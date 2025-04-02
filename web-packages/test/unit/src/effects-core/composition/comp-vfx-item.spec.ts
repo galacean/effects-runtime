@@ -720,9 +720,9 @@ describe('core/composition/comp-vfx-item', () => {
     const scene = await player.loadScene(json);
 
     player.play();
-    expect(scene.refContent.length).to.eql(2);
-    const comp1 = scene.refContent[0];
-    const comp2 = scene.refContent[1];
+    expect(scene.refContent.length).to.eql(3);
+    const comp1 = scene.refContent[1];
+    const comp2 = scene.refContent[2];
 
     expect(comp1.name).to.eql('ref_火花');
     expect(comp2.name).to.eql('欢呼粒子');

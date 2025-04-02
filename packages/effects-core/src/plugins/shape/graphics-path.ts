@@ -1,7 +1,5 @@
-/**
- * Based on:
- * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/GraphicsPath.ts
- */
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/GraphicsPath.ts
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { ShapePath } from './shape-path';
@@ -70,6 +68,19 @@ export class GraphicsPath {
   }
 
   /**
+   * Closes the current path by drawing a straight line back to the start.
+   * If the shape is already closed or there are no points in the path, this method does nothing.
+   * @returns The instance of the current object for chaining.
+   */
+  closePath (): this {
+    this.instructions.push({ action: 'closePath', data: [] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
    * Draws an ellipse at the specified location and with the given x and y radii.
    * An optional transformation can be applied, allowing for rotation, scaling, and translation.
    * @param x - The x-coordinate of the center of the ellipse.
@@ -96,8 +107,8 @@ export class GraphicsPath {
    * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
    * @returns The instance of the current object for chaining.
    */
-  rect (x: number, y: number, w: number, h: number, transform?: Matrix4): this {
-    this.instructions.push({ action: 'rect', data: [x, y, w, h, transform] });
+  rect (x: number, y: number, w: number, h: number, roundness: number, transform?: Matrix4): this {
+    this.instructions.push({ action: 'rect', data: [x, y, w, h, roundness, transform] });
 
     this.dirty = true;
 

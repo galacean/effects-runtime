@@ -1,7 +1,5 @@
-/**
- * Based on:
- * https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Polygon.ts
- */
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Polygon.ts
 
 import { ShapePrimitive } from './shape-primitive';
 import type { PointData } from './point-data';
@@ -152,16 +150,87 @@ export class Polygon extends ShapePrimitive {
 
   override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
     const triangles = triangulate([points]);
+    const indexStart = vertices.length / 2;
+
+    // 当所有 points 在一条直线时, gluTess 三角化 triangles 会返回空数组，这边做一下额外处理返回线段左右端点组成的三角形，确保拿到的包围盒是正确的。
+    if (triangles.length === 0) {
+      this.getLineEndPointsTriangle(points, triangles);
+    }
 
     for (let i = 0; i < triangles.length; i++) {
-      vertices[verticesOffset + i] = triangles[i];
+      vertices[verticesOffset * 2 + i] = triangles[i];
     }
 
     const vertexCount = triangles.length / 2;
 
     for (let i = 0; i < vertexCount; i++) {
-      indices[indicesOffset + i] = i;
+      indices[indicesOffset + i] = indexStart + i;
     }
+  }
+
+  /**
+   * 获取直线上最远的两个端点坐标组成的三角形
+   */
+  private getLineEndPointsTriangle (points: number[], triangles: number[]): void {
+    // 参数检查
+    if (!points || points.length < 2 || points.length % 2 !== 0) {
+
+      throw new Error('Invalid points array');
+    }
+
+    if (points.length === 2) {
+      triangles.push(
+        points[0], points[1],
+        points[0], points[1],
+        points[0], points[1]
+      );
+
+      return;
+    }
+
+    // 取第一个线段计算斜率
+    const dx = points[2] - points[0];
+    const dy = points[3] - points[1];
+
+    // 存放结果坐标
+    let startX = points[0];
+    let startY = points[1];
+    let endX = points[0];
+    let endY = points[1];
+
+    // 根据斜率决定比较x还是y
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      // 水平方向为主,比较x坐标
+      for (let i = 0; i < points.length; i += 2) {
+        const x = points[i];
+        const y = points[i + 1];
+
+        if (x < startX) {
+          startX = x;
+          startY = y;
+        }
+        if (x > endX) {
+          endX = x;
+          endY = y;
+        }
+      }
+    } else {
+      // 垂直方向为主,比较y坐标
+      for (let i = 0; i < points.length; i += 2) {
+        const x = points[i];
+        const y = points[i + 1];
+
+        if (y < startY) {
+          startX = x;
+          startY = y;
+        }
+        if (y > endY) {
+          endX = x;
+          endY = y;
+        }
+      }
+    }
+    triangles.push(startX, startY, endX, endY, endX, endY);
   }
 }
 

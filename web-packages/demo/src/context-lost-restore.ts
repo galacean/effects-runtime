@@ -1,3 +1,4 @@
+import type { GLEngine } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
@@ -13,59 +14,6 @@ let isWebGLLost = false;
 let allocateTimeout: any;
 
 (async () => {
-  try {
-    const player = createPlayer();
-    const scene = await player.loadScene(json);
-
-    player.on('webglcontextlost', e => {
-      console.info('WEBGL_CONTEXT_LOST', e);
-    });
-    player.on('webglcontextrestored', () => {
-      console.info('WEBGL_CONTEXT_RESTORED');
-    });
-    scene.on('end', () => {
-      document.getElementById('J-gpuInfo')!.innerText = `
-        frame: ${gpuFrame}
-        gpu avg: ${(gpuTimes.reduce((x, y) => { return x + y; }, 0) / gpuFrame).toFixed(2)}ms
-        gpu max: ${max.toFixed(2)}ms`;
-    });
-
-    player.canvas.addEventListener('webglcontextlost', e => {
-      isWebGLLost = true;
-      if (allocateTimeout) {
-        window.clearTimeout(allocateTimeout);
-        allocateTimeout = null;
-      }
-    });
-    player.canvas.addEventListener('webglcontextrestored', e => {
-      isWebGLLost = false;
-    });
-
-    //@ts-expect-error
-    const gl = player.renderer.glRenderer.gl;
-    const ext = gl.getExtension('WEBGL_lose_context');
-
-    lostButton?.addEventListener('click', () => {
-      ext?.loseContext();
-      lostButton.disabled = true;
-      restoreButton.disabled = false;
-    });
-
-    restoreButton?.addEventListener('click', () => {
-      ext?.restoreContext();
-      lostButton.disabled = false;
-      restoreButton.disabled = true;
-    });
-
-    memoryButton?.addEventListener('click', () => {
-      void allocateMemoryForLost(gl);
-    });
-  } catch (e) {
-    console.info(e);
-  }
-})();
-
-function createPlayer () {
   const player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -74,17 +22,61 @@ function createPlayer () {
       gpuFrame++;
       max = Math.max(time, max);
     },
-  });
+    onError: e => {
+      switch (e.cause) {
+        case 'webglcontextlost':
+          console.info('trigger onWebGLContextLost set by user');
 
-  player.on('webglcontextlost', e => {
-    console.info('trigger onWebGLContextLost set by user');
+          break;
+        default:
+          console.error(e);
+      }
+    },
   });
+  const scene = await player.loadScene(json);
+
   player.on('webglcontextrestored', () => {
     console.info('trigger onWebGLContextRestored set by user');
   });
 
-  return player;
-}
+  scene.on('end', () => {
+    document.getElementById('J-gpuInfo')!.innerText = `
+        frame: ${gpuFrame}
+        gpu avg: ${(gpuTimes.reduce((x, y) => { return x + y; }, 0) / gpuFrame).toFixed(2)}ms
+        gpu max: ${max.toFixed(2)}ms`;
+  });
+
+  player.canvas.addEventListener('webglcontextlost', e => {
+    isWebGLLost = true;
+    if (allocateTimeout) {
+      window.clearTimeout(allocateTimeout);
+      allocateTimeout = null;
+    }
+  });
+  player.canvas.addEventListener('webglcontextrestored', e => {
+    isWebGLLost = false;
+  });
+
+  const engine = player.renderer.engine as GLEngine;
+  const gl = engine.getGLPipelineContext().gl;
+  const ext = gl.getExtension('WEBGL_lose_context');
+
+  lostButton?.addEventListener('click', () => {
+    ext?.loseContext();
+    lostButton.disabled = true;
+    restoreButton.disabled = false;
+  });
+
+  restoreButton?.addEventListener('click', () => {
+    ext?.restoreContext();
+    lostButton.disabled = false;
+    restoreButton.disabled = true;
+  });
+
+  memoryButton?.addEventListener('click', () => {
+    void allocateMemoryForLost(gl);
+  });
+})();
 
 const texSize = 8192;
 const texData = new Uint8Array(texSize * texSize * 4);

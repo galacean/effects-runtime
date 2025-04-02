@@ -6,11 +6,10 @@ import { Behaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType } from './plugins';
-import { PlayableGraph } from './plugins/cal/playable-graph';
+import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
-import { generateGUID, noop } from './utils';
+import { noop } from './utils';
 import { VFXItem } from './vfx-item';
-import { SerializationHelper } from './serialization-helper';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -30,6 +29,11 @@ export class CompositionComponent extends Behaviour {
   startTime = 0;
   items: VFXItem[] = [];  // 场景的所有元素
 
+  /**
+   * @internal
+   */
+  state: PlayState = PlayState.Playing;
+
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset;
@@ -47,6 +51,8 @@ export class CompositionComponent extends Behaviour {
     if (this.item.endBehavior !== spec.EndBehavior.destroy) {
       this.setReusable(true);
     }
+
+    this.item.composition?.refContent.push(this.item);
   }
 
   setReusable (value: boolean) {
@@ -67,46 +73,27 @@ export class CompositionComponent extends Behaviour {
     return this.reusable;
   }
 
+  pause () {
+    this.state = PlayState.Paused;
+  }
+
+  resume () {
+    this.state = PlayState.Playing;
+  }
+
   override onUpdate (dt: number): void {
+    if (this.state === PlayState.Paused) {
+      return;
+    }
     const time = this.time;
 
     this.timelinePlayable.setTime(time);
 
     // The properties of the object may change dynamically,
     // so reset the track binding to avoid invalidation of the previously obtained binding object.
-    // this.resolveBindings();
+    this.resolveBindings();
     this.timelinePlayable.evaluate();
     this.graph.evaluate(dt);
-  }
-
-  createContent () {
-    if (this.item.composition) {
-      for (const item of this.items) {
-        item.composition = this.item.composition;
-
-        // 设置预合成作为元素时的时长、结束行为和渲染延时
-        if (VFXItem.isComposition(item)) {
-          this.item.composition.refContent.push(item);
-          const compositionContent = item.props.content as unknown as spec.CompositionContent;
-          const refId = compositionContent.options.refId;
-          const props = this.item.composition.refCompositionProps.get(refId);
-
-          if (!props) {
-            throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
-          }
-          const compositionComponent = item.addComponent(CompositionComponent);
-
-          SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
-          compositionComponent.createContent();
-          for (const vfxItem of compositionComponent.items) {
-            vfxItem.setInstanceId(generateGUID());
-            for (const component of vfxItem.components) {
-              component.setInstanceId(generateGUID());
-            }
-          }
-        }
-      }
-    }
   }
 
   override onEnable () {

@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Ellipse.ts
+
 import { ShapePrimitive } from './shape-primitive';
 
 /**

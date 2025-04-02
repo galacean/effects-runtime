@@ -1,4 +1,8 @@
 export default {
+  autumn2023: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*6fYqTZWauTkAAAAAAAAAAAAADlB4AQ',
+    name: '秋促2023',
+  },
   tableTennis: {
     name: '乒乓球',
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*RVUzSYO8hk0AAAAAAAAAAAAADlB4AQ',

@@ -1,7 +1,5 @@
-/**
- * Based on:
- * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
- */
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Polygon } from './polygon';
@@ -57,6 +55,11 @@ export class ShapePath {
 
           break;
         }
+        case 'closePath':{
+          this.closePath();
+
+          break;
+        }
       }
     }
     this.endPoly();
@@ -100,6 +103,17 @@ export class ShapePath {
   }
 
   /**
+   * Closes the current path by drawing a straight line back to the start.
+   * If the shape is already closed or there are no points in the path, this method does nothing.
+   * @returns The instance of the current object for chaining.
+   */
+  closePath (): this {
+    this.endPoly(true);
+
+    return this;
+  }
+
+  /**
    * Draws an ellipse at the specified location and with the given x and y radii.
    * An optional transformation can be applied, allowing for rotation, scaling, and translation.
    * @param x - The x-coordinate of the center of the ellipse.
@@ -132,8 +146,8 @@ export class ShapePath {
    * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
    * @returns The instance of the current object for chaining.
    */
-  rect (x: number, y: number, w: number, h: number, transform?: Matrix4): this {
-    this.drawShape(new Rectangle(x, y, w, h), transform);
+  rect (x: number, y: number, w: number, h: number, roundness: number, transform?: Matrix4): this {
+    this.drawShape(new Rectangle(x, y, w, h, roundness), transform);
 
     return this;
   }

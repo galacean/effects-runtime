@@ -45,7 +45,6 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "string-hash": "^1.1.3",
     "@galacean/effects-core": "workspace:*"
   }
 }

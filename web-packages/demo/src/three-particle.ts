@@ -9,5 +9,9 @@ const json = inspireList.woman.url;
     pixelRatio: window.devicePixelRatio,
   });
 
-  void renderbyThreeDisplayObject(threePlayer, json);
+  void renderbyThreeDisplayObject(threePlayer, [
+    json,
+    'https://mdn.alipayobjects.com/mars/afts/file/A*u-NFTK_DS0IAAAAAAAAAAAAAelB4AQ',
+    'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*qTquTKYbk6EAAAAAAAAAAAAADsF2AQ',
+  ]);
 })();

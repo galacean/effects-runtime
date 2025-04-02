@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Triangle.ts
+
 import { Rectangle } from './rectangle';
 import { ShapePrimitive } from './shape-primitive';
 

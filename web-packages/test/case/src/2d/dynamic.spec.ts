@@ -1,4 +1,5 @@
 import type { GLType } from '@galacean/effects';
+import '@galacean/effects-plugin-rich-text';
 import { TestController, ImageComparator, getCurrnetTimeStr } from '../common';
 import sceneList from './assets/dynamic';
 

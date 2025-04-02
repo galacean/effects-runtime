@@ -14,6 +14,7 @@ export { GLGeometry, GLEngine, GLRenderer } from '@galacean/effects-webgl';
 export * from '@galacean/effects-core';
 export * from './types';
 export * from './player';
+export { isCanvasUsedByPlayer, getPlayerByCanvas, getActivePlayers } from './player-map';
 
 Texture.create = (engine: Engine, props?: TextureSourceOptions) => {
   return new GLTexture(engine, props);

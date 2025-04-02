@@ -1,9 +1,10 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
-  SpineContent, TimelineAssetData,
+  SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData, CompositionContent,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
+  JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -22,7 +23,7 @@ export function version21Migration (json: JSONSceneLegacy): JSONSceneLegacy {
     });
   });
 
-  json.version = '2.1';
+  json.version = JSONSceneVersion['2_1'];
 
   return json;
 }
@@ -52,12 +53,54 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
  * 3.1 版本数据适配
  * - 富文本插件名称的适配
  */
-export function version31Migration (json: JSONSceneLegacy): JSONSceneLegacy {
+export function version31Migration (json: JSONScene): JSONScene {
+  // 修正老版本数据中，富文本插件名称的问题
   json.plugins?.forEach((plugin, index) => {
     if (plugin === 'richtext') {
       json.plugins[index] = 'rich-text';
     }
   });
+
+  // Custom shape fill 属性位置迁移
+  for (const component of json.components) {
+    if (component.dataType === DataType.ShapeComponent) {
+      const shapeComponent = component as ShapeComponentData;
+
+      if (shapeComponent.type === ShapePrimitiveType.Custom) {
+        const customShapeComponent = shapeComponent as CustomShapeData;
+
+        //@ts-expect-error
+        if (customShapeComponent.shapes?.length > 0 && customShapeComponent.shapes[0].fill) {
+          // @ts-expect-error
+          customShapeComponent.fill = customShapeComponent.shapes[0].fill;
+        }
+      }
+    }
+  }
+
+  // Composition id 转 guid
+  const compositionId = json.compositionId;
+  const compositionIdToGUIDMap: Record<string, string> = {};
+
+  for (const composition of json.compositions) {
+    const guid = generateGUID();
+
+    compositionIdToGUIDMap[composition.id] = guid;
+    if (composition.id === compositionId) {
+      json.compositionId = guid;
+    }
+    composition.id = guid;
+  }
+  // 预合成元素 refId 同步改为生成的合成 guid
+  for (const item of json.items) {
+    if (item.content) {
+      const compositionOptions = (item.content as CompositionContent).options;
+
+      if (compositionOptions && compositionOptions.refId !== undefined) {
+        compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
+      }
+    }
+  }
 
   return json;
 }
@@ -380,7 +423,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
-  result.version = '3.0';
+  result.version = JSONSceneVersion['3_0'];
 
   return result;
 }

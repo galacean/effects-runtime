@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/airbnb/lottie-web/blob/master/player/js/utils/shapes/ShapeProperty.js
+
 import { buildAdaptiveBezier } from './build-adaptive-bezier';
 import { ShapePrimitive } from './shape-primitive';
 import { triangulate } from './triangulate';
@@ -106,15 +109,16 @@ export class PolyStar extends ShapePrimitive {
 
   override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
     const triangles = triangulate([points]);
+    const indexStart = vertices.length / 2;
 
     for (let i = 0; i < triangles.length; i++) {
-      vertices[verticesOffset + i] = triangles[i];
+      vertices[verticesOffset * 2 + i] = triangles[i];
     }
 
     const vertexCount = triangles.length / 2;
 
     for (let i = 0; i < vertexCount; i++) {
-      indices[indicesOffset + i] = i;
+      indices[indicesOffset + i] = indexStart + i;
     }
   }
 
