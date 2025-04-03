@@ -3,7 +3,7 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
-import { MaskRefManager } from './material/mask-ref-manager';
+import { MaskRefManager } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';

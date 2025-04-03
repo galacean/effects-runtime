@@ -1,21 +1,13 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type {
-  Maskable,
-  MaterialProps,
-} from '../material';
-import { MaskProcessor } from '../material';
+import type { Maskable, MaterialProps } from '../material';
 import {
-  getPreMultiAlpha,
-  MaskMode,
-  Material,
-  setBlendMode,
-  setMaskMode,
-  setSideMode,
+  getPreMultiAlpha, MaskMode, Material, setBlendMode, setMaskMode, setSideMode, MaskProcessor,
 } from '../material';
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
@@ -26,7 +18,6 @@ import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { addItem } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { Color } from '@galacean/effects-math/es/core/color';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -68,7 +59,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   color: spec.vec4 = [1, 1, 1, 1];
   worldMatrix: Matrix4;
   geometry: Geometry;
-  maskManager: MaskProcessor;
+  readonly maskManager: MaskProcessor;
 
   protected renderInfo: ItemRenderInfo;
   // readonly mesh: Mesh;

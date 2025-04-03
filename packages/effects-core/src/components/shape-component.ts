@@ -1,20 +1,15 @@
 import { Color } from '@galacean/effects-math/es/core/color';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { IMaskProps, MaterialProps, Maskable } from '../material';
-import { MaskProcessor } from '../material';
-import { Material, setMaskMode } from '../material';
-import { GraphicsPath } from '../plugins/shape/graphics-path';
-import type { ShapePath } from '../plugins/shape/shape-path';
-import { Geometry, GLSLVersion } from '../render';
+import type { MaskProps, MaterialProps, Maskable } from '../material';
+import { Material, setMaskMode, MaskProcessor } from '../material';
 import { MeshComponent } from './mesh-component';
-import { StarType } from '../plugins/shape/poly-star';
-import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Polygon } from '../plugins/shape/polygon';
+import { Geometry, GLSLVersion } from '../render';
+import type { ShapePath, StrokeAttributes, Polygon } from '../plugins';
+import { GraphicsPath, StarType, buildLine } from '../plugins';
 
 interface CurveData {
   point: spec.Vector2Data,
@@ -179,7 +174,7 @@ void main() {
   gl_FragColor = color;
 }
 `;
-  maskManager: MaskProcessor;
+  readonly maskManager: MaskProcessor;
 
   get shape () {
     this.shapeDirty = true;
@@ -570,7 +565,7 @@ void main() {
       }
     }
 
-    const maskMode = this.maskManager.getMaskMode(data as IMaskProps);
+    const maskMode = this.maskManager.getMaskMode(data as MaskProps);
     const maskRef = this.maskManager.getRefValue();
 
     this.material.stencilRef = maskRef !== undefined ? [maskRef, maskRef] : undefined;

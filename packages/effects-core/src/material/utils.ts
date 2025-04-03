@@ -10,6 +10,7 @@ export function valIfUndefined<T> (val: any, def: T): T {
 
   return val;
 }
+
 export function getPreMultiAlpha (blending?: number): number {
   switch (blending) {
     case spec.BlendingMode.ALPHA:
@@ -88,7 +89,7 @@ export function setSideMode (material: Material, side: spec.SideMode) {
   }
 }
 
-export function setMaskMode (material: Material, maskMode: MaskMode, colorMask: boolean = false) {
+export function setMaskMode (material: Material, maskMode: MaskMode, colorMask = false) {
   switch (maskMode) {
     case undefined:
       material.stencilTest = false;

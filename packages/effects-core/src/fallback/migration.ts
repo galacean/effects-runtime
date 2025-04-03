@@ -53,7 +53,7 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
 
 let currentMaskComponent: string;
 const componentMap: Map<string, spec.ComponentData> = new Map();
-const itemMap: Map<string, spec.VFXItemData > = new Map();
+const itemMap: Map<string, spec.VFXItemData> = new Map();
 const refCompositions: Map<string, spec.CompositionData> = new Map();
 
 /**

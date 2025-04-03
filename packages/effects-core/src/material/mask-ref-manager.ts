@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
-import type { IMaskProps } from './types';
+import type { MaskProps } from './types';
 import { MaskMode } from './types';
 
 export class MaskRefManager {
@@ -29,7 +29,7 @@ export class MaskProcessor {
     return this.maskRef;
   }
 
-  getMaskMode (data: IMaskProps) {
+  getMaskMode (data: MaskProps) {
     let maskMode = MaskMode.NONE;
 
     if (data.mask) {

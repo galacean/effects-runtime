@@ -1,33 +1,17 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset,
-  BoundingBoxTriangle,
-  Engine,
-  HitTestTriangleParams, IMaskProps, Maskable,
-  Renderer,
-  Texture } from '@galacean/effects';
-import {
-  MaskProcessor,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps, Maskable,
+  Renderer, Texture,
 } from '@galacean/effects';
 import {
-  effectsClass,
-  HitTestType,
-  MaskMode,
-  math,
-  PLAYER_OPTIONS_ENV_EDITOR,
-  RendererComponent,
-  serialize,
-  spec,
+  effectsClass, HitTestType, MaskMode, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
+  serialize, spec, MaskProcessor,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import {
-  createSkeletonData,
-  getAnimationDuration,
-  getAnimationList,
-  getSkeletonFromBuffer,
-  getSkinList,
-  readAtlasData,
+  createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
+  getSkinList, readAtlasData,
 } from './utils';
 
 const { Vector2, Vector3 } = math;
@@ -106,6 +90,13 @@ export class SpineComponent extends RendererComponent implements Maskable {
   };
   options: spec.PluginSpineOption;
 
+  @serialize()
+  resource: SpineResource;
+  @serialize()
+  cache: SpineDataCache;
+
+  readonly maskManager: MaskProcessor;
+
   private content: SlotGroup | null;
   private skeleton: Skeleton;
   private state: AnimationState;
@@ -120,12 +111,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
    * aabb 包围盒的宽度与高度
    */
   private size = new Vector2();
-
-  @serialize()
-  resource: SpineResource;
-  @serialize()
-  cache: SpineDataCache;
-  maskManager: MaskProcessor;
 
   constructor (engine: Engine) {
     super(engine);
@@ -142,7 +127,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       maskMode: MaskMode.NONE,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
-    this.rendererOptions.maskMode = this.maskManager.getMaskMode(data as IMaskProps);
+    this.rendererOptions.maskMode = this.maskManager.getMaskMode(data as MaskProps);
     this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
@@ -252,7 +237,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       meshName: this.name,
       transform: this.transform,
       pma: this.pma,
-      renderOptions:this.rendererOptions,
+      renderOptions: this.rendererOptions,
       engine: this.engine,
     });
   }

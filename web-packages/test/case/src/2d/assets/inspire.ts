@@ -421,7 +421,6 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
     name: '支付宝2021——缴费',
   },
-  // 旧JSON元素顺序问题
   autumn: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*SmtETIh6bcAAAAAAAAAAAAAAelB4AQ',
     name: '天猫中秋大街',

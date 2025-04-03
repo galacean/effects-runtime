@@ -1,22 +1,11 @@
 import type {
-  Engine,
-  Texture2DSourceOptionsVideo,
-  Asset,
-  SpriteItemProps,
-  GeometryFromShape,
-  ItemRenderInfo,
-  MaterialProps,
-  ShaderMacros, IMaskProps,
+  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
+  ItemRenderInfo, MaterialProps, ShaderMacros, MaskProps,
 } from '@galacean/effects';
 import {
-  spec,
-  math,
-  Texture,
-  MaskMode,
-  effectsClass,
-  BaseRenderComponent,
-  glContext,
-  PLAYER_OPTIONS_ENV_EDITOR, itemFrag, itemVert, GLSLVersion, getImageItemRenderInfo, assertExist,
+  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent, glContext,
+  PLAYER_OPTIONS_ENV_EDITOR, itemFrag, itemVert, GLSLVersion, getImageItemRenderInfo,
+  assertExist,
 } from '@galacean/effects';
 
 /**
@@ -28,7 +17,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  mask?: IMaskProps['mask'],
+  mask?: MaskProps['mask'],
 }
 
 let seed = 0;
