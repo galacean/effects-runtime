@@ -87,6 +87,29 @@ export function version31Migration (json: JSONScene): JSONScene {
           // @ts-expect-error
           customShapeComponent.fill = customShapeComponent.shapes[0].fill;
         }
+
+        // easingIn 和 easingOut 绝对坐标转相对坐标
+        const easingInFlag = new Array(customShapeComponent.easingIns.length);
+        const easingOutFlag = new Array(customShapeComponent.easingOuts.length).fill(false);
+
+        for (const shape of customShapeComponent.shapes) {
+          for (const index of shape.indexes) {
+            const point = customShapeComponent.points[index.point];
+            const easingIn = customShapeComponent.easingIns[index.easingIn];
+            const easingOut = customShapeComponent.easingOuts[index.easingOut];
+
+            if (!easingInFlag[index.easingIn]) {
+              easingIn.x -= point.x;
+              easingIn.y -= point.y;
+              easingInFlag[index.easingIn] = true;
+            }
+            if (!easingOutFlag[index.easingOut]) {
+              easingOut.x -= point.x;
+              easingOut.y -= point.y;
+              easingOutFlag[index.easingOut] = true;
+            }
+          }
+        }
       }
     }
   }

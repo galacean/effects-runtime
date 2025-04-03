@@ -326,9 +326,16 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       scenes.push(scene);
     }
 
+    if (autoplay) {
+      this.autoPlaying = true;
+    }
+
+    const autoplayFlags: boolean[] = [];
+
     await Promise.all(
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
+        const compositionAutoplay = opts?.autoplay ?? autoplay;
         const assetManager = new AssetManager(opts);
 
         // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
@@ -340,13 +347,14 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
 
-        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer, options);
+        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
 
         const composition = this.createComposition(scene, opts);
 
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
+        autoplayFlags[index] = compositionAutoplay;
       }),
     );
 
@@ -359,8 +367,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const compileTime = performance.now() - compileStart;
 
     for (let i = 0; i < compositions.length; i++) {
-      if (autoplay) {
-        this.autoPlaying = true;
+      if (autoplayFlags[i]) {
         compositions[i].play();
       } else {
         compositions[i].pause();
