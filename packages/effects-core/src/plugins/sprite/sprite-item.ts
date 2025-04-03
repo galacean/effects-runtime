@@ -1,25 +1,26 @@
 import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
+import type { ColorPlayableAssetData } from '../../animation';
+import { ColorPlayable } from '../../animation';
+import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
+import type { MaskProps } from '../../material';
+import { MaskMode } from '../../material';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
-import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { PlayableGraph, Playable } from '../cal/playable-graph';
+import { type Texture, type Texture2DSourceOptionsVideo, TextureSourceType } from '../../texture';
+import type { Playable, PlayableGraph } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
-import type { ColorPlayableAssetData } from '../../animation';
-import { ColorPlayable } from '../../animation';
-import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
  */
-export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
+export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer' | 'mask'>, MaskProps {
   listIndex?: number,
   renderer: {
-    mask: number,
     shape: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
@@ -291,17 +292,19 @@ export class SpriteComponent extends BaseRenderComponent {
       renderer = {} as SpriteItemProps['renderer'];
     }
 
+    const maskMode = this.maskManager.getMaskMode(data);
+
     this.interaction = interaction;
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       shape: renderer.shape,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: this.maskManager.getRefValue(),
+      maskMode,
       order: listIndex,
     };
 

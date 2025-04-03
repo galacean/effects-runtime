@@ -1,11 +1,12 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer, Texture,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps, Maskable,
+  Renderer, Texture,
 } from '@galacean/effects';
 import {
-  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
-  spec,
+  effectsClass, HitTestType, MaskMode, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
+  serialize, spec, MaskProcessor,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import {
@@ -51,17 +52,12 @@ export interface SpineDataCache extends SpineBaseData {
   editorResourceID?: string,
 }
 
-export interface SpineMaskOptions {
-  mask?: number,
-  maskMode?: number,
-}
-
 /**
  * Spine 组件
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.SpineComponent)
-export class SpineComponent extends RendererComponent {
+export class SpineComponent extends RendererComponent implements Maskable {
   startSize: number;
   /**
    * 根据相机计算的缩放比例
@@ -86,10 +82,20 @@ export class SpineComponent extends RendererComponent {
    */
   pma: boolean;
   /**
-   * renderer 数据
+   * renderer 和 mask 数据
    */
-  rendererOptions: SpineMaskOptions;
+  rendererOptions: Pick<spec.SpineComponent, 'renderer'> & {
+    maskMode: MaskMode,
+    mask: number,
+  };
   options: spec.PluginSpineOption;
+
+  @serialize()
+  resource: SpineResource;
+  @serialize()
+  cache: SpineDataCache;
+
+  readonly maskManager: MaskProcessor;
 
   private content: SlotGroup | null;
   private skeleton: Skeleton;
@@ -106,20 +112,23 @@ export class SpineComponent extends RendererComponent {
    */
   private size = new Vector2();
 
-  @serialize()
-  resource: SpineResource;
-  @serialize()
-  cache: SpineDataCache;
-
   constructor (engine: Engine) {
     super(engine);
+    this.maskManager = new MaskProcessor(engine);
   }
 
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
     this.options = data.options;
-    this.rendererOptions = data.renderer || {};
+    this.rendererOptions = {
+      renderMode: spec.RenderMode.MESH,
+      ...data.renderer || {},
+      mask: 0,
+      maskMode: MaskMode.NONE,
+    };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
+    this.rendererOptions.maskMode = this.maskManager.getMaskMode(data as MaskProps);
+    this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;

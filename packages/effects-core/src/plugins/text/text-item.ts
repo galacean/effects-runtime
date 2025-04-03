@@ -1,26 +1,26 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
+import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import type { Engine } from '../../engine';
-import { Texture } from '../../texture';
-import { TextLayout } from './text-layout';
-import { TextStyle } from './text-style';
-import { glContext } from '../../gl';
-import { effectsClass } from '../../decorators';
 import { canvasPool } from '../../canvas-pool';
-import { applyMixins, isValidFontFamily } from '../../utils';
-import type { Material } from '../../material';
-import type { VFXItem } from '../../vfx-item';
 import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
-import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { effectsClass } from '../../decorators';
+import type { Engine } from '../../engine';
+import { glContext } from '../../gl';
+import type { MaskProps, Material } from '../../material';
+import { MaskMode } from '../../material';
+import { Texture } from '../../texture';
+import { applyMixins, isValidFontFamily } from '../../utils';
+import type { VFXItem } from '../../vfx-item';
+import { TextLayout } from './text-layout';
+import { TextStyle } from './text-style';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
  */
-export interface TextItemProps extends Omit<spec.TextContent, 'renderer'> {
+export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'>, MaskProps {
   listIndex?: number,
   renderer: {
-    mask: number,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
 }
@@ -58,7 +58,6 @@ let seed = 0;
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends BaseRenderComponent {
   isDirty = true;
-
   /**
    * 文本行数
    */
@@ -110,6 +109,8 @@ export class TextComponent extends BaseRenderComponent {
       renderer = {} as TextItemProps['renderer'];
     }
 
+    const maskMode = this.maskManager.getMaskMode(data);
+
     this.interaction = interaction;
 
     this.renderer = {
@@ -117,10 +118,10 @@ export class TextComponent extends BaseRenderComponent {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: this.maskManager.getRefValue(),
+      maskMode,
       order: listIndex,
     };
     this.interaction = interaction;

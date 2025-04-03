@@ -1,19 +1,15 @@
 import { Color } from '@galacean/effects-math/es/core/color';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaterialProps } from '../material';
-import { Material, setMaskMode } from '../material';
-import { GraphicsPath } from '../plugins/shape/graphics-path';
-import type { ShapePath } from '../plugins/shape/shape-path';
-import { Geometry, GLSLVersion } from '../render';
+import type { MaskProps, MaterialProps, Maskable } from '../material';
+import { Material, setMaskMode, MaskProcessor } from '../material';
 import { MeshComponent } from './mesh-component';
-import { StarType } from '../plugins/shape/poly-star';
-import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Polygon } from '../plugins/shape/polygon';
+import { Geometry, GLSLVersion } from '../render';
+import type { ShapePath, StrokeAttributes, Polygon } from '../plugins';
+import { GraphicsPath, StarType, buildLine } from '../plugins';
 
 interface FillAttribute {
   color: Color,
@@ -137,16 +133,14 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends MeshComponent {
+export class ShapeComponent extends MeshComponent implements Maskable {
   private hasStroke = false;
   private hasFill = false;
   private shapeDirty = true;
-
   private graphicsPath = new GraphicsPath();
   private fillAttribute: FillAttribute;
   private strokeAttributes: StrokeAttributes;
   private shapeAttribute: ShapeAttribute;
-
   private vert = `
 precision highp float;
 
@@ -173,6 +167,7 @@ void main() {
   gl_FragColor = color;
 }
 `;
+  readonly maskManager: MaskProcessor;
 
   get shape () {
     this.shapeDirty = true;
@@ -267,6 +262,9 @@ void main() {
       easingOuts: [],
       shapes: [],
     } as CustomShapeAttribute;
+
+    this.maskManager = new MaskProcessor(engine);
+
   }
 
   override onStart (): void {
@@ -553,11 +551,12 @@ void main() {
       }
     }
 
-    const material = this.material;
+    const maskMode = this.maskManager.getMaskMode(data as MaskProps);
+    const maskRef = this.maskManager.getRefValue();
 
-    //@ts-expect-error // TODO 新版蒙版上线后重构
-    material.stencilRef = data.renderer.mask !== undefined ? [data.renderer.mask, data.renderer.mask] : undefined;
-    //@ts-expect-error // TODO 新版蒙版上线后重构
-    setMaskMode(material, data.renderer.maskMode);
+    this.material.stencilRef = maskRef !== undefined ? [maskRef, maskRef] : undefined;
+    setMaskMode(this.material, maskMode);
+
   }
 }
+

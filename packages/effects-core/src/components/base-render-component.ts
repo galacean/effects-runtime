@@ -1,29 +1,32 @@
-import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import { RendererComponent } from './renderer-component';
-import { Texture } from '../texture';
-import type { GeometryDrawMode, Renderer } from '../render';
-import { Geometry } from '../render';
+import { Color } from '@galacean/effects-math/es/core/color';
+import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import { addItem } from '../utils';
+import type { Maskable, MaterialProps } from '../material';
+import {
+  getPreMultiAlpha, MaskMode, Material, setBlendMode, setMaskMode, setSideMode, MaskProcessor,
+} from '../material';
+import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
-import type { MaterialProps } from '../material';
-import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
-import { trianglesFromRect } from '../math';
+import type { GeometryDrawMode, Renderer } from '../render';
+import { Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
-import { Color } from '@galacean/effects-math/es/core/color';
+import { Texture } from '../texture';
+import { addItem } from '../utils';
+import { RendererComponent } from './renderer-component';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
  */
-export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin'>> {
+export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   order: number,
-  mask: number,
   texture: Texture,
+  mask: number,
+  maskMode: MaskMode,
   shape?: GeometryFromShape,
   anchor?: spec.vec2,
   particleOrigin?: spec.ParticleOrigin,
@@ -46,17 +49,17 @@ export interface ItemRenderInfo {
 /**
  * @since 2.1.0
  */
-export class BaseRenderComponent extends RendererComponent {
+export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   cachePrefix = '-';
   geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
   anchor?: spec.vec2;
   renderer: ItemRenderer;
-
   emptyTexture: Texture;
   color: spec.vec4 = [1, 1, 1, 1];
   worldMatrix: Matrix4;
   geometry: Geometry;
+  readonly maskManager: MaskProcessor;
 
   protected renderInfo: ItemRenderInfo;
   // readonly mesh: Mesh;
@@ -80,8 +83,8 @@ export class BaseRenderComponent extends RendererComponent {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
+      maskMode: MaskMode.NONE,
       mask: 0,
-      maskMode: spec.MaskMode.NONE,
       order: 0,
     };
     this.emptyTexture = this.engine.emptyTexture;
@@ -93,6 +96,7 @@ export class BaseRenderComponent extends RendererComponent {
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
+    this.maskManager = new MaskProcessor(engine);
   }
 
   /**
@@ -222,8 +226,8 @@ export class BaseRenderComponent extends RendererComponent {
       texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
       texParams.y = +this.preMultiAlpha;
       texParams.z = renderer.renderMode;
-
-      if (texParams.x === 0) {
+      texParams.w = renderer.maskMode;
+      if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
         this.material.enableMacro('ALPHA_CLIP');
       } else {
         this.material.disableMacro('ALPHA_CLIP');
@@ -314,6 +318,7 @@ export class BaseRenderComponent extends RendererComponent {
     this.preMultiAlpha = getPreMultiAlpha(blending);
 
     const material = Material.create(this.engine, materialProps);
+
     const states = {
       side,
       blending: true,
@@ -325,11 +330,13 @@ export class BaseRenderComponent extends RendererComponent {
     };
 
     material.blending = states.blending;
-    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
     material.depthTest = states.depthTest;
     material.depthMask = states.depthMask;
+    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
+
     states.blending && setBlendMode(material, states.blendMode);
-    setMaskMode(material, states.maskMode);
+    // 兼容旧数据中模板需要渲染的情况
+    setMaskMode(material, states.maskMode, !!this.renderer.shape);
     setSideMode(material, states.side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';

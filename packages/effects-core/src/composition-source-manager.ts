@@ -8,10 +8,6 @@ import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import type { VFXItemData } from './asset-loader';
 
-interface RendererOptionsWithMask extends spec.RendererOptions {
-  mask?: number,
-}
-
 export interface ContentOptions {
   id: string,
   duration: number,
@@ -137,10 +133,6 @@ export class CompositionSourceManager implements Disposable {
     if (renderContent.renderer) {
       renderContent.renderer = this.changeTex(renderContent.renderer);
 
-      if (!('mask' in renderContent.renderer)) {
-        this.processMask(renderContent.renderer);
-      }
-
       const split = renderContent.splits && !renderContent.textureSheetAnimation ? renderContent.splits[0] : undefined;
       const shape = renderContent.renderer.shape;
       let shapeData;
@@ -183,27 +175,6 @@ export class CompositionSourceManager implements Disposable {
         imageUsage[texId] = 0;
       }
       imageUsage[texId]++;
-    }
-  }
-
-  /**
-   * 处理蒙版和遮挡关系写入 stencil 的 ref 值
-   */
-  private processMask (renderer: RendererOptionsWithMask) {
-    const maskMode = renderer.maskMode;
-
-    if (maskMode === spec.MaskMode.NONE) {
-      return;
-    }
-    if (!renderer.mask) {
-      if (maskMode === spec.MaskMode.MASK) {
-        renderer.mask = ++this.mask;
-      } else if (
-        maskMode === spec.MaskMode.OBSCURED ||
-        maskMode === spec.MaskMode.REVERSE_OBSCURED
-      ) {
-        renderer.mask = this.mask;
-      }
     }
   }
 

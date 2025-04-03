@@ -1,22 +1,23 @@
 import type {
   Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  ItemRenderInfo, MaterialProps, ShaderMacros,
+  ItemRenderInfo, MaterialProps, ShaderMacros, MaskProps,
 } from '@galacean/effects';
 import {
-  spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
-  assertExist, Texture, itemFrag, itemVert, GLSLVersion, PLAYER_OPTIONS_ENV_EDITOR,
+  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent, glContext,
+  PLAYER_OPTIONS_ENV_EDITOR, itemFrag, itemVert, GLSLVersion, getImageItemRenderInfo,
+  assertExist,
 } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
-export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'> {
+export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer' | 'mask'> {
   listIndex?: number,
   renderer: {
-    mask: number,
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
+  mask?: MaskProps['mask'],
 }
 
 let seed = 0;
@@ -149,15 +150,17 @@ export class VideoComponent extends BaseRenderComponent {
       }
     }
 
+    const maskMode = this.maskManager.getMaskMode(data);
+
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: this.maskManager.getRefValue(),
+      maskMode,
       order: listIndex,
       shape: renderer.shape,
     };
