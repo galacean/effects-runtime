@@ -168,9 +168,9 @@ export function processContent (composition: spec.CompositionData) {
 
 export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
-  const maskMode = renderer.maskMode;
+  const maskMode = renderer?.maskMode;
 
-  if (maskMode === MaskMode.NONE) {
+  if (!maskMode || maskMode === MaskMode.NONE) {
 
     return;
   }
