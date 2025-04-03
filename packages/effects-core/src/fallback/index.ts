@@ -51,7 +51,7 @@ export function getStandardJSON (json: any): JSONScene {
       json = version30Migration(version21Migration(json));
     }
     // 3.x 版本格式转换
-    if (mainVersion < 4 || (mainVersion === 3 && minorVersion < 2)) {
+    if (mainVersion < 4 || (mainVersion === 4 && minorVersion < 2)) {
       json = version31Migration(json);
     }
 

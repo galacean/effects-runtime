@@ -25,10 +25,11 @@ vec4 blendColor(vec4 color, vec4 vc, float mode) {
 void main() {
   vec4 color = vec4(0.);
   #ifdef TRANSPARENT_VIDEO
-    vec2 uv_rgb = vec2(vTexCoord.x * 0.5000, vTexCoord.y);
-    vec2 uv_alpha = vec2(vTexCoord.x * 0.5000 + 0.5000, vTexCoord.y);
+    float halfX = vTexCoord.x * 0.5;
+    vec2 uv_rgb = vec2(halfX, vTexCoord.y);
+    vec2 uv_alpha = vec2(halfX + 0.5, vTexCoord.y);
     vec3 rgb = texture2D(_MainTex, uv_rgb).rgb;
-    float alpha = texture2D(_MainTex, uv_alpha).r;
+    float alpha = max(texture2D(_MainTex, uv_alpha).r, 1e-5);
     vec4 texColor = vec4(rgb / alpha, alpha);
   #else
     vec4 texColor = texture2D(_MainTex, vTexCoord.xy);

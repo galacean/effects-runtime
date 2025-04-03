@@ -32,6 +32,9 @@ importers:
       '@rollup/plugin-replace':
         specifier: ^6.0.1
         version: 6.0.2(rollup@2.79.2)
+      '@rollup/plugin-terser':
+        specifier: ^0.4.4
+        version: 0.4.4(rollup@2.79.2)
       '@swc/core':
         specifier: ^1.4.13
         version: 1.4.14(@swc/helpers@0.5.15)
@@ -150,8 +153,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.2.0-alpha.6
-        version: 2.2.0-alpha.6
+        specifier: 2.3.0-alpha.0
+        version: 2.3.0-alpha.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -1342,8 +1345,8 @@ packages:
   '@galacean/effects-specification@2.1.0':
     resolution: {integrity: sha512-gad/CBHvTlL182QExrPGqzafzfMjSEfVWRA4+mufHMvxlsDF0kEIvZ2EEcyG9IgvRkX81F1PU1vk+or6G1j2nw==}
 
-  '@galacean/effects-specification@2.2.0-alpha.6':
-    resolution: {integrity: sha512-EMjzc2lYAJ/1/txGOqFXMAFmXCUcssN2yKp3pX4vv9CkAXO+YulpVVPiSplijNfLWbptd9//IoQk+ENG8dDWYg==}
+  '@galacean/effects-specification@2.3.0-alpha.0':
+    resolution: {integrity: sha512-BEdAioissB46giJMOPpqiF8O4tftCFD+KTEgJYpqfdckfRfy8+IKa1iTI0sVk91FGLqXgmuPqjuyxT6PixWn+g==}
 
   '@humanwhocodes/config-array@0.11.14':
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -1463,6 +1466,15 @@ packages:
     engines: {node: '>=14.0.0'}
     peerDependencies:
       rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+
+  '@rollup/plugin-terser@0.4.4':
+    resolution: {integrity: sha512-XHeJC5Bgvs8LfukDwWZp7yeqin6ns8RTl2B9avbejt6tZqsqvVoWI7ZTQrcNsfKEDWBTnTxM8nMDkO2IFFbd0A==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^2.0.0||^3.0.0||^4.0.0
     peerDependenciesMeta:
       rollup:
         optional: true
@@ -3301,6 +3313,9 @@ packages:
     resolution: {integrity: sha1-W4h48ROlgheEjGSCAmxz4bpXcn8=, tarball: https://registry.npmmirror.com/quick-lru/download/quick-lru-4.0.1.tgz}
     engines: {node: '>=8'}
 
+  randombytes@2.1.0:
+    resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
+
   read-pkg-up@7.0.1:
     resolution: {integrity: sha1-86YTV1hFlzOuK5VjgFbhhU5+9Qc=, tarball: https://registry.npmmirror.com/read-pkg-up/download/read-pkg-up-7.0.1.tgz}
     engines: {node: '>=8'}
@@ -3482,6 +3497,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  serialize-javascript@6.0.2:
+    resolution: {integrity: sha512-Saa1xPByTTq2gdeFZYLLo+RFE35NHZkAbqZeWNd3BpzppeVisAqpDjcp8dyf6uIvEqJRd46jemmyA4iFIeVk8g==}
+
   shebang-command@2.0.0:
     resolution: {integrity: sha1-zNCvT4g1+9wmW4JGGq8MNmY/NOo=, tarball: https://registry.npmmirror.com/shebang-command/download/shebang-command-2.0.0.tgz}
     engines: {node: '>=8'}
@@ -3513,6 +3531,9 @@ packages:
   slice-ansi@4.0.0:
     resolution: {integrity: sha1-UA6N0P1VsFgVCGJVsxla3ypF/ms=, tarball: https://registry.npmmirror.com/slice-ansi/download/slice-ansi-4.0.0.tgz}
     engines: {node: '>=10'}
+
+  smob@1.5.0:
+    resolution: {integrity: sha512-g6T+p7QO8npa+/hNx9ohv1E5pVCmWrVCUzUXJyLdMmftX6ER0oiWY/w9knEonLpnOp6b6FenKnMfR8gqwWdwig==}
 
   sort-keys-length@1.0.1:
     resolution: {integrity: sha512-GRbEOUqCxemTAk/b32F2xa8wDTs+Z1QHOkbhJDQTvv/6G3ZkbJ+frYWsTcc7cBB3Fu4wy4XlLCuNtJuMn7Gsvw==}
@@ -5066,7 +5087,7 @@ snapshots:
 
   '@galacean/effects-specification@2.1.0': {}
 
-  '@galacean/effects-specification@2.2.0-alpha.6': {}
+  '@galacean/effects-specification@2.3.0-alpha.0': {}
 
   '@humanwhocodes/config-array@0.11.14':
     dependencies:
@@ -5198,6 +5219,14 @@ snapshots:
     dependencies:
       '@rollup/pluginutils': 5.1.0(rollup@2.79.2)
       magic-string: 0.30.8
+    optionalDependencies:
+      rollup: 2.79.2
+
+  '@rollup/plugin-terser@0.4.4(rollup@2.79.2)':
+    dependencies:
+      serialize-javascript: 6.0.2
+      smob: 1.5.0
+      terser: 5.19.1
     optionalDependencies:
       rollup: 2.79.2
 
@@ -7073,6 +7102,10 @@ snapshots:
 
   quick-lru@4.0.1: {}
 
+  randombytes@2.1.0:
+    dependencies:
+      safe-buffer: 5.2.1
+
   read-pkg-up@7.0.1:
     dependencies:
       find-up: 4.1.0
@@ -7307,6 +7340,10 @@ snapshots:
     dependencies:
       lru-cache: 6.0.0
 
+  serialize-javascript@6.0.2:
+    dependencies:
+      randombytes: 2.1.0
+
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -7345,6 +7382,8 @@ snapshots:
       ansi-styles: 4.3.0
       astral-regex: 2.0.0
       is-fullwidth-code-point: 3.0.0
+
+  smob@1.5.0: {}
 
   sort-keys-length@1.0.1:
     dependencies:

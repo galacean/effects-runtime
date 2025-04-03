@@ -40,7 +40,8 @@ describe('player/scene-load', () => {
 
     await player.loadScene(json, { variables });
 
-    expect(player.getAssetManager()[1].options.variables).to.eql(variables);
+    // @ts-expect-error
+    expect(player.getAssetManager().at(-1).options.variables).to.eql(variables);
   });
 
   it('加载多个合成链接并各自设置可选参数', async () => {
@@ -68,9 +69,9 @@ describe('player/scene-load', () => {
     }]);
 
     // @ts-expect-error
-    expect(player.getAssetManager().find(d => d.baseUrl === json1).options.variables).to.eql(variables1);
+    expect(player.getAssetManager().find(d => d.baseUrl === json1)?.options.variables).to.eql(variables1);
     // @ts-expect-error
-    expect(player.getAssetManager().find(d => d.baseUrl === json2).options.variables).to.eql(variables2);
+    expect(player.getAssetManager().find(d => d.baseUrl === json2)?.options.variables).to.eql(variables2);
     expect(composition1.getSpeed()).to.eql(2);
     expect(composition2.getSpeed()).to.eql(1);
   });

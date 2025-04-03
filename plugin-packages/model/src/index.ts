@@ -3,7 +3,7 @@ import type { spec } from '@galacean/effects';
 import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { ModelPlugin } from './plugin';
 
-registerPlugin<void>('model', ModelPlugin, VFXItem);
+registerPlugin('model', ModelPlugin, VFXItem);
 
 /**
  * 插件版本号

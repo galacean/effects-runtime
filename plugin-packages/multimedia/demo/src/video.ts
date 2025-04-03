@@ -15,6 +15,9 @@ const inputEle = document.getElementById('J-input') as HTMLInputElement;
     player = new Player({
       container,
       fps: 130,
+      onError (e) {
+        console.error(e.cause, e);
+      },
     });
 
     await checkAutoplayPermission();

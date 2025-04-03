@@ -322,7 +322,7 @@ void main() {
         const vertOffset = vertices.length / 2;
         const lineStyle = this.strokeAttributes;
 
-        let close = false;
+        let close = true;
 
         if (this.shapeAttribute.type === spec.ShapePrimitiveType.Custom) {
           close = (shape as Polygon).closePath;

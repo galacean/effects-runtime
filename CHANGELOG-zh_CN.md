@@ -8,6 +8,54 @@
 
 ---
 
+## 2.3.0
+
+`2025-04-02`
+
+- Feat: 增加安卓默认使用 WebGL2 的逻辑。[#861](https://github.com/galacean/effects-runtime/pull/861) @RGCHN
+- Feat: 扩展 `setTexture` 方法，支持直接传入资源链接。[#862](https://github.com/galacean/effects-runtime/pull/862) @Sruimeng
+- Feat: shape component support multi-shape and stroke attribute. [#870](https://github.com/galacean/effects-runtime/pull/870) @wumaolinmaoan
+  - Feat: shape support both stroke and fill. [#899](https://github.com/galacean/effects-runtime/pull/899) @wumaolinmaoan
+  - Feat: support custom shape close attribute. [#902](https://github.com/galacean/effects-runtime/pull/902) @wumaolinmaoan
+  - Fix: shape bounding box error when draw line. [#896](https://github.com/galacean/effects-runtime/pull/896) @wumaolinmaoan
+  - Fix: primitive shape default close path and build line return Nan when dist is zero. [#920](https://github.com/galacean/effects-runtime/pull/920) @wumaolinmaoan
+- Feat: add vector2 curve. [#878](https://github.com/galacean/effects-runtime/pull/878) @wumaolinmaoan
+- Feat: support rectangle roundness. [#891](https://github.com/galacean/effects-runtime/pull/891) @wumaolinmaoan
+- Feat: support vector animation. [#882](https://github.com/galacean/effects-runtime/pull/882) @wumaolinmaoan
+  - Refactor: remove vector property mixer setZero function call. [#883](https://github.com/galacean/effects-runtime/pull/883) @wumaolinmaoan
+  - Feat: primitive shape support key frame animation. [#884](https://github.com/galacean/effects-runtime/pull/884) @wumaolinmaoan
+- Feat: particle follow emitter transform. [#887](https://github.com/galacean/effects-runtime/pull/887) @wumaolinmaoan
+- Feat: composition component add pause and resume. [#903](https://github.com/galacean/effects-runtime/pull/903) @wumaolinmaoan
+- Feat: 初始化 `Player` 的参数增加 `onError`，支持捕获 `new Player` 或 `loadScene` 时的所有异常。[#905](https://github.com/galacean/effects-runtime/pull/905) @yiiqii
+- Feat: 支持动态修改最大粒子数。[#913](https://github.com/galacean/effects-runtime/pull/913) @RGCHN
+  - Feat: opt max particles properties name and note. [#918](https://github.com/galacean/effects-runtime/pull/918) @wumaolinmaoan
+- Feat: 开放 multimedia 插件的视频播放和暂停方法，并修复视频 freeze 逻辑。[#871](https://github.com/galacean/effects-runtime/pull/871) @Sruimeng
+- Feat: enhance video component for transparent video support. [#888](https://github.com/galacean/effects-runtime/pull/888) @Sruimeng
+  - Fix: improve alpha blending in transparent video shader. [#907](https://github.com/galacean/effects-runtime/pull/907) @Sruimeng
+- Feat: 添加富文本组件不支持的方法实现。[#892](https://github.com/galacean/effects-runtime/pull/892) @Sruimeng
+- Feat: 添加文本溢出模式支持，优化文本行数计算。[#898](https://github.com/galacean/effects-runtime/pull/898) @Sruimeng
+  - Fix: 修复文本组件行数计算和字体描述逻辑。[#927](https://github.com/galacean/effects-runtime/pull/927) @Sruimeng
+- Feat(rich-text): 增加富文本大小参数支持，重构文本渲染逻辑。[#900](https://github.com/galacean/effects-runtime/pull/900) @Sruimeng
+- Feat(rich-text): 支持字母间距调整，优化文本渲染逻辑。[#906](https://github.com/galacean/effects-runtime/pull/906) @Sruimeng
+- Fix: camera view matrix calculate. [#912](https://github.com/galacean/effects-runtime/pull/912) @wumaolinmaoan
+- Fix: 优化 `ThreeMaterial` 中颜色和统一变量的处理。[#917](https://github.com/galacean/effects-runtime/pull/917) @Sruimeng
+- Fix: geometry bounding box. [#915](https://github.com/galacean/effects-runtime/pull/915) @wumaolinmaoan
+- Fix: camera gesture rotation. [#926](https://github.com/galacean/effects-runtime/pull/926) @wumaolinmaoan
+- Refactor: 重构 `version31Migration` 函数及其计算位置。[#890](https://github.com/galacean/effects-runtime/pull/890) @Sruimeng
+- Refactor: base render component set color use math.Color type. [#908](https://github.com/galacean/effects-runtime/pull/908) @wumaolinmaoan
+  - Fix: sprite color unit test. [#910](https://github.com/galacean/effects-runtime/pull/910) @wumaolinmaoan
+- Refactor: scene load and pre composition instantiation logic. [#909](https://github.com/galacean/effects-runtime/pull/909) @wumaolinmaoan
+  - Refactor: THREE 插件跟随 `Player` 的 `loadScene` 多合成改造。[#928](https://github.com/galacean/effects-runtime/pull/928) @yiiqii
+    - test: 补充帧对比测试案例
+    - fix: typo issue
+  - Refactor: plugin system register and precompile logic. [#922](https://github.com/galacean/effects-runtime/pull/922) @wumaolinmaoan
+    - fix 3d rendering error caused by precompile timing
+  - Fix: composition index issue. [#921](https://github.com/galacean/effects-runtime/pull/921) @yiiqii
+  - Fix: 3d unit test. [#923](https://github.com/galacean/effects-runtime/pull/923) @wumaolinmaoan
+- Perf: 移除 `string-hash` 依赖，统一使用内部方法。[#877](https://github.com/galacean/effects-runtime/pull/877) @yiiqii
+- Build: 对小程序产物进行 minify 处理。[#911](https://github.com/galacean/effects-runtime/pull/911) @yiiqii
+- Chore: 替换 Spine 多合成 demo 使用的资源。[#919](https://github.com/galacean/effects-runtime/pull/919) @RGCHN
+
 ## 2.2.7
 
 `2025-02-28`

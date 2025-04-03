@@ -61,7 +61,7 @@ export class ModelPlugin extends AbstractPlugin {
     await CompositionCache.loadStaticResources();
   }
 
-  static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
+  override precompile (compositions: spec.CompositionData[], renderer: Renderer): Promise<void> {
     const isWebGL2 = renderer.engine.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode();
     const unlitShaderCode = fetchUnlitShaderCode();
@@ -102,8 +102,6 @@ export class ModelPlugin extends AbstractPlugin {
 
     this.cache = new CompositionCache(engine);
     this.cache.setup(false);
-    // FIXME: 先注释元素参数的配置
-    //PluginHelper.setupItem3DOptions(scene, this.cache, composition);
   }
 
   /**

@@ -5,16 +5,15 @@ const json = inspireList.compressed.url;
 const container = document.getElementById('J-container');
 
 (async () => {
-  try {
-    const player = new Player({
-      container,
-      pixelRatio: window.devicePixelRatio,
-    });
+  const player = new Player({
+    container,
+    pixelRatio: window.devicePixelRatio,
+    onError: (err, ...args) => {
+      console.error('biz', err.message);
+    },
+  });
 
-    await player.loadScene(json, {
-      useCompressedTexture: true,
-    });
-  } catch (e) {
-    console.error('biz', e);
-  }
+  await player.loadScene(json, {
+    useCompressedTexture: true,
+  });
 })();

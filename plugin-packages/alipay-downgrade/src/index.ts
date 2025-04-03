@@ -11,7 +11,7 @@ export * from './types';
  */
 export const version = __VERSION__;
 
-registerPlugin('alipay-downgrade', AlipayDowngradePlugin, VFXItem, true);
+registerPlugin('alipay-downgrade', AlipayDowngradePlugin, VFXItem);
 
 logger.info(`Plugin downgrade version: ${version}.`);
 

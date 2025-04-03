@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import type { SceneBindingData } from './comp-vfx-item';
 import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
-import type { PluginSystem } from './plugin-system';
 import type { Scene, SceneRenderLevel } from './scene';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
@@ -25,51 +24,43 @@ export interface ContentOptions {
  * 合成资源管理
  */
 export class CompositionSourceManager implements Disposable {
-  composition?: spec.CompositionData;
   sourceContent?: spec.CompositionData;
-  refCompositionProps: Map<string, spec.CompositionData> = new Map();
   renderLevel?: SceneRenderLevel;
-  pluginSystem?: PluginSystem;
-  totalTime: number;
   imgUsage: Record<string, number> = {};
   textures: Texture[];
   jsonScene?: spec.JSONScene;
   mask = 0;
-  engine: Engine;
-
-  private refCompositions: Map<string, spec.CompositionData> = new Map();
 
   constructor (
     scene: Scene,
-    engine: Engine,
+    public engine: Engine,
   ) {
-    this.engine = engine;
     // 资源
-    const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
+    const { jsonScene, renderLevel, textureOptions } = scene;
     const { compositions, compositionId } = jsonScene;
 
     if (!textureOptions) {
       throw new Error('scene.textures expected.');
     }
+
     const cachedTextures = textureOptions as Texture[];
 
-    for (const comp of compositions) {
-      if (comp.id === compositionId) {
-        this.composition = comp;
-      } else {
-        this.refCompositions.set(comp.id, comp);
+    this.jsonScene = jsonScene;
+    this.renderLevel = renderLevel;
+    this.textures = cachedTextures;
+
+    for (const composition of compositions) {
+      const compositionData = this.getContent(composition);
+
+      this.engine.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
+      if (composition.id === compositionId) {
+        this.sourceContent = compositionData;
       }
     }
 
-    if (!this.composition) {
+    if (!this.sourceContent) {
       throw new Error(`Invalid composition id: ${compositionId}.`);
     }
-    this.jsonScene = jsonScene;
-    this.renderLevel = renderLevel;
-    this.pluginSystem = pluginSystem;
-    this.totalTime = totalTime ?? 0;
-    this.textures = cachedTextures;
-    this.sourceContent = this.getContent(this.composition);
   }
 
   private getContent (composition: spec.CompositionData): spec.CompositionData {
@@ -121,21 +112,6 @@ export class CompositionSourceManager implements Disposable {
             const componentData = componentMap[componentPath.id] as spec.SpriteComponentData | spec.ParticleSystemData;
 
             this.preProcessItemContent(componentData);
-          }
-        }
-
-        // 处理预合成的渲染顺序
-        if (itemProps.type === spec.ItemType.composition) {
-          const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
-          const composition = this.refCompositions.get(refId);
-
-          if (!composition) {
-            throw new Error(`Invalid ref composition id: ${refId}.`);
-          }
-          const ref = this.getContent(composition);
-
-          if (!this.refCompositionProps.has(refId)) {
-            this.refCompositionProps.set(refId, ref);
           }
         }
         items.push(itemDataPath);
@@ -204,12 +180,7 @@ export class CompositionSourceManager implements Disposable {
 
   dispose (): void {
     this.textures = [];
-    this.composition = undefined;
     this.jsonScene = undefined;
-    this.totalTime = 0;
-    this.pluginSystem = undefined;
     this.sourceContent = undefined;
-    this.refCompositions.clear();
-    this.refCompositionProps.clear();
   }
 }

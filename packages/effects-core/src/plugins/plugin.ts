@@ -3,6 +3,7 @@ import type { Scene, SceneLoadOptions } from '../scene';
 import type { VFXItem } from '../vfx-item';
 import type { RenderFrame, Renderer } from '../render';
 import type { Composition } from '../composition';
+import type { PrecompileOptions } from '../plugin-system';
 
 export interface Plugin {
   /**
@@ -11,6 +12,13 @@ export interface Plugin {
    */
   order: number,
   name: string,
+
+  /**
+   * 在加载到 JSON 后，就可以进行提前编译
+   * @param json
+   * @param player
+   */
+  precompile: (compositions: spec.CompositionData[], renderer: Renderer, options?: PrecompileOptions) => void,
 
   /**
    * 合成创建时调用，用于触发元素在合成创建时的回调
@@ -136,9 +144,7 @@ export abstract class AbstractPlugin implements Plugin {
    * @param json
    * @param player
    */
-  static precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
-    return Promise.resolve();
-  }
+  precompile (compositions: spec.CompositionData[], renderer: Renderer, options?: PrecompileOptions): void { }
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
 

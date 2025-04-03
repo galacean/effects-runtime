@@ -190,7 +190,7 @@ export class VideoComponent extends BaseRenderComponent {
     this.material = material;
     this.geometry = geometry;
 
-    this.material.setVector4('_Color', new math.Vector4().setFromArray(startColor));
+    this.material.setColor('_Color', new math.Color().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
 
     this.setItem();
