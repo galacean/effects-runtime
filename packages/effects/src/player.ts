@@ -326,6 +326,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       scenes.push(scene);
     }
 
+    const autoplayFlags: boolean[] = [];
+
     await Promise.all(
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
@@ -340,13 +342,20 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
 
-        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer, options);
+        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
 
         const composition = this.createComposition(scene, opts);
 
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
+
+        if (opts?.autoplay === true || opts?.autoplay === undefined && autoplay) {
+          autoplayFlags[index] = true;
+        } else {
+          autoplayFlags[index] = false;
+        }
+
       }),
     );
 
@@ -359,7 +368,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const compileTime = performance.now() - compileStart;
 
     for (let i = 0; i < compositions.length; i++) {
-      if (autoplay) {
+      if (autoplayFlags[i]) {
         this.autoPlaying = true;
         compositions[i].play();
       } else {
