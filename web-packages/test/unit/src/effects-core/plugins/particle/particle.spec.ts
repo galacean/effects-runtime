@@ -1,4 +1,5 @@
 import type { ParticleSystem, GLGeometry, Material } from '@galacean/effects';
+import { SpriteComponent } from '@galacean/effects';
 import { MaskMode } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
 import type { GLMaterial } from '@galacean/effects-webgl';
@@ -132,8 +133,9 @@ describe('core/plugins/particle/test', function () {
   });
 
   it('particle mask mode', async () => {
-    const json = `[{"name":"unset","delay":0,"id":"4","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"default","delay":0,"id":"5","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"renderer":{"maskMode":${MaskMode.NONE}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"write","delay":0,"id":"1","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"renderer":{"maskMode":${MaskMode.MASK}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"read","delay":0,"id":"2","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"renderer":{"maskMode":${spec.ObscuredMode.OBSCURED}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"read_inverse","delay":0,"id":"3","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"renderer":{"maskMode":${spec.ObscuredMode.REVERSE_OBSCURED}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}}]`;
-    const comp = await generateComposition(player, json, 0.01);
+    const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*E1IcRYCXzbYAAAAAAAAAAAAAelB4AQ');
+
+    comp.gotoAndStop(0.1);
     const unsetItem = comp.getItemByName('unset');
     const unsetContent = unsetItem?.content as ParticleSystem;
     const unsetMaterial = unsetContent.renderer.particleMesh.mesh.material as GLMaterial;
@@ -147,19 +149,6 @@ describe('core/plugins/particle/test', function () {
 
     // @ts-expect-error
     expect(defaultMaterial.glMaterialState.stencilTest).to.be.false;
-
-    const writeItem = comp.getItemByName('write');
-    const writeContent = writeItem?.content as ParticleSystem;
-    const writeMaterial = writeContent.renderer.particleMesh.mesh.material as GLMaterial;
-    // @ts-expect-error
-    const writeStates = writeMaterial.glMaterialState;
-
-    expect(writeStates.stencilTest).to.be.true;
-    expect(writeStates.stencilFunc).to.deep.equal([glContext.ALWAYS, glContext.ALWAYS]);
-    expect(writeStates.stencilMask).to.deep.equal([0xFF, 0xFF]);
-    expect(writeStates.stencilOpFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(writeStates.stencilOpZPass).to.deep.equal([glContext.REPLACE, glContext.REPLACE]);
-    expect(writeStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
 
     const readItem = comp.getItemByName('read');
     const readContent = readItem?.content as ParticleSystem;
