@@ -191,6 +191,26 @@ export class ParticleSystem extends Component {
     return this.particleLink.length;
   }
 
+  /**
+   * 获取当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
+   * @since 2.3.0
+   */
+  get maxParticles () {
+    return this.options.maxCount;
+  }
+
+  /**
+   * 设置当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
+   * 注意：暂时不支持增加拖尾数量
+   * @since 2.3.0
+   */
+  set maxParticles (count: number) {
+    this.options.maxCount = count;
+    if (this.renderer?.particleMesh) {
+      this.renderer.particleMesh.maxCount = count;
+    }
+  }
+
   isFrozen () {
     return this.frozen;
   }
@@ -216,8 +236,6 @@ export class ParticleSystem extends Component {
       position, rotation, path,
     };
 
-    const parentTransform = this.transform.parentTransform;
-
     const selfPos = position.clone();
 
     if (path) {
@@ -225,16 +243,14 @@ export class ParticleSystem extends Component {
     }
     this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
-    if (this.options.particleFollowParent && parentTransform) {
-      const worldMatrix = parentTransform.getWorldMatrix();
+    if (this.options.particleFollowParent) {
+      const worldMatrix = this.transform.getWorldMatrix();
 
       this.renderer.updateWorldMatrix(worldMatrix);
     }
   }
 
   private updateEmitterTransform (time: number) {
-    const parentTransform = this.transform.parentTransform;
-
     const { path, position } = this.basicTransform;
     const selfPos = position.clone();
 
@@ -245,8 +261,8 @@ export class ParticleSystem extends Component {
     }
     this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
-    if (this.options.particleFollowParent && parentTransform) {
-      const worldMatrix = parentTransform.getWorldMatrix();
+    if (this.options.particleFollowParent) {
+      const worldMatrix = this.transform.getWorldMatrix();
 
       this.renderer.updateWorldMatrix(worldMatrix);
     }
@@ -662,7 +678,7 @@ export class ParticleSystem extends Component {
     const lifetime = this.lifetime;
     const shape = this.shape;
     const speed = options.startSpeed.getValue(lifetime);
-    const matrix4 = options.particleFollowParent ? this.transform.getMatrix() : this.transform.getWorldMatrix();
+    const matrix4 = options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
     const pointPosition: Vector3 = data.position;
 
     // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响

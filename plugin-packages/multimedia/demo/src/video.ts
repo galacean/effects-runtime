@@ -15,6 +15,9 @@ const inputEle = document.getElementById('J-input') as HTMLInputElement;
     player = new Player({
       container,
       fps: 130,
+      onError (e) {
+        console.error(e.cause, e);
+      },
     });
 
     await checkAutoplayPermission();
@@ -57,12 +60,12 @@ updateButton?.addEventListener('click', async () => {
   const value = inputEle.value;
 
   if (value) {
-    const videoComponent = player.getCompositionByName('新建合成3')?.getItemByName('video_6')?.getComponent(VideoComponent);
+    const videoItem = player.getCompositionByName('新建合成3')?.getItemByName('video_6');
 
-    if (videoComponent) {
-      const texture = await Texture.fromVideo(value, player.renderer.engine);
+    if (videoItem) {
+      const videoComponent = videoItem.getComponent(VideoComponent);
 
-      videoComponent.setTexture(texture);
+      await videoComponent.setTexture(value);
     }
   }
 });

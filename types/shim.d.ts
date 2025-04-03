@@ -1,4 +1,3 @@
-declare module 'string-hash';
 declare module 'uuid';
 declare module 'libtess';
 

@@ -1,4 +1,3 @@
-import stringHash from 'string-hash';
 import type {
   Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMacros, ShaderWithSource,
   SharedShaderWithSource,
@@ -9,6 +8,7 @@ import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
+import { stringHash } from './gl-uniform-utils';
 
 interface GLShaderCompileResult extends ShaderCompileResult {
   program?: WebGLProgram,
@@ -205,12 +205,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const { vertex = '', fragment = '', shared } = shader;
     const { cacheId } = shader as SharedShaderWithSource;
     let shaderCacheId: string;
-    // let shared = false;
 
     if (shared || cacheId) {
-      // FIXME: string-hash有冲突，这里先用strHashCode替代
-      shaderCacheId = cacheId || `shared_${strHashCode(vertex, fragment)}`;
-      // shared = true;
+      shaderCacheId = cacheId || `shared_${stringHash(vertex, fragment)}`;
     } else {
       shaderCacheId = 'instanced_' + shaderSeed++;
     }
@@ -341,18 +338,4 @@ function checkShader (gl: WebGLRenderingContext, shader: WebGLShader, type: stri
 
     return { error, status: ShaderCompileResultStatus.fail };
   }
-}
-
-function strHashCode (...strings: string[]): number {
-  let h = 0;
-
-  for (let j = 0; j < arguments.length; j++) {
-    const s = strings[j];
-
-    for (let i = 0; i < s.length; i++) {
-      h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-    }
-  }
-
-  return h;
 }

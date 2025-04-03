@@ -10,11 +10,126 @@ import type { ShapePath } from '../plugins/shape/shape-path';
 import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
 import { StarType } from '../plugins/shape/poly-star';
+import type { StrokeAttributes } from '../plugins/shape/build-line';
+import { buildLine } from '../plugins/shape/build-line';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import type { Polygon } from '../plugins/shape/polygon';
 
-interface CurveData {
-  point: spec.Vector2Data,
-  controlPoint1: spec.Vector2Data,
-  controlPoint2: spec.Vector2Data,
+interface FillAttribute {
+  color: Color,
+}
+
+interface ShapeAttribute {
+  /**
+   * 矢量图形类型
+   */
+  type: spec.ShapePrimitiveType,
+  /**
+   * 填充属性
+   */
+  fill?: spec.ShapeFillParam,
+}
+
+/**
+ * 自定义图形参数
+ */
+interface CustomShapeAttribute extends ShapeAttribute {
+  type: spec.ShapePrimitiveType.Custom,
+  /**
+   * 路径点
+   */
+  points: Vector2[],
+  /**
+   * 入射控制点
+   */
+  easingIns: Vector2[],
+  /**
+   * 入射控制点
+   */
+  easingOuts: Vector2[],
+  /**
+   * 自定义形状
+   */
+  shapes: spec.CustomShape[],
+}
+
+/**
+ * 椭圆组件参数
+ */
+export interface EllipseAttribute extends ShapeAttribute {
+  type: spec.ShapePrimitiveType.Ellipse,
+  /**
+   * x 轴半径
+   * -- TODO 后续完善类型
+   * -- TODO 可以看一下用xRadius/yRadius 还是 width/height
+   */
+  xRadius: number,
+  /**
+   * y 轴半径
+   */
+  yRadius: number,
+}
+
+/**
+ * 矩形参数
+ */
+export interface RectangleAttribute extends ShapeAttribute {
+  /**
+   * 宽度
+   */
+  width: number,
+  /**
+   * 高度
+   */
+  height: number,
+  /**
+   * 角点元素
+   */
+  roundness: number,
+}
+
+/**
+ * 星形参数
+ */
+export interface StarAttribute extends ShapeAttribute {
+  /**
+   * 顶点数 - 内外顶点同数
+   */
+  pointCount: number,
+  /**
+   * 内径
+   */
+  innerRadius: number,
+  /**
+   * 外径
+   */
+  outerRadius: number,
+  /**
+   * 内径点圆度
+   */
+  innerRoundness: number,
+  /**
+   * 外径点圆度
+   */
+  outerRoundness: number,
+}
+
+/**
+ * 多边形参数
+ */
+export interface PolygonAttribute extends ShapeAttribute {
+  /**
+   * 顶点数
+   */
+  pointCount: number,
+  /**
+   * 外切圆半径
+   */
+  radius: number,
+  /**
+   * 角点圆度
+   */
+  roundness: number,
 }
 
 /**
@@ -23,11 +138,14 @@ interface CurveData {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends MeshComponent {
+  private hasStroke = false;
+  private hasFill = false;
+  private shapeDirty = true;
 
-  private path = new GraphicsPath();
-  private curveValues: CurveData[] = [];
-  private data: spec.ShapeComponentData;
-  private animated = true;
+  private graphicsPath = new GraphicsPath();
+  private fillAttribute: FillAttribute;
+  private strokeAttributes: StrokeAttributes;
+  private shapeAttribute: ShapeAttribute;
 
   private vert = `
 precision highp float;
@@ -55,6 +173,12 @@ void main() {
   gl_FragColor = color;
 }
 `;
+
+  get shape () {
+    this.shapeDirty = true;
+
+    return this.shapeAttribute;
+  }
 
   /**
    *
@@ -85,6 +209,16 @@ void main() {
         mode: glContext.TRIANGLES,
         drawCount: 4,
       });
+
+      this.geometry.subMeshes.push({
+        offset: 0,
+        indexCount: 0,
+        vertexCount: 0,
+      }, {
+        offset: 0,
+        indexCount: 0,
+        vertexCount: 0,
+      });
     }
 
     if (!this.material) {
@@ -96,12 +230,43 @@ void main() {
         },
       };
 
-      this.material = Material.create(engine, materialProps);
-      this.material.setColor('_Color', new Color(1, 1, 1, 1));
-      this.material.depthMask = false;
-      this.material.depthTest = true;
-      this.material.blending = true;
+      const fillMaterial = Material.create(engine, materialProps);
+
+      fillMaterial.setColor('_Color', new Color(1, 1, 1, 1));
+      fillMaterial.depthMask = false;
+      fillMaterial.depthTest = true;
+      fillMaterial.blending = true;
+      this.material = fillMaterial;
+
+      const strokeMaterial = Material.create(engine, materialProps);
+
+      strokeMaterial.setColor('_Color', new Color(0.25, 0.25, 0.25, 1));
+      strokeMaterial.depthMask = false;
+      strokeMaterial.depthTest = true;
+      strokeMaterial.blending = true;
+      this.materials[1] = strokeMaterial;
     }
+
+    this.strokeAttributes = {
+      width: 1,
+      alignment: 0.5,
+      cap: spec.LineCap.Butt,
+      join: spec.LineJoin.Miter,
+      miterLimit: 10,
+      color: new Color(1, 1, 1, 1),
+    };
+
+    this.fillAttribute = {
+      color: new Color(1, 1, 1, 1),
+    };
+
+    this.shapeAttribute = {
+      type: spec.ShapePrimitiveType.Custom,
+      points: [],
+      easingIns: [],
+      easingOuts: [],
+      shapes: [],
+    } as CustomShapeAttribute;
   }
 
   override onStart (): void {
@@ -109,10 +274,12 @@ void main() {
   }
 
   override onUpdate (dt: number): void {
-    if (this.animated) {
-      this.buildPath(this.data);
-      this.buildGeometryFromPath(this.path.shapePath);
-      this.animated = false;
+    this.material.color = this.fillAttribute.color;
+    this.materials[1].color = this.strokeAttributes.color;
+    if (this.shapeDirty) {
+      this.buildPath(this.shapeAttribute);
+      this.buildGeometryFromPath(this.graphicsPath.shapePath);
+      this.shapeDirty = false;
     }
   }
 
@@ -121,18 +288,41 @@ void main() {
     const vertices: number[] = [];
     const indices: number[] = [];
 
-    // triangulate shapePrimitive
-    for (const shapePrimitive of shapePrimitives) {
-      const shape = shapePrimitive.shape;
-      const points: number[] = [];
-      const indexOffset = indices.length;
-      const vertOffset = vertices.length / 2;
+    // Triangulate shapePrimitive
+    //---------------------------------------------------
 
-      shape.build(points);
+    if (this.hasFill) {
+      for (const shapePrimitive of shapePrimitives) {
+        const shape = shapePrimitive.shape;
+        const points: number[] = [];
+        const indexOffset = indices.length;
+        const vertOffset = vertices.length / 2;
 
-      shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
+        shape.build(points);
+        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
+      }
     }
+    const fillIndexCount = indices.length;
 
+    if (this.hasStroke) {
+      for (const shapePrimitive of shapePrimitives) {
+        const shape = shapePrimitive.shape;
+        const points: number[] = [];
+        const indexOffset = indices.length;
+        const vertOffset = vertices.length / 2;
+        const lineStyle = this.strokeAttributes;
+
+        let close = true;
+
+        if (this.shapeAttribute.type === spec.ShapePrimitiveType.Custom) {
+          close = (shape as Polygon).closePath;
+        }
+
+        shape.build(points);
+        buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
+      }
+    }
+    const strokeIndexCount = indices.length - fillIndexCount;
     const vertexCount = vertices.length / 2;
 
     // get the current attribute and index arrays from the geometry, avoiding re-creation
@@ -146,7 +336,7 @@ void main() {
     if (!uvArray || uvArray.length < vertexCount * 2) {
       uvArray = new Float32Array(vertexCount * 2);
     }
-    if (!indexArray) {
+    if (!indexArray || indexArray.length < indices.length) {
       indexArray = new Uint16Array(indices.length);
     }
 
@@ -172,108 +362,196 @@ void main() {
     this.geometry.setAttributeData('aUV', uvArray);
     this.geometry.setIndexData(indexArray);
     this.geometry.setDrawCount(indices.length);
+
+    const u16Size = 2;
+    const fillSubMesh = this.geometry.subMeshes[0];
+    const strokeSubMesh = this.geometry.subMeshes[1];
+
+    fillSubMesh.indexCount = fillIndexCount;
+    strokeSubMesh.offset = fillIndexCount * u16Size;
+    strokeSubMesh.indexCount = strokeIndexCount;
   }
 
-  private buildPath (data: spec.ShapeComponentData) {
-    this.path.clear();
+  private buildPath (shapeAttribute: ShapeAttribute) {
+    this.graphicsPath.clear();
 
-    const shapeData = data;
-
-    switch (shapeData.type) {
+    switch (shapeAttribute.type) {
       case spec.ShapePrimitiveType.Custom: {
-        const customData = shapeData as spec.CustomShapeData;
-        const points = customData.points;
-        const easingIns = customData.easingIns;
-        const easingOuts = customData.easingOuts;
+        const customShapeAtribute = this.shapeAttribute as CustomShapeAttribute;
+        const points = customShapeAtribute.points;
+        const easingIns = customShapeAtribute.easingIns;
+        const easingOuts = customShapeAtribute.easingOuts;
 
-        this.curveValues = [];
-
-        for (const shape of customData.shapes) {
-          this.setFillColor(shape.fill);
-
+        for (const shape of customShapeAtribute.shapes) {
           const indices = shape.indexes;
+          const startPoint = points[indices[0].point];
+
+          this.graphicsPath.moveTo(startPoint.x, startPoint.y);
 
           for (let i = 1; i < indices.length; i++) {
             const pointIndex = indices[i];
             const lastPointIndex = indices[i - 1];
+            const point = points[pointIndex.point];
+            const lastPoint = points[lastPointIndex.point];
+            const control1 = easingOuts[lastPointIndex.easingOut];
+            const control2 = easingIns[pointIndex.easingIn];
 
-            this.curveValues.push({
-              point: points[pointIndex.point],
-              controlPoint1: easingOuts[lastPointIndex.easingOut],
-              controlPoint2: easingIns[pointIndex.easingIn],
-            });
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
           }
 
-          // Push the last curve
-          this.curveValues.push({
-            point: points[indices[0].point],
-            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-            controlPoint2: easingIns[indices[0].easingIn],
-          });
-        }
+          const pointIndex = indices[0];
+          const lastPointIndex = indices[indices.length - 1];
+          const point = points[pointIndex.point];
+          const lastPoint = points[lastPointIndex.point];
+          const control1 = easingOuts[lastPointIndex.easingOut];
+          const control2 = easingIns[pointIndex.easingIn];
 
-        this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+          this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
 
-        for (const curveValue of this.curveValues) {
-          const point = curveValue.point;
-          const control1 = curveValue.controlPoint1;
-          const control2 = curveValue.controlPoint2;
-
-          this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+          if (shape.close) {
+            this.graphicsPath.closePath();
+          }
         }
 
         break;
       }
       case spec.ShapePrimitiveType.Ellipse: {
-        const ellipseData = shapeData as spec.EllipseData;
+        const ellipseData = shapeAttribute as EllipseAttribute;
 
-        this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
-
-        this.setFillColor(ellipseData.fill);
+        this.graphicsPath.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
         break;
       }
       case spec.ShapePrimitiveType.Rectangle: {
-        const rectangleData = shapeData as spec.RectangleData;
+        const rectangleData = shapeAttribute as RectangleAttribute;
 
-        this.path.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
-
-        this.setFillColor(rectangleData.fill);
+        this.graphicsPath.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height, rectangleData.roundness);
 
         break;
       }
       case spec.ShapePrimitiveType.Star: {
-        const starData = shapeData as spec.StarData;
+        const starData = shapeAttribute as StarAttribute;
 
-        this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
-
-        this.setFillColor(starData.fill);
+        this.graphicsPath.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
         break;
       }
       case spec.ShapePrimitiveType.Polygon: {
-        const polygonData = shapeData as spec.PolygonData;
+        const polygonData = shapeAttribute as PolygonAttribute;
 
-        this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
-
-        this.setFillColor(polygonData.fill);
+        this.graphicsPath.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
         break;
       }
-    }
-  }
-
-  private setFillColor (fill?: spec.ShapeFillParam) {
-    if (fill) {
-      const color = fill.color;
-
-      this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
     }
   }
 
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
-    this.data = data;
+    this.shapeDirty = true;
+
+    const strokeParam = data.stroke;
+
+    if (strokeParam) {
+      this.hasStroke = true;
+      this.strokeAttributes.width = strokeParam.width;
+      this.strokeAttributes.color.copyFrom(strokeParam.color);
+      this.strokeAttributes.cap = strokeParam.cap;
+      this.strokeAttributes.join = strokeParam.join;
+    }
+
+    const fillParam = data.fill;
+
+    if (fillParam) {
+      this.hasFill = true;
+      this.fillAttribute.color.copyFrom(fillParam.color);
+    }
+
+    switch (data.type) {
+      case spec.ShapePrimitiveType.Custom: {
+        const customShapeData = data as spec.CustomShapeData;
+        const customShapeAttribute: CustomShapeAttribute = {
+          type: spec.ShapePrimitiveType.Custom,
+          points: [],
+          easingIns: [],
+          easingOuts: [],
+          shapes: [],
+          fill: customShapeData.fill,
+        };
+
+        for (const point of customShapeData.points) {
+          customShapeAttribute.points.push(new Vector2(point.x, point.y));
+        }
+        for (const easingIn of customShapeData.easingIns) {
+          customShapeAttribute.easingIns.push(new Vector2(easingIn.x, easingIn.y));
+        }
+        for (const easingOut of customShapeData.easingOuts) {
+          customShapeAttribute.easingOuts.push(new Vector2(easingOut.x, easingOut.y));
+        }
+        customShapeAttribute.shapes = customShapeData.shapes;
+
+        this.shapeAttribute = customShapeAttribute;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Ellipse: {
+        const ellipseData = data as spec.EllipseData;
+        const ellipseAttribute: EllipseAttribute = {
+          type: spec.ShapePrimitiveType.Ellipse,
+          xRadius: ellipseData.xRadius,
+          yRadius: ellipseData.yRadius,
+          fill: ellipseData.fill,
+        };
+
+        this.shapeAttribute = ellipseAttribute;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Rectangle: {
+        const rectangleData = data as spec.RectangleData;
+        const rectangleAttribute: RectangleAttribute = {
+          type: spec.ShapePrimitiveType.Rectangle,
+          width: rectangleData.width,
+          height: rectangleData.height,
+          roundness: rectangleData.roundness,
+          fill: rectangleData.fill,
+        };
+
+        this.shapeAttribute = rectangleAttribute;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Star: {
+        const starData = data as spec.StarData;
+        const starAttribute: StarAttribute = {
+          type: spec.ShapePrimitiveType.Star,
+          pointCount: starData.pointCount,
+          innerRadius: starData.innerRadius,
+          outerRadius: starData.outerRadius,
+          innerRoundness: starData.innerRoundness,
+          outerRoundness: starData.outerRoundness,
+          fill: starData.fill,
+        };
+
+        this.shapeAttribute = starAttribute;
+
+        break;
+      }
+      case spec.ShapePrimitiveType.Polygon: {
+        const polygonData = data as spec.PolygonData;
+        const polygonAttribute: PolygonAttribute = {
+          type: spec.ShapePrimitiveType.Polygon,
+          pointCount: polygonData.pointCount,
+          radius: polygonData.radius,
+          roundness: polygonData.roundness,
+          fill: polygonData.fill,
+        };
+
+        this.shapeAttribute = polygonAttribute;
+
+        break;
+      }
+    }
 
     const material = this.material;
 

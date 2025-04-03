@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
-import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
@@ -15,8 +14,6 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { Asset } from './asset';
-import type { Engine } from './engine';
 
 let seed = 1;
 
@@ -148,23 +145,21 @@ export class AssetManager implements Disposable {
         };
 
         const { jsonScene, pluginSystem, images: loadedImages } = scene;
-        const { compositions, images } = jsonScene;
+        const { images } = jsonScene;
 
         this.assignImagesToAssets(images, loadedImages);
         await Promise.all([
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
-          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
-        const { bins = [], images, compositions, fonts } = jsonScene;
+        const { bins = [], images, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
-          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
@@ -185,8 +180,6 @@ export class AssetManager implements Disposable {
         await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
       }
 
-      await hookTimeInfo('prepareAssets', () => this.prepareAssets(renderer?.engine));
-
       const totalTime = performance.now() - startTime;
 
       logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`);
@@ -203,22 +196,13 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
-  private async precompile (
-    compositions: spec.CompositionData[],
-    pluginSystem: PluginSystem,
-    renderer?: Renderer,
-    options?: PrecompileOptions,
-  ) {
-    if (!renderer || !renderer.getShaderLibrary()) {
-      return;
-    }
-    await pluginSystem.precompile(compositions, renderer, options);
+  getAssets () {
+    return this.assets;
   }
 
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [] } = jsonScene;
-    const pluginSystem = new PluginSystem(plugins);
+    const pluginSystem = new PluginSystem();
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 
@@ -385,21 +369,6 @@ export class AssetManager implements Disposable {
 
     for (let i = 0; i < assets.length; i++) {
       this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
-    }
-  }
-
-  private async prepareAssets (engine?: Engine) {
-    if (!engine) {
-      return;
-    }
-
-    for (const assetId of Object.keys(this.assets)) {
-      const asset = this.assets[assetId];
-      const engineAsset = new Asset(engine);
-
-      engineAsset.data = asset;
-      engineAsset.setInstanceId(assetId);
-      engine.addInstance(engineAsset);
     }
   }
 

@@ -12,7 +12,7 @@ export * from './types';
  */
 export const version = __VERSION__;
 
-registerPlugin('downgrade', DowngradePlugin, VFXItem, true);
+registerPlugin('downgrade', DowngradePlugin, VFXItem);
 
 logger.info(`Plugin downgrade version: ${version}.`);
 

@@ -2,6 +2,7 @@
  * 小程序产物编译配置
  */
 import inject from '@rollup/plugin-inject';
+import terser from '@rollup/plugin-terser';
 
 const module = '@galacean/appx-adapter';
 const commonAdapterList = [
@@ -67,6 +68,7 @@ export default [
     }],
     plugins: [
       inject(adapterVars),
+      terser(),
     ],
   };
 });

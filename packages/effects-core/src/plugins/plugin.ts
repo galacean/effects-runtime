@@ -13,6 +13,13 @@ export interface Plugin {
   name: string,
 
   /**
+   * 在加载到 JSON 后，就可以进行提前编译
+   * @param json
+   * @param player
+   */
+  precompile: (compositions: spec.CompositionData[], renderer: Renderer) => void,
+
+  /**
    * 合成创建时调用，用于触发元素在合成创建时的回调
    * @param composition
    * @param scene
@@ -136,9 +143,7 @@ export abstract class AbstractPlugin implements Plugin {
    * @param json
    * @param player
    */
-  static precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
-    return Promise.resolve();
-  }
+  precompile (compositions: spec.CompositionData[], renderer: Renderer): void { }
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
 

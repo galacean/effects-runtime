@@ -508,6 +508,7 @@ export class Transform implements Disposable {
    */
   cloneFromMatrix (m4: Matrix4, scale?: Vector3) {
     m4.decompose(this.position, this.quat, this.scale);
+    this.rotation.setFromQuaternion(this.quat.clone().conjugate());
     if (scale) {
       scale.copyFrom(this.scale);
     }

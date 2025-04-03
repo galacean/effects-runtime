@@ -1,5 +1,4 @@
-import { spec } from '@galacean/effects';
-import { generateGUID, Player } from '@galacean/effects';
+import { spec, generateGUID, Player } from '@galacean/effects';
 import { AudioComponent } from '@galacean/effects-plugin-multimedia';
 
 interface AudioCompositionOptions {

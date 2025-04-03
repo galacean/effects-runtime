@@ -3,7 +3,7 @@ import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { RendererComponent } from './renderer-component';
-import type { Texture } from '../texture';
+import { Texture } from '../texture';
 import type { GeometryDrawMode, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Engine } from '../engine';
@@ -15,6 +15,7 @@ import type { MaterialProps } from '../material';
 import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
 import { trianglesFromRect } from '../math';
 import type { GeometryFromShape } from '../shape';
+import { Color } from '@galacean/effects-math/es/core/color';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -90,7 +91,7 @@ export class BaseRenderComponent extends RendererComponent {
 
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
-    this.material.setVector4('_Color', new Vector4().setFromArray([1, 1, 1, 1]));
+    this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
   }
 
@@ -116,15 +117,30 @@ export class BaseRenderComponent extends RendererComponent {
    */
   setColor (color: spec.vec4) {
     this.color = color;
-    this.material.setVector4('_Color', new Vector4().setFromArray(color));
+    this.material.setColor('_Color', new Color().setFromArray(color));
   }
 
   /**
-   * 设置当前 Mesh 的纹理
+   * 使用纹理对象设置当前 Mesh 的纹理
    * @since 2.0.0
-   * @param texture - 纹理对象
+   * @param input - 纹理对象
    */
-  setTexture (texture: Texture) {
+  setTexture (input: Texture): void;
+  /**
+   * 使用资源链接异步设置当前 Mesh 的纹理
+   * @param input - 资料链接
+   * @since 2.3.0
+   */
+  async setTexture (input: string): Promise<void>;
+  async setTexture (input: Texture | string): Promise<void> {
+    let texture: Texture;
+
+    if (typeof input === 'string') {
+      texture = await Texture.fromImage(input, this.item.engine);
+    } else {
+      texture = input;
+    }
+
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
   }
@@ -285,11 +301,15 @@ export class BaseRenderComponent extends RendererComponent {
     });
   }
 
-  protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
-    const { side, occlusion, blending, maskMode, mask } = renderInfo;
-    const materialProps: MaterialProps = {
+  protected getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
+    return {
       shader: spriteMeshShaderFromRenderInfo(renderInfo, count, 1),
     };
+  }
+
+  protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
+    const { side, occlusion, blending, maskMode, mask } = renderInfo;
+    const materialProps = this.getMaterialProps(renderInfo, count);
 
     this.preMultiAlpha = getPreMultiAlpha(blending);
 
@@ -314,7 +334,7 @@ export class BaseRenderComponent extends RendererComponent {
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
     if (!material.hasUniform('_Color')) {
-      material.setVector4('_Color', new Vector4(0, 0, 0, 1));
+      material.setColor('_Color', new Color(0, 0, 0, 1));
     }
     if (!material.hasUniform('_TexOffset')) {
       material.setVector4('_TexOffset', new Vector4());

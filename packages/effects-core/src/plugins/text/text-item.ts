@@ -12,7 +12,7 @@ import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
 import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
-import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -63,6 +63,11 @@ export class TextComponent extends BaseRenderComponent {
    * 文本行数
    */
   lineCount = 0;
+
+  /**
+   * 每一行文本的最大宽度
+   */
+  protected maxLineWidth = 0;
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
@@ -130,11 +135,11 @@ export class TextComponent extends BaseRenderComponent {
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     // TextComponentBase
     this.updateWithOptions(options);
-    this.updateTexture();
+    this.renderText(options);
 
     this.setItem();
     // 恢复默认颜色
-    this.material.setVector4('_Color', new Vector4(1, 1, 1, 1));
+    this.material.setColor('_Color', new Color(1, 1, 1, 1));
 
   }
 
@@ -153,7 +158,6 @@ export class TextComponentBase {
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
-
   /***** mix 类型兼容用 *****/
   isDirty: boolean;
   engine: Engine;
@@ -163,7 +167,13 @@ export class TextComponentBase {
   renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
+  protected maxLineWidth: number;
+
   private char: string[];
+
+  protected renderText (options: spec.TextContentOptions) {
+    this.updateTexture();
+  }
 
   updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
@@ -174,7 +184,7 @@ export class TextComponentBase {
 
   private getLineCount (text: string, init: boolean) {
     const context = this.context;
-    const letterSpace = this.textLayout.letterSpace;
+    const { letterSpace, overflow } = this.textLayout;
     const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
@@ -186,13 +196,24 @@ export class TextComponentBase {
 
       // 和浏览器行为保持一致
       x += letterSpace;
-
-      if (((x + textMetrics) > width && i > 0) || str === '\n') {
-        lineCount++;
-        x = 0;
-      }
-      if (str !== '\n') {
-        x += textMetrics;
+      // 处理文本结束行为
+      if (overflow === spec.TextOverflow.display) {
+        if (str === '\n') {
+          lineCount++;
+          x = 0;
+        } else {
+          x += textMetrics;
+          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+        }
+      } else {
+        if (((x + textMetrics) > width && i > 0) || str === '\n') {
+          lineCount++;
+          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+          x = 0;
+        }
+        if (str !== '\n') {
+          x += textMetrics;
+        }
       }
     }
 
@@ -351,6 +372,20 @@ export class TextComponentBase {
   }
 
   /**
+   * 设置文本溢出模式
+   *
+   * - clip: 当文本内容超出边界框时，多余的会被截断。
+   * - display: 该模式下会显示所有文本，会自动调整文本字号以保证显示完整。
+   * > 当存在多行时，部分行内文本可能存在文本字号变小的情况，其他行为正常情况
+   *
+   * @param overflow - 文本溢出模式
+   */
+  setOverflow (overflow: spec.TextOverflow) {
+    this.textLayout.overflow = overflow;
+    this.isDirty = true;
+  }
+
+  /**
    * 设置阴影颜色
    * @param value - 阴影颜色
    * @returns
@@ -436,6 +471,7 @@ export class TextComponentBase {
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
+    style.fontDesc = this.getFontDesc(fontSize);
     this.char = (this.text || '').split('');
     this.canvas.width = width;
 
@@ -448,7 +484,6 @@ export class TextComponentBase {
 
     const height = this.canvas.height;
 
-    context.clearRect(0, 0, width, height);
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
 
@@ -456,10 +491,13 @@ export class TextComponentBase {
       context.translate(0, height);
       context.scale(1, -1);
     }
-
-    context.fillRect(0, 0, width, height);
-    style.fontDesc = this.getFontDesc();
-    context.font = style.fontDesc;
+    // canvas size 变化后重新刷新 context
+    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
+      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+    } else {
+      context.font = style.fontDesc;
+    }
+    context.clearRect(0, 0, width, height);
 
     if (style.hasShadow) {
       this.setupShadow();
@@ -471,7 +509,6 @@ export class TextComponentBase {
 
     // 文本颜色
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
-
     const charsInfo: CharInfo[] = [];
 
     let x = 0;
@@ -553,9 +590,9 @@ export class TextComponentBase {
     this.isDirty = false;
   }
 
-  private getFontDesc (): string {
+  private getFontDesc (size?: number): string {
     const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${(fontSize * fontScale).toString()}px `;
+    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
 
     if (!DEFAULT_FONTS.includes(fontFamily)) {
       fontDesc += `"${fontFamily}"`;
