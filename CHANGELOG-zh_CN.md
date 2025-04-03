@@ -8,6 +8,14 @@
 
 ---
 
+## 2.3.1
+
+`2025-04-03`
+
+- Fix: shape control point use relative coordinates. [#930](https://github.com/galacean/effects-runtime/pull/930) @wumaolinmaoan
+- Fix: scene load autoplay options invalid. [#931](https://github.com/galacean/effects-runtime/pull/931) @wumaolinmaoan
+- Fix: webgl restore. [#932](https://github.com/galacean/effects-runtime/pull/932) @wumaolinmaoan
+
 ## 2.3.0
 
 `2025-04-02`
