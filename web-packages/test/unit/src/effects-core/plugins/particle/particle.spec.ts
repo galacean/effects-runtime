@@ -1,6 +1,5 @@
 import type { ParticleSystem, GLGeometry, Material } from '@galacean/effects';
-import { MaskMode } from '@galacean/effects';
-import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
+import { Player, spec, TextureSourceType, glContext, math, MaskMode } from '@galacean/effects';
 import type { GLMaterial } from '@galacean/effects-webgl';
 
 const { Vector2 } = math;

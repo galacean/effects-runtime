@@ -9,8 +9,7 @@ import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
 import type { Maskable } from '../../material';
-import { MaskProcessor } from '../../material';
-import { MaskMode } from '../../material';
+import { MaskMode, MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
@@ -166,7 +165,8 @@ export class ParticleSystem extends Component implements Maskable {
   emissionStopped: boolean;
   destroyed = false;
   props: ParticleSystemProps;
-  maskManager: MaskProcessor;
+
+  readonly maskManager: MaskProcessor;
 
   private generatedCount: number;
   private lastUpdate: number;
@@ -1150,7 +1150,8 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   getMaskOptions (data: ParticleSystemProps | ParticleTrailProps) {
-    let maskMode = MaskMode.NONE, maskRef = 0;
+    let maskMode = MaskMode.NONE;
+    let maskRef = 0;
 
     if (data.mask) {
       const { mode, ref } = data.mask;
