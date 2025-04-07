@@ -1,11 +1,26 @@
-import type { GraphInstance } from '../plugins/animation-graph';
+import type * as spec from '@galacean/effects-specification';
+import type { AnimationGraphAsset } from '../plugins/animation-graph';
+import { GraphInstance } from '../plugins/animation-graph';
 import type { Transform } from '../transform.js';
 import { Component } from './component.js';
+import { effectsClass } from '../decorators';
 
-export class AnimationGraphComponent extends Component {
+export interface AnimatorData extends spec.ComponentData {
+  graphAsset: AnimationGraphAsset,
+}
+
+@effectsClass('Animator')
+export class Animator extends Component {
+  /**
+   * @internal
+   */
   graph: GraphInstance | null = null;
+  private graphAsset: AnimationGraphAsset | null = null;
 
   override onStart (): void {
+    if (this.graphAsset) {
+      this.graph = new GraphInstance(this.graphAsset, this.item);
+    }
   }
 
   override onUpdate (dt: number): void {
@@ -46,5 +61,9 @@ export class AnimationGraphComponent extends Component {
     }
 
     // TODO float curves
+  }
+
+  override fromData (data: AnimatorData): void {
+    this.graphAsset = data.graphAsset;
   }
 }

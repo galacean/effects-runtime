@@ -1,5 +1,5 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { AnimationGraphComponent, GLSLVersion, Geometry, Material, OrderType, Player, PostProcessVolume, RenderPass, RenderPassPriorityPostprocess, RendererComponent, VFXItem, glContext, math } from '@galacean/effects';
+import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -7,6 +7,7 @@ import '@galacean/effects-plugin-spine';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
+import * as animationScene from './demo.json';
 
 export class GalaceanEffects {
   static player: Player;
@@ -234,7 +235,8 @@ export class GalaceanEffects {
     GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*QsEaSZ9hNsgAAAAAAAAAAAAADlB4AQ');
+    //@ts-expect-error
+    GalaceanEffects.playURL(animationScene);
   }
 
   static playURL (url: string, use3DConverter = false) {
@@ -253,12 +255,6 @@ export class GalaceanEffects {
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        // composition.postProcessingEnabled = true;
-        // composition.createRenderFrame();
-        composition.rootItem.addComponent(PostProcessVolume);
-
-        composition.getItemByName('新建合成2')?.addComponent(AnimationGraphComponent);
-
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,

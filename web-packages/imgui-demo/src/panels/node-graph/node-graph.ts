@@ -1,5 +1,5 @@
 import type { AnimationGraphAssetData, GraphNodeAssetData, spec } from '@galacean/effects';
-import { AnimationGraphAsset, AnimationGraphComponent, GraphInstance, InvalidIndex, NodeAssetType, VFXItem } from '@galacean/effects';
+import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, NodeAssetType, SerializationHelper, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
@@ -50,7 +50,6 @@ interface LoadedGraphData {
 
 @editorWindow()
 export class AnimationGraph extends EditorWindow {
-  currentAnimationComponent: AnimationGraphComponent;
   currentVFXItem: VFXItem;
   graph: GraphInstance;
 
@@ -112,9 +111,9 @@ export class AnimationGraph extends EditorWindow {
       (stateNode.GetChildGraph()! as FlowGraph).TryMakeConnection(animationClipNode1, animationClipNode1.GetOutputPin(0)!, state1ResultNode, state1ResultNode.GetInputPin(0)!);
     };
 
-    buildStateGraph(stateNode1, '25ea2eda5e0e41a1a59a45294bcb5b2d');
-    buildStateGraph(stateNode2, '83864e16075b490b8b487e58844d1191');
-    buildStateGraph(stateNode3, 'e366a3769aa14592ab0e37f2a8763834');
+    buildStateGraph(stateNode1, '004b528e18f44637a69a9f8a73fa0287');
+    buildStateGraph(stateNode2, '9d0cf4ce9c41406ba02252d5b5ebb364');
+    buildStateGraph(stateNode3, '80be72ca20434bd5a1461f6fe4da6cc8');
 
     // stateNode1.GetChildGraph()?.CreateNode(StateMachineToolsNode);
     stateNode1.Rename('State1');
@@ -155,19 +154,19 @@ export class AnimationGraph extends EditorWindow {
   }
 
   rebuildGraph (item: VFXItem) {
+    const animator = item.getComponent(Animator);
+
+    if (!animator) {
+      return;
+    }
+
     const animationGraphAsset = new AnimationGraphAsset(item.engine);
     const animationGraphAssetData = this.compileGraph();
 
-    animationGraphAsset.fromData(animationGraphAssetData);
-    this.graph = new GraphInstance(animationGraphAsset, item);
+    SerializationHelper.deserialize(animationGraphAssetData, animationGraphAsset);
+    animator.graph = new GraphInstance(animationGraphAsset, item);
 
-    // const runtimeNodes = this.graph.nodes;
-
-    // for (const node of this.imNodeFlow.getNodes()) {
-    //   const runtimeNodeIndex = this.compilationContext.uuidToRuntimeIndex.get(node[1].getUID());
-
-    //   (node[1] as AnimationGraphNode).node = runtimeNodes[runtimeNodeIndex!];
-    // }
+    this.graph = animator.graph;
   }
 
   protected override onGUI (): void {
@@ -177,12 +176,12 @@ export class AnimationGraph extends EditorWindow {
 
     if (GalaceanEffects.player.getCompositions()[0]?.rootItem) {
       this.currentVFXItem = GalaceanEffects.player.getCompositions()[0].rootItem;
-      if (!this.currentVFXItem.getComponent(AnimationGraphComponent)) {
-        this.currentVFXItem.addComponent(AnimationGraphComponent);
+      if (!this.currentVFXItem.getComponent(Animator)) {
+        this.currentVFXItem.addComponent(Animator);
       }
     }
 
-    if (!this.currentVFXItem) {
+    if (!this.currentVFXItem || !this.currentVFXItem.getComponent(Animator)) {
       return;
     }
 
@@ -190,17 +189,12 @@ export class AnimationGraph extends EditorWindow {
       this.rebuildGraph(this.currentVFXItem);
     }
 
-    this.currentAnimationComponent = this.currentVFXItem.getComponent(AnimationGraphComponent);
-    const animationGraphComponent = this.currentAnimationComponent;
-
-    if (!animationGraphComponent) {
+    if (!this.graph) {
       return;
     }
-    animationGraphComponent.graph = this.graph;
 
     this.userContext.m_pGraphInstance = this.graph;
     this.userContext.m_nodeIDtoIndexMap = this.compilationContext.GetUUIDToRuntimeIndexMap();
-    // this.imNodeFlow.update();
 
     this.DrawGraphView();
     this.UpdateSelectedNode();

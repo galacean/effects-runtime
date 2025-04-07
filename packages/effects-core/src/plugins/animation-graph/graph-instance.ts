@@ -225,7 +225,7 @@ export class AnimationGraphAsset extends EffectsObject {
     this.graphDataSet = new GraphDataSet();
     this.graphDataSet.resources = [];
     for (const animationClipData of graphAssetData.graphDataSet.resources) {
-      const animationClip = this.engine.assetLoader.loadGUID<AnimationClip>(animationClipData.id);
+      const animationClip = animationClipData as unknown as AnimationClip;
 
       this.graphDataSet.resources.push(animationClip);
     }
