@@ -1,0 +1,1 @@
+import './shape-property-k-frame.spec';
