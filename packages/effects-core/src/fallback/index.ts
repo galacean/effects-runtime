@@ -35,14 +35,14 @@ export function getStandardJSON (json: any): JSONScene {
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
 
-    return version31Migration(version30Migration(version21Migration(getStandardJSONFromV0(json))));
+    return version32Migration(version31Migration(version30Migration(version21Migration(getStandardJSONFromV0(json)))));
   }
 
   reverseParticle = false;
 
-  const vs = standardVersion.exec(json.version) || [];
-  const mainVersion = Number(vs[1]);
-  const minorVersion = Number(vs[2]);
+  let vs = standardVersion.exec(json.version) || [];
+  let mainVersion = Number(vs[1]);
+  let minorVersion = Number(vs[2]);
 
   if (mainVersion) {
     if (mainVersion < 2 || (mainVersion === 2 && minorVersion < 4)) {
@@ -51,15 +51,17 @@ export function getStandardJSON (json: any): JSONScene {
     if (mainVersion < 3) {
       json = version30Migration(version21Migration(json));
     }
+    // 版本号重新计算
+    vs = standardVersion.exec(json.version) || [];
+    mainVersion = Number(vs[1]);
+    minorVersion = Number(vs[2]);
     // 3.x 版本格式转换
     if (mainVersion < 4) {
-      if (mainVersion === 3) {
-        if (minorVersion < 2) {
-          json = version31Migration(json);
-        }
-        if (minorVersion < 3) {
-          json = version32Migration(json);
-        }
+      if (minorVersion < 2) {
+        json = version31Migration(json);
+      }
+      if (minorVersion < 3) {
+        json = version32Migration(json);
       }
     }
 
