@@ -7,7 +7,12 @@ import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
 import {
-  version21Migration, version22Migration, version24Migration, version30Migration, version31Migration,
+  version21Migration,
+  version22Migration,
+  version24Migration,
+  version30Migration,
+  version31Migration,
+  version32Migration,
 } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
@@ -48,8 +53,13 @@ export function getStandardJSON (json: any): JSONScene {
     }
     // 3.x 版本格式转换
     if (mainVersion < 4) {
-      if (mainVersion === 3 && minorVersion < 2) {
-        json = version31Migration(json);
+      if (mainVersion === 3) {
+        if (minorVersion < 2) {
+          json = version31Migration(json);
+        }
+        if (minorVersion < 3) {
+          json = version32Migration(json);
+        }
       }
     }
 
