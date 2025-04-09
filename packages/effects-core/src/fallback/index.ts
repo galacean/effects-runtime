@@ -7,12 +7,8 @@ import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
 import {
-  version21Migration,
-  version22Migration,
-  version24Migration,
-  version30Migration,
-  version31Migration,
-  version32Migration,
+  version21Migration, version22Migration, version24Migration, version30Migration,
+  version31Migration, version32Migration,
 } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
