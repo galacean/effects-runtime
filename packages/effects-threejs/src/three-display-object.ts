@@ -102,7 +102,7 @@ export class ThreeDisplayObject extends THREE.Group {
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
 
-        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer, options);
+        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
 
         const composition = this.createComposition(scene, opts);
 

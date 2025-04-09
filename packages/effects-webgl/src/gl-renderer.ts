@@ -4,7 +4,7 @@ import type {
   ShaderLibrary, spec,
 } from '@galacean/effects-core';
 import {
-  FilterMode, POST_PROCESS_SETTINGS, RenderPassAttachmentStorageType, RenderTextureFormat,
+  FilterMode, GPUCapability, POST_PROCESS_SETTINGS, RenderPassAttachmentStorageType, RenderTextureFormat,
   Renderer, TextureLoadAction, TextureSourceType, assertExist, getConfig, glContext, math,
   sortByOrder,
 } from '@galacean/effects-core';
@@ -363,7 +363,7 @@ export class GLRenderer extends Renderer implements Disposable {
     if (!gl) {
       throw new Error('Can not restore automatically because losing gl context.');
     }
-    this.engine = new GLEngine(gl);
+    this.engine.gpuCapability = new GPUCapability(gl);
     this.engine.renderer = this;
     this.pipelineContext = new GLPipelineContext(this.engine as GLEngine, gl);
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);

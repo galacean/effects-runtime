@@ -8,9 +8,6 @@ import type { VFXItemConstructor } from './vfx-item';
 
 export const pluginLoaderMap: Record<string, PluginConstructor> = {};
 export const defaultPlugins: string[] = [];
-export type PrecompileOptions = {
-  [key: string]: any,
-};
 
 const pluginCtrlMap: Record<string, VFXItemConstructor> = {};
 
@@ -97,10 +94,9 @@ export class PluginSystem {
   precompile (
     compositions: spec.CompositionData[],
     renderer: Renderer,
-    options?: PrecompileOptions,
   ) {
     for (const plugin of this.plugins) {
-      plugin.precompile(compositions, renderer, options);
+      plugin.precompile(compositions, renderer);
     }
   }
 

@@ -11,12 +11,6 @@ import { Geometry, GLSLVersion } from '../render';
 import type { ShapePath, StrokeAttributes, Polygon } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
 
-interface CurveData {
-  point: spec.Vector2Data,
-  controlPoint1: spec.Vector2Data,
-  controlPoint2: spec.Vector2Data,
-}
-
 interface FillAttribute {
   color: Color,
 }
@@ -144,7 +138,6 @@ export class ShapeComponent extends MeshComponent implements Maskable {
   private hasFill = false;
   private shapeDirty = true;
   private graphicsPath = new GraphicsPath();
-  private curveValues: CurveData[] = [];
   private fillAttribute: FillAttribute;
   private strokeAttributes: StrokeAttributes;
   private shapeAttribute: ShapeAttribute;
@@ -388,37 +381,30 @@ void main() {
         const easingOuts = customShapeAtribute.easingOuts;
 
         for (const shape of customShapeAtribute.shapes) {
-          this.curveValues = [];
-
           const indices = shape.indexes;
+          const startPoint = points[indices[0].point];
+
+          this.graphicsPath.moveTo(startPoint.x, startPoint.y);
 
           for (let i = 1; i < indices.length; i++) {
             const pointIndex = indices[i];
             const lastPointIndex = indices[i - 1];
+            const point = points[pointIndex.point];
+            const lastPoint = points[lastPointIndex.point];
+            const control1 = easingOuts[lastPointIndex.easingOut];
+            const control2 = easingIns[pointIndex.easingIn];
 
-            this.curveValues.push({
-              point: points[pointIndex.point],
-              controlPoint1: easingOuts[lastPointIndex.easingOut],
-              controlPoint2: easingIns[pointIndex.easingIn],
-            });
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
           }
 
-          // Push the last curve
-          this.curveValues.push({
-            point: points[indices[0].point],
-            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-            controlPoint2: easingIns[indices[0].easingIn],
-          });
+          const pointIndex = indices[0];
+          const lastPointIndex = indices[indices.length - 1];
+          const point = points[pointIndex.point];
+          const lastPoint = points[lastPointIndex.point];
+          const control1 = easingOuts[lastPointIndex.easingOut];
+          const control2 = easingIns[pointIndex.easingIn];
 
-          this.graphicsPath.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
-
-          for (const curveValue of this.curveValues) {
-            const point = curveValue.point;
-            const control1 = curveValue.controlPoint1;
-            const control2 = curveValue.controlPoint2;
-
-            this.graphicsPath.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
-          }
+          this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
 
           if (shape.close) {
             this.graphicsPath.closePath();
