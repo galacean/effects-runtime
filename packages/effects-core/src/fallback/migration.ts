@@ -61,11 +61,6 @@ const refCompositions: Map<string, spec.CompositionData> = new Map();
  * - 富文本插件名称的适配
  */
 export function version31Migration (json: JSONScene): JSONScene {
-  componentMap.clear();
-  itemMap.clear();
-  refCompositions.clear();
-  const { compositions, items } = json;
-
   // 修正老版本数据中，富文本插件名称的问题
   json.plugins?.forEach((plugin, index) => {
     if (plugin === 'richtext') {
@@ -75,7 +70,6 @@ export function version31Migration (json: JSONScene): JSONScene {
 
   // Custom shape fill 属性位置迁移
   for (const component of json.components) {
-    componentMap.set(component.id, component);
     if (component.dataType === DataType.ShapeComponent) {
       const shapeComponent = component as ShapeComponentData;
 
@@ -113,21 +107,7 @@ export function version31Migration (json: JSONScene): JSONScene {
       }
     }
   }
-  // 处理旧蒙版数据
-  let mainComp = compositions[0];
 
-  for (const comp of compositions) {
-    if (comp.id === json.compositionId) {
-      mainComp = comp;
-    } else {
-      refCompositions.set(comp.id, comp);
-    }
-  }
-  for (const item of items) {
-    itemMap.set(item.id, item);
-  }
-
-  processContent(mainComp);
   // Composition id 转 guid
   const compositionId = json.compositionId;
   const compositionIdToGUIDMap: Record<string, string> = {};
@@ -155,6 +135,32 @@ export function version31Migration (json: JSONScene): JSONScene {
   return json;
 }
 
+export function version32Migration (json: JSONScene): JSONScene {
+  componentMap.clear();
+  itemMap.clear();
+  refCompositions.clear();
+  const { compositions, items, components } = json;
+  // 处理旧蒙版数据
+  let mainComp = compositions[0];
+
+  for (const component of components) {
+    componentMap.set(component.id, component);
+  }
+  for (const comp of compositions) {
+    if (comp.id === json.compositionId) {
+      mainComp = comp;
+    } else {
+      refCompositions.set(comp.id, comp);
+    }
+  }
+  for (const item of items) {
+    itemMap.set(item.id, item);
+  }
+
+  processContent(mainComp);
+
+  return json;
+}
 export function processContent (composition: spec.CompositionData) {
   for (const item of composition.items) {
     const itemProps = itemMap.get(item.id);
