@@ -79,10 +79,6 @@ export class SpriteComponent extends BaseRenderComponent {
   }
 
   override onUpdate (dt: number): void {
-    if (!this.isManualTimeSet) {
-      this.frameAnimationTime += dt / 1000;
-      this.isManualTimeSet = false;
-    }
     let time = this.frameAnimationTime;
     const duration = this.item.duration;
 
@@ -150,6 +146,7 @@ export class SpriteComponent extends BaseRenderComponent {
       ]);
     }
 
+    this.frameAnimationTime += dt / 1000;
   }
 
   override onDestroy (): void {

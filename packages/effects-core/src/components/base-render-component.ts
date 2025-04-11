@@ -57,7 +57,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   protected renderInfo: ItemRenderInfo;
   protected preMultiAlpha: number;
   protected visible = true;
-  protected isManualTimeSet = false;
   protected frameAnimationTime = 0;
 
   /**
@@ -155,7 +154,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
    */
   setAnimationTime (time: number) {
     this.frameAnimationTime = time;
-    this.isManualTimeSet = true;
   }
 
   override render (renderer: Renderer) {
