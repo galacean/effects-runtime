@@ -207,6 +207,7 @@ export class Transform implements Disposable {
       this.rotation.y = y;
       this.rotation.z = z;
       this.quat.setFromEuler(this.rotation);
+      // TODO 修正 GE 四元数旋转共轭问题
       this.quat.conjugate();
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
