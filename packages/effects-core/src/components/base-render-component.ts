@@ -126,14 +126,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   /**
-   * 获取当前图层的颜色
-   * @since 2.4.0
-   */
-  getColor (): Color {
-    return this.color;
-  }
-
-  /**
    * 使用纹理对象设置当前 Mesh 的纹理
    * @since 2.0.0
    * @param input - 纹理对象
