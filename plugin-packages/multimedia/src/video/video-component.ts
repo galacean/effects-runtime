@@ -175,7 +175,6 @@ export class VideoComponent extends BaseRenderComponent {
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
     }
-    this.worldMatrix = math.Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;
 

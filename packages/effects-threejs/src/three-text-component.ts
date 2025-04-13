@@ -42,8 +42,6 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
 
     this.renderInfo = getImageItemRenderInfo(this);
 
-    this.worldMatrix = math.Matrix4.fromIdentity();
-
     this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
     // TextComponentBase
     this.updateWithOptions(options);

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import type { ItemRenderer } from '../../components';
@@ -125,12 +125,10 @@ export class TextComponent extends BaseRenderComponent {
       order: listIndex,
     };
     this.interaction = interaction;
-    this.cachePrefix = '-';
     this.renderInfo = getImageItemRenderInfo(this);
 
     const material = this.createMaterial(this.renderInfo, 2);
 
-    this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
 
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));

@@ -1,4 +1,3 @@
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { Color } from '@galacean/effects-math/es/core/color';
@@ -16,7 +15,6 @@ import type { GeometryDrawMode, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
-import { addItem } from '../utils';
 import { RendererComponent } from './renderer-component';
 
 /**
@@ -51,22 +49,14 @@ export interface ItemRenderInfo {
  */
 export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
-  cachePrefix = '-';
-  geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
-  anchor?: spec.vec2;
   renderer: ItemRenderer;
-  emptyTexture: Texture;
-  color: spec.vec4 = [1, 1, 1, 1];
-  worldMatrix: Matrix4;
+  color = new Color(1, 1, 1, 1);
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
   protected renderInfo: ItemRenderInfo;
-  // readonly mesh: Mesh;
-  protected readonly wireframe?: boolean;
   protected preMultiAlpha: number;
   protected visible = true;
-  protected isManualTimeSet = false;
   protected frameAnimationTime = 0;
 
   /**
@@ -87,12 +77,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mask: 0,
       order: 0,
     };
-    this.emptyTexture = this.engine.emptyTexture;
     this.renderInfo = getImageItemRenderInfo(this);
 
     const material = this.createMaterial(this.renderInfo, 2);
 
-    this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
@@ -116,12 +104,24 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   /**
    * 设置当前图层的颜色
    * > Tips: 透明度也属于颜色的一部分，当有透明度/颜色 K 帧变化时，该 API 会失效
+   * @since 2.4.0
+   * @param color - 颜色值
+   */
+  setColor (color: Color): void;
+  /**
+   * 设置当前图层的颜色
+   * > Tips: 透明度也属于颜色的一部分，当有透明度/颜色 K 帧变化时，该 API 会失效
    * @since 2.0.0
    * @param color - 颜色值
    */
-  setColor (color: spec.vec4) {
-    this.color = color;
-    this.material.setColor('_Color', new Color().setFromArray(color));
+  setColor (color: spec.vec4): void;
+  setColor (color: spec.vec4 | Color) {
+    if (color instanceof Color) {
+      this.color.copyFrom(color);
+    } else {
+      this.color.setFromArray(color);
+    }
+    this.material.setColor('_Color', this.color);
   }
 
   /**
@@ -154,7 +154,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
    */
   setAnimationTime (time: number) {
     this.frameAnimationTime = time;
-    this.isManualTimeSet = true;
   }
 
   override render (renderer: Renderer) {
@@ -189,35 +188,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
   }
 
-  protected getItemInitData () {
-    this.geoData = this.getItemGeometryData();
-
-    const { index, atlasOffset } = this.geoData;
-    const idxCount = index.length;
-    // @ts-expect-error
-    const indexData: number[] = this.wireframe ? new Uint8Array([0, 1, 1, 3, 2, 3, 2, 0]) : new index.constructor(idxCount);
-
-    if (!this.wireframe) {
-      for (let i = 0; i < idxCount; i++) {
-        indexData[i] = 0 + index[i];
-      }
-    }
-
-    return {
-      atlasOffset,
-      index: indexData,
-    };
-  }
-
   protected setItem () {
-    const textures: Texture[] = [];
-    let texture = this.renderer.texture;
-
-    if (texture) {
-      addItem(textures, texture);
-    }
-    texture = this.renderer.texture;
-    const data = this.getItemInitData();
+    const texture = this.renderer.texture;
+    const geoData = this.getItemGeometryData();
+    const { index, atlasOffset } = geoData;
 
     const renderer = this.renderer;
     const texParams = this.material.getVector4('_TexParams');
@@ -235,18 +209,18 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
 
     const attributes = {
-      atlasOffset: new Float32Array(data.atlasOffset.length),
-      index: new Uint16Array(data.index.length),
+      atlasOffset: new Float32Array(atlasOffset.length),
+      index: new Uint16Array(index.length),
     };
 
-    attributes.atlasOffset.set(data.atlasOffset);
-    attributes.index.set(data.index);
+    attributes.atlasOffset.set(atlasOffset);
+    attributes.index.set(index);
     const { material, geometry } = this;
     const indexData = attributes.index;
 
     geometry.setIndexData(indexData);
     geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
-    geometry.setDrawCount(data.index.length);
+    geometry.setDrawCount(index.length);
 
     material.setTexture('_MainTex', texture);
   }
@@ -409,7 +383,7 @@ export function getImageItemRenderInfo (item: BaseRenderComponent): ItemRenderIn
   const { renderer } = item;
   const { blending, side, occlusion, mask, maskMode, order } = renderer;
   const blendingCache = +blending;
-  const cachePrefix = item.cachePrefix || '-';
+  const cachePrefix = '-';
 
   return {
     side,

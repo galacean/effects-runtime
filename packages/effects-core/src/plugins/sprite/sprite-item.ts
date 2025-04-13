@@ -1,4 +1,4 @@
-import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
@@ -79,10 +79,6 @@ export class SpriteComponent extends BaseRenderComponent {
   }
 
   override onUpdate (dt: number): void {
-    if (!this.isManualTimeSet) {
-      this.frameAnimationTime += dt / 1000;
-      this.isManualTimeSet = false;
-    }
     let time = this.frameAnimationTime;
     const duration = this.item.duration;
 
@@ -150,6 +146,7 @@ export class SpriteComponent extends BaseRenderComponent {
       ]);
     }
 
+    this.frameAnimationTime += dt / 1000;
   }
 
   override onDestroy (): void {
@@ -308,16 +305,13 @@ export class SpriteComponent extends BaseRenderComponent {
       order: listIndex,
     };
 
-    this.emptyTexture = this.engine.emptyTexture;
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
-    this.cachePrefix = '-';
     this.renderInfo = getImageItemRenderInfo(this);
 
     const geometry = this.createGeometry(glContext.TRIANGLES);
     const material = this.createMaterial(this.renderInfo, 2);
 
-    this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;
     const startColor = options.startColor || [1, 1, 1, 1];
