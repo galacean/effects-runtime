@@ -292,7 +292,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     let sourceContent: spec.CompositionData = scene.jsonScene.compositions[0];
 
     for (const composition of scene.jsonScene.compositions) {
-      this.getEngine().addEffectsObjectData(composition as unknown as spec.EffectsObjectData);
       if (composition.id === scene.jsonScene.compositionId) {
         sourceContent = composition;
       }

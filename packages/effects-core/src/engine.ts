@@ -97,9 +97,12 @@ export class Engine implements Disposable {
     const { jsonScene, textureOptions = [] } = scene;
     const {
       items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins = [], miscs = [],
+      animations = [], bins = [], miscs = [], compositions,
     } = jsonScene;
 
+    for (const compositionData of compositions) {
+      this.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
+    }
     for (const vfxItemData of items) {
       this.addEffectsObjectData(vfxItemData);
     }
