@@ -8,6 +8,12 @@
 
 ---
 
+## 2.3.2
+
+`2025-04-13`
+
+- Fix: camera rotation initialization. [#942](https://github.com/galacean/effects-runtime/pull/942) @wumaolinmaoan
+
 ## 2.3.1
 
 `2025-04-03`
