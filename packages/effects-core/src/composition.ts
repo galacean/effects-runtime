@@ -295,6 +295,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     let sourceContent: spec.CompositionData = scene.jsonScene.compositions[0];
 
+    // Filter composition item by RenderLevel
     for (const composition of scene.jsonScene.compositions) {
       filterItemsByRenderLevel(composition, this.getEngine(), scene.renderLevel);
 
