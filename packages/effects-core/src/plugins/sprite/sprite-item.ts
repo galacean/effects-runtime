@@ -10,7 +10,7 @@ import type { MaskProps } from '../../material';
 import { MaskMode } from '../../material';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
-import type { GeometryFromShape } from '../../shape';
+import { getGeometryByShape, type GeometryFromShape } from '../../shape';
 import { type Texture, type Texture2DSourceOptionsVideo, TextureSourceType } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
@@ -152,10 +152,6 @@ export class SpriteComponent extends BaseRenderComponent {
   override onDestroy (): void {
     const textures = this.getTextures();
 
-    if (this.item && this.item.composition) {
-      this.item.composition.destroyTextures(textures);
-    }
-
     textures.forEach(texture => {
       const source = texture.source;
 
@@ -292,6 +288,16 @@ export class SpriteComponent extends BaseRenderComponent {
     const maskMode = this.maskManager.getMaskMode(data);
 
     this.interaction = interaction;
+
+    // TODO 新蒙板上线后移除
+    const shapeData = renderer.shape;
+    const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
+
+    if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
+      //@ts-expect-error
+      renderer.shape = getGeometryByShape(shapeData, split);
+    }
+
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,

@@ -3,16 +3,15 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
-import { CompositionSourceManager } from './composition-source-manager';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
-import { TextureLoadAction, TextureSourceType } from './texture';
+import { TextureLoadAction } from './texture';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import { VFXItem } from './vfx-item';
@@ -22,6 +21,8 @@ import type { PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
 import { SerializationHelper } from './serialization-helper';
 import { PlayState } from './plugins/cal/playable-graph';
+import type { Engine } from './engine';
+import { passRenderLevel } from './pass-render-level';
 
 /**
  * 合成统计信息
@@ -170,13 +171,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @since 1.6.0
    */
   interactive: boolean;
-
   /**
    * 合成是否结束
    */
   isEnded = false;
-
-  compositionSourceManager: CompositionSourceManager;
+  /**
+   * 合成渲染等级
+   */
+  renderLevel?: SceneRenderLevel;
   /**
    * 合成id
    */
@@ -197,10 +199,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 插件系统，保存当前加载的插件对象，负责插件事件和创建插件的 Item 对象
    */
   readonly pluginSystem: PluginSystem;
-  /**
-   * 是否在合成结束时自动销毁引用的纹理，合成重播时不销毁
-   */
-  readonly autoRefTex: boolean;
   /**
    * 当前合成名称
    */
@@ -258,8 +256,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private paused = false;
   private lastVideoUpdateTime = 0;
   private isEndCalled = false;
+  private _textures: Texture[] = [];
 
-  private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
    */
@@ -284,19 +282,29 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       handleItemMessage,
     } = props;
 
-    this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
+    this._textures = scene.textureOptions as Texture[];
+    this.renderLevel = scene.renderLevel;
+    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
+    this.renderer = renderer;
 
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, imgUsage } = this.compositionSourceManager;
 
-    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
+    let sourceContent: spec.CompositionData = scene.jsonScene.compositions[0];
+
+    for (const composition of scene.jsonScene.compositions) {
+      filterItemsByRenderLevel(composition, this.getEngine(), scene.renderLevel);
+
+      this.getEngine().addEffectsObjectData(composition as unknown as spec.EffectsObjectData);
+      if (composition.id === scene.jsonScene.compositionId) {
+        sourceContent = composition;
+      }
+    }
 
     assertExist(sourceContent);
-    this.renderer = renderer;
 
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.getEngine());
@@ -314,7 +322,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent.id;
     this.renderer = renderer;
-    this.texInfo = !reusable ? imgUsage : {};
     this.event = event;
     this.statistic = {
       loadStart: scene.startTime ?? 0,
@@ -324,7 +331,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = scene.pluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -355,7 +361,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取场景中的纹理数组
    */
   get textures () {
-    return this.compositionSourceManager.textures;
+    return this._textures;
   }
 
   /**
@@ -864,45 +870,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 销毁插件 Item 中保存的纹理数组
-   * @internal
-   * @param textures - 需要销毁的数组
-   */
-  destroyTextures (textures: (Texture | null | undefined)[]) {
-    for (let i = 0; i < textures.length; i++) {
-      const texture: Texture | null | undefined = textures[i];
-
-      if (!texture) {
-        continue;
-      }
-      if (texture.sourceType === TextureSourceType.data && !(this.texInfo[texture.getInstanceId()])) {
-        if (
-          texture !== this.rendererOptions?.emptyTexture &&
-          texture !== this.renderFrame.transparentTexture &&
-          texture !== this.getEngine().emptyTexture
-        ) {
-          texture.dispose();
-        }
-        continue;
-      }
-      if (this.autoRefTex) {
-        // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
-        const c = --this.texInfo[texture.getInstanceId()];
-
-        if (!c) {
-          if (__DEBUG__) {
-            console.debug(`Destroy no ref texture: ${texture?.id}.`);
-            if (isNaN(c)) {
-              logger.error(`Texture ${texture?.id} not found usage.`);
-            }
-          }
-          texture.dispose();
-        }
-      }
-    }
-  }
-
-  /**
    * 销毁 Item
    * @internal
    * @param item - 需要销毁的 item
@@ -973,9 +940,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.dispose = noop;
     if (textures && this.keepResource) {
-      textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);
+      textures.forEach(tex => {tex.dispose = textureDisposes[tex.id];tex.dispose();});
     }
-    this.compositionSourceManager.dispose();
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
@@ -1101,4 +1067,26 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.textureOffloaded = false;
     }
   }
+}
+
+function filterItemsByRenderLevel (composition: spec.CompositionData, engine: Engine, renderLevel?: SceneRenderLevel) {
+  const items: spec.DataPath[] = [];
+
+  for (const itemDataPath of composition.items) {
+    const itemProps = engine.findEffectsObjectData(itemDataPath.id) as spec.VFXItemData;
+
+    if (passRenderLevel(itemProps.renderLevel, renderLevel)) {
+      items.push(itemDataPath);
+    } else {
+      // 非预合成元素未达到渲染等级的转化为空节点。
+      // 预合成元素有根据 item type 的子元素加载判断，没法保留空节点，这边先整体过滤掉。
+      if (itemProps.type !== spec.ItemType.composition) {
+        itemProps.components = [];
+        items.push(itemDataPath);
+      }
+    }
+  }
+  composition.items = items;
+
+  return composition;
 }

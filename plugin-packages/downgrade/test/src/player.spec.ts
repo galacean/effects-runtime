@@ -30,7 +30,7 @@ describe('Player downgrade', () => {
         },
       });
 
-      expect(comp.compositionSourceManager.renderLevel).to.equal(spec.RenderLevel.A);
+      expect(comp.renderLevel).to.equal(spec.RenderLevel.A);
       playerFunc();
     } catch (e) {
       catchFunc();
@@ -73,7 +73,7 @@ describe('Player downgrade', () => {
         },
       });
 
-      expect(comp.compositionSourceManager.renderLevel).to.equal(spec.RenderLevel.S);
+      expect(comp.renderLevel).to.equal(spec.RenderLevel.S);
       playerFunc();
     } catch (e) {
       catchFunc();
@@ -99,7 +99,7 @@ describe('Player downgrade', () => {
         },
       });
 
-      expect(comp.compositionSourceManager.renderLevel).to.equal(spec.RenderLevel.A);
+      expect(comp.renderLevel).to.equal(spec.RenderLevel.A);
       playerFunc();
     } catch (e) {
       catchFunc();

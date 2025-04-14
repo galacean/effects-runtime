@@ -501,7 +501,6 @@ export class ParticleSystem extends Component implements Maskable {
 
   override onDestroy (): void {
     if (this.item && this.item.composition) {
-      this.item.composition.destroyTextures(this.getTextures());
       this.meshes.forEach(mesh => mesh.dispose({ material: { textures: DestroyOptions.keep } }));
     }
   }

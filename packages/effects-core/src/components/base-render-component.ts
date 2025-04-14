@@ -183,9 +183,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   override onDestroy (): void {
-    if (this.item && this.item.composition) {
-      this.item.composition.destroyTextures(this.getTextures());
-    }
   }
 
   protected setItem () {

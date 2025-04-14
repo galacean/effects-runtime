@@ -231,11 +231,12 @@ export class CompositionComponent extends Behaviour {
 
   override fromData (data: any): void {
     super.fromData(data);
+    const compositionData = data as spec.CompositionData;
 
-    this.items = data.items;
-    this.startTime = data.startTime ?? 0;
-    this.sceneBindings = data.sceneBindings;
-    this.timelineAsset = data.timelineAsset;
+    this.items = compositionData.items as VFXItem[];
+    this.startTime = compositionData.startTime ?? 0;
+    this.sceneBindings = compositionData.sceneBindings as unknown as SceneBinding[];
+    this.timelineAsset = compositionData.timelineAsset as unknown as TimelineAsset;
   }
 
   private resolveBindings () {
