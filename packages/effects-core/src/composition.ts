@@ -176,10 +176,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   isEnded = false;
   /**
-   * 合成渲染等级
-   */
-  renderLevel?: SceneRenderLevel;
-  /**
    * 合成id
    */
   readonly id: string;
@@ -282,10 +278,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       handleItemMessage,
     } = props;
 
-    this._textures = scene.textureOptions as Texture[];
-    this.renderLevel = scene.renderLevel;
-    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
     this.renderer = renderer;
+    this._textures = scene.textureOptions as Texture[];
+    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
+    this.getEngine().renderLevel = scene.renderLevel;
 
     if (reusable) {
       this.keepResource = true;
@@ -295,10 +291,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     let sourceContent: spec.CompositionData = scene.jsonScene.compositions[0];
 
-    // Filter composition item by RenderLevel
     for (const composition of scene.jsonScene.compositions) {
-      filterItemsByRenderLevel(composition, this.getEngine(), scene.renderLevel);
-
       this.getEngine().addEffectsObjectData(composition as unknown as spec.EffectsObjectData);
       if (composition.id === scene.jsonScene.compositionId) {
         sourceContent = composition;
@@ -316,6 +309,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // Create rootCompositionComponent
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+    filterItemsByRenderLevel(sourceContent, this.getEngine(), scene.renderLevel);
     SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
 
     this.width = width;
@@ -1070,7 +1064,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 }
 
-function filterItemsByRenderLevel (composition: spec.CompositionData, engine: Engine, renderLevel?: SceneRenderLevel) {
+export function filterItemsByRenderLevel (composition: spec.CompositionData, engine: Engine, renderLevel?: SceneRenderLevel) {
   const items: spec.DataPath[] = [];
 
   for (const itemDataPath of composition.items) {
