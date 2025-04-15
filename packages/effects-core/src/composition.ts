@@ -934,7 +934,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.dispose = noop;
     if (textures && this.keepResource) {
-      textures.forEach(tex => {tex.dispose = textureDisposes[tex.id];tex.dispose();});
+      textures.forEach(tex => {
+        tex.dispose = textureDisposes[tex.id];
+        tex.dispose();
+      });
     }
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
