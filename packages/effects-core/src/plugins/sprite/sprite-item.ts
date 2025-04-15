@@ -1,4 +1,4 @@
-import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
@@ -284,6 +284,5 @@ export class SpriteComponent extends BaseRenderComponent {
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
   }
 }

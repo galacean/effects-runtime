@@ -177,7 +177,6 @@ export class VideoComponent extends BaseRenderComponent {
     this.geometry = geometry;
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
-    this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
   }
 
   override onUpdate (dt: number): void {

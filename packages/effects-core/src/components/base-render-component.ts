@@ -68,7 +68,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.maskManager = new MaskProcessor(engine);
   }
 
@@ -284,7 +283,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
     material.setColor('_Color', new Color(0, 0, 0, 1));
-    material.setVector4('_TexOffset', new Vector4());
+    material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_MainTex', texture);
 
     const texParams = new Vector4();

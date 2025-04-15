@@ -40,7 +40,6 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
     super.fromData(data);
     const options = data.options as spec.TextContentOptions;
 
-    this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
     // TextComponentBase
     this.updateWithOptions(options);
     // Text
