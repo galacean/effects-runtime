@@ -3,7 +3,7 @@ import type {
   MaterialProps, ShaderMacros, MaskProps,
 } from '@galacean/effects';
 import {
-  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent, glContext,
+  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent,
   itemFrag, itemVert, GLSLVersion,
   assertExist,
 } from '@galacean/effects';
@@ -49,7 +49,7 @@ export class VideoComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MVideo' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
+    this.geometry = this.createGeometry();
   }
 
   override setTexture (input: Texture): void;
@@ -167,7 +167,7 @@ export class VideoComponent extends BaseRenderComponent {
     this.interaction = interaction;
     this.pauseVideo();
 
-    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const geometry = this.createGeometry();
     const material = this.createMaterial(this.renderer);
 
     if (this.transparent) {

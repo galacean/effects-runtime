@@ -5,7 +5,6 @@ import { ColorPlayable } from '../../animation';
 import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
 import type { MaskProps } from '../../material';
 import { MaskMode } from '../../material';
 import type { GeometryFromShape } from '../../shape';
@@ -70,7 +69,7 @@ export class SpriteComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MSprite' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
+    this.geometry = this.createGeometry();
     if (props) {
       this.fromData(props);
     }
@@ -276,7 +275,7 @@ export class SpriteComponent extends BaseRenderComponent {
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
 
-    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const geometry = this.createGeometry();
     const material = this.createMaterial(this.renderer);
 
     this.material = material;

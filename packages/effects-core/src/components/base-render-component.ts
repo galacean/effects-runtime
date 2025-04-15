@@ -11,7 +11,7 @@ import {
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
-import type { GeometryDrawMode, Renderer, ShaderMacros } from '../render';
+import type { Renderer, ShaderMacros } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
@@ -199,7 +199,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
   }
 
-  protected createGeometry (mode: GeometryDrawMode) {
+  protected createGeometry () {
     const geometry = Geometry.create(this.engine, {
       attributes: {
         aPos: {
@@ -221,7 +221,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         },
       },
       indices: { data: new Uint16Array(0), releasable: true },
-      mode,
+      mode: glContext.TRIANGLES,
     });
 
     const geoData = this.getItemGeometryData(geometry);
