@@ -12,7 +12,7 @@ import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
 import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
-import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Matrix4 } from '@galacean/effects-math/es/core/index';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -81,6 +81,7 @@ export class TextComponent extends BaseRenderComponent {
       this.fromData(props);
     }
 
+    // 初始化canvas
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
@@ -132,15 +133,11 @@ export class TextComponent extends BaseRenderComponent {
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
 
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
-    // TextComponentBase
+    // TextComponentBase 初始化
     this.updateWithOptions(options);
     this.renderText(options);
 
     this.setItem();
-    // 恢复默认颜色
-    this.material.setColor('_Color', new Color(1, 1, 1, 1));
-
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
@@ -149,6 +146,77 @@ export class TextComponent extends BaseRenderComponent {
 
   updateTexture (flipY = true) {
     // OVERRIDE by mixins
+  }
+
+  /**
+   * 重写getMaterialProps方法，提供自定义shader
+   */
+  protected override getMaterialProps (renderInfo: any, count: number): any {
+    // 定义一个最基础的顶点着色器
+    const vertexShader = `
+      precision highp float;
+
+      attribute vec2 atlasOffset; //x y
+      attribute vec3 aPos;//x y
+
+      varying vec2 vUV;
+
+      uniform mat4 effects_MatrixVP;
+      uniform mat4 effects_ObjectToWorld;
+
+      // #ifdef ENV_EDITOR
+      // uniform vec4 uEditorTransform;
+      // #endif
+
+      void main() {
+        vUV = vec2(atlasOffset.xy);
+
+        vec4 pos = vec4(aPos.xy, aPos.z, 1.0);
+        gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
+
+
+        // #ifdef ENV_EDITOR
+        // gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
+        // #endif
+      }
+
+    `;
+
+    // 定义片段着色器，支持IDMap
+    const fragmentShader = `
+      precision highp float;
+
+      varying vec2 vUV; //x y
+
+      uniform sampler2D _MainTex;
+      uniform sampler2D uIDMap;    // IDMap纹理
+
+      void main() {
+
+        vec4 color = texture2D(_MainTex, vUV.xy);
+        color.rgb *= color.a; // ? TODO 预乘 alpha
+        color.a = clamp(color.a, 0.0, 1.0);
+
+        vec4 idColor = texture2D(uIDMap, vUV.xy);
+        // TODO 
+
+
+
+        gl_FragColor = color;
+      }
+
+    `;
+
+    // 返回shader配置
+    return {
+      shader: {
+        fragment: fragmentShader,
+        vertex: vertexShader,
+        glslVersion: 1, // 使用数字
+        macros: [],
+        shared: true,
+      },
+    };
   }
 }
 
