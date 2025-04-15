@@ -7,7 +7,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { MaskProps } from '../../material';
 import { MaskMode } from '../../material';
-import type { GeometryFromShape } from '../../shape';
+import { getGeometryByShape, type GeometryFromShape } from '../../shape';
 import { type Texture, type Texture2DSourceOptionsVideo, TextureSourceType } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
