@@ -1,11 +1,7 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
-import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '../../render';
-import { GLSLVersion } from '../../render';
-import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
+import type { GPUCapabilityDetail } from '../../render';
 import type { Transform } from '../../transform';
-import type { ItemRenderInfo } from '../../components';
 
 export type SpriteRenderData = {
   life: number,
@@ -33,45 +29,6 @@ export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDeta
   } else if (gpuCapability.maxVertexUniforms >= 128) {
     return maxSpriteMeshItemCount = 16;
   }
-}
-
-export function spriteMeshShaderFromFilter (
-  level: number,
-  options?: { wireframe?: boolean, env?: string },
-): SharedShaderWithSource {
-  const { env = '', wireframe } = options ?? {};
-  const macros: ShaderMacros = [
-    ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
-  ];
-  const fragment = wireframe ? itemFrameFrag : itemFrag;
-  const vertex = itemVert;
-
-  return {
-    fragment,
-    vertex,
-    glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
-    macros,
-    shared: true,
-  };
-}
-
-export function spriteMeshShaderIdFromRenderInfo (renderInfo: ItemRenderInfo, count: number): string {
-  return `${renderInfo.cachePrefix}_effects_sprite_${count}`;
-}
-
-export function spriteMeshShaderFromRenderInfo (renderInfo: ItemRenderInfo, count: number, level: number, env?: string): SharedShaderWithSource {
-  const { wireframe } = renderInfo;
-  const shader = spriteMeshShaderFromFilter(level, {
-    wireframe,
-    env,
-  });
-
-  shader.shared = true;
-  // if (!wireframe) {
-  //   shader.cacheId = spriteMeshShaderIdFromRenderInfo(renderInfo, count);
-  // }
-
-  return shader;
 }
 
 // TODO: 只有单测用

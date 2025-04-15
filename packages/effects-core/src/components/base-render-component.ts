@@ -10,12 +10,13 @@ import {
 } from '../material';
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
-import type { GeometryDrawMode, Renderer } from '../render';
-import { Geometry } from '../render';
+import { HitTestType } from '../plugins';
+import type { GeometryDrawMode, Renderer, ShaderMacros } from '../render';
+import { GLSLVersion, Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
+import { itemFrag, itemVert } from '../shader';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -31,20 +32,6 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
 }
 
 /**
- * 图层的渲染属性，用于 Mesh 的合并判断
- */
-export interface ItemRenderInfo {
-  side: number,
-  occlusion: boolean,
-  blending: number,
-  cachePrefix: string,
-  mask: number,
-  maskMode: number,
-  cacheId: string,
-  wireframe?: boolean,
-}
-
-/**
  * @since 2.1.0
  */
 export class BaseRenderComponent extends RendererComponent implements Maskable {
@@ -54,7 +41,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
-  protected renderInfo: ItemRenderInfo;
   protected preMultiAlpha: number;
   protected visible = true;
   protected frameAnimationTime = 0;
@@ -77,9 +63,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mask: 0,
       order: 0,
     };
-    this.renderInfo = getImageItemRenderInfo(this);
 
-    const material = this.createMaterial(this.renderInfo, 2);
+    const material = this.createMaterial(this.renderer);
 
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
@@ -188,44 +173,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
   }
 
-  protected setItem () {
-    const texture = this.renderer.texture;
-    const geoData = this.getItemGeometryData();
-    const { index, atlasOffset } = geoData;
-
-    const renderer = this.renderer;
-    const texParams = this.material.getVector4('_TexParams');
-
-    if (texParams) {
-      texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-      texParams.y = +this.preMultiAlpha;
-      texParams.z = renderer.renderMode;
-      texParams.w = renderer.maskMode;
-      if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
-        this.material.enableMacro('ALPHA_CLIP');
-      } else {
-        this.material.disableMacro('ALPHA_CLIP');
-      }
-    }
-
-    const attributes = {
-      atlasOffset: new Float32Array(atlasOffset.length),
-      index: new Uint16Array(index.length),
-    };
-
-    attributes.atlasOffset.set(atlasOffset);
-    attributes.index.set(index);
-    const { material, geometry } = this;
-    const indexData = attributes.index;
-
-    geometry.setIndexData(indexData);
-    geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
-    geometry.setDrawCount(index.length);
-
-    material.setTexture('_MainTex', texture);
-  }
-
-  protected getItemGeometryData () {
+  protected getItemGeometryData (geometry: Geometry) {
     const renderer = this.renderer;
 
     if (renderer.shape) {
@@ -239,21 +187,21 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
-      this.geometry.setAttributeData('aPos', new Float32Array(position));
+      geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
         index: index as number[],
         atlasOffset,
       };
     } else {
-      this.geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
+      geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
 
       return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
     }
   }
 
   protected createGeometry (mode: GeometryDrawMode) {
-    return Geometry.create(this.engine, {
+    const geometry = Geometry.create(this.engine, {
       attributes: {
         aPos: {
           type: glContext.FLOAT,
@@ -275,53 +223,82 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       },
       indices: { data: new Uint16Array(0), releasable: true },
       mode,
-      maxVertex: 4,
     });
+
+    const geoData = this.getItemGeometryData(geometry);
+    const { index, atlasOffset } = geoData;
+
+    const attributes = {
+      atlasOffset: new Float32Array(atlasOffset.length),
+      index: new Uint16Array(index.length),
+    };
+
+    attributes.atlasOffset.set(atlasOffset);
+    attributes.index.set(index);
+    const indexData = attributes.index;
+
+    geometry.setIndexData(indexData);
+    geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
+    geometry.setDrawCount(index.length);
+
+    return geometry;
   }
 
-  protected getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
+  protected getMaterialProps (): MaterialProps {
+    const macros: ShaderMacros = [
+    ];
+    const fragment = itemFrag;
+    const vertex = itemVert;
+    const level = 1;
+
+    const shader = {
+      fragment,
+      vertex,
+      glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
+      macros,
+      shared: true,
+    };
+
     return {
-      shader: spriteMeshShaderFromRenderInfo(renderInfo, count, 1),
+      shader,
     };
   }
 
-  protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
-    const { side, occlusion, blending, maskMode, mask } = renderInfo;
-    const materialProps = this.getMaterialProps(renderInfo, count);
+  protected createMaterial (renderer: ItemRenderer): Material {
+    const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
+    const materialProps = this.getMaterialProps();
 
-    this.preMultiAlpha = getPreMultiAlpha(blending);
+    this.preMultiAlpha = getPreMultiAlpha(blendMode);
 
     const material = Material.create(this.engine, materialProps);
 
-    const states = {
-      side,
-      blending: true,
-      blendMode: blending,
-      mask,
-      maskMode,
-      depthTest: true,
-      depthMask: occlusion,
-    };
+    material.blending = true;
+    material.depthTest = true;
+    material.depthMask = occlusion;
+    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
 
-    material.blending = states.blending;
-    material.depthTest = states.depthTest;
-    material.depthMask = states.depthMask;
-    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
-
-    states.blending && setBlendMode(material, states.blendMode);
+    setBlendMode(material, blendMode);
     // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, states.maskMode, !!this.renderer.shape);
-    setSideMode(material, states.side);
+    setMaskMode(material, maskMode, !!this.renderer.shape);
+    setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
-    if (!material.hasUniform('_Color')) {
-      material.setColor('_Color', new Color(0, 0, 0, 1));
-    }
-    if (!material.hasUniform('_TexOffset')) {
-      material.setVector4('_TexOffset', new Vector4());
-    }
-    if (!material.hasUniform('_TexParams')) {
-      material.setVector4('_TexParams', new Vector4());
+    material.setColor('_Color', new Color(0, 0, 0, 1));
+    material.setVector4('_TexOffset', new Vector4());
+    material.setTexture('_MainTex', texture);
+
+    const texParams = new Vector4();
+
+    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+    texParams.y = +this.preMultiAlpha;
+    texParams.z = renderer.renderMode;
+    texParams.w = renderer.maskMode;
+    material.setVector4('_TexParams', texParams);
+
+    if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
+      material.enableMacro('ALPHA_CLIP');
+    } else {
+      material.disableMacro('ALPHA_CLIP');
     }
 
     return material;
@@ -376,22 +353,5 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         };
       }
     }
-  };
-}
-
-export function getImageItemRenderInfo (item: BaseRenderComponent): ItemRenderInfo {
-  const { renderer } = item;
-  const { blending, side, occlusion, mask, maskMode, order } = renderer;
-  const blendingCache = +blending;
-  const cachePrefix = '-';
-
-  return {
-    side,
-    occlusion,
-    blending,
-    mask,
-    maskMode,
-    cachePrefix,
-    cacheId: `${cachePrefix}.${+side}+${+occlusion}+${blendingCache}+${order}+${maskMode}.${mask}`,
   };
 }
