@@ -1,10 +1,10 @@
 import type {
   Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  ItemRenderInfo, MaterialProps, ShaderMacros, MaskProps,
+  MaterialProps, ShaderMacros, MaskProps,
 } from '@galacean/effects';
 import {
   spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent, glContext,
-  PLAYER_OPTIONS_ENV_EDITOR, itemFrag, itemVert, GLSLVersion, getImageItemRenderInfo,
+  itemFrag, itemVert, GLSLVersion,
   assertExist,
 } from '@galacean/effects';
 
@@ -98,10 +98,9 @@ export class VideoComponent extends BaseRenderComponent {
     });
   }
 
-  protected override getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
+  protected override getMaterialProps (): MaterialProps {
     const macros: ShaderMacros = [
       ['TRANSPARENT_VIDEO', this.transparent],
-      ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const fragment = itemFrag;
     const vertex = itemVert;
@@ -109,7 +108,7 @@ export class VideoComponent extends BaseRenderComponent {
     const shader = {
       fragment,
       vertex,
-      glslVersion: count === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
+      glslVersion: GLSLVersion.GLSL1,
       macros,
       shared: true,
     };
@@ -167,10 +166,9 @@ export class VideoComponent extends BaseRenderComponent {
 
     this.interaction = interaction;
     this.pauseVideo();
-    this.renderInfo = getImageItemRenderInfo(this);
 
     const geometry = this.createGeometry(glContext.TRIANGLES);
-    const material = this.createMaterial(this.renderInfo, 2);
+    const material = this.createMaterial(this.renderer);
 
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);

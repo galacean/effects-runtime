@@ -2,7 +2,7 @@ import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
+import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
@@ -313,10 +313,9 @@ export class SpriteComponent extends BaseRenderComponent {
 
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
-    this.renderInfo = getImageItemRenderInfo(this);
 
     const geometry = this.createGeometry(glContext.TRIANGLES);
-    const material = this.createMaterial(this.renderInfo, 2);
+    const material = this.createMaterial(this.renderer);
 
     this.material = material;
     this.geometry = geometry;
