@@ -10,12 +10,13 @@ import {
 } from '../material';
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
-import type { GeometryDrawMode, Renderer } from '../render';
-import { Geometry } from '../render';
+import { HitTestType } from '../plugins';
+import type { GeometryDrawMode, Renderer, ShaderMacros } from '../render';
+import { GLSLVersion, Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
+import { itemFrag, itemVert } from '../shader';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -31,20 +32,6 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
 }
 
 /**
- * 图层的渲染属性，用于 Mesh 的合并判断
- */
-export interface ItemRenderInfo {
-  side: number,
-  occlusion: boolean,
-  blending: number,
-  cachePrefix: string,
-  mask: number,
-  maskMode: number,
-  cacheId: string,
-  wireframe?: boolean,
-}
-
-/**
  * @since 2.1.0
  */
 export class BaseRenderComponent extends RendererComponent implements Maskable {
@@ -54,7 +41,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
-  protected renderInfo: ItemRenderInfo;
   protected preMultiAlpha: number;
   protected visible = true;
   protected frameAnimationTime = 0;
@@ -77,9 +63,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mask: 0,
       order: 0,
     };
-    this.renderInfo = getImageItemRenderInfo(this);
 
-    const material = this.createMaterial(this.renderInfo, 2);
+    const material = this.createMaterial(this.renderer);
 
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
@@ -279,15 +264,29 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     });
   }
 
-  protected getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
+  protected getMaterialProps (): MaterialProps {
+    const macros: ShaderMacros = [
+    ];
+    const fragment = itemFrag;
+    const vertex = itemVert;
+    const level = 1;
+
+    const shader = {
+      fragment,
+      vertex,
+      glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
+      macros,
+      shared: true,
+    };
+
     return {
-      shader: spriteMeshShaderFromRenderInfo(renderInfo, count, 1),
+      shader,
     };
   }
 
-  protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
+  protected createMaterial (renderInfo: ItemRenderer): Material {
     const { side, occlusion, blending, maskMode, mask } = renderInfo;
-    const materialProps = this.getMaterialProps(renderInfo, count);
+    const materialProps = this.getMaterialProps();
 
     this.preMultiAlpha = getPreMultiAlpha(blending);
 
@@ -376,22 +375,5 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         };
       }
     }
-  };
-}
-
-export function getImageItemRenderInfo (item: BaseRenderComponent): ItemRenderInfo {
-  const { renderer } = item;
-  const { blending, side, occlusion, mask, maskMode, order } = renderer;
-  const blendingCache = +blending;
-  const cachePrefix = '-';
-
-  return {
-    side,
-    occlusion,
-    blending,
-    mask,
-    maskMode,
-    cachePrefix,
-    cacheId: `${cachePrefix}.${+side}+${+occlusion}+${blendingCache}+${order}+${maskMode}.${mask}`,
   };
 }

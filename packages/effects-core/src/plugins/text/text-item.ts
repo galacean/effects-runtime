@@ -3,7 +3,7 @@ import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import type { ItemRenderer } from '../../components';
-import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
+import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
@@ -125,9 +125,8 @@ export class TextComponent extends BaseRenderComponent {
       order: listIndex,
     };
     this.interaction = interaction;
-    this.renderInfo = getImageItemRenderInfo(this);
 
-    const material = this.createMaterial(this.renderInfo, 2);
+    const material = this.createMaterial(this.renderer);
 
     this.material = material;
 
