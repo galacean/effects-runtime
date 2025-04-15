@@ -5,7 +5,7 @@ import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import { MaskRefManager } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
@@ -20,6 +20,10 @@ export class Engine implements Disposable {
    * 渲染器
    */
   renderer: Renderer;
+  /**
+   * 渲染等级
+   */
+  renderLevel?: SceneRenderLevel;
   emptyTexture: Texture;
   transparentTexture: Texture;
   /**
@@ -93,9 +97,12 @@ export class Engine implements Disposable {
     const { jsonScene, textureOptions = [] } = scene;
     const {
       items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins = [], miscs = [],
+      animations = [], bins = [], miscs = [], compositions,
     } = jsonScene;
 
+    for (const compositionData of compositions) {
+      this.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
+    }
     for (const vfxItemData of items) {
       this.addEffectsObjectData(vfxItemData);
     }
