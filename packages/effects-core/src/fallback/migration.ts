@@ -159,6 +159,24 @@ export function version32Migration (json: JSONScene): JSONScene {
 
   processContent(mainComp);
 
+  // 老 shape 数据兼容
+  for (const item of items) {
+    if (item.type === spec.ItemType.sprite) {
+      const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
+
+      if (spriteComponent) {
+        const shape = spriteComponent.renderer.shape;
+        let shapeData;
+
+        if (Number.isInteger(shape)) {
+          shapeData = json.shapes[shape as number];
+        }
+
+        spriteComponent.renderer.shape = shapeData;
+      }
+    }
+  }
+
   return json;
 }
 export function processContent (composition: spec.CompositionData) {
@@ -191,7 +209,6 @@ export function processContent (composition: spec.CompositionData) {
 
       comp && processContent(comp);
     }
-
   }
 }
 

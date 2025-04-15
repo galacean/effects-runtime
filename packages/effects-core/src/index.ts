@@ -17,7 +17,6 @@ export * from './canvas-pool';
 export * from './comp-vfx-item';
 export * from './components';
 export * from './composition';
-export * from './composition-source-manager';
 export * from './config';
 export * from './constants';
 export * from './decorators';
