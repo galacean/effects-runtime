@@ -120,7 +120,7 @@ export class VideoComponent extends BaseRenderComponent {
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     const {
       video,
       startColor = [1, 1, 1, 1],
@@ -159,7 +159,6 @@ export class VideoComponent extends BaseRenderComponent {
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
       maskMode,
-      order: listIndex,
       shape: renderer.shape,
     };
 

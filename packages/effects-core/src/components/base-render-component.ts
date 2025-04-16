@@ -22,13 +22,10 @@ import { itemFrag, itemVert } from '../shader';
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
  */
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
-  order: number,
   texture: Texture,
   mask: number,
   maskMode: MaskMode,
   shape?: GeometryFromShape,
-  anchor?: spec.vec2,
-  particleOrigin?: spec.ParticleOrigin,
 }
 
 /**
@@ -61,7 +58,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       side: spec.SideMode.DOUBLE,
       maskMode: MaskMode.NONE,
       mask: 0,
-      order: 0,
     };
 
     const material = this.createMaterial(this.renderer);

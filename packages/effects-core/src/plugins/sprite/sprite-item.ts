@@ -245,7 +245,7 @@ export class SpriteComponent extends BaseRenderComponent {
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
 
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     let renderer = data.renderer;
 
     if (!renderer) {
@@ -259,10 +259,10 @@ export class SpriteComponent extends BaseRenderComponent {
     // TODO 新蒙板上线后移除
     const shapeData = renderer.shape;
     const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
+    let shapeGeometry: GeometryFromShape | undefined = undefined;
 
     if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
-      //@ts-expect-error
-      renderer.shape = getGeometryByShape(shapeData, split);
+      shapeGeometry = getGeometryByShape(shapeData, split);
     }
 
     this.renderer = {
@@ -272,10 +272,9 @@ export class SpriteComponent extends BaseRenderComponent {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      shape: renderer.shape,
+      shape: shapeGeometry,
       mask: this.maskManager.getRefValue(),
       maskMode,
-      order: listIndex,
     };
 
     this.splits = data.splits || singleSplits;

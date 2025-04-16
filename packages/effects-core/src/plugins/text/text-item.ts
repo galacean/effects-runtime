@@ -101,7 +101,7 @@ export class TextComponent extends BaseRenderComponent {
 
   override fromData (data: TextItemProps): void {
     super.fromData(data);
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     let renderer = data.renderer;
 
     if (!renderer) {
@@ -121,7 +121,6 @@ export class TextComponent extends BaseRenderComponent {
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
       maskMode,
-      order: listIndex,
     };
     this.interaction = interaction;
 
