@@ -11,7 +11,7 @@ import {
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
-import type { Renderer, ShaderMacros } from '../render';
+import type { Renderer, ShaderMacros, ShaderWithSource } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
@@ -240,7 +240,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return geometry;
   }
 
-  protected getMaterialProps (): MaterialProps {
+  protected createShader (): ShaderWithSource {
     const macros: ShaderMacros = [
     ];
     const fragment = itemFrag;
@@ -255,14 +255,14 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       shared: true,
     };
 
-    return {
-      shader,
-    };
+    return shader;
   }
 
   protected createMaterial (renderer: ItemRenderer): Material {
     const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
-    const materialProps = this.getMaterialProps();
+    const materialProps: MaterialProps = {
+      shader:this.createShader(),
+    };
 
     this.preMultiAlpha = getPreMultiAlpha(blendMode);
 

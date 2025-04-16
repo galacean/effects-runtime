@@ -1,6 +1,7 @@
 import type {
   Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  MaterialProps, ShaderMacros, MaskProps,
+  ShaderMacros, MaskProps,
+  ShaderWithSource,
 } from '@galacean/effects';
 import {
   spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent,
@@ -98,7 +99,7 @@ export class VideoComponent extends BaseRenderComponent {
     });
   }
 
-  protected override getMaterialProps (): MaterialProps {
+  protected override createShader (): ShaderWithSource {
     const macros: ShaderMacros = [
       ['TRANSPARENT_VIDEO', this.transparent],
     ];
@@ -113,9 +114,7 @@ export class VideoComponent extends BaseRenderComponent {
       shared: true,
     };
 
-    return {
-      shader,
-    };
+    return shader;
   }
 
   override fromData (data: VideoItemProps): void {
