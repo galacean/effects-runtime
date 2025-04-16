@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
-import { Texture } from '../../texture';
+import { Texture, TextureSourceType } from '../../texture';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
@@ -148,6 +148,26 @@ export class TextComponent extends BaseRenderComponent {
     // OVERRIDE by mixins
   }
 
+  // // 添加销毁方法
+  // override dispose () {
+  //   super.dispose();
+
+  //   // 释放 ID Map 相关资源
+  //   if (this.idMapTexture) {
+  //     this.idMapTexture.dispose();
+  //     this.idMapTexture = null;
+  //   }
+
+  //   // 释放renderer.texture资源
+  //   if (this.renderer && this.renderer.texture && this.renderer.texture !== this.engine.emptyTexture) {
+  //     this.renderer.texture.dispose();
+  //     this.renderer.texture = this.engine.emptyTexture;
+  //   }
+
+  //   // 释放canvas资源
+  //   canvasPool.saveCanvas(this.canvas);
+  // }
+
   /**
    * 重写getMaterialProps方法，提供自定义shader
    */
@@ -202,7 +222,7 @@ export class TextComponent extends BaseRenderComponent {
 
 
 
-        gl_FragColor = color;
+        gl_FragColor = vec4(idColor.rg, 1.0, 1.0);
       }
 
     `;
@@ -235,9 +255,10 @@ export class TextComponentBase {
   renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
+  // ID Map相关属性，使用共享的canvas
+  protected idMapTexture: Texture | null = null;
   protected maxLineWidth: number;
-
-  private char: string[];
+  protected char: string[];
 
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
@@ -249,8 +270,105 @@ export class TextComponentBase {
     this.text = options.text.toString();
   }
 
-  private getLineCount (text: string, context: CanvasRenderingContext2D) {
+  /**
+   * 生成字符 ID Map
+   * 为每个字符创建唯一的颜色标识，用于后续文本动画
+   */
+  protected generateIDMap () {
+    // 复用已有的canvas和context
+    const canvas = this.canvas;
+    const context = this.context;
 
+    if (!canvas || !context) {
+      return;
+    }
+
+    const { width, height } = canvas;
+
+    // 保存当前canvas状态
+    context.save();
+
+    // 清空画布
+    context.clearRect(0, 0, width, height);
+
+    // 设置字体样式
+    const fontDesc = `${this.textStyle.fontStyle} ${this.textStyle.textWeight} ${this.textStyle.fontSize}px ${this.textStyle.fontFamily}`;
+
+    context.font = fontDesc;
+
+    // 转换文本基线和对齐方式
+    const baselineMap: Record<spec.TextBaseline, CanvasTextBaseline> = {
+      [spec.TextBaseline.top]: 'top',
+      [spec.TextBaseline.middle]: 'middle',
+      [spec.TextBaseline.bottom]: 'bottom',
+    };
+
+    const alignMap: Record<spec.TextAlignment, CanvasTextAlign> = {
+      [spec.TextAlignment.left]: 'left',
+      [spec.TextAlignment.middle]: 'center',
+      [spec.TextAlignment.right]: 'right',
+    };
+
+    context.textBaseline = baselineMap[this.textLayout.textBaseline];
+    context.textAlign = alignMap[this.textLayout.textAlign];
+
+    let currentX = 0;
+    let currentY = 0;
+
+    // 遍历每个字符
+    for (let i = 0; i < this.text.length; i++) {
+      const char = this.text[i];
+
+      // 计算字符宽度
+      const metrics = context.measureText(char);
+      const charWidth = metrics.width;
+
+      // 将字符索引转换为颜色值
+      // 使用 RGB 通道，每个通道 8 位，可以支持 2^24 个字符
+      const r = (i & 0xFF) / 255;
+      const g = ((i >> 8) & 0xFF) / 255;
+      const b = ((i >> 16) & 0xFF) / 255;
+
+      // 设置填充颜色
+      context.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
+
+      // 绘制字符区域
+      context.fillRect(currentX, currentY, charWidth, this.textStyle.fontSize);
+
+      // 更新位置
+      currentX += charWidth + this.textLayout.letterSpace;
+
+      // 处理换行
+      if (char === '\n' || currentX > width) {
+        currentX = 0;
+        currentY += this.textLayout.lineHeight;
+      }
+    }
+
+    // 创建 ID Map 纹理
+    if (this.idMapTexture) {
+      this.idMapTexture.dispose();
+    }
+
+    // 使用当前canvas创建纹理
+    this.idMapTexture = Texture.create(this.engine, {
+      sourceType: TextureSourceType.image,
+      image: canvas,
+      flipY: true,
+    });
+
+    // 将 ID Map 纹理设置到材质
+    if (this.material && this.idMapTexture) {
+      this.material.setTexture('uIDMap', this.idMapTexture);
+      this.material.setFloat('uCharCount', this.text.length);
+    }
+
+    // 恢复canvas状态，以便于后续正常使用
+    context.restore();
+  }
+
+  // 修改为protected访问级别，以便在子类中访问
+  protected getLineCount (text: string, context: CanvasRenderingContext2D) {
     const { letterSpace, overflow } = this.textLayout;
 
     const width = (this.textLayout.width + this.textStyle.fontOffset);
@@ -657,6 +775,19 @@ export class TextComponentBase {
     this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
+
+    // 先为正常文本创建纹理，然后再生成 ID Map
+
+    // // 保存当前图像状态
+    // const savedImageData = imageData;
+
+    // 生成 ID Map
+    this.generateIDMap();
+
+    // // 如果需要，可以恢复原始文本图像
+    // if (savedImageData) {
+    //   context.putImageData(savedImageData, 0, 0);
+    // }
   }
 
   private getFontDesc (fontSize: number): string {
