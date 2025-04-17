@@ -76,7 +76,7 @@ export class SpriteComponent extends BaseRenderComponent {
   }
 
   override onUpdate (dt: number): void {
-    let time = this.frameAnimationTime;
+    let time = this.item.time;
     const duration = this.item.duration;
 
     if (time > duration && this.frameAnimationLoop) {
@@ -142,8 +142,6 @@ export class SpriteComponent extends BaseRenderComponent {
         dx, dy,
       ]);
     }
-
-    this.frameAnimationTime += dt / 1000;
   }
 
   override onDestroy (): void {

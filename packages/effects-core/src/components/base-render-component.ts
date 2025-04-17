@@ -40,7 +40,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
   protected preMultiAlpha: number;
   protected visible = true;
-  protected frameAnimationTime = 0;
 
   /**
    *
@@ -127,13 +126,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
-  }
-
-  /**
-   * @internal
-   */
-  setAnimationTime (time: number) {
-    this.frameAnimationTime = time;
   }
 
   override render (renderer: Renderer) {
