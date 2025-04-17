@@ -11,7 +11,7 @@ import {
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
-import type { GeometryDrawMode, Renderer, ShaderMacros } from '../render';
+import type { Renderer, ShaderMacros, ShaderWithSource } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
@@ -22,13 +22,10 @@ import { itemFrag, itemVert } from '../shader';
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
  */
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
-  order: number,
   texture: Texture,
   mask: number,
   maskMode: MaskMode,
   shape?: GeometryFromShape,
-  anchor?: spec.vec2,
-  particleOrigin?: spec.ParticleOrigin,
 }
 
 /**
@@ -43,7 +40,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
   protected preMultiAlpha: number;
   protected visible = true;
-  protected frameAnimationTime = 0;
 
   /**
    *
@@ -61,26 +57,27 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       side: spec.SideMode.DOUBLE,
       maskMode: MaskMode.NONE,
       mask: 0,
-      order: 0,
     };
 
     const material = this.createMaterial(this.renderer);
 
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.maskManager = new MaskProcessor(engine);
   }
 
   /**
    * 设置当前 Mesh 的可见性。
    * @param visible - true：可见，false：不可见
+   * @deprecated 2.4.0 Please use enabled instead
    */
   setVisible (visible: boolean) {
     this.visible = visible;
   }
+
   /**
    * 获取当前 Mesh 的可见性。
+   * @deprecated 2.4.0 Please use enabled instead
    */
   getVisible (): boolean {
     return this.visible;
@@ -134,13 +131,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.material.setTexture('_MainTex', texture);
   }
 
-  /**
-   * @internal
-   */
-  setAnimationTime (time: number) {
-    this.frameAnimationTime = time;
-  }
-
   override render (renderer: Renderer) {
     if (!this.getVisible()) {
       return;
@@ -167,47 +157,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.item.getHitTestParams = this.getHitTestParams;
   }
 
-  override onDestroy (): void {
-  }
-
-  protected setItem () {
-    const texture = this.renderer.texture;
-    const geoData = this.getItemGeometryData();
-    const { index, atlasOffset } = geoData;
-
-    const renderer = this.renderer;
-    const texParams = this.material.getVector4('_TexParams');
-
-    if (texParams) {
-      texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-      texParams.y = +this.preMultiAlpha;
-      texParams.z = renderer.renderMode;
-      texParams.w = renderer.maskMode;
-      if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
-        this.material.enableMacro('ALPHA_CLIP');
-      } else {
-        this.material.disableMacro('ALPHA_CLIP');
-      }
-    }
-
-    const attributes = {
-      atlasOffset: new Float32Array(atlasOffset.length),
-      index: new Uint16Array(index.length),
-    };
-
-    attributes.atlasOffset.set(atlasOffset);
-    attributes.index.set(index);
-    const { material, geometry } = this;
-    const indexData = attributes.index;
-
-    geometry.setIndexData(indexData);
-    geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
-    geometry.setDrawCount(index.length);
-
-    material.setTexture('_MainTex', texture);
-  }
-
-  protected getItemGeometryData () {
+  protected getItemGeometryData (geometry: Geometry) {
     const renderer = this.renderer;
 
     if (renderer.shape) {
@@ -221,21 +171,21 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
-      this.geometry.setAttributeData('aPos', new Float32Array(position));
+      geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
         index: index as number[],
         atlasOffset,
       };
     } else {
-      this.geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
+      geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
 
       return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
     }
   }
 
-  protected createGeometry (mode: GeometryDrawMode) {
-    return Geometry.create(this.engine, {
+  protected createGeometry () {
+    const geometry = Geometry.create(this.engine, {
       attributes: {
         aPos: {
           type: glContext.FLOAT,
@@ -256,12 +206,20 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         },
       },
       indices: { data: new Uint16Array(0), releasable: true },
-      mode,
-      maxVertex: 4,
+      mode: glContext.TRIANGLES,
     });
+
+    const geoData = this.getItemGeometryData(geometry);
+    const { index, atlasOffset } = geoData;
+
+    geometry.setIndexData(new Uint16Array(index));
+    geometry.setAttributeData('atlasOffset', new Float32Array(atlasOffset));
+    geometry.setDrawCount(index.length);
+
+    return geometry;
   }
 
-  protected getMaterialProps (): MaterialProps {
+  protected createShader (): ShaderWithSource {
     const macros: ShaderMacros = [
     ];
     const fragment = itemFrag;
@@ -276,62 +234,49 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       shared: true,
     };
 
-    return {
-      shader,
-    };
+    return shader;
   }
 
-  protected createMaterial (renderInfo: ItemRenderer): Material {
-    const { side, occlusion, blending, maskMode, mask } = renderInfo;
-    const materialProps = this.getMaterialProps();
+  protected createMaterial (renderer: ItemRenderer): Material {
+    const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
+    const materialProps: MaterialProps = {
+      shader:this.createShader(),
+    };
 
-    this.preMultiAlpha = getPreMultiAlpha(blending);
+    this.preMultiAlpha = getPreMultiAlpha(blendMode);
 
     const material = Material.create(this.engine, materialProps);
 
-    const states = {
-      side,
-      blending: true,
-      blendMode: blending,
-      mask,
-      maskMode,
-      depthTest: true,
-      depthMask: occlusion,
-    };
+    material.blending = true;
+    material.depthTest = true;
+    material.depthMask = occlusion;
+    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
 
-    material.blending = states.blending;
-    material.depthTest = states.depthTest;
-    material.depthMask = states.depthMask;
-    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
-
-    states.blending && setBlendMode(material, states.blendMode);
+    setBlendMode(material, blendMode);
     // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, states.maskMode, !!this.renderer.shape);
-    setSideMode(material, states.side);
+    setMaskMode(material, maskMode, !!this.renderer.shape);
+    setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
-    if (!material.hasUniform('_Color')) {
-      material.setColor('_Color', new Color(0, 0, 0, 1));
-    }
-    if (!material.hasUniform('_TexOffset')) {
-      material.setVector4('_TexOffset', new Vector4());
-    }
-    if (!material.hasUniform('_TexParams')) {
-      material.setVector4('_TexParams', new Vector4());
+    material.setColor('_Color', new Color(0, 0, 0, 1));
+    material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
+    material.setTexture('_MainTex', texture);
+
+    const texParams = new Vector4();
+
+    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+    texParams.y = +this.preMultiAlpha;
+    texParams.z = renderer.renderMode;
+    texParams.w = renderer.maskMode;
+    material.setVector4('_TexParams', texParams);
+
+    if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
+      material.enableMacro('ALPHA_CLIP');
+    } else {
+      material.disableMacro('ALPHA_CLIP');
     }
 
     return material;
-  }
-
-  getTextures (): Texture[] {
-    const ret = [];
-    const tex = this.renderer.texture;
-
-    if (tex) {
-      ret.push(tex);
-    }
-
-    return ret;
   }
 
   /**

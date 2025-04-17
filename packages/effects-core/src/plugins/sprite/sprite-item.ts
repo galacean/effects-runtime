@@ -1,19 +1,17 @@
-import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
 import type { MaskProps } from '../../material';
 import { MaskMode } from '../../material';
-import type { GeometryDrawMode } from '../../render';
-import { Geometry } from '../../render';
 import { getGeometryByShape, type GeometryFromShape } from '../../shape';
 import { type Texture, type Texture2DSourceOptionsVideo, TextureSourceType } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
+import type { Geometry } from '../../render/geometry';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -71,15 +69,14 @@ export class SpriteComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MSprite' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
-    this.setItem();
+    this.geometry = this.createGeometry();
     if (props) {
       this.fromData(props);
     }
   }
 
   override onUpdate (dt: number): void {
-    let time = this.frameAnimationTime;
+    let time = this.item.time;
     const duration = this.item.duration;
 
     if (time > duration && this.frameAnimationLoop) {
@@ -145,58 +142,20 @@ export class SpriteComponent extends BaseRenderComponent {
         dx, dy,
       ]);
     }
-
-    this.frameAnimationTime += dt / 1000;
   }
 
   override onDestroy (): void {
-    const textures = this.getTextures();
+    const texture = this.renderer.texture;
+    const source = texture.source;
 
-    textures.forEach(texture => {
-      const source = texture.source;
-
-      if (
-        source.sourceType === TextureSourceType.video &&
-        source?.video
-      ) {
-        source.video.pause();
-        source.video.src = '';
-        source.video.load();
-      }
-    });
+    if (source.sourceType === TextureSourceType.video && source?.video) {
+      source.video.pause();
+      source.video.src = '';
+      source.video.load();
+    }
   }
 
-  override createGeometry (mode: GeometryDrawMode) {
-    const maxVertex = 12 * this.splits.length;
-
-    return Geometry.create(this.engine, {
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array([
-            -0.5, 0.5, 0, //左上
-            -0.5, -0.5, 0, //左下
-            0.5, 0.5, 0, //右上
-            0.5, -0.5, 0, //右下
-          ]),
-        },
-        atlasOffset: {
-          size: 2,
-          offset: 0,
-          releasable: true,
-          type: glContext.FLOAT,
-          data: new Float32Array(0),
-        },
-      },
-      indices: { data: new Uint16Array(0), releasable: true },
-      mode,
-      maxVertex,
-    });
-
-  }
-
-  override getItemGeometryData () {
+  override getItemGeometryData (geometry: Geometry) {
     const { splits, textureSheetAnimation } = this;
     const sx = 1, sy = 1;
     const renderer = this.renderer;
@@ -214,7 +173,7 @@ export class SpriteComponent extends BaseRenderComponent {
         atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
-      this.geometry.setAttributeData('aPos', new Float32Array(position));
+      geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
         index: index as number[],
@@ -270,7 +229,7 @@ export class SpriteComponent extends BaseRenderComponent {
         index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
       }
     }
-    this.geometry.setAttributeData('aPos', new Float32Array(position));
+    geometry.setAttributeData('aPos', new Float32Array(position));
 
     return { index, atlasOffset };
   }
@@ -278,7 +237,7 @@ export class SpriteComponent extends BaseRenderComponent {
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
 
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     let renderer = data.renderer;
 
     if (!renderer) {
@@ -292,10 +251,10 @@ export class SpriteComponent extends BaseRenderComponent {
     // TODO 新蒙板上线后移除
     const shapeData = renderer.shape;
     const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
+    let shapeGeometry: GeometryFromShape | undefined = undefined;
 
     if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
-      //@ts-expect-error
-      renderer.shape = getGeometryByShape(shapeData, split);
+      shapeGeometry = getGeometryByShape(shapeData, split);
     }
 
     this.renderer = {
@@ -305,16 +264,15 @@ export class SpriteComponent extends BaseRenderComponent {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      shape: renderer.shape,
+      shape: shapeGeometry,
       mask: this.maskManager.getRefValue(),
       maskMode,
-      order: listIndex,
     };
 
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
 
-    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const geometry = this.createGeometry();
     const material = this.createMaterial(this.renderer);
 
     this.material = material;
@@ -322,7 +280,5 @@ export class SpriteComponent extends BaseRenderComponent {
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
-    this.setItem();
   }
 }

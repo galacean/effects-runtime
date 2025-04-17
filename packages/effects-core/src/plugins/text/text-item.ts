@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import { Color, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import type { ItemRenderer } from '../../components';
@@ -74,7 +74,7 @@ export class TextComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MText' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
+    this.geometry = this.createGeometry();
 
     if (props) {
       this.fromData(props);
@@ -83,7 +83,6 @@ export class TextComponent extends BaseRenderComponent {
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
-    this.setItem();
 
     if (!props) {
       return;
@@ -102,7 +101,7 @@ export class TextComponent extends BaseRenderComponent {
 
   override fromData (data: TextItemProps): void {
     super.fromData(data);
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     let renderer = data.renderer;
 
     if (!renderer) {
@@ -122,7 +121,6 @@ export class TextComponent extends BaseRenderComponent {
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
       maskMode,
-      order: listIndex,
     };
     this.interaction = interaction;
 
@@ -130,12 +128,10 @@ export class TextComponent extends BaseRenderComponent {
 
     this.material = material;
 
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     // TextComponentBase
     this.updateWithOptions(options);
     this.renderText(options);
 
-    this.setItem();
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
 

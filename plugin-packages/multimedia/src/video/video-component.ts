@@ -1,9 +1,10 @@
 import type {
   Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  MaterialProps, ShaderMacros, MaskProps,
+  ShaderMacros, MaskProps,
+  ShaderWithSource,
 } from '@galacean/effects';
 import {
-  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent, glContext,
+  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent,
   itemFrag, itemVert, GLSLVersion,
   assertExist,
 } from '@galacean/effects';
@@ -49,7 +50,7 @@ export class VideoComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MVideo' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
+    this.geometry = this.createGeometry();
   }
 
   override setTexture (input: Texture): void;
@@ -98,7 +99,7 @@ export class VideoComponent extends BaseRenderComponent {
     });
   }
 
-  protected override getMaterialProps (): MaterialProps {
+  protected override createShader (): ShaderWithSource {
     const macros: ShaderMacros = [
       ['TRANSPARENT_VIDEO', this.transparent],
     ];
@@ -113,15 +114,13 @@ export class VideoComponent extends BaseRenderComponent {
       shared: true,
     };
 
-    return {
-      shader,
-    };
+    return shader;
   }
 
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     const {
       video,
       startColor = [1, 1, 1, 1],
@@ -160,14 +159,13 @@ export class VideoComponent extends BaseRenderComponent {
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
       maskMode,
-      order: listIndex,
       shape: renderer.shape,
     };
 
     this.interaction = interaction;
     this.pauseVideo();
 
-    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const geometry = this.createGeometry();
     const material = this.createMaterial(this.renderer);
 
     if (this.transparent) {
@@ -177,9 +175,6 @@ export class VideoComponent extends BaseRenderComponent {
     this.geometry = geometry;
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
-    this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
-
-    this.setItem();
   }
 
   override onUpdate (dt: number): void {

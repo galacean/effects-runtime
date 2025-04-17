@@ -11,7 +11,7 @@ export function valIfUndefined<T> (val: any, def: T): T {
   return val;
 }
 
-export function getPreMultiAlpha (blending?: number): number {
+export function getPreMultiAlpha (blending?: spec.BlendingMode): number {
   switch (blending) {
     case spec.BlendingMode.ALPHA:
       return 1;

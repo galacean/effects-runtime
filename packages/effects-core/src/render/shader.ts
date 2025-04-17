@@ -24,32 +24,6 @@ export enum GLSLVersion {
   'GLSL1' = '100',
   'GLSL3' = '300 es',
 }
-export interface InstancedShaderWithSource {
-  /**
-   * fragment shader字符串
-   */
-  fragment: string,
-  /**
-   * vertex shader字符串
-   */
-  vertex: string,
-  /**
-   * shader 字符串的版本，用于添加版本头
-   */
-  glslVersion?: GLSLVersion,
-  /**
-   * shader的name
-   */
-  name?: string,
-  /**
-   * shader的宏定义
-   */
-  macros?: ShaderMacros,
-  /**
-   * shader是否共享
-   */
-  shared?: boolean,
-}
 
 export interface SharedShaderWithSource {
   /**
@@ -85,7 +59,7 @@ export interface SharedShaderWithSource {
   cacheId?: string,
 }
 
-export type ShaderWithSource = InstancedShaderWithSource | SharedShaderWithSource;
+export type ShaderWithSource = SharedShaderWithSource;
 
 export abstract class ShaderVariant extends EffectsObject {
   shader: Shader;
