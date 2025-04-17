@@ -212,17 +212,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const geoData = this.getItemGeometryData(geometry);
     const { index, atlasOffset } = geoData;
 
-    const attributes = {
-      atlasOffset: new Float32Array(atlasOffset.length),
-      index: new Uint16Array(index.length),
-    };
-
-    attributes.atlasOffset.set(atlasOffset);
-    attributes.index.set(index);
-    const indexData = attributes.index;
-
-    geometry.setIndexData(indexData);
-    geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
+    geometry.setIndexData(new Uint16Array(index));
+    geometry.setAttributeData('atlasOffset', new Float32Array(atlasOffset));
     geometry.setDrawCount(index.length);
 
     return geometry;
