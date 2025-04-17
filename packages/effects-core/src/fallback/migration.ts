@@ -192,6 +192,7 @@ export function processContent (composition: spec.CompositionData) {
       itemProps.type === spec.ItemType.particle ||
       itemProps.type === spec.ItemType.spine ||
       itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
       itemProps.type === spec.ItemType.video ||
       itemProps.type === spec.ItemType.shape
     ) {
