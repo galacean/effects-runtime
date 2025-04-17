@@ -247,7 +247,7 @@ describe('player/scene-load', () => {
       const item = composition2.getItemByName('sprite_1');
       const spriteComponent = item?.getComponent(SpriteComponent);
 
-      expect(spriteComponent?.getTextures()[0].sourceFrom).to.contains({ url: image });
+      expect(spriteComponent?.renderer.texture.sourceFrom).to.contains({ url: image });
       expect(composition1.getSpeed()).to.eql(2);
       expect(composition2.getSpeed()).to.eql(2);
     } catch (e: any) {

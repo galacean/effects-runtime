@@ -145,20 +145,14 @@ export class SpriteComponent extends BaseRenderComponent {
   }
 
   override onDestroy (): void {
-    const textures = this.getTextures();
+    const texture = this.renderer.texture;
+    const source = texture.source;
 
-    textures.forEach(texture => {
-      const source = texture.source;
-
-      if (
-        source.sourceType === TextureSourceType.video &&
-        source?.video
-      ) {
-        source.video.pause();
-        source.video.src = '';
-        source.video.load();
-      }
-    });
+    if (source.sourceType === TextureSourceType.video && source?.video) {
+      source.video.pause();
+      source.video.src = '';
+      source.video.load();
+    }
   }
 
   override getItemGeometryData (geometry: Geometry) {

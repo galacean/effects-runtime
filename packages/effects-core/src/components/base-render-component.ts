@@ -69,12 +69,15 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   /**
    * 设置当前 Mesh 的可见性。
    * @param visible - true：可见，false：不可见
+   * @deprecated 2.4.0 Please use enabled instead
    */
   setVisible (visible: boolean) {
     this.visible = visible;
   }
+
   /**
    * 获取当前 Mesh 的可见性。
+   * @deprecated 2.4.0 Please use enabled instead
    */
   getVisible (): boolean {
     return this.visible;
@@ -152,9 +155,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
-  }
-
-  override onDestroy (): void {
   }
 
   protected getItemGeometryData (geometry: Geometry) {
@@ -286,17 +286,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
 
     return material;
-  }
-
-  getTextures (): Texture[] {
-    const ret = [];
-    const tex = this.renderer.texture;
-
-    if (tex) {
-      ret.push(tex);
-    }
-
-    return ret;
   }
 
   /**
