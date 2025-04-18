@@ -202,7 +202,7 @@ export class TextComponent extends BaseRenderComponent {
 
     `;
 
-    // 定义片段着色器，支持IDMap
+    // 定义片段着色器，支持IDMap和索引解码
     const fragmentShader = `
       precision highp float;
 
@@ -210,21 +210,37 @@ export class TextComponent extends BaseRenderComponent {
 
       uniform sampler2D _MainTex;
       uniform sampler2D uIDMap;    // IDMap纹理
+      uniform float uCharCount;     // 字符总数
 
       void main() {
-
+        // 获取原始颜色
         vec4 color = texture2D(_MainTex, vUV.xy);
-        color.rgb *= color.a; // ? TODO 预乘 alpha
-        color.a = clamp(color.a, 0.0, 1.0);
-
+        
+        // 获取ID颜色
         vec4 idColor = texture2D(uIDMap, vUV.xy);
-        // TODO 
-
-
-
-        gl_FragColor = vec4(idColor.rgb + color.rgb, 1.0);
+        
+        // 从R通道解码字符索引（归一化值）
+        float normalizedIndex = idColor.r;
+        
+        // 计算实际索引（如果需要）
+        float charIndex = normalizedIndex * max(1.0, uCharCount - 1.0);
+        
+        // 这里可以根据索引实现各种动画效果
+        // 例如基于索引的颜色渐变、时间差异化等
+        
+        // 示例：根据索引修改颜色
+        // vec3 indexColor = vec3(normalizedIndex, 1.0 - normalizedIndex, 0.5);
+        // color.rgb *= indexColor;
+        
+        // 这里暂时只显示原始文本颜色，可以根据需要修改
+        color.rgb *= color.a; // 预乘alpha
+        color.a = clamp(color.a, 0.0, 1.0);
+        
+        gl_FragColor = color;
+        
+        // 如果需要调试查看索引编码，可以取消下面的注释
+        gl_FragColor = vec4(vec3(normalizedIndex), 1.0);
       }
-
     `;
 
     // 返回shader配置
@@ -291,43 +307,27 @@ export class TextComponentBase {
     // 清空画布
     context.clearRect(0, 0, width, height);
 
-    // 计算所有字符的全局索引，用于颜色生成
+    // 计算所有字符的全局索引
     let globalCharIndex = 0;
-    const charColorMap = new Map<string, [number, number, number]>();
 
-    // 先计算所有字符的颜色，存入映射表
-    for (let lineIndex = 0; lineIndex < charsInfo.length; lineIndex++) {
-      const charInfo = charsInfo[lineIndex];
-
-      for (let i = 0; i < charInfo.chars.length; i++) {
-        // 基于字符在总字符中的位置计算颜色
-        const normalizedIndex = globalCharIndex / Math.max(1, totalChars - 1);
-
-        // 使用归一化索引创建均匀分布的HSV颜色
-        const hue = normalizedIndex * 360;
-        // 使用最大饱和度和明度以获得最大的色彩差异
-        const [r, g, b] = this.hsvToRgb(hue, 1.0, 1.0);
-
-        // 将RGB值存入映射表，键为"行索引-字符索引"
-        const key = `${lineIndex}-${i}`;
-
-        charColorMap.set(key, [r, g, b]);
-
-        globalCharIndex++;
-      }
-    }
-
-    // 使用矩形渲染字符ID Map
+    // 渲染字符，使用索引编码到RGBA
     charsInfo.forEach((charInfo, lineIndex) => {
       const x = layoutInfo.layout.getOffsetX(style, charInfo.width);
 
       charInfo.chars.forEach((str, i) => {
-        // 从映射表中获取该字符的颜色
-        const key = `${lineIndex}-${i}`;
-        const [r, g, b] = charColorMap.get(key) || [1, 1, 1];
+        // 将字符索引编码为RGBA颜色值
+        // 使用归一化索引值 [0, 1]，乘以255转为颜色值
+        const normalizedIndex = globalCharIndex / Math.max(1, totalChars - 1);
+
+        // 将索引编码到RGB通道
+        // 这里使用一个简单的编码方式：直接存储到R通道，G和B通道可以用于存储更多信息
+        const r = normalizedIndex;
+        const g = 0; // 保留用于其他信息，比如延时
+        const b = 0; // 保留用于其他信息
+        const a = 1.0; // 完全不透明
 
         // 设置填充颜色
-        context.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
+        context.fillStyle = `rgba(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)}, ${a})`;
 
         // 获取字符宽度
         const charWidth = i + 1 < charInfo.charOffsetX.length
@@ -342,6 +342,8 @@ export class TextComponentBase {
           charWidth, // 矩形宽度（字符宽度）
           lineHeight // 矩形高度（行高）
         );
+        // 增加全局索引
+        globalCharIndex++;
       });
     });
 
