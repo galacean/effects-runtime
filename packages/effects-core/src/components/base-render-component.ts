@@ -159,15 +159,17 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
 
     for (let i = 0;i < this.materials.length;i++) {
-      this.material.setVector2('_Size', this.transform.size);
+      const material = this.materials[i];
 
+      material.setVector2('_Size', this.transform.size);
       if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
         this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
         this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
       ) {
-        this.material.setVector3('_Scale', this.transform.scale);
+        material.setVector3('_Scale', this.transform.scale);
       }
-      renderer.drawGeometry(this.geometry, this.materials[i], i);
+
+      renderer.drawGeometry(this.geometry, material, i);
     }
   }
 
