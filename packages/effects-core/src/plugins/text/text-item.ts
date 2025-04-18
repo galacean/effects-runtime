@@ -8,7 +8,6 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaskProps, Material } from '../../material';
-import { MaskMode } from '../../material';
 import { Texture } from '../../texture';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
@@ -102,31 +101,8 @@ export class TextComponent extends BaseRenderComponent {
   override fromData (data: TextItemProps): void {
     super.fromData(data);
     const { interaction, options } = data;
-    let renderer = data.renderer;
-
-    if (!renderer) {
-      renderer = {} as TextItemProps['renderer'];
-    }
-
-    const maskMode = this.maskManager.getMaskMode(data);
 
     this.interaction = interaction;
-
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskManager.getRefValue(),
-      maskMode,
-    };
-    this.interaction = interaction;
-
-    const material = this.createMaterial(this.renderer);
-
-    this.material = material;
 
     // TextComponentBase
     this.updateWithOptions(options);

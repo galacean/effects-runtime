@@ -4,13 +4,13 @@ import type { BoundingBoxTriangle } from './click-handler';
 import { HitTestType } from './click-handler';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { TypedArray } from '@galacean/effects-specification';
 
 /**
  *
  */
 export class MeshCollider {
   private boundingBoxData: BoundingBoxTriangle;
-  private geometry: Geometry;
   private triangles: TriangleLike[] = [];
   private worldMatrix = new Matrix4();
 
@@ -54,7 +54,6 @@ export class MeshCollider {
 
   setGeometry (geometry: Geometry, worldMatrix?: Matrix4) {
     this.triangles = this.geometryToTriangles(geometry);
-    this.geometry = geometry;
     const area = [];
 
     for (const triangle of this.triangles) {
@@ -79,29 +78,37 @@ export class MeshCollider {
       return res;
     }
 
-    for (const subMesh of geometry.subMeshes) {
-      if (subMesh.indexCount === undefined) {
-        continue;
-      }
+    if (geometry.subMeshes.length === 0) {
+      this.assemblyTriangles(vertices, indices, 0, indices.length, res);
+    } else {
+      for (const subMesh of geometry.subMeshes) {
+        if (subMesh.indexCount === undefined) {
+          continue;
+        }
 
-      const elementSize = indices.BYTES_PER_ELEMENT;
-      const start = subMesh.offset / elementSize;
-      const end = start + subMesh.indexCount;
+        const elementSize = indices.BYTES_PER_ELEMENT;
+        const start = subMesh.offset / elementSize;
+        const end = start + subMesh.indexCount;
 
-      for (let i = start; i < end; i += 3) {
-        const index0 = indices[i] * 3;
-        const index1 = indices[i + 1] * 3;
-        const index2 = indices[i + 2] * 3;
-        const p0 = { x: vertices[index0], y: vertices[index0 + 1], z: vertices[index0 + 2] };
-        const p1 = { x: vertices[index1], y: vertices[index1 + 1], z: vertices[index1 + 2] };
-        const p2 = { x: vertices[index2], y: vertices[index2 + 1], z: vertices[index2 + 2] };
-
-        res.push({ p0, p1, p2 });
+        this.assemblyTriangles(vertices, indices, start, end, res);
       }
     }
 
     return res;
   }
+
+  private assemblyTriangles = (vertices: TypedArray, indices: TypedArray, indexStart: number, indexEnd: number, res: TriangleLike[])=>{
+    for (let i = indexStart; i < indexEnd; i += 3) {
+      const index0 = indices[i] * 3;
+      const index1 = indices[i + 1] * 3;
+      const index2 = indices[i + 2] * 3;
+      const p0 = { x: vertices[index0], y: vertices[index0 + 1], z: vertices[index0 + 2] };
+      const p1 = { x: vertices[index1], y: vertices[index1 + 1], z: vertices[index1 + 2] };
+      const p2 = { x: vertices[index2], y: vertices[index2 + 1], z: vertices[index2 + 2] };
+
+      res.push({ p0, p1, p2 });
+    }
+  };
 
   private applyWorldMatrix (area: TriangleLike[]) {
     area.forEach(triangle => {
