@@ -4,12 +4,12 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaskProps, MaterialProps, Maskable } from '../material';
-import { Material, setMaskMode, MaskProcessor } from '../material';
-import { MeshComponent } from './mesh-component';
-import { Geometry, GLSLVersion } from '../render';
-import type { ShapePath, StrokeAttributes, Polygon } from '../plugins';
+import type { MaskProps, MaterialProps } from '../material';
+import { Material, setMaskMode } from '../material';
+import type { Polygon, ShapePath, StrokeAttributes } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
+import { GLSLVersion, Geometry } from '../render';
+import { BaseRenderComponent } from './base-render-component';
 
 interface FillAttribute {
   color: Color,
@@ -133,7 +133,7 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends MeshComponent implements Maskable {
+export class ShapeComponent extends BaseRenderComponent {
   private hasStroke = false;
   private hasFill = false;
   private shapeDirty = true;
@@ -167,7 +167,6 @@ void main() {
   gl_FragColor = color;
 }
 `;
-  readonly maskManager: MaskProcessor;
 
   get shape () {
     this.shapeDirty = true;
@@ -182,65 +181,69 @@ void main() {
   constructor (engine: Engine) {
     super(engine);
 
-    if (!this.geometry) {
-      this.geometry = Geometry.create(engine, {
-        attributes: {
-          aPos: {
-            type: glContext.FLOAT,
-            size: 3,
-            data: new Float32Array([
-              -0.5, 0.5, 0, //左上
-              -0.5, -0.5, 0, //左下
-              0.5, 0.5, 0, //右上
-              0.5, -0.5, 0, //右下
-            ]),
-          },
-          aUV: {
-            type: glContext.FLOAT,
-            size: 2,
-            data: new Float32Array(),
-          },
+    // Create Geometry
+    //-------------------------------------------------------------------------
+
+    this.geometry = Geometry.create(engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array([
+            -0.5, 0.5, 0, //左上
+            -0.5, -0.5, 0, //左下
+            0.5, 0.5, 0, //右上
+            0.5, -0.5, 0, //右下
+          ]),
         },
-        mode: glContext.TRIANGLES,
-        drawCount: 4,
-      });
-
-      this.geometry.subMeshes.push({
-        offset: 0,
-        indexCount: 0,
-        vertexCount: 0,
-      }, {
-        offset: 0,
-        indexCount: 0,
-        vertexCount: 0,
-      });
-    }
-
-    if (!this.material) {
-      const materialProps: MaterialProps = {
-        shader: {
-          vertex: this.vert,
-          fragment: this.frag,
-          glslVersion: GLSLVersion.GLSL1,
+        aUV: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(),
         },
-      };
+      },
+      mode: glContext.TRIANGLES,
+      drawCount: 4,
+    });
 
-      const fillMaterial = Material.create(engine, materialProps);
+    this.geometry.subMeshes.push({
+      offset: 0,
+      indexCount: 0,
+      vertexCount: 0,
+    }, {
+      offset: 0,
+      indexCount: 0,
+      vertexCount: 0,
+    });
 
-      fillMaterial.setColor('_Color', new Color(1, 1, 1, 1));
-      fillMaterial.depthMask = false;
-      fillMaterial.depthTest = true;
-      fillMaterial.blending = true;
-      this.material = fillMaterial;
+    // Create Material
+    //-------------------------------------------------------------------------
 
-      const strokeMaterial = Material.create(engine, materialProps);
+    const materialProps: MaterialProps = {
+      shader: {
+        vertex: this.vert,
+        fragment: this.frag,
+        glslVersion: GLSLVersion.GLSL1,
+      },
+    };
 
-      strokeMaterial.setColor('_Color', new Color(0.25, 0.25, 0.25, 1));
-      strokeMaterial.depthMask = false;
-      strokeMaterial.depthTest = true;
-      strokeMaterial.blending = true;
-      this.materials[1] = strokeMaterial;
-    }
+    const fillMaterial = Material.create(engine, materialProps);
+    const strokeMaterial = Material.create(engine, materialProps);
+
+    fillMaterial.color = new Color(1, 1, 1, 1);
+    fillMaterial.depthMask = false;
+    fillMaterial.depthTest = true;
+    fillMaterial.blending = true;
+    this.material = fillMaterial;
+
+    strokeMaterial.color = new Color(0.25, 0.25, 0.25, 1);
+    strokeMaterial.depthMask = false;
+    strokeMaterial.depthTest = true;
+    strokeMaterial.blending = true;
+    this.materials[1] = strokeMaterial;
+
+    // Create Shape Attrributes
+    //-------------------------------------------------------------------------
 
     this.strokeAttributes = {
       width: 1,
@@ -250,11 +253,9 @@ void main() {
       miterLimit: 10,
       color: new Color(1, 1, 1, 1),
     };
-
     this.fillAttribute = {
       color: new Color(1, 1, 1, 1),
     };
-
     this.shapeAttribute = {
       type: spec.ShapePrimitiveType.Custom,
       points: [],
@@ -262,9 +263,6 @@ void main() {
       easingOuts: [],
       shapes: [],
     } as CustomShapeAttribute;
-
-    this.maskManager = new MaskProcessor(engine);
-
   }
 
   override onStart (): void {
@@ -556,7 +554,6 @@ void main() {
 
     this.material.stencilRef = maskRef !== undefined ? [maskRef, maskRef] : undefined;
     setMaskMode(this.material, maskMode);
-
   }
 }
 
