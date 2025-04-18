@@ -40,7 +40,7 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@swc/core": "^1.4.13",
     "@swc/helpers": "^0.5.15",
-    "@types/chai": "4.3.14",
+    "@types/chai": "5.2.1",
     "@types/chai-spies": "1.0.6",
     "@types/mocha": "10.0.1",
     "@types/wicg-file-system-access": "^2023.10.4",
