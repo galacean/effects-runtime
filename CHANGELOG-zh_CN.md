@@ -8,6 +8,12 @@
 
 ---
 
+## 2.3.3
+
+`2025-04-18`
+
+- Fix: custom shape do not draw the last segment when not closed. [#951](https://github.com/galacean/effects-runtime/pull/951) @wumaolinmaoan
+
 ## 2.3.2
 
 `2025-04-13`
