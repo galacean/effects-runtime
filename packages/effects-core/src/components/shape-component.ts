@@ -399,16 +399,15 @@ void main() {
             this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
           }
 
-          const pointIndex = indices[0];
-          const lastPointIndex = indices[indices.length - 1];
-          const point = points[pointIndex.point];
-          const lastPoint = points[lastPointIndex.point];
-          const control1 = easingOuts[lastPointIndex.easingOut];
-          const control2 = easingIns[pointIndex.easingIn];
-
-          this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
-
           if (shape.close) {
+            const pointIndex = indices[0];
+            const lastPointIndex = indices[indices.length - 1];
+            const point = points[pointIndex.point];
+            const lastPoint = points[lastPointIndex.point];
+            const control1 = easingOuts[lastPointIndex.easingOut];
+            const control2 = easingIns[pointIndex.easingIn];
+
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
             this.graphicsPath.closePath();
           }
         }
