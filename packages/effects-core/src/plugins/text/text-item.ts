@@ -222,7 +222,7 @@ export class TextComponent extends BaseRenderComponent {
 
 
 
-        gl_FragColor = vec4(idColor.rgb, 1.0);
+        gl_FragColor = vec4(idColor.rgb + color.rgb, 1.0);
       }
 
     `;
@@ -283,6 +283,7 @@ export class TextComponentBase {
     const { charsInfo, context, style } = layoutInfo;
     const { width, height } = this.canvas;
     const totalChars = this.text.length;
+    const lineHeight = layoutInfo.lineHeight;
 
     // 保存当前canvas状态
     context.save();
@@ -316,7 +317,7 @@ export class TextComponentBase {
       }
     }
 
-    // 完全按照updateTexture的方式渲染字符
+    // 使用矩形渲染字符ID Map
     charsInfo.forEach((charInfo, lineIndex) => {
       const x = layoutInfo.layout.getOffsetX(style, charInfo.width);
 
@@ -328,14 +329,19 @@ export class TextComponentBase {
         // 设置填充颜色
         context.fillStyle = `rgb(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)})`;
 
-        // 完全按照updateTexture的方式渲染
-        if (style.isOutlined) {
-          // 设置描边颜色为填充颜色，保持一致性
-          context.strokeStyle = context.fillStyle;
-          context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-        }
+        // 获取字符宽度
+        const charWidth = i + 1 < charInfo.charOffsetX.length
+          ? charInfo.charOffsetX[i + 1] - charInfo.charOffsetX[i]
+          : context.measureText(str).width;
 
-        context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
+        // 渲染矩形而不是字符
+        // 注意：y位置需要减去行高来定位矩形顶部
+        context.fillRect(
+          x + charInfo.charOffsetX[i], // x位置
+          charInfo.y - lineHeight * 0.7, // y位置（从基线向上调整）
+          charWidth, // 矩形宽度（字符宽度）
+          lineHeight // 矩形高度（行高）
+        );
       });
     });
 
