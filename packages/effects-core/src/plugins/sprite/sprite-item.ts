@@ -6,12 +6,11 @@ import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { MaskProps } from '../../material';
-import { MaskMode } from '../../material';
-import { getGeometryByShape, type GeometryFromShape } from '../../shape';
-import { type Texture, type Texture2DSourceOptionsVideo, TextureSourceType } from '../../texture';
+import type { Geometry } from '../../render';
+import { type GeometryFromShape } from '../../shape';
+import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
-import type { Geometry } from '../../render/geometry';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -234,44 +233,13 @@ export class SpriteComponent extends BaseRenderComponent {
     super.fromData(data);
 
     const { interaction, options } = data;
-    let renderer = data.renderer;
-
-    if (!renderer) {
-      renderer = {} as SpriteItemProps['renderer'];
-    }
-
-    const maskMode = this.maskManager.getMaskMode(data);
 
     this.interaction = interaction;
-
-    // TODO 新蒙板上线后移除
-    const shapeData = renderer.shape;
-    const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
-    let shapeGeometry: GeometryFromShape | undefined = undefined;
-
-    if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
-      shapeGeometry = getGeometryByShape(shapeData, split);
-    }
-
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      shape: shapeGeometry,
-      mask: this.maskManager.getRefValue(),
-      maskMode,
-    };
-
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
 
     const geometry = this.createGeometry();
-    const material = this.createMaterial(this.renderer);
 
-    this.material = material;
     this.geometry = geometry;
     const startColor = options.startColor || [1, 1, 1, 1];
 

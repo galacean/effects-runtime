@@ -1,22 +1,21 @@
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { Color } from '@galacean/effects-math/es/core/color';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Maskable, MaterialProps } from '../material';
+import type { MaskProps, Maskable } from '../material';
 import {
-  getPreMultiAlpha, MaskMode, Material, setBlendMode, setMaskMode, setSideMode, MaskProcessor,
+  MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
-import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { HitTestType } from '../plugins';
-import type { Renderer, ShaderMacros, ShaderWithSource } from '../render';
-import { GLSLVersion, Geometry } from '../render';
-import type { GeometryFromShape } from '../shape';
+import { MeshCollider } from '../plugins';
+import type { Renderer } from '../render';
+import { Geometry } from '../render';
+import { itemFrag, itemVert } from '../shader';
+import { getGeometryByShape, type GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
-import { itemFrag, itemVert } from '../shader';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -26,6 +25,10 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
   mask: number,
   maskMode: MaskMode,
   shape?: GeometryFromShape,
+}
+
+interface BaseRenderComponentData extends spec.ComponentData {
+  renderer: spec.RendererOptions,
 }
 
 /**
@@ -40,6 +43,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
   protected preMultiAlpha: number;
   protected visible = true;
+
+  /**
+   * 用于点击测试的碰撞器
+   */
+  protected meshCollider = new MeshCollider();
 
   /**
    *
@@ -59,7 +67,13 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mask: 0,
     };
 
-    const material = this.createMaterial(this.renderer);
+    const material = Material.create(this.engine, {
+      shader: {
+        fragment: itemFrag,
+        vertex: itemVert,
+        shared: true,
+      },
+    });
 
     this.material = material;
     this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
@@ -135,26 +149,59 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     if (!this.getVisible()) {
       return;
     }
-    const material = this.material;
-    const geo = this.geometry;
 
     if (renderer.renderingData.currentFrame.globalUniforms) {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
-    this.material.setVector2('_Size', this.transform.size);
 
-    if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
-      this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
-      this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
-    ) {
-      this.material.setVector3('_Scale', this.transform.scale);
+    for (let i = 0; i < this.materials.length; i++) {
+      const material = this.materials[i];
+
+      material.setVector2('_Size', this.transform.size);
+
+      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
+      ) {
+        material.setVector3('_Scale', this.transform.scale);
+      }
+
+      renderer.drawGeometry(this.geometry, material, i);
     }
-
-    renderer.drawGeometry(geo, material);
   }
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+  }
+
+  // TODO 点击测试后续抽象一个 Collider 组件
+  getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
+    const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
+    const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
+    const ui = this.interaction;
+
+    if ((force || ui)) {
+      this.meshCollider.setGeometry(this.geometry, worldMatrix);
+      const area = this.meshCollider.getBoundingBoxData();
+
+      if (area) {
+        return {
+          behavior: this.interaction?.behavior || 0,
+          type: area.type,
+          triangles: area.area,
+          backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+        };
+      }
+    }
+  };
+
+  getBoundingBox (): BoundingBoxTriangle {
+    const worldMatrix = this.transform.getWorldMatrix();
+
+    this.meshCollider.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.meshCollider.getBoundingBox();
+
+    return boundingBox;
   }
 
   protected getItemGeometryData (geometry: Geometry) {
@@ -164,13 +211,13 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const { index = [], aPoint = [] } = renderer.shape;
       const point = new Float32Array(aPoint);
       const position = [];
-
       const atlasOffset = [];
 
       for (let i = 0; i < point.length; i += 6) {
         atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
+
       geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
@@ -219,33 +266,9 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return geometry;
   }
 
-  protected createShader (): ShaderWithSource {
-    const macros: ShaderMacros = [
-    ];
-    const fragment = itemFrag;
-    const vertex = itemVert;
-    const level = 1;
-
-    const shader = {
-      fragment,
-      vertex,
-      glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
-      macros,
-      shared: true,
-    };
-
-    return shader;
-  }
-
-  protected createMaterial (renderer: ItemRenderer): Material {
+  private configureMaterial (renderer: ItemRenderer): Material {
     const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
-    const materialProps: MaterialProps = {
-      shader:this.createShader(),
-    };
-
-    this.preMultiAlpha = getPreMultiAlpha(blendMode);
-
-    const material = Material.create(this.engine, materialProps);
+    const material = this.material;
 
     material.blending = true;
     material.depthTest = true;
@@ -262,6 +285,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_MainTex', texture);
 
+    this.preMultiAlpha = getPreMultiAlpha(blendMode);
     const texParams = new Vector4();
 
     texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
@@ -279,43 +303,35 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return material;
   }
 
-  /**
-   * 获取图层包围盒的类型和世界坐标
-   * @returns
-   */
-  getBoundingBox (): BoundingBoxTriangle | void {
-    if (!this.item) {
-      return;
+  override fromData (data: unknown): void {
+    super.fromData(data);
+    const renderer = (data as BaseRenderComponentData).renderer ?? {};
+    const maskMode = this.maskManager.getMaskMode(data as MaskProps);
+
+    // TODO 新蒙板上线后移除
+    //-------------------------------------------------------------------------
+    const shapeData = renderer.shape as spec.ShapeGeometry;
+    //@ts-expect-error
+    const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
+    let shapeGeometry: GeometryFromShape | undefined = undefined;
+
+    if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
+      shapeGeometry = getGeometryByShape(shapeData, split);
     }
-    const worldMatrix = this.transform.getWorldMatrix();
-    const triangles = trianglesFromRect(Vector3.ZERO, 0.5 * this.transform.size.x, 0.5 * this.transform.size.y);
+    //-------------------------------------------------------------------------
 
-    triangles.forEach(triangle => {
-      worldMatrix.transformPoint(triangle.p0 as Vector3);
-      worldMatrix.transformPoint(triangle.p1 as Vector3);
-      worldMatrix.transformPoint(triangle.p2 as Vector3);
-    });
-
-    return {
-      type: HitTestType.triangle,
-      area: triangles,
+    this.renderer = {
+      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
+      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
+      texture: renderer.texture as Texture ?? this.engine.emptyTexture,
+      occlusion: !!renderer.occlusion,
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
+      side: renderer.side ?? spec.SideMode.DOUBLE,
+      mask: this.maskManager.getRefValue(),
+      shape: shapeGeometry,
+      maskMode,
     };
+
+    this.configureMaterial(this.renderer);
   }
-
-  getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
-    const ui = this.interaction;
-
-    if ((force || ui)) {
-      const area = this.getBoundingBox();
-
-      if (area) {
-        return {
-          behavior: this.interaction?.behavior || 0,
-          type: area.type,
-          triangles: area.area,
-          backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
-        };
-      }
-    }
-  };
 }

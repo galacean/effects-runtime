@@ -1,13 +1,5 @@
-import type {
-  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  ShaderMacros, MaskProps,
-  ShaderWithSource,
-} from '@galacean/effects';
-import {
-  spec, math, Texture, MaskMode, effectsClass, BaseRenderComponent,
-  itemFrag, itemVert, GLSLVersion,
-  assertExist,
-} from '@galacean/effects';
+import type { Asset, Engine, GeometryFromShape, MaskProps, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import { BaseRenderComponent, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -99,24 +91,6 @@ export class VideoComponent extends BaseRenderComponent {
     });
   }
 
-  protected override createShader (): ShaderWithSource {
-    const macros: ShaderMacros = [
-      ['TRANSPARENT_VIDEO', this.transparent],
-    ];
-    const fragment = itemFrag;
-    const vertex = itemVert;
-
-    const shader = {
-      fragment,
-      vertex,
-      glslVersion: GLSLVersion.GLSL1,
-      macros,
-      shared: true,
-    };
-
-    return shader;
-  }
-
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
@@ -129,12 +103,8 @@ export class VideoComponent extends BaseRenderComponent {
       muted = false,
       transparent = false,
     } = options;
-    let renderer = data.renderer;
 
     this.transparent = transparent;
-    if (!renderer) {
-      renderer = {} as SpriteItemProps['renderer'];
-    }
     if (video) {
       this.video = (video as unknown as Asset<HTMLVideoElement>).data;
       this.setPlaybackRate(playbackRate);
@@ -148,30 +118,15 @@ export class VideoComponent extends BaseRenderComponent {
       }
     }
 
-    const maskMode = this.maskManager.getMaskMode(data);
-
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskManager.getRefValue(),
-      maskMode,
-      shape: renderer.shape,
-    };
-
     this.interaction = interaction;
     this.pauseVideo();
 
     const geometry = this.createGeometry();
-    const material = this.createMaterial(this.renderer);
 
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
     }
-    this.material = material;
+
     this.geometry = geometry;
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
