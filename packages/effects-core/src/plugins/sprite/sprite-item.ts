@@ -61,10 +61,6 @@ export class SpriteComponent extends BaseRenderComponent {
   splits: splitsDataType = singleSplits;
   frameAnimationLoop = false;
 
-  /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
-  // override colorOverLifetime: { stop: number, color: any }[];
-  // override opacityOverLifetime: ValueGetter<number>;
-
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
 
