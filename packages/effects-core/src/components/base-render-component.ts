@@ -6,11 +6,7 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaskProps, Maskable } from '../material';
 import {
-  MaskMode,
-  MaskProcessor,
-  Material,
-  getPreMultiAlpha,
-  setBlendMode, setMaskMode, setSideMode,
+  MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { MeshCollider } from '../plugins';
@@ -72,9 +68,9 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     };
 
     const material = Material.create(this.engine, {
-      shader:  {
-        fragment:itemFrag,
-        vertex:itemVert,
+      shader: {
+        fragment: itemFrag,
+        vertex: itemVert,
         shared: true,
       },
     });
@@ -158,10 +154,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
 
-    for (let i = 0;i < this.materials.length;i++) {
+    for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
       material.setVector2('_Size', this.transform.size);
+
       if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
         this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
         this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
@@ -181,7 +178,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
     const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
-
     const ui = this.interaction;
 
     if ((force || ui)) {
@@ -215,13 +211,13 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const { index = [], aPoint = [] } = renderer.shape;
       const point = new Float32Array(aPoint);
       const position = [];
-
       const atlasOffset = [];
 
       for (let i = 0; i < point.length; i += 6) {
         atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
+
       geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
@@ -332,7 +328,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
-      shape:shapeGeometry,
+      shape: shapeGeometry,
       maskMode,
     };
 

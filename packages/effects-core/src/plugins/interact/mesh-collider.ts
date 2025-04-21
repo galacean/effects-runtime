@@ -1,10 +1,10 @@
+import type { TypedArray } from '@galacean/effects-specification';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Geometry } from '../../render/geometry';
 import type { BoundingBoxTriangle } from './click-handler';
 import { HitTestType } from './click-handler';
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { TypedArray } from '@galacean/effects-specification';
 
 /**
  *
@@ -97,7 +97,7 @@ export class MeshCollider {
     return res;
   }
 
-  private assemblyTriangles = (vertices: TypedArray, indices: TypedArray, indexStart: number, indexEnd: number, res: TriangleLike[])=>{
+  private assemblyTriangles = (vertices: TypedArray, indices: TypedArray, indexStart: number, indexEnd: number, res: TriangleLike[]) => {
     for (let i = indexStart; i < indexEnd; i += 3) {
       const index0 = indices[i] * 3;
       const index1 = indices[i + 1] * 3;

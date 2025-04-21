@@ -6,7 +6,7 @@ import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { MaskProps } from '../../material';
-import type { Geometry } from '../../render/geometry';
+import type { Geometry } from '../../render';
 import { type GeometryFromShape } from '../../shape';
 import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
