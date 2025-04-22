@@ -1,22 +1,16 @@
-import type {
-  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  ItemRenderInfo, MaterialProps, ShaderMacros,
-} from '@galacean/effects';
-import {
-  spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
-  assertExist, Texture, itemFrag, itemVert, GLSLVersion, PLAYER_OPTIONS_ENV_EDITOR,
-} from '@galacean/effects';
+import type { Asset, Engine, GeometryFromShape, MaskProps, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import { BaseRenderComponent, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
-export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'> {
+export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer' | 'mask'> {
   listIndex?: number,
   renderer: {
-    mask: number,
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
+  mask?: MaskProps['mask'],
 }
 
 let seed = 0;
@@ -48,7 +42,7 @@ export class VideoComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MVideo' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
+    this.geometry = this.createGeometry();
   }
 
   override setTexture (input: Texture): void;
@@ -97,31 +91,10 @@ export class VideoComponent extends BaseRenderComponent {
     });
   }
 
-  protected override getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
-    const macros: ShaderMacros = [
-      ['TRANSPARENT_VIDEO', this.transparent],
-      ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
-    ];
-    const fragment = itemFrag;
-    const vertex = itemVert;
-
-    const shader = {
-      fragment,
-      vertex,
-      glslVersion: count === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
-      macros,
-      shared: true,
-    };
-
-    return {
-      shader,
-    };
-  }
-
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
-    const { interaction, options, listIndex = 0 } = data;
+    const { interaction, options } = data;
     const {
       video,
       startColor = [1, 1, 1, 1],
@@ -130,12 +103,8 @@ export class VideoComponent extends BaseRenderComponent {
       muted = false,
       transparent = false,
     } = options;
-    let renderer = data.renderer;
 
     this.transparent = transparent;
-    if (!renderer) {
-      renderer = {} as SpriteItemProps['renderer'];
-    }
     if (video) {
       this.video = (video as unknown as Asset<HTMLVideoElement>).data;
       this.setPlaybackRate(playbackRate);
@@ -149,37 +118,18 @@ export class VideoComponent extends BaseRenderComponent {
       }
     }
 
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
-      order: listIndex,
-      shape: renderer.shape,
-    };
-
     this.interaction = interaction;
     this.pauseVideo();
-    this.renderInfo = getImageItemRenderInfo(this);
 
-    const geometry = this.createGeometry(glContext.TRIANGLES);
-    const material = this.createMaterial(this.renderInfo, 2);
+    const geometry = this.createGeometry();
 
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
     }
-    this.worldMatrix = math.Matrix4.fromIdentity();
-    this.material = material;
+
     this.geometry = geometry;
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
-    this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
-
-    this.setItem();
   }
 
   override onUpdate (dt: number): void {

@@ -76,6 +76,7 @@ export interface PlayerConfig {
    * 可捕获异常的时机：
    * 1. 初始化 `Player` 遇到异常（包含 `webglcontextlost` 事件）
    * 2. `loadScene` 运行时异常（包含资源加载失败以及 `rendererror` 异常等）
+   * 3. 非以上两种情况，请自行 `try/catch` 捕获
    *
    * ```
    * 注意：

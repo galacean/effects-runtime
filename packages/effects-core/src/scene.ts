@@ -3,7 +3,6 @@ import type { Texture } from './texture';
 import type { PluginSystem } from './plugin-system';
 import type { PickEnum } from './utils';
 import { isObject } from './utils';
-import type { AssetManager } from './asset-manager';
 
 export type ImageLike = spec.HTMLImageLike | ArrayBuffer | Texture;
 export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | spec.RenderLevel.B | spec.RenderLevel.S>;
@@ -39,12 +38,6 @@ export interface Scene {
 
 export namespace Scene {
   type URLType = { url: string, options?: SceneLoadOptions };
-
-  export interface LoadResult {
-    scene: Scene,
-    assetManager: AssetManager,
-    options: SceneLoadOptions,
-  }
 
   /**
    * 接受用于加载的数据类型

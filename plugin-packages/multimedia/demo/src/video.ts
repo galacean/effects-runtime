@@ -15,6 +15,9 @@ const inputEle = document.getElementById('J-input') as HTMLInputElement;
     player = new Player({
       container,
       fps: 130,
+      onError (e) {
+        console.error(e.cause, e);
+      },
     });
 
     await checkAutoplayPermission();
@@ -46,7 +49,6 @@ addButton?.addEventListener('click', async () => {
         },
       },
       renderer: {
-        mask: 0,
         texture,
       },
     });

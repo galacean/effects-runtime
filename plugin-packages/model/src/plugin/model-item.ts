@@ -515,11 +515,11 @@ export class ModelCameraComponent extends Behaviour {
     const composition = this.item.composition;
 
     if (composition) {
-      composition.camera.position = this.transform.position.clone();
-      composition.camera.setQuat(this.transform.quat);
       composition.camera.near = this.content.nearPlane;
       composition.camera.far = this.content.farPlane;
       composition.camera.fov = this.content.fov;
+
+      composition.camera.setTransform(this.transform);
     }
   }
 

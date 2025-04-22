@@ -1,7 +1,7 @@
 import type {
-  EventSystem, SceneLoadOptions, Renderer, Composition, Texture, MessageItem,
+  EventSystem, SceneLoadOptions, Renderer, Composition, MessageItem, Scene,
 } from '@galacean/effects-core';
-import { Scene } from '@galacean/effects-core';
+import { AssetService, assertExist } from '@galacean/effects-core';
 import { AssetManager, isArray, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
@@ -39,6 +39,7 @@ export class ThreeDisplayObject extends THREE.Group {
   readonly height: number;
 
   private baseCompositionIndex = 0;
+  private assetService: AssetService;
 
   /**
    *
@@ -53,6 +54,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const { width, height, camera } = options;
 
     this.renderer = new ThreeRenderer(context);
+    this.assetService = new AssetService(this.renderer.engine);
     this.width = width;
     this.height = height;
     this.camera = camera;
@@ -72,29 +74,89 @@ export class ThreeDisplayObject extends THREE.Group {
    */
   async loadScene (scene: Scene.LoadType, options?: SceneLoadOptions): Promise<Composition>;
   async loadScene (scene: Scene.LoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
-  async loadScene<T extends Composition | Composition[]> (
+  async loadScene (
     scene: Scene.LoadType | Scene.LoadType[],
     options?: SceneLoadOptions,
-  ): Promise<T> {
-    let composition: Composition | Composition[];
+  ): Promise<Composition | Composition[]> {
+    assertExist(this.renderer, 'Renderer is not exist, maybe the Player has been disabled or in gl \'debug-disable\' mode.');
+
+    const last = performance.now();
+    const scenes: Scene.LoadType[] = [];
+    const compositions: Composition[] = [];
+    const autoplay = options?.autoplay ?? true;
     const baseOrder = this.baseCompositionIndex;
 
     if (isArray(scene)) {
-      this.baseCompositionIndex += scene.length;
-      composition = await Promise.all(scene.map(async (scn, index) => {
-        const res = await this.createComposition(scn, options);
-
-        res.setIndex(baseOrder + index);
-
-        return res;
-      }));
+      scenes.push(...scene);
     } else {
-      this.baseCompositionIndex += 1;
-      composition = await this.createComposition(scene, options);
-      composition.setIndex(baseOrder);
+      scenes.push(scene);
     }
 
-    return composition as T;
+    await Promise.all(
+      scenes.map(async (url, index) => {
+        const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
+        const assetManager = new AssetManager(opts);
+        const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
+
+        this.assetService.prepareAssets(scene, assetManager.getAssets());
+        this.assetService.updateTextVariables(scene, assetManager.options.variables);
+        this.assetService.initializeTexture(scene);
+
+        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
+
+        const composition = this.createComposition(scene, opts);
+
+        this.baseCompositionIndex += 1;
+        composition.setIndex(baseOrder + index);
+        compositions[index] = composition;
+      }),
+    );
+
+    for (let i = 0; i < compositions.length; i++) {
+      if (autoplay) {
+        compositions[i].play();
+      } else {
+        compositions[i].pause();
+      }
+    }
+
+    const compositionNames = compositions.map(composition => composition.name);
+    const firstFrameTime = performance.now() - last;
+
+    for (const composition of compositions) {
+      composition.statistic.firstFrameTime = firstFrameTime;
+    }
+    logger.info(`First frame [${compositionNames}]: ${firstFrameTime.toFixed(4)}ms.`);
+
+    return isArray(scene) ? compositions : compositions[0];
+  }
+
+  private createComposition (
+    scene: Scene,
+    options: SceneLoadOptions = {},
+  ): Composition {
+    const composition = new ThreeComposition({
+      ...options,
+      width: this.width,
+      height: this.height,
+      renderer: this.renderer,
+      handleItemMessage: (message: MessageItem) => {
+        this.dispatchEvent({ type: 'message', message });
+      },
+    }, scene);
+
+    composition.on('end', () => {
+      this.dispatchEvent({ type: 'end', composition });
+    });
+    (this.renderer.engine as ThreeEngine).setOptions({
+      threeCamera: this.camera,
+      threeGroup: this,
+      composition,
+    });
+
+    this.compositions.push(composition);
+
+    return composition;
   }
 
   pause () {
@@ -108,78 +170,6 @@ export class ThreeDisplayObject extends THREE.Group {
     this.compositions.forEach(composition => {
       composition.resume();
     });
-  }
-
-  private async createComposition (url: Scene.LoadType, options: SceneLoadOptions = {}): Promise<Composition> {
-    const last = performance.now();
-    let opts = {
-      autoplay: true,
-      ...options,
-    };
-    let source: Scene.LoadType = url;
-
-    if (Scene.isURL(url)) {
-      if (!Scene.isJSONObject(url)) {
-        source = url.url;
-      }
-      if (Scene.isWithOptions(url)) {
-        opts = {
-          ...opts,
-          ...url.options || {},
-        };
-      }
-    }
-
-    if (this.assetManager) {
-      this.assetManager.updateOptions(opts);
-    } else {
-      this.assetManager = new AssetManager(opts);
-    }
-
-    const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
-    const engine = this.renderer.engine;
-
-    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    engine.clearResources();
-    engine.addPackageDatas(scene);
-
-    for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = engine.assetLoader.loadGUID(scene.textureOptions[i].id);
-      (scene.textureOptions[i] as Texture).initialize();
-    }
-
-    if (engine.database) {
-      await engine.createVFXItems(scene);
-    }
-    const composition = new ThreeComposition({
-      ...opts,
-      width: this.width,
-      height: this.height,
-      renderer: this.renderer,
-      handleItemMessage: (message: MessageItem) => {
-        this.dispatchEvent({ type: 'message', message });
-      },
-    }, scene);
-
-    composition.on('end', () => {
-      this.dispatchEvent({ type: 'end', composition });
-    });
-    (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
-
-    if (opts.autoplay) {
-      composition.play();
-    } else {
-      composition.pause();
-    }
-
-    const firstFrameTime = (performance.now() - last) + composition.statistic.loadTime;
-
-    composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
-
-    this.compositions.push(composition);
-
-    return composition;
   }
 
   /**

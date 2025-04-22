@@ -1,3 +1,4 @@
+import * as spec from '@galacean/effects-specification';
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
   SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData, CompositionContent,
@@ -6,6 +7,7 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
+import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 
@@ -49,6 +51,11 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
   return json;
 }
 
+let currentMaskComponent: string;
+const componentMap: Map<string, spec.ComponentData> = new Map();
+const itemMap: Map<string, spec.VFXItemData> = new Map();
+const refCompositions: Map<string, spec.CompositionData> = new Map();
+
 /**
  * 3.1 版本数据适配
  * - 富文本插件名称的适配
@@ -73,6 +80,29 @@ export function version31Migration (json: JSONScene): JSONScene {
         if (customShapeComponent.shapes?.length > 0 && customShapeComponent.shapes[0].fill) {
           // @ts-expect-error
           customShapeComponent.fill = customShapeComponent.shapes[0].fill;
+        }
+
+        // easingIn 和 easingOut 绝对坐标转相对坐标
+        const easingInFlag = new Array(customShapeComponent.easingIns.length);
+        const easingOutFlag = new Array(customShapeComponent.easingOuts.length).fill(false);
+
+        for (const shape of customShapeComponent.shapes) {
+          for (const index of shape.indexes) {
+            const point = customShapeComponent.points[index.point];
+            const easingIn = customShapeComponent.easingIns[index.easingIn];
+            const easingOut = customShapeComponent.easingOuts[index.easingOut];
+
+            if (!easingInFlag[index.easingIn]) {
+              easingIn.x -= point.x;
+              easingIn.y -= point.y;
+              easingInFlag[index.easingIn] = true;
+            }
+            if (!easingOutFlag[index.easingOut]) {
+              easingOut.x -= point.x;
+              easingOut.y -= point.y;
+              easingOutFlag[index.easingOut] = true;
+            }
+          }
         }
       }
     }
@@ -103,6 +133,111 @@ export function version31Migration (json: JSONScene): JSONScene {
   }
 
   return json;
+}
+
+export function version32Migration (json: JSONScene): JSONScene {
+  componentMap.clear();
+  itemMap.clear();
+  refCompositions.clear();
+  const { compositions, items, components } = json;
+  // 处理旧蒙版数据
+  let mainComp = compositions[0];
+
+  for (const component of components) {
+    componentMap.set(component.id, component);
+  }
+  for (const comp of compositions) {
+    if (comp.id === json.compositionId) {
+      mainComp = comp;
+    } else {
+      refCompositions.set(comp.id, comp);
+    }
+  }
+  for (const item of items) {
+    itemMap.set(item.id, item);
+  }
+
+  processContent(mainComp);
+
+  // 老 shape 数据兼容
+  for (const item of items) {
+    if (item.type === spec.ItemType.sprite) {
+      const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
+
+      if (spriteComponent) {
+        const shape = spriteComponent.renderer.shape;
+        let shapeData;
+
+        if (Number.isInteger(shape)) {
+          shapeData = json.shapes[shape as number];
+        }
+
+        spriteComponent.renderer.shape = shapeData;
+      }
+    }
+  }
+
+  return json;
+}
+export function processContent (composition: spec.CompositionData) {
+  for (const item of composition.items) {
+    const itemProps = itemMap.get(item.id);
+
+    if (!itemProps) {
+      return;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape
+    ) {
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMask(component);
+      }
+    }
+
+    // 处理预合成的渲染顺序
+    if (itemProps.type === spec.ItemType.composition) {
+      const refId = (itemProps.content as spec.CompositionContent).options.refId;
+      const comp = refCompositions.get(refId);
+
+      comp && processContent(comp);
+    }
+  }
+}
+
+export function processMask (renderContent: any) {
+  const renderer = renderContent.renderer;
+  const maskMode = renderer?.maskMode;
+
+  if (!maskMode || maskMode === MaskMode.NONE) {
+
+    return;
+  }
+
+  if (maskMode === MaskMode.MASK) {
+    renderContent.mask = {
+      mask: true,
+    };
+    currentMaskComponent = renderContent.id;
+  } else if (
+    maskMode === spec.ObscuredMode.OBSCURED ||
+    maskMode === spec.ObscuredMode.REVERSE_OBSCURED
+  ) {
+    renderContent.mask = {
+      mode: maskMode,
+      ref: {
+        'id': currentMaskComponent,
+      },
+    };
+  }
 }
 
 /**

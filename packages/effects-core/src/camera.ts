@@ -1,7 +1,7 @@
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import type { Euler } from '@galacean/effects-math/es/core/euler';
+import { Euler } from '@galacean/effects-math/es/core/euler';
 import { DEG2RAD } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
@@ -68,6 +68,12 @@ const tmpScale = new Vector3(1, 1, 1);
  * 合成的相机对象，采用透视投影
  */
 export class Camera {
+
+  /**
+   * @internal
+   */
+  transform: Transform = new Transform();
+
   /**
    * 编辑器用于缩放画布
    */
@@ -79,7 +85,6 @@ export class Camera {
   private inverseViewMatrix = Matrix4.fromIdentity();
   private inverseProjectionMatrix: Matrix4 | null;
   private inverseViewProjectionMatrix: Matrix4 | null;
-  private transform: Transform = new Transform();
   private dirty = true;
 
   /**
@@ -101,9 +106,12 @@ export class Camera {
       rotation = [0, 0, 0],
     } = options;
 
+    const euler = new Euler(rotation[0], rotation[1], rotation[2]);
+    const quat = new Quaternion().setFromEuler(euler);
+
     this.options = { near, far, fov, aspect, clipMode };
     this.transform.setPosition(position[0], position[1], position[2]);
-    this.transform.setRotation(rotation[0], rotation[1], rotation[2]);
+    this.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
     this.dirty = true;
     this.updateMatrix();
   }
@@ -337,7 +345,10 @@ export class Camera {
    * @param value - 旋转四元数
    */
   setQuat (value: Quaternion) {
-    this.transform.setQuaternion(value.x, value.y, value.z, value.w);
+    if (!this.transform.getQuaternion().equals(value)) {
+      this.transform.setQuaternion(value.x, value.y, value.z, value.w);
+      this.dirty = true;
+    }
   }
 
   /**
@@ -397,7 +408,7 @@ export class Camera {
         clipMode === spec.CameraClipMode.portrait
       );
       this.projectionMatrix.premultiply(this.viewportMatrix);
-      this.inverseViewMatrix.compose(this.position, this.getQuat().conjugate(), tmpScale);
+      this.inverseViewMatrix.compose(this.position, this.getQuat(), tmpScale);
       this.inverseViewMatrix.premultiply(this.transform.getParentMatrix() ?? Matrix4.IDENTITY);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);

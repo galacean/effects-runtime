@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import type { Composition } from './composition';
+import { filterItemsByRenderLevel, type Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
@@ -793,6 +793,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
     const compositionComponent = this.addComponent(CompositionComponent);
 
+    filterItemsByRenderLevel(props as unknown as spec.CompositionData, this.engine, this.engine.renderLevel);
     SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
     for (const vfxItem of compositionComponent.items) {
       vfxItem.setInstanceId(generateGUID());

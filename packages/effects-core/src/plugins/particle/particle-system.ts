@@ -8,6 +8,8 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
+import type { Maskable } from '../../material';
+import { MaskMode, MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
@@ -120,30 +122,38 @@ export interface ParticleSystemOptions extends spec.ParticleOptions {
   meshSlots?: number[],
 }
 
-export interface ParticleSystemProps extends Omit<spec.ParticleContent, 'options' | 'renderer' | 'trails'> {
+export interface ParticleSystemProps extends Omit<spec.ParticleContent, 'options' | 'renderer' | 'trails' | 'mask'> {
   options: ParticleSystemOptions,
   renderer: ParticleSystemRendererOptions,
   trails?: ParticleTrailProps,
+  mask?: {
+    mode: MaskMode,
+    ref: Maskable,
+  },
 }
 
 // spec.RenderOptions 经过处理
 export interface ParticleSystemRendererOptions extends Required<Omit<spec.RendererOptions, 'texture' | 'anchor' | 'particleOrigin'>> {
-  mask: number,
+  // mask: number,
   texture: Texture,
   anchor?: vec2,
   particleOrigin?: spec.ParticleOrigin,
 }
 
-export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> {
+export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' | 'mask'> {
   texture: Texture,
   textureMap: vec4,
+  mask?: {
+    mode: MaskMode,
+    ref: Maskable,
+  },
 }
 
 // 粒子节点包含的数据
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
 
 @effectsClass(spec.DataType.ParticleSystem)
-export class ParticleSystem extends Component {
+export class ParticleSystem extends Component implements Maskable {
   renderer: ParticleSystemRenderer;
   options: ParticleOptions;
   shape: ShapeGenerator;
@@ -155,6 +165,8 @@ export class ParticleSystem extends Component {
   emissionStopped: boolean;
   destroyed = false;
   props: ParticleSystemProps;
+
+  readonly maskManager: MaskProcessor;
 
   private generatedCount: number;
   private lastUpdate: number;
@@ -174,6 +186,7 @@ export class ParticleSystem extends Component {
   ) {
     super(engine);
 
+    this.maskManager = new MaskProcessor(engine);
     if (props) {
       this.fromData(props);
     }
@@ -488,7 +501,6 @@ export class ParticleSystem extends Component {
 
   override onDestroy (): void {
     if (this.item && this.item.composition) {
-      this.item.composition.destroyTextures(this.getTextures());
       this.meshes.forEach(mesh => mesh.dispose({ material: { textures: DestroyOptions.keep } }));
     }
   }
@@ -991,6 +1003,8 @@ export class ParticleSystem extends Component {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
+    let maskProps = this.getMaskOptions(props);
+
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
       meshSlots: options.meshSlots,
@@ -1011,8 +1025,8 @@ export class ParticleSystem extends Component {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
-      mask: renderer.mask,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: maskProps.maskRef,
+      maskMode: maskProps.maskMode,
       forceTarget,
       diffuse: renderer.texture,
       sizeOverLifetime: sizeOverLifetimeGetter,
@@ -1087,6 +1101,8 @@ export class ParticleSystem extends Component {
         inheritParticleColor: !!trails.inheritParticleColor,
         parentAffectsPosition: !!trails.parentAffectsPosition,
       };
+
+      maskProps = this.getMaskOptions(trails);
       trailMeshProps = {
         name: 'Trail',
         matrix: Matrix4.IDENTITY,
@@ -1103,8 +1119,8 @@ export class ParticleSystem extends Component {
         occlusion: !!trails.occlusion,
         transparentOcclusion: !!trails.transparentOcclusion,
         textureMap: trails.textureMap,
-        mask: renderer.mask,
-        maskMode: renderer.maskMode,
+        mask: maskProps.maskRef,
+        maskMode: maskProps.maskMode,
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
@@ -1130,6 +1146,23 @@ export class ParticleSystem extends Component {
     }
     this.item.getHitTestParams = this.getHitTestParams;
     this.item._content = this;
+  }
+
+  getMaskOptions (data: ParticleSystemProps | ParticleTrailProps) {
+    let maskMode = MaskMode.NONE;
+    let maskRef = 0;
+
+    if (data.mask) {
+      const { mode, ref } = data.mask;
+
+      maskMode = mode;
+      maskRef = ref.maskManager.getRefValue();
+    }
+
+    return {
+      maskMode,
+      maskRef,
+    };
   }
 }
 

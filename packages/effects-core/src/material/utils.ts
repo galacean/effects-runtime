@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import { glContext } from '../gl';
+import { MaskMode } from './types';
 import type { Material } from './material';
 
 export function valIfUndefined<T> (val: any, def: T): T {
@@ -9,7 +10,8 @@ export function valIfUndefined<T> (val: any, def: T): T {
 
   return val;
 }
-export function getPreMultiAlpha (blending?: number): number {
+
+export function getPreMultiAlpha (blending?: spec.BlendingMode): number {
   switch (blending) {
     case spec.BlendingMode.ALPHA:
       return 1;
@@ -87,29 +89,31 @@ export function setSideMode (material: Material, side: spec.SideMode) {
   }
 }
 
-export function setMaskMode (material: Material, maskMode: spec.MaskMode) {
+export function setMaskMode (material: Material, maskMode: MaskMode, colorMask = false) {
   switch (maskMode) {
     case undefined:
       material.stencilTest = false;
 
       break;
-    case spec.MaskMode.MASK:
+    case MaskMode.MASK:
       material.stencilTest = true;
       material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
       material.stencilOpZPass = [glContext.REPLACE, glContext.REPLACE];
+      // 关闭/开启蒙版元素的颜色写入
+      material.colorMask = [colorMask, colorMask, colorMask, colorMask];
 
       break;
-    case spec.MaskMode.OBSCURED:
+    case MaskMode.OBSCURED:
       material.stencilTest = true;
       material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
 
       break;
-    case spec.MaskMode.REVERSE_OBSCURED:
+    case MaskMode.REVERSE_OBSCURED:
       material.stencilTest = true;
       material.stencilFunc = [glContext.NOTEQUAL, glContext.NOTEQUAL];
 
       break;
-    case spec.MaskMode.NONE:
+    case MaskMode.NONE:
       material.stencilTest = false;
 
       break;

@@ -564,7 +564,7 @@ describe('core/fallback/particle/base', () => {
     expect(renderer.texture, 'texture').to.eql(2);
     expect(renderer.occlusion, 'occlusion').to.be.true;
     expect(renderer.transparentOcclusion, 'transparentOcclusion').to.be.true;
-    expect(renderer.maskMode).to.eql(spec.MaskMode.OBSCURED, 'maskMode');
+    expect(renderer.maskMode).to.eql(spec.ObscuredMode.OBSCURED, 'maskMode');
     expect(renderer.side).to.eql(spec.SideMode.FRONT, 'side');
   });
 

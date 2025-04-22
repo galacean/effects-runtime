@@ -1,4 +1,36 @@
 export default {
+  wufu2022: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*dnU-SprU5pAAAAAAAAAAAAAADlB4AQ',
+    name: '2022-集五福氛围',
+  },
+  WufuParticle0: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*qTquTKYbk6EAAAAAAAAAAAAADsF2AQ',
+    name: '24五福烟花-步步高升',
+  },
+  WufuParticle1: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*OzJ7QZTxFbUAAAAAAAAAAAAADsF2AQ',
+    name: '24五福烟花-江山如画',
+  },
+  WufuParticle2: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*sEdkT5cdXGEAAAAAAAAAAAAADsF2AQ',
+    name: '24五福烟花-家和万事兴',
+  },
+  textParticle1: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*JS2GS4h_2REAAAAAAAAAAAAADsF2AQ',
+    name: '文字烟花-幸运',
+  },
+  textParticle2: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*yjUxQLnBbJwAAAAAAAAAAAAADsF2AQ',
+    name: '文字烟花-泼天富贵',
+  },
+  midAutumn: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*E8WcRom4-4cAAAAAAAAAAAAADlB4AQ',
+    name: '支付宝会员中秋',
+  },
+  particleFollow: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*gU3-RKGZABcAAAAAAAAAAAAADlB4AQ',
+    name: '粒子跟随',
+  },
   preComp: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json',
     name: '预合成',
@@ -258,10 +290,11 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WEPWUNCGNVQI/-1695824449-958ba.json',
     name: '闪光弹窗',
   },
-  countdown: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
-    name: '七夕倒计时',
-  },
+  // 蒙版无法兼容，原始蒙版未设置形状
+  // countdown: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
+  //   name: '七夕倒计时',
+  // },
   combineCard: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BRNUKQWSAIKG/136315478-98a3d.json',
     name: '合成卡',
@@ -389,7 +422,7 @@ export default {
     name: '支付宝2021——缴费',
   },
   autumn: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LSQRKALOXBYU/1384187888-f221a.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*SmtETIh6bcAAAAAAAAAAAAAAelB4AQ',
     name: '天猫中秋大街',
   },
   camera: {

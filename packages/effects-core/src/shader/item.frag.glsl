@@ -2,7 +2,7 @@ precision highp float;
 
 varying vec4 vColor;
 varying vec2 vTexCoord;//x y
-varying vec3 vParams;//texIndex mulAplha transparentOcclusion
+varying vec3 vParams;//maskMode mulAplha transparentOcclusion
 
 uniform sampler2D _MainTex;
 
@@ -37,9 +37,12 @@ void main() {
   color = blendColor(texColor, vColor, floor(0.5 + vParams.y));
 
   #ifdef ALPHA_CLIP
-  if(vParams.z == 0. && color.a < 0.04) { // 1/256 = 0.04
+  // 如果是蒙版且透明度小于阈值
+  // 或者关闭透明像素写入深度缓存
+  if( color.a < 0.04) { // 1/256 = 0.04
     discard;
   }
+
   #endif
   //color.rgb = pow(color.rgb, vec3(2.2));
   color.a = clamp(color.a, 0.0, 1.0);

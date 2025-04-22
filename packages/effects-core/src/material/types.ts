@@ -2,6 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
+import type { MaskProcessor } from './mask-ref-manager';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -81,4 +82,38 @@ export type UniformValue =
 export enum ShaderType {
   vertex = 0,
   fragment = 1
+}
+
+export interface MaskProps {
+  mask?: {
+    mask?: boolean,
+    mode?: spec.ObscuredMode,
+    ref?: Maskable,
+  },
+}
+
+/**
+ *
+ */
+export interface Maskable {
+  readonly maskManager: MaskProcessor,
+}
+
+export enum MaskMode {
+  /**
+   * 无
+   */
+  NONE = 0,
+  /**
+   * 蒙版
+   */
+  MASK = 1,
+  /**
+   * 被遮挡
+   */
+  OBSCURED = 2,
+  /**
+   * 被反向遮挡
+   */
+  REVERSE_OBSCURED = 3,
 }

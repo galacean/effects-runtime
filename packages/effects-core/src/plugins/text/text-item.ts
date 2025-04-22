@@ -1,26 +1,26 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
+import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
+import { canvasPool } from '../../canvas-pool';
+import type { ItemRenderer } from '../../components';
+import { BaseRenderComponent } from '../../components';
+import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { Texture, TextureSourceType } from '../../texture';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
-import { effectsClass } from '../../decorators';
-import { canvasPool } from '../../canvas-pool';
 import { applyMixins, isValidFontFamily } from '../../utils';
-import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
-import type { ItemRenderer } from '../../components';
-import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
-import { Matrix4 } from '@galacean/effects-math/es/core/index';
+import type { MaskProps, Material } from '../../material';
+import { Shader } from '../../render';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
  */
-export interface TextItemProps extends Omit<spec.TextContent, 'renderer'> {
+export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'>, MaskProps {
   listIndex?: number,
   renderer: {
-    mask: number,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
 }
@@ -58,7 +58,6 @@ let seed = 0;
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends BaseRenderComponent {
   isDirty = true;
-
   /**
    * 文本行数
    */
@@ -75,7 +74,7 @@ export class TextComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MText' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
+    this.geometry = this.createGeometry();
 
     if (props) {
       this.fromData(props);
@@ -85,7 +84,6 @@ export class TextComponent extends BaseRenderComponent {
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
-    this.setItem();
 
     if (!props) {
       return;
@@ -104,74 +102,17 @@ export class TextComponent extends BaseRenderComponent {
 
   override fromData (data: TextItemProps): void {
     super.fromData(data);
-    const { interaction, options, listIndex = 0 } = data;
-    let renderer = data.renderer;
-
-    if (!renderer) {
-      renderer = {} as TextItemProps['renderer'];
-    }
+    const { interaction, options } = data;
 
     this.interaction = interaction;
 
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
-      order: listIndex,
-    };
-    this.interaction = interaction;
-    this.cachePrefix = '-';
-    this.renderInfo = getImageItemRenderInfo(this);
-
-    const material = this.createMaterial(this.renderInfo, 2);
-
-    this.worldMatrix = Matrix4.fromIdentity();
-    this.material = material;
-
-    // TextComponentBase 初始化
+    // TextComponentBase
     this.updateWithOptions(options);
     this.renderText(options);
 
-    this.setItem();
-  }
+    // 恢复默认颜色
+    this.material.setColor('_Color', new Color(1, 1, 1, 1));
 
-  updateWithOptions (options: spec.TextContentOptions) {
-    // OVERRIDE by mixins
-  }
-
-  updateTexture (flipY = true) {
-    // OVERRIDE by mixins
-  }
-
-  // // 添加销毁方法
-  // override dispose () {
-  //   super.dispose();
-
-  //   // 释放 ID Map 相关资源
-  //   if (this.idMapTexture) {
-  //     this.idMapTexture.dispose();
-  //     this.idMapTexture = null;
-  //   }
-
-  //   // 释放renderer.texture资源
-  //   if (this.renderer && this.renderer.texture && this.renderer.texture !== this.engine.emptyTexture) {
-  //     this.renderer.texture.dispose();
-  //     this.renderer.texture = this.engine.emptyTexture;
-  //   }
-
-  //   // 释放canvas资源
-  //   canvasPool.saveCanvas(this.canvas);
-  // }
-
-  /**
-   * 重写getMaterialProps方法，提供自定义shader
-   */
-  protected override getMaterialProps (renderInfo: any, count: number): any {
     // 定义一个最基础的顶点着色器
     const vertexShader = `
       precision highp float;
@@ -244,16 +185,43 @@ export class TextComponent extends BaseRenderComponent {
     `;
 
     // 返回shader配置
-    return {
-      shader: {
-        fragment: fragmentShader,
-        vertex: vertexShader,
-        glslVersion: 1, // 使用数字
-        macros: [],
-        shared: true,
-      },
-    };
+    this.material.shader = new Shader(this.engine);
+    this.material.shader.fromData({
+      fragment: fragmentShader,
+      vertex: vertexShader,
+      id: 'TextShader',
+      dataType: spec.DataType.Shader,
+    });
+
   }
+
+  updateWithOptions (options: spec.TextContentOptions) {
+    // OVERRIDE by mixins
+  }
+
+  updateTexture (flipY = true) {
+    // OVERRIDE by mixins
+  }
+
+  // // 添加销毁方法
+  // override dispose () {
+  //   super.dispose();
+
+  //   // 释放 ID Map 相关资源
+  //   if (this.idMapTexture) {
+  //     this.idMapTexture.dispose();
+  //     this.idMapTexture = null;
+  //   }
+
+  //   // 释放renderer.texture资源
+  //   if (this.renderer && this.renderer.texture && this.renderer.texture !== this.engine.emptyTexture) {
+  //     this.renderer.texture.dispose();
+  //     this.renderer.texture = this.engine.emptyTexture;
+  //   }
+
+  //   // 释放canvas资源
+  //   canvasPool.saveCanvas(this.canvas);
+  // }
 }
 
 export class TextComponentBase {
@@ -284,6 +252,7 @@ export class TextComponentBase {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
+    this.lineCount = this.getLineCount(options.text, true);
   }
 
   /**
@@ -484,17 +453,17 @@ export class TextComponentBase {
   }
 
   // 修改为protected访问级别，以便在子类中访问
-  protected getLineCount (text: string, context: CanvasRenderingContext2D) {
+  private getLineCount (text: string, init: boolean) {
+    const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
-
+    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
-
     let lineCount = 1;
     let x = 0;
 
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = context?.measureText(str)?.width ?? 0;
+      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
 
       // 和浏览器行为保持一致
       x += letterSpace;
@@ -576,6 +545,7 @@ export class TextComponentBase {
       return;
     }
     this.text = value.toString();
+    this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
 
@@ -767,13 +737,13 @@ export class TextComponentBase {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
+    const finalHeight = layout.lineHeight * this.lineCount;
 
     this.char = (this.text || '').split('');
     this.canvas.width = width;
     const height = this.canvas.height;
 
-    this.lineCount = this.getLineCount(this.text, context);
-    const finalHeight = layout.lineHeight * this.lineCount;
+    this.lineCount = this.getLineCount(this.text, false);
 
     if (layout.autoWidth) {
       this.canvas.height = finalHeight * fontScale;
@@ -781,20 +751,20 @@ export class TextComponentBase {
     } else {
       this.canvas.height = layout.height * fontScale;
     }
-    // canvas size 变化后重新刷新 context
-    // TODO 看起来这个判断是导致 4.17 DIMA BUG 的原因
-    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-      context.font = this.getFontDesc(style.fontSize * fontScale * width / this.maxLineWidth);
-    }
+
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
-    context.clearRect(0, 0, width, height);
 
     if (!flipY) {
       context.translate(0, height);
       context.scale(1, -1);
     }
-    context.fillRect(0, 0, width, height);
+    // canvas size 变化后重新刷新 context
+    // TODO 看起来这个判断是导致 4.17 DIMA BUG 的原因
+    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
+      context.font = this.getFontDesc(style.fontSize * fontScale * width / this.maxLineWidth);
+    }
+    context.clearRect(0, 0, width, height);
 
     if (style.hasShadow) {
       this.setupShadow();
@@ -868,9 +838,9 @@ export class TextComponentBase {
     // }
   }
 
-  private getFontDesc (fontSize: number): string {
-    const { fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${fontSize.toString()}px `;
+  private getFontDesc (size?: number): string {
+    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
 
     if (!DEFAULT_FONTS.includes(fontFamily)) {
       fontDesc += `"${fontFamily}"`;

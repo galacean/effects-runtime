@@ -1,25 +1,15 @@
 import { Color } from '@galacean/effects-math/es/core/color';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaterialProps } from '../material';
+import type { MaskProps, MaterialProps } from '../material';
 import { Material, setMaskMode } from '../material';
-import { GraphicsPath } from '../plugins/shape/graphics-path';
-import type { ShapePath } from '../plugins/shape/shape-path';
-import { Geometry, GLSLVersion } from '../render';
-import { MeshComponent } from './mesh-component';
-import { StarType } from '../plugins/shape/poly-star';
-import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Polygon } from '../plugins/shape/polygon';
-
-interface CurveData {
-  point: spec.Vector2Data,
-  controlPoint1: spec.Vector2Data,
-  controlPoint2: spec.Vector2Data,
-}
+import type { Polygon, ShapePath, StrokeAttributes } from '../plugins';
+import { GraphicsPath, StarType, buildLine } from '../plugins';
+import { GLSLVersion, Geometry } from '../render';
+import { BaseRenderComponent } from './base-render-component';
 
 interface FillAttribute {
   color: Color,
@@ -143,17 +133,14 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends MeshComponent {
+export class ShapeComponent extends BaseRenderComponent {
   private hasStroke = false;
   private hasFill = false;
   private shapeDirty = true;
-
   private graphicsPath = new GraphicsPath();
-  private curveValues: CurveData[] = [];
   private fillAttribute: FillAttribute;
   private strokeAttributes: StrokeAttributes;
   private shapeAttribute: ShapeAttribute;
-
   private vert = `
 precision highp float;
 
@@ -194,65 +181,69 @@ void main() {
   constructor (engine: Engine) {
     super(engine);
 
-    if (!this.geometry) {
-      this.geometry = Geometry.create(engine, {
-        attributes: {
-          aPos: {
-            type: glContext.FLOAT,
-            size: 3,
-            data: new Float32Array([
-              -0.5, 0.5, 0, //左上
-              -0.5, -0.5, 0, //左下
-              0.5, 0.5, 0, //右上
-              0.5, -0.5, 0, //右下
-            ]),
-          },
-          aUV: {
-            type: glContext.FLOAT,
-            size: 2,
-            data: new Float32Array(),
-          },
+    // Create Geometry
+    //-------------------------------------------------------------------------
+
+    this.geometry = Geometry.create(engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array([
+            -0.5, 0.5, 0, //左上
+            -0.5, -0.5, 0, //左下
+            0.5, 0.5, 0, //右上
+            0.5, -0.5, 0, //右下
+          ]),
         },
-        mode: glContext.TRIANGLES,
-        drawCount: 4,
-      });
-
-      this.geometry.subMeshes.push({
-        offset: 0,
-        indexCount: 0,
-        vertexCount: 0,
-      }, {
-        offset: 0,
-        indexCount: 0,
-        vertexCount: 0,
-      });
-    }
-
-    if (!this.material) {
-      const materialProps: MaterialProps = {
-        shader: {
-          vertex: this.vert,
-          fragment: this.frag,
-          glslVersion: GLSLVersion.GLSL1,
+        aUV: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(),
         },
-      };
+      },
+      mode: glContext.TRIANGLES,
+      drawCount: 4,
+    });
 
-      const fillMaterial = Material.create(engine, materialProps);
+    this.geometry.subMeshes.push({
+      offset: 0,
+      indexCount: 0,
+      vertexCount: 0,
+    }, {
+      offset: 0,
+      indexCount: 0,
+      vertexCount: 0,
+    });
 
-      fillMaterial.setColor('_Color', new Color(1, 1, 1, 1));
-      fillMaterial.depthMask = false;
-      fillMaterial.depthTest = true;
-      fillMaterial.blending = true;
-      this.material = fillMaterial;
+    // Create Material
+    //-------------------------------------------------------------------------
 
-      const strokeMaterial = Material.create(engine, materialProps);
+    const materialProps: MaterialProps = {
+      shader: {
+        vertex: this.vert,
+        fragment: this.frag,
+        glslVersion: GLSLVersion.GLSL1,
+      },
+    };
 
-      strokeMaterial.setColor('_Color', new Color(0.25, 0.25, 0.25, 1));
-      strokeMaterial.depthMask = false;
-      strokeMaterial.depthTest = true;
-      strokeMaterial.blending = true;
-      this.materials[1] = strokeMaterial;
-    }
+    const fillMaterial = Material.create(engine, materialProps);
+    const strokeMaterial = Material.create(engine, materialProps);
+
+    fillMaterial.color = new Color(1, 1, 1, 1);
+    fillMaterial.depthMask = false;
+    fillMaterial.depthTest = true;
+    fillMaterial.blending = true;
+    this.material = fillMaterial;
+
+    strokeMaterial.color = new Color(0.25, 0.25, 0.25, 1);
+    strokeMaterial.depthMask = false;
+    strokeMaterial.depthTest = true;
+    strokeMaterial.blending = true;
+    this.materials[1] = strokeMaterial;
+
+    // Create Shape Attrributes
+    //-------------------------------------------------------------------------
 
     this.strokeAttributes = {
       width: 1,
@@ -262,11 +253,9 @@ void main() {
       miterLimit: 10,
       color: new Color(1, 1, 1, 1),
     };
-
     this.fillAttribute = {
       color: new Color(1, 1, 1, 1),
     };
-
     this.shapeAttribute = {
       type: spec.ShapePrimitiveType.Custom,
       points: [],
@@ -319,7 +308,7 @@ void main() {
         const vertOffset = vertices.length / 2;
         const lineStyle = this.strokeAttributes;
 
-        let close = false;
+        let close = true;
 
         if (this.shapeAttribute.type === spec.ShapePrimitiveType.Custom) {
           close = (shape as Polygon).closePath;
@@ -390,37 +379,30 @@ void main() {
         const easingOuts = customShapeAtribute.easingOuts;
 
         for (const shape of customShapeAtribute.shapes) {
-          this.curveValues = [];
-
           const indices = shape.indexes;
+          const startPoint = points[indices[0].point];
+
+          this.graphicsPath.moveTo(startPoint.x, startPoint.y);
 
           for (let i = 1; i < indices.length; i++) {
             const pointIndex = indices[i];
             const lastPointIndex = indices[i - 1];
+            const point = points[pointIndex.point];
+            const lastPoint = points[lastPointIndex.point];
+            const control1 = easingOuts[lastPointIndex.easingOut];
+            const control2 = easingIns[pointIndex.easingIn];
 
-            this.curveValues.push({
-              point: points[pointIndex.point],
-              controlPoint1: easingOuts[lastPointIndex.easingOut],
-              controlPoint2: easingIns[pointIndex.easingIn],
-            });
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
           }
 
-          // Push the last curve
-          this.curveValues.push({
-            point: points[indices[0].point],
-            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-            controlPoint2: easingIns[indices[0].easingIn],
-          });
+          const pointIndex = indices[0];
+          const lastPointIndex = indices[indices.length - 1];
+          const point = points[pointIndex.point];
+          const lastPoint = points[lastPointIndex.point];
+          const control1 = easingOuts[lastPointIndex.easingOut];
+          const control2 = easingIns[pointIndex.easingIn];
 
-          this.graphicsPath.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
-
-          for (const curveValue of this.curveValues) {
-            const point = curveValue.point;
-            const control1 = curveValue.controlPoint1;
-            const control2 = curveValue.controlPoint2;
-
-            this.graphicsPath.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
-          }
+          this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
 
           if (shape.close) {
             this.graphicsPath.closePath();
@@ -567,11 +549,11 @@ void main() {
       }
     }
 
-    const material = this.material;
+    const maskMode = this.maskManager.getMaskMode(data as MaskProps);
+    const maskRef = this.maskManager.getRefValue();
 
-    //@ts-expect-error // TODO 新版蒙版上线后重构
-    material.stencilRef = data.renderer.mask !== undefined ? [data.renderer.mask, data.renderer.mask] : undefined;
-    //@ts-expect-error // TODO 新版蒙版上线后重构
-    setMaskMode(material, data.renderer.maskMode);
+    this.material.stencilRef = maskRef !== undefined ? [maskRef, maskRef] : undefined;
+    setMaskMode(this.material, maskMode);
   }
 }
+

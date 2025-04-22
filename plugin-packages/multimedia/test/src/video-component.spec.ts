@@ -8,8 +8,8 @@ interface VideoCompositionOptions {
   videos: spec.AssetBase[],
   start: number,
   options: spec.VideoContentOptions,
-  composisitonDuration?: number,
-  composisitonEndBehavior?: spec.EndBehavior,
+  compositionDuration?: number,
+  compositionEndBehavior?: spec.EndBehavior,
 }
 
 const { expect } = chai;
@@ -290,7 +290,7 @@ describe('videoComponent ', function () {
     const options: VideoCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      composisitonDuration: 20,
+      compositionDuration: 20,
       id,
       videos: [{
         id,
@@ -332,7 +332,7 @@ describe('videoComponent ', function () {
     const options: VideoCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      composisitonDuration: 20,
+      compositionDuration: 20,
       id,
       videos: [
         {
@@ -366,8 +366,8 @@ describe('videoComponent ', function () {
     const options: VideoCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      composisitonEndBehavior: spec.EndBehavior.destroy,
-      composisitonDuration: 20,
+      compositionEndBehavior: spec.EndBehavior.destroy,
+      compositionDuration: 20,
       id,
       videos: [
         {
@@ -401,8 +401,8 @@ describe('videoComponent ', function () {
     const options: VideoCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      composisitonEndBehavior: spec.EndBehavior.freeze,
-      composisitonDuration: 20,
+      compositionEndBehavior: spec.EndBehavior.freeze,
+      compositionDuration: 20,
       id,
       videos: [
         {
@@ -436,7 +436,7 @@ describe('videoComponent ', function () {
     const options: VideoCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.freeze,
-      composisitonDuration: 20,
+      compositionDuration: 20,
       id,
       videos: [
         {
@@ -514,9 +514,9 @@ function getVideoJson (options: VideoCompositionOptions) {
       {
         id: '5',
         name: 'videoTest',
-        duration: options.composisitonDuration || 10,
+        duration: options.compositionDuration || 10,
         startTime: 0,
-        endBehavior: options.composisitonEndBehavior || spec.EndBehavior.forward,
+        endBehavior: options.compositionEndBehavior || spec.EndBehavior.forward,
         previewSize: [750, 1624],
         items: [{ id: '147e873c89b34c6f96108ccc4d6e6f83' }],
         camera: { fov: 60, far: 40, near: 0.1, clipMode: 1, position: [0, 0, 8], rotation: [0, 0, 0] },
