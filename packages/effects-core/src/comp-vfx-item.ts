@@ -10,6 +10,7 @@ import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';
+import { effectsClass } from './decorators';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -24,6 +25,7 @@ export interface SceneBindingData {
 /**
  * @since 2.0.0
  */
+@effectsClass('CompositionComponent')
 export class CompositionComponent extends Behaviour {
   time = 0;
   startTime = 0;
