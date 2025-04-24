@@ -170,6 +170,8 @@ export function version32Migration (json: JSONScene): JSONScene {
 
         if (Number.isInteger(shape)) {
           shapeData = json.shapes[shape as number];
+        } else {
+          shapeData = shape;
         }
 
         spriteComponent.renderer.shape = shapeData;
