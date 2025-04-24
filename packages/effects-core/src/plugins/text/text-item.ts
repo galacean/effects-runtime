@@ -113,7 +113,7 @@ export class TextComponent extends BaseRenderComponent {
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
 
-    // 定义一个最基础的顶点着色器
+    // 修改材质着色器
     const vertexShader = `
       precision highp float;
 
@@ -143,7 +143,6 @@ export class TextComponent extends BaseRenderComponent {
 
     `;
 
-    // 定义片段着色器，支持IDMap和索引解码
     const fragmentShader = `
       precision highp float;
 
@@ -180,7 +179,7 @@ export class TextComponent extends BaseRenderComponent {
         gl_FragColor = color;
         
         // 如果需要调试查看索引编码，可以取消下面的注释
-        gl_FragColor = vec4(vec3(normalizedIndex), 1.0);
+        // gl_FragColor = vec4(vec3(normalizedIndex), 1.0);
       }
     `;
 
@@ -203,7 +202,7 @@ export class TextComponent extends BaseRenderComponent {
     // OVERRIDE by mixins
   }
 
-  // // 添加销毁方法
+  // TODO // 添加销毁方法
   // override dispose () {
   //   super.dispose();
 
@@ -452,7 +451,6 @@ export class TextComponentBase {
     return [r + m, g + m, b + m];
   }
 
-  // 修改为protected访问级别，以便在子类中访问
   private getLineCount (text: string, init: boolean) {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
@@ -824,6 +822,7 @@ export class TextComponentBase {
 
     this.isDirty = false;
 
+    // TODO
     // 先为正常文本创建纹理，然后再生成 ID Map
 
     // // 保存当前图像状态
