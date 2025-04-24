@@ -315,7 +315,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
     let shapeGeometry: GeometryFromShape | undefined = undefined;
 
-    if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
+    if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
       shapeGeometry = getGeometryByShape(shapeData, split);
     }
     //-------------------------------------------------------------------------
