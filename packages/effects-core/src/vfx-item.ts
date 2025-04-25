@@ -82,7 +82,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   @serialize()
   components: Component[] = [];
-  rendererComponents: RendererComponent[] = [];
 
   /**
    * 元素是否激活
@@ -241,8 +240,10 @@ export class VFXItem extends EffectsObject implements Disposable {
   set renderOrder (value: number) {
     if (this.listIndex !== value) {
       this.listIndex = value;
-      for (const rendererComponent of this.rendererComponents) {
-        rendererComponent.priority = value;
+      for (const component of this.components) {
+        if (component instanceof RendererComponent) {
+          component.priority = value;
+        }
       }
     }
   }
@@ -689,18 +690,14 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    this.rendererComponents.length = 0;
+    // this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      if (component instanceof RendererComponent) {
-        this.rendererComponents.push(component);
-      }
       // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
       if (component instanceof ParticleSystem) {
         if (!this.components.includes(component.renderer)) {
           this.components.push(component.renderer);
         }
-        this.rendererComponents.push(component.renderer);
       }
     }
 

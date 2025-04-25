@@ -1,13 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../decorators';
-import { Behaviour } from './component';
+import { Component } from './component';
 import type { Engine } from '../engine';
 
 /**
  * @since 2.1.0
  */
 @effectsClass(spec.DataType.PostProcessVolume)
-export class PostProcessVolume extends Behaviour {
+export class PostProcessVolume extends Component {
 
   @serialize()
   bloom: spec.Bloom;

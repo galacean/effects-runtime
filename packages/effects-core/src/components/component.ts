@@ -172,6 +172,7 @@ export abstract class Component extends EffectsObject {
 
 /**
  * @since 2.0.0
+ * @deprecated 2.4.0 Please use Component instead
  */
 export abstract class Behaviour extends Component {
 

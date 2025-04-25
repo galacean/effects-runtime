@@ -1,8 +1,6 @@
 import { serialize } from '../decorators';
 import type { Material } from '../material';
 import type { Renderer } from '../render';
-import { removeItem } from '../utils';
-import type { VFXItem } from '../vfx-item';
 import { Component } from './component';
 
 /**
@@ -37,31 +35,11 @@ export class RendererComponent extends Component {
 
   render (renderer: Renderer): void { }
 
-  override setVFXItem (item: VFXItem): void {
-    super.setVFXItem(item);
-    this.item.rendererComponents.push(this);
-  }
-
   override onEnable (): void {
     this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
   }
 
   override onDisable (): void {
     this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
-  }
-
-  override fromData (data: unknown): void {
-    super.fromData(data);
-  }
-
-  override toData (): void {
-    super.toData();
-  }
-
-  override dispose (): void {
-    if (this.item) {
-      removeItem(this.item.rendererComponents, this);
-    }
-    super.dispose();
   }
 }
