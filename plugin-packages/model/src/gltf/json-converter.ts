@@ -1,5 +1,5 @@
 import {
-  spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glContext,
+  spec, generateGUID, Downloader, TextureSourceType, glContext,
   glType2VertexFormatType, isObject,
 } from '@galacean/effects';
 import type {
@@ -8,6 +8,10 @@ import type {
 import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
 import { PBRShaderGUID, UnlitShaderGUID, Color, Quaternion, Vector3 } from '../runtime';
 import type { ModelTreeContent } from '../index';
+import { getStandardJSONFromV0, version22Migration, version31Migration, version30Migration, version21Migration, version24Migration } from '@galacean/effects';
+
+const v0 = /^(\d+)\.(\d+)\.(\d+)(-(\w+)\.\d+)?$/;
+const standardVersion = /^(\d+)\.(\d+)$/;
 
 export class JSONConverter {
   newScene: spec.JSONScene;
@@ -39,7 +43,7 @@ export class JSONConverter {
       }
     });
 
-    const oldScene = getStandardJSON(sceneJSON);
+    const oldScene = this.getStandardJSON(sceneJSON);
     const oldBinUrls = oldScene.bins ?? [];
     const binFiles: ArrayBuffer[] = [];
 
@@ -95,6 +99,50 @@ export class JSONConverter {
     });
 
     newScene.images = newImages;
+  }
+
+  getStandardJSON (json: any): spec.JSONScene {
+    if (!json || typeof json !== 'object') {
+      throw new Error('Invalid input: Expected a JSON object.');
+    }
+
+    // 修正老版本数据中，meshItem 以及 lightItem 结束行为错误问题
+    version22Migration(json);
+
+    if (v0.test(json.version)) {
+      // reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
+
+      return version31Migration(version30Migration(version21Migration(getStandardJSONFromV0(json))));
+    }
+
+    // reverseParticle = false;
+
+    let vs = standardVersion.exec(json.version) || [];
+    let mainVersion = Number(vs[1]);
+    let minorVersion = Number(vs[2]);
+
+    if (mainVersion) {
+      if (mainVersion < 2 || (mainVersion === 2 && minorVersion < 4)) {
+        json = version24Migration(json);
+      }
+      if (mainVersion < 3) {
+        json = version30Migration(version21Migration(json));
+      }
+      // 版本号重新计算
+      vs = standardVersion.exec(json.version) || [];
+      mainVersion = Number(vs[1]);
+      minorVersion = Number(vs[2]);
+      // 3.x 版本格式转换
+      if (mainVersion < 4) {
+        if (minorVersion < 2) {
+          json = version31Migration(json);
+        }
+      }
+
+      return json;
+    }
+
+    throw new Error(`Invalid JSON version: ${json.version}.`);
   }
 
   async setTexture (newScene: spec.JSONScene, oldScene: spec.JSONScene) {

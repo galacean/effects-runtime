@@ -106,7 +106,9 @@ export class VideoComponent extends BaseRenderComponent {
 
     this.transparent = transparent;
     if (video) {
-      this.video = (video as unknown as Asset<HTMLVideoElement>).data;
+      const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
+
+      this.video = videoAsset.data;
       this.setPlaybackRate(playbackRate);
       this.setVolume(volume);
       this.setMuted(muted);

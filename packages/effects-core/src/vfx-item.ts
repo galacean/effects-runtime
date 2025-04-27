@@ -7,7 +7,7 @@ import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
 import { type Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { effectsClass, serialize } from './decorators';
+import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
@@ -78,10 +78,8 @@ export class VFXItem extends EffectsObject implements Disposable {
   _content?: VFXItemContent;
   type: spec.ItemType = spec.ItemType.base;
   props: spec.VFXItemData;
-  isDuringPlay = false;
-
-  @serialize()
   components: Component[] = [];
+  isDuringPlay = false;
 
   /**
    * 元素是否激活
@@ -690,13 +688,17 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    // this.rendererComponents.length = 0;
-    for (const component of this.components) {
-      component.item = this;
-      // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
-      if (component instanceof ParticleSystem) {
-        if (!this.components.includes(component.renderer)) {
-          this.components.push(component.renderer);
+    if (data.components) {
+      this.components.length = 0;
+      for (const componentPath of data.components) {
+        const component = this.engine.findObject<Component>(componentPath);
+
+        this.components.push(component);
+        // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
+        if (component instanceof ParticleSystem) {
+          if (!this.components.includes(component.renderer)) {
+            this.components.push(component.renderer);
+          }
         }
       }
     }
@@ -792,7 +794,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     const componentPaths = props.components as spec.DataPath[];
 
     for (const componentPath of componentPaths) {
-      const component = this.engine.assetLoader.loadGUID<Component>(componentPath.id);
+      const component = this.engine.findObject<Component>(componentPath);
 
       component.item = this;
       this.components.push(component);

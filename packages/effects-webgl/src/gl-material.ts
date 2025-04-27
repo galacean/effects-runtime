@@ -592,8 +592,10 @@ export class GLMaterial extends Material {
     for (name in propertiesData.textures) {
       const textureProperties = propertiesData.textures[name];
 
+      const texture = this.engine.findObject<Texture>(textureProperties.texture);
+
       // TODO 纹理通过 id 加入场景数据
-      this.setTexture(name, textureProperties.texture as Texture);
+      this.setTexture(name, texture);
       const offset = textureProperties.offset;
       const scale = textureProperties.scale;
 
@@ -603,7 +605,7 @@ export class GLMaterial extends Material {
     }
 
     if (data.shader) {
-      this.shader = data.shader as unknown as Shader;
+      this.shader = this.engine.findObject(data.shader);
       this.shaderSource = this.shader.shaderData;
     }
     this.stringTags = data.stringTags ?? {};

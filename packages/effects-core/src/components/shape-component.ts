@@ -549,6 +549,11 @@ void main() {
       }
     }
 
+    const maskProps = (data as MaskProps).mask;
+
+    if (maskProps && maskProps.ref) {
+      maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
+    }
     const maskMode = this.maskManager.getMaskMode(data as MaskProps);
     const maskRef = this.maskManager.getRefValue();
 

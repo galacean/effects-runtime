@@ -1,5 +1,5 @@
 import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { Player, Texture, spec } from '@galacean/effects';
+import { Asset, Player, Texture, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { checkAutoplayPermission, VideoComponent } from '@galacean/effects-plugin-multimedia';
 
@@ -41,12 +41,14 @@ addButton?.addEventListener('click', async () => {
 
     item.composition?.textures.push(texture);
     videoComponent.item = item;
+    const videoAsset = new Asset(item.engine);
+
+    videoAsset.data = (texture.source as Texture2DSourceOptionsVideo).video;
+
     videoComponent.fromData({
       options: {
-        video: {
-          //@ts-expect-error
-          data: (texture.source as Texture2DSourceOptionsVideo).video,
-        },
+        //@ts-expect-error
+        video:videoAsset,
       },
       renderer: {
         texture,

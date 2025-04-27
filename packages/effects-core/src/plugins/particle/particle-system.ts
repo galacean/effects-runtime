@@ -1028,7 +1028,7 @@ export class ParticleSystem extends Component implements Maskable {
       mask: maskProps.maskRef,
       maskMode: maskProps.maskMode,
       forceTarget,
-      diffuse: renderer.texture,
+      diffuse:renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
       anchor,
     };
@@ -1110,7 +1110,7 @@ export class ParticleSystem extends Component implements Maskable {
         maxTrailCount: options.maxCount,
         pointCountPerTrail: Math.round(trails.maxPointPerTrail) || 32,
         blending: trails.blending,
-        texture: trails.texture,
+        texture: trails.texture ? this.engine.findObject(trails.texture) : undefined,
         opacityOverLifetime: createValueGetter(trails.opacityOverLifetime || 1),
         widthOverTrail: createValueGetter(trails.widthOverTrail || 1),
         // order: vfxItem.listIndex + (trails.orderOffset || 0),
@@ -1155,8 +1155,10 @@ export class ParticleSystem extends Component implements Maskable {
     if (data.mask) {
       const { mode, ref } = data.mask;
 
+      const refComponent = this.engine.findObject<Maskable>((ref as unknown as spec.DataPath));
+
       maskMode = mode;
-      maskRef = ref.maskManager.getRefValue();
+      maskRef = refComponent.maskManager.getRefValue();
     }
 
     return {

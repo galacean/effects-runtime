@@ -308,7 +308,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const componentPaths = sourceContent.components as spec.DataPath[];
 
     for (const componentPath of componentPaths) {
-      const component = this.getEngine().assetLoader.loadGUID<Component>(componentPath.id);
+      const component = this.getEngine().findObject<Component>(componentPath);
 
       this.rootItem.components.push(component);
       component.item = this.rootItem;

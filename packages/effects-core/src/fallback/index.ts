@@ -15,6 +15,7 @@ import { getStandardNullContent, getStandardSpriteContent } from './sprite';
 import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
 
 export * from './utils';
+export * from './migration';
 
 const v0 = /^(\d+)\.(\d+)\.(\d+)(-(\w+)\.\d+)?$/;
 const standardVersion = /^(\d+)\.(\d+)$/;
@@ -69,7 +70,7 @@ export function getStandardJSON (json: any): JSONScene {
 
 let currentVersion: JSONSceneVersion = JSONSceneVersion['1_0'];
 
-function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
+export function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
   currentVersion = JSONSceneVersion['1_0'];
   const plugins = json.plugins || [];
 
