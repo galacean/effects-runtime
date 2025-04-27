@@ -709,23 +709,23 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   override toData (): void {
-    this.taggedProperties.id = this.guid;
-    this.taggedProperties.transform = this.transform.toData();
-    this.taggedProperties.dataType = spec.DataType.VFXItemData;
+    this.defination.id = this.guid;
+    this.defination.transform = this.transform.toData();
+    this.defination.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {
-      this.taggedProperties.parentId = this.parent?.guid;
+      this.defination.parentId = this.parent?.guid;
     }
 
     // TODO 统一 sprite 等其他组件的序列化逻辑
-    if (!this.taggedProperties.components) {
-      this.taggedProperties.components = [];
+    if (!this.defination.components) {
+      this.defination.components = [];
       for (const component of this.components) {
         if (component instanceof EffectComponent) {
-          this.taggedProperties.components.push(component);
+          this.defination.components.push(component);
         }
       }
     }
-    this.taggedProperties.content = {};
+    this.defination.content = {};
   }
 
   translateByPixel (x: number, y: number) {

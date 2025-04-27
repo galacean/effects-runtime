@@ -48,8 +48,8 @@ export class SerializationHelper {
     }
 
     // TODO 待移除 tagggedProperties 为没有装饰器的临时方案
-    for (const key of Object.keys(effectsObject.taggedProperties)) {
-      const value = effectsObject.taggedProperties[key];
+    for (const key of Object.keys(effectsObject.defination)) {
+      const value = effectsObject.defination[key];
 
       if (
         typeof value === 'number' ||
@@ -82,18 +82,10 @@ export class SerializationHelper {
     serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {
-    const taggedProperties = effectsObject.taggedProperties;
+    effectsObject.defination = serializedData;
+
     const serializedProperties = getMergedStore(effectsObject);
     const engine = effectsObject.engine;
-
-    for (const key of Object.keys(serializedData)) {
-      if (serializedProperties && serializedProperties[key]) {
-        continue;
-      }
-      const value = serializedData[key as keyof spec.EffectsObjectData];
-
-      taggedProperties[key] = SerializationHelper.deserializeProperty(value, engine, 0, undefined, false);
-    }
 
     if (serializedProperties) {
       for (const key of Object.keys(serializedProperties)) {
@@ -106,11 +98,10 @@ export class SerializationHelper {
         const propertyType = serializedProperties[key].type;
 
         // FIXME: taggedProperties 为 readonly，这里存在强制赋值
-        // @ts-expect-error
         effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0, propertyType);
       }
     }
-    effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
+    effectsObject.fromData(effectsObject.defination as spec.EffectsObjectData);
   }
 
   static checkTypedArray (obj: unknown): boolean {
