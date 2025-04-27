@@ -2,7 +2,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { Behaviour } from './components';
+import { Component } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType } from './plugins';
@@ -10,6 +10,7 @@ import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';
+import { effectsClass } from './decorators';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -24,7 +25,8 @@ export interface SceneBindingData {
 /**
  * @since 2.0.0
  */
-export class CompositionComponent extends Behaviour {
+@effectsClass('CompositionComponent')
+export class CompositionComponent extends Component {
   time = 0;
   startTime = 0;
   items: VFXItem[] = [];  // 场景的所有元素

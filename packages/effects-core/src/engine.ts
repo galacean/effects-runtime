@@ -11,6 +11,7 @@ import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
+import { passRenderLevel } from './pass-render-level';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
@@ -104,6 +105,10 @@ export class Engine implements Disposable {
       this.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
     }
     for (const vfxItemData of items) {
+      if (!passRenderLevel(vfxItemData.renderLevel, scene.renderLevel)) {
+        vfxItemData.components = [];
+        vfxItemData.type = spec.ItemType.null;
+      }
       this.addEffectsObjectData(vfxItemData);
     }
     for (const materialData of materials) {

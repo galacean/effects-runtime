@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import { filterItemsByRenderLevel, type Composition } from './composition';
+import { type Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
@@ -22,7 +22,6 @@ import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
 import { CompositionComponent } from './comp-vfx-item';
-import { SerializationHelper } from './serialization-helper';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: spec.Item, composition: Composition) => VFXItem;
@@ -83,7 +82,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   @serialize()
   components: Component[] = [];
-  rendererComponents: RendererComponent[] = [];
 
   /**
    * 元素是否激活
@@ -242,8 +240,10 @@ export class VFXItem extends EffectsObject implements Disposable {
   set renderOrder (value: number) {
     if (this.listIndex !== value) {
       this.listIndex = value;
-      for (const rendererComponent of this.rendererComponents) {
-        rendererComponent.priority = value;
+      for (const component of this.components) {
+        if (component instanceof RendererComponent) {
+          component.priority = value;
+        }
       }
     }
   }
@@ -690,18 +690,14 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    this.rendererComponents.length = 0;
+    // this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      if (component instanceof RendererComponent) {
-        this.rendererComponents.push(component);
-      }
       // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
       if (component instanceof ParticleSystem) {
         if (!this.components.includes(component.renderer)) {
           this.components.push(component.renderer);
         }
-        this.rendererComponents.push(component.renderer);
       }
     }
 
@@ -791,14 +787,24 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (!props) {
       throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
     }
-    const compositionComponent = this.addComponent(CompositionComponent);
 
-    filterItemsByRenderLevel(props as unknown as spec.CompositionData, this.engine, this.engine.renderLevel);
-    SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
-    for (const vfxItem of compositionComponent.items) {
-      vfxItem.setInstanceId(generateGUID());
-      for (const component of vfxItem.components) {
-        component.setInstanceId(generateGUID());
+    //@ts-expect-error TODO update spec.
+    const componentPaths = props.components as spec.DataPath[];
+
+    for (const componentPath of componentPaths) {
+      const component = this.engine.assetLoader.loadGUID<Component>(componentPath.id);
+
+      component.item = this;
+      this.components.push(component);
+      component.setInstanceId(generateGUID());
+
+      if (component instanceof CompositionComponent) {
+        for (const vfxItem of component.items) {
+          vfxItem.setInstanceId(generateGUID());
+          for (const component of vfxItem.components) {
+            component.setInstanceId(generateGUID());
+          }
+        }
       }
     }
   }

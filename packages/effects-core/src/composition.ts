@@ -9,7 +9,7 @@ import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene, SceneRenderLevel } from './scene';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction } from './texture';
 import type { Disposable, LostHandler } from './utils';
@@ -17,12 +17,9 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components';
+import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { SerializationHelper } from './serialization-helper';
 import { PlayState } from './plugins/cal/playable-graph';
-import type { Engine } from './engine';
-import { passRenderLevel } from './pass-render-level';
 
 /**
  * 合成统计信息
@@ -306,10 +303,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
-    // Create rootCompositionComponent
-    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
-    filterItemsByRenderLevel(sourceContent, this.getEngine(), scene.renderLevel);
-    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
+    // Create rootItem components
+    //@ts-expect-error TODO update spec.
+    const componentPaths = sourceContent.components as spec.DataPath[];
+
+    for (const componentPath of componentPaths) {
+      const component = this.getEngine().assetLoader.loadGUID<Component>(componentPath.id);
+
+      this.rootItem.components.push(component);
+      component.item = this.rootItem;
+    }
+    this.rootComposition = this.rootItem.getComponent(CompositionComponent);
 
     this.width = width;
     this.height = height;
@@ -1064,26 +1068,4 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.textureOffloaded = false;
     }
   }
-}
-
-export function filterItemsByRenderLevel (composition: spec.CompositionData, engine: Engine, renderLevel?: SceneRenderLevel) {
-  const items: spec.DataPath[] = [];
-
-  for (const itemDataPath of composition.items) {
-    const itemProps = engine.findEffectsObjectData(itemDataPath.id) as spec.VFXItemData;
-
-    if (passRenderLevel(itemProps.renderLevel, renderLevel)) {
-      items.push(itemDataPath);
-    } else {
-      // 非预合成元素未达到渲染等级的转化为空节点。
-      // 预合成元素有根据 item type 的子元素加载判断，没法保留空节点，这边先整体过滤掉。
-      if (itemProps.type !== spec.ItemType.composition) {
-        itemProps.components = [];
-        items.push(itemDataPath);
-      }
-    }
-  }
-  composition.items = items;
-
-  return composition;
 }
