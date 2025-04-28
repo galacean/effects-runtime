@@ -105,7 +105,7 @@ export class VideoComponent extends BaseRenderComponent {
     } = options;
 
     this.transparent = transparent;
-    if (video) {
+    if (video && video.id) {
       const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
 
       this.video = videoAsset.data;
