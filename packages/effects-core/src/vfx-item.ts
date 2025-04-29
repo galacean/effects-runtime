@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import { type Composition } from './composition';
+import { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
@@ -832,6 +832,8 @@ export class VFXItem extends EffectsObject implements Disposable {
         }
       }
     }
+
+    Composition.buildItemTree(this);
   }
 
   private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
