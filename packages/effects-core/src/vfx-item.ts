@@ -580,6 +580,25 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
+   * 复制 VFXItem，返回一个新的 VFXItem
+   * @returns 复制的新 VFXItem
+   */
+  duplicate () {
+    // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
+    this.resetGUID();
+    const newItem = this.engine.findObject<VFXItem>({ id:this.defination.id });
+
+    newItem.resetGUID();
+    this.resetGUID(true);
+
+    if (this.composition) {
+      newItem.setParent(this.composition.rootItem);
+    }
+
+    return newItem;
+  }
+
+  /**
    * @internal
    */
   beginPlay () {
@@ -808,6 +827,27 @@ export class VFXItem extends EffectsObject implements Disposable {
           }
         }
       }
+    }
+  }
+
+  private resetGUID (useOriginalID = false) {
+    let itemGUID = this.defination.id;
+
+    if (!useOriginalID) {
+      itemGUID = generateGUID();
+    }
+    this.setInstanceId(itemGUID);
+    for (const component of this.components) {
+      let componentGUID = component.defination.id;
+
+      if (!useOriginalID) {
+        componentGUID = generateGUID();
+      }
+      component.setInstanceId(componentGUID);
+    }
+
+    for (const child of this.children) {
+      child.resetGUID(useOriginalID);
     }
   }
 }
