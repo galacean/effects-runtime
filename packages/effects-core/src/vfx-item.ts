@@ -46,7 +46,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素动画的当前时间
    */
-  time = 0;
+  time = -1;
   /**
    * 元素动画的持续时间
    */
