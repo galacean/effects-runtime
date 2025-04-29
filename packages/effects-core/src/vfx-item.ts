@@ -581,6 +581,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   /**
    * 复制 VFXItem，返回一个新的 VFXItem
+   * @since 2.4.0
    * @returns 复制的新 VFXItem
    */
   duplicate () {
