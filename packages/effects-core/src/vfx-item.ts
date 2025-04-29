@@ -584,12 +584,15 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @returns 复制的新 VFXItem
    */
   duplicate () {
+    const previousObjectIDMap: Map<EffectsObject, string> = new Map();
+
+    this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
     this.resetGUID();
     const newItem = this.engine.findObject<VFXItem>({ id:this.defination.id });
 
     newItem.resetGUID();
-    // this.resetGUID(true);
+    this.resetGUID(previousObjectIDMap);
 
     if (this.composition) {
       newItem.setParent(this.composition.rootItem);
@@ -830,24 +833,29 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
-  private resetGUID (useOriginalID = false) {
-    let itemGUID = this.defination.id;
+  private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
+    const itemGUID = previousObjectIDMap?.get(this) ?? generateGUID();
 
-    if (!useOriginalID) {
-      itemGUID = generateGUID();
-    }
     this.setInstanceId(itemGUID);
     for (const component of this.components) {
-      let componentGUID = component.defination.id;
+      const componentGUID = previousObjectIDMap?.get(component) ?? generateGUID();
 
-      if (!useOriginalID) {
-        componentGUID = generateGUID();
-      }
       component.setInstanceId(componentGUID);
     }
 
     for (const child of this.children) {
-      child.resetGUID(useOriginalID);
+      child.resetGUID(previousObjectIDMap);
+    }
+  }
+
+  private gatherPreviousObjectID (previousObjectIDMap: Map<EffectsObject, string>) {
+    previousObjectIDMap.set(this, this.getInstanceId());
+    for (const component of this.components) {
+      previousObjectIDMap.set(component, component.getInstanceId());
+    }
+
+    for (const child of this.children) {
+      child.gatherPreviousObjectID(previousObjectIDMap);
     }
   }
 }
