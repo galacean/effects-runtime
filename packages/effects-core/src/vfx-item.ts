@@ -589,7 +589,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     const newItem = this.engine.findObject<VFXItem>({ id:this.defination.id });
 
     newItem.resetGUID();
-    this.resetGUID(true);
+    // this.resetGUID(true);
 
     if (this.composition) {
       newItem.setParent(this.composition.rootItem);
