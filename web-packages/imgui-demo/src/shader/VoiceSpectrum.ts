@@ -36,7 +36,6 @@ const float GRADIENT_POWER = 1.5;         // 渐变指数
 const float GRADIENT_CENTER_THRESHOLD = 0.2; // 渐变中心区域阈值
 
 // 常量定义
-const float EDGE_SMOOTHING = 0.0007;      // 边缘平滑参数，越小越锐利
 const float BAR_COUNT = 50.0;            // 柱子的数量
 const float BAR_WIDTH_SCALE = 0.57;       // 柱子宽度占用可用空间的比例
 const float AUDIO_THRESHOLD = 0.02;      // 音频强度的阈值
@@ -64,8 +63,8 @@ float drawCapsule(vec2 position, vec2 center, vec2 size) {
         vec2 delta = aspectCorrectedPos - aspectCorrectedCenter;
         delta.x *= _AspectRatio;
         float dist = length(delta) / _AspectRatio;
-        // 抗锯齿处理
-        return 1.0 - smoothstep(halfWidth - EDGE_SMOOTHING, halfWidth + EDGE_SMOOTHING, dist);
+        // 抗锯齿处理 - 返回一个精确的0到1之间的值，而不是平滑过渡
+        return step(dist, halfWidth);
     }
     
     // 计算水平距离，考虑宽高比
@@ -91,8 +90,8 @@ float drawCapsule(vec2 position, vec2 center, vec2 size) {
     delta.x *= _AspectRatio;
     float dist = length(delta) / _AspectRatio;
     
-    // 抗锯齿处理
-    return 1.0 - smoothstep(halfWidth - EDGE_SMOOTHING, halfWidth + EDGE_SMOOTHING, dist);
+    // 使用step而不是smoothstep，确保边缘清晰
+    return step(dist, halfWidth);
 }
 
 // 计算颜色渐变：从边缘到中心的三段式渐变
@@ -152,6 +151,7 @@ float calculateBloomIntensity(float distToCenter, float audioSample, vec3 color)
 void main() {
     vec2 uv = _uv.xy;
     vec3 col = vec3(0.0);
+    float alpha = 0.0; // 初始化alpha值为0
     
     // 计算当前像素属于哪个柱子
     float barIndex = floor(uv.x * BAR_COUNT);
@@ -172,14 +172,19 @@ void main() {
         // 计算当前柱子的高度（包含振动效果）
         float barHeight = calculateBarHeight(fSample, barIndex);
         
+        float shapeValue;
         if (barHeight < AUDIO_THRESHOLD) {
             // 音频强度小于阈值时，绘制纯圆形
-            float circle = drawCapsule(uv, vec2(barX, 0.5), vec2(halfBarWidth, 0.0));
-            col = barColor * circle;
+            shapeValue = drawCapsule(uv, vec2(barX, 0.5), vec2(halfBarWidth, 0.0));
         } else {
             // 音频强度大于阈值时，绘制胶囊形状
-            float rect = drawCapsule(uv, vec2(barX, 0.5), vec2(halfBarWidth, barHeight));
-            col = barColor * rect;
+            shapeValue = drawCapsule(uv, vec2(barX, 0.5), vec2(halfBarWidth, barHeight));
+        }
+        
+        // 只在柱子内部设置颜色和alpha，完全不透明
+        if (shapeValue > 0.5) {
+            col = barColor;
+            alpha = 1.0; // 柱子内部完全不透明
         }
     }
 
@@ -197,10 +202,20 @@ void main() {
     // 计算Bloom强度
     float bloomIntensity = calculateBloomIntensity(distToCenter, nearestBarSample, col);
 
-
-    // 平滑混合bloom效果
-    col += barColor * bloomIntensity;
+    // Bloom效果使用白色，强度通过alpha控制
+    vec3 finalColor;
+    float finalAlpha;
     
-    gl_FragColor = vec4(col, 1.0);
+    // 如果像素在柱子上（alpha > 0.0），保持原有颜色和alpha
+    if (alpha > 0.0) {
+        finalColor = col;
+        finalAlpha = alpha;
+    } else {
+        // 对于非柱子区域，如果有bloom效果，使用白色，通过alpha控制强度
+        finalColor = vec3(1.0, 1.0, 1.0); // 白色
+        finalAlpha = bloomIntensity; // 使用bloom强度直接控制透明度
+    }
+    
+    gl_FragColor = vec4(finalColor, finalAlpha);
 }
 `;
