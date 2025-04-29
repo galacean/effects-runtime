@@ -136,7 +136,7 @@ export class InteractComponent extends RendererComponent {
     this.duringPlay = true;
 
     // trigger messageBegin when item enter
-    if (this.item.time > 0 && this.item.time - dt / 1000 <= 0) {
+    if (this.item.time >= 0 && this.item.time - dt / 1000 < 0) {
       const options = this.item.props.content.options as spec.DragInteractOption;
 
       this.item.composition?.addInteractiveItem(this.item, options.type);
