@@ -1,4 +1,4 @@
-import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
+import type { SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
   BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer, Texture,
@@ -149,7 +149,6 @@ export class SpineComponent extends RendererComponent {
   }
 
   override onStart () {
-    super.onStart();
     if (!this.cache) {
       return;
     }
@@ -173,7 +172,9 @@ export class SpineComponent extends RendererComponent {
 
     this.state.update(deltaTime);
     this.state.apply(this.skeleton);
+    this.skeleton.update(deltaTime);
     this.skeleton.updateWorldTransform(Physics.update);
+
     if (this.content) {
       this.content.update();
     }
@@ -184,7 +185,7 @@ export class SpineComponent extends RendererComponent {
   }
 
   override onDestroy () {
-    if (this.item.endBehavior === spec.EndBehavior.destroy && this.state) {
+    if (this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }
@@ -301,7 +302,7 @@ export class SpineComponent extends RendererComponent {
     if (!this.animationList.length) {
       throw new Error('animationList is empty, check your spine file.');
     }
-    const loop = this.item.endBehavior === spec.EndBehavior.restart;
+    const loop = true;
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
@@ -347,19 +348,7 @@ export class SpineComponent extends RendererComponent {
     }
     this.state.setEmptyAnimation(0);
     for (const animation of animationList) {
-      const trackEntry = this.state.addAnimation(0, animation, false);
-
-      if (this.item.endBehavior === spec.EndBehavior.restart) {
-        const listener: AnimationStateListener = {
-          end: () => {
-            const trackEntry = this.state.addAnimation(0, animation, false);
-
-            trackEntry.listener = listener;
-          },
-        };
-
-        trackEntry.listener = listener;
-      }
+      this.state.addAnimation(0, animation, false);
     }
     this.activeAnimation = animationList;
     if (speed !== undefined && !isNaN(speed)) {
