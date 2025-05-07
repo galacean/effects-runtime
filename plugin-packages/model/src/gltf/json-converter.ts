@@ -1,7 +1,6 @@
 import {
-  spec, generateGUID, Downloader, TextureSourceType, glContext,
+  spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glContext,
   glType2VertexFormatType, isObject,
-  getStandardJSON,
 } from '@galacean/effects';
 import type {
   Engine, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,

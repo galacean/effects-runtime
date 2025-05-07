@@ -36,7 +36,6 @@ export class AudioComponent extends RendererComponent {
 
     const { options } = data;
     const { playbackRate = 1, muted = false, volume = 1 } = options;
-
     let audio: AudioBuffer | HTMLAudioElement | undefined = undefined;
 
     if (options.audio.id) {

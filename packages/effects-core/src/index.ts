@@ -25,7 +25,8 @@ export * from './effects-object';
 export * from './engine';
 export {
   ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,
-  getStandardJSON, normalizeColor } from './fallback';
+  getStandardJSON, normalizeColor,
+} from './fallback';
 export * from './gl';
 export * from './material';
 export * from './math';

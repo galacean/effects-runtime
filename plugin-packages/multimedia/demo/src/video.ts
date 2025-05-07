@@ -48,7 +48,7 @@ addButton?.addEventListener('click', async () => {
     videoComponent.fromData({
       options: {
         //@ts-expect-error
-        video:videoAsset,
+        video: videoAsset,
       },
       renderer: {
         texture,

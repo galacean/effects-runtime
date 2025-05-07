@@ -1028,7 +1028,7 @@ export class ParticleSystem extends Component implements Maskable {
       mask: maskProps.maskRef,
       maskMode: maskProps.maskMode,
       forceTarget,
-      diffuse:renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
+      diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
       anchor,
     };
@@ -1154,7 +1154,6 @@ export class ParticleSystem extends Component implements Maskable {
 
     if (data.mask) {
       const { mode, ref } = data.mask;
-
       const refComponent = this.engine.findObject<Maskable>((ref as unknown as spec.DataPath));
 
       maskMode = mode;

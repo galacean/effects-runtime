@@ -590,7 +590,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
     this.resetGUID();
-    const newItem = this.engine.findObject<VFXItem>({ id:this.defination.id });
+    const newItem = this.engine.findObject<VFXItem>({ id: this.defination.id });
 
     newItem.resetGUID();
     this.resetGUID(previousObjectIDMap);
