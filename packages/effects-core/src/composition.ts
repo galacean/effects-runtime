@@ -257,6 +257,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private handleItemMessage: (message: MessageItem) => void;
 
   /**
+   * @internal
    * 构建父子树，同时保存到 itemCacheMap 中便于查找
    */
   static buildItemTree (compVFXItem: VFXItem) {

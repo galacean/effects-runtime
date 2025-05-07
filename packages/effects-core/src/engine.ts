@@ -87,6 +87,9 @@ export class Engine implements Disposable {
     this.objectInstance[effectsObject.getInstanceId()] = effectsObject;
   }
 
+  /**
+   * @internal
+   */
   findObject<T> (guid: spec.DataPath): T {
     // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
     if (!(isObject(guid) && guid.constructor === Object)) {
