@@ -169,9 +169,10 @@ export class SpineComponent extends RendererComponent {
     if (!(this.state && this.skeleton)) {
       return;
     }
-    this.state.update(dt / 1000);
+    const deltaTime = this.item.time - (this.state.tracks[0]?.trackTime ?? 0);
+
+    this.state.update(deltaTime);
     this.state.apply(this.skeleton);
-    this.skeleton.update(dt / 1000);
     this.skeleton.updateWorldTransform(Physics.update);
     if (this.content) {
       this.content.update();
