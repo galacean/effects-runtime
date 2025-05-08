@@ -605,8 +605,12 @@ export class GLMaterial extends Material {
     }
 
     if (data.shader) {
-      this.shader = this.engine.findObject(data.shader);
-      this.shaderSource = this.shader.shaderData;
+      const shader = this.engine.findObject<Shader>(data.shader);
+
+      if (shader) {
+        this.shader = shader;
+        this.shaderSource = shader.shaderData;
+      }
     }
     this.stringTags = data.stringTags ?? {};
     this.initialized = false;
