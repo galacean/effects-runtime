@@ -178,8 +178,6 @@ export function version32Migration (json: JSONScene): JSONScene {
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
-    composition.items = undefined;
-    //@ts-expect-error
     composition.timelineAsset = undefined;
     //@ts-expect-error
     composition.sceneBindings = undefined;
