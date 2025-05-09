@@ -8,6 +8,13 @@
 
 ---
 
+## 2.3.4
+
+`2025-05-09`
+
+- Fix: spine 无法循环最后一个动作。[#965](https://github.com/galacean/effects-runtime/pull/965) @RGCHN
+- Test: add shape k frame property unit test. [#939](https://github.com/galacean/effects-runtime/pull/939) @wumaolinmaoan
+
 ## 2.3.3
 
 `2025-04-18`
