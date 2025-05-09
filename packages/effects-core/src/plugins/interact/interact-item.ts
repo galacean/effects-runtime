@@ -137,7 +137,6 @@ export class InteractComponent extends RendererComponent {
   override onUpdate (dt: number): void {
     this.duringPlay = true;
 
-    // debugger
     // trigger messageBegin when item enter
     if (this.item.time >= 0 && this.lastTime < 0) {
       const options = this.item.props.content.options as spec.DragInteractOption;
