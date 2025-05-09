@@ -220,9 +220,8 @@ export class SpineComponent extends RendererComponent implements Maskable {
       } else {
         this.setAnimation(activeAnimation[0], spineOptions.speed);
       }
-
     } else {
-      this.setAnimationList(activeAnimation, spineOptions.speed);
+      spineOptions.loopEnd ? this.setAnimationListLoopEnd(activeAnimation, spineOptions.speed) : this.setAnimationList(activeAnimation, spineOptions.speed);
     }
 
     this.cache = {
