@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-helper",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "description": "Galacean Effects runtime helper for the web",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
