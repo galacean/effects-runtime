@@ -47,8 +47,6 @@ export class InteractComponent extends RendererComponent {
   /** 是否响应点击和拖拽交互事件 */
   private _interactive = true;
 
-  private lastTime = -1;
-
   set interactive (enable: boolean) {
     this._interactive = enable;
     if (!enable) {
@@ -138,12 +136,11 @@ export class InteractComponent extends RendererComponent {
     this.duringPlay = true;
 
     // trigger messageBegin when item enter
-    if (this.item.time >= 0 && this.lastTime < 0) {
+    if (this.item.time > 0 && this.item.time - dt / 1000 <= 0) {
       const options = this.item.props.content.options as spec.DragInteractOption;
 
       this.item.composition?.addInteractiveItem(this.item, options.type);
     }
-    this.lastTime = this.item.time;
 
     this.previewContent?.updateMesh();
 
