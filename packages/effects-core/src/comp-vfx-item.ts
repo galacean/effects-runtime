@@ -10,7 +10,7 @@ import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';
-import { effectsClass } from './decorators';
+import { effectsClass, serialize } from './decorators';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -29,6 +29,7 @@ export interface SceneBindingData {
 export class CompositionComponent extends Component {
   time = 0;
   startTime = 0;
+  @serialize()
   items: VFXItem[] = [];  // 场景的所有元素
 
   /**
@@ -37,7 +38,9 @@ export class CompositionComponent extends Component {
   state: PlayState = PlayState.Playing;
 
   private reusable = false;
+  @serialize()
   private sceneBindings: SceneBinding[] = [];
+  @serialize()
   private timelineAsset: TimelineAsset;
   private timelinePlayable: TimelinePlayable;
   private graph: PlayableGraph = new PlayableGraph();
@@ -235,10 +238,7 @@ export class CompositionComponent extends Component {
     super.fromData(data);
     const compositionData = data as spec.CompositionData;
 
-    this.items = compositionData.items as VFXItem[];
     this.startTime = compositionData.startTime ?? 0;
-    this.sceneBindings = compositionData.sceneBindings as unknown as SceneBinding[];
-    this.timelineAsset = compositionData.timelineAsset as unknown as TimelineAsset;
   }
 
   private resolveBindings () {

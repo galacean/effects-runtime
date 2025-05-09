@@ -9,7 +9,7 @@ import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, logger, removeItem } from './utils';
+import { addItem, isObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 
@@ -33,7 +33,6 @@ export class Engine implements Disposable {
   gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
-  assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
 
   /**
@@ -52,6 +51,8 @@ export class Engine implements Disposable {
   protected geometries: Geometry[] = [];
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
+
+  private assetLoader: AssetLoader;
 
   /**
    *
@@ -86,8 +87,22 @@ export class Engine implements Disposable {
     this.objectInstance[effectsObject.getInstanceId()] = effectsObject;
   }
 
-  getInstance (id: string) {
-    return this.objectInstance[id];
+  /**
+   * @ignore
+   */
+  findObject<T> (guid: spec.DataPath): T {
+    // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
+    if (!(isObject(guid) && guid.constructor === Object)) {
+      return guid as T;
+    }
+
+    if (this.objectInstance[guid.id]) {
+      return this.objectInstance[guid.id] as T;
+    }
+
+    const result = this.assetLoader.loadGUID<T>(guid);
+
+    return result;
   }
 
   removeInstance (id: string) {
@@ -174,7 +189,7 @@ export class Engine implements Disposable {
         continue;
       }
       if (this.database) {
-        await this.assetLoader.loadGUIDAsync(itemData.id);
+        this.assetLoader.loadGUID(itemData);
       }
     }
   }

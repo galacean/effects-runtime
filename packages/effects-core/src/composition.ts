@@ -257,6 +257,33 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private handleItemMessage: (message: MessageItem) => void;
 
   /**
+   * @internal
+   * 构建父子树，同时保存到 itemCacheMap 中便于查找
+   */
+  static buildItemTree (compVFXItem: VFXItem) {
+    const itemMap = new Map<string, VFXItem>();
+    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
+
+    for (const item of contentItems) {
+      itemMap.set(item.id, item);
+    }
+
+    for (const item of contentItems) {
+      if (item.parentId === undefined) {
+        item.setParent(compVFXItem);
+      } else {
+        const parent = itemMap.get(item.parentId);
+
+        if (parent) {
+          item.setParent(parent);
+        } else {
+          throw new Error('The element references a non-existent element, please check the data.');
+        }
+      }
+    }
+  }
+
+  /**
    * Composition 构造函数
    * @param props - composition 的创建参数
    * @param scene
@@ -308,7 +335,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const componentPaths = sourceContent.components as spec.DataPath[];
 
     for (const componentPath of componentPaths) {
-      const component = this.getEngine().assetLoader.loadGUID<Component>(componentPath.id);
+      const component = this.getEngine().findObject<Component>(componentPath);
 
       this.rootItem.components.push(component);
       component.item = this.rootItem;
@@ -343,7 +370,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.createRenderFrame();
     this.rendererOptions = null;
 
-    this.buildItemTree(this.rootItem);
+    Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
@@ -649,42 +676,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  /**
-   * 构建父子树，同时保存到 itemCacheMap 中便于查找
-   */
-  private buildItemTree (compVFXItem: VFXItem) {
-    if (!compVFXItem.composition) {
-      return;
-    }
-
-    const itemMap = new Map<string, VFXItem>();
-    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
-
-    for (const item of contentItems) {
-      itemMap.set(item.id, item);
-    }
-
-    for (const item of contentItems) {
-      if (item.parentId === undefined) {
-        item.setParent(compVFXItem);
-      } else {
-        const parent = itemMap.get(item.parentId);
-
-        if (parent) {
-          item.setParent(parent);
-        } else {
-          throw new Error('The element references a non-existent element, please check the data.');
-        }
-      }
-    }
-
-    for (const item of contentItems) {
-      if (VFXItem.isComposition(item)) {
-        this.buildItemTree(item);
-      }
     }
   }
 

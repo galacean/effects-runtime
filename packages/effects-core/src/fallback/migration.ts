@@ -135,8 +135,12 @@ export function version32Migration (json: JSONScene): JSONScene {
 
   processContent(mainComp);
 
+  return json;
+}
+
+export function version33Migration (json: JSONScene): JSONScene {
   // 老 shape 数据兼容
-  for (const item of items) {
+  for (const item of json.items) {
     if (item.type === spec.ItemType.sprite) {
       const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
 
@@ -177,8 +181,6 @@ export function version32Migration (json: JSONScene): JSONScene {
       startTime: composition.startTime,
     } as unknown as spec.ComponentData;
 
-    //@ts-expect-error
-    composition.items = undefined;
     //@ts-expect-error
     composition.timelineAsset = undefined;
     //@ts-expect-error

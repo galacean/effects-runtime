@@ -5,9 +5,9 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import { type Composition } from './composition';
+import { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { effectsClass, serialize } from './decorators';
+import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
@@ -78,10 +78,8 @@ export class VFXItem extends EffectsObject implements Disposable {
   _content?: VFXItemContent;
   type: spec.ItemType = spec.ItemType.base;
   props: spec.VFXItemData;
-  isDuringPlay = false;
-
-  @serialize()
   components: Component[] = [];
+  isDuringPlay = false;
 
   /**
    * 元素是否激活
@@ -582,6 +580,29 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
+   * 复制 VFXItem，返回一个新的 VFXItem
+   * @since 2.4.0
+   * @returns 复制的新 VFXItem
+   */
+  duplicate () {
+    const previousObjectIDMap: Map<EffectsObject, string> = new Map();
+
+    this.gatherPreviousObjectID(previousObjectIDMap);
+    // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
+    this.resetGUID();
+    const newItem = this.engine.findObject<VFXItem>({ id: this.defination.id });
+
+    newItem.resetGUID();
+    this.resetGUID(previousObjectIDMap);
+
+    if (this.composition) {
+      newItem.setParent(this.composition.rootItem);
+    }
+
+    return newItem;
+  }
+
+  /**
    * @internal
    */
   beginPlay () {
@@ -690,13 +711,17 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    // this.rendererComponents.length = 0;
-    for (const component of this.components) {
-      component.item = this;
-      // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
-      if (component instanceof ParticleSystem) {
-        if (!this.components.includes(component.renderer)) {
-          this.components.push(component.renderer);
+    if (data.components) {
+      this.components.length = 0;
+      for (const componentPath of data.components) {
+        const component = this.engine.findObject<Component>(componentPath);
+
+        this.components.push(component);
+        // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
+        if (component instanceof ParticleSystem) {
+          if (!this.components.includes(component.renderer)) {
+            this.components.push(component.renderer);
+          }
         }
       }
     }
@@ -707,23 +732,23 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   override toData (): void {
-    this.taggedProperties.id = this.guid;
-    this.taggedProperties.transform = this.transform.toData();
-    this.taggedProperties.dataType = spec.DataType.VFXItemData;
+    this.defination.id = this.guid;
+    this.defination.transform = this.transform.toData();
+    this.defination.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {
-      this.taggedProperties.parentId = this.parent?.guid;
+      this.defination.parentId = this.parent?.guid;
     }
 
     // TODO 统一 sprite 等其他组件的序列化逻辑
-    if (!this.taggedProperties.components) {
-      this.taggedProperties.components = [];
+    if (!this.defination.components) {
+      this.defination.components = [];
       for (const component of this.components) {
         if (component instanceof EffectComponent) {
-          this.taggedProperties.components.push(component);
+          this.defination.components.push(component);
         }
       }
     }
-    this.taggedProperties.content = {};
+    this.defination.content = {};
   }
 
   translateByPixel (x: number, y: number) {
@@ -792,7 +817,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     const componentPaths = props.components as spec.DataPath[];
 
     for (const componentPath of componentPaths) {
-      const component = this.engine.assetLoader.loadGUID<Component>(componentPath.id);
+      const component = this.engine.findObject<Component>(componentPath);
 
       component.item = this;
       this.components.push(component);
@@ -806,6 +831,34 @@ export class VFXItem extends EffectsObject implements Disposable {
           }
         }
       }
+    }
+
+    Composition.buildItemTree(this);
+  }
+
+  private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
+    const itemGUID = previousObjectIDMap?.get(this) ?? generateGUID();
+
+    this.setInstanceId(itemGUID);
+    for (const component of this.components) {
+      const componentGUID = previousObjectIDMap?.get(component) ?? generateGUID();
+
+      component.setInstanceId(componentGUID);
+    }
+
+    for (const child of this.children) {
+      child.resetGUID(previousObjectIDMap);
+    }
+  }
+
+  private gatherPreviousObjectID (previousObjectIDMap: Map<EffectsObject, string>) {
+    previousObjectIDMap.set(this, this.getInstanceId());
+    for (const component of this.components) {
+      previousObjectIDMap.set(component, component.getInstanceId());
+    }
+
+    for (const child of this.children) {
+      child.gatherPreviousObjectID(previousObjectIDMap);
     }
   }
 }

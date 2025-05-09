@@ -317,7 +317,7 @@ describe('player/scene-load', () => {
 
   it('load cube texture', async () => {
     const scene = await player.loadScene(cubeTexture1);
-    const mipmaps = scene.textures[0].taggedProperties.mipmaps as (HTMLImageElement | ImageBitmap)[][];
+    const mipmaps = scene.textures[0].defination.mipmaps as (HTMLImageElement | ImageBitmap)[][];
 
     expect(mipmaps.length).to.eql(cubeTexture1.textures[0].mipmaps.length);
     expect(mipmaps.every(mipmap => mipmap.every(img => img instanceof HTMLImageElement || img instanceof ImageBitmap))).to.be.true;

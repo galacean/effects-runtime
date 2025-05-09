@@ -105,12 +105,14 @@ export class VideoComponent extends BaseRenderComponent {
     } = options;
 
     this.transparent = transparent;
-    if (video) {
-      this.video = (video as unknown as Asset<HTMLVideoElement>).data;
+    if (video && video.id) {
+      const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
+
+      this.video = videoAsset.data;
       this.setPlaybackRate(playbackRate);
       this.setVolume(volume);
       this.setMuted(muted);
-      const endBehavior = this.item.taggedProperties.endBehavior;
+      const endBehavior = this.item.defination.endBehavior;
 
       // 如果元素设置为 destroy
       if (endBehavior === spec.EndBehavior.destroy) {
