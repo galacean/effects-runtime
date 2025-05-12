@@ -1,6 +1,7 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
   Texture2DSourceOptionsVideo, TouchEventType, MessageItem,
+  Region,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, EventEmitter,
@@ -835,33 +836,44 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
   private handleClick = (e: TouchEventType) => {
     const { x, y } = e;
+    const hitInfos: (Region & {
+      player: Player,
+      composition: Composition,
+    })[] = [];
 
+    // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
     this.compositions.forEach(composition => {
       const regions = composition.hitTest(x, y);
 
-      if (regions.length) {
-        for (let i = 0; i < regions.length; i++) {
-          const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
-
-          if (behavior === spec.InteractBehavior.NOTIFY) {
-            this.emit('click', {
-              ...regions[i],
-              compositionId: composition.id,
-              compositionName: composition.name,
-              player: this,
-            });
-
-            composition.emit('click', {
-              ...regions[i],
-              compositionId: composition.id,
-              compositionName: composition.name,
-            });
-          } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
-            void this.resume();
-          }
-        }
+      for (const region of regions) {
+        hitInfos.push({
+          ...region,
+          player: this,
+          composition,
+        });
       }
     });
+
+    for (let i = 0; i < hitInfos.length; i++) {
+      const hitInfo = hitInfos[i];
+      const behavior = hitInfo.behavior || spec.InteractBehavior.NOTIFY;
+
+      if (behavior === spec.InteractBehavior.NOTIFY) {
+        this.emit('click', {
+          ...hitInfo,
+          compositionId: hitInfo.composition.id,
+          compositionName: hitInfo.composition.name,
+        });
+
+        hitInfo.composition.emit('click', {
+          ...hitInfo,
+          compositionId: hitInfo.composition.id,
+          compositionName: hitInfo.composition.name,
+        });
+      } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
+        void this.resume();
+      }
+    }
   };
 
   private getTargetSize (parentEle: HTMLElement) {
