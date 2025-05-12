@@ -7,6 +7,13 @@
 
 ---
 
+## 2.3.5
+
+`2025-05-12`
+
+- Fix: player hit test. [#974](https://github.com/galacean/effects-runtime/pull/974) @wumaolinmaoan
+- Fix: Fixed the rendering issue with Spine blending modes. [#972](https://github.com/galacean/effects-runtime/pull/972) @RGCHN
+
 ## 2.3.4
 
 `2025-05-09`
