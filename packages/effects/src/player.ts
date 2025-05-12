@@ -849,7 +849,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         hitInfos.push({
           ...region,
           player: this,
-          composition:composition,
+          composition,
         });
       }
     });
