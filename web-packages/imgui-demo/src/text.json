@@ -1,0 +1,98 @@
+{
+  "playerVersion": { "web": "2.3.1", "native": "0.0.1.202311221223" },
+  "images": [],
+  "fonts": [],
+  "version": "3.2",
+  "shapes": [],
+  "plugins": [],
+  "type": "ge",
+  "compositions": [
+    {
+      "id": "1",
+      "name": "新建合成1",
+      "duration": 5,
+      "startTime": 0,
+      "endBehavior": 2,
+      "previewSize": [750, 1624],
+      "items": [{ "id": "de26d6e96ed04f47845c58cdfbb79260" }],
+      "camera": { "fov": 60, "far": 40, "near": 0.1, "clipMode": 1, "position": [0, 0, 8], "rotation": [0, 0, 0] },
+      "sceneBindings": [{ "key": { "id": "3b10776b9ae9429e88b8703f7d338db8" }, "value": { "id": "de26d6e96ed04f47845c58cdfbb79260" } }],
+      "timelineAsset": { "id": "0e43ded0ea0f404cbe3e8d9de0236949" }
+    }
+  ],
+  "components": [
+    {
+      "id": "040eb395995e42558e603f91f0a562d4",
+      "item": { "id": "de26d6e96ed04f47845c58cdfbb79260" },
+      "dataType": "TextComponent",
+      "options": {
+        "text": "测试文本\n1111\n2222222",
+        "fontFamily": "sans-serif",
+        "fontSize": 80,
+        "textColor": [255, 255, 255, 1],
+        "fontWeight": "bold",
+        "letterSpace": 0,
+        "textAlign": 1,
+        "fontStyle": "normal",
+        "autoWidth": false,
+        "textWidth": 457.0361,
+        "textHeight": 377,
+        "lineHeight": 125.72,
+        "size": [5.6239, 4.639]
+      },
+      "renderer": { "renderMode": 1 }
+    }
+  ],
+  "geometries": [],
+  "materials": [],
+  "items": [
+    {
+      "id": "de26d6e96ed04f47845c58cdfbb79260",
+      "name": "text_2",
+      "duration": 5,
+      "type": "text",
+      "visible": true,
+      "endBehavior": 0,
+      "delay": 0,
+      "renderLevel": "B+",
+      "transform": { "position": { "x": 0, "y": 0, "z": 0 }, "eulerHint": { "x": 0, "y": 0, "z": 0 }, "scale": { "x": 5.6239, "y": 4.639, "z": 1 } },
+      "components": [{ "id": "040eb395995e42558e603f91f0a562d4" }],
+      "dataType": "VFXItemData"
+    }
+  ],
+  "shaders": [],
+  "bins": [],
+  "textures": [],
+  "animations": [],
+  "miscs": [
+    { "id": "0e43ded0ea0f404cbe3e8d9de0236949", "dataType": "TimelineAsset", "tracks": [{ "id": "3b10776b9ae9429e88b8703f7d338db8" }] },
+    { "id": "0ec5d5d0a3604bf39346d2f7c777cc03", "dataType": "ActivationPlayableAsset" },
+    { "id": "fdc83a05ac874723a47a4b20f94303f3", "dataType": "TransformPlayableAsset", "positionOverLifetime": {} },
+    { "id": "c6394f27d023498399b8bd708975ae4e", "dataType": "SpriteColorPlayableAsset" },
+    {
+      "id": "5b3514440eb64c318ad2a030cbf2ce36",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [{ "start": 0, "duration": 5, "endBehavior": 0, "asset": { "id": "0ec5d5d0a3604bf39346d2f7c777cc03" } }]
+    },
+    {
+      "id": "cb1bb0d133294ac99041f51e3b25c77b",
+      "dataType": "TransformTrack",
+      "children": [],
+      "clips": [{ "start": 0, "duration": 5, "endBehavior": 0, "asset": { "id": "fdc83a05ac874723a47a4b20f94303f3" } }]
+    },
+    {
+      "id": "66c45450f6ae40c6b7be098e4c56efd9",
+      "dataType": "SpriteColorTrack",
+      "children": [],
+      "clips": [{ "start": 0, "duration": 5, "endBehavior": 0, "asset": { "id": "c6394f27d023498399b8bd708975ae4e" } }]
+    },
+    {
+      "id": "3b10776b9ae9429e88b8703f7d338db8",
+      "dataType": "ObjectBindingTrack",
+      "children": [{ "id": "5b3514440eb64c318ad2a030cbf2ce36" }, { "id": "cb1bb0d133294ac99041f51e3b25c77b" }, { "id": "66c45450f6ae40c6b7be098e4c56efd9" }],
+      "clips": []
+    }
+  ],
+  "compositionId": "1"
+}
