@@ -1,7 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps, Maskable,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps,
   Renderer, Texture,
 } from '@galacean/effects';
 import {
@@ -57,7 +57,7 @@ export interface SpineDataCache extends SpineBaseData {
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.SpineComponent)
-export class SpineComponent extends RendererComponent implements Maskable {
+export class SpineComponent extends RendererComponent {
   startSize: number;
   /**
    * 根据相机计算的缩放比例
@@ -194,6 +194,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
+    this.maskManager.drawStencilMask(renderer);
     this.content?.render(renderer);
   }
 

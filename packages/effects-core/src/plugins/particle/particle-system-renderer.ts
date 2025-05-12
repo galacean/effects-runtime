@@ -9,6 +9,7 @@ import { ParticleMesh } from './particle-mesh';
 import type { Mesh, Renderer } from '../../render';
 import type { Engine } from '../../engine';
 import { RendererComponent } from '../../components';
+import type { MaskProcessor } from '../../material/mask-ref-manager';
 
 /**
  * @since 2.0.0
@@ -16,6 +17,7 @@ import { RendererComponent } from '../../components';
 export class ParticleSystemRenderer extends RendererComponent {
   meshes: Mesh[];
   particleMesh: ParticleMesh;
+  maskManager: MaskProcessor;
 
   private trailMesh?: TrailMesh;
 
@@ -63,6 +65,7 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   override render (renderer: Renderer): void {
+    this.maskManager.drawStencilMask(renderer);
     for (const mesh of this.meshes) {
       mesh.render(renderer);
     }
