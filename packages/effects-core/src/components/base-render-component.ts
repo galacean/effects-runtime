@@ -146,28 +146,20 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    if (!this.getVisible()) {
+    if (!this.getVisible() || this.renderer.maskMode === MaskMode.MASK) {
       return;
     }
 
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
+    this.maskManager.drawStencilMask(renderer);
 
-    for (let i = 0; i < this.materials.length; i++) {
-      const material = this.materials[i];
+    this.draw(renderer);
+  }
 
-      material.setVector2('_Size', this.transform.size);
-
-      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
-      ) {
-        material.setVector3('_Scale', this.transform.scale);
-      }
-
-      renderer.drawGeometry(this.geometry, material, i);
-    }
+  /**
+   * @internal
+   */
+  drawStencilMask (renderer: Renderer) {
+    this.draw(renderer);
   }
 
   override onStart (): void {
@@ -301,6 +293,27 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
 
     return material;
+  }
+
+  private draw (renderer: Renderer) {
+    if (renderer.renderingData.currentFrame.globalUniforms) {
+      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+    }
+
+    for (let i = 0; i < this.materials.length; i++) {
+      const material = this.materials[i];
+
+      material.setVector2('_Size', this.transform.size);
+
+      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
+      ) {
+        material.setVector3('_Scale', this.transform.scale);
+      }
+
+      renderer.drawGeometry(this.geometry, material, i);
+    }
   }
 
   override fromData (data: unknown): void {

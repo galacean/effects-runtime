@@ -3,6 +3,7 @@ import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effe
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
 import type { MaskProcessor } from './mask-ref-manager';
+import type { Renderer } from '../render';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -97,6 +98,7 @@ export interface MaskProps {
  */
 export interface Maskable {
   readonly maskManager: MaskProcessor,
+  drawStencilMask: (renderer: Renderer) => void,
 }
 
 export enum MaskMode {

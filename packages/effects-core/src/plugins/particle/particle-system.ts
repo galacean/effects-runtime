@@ -153,7 +153,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' |
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
 
 @effectsClass(spec.DataType.ParticleSystem)
-export class ParticleSystem extends Component implements Maskable {
+export class ParticleSystem extends Component {
   renderer: ParticleSystemRenderer;
   options: ParticleOptions;
   shape: ShapeGenerator;
@@ -1133,6 +1133,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.renderer = new ParticleSystemRenderer(this.engine, particleMeshProps, trailMeshProps);
     this.renderer.item = this.item;
+    this.renderer.maskManager = this.maskManager;
     this.meshes = this.renderer.meshes;
 
     const interaction = props.interaction;
