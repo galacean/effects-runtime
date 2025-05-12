@@ -30,7 +30,7 @@ const container = document.getElementById('J-container');
     },
   });
 
-  const compositions = await player.loadScene(jsons);
+  const compositions = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*Z7CdSZraICQAAAAAAAAAAAAAelB4AQ');
 
   // compositions[0].play();
 })();
