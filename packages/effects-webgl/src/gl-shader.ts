@@ -108,7 +108,7 @@ export class GLShaderVariant extends ShaderVariant {
   }
 
   override toData (): void {
-    const shaderData = this.taggedProperties as spec.ShaderData;
+    const shaderData = this.defination as spec.ShaderData;
 
     shaderData.dataType = spec.DataType.Shader;
     shaderData.id = this.guid;

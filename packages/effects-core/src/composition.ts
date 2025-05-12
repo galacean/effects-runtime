@@ -9,7 +9,7 @@ import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene, SceneRenderLevel } from './scene';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction } from './texture';
 import type { Disposable, LostHandler } from './utils';
@@ -17,12 +17,9 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components';
+import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { SerializationHelper } from './serialization-helper';
 import { PlayState } from './plugins/cal/playable-graph';
-import type { Engine } from './engine';
-import { passRenderLevel } from './pass-render-level';
 
 /**
  * 合成统计信息
@@ -260,6 +257,33 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private handleItemMessage: (message: MessageItem) => void;
 
   /**
+   * @internal
+   * 构建父子树，同时保存到 itemCacheMap 中便于查找
+   */
+  static buildItemTree (compVFXItem: VFXItem) {
+    const itemMap = new Map<string, VFXItem>();
+    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
+
+    for (const item of contentItems) {
+      itemMap.set(item.id, item);
+    }
+
+    for (const item of contentItems) {
+      if (item.parentId === undefined) {
+        item.setParent(compVFXItem);
+      } else {
+        const parent = itemMap.get(item.parentId);
+
+        if (parent) {
+          item.setParent(parent);
+        } else {
+          throw new Error('The element references a non-existent element, please check the data.');
+        }
+      }
+    }
+  }
+
+  /**
    * Composition 构造函数
    * @param props - composition 的创建参数
    * @param scene
@@ -306,10 +330,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
-    // Create rootCompositionComponent
-    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
-    filterItemsByRenderLevel(sourceContent, this.getEngine(), scene.renderLevel);
-    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
+    // Create rootItem components
+    //@ts-expect-error TODO update spec.
+    const componentPaths = sourceContent.components as spec.DataPath[];
+
+    for (const componentPath of componentPaths) {
+      const component = this.getEngine().findObject<Component>(componentPath);
+
+      this.rootItem.components.push(component);
+      component.item = this.rootItem;
+    }
+    this.rootComposition = this.rootItem.getComponent(CompositionComponent);
 
     this.width = width;
     this.height = height;
@@ -339,7 +370,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.createRenderFrame();
     this.rendererOptions = null;
 
-    this.buildItemTree(this.rootItem);
+    Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
@@ -645,42 +676,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  /**
-   * 构建父子树，同时保存到 itemCacheMap 中便于查找
-   */
-  private buildItemTree (compVFXItem: VFXItem) {
-    if (!compVFXItem.composition) {
-      return;
-    }
-
-    const itemMap = new Map<string, VFXItem>();
-    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
-
-    for (const item of contentItems) {
-      itemMap.set(item.id, item);
-    }
-
-    for (const item of contentItems) {
-      if (item.parentId === undefined) {
-        item.setParent(compVFXItem);
-      } else {
-        const parent = itemMap.get(item.parentId);
-
-        if (parent) {
-          item.setParent(parent);
-        } else {
-          throw new Error('The element references a non-existent element, please check the data.');
-        }
-      }
-    }
-
-    for (const item of contentItems) {
-      if (VFXItem.isComposition(item)) {
-        this.buildItemTree(item);
-      }
     }
   }
 
@@ -1064,26 +1059,4 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.textureOffloaded = false;
     }
   }
-}
-
-export function filterItemsByRenderLevel (composition: spec.CompositionData, engine: Engine, renderLevel?: SceneRenderLevel) {
-  const items: spec.DataPath[] = [];
-
-  for (const itemDataPath of composition.items) {
-    const itemProps = engine.findEffectsObjectData(itemDataPath.id) as spec.VFXItemData;
-
-    if (passRenderLevel(itemProps.renderLevel, renderLevel)) {
-      items.push(itemDataPath);
-    } else {
-      // 非预合成元素未达到渲染等级的转化为空节点。
-      // 预合成元素有根据 item type 的子元素加载判断，没法保留空节点，这边先整体过滤掉。
-      if (itemProps.type !== spec.ItemType.composition) {
-        itemProps.components = [];
-        items.push(itemDataPath);
-      }
-    }
-  }
-  composition.items = items;
-
-  return composition;
 }

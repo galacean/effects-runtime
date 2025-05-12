@@ -108,30 +108,6 @@ export function version31Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // Composition id 转 guid
-  const compositionId = json.compositionId;
-  const compositionIdToGUIDMap: Record<string, string> = {};
-
-  for (const composition of json.compositions) {
-    const guid = generateGUID();
-
-    compositionIdToGUIDMap[composition.id] = guid;
-    if (composition.id === compositionId) {
-      json.compositionId = guid;
-    }
-    composition.id = guid;
-  }
-  // 预合成元素 refId 同步改为生成的合成 guid
-  for (const item of json.items) {
-    if (item.content) {
-      const compositionOptions = (item.content as CompositionContent).options;
-
-      if (compositionOptions && compositionOptions.refId !== undefined) {
-        compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
-      }
-    }
-  }
-
   return json;
 }
 
@@ -159,8 +135,12 @@ export function version32Migration (json: JSONScene): JSONScene {
 
   processContent(mainComp);
 
+  return json;
+}
+
+export function version33Migration (json: JSONScene): JSONScene {
   // 老 shape 数据兼容
-  for (const item of items) {
+  for (const item of json.items) {
     if (item.type === spec.ItemType.sprite) {
       const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
 
@@ -170,6 +150,8 @@ export function version32Migration (json: JSONScene): JSONScene {
 
         if (Number.isInteger(shape)) {
           shapeData = json.shapes[shape as number];
+        } else {
+          shapeData = shape;
         }
 
         spriteComponent.renderer.shape = shapeData;
@@ -177,8 +159,51 @@ export function version32Migration (json: JSONScene): JSONScene {
     }
   }
 
+  // Composition id 转 guid, Composition 分离 CompositionComponent
+  const compositionId = json.compositionId;
+  const compositionIdToGUIDMap: Record<string, string> = {};
+
+  for (const composition of json.compositions) {
+    const guid = generateGUID();
+
+    compositionIdToGUIDMap[composition.id] = guid;
+    if (composition.id === compositionId) {
+      json.compositionId = guid;
+    }
+    composition.id = guid;
+
+    const compositionComponent = {
+      id: generateGUID(),
+      dataType:'CompositionComponent',
+      items: composition.items,
+      timelineAsset: composition.timelineAsset,
+      sceneBindings: composition.sceneBindings,
+      startTime: composition.startTime,
+    } as unknown as spec.ComponentData;
+
+    //@ts-expect-error
+    composition.timelineAsset = undefined;
+    //@ts-expect-error
+    composition.sceneBindings = undefined;
+    composition.startTime = undefined;
+    //@ts-expect-error
+    composition.components = [{ id:compositionComponent.id }];
+    json.components.push(compositionComponent);
+  }
+  // 预合成元素 refId 同步改为生成的合成 guid
+  for (const item of json.items) {
+    if (item.content) {
+      const compositionOptions = (item.content as CompositionContent).options;
+
+      if (compositionOptions && compositionOptions.refId !== undefined) {
+        compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
+      }
+    }
+  }
+
   return json;
 }
+
 export function processContent (composition: spec.CompositionData) {
   for (const item of composition.items) {
     const itemProps = itemMap.get(item.id);

@@ -6,76 +6,6 @@ import type { Constructor } from './utils';
 import { isArray, isCanvas, isObject, isString } from './utils';
 
 export class SerializationHelper {
-  static collectSerializableObject (
-    effectsObject: EffectsObject,
-    res: Record<string, EffectsObject>,
-  ) {
-    if (res[effectsObject.getInstanceId()]) {
-      return;
-    }
-
-    effectsObject.toData();
-    res[effectsObject.getInstanceId()] = effectsObject;
-
-    const serializedProperties = getMergedStore(effectsObject);
-
-    if (serializedProperties) {
-      for (const key of Object.keys(serializedProperties)) {
-        // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
-        let value = effectsObject.taggedProperties[key];
-
-        if (value === undefined) {
-          value = effectsObject[key as keyof EffectsObject];
-        }
-
-        if (EffectsObject.is(value)) {
-          SerializationHelper.collectSerializableObject(value, res);
-        } else if (isArray(value)) {
-          for (const arrayValue of value) {
-            if (EffectsObject.is(arrayValue)) {
-              SerializationHelper.collectSerializableObject(arrayValue, res);
-            }
-          }
-        } else if (isObject(value)) {
-          // 非 EffectsObject 对象只递归一层
-          for (const objectKey of Object.keys(value)) {
-            const objectValue = value[objectKey];
-
-            if (EffectsObject.is(objectValue)) {
-              SerializationHelper.collectSerializableObject(objectValue, res);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  static serializeEffectObject (effectsObject: EffectsObject) {
-    // 持有所有需要序列化的引擎对象
-    const serializableMap: Record<string, EffectsObject> = {};
-    const engine = effectsObject.engine;
-
-    // 加入内存中已加载的资产数据，避免重复创建资产数据
-    const serializedDatas: Record<string, any> = {
-      ...engine.jsonSceneData,
-    };
-
-    // 递归收集所有需要序列化的对象
-    SerializationHelper.collectSerializableObject(effectsObject, serializableMap);
-
-    // 依次序列化
-    for (const guid of Object.keys(serializableMap)) {
-      const serializeObject = serializableMap[guid];
-
-      if (!serializedDatas[serializeObject.getInstanceId()]) {
-        serializedDatas[serializeObject.getInstanceId()] = {};
-      }
-      SerializationHelper.serialize(serializeObject, serializedDatas[serializeObject.getInstanceId()]);
-    }
-
-    return serializedDatas;
-  }
-
   static serialize (
     effectsObject: EffectsObject,
     serializedData?: Record<string, any>,
@@ -118,8 +48,8 @@ export class SerializationHelper {
     }
 
     // TODO 待移除 tagggedProperties 为没有装饰器的临时方案
-    for (const key of Object.keys(effectsObject.taggedProperties)) {
-      const value = effectsObject.taggedProperties[key];
+    for (const key of Object.keys(effectsObject.defination)) {
+      const value = effectsObject.defination[key];
 
       if (
         typeof value === 'number' ||
@@ -152,18 +82,10 @@ export class SerializationHelper {
     serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {
-    const taggedProperties = effectsObject.taggedProperties;
+    effectsObject.defination = serializedData;
+
     const serializedProperties = getMergedStore(effectsObject);
     const engine = effectsObject.engine;
-
-    for (const key of Object.keys(serializedData)) {
-      if (serializedProperties && serializedProperties[key]) {
-        continue;
-      }
-      const value = serializedData[key as keyof spec.EffectsObjectData];
-
-      taggedProperties[key] = SerializationHelper.deserializeProperty(value, engine, 0);
-    }
 
     if (serializedProperties) {
       for (const key of Object.keys(serializedProperties)) {
@@ -176,46 +98,10 @@ export class SerializationHelper {
         const propertyType = serializedProperties[key].type;
 
         // FIXME: taggedProperties 为 readonly，这里存在强制赋值
-        // @ts-expect-error
         effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0, propertyType);
       }
     }
-    effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
-  }
-
-  static async deserializeAsync (
-    serializedData: spec.EffectsObjectData,
-    effectsObject: EffectsObject,
-  ) {
-    const taggedProperties = effectsObject.taggedProperties;
-    const serializedProperties = getMergedStore(effectsObject);
-    const engine = effectsObject.engine;
-
-    for (const key of Object.keys(serializedData)) {
-      if (serializedProperties && serializedProperties[key]) {
-        continue;
-      }
-      const value = serializedData[key as keyof spec.EffectsObjectData];
-
-      taggedProperties[key] = await SerializationHelper.deserializePropertyAsync(value, engine, 0);
-    }
-    if (serializedProperties) {
-      for (const key of Object.keys(serializedProperties)) {
-        const value = serializedData[key as keyof spec.EffectsObjectData];
-
-        if (value === undefined) {
-          continue;
-        }
-
-        const propertyType = serializedProperties[key].type;
-
-        // FIXME: taggedProperties 为 readonly，这里存在强制赋值
-        // @ts-expect-error
-        effectsObject[key as keyof EffectsObject] = await SerializationHelper.deserializePropertyAsync(value, engine, 0, propertyType);
-      }
-    }
-
-    effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
+    effectsObject.fromData(effectsObject.defination as spec.EffectsObjectData);
   }
 
   static checkTypedArray (obj: unknown): boolean {
@@ -256,6 +142,7 @@ export class SerializationHelper {
     engine: Engine,
     level: number,
     type?: Constructor<{}>,
+    overrideDataPath = true
   ): any {
     if (level > 14) {
       console.error('The nested object layers of the serialized data exceed the maximum limit.');
@@ -267,13 +154,15 @@ export class SerializationHelper {
       const res = [];
 
       for (const value of property) {
-        res.push(SerializationHelper.deserializeProperty(value, engine, level + 1, type));
+        res.push(SerializationHelper.deserializeProperty(value, engine, level + 1, type, overrideDataPath));
       }
 
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      return engine.assetLoader.loadGUID(property.id);
+      const referenceObject = engine.findObject(property);
+
+      return overrideDataPath ? referenceObject : property;
     } else if (isObject(property) && property.constructor === Object) {
       let res: Record<string, EffectsObject>;
 
@@ -283,49 +172,7 @@ export class SerializationHelper {
         res = {};
       }
       for (const key of Object.keys(property)) {
-        res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
-      }
-
-      return res;
-    } else {
-      return property;
-    }
-  }
-
-  private static async deserializePropertyAsync<T> (
-    property: T,
-    engine: Engine,
-    level: number,
-    type?: Constructor<{}>,
-  ): Promise<unknown> {
-    if (level > 14) {
-      console.error('The nested object layers of the serialized data exceed the maximum limit.');
-
-      return;
-    }
-    if (isArray(property)) {
-      const res = [];
-
-      for (const value of property) {
-        res.push(await SerializationHelper.deserializePropertyAsync(value, engine, level + 1, type));
-      }
-
-      return res;
-      // TODO json 数据避免传 typedArray
-    } else if (SerializationHelper.checkDataPath(property)) {
-      const res = await engine.assetLoader.loadGUIDAsync(property.id);
-
-      return res;
-    } else if (isObject(property) && property.constructor === Object) {
-      let res: Record<string, unknown>;
-
-      if (type) {
-        res = new type();
-      } else {
-        res = {};
-      }
-      for (const key of Object.keys(property)) {
-        res[key] = await SerializationHelper.deserializePropertyAsync(property[key], engine, level + 1);
+        res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1, undefined, overrideDataPath);
       }
 
       return res;

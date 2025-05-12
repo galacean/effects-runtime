@@ -127,6 +127,12 @@ export class SpineComponent extends RendererComponent implements Maskable {
       maskMode: MaskMode.NONE,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
+
+    const maskProps = (data as MaskProps).mask;
+
+    if (maskProps && maskProps.ref) {
+      maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
+    }
     this.rendererOptions.maskMode = this.maskManager.getMaskMode(data as MaskProps);
     this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
@@ -220,9 +226,8 @@ export class SpineComponent extends RendererComponent implements Maskable {
       } else {
         this.setAnimation(activeAnimation[0], spineOptions.speed);
       }
-
     } else {
-      this.setAnimationList(activeAnimation, spineOptions.speed);
+      spineOptions.loopEnd ? this.setAnimationListLoopEnd(activeAnimation, spineOptions.speed) : this.setAnimationList(activeAnimation, spineOptions.speed);
     }
 
     this.cache = {

@@ -19,7 +19,7 @@ export type TrailMeshProps = {
   maxTrailCount: number,
   pointCountPerTrail: number,
   colorOverLifetime?: Array<GradientStop>,
-  texture: Texture,
+  texture?: Texture,
   minimumVertexDistance: number,
   blending: number,
   widthOverTrail: ValueGetter<number>,

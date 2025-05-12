@@ -153,8 +153,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.3.0-alpha.0
-        version: 2.3.0-alpha.0
+        specifier: 2.3.1
+        version: 2.3.1
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -227,8 +227,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: ^0.7.1
-        version: 0.7.1
+        specifier: ^0.9.0
+        version: 0.9.0
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -313,8 +313,8 @@ importers:
         specifier: workspace:*
         version: link:../../plugin-packages/spine
       '@vvfx/resource-detection':
-        specifier: ^0.7.1
-        version: 0.7.1
+        specifier: ^0.9.0
+        version: 0.9.0
       maoan-imgui-js:
         specifier: ^1.0.6
         version: 1.0.6
@@ -347,8 +347,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects-webgl
       '@vvfx/resource-detection':
-        specifier: ^0.7.1
-        version: 0.7.1
+        specifier: ^0.9.0
+        version: 0.9.0
 
 packages:
 
@@ -2220,12 +2220,8 @@ packages:
     resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
 
-  /@galacean/effects-specification@2.1.0:
-    resolution: {integrity: sha512-gad/CBHvTlL182QExrPGqzafzfMjSEfVWRA4+mufHMvxlsDF0kEIvZ2EEcyG9IgvRkX81F1PU1vk+or6G1j2nw==}
-
-  /@galacean/effects-specification@2.3.0-alpha.0:
-    resolution: {integrity: sha512-BEdAioissB46giJMOPpqiF8O4tftCFD+KTEgJYpqfdckfRfy8+IKa1iTI0sVk91FGLqXgmuPqjuyxT6PixWn+g==}
-    dev: false
+  /@galacean/effects-specification@2.3.1:
+    resolution: {integrity: sha512-aSmZG86qx1l0MI25dAM/JaJ2vYxuHr0l5WCh+O9mbJHSRwTzYi3y2Bv+pOY+2RKeGpK1LZ3MaOMaFC0IZSl7OA==}
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -3024,12 +3020,12 @@ packages:
       - supports-color
     dev: true
 
-  /@vvfx/resource-detection@0.7.1:
-    resolution: {integrity: sha512-2yetmpvjNRmn1ENWpIGT2d9C2l9yB0HOiK+oPIdqc3QGsGahvyw73vBYFL6yrlaxQsBbpfiQ7A+aNqp1Ii1rWA==}
+  /@vvfx/resource-detection@0.9.0:
+    resolution: {integrity: sha512-cLjYi10knEAtg8e7n3yTFj8EliIuLz/WPr4U5JfuLdxxPODxVr/+4VbCh0SSVCXTcg2hcnQEtwcyY2aasMkcCw==}
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-math': 1.1.0
-      '@galacean/effects-specification': 2.1.0
+      '@galacean/effects-specification': 2.3.1
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1
@@ -5305,6 +5301,7 @@ packages:
   /node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   /node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}

@@ -306,6 +306,12 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   override fromData (data: unknown): void {
     super.fromData(data);
     const renderer = (data as BaseRenderComponentData).renderer ?? {};
+
+    const maskProps = (data as MaskProps).mask;
+
+    if (maskProps && maskProps.ref) {
+      maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
+    }
     const maskMode = this.maskManager.getMaskMode(data as MaskProps);
 
     // TODO 新蒙板上线后移除
@@ -315,7 +321,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
     let shapeGeometry: GeometryFromShape | undefined = undefined;
 
-    if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
+    if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
       shapeGeometry = getGeometryByShape(shapeData, split);
     }
     //-------------------------------------------------------------------------
@@ -323,7 +329,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture as Texture ?? this.engine.emptyTexture,
+      texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
