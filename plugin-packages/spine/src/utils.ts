@@ -7,7 +7,7 @@ import type { Material, Texture } from '@galacean/effects';
 import { assertExist, glContext } from '@galacean/effects';
 import { decodeText } from './polyfill';
 
-export function setBlending (material: Material, mode: BlendMode, pma: boolean) {
+export function setBlending (material: Material, mode: BlendMode) {
   material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
   switch (mode) {
     case BlendMode.Multiply:

@@ -248,7 +248,6 @@ export class SlotGroup {
             texture,
             name: this.meshName,
             priority: this.listIndex += 0.01,
-            pma,
             renderOptions: this.renderOptions,
             engine: this.engine,
           });
