@@ -15,7 +15,6 @@ export interface SpineMeshRenderInfo {
   priority: number,
   blendMode: BlendMode,
   name?: string,
-  pma: boolean,
   renderOptions: {
     maskMode?: number,
     mask?: number,
@@ -40,7 +39,7 @@ export class SpineMesh implements Disposable {
   priority: number;
 
   constructor (renderInfo: SpineMeshRenderInfo) {
-    const { blendMode, texture, priority, renderOptions = {}, pma, name = 'MSpine', engine } = renderInfo;
+    const { blendMode, texture, priority, renderOptions = {}, name = 'MSpine', engine } = renderInfo;
     const { mask = 0, maskMode = 0 } = renderOptions;
 
     this.blendMode = blendMode;
@@ -48,7 +47,7 @@ export class SpineMesh implements Disposable {
     this.priority = priority;
     this.engine = engine;
     this.geometry = this.createGeometry();
-    this.material = this.createMaterial(pma, maskMode, mask);
+    this.material = this.createMaterial(maskMode, mask);
     this.mesh = Mesh.create(
       engine,
       {
@@ -94,7 +93,7 @@ export class SpineMesh implements Disposable {
       });
   }
 
-  createMaterial (pma: boolean, maskMode: number, maskOrder: number): Material {
+  createMaterial (maskMode: number, maskOrder: number): Material {
     const material = Material.create(
       this.engine,
       {
@@ -113,7 +112,7 @@ export class SpineMesh implements Disposable {
     material.depthMask = false;
     material.stencilRef = maskOrder !== undefined ? [maskOrder, maskOrder] : undefined;
 
-    setBlending(material, this.blendMode, pma);
+    setBlending(material, this.blendMode);
     setMaskMode(material, maskMode);
 
     return material;
