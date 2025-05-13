@@ -8,6 +8,12 @@
 
 ---
 
+## 2.3.6
+
+`2025-05-13`
+
+- Fix: video pause error. [#985](https://github.com/galacean/effects-runtime/pull/985) @wumaolinmaoan
+
 ## 2.3.5
 
 `2025-05-12`
