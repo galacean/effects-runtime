@@ -146,7 +146,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    if (!this.getVisible() || this.renderer.maskMode === MaskMode.MASK) {
+    if (!this.getVisible()) {
       return;
     }
 
@@ -159,7 +159,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
    * @internal
    */
   drawStencilMask (renderer: Renderer) {
+    const previousColorMask = this.material.colorMask;
+
+    this.material.colorMask = false;
     this.draw(renderer);
+    this.material.colorMask = previousColorMask;
   }
 
   override onStart (): void {
