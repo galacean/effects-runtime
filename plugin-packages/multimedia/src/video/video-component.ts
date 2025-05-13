@@ -189,7 +189,10 @@ export class VideoComponent extends BaseRenderComponent {
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    if (time > 0 && this.video && !this.video.paused) {
+    const isEnd = (time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)
+    || Math.abs(time - duration) < this.threshold;
+
+    if (time > 0 && !isEnd) {
       this.setVisible(true);
       this.playVideo();
     }
