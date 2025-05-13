@@ -273,7 +273,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
     setBlendMode(material, blendMode);
     // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, maskMode, !!this.renderer.shape);
+    setMaskMode(material, maskMode);
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
