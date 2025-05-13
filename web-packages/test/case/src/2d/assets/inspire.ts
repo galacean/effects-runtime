@@ -255,32 +255,8 @@ export default {
     name: '五福弹窗',
   },
   WuFu1_2: {
-    url: ' https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HDFQTNQGUQQP/-989527426-49aae.json',
+    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HDFQTNQGUQQP/-989527426-49aae.json',
     name: '五福弹窗——福1_2',
-  },
-  WuFu1_3: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LRJGJPYXOERJ/-988603905-f565a.json',
-    name: '五福弹窗——福1_3',
-  },
-  WuFu1_4: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PVDCTTEWTUJF/-987680384-cd3b0.json',
-    name: '五福弹窗——福1_4',
-  },
-  WuFu1_5: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/ITNCLJFINAQE/-986756863-fb546.json',
-    name: '五福弹窗——福1_5',
-  },
-  WuFu1_6: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/XOXWCFMRMVED/-985833342-99731.json',
-    name: '五福弹窗——福1_6',
-  },
-  WuFu1_7: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/QBMEAYDGYCBS/-984909821-cdb44.json',
-    name: '五福弹窗——福1_7',
-  },
-  WuFu1_8: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EXKDJKHQFUIV/-983986300-7b84c.json',
-    name: '五福弹窗——福1_8',
   },
   WuFu1_9: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/MFFHJURMGBEH/-983062779-468ca.json',
@@ -290,11 +266,11 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WEPWUNCGNVQI/-1695824449-958ba.json',
     name: '闪光弹窗',
   },
-  // 蒙版无法兼容，原始蒙版未设置形状
-  // countdown: {
-  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
-  //   name: '七夕倒计时',
-  // },
+  // v2.4 蒙版改造无法兼容，原始蒙版未设置形状
+  countdown: {
+    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
+    name: '七夕倒计时',
+  },
   combineCard: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BRNUKQWSAIKG/136315478-98a3d.json',
     name: '合成卡',
