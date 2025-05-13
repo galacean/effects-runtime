@@ -100,7 +100,7 @@ export function setMaskMode (material: Material, maskMode: MaskMode, colorMask =
       material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
       material.stencilOpZPass = [glContext.REPLACE, glContext.REPLACE];
       // 关闭/开启蒙版元素的颜色写入
-      material.colorMask = [colorMask, colorMask, colorMask, colorMask];
+      material.colorMask = colorMask;
 
       break;
     case MaskMode.OBSCURED:
