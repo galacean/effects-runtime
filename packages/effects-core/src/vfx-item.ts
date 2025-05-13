@@ -20,7 +20,9 @@ import { ParticleSystem } from './plugins';
 import type { TransformProps } from './transform';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
-import { removeItem } from './utils';
+import { generateGUID, removeItem } from './utils';
+import { CompositionComponent } from './comp-vfx-item';
+import { SerializationHelper } from './serialization-helper';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: spec.Item, composition: Composition) => VFXItem;
@@ -42,10 +44,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素的变换包含位置、旋转、缩放。
    */
   transform: Transform = new Transform();
-  /**
-   * 合成属性
-   */
-  composition: Composition | null;
   /**
    * 元素动画的当前时间
    */
@@ -102,6 +100,10 @@ export class VFXItem extends EffectsObject implements Disposable {
   private listIndex = 0;
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
+  /**
+   * 合成属性
+   */
+  private _composition: Composition | null;
 
   /**
    *
@@ -202,6 +204,26 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   get content (): VFXItemContent {
     return this._content;
+  }
+
+  /**
+   * 获取元素的合成
+   */
+  get composition (): Composition | null {
+    return this._composition;
+  }
+
+  /**
+   * 设置元素的合成
+   */
+  set composition (value: Composition) {
+    this._composition = value;
+
+    for (const child of this.children) {
+      if (!child.composition) {
+        child.composition = value;
+      }
+    }
   }
 
   /**
@@ -360,11 +382,9 @@ export class VFXItem extends EffectsObject implements Disposable {
       removeItem(this.parent.children, this);
     }
     this.parent = vfxItem;
-    if (!VFXItem.isCamera(this)) {
-      this.transform.parentTransform = vfxItem.transform;
-    }
+    this.transform.parentTransform = vfxItem.transform;
     vfxItem.children.push(this);
-    if (!this.composition) {
+    if (!this.composition && vfxItem.composition) {
       this.composition = vfxItem.composition;
     }
     if (!this.isDuringPlay && vfxItem.isDuringPlay) {
@@ -684,6 +704,10 @@ export class VFXItem extends EffectsObject implements Disposable {
         this.rendererComponents.push(component.renderer);
       }
     }
+
+    if (VFXItem.isComposition(this)) {
+      this.instantiatePreComposition();
+    }
   }
 
   override toData (): void {
@@ -731,7 +755,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
       this.components = [];
       this._content = undefined;
-      this.composition = null;
+      this._composition = null;
       this.transform.setValid(false);
     }
   }
@@ -757,6 +781,25 @@ export class VFXItem extends EffectsObject implements Disposable {
     //   removeItem(this.parent?.children, this);
     // }
     // }
+  }
+
+  private instantiatePreComposition () {
+    const compositionContent = this.props.content as unknown as spec.CompositionContent;
+    const refId = compositionContent.options.refId;
+    const props = this.engine.findEffectsObjectData(refId);
+
+    if (!props) {
+      throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
+    }
+    const compositionComponent = this.addComponent(CompositionComponent);
+
+    SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
+    for (const vfxItem of compositionComponent.items) {
+      vfxItem.setInstanceId(generateGUID());
+      for (const component of vfxItem.components) {
+        component.setInstanceId(generateGUID());
+      }
+    }
   }
 }
 

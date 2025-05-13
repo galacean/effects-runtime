@@ -43,7 +43,7 @@ describe('core/composition/camera/item', () => {
     const comp = await player.loadScene(generateScene(items));
 
     player.gotoAndStop(0.1);
-    const { near, fov, far, position, rotation } = comp.camera;
+    const { near, fov, far, worldPosition, rotation } = comp.camera;
     const item = comp.getItemByName('camera');
 
     expect(item?.type).to.eql(spec.ItemType.camera, 'type');
@@ -53,7 +53,7 @@ describe('core/composition/camera/item', () => {
     expect(near).to.eql(0.6);
     expect(fov).to.eql(60);
     expect(far).to.eql(25);
-    expect([+(position.x.toFixed(0)), +(position.y.toFixed(0)), +(position.z.toFixed(0))]).to.eql([10, 2, 12]);
+    expect([+(worldPosition.x.toFixed(0)), +(worldPosition.y.toFixed(0)), +(worldPosition.z.toFixed(0))]).to.eql([10, 2, 12]);
     expect([+(rotation.x.toFixed(0)), +(rotation.y.toFixed(0)), +(rotation.z.toFixed(0))]).to.eql([10, 60, 30]);
   });
 
@@ -179,9 +179,9 @@ describe('core/composition/camera/item', () => {
     const comp = await player.loadScene(json);
     const camera = comp.camera;
 
-    expect(camera.position).to.deep.equals(new Vector3(0, 0, 8));
+    expect(camera.worldPosition).to.deep.equals(new Vector3(0, 0, 8));
     player.gotoAndStop(2.2);
-    expect(camera.position).to.deep.equals(new Vector3(0, 0, 12));
+    expect(camera.worldPosition).to.deep.equals(new Vector3(0, 0, 12));
   });
 });
 

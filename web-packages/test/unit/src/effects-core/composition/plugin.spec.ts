@@ -48,13 +48,13 @@ describe('core/composition/plugin', () => {
 
       override onCompositionConstructed (composition: Composition, scene: Scene) {
         expect(scene.storage.xx).to.eql(1);
-        expect(composition.items.length).to.eql(0);
+        expect(composition.items.length).to.eql(1);
         // @ts-expect-error
         constructSpy(ipp());
       }
     }
 
-    registerPlugin('test-plugin', TestPlugin, VFXItem, true);
+    registerPlugin('test-plugin', TestPlugin, VFXItem);
     await player.loadScene(generateScene());
 
     player.gotoAndStop(0.1);

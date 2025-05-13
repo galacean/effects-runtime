@@ -51,7 +51,7 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
     this.updateTexture();
     this.setItem();
     // 恢复默认颜色
-    this.material.setVector4('_Color', new math.Vector4(1, 1, 1, 1));
+    this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
 
   }
 

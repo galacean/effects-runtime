@@ -58,7 +58,7 @@ describe('core/plugins/sprite/item-base', () => {
         spriteColorClip = track.asset;
       }
     }
-    const color = spriteItem?.material.getVector4('_Color')?.toArray();
+    const color = spriteItem?.material.getColor('_Color')?.toArray();
 
     expect(spriteColorClip?.data.colorOverLifetime?.color?.[1]).to.eql([
       [0, 124, 183, 187, 255],

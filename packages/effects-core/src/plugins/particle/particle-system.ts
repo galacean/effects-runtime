@@ -191,6 +191,26 @@ export class ParticleSystem extends Component {
     return this.particleLink.length;
   }
 
+  /**
+   * 获取当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
+   * @since 2.3.0
+   */
+  get maxParticles () {
+    return this.options.maxCount;
+  }
+
+  /**
+   * 设置当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
+   * 注意：暂时不支持增加拖尾数量
+   * @since 2.3.0
+   */
+  set maxParticles (count: number) {
+    this.options.maxCount = count;
+    if (this.renderer?.particleMesh) {
+      this.renderer.particleMesh.maxCount = count;
+    }
+  }
+
   isFrozen () {
     return this.frozen;
   }

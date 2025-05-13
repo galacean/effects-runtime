@@ -207,6 +207,7 @@ export class Transform implements Disposable {
       this.rotation.y = y;
       this.rotation.z = z;
       this.quat.setFromEuler(this.rotation);
+      // TODO 修正 GE 四元数旋转共轭问题
       this.quat.conjugate();
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
@@ -508,6 +509,7 @@ export class Transform implements Disposable {
    */
   cloneFromMatrix (m4: Matrix4, scale?: Vector3) {
     m4.decompose(this.position, this.quat, this.scale);
+    this.rotation.setFromQuaternion(this.quat.clone().conjugate());
     if (scale) {
       scale.copyFrom(this.scale);
     }

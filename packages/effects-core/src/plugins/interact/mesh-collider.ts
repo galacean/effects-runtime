@@ -71,20 +71,33 @@ export class MeshCollider {
   }
 
   private geometryToTriangles (geometry: Geometry) {
-    const indices = geometry.getIndexData() ?? [];
-    const drawCount = geometry.getDrawCount();
-    const vertices = geometry.getAttributeData('aPos') ?? [];
+    const indices = geometry.getIndexData();
+    const vertices = geometry.getAttributeData('aPos');
     const res: TriangleLike[] = [];
 
-    for (let i = 0; i < drawCount; i += 3) {
-      const index0 = indices[i] * 3;
-      const index1 = indices[i + 1] * 3;
-      const index2 = indices[i + 2] * 3;
-      const p0 = { x: vertices[index0], y: vertices[index0 + 1], z: vertices[index0 + 2] };
-      const p1 = { x: vertices[index1], y: vertices[index1 + 1], z: vertices[index1 + 2] };
-      const p2 = { x: vertices[index2], y: vertices[index2 + 1], z: vertices[index2 + 2] };
+    if (!indices || !vertices) {
+      return res;
+    }
 
-      res.push({ p0, p1, p2 });
+    for (const subMesh of geometry.subMeshes) {
+      if (subMesh.indexCount === undefined) {
+        continue;
+      }
+
+      const elementSize = indices.BYTES_PER_ELEMENT;
+      const start = subMesh.offset / elementSize;
+      const end = start + subMesh.indexCount;
+
+      for (let i = start; i < end; i += 3) {
+        const index0 = indices[i] * 3;
+        const index1 = indices[i + 1] * 3;
+        const index2 = indices[i + 2] * 3;
+        const p0 = { x: vertices[index0], y: vertices[index0 + 1], z: vertices[index0 + 2] };
+        const p1 = { x: vertices[index1], y: vertices[index1 + 1], z: vertices[index1 + 2] };
+        const p2 = { x: vertices[index2], y: vertices[index2 + 1], z: vertices[index2 + 2] };
+
+        res.push({ p0, p1, p2 });
+      }
     }
 
     return res;

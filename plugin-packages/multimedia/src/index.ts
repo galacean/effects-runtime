@@ -14,8 +14,8 @@ export * from './utils';
  */
 export const version = __VERSION__;
 
-registerPlugin('video', VideoLoader, VFXItem, true);
-registerPlugin('audio', AudioLoader, VFXItem, true);
+registerPlugin('video', VideoLoader, VFXItem);
+registerPlugin('audio', AudioLoader, VFXItem);
 
 logger.info(`Plugin multimedia version: ${version}.`);
 
