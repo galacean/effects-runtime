@@ -6,7 +6,11 @@ import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType, JSONSceneVersion } from
 import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
-import { version21Migration, version22Migration, version24Migration, version30Migration, version31Migration } from './migration';
+import {
+  version21Migration, version22Migration, version24Migration, version30Migration,
+  version31Migration, version32Migration,
+  version33Migration,
+} from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
 import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
@@ -28,14 +32,19 @@ export function getStandardJSON (json: any): JSONScene {
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
 
-    return version31Migration(version30Migration(version21Migration(getStandardJSONFromV0(json))));
+    return version33Migration(
+      version32Migration(
+        version31Migration(
+          version30Migration(
+            version21Migration(
+              getStandardJSONFromV0(json))))));
   }
 
   reverseParticle = false;
 
-  const vs = standardVersion.exec(json.version) || [];
-  const mainVersion = Number(vs[1]);
-  const minorVersion = Number(vs[2]);
+  let vs = standardVersion.exec(json.version) || [];
+  let mainVersion = Number(vs[1]);
+  let minorVersion = Number(vs[2]);
 
   if (mainVersion) {
     if (mainVersion < 2 || (mainVersion === 2 && minorVersion < 4)) {
@@ -44,10 +53,20 @@ export function getStandardJSON (json: any): JSONScene {
     if (mainVersion < 3) {
       json = version30Migration(version21Migration(json));
     }
+    // 版本号重新计算
+    vs = standardVersion.exec(json.version) || [];
+    mainVersion = Number(vs[1]);
+    minorVersion = Number(vs[2]);
     // 3.x 版本格式转换
     if (mainVersion < 4) {
-      if (mainVersion === 3 && minorVersion < 2) {
+      if (minorVersion < 2) {
         json = version31Migration(json);
+      }
+      if (minorVersion < 3) {
+        json = version32Migration(json);
+      }
+      if (minorVersion < 4) {
+        json = version33Migration(json);
       }
     }
 

@@ -257,7 +257,13 @@ export abstract class Material extends EffectsObject implements Disposable {
    * 设置 Material 颜色缓冲区的写入开关
    * @param value
    */
-  set colorMask (value: UndefinedAble<[r: boolean, g: boolean, b: boolean, a: boolean]>) { }
+  abstract set colorMask (value: boolean);
+
+  /**
+   * 获取 Material 颜色缓冲区的写入开关
+   * @param value
+   */
+  abstract get colorMask (): boolean;
 
   /**
    * 分别指定 Material 的模板测试掩码
@@ -453,9 +459,6 @@ export abstract class Material extends EffectsObject implements Disposable {
   abstract clone (props?: MaterialProps): Material;
 
   abstract cloneUniforms (sourceMaterial: Material): void;
-
-  // TODO 待废弃 无需实现 等model/spine插件的material状态设置改造后即移除
-  // abstract createMaterialStates (states: MaterialStates): Immutable<MaterialStates> | void;
 
   /**
    * 销毁当前 Material

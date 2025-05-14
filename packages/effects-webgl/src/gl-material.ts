@@ -1,5 +1,5 @@
 import type {
-  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps,
   Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
@@ -138,10 +138,10 @@ export class GLMaterial extends Material {
   }
 
   override get colorMask () {
-    return this.glMaterialState.colorMask;
+    return this.glMaterialState.colorMask[0];
   }
-  override set colorMask (value: UndefinedAble<[r: boolean, g: boolean, b: boolean, a: boolean]>) {
-    value && this.glMaterialState.setColorMask(value);
+  override set colorMask (value: boolean) {
+    this.glMaterialState.setColorMask(value);
   }
 
   override get stencilTest () {
@@ -230,21 +230,6 @@ export class GLMaterial extends Material {
 
   override isMacroEnabled (keyword: string): boolean {
     return this.enabledMacros[keyword] !== undefined;
-  }
-
-  // TODO 待废弃 兼容 model/spine 插件 改造后可移除
-  createMaterialStates (states: MaterialStates): void {
-    this.sampleAlphaToCoverage = !!states.sampleAlphaToCoverage;
-    this.depthTest = states.depthTest;
-    this.depthMask = states.depthMask;
-    this.depthRange = states.depthRange;
-    this.depthFunc = states.depthFunc;
-    this.colorMask = states.colorMask;
-    this.polygonOffset = states.polygonOffset;
-    this.polygonOffsetFill = states.polygonOffsetFill;
-    this.blending = states.blending;
-    this.blendFunction = states.blendFunction;
-    this.stencilTest = states.stencilTest;
   }
 
   get isDestroyed (): boolean {
@@ -592,8 +577,10 @@ export class GLMaterial extends Material {
     for (name in propertiesData.textures) {
       const textureProperties = propertiesData.textures[name];
 
+      const texture = this.engine.findObject<Texture>(textureProperties.texture);
+
       // TODO 纹理通过 id 加入场景数据
-      this.setTexture(name, textureProperties.texture as Texture);
+      this.setTexture(name, texture);
       const offset = textureProperties.offset;
       const scale = textureProperties.scale;
 
@@ -603,8 +590,12 @@ export class GLMaterial extends Material {
     }
 
     if (data.shader) {
-      this.shader = data.shader as unknown as Shader;
-      this.shaderSource = this.shader.shaderData;
+      const shader = this.engine.findObject<Shader>(data.shader);
+
+      if (shader) {
+        this.shader = shader;
+        this.shaderSource = shader.shaderData;
+      }
     }
     this.stringTags = data.stringTags ?? {};
     this.initialized = false;
@@ -617,7 +608,7 @@ export class GLMaterial extends Material {
    */
   override toData (): spec.MaterialData {
     // @ts-expect-error
-    const materialData: spec.MaterialData = this.taggedProperties;
+    const materialData: spec.MaterialData = this.defination;
 
     if (this.shader) {
       // @ts-expect-error

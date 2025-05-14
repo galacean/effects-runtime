@@ -142,16 +142,11 @@ export class GLMaterialState {
     this.sampleAlphaToCoverage = value;
   }
 
-  setColorMask (color: [r: boolean, g: boolean, b: boolean, a: boolean]): void {
-    const [r, g, b, a] = color;
-
-    if (this.colorMask[0] === r && this.colorMask[1] === g && this.colorMask[2] === b && this.colorMask[3] === a) {
-      return;
-    }
-    this.colorMask[0] = r;
-    this.colorMask[1] = g;
-    this.colorMask[2] = b;
-    this.colorMask[3] = a;
+  setColorMask (colorMask: boolean): void {
+    this.colorMask[0] = colorMask;
+    this.colorMask[1] = colorMask;
+    this.colorMask[2] = colorMask;
+    this.colorMask[3] = colorMask;
   }
 
   setStencilTest (value: boolean) {

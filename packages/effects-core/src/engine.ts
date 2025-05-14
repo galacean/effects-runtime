@@ -3,13 +3,15 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
+import { MaskRefManager } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, logger, removeItem } from './utils';
+import { addItem, isObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
+import { passRenderLevel } from './pass-render-level';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
@@ -19,6 +21,10 @@ export class Engine implements Disposable {
    * 渲染器
    */
   renderer: Renderer;
+  /**
+   * 渲染等级
+   */
+  renderLevel?: SceneRenderLevel;
   emptyTexture: Texture;
   transparentTexture: Texture;
   /**
@@ -27,7 +33,6 @@ export class Engine implements Disposable {
   gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
-  assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
 
   /**
@@ -35,12 +40,19 @@ export class Engine implements Disposable {
    */
   renderErrors: Set<Error> = new Set();
 
+  /**
+   * maskRef 值分配
+   */
+  maskRefManager: MaskRefManager = new MaskRefManager();
+
   protected destroyed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
+
+  private assetLoader: AssetLoader;
 
   /**
    *
@@ -75,8 +87,22 @@ export class Engine implements Disposable {
     this.objectInstance[effectsObject.getInstanceId()] = effectsObject;
   }
 
-  getInstance (id: string) {
-    return this.objectInstance[id];
+  /**
+   * @ignore
+   */
+  findObject<T> (guid: spec.DataPath): T {
+    // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
+    if (!(isObject(guid) && guid.constructor === Object)) {
+      return guid as T;
+    }
+
+    if (this.objectInstance[guid.id]) {
+      return this.objectInstance[guid.id] as T;
+    }
+
+    const result = this.assetLoader.loadGUID<T>(guid);
+
+    return result;
   }
 
   removeInstance (id: string) {
@@ -87,10 +113,17 @@ export class Engine implements Disposable {
     const { jsonScene, textureOptions = [] } = scene;
     const {
       items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins = [], miscs = [],
+      animations = [], bins = [], miscs = [], compositions,
     } = jsonScene;
 
+    for (const compositionData of compositions) {
+      this.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
+    }
     for (const vfxItemData of items) {
+      if (!passRenderLevel(vfxItemData.renderLevel, scene.renderLevel)) {
+        vfxItemData.components = [];
+        vfxItemData.type = spec.ItemType.null;
+      }
       this.addEffectsObjectData(vfxItemData);
     }
     for (const materialData of materials) {
@@ -156,7 +189,7 @@ export class Engine implements Disposable {
         continue;
       }
       if (this.database) {
-        await this.assetLoader.loadGUIDAsync(itemData.id);
+        this.assetLoader.loadGUID(itemData);
       }
     }
   }

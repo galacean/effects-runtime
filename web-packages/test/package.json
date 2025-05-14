@@ -12,6 +12,6 @@
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "@galacean/effects-plugin-model": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
-    "@vvfx/resource-detection": "^0.7.1"
+    "@vvfx/resource-detection": "^0.9.0"
   }
 }

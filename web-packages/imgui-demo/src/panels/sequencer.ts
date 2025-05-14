@@ -88,7 +88,7 @@ export class Sequencer extends EditorWindow {
         const grabSize = clip.duration * sizePerScend;
 
         ImGui.PushStyleVar(ImGui.StyleVar.GrabMinSize, grabSize);
-        ImGui.SliderFloat('##' + trackAsset.getInstanceId(), (value = clip.start) => clip.start = value, 0.0, totalTime);
+        ImGui.SliderFloat('##' + trackAsset.getInstanceId(), (value = clip.start) => clip.start, 0.0, totalTime);
         ImGui.PopStyleVar();
       }
     }
