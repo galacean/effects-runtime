@@ -120,6 +120,15 @@ export class ModelMeshComponent extends RendererComponent {
   override fromData (data: ModelMeshComponentData): void {
     super.fromData(data);
     this.data = data;
+
+    data.rootBone = data.rootBone ? this.engine.findObject(data.rootBone) : undefined;
+    data.geometry = this.engine.findObject(data.geometry);
+
+    if (data.materials) {
+      for (let i = 0;i < data.materials.length;i++) {
+        data.materials[i] = this.engine.findObject(data.materials[i]);
+      }
+    }
   }
 
   /**
@@ -308,6 +317,9 @@ export class ModelSkyboxComponent extends RendererComponent {
    */
   override fromData (data: ModelSkyboxComponentData): void {
     super.fromData(data);
+
+    data.diffuseImage = data.diffuseImage ? this.engine.findObject(data.diffuseImage) : undefined;
+    data.specularImage = this.engine.findObject(data.specularImage);
     this.data = data;
   }
 
@@ -600,8 +612,9 @@ export class AnimationComponent extends Behaviour {
     this.clips = [];
     data.animationClips.forEach(clipData => {
       const clipObj = new ModelAnimationClip(this.engine);
+      const animationClip = this.engine.findObject<AnimationClip>(clipData);
 
-      clipObj.setFromAnimationClip(clipData as unknown as AnimationClip);
+      clipObj.setFromAnimationClip(animationClip);
       this.clips.push(clipObj);
     });
   }

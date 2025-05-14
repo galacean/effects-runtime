@@ -11,6 +11,7 @@ export abstract class Component extends EffectsObject {
   /**
    * 附加到的 VFXItem 对象
    */
+  @serialize()
   item: VFXItem;
   isAwakeCalled = false;
   isStartCalled = false;
@@ -143,9 +144,6 @@ export abstract class Component extends EffectsObject {
 
   override fromData (data: any): void {
     super.fromData(data);
-    if (data.item) {
-      this.item = data.item;
-    }
   }
 
   override dispose (): void {
@@ -172,6 +170,7 @@ export abstract class Component extends EffectsObject {
 
 /**
  * @since 2.0.0
+ * @deprecated 2.4.0 Please use Component instead
  */
 export abstract class Behaviour extends Component {
 

@@ -59,7 +59,7 @@ const json = {
     'id': '05e1c616baf34cc084968a05703719cd',
     'name': 'component',
     'duration': 99999,
-    'type': '1',
+    'type': '3',
     'visible': true,
     'endBehavior': 0,
     'delay': 0,

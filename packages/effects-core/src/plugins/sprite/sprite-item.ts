@@ -1,25 +1,23 @@
-import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { effectsClass } from '../../decorators';
-import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import type { GeometryDrawMode } from '../../render';
-import { Geometry } from '../../render';
-import type { GeometryFromShape } from '../../shape';
-import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { PlayableGraph, Playable } from '../cal/playable-graph';
-import { PlayableAsset } from '../cal/playable-graph';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
+import { BaseRenderComponent } from '../../components';
+import { effectsClass } from '../../decorators';
+import type { Engine } from '../../engine';
+import type { MaskProps } from '../../material';
+import type { Geometry } from '../../render';
+import { type GeometryFromShape } from '../../shape';
+import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
+import type { Playable, PlayableGraph } from '../cal/playable-graph';
+import { PlayableAsset } from '../cal/playable-graph';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
  */
-export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
+export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer' | 'mask'>, MaskProps {
   listIndex?: number,
   renderer: {
-    mask: number,
     shape: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
@@ -62,27 +60,18 @@ export class SpriteComponent extends BaseRenderComponent {
   splits: splitsDataType = singleSplits;
   frameAnimationLoop = false;
 
-  /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
-  // override colorOverLifetime: { stop: number, color: any }[];
-  // override opacityOverLifetime: ValueGetter<number>;
-
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
 
     this.name = 'MSprite' + seed++;
-    this.geometry = this.createGeometry(glContext.TRIANGLES);
-    this.setItem();
+    this.geometry = this.createGeometry();
     if (props) {
       this.fromData(props);
     }
   }
 
   override onUpdate (dt: number): void {
-    if (!this.isManualTimeSet) {
-      this.frameAnimationTime += dt / 1000;
-      this.isManualTimeSet = false;
-    }
-    let time = this.frameAnimationTime;
+    let time = this.item.time;
     const duration = this.item.duration;
 
     if (time > duration && this.frameAnimationLoop) {
@@ -148,61 +137,20 @@ export class SpriteComponent extends BaseRenderComponent {
         dx, dy,
       ]);
     }
-
   }
 
   override onDestroy (): void {
-    const textures = this.getTextures();
+    const texture = this.renderer.texture;
+    const source = texture.source;
 
-    if (this.item && this.item.composition) {
-      this.item.composition.destroyTextures(textures);
+    if (source.sourceType === TextureSourceType.video && source?.video) {
+      source.video.pause();
+      source.video.src = '';
+      source.video.load();
     }
-
-    textures.forEach(texture => {
-      const source = texture.source;
-
-      if (
-        source.sourceType === TextureSourceType.video &&
-        source?.video
-      ) {
-        source.video.pause();
-        source.video.src = '';
-        source.video.load();
-      }
-    });
   }
 
-  override createGeometry (mode: GeometryDrawMode) {
-    const maxVertex = 12 * this.splits.length;
-
-    return Geometry.create(this.engine, {
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array([
-            -0.5, 0.5, 0, //左上
-            -0.5, -0.5, 0, //左下
-            0.5, 0.5, 0, //右上
-            0.5, -0.5, 0, //右下
-          ]),
-        },
-        atlasOffset: {
-          size: 2,
-          offset: 0,
-          releasable: true,
-          type: glContext.FLOAT,
-          data: new Float32Array(0),
-        },
-      },
-      indices: { data: new Uint16Array(0), releasable: true },
-      mode,
-      maxVertex,
-    });
-
-  }
-
-  override getItemGeometryData () {
+  override getItemGeometryData (geometry: Geometry) {
     const { splits, textureSheetAnimation } = this;
     const sx = 1, sy = 1;
     const renderer = this.renderer;
@@ -220,7 +168,7 @@ export class SpriteComponent extends BaseRenderComponent {
         atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
-      this.geometry.setAttributeData('aPos', new Float32Array(position));
+      geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
         index: index as number[],
@@ -276,7 +224,7 @@ export class SpriteComponent extends BaseRenderComponent {
         index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
       }
     }
-    this.geometry.setAttributeData('aPos', new Float32Array(position));
+    geometry.setAttributeData('aPos', new Float32Array(position));
 
     return { index, atlasOffset };
   }
@@ -284,43 +232,17 @@ export class SpriteComponent extends BaseRenderComponent {
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
 
-    const { interaction, options, listIndex = 0 } = data;
-    let renderer = data.renderer;
-
-    if (!renderer) {
-      renderer = {} as SpriteItemProps['renderer'];
-    }
+    const { interaction, options } = data;
 
     this.interaction = interaction;
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      shape: renderer.shape,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
-      order: listIndex,
-    };
-
-    this.emptyTexture = this.engine.emptyTexture;
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
-    this.cachePrefix = '-';
-    this.renderInfo = getImageItemRenderInfo(this);
 
-    const geometry = this.createGeometry(glContext.TRIANGLES);
-    const material = this.createMaterial(this.renderInfo, 2);
+    const geometry = this.createGeometry();
 
-    this.worldMatrix = Matrix4.fromIdentity();
-    this.material = material;
     this.geometry = geometry;
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
-    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
-    this.setItem();
   }
 }
