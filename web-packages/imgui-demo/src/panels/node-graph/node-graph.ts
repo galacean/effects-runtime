@@ -111,9 +111,9 @@ export class AnimationGraph extends EditorWindow {
       (stateNode.GetChildGraph()! as FlowGraph).TryMakeConnection(animationClipNode1, animationClipNode1.GetOutputPin(0)!, state1ResultNode, state1ResultNode.GetInputPin(0)!);
     };
 
-    buildStateGraph(stateNode1, '004b528e18f44637a69a9f8a73fa0287');
-    buildStateGraph(stateNode2, '9d0cf4ce9c41406ba02252d5b5ebb364');
-    buildStateGraph(stateNode3, '80be72ca20434bd5a1461f6fe4da6cc8');
+    buildStateGraph(stateNode1, '4dbf7d18673747e0afc0328f0149f3ee');
+    buildStateGraph(stateNode2, '4dbf7d18673747e0afc0328f0149f3ee');
+    buildStateGraph(stateNode3, '4dbf7d18673747e0afc0328f0149f3ee');
 
     // stateNode1.GetChildGraph()?.CreateNode(StateMachineToolsNode);
     stateNode1.Rename('State1');
@@ -135,11 +135,11 @@ export class AnimationGraph extends EditorWindow {
 
     boolControlParameterToolsNode.Rename('TestParam');
     //@ts-expect-error
-    boolControlParameterToolsNode.m_value = true;
+    boolControlParameterToolsNode.m_value = false;
     //@ts-expect-error
-    conditionNode2.m_value = true;
+    conditionNode2.m_value = false;
     //@ts-expect-error
-    conditionNode3.m_value = true;
+    conditionNode3.m_value = false;
 
     transitionToolsNode1.m_duration = 2;
     transitionToolsNode2.m_duration = 2;
@@ -186,7 +186,7 @@ export class AnimationGraph extends EditorWindow {
     }
 
     if (ImGui.Button('Save') || !this.graph) {
-      this.rebuildGraph(this.currentVFXItem);
+      // this.rebuildGraph(this.currentVFXItem);
     }
 
     if (!this.graph) {
