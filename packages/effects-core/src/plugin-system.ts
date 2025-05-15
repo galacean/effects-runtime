@@ -54,16 +54,18 @@ export class PluginSystem {
     };
 
     defaultPlugins.forEach(addLoader);
-    pluginNames.forEach(addLoader);
+
+    for (const customPluginName of pluginNames) {
+      if (!pluginLoaderMap[customPluginName]) {
+        throw new Error(`The plugin '${customPluginName}' not found.` + getPluginUsageInfo(customPluginName));
+      }
+    }
+
     this.plugins = Object.keys(loaders)
       .map(name => {
-        const CTRL = pluginLoaderMap[name];
+        const pluginConstructor = pluginLoaderMap[name];
 
-        if (!CTRL) {
-          throw new Error(`The plugin '${name}' not found.` + getPluginUsageInfo(name));
-        }
-
-        const loader = new CTRL();
+        const loader = new pluginConstructor();
 
         loader.name = name;
 
