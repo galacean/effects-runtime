@@ -37,7 +37,9 @@ export class MaskProcessor {
   }
 
   drawStencilMask (renderer: Renderer) {
-    renderer.clear(this.stencilClearAction);
-    this.maskable?.drawStencilMask(renderer);
+    if (this.maskable) {
+      renderer.clear(this.stencilClearAction);
+      this.maskable.drawStencilMask(renderer);
+    }
   }
 }
