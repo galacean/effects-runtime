@@ -64,7 +64,6 @@ export class PluginSystem {
     this.plugins = Object.keys(loaders)
       .map(name => {
         const pluginConstructor = pluginLoaderMap[name];
-
         const loader = new pluginConstructor();
 
         loader.name = name;
