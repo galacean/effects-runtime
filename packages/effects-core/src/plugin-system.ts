@@ -41,7 +41,7 @@ export function unregisterPlugin (name: string) {
 export class PluginSystem {
   readonly plugins: Plugin[];
 
-  constructor () {
+  constructor (pluginNames: string[]) {
     const loaders: Record<string, PluginConstructor> = {};
     const loaded: PluginConstructor[] = [];
     const addLoader = (name: string) => {
@@ -54,6 +54,7 @@ export class PluginSystem {
     };
 
     defaultPlugins.forEach(addLoader);
+    pluginNames.forEach(addLoader);
     this.plugins = Object.keys(loaders)
       .map(name => {
         const CTRL = pluginLoaderMap[name];
