@@ -326,6 +326,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     } else {
       scenes.push(scene);
     }
+    this.baseCompositionIndex += scenes.length;
 
     if (autoplay) {
       this.autoPlaying = true;
@@ -352,7 +353,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
         const composition = this.createComposition(scene, opts);
 
-        this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
         autoplayFlags[index] = compositionAutoplay;
