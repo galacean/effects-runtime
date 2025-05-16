@@ -8,6 +8,12 @@
 
 ---
 
+## 2.3.7
+
+`2025-05-16`
+
+- Fix: 视频不重播、循环播放时闪烁。[#997](https://github.com/galacean/effects-runtime/pull/997) @yuufen
+
 ## 2.3.6
 
 `2025-05-13`
