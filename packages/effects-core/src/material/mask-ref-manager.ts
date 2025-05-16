@@ -7,7 +7,7 @@ import { TextureLoadAction } from '../texture/types';
 import type { RenderPassClearAction } from '../render/render-pass';
 
 export class MaskProcessor {
-  maskable?: Maskable;
+  maskable: Maskable | null = null;
 
   private stencilClearAction: RenderPassClearAction;
 
@@ -29,7 +29,9 @@ export class MaskProcessor {
         maskMode = MaskMode.MASK;
       } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
         maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
-        this.maskable = ref;
+        if (ref) {
+          this.maskable = ref;
+        }
       }
     }
 
