@@ -7,6 +7,12 @@
 
 ---
 
+## 2.3.7
+
+`2025-05-16`
+
+- Fix: The video does not replay and flickers during loop playback. [#997](https://github.com/galacean/effects-runtime/pull/997) @yuufen
+
 ## 2.3.6
 
 `2025-05-13`
