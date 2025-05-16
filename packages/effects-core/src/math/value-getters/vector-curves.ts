@@ -4,6 +4,7 @@ import type { BezierCurve } from './value-getter';
 import { ValueGetter } from './value-getter';
 import type * as spec from '@galacean/effects-specification';
 import { createValueGetter } from './value-getter-map';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
 export class Vector4Curve extends ValueGetter<Vector4> {
   private value = new Vector4();
@@ -38,6 +39,30 @@ export class Vector4Curve extends ValueGetter<Vector4> {
       this.zCurve.getMaxTime(),
       this.wCurve.getMaxTime(),
     );
+  }
+}
+
+export class Vector3Curve extends ValueGetter<Vector3> {
+  private value = new Vector3();
+
+  private xCurve: BezierCurve;
+  private yCurve: BezierCurve;
+  private zCurve: BezierCurve;
+
+  override onCreate (arg: spec.Vector3CurveData) {
+    this.xCurve = createValueGetter(arg[0]) as BezierCurve;
+    this.yCurve = createValueGetter(arg[1]) as BezierCurve;
+    this.zCurve = createValueGetter(arg[2]) as BezierCurve;
+  }
+
+  override getValue (t: number): Vector3 {
+    const x = this.xCurve.getValue(t);
+    const y = this.yCurve.getValue(t);
+    const z = this.zCurve.getValue(t);
+
+    this.value.set(x, y, z);
+
+    return this.value;
   }
 }
 
