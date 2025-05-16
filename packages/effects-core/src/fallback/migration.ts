@@ -57,8 +57,12 @@ const itemMap: Map<string, spec.VFXItemData> = new Map();
 const refCompositions: Map<string, spec.CompositionData> = new Map();
 
 /**
- * 3.1 版本数据适配
- * - 富文本插件名称的适配
+ * Migrates scene data to version 3.1 by updating custom shape components.
+ *
+ * Moves the `fill` property from the first shape in a custom shape component to the component root, and converts absolute easing coordinates (`easingIn` and `easingOut`) to relative coordinates based on their associated points.
+ *
+ * @param json - The scene data to migrate.
+ * @returns The migrated scene data compatible with version 3.1.
  */
 export function version31Migration (json: JSONScene): JSONScene {
   // Custom shape fill 属性位置迁移
@@ -104,6 +108,14 @@ export function version31Migration (json: JSONScene): JSONScene {
   return json;
 }
 
+/**
+ * Migrates a scene to version 3.2 by rebuilding internal maps and processing legacy mask data.
+ *
+ * Clears and reconstructs component, item, and composition maps from the scene data, then processes the main composition and referenced compositions to handle legacy mask structures.
+ *
+ * @param json - The scene data to migrate.
+ * @returns The migrated scene data.
+ */
 export function version32Migration (json: JSONScene): JSONScene {
   componentMap.clear();
   itemMap.clear();
@@ -131,6 +143,13 @@ export function version32Migration (json: JSONScene): JSONScene {
   return json;
 }
 
+/**
+ * Migrates a JSON scene to version 3.3, updating plugin names, shape references, and composition structures.
+ *
+ * Updates legacy rich-text plugin names to the new format, converts old shape references in sprite components to direct shape objects, assigns new GUIDs to compositions, separates composition components, and updates precomposition element references to use the new GUIDs.
+ *
+ * @returns The migrated {@link JSONScene} object compatible with version 3.3.
+ */
 export function version33Migration (json: JSONScene): JSONScene {
   // 修正老版本数据中，富文本插件名称的问题
   json.plugins?.forEach((plugin, index) => {
