@@ -11,6 +11,7 @@
 
 `2025-05-15`
 
+- Fix: mask is still drawn when the component is not activated. [#993](https://github.com/galacean/effects-runtime/pull/993) @wumaolinmaoan
 - Fix: recover when plugins not import will console the install tips. [#991](https://github.com/galacean/effects-runtime/pull/991) @yiiqii
 - Fix: mask value distribution cache error. [#989](https://github.com/galacean/effects-runtime/pull/989) @wumaolinmaoan
 - Fix: loaded composition array order is wrong. [#990](https://github.com/galacean/effects-runtime/pull/990) @wumaolinmaoan
