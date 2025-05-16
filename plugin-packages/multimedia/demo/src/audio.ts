@@ -113,7 +113,7 @@ const json = {
       id: '147e873c89b34c6f96108ccc4d6e6f83',
       name: 'audio',
       duration,
-      type: '1',
+      type: spec.ItemType.audio,
       visible: true,
       endBehavior,
       delay,

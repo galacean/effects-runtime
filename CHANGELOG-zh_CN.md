@@ -8,6 +8,54 @@
 
 ---
 
+## 2.4.2
+
+`2025-05-16`
+
+- Fix: 视频不重播、循环播放时闪烁。[#995](https://github.com/galacean/effects-runtime/pull/995) @yuufen
+- Fix: rich text plugin name migration. [#999](https://github.com/galacean/effects-runtime/pull/999) @wumaolinmaoan
+
+## 2.4.1
+
+`2025-05-15`
+
+- Fix: mask is still drawn when the component is not activated. [#993](https://github.com/galacean/effects-runtime/pull/993) @wumaolinmaoan
+- Fix: recover when plugins not import will console the install tips. [#991](https://github.com/galacean/effects-runtime/pull/991) @yiiqii
+- Fix: mask value distribution cache error. [#989](https://github.com/galacean/effects-runtime/pull/989) @wumaolinmaoan
+- Fix: loaded composition array order is wrong. [#990](https://github.com/galacean/effects-runtime/pull/990) @wumaolinmaoan
+
+## 2.4.0
+
+`2025-05-14`
+
+- Feat: 图像蒙版和指向性蒙版。[#901](https://github.com/galacean/effects-runtime/pull/901) @RGCHN
+  - Feat: support mask render. [#982](https://github.com/galacean/effects-runtime/pull/982) @wumaolinmaoan
+  - Fix: remove `setMaskMode` color mask parameter. [#984](https://github.com/galacean/effects-runtime/pull/984) @wumaolinmaoan
+  - Fix: 增加蒙版相关版本转换处理。[#940](https://github.com/galacean/effects-runtime/pull/940) @RGCHN
+  - Fix: 增加富文本元素的蒙版数据兼容。[#952](https://github.com/galacean/effects-runtime/pull/952) @RGCHN
+  - Fix: mask draw order. [#977](https://github.com/galacean/effects-runtime/pull/977) @wumaolinmaoan
+- Feat: shape support anchor and renderer settings. [#954](https://github.com/galacean/effects-runtime/pull/954) @wumaolinmaoan
+- Feat: root item support multiple components. [#957](https://github.com/galacean/effects-runtime/pull/957) @wumaolinmaoan
+- Refactor: remove redundant properties in `BaseRenderComponent`. [#941](https://github.com/galacean/effects-runtime/pull/941) @wumaolinmaoan
+  - Refactor: remove composition source manager. [#945](https://github.com/galacean/effects-runtime/pull/945) @wumaolinmaoan
+  - Refactor: `baseRenderComponent` material create. [#949](https://github.com/galacean/effects-runtime/pull/949) @wumaolinmaoan
+  - Refactor: `baseRenderComponent` `setItem` logic. [#950](https://github.com/galacean/effects-runtime/pull/950) @wumaolinmaoan
+  - Fix: 3d frame test. [#959](https://github.com/galacean/effects-runtime/pull/959) @wumaolinmaoan
+- Refactor: effectsObject deserialization logic. [#961](https://github.com/galacean/effects-runtime/pull/961) @wumaolinmaoan
+- Refactor: interact message trigger logic. [#973](https://github.com/galacean/effects-runtime/pull/973) @wumaolinmaoan
+  - Fix: unit test. [#983](https://github.com/galacean/effects-runtime/pull/983) @wumaolinmaoan
+- Fix: old shape data null check. [#960](https://github.com/galacean/effects-runtime/pull/960) @wumaolinmaoan
+- Fix: interact item start time judgment. [#962](https://github.com/galacean/effects-runtime/pull/962) @wumaolinmaoan
+  - Revert. [#970](https://github.com/galacean/effects-runtime/pull/970) @wumaolinmaoan
+- Chore: add hit test demo page. [#955](https://github.com/galacean/effects-runtime/pull/955) @wumaolinmaoan
+- Chore: update spec and resource-detection. [#958](https://github.com/galacean/effects-runtime/pull/958) @yiiqii
+
+## 2.3.6
+
+`2025-05-13`
+
+- Fix: video pause error. [#985](https://github.com/galacean/effects-runtime/pull/985) @wumaolinmaoan
+
 ## 2.3.5
 
 `2025-05-12`

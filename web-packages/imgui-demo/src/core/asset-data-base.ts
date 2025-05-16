@@ -90,7 +90,7 @@ export class AssetDatabase extends Database {
     // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
     for (const objectData of packageData.exportObjects) {
-      effectsPackage.exportObjects.push(await this.engine.assetLoader.loadGUIDAsync(objectData.id));
+      // effectsPackage.exportObjects.push(await this.engine.assetLoader.loadGUIDAsync(objectData.id));
     }
 
     return effectsPackage;

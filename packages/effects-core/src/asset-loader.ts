@@ -16,10 +16,13 @@ export class AssetLoader {
     private engine: Engine,
   ) { }
 
-  loadGUID<T> (guid: string): T {
-    if (this.engine.objectInstance[guid]) {
-      return this.engine.objectInstance[guid] as T;
+  loadGUID<T> (dataPath: spec.DataPath): T {
+    const guid = dataPath.id;
+
+    if (!dataPath) {
+      return null as T;
     }
+
     const effectsObjectData = this.findData(guid);
     let effectsObject: EffectsObject | undefined;
 
@@ -60,70 +63,6 @@ export class AssetLoader {
     effectsObject.setInstanceId(effectsObjectData.id);
     this.engine.addInstance(effectsObject);
     SerializationHelper.deserialize(effectsObjectData, effectsObject);
-
-    return effectsObject as T;
-  }
-
-  // 加载本地文件资产
-  async loadGUIDAsync<T> (guid: string): Promise<T> {
-    if (this.engine.objectInstance[guid]) {
-      return this.engine.objectInstance[guid] as T;
-    }
-
-    const effectsObjectData = this.findData(guid);
-    let effectsObject: EffectsObject | undefined;
-
-    if (!effectsObjectData) {
-      if (!this.engine.database) {
-        console.error(`Object data with uuid: ${guid} not found.`);
-
-        return undefined as T;
-      }
-
-      effectsObject = await this.engine.database.loadGUID(guid);
-
-      if (!effectsObject) {
-        console.error(`Disk data with uuid: ${guid} not found.`);
-
-        return undefined as T;
-      }
-
-      this.engine.addInstance(effectsObject);
-
-      return effectsObject as T;
-    }
-
-    switch (effectsObjectData.dataType) {
-      case spec.DataType.Material:
-        effectsObject = Material.create(this.engine);
-
-        break;
-      case spec.DataType.Geometry:
-        effectsObject = Geometry.create(this.engine);
-
-        break;
-      case spec.DataType.Texture:
-        effectsObject = Texture.create(this.engine);
-
-        break;
-      default: {
-        const classConstructor = AssetLoader.getClass(effectsObjectData.dataType);
-
-        if (classConstructor) {
-          effectsObject = new classConstructor(this.engine);
-        }
-      }
-    }
-
-    if (!effectsObject) {
-      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
-
-      return undefined as T;
-    }
-
-    effectsObject.setInstanceId(effectsObjectData.id);
-    this.engine.addInstance(effectsObject);
-    await SerializationHelper.deserializeAsync(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }

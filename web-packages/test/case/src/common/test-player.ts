@@ -177,7 +177,7 @@ export class TestPlayer {
     const url = this.canvas.toDataURL('image/png');
     const img = document.createElement('img');
     const suite = document.querySelectorAll('.suite');
-    const ul = suite[idx[0]].querySelector('ul');
+    const ul = suite[idx[0]]?.querySelector('ul');
     let li = ul?.querySelector(`li.idx-${idx[1]}`);
 
     if (!li) {

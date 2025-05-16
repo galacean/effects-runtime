@@ -19,7 +19,7 @@ export abstract class EffectsObject {
   /**
    * 存储需要序列化的数据
    */
-  readonly taggedProperties: Record<string, any>;
+  defination: Record<string, any>;
 
   /**
    *
@@ -29,7 +29,7 @@ export abstract class EffectsObject {
     public engine: Engine,
   ) {
     this.guid = generateGUID();
-    this.taggedProperties = {};
+    this.defination = {};
     this.engine.addInstance(this);
   }
 
@@ -62,9 +62,6 @@ export abstract class EffectsObject {
    * @param data - 对象的序列化的数据
    */
   fromData (data: spec.EffectsObjectData) {
-    if (data.id) {
-      this.setInstanceId(data.id);
-    }
   }
 
   /**

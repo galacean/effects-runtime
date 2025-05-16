@@ -21,7 +21,7 @@ export interface SlotGroupProps {
    */
   pma: boolean,
   /**
-   * mask 相关参数
+   * mask 和 renderer 相关参数
    */
   renderOptions: {},
   engine: Engine,

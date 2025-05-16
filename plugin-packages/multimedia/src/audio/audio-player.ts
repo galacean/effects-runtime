@@ -27,10 +27,12 @@ export class AudioPlayer {
   private currentVolume = 1;
 
   constructor (
-    audio: AudioBuffer | HTMLAudioElement,
     private engine: Engine,
+    audio?: AudioBuffer | HTMLAudioElement,
   ) {
-    this.setAudioSource(audio);
+    if (audio) {
+      this.setAudioSource(audio);
+    }
   }
 
   /**

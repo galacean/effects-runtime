@@ -70,6 +70,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       mergedMacros.push(...shaderSource.macros);
     }
     if (macros) {
+      // TODO 合并 shaderSource.macros 中已经存在的 macro
       mergedMacros.push(...macros);
     }
     const shaderWithMacros = {

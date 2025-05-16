@@ -41,7 +41,6 @@ export class ColorPlayable extends Playable {
       }
     }
 
-    this.activeComponent?.setAnimationTime(this.time);
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
     const life = this.time / boundObject.duration;

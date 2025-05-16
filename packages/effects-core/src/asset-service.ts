@@ -89,7 +89,7 @@ export class AssetService implements Disposable {
       if (textureOptions instanceof Texture) {
         this.engine.addInstance(textureOptions);
       } else {
-        textureOptions = this.engine.assetLoader.loadGUID<Texture>(scene.textureOptions[i].id);
+        textureOptions = this.engine.findObject<Texture>({ id:scene.textureOptions[i].id });
         scene.textureOptions[i] = textureOptions;
       }
       textureOptions.initialize();

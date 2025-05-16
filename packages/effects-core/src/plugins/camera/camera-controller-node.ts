@@ -1,10 +1,10 @@
 import * as spec from '@galacean/effects-specification';
-import { Behaviour } from '../../components';
+import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 
 @effectsClass(spec.DataType.CameraController)
-export class CameraController extends Behaviour {
+export class CameraController extends Component {
   private options: CameraControllerOptions;
 
   constructor (

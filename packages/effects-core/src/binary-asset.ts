@@ -6,8 +6,4 @@ import { effectsClass, serialize } from './decorators';
 export class BinaryAsset extends EffectsObject {
   @serialize()
   buffer: ArrayBuffer;
-
-  override fromData (data: spec.EffectsObjectData): void {
-
-  }
 }

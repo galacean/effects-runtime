@@ -87,7 +87,7 @@ describe('webgl/gl-material', () => {
     expect(material.blendFunction).to.eql([glContext.ZERO, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ZERO]);
     assert.equal(material.culling, true);
     expect(material.blendColor).to.eql([0, 0.5, 1.0, 0]);
-    expect(material.colorMask).to.eql([true, true, true, true]);
+    expect(material.colorMask).to.eql(true);
     assert.equal(material.depthTest, false);
     assert.equal(material.depthMask, true);
     assert.equal(material.depthFunc, glContext.LESS);
@@ -350,10 +350,10 @@ describe('webgl/gl-material', () => {
 
   // 使用自定义的colorMask相关参数
   it('colorMask with custom parameters', () => {
-    const material = generateGLMaterial(engine, shader, { colorMask: [false, true, false, true] }, renderer);
+    const material = generateGLMaterial(engine, shader, { colorMask: false }, renderer);
 
     material.setupStates(renderer.glRenderer.pipelineContext);
-    expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equals([false, true, false, true]);
+    expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equals([false, false, false, false]);
   });
 
   // 销毁GLMaterial以及对应的texture
@@ -1692,7 +1692,7 @@ function generateGLMaterial (
   material.depthMask = states.depthMask;
   material.depthRange = states.depthRange;
   material.depthFunc = states.depthFunc;
-  material.colorMask = states.colorMask;
+  material.colorMask = states.colorMask ?? material.colorMask;
   material.polygonOffset = states.polygonOffset;
   material.polygonOffsetFill = states.polygonOffsetFill;
   material.blending = states.blending;

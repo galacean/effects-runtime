@@ -202,7 +202,8 @@ export class AssetManager implements Disposable {
 
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const pluginSystem = new PluginSystem();
+    const { plugins = [] } = jsonScene;
+    const pluginSystem = new PluginSystem(plugins);
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 
