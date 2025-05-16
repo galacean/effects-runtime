@@ -61,13 +61,6 @@ const refCompositions: Map<string, spec.CompositionData> = new Map();
  * - 富文本插件名称的适配
  */
 export function version31Migration (json: JSONScene): JSONScene {
-  // 修正老版本数据中，富文本插件名称的问题
-  json.plugins?.forEach((plugin, index) => {
-    if (plugin === 'richtext') {
-      json.plugins[index] = 'rich-text';
-    }
-  });
-
   // Custom shape fill 属性位置迁移
   for (const component of json.components) {
     if (component.dataType === DataType.ShapeComponent) {
@@ -139,6 +132,13 @@ export function version32Migration (json: JSONScene): JSONScene {
 }
 
 export function version33Migration (json: JSONScene): JSONScene {
+  // 修正老版本数据中，富文本插件名称的问题
+  json.plugins?.forEach((plugin, index) => {
+    if (plugin === 'richtext') {
+      json.plugins[index] = 'rich-text';
+    }
+  });
+
   // 老 shape 数据兼容
   for (const item of json.items) {
     if (item.type === spec.ItemType.sprite) {
