@@ -3,7 +3,6 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
-import { MaskRefManager } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
@@ -39,11 +38,6 @@ export class Engine implements Disposable {
    * 渲染过程中错误队列
    */
   renderErrors: Set<Error> = new Set();
-
-  /**
-   * maskRef 值分配
-   */
-  maskRefManager: MaskRefManager = new MaskRefManager();
 
   protected destroyed = false;
   protected textures: Texture[] = [];

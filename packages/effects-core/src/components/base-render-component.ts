@@ -159,6 +159,9 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
    * @internal
    */
   drawStencilMask (renderer: Renderer) {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
     const previousColorMask = this.material.colorMask;
 
     this.material.colorMask = false;
