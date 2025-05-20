@@ -2,9 +2,9 @@
 // https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/buildCommands/buildLine.ts
 
 import type { Color } from '@galacean/effects-math/es/core/color';
+import { NumberEpsilon } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Point } from './point';
-import { NumberEpsilon } from '@galacean/effects-math/es/core/utils';
 
 export const closePointEps = 1e-4;
 export const curveEps = 0.0001;

@@ -3,7 +3,6 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
-import { CompositionSourceManager } from './composition-source-manager';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
@@ -12,15 +11,14 @@ import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
-import { TextureLoadAction, TextureSourceType } from './texture';
+import { TextureLoadAction } from './texture';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components';
+import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { SerializationHelper } from './serialization-helper';
 import { PlayState } from './plugins/cal/playable-graph';
 
 /**
@@ -170,13 +168,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @since 1.6.0
    */
   interactive: boolean;
-
   /**
    * 合成是否结束
    */
   isEnded = false;
-
-  compositionSourceManager: CompositionSourceManager;
   /**
    * 合成id
    */
@@ -197,10 +192,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 插件系统，保存当前加载的插件对象，负责插件事件和创建插件的 Item 对象
    */
   readonly pluginSystem: PluginSystem;
-  /**
-   * 是否在合成结束时自动销毁引用的纹理，合成重播时不销毁
-   */
-  readonly autoRefTex: boolean;
   /**
    * 当前合成名称
    */
@@ -258,12 +249,39 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private paused = false;
   private lastVideoUpdateTime = 0;
   private isEndCalled = false;
+  private _textures: Texture[] = [];
 
-  private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
    */
   private handleItemMessage: (message: MessageItem) => void;
+
+  /**
+   * @internal
+   * 构建父子树，同时保存到 itemCacheMap 中便于查找
+   */
+  static buildItemTree (compVFXItem: VFXItem) {
+    const itemMap = new Map<string, VFXItem>();
+    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
+
+    for (const item of contentItems) {
+      itemMap.set(item.id, item);
+    }
+
+    for (const item of contentItems) {
+      if (item.parentId === undefined) {
+        item.setParent(compVFXItem);
+      } else {
+        const parent = itemMap.get(item.parentId);
+
+        if (parent) {
+          item.setParent(parent);
+        } else {
+          throw new Error('The element references a non-existent element, please check the data.');
+        }
+      }
+    }
+  }
 
   /**
    * Composition 构造函数
@@ -284,19 +302,26 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       handleItemMessage,
     } = props;
 
-    this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
+    this.renderer = renderer;
+    this._textures = scene.textureOptions as Texture[];
+    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
+    this.getEngine().renderLevel = scene.renderLevel;
 
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, imgUsage } = this.compositionSourceManager;
 
-    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
+    let sourceContent: spec.CompositionData = scene.jsonScene.compositions[0];
+
+    for (const composition of scene.jsonScene.compositions) {
+      if (composition.id === scene.jsonScene.compositionId) {
+        sourceContent = composition;
+      }
+    }
 
     assertExist(sourceContent);
-    this.renderer = renderer;
 
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.getEngine());
@@ -305,16 +330,23 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
-    // Create rootCompositionComponent
-    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
-    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
+    // Create rootItem components
+    //@ts-expect-error TODO update spec.
+    const componentPaths = sourceContent.components as spec.DataPath[];
+
+    for (const componentPath of componentPaths) {
+      const component = this.getEngine().findObject<Component>(componentPath);
+
+      this.rootItem.components.push(component);
+      component.item = this.rootItem;
+    }
+    this.rootComposition = this.rootItem.getComponent(CompositionComponent);
 
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent.id;
     this.renderer = renderer;
-    this.texInfo = !reusable ? imgUsage : {};
     this.event = event;
     this.statistic = {
       loadStart: scene.startTime ?? 0,
@@ -324,7 +356,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = scene.pluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -339,7 +370,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.createRenderFrame();
     this.rendererOptions = null;
 
-    this.buildItemTree(this.rootItem);
+    Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
@@ -355,7 +386,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取场景中的纹理数组
    */
   get textures () {
-    return this.compositionSourceManager.textures;
+    return this._textures;
   }
 
   /**
@@ -649,42 +680,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 构建父子树，同时保存到 itemCacheMap 中便于查找
-   */
-  private buildItemTree (compVFXItem: VFXItem) {
-    if (!compVFXItem.composition) {
-      return;
-    }
-
-    const itemMap = new Map<string, VFXItem>();
-    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
-
-    for (const item of contentItems) {
-      itemMap.set(item.id, item);
-    }
-
-    for (const item of contentItems) {
-      if (item.parentId === undefined) {
-        item.setParent(compVFXItem);
-      } else {
-        const parent = itemMap.get(item.parentId);
-
-        if (parent) {
-          item.setParent(parent);
-        } else {
-          throw new Error('The element references a non-existent element, please check the data.');
-        }
-      }
-    }
-
-    for (const item of contentItems) {
-      if (VFXItem.isComposition(item)) {
-        this.buildItemTree(item);
-      }
-    }
-  }
-
-  /**
    * 更新视频数据到纹理
    * @override
    */
@@ -864,45 +859,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 销毁插件 Item 中保存的纹理数组
-   * @internal
-   * @param textures - 需要销毁的数组
-   */
-  destroyTextures (textures: (Texture | null | undefined)[]) {
-    for (let i = 0; i < textures.length; i++) {
-      const texture: Texture | null | undefined = textures[i];
-
-      if (!texture) {
-        continue;
-      }
-      if (texture.sourceType === TextureSourceType.data && !(this.texInfo[texture.getInstanceId()])) {
-        if (
-          texture !== this.rendererOptions?.emptyTexture &&
-          texture !== this.renderFrame.transparentTexture &&
-          texture !== this.getEngine().emptyTexture
-        ) {
-          texture.dispose();
-        }
-        continue;
-      }
-      if (this.autoRefTex) {
-        // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
-        const c = --this.texInfo[texture.getInstanceId()];
-
-        if (!c) {
-          if (__DEBUG__) {
-            console.debug(`Destroy no ref texture: ${texture?.id}.`);
-            if (isNaN(c)) {
-              logger.error(`Texture ${texture?.id} not found usage.`);
-            }
-          }
-          texture.dispose();
-        }
-      }
-    }
-  }
-
-  /**
    * 销毁 Item
    * @internal
    * @param item - 需要销毁的 item
@@ -973,9 +929,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.dispose = noop;
     if (textures && this.keepResource) {
-      textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);
+      textures.forEach(tex => {
+        tex.dispose = textureDisposes[tex.id];
+        tex.dispose();
+      });
     }
-    this.compositionSourceManager.dispose();
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;

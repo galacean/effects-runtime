@@ -2,7 +2,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { Behaviour } from './components';
+import { Component } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType } from './plugins';
@@ -10,6 +10,7 @@ import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';
+import { effectsClass, serialize } from './decorators';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -24,9 +25,11 @@ export interface SceneBindingData {
 /**
  * @since 2.0.0
  */
-export class CompositionComponent extends Behaviour {
+@effectsClass('CompositionComponent')
+export class CompositionComponent extends Component {
   time = 0;
   startTime = 0;
+  @serialize()
   items: VFXItem[] = [];  // 场景的所有元素
 
   /**
@@ -35,7 +38,9 @@ export class CompositionComponent extends Behaviour {
   state: PlayState = PlayState.Playing;
 
   private reusable = false;
+  @serialize()
   private sceneBindings: SceneBinding[] = [];
+  @serialize()
   private timelineAsset: TimelineAsset;
   private timelinePlayable: TimelinePlayable;
   private graph: PlayableGraph = new PlayableGraph();
@@ -231,11 +236,9 @@ export class CompositionComponent extends Behaviour {
 
   override fromData (data: any): void {
     super.fromData(data);
+    const compositionData = data as spec.CompositionData;
 
-    this.items = data.items;
-    this.startTime = data.startTime ?? 0;
-    this.sceneBindings = data.sceneBindings;
-    this.timelineAsset = data.timelineAsset;
+    this.startTime = compositionData.startTime ?? 0;
   }
 
   private resolveBindings () {

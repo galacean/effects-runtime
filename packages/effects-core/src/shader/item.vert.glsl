@@ -10,7 +10,7 @@ varying vec4 vColor;
 uniform vec2 _Size;
 uniform vec3 _Scale;
 uniform vec4 _Color;
-uniform vec4 _TexParams;//transparentOcclusion blending renderMode
+uniform vec4 _TexParams;//transparentOcclusion blending renderMode maskMode
 uniform vec4 _TexOffset;// x y sx sy
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
@@ -24,7 +24,7 @@ void main() {
   vec4 texParams = _TexParams;
   vTexCoord = vec2(atlasOffset.xy * _TexOffset.zw + _TexOffset.xy);
   vColor = _Color;
-  vParams = vec3(0.0, texParams.y, texParams.x);
+  vParams = vec3(texParams.w, texParams.y, texParams.x);
 
   if(texParams.z == 1.0) {
     vec4 pos = vec4(aPos.xy * _Size, aPos.z, 1.0);

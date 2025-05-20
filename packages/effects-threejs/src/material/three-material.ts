@@ -367,6 +367,16 @@ export class ThreeMaterial extends Material {
     }
   }
 
+  /**
+   * 获取颜色写入开关
+   */
+  override set colorMask (value: boolean) {
+    this.material.colorWrite = value;
+  }
+  override get colorMask (): boolean {
+    return this.material.colorWrite;
+  }
+
   getTexture (name: string): Texture | null {
     return this.textures[name];
   }

@@ -1,3 +1,4 @@
+import * as spec from '@galacean/effects-specification';
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
   SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData, CompositionContent,
@@ -6,6 +7,7 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
+import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 
@@ -49,18 +51,16 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
   return json;
 }
 
+let currentMaskComponent: string;
+const componentMap: Map<string, spec.ComponentData> = new Map();
+const itemMap: Map<string, spec.VFXItemData> = new Map();
+const refCompositions: Map<string, spec.CompositionData> = new Map();
+
 /**
  * 3.1 版本数据适配
  * - 富文本插件名称的适配
  */
 export function version31Migration (json: JSONScene): JSONScene {
-  // 修正老版本数据中，富文本插件名称的问题
-  json.plugins?.forEach((plugin, index) => {
-    if (plugin === 'richtext') {
-      json.plugins[index] = 'rich-text';
-    }
-  });
-
   // Custom shape fill 属性位置迁移
   for (const component of json.components) {
     if (component.dataType === DataType.ShapeComponent) {
@@ -101,7 +101,65 @@ export function version31Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // Composition id 转 guid
+  return json;
+}
+
+export function version32Migration (json: JSONScene): JSONScene {
+  componentMap.clear();
+  itemMap.clear();
+  refCompositions.clear();
+  const { compositions, items, components } = json;
+  // 处理旧蒙版数据
+  let mainComp = compositions[0];
+
+  for (const component of components) {
+    componentMap.set(component.id, component);
+  }
+  for (const comp of compositions) {
+    if (comp.id === json.compositionId) {
+      mainComp = comp;
+    } else {
+      refCompositions.set(comp.id, comp);
+    }
+  }
+  for (const item of items) {
+    itemMap.set(item.id, item);
+  }
+
+  processContent(mainComp);
+
+  return json;
+}
+
+export function version33Migration (json: JSONScene): JSONScene {
+  // 修正老版本数据中，富文本插件名称的问题
+  json.plugins?.forEach((plugin, index) => {
+    if (plugin === 'richtext') {
+      json.plugins[index] = 'rich-text';
+    }
+  });
+
+  // 老 shape 数据兼容
+  for (const item of json.items) {
+    if (item.type === spec.ItemType.sprite) {
+      const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
+
+      if (spriteComponent) {
+        const shape = spriteComponent.renderer.shape;
+        let shapeData;
+
+        if (Number.isInteger(shape)) {
+          shapeData = json.shapes[shape as number];
+        } else {
+          shapeData = shape;
+        }
+
+        spriteComponent.renderer.shape = shapeData;
+      }
+    }
+  }
+
+  // Composition id 转 guid, Composition 分离 CompositionComponent
   const compositionId = json.compositionId;
   const compositionIdToGUIDMap: Record<string, string> = {};
 
@@ -113,6 +171,24 @@ export function version31Migration (json: JSONScene): JSONScene {
       json.compositionId = guid;
     }
     composition.id = guid;
+
+    const compositionComponent = {
+      id: generateGUID(),
+      dataType:'CompositionComponent',
+      items: composition.items,
+      timelineAsset: composition.timelineAsset,
+      sceneBindings: composition.sceneBindings,
+      startTime: composition.startTime,
+    } as unknown as spec.ComponentData;
+
+    //@ts-expect-error
+    composition.timelineAsset = undefined;
+    //@ts-expect-error
+    composition.sceneBindings = undefined;
+    composition.startTime = undefined;
+    //@ts-expect-error
+    composition.components = [{ id:compositionComponent.id }];
+    json.components.push(compositionComponent);
   }
   // 预合成元素 refId 同步改为生成的合成 guid
   for (const item of json.items) {
@@ -126,6 +202,67 @@ export function version31Migration (json: JSONScene): JSONScene {
   }
 
   return json;
+}
+
+export function processContent (composition: spec.CompositionData) {
+  for (const item of composition.items) {
+    const itemProps = itemMap.get(item.id);
+
+    if (!itemProps) {
+      return;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape
+    ) {
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMask(component);
+      }
+    }
+
+    // 处理预合成的渲染顺序
+    if (itemProps.type === spec.ItemType.composition) {
+      const refId = (itemProps.content as spec.CompositionContent).options.refId;
+      const comp = refCompositions.get(refId);
+
+      comp && processContent(comp);
+    }
+  }
+}
+
+export function processMask (renderContent: any) {
+  const renderer = renderContent.renderer;
+  const maskMode = renderer?.maskMode;
+
+  if (!maskMode || maskMode === MaskMode.NONE) {
+
+    return;
+  }
+
+  if (maskMode === MaskMode.MASK) {
+    renderContent.mask = {
+      mask: true,
+    };
+    currentMaskComponent = renderContent.id;
+  } else if (
+    maskMode === spec.ObscuredMode.OBSCURED ||
+    maskMode === spec.ObscuredMode.REVERSE_OBSCURED
+  ) {
+    renderContent.mask = {
+      mode: maskMode,
+      ref: {
+        'id': currentMaskComponent,
+      },
+    };
+  }
 }
 
 /**
