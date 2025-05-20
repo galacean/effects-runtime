@@ -73,7 +73,6 @@ export class TextComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MText' + seed++;
-    this.geometry = this.createGeometry();
 
     if (props) {
       this.fromData(props);

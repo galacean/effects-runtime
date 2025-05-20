@@ -2,11 +2,11 @@ import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
+import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { MaskProps } from '../../material';
-import type { Geometry } from '../../render';
 import { type GeometryFromShape } from '../../shape';
 import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
@@ -64,7 +64,6 @@ export class SpriteComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MSprite' + seed++;
-    this.geometry = this.createGeometry();
     if (props) {
       this.fromData(props);
     }
@@ -150,10 +149,22 @@ export class SpriteComponent extends BaseRenderComponent {
     }
   }
 
-  override getItemGeometryData (geometry: Geometry) {
+  private configureGeometry (renderer: ItemRenderer) {
+    const geoData = this.getItemGeometryData(renderer);
+    const { index, atlasOffset } = geoData;
+    const geometry = this.geometry;
+
+    geometry.setIndexData(new Uint16Array(index));
+    geometry.setAttributeData('atlasOffset', new Float32Array(atlasOffset));
+    geometry.setDrawCount(index.length);
+
+    return geometry;
+  }
+
+  private getItemGeometryData (renderer: ItemRenderer) {
     const { splits, textureSheetAnimation } = this;
     const sx = 1, sy = 1;
-    const renderer = this.renderer;
+    const geometry = this.geometry;
 
     if (renderer.shape) {
       const { index = [], aPoint = [] } = renderer.shape;
@@ -238,9 +249,7 @@ export class SpriteComponent extends BaseRenderComponent {
     this.splits = data.splits || singleSplits;
     this.textureSheetAnimation = data.textureSheetAnimation;
 
-    const geometry = this.createGeometry();
-
-    this.geometry = geometry;
+    this.configureGeometry(this.renderer);
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
