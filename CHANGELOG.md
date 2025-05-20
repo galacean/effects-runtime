@@ -7,6 +7,13 @@
 
 ---
 
+## 2.4.2
+
+`2025-05-16`
+
+- Fix: The video does not replay and flickers during loop playback. [#995](https://github.com/galacean/effects-runtime/pull/995) @yuufen
+- Fix: rich text plugin name migration. [#999](https://github.com/galacean/effects-runtime/pull/999) @wumaolinmaoan
+
 ## 2.4.1
 
 `2025-05-15`
