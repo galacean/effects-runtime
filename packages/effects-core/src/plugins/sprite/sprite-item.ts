@@ -190,51 +190,74 @@ export class SpriteComponent extends BaseRenderComponent {
     const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
     const atlasOffset = [];
     const index = [];
-    let col = 2;
-    let row = 2;
-
-    if (splits.length === 1) {
-      col = 1;
-      row = 1;
-    }
     const position = [];
 
-    for (let x = 0; x < col; x++) {
-      for (let y = 0; y < row; y++) {
-        const base = (y * 2 + x) * 4;
-        // @ts-expect-error
-        const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
-        const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
-        const dw = ((x + x + 1) / col - 1) / 2;
-        const dh = ((y + y + 1) / row - 1) / 2;
-        const tox = split[0];
-        const toy = split[1];
-        const tsx = split[4] ? split[3] : split[2];
-        const tsy = split[4] ? split[2] : split[3];
-        const origin = [
-          originData[0] / col + dw,
-          originData[1] / row + dh,
-          originData[2] / col + dw,
-          originData[3] / row + dh,
-          originData[4] / col + dw,
-          originData[5] / row + dh,
-          originData[6] / col + dw,
-          originData[7] / row + dh,
-        ];
+    if (splits.length === 1) {
+      const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4] as number] : splits[0] as number[];
+      const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+      const tox = split[0];
+      const toy = split[1];
+      const tsx = split[4] ? split[3] : split[2];
+      const tsy = split[4] ? split[2] : split[3];
 
-        atlasOffset.push(
-          texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
-          texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
-          texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
-          texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
-        );
-        position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
-          (origin[2]) * sx, (origin[3]) * sy, 0.0,
-          (origin[4]) * sx, (origin[5]) * sy, 0.0,
-          (origin[6]) * sx, (origin[7]) * sy, 0.0);
-        index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
+      atlasOffset.push(
+        texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+        texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+        texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+        texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+      );
+      position.push(
+        originData[0], originData[1], 0.0,
+        originData[2], originData[3], 0.0,
+        originData[4], originData[5], 0.0,
+        originData[6], originData[7], 0.0
+      );
+      index.push(0, 1, 2, 2, 1, 3);
+    } else {
+      // TODO: 原有打包纹理拆分逻辑，待移除
+      //-------------------------------------------------------------------------
+
+      const col = 2;
+      const row = 2;
+
+      for (let x = 0; x < col; x++) {
+        for (let y = 0; y < row; y++) {
+          const base = (y * 2 + x) * 4;
+          // @ts-expect-error
+          const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
+          const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+          const dw = ((x + x + 1) / col - 1) / 2;
+          const dh = ((y + y + 1) / row - 1) / 2;
+          const tox = split[0];
+          const toy = split[1];
+          const tsx = split[4] ? split[3] : split[2];
+          const tsy = split[4] ? split[2] : split[3];
+          const origin = [
+            originData[0] / col + dw,
+            originData[1] / row + dh,
+            originData[2] / col + dw,
+            originData[3] / row + dh,
+            originData[4] / col + dw,
+            originData[5] / row + dh,
+            originData[6] / col + dw,
+            originData[7] / row + dh,
+          ];
+
+          atlasOffset.push(
+            texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+            texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+            texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+            texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+          );
+          position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
+            (origin[2]) * sx, (origin[3]) * sy, 0.0,
+            (origin[4]) * sx, (origin[5]) * sy, 0.0,
+            (origin[6]) * sx, (origin[7]) * sy, 0.0);
+          index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
+        }
       }
     }
+
     geometry.setAttributeData('aPos', new Float32Array(position));
 
     return { index, atlasOffset };
