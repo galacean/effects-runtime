@@ -12,12 +12,9 @@ import { createWireframeIndices } from '../utils/mesh-utils';
 
 @effectsClass('LoopSubdComponent')
 export class LoopSubdComponent extends Component {
-  private animated = false;
-
   private subdivisionLevel = 1; // 细分级别
   private wireframe = false; // 是否使用线框模式
 
-  // 存储EffectComponent引用
   private effectComponent: EffectComponent;
 
   constructor (engine: Engine) {
@@ -40,27 +37,22 @@ export class LoopSubdComponent extends Component {
     }
   }
 
-  override onUpdate (dt: number): void {
-    // 如果需要动态更新，可以在这里添加逻辑
-    if (this.animated) {
-      this.applyLoopSubdivision();
-      this.animated = false;
-    }
-  }
-
   /**
    * 应用Loop细分算法
    */
   private applyLoopSubdivision (): void {
-    if (this.subdivisionLevel <= 0 || !this.effectComponent || !this.effectComponent.geometry) {
-      return;
-    }
-
     // 获取原始几何体数据
     const originalGeometry = this.effectComponent.geometry;
     const originalPositions = originalGeometry.getAttributeData('aPos');
-    const originalIndices = originalGeometry.getIndexData();
+    let originalIndices = originalGeometry.getIndexData();
     const originalUVs = originalGeometry.getAttributeData('aUV');
+
+    console.log(originalPositions);
+    console.log(originalIndices);
+    console.log(originalUVs);
+    console.log('--------------------------------');
+
+    originalIndices = originalIndices?.slice(0, 6); // TODO 临时去掉垃圾数据
 
     if (!originalPositions || !originalIndices) {
       console.warn('细分网格需要顶点和索引数据');
@@ -70,6 +62,10 @@ export class LoopSubdComponent extends Component {
 
     // 转换位置数据为顶点数组，每个顶点是一个[x,y,z]数组
     const vertices: number[][] = [];
+    // 转换索引数据为三角形数组，每个三角形是顶点索引的数组[a,b,c]
+    const triangles: number[][] = [];
+    // 转换UV数据为数组，如果存在
+    const uvs: number[][] = [];
 
     for (let i = 0; i < originalPositions.length; i += 3) {
       vertices.push([
@@ -79,9 +75,6 @@ export class LoopSubdComponent extends Component {
       ]);
     }
 
-    // 转换索引数据为三角形数组，每个三角形是顶点索引的数组[a,b,c]
-    const triangles: number[][] = [];
-
     for (let i = 0; i < originalIndices.length; i += 3) {
       triangles.push([
         originalIndices[i],
@@ -89,9 +82,6 @@ export class LoopSubdComponent extends Component {
         originalIndices[i + 2],
       ]);
     }
-
-    // 转换UV数据为数组，如果存在
-    const uvs: number[][] = [];
 
     if (originalUVs) {
       for (let i = 0; i < originalUVs.length; i += 2) {
@@ -125,26 +115,29 @@ export class LoopSubdComponent extends Component {
       newUVs.push(uv[0], uv[1]);
     });
 
+    console.log(newPositions);
+    console.log(newIndices);
+    console.log(newUVs);
+
     // 创建新的几何体
-    const newGeometry = Geometry.create(
-      this.engine,
-      {
-        attributes: {
-          aPos: {
-            size: 3,
-            data: new Float32Array(newPositions),
-          },
-          aUV: {
-            size: 2,
-            data: new Float32Array(newUVs),
-          },
+    const newGeometry = Geometry.create(this.engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array(newPositions),
         },
-        indices: this.wireframe
-          ? { data: new Uint16Array(createWireframeIndices(newIndices)) }
-          : { data: new Uint16Array(newIndices) },
-        mode: this.wireframe ? glContext.LINES : glContext.TRIANGLES,
-        drawCount: this.wireframe ? createWireframeIndices(newIndices).length : newIndices.length,
-      }
+        aUV: {
+          size: 2,
+          data: new Float32Array(newUVs),
+        },
+      },
+      indices: this.wireframe
+        ? { data: new Uint16Array(createWireframeIndices(newIndices)) }
+        : { data: new Uint16Array(newIndices), releasable: true },
+      mode: this.wireframe ? glContext.LINES : glContext.TRIANGLES,
+      drawCount: this.wireframe ? createWireframeIndices(newIndices).length : newIndices.length,
+    }
     );
 
     // 替换 effectComponent 的几何体引用
@@ -157,125 +150,189 @@ export class LoopSubdComponent extends Component {
   private loopSubdivideOnce (mesh: { vertices: number[][], triangles: number[][], uvs: number[][] }): { vertices: number[][], triangles: number[][], uvs: number[][] } {
     const { vertices, triangles, uvs } = mesh;
 
-    // 创建边哈希表用于查找共享边
-    const edgeMap = new Map<string, number>();
-    const edgeVertices: number[][] = [];
-    const edgeUVs: number[][] = [];
+    // 存储边到它们的三角形的映射，用于识别轮廓边
+    const edgeToTriangles = new Map<string, number[]>();
+    // 存储边到中点索引的映射
+    const edgeToMidpoint = new Map<string, number>();
 
-    // 1. 为每条边创建新的中点顶点
-    triangles.forEach(triangle => {
-      for (let i = 0; i < 3; i++) {
-        const v1 = triangle[i];
-        const v2 = triangle[(i + 1) % 3];
+    // 存储新的几何数据
+    const newVertices = [...vertices];
+    const newTriangles: number[][] = [];
+    const newUVs = [...uvs];
 
-        // 确保边的顺序一致性（小索引在前）
-        const edgeKey = v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`;
+    // 构建边到三角形的映射
+    for (let i = 0; i < triangles.length; i++) {
+      const [a, b, c] = triangles[i];
 
-        if (!edgeMap.has(edgeKey)) {
-          // 计算边的中点位置（Loop算法中需要考虑相邻面的影响）
-          const midpoint = [
-            (vertices[v1][0] + vertices[v2][0]) / 2,
-            (vertices[v1][1] + vertices[v2][1]) / 2,
-            (vertices[v1][2] + vertices[v2][2]) / 2,
-          ];
+      // 对于每个三角形的三条边，记录它们所属的三角形
+      this.addEdge(edgeToTriangles, a, b, i);
+      this.addEdge(edgeToTriangles, b, c, i);
+      this.addEdge(edgeToTriangles, c, a, i);
+    }
 
-          // 计算中点的UV坐标
-          const midUV = uvs.length > 0 ? [
-            (uvs[v1][0] + uvs[v2][0]) / 2,
-            (uvs[v1][1] + uvs[v2][1]) / 2,
-          ] : [0, 0];
+    console.log(edgeToTriangles);
 
-          // 存储新顶点的索引
-          edgeMap.set(edgeKey, vertices.length + edgeVertices.length);
-          edgeVertices.push(midpoint);
-          edgeUVs.push(midUV);
-        }
+    // 为每条边创建中点
+    for (const [edge, triIndices] of edgeToTriangles.entries()) {
+      const [a, b] = edge.split(',').map(Number);
+
+      // 判断是否为轮廓边（只被一个三角形使用）
+      const isBoundary = triIndices.length === 1;
+
+      // 计算中点位置
+      let midpoint: number[];
+
+      if (isBoundary) {
+        // 对于轮廓边，直接使用线性插值保持锐利
+        midpoint = [
+          (vertices[a][0] + vertices[b][0]) / 2,
+          (vertices[a][1] + vertices[b][1]) / 2,
+          (vertices[a][2] + vertices[b][2]) / 2,
+        ];
+      } else {
+        // 对于普通边，使用Loop算法计算中点位置
+        // 找到共享这条边的两个三角形
+        const tri1 = triangles[triIndices[0]];
+        const tri2 = triangles[triIndices[1]];
+
+        // 找到对面的顶点
+        const opposite1 = tri1.find(v => v !== a && v !== b) as number;
+        const opposite2 = tri2.find(v => v !== a && v !== b) as number;
+
+        // 应用Loop规则：3/8 * (端点和) + 1/8 * (对面顶点和)
+        midpoint = [
+          3 / 8 * (vertices[a][0] + vertices[b][0]) + 1 / 8 * (vertices[opposite1][0] + vertices[opposite2][0]),
+          3 / 8 * (vertices[a][1] + vertices[b][1]) + 1 / 8 * (vertices[opposite1][1] + vertices[opposite2][1]),
+          3 / 8 * (vertices[a][2] + vertices[b][2]) + 1 / 8 * (vertices[opposite1][2] + vertices[opposite2][2]),
+        ];
       }
-    });
 
-    // 2. 调整原始顶点的位置（Loop算法的平滑规则）
-    const newVertices = [...vertices.map(v => [...v])]; // 深拷贝原始顶点
+      // 添加中点到顶点列表
+      const midpointIndex = newVertices.length;
 
-    // 计算每个顶点的相邻顶点
-    const vertexNeighbors: number[][] = vertices.map(() => []);
+      newVertices.push(midpoint);
 
-    triangles.forEach(triangle => {
-      for (let i = 0; i < 3; i++) {
-        const v1 = triangle[i];
-        const v2 = triangle[(i + 1) % 3];
-        const v3 = triangle[(i + 2) % 3];
+      // 记录边到中点的映射
+      edgeToMidpoint.set(edge, midpointIndex);
 
-        // 添加相邻顶点（如果还没有添加）
-        if (!vertexNeighbors[v1].includes(v2)) {vertexNeighbors[v1].push(v2);}
-        if (!vertexNeighbors[v1].includes(v3)) {vertexNeighbors[v1].push(v3);}
-      }
-    });
+      // 处理UV坐标
+      if (uvs.length > 0) {
+        const midpointUV = [
+          (uvs[a][0] + uvs[b][0]) / 2,
+          (uvs[a][1] + uvs[b][1]) / 2,
+        ];
 
-    // 应用Loop算法的顶点更新规则
-    for (let i = 0; i < vertices.length; i++) {
-      const neighbors = vertexNeighbors[i];
-      const n = neighbors.length;
-
-      if (n > 0) {
-        // 计算beta值（Loop算法中的权重参数）
-        const beta = n > 3
-          ? 3 / (8 * n)
-          : (n === 3 ? 3 / 16 : 0);
-
-        // 计算新位置
-        const newPos = [0, 0, 0];
-
-        // 原始顶点权重
-        const selfWeight = 1 - n * beta;
-
-        newPos[0] = vertices[i][0] * selfWeight;
-        newPos[1] = vertices[i][1] * selfWeight;
-        newPos[2] = vertices[i][2] * selfWeight;
-
-        // 相邻顶点贡献
-        for (const neighborIdx of neighbors) {
-          newPos[0] += vertices[neighborIdx][0] * beta;
-          newPos[1] += vertices[neighborIdx][1] * beta;
-          newPos[2] += vertices[neighborIdx][2] * beta;
-        }
-
-        newVertices[i] = newPos;
+        newUVs.push(midpointUV);
       }
     }
 
-    // 3. 合并所有顶点和UV
-    const resultVertices = [...newVertices, ...edgeVertices];
-    const resultUVs = [...uvs, ...edgeUVs];
+    // 更新原始顶点位置
+    for (let i = 0; i < vertices.length; i++) {
+      // 找到与顶点i相连的顶点
+      const connectedVertices: number[] = [];
+      const boundaryEdges: [number, number][] = [];
 
-    // 4. 创建新的三角形
-    const resultTriangles: number[][] = [];
+      // 检查每个三角形是否包含顶点i
+      for (let j = 0; j < triangles.length; j++) {
+        const tri = triangles[j];
+        const vertexIndex = tri.indexOf(i);
 
-    triangles.forEach(triangle => {
-      const [v1, v2, v3] = triangle;
+        if (vertexIndex !== -1) {
+          // 获取这个三角形中顶点i的相邻顶点
+          const next = tri[(vertexIndex + 1) % 3];
+          const prev = tri[(vertexIndex + 2) % 3];
 
-      // 获取三条边上的中点顶点索引
-      const e1 = edgeMap.get(v1 < v2 ? `${v1}-${v2}` : `${v2}-${v1}`);
-      const e2 = edgeMap.get(v2 < v3 ? `${v2}-${v3}` : `${v3}-${v2}`);
-      const e3 = edgeMap.get(v3 < v1 ? `${v3}-${v1}` : `${v1}-${v3}`);
+          if (!connectedVertices.includes(next)) {
+            connectedVertices.push(next);
+          }
+          if (!connectedVertices.includes(prev)) {
+            connectedVertices.push(prev);
+          }
 
-      if (e1 === undefined || e2 === undefined || e3 === undefined) {
-        console.error('细分算法错误：找不到边的中点');
+          // 检查边是否是轮廓
+          const edge1 = this.getEdgeKey(i, next);
+          const edge2 = this.getEdgeKey(i, prev);
 
-        return mesh;
+          if (edgeToTriangles.get(edge1)?.length === 1) {
+            boundaryEdges.push([i, next]);
+          }
+          if (edgeToTriangles.get(edge2)?.length === 1) {
+            boundaryEdges.push([i, prev]);
+          }
+        }
       }
 
-      // 每个原始三角形被分为四个新三角形
-      resultTriangles.push([v1, e1, e3]);  // 第一个新三角形
-      resultTriangles.push([e1, v2, e2]);  // 第二个新三角形
-      resultTriangles.push([e3, e2, v3]);  // 第三个新三角形
-      resultTriangles.push([e1, e2, e3]);  // 第四个新三角形（中间）
-    });
+      // 判断是否为边界顶点
+      const isBoundaryVertex = boundaryEdges.length > 0;
 
-    return {
-      vertices: resultVertices,
-      triangles: resultTriangles,
-      uvs: resultUVs,
-    };
+      // 如果是边界顶点且要保持锐利几何，特殊处理
+      if (isBoundaryVertex) {
+        // 如果有多于一条边界边，表示这是一个角点，直接保持不变
+        if (boundaryEdges.length > 1) {
+          // 不改变位置，保持锐利角
+        } else {
+          // 如果只有一条边界边，可以在边界上平滑
+          const [_, otherVertex] = boundaryEdges[0];
+
+          // 简单的1D平滑: 1/8 * neighbor + 7/8 * self
+          newVertices[i] = [
+            7 / 8 * vertices[i][0] + 1 / 8 * vertices[otherVertex][0],
+            7 / 8 * vertices[i][1] + 1 / 8 * vertices[otherVertex][1],
+            7 / 8 * vertices[i][2] + 1 / 8 * vertices[otherVertex][2],
+          ];
+        }
+      } else {
+        // 应用Loop规则更新内部顶点
+        const n = connectedVertices.length;
+        const beta = n > 3 ? 3 / (8 * n) : (n === 3 ? 3 / 16 : 0);
+
+        // 计算新位置：(1 - n*beta) * 原位置 + beta * 相邻点和
+        let newX = (1 - n * beta) * vertices[i][0];
+        let newY = (1 - n * beta) * vertices[i][1];
+        let newZ = (1 - n * beta) * vertices[i][2];
+
+        for (const neighbor of connectedVertices) {
+          newX += beta * vertices[neighbor][0];
+          newY += beta * vertices[neighbor][1];
+          newZ += beta * vertices[neighbor][2];
+        }
+
+        newVertices[i] = [newX, newY, newZ];
+      }
+    }
+
+    // 创建新的三角形拓扑
+    for (let i = 0; i < triangles.length; i++) {
+      const [a, b, c] = triangles[i];
+
+      // 获取各边的中点
+      const midAB = edgeToMidpoint.get(this.getEdgeKey(a, b)) as number;
+      const midBC = edgeToMidpoint.get(this.getEdgeKey(b, c)) as number;
+      const midCA = edgeToMidpoint.get(this.getEdgeKey(c, a)) as number;
+
+      // 创建四个新三角形
+      newTriangles.push([a, midAB, midCA]);
+      newTriangles.push([b, midBC, midAB]);
+      newTriangles.push([c, midCA, midBC]);
+      newTriangles.push([midAB, midBC, midCA]);
+    }
+
+    return { vertices: newVertices, triangles: newTriangles, uvs: newUVs };
+  }
+
+  // 辅助方法：生成唯一的边键
+  private getEdgeKey (a: number, b: number): string {
+    return a < b ? `${a},${b}` : `${b},${a}`;
+  }
+
+  // 辅助方法：添加边到映射
+  private addEdge (edgeMap: Map<string, number[]>, a: number, b: number, triIndex: number): void {
+    const key = this.getEdgeKey(a, b);
+
+    if (!edgeMap.has(key)) {
+      edgeMap.set(key, []);
+    }
+    edgeMap.get(key)?.push(triIndex);
   }
 }
 
