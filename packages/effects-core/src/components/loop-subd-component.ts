@@ -150,21 +150,20 @@ export class LoopSubdComponent extends Component {
   private loopSubdivideOnce (mesh: { vertices: number[][], triangles: number[][], uvs: number[][] }): { vertices: number[][], triangles: number[][], uvs: number[][] } {
     const { vertices, triangles, uvs } = mesh;
 
+    // 新的数据
+    const newVertices = [...vertices];
+    const newTriangles: number[][] = [];
+    const newUVs = [...uvs];
+
     // 存储边到它们的三角形的映射，用于识别轮廓边
     const edgeToTriangles = new Map<string, number[]>();
     // 存储边到中点索引的映射
     const edgeToMidpoint = new Map<string, number>();
 
-    // 存储新的几何数据
-    const newVertices = [...vertices];
-    const newTriangles: number[][] = [];
-    const newUVs = [...uvs];
-
     // 构建边到三角形的映射
     for (let i = 0; i < triangles.length; i++) {
       const [a, b, c] = triangles[i];
 
-      // 对于每个三角形的三条边，记录它们所属的三角形
       this.addEdge(edgeToTriangles, a, b, i);
       this.addEdge(edgeToTriangles, b, c, i);
       this.addEdge(edgeToTriangles, c, a, i);
@@ -172,7 +171,7 @@ export class LoopSubdComponent extends Component {
 
     console.log(edgeToTriangles);
 
-    // 为每条边创建中点
+    // 遍历每条边，添加中点并计算位置
     for (const [edge, triIndices] of edgeToTriangles.entries()) {
       const [a, b] = edge.split(',').map(Number);
 
@@ -265,7 +264,7 @@ export class LoopSubdComponent extends Component {
       // 判断是否为边界顶点
       const isBoundaryVertex = boundaryEdges.length > 0;
 
-      // 如果是边界顶点且要保持锐利几何，特殊处理
+      // 如果是边界顶点，特殊处理保持锐利
       if (isBoundaryVertex) {
         // 如果有多于一条边界边，表示这是一个角点，直接保持不变
         if (boundaryEdges.length > 1) {
