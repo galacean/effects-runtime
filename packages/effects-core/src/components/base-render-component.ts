@@ -146,7 +146,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   /**
-   * 设置当前图层的颜色
+   * 获取当前图层的颜色
    * @since 2.5.0
    */
   get color () {
@@ -154,7 +154,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   /**
-   * 获取当前图层的颜色
+   * 设置当前图层的颜色
    * @since 2.5.0
    */
   set color (value: Color) {
