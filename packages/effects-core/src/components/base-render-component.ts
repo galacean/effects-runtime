@@ -37,7 +37,7 @@ interface BaseRenderComponentData extends spec.ComponentData {
 export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   renderer: ItemRenderer;
-  color = new Color(1, 1, 1, 1);
+  _color = new Color(1, 1, 1, 1);
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
@@ -138,11 +138,28 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   setColor (color: spec.vec4): void;
   setColor (color: spec.vec4 | Color) {
     if (color instanceof Color) {
-      this.color.copyFrom(color);
+      this._color.copyFrom(color);
     } else {
-      this.color.setFromArray(color);
+      this._color.setFromArray(color);
     }
-    this.material.setColor('_Color', this.color);
+    this.material.setColor('_Color', this._color);
+  }
+
+  /**
+   * 设置当前图层的颜色
+   * @since 2.5.0
+   */
+  get color () {
+    return this._color;
+  }
+
+  /**
+   * 获取当前图层的颜色
+   * @since 2.5.0
+   */
+  set color (value: Color) {
+    this._color = value;
+    this.material.setColor('_Color', this._color);
   }
 
   /**
