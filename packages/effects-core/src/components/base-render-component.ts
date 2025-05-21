@@ -37,17 +37,17 @@ interface BaseRenderComponentData extends spec.ComponentData {
 export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   renderer: ItemRenderer;
-  _color = new Color(1, 1, 1, 1);
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
   protected preMultiAlpha: number;
   protected visible = true;
-
   /**
    * 用于点击测试的碰撞器
    */
   protected meshCollider = new MeshCollider();
+
+  private _color = new Color(1, 1, 1, 1);
 
   /**
    *
@@ -101,7 +101,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     });
 
     this.material = material;
-    this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
+    this.material.setColor('_Color', new Color(1, 1, 1, 1));
     this.maskManager = new MaskProcessor(engine);
   }
 
@@ -260,7 +260,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
-    material.setColor('_Color', new Color(0, 0, 0, 1));
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_MainTex', texture);
 
