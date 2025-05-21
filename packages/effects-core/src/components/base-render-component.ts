@@ -150,24 +150,23 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       return;
     }
 
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+    this.maskManager.drawStencilMask(renderer);
+
+    this.draw(renderer);
+  }
+
+  /**
+   * @internal
+   */
+  drawStencilMask (renderer: Renderer) {
+    if (!this.isActiveAndEnabled) {
+      return;
     }
+    const previousColorMask = this.material.colorMask;
 
-    for (let i = 0; i < this.materials.length; i++) {
-      const material = this.materials[i];
-
-      material.setVector2('_Size', this.transform.size);
-
-      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
-      ) {
-        material.setVector3('_Scale', this.transform.scale);
-      }
-
-      renderer.drawGeometry(this.geometry, material, i);
-    }
+    this.material.colorMask = false;
+    this.draw(renderer);
+    this.material.colorMask = previousColorMask;
   }
 
   override onStart (): void {
@@ -277,7 +276,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
     setBlendMode(material, blendMode);
     // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, maskMode, !!this.renderer.shape);
+    setMaskMode(material, maskMode);
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
@@ -301,6 +300,27 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
 
     return material;
+  }
+
+  private draw (renderer: Renderer) {
+    if (renderer.renderingData.currentFrame.globalUniforms) {
+      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+    }
+
+    for (let i = 0; i < this.materials.length; i++) {
+      const material = this.materials[i];
+
+      material.setVector2('_Size', this.transform.size);
+
+      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
+      ) {
+        material.setVector3('_Scale', this.transform.scale);
+      }
+
+      renderer.drawGeometry(this.geometry, material, i);
+    }
   }
 
   override fromData (data: unknown): void {

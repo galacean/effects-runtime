@@ -89,7 +89,7 @@ export function setSideMode (material: Material, side: spec.SideMode) {
   }
 }
 
-export function setMaskMode (material: Material, maskMode: MaskMode, colorMask = false) {
+export function setMaskMode (material: Material, maskMode: MaskMode) {
   switch (maskMode) {
     case undefined:
       material.stencilTest = false;
@@ -99,8 +99,6 @@ export function setMaskMode (material: Material, maskMode: MaskMode, colorMask =
       material.stencilTest = true;
       material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
       material.stencilOpZPass = [glContext.REPLACE, glContext.REPLACE];
-      // 关闭/开启蒙版元素的颜色写入
-      material.colorMask = [colorMask, colorMask, colorMask, colorMask];
 
       break;
     case MaskMode.OBSCURED:

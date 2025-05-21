@@ -115,8 +115,10 @@ export class VideoComponent extends BaseRenderComponent {
       const endBehavior = this.item.defination.endBehavior;
 
       // 如果元素设置为 destroy
-      if (endBehavior === spec.EndBehavior.destroy) {
+      if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
         this.setLoop(false);
+      } else if (endBehavior === spec.EndBehavior.restart) {
+        this.setLoop(true);
       }
     }
 
@@ -141,7 +143,10 @@ export class VideoComponent extends BaseRenderComponent {
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    if (time > 0) {
+    const isEnd = (time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)
+    || Math.abs(time - duration) < this.threshold;
+
+    if (time > 0 && !isEnd) {
       this.setVisible(true);
       this.playVideo();
     }
@@ -160,7 +165,6 @@ export class VideoComponent extends BaseRenderComponent {
       if (endBehavior === spec.EndBehavior.freeze) {
         this.pauseVideo();
       } else if (endBehavior === spec.EndBehavior.restart) {
-        this.setVisible(false);
         // 重播
         this.pauseVideo();
         this.setCurrentTime(0);

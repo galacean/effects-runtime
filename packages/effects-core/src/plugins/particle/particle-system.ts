@@ -8,7 +8,7 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
-import type { Maskable } from '../../material';
+import type { MaskProps, Maskable } from '../../material';
 import { MaskMode, MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
@@ -153,7 +153,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' |
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
 
 @effectsClass(spec.DataType.ParticleSystem)
-export class ParticleSystem extends Component implements Maskable {
+export class ParticleSystem extends Component {
   renderer: ParticleSystemRenderer;
   options: ParticleOptions;
   shape: ShapeGenerator;
@@ -1133,6 +1133,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.renderer = new ParticleSystemRenderer(this.engine, particleMeshProps, trailMeshProps);
     this.renderer.item = this.item;
+    this.renderer.maskManager = this.maskManager;
     this.meshes = this.renderer.meshes;
 
     const interaction = props.interaction;
@@ -1153,11 +1154,13 @@ export class ParticleSystem extends Component implements Maskable {
     let maskRef = 0;
 
     if (data.mask) {
-      const { mode, ref } = data.mask;
-      const refComponent = this.engine.findObject<Maskable>((ref as unknown as spec.DataPath));
+      const maskProps = (data as MaskProps).mask;
 
-      maskMode = mode;
-      maskRef = refComponent.maskManager.getRefValue();
+      if (maskProps && maskProps.ref) {
+        maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
+      }
+      maskMode = this.maskManager.getMaskMode(data as MaskProps);
+      maskRef = this.maskManager.getRefValue();
     }
 
     return {

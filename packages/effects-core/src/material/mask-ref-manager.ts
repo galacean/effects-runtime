@@ -1,32 +1,22 @@
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
-import type { MaskProps } from './types';
+import type { MaskProps, Maskable } from './types';
 import { MaskMode } from './types';
-
-export class MaskRefManager {
-  currentRef: number;
-
-  constructor (initRef?: number) {
-    this.currentRef = initRef || 0;
-  }
-
-  distributeRef () {
-    return ++this.currentRef;
-  }
-}
+import type { Renderer } from '../render/renderer';
+import { TextureLoadAction } from '../texture/types';
+import type { RenderPassClearAction } from '../render/render-pass';
 
 export class MaskProcessor {
-  maskRef: number;
+  maskable: Maskable | null = null;
+
+  private stencilClearAction: RenderPassClearAction;
 
   constructor (public engine: Engine) {
+    this.stencilClearAction = { stencilAction:TextureLoadAction.clear };
   }
 
   getRefValue () {
-    if (isNaN(this.maskRef)) {
-      this.maskRef = this.engine.maskRefManager.distributeRef();
-    }
-
-    return this.maskRef;
+    return 1;
   }
 
   getMaskMode (data: MaskProps) {
@@ -37,13 +27,21 @@ export class MaskProcessor {
 
       if (mask) {
         maskMode = MaskMode.MASK;
-        this.getRefValue();
       } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
         maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
-        this.maskRef = ref!.maskManager.getRefValue();
+        if (ref) {
+          this.maskable = ref;
+        }
       }
     }
 
     return maskMode;
+  }
+
+  drawStencilMask (renderer: Renderer) {
+    if (this.maskable) {
+      renderer.clear(this.stencilClearAction);
+      this.maskable.drawStencilMask(renderer);
+    }
   }
 }
