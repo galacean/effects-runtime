@@ -11,11 +11,11 @@ export function setBlending (material: Material, mode: BlendMode) {
   material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
   switch (mode) {
     case BlendMode.Multiply:
-      material.blendFunction = [glContext.DST_COLOR, glContext.ONE_MINUS_SRC_ALPHA, glContext.DST_COLOR, glContext.ONE_MINUS_SRC_ALPHA];
+      material.blendFunction = [glContext.DST_COLOR, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
 
       break;
     case BlendMode.Screen:
-      material.blendFunction = [glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE_MINUS_SRC_COLOR, glContext.ONE_MINUS_SRC_ALPHA];
+      material.blendFunction = [glContext.ONE, glContext.ONE_MINUS_SRC_COLOR, glContext.ONE, glContext.ONE_MINUS_SRC_COLOR];
 
       break;
     case BlendMode.Additive:
