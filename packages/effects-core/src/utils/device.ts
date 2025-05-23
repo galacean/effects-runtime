@@ -26,8 +26,12 @@ export function isAndroid (): boolean {
   return /\b[Aa]ndroid\b/.test(navigator.userAgent);
 }
 
+export function isOpenHarmony (): boolean {
+  return /\bOpenHarmony\b/.test(navigator.userAgent);
+}
+
 export function isSimulatorCellPhone (): boolean {
-  return isAndroid() || /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent);
+  return isAndroid() || isOpenHarmony() || /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent);
 }
 
 export function isMiniProgram () {

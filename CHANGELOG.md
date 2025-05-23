@@ -7,6 +7,12 @@
 
 ---
 
+## 2.4.3
+
+`2025-05-21`
+
+- Fix: harmony device detection. [#1006](https://github.com/galacean/effects-runtime/pull/1006) @wumaolinmaoan
+
 ## 2.4.2
 
 `2025-05-16`
