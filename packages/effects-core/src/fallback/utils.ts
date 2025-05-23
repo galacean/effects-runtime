@@ -1,7 +1,6 @@
 import type {
   FixedNumberExpression, RGBAColorValue, ColorExpression, NumberExpression, GradientColor,
-  GradientStop, FixedVec3Expression, vec4, vec3, BezierKeyframeValue,
-  vec2,
+  GradientStop, FixedVec3Expression, vec2, vec3, vec4, BezierKeyframeValue,
 } from '@galacean/effects-specification';
 import { BezierKeyframeType, ValueType, ParticleOrigin } from '@galacean/effects-specification';
 
