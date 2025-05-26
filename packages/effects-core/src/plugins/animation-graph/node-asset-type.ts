@@ -5,15 +5,20 @@ export enum NodeAssetType {
   AnimationClipNodeAsset = 'AnimationClipNodeAsset',
   AnimationRootNodeAsset = 'AnimationRootNodeAsset',
   Blend1DNodeAsset = 'Blend1DNodeAsset',
-  ConstFloatNodeAsset = 'ConstFloatNodeAsset',
-  ConstBoolNodeAsset = 'ConstBoolNodeAsset',
-  ControlParameterFloatNodeAsset = 'ControlParameterFloatNodeAsset',
+
   StateMachineNodeAsset = 'StateMachineNodeAsset',
   TransitionNodeAsset = 'TransitionNodeAsset',
   StateNodeAsset = 'StateNodeAsset',
-  ControlParameterBoolNodeAsset = 'ControlParameterBoolNodeAsset',
 
-  NotNodeAsset = 'NotNodeAsset'
+  ConstFloatNodeAsset = 'ConstFloatNodeAsset',
+  ConstBoolNodeAsset = 'ConstBoolNodeAsset',
+
+  ControlParameterBoolNodeAsset = 'ControlParameterBoolNodeAsset',
+  ControlParameterFloatNodeAsset = 'ControlParameterFloatNodeAsset',
+
+  NotNodeAsset = 'NotNodeAsset',
+  AndNodeAsset = 'AndNodeAsset',
+  OrNodeAsset = 'OrNodeAsset'
 }
 
 const nodeAssetClassStore: Record<string, any> = {};
