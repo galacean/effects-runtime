@@ -2,7 +2,7 @@ import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { AnimationClip } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeAsset, PoseNode, type GraphNodeAssetData } from '../graph-node';
-import { NodeAssetType, nodeAssetClass } from '../node-asset-type';
+import { NodeAssetType, nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
 
 export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
@@ -10,7 +10,7 @@ export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
   dataSlotIndex: number,
 }
 
-@nodeAssetClass(NodeAssetType.AnimationClipNodeAsset)
+@nodeDataClass(NodeAssetType.AnimationClipNodeAsset)
 export class AnimationClipNodeAsset extends GraphNodeAsset {
   dataSlotIndex = -1;
 

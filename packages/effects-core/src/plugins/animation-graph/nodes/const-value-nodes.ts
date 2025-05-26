@@ -1,4 +1,4 @@
-import { BoolValueNode, NodeAssetType, nodeAssetClass } from '../..';
+import { BoolValueNode, NodeAssetType, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { GraphNodeAssetData } from '../graph-node';
 import { FloatValueNode, GraphNodeAsset } from '../graph-node';
@@ -8,7 +8,7 @@ export interface ConstFloatNodeAssetData extends GraphNodeAssetData {
   value: number,
 }
 
-@nodeAssetClass(NodeAssetType.ConstFloatNodeAsset)
+@nodeDataClass(NodeAssetType.ConstFloatNodeAsset)
 export class ConstFloatNodeAsset extends GraphNodeAsset {
   value = 0;
 
@@ -41,7 +41,7 @@ export interface ConstBoolNodeAssetData extends GraphNodeAssetData {
   value: boolean,
 }
 
-@nodeAssetClass(NodeAssetType.ConstBoolNodeAsset)
+@nodeDataClass(NodeAssetType.ConstBoolNodeAsset)
 export class ConstBoolNodeAsset extends GraphNodeAsset {
   value = true;
 

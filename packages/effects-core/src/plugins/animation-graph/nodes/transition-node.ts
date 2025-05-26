@@ -1,6 +1,6 @@
 import { clamp, lerp } from '@galacean/effects-math/es/core/utils';
 import type { GraphNodeAssetData, StateNode } from '../..';
-import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, TransitionState, nodeAssetClass } from '../..';
+import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, TransitionState, nodeDataClass } from '../..';
 import { Blender } from '../blender';
 import type { InstantiationContext } from '../graph-context';
 import { BranchState, type GraphContext } from '../graph-context';
@@ -21,7 +21,7 @@ export interface TransitionNodeAssetData extends GraphNodeAssetData {
   targetStateNodeIndex: number,
 }
 
-@nodeAssetClass(NodeAssetType.TransitionNodeAsset)
+@nodeDataClass(NodeAssetType.TransitionNodeAsset)
 export class TransitionNodeAsset extends GraphNodeAsset {
   duration = 0;
   hasExitTime = false;

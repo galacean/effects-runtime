@@ -1,5 +1,5 @@
 import type { GraphNodeAssetData } from '../..';
-import { NodeAssetType, nodeAssetClass, GraphNodeAsset, BoolValueNode, InvalidIndex } from '../..';
+import { NodeAssetType, nodeDataClass, GraphNodeAsset, BoolValueNode, InvalidIndex } from '../..';
 import type { InstantiationContext, GraphContext } from '../graph-context';
 
 export interface AndNodeAssetData extends GraphNodeAssetData {
@@ -7,7 +7,7 @@ export interface AndNodeAssetData extends GraphNodeAssetData {
   conditionNodeIndices: number[],
 }
 
-@nodeAssetClass(NodeAssetType.AndNodeAsset)
+@nodeDataClass(NodeAssetType.AndNodeAsset)
 export class AndNodeAsset extends GraphNodeAsset {
   private conditionNodeIndices: number[] = [];
 
@@ -72,7 +72,7 @@ export interface OrNodeAssetData extends GraphNodeAssetData {
   conditionNodeIndices: number[],
 }
 
-@nodeAssetClass(NodeAssetType.OrNodeAsset)
+@nodeDataClass(NodeAssetType.OrNodeAsset)
 export class OrNodeAsset extends GraphNodeAsset {
   private conditionNodeIndices: number[] = [];
 
@@ -137,7 +137,7 @@ export interface NotNodeAssetData extends GraphNodeAssetData {
   inputValueNodeIndex: number,
 }
 
-@nodeAssetClass(NodeAssetType.NotNodeAsset)
+@nodeDataClass(NodeAssetType.NotNodeAsset)
 export class NotNodeAsset extends GraphNodeAsset {
   private inputValueNodeIndex = InvalidIndex;
 

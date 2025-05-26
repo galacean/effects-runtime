@@ -1,7 +1,7 @@
 import type { BoolValueNode, GraphNodeAssetData, StateNode } from '../..';
 import type { TransitionNode } from '../..';
 import { InvalidIndex, NodeAssetType } from '../..';
-import { GraphNodeAsset, PoseNode, nodeAssetClass } from '../..';
+import { GraphNodeAsset, PoseNode, nodeDataClass } from '../..';
 import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
@@ -22,7 +22,7 @@ export interface StateMachineNodeAssetData extends GraphNodeAssetData {
   defaultStateIndex: number,
 }
 
-@nodeAssetClass(NodeAssetType.StateMachineNodeAsset)
+@nodeDataClass(NodeAssetType.StateMachineNodeAsset)
 export class StateMachineNodeAsset extends GraphNodeAsset {
   stateDatas: StateData[];
   defaultStateIndex: number;

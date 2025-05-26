@@ -3,7 +3,7 @@ import type { FloatValueNode, GraphNodeAssetData } from '../graph-node';
 import { GraphNodeAsset, PoseNode } from '../graph-node';
 import type { Pose } from '../pose';
 import { PoseResult } from '../pose-result';
-import { NodeAssetType, nodeAssetClass } from '../..';
+import { NodeAssetType, nodeDataClass } from '../..';
 import type { Vector3Like } from '@galacean/effects-math/es/core/type';
 import type { Euler } from '@galacean/effects-math/es/core/euler';
 
@@ -14,7 +14,7 @@ export interface Blend1DNodeAssetData extends GraphNodeAssetData {
   inputParameterValueNode: number,
 }
 
-@nodeAssetClass(NodeAssetType.Blend1DNodeAsset)
+@nodeDataClass(NodeAssetType.Blend1DNodeAsset)
 export class Blend1DNodeAsset extends GraphNodeAsset {
   source0: number;
   source1: number;

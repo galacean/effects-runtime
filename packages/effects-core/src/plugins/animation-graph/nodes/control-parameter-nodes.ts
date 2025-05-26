@@ -1,6 +1,6 @@
 import type { GraphNodeAssetData } from '../..';
 import { NodeAssetType } from '../..';
-import { FloatValueNode, GraphNodeAsset, nodeAssetClass } from '../..';
+import { FloatValueNode, GraphNodeAsset, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
 export interface ControlParameterFloatNodeAssetData extends GraphNodeAssetData {
@@ -13,7 +13,7 @@ export interface ControlParameterBoolNodeAssetData extends GraphNodeAssetData {
   value: boolean,
 }
 
-@nodeAssetClass(NodeAssetType.ControlParameterFloatNodeAsset)
+@nodeDataClass(NodeAssetType.ControlParameterFloatNodeAsset)
 export class ControlParameterFloatNodeAsset extends GraphNodeAsset {
   value = 0;
 
@@ -45,7 +45,7 @@ export class ControlParameterFloatNode extends FloatValueNode {
   }
 }
 
-@nodeAssetClass(NodeAssetType.ControlParameterBoolNodeAsset)
+@nodeDataClass(NodeAssetType.ControlParameterBoolNodeAsset)
 export class ControlParameterBoolNodeAsset extends GraphNodeAsset {
   private value = false;
 

@@ -1,5 +1,5 @@
 import type { GraphNodeAssetData } from '../..';
-import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, nodeAssetClass } from '../..';
+import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
@@ -14,7 +14,7 @@ export interface StateNodeAssetData extends GraphNodeAssetData {
   childNodeIndex: number,
 }
 
-@nodeAssetClass(NodeAssetType.StateNodeAsset)
+@nodeDataClass(NodeAssetType.StateNodeAsset)
 export class StateNodeAsset extends GraphNodeAsset {
   childNodeIndex = InvalidIndex;
 

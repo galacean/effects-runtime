@@ -22,7 +22,7 @@ export enum NodeAssetType {
 
 const nodeAssetClassStore: Record<string, any> = {};
 
-export function nodeAssetClass (className: string) {
+export function nodeDataClass (className: string) {
   return (target: Object, context?: unknown) => {
     if (nodeAssetClassStore[className]) {
       console.warn(`NodeAsset Class ${className} is already registered.`);
