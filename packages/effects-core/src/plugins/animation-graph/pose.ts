@@ -38,7 +38,7 @@ export class Pose {
   setPosition (path: string, position: Vector3) {
     const boneIndex = this.referencePose.pathToPositionIndex.get(path);
 
-    if (boneIndex) {
+    if (boneIndex !== undefined) {
       this.parentSpaceReferencePosition[boneIndex].copyFrom(position);
     }
   }
@@ -46,7 +46,7 @@ export class Pose {
   setRotation (path: string, rotation: Quaternion) {
     const boneIndex = this.referencePose.pathToRotationIndex.get(path);
 
-    if (boneIndex) {
+    if (boneIndex !== undefined) {
       this.parentSpaceReferenceRotation[boneIndex].copyFrom(rotation);
     }
   }
@@ -54,7 +54,7 @@ export class Pose {
   setEuler (path: string, euler: Euler) {
     const boneIndex = this.referencePose.pathToEulerIndex.get(path);
 
-    if (boneIndex) {
+    if (boneIndex !== undefined) {
       this.parentSpaceReferenceEuler[boneIndex].copyFrom(euler);
     }
   }
@@ -62,7 +62,7 @@ export class Pose {
   setScale (path: string, scale: Vector3) {
     const boneIndex = this.referencePose.pathToScaleIndex.get(path);
 
-    if (boneIndex) {
+    if (boneIndex !== undefined) {
       this.parentSpaceReferenceScale[boneIndex].copyFrom(scale);
     }
   }
