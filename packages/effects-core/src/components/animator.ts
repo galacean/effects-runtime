@@ -17,6 +17,18 @@ export class Animator extends Component {
   graph: GraphInstance | null = null;
   private graphAsset: AnimationGraphAsset | null = null;
 
+  setBool (name: string, value: boolean) {
+    if (this.graph) {
+      this.graph.setBool(name, value);
+    }
+  }
+
+  setFloat (name: string, value: number) {
+    if (this.graph) {
+      this.graph.setFloat(name, value);
+    }
+  }
+
   override onStart (): void {
     if (this.graphAsset) {
       this.graph = new GraphInstance(this.graphAsset, this.item);

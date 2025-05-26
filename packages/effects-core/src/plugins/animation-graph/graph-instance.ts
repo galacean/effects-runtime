@@ -125,6 +125,8 @@ export class GraphInstance {
       return res;
     }
 
+    console.warn('Parameter ' + parameterID + ' does not exit.');
+
     return InvalidIndex;
   }
 
@@ -132,12 +134,20 @@ export class GraphInstance {
     return this.graphAsset.controlParameterIDs[paramterNodeIndex];
   }
 
-  setBool (parameterNodeIndex: number, value: boolean) {
-    (this.nodes[parameterNodeIndex] as ControlParameterBoolNode).setValue(value);
+  setBool (name: string, value: boolean) {
+    const index = this.getControlParameterIndex(name);
+
+    if (index !== InvalidIndex) {
+      (this.nodes[index] as ControlParameterBoolNode).setValue(value);
+    }
   }
 
-  setFloat (parameterNodeIndex: number, value: number) {
-    (this.nodes[parameterNodeIndex] as ControlParameterFloatNode).setValue(value);
+  setFloat (name: string, value: number) {
+    const index = this.getControlParameterIndex(name);
+
+    if (index !== InvalidIndex) {
+      (this.nodes[index] as ControlParameterFloatNode).setValue(value);
+    }
   }
 
   // Debug Information
