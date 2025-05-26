@@ -11,7 +11,9 @@ export enum NodeAssetType {
   StateMachineNodeAsset = 'StateMachineNodeAsset',
   TransitionNodeAsset = 'TransitionNodeAsset',
   StateNodeAsset = 'StateNodeAsset',
-  ControlParameterBoolNodeAsset = 'ControlParameterBoolNodeAsset'
+  ControlParameterBoolNodeAsset = 'ControlParameterBoolNodeAsset',
+
+  NotNodeAsset = 'NotNodeAsset'
 }
 
 const nodeAssetClassStore: Record<string, any> = {};
