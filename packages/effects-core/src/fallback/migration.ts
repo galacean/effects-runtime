@@ -251,6 +251,7 @@ export function processMask (renderContent: any) {
     renderContent.mask = {
       mask: true,
     };
+    renderer.alphaMask = false;
     currentMaskComponent = renderContent.id;
   } else if (
     maskMode === spec.ObscuredMode.OBSCURED ||
