@@ -22,6 +22,7 @@ export class EqualNodeAsset extends GraphNodeAsset {
   }
 
   override load (data: EqualNodeAssetData): void {
+    super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
     this.comparandValueNodeIndex = data.comparandValueNodeIndex;
   }
