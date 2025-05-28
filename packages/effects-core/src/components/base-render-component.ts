@@ -66,7 +66,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       side: spec.SideMode.DOUBLE,
       maskMode: MaskMode.NONE,
       mask: 0,
-      alphaMask: true,
+      alphaMask: false,
     };
 
     const material = Material.create(this.engine, {
@@ -359,7 +359,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       shape: shapeGeometry,
       maskMode,
       //@ts-expect-error TODO 新蒙版兼容老数据需要增加纹理透明度蒙版是否开启参数
-      alphaMask: renderer.alphaMask ?? true,
+      alphaMask: renderer.alphaMask ?? false,
     };
 
     this.configureMaterial(this.renderer);
