@@ -7,6 +7,14 @@
 
 ---
 
+## 2.4.4
+
+`2025-05-28`
+
+- Fix: Fixed the issue with Spine blend mode. [#1011](https://github.com/galacean/effects-runtime/pull/1011) @RGCHN
+- Fix: old json texture mask migration. [#1012](https://github.com/galacean/effects-runtime/pull/1012) @wumaolinmaoan
+  - Fix: alpha mask default value. [#1013](https://github.com/galacean/effects-runtime/pull/1013) @wumaolinmaoan
+
 ## 2.4.3
 
 `2025-05-21`
