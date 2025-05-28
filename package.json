@@ -21,7 +21,7 @@
     "clean:all": "pnpm clean:artifacts && pnpm clean:declaration && pnpm clean:dist && pnpm clean:nm",
     "preinstall": "npx only-allow pnpm && node ./scripts/flatc/get-binaries.js",
     "prepare": "husky install && pnpm --filter \"./packages/**\" build:fbs",
-    "publish": "pnpm -r publish --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
+    "publish": "pnpm -r publish --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
     "publish:alpha": "pnpm -r publish --tag alpha --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
     "publish:beta": "pnpm -r publish --tag beta --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\""
   },
