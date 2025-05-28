@@ -37,17 +37,17 @@ interface BaseRenderComponentData extends spec.ComponentData {
 export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   renderer: ItemRenderer;
-  color = new Color(1, 1, 1, 1);
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
   protected preMultiAlpha: number;
   protected visible = true;
-
   /**
    * 用于点击测试的碰撞器
    */
   protected meshCollider = new MeshCollider();
+
+  private _color = new Color(1, 1, 1, 1);
 
   /**
    *
@@ -67,6 +67,31 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mask: 0,
     };
 
+    this.geometry = Geometry.create(this.engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array([
+            -0.5, 0.5, 0, //左上
+            -0.5, -0.5, 0, //左下
+            0.5, 0.5, 0, //右上
+            0.5, -0.5, 0, //右下
+          ]),
+        },
+        atlasOffset: {
+          size: 2,
+          offset: 0,
+          releasable: true,
+          type: glContext.FLOAT,
+          data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
+        },
+      },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      mode: glContext.TRIANGLES,
+      drawCount: 6,
+    });
+
     const material = Material.create(this.engine, {
       shader: {
         fragment: itemFrag,
@@ -76,7 +101,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     });
 
     this.material = material;
-    this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
+    this.material.setColor('_Color', new Color(1, 1, 1, 1));
     this.maskManager = new MaskProcessor(engine);
   }
 
@@ -113,11 +138,28 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   setColor (color: spec.vec4): void;
   setColor (color: spec.vec4 | Color) {
     if (color instanceof Color) {
-      this.color.copyFrom(color);
+      this._color.copyFrom(color);
     } else {
-      this.color.setFromArray(color);
+      this._color.setFromArray(color);
     }
-    this.material.setColor('_Color', this.color);
+    this.material.setColor('_Color', this._color);
+  }
+
+  /**
+   * 获取当前图层的颜色
+   * @since 2.5.0
+   */
+  get color () {
+    return this._color;
+  }
+
+  /**
+   * 设置当前图层的颜色
+   * @since 2.5.0
+   */
+  set color (value: Color) {
+    this._color = value;
+    this.material.setColor('_Color', this._color);
   }
 
   /**
@@ -203,68 +245,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
-  protected getItemGeometryData (geometry: Geometry) {
-    const renderer = this.renderer;
-
-    if (renderer.shape) {
-      const { index = [], aPoint = [] } = renderer.shape;
-      const point = new Float32Array(aPoint);
-      const position = [];
-      const atlasOffset = [];
-
-      for (let i = 0; i < point.length; i += 6) {
-        atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
-        position.push(point[i], point[i + 1], 0.0);
-      }
-
-      geometry.setAttributeData('aPos', new Float32Array(position));
-
-      return {
-        index: index as number[],
-        atlasOffset,
-      };
-    } else {
-      geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
-
-      return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
-    }
-  }
-
-  protected createGeometry () {
-    const geometry = Geometry.create(this.engine, {
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array([
-            -0.5, 0.5, 0, //左上
-            -0.5, -0.5, 0, //左下
-            0.5, 0.5, 0, //右上
-            0.5, -0.5, 0, //右下
-          ]),
-        },
-        atlasOffset: {
-          size: 2,
-          offset: 0,
-          releasable: true,
-          type: glContext.FLOAT,
-          data: new Float32Array(0),
-        },
-      },
-      indices: { data: new Uint16Array(0), releasable: true },
-      mode: glContext.TRIANGLES,
-    });
-
-    const geoData = this.getItemGeometryData(geometry);
-    const { index, atlasOffset } = geoData;
-
-    geometry.setIndexData(new Uint16Array(index));
-    geometry.setAttributeData('atlasOffset', new Float32Array(atlasOffset));
-    geometry.setDrawCount(index.length);
-
-    return geometry;
-  }
-
   private configureMaterial (renderer: ItemRenderer): Material {
     const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
     const material = this.material;
@@ -280,7 +260,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
-    material.setColor('_Color', new Color(0, 0, 0, 1));
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_MainTex', texture);
 
