@@ -7,6 +7,12 @@
 
 ---
 
+## 2.3.8
+
+`2025-05-28`
+
+- Fix: Spine blend function. [#1015](https://github.com/galacean/effects-runtime/pull/1015) @wumaolinmaoan
+
 ## 2.3.7
 
 `2025-05-16`
