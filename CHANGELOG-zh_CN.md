@@ -8,6 +8,12 @@
 
 ---
 
+## 2.4.5
+
+`2025-05-28`
+
+- Fix: spine and particle mask. [#1018](https://github.com/galacean/effects-runtime/pull/1018) @wumaolinmaoan
+
 ## 2.4.4
 
 `2025-05-28`
