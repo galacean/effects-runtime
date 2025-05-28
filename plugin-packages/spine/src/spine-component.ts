@@ -1,8 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps,
-  Maskable,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps, Maskable,
   Renderer, Texture,
 } from '@galacean/effects';
 import {
@@ -208,7 +207,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
     }
     const previousColorMasks: boolean[] = [];
 
-    for (let i = 0;i < this.content.meshGroups.length;i++) {
+    for (let i = 0; i < this.content.meshGroups.length; i++) {
       const material = this.content.meshGroups[i].mesh.material;
 
       previousColorMasks.push(material.colorMask);
@@ -217,7 +216,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
 
     this.content.render(renderer);
 
-    for (let i = 0;i < this.content.meshGroups.length;i++) {
+    for (let i = 0; i < this.content.meshGroups.length; i++) {
       const material = this.content.meshGroups[i].mesh.material;
 
       material.colorMask = previousColorMasks[i];
