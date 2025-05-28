@@ -64,6 +64,14 @@ export class Vector3Curve extends ValueGetter<Vector3> {
 
     return this.value;
   }
+
+  override getMaxTime (): number {
+    return Math.max(
+      this.xCurve.getMaxTime(),
+      this.yCurve.getMaxTime(),
+      this.zCurve.getMaxTime(),
+    );
+  }
 }
 
 export class Vector2Curve extends ValueGetter<Vector2> {
@@ -84,5 +92,12 @@ export class Vector2Curve extends ValueGetter<Vector2> {
     this.value.set(x, y);
 
     return this.value;
+  }
+
+  override getMaxTime (): number {
+    return Math.max(
+      this.xCurve.getMaxTime(),
+      this.yCurve.getMaxTime(),
+    );
   }
 }
