@@ -25,6 +25,7 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
   mask: number,
   maskMode: MaskMode,
   shape?: GeometryFromShape,
+  alphaMask: boolean,
 }
 
 interface BaseRenderComponentData extends spec.ComponentData {
@@ -65,6 +66,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       side: spec.SideMode.DOUBLE,
       maskMode: MaskMode.NONE,
       mask: 0,
+      alphaMask: false,
     };
 
     this.geometry = Geometry.create(this.engine, {
@@ -272,7 +274,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     texParams.w = renderer.maskMode;
     material.setVector4('_TexParams', texParams);
 
-    if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
+    if (texParams.x === 0 || (renderer.alphaMask)) {
       material.enableMacro('ALPHA_CLIP');
     } else {
       material.disableMacro('ALPHA_CLIP');
@@ -335,6 +337,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mask: this.maskManager.getRefValue(),
       shape: shapeGeometry,
       maskMode,
+      //@ts-expect-error TODO 新蒙版兼容老数据需要增加纹理透明度蒙版是否开启参数
+      alphaMask: renderer.alphaMask ?? false,
     };
 
     this.configureMaterial(this.renderer);
