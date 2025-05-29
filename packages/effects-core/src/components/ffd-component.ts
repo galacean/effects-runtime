@@ -1,4 +1,3 @@
-// TODO TimeLine 支持
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
@@ -9,21 +8,18 @@ import { MeshComponent } from './mesh-component';
 // TODO 临时本地声明，提供给编辑器
 declare module '@galacean/effects-specification' {
   interface FFDComponentData extends spec.ComponentData {
-    controlPoints?: {
-      x: number,
-      y: number,
-      z: number,
-    }[],
+    controlPoints?: Vector3[],
   }
 }
 
 @effectsClass('FFDComponent')
 export class FFDComponent extends Component {
+  private controlPoints: Vector3[] = []; // 控制点数组， from time line
+
   private data: spec.FFDComponentData;
   private animated = false;
 
   private relatedMeshComponents: MeshComponent[] = []; // 存储相关的MeshComponent
-  private controlPoints = new Float32Array(25 * 3); // 控制点数组
   private boundMin = new Vector3(-0.5, -0.5, 0.0);
   private boundMax = new Vector3(0.5, 0.5, 0.0);
 
@@ -61,16 +57,14 @@ export class FFDComponent extends Component {
    * 初始化默认控制点
    */
   private initDefaultControlPoints () {
+    this.controlPoints = [];
     for (let i = 0; i < 5; i++) {
       for (let j = 0; j < 5; j++) {
-        const idx = (i * 5 + j) * 3;
         const x = j / 4.0 - 0.5;
         const y = i / 4.0 - 0.5;
         const z = 0.0;
 
-        this.controlPoints[idx] = x;
-        this.controlPoints[idx + 1] = y;
-        this.controlPoints[idx + 2] = z;
+        this.controlPoints.push(new Vector3(x, y, z));
       }
     }
 
@@ -178,18 +172,15 @@ export class FFDComponent extends Component {
     this.boundMax = new Vector3(maxX, maxY, maxZ);
 
     // 基于包围盒范围均匀生成5x5控制点
+    this.controlPoints = [];
     for (let i = 0; i < 5; i++) {
       for (let j = 0; j < 5; j++) {
-        const idx = (i * 5 + j) * 3;
-
         // 将控制点均匀分布在包围盒范围内
         const x = minX + (j / 4.0) * (maxX - minX);
         const y = minY + (i / 4.0) * (maxY - minY);
         const z = minZ; // 通常Z值保持不变
 
-        this.controlPoints[idx] = x;
-        this.controlPoints[idx + 1] = y;
-        this.controlPoints[idx + 2] = z;
+        this.controlPoints.push(new Vector3(x, y, z));
       }
     }
 
@@ -208,11 +199,14 @@ export class FFDComponent extends Component {
     // 更新控制点位置
     for (let i = 0; i < Math.min(this.data.controlPoints.length, 25); i++) {
       const point = this.data.controlPoints[i];
-      const idx = i * 3;
 
-      this.controlPoints[idx] = point.x;
-      this.controlPoints[idx + 1] = point.y;
-      this.controlPoints[idx + 2] = point.z;
+      if (i < this.controlPoints.length) {
+        this.controlPoints[i].x = point.x;
+        this.controlPoints[i].y = point.y;
+        this.controlPoints[i].z = point.z;
+      } else {
+        this.controlPoints.push(new Vector3(point.x, point.y, point.z));
+      }
     }
 
     // 更新所有相关材质的uniform
@@ -235,12 +229,13 @@ export class FFDComponent extends Component {
         // 设置控制点信息
         for (let i = 0; i < 5; i++) {
           for (let j = 0; j < 5; j++) {
-            const idx = (i * 5 + j) * 3;
-            const x = this.controlPoints[idx];
-            const y = this.controlPoints[idx + 1];
-            const z = this.controlPoints[idx + 2];
+            const idx = i * 5 + j;
 
-            material.setVector3(`u_ControlPoints[${i * 5 + j}]`, new Vector3(x, y, z));
+            if (idx < this.controlPoints.length) {
+              const controlPoint = this.controlPoints[idx];
+
+              material.setVector3(`u_ControlPoints[${idx}]`, controlPoint);
+            }
           }
         }
       }
