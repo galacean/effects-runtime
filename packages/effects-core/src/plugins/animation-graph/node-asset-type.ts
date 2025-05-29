@@ -19,7 +19,9 @@ export enum NodeAssetType {
   AndNodeAsset = 'AndNodeAsset',
   OrNodeAsset = 'OrNodeAsset',
 
-  EqualNodeAsset = 'EqualNodeAsset'
+  EqualNodeAsset = 'EqualNodeAsset',
+  GreaterNodeAsset = 'GreaterNodeAsset',
+  LessNodeAsset = 'LessNodeAsset'
 }
 
 const nodeAssetClassStore: Record<string, any> = {};
