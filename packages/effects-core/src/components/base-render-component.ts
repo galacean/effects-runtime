@@ -8,7 +8,7 @@ import type { MaskProps, Maskable } from '../material';
 import {
   MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
+import type { BoundingBoxTriangle, HitTestTriangleParams, splitsDataType } from '../plugins';
 import { MeshCollider } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
@@ -28,9 +28,22 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
   alphaMask: boolean,
 }
 
+// TODO: Add to spec
 interface BaseRenderComponentData extends spec.ComponentData {
   renderer: spec.RendererOptions,
+  /**
+     * added by loader
+     * @default null
+     */
+  splits?: spec.SplitParameter[],
+  /**
+     * 图层元素贴图变化属性
+     */
+  textureSheetAnimation?: spec.TextureSheetAnimation,
+  geometry?: spec.DataPath,
 }
+
+const singleSplits: splitsDataType = [[0, 0, 1, 1, undefined]];
 
 /**
  * @since 2.1.0
@@ -41,14 +54,18 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   geometry: Geometry;
   readonly maskManager: MaskProcessor;
 
-  protected preMultiAlpha: number;
   protected visible = true;
+
+  protected textureSheetAnimation?: spec.TextureSheetAnimation;
+  protected splits: splitsDataType = singleSplits;
+
   /**
    * 用于点击测试的碰撞器
    */
   protected meshCollider = new MeshCollider();
 
   private _color = new Color(1, 1, 1, 1);
+  private defaultGeometry: Geometry;
 
   /**
    *
@@ -69,7 +86,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       alphaMask: false,
     };
 
-    this.geometry = Geometry.create(this.engine, {
+    this.defaultGeometry = Geometry.create(this.engine, {
       attributes: {
         aPos: {
           type: glContext.FLOAT,
@@ -81,7 +98,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
             0.5, -0.5, 0, //右下
           ]),
         },
-        atlasOffset: {
+        aUV: {
           size: 2,
           offset: 0,
           releasable: true,
@@ -93,6 +110,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       mode: glContext.TRIANGLES,
       drawCount: 6,
     });
+    this.geometry = this.defaultGeometry;
 
     const material = Material.create(this.engine, {
       shader: {
@@ -247,6 +265,120 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
+  private getItemGeometryData (renderer: ItemRenderer) {
+    const { splits, textureSheetAnimation } = this;
+    const sx = 1, sy = 1;
+    const geometry = this.defaultGeometry;
+
+    if (renderer.shape) {
+      const { index = [], aPoint = [] } = renderer.shape;
+      const point = new Float32Array(aPoint);
+      const position = [];
+
+      const aUV = [];
+
+      for (let i = 0; i < point.length; i += 6) {
+        point[i] *= sx;
+        point[i + 1] *= sy;
+        aUV.push(aPoint[i + 2], aPoint[i + 3]);
+        position.push(point[i], point[i + 1], 0.0);
+      }
+      geometry.setAttributeData('aPos', new Float32Array(position));
+
+      return {
+        index: index as number[],
+        aUV,
+      };
+    }
+
+    const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
+    const aUV = [];
+    const index = [];
+    const position = [];
+
+    if (splits.length === 1) {
+      const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4] as number] : splits[0] as number[];
+      const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+      const tox = split[0];
+      const toy = split[1];
+      const tsx = split[4] ? split[3] : split[2];
+      const tsy = split[4] ? split[2] : split[3];
+
+      aUV.push(
+        texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+        texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+        texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+        texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+      );
+      position.push(
+        originData[0], originData[1], 0.0,
+        originData[2], originData[3], 0.0,
+        originData[4], originData[5], 0.0,
+        originData[6], originData[7], 0.0
+      );
+      index.push(0, 1, 2, 2, 1, 3);
+    } else {
+      // TODO: 原有打包纹理拆分逻辑，待移除
+      //-------------------------------------------------------------------------
+
+      const col = 2;
+      const row = 2;
+
+      for (let x = 0; x < col; x++) {
+        for (let y = 0; y < row; y++) {
+          const base = (y * 2 + x) * 4;
+          // @ts-expect-error
+          const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
+          const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+          const dw = ((x + x + 1) / col - 1) / 2;
+          const dh = ((y + y + 1) / row - 1) / 2;
+          const tox = split[0];
+          const toy = split[1];
+          const tsx = split[4] ? split[3] : split[2];
+          const tsy = split[4] ? split[2] : split[3];
+          const origin = [
+            originData[0] / col + dw,
+            originData[1] / row + dh,
+            originData[2] / col + dw,
+            originData[3] / row + dh,
+            originData[4] / col + dw,
+            originData[5] / row + dh,
+            originData[6] / col + dw,
+            originData[7] / row + dh,
+          ];
+
+          aUV.push(
+            texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+            texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+            texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+            texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+          );
+          position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
+            (origin[2]) * sx, (origin[3]) * sy, 0.0,
+            (origin[4]) * sx, (origin[5]) * sy, 0.0,
+            (origin[6]) * sx, (origin[7]) * sy, 0.0);
+          index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
+        }
+      }
+    }
+
+    geometry.setAttributeData('aPos', new Float32Array(position));
+
+    return { index, aUV };
+  }
+
+  private configureDefaultGeometry (renderer: ItemRenderer) {
+    const geoData = this.getItemGeometryData(renderer);
+    const { index, aUV } = geoData;
+    const geometry = this.defaultGeometry;
+
+    geometry.setIndexData(new Uint16Array(index));
+    geometry.setAttributeData('aUV', new Float32Array(aUV));
+    geometry.setDrawCount(index.length);
+
+    return geometry;
+  }
+
   private configureMaterial (renderer: ItemRenderer): Material {
     const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
     const material = this.material;
@@ -265,11 +397,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_MainTex', texture);
 
-    this.preMultiAlpha = getPreMultiAlpha(blendMode);
+    const preMultiAlpha = getPreMultiAlpha(blendMode);
     const texParams = new Vector4();
 
     texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-    texParams.y = +this.preMultiAlpha;
+    texParams.y = preMultiAlpha;
     texParams.z = renderer.renderMode;
     texParams.w = renderer.maskMode;
     material.setVector4('_TexParams', texParams);
@@ -306,8 +438,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
   override fromData (data: unknown): void {
     super.fromData(data);
-    const renderer = (data as BaseRenderComponentData).renderer ?? {};
 
+    const baseRenderComponentData = (data as BaseRenderComponentData);
+    const renderer = baseRenderComponentData.renderer ?? {};
+    const splits = baseRenderComponentData.splits;
+    const textureSheetAnimation = baseRenderComponentData.textureSheetAnimation;
     const maskProps = (data as MaskProps).mask;
 
     if (maskProps && maskProps.ref) {
@@ -318,14 +453,16 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     // TODO 新蒙板上线后移除
     //-------------------------------------------------------------------------
     const shapeData = renderer.shape as spec.ShapeGeometry;
-    //@ts-expect-error
-    const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
+    const split = splits && !textureSheetAnimation ? splits[0] : undefined;
     let shapeGeometry: GeometryFromShape | undefined = undefined;
 
     if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
       shapeGeometry = getGeometryByShape(shapeData, split);
     }
     //-------------------------------------------------------------------------
+
+    this.splits = splits || singleSplits;
+    this.textureSheetAnimation = textureSheetAnimation;
 
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
@@ -342,5 +479,12 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     };
 
     this.configureMaterial(this.renderer);
+
+    if (baseRenderComponentData.geometry) {
+      this.geometry = this.engine.findObject<Geometry>(baseRenderComponentData.geometry);
+    } else {
+      this.geometry = this.defaultGeometry;
+      this.configureDefaultGeometry(this.renderer);
+    }
   }
 }

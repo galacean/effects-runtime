@@ -2,7 +2,6 @@ import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -33,8 +32,6 @@ export type SpriteItemOptions = {
 
 export type splitsDataType = [r: number, x: number, y: number, w: number, h: number | undefined][];
 
-const singleSplits: splitsDataType = [[0, 0, 1, 1, undefined]];
-
 let seed = 0;
 
 @effectsClass(spec.DataType.SpriteColorPlayableAsset)
@@ -56,11 +53,9 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends BaseRenderComponent {
-  textureSheetAnimation?: spec.TextureSheetAnimation;
-  splits: splitsDataType = singleSplits;
   frameAnimationLoop = false;
 
-  constructor (engine: Engine, props?: SpriteItemProps) {
+  constructor (engine: Engine, props?: spec.SpriteComponentData) {
     super(engine);
 
     this.name = 'MSprite' + seed++;
@@ -149,130 +144,13 @@ export class SpriteComponent extends BaseRenderComponent {
     }
   }
 
-  private configureGeometry (renderer: ItemRenderer) {
-    const geoData = this.getItemGeometryData(renderer);
-    const { index, atlasOffset } = geoData;
-    const geometry = this.geometry;
-
-    geometry.setIndexData(new Uint16Array(index));
-    geometry.setAttributeData('atlasOffset', new Float32Array(atlasOffset));
-    geometry.setDrawCount(index.length);
-
-    return geometry;
-  }
-
-  private getItemGeometryData (renderer: ItemRenderer) {
-    const { splits, textureSheetAnimation } = this;
-    const sx = 1, sy = 1;
-    const geometry = this.geometry;
-
-    if (renderer.shape) {
-      const { index = [], aPoint = [] } = renderer.shape;
-      const point = new Float32Array(aPoint);
-      const position = [];
-
-      const atlasOffset = [];
-
-      for (let i = 0; i < point.length; i += 6) {
-        point[i] *= sx;
-        point[i + 1] *= sy;
-        atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
-        position.push(point[i], point[i + 1], 0.0);
-      }
-      geometry.setAttributeData('aPos', new Float32Array(position));
-
-      return {
-        index: index as number[],
-        atlasOffset,
-      };
-    }
-
-    const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
-    const atlasOffset = [];
-    const index = [];
-    const position = [];
-
-    if (splits.length === 1) {
-      const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4] as number] : splits[0] as number[];
-      const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
-      const tox = split[0];
-      const toy = split[1];
-      const tsx = split[4] ? split[3] : split[2];
-      const tsy = split[4] ? split[2] : split[3];
-
-      atlasOffset.push(
-        texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
-        texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
-        texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
-        texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
-      );
-      position.push(
-        originData[0], originData[1], 0.0,
-        originData[2], originData[3], 0.0,
-        originData[4], originData[5], 0.0,
-        originData[6], originData[7], 0.0
-      );
-      index.push(0, 1, 2, 2, 1, 3);
-    } else {
-      // TODO: 原有打包纹理拆分逻辑，待移除
-      //-------------------------------------------------------------------------
-
-      const col = 2;
-      const row = 2;
-
-      for (let x = 0; x < col; x++) {
-        for (let y = 0; y < row; y++) {
-          const base = (y * 2 + x) * 4;
-          // @ts-expect-error
-          const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
-          const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
-          const dw = ((x + x + 1) / col - 1) / 2;
-          const dh = ((y + y + 1) / row - 1) / 2;
-          const tox = split[0];
-          const toy = split[1];
-          const tsx = split[4] ? split[3] : split[2];
-          const tsy = split[4] ? split[2] : split[3];
-          const origin = [
-            originData[0] / col + dw,
-            originData[1] / row + dh,
-            originData[2] / col + dw,
-            originData[3] / row + dh,
-            originData[4] / col + dw,
-            originData[5] / row + dh,
-            originData[6] / col + dw,
-            originData[7] / row + dh,
-          ];
-
-          atlasOffset.push(
-            texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
-            texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
-            texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
-            texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
-          );
-          position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
-            (origin[2]) * sx, (origin[3]) * sy, 0.0,
-            (origin[4]) * sx, (origin[5]) * sy, 0.0,
-            (origin[6]) * sx, (origin[7]) * sy, 0.0);
-          index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
-        }
-      }
-    }
-
-    geometry.setAttributeData('aPos', new Float32Array(position));
-
-    return { index, atlasOffset };
-  }
-
-  override fromData (data: SpriteItemProps): void {
+  override fromData (data: spec.SpriteComponentData): void {
     super.fromData(data);
 
     const { interaction, options } = data;
 
     this.interaction = interaction;
-    this.splits = data.splits || singleSplits;
-    this.textureSheetAnimation = data.textureSheetAnimation;
 
-    this.configureGeometry(this.renderer);
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
