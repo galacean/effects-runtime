@@ -77,56 +77,43 @@ enum TransformCurveType {
   Euler
 }
 
-export interface TransformCurveBinding {
+export interface TransformCurveInfo {
   type: TransformCurveType,
   curve: AnimationCurve,
   boneIndex: number,
 }
 
 export class Animatable {
-  referencePose: ReferencePose;
-  animationClip: AnimationClip;
-  transformCurveBindings: TransformCurveBinding[] = [];
+  private referencePose: ReferencePose;
+  private animationClip: AnimationClip;
+  private transformCurveInfo: TransformCurveInfo[] = [];
 
   constructor (referencePose: ReferencePose, animationClip: AnimationClip) {
     this.referencePose = referencePose;
     this.animationClip = animationClip;
 
     for (const curve of animationClip.positionCurves) {
-      this.addCurveBinding(curve, TransformCurveType.Position);
+      this.addCurveInfo(curve, TransformCurveType.Position);
     }
     for (const curve of animationClip.scaleCurves) {
-      this.addCurveBinding(curve, TransformCurveType.Scale);
+      this.addCurveInfo(curve, TransformCurveType.Scale);
     }
     for (const curve of animationClip.rotationCurves) {
-      this.addCurveBinding(curve, TransformCurveType.Rotation);
+      this.addCurveInfo(curve, TransformCurveType.Rotation);
     }
     for (const curve of animationClip.eulerCurves) {
-      this.addCurveBinding(curve, TransformCurveType.Euler);
-    }
-  }
-
-  addCurveBinding (curve: AnimationCurve, type: TransformCurveType) {
-    const referencePose = this.referencePose;
-    const boneIndex = referencePose.pathToBoneIndex.get(curve.path);
-
-    if (boneIndex !== undefined) {
-      this.transformCurveBindings.push({
-        curve,
-        boneIndex,
-        type,
-      });
+      this.addCurveInfo(curve, TransformCurveType.Euler);
     }
   }
 
   getPose (time: number, outPose: Pose) {
     const life = time % this.animationClip.duration;
 
-    for (const curveBinding of this.transformCurveBindings) {
-      const curveValue = curveBinding.curve.keyFrames.getValue(life);
-      const outTransform = outPose.parentSpaceTransforms[curveBinding.boneIndex];
+    for (const curveInfo of this.transformCurveInfo) {
+      const curveValue = curveInfo.curve.keyFrames.getValue(life);
+      const outTransform = outPose.parentSpaceTransforms[curveInfo.boneIndex];
 
-      switch (curveBinding.type) {
+      switch (curveInfo.type) {
         case TransformCurveType.Position:
           outTransform.position.copyFrom(curveValue);
 
@@ -144,6 +131,19 @@ export class Animatable {
 
           break;
       }
+    }
+  }
+
+  private addCurveInfo (curve: AnimationCurve, type: TransformCurveType) {
+    const referencePose = this.referencePose;
+    const boneIndex = referencePose.pathToBoneIndex.get(curve.path);
+
+    if (boneIndex !== undefined) {
+      this.transformCurveInfo.push({
+        curve,
+        boneIndex,
+        type,
+      });
     }
   }
 }
