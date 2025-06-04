@@ -77,10 +77,10 @@ enum TransformCurveType {
   Euler
 }
 
-export class TransformCurveBinding {
-  type: TransformCurveType;
-  curve: AnimationCurve;
-  boneIndex: number;
+export interface TransformCurveBinding {
+  type: TransformCurveType,
+  curve: AnimationCurve,
+  boneIndex: number,
 }
 
 export class Animatable {
