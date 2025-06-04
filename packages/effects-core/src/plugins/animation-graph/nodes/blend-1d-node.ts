@@ -6,6 +6,7 @@ import { PoseResult } from '../pose-result';
 import { NodeAssetType, nodeDataClass } from '../..';
 import type { Vector3Like } from '@galacean/effects-math/es/core/type';
 import type { Euler } from '@galacean/effects-math/es/core/euler';
+import { Blender } from '../blender';
 
 export interface Blend1DNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.Blend1DNodeAsset,
@@ -84,34 +85,7 @@ export class Blend1DNode extends PoseNode {
   }
 
   private localBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
-    for (let i = 0;i < sourcePose.parentSpaceReferencePosition.length;i++) {
-      const sourcePosition = sourcePose.parentSpaceReferencePosition[i];
-      const targetPosition = targetPose.parentSpaceReferencePosition[i];
-      const resultPosition = resultPose.parentSpaceReferencePosition[i];
-
-      this.lerpVector3(sourcePosition, targetPosition, blendWeight, resultPosition);
-    }
-    for (let i = 0;i < sourcePose.parentSpaceReferenceRotation.length;i++) {
-      const sourceRotation = sourcePose.parentSpaceReferenceRotation[i];
-      const targetRotation = targetPose.parentSpaceReferenceRotation[i];
-      const resultRotation = resultPose.parentSpaceReferenceRotation[i];
-
-      resultRotation.copyFrom(sourceRotation).slerp(targetRotation, blendWeight);
-    }
-    for (let i = 0;i < sourcePose.parentSpaceReferenceScale.length;i++) {
-      const sourceScale = sourcePose.parentSpaceReferenceScale[i];
-      const targetScale = targetPose.parentSpaceReferenceScale[i];
-      const resultScale = resultPose.parentSpaceReferenceScale[i];
-
-      this.lerpVector3(sourceScale, targetScale, blendWeight, resultScale);
-    }
-    for (let i = 0;i < sourcePose.parentSpaceReferenceEuler.length;i++) {
-      const sourceEuler = sourcePose.parentSpaceReferenceEuler[i];
-      const targetEuler = targetPose.parentSpaceReferenceEuler[i];
-      const resultEuler = resultPose.parentSpaceReferenceEuler[i];
-
-      this.lerpEuler(sourceEuler, targetEuler, blendWeight, resultEuler);
-    }
+    Blender.localBlend(sourcePose, targetPose, blendWeight, resultPose);
   }
 
   private lerpEuler (from: Euler, to: Euler, t: number, res: Euler): Euler {

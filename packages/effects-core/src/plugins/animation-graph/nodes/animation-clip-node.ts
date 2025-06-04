@@ -1,9 +1,11 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
-import type { AnimationClip } from '../../cal/calculate-vfx-item';
+import type { AnimationClip, AnimationCurve } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeAsset, PoseNode, type GraphNodeAssetData } from '../graph-node';
 import { NodeAssetType, nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
+import type { ReferencePose } from '../reference-pose';
+import type { Pose } from '../pose';
 
 export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.AnimationClipNodeAsset,
@@ -31,8 +33,10 @@ export class AnimationClipNode extends PoseNode {
   animation: AnimationClip | null = null;
   loop = true;
 
+  private animatable: Animatable | null = null;
+
   override evaluate (context: GraphContext, result: PoseResult): PoseResult {
-    if (!this.animation) {
+    if (!this.animatable) {
       return result;
     }
 
@@ -50,7 +54,7 @@ export class AnimationClipNode extends PoseNode {
 
     const time = this.currentTime * this.duration;
 
-    this.animation.getPose(time, result.pose);
+    this.animatable.getPose(time, result.pose);
 
     return result;
   }
@@ -59,5 +63,87 @@ export class AnimationClipNode extends PoseNode {
     super.initializeInternal(context);
     this.duration = this.animation?.duration ?? 0;
     this.previousTime = this.currentTime = 0;
+
+    if (this.animation) {
+      this.animatable = new Animatable(context.referencePose, this.animation);
+    }
+  }
+}
+
+enum TransformCurveType {
+  Position,
+  Scale,
+  Rotation,
+  Euler
+}
+
+export class TransformCurveBinding {
+  type: TransformCurveType;
+  curve: AnimationCurve;
+  boneIndex: number;
+}
+
+export class Animatable {
+  referencePose: ReferencePose;
+  animationClip: AnimationClip;
+  transformCurveBindings: TransformCurveBinding[] = [];
+
+  constructor (referencePose: ReferencePose, animationClip: AnimationClip) {
+    this.referencePose = referencePose;
+    this.animationClip = animationClip;
+
+    for (const curve of animationClip.positionCurves) {
+      this.addCurveBinding(curve, TransformCurveType.Position);
+    }
+    for (const curve of animationClip.scaleCurves) {
+      this.addCurveBinding(curve, TransformCurveType.Scale);
+    }
+    for (const curve of animationClip.rotationCurves) {
+      this.addCurveBinding(curve, TransformCurveType.Rotation);
+    }
+    for (const curve of animationClip.eulerCurves) {
+      this.addCurveBinding(curve, TransformCurveType.Euler);
+    }
+  }
+
+  addCurveBinding (curve: AnimationCurve, type: TransformCurveType) {
+    const referencePose = this.referencePose;
+    const boneIndex = referencePose.pathToBoneIndex.get(curve.path);
+
+    if (boneIndex !== undefined) {
+      this.transformCurveBindings.push({
+        curve,
+        boneIndex,
+        type,
+      });
+    }
+  }
+
+  getPose (time: number, outPose: Pose) {
+    const life = time % this.animationClip.duration;
+
+    for (const curveBinding of this.transformCurveBindings) {
+      const curveValue = curveBinding.curve.keyFrames.getValue(life);
+      const outTransform = outPose.parentSpaceTransforms[curveBinding.boneIndex];
+
+      switch (curveBinding.type) {
+        case TransformCurveType.Position:
+          outTransform.position.copyFrom(curveValue);
+
+          break;
+        case TransformCurveType.Scale:
+          outTransform.scale.copyFrom(curveValue);
+
+          break;
+        case TransformCurveType.Rotation:
+          outTransform.rotation.copyFrom(curveValue);
+
+          break;
+        case TransformCurveType.Euler:
+          outTransform.euler.copyFrom(curveValue);
+
+          break;
+      }
+    }
   }
 }

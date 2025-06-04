@@ -3,31 +3,33 @@ import type { Pose } from './pose';
 
 export class Blender {
   static localBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
-    for (let i = 0; i < sourcePose.parentSpaceReferencePosition.length; i++) {
-      const sourcePosition = sourcePose.parentSpaceReferencePosition[i];
-      const targetPosition = targetPose.parentSpaceReferencePosition[i];
-      const resultPosition = resultPose.parentSpaceReferencePosition[i];
+
+    for (let i = 0;i < sourcePose.parentSpaceTransforms.length;i++) {
+      const sourceTransform = sourcePose.parentSpaceTransforms[i];
+      const targetTransform = targetPose.parentSpaceTransforms[i];
+      const resultTransform = resultPose.parentSpaceTransforms[i];
+
+      const sourcePosition = sourceTransform.position;
+      const targetPosition = targetTransform.position;
+      const resultPosition = resultTransform.position;
 
       Blender.lerpVector3(sourcePosition, targetPosition, blendWeight, resultPosition);
-    }
-    for (let i = 0; i < sourcePose.parentSpaceReferenceRotation.length; i++) {
-      const sourceRotation = sourcePose.parentSpaceReferenceRotation[i];
-      const targetRotation = targetPose.parentSpaceReferenceRotation[i];
-      const resultRotation = resultPose.parentSpaceReferenceRotation[i];
+
+      const sourceRotation = sourceTransform.rotation;
+      const targetRotation = targetTransform.rotation;
+      const resultRotation = resultTransform.rotation;
 
       resultRotation.copyFrom(sourceRotation).slerp(targetRotation, blendWeight);
-    }
-    for (let i = 0; i < sourcePose.parentSpaceReferenceScale.length; i++) {
-      const sourceScale = sourcePose.parentSpaceReferenceScale[i];
-      const targetScale = targetPose.parentSpaceReferenceScale[i];
-      const resultScale = resultPose.parentSpaceReferenceScale[i];
+
+      const sourceScale = sourceTransform.scale;
+      const targetScale = targetTransform.scale;
+      const resultScale = resultTransform.scale;
 
       Blender.lerpVector3(sourceScale, targetScale, blendWeight, resultScale);
-    }
-    for (let i = 0; i < sourcePose.parentSpaceReferenceEuler.length; i++) {
-      const sourceEuler = sourcePose.parentSpaceReferenceEuler[i];
-      const targetEuler = targetPose.parentSpaceReferenceEuler[i];
-      const resultEuler = resultPose.parentSpaceReferenceEuler[i];
+
+      const sourceEuler = sourceTransform.euler;
+      const targetEuler = targetTransform.euler;
+      const resultEuler = resultTransform.euler;
 
       Blender.lerpEuler(sourceEuler, targetEuler, blendWeight, resultEuler);
     }

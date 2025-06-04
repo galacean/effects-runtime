@@ -11,7 +11,6 @@ import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
-import type { Pose } from '../animation-graph/pose';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -259,28 +258,28 @@ export class ActivationPlayableAsset extends PlayableAsset {
   }
 }
 
-export interface PositionCurve {
+export interface AnimationCurve {
   path: string,
+  keyFrames: ValueGetter<any>,
+}
+
+export interface PositionCurve extends AnimationCurve {
   keyFrames: ValueGetter<Vector3>,
 }
 
-export interface EulerCurve {
-  path: string,
+export interface EulerCurve extends AnimationCurve {
   keyFrames: ValueGetter<Euler>,
 }
 
-export interface RotationCurve {
-  path: string,
+export interface RotationCurve extends AnimationCurve {
   keyFrames: ValueGetter<Quaternion>,
 }
 
-export interface ScaleCurve {
-  path: string,
+export interface ScaleCurve extends AnimationCurve {
   keyFrames: ValueGetter<Vector3>,
 }
 
-export interface FloatCurve {
-  path: string,
+export interface FloatCurve extends AnimationCurve {
   property: string,
   className: string,
   keyFrames: ValueGetter<number>,
@@ -400,36 +399,6 @@ export class AnimationClip extends EffectsObject {
     }
   }
 
-  getPose (time: number, outPose: Pose) {
-    const life = time % this.duration;
-
-    // life = life < 0 ? 0 : (life > 1 ? 1 : life);
-
-    for (const curve of this.positionCurves) {
-      const value = curve.keyFrames.getValue(life);
-
-      outPose.setPosition(curve.path, value);
-    }
-
-    for (const curve of this.rotationCurves) {
-      const value = curve.keyFrames.getValue(life);
-
-      outPose.setRotation(curve.path, value);
-    }
-
-    for (const curve of this.eulerCurves) {
-      const value = curve.keyFrames.getValue(life);
-
-      outPose.setEuler(curve.path, value);
-    }
-
-    for (const curve of this.scaleCurves) {
-      const value = curve.keyFrames.getValue(life);
-
-      outPose.setScale(curve.path, value);
-    }
-  }
-
   private findTarget (vfxItem: VFXItem, path: string[]) {
     let target = vfxItem;
 
@@ -450,20 +419,5 @@ export class AnimationClip extends EffectsObject {
     }
 
     return target;
-  }
-}
-
-export class AnimationClipPlayable extends Playable {
-  clip: AnimationClip;
-
-  override processFrame (context: FrameContext): void {
-    const boundObject = context.output.getUserData();
-
-    if (!(boundObject instanceof VFXItem)) {
-      return;
-    }
-    if (boundObject.composition) {
-      this.clip.sampleAnimation(boundObject, this.time);
-    }
   }
 }

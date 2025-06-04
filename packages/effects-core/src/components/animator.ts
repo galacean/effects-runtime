@@ -1,7 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { AnimationGraphAsset } from '../plugins/animation-graph';
 import { GraphInstance } from '../plugins/animation-graph';
-import type { Transform } from '../transform.js';
 import { Component } from './component.js';
 import { effectsClass } from '../decorators';
 
@@ -42,34 +41,22 @@ export class Animator extends Component {
 
     const result = this.graph.evaluateGraph(dt / 1000);
 
-    let animatedTransforms: Transform[];
+    const animatedTransforms = this.graph.referencePose.animatedTransforms;
 
-    animatedTransforms = this.graph.referencePose.positionTransformBindings;
     for (let i = 0;i < animatedTransforms.length;i++) {
-      const position = result.pose.parentSpaceReferencePosition[i];
+      const position = result.pose.parentSpaceTransforms[i].position;
+      const rotation = result.pose.parentSpaceTransforms[i].rotation;
+      const scale = result.pose.parentSpaceTransforms[i].scale;
+      const euler = result.pose.parentSpaceTransforms[i].euler;
 
       animatedTransforms[i].setPosition(position.x, position.y, position.z);
-    }
-
-    animatedTransforms = this.graph.referencePose.rotationTransformBindings;
-    for (let i = 0;i < animatedTransforms.length;i++) {
-      const rotation = result.pose.parentSpaceReferenceRotation[i];
-
-      animatedTransforms[i].setQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
-    }
-
-    animatedTransforms = this.graph.referencePose.scaleTransformBindings;
-    for (let i = 0;i < animatedTransforms.length;i++) {
-      const scale = result.pose.parentSpaceReferenceScale[i];
-
       animatedTransforms[i].setScale(scale.x, scale.y, scale.z);
-    }
 
-    animatedTransforms = this.graph.referencePose.eulerTransformBindings;
-    for (let i = 0;i < animatedTransforms.length;i++) {
-      const euler = result.pose.parentSpaceReferenceEuler[i];
-
-      animatedTransforms[i].setRotation(euler.x, euler.y, euler.z);
+      if (this.graph.referencePose.useEuler) {
+        animatedTransforms[i].setRotation(euler.x, euler.y, euler.z);
+      } else {
+        animatedTransforms[i].setQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
+      }
     }
 
     // TODO float curves
