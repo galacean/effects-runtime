@@ -119,14 +119,17 @@ export class ModelMeshComponent extends RendererComponent {
    */
   override fromData (data: ModelMeshComponentData): void {
     super.fromData(data);
-    this.data = data;
+    this.data = {
+      ...data,
+      materials:[],
+    };
 
-    data.rootBone = data.rootBone ? this.engine.findObject(data.rootBone) : undefined;
-    data.geometry = this.engine.findObject(data.geometry);
+    this.data.rootBone = data.rootBone ? this.engine.findObject(data.rootBone) : undefined;
+    this.data.geometry = this.engine.findObject(data.geometry);
 
     if (data.materials) {
-      for (let i = 0;i < data.materials.length;i++) {
-        data.materials[i] = this.engine.findObject(data.materials[i]);
+      for (let i = 0; i < data.materials.length; i++) {
+        this.data.materials[i] = this.engine.findObject(data.materials[i]);
       }
     }
   }
