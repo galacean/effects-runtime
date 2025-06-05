@@ -1,6 +1,6 @@
 precision highp float;
 
-attribute vec2 atlasOffset;//x y
+attribute vec2 aUV;//x y
 attribute vec3 aPos;//x y
 
 varying vec2 vTexCoord;
@@ -22,7 +22,7 @@ uniform vec4 uEditorTransform;
 
 void main() {
   vec4 texParams = _TexParams;
-  vTexCoord = vec2(atlasOffset.xy * _TexOffset.zw + _TexOffset.xy);
+  vTexCoord = vec2(aUV.xy * _TexOffset.zw + _TexOffset.xy);
   vColor = _Color;
   vParams = vec3(texParams.w, texParams.y, texParams.x);
 

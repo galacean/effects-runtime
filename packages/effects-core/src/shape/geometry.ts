@@ -21,7 +21,9 @@ export type GeometryFromShape = {
   aPoint: number[] | Float32Array,
   index: number[] | Uint16Array,
 };
+
 type ShapeGeometryPre = { p: spec.ShapePoints[1], s: spec.ShapeSplits[1] };
+
 // FIXME: 考虑合并 Shape2D
 export type ShapeGeometryData = { gs: ShapeGeometryPre[] } | { g: ShapeGeometryPre } | spec.ShapeGeometry;
 

@@ -3,12 +3,11 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
-import { glContext } from '../gl';
 import type { MaskProps, MaterialProps } from '../material';
 import { Material, setMaskMode } from '../material';
 import type { Polygon, ShapePath, StrokeAttributes } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
-import { GLSLVersion, Geometry } from '../render';
+import { GLSLVersion } from '../render';
 import { BaseRenderComponent } from './base-render-component';
 
 interface FillAttribute {
@@ -181,30 +180,8 @@ void main() {
   constructor (engine: Engine) {
     super(engine);
 
-    // Create Geometry
+    // Add Geometry SubMesh
     //-------------------------------------------------------------------------
-
-    this.geometry = Geometry.create(engine, {
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array([
-            -0.5, 0.5, 0, //左上
-            -0.5, -0.5, 0, //左下
-            0.5, 0.5, 0, //右上
-            0.5, -0.5, 0, //右下
-          ]),
-        },
-        aUV: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array(),
-        },
-      },
-      mode: glContext.TRIANGLES,
-      drawCount: 4,
-    });
 
     this.geometry.subMeshes.push({
       offset: 0,
