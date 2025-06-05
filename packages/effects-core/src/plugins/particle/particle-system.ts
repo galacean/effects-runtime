@@ -583,8 +583,6 @@ export class ParticleSystem extends Component {
               finish = true;
             }
           }
-        } else {
-          break;
         }
         // @ts-expect-error
       } while ((node = node.pre) && !finish);
