@@ -1,26 +1,13 @@
-import { Color } from '@galacean/effects-math/es/core/index';
+import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import type { MaskProps } from '../../material';
-import { type GeometryFromShape } from '../../shape';
-import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
+import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { Playable, PlayableGraph } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
-
-/**
- * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
- */
-export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer' | 'mask'>, MaskProps {
-  listIndex?: number,
-  renderer: {
-    shape: GeometryFromShape,
-    texture: Texture,
-  } & Omit<spec.RendererOptions, 'texture'>,
-}
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options

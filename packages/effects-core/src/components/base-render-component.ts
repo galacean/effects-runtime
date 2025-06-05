@@ -32,13 +32,13 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
 interface BaseRenderComponentData extends spec.ComponentData {
   renderer: spec.RendererOptions,
   /**
-     * added by loader
-     * @default null
-     */
+   * added by loader
+   * @default null
+   */
   splits?: spec.SplitParameter[],
   /**
-     * 图层元素贴图变化属性
-     */
+   * 图层元素贴图变化属性
+   */
   textureSheetAnimation?: spec.TextureSheetAnimation,
   geometry?: spec.DataPath,
 }
