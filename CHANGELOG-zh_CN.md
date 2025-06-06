@@ -8,6 +8,13 @@
 
 ---
 
+## 2.4.6
+
+`2025-06-06`
+
+- Fix: particle hitTest is invalid. [#1023](https://github.com/galacean/effects-runtime/pull/1023) @wumaolinmaoan
+- Fix: 3d mesh component modifies the original data. [#1022](https://github.com/galacean/effects-runtime/pull/1022) @wumaolinmaoan
+
 ## 2.4.5
 
 `2025-05-28`
