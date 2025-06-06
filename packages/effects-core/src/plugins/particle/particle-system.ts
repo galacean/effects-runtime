@@ -607,8 +607,6 @@ export class ParticleSystem extends Component implements Maskable {
               finish = true;
             }
           }
-        } else {
-          break;
         }
         // @ts-expect-error
       } while ((node = node.pre) && !finish);
