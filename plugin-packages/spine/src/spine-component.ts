@@ -1,7 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps, Maskable,
   Renderer, Texture,
 } from '@galacean/effects';
 import {
@@ -57,7 +57,7 @@ export interface SpineDataCache extends SpineBaseData {
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.SpineComponent)
-export class SpineComponent extends RendererComponent {
+export class SpineComponent extends RendererComponent implements Maskable {
   startSize: number;
   /**
    * 根据相机计算的缩放比例
@@ -196,6 +196,31 @@ export class SpineComponent extends RendererComponent {
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer);
     this.content?.render(renderer);
+  }
+
+  drawStencilMask (renderer: Renderer): void {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
+    if (!this.content) {
+      return;
+    }
+    const previousColorMasks: boolean[] = [];
+
+    for (let i = 0; i < this.content.meshGroups.length; i++) {
+      const material = this.content.meshGroups[i].mesh.material;
+
+      previousColorMasks.push(material.colorMask);
+      material.colorMask = false;
+    }
+
+    this.content.render(renderer);
+
+    for (let i = 0; i < this.content.meshGroups.length; i++) {
+      const material = this.content.meshGroups[i].mesh.material;
+
+      material.colorMask = previousColorMasks[i];
+    }
   }
 
   override onDestroy () {
