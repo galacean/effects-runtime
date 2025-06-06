@@ -7,7 +7,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
-import type { Mesh } from '../../render';
+import type { Mesh, Renderer } from '../../render';
 import type { MaskProps, Maskable } from '../../material';
 import { MaskMode, MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
@@ -153,7 +153,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' |
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
 
 @effectsClass(spec.DataType.ParticleSystem)
-export class ParticleSystem extends Component {
+export class ParticleSystem extends Component implements Maskable {
   renderer: ParticleSystemRenderer;
   options: ParticleOptions;
   shape: ShapeGenerator;
@@ -499,6 +499,30 @@ export class ParticleSystem extends Component {
     }
   }
 
+  drawStencilMask (renderer: Renderer): void {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
+    const previousColorMasks: boolean[] = [];
+
+    for (let i = 0;i < this.renderer.meshes.length;i++) {
+      const material = this.renderer.meshes[i].material;
+
+      previousColorMasks.push(material.colorMask);
+      material.colorMask = false;
+    }
+
+    for (const mesh of this.renderer.meshes) {
+      mesh.render(renderer);
+    }
+
+    for (let i = 0;i < this.renderer.meshes.length;i++) {
+      const material = this.renderer.meshes[i].material;
+
+      material.colorMask = previousColorMasks[i];
+    }
+  }
+
   override onDestroy (): void {
     if (this.item && this.item.composition) {
       this.meshes.forEach(mesh => mesh.dispose({ material: { textures: DestroyOptions.keep } }));
@@ -583,8 +607,6 @@ export class ParticleSystem extends Component {
               finish = true;
             }
           }
-        } else {
-          break;
         }
         // @ts-expect-error
       } while ((node = node.pre) && !finish);
