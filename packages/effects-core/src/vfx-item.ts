@@ -415,7 +415,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 激活或停用 VFXItem
    */
   setActive (value: boolean) {
-    if (this.active !== value) {
+    if (this.active !== !!value) {
       this.active = !!value;
       this.onActiveChanged();
     }
@@ -426,6 +426,10 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   get isActive () {
     return this.active;
+  }
+
+  set isActive (value: boolean) {
+    this.setActive(value);
   }
 
   /**

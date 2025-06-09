@@ -4,6 +4,9 @@ import type { Pose } from './pose';
 export class Blender {
   static localBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
 
+    // Blend transform
+    //-------------------------------------------------------------------------
+
     for (let i = 0;i < sourcePose.parentSpaceTransforms.length;i++) {
       const sourceTransform = sourcePose.parentSpaceTransforms[i];
       const targetTransform = targetPose.parentSpaceTransforms[i];
@@ -32,6 +35,16 @@ export class Blender {
       const resultEuler = resultTransform.euler;
 
       Blender.lerpEuler(sourceEuler, targetEuler, blendWeight, resultEuler);
+    }
+
+    // Blend float value
+    //-------------------------------------------------------------------------
+
+    for (let i = 0;i < sourcePose.floatPropertyValues.length;i++) {
+      const sourceFloatValue = sourcePose.floatPropertyValues[i];
+      const targetFloatValue = targetPose.floatPropertyValues[i];
+
+      resultPose.floatPropertyValues[i] = sourceFloatValue + (targetFloatValue - sourceFloatValue) * blendWeight;
     }
   }
 

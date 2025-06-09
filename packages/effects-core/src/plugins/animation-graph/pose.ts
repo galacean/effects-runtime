@@ -32,12 +32,17 @@ export class NodeTransform {
 export class Pose {
   referencePose: ReferencePose;
   parentSpaceTransforms: NodeTransform[] = [];
+  floatPropertyValues: number[] = [];
 
   constructor (referencePose: ReferencePose) {
     this.referencePose = referencePose;
 
     for (const transform of referencePose.parentSpaceTransforms) {
       this.parentSpaceTransforms.push(new NodeTransform().copyFrom(transform));
+    }
+
+    for (const defaultPropertyValue of referencePose.defaultFloatPropertyValues) {
+      this.floatPropertyValues.push(defaultPropertyValue);
     }
   }
 
@@ -70,6 +75,14 @@ export class Pose {
 
     if (boneIndex !== undefined) {
       this.parentSpaceTransforms[boneIndex].scale.copyFrom(scale);
+    }
+  }
+
+  setFloat (path: string, value: number) {
+    const animatedObjectIndex = this.referencePose.pathToObjectIndex.get(path);
+
+    if (animatedObjectIndex !== undefined) {
+      this.floatPropertyValues[animatedObjectIndex] = value;
     }
   }
 }

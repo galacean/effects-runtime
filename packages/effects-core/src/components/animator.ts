@@ -59,7 +59,14 @@ export class Animator extends Component {
       }
     }
 
-    // TODO float curves
+    const animatedObjects = this.graph.referencePose.floatAnimatedObjects;
+
+    for (let i = 0;i < animatedObjects.length;i++) {
+      const animatedObject = animatedObjects[i];
+      const property = animatedObject.property;
+
+      animatedObject.target[property] = result.pose.floatPropertyValues[i];
+    }
   }
 
   override fromData (data: AnimatorData): void {

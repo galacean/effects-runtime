@@ -2,7 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
 import { PoseResult } from './pose-result';
-import type { AnimationRecordProperties } from './reference-pose';
+import type { AnimationRecordDatas } from './reference-pose';
 import { ReferencePose } from './reference-pose';
 import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
@@ -27,7 +27,7 @@ export class GraphInstance {
     this.graphAsset = graphAsset;
 
     // initialize referencePose
-    const recordProperties: AnimationRecordProperties = {
+    const recordProperties: AnimationRecordDatas = {
       position: [],
       scale: [],
       rotation: [],
@@ -50,6 +50,9 @@ export class GraphInstance {
       }
       for (const eulerCurve of animationClip.eulerCurves) {
         recordProperties.euler.push(eulerCurve.path);
+      }
+      for (const floatCurve of animationClip.floatCurves) {
+        recordProperties.floats.push(floatCurve);
       }
     }
     this.referencePose = new ReferencePose(rootBone, recordProperties);

@@ -52,8 +52,8 @@
                 "id": "0689de41527d4720b452bba82489f6e7"
             },
             "dataType": "Animator",
-            "graphAsset":{
-                "id":"9acdc53dde1a1a8fc6ad1a4d70d0d6eb"
+            "graphAsset": {
+                "id": "9acdc53dde1a1a8fc6ad1a4d70d0d6eb"
             }
         },
         {
@@ -787,7 +787,39 @@
                     ]
                 }
             ],
-            "floatCurves": [],
+            "floatCurves": [
+                {
+                    "path": "root-node/pCube1",
+                    "className": "VFXItem",
+                    "property": "isActive",
+                    "keyFrames": [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    2,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    2.0,
+                                    1
+                                ]
+                            ]
+                        ]
+                    ]
+                }
+            ],
             "rotationCurves": [
                 {
                     "path": "root-node/pCube1",
@@ -1427,9 +1459,6 @@
             "dataType": "ObjectBindingTrack",
             "children": [
                 {
-                    "id": "7015b719238b417983b3078a6471d69d"
-                },
-                {
                     "id": "e5788ee1c67c4753b27fa650d586a806"
                 },
                 {
@@ -1507,9 +1536,6 @@
             "dataType": "ObjectBindingTrack",
             "children": [
                 {
-                    "id": "a3da3ac952af4177b33b6faa993653c0"
-                },
-                {
                     "id": "4eb683f38ed0491db2c70a34c429797d"
                 },
                 {
@@ -1586,9 +1612,6 @@
             "id": "a0153202b8b949248f112f6f3c8c0ac6",
             "dataType": "ObjectBindingTrack",
             "children": [
-                {
-                    "id": "3785a0a17ba14f6199bc78e4fdb22592"
-                },
                 {
                     "id": "2940b14baea94f7195c1c69d7398386c"
                 },

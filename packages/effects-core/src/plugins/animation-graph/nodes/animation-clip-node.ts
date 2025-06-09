@@ -1,5 +1,5 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
-import type { AnimationClip, AnimationCurve } from '../../cal/calculate-vfx-item';
+import type { AnimationClip, AnimationCurve, FloatCurve } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeAsset, PoseNode, type GraphNodeAssetData } from '../graph-node';
 import { NodeAssetType, nodeDataClass } from '../node-asset-type';
@@ -87,10 +87,17 @@ export interface TransformCurveInfo {
   boneIndex: number,
 }
 
+export interface FloatCurveInfo {
+  curve: AnimationCurve,
+  animatedObjectIndex: number,
+}
+
 export class Animatable {
   private referencePose: ReferencePose;
   private animationClip: AnimationClip;
-  private transformCurveInfo: TransformCurveInfo[] = [];
+  private transformCurveInfos: TransformCurveInfo[] = [];
+
+  private floatCurveInfos: FloatCurveInfo[] = [];
 
   constructor (referencePose: ReferencePose, animationClip: AnimationClip) {
     this.referencePose = referencePose;
@@ -108,12 +115,15 @@ export class Animatable {
     for (const curve of animationClip.eulerCurves) {
       this.addCurveInfo(curve, TransformCurveType.Euler);
     }
+    for (const curve of animationClip.floatCurves) {
+      this.addFloatCurveInfo(curve);
+    }
   }
 
   getPose (time: number, outPose: Pose) {
     const life = time % this.animationClip.duration;
 
-    for (const curveInfo of this.transformCurveInfo) {
+    for (const curveInfo of this.transformCurveInfos) {
       const curveValue = curveInfo.curve.keyFrames.getValue(life);
       const outTransform = outPose.parentSpaceTransforms[curveInfo.boneIndex];
 
@@ -136,6 +146,12 @@ export class Animatable {
           break;
       }
     }
+
+    for (const curveInfo of this.floatCurveInfos) {
+      const floatValue = curveInfo.curve.keyFrames.getValue(life);
+
+      outPose.floatPropertyValues[curveInfo.animatedObjectIndex] = floatValue;
+    }
   }
 
   private addCurveInfo (curve: AnimationCurve, type: TransformCurveType) {
@@ -143,10 +159,22 @@ export class Animatable {
     const boneIndex = referencePose.pathToBoneIndex.get(curve.path);
 
     if (boneIndex !== undefined) {
-      this.transformCurveInfo.push({
+      this.transformCurveInfos.push({
         curve,
         boneIndex,
         type,
+      });
+    }
+  }
+
+  private addFloatCurveInfo (curve: FloatCurve) {
+    const referencePose = this.referencePose;
+    const animatedObjectIndex = referencePose.pathToObjectIndex.get(curve.path + curve.className + curve.property);
+
+    if (animatedObjectIndex !== undefined) {
+      this.floatCurveInfos.push({
+        curve,
+        animatedObjectIndex,
       });
     }
   }

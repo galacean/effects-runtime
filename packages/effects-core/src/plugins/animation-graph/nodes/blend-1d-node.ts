@@ -4,8 +4,6 @@ import { GraphNodeAsset, PoseNode } from '../graph-node';
 import type { Pose } from '../pose';
 import { PoseResult } from '../pose-result';
 import { NodeAssetType, nodeDataClass } from '../..';
-import type { Vector3Like } from '@galacean/effects-math/es/core/type';
-import type { Euler } from '@galacean/effects-math/es/core/euler';
 import { Blender } from '../blender';
 
 export interface Blend1DNodeAssetData extends GraphNodeAssetData {
@@ -86,43 +84,5 @@ export class Blend1DNode extends PoseNode {
 
   private localBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
     Blender.localBlend(sourcePose, targetPose, blendWeight, resultPose);
-  }
-
-  private lerpEuler (from: Euler, to: Euler, t: number, res: Euler): Euler {
-    res.x = this.lerpAngle(from.x, to.x, t);
-    res.y = this.lerpAngle(from.y, to.y, t);
-    res.z = this.lerpAngle(from.z, to.z, t);
-
-    return res;
-  }
-
-  private lerpVector3 (from: Vector3Like, to: Vector3Like, t: number, result: Vector3Like) {
-    result.x = from.x + (to.x - from.x) * t;
-    result.y = from.y + (to.y - from.y) * t;
-    result.z = from.z + (to.z - from.z) * t;
-
-    return result;
-  }
-
-  private normalizeAngle (angle: number): number {
-    return ((angle % 360) + 360) % 360;
-  }
-
-  /**
-   * 计算两个角度之间的最短路径差
-   */
-  private shortestAngleDiff (from: number, to: number): number {
-    let diff = this.normalizeAngle(to) - this.normalizeAngle(from);
-
-    if (diff > 180) {diff -= 360;}
-    if (diff < -180) {diff += 360;}
-
-    return diff;
-  }
-
-  private lerpAngle (fromAngle: number, toAngle: number, t: number): number {
-    const diff = this.shortestAngleDiff(fromAngle, toAngle);
-
-    return this.normalizeAngle(fromAngle + diff * t);
   }
 }
