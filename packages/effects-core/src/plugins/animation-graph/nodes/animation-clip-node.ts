@@ -9,12 +9,14 @@ import type { Pose } from '../pose';
 
 export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.AnimationClipNodeAsset,
+  playRate: number,
   dataSlotIndex: number,
 }
 
 @nodeDataClass(NodeAssetType.AnimationClipNodeAsset)
 export class AnimationClipNodeAsset extends GraphNodeAsset {
   dataSlotIndex = -1;
+  playRate = 1.0;
 
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(AnimationClipNode, context);
@@ -26,12 +28,14 @@ export class AnimationClipNodeAsset extends GraphNodeAsset {
     super.load(data);
 
     this.dataSlotIndex = data.dataSlotIndex;
+    this.playRate = data.playRate;
   }
 }
 
 export class AnimationClipNode extends PoseNode {
-  animation: AnimationClip | null = null;
   loop = true;
+  playRate = 1.0;
+  animation: AnimationClip | null = null;
 
   private animatable: Animatable | null = null;
 
@@ -43,7 +47,7 @@ export class AnimationClipNode extends PoseNode {
     this.markNodeActive(context);
 
     this.previousTime = this.currentTime;
-    this.currentTime = this.previousTime + context.deltaTime / this.duration;
+    this.currentTime = this.previousTime + context.deltaTime / this.duration * this.playRate;
     if (!this.loop) {
       this.currentTime = clamp(this.currentTime, 0, 1);
     } else {
