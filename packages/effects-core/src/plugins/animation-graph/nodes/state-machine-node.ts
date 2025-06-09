@@ -142,7 +142,9 @@ export class StateMachineNode extends PoseNode {
 
       // HasExitTime override transition condition
       if (transition.transitionNode.hasExitTime) {
-        if (currentlyActiveStateInfo.stateNode.getCurrentTime() > transition.transitionNode.exitTime) {
+        const stateNode = currentlyActiveStateInfo.stateNode;
+
+        if (stateNode.getElapsedTimeInState() / stateNode.getDuration() > transition.transitionNode.exitTime) {
           canEnterTransition = true;
         }
       } else if (transition.conditionNode !== null && transition.conditionNode.getValue<boolean>(context)) {  // Check transition conditions

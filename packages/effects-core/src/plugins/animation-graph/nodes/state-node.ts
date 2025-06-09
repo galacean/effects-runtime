@@ -62,6 +62,10 @@ export class StateNode extends PoseNode {
     this.transitionState = newState;
   }
 
+  getElapsedTimeInState () {
+    return this.elapsedTimeInState;
+  }
+
   override evaluate (context: GraphContext, result: PoseResult): PoseResult {
     this.markNodeActive(context);
 
