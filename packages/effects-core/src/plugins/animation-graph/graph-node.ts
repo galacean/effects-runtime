@@ -15,7 +15,7 @@ export class GraphNode {
   constructor () {
   }
 
-  getAsset<T extends GraphNodeAsset> (): T {
+  getNodeData<T extends GraphNodeAsset> (): T {
     return this.asset as T;
   }
 

@@ -222,7 +222,7 @@ export class TransitionNode extends PoseNode {
     this.sourceNodeResult = new PoseResult(context.referencePose);
     this.targetNodeResult = new PoseResult(context.referencePose);
 
-    this.transitionLength = this.getAsset<TransitionNodeAsset>().duration;
+    this.transitionLength = this.getNodeData<TransitionNodeAsset>().duration;
 
     this.transitionProgress = 0;
     this.blendWeight = 0;

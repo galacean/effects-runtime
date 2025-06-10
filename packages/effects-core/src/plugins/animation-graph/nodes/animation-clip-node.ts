@@ -9,8 +9,8 @@ import type { Pose } from '../pose';
 
 export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.AnimationClipNodeAsset,
-  playRate: number,
   dataSlotIndex: number,
+  playRate?: number,
 }
 
 @nodeDataClass(NodeAssetType.AnimationClipNodeAsset)
@@ -27,14 +27,18 @@ export class AnimationClipNodeAsset extends GraphNodeAsset {
   override load (data: AnimationClipNodeAssetData): void {
     super.load(data);
 
+    const fullData = {
+      playRate:1.0,
+      ...data,
+    };
+
     this.dataSlotIndex = data.dataSlotIndex;
-    this.playRate = data.playRate;
+    this.playRate = fullData.playRate;
   }
 }
 
 export class AnimationClipNode extends PoseNode {
   loop = true;
-  playRate = 1.0;
   animation: AnimationClip | null = null;
 
   private animatable: Animatable | null = null;
@@ -46,8 +50,11 @@ export class AnimationClipNode extends PoseNode {
 
     this.markNodeActive(context);
 
+    const nodeData = this.getNodeData<AnimationClipNodeAsset>();
+
     this.previousTime = this.currentTime;
-    this.currentTime = this.previousTime + context.deltaTime / this.duration * this.playRate;
+    this.currentTime = this.previousTime + context.deltaTime / this.duration * nodeData.playRate;
+
     if (!this.loop) {
       this.currentTime = clamp(this.currentTime, 0, 1);
     } else {
