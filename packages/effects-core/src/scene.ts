@@ -18,9 +18,10 @@ export interface Scene {
   readonly storage: Record<string, any>,
 
   textureOptions: Record<string, any>[],
+  textures: Texture[],
   images: ImageLike[],
+  assets: Record<string, ImageLike>,
   consumed?: boolean,
-  textures?: Texture[],
   /**
    * 加载总耗时
    */
