@@ -42,7 +42,6 @@ export class AnimationClipNodeAsset extends GraphNodeAsset {
 }
 
 export class AnimationClipNode extends PoseNode {
-  loop = true;
   animation: AnimationClip | null = null;
 
   private animatable: Animatable | null = null;
@@ -59,7 +58,7 @@ export class AnimationClipNode extends PoseNode {
     this.previousTime = this.currentTime;
     this.currentTime = this.previousTime + context.deltaTime / this.duration * nodeData.playRate;
 
-    if (!this.loop) {
+    if (!nodeData.loopAnimation) {
       this.currentTime = clamp(this.currentTime, 0, 1);
     } else {
       if (this.currentTime > 1) {
