@@ -11,12 +11,14 @@ export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.AnimationClipNodeAsset,
   dataSlotIndex: number,
   playRate?: number,
+  loopAnimation?: boolean,
 }
 
 @nodeDataClass(NodeAssetType.AnimationClipNodeAsset)
 export class AnimationClipNodeAsset extends GraphNodeAsset {
-  dataSlotIndex = -1;
   playRate = 1.0;
+  loopAnimation = true;
+  dataSlotIndex = -1;
 
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(AnimationClipNode, context);
@@ -28,12 +30,14 @@ export class AnimationClipNodeAsset extends GraphNodeAsset {
     super.load(data);
 
     const fullData = {
-      playRate:1.0,
+      playRate: 1.0,
+      loopAnimation: true,
       ...data,
     };
 
     this.dataSlotIndex = data.dataSlotIndex;
     this.playRate = fullData.playRate;
+    this.loopAnimation = fullData.loopAnimation;
   }
 }
 
