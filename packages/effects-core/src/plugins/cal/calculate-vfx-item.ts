@@ -340,13 +340,15 @@ export class AnimationClip extends EffectsObject {
     this.scaleCurves.length = 0;
     this.floatCurves.length = 0;
 
+    let keyFramesDuration = 0;
+
     for (const positionCurveData of data.positionCurves) {
       const curve: PositionCurve = {
         path: positionCurveData.path,
         keyFrames: createValueGetter(positionCurveData.keyFrames),
       };
 
-      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
       this.positionCurves.push(curve);
     }
@@ -356,7 +358,7 @@ export class AnimationClip extends EffectsObject {
         keyFrames: createValueGetter(rotationCurveData.keyFrames),
       };
 
-      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
       this.rotationCurves.push(curve);
     }
@@ -370,7 +372,7 @@ export class AnimationClip extends EffectsObject {
           keyFrames: createValueGetter(eulerCurvesData.keyFrames),
         };
 
-        this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+        keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
         this.eulerCurves.push(curve);
       }
@@ -381,7 +383,7 @@ export class AnimationClip extends EffectsObject {
         keyFrames: createValueGetter(scaleCurvesData.keyFrames),
       };
 
-      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
       this.scaleCurves.push(curve);
     }
@@ -393,9 +395,17 @@ export class AnimationClip extends EffectsObject {
         className: floatCurveData.className,
       };
 
-      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
       this.floatCurves.push(curve);
+    }
+
+    //@ts-expect-error TODO: Update spec.
+    if (data.duration === undefined) {
+      this.duration = keyFramesDuration;
+    } else {
+      //@ts-expect-error
+      this.duration = data.duration;
     }
   }
 
