@@ -54,7 +54,6 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
 let currentMaskComponent: string;
 const componentMap: Map<string, spec.ComponentData> = new Map();
 const itemMap: Map<string, spec.VFXItemData> = new Map();
-const refCompositions: Map<string, spec.CompositionData> = new Map();
 
 /**
  * 3.1 版本数据适配
@@ -107,26 +106,19 @@ export function version31Migration (json: JSONScene): JSONScene {
 export function version32Migration (json: JSONScene): JSONScene {
   componentMap.clear();
   itemMap.clear();
-  refCompositions.clear();
   const { compositions, items, components } = json;
   // 处理旧蒙版数据
-  let mainComp = compositions[0];
 
   for (const component of components) {
     componentMap.set(component.id, component);
-  }
-  for (const comp of compositions) {
-    if (comp.id === json.compositionId) {
-      mainComp = comp;
-    } else {
-      refCompositions.set(comp.id, comp);
-    }
   }
   for (const item of items) {
     itemMap.set(item.id, item);
   }
 
-  processContent(mainComp);
+  for (const comp of compositions) {
+    processContent(comp);
+  }
 
   return json;
 }
@@ -226,14 +218,6 @@ export function processContent (composition: spec.CompositionData) {
       if (component) {
         processMask(component);
       }
-    }
-
-    // 处理预合成的渲染顺序
-    if (itemProps.type === spec.ItemType.composition) {
-      const refId = (itemProps.content as spec.CompositionContent).options.refId;
-      const comp = refCompositions.get(refId);
-
-      comp && processContent(comp);
     }
   }
 }
