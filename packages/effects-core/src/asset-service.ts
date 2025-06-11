@@ -85,7 +85,7 @@ export class AssetService implements Disposable {
 
   initializeTexture (scene: Scene) {
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textures[i] = this.engine.findObject<Texture>({ id:scene.textureOptions[i].id });
+      scene.textures[i] = this.engine.findObject<Texture>({ id: scene.textureOptions[i].id });
       scene.textures[i].initialize();
     }
   }
