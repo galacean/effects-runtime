@@ -7,6 +7,40 @@
 
 ---
 
+## 2.4.6
+
+`2025-06-06`
+
+- Fix: particle hitTest is invalid. [#1023](https://github.com/galacean/effects-runtime/pull/1023) @wumaolinmaoan
+- Fix: 3d mesh component modifies the original data. [#1022](https://github.com/galacean/effects-runtime/pull/1022) @wumaolinmaoan
+
+## 2.4.5
+
+`2025-05-28`
+
+- Fix: spine and particle mask. [#1018](https://github.com/galacean/effects-runtime/pull/1018) @wumaolinmaoan
+
+## 2.4.4
+
+`2025-05-28`
+
+- Fix: Fixed the issue with Spine blend mode. [#1011](https://github.com/galacean/effects-runtime/pull/1011) @RGCHN
+- Fix: old json texture mask migration. [#1012](https://github.com/galacean/effects-runtime/pull/1012) @wumaolinmaoan
+  - Fix: alpha mask default value. [#1013](https://github.com/galacean/effects-runtime/pull/1013) @wumaolinmaoan
+
+## 2.4.3
+
+`2025-05-21`
+
+- Fix: harmony device detection. [#1006](https://github.com/galacean/effects-runtime/pull/1006) @wumaolinmaoan
+
+## 2.4.2
+
+`2025-05-16`
+
+- Fix: The video does not replay and flickers during loop playback. [#995](https://github.com/galacean/effects-runtime/pull/995) @yuufen
+- Fix: rich text plugin name migration. [#999](https://github.com/galacean/effects-runtime/pull/999) @wumaolinmaoan
+
 ## 2.4.1
 
 `2025-05-15`

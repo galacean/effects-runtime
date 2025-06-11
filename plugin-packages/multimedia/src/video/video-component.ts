@@ -42,7 +42,6 @@ export class VideoComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MVideo' + seed++;
-    this.geometry = this.createGeometry();
   }
 
   override setTexture (input: Texture): void;
@@ -115,21 +114,19 @@ export class VideoComponent extends BaseRenderComponent {
       const endBehavior = this.item.defination.endBehavior;
 
       // 如果元素设置为 destroy
-      if (endBehavior === spec.EndBehavior.destroy) {
+      if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
         this.setLoop(false);
+      } else if (endBehavior === spec.EndBehavior.restart) {
+        this.setLoop(true);
       }
     }
 
     this.interaction = interaction;
     this.pauseVideo();
 
-    const geometry = this.createGeometry();
-
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
     }
-
-    this.geometry = geometry;
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
   }
@@ -163,7 +160,6 @@ export class VideoComponent extends BaseRenderComponent {
       if (endBehavior === spec.EndBehavior.freeze) {
         this.pauseVideo();
       } else if (endBehavior === spec.EndBehavior.restart) {
-        this.setVisible(false);
         // 重播
         this.pauseVideo();
         this.setCurrentTime(0);

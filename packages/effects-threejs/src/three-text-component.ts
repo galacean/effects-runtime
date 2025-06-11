@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import type { Engine, SpriteItemProps } from '@galacean/effects-core';
+import type { Engine } from '@galacean/effects-core';
 import { math, effectsClass, spec, applyMixins, canvasPool, TextComponentBase } from '@galacean/effects-core';
 import { ThreeSpriteComponent } from './three-sprite-component';
 
@@ -15,7 +15,7 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
   context: CanvasRenderingContext2D | null;
 
   constructor (engine: Engine, props?: spec.TextContent) {
-    super(engine, props as unknown as SpriteItemProps);
+    super(engine, props as unknown as spec.SpriteComponentData);
 
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
@@ -36,7 +36,7 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
     this.updateTexture();
   }
 
-  override fromData (data: SpriteItemProps): void {
+  override fromData (data: spec.SpriteComponentData): void {
     super.fromData(data);
     const options = data.options as spec.TextContentOptions;
 

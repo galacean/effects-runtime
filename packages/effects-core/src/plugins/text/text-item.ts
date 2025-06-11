@@ -69,11 +69,10 @@ export class TextComponent extends BaseRenderComponent {
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
-  constructor (engine: Engine, props?: TextItemProps) {
+  constructor (engine: Engine, props?: spec.TextComponentData) {
     super(engine);
 
     this.name = 'MText' + seed++;
-    this.geometry = this.createGeometry();
 
     if (props) {
       this.fromData(props);
@@ -98,7 +97,7 @@ export class TextComponent extends BaseRenderComponent {
     this.updateTexture();
   }
 
-  override fromData (data: TextItemProps): void {
+  override fromData (data: spec.TextComponentData): void {
     super.fromData(data);
     const { interaction, options } = data;
 

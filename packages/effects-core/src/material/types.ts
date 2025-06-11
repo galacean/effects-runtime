@@ -96,7 +96,7 @@ export interface MaskProps {
  *
  */
 export interface Maskable {
-  drawStencilMask: (renderer: Renderer) => void,
+  drawStencilMask (renderer: Renderer): void,
 }
 
 export enum MaskMode {

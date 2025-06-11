@@ -1,7 +1,6 @@
 import type {
   FixedNumberExpression, RGBAColorValue, ColorExpression, NumberExpression, GradientColor,
-  GradientStop, FixedVec3Expression, vec4, vec3, BezierKeyframeValue,
-  vec2,
+  GradientStop, FixedVec3Expression, vec2, vec3, vec4, BezierKeyframeValue,
 } from '@galacean/effects-specification';
 import { BezierKeyframeType, ValueType, ParticleOrigin } from '@galacean/effects-specification';
 
@@ -123,7 +122,7 @@ export function colorToArr (hex: string | number[], normalized?: boolean): vec4 
       ret = [parseInt(hex[1] + hex[1], 16), parseInt(hex[2] + hex[2], 16), parseInt(hex[3] + hex[3], 16), 255];
       // eslint-disable-next-line no-cond-assign
     } else if (m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)) {
-      ret = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16), 255] || [0, 0, 0, 255];
+      ret = [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16), 255];
     }
   } else if (hex instanceof Array) {
     ret = [hex[0], hex[1], hex[2], isNaN(hex[3]) ? 255 : Math.round(hex[3] * 255)];
