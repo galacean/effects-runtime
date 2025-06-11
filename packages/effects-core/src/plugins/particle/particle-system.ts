@@ -438,7 +438,7 @@ export class ParticleSystem extends Component implements Maskable {
             const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
 
             if (opts) {
-              const originVec = [0, 0, 0];
+              const originVec = [0, 0, 0] as vec3;
               const offsets = emission.burstOffsets[j];
               const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
 
@@ -459,7 +459,7 @@ export class ParticleSystem extends Component implements Maskable {
 
                 p.delay += meshTime;
                 cursor++;
-                p.transform.translate(...burstOffset as vec3);
+                p.transform.translate(...burstOffset);
 
                 this.addParticle(p, maxCount);
               }
