@@ -4,42 +4,47 @@ import { NodeTransform } from './pose';
 import type { Constructor } from '../../utils';
 import type { Component } from '../../components';
 import { getClass } from '../../decorators';
+import type { Color } from '@galacean/effects-math/es/core/color';
+import type { ColorAnimationCurve, FloatAnimationCurve } from '../cal/calculate-vfx-item';
 
-export interface AnimationRecordDatas {
+export interface AnimationRecordData {
   position: string[],
   scale: string[],
   rotation: string[],
   euler: string[],
-  floats: FloatRecordData[],
+  floats: FloatAnimationCurve[],
+  colors: ColorAnimationCurve[],
 }
 
-export interface FloatRecordData {
-  path: string,
-  className: string,
-  property: string,
+export enum AnimatedPropertyType {
+  Float,
+  Color
 }
 
-export interface FloatAnimatedObject {
-  target: Record<string, number>,
+export interface AnimatedObject {
   property: string,
+  target: Record<string, any>,
 }
 
 export const VFXItemType = 'VFXItem';
 
 export class ReferencePose {
-  floatAnimatedObjects: FloatAnimatedObject[] = [];
-  defaultFloatPropertyValues: number[] = [];
+  useEuler = false;
+  rootBone: VFXItem;
+
   pathToObjectIndex = new Map<string, number>();
 
-  rootBone: VFXItem;
+  floatAnimatedObjects: AnimatedObject[] = [];
+  defaultFloatPropertyValues: number[] = [];
+
+  colorAnimatedObjects: AnimatedObject[] = [];
+  defaultColorPropertyValues: Color[] = [];
 
   animatedTransforms: Transform[] = [];
   parentSpaceTransforms: NodeTransform[] = [];
   pathToBoneIndex = new Map<string, number>();
 
-  useEuler = false;
-
-  constructor (rootBone: VFXItem, recordedProperties: AnimationRecordDatas) {
+  constructor (rootBone: VFXItem, recordedProperties: AnimationRecordData) {
     this.rootBone = rootBone;
     for (const path of recordedProperties.position) {
       this.addReferenceTransform(path);
@@ -58,7 +63,13 @@ export class ReferencePose {
     for (let i = 0;i < recordedProperties.floats.length;i++) {
       const floatRecords = recordedProperties.floats[i];
 
-      this.addFloatRecordedProperty(floatRecords.path, floatRecords.className, floatRecords.property);
+      this.addRecordedProperty(floatRecords.path, floatRecords.className, floatRecords.property, AnimatedPropertyType.Float);
+    }
+
+    for (let i = 0;i < recordedProperties.colors.length;i++) {
+      const colorRecords = recordedProperties.colors[i];
+
+      this.addRecordedProperty(colorRecords.path, colorRecords.className, colorRecords.property, AnimatedPropertyType.Color);
     }
   }
 
@@ -77,7 +88,7 @@ export class ReferencePose {
     this.pathToBoneIndex.set(path, this.parentSpaceTransforms.length - 1);
   }
 
-  private addFloatRecordedProperty (path: string, className: string, property: string) {
+  private addRecordedProperty (path: string, className: string, property: string, type: AnimatedPropertyType) {
     const totalPath = path + className + property;
 
     if (this.pathToObjectIndex.get(totalPath)) {
@@ -117,14 +128,23 @@ export class ReferencePose {
       target = property;
     }
 
-    const floatAnimatedObject: FloatAnimatedObject = {
+    const animatedObject: AnimatedObject = {
       target: target,
       property: lastPropertyName,
     };
 
-    this.floatAnimatedObjects.push(floatAnimatedObject);
-    this.defaultFloatPropertyValues.push(target[lastPropertyName]);
-    this.pathToObjectIndex.set(totalPath, this.floatAnimatedObjects.length - 1);
+    switch (type) {
+      case AnimatedPropertyType.Float:
+        this.floatAnimatedObjects.push(animatedObject);
+        this.defaultFloatPropertyValues.push(target[lastPropertyName]);
+        this.pathToObjectIndex.set(totalPath, this.floatAnimatedObjects.length - 1);
+
+        break;
+      case AnimatedPropertyType.Color:
+        this.colorAnimatedObjects.push(animatedObject);
+        this.defaultColorPropertyValues.push(target[lastPropertyName]);
+        this.pathToObjectIndex.set(totalPath, this.colorAnimatedObjects.length - 1);
+    }
   }
 
   private findTarget (boneName: string) {

@@ -1,5 +1,5 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
-import type { AnimationClip, AnimationCurve, FloatCurve } from '../../cal/calculate-vfx-item';
+import type { AnimationClip, AnimationCurve, ColorAnimationCurve, FloatAnimationCurve } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeAsset, PoseNode, type GraphNodeAssetData } from '../graph-node';
 import { NodeAssetType, nodeDataClass } from '../node-asset-type';
@@ -98,7 +98,12 @@ export interface TransformCurveInfo {
 }
 
 export interface FloatCurveInfo {
-  curve: AnimationCurve,
+  curve: FloatAnimationCurve,
+  animatedObjectIndex: number,
+}
+
+export interface ColorCurveInfo {
+  curve: ColorAnimationCurve,
   animatedObjectIndex: number,
 }
 
@@ -108,25 +113,29 @@ export class Animatable {
   private transformCurveInfos: TransformCurveInfo[] = [];
 
   private floatCurveInfos: FloatCurveInfo[] = [];
+  private colorCurveInfos: ColorCurveInfo[] = [];
 
   constructor (referencePose: ReferencePose, animationClip: AnimationClip) {
     this.referencePose = referencePose;
     this.animationClip = animationClip;
 
     for (const curve of animationClip.positionCurves) {
-      this.addCurveInfo(curve, TransformCurveType.Position);
+      this.addTransformCurveInfo(curve, TransformCurveType.Position);
     }
     for (const curve of animationClip.scaleCurves) {
-      this.addCurveInfo(curve, TransformCurveType.Scale);
+      this.addTransformCurveInfo(curve, TransformCurveType.Scale);
     }
     for (const curve of animationClip.rotationCurves) {
-      this.addCurveInfo(curve, TransformCurveType.Rotation);
+      this.addTransformCurveInfo(curve, TransformCurveType.Rotation);
     }
     for (const curve of animationClip.eulerCurves) {
-      this.addCurveInfo(curve, TransformCurveType.Euler);
+      this.addTransformCurveInfo(curve, TransformCurveType.Euler);
     }
     for (const curve of animationClip.floatCurves) {
       this.addFloatCurveInfo(curve);
+    }
+    for (const curve of animationClip.colorCurves) {
+      this.addColorCurveInfo(curve);
     }
   }
 
@@ -162,9 +171,15 @@ export class Animatable {
 
       outPose.floatPropertyValues[curveInfo.animatedObjectIndex] = floatValue;
     }
+
+    for (const curveInfo of this.colorCurveInfos) {
+      const colorValue = curveInfo.curve.keyFrames.getValue(life);
+
+      outPose.colorPropertyValues[curveInfo.animatedObjectIndex] = colorValue;
+    }
   }
 
-  private addCurveInfo (curve: AnimationCurve, type: TransformCurveType) {
+  private addTransformCurveInfo (curve: AnimationCurve, type: TransformCurveType) {
     const referencePose = this.referencePose;
     const boneIndex = referencePose.pathToBoneIndex.get(curve.path);
 
@@ -177,12 +192,24 @@ export class Animatable {
     }
   }
 
-  private addFloatCurveInfo (curve: FloatCurve) {
+  private addFloatCurveInfo (curve: FloatAnimationCurve) {
     const referencePose = this.referencePose;
     const animatedObjectIndex = referencePose.pathToObjectIndex.get(curve.path + curve.className + curve.property);
 
     if (animatedObjectIndex !== undefined) {
       this.floatCurveInfos.push({
+        curve,
+        animatedObjectIndex,
+      });
+    }
+  }
+
+  private addColorCurveInfo (curve: ColorAnimationCurve) {
+    const referencePose = this.referencePose;
+    const animatedObjectIndex = referencePose.pathToObjectIndex.get(curve.path + curve.className + curve.property);
+
+    if (animatedObjectIndex !== undefined) {
+      this.colorCurveInfos.push({
         curve,
         animatedObjectIndex,
       });

@@ -1228,6 +1228,94 @@
                     ]
                 }
             ],
+            "colorCurves": [
+                {
+                    "path": "root-node/pCube2",
+                    "className": "SpriteComponent",
+                    "property": "color",
+                    "keyFrames": [
+                        24,
+                        [
+                            [
+                                21,
+                                [
+                                    [
+                                        4,
+                                        [
+                                            0,
+                                            1
+                                        ]
+                                    ],
+                                    [
+                                        4,
+                                        [
+                                            0.2667,
+                                            1
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            [
+                                21,
+                                [
+                                    [
+                                        4,
+                                        [
+                                            0,
+                                            1
+                                        ]
+                                    ],
+                                    [
+                                        4,
+                                        [
+                                            2.2667,
+                                            0
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            [
+                                21,
+                                [
+                                    [
+                                        4,
+                                        [
+                                            0,
+                                            1
+                                        ]
+                                    ],
+                                    [
+                                        4,
+                                        [
+                                            2.2667,
+                                            0
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            [
+                                21,
+                                [
+                                    [
+                                        4,
+                                        [
+                                            0,
+                                            1
+                                        ]
+                                    ],
+                                    [
+                                        4,
+                                        [
+                                            0.2667,
+                                            1
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
+                }
+            ],
             "id": "4dbf7d18673747e0afc0328f0149f3ee",
             "dataType": "AnimationClip",
             "name": "CUBE_ANI2"
@@ -1293,7 +1381,7 @@
                 {
                     "type": "AnimationClipNodeAsset",
                     "index": 4,
-                    "playRate":2,
+                    "playRate": 2,
                     "dataSlotIndex": 0
                 },
                 {

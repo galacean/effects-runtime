@@ -2,7 +2,7 @@ import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import type { ValueGetter } from '../../math';
+import type { BezierCurve, ColorCurve, ValueGetter, Vector3Curve } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
@@ -263,36 +263,43 @@ export interface AnimationCurve {
   keyFrames: ValueGetter<any>,
 }
 
-export interface PositionCurve extends AnimationCurve {
-  keyFrames: ValueGetter<Vector3>,
+export interface PositionAnimationCurve extends AnimationCurve {
+  keyFrames: Vector3Curve,
 }
 
-export interface EulerCurve extends AnimationCurve {
+export interface EulerAnimationCurve extends AnimationCurve {
   keyFrames: ValueGetter<Euler>,
 }
 
-export interface RotationCurve extends AnimationCurve {
+export interface RotationAnimationCurve extends AnimationCurve {
   keyFrames: ValueGetter<Quaternion>,
 }
 
-export interface ScaleCurve extends AnimationCurve {
-  keyFrames: ValueGetter<Vector3>,
+export interface ScaleAnimationCurve extends AnimationCurve {
+  keyFrames: Vector3Curve,
 }
 
-export interface FloatCurve extends AnimationCurve {
+export interface FloatAnimationCurve extends AnimationCurve {
   property: string,
   className: string,
-  keyFrames: ValueGetter<number>,
+  keyFrames: BezierCurve,
+}
+
+export interface ColorAnimationCurve extends AnimationCurve {
+  property: string,
+  className: string,
+  keyFrames: ColorCurve,
 }
 
 @effectsClass(spec.DataType.AnimationClip)
 export class AnimationClip extends EffectsObject {
   duration = 0;
-  positionCurves: PositionCurve[] = [];
-  rotationCurves: RotationCurve[] = [];
-  eulerCurves: EulerCurve[] = [];
-  scaleCurves: ScaleCurve[] = [];
-  floatCurves: FloatCurve[] = [];
+  positionCurves: PositionAnimationCurve[] = [];
+  rotationCurves: RotationAnimationCurve[] = [];
+  eulerCurves: EulerAnimationCurve[] = [];
+  scaleCurves: ScaleAnimationCurve[] = [];
+  floatCurves: FloatAnimationCurve[] = [];
+  colorCurves: ColorAnimationCurve[] = [];
 
   sampleAnimation (vfxItem: VFXItem, time: number) {
     const duration = vfxItem.duration;
@@ -338,14 +345,17 @@ export class AnimationClip extends EffectsObject {
   override fromData (data: spec.AnimationClipData): void {
     this.positionCurves.length = 0;
     this.scaleCurves.length = 0;
+    this.rotationCurves.length = 0;
+    this.eulerCurves.length = 0;
     this.floatCurves.length = 0;
+    this.colorCurves.length = 0;
 
     let keyFramesDuration = 0;
 
     for (const positionCurveData of data.positionCurves) {
-      const curve: PositionCurve = {
+      const curve: PositionAnimationCurve = {
         path: positionCurveData.path,
-        keyFrames: createValueGetter(positionCurveData.keyFrames),
+        keyFrames: createValueGetter(positionCurveData.keyFrames) as Vector3Curve,
       };
 
       keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
@@ -353,7 +363,7 @@ export class AnimationClip extends EffectsObject {
       this.positionCurves.push(curve);
     }
     for (const rotationCurveData of data.rotationCurves) {
-      const curve: RotationCurve = {
+      const curve: RotationAnimationCurve = {
         path: rotationCurveData.path,
         keyFrames: createValueGetter(rotationCurveData.keyFrames),
       };
@@ -367,7 +377,7 @@ export class AnimationClip extends EffectsObject {
     if (data.eulerCurves) {
       //@ts-expect-error
       for (const eulerCurvesData of data.eulerCurves) {
-        const curve: EulerCurve = {
+        const curve: EulerAnimationCurve = {
           path: eulerCurvesData.path,
           keyFrames: createValueGetter(eulerCurvesData.keyFrames),
         };
@@ -378,9 +388,9 @@ export class AnimationClip extends EffectsObject {
       }
     }
     for (const scaleCurvesData of data.scaleCurves) {
-      const curve: ScaleCurve = {
+      const curve: ScaleAnimationCurve = {
         path: scaleCurvesData.path,
-        keyFrames: createValueGetter(scaleCurvesData.keyFrames),
+        keyFrames: createValueGetter(scaleCurvesData.keyFrames) as Vector3Curve,
       };
 
       keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
@@ -388,9 +398,9 @@ export class AnimationClip extends EffectsObject {
       this.scaleCurves.push(curve);
     }
     for (const floatCurveData of data.floatCurves) {
-      const curve: FloatCurve = {
+      const curve: FloatAnimationCurve = {
         path: floatCurveData.path,
-        keyFrames: createValueGetter(floatCurveData.keyFrames),
+        keyFrames: createValueGetter(floatCurveData.keyFrames) as BezierCurve,
         property: floatCurveData.property,
         className: floatCurveData.className,
       };
@@ -398,6 +408,22 @@ export class AnimationClip extends EffectsObject {
       keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
       this.floatCurves.push(curve);
+    }
+
+    // @ts-expect-error TODO: Update spec.
+    const colorCurves = data.colorCurves ?? [];
+
+    for (const colorCurveData of colorCurves) {
+      const curve: ColorAnimationCurve = {
+        path: colorCurveData.path,
+        keyFrames: createValueGetter(colorCurveData.keyFrames) as ColorCurve,
+        property: colorCurveData.property,
+        className: colorCurveData.className,
+      };
+
+      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
+
+      this.colorCurves.push(curve);
     }
 
     //@ts-expect-error TODO: Update spec.

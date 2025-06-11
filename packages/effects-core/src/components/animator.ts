@@ -41,6 +41,9 @@ export class Animator extends Component {
 
     const result = this.graph.evaluateGraph(dt / 1000);
 
+    // Apply transform animation
+    //-------------------------------------------------------------------------
+
     const animatedTransforms = this.graph.referencePose.animatedTransforms;
 
     for (let i = 0;i < animatedTransforms.length;i++) {
@@ -59,13 +62,25 @@ export class Animator extends Component {
       }
     }
 
-    const animatedObjects = this.graph.referencePose.floatAnimatedObjects;
+    // Apply property animation
+    //-------------------------------------------------------------------------
 
-    for (let i = 0;i < animatedObjects.length;i++) {
-      const animatedObject = animatedObjects[i];
+    const floatAnimatedObjects = this.graph.referencePose.floatAnimatedObjects;
+
+    for (let i = 0;i < floatAnimatedObjects.length;i++) {
+      const animatedObject = floatAnimatedObjects[i];
       const property = animatedObject.property;
 
       animatedObject.target[property] = result.pose.floatPropertyValues[i];
+    }
+
+    const colorAnimatedObjects = this.graph.referencePose.colorAnimatedObjects;
+
+    for (let i = 0;i < colorAnimatedObjects.length;i++) {
+      const animatedObject = colorAnimatedObjects[i];
+      const property = animatedObject.property;
+
+      animatedObject.target[property] = result.pose.colorPropertyValues[i];
     }
   }
 
