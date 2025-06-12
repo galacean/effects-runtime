@@ -221,6 +221,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly camera: Camera;
   /**
+   * 合成开始渲染的时间
+   */
+  readonly startTime: number = 0;
+  /**
    * 后处理渲染配置
    */
   globalVolume?: PostProcessVolume;
@@ -240,8 +244,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否是否每次渲染时清除 RenderFrame 颜色缓存
    */
   protected readonly keepColorBuffer: boolean;
-  protected rootComposition: CompositionComponent;
   protected readonly postLoaders: Plugin[] = [];
+  protected rootComposition: CompositionComponent;
 
   /**
    * 合成暂停/播放 标识
@@ -346,6 +350,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.height = height;
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent.id;
+    this.startTime = sourceContent.startTime ?? 0;
     this.renderer = renderer;
     this.event = event;
     this.statistic = {
@@ -394,13 +399,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   get items (): VFXItem[] {
     return this.rootComposition.items;
-  }
-
-  /**
-   * 获取合成开始渲染的时间
-   */
-  get startTime () {
-    return this.rootComposition.startTime;
   }
 
   /**

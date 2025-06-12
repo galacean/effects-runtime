@@ -178,14 +178,12 @@ export function version33Migration (json: JSONScene): JSONScene {
       items: composition.items,
       timelineAsset: composition.timelineAsset,
       sceneBindings: composition.sceneBindings,
-      startTime: composition.startTime,
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
     composition.timelineAsset = undefined;
     //@ts-expect-error
     composition.sceneBindings = undefined;
-    composition.startTime = undefined;
     //@ts-expect-error
     composition.components = [{ id:compositionComponent.id }];
     json.components.push(compositionComponent);
