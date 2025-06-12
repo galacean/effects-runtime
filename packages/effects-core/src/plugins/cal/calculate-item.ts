@@ -8,6 +8,7 @@ import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
 import { ParticleTrack, TrackAsset } from '../timeline';
 import type { TimelineAsset } from '../timeline';
+import { SpriteComponent, SpriteTimePlayableAsset, SpriteTimeTrack } from '../sprite/sprite-item';
 
 /**
  * 基础位移属性数据
@@ -54,5 +55,18 @@ export class ObjectBindingTrack extends TrackAsset {
       particleClip.duration = boundItem.duration;
       particleClip.endBehavior = boundItem.endBehavior;
     }
+
+    // 添加图层帧动画动画时间 clip // TODO 待移除
+    if (boundItem.getComponent(SpriteComponent)) {
+      const spriteAnimationTimeTrack = timelineAsset.createTrack(SpriteTimeTrack, this, 'SpriteTimeTrack');
+
+      spriteAnimationTimeTrack.boundObject = this.boundObject.getComponent(SpriteComponent);
+      const clip = spriteAnimationTimeTrack.createClip(SpriteTimePlayableAsset);
+
+      clip.start = boundItem.start;
+      clip.duration = boundItem.duration;
+      clip.endBehavior = boundItem.endBehavior;
+    }
+
   }
 }
