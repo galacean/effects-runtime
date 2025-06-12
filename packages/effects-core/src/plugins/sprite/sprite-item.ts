@@ -70,6 +70,7 @@ export class SpriteTimePlayable extends Playable {
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends BaseRenderComponent {
   time = 0;
+  duration = 0;
   frameAnimationLoop = true;
 
   constructor (engine: Engine, props?: spec.SpriteComponentData) {
@@ -83,7 +84,7 @@ export class SpriteComponent extends BaseRenderComponent {
 
   override onUpdate (dt: number): void {
     let time = this.time;
-    const duration = this.item.duration;
+    const duration = this.duration;
 
     if (time > duration && this.frameAnimationLoop) {
       time = time % duration;
@@ -173,5 +174,8 @@ export class SpriteComponent extends BaseRenderComponent {
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
+
+    //@ts-expect-error
+    this.duration = data.duration ?? this.item.duration;
   }
 }
