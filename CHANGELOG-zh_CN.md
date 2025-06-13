@@ -8,6 +8,13 @@
 
 ---
 
+## 2.4.7
+
+`2025-06-13`
+
+- Fix: pre composition mask migration error. [#1030](https://github.com/galacean/effects-runtime/pull/1030) @wumaolinmaoan
+- Fix: video will be downloaded twice when loaded using the assetManager. [#1029](https://github.com/galacean/effects-runtime/pull/1029) @wumaolinmaoan
+
 ## 2.4.6
 
 `2025-06-06`
