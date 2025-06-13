@@ -221,8 +221,9 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置字体类型
-   * @param value 字体类型
+   * 设置字体样式
+   * @param value 设置字体样式
+   * @default "normal"
    * @returns
    */
   setFontStyle (value: spec.FontStyle): void {
