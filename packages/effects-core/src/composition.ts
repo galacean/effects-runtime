@@ -578,7 +578,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对0时刻的时间
    */
   private forwardTime (time: number) {
-    const deltaTime = time * 1000 - this.rootComposition.time * 1000;
+    const deltaTime = time * 1000 - this.time * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
     let t = Math.abs(deltaTime);
@@ -699,17 +699,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.pluginSystem.plugins.forEach(loader => loader.onCompositionUpdate(this, deltaTime));
   }
 
-  private getUpdateTime (t: number) {
-    const startTimeInMs = this.startTime * 1000;
-    const now = this.time * 1000;
-
-    if (t < 0 && (now + t) < startTimeInMs) {
-      return startTimeInMs - now;
-    }
-
-    return t;
-  }
-
   /**
    * 更新主合成组件
    */
@@ -719,7 +708,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     // 相对于合成开始时间的时间
-    let localTime = this.time + deltaTime - this.rootItem.start;
+    let localTime = this.time + deltaTime - this.startTime;
+
+    if (deltaTime < 0 && localTime < this.startTime) {
+      localTime = this.startTime;
+    }
 
     const duration = this.rootItem.duration;
     const endBehavior = this.rootItem.endBehavior;
@@ -753,7 +746,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     }
 
-    this.rootComposition.time = localTime;
+    this.rootComposition.time = localTime + this.startTime;
 
     // end state changed, handle onEnd flags
     if (this.isEnded !== isEnded) {
