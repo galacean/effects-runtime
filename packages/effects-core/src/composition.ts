@@ -303,13 +303,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     } = props;
 
     this.renderer = renderer;
-    this._textures = scene.textureOptions as Texture[];
+    this._textures = scene.textures;
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
     this.getEngine().renderLevel = scene.renderLevel;
 
     if (reusable) {
       this.keepResource = true;
-      scene.textures = undefined;
       scene.consumed = true;
     }
 

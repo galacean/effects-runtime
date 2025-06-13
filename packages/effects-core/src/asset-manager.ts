@@ -139,18 +139,9 @@ export class AssetManager implements Disposable {
       }
 
       if (Scene.isJSONObject(rawJSON)) {
-        // 已经加载过的 可能需要更新数据模板
         scene = {
           ...rawJSON,
         };
-
-        const { jsonScene, pluginSystem, images: loadedImages } = scene;
-        const { images } = jsonScene;
-
-        this.assignImagesToAssets(images, loadedImages);
-        await Promise.all([
-          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
-        ]);
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
@@ -172,8 +163,10 @@ export class AssetManager implements Disposable {
           pluginSystem,
           jsonScene,
           bins: loadedBins,
-          images: loadedImages,
           textureOptions: loadedTextures,
+          textures: [],
+          images: loadedImages,
+          assets: this.assets,
         };
 
         // 触发插件系统 pluginSystem 的回调 prepareResource
