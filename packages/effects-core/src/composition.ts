@@ -710,8 +710,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // 相对于合成开始时间的时间
     let localTime = this.time + deltaTime - this.startTime;
 
-    if (deltaTime < 0 && localTime < this.startTime) {
-      localTime = this.startTime;
+    if (deltaTime < 0 && localTime < 0) {
+      localTime = 0;
     }
 
     const duration = this.rootItem.duration;
