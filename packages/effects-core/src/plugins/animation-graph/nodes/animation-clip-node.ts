@@ -140,7 +140,7 @@ export class Animatable {
   }
 
   getPose (time: number, outPose: Pose) {
-    const life = time % this.animationClip.duration;
+    const life = clamp(time, 0, this.animationClip.duration);
 
     for (const curveInfo of this.transformCurveInfos) {
       const curveValue = curveInfo.curve.keyFrames.getValue(life);

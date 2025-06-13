@@ -11,6 +11,7 @@ import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -302,10 +303,7 @@ export class AnimationClip extends EffectsObject {
   colorCurves: ColorAnimationCurve[] = [];
 
   sampleAnimation (vfxItem: VFXItem, time: number) {
-    const duration = vfxItem.duration;
-    let life = time / duration;
-
-    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+    const life = clamp(time, 0, this.duration);
 
     for (const curve of this.positionCurves) {
       const value = curve.keyFrames.getValue(life);
