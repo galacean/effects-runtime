@@ -1,4 +1,4 @@
-import type { GraphNode, GraphNodeAsset } from '..';
+import type { GraphNode, GraphNodeData } from '..';
 import type { GraphDataSet } from './graph-data-set';
 import type { Skeleton } from './reference-pose';
 
@@ -23,7 +23,7 @@ export class GraphContext {
 }
 
 export class InstantiationContext {
-  nodeAsset: GraphNodeAsset[] = [];
+  nodeDatas: GraphNodeData[] = [];
   nodes: GraphNode[] = [];
   dataSet: GraphDataSet;
 
@@ -31,11 +31,11 @@ export class InstantiationContext {
     if (this.nodes[index]) {
       return this.nodes[index] as T;
     }
-    if (!this.nodeAsset[index]) {
+    if (!this.nodeDatas[index]) {
       return null as unknown as T;
     }
-    this.nodeAsset[index].instantiate(this);
-    this.nodes[index].asset = this.nodeAsset[index];
+    this.nodeDatas[index].instantiate(this);
+    this.nodes[index].asset = this.nodeDatas[index];
 
     return this.nodes[index] as T;
   }

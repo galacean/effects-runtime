@@ -1,3 +1,4 @@
+import type { Spec } from '..';
 import type { GraphContext, InstantiationContext } from './graph-context';
 import type { PoseResult } from './pose-result';
 
@@ -7,7 +8,7 @@ export class GraphNode {
   /**
    * @internal
    */
-  asset: GraphNodeAsset;
+  asset: GraphNodeData;
 
   private initializationCount = 0;
   private lastUpdateID = -1;
@@ -15,7 +16,7 @@ export class GraphNode {
   constructor () {
   }
 
-  getNodeData<T extends GraphNodeAsset> (): T {
+  getNodeData<T extends GraphNodeData> (): T {
     return this.asset as T;
   }
 
@@ -81,17 +82,12 @@ export class GraphNode {
   }
 }
 
-export interface GraphNodeAssetData {
-  type: string,
-  index: number,
-}
-
-export abstract class GraphNodeAsset {
+export abstract class GraphNodeData {
   index: number;
 
   abstract instantiate (context: InstantiationContext): void;
 
-  load (data: GraphNodeAssetData) {
+  load (data: Spec.GraphNodeData) {
     this.index = data.index;
   }
 

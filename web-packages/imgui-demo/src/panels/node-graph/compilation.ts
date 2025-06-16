@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
-import type { GraphNode, GraphNodeAssetData } from '@galacean/effects';
-import { InvalidIndex, NodeAssetType } from '@galacean/effects';
+import type { Spec } from '@galacean/effects';
+import { InvalidIndex, NodeDataType } from '@galacean/effects';
 import { StateMachineToolsNode } from './tools-graph/nodes/state-machine-tools-node';
 import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
 import { TransitionConduitToolsNode, TransitionToolsNode } from './tools-graph/nodes/transition-tools-node';
@@ -248,7 +248,7 @@ export class GraphCompilationContext {
   //     // Deep copy implementation
   //   }
 
-  nodeAssetDatas: GraphNodeAssetData[] = [];
+  nodeDatas: Spec.GraphNodeData[] = [];
 
   private compilationStates: NodeCompilationState[] = [];
 
@@ -276,22 +276,22 @@ export class GraphCompilationContext {
   //   return nodeAssetData;
   // }
 
-  getGraphNodeAssetData<T extends GraphNodeAssetData>(node: BaseNode): T {
+  getGraphNodeAssetData<T extends Spec.GraphNodeData>(node: BaseNode): T {
     const cachedIndex = this.m_nodeIDToIndexMap.get(node.m_ID);
 
     if (cachedIndex !== undefined) {
       this.compilationStates[cachedIndex] = NodeCompilationState.AlreadyCompiled;
 
-      return this.nodeAssetDatas[cachedIndex] as T;
+      return this.nodeDatas[cachedIndex] as T;
     }
 
     const type = this.getNodeAssetType(node) ?? '';
-    const nodeAssetData: GraphNodeAssetData = {
+    const nodeAssetData: Spec.GraphNodeData = {
       type,
-      index: this.nodeAssetDatas.length,
+      index: this.nodeDatas.length,
     };
 
-    this.nodeAssetDatas.push(nodeAssetData);
+    this.nodeDatas.push(nodeAssetData);
     this.m_compiledNodePaths.push(node.GetStringPathFromRoot());
     this.compilationStates.push(NodeCompilationState.NeedCompilation);
 
@@ -302,12 +302,12 @@ export class GraphCompilationContext {
     return nodeAssetData as T;
   }
 
-  checkNodeCompilationState (data: GraphNodeAssetData): boolean {
+  checkNodeCompilationState (data: Spec.GraphNodeData): boolean {
     return this.compilationStates[data.index] === NodeCompilationState.AlreadyCompiled;
   }
 
   reset () {
-    this.nodeAssetDatas = [];
+    this.nodeDatas = [];
     this.compilationStates = [];
 
     this.m_nodeIDToIndexMap.clear();
@@ -327,21 +327,21 @@ export class GraphCompilationContext {
 
   private getNodeAssetType (node: BaseNode) {
     if (node instanceof AnimationClipToolsNode) {
-      return NodeAssetType.AnimationClipNodeAsset;
+      return NodeDataType.AnimationClipNodeData;
     } else if (node instanceof StateMachineToolsNode) {
-      return NodeAssetType.StateMachineNodeAsset;
+      return NodeDataType.StateMachineNodeData;
     } else if (node instanceof StateToolsNode) {
-      return NodeAssetType.StateNodeAsset;
+      return NodeDataType.StateNodeData;
     } else if (node instanceof TransitionToolsNode) {
-      return NodeAssetType.TransitionNodeAsset;
+      return NodeDataType.TransitionNodeData;
     } else if (node instanceof ConstFloatToolsNode) {
-      return NodeAssetType.ConstFloatNodeAsset;
+      return NodeDataType.ConstFloatNodeData;
     } else if (node instanceof ConstBoolToolsNode) {
-      return NodeAssetType.ConstBoolNodeAsset;
+      return NodeDataType.ConstBoolNodeData;
     } else if (node instanceof FloatControlParameterToolsNode) {
-      return NodeAssetType.ControlParameterFloatNodeAsset;
+      return NodeDataType.ControlParameterFloatNodeData;
     } else if (node instanceof BoolControlParameterToolsNode) {
-      return NodeAssetType.ControlParameterBoolNodeAsset;
+      return NodeDataType.ControlParameterBoolNodeData;
     }
   }
 }

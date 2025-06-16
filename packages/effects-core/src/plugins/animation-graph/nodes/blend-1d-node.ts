@@ -1,41 +1,35 @@
 import type { GraphContext, InstantiationContext } from '../graph-context';
-import type { FloatValueNode, GraphNodeAssetData } from '../graph-node';
-import { GraphNodeAsset, PoseNode } from '../graph-node';
+import type { FloatValueNode } from '../graph-node';
+import { GraphNodeData, PoseNode } from '../graph-node';
 import type { Pose } from '../pose';
 import { PoseResult } from '../pose-result';
-import { NodeAssetType, nodeDataClass } from '../..';
+import type { Spec } from '../..';
+import { NodeDataType, nodeDataClass } from '../..';
 import { Blender } from '../blender';
 
-export interface Blend1DNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.Blend1DNodeAsset,
-  source0: number,
-  source1: number,
-  inputParameterValueNode: number,
-}
-
-@nodeDataClass(NodeAssetType.Blend1DNodeAsset)
-export class Blend1DNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.BlendNodeData)
+export class BlendNodeData extends GraphNodeData {
   source0: number;
   source1: number;
   inputParameterValueNode: number;
 
   override instantiate (context: InstantiationContext) {
-    const node = this.createNode(Blend1DNode, context);
+    const node = this.createNode(BlendNode, context);
 
     node.source0 = context.getNode<PoseNode>(this.source0);
     node.source1 = context.getNode<PoseNode>(this.source1);
     node.inputParameterValueNode = context.getNode<FloatValueNode>(this.inputParameterValueNode);
   }
 
-  override load (data: Blend1DNodeAssetData): void {
+  override load (data: Spec.BlendNodeData): void {
     super.load(data);
-    this.source0 = data.source0;
-    this.source1 = data.source1;
-    this.inputParameterValueNode = data.inputParameterValueNode;
+    this.source0 = data.sourceNodeIndex0;
+    this.source1 = data.sourceNodeIndex1;
+    this.inputParameterValueNode = data.inputParameterValueNodeIndex;
   }
 }
 
-export class Blend1DNode extends PoseNode {
+export class BlendNode extends PoseNode {
   source0: PoseNode | null = null;
   source1: PoseNode | null = null;
 

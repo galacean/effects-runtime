@@ -4,14 +4,14 @@ import { GraphDataSet } from './graph-data-set';
 import { PoseResult } from './pose-result';
 import type { AnimationRecordData } from './reference-pose';
 import { Skeleton } from './reference-pose';
-import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
+import type { GraphNode, GraphNodeData, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
 import type { VFXItem } from '../../vfx-item';
 import { EffectsObject } from '../../effects-object';
 import { effectsClass } from '../../decorators';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
-import type { NodeAssetType } from './node-asset-type';
-import { getNodeAssetClass } from './node-asset-type';
+import type { NodeDataType, Spec } from './node-asset-type';
+import { getNodeDataClass } from './node-asset-type';
 import type { ControlParameterBoolNode, ControlParameterFloatNode } from './nodes/control-parameter-nodes';
 
 export class GraphInstance {
@@ -69,12 +69,12 @@ export class GraphInstance {
     const instantiationContext = new InstantiationContext();
 
     instantiationContext.nodes = this.nodes;
-    instantiationContext.nodeAsset = graphAsset.nodeAssets;
+    instantiationContext.nodeDatas = graphAsset.nodeDatas;
     instantiationContext.dataSet = graphAsset.graphDataSet;
 
-    for (let i = 0;i < graphAsset.nodeAssets.length;i++) {
+    for (let i = 0;i < graphAsset.nodeDatas.length;i++) {
       if (!instantiationContext.nodes[i]) {
-        graphAsset.nodeAssets[i].instantiate(instantiationContext);
+        graphAsset.nodeDatas[i].instantiate(instantiationContext);
       }
     }
     this.rootNode = this.nodes[graphAsset.rootNodeIndex] as PoseNode;
@@ -186,7 +186,7 @@ export interface GraphDataSetData {
 }
 
 export interface AnimationGraphAssetData extends spec.EffectsObjectData {
-  nodeAssetDatas: GraphNodeAssetData[],
+  nodeDatas: Spec.GraphNodeData[],
   graphDataSet: GraphDataSetData,
   rootNodeIndex: number,
   controlParameterIDs: string[],
@@ -194,14 +194,14 @@ export interface AnimationGraphAssetData extends spec.EffectsObjectData {
 
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {
-  nodeAssets: GraphNodeAsset[] = [];
+  nodeDatas: GraphNodeData[] = [];
   graphDataSet = new GraphDataSet();
   controlParameterIDs: string[] = [];
   parameterLookupMap = new Map<string, number>();
   rootNodeIndex = InvalidIndex;
 
-  static createNodeAsset (type: NodeAssetType) {
-    const classConstructor = getNodeAssetClass(type);
+  static createNodeData (type: NodeDataType) {
+    const classConstructor = getNodeDataClass(type);
 
     if (classConstructor) {
       return new classConstructor();
@@ -212,7 +212,7 @@ export class AnimationGraphAsset extends EffectsObject {
 
   override fromData (data: AnimationGraphAssetData) {
     const graphAssetData = data;
-    const nodeAssetDatas = graphAssetData.nodeAssetDatas;
+    const nodeDatas = graphAssetData.nodeDatas;
 
     this.rootNodeIndex = graphAssetData.rootNodeIndex;
     this.controlParameterIDs = graphAssetData.controlParameterIDs;
@@ -229,11 +229,11 @@ export class AnimationGraphAsset extends EffectsObject {
     // Deserialize node asset
     //-------------------------------------------------------------------------
 
-    this.nodeAssets = [];
+    this.nodeDatas = [];
 
-    for (let i = 0;i < nodeAssetDatas.length;i++) {
-      this.nodeAssets[i] = AnimationGraphAsset.createNodeAsset(nodeAssetDatas[i].type as NodeAssetType);
-      this.nodeAssets[i].load(nodeAssetDatas[i]);
+    for (let i = 0;i < nodeDatas.length;i++) {
+      this.nodeDatas[i] = AnimationGraphAsset.createNodeData(nodeDatas[i].type as NodeDataType);
+      this.nodeDatas[i].load(nodeDatas[i]);
     }
 
     // Deserialize graph data set

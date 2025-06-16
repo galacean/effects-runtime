@@ -1,10 +1,10 @@
 import { DrawValueDisplayText, FlowToolsNode, GraphType, GraphValueType, InvalidIndex } from './flow-tools-node';
 import * as NodeGraph from '../../visual-graph';
 import type { GraphCompilationContext } from '../../compilation';
-import type { ControlParameterBoolNodeAssetData, ControlParameterFloatNodeAssetData } from '@galacean/effects';
 import { ImGui } from 'web-packages/imgui-demo/src/imgui';
 import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { ResultToolsNode } from './result-tools-node';
+import type { Spec } from '@galacean/effects';
 
 export abstract class ParameterBaseToolsNode extends FlowToolsNode {
   protected m_group: string;
@@ -54,14 +54,14 @@ export class ControlParameterToolsNode extends ParameterBaseToolsNode {
   override Compile (context: GraphCompilationContext): number {
     switch (this.GetOutputValueType()) {
       case GraphValueType.Bool: {
-        const pDefinition: ControlParameterBoolNodeAssetData = context.getGraphNodeAssetData(this);
+        const pDefinition: Spec.ControlParameterBoolNodeData = context.getGraphNodeAssetData(this);
 
         pDefinition.value = this.m_value;
 
         return pDefinition.index;
       }
       case GraphValueType.Float: {
-        const pDefinition: ControlParameterFloatNodeAssetData = context.getGraphNodeAssetData(this);
+        const pDefinition: Spec.ControlParameterFloatNodeData = context.getGraphNodeAssetData(this);
 
         pDefinition.value = this.m_value;
 

@@ -1,15 +1,10 @@
-import { BoolValueNode, NodeAssetType, nodeDataClass } from '../..';
+import type { Spec } from '../..';
+import { BoolValueNode, NodeDataType, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
-import type { GraphNodeAssetData } from '../graph-node';
-import { FloatValueNode, GraphNodeAsset } from '../graph-node';
+import { FloatValueNode, GraphNodeData } from '../graph-node';
 
-export interface ConstFloatNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.ConstFloatNodeAsset,
-  value: number,
-}
-
-@nodeDataClass(NodeAssetType.ConstFloatNodeAsset)
-export class ConstFloatNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.ConstFloatNodeData)
+export class ConstFloatNodeData extends GraphNodeData {
   value = 0;
 
   override instantiate (context: InstantiationContext) {
@@ -18,7 +13,7 @@ export class ConstFloatNodeAsset extends GraphNodeAsset {
     node.value = this.value;
   }
 
-  override load (data: ConstFloatNodeAssetData): void {
+  override load (data: Spec.ConstFloatNodeData): void {
     super.load(data);
     this.value = data.value;
   }
@@ -36,13 +31,8 @@ export class ConstFloatNode extends FloatValueNode {
   }
 }
 
-export interface ConstBoolNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.ConstBoolNodeAsset,
-  value: boolean,
-}
-
-@nodeDataClass(NodeAssetType.ConstBoolNodeAsset)
-export class ConstBoolNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.ConstBoolNodeData)
+export class ConstBoolNodeData extends GraphNodeData {
   value = true;
 
   override instantiate (context: InstantiationContext) {
@@ -51,7 +41,7 @@ export class ConstBoolNodeAsset extends GraphNodeAsset {
     node.value = this.value;
   }
 
-  override load (data: ConstBoolNodeAssetData): void {
+  override load (data: Spec.ConstBoolNodeData): void {
     super.load(data);
     this.value = data.value;
   }

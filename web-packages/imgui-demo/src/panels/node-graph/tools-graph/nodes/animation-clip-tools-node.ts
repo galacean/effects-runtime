@@ -2,7 +2,7 @@ import type { FlowToolsNode } from './flow-tools-node';
 import { GraphValueType, GraphType } from './flow-tools-node';
 import { DataSlotToolsNode } from './data-slot-tools-node';
 import type { GraphCompilationContext } from '../../compilation';
-import type { AnimationClipNodeAssetData } from '@galacean/effects';
+import type { Spec } from '@galacean/effects';
 
 export class AnimationClipToolsNode extends DataSlotToolsNode {
 
@@ -34,7 +34,7 @@ export class AnimationClipToolsNode extends DataSlotToolsNode {
   }
 
   override Compile (context: GraphCompilationContext): number {
-    const pDefinition = context.getGraphNodeAssetData<AnimationClipNodeAssetData>(this);
+    const pDefinition = context.getGraphNodeAssetData<Spec.AnimationClipNodeData>(this);
 
     if (!context.checkNodeCompilationState(pDefinition)) {
       const pShouldPlayInReverseNode = this.GetConnectedInputNode<FlowToolsNode>(0);

@@ -1,21 +1,15 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { AnimationClip, AnimationCurve, ColorAnimationCurve, FloatAnimationCurve } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
-import { GraphNodeAsset, PoseNode, type GraphNodeAssetData } from '../graph-node';
-import { NodeAssetType, nodeDataClass } from '../node-asset-type';
+import { GraphNodeData, PoseNode } from '../graph-node';
+import type { Spec } from '../node-asset-type';
+import { NodeDataType, nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
 import type { Skeleton } from '../reference-pose';
 import type { Pose } from '../pose';
 
-export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.AnimationClipNodeAsset,
-  dataSlotIndex: number,
-  playRate?: number,
-  loopAnimation?: boolean,
-}
-
-@nodeDataClass(NodeAssetType.AnimationClipNodeAsset)
-export class AnimationClipNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.AnimationClipNodeData)
+export class AnimationClipNodeData extends GraphNodeData {
   playRate = 1.0;
   loopAnimation = true;
   dataSlotIndex = -1;
@@ -26,7 +20,7 @@ export class AnimationClipNodeAsset extends GraphNodeAsset {
     node.animation = context.dataSet.getResource(this.dataSlotIndex);
   }
 
-  override load (data: AnimationClipNodeAssetData): void {
+  override load (data: Spec.AnimationClipNodeData): void {
     super.load(data);
 
     const fullData = {
@@ -53,7 +47,7 @@ export class AnimationClipNode extends PoseNode {
 
     this.markNodeActive(context);
 
-    const nodeData = this.getNodeData<AnimationClipNodeAsset>();
+    const nodeData = this.getNodeData<AnimationClipNodeData>();
 
     this.previousTime = this.currentTime;
     this.currentTime = this.previousTime + context.deltaTime / this.duration * nodeData.playRate;

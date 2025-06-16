@@ -1321,14 +1321,14 @@
             "name": "CUBE_ANI2"
         },
         {
-            "nodeAssetDatas": [
+            "nodeDatas": [
                 {
-                    "type": "ControlParameterBoolNodeAsset",
+                    "type": "ControlParameterBoolNodeData",
                     "index": 0,
                     "value": false
                 },
                 {
-                    "type": "StateMachineNodeAsset",
+                    "type": "StateMachineNodeData",
                     "index": 1,
                     "stateDatas": [
                         {
@@ -1369,43 +1369,43 @@
                     "defaultStateIndex": 1
                 },
                 {
-                    "type": "StateNodeAsset",
+                    "type": "StateNodeData",
                     "index": 2,
                     "childNodeIndex": -1
                 },
                 {
-                    "type": "StateNodeAsset",
+                    "type": "StateNodeData",
                     "index": 3,
                     "childNodeIndex": 4
                 },
                 {
-                    "type": "AnimationClipNodeAsset",
+                    "type": "AnimationClipNodeData",
                     "index": 4,
                     "playRate": 2,
                     "dataSlotIndex": 0
                 },
                 {
-                    "type": "StateNodeAsset",
+                    "type": "StateNodeData",
                     "index": 5,
                     "childNodeIndex": 6
                 },
                 {
-                    "type": "AnimationClipNodeAsset",
+                    "type": "AnimationClipNodeData",
                     "index": 6,
                     "dataSlotIndex": 1
                 },
                 {
-                    "type": "StateNodeAsset",
+                    "type": "StateNodeData",
                     "index": 7,
                     "childNodeIndex": 8
                 },
                 {
-                    "type": "AnimationClipNodeAsset",
+                    "type": "AnimationClipNodeData",
                     "index": 8,
                     "dataSlotIndex": 2
                 },
                 {
-                    "type": "TransitionNodeAsset",
+                    "type": "TransitionNodeData",
                     "index": 9,
                     "targetStateNodeIndex": 5,
                     "duration": 2,
@@ -1413,7 +1413,7 @@
                     "exitTime": 0.75
                 },
                 {
-                    "type": "TransitionNodeAsset",
+                    "type": "TransitionNodeData",
                     "index": 10,
                     "targetStateNodeIndex": 7,
                     "duration": 2,
@@ -1421,12 +1421,12 @@
                     "exitTime": 0.75
                 },
                 {
-                    "type": "ConstBoolNodeAsset",
+                    "type": "ConstBoolNodeData",
                     "index": 11,
                     "value": false
                 },
                 {
-                    "type": "TransitionNodeAsset",
+                    "type": "TransitionNodeData",
                     "index": 12,
                     "targetStateNodeIndex": 3,
                     "duration": 3,
@@ -1434,7 +1434,7 @@
                     "exitTime": 0.75
                 },
                 {
-                    "type": "ConstBoolNodeAsset",
+                    "type": "ConstBoolNodeData",
                     "index": 13,
                     "value": false
                 }

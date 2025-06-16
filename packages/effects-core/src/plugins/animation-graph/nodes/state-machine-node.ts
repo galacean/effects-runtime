@@ -1,30 +1,13 @@
-import type { BoolValueNode, GraphNodeAssetData, StateNode } from '../..';
+import type { BoolValueNode, Spec, StateNode } from '../..';
 import type { TransitionNode } from '../..';
-import { InvalidIndex, NodeAssetType } from '../..';
-import { GraphNodeAsset, PoseNode, nodeDataClass } from '../..';
+import { InvalidIndex, NodeDataType } from '../..';
+import { GraphNodeData, PoseNode, nodeDataClass } from '../..';
 import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
-export interface TransitionData {
-  targetStateIndex: number,
-  conditionNodeIndex: number,
-  transitionNodeIndex: number,
-}
-
-export interface StateData {
-  stateNodeIndex: number,
-  transitionDatas: TransitionData[],
-}
-
-export interface StateMachineNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.StateMachineNodeAsset,
-  stateDatas: StateData[],
-  defaultStateIndex: number,
-}
-
-@nodeDataClass(NodeAssetType.StateMachineNodeAsset)
-export class StateMachineNodeAsset extends GraphNodeAsset {
-  stateDatas: StateData[];
+@nodeDataClass(NodeDataType.StateMachineNodeData)
+export class StateMachineNodeData extends GraphNodeData {
+  stateDatas: Spec.StateData[];
   defaultStateIndex: number;
 
   override instantiate (context: InstantiationContext): void {
@@ -52,7 +35,7 @@ export class StateMachineNodeAsset extends GraphNodeAsset {
     }
   }
 
-  override load (data: StateMachineNodeAssetData): void {
+  override load (data: Spec.StateMachineNodeData): void {
     super.load(data);
 
     this.stateDatas = data.stateDatas;

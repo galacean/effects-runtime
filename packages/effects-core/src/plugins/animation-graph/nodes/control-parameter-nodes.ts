@@ -1,20 +1,10 @@
-import type { GraphNodeAssetData } from '../..';
-import { NodeAssetType } from '../..';
-import { FloatValueNode, GraphNodeAsset, nodeDataClass } from '../..';
+import type { Spec } from '../..';
+import { NodeDataType } from '../..';
+import { FloatValueNode, GraphNodeData, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
-export interface ControlParameterFloatNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.ControlParameterFloatNodeAsset,
-  value: number,
-}
-
-export interface ControlParameterBoolNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.ControlParameterBoolNodeAsset,
-  value: boolean,
-}
-
-@nodeDataClass(NodeAssetType.ControlParameterFloatNodeAsset)
-export class ControlParameterFloatNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.ControlParameterFloatNodeData)
+export class ControlParameterFloatNodeData extends GraphNodeData {
   value = 0;
 
   override instantiate (context: InstantiationContext) {
@@ -23,7 +13,7 @@ export class ControlParameterFloatNodeAsset extends GraphNodeAsset {
     node.setValue(this.value);
   }
 
-  override load (data: ControlParameterFloatNodeAssetData): void {
+  override load (data: Spec.ControlParameterFloatNodeData): void {
     super.load(data);
     this.value = data.value;
   }
@@ -45,8 +35,8 @@ export class ControlParameterFloatNode extends FloatValueNode {
   }
 }
 
-@nodeDataClass(NodeAssetType.ControlParameterBoolNodeAsset)
-export class ControlParameterBoolNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.ControlParameterBoolNodeData)
+export class ControlParameterBoolNodeData extends GraphNodeData {
   private value = false;
 
   override instantiate (context: InstantiationContext) {
@@ -55,7 +45,7 @@ export class ControlParameterBoolNodeAsset extends GraphNodeAsset {
     node.setValue(this.value);
   }
 
-  override load (data: ControlParameterBoolNodeAssetData): void {
+  override load (data: Spec.ControlParameterBoolNodeData): void {
     super.load(data);
     this.value = data.value;
   }

@@ -1,16 +1,10 @@
-import type { FloatValueNode, GraphNodeAssetData, ValueNode } from '../..';
-import { NodeAssetType } from '../..';
-import { BoolValueNode, GraphNodeAsset, InvalidIndex, nodeDataClass } from '../..';
+import type { FloatValueNode, Spec, ValueNode } from '../..';
+import { NodeDataType } from '../..';
+import { BoolValueNode, GraphNodeData, InvalidIndex, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
-export interface EqualNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.EqualNodeAsset,
-  inputValueNodeIndex: number,
-  comparandValueNodeIndex: number,
-}
-
-@nodeDataClass(NodeAssetType.EqualNodeAsset)
-export class EqualNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.EqualNodeData)
+export class EqualNodeData extends GraphNodeData {
   private inputValueNodeIndex = InvalidIndex;
   private comparandValueNodeIndex = InvalidIndex;
 
@@ -21,7 +15,7 @@ export class EqualNodeAsset extends GraphNodeAsset {
     node.comparandValueNode = context.getNode<ValueNode>(this.comparandValueNodeIndex);
   }
 
-  override load (data: EqualNodeAssetData): void {
+  override load (data: Spec.EqualNodeData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
     this.comparandValueNodeIndex = data.comparandValueNodeIndex;
@@ -75,16 +69,11 @@ class EqualNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-export interface FloatComparisonNodeAssetData extends GraphNodeAssetData {
-  inputValueNodeIndex: number,
-  comparandValueNodeIndex: number,
-}
-
-export abstract class FloatComparisonNodeAsset extends GraphNodeAsset {
+export abstract class FloatComparisonNodeData extends GraphNodeData {
   protected inputValueNodeIndex = InvalidIndex;
   protected comparandValueNodeIndex = InvalidIndex;
 
-  override load (data: FloatComparisonNodeAssetData): void {
+  override load (data: Spec.FloatComparisonNodeData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
     this.comparandValueNodeIndex = data.comparandValueNodeIndex;
@@ -154,12 +143,8 @@ export class FloatComparisonNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-export interface GreaterNodeAssetData extends FloatComparisonNodeAssetData {
-  type: NodeAssetType.EqualNodeAsset,
-}
-
-@nodeDataClass(NodeAssetType.GreaterNodeAsset)
-export class GreaterNodeAsset extends FloatComparisonNodeAsset {
+@nodeDataClass(NodeDataType.GreaterNodeData)
+export class GreaterNodeData extends FloatComparisonNodeData {
   override instantiate (context: InstantiationContext): void {
     const node = this.createNode(FloatComparisonNode, context);
 
@@ -171,12 +156,8 @@ export class GreaterNodeAsset extends FloatComparisonNodeAsset {
 
 //-------------------------------------------------------------------------
 
-export interface LessNodeAssetData extends FloatComparisonNodeAssetData {
-  type: NodeAssetType.LessNodeAsset,
-}
-
-@nodeDataClass(NodeAssetType.LessNodeAsset)
-export class LessNodeAsset extends FloatComparisonNodeAsset {
+@nodeDataClass(NodeDataType.LessNodeData)
+export class LessNodeData extends FloatComparisonNodeData {
   override instantiate (context: InstantiationContext): void {
     const node = this.createNode(FloatComparisonNode, context);
 

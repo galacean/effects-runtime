@@ -1,5 +1,5 @@
-import type { GraphNodeAssetData } from '../..';
-import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, nodeDataClass } from '../..';
+import type { Spec } from '../..';
+import { GraphNodeData, InvalidIndex, NodeDataType, PoseNode, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
@@ -9,13 +9,8 @@ export enum TransitionState {
   TransitioningOut,
 }
 
-export interface StateNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.StateNodeAsset,
-  childNodeIndex: number,
-}
-
-@nodeDataClass(NodeAssetType.StateNodeAsset)
-export class StateNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.StateNodeData)
+export class StateNodeData extends GraphNodeData {
   childNodeIndex = InvalidIndex;
 
   override instantiate (context: InstantiationContext): void {
@@ -24,7 +19,7 @@ export class StateNodeAsset extends GraphNodeAsset {
     node.childNode = context.getNode<PoseNode>(this.childNodeIndex);
   }
 
-  override load (data: StateNodeAssetData): void {
+  override load (data: Spec.StateNodeData): void {
     super.load(data);
 
     this.childNodeIndex = data.childNodeIndex;

@@ -1,14 +1,9 @@
-import type { GraphNodeAssetData } from '../..';
-import { NodeAssetType, nodeDataClass, GraphNodeAsset, BoolValueNode, InvalidIndex } from '../..';
+import type { Spec } from '../..';
+import { NodeDataType, nodeDataClass, GraphNodeData, BoolValueNode, InvalidIndex } from '../..';
 import type { InstantiationContext, GraphContext } from '../graph-context';
 
-export interface AndNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.AndNodeAsset,
-  conditionNodeIndices: number[],
-}
-
-@nodeDataClass(NodeAssetType.AndNodeAsset)
-export class AndNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.AndNodeData)
+export class AndNodeData extends GraphNodeData {
   private conditionNodeIndices: number[] = [];
 
   override instantiate (context: InstantiationContext) {
@@ -19,7 +14,7 @@ export class AndNodeAsset extends GraphNodeAsset {
     }
   }
 
-  override load (data: AndNodeAssetData): void {
+  override load (data: Spec.AndNodeData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
   }
@@ -67,13 +62,8 @@ export class AndNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-export interface OrNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.OrNodeAsset,
-  conditionNodeIndices: number[],
-}
-
-@nodeDataClass(NodeAssetType.OrNodeAsset)
-export class OrNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.OrNodeData)
+export class OrNodeData extends GraphNodeData {
   private conditionNodeIndices: number[] = [];
 
   override instantiate (context: InstantiationContext) {
@@ -84,7 +74,7 @@ export class OrNodeAsset extends GraphNodeAsset {
     }
   }
 
-  override load (data: OrNodeAssetData): void {
+  override load (data: Spec.OrNodeAssetData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
   }
@@ -132,13 +122,8 @@ export class OrNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-export interface NotNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.NotNodeAsset,
-  inputValueNodeIndex: number,
-}
-
-@nodeDataClass(NodeAssetType.NotNodeAsset)
-export class NotNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.NotNodeData)
+export class NotNodeData extends GraphNodeData {
   private inputValueNodeIndex = InvalidIndex;
 
   override instantiate (context: InstantiationContext) {
@@ -147,7 +132,7 @@ export class NotNodeAsset extends GraphNodeAsset {
     node.inputValueNode = context.getNode<BoolValueNode>(this.inputValueNodeIndex);
   }
 
-  override load (data: NotNodeAssetData): void {
+  override load (data: Spec.NotNodeAssetData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
   }

@@ -1,6 +1,6 @@
 import { clamp, lerp } from '@galacean/effects-math/es/core/utils';
-import type { GraphNodeAssetData, StateNode } from '../..';
-import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, TransitionState, nodeDataClass } from '../..';
+import type { Spec, StateNode } from '../..';
+import { GraphNodeData, InvalidIndex, NodeDataType, PoseNode, TransitionState, nodeDataClass } from '../..';
 import { Blender } from '../blender';
 import type { InstantiationContext } from '../graph-context';
 import { BranchState, type GraphContext } from '../graph-context';
@@ -13,16 +13,8 @@ export enum SourceType {
   CachedPose
 }
 
-export interface TransitionNodeAssetData extends GraphNodeAssetData {
-  type: NodeAssetType.TransitionNodeAsset,
-  duration: number,
-  hasExitTime: boolean,
-  exitTime: number,
-  targetStateNodeIndex: number,
-}
-
-@nodeDataClass(NodeAssetType.TransitionNodeAsset)
-export class TransitionNodeAsset extends GraphNodeAsset {
+@nodeDataClass(NodeDataType.TransitionNodeData)
+export class TransitionNodeData extends GraphNodeData {
   duration = 0;
   hasExitTime = false;
   exitTime = 0.75;
@@ -36,7 +28,7 @@ export class TransitionNodeAsset extends GraphNodeAsset {
     node.exitTime = this.exitTime;
   }
 
-  override load (data: TransitionNodeAssetData): void {
+  override load (data: Spec.TransitionNodeData): void {
     super.load(data);
 
     this.duration = data.duration;
@@ -222,7 +214,7 @@ export class TransitionNode extends PoseNode {
     this.sourceNodeResult = new PoseResult(context.skeleton);
     this.targetNodeResult = new PoseResult(context.skeleton);
 
-    this.transitionLength = this.getNodeData<TransitionNodeAsset>().duration;
+    this.transitionLength = this.getNodeData<TransitionNodeData>().duration;
 
     this.transitionProgress = 0;
     this.blendWeight = 0;

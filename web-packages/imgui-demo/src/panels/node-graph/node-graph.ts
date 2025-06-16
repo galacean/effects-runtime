@@ -1,5 +1,5 @@
-import type { AnimationGraphAssetData, GraphNodeAssetData, spec } from '@galacean/effects';
-import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, NodeAssetType, SerializationHelper, VFXItem } from '@galacean/effects';
+import type { AnimationGraphAssetData, spec } from '@galacean/effects';
+import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
@@ -635,7 +635,7 @@ export class AnimationGraph extends EditorWindow {
     //-------------------------------------------------------------------------
 
     const graphAsset: AnimationGraphAssetData = {
-      nodeAssetDatas: context.nodeAssetDatas,
+      nodeDatas: context.nodeDatas,
       graphDataSet: {
         resources: resources,
       },
