@@ -1,6 +1,6 @@
 import type { GraphNode, GraphNodeAsset } from '..';
 import type { GraphDataSet } from './graph-data-set';
-import type { ReferencePose } from './reference-pose';
+import type { Skeleton } from './reference-pose';
 
 // Used to signify if a node or node output is coming from an active state (i.e. a state we are not transitioning away from)
 export enum BranchState
@@ -12,7 +12,7 @@ export enum BranchState
 export class GraphContext {
   deltaTime = 0;
   updateID = 0;
-  referencePose: ReferencePose;
+  skeleton: Skeleton;
   branchState = BranchState.Active;
 
   update (deltaTime: number) {

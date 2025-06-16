@@ -1,4 +1,4 @@
-import type { Euler, Vector3Like } from '@galacean/effects-math/es/core';
+import type { Color, Euler, Vector3Like } from '@galacean/effects-math/es/core';
 import type { Pose } from './pose';
 
 export class Blender {
@@ -41,10 +41,21 @@ export class Blender {
     //-------------------------------------------------------------------------
 
     for (let i = 0;i < sourcePose.floatPropertyValues.length;i++) {
-      const sourceFloatValue = sourcePose.floatPropertyValues[i];
-      const targetFloatValue = targetPose.floatPropertyValues[i];
+      const sourceFloat = sourcePose.floatPropertyValues[i];
+      const targetFloat = targetPose.floatPropertyValues[i];
 
-      resultPose.floatPropertyValues[i] = sourceFloatValue + (targetFloatValue - sourceFloatValue) * blendWeight;
+      resultPose.floatPropertyValues[i] = sourceFloat + (targetFloat - sourceFloat) * blendWeight;
+    }
+
+    // Blend color value
+    //-------------------------------------------------------------------------
+
+    for (let i = 0;i < sourcePose.colorPropertyValues.length;i++) {
+      const sourceColor = sourcePose.colorPropertyValues[i];
+      const targetColor = targetPose.colorPropertyValues[i];
+      const resultColor = resultPose.colorPropertyValues[i];
+
+      Blender.lerpColor(sourceColor, targetColor, blendWeight, resultColor);
     }
   }
 
@@ -60,6 +71,15 @@ export class Blender {
     result.x = from.x + (to.x - from.x) * t;
     result.y = from.y + (to.y - from.y) * t;
     result.z = from.z + (to.z - from.z) * t;
+
+    return result;
+  }
+
+  static lerpColor (from: Color, to: Color, t: number, result: Color) {
+    result.r = from.r + (to.r - from.r) * t;
+    result.g = from.g + (to.g - from.g) * t;
+    result.b = from.b + (to.b - from.b) * t;
+    result.a = from.a + (to.a - from.a) * t;
 
     return result;
   }

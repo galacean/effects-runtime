@@ -44,7 +44,7 @@ export class Animator extends Component {
     // Apply transform animation
     //-------------------------------------------------------------------------
 
-    const animatedTransforms = this.graph.referencePose.animatedTransforms;
+    const animatedTransforms = this.graph.skeleton.animatedTransforms;
 
     for (let i = 0;i < animatedTransforms.length;i++) {
       const position = result.pose.parentSpaceTransforms[i].position;
@@ -55,7 +55,7 @@ export class Animator extends Component {
       animatedTransforms[i].setPosition(position.x, position.y, position.z);
       animatedTransforms[i].setScale(scale.x, scale.y, scale.z);
 
-      if (this.graph.referencePose.useEuler) {
+      if (this.graph.skeleton.useEuler) {
         animatedTransforms[i].setRotation(euler.x, euler.y, euler.z);
       } else {
         animatedTransforms[i].setQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
@@ -65,7 +65,7 @@ export class Animator extends Component {
     // Apply property animation
     //-------------------------------------------------------------------------
 
-    const floatAnimatedObjects = this.graph.referencePose.floatAnimatedObjects;
+    const floatAnimatedObjects = this.graph.skeleton.floatAnimatedObjects;
 
     for (let i = 0;i < floatAnimatedObjects.length;i++) {
       const animatedObject = floatAnimatedObjects[i];
@@ -74,7 +74,7 @@ export class Animator extends Component {
       animatedObject.target[property] = result.pose.floatPropertyValues[i];
     }
 
-    const colorAnimatedObjects = this.graph.referencePose.colorAnimatedObjects;
+    const colorAnimatedObjects = this.graph.skeleton.colorAnimatedObjects;
 
     for (let i = 0;i < colorAnimatedObjects.length;i++) {
       const animatedObject = colorAnimatedObjects[i];

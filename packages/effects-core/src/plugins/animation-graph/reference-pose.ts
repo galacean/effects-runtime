@@ -28,7 +28,7 @@ export interface AnimatedObject {
 
 export const VFXItemType = 'VFXItem';
 
-export class ReferencePose {
+export class Skeleton {
   useEuler = false;
   rootBone: VFXItem;
 

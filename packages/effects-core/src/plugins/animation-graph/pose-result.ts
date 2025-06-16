@@ -1,10 +1,10 @@
 import { Pose } from './pose';
-import type { ReferencePose } from './reference-pose';
+import type { Skeleton } from './reference-pose';
 
 export class PoseResult {
   pose: Pose;
 
-  constructor (referencePose: ReferencePose) {
-    this.pose = new Pose(referencePose);
+  constructor (skeleton: Skeleton) {
+    this.pose = new Pose(skeleton);
   }
 }

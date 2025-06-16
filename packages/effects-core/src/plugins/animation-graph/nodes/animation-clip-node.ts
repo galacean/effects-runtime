@@ -4,7 +4,7 @@ import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeAsset, PoseNode, type GraphNodeAssetData } from '../graph-node';
 import { NodeAssetType, nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
-import type { ReferencePose } from '../reference-pose';
+import type { Skeleton } from '../reference-pose';
 import type { Pose } from '../pose';
 
 export interface AnimationClipNodeAssetData extends GraphNodeAssetData {
@@ -79,7 +79,7 @@ export class AnimationClipNode extends PoseNode {
     this.previousTime = this.currentTime = 0;
 
     if (this.animation) {
-      this.animatable = new Animatable(context.referencePose, this.animation);
+      this.animatable = new Animatable(context.skeleton, this.animation);
     }
   }
 }
@@ -108,15 +108,15 @@ export interface ColorCurveInfo {
 }
 
 export class Animatable {
-  private referencePose: ReferencePose;
+  private skeleton: Skeleton;
   private animationClip: AnimationClip;
   private transformCurveInfos: TransformCurveInfo[] = [];
 
   private floatCurveInfos: FloatCurveInfo[] = [];
   private colorCurveInfos: ColorCurveInfo[] = [];
 
-  constructor (referencePose: ReferencePose, animationClip: AnimationClip) {
-    this.referencePose = referencePose;
+  constructor (skeleton: Skeleton, animationClip: AnimationClip) {
+    this.skeleton = skeleton;
     this.animationClip = animationClip;
 
     for (const curve of animationClip.positionCurves) {
@@ -180,8 +180,7 @@ export class Animatable {
   }
 
   private addTransformCurveInfo (curve: AnimationCurve, type: TransformCurveType) {
-    const referencePose = this.referencePose;
-    const boneIndex = referencePose.pathToBoneIndex.get(curve.path);
+    const boneIndex = this.skeleton.pathToBoneIndex.get(curve.path);
 
     if (boneIndex !== undefined) {
       this.transformCurveInfos.push({
@@ -193,8 +192,7 @@ export class Animatable {
   }
 
   private addFloatCurveInfo (curve: FloatAnimationCurve) {
-    const referencePose = this.referencePose;
-    const animatedObjectIndex = referencePose.pathToObjectIndex.get(curve.path + curve.className + curve.property);
+    const animatedObjectIndex = this.skeleton.pathToObjectIndex.get(curve.path + curve.className + curve.property);
 
     if (animatedObjectIndex !== undefined) {
       this.floatCurveInfos.push({
@@ -205,8 +203,7 @@ export class Animatable {
   }
 
   private addColorCurveInfo (curve: ColorAnimationCurve) {
-    const referencePose = this.referencePose;
-    const animatedObjectIndex = referencePose.pathToObjectIndex.get(curve.path + curve.className + curve.property);
+    const animatedObjectIndex = this.skeleton.pathToObjectIndex.get(curve.path + curve.className + curve.property);
 
     if (animatedObjectIndex !== undefined) {
       this.colorCurveInfos.push({

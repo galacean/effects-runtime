@@ -1,7 +1,7 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { ReferencePose } from './reference-pose';
+import type { Skeleton } from './reference-pose';
 import type { Transform } from '../../transform';
 import type { Color } from '@galacean/effects-math/es/core/color';
 
@@ -31,29 +31,29 @@ export class NodeTransform {
 }
 
 export class Pose {
-  referencePose: ReferencePose;
+  skeleton: Skeleton;
   parentSpaceTransforms: NodeTransform[] = [];
   floatPropertyValues: number[] = [];
   colorPropertyValues: Color[] = [];
 
-  constructor (referencePose: ReferencePose) {
-    this.referencePose = referencePose;
+  constructor (skeleton: Skeleton) {
+    this.skeleton = skeleton;
 
-    for (const transform of referencePose.parentSpaceTransforms) {
+    for (const transform of skeleton.parentSpaceTransforms) {
       this.parentSpaceTransforms.push(new NodeTransform().copyFrom(transform));
     }
 
-    for (const defaultFloat of referencePose.defaultFloatPropertyValues) {
+    for (const defaultFloat of skeleton.defaultFloatPropertyValues) {
       this.floatPropertyValues.push(defaultFloat);
     }
 
-    for (const defaultColor of referencePose.defaultColorPropertyValues) {
+    for (const defaultColor of skeleton.defaultColorPropertyValues) {
       this.colorPropertyValues.push(defaultColor);
     }
   }
 
   setPosition (path: string, position: Vector3) {
-    const boneIndex = this.referencePose.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToBoneIndex.get(path);
 
     if (boneIndex !== undefined) {
       this.parentSpaceTransforms[boneIndex].position.copyFrom(position);
@@ -61,7 +61,7 @@ export class Pose {
   }
 
   setRotation (path: string, rotation: Quaternion) {
-    const boneIndex = this.referencePose.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToBoneIndex.get(path);
 
     if (boneIndex !== undefined) {
       this.parentSpaceTransforms[boneIndex].rotation.copyFrom(rotation);
@@ -69,7 +69,7 @@ export class Pose {
   }
 
   setEuler (path: string, euler: Euler) {
-    const boneIndex = this.referencePose.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToBoneIndex.get(path);
 
     if (boneIndex !== undefined) {
       this.parentSpaceTransforms[boneIndex].euler.copyFrom(euler);
@@ -77,7 +77,7 @@ export class Pose {
   }
 
   setScale (path: string, scale: Vector3) {
-    const boneIndex = this.referencePose.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToBoneIndex.get(path);
 
     if (boneIndex !== undefined) {
       this.parentSpaceTransforms[boneIndex].scale.copyFrom(scale);
@@ -85,7 +85,7 @@ export class Pose {
   }
 
   setFloat (path: string, value: number) {
-    const animatedObjectIndex = this.referencePose.pathToObjectIndex.get(path);
+    const animatedObjectIndex = this.skeleton.pathToObjectIndex.get(path);
 
     if (animatedObjectIndex !== undefined) {
       this.floatPropertyValues[animatedObjectIndex] = value;

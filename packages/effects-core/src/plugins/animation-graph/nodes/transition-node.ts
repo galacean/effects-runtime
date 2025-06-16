@@ -219,8 +219,8 @@ export class TransitionNode extends PoseNode {
 
   protected override initializeInternal (context: GraphContext): void {
     super.initializeInternal(context);
-    this.sourceNodeResult = new PoseResult(context.referencePose);
-    this.targetNodeResult = new PoseResult(context.referencePose);
+    this.sourceNodeResult = new PoseResult(context.skeleton);
+    this.targetNodeResult = new PoseResult(context.skeleton);
 
     this.transitionLength = this.getNodeData<TransitionNodeAsset>().duration;
 

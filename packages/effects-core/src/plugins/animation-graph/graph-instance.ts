@@ -3,7 +3,7 @@ import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
 import { PoseResult } from './pose-result';
 import type { AnimationRecordData } from './reference-pose';
-import { ReferencePose } from './reference-pose';
+import { Skeleton } from './reference-pose';
 import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
 import type { VFXItem } from '../../vfx-item';
@@ -16,7 +16,7 @@ import type { ControlParameterBoolNode, ControlParameterFloatNode } from './node
 
 export class GraphInstance {
   nodes: GraphNode[] = [];
-  referencePose: ReferencePose;
+  skeleton: Skeleton;
 
   private rootNode: PoseNode;
   private graphAsset: AnimationGraphAsset;
@@ -26,7 +26,7 @@ export class GraphInstance {
   constructor (graphAsset: AnimationGraphAsset, rootBone: VFXItem) {
     this.graphAsset = graphAsset;
 
-    // initialize referencePose
+    // Initialize skeleton
     const recordProperties: AnimationRecordData = {
       position: [],
       scale: [],
@@ -59,11 +59,11 @@ export class GraphInstance {
         recordProperties.colors.push(colorCurve);
       }
     }
-    this.referencePose = new ReferencePose(rootBone, recordProperties);
+    this.skeleton = new Skeleton(rootBone, recordProperties);
 
     // create PoseResult
-    this.result = new PoseResult(this.referencePose);
-    this.context.referencePose = this.referencePose;
+    this.result = new PoseResult(this.skeleton);
+    this.context.skeleton = this.skeleton;
 
     // instantiate graph nodes
     const instantiationContext = new InstantiationContext();
