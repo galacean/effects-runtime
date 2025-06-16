@@ -236,13 +236,13 @@ export class GalaceanEffects {
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
     //@ts-expect-error
     GalaceanEffects.playURL({
-      'playerVersion': {
-        'web': '2.0.4',
-        'native': '0.0.1.202311221223',
-      },
-      'images': [],
+      'playerVersion': { 'web': '2.2.5', 'native': '0.0.1.202311221223' },
+      'images': [
+        { 'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*43_zTqI7nz4AAAAAAAAAAAAAelB4AQ/original', 'id': 'c51d290fedd54357a8b05da47d4b6ec7' },
+        { 'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*43_zTqI7nz4AAAAAAAAAAAAAelB4AQ/original', 'id': '9ccd157f02e44c148275f5f61985ca7f', 'oriY': 1 },
+      ],
       'fonts': [],
-      'version': '3.0',
+      'version': '3.1',
       'shapes': [],
       'plugins': [],
       'type': 'ge',
@@ -250,250 +250,193 @@ export class GalaceanEffects {
         {
           'id': '1',
           'name': '新建合成1',
-          'duration': 6,
+          'duration': 5,
           'startTime': 0,
           'endBehavior': 4,
-          'previewSize': [
-            750,
-            1624,
-          ],
-          'items': [
-            {
-              'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
-            },
-          ],
-          'camera': {
-            'fov': 60,
-            'far': 40,
-            'near': 0.1,
-            'clipMode': 1,
-            'position': [
-              0,
-              0,
-              8,
-            ],
-            'rotation': [
-              0,
-              0,
-              0,
-            ],
-          },
-          'sceneBindings': [
-            {
-              'key': {
-                'id': 'f8a6089ed7794f479907ed0bcac17220',
-              },
-              'value': {
-                'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
-              },
-            },
-          ],
-          'timelineAsset': {
-            'id': 'dd50ad0de3f044a5819576175acf05f7',
-          },
+          'previewSize': [750, 1624],
+          'items': [{ 'id': 'a616c54d130740e6aff3636b7fd2afdc' }],
+          'camera': { 'fov': 60, 'far': 40, 'near': 0.1, 'clipMode': 1, 'position': [0, 0, 8], 'rotation': [0, 0, 0] },
+          'sceneBindings': [{ 'key': { 'id': '518b39d4b9ba41e79b46b937e9e26463' }, 'value': { 'id': 'a616c54d130740e6aff3636b7fd2afdc' } }],
+          'timelineAsset': { 'id': '51453269031d45aabb4c2834a6d4d820' },
         },
       ],
       'components': [
         {
-          'id': 'b7890caa354a4c279ff9678c5530cd83',
-          'item': {
-            'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
-          },
-          'dataType': 'ShapeComponent',
-          'type': 0,
-          'points': [
-            {
-              'x': -1,
-              'y': -1,
-              'z': 0,
-            },
-            {
-              'x': 1,
-              'y': -1,
-              'z': 0,
-            },
-            {
-              'x': 0,
-              'y': 1,
-              'z': 0,
-            },
+          'id': '473b92d40343423398ebf3f13d13c34f',
+          'item': { 'id': 'a616c54d130740e6aff3636b7fd2afdc' },
+          'dataType': 'EffectComponent',
+          'geometry': { 'id': '4b7944c565fa44358515181345fcbc04' },
+          'materials': [{ 'id': '14f87546cd11476b8288280eed2aa9df' }],
+        },
+        {
+          'id': 'ba8dfd10f7aa4f55941f0a908bdf2c7b',
+          'item': { 'id': 'a616c54d130740e6aff3636b7fd2afdc' },
+          'dataType': 'FFDComponent',
+          'controlPoints': [
+            { 'x': -0.5, 'y': 0.5, 'z': 0 },
+            { 'x': -0.25, 'y': 0.7, 'z': 0 },
+            { 'x': 0, 'y': 0.5, 'z': 0 },
+            { 'x': 0.25, 'y': 0.4, 'z': 0 },
+            { 'x': 0.5, 'y': 0.5, 'z': 0 },
+
+            { 'x': -0.5, 'y': 0.25, 'z': 0 },
+            { 'x': -0.25, 'y': 0.3, 'z': 0 },
+            { 'x': 0, 'y': 0.25, 'z': 0 },
+            { 'x': 0.25, 'y': 0.3, 'z': 0 },
+            { 'x': 0.5, 'y': 0.25, 'z': 0 },
+
+            { 'x': -0.5, 'y': 0, 'z': 0 },
+            { 'x': -0.25, 'y': 0, 'z': 0 },
+            { 'x': 0, 'y': 0, 'z': 0 },
+            { 'x': 0.25, 'y': 0, 'z': 0 },
+            { 'x': 0.5, 'y': 0, 'z': 0 },
+
+            { 'x': -0.5, 'y': -0.25, 'z': 0 },
+            { 'x': -0.25, 'y': -0.3, 'z': 0 },
+            { 'x': 0, 'y': -0.25, 'z': 0 },
+            { 'x': 0.25, 'y': -0.3, 'z': 0 },
+            { 'x': 0.5, 'y': -0.25, 'z': 0 },
+
+            { 'x': -0.5, 'y': -0.5, 'z': 0 },
+            { 'x': -0.25, 'y': -0.7, 'z': 0 },
+            { 'x': 0, 'y': -0.5, 'z': 0 },
+            { 'x': 0.25, 'y': -0.4, 'z': 0 },
+            { 'x': 0.5, 'y': -0.5, 'z': 0 },
           ],
-          'easingIns': [
-            {
-              'x': -1,
-              'y': -0.5,
-              'z': 0,
-            },
-            {
-              'x': 0.5,
-              'y': -1.5,
-              'z': 0,
-            },
-            {
-              'x': 0.5,
-              'y': 1,
-              'z': 0,
-            },
-          ],
-          'easingOuts': [
-            {
-              'x': -0.5,
-              'y': -1.5,
-              'z': 0,
-            },
-            {
-              'x': 1,
-              'y': -0.5,
-              'z': 0,
-            },
-            {
-              'x': -0.5,
-              'y': 1,
-              'z': 0,
-            },
-          ],
-          'shapes': [
-            {
-              'verticalToPlane': 'z',
-              'indexes': [
-                {
-                  'point': 0,
-                  'easingIn': 0,
-                  'easingOut': 0,
-                },
-                {
-                  'point': 1,
-                  'easingIn': 1,
-                  'easingOut': 1,
-                },
-                {
-                  'point': 2,
-                  'easingIn': 2,
-                  'easingOut': 2,
-                },
-              ],
-              'close': true,
-              'fill': {
-                'color': { 'r': 1, 'g': 0.7, 'b': 0.5, 'a': 1 },
-              },
-            },
-          ],
-          'renderer': {
-            'renderMode': 1,
-          },
         },
       ],
       'geometries': [],
-      'materials': [],
+      'materials': [
+        {
+          'dataType': 'Material',
+          'shader': { 'id': '2bb38aef323b443388fe310c93b05c46' },
+          'stringTags': { 'RenderType': 'Transparent' },
+          'floats': {
+            '_MainTexAR': 0,
+            '_MainTexUVPolar': 1,
+            '_MainTexUSpeed': 1,
+            '_MainTexVSpeed': 0,
+            '_UseAddTex': 1,
+            '_AddTexUSpeed': 0,
+            '_AddTexVSpeed': 0,
+            '_AddTexPower': 1,
+            '_AddTexIntensity': 1,
+            '_DistortTexUSpeed': 0,
+            '_DistortTexVSpeed': 0,
+            '_DistortIntensity': 0,
+            '_MaskTexReverse': 0,
+            '_MaskTexAR': 1,
+            '_MaskTexUSpeed': 0,
+            '_MaskTexVSpeed': 0,
+            '_DissolveTexPower': 1,
+            '_DissolveTexIntensity': 1,
+            '_DissolveTexUSpeed': 0,
+            '_DissolveTexVSpeed': 0,
+            '_DissolveIntensity': 0,
+            '_DissolveWide': 0.05,
+            'ZWrite': 1,
+          },
+          'textures': {
+            '_MainTex': { 'texture': { 'id': '8f4ac587135e40b3ad914507741c1ba1' } },
+            '_AddTex': { 'texture': { 'id': '8f4ac587135e40b3ad914507741c1ba1' } },
+            '_DistortTex': { 'texture': { 'id': 'whitetexture00000000000000000000' }, 'offset': { 'x': 0, 'y': 0 }, 'scale': { 'x': 1, 'y': 1 } },
+            '_MaskTex': { 'texture': { 'id': 'whitetexture00000000000000000000' }, 'offset': { 'x': 0, 'y': 0 }, 'scale': { 'x': 1, 'y': 1 } },
+            '_DissolveTex': { 'texture': { 'id': 'whitetexture00000000000000000000' }, 'offset': { 'x': 0, 'y': 0 }, 'scale': { 'x': 1, 'y': 1 } },
+          },
+          'colors': {
+            '_MainColor': { 'r': 7.466666666666667, 'g': 1.2862745098039217, 'b': 1.2862745098039217, 'a': 1 },
+            '_AddColor': { 'r': 172.67450980392158, 'g': 46.180392156862744, 'b': 44.17254901960784, 'a': 1 },
+            '_DissolveColor': { 'r': 1, 'g': 1, 'b': 1, 'a': 1 },
+          },
+          'vector4s': { '_TillingOffset': { 'x': 1, 'y': 1, 'z': 0, 'w': 0 } },
+          'ints': {},
+          'macros': [],
+          'id': '14f87546cd11476b8288280eed2aa9df',
+        },
+      ],
       'items': [
         {
-          'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
-          'name': 'sprite_1',
+          'id': 'a616c54d130740e6aff3636b7fd2afdc',
+          'name': 'effect_15',
           'duration': 5,
-          'type': '1',
+          'type': 'effect',
           'visible': true,
-          'endBehavior': 0,
+          'endBehavior': 5,
           'delay': 0,
           'renderLevel': 'B+',
-          'components': [
-            {
-              'id': 'b7890caa354a4c279ff9678c5530cd83',
-            },
-          ],
-          'transform': {
-            'position': {
-              'x': 0,
-              'y': 0,
-              'z': 0,
-            },
-            'eulerHint': {
-              'x': 0,
-              'y': 0,
-              'z': 0,
-            },
-            'anchor': {
-              'x': 0,
-              'y': 0,
-            },
-            'size': {
-              'x': 1.2,
-              'y': 1.2,
-            },
-            'scale': {
-              'x': 1,
-              'y': 1,
-              'z': 1,
-            },
-          },
+          'components': [{ 'id': '473b92d40343423398ebf3f13d13c34f' }, { 'id': 'ba8dfd10f7aa4f55941f0a908bdf2c7b' }],
+          'transform': { 'position': { 'x': 0, 'y': 0, 'z': 0 }, 'eulerHint': { 'x': 0, 'y': 0, 'z': 0 }, 'scale': { 'x': 4, 'y': 4, 'z': 1 } },
           'dataType': 'VFXItemData',
         },
       ],
-      'shaders': [],
-      'bins': [],
-      'textures': [],
+      'shaders': [
+        {
+          'id': '2bb38aef323b443388fe310c93b05c46',
+          'name': 'universal-vfx',
+          'dataType': 'Shader',
+          'vertex': 'precision highp float;attribute vec3 aPos;attribute vec2 aUV;varying vec2 uv0;varying vec2 uvDistort;uniform mat4 effects_ObjectToWorld;uniform mat4 effects_MatrixVP;uniform vec4 _Time;uniform float _DistortTexUSpeed;uniform float _DistortTexVSpeed;uniform vec3 u_ControlPoints[25];uniform vec3 u_BoundMin;uniform vec3 u_BoundMax;float B0(float t){return(1.0 - t)*(1.0 - t)*(1.0 - t)*(1.0 - t);}float B1(float t){return 4.0 * t *(1.0 - t)*(1.0 - t)*(1.0 - t);}float B2(float t){return 6.0 * t * t *(1.0 - t)*(1.0 - t);}float B3(float t){return 4.0 * t * t * t *(1.0 - t);}float B4(float t){return t * t * t * t;}vec3 bezierSurface(vec3 originalPos){bool isInBoundingBox =originalPos.x >= u_BoundMin.x && originalPos.x <= u_BoundMax.x &&originalPos.y >= u_BoundMin.y && originalPos.y <= u_BoundMax.y &&originalPos.z >= u_BoundMin.z && originalPos.z <= u_BoundMax.z;if(!isInBoundingBox){return originalPos;}float u =(originalPos.x - u_BoundMin.x)/(u_BoundMax.x - u_BoundMin.x);float v =(originalPos.y - u_BoundMin.y)/(u_BoundMax.y - u_BoundMin.y);float bu[5] = float[5](B0(u),B1(u),B2(u),B3(u),B4(u));float bv[5] = float[5](B0(v),B1(v),B2(v),B3(v),B4(v));vec3 newPos = vec3(0.0);for(int i = 0;i < 5;i++){for(int j = 0;j < 5;j++){newPos += u_ControlPoints[i * 5 + j] * bu[j] * bv[i];}}return newPos;}void main(){uv0 = aUV;uvDistort = aUV + fract(vec2(_DistortTexUSpeed,_DistortTexVSpeed)* _Time.y);vec3 newPos = bezierSurface(aPos);gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos,1.0);}',
+          'fragment': 'precision highp float;\r\n\r\n#define _FDISTORTTEX_ON\r\n#define _MAINTEXUVS_POLAR\r\n#define _FMASKTEX_ON\r\n#define _FDISSOLVETEX_ON\r\n#define _FADDTEX_ON\r\n\r\n// Varyings\r\nvarying vec2 uv0;\r\nvarying vec2 uvDistort;\r\n\r\n// Uniforms\r\nuniform vec4 _Time;\r\n\r\nuniform sampler2D _MainTex;\r\nuniform vec4 _TillingOffset;\r\nuniform vec4 _MainColor;\r\nuniform float _MainTexAR;\r\nuniform float _MainTexUVPolar;\r\nuniform float _MainTexUSpeed;\r\nuniform float _MainTexVSpeed;\r\n\r\nuniform float _UseAddTex;\r\nuniform sampler2D _AddTex;\r\nuniform vec4 _AddColor;\r\nuniform float _AddTexUSpeed;\r\nuniform float _AddTexVSpeed;\r\nuniform float _AddTexPower;\r\nuniform float _AddTexIntensity;\r\n\r\nuniform sampler2D _DistortTex;\r\nuniform float _DistortIntensity;\r\n\r\nuniform sampler2D _MaskTex;\r\nuniform float _MaskTexReverse;\r\nuniform float _MaskTexAR;\r\nuniform float _MaskTexUSpeed;\r\nuniform float _MaskTexVSpeed;\r\n\r\nuniform sampler2D _DissolveTex;\r\nuniform vec4 _DissolveColor;\r\nuniform float _DissolveTexUSpeed;\r\nuniform float _DissolveTexVSpeed;\r\nuniform float _DissolveTexPower;\r\nuniform float _DissolveTexIntensity;\r\nuniform float _DissolveIntensity;\r\nuniform float _DissolveSoft;\r\nuniform float _DissolveWide;\r\n\r\nvoid main() {\r\n    vec2 uvMain = uv0;\r\n\r\n    // 扭曲贴图\r\n    #ifdef _FDISTORTTEX_ON\r\n    vec2 uvDistort = uvDistort + fract(vec2(_MainTexUSpeed, _MainTexVSpeed) * _Time.y);\r\n    vec4 var_DistortTex = texture2D(_DistortTex, uvDistort);\r\n    float var_DistortTexAlpha = var_DistortTex.r - 0.5;\r\n    var_DistortTexAlpha *= _DistortIntensity;\r\n    vec2 DistortUV = vec2(var_DistortTexAlpha, var_DistortTexAlpha);\r\n    uvMain += DistortUV;  // 扭曲主贴图UV\r\n    #endif\r\n\r\n    // 采样主纹理\r\n    // 极坐标转化\r\n    #ifdef _MAINTEXUVS_POLAR\r\n    if(_MainTexUVPolar > 0.0) {\r\n        vec2 centerUV = uvMain - vec2(0.5, 0.5);\r\n        vec2 polarUV = vec2(length(centerUV) * 2.0, atan(centerUV.y, centerUV.x) * (1.0 / 6.28318)); // 6.28318 is 2*pi\r\n        uvMain = polarUV;\r\n    }\r\n    #endif\r\n    uvMain = uvMain * _TillingOffset.xy + _TillingOffset.zw;\r\n    uvMain += fract(vec2(_MainTexUSpeed, _MainTexVSpeed) * _Time.y);\r\n    vec4 mainTex = texture2D(_MainTex, uvMain);\r\n    mainTex.rgb = (_MainTexAR == 0.0 ? mainTex.rgb : mainTex.rrr);\r\n    float mainTexAlpha = (_MainTexAR == 0.0 ? mainTex.a : mainTex.r);\r\n    vec3 color = mainTex.rgb * _MainColor.rgb;\r\n    float alpha = mainTexAlpha * _MainColor.a;\r\n\r\n    // 额外贴图\r\n    if(_UseAddTex > 0.0) {\r\n        vec2 uvAdd = uv0;\r\n        #ifdef _ADDTEXUVS_POLAR\r\n        vec2 addCenterUV = uvAdd - vec2(0.5, 0.5);\r\n        vec2 addPolarUV = vec2(length(addCenterUV) * 2.0, atan(addCenterUV.y, addCenterUV.x) * (1.0 / 6.28318)); // 6.28318 is 2*pi\r\n        uvAdd = addPolarUV;\r\n        #endif\r\n        uvAdd.xy += fract(vec2(_AddTexUSpeed, _AddTexVSpeed) * _Time.y);\r\n        vec4 var_AddTex = texture2D(_AddTex, uvAdd);\r\n        var_AddTex = clamp(pow(abs(var_AddTex), vec4(_AddTexPower)) * _AddTexIntensity, 0.0, 1.0);\r\n        vec3 addColor = var_AddTex.rgb * _AddColor.rgb;\r\n        float addAlpha = var_AddTex.a * _AddColor.a;\r\n        color = mix(color, color + addColor, addAlpha);\r\n    }\r\n\r\n    // 遮罩贴图\r\n    #ifdef _FMASKTEX_ON\r\n    vec2 uvMask = uv0;\r\n        #ifdef _MASKTEXUVS_POLAR\r\n    vec2 maskCenterUV = uvMask - vec2(0.5, 0.5);\r\n    vec2 maskPolarUV = vec2(length(maskCenterUV) * 2.0, atan(maskCenterUV.y, maskCenterUV.x) / (2.0 * PI));\r\n    uvMask = maskPolarUV;\r\n        #endif\r\n    uvMask += fract(vec2(_MaskTexUSpeed, _MaskTexVSpeed) * _Time.y);\r\n    vec4 var_MaskTex = texture2D(_MaskTex, uvMask);\r\n    float var_MaskTexAlpha = (_MaskTexAR == 0.0 ? var_MaskTex.a : var_MaskTex.r);\r\n    var_MaskTexAlpha = (_MaskTexReverse == 0.0 ? var_MaskTexAlpha : 1.0 - var_MaskTexAlpha);\r\n    alpha *= var_MaskTexAlpha;\r\n    #endif\r\n\r\n    // 溶解效果\r\n    #ifdef _FDISSOLVETEX_ON\r\n    vec2 uvDissolve = uv0;\r\n        #ifdef _DISSOLVETEXUVS_POLAR\r\n    vec2 dissolveCenterUV = uvDissolve.xy - vec2(0.5, 0.5);\r\n    vec2 dissolvePolarUV = vec2(length(dissolveCenterUV) * 2.0, atan(dissolveCenterUV.y, dissolveCenterUV.x) / (2.0 * PI));\r\n    uvDissolve.xy = dissolvePolarUV;\r\n        #endif\r\n    uvDissolve += fract(vec2(_DissolveTexUSpeed, _DissolveTexVSpeed) * _Time.y);\r\n    vec4 var_DissolveTex = texture2D(_DissolveTex, uvDissolve.xy);\r\n    float var_DissolveTexAlpha = var_DissolveTex.r;\r\n    var_DissolveTexAlpha = clamp(pow(abs(var_DissolveTexAlpha), _DissolveTexPower) * _DissolveTexIntensity, 0.0, 1.0);\r\n    vec3 DissolveColor = _DissolveColor.rgb * 2.0;\r\n    float DissolveIntensity = _DissolveIntensity;\r\n        //DissolveIntensity += 0.001; // Uncomment and adjust this value as needed\r\n        #ifdef _DISSOLVETEXSOFT_ON\r\n    float SoftDissolveBig = DissolveIntensity * (_DissolveSoft + 1.0);\r\n    float SoftDissolveSmall = SoftDissolveBig - _DissolveSoft;\r\n    float SoftDissolve = smoothstep(SoftDissolveSmall, SoftDissolveBig, var_DissolveTexAlpha);\r\n    color = mix(DissolveColor, color, SoftDissolve);\r\n    alpha *= SoftDissolve;\r\n        #else\r\n    float HardDissolve = DissolveIntensity * (_DissolveWide + 1.0);\r\n    float HardDissolveSmall = step(HardDissolve, var_DissolveTexAlpha);\r\n    float HardDissolveBig = step(HardDissolve - _DissolveWide, var_DissolveTexAlpha);\r\n    color = mix(DissolveColor, color, HardDissolveSmall);\r\n    alpha *= HardDissolveBig;\r\n        #endif\r\n    #endif\r\n\r\n    color *= alpha;\r\n    gl_FragColor = vec4(color, alpha);\r\n}',
+          'properties': '_MainTex("主贴图", 2D) = "white" {}\n[HDR]_MainColor("主颜色", Color) = (1,1,1,1)\n_TillingOffset("缩放偏移", Vector) = (1,1,0,0)\n[Toggle]_MainTexAR ("R通道为透明通道", Float) = 0.0\n[Toggle]_MainTexUVPolar ("极坐标UV", Float) = 0.0\n_MainTexUSpeed ("主贴图U方向流动", Float) = 0\n_MainTexVSpeed ("主贴图V方向流动", Float) = 0\n[Toggle]_UseAddTex("使用额外贴图", Float) = 0.0\n_AddTex("额外贴图", 2D) = "white" {}\n[HDR]_AddColor("额外颜色", Color) = (1,1,1,1)\n_AddTexUSpeed ("额外贴图U方向流动", Float) = 0\n_AddTexVSpeed ("额外贴图V方向流动", Float) = 0\n_AddTexPower ("额外贴图锐度", Range(0.0, 10.0)) = 1.0\n_AddTexIntensity ("额外贴图亮度", Range(0.0, 10.0)) = 1.0\n_DistortTex("扭曲贴图", 2D) = "white" {}\n_DistortTexUSpeed ("扭曲贴图U方向流动", Float) = 0\n_DistortTexVSpeed ("扭曲贴图V方向流动", Float) = 0\n_DistortIntensity ("扭曲程度", Range(0.0, 1.0)) = 0.0\n_MaskTex ("遮罩贴图", 2D) = "white" {}\n[Toggle]_MaskTexReverse ("遮罩贴图反转", Float) = 0\n[Toggle]_MaskTexAR ("R通道为遮罩通道", Float) = 1\n_MaskTexUSpeed ("遮罩贴图U方向流动", Float) = 0.0\n_MaskTexVSpeed ("遮罩贴图V方向流动", Float) = 0.0\n[HDR]_DissolveColor ("溶解颜色", Color) = (1.0, 1.0, 1.0, 1.0)\n_DissolveTex ("溶解贴图", 2D) = "white" {}\n_DissolveTexPower ("溶解贴图锐度", Range(0.0, 10.0)) = 1.0\n_DissolveTexIntensity ("溶解贴图亮度", Range(0.0, 10.0)) = 1.0\n_DissolveTexUSpeed ("溶解贴图U方向流动", Float) = 0.0\n_DissolveTexVSpeed ("溶解贴图V方向流动", Float) = 0.0\n_DissolveIntensity ("溶解程度", Range(0.0, 1.0)) = 0.0\n_DissolveWide ("溶解宽度", Range(0.0, 1.0)) = 0.05\n',
+        },
+      ],
+      'bins': [{ 'url': 'https://mdn.alipayobjects.com/mars/afts/file/A*FbdORb5mUYcAAAAAAAAAAAAAelB4AQ', 'id': '23913db1ec46407c87e435760007cd34' }],
+      'textures': [
+        {
+          'id': '8f4ac587135e40b3ad914507741c1ba1',
+          'dataType': 'Texture',
+          'source': { 'id': 'c51d290fedd54357a8b05da47d4b6ec7' },
+          'name': 'mask.tex',
+          'flipY': true,
+          'wrapS': 10497,
+          'wrapT': 10497,
+          'magFilter': 9729,
+          'minFilter': 9729,
+        },
+        {
+          'minFilter': 9729,
+          'magFilter': 9729,
+          'wrapS': 10497,
+          'wrapT': 10497,
+          'target': 3553,
+          'format': 6408,
+          'internalFormat': 6408,
+          'type': 5121,
+          'id': '8f4ac587135e40b3ad914507741c1ba1',
+          'dataType': 'Texture',
+          'source': { 'id': '9ccd157f02e44c148275f5f61985ca7f' },
+          'name': 'mask.tex',
+          'flipY': true,
+          'generateMipmap': true,
+          'sourceType': 2,
+        },
+      ],
       'animations': [],
       'miscs': [
+        { 'id': '51453269031d45aabb4c2834a6d4d820', 'dataType': 'TimelineAsset', 'tracks': [{ 'id': '518b39d4b9ba41e79b46b937e9e26463' }] },
+        { 'id': '7ed4996411d243f8916f25975718a610', 'dataType': 'ActivationPlayableAsset' },
+        { 'id': 'eab56ba12c814716a63dd7c91ab1976a', 'dataType': 'TransformPlayableAsset', 'positionOverLifetime': {} },
         {
-          'id': 'dd50ad0de3f044a5819576175acf05f7',
-          'dataType': 'TimelineAsset',
-          'tracks': [
-          ],
-        },
-        {
-          'id': '51ed062462544526998daf514c320854',
-          'dataType': 'ActivationPlayableAsset',
-        },
-        {
-          'id': '9fd3412cf92c4dc19a2deabb942dadb2',
-          'dataType': 'TransformPlayableAsset',
-          'positionOverLifetime': {},
-        },
-        {
-          'id': 'a59a15a3f3b4414abb81217733561926',
+          'id': '07a26b2b8ed5404e8a339a0b25dc5529',
           'dataType': 'ActivationTrack',
           'children': [],
-          'clips': [
-            {
-              'start': 0,
-              'duration': 5,
-              'endBehavior': 0,
-              'asset': {
-                'id': '51ed062462544526998daf514c320854',
-              },
-            },
-          ],
+          'clips': [{ 'start': 0, 'duration': 5, 'endBehavior': 5, 'asset': { 'id': '7ed4996411d243f8916f25975718a610' } }],
         },
         {
-          'id': '9436a285d586414ab72622f64b11f54d',
+          'id': 'b5236fe4a61740bd88c6e59a2f9707cc',
           'dataType': 'TransformTrack',
           'children': [],
-          'clips': [
-            {
-              'start': 0,
-              'duration': 5,
-              'endBehavior': 0,
-              'asset': {
-                'id': '9fd3412cf92c4dc19a2deabb942dadb2',
-              },
-            },
-          ],
+          'clips': [{ 'start': 0, 'duration': 5, 'endBehavior': 5, 'asset': { 'id': 'eab56ba12c814716a63dd7c91ab1976a' } }],
         },
         {
-          'id': 'f8a6089ed7794f479907ed0bcac17220',
+          'id': '518b39d4b9ba41e79b46b937e9e26463',
           'dataType': 'ObjectBindingTrack',
-          'children': [
-            {
-              'id': 'a59a15a3f3b4414abb81217733561926',
-            },
-            {
-              'id': '9436a285d586414ab72622f64b11f54d',
-            },
-          ],
+          'children': [{ 'id': '07a26b2b8ed5404e8a339a0b25dc5529' }, { 'id': 'b5236fe4a61740bd88c6e59a2f9707cc' }],
           'clips': [],
         },
       ],
       'compositionId': '1',
-    });
+    }
+    );
   }
 
   static playURL (url: string, use3DConverter = false) {

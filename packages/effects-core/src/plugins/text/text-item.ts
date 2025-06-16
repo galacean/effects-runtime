@@ -6,13 +6,14 @@ import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import type { MaskProps, Material } from '../../material';
-import { Texture } from '../../texture';
-import { applyMixins, isValidFontFamily } from '../../utils';
-import type { VFXItem } from '../../vfx-item';
+import { Texture, TextureSourceType } from '../../texture';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
+import { glContext } from '../../gl';
+import { applyMixins, isValidFontFamily } from '../../utils';
+import type { VFXItem } from '../../vfx-item';
+import type { MaskProps, Material } from '../../material';
+import { Shader } from '../../render';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -78,6 +79,7 @@ export class TextComponent extends BaseRenderComponent {
       this.fromData(props);
     }
 
+    // 初始化canvas
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
@@ -110,6 +112,85 @@ export class TextComponent extends BaseRenderComponent {
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
 
+    // 修改材质着色器
+    const vertexShader = `
+      precision highp float;
+
+      attribute vec2 atlasOffset; //x y
+      attribute vec3 aPos;//x y
+
+      varying vec2 vUV;
+
+      uniform mat4 effects_MatrixVP;
+      uniform mat4 effects_ObjectToWorld;
+
+      // #ifdef ENV_EDITOR
+      // uniform vec4 uEditorTransform;
+      // #endif
+
+      void main() {
+        vUV = vec2(atlasOffset.xy);
+
+        vec4 pos = vec4(aPos.xy, aPos.z, 1.0);
+        gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
+
+
+        // #ifdef ENV_EDITOR
+        // gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
+        // #endif
+      }
+
+    `;
+
+    const fragmentShader = `
+      precision highp float;
+
+      varying vec2 vUV; //x y
+
+      uniform sampler2D _MainTex;
+      uniform sampler2D uIDMap;    // IDMap纹理
+      uniform float uCharCount;     // 字符总数
+
+      void main() {
+        // 获取原始颜色
+        vec4 color = texture2D(_MainTex, vUV.xy);
+        
+        // 获取ID颜色
+        vec4 idColor = texture2D(uIDMap, vUV.xy);
+        
+        // 从R通道解码字符索引（归一化值）
+        float normalizedIndex = idColor.r;
+        
+        // 计算实际索引（如果需要）
+        float charIndex = normalizedIndex * max(1.0, uCharCount - 1.0);
+        
+        // 这里可以根据索引实现各种动画效果
+        // 例如基于索引的颜色渐变、时间差异化等
+        
+        // 示例：根据索引修改颜色
+        // vec3 indexColor = vec3(normalizedIndex, 1.0 - normalizedIndex, 0.5);
+        // color.rgb *= indexColor;
+        
+        // 这里暂时只显示原始文本颜色，可以根据需要修改
+        color.rgb *= color.a; // 预乘alpha
+        color.a = clamp(color.a, 0.0, 1.0);
+        
+        gl_FragColor = color;
+        
+        // 如果需要调试查看索引编码，可以取消下面的注释
+        // gl_FragColor = vec4(vec3(normalizedIndex), 1.0);
+      }
+    `;
+
+    // 返回shader配置
+    this.material.shader = new Shader(this.engine);
+    this.material.shader.fromData({
+      fragment: fragmentShader,
+      vertex: vertexShader,
+      id: 'TextShader',
+      dataType: spec.DataType.Shader,
+    });
+
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
@@ -119,6 +200,26 @@ export class TextComponent extends BaseRenderComponent {
   updateTexture (flipY = true) {
     // OVERRIDE by mixins
   }
+
+  // TODO // 添加销毁方法
+  // override dispose () {
+  //   super.dispose();
+
+  //   // 释放 ID Map 相关资源
+  //   if (this.idMapTexture) {
+  //     this.idMapTexture.dispose();
+  //     this.idMapTexture = null;
+  //   }
+
+  //   // 释放renderer.texture资源
+  //   if (this.renderer && this.renderer.texture && this.renderer.texture !== this.engine.emptyTexture) {
+  //     this.renderer.texture.dispose();
+  //     this.renderer.texture = this.engine.emptyTexture;
+  //   }
+
+  //   // 释放canvas资源
+  //   canvasPool.saveCanvas(this.canvas);
+  // }
 }
 
 export class TextComponentBase {
@@ -136,9 +237,10 @@ export class TextComponentBase {
   renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
+  // ID Map相关属性，使用共享的canvas
+  protected idMapTexture: Texture | null = null;
   protected maxLineWidth: number;
-
-  private char: string[];
+  protected char: string[];
 
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
@@ -149,6 +251,203 @@ export class TextComponentBase {
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text, true);
+  }
+
+  /**
+   * 生成字符 ID Map
+   * 为每个字符创建唯一的颜色标识，用于后续文本动画
+   */
+  protected generateIDMap () {
+    // 获取布局信息
+    const layoutInfo = this.prepareCharsInfoLayout();
+
+    if (!layoutInfo) { return; }
+
+    const { charsInfo, context, style } = layoutInfo;
+    const { width, height } = this.canvas;
+    const totalChars = this.text.length;
+    const lineHeight = layoutInfo.lineHeight;
+
+    // 保存当前canvas状态
+    context.save();
+
+    // 清空画布
+    context.clearRect(0, 0, width, height);
+
+    // 计算所有字符的全局索引
+    let globalCharIndex = 0;
+
+    // 渲染字符，使用索引编码到RGBA
+    charsInfo.forEach((charInfo, lineIndex) => {
+      const x = layoutInfo.layout.getOffsetX(style, charInfo.width);
+
+      charInfo.chars.forEach((str, i) => {
+        // 将字符索引编码为RGBA颜色值
+        // 使用归一化索引值 [0, 1]，乘以255转为颜色值
+        const normalizedIndex = globalCharIndex / Math.max(1, totalChars - 1);
+
+        // 将索引编码到RGB通道
+        // 这里使用一个简单的编码方式：直接存储到R通道，G和B通道可以用于存储更多信息
+        const r = normalizedIndex;
+        const g = 0; // 保留用于其他信息，比如延时
+        const b = 0; // 保留用于其他信息
+        const a = 1.0; // 完全不透明
+
+        // 设置填充颜色
+        context.fillStyle = `rgba(${Math.floor(r * 255)}, ${Math.floor(g * 255)}, ${Math.floor(b * 255)}, ${a})`;
+
+        // 获取字符宽度
+        const charWidth = i + 1 < charInfo.charOffsetX.length
+          ? charInfo.charOffsetX[i + 1] - charInfo.charOffsetX[i]
+          : context.measureText(str).width;
+
+        // 渲染矩形而不是字符
+        // 注意：y位置需要减去行高来定位矩形顶部
+        context.fillRect(
+          x + charInfo.charOffsetX[i], // x位置
+          charInfo.y - lineHeight * 0.7, // y位置（从基线向上调整）
+          charWidth, // 矩形宽度（字符宽度）
+          lineHeight // 矩形高度（行高）
+        );
+        // 增加全局索引
+        globalCharIndex++;
+      });
+    });
+
+    // 创建 ID Map 纹理
+    if (this.idMapTexture) {
+      this.idMapTexture.dispose();
+    }
+
+    // 使用当前canvas创建纹理
+    this.idMapTexture = Texture.create(this.engine, {
+      sourceType: TextureSourceType.image,
+      image: this.canvas,
+      flipY: true,
+    });
+
+    // 将 ID Map 纹理设置到材质
+    if (this.material && this.idMapTexture) {
+      this.material.setTexture('uIDMap', this.idMapTexture);
+      this.material.setFloat('uCharCount', this.text.length);
+    }
+
+    // 恢复canvas状态，以便于后续正常使用
+    context.restore();
+  }
+  /**
+   * 准备字符布局信息
+   * 被 updateTexture 和 generateIDMap 共同使用，减少代码重复
+   */
+  private prepareCharsInfoLayout (): {
+    charsInfo: CharInfo[],
+    context: CanvasRenderingContext2D,
+    style: TextStyle,
+    layout: TextLayout,
+    fontScale: number,
+    width: number,
+    height: number,
+    fontSize: number,
+    lineHeight: number,
+  } | null {
+    if (!this.context || !this.canvas) {
+      return null;
+    }
+
+    const context = this.context;
+    const style = this.textStyle;
+    const layout = this.textLayout;
+    const fontScale = style.fontScale;
+    const { width, height } = this.canvas;
+    const fontSize = style.fontSize * fontScale;
+    const lineHeight = layout.lineHeight * fontScale;
+
+    // 设置字体
+    style.fontDesc = this.getFontDesc(fontSize);
+    context.font = style.fontDesc;
+
+    // 计算字符布局
+    const charsInfo: CharInfo[] = [];
+    let x = 0;
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+    let charsArray: string[] = [];
+    let charOffsetX: number[] = [];
+
+    for (let i = 0; i < this.char.length; i++) {
+      const str = this.char[i];
+      const textMetrics = context.measureText(str);
+
+      // 和浏览器行为保持一致
+      x += layout.letterSpace * fontScale;
+
+      if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
+        charsInfo.push({
+          y,
+          width: x,
+          chars: charsArray,
+          charOffsetX,
+        });
+        x = 0;
+        y += lineHeight;
+        charsArray = [];
+        charOffsetX = [];
+      }
+
+      if (str !== '\n') {
+        charsArray.push(str);
+        charOffsetX.push(x);
+
+        x += textMetrics.width;
+      }
+    }
+
+    charsInfo.push({
+      y,
+      width: x,
+      chars: charsArray,
+      charOffsetX,
+    });
+
+    return {
+      charsInfo,
+      context,
+      style,
+      layout,
+      fontScale,
+      width,
+      height,
+      fontSize,
+      lineHeight,
+    };
+  }
+
+  /**
+     * 将HSV转换为RGB
+     * h: 0-360, s: 0-1, v: 0-1
+     * 返回: [r, g, b] 范围0-1
+     */
+  hsvToRgb (h: number, s: number, v: number): [number, number, number] {
+    const c = v * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = v - c;
+
+    let r = 0, g = 0, b = 0;
+
+    if (h < 60) {
+      [r, g, b] = [c, x, 0];
+    } else if (h < 120) {
+      [r, g, b] = [x, c, 0];
+    } else if (h < 180) {
+      [r, g, b] = [0, c, x];
+    } else if (h < 240) {
+      [r, g, b] = [0, x, c];
+    } else if (h < 300) {
+      [r, g, b] = [x, 0, c];
+    } else {
+      [r, g, b] = [c, 0, x];
+    }
+
+    return [r + m, g + m, b + m];
   }
 
   private getLineCount (text: string, init: boolean) {
@@ -438,12 +737,11 @@ export class TextComponentBase {
     const width = (layout.width + style.fontOffset) * fontScale;
     const finalHeight = layout.lineHeight * this.lineCount;
 
-    const fontSize = style.fontSize * fontScale;
-    const lineHeight = layout.lineHeight * fontScale;
-
-    style.fontDesc = this.getFontDesc(fontSize);
     this.char = (this.text || '').split('');
     this.canvas.width = width;
+    const height = this.canvas.height;
+
+    this.lineCount = this.getLineCount(this.text, false);
 
     if (layout.autoWidth) {
       this.canvas.height = finalHeight * fontScale;
@@ -451,8 +749,6 @@ export class TextComponentBase {
     } else {
       this.canvas.height = layout.height * fontScale;
     }
-
-    const height = this.canvas.height;
 
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
@@ -462,10 +758,9 @@ export class TextComponentBase {
       context.scale(1, -1);
     }
     // canvas size 变化后重新刷新 context
+    // TODO 看起来这个判断是导致 4.17 DIMA BUG 的原因
     if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
-    } else {
-      context.font = style.fontDesc;
+      context.font = this.getFontDesc(style.fontSize * fontScale * width / this.maxLineWidth);
     }
     context.clearRect(0, 0, width, height);
 
@@ -479,52 +774,20 @@ export class TextComponentBase {
 
     // 文本颜色
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
-    const charsInfo: CharInfo[] = [];
 
-    let x = 0;
-    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
-    let charsArray = [];
-    let charOffsetX = [];
+    // 获取布局信息
+    const layoutInfo = this.prepareCharsInfoLayout();
 
-    for (let i = 0; i < this.char.length; i++) {
-      const str = this.char[i];
-      const textMetrics = context.measureText(str);
+    if (!layoutInfo) { return; }
 
-      // 和浏览器行为保持一致
-      x += layout.letterSpace * fontScale;
+    const { charsInfo } = layoutInfo;
 
-      if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
-        charsInfo.push({
-          y,
-          width: x,
-          chars: charsArray,
-          charOffsetX,
-        });
-        x = 0;
-        y += lineHeight;
-        charsArray = [];
-        charOffsetX = [];
-      }
-
-      if (str !== '\n') {
-        charsArray.push(str);
-        charOffsetX.push(x);
-
-        x += textMetrics.width;
-      }
-    }
-    charsInfo.push({
-      y,
-      width: x,
-      chars: charsArray,
-      charOffsetX,
-    });
-
+    // 渲染字符
     charsInfo.forEach(charInfo => {
-      const x = layout.getOffsetX(style, charInfo.width);
+      const x = layoutInfo.layout.getOffsetX(layoutInfo.style, charInfo.width);
 
       charInfo.chars.forEach((str, i) => {
-        if (style.isOutlined) {
+        if (layoutInfo.style.isOutlined) {
           context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
         }
 
@@ -532,7 +795,7 @@ export class TextComponentBase {
       });
     });
 
-    if (style.hasShadow) {
+    if (layoutInfo.style.hasShadow) {
       context.shadowColor = 'transparent';
     }
 
@@ -558,6 +821,20 @@ export class TextComponentBase {
     this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
+
+    // TODO
+    // 先为正常文本创建纹理，然后再生成 ID Map
+
+    // // 保存当前图像状态
+    // const savedImageData = imageData;
+
+    // 生成 ID Map
+    this.generateIDMap();
+
+    // // 如果需要，可以恢复原始文本图像
+    // if (savedImageData) {
+    //   context.putImageData(savedImageData, 0, 0);
+    // }
   }
 
   private getFontDesc (size?: number): string {
