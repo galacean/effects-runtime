@@ -9,23 +9,23 @@ import { Blender } from '../blender';
 
 @nodeDataClass(NodeDataType.BlendNodeData)
 export class BlendNodeData extends GraphNodeData {
-  source0: number;
-  source1: number;
-  inputParameterValueNode: number;
+  sourceNodeIndex0: number;
+  sourceNodeIndex1: number;
+  inputParameterValueNodeIndex: number;
 
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(BlendNode, context);
 
-    node.source0 = context.getNode<PoseNode>(this.source0);
-    node.source1 = context.getNode<PoseNode>(this.source1);
-    node.inputParameterValueNode = context.getNode<FloatValueNode>(this.inputParameterValueNode);
+    node.source0 = context.getNode<PoseNode>(this.sourceNodeIndex0);
+    node.source1 = context.getNode<PoseNode>(this.sourceNodeIndex1);
+    node.inputParameterValueNode = context.getNode<FloatValueNode>(this.inputParameterValueNodeIndex);
   }
 
   override load (data: Spec.BlendNodeData): void {
     super.load(data);
-    this.source0 = data.sourceNodeIndex0;
-    this.source1 = data.sourceNodeIndex1;
-    this.inputParameterValueNode = data.inputParameterValueNodeIndex;
+    this.sourceNodeIndex0 = data.sourceNodeIndex0;
+    this.sourceNodeIndex1 = data.sourceNodeIndex1;
+    this.inputParameterValueNodeIndex = data.inputParameterValueNodeIndex;
   }
 }
 

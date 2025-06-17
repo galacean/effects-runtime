@@ -1,4 +1,3 @@
-import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Skeleton } from './reference-pose';
@@ -9,7 +8,7 @@ export class NodeTransform {
   position = new Vector3();
   rotation = new Quaternion();
   scale = new Vector3();
-  euler = new Euler();
+  euler = new Vector3();
 
   constructor (transform?: Transform) {
     if (transform) {
@@ -68,7 +67,7 @@ export class Pose {
     }
   }
 
-  setEuler (path: string, euler: Euler) {
+  setEuler (path: string, euler: Vector3) {
     const boneIndex = this.skeleton.pathToBoneIndex.get(path);
 
     if (boneIndex !== undefined) {

@@ -4,6 +4,7 @@ import type { Constructor } from '../../utils';
 export enum NodeDataType {
   AnimationClipNodeData = 'AnimationClipNodeData',
   BlendNodeData = 'BlendNodeData',
+  ApplyAdditiveNodeData = 'ApplyAdditiveNodeData',
 
   StateMachineNodeData = 'StateMachineNodeData',
   TransitionNodeData = 'TransitionNodeData',
@@ -63,6 +64,13 @@ export namespace Spec {
     type: NodeDataType.BlendNodeData,
     sourceNodeIndex0: number,
     sourceNodeIndex1: number,
+    inputParameterValueNodeIndex: number,
+  }
+
+  export interface ApplyAdditiveNodeData extends GraphNodeData {
+    type: NodeDataType.ApplyAdditiveNodeData,
+    baseNodeIndex: number,
+    additiveNodeIndex: number,
     inputParameterValueNodeIndex: number,
   }
 
