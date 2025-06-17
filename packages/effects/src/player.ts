@@ -346,6 +346,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
         if (this.disposed) {
+          compositions.length = 0;
+
           return;
         }
 
@@ -362,7 +364,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         autoplayFlags[index] = compositionAutoplay;
       }),
     );
-
     const compileStart = performance.now();
 
     await new Promise(resolve => {
