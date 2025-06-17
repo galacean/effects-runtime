@@ -1376,7 +1376,7 @@
                 {
                     "type": "StateNodeData",
                     "index": 3,
-                    "childNodeIndex": 4
+                    "childNodeIndex": 14
                 },
                 {
                     "type": "AnimationClipNodeData",
@@ -1437,6 +1437,30 @@
                     "type": "ConstBoolNodeData",
                     "index": 13,
                     "value": false
+                },
+                {
+                    "index": 14,
+                    "type": "ApplyAdditiveNodeData",
+                    "baseNodeIndex": 15,
+                    "additiveNodeIndex": 16,
+                    "inputParameterValueNodeIndex": 17
+                },
+                {
+                    "type": "AnimationClipNodeData",
+                    "index": 15,
+                    "playRate": 2,
+                    "dataSlotIndex": 0
+                },
+                {
+                    "type": "AnimationClipNodeData",
+                    "index": 16,
+                    "playRate": 2,
+                    "dataSlotIndex": 0
+                },
+                {
+                    "index": 17,
+                    "type": "ConstFloatNodeData",
+                    "value": 1.5
                 }
             ],
             "graphDataSet": {
