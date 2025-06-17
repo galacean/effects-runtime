@@ -2,7 +2,7 @@ import type { Player, Disposable } from '@galacean/effects';
 import { StatsComponent } from './stats-component';
 
 /**
- *
+ * Options for the Stats plugin.
  */
 export interface StatsOptions {
   /**
@@ -100,14 +100,14 @@ const json = {
 };
 
 /**
- *
+ * Stats plugin for the Player.
  */
 export class Stats implements Disposable {
   private component?: StatsComponent;
   private disposed = false;
 
   /**
-   *
+   * Create a new Stats instance.
    * @param player
    * @param options
    */
@@ -132,14 +132,32 @@ export class Stats implements Disposable {
     }
   }
 
+  /**
+   * Get the stats component.
+   * @returns
+   */
+  getComponent () {
+    return this.component;
+  }
+
+  /**
+   * Hide the stats monitor.
+   */
   hide () {
     this.component?.monitor.hide();
   }
 
+  /**
+   * Show the stats monitor.
+   */
   show () {
     this.component?.monitor.show();
   }
 
+  /**
+   * Dispose the stats component and release resources.
+   * @returns
+   */
   dispose () {
     if (this.disposed) {
       return;

@@ -58,8 +58,15 @@ const css = `
   }
 `;
 
+/**
+ * Performance monitor.
+ */
 export class Monitor implements Disposable {
-  private core: Core;
+  /**
+   * The core of the monitor, which handles the performance data collection.
+   */
+  core: Core;
+
   private doms: HTMLElement[];
   private container: HTMLElement;
   private readonly items = ['fps', 'memory', 'drawCall', 'triangles', 'textures', 'shaders', 'programs', 'webglContext'];
@@ -77,6 +84,11 @@ export class Monitor implements Disposable {
     webglContext: '2.0',
   };
 
+  /**
+   * Create a new Monitor instance.
+   * @param gl
+   * @param options
+   */
   constructor (
     gl: WebGLRenderingContext | WebGL2RenderingContext,
     private readonly options: Required<StatsOptions>,
@@ -132,10 +144,16 @@ export class Monitor implements Disposable {
     }
   }
 
+  /**
+   * Hide the monitor
+   */
   hide (): void {
     this.container.style.display = 'none';
   }
 
+  /**
+   * Show the monitor
+   */
   show (): void {
     this.container.style.display = 'block';
   }
