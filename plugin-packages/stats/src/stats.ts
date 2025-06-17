@@ -1,4 +1,5 @@
 import type { Player, Disposable } from '@galacean/effects';
+import { Deferred } from '@galacean/effects';
 import { StatsComponent } from './stats-component';
 
 /**
@@ -101,10 +102,38 @@ const json = {
 
 /**
  * Stats plugin for the Player.
+ *
+ * @example
+ * ```ts
+ * // Simple usage of Stats plugin
+ * import { Stats } from '@galacean/effects-plugin-stats';
+ *
+ * const stats = new Stats(player);
+ * // Hide the stats monitor
+ * stats.hide();
+ * // Show the stats monitor
+ * stats.show();
+ * ```
+ *
+ * @example
+ * ```ts
+ * // 自定义 Stats 组件的 onUpdate 方法
+ * // 可用于在每帧更新时获取性能数据
+ * const stats = new Stats(player, { visible: false });
+ * const [_, component] = await Promise.all([
+ *   player.loadScene(json),
+ *   stats.getComponent(),
+ * ]);
+ *
+ * component?.monitor.on('update', data => {
+ *   console.info(data);
+ * });
+ * ```
  */
 export class Stats implements Disposable {
   private component?: StatsComponent;
   private disposed = false;
+  protected readonly initialized = new Deferred<void>();
 
   /**
    * Create a new Stats instance.
@@ -129,6 +158,8 @@ export class Stats implements Disposable {
       }
     } catch (e: any) {
       throw new Error(`Failed to load stats scene: ${e.message}.`);
+    } finally {
+      this.initialized.resolve();
     }
   }
 
@@ -136,7 +167,9 @@ export class Stats implements Disposable {
    * Get the stats component.
    * @returns
    */
-  getComponent () {
+  async getComponent () {
+    await this.initialized.promise;
+
     return this.component;
   }
 

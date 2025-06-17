@@ -1,4 +1,5 @@
 import type { Disposable } from '@galacean/effects';
+import { EventEmitter } from '@galacean/effects';
 import type { PerformanceData } from './core';
 import { Core } from './core';
 import type { StatsOptions } from './stats';
@@ -59,9 +60,16 @@ const css = `
 `;
 
 /**
+ * Performance monitor event type.
+ */
+export type MonitorEvent = {
+  ['update']: [data: PerformanceData],
+};
+
+/**
  * Performance monitor.
  */
-export class Monitor implements Disposable {
+export class Monitor extends EventEmitter<MonitorEvent> implements Disposable {
   /**
    * The core of the monitor, which handles the performance data collection.
    */
@@ -70,6 +78,7 @@ export class Monitor implements Disposable {
   private doms: HTMLElement[];
   private container: HTMLElement;
   private readonly items = ['fps', 'memory', 'drawCall', 'triangles', 'textures', 'shaders', 'programs', 'webglContext'];
+  private visible = false;
 
   private data: PerformanceData = {
     fps: 60,
@@ -93,7 +102,10 @@ export class Monitor implements Disposable {
     gl: WebGLRenderingContext | WebGL2RenderingContext,
     private readonly options: Required<StatsOptions>,
   ) {
+    super();
+
     this.core = new Core(gl, options.debug);
+    this.visible = options.visible;
 
     this.createContainer();
     this.update = this.update.bind(this);
@@ -103,7 +115,7 @@ export class Monitor implements Disposable {
     const container = document.createElement('div');
 
     this.container = container;
-    if (!this.options.visible) {
+    if (!this.visible) {
       this.hide();
     }
     container.classList.add('gl-perf');
@@ -132,6 +144,12 @@ export class Monitor implements Disposable {
       return;
     }
 
+    this.emit('update', data);
+
+    if (!this.visible) {
+      return;
+    }
+
     for (let i = 0, l = this.items.length; i < l; i++) {
       const dom = this.doms[i];
       const item = this.items[i];
@@ -148,6 +166,7 @@ export class Monitor implements Disposable {
    * Hide the monitor
    */
   hide (): void {
+    this.visible = false;
     this.container.style.display = 'none';
   }
 
@@ -155,6 +174,7 @@ export class Monitor implements Disposable {
    * Show the monitor
    */
   show (): void {
+    this.visible = true;
     this.container.style.display = 'block';
   }
 
