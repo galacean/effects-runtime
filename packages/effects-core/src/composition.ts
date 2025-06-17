@@ -578,12 +578,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对0时刻的时间
    */
   private forwardTime (time: number) {
-    const deltaTime = time * 1000 - this.rootComposition.time * 1000;
+    const deltaTime = time * 1000 - this.time * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
     let t = Math.abs(deltaTime);
     const ss = reverse ? -step : step;
 
+    // FIXME Update 中可能会修改合成时间，这边需要优化更新逻辑
     for (t; t > step; t -= step) {
       this.update(ss);
     }
@@ -629,15 +630,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.rootItem.beginPlay();
     }
 
-    const dt = parseFloat(this.getUpdateTime(deltaTime * this.speed).toFixed(0));
+    const previousCompositionTime = this.time;
 
-    this.updateRootComposition(dt / 1000);
+    this.updateCompositionTime(deltaTime * this.speed / 1000);
+    const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
+
     this.updateVideo();
     // 更新 model-tree-plugin
-    this.updatePluginLoaders(deltaTime);
+    this.updatePluginLoaders(deltaTimeInMs);
 
-    this.sceneTicking.update.tick(dt);
-    this.sceneTicking.lateUpdate.tick(dt);
+    this.sceneTicking.update.tick(deltaTimeInMs);
+    this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
 
     this.updateCamera();
     this.prepareRender();
@@ -653,17 +656,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private shouldDispose () {
     return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
-  }
-
-  private getUpdateTime (t: number) {
-    const startTimeInMs = this.startTime * 1000;
-    const now = this.rootComposition.time * 1000;
-
-    if (t < 0 && (now + t) < startTimeInMs) {
-      return startTimeInMs - now;
-    }
-
-    return t;
   }
 
   private callAwake (item: VFXItem) {
@@ -711,16 +703,22 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 更新主合成组件
    */
-  private updateRootComposition (deltaTime: number) {
+  private updateCompositionTime (deltaTime: number) {
     if (this.rootComposition.state === PlayState.Paused || !this.rootComposition.isActiveAndEnabled) {
       return;
     }
 
-    let localTime = parseFloat((this.time + deltaTime - this.rootItem.start).toFixed(3));
-    let isEnded = false;
+    // 相对于合成开始时间的时间
+    let localTime = this.time + deltaTime - this.startTime;
+
+    if (deltaTime < 0 && localTime < 0) {
+      localTime = 0;
+    }
 
     const duration = this.rootItem.duration;
     const endBehavior = this.rootItem.endBehavior;
+
+    let isEnded = false;
 
     if (localTime - duration > 0.001) {
 
@@ -749,7 +747,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     }
 
-    this.rootComposition.time = localTime;
+    this.rootComposition.time = localTime + this.startTime;
 
     // end state changed, handle onEnd flags
     if (this.isEnded !== isEnded) {
