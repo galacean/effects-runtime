@@ -7,6 +7,7 @@ export * from './image-data';
 export * from './sortable';
 export * from './asserts';
 export * from './text';
+export * from './promise-util';
 export * from './logger';
 
 export type Immutable<O> = O extends Record<any, any>
