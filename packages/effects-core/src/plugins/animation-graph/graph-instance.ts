@@ -12,7 +12,11 @@ import { effectsClass } from '../../decorators';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
 import type { NodeDataType, Spec } from './node-asset-type';
 import { getNodeDataClass } from './node-asset-type';
-import type { ControlParameterBoolNode, ControlParameterFloatNode } from './nodes/control-parameter-nodes';
+import type {
+  ControlParameterBoolNode,
+  ControlParameterFloatNode,
+  ControlParameterTriggerNode,
+} from './nodes/control-parameter-nodes';
 
 export class GraphInstance {
   nodes: GraphNode[] = [];
@@ -154,6 +158,14 @@ export class GraphInstance {
 
     if (index !== InvalidIndex) {
       (this.nodes[index] as ControlParameterFloatNode).setValue(value);
+    }
+  }
+
+  fire (name: string) {
+    const index = this.getControlParameterIndex(name);
+
+    if (index !== InvalidIndex) {
+      (this.nodes[index] as ControlParameterTriggerNode).fire();
     }
   }
 

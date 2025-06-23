@@ -15,6 +15,7 @@ export enum NodeDataType {
 
   ControlParameterBoolNodeData = 'ControlParameterBoolNodeData',
   ControlParameterFloatNodeData = 'ControlParameterFloatNodeData',
+  ControlParameterTriggerNodeData = 'ControlParameterTriggerNodeData',
 
   NotNodeData = 'NotNodeData',
   AndNodeData = 'AndNodeData',

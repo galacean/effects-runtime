@@ -28,6 +28,12 @@ export class Animator extends Component {
     }
   }
 
+  fire (name: string) {
+    if (this.graph) {
+      this.graph.fire(name);
+    }
+  }
+
   override onStart (): void {
     if (this.graphAsset) {
       this.graph = new GraphInstance(this.graphAsset, this.item);
