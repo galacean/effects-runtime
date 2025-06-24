@@ -1,21 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>single - demo</title>
-  <style>
-    html, body, div, canvas { margin: 0; padding: 0; }
-    .container {
-      width: 375px;
-      height: 812px;
-      background-color: rgba(0,0,0,255);
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Polyline from Coordinates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-<div class="container" id="J-container"></div>
+    <h1>Draw Polyline from Coordinates</h1>
+    
+    <label for="coordinates">Enter coordinates: </label>
+    <input type="text" id="coordinates" placeholder="e.g. 50,50,150,150,250,100">
+    <button onclick="getCoordinates()">Draw Polyline</button>
 
-<script type="module" src="../src/single.ts"></script>
+    <canvas id="canvas" width="500" height="500"></canvas>
 </body>
+<script type="module" src="../src/single.ts"></script>
 </html>
