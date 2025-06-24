@@ -66,3 +66,38 @@ export class ControlParameterBoolNode extends FloatValueNode {
     this.value = value as boolean;
   }
 }
+
+@nodeDataClass(NodeDataType.ControlParameterTriggerNodeData)
+export class ControlParameterTriggerNodeData extends GraphNodeData {
+  private value = false;
+
+  override instantiate (context: InstantiationContext) {
+    const node = this.createNode(ControlParameterTriggerNode, context);
+
+    node.setValue(this.value);
+  }
+
+  override load (data: Spec.ControlParameterBoolNodeData): void {
+    super.load(data);
+    this.value = data.value;
+  }
+}
+
+export class ControlParameterTriggerNode extends FloatValueNode {
+  private value = false;
+
+  override getValue<T>(context: GraphContext): T {
+    if (!this.isUpdated(context)) {
+      this.markNodeActive(context);
+    }
+
+    return this.value as T;
+  }
+
+  fire (): void {
+    this.value = true;
+    window.requestAnimationFrame(() => {
+      this.value = false;
+    });
+  }
+}
