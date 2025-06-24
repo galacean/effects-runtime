@@ -1,12 +1,12 @@
-import type { GLType } from '@galacean/effects';
+import type { GLType, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-rich-text';
 import { TestController, ImageComparator, getCurrnetTimeStr } from '../common';
 import sceneList from './assets/dynamic';
 
 const { expect } = chai;
 // 使用 Canvas 2D 每次渲染出的图都不一致，阈值提高到 2%
-const accumRatioThreshold = 0.02;
-const pixelDiffThreshold = 10;
+const accumRatioThreshold = 2e-4;
+const pixelDiffThreshold = 1;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller: TestController;
@@ -28,21 +28,21 @@ function addDescribe (renderFramework: GLType, i: number) {
     });
 
     Object.keys(sceneList).forEach((key, j) => {
-      const { name, url } = sceneList[key as keyof typeof sceneList];
+      const { name, url, variables } = sceneList[key as keyof typeof sceneList];
 
-      void checkScene(key, name, url, [i, j]);
+      void checkScene(key, name, url, variables, [i, j]);
     });
   });
 }
 
-async function checkScene (keyName: string, name: string, url: string, idx: [number, number]) {
+async function checkScene (keyName: string, name: string, url: string, variables: spec.TemplateVariables, idx: [number, number]) {
   it(`${name}`, async () => {
     console.info(`[Test] Compare begin: ${name}, ${url}`);
 
     const { oldPlayer, newPlayer, renderFramework } = controller;
 
-    await oldPlayer.initialize(url);
-    await newPlayer.initialize(url);
+    await oldPlayer.initialize(url, { variables });
+    await newPlayer.initialize(url, { variables });
 
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
