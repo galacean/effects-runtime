@@ -52,7 +52,7 @@ export class BlendNode extends PoseNode {
     this.source0?.shutdown(context);
     this.source1?.shutdown(context);
     this.inputParameterValueNode?.shutdown(context);
-    super.shutdown(context);
+    super.shutdownInternal(context);
   }
 
   override evaluate (context: GraphContext, result: PoseResult): PoseResult {

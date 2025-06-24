@@ -28,9 +28,15 @@ export class Animator extends Component {
     }
   }
 
-  fire (name: string) {
+  setTrigger (name: string) {
     if (this.graph) {
-      this.graph.fire(name);
+      this.graph.setTrigger(name);
+    }
+  }
+
+  resetTrigger (name: string) {
+    if (this.graph) {
+      this.graph.resetTrigger(name);
     }
   }
 

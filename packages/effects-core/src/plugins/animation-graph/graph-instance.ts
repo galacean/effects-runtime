@@ -12,9 +12,7 @@ import { effectsClass } from '../../decorators';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
 import type { NodeDataType, Spec } from './node-asset-type';
 import { getNodeDataClass } from './node-asset-type';
-import type {
-  ControlParameterBoolNode,
-  ControlParameterFloatNode,
+import {
   ControlParameterTriggerNode,
 } from './nodes/control-parameter-nodes';
 
@@ -91,8 +89,18 @@ export class GraphInstance {
       this.resetGraphState();
     }
 
+    // Evaluate the entire animation graph starting from the rootNode
     if (this.rootNode) {
       this.result = this.rootNode.evaluate(this.context, this.result);
+    }
+
+    // Reset trigger nodes
+    for (let i = 0;i < this.getNumControlParameters();i++) {
+      const controlParameterNode = this.nodes[i];
+
+      if (controlParameterNode instanceof ControlParameterTriggerNode) {
+        controlParameterNode.setValue(false);
+      }
     }
 
     return this.result;
@@ -146,27 +154,19 @@ export class GraphInstance {
   }
 
   setBool (name: string, value: boolean) {
-    const index = this.getControlParameterIndex(name);
-
-    if (index !== InvalidIndex) {
-      (this.nodes[index] as ControlParameterBoolNode).setValue(value);
-    }
+    this.setControlParameterValue<boolean>(name, value);
   }
 
   setFloat (name: string, value: number) {
-    const index = this.getControlParameterIndex(name);
-
-    if (index !== InvalidIndex) {
-      (this.nodes[index] as ControlParameterFloatNode).setValue(value);
-    }
+    this.setControlParameterValue<number>(name, value);
   }
 
-  fire (name: string) {
-    const index = this.getControlParameterIndex(name);
+  setTrigger (name: string) {
+    this.setControlParameterValue<boolean>(name, true);
+  }
 
-    if (index !== InvalidIndex) {
-      (this.nodes[index] as ControlParameterTriggerNode).fire();
-    }
+  resetTrigger (name: string) {
+    this.setControlParameterValue<boolean>(name, false);
   }
 
   // Debug Information
@@ -179,9 +179,9 @@ export class GraphInstance {
   }
 
   getRuntimeNodeDebugValue<T>(nodeIdx: number): T {
-    const pValueNode = this.nodes[nodeIdx] as ValueNode;
+    const valueNode = this.nodes[nodeIdx] as ValueNode;
 
-    return pValueNode.getValue<T>(this.context);
+    return valueNode.getValue<T>(this.context);
   }
 
   getNodeDebugInstance (nodeIdx: number): GraphNode {
@@ -190,6 +190,14 @@ export class GraphInstance {
 
   private isControlParameter (nodeIdx: number) {
     return nodeIdx < this.getNumControlParameters();
+  }
+
+  private setControlParameterValue<T> (name: string, value: T) {
+    const index = this.getControlParameterIndex(name);
+
+    if (index !== InvalidIndex) {
+      (this.nodes[index] as ValueNode).setValue(value);
+    }
   }
 }
 

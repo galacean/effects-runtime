@@ -1323,9 +1323,8 @@
         {
             "nodeDatas": [
                 {
-                    "type": "ControlParameterBoolNodeData",
-                    "index": 0,
-                    "value": false
+                    "type": "ControlParameterTriggerNodeData",
+                    "index": 0
                 },
                 {
                     "type": "StateMachineNodeData",
@@ -1349,7 +1348,7 @@
                             "stateNodeIndex": 5,
                             "transitionDatas": [
                                 {
-                                    "targetStateIndex": 3,
+                                    "targetStateIndex": 1,
                                     "conditionNodeIndex": 11,
                                     "transitionNodeIndex": 10
                                 }
@@ -1415,9 +1414,9 @@
                 {
                     "type": "TransitionNodeData",
                     "index": 10,
-                    "targetStateNodeIndex": 7,
+                    "targetStateNodeIndex": 3,
                     "duration": 2,
-                    "hasExitTime": false,
+                    "hasExitTime": true,
                     "exitTime": 0.75
                 },
                 {

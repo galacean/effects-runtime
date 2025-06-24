@@ -50,7 +50,7 @@ export class ApplyAdditiveNode extends PoseNode {
     this.baseNode?.shutdown(context);
     this.additiveNode?.shutdown(context);
     this.inputParameterValueNode?.shutdown(context);
-    super.shutdown(context);
+    super.shutdownInternal(context);
   }
 
   override evaluate (context: GraphContext, result: PoseResult): PoseResult {

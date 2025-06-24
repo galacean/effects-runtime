@@ -1,5 +1,5 @@
 import type { Spec } from '../..';
-import { NodeDataType } from '../..';
+import { BoolValueNode, NodeDataType } from '../..';
 import { FloatValueNode, GraphNodeData, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
@@ -69,21 +69,16 @@ export class ControlParameterBoolNode extends FloatValueNode {
 
 @nodeDataClass(NodeDataType.ControlParameterTriggerNodeData)
 export class ControlParameterTriggerNodeData extends GraphNodeData {
-  private value = false;
-
   override instantiate (context: InstantiationContext) {
-    const node = this.createNode(ControlParameterTriggerNode, context);
-
-    node.setValue(this.value);
+    this.createNode(ControlParameterTriggerNode, context);
   }
 
-  override load (data: Spec.ControlParameterBoolNodeData): void {
+  override load (data: Spec.ControlParameterTriggerNodeData): void {
     super.load(data);
-    this.value = data.value;
   }
 }
 
-export class ControlParameterTriggerNode extends FloatValueNode {
+export class ControlParameterTriggerNode extends BoolValueNode {
   private value = false;
 
   override getValue<T>(context: GraphContext): T {
@@ -94,10 +89,7 @@ export class ControlParameterTriggerNode extends FloatValueNode {
     return this.value as T;
   }
 
-  fire (): void {
-    this.value = true;
-    window.requestAnimationFrame(() => {
-      this.value = false;
-    });
+  override setValue<T>(value: T): void {
+    this.value = value as boolean;
   }
 }

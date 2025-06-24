@@ -109,6 +109,10 @@ export namespace Spec {
     value: boolean,
   }
 
+  export interface ControlParameterTriggerNodeData extends GraphNodeData {
+    type: NodeDataType.ControlParameterTriggerNodeData,
+  }
+
   export interface FloatComparisonNodeData extends GraphNodeData {
     inputValueNodeIndex: number,
     comparandValueNodeIndex: number,
