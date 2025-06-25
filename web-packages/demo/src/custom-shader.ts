@@ -7,7 +7,7 @@ import AudioSimulator, { AudioStage } from './simulator-audio';
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*piz4QagroQ0AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 
-// UI控制参数，新增消隐速度
+// UI控制参数，新增消隐速度和uFadeOffset
 const shaderParams = {
   amplitude: 1.0,
   blend: 0.5,
@@ -32,6 +32,7 @@ const shaderParams = {
   uFadeProgressMask: 0.0,   // 新增
   fadeSpeedGlobal: 0.005,   // 新增
   fadeSpeedMask: 0.008,     // 新增
+  uFadeOffset: 0.0,         // 新增
 };
 
 const vertex = `
@@ -74,6 +75,8 @@ uniform float uHeightPower;
 uniform float uRevealEdge;
 uniform float uFadeProgressGlobal; // 新增
 uniform float uFadeProgressMask;   // 新增
+uniform float uFadeOffset; // 控制消隐横坐标偏移
+uniform float uFadeMode; // 0: 淡入, 1: 淡出, 2: 全显
 
 vec3 acesToneMapping(vec3 color) {
   const float a = 2.51;
@@ -165,17 +168,25 @@ void main() {
   float audioData = texture2D(uAudioTexture, vec2(uvCoord.x, 0.5)).r;
   
 
-  float edge = min(uRevealEdge, uAudioInfluence );
-  float revealMask = smoothstep(1.0 - uAudioInfluence - edge, 1.0 - uAudioInfluence, uvCoord.x);
+  //float edge = min(uRevealEdge, uAudioInfluence );
+  //float revealMask = smoothstep(1.0 - uAudioInfluence - edge, 1.0 - uAudioInfluence, uvCoord.x);
   
-  float dynamicTimeSpeed = mix(0.1, 1.0, uAudioInfluence); // revealMask 越大，速度越快
+  //float dynamicTimeSpeed = mix(0.1, 1.0, uAudioInfluence); // revealMask 越大，速度越快
   float time = _Time.y * uTimeSpeed ; 
 
   float wavePhase = uvCoord.x * uNoiseScale + time * 0.1;
   
-  vec3 rampColor = getColorFromGradient(wavePhase);
-  
-  float height = snoise(vec2(wavePhase, time * 0.25)) * 0.5 * uAmplitude;
+  float offset1 = 0.2;
+  float offset2 = 0.4;
+  vec3 colorA = getColorFromGradient(wavePhase);
+  vec3 colorB = getColorFromGradient(wavePhase + offset1);
+  vec3 colorC = getColorFromGradient(wavePhase + offset2);
+
+  vec3 rampColor = mix(mix(colorA, colorB, uAudioInfluence), colorC, uAudioInfluence * 0.5);
+
+  float baseNoise = snoise(vec2(wavePhase, time * 0.25)) * 0.5 * uAmplitude;
+  // 用uAudioInfluence控制起伏幅度，0时无起伏，1时最大起伏
+  float height = mix(0.5*baseNoise, baseNoise, uAudioInfluence);
 
   float normHeight = (height + uAmplitude * 0.5) / uAmplitude;
   normHeight = pow(normHeight, 1.0 / uHeightPower);
@@ -191,7 +202,8 @@ void main() {
   float edge1 = max(uMidPoint + uBlend * 0.5, maxIntensity);
   float auroraAlpha = smoothstep(edge0, edge1, intensity);
   
-  vec3 auroraColor =  rampColor*(1.0 + uAudioInfluence) ;
+  vec3 auroraColor = rampColor * (1.0 + uAudioInfluence);
+  auroraColor = acesToneMapping(auroraColor); // 限制高亮，防止过曝
 
   //从右往左显现
 
@@ -201,19 +213,43 @@ void main() {
 
 
 
-  // 右到左显隐遮罩（用uFadeProgressMask控制）
-  float fadeEdge = 0.05;
-  float fadeOutMask = 1.0 - smoothstep(1.0 - uFadeProgressMask - fadeEdge, 1.0 - uFadeProgressMask, uvCoord.x );
+  // 右到左淡出遮罩
+  float fadeEdge = 0.00;
+  float fadeOutMask = 1.0 - smoothstep(1.0 - uFadeProgressMask - fadeEdge, 1.0 - uFadeProgressMask, uvCoord.x);
 
-  // 整体消隐（用uFadeProgressGlobal控制）
-  float fade = pow(uFadeProgressGlobal, 2.0);
+  // 右到左淡入遮罩（与淡出相反，uFadeProgressMask从1到0时显现）
+  float fadeInMask = smoothstep(1.0 - uFadeProgressMask - fadeEdge, 1.0 - uFadeProgressMask, uvCoord.x);
 
-  // 叠加遮罩
-  float totalfade = fadeOutMask * (1.0 - fade);
+  // 你可以选择用哪个mask，或两者结合
+  // auroraAlpha *= fadeInMask; // 只用淡入
+  // auroraAlpha *= fadeOutMask; // 只用淡出
+  // auroraAlpha *= fadeInMask * fadeOutMask; // 叠加
 
-  //auroraAlpha *= totalfade;
+  // 推荐：淡入淡出都支持
+  auroraAlpha *=  fadeOutMask;
 
-  gl_FragColor = vec4(rampColor * auroraAlpha, auroraAlpha);
+  // 整体消隐（用uFadeProgressGlobal和uFadeOffset控制）
+//float fadeCoord = clamp((uvCoord.x - uFadeOffset) / (1.0 - uFadeOffset), 0.0, 1.0);
+  float fade = pow(mix(uFadeProgressGlobal, 1.0, uvCoord.x - uFadeOffset), 2.0);
+
+
+    // 叠加遮罩
+    float totalfade = (1.0 - fade);
+
+    auroraAlpha *= totalfade;
+
+    float mask = 1.0;
+    if (uFadeMode < 0.5) {
+      mask = fadeInMask;
+    } else if (uFadeMode < 1.5) {
+      mask = fadeOutMask;
+    } else {
+      mask = 1.0;
+    }
+
+    auroraAlpha *= mask;
+
+    gl_FragColor = vec4(auroraAlpha*auroraColor, auroraAlpha);
 }
 `;
 
@@ -234,7 +270,7 @@ function rgbToHex (r: number, g: number, b: number) {
   return '#' + ((1 << 24) + (Math.round(r * 255) << 16) + (Math.round(g * 255) << 8) + Math.round(b * 255)).toString(16).slice(1);
 }
 
-// 创建UI控制面板，新增消隐速度滑块
+// 创建UI控制面板，新增消隐速度和uFadeOffset滑块
 function createControlPanel () {
   const existingPanel = document.getElementById('control-panel');
 
@@ -346,7 +382,7 @@ function createControlPanel () {
       <h3>音频效果</h3>
       <div class="control-item">
         <label for="amplitude">Amplitude (振幅)</label>
-        <input type="range" id="amplitude" min="0" max="3" step="0.1" value="1.0">
+        <input type="range" id="amplitude" min="0" max="3" step="0.01" value="1.0">
         <div class="value-display" id="amplitude-value">1.0</div>
       </div>
       <div class="control-item">
@@ -423,20 +459,13 @@ function createControlPanel () {
         <input type="range" id="fadeSpeedMask" min="0.001" max="0.05" step="0.001" value="0.008">
         <div class="value-display" id="fadeSpeedMask-value">0.008</div>
       </div>
+      <div class="control-item">
+        <label for="uFadeOffset">消隐横坐标偏移 (uFadeOffset)</label>
+        <input type="range" id="uFadeOffset" min="0" max="0.95" step="0.01" value="0.0">
+        <div class="value-display" id="uFadeOffset-value">0.00</div>
+      </div>
     </div>
-    <div class="control-group">
-      <h3>颜色渐变</h3>
-      <div class="control-item">
-        <label for="colorStop0">Color Stop 0 (起始色)</label>
-        <input type="color" id="colorStop0" class="color-input" value="#FF7B24">
-      </div>
-      <div class="control-item">
-        <label for="colorStop1">Color Stop 1 (中间色)</label>
-        <input type="color" class="color-input" id="colorStop1" value="#7dff66">
-      </div>
-      <div class="control-item">
-        <label for="colorStop2">Color Stop 2 (结束色)</label>
-        <input type="color" class="color-input" id="colorStop2" value="#22E5FF">
+    <div class="control
       </div>
     </div>
     <div class="control-item">
@@ -455,13 +484,13 @@ function createControlPanel () {
   document.body.appendChild(panel);
 }
 
-// 初始化UI控制，支持消隐速度
+// 初始化UI控制，支持uFadeOffset
 function initializeControls () {
   const controls = [
     'amplitude', 'audioInfluence', 'audioMultiplier', 'blend', 'timeSpeed',
     'noiseScale', 'heightMultiplier', 'midPoint', 'intensityMultiplier', 'yOffset',
     'heightPower', 'minIntensity', 'maxIntensity', 'uRevealEdge',
-    'fadeSpeedGlobal', 'fadeSpeedMask', // 新增
+    'fadeSpeedGlobal', 'fadeSpeedMask', 'uFadeOffset', // 新增
   ];
 
   controls.forEach(controlName => {
@@ -516,23 +545,24 @@ function initializeControls () {
   });
 }
 
-// 重置为默认值，支持消隐速度
+// 重置为默认值，支持uFadeOffset
 function resetToDefaults () {
   const defaults = {
-    amplitude: 0.50,
+    amplitude: 0.150,
     audioInfluence:1.10,
     audioMultiplier: 4.0,
-    blend: 3.250,
-    timeSpeed: 1.9,
+    blend: 3.70,
+    timeSpeed: 2.1,
     noiseScale: 0.90,
-    heightMultiplier: 2.8,
+    heightMultiplier: 3.9,
     midPoint: 0.86,
-    intensityMultiplier: 0.9,
-    yOffset: 0.14,
-    heightPower: 3.9,
+    intensityMultiplier: 1.5,
+    yOffset: 0.48,
+    heightPower: 0.58,
     uRevealEdge: 0.299,
     fadeSpeedGlobal: 0.005,
     fadeSpeedMask: 0.008,
+    uFadeOffset: 0.0, // 新增
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -543,6 +573,7 @@ function resetToDefaults () {
       slider.value = value.toString();
       valueDisplay.textContent = Number(value).toFixed(3);
 
+      // 统一生成 uniform 名称
       const uniformName = key.startsWith('u') ? key : `u${key.charAt(0).toUpperCase() + key.slice(1)}`;
 
       if (key !== 'fadeSpeedGlobal' && key !== 'fadeSpeedMask') {
@@ -550,12 +581,15 @@ function resetToDefaults () {
           material.setFloat(uniformName, value);
         });
       }
+
+      // 更新本地参数，确保 shaderParams 也同步
+      (shaderParams as any)[key] = value;
     }
   });
 
   // 重置颜色
   const defaultColors = [
-    '#FF5B24', '#7dff66', '#1AFFC6',
+    '#00FFBF', '#00FF04', '#00FFBF',
   ];
 
   defaultColors.forEach((hex, index) => {
@@ -719,37 +753,76 @@ function togglePanel () {
 
       const avgAmplitude = audioData.floatData.reduce((a: number, b: number) => a + b, 0) / audioData.frequencyBands;
       const bassLevel = audioData.floatData.slice(0, 13).reduce((a: number, b: number) => a + b, 0) / 13;
+
       //打印avgAmplitude
       console.log('avgAmplitude:', avgAmplitude);
       wasSpeaking = isSpeaking;
       isSpeaking = avgAmplitude > fadeThreshold;
 
-      // 控制fadeProgressGlobal和fadeProgressMask
-      if (isSpeaking) {
-        fadeProgressGlobal = 0;
-        fadeProgressMask = 0;
-      } else {
-        // 读取UI的速度参数
-        const fadeSpeedGlobal = shaderParams.fadeSpeedGlobal;
-        const fadeSpeedMask = shaderParams.fadeSpeedMask;
-
-        if (fadeProgressMask < 1) {
-          fadeProgressMask += fadeSpeedMask;
-          if (fadeProgressMask > 1) {fadeProgressMask = 1;}
-        }
-        // 整体消隐稍慢一点
-        if (fadeProgressGlobal < 1) {
-          fadeProgressGlobal += fadeSpeedGlobal;
-          if (fadeProgressGlobal > 1) {fadeProgressGlobal = 1;}
+      // 状态切换
+      if (!wasSpeaking && isSpeaking) {
+        // 静默->说话，触发淡入
+        speakState = SpeakState.FadeIn;
+      } else if (wasSpeaking && isSpeaking) {
+        // 说话中
+        if (speakState !== SpeakState.Speaking) {speakState = SpeakState.Speaking;}
+      } else if (wasSpeaking && !isSpeaking) {
+        // 说话->静默，触发淡出
+        speakState = SpeakState.FadeOut;
+      } else if (!wasSpeaking && !isSpeaking) {
+        // 静默
+        if (speakState !== SpeakState.FadeOut && speakState !== SpeakState.FadeIn) {
+          speakState = SpeakState.Idle;
         }
       }
+      //打印speakState
+      console.log('speakState:', SpeakState[speakState]);
 
+      // 状态驱动淡入淡出
+      if (speakState === SpeakState.FadeIn) {
+        fadeProgressGlobal -= shaderParams.fadeSpeedGlobal;
+        fadeProgressMask -= shaderParams.fadeSpeedMask;
+        if (fadeProgressGlobal < 0) {fadeProgressGlobal = 0;}
+        if (fadeProgressMask < 0) {fadeProgressMask = 0;}
+        // 完全淡入后切换到说话中
+        if (fadeProgressGlobal === 0 && fadeProgressMask === 0) {
+          speakState = SpeakState.Speaking;
+        }
+      } else if (speakState === SpeakState.Speaking) {
+        fadeProgressGlobal = 0;
+        fadeProgressMask = 0;
+      } else if (speakState === SpeakState.FadeOut) {
+        if (fadeProgressMask < 1) {
+          fadeProgressMask += shaderParams.fadeSpeedMask;
+          if (fadeProgressMask > 1) {fadeProgressMask = 1;}
+        }
+        if (fadeProgressGlobal < 1) {
+          fadeProgressGlobal += shaderParams.fadeSpeedGlobal;
+          if (fadeProgressGlobal > 1) {fadeProgressGlobal = 1;}
+        }
+        // 完全淡出后切换到Idle
+        if (fadeProgressGlobal === 1 && fadeProgressMask === 1) {
+          speakState = SpeakState.Idle;
+        }
+      } else if (speakState === SpeakState.Idle) {
+        fadeProgressGlobal = 1;
+        fadeProgressMask = 1;
+      }
+
+      // 0: 淡入，1: 淡出，其他（比如2）: 全显
+      let fadeMode = 2;
+
+      if (speakState === SpeakState.FadeIn) {fadeMode = 0;} else if (speakState === SpeakState.FadeOut) {fadeMode = 1;} else {fadeMode = 2;}
+      //打印fademode
+      //console.log('fadeMode:', fadeMode);
       materials.forEach((material: Material) => {
+        material.setFloat('uFadeMode', fadeMode);
         material.setFloat('uAmplitude', shaderParams.amplitude);
         material.setFloat('uAudioInfluence', avgAmplitude);
         material.setFloat('uRevealEdge', shaderParams.uRevealEdge);
         material.setFloat('uFadeProgressGlobal', fadeProgressGlobal);
         material.setFloat('uFadeProgressMask', fadeProgressMask);
+        material.setFloat('uFadeOffset', shaderParams.uFadeOffset);
       });
     }
   }, 60);
@@ -779,3 +852,12 @@ function togglePanel () {
 function getJSON (json: string): Promise<any> {
   return fetch(json).then(res => res.json());
 }
+
+// 状态机定义
+enum SpeakState {
+  Idle,      // 静默
+  FadeIn,    // 淡入
+  Speaking,  // 说话中
+  FadeOut    // 淡出
+}
+let speakState: SpeakState = SpeakState.Idle;
