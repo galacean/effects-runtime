@@ -33,6 +33,7 @@ const shaderParams = {
   fadeSpeedGlobal: 0.005,   // 新增
   fadeSpeedMask: 0.008,     // 新增
   uFadeOffset: 0.0,         // 新增
+  uAudioBrightness: 1.0,     // 新增
 };
 
 const vertex = `
@@ -77,6 +78,7 @@ uniform float uFadeProgressGlobal; // 新增
 uniform float uFadeProgressMask;   // 新增
 uniform float uFadeOffset; // 控制消隐横坐标偏移
 uniform float uFadeMode; // 0: 淡入, 1: 淡出, 2: 全显
+uniform float uAudioBrightness; // 
 
 vec3 acesToneMapping(vec3 color) {
   const float a = 2.51;
@@ -202,7 +204,7 @@ void main() {
   float edge1 = max(uMidPoint + uBlend * 0.5, maxIntensity);
   float auroraAlpha = smoothstep(edge0, edge1, intensity);
   
-  vec3 auroraColor = rampColor * (1.0 + uAudioInfluence);
+  vec3 auroraColor = rampColor * (1.0 + uAudioInfluence * uAudioBrightness);
   auroraColor = acesToneMapping(auroraColor); // 限制高亮，防止过曝
 
   //从右往左显现
@@ -252,7 +254,7 @@ void main() {
 
     auroraAlpha *= mask;
 
-    gl_FragColor = vec4(auroraAlpha*auroraColor, 1.0);
+    gl_FragColor = vec4(auroraColor*auroraAlpha, auroraAlpha);
 }
 `;
 
@@ -398,6 +400,11 @@ function createControlPanel () {
         <input type="range" id="audioMultiplier" min="0" max="10" step="0.5" value="2.0">
         <div class="value-display" id="audioMultiplier-value">2.0</div>
       </div>
+      <div class="control-item">
+        <label for="uAudioBrightness">Audio Brightness (音频亮度影响)</label>
+        <input type="range" id="uAudioBrightness" min="0" max="5" step="0.01" value="1.0">
+        <div class="value-display" id="uAudioBrightness-value">1.0</div>
+      </div>
     </div>
     <div class="control-group">
       <h3>极光效果</h3>
@@ -460,7 +467,7 @@ function createControlPanel () {
       <div class="control-item">
         <label for="fadeSpeedMask">右到左消隐速度 (fadeSpeedMask)</label>
         <input type="range" id="fadeSpeedMask" min="0.001" max="0.05" step="0.001" value="0.008">
-        <div class="value-display" id="fadeSpeedMask-value">0.008</div>
+        <div class="value-display" id="fadeSpeedMask-value">0.025</div>
       </div>
       <div class="control-item">
         <label for="uFadeOffset">消隐横坐标偏移 (uFadeOffset)</label>
@@ -506,6 +513,7 @@ function initializeControls () {
     'noiseScale', 'heightMultiplier', 'midPoint', 'intensityMultiplier', 'yOffset',
     'heightPower', 'minIntensity', 'maxIntensity', 'uRevealEdge',
     'fadeSpeedGlobal', 'fadeSpeedMask', 'uFadeOffset', // 新增
+    'uAudioBrightness', // 新增
   ];
 
   controls.forEach(controlName => {
@@ -576,8 +584,9 @@ function resetToDefaults () {
     heightPower: 0.58,
     uRevealEdge: 0.299,
     fadeSpeedGlobal: 0.035,
-    fadeSpeedMask: 0.008,
+    fadeSpeedMask: 0.025,
     uFadeOffset: 0.0, // 新增
+    uAudioBrightness: 1.0, // 新增
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
