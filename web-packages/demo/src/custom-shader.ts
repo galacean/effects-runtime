@@ -1,8 +1,8 @@
 import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, Texture, glContext, setBlendMode, spec, math } from '@galacean/effects';
 import { Vector3 } from '@galacean/effects-plugin-model';
-import type { AudioData } from './simulator-audio';
-import AudioSimulator, { AudioStage, getSpeakState, driveSpeakState } from './simulator-audio';
+import type { AudioData } from './audio-state-machine';
+import AudioStateMachine, { AudioStage } from './audio-state-machine';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*piz4QagroQ0AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
@@ -455,7 +455,7 @@ function createControlPanel () {
       <div class="control-item">
         <label for="fadeSpeedGlobal">整体消隐速度 (fadeSpeedGlobal)</label>
         <input type="range" id="fadeSpeedGlobal" min="0.001" max="0.05" step="0.001" value="0.005">
-        <div class="value-display" id="fadeSpeedGlobal-value">0.005</div>
+        <div class="value-display" id="fadeSpeedGlobal-value">0.035</div>
       </div>
       <div class="control-item">
         <label for="fadeSpeedMask">右到左消隐速度 (fadeSpeedMask)</label>
@@ -477,6 +477,21 @@ function createControlPanel () {
       <label for="maxIntensity">Max Intensity (最大强度)</label>
       <input type="range" id="maxIntensity" min="-2" max="2" step="0.01" value="1.0">
       <div class="value-display" id="maxIntensity-value">1.00</div>
+    </div>
+    <div class="control-group">
+      <h3>极光颜色</h3>
+      <div class="control-item">
+        <label for="colorStop0">Color Stop 0</label>
+        <input type="color" id="colorStop0" class="color-input">
+      </div>
+      <div class="control-item">
+        <label for="colorStop1">Color Stop 1</label>
+        <input type="color" id="colorStop1" class="color-input">
+      </div>
+      <div class="control-item">
+        <label for="colorStop2">Color Stop 2</label>
+        <input type="color" id="colorStop2" class="color-input">
+      </div>
     </div>
     <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
   `;
@@ -560,7 +575,7 @@ function resetToDefaults () {
     yOffset: 0.48,
     heightPower: 0.58,
     uRevealEdge: 0.299,
-    fadeSpeedGlobal: 0.005,
+    fadeSpeedGlobal: 0.035,
     fadeSpeedMask: 0.008,
     uFadeOffset: 0.0, // 新增
   };
@@ -664,7 +679,7 @@ function togglePanel () {
   const composition = await player.loadScene(jsonValue);
   const item = composition.getItemByName('effect_3');
 
-  const audioSimulator: AudioSimulator = new AudioSimulator(64);
+  const audioStateMachine: AudioStateMachine = new AudioStateMachine(64);
 
   // 可自定义每个阶段的时长（单位：秒）
   //audioSimulator.setStageDuration(AudioStage.Idle, 2.0);
@@ -731,9 +746,9 @@ function togglePanel () {
   let fadeProgressGlobal = 0; // 0~1
   let fadeProgressMask = 0;   // 0~1
   const fadeThreshold = 0.2;
-  let speakState: AudioStage = AudioStage.Idle;
+  const speakState: AudioStage = AudioStage.Idle;
 
-  audioSimulator.start((audioData: AudioData) => {
+  audioStateMachine.start((audioData: AudioData) => {
     if (audioTexture && materials.length > 0) {
       const width = 64;
       const height = 1;
@@ -764,31 +779,24 @@ function togglePanel () {
       audioTexture = newAudioTexture;
 
       const avgAmplitude = audioData.floatData.reduce((a: number, b: number) => a + b, 0) / audioData.frequencyBands;
-
       // 状态判断
       const envLevel = 0; // 新增：环境底噪值（如无特殊需求可设为0）
 
       //设置每个状态持续时间
-      audioSimulator.setStageDuration(AudioStage.Idle, 2.0);
-      audioSimulator.setStageDuration(AudioStage.FadeIn, 1.5);
-      audioSimulator.setStageDuration(AudioStage.Speaking, 5.0);
-      audioSimulator.setStageDuration(AudioStage.FadeOut, 1.5);
+      audioStateMachine.setStageDuration(AudioStage.Idle, 2.0);
+      audioStateMachine.setStageDuration(AudioStage.FadeIn, 1.5);
+      audioStateMachine.setStageDuration(AudioStage.Speaking, 5.0);
+      audioStateMachine.setStageDuration(AudioStage.FadeOut, 1.5);
 
-      speakState = getSpeakState(
+      // 状态判断与切换，全部交给类内部
+      audioStateMachine.updateSpeakState(
         avgAmplitude,
         envLevel,
-        fadeThreshold,
-        speakState,
-        audioSimulator.getStageTime(),
-        audioSimulator.getStageDurations() // 阶段时长配置
+        fadeThreshold
       );
-      //打印speakState
 
-      console.log('avgAmplitude:', avgAmplitude, 'speakState:', speakState);
-
-      // 状态机驱动
-      const driveResult = driveSpeakState(
-        speakState,
+      // 状态机驱动（消隐动画推进），用实例方法
+      const driveResult = audioStateMachine.driveState(
         fadeProgressGlobal,
         fadeProgressMask,
         { fadeSpeedGlobal: shaderParams.fadeSpeedGlobal, fadeSpeedMask: shaderParams.fadeSpeedMask }
@@ -796,12 +804,11 @@ function togglePanel () {
 
       fadeProgressGlobal = driveResult.fadeProgressGlobal;
       fadeProgressMask = driveResult.fadeProgressMask;
-      speakState = driveResult.speakState;
-
-      //console.log('speakState:', speakState);
+      //打印driveResult三个数据
+      //console.log(`Fade Progress Global: ${fadeProgressGlobal.toFixed(3)}, Fade Progress Mask: ${fadeProgressMask.toFixed(3)}, Stage: ${audioSimulator.getStage()}`);
       // 设置shader参数
       materials.forEach((material: Material) => {
-        material.setFloat('uFadeMode', speakState);
+        material.setFloat('uFadeMode', audioStateMachine.getStage()); // 用 getStage() 替代 .stage
         material.setFloat('uAmplitude', shaderParams.amplitude);
         material.setFloat('uAudioInfluence', avgAmplitude);
         material.setFloat('uRevealEdge', shaderParams.uRevealEdge);
@@ -815,7 +822,7 @@ function togglePanel () {
   player.play();
 
   window.addEventListener('beforeunload', () => {
-    audioSimulator.stop();
+    audioStateMachine.stop();
   });
 })();
 
