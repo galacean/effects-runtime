@@ -7,7 +7,7 @@ import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { MaskProps, Material } from '../../material';
+import type { Material } from '../../material';
 import { Texture } from '../../texture';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
@@ -17,8 +17,9 @@ import { TextStyle } from './text-style';
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
  */
-export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'>, MaskProps {
+export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'> {
   listIndex?: number,
+  mask?: spec.MaskOptions,
   renderer: {
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,

@@ -84,14 +84,6 @@ export enum ShaderType {
   fragment = 1
 }
 
-export interface MaskProps {
-  mask?: {
-    mask?: boolean,
-    mode?: spec.ObscuredMode,
-    ref?: Maskable,
-  },
-}
-
 /**
  *
  */

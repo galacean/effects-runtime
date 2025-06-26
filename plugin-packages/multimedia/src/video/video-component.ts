@@ -1,4 +1,4 @@
-import type { Asset, Engine, GeometryFromShape, MaskProps, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import type { Asset, Engine, GeometryFromShape, Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { BaseRenderComponent, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
 
 /**
@@ -10,7 +10,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  mask?: MaskProps['mask'],
+  mask?: spec.MaskOptions,
 }
 
 let seed = 0;
