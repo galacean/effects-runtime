@@ -2,7 +2,7 @@ import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, Texture, glContext, setBlendMode, spec, math } from '@galacean/effects';
 import { Vector3 } from '@galacean/effects-plugin-model';
 import type { AudioData } from './simulator-audio';
-import AudioSimulator, { AudioStage } from './simulator-audio';
+import AudioSimulator, { AudioStage, getSpeakState, driveSpeakState } from './simulator-audio';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*piz4QagroQ0AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
@@ -214,11 +214,11 @@ void main() {
 
 
   // 右到左淡出遮罩
-  float fadeEdge = 0.00;
-  float fadeOutMask = 1.0 - smoothstep(1.0 - uFadeProgressMask - fadeEdge, 1.0 - uFadeProgressMask, uvCoord.x);
+  float fadeEdge = 0.2;
+  //float fadeOutMask = 1.0 - smoothstep(1.0 + uFadeProgressMask - fadeEdge, 1.0 +  uFadeProgressMask, uvCoord.x);
 
   // 右到左淡入遮罩（与淡出相反，uFadeProgressMask从1到0时显现）
-  float fadeInMask = smoothstep(1.0 - uFadeProgressMask - fadeEdge, 1.0 - uFadeProgressMask, uvCoord.x);
+  float fadeInMask =1.0- smoothstep(1.0 - uFadeProgressMask - fadeEdge, 1.0 - uFadeProgressMask,1.0 - uvCoord.x- uFadeOffset);
 
   // 你可以选择用哪个mask，或两者结合
   // auroraAlpha *= fadeInMask; // 只用淡入
@@ -226,30 +226,33 @@ void main() {
   // auroraAlpha *= fadeInMask * fadeOutMask; // 叠加
 
   // 推荐：淡入淡出都支持
-  auroraAlpha *=  fadeOutMask;
+  //auroraAlpha *=  fadeOutMask;
 
   // 整体消隐（用uFadeProgressGlobal和uFadeOffset控制）
 //float fadeCoord = clamp((uvCoord.x - uFadeOffset) / (1.0 - uFadeOffset), 0.0, 1.0);
-  float fade = pow(mix(uFadeProgressGlobal, 1.0, uvCoord.x - uFadeOffset), 2.0);
+  float fade = 1.0 - pow(mix(uFadeProgressGlobal, 1.0, uvCoord.x - uFadeOffset), 2.0);
 
 
     // 叠加遮罩
-    float totalfade = (1.0 - fade);
+    //float totalfade = (1.0 - fade);
 
-    auroraAlpha *= totalfade;
+    //auroraAlpha *= totalfade;
 
     float mask = 1.0;
-    if (uFadeMode < 0.5) {
+    if (uFadeMode == 0.0) {
+      mask = 0.0;
+    } else if (uFadeMode == 1.0) {
       mask = fadeInMask;
-    } else if (uFadeMode < 1.5) {
-      mask = fadeOutMask;
-    } else {
+      }
+      else if (uFadeMode == 2.0) {
       mask = 1.0;
+    } else if (uFadeMode == 3.0) {
+      mask = fade ;
     }
 
     auroraAlpha *= mask;
 
-    gl_FragColor = vec4(auroraAlpha*auroraColor, auroraAlpha);
+    gl_FragColor = vec4(auroraAlpha*auroraColor, 1.0);
 }
 `;
 
@@ -465,9 +468,6 @@ function createControlPanel () {
         <div class="value-display" id="uFadeOffset-value">0.00</div>
       </div>
     </div>
-    <div class="control
-      </div>
-    </div>
     <div class="control-item">
       <label for="minIntensity">Min Intensity (最小强度)</label>
       <input type="range" id="minIntensity" min="-2" max="2" step="0.01" value="0.0">
@@ -665,8 +665,19 @@ function togglePanel () {
   const item = composition.getItemByName('effect_3');
 
   const audioSimulator: AudioSimulator = new AudioSimulator(64);
-  let audioTexture: Texture | null = null;
+
+  // 可自定义每个阶段的时长（单位：秒）
+  //audioSimulator.setStageDuration(AudioStage.Idle, 2.0);
+  //audioSimulator.setStageDuration(AudioStage.FadeIn, 5.5);
+  //audioSimulator.setStageDuration(AudioStage.Speaking, 5.0);
+  //audioSimulator.setStageDuration(AudioStage.FadeOut, 3.5);
+
+  //audioSimulator.start(callback, 60);
+  // 不需要 startAutoLoop，也不需要外部 setStage
+
   const engine = composition.renderer.engine;
+
+  let audioTexture: Texture;
 
   if (item) {
     const rendererComponents = item.getComponents(RendererComponent);
@@ -715,11 +726,12 @@ function togglePanel () {
   initializeControls();
 
   // 消隐动画变量
-  let isSpeaking = false;
-  let wasSpeaking = false;
+  const isSpeaking = false;
+  //let wasSpeaking = false;
   let fadeProgressGlobal = 0; // 0~1
   let fadeProgressMask = 0;   // 0~1
   const fadeThreshold = 0.2;
+  let speakState: AudioStage = AudioStage.Idle;
 
   audioSimulator.start((audioData: AudioData) => {
     if (audioTexture && materials.length > 0) {
@@ -752,71 +764,44 @@ function togglePanel () {
       audioTexture = newAudioTexture;
 
       const avgAmplitude = audioData.floatData.reduce((a: number, b: number) => a + b, 0) / audioData.frequencyBands;
-      const bassLevel = audioData.floatData.slice(0, 13).reduce((a: number, b: number) => a + b, 0) / 13;
 
-      //打印avgAmplitude
-      console.log('avgAmplitude:', avgAmplitude);
-      wasSpeaking = isSpeaking;
-      isSpeaking = avgAmplitude > fadeThreshold;
+      // 状态判断
+      const envLevel = 0; // 新增：环境底噪值（如无特殊需求可设为0）
 
-      // 状态切换
-      if (!wasSpeaking && isSpeaking) {
-        // 静默->说话，触发淡入
-        speakState = SpeakState.FadeIn;
-      } else if (wasSpeaking && isSpeaking) {
-        // 说话中
-        if (speakState !== SpeakState.Speaking) {speakState = SpeakState.Speaking;}
-      } else if (wasSpeaking && !isSpeaking) {
-        // 说话->静默，触发淡出
-        speakState = SpeakState.FadeOut;
-      } else if (!wasSpeaking && !isSpeaking) {
-        // 静默
-        if (speakState !== SpeakState.FadeOut && speakState !== SpeakState.FadeIn) {
-          speakState = SpeakState.Idle;
-        }
-      }
+      //设置每个状态持续时间
+      audioSimulator.setStageDuration(AudioStage.Idle, 2.0);
+      audioSimulator.setStageDuration(AudioStage.FadeIn, 1.5);
+      audioSimulator.setStageDuration(AudioStage.Speaking, 5.0);
+      audioSimulator.setStageDuration(AudioStage.FadeOut, 1.5);
+
+      speakState = getSpeakState(
+        avgAmplitude,
+        envLevel,
+        fadeThreshold,
+        speakState,
+        audioSimulator.getStageTime(),
+        audioSimulator.getStageDurations() // 阶段时长配置
+      );
       //打印speakState
-      console.log('speakState:', SpeakState[speakState]);
 
-      // 状态驱动淡入淡出
-      if (speakState === SpeakState.FadeIn) {
-        fadeProgressGlobal -= shaderParams.fadeSpeedGlobal;
-        fadeProgressMask -= shaderParams.fadeSpeedMask;
-        if (fadeProgressGlobal < 0) {fadeProgressGlobal = 0;}
-        if (fadeProgressMask < 0) {fadeProgressMask = 0;}
-        // 完全淡入后切换到说话中
-        if (fadeProgressGlobal === 0 && fadeProgressMask === 0) {
-          speakState = SpeakState.Speaking;
-        }
-      } else if (speakState === SpeakState.Speaking) {
-        fadeProgressGlobal = 0;
-        fadeProgressMask = 0;
-      } else if (speakState === SpeakState.FadeOut) {
-        if (fadeProgressMask < 1) {
-          fadeProgressMask += shaderParams.fadeSpeedMask;
-          if (fadeProgressMask > 1) {fadeProgressMask = 1;}
-        }
-        if (fadeProgressGlobal < 1) {
-          fadeProgressGlobal += shaderParams.fadeSpeedGlobal;
-          if (fadeProgressGlobal > 1) {fadeProgressGlobal = 1;}
-        }
-        // 完全淡出后切换到Idle
-        if (fadeProgressGlobal === 1 && fadeProgressMask === 1) {
-          speakState = SpeakState.Idle;
-        }
-      } else if (speakState === SpeakState.Idle) {
-        fadeProgressGlobal = 1;
-        fadeProgressMask = 1;
-      }
+      console.log('avgAmplitude:', avgAmplitude, 'speakState:', speakState);
 
-      // 0: 淡入，1: 淡出，其他（比如2）: 全显
-      let fadeMode = 2;
+      // 状态机驱动
+      const driveResult = driveSpeakState(
+        speakState,
+        fadeProgressGlobal,
+        fadeProgressMask,
+        { fadeSpeedGlobal: shaderParams.fadeSpeedGlobal, fadeSpeedMask: shaderParams.fadeSpeedMask }
+      );
 
-      if (speakState === SpeakState.FadeIn) {fadeMode = 0;} else if (speakState === SpeakState.FadeOut) {fadeMode = 1;} else {fadeMode = 2;}
-      //打印fademode
-      //console.log('fadeMode:', fadeMode);
+      fadeProgressGlobal = driveResult.fadeProgressGlobal;
+      fadeProgressMask = driveResult.fadeProgressMask;
+      speakState = driveResult.speakState;
+
+      //console.log('speakState:', speakState);
+      // 设置shader参数
       materials.forEach((material: Material) => {
-        material.setFloat('uFadeMode', fadeMode);
+        material.setFloat('uFadeMode', speakState);
         material.setFloat('uAmplitude', shaderParams.amplitude);
         material.setFloat('uAudioInfluence', avgAmplitude);
         material.setFloat('uRevealEdge', shaderParams.uRevealEdge);
@@ -832,32 +817,8 @@ function togglePanel () {
   window.addEventListener('beforeunload', () => {
     audioSimulator.stop();
   });
-
-  function loopAudioStage (audioSimulator: AudioSimulator) {
-    audioSimulator.setStage(AudioStage.Silence);
-    setTimeout(() => {
-      audioSimulator.setStage(AudioStage.Speaking);
-      setTimeout(() => {
-        audioSimulator.setStage(AudioStage.FadeOut);
-        setTimeout(() => {
-          loopAudioStage(audioSimulator);
-        }, audioSimulator.getFadeOutDuration() * 1000);
-      }, 3000);
-    }, 2000);
-  }
-
-  loopAudioStage(audioSimulator);
 })();
 
 function getJSON (json: string): Promise<any> {
   return fetch(json).then(res => res.json());
 }
-
-// 状态机定义
-enum SpeakState {
-  Idle,      // 静默
-  FadeIn,    // 淡入
-  Speaking,  // 说话中
-  FadeOut    // 淡出
-}
-let speakState: SpeakState = SpeakState.Idle;
