@@ -4,7 +4,7 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaskProps, Maskable } from '../material';
+import type { Maskable } from '../material';
 import {
   MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
@@ -23,9 +23,7 @@ import { RendererComponent } from './renderer-component';
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   texture: Texture,
   mask: number,
-  maskMode: MaskMode,
   shape?: GeometryFromShape,
-  alphaMask: boolean,
 }
 
 // TODO: Add to spec
@@ -41,6 +39,7 @@ interface BaseRenderComponentData extends spec.ComponentData {
    */
   textureSheetAnimation?: spec.TextureSheetAnimation,
   geometry?: spec.DataPath,
+  mask?: spec.MaskOptions,
 }
 
 const singleSplits: splitsDataType = [[0, 0, 1, 1, undefined]];
@@ -81,9 +80,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
-      maskMode: MaskMode.NONE,
       mask: 0,
-      alphaMask: false,
     };
 
     this.defaultGeometry = Geometry.create(this.engine, {
@@ -380,7 +377,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   private configureMaterial (renderer: ItemRenderer): Material {
-    const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
+    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const maskMode = this.maskManager.maskMode;
     const material = this.material;
 
     material.blending = true;
@@ -403,10 +401,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
     texParams.y = preMultiAlpha;
     texParams.z = renderer.renderMode;
-    texParams.w = renderer.maskMode;
+    texParams.w = maskMode;
     material.setVector4('_TexParams', texParams);
 
-    if (texParams.x === 0 || (renderer.alphaMask)) {
+    if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
       material.enableMacro('ALPHA_CLIP');
     } else {
       material.disableMacro('ALPHA_CLIP');
@@ -443,12 +441,12 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const renderer = baseRenderComponentData.renderer ?? {};
     const splits = baseRenderComponentData.splits;
     const textureSheetAnimation = baseRenderComponentData.textureSheetAnimation;
-    const maskProps = (data as MaskProps).mask;
 
-    if (maskProps && maskProps.ref) {
-      maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
+    const maskOptions = baseRenderComponentData.mask;
+
+    if (maskOptions) {
+      this.maskManager.getMaskMode(maskOptions);
     }
-    const maskMode = this.maskManager.getMaskMode(data as MaskProps);
 
     // TODO 新蒙板上线后移除
     //-------------------------------------------------------------------------
@@ -469,13 +467,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
       shape: shapeGeometry,
-      maskMode,
-      //@ts-expect-error TODO 新蒙版兼容老数据需要增加纹理透明度蒙版是否开启参数
-      alphaMask: renderer.alphaMask ?? false,
     };
 
     this.configureMaterial(this.renderer);
