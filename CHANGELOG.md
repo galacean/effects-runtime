@@ -7,6 +7,13 @@
 
 ---
 
+## 2.4.8
+
+`2025-06-27`
+
+- Fix: rich-text character overlapping bug. [#1040](https://github.com/galacean/effects-runtime/pull/1040) @Fryt1
+- Fix: composition freeze issue. [#1035](https://github.com/galacean/effects-runtime/pull/1035) @wumaolinmaoan
+
 ## 2.4.7
 
 `2025-06-13`
