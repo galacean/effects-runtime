@@ -332,16 +332,22 @@ void main() {
 
     // --- 辉光效果 begin ---
     float glowWidth = _GlowWidth;
-    float glowSoft = _GlowSoft;
     float glowPower = _GlowPower;
     float glowIntensity = _GlowIntensity;
     vec3 glowColor = rampColor;
 
-    float glow = 1.0 - smoothstep(_LineWidth, _LineWidth + glowWidth, abs(signedDist));
-    //glow *= smoothstep(_LineWidth + glowWidth, _LineWidth + glowWidth + glowSoft, abs(signedDist));
-    glow = pow(glow, glowPower);
-
+    // 只在曲线外侧（signedDist > _LineWidth）叠加辉光，且边界平滑
+    float glow = 0.0;
+    if (signedDist > 0.0) {
+        glow = 1.0 - smoothstep(_LineWidth, _LineWidth + glowWidth, signedDist);
+        glow = pow(glow, glowPower);
+        // 让辉光在 _LineWidth 附近平滑开启
+        //glow *= smoothstep(_LineWidth/2.0, _LineWidth/2.0 + 0.01, signedDist); // 0.01 可调
+    }
     // --- 辉光效果 end ---
+    finalColorRGB = glowColor * glow * glowIntensity;
+    finalAlpha = 1.0;
+
 
     if(signedDist < 0.0) {
         finalColorRGB = _InsideColor;
@@ -350,6 +356,9 @@ void main() {
     }
     if (signedDist >= 0.0) {
         bgColor.rgb = finalColorRGB;
+        // 叠加辉光
+        finalColorRGB = glowColor * glow * glowIntensity;
+
     }
     if (lineStroke > 0.0) {
         finalColorRGB = mix(bgColor.rgb, rampColor.rgb * _LineColor, lineStroke);
@@ -357,9 +366,9 @@ void main() {
     }
 
     // 叠加辉光
-    finalColorRGB += glowColor * glow * glowIntensity;
+    //finalColorRGB += glowColor * glow * glowIntensity;
 
-    gl_FragColor = vec4(glowColor *glow  * glowIntensity , 1.0);
+    gl_FragColor = vec4(finalColorRGB , 1.0);
 }
 `;
 
