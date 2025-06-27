@@ -486,11 +486,20 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const height = isRotate90 ? uvTransform[2] : uvTransform[3];
 
       const aUV = this.geometry.getAttributeData('aUV');
+      const aPos = this.geometry.getAttributeData('aPos');
 
-      if (aUV) {
-        for (let i = 0;i < aUV.length;i += 2) {
-          aUV[i] = aUV[i] * width + x;
-          aUV[i + 1] = aUV[i + 1] * height + y;
+      if (aUV && aPos) {
+        const vertexCount = aUV.length / 2;
+
+        for (let i = 0; i < vertexCount; i++) {
+          const positionOffset = i * 3;
+          const uvOffset = i * 2;
+
+          const positionX = aPos[positionOffset];
+          const positionY = aPos[positionOffset + 1];
+
+          aUV[uvOffset] = (positionX + 0.5) * width + x;
+          aUV[uvOffset + 1] = (positionY + 0.5) * height + y;
         }
       }
     } else {
