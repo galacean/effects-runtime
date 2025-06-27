@@ -46,6 +46,11 @@ const shaderParams = {
   barColorEdge: { x: 0.0431, y: 0.059, z: 0.1 },
   leftMode: 3,
   rightMode: 1,
+  // 新增辉光参数
+  glowWidth: 0.05,
+  glowSoft: 0.03,
+  glowPower: 2.0,
+  glowIntensity: 0.8,
 };
 
 const vertex = `
@@ -109,6 +114,12 @@ uniform float uYOffset;
 // 新增 uniform 控制左右端色的动态方式
 uniform int uLeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
 uniform int uRightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
+
+// 新增辉光控制参数
+uniform float _GlowWidth;      // 辉光范围
+uniform float _GlowSoft;       // 辉光边缘柔和度
+uniform float _GlowPower;      // 辉光边缘衰减
+uniform float _GlowIntensity;  // 辉光强度
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -300,11 +311,11 @@ void main() {
     //获取渐变的颜色
     vec3 rampColor = getColorFromGradient(uvCoord.x);
 
-    
     vec4 aurora = vec4(rampColor, 1.0);
-    
+
     uvCoord = vec2(uv.x, uv.y);
-    
+
+    // 计算贝塞尔曲线绘制
     vec2 A_single, C_single;
     getCurvePoints(_CurveType, A_single, C_single);
     vec2 B_single = getBezierControlPoint(_CurveAngle, A_single, C_single);
@@ -318,7 +329,20 @@ void main() {
     vec3 auroraRampColor = rampColor;
     //finalColorRGB = aurora.rgb;
     finalAlpha = aurora.a;
-    
+
+    // --- 辉光效果 begin ---
+    float glowWidth = _GlowWidth;
+    float glowSoft = _GlowSoft;
+    float glowPower = _GlowPower;
+    float glowIntensity = _GlowIntensity;
+    vec3 glowColor = rampColor;
+
+    float glow = 1.0 - smoothstep(_LineWidth, _LineWidth + glowWidth, abs(signedDist));
+    //glow *= smoothstep(_LineWidth + glowWidth, _LineWidth + glowWidth + glowSoft, abs(signedDist));
+    glow = pow(glow, glowPower);
+
+    // --- 辉光效果 end ---
+
     if(signedDist < 0.0) {
         finalColorRGB = _InsideColor;
         finalAlpha = max(bgColor.a, _InsideAlpha);
@@ -332,7 +356,10 @@ void main() {
         finalAlpha = max(bgColor.a, lineStroke);
     }
 
-    gl_FragColor = vec4(finalColorRGB, 1.0);
+    // 叠加辉光
+    finalColorRGB += glowColor * glow * glowIntensity;
+
+    gl_FragColor = vec4(glowColor *glow  * glowIntensity , 1.0);
 }
 `;
 
@@ -469,11 +496,8 @@ function createControlPanel () {
         font-size: 12px;
       }
     </style>
-    
     <button class="toggle-btn" onclick="togglePanel()">收起</button>
-    
     <h2 style="margin-top: 0; color: #4CAF50;">Aurora + Bezier Shader Controls</h2>
-    
     <div class="control-group">
       <h3>贝塞尔曲线</h3>
       <div class="control-item">
@@ -646,6 +670,30 @@ function createControlPanel () {
       </div>
     </div>
     
+    <div class="control-group">
+      <h3>辉光效果</h3>
+      <div class="control-item">
+        <label for="glowWidth">辉光范围 (_GlowWidth)</label>
+        <input type="range" id="glowWidth" min="0" max="0.2" step="0.001" value="0.05">
+        <div class="value-display" id="glowWidth-value">0.05</div>
+      </div>
+      <div class="control-item">
+        <label for="glowSoft">辉光柔和度 (_GlowSoft)</label>
+        <input type="range" id="glowSoft" min="0" max="0.2" step="0.001" value="0.03">
+        <div class="value-display" id="glowSoft-value">0.03</div>
+      </div>
+      <div class="control-item">
+        <label for="glowPower">辉光衰减 (_GlowPower)</label>
+        <input type="range" id="glowPower" min="0.1" max="5" step="0.01" value="2.0">
+        <div class="value-display" id="glowPower-value">2.0</div>
+      </div>
+      <div class="control-item">
+        <label for="glowIntensity">辉光强度 (_GlowIntensity)</label>
+        <input type="range" id="glowIntensity" min="0" max="2" step="0.01" value="0.8">
+        <div class="value-display" id="glowIntensity-value">0.8</div>
+      </div>
+    </div>
+    
     <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
   `;
   document.body.appendChild(panel);
@@ -764,6 +812,29 @@ function initializeControls () {
       });
     }
   });
+
+  // 新增辉光参数
+  [
+    { name: 'glowWidth', uniform: '_GlowWidth', fixed: 3 },
+    { name: 'glowSoft', uniform: '_GlowSoft', fixed: 3 },
+    { name: 'glowPower', uniform: '_GlowPower', fixed: 2 },
+    { name: 'glowIntensity', uniform: '_GlowIntensity', fixed: 2 },
+  ].forEach(({ name, uniform, fixed }) => {
+    const slider = document.getElementById(name) as HTMLInputElement;
+    const valueDisplay = document.getElementById(`${name}-value`);
+
+    if (slider && valueDisplay) {
+      slider.addEventListener('input', e => {
+        const value = parseFloat((e.target as HTMLInputElement).value);
+
+        valueDisplay.textContent = value.toFixed(fixed);
+        materials.forEach(material => {
+          material.setFloat(uniform, value);
+        });
+        (shaderParams as any)[name] = value;
+      });
+    }
+  });
 }
 
 // 重置为默认值
@@ -790,6 +861,11 @@ function resetToDefaults () {
     timeSpeed: 3.0,
     leftMode: 0,
     rightMode: 2,
+    // 新增辉光参数
+    glowWidth: 0.05,
+    glowSoft: 0.03,
+    glowPower: 2.0,
+    glowIntensity: 0.8,
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -798,12 +874,10 @@ function resetToDefaults () {
 
     if (slider && valueDisplay) {
       slider.value = value.toString();
-      valueDisplay.textContent = value.toFixed(3);
-
+      valueDisplay.textContent = typeof value === 'number' ? value.toFixed(3) : value;
       let uniformName = '';
 
-      if (key === 'curveAngle') {uniformName = '_CurveAngle';} else if (key === 'lineWidth') {uniformName = '_LineWidth';} else if (key === 'baseBloomIntensity') {uniformName = '_BaseBloomIntensity';} else if (key === 'bloomRange') {uniformName = '_BloomRange';} else if (key === 'bloomTransitionRange') {uniformName = '_BloomTransitionRange';} else if (key === 'gradientPower') {uniformName = '_GradientPower';} else if (key === 'gradientCenterThreshold') {uniformName = '_GradientCenterThreshold';} else if (key === 'insideAlpha') {uniformName = '_InsideAlpha';} else if (key === 'timeSpeed') {uniformName = '_TimeSpeed';} else {uniformName = `u${key.charAt(0).toUpperCase() + key.slice(1)}`;}
-
+      if (key === 'curveAngle') {uniformName = '_CurveAngle';} else if (key === 'lineWidth') {uniformName = '_LineWidth';} else if (key === 'baseBloomIntensity') {uniformName = '_BaseBloomIntensity';} else if (key === 'bloomRange') {uniformName = '_BloomRange';} else if (key === 'bloomTransitionRange') {uniformName = '_BloomTransitionRange';} else if (key === 'gradientPower') {uniformName = '_GradientPower';} else if (key === 'gradientCenterThreshold') {uniformName = '_GradientCenterThreshold';} else if (key === 'insideAlpha') {uniformName = '_InsideAlpha';} else if (key === 'timeSpeed') {uniformName = '_TimeSpeed';} else if (key === 'glowWidth') {uniformName = '_GlowWidth';} else if (key === 'glowSoft') {uniformName = '_GlowSoft';} else if (key === 'glowPower') {uniformName = '_GlowPower';} else if (key === 'glowIntensity') {uniformName = '_GlowIntensity';} else {uniformName = `u${key.charAt(0).toUpperCase() + key.slice(1)}`;}
       materials.forEach(material => {
         material.setFloat(uniformName, value);
       });
