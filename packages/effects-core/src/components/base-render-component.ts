@@ -485,11 +485,17 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const width = isRotate90 ? uvTransform[3] : uvTransform[2];
       const height = isRotate90 ? uvTransform[2] : uvTransform[3];
 
-      this.material.setVector4('_AtlasOffset', new Vector4(x, y, width, height));
+      const aUV = this.geometry.getAttributeData('aUV');
+
+      if (aUV) {
+        for (let i = 0;i < aUV.length;i += 2) {
+          aUV[i] = aUV[i] * width + x;
+          aUV[i + 1] = aUV[i + 1] * height + y;
+        }
+      }
     } else {
       this.geometry = this.defaultGeometry;
       this.configureDefaultGeometry(this.renderer);
-      this.material.setVector4('_AtlasOffset', new Vector4(0, 0, 1, 1));
     }
   }
 }
