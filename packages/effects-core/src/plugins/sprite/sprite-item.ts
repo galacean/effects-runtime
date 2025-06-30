@@ -69,6 +69,7 @@ export class SpriteComponent extends BaseRenderComponent {
       } else {
         video.play().catch(e => { this.engine.renderErrors.add(e); });
       }
+      this.renderer.texture.uploadCurrentVideoFrame();
     }
     if (ta) {
       const total = ta.total || (ta.row * ta.col);
