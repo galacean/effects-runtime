@@ -51,6 +51,9 @@ const shaderParams = {
   glowSoft: 0.03,
   glowPower: 2.0,
   glowIntensity: 0.8,
+  // 新增线宽衰减力度
+  uDynamicWidthFalloff: 1.0,
+  uColorRegion: 0.0, // 新增
 };
 
 const vertex = `
@@ -120,6 +123,10 @@ uniform float _GlowWidth;      // 辉光范围
 uniform float _GlowSoft;       // 辉光边缘柔和度
 uniform float _GlowPower;      // 辉光边缘衰减
 uniform float _GlowIntensity;  // 辉光强度
+
+// 新增：线宽衰减力度，建议范围 1~4
+uniform float uDynamicWidthFalloff;
+uniform float uColorRegion; // 新增
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -205,8 +212,9 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 }
 
 float antiAliasedStroke(float dist, float lineWidth) {
-    float antiAliasWidth = max(dist * 1.0, 0.002);
-    return smoothstep(lineWidth + antiAliasWidth, lineWidth - antiAliasWidth, dist);
+    float aa = max(fwidth(dist), 0.002);
+    // 两边都平滑
+    return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
 vec3 calculateGradientColor(float sdfDistance, vec2 uvPos) {
@@ -310,8 +318,8 @@ void main() {
 
     //获取渐变的颜色
     vec3 rampColor = getColorFromGradient(uvCoord.x);
+    vec3 glowColor = rampColor;
 
-    vec4 aurora = vec4(rampColor, 1.0);
 
     uvCoord = vec2(uv.x, uv.y);
 
@@ -322,44 +330,85 @@ void main() {
     float signedDist = sd_bezier_signed(uvCoord, A_single, B_single, C_single);
     vec3 gradientColor = calculateGradientColor(abs(signedDist), uvCoord);
     float bloomIntensity = calculateBloomIntensity(abs(signedDist));
-    float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth);
+    //线条从中间到两侧逐渐减少宽度
+    float widthCenter = _LineWidth;         // 中间最大线宽
+    float widthEdge = _LineWidth * 0.3;     // 两侧最小线宽，可调
+    float t = pow(abs(uvCoord.x - 0.5) / 0.5, uDynamicWidthFalloff);
+    t = max(0.0, t - uColorRegion); // uColorRegion 越大，彩色区域越窄
+    float dynamicLineWidth = mix(widthCenter, widthEdge, t);
+    //计算静态线宽
+    float lineStroke = antiAliasedStroke(abs(signedDist), dynamicLineWidth);
+
+    // 彩色区域mask
+    float aa = fwidth(signedDist) * 3.0; // 1.0~2.0 可调，越大越柔和
+    float colorMask = smoothstep(dynamicLineWidth +aa, dynamicLineWidth - aa, abs(signedDist));
+
+
+    vec3 linecolor = _InsideColor;
+
+    // 计算mask后的rampcolor
+    //rampColor = mix(linecolor, rampColor, colorMask);
+
     vec3 finalColorRGB = vec3(0.0);
     float finalAlpha = 0.0;
-    vec4 bgColor = aurora;
+    vec4 bgColor = vec4(rampColor, 1.0);
     vec3 auroraRampColor = rampColor;
     //finalColorRGB = aurora.rgb;
-    finalAlpha = aurora.a;
+    finalAlpha = bgColor.a;
 
     // --- 辉光效果 begin ---
     float glowWidth = _GlowWidth;
-    float glowSoft = _GlowSoft;
     float glowPower = _GlowPower;
     float glowIntensity = _GlowIntensity;
-    vec3 glowColor = rampColor;
+    float glowOffset = 0.01; 
+    
 
-    float glow = 1.0 - smoothstep(_LineWidth, _LineWidth + glowWidth, abs(signedDist));
-    //glow *= smoothstep(_LineWidth + glowWidth, _LineWidth + glowWidth + glowSoft, abs(signedDist));
-    glow = pow(glow, glowPower);
+    // 修改辉光的条件判断，使其与主线条的抗锯齿区域重叠
+    float glow = 0.0;
+    if (signedDist >= 0.0) {
+        float distanceFromLine = signedDist+glowOffset;
+        float glowStart = dynamicLineWidth - _GlowSoft;
+        float glowEnd = dynamicLineWidth + _GlowWidth;
+        float glowAA = max(fwidth(distanceFromLine), 0.002); // 加入抗锯齿
+        glow = 1.0 - smoothstep(glowStart - glowAA, glowEnd + glowAA, abs(distanceFromLine));
+        glow = pow(glow, _GlowPower);
+    }
 
     // --- 辉光效果 end ---
+    //finalColorRGB = _InsideColor;
+    finalAlpha = 1.0;
+
 
     if(signedDist < 0.0) {
         finalColorRGB = _InsideColor;
-        finalAlpha = max(bgColor.a, _InsideAlpha);
-        bgColor= vec4(_InsideColor, _InsideAlpha);
+        finalAlpha = _InsideAlpha;
+       
     }
-    if (signedDist >= 0.0) {
-        bgColor.rgb = finalColorRGB;
-    }
+
     if (lineStroke > 0.0) {
-        finalColorRGB = mix(bgColor.rgb, rampColor.rgb * _LineColor, lineStroke);
+
+      if (signedDist < 0.0) {
+        // 在曲线内侧应用渐变颜色    
+        finalColorRGB = mix(_InsideColor.rgb, rampColor.rgb , lineStroke);
+      }else {
+        // 在曲线外侧应用渐变颜色
+        finalColorRGB =rampColor.rgb;
+      }       
+
         finalAlpha = max(bgColor.a, lineStroke);
     }
 
-    // 叠加辉光
-    finalColorRGB += glowColor * glow * glowIntensity;
+    if (signedDist > 0.0) {
+        bgColor.rgb = finalColorRGB;
+        // 叠加辉光
+        vec3 glowBlend = mix(finalColorRGB, glowColor * glow * glowIntensity, 1.0 - lineStroke);
+    
+        finalColorRGB = glowBlend;
+        finalAlpha = max(finalAlpha, glow * glowIntensity);
+    }
 
-    gl_FragColor = vec4(glowColor *glow  * glowIntensity , 1.0);
+
+    gl_FragColor = vec4(finalColorRGB, finalAlpha);
 }
 `;
 
@@ -514,7 +563,7 @@ function createControlPanel () {
       </div>
       <div class="control-item">
         <label for="lineWidth">线条宽度</label>
-        <input type="range" id="lineWidth" min="0.001" max="0.05" step="0.001" value="0.01">
+        <input type="range" id="lineWidth" min="0.001" max="0.5" step="0.001" value="0.01">
         <div class="value-display" id="lineWidth-value">0.01</div>
       </div>
     </div>
@@ -694,6 +743,21 @@ function createControlPanel () {
       </div>
     </div>
     
+    <div class="control-group">
+      <h3>线宽衰减</h3>
+      <div class="control-item">
+        <label for="uDynamicWidthFalloff">线宽衰减力度 (uDynamicWidthFalloff)</label>
+        <input type="range" id="uDynamicWidthFalloff" min="0" max="4" step="0.01" value="1.0">
+        <div class="value-display" id="uDynamicWidthFalloff-value">1.00</div>
+      </div>
+    </div>
+    
+    <div class="control-item">
+      <label for="uColorRegion">彩色区域宽度 (uColorRegion)</label>
+      <input type="range" id="uColorRegion" min="-1" max="5" step="0.01" value="0.0">
+      <div class="value-display" id="uColorRegion-value">0.00</div>
+    </div>
+    
     <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
   `;
   document.body.appendChild(panel);
@@ -722,6 +786,11 @@ function initializeControls () {
     'gradientPower', 'gradientCenterThreshold', 'insideAlpha', 'timeSpeed',
     'amplitude', 'blend', 'audioInfluence', 'audioMultiplier', 'uTimeSpeed',
     'noiseScale', 'heightMultiplier', 'midPoint', 'intensityMultiplier', 'yOffset',
+    // 新增辉光参数
+    'glowWidth', 'glowSoft', 'glowPower', 'glowIntensity',
+    // 新增线宽衰减力度
+    'uDynamicWidthFalloff',
+    'uColorRegion',
   ];
 
   controls.forEach(controlName => {
