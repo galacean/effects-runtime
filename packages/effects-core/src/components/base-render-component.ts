@@ -51,12 +51,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   renderer: ItemRenderer;
   geometry: Geometry;
-  readonly maskManager: MaskProcessor;
 
   protected visible = true;
-
-  protected textureSheetAnimation?: spec.TextureSheetAnimation;
   protected splits: splitsDataType = singleSplits;
+  protected textureSheetAnimation?: spec.TextureSheetAnimation;
+  protected readonly maskManager: MaskProcessor;
 
   /**
    * 用于点击测试的碰撞器
@@ -476,7 +475,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.configureMaterial(this.renderer);
 
     if (baseRenderComponentData.geometry) {
-      this.geometry = this.engine.findObject<Geometry>(baseRenderComponentData.geometry);
+      const baseGeometry = this.engine.findObject<Geometry>(baseRenderComponentData.geometry);
 
       const uvTransform = baseRenderComponentData.splits && !baseRenderComponentData.textureSheetAnimation ? baseRenderComponentData.splits[0] : singleSplits[0];
       const x = uvTransform[0];
@@ -485,10 +484,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const width = isRotate90 ? uvTransform[3] : uvTransform[2];
       const height = isRotate90 ? uvTransform[2] : uvTransform[3];
 
-      const aUV = this.geometry.getAttributeData('aUV');
-      const aPos = this.geometry.getAttributeData('aPos');
+      const aUV = baseGeometry.getAttributeData('aUV');
+      const aPos = baseGeometry.getAttributeData('aPos');
+      const indices = baseGeometry.getIndexData();
 
-      if (aUV && aPos) {
+      if (aUV && aPos && indices) {
         const vertexCount = aUV.length / 2;
 
         for (let i = 0; i < vertexCount; i++) {
@@ -501,6 +501,20 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
           aUV[uvOffset] = (positionX + 0.5) * width + x;
           aUV[uvOffset + 1] = (positionY + 0.5) * height + y;
         }
+
+        this.geometry.setAttributeData('aPos', aPos.slice());
+        this.geometry.setAttributeData('aUV', aUV.slice());
+        this.geometry.setIndexData(indices.slice());
+        this.geometry.setDrawCount(indices.length);
+      }
+
+      this.geometry.subMeshes.length = 0;
+      for (const subMesh of baseGeometry.subMeshes) {
+        this.geometry.subMeshes.push({
+          offset: subMesh.offset,
+          indexCount:  subMesh.indexCount,
+          vertexCount:  subMesh.vertexCount,
+        });
       }
     } else {
       this.geometry = this.defaultGeometry;
