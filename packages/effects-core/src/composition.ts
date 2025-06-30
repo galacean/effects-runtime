@@ -247,7 +247,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成暂停/播放 标识
    */
   private paused = false;
-  private lastVideoUpdateTime = 0;
   private isEndCalled = false;
   private _textures: Texture[] = [];
 
@@ -635,7 +634,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateCompositionTime(deltaTime * this.speed / 1000);
     const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
 
-    this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTimeInMs);
 
@@ -667,20 +665,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  /**
-   * 更新视频数据到纹理
-   * @override
-   */
-  updateVideo () {
-    const now = performance.now();
-
-    // 视频固定30帧更新
-    if (now - this.lastVideoUpdateTime > 33) {
-      (this.textures ?? []).forEach(tex => tex?.uploadCurrentVideoFrame());
-      this.lastVideoUpdateTime = now;
     }
   }
 
