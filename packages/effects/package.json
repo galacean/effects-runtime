@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects",
-  "version": "2.4.7",
+  "version": "2.4.8",
   "description": "Galacean Effects runtime player for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
