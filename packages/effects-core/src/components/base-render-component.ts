@@ -477,6 +477,31 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
     if (baseRenderComponentData.geometry) {
       this.geometry = this.engine.findObject<Geometry>(baseRenderComponentData.geometry);
+
+      const uvTransform = baseRenderComponentData.splits && !baseRenderComponentData.textureSheetAnimation ? baseRenderComponentData.splits[0] : singleSplits[0];
+      const x = uvTransform[0];
+      const y = uvTransform[1];
+      const isRotate90 = uvTransform[4];
+      const width = isRotate90 ? uvTransform[3] : uvTransform[2];
+      const height = isRotate90 ? uvTransform[2] : uvTransform[3];
+
+      const aUV = this.geometry.getAttributeData('aUV');
+      const aPos = this.geometry.getAttributeData('aPos');
+
+      if (aUV && aPos) {
+        const vertexCount = aUV.length / 2;
+
+        for (let i = 0; i < vertexCount; i++) {
+          const positionOffset = i * 3;
+          const uvOffset = i * 2;
+
+          const positionX = aPos[positionOffset];
+          const positionY = aPos[positionOffset + 1];
+
+          aUV[uvOffset] = (positionX + 0.5) * width + x;
+          aUV[uvOffset + 1] = (positionY + 0.5) * height + y;
+        }
+      }
     } else {
       this.geometry = this.defaultGeometry;
       this.configureDefaultGeometry(this.renderer);
