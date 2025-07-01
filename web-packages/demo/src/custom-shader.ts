@@ -9,31 +9,33 @@ const container = document.getElementById('J-container');
 
 // UI控制参数，新增消隐速度和uFadeOffset
 const shaderParams = {
-  amplitude: 1.0,
-  blend: 0.5,
-  audioInfluence: 1.0,
-  audioMultiplier: 2.0,
-  timeSpeed: 0.5,
-  noiseScale: 2.0,
-  heightMultiplier: 0.5,
-  midPoint: 0.20,
-  intensityMultiplier: 0.6,
-  yOffset: 0.2,
-  heightPower: 1.0,
-  minIntensity: 0.0,
-  maxIntensity: 1.0,
-  uRevealEdge: 0.05,
+  amplitude: 0.150,
+  blend: 1.250,
+  audioInfluence: 1.100,
+  audioMultiplier: 4.000,
+  timeSpeed: 2.100,
+  noiseScale: 0.900,
+  heightMultiplier: 3.900,
+  midPoint: 0.860,
+  intensityMultiplier: 1.500,
+  yOffset: 0.480,
+  heightPower: 0.580,
+  minIntensity: 0.00,
+  maxIntensity: 1.00,
+  uRevealEdge: 0.299,
   colorStops: [
-    { x: 0.32, y: 0.15, z: 1.0 },
+    { x: 0.32, y: 0.15, z: 1.0 }, // 可根据实际颜色需求调整
     { x: 0.49, y: 1.0, z: 0.40 },
     { x: 0.32, y: 0.15, z: 1.0 },
   ],
-  uFadeProgressGlobal: 0.0, // 新增
-  uFadeProgressMask: 0.0,   // 新增
-  fadeSpeedGlobal: 0.005,   // 新增
-  fadeSpeedMask: 0.008,     // 新增
-  uFadeOffset: 0.0,         // 新增
-  uAudioBrightness: 1.0,     // 新增
+  uFadeProgressGlobal: 0.0,
+  uFadeProgressMask: 0.0,
+  fadeSpeedGlobal: 0.035,
+  fadeSpeedMask: 0.025,
+  uFadeOffset: 0.000,
+  uAudioBrightness: 0.000,
+  uFadeStart: 0.000,
+  uFadeEnd: 0.780,
 };
 
 const vertex = `
@@ -79,6 +81,8 @@ uniform float uFadeProgressMask;   // 新增
 uniform float uFadeOffset; // 控制消隐横坐标偏移
 uniform float uFadeMode; // 0: 淡入, 1: 淡出, 2: 全显
 uniform float uAudioBrightness; // 
+uniform float uFadeStart; // 新增，消隐起始Y
+uniform float uFadeEnd;   // 新增，消隐结束Y
 
 vec3 acesToneMapping(vec3 color) {
   const float a = 2.51;
@@ -199,13 +203,18 @@ void main() {
   height = (uvCoord.y * 2.0 - height + 0.2 )* uHeightMultiplier;
 
   float intensity = uIntensityMultiplier* height;
-
-  float edge0 = min(uMidPoint - uBlend * 0.5, minIntensity);
-  float edge1 = max(uMidPoint + uBlend * 0.5, maxIntensity);
+  
+  float edge0 = uMidPoint - uBlend * 0.5;
+  float edge1 = uMidPoint + uBlend * 0.5;
   float auroraAlpha = smoothstep(edge0, edge1, intensity);
+  float fadeNorm = clamp(((1.0 - uvCoord.y) - uFadeStart) / max(0.0001, uFadeEnd - uFadeStart), 0.0, 1.0);
+  float fadePower = 2.5; // 你可以把它做成uniform
+  float verticalFade = pow(1.0 - fadeNorm, fadePower);
+  auroraAlpha *= verticalFade;
+
   
   vec3 auroraColor = rampColor * (1.0 + uAudioInfluence * uAudioBrightness);
-  auroraColor = acesToneMapping(auroraColor); // 限制高亮，防止过曝
+  //auroraColor = acesToneMapping(auroraColor); // 限制高亮，防止过曝
 
   //从右往左显现
 
@@ -474,6 +483,16 @@ function createControlPanel () {
         <input type="range" id="uFadeOffset" min="0" max="0.95" step="0.01" value="0.0">
         <div class="value-display" id="uFadeOffset-value">0.00</div>
       </div>
+      <div class="control-item">
+        <label for="uFadeStart">消隐起始Y (uFadeStart)</label>
+        <input type="range" id="uFadeStart" min="0" max="1" step="0.01" value="${shaderParams.uFadeStart}">
+        <div class="value-display" id="uFadeStart-value">${shaderParams.uFadeStart.toFixed(2)}</div>
+      </div>
+      <div class="control-item">
+        <label for="uFadeEnd">消隐结束Y (uFadeEnd)</label>
+        <input type="range" id="uFadeEnd" min="0" max="1" step="0.01" value="${shaderParams.uFadeEnd}">
+        <div class="value-display" id="uFadeEnd-value">${shaderParams.uFadeEnd.toFixed(2)}</div>
+      </div>
     </div>
     <div class="control-item">
       <label for="minIntensity">Min Intensity (最小强度)</label>
@@ -514,6 +533,7 @@ function initializeControls () {
     'heightPower', 'minIntensity', 'maxIntensity', 'uRevealEdge',
     'fadeSpeedGlobal', 'fadeSpeedMask', 'uFadeOffset', // 新增
     'uAudioBrightness', // 新增
+    'uFadeStart', 'uFadeEnd', // 新增
   ];
 
   controls.forEach(controlName => {
@@ -572,21 +592,25 @@ function initializeControls () {
 function resetToDefaults () {
   const defaults = {
     amplitude: 0.150,
-    audioInfluence:1.10,
-    audioMultiplier: 4.0,
-    blend: 3.70,
-    timeSpeed: 2.1,
-    noiseScale: 0.90,
-    heightMultiplier: 3.9,
-    midPoint: 0.86,
-    intensityMultiplier: 1.5,
-    yOffset: 0.48,
-    heightPower: 0.58,
+    audioInfluence: 1.100,
+    audioMultiplier: 4.000,
+    blend: 1.250,
+    timeSpeed: 2.100,
+    noiseScale: 0.900,
+    heightMultiplier: 3.900,
+    midPoint: 0.860,
+    intensityMultiplier: 1.500,
+    yOffset: 0.480,
+    heightPower: 0.580,
     uRevealEdge: 0.299,
     fadeSpeedGlobal: 0.035,
     fadeSpeedMask: 0.025,
-    uFadeOffset: 0.0, // 新增
-    uAudioBrightness: 1.0, // 新增
+    uFadeOffset: 0.000,
+    uAudioBrightness: 0.000,
+    uFadeStart: 0.000,
+    uFadeEnd: 0.780,
+    minIntensity: 0.00,
+    maxIntensity: 1.00,
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
