@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-plugin-model';
 import type { AudioData } from './audio-state-machine';
 import AudioSimulator from './audio-state-machine';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*BIRER6z6IKoAAAAAQDAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*gAIvS7C5mJ4AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 
 // UI控制参数
@@ -352,7 +352,7 @@ void main() {
     vec3 linecolor = _InsideColor;
 
     // 计算mask后的rampcolor
-    //rampColor = mix(linecolor, rampColor, colorMask);
+    rampColor = mix(linecolor, rampColor, colorMask);
 
     vec3 finalColorRGB = vec3(0.0);
     float finalAlpha = 0.0;
@@ -387,12 +387,12 @@ void main() {
 
     // --- 辉光效果 end ---
     //finalColorRGB = _InsideColor;
-    finalAlpha = 1.0;
+    finalAlpha = 0.0;
 
 
     if(signedDist < 0.0) {
         finalColorRGB = _InsideColor;
-        finalAlpha = _InsideAlpha;
+        finalAlpha = 1.0;
        
     }
 
@@ -406,20 +406,19 @@ void main() {
         finalColorRGB =rampColor.rgb;
       }       
 
-        finalAlpha = max(bgColor.a, lineStroke);
+        finalAlpha =max(lineStroke, finalAlpha);
     }
-
     if (signedDist > 0.0) {
         bgColor.rgb = finalColorRGB;
         // 叠加辉光
         vec3 glowBlend = mix(finalColorRGB, glowColor * glow * glowIntensity, 1.0 - lineStroke);
-    
         finalColorRGB = glowBlend;
-        finalAlpha = max(finalAlpha, glow * glowIntensity);
+        // 透明度为主线条和辉光的最大值
+        finalAlpha = max(lineStroke, glow * glowIntensity);
     }
 
 
-    gl_FragColor = vec4(finalColorRGB, finalAlpha);
+    gl_FragColor = vec4(finalColorRGB*finalAlpha, finalAlpha);
 }
 `;
 
@@ -1153,6 +1152,8 @@ function togglePanel () {
             magFilter: glContext.LINEAR,
           }
         );
+
+        setBlendMode(material, spec.BlendingMode.ALPHA);
 
         material.setTexture('uAudioTexture', audioTexture);
         materials.push(material);
