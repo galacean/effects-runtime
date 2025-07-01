@@ -54,6 +54,8 @@ const shaderParams = {
   // 新增线宽衰减力度
   uDynamicWidthFalloff: 1.0,
   uColorRegion: 0.0, // 新增
+  uGlowRegion: 0.0, // 新增
+  uDynamicWidthCenter: 0.5,
 };
 
 const vertex = `
@@ -127,6 +129,8 @@ uniform float _GlowIntensity;  // 辉光强度
 // 新增：线宽衰减力度，建议范围 1~4
 uniform float uDynamicWidthFalloff;
 uniform float uColorRegion; // 新增
+uniform float uGlowRegion;
+uniform float uDynamicWidthCenter; // 新增，线宽衰减中心位置
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -333,7 +337,8 @@ void main() {
     //线条从中间到两侧逐渐减少宽度
     float widthCenter = _LineWidth;         // 中间最大线宽
     float widthEdge = _LineWidth * 0.3;     // 两侧最小线宽，可调
-    float t = pow(abs(uvCoord.x - 0.5) / 0.5, uDynamicWidthFalloff);
+    // 修改中心点
+    float t = pow(abs(uvCoord.x - uDynamicWidthCenter) / max(uDynamicWidthCenter, 1.0-uDynamicWidthCenter), uDynamicWidthFalloff);
     t = max(0.0, t - uColorRegion); // uColorRegion 越大，彩色区域越窄
     float dynamicLineWidth = mix(widthCenter, widthEdge, t);
     //计算静态线宽
@@ -357,18 +362,24 @@ void main() {
     finalAlpha = bgColor.a;
 
     // --- 辉光效果 begin ---
-    float glowWidth = _GlowWidth;
+    float glowWidthCenter = _GlowWidth;
+    float glowWidthEdge = _GlowWidth * 0.3; // 辉光两侧最小宽度
     float glowPower = _GlowPower;
     float glowIntensity = _GlowIntensity;
     float glowOffset = 0.01; 
+
+    float glowt = pow(abs(uvCoord.x - uDynamicWidthCenter) / max(uDynamicWidthCenter, 1.0-uDynamicWidthCenter), uDynamicWidthFalloff);
+    glowt = max(0.0, t - uGlowRegion); // uColorRegion 越大，彩色区域越窄
+    float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
+    
     
 
     // 修改辉光的条件判断，使其与主线条的抗锯齿区域重叠
     float glow = 0.0;
     if (signedDist >= 0.0) {
         float distanceFromLine = signedDist+glowOffset;
-        float glowStart = dynamicLineWidth - _GlowSoft;
-        float glowEnd = dynamicLineWidth + _GlowWidth;
+        float glowStart = dynamicLineGlowWidth - _GlowSoft;
+        float glowEnd = dynamicLineGlowWidth + _GlowWidth;
         float glowAA = max(fwidth(distanceFromLine), 0.002); // 加入抗锯齿
         glow = 1.0 - smoothstep(glowStart - glowAA, glowEnd + glowAA, abs(distanceFromLine));
         glow = pow(glow, _GlowPower);
@@ -750,15 +761,26 @@ function createControlPanel () {
         <input type="range" id="uDynamicWidthFalloff" min="0" max="4" step="0.01" value="1.0">
         <div class="value-display" id="uDynamicWidthFalloff-value">1.00</div>
       </div>
+      <div class="control-item">
+        <label for="uColorRegion">彩色区域宽度 (uColorRegion)</label>
+        <input type="range" id="uColorRegion" min="-5" max="5" step="0.01" value="0.0">
+        <div class="value-display" id="uColorRegion-value">0.00</div>
+      </div>
+      <div class="control-item">
+        <label for="uGlowRegion">辉光区域宽度 (uGlowRegion)</label>
+        <input type="range" id="uGlowRegion" min="-5" max="5" step="0.01" value="0.0">
+        <div class="value-display" id="uGlowRegion-value">0.00</div>
+      </div>
+      <div class="control-item">
+        <label for="uDynamicWidthCenter">线宽衰减中心 (uDynamicWidthCenter)</label>
+        <input type="range" id="uDynamicWidthCenter" min="0" max="1" step="0.001" value="0.5">
+        <div class="value-display" id="uDynamicWidthCenter-value">0.50</div>
+      </div>
     </div>
     
     <div class="control-item">
-      <label for="uColorRegion">彩色区域宽度 (uColorRegion)</label>
-      <input type="range" id="uColorRegion" min="-1" max="5" step="0.01" value="0.0">
-      <div class="value-display" id="uColorRegion-value">0.00</div>
+      <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
     </div>
-    
-    <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
   `;
   document.body.appendChild(panel);
 }
@@ -791,6 +813,8 @@ function initializeControls () {
     // 新增线宽衰减力度
     'uDynamicWidthFalloff',
     'uColorRegion',
+    'uGlowRegion', // 新增
+    'uDynamicWidthCenter',
   ];
 
   controls.forEach(controlName => {
