@@ -13,7 +13,7 @@ import { MeshCollider } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
 import { itemFrag, itemVert } from '../shader';
-import { getGeometryByShape, type GeometryFromShape } from '../shape';
+import { getGeometryByShape, rotateVec2, type GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
 
@@ -483,10 +483,13 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const isRotate90 = uvTransform[4];
       const width = isRotate90 ? uvTransform[3] : uvTransform[2];
       const height = isRotate90 ? uvTransform[2] : uvTransform[3];
+      const angle = isRotate90 === 0 ? 0 : -Math.PI / 2;
 
       const aUV = baseGeometry.getAttributeData('aUV');
       const aPos = baseGeometry.getAttributeData('aPos');
       const indices = baseGeometry.getIndexData();
+
+      const tempPosition: spec.vec2 = [0, 0];
 
       if (aUV && aPos && indices) {
         const vertexCount = aUV.length / 2;
@@ -494,12 +497,15 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         for (let i = 0; i < vertexCount; i++) {
           const positionOffset = i * 3;
           const uvOffset = i * 2;
-
           const positionX = aPos[positionOffset];
           const positionY = aPos[positionOffset + 1];
 
-          aUV[uvOffset] = (positionX + 0.5) * width + x;
-          aUV[uvOffset + 1] = (positionY + 0.5) * height + y;
+          tempPosition[0] = positionX ;
+          tempPosition[1] = positionY ;
+          rotateVec2(tempPosition, tempPosition, angle);
+
+          aUV[uvOffset] = (tempPosition[0] + 0.5) * width + x;
+          aUV[uvOffset + 1] = (tempPosition[1] + 0.5) * height + y;
         }
 
         this.geometry.setAttributeData('aPos', aPos.slice());
