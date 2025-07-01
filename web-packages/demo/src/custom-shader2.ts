@@ -362,40 +362,26 @@ void main() {
     finalAlpha = bgColor.a;
 
     // --- 辉光效果 begin ---
-    float glowWidthCenter = _GlowWidth;
-    float glowWidthEdge = _GlowWidth * 0.3; // 辉光两侧最小宽度
+    float glowWidth = _GlowWidth;
+    float glowSoft = _GlowSoft;
     float glowPower = _GlowPower;
     float glowIntensity = _GlowIntensity;
-    float glowOffset = 0.01; 
+    vec3 glowColor = rampColor;
 
-    float glowt = pow(abs(uvCoord.x - uDynamicWidthCenter) / max(uDynamicWidthCenter, 1.0-uDynamicWidthCenter), uDynamicWidthFalloff);
-    glowt = max(0.0, t - uGlowRegion); // uColorRegion 越大，彩色区域越窄
-    float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
-    
-    
-
-    // 修改辉光的条件判断，使其与主线条的抗锯齿区域重叠
-    float glow = 0.0;
-    if (signedDist >= 0.0) {
-        float distanceFromLine = signedDist+glowOffset;
-        float glowStart = dynamicLineGlowWidth - _GlowSoft;
-        float glowEnd = dynamicLineGlowWidth + _GlowWidth;
-        float glowAA = max(fwidth(distanceFromLine), 0.002); // 加入抗锯齿
-        glow = 1.0 - smoothstep(glowStart - glowAA, glowEnd + glowAA, abs(distanceFromLine));
-        glow = pow(glow, _GlowPower);
-    }
+    float glow = 1.0 - smoothstep(_LineWidth, _LineWidth + glowWidth, abs(signedDist));
+    //glow *= smoothstep(_LineWidth + glowWidth, _LineWidth + glowWidth + glowSoft, abs(signedDist));
+    glow = pow(glow, glowPower);
 
     // --- 辉光效果 end ---
-    //finalColorRGB = _InsideColor;
-    finalAlpha = 1.0;
-
 
     if(signedDist < 0.0) {
         finalColorRGB = _InsideColor;
         finalAlpha = _InsideAlpha;
        
     }
-
+    if (signedDist >= 0.0) {
+        bgColor.rgb = finalColorRGB;
+    }
     if (lineStroke > 0.0) {
 
       if (signedDist < 0.0) {
@@ -409,17 +395,10 @@ void main() {
         finalAlpha = max(bgColor.a, lineStroke);
     }
 
-    if (signedDist > 0.0) {
-        bgColor.rgb = finalColorRGB;
-        // 叠加辉光
-        vec3 glowBlend = mix(finalColorRGB, glowColor * glow * glowIntensity, 1.0 - lineStroke);
-    
-        finalColorRGB = glowBlend;
-        finalAlpha = max(finalAlpha, glow * glowIntensity);
-    }
+    // 叠加辉光
+    finalColorRGB += glowColor * glow * glowIntensity;
 
-
-    gl_FragColor = vec4(finalColorRGB, finalAlpha);
+    gl_FragColor = vec4(glowColor *glow  * glowIntensity , 1.0);
 }
 `;
 
