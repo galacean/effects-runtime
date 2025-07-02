@@ -42,7 +42,7 @@ interface BaseRenderComponentData extends spec.ComponentData {
   mask?: spec.MaskOptions,
 }
 
-const singleSplits: splitsDataType = [[0, 0, 1, 1, undefined]];
+const singleSplits: splitsDataType = [[0, 0, 1, 1, 0]];
 
 /**
  * @since 2.1.0
