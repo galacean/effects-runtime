@@ -8,7 +8,7 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh, Renderer } from '../../render';
-import type { MaskProps, Maskable } from '../../material';
+import type { Maskable } from '../../material';
 import { MaskMode, MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
@@ -126,10 +126,7 @@ export interface ParticleSystemProps extends Omit<spec.ParticleContent, 'options
   options: ParticleSystemOptions,
   renderer: ParticleSystemRendererOptions,
   trails?: ParticleTrailProps,
-  mask?: {
-    mode: MaskMode,
-    ref: Maskable,
-  },
+  mask?: spec.MaskOptions,
 }
 
 // spec.RenderOptions 经过处理
@@ -143,10 +140,7 @@ export interface ParticleSystemRendererOptions extends Required<Omit<spec.Render
 export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' | 'mask'> {
   texture: Texture,
   textureMap: vec4,
-  mask?: {
-    mode: MaskMode,
-    ref: Maskable,
-  },
+  mask?: spec.MaskOptions,
 }
 
 // 粒子节点包含的数据
@@ -438,7 +432,7 @@ export class ParticleSystem extends Component implements Maskable {
             const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
 
             if (opts) {
-              const originVec = [0, 0, 0];
+              const originVec = [0, 0, 0] as vec3;
               const offsets = emission.burstOffsets[j];
               const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
 
@@ -459,7 +453,7 @@ export class ParticleSystem extends Component implements Maskable {
 
                 p.delay += meshTime;
                 cursor++;
-                p.transform.translate(...burstOffset as vec3);
+                p.transform.translate(...burstOffset);
 
                 this.addParticle(p, maxCount);
               }
@@ -1176,12 +1170,7 @@ export class ParticleSystem extends Component implements Maskable {
     let maskRef = 0;
 
     if (data.mask) {
-      const maskProps = (data as MaskProps).mask;
-
-      if (maskProps && maskProps.ref) {
-        maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
-      }
-      maskMode = this.maskManager.getMaskMode(data as MaskProps);
+      maskMode = this.maskManager.getMaskMode(data.mask);
       maskRef = this.maskManager.getRefValue();
     }
 

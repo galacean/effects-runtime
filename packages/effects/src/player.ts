@@ -345,7 +345,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
         const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
-        this.assetService.prepareAssets(scene, assetManager.getAssets());
+        if (this.disposed) {
+          compositions.length = 0;
+
+          return;
+        }
+
+        this.assetService.prepareAssets(scene, scene.assets);
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
 
@@ -358,7 +364,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         autoplayFlags[index] = compositionAutoplay;
       }),
     );
-
     const compileStart = performance.now();
 
     await new Promise(resolve => {
@@ -395,12 +400,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     options: Omit<SceneLoadOptions, 'speed' | 'reusable'> = {},
   ) {
     const renderer = this.renderer;
-
-    // 加载期间 player 销毁
-    if (this.disposed) {
-      throw new Error('Disposed player can not used to create Composition.');
-    }
-
     const composition = new Composition({
       ...options,
       renderer,
