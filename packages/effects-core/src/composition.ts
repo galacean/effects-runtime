@@ -12,7 +12,7 @@ import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction } from './texture';
-import type { Disposable, LostHandler } from './utils';
+import type { Constructor, Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
@@ -570,6 +570,15 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   addItem (item: VFXItem) {
     this.items.push(item);
     item.setParent(this.rootItem);
+  }
+
+  /**
+   * 获取合成上某一类型的组件。
+   * @param classConstructor - 要获取的组件类型
+   * @returns 查询结果中符合类型的第一个组件
+   */
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
+    return this.rootItem.getComponent(classConstructor);
   }
 
   /**
