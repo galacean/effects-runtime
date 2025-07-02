@@ -480,10 +480,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       const uvTransform = baseRenderComponentData.splits && !baseRenderComponentData.textureSheetAnimation ? baseRenderComponentData.splits[0] : singleSplits[0];
       const x = uvTransform[0];
       const y = uvTransform[1];
-      const isRotate90 = uvTransform[4];
+      const isRotate90 = Boolean(uvTransform[4]);
       const width = isRotate90 ? uvTransform[3] : uvTransform[2];
       const height = isRotate90 ? uvTransform[2] : uvTransform[3];
-      const angle = isRotate90 === 0 ? 0 : -Math.PI / 2;
+      const angle = isRotate90 ? -Math.PI / 2 : 0;
 
       const aUV = baseGeometry.getAttributeData('aUV');
       const aPos = baseGeometry.getAttributeData('aPos');
