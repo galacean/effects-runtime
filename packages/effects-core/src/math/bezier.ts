@@ -417,12 +417,6 @@ export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightK
   };
 }
 
-enum TangentMode {
-  Cubic,
-  Linear,
-  Constant
-}
-
 /**
  * 根据关键帧类型获取贝塞尔曲线上的关键点
  */
@@ -438,27 +432,8 @@ export function getControlPoints (
   const leftEase = !rightHoldLine && keyframeInfo.isRightSideEase(leftKeyframe);
   const rightEase = !leftHoldLine && keyframeInfo.isLeftSideEase(rightKeyframe);
 
-  let inTangentMode = TangentMode.Cubic;
-  let outTangentMode = TangentMode.Cubic;
-
-  if (leftHoldLine) {
-    inTangentMode = TangentMode.Constant;
-  } else if (leftEase) {
-    inTangentMode = TangentMode.Cubic;
-  } else {
-    inTangentMode = TangentMode.Linear;
-  }
-
-  if (rightHoldLine) {
-    outTangentMode = TangentMode.Constant;
-  } else if (rightEase) {
-    outTangentMode = TangentMode.Cubic;
-  } else {
-    outTangentMode = TangentMode.Linear;
-  }
-
   // 1. 左边为ease，右边为line（补充右边的控制点，该点在曲线上的点的偏左边位置）
-  if (inTangentMode === TangentMode.Cubic && outTangentMode === TangentMode.Linear) {
+  if (leftEase && !rightEase && !rightHoldLine) {
     const p0 = new Vector2(leftValue[leftValue.length - 4], leftValue[leftValue.length - 3]);
     const p1 = new Vector2(leftValue[leftValue.length - 2], leftValue[leftValue.length - 1]);
     const rightPoint = keyframeInfo.getPointInCurve(rightKeyframe);
@@ -469,7 +444,7 @@ export function getControlPoints (
   }
 
   // 2. 左边为line，右边为ease（补充左边的控制点，该点在曲线上的点的偏右边位置）
-  if (inTangentMode === TangentMode.Linear && outTangentMode === TangentMode.Cubic) {
+  if (!leftEase && rightEase && !leftHoldLine) {
     const [, rightValue] = rightKeyframe;
     const leftPoint = keyframeInfo.getPointInCurve(leftKeyframe);
     const p0 = new Vector2(leftPoint.x, leftPoint.y);
@@ -481,7 +456,7 @@ export function getControlPoints (
   }
 
   // 3. 左边为ease，右边为ease
-  if (inTangentMode === TangentMode.Cubic && outTangentMode === TangentMode.Cubic) {
+  if (leftEase && rightEase) {
     const [, rightValue] = rightKeyframe;
     const p0 = new Vector2(leftValue[leftValue.length - 4], leftValue[leftValue.length - 3]);
     const p1 = new Vector2(leftValue[leftValue.length - 2], leftValue[leftValue.length - 1]);
@@ -495,9 +470,9 @@ export function getControlPoints (
   const p0 = keyframeInfo.getPointInCurve(leftKeyframe);
   const p1 = keyframeInfo.getPointInCurve(rightKeyframe);
 
-  if (inTangentMode === TangentMode.Constant) {
+  if (leftHoldLine) {
     p1.y = p0.y; // 定格关键帧使用相同的点
-  } else if (outTangentMode === TangentMode.Constant) {
+  } else if (rightHoldLine) {
     p0.y = p1.y;
   }
 
