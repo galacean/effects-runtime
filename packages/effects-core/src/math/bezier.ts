@@ -259,43 +259,72 @@ export class BezierEasing {
   private precomputed = false;
   private mSampleValues: number[];
 
-  constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
+  private control1 = new Vector2();
+  private control2 = new Vector2();
+  private weighted = false;
+  private isConstant = false;
+
+  constructor ();
+  constructor (control1: number, control2: number);
+  constructor (control1X: number, control1Y: number, control2X: number, control2Y: number);
+  constructor (control1YOrControl1X?: number, control2YOrControl1Y?: number, control2X?: number, control2Y?: number) {
     this.mSampleValues = new Array(kSplineTableSize);
-  }
 
-  precompute () {
-
-    this.precomputed = true;
-    if (this.mX1 !== this.mY1 || this.mX2 !== this.mY2) {
-      this.calcSampleValues();
+    if (control1YOrControl1X !== undefined && control2YOrControl1Y !== undefined && control2X !== undefined && control2Y !== undefined) {
+      this.control1.x = control1YOrControl1X;
+      this.control1.y = control2YOrControl1Y;
+      this.control2.x = control2X;
+      this.control2.y = control2Y;
+      this.weighted = true;
+    } else if (control1YOrControl1X !== undefined && control2YOrControl1Y !== undefined) {
+      this.control1.x = 1 / 3;
+      this.control1.y = control1YOrControl1X;
+      this.control2.x = 2 / 3;
+      this.control2.y = control2YOrControl1Y;
+    } else {
+      this.isConstant = true;
     }
   }
 
   getValue (x: number) {
-    if (this.mX1 === this.mY1 && this.mX2 === this.mY2) {
-      return x;
-    }
-    if (isNaN(this.mY1) || isNaN(this.mY2)) {
+    if (this.isConstant) {
       return 0;
+    }
+    if (this.control1.x === this.control1.y && this.control2.x === this.control2.y) {
+      return x;
     }
     if (x === 0 || x === 1) {
       return x;
     }
+    if (!this.weighted) {
+      return this.bezierInterpolate(0, this.control1.y, this.control2.y, 1, x);
+    }
     if (!this.precomputed) {
       this.precompute();
     }
-    const value = calcBezier(this.getTForX(x), this.mY1, this.mY2);
+    const value = calcBezier(this.getTForX(x), this.control1.y, this.control2.y);
 
     return value;
   }
 
-  calcSampleValues () {
+  private bezierInterpolate (pStart: number, pControl1: number, pControl2: number, pEnd: number, t: number): number {
+  // Formula from Wikipedia article on Bezier curves
+    const omt = (1.0 - t);
+    const omt2 = omt * omt;
+    const omt3 = omt2 * omt;
+    const t2 = t * t;
+    const t3 = t2 * t;
+
+    return pStart * omt3 + pControl1 * omt2 * t * 3.0 + pControl2 * omt * t2 * 3.0 + pEnd * t3;
+  }
+
+  private calcSampleValues () {
     for (let i = 0; i < kSplineTableSize; ++i) {
-      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.mX1, this.mX2);
+      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.control1.x, this.control2.x);
     }
   }
 
-  getTForX (aX: number) {
+  private getTForX (aX: number) {
     const mSampleValues = this.mSampleValues, lastSample = kSplineTableSize - 1;
     let intervalStart = 0, currentSample = 1;
 
@@ -308,15 +337,23 @@ export class BezierEasing {
     const dist = (aX - mSampleValues[currentSample]) / (mSampleValues[currentSample + 1] - mSampleValues[currentSample]);
     const guessForT = intervalStart + dist * kSampleStepSize;
 
-    const initialSlope = getSlope(guessForT, this.mX1, this.mX2);
+    const initialSlope = getSlope(guessForT, this.control1.x, this.control2.x);
 
     if (initialSlope >= NEWTON_MIN_SLOPE) {
-      return newtonRaphsonIterate(aX, guessForT, this.mX1, this.mX2);
+      return newtonRaphsonIterate(aX, guessForT, this.control1.x, this.control2.x);
     } if (initialSlope === 0.0) {
       return guessForT;
     }
 
-    return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, this.mX1, this.mX2);
+    return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, this.control1.x, this.control2.x);
+  }
+
+  private precompute () {
+
+    this.precomputed = true;
+    if (this.control1.x !== this.control1.y || this.control2.x !== this.control2.y) {
+      this.calcSampleValues();
+    }
   }
 
 }
@@ -380,6 +417,12 @@ export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightK
   };
 }
 
+enum TangentMode {
+  Cubic,
+  Linear,
+  Constant
+}
+
 /**
  * 根据关键帧类型获取贝塞尔曲线上的关键点
  */
@@ -395,8 +438,27 @@ export function getControlPoints (
   const leftEase = !rightHoldLine && keyframeInfo.isRightSideEase(leftKeyframe);
   const rightEase = !leftHoldLine && keyframeInfo.isLeftSideEase(rightKeyframe);
 
+  let inTangentMode = TangentMode.Cubic;
+  let outTangentMode = TangentMode.Cubic;
+
+  if (leftHoldLine) {
+    inTangentMode = TangentMode.Constant;
+  } else if (leftEase) {
+    inTangentMode = TangentMode.Cubic;
+  } else {
+    inTangentMode = TangentMode.Linear;
+  }
+
+  if (rightHoldLine) {
+    outTangentMode = TangentMode.Constant;
+  } else if (rightEase) {
+    outTangentMode = TangentMode.Cubic;
+  } else {
+    outTangentMode = TangentMode.Linear;
+  }
+
   // 1. 左边为ease，右边为line（补充右边的控制点，该点在曲线上的点的偏左边位置）
-  if (leftEase && !rightEase && !rightHoldLine) {
+  if (inTangentMode === TangentMode.Cubic && outTangentMode === TangentMode.Linear) {
     const p0 = new Vector2(leftValue[leftValue.length - 4], leftValue[leftValue.length - 3]);
     const p1 = new Vector2(leftValue[leftValue.length - 2], leftValue[leftValue.length - 1]);
     const rightPoint = keyframeInfo.getPointInCurve(rightKeyframe);
@@ -407,7 +469,7 @@ export function getControlPoints (
   }
 
   // 2. 左边为line，右边为ease（补充左边的控制点，该点在曲线上的点的偏右边位置）
-  if (!leftEase && rightEase && !leftHoldLine) {
+  if (inTangentMode === TangentMode.Linear && outTangentMode === TangentMode.Cubic) {
     const [, rightValue] = rightKeyframe;
     const leftPoint = keyframeInfo.getPointInCurve(leftKeyframe);
     const p0 = new Vector2(leftPoint.x, leftPoint.y);
@@ -419,7 +481,7 @@ export function getControlPoints (
   }
 
   // 3. 左边为ease，右边为ease
-  if (leftEase && rightEase) {
+  if (inTangentMode === TangentMode.Cubic && outTangentMode === TangentMode.Cubic) {
     const [, rightValue] = rightKeyframe;
     const p0 = new Vector2(leftValue[leftValue.length - 4], leftValue[leftValue.length - 3]);
     const p1 = new Vector2(leftValue[leftValue.length - 2], leftValue[leftValue.length - 1]);
@@ -433,9 +495,9 @@ export function getControlPoints (
   const p0 = keyframeInfo.getPointInCurve(leftKeyframe);
   const p1 = keyframeInfo.getPointInCurve(rightKeyframe);
 
-  if (leftHoldLine) {
+  if (inTangentMode === TangentMode.Constant) {
     p1.y = p0.y; // 定格关键帧使用相同的点
-  } else if (rightHoldLine) {
+  } else if (outTangentMode === TangentMode.Constant) {
     p0.y = p1.y;
   }
 
