@@ -308,7 +308,7 @@ export class BezierEasing {
   }
 
   private bezierInterpolate (pStart: number, pControl1: number, pControl2: number, pEnd: number, t: number): number {
-  // Formula from Wikipedia article on Bezier curves
+    // Formula from Wikipedia article on Bezier curves
     const omt = (1.0 - t);
     const omt2 = omt * omt;
     const omt3 = omt2 * omt;
@@ -349,7 +349,6 @@ export class BezierEasing {
   }
 
   private precompute () {
-
     this.precomputed = true;
     if (this.control1.x !== this.control1.y || this.control2.x !== this.control2.y) {
       this.calcSampleValues();

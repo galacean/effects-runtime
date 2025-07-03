@@ -1,11 +1,12 @@
 import * as spec from '@galacean/effects-specification';
-import { BezierEasing } from '../bezier';
-import { BezierMap, getControlPoints } from '../bezier';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import type { Vector2Like } from '@galacean/effects-math/es/core/type';
+import { NumberEpsilon } from '@galacean/effects-math/es/core/utils';
+import { BezierEasing, BezierMap, getControlPoints } from '../bezier';
 import type { KeyFrameMeta } from './value-getter';
 import { ValueGetter } from './value-getter';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { assertExist, decimalEqual, math, numberToFix } from '@galacean/effects-core';
-import type { Vector2Like } from '@galacean/effects-math/es/core/type';
+import { assertExist } from '../../utils';
+import { decimalEqual, numberToFix } from '../utils';
 
 interface CurveInfo {
   points: Vector2[],
@@ -46,10 +47,6 @@ export class BezierCurve extends ValueGetter<number> {
 
   private keyFrames: Keyframe[];
   private curveInfos: CurveInfo[];
-
-  constructor (arg: any) {
-    super(arg);
-  }
 
   override onCreate (props: Keyframe[]) {
     this.keyFrames = props;
@@ -216,9 +213,9 @@ function buildBezierEasing (leftKeyframe: Keyframe, rightKeyframe: Keyframe): {
   const p3 = new Vector2();
 
   const isWeighted = leftKeyframe.weightedMode === WeightedMode.Out ||
-        leftKeyframe.weightedMode === WeightedMode.Both ||
-        rightKeyframe.weightedMode === WeightedMode.In ||
-        rightKeyframe.weightedMode === WeightedMode.Both;
+    leftKeyframe.weightedMode === WeightedMode.Both ||
+    rightKeyframe.weightedMode === WeightedMode.In ||
+    rightKeyframe.weightedMode === WeightedMode.Both;
 
   const isConstant = leftKeyframe.tangentMode === TangentMode.Constant;
 
@@ -342,7 +339,7 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
   }
 
   const calculateSlop = (p0: Vector2Like, p1: Vector2Like) => {
-    return (p1.y - p0.y) / (p1.x - p0.x + math.NumberEpsilon);
+    return (p1.y - p0.y) / (p1.x - p0.x + NumberEpsilon);
   };
 
   for (let i = 0; i < keyDatas.length; i++) {
