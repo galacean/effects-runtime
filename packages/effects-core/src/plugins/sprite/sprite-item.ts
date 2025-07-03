@@ -41,25 +41,25 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
   }
 }
 
-export class SpriteTimeTrack extends TrackAsset {
+export class ComponentTimeTrack extends TrackAsset {
   override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
     return new TrackMixerPlayable(graph);
   }
 }
 
-export class SpriteTimePlayableAsset extends PlayableAsset {
+export class ComponentTimePlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
-    const spriteColorPlayable = new SpriteTimePlayable(graph);
+    const componentTimePlayable = new ComponentTimePlayable(graph);
 
-    return spriteColorPlayable;
+    return componentTimePlayable;
   }
 }
 
-export class SpriteTimePlayable extends Playable {
+export class ComponentTimePlayable extends Playable {
   override processFrame (context: FrameContext): void {
     const boundObject = context.output.getUserData();
 
-    if (!(boundObject instanceof SpriteComponent)) {
+    if (!('time' in boundObject)) {
       return;
     }
 

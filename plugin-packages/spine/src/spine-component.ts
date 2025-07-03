@@ -158,8 +158,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
     }
   }
 
-  override onStart () {
-    super.onStart();
+  override onAwake () {
     if (!this.cache) {
       return;
     }
