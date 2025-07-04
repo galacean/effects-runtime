@@ -1,6 +1,6 @@
 precision highp float;
 
-attribute vec2 atlasOffset;//x y
+attribute vec2 aUV;//x y
 attribute vec3 aPos;//x y
 
 varying vec2 vTexCoord;
@@ -12,6 +12,7 @@ uniform vec3 _Scale;
 uniform vec4 _Color;
 uniform vec4 _TexParams;//transparentOcclusion blending renderMode maskMode
 uniform vec4 _TexOffset;// x y sx sy
+
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixV;
@@ -22,7 +23,8 @@ uniform vec4 uEditorTransform;
 
 void main() {
   vec4 texParams = _TexParams;
-  vTexCoord = vec2(atlasOffset.xy * _TexOffset.zw + _TexOffset.xy);
+
+  vTexCoord = vec2(aUV.xy * _TexOffset.zw + _TexOffset.xy);
   vColor = _Color;
   vParams = vec3(texParams.w, texParams.y, texParams.x);
 

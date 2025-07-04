@@ -1,4 +1,4 @@
-import type { Renderer, SpriteItemProps } from '@galacean/effects-core';
+import type { Renderer } from '@galacean/effects-core';
 import { SpriteComponent, effectsClass, glContext, spec } from '@galacean/effects-core';
 import type { ThreeGeometry } from './three-geometry';
 import type { ThreeMaterial } from './material';
@@ -67,7 +67,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
     }
   }
 
-  override fromData (data: SpriteItemProps): void {
+  override fromData (data: spec.SpriteComponentData): void {
     super.fromData(data);
     if (!this.threeMesh) {
       if ((this.geometry as ThreeGeometry).mode === glContext.LINES) {

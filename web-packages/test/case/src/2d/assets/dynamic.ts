@@ -27,5 +27,20 @@ export default {
       'richText_4 (1)': '<color=#ea9f53ff><size=51.9>1111.86</size></color><size=21.5>元</size>',
     },
   },
+  dynamicImage: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ',
+    name: '动态换图',
+    variables: {
+      'image': 'https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*ySrfRJvfvfQAAAAAAAAAAAAADvV6AQ/original',
+    },
+  },
+  dynamicVideo: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*kENFRbxlKcUAAAAAAAAAAAAADlB4AQ',
+    name: '动态视频',
+    variables: {
+      'video': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
+      'text_3': 'Dynamic Video',
+    },
+  },
 };
 

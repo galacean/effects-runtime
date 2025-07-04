@@ -12,10 +12,16 @@ const selectEle = document.getElementById('J-select') as HTMLSelectElement;
       container,
     });
 
-    new Stats(player);
+    const stats = new Stats(player);
+    const [_, component] = await Promise.all([
+      player.loadScene(json, {
+        renderLevel: spec.RenderLevel.B,
+      }),
+      stats.getComponent(),
+    ]);
 
-    await player.loadScene(json, {
-      renderLevel: spec.RenderLevel.B,
+    component?.monitor.on('update', data => {
+      console.info(data);
     });
 
     // 切换机型

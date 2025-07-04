@@ -23,9 +23,6 @@ importers:
       '@rollup/plugin-inject':
         specifier: ^5.0.5
         version: 5.0.5(rollup@2.79.2)
-      '@rollup/plugin-json':
-        specifier: ^6.1.0
-        version: 6.1.0(rollup@2.79.2)
       '@rollup/plugin-node-resolve':
         specifier: ^13.3.0
         version: 13.3.0(rollup@2.79.2)
@@ -153,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.3.1
-        version: 2.3.1
+        specifier: 2.4.0
+        version: 2.4.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -2220,8 +2217,8 @@ packages:
     resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
 
-  /@galacean/effects-specification@2.3.1:
-    resolution: {integrity: sha512-aSmZG86qx1l0MI25dAM/JaJ2vYxuHr0l5WCh+O9mbJHSRwTzYi3y2Bv+pOY+2RKeGpK1LZ3MaOMaFC0IZSl7OA==}
+  /@galacean/effects-specification@2.4.0:
+    resolution: {integrity: sha512-FQsYZTAYjTn7j4VvjsXDDYHpD0APLOMEbQcSTg7agFZLBD/LZhCizJ0W7fVBrULzYFoNGvyrbFjagOPIx+h5Vw==}
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -2402,19 +2399,6 @@ packages:
       '@rollup/pluginutils': 5.0.2(rollup@2.79.2)
       estree-walker: 2.0.2
       magic-string: 0.30.5
-      rollup: 2.79.2
-    dev: true
-
-  /@rollup/plugin-json@6.1.0(rollup@2.79.2):
-    resolution: {integrity: sha512-EGI2te5ENk1coGeADSIwZ7G2Q8CJS2sF120T7jLw4xFw9n7wIOXHo+kIYRAoVpJAN+kmqZSoO3Fp4JtoNF4ReA==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-    dependencies:
-      '@rollup/pluginutils': 5.1.0(rollup@2.79.2)
       rollup: 2.79.2
     dev: true
 
@@ -3025,7 +3009,7 @@ packages:
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-math': 1.1.0
-      '@galacean/effects-specification': 2.3.1
+      '@galacean/effects-specification': 2.4.0
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1

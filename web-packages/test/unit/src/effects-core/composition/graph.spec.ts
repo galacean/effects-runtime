@@ -23,7 +23,16 @@ export function getCompositionGraph (comp: spec.CompositionData, items: spec.VFX
   items.forEach(item => collectNodes(item));
 
   function collectNodes (item: spec.VFXItemData, treeNodeChildren: number[] = []) {
-    const node = {
+    type Node = {
+      name: string,
+      type: spec.ItemType,
+      id: string,
+      transform?: spec.TransformData,
+      parentId?: string,
+      children?: number[],
+    };
+
+    const node: Node = {
       name: item.name,
       type: item.type,
       id: item.id,
@@ -43,7 +52,7 @@ export function getCompositionGraph (comp: spec.CompositionData, items: spec.VFX
     nodeMap[node.id] = node;
     if (node.type === spec.ItemType.tree) {
       let children: number[];
-      let nodes;
+      let nodes: Node[];
       const isTreeNode = node.id.includes('^');
 
       if (isTreeNode) {

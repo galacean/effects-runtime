@@ -1,7 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, MaskProps, Maskable,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Maskable,
   Renderer, Texture,
 } from '@galacean/effects';
 import {
@@ -128,12 +128,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
-    const maskProps = (data as MaskProps).mask;
-
-    if (maskProps && maskProps.ref) {
-      maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
-    }
-    this.rendererOptions.maskMode = this.maskManager.getMaskMode(data as MaskProps);
+    this.rendererOptions.maskMode = data.mask ? this.maskManager.getMaskMode(data.mask) : MaskMode.NONE;
     this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
