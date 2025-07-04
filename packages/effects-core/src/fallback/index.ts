@@ -17,6 +17,7 @@ import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
 
 export * from './utils';
 
+const version = __VERSION__;
 const v0 = /^(\d+)\.(\d+)\.(\d+)(-(\w+)\.\d+)?$/;
 const standardVersion = /^(\d+)\.(\d+)$/;
 let reverseParticle = false;
@@ -24,6 +25,11 @@ let reverseParticle = false;
 export function getStandardJSON (json: any): JSONScene {
   if (!json || typeof json !== 'object') {
     throw new Error('Invalid input: Expected a JSON object.');
+  }
+
+  // 如果 JSON 中的 runtime 版本高于当前运行时版本，则发出警告
+  if (checkRuntimeVersion(json)) {
+    console.warn(`The JSON need higher than ${json.playerVersion?.web} runtime version(current: ${version}). Some features may not work as expected.`);
   }
 
   // 修正老版本数据中，meshItem 以及 lightItem 结束行为错误问题
@@ -333,3 +339,23 @@ export function getStandardItem (item: any, opt: { plugins?: string[], requires?
   }
 }
 
+/**
+ * 检查 json.playerVersion.web 的版本号是否低于当前 runtime 的版本
+ */
+function checkRuntimeVersion (json: JSONScene) {
+  const { web = '' } = json.playerVersion || {};
+
+  if (web) {
+    const jsonVersionMatch = v0.exec(web) ?? [];
+    const runtimeVersionMatch = v0.exec(version) ?? [];
+    const [, major, minor] = jsonVersionMatch;
+    const [, currentMajor, currentMinor] = runtimeVersionMatch;
+
+    return (
+      Number(currentMajor) < Number(major) ||
+      (Number(currentMajor) === Number(major) && Number(currentMinor) < Number(minor))
+    );
+  }
+
+  return false;
+}

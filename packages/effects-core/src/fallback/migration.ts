@@ -233,7 +233,7 @@ export function processMask (renderContent: any) {
 
   if (maskMode === MaskMode.MASK) {
     renderContent.mask = {
-      mask: true,
+      isMask: true,
     };
     currentMaskComponent = renderContent.id;
   } else if (
@@ -241,8 +241,8 @@ export function processMask (renderContent: any) {
     maskMode === spec.ObscuredMode.REVERSE_OBSCURED
   ) {
     renderContent.mask = {
-      mode: maskMode,
-      ref: {
+      inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED ? true : false,
+      reference: {
         'id': currentMaskComponent,
       },
     };

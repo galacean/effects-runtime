@@ -1,11 +1,14 @@
+type CreateTexture = typeof WebGLRenderingContext.prototype.createTexture;
+type DeleteTexture = typeof WebGLRenderingContext.prototype.deleteTexture;
+
 /**
  * TextureHook
  */
 export default class TextureHook {
   textures = 0;
 
-  private readonly realCreateTexture: () => WebGLTexture | null;
-  private readonly realDeleteTexture: (texture: WebGLTexture | null) => void;
+  private readonly realCreateTexture: CreateTexture;
+  private readonly realDeleteTexture: DeleteTexture;
   private hooked = true;
 
   constructor (
@@ -23,8 +26,8 @@ export default class TextureHook {
     }
   }
 
-  private hookedCreateTexture (): WebGLTexture | null {
-    const texture = this.realCreateTexture.call(this.gl);
+  private hookedCreateTexture: CreateTexture = (...args) => {
+    const texture = this.realCreateTexture.call(this.gl, ...args);
 
     this.textures++;
 
@@ -33,16 +36,16 @@ export default class TextureHook {
     }
 
     return texture;
-  }
+  };
 
-  private hookedDeleteTexture (texture: WebGLTexture | null): void {
-    this.realDeleteTexture.call(this.gl, texture);
+  private hookedDeleteTexture: DeleteTexture = (...args: Parameters<DeleteTexture>) => {
+    this.realDeleteTexture.call(this.gl, ...args);
     this.textures--;
 
     if (this.debug) {
       console.debug(`DeleteTexture, textures: ${this.textures}.`);
     }
-  }
+  };
 
   reset (): void {
     this.textures = 0;

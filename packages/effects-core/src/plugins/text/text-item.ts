@@ -7,7 +7,7 @@ import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { MaskProps, Material } from '../../material';
+import type { Material } from '../../material';
 import { Texture } from '../../texture';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
@@ -17,8 +17,9 @@ import { TextStyle } from './text-style';
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
  */
-export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'>, MaskProps {
+export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'> {
   listIndex?: number,
+  mask?: spec.MaskOptions,
   renderer: {
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
@@ -69,11 +70,10 @@ export class TextComponent extends BaseRenderComponent {
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
-  constructor (engine: Engine, props?: TextItemProps) {
+  constructor (engine: Engine, props?: spec.TextComponentData) {
     super(engine);
 
     this.name = 'MText' + seed++;
-    this.geometry = this.createGeometry();
 
     if (props) {
       this.fromData(props);
@@ -98,7 +98,7 @@ export class TextComponent extends BaseRenderComponent {
     this.updateTexture();
   }
 
-  override fromData (data: TextItemProps): void {
+  override fromData (data: spec.TextComponentData): void {
     super.fromData(data);
     const { interaction, options } = data;
 
