@@ -8,6 +8,12 @@
 
 ---
 
+## 2.5.1
+
+`2025-07-04`
+
+- Fix: text render issue. [#1062](https://github.com/galacean/effects-runtime/pull/1062) @wumaolinmaoan
+
 ## 2.5.0
 
 `2025-07-04`
