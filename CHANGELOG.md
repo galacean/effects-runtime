@@ -7,9 +7,16 @@
 
 ---
 
+## 2.5.1
+
+`2025-07-04`
+
+- Fix: text render issue. [#1062](https://github.com/galacean/effects-runtime/pull/1062) @wumaolinmaoan
+
 ## 2.5.0
 
 `2025-07-04`
+
 - Feat: sprite component support custom geometry. [#1021](https://github.com/galacean/effects-runtime/pull/1021) @wumaolinmaoan
   - Fix: sprite geometry split rotate. [#1053](https://github.com/galacean/effects-runtime/pull/1053) @wumaolinmaoan
   - Fix: sprite split rotate issue. [#1055](https://github.com/galacean/effects-runtime/pull/1055) @wumaolinmaoan
