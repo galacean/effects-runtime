@@ -8,6 +8,47 @@
 
 ---
 
+## 2.5.1
+
+`2025-07-04`
+
+- Fix: text render issue. [#1062](https://github.com/galacean/effects-runtime/pull/1062) @wumaolinmaoan
+
+## 2.5.0
+
+`2025-07-04`
+- Feat: sprite component support custom geometry. [#1021](https://github.com/galacean/effects-runtime/pull/1021) @wumaolinmaoan
+  - Fix: sprite geometry split rotate. [#1053](https://github.com/galacean/effects-runtime/pull/1053) @wumaolinmaoan
+  - Fix: sprite split rotate issue. [#1055](https://github.com/galacean/effects-runtime/pull/1055) @wumaolinmaoan
+- Feat: support custom stats metric callbacks. [#1036](https://github.com/galacean/effects-runtime/pull/1036) @yiiqii
+- Feat: add runtime version check. [#1041](https://github.com/galacean/effects-runtime/pull/1041) @yiiqii
+- Feat: add alpha mask option. [#1042](https://github.com/galacean/effects-runtime/pull/1042) @wumaolinmaoan
+- Refactor: sprite shape geometry generation logic. [#1005](https://github.com/galacean/effects-runtime/pull/1005) @wumaolinmaoan
+- Refactor: sprite geometry initialization. [#1048](https://github.com/galacean/effects-runtime/pull/1048) @wumaolinmaoan
+- Perf: opt bezier evaluation performance. [#1059](https://github.com/galacean/effects-runtime/pull/1059) @wumaolinmaoan
+- Fix: type issues. [#1008](https://github.com/galacean/effects-runtime/pull/1008) @zheeeng
+- Fix: optimize Player dispose processing during loadScene. [#1037](https://github.com/galacean/effects-runtime/pull/1037) @wumaolinmaoan
+- Fix: baseRender splits processing. [#1046](https://github.com/galacean/effects-runtime/pull/1046) @wumaolinmaoan
+- Fix: text autosize. [#1050](https://github.com/galacean/effects-runtime/pull/1050) @Fryt1
+- Fix: video update. [#1051](https://github.com/galacean/effects-runtime/pull/1051) @wumaolinmaoan
+- Fix: ignore shader textures compile error. [#1054](https://github.com/galacean/effects-runtime/pull/1054) @wumaolinmaoan
+- Fix: audio asset loading. [#1056](https://github.com/galacean/effects-runtime/pull/1056) @wumaolinmaoan
+- Test: update pre runtime version for test. [#1047](https://github.com/galacean/effects-runtime/pull/1047) @yiiqii
+
+## 2.4.8
+
+`2025-06-27`
+
+- Fix: rich-text character overlapping bug. [#1040](https://github.com/galacean/effects-runtime/pull/1040) @Fryt1
+- Fix: composition freeze issue. [#1035](https://github.com/galacean/effects-runtime/pull/1035) @wumaolinmaoan
+
+## 2.4.7
+
+`2025-06-13`
+
+- Fix: pre composition mask migration error. [#1030](https://github.com/galacean/effects-runtime/pull/1030) @wumaolinmaoan
+- Fix: video will be downloaded twice when loaded using the assetManager. [#1029](https://github.com/galacean/effects-runtime/pull/1029) @wumaolinmaoan
+
 ## 2.4.6
 
 `2025-06-06`
