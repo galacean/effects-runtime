@@ -9,34 +9,29 @@ const container = document.getElementById('J-container');
 
 // UI控制参数，仅保留实际用到的参数
 const shaderParams = {
-  amplitude: 0.150,
-  blend: 1.250,
-  timeSpeed: 2.100, // 修改
-  noiseScale: 0.900,
-  heightMultiplier: 3.900,
-  midPoint: 0.860,
-  intensityMultiplier: 1.500,
-  yOffset: 0.480,
-  heightPower: 0.580,
-  uRevealEdge: 0.299,
-  colorStops: [
-    { x: 0.00, y: 0.15, z: 1.0 },
-    { x: 0.49, y: 1.0, z: 0.40 },
-    { x: 0.32, y: 0.15, z: 1.0 },
-  ],
-  uFadeProgressGlobal: 0.0,
-  uFadeProgressMask: 0.0,
-  fadeSpeedGlobal: 0.035,
-  fadeSpeedMask: 0.025,
-  uFadeOffset: 0.230,
-  uAudioBrightness: 1.000,
-  uAudioSensitivity: 2.0,
-  uFadeStart: 0.000,
-  uFadeEnd: 0.780,
-  minIntensity: 0.330,
-  maxIntensity: 1.050,
-  audioMin: 0.0,
-  audioMax: 1.0,
+  _Amplitude: 0.150,
+  _Blend: 1.250,
+  _TimeSpeed: 2.100, // 修改
+  _NoiseScale: 0.900,
+  _HeightMultiplier: 3.900,
+  _MidPoint: 0.860,
+  _IntensityMultiplier: 1.500,
+  _YOffset: 0.480,
+  _HeightPower: 0.580,
+  _ColorStops0: { x: 0.00, y: 0.15, z: 1.0 },
+  _ColorStops1: { x: 0.49, y: 1.0, z: 0.40 },
+  _ColorStops2: { x: 0.32, y: 0.15, z: 1.0 },
+  _FadeProgressGlobal: 0.0,
+  _FadeProgressMask: 0.0,
+  _FadeOffset: 0.230,
+  _AudioBrightness: 1.000,
+  _AudioSensitivity: 2.0,
+  _FadeStart: 0.000,
+  _FadeEnd: 0.780,
+  _MinIntensity: 0.330,
+  _MaxIntensity: 1.050,
+  _AudioMin: 0.0,
+  _AudioMax: 1.0,
 };
 
 const vertex = `
@@ -58,7 +53,7 @@ const fragment = `
 precision highp float;
 
 varying vec2 uv;
-uniform vec4 _Time;
+uniform vec2 _Time;
 uniform float _Amplitude;
 uniform vec3 _ColorStops0;
 uniform vec3 _ColorStops1;
@@ -204,7 +199,7 @@ void main() {
   // 归一化音量
   float normalizedAudio = clamp((_AudioCurrent - _AudioMin) / max(0.0001, _AudioMax - _AudioMin), 0.0, 1.0);
 
-  // 用 normalizedAudio 替换 _AudioInfluence
+  // 用 normalizedAudio 替换 uAudioInfluence
   vec3 rampColor = mix(mix(colorA, colorB, normalizedAudio), colorC, normalizedAudio * 0.5);
 
     // 添加亮度曲线控制，增加灵敏度参数
@@ -215,7 +210,7 @@ void main() {
   vec3 auroraColor = rampColor  * _AudioBrightness;
 
   float baseNoise = snoise(vec2(wavePhase, time * 0.25)) * 0.5 * _Amplitude;
-  // 用_AudioInfluence控制起伏幅度，0时无起伏，1时最大起伏
+  // 用uAudioInfluence控制起伏幅度，0时无起伏，1时最大起伏
   float height = mix(0.5*baseNoise, baseNoise, normalizedAudio);
 
   float normHeight = (height + _Amplitude * 0.5) / _Amplitude;
@@ -242,7 +237,7 @@ void main() {
 
   // 右到左淡出遮罩
   float fadeEdge = 0.2;
-  // 右到左淡入遮罩（与淡出相反，_FadeProgressMask从1到0时显现）
+  // 右到左淡入遮罩（与淡出相反，uFadeProgressMask从1到0时显现）
   float fadeInMask =1.0- smoothstep(1.0 - _FadeProgressMask - fadeEdge, 1.0 - _FadeProgressMask,1.0 - uvCoord.x- _FadeOffset);
 
   float fade = 1.0 - pow(mix(_FadeProgressGlobal, 1.0, uvCoord.x - _FadeOffset), 2.0);
@@ -393,130 +388,130 @@ function createControlPanel () {
     <div class="control-group">
       <h3>极光形态参数</h3>
       <div class="control-item">
-        <label for="amplitude">Amplitude (振幅)</label>
-        <input type="range" id="amplitude" min="0" max="3" step="0.01" value="0.15">
-        <div class="value-display" id="amplitude-value">0.15</div>
+        <label for="_Amplitude">Amplitude (振幅)</label>
+        <input type="range" id="_Amplitude" min="0" max="3" step="0.01" value="0.15">
+        <div class="value-display" id="_Amplitude-value">0.15</div>
       </div>
       <div class="control-item">
-        <label for="blend">Blend Factor (混合因子)</label>
-        <input type="range" id="blend" min="0" max="5" step="0.05" value="1.25">
-        <div class="value-display" id="blend-value">1.25</div>
+        <label for="_Blend">Blend Factor (混合因子)</label>
+        <input type="range" id="_Blend" min="0" max="5" step="0.05" value="1.25">
+        <div class="value-display" id="_Blend-value">1.25</div>
       </div>
       <div class="control-item">
-        <label for="midPoint">Mid Point (中点位置)</label>
-        <input type="range" id="midPoint" min="0" max="2" step="0.01" value="0.86">
-        <div class="value-display" id="midPoint-value">0.86</div>
+        <label for="_MidPoint">Mid Point (中点位置)</label>
+        <input type="range" id="_MidPoint" min="0" max="2" step="0.01" value="0.86">
+        <div class="value-display" id="_MidPoint-value">0.86</div>
       </div>
       <div class="control-item">
-        <label for="intensityMultiplier">Intensity (强度倍数)</label>
-        <input type="range" id="intensityMultiplier" min="0" max="2" step="0.1" value="1.5">
-        <div class="value-display" id="intensityMultiplier-value">1.50</div>
+        <label for="_IntensityMultiplier">Intensity (强度倍数)</label>
+        <input type="range" id="_IntensityMultiplier" min="0" max="2" step="0.1" value="1.5">
+        <div class="value-display" id="_IntensityMultiplier-value">1.50</div>
       </div>
       <div class="control-item">
-        <label for="yOffset">Y Offset (Y偏移)</label>
-        <input type="range" id="yOffset" min="-1" max="1" step="0.01" value="0.48">
-        <div class="value-display" id="yOffset-value">0.48</div>
+        <label for="_YOffset">Y Offset (Y偏移)</label>
+        <input type="range" id="_YOffset" min="-1" max="1" step="0.01" value="0.48">
+        <div class="value-display" id="_YOffset-value">0.48</div>
       </div>
       <div class="control-item">
-        <label for="heightPower">Height Power (高度幂次)</label>
-        <input type="range" id="heightPower" min="0.1" max="10" step="0.01" value="0.58">
-        <div class="value-display" id="heightPower-value">0.58</div>
+        <label for="_HeightPower">Height Power (高度幂次)</label>
+        <input type="range" id="_HeightPower" min="0.1" max="10" step="0.01" value="0.58">
+        <div class="value-display" id="_HeightPower-value">0.58</div>
       </div>
       <div class="control-item">
-        <label for="heightMultiplier">Height Multiplier (高度倍数)</label>
-        <input type="range" id="heightMultiplier" min="0" max="5" step="0.1" value="3.9">
-        <div class="value-display" id="heightMultiplier-value">3.90</div>
+        <label for="_HeightMultiplier">Height Multiplier (高度倍数)</label>
+        <input type="range" id="_HeightMultiplier" min="0" max="5" step="0.1" value="3.9">
+        <div class="value-display" id="_HeightMultiplier-value">3.90</div>
       </div>
       <div class="control-item">
-        <label for="noiseScale">Noise Scale (噪声缩放)</label>
-        <input type="range" id="noiseScale" min="0.5" max="5" step="0.1" value="0.9">
-        <div class="value-display" id="noiseScale-value">0.90</div>
+        <label for="_NoiseScale">Noise Scale (噪声缩放)</label>
+        <input type="range" id="_NoiseScale" min="0.5" max="5" step="0.1" value="0.9">
+        <div class="value-display" id="_NoiseScale-value">0.90</div>
       </div>
       <div class="control-item">
-        <label for="uRevealEdge">Reveal Edge (显隐过渡宽度)</label>
-        <input type="range" id="uRevealEdge" min="0.001" max="1.0" step="0.001" value="0.299">
-        <div class="value-display" id="uRevealEdge-value">0.299</div>
+        <label for="_ColorStops0">Reveal Edge (显隐过渡宽度)</label>
+        <input type="range" id="_ColorStops0" min="0.001" max="1.0" step="0.001" value="0.299">
+        <div class="value-display" id="_ColorStops0-value">0.299</div>
       </div>
       <div class="control-item">
-        <label for="audioMin">Audio Min (音量最小值)</label>
-        <input type="range" id="audioMin" min="0" max="100" step="0.01" value="0.00">
-        <div class="value-display" id="audioMin-value">0.00</div>
+        <label for="_AudioMin">Audio Min (音量最小值)</label>
+        <input type="range" id="_AudioMin" min="0" max="100" step="0.01" value="0.00">
+        <div class="value-display" id="_AudioMin-value">0.00</div>
       </div>
       <div class="control-item">
-        <label for="audioMax">Audio Max (音量最大值)</label>
-        <input type="range" id="audioMax" min="0" max="100" step="0.01" value="1.00">
-        <div class="value-display" id="audioMax-value">1.00</div>
+        <label for="_AudioMax">Audio Max (音量最大值)</label>
+        <input type="range" id="_AudioMax" min="0" max="100" step="0.01" value="1.00">
+        <div class="value-display" id="_AudioMax-value">1.00</div>
       </div>
     </div>
     <div class="control-group">
       <h3>动画与消隐参数</h3>
       <div class="control-item">
-        <label for="timeSpeed">Time Speed (时间速度)</label>
-        <input type="range" id="timeSpeed" min="0" max="10" step="0.1" value="2.1">
-        <div class="value-display" id="timeSpeed-value">2.10</div>
+        <label for="_TimeSpeed">Time Speed (时间速度)</label>
+        <input type="range" id="_TimeSpeed" min="0" max="10" step="0.1" value="2.1">
+        <div class="value-display" id="_TimeSpeed-value">2.10</div>
       </div>
       <div class="control-item">
-        <label for="fadeSpeedGlobal">整体消隐速度 (fadeSpeedGlobal)</label>
-        <input type="range" id="fadeSpeedGlobal" min="0.001" max="0.05" step="0.001" value="0.035">
-        <div class="value-display" id="fadeSpeedGlobal-value">0.035</div>
+        <label for="_FadeProgressGlobal">整体消隐速度 (fadeSpeedGlobal)</label>
+        <input type="range" id="_FadeProgressGlobal" min="0.001" max="0.05" step="0.001" value="0.035">
+        <div class="value-display" id="_FadeProgressGlobal-value">0.035</div>
       </div>
       <div class="control-item">
-        <label for="fadeSpeedMask">右到左消隐速度 (fadeSpeedMask)</label>
-        <input type="range" id="fadeSpeedMask" min="0.001" max="0.05" step="0.001" value="0.025">
-        <div class="value-display" id="fadeSpeedMask-value">0.025</div>
+        <label for="_FadeProgressMask">右到左消隐速度 (fadeSpeedMask)</label>
+        <input type="range" id="_FadeProgressMask" min="0.001" max="0.05" step="0.001" value="0.025">
+        <div class="value-display" id="_FadeProgressMask-value">0.025</div>
       </div>
       <div class="control-item">
-        <label for="uFadeOffset">消隐横坐标偏移 (uFadeOffset)</label>
-        <input type="range" id="uFadeOffset" min="0" max="0.95" step="0.01" value="0.0">
-        <div class="value-display" id="uFadeOffset-value">0.00</div>
+        <label for="_FadeOffset">消隐横坐标偏移 (uFadeOffset)</label>
+        <input type="range" id="_FadeOffset" min="0" max="0.95" step="0.01" value="0.0">
+        <div class="value-display" id="_FadeOffset-value">0.00</div>
       </div>
       <div class="control-item">
-        <label for="uAudioBrightness">Audio Brightness (音频亮度影响)</label>
-        <input type="range" id="uAudioBrightness" min="0" max="5" step="0.01" value="0.0">
-        <div class="value-display" id="uAudioBrightness-value">0.00</div>
+        <label for="_AudioBrightness">Audio Brightness (音频亮度影响)</label>
+        <input type="range" id="_AudioBrightness" min="0" max="5" step="0.01" value="0.0">
+        <div class="value-display" id="_AudioBrightness-value">0.00</div>
       </div>
       <div class="control-item">
-        <label for="uAudioSensitivity">Audio Sensitivity (音频灵敏度)</label>
-        <input type="range" id="uAudioSensitivity" min="1" max="3" step="0.01" value="${shaderParams.uAudioSensitivity}">
-        <div class="value-display" id="uAudioSensitivity-value">${shaderParams.uAudioSensitivity.toFixed(2)}</div>
+        <label for="_AudioSensitivity">Audio Sensitivity (音频灵敏度)</label>
+        <input type="range" id="_AudioSensitivity" min="1" max="3" step="0.01" value="${shaderParams._AudioSensitivity}">
+        <div class="value-display" id="_AudioSensitivity-value">${shaderParams._AudioSensitivity.toFixed(2)}</div>
       </div>
       <div class="control-item">
-        <label for="uFadeStart">消隐起始Y (uFadeStart)</label>
-        <input type="range" id="uFadeStart" min="0" max="1" step="0.01" value="${shaderParams.uFadeStart}">
-        <div class="value-display" id="uFadeStart-value">${shaderParams.uFadeStart.toFixed(2)}</div>
+        <label for="_FadeStart">消隐起始Y (uFadeStart)</label>
+        <input type="range" id="_FadeStart" min="0" max="1" step="0.01" value="${shaderParams._FadeStart}">
+        <div class="value-display" id="_FadeStart-value">${shaderParams._FadeStart.toFixed(2)}</div>
       </div>
       <div class="control-item">
-        <label for="uFadeEnd">消隐结束Y (uFadeEnd)</label>
-        <input type="range" id="uFadeEnd" min="0" max="1" step="0.01" value="${shaderParams.uFadeEnd}">
-        <div class="value-display" id="uFadeEnd-value">${shaderParams.uFadeEnd.toFixed(2)}</div>
+        <label for="_FadeEnd">消隐结束Y (uFadeEnd)</label>
+        <input type="range" id="_FadeEnd" min="0" max="1" step="0.01" value="${shaderParams._FadeEnd}">
+        <div class="value-display" id="_FadeEnd-value">${shaderParams._FadeEnd.toFixed(2)}</div>
       </div>
     </div>
     <div class="control-group">
       <h3>极光颜色</h3>
       <div class="control-item">
-        <label for="colorStop0">Color Stop 0</label>
-        <input type="color" id="colorStop0" class="color-input">
+        <label for="_ColorStops0">Color Stop 0</label>
+        <input type="color" id="_ColorStops0" class="color-input">
       </div>
       <div class="control-item">
-        <label for="colorStop1">Color Stop 1</label>
-        <input type="color" id="colorStop1" class="color-input">
+        <label for="_ColorStops1">Color Stop 1</label>
+        <input type="color" id="_ColorStops1" class="color-input">
       </div>
       <div class="control-item">
-        <label for="colorStop2">Color Stop 2</label>
-        <input type="color" id="colorStop2" class="color-input">
+        <label for="_ColorStops2">Color Stop 2</label>
+        <input type="color" id="_ColorStops2" class="color-input">
       </div>
     </div>
     <div class="control-group">
       <h3>强度参数</h3>
       <div class="control-item">
-        <label for="minIntensity">Min Intensity (最小强度)</label>
-        <input type="range" id="minIntensity" min="0" max="5" step="0.01" value="1.0">
-        <div class="value-display" id="minIntensity-value">1.00</div>
+        <label for="_MinIntensity">Min Intensity (最小强度)</label>
+        <input type="range" id="_MinIntensity" min="0" max="5" step="0.01" value="1.0">
+        <div class="value-display" id="_MinIntensity-value">1.00</div>
       </div>
       <div class="control-item">
-        <label for="maxIntensity">Max Intensity (最大强度)</label>
-        <input type="range" id="maxIntensity" min="0" max="5" step="0.01" value="2.0">
-        <div class="value-display" id="maxIntensity-value">2.00</div>
+        <label for="_MaxIntensity">Max Intensity (最大强度)</label>
+        <input type="range" id="_MaxIntensity" min="0" max="5" step="0.01" value="2.0">
+        <div class="value-display" id="_MaxIntensity-value">2.00</div>
       </div>
     </div>
     <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
@@ -527,11 +522,13 @@ function createControlPanel () {
 
 // 初始化UI控制，支持uFadeOffset
 function initializeControls () {
+  // 参数分组顺序与UI一致
   const controls = [
-    'amplitude', 'blend', 'midPoint', 'intensityMultiplier', 'yOffset', 'heightPower', 'heightMultiplier', 'noiseScale', 'uRevealEdge',
-    'minIntensity', 'maxIntensity', 'audioMin', 'audioMax',
-    'timeSpeed', // 确保包含 timeSpeed
-    'fadeSpeedGlobal', 'fadeSpeedMask', 'uFadeOffset', 'uAudioBrightness', 'uAudioSensitivity', 'uFadeStart', 'uFadeEnd',
+    // 极光形态参数
+    '_Amplitude', '_Blend', '_MidPoint', '_IntensityMultiplier', '_YOffset', '_HeightPower', '_HeightMultiplier', '_NoiseScale',
+    '_MinIntensity', '_MaxIntensity', '_AudioMin', '_AudioMax',
+    // 动画与消隐参数
+    '_TimeSpeed', '_FadeOffset', '_AudioBrightness', '_AudioSensitivity', '_FadeStart', '_FadeEnd',
   ];
 
   controls.forEach(controlName => {
@@ -539,11 +536,10 @@ function initializeControls () {
     const valueDisplay = document.getElementById(`${controlName}-value`);
 
     if (slider && valueDisplay) {
+      // 设置初始值
       if (shaderParams[controlName as keyof typeof shaderParams] !== undefined) {
         slider.value = shaderParams[controlName as keyof typeof shaderParams].toString();
-        const val = shaderParams[controlName as keyof typeof shaderParams];
-
-        valueDisplay.textContent = typeof val === 'number' ? val.toFixed(3) : '';
+        valueDisplay.textContent = shaderParams[controlName as keyof typeof shaderParams].toFixed(3);
       }
 
       slider.addEventListener('input', e => {
@@ -551,35 +547,33 @@ function initializeControls () {
 
         valueDisplay.textContent = value.toFixed(3);
 
-        // 统一生成 uniform 名称
+        // 更新材质参数
         let uniformName = controlName;
 
-        if (controlName === 'blend') {
-          uniformName = '_Blend';
-        } else if (controlName === 'timeSpeed') {
-          uniformName = '_TimeSpeed';
-        } else if (!['minIntensity', 'maxIntensity', 'uFadeProgressGlobal', 'uFadeProgressMask', 'uFadeOffset'].includes(controlName)) {
-          uniformName = `u${controlName.charAt(0).toUpperCase() + controlName.slice(1)}`;
+        if (!['_MinIntensity', '_MaxIntensity', '_FadeProgressGlobal', '_FadeProgressMask', '_FadeOffset'].includes(controlName)) {
+          uniformName = `u${controlName.charAt(1).toUpperCase() + controlName.slice(2)}`;
         }
 
-        if (controlName !== 'fadeSpeedGlobal' && controlName !== 'fadeSpeedMask') {
+        // 只对shader uniform的参数设置
+        if (controlName !== '_FadeProgressGlobal' && controlName !== '_FadeProgressMask') {
           materials.forEach(material => {
             material.setFloat(uniformName, value);
           });
         }
 
+        // 更新本地参数
         (shaderParams as any)[controlName] = value;
       });
     }
   });
 
   // 颜色控制
-  ['colorStop0', 'colorStop1', 'colorStop2'].forEach((colorName, index) => {
+  ['_ColorStops0', '_ColorStops1', '_ColorStops2'].forEach((colorName, index) => {
     const colorPicker = document.getElementById(colorName) as HTMLInputElement;
 
     if (colorPicker) {
       // 设置初始颜色
-      const color = shaderParams.colorStops[index];
+      const color = shaderParams[colorName as keyof typeof shaderParams];
 
       colorPicker.value = rgbToHex(color.x, color.y, color.z);
 
@@ -588,10 +582,10 @@ function initializeControls () {
         const rgb = hexToRgb(hex);
 
         if (rgb) {
-          shaderParams.colorStops[index] = { x: rgb.r, y: rgb.g, z: rgb.b };
+          shaderParams[colorName as keyof typeof shaderParams] = { x: rgb.r, y: rgb.g, z: rgb.b };
 
           materials.forEach(material => {
-            material.setVector3(`_ColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
+            material.setVector3(colorName, new math.Vector3(rgb.r, rgb.g, rgb.b));
           });
         }
       });
@@ -602,27 +596,28 @@ function initializeControls () {
 // 重置为默认值，支持uFadeOffset
 function resetToDefaults () {
   const defaults = {
-    amplitude: 0.150,
-    blend: 1.250,
-    midPoint: 0.860,
-    intensityMultiplier: 1.500,
-    yOffset: 0.480,
-    heightPower: 0.580,
-    heightMultiplier: 3.900,
-    noiseScale: 0.900,
-    uRevealEdge: 0.299,
-    timeSpeed: 2.100,
-    fadeSpeedGlobal: 0.035,
-    fadeSpeedMask: 0.025,
-    uFadeOffset: 0.230,
-    uAudioBrightness: 1.000,
-    uAudioSensitivity: 2.0,
-    uFadeStart: 0.000,
-    uFadeEnd: 0.780,
-    minIntensity: 0.330,
-    maxIntensity: 1.050,
-    audioMin: 0.0,
-    audioMax: 1.0,
+    _Amplitude: 0.150,
+    _Blend: 1.250,
+    _MidPoint: 0.860,
+    _IntensityMultiplier: 1.500,
+    _YOffset: 0.480,
+    _HeightPower: 0.580,
+    _HeightMultiplier: 3.900,
+    _NoiseScale: 0.900,
+    _ColorStops0: { x: 0.00, y: 0.15, z: 1.0 },
+    _ColorStops1: { x: 0.49, y: 1.0, z: 0.40 },
+    _ColorStops2: { x: 0.32, y: 0.15, z: 1.0 },
+    _FadeProgressGlobal: 0.0,
+    _FadeProgressMask: 0.0,
+    _FadeOffset: 0.230,
+    _AudioBrightness: 1.000,
+    _AudioSensitivity: 2.0,
+    _FadeStart: 0.000,
+    _FadeEnd: 0.780,
+    _MinIntensity: 0.330,
+    _MaxIntensity: 1.050,
+    _AudioMin: 0.0,
+    _AudioMax: 1.0,
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -633,22 +628,16 @@ function resetToDefaults () {
       slider.value = value.toString();
       valueDisplay.textContent = Number(value).toFixed(3);
 
-      let uniformName = key;
+      // 统一生成 uniform 名称
+      const uniformName = key.startsWith('u') ? key : `u${key.charAt(1).toUpperCase() + key.slice(2)}`;
 
-      if (key === 'blend') {
-        uniformName = '_Blend';
-      } else if (key === 'timeSpeed') {
-        uniformName = '_TimeSpeed';
-      } else if (!key.startsWith('u')) {
-        uniformName = `u${key.charAt(0).toUpperCase() + key.slice(1)}`;
-      }
-
-      if (key !== 'fadeSpeedGlobal' && key !== 'fadeSpeedMask') {
+      if (key !== '_FadeProgressGlobal' && key !== '_FadeProgressMask') {
         materials.forEach(material => {
           material.setFloat(uniformName, value);
         });
       }
 
+      // 更新本地参数，确保 shaderParams 也同步
       (shaderParams as any)[key] = value;
     }
   });
@@ -659,14 +648,14 @@ function resetToDefaults () {
   ];
 
   defaultColors.forEach((hex, index) => {
-    const colorPicker = document.getElementById(`colorStop${index}`) as HTMLInputElement;
+    const colorPicker = document.getElementById(`_ColorStops${index}`) as HTMLInputElement;
 
     if (colorPicker) {
       colorPicker.value = hex;
       const rgb = hexToRgb(hex);
 
       if (rgb) {
-        shaderParams.colorStops[index] = { x: rgb.r, y: rgb.g, z: rgb.b };
+        shaderParams[`_ColorStops${index}` as keyof typeof shaderParams] = { x: rgb.r, y: rgb.g, z: rgb.b };
         materials.forEach(material => {
           material.setVector3(`_ColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
         });
@@ -720,8 +709,8 @@ function togglePanel () {
     }
   });
 
-  shaderParams.colorStops.forEach((color, index) => {
-    jsonValue.materials[0].vector3s[`_ColorStops${index}`] = color;
+  ['_ColorStops0', '_ColorStops1', '_ColorStops2'].forEach((colorName, index) => {
+    jsonValue.materials[0].vector3s[colorName] = shaderParams[colorName as keyof typeof shaderParams];
   });
 
   jsonValue.shaders[0].vertex = vertex;
@@ -746,23 +735,16 @@ function togglePanel () {
         setBlendMode(material, spec.BlendingMode.ADD);
         material.depthMask = false;
 
-        // 使用新的uniform名称设置参数
         Object.entries(shaderParams).forEach(([key, value]) => {
           if (typeof value === 'number') {
-            // 转换为新的uniform命名规则
-            let uniformName = key;
-
-            if (key.startsWith('u')) {
-              uniformName = `_${key.charAt(1).toUpperCase() + key.slice(2)}`;
-            } else {
-              uniformName = `_${key.charAt(0).toUpperCase() + key.slice(1)}`;
-            }
-            material.setFloat(uniformName, value);
+            material.setFloat(key, value);
           }
         });
 
-        shaderParams.colorStops.forEach((color, index) => {
-          material.setVector3(`_ColorStops${index}`, new math.Vector3(color.x, color.y, color.z));
+        ['_ColorStops0', '_ColorStops1', '_ColorStops2'].forEach((colorName, index) => {
+          const color = shaderParams[colorName as keyof typeof shaderParams];
+
+          material.setVector3(colorName, new math.Vector3(color.x, color.y, color.z));
         });
 
         const audioTextureData = {
@@ -876,8 +858,8 @@ function togglePanel () {
       // 设置shader参数
       materials.forEach((material: Material) => {
         // 传递你设定的最大/最小音量和当前音量到shader
-        const minVolume = shaderParams.audioMin !== undefined ? shaderParams.audioMin : 0.0;
-        const maxVolume = shaderParams.audioMax !== undefined ? shaderParams.audioMax : 1.0;
+        const minVolume = shaderParams._AudioMin !== undefined ? shaderParams._AudioMin : 0.0;
+        const maxVolume = shaderParams._AudioMax !== undefined ? shaderParams._AudioMax : 1.0;
         const currentVolume = volume; // 当前音量
 
         material.setFloat('_AudioMin', minVolume);
@@ -885,11 +867,12 @@ function togglePanel () {
         material.setFloat('_AudioCurrent', currentVolume);
 
         material.setFloat('_FadeMode', audioStateMachine.getStage());
-        material.setFloat('_Amplitude', shaderParams.amplitude);
-        material.setFloat('_RevealEdge', shaderParams.uRevealEdge);
+        material.setFloat('_Amplitude', shaderParams._Amplitude);
+        // material.setFloat('uAudioInfluence', volume); // 已被uAudioCurrent替代
+        //material.setFloat('_ColorStops0', shaderParams._ColorStops0);
         material.setFloat('_FadeProgressGlobal', fadeProgressGlobal);
         material.setFloat('_FadeProgressMask', fadeProgressMask);
-        material.setFloat('_FadeOffset', shaderParams.uFadeOffset);
+        material.setFloat('_FadeOffset', shaderParams._FadeOffset);
       });
     }
   }, 60);
