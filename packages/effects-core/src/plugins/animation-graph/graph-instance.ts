@@ -146,8 +146,6 @@ export class GraphInstance {
   getControlParameterID (parameterNodeIndex: number): string {
     return this.graphAsset.controlParameterIDs[parameterNodeIndex];
   }
-    return this.graphAsset.controlParameterIDs[paramterNodeIndex];
-  }
 
   setBool (name: string, value: boolean) {
     this.setControlParameterValue<boolean>(name, value);
