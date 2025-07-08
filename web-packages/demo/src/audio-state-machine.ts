@@ -94,41 +94,35 @@ class AudioStateMachine {
   public driveState (
     fadeProgressGlobal: number,
     fadeProgressMask: number,
-    shaderParams: { fadeSpeedGlobal: number, fadeSpeedMask: number }
+    shaderParams: { fadeSpeedGlobal: number, fadeSpeedMask: number },
+    avgAmplitude: number,
+    fadeThreshold: number
   ): {
       fadeProgressGlobal: number,
       fadeProgressMask: number,
-      speakState: AudioStage,
     } {
     let newFadeProgressGlobal = fadeProgressGlobal;
     let newFadeProgressMask = fadeProgressMask;
-    let newSpeakState = this.stage;
+
+    // 计算推进速度
+    const fadeInSpeed = shaderParams.fadeSpeedGlobal * Math.max(1, (avgAmplitude - fadeThreshold) * 5);
+    const fadeOutSpeed = shaderParams.fadeSpeedGlobal * Math.max(1, (fadeThreshold - avgAmplitude) * 5);
 
     if (this.stage === AudioStage.FadeIn) {
-      newFadeProgressGlobal -= shaderParams.fadeSpeedGlobal;
-      newFadeProgressMask -= shaderParams.fadeSpeedMask;
-      if (newFadeProgressGlobal < 0) { newFadeProgressGlobal = 0; }
-      if (newFadeProgressMask < 0) { newFadeProgressMask = 0; }
-      if (newFadeProgressGlobal === 0 && newFadeProgressMask === 0) {
-        this.setStage(AudioStage.Speaking);
-        newSpeakState = AudioStage.Speaking;
-      }
+      newFadeProgressGlobal -= fadeInSpeed;
+      newFadeProgressMask -= fadeInSpeed;
+      if (newFadeProgressGlobal < 0) {newFadeProgressGlobal = 0;}
+      if (newFadeProgressMask < 0) {newFadeProgressMask = 0;}
+      // 不在这里 setStage
     } else if (this.stage === AudioStage.Speaking) {
       newFadeProgressGlobal = 0;
       newFadeProgressMask = 0;
     } else if (this.stage === AudioStage.FadeOut) {
-      if (newFadeProgressMask < 1) {
-        newFadeProgressMask += shaderParams.fadeSpeedMask;
-        if (newFadeProgressMask > 1) { newFadeProgressMask = 1; }
-      }
-      if (newFadeProgressGlobal < 1) {
-        newFadeProgressGlobal += shaderParams.fadeSpeedGlobal;
-        if (newFadeProgressGlobal > 1) { newFadeProgressGlobal = 1; }
-      }
-      if (newFadeProgressGlobal === 1 && newFadeProgressMask === 1) {
-        this.setStage(AudioStage.Idle);
-        newSpeakState = AudioStage.Idle;
-      }
+      newFadeProgressGlobal += fadeOutSpeed;
+      newFadeProgressMask += fadeOutSpeed;
+      if (newFadeProgressGlobal > 1) {newFadeProgressGlobal = 1;}
+      if (newFadeProgressMask > 1) {newFadeProgressMask = 1;}
+      // 不在这里 setStage
     } else if (this.stage === AudioStage.Idle) {
       newFadeProgressGlobal = 1;
       newFadeProgressMask = 1;
@@ -137,76 +131,7 @@ class AudioStateMachine {
     return {
       fadeProgressGlobal: newFadeProgressGlobal,
       fadeProgressMask: newFadeProgressMask,
-      speakState: this.stage,
     };
-  }
-
-  generateFrame (deltaTime: number = 0.016): Float32Array {
-    this.time += deltaTime;
-    this.stageTime += deltaTime;
-
-    if (this.stage === AudioStage.Idle) {
-      this.data.fill(0);
-      if (this.stageTime >= this.stageDurations[AudioStage.Idle]) {
-        this.setStage(AudioStage.FadeIn);
-      }
-    } else if (this.stage === AudioStage.FadeIn) {
-      this.fadeInTime += deltaTime;
-      const fade = Math.min(1, this.fadeInTime / this.stageDurations[AudioStage.FadeIn]);
-
-      for (let i = 0; i < this.frequencyBands; i++) {
-        const normalizedIndex = i / (this.frequencyBands - 1);
-        const base =
-          Math.sin(this.time * 2.0 + normalizedIndex * Math.PI * 8.0) * (1.0 - normalizedIndex) * 2.5 +
-          Math.sin(this.time * 1.3 + normalizedIndex * Math.PI * 3.0) * 1.2 +
-          Math.sin(this.time * 3.7 + normalizedIndex * Math.PI * 12.0) * 0.7 +
-          1.5 * (1.0 - normalizedIndex) +
-          0.5;
-        const noise = (Math.random() - 0.5) * 0.18;
-        const amplitude = base + noise;
-        const newValue = Math.max(0, Math.min(1, amplitude));
-
-        // 线性插值从0到目标值
-        this.data[i] = newValue * fade;
-      }
-      if (this.fadeInTime >= this.stageDurations[AudioStage.FadeIn]) {
-        this.setStage(AudioStage.Speaking);
-      }
-    } else if (this.stage === AudioStage.Speaking) {
-      for (let i = 0; i < this.frequencyBands; i++) {
-        const normalizedIndex = i / (this.frequencyBands - 1);
-        const base =
-          Math.sin(this.time * 2.0 + normalizedIndex * Math.PI * 8.0) * (1.0 - normalizedIndex) * 2.5 +
-          Math.sin(this.time * 1.3 + normalizedIndex * Math.PI * 3.0) * 1.2 +
-          Math.sin(this.time * 3.7 + normalizedIndex * Math.PI * 12.0) * 0.7 +
-          1.5 * (1.0 - normalizedIndex) +
-          0.5;
-        const noise = (Math.random() - 0.5) * 0.18;
-        const amplitude = base + noise;
-        const newValue = Math.max(0, Math.min(1, amplitude));
-
-        this.data[i] = this.data[i] * this.smoothingFactor + newValue * (1 - this.smoothingFactor);
-      }
-      if (this.stageTime >= this.stageDurations[AudioStage.Speaking]) {
-        this.setStage(AudioStage.FadeOut);
-      }
-    } else if (this.stage === AudioStage.FadeOut) {
-      this.fadeOutTime += deltaTime;
-      const fade = Math.max(0, 1 - this.fadeOutTime / this.stageDurations[AudioStage.FadeOut]);
-
-      if (this.fadeOutStartData) {
-        for (let i = 0; i < this.frequencyBands; i++) {
-          // 线性插值到0，和fadeIn一致
-          this.data[i] = this.fadeOutStartData[i] * fade;
-        }
-      }
-      if (this.fadeOutTime >= this.stageDurations[AudioStage.FadeOut]) {
-        this.setStage(AudioStage.Idle);
-        this.fadeOutStartData = null;
-      }
-    }
-
-    return this.data;
   }
 
   getTextureData (): Float32Array {
@@ -248,9 +173,6 @@ class AudioStateMachine {
 
       lastTime = currentTime;
 
-      if (!this.useRealData) {
-        this.generateFrame(deltaTime);
-      }
       // 如果 useRealData 为 true，则 this.data 由外部 setRealData 注入
 
       if (callback) {
@@ -330,33 +252,41 @@ class AudioStateMachine {
     stageTime: number,
     stageDurations: Record<AudioStage, number>
   ): AudioStage {
-    //const triggerLevel = envLevel + fadeThreshold;
-    //打印avgAmplitude
-    //(`Avg Amplitude: ${avgAmplitude}, Prev State: ${prevState}, Stage Time: ${stageTime}`);
-
-    if (prevState === AudioStage.Idle && avgAmplitude > fadeThreshold) {
-      return AudioStage.FadeIn;
-    }
-    if (prevState === AudioStage.FadeIn) {
-      // 淡入阶段只持续设定时长
-      if (stageTime >= stageDurations[AudioStage.FadeIn]) {
-        return AudioStage.Speaking;
-      }
+    // Idle -> FadeIn（音量大于环境噪声）
+    if (prevState === AudioStage.Idle && avgAmplitude > envLevel) {
+      //console.log(`Transitioning from Idle to FadeIn: avgAmplitude=${avgAmplitude}, envLevel=${envLevel}`);
 
       return AudioStage.FadeIn;
     }
-    if (prevState === AudioStage.Speaking && avgAmplitude < fadeThreshold) {
-      return AudioStage.FadeOut;
+    // FadeIn -> Speaking（淡入时间到且音量大于fadeThreshold）
+    if (prevState === AudioStage.FadeIn && stageTime >= stageDurations[AudioStage.FadeIn] && avgAmplitude > fadeThreshold) {
+      //console.log(`Transitioning from FadeIn to Speaking: stageTime=${avgAmplitude}, fadeThreshold=${fadeThreshold}`);
+
+      return AudioStage.Speaking;
     }
-    if (prevState === AudioStage.FadeOut) {
-      // 淡出阶段只持续设定时长
-      if (stageTime >= stageDurations[AudioStage.FadeOut]) {
-        return AudioStage.Idle;
-      }
+    // FadeIn -> FadeOut（淡入时间到且音量小于等于fadeThreshold）
+    /*if (prevState === AudioStage.FadeIn && stageTime >= stageDurations[AudioStage.FadeIn] && avgAmplitude <= fadeThreshold) {
+      console.log(`Transitioning from FadeIn to FadeOut: stageTime=${stageTime}, fadeThreshold=${fadeThreshold}`);
 
       return AudioStage.FadeOut;
+    }*/
+    // Speaking -> FadeOut（音量低于等于fadeThreshold）
+    if (prevState === AudioStage.Speaking && avgAmplitude <= fadeThreshold) {
+      return AudioStage.FadeOut;
+    }
+    // FadeOut -> Idle（**只允许淡出时间到时进入Idle**）
+    if (prevState === AudioStage.FadeOut && stageTime >= stageDurations[AudioStage.FadeOut] && avgAmplitude <= envLevel) {
+      return AudioStage.Idle;
     }
 
+    // FadeOut -> Speaking (if volume increases above threshold)
+    /*if (prevState === AudioStage.FadeOut && avgAmplitude > fadeThreshold) {
+      console.log(`Transitioning from FadeOut to Speaking: avgAmplitude=${avgAmplitude}, fadeThreshold=${fadeThreshold}`);
+
+      return AudioStage.Speaking;
+    }*/
+
+    // FadeOut期间无论音量如何都不能提前进入Idle
     return prevState;
   }
 
@@ -368,18 +298,19 @@ class AudioStateMachine {
     envLevel: number,
     fadeThreshold: number
   ) {
+    this.updateStageTime(0.016); // 假设每帧大约 16ms
+    const prevStage = this.getStage();
     const nextState = AudioStateMachine.getSpeakState(
       avgAmplitude,
       envLevel,
       fadeThreshold,
-      this.getStage(),
-      this.getStageTime(),
-      this.getStageDurations()
+      prevStage,
+      this.stageTime,
+      this.stageDurations
     );
 
-    //打印nextState
-    //(`Next State: ${nextState}`);
-    if (nextState !== this.getStage()) {
+    if (nextState !== prevStage) {
+      this.stageTime = 0; // 重置阶段时间
       this.setStage(nextState);
     }
   }
@@ -400,16 +331,14 @@ function driveSpeakState (
   } {
   let newFadeProgressGlobal = fadeProgressGlobal;
   let newFadeProgressMask = fadeProgressMask;
-  let newSpeakState = speakState;
+  const newSpeakState = speakState;
 
   if (speakState === AudioStage.FadeIn) {
     newFadeProgressGlobal -= shaderParams.fadeSpeedGlobal;
     newFadeProgressMask -= shaderParams.fadeSpeedMask;
     if (newFadeProgressGlobal < 0) {newFadeProgressGlobal = 0;}
     if (newFadeProgressMask < 0) {newFadeProgressMask = 0;}
-    if (newFadeProgressGlobal === 0 && newFadeProgressMask === 0) {
-      newSpeakState = AudioStage.Speaking;
-    }
+    // 不自动切换 newSpeakState
   } else if (speakState === AudioStage.Speaking) {
     newFadeProgressGlobal = 0;
     newFadeProgressMask = 0;
@@ -422,9 +351,7 @@ function driveSpeakState (
       newFadeProgressGlobal += shaderParams.fadeSpeedGlobal;
       if (newFadeProgressGlobal > 1) {newFadeProgressGlobal = 1;}
     }
-    if (newFadeProgressGlobal === 1 && newFadeProgressMask === 1) {
-      newSpeakState = AudioStage.Idle;
-    }
+    // 不自动切换 newSpeakState
   } else if (speakState === AudioStage.Idle) {
     newFadeProgressGlobal = 1;
     newFadeProgressMask = 1;
