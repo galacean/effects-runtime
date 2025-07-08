@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
+import { nodeDataClass } from '../node-asset-type';
+import { FloatValueNode, GraphNodeData } from '../..';
 import { BoolValueNode } from '../..';
-import { FloatValueNode, GraphNodeData, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
 @nodeDataClass(spec.NodeDataType.ControlParameterFloatNodeData)

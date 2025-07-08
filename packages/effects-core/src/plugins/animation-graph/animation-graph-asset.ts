@@ -1,10 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
-import type { GraphNodeData } from '..';
-import { InvalidIndex, getNodeDataClass } from '..';
+import { InvalidIndex, type GraphNodeData } from '..';
 import { effectsClass } from '../../decorators';
 import { EffectsObject } from '../../effects-object';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
 import { GraphDataSet } from './graph-data-set';
+import { getNodeDataClass } from './node-asset-type';
 
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {
@@ -15,7 +15,7 @@ export class AnimationGraphAsset extends EffectsObject {
   rootNodeIndex = InvalidIndex;
 
   static createNodeData (type: spec.NodeDataType) {
-    const classConstructor = getNodeDataClass(type);
+    const classConstructor = getNodeDataClass<GraphNodeData>(type);
 
     if (classConstructor) {
       return new classConstructor();

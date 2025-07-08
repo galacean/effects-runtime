@@ -1,6 +1,7 @@
-import { nodeDataClass, GraphNodeData, BoolValueNode, InvalidIndex } from '../..';
+import { GraphNodeData, BoolValueNode, InvalidIndex } from '../..';
 import type { InstantiationContext, GraphContext } from '../graph-context';
 import * as spec from '@galacean/effects-specification';
+import { nodeDataClass } from '../node-asset-type';
 
 @nodeDataClass(spec.NodeDataType.AndNodeData)
 export class AndNodeData extends GraphNodeData {

@@ -1,4 +1,3 @@
-import type { GraphNodeData } from '..';
 import type { Constructor } from '../../utils';
 
 const nodeDataClassStore: Record<string, any> = {};
@@ -12,6 +11,6 @@ export function nodeDataClass (className: string) {
   };
 }
 
-export function getNodeDataClass (className: string): Constructor<GraphNodeData> | null {
+export function getNodeDataClass<T> (className: string): Constructor<T> | null {
   return nodeDataClassStore[className];
 }

@@ -1,12 +1,13 @@
 import { clamp, lerp } from '@galacean/effects-math/es/core/utils';
-import type { StateNode } from '../..';
 import * as spec from '@galacean/effects-specification';
-import { GraphNodeData, InvalidIndex, PoseNode, TransitionState, nodeDataClass } from '../..';
 import { Blender } from '../blender';
 import type { InstantiationContext } from '../graph-context';
 import { BranchState, type GraphContext } from '../graph-context';
 import { PoseResult } from '../pose-result';
 import { assertExist } from '../../../utils/asserts';
+import { nodeDataClass } from '../node-asset-type';
+import { GraphNodeData, InvalidIndex, PoseNode } from '../graph-node';
+import { TransitionState, type StateNode } from './state-node';
 
 export enum SourceType {
   State,

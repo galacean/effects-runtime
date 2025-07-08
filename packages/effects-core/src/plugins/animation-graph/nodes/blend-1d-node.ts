@@ -4,7 +4,7 @@ import { GraphNodeData, PoseNode } from '../graph-node';
 import type { Pose } from '../pose';
 import { PoseResult } from '../pose-result';
 import * as spec from '@galacean/effects-specification';
-import { nodeDataClass } from '../..';
+import { nodeDataClass } from '../node-asset-type';
 import { Blender } from '../blender';
 
 @nodeDataClass(spec.NodeDataType.BlendNodeData)

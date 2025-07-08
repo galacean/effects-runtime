@@ -2,9 +2,10 @@ import type { BoolValueNode, StateNode } from '../..';
 import type { TransitionNode } from '../..';
 import * as spec from '@galacean/effects-specification';
 import { InvalidIndex } from '../..';
-import { GraphNodeData, PoseNode, nodeDataClass } from '../..';
+import { GraphNodeData, PoseNode } from '../..';
 import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
+import { nodeDataClass } from '../node-asset-type';
 
 @nodeDataClass(spec.NodeDataType.StateMachineNodeData)
 export class StateMachineNodeData extends GraphNodeData {
