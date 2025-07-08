@@ -143,7 +143,9 @@ export class GraphInstance {
     return InvalidIndex;
   }
 
-  getControlParameterID (paramterNodeIndex: number): string {
+  getControlParameterID (parameterNodeIndex: number): string {
+    return this.graphAsset.controlParameterIDs[parameterNodeIndex];
+  }
     return this.graphAsset.controlParameterIDs[paramterNodeIndex];
   }
 
