@@ -34,6 +34,12 @@ export enum GraphValueType {
   Special
 }
 
+/**
+ * Returns the string identifier corresponding to a given GraphValueType.
+ *
+ * @param type - The graph value type to convert
+ * @returns The string ID representing the specified value type
+ */
 export function GetIDForValueType (type: GraphValueType): string {
   const IDs = [
     'Unknown',
@@ -50,6 +56,14 @@ export function GetIDForValueType (type: GraphValueType): string {
   return IDs[type];
 }
 
+/**
+ * Returns the `GraphValueType` corresponding to the given string ID.
+ *
+ * If the ID does not match any known value type, returns `GraphValueType.Unknown`.
+ *
+ * @param ID - The string identifier for a graph value type
+ * @returns The matching `GraphValueType`, or `Unknown` if no match is found
+ */
 export function GetValueTypeForID (ID: string): GraphValueType {
   for (let i = 0; i <= GraphValueType.Special; i++) {
     const gvt = i as GraphValueType;
@@ -74,10 +88,21 @@ const colors: Color[] = [
   new Color(Colors.White),           // special
 ];
 
+/**
+ * Returns the color associated with a given graph value type.
+ *
+ * @returns The color corresponding to the specified `GraphValueType`.
+ */
 export function GetColorForValueType (type: GraphValueType): Color {
   return colors[type as number];
 }
 
+/**
+ * Returns the human-readable name for a given GraphValueType.
+ *
+ * @param type - The GraphValueType to get the name for
+ * @returns The display name corresponding to the specified value type
+ */
 export function GetNameForValueType (type: GraphValueType): string {
   const names: string[] = [
     'Unknown',
@@ -100,7 +125,15 @@ const g_playbackBarHeight: number = 12;
 const g_playbackBarMarkerSize: number = 4;
 const g_playbackBarRegionHeight: number = g_playbackBarHeight + g_playbackBarMarkerSize;
 
-//-------------------------------------------------------------------------
+/**
+ * Renders a playback progress bar and debug information for a pose node.
+ *
+ * Displays a visual playback bar, current time, and percentage progress. If debug info is provided, the bar is filled to indicate progress and a marker shows the current position; otherwise, an empty bar and placeholder text are shown.
+ *
+ * @param ctx - The drawing context for rendering UI elements
+ * @param canvasWidth - The width of the playback bar in canvas units
+ * @param pDebugInfo - Optional pose node debug information; if null, displays placeholders
+ */
 
 export function DrawPoseNodeDebugInfo (ctx: NodeGraph.DrawContext, canvasWidth: number, pDebugInfo: PoseNodeDebugInfo | null): void {
   const availableCanvasWidth = Math.max(canvasWidth, g_playbackBarMinimumWidth);
@@ -352,6 +385,11 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
   }
 }
 
+/**
+ * Displays the value of a node in the UI based on its `GraphValueType`.
+ *
+ * For supported types, renders a formatted value display using ImGui. Boolean values are shown in color, floats are formatted to three decimal places, and placeholders exist for other types.
+ */
 export function DrawValueDisplayText (
   ctx: NodeGraph.DrawContext,
   pGraphNodeContext: ToolsGraphUserContext,

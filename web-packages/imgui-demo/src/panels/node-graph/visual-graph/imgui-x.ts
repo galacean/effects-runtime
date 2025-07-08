@@ -10,7 +10,13 @@ export const ImVec2 = ImGui.ImVec2;
 type Color = ImGui.Color;
 const Color = ImGui.Color;
 
-// General helpers
+/**
+ * Clamps a 2D point to the bounds of a given rectangle.
+ *
+ * @param rect - The rectangle to clamp within
+ * @param inPoint - The point to be clamped
+ * @returns A new point representing the clamped coordinates within the rectangle
+ */
 export function ClampToRect (rect: ImRect, inPoint: ImGui.ImVec2): ImGui.ImVec2 {
   return new ImGui.ImVec2(
     Math.max(rect.Min.x, Math.min(inPoint.x, rect.Max.x)),
@@ -18,6 +24,11 @@ export function ClampToRect (rect: ImRect, inPoint: ImGui.ImVec2): ImGui.ImVec2 
   );
 }
 
+/**
+ * Returns the closest point on the line segment from `a` to `b` to the point `p`.
+ *
+ * @returns The point on the segment `[a, b]` that is nearest to `p`
+ */
 export function ImLineClosestPoint (a: ImVec2, b: ImVec2, p: ImVec2): ImVec2 {
   const ap = subtract(p, a);
   const ab_dir = subtract(b, a);
@@ -35,7 +46,11 @@ export function ImLineClosestPoint (a: ImVec2, b: ImVec2, p: ImVec2): ImVec2 {
   return add(a, multiplyScalar(ab_dir, dot / ab_len_sqr));
 }
 
-// Closely mimics PathBezierToCasteljau() in imgui_draw.cpp
+/**
+ * Recursively finds the closest point on a cubic Bezier curve segment to a given point using the Casteljau algorithm.
+ *
+ * Updates the closest point and its squared distance via mutable references as the curve is subdivided, stopping when the tessellation tolerance is met or a recursion depth of 10 is reached.
+ */
 export function ImBezierCubicClosestPointCasteljauStep (
   p: ImVec2,
   p_closest: { value: ImVec2 },
@@ -79,7 +94,17 @@ export function ImBezierCubicClosestPointCasteljauStep (
 }
 
 // tess_tol is generally the same value you would find in ImGui::GetStyle().CurveTessellationTol
-// Because those ImXXX functions are lower-level than ImGui:: we cannot access this value automatically.
+/**
+ * Finds the closest point on a cubic Bezier curve to a given point using recursive subdivision.
+ *
+ * @param p1 - The first control point of the cubic Bezier curve
+ * @param p2 - The second control point of the cubic Bezier curve
+ * @param p3 - The third control point of the cubic Bezier curve
+ * @param p4 - The fourth control point of the cubic Bezier curve
+ * @param p - The point to which the closest point on the curve is sought
+ * @param tess_tol - The tessellation tolerance for curve subdivision
+ * @returns The point on the cubic Bezier curve closest to `p`
+ */
 export function ImBezierCubicClosestPointCasteljau (p1: ImVec2, p2: ImVec2, p3: ImVec2, p4: ImVec2, p: ImVec2, tess_tol: number): ImVec2 {
   const p_last = { value: new ImVec2().Copy(p1) };
   const p_closest = { value: new ImVec2() };
@@ -90,6 +115,15 @@ export function ImBezierCubicClosestPointCasteljau (p1: ImVec2, p2: ImVec2, p3: 
   return p_closest.value;
 }
 
+/**
+ * Returns the closest point on the border of a rectangle to a given point.
+ *
+ * Evaluates all four edges of the rectangle and finds the point on any edge that is nearest to `inPoint`.
+ *
+ * @param rect - The rectangle to evaluate
+ * @param inPoint - The point from which to measure distance
+ * @returns The closest point on the rectangle's border to `inPoint`
+ */
 export function GetClosestPointOnRectBorder (rect: ImRect, inPoint: ImGui.ImVec2): ImGui.ImVec2 {
   const points: ImGui.ImVec2[] = [
     ImLineClosestPoint(rect.GetTL(), rect.GetTR(), inPoint),
@@ -113,10 +147,23 @@ export function GetClosestPointOnRectBorder (rect: ImRect, inPoint: ImGui.ImVec2
   return points[closestPointIdx];
 }
 
+/**
+ * Determines whether a character is a valid name or ID character.
+ *
+ * Returns true if the character is an alphanumeric character or an underscore; otherwise, returns false.
+ *
+ * @param c - The character to validate
+ * @returns True if `c` is a letter, digit, or underscore; false otherwise
+ */
 export function IsValidNameIDChar (c: string): boolean {
   return /[a-zA-Z0-9_]/.test(c);
 }
 
+/**
+ * Filters input characters for ImGui text fields, allowing only alphanumeric and underscore characters.
+ *
+ * Returns 0 if the input character is valid for use in name or ID fields; otherwise, returns 1 to reject the character.
+ */
 export function FilterNameIDChars (data: ImGui.ImGuiInputTextCallbackData<any>): number {
   return IsValidNameIDChar(String.fromCharCode(data.EventChar)) ? 0 : 1;
 }
@@ -129,7 +176,12 @@ export function FilterNameIDChars (data: ImGui.ImGuiInputTextCallbackData<any>):
 //   ImGui.SetNextWindowViewport(ImGui.GetMainViewport()!.ID);
 
 //   return ImGui.BeginPopupModal(popupName, isPopupOpen, windowFlags);
-// }
+/**
+ * Closes the current ImGui popup if the Escape key is pressed and returns false; otherwise, returns the original dialog open state.
+ *
+ * @param isDialogOpen - The current open state of the dialog
+ * @returns `false` if the Escape key was pressed (dialog should close), otherwise returns the input `isDialogOpen`
+ */
 
 export function CancelDialogViaEsc (isDialogOpen: boolean): boolean {
   if (ImGui.IsKeyPressed(ImGui.ImGuiKey.Escape)) {
@@ -141,7 +193,12 @@ export function CancelDialogViaEsc (isDialogOpen: boolean): boolean {
   return isDialogOpen;
 }
 
-// Layout and Separators
+/**
+ * Draws a vertical separator line on the current UI line.
+ *
+ * @param width - Optional width of the separator; defaults to twice the item spacing plus 1 if not specified or non-positive.
+ * @param color - Optional color for the separator; uses the default separator color if not provided.
+ */
 export function SameLineSeparator (width: number = 0, color?: Color): void {
   const separatorColor = color ? color : new Color(ImGui.GetStyleColorVec4(ImGui.ImGuiCol.Separator));
   const separatorSize = new ImGui.ImVec2(width <= 0 ? (ImGui.GetStyle().ItemSpacing.x * 2) + 1 : width, ImGui.GetFrameHeight());
@@ -161,6 +218,14 @@ export function SameLineSeparator (width: number = 0, color?: Color): void {
   ImGui.SameLine(0, 0);
 }
 
+/**
+ * Begins a collapsible child window with a styled header and background.
+ *
+ * @param labelAndID - The label and unique identifier for the child window and header
+ * @param initiallyOpen - Whether the collapsible header should be open on first use (default: true)
+ * @param backgroundColor - The background color for the child window and header (default: dark gray)
+ * @returns True if the collapsible header is open and its contents should be drawn; false otherwise
+ */
 export function BeginCollapsibleChildWindow (labelAndID: string, initiallyOpen: boolean = true, backgroundColor: Color = new Color(28 / 255, 28 / 255, 28 / 255, 1)): boolean {
   ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, backgroundColor.toImVec4());
   ImGui.PushStyleVar(ImGui.ImGuiStyleVar.ChildRounding, 8);
@@ -189,6 +254,9 @@ export function BeginCollapsibleChildWindow (labelAndID: string, initiallyOpen: 
   return false;
 }
 
+/**
+ * Ends the collapsible child window started by `BeginCollapsibleChildWindow`.
+ */
 export function EndCollapsibleChildWindow (): void {
   ImGui.EndChild();
 }
@@ -480,7 +548,19 @@ export function EndCollapsibleChildWindow (): void {
 //   return ComboButtonEx(icon, label, comboCallback, size, backgroundColor, iconColor, foregroundColor, shouldCenterContents);
 // }
 
-// Custom InputText
+/**
+ * Displays an input text field with optional clear button and combo dropdown support.
+ *
+ * Renders a text input widget with configurable width, optional placeholder help text, and support for additional UI elements such as a clear button and a combo dropdown (if callbacks are provided). Returns true if the input was changed or deactivated after editing.
+ *
+ * @param inputTextID - Unique identifier for the input widget
+ * @param buf - Buffer or accessor for the input text value
+ * @param bufferSize - Maximum number of characters allowed in the input
+ * @param hasClearButton - Whether to display a clear button next to the input
+ * @param helpText - Optional placeholder or help text to display when input is empty
+ * @param comboCallback - Optional callback to render a combo dropdown menu
+ * @returns True if the input value was changed or editing was completed
+ */
 export function InputTextEx (inputTextID: string, buf: ImGui.ImStringBuffer | ImGui.Bind.ImAccess<string> | ImGui.Bind.ImScalar<string>, bufferSize: number, hasClearButton: boolean, helpText: string | null, comboCallback: (() => void) | null, flags: ImGui.ImGuiInputTextFlags = 0, callback: ((data: ImGui.ImGuiInputTextCallbackData<any>) => number) | null = null, userData: any = null): boolean {
   ImGui.PushID(inputTextID);
 
@@ -604,7 +684,11 @@ export function InputTextEx (inputTextID: string, buf: ImGui.ImStringBuffer | Im
 
 // export function InputTextCombo (inputTextID: string, buffer: string, bufferSize: number, comboCallback: () => void, flags: ImGui.ImGuiInputTextFlags = 0, callback: ((data: ImGui.ImGuiInputTextCallbackData) => number) | null = null, userData: any = null): boolean {
 //   return InputTextEx(inputTextID, buffer, bufferSize, false, null, comboCallback, flags, callback, userData);
-// }
+/**
+ * Displays an input text field with an integrated clear button and optional help text.
+ *
+ * Returns true if the input value was changed or editing was completed.
+ */
 
 export function InputTextWithClearButton (inputTextID: string, helpText: string, buf: ImGui.ImStringBuffer | ImGui.Bind.ImAccess<string> | ImGui.Bind.ImScalar<string>, bufferSize: number, flags: ImGui.ImGuiInputTextFlags = 0, callback: ((data: ImGui.ImGuiInputTextCallbackData<any>) => number) | null = null, userData: any = null): boolean {
   return InputTextEx(inputTextID, buf, bufferSize, true, helpText, null, flags, callback, userData);
@@ -644,7 +728,18 @@ export function InputTextWithClearButton (inputTextID: string, helpText: string,
 //   return result;
 // }
 
-// Drawing functions
+/**
+ * Draws an arrow from the specified start point to the end point on the given ImGui draw list.
+ *
+ * The arrow consists of a line shaft and a filled triangular head. The width of the shaft and the size of the arrowhead can be customized.
+ *
+ * @param drawList - The ImGui draw list to render the arrow on
+ * @param arrowStart - The starting point of the arrow
+ * @param arrowEnd - The ending point (tip) of the arrow
+ * @param color - The color of the arrow
+ * @param arrowWidth - The width of the arrow shaft
+ * @param arrowHeadWidth - The width of the arrowhead (default is 5.0)
+ */
 export function DrawArrow (drawList: ImGui.ImDrawList, arrowStart: ImGui.ImVec2, arrowEnd: ImGui.ImVec2, color: Color, arrowWidth: number, arrowHeadWidth: number = 5.0): void {
   const direction = normalize(subtract(arrowEnd, arrowStart));
   const orthogonalDirection = new ImGui.ImVec2(-direction.y, direction.x);

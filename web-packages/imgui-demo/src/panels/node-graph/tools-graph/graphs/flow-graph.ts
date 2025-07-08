@@ -8,7 +8,15 @@ import { CommentNode } from '../../visual-graph/comment-node';
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
 
-// 辅助函数
+/**
+ * Determines whether a string contains all tokens from a filter array, case-insensitively.
+ *
+ * Returns `true` if the filter array is empty or if every token is found within the string; otherwise, returns `false`.
+ *
+ * @param filterTokens - Array of lowercase tokens to search for
+ * @param string - The string to be checked against the filter tokens
+ * @returns Whether the string matches all filter tokens
+ */
 function MatchesFilter (filterTokens: string[], string: string): boolean {
   if (filterTokens.length === 0) {
     return true;

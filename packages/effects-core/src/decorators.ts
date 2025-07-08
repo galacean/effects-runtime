@@ -8,10 +8,24 @@ const mergedStore: SerializableMemberStoreType = new Map();
 
 export const effectsClassStore: Record<string, any> = {};
 
+/**
+ * Retrieves the class registered under the specified class name.
+ *
+ * @param className - The name of the registered class to retrieve
+ * @returns The class constructor or object associated with `className`, or `undefined` if not found
+ */
 export function getClass (className: string) {
   return effectsClassStore[className];
 }
 
+/**
+ * Class decorator factory that registers the decorated class under the specified name for later retrieval.
+ *
+ * If a class with the same name is already registered, a warning is logged and the registration is overwritten.
+ *
+ * @param className - The name under which to register the class
+ * @returns A class decorator function
+ */
 export function effectsClass (className: string) {
   return (target: Object, context?: unknown) => {
     if (effectsClassStore[className]) {

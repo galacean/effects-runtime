@@ -123,6 +123,16 @@ export function version32Migration (json: JSONScene): JSONScene {
   return json;
 }
 
+/**
+ * Migrates a JSONScene to version 3.3 by updating plugin names, normalizing shape references, and converting composition IDs to GUIDs.
+ *
+ * - Renames the "richtext" plugin to "rich-text".
+ * - Replaces integer-based shape references in sprite components with actual shape data.
+ * - Converts composition IDs to GUIDs and creates corresponding CompositionComponent entries.
+ * - Updates references in composition options to use the new GUIDs.
+ *
+ * @returns The migrated JSONScene object compatible with version 3.3.
+ */
 export function version33Migration (json: JSONScene): JSONScene {
   // 修正老版本数据中，富文本插件名称的问题
   json.plugins?.forEach((plugin, index) => {

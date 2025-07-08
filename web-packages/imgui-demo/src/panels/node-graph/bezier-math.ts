@@ -21,14 +21,33 @@ export function subtract (p1: ImVec2, p2: ImVec2): ImVec2 {
   return new ImVec2(p1.x - p2.x, p1.y - p2.y);
 }
 
+/**
+ * Returns a new ImVec2 vector with both components of the input vector scaled by the given scalar.
+ *
+ * @param p - The input vector to scale
+ * @param scalar - The value to multiply each component by
+ * @returns A new ImVec2 with x and y multiplied by the scalar
+ */
 export function multiplyScalar (p: ImVec2, scalar: number): ImVec2 {
   return new ImVec2(p.x * scalar, p.y * scalar);
 }
 
+/**
+ * Returns a new ImVec2 vector by dividing each component of the input vector by a scalar value.
+ *
+ * @param p - The input ImVec2 vector
+ * @param scalar - The scalar value to divide by
+ * @returns A new ImVec2 with each component divided by the scalar
+ */
 export function div (p: ImVec2, scalar: number): ImVec2 {
   return new ImVec2(p.x / scalar, p.y / scalar);
 }
 
+/**
+ * Computes the dot product of two 2D vectors.
+ *
+ * @returns The scalar dot product of `p1` and `p2`
+ */
 export function dot (p1: ImVec2, p2: ImVec2): number {
   return p1.x * p2.x + p1.y * p2.y;
 }
@@ -37,14 +56,33 @@ export function lengthSqr (p: ImVec2): number {
   return p.x * p.x + p.y * p.y;
 }
 
+/**
+ * Returns the Euclidean length (magnitude) of a 2D vector.
+ *
+ * @returns The distance from the origin to the point represented by `p`
+ */
 export function length (p: ImVec2): number {
   return Math.sqrt(lengthSqr(p));
 }
 
+/**
+ * Returns the unit vector in the direction of the given ImVec2.
+ *
+ * The result has a length of 1 and points in the same direction as `p`.
+ */
 export function normalize (p: ImVec2): ImVec2 {
   return div(p, length(p));
 }
 
+/**
+ * Linearly interpolates between two ImVec2 points by a parameter t in [0, 1].
+ *
+ * @param from - The starting point
+ * @param to - The ending point
+ * @param t - Interpolation parameter between 0 and 1 (inclusive)
+ * @returns The interpolated ImVec2 point
+ * @throws Error if t is outside the range [0, 1]
+ */
 export function lerp (from: ImVec2, to: ImVec2, t: number): ImVec2 {
   if (t < 0.0 || t > 1.0) {
     throw new Error('t must be between 0 and 1');
@@ -53,12 +91,26 @@ export function lerp (from: ImVec2, to: ImVec2, t: number): ImVec2 {
   return new ImVec2(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
 }
 
+/**
+ * Returns a new ImColor with its RGB components multiplied by a scalar, preserving the alpha channel.
+ *
+ * @param p - The input color
+ * @param scalar - The value to multiply the RGB components by
+ * @returns A new ImColor with scaled RGB values and original alpha
+ */
 export function colorMultiplyScalar (p: ImColor, scalar: number): ImColor {
   const value = p.Value;
 
   return new ImColor(value.x * scalar, value.y * scalar, value.z * scalar, value.w);
 }
 
+/**
+ * Returns the floating-point remainder of dividing `a` by `b`.
+ *
+ * Equivalent to the mathematical operation `a % b`, but preserves the sign of the dividend for floating-point numbers.
+ *
+ * @returns The remainder after dividing `a` by `b`
+ */
 export function fmodf (a: number, b: number): number { return a - (Math.floor(a / b) * b); }
 
 /**

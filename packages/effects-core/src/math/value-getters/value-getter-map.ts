@@ -91,6 +91,14 @@ const map: Record<any, any> = {
   },
 };
 
+/**
+ * Creates a value getter instance based on the provided arguments.
+ *
+ * If the argument is a primitive value or falsy, returns a static value getter. If the argument is already a value getter, returns it directly. Otherwise, constructs the appropriate value getter based on the specified value type and properties.
+ *
+ * @returns A value getter instance corresponding to the input arguments.
+ * @throws Error if the specified value type is not supported.
+ */
 export function createValueGetter (args: any): ValueGetter<any> {
   if (!args || !isNaN(+args)) {
     return new StaticValue(args || 0);
