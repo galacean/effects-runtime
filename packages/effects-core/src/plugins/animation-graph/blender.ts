@@ -97,15 +97,15 @@ export class AdditiveBlend extends BlendFunction {
 }
 
 export class Blender {
-  private static normalBlend = new NormalBlend();
-  private static additivelBlend = new AdditiveBlend();
+  private static normalBlendFunction = new NormalBlend();
+  private static additiveBlendFunction = new AdditiveBlend();
 
   static localBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
-    Blender.localBlendInternal(sourcePose, targetPose, blendWeight, resultPose, Blender.normalBlend);
+    Blender.localBlendInternal(sourcePose, targetPose, blendWeight, resultPose, Blender.normalBlendFunction);
   }
 
   static additiveBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
-    Blender.localBlendInternal(sourcePose, targetPose, blendWeight, resultPose, Blender.additivelBlend);
+    Blender.localBlendInternal(sourcePose, targetPose, blendWeight, resultPose, Blender.additiveBlendFunction);
   }
 
   private static localBlendInternal (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose, blendFunction: BlendFunction): void {
