@@ -1,9 +1,9 @@
-import type { Spec } from '../..';
-import { BoolValueNode, NodeDataType } from '../..';
+import * as spec from '@galacean/effects-specification';
+import { BoolValueNode } from '../..';
 import { FloatValueNode, GraphNodeData, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
-@nodeDataClass(NodeDataType.ControlParameterFloatNodeData)
+@nodeDataClass(spec.NodeDataType.ControlParameterFloatNodeData)
 export class ControlParameterFloatNodeData extends GraphNodeData {
   value = 0;
 
@@ -13,7 +13,7 @@ export class ControlParameterFloatNodeData extends GraphNodeData {
     node.setValue(this.value);
   }
 
-  override load (data: Spec.ControlParameterFloatNodeData): void {
+  override load (data: spec.ControlParameterFloatNodeData): void {
     super.load(data);
     this.value = data.value;
   }
@@ -35,7 +35,7 @@ export class ControlParameterFloatNode extends FloatValueNode {
   }
 }
 
-@nodeDataClass(NodeDataType.ControlParameterBoolNodeData)
+@nodeDataClass(spec.NodeDataType.ControlParameterBoolNodeData)
 export class ControlParameterBoolNodeData extends GraphNodeData {
   private value = false;
 
@@ -45,7 +45,7 @@ export class ControlParameterBoolNodeData extends GraphNodeData {
     node.setValue(this.value);
   }
 
-  override load (data: Spec.ControlParameterBoolNodeData): void {
+  override load (data: spec.ControlParameterBoolNodeData): void {
     super.load(data);
     this.value = data.value;
   }
@@ -67,13 +67,13 @@ export class ControlParameterBoolNode extends FloatValueNode {
   }
 }
 
-@nodeDataClass(NodeDataType.ControlParameterTriggerNodeData)
+@nodeDataClass(spec.NodeDataType.ControlParameterTriggerNodeData)
 export class ControlParameterTriggerNodeData extends GraphNodeData {
   override instantiate (context: InstantiationContext) {
     this.createNode(ControlParameterTriggerNode, context);
   }
 
-  override load (data: Spec.ControlParameterTriggerNodeData): void {
+  override load (data: spec.ControlParameterTriggerNodeData): void {
     super.load(data);
   }
 }

@@ -1,4 +1,4 @@
-import type { AnimationGraphAssetData, spec } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
@@ -587,7 +587,7 @@ export class AnimationGraph extends EditorWindow {
     // }
   }
 
-  compileGraph (): AnimationGraphAssetData {
+  compileGraph (): spec.AnimationGraphAssetData {
     const rootGraph = this.flowGraph;
     const context = this.compilationContext;
 
@@ -634,7 +634,7 @@ export class AnimationGraph extends EditorWindow {
     // Fill runtime definition
     //-------------------------------------------------------------------------
 
-    const graphAsset: AnimationGraphAssetData = {
+    const graphAsset: spec.AnimationGraphAssetData = {
       nodeDatas: context.nodeDatas,
       graphDataSet: {
         resources: resources,

@@ -1,5 +1,5 @@
-import type { Spec } from '../..';
-import { GraphNodeData, InvalidIndex, NodeDataType, PoseNode, nodeDataClass } from '../..';
+import * as spec from '@galacean/effects-specification';
+import { GraphNodeData, InvalidIndex, PoseNode, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
@@ -9,7 +9,7 @@ export enum TransitionState {
   TransitioningOut,
 }
 
-@nodeDataClass(NodeDataType.StateNodeData)
+@nodeDataClass(spec.NodeDataType.StateNodeData)
 export class StateNodeData extends GraphNodeData {
   childNodeIndex = InvalidIndex;
 
@@ -19,7 +19,7 @@ export class StateNodeData extends GraphNodeData {
     node.childNode = context.getNode<PoseNode>(this.childNodeIndex);
   }
 
-  override load (data: Spec.StateNodeData): void {
+  override load (data: spec.StateNodeData): void {
     super.load(data);
 
     this.childNodeIndex = data.childNodeIndex;

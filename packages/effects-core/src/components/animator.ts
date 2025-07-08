@@ -4,10 +4,6 @@ import { GraphInstance } from '../plugins/animation-graph';
 import { Component } from './component.js';
 import { effectsClass } from '../decorators';
 
-export interface AnimatorData extends spec.ComponentData {
-  graphAsset: spec.DataPath,
-}
-
 @effectsClass('Animator')
 export class Animator extends Component {
   /**
@@ -96,7 +92,7 @@ export class Animator extends Component {
     }
   }
 
-  override fromData (data: AnimatorData): void {
+  override fromData (data: spec.AnimatorData): void {
     this.graphAsset = this.engine.findObject<AnimationGraphAsset>(data.graphAsset);
   }
 }

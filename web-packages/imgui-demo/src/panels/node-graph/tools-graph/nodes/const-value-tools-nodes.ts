@@ -2,7 +2,7 @@ import { ImGui } from '../../../../imgui/index';
 import type { GraphCompilationContext } from '../../compilation';
 import { FlowToolsNode, GraphValueType, GraphType } from './flow-tools-node';
 import type * as NodeGraph from '../../visual-graph';
-import type { Spec } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 
 export class ConstBoolToolsNode extends FlowToolsNode {
   private m_value: boolean = false;
@@ -20,7 +20,7 @@ export class ConstBoolToolsNode extends FlowToolsNode {
   }
 
   override Compile (context: GraphCompilationContext): number {
-    const pDefinition = context.getGraphNodeAssetData<Spec.ConstBoolNodeData>(this);
+    const pDefinition = context.getGraphNodeAssetData<spec.ConstBoolNodeData>(this);
 
     if (!context.checkNodeCompilationState(pDefinition)) {
       pDefinition.value = this.m_value;
@@ -95,7 +95,7 @@ export class ConstFloatToolsNode extends FlowToolsNode {
   }
 
   override Compile (context: GraphCompilationContext): number {
-    const pDefinition = context.getGraphNodeAssetData<Spec.ConstFloatNodeData>(this);
+    const pDefinition = context.getGraphNodeAssetData<spec.ConstFloatNodeData>(this);
 
     if (!context.checkNodeCompilationState(pDefinition)) {
       pDefinition.value = this.m_value;

@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
-import type { Spec } from '@galacean/effects';
-import { InvalidIndex, NodeDataType } from '@galacean/effects';
+import { spec } from '@galacean/effects';
+import { InvalidIndex } from '@galacean/effects';
 import { StateMachineToolsNode } from './tools-graph/nodes/state-machine-tools-node';
 import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
 import { TransitionConduitToolsNode, TransitionToolsNode } from './tools-graph/nodes/transition-tools-node';
@@ -248,7 +248,7 @@ export class GraphCompilationContext {
   //     // Deep copy implementation
   //   }
 
-  nodeDatas: Spec.GraphNodeData[] = [];
+  nodeDatas: spec.GraphNodeData[] = [];
 
   private compilationStates: NodeCompilationState[] = [];
 
@@ -276,7 +276,7 @@ export class GraphCompilationContext {
   //   return nodeAssetData;
   // }
 
-  getGraphNodeAssetData<T extends Spec.GraphNodeData>(node: BaseNode): T {
+  getGraphNodeAssetData<T extends spec.GraphNodeData>(node: BaseNode): T {
     const cachedIndex = this.m_nodeIDToIndexMap.get(node.m_ID);
 
     if (cachedIndex !== undefined) {
@@ -286,7 +286,7 @@ export class GraphCompilationContext {
     }
 
     const type = this.getNodeAssetType(node) ?? '';
-    const nodeAssetData: Spec.GraphNodeData = {
+    const nodeAssetData: spec.GraphNodeData = {
       type,
       index: this.nodeDatas.length,
     };
@@ -302,7 +302,7 @@ export class GraphCompilationContext {
     return nodeAssetData as T;
   }
 
-  checkNodeCompilationState (data: Spec.GraphNodeData): boolean {
+  checkNodeCompilationState (data: spec.GraphNodeData): boolean {
     return this.compilationStates[data.index] === NodeCompilationState.AlreadyCompiled;
   }
 
@@ -327,21 +327,21 @@ export class GraphCompilationContext {
 
   private getNodeAssetType (node: BaseNode) {
     if (node instanceof AnimationClipToolsNode) {
-      return NodeDataType.AnimationClipNodeData;
+      return spec.NodeDataType.AnimationClipNodeData;
     } else if (node instanceof StateMachineToolsNode) {
-      return NodeDataType.StateMachineNodeData;
+      return spec.NodeDataType.StateMachineNodeData;
     } else if (node instanceof StateToolsNode) {
-      return NodeDataType.StateNodeData;
+      return spec.NodeDataType.StateNodeData;
     } else if (node instanceof TransitionToolsNode) {
-      return NodeDataType.TransitionNodeData;
+      return spec.NodeDataType.TransitionNodeData;
     } else if (node instanceof ConstFloatToolsNode) {
-      return NodeDataType.ConstFloatNodeData;
+      return spec.NodeDataType.ConstFloatNodeData;
     } else if (node instanceof ConstBoolToolsNode) {
-      return NodeDataType.ConstBoolNodeData;
+      return spec.NodeDataType.ConstBoolNodeData;
     } else if (node instanceof FloatControlParameterToolsNode) {
-      return NodeDataType.ControlParameterFloatNodeData;
+      return spec.NodeDataType.ControlParameterFloatNodeData;
     } else if (node instanceof BoolControlParameterToolsNode) {
-      return NodeDataType.ControlParameterBoolNodeData;
+      return spec.NodeDataType.ControlParameterBoolNodeData;
     }
   }
 }

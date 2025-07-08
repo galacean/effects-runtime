@@ -5,7 +5,7 @@ import { StateToolsNode } from './state-tools-node';
 import { ImGui } from '../../../../imgui/index';
 import { Colors } from '../colors';
 import * as NodeGraph from '../../visual-graph';
-import type { Spec } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { InvalidIndex } from '@galacean/effects';
 import { TransitionToolsNode } from './transition-tools-node';
 import { TransitionConduitToolsNode } from './transition-tools-node';
@@ -104,7 +104,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
 
   override Compile (context: GraphCompilationContext): number {
     // const pDefinition: StateMachineNodeAssetData | null = null;
-    const pDefinition = context.getGraphNodeAssetData<Spec.StateMachineNodeData>(this);
+    const pDefinition = context.getGraphNodeAssetData<spec.StateMachineNodeData>(this);
 
     // if (state !== NodeCompilationState.NeedCompilation) {
     //   return pDefinition!.m_nodeIdx;
@@ -197,7 +197,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
         const pConditionNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(0);
 
         if (pConditionNode !== null) {
-          const transitionDefinition: Spec.TransitionData = {
+          const transitionDefinition: spec.TransitionData = {
             targetStateIndex: InvalidIndex,
             conditionNodeIndex: InvalidIndex,
             transitionNodeIndex: InvalidIndex,
@@ -223,7 +223,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
           // Compile condition tree
           //-------------------------------------------------------------------------
 
-          const pCompiledTransitionDefinition = context.getGraphNodeAssetData<Spec.TransitionNodeData>(pTransitionNode);
+          const pCompiledTransitionDefinition = context.getGraphNodeAssetData<spec.TransitionNodeData>(pTransitionNode);
 
           console.assert(context.checkNodeCompilationState(pCompiledTransitionDefinition));
 
@@ -297,7 +297,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
   private CompileState (context: GraphCompilationContext, pStateNode: StateToolsNode): number {
     console.assert(pStateNode !== null);
 
-    const pDefinition = context.getGraphNodeAssetData<Spec.StateNodeData>(pStateNode);
+    const pDefinition = context.getGraphNodeAssetData<spec.StateNodeData>(pStateNode);
 
     console.assert(!context.checkNodeCompilationState(pDefinition));
 
@@ -425,7 +425,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
     targetStateNodeIdx: number
   ): number {
     console.assert(pTransitionNode !== null);
-    const pDefinition = context.getGraphNodeAssetData<Spec.TransitionNodeData>(pTransitionNode);
+    const pDefinition = context.getGraphNodeAssetData<spec.TransitionNodeData>(pTransitionNode);
 
     if (context.checkNodeCompilationState(pDefinition)) {
       return pDefinition.index;

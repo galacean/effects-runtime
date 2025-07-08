@@ -1,14 +1,14 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
+import * as spec from '@galacean/effects-specification';
 import type { AnimationClip, AnimationCurve, ColorAnimationCurve, FloatAnimationCurve } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeData, PoseNode } from '../graph-node';
-import type { Spec } from '../node-asset-type';
-import { NodeDataType, nodeDataClass } from '../node-asset-type';
+import { nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
 import type { Skeleton } from '../reference-pose';
 import type { Pose } from '../pose';
 
-@nodeDataClass(NodeDataType.AnimationClipNodeData)
+@nodeDataClass(spec.NodeDataType.AnimationClipNodeData)
 export class AnimationClipNodeData extends GraphNodeData {
   playRate = 1.0;
   loopAnimation = true;
@@ -20,7 +20,7 @@ export class AnimationClipNodeData extends GraphNodeData {
     node.animation = context.dataSet.getResource(this.dataSlotIndex);
   }
 
-  override load (data: Spec.AnimationClipNodeData): void {
+  override load (data: spec.AnimationClipNodeData): void {
     super.load(data);
 
     const fullData = {

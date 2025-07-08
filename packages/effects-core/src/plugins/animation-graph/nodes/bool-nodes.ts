@@ -1,8 +1,8 @@
-import type { Spec } from '../..';
-import { NodeDataType, nodeDataClass, GraphNodeData, BoolValueNode, InvalidIndex } from '../..';
+import { nodeDataClass, GraphNodeData, BoolValueNode, InvalidIndex } from '../..';
 import type { InstantiationContext, GraphContext } from '../graph-context';
+import * as spec from '@galacean/effects-specification';
 
-@nodeDataClass(NodeDataType.AndNodeData)
+@nodeDataClass(spec.NodeDataType.AndNodeData)
 export class AndNodeData extends GraphNodeData {
   private conditionNodeIndices: number[] = [];
 
@@ -14,7 +14,7 @@ export class AndNodeData extends GraphNodeData {
     }
   }
 
-  override load (data: Spec.AndNodeData): void {
+  override load (data: spec.AndNodeData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
   }
@@ -62,7 +62,7 @@ export class AndNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-@nodeDataClass(NodeDataType.OrNodeData)
+@nodeDataClass(spec.NodeDataType.OrNodeData)
 export class OrNodeData extends GraphNodeData {
   private conditionNodeIndices: number[] = [];
 
@@ -74,7 +74,7 @@ export class OrNodeData extends GraphNodeData {
     }
   }
 
-  override load (data: Spec.OrNodeAssetData): void {
+  override load (data: spec.OrNodeAssetData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
   }
@@ -122,7 +122,7 @@ export class OrNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-@nodeDataClass(NodeDataType.NotNodeData)
+@nodeDataClass(spec.NodeDataType.NotNodeData)
 export class NotNodeData extends GraphNodeData {
   private inputValueNodeIndex = InvalidIndex;
 
@@ -132,7 +132,7 @@ export class NotNodeData extends GraphNodeData {
     node.inputValueNode = context.getNode<BoolValueNode>(this.inputValueNodeIndex);
   }
 
-  override load (data: Spec.NotNodeAssetData): void {
+  override load (data: spec.NotNodeAssetData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
   }

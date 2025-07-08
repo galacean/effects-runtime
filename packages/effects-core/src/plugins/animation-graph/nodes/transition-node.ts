@@ -1,6 +1,7 @@
 import { clamp, lerp } from '@galacean/effects-math/es/core/utils';
-import type { Spec, StateNode } from '../..';
-import { GraphNodeData, InvalidIndex, NodeDataType, PoseNode, TransitionState, nodeDataClass } from '../..';
+import type { StateNode } from '../..';
+import * as spec from '@galacean/effects-specification';
+import { GraphNodeData, InvalidIndex, PoseNode, TransitionState, nodeDataClass } from '../..';
 import { Blender } from '../blender';
 import type { InstantiationContext } from '../graph-context';
 import { BranchState, type GraphContext } from '../graph-context';
@@ -13,7 +14,7 @@ export enum SourceType {
   CachedPose
 }
 
-@nodeDataClass(NodeDataType.TransitionNodeData)
+@nodeDataClass(spec.NodeDataType.TransitionNodeData)
 export class TransitionNodeData extends GraphNodeData {
   duration = 0;
   hasExitTime = false;
@@ -28,7 +29,7 @@ export class TransitionNodeData extends GraphNodeData {
     node.exitTime = this.exitTime;
   }
 
-  override load (data: Spec.TransitionNodeData): void {
+  override load (data: spec.TransitionNodeData): void {
     super.load(data);
 
     this.duration = data.duration;

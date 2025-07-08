@@ -1,13 +1,14 @@
-import type { BoolValueNode, Spec, StateNode } from '../..';
+import type { BoolValueNode, StateNode } from '../..';
 import type { TransitionNode } from '../..';
-import { InvalidIndex, NodeDataType } from '../..';
+import * as spec from '@galacean/effects-specification';
+import { InvalidIndex } from '../..';
 import { GraphNodeData, PoseNode, nodeDataClass } from '../..';
 import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
-@nodeDataClass(NodeDataType.StateMachineNodeData)
+@nodeDataClass(spec.NodeDataType.StateMachineNodeData)
 export class StateMachineNodeData extends GraphNodeData {
-  stateDatas: Spec.StateData[];
+  stateDatas: spec.StateData[];
   defaultStateIndex: number;
 
   override instantiate (context: InstantiationContext): void {
@@ -35,7 +36,7 @@ export class StateMachineNodeData extends GraphNodeData {
     }
   }
 
-  override load (data: Spec.StateMachineNodeData): void {
+  override load (data: spec.StateMachineNodeData): void {
     super.load(data);
 
     this.stateDatas = data.stateDatas;

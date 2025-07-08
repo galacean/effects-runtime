@@ -1,9 +1,9 @@
-import type { Spec } from '../..';
-import { BoolValueNode, NodeDataType, nodeDataClass } from '../..';
+import * as spec from '@galacean/effects-specification';
+import { BoolValueNode, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { FloatValueNode, GraphNodeData } from '../graph-node';
 
-@nodeDataClass(NodeDataType.ConstFloatNodeData)
+@nodeDataClass(spec.NodeDataType.ConstFloatNodeData)
 export class ConstFloatNodeData extends GraphNodeData {
   value = 0;
 
@@ -13,7 +13,7 @@ export class ConstFloatNodeData extends GraphNodeData {
     node.value = this.value;
   }
 
-  override load (data: Spec.ConstFloatNodeData): void {
+  override load (data: spec.ConstFloatNodeData): void {
     super.load(data);
     this.value = data.value;
   }
@@ -31,7 +31,7 @@ export class ConstFloatNode extends FloatValueNode {
   }
 }
 
-@nodeDataClass(NodeDataType.ConstBoolNodeData)
+@nodeDataClass(spec.NodeDataType.ConstBoolNodeData)
 export class ConstBoolNodeData extends GraphNodeData {
   value = true;
 
@@ -41,7 +41,7 @@ export class ConstBoolNodeData extends GraphNodeData {
     node.value = this.value;
   }
 
-  override load (data: Spec.ConstBoolNodeData): void {
+  override load (data: spec.ConstBoolNodeData): void {
     super.load(data);
     this.value = data.value;
   }

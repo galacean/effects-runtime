@@ -3,11 +3,11 @@ import type { FloatValueNode } from '../graph-node';
 import { GraphNodeData, PoseNode } from '../graph-node';
 import type { Pose } from '../pose';
 import { PoseResult } from '../pose-result';
-import type { Spec } from '../..';
-import { NodeDataType, nodeDataClass } from '../..';
+import * as spec from '@galacean/effects-specification';
+import { nodeDataClass } from '../..';
 import { Blender } from '../blender';
 
-@nodeDataClass(NodeDataType.BlendNodeData)
+@nodeDataClass(spec.NodeDataType.BlendNodeData)
 export class BlendNodeData extends GraphNodeData {
   sourceNodeIndex0: number;
   sourceNodeIndex1: number;
@@ -21,7 +21,7 @@ export class BlendNodeData extends GraphNodeData {
     node.inputParameterValueNode = context.getNode<FloatValueNode>(this.inputParameterValueNodeIndex);
   }
 
-  override load (data: Spec.BlendNodeData): void {
+  override load (data: spec.BlendNodeData): void {
     super.load(data);
     this.sourceNodeIndex0 = data.sourceNodeIndex0;
     this.sourceNodeIndex1 = data.sourceNodeIndex1;

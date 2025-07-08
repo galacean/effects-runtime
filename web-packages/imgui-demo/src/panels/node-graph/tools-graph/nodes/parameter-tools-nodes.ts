@@ -4,7 +4,7 @@ import type { GraphCompilationContext } from '../../compilation';
 import { ImGui } from 'web-packages/imgui-demo/src/imgui';
 import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { ResultToolsNode } from './result-tools-node';
-import type { Spec } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 
 export abstract class ParameterBaseToolsNode extends FlowToolsNode {
   protected m_group: string;
@@ -54,14 +54,14 @@ export class ControlParameterToolsNode extends ParameterBaseToolsNode {
   override Compile (context: GraphCompilationContext): number {
     switch (this.GetOutputValueType()) {
       case GraphValueType.Bool: {
-        const pDefinition: Spec.ControlParameterBoolNodeData = context.getGraphNodeAssetData(this);
+        const pDefinition: spec.ControlParameterBoolNodeData = context.getGraphNodeAssetData(this);
 
         pDefinition.value = this.m_value;
 
         return pDefinition.index;
       }
       case GraphValueType.Float: {
-        const pDefinition: Spec.ControlParameterFloatNodeData = context.getGraphNodeAssetData(this);
+        const pDefinition: spec.ControlParameterFloatNodeData = context.getGraphNodeAssetData(this);
 
         pDefinition.value = this.m_value;
 

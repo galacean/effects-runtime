@@ -1,4 +1,4 @@
-import type { Spec } from '..';
+import type * as spec from '@galacean/effects-specification';
 import type { GraphContext, InstantiationContext } from './graph-context';
 import type { PoseResult } from './pose-result';
 
@@ -87,7 +87,7 @@ export abstract class GraphNodeData {
 
   abstract instantiate (context: InstantiationContext): void;
 
-  load (data: Spec.GraphNodeData) {
+  load (data: spec.GraphNodeData) {
     this.index = data.index;
   }
 

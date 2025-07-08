@@ -1,9 +1,9 @@
-import type { FloatValueNode, Spec, ValueNode } from '../..';
-import { NodeDataType } from '../..';
+import type { FloatValueNode, ValueNode } from '../..';
+import * as spec from '@galacean/effects-specification';
 import { BoolValueNode, GraphNodeData, InvalidIndex, nodeDataClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 
-@nodeDataClass(NodeDataType.EqualNodeData)
+@nodeDataClass(spec.NodeDataType.EqualNodeData)
 export class EqualNodeData extends GraphNodeData {
   private inputValueNodeIndex = InvalidIndex;
   private comparandValueNodeIndex = InvalidIndex;
@@ -15,7 +15,7 @@ export class EqualNodeData extends GraphNodeData {
     node.comparandValueNode = context.getNode<ValueNode>(this.comparandValueNodeIndex);
   }
 
-  override load (data: Spec.EqualNodeData): void {
+  override load (data: spec.EqualNodeData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
     this.comparandValueNodeIndex = data.comparandValueNodeIndex;
@@ -73,7 +73,7 @@ export abstract class FloatComparisonNodeData extends GraphNodeData {
   protected inputValueNodeIndex = InvalidIndex;
   protected comparandValueNodeIndex = InvalidIndex;
 
-  override load (data: Spec.FloatComparisonNodeData): void {
+  override load (data: spec.FloatComparisonNodeData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
     this.comparandValueNodeIndex = data.comparandValueNodeIndex;
@@ -143,7 +143,7 @@ export class FloatComparisonNode extends BoolValueNode {
 
 //-------------------------------------------------------------------------
 
-@nodeDataClass(NodeDataType.GreaterNodeData)
+@nodeDataClass(spec.NodeDataType.GreaterNodeData)
 export class GreaterNodeData extends FloatComparisonNodeData {
   override instantiate (context: InstantiationContext): void {
     const node = this.createNode(FloatComparisonNode, context);
@@ -156,7 +156,7 @@ export class GreaterNodeData extends FloatComparisonNodeData {
 
 //-------------------------------------------------------------------------
 
-@nodeDataClass(NodeDataType.LessNodeData)
+@nodeDataClass(spec.NodeDataType.LessNodeData)
 export class LessNodeData extends FloatComparisonNodeData {
   override instantiate (context: InstantiationContext): void {
     const node = this.createNode(FloatComparisonNode, context);

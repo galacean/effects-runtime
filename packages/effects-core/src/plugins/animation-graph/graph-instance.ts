@@ -10,7 +10,6 @@ import type { VFXItem } from '../../vfx-item';
 import { EffectsObject } from '../../effects-object';
 import { effectsClass } from '../../decorators';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
-import type { NodeDataType, Spec } from './node-asset-type';
 import { getNodeDataClass } from './node-asset-type';
 import {
   ControlParameterTriggerNode,
@@ -201,17 +200,6 @@ export class GraphInstance {
   }
 }
 
-export interface GraphDataSetData {
-  resources: spec.DataPath[],
-}
-
-export interface AnimationGraphAssetData extends spec.EffectsObjectData {
-  nodeDatas: Spec.GraphNodeData[],
-  graphDataSet: GraphDataSetData,
-  rootNodeIndex: number,
-  controlParameterIDs: string[],
-}
-
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {
   nodeDatas: GraphNodeData[] = [];
@@ -220,7 +208,7 @@ export class AnimationGraphAsset extends EffectsObject {
   parameterLookupMap = new Map<string, number>();
   rootNodeIndex = InvalidIndex;
 
-  static createNodeData (type: NodeDataType) {
+  static createNodeData (type: spec.NodeDataType) {
     const classConstructor = getNodeDataClass(type);
 
     if (classConstructor) {
@@ -230,7 +218,7 @@ export class AnimationGraphAsset extends EffectsObject {
     }
   }
 
-  override fromData (data: AnimationGraphAssetData) {
+  override fromData (data: spec.AnimationGraphAssetData) {
     const graphAssetData = data;
     const nodeDatas = graphAssetData.nodeDatas;
 
@@ -252,7 +240,7 @@ export class AnimationGraphAsset extends EffectsObject {
     this.nodeDatas = [];
 
     for (let i = 0;i < nodeDatas.length;i++) {
-      this.nodeDatas[i] = AnimationGraphAsset.createNodeData(nodeDatas[i].type as NodeDataType);
+      this.nodeDatas[i] = AnimationGraphAsset.createNodeData(nodeDatas[i].type as spec.NodeDataType);
       this.nodeDatas[i].load(nodeDatas[i]);
     }
 
