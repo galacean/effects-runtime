@@ -1,6 +1,6 @@
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { Skeleton } from './reference-pose';
+import type { Skeleton } from './skeleton';
 import type { Transform } from '../../transform';
 import type { Color } from '@galacean/effects-math/es/core/color';
 

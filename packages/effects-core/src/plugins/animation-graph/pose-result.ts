@@ -1,5 +1,5 @@
 import { Pose } from './pose';
-import type { Skeleton } from './reference-pose';
+import type { Skeleton } from './skeleton';
 
 export class PoseResult {
   pose: Pose;

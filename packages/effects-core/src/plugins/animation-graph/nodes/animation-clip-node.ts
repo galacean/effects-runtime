@@ -5,7 +5,7 @@ import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeData, PoseNode } from '../graph-node';
 import { nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
-import type { Skeleton } from '../reference-pose';
+import type { Skeleton } from '../skeleton';
 import type { Pose } from '../pose';
 
 @nodeDataClass(spec.NodeDataType.AnimationClipNodeData)

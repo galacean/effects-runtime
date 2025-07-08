@@ -1,6 +1,6 @@
 import type { GraphNode, GraphNodeData } from '..';
 import type { GraphDataSet } from './graph-data-set';
-import type { Skeleton } from './reference-pose';
+import type { Skeleton } from './skeleton';
 
 // Used to signify if a node or node output is coming from an active state (i.e. a state we are not transitioning away from)
 export enum BranchState
