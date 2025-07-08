@@ -20,7 +20,7 @@ const shaderParams = {
   heightPower: 0.580,
   uRevealEdge: 0.299,
   colorStops: [
-    { x: 0.32, y: 0.15, z: 1.0 },
+    { x: 0.32, y: 0.15, z: 1.0 }, // 可根据实际颜色需求调整
     { x: 0.49, y: 1.0, z: 0.40 },
     { x: 0.32, y: 0.15, z: 1.0 },
   ],
