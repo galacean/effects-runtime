@@ -155,11 +155,17 @@ export class TextComponentBase {
   private getLineCount (text: string, init: boolean) {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
+
     const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
 
+    //设置context.font的字号
+    // if (context) {
+    //   context.font = this.getFontDesc(this.textStyle.fontSize);
+    // }
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
       const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;

@@ -1,10 +1,10 @@
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type { BezierCurve } from './value-getter';
 import { ValueGetter } from './value-getter';
 import type * as spec from '@galacean/effects-specification';
 import { createValueGetter } from './value-getter-map';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { BezierCurve } from './bezier-curve';
 
 export class Vector4Curve extends ValueGetter<Vector4> {
   private value = new Vector4();

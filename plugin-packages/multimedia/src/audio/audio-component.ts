@@ -38,7 +38,7 @@ export class AudioComponent extends RendererComponent {
     const { playbackRate = 1, muted = false, volume = 1 } = options;
     let audio: AudioBuffer | HTMLAudioElement | undefined = undefined;
 
-    if (options.audio.id) {
+    if (options.audio) {
       const audioAsset = this.engine.findObject<Asset<HTMLAudioElement | AudioBuffer>>(options.audio);
 
       audio = audioAsset.data;

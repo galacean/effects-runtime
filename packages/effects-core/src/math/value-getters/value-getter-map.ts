@@ -1,12 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import { colorToArr, isFunction } from '../../utils';
-import { BezierCurve, BezierCurvePath, BezierCurveQuat, GradientValue, LinearValue, LineSegments, PathSegments, RandomSetValue, RandomValue, RandomVectorValue, StaticValue } from './value-getter';
+import { BezierCurvePath, BezierCurveQuat, GradientValue, LinearValue, LineSegments, PathSegments, RandomSetValue, RandomValue, RandomVectorValue, StaticValue } from './value-getter';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { ColorCurve } from './color-curve';
 import { Vector2Curve, Vector3Curve, Vector4Curve } from './vector-curves';
 import { ValueGetter } from './value-getter';
 import { HELP_LINK } from '../../constants';
+import { BezierCurve, oldBezierKeyFramesToNew } from './bezier-curve';
 
 /**
  * Vector2 曲线
@@ -58,7 +59,8 @@ const map: Record<any, any> = {
       return new StaticValue(props[0][1][1]);
     }
 
-    return new BezierCurve(props);
+    // TODO: Move to migration.
+    return new BezierCurve(oldBezierKeyFramesToNew(props as spec.BezierKeyframeValue[]));
   },
   [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {
     if (props[0].length === 1) {
