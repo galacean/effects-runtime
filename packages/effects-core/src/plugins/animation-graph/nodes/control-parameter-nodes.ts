@@ -51,7 +51,7 @@ export class ControlParameterBoolNodeData extends GraphNodeData {
   }
 }
 
-export class ControlParameterBoolNode extends FloatValueNode {
+export class ControlParameterBoolNode extends BoolValueNode {
   private value = false;
 
   override getValue<T>(context: GraphContext): T {

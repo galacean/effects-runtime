@@ -290,7 +290,7 @@ export class TransitionNode extends PoseNode {
   }
 
   private calculateBlendWeight () {
-    if (this.transitionLength == 0) {
+    if (this.transitionLength === 0) {
       this.blendWeight = 1;
     } else {
       // Linear

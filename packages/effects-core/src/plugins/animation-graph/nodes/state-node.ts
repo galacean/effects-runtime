@@ -38,11 +38,11 @@ export class StateNode extends PoseNode {
   }
 
   isTransitioningIn () {
-    return this.transitionState == TransitionState.TransitioningIn;
+    return this.transitionState === TransitionState.TransitioningIn;
   }
 
   isTransitioningOut () {
-    return this.transitionState == TransitionState.TransitioningOut;
+    return this.transitionState === TransitionState.TransitioningOut;
   }
 
   startTransitionIn (context: GraphContext) {

@@ -50,7 +50,7 @@ export class GraphNode {
   }
 
   isNodeActive (updateID: number) {
-    return this.lastUpdateID == updateID;
+    return this.lastUpdateID === updateID;
   }
 
   isUpdated (context: GraphContext) {
