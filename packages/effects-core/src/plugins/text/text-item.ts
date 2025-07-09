@@ -14,17 +14,6 @@ import type { VFXItem } from '../../vfx-item';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 
-/**
- * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
- */
-export interface TextItemProps extends Omit<spec.TextContent, 'renderer' | 'mask'> {
-  listIndex?: number,
-  mask?: spec.MaskOptions,
-  renderer: {
-    texture: Texture,
-  } & Omit<spec.RendererOptions, 'texture'>,
-}
-
 export const DEFAULT_FONTS = [
   'serif',
   'sans-serif',
