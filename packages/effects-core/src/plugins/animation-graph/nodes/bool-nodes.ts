@@ -75,7 +75,7 @@ export class OrNodeData extends GraphNodeData {
     }
   }
 
-  override load (data: spec.OrNodeAssetData): void {
+  override load (data: spec.OrNodeData): void {
     super.load(data);
     this.conditionNodeIndices = data.conditionNodeIndices;
   }
@@ -133,7 +133,7 @@ export class NotNodeData extends GraphNodeData {
     node.inputValueNode = context.getNode<BoolValueNode>(this.inputValueNodeIndex);
   }
 
-  override load (data: spec.NotNodeAssetData): void {
+  override load (data: spec.NotNodeData): void {
     super.load(data);
     this.inputValueNodeIndex = data.inputValueNodeIndex;
   }
