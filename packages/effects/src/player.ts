@@ -9,7 +9,7 @@ import {
   isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
   assertExist, AssetService,
 } from '@galacean/effects-core';
-import type { GLEngine, GLRenderer } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
@@ -813,11 +813,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
       this.canvas.remove();
     }
-
-    if (!this.useExternalCanvas) {
-      (this.renderer.engine as GLEngine).gl.getExtension('WEBGL_lose_context')?.loseContext();
-    }
-
     // 在报错函数中传入 player.name
     const errorMsg = getDestroyedErrorMessage(this.name);
     const throwErrorFunc = () => throwError(errorMsg);
