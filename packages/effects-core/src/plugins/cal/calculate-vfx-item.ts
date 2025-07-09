@@ -307,7 +307,6 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.positionCurves) {
       const value = curve.keyFrames.getValue(life);
-      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setPosition(value.x, value.y, value.z);
@@ -315,7 +314,6 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.rotationCurves) {
       const value = curve.keyFrames.getValue(life);
-      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
@@ -323,7 +321,6 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.eulerCurves) {
       const value = curve.keyFrames.getValue(life);
-      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setRotation(value.x, value.y, value.z);
@@ -331,7 +328,6 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.scaleCurves) {
       const value = curve.keyFrames.getValue(life);
-      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setScale(value.x, value.y, value.z);
@@ -362,6 +358,7 @@ export class AnimationClip extends EffectsObject {
         this.positionCurves.push(curve);
       }
     }
+
     if (data.rotationCurves) {
       for (const rotationCurveData of data.rotationCurves) {
         const curve: RotationAnimationCurve = {
@@ -387,6 +384,7 @@ export class AnimationClip extends EffectsObject {
         this.eulerCurves.push(curve);
       }
     }
+
     if (data.scaleCurves) {
       for (const scaleCurvesData of data.scaleCurves) {
         const curve: ScaleAnimationCurve = {
@@ -399,6 +397,7 @@ export class AnimationClip extends EffectsObject {
         this.scaleCurves.push(curve);
       }
     }
+
     if (data.floatCurves) {
       for (const floatCurveData of data.floatCurves) {
         const curve: FloatAnimationCurve = {
@@ -436,10 +435,11 @@ export class AnimationClip extends EffectsObject {
     }
   }
 
-  private findTarget (vfxItem: VFXItem, path: string[]) {
+  private findTarget (vfxItem: VFXItem, path: string) {
     let target = vfxItem;
+    const paths = path.split('.');
 
-    for (const name of path) {
+    for (const name of paths) {
       let findTag = false;
 
       for (const child of target.children) {
