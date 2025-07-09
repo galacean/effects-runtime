@@ -68,6 +68,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private assetService: AssetService;
   private speed = 1;
   private baseCompositionIndex = 0;
+  private useExternalCanvas = false;
 
   /**
    * 播放器的构造函数
@@ -116,6 +117,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       if (canvas) {
         this.canvas = canvas;
+        this.useExternalCanvas = true;
       } else {
         assertContainer(container);
         this.canvas = document.createElement('canvas');
@@ -151,6 +153,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
     } catch (e: any) {
+      if (this.canvas && !this.useExternalCanvas) {
+        this.canvas.remove();
+      }
       this.handleThrowError(e);
     }
 
