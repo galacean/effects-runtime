@@ -8,6 +8,12 @@
 
 ---
 
+## 2.5.2
+
+`2025-07-09`
+
+- Fix: opt canvas dispose logic. [#1067](https://github.com/galacean/effects-runtime/pull/1067) @wumaolinmaoan
+
 ## 2.5.1
 
 `2025-07-04`
