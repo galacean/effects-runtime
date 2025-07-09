@@ -539,7 +539,7 @@ export class JSONConverter {
               [lineValue, points, controlPoints],
             ];
 
-            clipData.rotationCurves.push({ path, keyFrames });
+            clipData.rotationCurves?.push({ path, keyFrames });
           } else if (track.path === 'weights') {
             const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
             let path = this.treeInfo.getNodePath(node.id);
@@ -572,7 +572,7 @@ export class JSONConverter {
                 lineValue,
               ];
 
-              clipData.floatCurves.push({
+              clipData.floatCurves?.push({
                 path,
                 className: 'ModelMeshComponent',
                 property: `morphWeights.${c}`,
@@ -616,9 +616,9 @@ export class JSONConverter {
             ];
 
             if (track.path === 'translation') {
-              clipData.positionCurves.push({ path, keyFrames });
+              clipData.positionCurves?.push({ path, keyFrames });
             } else {
-              clipData.scaleCurves.push({ path, keyFrames });
+              clipData.scaleCurves?.push({ path, keyFrames });
             }
           }
         });

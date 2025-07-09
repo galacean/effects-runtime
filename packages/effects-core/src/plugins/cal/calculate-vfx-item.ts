@@ -350,30 +350,32 @@ export class AnimationClip extends EffectsObject {
 
     let keyFramesDuration = 0;
 
-    for (const positionCurveData of data.positionCurves) {
-      const curve: PositionAnimationCurve = {
-        path: positionCurveData.path,
-        keyFrames: createValueGetter(positionCurveData.keyFrames) as Vector3Curve,
-      };
+    if (data.positionCurves) {
+      for (const positionCurveData of data.positionCurves) {
+        const curve: PositionAnimationCurve = {
+          path: positionCurveData.path,
+          keyFrames: createValueGetter(positionCurveData.keyFrames) as Vector3Curve,
+        };
 
-      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
+        keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
-      this.positionCurves.push(curve);
+        this.positionCurves.push(curve);
+      }
     }
-    for (const rotationCurveData of data.rotationCurves) {
-      const curve: RotationAnimationCurve = {
-        path: rotationCurveData.path,
-        keyFrames: createValueGetter(rotationCurveData.keyFrames),
-      };
+    if (data.rotationCurves) {
+      for (const rotationCurveData of data.rotationCurves) {
+        const curve: RotationAnimationCurve = {
+          path: rotationCurveData.path,
+          keyFrames: createValueGetter(rotationCurveData.keyFrames),
+        };
 
-      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
+        keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
-      this.rotationCurves.push(curve);
+        this.rotationCurves.push(curve);
+      }
     }
 
-    //@ts-expect-error TODO 更新 spec
     if (data.eulerCurves) {
-      //@ts-expect-error
       for (const eulerCurvesData of data.eulerCurves) {
         const curve: EulerAnimationCurve = {
           path: eulerCurvesData.path,
@@ -385,51 +387,52 @@ export class AnimationClip extends EffectsObject {
         this.eulerCurves.push(curve);
       }
     }
-    for (const scaleCurvesData of data.scaleCurves) {
-      const curve: ScaleAnimationCurve = {
-        path: scaleCurvesData.path,
-        keyFrames: createValueGetter(scaleCurvesData.keyFrames) as Vector3Curve,
-      };
+    if (data.scaleCurves) {
+      for (const scaleCurvesData of data.scaleCurves) {
+        const curve: ScaleAnimationCurve = {
+          path: scaleCurvesData.path,
+          keyFrames: createValueGetter(scaleCurvesData.keyFrames) as Vector3Curve,
+        };
 
-      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
+        keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
-      this.scaleCurves.push(curve);
+        this.scaleCurves.push(curve);
+      }
     }
-    for (const floatCurveData of data.floatCurves) {
-      const curve: FloatAnimationCurve = {
-        path: floatCurveData.path,
-        keyFrames: createValueGetter(floatCurveData.keyFrames) as BezierCurve,
-        property: floatCurveData.property,
-        className: floatCurveData.className,
-      };
+    if (data.floatCurves) {
+      for (const floatCurveData of data.floatCurves) {
+        const curve: FloatAnimationCurve = {
+          path: floatCurveData.path,
+          keyFrames: createValueGetter(floatCurveData.keyFrames) as BezierCurve,
+          property: floatCurveData.property,
+          className: floatCurveData.className,
+        };
 
-      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
+        keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
 
-      this.floatCurves.push(curve);
-    }
-
-    // @ts-expect-error TODO: Update spec.
-    const colorCurves = data.colorCurves ?? [];
-
-    for (const colorCurveData of colorCurves) {
-      const curve: ColorAnimationCurve = {
-        path: colorCurveData.path,
-        keyFrames: createValueGetter(colorCurveData.keyFrames) as ColorCurve,
-        property: colorCurveData.property,
-        className: colorCurveData.className,
-      };
-
-      keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
-
-      this.colorCurves.push(curve);
+        this.floatCurves.push(curve);
+      }
     }
 
-    //@ts-expect-error TODO: Update spec.
-    if (data.duration === undefined) {
-      this.duration = keyFramesDuration;
-    } else {
-      //@ts-expect-error
+    if (data.colorCurves) {
+      for (const colorCurveData of data.colorCurves) {
+        const curve: ColorAnimationCurve = {
+          path: colorCurveData.path,
+          keyFrames: createValueGetter(colorCurveData.keyFrames) as ColorCurve,
+          property: colorCurveData.property,
+          className: colorCurveData.className,
+        };
+
+        keyFramesDuration = Math.max(keyFramesDuration, curve.keyFrames.getMaxTime());
+
+        this.colorCurves.push(curve);
+      }
+    }
+
+    if (data.duration !== undefined) {
       this.duration = data.duration;
+    } else {
+      this.duration = keyFramesDuration;
     }
   }
 
