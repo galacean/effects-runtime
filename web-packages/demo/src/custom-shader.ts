@@ -554,12 +554,15 @@ function initializeControls () {
         // 统一生成 uniform 名称
         let uniformName = controlName;
 
-        if (controlName === 'blend') {
+        if (controlName === 'uFadeStart') {uniformName = '_FadeStart';}     // 新增映射
+        else if (controlName === 'uFadeEnd') {uniformName = '_FadeEnd';}    // 新增映射
+        else if (controlName === 'minIntensity') {uniformName = '_MinIntensity';} // 映射到Shader新参数名
+        else if (controlName === 'maxIntensity') {
+          uniformName = '_MaxIntensity';
+        } else if (controlName === 'blend') {
           uniformName = '_Blend';
         } else if (controlName === 'timeSpeed') {
           uniformName = '_TimeSpeed';
-        } else if (!['minIntensity', 'maxIntensity', 'uFadeProgressGlobal', 'uFadeProgressMask', 'uFadeOffset'].includes(controlName)) {
-          uniformName = `u${controlName.charAt(0).toUpperCase() + controlName.slice(1)}`;
         }
 
         if (controlName !== 'fadeSpeedGlobal' && controlName !== 'fadeSpeedMask') {
@@ -635,14 +638,15 @@ function resetToDefaults () {
 
       let uniformName = key;
 
-      if (key === 'blend') {
+      if (key === 'minIntensity') {
+        uniformName = '_MinIntensity'; // 映射到Shader新参数名
+      } else if (key === 'maxIntensity') {
+        uniformName = '_MaxIntensity'; // 映射到Shader新参数名
+      } else if (key === 'blend') {
         uniformName = '_Blend';
       } else if (key === 'timeSpeed') {
         uniformName = '_TimeSpeed';
-      } else if (!key.startsWith('u')) {
-        uniformName = `u${key.charAt(0).toUpperCase() + key.slice(1)}`;
       }
-
       if (key !== 'fadeSpeedGlobal' && key !== 'fadeSpeedMask') {
         materials.forEach(material => {
           material.setFloat(uniformName, value);
@@ -783,6 +787,8 @@ function togglePanel () {
         );
 
         material.setTexture('uAudioTexture', audioTexture);
+        material.setFloat('_FadeStart', shaderParams.uFadeStart); // 默认值
+        material.setFloat('_FadeEnd', shaderParams.uFadeEnd);     // 默认值
         materials.push(material);
       }
     }
@@ -826,6 +832,10 @@ function togglePanel () {
       );
 
       materials.forEach((material: Material) => {
+        material.setFloat('_MinIntensity', shaderParams.minIntensity);
+        material.setFloat('_MaxIntensity', shaderParams.maxIntensity);
+        material.setFloat('_FadeStart', shaderParams.uFadeStart);
+        material.setFloat('_FadeEnd', shaderParams.uFadeEnd);
         material.setTexture('uAudioTexture', newAudioTexture);
       });
 
