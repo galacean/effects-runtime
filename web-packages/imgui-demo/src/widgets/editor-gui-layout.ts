@@ -59,6 +59,10 @@ export class EditorGUILayout {
 
     const targetObject = (object as Record<string, any>)[property];
 
+    if (!targetObject) {
+      return;
+    }
+
     ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(200, 0));
 
     if (ImGui.BeginDragDropTarget()) {

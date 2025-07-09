@@ -9,6 +9,7 @@ import { MeshComponent } from './mesh-component';
  */
 @effectsClass(spec.DataType.EffectComponent)
 export class EffectComponent extends MeshComponent {
+  time = 0;
 
   constructor (engine: Engine) {
     super(engine);
@@ -20,10 +21,12 @@ export class EffectComponent extends MeshComponent {
   }
 
   override onUpdate (dt: number): void {
-    const time = this.item.time;
+    const time = this.time;
     const _Time = this.material.getVector4('_Time') ?? new Vector4();
 
     this.material.setVector4('_Time', _Time.set(time / 20, time, time * 2, time * 3));
+
+    this.time += dt / 1000;
   }
 
   override fromData (data: unknown): void {

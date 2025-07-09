@@ -159,11 +159,11 @@ export class ParticleSystem extends Component implements Maskable {
   emissionStopped: boolean;
   destroyed = false;
   props: ParticleSystemProps;
+  time: number;
 
   readonly maskManager: MaskProcessor;
 
   private generatedCount: number;
-  private lastUpdate: number;
   private loopStartTime: number;
   private particleLink: Link<ParticleContent>;
   private started: boolean;
@@ -187,7 +187,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   get timePassed () {
-    return this.lastUpdate - this.loopStartTime;
+    return this.time - this.loopStartTime;
   }
 
   get lifetime () {
@@ -354,7 +354,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   reset () {
     this.renderer.reset();
-    this.lastUpdate = 0;
+    this.time = 0;
     this.loopStartTime = 0;
     this.lastEmitTime = -1 / this.emission.rateOverTime.getValue(0);
     this.generatedCount = 0;
@@ -365,14 +365,23 @@ export class ParticleSystem extends Component implements Maskable {
     this.destroyed = false;
   }
 
+  override onStart (): void {
+    this.startEmit();
+    this.initEmitterTransform();
+  }
+
+  override onUpdate (dt: number): void {
+    this.update(dt);
+  }
+
   update (delta: number) {
     if (this.started && !this.frozen) {
-      const now = this.lastUpdate + delta / 1000;
+      const now = this.time + delta / 1000;
       const options = this.options;
       const loopStartTime = this.loopStartTime;
       const emission = this.emission;
 
-      this.lastUpdate = now;
+      this.time = now;
       this.upDirectionWorld = null;
       this.renderer.updateTime(now, delta);
 
@@ -463,7 +472,7 @@ export class ParticleSystem extends Component implements Maskable {
           updateTrail();
           this.loopStartTime = now - duration;
           this.lastEmitTime -= duration;
-          this.lastUpdate -= duration;
+          this.time -= duration;
           emission.bursts.forEach(b => b.reset());
           this.particleLink.forEach(content => {
             content[0] -= duration;
@@ -484,7 +493,7 @@ export class ParticleSystem extends Component implements Maskable {
         if (spec.EndBehavior.destroy === this.item.endBehavior) {
           const node = link.last;
 
-          if (node && (node.content[0]) < this.lastUpdate) {
+          if (node && (node.content[0]) < this.time) {
             this.destroyed = true;
           }
         }
@@ -680,7 +689,7 @@ export class ParticleSystem extends Component implements Maskable {
     } = point;
 
     const forceTarget = this.options.forceTarget;
-    const time = this.lastUpdate - delay;
+    const time = this.time - delay;
 
     const tempPos = new Vector3();
     const acc = Vector3.fromArray(gravity);
