@@ -1,7 +1,7 @@
-import { GraphNodeData, BoolValueNode, InvalidIndex } from '../..';
-import type { InstantiationContext, GraphContext } from '../graph-context';
 import * as spec from '@galacean/effects-specification';
+import type { InstantiationContext, GraphContext } from '../graph-context';
 import { nodeDataClass } from '../node-asset-type';
+import { BoolValueNode, GraphNodeData, InvalidIndex } from '../graph-node';
 
 @nodeDataClass(spec.NodeDataType.AndNodeData)
 export class AndNodeData extends GraphNodeData {
@@ -26,7 +26,7 @@ export class AndNode extends BoolValueNode {
 
   private result = false;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
       this.result = true;
@@ -86,7 +86,7 @@ export class OrNode extends BoolValueNode {
 
   private result = false;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
       this.result = false;
@@ -144,7 +144,7 @@ export class NotNode extends BoolValueNode {
 
   private result = false;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
       if (this.inputValueNode) {

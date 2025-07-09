@@ -3,9 +3,7 @@ import type { AnimationGraphAsset } from './animation-graph-asset';
 import { GraphContext, InstantiationContext } from './graph-context';
 import type { GraphNode, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
-import {
-  ControlParameterTriggerNode,
-} from './nodes/control-parameter-nodes';
+import { ControlParameterTriggerNode } from './nodes';
 import { PoseResult } from './pose-result';
 import type { AnimationRecordData } from './skeleton';
 import { Skeleton } from './skeleton';
@@ -15,13 +13,13 @@ export class GraphInstance {
   skeleton: Skeleton;
 
   private rootNode: PoseNode;
-  private graphAsset: AnimationGraphAsset;
   private context = new GraphContext();
   private result: PoseResult;
 
-  constructor (graphAsset: AnimationGraphAsset, rootBone: VFXItem) {
-    this.graphAsset = graphAsset;
-
+  constructor (
+    private graphAsset: AnimationGraphAsset,
+    rootBone: VFXItem,
+  ) {
     // Initialize skeleton
     const recordProperties: AnimationRecordData = {
       position: [],
@@ -29,7 +27,7 @@ export class GraphInstance {
       rotation: [],
       euler: [],
       floats: [],
-      colors:[],
+      colors: [],
     };
 
     for (const animationClip of graphAsset.graphDataSet.resources) {
@@ -68,7 +66,7 @@ export class GraphInstance {
     instantiationContext.nodeDatas = graphAsset.nodeDatas;
     instantiationContext.dataSet = graphAsset.graphDataSet;
 
-    for (let i = 0;i < graphAsset.nodeDatas.length;i++) {
+    for (let i = 0; i < graphAsset.nodeDatas.length; i++) {
       if (!instantiationContext.nodes[i]) {
         graphAsset.nodeDatas[i].instantiate(instantiationContext);
       }
@@ -89,7 +87,7 @@ export class GraphInstance {
     }
 
     // Reset trigger nodes
-    for (let i = 0;i < this.getNumControlParameters();i++) {
+    for (let i = 0; i < this.getNumControlParameters(); i++) {
       const controlParameterNode = this.nodes[i];
 
       if (controlParameterNode instanceof ControlParameterTriggerNode) {
@@ -138,7 +136,7 @@ export class GraphInstance {
       return res;
     }
 
-    console.warn('Parameter ' + parameterID + ' does not exit.');
+    console.warn(`Parameter '${parameterID}' does not exist.`);
 
     return InvalidIndex;
   }
@@ -172,7 +170,7 @@ export class GraphInstance {
     return node.getDebugInfo();
   }
 
-  getRuntimeNodeDebugValue<T>(nodeIdx: number): T {
+  getRuntimeNodeDebugValue<T> (nodeIdx: number): T {
     const valueNode = this.nodes[nodeIdx] as ValueNode;
 
     return valueNode.getValue<T>(this.context);

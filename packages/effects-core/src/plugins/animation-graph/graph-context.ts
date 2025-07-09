@@ -1,10 +1,9 @@
-import type { GraphNode, GraphNodeData } from '..';
 import type { GraphDataSet } from './graph-data-set';
+import type { GraphNode, GraphNodeData } from './graph-node';
 import type { Skeleton } from './skeleton';
 
 // Used to signify if a node or node output is coming from an active state (i.e. a state we are not transitioning away from)
-export enum BranchState
-  {
+export enum BranchState {
   Active,
   Inactive,
 }
@@ -27,7 +26,7 @@ export class InstantiationContext {
   nodes: GraphNode[] = [];
   dataSet: GraphDataSet;
 
-  getNode <T extends GraphNode>(index: number): T {
+  getNode<T extends GraphNode> (index: number): T {
     if (this.nodes[index]) {
       return this.nodes[index] as T;
     }

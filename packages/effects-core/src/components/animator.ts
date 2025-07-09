@@ -4,6 +4,9 @@ import { GraphInstance } from '../plugins/animation-graph';
 import { Component } from './component.js';
 import { effectsClass } from '../decorators';
 
+/**
+ * @since 2.6.0
+ */
 @effectsClass('Animator')
 export class Animator extends Component {
   /**
@@ -51,10 +54,9 @@ export class Animator extends Component {
 
     // Apply transform animation
     //-------------------------------------------------------------------------
-
     const animatedTransforms = this.graph.skeleton.animatedTransforms;
 
-    for (let i = 0;i < animatedTransforms.length;i++) {
+    for (let i = 0; i < animatedTransforms.length; i++) {
       const position = result.pose.parentSpaceTransforms[i].position;
       const rotation = result.pose.parentSpaceTransforms[i].rotation;
       const scale = result.pose.parentSpaceTransforms[i].scale;
@@ -72,10 +74,9 @@ export class Animator extends Component {
 
     // Apply property animation
     //-------------------------------------------------------------------------
-
     const floatAnimatedObjects = this.graph.skeleton.floatAnimatedObjects;
 
-    for (let i = 0;i < floatAnimatedObjects.length;i++) {
+    for (let i = 0; i < floatAnimatedObjects.length; i++) {
       const animatedObject = floatAnimatedObjects[i];
       const property = animatedObject.property;
 
@@ -84,7 +85,7 @@ export class Animator extends Component {
 
     const colorAnimatedObjects = this.graph.skeleton.colorAnimatedObjects;
 
-    for (let i = 0;i < colorAnimatedObjects.length;i++) {
+    for (let i = 0; i < colorAnimatedObjects.length; i++) {
       const animatedObject = colorAnimatedObjects[i];
       const property = animatedObject.property;
 

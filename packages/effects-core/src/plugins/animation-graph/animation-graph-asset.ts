@@ -1,10 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
-import { InvalidIndex, type GraphNodeData } from '..';
 import { effectsClass } from '../../decorators';
 import { EffectsObject } from '../../effects-object';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
 import { GraphDataSet } from './graph-data-set';
 import { getNodeDataClass } from './node-asset-type';
+import { InvalidIndex, type GraphNodeData } from './graph-node';
 
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {
@@ -20,7 +20,7 @@ export class AnimationGraphAsset extends EffectsObject {
     if (classConstructor) {
       return new classConstructor();
     } else {
-      throw new Error('Unknown node type:' + type);
+      throw new Error(`Unknown node type: ${type}.`);
     }
   }
 
@@ -33,7 +33,6 @@ export class AnimationGraphAsset extends EffectsObject {
 
     // Create parameter lookup map
     //-------------------------------------------------------------------------
-
     const numControlParameters = graphAssetData.controlParameterIDs.length;
 
     for (let i = 0; i < numControlParameters; i++) {
@@ -42,17 +41,15 @@ export class AnimationGraphAsset extends EffectsObject {
 
     // Deserialize node asset
     //-------------------------------------------------------------------------
-
     this.nodeDatas = [];
 
-    for (let i = 0;i < nodeDatas.length;i++) {
+    for (let i = 0; i < nodeDatas.length; i++) {
       this.nodeDatas[i] = AnimationGraphAsset.createNodeData(nodeDatas[i].type as spec.NodeDataType);
       this.nodeDatas[i].load(nodeDatas[i]);
     }
 
     // Deserialize graph data set
     //-------------------------------------------------------------------------
-
     this.graphDataSet = new GraphDataSet();
     this.graphDataSet.resources = [];
     for (const animationClipData of graphAssetData.graphDataSet.resources) {

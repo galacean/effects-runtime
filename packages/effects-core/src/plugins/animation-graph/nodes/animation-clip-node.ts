@@ -102,17 +102,15 @@ export interface ColorCurveInfo {
 }
 
 export class Animatable {
-  private skeleton: Skeleton;
-  private animationClip: AnimationClip;
   private transformCurveInfos: TransformCurveInfo[] = [];
 
   private floatCurveInfos: FloatCurveInfo[] = [];
   private colorCurveInfos: ColorCurveInfo[] = [];
 
-  constructor (skeleton: Skeleton, animationClip: AnimationClip) {
-    this.skeleton = skeleton;
-    this.animationClip = animationClip;
-
+  constructor (
+    private skeleton: Skeleton,
+    private animationClip: AnimationClip,
+  ) {
     for (const curve of animationClip.positionCurves) {
       this.addTransformCurveInfo(curve, TransformCurveType.Position);
     }

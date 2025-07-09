@@ -1,9 +1,9 @@
+import * as spec from '@galacean/effects-specification';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { FloatValueNode } from '../graph-node';
 import { GraphNodeData, PoseNode } from '../graph-node';
 import type { Pose } from '../pose';
 import { PoseResult } from '../pose-result';
-import * as spec from '@galacean/effects-specification';
 import { nodeDataClass } from '../node-asset-type';
 import { Blender } from '../blender';
 

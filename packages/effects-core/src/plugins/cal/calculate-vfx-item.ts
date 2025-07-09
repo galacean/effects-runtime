@@ -1,6 +1,7 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import type { BezierCurve, ColorCurve, ValueGetter, Vector3Curve } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
@@ -11,7 +12,6 @@ import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
-import { clamp } from '@galacean/effects-math/es/core/utils';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);

@@ -1,8 +1,8 @@
-import type { FloatValueNode, ValueNode } from '../..';
 import * as spec from '@galacean/effects-specification';
-import { BoolValueNode, GraphNodeData, InvalidIndex } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { nodeDataClass } from '../node-asset-type';
+import type { FloatValueNode, ValueNode } from '../graph-node';
+import { BoolValueNode, GraphNodeData, InvalidIndex } from '../graph-node';
 
 @nodeDataClass(spec.NodeDataType.EqualNodeData)
 export class EqualNodeData extends GraphNodeData {
@@ -53,7 +53,7 @@ class EqualNode extends BoolValueNode {
     super.shutdownInternal(context);
   }
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
       if (this.inputValueNode && this.comparandValueNode) {
@@ -117,7 +117,7 @@ export class FloatComparisonNode extends BoolValueNode {
     super.shutdownInternal(context);
   }
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
 

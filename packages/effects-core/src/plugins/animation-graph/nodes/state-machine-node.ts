@@ -1,11 +1,11 @@
-import type { BoolValueNode, StateNode } from '../..';
-import type { TransitionNode } from '../..';
 import * as spec from '@galacean/effects-specification';
-import { InvalidIndex } from '../..';
-import { GraphNodeData, PoseNode } from '../..';
 import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
+import type { BoolValueNode } from '../graph-node';
+import { GraphNodeData, InvalidIndex, PoseNode } from '../graph-node';
+import type { StateNode } from './state-node';
+import type { TransitionNode } from './transition-node';
 
 @nodeDataClass(spec.NodeDataType.StateMachineNodeData)
 export class StateMachineNodeData extends GraphNodeData {
@@ -115,7 +115,7 @@ export class StateMachineNode extends PoseNode {
       const transition = currentlyActiveStateInfo.transitions[i];
 
       if (transition.targetStateIndex === InvalidIndex) {
-        throw new Error('Invalid target state index');
+        throw new Error('Invalid target state index.');
       }
 
       // Disallow transitions to already transitioning states unless forced

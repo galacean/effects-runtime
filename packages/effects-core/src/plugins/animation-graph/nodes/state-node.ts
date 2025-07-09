@@ -1,8 +1,8 @@
 import * as spec from '@galacean/effects-specification';
-import { GraphNodeData, InvalidIndex, PoseNode } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
+import { GraphNodeData, InvalidIndex, PoseNode } from '../graph-node';
 
 export enum TransitionState {
   None,

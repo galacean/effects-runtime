@@ -406,7 +406,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 设置元素的透明度
    * @param opacity - 透明度值，范围 [0,1]
    */
-
   setOpacity (opacity: number) {
 
   }
@@ -427,7 +426,9 @@ export class VFXItem extends EffectsObject implements Disposable {
   get isActive () {
     return this.active;
   }
-
+  /**
+   * @since 2.6.0
+   */
   set isActive (value: boolean) {
     this.setActive(value);
   }

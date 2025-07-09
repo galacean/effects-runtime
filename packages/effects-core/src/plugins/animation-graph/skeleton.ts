@@ -1,10 +1,10 @@
+import type { Color } from '@galacean/effects-math/es/core/color';
 import type { VFXItem } from '../../vfx-item';
 import type { Transform } from '../../transform';
 import { NodeTransform } from './pose';
 import type { Constructor } from '../../utils';
 import type { Component } from '../../components';
 import { getClass } from '../../decorators';
-import type { Color } from '@galacean/effects-math/es/core/color';
 import type { ColorAnimationCurve, FloatAnimationCurve } from '../cal/calculate-vfx-item';
 
 export interface AnimationRecordData {
@@ -18,7 +18,7 @@ export interface AnimationRecordData {
 
 export enum AnimatedPropertyType {
   Float,
-  Color
+  Color,
 }
 
 export interface AnimatedObject {
@@ -30,7 +30,6 @@ export const VFXItemType = 'VFXItem';
 
 export class Skeleton {
   useEuler = false;
-  rootBone: VFXItem;
 
   pathToObjectIndex = new Map<string, number>();
 
@@ -44,8 +43,10 @@ export class Skeleton {
   parentSpaceTransforms: NodeTransform[] = [];
   pathToBoneIndex = new Map<string, number>();
 
-  constructor (rootBone: VFXItem, recordedProperties: AnimationRecordData) {
-    this.rootBone = rootBone;
+  constructor (
+    public rootBone: VFXItem,
+    recordedProperties: AnimationRecordData,
+  ) {
     for (const path of recordedProperties.position) {
       this.addReferenceTransform(path);
     }
@@ -60,13 +61,13 @@ export class Skeleton {
       this.useEuler = true;
     }
 
-    for (let i = 0;i < recordedProperties.floats.length;i++) {
+    for (let i = 0; i < recordedProperties.floats.length; i++) {
       const floatRecords = recordedProperties.floats[i];
 
       this.addRecordedProperty(floatRecords.path, floatRecords.className, floatRecords.property, AnimatedPropertyType.Float);
     }
 
-    for (let i = 0;i < recordedProperties.colors.length;i++) {
+    for (let i = 0; i < recordedProperties.colors.length; i++) {
       const colorRecords = recordedProperties.colors[i];
 
       this.addRecordedProperty(colorRecords.path, colorRecords.className, colorRecords.property, AnimatedPropertyType.Color);
@@ -111,7 +112,7 @@ export class Skeleton {
     }
 
     if (!animatedComponentOrItem) {
-      console.error('The ' + className + ' Component was not found');
+      console.error(`The ${className} Component was not found.`);
     }
 
     // Find last animated object by path
@@ -123,7 +124,7 @@ export class Skeleton {
       const property = target[propertyNames[i]];
 
       if (property === undefined) {
-        console.error('The ' + propertyNames[i] + ' property of ' + target + ' was not found');
+        console.error(`The ${propertyNames[i]} property of ${target} was not found.`);
       }
       target = property;
     }
@@ -167,5 +168,4 @@ export class Skeleton {
 
     return currentItem;
   }
-
 }

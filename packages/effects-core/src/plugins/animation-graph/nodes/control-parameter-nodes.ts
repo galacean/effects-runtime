@@ -1,8 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { nodeDataClass } from '../node-asset-type';
-import { FloatValueNode, GraphNodeData } from '../..';
-import { BoolValueNode } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
+import { BoolValueNode, FloatValueNode, GraphNodeData } from '../graph-node';
 
 @nodeDataClass(spec.NodeDataType.ControlParameterFloatNodeData)
 export class ControlParameterFloatNodeData extends GraphNodeData {
@@ -23,7 +22,7 @@ export class ControlParameterFloatNodeData extends GraphNodeData {
 export class ControlParameterFloatNode extends FloatValueNode {
   private value = 0;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
     }
@@ -31,7 +30,7 @@ export class ControlParameterFloatNode extends FloatValueNode {
     return this.value as T;
   }
 
-  override setValue<T>(value: T): void {
+  override setValue<T> (value: T): void {
     this.value = value as number;
   }
 }
@@ -55,7 +54,7 @@ export class ControlParameterBoolNodeData extends GraphNodeData {
 export class ControlParameterBoolNode extends BoolValueNode {
   private value = false;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
     }
@@ -63,7 +62,7 @@ export class ControlParameterBoolNode extends BoolValueNode {
     return this.value as T;
   }
 
-  override setValue<T>(value: T): void {
+  override setValue<T> (value: T): void {
     this.value = value as boolean;
   }
 }
@@ -82,7 +81,7 @@ export class ControlParameterTriggerNodeData extends GraphNodeData {
 export class ControlParameterTriggerNode extends BoolValueNode {
   private value = false;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
     }
@@ -90,7 +89,7 @@ export class ControlParameterTriggerNode extends BoolValueNode {
     return this.value as T;
   }
 
-  override setValue<T>(value: T): void {
+  override setValue<T> (value: T): void {
     this.value = value as boolean;
   }
 }

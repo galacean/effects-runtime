@@ -7,8 +7,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
-import { Playable } from '../cal/playable-graph';
-import { PlayableAsset } from '../cal/playable-graph';
+import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { TrackAsset } from '../timeline/track';
 import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
 

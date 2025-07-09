@@ -571,7 +571,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 获取合成上某一类型的组件。
+   * 获取合成上某一类型的组件
+   * @since 2.6.0
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */

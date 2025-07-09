@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import { BoolValueNode } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
-import { FloatValueNode, GraphNodeData } from '../graph-node';
+import { BoolValueNode, FloatValueNode, GraphNodeData } from '../graph-node';
 import { nodeDataClass } from '../node-asset-type';
 
 @nodeDataClass(spec.NodeDataType.ConstFloatNodeData)
@@ -23,7 +22,7 @@ export class ConstFloatNodeData extends GraphNodeData {
 export class ConstFloatNode extends FloatValueNode {
   value = 0;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
     }
@@ -51,7 +50,7 @@ export class ConstBoolNodeData extends GraphNodeData {
 export class ConstBoolNode extends BoolValueNode {
   value = true;
 
-  override getValue<T>(context: GraphContext): T {
+  override getValue<T> (context: GraphContext): T {
     if (!this.isUpdated(context)) {
       this.markNodeActive(context);
     }

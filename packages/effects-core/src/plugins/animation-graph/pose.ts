@@ -1,8 +1,8 @@
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { Color } from '@galacean/effects-math/es/core/color';
 import type { Skeleton } from './skeleton';
 import type { Transform } from '../../transform';
-import type { Color } from '@galacean/effects-math/es/core/color';
 
 export class NodeTransform {
   position = new Vector3();
@@ -30,14 +30,13 @@ export class NodeTransform {
 }
 
 export class Pose {
-  skeleton: Skeleton;
   parentSpaceTransforms: NodeTransform[] = [];
   floatPropertyValues: number[] = [];
   colorPropertyValues: Color[] = [];
 
-  constructor (skeleton: Skeleton) {
-    this.skeleton = skeleton;
-
+  constructor (
+    public skeleton: Skeleton,
+  ) {
     for (const transform of skeleton.parentSpaceTransforms) {
       this.parentSpaceTransforms.push(new NodeTransform().copyFrom(transform));
     }

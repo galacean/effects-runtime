@@ -1,11 +1,11 @@
-import type { FloatValueNode, Pose } from '../..';
 import * as spec from '@galacean/effects-specification';
-import { PoseNode } from '../..';
-import { GraphNodeData } from '../..';
 import { Blender } from '../blender';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
+import type { FloatValueNode } from '../graph-node';
+import { GraphNodeData, PoseNode } from '../graph-node';
+import type { Pose } from '../pose';
 
 @nodeDataClass(spec.NodeDataType.ApplyAdditiveNodeData)
 export class ApplyAdditiveNodeData extends GraphNodeData {
