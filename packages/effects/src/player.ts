@@ -9,7 +9,7 @@ import {
   isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
   assertExist, AssetService,
 } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
+import type { GLEngine, GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
@@ -68,6 +68,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private assetService: AssetService;
   private speed = 1;
   private baseCompositionIndex = 0;
+  private useExternalCanvas = false;
 
   /**
    * 播放器的构造函数
@@ -116,6 +117,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       if (canvas) {
         this.canvas = canvas;
+        this.useExternalCanvas = true;
       } else {
         assertContainer(container);
         this.canvas = document.createElement('canvas');
@@ -151,6 +153,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
     } catch (e: any) {
+      if (this.canvas && !this.useExternalCanvas) {
+        this.canvas.remove();
+      }
       this.handleThrowError(e);
     }
 
@@ -808,6 +813,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
       this.canvas.remove();
     }
+
+    if (!this.useExternalCanvas) {
+      (this.renderer.engine as GLEngine).gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+
     // 在报错函数中传入 player.name
     const errorMsg = getDestroyedErrorMessage(this.name);
     const throwErrorFunc = () => throwError(errorMsg);
