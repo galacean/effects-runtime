@@ -230,8 +230,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   postProcessingEnabled = false;
 
   protected rendererOptions: MeshRendererOptions | null;
-  // TODO: 待优化
-  protected assigned = false;
   /**
    * 销毁状态位
    */
@@ -249,6 +247,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private paused = false;
   private isEndCalled = false;
   private _textures: Texture[] = [];
+
+  /**
+   * 合成是否在播放期间，在第一次调用 play 后为 true
+   */
+  private isDuringPlay = false;
 
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -362,7 +365,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       aspect: width / height,
     });
     this.url = scene.url;
-    this.assigned = true;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
@@ -482,6 +484,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    *
    */
   play () {
+    if (!this.isDuringPlay) {
+      this.isDuringPlay = true;
+    }
     if (this.isEnded && this.reusable) {
       this.restart();
     }
@@ -619,7 +624,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param deltaTime - 更新的时间步长
    */
   update (deltaTime: number) {
-    if (!this.assigned || this.getPaused()) {
+    if (!this.isDuringPlay || this.getPaused()) {
       return;
     }
 
