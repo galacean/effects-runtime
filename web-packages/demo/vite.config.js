@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'render-level': resolve(__dirname, 'html/render-level.html'),
           'shader-compile': resolve(__dirname, 'html/shader-compile.html'),
-          'shape': resolve(__dirname, 'html/shape.html'),
+          'multi-load-type': resolve(__dirname, 'html/multi-load-type.html'),
           'single': resolve(__dirname, 'html/single.html'),
           'text': resolve(__dirname, 'html/text.html'),
           'three-particle': resolve(__dirname, 'html/three-particle.html'),

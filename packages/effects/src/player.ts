@@ -383,6 +383,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       } else {
         compositions[i].pause();
       }
+
+      // 注意：不要移动此行代码，避免出现多合成加载时，非自动播放的合成在加载时就开始渲染
+      this.compositions.push(compositions[i]);
     }
 
     this.ticker?.start();
@@ -425,8 +428,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.env !== PLAYER_OPTIONS_ENV_EDITOR) {
       this.assetService.createShaderVariant();
     }
-
-    this.compositions.push(composition);
 
     return composition;
   }

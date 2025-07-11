@@ -249,11 +249,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private _textures: Texture[] = [];
 
   /**
-   * 合成是否在播放期间，在第一次调用 play 后为 true
-   */
-  private isDuringPlay = false;
-
-  /**
    * 合成中消息元素创建/销毁时触发的回调
    */
   private handleItemMessage: (message: MessageItem) => void;
@@ -484,9 +479,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    *
    */
   play () {
-    if (!this.isDuringPlay) {
-      this.isDuringPlay = true;
-    }
     if (this.isEnded && this.reusable) {
       this.restart();
     }
@@ -624,7 +616,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param deltaTime - 更新的时间步长
    */
   update (deltaTime: number) {
-    if (!this.isDuringPlay || this.getPaused()) {
+    if (this.getPaused()) {
       return;
     }
 
