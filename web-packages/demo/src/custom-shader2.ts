@@ -74,7 +74,6 @@ void main(){
 `;
 
 const fragment = `
-#define AA_ENABLED 0  // 1=启用高级抗锯齿，0=禁用
 
 precision highp float;
 
@@ -219,88 +218,12 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 }
 
 float antiAliasedStroke(float dist, float lineWidth) {
-    float aa = max(fwidth(dist), 0.002);
+    float aa = max(fwidth(dist)* 2.0, 0.01);
     // 两边都平滑
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
-vec3 calculateGradientColor(float sdfDistance, vec2 uvPos) {
-    float normalizedDistance = clamp(sdfDistance / _BloomRange, 0.0, 1.0);
-    float adjustedDistance = pow(normalizedDistance, _GradientPower);
-    float timeInfluence = sin(_Time.y * _TimeSpeed) * 0.5 + 0.5;
-    vec3 baseColor;
-    if (uvPos.x < 0.3) {
-        baseColor = mix(_PurpleColor, _GreenColor, timeInfluence);
-    } else if (uvPos.x > 0.7)  {
-        baseColor = _BlueColor;
-    } else {
-        vec3 leftColor = mix(_PurpleColor, _GreenColor, timeInfluence);
-        float transitionFactor = (uvPos.x - 0.3) / 0.4;
-        baseColor = mix(leftColor, _BlueColor, transitionFactor);
-    }
-    if (adjustedDistance < _GradientCenterThreshold) {
-        float t = adjustedDistance / _GradientCenterThreshold;
-        return mix(baseColor, _BarColorMiddle, t);
-    } else {
-        float t = (adjustedDistance - _GradientCenterThreshold) / (1.0 - _GradientCenterThreshold);
-        return mix(_BarColorMiddle, _BarColorEdge, t);
-    }
-}
 
-float calculateBloomIntensity(float sdfDistance) {
-    if (sdfDistance <= 0.0) {
-        return 0.0;
-    }
-    float audioSample = sin(_Time.y * _TimeSpeed) * 0.5 + 0.5;
-    float distanceFalloff = smoothstep(_BloomRange + _BloomTransitionRange, _BloomRange - _BloomTransitionRange, sdfDistance);
-    float audioFactor = 0.5 + audioSample * 2.0;
-    float intensity = _BaseBloomIntensity * distanceFalloff * distanceFalloff * audioFactor;
-    return intensity;
-}
-
-vec3 permute(vec3 x) {
-  return mod(((x * 34.0) + 1.0) * x, 289.0);
-}
-
-float snoise(vec2 v){
-  const vec4 C = vec4(
-      0.211324865405187, 0.366025403784439,
-      -0.577350269189626, 0.024390243902439
-  );
-  vec2 i  = floor(v + dot(v, C.yy));
-  vec2 x0 = v - i + dot(i, C.xx);
-  vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-  vec4 x12 = x0.xyxy + C.xxzz;
-  x12.xy -= i1;
-  i = mod(i, 289.0);
-
-  vec3 p = permute(
-      permute(i.y + vec3(0.0, i1.y, 1.0))
-    + i.x + vec3(0.0, i1.x, 1.0)
-  );
-
-  vec3 m = max(
-      0.5 - vec3(
-          dot(x0, x0),
-          dot(x12.xy, x12.xy),
-          dot(x12.zw, x12.zw)
-      ), 
-      0.0
-  );
-  m = m * m;
-  m = m * m;
-
-  vec3 x = 2.0 * fract(p * C.www) - 1.0;
-  vec3 h = abs(x) - 0.5;
-  vec3 ox = floor(x + 0.5);
-  vec3 a0 = x - ox;
-  m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
-
-  vec3 g;
-  g.x  = a0.x  * x0.x  + h.x  * x0.y;
-  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-  return 130.0 * dot(m, g);
-}
 
 vec3 getStopColor(int mode, float beat) {
     if(mode == 0) return uColorStops0;
@@ -336,12 +259,8 @@ void main() {
     getCurvePoints(_CurveType, A_single, C_single);
     vec2 B_single = getBezierControlPoint(_CurveAngle, A_single, C_single);
     float signedDist = sd_bezier_signed(uvCoord, A_single, B_single, C_single);
-    vec3 gradientColor = calculateGradientColor(abs(signedDist), uvCoord);
-    float bloomIntensity = calculateBloomIntensity(abs(signedDist));
 
 
-    // 在着色器开头添加全局抗锯齿控制
-#if AA_ENABLED
     vec2 grad = vec2(dFdx(signedDist), dFdy(signedDist));
     float gradient = length(grad);
     float globalAARange = clamp(gradient * 2.0, 0.005, 0.15);
@@ -349,11 +268,6 @@ void main() {
         // 双向平滑过渡
     float normalizedDist = signedDist / globalAARange;
     float alphaTransition = smoothstep(-0.5, 0.5, normalizedDist);
-#else
-    float globalAARange = max(fwidth(signedDist), 0.01) ;
-    float alphaTransition = smoothstep(0.0, -globalAARange, signedDist);
-#endif
-
 
     //线条从中间到两侧逐渐减少宽度
     float widthCenter = _LineWidth;         // 中间最大线宽
@@ -366,22 +280,17 @@ void main() {
     //计算静宽
     float lineStroke = antiAliasedStroke(abs(signedDist), dynamicLineWidth);
 
-    // 彩色区域mask
-    float aa = fwidth(signedDist) * 3.0; // 1.0~2.0 可调，越大越柔和
-    float colorMask = smoothstep(dynamicLineWidth +aa, dynamicLineWidth - aa, abs(signedDist));
 
 
-    vec3 linecolor = _InsideColor;
+    vec4 linecolor = vec4(rampColor,1.0);
 
-    // 计算mask后的rampcolor
-    rampColor = mix(linecolor, rampColor, colorMask);
+
+
 
     vec3 finalColorRGB = vec3(0.0);
-    float finalAlpha = 0.0;
-    vec4 bgColor = vec4(rampColor, 1.0);
-    vec3 auroraRampColor = rampColor;
-    //finalColorRGB = aurora.rgb;
-    finalAlpha = bgColor.a;
+    float finalAlpha = 1.0;
+
+
 
     // --- 辉光效果 begin ---
     float glowWidthCenter = _GlowWidth;
@@ -398,75 +307,50 @@ void main() {
 
     // 修改辉光的条件判断，使其与主线条的抗锯齿区域重叠
     float glow = 0.0;
-    if (signedDist >= 0.0) {
-        float distanceFromLine = signedDist+glowOffset;
-        float glowStart = dynamicLineGlowWidth - _GlowSoft;
-        float glowEnd = dynamicLineGlowWidth + _GlowWidth;
-        float glowAA = max(fwidth(distanceFromLine), 0.002); // 加入抗锯齿
-        glow = 1.0 - smoothstep(glowStart - glowAA, glowEnd + glowAA, abs(distanceFromLine));
-        glow = pow(glow, _GlowPower);
-    }
+    float distanceFromLine = signedDist+glowOffset;
+    float glowStart = dynamicLineGlowWidth - _GlowSoft;
+    float glowEnd = dynamicLineGlowWidth + _GlowWidth;
+    float glowAA = max(fwidth(distanceFromLine), 0.002); // 加入抗锯齿
+    glow = 1.0 - smoothstep(glowStart - glowAA, glowEnd + glowAA, abs(distanceFromLine));
+    glow = pow(glow, _GlowPower);
 
     // --- 辉光效果 end ---
-    //finalColorRGB = _InsideColor;
     finalAlpha = 0.0;
 
     // 计算边界过渡抗锯齿
-    float transitionRange = max(fwidth(signedDist), 0.01) ;
-    float boundaryTransition = smoothstep(-globalAARange, globalAARange, transitionRange);
+    float transitionRange = max(fwidth(signedDist)*2.0, 0.001) ;
 
-
+    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
 
 
     // 2. 内部区域处理（单向过渡）
     if (signedDist < 0.0) {
         finalColorRGB = _InsideColor;
-        if (lineStroke == 0.0) {
-            // 在边界处alpha从1.0渐变到0.0
-            #if AA_ENABLED
-                finalAlpha = 1.0 - alphaTransition;
-            #else
-                finalAlpha = alphaTransition;
-            #endif
-        } else {
-            finalAlpha = 1.0;
-        }
+        
+        finalAlpha = inner_base_alpha;
+       
         
     }
 
-    // 3. 线条区域处理（渐变色/线条）
-    if (lineStroke > 0.0) {
-        if (signedDist < 0.0) {
-            finalColorRGB = mix(_InsideColor.rgb, rampColor.rgb, lineStroke);
-        } else {
-            finalColorRGB = rampColor.rgb;
-        }
-        finalAlpha = finalAlpha;
-    }
+    float final_stroke_alpha = lineStroke * (1.0 - inner_base_alpha);
+    vec4 stroke_layer = linecolor * final_stroke_alpha;
 
-    // 4. 辉光区域处理（对称过渡+二次平滑）
-    if (signedDist > 0.0) {
-        vec3 glowBlend = glowColor;
-        float glowFactor = glow * _GlowIntensity;
-        float glowAA = globalAARange * 0.5; // 辉光抗锯齿范围与主范围关联
+    finalColorRGB = stroke_layer.rgb * stroke_layer.a + finalColorRGB * (1.0 - stroke_layer.a);
+    finalAlpha = stroke_layer.a + finalAlpha * (1.0 - stroke_layer.a);
 
-        if (lineStroke == 0.0) {
-            // 对称过渡
-            float blendFactor = smoothstep(-globalAARange, globalAARange, signedDist);
-            finalColorRGB = mix(_InsideColor, glowBlend, blendFactor);
+    float upperGlowMask = smoothstep(-0.01, 0.01, signedDist);
+    float topAttenuation = smoothstep(0.0, 0.2, 1.0 - uvCoord.y);
+    glow = glow * upperGlowMask * topAttenuation;
 
-            // 二次平滑消除硬边
-            float edgeSmooth = smoothstep(-globalAARange * 0.5, globalAARange * 0.5, signedDist);
-            finalAlpha = mix(0.0, glowFactor, blendFactor) * edgeSmooth;
-        } else {
-            finalColorRGB = glowBlend;
-            finalAlpha = max(lineStroke, glowFactor);
-        }
-    }
+
+    finalColorRGB = glowColor * glow * _GlowIntensity + finalColorRGB * (1.0 - glow * _GlowIntensity);
+    finalAlpha = glow * _GlowIntensity + finalAlpha * (1.0 - glow * _GlowIntensity);
 
 
 
-    gl_FragColor = vec4(finalColorRGB * finalAlpha, finalAlpha);
+
+
+    gl_FragColor = vec4(finalColorRGB,finalAlpha);
 }
 `;
 

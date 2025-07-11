@@ -7,8 +7,8 @@
   <style>
     html, body, div, canvas { margin: 0; padding: 0; }
     .container {
-      width: 1080px;
-      height: 1920px;
+      width: 375px;
+      height: 812px;
       background-color: rgba(255,255,255,255);
     }
   </style>
@@ -16,28 +16,6 @@
 <body>
 <div class="container" id="J-container"></div>
 
-<script type="module">
-const container = document.getElementById('J-container')!;
-const canvas = document.createElement('canvas');
-
-// 设置显示大小（CSS 尺寸）
-const maxSize = 2048; // 或 4096，视显卡支持而定
-const width = Math.min(1080, maxSize);
-const height = Math.min(1920, maxSize);
-
-canvas.style.width = width + 'px';
-canvas.style.height = height + 'px';
-
-// 设置分辨率（像素尺寸，结合 dpr）
-const dpr = window.devicePixelRatio || 1;
-canvas.width = width * dpr;
-canvas.height = height * dpr;
-
-container.appendChild(canvas);
-
-// 后续用 canvas 初始化 WebGL 或 Player
-// 例如：const gl = canvas.getContext('webgl2');
-</script>
 <script type="module" src="../src/custom-shader2.ts"></script>
 </body>
 </html>
