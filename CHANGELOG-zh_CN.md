@@ -8,6 +8,14 @@
 
 ---
 
+## 2.5.3
+
+`2025-07-11`
+
+- Fix: composition autoplay issue. [#1069](https://github.com/galacean/effects-runtime/pull/1069) @wumaolinmaoan
+  - Fix: composition play issue. [#1071](https://github.com/galacean/effects-runtime/pull/1071) @wumaolinmaoan
+- Fix: bezier path build const bezier easing. [#1070](https://github.com/galacean/effects-runtime/pull/1070) @wumaolinmaoan
+
 ## 2.5.2
 
 `2025-07-09`
