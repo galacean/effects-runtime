@@ -230,8 +230,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   postProcessingEnabled = false;
 
   protected rendererOptions: MeshRendererOptions | null;
-  // TODO: 待优化
-  protected assigned = false;
   /**
    * 销毁状态位
    */
@@ -362,7 +360,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       aspect: width / height,
     });
     this.url = scene.url;
-    this.assigned = true;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
@@ -619,7 +616,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param deltaTime - 更新的时间步长
    */
   update (deltaTime: number) {
-    if (!this.assigned || this.getPaused()) {
+    if (this.getPaused()) {
       return;
     }
 
