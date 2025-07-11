@@ -10,10 +10,9 @@ export class GLEngine extends Engine {
   }
 
   override dispose () {
-    if (this.isDestroyed) {
+    if (this.destroyed) {
       return;
     }
-
     super.dispose();
   }
 

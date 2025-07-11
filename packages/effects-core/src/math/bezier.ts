@@ -404,7 +404,11 @@ export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightK
   if (BezierMap[str]) {
     bezEasing = BezierMap[str];
   } else {
-    bezEasing = new BezierEasing(x1, y1, x2, y2);
+    if (decimalEqual(valueInterval, 0)) {
+      bezEasing = new BezierEasing();
+    } else {
+      bezEasing = new BezierEasing(x1, y1, x2, y2);
+    }
     BezierMap[str] = bezEasing;
   }
 
