@@ -266,7 +266,7 @@ void main() {
     float distanceFromLine = signedDist+glowOffset;
     float glowStart = dynamicLineGlowWidth - _GlowSoft;
     float glowEnd = dynamicLineGlowWidth + _GlowWidth;
-    float glowAA = max(fwidth(distanceFromLine), 0.002); // 加入抗锯齿
+    float glowAA = max(fwidth(distanceFromLine), 0.001); // 加入抗锯齿
     glow = 1.0 - smoothstep(glowStart - glowAA, glowEnd + glowAA, abs(distanceFromLine));
     glow = pow(glow, _GlowPower);
 
@@ -290,7 +290,7 @@ void main() {
     finalColorRGB = stroke_layer.rgb * stroke_layer.a + finalColorRGB * (1.0 - stroke_layer.a);
     finalAlpha = stroke_layer.a + finalAlpha * (1.0 - stroke_layer.a);
 
-    float upperGlowMask = smoothstep(-0.01, 0.01, signedDist);
+    float upperGlowMask = smoothstep(-0.01, 0.0, signedDist);
     float topAttenuation = smoothstep(0.0, 0.2, 1.0 - uvCoord.y);
     glow = glow * upperGlowMask * topAttenuation;
 
@@ -660,7 +660,7 @@ function initializeControls () {
     if (slider && valueDisplay) {
       slider.value = (shaderParams as any)[controlName]?.toString() || '0';
       valueDisplay.textContent = (shaderParams as any)[controlName]?.toString() || '0';
-      
+
       slider.addEventListener('input', e => {
         const value = parseFloat((e.target as HTMLInputElement).value);
 
@@ -683,6 +683,7 @@ function initializeControls () {
 
     if (colorPicker) {
       const color = shaderParams.colorStops[index];
+
       colorPicker.value = rgbToHex(color.x, color.y, color.z);
 
       colorPicker.addEventListener('input', e => {
@@ -700,6 +701,7 @@ function initializeControls () {
 
   // 内部颜色
   const insideColorPicker = document.getElementById('insideColor') as HTMLInputElement;
+
   if (insideColorPicker) {
     insideColorPicker.value = rgbToHex(
       shaderParams.insideColor.x,
@@ -709,6 +711,7 @@ function initializeControls () {
 
     insideColorPicker.addEventListener('input', e => {
       const rgb = hexToRgb((e.target as HTMLInputElement).value);
+
       if (rgb) {
         shaderParams.insideColor = { x: rgb.r, y: rgb.g, z: rgb.b };
         materials.forEach(material => {
@@ -812,6 +815,7 @@ function resetToDefaults () {
 
   // 重置内部颜色
   const insideColorPicker = document.getElementById('insideColor') as HTMLInputElement;
+
   if (insideColorPicker) {
     insideColorPicker.value = '#000000';
     shaderParams.insideColor = { x: 0, y: 0, z: 0 };
@@ -946,8 +950,8 @@ function togglePanel () {
 
         // 设置内部颜色
         material.setVector3('_InsideColor', new math.Vector3(
-          shaderParams.insideColor.x, 
-          shaderParams.insideColor.y, 
+          shaderParams.insideColor.x,
+          shaderParams.insideColor.y,
           shaderParams.insideColor.z
         ));
 
