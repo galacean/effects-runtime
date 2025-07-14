@@ -1,9 +1,6 @@
 /* eslint-disable no-case-declarations */
 import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, Texture, glContext, setBlendMode, spec, math } from '@galacean/effects';
-import { Vector3 } from '@galacean/effects-plugin-model';
-import type { AudioData } from './audio-state-machine';
-import AudioSimulator from './audio-state-machine';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*gAIvS7C5mJ4AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
@@ -65,40 +62,19 @@ varying vec2 uv;
 uniform vec4 _Time;
 uniform float _CurveAngle;
 uniform float _CurveType;
-
-// UI可控制的参数
 uniform float _LineWidth;
 uniform float _InsideAlpha;
 uniform vec3 _InsideColor;
-uniform float _TimeSpeed;
-
-// 氛围光参数
-uniform float _Amplitude;
 uniform vec3 _ColorStops0;
 uniform vec3 _ColorStops1;
 uniform vec3 _ColorStops2;
-uniform float _Blend;
-uniform sampler2D _AudioTexture;
-uniform float _AudioInfluence;
-uniform float _AudioMultiplier;
 uniform float _TimeSpeedUniform;
-uniform float _NoiseScale;
-uniform float _HeightMultiplier;
-uniform float _MidPoint;
-uniform float _IntensityMultiplier;
-uniform float _YOffset;
-
-// 新增 uniform 控制左右端色的动态方式
 uniform int _LeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
 uniform int _RightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
-
-// 新增辉光控制参数
 uniform float _GlowWidth;      // 辉光范围
 uniform float _GlowSoft;       // 辉光边缘柔和度
 uniform float _GlowPower;      // 辉光边缘衰减
 uniform float _GlowIntensity;  // 辉光强度
-
-// 新增：线宽衰减力度，建议范围 1~4
 uniform float _DynamicWidthFalloff;
 uniform float _ColorRegion;
 uniform float _GlowRegion;
@@ -212,7 +188,6 @@ vec3 getColorFromGradient(float factor) {
 void main() {
     vec2 uvCoord = vec2(uv.x, 1.0 - uv.y);
 
-    float audioData = texture2D(_AudioTexture, vec2(uvCoord.x, 0.5)).r;
 
     //获取渐变的颜色
     vec3 rampColor = getColorFromGradient(uvCoord.x);
@@ -261,7 +236,6 @@ void main() {
     glowt = max(0.0, t - _GlowRegion); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
     
-    // 修改辉光的条件判断，使其与主线条的抗锯齿区域重叠
     float glow = 0.0;
     float distanceFromLine = signedDist+glowOffset;
     float glowStart = dynamicLineGlowWidth - _GlowSoft;
@@ -456,71 +430,12 @@ function createControlPanel () {
         <div class="value-display" id="lineWidth-value">0.01</div>
       </div>
     </div>
-    
-    <div class="control-group">
-      <h3>音频效果</h3>
-      <div class="control-item">
-        <label for="amplitude">Amplitude (振幅)</label>
-        <input type="range" id="amplitude" min="0" max="3" step="0.1" value="1.0">
-        <div class="value-display" id="amplitude-value">1.0</div>
-      </div>
-      <div class="control-item">
-        <label for="audioInfluence">Audio Influence (音频影响)</label>
-        <input type="range" id="audioInfluence" min="0" max="5" step="0.1" value="1.0">
-        <div class="value-display" id="audioInfluence-value">1.0</div>
-      </div>
-      <div class="control-item">
-        <label for="audioMultiplier">Audio Multiplier (音频倍数)</label>
-        <input type="range" id="audioMultiplier" min="0" max="10" step="0.5" value="2.0">
-        <div class="value-display" id="audioMultiplier-value">2.0</div>
-      </div>
-    </div>
-    
-    <div class="control-group">
-      <h3>极光效果</h3>
-      <div class="control-item">
-        <label for="blend">Blend Factor (混合因子)</label>
-        <input type="range" id="blend" min="0" max="2" step="0.05" value="0.5">
-        <div class="value-display" id="blend-value">0.5</div>
-      </div>
-      <div class="control-item">
-        <label for="midPoint">Mid Point (中点位置)</label>
-        <input type="range" id="midPoint" min="0" max="1" step="0.01" value="0.20">
-        <div class="value-display" id="midPoint-value">0.20</div>
-      </div>
-      <div class="control-item">
-        <label for="intensityMultiplier">Intensity (强度倍数)</label>
-        <input type="range" id="intensityMultiplier" min="0" max="2" step="0.1" value="0.6">
-        <div class="value-display" id="intensityMultiplier-value">0.6</div>
-      </div>
-      <div class="control-item">
-        <label for="yOffset">Y Offset (Y偏移)</label>
-        <input type="range" id="yOffset" min="-1" max="1" step="0.001" value="0.2">
-        <div class="value-display" id="yOffset-value">0.2</div>
-      </div>
-    </div>
-    
     <div class="control-group">
       <h3>噪声动画</h3>
       <div class="control-item">
         <label for="timeSpeedUniform">Time Speed (时间速度)</label>
         <input type="range" id="timeSpeedUniform" min="0" max="50" step="0.1" value="4.1">
         <div class="value-display" id="timeSpeedUniform-value">4.1</div>
-      </div>
-      <div class="control-item">
-        <label for="timeSpeed">Bezier Time Speed (贝塞尔时间速度)</label>
-        <input type="range" id="timeSpeed" min="0.5" max="10" step="0.5" value="3.0">
-        <div class="value-display" id="timeSpeed-value">3.0</div>
-      </div>
-      <div class="control-item">
-        <label for="noiseScale">Noise Scale (噪声缩放)</label>
-        <input type="range" id="noiseScale" min="0.5" max="5" step="0.1" value="2.0">
-        <div class="value-display" id="noiseScale-value">2.0</div>
-      </div>
-      <div class="control-item">
-        <label for="heightMultiplier">Height Multiplier (高度倍数)</label>
-        <input type="range" id="heightMultiplier" min="0" max="3" step="0.01" value="0.5">
-        <div class="value-display" id="heightMultiplier-value">0.50</div>
       </div>
     </div>
     
@@ -547,15 +462,15 @@ function createControlPanel () {
         </select>
       </div>
       <div class="control-item">
-        <label for="colorStop0">Color Stop 0 (起始色)</label>
+        <label for="colorStop0">Color Stop 0 (色1)</label>
         <input type="color" id="colorStop0" class="color-input" value="#5226ff">
       </div>
       <div class="control-item">
-        <label for="colorStop1">Color Stop 1 (中间色)</label>
+        <label for="colorStop1">Color Stop 1 (色2)</label>
         <input type="color" class="color-input" id="colorStop1" value="#7dff66">
       </div>
       <div class="control-item">
-        <label for="colorStop2">Color Stop 2 (结束色)</label>
+        <label for="colorStop2">Color Stop 2 (色3)</label>
         <input type="color" class="color-input" id="colorStop2" value="#5226ff">
       </div>
     </div>
@@ -666,7 +581,6 @@ function initializeControls () {
 
         valueDisplay.textContent = value.toFixed(3);
 
-        // 自动生成 uniform 名称
         const uniformName = `_${controlName.charAt(0).toUpperCase()}${controlName.slice(1)}`;
 
         materials.forEach(material => {
@@ -871,19 +785,9 @@ function togglePanel () {
   jsonValue.materials[0].floats['_CurveType'] = shaderParams.curveType;
   jsonValue.materials[0].floats['_LineWidth'] = shaderParams.lineWidth;
   jsonValue.materials[0].floats['_InsideAlpha'] = shaderParams.insideAlpha;
-  jsonValue.materials[0].floats['_TimeSpeed'] = shaderParams.timeSpeed;
 
   // 设置氛围光参数默认值
-  jsonValue.materials[0].floats['_Amplitude'] = shaderParams.amplitude;
-  jsonValue.materials[0].floats['_Blend'] = shaderParams.blend;
-  jsonValue.materials[0].floats['_AudioInfluence'] = shaderParams.audioInfluence;
-  jsonValue.materials[0].floats['_AudioMultiplier'] = shaderParams.audioMultiplier;
   jsonValue.materials[0].floats['_TimeSpeedUniform'] = shaderParams.timeSpeedUniform;
-  jsonValue.materials[0].floats['_NoiseScale'] = shaderParams.noiseScale;
-  jsonValue.materials[0].floats['_HeightMultiplier'] = shaderParams.heightMultiplier;
-  jsonValue.materials[0].floats['_MidPoint'] = shaderParams.midPoint;
-  jsonValue.materials[0].floats['_IntensityMultiplier'] = shaderParams.intensityMultiplier;
-  jsonValue.materials[0].floats['_YOffset'] = shaderParams.yOffset;
 
   // 设置颜色
   jsonValue.materials[0].vector3s['_InsideColor'] = shaderParams.insideColor;
@@ -915,10 +819,6 @@ function togglePanel () {
   const composition = await player.loadScene(jsonValue);
   const item = composition.getItemByName('effect_3');
 
-  const audioSimulator: AudioSimulator = new AudioSimulator(64);
-  let audioTexture: Texture | null = null;
-  const engine = composition.renderer.engine;
-
   if (item) {
     const rendererComponents = item.getComponents(RendererComponent);
 
@@ -934,19 +834,9 @@ function togglePanel () {
         material.setFloat('_CurveType', shaderParams.curveType);
         material.setFloat('_LineWidth', shaderParams.lineWidth);
         material.setFloat('_InsideAlpha', shaderParams.insideAlpha);
-        material.setFloat('_TimeSpeed', shaderParams.timeSpeed);
 
         // 设置所有氛围光uniform参数
-        material.setFloat('_Amplitude', shaderParams.amplitude);
-        material.setFloat('_Blend', shaderParams.blend);
-        material.setFloat('_AudioInfluence', shaderParams.audioInfluence);
-        material.setFloat('_AudioMultiplier', shaderParams.audioMultiplier);
         material.setFloat('_TimeSpeedUniform', shaderParams.timeSpeedUniform);
-        material.setFloat('_NoiseScale', shaderParams.noiseScale);
-        material.setFloat('_HeightMultiplier', shaderParams.heightMultiplier);
-        material.setFloat('_MidPoint', shaderParams.midPoint);
-        material.setFloat('_IntensityMultiplier', shaderParams.intensityMultiplier);
-        material.setFloat('_YOffset', shaderParams.yOffset);
 
         // 设置内部颜色
         material.setVector3('_InsideColor', new math.Vector3(
@@ -976,26 +866,7 @@ function togglePanel () {
           material.setVector3(`_ColorStops${index}`, new math.Vector3(color.x, color.y, color.z));
         });
 
-        // 创建音频纹理
-        const audioTextureData = {
-          width: 64,
-          height: 1,
-          data: new Float32Array(64).fill(128),
-        };
-
-        audioTexture = Texture.createWithData(
-          engine,
-          audioTextureData,
-          {
-            wrapS: glContext.CLAMP_TO_EDGE,
-            wrapT: glContext.CLAMP_TO_EDGE,
-            minFilter: glContext.LINEAR,
-            magFilter: glContext.LINEAR,
-          }
-        );
-
         setBlendMode(material, spec.BlendingMode.ALPHA);
-        material.setTexture('_AudioTexture', audioTexture);
         materials.push(material);
       }
     }
@@ -1005,51 +876,9 @@ function togglePanel () {
   createControlPanel();
   initializeControls();
 
-  // 启动音频模拟器
-  audioSimulator.start((audioData: AudioData) => {
-    if (audioTexture && materials.length > 0) {
-      const width = 64;
-      const height = 1;
-
-      const updatedTextureData = {
-        width: width,
-        height: height,
-        data: audioData.textureData,
-      };
-
-      const newAudioTexture = Texture.createWithData(
-        engine,
-        updatedTextureData,
-        {
-          wrapS: glContext.CLAMP_TO_EDGE,
-          wrapT: glContext.CLAMP_TO_EDGE,
-          minFilter: glContext.LINEAR,
-          magFilter: glContext.LINEAR,
-          format: glContext.RGBA,
-          type: glContext.FLOAT,
-        }
-      );
-
-      materials.forEach((material: Material) => {
-        material.setTexture('_AudioTexture', newAudioTexture);
-      });
-
-      audioTexture = newAudioTexture;
-
-      const avgAmplitude = audioData.floatData.reduce((a: number, b: number) => a + b, 0) / audioData.frequencyBands;
-      const bassLevel = audioData.floatData.slice(0, 13).reduce((a: number, b: number) => a + b, 0) / 13;
-
-      materials.forEach((material: Material) => {
-        material.setFloat('_Amplitude', shaderParams.amplitude + bassLevel * 1.5);
-        material.setFloat('_AudioInfluence', shaderParams.audioInfluence * avgAmplitude * 2.0);
-      });
-    }
-  }, 60);
-
   player.play();
 
   window.addEventListener('beforeunload', () => {
-    audioSimulator.stop();
   });
 })();
 
