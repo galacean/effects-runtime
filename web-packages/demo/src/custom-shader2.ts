@@ -9,53 +9,38 @@ const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*gAIvS7C5mJ4AAAAAQDA
 const container = document.getElementById('J-container');
 
 // UI控制参数
-// 1. 统一参数定义（保持原有结构）
 const shaderParams = {
   curveAngle: 0.5,
   curveType: 0.0,
   lineWidth: 0.01,
-  baseBloomIntensity: 0.4,
-  bloomRange: 0.25,
-  bloomTransitionRange: 0.05,
-  gradientPower: 1.5,
-  gradientCenterThreshold: 0.2,
   insideAlpha: 1.0,
   timeSpeed: 3.0,
   amplitude: 1.0,
   blend: 0.5,
   audioInfluence: 1.0,
   audioMultiplier: 2.0,
-  uTimeSpeed: 4.1,
+  timeSpeedUniform: 4.1,
   noiseScale: 2.0,
   heightMultiplier: 0.5,
   midPoint: 0.20,
   intensityMultiplier: 0.6,
   yOffset: 0.2,
-  lineColor: { x: 1.0, y: 1.0, z: 1.0 },
-  purpleColor: { x: 0.6, y: 0.2, z: 0.8 },
-  greenColor: { x: 0.2, y: 0.8, z: 0.3 },
-  blueColor: { x: 0.2, y: 0.4, z: 1.0 },
   insideColor: { x: 0.0, y: 0.0, z: 0.0 },
   colorStops: [
     { x: 0.32, y: 0.15, z: 1.0 },
     { x: 0.49, y: 1.0, z: 0.40 },
     { x: 0.32, y: 0.15, z: 1.0 },
   ],
-  barColorCenter: { x: 1.0, y: 1.0, z: 1.0 },
-  barColorMiddle: { x: 0.576, y: 0.607, z: 0.808 },
-  barColorEdge: { x: 0.0431, y: 0.059, z: 0.1 },
   leftMode: 3,
   rightMode: 1,
-  // 新增辉光参数
   glowWidth: 0.05,
   glowSoft: 0.03,
   glowPower: 2.0,
   glowIntensity: 0.8,
-  // 新增线宽衰减力度
-  uDynamicWidthFalloff: 1.0,
-  uColorRegion: 0.0, // 新增
-  uGlowRegion: 0.0, // 新增
-  uDynamicWidthCenter: 0.5,
+  dynamicWidthFalloff: 1.0,
+  colorRegion: 0.0,
+  glowRegion: 0.0,
+  dynamicWidthCenter: 0.5,
 };
 
 const vertex = `
@@ -74,7 +59,6 @@ void main(){
 `;
 
 const fragment = `
-
 precision highp float;
 
 varying vec2 uv;
@@ -84,43 +68,29 @@ uniform float _CurveType;
 
 // UI可控制的参数
 uniform float _LineWidth;
-uniform vec3 _LineColor;
-uniform float _BaseBloomIntensity;
-uniform float _BloomRange;
-uniform float _BloomTransitionRange;
-uniform float _GradientPower;
-uniform float _GradientCenterThreshold;
-uniform vec3 _PurpleColor;
-uniform vec3 _GreenColor;
-uniform vec3 _BlueColor;
-uniform vec3 _InsideColor;
 uniform float _InsideAlpha;
+uniform vec3 _InsideColor;
 uniform float _TimeSpeed;
 
-// 保留的渐变参数
-uniform vec3 _BarColorCenter;
-uniform vec3 _BarColorMiddle;
-uniform vec3 _BarColorEdge;
-
 // 氛围光参数
-uniform float uAmplitude;
-uniform vec3 uColorStops0;
-uniform vec3 uColorStops1;
-uniform vec3 uColorStops2;
-uniform float uBlend;
-uniform sampler2D uAudioTexture;
-uniform float uAudioInfluence;
-uniform float uAudioMultiplier;
-uniform float uTimeSpeed;
-uniform float uNoiseScale;
-uniform float uHeightMultiplier;
-uniform float uMidPoint;
-uniform float uIntensityMultiplier;
-uniform float uYOffset;
+uniform float _Amplitude;
+uniform vec3 _ColorStops0;
+uniform vec3 _ColorStops1;
+uniform vec3 _ColorStops2;
+uniform float _Blend;
+uniform sampler2D _AudioTexture;
+uniform float _AudioInfluence;
+uniform float _AudioMultiplier;
+uniform float _TimeSpeedUniform;
+uniform float _NoiseScale;
+uniform float _HeightMultiplier;
+uniform float _MidPoint;
+uniform float _IntensityMultiplier;
+uniform float _YOffset;
 
 // 新增 uniform 控制左右端色的动态方式
-uniform int uLeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
-uniform int uRightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
+uniform int _LeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
+uniform int _RightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
 
 // 新增辉光控制参数
 uniform float _GlowWidth;      // 辉光范围
@@ -129,10 +99,10 @@ uniform float _GlowPower;      // 辉光边缘衰减
 uniform float _GlowIntensity;  // 辉光强度
 
 // 新增：线宽衰减力度，建议范围 1~4
-uniform float uDynamicWidthFalloff;
-uniform float uColorRegion; // 新增
-uniform float uGlowRegion;
-uniform float uDynamicWidthCenter; // 新增，线宽衰减中心位置
+uniform float _DynamicWidthFalloff;
+uniform float _ColorRegion;
+uniform float _GlowRegion;
+uniform float _DynamicWidthCenter;
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -223,34 +193,30 @@ float antiAliasedStroke(float dist, float lineWidth) {
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
-
-
 vec3 getStopColor(int mode, float beat) {
-    if(mode == 0) return uColorStops0;
-    if(mode == 1) return uColorStops1;
-    if(mode == 2) return uColorStops2;
-    if(mode == 3) return mix(uColorStops0, uColorStops2, beat);
-    if(mode == 4) return mix(uColorStops1, uColorStops2, beat);
-    return uColorStops0;
+    if(mode == 0) return _ColorStops0;
+    if(mode == 1) return _ColorStops1;
+    if(mode == 2) return _ColorStops2;
+    if(mode == 3) return mix(_ColorStops0, _ColorStops2, beat);
+    if(mode == 4) return mix(_ColorStops1, _ColorStops2, beat);
+    return _ColorStops0;
 }
 
 vec3 getColorFromGradient(float factor) {
-    float beat = sin(_Time.y * uTimeSpeed) * 0.5 + 0.5;
-    vec3 leftColor = getStopColor(uLeftMode, beat);
-    vec3 rightColor = getStopColor(uRightMode, beat);
+    float beat = sin(_Time.y * _TimeSpeedUniform) * 0.5 + 0.5;
+    vec3 leftColor = getStopColor(_LeftMode, beat);
+    vec3 rightColor = getStopColor(_RightMode, beat);
     return mix(leftColor, rightColor, factor);
 }
-
 
 void main() {
     vec2 uvCoord = vec2(uv.x, 1.0 - uv.y);
 
-    float audioData = texture2D(uAudioTexture, vec2(uvCoord.x, 0.5)).r;
+    float audioData = texture2D(_AudioTexture, vec2(uvCoord.x, 0.5)).r;
 
     //获取渐变的颜色
     vec3 rampColor = getColorFromGradient(uvCoord.x);
     vec3 glowColor = rampColor;
-
 
     uvCoord = vec2(uv.x, uv.y);
 
@@ -260,12 +226,11 @@ void main() {
     vec2 B_single = getBezierControlPoint(_CurveAngle, A_single, C_single);
     float signedDist = sd_bezier_signed(uvCoord, A_single, B_single, C_single);
 
-
     vec2 grad = vec2(dFdx(signedDist), dFdy(signedDist));
     float gradient = length(grad);
     float globalAARange = clamp(gradient * 2.0, 0.005, 0.15);
 
-        // 双向平滑过渡
+    // 双向平滑过渡
     float normalizedDist = signedDist / globalAARange;
     float alphaTransition = smoothstep(-0.5, 0.5, normalizedDist);
 
@@ -273,24 +238,17 @@ void main() {
     float widthCenter = _LineWidth;         // 中间最大线宽
     float widthEdge = _LineWidth * 0.3;     // 两侧最小线宽，可调
     // 修改中心点
-    float t = pow(abs(uvCoord.x - uDynamicWidthCenter) / max(uDynamicWidthCenter, 1.0-uDynamicWidthCenter), uDynamicWidthFalloff);
-    t = max(0.0, t - uColorRegion); // uColorRegion 越大，彩色区域越窄
+    float t = pow(abs(uvCoord.x - _DynamicWidthCenter) / max(_DynamicWidthCenter, 1.0-_DynamicWidthCenter), _DynamicWidthFalloff);
+    t = max(0.0, t - _ColorRegion); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineWidth = mix(widthCenter, widthEdge, t);
 
     //计算静宽
     float lineStroke = antiAliasedStroke(abs(signedDist), dynamicLineWidth);
 
-
-
     vec4 linecolor = vec4(rampColor,1.0);
-
-
-
 
     vec3 finalColorRGB = vec3(0.0);
     float finalAlpha = 1.0;
-
-
 
     // --- 辉光效果 begin ---
     float glowWidthCenter = _GlowWidth;
@@ -299,12 +257,10 @@ void main() {
     float glowIntensity = _GlowIntensity;
     float glowOffset = 0.01; 
 
-    float glowt = pow(abs(uvCoord.x - uDynamicWidthCenter) / max(uDynamicWidthCenter, 1.0-uDynamicWidthCenter), uDynamicWidthFalloff);
-    glowt = max(0.0, t - uGlowRegion); // uColorRegion 越大，彩色区域越窄
+    float glowt = pow(abs(uvCoord.x - _DynamicWidthCenter) / max(_DynamicWidthCenter, 1.0-_DynamicWidthCenter), _DynamicWidthFalloff);
+    glowt = max(0.0, t - _GlowRegion); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
     
-    
-
     // 修改辉光的条件判断，使其与主线条的抗锯齿区域重叠
     float glow = 0.0;
     float distanceFromLine = signedDist+glowOffset;
@@ -322,14 +278,10 @@ void main() {
 
     float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
 
-
     // 2. 内部区域处理（单向过渡）
     if (signedDist < 0.0) {
         finalColorRGB = _InsideColor;
-        
-        finalAlpha = inner_base_alpha;
-       
-        
+        finalAlpha = inner_base_alpha * _InsideAlpha;
     }
 
     float final_stroke_alpha = lineStroke * (1.0 - inner_base_alpha);
@@ -342,13 +294,8 @@ void main() {
     float topAttenuation = smoothstep(0.0, 0.2, 1.0 - uvCoord.y);
     glow = glow * upperGlowMask * topAttenuation;
 
-
     finalColorRGB = glowColor * glow * _GlowIntensity + finalColorRGB * (1.0 - glow * _GlowIntensity);
     finalAlpha = glow * _GlowIntensity + finalAlpha * (1.0 - glow * _GlowIntensity);
-
-
-
-
 
     gl_FragColor = vec4(finalColorRGB,finalAlpha);
 }
@@ -511,25 +458,6 @@ function createControlPanel () {
     </div>
     
     <div class="control-group">
-      <h3>Bloom效果</h3>
-      <div class="control-item">
-        <label for="baseBloomIntensity">基础强度</label>
-        <input type="range" id="baseBloomIntensity" min="0" max="2" step="0.1" value="0.4">
-        <div class="value-display" id="baseBloomIntensity-value">0.4</div>
-      </div>
-      <div class="control-item">
-        <label for="bloomRange">影响范围</label>
-        <input type="range" id="bloomRange" min="0.05" max="0.5" step="0.01" value="0.25">
-        <div class="value-display" id="bloomRange-value">0.25</div>
-      </div>
-      <div class="control-item">
-        <label for="bloomTransitionRange">过渡范围</label>
-        <input type="range" id="bloomTransitionRange" min="0.01" max="0.2" step="0.01" value="0.05">
-        <div class="value-display" id="bloomTransitionRange-value">0.05</div>
-      </div>
-    </div>
-    
-    <div class="control-group">
       <h3>音频效果</h3>
       <div class="control-item">
         <label for="amplitude">Amplitude (振幅)</label>
@@ -575,9 +503,9 @@ function createControlPanel () {
     <div class="control-group">
       <h3>噪声动画</h3>
       <div class="control-item">
-        <label for="uTimeSpeed">Time Speed (时间速度)</label>
-        <input type="range" id="uTimeSpeed" min="0" max="50" step="0.1" value="0.5">
-        <div class="value-display" id="uTimeSpeed-value">0.5</div>
+        <label for="timeSpeedUniform">Time Speed (时间速度)</label>
+        <input type="range" id="timeSpeedUniform" min="0" max="50" step="0.1" value="4.1">
+        <div class="value-display" id="timeSpeedUniform-value">4.1</div>
       </div>
       <div class="control-item">
         <label for="timeSpeed">Bezier Time Speed (贝塞尔时间速度)</label>
@@ -591,8 +519,8 @@ function createControlPanel () {
       </div>
       <div class="control-item">
         <label for="heightMultiplier">Height Multiplier (高度倍数)</label>
-        <input type="range" id="heightMultiplier" min="0" max="3" step="0.01" value="0.15">
-        <div class="value-display" id="heightMultiplier-value">0.13</div>
+        <input type="range" id="heightMultiplier" min="0" max="3" step="0.01" value="0.5">
+        <div class="value-display" id="heightMultiplier-value">0.50</div>
       </div>
     </div>
     
@@ -604,7 +532,7 @@ function createControlPanel () {
           <option value="0">Stop0</option>
           <option value="1">Stop1</option>
           <option value="2">Stop2</option>
-          <option value="3">Stop0↔Stop2 动态</option>
+          <option value="3" selected>Stop0↔Stop2 动态</option>
           <option value="4">Stop1↔Stop2 动态</option>
         </select>
       </div>
@@ -612,7 +540,7 @@ function createControlPanel () {
         <label for="rightMode">右端色模式</label>
         <select id="rightMode">
           <option value="0">Stop0</option>
-          <option value="1">Stop1</option>
+          <option value="1" selected>Stop1</option>
           <option value="2">Stop2</option>
           <option value="3">Stop0↔Stop2 动态</option>
           <option value="4">Stop1↔Stop2 动态</option>
@@ -633,23 +561,7 @@ function createControlPanel () {
     </div>
     
     <div class="control-group">
-      <h3>贝塞尔颜色</h3>
-      <div class="control-item">
-        <label for="lineColor">线条颜色</label>
-        <input type="color" id="lineColor" class="color-input" value="#ffffff">
-      </div>
-      <div class="control-item">
-        <label for="purpleColor">紫色</label>
-        <input type="color" id="purpleColor" class="color-input" value="#9933cc">
-      </div>
-      <div class="control-item">
-        <label for="greenColor">绿色</label>
-        <input type="color" id="greenColor" class="color-input" value="#33cc4d">
-      </div>
-      <div class="control-item">
-        <label for="blueColor">蓝色</label>
-        <input type="color" id="blueColor" class="color-input" value="#3366ff">
-      </div>
+      <h3>内部颜色</h3>
       <div class="control-item">
         <label for="insideColor">内侧颜色</label>
         <input type="color" id="insideColor" class="color-input" value="#000000">
@@ -688,24 +600,24 @@ function createControlPanel () {
     <div class="control-group">
       <h3>线宽衰减</h3>
       <div class="control-item">
-        <label for="uDynamicWidthFalloff">线宽衰减力度 (uDynamicWidthFalloff)</label>
-        <input type="range" id="uDynamicWidthFalloff" min="0" max="4" step="0.01" value="1.0">
-        <div class="value-display" id="uDynamicWidthFalloff-value">1.00</div>
+        <label for="dynamicWidthFalloff">线宽衰减力度 (_DynamicWidthFalloff)</label>
+        <input type="range" id="dynamicWidthFalloff" min="0" max="4" step="0.01" value="1.0">
+        <div class="value-display" id="dynamicWidthFalloff-value">1.00</div>
       </div>
       <div class="control-item">
-        <label for="uColorRegion">彩色区域宽度 (uColorRegion)</label>
-        <input type="range" id="uColorRegion" min="-5" max="5" step="0.01" value="0.0">
-        <div class="value-display" id="uColorRegion-value">0.00</div>
+        <label for="colorRegion">彩色区域宽度 (_ColorRegion)</label>
+        <input type="range" id="colorRegion" min="-5" max="5" step="0.01" value="0.0">
+        <div class="value-display" id="colorRegion-value">0.00</div>
       </div>
       <div class="control-item">
-        <label for="uGlowRegion">辉光区域宽度 (uGlowRegion)</label>
-        <input type="range" id="uGlowRegion" min="-5" max="5" step="0.01" value="0.0">
-        <div class="value-display" id="uGlowRegion-value">0.00</div>
+        <label for="glowRegion">辉光区域宽度 (_GlowRegion)</label>
+        <input type="range" id="glowRegion" min="-5" max="5" step="0.01" value="0.0">
+        <div class="value-display" id="glowRegion-value">0.00</div>
       </div>
       <div class="control-item">
-        <label for="uDynamicWidthCenter">线宽衰减中心 (uDynamicWidthCenter)</label>
-        <input type="range" id="uDynamicWidthCenter" min="0" max="1" step="0.001" value="0.5">
-        <div class="value-display" id="uDynamicWidthCenter-value">0.50</div>
+        <label for="dynamicWidthCenter">线宽衰减中心 (_DynamicWidthCenter)</label>
+        <input type="range" id="dynamicWidthCenter" min="0" max="1" step="0.001" value="0.5">
+        <div class="value-display" id="dynamicWidthCenter-value">0.50</div>
       </div>
     </div>
     
@@ -733,19 +645,12 @@ function initializeControls () {
   });
 
   // 数值滑块控制
-  // 2. UI滑块与uniform自动映射
   const controls = [
-    'curveAngle', 'curveType', 'lineWidth', 'baseBloomIntensity', 'bloomRange', 'bloomTransitionRange',
-    'gradientPower', 'gradientCenterThreshold', 'insideAlpha', 'timeSpeed',
-    'amplitude', 'blend', 'audioInfluence', 'audioMultiplier', 'uTimeSpeed',
+    'curveAngle', 'lineWidth', 'insideAlpha', 'timeSpeed',
+    'amplitude', 'blend', 'audioInfluence', 'audioMultiplier', 'timeSpeedUniform',
     'noiseScale', 'heightMultiplier', 'midPoint', 'intensityMultiplier', 'yOffset',
-    // 新增辉光参数
     'glowWidth', 'glowSoft', 'glowPower', 'glowIntensity',
-    // 新增线宽衰减力度
-    'uDynamicWidthFalloff',
-    'uColorRegion',
-    'uGlowRegion', // 新增
-    'uDynamicWidthCenter',
+    'dynamicWidthFalloff', 'colorRegion', 'glowRegion', 'dynamicWidthCenter',
   ];
 
   controls.forEach(controlName => {
@@ -753,19 +658,17 @@ function initializeControls () {
     const valueDisplay = document.getElementById(`${controlName}-value`);
 
     if (slider && valueDisplay) {
+      slider.value = (shaderParams as any)[controlName]?.toString() || '0';
+      valueDisplay.textContent = (shaderParams as any)[controlName]?.toString() || '0';
+      
       slider.addEventListener('input', e => {
         const value = parseFloat((e.target as HTMLInputElement).value);
 
         valueDisplay.textContent = value.toFixed(3);
 
         // 自动生成 uniform 名称
-        let uniformName = controlName;
+        const uniformName = `_${controlName.charAt(0).toUpperCase()}${controlName.slice(1)}`;
 
-        // 兼容shader中的下划线命名
-        if (['_CurveAngle', '_CurveType', '_LineWidth', '_BaseBloomIntensity', '_BloomRange', '_BloomTransitionRange', '_GradientPower', '_GradientCenterThreshold', '_InsideAlpha', '_TimeSpeed'].includes(`_${controlName.charAt(0).toUpperCase()}${controlName.slice(1)}`)) {
-          uniformName = `_${controlName.charAt(0).toUpperCase()}${controlName.slice(1)}`;
-        }
-        // 其它直接用参数名
         materials.forEach(material => {
           material.setFloat(uniformName, value);
         });
@@ -780,41 +683,40 @@ function initializeControls () {
 
     if (colorPicker) {
       const color = shaderParams.colorStops[index];
-
       colorPicker.value = rgbToHex(color.x, color.y, color.z);
+
       colorPicker.addEventListener('input', e => {
         const rgb = hexToRgb((e.target as HTMLInputElement).value);
 
         if (rgb) {
           shaderParams.colorStops[index] = { x: rgb.r, y: rgb.g, z: rgb.b };
           materials.forEach(material => {
-            material.setVector3(`uColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
+            material.setVector3(`_ColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
           });
         }
       });
     }
   });
 
-  // 贝塞尔颜色
-  ['lineColor', 'purpleColor', 'greenColor', 'blueColor', 'insideColor'].forEach(colorName => {
-    const colorPicker = document.getElementById(colorName) as HTMLInputElement;
+  // 内部颜色
+  const insideColorPicker = document.getElementById('insideColor') as HTMLInputElement;
+  if (insideColorPicker) {
+    insideColorPicker.value = rgbToHex(
+      shaderParams.insideColor.x,
+      shaderParams.insideColor.y,
+      shaderParams.insideColor.z
+    );
 
-    if (colorPicker) {
-      const color = (shaderParams as any)[colorName];
-
-      colorPicker.value = rgbToHex(color.x, color.y, color.z);
-      colorPicker.addEventListener('input', e => {
-        const rgb = hexToRgb((e.target as HTMLInputElement).value);
-
-        if (rgb) {
-          (shaderParams as any)[colorName] = { x: rgb.r, y: rgb.g, z: rgb.b };
-          materials.forEach(material => {
-            material.setVector3(`_${colorName.charAt(0).toUpperCase()}${colorName.slice(1)}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
-          });
-        }
-      });
-    }
-  });
+    insideColorPicker.addEventListener('input', e => {
+      const rgb = hexToRgb((e.target as HTMLInputElement).value);
+      if (rgb) {
+        shaderParams.insideColor = { x: rgb.r, y: rgb.g, z: rgb.b };
+        materials.forEach(material => {
+          material.setVector3('_InsideColor', new math.Vector3(rgb.r, rgb.g, rgb.b));
+        });
+      }
+    });
+  }
 
   // 左右端色模式
   ['leftMode', 'rightMode'].forEach((modeName, idx) => {
@@ -824,38 +726,16 @@ function initializeControls () {
       select.value = (shaderParams as any)[modeName]?.toString() || '0';
       select.addEventListener('change', e => {
         const value = parseInt((e.target as HTMLSelectElement).value, 10);
-        const uniformName = idx === 0 ? 'uLeftMode' : 'uRightMode';
+        const uniformName = idx === 0 ? '_LeftMode' : '_RightMode';
 
         materials.forEach(material => {
           material.setInt(uniformName, value);
         });
         (shaderParams as any)[modeName] = value;
       });
+
       materials.forEach(material => {
-        material.setInt(idx === 0 ? 'uLeftMode' : 'uRightMode', (shaderParams as any)[modeName] || 0);
-      });
-    }
-  });
-
-  // 新增辉光参数
-  [
-    { name: 'glowWidth', uniform: '_GlowWidth', fixed: 3 },
-    { name: 'glowSoft', uniform: '_GlowSoft', fixed: 3 },
-    { name: 'glowPower', uniform: '_GlowPower', fixed: 2 },
-    { name: 'glowIntensity', uniform: '_GlowIntensity', fixed: 2 },
-  ].forEach(({ name, uniform, fixed }) => {
-    const slider = document.getElementById(name) as HTMLInputElement;
-    const valueDisplay = document.getElementById(`${name}-value`);
-
-    if (slider && valueDisplay) {
-      slider.addEventListener('input', e => {
-        const value = parseFloat((e.target as HTMLInputElement).value);
-
-        valueDisplay.textContent = value.toFixed(fixed);
-        materials.forEach(material => {
-          material.setFloat(uniform, value);
-        });
-        (shaderParams as any)[name] = value;
+        material.setInt(idx === 0 ? '_LeftMode' : '_RightMode', (shaderParams as any)[modeName] || 0);
       });
     }
   });
@@ -868,7 +748,7 @@ function resetToDefaults () {
     audioInfluence: 1.0,
     audioMultiplier: 2.0,
     blend: 0.5,
-    uTimeSpeed: 0.5,
+    timeSpeedUniform: 4.1,
     noiseScale: 2.0,
     heightMultiplier: 0.5,
     midPoint: 0.20,
@@ -876,20 +756,18 @@ function resetToDefaults () {
     yOffset: 0.2,
     curveAngle: 0.5,
     lineWidth: 0.01,
-    baseBloomIntensity: 0.4,
-    bloomRange: 0.25,
-    bloomTransitionRange: 0.05,
-    gradientPower: 1.5,
-    gradientCenterThreshold: 0.2,
     insideAlpha: 1.0,
     timeSpeed: 3.0,
-    leftMode: 0,
-    rightMode: 2,
-    // 新增辉光参数
+    leftMode: 3,
+    rightMode: 1,
     glowWidth: 0.05,
     glowSoft: 0.03,
     glowPower: 2.0,
     glowIntensity: 0.8,
+    dynamicWidthFalloff: 1.0,
+    colorRegion: 0.0,
+    glowRegion: 0.0,
+    dynamicWidthCenter: 0.5,
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -899,18 +777,21 @@ function resetToDefaults () {
     if (slider && valueDisplay) {
       slider.value = value.toString();
       valueDisplay.textContent = typeof value === 'number' ? value.toFixed(3) : value;
-      let uniformName = '';
 
-      if (key === 'curveAngle') {uniformName = '_CurveAngle';} else if (key === 'lineWidth') {uniformName = '_LineWidth';} else if (key === 'baseBloomIntensity') {uniformName = '_BaseBloomIntensity';} else if (key === 'bloomRange') {uniformName = '_BloomRange';} else if (key === 'bloomTransitionRange') {uniformName = '_BloomTransitionRange';} else if (key === 'gradientPower') {uniformName = '_GradientPower';} else if (key === 'gradientCenterThreshold') {uniformName = '_GradientCenterThreshold';} else if (key === 'insideAlpha') {uniformName = '_InsideAlpha';} else if (key === 'timeSpeed') {uniformName = '_TimeSpeed';} else if (key === 'glowWidth') {uniformName = '_GlowWidth';} else if (key === 'glowSoft') {uniformName = '_GlowSoft';} else if (key === 'glowPower') {uniformName = '_GlowPower';} else if (key === 'glowIntensity') {uniformName = '_GlowIntensity';} else {uniformName = `u${key.charAt(0).toUpperCase() + key.slice(1)}`;}
+      // 生成对应的uniform名称
+      const uniformName = `_${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+
       materials.forEach(material => {
         material.setFloat(uniformName, value);
       });
+
+      (shaderParams as any)[key] = value;
     }
   });
 
   // 重置颜色
   const defaultColors = [
-    '#9124ff', '#00aaff', '#24ff70',
+    '#5226ff', '#7dff66', '#5226ff',
   ];
 
   defaultColors.forEach((hex, index) => {
@@ -923,11 +804,21 @@ function resetToDefaults () {
       if (rgb) {
         shaderParams.colorStops[index] = { x: rgb.r, y: rgb.g, z: rgb.b };
         materials.forEach(material => {
-          material.setVector3(`uColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
+          material.setVector3(`_ColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
         });
       }
     }
   });
+
+  // 重置内部颜色
+  const insideColorPicker = document.getElementById('insideColor') as HTMLInputElement;
+  if (insideColorPicker) {
+    insideColorPicker.value = '#000000';
+    shaderParams.insideColor = { x: 0, y: 0, z: 0 };
+    materials.forEach(material => {
+      material.setVector3('_InsideColor', new math.Vector3(0, 0, 0));
+    });
+  }
 }
 
 // 切换面板显示/隐藏
@@ -975,39 +866,44 @@ function togglePanel () {
   jsonValue.materials[0].floats['_CurveAngle'] = shaderParams.curveAngle;
   jsonValue.materials[0].floats['_CurveType'] = shaderParams.curveType;
   jsonValue.materials[0].floats['_LineWidth'] = shaderParams.lineWidth;
-  jsonValue.materials[0].floats['_BaseBloomIntensity'] = shaderParams.baseBloomIntensity;
-  jsonValue.materials[0].floats['_BloomRange'] = shaderParams.bloomRange;
-  jsonValue.materials[0].floats['_BloomTransitionRange'] = shaderParams.bloomTransitionRange;
-  jsonValue.materials[0].floats['_GradientPower'] = shaderParams.gradientPower;
-  jsonValue.materials[0].floats['_GradientCenterThreshold'] = shaderParams.gradientCenterThreshold;
   jsonValue.materials[0].floats['_InsideAlpha'] = shaderParams.insideAlpha;
   jsonValue.materials[0].floats['_TimeSpeed'] = shaderParams.timeSpeed;
 
   // 设置氛围光参数默认值
-  jsonValue.materials[0].floats['uAmplitude'] = shaderParams.amplitude;
-  jsonValue.materials[0].floats['uBlend'] = shaderParams.blend;
-  jsonValue.materials[0].floats['uAudioInfluence'] = shaderParams.audioInfluence;
-  jsonValue.materials[0].floats['uAudioMultiplier'] = shaderParams.audioMultiplier;
-  jsonValue.materials[0].floats['uTimeSpeed'] = shaderParams.uTimeSpeed;
-  jsonValue.materials[0].floats['uNoiseScale'] = shaderParams.noiseScale;
-  jsonValue.materials[0].floats['uHeightMultiplier'] = shaderParams.heightMultiplier;
-  jsonValue.materials[0].floats['uMidPoint'] = shaderParams.midPoint;
-  jsonValue.materials[0].floats['uIntensityMultiplier'] = shaderParams.intensityMultiplier;
-  jsonValue.materials[0].floats['uYOffset'] = shaderParams.yOffset;
+  jsonValue.materials[0].floats['_Amplitude'] = shaderParams.amplitude;
+  jsonValue.materials[0].floats['_Blend'] = shaderParams.blend;
+  jsonValue.materials[0].floats['_AudioInfluence'] = shaderParams.audioInfluence;
+  jsonValue.materials[0].floats['_AudioMultiplier'] = shaderParams.audioMultiplier;
+  jsonValue.materials[0].floats['_TimeSpeedUniform'] = shaderParams.timeSpeedUniform;
+  jsonValue.materials[0].floats['_NoiseScale'] = shaderParams.noiseScale;
+  jsonValue.materials[0].floats['_HeightMultiplier'] = shaderParams.heightMultiplier;
+  jsonValue.materials[0].floats['_MidPoint'] = shaderParams.midPoint;
+  jsonValue.materials[0].floats['_IntensityMultiplier'] = shaderParams.intensityMultiplier;
+  jsonValue.materials[0].floats['_YOffset'] = shaderParams.yOffset;
 
   // 设置颜色
-  jsonValue.materials[0].vector3s['_LineColor'] = shaderParams.lineColor;
-  jsonValue.materials[0].vector3s['_PurpleColor'] = shaderParams.purpleColor;
-  jsonValue.materials[0].vector3s['_GreenColor'] = shaderParams.greenColor;
-  jsonValue.materials[0].vector3s['_BlueColor'] = shaderParams.blueColor;
   jsonValue.materials[0].vector3s['_InsideColor'] = shaderParams.insideColor;
-  jsonValue.materials[0].vector3s['_BarColorCenter'] = shaderParams.barColorCenter;
-  jsonValue.materials[0].vector3s['_BarColorMiddle'] = shaderParams.barColorMiddle;
-  jsonValue.materials[0].vector3s['_BarColorEdge'] = shaderParams.barColorEdge;
-
   shaderParams.colorStops.forEach((color, index) => {
-    jsonValue.materials[0].vector3s[`uColorStops${index}`] = color;
+    jsonValue.materials[0].vector3s[`_ColorStops${index}`] = color;
   });
+
+  // 设置模式参数
+  jsonValue.materials[0].ints = {
+    '_LeftMode': shaderParams.leftMode,
+    '_RightMode': shaderParams.rightMode,
+  };
+
+  // 设置辉光参数
+  jsonValue.materials[0].floats['_GlowWidth'] = shaderParams.glowWidth;
+  jsonValue.materials[0].floats['_GlowSoft'] = shaderParams.glowSoft;
+  jsonValue.materials[0].floats['_GlowPower'] = shaderParams.glowPower;
+  jsonValue.materials[0].floats['_GlowIntensity'] = shaderParams.glowIntensity;
+
+  // 设置线宽衰减参数
+  jsonValue.materials[0].floats['_DynamicWidthFalloff'] = shaderParams.dynamicWidthFalloff;
+  jsonValue.materials[0].floats['_ColorRegion'] = shaderParams.colorRegion;
+  jsonValue.materials[0].floats['_GlowRegion'] = shaderParams.glowRegion;
+  jsonValue.materials[0].floats['_DynamicWidthCenter'] = shaderParams.dynamicWidthCenter;
 
   jsonValue.shaders[0].vertex = vertex;
   jsonValue.shaders[0].fragment = fragment;
@@ -1033,41 +929,50 @@ function togglePanel () {
         material.setFloat('_CurveAngle', shaderParams.curveAngle);
         material.setFloat('_CurveType', shaderParams.curveType);
         material.setFloat('_LineWidth', shaderParams.lineWidth);
-        material.setFloat('_BaseBloomIntensity', shaderParams.baseBloomIntensity);
-        material.setFloat('_BloomRange', shaderParams.bloomRange);
-        material.setFloat('_BloomTransitionRange', shaderParams.bloomTransitionRange);
-        material.setFloat('_GradientPower', shaderParams.gradientPower);
-        material.setFloat('_GradientCenterThreshold', shaderParams.gradientCenterThreshold);
         material.setFloat('_InsideAlpha', shaderParams.insideAlpha);
         material.setFloat('_TimeSpeed', shaderParams.timeSpeed);
 
         // 设置所有氛围光uniform参数
-        material.setFloat('uAmplitude', shaderParams.amplitude);
-        material.setFloat('uBlend', shaderParams.blend);
-        material.setFloat('uAudioInfluence', shaderParams.audioInfluence);
-        material.setFloat('uAudioMultiplier', shaderParams.audioMultiplier);
-        material.setFloat('uTimeSpeed', shaderParams.uTimeSpeed);
-        material.setFloat('uNoiseScale', shaderParams.noiseScale);
-        material.setFloat('uHeightMultiplier', shaderParams.heightMultiplier);
-        material.setFloat('uMidPoint', shaderParams.midPoint);
-        material.setFloat('uIntensityMultiplier', shaderParams.intensityMultiplier);
-        material.setFloat('uYOffset', shaderParams.yOffset);
+        material.setFloat('_Amplitude', shaderParams.amplitude);
+        material.setFloat('_Blend', shaderParams.blend);
+        material.setFloat('_AudioInfluence', shaderParams.audioInfluence);
+        material.setFloat('_AudioMultiplier', shaderParams.audioMultiplier);
+        material.setFloat('_TimeSpeedUniform', shaderParams.timeSpeedUniform);
+        material.setFloat('_NoiseScale', shaderParams.noiseScale);
+        material.setFloat('_HeightMultiplier', shaderParams.heightMultiplier);
+        material.setFloat('_MidPoint', shaderParams.midPoint);
+        material.setFloat('_IntensityMultiplier', shaderParams.intensityMultiplier);
+        material.setFloat('_YOffset', shaderParams.yOffset);
 
-        // 设置颜色
-        material.setVector3('_LineColor', new math.Vector3(shaderParams.lineColor.x, shaderParams.lineColor.y, shaderParams.lineColor.z));
-        material.setVector3('_PurpleColor', new math.Vector3(shaderParams.purpleColor.x, shaderParams.purpleColor.y, shaderParams.purpleColor.z));
-        material.setVector3('_GreenColor', new math.Vector3(shaderParams.greenColor.x, shaderParams.greenColor.y, shaderParams.greenColor.z));
-        material.setVector3('_BlueColor', new math.Vector3(shaderParams.blueColor.x, shaderParams.blueColor.y, shaderParams.blueColor.z));
-        material.setVector3('_InsideColor', new math.Vector3(shaderParams.insideColor.x, shaderParams.insideColor.y, shaderParams.insideColor.z));
-        material.setVector3('_BarColorCenter', new math.Vector3(shaderParams.barColorCenter.x, shaderParams.barColorCenter.y, shaderParams.barColorCenter.z));
-        material.setVector3('_BarColorMiddle', new math.Vector3(shaderParams.barColorMiddle.x, shaderParams.barColorMiddle.y, shaderParams.barColorMiddle.z));
-        material.setVector3('_BarColorEdge', new math.Vector3(shaderParams.barColorEdge.x, shaderParams.barColorEdge.y, shaderParams.barColorEdge.z));
+        // 设置内部颜色
+        material.setVector3('_InsideColor', new math.Vector3(
+          shaderParams.insideColor.x, 
+          shaderParams.insideColor.y, 
+          shaderParams.insideColor.z
+        ));
 
         // 设置左右端色模式
-        material.setInt('uLeftMode', shaderParams.leftMode);
-        material.setInt('uRightMode', shaderParams.rightMode);
+        material.setInt('_LeftMode', shaderParams.leftMode);
+        material.setInt('_RightMode', shaderParams.rightMode);
 
-        // 创建音频纹理 - 使用您的方法
+        // 设置辉光参数
+        material.setFloat('_GlowWidth', shaderParams.glowWidth);
+        material.setFloat('_GlowSoft', shaderParams.glowSoft);
+        material.setFloat('_GlowPower', shaderParams.glowPower);
+        material.setFloat('_GlowIntensity', shaderParams.glowIntensity);
+
+        // 设置线宽衰减参数
+        material.setFloat('_DynamicWidthFalloff', shaderParams.dynamicWidthFalloff);
+        material.setFloat('_ColorRegion', shaderParams.colorRegion);
+        material.setFloat('_GlowRegion', shaderParams.glowRegion);
+        material.setFloat('_DynamicWidthCenter', shaderParams.dynamicWidthCenter);
+
+        // 设置颜色停止点
+        shaderParams.colorStops.forEach((color, index) => {
+          material.setVector3(`_ColorStops${index}`, new math.Vector3(color.x, color.y, color.z));
+        });
+
+        // 创建音频纹理
         const audioTextureData = {
           width: 64,
           height: 1,
@@ -1086,8 +991,7 @@ function togglePanel () {
         );
 
         setBlendMode(material, spec.BlendingMode.ALPHA);
-
-        material.setTexture('uAudioTexture', audioTexture);
+        material.setTexture('_AudioTexture', audioTexture);
         materials.push(material);
       }
     }
@@ -1097,7 +1001,7 @@ function togglePanel () {
   createControlPanel();
   initializeControls();
 
-  // 启动音频模拟器 - 使用您的方法
+  // 启动音频模拟器
   audioSimulator.start((audioData: AudioData) => {
     if (audioTexture && materials.length > 0) {
       const width = 64;
@@ -1123,7 +1027,7 @@ function togglePanel () {
       );
 
       materials.forEach((material: Material) => {
-        material.setTexture('uAudioTexture', newAudioTexture);
+        material.setTexture('_AudioTexture', newAudioTexture);
       });
 
       audioTexture = newAudioTexture;
@@ -1132,8 +1036,8 @@ function togglePanel () {
       const bassLevel = audioData.floatData.slice(0, 13).reduce((a: number, b: number) => a + b, 0) / 13;
 
       materials.forEach((material: Material) => {
-        material.setFloat('uAmplitude', shaderParams.amplitude + bassLevel * 1.5);
-        material.setFloat('uAudioInfluence', shaderParams.audioInfluence * avgAmplitude * 2.0);
+        material.setFloat('_Amplitude', shaderParams.amplitude + bassLevel * 1.5);
+        material.setFloat('_AudioInfluence', shaderParams.audioInfluence * avgAmplitude * 2.0);
       });
     }
   }, 60);
