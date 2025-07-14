@@ -9,9 +9,9 @@ const container = document.getElementById('J-container');
 const shaderParams = {
   curveAngle: 0.5,
   curveType: 0.0,
-  lineWidth: 0.01,
+  lineWidth: 0.084,
   insideAlpha: 1.0,
-  timeSpeed: 3.0,
+  timeSpeed: 4.100,
   amplitude: 1.0,
   blend: 0.5,
   audioInfluence: 1.0,
@@ -26,17 +26,17 @@ const shaderParams = {
   colorStops: [
     { x: 0.32, y: 0.15, z: 1.0 },
     { x: 0.49, y: 1.0, z: 0.40 },
-    { x: 0.32, y: 0.15, z: 1.0 },
+    { x: 0.655, y: 0.14, z: 1.0 },
   ],
   leftMode: 3,
   rightMode: 1,
-  glowWidth: 0.05,
+  glowWidth: 0.162,
   glowSoft: 0.03,
   glowPower: 2.0,
-  glowIntensity: 0.8,
-  dynamicWidthFalloff: 1.0,
-  colorRegion: 0.0,
-  glowRegion: 0.0,
+  glowIntensity: 1.350,
+  dynamicWidthFalloff: 3.250,
+  colorRegion: -1.270,
+  glowRegion: -0.010,
   dynamicWidthCenter: 0.5,
 };
 
@@ -227,13 +227,13 @@ void main() {
 
     // --- 辉光效果 begin ---
     float glowWidthCenter = _GlowWidth;
-    float glowWidthEdge = _GlowWidth * 0.3; // 辉光两侧最小宽度
+    float glowWidthEdge = _GlowWidth * 0.15; // 辉光两侧最小宽度
     float glowPower = _GlowPower;
     float glowIntensity = _GlowIntensity;
     float glowOffset = 0.01; 
 
     float glowt = pow(abs(uvCoord.x - _DynamicWidthCenter) / max(_DynamicWidthCenter, 1.0-_DynamicWidthCenter), _DynamicWidthFalloff);
-    glowt = max(0.0, t - _GlowRegion); // _ColorRegion 越大，彩色区域越窄
+    glowt = max(0.0, t - _GlowRegion*3.5); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
     
     float glow = 0.0;
@@ -672,18 +672,18 @@ function resetToDefaults () {
     intensityMultiplier: 0.6,
     yOffset: 0.2,
     curveAngle: 0.5,
-    lineWidth: 0.01,
+    lineWidth: 0.084,
     insideAlpha: 1.0,
-    timeSpeed: 3.0,
+    timeSpeed: 4.100,
     leftMode: 3,
     rightMode: 1,
-    glowWidth: 0.05,
+    glowWidth: 0.162,
     glowSoft: 0.03,
     glowPower: 2.0,
-    glowIntensity: 0.8,
-    dynamicWidthFalloff: 1.0,
-    colorRegion: 0.0,
-    glowRegion: 0.0,
+    glowIntensity: 1.350,
+    dynamicWidthFalloff: 3.250,
+    colorRegion: -1.270,
+    glowRegion: -0.010,
     dynamicWidthCenter: 0.5,
   };
 
@@ -708,7 +708,7 @@ function resetToDefaults () {
 
   // 重置颜色
   const defaultColors = [
-    '#5226ff', '#7dff66', '#5226ff',
+    '#5226ff', '#7dff66', '##A724FF',
   ];
 
   defaultColors.forEach((hex, index) => {
