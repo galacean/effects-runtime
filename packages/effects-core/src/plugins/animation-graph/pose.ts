@@ -1,8 +1,13 @@
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { Color } from '@galacean/effects-math/es/core/color';
+import { Color } from '@galacean/effects-math/es/core/color';
 import type { Skeleton } from './skeleton';
 import type { Transform } from '../../transform';
+
+export enum PoseInitialType {
+  ReferencePose,
+  ZeroPose
+}
 
 export class NodeTransform {
   position = new Vector3();
@@ -34,20 +39,38 @@ export class Pose {
   floatPropertyValues: number[] = [];
   colorPropertyValues: Color[] = [];
 
-  constructor (
-    public skeleton: Skeleton,
-  ) {
-    for (const transform of skeleton.parentSpaceTransforms) {
-      this.parentSpaceTransforms.push(new NodeTransform().copyFrom(transform));
+  constructor (public skeleton: Skeleton, initialType: PoseInitialType = PoseInitialType.ReferencePose) {
+    switch (initialType) {
+      case PoseInitialType.ReferencePose:
+        for (const transform of skeleton.parentSpaceTransforms) {
+          this.parentSpaceTransforms.push(new NodeTransform().copyFrom(transform));
+        }
+
+        for (const defaultFloat of skeleton.defaultFloatPropertyValues) {
+          this.floatPropertyValues.push(defaultFloat);
+        }
+
+        for (const defaultColor of skeleton.defaultColorPropertyValues) {
+          this.colorPropertyValues.push(defaultColor.clone());
+        }
+
+        break;
+      case PoseInitialType.ZeroPose:
+        for (let i = 0;i < skeleton.parentSpaceTransforms.length;i++) {
+          this.parentSpaceTransforms.push(new NodeTransform());
+        }
+
+        for (let i = 0;i < skeleton.defaultFloatPropertyValues.length;i++) {
+          this.floatPropertyValues.push(0);
+        }
+
+        for (let i = 0;i < skeleton.defaultColorPropertyValues.length;i++) {
+          this.colorPropertyValues.push(new Color());
+        }
+
+        break;
     }
 
-    for (const defaultFloat of skeleton.defaultFloatPropertyValues) {
-      this.floatPropertyValues.push(defaultFloat);
-    }
-
-    for (const defaultColor of skeleton.defaultColorPropertyValues) {
-      this.colorPropertyValues.push(defaultColor);
-    }
   }
 
   setPosition (path: string, position: Vector3) {
@@ -88,5 +111,9 @@ export class Pose {
     if (animatedObjectIndex !== undefined) {
       this.floatPropertyValues[animatedObjectIndex] = value;
     }
+  }
+
+  resetPose () {
+
   }
 }

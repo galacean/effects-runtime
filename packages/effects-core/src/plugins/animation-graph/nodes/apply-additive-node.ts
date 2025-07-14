@@ -5,7 +5,7 @@ import { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
 import type { FloatValueNode } from '../graph-node';
 import { GraphNodeData, PoseNode } from '../graph-node';
-import type { Pose } from '../pose';
+import { PoseInitialType, type Pose } from '../pose';
 
 @nodeDataClass(spec.NodeDataType.ApplyAdditiveNodeData)
 export class ApplyAdditiveNodeData extends GraphNodeData {
@@ -41,7 +41,7 @@ export class ApplyAdditiveNode extends PoseNode {
   protected override initializeInternal (context: GraphContext): void {
     super.initializeInternal(context);
     this.baseNodeResult = new PoseResult(context.skeleton);
-    this.additiveNodeResult = new PoseResult(context.skeleton);
+    this.additiveNodeResult = new PoseResult(context.skeleton, PoseInitialType.ZeroPose);
 
     this.baseNode?.initialize(context);
     this.additiveNode?.initialize(context);
