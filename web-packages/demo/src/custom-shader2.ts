@@ -1,44 +1,93 @@
 /* eslint-disable no-case-declarations */
 import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, Texture, glContext, setBlendMode, spec, math } from '@galacean/effects';
+import { clamp } from 'three/src/math/MathUtils';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*gAIvS7C5mJ4AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 
 // UI控制参数
-const shaderParams = {
-  curveAngle: 0.5,
-  curveType: 0.0,
-  lineWidth: 0.084,
-  insideAlpha: 1.0,
-  timeSpeed: 4.100,
+interface ShaderParams {
+  curveAngle: number,
+  curveType: number,
+  lineWidth: number,
+  insideAlpha: number,
+  timeSpeed: number,
+  amplitude: number,
+  blend: number,
+  audioInfluence: number,
+  audioMultiplier: number,
+  timeSpeedUniform: number,
+  noiseScale: number,
+  heightMultiplier: number,
+  midPoint: number,
+  intensityMultiplier: number,
+  yOffset: number,
+  insideColor: { x: number, y: number, z: number, w: number },
+  colorStops: { x: number, y: number, z: number, w: number }[],
+  leftMode: number,
+  rightMode: number,
+  glowWidth: number,
+  glowSoft: number,
+  glowPower: number,
+  glowIntensity: number,
+  dynamicWidthFalloff: number,
+  colorRegion: number,
+  glowRegion: number,
+  dynamicWidthCenter: number,
+  dynamicWidthCenterRange: number,
+  dynamicWidthSpeed: number,
+  isDynamicWidthCenter: number,
+  glowmask: number,
+  minVolume: number,
+  maxVolume: number,
+  audioCurveInfluence: number, // 新增音量曲率影响参数
+  [key: string]: any, // Add index signature to allow string indexing
+}
+
+const defaults = {
   amplitude: 1.0,
-  blend: 0.5,
   audioInfluence: 1.0,
   audioMultiplier: 2.0,
+  blend: 0.5,
   timeSpeedUniform: 4.1,
   noiseScale: 2.0,
   heightMultiplier: 0.5,
   midPoint: 0.20,
   intensityMultiplier: 0.6,
   yOffset: 0.2,
-  insideColor: { x: 0.0, y: 0.0, z: 0.0 },
-  colorStops: [
-    { x: 0.32, y: 0.15, z: 1.0 },
-    { x: 0.49, y: 1.0, z: 0.40 },
-    { x: 0.655, y: 0.14, z: 1.0 },
-  ],
+  curveAngle: 0.5,
+  curveType: 0.0,
+  lineWidth: 0.084,
+  insideAlpha: 1.0,
+  timeSpeed: 4.100,
   leftMode: 3,
   rightMode: 1,
   glowWidth: 0.162,
   glowSoft: 0.03,
   glowPower: 2.0,
-  glowIntensity: 1.350,
+  glowIntensity: 0.830,
   dynamicWidthFalloff: 3.250,
   colorRegion: -1.270,
   glowRegion: -0.010,
   dynamicWidthCenter: 0.5,
+  dynamicWidthCenterRange: 0.1,
+  dynamicWidthSpeed: 0.5,
+  isDynamicWidthCenter: 1.0,
+  isDynamicCurve: 0.0,
+  glowmask: 0,
+  minVolume: 0.0,
+  maxVolume: 1.0,
+  audioCurveInfluence: 0.5, // 默认影响强度，可调整
+  insideColor: { x: 0, y: 0, z: 0, w: 1.0 },
+  colorStops: [
+    { x: 82 / 255, y: 38 / 255, z: 255 / 255, w: 1.0 }, // #5226ff
+    { x: 125 / 255, y: 255 / 255, z: 102 / 255, w: 1.0 }, // #7dff66
+    { x: 167 / 255, y: 36 / 255, z: 255 / 255, w: 1.0 }, // #A724FF
+  ],
 };
+
+const shaderParams: ShaderParams = { ...defaults };
 
 const vertex = `
 precision highp float;
@@ -55,7 +104,7 @@ void main(){
 }
 `;
 
-const fragment = `
+const fragment = /*glsl*/ `
 precision highp float;
 
 varying vec2 uv;
@@ -64,10 +113,10 @@ uniform float _CurveAngle;
 uniform float _CurveType;
 uniform float _LineWidth;
 uniform float _InsideAlpha;
-uniform vec3 _InsideColor;
-uniform vec3 _ColorStops0;
-uniform vec3 _ColorStops1;
-uniform vec3 _ColorStops2;
+uniform vec4 _InsideColor;
+uniform vec4 _ColorStops0;
+uniform vec4 _ColorStops1;
+uniform vec4 _ColorStops2;
 uniform float _TimeSpeedUniform;
 uniform int _LeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
 uniform int _RightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
@@ -79,6 +128,16 @@ uniform float _DynamicWidthFalloff;
 uniform float _ColorRegion;
 uniform float _GlowRegion;
 uniform float _DynamicWidthCenter;
+uniform float _DynamicWidthCenterRange;
+uniform float _DynamicWidthSpeed;
+uniform float _IsDynamicWidthCenter; // 开关左右滑动
+uniform float _Glowmask; // 0: 上, 1: 下, 2: 上下
+uniform float _AudioMin;
+uniform float _AudioMax;
+uniform float _AudioCurrent;
+uniform float _IsDynamicCurve; // 是否开启动态曲率
+uniform float _AudioCurveInfluence; // 新增音量影响强度参数
+ 
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -169,7 +228,7 @@ float antiAliasedStroke(float dist, float lineWidth) {
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
-vec3 getStopColor(int mode, float beat) {
+vec4 getStopColor(int mode, float beat) {
     if(mode == 0) return _ColorStops0;
     if(mode == 1) return _ColorStops1;
     if(mode == 2) return _ColorStops2;
@@ -178,27 +237,48 @@ vec3 getStopColor(int mode, float beat) {
     return _ColorStops0;
 }
 
-vec3 getColorFromGradient(float factor) {
+vec4 getColorFromGradient(float factor) {
     float beat = sin(_Time.y * _TimeSpeedUniform) * 0.5 + 0.5;
-    vec3 leftColor = getStopColor(_LeftMode, beat);
-    vec3 rightColor = getStopColor(_RightMode, beat);
+    vec4 leftColor = getStopColor(_LeftMode, beat);
+    vec4 rightColor = getStopColor(_RightMode, beat);
     return mix(leftColor, rightColor, factor);
+}
+
+float getDynamicWidthCenter() {
+    float t = _Time.y * _DynamicWidthSpeed;
+    float center = _DynamicWidthCenter + _DynamicWidthCenterRange * sin(t);
+    return center;
+}
+//使用音量印象曲线角度_CurveAngle
+float getCurveAngle() {
+    float audioRange = _AudioMax - _AudioMin;
+    float audioNormalized = (_AudioCurrent - _AudioMin) / audioRange;
+    audioNormalized = clamp(audioNormalized * 0.5 + 0.5, 0.0, 1.0); // 映射到[0,1]
+    float influenced = _CurveAngle * (1.0 + audioNormalized * _AudioCurveInfluence);
+    return max(_CurveAngle, influenced); // 保证不小于_CurveAngle
 }
 
 void main() {
     vec2 uvCoord = vec2(uv.x, 1.0 - uv.y);
 
-
     //获取渐变的颜色
-    vec3 rampColor = getColorFromGradient(uvCoord.x);
-    vec3 glowColor = rampColor;
+    vec4 rampColor = getColorFromGradient(uvCoord.x);
+    vec4 glowColor = rampColor;
 
     uvCoord = vec2(uv.x, uv.y);
 
+    // 获取曲线角度
+    float CurveAngle = _CurveAngle;
+    if(_IsDynamicCurve == 1.0) {
+      CurveAngle = getCurveAngle();
+    }else {
+      CurveAngle = _CurveAngle;
+    }
+    
     // 计算贝塞尔曲线绘制
     vec2 A_single, C_single;
     getCurvePoints(_CurveType, A_single, C_single);
-    vec2 B_single = getBezierControlPoint(_CurveAngle, A_single, C_single);
+    vec2 B_single = getBezierControlPoint(CurveAngle, A_single, C_single);
     float signedDist = sd_bezier_signed(uvCoord, A_single, B_single, C_single);
 
     vec2 grad = vec2(dFdx(signedDist), dFdy(signedDist));
@@ -209,18 +289,27 @@ void main() {
     float normalizedDist = signedDist / globalAARange;
     float alphaTransition = smoothstep(-0.5, 0.5, normalizedDist);
 
+
+    //获取动态宽度中心
+    float center;
+    if(_IsDynamicWidthCenter == 1.0) {
+      center = getDynamicWidthCenter();
+    } else {
+      center = _DynamicWidthCenter;
+    }
+
     //线条从中间到两侧逐渐减少宽度
     float widthCenter = _LineWidth;         // 中间最大线宽
     float widthEdge = _LineWidth * 0.3;     // 两侧最小线宽，可调
     // 修改中心点
-    float t = pow(abs(uvCoord.x - _DynamicWidthCenter) / max(_DynamicWidthCenter, 1.0-_DynamicWidthCenter), _DynamicWidthFalloff);
+    float t = pow(abs(uvCoord.x - center) / max(center, 1.0-center), _DynamicWidthFalloff);
     t = max(0.0, t - _ColorRegion); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineWidth = mix(widthCenter, widthEdge, t);
 
     //计算静宽
     float lineStroke = antiAliasedStroke(abs(signedDist), dynamicLineWidth);
 
-    vec4 linecolor = vec4(rampColor,1.0);
+    vec4 linecolor = rampColor;
 
     vec3 finalColorRGB = vec3(0.0);
     float finalAlpha = 1.0;
@@ -232,7 +321,7 @@ void main() {
     float glowIntensity = _GlowIntensity;
     float glowOffset = 0.01; 
 
-    float glowt = pow(abs(uvCoord.x - _DynamicWidthCenter) / max(_DynamicWidthCenter, 1.0-_DynamicWidthCenter), _DynamicWidthFalloff);
+    float glowt = pow(abs(uvCoord.x - center) / max(center, 1.0-center), _DynamicWidthFalloff);
     glowt = max(0.0, t - _GlowRegion*3.5); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
     
@@ -254,7 +343,7 @@ void main() {
 
     // 2. 内部区域处理（单向过渡）
     if (signedDist < 0.0) {
-        finalColorRGB = _InsideColor;
+        finalColorRGB = _InsideColor.rgb;
         finalAlpha = inner_base_alpha * _InsideAlpha;
     }
 
@@ -264,11 +353,23 @@ void main() {
     finalColorRGB = stroke_layer.rgb * stroke_layer.a + finalColorRGB * (1.0 - stroke_layer.a);
     finalAlpha = stroke_layer.a + finalAlpha * (1.0 - stroke_layer.a);
 
-    float upperGlowMask = smoothstep(-0.01, 0.0, signedDist);
+    float upperGlowMask = 0.0;
+    if(_Glowmask == 0.0) {
+        upperGlowMask = smoothstep(-0.01, 0.0, signedDist);
+    }
+
+    if (_Glowmask == 1.0) {
+        upperGlowMask = smoothstep(-0.0002, -0.0005, signedDist);
+    }
+
+    if (_Glowmask == 2.0) {
+        upperGlowMask = 1.0;
+    }
+
     float topAttenuation = smoothstep(0.0, 0.2, 1.0 - uvCoord.y);
     glow = glow * upperGlowMask * topAttenuation;
 
-    finalColorRGB = glowColor * glow * _GlowIntensity + finalColorRGB * (1.0 - glow * _GlowIntensity);
+    finalColorRGB = glowColor.rgb * glow * _GlowIntensity + finalColorRGB * (1.0 - glow * _GlowIntensity);
     finalAlpha = glow * _GlowIntensity + finalAlpha * (1.0 - glow * _GlowIntensity);
 
     gl_FragColor = vec4(finalColorRGB,finalAlpha);
@@ -278,17 +379,18 @@ void main() {
 const materials: Material[] = [];
 
 // 颜色转换函数
-function hexToRgb (hex: string) {
+function hexToRgba (hex: string) {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
 
   return result ? {
     r: parseInt(result[1], 16) / 255,
     g: parseInt(result[2], 16) / 255,
     b: parseInt(result[3], 16) / 255,
+    a: 1.0,
   } : null;
 }
 
-function rgbToHex (r: number, g: number, b: number) {
+function rgbaToHex (r: number, g: number, b: number, a: number = 1.0) {
   return '#' + ((1 << 24) + (Math.round(r * 255) << 16) + (Math.round(g * 255) << 8) + Math.round(b * 255)).toString(16).slice(1);
 }
 
@@ -424,10 +526,15 @@ function createControlPanel () {
         <input type="range" id="curveAngle" min="-1.57" max="1.57" step="0.1" value="0.5">
         <div class="value-display" id="curveAngle-value">0.5</div>
       </div>
+
       <div class="control-item">
         <label for="lineWidth">线条宽度</label>
         <input type="range" id="lineWidth" min="0.001" max="0.5" step="0.001" value="0.01">
         <div class="value-display" id="lineWidth-value">0.01</div>
+      </div>
+      <div class="control-item">
+        <label for="isDynamicCurve">动态曲率开关 (_IsDynamicCurve)</label>
+        <input type="checkbox" id="isDynamicCurve">
       </div>
     </div>
     <div class="control-group">
@@ -471,7 +578,7 @@ function createControlPanel () {
       </div>
       <div class="control-item">
         <label for="colorStop2">Color Stop 2 (色3)</label>
-        <input type="color" class="color-input" id="colorStop2" value="#5226ff">
+        <input type="color" id="colorStop2" value="#5226ff">
       </div>
     </div>
     
@@ -510,6 +617,14 @@ function createControlPanel () {
         <input type="range" id="glowIntensity" min="0" max="2" step="0.01" value="0.8">
         <div class="value-display" id="glowIntensity-value">0.8</div>
       </div>
+      <div class="control-item">
+        <label for="glowmaskMode">辉光显示模式 (_Glowmask)</label>
+        <select id="glowmaskMode">
+          <option value="0">只在上</option>
+          <option value="1">只在下</option>
+          <option value="2">上下都有</option>
+        </select>
+      </div>
     </div>
     
     <div class="control-group">
@@ -536,8 +651,45 @@ function createControlPanel () {
       </div>
     </div>
     
+    <div class="control-group">
+      <h3>线宽中心动态滑动</h3>
+      <div class="control-item">
+        <label for="dynamicWidthCenterRange">滑动范围 (_DynamicWidthCenterRange)</label>
+        <input type="range" id="dynamicWidthCenterRange" min="0" max="0.5" step="0.01" value="0.4">
+        <div class="value-display" id="dynamicWidthCenterRange-value">0.40</div>
+      </div>
+      <div class="control-item">
+        <label for="dynamicWidthSpeed">滑动速度 (_DynamicWidthSpeed)</label>
+        <input type="range" id="dynamicWidthSpeed" min="0" max="20" step="0.01" value="0.5">
+        <div class="value-display" id="dynamicWidthSpeed-value">0.50</div>
+      </div>
+      <div class="control-item">
+        <label for="isDynamicWidthCenter">动态滑动开关 (_IsDynamicWidthCenter)</label>
+        <input type="checkbox" id="isDynamicWidthCenter" checked>
+      </div>
+    </div>
+    
+    
     <div class="control-item">
       <button class="reset-btn" onclick="resetToDefaults()">重置为默认值</button>
+    </div>
+    <div class="control-group">
+      <h3>音量参数</h3>
+      <div class="control-item">
+        <label for="minVolume">最小音量 (_AudioMin)</label>
+        <input type="range" id="minVolume" min="0" max="1" step="0.01" value="0.0">
+        <div class="value-display" id="minVolume-value">0.00</div>
+      </div>
+      <div class="control-item">
+        <label for="maxVolume">最大音量 (_AudioMax)</label>
+        <input type="range" id="maxVolume" min="0" max="1" step="0.01" value="1.0">
+        <div class="value-display" id="maxVolume-value">1.00</div>
+      </div>
+      <div class="control-item">
+        <label for="audioCurveInfluence">音量曲率影响 (_AudioCurveInfluence)</label>
+        <input type="range" id="audioCurveInfluence" min="0" max="2" step="0.01" value="0.5">
+        <div class="value-display" id="audioCurveInfluence-value">0.50</div>
+      </div>
     </div>
   `;
   document.body.appendChild(panel);
@@ -566,6 +718,8 @@ function initializeControls () {
     'noiseScale', 'heightMultiplier', 'midPoint', 'intensityMultiplier', 'yOffset',
     'glowWidth', 'glowSoft', 'glowPower', 'glowIntensity',
     'dynamicWidthFalloff', 'colorRegion', 'glowRegion', 'dynamicWidthCenter',
+    'dynamicWidthCenterRange', 'dynamicWidthSpeed',
+    'audioCurveInfluence', // 新增到控件列表
   ];
 
   controls.forEach(controlName => {
@@ -591,6 +745,26 @@ function initializeControls () {
     }
   });
 
+  // 音量参数滑块控制
+  ['minVolume', 'maxVolume'].forEach(param => {
+    const slider = document.getElementById(param) as HTMLInputElement;
+    const valueDisplay = document.getElementById(`${param}-value`);
+
+    if (slider && valueDisplay) {
+      slider.value = shaderParams[param].toString();
+      valueDisplay.textContent = shaderParams[param].toFixed(2);
+      slider.addEventListener('input', e => {
+        const value = parseFloat((e.target as HTMLInputElement).value);
+
+        valueDisplay.textContent = value.toFixed(2);
+        shaderParams[param] = value;
+        materials.forEach(material => {
+          material.setFloat(`_${param.charAt(0).toUpperCase()}${param.slice(1)}`, value);
+        });
+      });
+    }
+  });
+
   // 颜色控制
   ['colorStop0', 'colorStop1', 'colorStop2'].forEach((colorName, index) => {
     const colorPicker = document.getElementById(colorName) as HTMLInputElement;
@@ -598,15 +772,14 @@ function initializeControls () {
     if (colorPicker) {
       const color = shaderParams.colorStops[index];
 
-      colorPicker.value = rgbToHex(color.x, color.y, color.z);
-
+      colorPicker.value = rgbaToHex(color.x, color.y, color.z, color.w);
       colorPicker.addEventListener('input', e => {
-        const rgb = hexToRgb((e.target as HTMLInputElement).value);
+        const rgba = hexToRgba((e.target as HTMLInputElement).value);
 
-        if (rgb) {
-          shaderParams.colorStops[index] = { x: rgb.r, y: rgb.g, z: rgb.b };
+        if (rgba) {
+          shaderParams.colorStops[index] = { x: rgba.r, y: rgba.g, z: rgba.b, w: 1.0 };
           materials.forEach(material => {
-            material.setVector3(`_ColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
+            material.setVector4(`_ColorStops${index}`, new math.Vector4(rgba.r, rgba.g, rgba.b, 1.0));
           });
         }
       });
@@ -617,19 +790,19 @@ function initializeControls () {
   const insideColorPicker = document.getElementById('insideColor') as HTMLInputElement;
 
   if (insideColorPicker) {
-    insideColorPicker.value = rgbToHex(
+    insideColorPicker.value = rgbaToHex(
       shaderParams.insideColor.x,
       shaderParams.insideColor.y,
-      shaderParams.insideColor.z
+      shaderParams.insideColor.z,
+      shaderParams.insideColor.w
     );
-
     insideColorPicker.addEventListener('input', e => {
-      const rgb = hexToRgb((e.target as HTMLInputElement).value);
+      const rgba = hexToRgba((e.target as HTMLInputElement).value);
 
-      if (rgb) {
-        shaderParams.insideColor = { x: rgb.r, y: rgb.g, z: rgb.b };
+      if (rgba) {
+        shaderParams.insideColor = { x: rgba.r, y: rgba.g, z: rgba.b, w: 1.0 };
         materials.forEach(material => {
-          material.setVector3('_InsideColor', new math.Vector3(rgb.r, rgb.g, rgb.b));
+          material.setVector4('_InsideColor', new math.Vector4(rgba.r, rgba.g, rgba.b, 1.0));
         });
       }
     });
@@ -656,6 +829,87 @@ function initializeControls () {
       });
     }
   });
+
+  // 新增动态宽度中心相关控件事件监听
+  const dynamicWidthCenterRangeSlider = document.getElementById('dynamicWidthCenterRange') as HTMLInputElement;
+  const dynamicWidthCenterRangeValue = document.getElementById('dynamicWidthCenterRange-value');
+
+  if (dynamicWidthCenterRangeSlider && dynamicWidthCenterRangeValue) {
+    dynamicWidthCenterRangeSlider.value = shaderParams.dynamicWidthCenterRange.toString();
+    dynamicWidthCenterRangeValue.textContent = shaderParams.dynamicWidthCenterRange.toFixed(2);
+    dynamicWidthCenterRangeSlider.addEventListener('input', e => {
+      const value = parseFloat((e.target as HTMLInputElement).value);
+
+      dynamicWidthCenterRangeValue.textContent = value.toFixed(2);
+      shaderParams.dynamicWidthCenterRange = value;
+      materials.forEach(material => {
+        material.setFloat('_DynamicWidthCenterRange', value);
+      });
+    });
+  }
+  const dynamicWidthSpeedSlider = document.getElementById('dynamicWidthSpeed') as HTMLInputElement;
+  const dynamicWidthSpeedValue = document.getElementById('dynamicWidthSpeed-value');
+
+  if (dynamicWidthSpeedSlider && dynamicWidthSpeedValue) {
+    dynamicWidthSpeedSlider.value = shaderParams.dynamicWidthSpeed.toString();
+    dynamicWidthSpeedValue.textContent = shaderParams.dynamicWidthSpeed.toFixed(2);
+    dynamicWidthSpeedSlider.addEventListener('input', e => {
+      const value = parseFloat((e.target as HTMLInputElement).value);
+
+      dynamicWidthSpeedValue.textContent = value.toFixed(2);
+      shaderParams.dynamicWidthSpeed = value;
+      materials.forEach(material => {
+        material.setFloat('_DynamicWidthSpeed', value);
+      });
+    });
+  }
+  const isDynamicWidthCenterCheckbox = document.getElementById('isDynamicWidthCenter') as HTMLInputElement;
+
+  if (isDynamicWidthCenterCheckbox) {
+    isDynamicWidthCenterCheckbox.checked = !!shaderParams.isDynamicWidthCenter;
+    isDynamicWidthCenterCheckbox.addEventListener('change', e => {
+      const checked = (e.target as HTMLInputElement).checked;
+
+      shaderParams.isDynamicWidthCenter = checked ? 1.0 : 0.0;
+      materials.forEach(material => {
+        material.setFloat('_IsDynamicWidthCenter', checked ? 1.0 : 0.0);
+      });
+    });
+  }
+
+  // 动态曲率开关
+  const isDynamicCurveCheckbox = document.getElementById('isDynamicCurve') as HTMLInputElement;
+
+  if (isDynamicCurveCheckbox) {
+    isDynamicCurveCheckbox.checked = !!shaderParams.isDynamicCurve;
+    isDynamicCurveCheckbox.addEventListener('change', e => {
+      const checked = (e.target as HTMLInputElement).checked;
+
+      shaderParams.isDynamicCurve = checked ? 1.0 : 0.0;
+      materials.forEach(material => {
+        material.setFloat('_IsDynamicCurve', shaderParams.isDynamicCurve);
+      });
+    });
+    // 初始化同步一次
+    materials.forEach(material => {
+      material.setFloat('_IsDynamicCurve', shaderParams.isDynamicCurve);
+    });
+  }
+
+  // 新增辉光模式控件事件监听
+  const glowmaskModeSelect = document.getElementById('glowmaskMode') as HTMLSelectElement;
+
+  if (glowmaskModeSelect) {
+    glowmaskModeSelect.value = (shaderParams.glowmask).toString();
+    glowmaskModeSelect.addEventListener('change', e => {
+      const value = parseInt((e.target as HTMLSelectElement).value, 10);
+
+      shaderParams.glowmask = value;
+      materials.forEach(material => {
+        material.setFloat('_Glowmask', value);
+      });
+    });
+  }
 }
 
 // 重置为默认值
@@ -672,6 +926,7 @@ function resetToDefaults () {
     intensityMultiplier: 0.6,
     yOffset: 0.2,
     curveAngle: 0.5,
+    curveType: 0.0,
     lineWidth: 0.084,
     insideAlpha: 1.0,
     timeSpeed: 4.100,
@@ -680,11 +935,19 @@ function resetToDefaults () {
     glowWidth: 0.162,
     glowSoft: 0.03,
     glowPower: 2.0,
-    glowIntensity: 1.350,
+    glowIntensity: 0.830,
     dynamicWidthFalloff: 3.250,
     colorRegion: -1.270,
     glowRegion: -0.010,
     dynamicWidthCenter: 0.5,
+    dynamicWidthCenterRange: 0.1,
+    dynamicWidthSpeed: 0.5,
+    isDynamicWidthCenter: 1.0,
+    isDynamicCurve: 0.0,
+    glowmask: 0,
+    minVolume: 0.0,
+    maxVolume: 1.0,
+    audioCurveInfluence: 0.5,
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -708,7 +971,7 @@ function resetToDefaults () {
 
   // 重置颜色
   const defaultColors = [
-    '#5226ff', '#7dff66', '##A724FF',
+    '#5226ff', '#7dff66', '#A724FF',
   ];
 
   defaultColors.forEach((hex, index) => {
@@ -716,12 +979,12 @@ function resetToDefaults () {
 
     if (colorPicker) {
       colorPicker.value = hex;
-      const rgb = hexToRgb(hex);
+      const rgba = hexToRgba(hex);
 
-      if (rgb) {
-        shaderParams.colorStops[index] = { x: rgb.r, y: rgb.g, z: rgb.b };
+      if (rgba) {
+        shaderParams.colorStops[index] = { x: rgba.r, y: rgba.g, z: rgba.b, w: 1.0 };
         materials.forEach(material => {
-          material.setVector3(`_ColorStops${index}`, new math.Vector3(rgb.r, rgb.g, rgb.b));
+          material.setVector4(`_ColorStops${index}`, new math.Vector4(rgba.r, rgba.g, rgba.b, 1.0));
         });
       }
     }
@@ -732,9 +995,9 @@ function resetToDefaults () {
 
   if (insideColorPicker) {
     insideColorPicker.value = '#000000';
-    shaderParams.insideColor = { x: 0, y: 0, z: 0 };
+    shaderParams.insideColor = { x: 0, y: 0, z: 0, w: 1.0 };
     materials.forEach(material => {
-      material.setVector3('_InsideColor', new math.Vector3(0, 0, 0));
+      material.setVector4('_InsideColor', new math.Vector4(0, 0, 0, 1.0));
     });
   }
 }
@@ -859,8 +1122,25 @@ function togglePanel () {
         material.setFloat('_DynamicWidthFalloff', shaderParams.dynamicWidthFalloff);
         material.setFloat('_ColorRegion', shaderParams.colorRegion);
         material.setFloat('_GlowRegion', shaderParams.glowRegion);
-        material.setFloat('_DynamicWidthCenter', shaderParams.dynamicWidthCenter);
 
+        //设置线条左右滑动通过设置_DynamicWidthCenter
+
+        material.setFloat('_DynamicWidthCenter', shaderParams.dynamicWidthCenter);
+        material.setFloat('_DynamicWidthCenterRange', shaderParams.dynamicWidthCenterRange);
+        material.setFloat('_DynamicWidthSpeed', shaderParams.dynamicWidthSpeed);
+        material.setFloat('_IsDynamicWidthCenter', shaderParams.isDynamicWidthCenter ? 1.0 : 0.0);
+
+        //设置辉光在上还是在下
+        material.setFloat('_Glowmask', shaderParams.glowmask);
+
+        //设置音量参数（min/max UI控制，current模拟）
+        material.setFloat('_AudioMin', shaderParams.minVolume);
+        material.setFloat('_AudioMax', shaderParams.maxVolume);
+        // 用sin模拟audioCurrent（初始化时赋值，后续用 requestAnimationFrame 动态更新）
+        material.setFloat('_AudioCurrent', clamp(0, 1, Math.sin(Date.now() * 0.001)));
+
+        // 设置是否需要开启动态曲率
+        material.setFloat('_IsDynamicCurve', shaderParams.isDynamicCurve);
         // 设置颜色停止点
         shaderParams.colorStops.forEach((color, index) => {
           material.setVector3(`_ColorStops${index}`, new math.Vector3(color.x, color.y, color.z));
@@ -875,6 +1155,22 @@ function togglePanel () {
   // 创建并初始化UI控制面板
   createControlPanel();
   initializeControls();
+  // 启动时自动重置一次参数和UI
+  resetToDefaults();
+
+  // 用 requestAnimationFrame 动态同步 audioCurrent 到 shader
+  function updateAudioCurrent () {
+    // 用 sin 动态模拟 currentVolume，需要接入真实音量
+    const t = Date.now() * 0.001;
+    const audioCurrent = Math.sin(t);
+
+    shaderParams.currentVolume = audioCurrent;
+    materials.forEach(material => {
+      material.setFloat('_AudioCurrent', audioCurrent);
+    });
+    requestAnimationFrame(updateAudioCurrent);
+  }
+  updateAudioCurrent();
 
   player.play();
 
