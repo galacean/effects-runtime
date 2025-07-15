@@ -492,6 +492,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   pause () {
     this.paused = true;
+    this.emit('pause');
   }
 
   /**
@@ -516,6 +517,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   gotoAndPlay (time: number) {
     this.setTime(time);
     this.resume();
+    this.emit('play', { time });
   }
 
   /**
@@ -557,7 +559,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.forwardTime(time + this.startTime);
     this.setSpeed(speed);
     if (pause) {
-      this.pause();
+      this.paused = true;
     }
     this.emit('goto', { time });
   }
