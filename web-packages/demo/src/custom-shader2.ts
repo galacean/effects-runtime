@@ -118,8 +118,8 @@ uniform vec4 _ColorStops0;
 uniform vec4 _ColorStops1;
 uniform vec4 _ColorStops2;
 uniform float _TimeSpeedUniform;
-uniform int _LeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
-uniform int _RightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
+uniform float _LeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
+uniform float _RightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
 uniform float _GlowWidth;      // 辉光范围
 uniform float _GlowSoft;       // 辉光边缘柔和度
 uniform float _GlowPower;      // 辉光边缘衰减
@@ -228,12 +228,12 @@ float antiAliasedStroke(float dist, float lineWidth) {
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
-vec4 getStopColor(int mode, float beat) {
-    if(mode == 0) return _ColorStops0;
-    if(mode == 1) return _ColorStops1;
-    if(mode == 2) return _ColorStops2;
-    if(mode == 3) return mix(_ColorStops0, _ColorStops2, beat);
-    if(mode == 4) return mix(_ColorStops1, _ColorStops2, beat);
+vec4 getStopColor(float mode, float beat) {
+    if(abs(mode-0.0)<0.5) return _ColorStops0;
+    if(abs(mode-1.0)<0.5) return _ColorStops1;
+    if(abs(mode-2.0)<0.5) return _ColorStops2;
+    if(abs(mode-3.0)<0.5) return mix(_ColorStops0, _ColorStops2, beat);
+    if(abs(mode-4.0)<0.5) return mix(_ColorStops1, _ColorStops2, beat);
     return _ColorStops0;
 }
 
@@ -815,17 +815,17 @@ function initializeControls () {
     if (select) {
       select.value = (shaderParams as any)[modeName]?.toString() || '0';
       select.addEventListener('change', e => {
-        const value = parseInt((e.target as HTMLSelectElement).value, 10);
+        const value = parseFloat((e.target as HTMLSelectElement).value);
         const uniformName = idx === 0 ? '_LeftMode' : '_RightMode';
 
         materials.forEach(material => {
-          material.setInt(uniformName, value);
+          material.setFloat(uniformName, value);
         });
         (shaderParams as any)[modeName] = value;
       });
 
       materials.forEach(material => {
-        material.setInt(idx === 0 ? '_LeftMode' : '_RightMode', (shaderParams as any)[modeName] || 0);
+        material.setFloat(idx === 0 ? '_LeftMode' : '_RightMode', (shaderParams as any)[modeName] || 0);
       });
     }
   });
@@ -1059,10 +1059,8 @@ function togglePanel () {
   });
 
   // 设置模式参数
-  jsonValue.materials[0].ints = {
-    '_LeftMode': shaderParams.leftMode,
-    '_RightMode': shaderParams.rightMode,
-  };
+  jsonValue.materials[0].floats['_LeftMode'] = shaderParams.leftMode;
+  jsonValue.materials[0].floats['_RightMode'] = shaderParams.rightMode;
 
   // 设置辉光参数
   jsonValue.materials[0].floats['_GlowWidth'] = shaderParams.glowWidth;
@@ -1109,8 +1107,8 @@ function togglePanel () {
         ));
 
         // 设置左右端色模式
-        material.setInt('_LeftMode', shaderParams.leftMode);
-        material.setInt('_RightMode', shaderParams.rightMode);
+        material.setFloat('_LeftMode', shaderParams.leftMode);
+        material.setFloat('_RightMode', shaderParams.rightMode);
 
         // 设置辉光参数
         material.setFloat('_GlowWidth', shaderParams.glowWidth);
