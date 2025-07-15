@@ -26,7 +26,14 @@ export type CompositionEvent<C> = {
     compositionName: string,
     compositionId: string,
   }],
-  // ['message']: [messageInfo: MessageItem],
+  /**
+   * 合成开始播放事件
+   */
+  ['play']: [playInfo: { time: number }],
+  /**
+   * 合成暂停事件
+   */
+  ['pause']: [],
   /**
    * 合成结束事件
    * 合成行为为循环时每次循环结束都会触发

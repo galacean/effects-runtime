@@ -167,6 +167,7 @@ export class ThreeDisplayObject extends THREE.Group {
   }
 
   resume () {
+    this.dispatchEvent({ type: 'resume' });
     this.compositions.forEach(composition => {
       composition.resume();
     });

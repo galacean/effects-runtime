@@ -171,9 +171,17 @@ export type PlayerEvent<P> = {
    */
   ['message']: [messageInfo: MessageItem],
   /**
+   * 播放器播放事件
+   */
+  ['play']: [playInfo: { time: number }],
+  /**
    * 播放器暂停事件
    */
   ['pause']: [],
+  /**
+   * 播放器恢复事件
+   */
+  ['resume']: [],
   /**
    * 播放器更新事件
    */

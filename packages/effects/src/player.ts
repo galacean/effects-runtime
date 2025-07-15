@@ -60,7 +60,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private displayAspect: number;
   private displayScale = 1;
   private forceRenderNextFrame: boolean;
-  private autoPlaying: boolean;
   private resumePending = false;
   private offscreenMode: boolean;
   private disposed = false;
@@ -333,10 +332,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
     this.baseCompositionIndex += scenes.length;
 
-    if (autoplay) {
-      this.autoPlaying = true;
-    }
-
     const autoplayFlags: boolean[] = [];
 
     await Promise.all(
@@ -390,6 +385,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.ticker?.start();
 
+    if (compositions.some(c => !c.getPaused())) {
+      this.emit('play', { time: 0 });
+    }
+
     const compositionNames = compositions.map(composition => composition.name);
     const firstFrameTime = performance.now() - last;
 
@@ -440,11 +439,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       this.offscreenMode = false;
     }
-    this.autoPlaying = true;
     this.compositions.map(composition => {
       composition.play();
     });
     this.ticker?.start();
+    this.emit('play', { time: 0 });
   }
 
   /**
@@ -456,7 +455,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       this.offscreenMode = false;
     }
-    this.autoPlaying = true;
     this.compositions.map(composition => {
       composition.gotoAndPlay(time);
     });
@@ -465,6 +463,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     } else {
       this.doTick(0, true);
     }
+    this.emit('play', { time });
   }
 
   /**
@@ -476,13 +475,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       this.offscreenMode = false;
     }
-    this.autoPlaying = false;
     this.compositions.map(composition => {
       composition.gotoAndStop(time);
     });
     if (!this.ticker || this.ticker?.getPaused()) {
       this.doTick(0, true);
     }
+    this.emit('pause');
     this.emit('update', {
       player: this,
       playing: false,
@@ -538,7 +537,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resumePending = true;
       await Promise.all(this.compositions.map(c => c.reloadTexture()));
       this.resumePending = false;
-      this.handleResume();
+      this.emit('resume');
     }
     this.ticker?.resume();
   }
@@ -617,12 +616,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       time?.getTime()
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
-      if (this.autoPlaying) {
-        this.emit('update', {
-          player: this,
-          playing: true,
-        });
-      }
+
+      this.emit('update', {
+        player: this,
+        playing: this.compositions.some(c => !c.getPaused()),
+      });
     }
   }
 
@@ -830,10 +828,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.resume = throwErrorPromiseFunc;
     this.disposed = true;
   }
-
-  private handleResume = () => {
-    this.emit('update', { player: this, playing: true });
-  };
 
   private offloadTexture () {
     this.compositions.forEach(comp => comp.offloadTexture());
