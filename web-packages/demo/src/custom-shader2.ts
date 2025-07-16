@@ -42,6 +42,8 @@ interface ShaderParams {
   minVolume: number,
   maxVolume: number,
   audioCurveInfluence: number, // 新增音量曲率影响参数
+  glowBaseRatio: number, // 新增辉光基础比例，默认50%
+  strokeAA: number, // 线条虚实度，默认2.0
   [key: string]: any, // Add index signature to allow string indexing
 }
 
@@ -79,6 +81,8 @@ const defaults = {
   minVolume: 0.0,
   maxVolume: 1.0,
   audioCurveInfluence: 0.5, // 默认影响强度，可调整
+  glowBaseRatio: 0.5, // 新增辉光基础比例，默认50%
+  strokeAA: 2.0, // 线条虚实度，默认2.0
   insideColor: { x: 0, y: 0, z: 0, w: 1.0 },
   colorStops: [
     { x: 82 / 255, y: 38 / 255, z: 255 / 255, w: 1.0 }, // #5226ff
@@ -105,6 +109,7 @@ void main(){
 `;
 
 const fragment = /*glsl*/ `
+#version 100
 precision highp float;
 
 varying vec2 uv;
@@ -137,7 +142,8 @@ uniform float _AudioMax;
 uniform float _AudioCurrent;
 uniform float _IsDynamicCurve; // 是否开启动态曲率
 uniform float _AudioCurveInfluence; // 新增音量影响强度参数
- 
+uniform float _GlowBaseRatio; // 辉光基础比例，0.5表示最低50%辉光，1.0表示100%辉光
+uniform float _StrokeAA; // 线条过渡抗锯齿
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -151,8 +157,8 @@ void getCurvePoints(float curveType, out vec2 A, out vec2 C) {
         A = vec2(0.0, 0.0);
         C = vec2(1.0, 0.0);
     } else {
-        A = vec2(0.0, 1.0);
-        C = vec2(1.0, 1.0);
+        A = vec2(0.0, 0.5);
+        C = vec2(1.0, 0.5);
     }
 }
 
@@ -223,8 +229,9 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 }
 
 float antiAliasedStroke(float dist, float lineWidth) {
-    float aa = max(fwidth(dist)* 2.0, 0.01);
-    // 两边都平滑
+    // 根据线宽设置最大过渡值，防止细线条抗锯齿过宽
+    float maxAA = max(0.005, lineWidth * 0.4); // 0.4 可调，越小越锐利
+    float aa = clamp(fwidth(dist) * _StrokeAA, 0.001, maxAA);
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
@@ -254,8 +261,24 @@ float getCurveAngle() {
     float audioRange = _AudioMax - _AudioMin;
     float audioNormalized = (_AudioCurrent - _AudioMin) / audioRange;
     audioNormalized = clamp(audioNormalized * 0.5 + 0.5, 0.0, 1.0); // 映射到[0,1]
-    float influenced = _CurveAngle * (1.0 + audioNormalized * _AudioCurveInfluence);
-    return max(_CurveAngle, influenced); // 保证不小于_CurveAngle
+    float base = abs(_CurveAngle);
+    float delta = base * audioNormalized * _AudioCurveInfluence;
+    if (_CurveType < 0.5) {
+        // 向上
+        return base + delta;
+    } else {
+        // 向下
+        return _CurveAngle + delta;
+    }
+}
+
+//根据音量获取辉光强度
+float getGlowIntensity() {
+    float audioRange = _AudioMax - _AudioMin;
+    float audioNormalized = (_AudioCurrent - _AudioMin) / audioRange;
+    audioNormalized = clamp(audioNormalized, 0.0, 1.0); // 保证范围
+    float influenced = _GlowIntensity * (_GlowBaseRatio + (1.0 - _GlowBaseRatio) * audioNormalized);
+    return influenced;
 }
 
 void main() {
@@ -318,7 +341,7 @@ void main() {
     float glowWidthCenter = _GlowWidth;
     float glowWidthEdge = _GlowWidth * 0.15; // 辉光两侧最小宽度
     float glowPower = _GlowPower;
-    float glowIntensity = _GlowIntensity;
+    float glowIntensity = getGlowIntensity();
     float glowOffset = 0.01; 
 
     float glowt = pow(abs(uvCoord.x - center) / max(center, 1.0-center), _DynamicWidthFalloff);
@@ -366,11 +389,10 @@ void main() {
         upperGlowMask = 1.0;
     }
 
-    float topAttenuation = smoothstep(0.0, 0.2, 1.0 - uvCoord.y);
-    glow = glow * upperGlowMask * topAttenuation;
+    glow = glow * upperGlowMask  ;
 
-    finalColorRGB = glowColor.rgb * glow * _GlowIntensity + finalColorRGB * (1.0 - glow * _GlowIntensity);
-    finalAlpha = glow * _GlowIntensity + finalAlpha * (1.0 - glow * _GlowIntensity);
+    finalColorRGB = glowColor.rgb * glow * glowIntensity + finalColorRGB * (1.0 - glow * glowIntensity);
+    finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
 
     gl_FragColor = vec4(finalColorRGB,finalAlpha);
 }
@@ -533,6 +555,11 @@ function createControlPanel () {
         <div class="value-display" id="lineWidth-value">0.01</div>
       </div>
       <div class="control-item">
+        <label for="strokeAA">线条虚实度 (_StrokeAA)</label>
+        <input type="range" id="strokeAA" min="0.1" max="30.0" step="0.01" value="2.0">
+        <div class="value-display" id="strokeAA-value">2.00</div>
+      </div>
+      <div class="control-item">
         <label for="isDynamicCurve">动态曲率开关 (_IsDynamicCurve)</label>
         <input type="checkbox" id="isDynamicCurve">
       </div>
@@ -599,7 +626,7 @@ function createControlPanel () {
       <h3>辉光效果</h3>
       <div class="control-item">
         <label for="glowWidth">辉光范围 (_GlowWidth)</label>
-        <input type="range" id="glowWidth" min="0" max="0.2" step="0.001" value="0.05">
+        <input type="range" id="glowWidth" min="0" max="5.0" step="0.001" value="0.05">
         <div class="value-display" id="glowWidth-value">0.05</div>
       </div>
       <div class="control-item">
@@ -616,6 +643,11 @@ function createControlPanel () {
         <label for="glowIntensity">辉光强度 (_GlowIntensity)</label>
         <input type="range" id="glowIntensity" min="0" max="2" step="0.01" value="0.8">
         <div class="value-display" id="glowIntensity-value">0.8</div>
+      </div>
+      <div class="control-item">
+        <label for="glowBaseRatio">辉光基础比例 (_GlowBaseRatio)</label>
+        <input type="range" id="glowBaseRatio" min="0" max="1" step="0.01" value="0.5">
+        <div class="value-display" id="glowBaseRatio-value">0.50</div>
       </div>
       <div class="control-item">
         <label for="glowmaskMode">辉光显示模式 (_Glowmask)</label>
@@ -720,6 +752,8 @@ function initializeControls () {
     'dynamicWidthFalloff', 'colorRegion', 'glowRegion', 'dynamicWidthCenter',
     'dynamicWidthCenterRange', 'dynamicWidthSpeed',
     'audioCurveInfluence', // 新增到控件列表
+    'glowBaseRatio', // 新增到控件列表
+    'strokeAA', // 新增到控件列表
   ];
 
   controls.forEach(controlName => {
@@ -733,7 +767,7 @@ function initializeControls () {
       slider.addEventListener('input', e => {
         const value = parseFloat((e.target as HTMLInputElement).value);
 
-        valueDisplay.textContent = value.toFixed(3);
+        valueDisplay.textContent = value.toFixed(2);
 
         const uniformName = `_${controlName.charAt(0).toUpperCase()}${controlName.slice(1)}`;
 
@@ -948,6 +982,8 @@ function resetToDefaults () {
     minVolume: 0.0,
     maxVolume: 1.0,
     audioCurveInfluence: 0.5,
+    glowBaseRatio: 0.5,
+    strokeAA: 2.0,
   };
 
   Object.entries(defaults).forEach(([key, value]) => {
@@ -956,7 +992,7 @@ function resetToDefaults () {
 
     if (slider && valueDisplay) {
       slider.value = value.toString();
-      valueDisplay.textContent = typeof value === 'number' ? value.toFixed(3) : value;
+      valueDisplay.textContent = typeof value === 'number' ? value.toFixed(2) : value;
 
       // 生成对应的uniform名称
       const uniformName = `_${key.charAt(0).toUpperCase()}${key.slice(1)}`;
