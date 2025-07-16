@@ -61,6 +61,13 @@ export class Transform implements Disposable {
    */
   readonly anchor = new Vector3(0, 0, 0);
 
+  anchorLeft = 0.5;
+  anchorTop = 0.5;
+  anchorRight = 0.5;
+  anchorBottom = 0.5;
+
+  anchoredPosition = new Vector2();
+
   /**
    * 元素矩形宽高
    */
@@ -552,6 +559,21 @@ export class Transform implements Disposable {
 
   fromData (data: spec.TransformData) {
     const transformProps: TransformProps = {};
+
+    //@ts-expect-error
+    this.anchorLeft = data.anchorLeft ?? 0.5;
+    //@ts-expect-error
+    this.anchorTop = data.anchorTop ?? 0.5;
+    //@ts-expect-error
+    this.anchorRight = data.anchorRight ?? 0.5;
+    //@ts-expect-error
+    this.anchorBottom = data.anchorBottom ?? 0.5;
+
+    //@ts-expect-error
+    if (data.anchoredPosition) {
+      //@ts-expect-error
+      this.anchoredPosition.copyFrom(data.anchoredPosition);
+    }
 
     transformProps.position = new Vector3().copyFrom(data.position);
     //@ts-expect-error

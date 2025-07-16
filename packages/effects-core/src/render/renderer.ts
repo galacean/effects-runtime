@@ -9,8 +9,10 @@ import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
 import type { GLType } from '../gl';
+import { EventEmitter } from '../events/event-emitter';
+import type { RendererEvent } from '../events';
 
-export class Renderer implements LostHandler, RestoreHandler {
+export class Renderer extends EventEmitter<RendererEvent> implements LostHandler, RestoreHandler {
   static create: (
     canvas: HTMLCanvasElement | OffscreenCanvas,
     framework: GLType,
@@ -25,9 +27,6 @@ export class Renderer implements LostHandler, RestoreHandler {
   * 存放渲染需要用到的数据
   */
   renderingData: RenderingData;
-
-  constructor () {
-  }
 
   setGlobalFloat (name: string, value: number) {
     // OVERRIDE

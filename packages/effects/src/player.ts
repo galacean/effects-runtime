@@ -670,7 +670,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       if (canvasWidth > documentWidth * 2) {
         logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}.`);
       }
-      const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : 2048;
+      const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : this.gpuCapability.detail.maxTextureSize;
 
       if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
         logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}.`);

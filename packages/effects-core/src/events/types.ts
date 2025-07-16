@@ -39,3 +39,13 @@ export type CompositionEvent<C> = {
    */
   ['goto']: [gotoInfo: { time: number }],
 };
+
+/**
+ * Renderer 可以绑定的事件
+ */
+export type RendererEvent = {
+  /**
+   * Renderer resize 事件
+   */
+  ['resize']: [],
+};

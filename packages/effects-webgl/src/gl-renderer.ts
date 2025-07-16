@@ -378,6 +378,8 @@ export class GLRenderer extends Renderer implements Disposable {
         internal.resize(width, height);
       }
     }
+
+    this.emit('resize');
   }
 
   private checkGlobalUniform (name: string) {

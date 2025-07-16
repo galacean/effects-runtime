@@ -1,4 +1,5 @@
-import type { MaterialProps, Renderer } from '@galacean/effects';
+//@ts-nocheck
+import type { JSONValue, MaterialProps, Renderer, spec } from '@galacean/effects';
 import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
@@ -39,6 +40,246 @@ export class GalaceanEffects {
         }),);
       });
     } else {
+      const guidToItemMap: Record<string, spec.VFXItemData> = {};
+
+      for (const item of (url as unknown as spec.JSONScene).items) {
+        guidToItemMap[item.id] = item;
+
+        item.transform!.size = {
+          x:1,
+          y:1,
+          ...item.transform!.size,
+        };
+
+        item.transform!.sourceSize = {
+          x:item.transform?.size?.x ?? 1,
+          y:item.transform?.size?.y ?? 1,
+        };
+      }
+
+      for (const item of (url as unknown as spec.JSONScene).items) {
+
+        const parentItem = guidToItemMap[item.parentId!];
+
+        let minX = -4.62;
+        let minY = -10;
+        let maxX = 4.62;
+        let maxY = 10;
+
+        if (parentItem) {
+          const sizeX = parentItem.transform?.sourceSize?.x ?? 1;
+          const sizeY = parentItem.transform?.sourceSize?.y ?? 1;
+
+          minX = -sizeX / 2;
+          minY = -sizeY / 2;
+          maxX = sizeX / 2;
+          maxY = sizeY / 2;
+        }
+
+        const defaultDeviceWidth = 720;
+        const defaultDeviceHeight = 1280;
+
+        const pixelsPerUnit = 1 / (4.62 - (-4.62)) * defaultDeviceWidth;
+
+        if (item.name.includes('TopLeft')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0,
+            anchorTop: 1,
+            anchorRight: 0,
+            anchorBottom: 1,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - minX) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - maxY) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+        if (item.name.includes('BottomRight')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 1,
+            anchorTop: 0,
+            anchorRight: 1,
+            anchorBottom: 0,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - maxX) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - minY) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+        if (item.name.includes('TopRight')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft:1,
+            anchorTop: 1,
+            anchorRight: 1,
+            anchorBottom: 1,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - maxX) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - maxY) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+        if (item.name.includes('BottomLeft')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0,
+            anchorTop: 0,
+            anchorRight: 0,
+            anchorBottom: 0,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - minX) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - minY) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+        if (item.name.includes('MiddleCenter')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0.5,
+            anchorTop: 0.5,
+            anchorRight: 0.5,
+            anchorBottom: 0.5,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - (minX + maxX) / 2) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - (minY + maxY) / 2) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+
+        if (item.name.includes('StretchLeft')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0,
+            anchorTop: 1,
+            anchorRight: 0,
+            anchorBottom: 0,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - minX) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - (maxY + minY) / 2) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = (maxY - minY - item.transform!.size!.y) * pixelsPerUnit;
+        }
+
+        if (item.name.includes('StretchRight')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 1,
+            anchorTop: 1,
+            anchorRight: 1,
+            anchorBottom: 0,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - maxX) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - (maxY + minY) / 2) * pixelsPerUnit;
+
+          item.transform!.size!.x = item.transform!.size!.x * pixelsPerUnit;
+          item.transform!.size!.y = (maxY - minY - item.transform!.size!.y) * pixelsPerUnit;
+        }
+
+        if (item.name.includes('StretchTop')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0,
+            anchorTop: 1,
+            anchorRight: 1,
+            anchorBottom: 1,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - (maxX + minX) / 2) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - maxY) * pixelsPerUnit;
+
+          item.transform!.size!.x = (maxX - minX - item.transform!.size!.x) * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+
+        if (item.name.includes('StretchBottom')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0,
+            anchorTop: 0,
+            anchorRight: 1,
+            anchorBottom: 0,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - (maxX + minX) / 2) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - minY) * pixelsPerUnit;
+
+          // TODO: sizeDelta cal
+          item.transform!.size!.x = (maxX - minX - item.transform!.size!.x) * pixelsPerUnit;
+          item.transform!.size!.y = item.transform!.size!.y * pixelsPerUnit;
+        }
+
+        if (item.name.includes('StretchAll')) {
+          item.transform = {
+            ...item.transform,
+            anchorLeft: 0,
+            anchorTop: 1,
+            anchorRight: 1,
+            anchorBottom: 0,
+            anchoredPosition:{
+              x:0,
+              y:0,
+            },
+          };
+
+          item.transform!.anchoredPosition.x = (item.transform!.position.x - (maxX + minX) / 2) * pixelsPerUnit;
+          item.transform!.anchoredPosition.y = (item.transform!.position.y - (maxY + minY) / 2) * pixelsPerUnit;
+
+          item.transform!.size.x = (maxX - minX - item.transform!.size.x) * pixelsPerUnit;
+          item.transform!.size.y = (maxY - minY - item.transform!.size.y) * pixelsPerUnit;
+
+        }
+
+      }
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',

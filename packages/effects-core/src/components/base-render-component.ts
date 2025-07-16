@@ -16,6 +16,7 @@ import { itemFrag, itemVert } from '../shader';
 import { getGeometryByShape, rotateVec2, type GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
+import type { Vector2 } from '@galacean/effects-math/es/core';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -227,6 +228,13 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.material.colorMask = previousColorMask;
   }
 
+  override onAwake (): void {
+    if (this.item.composition) {
+      this.sizeChanged();
+      this.item.composition.renderer.on('resize', this.sizeChanged.bind(this));
+    }
+  }
+
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
   }
@@ -412,9 +420,126 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return material;
   }
 
+  getRectX () {
+    const pixelsPerUnitX = (this.item.composition?.renderer.getWidth() ?? 1) / 2;
+
+    return this.transform.size.x * pixelsPerUnitX;
+  }
+
+  getRectY () {
+    const pixelsPerUnitY = (this.item.composition?.renderer.getHeight() ?? 1) / 2;
+
+    return this.transform.size.y * pixelsPerUnitY;
+  }
+
+  getParentRectX () {
+    if (!this.item.composition) {
+      return 0;
+    }
+
+    if (!this.item.parent) {
+      return 0;
+    }
+
+    if (this.item.parent === this.item.composition.rootItem) {
+      return this.item.composition.renderer.getWidth();
+    } else {
+      const parentControlComponent = this.item.parent.getComponent(BaseRenderComponent);
+
+      if (parentControlComponent) {
+        return parentControlComponent.getRectX();
+      }
+    }
+
+    return 0;
+  }
+
+  getParentRectY () {
+    if (!this.item.composition) {
+      return 0;
+    }
+
+    if (!this.item.parent) {
+      return 0;
+    }
+
+    if (this.item.parent === this.item.composition.rootItem) {
+      return this.item.composition.renderer.getHeight();
+    } else {
+      const parentControlComponent = this.item.parent.getComponent(BaseRenderComponent);
+
+      if (parentControlComponent) {
+        return parentControlComponent.getRectY();
+      }
+    }
+
+    return 0;
+  }
+
+  sourceSize: Vector2;
+  sizeChanged () {
+    if (!this.item.composition) {
+      return;
+    }
+    if (!this.sourceSize) {
+      this.sourceSize = this.transform.size.clone();
+    }
+    const width = this.getParentRectX();
+    const height = this.getParentRectY();
+
+    // this.transform.setPosition(width / 1000 / 2, height / 1000 / 2, 0);
+    const unitPerPixelsX = 2 / (this.item.composition?.renderer.getWidth() ?? 1);
+    const unitPerPixelsY = 2 / (this.item.composition?.renderer.getHeight() ?? 1);
+
+    const anchorLeft = this.transform.anchorLeft;
+    const anchorTop = this.transform.anchorTop;
+    const anchorRight = this.transform.anchorRight;
+    const anchorBottom = this.transform.anchorBottom;
+
+    // console.log(this.item.name, this.transform.anchoredPosition.x, this.transform.anchoredPosition.y);
+
+    let anchorPositionX = 0;
+    let anchorPositionY = 0;
+
+    let sizeX = 0;
+    let sizeY = 0;
+
+    const anchorLeftPosition = (anchorLeft - 0.5) * width;
+    const anchorTopPosition = (anchorTop - 0.5) * height;
+    const anchorRightPosition = (anchorRight - 0.5) * width;
+    const anchorBottomPosition = (anchorBottom - 0.5) * height;
+
+    if (anchorLeftPosition === anchorRightPosition) {
+      anchorPositionX = anchorLeftPosition;
+      sizeX = this.sourceSize.x;
+    } else {
+      anchorPositionX = (anchorLeftPosition + anchorRightPosition) / 2;
+      sizeX = anchorRightPosition - anchorLeftPosition - this.sourceSize.x;
+    }
+
+    if (anchorTopPosition === anchorBottomPosition) {
+      anchorPositionY = anchorTopPosition;
+      sizeY = this.sourceSize.y;
+    } else {
+      anchorPositionY = (anchorTopPosition + anchorBottomPosition) / 2;
+      sizeY = anchorTopPosition - anchorBottomPosition - this.sourceSize.y;
+    }
+
+    const posX = anchorPositionX + this.transform.anchoredPosition.x;
+    const posY = anchorPositionY + this.transform.anchoredPosition.y;
+
+    this.transform.setPosition(posX * unitPerPixelsX, posY * unitPerPixelsY, 0);
+
+    // console.log(width, height);
+    // this.transform.setSize(1, 1);
+    this.transform.setSize(sizeX * unitPerPixelsX, sizeY * unitPerPixelsY);
+    // renderer.setGlobalMatrix('effects_ObjectToWorld', new Matrix4().setFromTranslation(width / 1000 / 2, height / 1000 / 2, 0));
+  }
+
   private draw (renderer: Renderer) {
     if (renderer.renderingData.currentFrame.globalUniforms) {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+      renderer.setGlobalMatrix('effects_MatrixVP', new Matrix4());
     }
 
     for (let i = 0; i < this.materials.length; i++) {
