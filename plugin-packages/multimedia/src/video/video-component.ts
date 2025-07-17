@@ -1,4 +1,4 @@
-import type { Asset, Engine, GeometryFromShape, MaskProps, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import type { Asset, Engine, GeometryFromShape, Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { BaseRenderComponent, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
 
 /**
@@ -10,7 +10,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  mask?: MaskProps['mask'],
+  mask?: spec.MaskOptions,
 }
 
 let seed = 0;
@@ -42,7 +42,6 @@ export class VideoComponent extends BaseRenderComponent {
     super(engine);
 
     this.name = 'MVideo' + seed++;
-    this.geometry = this.createGeometry();
   }
 
   override setTexture (input: Texture): void;
@@ -105,33 +104,32 @@ export class VideoComponent extends BaseRenderComponent {
     } = options;
 
     this.transparent = transparent;
-    if (video && video.id) {
+
+    if (video) {
       const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
 
-      this.video = videoAsset.data;
-      this.setPlaybackRate(playbackRate);
-      this.setVolume(volume);
-      this.setMuted(muted);
-      const endBehavior = this.item.defination.endBehavior;
+      if (videoAsset) {
+        this.video = videoAsset.data;
+        this.setPlaybackRate(playbackRate);
+        this.setVolume(volume);
+        this.setMuted(muted);
+        const endBehavior = this.item.defination.endBehavior;
 
-      // 如果元素设置为 destroy
-      if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
-        this.setLoop(false);
-      } else if (endBehavior === spec.EndBehavior.restart) {
-        this.setLoop(true);
+        // 如果元素设置为 destroy
+        if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
+          this.setLoop(false);
+        } else if (endBehavior === spec.EndBehavior.restart) {
+          this.setLoop(true);
+        }
       }
     }
 
     this.interaction = interaction;
     this.pauseVideo();
 
-    const geometry = this.createGeometry();
-
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
     }
-
-    this.geometry = geometry;
 
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
   }
@@ -150,6 +148,8 @@ export class VideoComponent extends BaseRenderComponent {
       this.setVisible(true);
       this.playVideo();
     }
+
+    this.renderer.texture.uploadCurrentVideoFrame();
 
     if ((time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {

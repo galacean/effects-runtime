@@ -259,43 +259,72 @@ export class BezierEasing {
   private precomputed = false;
   private mSampleValues: number[];
 
-  constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
+  private control1 = new Vector2();
+  private control2 = new Vector2();
+  private weighted = false;
+  private isConstant = false;
+
+  constructor ();
+  constructor (control1: number, control2: number);
+  constructor (control1X: number, control1Y: number, control2X: number, control2Y: number);
+  constructor (control1YOrControl1X?: number, control2YOrControl1Y?: number, control2X?: number, control2Y?: number) {
     this.mSampleValues = new Array(kSplineTableSize);
-  }
 
-  precompute () {
-
-    this.precomputed = true;
-    if (this.mX1 !== this.mY1 || this.mX2 !== this.mY2) {
-      this.calcSampleValues();
+    if (control1YOrControl1X !== undefined && control2YOrControl1Y !== undefined && control2X !== undefined && control2Y !== undefined) {
+      this.control1.x = control1YOrControl1X;
+      this.control1.y = control2YOrControl1Y;
+      this.control2.x = control2X;
+      this.control2.y = control2Y;
+      this.weighted = true;
+    } else if (control1YOrControl1X !== undefined && control2YOrControl1Y !== undefined) {
+      this.control1.x = 1 / 3;
+      this.control1.y = control1YOrControl1X;
+      this.control2.x = 2 / 3;
+      this.control2.y = control2YOrControl1Y;
+    } else {
+      this.isConstant = true;
     }
   }
 
   getValue (x: number) {
-    if (this.mX1 === this.mY1 && this.mX2 === this.mY2) {
-      return x;
-    }
-    if (isNaN(this.mY1) || isNaN(this.mY2)) {
+    if (this.isConstant) {
       return 0;
+    }
+    if (this.control1.x === this.control1.y && this.control2.x === this.control2.y) {
+      return x;
     }
     if (x === 0 || x === 1) {
       return x;
     }
+    if (!this.weighted) {
+      return this.bezierInterpolate(0, this.control1.y, this.control2.y, 1, x);
+    }
     if (!this.precomputed) {
       this.precompute();
     }
-    const value = calcBezier(this.getTForX(x), this.mY1, this.mY2);
+    const value = calcBezier(this.getTForX(x), this.control1.y, this.control2.y);
 
     return value;
   }
 
-  calcSampleValues () {
+  private bezierInterpolate (pStart: number, pControl1: number, pControl2: number, pEnd: number, t: number): number {
+    // Formula from Wikipedia article on Bezier curves
+    const omt = (1.0 - t);
+    const omt2 = omt * omt;
+    const omt3 = omt2 * omt;
+    const t2 = t * t;
+    const t3 = t2 * t;
+
+    return pStart * omt3 + pControl1 * omt2 * t * 3.0 + pControl2 * omt * t2 * 3.0 + pEnd * t3;
+  }
+
+  private calcSampleValues () {
     for (let i = 0; i < kSplineTableSize; ++i) {
-      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.mX1, this.mX2);
+      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.control1.x, this.control2.x);
     }
   }
 
-  getTForX (aX: number) {
+  private getTForX (aX: number) {
     const mSampleValues = this.mSampleValues, lastSample = kSplineTableSize - 1;
     let intervalStart = 0, currentSample = 1;
 
@@ -308,15 +337,22 @@ export class BezierEasing {
     const dist = (aX - mSampleValues[currentSample]) / (mSampleValues[currentSample + 1] - mSampleValues[currentSample]);
     const guessForT = intervalStart + dist * kSampleStepSize;
 
-    const initialSlope = getSlope(guessForT, this.mX1, this.mX2);
+    const initialSlope = getSlope(guessForT, this.control1.x, this.control2.x);
 
     if (initialSlope >= NEWTON_MIN_SLOPE) {
-      return newtonRaphsonIterate(aX, guessForT, this.mX1, this.mX2);
+      return newtonRaphsonIterate(aX, guessForT, this.control1.x, this.control2.x);
     } if (initialSlope === 0.0) {
       return guessForT;
     }
 
-    return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, this.mX1, this.mX2);
+    return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, this.control1.x, this.control2.x);
+  }
+
+  private precompute () {
+    this.precomputed = true;
+    if (this.control1.x !== this.control1.y || this.control2.x !== this.control2.y) {
+      this.calcSampleValues();
+    }
   }
 
 }
@@ -368,7 +404,11 @@ export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightK
   if (BezierMap[str]) {
     bezEasing = BezierMap[str];
   } else {
-    bezEasing = new BezierEasing(x1, y1, x2, y2);
+    if (decimalEqual(valueInterval, 0)) {
+      bezEasing = new BezierEasing();
+    } else {
+      bezEasing = new BezierEasing(x1, y1, x2, y2);
+    }
     BezierMap[str] = bezEasing;
   }
 

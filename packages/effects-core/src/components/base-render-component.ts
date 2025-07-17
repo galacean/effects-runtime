@@ -4,16 +4,16 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaskProps, Maskable } from '../material';
+import type { Maskable } from '../material';
 import {
   MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
+import type { BoundingBoxTriangle, HitTestTriangleParams, splitsDataType } from '../plugins';
 import { MeshCollider } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
 import { itemFrag, itemVert } from '../shader';
-import { getGeometryByShape, type GeometryFromShape } from '../shape';
+import { getGeometryByShape, rotateVec2, type GeometryFromShape } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
 
@@ -23,14 +23,26 @@ import { RendererComponent } from './renderer-component';
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   texture: Texture,
   mask: number,
-  maskMode: MaskMode,
   shape?: GeometryFromShape,
-  alphaMask: boolean,
 }
 
+// TODO: Add to spec
 interface BaseRenderComponentData extends spec.ComponentData {
   renderer: spec.RendererOptions,
+  /**
+   * added by loader
+   * @default null
+   */
+  splits?: spec.SplitParameter[],
+  /**
+   * 图层元素贴图变化属性
+   */
+  textureSheetAnimation?: spec.TextureSheetAnimation,
+  geometry?: spec.DataPath,
+  mask?: spec.MaskOptions,
 }
+
+const singleSplits: splitsDataType = [[0, 0, 1, 1, 0]];
 
 /**
  * @since 2.1.0
@@ -38,17 +50,20 @@ interface BaseRenderComponentData extends spec.ComponentData {
 export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   renderer: ItemRenderer;
-  color = new Color(1, 1, 1, 1);
   geometry: Geometry;
-  readonly maskManager: MaskProcessor;
 
-  protected preMultiAlpha: number;
   protected visible = true;
+  protected splits: splitsDataType = singleSplits;
+  protected textureSheetAnimation?: spec.TextureSheetAnimation;
+  protected readonly maskManager: MaskProcessor;
 
   /**
    * 用于点击测试的碰撞器
    */
   protected meshCollider = new MeshCollider();
+
+  private _color = new Color(1, 1, 1, 1);
+  private defaultGeometry: Geometry;
 
   /**
    *
@@ -64,10 +79,34 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
-      maskMode: MaskMode.NONE,
       mask: 0,
-      alphaMask: false,
     };
+
+    this.defaultGeometry = Geometry.create(this.engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array([
+            -0.5, 0.5, 0, //左上
+            -0.5, -0.5, 0, //左下
+            0.5, 0.5, 0, //右上
+            0.5, -0.5, 0, //右下
+          ]),
+        },
+        aUV: {
+          size: 2,
+          offset: 0,
+          releasable: true,
+          type: glContext.FLOAT,
+          data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
+        },
+      },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      mode: glContext.TRIANGLES,
+      drawCount: 6,
+    });
+    this.geometry = this.defaultGeometry;
 
     const material = Material.create(this.engine, {
       shader: {
@@ -78,7 +117,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     });
 
     this.material = material;
-    this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
+    this.material.setColor('_Color', new Color(1, 1, 1, 1));
     this.maskManager = new MaskProcessor(engine);
   }
 
@@ -115,11 +154,28 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   setColor (color: spec.vec4): void;
   setColor (color: spec.vec4 | Color) {
     if (color instanceof Color) {
-      this.color.copyFrom(color);
+      this._color.copyFrom(color);
     } else {
-      this.color.setFromArray(color);
+      this._color.setFromArray(color);
     }
-    this.material.setColor('_Color', this.color);
+    this.material.setColor('_Color', this._color);
+  }
+
+  /**
+   * 获取当前图层的颜色
+   * @since 2.5.0
+   */
+  get color () {
+    return this._color;
+  }
+
+  /**
+   * 设置当前图层的颜色
+   * @since 2.5.0
+   */
+  set color (value: Color) {
+    this._color = value;
+    this.material.setColor('_Color', this._color);
   }
 
   /**
@@ -205,70 +261,123 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
-  protected getItemGeometryData (geometry: Geometry) {
-    const renderer = this.renderer;
+  private getItemGeometryData (renderer: ItemRenderer) {
+    const { splits, textureSheetAnimation } = this;
+    const sx = 1, sy = 1;
+    const geometry = this.defaultGeometry;
 
     if (renderer.shape) {
       const { index = [], aPoint = [] } = renderer.shape;
       const point = new Float32Array(aPoint);
       const position = [];
-      const atlasOffset = [];
+
+      const aUV = [];
 
       for (let i = 0; i < point.length; i += 6) {
-        atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
+        point[i] *= sx;
+        point[i + 1] *= sy;
+        aUV.push(aPoint[i + 2], aPoint[i + 3]);
         position.push(point[i], point[i + 1], 0.0);
       }
-
       geometry.setAttributeData('aPos', new Float32Array(position));
 
       return {
         index: index as number[],
-        atlasOffset,
+        aUV,
       };
-    } else {
-      geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
-
-      return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
     }
+
+    const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
+    const aUV = [];
+    const index = [];
+    const position = [];
+
+    if (splits.length === 1) {
+      const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4] as number] : splits[0] as number[];
+      const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+      const tox = split[0];
+      const toy = split[1];
+      const tsx = split[4] ? split[3] : split[2];
+      const tsy = split[4] ? split[2] : split[3];
+
+      aUV.push(
+        texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+        texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+        texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+        texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+      );
+      position.push(
+        originData[0], originData[1], 0.0,
+        originData[2], originData[3], 0.0,
+        originData[4], originData[5], 0.0,
+        originData[6], originData[7], 0.0
+      );
+      index.push(0, 1, 2, 2, 1, 3);
+    } else {
+      // TODO: 原有打包纹理拆分逻辑，待移除
+      //-------------------------------------------------------------------------
+
+      const col = 2;
+      const row = 2;
+
+      for (let x = 0; x < col; x++) {
+        for (let y = 0; y < row; y++) {
+          const base = (y * 2 + x) * 4;
+          // @ts-expect-error
+          const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
+          const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+          const dw = ((x + x + 1) / col - 1) / 2;
+          const dh = ((y + y + 1) / row - 1) / 2;
+          const tox = split[0];
+          const toy = split[1];
+          const tsx = split[4] ? split[3] : split[2];
+          const tsy = split[4] ? split[2] : split[3];
+          const origin = [
+            originData[0] / col + dw,
+            originData[1] / row + dh,
+            originData[2] / col + dw,
+            originData[3] / row + dh,
+            originData[4] / col + dw,
+            originData[5] / row + dh,
+            originData[6] / col + dw,
+            originData[7] / row + dh,
+          ];
+
+          aUV.push(
+            texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+            texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+            texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+            texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+          );
+          position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
+            (origin[2]) * sx, (origin[3]) * sy, 0.0,
+            (origin[4]) * sx, (origin[5]) * sy, 0.0,
+            (origin[6]) * sx, (origin[7]) * sy, 0.0);
+          index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
+        }
+      }
+    }
+
+    geometry.setAttributeData('aPos', new Float32Array(position));
+
+    return { index, aUV };
   }
 
-  protected createGeometry () {
-    const geometry = Geometry.create(this.engine, {
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array([
-            -0.5, 0.5, 0, //左上
-            -0.5, -0.5, 0, //左下
-            0.5, 0.5, 0, //右上
-            0.5, -0.5, 0, //右下
-          ]),
-        },
-        atlasOffset: {
-          size: 2,
-          offset: 0,
-          releasable: true,
-          type: glContext.FLOAT,
-          data: new Float32Array(0),
-        },
-      },
-      indices: { data: new Uint16Array(0), releasable: true },
-      mode: glContext.TRIANGLES,
-    });
-
-    const geoData = this.getItemGeometryData(geometry);
-    const { index, atlasOffset } = geoData;
+  private configureDefaultGeometry (renderer: ItemRenderer) {
+    const geoData = this.getItemGeometryData(renderer);
+    const { index, aUV } = geoData;
+    const geometry = this.defaultGeometry;
 
     geometry.setIndexData(new Uint16Array(index));
-    geometry.setAttributeData('atlasOffset', new Float32Array(atlasOffset));
+    geometry.setAttributeData('aUV', new Float32Array(aUV));
     geometry.setDrawCount(index.length);
 
     return geometry;
   }
 
   private configureMaterial (renderer: ItemRenderer): Material {
-    const { side, occlusion, blending: blendMode, maskMode, mask, texture } = renderer;
+    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const maskMode = this.maskManager.maskMode;
     const material = this.material;
 
     material.blending = true;
@@ -282,20 +391,19 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
-    material.setColor('_Color', new Color(0, 0, 0, 1));
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_MainTex', texture);
 
-    this.preMultiAlpha = getPreMultiAlpha(blendMode);
+    const preMultiAlpha = getPreMultiAlpha(blendMode);
     const texParams = new Vector4();
 
     texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-    texParams.y = +this.preMultiAlpha;
+    texParams.y = preMultiAlpha;
     texParams.z = renderer.renderMode;
-    texParams.w = renderer.maskMode;
+    texParams.w = maskMode;
     material.setVector4('_TexParams', texParams);
 
-    if (texParams.x === 0 || (renderer.alphaMask)) {
+    if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
       material.enableMacro('ALPHA_CLIP');
     } else {
       material.disableMacro('ALPHA_CLIP');
@@ -327,20 +435,22 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
 
   override fromData (data: unknown): void {
     super.fromData(data);
-    const renderer = (data as BaseRenderComponentData).renderer ?? {};
 
-    const maskProps = (data as MaskProps).mask;
+    const baseRenderComponentData = (data as BaseRenderComponentData);
+    const renderer = baseRenderComponentData.renderer ?? {};
+    const splits = baseRenderComponentData.splits;
+    const textureSheetAnimation = baseRenderComponentData.textureSheetAnimation;
 
-    if (maskProps && maskProps.ref) {
-      maskProps.ref = this.engine.findObject((maskProps.ref as unknown as spec.DataPath));
+    const maskOptions = baseRenderComponentData.mask;
+
+    if (maskOptions) {
+      this.maskManager.getMaskMode(maskOptions);
     }
-    const maskMode = this.maskManager.getMaskMode(data as MaskProps);
 
     // TODO 新蒙板上线后移除
     //-------------------------------------------------------------------------
     const shapeData = renderer.shape as spec.ShapeGeometry;
-    //@ts-expect-error
-    const split = data.splits && !data.textureSheetAnimation ? data.splits[0] : undefined;
+    const split = splits && !textureSheetAnimation ? splits[0] : undefined;
     let shapeGeometry: GeometryFromShape | undefined = undefined;
 
     if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
@@ -348,20 +458,73 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     }
     //-------------------------------------------------------------------------
 
+    this.splits = splits || singleSplits;
+    this.textureSheetAnimation = textureSheetAnimation;
+
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
       shape: shapeGeometry,
-      maskMode,
-      //@ts-expect-error TODO 新蒙版兼容老数据需要增加纹理透明度蒙版是否开启参数
-      alphaMask: renderer.alphaMask ?? false,
     };
 
     this.configureMaterial(this.renderer);
+
+    if (baseRenderComponentData.geometry) {
+      const baseGeometry = this.engine.findObject<Geometry>(baseRenderComponentData.geometry);
+
+      const uvTransform = baseRenderComponentData.splits && !baseRenderComponentData.textureSheetAnimation ? baseRenderComponentData.splits[0] : singleSplits[0];
+      const x = uvTransform[0];
+      const y = uvTransform[1];
+      const isRotate90 = Boolean(uvTransform[4]);
+      const width = isRotate90 ? uvTransform[3] : uvTransform[2];
+      const height = isRotate90 ? uvTransform[2] : uvTransform[3];
+      const angle = isRotate90 ? -Math.PI / 2 : 0;
+
+      const aUV = baseGeometry.getAttributeData('aUV');
+      const aPos = baseGeometry.getAttributeData('aPos');
+      const indices = baseGeometry.getIndexData();
+
+      const tempPosition: spec.vec2 = [0, 0];
+
+      if (aUV && aPos && indices) {
+        const vertexCount = aUV.length / 2;
+
+        for (let i = 0; i < vertexCount; i++) {
+          const positionOffset = i * 3;
+          const uvOffset = i * 2;
+          const positionX = aPos[positionOffset];
+          const positionY = aPos[positionOffset + 1];
+
+          tempPosition[0] = positionX ;
+          tempPosition[1] = positionY ;
+          rotateVec2(tempPosition, tempPosition, angle);
+
+          aUV[uvOffset] = (tempPosition[0] + 0.5) * width + x;
+          aUV[uvOffset + 1] = (tempPosition[1] + 0.5) * height + y;
+        }
+
+        this.geometry.setAttributeData('aPos', aPos.slice());
+        this.geometry.setAttributeData('aUV', aUV.slice());
+        this.geometry.setIndexData(indices.slice());
+        this.geometry.setDrawCount(indices.length);
+      }
+
+      this.geometry.subMeshes.length = 0;
+      for (const subMesh of baseGeometry.subMeshes) {
+        this.geometry.subMeshes.push({
+          offset: subMesh.offset,
+          indexCount:  subMesh.indexCount,
+          vertexCount:  subMesh.vertexCount,
+        });
+      }
+    } else {
+      this.geometry = this.defaultGeometry;
+      this.configureDefaultGeometry(this.renderer);
+    }
   }
 }

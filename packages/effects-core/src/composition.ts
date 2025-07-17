@@ -230,8 +230,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   postProcessingEnabled = false;
 
   protected rendererOptions: MeshRendererOptions | null;
-  // TODO: 待优化
-  protected assigned = false;
   /**
    * 销毁状态位
    */
@@ -247,7 +245,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成暂停/播放 标识
    */
   private paused = false;
-  private lastVideoUpdateTime = 0;
   private isEndCalled = false;
   private _textures: Texture[] = [];
 
@@ -363,7 +360,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       aspect: width / height,
     });
     this.url = scene.url;
-    this.assigned = true;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
@@ -620,7 +616,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param deltaTime - 更新的时间步长
    */
   update (deltaTime: number) {
-    if (!this.assigned || this.getPaused()) {
+    if (this.getPaused()) {
       return;
     }
 
@@ -635,7 +631,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateCompositionTime(deltaTime * this.speed / 1000);
     const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
 
-    this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTimeInMs);
 
@@ -667,20 +662,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  /**
-   * 更新视频数据到纹理
-   * @override
-   */
-  updateVideo () {
-    const now = performance.now();
-
-    // 视频固定30帧更新
-    if (now - this.lastVideoUpdateTime > 33) {
-      (this.textures ?? []).forEach(tex => tex?.uploadCurrentVideoFrame());
-      this.lastVideoUpdateTime = now;
     }
   }
 

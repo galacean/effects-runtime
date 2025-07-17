@@ -68,6 +68,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private assetService: AssetService;
   private speed = 1;
   private baseCompositionIndex = 0;
+  private useExternalCanvas = false;
 
   /**
    * 播放器的构造函数
@@ -116,6 +117,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       if (canvas) {
         this.canvas = canvas;
+        this.useExternalCanvas = true;
       } else {
         assertContainer(container);
         this.canvas = document.createElement('canvas');
@@ -151,6 +153,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
     } catch (e: any) {
+      if (this.canvas && !this.useExternalCanvas) {
+        this.canvas.remove();
+      }
       this.handleThrowError(e);
     }
 
@@ -345,6 +350,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
         const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
+        if (this.disposed) {
+          compositions.length = 0;
+
+          return;
+        }
+
         this.assetService.prepareAssets(scene, scene.assets);
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
@@ -358,7 +369,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         autoplayFlags[index] = compositionAutoplay;
       }),
     );
-
     const compileStart = performance.now();
 
     await new Promise(resolve => {
@@ -373,6 +383,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       } else {
         compositions[i].pause();
       }
+
+      // 注意：不要移动此行代码，避免出现多合成加载时，非自动播放的合成在加载时就开始渲染
+      this.compositions.push(compositions[i]);
     }
 
     this.ticker?.start();
@@ -395,12 +408,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     options: Omit<SceneLoadOptions, 'speed' | 'reusable'> = {},
   ) {
     const renderer = this.renderer;
-
-    // 加载期间 player 销毁
-    if (this.disposed) {
-      throw new Error('Disposed player can not used to create Composition.');
-    }
-
     const composition = new Composition({
       ...options,
       renderer,
@@ -421,8 +428,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.env !== PLAYER_OPTIONS_ENV_EDITOR) {
       this.assetService.createShaderVariant();
     }
-
-    this.compositions.push(composition);
 
     return composition;
   }
