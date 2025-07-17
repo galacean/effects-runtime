@@ -155,9 +155,7 @@ export class TextComponentBase {
   private getLineCount (text: string, init: boolean) {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
-
     const fontScale = init ? this.textStyle.fontSize / 10 * this.textStyle.fontScale : this.textStyle.fontScale;
-
     const width = (this.textLayout.width + this.textStyle.fontOffset) * this.textStyle.fontScale;
     let lineCount = 1;
     let x = 0;
