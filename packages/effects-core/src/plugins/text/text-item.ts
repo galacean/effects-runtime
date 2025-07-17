@@ -149,27 +149,49 @@ export class TextComponentBase {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
+    const style = this.textStyle;
+
+    const fontScale = style.fontScale;
+
+    const fontSize = style.fontSize * fontScale;
+
+    style.fontDesc = this.getFontDesc(fontSize);
     this.lineCount = this.getLineCount(options.text, true);
   }
 
   private getLineCount (text: string, init: boolean) {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
-
-    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
-
-    const width = (this.textLayout.width + this.textStyle.fontOffset);
+    //const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    const width = (this.textLayout.width + this.textStyle.fontOffset) * this.textStyle.fontScale;
     let lineCount = 1;
     let x = 0;
 
-    //设置context.font的字号
-    // if (context) {
-    //   context.font = this.getFontDesc(this.textStyle.fontSize);
-    // }
+    const charDebugInfo = [];
+
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+      let textMetrics = 0;
 
+      if (overflow === spec.TextOverflow.clip) {
+        if (context) {
+          context.font = this.textStyle.fontDesc;
+          textMetrics = context.measureText(str)?.width ?? 0;
+        }
+      } else if (overflow === spec.TextOverflow.display) {
+        if (context) {
+          textMetrics = context.measureText(str)?.width ?? 0;
+        }
+      }
+      charDebugInfo.push({
+        i,
+        str,
+        textMetrics,
+        contextFont: context?.font,
+
+        overflow,
+        init,
+      });
       // 和浏览器行为保持一致
       x += letterSpace;
       // 处理文本结束行为
@@ -192,6 +214,25 @@ export class TextComponentBase {
         }
       }
     }
+    console.log('[getLineCount:charDebugInfo]', charDebugInfo);
+    console.log('[getLineCount]', {
+      lineCount,
+      text,
+      textLength: text?.length,
+      width,
+      maxLineWidth: this.maxLineWidth,
+      letterSpace,
+      overflow,
+      fontSize: this.textStyle?.fontSize,
+      fontScale: this.textStyle?.fontScale,
+      fontFamily: this.textStyle?.fontFamily,
+      textWeight: this.textStyle?.textWeight,
+      fontStyle: this.textStyle?.fontStyle,
+      layoutWidth: this.textLayout?.width,
+      layoutHeight: this.textLayout?.height,
+      contextNull: !context,
+      init,
+    });
 
     return lineCount;
   }
@@ -359,6 +400,7 @@ export class TextComponentBase {
    */
   setOverflow (overflow: spec.TextOverflow) {
     this.textLayout.overflow = overflow;
+    //this.lineCount = this.getLineCount(this.text, false);
     this.isDirty = true;
   }
 
@@ -489,7 +531,14 @@ export class TextComponentBase {
     const charsInfo: CharInfo[] = [];
 
     let x = 0;
-    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+    let y = 0;
+
+    if (layout.overflow === spec.TextOverflow.display) {
+      // 如果是 display 模式，则需要进行缩放
+      y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize * width / this.maxLineWidth);
+    } else {
+      y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+    }
     let charsArray = [];
     let charOffsetX = [];
 
