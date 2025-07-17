@@ -109,7 +109,7 @@ void main(){
 `;
 
 const fragment = /*glsl*/ `
-#version 100
+#extension GL_OES_standard_derivatives : enable
 precision highp float;
 
 varying vec2 uv;
@@ -230,8 +230,10 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 
 float antiAliasedStroke(float dist, float lineWidth) {
     // 根据线宽设置最大过渡值，防止细线条抗锯齿过宽
-    float maxAA = max(0.005, lineWidth * 0.4); // 0.4 可调，越小越锐利
-    float aa = clamp(fwidth(dist) * _StrokeAA, 0.001, maxAA);
+    
+    float minAA = max(0.004, lineWidth * 0.2);
+    float maxAA = max(minAA, lineWidth * 0.5); 
+    float aa = clamp(fwidth(dist) * _StrokeAA, minAA, maxAA);
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
