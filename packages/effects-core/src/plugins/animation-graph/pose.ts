@@ -89,4 +89,18 @@ export class Pose {
       this.floatPropertyValues[animatedObjectIndex] = value;
     }
   }
+
+  copyFrom (pose: Pose) {
+    for (let i = 0;i < this.parentSpaceTransforms.length;i++) {
+      this.parentSpaceTransforms[i].copyFrom(pose.parentSpaceTransforms[i]);
+    }
+
+    for (let i = 0;i < this.colorPropertyValues.length;i++) {
+      this.colorPropertyValues[i].copyFrom(pose.colorPropertyValues[i]);
+    }
+
+    for (let i = 0;i < this.floatPropertyValues.length;i++) {
+      this.floatPropertyValues[i] = pose.floatPropertyValues[i];
+    }
+  }
 }
