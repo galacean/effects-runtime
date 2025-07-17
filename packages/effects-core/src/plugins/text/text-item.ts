@@ -66,7 +66,22 @@ export class TextComponent extends BaseRenderComponent {
   /**
    * 每一行文本的最大宽度
    */
-  protected maxLineWidth = 0;
+  /**
+   * 【状态分离】基础行宽（基于原始字体大小）
+   * 作用：存储文本在原始字体大小下的真实布局需求
+   * 修改原因：解决初始化和更新相互干扰问题
+   */
+  protected baseMaxLineWidth = 0;
+
+  /**
+   * 【状态分离】渲染行宽（自适应缩放后）
+   * 作用：仅用于存储当前渲染状态，不参与计算
+   * 修改原因：解耦测量和渲染阶段
+   */
+  protected renderMaxLineWidth = 0;
+
+  // 原逻辑保留但注释掉（方便对比和恢复）
+  // protected maxLineWidth = 0;
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
@@ -137,7 +152,21 @@ export class TextComponentBase {
   renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
-  protected maxLineWidth: number;
+  /**
+   * 【状态分离】基础行宽（基于原始字体大小）
+   * 作用：存储文本在原始字体大小下的真实布局需求
+   * 修改原因：解决初始化和更新相互干扰问题
+   */
+  protected baseMaxLineWidth = 0;
+
+  /**
+   * 【状态分离】渲染行宽（自适应缩放后）
+   * 作用：仅用于存储当前渲染状态，不参与计算
+   * 修改原因：解耦测量和渲染阶段
+   */
+  protected renderMaxLineWidth = 0;
+
+  // protected maxLineWidth: number;
 
   private char: string[];
 
@@ -146,28 +175,69 @@ export class TextComponentBase {
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
+    // 临时调试日志
+    /* eslint-disable no-console */
+    console.log('[TextComponent] updateWithOptions', {
+      options,
+      currentOverflow: this.textLayout?.overflow,
+    });
+
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
     const style = this.textStyle;
 
     const fontScale = style.fontScale;
-
     const fontSize = style.fontSize * fontScale;
 
     style.fontDesc = this.getFontDesc(fontSize);
-    this.lineCount = this.getLineCount(options.text, true);
+
+    // 【关键修复】确保默认溢出模式为display
+    // 修改原因：解决自适应缩放未触发问题
+    if (!this.textLayout.overflow) {
+      console.log('[TextComponent] Setting default overflow to display');
+      this.textLayout.overflow = spec.TextOverflow.display;
+    } else {
+      console.log('[TextComponent] Using provided overflow:', this.textLayout.overflow);
+    }
+
+    // 移除init参数调用
+    this.lineCount = this.getLineCount(options.text);
+
+    // 【关键修复】标记组件需要更新
+    // 修改原因：确保初始化后触发渲染
+    this.isDirty = true;
+
+    console.log('[TextComponent] updateWithOptions completed', {
+      overflow: this.textLayout.overflow,
+      lineCount: this.lineCount,
+    });
+    /* eslint-enable no-console */
   }
 
-  private getLineCount (text: string, init: boolean) {
+  private getLineCount (text: string) {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
-    //const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     const width = (this.textLayout.width + this.textStyle.fontOffset) * this.textStyle.fontScale;
     let lineCount = 1;
     let x = 0;
 
-    const charDebugInfo = [];
+    // 【调试日志】记录测量开始
+    console.log('[getLineCount] start', {
+      text,
+      baseMaxLineWidth: this.baseMaxLineWidth,
+      layoutWidth: this.textLayout.width,
+      fontScale: this.textStyle.fontScale,
+      fontSize: this.textStyle.fontSize,
+    });
+
+    // 【统一测量基准】始终使用原始字体大小
+    // 修改原因：避免渲染状态污染测量结果
+    const baseFontSize = this.textStyle.fontSize * this.textStyle.fontScale;
+
+    if (context) {
+      context.font = this.getFontDesc(baseFontSize);
+    }
 
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
@@ -183,15 +253,6 @@ export class TextComponentBase {
           textMetrics = context.measureText(str)?.width ?? 0;
         }
       }
-      charDebugInfo.push({
-        i,
-        str,
-        textMetrics,
-        contextFont: context?.font,
-
-        overflow,
-        init,
-      });
       // 和浏览器行为保持一致
       x += letterSpace;
       // 处理文本结束行为
@@ -201,12 +262,12 @@ export class TextComponentBase {
           x = 0;
         } else {
           x += textMetrics;
-          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+          this.baseMaxLineWidth = Math.max(this.baseMaxLineWidth, x);
         }
       } else {
         if (((x + textMetrics) > width && i > 0) || str === '\n') {
           lineCount++;
-          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+          this.baseMaxLineWidth = Math.max(this.baseMaxLineWidth, x);
           x = 0;
         }
         if (str !== '\n') {
@@ -214,24 +275,14 @@ export class TextComponentBase {
         }
       }
     }
-    console.log('[getLineCount:charDebugInfo]', charDebugInfo);
-    console.log('[getLineCount]', {
+    // 移除调试日志避免ESLint报错
+    // console.log('[getLineCount]', { ... });
+
+    // 【调试日志】记录测量结果
+    console.log('[getLineCount] result', {
       lineCount,
-      text,
-      textLength: text?.length,
-      width,
-      maxLineWidth: this.maxLineWidth,
-      letterSpace,
-      overflow,
-      fontSize: this.textStyle?.fontSize,
-      fontScale: this.textStyle?.fontScale,
-      fontFamily: this.textStyle?.fontFamily,
-      textWeight: this.textStyle?.textWeight,
-      fontStyle: this.textStyle?.fontStyle,
-      layoutWidth: this.textLayout?.width,
-      layoutHeight: this.textLayout?.height,
-      contextNull: !context,
-      init,
+      baseMaxLineWidth: this.baseMaxLineWidth,
+      charCount: text.length,
     });
 
     return lineCount;
@@ -291,8 +342,21 @@ export class TextComponentBase {
     if (this.text === value) {
       return;
     }
+
+    // 【调试日志】记录文本更新
+    console.log('[setText] update', {
+      oldText: this.text,
+      newText: value,
+      oldBaseMaxLineWidth: this.baseMaxLineWidth,
+    });
+
     this.text = value.toString();
-    this.lineCount = this.getLineCount(value, false);
+
+    // 【状态重置】清除基础行宽
+    // 修改原因：确保每次更新都重新测量
+    this.baseMaxLineWidth = 0;
+
+    this.lineCount = this.getLineCount(value);
     this.isDirty = true;
   }
 
@@ -399,8 +463,20 @@ export class TextComponentBase {
    * @param overflow - 文本溢出模式
    */
   setOverflow (overflow: spec.TextOverflow) {
+    // 记录模式变更
+    // eslint-disable-next-line no-console
+    console.log(
+      `[TextComponent] setOverflow: ${this.textLayout.overflow} -> ${overflow}`
+    );
+
     this.textLayout.overflow = overflow;
-    //this.lineCount = this.getLineCount(this.text, false);
+    // 【关键修复】仅当文本内容未初始化时才重置测量状态
+    if (this.baseMaxLineWidth === 0) {
+      this.baseMaxLineWidth = 0;
+    } else {
+      // 触发重新测量
+      this.lineCount = this.getLineCount(this.text);
+    }
     this.isDirty = true;
   }
 
@@ -479,6 +555,14 @@ export class TextComponentBase {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
+
+    // 【调试日志】记录渲染开始
+    console.log('[updateTexture] start', {
+      text: this.text,
+      isDirty: this.isDirty,
+      baseMaxLineWidth: this.baseMaxLineWidth,
+      renderMaxLineWidth: this.renderMaxLineWidth,
+    });
     const context = this.context;
     const style = this.textStyle;
     const layout = this.textLayout;
@@ -510,11 +594,39 @@ export class TextComponentBase {
       context.translate(0, height);
       context.scale(1, -1);
     }
-    // canvas size 变化后重新刷新 context
-    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+
+    // 检查自适应缩放条件
+    if (layout.overflow === spec.TextOverflow.display) {
+      // 计算缩放因子
+      const scaleFactor = this.baseMaxLineWidth > width ? width / this.baseMaxLineWidth : 1;
+
+      // 记录关键测量值
+      // eslint-disable-next-line no-console
+      console.log(
+        '[updateTexture] display mode - ' +
+        `baseMaxLineWidth: ${this.baseMaxLineWidth}, ` +
+        `width: ${width}, ` +
+        `scaleFactor: ${scaleFactor}`
+      );
+
+      if (this.baseMaxLineWidth > width) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[updateTexture] applying scaling (factor: ${scaleFactor})`
+        );
+        context.font = this.getFontDesc(fontSize * scaleFactor);
+        this.renderMaxLineWidth = this.baseMaxLineWidth * scaleFactor;
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('[updateTexture] no scaling needed');
+        context.font = style.fontDesc;
+        this.renderMaxLineWidth = this.baseMaxLineWidth;
+      }
     } else {
+      // eslint-disable-next-line no-console
+      console.log('[updateTexture] clip mode - no scaling applied');
       context.font = style.fontDesc;
+      this.renderMaxLineWidth = this.baseMaxLineWidth;
     }
     context.clearRect(0, 0, width, height);
 
@@ -535,7 +647,7 @@ export class TextComponentBase {
 
     if (layout.overflow === spec.TextOverflow.display) {
       // 如果是 display 模式，则需要进行缩放
-      y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize * width / this.maxLineWidth);
+      y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize * width / this.baseMaxLineWidth);
     } else {
       y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
     }
