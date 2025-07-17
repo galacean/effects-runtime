@@ -150,6 +150,7 @@ export class CompositionComponent extends Component {
           const intersectPoint = new Vector3();
 
           if (hitParams.type === HitTestType.triangle) {
+
             const { triangles, backfaceCulling } = hitParams;
 
             for (let j = 0; j < triangles.length; j++) {

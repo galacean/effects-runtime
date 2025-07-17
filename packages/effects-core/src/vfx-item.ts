@@ -395,17 +395,18 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param {number} b
    * @param {number} a
    * @internal
+   * @deprecated 2.6.0 Please use `Component.setColor` instead
    */
   setColor (r: number, g: number, b: number, a: number) {
-
   }
 
   /**
    * 设置元素的透明度
    * @param opacity - 透明度值，范围 [0,1]
+   * @internal
+   * @deprecated 2.6.0 Please use `Component.setColor` instead
    */
   setOpacity (opacity: number) {
-
   }
 
   /**
