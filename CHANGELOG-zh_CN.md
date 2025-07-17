@@ -8,6 +8,14 @@
 
 ---
 
+## 2.5.4
+
+`2025-07-17`
+
+- Fix: 修复文本行数判断错误导致文本上移的问题。[#1080](https://github.com/galacean/effects-runtime/pull/1080) @Fryt1
+- Fix: add video.play error processing in loadVideo. [#1081](https://github.com/galacean/effects-runtime/pull/1081) @wumaolinmaoan
+- Fix: lockdown mode just check in iOS env. [#1078](https://github.com/galacean/effects-runtime/pull/1078) @yiiqii
+
 ## 2.5.3
 
 `2025-07-11`
