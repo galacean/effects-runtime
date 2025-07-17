@@ -75,69 +75,43 @@ export class MergeBlendNode extends PoseNode {
 
     poseResults.push(result);
     let valueIndex = 0;
-    const setBefore: boolean[][] = [];
 
     for (let i = 0; i < poseResults.length - 1; i++) {
       const first = poseResults[i];
       const second = poseResults[i + 1];
-      const isLast = i === poseResults.length - 1;
-      let setIndex = 0;
 
-      setBefore[i] = [];
       first.pose.parentSpaceTransforms.forEach((firstTransform, index) => {
         const secondTransform = second.pose.parentSpaceTransforms[index];
 
         (['position', 'scale', 'euler', 'rotation'] as const).forEach(key => {
           const firstSet = this.hasSet(firstTransform[key], 'x') ;
-          const secondSet = this.hasSet(secondTransform[key], 'x') && !isLast;
 
           if (firstSet) {
-            setBefore[i][setIndex] = true;
+            secondTransform[key].copyFrom(firstTransform[key] as Quaternion);
           } else {
             firstTransform[key].x = originValues[valueIndex++];
           }
-
-          if (firstSet || (!secondSet && setBefore[i][setIndex])) {
-            secondTransform[key].copyFrom(firstTransform[key] as Quaternion);
-          }
-
-          setIndex++;
         });
       });
 
       first.pose.colorPropertyValues.forEach((color, index) => {
-        const secondColor = second.pose.colorPropertyValues[index];
         const firstSet = this.hasSet(color, 'a');
-        const secondSet = this.hasSet(secondColor, 'a') && !isLast;
 
         if (firstSet) {
-          setBefore[i][setIndex] = true;
+          second.pose.colorPropertyValues[index].copyFrom(color);
         } else {
           color.a = originValues[valueIndex++];
         }
-
-        if (firstSet || (!secondSet && setBefore[i][setIndex])) {
-          second.pose.colorPropertyValues[index].copyFrom(color);
-        }
-
-        setIndex++;
       });
 
       first.pose.floatPropertyValues.forEach((float, index) => {
         const firstSet = this.hasSet(first.pose.floatPropertyValues, index);
-        const secondSet = this.hasSet(second.pose.floatPropertyValues, index) && !isLast;
 
         if (firstSet) {
-          setBefore[i][setIndex] = true;
+          second.pose.floatPropertyValues[index] = first.pose.floatPropertyValues[index];
         } else {
           first.pose.floatPropertyValues[index] = originValues[valueIndex++];
         }
-
-        if (firstSet || (!secondSet && setBefore[i][setIndex])) {
-          second.pose.floatPropertyValues[index] = first.pose.floatPropertyValues[index];
-        }
-
-        setIndex++;
       });
 
     }
