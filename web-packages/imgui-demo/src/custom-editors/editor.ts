@@ -40,8 +40,7 @@ export class Editor {
       } else if (property instanceof EffectsObject) {
         EditorGUILayout.ObjectField(propertyName, object, key);
       } else if (property.constructor === Object) {
-        EditorGUILayout.Label(propertyName);
-        if (ImGui.TreeNode('##' + propertyName)) {
+        if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
           this.drawObject(property);
           ImGui.TreePop();
         }

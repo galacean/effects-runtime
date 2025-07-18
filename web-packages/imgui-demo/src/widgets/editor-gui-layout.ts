@@ -14,7 +14,7 @@ export class EditorGUILayout {
   static alignWidth = 150;
 
   static Label (label: string) {
-    ImGui.Text(label);
+    ImGui.Text('       ' + label);
     ImGui.SameLine(EditorGUILayout.alignWidth);
     ImGui.SetNextItemWidth(-1);
   }
