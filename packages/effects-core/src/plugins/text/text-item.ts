@@ -80,7 +80,7 @@ export class TextComponent extends BaseRenderComponent {
    */
   protected renderMaxLineWidth = 0;
 
-  // 原逻辑保留但注释掉（方便对比和恢复）
+  // 原maxLineWidth会在测量和渲染阶段都被使用导致循环依赖
   // protected maxLineWidth = 0;
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
@@ -175,12 +175,6 @@ export class TextComponentBase {
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
-    // 临时调试日志
-    /* eslint-disable no-console */
-    console.log('[TextComponent] updateWithOptions', {
-      options,
-      currentOverflow: this.textLayout?.overflow,
-    });
 
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
@@ -192,27 +186,11 @@ export class TextComponentBase {
 
     style.fontDesc = this.getFontDesc(fontSize);
 
-    // 【关键修复】确保默认溢出模式为display
-    // 修改原因：解决自适应缩放未触发问题
-    if (!this.textLayout.overflow) {
-      console.log('[TextComponent] Setting default overflow to display');
-      this.textLayout.overflow = spec.TextOverflow.display;
-    } else {
-      console.log('[TextComponent] Using provided overflow:', this.textLayout.overflow);
-    }
-
-    // 移除init参数调用
     this.lineCount = this.getLineCount(options.text);
 
     // 【关键修复】标记组件需要更新
-    // 修改原因：确保初始化后触发渲染
+    // 确保初始化后触发渲染
     this.isDirty = true;
-
-    console.log('[TextComponent] updateWithOptions completed', {
-      overflow: this.textLayout.overflow,
-      lineCount: this.lineCount,
-    });
-    /* eslint-enable no-console */
   }
 
   private getLineCount (text: string) {
@@ -221,15 +199,6 @@ export class TextComponentBase {
     const width = (this.textLayout.width + this.textStyle.fontOffset) * this.textStyle.fontScale;
     let lineCount = 1;
     let x = 0;
-
-    // 【调试日志】记录测量开始
-    console.log('[getLineCount] start', {
-      text,
-      baseMaxLineWidth: this.baseMaxLineWidth,
-      layoutWidth: this.textLayout.width,
-      fontScale: this.textStyle.fontScale,
-      fontSize: this.textStyle.fontSize,
-    });
 
     // 【统一测量基准】始终使用原始字体大小
     // 修改原因：避免渲染状态污染测量结果
@@ -275,15 +244,6 @@ export class TextComponentBase {
         }
       }
     }
-    // 移除调试日志避免ESLint报错
-    // console.log('[getLineCount]', { ... });
-
-    // 【调试日志】记录测量结果
-    console.log('[getLineCount] result', {
-      lineCount,
-      baseMaxLineWidth: this.baseMaxLineWidth,
-      charCount: text.length,
-    });
 
     return lineCount;
   }
@@ -343,17 +303,10 @@ export class TextComponentBase {
       return;
     }
 
-    // 【调试日志】记录文本更新
-    console.log('[setText] update', {
-      oldText: this.text,
-      newText: value,
-      oldBaseMaxLineWidth: this.baseMaxLineWidth,
-    });
-
     this.text = value.toString();
 
     // 【状态重置】清除基础行宽
-    // 修改原因：确保每次更新都重新测量
+    // 修改原因：确保每次更新都重新测量，不然初始化和更新相互干扰
     this.baseMaxLineWidth = 0;
 
     this.lineCount = this.getLineCount(value);
@@ -458,16 +411,10 @@ export class TextComponentBase {
    *
    * - clip: 当文本内容超出边界框时，多余的会被截断。
    * - display: 该模式下会显示所有文本，会自动调整文本字号以保证显示完整。
-   * > 当存在多行时，部分行内文本可能存在文本字号变小的情况，其他行为正常情况
    *
    * @param overflow - 文本溢出模式
    */
   setOverflow (overflow: spec.TextOverflow) {
-    // 记录模式变更
-    // eslint-disable-next-line no-console
-    console.log(
-      `[TextComponent] setOverflow: ${this.textLayout.overflow} -> ${overflow}`
-    );
 
     this.textLayout.overflow = overflow;
     // 【关键修复】仅当文本内容未初始化时才重置测量状态
@@ -555,14 +502,6 @@ export class TextComponentBase {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
-
-    // 【调试日志】记录渲染开始
-    console.log('[updateTexture] start', {
-      text: this.text,
-      isDirty: this.isDirty,
-      baseMaxLineWidth: this.baseMaxLineWidth,
-      renderMaxLineWidth: this.renderMaxLineWidth,
-    });
     const context = this.context;
     const style = this.textStyle;
     const layout = this.textLayout;
@@ -600,31 +539,15 @@ export class TextComponentBase {
       // 计算缩放因子
       const scaleFactor = this.baseMaxLineWidth > width ? width / this.baseMaxLineWidth : 1;
 
-      // 记录关键测量值
-      // eslint-disable-next-line no-console
-      console.log(
-        '[updateTexture] display mode - ' +
-        `baseMaxLineWidth: ${this.baseMaxLineWidth}, ` +
-        `width: ${width}, ` +
-        `scaleFactor: ${scaleFactor}`
-      );
-
       if (this.baseMaxLineWidth > width) {
-        // eslint-disable-next-line no-console
-        console.log(
-          `[updateTexture] applying scaling (factor: ${scaleFactor})`
-        );
+
         context.font = this.getFontDesc(fontSize * scaleFactor);
         this.renderMaxLineWidth = this.baseMaxLineWidth * scaleFactor;
       } else {
-        // eslint-disable-next-line no-console
-        console.log('[updateTexture] no scaling needed');
         context.font = style.fontDesc;
         this.renderMaxLineWidth = this.baseMaxLineWidth;
       }
     } else {
-      // eslint-disable-next-line no-console
-      console.log('[updateTexture] clip mode - no scaling applied');
       context.font = style.fontDesc;
       this.renderMaxLineWidth = this.baseMaxLineWidth;
     }
