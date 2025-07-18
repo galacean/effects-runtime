@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
@@ -6,15 +6,7 @@ import type { FloatValueNode } from '../graph-node';
 import { GraphNodeData, InvalidIndex, PoseNode } from '../graph-node';
 import { Blender } from '../blender';
 
-interface SpecLayerData {
-  inputNodeIndex?: number,
-  weightValueNodeIndex?: number,
-}
-
-interface SpecLayerBlendNodeData extends spec.GraphNodeData {
-  baseNodeIndex?: number,
-  layerDatas?: SpecLayerData[],
-}
+type LayerData = Required<spec.LayerData>;
 
 interface Layer {
   inputNode: PoseNode | null,
@@ -22,10 +14,10 @@ interface Layer {
   weight: number,
 }
 
-@nodeDataClass('LayerBlendNodeData')
+@nodeDataClass(spec.NodeDataType.LayerBlendNodeData)
 export class LayerBlendNodeData extends GraphNodeData {
   baseNodeIndex = InvalidIndex;
-  layerDatas: Required<SpecLayerData>[] = [];
+  layerDatas: LayerData[] = [];
 
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(LayerBlendNode, context);
@@ -40,7 +32,7 @@ export class LayerBlendNodeData extends GraphNodeData {
     }
   }
 
-  override load (data: SpecLayerBlendNodeData): void {
+  override load (data: spec.LayerBlendNodeData): void {
     super.load(data);
 
     this.baseNodeIndex = data.baseNodeIndex ?? InvalidIndex;
