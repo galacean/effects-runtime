@@ -36,6 +36,12 @@ export class EditorGUILayout {
     return ImGui.Checkbox('##' + label + guiID, access(object, property));
   }
 
+  static Vector2Field (label: string, value: ImGui.XY | ImGui.Bind.ImTuple2<number>, guiID?: string) {
+    EditorGUILayout.Label(label);
+
+    return ImGui.DragFloat2('##' + label + guiID, value, 0.03);
+  }
+
   static Vector3Field (label: string, value: ImGui.XYZ | ImGui.XYZW | ImGui.Bind.ImTuple3<number> | ImGui.Bind.ImTuple4<number>, guiID?: string) {
     EditorGUILayout.Label(label);
 
