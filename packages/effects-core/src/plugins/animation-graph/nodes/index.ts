@@ -1,6 +1,6 @@
 export * from './animation-clip-node';
 export * from './apply-additive-node';
-export * from './blend-1d-node';
+export * from './blend-node';
 export * from './bool-nodes';
 export * from './const-value-nodes';
 export * from './control-parameter-nodes';
