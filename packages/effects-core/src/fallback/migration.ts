@@ -10,6 +10,7 @@ import {
 import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import { oldBezierKeyFramesToNew } from '../math';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -187,6 +188,165 @@ export function version33Migration (json: JSONScene): JSONScene {
 
       if (compositionOptions && compositionOptions.refId !== undefined) {
         compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
+      }
+    }
+  }
+
+  // TODO: Animation clip migration, move to version34Migration function
+  //-------------------------------------------------------------------------
+
+  const convertOldBezierValue = (bezierValue?: spec.NumberExpression)=>{
+    if (!bezierValue || bezierValue[0] !== spec.ValueType.BEZIER_CURVE) {
+      return;
+    }
+
+    bezierValue[1] = oldBezierKeyFramesToNew(bezierValue[1]) as unknown as spec.BezierKeyframeValue[];
+  };
+
+  for (const playableAsset of json.miscs) {
+    if (playableAsset.dataType === spec.DataType.TransformPlayableAsset) {
+      const transformPlayableAsset = playableAsset as spec.TransformPlayableAssetData;
+
+      if (transformPlayableAsset.sizeOverLifetime) {
+        const sizeOverLifetime = transformPlayableAsset.sizeOverLifetime;
+
+        convertOldBezierValue(sizeOverLifetime.x);
+        convertOldBezierValue(sizeOverLifetime.y);
+        convertOldBezierValue(sizeOverLifetime.z);
+        convertOldBezierValue(sizeOverLifetime.size);
+      }
+
+      if (transformPlayableAsset.rotationOverLifetime) {
+        const rotationOverLifetime = transformPlayableAsset.rotationOverLifetime;
+
+        convertOldBezierValue(rotationOverLifetime.x);
+        convertOldBezierValue(rotationOverLifetime.y);
+        convertOldBezierValue(rotationOverLifetime.z);
+      }
+
+      if (transformPlayableAsset.positionOverLifetime) {
+        const positionOverLifetime = transformPlayableAsset.positionOverLifetime;
+
+        convertOldBezierValue(positionOverLifetime.linearX);
+        convertOldBezierValue(positionOverLifetime.linearY);
+        convertOldBezierValue(positionOverLifetime.linearZ);
+
+        convertOldBezierValue(positionOverLifetime.orbitalX);
+        convertOldBezierValue(positionOverLifetime.orbitalY);
+        convertOldBezierValue(positionOverLifetime.orbitalZ);
+
+        convertOldBezierValue(positionOverLifetime.speedOverLifetime);
+        convertOldBezierValue(positionOverLifetime.gravityOverLifetime);
+      }
+    }
+
+    if (playableAsset.dataType === spec.DataType.SpriteColorPlayableAsset) {
+      const colorPlayableAsset = playableAsset as spec.SpriteColorPlayableAssetData;
+
+      convertOldBezierValue(colorPlayableAsset.colorOverLifetime?.opacity);
+    }
+
+    if (playableAsset.dataType === spec.DataType.Vector2PropertyPlayableAsset
+      || playableAsset.dataType === spec.DataType.Vector4PropertyPlayableAsset
+    || playableAsset.dataType === spec.DataType.ColorPropertyPlayableAsset
+    ) {
+      //@ts-expect-error
+      const curveData = playableAsset.curveData[1];
+
+      for (const bezierValue of curveData) {
+        convertOldBezierValue(bezierValue);
+      }
+    }
+
+    if (playableAsset.dataType === spec.DataType.FloatPropertyPlayableAsset
+    ) {
+      //@ts-expect-error
+      const curveData = playableAsset.curveData;
+
+      convertOldBezierValue(curveData);
+    }
+  }
+
+  for (const component of json.components) {
+    if (component.dataType === spec.DataType.ParticleSystem) {
+      const particleSystemData = component as spec.ParticleSystemData;
+
+      const particleOptions = particleSystemData.options;
+
+      convertOldBezierValue(particleOptions.startLifetime);
+      convertOldBezierValue(particleOptions.startDelay);
+      convertOldBezierValue(particleOptions.startSize);
+      convertOldBezierValue(particleOptions.sizeAspect);
+      convertOldBezierValue(particleOptions.startSizeX);
+      convertOldBezierValue(particleOptions.startSizeY);
+      convertOldBezierValue(particleOptions.startRotationZ);
+      convertOldBezierValue(particleOptions.startRotationX);
+      convertOldBezierValue(particleOptions.startRotationY);
+
+      if (particleSystemData.shape) {
+        const shape = particleSystemData.shape;
+
+        convertOldBezierValue(shape.turbulenceX);
+        convertOldBezierValue(shape.turbulenceY);
+        convertOldBezierValue(shape.turbulenceZ);
+      }
+
+      if (particleSystemData.emission) {
+        const emission = particleSystemData.emission;
+
+        convertOldBezierValue(emission.rateOverTime);
+      }
+
+      if (particleSystemData.sizeOverLifetime) {
+        const sizeOverLifetime = particleSystemData.sizeOverLifetime;
+
+        convertOldBezierValue(sizeOverLifetime.x);
+        convertOldBezierValue(sizeOverLifetime.y);
+        convertOldBezierValue(sizeOverLifetime.size);
+      }
+
+      if (particleSystemData.rotationOverLifetime) {
+        const rotationOverLifetime = particleSystemData.rotationOverLifetime;
+
+        convertOldBezierValue(rotationOverLifetime.x);
+        convertOldBezierValue(rotationOverLifetime.y);
+        convertOldBezierValue(rotationOverLifetime.z);
+      }
+
+      if (particleSystemData.positionOverLifetime) {
+        const positionOverLifetime = particleSystemData.positionOverLifetime;
+
+        convertOldBezierValue(positionOverLifetime.linearX);
+        convertOldBezierValue(positionOverLifetime.linearY);
+        convertOldBezierValue(positionOverLifetime.linearZ);
+
+        convertOldBezierValue(positionOverLifetime.orbitalX);
+        convertOldBezierValue(positionOverLifetime.orbitalY);
+        convertOldBezierValue(positionOverLifetime.orbitalZ);
+
+        convertOldBezierValue(positionOverLifetime.forceCurve);
+        convertOldBezierValue(positionOverLifetime.startSpeed);
+
+        convertOldBezierValue(positionOverLifetime.speedOverLifetime);
+        convertOldBezierValue(positionOverLifetime.gravityOverLifetime);
+      }
+
+      convertOldBezierValue(particleSystemData.colorOverLifetime?.opacity);
+
+      if (particleSystemData.textureSheetAnimation) {
+        const textureSheetAnimation = particleSystemData.textureSheetAnimation;
+
+        convertOldBezierValue(textureSheetAnimation.cycles);
+        convertOldBezierValue(textureSheetAnimation.animationDelay);
+        convertOldBezierValue(textureSheetAnimation.animationDuration);
+      }
+
+      if (particleSystemData.trails) {
+        const trails = particleSystemData.trails;
+
+        convertOldBezierValue(trails.lifetime);
+        convertOldBezierValue(trails.widthOverTrail);
+        convertOldBezierValue(trails.opacityOverLifetime);
       }
     }
   }
