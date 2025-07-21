@@ -10,6 +10,12 @@ const container = document.getElementById('J-container');
       interactive: true,
     });
 
+    player.on('play', ({ time }) => {
+      console.info(`[player play] - player started playing at ${time}`);
+    });
+    player.on('resume', () => {
+      console.info('[player resume] - player resumed.');
+    });
     player.on('click', e => {
       console.info(`[player click] - item [${e.name}] clicked.`);
     });
@@ -33,6 +39,12 @@ const container = document.getElementById('J-container');
     const composition = await player.loadScene(json);
     const item = composition.getItemByName('lotteryBtn');
 
+    composition.on('play', () => {
+      console.info('[composition play] - composition started playing');
+    });
+    composition.on('pause', () => {
+      console.info('[composition pause] - composition paused');
+    });
     item?.on('click', e => {
       console.info(`[item click] - item [${e.name}] clicked.`);
     });
