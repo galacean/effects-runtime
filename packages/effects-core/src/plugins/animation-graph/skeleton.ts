@@ -92,7 +92,7 @@ export class Skeleton {
   private addRecordedProperty (path: string, className: string, property: string, type: AnimatedPropertyType) {
     const totalPath = path + className + property;
 
-    if (this.pathToObjectIndex.get(totalPath)) {
+    if (this.pathToObjectIndex.get(totalPath) !== undefined) {
       return;
     }
 
