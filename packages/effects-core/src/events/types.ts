@@ -6,11 +6,12 @@ import type { Region } from '../plugins';
  */
 export type ItemEvent = {
   /**
-   * 元素点击事件
+   * 元素点击事件（编辑器设置交互行为“消息通知”）
    */
   ['click']: [region: Region],
   /**
    * 元素消息事件（元素创建/销毁时触发）
+   * 注意：仅对交互元素有效
    */
   ['message']: [message: Omit<MessageItem, 'compositionId'>],
 };

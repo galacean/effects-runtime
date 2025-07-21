@@ -1,5 +1,5 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
-import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
@@ -300,41 +300,6 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.setVisible(visible);
   }
 
-  setOpacity (opacity: number) {
-    const material = this.renderer.particleMesh.mesh.material;
-    const geometry = this.renderer.particleMesh.mesh.geometry;
-    const originalColor = material.getVector4('uOpacityOverLifetimeValue')?.toArray() || [1, 1, 1, 1];
-
-    material.setVector4('uOpacityOverLifetimeValue', new Vector4(originalColor[0], originalColor[1], originalColor[2], opacity));
-    const data = geometry.getAttributeData('aColor') || [];
-
-    for (let i = 0; i < data.length; i += 32) {
-      data[i * 8 + 7] = opacity;
-    }
-  }
-
-  /**
-   * @internal
-   */
-  setColor (r: number, g: number, b: number, a: number) {
-    const material = this.renderer.particleMesh.mesh.material;
-    const geometry = this.renderer.particleMesh.mesh.geometry;
-    const originalColor = material.getVector4('uOpacityOverLifetimeValue')?.toArray() || [1, 1, 1, 1];
-
-    material.setVector4('uOpacityOverLifetimeValue', new Vector4(originalColor[0], originalColor[1], originalColor[2], a));
-    const data = geometry.getAttributeData('aColor') || [];
-
-    for (let i = 0; i < data.length; i += 32) {
-      data[i * 8 + 4] = r;
-      data[i * 8 + 5] = g;
-      data[i * 8 + 6] = b;
-      data[i * 8 + 7] = a;
-    }
-  }
-
-  setParentTransform (transform: Transform) {
-  }
-
   getTextures (): Texture[] {
     return this.renderer.getTextures();
   }
@@ -508,7 +473,7 @@ export class ParticleSystem extends Component implements Maskable {
     }
     const previousColorMasks: boolean[] = [];
 
-    for (let i = 0;i < this.renderer.meshes.length;i++) {
+    for (let i = 0; i < this.renderer.meshes.length; i++) {
       const material = this.renderer.meshes[i].material;
 
       previousColorMasks.push(material.colorMask);
@@ -519,7 +484,7 @@ export class ParticleSystem extends Component implements Maskable {
       mesh.render(renderer);
     }
 
-    for (let i = 0;i < this.renderer.meshes.length;i++) {
+    for (let i = 0; i < this.renderer.meshes.length; i++) {
       const material = this.renderer.meshes[i].material;
 
       material.colorMask = previousColorMasks[i];

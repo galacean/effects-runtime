@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-model",
-  "version": "2.5.3",
+  "version": "2.5.5",
   "description": "Galacean Effects player model plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -64,7 +64,7 @@
   "devDependencies": {
     "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
-    "@vvfx/resource-detection": "^0.9.0",
+    "@vvfx/resource-detection": "^0.10.0",
     "@types/hammerjs": "^2.0.45",
     "fpsmeter": "^0.3.1",
     "hammerjs": "^2.0.8"
