@@ -8,6 +8,12 @@
 
 ---
 
+## 2.5.5
+
+`2025-07-21`
+
+- Fix: revert overflow fix. [#1088](https://github.com/galacean/effects-runtime/pull/1088) @Fryt1
+
 ## 2.5.4
 
 `2025-07-17`
