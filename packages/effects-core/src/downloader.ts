@@ -266,7 +266,9 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   video.setAttribute('playsinline', 'playsinline');
 
   return new Promise<HTMLVideoElement>((resolve, reject) => {
-    const pending = video.play();
+    const pending = video.play().catch(e=>{
+      reject(e);
+    });
 
     if (pending) {
       void pending.then(() => resolve(video));

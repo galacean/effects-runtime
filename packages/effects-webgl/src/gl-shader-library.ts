@@ -120,7 +120,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
 
   compileShader (shader: GLShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void) {
     const { shared: sourceShared, vertex, fragment, name } = shader.source;
-    const { cacheId } = shader.source as SharedShaderWithSource;
+    const { cacheId } = shader.source;
     let shared = false;
 
     if (sourceShared || cacheId) {
@@ -172,8 +172,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
           if (!valid) {
             const error = gl.getProgramInfoLog(program);
             const err0 = 'the same texture';
+            const err1 = 'Two textures of different types use the same sampler';
 
-            if (error?.includes(err0)) {
+            if (error?.includes(err0) || error?.includes(err1)) {
               // 忽略这类错误
               setupProgram(glProgram);
             } else {
@@ -204,7 +205,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
 
   private computeShaderCacheId (shader: ShaderWithSource): string {
     const { vertex = '', fragment = '', shared } = shader;
-    const { cacheId } = shader as SharedShaderWithSource;
+    const { cacheId } = shader;
     let shaderCacheId: string;
 
     if (shared || cacheId) {

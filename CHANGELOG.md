@@ -7,6 +7,69 @@
 
 ---
 
+## 2.5.5
+
+`2025-07-21`
+
+- Fix: revert overflow fix. [#1088](https://github.com/galacean/effects-runtime/pull/1088) @Fryt1
+
+## 2.5.4
+
+`2025-07-17`
+
+- Fix: Resolve the issue where incorrect line count judgment caused the text to shift upwards. [#1080](https://github.com/galacean/effects-runtime/pull/1080) @Fryt1
+- Fix: add video.play error processing in loadVideo. [#1081](https://github.com/galacean/effects-runtime/pull/1081) @wumaolinmaoan
+- Fix: lockdown mode just check in iOS env. [#1078](https://github.com/galacean/effects-runtime/pull/1078) @yiiqii
+
+## 2.5.3
+
+`2025-07-11`
+
+- Fix: composition autoplay issue. [#1069](https://github.com/galacean/effects-runtime/pull/1069) @wumaolinmaoan
+  - Fix: composition play issue. [#1071](https://github.com/galacean/effects-runtime/pull/1071) @wumaolinmaoan
+- Fix: bezier path build const bezier easing. [#1070](https://github.com/galacean/effects-runtime/pull/1070) @wumaolinmaoan
+
+## 2.5.2
+
+`2025-07-09`
+
+- Fix: opt canvas dispose logic. [#1067](https://github.com/galacean/effects-runtime/pull/1067) @wumaolinmaoan
+
+## 2.5.1
+
+`2025-07-04`
+
+- Fix: text render issue. [#1062](https://github.com/galacean/effects-runtime/pull/1062) @wumaolinmaoan
+
+## 2.5.0
+
+`2025-07-04`
+
+- Feat: sprite component support custom geometry. [#1021](https://github.com/galacean/effects-runtime/pull/1021) @wumaolinmaoan
+  - Fix: sprite geometry split rotate. [#1053](https://github.com/galacean/effects-runtime/pull/1053) @wumaolinmaoan
+  - Fix: sprite split rotate issue. [#1055](https://github.com/galacean/effects-runtime/pull/1055) @wumaolinmaoan
+- Feat: support custom stats metric callbacks. [#1036](https://github.com/galacean/effects-runtime/pull/1036) @yiiqii
+- Feat: add runtime version check. [#1041](https://github.com/galacean/effects-runtime/pull/1041) @yiiqii
+- Feat: add alpha mask option. [#1042](https://github.com/galacean/effects-runtime/pull/1042) @wumaolinmaoan
+- Refactor: sprite shape geometry generation logic. [#1005](https://github.com/galacean/effects-runtime/pull/1005) @wumaolinmaoan
+- Refactor: sprite geometry initialization. [#1048](https://github.com/galacean/effects-runtime/pull/1048) @wumaolinmaoan
+- Perf: opt bezier evaluation performance. [#1059](https://github.com/galacean/effects-runtime/pull/1059) @wumaolinmaoan
+- Fix: type issues. [#1008](https://github.com/galacean/effects-runtime/pull/1008) @zheeeng
+- Fix: optimize Player dispose processing during loadScene. [#1037](https://github.com/galacean/effects-runtime/pull/1037) @wumaolinmaoan
+- Fix: baseRender splits processing. [#1046](https://github.com/galacean/effects-runtime/pull/1046) @wumaolinmaoan
+- Fix: text autosize. [#1050](https://github.com/galacean/effects-runtime/pull/1050) @Fryt1
+- Fix: video update. [#1051](https://github.com/galacean/effects-runtime/pull/1051) @wumaolinmaoan
+- Fix: ignore shader textures compile error. [#1054](https://github.com/galacean/effects-runtime/pull/1054) @wumaolinmaoan
+- Fix: audio asset loading. [#1056](https://github.com/galacean/effects-runtime/pull/1056) @wumaolinmaoan
+- Test: update pre runtime version for test. [#1047](https://github.com/galacean/effects-runtime/pull/1047) @yiiqii
+
+## 2.4.8
+
+`2025-06-27`
+
+- Fix: rich-text character overlapping bug. [#1040](https://github.com/galacean/effects-runtime/pull/1040) @Fryt1
+- Fix: composition freeze issue. [#1035](https://github.com/galacean/effects-runtime/pull/1035) @wumaolinmaoan
+
 ## 2.4.7
 
 `2025-06-13`

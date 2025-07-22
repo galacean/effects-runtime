@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import { isIOS } from '../utils';
 
 export * from './create-gl-context';
 export * from './gpu-time';
@@ -19,8 +20,10 @@ export function initGLContext () {
     copy(WebGLRenderingContext.prototype);
   } else {
     initErrors.push(
-      // iOS 16 lockdown mode
-      'iOS16 lockdown mode, WebGL Constants not in global'
+      isIOS() ?
+        // iOS 16 lockdown mode
+        'iOS16 lockdown mode, WebGL Constants not in global' :
+        'WebGL Constants not in global, please check your environment',
     );
   }
   if (!initErrors.length && !('HALF_FLOAT' in glContext)) {

@@ -49,6 +49,7 @@ export class EventSystem implements Disposable {
     let touchstart = 'mousedown';
     let touchmove = 'mousemove';
     let touchend = 'mouseup';
+    let touchcancel = 'mouseleave';
     const getTouchEventValue = (event: Event, x: number, y: number, dx = 0, dy = 0): TouchEventType => {
       let vx = 0;
       let vy = 0;
@@ -83,6 +84,7 @@ export class EventSystem implements Disposable {
       touchstart = 'touchstart';
       touchmove = 'touchmove';
       touchend = 'touchend';
+      touchcancel = 'touchcancel';
     }
     this.nativeHandlers = {
       [touchstart]: event => {
@@ -131,6 +133,7 @@ export class EventSystem implements Disposable {
         currentTouch = 0;
       },
     };
+    this.nativeHandlers[touchcancel] = this.nativeHandlers[touchend];
 
     Object.keys(this.nativeHandlers).forEach(name => {
       this.target?.addEventListener(String(name), this.nativeHandlers[name]);

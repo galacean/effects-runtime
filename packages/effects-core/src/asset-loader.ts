@@ -17,12 +17,11 @@ export class AssetLoader {
   ) { }
 
   loadGUID<T> (dataPath: spec.DataPath): T {
-    const guid = dataPath.id;
-
     if (!dataPath) {
       return null as T;
     }
 
+    const guid = dataPath.id;
     const effectsObjectData = this.findData(guid);
     let effectsObject: EffectsObject | undefined;
 
