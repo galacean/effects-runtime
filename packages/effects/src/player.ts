@@ -12,7 +12,7 @@ import {
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
-import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
+import type { PlayerConfig, PlayerErrorCause, PlayerEvent, PlayerUpdateEventInfo } from './types';
 import { assertNoConcurrentPlayers, playerMap } from './player-map';
 
 let enableDebugType = false;
@@ -51,6 +51,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   readonly ticker: Ticker;
 
   private readonly event: EventSystem;
+  private readonly updateInfo: PlayerUpdateEventInfo = { playing: false, deltaTime: 0 };
   private readonly reportGPUTime?: (time: number) => void;
   private readonly onError?: (e: Error, ...args: any) => void;
   /**
@@ -511,10 +512,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.ticker?.pause();
     this.emit('pause');
-    this.emit('update', {
-      player: this,
-      playing: false,
-    });
+    this.emitUpdate(false, 0);
+
     if (options && options.offloadTexture) {
       this.offloadTexture();
     }
@@ -615,10 +614,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       // TODO: 待移除
       if (this.compositions.some(c => !c.getPaused())) {
-        this.emit('update', {
-          player: this,
-          playing: true,
-        });
+        this.emitUpdate(true, dt / 1000);
       }
     }
   }
@@ -826,6 +822,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.destroyCurrentCompositions = throwErrorFunc;
     this.resume = throwErrorPromiseFunc;
     this.disposed = true;
+  }
+
+  private emitUpdate (playing: boolean, deltaTime: number) {
+    this.updateInfo.playing = playing;
+    this.updateInfo.deltaTime = deltaTime;
+    this.emit('update', this.updateInfo);
   }
 
   private offloadTexture () {

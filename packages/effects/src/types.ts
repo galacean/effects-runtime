@@ -155,6 +155,17 @@ export type PlayerErrorCause =
   ;
 
 /**
+ * 播放器更新事件信息
+ */
+export interface PlayerUpdateEventInfo {
+  /**
+   * 播放器是否正在播放
+   */
+  playing: boolean,
+  deltaTime: number,
+}
+
+/**
  * 播放器事件
  */
 export type PlayerEvent<P> = {
@@ -185,7 +196,7 @@ export type PlayerEvent<P> = {
   /**
    * 播放器更新事件
    */
-  ['update']: [updateInfo: { player: P, playing: boolean }],
+  ['update']: [updateInfo: PlayerUpdateEventInfo],
   /**
    * WebGL 上下文丢失事件
    * 这个时候播放器已经自动被销毁，业务需要做兜底逻辑

@@ -17,6 +17,13 @@ export type ItemEvent = {
 };
 
 /**
+ * 合成更新事件信息
+ */
+export interface CompositionUpdateEventInfo {
+  deltaTime: number,
+}
+
+/**
  * Composition 可以绑定的事件
  */
 export type CompositionEvent<C> = {
@@ -46,4 +53,8 @@ export type CompositionEvent<C> = {
    * 用于在合成中跳转到指定时间
    */
   ['goto']: [gotoInfo: { time: number }],
+  /**
+   * 合成更新事件
+   */
+  ['update']: [updateInfo: CompositionUpdateEventInfo],
 };

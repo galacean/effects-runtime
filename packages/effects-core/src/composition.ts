@@ -15,7 +15,7 @@ import { TextureLoadAction } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import { VFXItem } from './vfx-item';
-import type { CompositionEvent } from './events';
+import type { CompositionEvent, CompositionUpdateEventInfo } from './events';
 import { EventEmitter } from './events';
 import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
@@ -251,6 +251,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private paused = false;
   private isEndCalled = false;
   private _textures: Texture[] = [];
+  private readonly updateInfo: CompositionUpdateEventInfo = { deltaTime: 0 };
 
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -650,6 +651,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateCamera();
     this.prepareRender();
 
+    this.emitUpdate(deltaTimeInMs / 1000);
+
     if (this.isEnded && !this.isEndCalled) {
       this.isEndCalled = true;
       this.emit('end', { composition: this });
@@ -1046,5 +1049,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       await Promise.all(this.textures.map(tex => tex?.reloadData()));
       this.textureOffloaded = false;
     }
+  }
+
+  private emitUpdate (deltaTime: number) {
+    this.updateInfo.deltaTime = deltaTime;
+    this.emit('update', this.updateInfo);
   }
 }
