@@ -618,7 +618,7 @@ export class JSONConverter {
             if (track.path === 'translation') {
               clipData.positionCurves?.push({ path, keyFrames });
             } else {
-              clipData.scaleCurves?.push({ path, keyFrames });
+              clipData.scaleCurves?.push({ path, keyFrames: keyFrames as unknown as spec.Vector3CurveValue });
             }
           }
         });
