@@ -482,10 +482,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.doTick(0, true);
     }
     this.emit('pause');
-    this.emit('update', {
-      player: this,
-      playing: false,
-    });
   }
 
   /**
@@ -617,10 +613,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
 
-      this.emit('update', {
-        player: this,
-        playing: this.compositions.some(c => !c.getPaused()),
-      });
+      if (this.compositions.some(c => !c.getPaused())) {
+        this.emit('update', {
+          player: this,
+          playing: true,
+        });
+      }
     }
   }
 
