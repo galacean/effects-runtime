@@ -1,11 +1,14 @@
 import * as spec from '@galacean/effects-specification';
-import { isIOS } from '../utils';
+import { canUseBOM, isIOS } from '../utils';
 
 export * from './create-gl-context';
 export * from './gpu-time';
 
 export const initErrors: string[] = [];
 export const glContext: WebGL2RenderingContext = {} as WebGL2RenderingContext;
+
+const IOS16_LOCKDOWN_MODE = 'iOS16 lockdown mode, WebGL Constants not in global';
+const WEBGL_CONSTANTS_NOT_IN_GLOBAL = 'WebGL Constants not in global, please check your environment';
 
 if (!initErrors.length) {
   initGLContext();
@@ -19,12 +22,14 @@ export function initGLContext () {
     copy(WebGLRenderingContext);
     copy(WebGLRenderingContext.prototype);
   } else {
-    initErrors.push(
-      isIOS() ?
+    if (canUseBOM) {
+      initErrors.push(
         // iOS 16 lockdown mode
-        'iOS16 lockdown mode, WebGL Constants not in global' :
-        'WebGL Constants not in global, please check your environment',
-    );
+        isIOS() ? IOS16_LOCKDOWN_MODE : WEBGL_CONSTANTS_NOT_IN_GLOBAL,
+      );
+    } else {
+      initErrors.push(WEBGL_CONSTANTS_NOT_IN_GLOBAL);
+    }
   }
   if (!initErrors.length && !('HALF_FLOAT' in glContext)) {
     // @ts-expect-error set default value
