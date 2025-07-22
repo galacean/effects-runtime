@@ -200,7 +200,10 @@ export function version33Migration (json: JSONScene): JSONScene {
       return;
     }
 
-    bezierValue[1] = oldBezierKeyFramesToNew(bezierValue[1]) as unknown as spec.BezierKeyframeValue[];
+    // Check old bezier value
+    if ((bezierValue[1] instanceof Array) && bezierValue[1].length > 0 && (bezierValue[1][0] instanceof Array)) {
+      bezierValue[1] = oldBezierKeyFramesToNew(bezierValue[1]) as unknown as spec.BezierKeyframeValue[];
+    }
   };
 
   for (const playableAsset of json.miscs) {
@@ -347,6 +350,53 @@ export function version33Migration (json: JSONScene): JSONScene {
         convertOldBezierValue(trails.lifetime);
         convertOldBezierValue(trails.widthOverTrail);
         convertOldBezierValue(trails.opacityOverLifetime);
+      }
+    }
+  }
+
+  for (const animationClip of json.animations) {
+    if (animationClip.dataType === spec.DataType.AnimationClip) {
+
+      if (animationClip.eulerCurves) {
+        for (const eulerCurve of animationClip.eulerCurves) {
+          const eulerVector3CurveValue = eulerCurve.keyFrames as unknown as spec.Vector3CurveValue;
+          const eulerVector3CurveData = eulerVector3CurveValue[1];
+
+          convertOldBezierValue(eulerVector3CurveData[0]);
+          convertOldBezierValue(eulerVector3CurveData[1]);
+          convertOldBezierValue(eulerVector3CurveData[2]);
+        }
+      }
+
+      if (animationClip.scaleCurves) {
+        for (const scaleCurve of animationClip.scaleCurves) {
+          //@ts-expect-error
+          if (scaleCurve.keyFrames[0] === spec.ValueType.VECTOR3_CURVE) {
+            const scaleVector3CurveValue = scaleCurve.keyFrames as unknown as spec.Vector3CurveValue;
+            const scaleVector3CurveData = scaleVector3CurveValue[1];
+
+            convertOldBezierValue(scaleVector3CurveData[0]);
+            convertOldBezierValue(scaleVector3CurveData[1]);
+            convertOldBezierValue(scaleVector3CurveData[2]);
+          }
+        }
+      }
+      if (animationClip.floatCurves) {
+        for (const floatCurve of animationClip.floatCurves) {
+
+          convertOldBezierValue(floatCurve.keyFrames);
+        }
+      }
+
+      if (animationClip.colorCurves) {
+        for (const colorCurve of animationClip.colorCurves) {
+          const colorCurveValue = colorCurve.keyFrames as unknown as spec.ColorCurveValue;
+          const colorCurveData = colorCurveValue[1];
+
+          convertOldBezierValue(colorCurveData[0]);
+          convertOldBezierValue(colorCurveData[1]);
+          convertOldBezierValue(colorCurveData[2]);
+        }
       }
     }
   }
