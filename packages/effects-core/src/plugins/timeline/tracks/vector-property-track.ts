@@ -22,7 +22,7 @@ export class Vector4PropertyTrack extends PropertyTrack {
   }
 }
 
-@effectsClass('Vector2PropertyTrack')
+@effectsClass(spec.DataType.Vector2PropertyTrack)
 export class Vector2PropertyTrack extends PropertyTrack {
   override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
     const mixer = new Vector2PropertyMixerPlayable(graph);
