@@ -3,7 +3,7 @@
  * 音频可视化效果核心实现
  * 功能：
  * 1. 监听阶段：单纹理移动和透明度变化
- * 2. 输入阶段：双纹理混合移动
+ * 2. 输入阶段：多纹理混合移动
  * 3. 基于音量检测的状态切换
  */
 import type { Material } from '@galacean/effects';
@@ -11,7 +11,7 @@ import { Player, RendererComponent, setBlendMode, spec } from '@galacean/effects
 import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Ad0nS4KNtEMAAAAAQDAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*l15SSZrLuoAAAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 // 调试模式开关
 const DEBUG = true; // 调试模式开关
@@ -24,27 +24,24 @@ function clampOffset (value: number): number {
 // 初始化日志
 if (DEBUG) {
   // eslint-disable-next-line no-console
-  console.log('Custom Shader Initializing...');
+  //console.log('Custom Shader Initializing...');
 }
 
 // 核心Shader参数
 interface ShaderParams {
-  _OffsetA: number,  // 纹理A的水平偏移
-  _OffsetB: number,  // 纹理B的水平偏移
-  _AlphaA: number,   // 纹理A的透明度
-  _AlphaB: number,   // 纹理B的透明度
-  _CanvasAspect: number, // 画布宽高比
-  _TextureAspect: number, // 纹理宽高比
+  _CanvasAspect: number; // 画布宽高比
+  _TextureAspect: number; // 纹理宽高比
+  _TextureCount: number; // 当前活动纹理数量
 }
 
 const shaderParams: ShaderParams = {
-  _OffsetA: 0,
-  _OffsetB: 0,
-  _AlphaA: 0,
-  _AlphaB: 0,
   _CanvasAspect: 1,
   _TextureAspect: 1,
+  _TextureCount: 0,
 };
+
+// 最大支持的纹理数量
+const MAX_TEXTURES = 4;
 
 /**
  * 顶点Shader
@@ -67,41 +64,80 @@ void main(){
 
 /**
  * 片段Shader
- * 实现双纹理混合效果：
- * 1. 根据偏移量计算两个纹理的UV
+ * 实现多纹理混合效果：
+ * 1. 根据偏移量计算多个纹理的UV
  * 2. 应用透明度混合
  * 3. 确保纹理在有效范围内显示
+ * 4. 按从后向前顺序混合纹理
  */
 const fragment = /*glsl*/ `
-#extension GL_OES_standard_derivatives : enable
 precision highp float;
-varying vec2 uv;                  // 从顶点Shader传递的UV坐标
-uniform float _OffsetA, _OffsetB;  // 纹理A和B的水平偏移(像素单位)
-uniform float _AlphaA, _AlphaB;    // 纹理A和B的透明度
-uniform float _CanvasAspect, _TextureAspect; // 画布和纹理宽高比
-uniform sampler2D uTexA, uTexB;    // 纹理A和B
+varying vec2 uv;
+uniform float _TextureCount;
+uniform float _Offset0;
+uniform float _Offset1;
+uniform float _Offset2;
+uniform float _Offset3;
+uniform float _Alpha0;
+uniform float _Alpha1;
+uniform float _Alpha2;
+uniform float _Alpha3;
+uniform sampler2D uTex0;
+uniform sampler2D uTex1;
+uniform sampler2D uTex2;
+uniform sampler2D uTex3;
+
+// 确保UV在有效范围内采样
+vec2 clampUV(vec2 uv) {
+  return clamp(uv, vec2(0.01), vec2(0.99));
+}
 
 void main() {
-  // 计算归一化的偏移量(假设画布宽度为1000像素)
-  float normOffsetA = _OffsetA / 1000.0;
-  float normOffsetB = _OffsetB / 1000.0;
+  vec4 finalColor = vec4(0.0);
+  int textureCount = int(_TextureCount);
   
-  // 计算带偏移的UV坐标(从右向左移动)
-  vec2 tuvA = vec2(uv.x - normOffsetA, 1.0 - uv.y);
-  vec2 tuvB = vec2(uv.x - normOffsetB, 1.0 - uv.y);
-  
-  // 采样纹理A
-  vec4 colorA = texture2D(uTexA, tuvA);
-  colorA.a *= _AlphaA;
-  
-  // 采样纹理B
-  vec4 colorB = texture2D(uTexB, tuvB);
-  colorB.a *= _AlphaB;
-  
-  // 预乘alpha并加法混合
-  colorA.rgb *= colorA.a;
-  colorB.rgb *= colorB.a;
-  gl_FragColor = colorA + colorB;
+  // 按从新到旧顺序处理纹理（纹理3最新，纹理0最旧）
+  for (int i = 3; i >= 0; i--) {
+    if (i < textureCount) {
+      float offset, alpha;
+      vec4 color;
+      
+      // 根据索引获取参数
+      if (i == 0) {
+        offset = _Offset0 / 200.0;
+        alpha = _Alpha0;
+        color = texture2D(uTex0, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+      } else if (i == 1) {
+        offset = _Offset1 / 200.0;
+        alpha = _Alpha1;
+        color = texture2D(uTex1, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+      } else if (i == 2) {
+        offset = _Offset2 / 200.0;
+        alpha = _Alpha2;
+        color = texture2D(uTex2, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+      } else if (i == 3) {
+        offset = _Offset3 / 200.0;
+        alpha = _Alpha3;
+        color = texture2D(uTex3, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+      }
+      
+      color.a *= alpha;
+      
+      // 边缘处理
+      vec2 tuv = vec2(uv.x - offset, 1.0 - uv.y);
+      float edgeFactor = smoothstep(0.0, 0.2, min(tuv.x, 1.0-tuv.x)) *
+                         smoothstep(0.0, 0.2, min(tuv.y, 1.0-tuv.y));
+      color.a *= edgeFactor;
+      
+      // 应用规范混合公式：新纹理作为源(source)，旧纹理作为目标(destination)
+      // finalColor = destination, color = source
+      // result = dest * (1 - src.a) + src * src.a
+      finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
+      finalColor.a = finalColor.a * (1.0 - color.a) + color.a;
+    }
+  }
+
+  gl_FragColor = finalColor;
 }
 `;
 
@@ -114,13 +150,12 @@ let material: Material | undefined;
  */
 (async () => {
   // eslint-disable-next-line no-console
-  console.log('1. Starting initialization...');
+  // console.log('1. Starting initialization...');
   const player = new Player({
     container,
     interactive: true,
-    onError: (err: Error, ...args: any[]) => {
-      // eslint-disable-next-line no-console
-      console.error('Player error:', err.message);
+    onError: (err: Error) => {
+      console.error('Player error:', err);
     },
   });
 
@@ -139,6 +174,12 @@ let material: Material | undefined;
     }
   });
 
+  // 添加偏移和透明度参数
+  for (let i = 0; i < MAX_TEXTURES; i++) {
+    jsonValue.materials[0].floats[`_Offset${i}`] = 0;
+    jsonValue.materials[0].floats[`_Alpha${i}`] = 0;
+  }
+
   jsonValue.shaders[0].vertex = vertex;
   jsonValue.shaders[0].fragment = fragment;
   const composition = await player.loadScene(jsonValue);
@@ -147,9 +188,11 @@ let material: Material | undefined;
   const controller = new TextureController();
   const engine = composition.renderer.engine;
 
-  // 初始化时重置到监听状态
-  controller.resetToListening(performance.now());
-  console.log('Initialized controller with textures:', controller.textures);
+  // 初始化时重置到监听状态(转换为秒)
+  controller.resetToListening(performance.now() / 1000);
+  if (DEBUG) {
+    console.log('Initialized controller with textures:', controller.textures);
+  }
 
   // 手动加载本地图片并创建纹理
   const loadLocalImageData = (path: string): Promise<ImageData> => {
@@ -169,11 +212,11 @@ let material: Material | undefined;
         const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
         // eslint-disable-next-line no-console
-        console.log(`Texture loaded: ${path}, size: ${img.width}x${img.height}`);
+        //console.log(`Texture loaded: ${path}, size: ${img.width}x${img.height}`);
         resolve(imageData);
       };
       img.onerror = err => {
-        console.error(`Failed to load texture: ${path}`, err);
+        //console.error(`Failed to load texture: ${path}`, err);
         reject(err);
       };
       img.src = path;
@@ -181,11 +224,11 @@ let material: Material | undefined;
   };
 
   // eslint-disable-next-line no-console
-  console.log('3. Loading texture...');
-  const imageData = await loadLocalImageData('/assets/cloud.png');
+  //console.log('3. Loading texture...');
+  const imageData = await loadLocalImageData('../cloud.png');
 
   // eslint-disable-next-line no-console
-  console.log('4. Texture loaded, creating...');
+  //console.log('4. Texture loaded, creating...');
   const cloudTexture = Texture.createWithData(
     engine,
     {
@@ -199,41 +242,35 @@ let material: Material | undefined;
     }
   );
 
-  // 设置宽高比参数
-  if (container) {
-    shaderParams._CanvasAspect = container.clientWidth / container.clientHeight;
-  }
-  shaderParams._TextureAspect = imageData.width / imageData.height;
+  if (item) {
+    const rendererComponents = item.getComponents(RendererComponent);
 
-  // 重新加载场景以应用纹理修改
-  await player.loadScene(jsonValue);
+    if (rendererComponents.length > 0) {
+      const componentMaterials = rendererComponents[0].materials;
 
-  // 初始化材质参数
-  function applyShaderParams (material: Material) {
-    // eslint-disable-next-line no-console
-    console.log('Applying shader params:', {
-      _OffsetA: shaderParams._OffsetA,
-      _AlphaA: shaderParams._AlphaA,
-      _OffsetB: shaderParams._OffsetB,
-      _AlphaB: shaderParams._AlphaB,
-    });
-
-    material.setFloat('_OffsetA', shaderParams._OffsetA);
-    material.setFloat('_OffsetB', shaderParams._OffsetB);
-    material.setFloat('_AlphaA', shaderParams._AlphaA);
-    material.setFloat('_AlphaB', shaderParams._AlphaB);
-    material.setFloat('_CanvasAspect', shaderParams._CanvasAspect);
-    material.setFloat('_TextureAspect', shaderParams._TextureAspect);
-    material.setTexture('uTexA', cloudTexture);
-    material.setTexture('uTexB', cloudTexture);
-
-    // eslint-disable-next-line no-console
-    console.log('Actual material values:', {
-      _OffsetA: material.getFloat('_OffsetA'),
-      _AlphaA: material.getFloat('_AlphaA'),
-      _OffsetB: material.getFloat('_OffsetB'),
-      _AlphaB: material.getFloat('_AlphaB'),
-    });
+      if (componentMaterials.length > 0) {
+        material = componentMaterials[0];
+        setBlendMode(material, spec.BlendingMode.ADD);
+        material.depthMask = false;
+        
+        // 初始化参数和纹理
+        material.setFloat('_CanvasAspect', shaderParams._CanvasAspect);
+        material.setFloat('_TextureAspect', shaderParams._TextureAspect);
+        material.setFloat('_TextureCount', shaderParams._TextureCount);
+        
+        // 分别设置四个独立纹理
+        material.setTexture('uTex0', cloudTexture);
+        material.setTexture('uTex1', cloudTexture);
+        material.setTexture('uTex2', cloudTexture);
+        material.setTexture('uTex3', cloudTexture);
+        
+        // 初始化偏移和透明度参数
+        for (let i = 0; i < MAX_TEXTURES; i++) {
+          material.setFloat(`_Offset${i}`, 0.5);
+          material.setFloat(`_Alpha${i}`, 0);
+        }
+      }
+    }
   }
 
   /**
@@ -252,88 +289,51 @@ let material: Material | undefined;
    * 每帧更新纹理控制器状态和Shader参数
    */
   function updateLoop () {
-    const now = performance.now();
-    const delta = (now - lastTime) / 1000;
+    const now = performance.now() / 1000; // 转换为秒以匹配texture-controller
+    const delta = (now - lastTime);
 
     lastTime = now;
 
     const volume = getAudioVolume();
 
-    console.log(`Current volume: ${volume}`);
+    if (DEBUG) {
+      console.log(`Current volume: ${volume}`);
+      console.log('Current textures:', controller.textures);
+    }
 
     controller.update(delta, volume, now);
 
     // eslint-disable-next-line no-console
-    console.log('Controller stage:', controller.mainStage);
-    // eslint-disable-next-line no-console
-    console.log('Textures array:', controller.textures);
+    //console.log('Controller stage:', controller.mainStage);
+    //console.log('Textures:', controller.textures);
 
     if (material) {
-      // eslint-disable-next-line no-console
-      // 调试输出材质参数
-      if (DEBUG) {
-        console.log('Material uniforms:', {
-          _OffsetA: material?.getFloat('_OffsetA')?.toFixed(2),
-          _AlphaA: material?.getFloat('_AlphaA')?.toFixed(2),
-          _OffsetB: material?.getFloat('_OffsetB')?.toFixed(2),
-          _AlphaB: material?.getFloat('_AlphaB')?.toFixed(2),
-        });
-      }
-      if (controller.textures.length > 0) {
-        const texA = controller.textures[0];
-
-        shaderParams._OffsetA = texA.x;
-        shaderParams._AlphaA = texA.alpha;
-        if (material) {
-          console.log(`Setting params: _OffsetA=${texA.x}, _AlphaA=${texA.alpha.toFixed(2)}`);
-          material.setFloat('_OffsetA', texA.x);
-          material.setFloat('_AlphaA', texA.alpha);
-          console.log(`After set: _OffsetA=${material?.getFloat('_OffsetA')?.toFixed(2)}, _AlphaA=${material?.getFloat('_AlphaA')?.toFixed(2)}`);
+      // 更新纹理数量
+      const textureCount = Math.min(controller.textures.length, MAX_TEXTURES);
+      console.log(textureCount);
+      material.setFloat('_TextureCount', textureCount); // 修正为setInt以匹配shader中的int uniform
+      
+        // 更新每个纹理的参数
+        for (let i = 0; i < textureCount; i++) {
+          const texture = controller.textures[i];
+          material.setFloat(`_Offset${i}`, texture.x);
+          material.setFloat(`_Alpha${i}`, texture.alpha);
+          
+          // 调试日志
+          if (DEBUG && i === 0) {
+            //console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
+          }
         }
-      }
-
-      if (controller.textures.length > 1) {
-        const texB = controller.textures[1];
-
-        shaderParams._OffsetB = texB.x;
-        shaderParams._AlphaB = texB.alpha;
-        if (material) {
-          console.log(`Setting params: _OffsetB=${texB.x}, _AlphaB=${texB.alpha.toFixed(2)}`);
-          material.setFloat('_OffsetB', texB.x);
-          material.setFloat('_AlphaB', texB.alpha);
-          console.log(`After set: _OffsetB=${material?.getFloat('_OffsetB')?.toFixed(2)}, _AlphaB=${material?.getFloat('_AlphaB')?.toFixed(2)}`);
+        // 对于未使用的纹理，重置参数
+        for (let i = textureCount; i < MAX_TEXTURES; i++) {
+          material.setFloat(`_Offset${i}`, 0.5);
+          material.setFloat(`_Alpha${i}`, 0);
         }
-      }
-    }
-
-    // 调试信息
-    if (DEBUG) {
-      // eslint-disable-next-line no-console
-      console.log('Material params:', {
-        alphaA: shaderParams._AlphaA.toFixed(2),
-        alphaB: shaderParams._AlphaB.toFixed(2),
-        offsetA: shaderParams._OffsetA.toFixed(2),
-        offsetB: shaderParams._OffsetB.toFixed(2),
-      });
+      
+      // 如有必要，强制刷新
+      // material.markDirty?.();
     }
     requestAnimationFrame(updateLoop);
-  }
-
-  if (item) {
-    const rendererComponents = item.getComponents(RendererComponent);
-
-    if (rendererComponents.length > 0) {
-      const componentMaterials = rendererComponents[0].materials;
-
-      if (componentMaterials.length > 0) {
-        material = componentMaterials[0]; // 赋值到全局变量
-
-        setBlendMode(material, spec.BlendingMode.ADD);
-        material.depthMask = false;
-
-        applyShaderParams(material);
-      }
-    }
   }
 
   updateLoop();

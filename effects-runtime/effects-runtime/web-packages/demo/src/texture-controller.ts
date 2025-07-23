@@ -1,235 +1,185 @@
 /* eslint-disable no-console */
-// 调试模式开关
 const DEBUG = true;
 
 enum MainStage { Listening, Input, Stop }
 enum TexFadeStage { Hidden, FadingIn, Showing, FadingOut }
 
 interface TexState {
-  x: number,                     // 横向位置
-  stage: TexFadeStage,           // 当前透明阶段
-  alpha: number,                 // 当前透明度
-  time: number,                  // 当前阶段内时间
-  life: number,                  // 累计生存时间
-  startedAt: number,             // 全局计时起始
-  duration: number,              // 整体存在时长
+  id: number;                   // 纹理唯一ID
+  x: number;                    // 横向位置
+  stage: TexFadeStage;          // 当前透明阶段
+  alpha: number;                // 当前透明度
+  startedAt: number;            // 创建时间戳
+  duration: number;             // 总持续时间
+  fadeIn: number;               // 渐显时长
+  fadeOutStart: number;         // 渐隐开始时间
+  fadeOutEnd: number;           // 渐隐结束时间
+  distance: number;             // 移动距离
+  type: 'listening' | 'input';  // 纹理类型
+  triggered?: boolean;          // 是否已触发检测
 }
 
 export class TextureController {
   textures: TexState[] = [];
-  mainStage: MainStage = MainStage.Listening;
-  pendingLoop: boolean = false;
-  timer: number = 0;
-  volumeThreshold: number = 0.1; // 降低阈值提高灵敏度
-
-  // 第一阶段参数
+  nextId = 1;
+  currentStage: MainStage = MainStage.Listening;
+  volumeThreshold = 0.5;       // 符合规范要求的音量阈值
+  pendingInputStage = false;    // 标记是否在3.4s触发第二阶段
+  stageStartTime = 0;           // 当前阶段开始时间
+  
+  // 参数配置
   listeningDuration = 3.4;
-  movingDistance = 200;
-  fadeInMs = 0.6;
-  fadeOutStart = 2.4;
-  fadeOutEnd = 3.4;
-
-  // 第二阶段参数
+  listeningFadeIn = 0.6;
+  listeningFadeOutStart = 2.4;
+  listeningFadeOutEnd = 3.4;
+  listeningDistance = 100; // 对应UV偏移0.5
+  
   inputDuration = 2.4;
-  inputDistance = 400;
-  textureInterval = 0.5; // 第二张纹理的生成时间(秒)
-  fadeInA = 0.4;
-  fadeOutStartA = 1.9; // A消隐期开始
-  fadeOutB = 1.9; // B消隐起始（纹理2）
+  inputFadeIn = 0.4;
+  inputFadeOutStart = 1.9;
+  inputDistance = 200; // 对应UV偏移1.0
+  textureInterval = 500;        // 纹理B生成延迟(毫秒)
 
   onStage: (stage: MainStage) => void = () => {};
   onUpdate: (textures: TexState[]) => void = () => {};
 
-  constructor () {}
+  constructor() {
+    this.resetToListening(performance.now() / 1000);
+  }
 
-  resetToListening (now: number) {
-    // eslint-disable-next-line no-console
-    console.log('重置到监听阶段');
-    this.mainStage = MainStage.Listening;
-    this.pendingLoop = false;
-    this.timer = 0;
-
-    // 确保textures数组被正确初始化
-    this.textures = [{
-      x: 0,
-      stage: TexFadeStage.FadingIn,
-      alpha: 0,
-      time: 0,
-      life: 0,
-      startedAt: now,
-      duration: this.listeningDuration,
-    }];
-
-    // eslint-disable-next-line no-console
-    console.log('初始化textures:', this.textures);
+  resetToListening(now: number) {
+    this.currentStage = MainStage.Listening;
+    this.stageStartTime = now;
+    this.textures = [this.createTexture('listening', now)];
     this.onStage(MainStage.Listening);
+    if (DEBUG) {
+      console.log('重置到监听阶段', this.textures);
+    }
   }
 
-  triggerInputStage (now: number) {
-    // eslint-disable-next-line no-console
-    console.log('触发输入阶段');
-    this.mainStage = MainStage.Input;
-    this.pendingLoop = false;
-    this.timer = 0;
-    this.textures = [{
+  createTexture(type: 'listening' | 'input', startTime: number): TexState {
+    return {
+      id: this.nextId++,
+      type,
       x: 0,
       stage: TexFadeStage.FadingIn,
       alpha: 0,
-      time: 0,
-      life: 0,
-      startedAt: now,
-      duration: this.inputDuration,
-    }];
-    this.onStage(MainStage.Input);
+      startedAt: startTime,
+      duration: type === 'listening' ? this.listeningDuration : this.inputDuration,
+      fadeIn: type === 'listening' ? this.listeningFadeIn : this.inputFadeIn,
+      fadeOutStart: type === 'listening' ? this.listeningFadeOutStart : this.inputFadeOutStart,
+      fadeOutEnd: type === 'listening' ? this.listeningFadeOutEnd : this.inputDuration,
+      distance: type === 'listening' ? this.listeningDistance : this.inputDistance,
+      triggered: false
+    };
   }
 
-  stop () {
-    this.mainStage = MainStage.Stop;
+  enterInputStage(now: number) {
+    this.currentStage = MainStage.Input;
+    this.stageStartTime = now;
+    this.pendingInputStage = false;
+    
+    // 创建输入阶段纹理A
+    const texA = this.createTexture('input', now);
+    this.textures.push(texA);
+    
+    // 0.5s后创建纹理B
+    setTimeout(() => {
+      const texB = this.createTexture('input', performance.now() / 1000);
+      this.textures.push(texB);
+      
+      if (DEBUG) {
+        console.log('生成第二纹理', texB);
+      }
+    }, this.textureInterval);
+    
+    this.onStage(MainStage.Input);
+    if (DEBUG) {
+      console.log('进入第二阶段');
+    }
+  }
+
+  stop() {
+    this.currentStage = MainStage.Stop;
     this.textures = [];
     this.onStage(MainStage.Stop);
   }
 
-  update (delta: number, volume: number, now: number) {
-    this.timer += delta;
-
-    // 第一阶段：监听逻辑
-    if (this.mainStage === MainStage.Listening) {
-      const t = this.timer;
-
-      if (!this.textures.length) {
-        return;
-      }
-      const tex = this.textures[0];
-
-      tex.life += delta;
-      tex.x = this.movingDistance - (t / this.listeningDuration) * this.movingDistance;
-
-      if (t <= this.fadeInMs) {
+  update(delta: number, volume: number, now: number) {
+    // 更新所有纹理状态
+    this.textures.forEach(tex => {
+      const elapsed = now - tex.startedAt;
+      const lifeProgress = elapsed / tex.duration;
+      
+      // 更新位置
+      tex.x = tex.distance * (1 - lifeProgress);
+      
+      // 更新透明度
+      if (elapsed < tex.fadeIn) {
+        tex.alpha = elapsed / tex.fadeIn;
         tex.stage = TexFadeStage.FadingIn;
-        tex.alpha = t / this.fadeInMs;
-      } else if (t > this.fadeInMs && t < this.fadeOutStart) {
-        tex.stage = TexFadeStage.Showing;
+      } else if (elapsed < tex.fadeOutStart) {
         tex.alpha = 1;
-      } else if (t >= this.fadeOutStart && t <= this.fadeOutEnd) {
+        tex.stage = TexFadeStage.Showing;
+      } else if (elapsed < tex.fadeOutEnd) {
+        tex.alpha = 1 - (elapsed - tex.fadeOutStart) / 
+                   (tex.fadeOutEnd - tex.fadeOutStart);
         tex.stage = TexFadeStage.FadingOut;
-        tex.alpha = 1 - (t - this.fadeOutStart) / (this.fadeOutEnd - this.fadeOutStart);
-      } else if (t > this.fadeOutEnd) {
-        tex.alpha = 0;
-      }
-
-      // 音量判断触发第二阶段
-      if (t >= this.fadeOutStart && t < this.fadeOutEnd) {
-        if (volume > this.volumeThreshold) {
-          this.pendingLoop = true;
-          // eslint-disable-next-line no-console
-          console.log(`音量${volume}超过阈值${this.volumeThreshold}, 准备进入输入阶段`);
-        } else {
-          this.pendingLoop = false;
-        }
-      }
-
-      if (t > this.fadeOutEnd) {
-        if (this.pendingLoop) {
-          this.triggerInputStage(now);
-        } else {
-          this.resetToListening(now);
-        }
-      }
-    } else if (this.mainStage === MainStage.Input) {
-    // 第二阶段：纹理叠加逻辑
-      const tA = this.timer;
-
-      if (!this.textures.length) {
-        return;
-      }
-      const texA = this.textures[0];
-
-      texA.life = tA;
-      texA.x = this.inputDistance - (tA / texA.duration) * this.inputDistance;
-
-      if (tA < this.fadeInA) {
-        texA.alpha = tA / this.fadeInA;
-      } else if (tA < this.fadeOutStartA) {
-        texA.alpha = 1;
-      } else if (tA < texA.duration) {
-        texA.alpha = 1 - (tA - this.fadeOutStartA) / (texA.duration - this.fadeOutStartA);
       } else {
-        texA.alpha = 0;
+        tex.alpha = 0;
+        tex.stage = TexFadeStage.Hidden;
       }
 
-      // 在0.5s时生成第二纹理
-      if (!this.textures[1] && tA >= this.textureInterval) {
-        if (typeof DEBUG !== 'undefined' && DEBUG) {
-          // eslint-disable-next-line no-console
-          if (DEBUG) {
-            console.log(`生成第二纹理，当前时间: ${tA.toFixed(2)}s`);
-          }
-        }
-        this.textures[1] = {
-          x: 0,
-          stage: TexFadeStage.FadingIn,
-          alpha: 0,
-          time: 0,
-          life: 0,
-          startedAt: now,
-          duration: this.inputDuration,
-        };
-      }
+      // 精确时间点检测
+      this.checkTriggerPoints(tex, elapsed, volume, now);
+    });
 
-      const texB = this.textures[1];
+    // 清理结束的纹理
+    this.textures = this.textures.filter(
+      tex => (now - tex.startedAt) < tex.duration
+    );
 
-      if (texB) {
-        const tB = tA - this.textureInterval;
+    // 3.4s阶段转换点
+    if (this.currentStage === MainStage.Listening && 
+        this.pendingInputStage &&
+        now - this.stageStartTime >= this.listeningFadeOutEnd) {
+      this.enterInputStage(now);
+    }
+  }
 
-        texB.life = tB;
-        texB.x = this.inputDistance - (tB / texB.duration) * this.inputDistance;
-
-        if (tB < 0) {
-          texB.alpha = 0;
-        } else if (tB < this.textureInterval) {
-          texB.alpha = tB / this.textureInterval;
-        } else if (tB < this.fadeOutB) {
-          texB.alpha = 1;
-        } else if (tB < texB.duration) {
-          texB.alpha = 1 - (tB - this.fadeOutB) / (texB.duration - this.fadeOutB);
-        } else {
-          texB.alpha = 0;
-        }
-      }
-
-      // 在1.9s时检测音量
-      if (tA >= this.fadeOutStartA && !this.pendingLoop) {
-        this.pendingLoop = volume > this.volumeThreshold;
+  checkTriggerPoints(tex: TexState, elapsed: number, volume: number, now: number) {
+    // 监听阶段2.4s检测点
+    if (tex.type === 'listening' && 
+        Math.abs(elapsed - this.listeningFadeOutStart) < 0.05 &&
+        !tex.triggered) {
+      tex.triggered = true;
+      
+      if (volume > this.volumeThreshold && !this.pendingInputStage) {
+        this.pendingInputStage = true;
         if (DEBUG) {
-          // eslint-disable-next-line no-console
-          if (DEBUG) {
-            console.log(`音量检测: ${volume.toFixed(2)} > ${this.volumeThreshold} = ${this.pendingLoop}`);
-          }
+          console.log(`[精确检测] 音量${volume}超阈值，将在3.4s进入第二阶段`);
         }
-      }
-
-      // 动画结束处理
-      if (tA >= this.inputDuration) {
-        if (this.pendingLoop) {
-          this.triggerInputStage(now);
-          if (DEBUG) {
-            // eslint-disable-next-line no-console
-            if (DEBUG) {
-              console.log('触发新的输入阶段循环');
-            }
-          }
-        } else {
-          this.stop();
-          if (DEBUG) {
-            // eslint-disable-next-line no-console
-            if (DEBUG) {
-              console.log('动画结束');
-            }
-          }
+      } else if (!this.pendingInputStage) {
+        const newTex = this.createTexture('listening', now);
+        this.textures.push(newTex);
+        if (DEBUG) {
+          console.log(`[精确检测] 音量${volume}未超阈值，生成新监听纹理`, newTex);
         }
       }
     }
 
-    this.onUpdate(this.textures);
+    // 输入阶段1.9s检测点  
+    if (tex.type === 'input' &&
+        Math.abs(elapsed - this.inputFadeOutStart) < 0.05 &&
+        !tex.triggered) {
+      tex.triggered = true;
+      
+      if (volume > this.volumeThreshold) {
+        this.enterInputStage(now);
+        if (DEBUG) {
+          console.log(`[精确检测] 音量${volume}超阈值，生成新输入纹理组`);
+        }
+      }
+    }
   }
 }
