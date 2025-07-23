@@ -612,10 +612,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
 
-      // TODO: 待移除
-      if (this.compositions.some(c => !c.getPaused())) {
-        this.emitUpdate(true, dt / 1000);
-      }
+      this.emitUpdate(
+        this.compositions.some(c => !c.getPaused()),
+        dt / 1000,
+      );
     }
   }
 
