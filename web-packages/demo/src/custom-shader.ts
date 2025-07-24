@@ -8,6 +8,8 @@
  */
 import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, setBlendMode, spec } from '@galacean/effects';
+import { math } from '@galacean/effects-core';
+const { Vector4 } = math;
 import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 
@@ -87,6 +89,12 @@ uniform sampler2D uTex1;
 uniform sampler2D uTex2;
 uniform sampler2D uTex3;
 
+// 颜色uniform
+uniform vec4 uColor0;
+uniform vec4 uColor1;
+uniform vec4 uColor2;
+uniform vec4 uColor3;
+
 // 确保UV在有效范围内采样
 vec2 clampUV(vec2 uv) {
   return clamp(uv, vec2(0.01), vec2(0.99));
@@ -107,10 +115,14 @@ void main() {
         offset = _Offset0 / 200.0;
         alpha = _Alpha0;
         color = texture2D(uTex0, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+        // 应用颜色0
+        color.rgb = uColor0.rgb;
       } else if (i == 1) {
         offset = _Offset1 / 200.0;
         alpha = _Alpha1;
         color = texture2D(uTex1, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+        // 应用颜色1
+        color.rgb = uColor1.rgb;
       } else if (i == 2) {
         offset = _Offset2 / 200.0;
         alpha = _Alpha2;
@@ -174,10 +186,12 @@ let material: Material | undefined;
     }
   });
 
-  // 添加偏移和透明度参数
+  // 添加偏移、透明度和颜色矩阵参数
   for (let i = 0; i < MAX_TEXTURES; i++) {
     jsonValue.materials[0].floats[`_Offset${i}`] = 0;
     jsonValue.materials[0].floats[`_Alpha${i}`] = 0;
+    // 初始化颜色参数
+    jsonValue.materials[0].vector4s[`uColor${i}`] = [1, 1, 1, 1];
   }
 
   jsonValue.shaders[0].vertex = vertex;
@@ -264,10 +278,12 @@ let material: Material | undefined;
         material.setTexture('uTex2', cloudTexture);
         material.setTexture('uTex3', cloudTexture);
 
-        // 初始化偏移和透明度参数
+        // 初始化偏移、透明度和颜色矩阵参数
         for (let i = 0; i < MAX_TEXTURES; i++) {
           material.setFloat(`_Offset${i}`, 0.5);
           material.setFloat(`_Alpha${i}`, 0);
+        // 设置默认颜色(白色)
+        material.setVector4(`uColor${i}`, new Vector4(1, 1, 1, 1));
         }
       }
     }
@@ -275,11 +291,24 @@ let material: Material | undefined;
 
   /**
    * 获取当前音量(模拟)
-   * 实际项目中应替换为真实音频分析
-   * @returns 模拟音量值(0-1)
+   * 实现状态循环：
+   * 1. 状态1：3.4秒高音量(0.8)
+   * 2. 状态2：2.4秒中等音量(0.6)
+   * 3. 静谧状态：1秒静音
+   * 循环往复
    */
   function getAudioVolume () {
-    return Math.random(); // 模拟音量
+    const now = performance.now();
+    const cycleDuration = 6800; // 3400 + 2400 + 1000
+    const timeInCycle = now % cycleDuration;
+
+    if (timeInCycle < 3400) {
+      return 0.8; // 状态1
+    } else if (timeInCycle < 5800) {
+      return 0.6; // 状态2
+    } else {
+      return 0.0; // 静谧状态
+    }
   }
 
   let lastTime = performance.now();
@@ -320,10 +349,16 @@ let material: Material | undefined;
 
         material.setFloat(`_Offset${i}`, texture.x);
         material.setFloat(`_Alpha${i}`, texture.alpha);
+        
+        // 设置颜色
+        if (texture.color) {
+          material.setVector4(`uColor${i}`, new Vector4(...texture.color));
+        }
 
         // 调试日志
         if (DEBUG && i === 0) {
-          //console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
+          console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
+          console.log('Color:', texture.color);
         }
       }
       // 对于未使用的纹理，重置参数

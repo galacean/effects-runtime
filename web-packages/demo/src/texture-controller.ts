@@ -17,6 +17,10 @@ interface TexState {
   distance: number,             // 移动距离
   type: 'listening' | 'input',  // 纹理类型
   triggered?: boolean,          // 是否已触发检测
+  color?: [number, number, number, number]; // 直接颜色值[r,g,b,a]
+  colorMode?: number;           // 颜色模式 0:固定 1:动态渐变
+  colorStops?: [number, number, number, number][]; // 颜色渐变点
+  colorSpeed: number;          // 颜色变化速度
 }
 
 export class TextureController {
@@ -71,7 +75,32 @@ export class TextureController {
       fadeOutEnd: type === 'listening' ? this.listeningFadeOutEnd : this.inputDuration,
       distance: type === 'listening' ? this.listeningDistance : this.inputDistance,
       triggered: false,
+      colorSpeed: 1.0 // 默认颜色变化速度
     };
+  }
+
+  // 颜色配置
+  inputColors = {
+    primary: [0, 0, 1, 1] as [number, number, number, number], // 蓝色
+    secondary: [0, 1, 0, 1] as [number, number, number, number], // 绿色
+    colorMode: 0, // 0:固定 1:动态渐变
+    colorStops: [
+      [0, 0, 1, 1] as [number, number, number, number], // 蓝色
+      [0, 1, 0, 1] as [number, number, number, number], // 绿色
+      [1, 0, 0, 1] as [number, number, number, number]  // 红色
+    ],
+    colorSpeed: 1.0
+  };
+
+  // 设置输入阶段颜色
+  setInputColors(colors: {
+    primary?: [number, number, number, number],
+    secondary?: [number, number, number, number],
+    colorMode?: number,
+    colorStops?: [number, number, number, number][],
+    colorSpeed?: number
+  }) {
+    Object.assign(this.inputColors, colors);
   }
 
   enterInputStage (now: number) {
@@ -81,12 +110,20 @@ export class TextureController {
 
     // 创建输入阶段纹理A
     const texA = this.createTexture('input', now);
+    texA.color = this.inputColors.primary;
+    texA.colorMode = this.inputColors.colorMode;
+    texA.colorStops = this.inputColors.colorStops;
+    texA.colorSpeed = this.inputColors.colorSpeed;
 
     this.textures.push(texA);
 
     // 0.5s后创建纹理B
     setTimeout(() => {
       const texB = this.createTexture('input', performance.now() / 1000);
+      texB.color = this.inputColors.secondary;
+      texB.colorMode = this.inputColors.colorMode;
+      texB.colorStops = this.inputColors.colorStops;
+      texB.colorSpeed = this.inputColors.colorSpeed;
 
       this.textures.push(texB);
 
@@ -130,6 +167,23 @@ export class TextureController {
       } else {
         tex.alpha = 0;
         tex.stage = TexFadeStage.Hidden;
+      }
+
+      // 更新颜色 (如果是动态模式)
+      if (tex.colorMode === 1 && tex.colorStops && tex.colorStops.length > 1) {
+        const t = (Math.sin(now * tex.colorSpeed) * 0.5 + 0.5);
+        const colorIndex = Math.floor(t * (tex.colorStops.length - 1));
+        const nextIndex = Math.min(colorIndex + 1, tex.colorStops.length - 1);
+        const lerpT = t * (tex.colorStops.length - 1) - colorIndex;
+        
+        const colorA = tex.colorStops[colorIndex];
+        const colorB = tex.colorStops[nextIndex];
+        tex.color = [
+          colorA[0] + (colorB[0] - colorA[0]) * lerpT,
+          colorA[1] + (colorB[1] - colorA[1]) * lerpT,
+          colorA[2] + (colorB[2] - colorA[2]) * lerpT,
+          colorA[3] + (colorB[3] - colorA[3]) * lerpT
+        ];
       }
 
       // 精确时间点检测
