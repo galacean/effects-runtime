@@ -10,6 +10,9 @@ export function getPixelRatio (): number {
   return 1;
 }
 
+// window 对象不存在时需要判断
+export const canUseBOM = typeof window !== 'undefined';
+
 export function isIOS (): boolean {
   // real ios device not in simulator
   return !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
