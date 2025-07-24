@@ -231,8 +231,8 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 float antiAliasedStroke(float dist, float lineWidth) {
     // 根据线宽设置最大过渡值，防止细线条抗锯齿过宽
     
-    float minAA = max(0.004, lineWidth * 0.2);
-    float maxAA = max(minAA, lineWidth * 0.5); 
+    float minAA = max(0.004, lineWidth * 0.05);
+    float maxAA = max(minAA, lineWidth * 0.5);
     float aa = clamp(fwidth(dist) * _StrokeAA, minAA, maxAA);
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
@@ -331,8 +331,25 @@ void main() {
     t = max(0.0, t - _ColorRegion); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineWidth = mix(widthCenter, widthEdge, t);
 
+        // 固定控制点测试值
+    float outerLeft = 0.2;
+    float innerLeft = 0.4;
+    float innerRight = 0.6; 
+    float outerRight = 0.8;
+    
+    float xPos = uvCoord.x;
+    float alpha = 0.0;
+    
+    if (xPos >= outerLeft && xPos < innerLeft) {
+      alpha = (xPos - outerLeft) / (innerLeft - outerLeft);
+    } else if (xPos >= innerLeft && xPos <= innerRight) {
+      alpha = 1.0;
+    } else if (xPos > innerRight && xPos <= outerRight) {
+      alpha = 1.0 - (xPos - innerRight) / (outerRight - innerRight);
+    }
+
     //计算静宽
-    float lineStroke = antiAliasedStroke(abs(signedDist), dynamicLineWidth);
+    float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth/10.0)* alpha;
 
     vec4 linecolor = rampColor;
 
@@ -351,7 +368,7 @@ void main() {
     float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
     
     float glow = 0.0;
-    float distanceFromLine = signedDist+glowOffset;
+    float distanceFromLine = (signedDist - _LineWidth*0.9/10.0) + glowOffset;
     float glowStart = dynamicLineGlowWidth - _GlowSoft;
     float glowEnd = dynamicLineGlowWidth + _GlowWidth;
     float glowAA = max(fwidth(distanceFromLine), 0.001); // 加入抗锯齿
@@ -362,41 +379,45 @@ void main() {
     finalAlpha = 0.0;
 
     // 计算边界过渡抗锯齿
-    float transitionRange = max(fwidth(signedDist)*2.0, 0.001) ;
+    float transitionRange = max(max(fwidth(signedDist)*2.0, 0.005) * (_LineWidth*2.0), 0.0045); // 增加过渡范围，避免锯齿
 
-    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
+    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist - _LineWidth*0.9/10.0);
+    float line_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
+    float lineStrokeAA = smoothstep(0.0, 1.0, lineStroke);
+    vec3 insidecolor = mix(_InsideColor.rgb, linecolor.rgb, lineStrokeAA);
 
     // 2. 内部区域处理（单向过渡）
-    if (signedDist < 0.0) {
+    if (signedDist < _LineWidth * 0.999/10.0) {
         finalColorRGB = _InsideColor.rgb;
         finalAlpha = inner_base_alpha * _InsideAlpha;
     }
 
-    float final_stroke_alpha = lineStroke * (1.0 - inner_base_alpha);
+
+    float final_stroke_alpha = lineStroke;
     vec4 stroke_layer = linecolor * final_stroke_alpha;
 
     finalColorRGB = stroke_layer.rgb * stroke_layer.a + finalColorRGB * (1.0 - stroke_layer.a);
     finalAlpha = stroke_layer.a + finalAlpha * (1.0 - stroke_layer.a);
-
+    
     float upperGlowMask = 0.0;
     if(_Glowmask == 0.0) {
-        upperGlowMask = smoothstep(-0.01, 0.0, signedDist);
+        upperGlowMask = smoothstep(-0.01, 0.0, signedDist - _LineWidth * 0.9/10.0);
     }
 
     if (_Glowmask == 1.0) {
-        upperGlowMask = smoothstep(-0.0002, -0.0005, signedDist);
+        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LineWidth * 0.5/10.0);
     }
 
     if (_Glowmask == 2.0) {
         upperGlowMask = 1.0;
     }
 
-    glow = glow * upperGlowMask  ;
+    glow = glow * upperGlowMask * alpha;
 
     finalColorRGB = glowColor.rgb * glow * glowIntensity + finalColorRGB * (1.0 - glow * glowIntensity);
     finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
-
-    gl_FragColor = vec4(finalColorRGB,finalAlpha);
+    
+    gl_FragColor = vec4(finalColorRGB, finalAlpha);
 }
 `;
 
