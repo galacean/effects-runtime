@@ -7,6 +7,13 @@
 
 ---
 
+## 2.5.6
+
+`2025-07-24`
+
+- Fix: implemented a check for the BOM object in SSR environments before usage. [#1100](https://github.com/galacean/effects-runtime/pull/1100) @yiiqii
+- Fix: touchcancel event unbind. [#1096](https://github.com/galacean/effects-runtime/pull/1096) @yiiqii
+
 ## 2.5.5
 
 `2025-07-21`
