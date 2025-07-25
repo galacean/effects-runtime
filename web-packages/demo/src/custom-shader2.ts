@@ -83,6 +83,11 @@ const defaults = {
   audioCurveInfluence: 0.5, // 默认影响强度，可调整
   glowBaseRatio: 0.5, // 新增辉光基础比例，默认50%
   strokeAA: 2.0, // 线条虚实度，默认2.0
+  centerPos: 0.5, // 中心位置(0-1)
+  leftWidth: 0.5, // 左侧总宽度
+  rightWidth: 0.5, // 右侧总宽度
+  leftInnerRatio: 0.5, // 左侧内部高亮区域占比
+  rightInnerRatio: 0.5, // 右侧内部高亮区域占比
   insideColor: { x: 0, y: 0, z: 0, w: 1.0 },
   colorStops: [
     { x: 82 / 255, y: 38 / 255, z: 255 / 255, w: 1.0 }, // #5226ff
@@ -143,7 +148,11 @@ uniform float _AudioCurrent;
 uniform float _IsDynamicCurve; // 是否开启动态曲率
 uniform float _AudioCurveInfluence; // 新增音量影响强度参数
 uniform float _GlowBaseRatio; // 辉光基础比例，0.5表示最低50%辉光，1.0表示100%辉光
-uniform float _StrokeAA; // 线条过渡抗锯齿
+uniform float _StrokeAA; // 线条过渡抗锯齿// 中心位置(0-1)
+uniform float _LeftWidth; // 左侧总宽度
+uniform float _RightWidth; // 右侧总宽度
+uniform float _LeftInnerRatio; // 左侧内部高亮区域占比
+uniform float _RightInnerRatio; // 右侧内部高亮区域占比
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -229,11 +238,17 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 }
 
 float antiAliasedStroke(float dist, float lineWidth) {
-    // 根据线宽设置最大过渡值，防止细线条抗锯齿过宽
+    // 改进的抗锯齿计算，在低线宽时提供更好的控制
     
-    float minAA = max(0.004, lineWidth * 0.05);
-    float maxAA = max(minAA, lineWidth * 0.5);
-    float aa = clamp(fwidth(dist) * _StrokeAA, minAA, maxAA);
+    // 基础抗锯齿范围，受_StrokeAA参数影响
+    float baseAA = fwidth(dist) * _StrokeAA;
+    
+    // 动态调整最小/最大抗锯齿范围
+    float minAA = lineWidth * 0.1 * _StrokeAA;  // 更灵活的最小值
+    float maxAA = lineWidth * 0.8;  // 保持对粗线条的限制
+    
+    // 应用抗锯齿范围
+    float aa = clamp(baseAA, minAA, maxAA);
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
@@ -255,7 +270,16 @@ vec4 getColorFromGradient(float factor) {
 
 float getDynamicWidthCenter() {
     float t = _Time.y * _DynamicWidthSpeed;
-    float center = _DynamicWidthCenter + _DynamicWidthCenterRange * sin(t);
+    // 基础中心位置
+    float baseCenter = _DynamicWidthCenter;
+    // 计算最大允许动态范围(不超过左右宽度)
+    float maxRange = min(_LeftWidth, _RightWidth) * 0.8;
+    // 应用动态范围限制
+    float effectiveRange = clamp(_DynamicWidthCenterRange, 0.01, maxRange);
+    // 动态偏移量
+    float offset = effectiveRange * sin(t);
+    // 确保最终中心位置在有效范围内
+    float center = clamp(baseCenter + offset, _LeftWidth, 1.0 - _RightWidth);
     return center;
 }
 //使用音量印象曲线角度_CurveAngle
@@ -322,7 +346,7 @@ void main() {
     } else {
       center = _DynamicWidthCenter;
     }
-
+    /*
     //线条从中间到两侧逐渐减少宽度
     float widthCenter = _LineWidth;         // 中间最大线宽
     float widthEdge = _LineWidth * 0.3;     // 两侧最小线宽，可调
@@ -330,12 +354,19 @@ void main() {
     float t = pow(abs(uvCoord.x - center) / max(center, 1.0-center), _DynamicWidthFalloff);
     t = max(0.0, t - _ColorRegion); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineWidth = mix(widthCenter, widthEdge, t);
-
-        // 固定控制点测试值
-    float outerLeft = 0.2;
-    float innerLeft = 0.4;
-    float innerRight = 0.6; 
-    float outerRight = 0.8;
+    */
+        // 基于中心位置的控制点
+    float centerPos = center; // 使用统一中心位置
+    float leftWidth = _LeftWidth; // 左侧总宽度
+    float rightWidth = _RightWidth; // 右侧总宽度
+    float leftInnerRatio = _LeftInnerRatio; // 左侧内部高亮区域占比
+    float rightInnerRatio = _RightInnerRatio; // 右侧内部高亮区域占比
+    
+    // 计算控制点位置
+    float outerLeft = centerPos - leftWidth;
+    float innerLeft = centerPos - leftWidth * leftInnerRatio;
+    float innerRight = centerPos + rightWidth * rightInnerRatio;
+    float outerRight = centerPos + rightWidth;
     
     float xPos = uvCoord.x;
     float alpha = 0.0;
@@ -364,7 +395,7 @@ void main() {
     float glowOffset = 0.01; 
 
     float glowt = pow(abs(uvCoord.x - center) / max(center, 1.0-center), _DynamicWidthFalloff);
-    glowt = max(0.0, t - _GlowRegion*3.5); // _ColorRegion 越大，彩色区域越窄
+    glowt = max(0.0, glowt - _GlowRegion*3.5); // _ColorRegion 越大，彩色区域越窄
     float dynamicLineGlowWidth = mix(glowWidthCenter, glowWidthEdge, glowt);
     
     float glow = 0.0;
@@ -381,13 +412,13 @@ void main() {
     // 计算边界过渡抗锯齿
     float transitionRange = max(max(fwidth(signedDist)*2.0, 0.005) * (_LineWidth*2.0), 0.0045); // 增加过渡范围，避免锯齿
 
-    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist - _LineWidth*0.9/10.0);
+    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist - _LineWidth*1.0/10.0);
     float line_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
     float lineStrokeAA = smoothstep(0.0, 1.0, lineStroke);
     vec3 insidecolor = mix(_InsideColor.rgb, linecolor.rgb, lineStrokeAA);
 
     // 2. 内部区域处理（单向过渡）
-    if (signedDist < _LineWidth * 0.999/10.0) {
+    if (signedDist < _LineWidth *1.0/10.0) {
         finalColorRGB = _InsideColor.rgb;
         finalAlpha = inner_base_alpha * _InsideAlpha;
     }
@@ -396,8 +427,9 @@ void main() {
     float final_stroke_alpha = lineStroke;
     vec4 stroke_layer = linecolor * final_stroke_alpha;
 
-    finalColorRGB = stroke_layer.rgb * stroke_layer.a + finalColorRGB * (1.0 - stroke_layer.a);
-    finalAlpha = stroke_layer.a + finalAlpha * (1.0 - stroke_layer.a);
+    // 使用max混合实现变亮效果
+    finalColorRGB = max(stroke_layer.rgb, finalColorRGB);
+    finalAlpha = max(stroke_layer.a, finalAlpha);
     
     float upperGlowMask = 0.0;
     if(_Glowmask == 0.0) {
@@ -405,7 +437,7 @@ void main() {
     }
 
     if (_Glowmask == 1.0) {
-        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LineWidth * 0.5/10.0);
+        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LineWidth * 1.0/10.0);
     }
 
     if (_Glowmask == 2.0) {
@@ -414,10 +446,14 @@ void main() {
 
     glow = glow * upperGlowMask * alpha;
 
+    // 辉光部分使用加法混合
     finalColorRGB = glowColor.rgb * glow * glowIntensity + finalColorRGB * (1.0 - glow * glowIntensity);
     finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
     
-    gl_FragColor = vec4(finalColorRGB, finalAlpha);
+    
+    // 限制alpha值不超过1.0
+    finalAlpha = min(finalAlpha, 1.0);
+    gl_FragColor = vec4(finalColorRGB , finalAlpha);
 }
 `;
 
@@ -685,6 +721,26 @@ function createControlPanel () {
     <div class="control-group">
       <h3>线宽衰减</h3>
       <div class="control-item">
+        <label for="leftWidth">左侧宽度 (_LeftWidth)</label>
+        <input type="range" id="leftWidth" min="0" max="0.5" step="0.01" value="0.2">
+        <div class="value-display" id="leftWidth-value">0.20</div>
+      </div>
+      <div class="control-item">
+        <label for="rightWidth">右侧宽度 (_RightWidth)</label>
+        <input type="range" id="rightWidth" min="0" max="0.5" step="0.01" value="0.2">
+        <div class="value-display" id="rightWidth-value">0.20</div>
+      </div>
+      <div class="control-item">
+        <label for="leftInnerRatio">左侧内部高亮占比 (_LeftInnerRatio)</label>
+        <input type="range" id="leftInnerRatio" min="0" max="1" step="0.01" value="0.5">
+        <div class="value-display" id="leftInnerRatio-value">0.50</div>
+      </div>
+      <div class="control-item">
+        <label for="rightInnerRatio">右侧内部高亮占比 (_RightInnerRatio)</label>
+        <input type="range" id="rightInnerRatio" min="0" max="1" step="0.01" value="0.5">
+        <div class="value-display" id="rightInnerRatio-value">0.50</div>
+      </div>
+      <div class="control-item">
         <label for="dynamicWidthFalloff">线宽衰减力度 (_DynamicWidthFalloff)</label>
         <input type="range" id="dynamicWidthFalloff" min="0" max="4" step="0.01" value="1.0">
         <div class="value-display" id="dynamicWidthFalloff-value">1.00</div>
@@ -777,6 +833,10 @@ function initializeControls () {
     'audioCurveInfluence', // 新增到控件列表
     'glowBaseRatio', // 新增到控件列表
     'strokeAA', // 新增到控件列表
+    'leftWidth', // 新增左侧宽度控制
+    'rightWidth', // 新增右侧宽度控制
+    'leftInnerRatio', // 新增左侧内部高亮占比控制
+    'rightInnerRatio', // 新增右侧内部高亮占比控制
   ];
 
   controls.forEach(controlName => {
@@ -1131,6 +1191,10 @@ function togglePanel () {
   jsonValue.materials[0].floats['_DynamicWidthFalloff'] = shaderParams.dynamicWidthFalloff;
   jsonValue.materials[0].floats['_ColorRegion'] = shaderParams.colorRegion;
   jsonValue.materials[0].floats['_GlowRegion'] = shaderParams.glowRegion;
+  jsonValue.materials[0].floats['_LeftWidth'] = shaderParams.leftWidth;
+  jsonValue.materials[0].floats['_RightWidth'] = shaderParams.rightWidth;
+  jsonValue.materials[0].floats['_LeftInnerRatio'] = shaderParams.leftInnerRatio;
+  jsonValue.materials[0].floats['_RightInnerRatio'] = shaderParams.rightInnerRatio;
   jsonValue.materials[0].floats['_DynamicWidthCenter'] = shaderParams.dynamicWidthCenter;
 
   jsonValue.shaders[0].vertex = vertex;
@@ -1146,7 +1210,8 @@ function togglePanel () {
       const { materials: componentMaterials } = component;
 
       for (const material of componentMaterials) {
-        setBlendMode(material, spec.BlendingMode.ALPHA);
+        // 使用加法混合实现变亮效果
+        setBlendMode(material, spec.BlendingMode.ADD);
         material.depthMask = false;
 
         // 设置所有贝塞尔uniform参数
@@ -1203,7 +1268,7 @@ function togglePanel () {
           material.setVector3(`_ColorStops${index}`, new math.Vector3(color.x, color.y, color.z));
         });
 
-        setBlendMode(material, spec.BlendingMode.ALPHA);
+        //setBlendMode(material, spec.BlendingMode.ALPHA);
         materials.push(material);
       }
     }
