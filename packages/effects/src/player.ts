@@ -60,6 +60,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private displayAspect: number;
   private displayScale = 1;
   private forceRenderNextFrame: boolean;
+  private autoPlaying: boolean;
   private resumePending = false;
   private offscreenMode: boolean;
   private disposed = false;
@@ -332,6 +333,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
     this.baseCompositionIndex += scenes.length;
 
+    if (autoplay) {
+      this.autoPlaying = true;
+    }
+
     const autoplayFlags: boolean[] = [];
 
     await Promise.all(
@@ -439,6 +444,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       this.offscreenMode = false;
     }
+    this.autoPlaying = true;
     this.compositions.map(composition => {
       composition.play();
     });
@@ -455,6 +461,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       this.offscreenMode = false;
     }
+    this.autoPlaying = true;
     this.compositions.map(composition => {
       composition.gotoAndPlay(time);
     });
@@ -475,6 +482,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resize();
       this.offscreenMode = false;
     }
+    this.autoPlaying = false;
     this.compositions.map(composition => {
       composition.gotoAndStop(time);
     });
@@ -613,8 +621,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
 
-      // TODO: 待移除
-      if (this.compositions.some(c => !c.getPaused())) {
+      if (this.autoPlaying) {
         this.emit('update', {
           player: this,
           playing: true,
