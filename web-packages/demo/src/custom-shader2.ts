@@ -11,6 +11,7 @@ const container = document.getElementById('J-container');
 interface ShaderParams {
   curveAngle: number,
   lineWidth: number,
+  lineOffsetRatio: number, // 新增线条偏移比例参数
   insideAlpha: number,
   timeSpeed: number,
   amplitude: number,
@@ -63,6 +64,7 @@ const defaults = {
   audioInfluence: 1.0,
   audioMultiplier: 2.0,
   blend: 0.5,
+  lineOffsetRatio: 0.5, // 线条偏移比例默认值
   timeSpeedUniform: 4.1,
   noiseScale: 2.0,
   heightMultiplier: 0.5,
@@ -94,6 +96,8 @@ const defaults = {
   rightWidth: 0.5,
   leftInnerRatio: 0.5,
   rightInnerRatio: 0.5,
+  upperGlowOffsetRatio: 0.9, // 上辉光默认偏移比例
+  lowerGlowOffsetRatio: 0.85, // 下辉光默认偏移比例
   insideColor: { x: 0, y: 0, z: 0, w: 1.0 },
   colorStops: [
     { x: 82 / 255, y: 38 / 255, z: 255 / 255, w: 1.0 }, // #5226ff
@@ -180,6 +184,9 @@ uniform float _LeftWidth; // 左侧总宽度
 uniform float _RightWidth; // 右侧总宽度
 uniform float _LeftInnerRatio; // 左侧内部高亮区域占比
 uniform float _RightInnerRatio; // 右侧内部高亮区域占比
+uniform float _UpperGlowOffsetRatio; // 上辉光偏移比例
+uniform float _LowerGlowOffsetRatio; // 下辉光偏移比例
+uniform float _LineOffsetRatio; // 线条偏移比例
 
 vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     float midX = (A.x + C.x) * 0.5;
@@ -266,19 +273,19 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 
 float antiAliasedStroke(float dist, float lineWidth) {
     // 处理直线情况下的抗锯齿
-    if(abs(dist) < 0.001) {
-        return smoothstep(lineWidth + 0.01, lineWidth - 0.01, abs(dist));
-    }
     
     // 改进的抗锯齿计算，在低线宽时提供更好的控制
     float baseAA = fwidth(dist) * _StrokeAA;
     
     // 动态调整最小/最大抗锯齿范围
-    float minAA = lineWidth * 0.1 * _StrokeAA;  // 更灵活的最小值
-    float maxAA = lineWidth * 0.8;  // 保持对粗线条的限制
+    float minAA = lineWidth * 0.01;  // 减少最小抗锯齿范围
+    float maxAA = lineWidth * 0.5;  // 进一步减少最大抗锯齿范围
     
-    // 应用抗锯齿范围
+    // 应用抗锯齿范围（主要向内抗锯齿，少量向外抗锯齿）
     float aa = clamp(baseAA, minAA, maxAA);
+    // 主要在内侧应用抗锯齿，同时添加少量向外抗锯齿使边缘更自然
+    float innerAA = aa * 0.8;  // 内侧抗锯齿范围
+    float outerAA = aa * 0.8;  // 外侧抗锯齿范围（少量）
     return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
 }
 
@@ -456,7 +463,7 @@ void main() {
     }
 
     //计算静宽
-    float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth/10.0)* alpha;
+    float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth* _LineOffsetRatio/10.0)* alpha;
 
     vec4 linecolor = rampColor;
 
@@ -486,15 +493,15 @@ void main() {
     finalAlpha = 0.0;
 
     // 计算边界过渡抗锯齿
-    float transitionRange = max(max(fwidth(signedDist)*2.0, 0.005) * (_LineWidth*2.0), 0.0045); // 增加过渡范围，避免锯齿
+    float transitionRange = max(max(fwidth(signedDist)*2.0, 0.002) * (_LineWidth*2.0), 0.0045); // 增加过渡范围，避免锯齿
 
-    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist - _LineWidth*1.0/10.0);
+    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist - _LineWidth * 1.0/10.0);
     float line_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
     float lineStrokeAA = smoothstep(0.0, 1.0, lineStroke);
     vec3 insidecolor = mix(_InsideColor.rgb, linecolor.rgb, lineStrokeAA);
 
     // 2. 内部区域处理（单向过渡）
-    if (signedDist < _LineWidth *1.0/10.0) {
+    if (signedDist < _LineWidth * 1.0 / 10.0) {
         finalColorRGB = _InsideColor.rgb;
         finalAlpha = inner_base_alpha * _InsideAlpha;
     }
@@ -509,11 +516,11 @@ void main() {
     
     float upperGlowMask = 0.0;
     if(_Glowmask == 0.0) {
-        upperGlowMask = smoothstep(-0.01, 0.0, signedDist - _LineWidth * 0.9/10.0);
+        upperGlowMask = smoothstep(-0.01, 0.0, signedDist - _UpperGlowOffsetRatio * 0.1);
     }
 
     if (_Glowmask == 1.0) {
-        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LineWidth * 0.8/10.0);
+        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LowerGlowOffsetRatio * 0.1);
     }
 
     if (_Glowmask == 2.0) {
@@ -683,6 +690,11 @@ function createControlPanel () {
         <div class="value-display" id="lineWidth-value">0.01</div>
       </div>
       <div class="control-item">
+        <label for="lineOffsetRatio">线条偏移比例</label>
+        <input type="range" id="lineOffsetRatio" min="0.1" max="1.0" step="0.01" value="0.5">
+        <div class="value-display" id="lineOffsetRatio-value">0.50</div>
+      </div>
+      <div class="control-item">
         <label for="strokeAA">线条虚实度 (_StrokeAA)</label>
         <input type="range" id="strokeAA" min="0.1" max="30.0" step="0.01" value="2.0">
         <div class="value-display" id="strokeAA-value">2.00</div>
@@ -833,6 +845,16 @@ function createControlPanel () {
           <option value="2">上下都有</option>
         </select>
       </div>
+      <div class="control-item">
+        <label for="upperGlowOffsetRatio">上辉光偏移比例</label>
+        <input type="range" id="upperGlowOffsetRatio" min="-1.5" max="1.5" step="0.01" value="0.9">
+        <div class="value-display" id="upperGlowOffsetRatio-value">0.90</div>
+      </div>
+      <div class="control-item">
+        <label for="lowerGlowOffsetRatio">下辉光偏移比例</label>
+        <input type="range" id="lowerGlowOffsetRatio" min="-1.5" max="1.5" step="0.01" value="0.85">
+        <div class="value-display" id="lowerGlowOffsetRatio-value">0.85</div>
+      </div>
     </div>
     
     <div class="control-group">
@@ -869,7 +891,7 @@ function createControlPanel () {
       </div>
       <div class="control-item">
         <label for="dynamicWidthCenter">线宽衰减中心 (_DynamicWidthCenter)</label>
-        <input type="range" id="dynamicWidthCenter" min="0" max="1" step="0.001" value="0.5">
+        <input type="range" id="dynamicWidthCenter" min="-1" max="2" step="0.001" value="0.5">
         <div class="value-display" id="dynamicWidthCenter-value">0.50</div>
       </div>
     </div>
@@ -997,6 +1019,9 @@ function initializeControls () {
     'rightWidth', // 新增右侧宽度控制
     'leftInnerRatio', // 新增左侧内部高亮占比控制
     'rightInnerRatio', // 新增右侧内部高亮占比控制
+    'upperGlowOffsetRatio', // 上辉光偏移比例控制
+    'lowerGlowOffsetRatio', // 下辉光偏移比例控制
+    'lineOffsetRatio', // 新增线条偏移比例控制
   ];
 
   controls.forEach(controlName => {
@@ -1410,6 +1435,9 @@ function togglePanel () {
 
         // 设置是否需要开启动态曲率
         material.setFloat('_IsDynamicCurve', shaderParams.isDynamicCurve);
+        material.setFloat('_UpperGlowOffsetRatio', shaderParams.upperGlowOffsetRatio);
+        material.setFloat('_LowerGlowOffsetRatio', shaderParams.lowerGlowOffsetRatio);
+        material.setFloat('_LineOffsetRatio', shaderParams.lineOffsetRatio);
         // 设置颜色停止点和位置
         shaderParams.colorStops.forEach((color, index) => {
           material.setVector3(`_ColorStops${index}`, new math.Vector3(color.x, color.y, color.z));
