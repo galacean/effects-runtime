@@ -29,10 +29,12 @@ export type CompositionEvent<C> = {
   }],
   /**
    * 合成开始播放事件
+   * @since 2.6.0
    */
   ['play']: [playInfo: { time: number }],
   /**
    * 合成暂停事件
+   * @since 2.6.0
    */
   ['pause']: [],
   /**

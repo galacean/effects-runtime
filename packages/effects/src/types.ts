@@ -172,6 +172,7 @@ export type PlayerEvent<P> = {
   ['message']: [messageInfo: MessageItem],
   /**
    * 播放器播放事件
+   * @since 2.6.0
    */
   ['play']: [playInfo: { time: number }],
   /**
@@ -180,6 +181,7 @@ export type PlayerEvent<P> = {
   ['pause']: [],
   /**
    * 播放器恢复事件
+   * @since 2.6.0
    */
   ['resume']: [],
   /**
