@@ -100,6 +100,8 @@ export function version31Migration (json: JSONScene): JSONScene {
     }
   }
 
+  json.version = JSONSceneVersion['3_2'];
+
   return json;
 }
 
@@ -119,6 +121,8 @@ export function version32Migration (json: JSONScene): JSONScene {
   for (const comp of compositions) {
     processContent(comp);
   }
+
+  json.version = JSONSceneVersion['3_3'];
 
   return json;
 }
@@ -190,6 +194,8 @@ export function version33Migration (json: JSONScene): JSONScene {
       }
     }
   }
+
+  json.version = JSONSceneVersion['3_4'];
 
   return json;
 }
