@@ -10,8 +10,7 @@
  * nativeLog.error('this is native log from h5, error:', error);
  * ```
  */
-import { isAlipayMiniApp, isAndroid, logger } from '@galacean/effects';
-import { canUseBOM } from './utils';
+import { isAlipayMiniApp, isAndroid, logger, canUseBOM } from '@galacean/effects';
 
 const prefix = '[Galacean Effects]';
 

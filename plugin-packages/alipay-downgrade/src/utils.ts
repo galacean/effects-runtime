@@ -1,4 +1,4 @@
-import { spec, getActivePlayers, logger, isAlipayMiniApp, isIOS } from '@galacean/effects';
+import { spec, getActivePlayers, logger, isAlipayMiniApp, isIOS, canUseBOM } from '@galacean/effects';
 import type { DowngradeOptions, DowngradeResult, SystemInfo } from './types';
 import { DeviceProxy } from './device-proxy';
 
@@ -6,9 +6,6 @@ const internalPaused = Symbol('@@_inter_pause');
 const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
 let hasRegisterEvent = false;
-
-// window 对象不存在时需要判断
-export const canUseBOM = typeof window !== 'undefined';
 
 /**
  * 获取 GE 降级结果，在有 JSAPI 环境下调用，不需要创建 Canvas 和 WebGL 环境。
