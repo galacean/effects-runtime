@@ -1,3 +1,4 @@
+
 /* eslint-disable no-case-declarations */
 import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, Texture, glContext, setBlendMode, spec, math } from '@galacean/effects';
@@ -9,7 +10,6 @@ const container = document.getElementById('J-container');
 // UI控制参数
 interface ShaderParams {
   curveAngle: number,
-  curveType: number,
   lineWidth: number,
   insideAlpha: number,
   timeSpeed: number,
@@ -35,14 +35,11 @@ interface ShaderParams {
   color2B: { x: number, y: number, z: number, w: number },
   color3A: { x: number, y: number, z: number, w: number },
   color3B: { x: number, y: number, z: number, w: number },
-  leftMode: number,
-  rightMode: number,
   glowWidth: number,
   glowSoft: number,
   glowPower: number,
   glowIntensity: number,
   dynamicWidthFalloff: number,
-  colorRegion: number,
   glowRegion: number,
   dynamicWidthCenter: number,
   dynamicWidthCenterRange: number,
@@ -54,6 +51,10 @@ interface ShaderParams {
   audioCurveInfluence: number,
   glowBaseRatio: number,
   strokeAA: number,
+  leftWidth: number,
+  rightWidth: number,
+  leftInnerRatio: number,
+  rightInnerRatio: number,
   [key: string]: any,
 }
 
@@ -68,19 +69,15 @@ const defaults = {
   midPoint: 0.20,
   intensityMultiplier: 0.6,
   yOffset: 0.2,
-  curveAngle: 0.5,
-  curveType: 0.0,
+  curveAngle: 0.0,
   lineWidth: 0.084,
   insideAlpha: 1.0,
   timeSpeed: 4.100,
-  leftMode: 3,
-  rightMode: 1,
   glowWidth: 0.162,
   glowSoft: 0.03,
   glowPower: 2.0,
   glowIntensity: 0.830,
   dynamicWidthFalloff: 3.250,
-  colorRegion: -1.270,
   glowRegion: -0.010,
   dynamicWidthCenter: 0.5,
   dynamicWidthCenterRange: 0.1,
@@ -93,7 +90,6 @@ const defaults = {
   audioCurveInfluence: 0.5,
   glowBaseRatio: 0.5,
   strokeAA: 2.0,
-  centerPos: 0.5,
   leftWidth: 0.5,
   rightWidth: 0.5,
   leftInnerRatio: 0.5,
@@ -140,7 +136,7 @@ precision highp float;
 varying vec2 uv;
 uniform vec4 _Time;
 uniform float _CurveAngle;
-uniform float _CurveType;
+//uniform float _CurveType;
 uniform float _LineWidth;
 uniform float _InsideAlpha;
 uniform vec4 _InsideColor;
@@ -162,14 +158,11 @@ uniform float _ColorMode1;    // 点1颜色模式 (0=静态, 1=交替)
 uniform float _ColorMode2;    // 点2颜色模式 (0=静态, 1=交替)
 uniform float _ColorMode3;    // 点3颜色模式 (0=静态, 1=交替)
 uniform float _TimeSpeedUniform;
-uniform float _LeftMode;   // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
-uniform float _RightMode;  // 0: stops0, 1: stops1, 2: stops2, 3: stops0<->stops2 动态, 4: stops1<->stops2 动态
 uniform float _GlowWidth;      // 辉光范围
 uniform float _GlowSoft;       // 辉光边缘柔和度
 uniform float _GlowPower;      // 辉光边缘衰减
 uniform float _GlowIntensity;  // 辉光强度
 uniform float _DynamicWidthFalloff;
-uniform float _ColorRegion;
 uniform float _GlowRegion;
 uniform float _DynamicWidthCenter;
 uniform float _DynamicWidthCenterRange;
@@ -195,17 +188,17 @@ vec2 getBezierControlPoint(float angle, vec2 A, vec2 C) {
     return vec2(midX, midY + offsetY);
 }
 
-void getCurvePoints(float curveType, out vec2 A, out vec2 C) {
-    if (curveType < 0.5) {
-        A = vec2(0.0, 0.0);
-        C = vec2(1.0, 0.0);
-    } else {
-        A = vec2(0.0, 0.5);
-        C = vec2(1.0, 0.5);
-    }
+void getCurvePoints(out vec2 A, out vec2 C) {
+    A = vec2(0.0, 0.5);
+    C = vec2(1.0, 0.5);
 }
 
 float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
+    // 处理直线情况（控制点Y坐标与端点相同）
+    if(abs(B.y - A.y) < 0.001 && abs(B.y - C.y) < 0.001) {
+        return pos.y - A.y; // 直接计算到直线的垂直距离
+    }
+    
     vec2 a = B - A;
     vec2 b = A - 2.0*B + C;
     vec2 c = a * 2.0;
@@ -272,9 +265,12 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 }
 
 float antiAliasedStroke(float dist, float lineWidth) {
-    // 改进的抗锯齿计算，在低线宽时提供更好的控制
+    // 处理直线情况下的抗锯齿
+    if(abs(dist) < 0.001) {
+        return smoothstep(lineWidth + 0.01, lineWidth - 0.01, abs(dist));
+    }
     
-    // 基础抗锯齿范围，受_StrokeAA参数影响
+    // 改进的抗锯齿计算，在低线宽时提供更好的控制
     float baseAA = fwidth(dist) * _StrokeAA;
     
     // 动态调整最小/最大抗锯齿范围
@@ -314,9 +310,14 @@ vec4 getPointColor(int pointIndex, float beat) {
 vec4 getColorFromGradient(float xPos, float centerPos, float leftWidth, float rightWidth, float leftInnerRatio, float rightInnerRatio) {
     float beat = sin(_Time.y * _TimeSpeedUniform) * 0.5 + 0.5;
     
-    // 计算线条可见范围
-    float lineStart = centerPos - leftWidth;
-    float lineEnd = centerPos + rightWidth;
+    // 计算线条可见范围并添加边界保护
+    float lineStart = max(centerPos - leftWidth, 0.0);
+    float lineEnd = min(centerPos + rightWidth, 1.0);
+    
+    // 当线条不可见时返回透明
+    if (lineStart >= lineEnd) {
+        return vec4(0.0);
+    }
     
     // 将xPos映射到线条可见范围(0-1)
     float mappedPos = (xPos - lineStart) / (lineEnd - lineStart);
@@ -358,16 +359,13 @@ vec4 getColorFromGradient(float xPos, float centerPos, float leftWidth, float ri
 
 float getDynamicWidthCenter() {
     float t = _Time.y * _DynamicWidthSpeed;
-    // 基础中心位置
     float baseCenter = _DynamicWidthCenter;
-    // 计算最大允许动态范围(不超过左右宽度)
     float maxRange = min(_LeftWidth, _RightWidth) * 0.8;
-    // 应用动态范围限制
     float effectiveRange = clamp(_DynamicWidthCenterRange, 0.01, maxRange);
-    // 动态偏移量
     float offset = effectiveRange * sin(t);
-    // 确保最终中心位置在有效范围内
-    float center = clamp(baseCenter + offset, _LeftWidth, 1.0 - _RightWidth);
+    float center = baseCenter + offset;
+    // 确保中心位置在[0,1]范围内
+    center = clamp(center, 0.0, 1.0);
     return center;
 }
 //使用音量印象曲线角度_CurveAngle
@@ -375,15 +373,9 @@ float getCurveAngle() {
     float audioRange = _AudioMax - _AudioMin;
     float audioNormalized = (_AudioCurrent - _AudioMin) / audioRange;
     audioNormalized = clamp(audioNormalized * 0.5 + 0.5, 0.0, 1.0); // 映射到[0,1]
-    float base = abs(_CurveAngle);
-    float delta = base * audioNormalized * _AudioCurveInfluence;
-    if (_CurveType < 0.5) {
-        // 向上
-        return base + delta;
-    } else {
-        // 向下
-        return _CurveAngle + delta;
-    }
+    float base = _CurveAngle;
+    float delta = abs(base) * audioNormalized * _AudioCurveInfluence;
+    return base + (base >= 0.0 ? delta : -delta);
 }
 
 //根据音量获取辉光强度
@@ -423,7 +415,7 @@ void main() {
     
     // 计算贝塞尔曲线绘制
     vec2 A_single, C_single;
-    getCurvePoints(_CurveType, A_single, C_single);
+    getCurvePoints(A_single, C_single);
     vec2 B_single = getBezierControlPoint(CurveAngle, A_single, C_single);
     float signedDist = sd_bezier_signed(uvCoord, A_single, B_single, C_single);
 
@@ -521,7 +513,7 @@ void main() {
     }
 
     if (_Glowmask == 1.0) {
-        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LineWidth * 1.0/10.0);
+        upperGlowMask = smoothstep(-0.001, -0.005, signedDist + _LineWidth * 0.8/10.0);
     }
 
     if (_Glowmask == 2.0) {
@@ -680,16 +672,9 @@ function createControlPanel () {
     <div class="control-group">
       <h3>贝塞尔曲线</h3>
       <div class="control-item">
-        <label>曲线类型:</label>
-        <div style="margin: 5px 0;">
-          <label><input type="radio" name="curve-type" value="0" checked> 向上曲线 (0,0)→(1,0)</label><br>
-          <label><input type="radio" name="curve-type" value="1"> 向下曲线 (0,1)→(1,1)</label><br>
-        </div>
-      </div>
-      <div class="control-item">
         <label for="curveAngle">曲线角度</label>
-        <input type="range" id="curveAngle" min="-1.57" max="1.57" step="0.1" value="0.5">
-        <div class="value-display" id="curveAngle-value">0.5</div>
+        <input type="range" id="curveAngle" min="-1.57" max="1.57" step="0.1" value="0.0">
+        <div class="value-display" id="curveAngle-value">0.0</div>
       </div>
 
       <div class="control-item">
@@ -718,26 +703,6 @@ function createControlPanel () {
     
     <div class="control-group">
       <h3>颜色渐变</h3>
-      <div class="control-item">
-        <label for="leftMode">左端色模式</label>
-        <select id="leftMode">
-          <option value="0">Stop0</option>
-          <option value="1">Stop1</option>
-          <option value="2">Stop2</option>
-          <option value="3" selected>Stop0↔Stop2 动态</option>
-          <option value="4">Stop1↔Stop2 动态</option>
-        </select>
-      </div>
-      <div class="control-item">
-        <label for="rightMode">右端色模式</label>
-        <select id="rightMode">
-          <option value="0">Stop0</option>
-          <option value="1" selected>Stop1</option>
-          <option value="2">Stop2</option>
-          <option value="3">Stop0↔Stop2 动态</option>
-          <option value="4">Stop1↔Stop2 动态</option>
-        </select>
-      </div>
       <div class="control-item">
         <label for="colorPos0">颜色点0位置</label>
         <input type="range" id="colorPos0" min="0" max="1" step="0.01" value="0.0">
@@ -898,11 +863,6 @@ function createControlPanel () {
         <div class="value-display" id="dynamicWidthFalloff-value">1.00</div>
       </div>
       <div class="control-item">
-        <label for="colorRegion">彩色区域宽度 (_ColorRegion)</label>
-        <input type="range" id="colorRegion" min="-5" max="5" step="0.01" value="0.0">
-        <div class="value-display" id="colorRegion-value">0.00</div>
-      </div>
-      <div class="control-item">
         <label for="glowRegion">辉光区域宽度 (_GlowRegion)</label>
         <input type="range" id="glowRegion" min="-5" max="5" step="0.01" value="0.0">
         <div class="value-display" id="glowRegion-value">0.00</div>
@@ -918,7 +878,7 @@ function createControlPanel () {
       <h3>线宽中心动态滑动</h3>
       <div class="control-item">
         <label for="dynamicWidthCenterRange">滑动范围 (_DynamicWidthCenterRange)</label>
-        <input type="range" id="dynamicWidthCenterRange" min="0" max="0.5" step="0.01" value="0.4">
+        <input type="range" id="dynamicWidthCenterRange" min="0" max="1.0" step="0.01" value="0.4">
         <div class="value-display" id="dynamicWidthCenterRange-value">0.40</div>
       </div>
       <div class="control-item">
@@ -960,19 +920,6 @@ function createControlPanel () {
 
 // 初始化UI控制
 function initializeControls () {
-  // 贝塞尔曲线类型控制
-  const curveTypeRadios = document.querySelectorAll('input[name="curve-type"]');
-
-  curveTypeRadios.forEach(radio => {
-    radio.addEventListener('change', e => {
-      const value = parseFloat((e.target as HTMLInputElement).value);
-
-      materials.forEach(material => {
-        material.setFloat('_CurveType', value);
-      });
-      shaderParams.curveType = value;
-    });
-  });
 
   // 颜色点位置控制
   for (let i = 0; i < 4; i++) {
@@ -1041,7 +988,7 @@ function initializeControls () {
     'amplitude', 'blend', 'audioInfluence', 'audioMultiplier', 'timeSpeedUniform',
     'noiseScale', 'heightMultiplier', 'midPoint', 'intensityMultiplier', 'yOffset',
     'glowWidth', 'glowSoft', 'glowPower', 'glowIntensity',
-    'dynamicWidthFalloff', 'colorRegion', 'glowRegion', 'dynamicWidthCenter',
+    'dynamicWidthFalloff', 'glowRegion', 'dynamicWidthCenter',
     'dynamicWidthCenterRange', 'dynamicWidthSpeed',
     'audioCurveInfluence', // 新增到控件列表
     'glowBaseRatio', // 新增到控件列表
@@ -1138,28 +1085,6 @@ function initializeControls () {
     });
   }
 
-  // 左右端色模式
-  ['leftMode', 'rightMode'].forEach((modeName, idx) => {
-    const select = document.getElementById(modeName) as HTMLSelectElement;
-
-    if (select) {
-      select.value = (shaderParams as any)[modeName]?.toString() || '0';
-      select.addEventListener('change', e => {
-        const value = parseFloat((e.target as HTMLSelectElement).value);
-        const uniformName = idx === 0 ? '_LeftMode' : '_RightMode';
-
-        materials.forEach(material => {
-          material.setFloat(uniformName, value);
-        });
-        (shaderParams as any)[modeName] = value;
-      });
-
-      materials.forEach(material => {
-        material.setFloat(idx === 0 ? '_LeftMode' : '_RightMode', (shaderParams as any)[modeName] || 0);
-      });
-    }
-  });
-
   // 新增动态宽度中心相关控件事件监听
   const dynamicWidthCenterRangeSlider = document.getElementById('dynamicWidthCenterRange') as HTMLInputElement;
   const dynamicWidthCenterRangeValue = document.getElementById('dynamicWidthCenterRange-value');
@@ -1255,19 +1180,15 @@ function resetToDefaults () {
     midPoint: 0.20,
     intensityMultiplier: 0.6,
     yOffset: 0.2,
-    curveAngle: 0.5,
-    curveType: 0.0,
+    curveAngle: 0.0, // 控制曲线凹凸的角度参数
     lineWidth: 0.084,
     insideAlpha: 1.0,
     timeSpeed: 4.100,
-    leftMode: 3,
-    rightMode: 1,
     glowWidth: 0.162,
     glowSoft: 0.03,
     glowPower: 2.0,
     glowIntensity: 0.830,
     dynamicWidthFalloff: 3.250,
-    colorRegion: -1.270,
     glowRegion: -0.010,
     dynamicWidthCenter: 0.5,
     dynamicWidthCenterRange: 0.1,
@@ -1377,7 +1298,6 @@ function togglePanel () {
 
   // 设置贝塞尔参数默认值
   jsonValue.materials[0].floats['_CurveAngle'] = shaderParams.curveAngle;
-  jsonValue.materials[0].floats['_CurveType'] = shaderParams.curveType;
   jsonValue.materials[0].floats['_LineWidth'] = shaderParams.lineWidth;
   jsonValue.materials[0].floats['_InsideAlpha'] = shaderParams.insideAlpha;
 
@@ -1413,8 +1333,6 @@ function togglePanel () {
   jsonValue.materials[0].vector4s['_Color3B'] = shaderParams.color3B;
 
   // 设置模式参数
-  jsonValue.materials[0].floats['_LeftMode'] = shaderParams.leftMode;
-  jsonValue.materials[0].floats['_RightMode'] = shaderParams.rightMode;
 
   // 设置辉光参数
   jsonValue.materials[0].floats['_GlowWidth'] = shaderParams.glowWidth;
@@ -1449,9 +1367,8 @@ function togglePanel () {
         setBlendMode(material, spec.BlendingMode.ADD);
         material.depthMask = false;
 
-        // 设置所有贝塞尔uniform参数
+        // 设置贝塞尔uniform参数
         material.setFloat('_CurveAngle', shaderParams.curveAngle);
-        material.setFloat('_CurveType', shaderParams.curveType);
         material.setFloat('_LineWidth', shaderParams.lineWidth);
         material.setFloat('_InsideAlpha', shaderParams.insideAlpha);
 
@@ -1465,10 +1382,6 @@ function togglePanel () {
           shaderParams.insideColor.z
         ));
 
-        // 设置左右端色模式
-        material.setFloat('_LeftMode', shaderParams.leftMode);
-        material.setFloat('_RightMode', shaderParams.rightMode);
-
         // 设置辉光参数
         material.setFloat('_GlowWidth', shaderParams.glowWidth);
         material.setFloat('_GlowSoft', shaderParams.glowSoft);
@@ -1477,7 +1390,6 @@ function togglePanel () {
 
         // 设置线宽衰减参数
         material.setFloat('_DynamicWidthFalloff', shaderParams.dynamicWidthFalloff);
-        material.setFloat('_ColorRegion', shaderParams.colorRegion);
         material.setFloat('_GlowRegion', shaderParams.glowRegion);
 
         //设置线条左右滑动通过设置_DynamicWidthCenter
@@ -1540,3 +1452,4 @@ function togglePanel () {
 function getJSON (json: string): Promise<any> {
   return fetch(json).then(res => res.json());
 }
+
