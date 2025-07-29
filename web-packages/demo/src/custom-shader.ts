@@ -14,7 +14,7 @@ const { Vector4 } = math;
 import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*fLISQrW01_kAAAAAQDAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*h_BxQYS9C30AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 // 调试模式开关
 const DEBUG = true; // 调试模式开关
@@ -76,6 +76,7 @@ void main(){
 const fragment = /*glsl*/ `
 precision highp float;
 varying vec2 uv;
+uniform vec4 _Time; // 时间变量
 uniform float _TextureCount;
 uniform float _Offset0;
 uniform float _Offset1;
@@ -89,6 +90,9 @@ uniform sampler2D _Tex0;
 uniform sampler2D _Tex1;
 uniform sampler2D _Tex2;
 uniform sampler2D _Tex3;
+
+uniform sampler2D _NoiseTex; // 添加噪声纹理
+uniform float _Strength; // 噪声强度
 //纹理的layer
 uniform float _Tex0Layer; 
 uniform float _Tex1Layer; 
@@ -126,8 +130,27 @@ void main() {
   layers[2] = _Tex2Layer;
   layers[3] = _Tex3Layer;
 
+  //计算noise纹理的UV坐标
+  vec2 noiseUV = uv;
+  noiseUV.x = _Time.y * 0.1;
+  float noiseValue = 0.0;
+  float amplitude = 1.0;
+  float frequencyx = 1.0;
+  float frequencyy = 1.0;
+  for (int i = 0; i < 1; i++) {
+    noiseValue += amplitude * texture2D(_NoiseTex, vec2(noiseUV.x * frequencyx, noiseUV.y * frequencyy / 10.0)).r;
+    frequencyx *= 2.0;
+    frequencyy *= 2.0;
+    amplitude *= 0.5;
+  }
+  float y_offset = (-noiseValue ) * _Strength;
+
   // 记录每个纹理的索引
-  int indices[4] = int[4](0, 1, 2, 3);
+  int indices[4];
+  indices[0] = 0;
+  indices[1] = 1;
+  indices[2] = 2;
+  indices[3] = 3;
 
   // 简单选择排序，按 layer 从小到大排列 indices
   for (int i = 0; i < 4; i++) {
@@ -152,25 +175,25 @@ void main() {
     if (i == 0) {
       offset = _Offset0 / 200.0;
       alpha = _Alpha0;
-      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y+ y_offset);
       color = safeTexture2D(_Tex0, sampleUV);
       color.rgb = _Color0.rgb;
     } else if (i == 1) {
       offset = _Offset1 / 200.0;
       alpha = _Alpha1;
-      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y+ y_offset);
       color = safeTexture2D(_Tex1, sampleUV);
       color.rgb = _Color1.rgb;
     } else if (i == 2) {
       offset = _Offset2 / 200.0;
       alpha = _Alpha2;
-      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y+ y_offset);
       color = safeTexture2D(_Tex2, sampleUV);
       color.rgb = _Color2.rgb;
     } else if (i == 3) {
       offset = _Offset3 / 200.0;
       alpha = _Alpha3;
-      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y+ y_offset);
       color = safeTexture2D(_Tex3, sampleUV);
       color.rgb = _Color3.rgb;
     }
@@ -336,6 +359,7 @@ let material: Material | undefined;
   // eslint-disable-next-line no-console
   //console.log('3. Loading texture...');
   const imageData = await loadLocalImageData('../cloud.png');
+  const noiseimageData = await loadLocalImageData('../Perlin.png');
 
   // eslint-disable-next-line no-console
   //console.log('4. Texture loaded, creating...');
@@ -350,6 +374,19 @@ let material: Material | undefined;
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
     }
+  );
+  const noiseTexture = Texture.createWithData(
+    engine,
+    {
+      data: new Uint8Array(noiseimageData.data),
+      width: noiseimageData.width,
+      height: noiseimageData.height,
+    },
+    {
+      wrapS: glContext.REPEAT,
+      wrapT: glContext.REPEAT,
+    },
+
   );
 
   if (item) {
@@ -371,6 +408,10 @@ let material: Material | undefined;
         material.setTexture('_Tex1', cloudTexture);
         material.setTexture('_Tex2', cloudTexture);
         material.setTexture('_Tex3', cloudTexture);
+        // 设置噪声纹理
+        material.setTexture('_NoiseTex', noiseTexture);
+        // 设置噪声强度
+        material.setFloat('_Strength', 1.1);
         // 设置纹理层级
         material.setFloat('_Tex0Layer', 0);
         material.setFloat('_Tex1Layer', 1);
