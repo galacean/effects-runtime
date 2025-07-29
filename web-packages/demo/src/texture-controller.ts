@@ -153,7 +153,7 @@ export class TextureController {
     texA.batchTriggered = false;
     this.textures.push(texA);
 
-    // 0.5s后创建纹理B
+    // 0.5s后创建纹理B，强制fadeIn为0.5s
     setTimeout(() => {
       const texB = this.createTexture('input', performance.now() / 1000);
 
@@ -162,6 +162,7 @@ export class TextureController {
       texB.colorStops = this.inputColors.colorStops;
       texB.colorSpeed = this.inputColors.colorSpeed;
       texB.batchTriggered = false;
+      texB.fadeIn = 0.5; // 保证fadeIn为0.5s
       this.textures.push(texB);
 
       if (DEBUG) {

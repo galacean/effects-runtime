@@ -14,7 +14,7 @@ const { Vector4 } = math;
 import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*l15SSZrLuoAAAAAAQDAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*fLISQrW01_kAAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 // 调试模式开关
 const DEBUG = true; // 调试模式开关
@@ -234,14 +234,68 @@ let material: Material | undefined;
 
   const controller = new TextureController();
 
-  // 示例：设置聆听阶段颜色为黄色 [1, 1, 0, 1]
-  controller.setListeningColor([19 / 255, 107 / 255, 205 / 255, 1]);
+  // 添加颜色调试 UI
+  const uiHtml = `
+    <div style="position:fixed;top:10px;left:10px;z-index:999;background:#fff;padding:8px;border-radius:6px;box-shadow:0 2px 8px #0002;font-size:14px;">
+      <div style="margin-bottom:6px;">
+        <label>聆听阶段颜色：</label>
+        <input type="color" id="listeningColor" value="#136BCD" />
+      </div>
+      <div style="margin-bottom:6px;">
+        <label>输入主色：</label>
+        <input type="color" id="inputPrimaryColor" value="#136BCD" />
+      </div>
+      <div>
+        <label>输入副色：</label>
+        <input type="color" id="inputSecondaryColor" value="#029896" />
+      </div>
+    </div>
+  `;
 
-  // 示例：设置输入阶段主色为红色，副色为绿色
+  document.body.insertAdjacentHTML('beforeend', uiHtml);
+
+  function hexToRgba (hex: string): [number, number, number, number] {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+    return [r, g, b, 1];
+  }
+
+  // 初始化默认颜色
+  controller.setListeningColor(hexToRgba('#136BCD'));
   controller.setInputColors({
-    primary: [19 / 255, 107 / 255, 205 / 255, 1], // 红色
-    secondary: [2 / 255, 152 / 255, 150 / 255, 1], // 绿色
+    primary: hexToRgba('#136BCD'),
+    secondary: hexToRgba('#029896'),
   });
+
+  const listeningColorInput = document.getElementById('listeningColor') as HTMLInputElement | null;
+
+  if (listeningColorInput) {
+    listeningColorInput.addEventListener('input', e => {
+      const target = e.target as HTMLInputElement;
+
+      controller.setListeningColor(hexToRgba(target.value));
+    });
+  }
+  const inputPrimaryColorInput = document.getElementById('inputPrimaryColor') as HTMLInputElement | null;
+
+  if (inputPrimaryColorInput) {
+    inputPrimaryColorInput.addEventListener('input', e => {
+      const target = e.target as HTMLInputElement;
+
+      controller.setInputColors({ primary: hexToRgba(target.value) });
+    });
+  }
+  const inputSecondaryColorInput = document.getElementById('inputSecondaryColor') as HTMLInputElement | null;
+
+  if (inputSecondaryColorInput) {
+    inputSecondaryColorInput.addEventListener('input', e => {
+      const target = e.target as HTMLInputElement;
+
+      controller.setInputColors({ secondary: hexToRgba(target.value) });
+    });
+  }
   const engine = composition.renderer.engine;
 
   // 初始化时重置到监听状态(转换为秒)
