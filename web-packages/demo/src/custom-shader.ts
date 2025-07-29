@@ -10,6 +10,7 @@ import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, setBlendMode, spec } from '@galacean/effects';
 import { math } from '@galacean/effects-core';
 const { Vector4 } = math;
+
 import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 
@@ -84,72 +85,101 @@ uniform float _Alpha0;
 uniform float _Alpha1;
 uniform float _Alpha2;
 uniform float _Alpha3;
-uniform sampler2D uTex0;
-uniform sampler2D uTex1;
-uniform sampler2D uTex2;
-uniform sampler2D uTex3;
+uniform sampler2D _Tex0;
+uniform sampler2D _Tex1;
+uniform sampler2D _Tex2;
+uniform sampler2D _Tex3;
+//纹理的layer
+uniform float _Tex0Layer; 
+uniform float _Tex1Layer; 
+uniform float _Tex2Layer; 
+uniform float _Tex3Layer;
 
 // 颜色uniform
-uniform vec4 uColor0;
-uniform vec4 uColor1;
-uniform vec4 uColor2;
-uniform vec4 uColor3;
+uniform vec4 _Color0;
+uniform vec4 _Color1;
+uniform vec4 _Color2;
+uniform vec4 _Color3;
+
 
 // 确保UV在有效范围内采样
 vec2 clampUV(vec2 uv) {
   return clamp(uv, vec2(0.01), vec2(0.99));
 }
 
+vec4 safeTexture2D(sampler2D tex, vec2 uv) {
+  // 使用edgeFactor方案实现自然边缘淡出
+  vec4 color = texture2D(tex, clamp(uv, vec2(0.0), vec2(1.0)));
+  float edgeFactor = smoothstep(0.0, 0.1, min(uv.x, 1.0 - uv.x)) *
+                     smoothstep(0.0, 0.1, min(uv.y, 1.0 - uv.y));
+  color.a *= edgeFactor;
+  return color;
+}
+
 void main() {
   vec4 finalColor = vec4(0.0);
-  int textureCount = int(_TextureCount);
-  
-  // 按从新到旧顺序处理纹理（纹理3最新，纹理0最旧）
-  for (int i = 3; i >= 0; i--) {
-    if (i < textureCount) {
-      float offset, alpha;
-      vec4 color;
-      
-      // 根据索引获取参数
-      if (i == 0) {
-        offset = _Offset0 / 200.0;
-        alpha = _Alpha0;
-        color = texture2D(uTex0, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
-        // 应用颜色0
-        color.rgb = uColor0.rgb;
-      } else if (i == 1) {
-        offset = _Offset1 / 200.0;
-        alpha = _Alpha1;
-        color = texture2D(uTex1, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
-        // 应用颜色1
-        color.rgb = uColor1.rgb;
-      } else if (i == 2) {
-        offset = _Offset2 / 200.0;
-        alpha = _Alpha2;
-        color = texture2D(uTex2, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
-      } else if (i == 3) {
-        offset = _Offset3 / 200.0;
-        alpha = _Alpha3;
-        color = texture2D(uTex3, clampUV(vec2(uv.x - offset, 1.0 - uv.y)));
+
+  // 记录每个纹理的 layer
+  float layers[4];
+  layers[0] = _Tex0Layer;
+  layers[1] = _Tex1Layer;
+  layers[2] = _Tex2Layer;
+  layers[3] = _Tex3Layer;
+
+  // 记录每个纹理的索引
+  int indices[4] = int[4](0, 1, 2, 3);
+
+  // 简单选择排序，按 layer 从小到大排列 indices
+  for (int i = 0; i < 4; i++) {
+    for (int j = i + 1; j < 4; j++) {
+      if (layers[indices[i]] > layers[indices[j]]) {
+        int tmp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = tmp;
       }
-      
-      color.a *= alpha;
-      
-      // 边缘处理
-      vec2 tuv = vec2(uv.x - offset, 1.0 - uv.y);
-      float edgeFactor = smoothstep(0.0, 0.2, min(tuv.x, 1.0-tuv.x)) *
-                         smoothstep(0.0, 0.2, min(tuv.y, 1.0-tuv.y));
-      color.a *= edgeFactor;
-      
-      // 应用规范混合公式：新纹理作为源(source)，旧纹理作为目标(destination)
-      // finalColor = destination, color = source
-      // result = dest * (1 - src.a) + src * src.a
-      finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
-      finalColor.a = finalColor.a * (1.0 - color.a) + color.a;
     }
   }
 
-  gl_FragColor = finalColor;
+  int textureCount = int(_TextureCount);
+
+  // 按 layer 顺序混合
+  for (int k = 0; k < textureCount; k++) {
+    int i = indices[k];
+    float offset, alpha;
+    vec4 color;
+    vec2 sampleUV;
+
+    if (i == 0) {
+      offset = _Offset0 / 200.0;
+      alpha = _Alpha0;
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      color = safeTexture2D(_Tex0, sampleUV);
+      color.rgb = _Color0.rgb;
+    } else if (i == 1) {
+      offset = _Offset1 / 200.0;
+      alpha = _Alpha1;
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      color = safeTexture2D(_Tex1, sampleUV);
+      color.rgb = _Color1.rgb;
+    } else if (i == 2) {
+      offset = _Offset2 / 200.0;
+      alpha = _Alpha2;
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      color = safeTexture2D(_Tex2, sampleUV);
+      color.rgb = _Color2.rgb;
+    } else if (i == 3) {
+      offset = _Offset3 / 200.0;
+      alpha = _Alpha3;
+      sampleUV = vec2(uv.x - offset, 1.0 - uv.y);
+      color = safeTexture2D(_Tex3, sampleUV);
+      color.rgb = _Color3.rgb;
+    }
+    color.a *= alpha;
+    finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
+    finalColor.a = finalColor.a * (1.0 - color.a) + color.a;
+  }
+
+  gl_FragColor = vec4(finalColor.rgb, finalColor.a);
 }
 `;
 
@@ -191,7 +221,10 @@ let material: Material | undefined;
     jsonValue.materials[0].floats[`_Offset${i}`] = 0;
     jsonValue.materials[0].floats[`_Alpha${i}`] = 0;
     // 初始化颜色参数
-    jsonValue.materials[0].vector4s[`uColor${i}`] = [1, 1, 1, 1];
+    jsonValue.materials[0].vector4s[`_Color${i}`] = [1, 1, 1, 1];
+    //初始化纹理层级
+    jsonValue.materials[0].floats = jsonValue.materials[0].floats || {};
+    jsonValue.materials[0].floats[`_Tex${i}Layer`] = i;
   }
 
   jsonValue.shaders[0].vertex = vertex;
@@ -200,13 +233,22 @@ let material: Material | undefined;
   const item = composition.getItemByName('effect_4');
 
   const controller = new TextureController();
+
+  // 示例：设置聆听阶段颜色为黄色 [1, 1, 0, 1]
+  controller.setListeningColor([19 / 255, 107 / 255, 205 / 255, 1]);
+
+  // 示例：设置输入阶段主色为红色，副色为绿色
+  controller.setInputColors({
+    primary: [19 / 255, 107 / 255, 205 / 255, 1], // 红色
+    secondary: [2 / 255, 152 / 255, 150 / 255, 1], // 绿色
+  });
   const engine = composition.renderer.engine;
 
   // 初始化时重置到监听状态(转换为秒)
   controller.resetToListening(performance.now() / 1000);
-  if (DEBUG) {
-    console.log('Initialized controller with textures:', controller.textures);
-  }
+  // if (DEBUG) {
+  //   console.log('Initialized controller with textures:', controller.textures);
+  // }
 
   // 手动加载本地图片并创建纹理
   const loadLocalImageData = (path: string): Promise<ImageData> => {
@@ -268,22 +310,25 @@ let material: Material | undefined;
         material.depthMask = false;
 
         // 初始化参数和纹理
-        material.setFloat('_CanvasAspect', shaderParams._CanvasAspect);
-        material.setFloat('_TextureAspect', shaderParams._TextureAspect);
         material.setFloat('_TextureCount', shaderParams._TextureCount);
 
         // 分别设置四个独立纹理
-        material.setTexture('uTex0', cloudTexture);
-        material.setTexture('uTex1', cloudTexture);
-        material.setTexture('uTex2', cloudTexture);
-        material.setTexture('uTex3', cloudTexture);
+        material.setTexture('_Tex0', cloudTexture);
+        material.setTexture('_Tex1', cloudTexture);
+        material.setTexture('_Tex2', cloudTexture);
+        material.setTexture('_Tex3', cloudTexture);
+        // 设置纹理层级
+        material.setFloat('_Tex0Layer', 0);
+        material.setFloat('_Tex1Layer', 1);
+        material.setFloat('_Tex2Layer', 2);
+        material.setFloat('_Tex3Layer', 3);
 
         // 初始化偏移、透明度和颜色矩阵参数
         for (let i = 0; i < MAX_TEXTURES; i++) {
           material.setFloat(`_Offset${i}`, 0.5);
           material.setFloat(`_Alpha${i}`, 0);
-        // 设置默认颜色(白色)
-        material.setVector4(`uColor${i}`, new Vector4(1, 1, 1, 1));
+          // 设置默认颜色(白色)
+          material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 1));
         }
       }
     }
@@ -299,15 +344,15 @@ let material: Material | undefined;
    */
   function getAudioVolume () {
     const now = performance.now();
-    const cycleDuration = 6800; // 3400 + 2400 + 1000
+    const cycleDuration = 68000; // 3400 + 2400 + 1000
     const timeInCycle = now % cycleDuration;
 
     if (timeInCycle < 3400) {
-      return 0.8; // 状态1
-    } else if (timeInCycle < 5800) {
+      return 0.05; // 状态1
+    } else if (timeInCycle < 20000) {
       return 0.6; // 状态2
     } else {
-      return 0.0; // 静谧状态
+      return 0.05; // 静谧状态
     }
   }
 
@@ -325,10 +370,10 @@ let material: Material | undefined;
 
     const volume = getAudioVolume();
 
-    if (DEBUG) {
-      console.log(`Current volume: ${volume}`);
-      console.log('Current textures:', controller.textures);
-    }
+    // if (DEBUG) {
+    //   console.log(`Current volume: ${volume}`);
+    //   console.log('Current textures:', controller.textures);
+    // }
 
     controller.update(delta, volume, now);
 
@@ -349,16 +394,19 @@ let material: Material | undefined;
 
         material.setFloat(`_Offset${i}`, texture.x);
         material.setFloat(`_Alpha${i}`, texture.alpha);
-        
+        // 设置纹理层级
+        material.setFloat(`_Tex${i}Layer`, texture.layer);
+
         // 设置颜色
         if (texture.color) {
-          material.setVector4(`uColor${i}`, new Vector4(...texture.color));
+          material.setVector4(`_Color${i}`, new Vector4(...texture.color));
+          console.log(`Texture ${i} color:`, texture.color);
         }
 
         // 调试日志
         if (DEBUG && i === 0) {
-          console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
-          console.log('Color:', texture.color);
+          //console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
+          //console.log('Color:', texture.color);
         }
       }
       // 对于未使用的纹理，重置参数

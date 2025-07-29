@@ -6,6 +6,8 @@ enum TexFadeStage { Hidden, FadingIn, Showing, FadingOut }
 
 interface TexState {
   id: number,                   // 纹理唯一ID
+  layer: number,                // 渲染层级（0~3）
+  batchId?: number,             // 所属input批次ID
   x: number,                    // 横向位置
   stage: TexFadeStage,          // 当前透明阶段
   alpha: number,                // 当前透明度
@@ -16,16 +18,18 @@ interface TexState {
   fadeOutEnd: number,           // 渐隐结束时间
   distance: number,             // 移动距离
   type: 'listening' | 'input',  // 纹理类型
-  triggered?: boolean,          // 是否已触发检测
-  color?: [number, number, number, number]; // 直接颜色值[r,g,b,a]
-  colorMode?: number;           // 颜色模式 0:固定 1:动态渐变
-  colorStops?: [number, number, number, number][]; // 颜色渐变点
-  colorSpeed: number;          // 颜色变化速度
+  triggered?: boolean,          // 是否已触发监听阶段检测
+  batchTriggered?: boolean,     // 所属批次是否已触发输入检测
+  color?: [number, number, number, number], // 直接颜色值[r,g,b,a]
+  colorMode?: number,           // 颜色模式 0:固定 1:动态渐变
+  colorStops?: [number, number, number, number][], // 颜色渐变点
+  colorSpeed: number,          // 颜色变化速度
 }
 
 export class TextureController {
   textures: TexState[] = [];
   nextId = 1;
+  nextLayer = 0;
   currentStage: MainStage = MainStage.Listening;
   volumeThreshold = 0.1;
   pendingInputStage = false;    // 标记是否在3.4s触发第二阶段
@@ -47,6 +51,13 @@ export class TextureController {
   onStage: (stage: MainStage) => void = () => {};
   onUpdate: (textures: TexState[]) => void = () => {};
 
+  // 当前input批次是否已触发
+  inputStageTriggered = false; // 当前input批次是否已触发
+  inputBatchId = 0; // 当前input批次ID
+
+  // 在 TextureController 类中添加：
+  listeningColor: [number, number, number, number] = [1, 1, 1, 1]; // 默认白色
+
   constructor () {
     this.resetToListening(performance.now() / 1000);
   }
@@ -54,6 +65,10 @@ export class TextureController {
   resetToListening (now: number) {
     this.currentStage = MainStage.Listening;
     this.stageStartTime = now;
+    this.nextLayer = 0;
+    this.pendingInputStage = false;
+    this.inputStageTriggered = false; // 重置批次触发标记
+    this.inputBatchId = 0; // 重置input批次ID
     this.textures = [this.createTexture('listening', now)];
     this.onStage(MainStage.Listening);
     if (DEBUG) {
@@ -61,9 +76,21 @@ export class TextureController {
     }
   }
 
+  setListeningColor (color: [number, number, number, number]) {
+    this.listeningColor = color;
+    // 已有监听阶段纹理立即更新颜色
+    this.textures.forEach(tex => {
+      if (tex.type === 'listening') {
+        tex.color = color;
+      }
+    });
+  }
+
   createTexture (type: 'listening' | 'input', startTime: number): TexState {
-    return {
+    const tex: TexState = {
       id: this.nextId++,
+      layer: this.nextLayer++,
+      batchId: type === 'input' ? this.inputBatchId : undefined,
       type,
       x: 0,
       stage: TexFadeStage.FadingIn,
@@ -75,8 +102,15 @@ export class TextureController {
       fadeOutEnd: type === 'listening' ? this.listeningFadeOutEnd : this.inputDuration,
       distance: type === 'listening' ? this.listeningDistance : this.inputDistance,
       triggered: false,
-      colorSpeed: 1.0 // 默认颜色变化速度
+      colorSpeed: 1.0,
     };
+
+    if (type === 'listening') {
+      tex.color = this.listeningColor;
+      tex.colorMode = 0;
+    }
+
+    return tex;
   }
 
   // 颜色配置
@@ -87,18 +121,18 @@ export class TextureController {
     colorStops: [
       [0, 0, 1, 1] as [number, number, number, number], // 蓝色
       [0, 1, 0, 1] as [number, number, number, number], // 绿色
-      [1, 0, 0, 1] as [number, number, number, number]  // 红色
+      [1, 0, 0, 1] as [number, number, number, number],  // 红色
     ],
-    colorSpeed: 1.0
+    colorSpeed: 1.0,
   };
 
   // 设置输入阶段颜色
-  setInputColors(colors: {
+  setInputColors (colors: {
     primary?: [number, number, number, number],
     secondary?: [number, number, number, number],
     colorMode?: number,
     colorStops?: [number, number, number, number][],
-    colorSpeed?: number
+    colorSpeed?: number,
   }) {
     Object.assign(this.inputColors, colors);
   }
@@ -107,24 +141,27 @@ export class TextureController {
     this.currentStage = MainStage.Input;
     this.stageStartTime = now;
     this.pendingInputStage = false;
+    this.inputBatchId++;
 
     // 创建输入阶段纹理A
     const texA = this.createTexture('input', now);
+
     texA.color = this.inputColors.primary;
     texA.colorMode = this.inputColors.colorMode;
     texA.colorStops = this.inputColors.colorStops;
     texA.colorSpeed = this.inputColors.colorSpeed;
-
+    texA.batchTriggered = false;
     this.textures.push(texA);
 
     // 0.5s后创建纹理B
     setTimeout(() => {
       const texB = this.createTexture('input', performance.now() / 1000);
+
       texB.color = this.inputColors.secondary;
       texB.colorMode = this.inputColors.colorMode;
       texB.colorStops = this.inputColors.colorStops;
       texB.colorSpeed = this.inputColors.colorSpeed;
-
+      texB.batchTriggered = false;
       this.textures.push(texB);
 
       if (DEBUG) {
@@ -175,14 +212,15 @@ export class TextureController {
         const colorIndex = Math.floor(t * (tex.colorStops.length - 1));
         const nextIndex = Math.min(colorIndex + 1, tex.colorStops.length - 1);
         const lerpT = t * (tex.colorStops.length - 1) - colorIndex;
-        
+
         const colorA = tex.colorStops[colorIndex];
         const colorB = tex.colorStops[nextIndex];
+
         tex.color = [
           colorA[0] + (colorB[0] - colorA[0]) * lerpT,
           colorA[1] + (colorB[1] - colorA[1]) * lerpT,
           colorA[2] + (colorB[2] - colorA[2]) * lerpT,
-          colorA[3] + (colorB[3] - colorA[3]) * lerpT
+          colorA[3] + (colorB[3] - colorA[3]) * lerpT,
         ];
       }
 
@@ -194,6 +232,11 @@ export class TextureController {
     this.textures = this.textures.filter(
       tex => (now - tex.startedAt) < tex.duration
     );
+    // layer自动重排：移除后剩余纹理layer重新编号为0~N
+    this.textures.forEach((tex, idx) => {
+      tex.layer = idx;
+    });
+    this.nextLayer = this.textures.length;
 
     // 3.4s阶段转换点
     if (this.currentStage === MainStage.Listening &&
@@ -201,17 +244,27 @@ export class TextureController {
         now - this.stageStartTime >= this.listeningFadeOutEnd) {
       this.enterInputStage(now);
     }
+
+    // 新增：输入阶段所有纹理消失后自动回到监听阶段
+    if (this.currentStage === MainStage.Input && this.textures.length === 0) {
+      this.resetToListening(now);
+      if (DEBUG) {
+        console.log('所有输入阶段纹理消失，自动回到监听阶段');
+      }
+    }
   }
 
   checkTriggerPoints (tex: TexState, elapsed: number, volume: number, now: number) {
-    // 监听阶段2.4s检测点
-    if (tex.type === 'listening' &&
-        Math.abs(elapsed - this.listeningFadeOutStart) < 0.05 &&
-        !tex.triggered) {
-      tex.triggered = true;
-
+    // 监听阶段fadeOut区间持续检测
+    if (
+      tex.type === 'listening' &&
+      elapsed >= this.listeningFadeOutStart &&
+      elapsed < this.listeningFadeOutEnd &&
+      !tex.triggered
+    ) {
       if (volume > this.volumeThreshold && !this.pendingInputStage) {
         this.pendingInputStage = true;
+        tex.triggered = true;
         if (DEBUG) {
           console.log(`[精确检测] 音量${volume}超阈值，将在3.4s进入第二阶段`);
         }
@@ -219,20 +272,28 @@ export class TextureController {
         const newTex = this.createTexture('listening', now);
 
         this.textures.push(newTex);
+        tex.triggered = true;
         if (DEBUG) {
           console.log(`[精确检测] 音量${volume}未超阈值，生成新监听纹理`, newTex);
         }
       }
     }
 
-    // 输入阶段1.9s检测点
-    if (tex.type === 'input' &&
-        Math.abs(elapsed - this.inputFadeOutStart) < 0.05 &&
-        !tex.triggered) {
-      tex.triggered = true;
+    // 输入阶段fadeOut区间持续检测，每批次只允许触发一次
+    if (
+      tex.type === 'input' &&
+      tex.batchId === this.inputBatchId &&
+      elapsed >= this.inputFadeOutStart &&
+      elapsed < tex.fadeOutEnd
+    ) {
+      // 查找当前批次所有纹理
+      const batchTextures = this.textures.filter(t => t.batchId === this.inputBatchId);
+      // 只有当前批次所有纹理都未触发过，才允许触发
+      const batchAlreadyTriggered = batchTextures.some(t => t.batchTriggered);
 
-      if (volume > this.volumeThreshold) {
+      if (!batchAlreadyTriggered && volume > this.volumeThreshold) {
         this.enterInputStage(now);
+        batchTextures.forEach(t => t.batchTriggered = true);
         if (DEBUG) {
           console.log(`[精确检测] 音量${volume}超阈值，生成新输入纹理组`);
         }
