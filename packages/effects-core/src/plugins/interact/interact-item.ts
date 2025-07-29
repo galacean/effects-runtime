@@ -120,7 +120,8 @@ export class InteractComponent extends RendererComponent {
   override onDisable (): void {
     super.onDisable();
     if (this.item && this.item.composition) {
-      if (this.duringPlay && !this.item.transform.getValid()) {
+      // Triggers the Message end event, do not trigger when reverse playback
+      if (this.duringPlay && !this.item.transform.getValid() && this.item.composition.getSpeed() > 0) {
         this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
         this.duringPlay = false;
       }
@@ -153,7 +154,7 @@ export class InteractComponent extends RendererComponent {
   override onUpdate (dt: number): void {
     this.duringPlay = true;
 
-    // trigger messageBegin when item enter
+    // Trigger messageBegin when item enter
     if (this.lastTime <= this.item.time) {
       if (this.item.time >= 0 && this.lastTime < 0) {
         const options = this.item.props.content.options as spec.DragInteractOption;
@@ -161,8 +162,8 @@ export class InteractComponent extends RendererComponent {
         this.item.composition?.addInteractiveItem(this.item, options.type);
       }
     } else {
-      // loop trigger
-      if (this.item.time >= 0) {
+      // Loop trigger, do not trigger when reverse playback
+      if (this.item.time >= 0 && dt > 0) {
         const options = this.item.props.content.options as spec.DragInteractOption;
 
         this.item.composition?.addInteractiveItem(this.item, options.type);
