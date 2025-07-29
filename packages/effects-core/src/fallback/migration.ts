@@ -100,6 +100,8 @@ export function version31Migration (json: JSONScene): JSONScene {
     }
   }
 
+  json.version = JSONSceneVersion['3_2'];
+
   return json;
 }
 
@@ -119,6 +121,8 @@ export function version32Migration (json: JSONScene): JSONScene {
   for (const comp of compositions) {
     processContent(comp);
   }
+
+  json.version = JSONSceneVersion['3_3'];
 
   return json;
 }
@@ -170,14 +174,12 @@ export function version33Migration (json: JSONScene): JSONScene {
       items: composition.items,
       timelineAsset: composition.timelineAsset,
       sceneBindings: composition.sceneBindings,
-      startTime: composition.startTime,
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
     composition.timelineAsset = undefined;
     //@ts-expect-error
     composition.sceneBindings = undefined;
-    composition.startTime = undefined;
     //@ts-expect-error
     composition.components = [{ id:compositionComponent.id }];
     json.components.push(compositionComponent);
@@ -192,6 +194,8 @@ export function version33Migration (json: JSONScene): JSONScene {
       }
     }
   }
+
+  json.version = JSONSceneVersion['3_4'];
 
   return json;
 }

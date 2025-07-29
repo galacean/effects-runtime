@@ -28,7 +28,6 @@ export interface SceneBindingData {
 @effectsClass('CompositionComponent')
 export class CompositionComponent extends Component {
   time = 0;
-  startTime = 0;
   @serialize()
   items: VFXItem[] = [];  // 场景的所有元素
 
@@ -151,6 +150,7 @@ export class CompositionComponent extends Component {
           const intersectPoint = new Vector3();
 
           if (hitParams.type === HitTestType.triangle) {
+
             const { triangles, backfaceCulling } = hitParams;
 
             for (let j = 0; j < triangles.length; j++) {
@@ -236,9 +236,6 @@ export class CompositionComponent extends Component {
 
   override fromData (data: any): void {
     super.fromData(data);
-    const compositionData = data as spec.CompositionData;
-
-    this.startTime = compositionData.startTime ?? 0;
   }
 
   private resolveBindings () {

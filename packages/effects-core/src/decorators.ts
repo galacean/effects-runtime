@@ -8,6 +8,10 @@ const mergedStore: SerializableMemberStoreType = new Map();
 
 export const effectsClassStore: Record<string, any> = {};
 
+export function getClass (className: string) {
+  return effectsClassStore[className];
+}
+
 export function effectsClass (className: string) {
   return (target: Object, context?: unknown) => {
     if (effectsClassStore[className]) {

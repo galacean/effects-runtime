@@ -551,13 +551,24 @@ export class Transform implements Disposable {
   }
 
   fromData (data: spec.TransformData) {
-    const transformData = {
-      position: new Vector3().copyFrom(data.position),
-      rotation: new Euler(data.eulerHint.x, data.eulerHint.y, data.eulerHint.z),
-      scale: new Vector3().copyFrom(data.scale),
-    };
+    const transformProps: TransformProps = {};
 
-    this.setTransform(transformData);
+    transformProps.position = new Vector3().copyFrom(data.position);
+    //@ts-expect-error
+    if (data.quat) {
+      //@ts-expect-error
+      transformProps.quat = new Quaternion(data.quat.x, data.quat.y, data.quat.z, data.quat.w);
+    } else {
+      transformProps.rotation = new Euler(data.eulerHint.x, data.eulerHint.y, data.eulerHint.z);
+    }
+    transformProps.scale = new Vector3().copyFrom(data.scale);
+    if (data.size) {
+      transformProps.size = new Vector2().copyFrom(data.size);
+    }
+    if (data.anchor) {
+      transformProps.anchor = new Vector2().copyFrom(data.anchor);
+    }
+    this.setTransform(transformProps);
   }
 
   dispose (): void { }

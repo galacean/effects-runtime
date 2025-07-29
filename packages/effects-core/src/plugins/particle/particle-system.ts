@@ -1,5 +1,5 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
-import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
@@ -9,7 +9,7 @@ import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh, Renderer } from '../../render';
 import type { Maskable } from '../../material';
-import { MaskMode, MaskProcessor } from '../../material';
+import { MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
@@ -159,11 +159,11 @@ export class ParticleSystem extends Component implements Maskable {
   emissionStopped: boolean;
   destroyed = false;
   props: ParticleSystemProps;
+  time: number;
 
   readonly maskManager: MaskProcessor;
 
   private generatedCount: number;
-  private lastUpdate: number;
   private loopStartTime: number;
   private particleLink: Link<ParticleContent>;
   private started: boolean;
@@ -187,7 +187,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   get timePassed () {
-    return this.lastUpdate - this.loopStartTime;
+    return this.time - this.loopStartTime;
   }
 
   get lifetime () {
@@ -300,41 +300,6 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.setVisible(visible);
   }
 
-  setOpacity (opacity: number) {
-    const material = this.renderer.particleMesh.mesh.material;
-    const geometry = this.renderer.particleMesh.mesh.geometry;
-    const originalColor = material.getVector4('uOpacityOverLifetimeValue')?.toArray() || [1, 1, 1, 1];
-
-    material.setVector4('uOpacityOverLifetimeValue', new Vector4(originalColor[0], originalColor[1], originalColor[2], opacity));
-    const data = geometry.getAttributeData('aColor') || [];
-
-    for (let i = 0; i < data.length; i += 32) {
-      data[i * 8 + 7] = opacity;
-    }
-  }
-
-  /**
-   * @internal
-   */
-  setColor (r: number, g: number, b: number, a: number) {
-    const material = this.renderer.particleMesh.mesh.material;
-    const geometry = this.renderer.particleMesh.mesh.geometry;
-    const originalColor = material.getVector4('uOpacityOverLifetimeValue')?.toArray() || [1, 1, 1, 1];
-
-    material.setVector4('uOpacityOverLifetimeValue', new Vector4(originalColor[0], originalColor[1], originalColor[2], a));
-    const data = geometry.getAttributeData('aColor') || [];
-
-    for (let i = 0; i < data.length; i += 32) {
-      data[i * 8 + 4] = r;
-      data[i * 8 + 5] = g;
-      data[i * 8 + 6] = b;
-      data[i * 8 + 7] = a;
-    }
-  }
-
-  setParentTransform (transform: Transform) {
-  }
-
   getTextures (): Texture[] {
     return this.renderer.getTextures();
   }
@@ -354,7 +319,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   reset () {
     this.renderer.reset();
-    this.lastUpdate = 0;
+    this.time = 0;
     this.loopStartTime = 0;
     this.lastEmitTime = -1 / this.emission.rateOverTime.getValue(0);
     this.generatedCount = 0;
@@ -365,14 +330,23 @@ export class ParticleSystem extends Component implements Maskable {
     this.destroyed = false;
   }
 
+  override onStart (): void {
+    this.startEmit();
+    this.initEmitterTransform();
+  }
+
+  override onUpdate (dt: number): void {
+    this.update(dt);
+  }
+
   update (delta: number) {
     if (this.started && !this.frozen) {
-      const now = this.lastUpdate + delta / 1000;
+      const now = this.time + delta / 1000;
       const options = this.options;
       const loopStartTime = this.loopStartTime;
       const emission = this.emission;
 
-      this.lastUpdate = now;
+      this.time = now;
       this.upDirectionWorld = null;
       this.renderer.updateTime(now, delta);
 
@@ -463,7 +437,7 @@ export class ParticleSystem extends Component implements Maskable {
           updateTrail();
           this.loopStartTime = now - duration;
           this.lastEmitTime -= duration;
-          this.lastUpdate -= duration;
+          this.time -= duration;
           emission.bursts.forEach(b => b.reset());
           this.particleLink.forEach(content => {
             content[0] -= duration;
@@ -484,7 +458,7 @@ export class ParticleSystem extends Component implements Maskable {
         if (spec.EndBehavior.destroy === this.item.endBehavior) {
           const node = link.last;
 
-          if (node && (node.content[0]) < this.lastUpdate) {
+          if (node && (node.content[0]) < this.time) {
             this.destroyed = true;
           }
         }
@@ -499,7 +473,7 @@ export class ParticleSystem extends Component implements Maskable {
     }
     const previousColorMasks: boolean[] = [];
 
-    for (let i = 0;i < this.renderer.meshes.length;i++) {
+    for (let i = 0; i < this.renderer.meshes.length; i++) {
       const material = this.renderer.meshes[i].material;
 
       previousColorMasks.push(material.colorMask);
@@ -510,7 +484,7 @@ export class ParticleSystem extends Component implements Maskable {
       mesh.render(renderer);
     }
 
-    for (let i = 0;i < this.renderer.meshes.length;i++) {
+    for (let i = 0; i < this.renderer.meshes.length; i++) {
       const material = this.renderer.meshes[i].material;
 
       material.colorMask = previousColorMasks[i];
@@ -680,7 +654,7 @@ export class ParticleSystem extends Component implements Maskable {
     } = point;
 
     const forceTarget = this.options.forceTarget;
-    const time = this.lastUpdate - delay;
+    const time = this.time - delay;
 
     const tempPos = new Vector3();
     const acc = Vector3.fromArray(gravity);
@@ -1019,7 +993,9 @@ export class ParticleSystem extends Component implements Maskable {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
-    let maskProps = this.getMaskOptions(props);
+    if (props.mask) {
+      this.maskManager.setMaskOptions(props.mask);
+    }
 
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
@@ -1041,8 +1017,8 @@ export class ParticleSystem extends Component implements Maskable {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
-      mask: maskProps.maskRef,
-      maskMode: maskProps.maskMode,
+      mask: this.maskManager.getRefValue(),
+      maskMode: this.maskManager.maskMode,
       forceTarget,
       diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
@@ -1118,7 +1094,10 @@ export class ParticleSystem extends Component implements Maskable {
         parentAffectsPosition: !!trails.parentAffectsPosition,
       };
 
-      maskProps = this.getMaskOptions(trails);
+      if (trails.mask) {
+        this.maskManager.setMaskOptions(trails.mask);
+      }
+
       trailMeshProps = {
         name: 'Trail',
         matrix: Matrix4.IDENTITY,
@@ -1135,8 +1114,8 @@ export class ParticleSystem extends Component implements Maskable {
         occlusion: !!trails.occlusion,
         transparentOcclusion: !!trails.transparentOcclusion,
         textureMap: trails.textureMap,
-        mask: maskProps.maskRef,
-        maskMode: maskProps.maskMode,
+        mask: this.maskManager.getRefValue(),
+        maskMode: this.maskManager.maskMode,
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
@@ -1163,21 +1142,6 @@ export class ParticleSystem extends Component implements Maskable {
     }
     this.item.getHitTestParams = this.getHitTestParams;
     this.item._content = this;
-  }
-
-  getMaskOptions (data: ParticleSystemProps | ParticleTrailProps) {
-    let maskMode = MaskMode.NONE;
-    let maskRef = 0;
-
-    if (data.mask) {
-      maskMode = this.maskManager.getMaskMode(data.mask);
-      maskRef = this.maskManager.getRefValue();
-    }
-
-    return {
-      maskMode,
-      maskRef,
-    };
   }
 }
 

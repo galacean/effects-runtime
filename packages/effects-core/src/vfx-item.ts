@@ -1,6 +1,5 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
@@ -17,7 +16,6 @@ import type {
   HitTestTriangleParams, InteractComponent, SpriteComponent,
 } from './plugins';
 import { ParticleSystem } from './plugins';
-import type { TransformProps } from './transform';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
@@ -397,25 +395,25 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param {number} b
    * @param {number} a
    * @internal
+   * @deprecated 2.6.0 Please use `Component.setColor` instead
    */
   setColor (r: number, g: number, b: number, a: number) {
-
   }
 
   /**
    * 设置元素的透明度
    * @param opacity - 透明度值，范围 [0,1]
+   * @internal
+   * @deprecated 2.6.0 Please use `Component.setColor` instead
    */
-
   setOpacity (opacity: number) {
-
   }
 
   /**
    * 激活或停用 VFXItem
    */
   setActive (value: boolean) {
-    if (this.active !== value) {
+    if (this.active !== !!value) {
       this.active = !!value;
       this.onActiveChanged();
     }
@@ -426,6 +424,12 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   get isActive () {
     return this.active;
+  }
+  /**
+   * @since 2.6.0
+   */
+  set isActive (value: boolean) {
+    this.setActive(value);
   }
 
   /**
@@ -674,27 +678,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.name = name;
     this.start = delay ? delay : this.start;
 
-    const transformProps: TransformProps = {};
-
     if (transform) {
-      transformProps.position = new Vector3().copyFrom(transform.position);
-      // FIXME: transform.rotation待删除
-      //@ts-expect-error
-      if (transform.quat) {
-        //@ts-expect-error
-        transformProps.quat = new Quaternion(transform.quat.x, transform.quat.y, transform.quat.z, transform.quat.w);
-      } else {
-        //@ts-expect-error
-        transformProps.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
-      }
-      transformProps.scale = new Vector3().copyFrom(transform.scale);
-      if (transform.size) {
-        transformProps.size = new Vector2().copyFrom(transform.size);
-      }
-      if (transform.anchor) {
-        transformProps.anchor = new Vector2().copyFrom(transform.anchor);
-      }
-      this.transform.setTransform(transformProps);
+      this.transform.fromData(transform);
     }
 
     this.transform.name = this.name;

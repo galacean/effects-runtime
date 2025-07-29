@@ -168,14 +168,12 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   get color () {
     return this._color;
   }
-
   /**
    * 设置当前图层的颜色
    * @since 2.5.0
    */
   set color (value: Color) {
-    this._color = value;
-    this.material.setColor('_Color', this._color);
+    this.setColor(value);
   }
 
   /**
@@ -237,7 +235,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
     const ui = this.interaction;
 
-    if ((force || ui)) {
+    if (force || ui) {
       this.meshCollider.setGeometry(this.geometry, worldMatrix);
       const area = this.meshCollider.getBoundingBoxData();
 
@@ -444,7 +442,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const maskOptions = baseRenderComponentData.mask;
 
     if (maskOptions) {
-      this.maskManager.getMaskMode(maskOptions);
+      this.maskManager.setMaskOptions(maskOptions);
     }
 
     // TODO 新蒙板上线后移除

@@ -27,3 +27,4 @@ export * from './shape/polygon';
 export * from './shape/shape-path';
 export * from './timeline';
 export * from './text';
+export * from './animation-graph';

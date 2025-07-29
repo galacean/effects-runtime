@@ -6,8 +6,10 @@ import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
-import { ParticleTrack, TrackAsset } from '../timeline';
+import { ActivationTrack, ParticleTrack, TrackAsset } from '../timeline';
 import type { TimelineAsset } from '../timeline';
+import { SpriteComponent, ComponentTimePlayableAsset, ComponentTimeTrack } from '../sprite/sprite-item';
+import { EffectComponent } from '../../components';
 
 /**
  * 基础位移属性数据
@@ -43,6 +45,20 @@ export class ObjectBindingTrack extends TrackAsset {
 
     const boundItem = this.boundObject;
 
+    let hasActiveTrack = false;
+
+    for (const childTrack of this.getChildTracks()) {
+      if (childTrack instanceof ActivationTrack) {
+        hasActiveTrack = true;
+
+        break;
+      }
+    }
+
+    if (!hasActiveTrack) {
+      return;
+    }
+
     // 添加粒子动画 clip // TODO 待移除
     if (boundItem.getComponent(ParticleSystem)) {
       const particleTrack = timelineAsset.createTrack(ParticleTrack, this, 'ParticleTrack');
@@ -53,6 +69,30 @@ export class ObjectBindingTrack extends TrackAsset {
       particleClip.start = boundItem.start;
       particleClip.duration = boundItem.duration;
       particleClip.endBehavior = boundItem.endBehavior;
+    }
+
+    // 添加图层帧动画动画时间 clip // TODO 待移除
+    if (boundItem.getComponent(SpriteComponent)) {
+      const componentTimeTrack = timelineAsset.createTrack(ComponentTimeTrack, this, 'ComponentTimeTrack');
+
+      componentTimeTrack.boundObject = this.boundObject.getComponent(SpriteComponent);
+      const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
+
+      clip.start = boundItem.start;
+      clip.duration = boundItem.duration;
+      clip.endBehavior = boundItem.endBehavior;
+    }
+
+    // 添加图层帧动画动画时间 clip // TODO 待移除
+    if (boundItem.getComponent(EffectComponent)) {
+      const componentTimeTrack = timelineAsset.createTrack(ComponentTimeTrack, this, 'ComponentTimeTrack');
+
+      componentTimeTrack.boundObject = this.boundObject.getComponent(EffectComponent);
+      const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
+
+      clip.start = boundItem.start;
+      clip.duration = boundItem.duration;
+      clip.endBehavior = boundItem.endBehavior;
     }
   }
 }
