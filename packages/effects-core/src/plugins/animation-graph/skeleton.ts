@@ -22,8 +22,10 @@ export enum AnimatedPropertyType {
 }
 
 export interface AnimatedObject {
-  property: string,
   target: Record<string, any>,
+  targetPath: string[],
+  directTargetPath: string,
+  directTarget: Record<string, any>,
 }
 
 export const VFXItemType = 'VFXItem';
@@ -118,32 +120,34 @@ export class Skeleton {
     // Find last animated object by path
     const propertyNames = property.split('.');
     const lastPropertyName = propertyNames[propertyNames.length - 1];
-    let target: Record<string, any> = animatedComponentOrItem;
+    let directTarget: Record<string, any> = animatedComponentOrItem;
 
     for (let i = 0; i < propertyNames.length - 1; i++) {
-      const property = target[propertyNames[i]];
+      const property = directTarget[propertyNames[i]];
 
       if (property === undefined) {
-        console.error(`The ${propertyNames[i]} property of ${target} was not found.`);
+        console.error(`The ${propertyNames[i]} property of ${directTarget} was not found.`);
       }
-      target = property;
+      directTarget = property;
     }
 
     const animatedObject: AnimatedObject = {
-      target: target,
-      property: lastPropertyName,
+      target: animatedComponentOrItem,
+      targetPath: propertyNames,
+      directTarget: directTarget,
+      directTargetPath: lastPropertyName,
     };
 
     switch (type) {
       case AnimatedPropertyType.Float:
         this.floatAnimatedObjects.push(animatedObject);
-        this.defaultFloatPropertyValues.push(target[lastPropertyName]);
+        this.defaultFloatPropertyValues.push(directTarget[lastPropertyName]);
         this.pathToObjectIndex.set(totalPath, this.floatAnimatedObjects.length - 1);
 
         break;
       case AnimatedPropertyType.Color:
         this.colorAnimatedObjects.push(animatedObject);
-        this.defaultColorPropertyValues.push(target[lastPropertyName]);
+        this.defaultColorPropertyValues.push(directTarget[lastPropertyName]);
         this.pathToObjectIndex.set(totalPath, this.colorAnimatedObjects.length - 1);
     }
   }

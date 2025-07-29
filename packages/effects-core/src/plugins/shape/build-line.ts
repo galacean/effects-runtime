@@ -5,6 +5,8 @@ import type { Color } from '@galacean/effects-math/es/core/color';
 import { NumberEpsilon } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Point } from './point';
+import type { GradientValue } from '../../math/value-getters/value-getter';
+import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 export const closePointEps = 1e-4;
 export const curveEps = 0.0001;
@@ -166,6 +168,12 @@ function getOrientationOfPoints (points: number[]): number {
   return 1;
 }
 
+export enum FillType {
+  Solid,
+  Linear,
+  Radial
+}
+
 /**
  * A stroke attribute object, used to define properties for a stroke.
  */
@@ -182,6 +190,10 @@ export interface StrokeAttributes {
   miterLimit: number,
   /** Stroke color */
   color: Color,
+  strokeType: FillType,
+  gradient: GradientValue,
+  startPoint: Vector2,
+  endPoint: Vector2,
 }
 
 /**

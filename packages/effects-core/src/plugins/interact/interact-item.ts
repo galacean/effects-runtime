@@ -120,7 +120,8 @@ export class InteractComponent extends RendererComponent {
   override onDisable (): void {
     super.onDisable();
     if (this.item && this.item.composition) {
-      if (this.duringPlay && !this.item.transform.getValid()) {
+      // Triggers the Message end event, do not trigger when composition speed less than 0
+      if (this.duringPlay && !this.item.transform.getValid() && this.item.composition.getSpeed() > 0) {
         this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
         this.duringPlay = false;
       }
@@ -162,7 +163,7 @@ export class InteractComponent extends RendererComponent {
       }
     } else {
       // loop trigger
-      if (this.item.time >= 0) {
+      if (this.item.time >= 0 && dt > 0) {
         const options = this.item.props.content.options as spec.DragInteractOption;
 
         this.item.composition?.addInteractiveItem(this.item, options.type);
