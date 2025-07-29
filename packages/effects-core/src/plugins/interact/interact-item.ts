@@ -350,7 +350,7 @@ export class InteractComponent extends RendererComponent {
   }
 
   /**
-   * 检查滑动手动边界
+   * 检查滑动手势边界
    * @param position
    */
   private checkInvalidBorderRange (
