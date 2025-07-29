@@ -525,7 +525,7 @@ void main() {
       }
     }
     if (data.mask) {
-      this.maskManager.getMaskMode(data.mask);
+      this.maskManager.setMaskOptions(data.mask);
     }
     const maskRef = this.maskManager.getRefValue();
 

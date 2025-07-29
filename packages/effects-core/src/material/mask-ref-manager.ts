@@ -21,7 +21,7 @@ export class MaskProcessor {
     return 1;
   }
 
-  getMaskMode (data: spec.MaskOptions) {
+  setMaskOptions (data: spec.MaskOptions) {
     const { isMask = false, inverted = false, reference, alphaMaskEnabled = false } = data;
 
     this.alphaMaskEnabled = alphaMaskEnabled;
@@ -30,12 +30,8 @@ export class MaskProcessor {
       this.maskMode = MaskMode.MASK;
     } else {
       this.maskMode = inverted ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
-      if (reference) {
-        this.maskable = this.engine.findObject<Maskable>(reference);
-      }
+      this.maskable = this.engine.findObject<Maskable>(reference);
     }
-
-    return this.maskMode;
   }
 
   drawStencilMask (renderer: Renderer) {

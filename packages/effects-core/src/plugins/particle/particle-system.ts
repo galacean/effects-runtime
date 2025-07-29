@@ -9,7 +9,7 @@ import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh, Renderer } from '../../render';
 import type { Maskable } from '../../material';
-import { MaskMode, MaskProcessor } from '../../material';
+import { MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
@@ -993,7 +993,9 @@ export class ParticleSystem extends Component implements Maskable {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
-    let maskProps = this.getMaskOptions(props);
+    if (props.mask) {
+      this.maskManager.setMaskOptions(props.mask);
+    }
 
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
@@ -1015,8 +1017,8 @@ export class ParticleSystem extends Component implements Maskable {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
-      mask: maskProps.maskRef,
-      maskMode: maskProps.maskMode,
+      mask: this.maskManager.getRefValue(),
+      maskMode: this.maskManager.maskMode,
       forceTarget,
       diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
@@ -1092,7 +1094,10 @@ export class ParticleSystem extends Component implements Maskable {
         parentAffectsPosition: !!trails.parentAffectsPosition,
       };
 
-      maskProps = this.getMaskOptions(trails);
+      if (trails.mask) {
+        this.maskManager.setMaskOptions(trails.mask);
+      }
+
       trailMeshProps = {
         name: 'Trail',
         matrix: Matrix4.IDENTITY,
@@ -1109,8 +1114,8 @@ export class ParticleSystem extends Component implements Maskable {
         occlusion: !!trails.occlusion,
         transparentOcclusion: !!trails.transparentOcclusion,
         textureMap: trails.textureMap,
-        mask: maskProps.maskRef,
-        maskMode: maskProps.maskMode,
+        mask: this.maskManager.getRefValue(),
+        maskMode: this.maskManager.maskMode,
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
@@ -1137,21 +1142,6 @@ export class ParticleSystem extends Component implements Maskable {
     }
     this.item.getHitTestParams = this.getHitTestParams;
     this.item._content = this;
-  }
-
-  getMaskOptions (data: ParticleSystemProps | ParticleTrailProps) {
-    let maskMode = MaskMode.NONE;
-    let maskRef = 0;
-
-    if (data.mask) {
-      maskMode = this.maskManager.getMaskMode(data.mask);
-      maskRef = this.maskManager.getRefValue();
-    }
-
-    return {
-      maskMode,
-      maskRef,
-    };
   }
 }
 
