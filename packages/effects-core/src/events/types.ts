@@ -6,11 +6,12 @@ import type { Region } from '../plugins';
  */
 export type ItemEvent = {
   /**
-   * 元素点击事件
+   * 元素点击事件（编辑器设置交互行为“消息通知”）
    */
   ['click']: [region: Region],
   /**
    * 元素消息事件（元素创建/销毁时触发）
+   * 注意：仅对交互元素有效
    */
   ['message']: [message: Omit<MessageItem, 'compositionId'>],
 };
@@ -26,7 +27,16 @@ export type CompositionEvent<C> = {
     compositionName: string,
     compositionId: string,
   }],
-  // ['message']: [messageInfo: MessageItem],
+  /**
+   * 合成开始播放事件
+   * @since 2.6.0
+   */
+  ['play']: [playInfo: { time: number }],
+  /**
+   * 合成暂停事件
+   * @since 2.6.0
+   */
+  ['pause']: [],
   /**
    * 合成结束事件
    * 合成行为为循环时每次循环结束都会触发

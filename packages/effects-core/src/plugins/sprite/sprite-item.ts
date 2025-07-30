@@ -6,8 +6,10 @@ import { BaseRenderComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { Playable, PlayableGraph } from '../cal/playable-graph';
-import { PlayableAsset } from '../cal/playable-graph';
+import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
+import { Playable, PlayableAsset } from '../cal/playable-graph';
+import { TrackAsset } from '../timeline/track';
+import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options
@@ -38,9 +40,37 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
   }
 }
 
+export class ComponentTimeTrack extends TrackAsset {
+  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
+    return new TrackMixerPlayable(graph);
+  }
+}
+
+export class ComponentTimePlayableAsset extends PlayableAsset {
+  override createPlayable (graph: PlayableGraph): Playable {
+    const componentTimePlayable = new ComponentTimePlayable(graph);
+
+    return componentTimePlayable;
+  }
+}
+
+export class ComponentTimePlayable extends Playable {
+  override processFrame (context: FrameContext): void {
+    const boundObject = context.output.getUserData();
+
+    if (!('time' in boundObject)) {
+      return;
+    }
+
+    boundObject.time = this.time;
+  }
+}
+
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends BaseRenderComponent {
-  frameAnimationLoop = false;
+  time = 0;
+  duration = 0;
+  frameAnimationLoop = true;
 
   constructor (engine: Engine, props?: spec.SpriteComponentData) {
     super(engine);
@@ -52,8 +82,8 @@ export class SpriteComponent extends BaseRenderComponent {
   }
 
   override onUpdate (dt: number): void {
-    let time = this.item.time;
-    const duration = this.item.duration;
+    let time = this.time;
+    const duration = this.duration;
 
     if (time > duration && this.frameAnimationLoop) {
       time = time % duration;
@@ -119,6 +149,13 @@ export class SpriteComponent extends BaseRenderComponent {
         dx, dy,
       ]);
     }
+
+    this.time = time + dt / 1000;
+  }
+
+  override onDisable (): void {
+    super.onDisable();
+    this.time = 0;
   }
 
   override onDestroy (): void {
@@ -142,5 +179,8 @@ export class SpriteComponent extends BaseRenderComponent {
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
+
+    //@ts-expect-error
+    this.duration = data.duration ?? this.item.duration;
   }
 }

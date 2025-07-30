@@ -37,6 +37,8 @@ export class VFXItemInspector extends ObjectInspector {
       return activeObject.isActive;
     });
 
+    EditorGUILayout.FloatField('Duration', activeObject, 'duration');
+
     EditorGUILayout.Text('End Behavior', this.endBehaviorToString(activeObject.endBehavior));
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {

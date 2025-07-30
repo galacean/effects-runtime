@@ -20,8 +20,6 @@ export class ParticleBehaviourPlayable extends Playable {
 
     if (this.particleSystem) {
       this.particleSystem.name = boundObject.name;
-      this.particleSystem.startEmit();
-      this.particleSystem.initEmitterTransform();
     }
   }
 
@@ -32,8 +30,6 @@ export class ParticleBehaviourPlayable extends Playable {
     const particleSystem = this.particleSystem;
 
     if (particleSystem) {
-      let deltaTime = context.deltaTime;
-
       if (
         this.time >= 0 &&
         this.time < particleSystem.item.duration &&
@@ -41,10 +37,7 @@ export class ParticleBehaviourPlayable extends Playable {
       ) {
         particleSystem.reset();
       }
-      if (Math.abs(this.time - this.lastTime) < 0.001) {
-        deltaTime = 0;
-      }
-      particleSystem.update(deltaTime);
+      particleSystem.update(this.time - particleSystem.time);
     }
     this.lastTime = this.time;
   }

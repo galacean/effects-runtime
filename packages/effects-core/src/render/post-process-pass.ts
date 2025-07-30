@@ -104,7 +104,7 @@ export class HQGaussianDownSamplePass extends RenderPass {
       drawCount: 4,
     });
 
-    const fragment = type == 'H' ? gaussianDownHFrag : gaussianDownVFrag;
+    const fragment = type === 'H' ? gaussianDownHFrag : gaussianDownVFrag;
     const shader: ShaderWithSource = {
       vertex: screenMeshVert,
       fragment,

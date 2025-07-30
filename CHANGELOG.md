@@ -7,6 +7,35 @@
 
 ---
 
+## 2.6.0
+
+`2025-07-29`
+
+- Feat: add animation graph system. [#1064](https://github.com/galacean/effects-runtime/pull/1064) @wumaolinmaoan
+  - Feat: add layer blend node data. [#1086](https://github.com/galacean/effects-runtime/pull/1086) @wumaolinmaoan
+  - Chore: update imgui inspector panel. [#1087](https://github.com/galacean/effects-runtime/pull/1087) @wumaolinmaoan
+  - Chore: update spec to 2.5.0. [#1091](https://github.com/galacean/effects-runtime/pull/1091) @wumaolinmaoan
+  - Chore: update spec to 2.5.1. [#1095](https://github.com/galacean/effects-runtime/pull/1095) @wumaolinmaoan
+  - Fix: reset sprite animation time when component disable. [#1092](https://github.com/galacean/effects-runtime/pull/1092) @wumaolinmaoan
+  - Fix: 3d json converter type issue. [#1097](https://github.com/galacean/effects-runtime/pull/1097) @wumaolinmaoan
+  - Fix: spine setAnimationListLoopEnd invalid issue. [#1099](https://github.com/galacean/effects-runtime/pull/1099) @wumaolinmaoan
+  - Fix: migration add json version modify. [#1107](https://github.com/galacean/effects-runtime/pull/1107) @wumaolinmaoan
+- Feat: add player and composition play/pause/resume events. [#1079](https://github.com/galacean/effects-runtime/pull/1079) @yiiqii
+  - Fix: compatible player update logic, only emit when playing is true. [#1093](https://github.com/galacean/effects-runtime/pull/1093) @yiiqii
+  - Chore: revert player update. [#1105](https://github.com/galacean/effects-runtime/pull/1105) @yiiqii
+- Feat: drag event support border range invalid. [#1106](https://github.com/galacean/effects-runtime/pull/1106) @yiiqii
+- Refactor: transform initialization. [#1076](https://github.com/galacean/effects-runtime/pull/1076) @wumaolinmaoan
+- Refactor: mask processor. [#1108](https://github.com/galacean/effects-runtime/pull/1108) @wumaolinmaoan
+- Fix: triggering issue of message item during reverse playback. [#1103](https://github.com/galacean/effects-runtime/pull/1103) @wumaolinmaoan
+- Chore: remove unused particle-system function. [#1085](https://github.com/galacean/effects-runtime/pull/1085) @yiiqii
+
+## 2.5.6
+
+`2025-07-24`
+
+- Fix: implemented a check for the BOM object in SSR environments before usage. [#1100](https://github.com/galacean/effects-runtime/pull/1100) @yiiqii
+- Fix: touchcancel event unbind. [#1096](https://github.com/galacean/effects-runtime/pull/1096) @yiiqii
+
 ## 2.5.5
 
 `2025-07-21`

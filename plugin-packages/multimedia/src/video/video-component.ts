@@ -29,6 +29,17 @@ export class VideoComponent extends BaseRenderComponent {
   private played = false;
 
   /**
+   * 解决 video 暂停报错问题
+   *
+   * video.play(); // <-- This is asynchronous!
+   *
+   * video.pause();
+   *
+   * @see https://developer.chrome.com/blog/play-request-was-interrupted
+   */
+  private isPlayLoading = false;
+
+  /**
    * 视频元素是否激活
    */
   isVideoActive = false;
@@ -257,9 +268,17 @@ export class VideoComponent extends BaseRenderComponent {
     }
     if (this.video) {
       this.played = true;
-      this.video.play().catch(error => {
-        this.engine.renderErrors.add(error);
-      });
+      this.isPlayLoading = true;
+      this.video.play().
+        then(()=>{
+          this.isPlayLoading = false;
+          if (this.played === false && this.video) {
+            this.video.pause();
+          }
+        }).
+        catch(error => {
+          this.engine.renderErrors.add(error);
+        });
     }
   }
 
@@ -271,7 +290,7 @@ export class VideoComponent extends BaseRenderComponent {
     if (this.played) {
       this.played = false;
     }
-    if (this.video && !this.video.paused) {
+    if (this.video && !this.isPlayLoading) {
       this.video.pause();
     }
   }
