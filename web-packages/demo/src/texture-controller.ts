@@ -246,13 +246,6 @@ export class TextureController {
       this.enterInputStage(now);
     }
 
-    // 新增：输入阶段所有纹理消失后自动回到监听阶段
-    if (this.currentStage === MainStage.Input && this.textures.length === 0) {
-      this.resetToListening(now);
-      if (DEBUG) {
-        console.log('所有输入阶段纹理消失，自动回到监听阶段');
-      }
-    }
   }
 
   checkTriggerPoints (tex: TexState, elapsed: number, volume: number, now: number) {
