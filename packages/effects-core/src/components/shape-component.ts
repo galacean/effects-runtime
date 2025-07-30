@@ -700,7 +700,7 @@ void main() {
     this.shapeDirty = true;
 
     if (data.mask) {
-      this.maskManager.getMaskMode(data.mask);
+      this.maskManager.setMaskOptions(data.mask);
     }
 
     //@ts-expect-error
@@ -854,6 +854,7 @@ void main() {
         break;
       }
     }
+
     this.setupMaterials();
   }
 }

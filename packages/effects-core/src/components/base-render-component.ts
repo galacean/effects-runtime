@@ -442,7 +442,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const maskOptions = baseRenderComponentData.mask;
 
     if (maskOptions) {
-      this.maskManager.getMaskMode(maskOptions);
+      this.maskManager.setMaskOptions(maskOptions);
     }
 
     // TODO 新蒙板上线后移除
