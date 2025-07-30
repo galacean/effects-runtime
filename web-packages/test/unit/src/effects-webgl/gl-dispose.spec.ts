@@ -353,7 +353,7 @@ describe('webgl/dispose', function () {
     const framebuffer = renderPass.framebuffer as GLFramebuffer;
 
     renderPass.dispose({
-      meshes: { geometries: DestroyOptions.destroy, material: DestroyOptions.keep },
+      meshes: { geometries: DestroyOptions.destroy },
       colorAttachment: RenderPassDestroyAttachmentType.keep,
       depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
     });
@@ -402,7 +402,7 @@ describe('webgl/dispose', function () {
     const framebuffer = renderPass.framebuffer as GLFramebuffer;
 
     renderPass.dispose({
-      meshes: { geometries: DestroyOptions.keep, material: DestroyOptions.destroy },
+      meshes: { geometries: DestroyOptions.keep },
       colorAttachment: RenderPassDestroyAttachmentType.keep,
       depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
     });

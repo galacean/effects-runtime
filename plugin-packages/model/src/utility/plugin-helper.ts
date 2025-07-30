@@ -350,9 +350,6 @@ export class WebGLHelper {
   static deleteMesh (mesh: Mesh) {
     mesh.dispose({
       geometries: DestroyOptions.destroy,
-      material: {
-        textures: DestroyOptions.destroy,
-      },
     });
   }
 
@@ -372,9 +369,6 @@ export class WebGLHelper {
     pass.dispose({
       meshes: {
         geometries: DestroyOptions.destroy,
-        material: {
-          textures: DestroyOptions.destroy,
-        },
       },
       depthStencilAttachment: RenderPassDestroyAttachmentType.force,
       colorAttachment: RenderPassDestroyAttachmentType.force,
