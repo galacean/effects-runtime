@@ -13,6 +13,8 @@ const { Vector4 } = math;
 
 import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
+enum MainStage { Listening, Input, Stop }
+
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*h_BxQYS9C30AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
@@ -93,6 +95,8 @@ uniform sampler2D _Tex0;
 uniform sampler2D _Tex1;
 uniform sampler2D _Tex2;
 uniform sampler2D _Tex3;
+
+uniform float _ExposureType; 
 
 uniform sampler2D _NoiseTex; // 大尺度噪声纹理
 uniform sampler2D _T_NoiseTex; // 小尺度细节噪声纹理
@@ -270,8 +274,16 @@ void main() {
   finalColor.rgb *= brightnessBoost;
 
   // 应用音量控制的亮度增强和tonemapping
-  vec3 tonemapped = ACESFilm(finalColor.rgb);
-  gl_FragColor = vec4(tonemapped, finalColor.a);
+  //finalColor.rgb = ACESFilm(finalColor.rgb);
+  //finalColor.rgb = finalColor.rgb / (finalColor.rgb + vec3(1.0));
+
+  float exposure = 0.0;
+  exposure = mix(0.3, 1.5, pow(normalizedVolume, 0.7));
+  
+  finalColor.rgb = 1.0 - exp(-finalColor.rgb * exposure);
+
+
+  gl_FragColor = vec4(finalColor.rgb, finalColor.a);
 }
 `;
 
@@ -312,7 +324,7 @@ let material: Material | undefined;
   jsonValue.materials[0].floats['_VerticalOffset'] = -0.5;
   jsonValue.materials[0].floats['_VolumeCurve'] = 0.7; // 默认音量曲线
   jsonValue.materials[0].floats['_BrightnessCurve'] = 1.5;
-  jsonValue.materials[0].floats['_MaxBrightness'] = 2.0;
+  jsonValue.materials[0].floats['_MaxBrightness'] = 1.80;
 
   for (let i = 0; i < MAX_TEXTURES; i++) {
     jsonValue.materials[0].floats[`_Offset${i}`] = 0;
@@ -333,131 +345,131 @@ let material: Material | undefined;
 
   // 添加颜色调试 UI
   const uiHtml = `
-    <div style="position:fixed;top:10px;right:10px;z-index:999;background:#fff;padding:8px;border-radius:6px;box-shadow:0 2px 8px #0002;font-size:14px;width:320px;">
-      <h3 style="margin:0 0 8px 0;color:#136BCD">大尺度噪声</h3>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="width:48%">
-          <label>扰动水平缩放:</label>
-          <input type="range" id="noiseScaleX" min="0" max="1" step="0.01" value="0.1" style="width:100%"/>
-          <span id="noiseScaleXValue">0.1</span>
-        </div>
-        <div style="width:48%">
-          <label>噪声UV水平缩放:</label>
-          <input type="range" id="noiseUVScaleX" min="0.0" max="10" step="0.001" value="1.0" style="width:100%"/>
-          <span id="noiseUVScaleXValue">1.0</span>
-        </div>
+  <div style="position:fixed;top:10px;right:10px;z-index:999;background:#fff;padding:8px;border-radius:6px;box-shadow:0 2px 8px #0002;font-size:14px;width:320px;">
+    <h3 style="margin:0 0 8px 0;color:#136BCD">大尺度噪声</h3>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="width:48%">
+        <label>扰动水平缩放:</label>
+        <input type="range" id="noiseScaleX" min="0" max="1" step="0.01" value="0.28" style="width:100%"/>
+        <span id="noiseScaleXValue">0.28</span>
       </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="width:48%">
-          <label>扰动垂直缩放:</label>
-          <input type="range" id="noiseScaleY" min="0.0" max="1" step="0.001" value="0.1" style="width:100%"/>
-          <span id="noiseScaleYValue">0.1</span>
-        </div>
-        <div style="width:48%">
-          <label>噪声UV垂直缩放:</label>
-          <input type="range" id="noiseUVScaleY" min="0.0" max="1" step="0.001" value="1.0" style="width:100%"/>
-          <span id="noiseUVScaleYValue">1.0</span>
-        </div>
+      <div style="width:48%">
+        <label>噪声UV水平缩放:</label>
+        <input type="range" id="noiseUVScaleX" min="0.0" max="1" step="0.001" value="0.302" style="width:100%"/>
+        <span id="noiseUVScaleXValue">0.302</span>
       </div>
-      
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="width:48%">
-          <label>水平速度:</label>
-          <input type="range" id="noiseSpeedX" min="0" max="10" step="0.001" value="1" style="width:100%"/>
-          <span id="noiseSpeedXValue">1</span>
-        </div>
-        <div style="width:48%">
-          <label>垂直速度:</label>
-          <input type="range" id="noiseSpeedY" min="0" max="10" step="0.001" value="1" style="width:100%"/>
-          <span id="noiseSpeedYValue">1</span>
-        </div>
-      </div>
-      
-      <div style="margin-bottom:6px;">
-        <label>噪点偏移:</label>
-        <input type="range" id="noiseBrightOffset" min="0" max="0.9" step="0.001" value="0.25" style="width:100%"/>
-        <span id="noiseBrightOffsetValue">0.25</span>
-      </div>
-
-      <h3 style="margin:8px 0;color:#029896">细节噪声</h3>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="width:48%">
-          <label>细节强度:</label>
-          <input type="range" id="detailNoiseScale" min="0" max="1" step="0.01" value="0.2" style="width:100%"/>
-          <span id="detailNoiseScaleValue">0.2</span>
-        </div>
-        <div style="width:48%">
-          <label>水平缩放:</label>
-          <input type="range" id="detailNoiseScaleX" min="0" max="1" step="0.01" value="0.1" style="width:100%"/>
-          <span id="detailNoiseScaleXValue">0.1</span>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="width:48%">
-          <label>垂直缩放:</label>
-          <input type="range" id="detailNoiseScaleY" min="0" max="1" step="0.01" value="0.1" style="width:100%"/>
-          <span id="detailNoiseScaleYValue">0.1</span>
-        </div>
-        <div style="width:48%">
-          <label>水平速度:</label>
-          <input type="range" id="detailNoiseSpeedX" min="0" max="10" step="0.1" value="2.0" style="width:100%"/>
-          <span id="detailNoiseSpeedXValue">2.0</span>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <div style="width:48%">
-          <label>垂直速度:</label>
-          <input type="range" id="detailNoiseSpeedY" min="0" max="10" step="0.1" value="2.0" style="width:100%"/>
-          <span id="detailNoiseSpeedYValue">2.0</span>
-        </div>
-        <div style="width:48%">
-          <label>UV水平缩放:</label>
-          <input type="range" id="detailNoiseUVScaleX" min="0.1" max="10" step="0.1" value="3.0" style="width:100%"/>
-          <span id="detailNoiseUVScaleXValue">3.0</span>
-        </div>
-      </div>
-      <div style="margin-bottom:6px;">
-        <label>UV垂直缩放:</label>
-        <input type="range" id="detailNoiseUVScaleY" min="0.1" max="10" step="0.1" value="3.0" style="width:100%"/>
-        <span id="detailNoiseUVScaleYValue">3.0</span>
-      </div>
-      
-      
-      <div style="margin-bottom:6px;">
-        <label>聆听阶段颜色：</label>
-        <input type="color" id="listeningColor" value="#136BCD" style="width:100%"/>
-      </div>
-      <div style="display:flex;justify-content:space-between">
-        <div style="width:48%">
-          <label>输入主色：</label>
-          <input type="color" id="inputPrimaryColor" value="#136BCD" style="width:100%"/>
-        </div>
-        <div style="width:48%">
-          <label>输入副色：</label>
-          <input type="color" id="inputSecondaryColor" value="#029896" style="width:100%"/>
-        </div>
-      </div>
-      <div style="margin-bottom:6px;">
-       <label>垂直偏移:</label>
-       <input type="range" id="verticalOffset" min="-1.0" max="0.0" step="0.01" value="-0.5" style="width:100%"/>
-       <span id="verticalOffsetValue">-0.5</span>
-     </div>
-     <div style="margin-bottom:6px;">
-       <label>音量响应曲线:</label>
-       <input type="range" id="volumeCurve" min="0.1" max="2.0" step="0.05" value="0.7" style="width:100%"/>
-       <span id="volumeCurveValue">0.7</span>
-     </div>
-     <div style="margin-bottom:6px;">
-       <label>亮度曲线:</label>
-       <input type="range" id="brightnessCurve" min="0.5" max="3.0" step="0.1" value="1.5" style="width:100%"/>
-       <span id="brightnessCurveValue">1.5</span>
-     </div>
-     <div style="margin-bottom:6px;">
-       <label>最大亮度:</label>
-       <input type="range" id="maxBrightness" min="1.0" max="3.0" step="0.1" value="2.0" style="width:100%"/>
-       <span id="maxBrightnessValue">2.0</span>
-     </div>
     </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="width:48%">
+        <label>扰动垂直缩放:</label>
+        <input type="range" id="noiseScaleY" min="0.0" max="1" step="0.001" value="0.74" style="width:100%"/>
+        <span id="noiseScaleYValue">0.74</span>
+      </div>
+      <div style="width:48%">
+        <label>噪声UV垂直缩放:</label>
+        <input type="range" id="noiseUVScaleY" min="0.0" max="1.0" step="0.01" value="0.320" style="width:100%"/>
+        <span id="noiseUVScaleYValue">0.320</span>
+      </div>
+    </div>
+    
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="width:48%">
+        <label>水平速度:</label>
+        <input type="range" id="noiseSpeedX" min="0" max="10" step="0.001" value="0.1" style="width:100%"/>
+        <span id="noiseSpeedXValue">0.1</span>
+      </div>
+      <div style="width:48%">
+        <label>垂直速度:</label>
+        <input type="range" id="noiseSpeedY" min="0" max="10" step="0.001" value="0.1" style="width:100%"/>
+        <span id="noiseSpeedYValue">0.1000</span>
+      </div>
+    </div>
+    
+    <div style="margin-bottom:6px;">
+      <label>噪点偏移:</label>
+      <input type="range" id="noiseBrightOffset" min="0" max="0.9" step="0.001" value="0.25" style="width:100%"/>
+      <span id="noiseBrightOffsetValue">0.25</span>
+    </div>
+
+    <h3 style="margin:8px 0;color:#029896">细节噪声</h3>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="width:48%">
+        <label>细节强度:</label>
+        <input type="range" id="detailNoiseScale" min="0" max="1" step="0.01" value="0.24" style="width:100%"/>
+        <span id="detailNoiseScaleValue">0.24</span>
+      </div>
+      <div style="width:48%">
+        <label>水平缩放:</label>
+        <input type="range" id="detailNoiseScaleX" min="0" max="1" step="0.01" value="0.71" style="width:100%"/>
+        <span id="detailNoiseScaleXValue">0.71</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="width:48%">
+        <label>垂直缩放:</label>
+        <input type="range" id="detailNoiseScaleY" min="0" max="1" step="0.01" value="0.62" style="width:100%"/>
+        <span id="detailNoiseScaleYValue">0.62</span>
+      </div>
+      <div style="width:48%">
+        <label>水平速度:</label>
+        <input type="range" id="detailNoiseSpeedX" min="0" max="10" step="0.1" value="0.10" style="width:100%"/>
+        <span id="detailNoiseSpeedXValue">0.10</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <div style="width:48%">
+        <label>垂直速度:</label>
+        <input type="range" id="detailNoiseSpeedY" min="0" max="10" step="0.1" value="0.10" style="width:100%"/>
+        <span id="detailNoiseSpeedYValue">0.10</span>
+      </div>
+      <div style="width:48%">
+        <label>UV水平缩放:</label>
+        <input type="range" id="detailNoiseUVScaleX" min="0.1" max="10" step="0.1" value="0.40" style="width:100%"/>
+        <span id="detailNoiseUVScaleXValue">0.40</span>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;">
+      <label>UV垂直缩放:</label>
+      <input type="range" id="detailNoiseUVScaleY" min="0.1" max="10" step="0.1" value="0.40" style="width:100%"/>
+      <span id="detailNoiseUVScaleYValue">0.40</span>
+    </div>
+    
+    
+    <div style="margin-bottom:6px;">
+      <label>聆听阶段颜色：</label>
+      <input type="color" id="listeningColor" value="#136BCD" style="width:100%"/>
+    </div>
+    <div style="display:flex;justify-content:space-between">
+      <div style="width:48%">
+        <label>输入主色：</label>
+        <input type="color" id="inputPrimaryColor" value="#136BCD" style="width:100%"/>
+      </div>
+      <div style="width:48%">
+        <label>输入副色：</label>
+        <input type="color" id="inputSecondaryColor" value="#029896" style="width:100%"/>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;">
+     <label>垂直偏移:</label>
+     <input type="range" id="verticalOffset" min="-1.0" max="0.0" step="0.01" value="-0.79" style="width:100%"/>
+     <span id="verticalOffsetValue">-0.79</span>
+   </div>
+   <div style="margin-bottom:6px;">
+     <label>音量响应曲线:</label>
+     <input type="range" id="volumeCurve" min="0.1" max="2.0" step="0.05" value="0.7" style="width:100%"/>
+     <span id="volumeCurveValue">0.7</span>
+   </div>
+   <div style="margin-bottom:6px;">
+     <label>亮度曲线:</label>
+     <input type="range" id="brightnessCurve" min="0.5" max="3.0" step="0.1" value="1.5" style="width:100%"/>
+     <span id="brightnessCurveValue">1.5</span>
+   </div>
+   <div style="margin-bottom:6px;">
+     <label>最大亮度:</label>
+     <input type="range" id="maxBrightness" min="1.0" max="3.0" step="0.1" value="1.80" style="width:100%"/>
+     <span id="maxBrightnessValue">1.80</span>
+   </div>
+  </div>
   `;
 
   document.body.insertAdjacentHTML('beforeend', uiHtml);
@@ -505,18 +517,29 @@ let material: Material | undefined;
     });
   }
 
-  // 添加水流参数控制
-  // 添加所有参数的事件监听
+  // 获取材质参数值，带默认值
+  const getMaterialFloat = (param: string): number => {
+    return material?.getFloat(param) ?? 0;
+  };
+
+  // 添加所有参数的事件监听和初始化
   const addSliderControl = (id: string, param: string, precision = 2) => {
     const input = document.getElementById(id) as HTMLInputElement | null;
+    const valueSpan = document.getElementById(`${id}Value`);
 
-    if (input) {
+    if (input && valueSpan) {
+      // 初始化值
+      const initialValue = getMaterialFloat(param);
+      input.value = initialValue.toString();
+      valueSpan.textContent = initialValue.toFixed(precision);
+
+      // 添加事件监听
       input.addEventListener('input', e => {
         const target = e.target as HTMLInputElement;
         const value = parseFloat(target.value);
 
-        document.getElementById(`${id}Value`)!.textContent = value.toFixed(precision);
-        if (material) {material.setFloat(param, value);}
+        valueSpan.textContent = value.toFixed(precision);
+        if (material) { material.setFloat(param, value); }
       });
     }
   };
@@ -524,20 +547,20 @@ let material: Material | undefined;
   addSliderControl('noiseScaleX', '_NoiseScaleX');
   addSliderControl('noiseScaleY', '_NoiseScaleY');
   addSliderControl('noiseSpeedX', '_NoiseSpeedX', 1);
-  addSliderControl('noiseSpeedY', '_NoiseSpeedY', 1);
+  addSliderControl('noiseSpeedY', '_NoiseSpeedY', 3);
   addSliderControl('noiseBrightOffset', '_NoiseBrightOffset');
   addSliderControl('specularGlossy', '_SpecularGlossy');
   addSliderControl('specularIntensity', '_SpecularIntensity');
-  addSliderControl('noiseUVScaleX', '_NoiseUVScaleX', 1);
-  addSliderControl('noiseUVScaleY', '_NoiseUVScaleY', 1);
+  addSliderControl('noiseUVScaleX', '_NoiseUVScaleX', 3);
+  addSliderControl('noiseUVScaleY', '_NoiseUVScaleY', 3);
   // 添加细节噪声控制
-  jsonValue.materials[0].floats['_DetailNoiseScale'] = 0.2;
+  jsonValue.materials[0].floats['_DetailNoiseScale'] = 0.26;
   jsonValue.materials[0].floats['_DetailNoiseScaleX'] = 0.1;
-  jsonValue.materials[0].floats['_DetailNoiseScaleY'] = 0.1;
-  jsonValue.materials[0].floats['_DetailNoiseSpeedX'] = 2.0;
-  jsonValue.materials[0].floats['_DetailNoiseSpeedY'] = 2.0;
-  jsonValue.materials[0].floats['_DetailNoiseUVScaleX'] = 3.0;
-  jsonValue.materials[0].floats['_DetailNoiseUVScaleY'] = 3.0;
+  jsonValue.materials[0].floats['_DetailNoiseScaleY'] = 0.31;
+  jsonValue.materials[0].floats['_DetailNoiseSpeedX'] = 0.70;
+  jsonValue.materials[0].floats['_DetailNoiseSpeedY'] = 0.70;
+  jsonValue.materials[0].floats['_DetailNoiseUVScaleX'] = 0.60;
+  jsonValue.materials[0].floats['_DetailNoiseUVScaleY'] = 0.60;
 
   addSliderControl('detailNoiseScale', '_DetailNoiseScale');
   addSliderControl('detailNoiseScaleX', '_DetailNoiseScaleX');
@@ -555,20 +578,58 @@ let material: Material | undefined;
 
   // 初始化参数
   if (material) {
-    material.setFloat('_NoiseScaleX', 0.1);
-    material.setFloat('_NoiseScaleY', 0.1);
-    material.setFloat('_NoiseSpeedX', 1);
-    material.setFloat('_NoiseSpeedY', 1);
+    material.setFloat('_NoiseScaleX', 0.28);
+    material.setFloat('_NoiseScaleY', 0.74);
+    material.setFloat('_NoiseSpeedX', 0.1);
+    material.setFloat('_NoiseSpeedY', 0.1);
     material.setFloat('_NoiseBrightOffset', 0.25);
     material.setFloat('_SpecularGlossy', 0.16);
     material.setFloat('_SpecularIntensity', 0.5);
-    material.setFloat('_NoiseUVScaleX', 1.0);
-    material.setFloat('_NoiseUVScaleY', 1.0);
+    material.setFloat('_NoiseUVScaleX', 0.302);
+    material.setFloat('_NoiseUVScaleY', 0.320);
     // 设置新增参数的默认值
-    material.setFloat('_VerticalOffset', -0.5);
+    material.setFloat('_VerticalOffset', -0.79);
     material.setFloat('_VolumeCurve', 0.7);
     material.setFloat('_BrightnessCurve', 1.5);
-    material.setFloat('_MaxBrightness', 2.0);
+    material.setFloat('_MaxBrightness', 1.80);
+    material.setFloat('_DetailNoiseScale', 0.24);
+    material.setFloat('_DetailNoiseScaleX', 0.71);
+    material.setFloat('_DetailNoiseScaleY', 0.62);
+    material.setFloat('_DetailNoiseSpeedX', 0.10);
+    material.setFloat('_DetailNoiseSpeedY', 0.10);
+    material.setFloat('_DetailNoiseUVScaleX', 0.40);
+    material.setFloat('_DetailNoiseUVScaleY', 0.40);
+    
+    // 同步设置UI滑块值并触发更新
+    const setSliderValue = (id: string, value: number, precision = 3) => {
+      const input = document.getElementById(id) as HTMLInputElement | null;
+      const valueSpan = document.getElementById(`${id}Value`);
+      
+      if (input && valueSpan) {
+        input.value = value.toString();
+        valueSpan.textContent = value.toFixed(precision);
+        input.dispatchEvent(new Event('input'));
+      }
+    };
+    
+    setSliderValue('noiseScaleX', 0.28);
+    setSliderValue('noiseScaleY', 0.74);
+    setSliderValue('noiseSpeedX', 0.1);
+    setSliderValue('noiseSpeedY', 0.1);
+    setSliderValue('noiseBrightOffset', 0.25);
+    setSliderValue('noiseUVScaleX', 0.302);
+    setSliderValue('noiseUVScaleY', 0.320);
+    setSliderValue('verticalOffset', -0.79);
+    setSliderValue('volumeCurve', 0.7);
+    setSliderValue('brightnessCurve', 1.5);
+    setSliderValue('maxBrightness', 1.80);
+    setSliderValue('detailNoiseScale', 0.24);
+    setSliderValue('detailNoiseScaleX', 0.71);
+    setSliderValue('detailNoiseScaleY', 0.62);
+    setSliderValue('detailNoiseSpeedX', 0.10);
+    setSliderValue('detailNoiseSpeedY', 0.10);
+    setSliderValue('detailNoiseUVScaleX', 0.40);
+    setSliderValue('detailNoiseUVScaleY', 0.40);
   }
   const engine = composition.renderer.engine;
 
@@ -635,8 +696,8 @@ let material: Material | undefined;
       height: noiseimageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
     },
 
   );
@@ -648,8 +709,8 @@ let material: Material | undefined;
       height: T_noiseimageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
     },
   );
 
@@ -691,6 +752,59 @@ let material: Material | undefined;
           // 设置默认颜色(白色)
           material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 1));
         }
+
+        // 初始化UI控件值
+        const initUIControls = () => {
+          if (DEBUG) console.log('Initializing UI controls...');
+          
+          // 设置所有滑块控件的初始值
+          const controls = [
+            {id: 'noiseScaleX', param: '_NoiseScaleX', value: 0.28, precision: 2},
+            {id: 'noiseScaleY', param: '_NoiseScaleY', value: 0.74, precision: 2},
+            {id: 'noiseSpeedX', param: '_NoiseSpeedX', value: 0.1, precision: 1},
+            {id: 'noiseSpeedY', param: '_NoiseSpeedY', value: 0.1, precision: 3},
+            {id: 'noiseBrightOffset', param: '_NoiseBrightOffset', value: 0.25, precision: 2},
+            {id: 'noiseUVScaleX', param: '_NoiseUVScaleX', value: 0.302, precision: 3},
+            {id: 'noiseUVScaleY', param: '_NoiseUVScaleY', value: 0.320, precision: 3},
+            {id: 'verticalOffset', param: '_VerticalOffset', value: -0.79, precision: 2},
+            {id: 'volumeCurve', param: '_VolumeCurve', value: 0.7, precision: 2},
+            {id: 'brightnessCurve', param: '_BrightnessCurve', value: 1.5, precision: 1},
+            {id: 'maxBrightness', param: '_MaxBrightness', value: 1.80, precision: 2},
+            {id: 'detailNoiseScale', param: '_DetailNoiseScale', value: 0.24, precision: 2},
+            {id: 'detailNoiseScaleX', param: '_DetailNoiseScaleX', value: 0.71, precision: 2},
+            {id: 'detailNoiseScaleY', param: '_DetailNoiseScaleY', value: 0.62, precision: 2},
+            {id: 'detailNoiseSpeedX', param: '_DetailNoiseSpeedX', value: 0.10, precision: 2},
+            {id: 'detailNoiseSpeedY', param: '_DetailNoiseSpeedY', value: 0.10, precision: 2},
+            {id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 0.40, precision: 2},
+            {id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 0.40, precision: 2}
+          ];
+
+          controls.forEach(control => {
+            const input = document.getElementById(control.id) as HTMLInputElement;
+            const valueSpan = document.getElementById(`${control.id}Value`);
+            
+            if (input && valueSpan) {
+              const value = material?.getFloat(control.param) ?? control.value;
+              input.value = value.toString();
+              valueSpan.textContent = value.toFixed(control.precision);
+              if (DEBUG) console.log(`Initialized ${control.id} with value: ${value}`);
+            }
+          });
+        };
+
+        // 延迟一小段时间确保UI已加载
+        setTimeout(() => {
+          initUIControls();
+          // 新增：初始化时同步所有UI参数到材质，确保初始渲染参数生效
+          if (material) {
+            controls.forEach(control => {
+              const input = document.getElementById(control.id) as HTMLInputElement;
+              if (input) {
+                material!.setFloat(control.param, parseFloat(input.value));
+              }
+            });
+          }
+        }, 100);
       }
     }
   }
@@ -710,7 +824,7 @@ let material: Material | undefined;
   function getAudioVolume (): number {
     // 使用sin函数模拟0-1波动的音量
     const now = performance.now();
-    const timeFactor = now * 0.001; // 转换为秒
+    const timeFactor = now * 0.0001; // 转换为秒
     // 基础sin波(0.5振幅+0.5偏移)
     const baseWave = Math.sin(timeFactor) * 0.5 + 0.5;
     // 添加次级波动增加随机感
@@ -718,6 +832,20 @@ let material: Material | undefined;
 
     // 组合并确保0-1范围
     return clamp(baseWave + detailWave, 0.0, 1.0);
+  }
+  //新的模拟音量的方法，可以定时在某个值上
+  function getSimulatedAudioVolume (): number {
+    //定时器
+    const now = performance.now();
+    const timeFactor = now * 0.1; // 转换为秒
+    if(timeFactor>30000)
+      return 0.8;
+    else if(timeFactor>20000)
+      return 0.6;
+    else if(timeFactor>500)
+      return 1.0;
+    else
+      return 0.1;
   }
 
   // 数值范围限制
@@ -762,6 +890,9 @@ let material: Material | undefined;
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
 
+       //设置exposureType
+      material.setFloat(`_ExposureType`, controller.currentStage === MainStage.Input ? 1 : 0);
+
       // 更新每个纹理的参数
       for (let i = 0; i < textureCount; i++) {
         const texture = controller.textures[i];
@@ -776,6 +907,8 @@ let material: Material | undefined;
           material.setVector4(`_Color${i}`, new Vector4(...texture.color));
           //console.log(`Texture ${i} color:`, texture.color);
         }
+
+    
 
         // 调试日志
         if (DEBUG && i === 0) {
@@ -807,3 +940,25 @@ let material: Material | undefined;
 function getJSON (json: string): Promise<any> {
   return fetch(json).then(res => res.json());
 }
+
+// 控件参数配置，提升到外部，便于多处使用
+const controls: Array<{id: string; param: string; value: number; precision: number}> = [
+  {id: 'noiseScaleX', param: '_NoiseScaleX', value: 0.28, precision: 2},
+  {id: 'noiseScaleY', param: '_NoiseScaleY', value: 0.74, precision: 2},
+  {id: 'noiseSpeedX', param: '_NoiseSpeedX', value: 0.1, precision: 1},
+  {id: 'noiseSpeedY', param: '_NoiseSpeedY', value: 0.1, precision: 3},
+  {id: 'noiseBrightOffset', param: '_NoiseBrightOffset', value: 0.25, precision: 2},
+  {id: 'noiseUVScaleX', param: '_NoiseUVScaleX', value: 0.302, precision: 3},
+  {id: 'noiseUVScaleY', param: '_NoiseUVScaleY', value: 0.320, precision: 3},
+  {id: 'verticalOffset', param: '_VerticalOffset', value: -0.79, precision: 2},
+  {id: 'volumeCurve', param: '_VolumeCurve', value: 0.7, precision: 2},
+  {id: 'brightnessCurve', param: '_BrightnessCurve', value: 1.5, precision: 1},
+  {id: 'maxBrightness', param: '_MaxBrightness', value: 1.80, precision: 2},
+  {id: 'detailNoiseScale', param: '_DetailNoiseScale', value: 0.24, precision: 2},
+  {id: 'detailNoiseScaleX', param: '_DetailNoiseScaleX', value: 0.71, precision: 2},
+  {id: 'detailNoiseScaleY', param: '_DetailNoiseScaleY', value: 0.62, precision: 2},
+  {id: 'detailNoiseSpeedX', param: '_DetailNoiseSpeedX', value: 0.10, precision: 2},
+  {id: 'detailNoiseSpeedY', param: '_DetailNoiseSpeedY', value: 0.10, precision: 2},
+  {id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 0.40, precision: 2},
+  {id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 0.40, precision: 2}
+];

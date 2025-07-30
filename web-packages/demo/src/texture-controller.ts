@@ -178,11 +178,20 @@ export class TextureController {
 
   stop () {
     this.currentStage = MainStage.Stop;
-    this.textures = [];
-    this.onStage(MainStage.Stop);
+    const now = performance.now() / 1000;
+    this.textures.forEach(tex => {
+      // 如果还没进入渐隐阶段，则强制进入渐隐
+      if (tex.stage !== TexFadeStage.FadingOut && tex.stage !== TexFadeStage.Hidden) {
+        tex.fadeOutStart = now;
+        tex.fadeOutEnd = now + (tex.fadeOutEnd - tex.fadeOutStart); // 保持原fadeOut时长
+        tex.stage = TexFadeStage.FadingOut;
+      }
+    });
+    
   }
 
   update (delta: number, volume: number, now: number) {
+
     // 更新所有纹理状态
     this.textures.forEach(tex => {
       const elapsed = now - tex.startedAt;
@@ -239,11 +248,31 @@ export class TextureController {
     });
     this.nextLayer = this.textures.length;
 
+    if (
+      this.currentStage === MainStage.Input &&
+      volume < this.volumeThreshold
+    ) {
+      this.stop();
+      if (DEBUG) {
+        console.log('音量低于阈值，提前结束输入阶段');
+      }
+      
+    }
+
     // 3.4s阶段转换点
     if (this.currentStage === MainStage.Listening &&
         this.pendingInputStage &&
-        now - this.stageStartTime >= this.listeningFadeOutEnd) {
+        now - this.stageStartTime >= this.listeningFadeOutStart) {
       this.enterInputStage(now);
+    }
+
+    if (
+    this.currentStage === MainStage.Stop &&
+    this.textures.every(tex => tex.stage === TexFadeStage.Hidden || tex.alpha === 0)
+    ) {
+      this.textures = [];
+      this.onStage(MainStage.Stop);
+      return; // 停止更新
     }
 
   }
