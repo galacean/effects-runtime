@@ -109,22 +109,7 @@ export async function loadScene (inPlayer: Player) {
     player = inPlayer;
     registerMouseEvent();
   }
-  //
-  if (!playScene) {
-    playScene = await getCurrentScene();
-  } else {
-    playScene.items.forEach(item => {
-      if (item.name === 'extra-camera') {
-        const camera = player.getCompositions()[0].camera;
-
-        item.transform = {
-          position: camera.position.clone(),
-          eulerHint: camera.rotation.clone(),
-          scale: { x: 1, y: 1, z: 1 },
-        };
-      }
-    });
-  }
+  playScene = await getCurrentScene();
 
   let currentScene = playScene;
   let renderMode3D = spec.RenderMode3D.none;
