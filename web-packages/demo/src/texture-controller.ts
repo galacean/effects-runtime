@@ -179,6 +179,7 @@ export class TextureController {
   stop () {
     this.currentStage = MainStage.Stop;
     const now = performance.now() / 1000;
+
     this.textures.forEach(tex => {
       // 如果还没进入渐隐阶段，则强制进入渐隐
       if (tex.stage !== TexFadeStage.FadingOut && tex.stage !== TexFadeStage.Hidden) {
@@ -187,7 +188,7 @@ export class TextureController {
         tex.stage = TexFadeStage.FadingOut;
       }
     });
-    
+
   }
 
   update (delta: number, volume: number, now: number) {
@@ -256,7 +257,7 @@ export class TextureController {
       if (DEBUG) {
         console.log('音量低于阈值，提前结束输入阶段');
       }
-      
+
     }
 
     // 3.4s阶段转换点
@@ -267,11 +268,12 @@ export class TextureController {
     }
 
     if (
-    this.currentStage === MainStage.Stop &&
+      this.currentStage === MainStage.Stop &&
     this.textures.every(tex => tex.stage === TexFadeStage.Hidden || tex.alpha === 0)
     ) {
       this.textures = [];
       this.onStage(MainStage.Stop);
+
       return; // 停止更新
     }
 

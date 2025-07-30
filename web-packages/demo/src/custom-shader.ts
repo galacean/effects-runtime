@@ -15,7 +15,6 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 enum MainStage { Listening, Input, Stop }
 
-
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*h_BxQYS9C30AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 // 调试模式开关
@@ -530,6 +529,7 @@ let material: Material | undefined;
     if (input && valueSpan) {
       // 初始化值
       const initialValue = getMaterialFloat(param);
+
       input.value = initialValue.toString();
       valueSpan.textContent = initialValue.toFixed(precision);
 
@@ -599,19 +599,19 @@ let material: Material | undefined;
     material.setFloat('_DetailNoiseSpeedY', 0.10);
     material.setFloat('_DetailNoiseUVScaleX', 0.40);
     material.setFloat('_DetailNoiseUVScaleY', 0.40);
-    
+
     // 同步设置UI滑块值并触发更新
     const setSliderValue = (id: string, value: number, precision = 3) => {
       const input = document.getElementById(id) as HTMLInputElement | null;
       const valueSpan = document.getElementById(`${id}Value`);
-      
+
       if (input && valueSpan) {
         input.value = value.toString();
         valueSpan.textContent = value.toFixed(precision);
         input.dispatchEvent(new Event('input'));
       }
     };
-    
+
     setSliderValue('noiseScaleX', 0.28);
     setSliderValue('noiseScaleY', 0.74);
     setSliderValue('noiseSpeedX', 0.1);
@@ -755,39 +755,40 @@ let material: Material | undefined;
 
         // 初始化UI控件值
         const initUIControls = () => {
-          if (DEBUG) console.log('Initializing UI controls...');
-          
+          if (DEBUG) {console.log('Initializing UI controls...');}
+
           // 设置所有滑块控件的初始值
           const controls = [
-            {id: 'noiseScaleX', param: '_NoiseScaleX', value: 0.28, precision: 2},
-            {id: 'noiseScaleY', param: '_NoiseScaleY', value: 0.74, precision: 2},
-            {id: 'noiseSpeedX', param: '_NoiseSpeedX', value: 0.1, precision: 1},
-            {id: 'noiseSpeedY', param: '_NoiseSpeedY', value: 0.1, precision: 3},
-            {id: 'noiseBrightOffset', param: '_NoiseBrightOffset', value: 0.25, precision: 2},
-            {id: 'noiseUVScaleX', param: '_NoiseUVScaleX', value: 0.302, precision: 3},
-            {id: 'noiseUVScaleY', param: '_NoiseUVScaleY', value: 0.320, precision: 3},
-            {id: 'verticalOffset', param: '_VerticalOffset', value: -0.79, precision: 2},
-            {id: 'volumeCurve', param: '_VolumeCurve', value: 0.7, precision: 2},
-            {id: 'brightnessCurve', param: '_BrightnessCurve', value: 1.5, precision: 1},
-            {id: 'maxBrightness', param: '_MaxBrightness', value: 1.80, precision: 2},
-            {id: 'detailNoiseScale', param: '_DetailNoiseScale', value: 0.24, precision: 2},
-            {id: 'detailNoiseScaleX', param: '_DetailNoiseScaleX', value: 0.71, precision: 2},
-            {id: 'detailNoiseScaleY', param: '_DetailNoiseScaleY', value: 0.62, precision: 2},
-            {id: 'detailNoiseSpeedX', param: '_DetailNoiseSpeedX', value: 0.10, precision: 2},
-            {id: 'detailNoiseSpeedY', param: '_DetailNoiseSpeedY', value: 0.10, precision: 2},
-            {id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 0.40, precision: 2},
-            {id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 0.40, precision: 2}
+            { id: 'noiseScaleX', param: '_NoiseScaleX', value: 0.28, precision: 2 },
+            { id: 'noiseScaleY', param: '_NoiseScaleY', value: 0.74, precision: 2 },
+            { id: 'noiseSpeedX', param: '_NoiseSpeedX', value: 0.1, precision: 1 },
+            { id: 'noiseSpeedY', param: '_NoiseSpeedY', value: 0.1, precision: 3 },
+            { id: 'noiseBrightOffset', param: '_NoiseBrightOffset', value: 0.25, precision: 2 },
+            { id: 'noiseUVScaleX', param: '_NoiseUVScaleX', value: 0.302, precision: 3 },
+            { id: 'noiseUVScaleY', param: '_NoiseUVScaleY', value: 0.320, precision: 3 },
+            { id: 'verticalOffset', param: '_VerticalOffset', value: -0.79, precision: 2 },
+            { id: 'volumeCurve', param: '_VolumeCurve', value: 0.7, precision: 2 },
+            { id: 'brightnessCurve', param: '_BrightnessCurve', value: 1.5, precision: 1 },
+            { id: 'maxBrightness', param: '_MaxBrightness', value: 1.80, precision: 2 },
+            { id: 'detailNoiseScale', param: '_DetailNoiseScale', value: 0.24, precision: 2 },
+            { id: 'detailNoiseScaleX', param: '_DetailNoiseScaleX', value: 0.71, precision: 2 },
+            { id: 'detailNoiseScaleY', param: '_DetailNoiseScaleY', value: 0.62, precision: 2 },
+            { id: 'detailNoiseSpeedX', param: '_DetailNoiseSpeedX', value: 0.10, precision: 2 },
+            { id: 'detailNoiseSpeedY', param: '_DetailNoiseSpeedY', value: 0.10, precision: 2 },
+            { id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 0.40, precision: 2 },
+            { id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 0.40, precision: 2 },
           ];
 
           controls.forEach(control => {
             const input = document.getElementById(control.id) as HTMLInputElement;
             const valueSpan = document.getElementById(`${control.id}Value`);
-            
+
             if (input && valueSpan) {
               const value = material?.getFloat(control.param) ?? control.value;
+
               input.value = value.toString();
               valueSpan.textContent = value.toFixed(control.precision);
-              if (DEBUG) console.log(`Initialized ${control.id} with value: ${value}`);
+              if (DEBUG) {console.log(`Initialized ${control.id} with value: ${value}`);}
             }
           });
         };
@@ -799,6 +800,7 @@ let material: Material | undefined;
           if (material) {
             controls.forEach(control => {
               const input = document.getElementById(control.id) as HTMLInputElement;
+
               if (input) {
                 material!.setFloat(control.param, parseFloat(input.value));
               }
@@ -838,14 +840,8 @@ let material: Material | undefined;
     //定时器
     const now = performance.now();
     const timeFactor = now * 0.1; // 转换为秒
-    if(timeFactor>30000)
-      return 0.8;
-    else if(timeFactor>20000)
-      return 0.6;
-    else if(timeFactor>500)
-      return 1.0;
-    else
-      return 0.1;
+
+    if (timeFactor > 30000) {return 0.8;} else if (timeFactor > 20000) {return 0.6;} else if (timeFactor > 500) {return 1.0;} else {return 0.1;}
   }
 
   // 数值范围限制
@@ -890,8 +886,8 @@ let material: Material | undefined;
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
 
-       //设置exposureType
-      material.setFloat(`_ExposureType`, controller.currentStage === MainStage.Input ? 1 : 0);
+      //设置exposureType
+      material.setFloat('_ExposureType', controller.currentStage === MainStage.Input ? 1 : 0);
 
       // 更新每个纹理的参数
       for (let i = 0; i < textureCount; i++) {
@@ -907,8 +903,6 @@ let material: Material | undefined;
           material.setVector4(`_Color${i}`, new Vector4(...texture.color));
           //console.log(`Texture ${i} color:`, texture.color);
         }
-
-    
 
         // 调试日志
         if (DEBUG && i === 0) {
@@ -942,23 +936,23 @@ function getJSON (json: string): Promise<any> {
 }
 
 // 控件参数配置，提升到外部，便于多处使用
-const controls: Array<{id: string; param: string; value: number; precision: number}> = [
-  {id: 'noiseScaleX', param: '_NoiseScaleX', value: 0.28, precision: 2},
-  {id: 'noiseScaleY', param: '_NoiseScaleY', value: 0.74, precision: 2},
-  {id: 'noiseSpeedX', param: '_NoiseSpeedX', value: 0.1, precision: 1},
-  {id: 'noiseSpeedY', param: '_NoiseSpeedY', value: 0.1, precision: 3},
-  {id: 'noiseBrightOffset', param: '_NoiseBrightOffset', value: 0.25, precision: 2},
-  {id: 'noiseUVScaleX', param: '_NoiseUVScaleX', value: 0.302, precision: 3},
-  {id: 'noiseUVScaleY', param: '_NoiseUVScaleY', value: 0.320, precision: 3},
-  {id: 'verticalOffset', param: '_VerticalOffset', value: -0.79, precision: 2},
-  {id: 'volumeCurve', param: '_VolumeCurve', value: 0.7, precision: 2},
-  {id: 'brightnessCurve', param: '_BrightnessCurve', value: 1.5, precision: 1},
-  {id: 'maxBrightness', param: '_MaxBrightness', value: 1.80, precision: 2},
-  {id: 'detailNoiseScale', param: '_DetailNoiseScale', value: 0.24, precision: 2},
-  {id: 'detailNoiseScaleX', param: '_DetailNoiseScaleX', value: 0.71, precision: 2},
-  {id: 'detailNoiseScaleY', param: '_DetailNoiseScaleY', value: 0.62, precision: 2},
-  {id: 'detailNoiseSpeedX', param: '_DetailNoiseSpeedX', value: 0.10, precision: 2},
-  {id: 'detailNoiseSpeedY', param: '_DetailNoiseSpeedY', value: 0.10, precision: 2},
-  {id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 0.40, precision: 2},
-  {id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 0.40, precision: 2}
+const controls: Array<{ id: string, param: string, value: number, precision: number }> = [
+  { id: 'noiseScaleX', param: '_NoiseScaleX', value: 0.28, precision: 2 },
+  { id: 'noiseScaleY', param: '_NoiseScaleY', value: 0.74, precision: 2 },
+  { id: 'noiseSpeedX', param: '_NoiseSpeedX', value: 0.1, precision: 1 },
+  { id: 'noiseSpeedY', param: '_NoiseSpeedY', value: 0.1, precision: 3 },
+  { id: 'noiseBrightOffset', param: '_NoiseBrightOffset', value: 0.25, precision: 2 },
+  { id: 'noiseUVScaleX', param: '_NoiseUVScaleX', value: 0.302, precision: 3 },
+  { id: 'noiseUVScaleY', param: '_NoiseUVScaleY', value: 0.320, precision: 3 },
+  { id: 'verticalOffset', param: '_VerticalOffset', value: -0.79, precision: 2 },
+  { id: 'volumeCurve', param: '_VolumeCurve', value: 0.7, precision: 2 },
+  { id: 'brightnessCurve', param: '_BrightnessCurve', value: 1.5, precision: 1 },
+  { id: 'maxBrightness', param: '_MaxBrightness', value: 1.80, precision: 2 },
+  { id: 'detailNoiseScale', param: '_DetailNoiseScale', value: 0.24, precision: 2 },
+  { id: 'detailNoiseScaleX', param: '_DetailNoiseScaleX', value: 0.71, precision: 2 },
+  { id: 'detailNoiseScaleY', param: '_DetailNoiseScaleY', value: 0.62, precision: 2 },
+  { id: 'detailNoiseSpeedX', param: '_DetailNoiseSpeedX', value: 0.10, precision: 2 },
+  { id: 'detailNoiseSpeedY', param: '_DetailNoiseSpeedY', value: 0.10, precision: 2 },
+  { id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 0.40, precision: 2 },
+  { id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 0.40, precision: 2 },
 ];
