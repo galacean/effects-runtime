@@ -1,6 +1,6 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/index';
 import type { Engine } from '../engine';
-import type { Material } from '../material';
+import type { Material, MaterialDestroyOptions } from '../material';
 import type { Geometry, Renderer } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions } from '../utils';
@@ -19,6 +19,7 @@ export interface GeometryMeshProps extends MeshOptionsBase {
 
 export interface MeshDestroyOptions {
   geometries?: DestroyOptions,
+  material?: MaterialDestroyOptions | DestroyOptions,
 }
 
 let seed = 1;
@@ -120,8 +121,10 @@ export class Mesh extends RendererComponent implements Disposable {
    * @param material - 要设置的材质
    * @param destroy - 可选的材质销毁选项
    */
-  setMaterial (material: Material) {
-    this.material.dispose();
+  setMaterial (material: Material, destroy?: MaterialDestroyOptions | DestroyOptions.keep) {
+    if (destroy !== DestroyOptions.keep) {
+      this.material.dispose();
+    }
     this.material = material;
   }
 
@@ -141,8 +144,11 @@ export class Mesh extends RendererComponent implements Disposable {
     if (options?.geometries !== DestroyOptions.keep) {
       this.geometry.dispose();
     }
+    const materialDestroyOption = options?.material;
 
-    this.material.dispose();
+    if (materialDestroyOption !== DestroyOptions.keep) {
+      this.material.dispose();
+    }
     this.destroyed = true;
 
     if (this.engine !== undefined) {
