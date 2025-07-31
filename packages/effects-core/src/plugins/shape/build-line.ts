@@ -171,7 +171,8 @@ function getOrientationOfPoints (points: number[]): number {
 export enum FillType {
   Solid,
   Linear,
-  Radial
+  Radial,
+  Angular
 }
 
 /**

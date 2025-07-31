@@ -181,12 +181,13 @@ void main() {
   private frag = `
 precision highp float;
 #define _MAX_STOPS 8
+#define PI 3.14159265359
 
 uniform vec4 _Color;                   // 纯色
 uniform vec4 _Colors[_MAX_STOPS];      // 渐变颜色数组
 uniform float _Stops[_MAX_STOPS];      // 渐变控制点位置数组
 uniform int _StopsCount;               // 实际使用的渐变控制点数量
-uniform float _FillType;               // 填充类型 (0:solid, 1:linear, 2:radial)
+uniform float _FillType;               // 填充类型 (0:solid, 1:linear, 2:radial, 3:angular)
 uniform vec2 _StartPoint;              // 渐变起点 (0-1范围)
 uniform vec2 _EndPoint;                // 渐变终点 (0-1范围)
 
@@ -195,6 +196,14 @@ varying vec2 uv0;
 // 辅助函数：在两点之间进行平滑插值
 vec4 smoothMix(vec4 a, vec4 b, float t) {
     return mix(a, b, smoothstep(0.0, 1.0, t));
+}
+
+// 计算向量的角度 (返回0到1之间的值)
+float calculateAngleRatio(vec2 v1, vec2 v2) {
+    float angle = atan(v2.y, v2.x) - atan(v1.y, v1.x);
+    // 确保角度在0到2PI之间
+    if (angle < 0.0) angle += 2.0 * PI;
+    return angle / (2.0 * PI);
 }
 
 void main() {
@@ -210,17 +219,24 @@ void main() {
             // 线性渐变
             vec2 gradientVector = _EndPoint - _StartPoint;
             vec2 pixelVector = uv0 - _StartPoint;
-            // 计算当前像素在渐变方向上的投影
             t = dot(pixelVector, gradientVector) / dot(gradientVector, gradientVector);
-            // 限制在0-1范围内
             t = clamp(t, 0.0, 1.0);
         } else if(_FillType == 2.0) {
             // 径向渐变
             float maxRadius = distance(_EndPoint, _StartPoint);
-            // 如果maxRadius接近0，设为一个很小的数以避免除0
             maxRadius = max(maxRadius, 0.001);
             t = distance(uv0, _StartPoint) / maxRadius;
             t = clamp(t, 0.0, 1.0);
+        } else if(_FillType == 3.0) {
+            // 角度渐变
+            vec2 center = _StartPoint;
+            vec2 referenceVector = _EndPoint - center;
+            vec2 targetVector = uv0 - center;
+            
+            // 忽略太接近中心点的像素以避免精度问题
+            if (length(targetVector) > 0.001) {
+                t = calculateAngleRatio(referenceVector, targetVector);
+            }
         }
 
         // 找到对应的渐变区间
