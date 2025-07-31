@@ -78,18 +78,18 @@ export class Animator extends Component {
 
     for (let i = 0; i < floatAnimatedObjects.length; i++) {
       const animatedObject = floatAnimatedObjects[i];
-      const property = animatedObject.property;
+      const property = animatedObject.directTargetPath;
 
-      animatedObject.target[property] = result.pose.floatPropertyValues[i];
+      animatedObject.directTarget[property] = result.pose.floatPropertyValues[i];
     }
 
     const colorAnimatedObjects = this.graph.skeleton.colorAnimatedObjects;
 
     for (let i = 0; i < colorAnimatedObjects.length; i++) {
       const animatedObject = colorAnimatedObjects[i];
-      const property = animatedObject.property;
+      const property = animatedObject.directTargetPath;
 
-      animatedObject.target[property] = result.pose.colorPropertyValues[i];
+      animatedObject.directTarget[property] = result.pose.colorPropertyValues[i];
     }
   }
 

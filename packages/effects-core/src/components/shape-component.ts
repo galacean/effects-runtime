@@ -3,32 +3,41 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
-import type { MaterialProps } from '../material';
+import type { Maskable, MaterialProps } from '../material';
+import { MaskMode, MaskProcessor, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import { Material, setMaskMode } from '../material';
-import type { Polygon, ShapePath, StrokeAttributes } from '../plugins';
+import type { BoundingBoxTriangle, HitTestTriangleParams, Polygon, ShapePath, StrokeAttributes } from '../plugins';
+import { FillType, MeshCollider } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
-import { GLSLVersion } from '../render';
-import { BaseRenderComponent } from './base-render-component';
+import type { Renderer } from '../render';
+import { GLSLVersion, Geometry } from '../render';
+import type { ItemRenderer } from './base-render-component';
+import { GradientValue, createValueGetter } from '../math';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { RendererComponent } from './renderer-component';
+import type { Texture } from '../texture/texture';
+import { glContext } from '../gl';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 
-interface FillAttribute {
+interface FillAttributes {
+  fillType: FillType,
   color: Color,
+  gradient: GradientValue,
+  startPoint: Vector2,
+  endPoint: Vector2,
 }
 
-interface ShapeAttribute {
+interface ShapeAttributes {
   /**
    * 矢量图形类型
    */
   type: spec.ShapePrimitiveType,
-  /**
-   * 填充属性
-   */
-  fill?: spec.ShapeFillParam,
 }
 
 /**
  * 自定义图形参数
  */
-interface CustomShapeAttribute extends ShapeAttribute {
+interface CustomShapeAttribute extends ShapeAttributes {
   type: spec.ShapePrimitiveType.Custom,
   /**
    * 路径点
@@ -51,7 +60,7 @@ interface CustomShapeAttribute extends ShapeAttribute {
 /**
  * 椭圆组件参数
  */
-export interface EllipseAttribute extends ShapeAttribute {
+export interface EllipseAttribute extends ShapeAttributes {
   type: spec.ShapePrimitiveType.Ellipse,
   /**
    * x 轴半径
@@ -68,7 +77,7 @@ export interface EllipseAttribute extends ShapeAttribute {
 /**
  * 矩形参数
  */
-export interface RectangleAttribute extends ShapeAttribute {
+export interface RectangleAttribute extends ShapeAttributes {
   /**
    * 宽度
    */
@@ -86,7 +95,7 @@ export interface RectangleAttribute extends ShapeAttribute {
 /**
  * 星形参数
  */
-export interface StarAttribute extends ShapeAttribute {
+export interface StarAttribute extends ShapeAttributes {
   /**
    * 顶点数 - 内外顶点同数
    */
@@ -112,7 +121,7 @@ export interface StarAttribute extends ShapeAttribute {
 /**
  * 多边形参数
  */
-export interface PolygonAttribute extends ShapeAttribute {
+export interface PolygonAttribute extends ShapeAttributes {
   /**
    * 顶点数
    */
@@ -132,18 +141,31 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends BaseRenderComponent {
+export class ShapeComponent extends RendererComponent implements Maskable {
   private hasStroke = false;
   private hasFill = false;
   private shapeDirty = true;
   private graphicsPath = new GraphicsPath();
-  private fillAttribute: FillAttribute;
+
+  private fillAttributes: FillAttributes;
   private strokeAttributes: StrokeAttributes;
-  private shapeAttribute: ShapeAttribute;
+  private shapeAttributes: ShapeAttributes;
+
+  /**
+   * 用于点击测试的碰撞器
+   */
+  private meshCollider = new MeshCollider();
+  private renderer: ItemRenderer;
+  private geometry: Geometry;
+  private readonly maskManager: MaskProcessor;
+
   private vert = `
 precision highp float;
 
 attribute vec3 aPos;//x y
+attribute vec2 aUV;//x y
+
+varying vec2 uv0;
 
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_MatrixInvV;
@@ -151,26 +173,98 @@ uniform mat4 effects_ObjectToWorld;
 
 void main() {
   vec4 pos = vec4(aPos.xyz, 1.0);
+  uv0 = aUV;
   gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
 }
 `;
 
   private frag = `
 precision highp float;
+#define _MAX_STOPS 8
+#define PI 3.14159265359
 
-uniform vec4 _Color;
+uniform vec4 _Color;                   // 纯色
+uniform vec4 _Colors[_MAX_STOPS];      // 渐变颜色数组
+uniform float _Stops[_MAX_STOPS];      // 渐变控制点位置数组
+uniform int _StopsCount;               // 实际使用的渐变控制点数量
+uniform float _FillType;               // 填充类型 (0:solid, 1:linear, 2:radial, 3:angular)
+uniform vec2 _StartPoint;              // 渐变起点 (0-1范围)
+uniform vec2 _EndPoint;                // 渐变终点 (0-1范围)
+
+varying vec2 uv0;
+
+// 辅助函数：在两点之间进行平滑插值
+vec4 smoothMix(vec4 a, vec4 b, float t) {
+    return mix(a, b, smoothstep(0.0, 1.0, t));
+}
+
+// 计算向量的角度 (返回0到1之间的值)
+float calculateAngleRatio(vec2 v1, vec2 v2) {
+    float angle = atan(v2.y, v2.x) - atan(v1.y, v1.x);
+    // 确保角度在0到2PI之间
+    if (angle < 0.0) angle += 2.0 * PI;
+    return angle / (2.0 * PI);
+}
 
 void main() {
-  vec4 color = _Color;
-  color.rgb *= color.a;
-  gl_FragColor = color;
+    vec4 finalColor = vec4(1.0);
+
+    if(_FillType == 0.0) {
+        // 纯色填充
+        finalColor = _Color;
+    } else {
+        float t = 0.0;
+
+        if(_FillType == 1.0) {
+            // 线性渐变
+            vec2 gradientVector = _EndPoint - _StartPoint;
+            vec2 pixelVector = uv0 - _StartPoint;
+            t = dot(pixelVector, gradientVector) / dot(gradientVector, gradientVector);
+            t = clamp(t, 0.0, 1.0);
+        } else if(_FillType == 2.0) {
+            // 径向渐变
+            float maxRadius = distance(_EndPoint, _StartPoint);
+            maxRadius = max(maxRadius, 0.001);
+            t = distance(uv0, _StartPoint) / maxRadius;
+            t = clamp(t, 0.0, 1.0);
+        } else if(_FillType == 3.0) {
+            // 角度渐变
+            vec2 center = _StartPoint;
+            vec2 referenceVector = _EndPoint - center;
+            vec2 targetVector = uv0 - center;
+            
+            // 忽略太接近中心点的像素以避免精度问题
+            if (length(targetVector) > 0.001) {
+                t = calculateAngleRatio(referenceVector, targetVector);
+            }
+        }
+
+        // 找到对应的渐变区间
+        finalColor = _Colors[0];
+        
+        for(int i = 1; i < _MAX_STOPS; i++) {
+            if(i >= _StopsCount)
+                break;
+
+            float prevStop = _Stops[i - 1];
+            float currStop = _Stops[i];
+
+            if(t >= prevStop && t <= currStop) {
+                float localT = (t - prevStop) / (currStop - prevStop);
+                finalColor = smoothMix(_Colors[i - 1], _Colors[i], localT);
+                break;
+            }
+        }
+    }
+
+    gl_FragColor = finalColor;
 }
 `;
 
   get shape () {
     this.shapeDirty = true;
 
-    return this.shapeAttribute;
+    return this.shapeAttributes;
   }
 
   /**
@@ -180,8 +274,83 @@ void main() {
   constructor (engine: Engine) {
     super(engine);
 
-    // Add Geometry SubMesh
+    this.renderer = {
+      renderMode: spec.RenderMode.MESH,
+      blending: spec.BlendingMode.ALPHA,
+      texture: this.engine.emptyTexture,
+      occlusion: false,
+      transparentOcclusion: false,
+      side: spec.SideMode.DOUBLE,
+      mask: 0,
+    };
+
+    this.maskManager = new MaskProcessor(this.engine);
+
+    // Create Shape Attrributes
     //-------------------------------------------------------------------------
+
+    this.strokeAttributes = {
+      width: 1,
+      alignment: 0.5,
+      cap: spec.LineCap.Butt,
+      join: spec.LineJoin.Miter,
+      miterLimit: 10,
+      color: new Color(0.25, 0.25, 0.25, 1),
+      strokeType: FillType.Solid,
+      gradient: new GradientValue([
+        [0, 1, 1, 0, 1],
+        [1, 0, 0, 1, 1],
+      ]),
+      startPoint: new Vector2(0, 0),
+      endPoint: new Vector2(1, 0),
+    };
+
+    this.fillAttributes = {
+      color: new Color(1, 1, 1, 1),
+      gradient: new GradientValue([
+        [0, 1, 1, 0, 1],
+        [1, 0, 0, 1, 1],
+      ]),
+      fillType: FillType.Solid,
+      startPoint: new Vector2(0, 0),
+      endPoint: new Vector2(1, 0),
+    };
+
+    this.shapeAttributes = {
+      type: spec.ShapePrimitiveType.Custom,
+      points: [],
+      easingIns: [],
+      easingOuts: [],
+      shapes: [],
+    } as CustomShapeAttribute;
+
+    // Create Geometry
+    //-------------------------------------------------------------------------
+
+    this.geometry = Geometry.create(this.engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array([
+            -0.5, 0.5, 0, //左上
+            -0.5, -0.5, 0, //左下
+            0.5, 0.5, 0, //右上
+            0.5, -0.5, 0, //右下
+          ]),
+        },
+        aUV: {
+          size: 2,
+          offset: 0,
+          releasable: true,
+          type: glContext.FLOAT,
+          data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
+        },
+      },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      mode: glContext.TRIANGLES,
+      drawCount: 6,
+    });
 
     this.geometry.subMeshes.push({
       offset: 0,
@@ -207,39 +376,17 @@ void main() {
     const fillMaterial = Material.create(engine, materialProps);
     const strokeMaterial = Material.create(engine, materialProps);
 
-    fillMaterial.color = new Color(1, 1, 1, 1);
     fillMaterial.depthMask = false;
     fillMaterial.depthTest = true;
     fillMaterial.blending = true;
     this.material = fillMaterial;
 
-    strokeMaterial.color = new Color(0.25, 0.25, 0.25, 1);
     strokeMaterial.depthMask = false;
     strokeMaterial.depthTest = true;
     strokeMaterial.blending = true;
     this.materials[1] = strokeMaterial;
 
-    // Create Shape Attrributes
-    //-------------------------------------------------------------------------
-
-    this.strokeAttributes = {
-      width: 1,
-      alignment: 0.5,
-      cap: spec.LineCap.Butt,
-      join: spec.LineJoin.Miter,
-      miterLimit: 10,
-      color: new Color(1, 1, 1, 1),
-    };
-    this.fillAttribute = {
-      color: new Color(1, 1, 1, 1),
-    };
-    this.shapeAttribute = {
-      type: spec.ShapePrimitiveType.Custom,
-      points: [],
-      easingIns: [],
-      easingOuts: [],
-      shapes: [],
-    } as CustomShapeAttribute;
+    this.setupMaterials();
   }
 
   override onStart (): void {
@@ -247,13 +394,72 @@ void main() {
   }
 
   override onUpdate (dt: number): void {
-    this.material.color = this.fillAttribute.color;
-    this.materials[1].color = this.strokeAttributes.color;
+
     if (this.shapeDirty) {
-      this.buildPath(this.shapeAttribute);
+      this.buildPath(this.shapeAttributes);
       this.buildGeometryFromPath(this.graphicsPath.shapePath);
       this.shapeDirty = false;
     }
+  }
+
+  override render (renderer: Renderer) {
+    this.maskManager.drawStencilMask(renderer);
+
+    this.draw(renderer);
+  }
+
+  /**
+   * @internal
+   */
+  drawStencilMask (renderer: Renderer) {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
+    const previousColorMask = this.material.colorMask;
+
+    this.material.colorMask = false;
+    this.draw(renderer);
+    this.material.colorMask = previousColorMask;
+  }
+
+  private draw (renderer: Renderer) {
+    if (renderer.renderingData.currentFrame.globalUniforms) {
+      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+    }
+
+    for (let i = 0; i < this.materials.length; i++) {
+      const material = this.materials[i];
+
+      renderer.drawGeometry(this.geometry, material, i);
+    }
+  }
+
+  getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
+    const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
+    const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
+
+    if (force) {
+      this.meshCollider.setGeometry(this.geometry, worldMatrix);
+      const area = this.meshCollider.getBoundingBoxData();
+
+      if (area) {
+        return {
+          behavior: 0,
+          type: area.type,
+          triangles: area.area,
+          backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+        };
+      }
+    }
+  };
+
+  getBoundingBox (): BoundingBoxTriangle {
+    const worldMatrix = this.transform.getWorldMatrix();
+
+    this.meshCollider.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.meshCollider.getBoundingBox();
+
+    return boundingBox;
   }
 
   private buildGeometryFromPath (shapePath: ShapePath) {
@@ -261,9 +467,7 @@ void main() {
     const vertices: number[] = [];
     const indices: number[] = [];
 
-    // Triangulate shapePrimitive
-    //---------------------------------------------------
-
+    // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (this.hasFill) {
       for (const shapePrimitive of shapePrimitives) {
         const shape = shapePrimitive.shape;
@@ -287,7 +491,7 @@ void main() {
 
         let close = true;
 
-        if (this.shapeAttribute.type === spec.ShapePrimitiveType.Custom) {
+        if (this.shapeAttributes.type === spec.ShapePrimitiveType.Custom) {
           close = (shape as Polygon).closePath;
         }
 
@@ -298,7 +502,7 @@ void main() {
     const strokeIndexCount = indices.length - fillIndexCount;
     const vertexCount = vertices.length / 2;
 
-    // get the current attribute and index arrays from the geometry, avoiding re-creation
+    // Get the current attribute and index arrays from the geometry, avoiding re-creation
     let positionArray = this.geometry.getAttributeData('aPos');
     let uvArray = this.geometry.getAttributeData('aUV');
     let indexArray = this.geometry.getIndexData();
@@ -313,24 +517,45 @@ void main() {
       indexArray = new Uint16Array(indices.length);
     }
 
-    // set position and uv attribute array
+    // Set position attribute array, calculate bounding box for uv scaling
+    let minX = Number.MAX_VALUE;
+    let minY = Number.MAX_VALUE;
+    let maxX = Number.MIN_VALUE;
+    let maxY = Number.MIN_VALUE;
+
     for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
       const positionArrayOffset = i * 2;
-      const uvOffset = i * 2;
 
-      positionArray[pointsOffset] = vertices[positionArrayOffset];
-      positionArray[pointsOffset + 1] = vertices[positionArrayOffset + 1];
+      const x = vertices[positionArrayOffset];
+      const y = vertices[positionArrayOffset + 1];
+
+      positionArray[pointsOffset] = x;
+      positionArray[pointsOffset + 1] = y;
       positionArray[pointsOffset + 2] = 0;
 
-      uvArray[uvOffset] = positionArray[pointsOffset];
-      uvArray[uvOffset + 1] = positionArray[pointsOffset + 1];
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
     }
 
-    // set index array
+    // Set uv attribute array
+    const sizeX = maxX - minX;
+    const sizeY = maxY - minY;
+
+    for (let i = 0; i < vertexCount; i++) {
+      const pointsOffset = i * 3;
+      const uvOffset = i * 2;
+
+      uvArray[uvOffset] = (positionArray[pointsOffset] - minX) / sizeX;
+      uvArray[uvOffset + 1] = (positionArray[pointsOffset + 1] - minY) / sizeY;
+    }
+
+    // Set index array
     indexArray.set(indices);
 
-    // rewrite to geometry
+    // Rewrite to geometry
     this.geometry.setAttributeData('aPos', positionArray);
     this.geometry.setAttributeData('aUV', uvArray);
     this.geometry.setIndexData(indexArray);
@@ -345,12 +570,12 @@ void main() {
     strokeSubMesh.indexCount = strokeIndexCount;
   }
 
-  private buildPath (shapeAttribute: ShapeAttribute) {
+  private buildPath (shapeAttribute: ShapeAttributes) {
     this.graphicsPath.clear();
 
     switch (shapeAttribute.type) {
       case spec.ShapePrimitiveType.Custom: {
-        const customShapeAtribute = this.shapeAttribute as CustomShapeAttribute;
+        const customShapeAtribute = this.shapeAttributes as CustomShapeAttribute;
         const points = customShapeAtribute.points;
         const easingIns = customShapeAtribute.easingIns;
         const easingOuts = customShapeAtribute.easingOuts;
@@ -418,9 +643,94 @@ void main() {
     }
   }
 
+  private setupMaterials () {
+    for (const material of this.materials) {
+      const renderer = this.renderer;
+      const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+      const maskMode = this.maskManager.maskMode;
+
+      material.blending = true;
+      material.depthTest = true;
+      material.depthMask = occlusion;
+      material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
+
+      setBlendMode(material, blendMode);
+      // 兼容旧数据中模板需要渲染的情况
+      setMaskMode(material, maskMode);
+      setSideMode(material, side);
+
+      material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
+      material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
+      material.setTexture('_MainTex', texture);
+
+      const preMultiAlpha = getPreMultiAlpha(blendMode);
+      const texParams = new Vector4();
+
+      texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+      texParams.y = preMultiAlpha;
+      texParams.z = renderer.renderMode;
+      texParams.w = maskMode;
+      material.setVector4('_TexParams', texParams);
+
+      if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
+        material.enableMacro('ALPHA_CLIP');
+      } else {
+        material.disableMacro('ALPHA_CLIP');
+      }
+    }
+
+    this.material.color = this.fillAttributes.color;
+    this.material.setFloat('_FillType', this.fillAttributes.fillType);
+
+    this.materials[1].color = this.strokeAttributes.color;
+    this.materials[1].setFloat('_FillType', this.strokeAttributes.strokeType);
+
+    if (this.fillAttributes.fillType !== FillType.Solid) {
+      this.setupGradientMaterial(this.material, this.fillAttributes.gradient, this.fillAttributes.startPoint, this.fillAttributes.endPoint);
+    }
+
+    if (this.strokeAttributes.strokeType !== FillType.Solid) {
+      this.setupGradientMaterial(this.materials[1], this.strokeAttributes.gradient, this.strokeAttributes.startPoint, this.strokeAttributes.endPoint);
+    }
+  }
+
+  private setupGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {
+    const gradientColors: Vector4[] = [];
+    const gradientStops: number[] = [];
+
+    for (const stop of gradient.stops) {
+      const stopColor = stop.color;
+
+      gradientColors.push(new Vector4(stopColor[0], stopColor[1], stopColor[2], stopColor[3]));
+      gradientStops.push(stop.stop);
+    }
+    material.setVector4Array('_Colors', gradientColors);
+    material.setFloats('_Stops', gradientStops);
+    material.setInt('_StopsCount', gradientStops.length);
+    material.setVector2('_StartPoint', startPoint);
+    material.setVector2('_EndPoint', endPoint);
+  }
+
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
+
+    if (data.mask) {
+      this.maskManager.setMaskOptions(data.mask);
+    }
+
+    //@ts-expect-error
+    const renderer = data.renderer ?? {};
+
+    this.renderer = {
+      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
+      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
+      texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.emptyTexture,
+      occlusion: !!renderer.occlusion,
+      transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
+      side: renderer.side ?? spec.SideMode.DOUBLE,
+      mask: this.maskManager.getRefValue(),
+    };
 
     const strokeParam = data.stroke;
 
@@ -430,13 +740,54 @@ void main() {
       this.strokeAttributes.color.copyFrom(strokeParam.color);
       this.strokeAttributes.cap = strokeParam.cap;
       this.strokeAttributes.join = strokeParam.join;
+
+      //@ts-expect-error
+      this.strokeAttributes.strokeType = strokeParam.strokeType ?? FillType.Solid;
+
+      //@ts-expect-error
+      if (strokeParam.gradient) {
+        //@ts-expect-error
+        this.strokeAttributes.gradient = createValueGetter(strokeParam.gradient);
+      }
+
+      //@ts-expect-error
+      if (strokeParam.startPoint) {
+        //@ts-expect-error
+        this.strokeAttributes.startPoint.copyFrom(strokeParam.startPoint);
+      }
+
+      //@ts-expect-error
+      if (strokeParam.endPoint) {
+        //@ts-expect-error
+        this.strokeAttributes.endPoint.copyFrom(strokeParam.endPoint);
+      }
     }
 
     const fillParam = data.fill;
 
     if (fillParam) {
       this.hasFill = true;
-      this.fillAttribute.color.copyFrom(fillParam.color);
+      this.fillAttributes.color.copyFrom(fillParam.color);
+      //@ts-expect-error
+      this.fillAttributes.fillType = fillParam.fillType ?? FillType.Solid;
+
+      //@ts-expect-error
+      if (fillParam.gradient) {
+        //@ts-expect-error
+        this.fillAttributes.gradient = createValueGetter(fillParam.gradient);
+      }
+
+      //@ts-expect-error
+      if (fillParam.startPoint) {
+        //@ts-expect-error
+        this.fillAttributes.startPoint.copyFrom(fillParam.startPoint);
+      }
+
+      //@ts-expect-error
+      if (fillParam.endPoint) {
+        //@ts-expect-error
+        this.fillAttributes.endPoint.copyFrom(fillParam.endPoint);
+      }
     }
 
     switch (data.type) {
@@ -448,7 +799,6 @@ void main() {
           easingIns: [],
           easingOuts: [],
           shapes: [],
-          fill: customShapeData.fill,
         };
 
         for (const point of customShapeData.points) {
@@ -462,7 +812,7 @@ void main() {
         }
         customShapeAttribute.shapes = customShapeData.shapes;
 
-        this.shapeAttribute = customShapeAttribute;
+        this.shapeAttributes = customShapeAttribute;
 
         break;
       }
@@ -472,10 +822,9 @@ void main() {
           type: spec.ShapePrimitiveType.Ellipse,
           xRadius: ellipseData.xRadius,
           yRadius: ellipseData.yRadius,
-          fill: ellipseData.fill,
         };
 
-        this.shapeAttribute = ellipseAttribute;
+        this.shapeAttributes = ellipseAttribute;
 
         break;
       }
@@ -486,10 +835,9 @@ void main() {
           width: rectangleData.width,
           height: rectangleData.height,
           roundness: rectangleData.roundness,
-          fill: rectangleData.fill,
         };
 
-        this.shapeAttribute = rectangleAttribute;
+        this.shapeAttributes = rectangleAttribute;
 
         break;
       }
@@ -502,10 +850,9 @@ void main() {
           outerRadius: starData.outerRadius,
           innerRoundness: starData.innerRoundness,
           outerRoundness: starData.outerRoundness,
-          fill: starData.fill,
         };
 
-        this.shapeAttribute = starAttribute;
+        this.shapeAttributes = starAttribute;
 
         break;
       }
@@ -516,21 +863,15 @@ void main() {
           pointCount: polygonData.pointCount,
           radius: polygonData.radius,
           roundness: polygonData.roundness,
-          fill: polygonData.fill,
         };
 
-        this.shapeAttribute = polygonAttribute;
+        this.shapeAttributes = polygonAttribute;
 
         break;
       }
     }
-    if (data.mask) {
-      this.maskManager.setMaskOptions(data.mask);
-    }
-    const maskRef = this.maskManager.getRefValue();
 
-    this.material.stencilRef = maskRef !== undefined ? [maskRef, maskRef] : undefined;
-    setMaskMode(this.material, this.maskManager.maskMode);
+    this.setupMaterials();
   }
 }
 

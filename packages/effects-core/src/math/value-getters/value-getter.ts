@@ -254,7 +254,7 @@ export class GradientValue extends ValueGetter<number[]> {
 
   stops: ColorStop[];
 
-  override onCreate (props: number[][] | Record<string, string>) {
+  override onCreate (props: spec.GradientStop[] | Record<string, string>) {
     this.stops = colorStopsFromGradient(props);
   }
 

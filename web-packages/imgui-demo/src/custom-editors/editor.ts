@@ -39,7 +39,7 @@ export class Editor {
         EditorGUILayout.ColorField(propertyName, property);
       } else if (property instanceof EffectsObject) {
         EditorGUILayout.ObjectField(propertyName, object, key);
-      } else if (property.constructor === Object) {
+      } else if (property instanceof Object) {
         if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
           this.drawObject(property);
           ImGui.TreePop();
