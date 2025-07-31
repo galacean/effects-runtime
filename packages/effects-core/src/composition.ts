@@ -160,10 +160,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   reusable: boolean;
   /**
-   * 是否播放完成后销毁 texture 对象
-   */
-  keepResource: boolean;
-  /**
    * 合成内的元素否允许点击、拖拽交互
    * @since 1.6.0
    */
@@ -309,7 +305,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.getEngine().renderLevel = scene.renderLevel;
 
     if (reusable) {
-      this.keepResource = true;
       scene.consumed = true;
     }
 
@@ -890,21 +885,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.destroyed = true;
 
-    const textureDisposes: Record<string, () => void> = {};
-    const textures = this.textures;
-
-    if (textures) {
-      if (this.keepResource) {
-        textures.forEach(tex => {
-          if (tex?.dispose) {
-            textureDisposes[tex.id] = tex.dispose;
-            tex.dispose = noop;
-          }
-        });
-      } else {
-        // textures.forEach(tex => tex && tex.dispose());
-      }
+    for (const texture of this.textures) {
+      texture.dispose();
     }
+    this._textures = [];
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
@@ -916,12 +900,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     };
     this.dispose = noop;
-    if (textures && this.keepResource) {
-      textures.forEach(tex => {
-        tex.dispose = textureDisposes[tex.id];
-        tex.dispose();
-      });
-    }
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;

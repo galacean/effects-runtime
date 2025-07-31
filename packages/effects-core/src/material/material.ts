@@ -462,9 +462,8 @@ export abstract class Material extends EffectsObject implements Disposable {
 
   /**
    * 销毁当前 Material
-   * @param destroy - 包含纹理的销毁选项
    */
-  abstract override dispose (destroy?: MaterialDestroyOptions | DestroyOptions): void;
+  abstract override dispose (): void;
 
   /**
    * 创建 Material

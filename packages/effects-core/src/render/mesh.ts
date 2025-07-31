@@ -123,7 +123,7 @@ export class Mesh extends RendererComponent implements Disposable {
    */
   setMaterial (material: Material, destroy?: MaterialDestroyOptions | DestroyOptions.keep) {
     if (destroy !== DestroyOptions.keep) {
-      this.material.dispose(destroy);
+      this.material.dispose();
     }
     this.material = material;
   }
@@ -147,7 +147,7 @@ export class Mesh extends RendererComponent implements Disposable {
     const materialDestroyOption = options?.material;
 
     if (materialDestroyOption !== DestroyOptions.keep) {
-      this.material.dispose(materialDestroyOption);
+      this.material.dispose();
     }
     this.destroyed = true;
 
