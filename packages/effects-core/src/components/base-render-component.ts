@@ -411,13 +411,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   private draw (renderer: Renderer) {
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
-
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
+      material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
       material.setVector2('_Size', this.transform.size);
 
       if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||

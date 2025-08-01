@@ -103,9 +103,7 @@ export class Mesh extends RendererComponent implements Disposable {
     if (!this.getVisible()) {
       return;
     }
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.worldMatrix);
-    }
+    this.material.setMatrix('effects_ObjectToWorld', this.worldMatrix);
     renderer.drawGeometry(this.geometry, this.material);
   }
 
