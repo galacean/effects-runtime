@@ -1,6 +1,7 @@
+import { GLTexture } from '@galacean/effects-webgl';
 import type { FileNode } from '../core/file-node';
 import { GalaceanEffects } from '../ge';
-import { ImGui } from '../imgui';
+import { ImGui, ImGui_Impl } from '../imgui';
 
 function access (object: any, property: string) {
   return (_ = object[property]) => {
@@ -69,7 +70,17 @@ export class EditorGUILayout {
       return;
     }
 
-    ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(200, 0));
+    if (targetObject instanceof GLTexture) {
+      let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
+
+      if (!__inspectorTexture && targetObject.defination.image) {
+        __inspectorTexture = createTextureFromImage(ImGui_Impl.gl!, targetObject.defination.image);
+        (targetObject as any).__imguiInspectorTexture = __inspectorTexture;
+      }
+      ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
+    } else {
+      ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(200, 0));
+    }
 
     if (ImGui.BeginDragDropTarget()) {
       const payload = ImGui.AcceptDragDropPayload(targetObject.constructor.name);
@@ -91,4 +102,24 @@ export class EditorGUILayout {
       ImGui.EndDragDropTarget();
     }
   }
+}
+
+export function createTextureFromImage (
+  gl: WebGLRenderingContext,
+  image: HTMLImageElement
+): WebGLTexture {
+  const texture = gl.createTexture()!;
+
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  // 上传图片数据到纹理
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+  // 设置纹理参数
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  return texture;
 }

@@ -3,8 +3,8 @@ import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, s
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { UIManager } from '../core/ui-manager';
-import { ImGui } from '../imgui';
-import { EditorGUILayout } from '../widgets/editor-gui-layout';
+import { ImGui, ImGui_Impl } from '../imgui';
+import { EditorGUILayout, createTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
 import { Editor } from '../custom-editors/editor';
 import type { GLMaterial } from '@galacean/effects-webgl';
@@ -154,7 +154,6 @@ export class Inspector extends EditorWindow {
     const glMaterial = material as GLMaterial;
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
-    const alignWidth = EditorGUILayout.alignWidth;
     let dirtyFlag = false;
 
     if (!shaderProperties) {
@@ -169,8 +168,7 @@ export class Inspector extends EditorWindow {
     }
     let currentRenderTypeIndex = RenderType.indexOf(serializedData.stringTags['RenderType']);
 
-    ImGui.Text('SurfaceType');
-    ImGui.SameLine(alignWidth);
+    EditorGUILayout.Label('SurfaceType');
     if (ImGui.Combo('##RenderType', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType)) {
       dirtyFlag = true;
     }
@@ -184,8 +182,7 @@ export class Inspector extends EditorWindow {
     }
     let currentRenderFaceIndex = RenderFace.indexOf(serializedData.stringTags['RenderFace']);
 
-    ImGui.Text('RenderFace');
-    ImGui.SameLine(alignWidth);
+    EditorGUILayout.Label('RenderFace');
     if (ImGui.Combo('##RenderFace', (value = currentRenderFaceIndex)=>currentRenderFaceIndex = value, RenderFace)) {
       dirtyFlag = true;
     }
@@ -214,8 +211,7 @@ export class Inspector extends EditorWindow {
       // 提取 Range(a, b) 的 a 和 b
       const RangeMatch = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
 
-      ImGui.Text(inspectorName);
-      ImGui.SameLine(alignWidth);
+      EditorGUILayout.Label(inspectorName);
       if (RangeMatch) {
         const start = Number(RangeMatch[1]);
         const end = Number(RangeMatch[2]);
@@ -256,10 +252,16 @@ export class Inspector extends EditorWindow {
       } else if (type === '2D') {
         const texture = glMaterial.getTexture(uniformName);
 
-        if (texture) {
-          ImGui.Button(texture.id, new ImGui.Vec2(200, 0));
+        if (texture instanceof GLTexture) {
+          let __inspectorTexture = (texture as any).__imguiInspectorTexture as WebGLTexture;
+
+          if (!__inspectorTexture && texture.defination.image) {
+            __inspectorTexture = createTextureFromImage(ImGui_Impl.gl!, texture.defination.image);
+            (texture as any).__imguiInspectorTexture = __inspectorTexture;
+          }
+          ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
         } else {
-          ImGui.Button('  ' + '##' + uniformName, new ImGui.Vec2(200, 0));
+          ImGui.Button(inspectorName + '##' + uniformName, new ImGui.Vec2(100, 100));
         }
         if (ImGui.BeginDragDropTarget()) {
           const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
