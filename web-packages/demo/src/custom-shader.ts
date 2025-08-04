@@ -15,7 +15,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureController } from './texture-controller.js';
 enum MainStage { Listening, Input, Stop }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*h_BxQYS9C30AAAAAQDAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*K5EMQ47vz34AAAAAQDAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 // 调试模式开关
 const DEBUG = true; // 调试模式开关
@@ -156,8 +156,10 @@ vec4 safeTexture2D(sampler2D tex, vec2 uv) {
   // 使用edgeFactor方案实现自然边缘淡出
   vec4 color = texture2D(tex, clamp(uv, vec2(0.0), vec2(1.0)));
   float edgeFactor = smoothstep(0.0, 0.1, min(uv.x, 1.0 - uv.x)) *
-                     smoothstep(0.0, 0.1, min(uv.y, 1.0 - uv.y));
+                     smoothstep(0.0, 0.01, min(uv.y, 1.0 - uv.y));
   color.a *= edgeFactor;
+  //转换到线性空间
+  //color.rgb = pow(color.rgb, vec3(1.0/2.4)); // 假设Gamma值为2.4
   return color;
 }
 
@@ -206,7 +208,7 @@ void main() {
   verticalOffset = min(max(verticalOffset, -0.7), -0.2);
   
   // 计算y轴mask(底部不扰动，顶部完全扰动)
-  //float yMask = smoothstep(0.0, 0.1, uv.y);
+  vec2 yMask = vec2(0.0, -0.35);
 
   // 最终扰动偏移，受音量和alpha值影响
   vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume) * alphaAttenuation ;
@@ -239,50 +241,41 @@ void main() {
     vec2 sampleUV;
 
     if (i == 0) {
-      offset = _Offset0 /200.0;
+      offset = _Offset0 ;
       alpha = _Alpha0;
-      sampleUV = vec2(uv.x - offset, 1.0 - (uv.y - verticalOffset)) + finalOffset;
+      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
       color = safeTexture2D(_Tex0, sampleUV);
       color.rgb = _Color0.rgb;
     } else if (i == 1) {
-      offset = _Offset1 / 200.0;
+      offset = _Offset1 ;
       alpha = _Alpha1;
-      sampleUV = vec2(uv.x - offset, 1.0 - (uv.y - verticalOffset)) + finalOffset;
+      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
       color = safeTexture2D(_Tex1, sampleUV);
       color.rgb = _Color1.rgb;
     } else if (i == 2) {
-      offset = _Offset2 / 200.0;
+      offset = _Offset2 ;
       alpha = _Alpha2;
-      sampleUV = vec2(uv.x - offset, 1.0 - (uv.y - verticalOffset)) + finalOffset;
+      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
       color = safeTexture2D(_Tex2, sampleUV);
       color.rgb = _Color2.rgb;
     } else if (i == 3) {
-      offset = _Offset3 / 200.0;
+      offset = _Offset3;
       alpha = _Alpha3;
-      sampleUV = vec2(uv.x - offset, 1.0 - (uv.y - verticalOffset)) + finalOffset;
+      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
       color = safeTexture2D(_Tex3, sampleUV);
       color.rgb = _Color3.rgb;
     }
     color.a *= alpha;
+    // 混合当前纹理颜色到最终颜色
     finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
     finalColor.a = finalColor.a * (1.0 - color.a) + color.a;
+    //使用color = mix(color, color + addColor, addAlpha);混合
+    // 混合当前纹理颜色到最终颜色
+    //finalColor = mix(finalColor, finalColor + color, color.a);
   }
+  finalColor.rgb *=1.5; // 增强亮度;
 
-  // 计算非线性亮度增强
-  float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
-  finalColor.rgb *= brightnessBoost;
-
-  // 应用音量控制的亮度增强和tonemapping
-  //finalColor.rgb = ACESFilm(finalColor.rgb);
-  //finalColor.rgb = finalColor.rgb / (finalColor.rgb + vec3(1.0));
-
-  float exposure = 0.0;
-  exposure = mix(0.3, 1.5, pow(normalizedVolume, 0.7));
-  
-  finalColor.rgb = 1.0 - exp(-finalColor.rgb * exposure);
-
-
-  gl_FragColor = vec4(finalColor.rgb, finalColor.a);
+  gl_FragColor = vec4(finalColor.rgb , finalColor.a);
 }
 `;
 
@@ -670,7 +663,7 @@ let material: Material | undefined;
 
   // eslint-disable-next-line no-console
   //console.log('3. Loading texture...');
-  const imageData = await loadLocalImageData('../cloud.png');
+  const imageData = await loadLocalImageData('../预合成 28 (0-00-05-02)_1.png');
   const noiseimageData = await loadLocalImageData('../Perlin.png');
   const T_noiseimageData = await loadLocalImageData('../T_Noise.png');
 
@@ -722,7 +715,7 @@ let material: Material | undefined;
 
       if (componentMaterials.length > 0) {
         material = componentMaterials[0];
-        setBlendMode(material, spec.BlendingMode.ADD);
+        setBlendMode(material, spec.BlendingMode.ALPHA);
         material.depthMask = false;
 
         // 初始化参数和纹理
@@ -826,7 +819,7 @@ let material: Material | undefined;
   function getAudioVolume (): number {
     // 使用sin函数模拟0-1波动的音量
     const now = performance.now();
-    const timeFactor = now * 0.0001; // 转换为秒
+    const timeFactor = now * 0.0003; // 转换为秒
     // 基础sin波(0.5振幅+0.5偏移)
     const baseWave = Math.sin(timeFactor) * 0.5 + 0.5;
     // 添加次级波动增加随机感

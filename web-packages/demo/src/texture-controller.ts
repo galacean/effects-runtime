@@ -24,6 +24,7 @@ interface TexState {
   colorMode?: number,           // 颜色模式 0:固定 1:动态渐变
   colorStops?: [number, number, number, number][], // 颜色渐变点
   colorSpeed: number,          // 颜色变化速度
+  isSecondTexture?: boolean;    // 标识是否为第二阶段纹理
 }
 
 export class TextureController {
@@ -40,13 +41,17 @@ export class TextureController {
   listeningFadeIn = 0.6;
   listeningFadeOutStart = 2.4;
   listeningFadeOutEnd = 3.4;
-  listeningDistance = 100; // 对应UV偏移0.5
+  listeningDistance = 0.5; // 对应UV偏移0.5
 
-  inputDuration = 2.4;
-  inputFadeIn = 0.4;
-  inputFadeOutStart = 1.9;
-  inputDistance = 200; // 对应UV偏移1.0
-  textureInterval = 500;        // 纹理B生成延迟(毫秒)
+  inputDuration = 3.0;
+  inputFadeIn1 = 0.333;
+  inputFadeIn2 = 0.5417; // 第二纹理的渐显时间
+
+  inputFadeOutStart = 1.8333;
+  InputFadeOutEnd = 2.4167;
+  inputDistance1 = 0.6315; // 对应UV偏移1.0（蓝色纹理）
+  inputDistance2 = 0.8164; // 对应UV偏移1.5（绿色纹理）
+  textureInterval = 583;        // 纹理B生成延迟(毫秒)
 
   onStage: (stage: MainStage) => void = () => {};
   onUpdate: (textures: TexState[]) => void = () => {};
@@ -97,10 +102,10 @@ export class TextureController {
       alpha: 0,
       startedAt: startTime,
       duration: type === 'listening' ? this.listeningDuration : this.inputDuration,
-      fadeIn: type === 'listening' ? this.listeningFadeIn : this.inputFadeIn,
+      fadeIn: type === 'listening' ? this.listeningFadeIn : this.inputFadeIn1, // 使用 inputFadeIn1 作为默认值
       fadeOutStart: type === 'listening' ? this.listeningFadeOutStart : this.inputFadeOutStart,
-      fadeOutEnd: type === 'listening' ? this.listeningFadeOutEnd : this.inputDuration,
-      distance: type === 'listening' ? this.listeningDistance : this.inputDistance,
+      fadeOutEnd: type === 'listening' ? this.listeningFadeOutEnd : this.InputFadeOutEnd,
+      distance: type === 'listening' ? this.listeningDistance : this.inputDistance1, // 默认使用 inputDistance
       triggered: false,
       colorSpeed: 1.0,
     };
@@ -153,16 +158,18 @@ export class TextureController {
     texA.batchTriggered = false;
     this.textures.push(texA);
 
-    // 0.5s后创建纹理B，强制fadeIn为0.5s
+    // 0.5s后创建纹理B
     setTimeout(() => {
       const texB = this.createTexture('input', performance.now() / 1000);
+      texB.isSecondTexture = true; // 标记为第二阶段纹理
 
       texB.color = this.inputColors.secondary;
       texB.colorMode = this.inputColors.colorMode;
       texB.colorStops = this.inputColors.colorStops;
       texB.colorSpeed = this.inputColors.colorSpeed;
       texB.batchTriggered = false;
-      texB.fadeIn = 0.5; // 保证fadeIn为0.5s
+      texB.fadeIn = this.inputFadeIn2; // 使用参数配置中的 inputFadeIn2
+      texB.distance = this.inputDistance2; // 使用参数配置中的 inputDistance2
       this.textures.push(texB);
 
       if (DEBUG) {
@@ -183,12 +190,15 @@ export class TextureController {
     this.textures.forEach(tex => {
       // 如果还没进入渐隐阶段，则强制进入渐隐
       if (tex.stage !== TexFadeStage.FadingOut && tex.stage !== TexFadeStage.Hidden) {
-        tex.fadeOutStart = now;
-        tex.fadeOutEnd = now + (tex.fadeOutEnd - tex.fadeOutStart); // 保持原fadeOut时长
+        const elapsed = now - tex.startedAt;
+        // 使用相对时间设置渐隐参数
+        tex.fadeOutStart = elapsed;
+        // 确保渐隐时长至少0.1秒
+        const fadeOutDuration = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
+        tex.fadeOutEnd = elapsed + fadeOutDuration;
         tex.stage = TexFadeStage.FadingOut;
       }
     });
-
   }
 
   update (delta: number, volume: number, now: number) {
@@ -199,7 +209,12 @@ export class TextureController {
       const lifeProgress = elapsed / tex.duration;
 
       // 更新位置
-      tex.x = tex.distance * (1 - lifeProgress);
+      tex.x = tex.distance * (lifeProgress);
+      
+      // 为第二阶段纹理添加额外偏移
+      if (tex.isSecondTexture) {
+        tex.x -= 0.185;
+      }
 
       // 更新透明度
       if (elapsed < tex.fadeIn) {
@@ -209,8 +224,8 @@ export class TextureController {
         tex.alpha = 1;
         tex.stage = TexFadeStage.Showing;
       } else if (elapsed < tex.fadeOutEnd) {
-        tex.alpha = 1 - (elapsed - tex.fadeOutStart) /
-                   (tex.fadeOutEnd - tex.fadeOutStart);
+        tex.alpha = Math.max(1 - (elapsed - tex.fadeOutStart) /
+                   (tex.fadeOutEnd - tex.fadeOutStart), 0);
         tex.stage = TexFadeStage.FadingOut;
       } else {
         tex.alpha = 0;
