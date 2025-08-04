@@ -416,7 +416,7 @@ void main() {
       return;
     }
     const previousColorMask0 = this.material.colorMask;
-    const previousColorMask1 = this.material.colorMask;
+    const previousColorMask1 = this.materials[1].colorMask;
 
     this.material.colorMask = false;
     this.materials[1].colorMask = false;
