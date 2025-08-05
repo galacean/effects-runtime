@@ -4,7 +4,7 @@ import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { UIManager } from '../core/ui-manager';
 import { ImGui, ImGui_Impl } from '../imgui';
-import { EditorGUILayout, createTextureFromImage } from '../widgets/editor-gui-layout';
+import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
 import { Editor } from '../custom-editors/editor';
 import type { GLMaterial } from '@galacean/effects-webgl';
@@ -256,7 +256,7 @@ export class Inspector extends EditorWindow {
           let __inspectorTexture = (texture as any).__imguiInspectorTexture as WebGLTexture;
 
           if (!__inspectorTexture && texture.defination.image) {
-            __inspectorTexture = createTextureFromImage(ImGui_Impl.gl!, texture.defination.image);
+            __inspectorTexture = createImguiTextureFromImage(texture.defination.image);
             (texture as any).__imguiInspectorTexture = __inspectorTexture;
           }
           ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));

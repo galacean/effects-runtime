@@ -74,7 +74,7 @@ export class EditorGUILayout {
       let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
 
       if (!__inspectorTexture && targetObject.defination.image) {
-        __inspectorTexture = createTextureFromImage(ImGui_Impl.gl!, targetObject.defination.image);
+        __inspectorTexture = createImguiTextureFromImage(targetObject.defination.image);
         (targetObject as any).__imguiInspectorTexture = __inspectorTexture;
       }
       ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
@@ -104,10 +104,10 @@ export class EditorGUILayout {
   }
 }
 
-export function createTextureFromImage (
-  gl: WebGLRenderingContext,
+export function createImguiTextureFromImage (
   image: HTMLImageElement
 ): WebGLTexture {
+  const gl = ImGui_Impl.gl!;
   const texture = gl.createTexture()!;
 
   gl.bindTexture(gl.TEXTURE_2D, texture);
