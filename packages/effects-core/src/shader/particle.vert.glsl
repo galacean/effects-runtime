@@ -84,10 +84,6 @@ varying float vLife;
 varying vec4 vColor;
 varying vec2 vTexCoord;
 
-#ifdef ENV_EDITOR
-uniform vec4 uEditorTransform; //sx sy dx dy
-#endif
-
 vec3 calOrbitalMov(float _life, float _dur) {
   vec3 orb = vec3(0.0);
     #ifdef AS_ORBITAL_MOVEMENT
@@ -273,10 +269,5 @@ void main() {
     vSeed = aSeed;
 
     gl_PointSize = 6.0;
-
-        #ifdef ENV_EDITOR
-    gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-        #endif
-
   }
 }

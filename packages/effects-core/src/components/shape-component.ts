@@ -429,9 +429,7 @@ void main() {
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
-      material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-
-      renderer.drawGeometry(this.geometry, material, i);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
     }
   }
 

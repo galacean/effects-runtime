@@ -144,12 +144,6 @@ export class TrailMesh {
         name: `trail#${name}`,
         cacheId: `-t:+${shaderCacheId}+${keyFrameMeta.index}+${keyFrameMeta.max}`,
       },
-      uniformSemantics: {
-        effects_MatrixVP: 'VIEWPROJECTION',
-        effects_MatrixInvV: 'VIEWINVERSE',
-        effects_ObjectToWorld: 'MODEL',
-        uEditorTransform: 'EDITOR_TRANSFORM',
-      },
     });
 
     const maxVertexCount = pointCountPerTrail * maxTrailCount * 2;

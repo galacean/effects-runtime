@@ -22,9 +22,6 @@ uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_MatrixVP;
 varying vec4 vColor;
-#ifdef ENV_EDITOR
-  uniform vec4 uEditorTransform;
-#endif
 
 vec3 rotateByQuat(vec3 a, vec4 quat){
   vec3 qvec = quat.xyz;
@@ -41,9 +38,6 @@ void main() {
   pos.xyz += effects_MatrixInvV[0].xyz * point.x+ effects_MatrixInvV[1].xyz * point.y;
   gl_Position = effects_MatrixVP * pos;
   vColor = uColor;
-  #ifdef ENV_EDITOR
-    gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-  #endif
 }
 `;
 const fragment = `
@@ -111,12 +105,6 @@ export class InteractMesh {
         glslVersion: GLSLVersion.GLSL1,
         cacheId: `${rendererOptions.cachePrefix}_effects_interact`,
         macros,
-      },
-      uniformSemantics: {
-        effects_MatrixVP: 'VIEWPROJECTION',
-        effects_MatrixInvV: 'VIEWINVERSE',
-        effects_ObjectToWorld: 'MODEL',
-        uEditorTransform: 'EDITOR_TRANSFORM',
       },
     };
 
