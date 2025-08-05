@@ -45,6 +45,18 @@ export class FFDComponent extends Component {
   private rightTopIndices: number[] = [];
   private leftBottomIndices: number[] = [];
   private rightBottomIndices: number[] = [];
+
+  private trapezoidOps = [
+    { flag: 'trapezoidExpandTop', edge: 'top', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidShrinkTop', edge: 'top', xGap: -0.2, yGap: -0.1 },
+    { flag: 'trapezoidExpandBottom', edge: 'bottom', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidShrinkBottom', edge: 'bottom', xGap: -0.2, yGap: -0.1 },
+    { flag: 'trapezoidExpandLeft', edge: 'left', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidShrinkLeft', edge: 'left', xGap: -0.2, yGap: -0.1 },
+    { flag: 'trapezoidExpandRight', edge: 'right', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidShrinkRight', edge: 'right', xGap: -0.2, yGap: -0.1 },
+  ] as const;
+
   constructor (engine: Engine) {
     super(engine);
   }
@@ -95,22 +107,14 @@ export class FFDComponent extends Component {
       this.expandByVariableValue(-0.15);
       this.variableValueShrink = false;
     }
-    const trapezoidOps = [
-      { flag: 'trapezoidExpandTop', edge: 'top', xGap:  0.2, yGap:  0.1 },
-      { flag: 'trapezoidShrinkTop', edge: 'top', xGap: -0.2, yGap: -0.1 },
-      { flag: 'trapezoidExpandBottom', edge: 'bottom', xGap:  0.2, yGap:  0.1 },
-      { flag: 'trapezoidShrinkBottom', edge: 'bottom', xGap: -0.2, yGap: -0.1 },
-      { flag: 'trapezoidExpandLeft', edge: 'left', xGap:  0.2, yGap:  0.1 },
-      { flag: 'trapezoidShrinkLeft', edge: 'left', xGap: -0.2, yGap: -0.1 },
-      { flag: 'trapezoidExpandRight', edge: 'right', xGap:  0.2, yGap:  0.1 },
-      { flag: 'trapezoidShrinkRight', edge: 'right', xGap: -0.2, yGap: -0.1 },
-    ] as const;
 
-    for (const op of trapezoidOps) {
-      if ((this as any)[op.flag]) {
+    for (const op of this.trapezoidOps) {
+      const flag = this[op.flag as keyof this] as boolean;
+
+      if (flag) {
         maybeReset();
         this.expandTrapezoidEdge(op.edge, op.xGap, op.yGap);
-        (this as any)[op.flag] = false;
+        (this[op.flag as keyof this] as boolean) = false;
       }
     }
   }
@@ -688,10 +692,12 @@ vec3 bezierSurface(vec3 originalPos) {
 
   vec3 newPos = vec3(0.0);
 
-  for (int row = 0; row < uRowNum; ++row) {
-      float bv = bernstein(uRowNum-1, row, v);
-      for (int col = 0; col < uColNum; ++col) {
-          float bu = bernstein(uColNum-1, col, u);
+  for (int row = 0; row < MAX_BLOCK_NUM; ++row) {
+      if(row >= uRowNum) break;
+      float bv = bernstein(uRowNum - 1, row, v);
+      for (int col = 0; col < MAX_BLOCK_NUM; ++col) {
+          if(col >= uColNum) break;
+          float bu = bernstein(uColNum - 1, col, u);
           int idx = row * uColNum + col;
           newPos += uControlPoints[idx] * bu * bv;
       }
