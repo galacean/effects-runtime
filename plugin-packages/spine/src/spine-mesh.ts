@@ -1,7 +1,7 @@
 import type { BlendMode } from '@esotericsoftware/spine-core';
 import type {
-  Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture,
-  math } from '@galacean/effects';
+  Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture, math,
+} from '@galacean/effects';
 import {
   GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, setMaskMode,
 } from '@galacean/effects';
