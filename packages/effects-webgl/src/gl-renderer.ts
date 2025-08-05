@@ -1,12 +1,11 @@
 import type {
   Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
   RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
-  ShaderLibrary,
-  math } from '@galacean/effects-core';
+  ShaderLibrary, math,
+} from '@galacean/effects-core';
 import {
   FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
-  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext,
-  sortByOrder,
+  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, sortByOrder,
 } from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
 import { GLContextManager } from './gl-context-manager';
