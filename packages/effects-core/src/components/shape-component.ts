@@ -147,8 +147,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private shapeDirty = true;
   private graphicsPath = new GraphicsPath();
 
-  private fillAttributes: FillAttributes;
-  private strokeAttributes: StrokeAttributes;
+  private fills: FillAttributes[] = [];
+  private strokes: StrokeAttributes[] = [];
   private shapeAttributes: ShapeAttributes;
 
   /**
@@ -289,7 +289,7 @@ void main() {
     // Create Shape Attrributes
     //-------------------------------------------------------------------------
 
-    this.strokeAttributes = {
+    this.strokes.push({
       width: 1,
       alignment: 0.5,
       cap: spec.LineCap.Butt,
@@ -303,18 +303,19 @@ void main() {
       ]),
       startPoint: new Vector2(0, 0),
       endPoint: new Vector2(1, 0),
-    };
+    });
 
-    this.fillAttributes = {
+    this.fills.push({
       color: new Color(1, 1, 1, 1),
       gradient: new GradientValue([
-        [0, 1, 1, 0, 1],
-        [1, 0, 0, 1, 1],
+        [0, 0.2, 0.2, 0.8, 1],
+        [0.3, 1, 1, 0, 1],
+        [1, 1, 0.2, 0.2, 1],
       ]),
       fillType: FillType.Solid,
       startPoint: new Vector2(0, 0),
       endPoint: new Vector2(1, 0),
-    };
+    });
 
     this.shapeAttributes = {
       type: spec.ShapePrimitiveType.Custom,
@@ -394,7 +395,6 @@ void main() {
   }
 
   override onUpdate (dt: number): void {
-
     if (this.shapeDirty) {
       this.buildPath(this.shapeAttributes);
       this.buildGeometryFromPath(this.graphicsPath.shapePath);
@@ -415,20 +415,21 @@ void main() {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMask = this.material.colorMask;
+    const previousColorMask0 = this.material.colorMask;
+    const previousColorMask1 = this.materials[1].colorMask;
 
     this.material.colorMask = false;
+    this.materials[1].colorMask = false;
     this.draw(renderer);
-    this.material.colorMask = previousColorMask;
+    this.material.colorMask = previousColorMask0;
+    this.materials[1].colorMask = previousColorMask1;
   }
 
   private draw (renderer: Renderer) {
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
-
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
+
+      material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
 
       renderer.drawGeometry(this.geometry, material, i);
     }
@@ -487,7 +488,7 @@ void main() {
         const points: number[] = [];
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
-        const lineStyle = this.strokeAttributes;
+        const lineStyle = this.strokes[0];
 
         let close = true;
 
@@ -679,18 +680,21 @@ void main() {
       }
     }
 
-    this.material.color = this.fillAttributes.color;
-    this.material.setFloat('_FillType', this.fillAttributes.fillType);
+    const fill = this.fills[0];
+    const stroke = this.strokes[0];
 
-    this.materials[1].color = this.strokeAttributes.color;
-    this.materials[1].setFloat('_FillType', this.strokeAttributes.strokeType);
+    this.material.color = fill.color;
+    this.material.setFloat('_FillType', fill.fillType);
 
-    if (this.fillAttributes.fillType !== FillType.Solid) {
-      this.setupGradientMaterial(this.material, this.fillAttributes.gradient, this.fillAttributes.startPoint, this.fillAttributes.endPoint);
+    this.materials[1].color = stroke.color;
+    this.materials[1].setFloat('_FillType', stroke.strokeType);
+
+    if (fill.fillType !== FillType.Solid) {
+      this.setupGradientMaterial(this.material, fill.gradient, fill.startPoint, fill.endPoint);
     }
 
-    if (this.strokeAttributes.strokeType !== FillType.Solid) {
-      this.setupGradientMaterial(this.materials[1], this.strokeAttributes.gradient, this.strokeAttributes.startPoint, this.strokeAttributes.endPoint);
+    if (stroke.strokeType !== FillType.Solid) {
+      this.setupGradientMaterial(this.materials[1], stroke.gradient, stroke.startPoint, stroke.endPoint);
     }
   }
 
@@ -736,30 +740,33 @@ void main() {
 
     if (strokeParam) {
       this.hasStroke = true;
-      this.strokeAttributes.width = strokeParam.width;
-      this.strokeAttributes.color.copyFrom(strokeParam.color);
-      this.strokeAttributes.cap = strokeParam.cap;
-      this.strokeAttributes.join = strokeParam.join;
+      const stroke = this.strokes[0];
+
+      stroke.width = strokeParam.width;
+      stroke.cap = strokeParam.cap;
+      stroke.join = strokeParam.join;
+
+      stroke.color.copyFrom(strokeParam.color);
 
       //@ts-expect-error
-      this.strokeAttributes.strokeType = strokeParam.strokeType ?? FillType.Solid;
+      stroke.strokeType = strokeParam.strokeType ?? FillType.Solid;
 
       //@ts-expect-error
       if (strokeParam.gradient) {
         //@ts-expect-error
-        this.strokeAttributes.gradient = createValueGetter(strokeParam.gradient);
+        stroke.gradient = createValueGetter(strokeParam.gradient);
       }
 
       //@ts-expect-error
       if (strokeParam.startPoint) {
         //@ts-expect-error
-        this.strokeAttributes.startPoint.copyFrom(strokeParam.startPoint);
+        stroke.startPoint.copyFrom(strokeParam.startPoint);
       }
 
       //@ts-expect-error
       if (strokeParam.endPoint) {
         //@ts-expect-error
-        this.strokeAttributes.endPoint.copyFrom(strokeParam.endPoint);
+        stroke.endPoint.copyFrom(strokeParam.endPoint);
       }
     }
 
@@ -767,26 +774,29 @@ void main() {
 
     if (fillParam) {
       this.hasFill = true;
-      this.fillAttributes.color.copyFrom(fillParam.color);
+
+      const fill = this.fills[0];
+
+      fill.color.copyFrom(fillParam.color);
       //@ts-expect-error
-      this.fillAttributes.fillType = fillParam.fillType ?? FillType.Solid;
+      fill.fillType = fillParam.fillType ?? FillType.Solid;
 
       //@ts-expect-error
       if (fillParam.gradient) {
         //@ts-expect-error
-        this.fillAttributes.gradient = createValueGetter(fillParam.gradient);
+        fill.gradient = createValueGetter(fillParam.gradient);
       }
 
       //@ts-expect-error
       if (fillParam.startPoint) {
         //@ts-expect-error
-        this.fillAttributes.startPoint.copyFrom(fillParam.startPoint);
+        fill.startPoint.copyFrom(fillParam.startPoint);
       }
 
       //@ts-expect-error
       if (fillParam.endPoint) {
         //@ts-expect-error
-        this.fillAttributes.endPoint.copyFrom(fillParam.endPoint);
+        fill.endPoint.copyFrom(fillParam.endPoint);
       }
     }
 
