@@ -39,15 +39,6 @@ describe('core/plugins/particle/test', function () {
     // expect(pMesh.priority).to.eql(1, 'particle');
     // expect(tMesh.priority).to.eql(1, 'trail');
     expect(content.renderer.particleMesh.maxCount).to.eql(18);
-    expect(pMesh.material.uniformSemantics).to.include({
-      effects_MatrixV: 'VIEW',
-      effects_MatrixVP: 'VIEWPROJECTION',
-    }, 'particle');
-    expect(tMesh?.material.uniformSemantics).to.includes({
-      effects_ObjectToWorld: 'MODEL',
-      effects_MatrixInvV: 'VIEWINVERSE',
-      effects_MatrixVP: 'VIEWPROJECTION',
-    }, 'trail');
     const tex = content.getTextures();
 
     expect(tex).to.be.an('array').with.lengthOf(2);

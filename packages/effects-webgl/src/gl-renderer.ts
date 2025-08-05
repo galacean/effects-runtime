@@ -1,11 +1,11 @@
 import type {
   Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
   RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
-  ShaderLibrary, spec,
-} from '@galacean/effects-core';
+  ShaderLibrary,
+  math } from '@galacean/effects-core';
 import {
-  FilterMode, GPUCapability, POST_PROCESS_SETTINGS, RenderPassAttachmentStorageType, RenderTextureFormat,
-  Renderer, TextureLoadAction, TextureSourceType, assertExist, getConfig, glContext, math,
+  FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
+  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext,
   sortByOrder,
 } from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
@@ -187,7 +187,7 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.vector3s[name] = value;
   }
 
-  override drawGeometry (geometry: Geometry, material: Material, subMeshIndex = 0): void {
+  override drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0): void {
     if (!geometry || !material) {
       return;
     }
@@ -196,19 +196,8 @@ export class GLRenderer extends Renderer implements Disposable {
     geometry.flush();
     const renderingData = this.renderingData;
 
-    if (renderingData.currentFrame.editorTransform) {
-      material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);
-    }
+    material.setMatrix('effects_ObjectToWorld', matrix);
 
-    // 测试后处理 Bloom 和 ToneMapping 逻辑
-    if (__DEBUG__) {
-      if (getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)) {
-        const emissionColor = getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)['color'].slice() as spec.vec3;
-
-        material.setVector3('emissionColor', math.Vector3.fromArray(emissionColor));
-        material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
-      }
-    }
     try {
       material.use(this, renderingData.currentFrame.globalUniforms);
     } catch (e) {
@@ -216,6 +205,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
       return;
     }
+
     this.glRenderer.drawGeometry(geometry, material, subMeshIndex);
   }
 

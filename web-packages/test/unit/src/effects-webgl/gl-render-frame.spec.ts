@@ -22,19 +22,6 @@ describe('webgl/gl-render-frame', () => {
     canvas = null;
   });
 
-  // it('create copy mesh', () => {
-  //   const frame = new RenderFrame({ renderer, camera: new Camera() });
-  //   const mesh = frame.createCopyMesh();
-
-  //   // mesh.initialize(renderer.glRenderer);
-  //   expect(mesh.material.uniformSemantics['uFilterSource']).to.eql(SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_0);
-  //   expect(mesh.material.uniformSemantics['uFilterSourceSize']).to.eql(SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_SIZE_0);
-
-  //   // TODO: 补充
-  //   frame.renderer.pipelineContext.shaderLibrary.compileShader(m.material.shaderCacheId);
-  //   expect(frame.renderer.pipelineContext.shaderLibrary.shaderResults[m.material.shaderCacheId].status).to.eql(1);//success
-  // });
-
   it('add default render Pass with info', () => {
     const frame = new RenderFrame({ renderer, camera: new Camera('') });
     const meshes = generateMeshes(renderer, 3);
