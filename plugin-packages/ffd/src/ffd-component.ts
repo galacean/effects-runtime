@@ -124,7 +124,6 @@ export class FFDComponent extends Component {
     if (this.item) {
       const currentComponent = this.item.getComponent(SpriteComponent);
 
-      console.info(currentComponent);
       if (currentComponent) {
         // 网格细分 begin：debug 用
         // 修改当前 sprite 组件的 shader
