@@ -22,9 +22,9 @@ export enum AnimatedPropertyType {
 }
 
 export interface AnimatedObject {
+  propertyPath: string,
+  propertyName: string,
   target: Record<string, any>,
-  targetPath: string[],
-  directTargetPath: string,
   directTarget: Record<string, any>,
 }
 
@@ -76,11 +76,11 @@ export class Skeleton {
     }
   }
 
-  private addReferenceTransform (path: string) {
-    if (this.pathToBoneIndex.get(path)) {
+  private addReferenceTransform (itemPath: string) {
+    if (this.pathToBoneIndex.get(itemPath)) {
       return;
     }
-    const targetBone = this.findTarget(path);
+    const targetBone = this.findTarget(itemPath);
 
     if (!targetBone) {
       return;
@@ -88,17 +88,17 @@ export class Skeleton {
 
     this.parentSpaceTransforms.push(new NodeTransform(targetBone.transform));
     this.animatedTransforms.push(targetBone.transform);
-    this.pathToBoneIndex.set(path, this.parentSpaceTransforms.length - 1);
+    this.pathToBoneIndex.set(itemPath, this.parentSpaceTransforms.length - 1);
   }
 
-  private addRecordedProperty (path: string, className: string, property: string, type: AnimatedPropertyType) {
-    const totalPath = path + className + property;
+  private addRecordedProperty (itemPath: string, className: string, propertyPath: string, type: AnimatedPropertyType) {
+    const totalPath = itemPath + className + propertyPath;
 
     if (this.pathToObjectIndex.get(totalPath) !== undefined) {
       return;
     }
 
-    const targetBone = this.findTarget(path);
+    const targetBone = this.findTarget(itemPath);
 
     if (!targetBone) {
       return;
@@ -118,24 +118,24 @@ export class Skeleton {
     }
 
     // Find last animated object by path
-    const propertyNames = property.split('.');
-    const lastPropertyName = propertyNames[propertyNames.length - 1];
+    const propertyPathSegments = propertyPath.split('.');
+    const lastPropertyName = propertyPathSegments[propertyPathSegments.length - 1];
     let directTarget: Record<string, any> = animatedComponentOrItem;
 
-    for (let i = 0; i < propertyNames.length - 1; i++) {
-      const property = directTarget[propertyNames[i]];
+    for (let i = 0; i < propertyPathSegments.length - 1; i++) {
+      const property = directTarget[propertyPathSegments[i]];
 
       if (property === undefined) {
-        console.error(`The ${propertyNames[i]} property of ${directTarget} was not found.`);
+        console.error(`The ${propertyPathSegments[i]} property of ${directTarget} was not found.`);
       }
       directTarget = property;
     }
 
     const animatedObject: AnimatedObject = {
       target: animatedComponentOrItem,
-      targetPath: propertyNames,
+      propertyPath: propertyPath,
       directTarget: directTarget,
-      directTargetPath: lastPropertyName,
+      propertyName: lastPropertyName,
     };
 
     switch (type) {
