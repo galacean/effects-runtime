@@ -170,6 +170,12 @@ export class TextureController {
       texB.batchTriggered = false;
       texB.fadeIn = this.inputFadeIn2; // 使用参数配置中的 inputFadeIn2
       texB.distance = this.inputDistance2; // 使用参数配置中的 inputDistance2
+      
+      // 修正：调整绿色纹理渐隐时间，使其与蓝色纹理同时消失
+      const delayInSeconds = this.textureInterval / 1000;
+      texB.fadeOutStart = this.inputFadeOutStart - delayInSeconds;
+      texB.fadeOutEnd = this.InputFadeOutEnd - delayInSeconds + 0.0416;
+
       this.textures.push(texB);
 
       if (DEBUG) {
@@ -319,23 +325,23 @@ export class TextureController {
       }
     }
 
-    // 输入阶段fadeOut区间持续检测，每批次只允许触发一次
-    if (
-      tex.type === 'input' &&
-      tex.batchId === this.inputBatchId &&
-      elapsed >= this.inputFadeOutStart &&
-      elapsed < tex.fadeOutEnd
-    ) {
-      // 查找当前批次所有纹理
-      const batchTextures = this.textures.filter(t => t.batchId === this.inputBatchId);
-      // 只有当前批次所有纹理都未触发过，才允许触发
-      const batchAlreadyTriggered = batchTextures.some(t => t.batchTriggered);
+    // 输入阶段触发检测：在显示阶段后期（75%进度）开始检测
+    if (tex.type === 'input' && tex.batchId === this.inputBatchId) {
+      // 计算触发开始时间：显示阶段结束前25%时间
+      const triggerStart = tex.fadeOutStart - (tex.fadeOutStart - tex.fadeIn) * 0.20;
+      
+      if (elapsed >= triggerStart && elapsed < tex.fadeOutEnd) {
+        // 查找当前批次所有纹理
+        const batchTextures = this.textures.filter(t => t.batchId === this.inputBatchId);
+        // 只有当前批次所有纹理都未触发过，才允许触发
+        const batchAlreadyTriggered = batchTextures.some(t => t.batchTriggered);
 
-      if (!batchAlreadyTriggered && volume > this.volumeThreshold) {
-        this.enterInputStage(now);
-        batchTextures.forEach(t => t.batchTriggered = true);
-        if (DEBUG) {
-          console.log(`[精确检测] 音量${volume}超阈值，生成新输入纹理组`);
+        if (!batchAlreadyTriggered && volume > this.volumeThreshold) {
+          this.enterInputStage(now);
+          batchTextures.forEach(t => t.batchTriggered = true);
+          if (DEBUG) {
+            console.log(`[精确检测] 音量${volume}超阈值，生成新输入纹理组`);
+          }
         }
       }
     }

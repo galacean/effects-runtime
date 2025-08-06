@@ -273,7 +273,7 @@ void main() {
     // 混合当前纹理颜色到最终颜色
     //finalColor = mix(finalColor, finalColor + color, color.a);
   }
-  finalColor.rgb *=1.5; // 增强亮度;
+  finalColor.rgb *=1.3; // 增强亮度;
 
   gl_FragColor = vec4(finalColor.rgb , finalColor.a);
 }
