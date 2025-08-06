@@ -703,8 +703,8 @@ void main() {
     for (const stop of gradient.stops) {
       const stopColor = stop.color;
 
-      gradientColors.push(new Vector4(stopColor[0], stopColor[1], stopColor[2], stopColor[3]));
-      gradientStops.push(stop.stop);
+      gradientColors.push(new Vector4(stopColor.r, stopColor.g, stopColor.b, stopColor.a));
+      gradientStops.push(stop.time);
     }
     material.setVector4Array('_Colors', gradientColors);
     material.setFloats('_Stops', gradientStops);

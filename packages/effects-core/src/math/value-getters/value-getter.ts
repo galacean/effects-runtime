@@ -251,7 +251,6 @@ export class LinearValue extends ValueGetter<number> {
 }
 
 export class GradientValue extends ValueGetter<number[]> {
-
   stops: ColorStop[];
 
   override onCreate (props: spec.GradientStop[] | Record<string, string>) {
@@ -270,14 +269,14 @@ export class GradientValue extends ValueGetter<number[]> {
       const a = stops[i];
       const b = stops[i + 1];
 
-      if (a.stop <= time && b.stop > time) {
-        const t = (time - a.stop) / (b.stop - a.stop);
+      if (a.time <= time && b.time > time) {
+        const t = (time - a.time) / (b.time - a.time);
 
-        return interpolateColor(a.color, b.color, t, true);
+        return interpolateColor(a.color.toArray(), b.color.toArray(), t, true);
       }
     }
 
-    return stops[last].color.slice();
+    return stops[last].color.toArray();
   }
 }
 
