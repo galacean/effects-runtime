@@ -1,4 +1,4 @@
-import { Component } from 'packages/effects-core/src/components';
+import { Component } from '../../../components/component';
 import type { FrameContext } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
