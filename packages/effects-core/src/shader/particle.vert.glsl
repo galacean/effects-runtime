@@ -3,8 +3,8 @@ precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-#include "./value.glsl";
-#include "./integrate.glsl";
+#include "./value.glsl"
+#include "./integrate.glsl"
 
 const float d2r = 3.141592653589793 / 180.;
 
