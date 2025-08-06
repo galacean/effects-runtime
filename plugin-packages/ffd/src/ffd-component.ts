@@ -29,9 +29,9 @@ export class FFDComponent extends Component {
   private rowNum = 5;                     // 行数量（列控制点数）
   private colNum = 5;                     // 列数量（行控制点数）
 
-  private relatedSpriteComponents: SpriteComponent[] = []; // 存储相关的 SpriteComponent
-  private boundMin = new math.Vector3(-0.5, -0.5, 0.0);
-  private boundMax = new math.Vector3(0.5, 0.5, 0.0);
+  private currentSpriteComponent: SpriteComponent;      // 存储当前的SpriteComponent
+  private boundMin = new math.Vector3(-0.5, -0.5, 0.0); // 当前SpriteComponent的BBX
+  private boundMax = new math.Vector3(0.5, 0.5, 0.0);   // 当前SpriteComponent的BBX
   private leftTopIndices: number[] = [];
   private rightTopIndices: number[] = [];
   private leftBottomIndices: number[] = [];
@@ -120,14 +120,12 @@ export class FFDComponent extends Component {
    * 收集所有相关的 SpriteComponents（自己和子元素的）
    */
   private collectSpriteComponents () {
-    this.relatedSpriteComponents = [];
-
     // 收集同级 SpriteComponent
     if (this.item) {
-      const siblingComponents = this.item.getComponents(SpriteComponent);
+      const currentComponent = this.item.getComponent(SpriteComponent);
 
-      if (siblingComponents && siblingComponents.length > 0) {
-
+      console.info(currentComponent);
+      if (currentComponent) {
         // 网格细分 begin：debug 用
         // 修改当前 sprite 组件的 shader
         const shader = new Shader(this.engine);
@@ -143,78 +141,77 @@ export class FFDComponent extends Component {
         const xCount = 13; // x方向格点数
         const yCount = 13; // y方向格点数
 
-        for (const siblingComponent of siblingComponents) {
-          const subdivPosition = [];
-          const subdivUV = [];
-          const subdivIndex = [];
+        const subdivPosition = [];
+        const subdivUV = [];
+        const subdivIndex = [];
 
-          const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(siblingComponent);
-          const componentSize = siblingComponent.transform.size;
+        const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(currentComponent);
+        const componentSize = currentComponent.transform.size;
 
-          // 更新包围盒边界，这里需要手动乘一下组件的 size
-          this.boundMin = new math.Vector3(componentSize.x * minX, componentSize.y * minY, minZ);
-          this.boundMax = new math.Vector3(componentSize.x * maxX, componentSize.y * maxY, maxZ);
+        // 更新包围盒边界，这里需要手动乘一下组件的 size
+        this.boundMin = new math.Vector3(componentSize.x * minX, componentSize.y * minY, minZ);
+        this.boundMax = new math.Vector3(componentSize.x * maxX, componentSize.y * maxY, maxZ);
 
-          //@ts-expect-error
-          const split: number[] = siblingComponent.splits[0] as number[];
-          const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+        //@ts-expect-error
+        const split: number[] = currentComponent.splits[0] as number[];
+        const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
 
-          const tox = split[0];
-          const toy = split[1];
-          const tsx = split[4] ? split[3] : split[2];
-          const tsy = split[4] ? split[2] : split[3];
+        const tox = split[0];
+        const toy = split[1];
+        const tsx = split[4] ? split[3] : split[2];
+        const tsy = split[4] ? split[2] : split[3];
 
-          const uv00 = [texOffset[2] * tsx + tox, texOffset[3] * tsy + toy];
-          const uv01 = [texOffset[0] * tsx + tox, texOffset[1] * tsy + toy];
-          const uv11 = [texOffset[4] * tsx + tox, texOffset[5] * tsy + toy];
-          const uv10 = [texOffset[6] * tsx + tox, texOffset[7] * tsy + toy];
+        const uv00 = [texOffset[2] * tsx + tox, texOffset[3] * tsy + toy];
+        const uv01 = [texOffset[0] * tsx + tox, texOffset[1] * tsy + toy];
+        const uv11 = [texOffset[4] * tsx + tox, texOffset[5] * tsy + toy];
+        const uv10 = [texOffset[6] * tsx + tox, texOffset[7] * tsy + toy];
 
-          for (let yi = 0; yi < yCount; yi++) {
-            const y = this.boundMin.y + yi * ((this.boundMax.y - this.boundMin.y) / (yCount - 1));
-            const v = yi / (yCount - 1);
+        for (let yi = 0; yi < yCount; yi++) {
+          const y = this.boundMin.y + yi * ((this.boundMax.y - this.boundMin.y) / (yCount - 1));
+          const v = yi / (yCount - 1);
 
-            for (let xi = 0; xi < xCount; xi++) {
-              const x = this.boundMin.x + xi * ((this.boundMax.x - this.boundMin.x) / (xCount - 1));
-              const u = xi / (xCount - 1);
+          for (let xi = 0; xi < xCount; xi++) {
+            const x = this.boundMin.x + xi * ((this.boundMax.x - this.boundMin.x) / (xCount - 1));
+            const u = xi / (xCount - 1);
 
-              subdivPosition.push(x, y, 0);
-              // 映射到 split 上
-              const uvx = uv00[0] * (1 - u) * (1 - v) + uv01[0] * (1 - u) * v + uv11[0] * u * v + uv10[0] * u * (1 - v);
-              const uvy = uv00[1] * (1 - u) * (1 - v) + uv01[1] * (1 - u) * v + uv11[1] * u * v + uv10[1] * u * (1 - v);
+            subdivPosition.push(x, y, 0);
+            // 映射到 split 上
+            const uvx = uv00[0] * (1 - u) * (1 - v) + uv01[0] * (1 - u) * v + uv11[0] * u * v + uv10[0] * u * (1 - v);
+            const uvy = uv00[1] * (1 - u) * (1 - v) + uv01[1] * (1 - u) * v + uv11[1] * u * v + uv10[1] * u * (1 - v);
 
-              subdivUV.push(uvx, uvy);
-            }
+            subdivUV.push(uvx, uvy);
           }
-          for (let yi = 0; yi < yCount - 1; yi++) {
-            for (let xi = 0; xi < xCount - 1; xi++) {
-              const i0 = yi * xCount + xi;              // 左上
-              const i1 = (yi + 1) * xCount + xi;        // 左下
-              const i2 = yi * xCount + (xi + 1);        // 右上
-              const i3 = (yi + 1) * xCount + (xi + 1);  // 右下
-
-              // 两个三角形
-              subdivIndex.push(i0, i1, i2); // 左上-左下-右上
-              subdivIndex.push(i2, i1, i3); // 右上-左下-右下
-            }
-          }
-
-          siblingComponent.geometry.setAttributeData('aPos', new Float32Array(subdivPosition));
-          siblingComponent.geometry.setIndexData(new Uint16Array(subdivIndex));
-          siblingComponent.geometry.setAttributeData('aUV', new Float32Array(subdivUV));
-          siblingComponent.geometry.setDrawCount(subdivIndex.length);
-          siblingComponent.geometry.subMeshes.length = 0;
-          for (const subMesh of siblingComponent.geometry.subMeshes) {
-            siblingComponent.geometry.subMeshes.push({
-              offset: subMesh.offset,
-              indexCount: subMesh.indexCount,
-              vertexCount: subMesh.vertexCount,
-            });
-          }
-          siblingComponent.material.shader = shader;
         }
-        // 网格细分 end：debug用
-        this.relatedSpriteComponents.push(...siblingComponents);
+        for (let yi = 0; yi < yCount - 1; yi++) {
+          for (let xi = 0; xi < xCount - 1; xi++) {
+            const i0 = yi * xCount + xi;              // 左上
+            const i1 = (yi + 1) * xCount + xi;        // 左下
+            const i2 = yi * xCount + (xi + 1);        // 右上
+            const i3 = (yi + 1) * xCount + (xi + 1);  // 右下
+
+            // 两个三角形
+            subdivIndex.push(i0, i1, i2); // 左上-左下-右上
+            subdivIndex.push(i2, i1, i3); // 右上-左下-右下
+          }
+        }
+
+        currentComponent.geometry.setAttributeData('aPos', new Float32Array(subdivPosition));
+        currentComponent.geometry.setIndexData(new Uint16Array(subdivIndex));
+        currentComponent.geometry.setAttributeData('aUV', new Float32Array(subdivUV));
+        currentComponent.geometry.setDrawCount(subdivIndex.length);
+        currentComponent.geometry.subMeshes.length = 0;
+        for (const subMesh of currentComponent.geometry.subMeshes) {
+          currentComponent.geometry.subMeshes.push({
+            offset: subMesh.offset,
+            indexCount: subMesh.indexCount,
+            vertexCount: subMesh.vertexCount,
+          });
+        }
+        currentComponent.material.shader = shader;
+        this.currentSpriteComponent = currentComponent;
+
       }
+      // 网格细分 end：debug用
       // // 收集子元素的spriteComponent 暂不考虑FFD叠加效果
       // if (this.item.children && this.item.children.length > 0) {
       //   for (const child of this.item.children) {
@@ -240,29 +237,27 @@ export class FFDComponent extends Component {
     }
 
     // 使用已收集的 spriteComponent 来获取包围盒
-    for (const spriteComponent of this.relatedSpriteComponents) {
-      const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(spriteComponent);
+    const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(this.currentSpriteComponent);
 
-      // 更新包围盒边界
-      this.boundMin = new math.Vector3(minX, minY, minZ);
-      this.boundMax = new math.Vector3(maxX, maxY, maxZ);
-      // 基于包围盒范围均匀生成 rowNum x colNum 个控制点
-      this.controlPoints = [];
+    // 更新包围盒边界
+    this.boundMin = new math.Vector3(minX, minY, minZ);
+    this.boundMax = new math.Vector3(maxX, maxY, maxZ);
+    // 基于包围盒范围均匀生成 rowNum x colNum 个控制点
+    this.controlPoints = [];
 
-      for (let row = 0; row < this.rowNum; row++) {
-        const y = this.boundMin.y + (row / (this.rowNum - 1)) * (this.boundMax.y - this.boundMin.y);
+    for (let row = 0; row < this.rowNum; row++) {
+      const y = this.boundMin.y + (row / (this.rowNum - 1)) * (this.boundMax.y - this.boundMin.y);
 
-        for (let col = 0; col < this.colNum; col++) {
-          const x = this.boundMin.x + (col / (this.colNum - 1)) * (this.boundMax.x - this.boundMin.x);
-          const z = minZ;
-          const cp = new math.Vector3(x, y, z);
+      for (let col = 0; col < this.colNum; col++) {
+        const x = this.boundMin.x + (col / (this.colNum - 1)) * (this.boundMax.x - this.boundMin.x);
+        const z = minZ;
+        const cp = new math.Vector3(x, y, z);
 
-          this.controlPoints.push(cp);
-        }
+        this.controlPoints.push(cp);
       }
-      // 更新所有相关材质的 uniform
-      this.updateMaterialUniforms();
     }
+    // 更新所有相关材质的 uniform
+    this.updateMaterialUniforms();
   }
 
   /**
@@ -297,36 +292,34 @@ export class FFDComponent extends Component {
     this.rightBottomIndices = [];
 
     // 使用已收集的 spriteComponent 来获取包围盒
-    for (const spriteComponent of this.relatedSpriteComponents) {
-      const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(spriteComponent);
+    const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(this.currentSpriteComponent);
 
-      // 更新包围盒边界
-      this.boundMin = new math.Vector3(minX, minY, minZ);
-      this.boundMax = new math.Vector3(maxX, maxY, maxZ);
+    // 更新包围盒边界
+    this.boundMin = new math.Vector3(minX, minY, minZ);
+    this.boundMax = new math.Vector3(maxX, maxY, maxZ);
 
-      const centerX = (minX + maxX) / 2;
-      const centerY = (minY + maxY) / 2;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
 
-      for (let col = 0; col < this.colNum; col++) {
-        for (let row = 0; row < this.rowNum; row++) {
-          const idx = col * this.rowNum + row;
-          // 控制点在真实包围盒中的(x,y)
-          const x = this.controlPoints[idx].x;
-          const y = this.controlPoints[idx].y;
+    for (let col = 0; col < this.colNum; col++) {
+      for (let row = 0; row < this.rowNum; row++) {
+        const idx = col * this.rowNum + row;
+        // 控制点在真实包围盒中的(x,y)
+        const x = this.controlPoints[idx].x;
+        const y = this.controlPoints[idx].y;
 
-          if (y > centerY) {
-            // 上
-            if (x < centerX) {
-              this.leftTopIndices.push(idx);
-            } else {
-              this.rightTopIndices.push(idx);
-            }
-          } else { // 归下（中轴归下）
-            if (x < centerX) {
-              this.leftBottomIndices.push(idx);
-            } else {
-              this.rightBottomIndices.push(idx);
-            }
+        if (y > centerY) {
+          // 上
+          if (x < centerX) {
+            this.leftTopIndices.push(idx);
+          } else {
+            this.rightTopIndices.push(idx);
+          }
+        } else { // 归下（中轴归下）
+          if (x < centerX) {
+            this.leftBottomIndices.push(idx);
+          } else {
+            this.rightBottomIndices.push(idx);
           }
         }
       }
@@ -537,24 +530,22 @@ export class FFDComponent extends Component {
    */
   private updateMaterialUniforms (): void {
     // 使用已收集的 spriteComponent，无需每次都重新收集
-    for (const spriteComponent of this.relatedSpriteComponents) {
-      const material = spriteComponent.material;
+    const material = this.currentSpriteComponent.material;
 
-      if (material) {
-        material.setVector3('uBoundMin', this.boundMin);
-        material.setVector3('uBoundMax', this.boundMax);
-        material.setInt('uRowNum', this.rowNum);
-        material.setInt('uColNum', this.colNum);
+    if (material) {
+      material.setVector3('_BoundMin', this.boundMin);
+      material.setVector3('_BoundMax', this.boundMax);
+      material.setInt('_RowNum', this.rowNum);
+      material.setInt('_ColNum', this.colNum);
 
-        for (let i = 0; i < this.colNum; i++) {
-          for (let j = 0; j < this.rowNum; j++) {
-            const idx = i * this.rowNum + j;
+      for (let i = 0; i < this.colNum; i++) {
+        for (let j = 0; j < this.rowNum; j++) {
+          const idx = i * this.rowNum + j;
 
-            if (idx < this.controlPoints.length) {
-              const controlPoint = this.controlPoints[idx];
+          if (idx < this.controlPoints.length) {
+            const controlPoint = this.controlPoints[idx];
 
-              material.setVector3(`uControlPoints[${idx}]`, controlPoint);
-            }
+            material.setVector3(`_ControlPoints[${idx}]`, controlPoint);
           }
         }
       }
@@ -619,5 +610,4 @@ export class FFDComponent extends Component {
 
     return { minX, minY, minZ, maxX, maxY, maxZ };
   }
-
 }
