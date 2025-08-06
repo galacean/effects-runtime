@@ -1,22 +1,13 @@
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import * as spec from '@galacean/effects-specification';
-import { effectsClass } from '../decorators';
-import type { Engine } from '../engine';
-import { Component } from './component';
-import { SpriteComponent } from '../plugins';
-import { Shader } from '../render';
-import { generateGUID } from '../utils';
-// TODO 临时本地声明，提供给编辑器
-declare module '@galacean/effects-specification' {
-  interface FFDComponentData extends spec.ComponentData {
-    controlPoints?: Vector3[],
-  }
-}
+import type { Engine } from '@galacean/effects';
+import { spec, math, effectsClass, Component, SpriteComponent, Shader, generateGUID } from '@galacean/effects';
+import fs from './shader/fragment.glsl';
+import vs from './shader/vertex.glsl';
 
 @effectsClass('FFDComponent')
 export class FFDComponent extends Component {
-  private controlPoints: Vector3[] = [];  // 控制点数组， from time line
+  private controlPoints: math.Vector3[] = [];  // 控制点数组， from time line
 
+  // @ts-expect-error
   private data: spec.FFDComponentData;
   private reset = false;                  // 控制点重置
   private additive = true;                // 效果叠加
@@ -38,22 +29,22 @@ export class FFDComponent extends Component {
   private rowNum = 5;                     // 行数量（列控制点数）
   private colNum = 5;                     // 列数量（行控制点数）
 
-  private relatedSpriteComponents: SpriteComponent[] = []; // 存储相关的SpriteComponent
-  private boundMin = new Vector3(-0.5, -0.5, 0.0);
-  private boundMax = new Vector3(0.5, 0.5, 0.0);
+  private relatedSpriteComponents: SpriteComponent[] = []; // 存储相关的 SpriteComponent
+  private boundMin = new math.Vector3(-0.5, -0.5, 0.0);
+  private boundMax = new math.Vector3(0.5, 0.5, 0.0);
   private leftTopIndices: number[] = [];
   private rightTopIndices: number[] = [];
   private leftBottomIndices: number[] = [];
   private rightBottomIndices: number[] = [];
 
   private trapezoidOps = [
-    { flag: 'trapezoidExpandTop', edge: 'top', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidExpandTop', edge: 'top', xGap: 0.2, yGap: 0.1 },
     { flag: 'trapezoidShrinkTop', edge: 'top', xGap: -0.2, yGap: -0.1 },
-    { flag: 'trapezoidExpandBottom', edge: 'bottom', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidExpandBottom', edge: 'bottom', xGap: 0.2, yGap: 0.1 },
     { flag: 'trapezoidShrinkBottom', edge: 'bottom', xGap: -0.2, yGap: -0.1 },
-    { flag: 'trapezoidExpandLeft', edge: 'left', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidExpandLeft', edge: 'left', xGap: 0.2, yGap: 0.1 },
     { flag: 'trapezoidShrinkLeft', edge: 'left', xGap: -0.2, yGap: -0.1 },
-    { flag: 'trapezoidExpandRight', edge: 'right', xGap:  0.2, yGap:  0.1 },
+    { flag: 'trapezoidExpandRight', edge: 'right', xGap: 0.2, yGap: 0.1 },
     { flag: 'trapezoidShrinkRight', edge: 'right', xGap: -0.2, yGap: -0.1 },
   ] as const;
 
@@ -62,7 +53,7 @@ export class FFDComponent extends Component {
   }
 
   override onStart (): void {
-    // 收集相关的SpriteComponent
+    // 收集相关的 SpriteComponent
     this.collectSpriteComponents();
 
     // 基于相关组件的包围盒更新控制点
@@ -79,7 +70,7 @@ export class FFDComponent extends Component {
       this.initControlPointsFromBoundingBox();
       this.reset = false;
     }
-    // 判断是否处于可叠加状态，不在的话执行模板前要reset
+    // 判断是否处于可叠加状态，不在的话执行模板前要 reset
     const maybeReset = () => {
       if (!this.additive) {
         this.initControlPointsFromBoundingBox();
@@ -119,35 +110,36 @@ export class FFDComponent extends Component {
     }
   }
 
+  // @ts-expect-error
   override fromData (data: spec.FFDComponentData): void {
     super.fromData(data);
     this.data = data;
   }
 
   /**
-   * 收集所有相关的SpriteComponents（自己和子元素的）
+   * 收集所有相关的 SpriteComponents（自己和子元素的）
    */
   private collectSpriteComponents () {
     this.relatedSpriteComponents = [];
 
-    // 收集同级SpriteComponent
+    // 收集同级 SpriteComponent
     if (this.item) {
       const siblingComponents = this.item.getComponents(SpriteComponent);
 
       if (siblingComponents && siblingComponents.length > 0) {
 
-        // 网格细分 begin：debug用
-        // 修改当前sprite组件的shader
+        // 网格细分 begin：debug 用
+        // 修改当前 sprite 组件的 shader
         const shader = new Shader(this.engine);
 
         shader.fromData({
-          vertex: FFDVertexShader,
-          fragment: FFDFragmentShader,
+          vertex: vs,
+          fragment: fs,
           id: generateGUID(),
           dataType: spec.DataType.Shader,
         });
 
-        // 修改当前sprite组件的geometry，即进行网格细分
+        // 修改当前 sprite 组件的 geometry，即进行网格细分
         const xCount = 13; // x方向格点数
         const yCount = 13; // y方向格点数
 
@@ -159,9 +151,9 @@ export class FFDComponent extends Component {
           const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(siblingComponent);
           const componentSize = siblingComponent.transform.size;
 
-          // 更新包围盒边界，这里需要手动乘一下组件的size
-          this.boundMin = new Vector3(componentSize.x * minX, componentSize.y * minY, minZ);
-          this.boundMax = new Vector3(componentSize.x * maxX, componentSize.y * maxY, maxZ);
+          // 更新包围盒边界，这里需要手动乘一下组件的 size
+          this.boundMin = new math.Vector3(componentSize.x * minX, componentSize.y * minY, minZ);
+          this.boundMax = new math.Vector3(componentSize.x * maxX, componentSize.y * maxY, maxZ);
 
           //@ts-expect-error
           const split: number[] = siblingComponent.splits[0] as number[];
@@ -186,7 +178,7 @@ export class FFDComponent extends Component {
               const u = xi / (xCount - 1);
 
               subdivPosition.push(x, y, 0);
-              // 映射到split上
+              // 映射到 split 上
               const uvx = uv00[0] * (1 - u) * (1 - v) + uv01[0] * (1 - u) * v + uv11[0] * u * v + uv10[0] * u * (1 - v);
               const uvy = uv00[1] * (1 - u) * (1 - v) + uv01[1] * (1 - u) * v + uv11[1] * u * v + uv10[1] * u * (1 - v);
 
@@ -214,8 +206,8 @@ export class FFDComponent extends Component {
           for (const subMesh of siblingComponent.geometry.subMeshes) {
             siblingComponent.geometry.subMeshes.push({
               offset: subMesh.offset,
-              indexCount:  subMesh.indexCount,
-              vertexCount:  subMesh.vertexCount,
+              indexCount: subMesh.indexCount,
+              vertexCount: subMesh.vertexCount,
             });
           }
           siblingComponent.material.shader = shader;
@@ -235,40 +227,40 @@ export class FFDComponent extends Component {
       // }
     }
   }
+
   /**
    * 基于包围盒初始化控制点
    */
   private initControlPointsFromBoundingBox () {
-    // 此时this.item应该已经初始化
+    // 此时 this.item 应该已经初始化
     if (!this.item) {
       console.warn('FFDComponent: item is not initialized, cannot get bounding box');
 
       return;
     }
 
-    // 使用已收集的SpriteComp来获取包围盒
-    for (const spriteComp of this.relatedSpriteComponents) {
-
-      const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(spriteComp);
+    // 使用已收集的 spriteComponent 来获取包围盒
+    for (const spriteComponent of this.relatedSpriteComponents) {
+      const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(spriteComponent);
 
       // 更新包围盒边界
-      this.boundMin = new Vector3(minX, minY, minZ);
-      this.boundMax = new Vector3(maxX, maxY, maxZ);
-
-      // 基于包围盒范围均匀生成rowNum x colNum个控制点
+      this.boundMin = new math.Vector3(minX, minY, minZ);
+      this.boundMax = new math.Vector3(maxX, maxY, maxZ);
+      // 基于包围盒范围均匀生成 rowNum x colNum 个控制点
       this.controlPoints = [];
+
       for (let row = 0; row < this.rowNum; row++) {
         const y = this.boundMin.y + (row / (this.rowNum - 1)) * (this.boundMax.y - this.boundMin.y);
 
         for (let col = 0; col < this.colNum; col++) {
           const x = this.boundMin.x + (col / (this.colNum - 1)) * (this.boundMax.x - this.boundMin.x);
           const z = minZ;
-          const cp = new Vector3(x, y, z);
+          const cp = new math.Vector3(x, y, z);
 
           this.controlPoints.push(cp);
         }
       }
-      // 更新所有相关材质的uniform
+      // 更新所有相关材质的 uniform
       this.updateMaterialUniforms();
     }
   }
@@ -290,11 +282,11 @@ export class FFDComponent extends Component {
         this.controlPoints[i].y = point.y;
         this.controlPoints[i].z = point.z;
       } else {
-        this.controlPoints.push(new Vector3(point.x, point.y, point.z));
+        this.controlPoints.push(new math.Vector3(point.x, point.y, point.z));
       }
     }
 
-    // 更新所有相关材质的uniform
+    // 更新所有相关材质的 uniform
     this.updateMaterialUniforms();
   }
 
@@ -304,14 +296,13 @@ export class FFDComponent extends Component {
     this.leftBottomIndices = [];
     this.rightBottomIndices = [];
 
-    // 使用已收集的SpriteComp来获取包围盒
-    for (const spriteComp of this.relatedSpriteComponents) {
-
-      const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(spriteComp);
+    // 使用已收集的 spriteComponent 来获取包围盒
+    for (const spriteComponent of this.relatedSpriteComponents) {
+      const { minX, minY, minZ, maxX, maxY, maxZ } = this.getComponentBoundingBox(spriteComponent);
 
       // 更新包围盒边界
-      this.boundMin = new Vector3(minX, minY, minZ);
-      this.boundMax = new Vector3(maxX, maxY, maxZ);
+      this.boundMin = new math.Vector3(minX, minY, minZ);
+      this.boundMax = new math.Vector3(maxX, maxY, maxZ);
 
       const centerX = (minX + maxX) / 2;
       const centerY = (minY + maxY) / 2;
@@ -324,7 +315,7 @@ export class FFDComponent extends Component {
           const y = this.controlPoints[idx].y;
 
           if (y > centerY) {
-          // 上
+            // 上
             if (x < centerX) {
               this.leftTopIndices.push(idx);
             } else {
@@ -343,9 +334,9 @@ export class FFDComponent extends Component {
   }
 
   /**
- * 按照sprite boundingbox中心做四周的等长扩展/收缩
- * @param amount  大于0表示扩展，小于0表示收缩
- */
+   * 按照 sprite boundingbox 中心做四周的等长扩展/收缩
+   * @param amount - 大于 0 表示扩展，小于 0 表示收缩
+   */
   private expandByFixedValue (amount: number = 0.25): void {
     const N = this.controlPoints?.length || 0;
 
@@ -355,7 +346,7 @@ export class FFDComponent extends Component {
       return;
     }
 
-    const boundCenter = new Vector3(
+    const boundCenter = new math.Vector3(
       (this.boundMin.x + this.boundMax.x) * 0.5,
       (this.boundMin.y + this.boundMax.y) * 0.5,
       (this.boundMin.z + this.boundMax.z) * 0.5
@@ -377,9 +368,9 @@ export class FFDComponent extends Component {
   }
 
   /**
- * 按照控制点离sprite boundingbox中心的距离做扩展/收缩，距离越小位移量越大
- * @param amount  大于0表示扩展，小于0表示收缩
- */
+  * 按照控制点离 sprite boundingbox 中心的距离做扩展/收缩，距离越小位移量越大
+  * @param amount - 大于 0 表示扩展，小于 0 表示收缩
+  */
   private expandByVariableValue (amount: number = 0.25): void {
     const N = this.controlPoints?.length || 0;
 
@@ -389,7 +380,7 @@ export class FFDComponent extends Component {
       return;
     }
 
-    const center = new Vector3(
+    const center = new math.Vector3(
       (this.boundMin.x + this.boundMax.x) * 0.5,
       (this.boundMin.y + this.boundMax.y) * 0.5,
       (this.boundMin.z + this.boundMax.z) * 0.5
@@ -403,8 +394,8 @@ export class FFDComponent extends Component {
       const dy = p.y - center.y;
       const len = Math.sqrt(dx * dx + dy * dy);
 
-      if (len < minDist) {minDist = len;}
-      if (len > maxDist) {maxDist = len;}
+      if (len < minDist) { minDist = len; }
+      if (len > maxDist) { maxDist = len; }
     });
 
     const distRange = Math.max(maxDist - minDist, 1e-6);
@@ -433,15 +424,15 @@ export class FFDComponent extends Component {
   }
 
   /**
- * 四边任选一边固定，其余点线性插值做梯形变形
- * @param edge  主要变形方向："top" | "bottom" | "left" | "right"
- * @param xGap  若edge为top/bottom表示两侧横向扩展量,若edge为left/right则为纵向扩展量。
- * @param yGap  若edge为top/bottom表示两侧纵向扩展量,若edge为left/right则为横向扩展量。
- */
+  * 四边任选一边固定，其余点线性插值做梯形变形
+  * @param edge - 主要变形方向："top" | "bottom" | "left" | "right"
+  * @param xGap - 若 edge 为 top/bottom 表示两侧横向扩展量，若 edge 为 left/right 则为纵向扩展量。
+  * @param yGap - 若 edge 为 top/bottom 表示两侧纵向扩展量，若 edge 为 left/right 则为横向扩展量。
+  */
   private expandTrapezoidEdge (
     edge: 'top' | 'bottom' | 'left' | 'right',
     xGap: number = 0,
-    yGap: number = 0
+    yGap: number = 0,
   ): void {
     const N = this.controlPoints?.length || 0;
 
@@ -458,10 +449,10 @@ export class FFDComponent extends Component {
     let minX = Infinity, maxX = -Infinity;
 
     this.controlPoints.forEach(p => {
-      if (p.y < minY) {minY = p.y;}
-      if (p.y > maxY) {maxY = p.y;}
-      if (p.x < minX) {minX = p.x;}
-      if (p.x > maxX) {maxX = p.x;}
+      if (p.y < minY) { minY = p.y; }
+      if (p.y > maxY) { maxY = p.y; }
+      if (p.x < minX) { minX = p.x; }
+      if (p.x > maxX) { maxX = p.x; }
     });
 
     if (edge === 'top') {
@@ -477,7 +468,7 @@ export class FFDComponent extends Component {
           const p = this.controlPoints[idx];
           const sideNorm = (cols === 1) ? 0 : col / (cols - 1) * 2 - 1;
 
-          if (row === 0) {continue;} // 底边不动
+          if (row === 0) { continue; } // 底边不动
           p.x += sideNorm * rowExpand;
           p.y += (yDst - ySrc);
         }
@@ -495,7 +486,7 @@ export class FFDComponent extends Component {
           const p = this.controlPoints[idx];
           const sideNorm = (cols === 1) ? 0 : col / (cols - 1) * 2 - 1;
 
-          if (row === rows - 1) {continue;} // 顶边不动
+          if (row === rows - 1) { continue; } // 顶边不动
           p.x += sideNorm * rowExpand;
           p.y += (yDst - ySrc);
         }
@@ -513,7 +504,7 @@ export class FFDComponent extends Component {
           const p = this.controlPoints[idx];
           const sideNorm = (rows === 1) ? 0 : row / (rows - 1) * 2 - 1;
 
-          if (col === 0) {continue;} // 左侧不动
+          if (col === 0) { continue; } // 左侧不动
           p.y += sideNorm * colExpand;
           p.x += (xDst - xSrc);
         }
@@ -531,7 +522,7 @@ export class FFDComponent extends Component {
           const p = this.controlPoints[idx];
           const sideNorm = (rows === 1) ? 0 : row / (rows - 1) * 2 - 1;
 
-          if (col === cols - 1) {continue;} // 右侧不动
+          if (col === cols - 1) { continue; } // 右侧不动
           p.y += sideNorm * colExpand;
           p.x += (xDst - xSrc);
         }
@@ -542,18 +533,19 @@ export class FFDComponent extends Component {
   }
 
   /**
-   * 更新相关uniform
+   * 更新相关 uniform
    */
   private updateMaterialUniforms (): void {
-    // 使用已收集的spriteComponent，无需每次都重新收集
-    for (const spriteComp of this.relatedSpriteComponents) {
-      const material = spriteComp.material;
+    // 使用已收集的 spriteComponent，无需每次都重新收集
+    for (const spriteComponent of this.relatedSpriteComponents) {
+      const material = spriteComponent.material;
 
       if (material) {
         material.setVector3('uBoundMin', this.boundMin);
         material.setVector3('uBoundMax', this.boundMax);
         material.setInt('uRowNum', this.rowNum);
         material.setInt('uColNum', this.colNum);
+
         for (let i = 0; i < this.colNum; i++) {
           for (let j = 0; j < this.rowNum; j++) {
             const idx = i * this.rowNum + j;
@@ -570,7 +562,7 @@ export class FFDComponent extends Component {
   }
 
   /**
-   * 获取组件的BoundingBox
+   * 获取组件的 BoundingBox
    */
   private getComponentBoundingBox (vComponent: SpriteComponent) {
     let minX = Infinity, minY = Infinity, minZ = Infinity;
@@ -629,99 +621,3 @@ export class FFDComponent extends Component {
   }
 
 }
-
-const FFDVertexShader = `
-precision highp float;
-
-attribute vec3 aPos;
-attribute vec2 aUV;
-
-varying vec2 uv0;
-
-#define MAX_BLOCK_NUM 10
-#define EPSILON 1e-6
-
-uniform mat4 effects_ObjectToWorld;
-uniform mat4 effects_MatrixVP;
-uniform vec3 uControlPoints[MAX_BLOCK_NUM * MAX_BLOCK_NUM];
-uniform vec3 uBoundMin;
-uniform vec3 uBoundMax;
-uniform int uColNum;   // 列数量（行控制点数）
-uniform int uRowNum;   // 行数量（列控制点数）
-
-// 计算二项式系数 C(n, k)
-float binomialCoefficient(int n, int k) {
-  // 减少循环次数：C(n, k) == C(n, n-k)
-  if(k > n-k) k = n-k; 
-
-  float result = 1.0;
-  for(int i = 1; i <= k; ++i) {
-      result *= float(n - i + 1) / float(i);
-  }
-  return result;
-}
-
-// 计算n阶第k项的基函数值Bernstein(n, k, t)
-float bernstein(int n, int k, float t) {
-  // t在[0, 1]范围外直接返回0
-  if(t < 0.0 || t > 1.0) return 0.0;
-
-  // 端点精度处理
-  if(abs(t) < EPSILON && k == 0)     return 1.0;
-  else if(abs(t-1.0) < EPSILON && k == n) return 1.0;
-
-  // 计算公式：C(n, k) * t^k * (1-t)^(n-k)
-  float coeff = binomialCoefficient(n, k);
-  float tk  = (k == 0)   ? 1.0 : pow(t, float(k));
-  float tnk = ((n-k)==0) ? 1.0 : pow(1.0-t, float(n-k));
-  return coeff * tk * tnk;
-} 
-
-vec3 bezierSurface(vec3 originalPos) {
-  // 判断点是否在包围盒内，不在则直接返回原始位置
-  bool isInBoundingBox =
-      originalPos.x >= uBoundMin.x - EPSILON && originalPos.x <= uBoundMax.x + EPSILON &&
-      originalPos.y >= uBoundMin.y - EPSILON && originalPos.y <= uBoundMax.y + EPSILON &&
-      originalPos.z >= uBoundMin.z - EPSILON && originalPos.z <= uBoundMax.z + EPSILON;
-  if (!isInBoundingBox) {
-      return originalPos;
-  }
-
-  float u = (originalPos.x - uBoundMin.x) / (uBoundMax.x - uBoundMin.x);
-  float v = (originalPos.y - uBoundMin.y) / (uBoundMax.y - uBoundMin.y);
-
-  vec3 newPos = vec3(0.0);
-
-  for (int row = 0; row < MAX_BLOCK_NUM; ++row) {
-      if(row >= uRowNum) break;
-      float bv = bernstein(uRowNum - 1, row, v);
-      for (int col = 0; col < MAX_BLOCK_NUM; ++col) {
-          if(col >= uColNum) break;
-          float bu = bernstein(uColNum - 1, col, u);
-          int idx = row * uColNum + col;
-          newPos += uControlPoints[idx] * bu * bv;
-      }
-  }
-  return newPos;
-}
-
-void main() {
-  uv0 = aUV;
-  vec3 newPos = bezierSurface(aPos);
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
-}
-`;
-
-const FFDFragmentShader = `
-precision highp float;
-
-varying vec2 uv0;
-
-uniform sampler2D _MainTex;
-
-void main() {
-    vec2 uvMain = uv0;
-    vec3 color = texture2D(_MainTex, uv0).rgb;
-    gl_FragColor =vec4(color, 1.0);
-}
-`;
