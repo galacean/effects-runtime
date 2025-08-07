@@ -145,6 +145,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private hasStroke = false;
   private hasFill = false;
   private shapeDirty = true;
+  private materialDirty = true;
   private graphicsPath = new GraphicsPath();
 
   private fills: FillAttributes[] = [];
@@ -262,8 +263,6 @@ void main() {
 `;
 
   get shape () {
-    this.shapeDirty = true;
-
     return this.shapeAttributes;
   }
 
@@ -399,6 +398,11 @@ void main() {
       this.buildPath(this.shapeAttributes);
       this.buildGeometryFromPath(this.graphicsPath.shapePath);
       this.shapeDirty = false;
+    }
+
+    if (this.materialDirty) {
+      this.setupMaterials();
+      this.materialDirty = false;
     }
   }
 
@@ -880,6 +884,11 @@ void main() {
     }
 
     this.setupMaterials();
+  }
+
+  override onApplyAnimationProperties (): void {
+    this.shapeDirty = true;
+    this.materialDirty = true;
   }
 }
 

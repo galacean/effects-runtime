@@ -1,7 +1,7 @@
 #version 100
 precision mediump float;
 #define SHADER_VERTEX 1
-#include "./value.glsl";
+#include "./value.glsl"
 attribute vec4 aPos;
 attribute vec3 aDir;
 attribute vec3 aInfo;//lifetime section side

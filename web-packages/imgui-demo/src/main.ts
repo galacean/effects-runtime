@@ -109,7 +109,7 @@ async function _init (): Promise<void> {
 
   fontConfig.internal.OversampleH = 2;
   fontConfig.internal.OversampleV = 2;
-  font = await AddFontFromFileTTF('https://template-center.oss-cn-beijing.aliyuncs.com/SYS/font/Alibaba-PuHuiTi-Regular.ttf', 44, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
+  font = await AddFontFromFileTTF('./Alibaba-PuHuiTi-Regular.ttf', 44, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
   font.Scale = 0.5;
@@ -780,7 +780,7 @@ function styleBlack () {
   colors[ImGui.ImGuiCol.ScrollbarGrab] = new ImGui.ImVec4(0.277, 0.277, 0.277, 1.000);
   colors[ImGui.ImGuiCol.ScrollbarGrabHovered] = new ImGui.ImVec4(0.300, 0.300, 0.300, 1.000);
   colors[ImGui.ImGuiCol.ScrollbarGrabActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.CheckMark] = new ImGui.ImVec4(1.000, 1.000, 1.000, 1.000);
+  colors[ImGui.ImGuiCol.CheckMark] = new ImGui.ImVec4(0.000, 0.478, 0.800, 1.000);
   colors[ImGui.ImGuiCol.SliderGrab] = new ImGui.ImVec4(0.391, 0.391, 0.391, 1.000);
   colors[ImGui.ImGuiCol.SliderGrabActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
   colors[ImGui.ImGuiCol.Button] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.000);
