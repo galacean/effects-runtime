@@ -275,6 +275,9 @@ void main() {
   }
   finalColor.rgb *=1.3; // 增强亮度;
 
+  vec2 uv2 = vec2(uv.x+_Offset1,1.0-uv.y);
+  vec4 finalColor2 = safeTexture2D(_Tex1, uv2);
+
   gl_FragColor = vec4(finalColor.rgb , finalColor.a);
 }
 `;
@@ -475,37 +478,62 @@ let material: Material | undefined;
   }
 
   // 初始化默认颜色
-  controller.setListeningColor(hexToRgba('#136BCD'));
-  controller.setInputColors({
-    primary: hexToRgba('#136BCD'),
-    secondary: hexToRgba('#029896'),
-  });
+  // 第一阶段：蓝色和绿色
+  controller.setFirstStageColors(
+    hexToRgba('#136BCD'), // 蓝色
+    hexToRgba('#029896')  // 绿色
+  );
+  // 第二阶段：主色和副色
+  controller.setSecondStageColors(
+    hexToRgba('#136BCD'), // 主色
+    hexToRgba('#029896')  // 副色
+  );
 
-  const listeningColorInput = document.getElementById('listeningColor') as HTMLInputElement | null;
-
-  if (listeningColorInput) {
-    listeningColorInput.addEventListener('input', e => {
+  // 第一阶段蓝色
+  const firstStageBlueInput = document.getElementById('listeningColor') as HTMLInputElement | null;
+  if (firstStageBlueInput) {
+    firstStageBlueInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
-
-      controller.setListeningColor(hexToRgba(target.value));
+      const blue = hexToRgba(target.value);
+      const green = controller.firstStageGreenColor;
+      
+      controller.setFirstStageColors(blue, green);
     });
   }
-  const inputPrimaryColorInput = document.getElementById('inputPrimaryColor') as HTMLInputElement | null;
-
-  if (inputPrimaryColorInput) {
-    inputPrimaryColorInput.addEventListener('input', e => {
+  
+  // 第一阶段绿色
+  const firstStageGreenInput = document.getElementById('inputSecondaryColor') as HTMLInputElement | null;
+  if (firstStageGreenInput) {
+    firstStageGreenInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
-
-      controller.setInputColors({ primary: hexToRgba(target.value) });
+      const green = hexToRgba(target.value);
+      const blue = controller.firstStageBlueColor;
+      
+      controller.setFirstStageColors(blue, green);
     });
   }
-  const inputSecondaryColorInput = document.getElementById('inputSecondaryColor') as HTMLInputElement | null;
-
-  if (inputSecondaryColorInput) {
-    inputSecondaryColorInput.addEventListener('input', e => {
+  
+  // 第二阶段主色
+  const secondStagePrimaryInput = document.getElementById('inputPrimaryColor') as HTMLInputElement | null;
+  if (secondStagePrimaryInput) {
+    secondStagePrimaryInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
-
-      controller.setInputColors({ secondary: hexToRgba(target.value) });
+      const primary = hexToRgba(target.value);
+      const secondary = controller.secondStageSecondaryColor;
+      
+      controller.setSecondStageColors(primary, secondary);
+    });
+  }
+  
+  // 第二阶段副色
+  const secondStageSecondaryInput = document.getElementById('inputSecondaryColor') as HTMLInputElement | null;
+  if (secondStageSecondaryInput) {
+    secondStageSecondaryInput.addEventListener('input', e => {
+      const target = e.target as HTMLInputElement;
+      const secondary = hexToRgba(target.value);
+      const primary = controller.secondStagePrimaryColor;
+      
+      controller.setSecondStageColors(primary, secondary);
     });
   }
 
@@ -663,18 +691,20 @@ let material: Material | undefined;
 
   // eslint-disable-next-line no-console
   //console.log('3. Loading texture...');
-  const imageData = await loadLocalImageData('../预合成 28 (0-00-05-02)_1.png');
-  const noiseimageData = await loadLocalImageData('../Perlin.png');
-  const T_noiseimageData = await loadLocalImageData('../T_Noise.png');
+  const SecondStageImageData = await loadLocalImageData('../public/第二阶段.png');
+  const noiseimageData = await loadLocalImageData('../public/Perlin.png');
+  const T_noiseimageData = await loadLocalImageData('../public/T_Noise.png');
+  const FirstStageBlueImageData = await loadLocalImageData('../public/蓝光裁切.png');
+  const FirstStageGreenImageData = await loadLocalImageData('../public/绿光裁切.png');
 
   // eslint-disable-next-line no-console
   //console.log('4. Texture loaded, creating...');
   const cloudTexture = Texture.createWithData(
     engine,
     {
-      data: new Uint8Array(imageData.data),
-      width: imageData.width,
-      height: imageData.height,
+      data: new Uint8Array(SecondStageImageData.data),
+      width: SecondStageImageData.width,
+      height: SecondStageImageData.height,
     },
     {
       wrapS: glContext.CLAMP_TO_EDGE,
@@ -706,7 +736,30 @@ let material: Material | undefined;
       wrapT: glContext.MIRRORED_REPEAT,
     },
   );
-
+  const FirstStageBlueTexture = Texture.createWithData(
+    engine,
+    {
+      data: new Uint8Array(FirstStageBlueImageData.data),
+      width: FirstStageBlueImageData.width,
+      height: FirstStageBlueImageData.height,
+    },
+    {
+      wrapS: glContext.CLAMP_TO_EDGE,
+      wrapT: glContext.CLAMP_TO_EDGE,
+    }
+  );
+  const FirstStageGreenTexture = Texture.createWithData(
+    engine,
+    {
+      data: new Uint8Array(FirstStageGreenImageData.data),
+      width: FirstStageGreenImageData.width,
+      height: FirstStageGreenImageData.height,
+    },
+    {
+      wrapS: glContext.CLAMP_TO_EDGE,
+      wrapT: glContext.CLAMP_TO_EDGE,
+    }
+  );
   if (item) {
     const rendererComponents = item.getComponents(RendererComponent);
 
@@ -834,7 +887,7 @@ let material: Material | undefined;
     const now = performance.now();
     const timeFactor = now * 0.1; // 转换为秒
 
-    if (timeFactor > 30000) {return 0.8;} else if (timeFactor > 20000) {return 0.6;} else if (timeFactor > 500) {return 1.0;} else {return 0.1;}
+    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 500000) {return 1.0;} else {return 0.1;}
   }
 
   // 数值范围限制
@@ -890,6 +943,17 @@ let material: Material | undefined;
         material.setFloat(`_Alpha${i}`, texture.alpha);
         // 设置纹理层级
         material.setFloat(`_Tex${i}Layer`, texture.layer);
+        
+        // 根据纹理类型设置不同的纹理资源
+        if (texture.type === 'listening') {
+          if (texture.textureType === 'blue') {
+            material.setTexture(`_Tex${i}`, FirstStageBlueTexture);
+          } else if (texture.textureType === 'green') {
+            material.setTexture(`_Tex${i}`, FirstStageGreenTexture);
+          }
+        } else if (texture.type === 'input') {
+          material.setTexture(`_Tex${i}`, cloudTexture);
+        }
 
         // 设置颜色
         if (texture.color) {
