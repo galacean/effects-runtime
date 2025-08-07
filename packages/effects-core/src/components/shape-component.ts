@@ -263,8 +263,6 @@ void main() {
 `;
 
   get shape () {
-    this.shapeDirty = true;
-
     return this.shapeAttributes;
   }
 
@@ -889,6 +887,7 @@ void main() {
   }
 
   override onApplyAnimationProperties (): void {
+    this.shapeDirty = true;
     this.materialDirty = true;
   }
 }
