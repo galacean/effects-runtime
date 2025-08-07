@@ -82,10 +82,14 @@ uniform float _TextureCount;
 uniform float _CurrentVolume; // 当前音量 [minVolume,maxVolume]
 uniform float _MinVolume; // 最小音量
 uniform float _MaxVolume; // 最大音量
-uniform float _Offset0;
-uniform float _Offset1;
-uniform float _Offset2;
-uniform float _Offset3;
+uniform float _OffsetX0;
+uniform float _OffsetY0;
+uniform float _OffsetX1;
+uniform float _OffsetY1;
+uniform float _OffsetX2;
+uniform float _OffsetY2;
+uniform float _OffsetX3;
+uniform float _OffsetY3;
 uniform float _Alpha0;
 uniform float _Alpha1;
 uniform float _Alpha2;
@@ -241,27 +245,31 @@ void main() {
     vec2 sampleUV;
 
     if (i == 0) {
-      offset = _Offset0 ;
+      float offsetX = _OffsetX0;
+      float offsetY = _OffsetY0;
       alpha = _Alpha0;
-      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
+      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex0, sampleUV);
       color.rgb = _Color0.rgb;
     } else if (i == 1) {
-      offset = _Offset1 ;
+      float offsetX = _OffsetX1;
+      float offsetY = _OffsetY1;
       alpha = _Alpha1;
-      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
+      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex1, sampleUV);
       color.rgb = _Color1.rgb;
     } else if (i == 2) {
-      offset = _Offset2 ;
+      float offsetX = _OffsetX2;
+      float offsetY = _OffsetY2;
       alpha = _Alpha2;
-      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
+      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex2, sampleUV);
       color.rgb = _Color2.rgb;
     } else if (i == 3) {
-      offset = _Offset3;
+      float offsetX = _OffsetX3;
+      float offsetY = _OffsetY3;
       alpha = _Alpha3;
-      sampleUV = vec2(uv.x + offset-0.28, 1.0 - (uv.y )) ;
+      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex3, sampleUV);
       color.rgb = _Color3.rgb;
     }
@@ -275,8 +283,6 @@ void main() {
   }
   finalColor.rgb *=1.3; // 增强亮度;
 
-  vec2 uv2 = vec2(uv.x+_Offset1,1.0-uv.y);
-  vec4 finalColor2 = safeTexture2D(_Tex1, uv2);
 
   gl_FragColor = vec4(finalColor.rgb , finalColor.a);
 }
@@ -481,7 +487,7 @@ let material: Material | undefined;
   // 第一阶段：蓝色和绿色
   controller.setFirstStageColors(
     hexToRgba('#136BCD'), // 蓝色
-    hexToRgba('#029896')  // 绿色
+    hexToRgba('#136BCD')  // 绿色
   );
   // 第二阶段：主色和副色
   controller.setSecondStageColors(
@@ -695,7 +701,7 @@ let material: Material | undefined;
   const noiseimageData = await loadLocalImageData('../public/Perlin.png');
   const T_noiseimageData = await loadLocalImageData('../public/T_Noise.png');
   const FirstStageBlueImageData = await loadLocalImageData('../public/蓝光裁切.png');
-  const FirstStageGreenImageData = await loadLocalImageData('../public/绿光裁切.png');
+  const FirstStageGreenImageData = await loadLocalImageData('../public/绿光裁切1.png');
 
   // eslint-disable-next-line no-console
   //console.log('4. Texture loaded, creating...');
@@ -756,8 +762,8 @@ let material: Material | undefined;
       height: FirstStageGreenImageData.height,
     },
     {
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
     }
   );
   if (item) {
@@ -939,7 +945,9 @@ let material: Material | undefined;
       for (let i = 0; i < textureCount; i++) {
         const texture = controller.textures[i];
 
-        material.setFloat(`_Offset${i}`, texture.x);
+        // 设置X和Y偏移量
+        material.setFloat(`_OffsetX${i}`, texture.x);
+        material.setFloat(`_OffsetY${i}`, texture.y);
         material.setFloat(`_Alpha${i}`, texture.alpha);
         // 设置纹理层级
         material.setFloat(`_Tex${i}Layer`, texture.layer);
@@ -963,7 +971,7 @@ let material: Material | undefined;
 
         // 调试日志
         if (DEBUG && i === 0) {
-          //console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
+          //console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, y: ${texture.y.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
           //console.log('Color:', texture.color);
         }
       }

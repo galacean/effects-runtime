@@ -28,6 +28,8 @@ interface TexState {
   colorStops?: [number, number, number, number][], // 颜色渐变点
   colorSpeed: number,          // 颜色变化速度
   isSecondTexture?: boolean;    // 标识是否为第二阶段纹理
+  initialOffsetU?: number;      // 初始U偏移量（第二阶段）
+  initialOffsetV?: number;      // 初始V偏移量（第二阶段）
 }
 
 export class TextureController {
@@ -49,16 +51,16 @@ export class TextureController {
       move1Start: 0.625,      // 第一段移动开始
       move1End: 2.375,        // 第一段移动结束
       move2Start: 2.375,      // 第二段移动开始
-      move2End: 3.458,        // 第二段移动结束
+      move2End: 3.558,        // 第二段移动结束
       fadeOutStart: 2.375,    // 淡出开始
       fadeOutEnd: 3.417,      // 淡出结束
-      initialOffsetU: 0.50,    // 初始U偏移量 (可调整)
-      initialOffsetV: 0.50,    // 初始V偏移量 (可调整)
-      move1TargetU: -0.1198,  // 第一段移动u偏移量 (从初始偏移量开始)
-      move1TargetV: 0.0112,   // 第一段移动v偏移量
-      move2TargetU: -0.2382,  // 第二段移动u偏移量 (从第一阶段结束位置开始)
-      move2TargetV: 0.0141,   // 第二段移动v偏移量
-      fadeInDeltaV: -0.0413,  // 淡入阶段v偏移量
+      initialOffsetU: -0.30,    // 初始U偏移量 (可调整)
+      initialOffsetV: 0.0,    // 初始V偏移量 (可调整)
+      move1TargetU: 0.1198,  // 第一段移动u偏移量 (从初始偏移量开始)
+      move1TargetV: -0.0112,   // 第一段移动v偏移量
+      move2TargetU: 0.2382,  // 第二段移动u偏移量 (从第一阶段结束位置开始)
+      move2TargetV: -0.0141,   // 第二段移动v偏移量
+      fadeInDeltaV: 0.0413,  // 淡入阶段v偏移量
     },
     
     // 绿色光参数
@@ -69,11 +71,11 @@ export class TextureController {
       moveEnd: 2.875,         // 移动结束
       fadeOutStart: 2.375,    // 淡出开始
       fadeOutEnd: 3.458,      // 淡出结束
-      initialOffsetU: 0.0,    // 初始U偏移量 (可调整)
-      initialOffsetV: 0.0,    // 初始V偏移量 (可调整)
-      moveTargetU: -0.2669,   // 移动u偏移量
-      moveTargetV: 0.0542,    // 移动v偏移量
-      fadeInDeltaV: -0.0333,  // 淡入阶段v偏移量
+      initialOffsetU: -0.20,    // 初始U偏移量 (可调整)
+      initialOffsetV: -0.10,    // 初始V偏移量 (可调整)
+      moveTargetU: 0.266,   // 移动u偏移量
+      moveTargetV: -0.0542,    // 移动v偏移量
+      fadeInDeltaV: 0.0333,  // 淡入阶段v偏移量
     }
   };
 
@@ -87,6 +89,7 @@ export class TextureController {
   inputDuration = 3.0;
   inputFadeIn1 = 0.333;
   inputFadeIn2 = 0.5417; // 第二纹理的渐显时间
+  inputInitialOffsetU = -0.28; // 第二阶段初始U偏移量
 
   inputFadeOutStart = 1.8333;
   InputFadeOutEnd = 2.4167;
@@ -102,6 +105,7 @@ export class TextureController {
   groupStartedAt = 0; // 当前组开始时间
   groupDuration = 3.458; // 组完整生命周期（取蓝绿光最长时间）
   inputStageTriggered = false; // 当前input批次是否已触发
+  pendingTriggerTime = 0; // 记录触发时间点（用于2.75秒逻辑）
   inputBatchId = 0; // 当前input批次ID
 
   // 第一阶段颜色配置
@@ -125,6 +129,7 @@ export class TextureController {
     this.pendingInputStage = false;
     this.inputStageTriggered = false;
     this.inputBatchId = 0;
+    this.pendingTriggerTime = 0; // 重置触发时间点
     
     // 创建蓝色和绿色纹理（同一组）
     this.listeningTextureColor = 'blue';
@@ -187,8 +192,8 @@ export class TextureController {
 
   createTexture (type: 'listening' | 'input', startTime: number): TexState {
     // 明确纹理类型
-    const textureType = type === 'input' 
-      ? 'input' 
+    const textureType = type === 'input'
+      ? 'input'
       : this.listeningTextureColor;
     
   const tex: TexState = {
@@ -210,6 +215,12 @@ export class TextureController {
       triggered: false,
       colorSpeed: 1.0,
     };
+
+      // 设置第二阶段初始偏移
+      if (type === 'input') {
+        tex.initialOffsetU = this.inputInitialOffsetU;
+        tex.initialOffsetV = 0; // 默认垂直偏移为0
+      }
 
       if (type === 'listening') {
         // 根据纹理类型选择参数
@@ -284,6 +295,10 @@ export class TextureController {
     setTimeout(() => {
       const texB = this.createTexture('input', performance.now() / 1000);
       texB.isSecondTexture = true; // 标记为第二阶段纹理
+      
+      // 复制初始偏移值
+      texB.initialOffsetU = texA.initialOffsetU;
+      texB.initialOffsetV = texA.initialOffsetV; // 继承垂直偏移量
 
       texB.color = this.secondStageSecondaryColor;
       texB.colorMode = 0;
@@ -414,13 +429,18 @@ export class TextureController {
       else {
         const lifeProgress = elapsed / tex.duration;
 
-        // 更新位置 (x和y)
-        tex.x = tex.distance * lifeProgress;
-        tex.y = 0; // 暂时设置为0，后续根据需求添加y轴运动
+        // 更新位置: 初始偏移 + 根据进度移动的距离
+        tex.x = (tex.initialOffsetU || 0) + tex.distance * lifeProgress;
+        tex.y = (tex.initialOffsetV || 0); // 使用初始V偏移量
         
         // 为第二阶段纹理添加额外偏移
         if (tex.isSecondTexture) {
           tex.x -= 0.185;
+        }
+        
+        // DEBUG: 输出位置信息
+        if (DEBUG && tex.type === 'input' && tex.isSecondTexture) {
+          console.log(`纹理 ${tex.id} 位置: x=${tex.x.toFixed(4)}, 初始偏移=${tex.initialOffsetU}, 距离=${tex.distance}, 进度=${lifeProgress.toFixed(4)}`);
         }
 
         // 更新透明度
@@ -483,6 +503,20 @@ export class TextureController {
 
     }
 
+    // 2.75秒处理逻辑
+    if (
+      this.currentStage === MainStage.Listening &&
+      this.pendingTriggerTime > 0
+    ) {
+      const elapsedSinceTrigger = now - this.pendingTriggerTime;
+      const groupElapsed = now - this.groupStartedAt;
+      
+      if (groupElapsed >= 2.75) {
+        this.enterInputStage(now);
+        this.pendingTriggerTime = 0; // 重置触发时间
+      }
+    }
+    
     // 3.4s阶段转换点 - 使用组时间检测
     if (this.currentStage === MainStage.Listening &&
         this.pendingInputStage &&
@@ -517,6 +551,7 @@ export class TextureController {
       if (groupEnded) {
         if (volume > this.volumeThreshold) {
           this.pendingInputStage = true;
+          this.pendingTriggerTime = now; // 记录触发时间点
           if (DEBUG) {
             console.log(`[组${this.listeningGroupId}] 音量${volume}超阈值，将在3.4s进入第二阶段`);
           }
@@ -541,9 +576,10 @@ export class TextureController {
       if (!groupEnded) {
         if (volume > this.volumeThreshold && !this.pendingInputStage) {
           this.pendingInputStage = true;
+          this.pendingTriggerTime = now; // 记录触发时间点
           tex.triggered = true;
           if (DEBUG) {
-            console.log(`[精确检测] 音量${volume}超阈值，将在3.4s进入第二阶段`);
+            console.log(`[精确检测] 音量${volume}超阈值，将在2.75s进入第二阶段`);
           }
         }
       }
