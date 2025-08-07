@@ -5,29 +5,28 @@ import vs from './shader/vertex.glsl';
 
 @effectsClass('FFDComponent')
 export class FFDComponent extends Component {
-  private controlPoints: math.Vector3[] = [];  // 控制点数组， from time line
-
   // @ts-expect-error
   private data: spec.FFDComponentData;
+
+  private rowNum = 5;                     // 行数量（列控制点数）
+  private colNum = 5;                     // 列数量（行控制点数）
   private reset = false;                  // 控制点重置
   private additive = true;                // 效果叠加
+
+  private controlPoints: math.Vector3[] = [];  // 控制点数组， from time line
 
   private fixedValueExpand = false;       // 等长扩张
   private fixedValueShrink = false;       // 等长收缩
   private variableValueExpand = false;    // 按距离扩张
   private variableValueShrink = false;    // 按距离收缩
-
+  private trapezoidExpandRight = false;   // 梯形扩张
+  private trapezoidShrinkRight = false;   // 梯形收缩
   private trapezoidExpandTop = false;     // 梯形扩张
   private trapezoidShrinkTop = false;     // 梯形收缩
   private trapezoidExpandBottom = false;  // 梯形扩张
   private trapezoidShrinkBottom = false;  // 梯形收缩
   private trapezoidExpandLeft = false;    // 梯形扩张
   private trapezoidShrinkLeft = false;    // 梯形收缩
-  private trapezoidExpandRight = false;   // 梯形扩张
-  private trapezoidShrinkRight = false;   // 梯形收缩
-
-  private rowNum = 5;                     // 行数量（列控制点数）
-  private colNum = 5;                     // 列数量（行控制点数）
 
   private currentSpriteComponent: SpriteComponent;      // 存储当前的SpriteComponent
   private boundMin = new math.Vector3(-0.5, -0.5, 0.0); // 当前SpriteComponent的BBX
@@ -38,14 +37,14 @@ export class FFDComponent extends Component {
   private rightBottomIndices: number[] = [];
 
   private trapezoidOps = [
-    { flag: 'trapezoidExpandTop', edge: 'top', xGap: 0.2, yGap: 0.1 },
-    { flag: 'trapezoidShrinkTop', edge: 'top', xGap: -0.2, yGap: -0.1 },
-    { flag: 'trapezoidExpandBottom', edge: 'bottom', xGap: 0.2, yGap: 0.1 },
-    { flag: 'trapezoidShrinkBottom', edge: 'bottom', xGap: -0.2, yGap: -0.1 },
-    { flag: 'trapezoidExpandLeft', edge: 'left', xGap: 0.2, yGap: 0.1 },
-    { flag: 'trapezoidShrinkLeft', edge: 'left', xGap: -0.2, yGap: -0.1 },
-    { flag: 'trapezoidExpandRight', edge: 'right', xGap: 0.2, yGap: 0.1 },
-    { flag: 'trapezoidShrinkRight', edge: 'right', xGap: -0.2, yGap: -0.1 },
+    { flag: 'trapezoidExpandTop', edge: 'top', xGap: 0.2, yGap: 0.235 },
+    { flag: 'trapezoidShrinkTop', edge: 'top', xGap: -0.2, yGap: -0.235 },
+    { flag: 'trapezoidExpandBottom', edge: 'bottom', xGap: 0.2, yGap: 0.235 },
+    { flag: 'trapezoidShrinkBottom', edge: 'bottom', xGap: -0.2, yGap: -0.235 },
+    { flag: 'trapezoidExpandLeft', edge: 'left', xGap: 0.2, yGap: 0.235 },
+    { flag: 'trapezoidShrinkLeft', edge: 'left', xGap: -0.2, yGap: -0.235 },
+    { flag: 'trapezoidExpandRight', edge: 'right', xGap: 0.2, yGap: 0.235 },
+    { flag: 'trapezoidShrinkRight', edge: 'right', xGap: -0.2, yGap: -0.235 },
   ] as const;
 
   constructor (engine: Engine) {
