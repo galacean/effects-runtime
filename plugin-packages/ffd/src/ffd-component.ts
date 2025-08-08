@@ -150,7 +150,6 @@ export class FFDComponent extends Component {
         this.boundMin = new math.Vector3(componentSize.x * minX, componentSize.y * minY, minZ);
         this.boundMax = new math.Vector3(componentSize.x * maxX, componentSize.y * maxY, maxZ);
 
-        //@ts-expect-error
         const split: number[] = currentComponent.splits[0] as number[];
         const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
 
