@@ -73,7 +73,6 @@ export class UIManager {
           if (typeof(window) !== 'undefined') {
             window.localStorage.setItem('imgui.ini', ImGui.SaveIniSettingsToMemory());
           }
-          ImGui.EndMenu();
         }
         // ShowExampleMenuFile();
         ImGui.EndMenu();
