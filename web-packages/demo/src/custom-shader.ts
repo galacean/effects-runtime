@@ -1,4 +1,6 @@
 /* eslint-disable no-console */
+
+
 /**
  * 音频可视化效果核心实现
  * 功能：
@@ -282,7 +284,12 @@ void main() {
     //finalColor = mix(finalColor, finalColor + color, color.a);
   }
   finalColor.rgb *=1.3; // 增强亮度;
+  vec4 finalColor2 = safeTexture2D(_Tex0, uv);
+  vec4 finalColor3 = safeTexture2D(_Tex1, uv);
+  vec4 finalColor4 = safeTexture2D(_Tex2, uv);
+  vec4 finalColor5 = safeTexture2D(_Tex3, uv);
 
+  
 
   gl_FragColor = vec4(finalColor.rgb , finalColor.a);
 }
@@ -474,6 +481,59 @@ let material: Material | undefined;
   `;
 
   document.body.insertAdjacentHTML('beforeend', uiHtml);
+
+  // 添加快照按钮和状态提示（固定在右下角）
+  const snapshotContainer = document.createElement('div');
+  snapshotContainer.style.position = 'fixed';
+  snapshotContainer.style.bottom = '20px';
+  snapshotContainer.style.right = '20px';
+  snapshotContainer.style.zIndex = '10000';
+  snapshotContainer.style.display = 'flex';
+  snapshotContainer.style.flexDirection = 'column';
+  snapshotContainer.style.alignItems = 'flex-end';
+  snapshotContainer.style.gap = '10px';
+  
+
+  
+  // 创建手动捕获快照按钮
+  const captureButton = document.createElement('button');
+  captureButton.textContent = '捕获快照';
+  captureButton.style.padding = '8px 16px';
+  captureButton.style.backgroundColor = '#136BCD';
+  captureButton.style.color = 'white';
+  captureButton.style.border = 'none';
+  captureButton.style.borderRadius = '4px';
+  captureButton.style.cursor = 'pointer';
+  captureButton.style.marginBottom = '10px'; // 与链接保持间距
+  captureButton.addEventListener('click', () => {
+    captureButton.textContent = '捕获中...';
+    captureButton.disabled = true;
+    
+    setTimeout(() => {
+      controller.captureManualSnapshot();
+      captureButton.textContent = '快照已保存';
+      setTimeout(() => {
+        captureButton.textContent = '捕获快照';
+        captureButton.disabled = false;
+      }, 2000);
+    }, 500);
+  });
+  snapshotContainer.appendChild(captureButton);
+
+  const openFolderLink = document.createElement('a');
+  openFolderLink.id = 'open-folder-link';
+  openFolderLink.textContent = '打开下载文件夹';
+  openFolderLink.style.color = '#4fc3f7';
+  openFolderLink.style.cursor = 'pointer';
+  openFolderLink.style.fontSize = '14px';
+  openFolderLink.style.textDecoration = 'underline';
+  openFolderLink.onclick = () => {
+    alert('请在浏览器的下载历史中查看文件位置');
+  };
+  
+  snapshotContainer.appendChild(openFolderLink);
+  document.body.appendChild(snapshotContainer);
+  console.log('快照UI已添加到DOM');
 
   function hexToRgba (hex: string): [number, number, number, number] {
     const r = parseInt(hex.slice(1, 3), 16) / 255;
