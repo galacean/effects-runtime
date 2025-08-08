@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import type { AnimationGraphAsset } from '../plugins/animation-graph';
+import type { AnimationGraphAsset, StateMachineNode } from '../plugins/animation-graph';
 import { GraphInstance } from '../plugins/animation-graph';
 import { Component } from './component.js';
 import { effectsClass } from '../decorators';
@@ -12,49 +12,59 @@ export class Animator extends Component {
   /**
    * @internal
    */
-  graph: GraphInstance | null = null;
+  graphInstance: GraphInstance | null = null;
   private graphAsset: AnimationGraphAsset | null = null;
 
   setBool (name: string, value: boolean) {
-    if (this.graph) {
-      this.graph.setBool(name, value);
+    if (this.graphInstance) {
+      this.graphInstance.setBool(name, value);
     }
   }
 
   setFloat (name: string, value: number) {
-    if (this.graph) {
-      this.graph.setFloat(name, value);
+    if (this.graphInstance) {
+      this.graphInstance.setFloat(name, value);
     }
   }
 
   setTrigger (name: string) {
-    if (this.graph) {
-      this.graph.setTrigger(name);
+    if (this.graphInstance) {
+      this.graphInstance.setTrigger(name);
     }
   }
 
   resetTrigger (name: string) {
-    if (this.graph) {
-      this.graph.resetTrigger(name);
+    if (this.graphInstance) {
+      this.graphInstance.resetTrigger(name);
     }
+  }
+
+  getStateMachineNode (machineName: string): StateMachineNode | null {
+    let result: StateMachineNode | null = null;
+
+    if (this.graphInstance) {
+      result = this.graphInstance.getStateMachineNode(machineName);
+    }
+
+    return result;
   }
 
   override onStart (): void {
     if (this.graphAsset) {
-      this.graph = new GraphInstance(this.graphAsset, this.item);
+      this.graphInstance = new GraphInstance(this.graphAsset, this.item);
     }
   }
 
   override onUpdate (dt: number): void {
-    if (!this.graph) {
+    if (!this.graphInstance) {
       return;
     }
 
-    const result = this.graph.evaluateGraph(dt / 1000);
+    const result = this.graphInstance.evaluateGraph(dt / 1000);
 
     // Apply transform animation
     //-------------------------------------------------------------------------
-    const animatedTransforms = this.graph.skeleton.animatedTransforms;
+    const animatedTransforms = this.graphInstance.skeleton.animatedTransforms;
 
     for (let i = 0; i < animatedTransforms.length; i++) {
       const position = result.pose.parentSpaceTransforms[i].position;
@@ -65,7 +75,7 @@ export class Animator extends Component {
       animatedTransforms[i].setPosition(position.x, position.y, position.z);
       animatedTransforms[i].setScale(scale.x, scale.y, scale.z);
 
-      if (this.graph.skeleton.useEuler) {
+      if (this.graphInstance.skeleton.useEuler) {
         animatedTransforms[i].setRotation(euler.x, euler.y, euler.z);
       } else {
         animatedTransforms[i].setQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
@@ -74,7 +84,7 @@ export class Animator extends Component {
 
     // Apply property animation
     //-------------------------------------------------------------------------
-    const floatAnimatedObjects = this.graph.skeleton.floatAnimatedObjects;
+    const floatAnimatedObjects = this.graphInstance.skeleton.floatAnimatedObjects;
 
     for (let i = 0; i < floatAnimatedObjects.length; i++) {
       const animatedObject = floatAnimatedObjects[i];
@@ -87,7 +97,7 @@ export class Animator extends Component {
       }
     }
 
-    const colorAnimatedObjects = this.graph.skeleton.colorAnimatedObjects;
+    const colorAnimatedObjects = this.graphInstance.skeleton.colorAnimatedObjects;
 
     for (let i = 0; i < colorAnimatedObjects.length; i++) {
       const animatedObject = colorAnimatedObjects[i];

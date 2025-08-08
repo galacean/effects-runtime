@@ -77,7 +77,6 @@ export class AnimationGraph extends EditorWindow {
   constructor () {
     super();
     this.title = 'AnimationGraph';
-    this.open();
     this.setWindowFlags(ImGui.WindowFlags.NoScrollWithMouse | ImGui.WindowFlags.NoScrollbar);
     this.primaryGraphView = new GraphView(this.userContext);
     this.secondaryGraphView = new GraphView(this.userContext);
@@ -164,9 +163,9 @@ export class AnimationGraph extends EditorWindow {
     const animationGraphAssetData = this.compileGraph();
 
     SerializationHelper.deserialize(animationGraphAssetData, animationGraphAsset);
-    animator.graph = new GraphInstance(animationGraphAsset, item);
+    animator.graphInstance = new GraphInstance(animationGraphAsset, item);
 
-    this.graph = animator.graph;
+    this.graph = animator.graphInstance;
   }
 
   protected override onGUI (): void {
