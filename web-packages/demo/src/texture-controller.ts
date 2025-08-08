@@ -551,17 +551,31 @@ export class TextureController {
     textureType: 'blue' | 'green' | 'input',
     isSecondTexture?: boolean
   }[] {
-    return this.textures.map(tex => ({
-      id: tex.id,
-      x: tex.x,
-      y: tex.y,
-      alpha: tex.alpha,
-      initialU: tex.initialOffsetU || 0,
-      initialV: tex.initialOffsetV || 0,
-      type: tex.type,
-      textureType: tex.textureType,
-      isSecondTexture: tex.isSecondTexture
-    }));
+    return this.textures.map(tex => {
+      // 对于listening类型纹理，从firstStageParams获取初始UV
+      let initialU = tex.initialOffsetU || 0;
+      let initialV = tex.initialOffsetV || 0;
+      
+      if (tex.type === 'listening') {
+        const params = tex.textureType === 'blue'
+          ? this.firstStageParams.blue
+          : this.firstStageParams.green;
+        initialU = params.initialOffsetU;
+        initialV = params.initialOffsetV;
+      }
+      
+      return {
+        id: tex.id,
+        x: tex.x,
+        y: tex.y,
+        alpha: tex.alpha,
+        initialU,
+        initialV,
+        type: tex.type,
+        textureType: tex.textureType,
+        isSecondTexture: tex.isSecondTexture
+      };
+    });
   }
 
   /**
