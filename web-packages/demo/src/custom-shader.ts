@@ -77,6 +77,7 @@ void main(){
  * 4. 按从后向前顺序混合纹理
  */
 const fragment = /*glsl*/ `
+#extension GL_OES_standard_derivatives : enable
 precision highp float;
 varying vec2 uv;
 uniform vec4 _Time; // 时间变量
