@@ -79,16 +79,15 @@ export class FFDComponent extends Component {
     }
 
     // 更新控制点位置
-    for (let i = 0; i < Math.min(this.data.controlPoints.length, this.rowNum * this.colNum); i++) {
-      const point = this.data.controlPoints[i];
+    const capacity = this.rowNum * this.colNum;
+    const count = Math.min(this.data.controlPoints.length, capacity);
 
-      if (i < this.controlPoints.length) {
-        this.controlPoints[i].x = point.x;
-        this.controlPoints[i].y = point.y;
-        this.controlPoints[i].z = point.z;
-      } else {
-        this.controlPoints.push(new math.Vector3(point.x, point.y, point.z));
-      }
+    // Rebuild the array per update to avoid stale points when count shrinks
+    this.controlPoints.length = 0;
+    for (let i = 0; i < count; i++) {
+      const p = this.data.controlPoints[i];
+
+      this.controlPoints.push(new math.Vector3(p.x, p.y, p.z ?? 0));
     }
     // 更新所有相关材质的 uniform
     this.updateMaterialUniforms();

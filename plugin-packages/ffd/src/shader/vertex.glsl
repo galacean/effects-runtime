@@ -4,17 +4,29 @@ attribute vec3 aPos;
 attribute vec2 aUV;
 
 varying vec2 vTexCoord;
+varying vec3 vParams;
+varying vec4 vColor;
 
 #define MAX_BLOCK_NUM 10
 #define EPSILON 1e-6
 
 uniform mat4 effects_ObjectToWorld;
+uniform mat4 effects_MatrixV;
 uniform mat4 effects_MatrixVP;
 uniform vec3 _ControlPoints[MAX_BLOCK_NUM * MAX_BLOCK_NUM];
 uniform vec3 _BoundMin;
 uniform vec3 _BoundMax;
+uniform vec2 _Size;
+uniform vec3 _Scale;
+uniform vec4 _Color;
+uniform vec4 _TexParams;//transparentOcclusion blending renderMode maskMode
+uniform vec4 _TexOffset;// x y sx sy
 uniform int _ColNum;   // 列数量（行控制点数）
 uniform int _RowNum;   // 行数量（列控制点数）
+
+#ifdef ENV_EDITOR
+uniform vec4 uEditorTransform;
+#endif
 
 // 计算二项式系数 C(n, k)
 float binomialCoefficient(int n, int k) {
@@ -80,7 +92,31 @@ vec3 bezierSurface(vec3 originalPos) {
 }
 
 void main() {
-  vTexCoord = aUV;
-  vec3 newPos = bezierSurface(aPos);
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
+  vec4 texParams = _TexParams;
+  vTexCoord = vec2(aUV.xy * _TexOffset.zw + _TexOffset.xy);
+  vColor = _Color;
+  vParams = vec3(texParams.w, texParams.y, texParams.x);
+  if(texParams.z == 1.0) {
+      vec3 pos = vec3(aPos.xy * _Size, aPos.z);
+      vec3 newPos = bezierSurface(pos);
+      gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
+  } else { // Billboard
+    mat4 view = effects_MatrixV;
+    // 提取摄像机的右向量和上向量
+    vec3 camRight = vec3(view[0][0], view[1][0], view[2][0]); // 视图矩阵的第一列
+    vec3 camUp = vec3(view[0][1], view[1][1], view[2][1]);    // 视图矩阵的第二列
+
+    // 计算模型转换后的位置
+    vec3 worldPosition = vec3(effects_ObjectToWorld * vec4(0.0, 0.0, 0.0, 1.0));
+
+    // 根据局部顶点在 billboarding 平面上的方向，调整到面向摄像机的世界坐标
+    vec3 vertexPosition = worldPosition + camRight * aPos.x * _Size.x * _Scale.x + camUp * aPos.y * _Size.y * _Scale.y;
+  
+    vec3 newPos = bezierSurface(vertexPosition);
+    gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
+  }
+
+#ifdef ENV_EDITOR
+  gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
+#endif
 }
