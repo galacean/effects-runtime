@@ -1,8 +1,9 @@
+import { Color } from '@galacean/effects-math/es/core/color';
 import { isString } from './index';
 
 export interface ColorStop {
-  stop: number,
-  color: number[],
+  time: number,
+  color: Color,
 }
 
 export function colorToArr (hex: string | number[], normalized?: boolean): number[] {
@@ -43,14 +44,14 @@ export function getColorFromGradientStops (stops: ColorStop[], key: number, norm
       const s0 = stops[j - 1];
       const s1 = stops[j];
 
-      if (s0.stop <= key && key <= s1.stop) {
-        color = interpolateColor(s0.color, s1.color, (key - s0.stop) / (s1.stop - s0.stop));
+      if (s0.time <= key && key <= s1.time) {
+        color = interpolateColor(s0.color.toArray(), s1.color.toArray(), (key - s0.time) / (s1.time - s0.time));
 
         break;
       }
     }
     if (!color) {
-      color = stops[stops.length - 1].color;
+      color = stops[stops.length - 1].color.toArray();
     }
 
     return normalize ? color.map(n => n / 255) : color;
@@ -69,30 +70,30 @@ export function colorStopsFromGradient (gradient: number[][] | Record<string, st
       stops.push({
         // TODO
         // @ts-expect-error
-        stop: parsePercent(s),
-        color: [r, g, b, a],
+        time: parsePercent(s),
+        color: new Color(r, g, b, a),
       });
     });
   } else {
     Object.keys(gradient).forEach(stop => {
       const colorRGB = gradient[stop];
-      const color = colorToArr(colorRGB);
+      const color = new Color().setFromArray(colorToArr(colorRGB));
 
       stops.push({
-        stop: parsePercent(stop),
+        time: parsePercent(stop),
         color,
       });
     });
   }
-  stops = stops.sort((a, b) => a.stop - b.stop);
+  stops = stops.sort((a, b) => a.time - b.time);
   if (stops.length) {
-    if (stops[0].stop !== 0) {
-      stops.unshift({ stop: 0, color: stops[0].color.slice() });
+    if (stops[0].time !== 0) {
+      stops.unshift({ time: 0, color: stops[0].color.clone() });
     }
     const lastStop = stops[stops.length - 1];
 
-    if (lastStop.stop !== 1) {
-      stops.push({ stop: 1, color: lastStop.color.slice() });
+    if (lastStop.time !== 1) {
+      stops.push({ time: 1, color: lastStop.color.clone() });
     }
   }
 

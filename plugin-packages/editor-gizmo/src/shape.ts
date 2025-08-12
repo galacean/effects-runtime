@@ -297,10 +297,6 @@ function createMesh (engine: Engine, points: Float32Array, indices: Uint16Array,
         u_color: new Float32Array(color),
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
       },
-      uniformSemantics: {
-        u_vp: 'VIEWPROJECTION',
-        u_et: 'EDITOR_TRANSFORM',
-      },
       shader: {
         shared: true,
         fragment: `
@@ -317,10 +313,8 @@ function createMesh (engine: Engine, points: Float32Array, indices: Uint16Array,
 
     uniform mat4 u_model;
     uniform mat4 effects_MatrixVP;
-    uniform vec4 uEditorTransform;
     void main(){
       gl_Position = effects_MatrixVP * u_model * vec4(a_Position,1.0);
-      gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w,gl_Position.zw);
     }`,
       },
     });

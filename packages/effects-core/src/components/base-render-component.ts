@@ -411,10 +411,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   }
 
   private draw (renderer: Renderer) {
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
-
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
@@ -427,7 +423,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         material.setVector3('_Scale', this.transform.scale);
       }
 
-      renderer.drawGeometry(this.geometry, material, i);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
     }
   }
 

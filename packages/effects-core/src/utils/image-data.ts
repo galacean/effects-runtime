@@ -33,7 +33,7 @@ export function imageDataFromGradient (gradient: number[][] | Record<string, str
   const stops = colorStopsFromGradient(gradient);
 
   if (stops.length) {
-    data.set(stops[0].color, 0);
+    data.set(stops[0].color.toArray(), 0);
     for (let i = 1, cursor = 0; i < width - 1; i++) {
       const index = i / width;
       let s0!: ColorStop;
@@ -42,15 +42,15 @@ export function imageDataFromGradient (gradient: number[][] | Record<string, str
       for (let j = cursor; j < stops.length; j++) {
         s0 = stops[j];
         s1 = stops[j + 1];
-        if (s0.stop <= index && s1.stop > index) {
+        if (s0.time <= index && s1.time > index) {
           break;
         }
       }
-      const color = interpolateColor(s0.color, s1.color, (index - s0.stop) / (s1.stop - s0.stop));
+      const color = interpolateColor(s0.color.toArray(), s1.color.toArray(), (index - s0.time) / (s1.time - s0.time));
 
       data.set(color, i * 4);
     }
-    data.set(stops[stops.length - 1].color, (width - 1) * 4);
+    data.set(stops[stops.length - 1].color.toArray(), (width - 1) * 4);
   }
 
   return image;

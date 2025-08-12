@@ -9,7 +9,7 @@ import { EditorWindow } from './editor-window';
 export class Sequencer extends EditorWindow {
   isDragging = false;
   currentTime = 0;
-  trackUIOffset = 200;
+  trackUIOffset = 300;
   timeCursorPositionX = 0;
 
   currentComposition: Composition;
@@ -76,21 +76,38 @@ export class Sequencer extends EditorWindow {
 
   private drawTrack (track: TrackAsset) {
     for (const child of track.getChildTracks()) {
-      const trackAsset = child;
+      this.drawSubTrack(child);
+    }
+  }
 
-      for (const clip of trackAsset.getClips()) {
-        ImGui.Text(trackAsset.constructor.name);
+  private drawSubTrack (track: TrackAsset) {
+    const trackAsset = track;
 
-        ImGui.SameLine(this.trackUIOffset);
-        const sizePerScend = ImGui.GetWindowSize().x / 100;
-        const totalTime = 100;
+    let isTreeExpended = false;
 
-        const grabSize = clip.duration * sizePerScend;
+    if (ImGui.TreeNode(trackAsset.constructor.name + '##' + trackAsset.getInstanceId())) {
+      isTreeExpended = true;
+    }
 
-        ImGui.PushStyleVar(ImGui.StyleVar.GrabMinSize, grabSize);
-        ImGui.SliderFloat('##' + trackAsset.getInstanceId(), (value = clip.start) => clip.start, 0.0, totalTime);
-        ImGui.PopStyleVar();
+    ImGui.SameLine(this.trackUIOffset);
+
+    for (const clip of trackAsset.getClips()) {
+
+      const sizePerScend = ImGui.GetWindowSize().x / 100;
+      const totalTime = 100;
+
+      const grabSize = clip.duration * sizePerScend;
+
+      ImGui.PushStyleVar(ImGui.StyleVar.GrabMinSize, grabSize);
+      ImGui.SliderFloat('##' + trackAsset.getInstanceId(), (value = clip.start) => clip.start, 0.0, totalTime);
+      ImGui.PopStyleVar();
+    }
+
+    if (isTreeExpended) {
+      for (const child of track.getChildTracks()) {
+        this.drawSubTrack(child);
       }
+      ImGui.TreePop();
     }
   }
 

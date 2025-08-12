@@ -49,7 +49,7 @@ export enum WireframeGeometryType {
 
 export function destroyWireframeMesh (mesh: Mesh) {
   mesh.geometry?.dispose();
-  mesh.dispose({ material: { textures: DestroyOptions.keep }, geometries: DestroyOptions.keep });
+  mesh.dispose({ geometries: DestroyOptions.keep });
 }
 
 export function updateWireframeMesh (originGeometry: Geometry, originMaterial: Material, wireframe: Mesh, type: WireframeGeometryType) {

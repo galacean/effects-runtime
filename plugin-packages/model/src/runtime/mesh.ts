@@ -181,6 +181,7 @@ export class PMesh extends PEntity {
     this.subMeshes.forEach((subMesh, index) => {
       renderer.drawGeometry(
         subMesh.getEffectsGeometry(),
+        this.matrix,
         subMesh.getEffectsMaterial(),
         index
       );
@@ -189,7 +190,7 @@ export class PMesh extends PEntity {
     if (this.visBoundingBox && this.boundingBoxMesh !== undefined) {
       const mesh = this.boundingBoxMesh.mesh;
 
-      renderer.drawGeometry(mesh.geometry, mesh.material);
+      renderer.drawGeometry(mesh.geometry, Matrix4.IDENTITY, mesh.material);
     }
   }
 
@@ -806,7 +807,6 @@ export class PSubMesh {
   private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4) {
     const material = this.getEffectsMaterial();
 
-    material.setMatrix('effects_ObjectToWorld', worldMatrix);
     material.setMatrix('_NormalMatrix', normalMatrix);
     //
     const skin = this.skin;
