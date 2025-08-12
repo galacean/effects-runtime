@@ -7,6 +7,12 @@
 
 ---
 
+## 2.6.1
+
+`2025-08-12`
+
+- Fix: spine set animation list render issue. [#1128](https://github.com/galacean/effects-runtime/pull/1128) @wumaolinmaoan
+
 ## 2.6.0
 
 `2025-07-29`
