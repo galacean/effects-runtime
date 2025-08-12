@@ -17,7 +17,25 @@ export interface RichTextOptions {
   isNewLine: boolean,
 }
 
+interface CharDetail {
+  /**
+   * 字符内容
+   */
+  char: string,
+  /**
+   * 当前字符在本行内的起始 x 坐标（相对行起点）
+   */
+  x: number,
+  /**
+   * 当前字符的宽度
+   */
+  width: number,
+}
+
 interface RichCharInfo {
+  /**
+   * 每个富文本片段的起始 x 坐标
+   */
   offsetX: number[],
   /**
    * 字符参数
@@ -35,6 +53,10 @@ interface RichCharInfo {
    * 字体偏移高度
    */
   offsetY: number,
+  /**
+   * 当前富文本片段内所有字符的详细信息
+   */
+  chars: CharDetail[][],
 }
 
 let seed = 0;
@@ -43,7 +65,7 @@ let seed = 0;
 export class RichTextComponent extends TextComponent {
   processedTextOptions: RichTextOptions[] = [];
   // 字体高度的倍数（字体高度上下多出来的部分就是行间距）
-  private singleLineHeight: number = 1.571;
+  private singleLineHeight: number = 1.0;
   private size: math.Vector2 | null = null;
   /**
    * 获取第一次渲染的 size
@@ -122,9 +144,10 @@ export class RichTextComponent extends TextComponent {
       offsetX: [],
       width: 0,
       // 包括字体和上下行间距的高度
-      lineHeight: fontHeight * this.singleLineHeight,
+      lineHeight: fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)),
       // 字体偏移高度（也就是行间距）
-      offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
+      offsetY: fontHeight * ((this.singleLineHeight + (this.textLayout.lineGap || 0) - 1)) / 2,
+      chars: [],
     };
 
     // 遍历解析后的文本选项
@@ -139,37 +162,43 @@ export class RichTextComponent extends TextComponent {
           richOptions: [],
           offsetX: [],
           width: 0,
-          lineHeight: fontHeight * this.singleLineHeight,
-          offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
+          lineHeight: fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)),
+          offsetY: fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0) - 1) / 2,
+          chars: [],
         };
         // 管理行的总高度调整canvas尺寸
         height += charInfo.lineHeight;
       }
       // 恢复默认设置
       context.font = `${options.fontWeight || textStyle.textWeight} 10px ${options.fontFamily || textStyle.fontFamily}`;
-      // 计算得到每个字段的宽度textWidth
-      const textMetrics = context.measureText(text);
-      let textWidth = textMetrics.width;
 
-      if (textMetrics.actualBoundingBoxLeft !== undefined && textMetrics.actualBoundingBoxRight !== undefined) {
-        const actualWidth = textMetrics.actualBoundingBoxLeft + textMetrics.actualBoundingBoxRight;
-
-        if (actualWidth > 0) {
-          textWidth = Math.max(textWidth, actualWidth);
-        }
-      }
-      const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
+      const textHeight = fontSize * (this.singleLineHeight + (this.textLayout.lineGap || 0)) * this.textStyle.fontScale;
 
       if (textHeight > charInfo.lineHeight) {
         height += textHeight - charInfo.lineHeight;
         charInfo.lineHeight = textHeight;
-        charInfo.offsetY = fontSize * this.textStyle.fontScale * (this.singleLineHeight - 1) / 2;
+        charInfo.offsetY = fontSize * this.textStyle.fontScale * ((this.singleLineHeight + (this.textLayout.lineGap || 0)) - 1) / 2;
       }
-      charInfo.offsetX.push(charInfo.width);
-      // 计算字段宽度*富文本字体大小*缩放因子*整体文本大小+每个字符的间距（每个字符间距存疑，因为实际测量的宽度已经包含了间距）
-      charInfo.width += (textWidth <= 0 ? 0 : textWidth) * fontSize * this.SCALE_FACTOR * this.textStyle.fontScale + text.length * letterSpace;
 
-      // 将富文本数据存入charInfo
+      charInfo.offsetX.push(charInfo.width);
+      //逐字计算宽度以实现字符间距
+      let segmentInnerX = 0;
+      const charArr: CharDetail[] = [];
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const tempcharWidth = context.measureText(char).width;
+        const charWidth = (tempcharWidth <= 0 ? 0 : tempcharWidth) * fontSize * this.SCALE_FACTOR * this.textStyle.fontScale;
+
+        charArr.push({
+          char,
+          x: segmentInnerX,
+          width: charWidth,
+        });
+        segmentInnerX += charWidth + letterSpace;
+      }
+      charInfo.chars.push(charArr); // 每个片段一个字符数组
+      charInfo.width += segmentInnerX;
       charInfo.richOptions.push(options);
     });
     // 存储最后一行的字符信息，并且更新最终的宽度和高度用于确定canvas尺寸
@@ -214,7 +243,7 @@ export class RichTextComponent extends TextComponent {
     if (charsInfo.length === 0) {
       return;
     }
-    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight, textStyle.fontSize);
+    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight + (this.textLayout.lineGap || 0), textStyle.fontSize);
 
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX, width } = charInfo;
@@ -238,7 +267,7 @@ export class RichTextComponent extends TextComponent {
 
       richOptions.forEach((options, index) => {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
-        const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
+        const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
         let textSize = fontSize;
 
         if (overflow === spec.TextOverflow.display) {
@@ -252,7 +281,12 @@ export class RichTextComponent extends TextComponent {
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
 
-        context.fillText(text, strOffsetX, charsLineHeight);
+        // 遍历当前行的 chars 逐字绘制
+        const charArr = charInfo.chars[index]; // 只取当前片段的字符数组
+
+        charArr.forEach(charDetail => {
+          context.fillText(charDetail.char, strOffsetX + charDetail.x, charsLineHeight);
+        });
 
       });
     });
