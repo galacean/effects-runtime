@@ -10,6 +10,7 @@ import {
   version21Migration, version22Migration, version24Migration, version30Migration,
   version31Migration, version32Migration,
   version33Migration,
+  version34Migration,
 } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
@@ -73,6 +74,9 @@ export function getStandardJSON (json: any): JSONScene {
       }
       if (minorVersion < 4) {
         json = version33Migration(json);
+      }
+      if (minorVersion < 5) {
+        json = version34Migration(json);
       }
     }
 

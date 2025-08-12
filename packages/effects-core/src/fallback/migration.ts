@@ -196,19 +196,23 @@ export function version33Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // TODO: Animation clip migration, move to version34Migration function
-  //-------------------------------------------------------------------------
+  json.version = JSONSceneVersion['3_4'];
 
-  const convertOldBezierValue = (bezierValue?: spec.NumberExpression)=>{
-    if (!bezierValue || bezierValue[0] !== spec.ValueType.BEZIER_CURVE) {
-      return;
-    }
+  return json;
+}
 
-    // Check old bezier value
-    if ((bezierValue[1] instanceof Array) && bezierValue[1].length > 0 && (bezierValue[1][0] instanceof Array)) {
-      bezierValue[1] = oldBezierKeyFramesToNew(bezierValue[1]) as unknown as spec.BezierKeyframeValue[];
-    }
-  };
+export function convertOldBezierValue (bezierValue?: spec.NumberExpression) {
+  if (!bezierValue || bezierValue[0] !== spec.ValueType.BEZIER_CURVE) {
+    return;
+  }
+
+  // Check old bezier value
+  if ((bezierValue[1] instanceof Array) && bezierValue[1].length > 0 && (bezierValue[1][0] instanceof Array)) {
+    bezierValue[1] = oldBezierKeyFramesToNew(bezierValue[1]) as unknown as spec.BezierKeyframeValue[];
+  }
+}
+
+export function version34Migration (json: JSONScene) {
 
   for (const playableAsset of json.miscs) {
     if (playableAsset.dataType === spec.DataType.TransformPlayableAsset) {
@@ -403,9 +407,6 @@ export function version33Migration (json: JSONScene): JSONScene {
       }
     }
   }
-  json.version = JSONSceneVersion['3_4'];
-
-  return json;
 }
 
 export function processContent (composition: spec.CompositionData) {
