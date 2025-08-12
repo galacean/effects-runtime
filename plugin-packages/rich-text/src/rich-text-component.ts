@@ -243,7 +243,7 @@ export class RichTextComponent extends TextComponent {
     if (charsInfo.length === 0) {
       return;
     }
-    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight + (this.textLayout.lineGap || 0), textStyle.fontSize);
+    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)), textStyle.fontSize);
 
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX, width } = charInfo;
@@ -262,7 +262,7 @@ export class RichTextComponent extends TextComponent {
       const x = this.textLayout.getOffsetX(textStyle, charWidth);
 
       if (index > 0) {
-        charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
+        charsLineHeight += charsInfo[index - 1].lineHeight;
       }
 
       richOptions.forEach((options, index) => {
