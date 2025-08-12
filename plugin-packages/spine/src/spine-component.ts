@@ -383,9 +383,8 @@ export class SpineComponent extends RendererComponent implements Maskable {
       listener.end = () => { };
     }
 
-    for (let i = 0;i < animationList.length;i++) {
+    for (let i = 0; i < animationList.length; i++) {
       const animation = animationList[i];
-
       let trackEntry: TrackEntry;
 
       if (i === 0) {
@@ -435,9 +434,9 @@ export class SpineComponent extends RendererComponent implements Maskable {
     if (listener) {
       listener.end = () => { };
     }
+
     for (let i = 0; i < animationList.length - 1; i++) {
       const animation = animationList[i];
-
       let trackEntry: TrackEntry;
 
       if (i === 0) {
