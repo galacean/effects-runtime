@@ -63,6 +63,10 @@ export class StateMachineNode extends PoseNode {
   private activeTransition: TransitionNode | null = null;
   private activeStateIndex = InvalidIndex;
 
+  /**
+   * 获取当前激活状态的名称
+   * @returns 当前状态名
+   */
   getCurrentStateName (): string {
     return this.states[this.activeStateIndex].stateNode.getNodeData<StateNodeData>().stateName;
   }

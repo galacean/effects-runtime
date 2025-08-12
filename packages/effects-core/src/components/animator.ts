@@ -15,30 +15,53 @@ export class Animator extends Component {
   graphInstance: GraphInstance | null = null;
   private graphAsset: AnimationGraphAsset | null = null;
 
+  /**
+   * 设置布尔类型参数
+   * @param name 参数名
+   * @param value 参数值
+   */
   setBool (name: string, value: boolean) {
     if (this.graphInstance) {
       this.graphInstance.setBool(name, value);
     }
   }
 
+  /**
+   * 设置浮点类型参数
+   * @param name 参数名
+   * @param value 参数值
+   */
   setFloat (name: string, value: number) {
     if (this.graphInstance) {
       this.graphInstance.setFloat(name, value);
     }
   }
 
+  /**
+   * 设置触发器参数
+   * @param name 参数名
+   */
   setTrigger (name: string) {
     if (this.graphInstance) {
       this.graphInstance.setTrigger(name);
     }
   }
 
+  /**
+   * 重置触发器参数
+   * @param name 参数名
+   */
   resetTrigger (name: string) {
     if (this.graphInstance) {
       this.graphInstance.resetTrigger(name);
     }
   }
 
+  /**
+   * 获取状态机节点
+   * @param machineName 状态机名称
+   * @returns 状态机节点
+   */
   getStateMachineNode (machineName: string): StateMachineNode | null {
     let result: StateMachineNode | null = null;
 
