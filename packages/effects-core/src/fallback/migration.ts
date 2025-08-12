@@ -174,6 +174,7 @@ export function version33Migration (json: JSONScene): JSONScene {
       items: composition.items,
       timelineAsset: composition.timelineAsset,
       sceneBindings: composition.sceneBindings,
+      item:{ id:composition.id },
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
