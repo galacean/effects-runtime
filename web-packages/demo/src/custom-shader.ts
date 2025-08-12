@@ -254,6 +254,7 @@ void main() {
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex0, sampleUV);
       color.rgb = _Color0.rgb;
+      alpha *= _Color0.a;
     } else if (i == 1) {
       float offsetX = _OffsetX1;
       float offsetY = _OffsetY1;
@@ -261,6 +262,7 @@ void main() {
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex1, sampleUV);
       color.rgb = _Color1.rgb;
+      alpha *= _Color1.a;
     } else if (i == 2) {
       float offsetX = _OffsetX2;
       float offsetY = _OffsetY2;
@@ -268,6 +270,7 @@ void main() {
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex2, sampleUV);
       color.rgb = _Color2.rgb;
+      alpha *= _Color2.a;
     } else if (i == 3) {
       float offsetX = _OffsetX3;
       float offsetY = _OffsetY3;
@@ -275,6 +278,7 @@ void main() {
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY);
       color = safeTexture2D(_Tex3, sampleUV);
       color.rgb = _Color3.rgb;
+      alpha *= _Color3.a;
     }
     color.a *= alpha;
     // 混合当前纹理颜色到最终颜色
@@ -758,7 +762,7 @@ let material: Material | undefined;
 
   // eslint-disable-next-line no-console
   //console.log('3. Loading texture...');
-  const SecondStageImageData = await loadLocalImageData('../public/第二阶段.png');
+  const SecondStageImageData = await loadLocalImageData('../public/第二阶段_模糊.png');
   const noiseimageData = await loadLocalImageData('../public/Perlin.png');
   const T_noiseimageData = await loadLocalImageData('../public/T_Noise.png');
   const FirstStageBlueImageData = await loadLocalImageData('../public/蓝光裁切.png');

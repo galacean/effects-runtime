@@ -27,9 +27,9 @@ interface TexState {
   colorMode?: number,           // 颜色模式 0:固定 1:动态渐变
   colorStops?: [number, number, number, number][], // 颜色渐变点
   colorSpeed: number,          // 颜色变化速度
-  isSecondTexture?: boolean;    // 标识是否为第二阶段纹理
-  initialOffsetU?: number;      // 初始U偏移量（第二阶段）
-  initialOffsetV?: number;      // 初始V偏移量（第二阶段）
+  isSecondTexture?: boolean,    // 标识是否为第二阶段纹理
+  initialOffsetU?: number,      // 初始U偏移量（第二阶段）
+  initialOffsetV?: number,      // 初始V偏移量（第二阶段）
 }
 
 export class TextureController {
@@ -62,7 +62,7 @@ export class TextureController {
       move2TargetV: -0.0141,   // 第二段移动v偏移量
       fadeInDeltaV: 0.0413,  // 淡入阶段v偏移量
     },
-    
+
     // 绿色光参数
     green: {
       fadeInStart: 0.500,     // 淡入开始
@@ -76,7 +76,7 @@ export class TextureController {
       moveTargetU: 0.266,   // 移动u偏移量
       moveTargetV: -0.0542,    // 移动v偏移量
       fadeInDeltaV: 0.0333,  // 淡入阶段v偏移量
-    }
+    },
   };
 
   // 参数配置
@@ -111,7 +111,7 @@ export class TextureController {
   // 第一阶段颜色配置
   firstStageBlueColor: [number, number, number, number] = [0, 0, 1, 1]; // 默认蓝色
   firstStageGreenColor: [number, number, number, number] = [0, 1, 0, 1]; // 默认绿色
-  
+
   // 第二阶段颜色配置
   secondStagePrimaryColor: [number, number, number, number] = [0, 0, 1, 1]; // 默认蓝色
   secondStageSecondaryColor: [number, number, number, number] = [0, 1, 0, 1]; // 默认绿色
@@ -130,18 +130,20 @@ export class TextureController {
     this.inputStageTriggered = false;
     this.inputBatchId = 0;
     this.pendingTriggerTime = 0; // 重置触发时间点
-    
+
     // 创建蓝色和绿色纹理（同一组）
     this.listeningTextureColor = 'blue';
     const blueTexture = this.createTexture('listening', now);
+
     blueTexture.groupId = this.listeningGroupId;
-    
+
     this.listeningTextureColor = 'green';
     const greenTexture = this.createTexture('listening', now);
+
     greenTexture.groupId = this.listeningGroupId;
-    
+
     this.textures = [blueTexture, greenTexture];
-    
+
     this.onStage(MainStage.Listening);
     if (DEBUG) {
       console.log(`[组${this.listeningGroupId}] 重置到监听阶段`, this.textures);
@@ -156,7 +158,7 @@ export class TextureController {
     if (green) {
       this.firstStageGreenColor = green;
     }
-    
+
     // 更新现有纹理的颜色
     this.textures.forEach(tex => {
       if (tex.type === 'listening') {
@@ -168,7 +170,7 @@ export class TextureController {
       }
     });
   }
-  
+
   // 设置第二阶段颜色
   setSecondStageColors (primary?: [number, number, number, number], secondary?: [number, number, number, number]) {
     if (primary) {
@@ -177,7 +179,7 @@ export class TextureController {
     if (secondary) {
       this.secondStageSecondaryColor = secondary;
     }
-    
+
     // 更新现有纹理的颜色
     this.textures.forEach(tex => {
       if (tex.type === 'input') {
@@ -195,15 +197,15 @@ export class TextureController {
     const textureType = type === 'input'
       ? 'input'
       : this.listeningTextureColor;
-    
-  const tex: TexState = {
-    id: this.nextId++,
-    layer: this.nextLayer++,
-    batchId: type === 'input' ? this.inputBatchId : undefined,
-    type,
-    textureType, // 使用明确的纹理类型变量
-    x: 0,
-    y: 0, // 初始化y坐标
+
+    const tex: TexState = {
+      id: this.nextId++,
+      layer: this.nextLayer++,
+      batchId: type === 'input' ? this.inputBatchId : undefined,
+      type,
+      textureType, // 使用明确的纹理类型变量
+      x: 0,
+      y: 0, // 初始化y坐标
       stage: TexFadeStage.FadingIn,
       alpha: 0,
       startedAt: startTime,
@@ -216,29 +218,29 @@ export class TextureController {
       colorSpeed: 1.0,
     };
 
-      // 设置第二阶段初始偏移
-      if (type === 'input') {
-        tex.initialOffsetU = this.inputInitialOffsetU;
-        tex.initialOffsetV = 0; // 默认垂直偏移为0
-      }
+    // 设置第二阶段初始偏移
+    if (type === 'input') {
+      tex.initialOffsetU = this.inputInitialOffsetU;
+      tex.initialOffsetV = 0; // 默认垂直偏移为0
+    }
 
-      if (type === 'listening') {
-        // 根据纹理类型选择参数
-        const params = textureType === 'blue' 
-          ? this.firstStageParams.blue 
-          : this.firstStageParams.green;
-          
-        // 应用初始偏移量
-        tex.x = params.initialOffsetU;
-        tex.y = params.initialOffsetV;
-      
+    if (type === 'listening') {
+      // 根据纹理类型选择参数
+      const params = textureType === 'blue'
+        ? this.firstStageParams.blue
+        : this.firstStageParams.green;
+
+      // 应用初始偏移量
+      tex.x = params.initialOffsetU;
+      tex.y = params.initialOffsetV;
+
       // 设置纹理特定颜色
       if (textureType === 'blue') {
         tex.color = this.firstStageBlueColor;
       } else if (textureType === 'green') {
         tex.color = this.firstStageGreenColor;
       }
-      
+
       tex.colorMode = 0;
     }
     if (type === 'input') {
@@ -294,8 +296,9 @@ export class TextureController {
     // 0.5s后创建纹理B
     setTimeout(() => {
       const texB = this.createTexture('input', performance.now() / 1000);
+
       texB.isSecondTexture = true; // 标记为第二阶段纹理
-      
+
       // 复制初始偏移值
       texB.initialOffsetU = texA.initialOffsetU;
       texB.initialOffsetV = texA.initialOffsetV; // 继承垂直偏移量
@@ -305,9 +308,10 @@ export class TextureController {
       texB.batchTriggered = false;
       texB.fadeIn = this.inputFadeIn2; // 使用参数配置中的 inputFadeIn2
       texB.distance = this.inputDistance2; // 使用参数配置中的 inputDistance2
-      
+
       // 修正：调整绿色纹理渐隐时间，使其与蓝色纹理同时消失
       const delayInSeconds = this.textureInterval / 1000;
+
       texB.fadeOutStart = this.inputFadeOutStart - delayInSeconds;
       texB.fadeOutEnd = this.InputFadeOutEnd - delayInSeconds + 0.0416;
 
@@ -332,10 +336,12 @@ export class TextureController {
       // 如果还没进入渐隐阶段，则强制进入渐隐
       if (tex.stage !== TexFadeStage.FadingOut && tex.stage !== TexFadeStage.Hidden) {
         const elapsed = now - tex.startedAt;
+
         // 使用相对时间设置渐隐参数
         tex.fadeOutStart = elapsed;
         // 确保渐隐时长至少0.1秒
         const fadeOutDuration = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
+
         tex.fadeOutEnd = elapsed + fadeOutDuration;
         tex.stage = TexFadeStage.FadingOut;
       }
@@ -347,43 +353,44 @@ export class TextureController {
     // 更新所有纹理状态
     this.textures.forEach(tex => {
       const elapsed = now - tex.startedAt;
-      
+
       // ===== 第一阶段特殊处理 =====
       // 第一阶段纹理：只执行第一阶段的位置和透明度计算
       if (tex.type === 'listening') {
         if (tex.textureType === 'blue') {
           const params = this.firstStageParams.blue;
-          
+
           // 蓝色光处理逻辑 - 基于相对时间
           if (elapsed < params.fadeInEnd) {
             const progress = elapsed / params.fadeInEnd;
+
             tex.alpha = progress;
             // 应用初始偏移 + 淡入阶段垂直移动
             tex.y = params.initialOffsetV + params.fadeInDeltaV * progress;
-          }
-          else if (elapsed < params.move1End) {
-            const progress = (elapsed - params.fadeInEnd) / 
+          } else if (elapsed < params.move1End) {
+            const progress = (elapsed - params.fadeInEnd) /
                             (params.move1End - params.fadeInEnd);
+
             // 第一段移动 (同时改变U和V)
             tex.x = params.initialOffsetU + params.move1TargetU * progress;
             tex.y = params.initialOffsetV + params.fadeInDeltaV + params.move1TargetV * progress;
-          }
-          else if (elapsed < params.move2End) {
-            const progress = (elapsed - params.move1End) / 
+          } else if (elapsed < params.move2End) {
+            const progress = (elapsed - params.move1End) /
                             (params.move2End - params.move1End);
+
             // 第二段移动 (同时改变U和V)
-            tex.x = params.initialOffsetU + params.move1TargetU + 
+            tex.x = params.initialOffsetU + params.move1TargetU +
                     (params.move2TargetU - params.move1TargetU) * progress;
-            tex.y = params.initialOffsetV + params.fadeInDeltaV + params.move1TargetV + 
+            tex.y = params.initialOffsetV + params.fadeInDeltaV + params.move1TargetV +
                     (params.move2TargetV - params.move1TargetV) * progress;
           }
-          
+
           // 透明度处理 (独立于位置变化)
           if (elapsed < params.fadeInEnd) {
             tex.alpha = elapsed / params.fadeInEnd;
           } else if (elapsed >= params.fadeOutStart) {
             if (elapsed < params.fadeOutEnd) {
-              tex.alpha = 1 - (elapsed - params.fadeOutStart) / 
+              tex.alpha = 1 - (elapsed - params.fadeOutStart) /
                          (params.fadeOutEnd - params.fadeOutStart);
             } else {
               tex.alpha = 0;
@@ -391,31 +398,31 @@ export class TextureController {
           } else {
             tex.alpha = 1;
           }
-        }
-        else if (tex.textureType === 'green') {
+        } else if (tex.textureType === 'green') {
           const params = this.firstStageParams.green;
-          
+
           // 绿色光处理逻辑 - 基于相对时间
           if (elapsed < params.fadeInEnd) {
             const progress = elapsed / params.fadeInEnd;
+
             tex.alpha = progress;
             // 应用初始偏移 + 淡入阶段垂直移动
             tex.y = params.initialOffsetV + params.fadeInDeltaV * progress;
-          }
-          else if (elapsed < params.moveEnd) {
-            const progress = (elapsed - params.fadeInEnd) / 
+          } else if (elapsed < params.moveEnd) {
+            const progress = (elapsed - params.fadeInEnd) /
                             (params.moveEnd - params.fadeInEnd);
+
             // 移动阶段 (同时改变U和V)
             tex.x = params.initialOffsetU + params.moveTargetU * progress;
             tex.y = params.initialOffsetV + params.fadeInDeltaV + params.moveTargetV * progress;
           }
-          
+
           // 透明度处理 (独立于位置变化)
           if (elapsed < params.fadeInEnd) {
             tex.alpha = elapsed / params.fadeInEnd;
           } else if (elapsed >= params.fadeOutStart) {
             if (elapsed < params.fadeOutEnd) {
-              tex.alpha = 1 - (elapsed - params.fadeOutStart) / 
+              tex.alpha = 1 - (elapsed - params.fadeOutStart) /
                          (params.fadeOutEnd - params.fadeOutStart);
             } else {
               tex.alpha = 0;
@@ -425,6 +432,7 @@ export class TextureController {
           }
         }
       }
+
       // 第二阶段纹理：只执行第二阶段的位置和透明度计算
       else {
         const lifeProgress = elapsed / tex.duration;
@@ -432,12 +440,12 @@ export class TextureController {
         // 更新位置: 初始偏移 + 根据进度移动的距离
         tex.x = (tex.initialOffsetU || 0) + tex.distance * lifeProgress;
         tex.y = (tex.initialOffsetV || 0); // 使用初始V偏移量
-        
+
         // 为第二阶段纹理添加额外偏移
         if (tex.isSecondTexture) {
-          tex.x -= 0.185;
+          tex.x -= 0.235;
         }
-        
+
         // DEBUG: 输出位置信息
         if (DEBUG && tex.type === 'input' && tex.isSecondTexture) {
           console.log(`纹理 ${tex.id} 位置: x=${tex.x.toFixed(4)}, 初始偏移=${tex.initialOffsetU}, 距离=${tex.distance}, 进度=${lifeProgress.toFixed(4)}`);
@@ -510,13 +518,13 @@ export class TextureController {
     ) {
       const elapsedSinceTrigger = now - this.pendingTriggerTime;
       const groupElapsed = now - this.groupStartedAt;
-      
+
       if (groupElapsed >= 2.75) {
         this.enterInputStage(now);
         this.pendingTriggerTime = 0; // 重置触发时间
       }
     }
-    
+
     // 3.4s阶段转换点 - 使用组时间检测
     if (this.currentStage === MainStage.Listening &&
         this.pendingInputStage &&
@@ -549,21 +557,22 @@ export class TextureController {
     initialV: number,
     type: 'listening' | 'input',
     textureType: 'blue' | 'green' | 'input',
-    isSecondTexture?: boolean
+    isSecondTexture?: boolean,
   }[] {
     return this.textures.map(tex => {
       // 对于listening类型纹理，从firstStageParams获取初始UV
       let initialU = tex.initialOffsetU || 0;
       let initialV = tex.initialOffsetV || 0;
-      
+
       if (tex.type === 'listening') {
         const params = tex.textureType === 'blue'
           ? this.firstStageParams.blue
           : this.firstStageParams.green;
+
         initialU = params.initialOffsetU;
         initialV = params.initialOffsetV;
       }
-      
+
       return {
         id: tex.id,
         x: tex.x,
@@ -573,7 +582,7 @@ export class TextureController {
         initialV,
         type: tex.type,
         textureType: tex.textureType,
-        isSecondTexture: tex.isSecondTexture
+        isSecondTexture: tex.isSecondTexture,
       };
     });
   }
@@ -581,32 +590,35 @@ export class TextureController {
   /**
    * 手动捕获快照并输出到控制台
    */
-  captureManualSnapshot() {
+  captureManualSnapshot () {
     const snapshots = this.captureSnapshot();
     const jsonData = JSON.stringify(snapshots, null, 2);
+
     console.log('手动捕获快照:', jsonData);
-    
+
     // 创建Blob对象并触发下载
     const blob = new Blob([jsonData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+
     a.href = url;
     a.download = `snapshot-${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
-    
+
     // 清理资源
     setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     }, 100);
-    
+
     return snapshots;
   }
 
   checkTriggerPoints (tex: TexState, elapsed: number, volume: number, now: number) {
     // 监听阶段组生命周期检测 - 基于纹理结束时间
     let groupEnded = false;
+
     if (
       this.currentStage === MainStage.Listening &&
       !this.pendingInputStage
@@ -614,8 +626,9 @@ export class TextureController {
       // 获取组内最晚结束的纹理
       const groupTextures = this.textures.filter(t => t.groupId === this.listeningGroupId);
       const lastEndTime = Math.max(...groupTextures.map(t => t.startedAt + t.duration));
+
       groupEnded = now >= lastEndTime;
-      
+
       if (groupEnded) {
         if (volume > this.volumeThreshold) {
           this.pendingInputStage = true;
@@ -632,7 +645,7 @@ export class TextureController {
         }
       }
     }
-    
+
     // 监听阶段fadeOut区间持续检测 - 确保与组检测协调
     if (
       tex.type === 'listening' &&
@@ -657,7 +670,7 @@ export class TextureController {
     if (tex.type === 'input' && tex.batchId === this.inputBatchId) {
       // 计算触发开始时间：显示阶段结束前25%时间
       const triggerStart = tex.fadeOutStart - (tex.fadeOutStart - tex.fadeIn) * 0.20;
-      
+
       if (elapsed >= triggerStart && elapsed < tex.fadeOutEnd) {
         // 查找当前批次所有纹理
         const batchTextures = this.textures.filter(t => t.batchId === this.inputBatchId);
