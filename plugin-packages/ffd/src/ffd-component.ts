@@ -37,10 +37,9 @@ export class FFDComponent extends Component {
   }
 
   /**
-   * 收集所有相关的 SpriteComponents（自己和子元素的）
+   * 获取当前的SpriteComponent
    */
   private collectSpriteComponents () {
-    // 收集同级 SpriteComponent
     if (this.item) {
       const currentComponent = this.item.getComponent(SpriteComponent);
 
@@ -57,32 +56,20 @@ export class FFDComponent extends Component {
         currentComponent.material.shader = shader;
         this.currentSpriteComponent = currentComponent;
       }
-      // // 收集子元素的spriteComponent 暂不考虑FFD叠加效果
-      // if (this.item.children && this.item.children.length > 0) {
-      //   for (const child of this.item.children) {
-      //     const childComponent = child.getComponent(SpriteComponent);
-
-      //     if (childComponent) {
-      //       this.relatedSpriteComponents.push(childComponent);
-      //     }
-      //   }
-      // }
     }
   }
 
   /**
-   * 更新控制点，控制点顺序为以左下角点为起点，行优先
+   * 更新控制点位置
    */
   private updateControlPoints () {
     if (!this.data || !this.data.controlPoints) {
       return;
     }
 
-    // 更新控制点位置
     const capacity = this.rowNum * this.colNum;
     const count = Math.min(this.data.controlPoints.length, capacity);
 
-    // Rebuild the array per update to avoid stale points when count shrinks
     this.controlPoints.length = 0;
     for (let i = 0; i < count; i++) {
       const p = this.data.controlPoints[i];
@@ -97,7 +84,10 @@ export class FFDComponent extends Component {
    * 更新相关 uniform
    */
   private updateMaterialUniforms (): void {
-    // 使用已收集的 spriteComponent，无需每次都重新收集
+    // 确保当前的 SpriteComponent 存在
+    if (!this.currentSpriteComponent) {
+      return;
+    }
     const material = this.currentSpriteComponent.material;
 
     if (material) {
