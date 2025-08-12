@@ -11,6 +11,7 @@ import { RendererComponent } from '../../components';
 import type { DragEventType } from './interact-vfx-item';
 import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
+import { isArray } from '../../utils';
 
 /**
  * 交互组件
@@ -24,15 +25,23 @@ export class InteractComponent extends RendererComponent {
   previewContent: InteractMesh | null;
   interactData: spec.InteractContent;
   /**
-   * 拖拽的惯性衰减系数，范围[0, 1], 越大惯性越强
+   * 拖拽后的惯性衰减系数，范围[0, 1], 越大惯性越强
+   * @default 0.95
    */
   downgrade = 0.95;
   /**
-   * 拖拽的距离映射系数，越大越容易拖动
+   * 拖拽后的惯性速度，范围[0, +∞), 越大惯性越强
+   * @default 25
+   * @since 2.6.0
+   */
+  speed = 25;
+  /**
+   * 拖拽时的距离映射系数，越大越容易拖动
+   * @default [1, 1]
    */
   dragRatio: number[] = [1, 1];
   /**
-   * 拖拽X范围
+   * 拖拽范围（编辑器制作时已经设置好，特殊情况可运行时修改）
    */
   dragRange: {
     dxRange: [min: number, max: number],
@@ -42,6 +51,15 @@ export class InteractComponent extends RendererComponent {
       dyRange: [0, 0],
     };
 
+  /**
+   * 滑动失效区域，范围[0, 1]，单位 %，避免滑动触控冲突（如 iOS 右滑退出时不执行）
+   * > 若是数组形式，格式为：[top、right、bottom、left]
+   * @since 2.6.0
+   * @default 0
+   */
+  invalidBorderRange: number | number[] = 0;
+
+  private invalidByBorderRange = false;
   private duringPlay = false;
 
   /** 是否响应点击和拖拽交互事件 */
@@ -78,7 +96,6 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onStart (): void {
-    const options = this.item.props.content.options as spec.DragInteractOption;
     const { env } = this.item.engine.renderer;
     const composition = this.item.composition;
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
@@ -93,11 +110,6 @@ export class InteractComponent extends RendererComponent {
         }
       }
     }
-    if (options.type === spec.InteractType.DRAG) {
-      if (env !== PLAYER_OPTIONS_ENV_EDITOR || options.enableInEditor) {
-        composition?.event && this.beginDragTarget(options, composition.event);
-      }
-    }
     if (this.previewContent) {
       this.previewContent.mesh.item = this.item;
       this.materials = this.previewContent.mesh.materials;
@@ -108,7 +120,8 @@ export class InteractComponent extends RendererComponent {
   override onDisable (): void {
     super.onDisable();
     if (this.item && this.item.composition) {
-      if (this.duringPlay && !this.item.transform.getValid()) {
+      // Triggers the Message end event, do not trigger when reverse playback
+      if (this.duringPlay && !this.item.transform.getValid() && this.item.composition.getSpeed() > 0) {
         this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
         this.duringPlay = false;
       }
@@ -129,7 +142,11 @@ export class InteractComponent extends RendererComponent {
       const enableInEditor = options.enableInEditor;
 
       if (env !== PLAYER_OPTIONS_ENV_EDITOR || enableInEditor) {
-        this.item.composition?.event && this.beginDragTarget(options, this.item.composition.event);
+        const { event } = this.item.composition ?? {};
+
+        if (event) {
+          this.beginDragTarget(options, event);
+        }
       }
     }
   }
@@ -137,7 +154,7 @@ export class InteractComponent extends RendererComponent {
   override onUpdate (dt: number): void {
     this.duringPlay = true;
 
-    // trigger messageBegin when item enter
+    // Trigger messageBegin when item enter
     if (this.lastTime <= this.item.time) {
       if (this.item.time >= 0 && this.lastTime < 0) {
         const options = this.item.props.content.options as spec.DragInteractOption;
@@ -145,8 +162,8 @@ export class InteractComponent extends RendererComponent {
         this.item.composition?.addInteractiveItem(this.item, options.type);
       }
     } else {
-      // loop trigger
-      if (this.item.time >= 0) {
+      // Loop trigger, do not trigger when reverse playback
+      if (this.item.time >= 0 && dt > 0) {
         const options = this.item.props.content.options as spec.DragInteractOption;
 
         this.item.composition?.addInteractiveItem(this.item, options.type);
@@ -228,6 +245,11 @@ export class InteractComponent extends RendererComponent {
         if (!this.canInteract()) {
           return;
         }
+        this.invalidByBorderRange = this.checkInvalidBorderRange({ x: event.x, y: event.y });
+
+        if (this.invalidByBorderRange) {
+          return;
+        }
         this.dragEvent = null;
         this.bouncingArg = null;
         const camera = this.item.composition?.camera;
@@ -242,6 +264,10 @@ export class InteractComponent extends RendererComponent {
         };
       },
       touchmove: (event: TouchEventType) => {
+        if (this.invalidByBorderRange) {
+          return;
+        }
+
         this.handleDragMove(dragEvent as Partial<DragEventType>, event);
         this.bouncingArg = event;
       },
@@ -252,10 +278,8 @@ export class InteractComponent extends RendererComponent {
         const bouncingArg = this.bouncingArg as TouchEventType;
 
         if (!shouldIgnoreBouncing(bouncingArg, 3) && bouncingArg) {
-          const speed = 5;
-
-          bouncingArg.vx *= speed;
-          bouncingArg.vy *= speed;
+          bouncingArg.vx *= this.speed;
+          bouncingArg.vy *= this.speed;
           this.dragEvent = { ...dragEvent as DragEventType };
         }
         dragEvent = null;
@@ -325,6 +349,42 @@ export class InteractComponent extends RendererComponent {
     return Boolean(this.item.composition?.interactive) && this._interactive;
   }
 
+  /**
+   * 检查滑动手势边界
+   * @param position
+   */
+  private checkInvalidBorderRange (
+    position: { x: number, y: number },
+  ) {
+    const invalidBorderRange = this.invalidBorderRange;
+
+    if (invalidBorderRange) {
+      let top = 0;
+      let right = 0;
+      let bottom = 0;
+      let left = 0;
+
+      if (typeof invalidBorderRange === 'number') {
+        top = invalidBorderRange;
+        right = invalidBorderRange;
+        bottom = invalidBorderRange;
+        left = invalidBorderRange;
+      } else if (isArray(invalidBorderRange)) {
+        [top = 0, right = 0, bottom = 0, left = 0] = invalidBorderRange;
+      }
+
+      if (
+        position.x < left - 1 ||
+        position.x > (1 - right) ||
+        position.y < top - 1 ||
+        position.y > (1 - bottom)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 }
 
 function shouldIgnoreBouncing (arg: TouchEventType, mul?: number) {

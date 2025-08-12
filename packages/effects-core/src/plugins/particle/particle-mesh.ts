@@ -316,12 +316,6 @@ export class ParticleMesh implements ParticleMeshData {
     };
     const mtlOptions: MaterialProps = {
       shader,
-      uniformSemantics: {
-        effects_MatrixV: 'VIEW',
-        effects_MatrixVP: 'VIEWPROJECTION',
-        uEditorTransform: 'EDITOR_TRANSFORM',
-        effects_ObjectToWorld: 'MODEL',
-      },
     };
     const preMulAlpha = getPreMultiAlpha(blending);
 

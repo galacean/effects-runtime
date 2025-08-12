@@ -28,6 +28,16 @@ export type CompositionEvent<C> = {
     compositionId: string,
   }],
   /**
+   * 合成开始播放事件
+   * @since 2.6.0
+   */
+  ['play']: [playInfo: { time: number }],
+  /**
+   * 合成暂停事件
+   * @since 2.6.0
+   */
+  ['pause']: [],
+  /**
    * 合成结束事件
    * 合成行为为循环时每次循环结束都会触发
    * 合成行为为销毁/冻结时只会触发一次

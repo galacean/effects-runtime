@@ -390,6 +390,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.ticker?.start();
 
+    if (compositions.some(c => !c.getPaused())) {
+      this.emit('play', { time: 0 });
+    }
+
     const compositionNames = compositions.map(composition => composition.name);
     const firstFrameTime = performance.now() - last;
 
@@ -445,6 +449,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       composition.play();
     });
     this.ticker?.start();
+    this.emit('play', { time: 0 });
   }
 
   /**
@@ -465,6 +470,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     } else {
       this.doTick(0, true);
     }
+    this.emit('play', { time });
   }
 
   /**
@@ -483,10 +489,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (!this.ticker || this.ticker?.getPaused()) {
       this.doTick(0, true);
     }
-    this.emit('update', {
-      player: this,
-      playing: false,
-    });
+    this.emit('pause');
   }
 
   /**
@@ -538,7 +541,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resumePending = true;
       await Promise.all(this.compositions.map(c => c.reloadTexture()));
       this.resumePending = false;
-      this.handleResume();
+      this.emit('resume');
     }
     this.ticker?.resume();
   }
@@ -617,6 +620,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       time?.getTime()
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
+
       if (this.autoPlaying) {
         this.emit('update', {
           player: this,
@@ -731,12 +735,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   restore = async () => {
     this.renderer.restore();
     this.compositions = await Promise.all(this.compositions.map(async composition => {
-      const { time: currentTime, url, speed, keepResource, reusable, renderOrder, transform, videoState } = composition;
+      const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
       const newComposition = await this.loadScene(url);
 
       newComposition.speed = speed;
       newComposition.reusable = reusable;
-      newComposition.keepResource = keepResource;
       newComposition.renderOrder = renderOrder;
       newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
       newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
@@ -830,10 +833,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.resume = throwErrorPromiseFunc;
     this.disposed = true;
   }
-
-  private handleResume = () => {
-    this.emit('update', { player: this, playing: true });
-  };
 
   private offloadTexture () {
     this.compositions.forEach(comp => comp.offloadTexture());

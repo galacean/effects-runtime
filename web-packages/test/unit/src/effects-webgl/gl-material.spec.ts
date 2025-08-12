@@ -365,11 +365,8 @@ describe('webgl/gl-material', () => {
     expect(material.getTexture('u_Tex')).to.deep.equal(texture);
     material.initialize();
     expect(material).not.eql(undefined);
-    material.dispose({
-      textures: DestroyOptions.destroy,
-    });
+    material.dispose();
     expect(material.isDestroyed).to.be.true;
-    expect(texture.isDestroyed).to.be.true;
     expect(() => material.initialize()).to.throw(Error);
   });
 
@@ -384,7 +381,6 @@ describe('webgl/gl-material', () => {
     expect(material).not.eql(undefined);
     material.dispose();
     expect(material.isDestroyed).to.be.true;
-    expect(texture.isDestroyed).to.be.true;
     expect(material.getTexture('u_Tex')).to.equal(undefined);
     expect(() => material.initialize()).to.throw(Error);
   });
@@ -398,9 +394,7 @@ describe('webgl/gl-material', () => {
     material.initialize();
     expect(material.getTexture('u_Tex')).to.deep.equal(texture);
     expect(material).not.eql(undefined);
-    material.dispose({
-      textures: DestroyOptions.keep,
-    });
+    material.dispose();
     expect(material.isDestroyed).to.be.true;
     expect(texture.isDestroyed).to.be.false;
     expect(() => material.initialize()).to.throw(Error);
@@ -414,9 +408,7 @@ describe('webgl/gl-material', () => {
     material.setTexture('u_Tex', texture);
     material.initialize();
     expect(material).not.eql(undefined);
-    material.dispose({
-      textures: DestroyOptions.keep,
-    });
+    material.dispose();
     expect(material.isDestroyed).to.be.true;
     expect(texture.isDestroyed).to.be.false;
     expect(material.getTexture('u_Tex')).to.equal(undefined);

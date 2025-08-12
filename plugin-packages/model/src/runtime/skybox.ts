@@ -6,7 +6,7 @@ import { PEntity } from './object';
 import { PMaterialBase } from './material';
 import type { PSceneManager } from './scene';
 import { WebGLHelper } from '../utility/plugin-helper';
-import { Vector2, Vector3 } from './math';
+import { Matrix4, Vector2, Vector3 } from './math';
 import type { ModelSkyboxComponent } from '../plugin/model-item';
 
 /**
@@ -150,7 +150,7 @@ export class PSkybox extends PEntity {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
       const mesh = this.skyboxMesh;
 
-      renderer.drawGeometry(mesh.geometry, mesh.material);
+      renderer.drawGeometry(mesh.geometry, Matrix4.IDENTITY, mesh.material);
     }
   }
 

@@ -150,7 +150,12 @@ export class SpriteComponent extends BaseRenderComponent {
       ]);
     }
 
-    this.time += dt / 1000;
+    this.time = time + dt / 1000;
+  }
+
+  override onDisable (): void {
+    super.onDisable();
+    this.time = 0;
   }
 
   override onDestroy (): void {

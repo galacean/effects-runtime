@@ -28,6 +28,14 @@ export type JSONValue =
  * 负责下载各种资源，并提供了一些异步加载和缓存管理的功能
  */
 export class Downloader {
+
+  /**
+   * 是否信任 XMLHttpRequest 的状态码为 0 的响应
+   * 某些浏览器在本地文件协议（file://）下会返回状态码 0，但实际上请求是成功的
+   * 设置为 true 可以让 Downloader 将状态码 0 视为成功
+   */
+  static trustXHRStatusZero = false;
+
   /**
    * 存储多个回调函数的对象
    */
@@ -73,7 +81,7 @@ export class Downloader {
       this.finish(url, xhr.status, xhr.response);
     };
     const handleLoad = () => {
-      if (xhr.status == 200) {
+      if (xhr.status == 200 || (xhr.status == 0 && Downloader.trustXHRStatusZero)) {
         this.finish(url, 200, xhr.response);
       } else {
         handleError();
@@ -102,7 +110,7 @@ export class Downloader {
     const callbacks = this.callbacks[url];
 
     delete this.callbacks[url];
-    const args = status == 200 ? [data] : [status, data];
+    const args = status == 200 || (status == 0 && Downloader.trustXHRStatusZero) ? [data] : [status, data];
 
     for (let i = args.length - 1, n = callbacks.length; i < n; i += 2) {
       callbacks[i].apply(null, args);
@@ -266,7 +274,9 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   video.setAttribute('playsinline', 'playsinline');
 
   return new Promise<HTMLVideoElement>((resolve, reject) => {
-    const pending = video.play();
+    const pending = video.play().catch(e => {
+      reject(e);
+    });
 
     if (pending) {
       void pending.then(() => resolve(video));

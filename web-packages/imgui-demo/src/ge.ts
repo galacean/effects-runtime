@@ -1,7 +1,7 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
 import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
-import { JSONConverter } from '@galacean/effects-plugin-model';
+import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-spine';
 import { Selection } from './core/selection';
@@ -161,7 +161,7 @@ export class OutlinePass extends RenderPass {
 
       this.geometry.setDrawCount(4);
       this.geometry.setAttributeData('aPos', new Float32Array(point1.toArray().concat(point2.toArray(), point3.toArray(), point4.toArray())));
-      renderer.drawGeometry(this.geometry, this.material);
+      renderer.drawGeometry(this.geometry, Matrix4.IDENTITY, this.material);
     }
   }
 }
