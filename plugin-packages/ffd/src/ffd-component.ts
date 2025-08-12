@@ -68,6 +68,9 @@ export class FFDComponent extends Component {
     }
     this.boundMax = this.data.boundMax;
     this.boundMin = this.data.boundMin;
+    this.rowNum = this.data.rowNum;
+    this.colNum = this.data.colNum;
+
     const capacity = this.rowNum * this.colNum;
     const count = Math.min(this.data.controlPoints.length, capacity);
 
