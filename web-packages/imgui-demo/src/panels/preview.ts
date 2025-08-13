@@ -28,7 +28,6 @@ export class Preview extends EditorWindow {
     this.previewPlayer.ticker.add(this.updateRenderTexture);
     this.previewPlayer.renderer.engine.database = new AssetDatabase(this.previewPlayer.renderer.engine);
     this.cameraController = new OrbitController();
-    this.open();
   }
 
   protected override onGUI (): void {

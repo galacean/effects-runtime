@@ -108,7 +108,7 @@ export class MainEditor extends EditorWindow {
     }
 
     if (ImGui.TreeNodeEx('Composition', base_flags.value | ImGui.TreeNodeFlags.DefaultOpen)) {
-      this.generateHierarchyTree(GalaceanEffects.player.getCompositions()[0].rootItem, base_flags.value);
+      this.drawVFXItemTreeNode(GalaceanEffects.player.getCompositions()[0].rootItem, base_flags.value);
       ImGui.TreePop();
     }
 
@@ -117,12 +117,11 @@ export class MainEditor extends EditorWindow {
     ImGui.End();
   }
 
-  private generateHierarchyTree (item: VFXItem, baseFlags: ImGui.TreeNodeFlags) {
+  private drawVFXItemTreeNode (item: VFXItem, baseFlags: ImGui.TreeNodeFlags) {
     let nodeFlags: ImGui.TreeNodeFlags = baseFlags;
-    let isSelected = false;
+    const isSelected = Selection.activeObject === item;
 
-    if (Selection.activeObject === item) {
-      isSelected = true;
+    if (isSelected) {
       nodeFlags |= ImGui.TreeNodeFlags.Selected;
     }
     if (item.children.length === 0) {
@@ -132,7 +131,9 @@ export class MainEditor extends EditorWindow {
       nodeFlags |= ImGui.TreeNodeFlags.DefaultOpen;
     }
 
-    if (isSelected && ImGui.IsWindowFocused()) {
+    const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
+
+    if (isHoverSelectedNode) {
       ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, this.highlightBlue);
     }
     const node_open: boolean = ImGui.TreeNodeEx(item.id, nodeFlags, item.name);
@@ -141,13 +142,13 @@ export class MainEditor extends EditorWindow {
       Selection.setActiveObject(item);
     }
 
-    if (isSelected && ImGui.IsWindowFocused()) {
+    if (isHoverSelectedNode) {
       ImGui.PopStyleColor(1);
     }
 
     if (node_open) {
       for (const child of item.children) {
-        this.generateHierarchyTree(child, baseFlags);
+        this.drawVFXItemTreeNode(child, baseFlags);
       }
       ImGui.TreePop();
     }
