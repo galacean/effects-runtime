@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
+import type { GraphContext, InstantiationContext } from '../graph-context';
+import { BranchState } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
 import type { BoolValueNode } from '../graph-node';
@@ -58,6 +59,9 @@ export interface StateInfo {
   transitions: TransitionInfo[],
 }
 
+/**
+ * 状态机节点
+ */
 export class StateMachineNode extends PoseNode {
   states: StateInfo[] = [];
   private activeTransition: TransitionNode | null = null;
@@ -65,6 +69,7 @@ export class StateMachineNode extends PoseNode {
 
   /**
    * 获取当前激活状态的名称
+   * @since 2.7.0
    * @returns 当前状态名
    */
   getCurrentStateName (): string {

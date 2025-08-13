@@ -17,8 +17,9 @@ export class Animator extends Component {
 
   /**
    * 设置布尔类型参数
-   * @param name 参数名
-   * @param value 参数值
+   * @param name - 参数名
+   * @param value - 参数值
+   * @since 2.7.0
    */
   setBool (name: string, value: boolean) {
     if (this.graphInstance) {
@@ -28,8 +29,9 @@ export class Animator extends Component {
 
   /**
    * 设置浮点类型参数
-   * @param name 参数名
-   * @param value 参数值
+   * @param name - 参数名
+   * @param value - 参数值
+   * @since 2.7.0
    */
   setFloat (name: string, value: number) {
     if (this.graphInstance) {
@@ -39,7 +41,8 @@ export class Animator extends Component {
 
   /**
    * 设置触发器参数
-   * @param name 参数名
+   * @since 2.7.0
+   * @param name - 参数名
    */
   setTrigger (name: string) {
     if (this.graphInstance) {
@@ -49,7 +52,8 @@ export class Animator extends Component {
 
   /**
    * 重置触发器参数
-   * @param name 参数名
+   * @since 2.7.0
+   * @param name - 参数名
    */
   resetTrigger (name: string) {
     if (this.graphInstance) {
@@ -59,7 +63,8 @@ export class Animator extends Component {
 
   /**
    * 获取状态机节点
-   * @param machineName 状态机名称
+   * @param machineName - 状态机名称
+   * @since 2.7.0
    * @returns 状态机节点
    */
   getStateMachineNode (machineName: string): StateMachineNode | null {
