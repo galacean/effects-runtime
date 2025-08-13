@@ -320,6 +320,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.getEngine());
+    this.rootItem.setInstanceId(sourceContent.id);
     this.rootItem.name = 'rootItem';
     this.rootItem.duration = sourceContent.duration;
     this.rootItem.endBehavior = sourceContent.endBehavior;

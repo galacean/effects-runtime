@@ -174,6 +174,7 @@ export function version33Migration (json: JSONScene): JSONScene {
       items: composition.items,
       timelineAsset: composition.timelineAsset,
       sceneBindings: composition.sceneBindings,
+      item:{ id:composition.id },
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
@@ -196,6 +197,30 @@ export function version33Migration (json: JSONScene): JSONScene {
   }
 
   json.version = JSONSceneVersion['3_4'];
+
+  return json;
+}
+
+export function version34Migration (json: JSONScene): JSONScene {
+  const idToComponentMap: Record<string, spec.ComponentData> = {};
+
+  for (const componentData of json.components) {
+    idToComponentMap[componentData.id] = componentData;
+  }
+
+  // 修复合成组件的 item id 问题
+  for (const composition of json.compositions) {
+    // TODO: Update spec
+    //@ts-expect-error
+    for (const component of composition.components) {
+      const componentID = (component as spec.DataPath).id;
+
+      idToComponentMap[componentID].item.id = composition.id;
+    }
+  }
+
+  //@ts-expect-error
+  json.version = '3.5';
 
   return json;
 }

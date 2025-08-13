@@ -113,6 +113,9 @@
         {
             "id": "d84805aed8c04988a4c1d631047a0723",
             "dataType": "CompositionComponent",
+            "item": {
+                "id": "0689de41527d4720b452bba82489f6e7"
+            },
             "items": [
                 {
                     "id": "007be01e1e3746019f9cb3f97d6fe609"
