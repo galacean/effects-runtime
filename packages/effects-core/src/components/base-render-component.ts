@@ -51,9 +51,12 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   renderer: ItemRenderer;
   geometry: Geometry;
+  /**
+   * @internal
+  */
+  splits: splitsDataType = singleSplits;
 
   protected visible = true;
-  protected splits: splitsDataType = singleSplits;
   protected textureSheetAnimation?: spec.TextureSheetAnimation;
   protected readonly maskManager: MaskProcessor;
 
