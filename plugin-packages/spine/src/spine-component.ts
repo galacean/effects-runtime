@@ -192,8 +192,18 @@ export class SpineComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
+    if (!this.content) {
+      return;
+    }
+
+    for (let i = 0; i < this.content.meshGroups.length; i++) {
+      const material = this.content.meshGroups[i].mesh.material;
+
+      material.setVector2('_Size', new Vector2(this.startSize * this.scaleFactor, this.startSize * this.scaleFactor));
+    }
+
     this.maskManager.drawStencilMask(renderer);
-    this.content?.render(renderer);
+    this.content.render(renderer);
   }
 
   drawStencilMask (renderer: Renderer): void {
@@ -557,7 +567,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
     const { width } = res;
-    const scale = this.transform.scale;
     let scaleFactor;
 
     if (this.resizeRule) {
@@ -574,7 +583,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
       scaleFactor = 1 / width;
     }
     this.scaleFactor = scaleFactor;
-    this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
   }
 
   // 转换当前大小为旧缩放规则下的大小
