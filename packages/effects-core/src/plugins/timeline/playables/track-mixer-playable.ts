@@ -1,8 +1,10 @@
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
+import type { TrackInstance } from '../track-instance';
 
 export class TrackMixerPlayable extends Playable {
 
+  trackInstance: TrackInstance;
   clipPlayables: Playable[] = [];
   clipWeights: number[] = [];
 

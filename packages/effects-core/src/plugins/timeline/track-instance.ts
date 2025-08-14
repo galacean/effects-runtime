@@ -1,4 +1,5 @@
-import type { Playable, PlayableOutput } from '../cal/playable-graph';
+import type { PlayableOutput } from '../cal/playable-graph';
+import type { TrackMixerPlayable } from './playables';
 import type { TrackAsset } from './track';
 
 /**
@@ -6,16 +7,20 @@ import type { TrackAsset } from './track';
  * It is used to query the corresponding playable object based on the track asset.
  */
 export class TrackInstance {
+  boundObject: object;
+
   trackAsset: TrackAsset;
-  mixer: Playable;
+  mixer: TrackMixerPlayable;
   output: PlayableOutput;
 
   children: TrackInstance[] = [];
 
-  constructor (trackAsset: TrackAsset, mixer: Playable, output: PlayableOutput) {
+  constructor (trackAsset: TrackAsset, mixer: TrackMixerPlayable, output: PlayableOutput) {
     this.trackAsset = trackAsset;
     this.mixer = mixer;
     this.output = output;
+
+    this.mixer.trackInstance = this;
   }
 
   addChild (trackInstance: TrackInstance) {

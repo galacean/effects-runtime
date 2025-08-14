@@ -8,7 +8,7 @@ import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
 import { ActivationTrack, ParticleTrack, TrackAsset } from '../timeline';
 import type { TimelineAsset } from '../timeline';
-import { SpriteComponent, ComponentTimePlayableAsset, ComponentTimeTrack } from '../sprite/sprite-item';
+import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../sprite/sprite-item';
 import { EffectComponent } from '../../components';
 
 /**
@@ -35,15 +35,13 @@ export type ItemLinearVelOverLifetime = {
 @effectsClass(spec.DataType.ObjectBindingTrack)
 export class ObjectBindingTrack extends TrackAsset {
 
-  override updateAnimatedObject (): void {
-  }
+  create (timelineAsset: TimelineAsset, sceneBindingMap: Record<string, VFXItem>): void {
 
-  create (timelineAsset: TimelineAsset): void {
-    if (!(this.boundObject instanceof VFXItem)) {
+    const boundItem = sceneBindingMap[this.getInstanceId()];
+
+    if (!(boundItem instanceof VFXItem)) {
       return;
     }
-
-    const boundItem = this.boundObject;
 
     let hasActiveTrack = false;
 
@@ -63,7 +61,6 @@ export class ObjectBindingTrack extends TrackAsset {
     if (boundItem.getComponent(ParticleSystem)) {
       const particleTrack = timelineAsset.createTrack(ParticleTrack, this, 'ParticleTrack');
 
-      particleTrack.boundObject = this.boundObject;
       const particleClip = particleTrack.createClip(ParticleBehaviourPlayableAsset);
 
       particleClip.start = boundItem.start;
@@ -73,9 +70,8 @@ export class ObjectBindingTrack extends TrackAsset {
 
     // 添加图层帧动画动画时间 clip // TODO 待移除
     if (boundItem.getComponent(SpriteComponent)) {
-      const componentTimeTrack = timelineAsset.createTrack(ComponentTimeTrack, this, 'ComponentTimeTrack');
+      const componentTimeTrack = timelineAsset.createTrack(SpriteComponentTimeTrack, this, 'ComponentTimeTrack');
 
-      componentTimeTrack.boundObject = this.boundObject.getComponent(SpriteComponent);
       const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
 
       clip.start = boundItem.start;
@@ -85,9 +81,8 @@ export class ObjectBindingTrack extends TrackAsset {
 
     // 添加图层帧动画动画时间 clip // TODO 待移除
     if (boundItem.getComponent(EffectComponent)) {
-      const componentTimeTrack = timelineAsset.createTrack(ComponentTimeTrack, this, 'ComponentTimeTrack');
+      const componentTimeTrack = timelineAsset.createTrack(EffectComponentTimeTrack, this, 'ComponentTimeTrack');
 
-      componentTimeTrack.boundObject = this.boundObject.getComponent(EffectComponent);
       const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
 
       clip.start = boundItem.start;

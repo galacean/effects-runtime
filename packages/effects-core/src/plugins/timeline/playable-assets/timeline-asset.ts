@@ -1,12 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../../decorators';
-import { VFXItem } from '../../../vfx-item';
+import type { VFXItem } from '../../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../track';
 import { ObjectBindingTrack } from '../../cal/calculate-item';
-import type { FrameContext, PlayableGraph } from '../../cal/playable-graph';
-import { Playable, PlayableAsset } from '../../cal/playable-graph';
+import type { PlayableGraph } from '../../cal/playable-graph';
+import { PlayState, Playable, PlayableAsset } from '../../cal/playable-graph';
 import type { Constructor } from '../../../utils';
 import { TrackInstance } from '../track-instance';
+import type { SceneBinding } from 'packages/effects-core/src/comp-vfx-item';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends PlayableAsset {
@@ -29,16 +30,24 @@ export class TimelineAsset extends PlayableAsset {
   }
 
   override createPlayable (graph: PlayableGraph): Playable {
+    return new Playable(graph);
+  }
+
+  createTimelinePlayable (graph: PlayableGraph, sceneBindings: SceneBinding[]): TimelinePlayable {
     const timelinePlayable = new TimelinePlayable(graph);
+    const sceneBindingMap: Record<string, VFXItem> = {};
+
+    for (const sceneBinding of sceneBindings) {
+      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
+    }
 
     for (const track of this.tracks) {
       if (track instanceof ObjectBindingTrack) {
-        track.create(this);
+        track.create(this, sceneBindingMap);
       }
     }
 
-    this.sortTracks(this.tracks);
-    timelinePlayable.compileTracks(graph, this.flattenedTracks);
+    timelinePlayable.compileTracks(graph, this.flattenedTracks, sceneBindings);
 
     return timelinePlayable;
   }
@@ -70,19 +79,6 @@ export class TimelineAsset extends PlayableAsset {
     }
   }
 
-  private sortTracks (tracks: TrackAsset[]) {
-    const sortedTracks = [];
-
-    for (let i = 0; i < tracks.length; i++) {
-      sortedTracks.push(new TrackSortWrapper(tracks[i], i));
-    }
-    sortedTracks.sort(compareTracks);
-    tracks.length = 0;
-    for (const trackWrapper of sortedTracks) {
-      tracks.push(trackWrapper.track);
-    }
-  }
-
   override fromData (data: spec.TimelineAssetData): void {
   }
 }
@@ -91,10 +87,7 @@ export class TimelinePlayable extends Playable {
   clips: RuntimeClip[] = [];
   masterTrackInstances: TrackInstance[] = [];
 
-  override prepareFrame (context: FrameContext): void {
-  }
-
-  evaluate () {
+  evaluate (deltaTime: number) {
     const time = this.getTime();
 
     // TODO search active clips
@@ -102,9 +95,35 @@ export class TimelinePlayable extends Playable {
     for (const clip of this.clips) {
       clip.evaluateAt(time);
     }
+
+    for (const track of this.masterTrackInstances) {
+      this.tickTrack(track, deltaTime);
+    }
   }
 
-  compileTracks (graph: PlayableGraph, tracks: TrackAsset[]) {
+  tickTrack (track: TrackInstance, deltaTime: number) {
+
+    const context = track.output.context;
+
+    context.deltaTime = deltaTime;
+
+    track.output.setUserData(track.boundObject);
+
+    for (const clip of track.mixer.clipPlayables) {
+      if (clip.getPlayState() === PlayState.Playing) {
+        clip.processFrame(context);
+      }
+    }
+
+    track.mixer.evaluate(context);
+
+    for (const child of track.children) {
+      this.tickTrack(child, deltaTime);
+    }
+  }
+
+  compileTracks (graph: PlayableGraph, tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
+
     const outputTrack: TrackAsset[] = tracks;
 
     // map for searching track instance with track asset guid
@@ -115,8 +134,6 @@ export class TimelinePlayable extends Playable {
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
       const trackOutput = track.createOutput();
-
-      trackOutput.setUserData(track.boundObject);
 
       graph.addOutput(trackOutput);
       trackOutput.setSourcePlayable(trackMixPlayable);
@@ -141,32 +158,24 @@ export class TimelinePlayable extends Playable {
         trackInstance.addChild(childTrackInstance);
       }
     }
-  }
-}
 
-export class TrackSortWrapper {
-  track: TrackAsset;
-  originalIndex: number;
+    for (const sceneBinding of sceneBindings) {
+      trackInstanceMap[sceneBinding.key.getInstanceId()].boundObject = sceneBinding.value;
+    }
 
-  constructor (track: TrackAsset, originalIndex: number) {
-    this.track = track;
-    this.originalIndex = originalIndex;
-  }
-}
-
-function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
-  const bindingA = a.track.boundObject;
-  const bindingB = b.track.boundObject;
-
-  if (!(bindingA instanceof VFXItem) || !(bindingB instanceof VFXItem)) {
-    return a.originalIndex - b.originalIndex;
+    for (const trackInstance of this.masterTrackInstances) {
+      this.updateTrackAnimatedObject(trackInstance);
+    }
   }
 
-  if (VFXItem.isAncestor(bindingA, bindingB)) {
-    return -1;
-  } else if (VFXItem.isAncestor(bindingB, bindingA)) {
-    return 1;
-  } else {
-    return a.originalIndex - b.originalIndex; // 非父子关系的元素保持原始顺序
+  private updateTrackAnimatedObject (trackInstance: TrackInstance) {
+    for (const subTrack of trackInstance.children) {
+      const boundObject = subTrack.trackAsset.updateAnimatedObject(trackInstance.boundObject);
+
+      if (!subTrack.boundObject) {
+        subTrack.boundObject = boundObject;
+      }
+      this.updateTrackAnimatedObject(subTrack);
+    }
   }
 }

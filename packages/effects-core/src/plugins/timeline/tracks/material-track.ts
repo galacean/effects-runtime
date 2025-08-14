@@ -1,4 +1,4 @@
-import { RendererComponent } from '../../../components';
+import type { RendererComponent } from '../../../components';
 import { effectsClass, serialize } from '../../../decorators';
 import { TrackAsset } from '../track';
 
@@ -8,11 +8,7 @@ export class MaterialTrack extends TrackAsset {
   @serialize()
   index: number;
 
-  override updateAnimatedObject () {
-    if (!(this.parent.boundObject instanceof RendererComponent)) {
-      return;
-    }
-    this.parent.boundObject;
-    this.boundObject = this.parent.boundObject.materials[this.index];
+  override updateAnimatedObject (boundObject: object): object {
+    return (boundObject as RendererComponent).materials[this.index];
   }
 }

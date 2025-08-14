@@ -15,8 +15,4 @@ export class FloatPropertyTrack extends PropertyTrack {
 
     return mixer;
   }
-
-  override updateAnimatedObject () {
-    this.boundObject = this.parent.boundObject;
-  }
 }

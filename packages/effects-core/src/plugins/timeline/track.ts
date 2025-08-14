@@ -43,7 +43,6 @@ export class TimelineClip {
 @effectsClass(spec.DataType.TrackAsset)
 export class TrackAsset extends PlayableAsset {
   name: string;
-  boundObject: object;
   parent: TrackAsset;
   trackType = TrackType.MasterTrack;
 
@@ -58,10 +57,8 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以获取自定义对象绑定
    */
-  updateAnimatedObject () {
-    if (this.parent) {
-      this.boundObject = this.parent.boundObject;
-    }
+  updateAnimatedObject (boundObject: object): object {
+    return boundObject;
   }
 
   /**
@@ -102,7 +99,7 @@ export class TrackAsset extends PlayableAsset {
 
       clipPlayable.setDuration(timelineClip.duration);
 
-      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer, this);
+      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer);
 
       runtimeClips.push(clip);
 
@@ -177,20 +174,14 @@ export class RuntimeClip {
   clip: TimelineClip;
   playable: Playable;
   parentMixer: TrackMixerPlayable;
-  track: TrackAsset;
 
   // TODO: 粒子结束行为有特殊逻辑，这里 cache 一下避免每帧查询组件导致 GC。粒子结束行为判断统一后可移除
-  particleSystem: ParticleSystem;
+  private particleSystem: ParticleSystem;
 
-  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: TrackMixerPlayable, track: TrackAsset) {
+  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: TrackMixerPlayable) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
-    this.track = track;
-
-    if (this.track.boundObject instanceof VFXItem) {
-      this.particleSystem = this.track.boundObject.getComponent(ParticleSystem);
-    }
   }
 
   set enable (value: boolean) {
@@ -202,16 +193,26 @@ export class RuntimeClip {
     }
   }
 
+  getParticleSystem () {
+    if (!this.particleSystem) {
+      if (this.parentMixer.trackInstance.boundObject instanceof VFXItem) {
+        this.particleSystem = this.parentMixer.trackInstance.boundObject.getComponent(ParticleSystem);
+      }
+    }
+
+    return this.particleSystem;
+  }
+
   evaluateAt (localTime: number) {
     const clip = this.clip;
 
     let weight = 1.0;
     let ended = false;
     let started = false;
-    const boundObject = this.track.boundObject;
+    const boundObject = this.parentMixer.trackInstance.boundObject;
 
     if (localTime >= clip.start + clip.duration && clip.endBehavior === spec.EndBehavior.destroy) {
-      if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.particleSystem && !this.particleSystem.destroyed) {
+      if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.getParticleSystem() && !this.getParticleSystem().destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
