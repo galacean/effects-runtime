@@ -3,7 +3,6 @@ import { effectsClass, serialize } from '../../../decorators';
 import type { VFXItem } from '../../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../track';
 import { ObjectBindingTrack } from '../../cal/calculate-item';
-import type { PlayableGraph } from '../../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset } from '../../cal/playable-graph';
 import type { Constructor } from '../../../utils';
 import { TrackInstance } from '../track-instance';
@@ -29,12 +28,12 @@ export class TimelineAsset extends PlayableAsset {
     return this.cacheFlattenedTracks;
   }
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    return new Playable(graph);
+  override createPlayable (): Playable {
+    return new Playable();
   }
 
-  createTimelinePlayable (graph: PlayableGraph, sceneBindings: SceneBinding[]): TimelinePlayable {
-    const timelinePlayable = new TimelinePlayable(graph);
+  createTimelinePlayable (sceneBindings: SceneBinding[]): TimelinePlayable {
+    const timelinePlayable = new TimelinePlayable();
     const sceneBindingMap: Record<string, VFXItem> = {};
 
     for (const sceneBinding of sceneBindings) {
@@ -47,7 +46,7 @@ export class TimelineAsset extends PlayableAsset {
       }
     }
 
-    timelinePlayable.compileTracks(graph, this.flattenedTracks, sceneBindings);
+    timelinePlayable.compileTracks(this.flattenedTracks, sceneBindings);
 
     return timelinePlayable;
   }
@@ -101,28 +100,7 @@ export class TimelinePlayable extends Playable {
     }
   }
 
-  tickTrack (track: TrackInstance, deltaTime: number) {
-
-    const context = track.output.context;
-
-    context.deltaTime = deltaTime;
-
-    track.output.setUserData(track.boundObject);
-
-    for (const clip of track.mixer.clipPlayables) {
-      if (clip.getPlayState() === PlayState.Playing) {
-        clip.processFrame(context);
-      }
-    }
-
-    track.mixer.evaluate(context);
-
-    for (const child of track.children) {
-      this.tickTrack(child, deltaTime);
-    }
-  }
-
-  compileTracks (graph: PlayableGraph, tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
+  compileTracks (tracks: TrackAsset[], sceneBindings: SceneBinding[]) {
 
     const outputTrack: TrackAsset[] = tracks;
 
@@ -131,11 +109,10 @@ export class TimelinePlayable extends Playable {
 
     for (const track of outputTrack) {
       // create track mixer and track output
-      const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
+      const trackMixPlayable = track.createPlayableGraph(this.clips);
 
       const trackOutput = track.createOutput();
 
-      graph.addOutput(trackOutput);
       trackOutput.setSourcePlayable(trackMixPlayable);
 
       // create track instance
@@ -165,6 +142,27 @@ export class TimelinePlayable extends Playable {
 
     for (const trackInstance of this.masterTrackInstances) {
       this.updateTrackAnimatedObject(trackInstance);
+    }
+  }
+
+  private tickTrack (track: TrackInstance, deltaTime: number) {
+
+    const context = track.output.context;
+
+    context.deltaTime = deltaTime;
+
+    track.output.setUserData(track.boundObject);
+
+    for (const clip of track.mixer.clipPlayables) {
+      if (clip.getPlayState() === PlayState.Playing) {
+        clip.processFrame(context);
+      }
+    }
+
+    track.mixer.evaluate(context);
+
+    for (const child of track.children) {
+      this.tickTrack(child, deltaTime);
     }
   }
 

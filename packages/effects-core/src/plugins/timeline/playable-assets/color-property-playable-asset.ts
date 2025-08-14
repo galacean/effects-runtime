@@ -1,5 +1,5 @@
 import { effectsClass, serialize } from '../../../decorators';
-import type { Playable, PlayableGraph } from '../../cal/playable-graph';
+import type { Playable } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
@@ -11,8 +11,8 @@ export class ColorPropertyPlayableAsset extends PlayableAsset {
   @serialize()
   curveData: spec.ColorCurveValue;
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    const clipPlayable = new PropertyClipPlayable<Color>(graph);
+  override createPlayable (): Playable {
+    const clipPlayable = new PropertyClipPlayable<Color>();
 
     clipPlayable.curve = createValueGetter(this.curveData);
     clipPlayable.value = clipPlayable.curve.getValue(0);

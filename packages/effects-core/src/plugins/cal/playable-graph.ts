@@ -2,60 +2,6 @@ import { EffectsObject } from '../../effects-object';
 import type { Disposable } from '../../utils';
 
 /**
- * 动画图，负责更新所有的动画节点
- * @since 2.0.0
- */
-export class PlayableGraph {
-  private playableOutputs: PlayableOutput[] = [];
-  private playables: Playable[] = [];
-
-  evaluate (dt: number) {
-    // 初始化输出节点状态
-    for (const playableOutput of this.playableOutputs) {
-      playableOutput.context.deltaTime = dt;
-    }
-
-    // 执行生命周期函数
-    for (const playableOutput of this.playableOutputs) {
-      this.prepareFrameWithRoot(playableOutput);
-    }
-    for (const playableOutput of this.playableOutputs) {
-      this.processFrameWithRoot(playableOutput);
-    }
-
-    // 更新节点时间
-    // for (const playable of this.playables) {
-    //   this.updatePlayableTime(playable, dt / 1000);
-    // }
-  }
-
-  addOutput (output: PlayableOutput) {
-    this.playableOutputs.push(output);
-  }
-
-  addPlayable (playable: Playable) {
-    this.playables.push(playable);
-  }
-
-  private processFrameWithRoot (output: PlayableOutput) {
-    output.sourcePlayable.processFrame(output.context);
-    output.processFrame();
-  }
-
-  private prepareFrameWithRoot (output: PlayableOutput) {
-    output.prepareFrame();
-    output.sourcePlayable.prepareFrame(output.context);
-  }
-
-  private updatePlayableTime (playable: Playable, deltaTime: number) {
-    if (playable.getPlayState() !== PlayState.Playing) {
-      return;
-    }
-    playable.setTime(playable.getTime() + deltaTime);
-  }
-}
-
-/**
  * 动画图可播放节点对象
  * @since 2.0.0
  */
@@ -72,9 +18,7 @@ export class Playable implements Disposable {
    */
   protected time: number = 0;
 
-  constructor (graph: PlayableGraph, inputCount = 0) {
-    graph.addPlayable(this);
-  }
+  constructor () {}
 
   play () {
     switch (this.playState) {
@@ -121,14 +65,6 @@ export class Playable implements Disposable {
   getPlayState () {
     return this.playState;
   }
-
-  // onGraphStart () {
-
-  // }
-
-  // onGraphStop () {
-
-  // }
 
   // onPlayablePlay (context: FrameContext) {
 
@@ -212,7 +148,7 @@ export class PlayableOutput {
 }
 
 export abstract class PlayableAsset extends EffectsObject {
-  abstract createPlayable (graph: PlayableGraph): Playable;
+  abstract createPlayable (): Playable;
 }
 
 export interface FrameContext {

@@ -7,7 +7,7 @@ import type { BezierCurve, ColorCurve, ValueGetter, Vector3Curve } from '../../m
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
-import type { FrameContext, PlayableGraph } from './playable-graph';
+import type { FrameContext } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import { VFXItem } from '../../vfx-item';
@@ -208,8 +208,8 @@ export class TransformAnimationPlayable extends AnimationPlayable {
 export class TransformPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformPlayableAssetData;
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    const transformAnimationPlayable = new TransformAnimationPlayable(graph);
+  override createPlayable (): Playable {
+    const transformAnimationPlayable = new TransformAnimationPlayable();
 
     transformAnimationPlayable.data = this.transformAnimationData;
 
@@ -254,8 +254,8 @@ export class ActivationPlayable extends Playable {
 
 @effectsClass(spec.DataType.ActivationPlayableAsset)
 export class ActivationPlayableAsset extends PlayableAsset {
-  override createPlayable (graph: PlayableGraph): Playable {
-    return new ActivationPlayable(graph);
+  override createPlayable (): Playable {
+    return new ActivationPlayable();
   }
 }
 

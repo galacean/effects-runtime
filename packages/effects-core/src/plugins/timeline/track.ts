@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import { VFXItem } from '../../vfx-item';
-import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
 import type { Constructor } from '../../utils';
@@ -64,8 +63,8 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以创建自定义混合器
    */
-  createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    return new TrackMixerPlayable(graph);
+  createTrackMixer (): TrackMixerPlayable {
+    return new TrackMixerPlayable();
   }
 
   createOutput (): PlayableOutput {
@@ -74,28 +73,28 @@ export class TrackAsset extends PlayableAsset {
     return output;
   }
 
-  createPlayableGraph (graph: PlayableGraph, runtimeClips: RuntimeClip[]) {
-    const mixerPlayable = this.createMixerPlayableGraph(graph, runtimeClips);
+  createPlayableGraph (runtimeClips: RuntimeClip[]) {
+    const mixerPlayable = this.createMixerPlayableGraph(runtimeClips);
 
     return mixerPlayable;
   }
 
-  createMixerPlayableGraph (graph: PlayableGraph, runtimeClips: RuntimeClip[]) {
+  createMixerPlayableGraph (runtimeClips: RuntimeClip[]) {
     const clips: TimelineClip[] = [];
 
     for (const clip of this.clips) {
       clips.push(clip);
     }
-    const mixerPlayable = this.compileClips(graph, clips, runtimeClips);
+    const mixerPlayable = this.compileClips(clips, runtimeClips);
 
     return mixerPlayable;
   }
 
-  compileClips (graph: PlayableGraph, timelineClips: TimelineClip[], runtimeClips: RuntimeClip[]) {
-    const mixer = this.createTrackMixer(graph);
+  compileClips (timelineClips: TimelineClip[], runtimeClips: RuntimeClip[]) {
+    const mixer = this.createTrackMixer();
 
     for (const timelineClip of timelineClips) {
-      const clipPlayable = this.createClipPlayable(graph, timelineClip);
+      const clipPlayable = this.createClipPlayable(timelineClip);
 
       clipPlayable.setDuration(timelineClip.duration);
 
@@ -110,8 +109,8 @@ export class TrackAsset extends PlayableAsset {
     return mixer;
   }
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    return new Playable(graph);
+  override createPlayable (): Playable {
+    return new Playable();
   }
 
   getChildTracks () {
@@ -153,8 +152,8 @@ export class TrackAsset extends PlayableAsset {
     this.clips.push(clip);
   }
 
-  private createClipPlayable (graph: PlayableGraph, clip: TimelineClip) {
-    return clip.asset.createPlayable(graph);
+  private createClipPlayable (clip: TimelineClip) {
+    return clip.asset.createPlayable();
   }
 
   override fromData (data: spec.EffectsObjectData): void {

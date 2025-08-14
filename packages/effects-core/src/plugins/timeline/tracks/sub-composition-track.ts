@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { CompositionComponent } from '../../../comp-vfx-item';
 import { effectsClass } from '../../../decorators';
 import { VFXItem } from '../../../vfx-item';
-import type { PlayableGraph } from '../../cal/playable-graph';
 import type { TrackMixerPlayable } from '../playables';
 import { SubCompositionMixerPlayable } from '../playables';
 import { TrackAsset } from '../track';
@@ -18,7 +17,7 @@ export class SubCompositionTrack extends TrackAsset {
     return boundObject.getComponent(CompositionComponent);
   }
 
-  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    return new SubCompositionMixerPlayable(graph);
+  override createTrackMixer (): TrackMixerPlayable {
+    return new SubCompositionMixerPlayable();
   }
 }

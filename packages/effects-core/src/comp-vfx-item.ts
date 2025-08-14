@@ -6,7 +6,7 @@ import { Component } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType } from './plugins';
-import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
+import { PlayState } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';
@@ -42,14 +42,13 @@ export class CompositionComponent extends Component {
   @serialize()
   private timelineAsset: TimelineAsset;
   private timelinePlayable: TimelinePlayable;
-  private graph: PlayableGraph = new PlayableGraph();
 
   override onStart (): void {
     if (!this.timelineAsset) {
       this.timelineAsset = new TimelineAsset(this.engine);
     }
     // this.resolveBindings();
-    this.timelinePlayable = this.timelineAsset.createTimelinePlayable(this.graph, this.sceneBindings);
+    this.timelinePlayable = this.timelineAsset.createTimelinePlayable(this.sceneBindings);
 
     this.item.composition?.refContent.push(this.item);
   }
@@ -75,7 +74,6 @@ export class CompositionComponent extends Component {
     this.timelinePlayable.setTime(time);
 
     this.timelinePlayable.evaluate(dt / 1000);
-    // this.graph.evaluate(dt / 1000);
   }
 
   override onEnable () {

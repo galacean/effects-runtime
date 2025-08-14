@@ -6,7 +6,7 @@ import { BaseRenderComponent, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
+import type { FrameContext } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { TrackAsset } from '../timeline/track';
 import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
@@ -28,8 +28,8 @@ let seed = 0;
 export class SpriteColorPlayableAsset extends PlayableAsset {
   data: ColorPlayableAssetData;
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    const spriteColorPlayable = new ColorPlayable(graph);
+  override createPlayable (): Playable {
+    const spriteColorPlayable = new ColorPlayable();
 
     spriteColorPlayable.create(this.data);
 
@@ -42,8 +42,8 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 }
 
 export class ComponentTimeTrack extends TrackAsset {
-  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    return new TrackMixerPlayable(graph);
+  override createTrackMixer (): TrackMixerPlayable {
+    return new TrackMixerPlayable();
   }
 }
 
@@ -61,8 +61,8 @@ export class EffectComponentTimeTrack extends ComponentTimeTrack {
 }
 
 export class ComponentTimePlayableAsset extends PlayableAsset {
-  override createPlayable (graph: PlayableGraph): Playable {
-    const componentTimePlayable = new ComponentTimePlayable(graph);
+  override createPlayable (): Playable {
+    const componentTimePlayable = new ComponentTimePlayable();
 
     return componentTimePlayable;
   }

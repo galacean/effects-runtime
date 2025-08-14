@@ -1,5 +1,5 @@
 import { VFXItem } from '../../vfx-item';
-import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
+import type { FrameContext } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { ParticleSystem } from './particle-system';
 
@@ -44,8 +44,8 @@ export class ParticleBehaviourPlayable extends Playable {
 }
 
 export class ParticleBehaviourPlayableAsset extends PlayableAsset {
-  override createPlayable (graph: PlayableGraph): Playable {
-    return new ParticleBehaviourPlayable(graph);
+  override createPlayable (): Playable {
+    return new ParticleBehaviourPlayable();
   }
 }
 
