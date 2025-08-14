@@ -104,18 +104,16 @@ export class TimelinePlayable extends Playable {
 
     const outputTrack: TrackAsset[] = tracks;
 
-    // map for searching track instance with track asset guid
+    // Map for searching track instance with track asset guid
     const trackInstanceMap: Record<string, TrackInstance> = {};
 
     for (const track of outputTrack) {
-      // create track mixer and track output
+      // Create track mixer and track output
       const trackMixPlayable = track.createPlayableGraph(this.clips);
 
       const trackOutput = track.createOutput();
 
-      trackOutput.setSourcePlayable(trackMixPlayable);
-
-      // create track instance
+      // Create track instance
       const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
 
       trackInstanceMap[track.getInstanceId()] = trackInstance;
@@ -125,7 +123,7 @@ export class TimelinePlayable extends Playable {
       }
     }
 
-    // build trackInstance tree
+    // Build trackInstance tree
     for (const track of outputTrack) {
       const trackInstance = trackInstanceMap[track.getInstanceId()];
 

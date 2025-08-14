@@ -105,10 +105,6 @@ export class PlayableOutput {
    * 绑定到的动画 item
    */
   userData: object;
-  /**
-   * 源 playable 对象
-   */
-  sourcePlayable: Playable;
   context: FrameContext;
   /**
    * 当前本地播放的时间
@@ -120,10 +116,6 @@ export class PlayableOutput {
       deltaTime: 0,
       output: this,
     };
-  }
-
-  setSourcePlayable (playable: Playable) {
-    this.sourcePlayable = playable;
   }
 
   setUserData (value: object) {
