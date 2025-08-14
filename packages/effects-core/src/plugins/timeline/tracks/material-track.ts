@@ -1,4 +1,4 @@
-import type { RendererComponent } from '../../../components';
+import { RendererComponent } from '../../../components';
 import { effectsClass, serialize } from '../../../decorators';
 import { TrackAsset } from '../track';
 
@@ -9,6 +9,16 @@ export class MaterialTrack extends TrackAsset {
   index: number;
 
   override updateAnimatedObject (boundObject: object): object {
-    return (boundObject as RendererComponent).materials[this.index];
+    if (!(boundObject instanceof RendererComponent)) {
+      throw new Error('MaterialTrack: expected a RendererComponent bound object.');
+    }
+
+    const materials = boundObject.materials;
+
+    if (this.index >= materials.length) {
+      throw new Error(`MaterialTrack: material index ${this.index} out of bounds (length=${materials.length}).`);
+    }
+
+    return materials[this.index];
   }
 }
