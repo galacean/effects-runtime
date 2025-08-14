@@ -168,9 +168,9 @@ export class TimelinePlayable extends Playable {
 
   private updateTrackAnimatedObject (trackInstance: TrackInstance) {
     for (const subTrack of trackInstance.children) {
-      const boundObject = subTrack.trackAsset.updateAnimatedObject(trackInstance.boundObject);
-
       if (!subTrack.boundObject) {
+        const boundObject = subTrack.trackAsset.updateAnimatedObject(trackInstance.boundObject);
+
         subTrack.boundObject = boundObject;
       }
       this.updateTrackAnimatedObject(subTrack);
