@@ -1,12 +1,12 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
-import type { AnimationClip, AnimationCurve, ColorAnimationCurve, FloatAnimationCurve } from '../../cal/calculate-vfx-item';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeData, PoseNode } from '../graph-node';
 import { nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
 import type { Skeleton } from '../skeleton';
 import type { Pose } from '../pose';
+import type { AnimationClip, AnimationCurve, FloatAnimationCurve, ColorAnimationCurve } from 'packages/effects-core/src/animation';
 
 @nodeDataClass(spec.NodeDataType.AnimationClipNodeData)
 export class AnimationClipNodeData extends GraphNodeData {

@@ -1,3 +1,4 @@
+export * from './activation-playable-asset';
 export * from './color-property-playable-asset';
 export * from './float-property-playable-asset';
 export * from './sub-composition-playable-asset';

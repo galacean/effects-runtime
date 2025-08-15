@@ -1,4 +1,5 @@
 export * from './activation-mixer-playable';
+export * from './activation-playable';
 export * from './color-property-mixer-playable';
 export * from './float-property-mixer-playable';
 export * from './particle-mixer-playable';
