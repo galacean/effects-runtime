@@ -10,3 +10,4 @@ export * from './sub-composition-mixer-playable';
 export * from './track-mixer-playable';
 export * from './transform-mixer-playable';
 export * from './vector-property-mixer-playable';
+export * from './transform-playable';

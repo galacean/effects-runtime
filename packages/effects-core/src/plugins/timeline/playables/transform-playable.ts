@@ -1,13 +1,13 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { effectsClass } from '../../decorators';
-import type { ItemLinearVelOverLifetime, ValueGetter } from '../../math';
-import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
-import { VFXItem } from '../../vfx-item';
-import type { FrameContext } from '../timeline/playable';
-import { Playable } from '../timeline/playable';
-import { PlayableAsset } from '../timeline/playable';
+import { effectsClass } from '../../../decorators';
+import type { ItemLinearVelOverLifetime, ValueGetter } from '../../../math';
+import { calculateTranslation, createValueGetter, ensureVec3 } from '../../../math';
+import { VFXItem } from '../../../vfx-item';
+import type { FrameContext } from '../playable';
+import { Playable } from '../playable';
+import { PlayableAsset } from '../playable';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -26,7 +26,7 @@ export type ItemBasicTransform = {
 /**
  * @since 2.0.0
  */
-export class TransformAnimationPlayable extends Playable {
+export class TransformPlayable extends Playable {
   originalTransform: ItemBasicTransform;
   protected sizeSeparateAxes: boolean;
   protected sizeXOverLifetime: ValueGetter<number>;
@@ -174,9 +174,6 @@ export class TransformAnimationPlayable extends Playable {
       const startSize = this.originalTransform.scale;
 
       boundItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
-      // this.animationStream.setCurveValue('transform', 'scale.x', tempSize.x * startSize.x);
-      // this.animationStream.setCurveValue('transform', 'scale.y', tempSize.y * startSize.y);
-      // this.animationStream.setCurveValue('transform', 'scale.z', tempSize.z * startSize.z);
     }
 
     if (this.rotationOverLifetime) {
@@ -190,9 +187,6 @@ export class TransformAnimationPlayable extends Playable {
       const rot = tempRot.addEulers(this.originalTransform.rotation, tempRot);
 
       boundItem.transform.setRotation(rot.x, rot.y, rot.z);
-      // this.animationStream.setCurveValue('transform', 'rotation.x', rot.x);
-      // this.animationStream.setCurveValue('transform', 'rotation.y', rot.y);
-      // this.animationStream.setCurveValue('transform', 'rotation.z', rot.z);
     }
 
     if (this.positionOverLifetime) {
@@ -203,9 +197,6 @@ export class TransformAnimationPlayable extends Playable {
         pos.add(this.originalTransform.path.getValue(life));
       }
       boundItem.transform.setPosition(pos.x, pos.y, pos.z);
-      // this.animationStream.setCurveValue('transform', 'position.x', pos.x);
-      // this.animationStream.setCurveValue('transform', 'position.y', pos.y);
-      // this.animationStream.setCurveValue('transform', 'position.z', pos.z);
     }
   }
 }
@@ -215,11 +206,11 @@ export class TransformPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformPlayableAssetData;
 
   override createPlayable (): Playable {
-    const transformAnimationPlayable = new TransformAnimationPlayable();
+    const transformPlayable = new TransformPlayable();
 
-    transformAnimationPlayable.data = this.transformAnimationData;
+    transformPlayable.data = this.transformAnimationData;
 
-    return transformAnimationPlayable;
+    return transformPlayable;
   }
 
   override fromData (data: TransformPlayableAssetData): void {
