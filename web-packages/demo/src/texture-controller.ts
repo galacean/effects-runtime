@@ -57,10 +57,10 @@ export class TextureController {
       initialOffsetU: -0.30,    // 初始U偏移量 (可调整)
       initialOffsetV: 0.0,    // 初始V偏移量 (可调整)
       move1TargetU: 0.1198,  // 第一段移动u偏移量 (从初始偏移量开始)
-      move1TargetV: -0.0112,   // 第一段移动v偏移量
+      move1TargetV: -0.0,   // 第一段移动v偏移量
       move2TargetU: 0.2382,  // 第二段移动u偏移量 (从第一阶段结束位置开始)
-      move2TargetV: -0.0141,   // 第二段移动v偏移量
-      fadeInDeltaV: 0.0413,  // 淡入阶段v偏移量
+      move2TargetV: -0.0,   // 第二段移动v偏移量
+      fadeInDeltaV: 0.0,  // 淡入阶段v偏移量
     },
 
     // 绿色光参数
@@ -72,10 +72,10 @@ export class TextureController {
       fadeOutStart: 2.375,    // 淡出开始
       fadeOutEnd: 3.458,      // 淡出结束
       initialOffsetU: -0.20,    // 初始U偏移量 (可调整)
-      initialOffsetV: -0.10,    // 初始V偏移量 (可调整)
+      initialOffsetV: -0.0,    // 初始V偏移量 (可调整)
       moveTargetU: 0.266,   // 移动u偏移量
-      moveTargetV: -0.0542,    // 移动v偏移量
-      fadeInDeltaV: 0.0333,  // 淡入阶段v偏移量
+      moveTargetV: -0.00,    // 移动v偏移量
+      fadeInDeltaV: 0.0,  // 淡入阶段v偏移量
     },
   };
 
@@ -86,16 +86,16 @@ export class TextureController {
   listeningFadeOutEnd = 3.4;
   listeningDistance = 0.5; // 对应UV偏移0.5
 
-  inputDuration = 3.0;
-  inputFadeIn1 = 0.333;
-  inputFadeIn2 = 0.5417; // 第二纹理的渐显时间
-  inputInitialOffsetU = -0.28; // 第二阶段初始U偏移量
+  inputDuration = 3.7;
+  inputFadeIn1 = 0.533;
+  inputFadeIn2 = 0.7417; // 第二纹理的渐显时间
+  inputInitialOffsetU = -0.48; // 第二阶段初始U偏移量
 
-  inputFadeOutStart = 1.8333;
-  InputFadeOutEnd = 2.4167;
-  inputDistance1 = 0.6315; // 对应UV偏移1.0（蓝色纹理）
-  inputDistance2 = 0.8164; // 对应UV偏移1.5（绿色纹理）
-  textureInterval = 583;        // 纹理B生成延迟(毫秒)
+  inputFadeOutStart = 2.9333;
+  InputFadeOutEnd = 3.6167;
+  inputDistance1 = 1.2315; // 对应UV偏移（蓝色纹理）
+  inputDistance2 = 1.4164; // 对应UV偏移（绿色纹理）
+  textureInterval = 733;        // 纹理B生成延迟(毫秒)
 
   onStage: (stage: MainStage) => void = () => {};
   onUpdate: (textures: TexState[]) => void = () => {};
@@ -301,7 +301,8 @@ export class TextureController {
 
       // 复制初始偏移值
       texB.initialOffsetU = texA.initialOffsetU;
-      texB.initialOffsetV = texA.initialOffsetV; // 继承垂直偏移量
+      texB.initialOffsetV = (texA.initialOffsetV || 0) - 0.1; // 继承垂直偏移量
+
 
       texB.color = this.secondStageSecondaryColor;
       texB.colorMode = 0;
@@ -446,10 +447,10 @@ export class TextureController {
           tex.x -= 0.235;
         }
 
-        // DEBUG: 输出位置信息
-        if (DEBUG && tex.type === 'input' && tex.isSecondTexture) {
-          console.log(`纹理 ${tex.id} 位置: x=${tex.x.toFixed(4)}, 初始偏移=${tex.initialOffsetU}, 距离=${tex.distance}, 进度=${lifeProgress.toFixed(4)}`);
-        }
+        // // DEBUG: 输出位置信息
+        // if (DEBUG && tex.type === 'input' && tex.isSecondTexture) {
+        //   console.log(`纹理 ${tex.id} 位置: x=${tex.x.toFixed(4)}, 初始偏移=${tex.initialOffsetU}, 距离=${tex.distance}, 进度=${lifeProgress.toFixed(4)}`);
+        // }
 
         // 更新透明度
         if (elapsed < tex.fadeIn) {
@@ -627,7 +628,7 @@ export class TextureController {
       const groupTextures = this.textures.filter(t => t.groupId === this.listeningGroupId);
       const lastEndTime = Math.max(...groupTextures.map(t => t.startedAt + t.duration));
 
-      groupEnded = now >= lastEndTime;
+      groupEnded = now >= lastEndTime ;
 
       if (groupEnded) {
         if (volume > this.volumeThreshold) {
@@ -649,6 +650,7 @@ export class TextureController {
     // 监听阶段fadeOut区间持续检测 - 确保与组检测协调
     if (
       tex.type === 'listening' &&
+      tex.textureType === 'green' &&
       elapsed >= this.listeningFadeOutStart &&
       elapsed < this.listeningFadeOutEnd &&
       !tex.triggered
@@ -667,9 +669,10 @@ export class TextureController {
     }
 
     // 输入阶段触发检测：在显示阶段后期（75%进度）开始检测
-    if (tex.type === 'input' && tex.batchId === this.inputBatchId) {
+    if (tex.type === 'input' && tex.batchId === this.inputBatchId&& 
+      tex.isSecondTexture) {
       // 计算触发开始时间：显示阶段结束前25%时间
-      const triggerStart = tex.fadeOutStart - (tex.fadeOutStart - tex.fadeIn) * 0.20;
+      const triggerStart = tex.fadeOutStart - (tex.fadeOutStart - tex.fadeIn) * 0.50;
 
       if (elapsed >= triggerStart && elapsed < tex.fadeOutEnd) {
         // 查找当前批次所有纹理
