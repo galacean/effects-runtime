@@ -1,7 +1,7 @@
 import type { FixedNumberExpression } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../../decorators';
-import type { Playable } from '../../cal/playable-graph';
-import { PlayableAsset } from '../../cal/playable-graph';
+import type { Playable } from '../playable';
+import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
 import * as spec from '@galacean/effects-specification';

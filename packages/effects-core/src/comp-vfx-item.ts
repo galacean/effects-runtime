@@ -7,7 +7,7 @@ import type { CompositionHitTestOptions } from './composition';
 import type { Region, TrackAsset } from './plugins';
 import { TimelineInstance } from './plugins';
 import { HitTestType } from './plugins';
-import { PlayState } from './plugins/cal/playable-graph';
+import { PlayState } from './plugins/timeline/playable';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';

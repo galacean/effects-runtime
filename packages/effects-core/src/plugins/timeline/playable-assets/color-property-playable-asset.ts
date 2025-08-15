@@ -1,6 +1,6 @@
 import { effectsClass, serialize } from '../../../decorators';
-import type { Playable } from '../../cal/playable-graph';
-import { PlayableAsset } from '../../cal/playable-graph';
+import type { Playable } from '../playable';
+import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
 import type { Color } from '@galacean/effects-math/es/core';

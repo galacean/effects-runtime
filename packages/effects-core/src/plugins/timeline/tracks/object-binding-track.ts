@@ -1,33 +1,12 @@
 import * as spec from '@galacean/effects-specification';
-import type { Euler } from '@galacean/effects-math/es/core/euler';
-import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { effectsClass } from '../../decorators';
-import type { ValueGetter } from '../../math';
-import { VFXItem } from '../../vfx-item';
-import { ParticleSystem } from '../particle/particle-system';
-import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
-import { ActivationTrack, ParticleTrack, TrackAsset } from '../timeline';
-import type { TimelineAsset } from '../timeline';
-import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../sprite/sprite-item';
-import { EffectComponent } from '../../components';
-
-/**
- * 基础位移属性数据
- */
-export type ItemBasicTransform = {
-  position: Vector3,
-  rotation: Euler,
-  scale: Vector3,
-  path?: ValueGetter<Vector3>,
-};
-
-export type ItemLinearVelOverLifetime = {
-  asMovement?: boolean,
-  x?: ValueGetter<number>,
-  y?: ValueGetter<number>,
-  z?: ValueGetter<number>,
-  enabled?: boolean,
-};
+import { effectsClass } from '../../../decorators';
+import { VFXItem } from '../../../vfx-item';
+import { ParticleSystem } from '../../particle/particle-system';
+import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
+import { ActivationTrack, ParticleTrack, TrackAsset } from '..';
+import type { TimelineAsset } from '..';
+import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
+import { EffectComponent } from '../../../components';
 
 /**
  * @since 2.0.0

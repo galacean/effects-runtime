@@ -1,4 +1,4 @@
-import type { PlayableOutput } from '../cal/playable-graph';
+import type { PlayableOutput } from './playable';
 import type { TrackMixerPlayable } from './playables';
 import type { TrackAsset } from './track';
 

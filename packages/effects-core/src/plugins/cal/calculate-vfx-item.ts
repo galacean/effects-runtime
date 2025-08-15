@@ -2,22 +2,31 @@ import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
-import type { ValueGetter } from '../../math';
+import type { ItemLinearVelOverLifetime, ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { VFXItem } from '../../vfx-item';
-import { AnimationPlayable } from './animation-playable';
-import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
-import type { FrameContext, Playable } from './playable-graph';
-import { PlayableAsset } from './playable-graph';
+import type { FrameContext } from '../timeline/playable';
+import { Playable } from '../timeline/playable';
+import { PlayableAsset } from '../timeline/playable';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
 const tempPos = new Vector3();
 
 /**
+ * 基础位移属性数据
+ */
+export type ItemBasicTransform = {
+  position: Vector3,
+  rotation: Euler,
+  scale: Vector3,
+  path?: ValueGetter<Vector3>,
+};
+
+/**
  * @since 2.0.0
  */
-export class TransformAnimationPlayable extends AnimationPlayable {
+export class TransformAnimationPlayable extends Playable {
   originalTransform: ItemBasicTransform;
   protected sizeSeparateAxes: boolean;
   protected sizeXOverLifetime: ValueGetter<number>;

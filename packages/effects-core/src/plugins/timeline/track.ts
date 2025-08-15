@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import { VFXItem } from '../../vfx-item';
-import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
+import { PlayState, Playable, PlayableAsset, PlayableOutput } from './playable';
 import { ParticleSystem } from '../particle/particle-system';
 import type { Constructor } from '../../utils';
 import { TrackMixerPlayable } from './playables';

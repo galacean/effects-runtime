@@ -1,6 +1,6 @@
 import { VFXItem } from '../../../vfx-item';
-import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
+import type { FrameContext } from '../playable';
+import { Playable } from '../playable';
 
 /**
  * @since 2.0.0

@@ -1,8 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import type { Vector2, Vector4 } from '@galacean/effects-math/es/core';
 import { effectsClass, serialize } from '../../../decorators';
-import type { Playable } from '../../cal/playable-graph';
-import { PlayableAsset } from '../../cal/playable-graph';
+import type { Playable } from '../playable';
+import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
 

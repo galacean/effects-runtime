@@ -1,5 +1,5 @@
-import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
+import type { FrameContext } from '../playable';
+import { Playable } from '../playable';
 import type { TrackInstance } from '../track-instance';
 
 export class TrackMixerPlayable extends Playable {

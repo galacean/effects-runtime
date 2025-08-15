@@ -18,7 +18,6 @@ export * from './particle/particle-system';
 export * from './particle/particle-system-renderer';
 export * from './cal/calculate-loader';
 export * from './cal/calculate-vfx-item';
-export * from './cal/calculate-item';
 export * from './shape/build-line';
 export * from './shape/graphics-path';
 export * from './shape/ellipse';
