@@ -1,15 +1,16 @@
 import * as spec from '@galacean/effects-specification';
-import { effectsClass, serialize } from '../../../decorators';
-import type { VFXItem } from '../../../vfx-item';
-import type { RuntimeClip, TrackAsset } from '../track';
-import { ObjectBindingTrack } from '../../cal/calculate-item';
-import { PlayState, Playable, PlayableAsset } from '../../cal/playable-graph';
-import type { Constructor } from '../../../utils';
-import { TrackInstance } from '../track-instance';
+import { effectsClass, serialize } from '../../decorators';
+import type { VFXItem } from '../../vfx-item';
+import type { RuntimeClip, TrackAsset } from './track';
+import { ObjectBindingTrack } from '../cal/calculate-item';
+import { PlayState } from '../cal/playable-graph';
+import type { Constructor } from '../../utils';
+import { TrackInstance } from './track-instance';
 import type { SceneBinding } from 'packages/effects-core/src/comp-vfx-item';
+import { EffectsObject } from 'packages/effects-core/src/effects-object';
 
 @effectsClass(spec.DataType.TimelineAsset)
-export class TimelineAsset extends PlayableAsset {
+export class TimelineAsset extends EffectsObject {
   @serialize()
   tracks: TrackAsset[] = [];
 
@@ -26,29 +27,6 @@ export class TimelineAsset extends PlayableAsset {
     }
 
     return this.cacheFlattenedTracks;
-  }
-
-  override createPlayable (): Playable {
-    return new Playable();
-  }
-
-  createTimelinePlayable (sceneBindings: SceneBinding[]): TimelinePlayable {
-    const timelinePlayable = new TimelinePlayable();
-    const sceneBindingMap: Record<string, VFXItem> = {};
-
-    for (const sceneBinding of sceneBindings) {
-      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
-    }
-
-    for (const track of this.tracks) {
-      if (track instanceof ObjectBindingTrack) {
-        track.create(this, sceneBindingMap);
-      }
-    }
-
-    timelinePlayable.compileTracks(this.flattenedTracks, sceneBindings);
-
-    return timelinePlayable;
   }
 
   createTrack<T extends TrackAsset>(classConstructor: Constructor<T>, parent: TrackAsset, name?: string): T {
@@ -77,14 +55,37 @@ export class TimelineAsset extends PlayableAsset {
       this.addSubTracksRecursive(subTrack, allTracks);
     }
   }
-
-  override fromData (data: spec.TimelineAssetData): void {
-  }
 }
 
-export class TimelinePlayable extends Playable {
-  clips: RuntimeClip[] = [];
-  masterTrackInstances: TrackInstance[] = [];
+export class TimelineInstance {
+  private time = 0;
+  private clips: RuntimeClip[] = [];
+  private masterTrackInstances: TrackInstance[] = [];
+
+  constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
+    const sceneBindingMap: Record<string, VFXItem> = {};
+
+    for (const sceneBinding of sceneBindings) {
+      sceneBindingMap[sceneBinding.key.getInstanceId()] = sceneBinding.value;
+    }
+
+    // TODO: Hack 临时生成轨道, 待移除
+    for (const track of timelineAsset.tracks) {
+      if (track instanceof ObjectBindingTrack) {
+        track.create(timelineAsset, sceneBindingMap);
+      }
+    }
+
+    this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
+  }
+
+  setTime (time: number) {
+    this.time = time;
+  }
+
+  getTime () {
+    return this.time;
+  }
 
   evaluate (deltaTime: number) {
     const time = this.getTime();

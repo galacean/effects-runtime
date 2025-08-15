@@ -4,7 +4,8 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { Component } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region, TimelinePlayable, TrackAsset } from './plugins';
+import type { Region, TrackAsset } from './plugins';
+import { TimelineInstance } from './plugins';
 import { HitTestType } from './plugins';
 import { PlayState } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
@@ -41,14 +42,14 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   @serialize()
   private timelineAsset: TimelineAsset;
-  private timelinePlayable: TimelinePlayable;
+  private timelineInstance: TimelineInstance;
 
   override onStart (): void {
     if (!this.timelineAsset) {
       this.timelineAsset = new TimelineAsset(this.engine);
     }
     // this.resolveBindings();
-    this.timelinePlayable = this.timelineAsset.createTimelinePlayable(this.sceneBindings);
+    this.timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
 
     this.item.composition?.refContent.push(this.item);
   }
@@ -71,9 +72,9 @@ export class CompositionComponent extends Component {
     }
     const time = this.time;
 
-    this.timelinePlayable.setTime(time);
+    this.timelineInstance.setTime(time);
 
-    this.timelinePlayable.evaluate(dt / 1000);
+    this.timelineInstance.evaluate(dt / 1000);
   }
 
   override onEnable () {

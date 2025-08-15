@@ -70,7 +70,7 @@ export class ObjectBindingTrack extends TrackAsset {
 
     // 添加图层帧动画动画时间 clip // TODO 待移除
     if (boundItem.getComponent(SpriteComponent)) {
-      const componentTimeTrack = timelineAsset.createTrack(SpriteComponentTimeTrack, this, 'ComponentTimeTrack');
+      const componentTimeTrack = timelineAsset.createTrack(SpriteComponentTimeTrack, this, 'SpriteComponentTimeTrack');
 
       const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
 
@@ -81,7 +81,7 @@ export class ObjectBindingTrack extends TrackAsset {
 
     // 添加图层帧动画动画时间 clip // TODO 待移除
     if (boundItem.getComponent(EffectComponent)) {
-      const componentTimeTrack = timelineAsset.createTrack(EffectComponentTimeTrack, this, 'ComponentTimeTrack');
+      const componentTimeTrack = timelineAsset.createTrack(EffectComponentTimeTrack, this, 'EffectComponentTimeTrack');
 
       const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
 
