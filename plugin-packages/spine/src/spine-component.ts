@@ -583,6 +583,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       scaleFactor = 1 / width;
     }
     this.scaleFactor = scaleFactor;
+    this.transform.setScale(1, 1, this.transform.scale.z);
   }
 
   // 转换当前大小为旧缩放规则下的大小
