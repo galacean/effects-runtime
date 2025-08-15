@@ -6,8 +6,8 @@ import { ObjectBindingTrack } from './tracks/object-binding-track';
 import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
-import type { SceneBinding } from 'packages/effects-core/src/comp-vfx-item';
-import { EffectsObject } from 'packages/effects-core/src/effects-object';
+import type { SceneBinding } from '../../comp-vfx-item';
+import { EffectsObject } from '../../effects-object';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends EffectsObject {

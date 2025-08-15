@@ -15,7 +15,7 @@ import type { Euler, Ray, Vector2 } from '../runtime/math';
 import { Vector3 } from '../runtime/math';
 import { RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
-import { AnimationClip } from 'packages/effects-core/src/animation';
+import { AnimationClip } from '@galacean/effects';
 
 /**
  * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
