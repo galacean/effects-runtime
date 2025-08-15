@@ -8,6 +8,13 @@
 
 ---
 
+## 2.6.2
+
+`2025-08-15`
+
+- Fix: 3d editor mode demo. [#1112](https://github.com/galacean/effects-runtime/pull/1112) @wumaolinmaoan
+- Fix: rendering scale was incorrect after setting the scale of spine. [#1132](https://github.com/galacean/effects-runtime/pull/1132) @wumaolinmaoan
+
 ## 2.6.1
 
 `2025-08-12`
