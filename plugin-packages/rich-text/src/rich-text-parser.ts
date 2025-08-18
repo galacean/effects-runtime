@@ -34,11 +34,11 @@ export const lexer = (input: string, lexed: Token[] = [], cursor = 0): Token[] =
   }
 
   for (const [tokenType, regex] of rules) {
-    if (tokenType === TokenType.EscapedChar) {continue;}
+    if (tokenType === TokenType.EscapedChar) { continue; }
 
     const match = regex.exec(input);
 
-    if (!match) {continue;}
+    if (!match) { continue; }
 
     const tokenMatch = match[0];
     const len = tokenMatch.length;
@@ -108,11 +108,11 @@ export const richTextParser = (input: string): RichTextAST[] => {
         const { attributeName: endAttributeName } = ContextEnd();
 
         if (!endAttributeName) {
-          throw new Error(`Expect an end tag marker "${ expectedEndAttributeName }" at position ${ cursor } but found no tag!`);
+          throw new Error(`Expect an end tag marker "${expectedEndAttributeName}" at position ${cursor} but found no tag!`);
         }
 
         if (endAttributeName !== expectedEndAttributeName) {
-          throw new Error(`Expect an end tag marker "${ expectedEndAttributeName }" at position ${ cursor } but found tag "${ endAttributeName }"`);
+          throw new Error(`Expect an end tag marker "${expectedEndAttributeName}" at position ${cursor} but found tag "${endAttributeName}"`);
         }
 
         return;
@@ -153,7 +153,7 @@ export const richTextParser = (input: string): RichTextAST[] => {
         return { attributeName, attributeParam };
       }
 
-      throw new Error(`Expected a start tag marker at position ${ cursor}`);
+      throw new Error(`Expected a start tag marker at position ${cursor}`);
     }
 
     return {};
@@ -173,7 +173,7 @@ export const richTextParser = (input: string): RichTextAST[] => {
         return { attributeName };
       }
 
-      throw new Error(`Expect an end tag marker at position ${ cursor}`);
+      throw new Error(`Expect an end tag marker at position ${cursor}`);
     }
 
     return {};
@@ -234,17 +234,17 @@ export function isRichText (text: string): boolean {
       return checkPaired(restToken, startContextAttributes.slice(0, -1));
     }
 
-    throw new Error(`Unexpected token: ${ token.tokenType}`);
+    throw new Error(`Unexpected token: ${token.tokenType}`);
   }
 
   return checkPaired(tokensOfAttribute);
 }
 
 /**
-* 转义富文本中的特殊字符
-* @param input 需要转义的输入字符串
-* @returns 转义后的字符串
-*/
+ * 转义富文本中的特殊字符
+ * @param input - 需要转义的输入字符串
+ * @returns 转义后的字符串
+ */
 export function escape (input: string): string {
   if (typeof input !== 'string') {
     throw new Error('Input must be a string');
@@ -259,10 +259,10 @@ export function escape (input: string): string {
 }
 
 /**
-* 反转义富文本中的特殊字符
-* @param input 需要反转义的输入字符串
-* @returns 反转义后的字符串
-*/
+ * 反转义富文本中的特殊字符
+ * @param input - 需要反转义的输入字符串
+ * @returns 反转义后的字符串
+ */
 export function unescape (input: string): string {
   if (typeof input !== 'string') {
     throw new Error('Input must be a string');
