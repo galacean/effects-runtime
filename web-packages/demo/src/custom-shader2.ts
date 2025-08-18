@@ -464,7 +464,7 @@ void main() {
     //计算静宽
     float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth* _LineOffsetRatio/10.0)* alpha;
 
-    vec4 linecolor = rampColor;
+    vec4 linecolor = vec4(rampColor.rgb*rampColor.a, 1.0);
 
     vec3 finalColorRGB = vec3(0.0);
     float finalAlpha = 1.0;
@@ -508,9 +508,8 @@ void main() {
 
     float final_stroke_alpha = lineStroke;
     vec4 stroke_layer = linecolor * final_stroke_alpha;
-
     // 当描边透明度>0时完全显示描边颜色，但保留内侧区域透明度
-        finalColorRGB = max(stroke_layer.rgb, finalColorRGB);
+        finalColorRGB = max(stroke_layer.rgb/rampColor.a, finalColorRGB)*rampColor.a;
         // 保持内侧区域原有的透明度计算
         finalAlpha = max(stroke_layer.a, finalAlpha);
     // 否则保持原有混合逻辑
