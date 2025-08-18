@@ -12,6 +12,7 @@ export enum TransitionState {
 
 @nodeDataClass(spec.NodeDataType.StateNodeData)
 export class StateNodeData extends GraphNodeData {
+  stateName: string;
   childNodeIndex = InvalidIndex;
 
   override instantiate (context: InstantiationContext): void {
@@ -24,6 +25,9 @@ export class StateNodeData extends GraphNodeData {
     super.load(data);
 
     this.childNodeIndex = data.childNodeIndex;
+    // TODO: Add to spec
+    //@ts-expect-error
+    this.stateName = data.stateName;
   }
 }
 

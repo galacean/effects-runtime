@@ -95,6 +95,7 @@ export abstract class GraphNodeData {
     const node = new nodeType();
 
     context.nodes[this.index] = node;
+    node.asset = this;
 
     return node;
   }

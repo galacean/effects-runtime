@@ -800,7 +800,10 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     //@ts-expect-error TODO update spec.
     const componentPaths = props.components as spec.DataPath[];
+    const prevInstanceId = this.getInstanceId();
 
+    // Set the current preComposition item id to the referenced composition id to prevent the composition component from not finding the correct item
+    this.setInstanceId(props.id);
     for (const componentPath of componentPaths) {
       const component = this.engine.findObject<Component>(componentPath);
 
@@ -817,6 +820,7 @@ export class VFXItem extends EffectsObject implements Disposable {
         }
       }
     }
+    this.setInstanceId(prevInstanceId);
 
     Composition.buildItemTree(this);
   }

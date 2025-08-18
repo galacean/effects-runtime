@@ -149,7 +149,7 @@ describe('webgl/dispose', function () {
     expect(spy1).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
     expect(material.shaderVariant.program.pipelineContext).to.eql(null);
-    expect(texture.isDestroyed).to.be.true;
+    expect(Object.keys(material.textures).length).to.eql(0);
     expect(geom.isDestroyed).to.be.false;
 
   });

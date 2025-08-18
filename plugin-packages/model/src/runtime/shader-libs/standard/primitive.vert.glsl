@@ -51,10 +51,6 @@ uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 _NormalMatrix;
 
-#ifdef EDITOR_TRANSFORM
-uniform vec4 uEditorTransform;
-#endif
-
 #ifdef USE_SHADOW_MAPPING
 uniform mat4 _LightViewProjectionMatrix;
 uniform float _DeltaSceneSize;
@@ -149,8 +145,4 @@ void main()
     #endif
 
     gl_Position = effects_MatrixVP * pos;
-
-    #ifdef EDITOR_TRANSFORM
-        gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-    #endif
 }

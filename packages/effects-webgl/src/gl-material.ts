@@ -1,9 +1,9 @@
 import type {
-  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps,
+  Engine, GlobalUniforms, MaterialProps,
   Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  spec, Material, Shader, assertExist, generateGUID, isFunction, logger,
   math, throwDestroyedError, glContext,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
@@ -722,26 +722,15 @@ export class GLMaterial extends Material {
     }
   }
 
-  dispose (options?: MaterialDestroyOptions) {
+  dispose () {
     if (this.destroyed) {
       return;
     }
     this.shaderVariant?.dispose();
-    if (options?.textures !== DestroyOptions.keep) {
-      Object.keys(this.textures).forEach(key => {
-        const texture = this.textures[key];
-
-        // TODO 纹理释放需要引用计数
-        if (texture !== this.engine.emptyTexture) {
-          texture.dispose();
-        }
-      });
-    }
+    this.textures = {};
 
     // @ts-expect-error
     this.shaderSource = null;
-    // @ts-expect-error
-    this.uniformSemantics = {};
     this.floats = {};
     this.ints = {};
     this.vector2s = {};

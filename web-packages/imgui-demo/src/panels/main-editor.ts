@@ -22,6 +22,9 @@ export class MainEditor extends EditorWindow {
   private lockedObject: object;
   private alignWidth = 150;
 
+  private lightBlue = new ImGui.ImVec4(0.25, 0.34, 0.43, 1.0);
+  private highlightBlue = new ImGui.ImVec4(0.000, 0.43, 0.87, 1.000);
+
   constructor () {
     super();
     this.open();
@@ -91,18 +94,34 @@ export class MainEditor extends EditorWindow {
       ImGui.TreeNodeFlags.SpanFullWidth
     );
 
+    const highlightBlue = this.highlightBlue;
+    const lightBlue = this.lightBlue;
+
+    if (ImGui.IsWindowFocused()) {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, highlightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, lightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, highlightBlue);
+    } else {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, lightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, lightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, lightBlue);
+    }
+
     if (ImGui.TreeNodeEx('Composition', base_flags.value | ImGui.TreeNodeFlags.DefaultOpen)) {
-      this.generateHierarchyTree(GalaceanEffects.player.getCompositions()[0].rootItem, base_flags.value);
+      this.drawVFXItemTreeNode(GalaceanEffects.player.getCompositions()[0].rootItem, base_flags.value);
       ImGui.TreePop();
     }
+
+    ImGui.PopStyleColor(3);
 
     ImGui.End();
   }
 
-  private generateHierarchyTree (item: VFXItem, baseFlags: ImGui.TreeNodeFlags) {
+  private drawVFXItemTreeNode (item: VFXItem, baseFlags: ImGui.TreeNodeFlags) {
     let nodeFlags: ImGui.TreeNodeFlags = baseFlags;
+    const isSelected = Selection.activeObject === item;
 
-    if (Selection.activeObject === item) {
+    if (isSelected) {
       nodeFlags |= ImGui.TreeNodeFlags.Selected;
     }
     if (item.children.length === 0) {
@@ -111,15 +130,25 @@ export class MainEditor extends EditorWindow {
     if (item.name === 'rootItem') {
       nodeFlags |= ImGui.TreeNodeFlags.DefaultOpen;
     }
+
+    const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
+
+    if (isHoverSelectedNode) {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, this.highlightBlue);
+    }
     const node_open: boolean = ImGui.TreeNodeEx(item.id, nodeFlags, item.name);
 
     if (ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen()) {
       Selection.setActiveObject(item);
     }
 
+    if (isHoverSelectedNode) {
+      ImGui.PopStyleColor(1);
+    }
+
     if (node_open) {
       for (const child of item.children) {
-        this.generateHierarchyTree(child, baseFlags);
+        this.drawVFXItemTreeNode(child, baseFlags);
       }
       ImGui.TreePop();
     }

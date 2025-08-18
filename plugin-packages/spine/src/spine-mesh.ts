@@ -1,9 +1,9 @@
 import type { BlendMode } from '@esotericsoftware/spine-core';
 import type {
-  Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture,
+  Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture, math,
 } from '@galacean/effects';
 import {
-  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, math, setMaskMode,
+  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, setMaskMode,
 } from '@galacean/effects';
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
@@ -98,14 +98,9 @@ export class SpineMesh implements Disposable {
       this.engine,
       {
         shader: createShader(this.engine),
-        uniformSemantics: {
-          effects_MatrixVP: 'VIEWPROJECTION',
-          uEditorTransform: 'EDITOR_TRANSFORM',
-        },
       });
 
     material.setTexture('uTexture', this.lastTexture);
-    material.setMatrix('effects_ObjectToWorld', math.Matrix4.fromIdentity());
     material.blending = true;
     material.culling = false;
     material.depthTest = false;
@@ -148,7 +143,6 @@ export class SpineMesh implements Disposable {
     this.geometry.setAttributeData('aPosition', this.vertices);
     this.geometry.setIndexData(this.indices);
     this.geometry.setDrawCount(this.indicesLength);
-    this.material.setMatrix('effects_ObjectToWorld', worldMatrix);
   }
 
   startUpdate () {

@@ -687,12 +687,6 @@ function createMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Mat
         u_color: new Float32Array(myColor.toArray()),
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
       },
-      uniformSemantics: {
-        u_viewinverse: 'VIEWINVERSE',
-        u_v: 'VIEW',
-        u_p: 'PROJECTION',
-        u_et: 'EDITOR_TRANSFORM',
-      },
       shader: {
         fragment: `
         precision mediump float;
@@ -710,11 +704,9 @@ function createMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Mat
         uniform mat4 u_model;
         uniform mat4 effects_MatrixV;
         uniform mat4 _MatrixP;
-        uniform vec4 uEditorTransform;
 
         void main(){
           gl_Position = _MatrixP * effects_MatrixV * u_model * vec4(a_Position,1.0);
-          gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w,gl_Position.zw);
         }`,
         shared: true,
       },
@@ -750,12 +742,6 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
         u_cameraPos: new Float32Array([0, 0, 0]),
         u_center: new Float32Array([0, 0, 0]),
       },
-      uniformSemantics: {
-        u_viewinverse: 'VIEWINVERSE',
-        u_v: 'VIEW',
-        u_p: 'PROJECTION',
-        u_et: 'EDITOR_TRANSFORM',
-      },
       shader: {
         fragment: `
         precision mediump float;
@@ -779,7 +765,6 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
         uniform mat4 u_model;
         uniform mat4 effects_MatrixV;
         uniform mat4 _MatrixP;
-        uniform vec4 uEditorTransform;
 
         uniform vec3 u_cameraPos;
         uniform vec3 u_center;
@@ -790,7 +775,6 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
           vec3 worldPosition = (u_model * vec4(a_Position,1.0)).xyz;
           flag = length(u_cameraPos - worldPosition) - distance;
           gl_Position = _MatrixP * effects_MatrixV * u_model * vec4(a_Position,1.0);
-          gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w,gl_Position.zw);
         }`,
         shared: true,
       },
@@ -830,12 +814,6 @@ function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean,
         u_alpha: new Float32Array([myAlpha, 0]),
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
       },
-      uniformSemantics: {
-        u_viewinverse: 'VIEWINVERSE',
-        u_v: 'VIEW',
-        u_p: 'PROJECTION',
-        u_et: 'EDITOR_TRANSFORM',
-      },
       shader: {
         shared: true,
         fragment: `
@@ -855,10 +833,8 @@ function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean,
         uniform mat4 u_model;
         uniform mat4 effects_MatrixV;
         uniform mat4 _MatrixP;
-        uniform vec4 uEditorTransform;
         void main(){
           gl_Position = _MatrixP * effects_MatrixV * u_model * vec4(a_Position,1.0);
-          gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w,gl_Position.zw);
         }`,
       },
     });
@@ -887,12 +863,6 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
     engine,
     {
       uniformValues,
-      uniformSemantics: {
-        u_viewinverse: 'VIEWINVERSE',
-        u_v: 'VIEW',
-        u_p: 'PROJECTION',
-        u_et: 'EDITOR_TRANSFORM',
-      },
       shader: {
         shared: true,
         fragment: `
@@ -922,7 +892,6 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
         uniform mat4 effects_MatrixV;
         uniform mat4 _MatrixP;
         uniform mat4 effects_MatrixInvV;
-        uniform vec4 uEditorTransform;
         varying vec2 v_uv;
 
         void main(){
@@ -932,7 +901,6 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
 
           pos.xyz += effects_MatrixInvV[0].xyz * a_Position.x + effects_MatrixInvV[1].xyz * a_Position.y;
           gl_Position = _MatrixP * effects_MatrixV * pos;
-          gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w,gl_Position.zw);
         }`,
       },
     });
