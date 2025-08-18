@@ -14,6 +14,7 @@
 
 - Fix: 3d editor mode demo. [#1112](https://github.com/galacean/effects-runtime/pull/1112) @wumaolinmaoan
 - Fix: rendering scale was incorrect after setting the scale of spine. [#1132](https://github.com/galacean/effects-runtime/pull/1132) @wumaolinmaoan
+  - Fix: spine start scale issue. [#1136](https://github.com/galacean/effects-runtime/pull/1136) @wumaolinmaoan
 
 ## 2.6.1
 
