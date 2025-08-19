@@ -249,7 +249,6 @@ export function version34Migration (json: JSONScene): JSONScene {
 /**
  * @description 根据形状获取形状几何体数据
  * @param shape 形状
- * @param resourceIndex 资源索引
  * @returns 形状几何体数据
  */
 function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName = '形状') {
