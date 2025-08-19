@@ -272,21 +272,16 @@ float sd_bezier_signed(vec2 pos, vec2 A, vec2 B, vec2 C) {
 }
 
 float antiAliasedStroke(float dist, float lineWidth) {
-    // 处理直线情况下的抗锯齿
-    
-    // 改进的抗锯齿计算，在低线宽时提供更好的控制
-    float baseAA = fwidth(dist) * _StrokeAA;
-    
-    // 动态调整最小/最大抗锯齿范围
-    float minAA = lineWidth * 0.01;  // 减少最小抗锯齿范围
-    float maxAA = lineWidth * 1.5;  // 进一步减少最大抗锯齿范围
-    
-    // 应用抗锯齿范围（主要向内抗锯齿，少量向外抗锯齿）
+    float baseAA = 0.001 * _StrokeAA;
+    float minAA = lineWidth * 0.01;
+    float maxAA = lineWidth * 0.485;
     float aa = clamp(baseAA, minAA, maxAA);
-    // 主要在内侧应用抗锯齿，同时添加少量向外抗锯齿使边缘更自然
-    float innerAA = aa * 0.8;  // 内侧抗锯齿范围
-    float outerAA = aa * 0.8;  // 外侧抗锯齿范围（少量）
-    return smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
+
+    // 第一次 smoothstep
+    float s1 = smoothstep(lineWidth + aa, lineWidth - aa, abs(dist));
+    //s1 = pow(s1, 10.4);
+
+    return s1;
 }
 
 // 获取点颜色（支持静态/交替） - 使用整数索引
@@ -462,7 +457,7 @@ void main() {
     }
 
     //计算静宽
-    float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth* _LineOffsetRatio/10.0)* alpha;
+    float lineStroke = antiAliasedStroke(abs(signedDist), _LineWidth * _LineOffsetRatio/10.0)* alpha;
 
     vec4 linecolor = vec4(rampColor.rgb*rampColor.a, 1.0);
 
