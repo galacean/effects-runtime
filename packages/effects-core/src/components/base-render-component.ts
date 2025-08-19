@@ -13,7 +13,7 @@ import { MeshCollider } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
 import { itemFrag, itemVert } from '../shader';
-import { getGeometryByShape, rotateVec2, type GeometryFromShape } from '../shape';
+import { rotateVec2 } from '../shape';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
 
@@ -23,7 +23,6 @@ import { RendererComponent } from './renderer-component';
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   texture: Texture,
   mask: number,
-  shape?: GeometryFromShape,
 }
 
 // TODO: Add to spec
@@ -264,27 +263,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const sx = 1, sy = 1;
     const geometry = this.defaultGeometry;
 
-    if (renderer.shape) {
-      const { index = [], aPoint = [] } = renderer.shape;
-      const point = new Float32Array(aPoint);
-      const position = [];
-
-      const aUV = [];
-
-      for (let i = 0; i < point.length; i += 6) {
-        point[i] *= sx;
-        point[i + 1] *= sy;
-        aUV.push(aPoint[i + 2], aPoint[i + 3]);
-        position.push(point[i], point[i + 1], 0.0);
-      }
-      geometry.setAttributeData('aPos', new Float32Array(position));
-
-      return {
-        index: index as number[],
-        aUV,
-      };
-    }
-
     const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
     const aUV = [];
     const index = [];
@@ -441,17 +419,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       this.maskManager.setMaskOptions(maskOptions);
     }
 
-    // TODO 新蒙板上线后移除
-    //-------------------------------------------------------------------------
-    const shapeData = renderer.shape as spec.ShapeGeometry;
-    const split = splits && !textureSheetAnimation ? splits[0] : undefined;
-    let shapeGeometry: GeometryFromShape | undefined = undefined;
-
-    if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
-      shapeGeometry = getGeometryByShape(shapeData, split);
-    }
-    //-------------------------------------------------------------------------
-
     this.splits = splits || singleSplits;
     this.textureSheetAnimation = textureSheetAnimation;
 
@@ -463,7 +430,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
-      shape: shapeGeometry,
     };
 
     this.configureMaterial(this.renderer);
