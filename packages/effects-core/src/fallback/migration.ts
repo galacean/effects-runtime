@@ -10,6 +10,7 @@ import {
 import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import { getGeometryByShape } from '../shape/geometry';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -108,6 +109,7 @@ export function version31Migration (json: JSONScene): JSONScene {
 export function version32Migration (json: JSONScene): JSONScene {
   componentMap.clear();
   itemMap.clear();
+
   const { compositions, items, components } = json;
   // 处理旧蒙版数据
 
@@ -170,11 +172,11 @@ export function version33Migration (json: JSONScene): JSONScene {
 
     const compositionComponent = {
       id: generateGUID(),
-      dataType:'CompositionComponent',
+      dataType: 'CompositionComponent',
       items: composition.items,
       timelineAsset: composition.timelineAsset,
       sceneBindings: composition.sceneBindings,
-      item:{ id:composition.id },
+      item: { id: composition.id },
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
@@ -182,7 +184,7 @@ export function version33Migration (json: JSONScene): JSONScene {
     //@ts-expect-error
     composition.sceneBindings = undefined;
     //@ts-expect-error
-    composition.components = [{ id:compositionComponent.id }];
+    composition.components = [{ id: compositionComponent.id }];
     json.components.push(compositionComponent);
   }
   // 预合成元素 refId 同步改为生成的合成 guid
@@ -219,10 +221,110 @@ export function version34Migration (json: JSONScene): JSONScene {
     }
   }
 
+  // 兼容老 Shape 资源
+  for (const componentData of json.components) {
+    if (componentData.dataType === spec.DataType.SpriteComponent) {
+      const spriteComponentData = componentData as spec.SpriteComponentData;
+      const renderer = spriteComponentData.renderer;
+      const shapeData = renderer.shape as spec.ShapeGeometry;
+
+      if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
+        const geometryData = createGeometryDataByShape(shapeData);
+
+        //@ts-expect-error
+        spriteComponentData.geometry = { id: geometryData.id };
+        json.geometries.push(geometryData);
+      }
+    }
+  }
+
   //@ts-expect-error
   json.version = '3.5';
 
   return json;
+}
+
+/**
+ * 根据形状获取形状几何体数据
+ * @param shape - 形状
+ * @returns 形状几何体数据
+ */
+function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName = '形状') {
+  const targetGeometry = getGeometryByShape(shape);
+  const { index = [], aPoint = [] } = targetGeometry;
+  const point = new Float32Array(aPoint);
+  const position = [];
+  const atlasOffset = [];
+
+  for (let i = 0; i < point.length; i += 6) {
+    atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
+    position.push(point[i], point[i + 1], 0.0);
+  }
+
+  // 用 position altasOffset index 创建GeometryData
+  const subMeshes: {
+    offset: number,
+    indexCount: number,
+    vertexCount: number,
+  }[] = [];
+  const vertexCount = position.length / 3;
+  const indexCount = index.length;
+  const positionByteLength = position.length * 4;
+  const uvByteLength = atlasOffset.length * 4;
+  const vertexByteLength = positionByteLength + uvByteLength;
+  const indexByteLength = index.length * 2;
+
+  const geometryData: spec.GeometryData = {
+    mode: spec.GeometryType.TRIANGLES,
+    vertexData: {
+      vertexCount,
+      channels: [],
+    },
+    name: geometryDataName,
+    indexFormat: spec.IndexFormatType.UInt16,
+    indexOffset: vertexByteLength,
+    buffer: '',
+    id: generateGUID(),
+    dataType: spec.DataType.Geometry,
+    subMeshes,
+  };
+
+  geometryData.vertexData.channels.push({
+    semantic: spec.VertexBufferSemantic.Position,
+    offset: 0,
+    format: spec.VertexFormatType.Float32,
+    dimension: 3,
+  });
+
+  geometryData.vertexData.channels.push({
+    semantic: spec.VertexBufferSemantic.Uv,
+    offset: positionByteLength,
+    format: spec.VertexFormatType.Float32,
+    dimension: 2,
+  });
+
+  geometryData.subMeshes.push({
+    offset: 0,
+    indexCount,
+    vertexCount,
+  });
+
+  const supByteLength = indexByteLength % 4 === 0 ? 0 : 2;
+  const infoBuffer = new ArrayBuffer(vertexByteLength + indexByteLength + supByteLength);
+  const vertexArray = new Float32Array(infoBuffer);
+
+  vertexArray.set(position, 0);
+  vertexArray.set(atlasOffset, position.length);
+
+  const indexArray = new Uint16Array(infoBuffer, vertexByteLength);
+
+  indexArray.set(index, 0);
+
+  const uint8View = new Uint8Array(infoBuffer).slice(0, vertexByteLength + indexByteLength);
+
+  geometryData.binaryData = uint8View;
+
+  return geometryData;
 }
 
 export function processContent (composition: spec.CompositionData) {
