@@ -96,7 +96,11 @@ uniform float _Alpha3;
 uniform sampler2D _Tex0;
 uniform sampler2D _Tex1;
 uniform sampler2D _Tex2;
-uniform sampler2D _Tex3;
+
+uniform float _TexIndex0;
+uniform float _TexIndex1;
+uniform float _TexIndex2;
+uniform float _TexIndex3;
 
 
 uniform sampler2D _NoiseTex; // 大尺度噪声纹理
@@ -164,6 +168,15 @@ vec4 safeTexture2D(sampler2D tex, vec2 uv) {
   return color;
 }
 
+// 新增的纹理采样函数
+vec4 sampleTex(float idx, vec2 uv) {
+  if (int(idx) == 0) return safeTexture2D(_Tex0, uv);
+  if (int(idx) == 1) return safeTexture2D(_Tex1, uv);
+  if (int(idx) == 2) return safeTexture2D(_Tex2, uv);
+  // 如果有更多纹理可继续扩展
+  return vec4(0.0);
+}
+
 void main() {
   vec4 finalColor = vec4(0.0);
 
@@ -212,7 +225,7 @@ void main() {
   vec2 yMask = vec2(0.0, -0.35);
 
   // 最终扰动偏移，受音量和alpha值影响
-  vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume) * alphaAttenuation + vec2(0.0, verticalOffset);
+  vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume)  + vec2(0.0, verticalOffset);
 
   // 记录每个纹理的索引
   int indices[4];
@@ -237,45 +250,51 @@ void main() {
   // 按 layer 顺序混合
   for (int k = 0; k < textureCount; k++) {
     int i = indices[k];
-    float offset, alpha;
-    vec4 color;
-    vec2 sampleUV;
+    float offsetX = 0.0;
+    float offsetY = 0.0;
+    float alpha = 0.0;
+    vec4 color = vec4(0.0);
+    vec2 sampleUV = vec2(0.0);
 
+    float texIndex = 0.0;
     if (i == 0) {
-      float offsetX = _OffsetX0;
-      float offsetY = _OffsetY0;
+      offsetX = _OffsetX0;
+      offsetY = _OffsetY0;
       alpha = _Alpha0;
-      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset ;
-      color = safeTexture2D(_Tex0, sampleUV);
+      texIndex = _TexIndex0;
+      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
+      color = sampleTex(texIndex, sampleUV);
       color.rgb = _Color0.rgb;
       alpha *= _Color0.a;
     } else if (i == 1) {
-      float offsetX = _OffsetX1;
-      float offsetY = _OffsetY1;
+      offsetX = _OffsetX1;
+      offsetY = _OffsetY1;
       alpha = _Alpha1;
+      texIndex = _TexIndex1;
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = safeTexture2D(_Tex1, sampleUV);
+      color = sampleTex(texIndex, sampleUV);
       color.rgb = _Color1.rgb;
       alpha *= _Color1.a;
     } else if (i == 2) {
-      float offsetX = _OffsetX2;
-      float offsetY = _OffsetY2;
+      offsetX = _OffsetX2;
+      offsetY = _OffsetY2;
       alpha = _Alpha2;
+      texIndex = _TexIndex2;
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = safeTexture2D(_Tex2, sampleUV);
+      color = sampleTex(texIndex, sampleUV);
       color.rgb = _Color2.rgb;
       alpha *= _Color2.a;
     } else if (i == 3) {
-      float offsetX = _OffsetX3;
-      float offsetY = _OffsetY3;
+      offsetX = _OffsetX3;
+      offsetY = _OffsetY3;
       alpha = _Alpha3;
+      texIndex = _TexIndex3;
       sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = safeTexture2D(_Tex3, sampleUV);
+      color = sampleTex(texIndex, sampleUV);
       color.rgb = _Color3.rgb;
       alpha *= _Color3.a;
     }
     color.a *= alpha;
-    // 混合当前纹理颜色到最终颜色
     finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
     finalColor.a = finalColor.a * (1.0 - color.a) + color.a;
 
@@ -790,11 +809,10 @@ let material: Material | undefined;
         // 初始化参数和纹理
         material.setFloat('_TextureCount', shaderParams._TextureCount);
 
-        // 分别设置四个独立纹理
-        material.setTexture('_Tex0', cloudTexture);
-        material.setTexture('_Tex1', cloudTexture);
+        // 初始化时绑定三张纹理
+        material.setTexture('_Tex0', FirstStageBlueTexture);
+        material.setTexture('_Tex1', FirstStageGreenTexture);
         material.setTexture('_Tex2', cloudTexture);
-        material.setTexture('_Tex3', cloudTexture);
         // 设置噪声纹理
         material.setTexture('_NoiseTex', noiseTexture);
         // 设置T噪声纹理
@@ -962,28 +980,20 @@ let material: Material | undefined;
         material.setFloat(`_Alpha${i}`, texture.alpha);
         // 设置纹理层级
         material.setFloat(`_Tex${i}Layer`, texture.layer);
-        
-        // 根据纹理类型设置不同的纹理资源
+
+        // 设置采样索引
+        // 0: FirstStageBlueTexture, 1: FirstStageGreenTexture, 2: cloudTexture
+        let texIndex = 0;
         if (texture.type === 'listening') {
-          if (texture.textureType === 'blue') {
-            material.setTexture(`_Tex${i}`, FirstStageBlueTexture);
-          } else if (texture.textureType === 'green') {
-            material.setTexture(`_Tex${i}`, FirstStageGreenTexture);
-          }
+          texIndex = (texture.textureType === 'blue') ? 0 : 1;
         } else if (texture.type === 'input') {
-          material.setTexture(`_Tex${i}`, cloudTexture);
+          texIndex = 2;
         }
+        material.setFloat(`_TexIndex${i}`, texIndex);
 
         // 设置颜色
         if (texture.color) {
           material.setVector4(`_Color${i}`, new Vector4(...texture.color));
-          //console.log(`Texture ${i} color:`, texture.color);
-        }
-
-        // 调试日志
-        if (DEBUG && i === 0) {
-          //console.log(`Texture ${i} - x: ${texture.x.toFixed(2)}, y: ${texture.y.toFixed(2)}, alpha: ${texture.alpha.toFixed(2)}`);
-          //console.log('Color:', texture.color);
         }
       }
       // 对于未使用的纹理，重置参数
@@ -1032,3 +1042,5 @@ const controls: Array<{ id: string, param: string, value: number, precision: num
   { id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 1.10, precision: 2 },
   { id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 3.00, precision: 2 },
 ];
+
+
