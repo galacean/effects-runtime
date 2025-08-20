@@ -193,6 +193,39 @@ export class AssetManager implements Disposable {
     return this.assets;
   }
 
+  /**
+   * 公开字体加载方法，供外部动态加载字体
+   * @param fonts 字体定义数组
+   */
+  static async loadFontFamily (fonts: spec.FontDefine[]) {
+    // 对老数据的兼容
+    if (!fonts) {
+      return;
+    }
+
+    const jobs = fonts.map(async font => {
+      // 数据模版兼容判断
+      if (font.fontURL && !AssetManager.fontCache.has(font.fontFamily)) {
+        if (!isValidFontFamily(font.fontFamily)) {
+          // 在所有设备上提醒开发者
+          console.warn(`Risky font family: ${font.fontFamily}.`);
+        }
+        try {
+          const url = new URL(font.fontURL, location.href).href;
+          const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
+
+          await fontFace.load();
+          document.fonts.add(fontFace);
+          AssetManager.fontCache.add(font.fontFamily);
+        } catch (_) {
+          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
+        }
+      }
+    });
+
+    return Promise.all(jobs);
+  }
+
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
     const { plugins = [] } = jsonScene;
