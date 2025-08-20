@@ -35,14 +35,10 @@ if (DEBUG) {
 
 // 核心Shader参数
 interface ShaderParams {
-  _CanvasAspect: number, // 画布宽高比
-  _TextureAspect: number, // 纹理宽高比
   _TextureCount: number, // 当前活动纹理数量
 }
 
 const shaderParams: ShaderParams = {
-  _CanvasAspect: 1,
-  _TextureAspect: 1,
   _TextureCount: 0,
 };
 
@@ -102,7 +98,6 @@ uniform sampler2D _Tex1;
 uniform sampler2D _Tex2;
 uniform sampler2D _Tex3;
 
-uniform float _ExposureType; 
 
 uniform sampler2D _NoiseTex; // 大尺度噪声纹理
 uniform sampler2D _T_NoiseTex; // 小尺度细节噪声纹理
@@ -122,9 +117,8 @@ uniform float _DetailNoiseSpeedY; // 垂直细节扰动速度 [0,10]
 uniform float _DetailNoiseUVScaleX; // 细节噪声贴图水平缩放 [0.1,10]
 uniform float _DetailNoiseUVScaleY; // 细节噪声贴图垂直缩放 [0.1,10]
 uniform float _Strength; // 整体强度
-uniform float _Brightness; // 镜面光泽度 [0,1]
 
-uniform float _NoiseBrightOffset; // 噪声亮度偏移 [0,0.9]
+
 // 新增参数
 uniform float _VerticalOffset;     // 垂直偏移量 [-1.0,1.0]
 uniform float _VolumeCurve;        // 音量响应曲线 [0.1,2.0] 值越小低音量越不敏感
@@ -341,7 +335,6 @@ let material: Material | undefined;
   jsonValue.materials[0].floats['_MaxBrightness'] = 0.30;
 
   for (let i = 0; i < MAX_TEXTURES; i++) {
-    jsonValue.materials[0].floats[`_Offset${i}`] = 0;
     jsonValue.materials[0].floats[`_Alpha${i}`] = 0;
     // 初始化颜色参数
     jsonValue.materials[0].vector4s[`_Color${i}`] = [1, 1, 1, 1];
@@ -560,6 +553,10 @@ let material: Material | undefined;
     hexToRgba('#559EF7'), // 主色
     hexToRgba('#55F7D8')  // 副色
   );
+
+  //初始化  volumeThreshold ；
+  controller.setVolumeThreshold(0.1);
+  
 
   // 第一阶段蓝色
   const firstStageBlueInput = document.getElementById('listeningColor') as HTMLInputElement | null;
@@ -812,7 +809,6 @@ let material: Material | undefined;
 
         // 初始化偏移、透明度和颜色矩阵参数
         for (let i = 0; i < MAX_TEXTURES; i++) {
-          material.setFloat(`_Offset${i}`, 0.5);
           material.setFloat(`_Alpha${i}`, 0);
           // 设置默认颜色(白色)
           material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 1));
@@ -823,7 +819,6 @@ let material: Material | undefined;
         material.setFloat('_NoiseScaleY', 0.74);
         material.setFloat('_NoiseSpeedX', 0.1);
         material.setFloat('_NoiseSpeedY', 0.111);
-        material.setFloat('_NoiseBrightOffset', 0.34);
         material.setFloat('_NoiseUVScaleX', 0.081);
         material.setFloat('_NoiseUVScaleY', 0.040);
         material.setFloat('_VerticalOffset', -0.50);
@@ -956,8 +951,6 @@ let material: Material | undefined;
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
 
-      //设置exposureType
-      material.setFloat('_ExposureType', controller.currentStage === MainStage.Input ? 1 : 0);
 
       // 更新每个纹理的参数
       for (let i = 0; i < textureCount; i++) {

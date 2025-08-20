@@ -37,7 +37,7 @@ export class TextureController {
   nextId = 1;
   nextLayer = 0;
   currentStage: MainStage = MainStage.Listening;
-  volumeThreshold = 0.1;
+  volumeThreshold = 0.1; // 默认值
   pendingInputStage = false;    // 标记是否在3.4s触发第二阶段
   stageStartTime = 0;           // 当前阶段开始时间
   listeningTextureColor: 'blue' | 'green' = 'blue'; // 监听阶段纹理颜色控制
@@ -116,8 +116,15 @@ export class TextureController {
   secondStagePrimaryColor: [number, number, number, number] = [0, 0, 1, 1]; // 默认蓝色
   secondStageSecondaryColor: [number, number, number, number] = [0, 1, 0, 1]; // 默认绿色
 
-  constructor () {
+  constructor (initialVolumeThreshold?: number) {
+    if (typeof initialVolumeThreshold === 'number') {
+      this.volumeThreshold = initialVolumeThreshold;
+    }
     this.resetToListening(performance.now() / 1000);
+  }
+
+  setVolumeThreshold(threshold: number) {
+    this.volumeThreshold = threshold;
   }
 
   resetToListening (now: number) {
