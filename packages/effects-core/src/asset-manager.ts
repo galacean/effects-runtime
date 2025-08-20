@@ -194,15 +194,10 @@ export class AssetManager implements Disposable {
   }
 
   /**
-   * 公开字体加载方法，供外部动态加载字体
-   * @param fonts 字体定义数组
+   * 字体加载方法
+   * @param fonts - 字体定义数组
    */
   static async loadFontFamily (fonts: spec.FontDefine[]) {
-    // 对老数据的兼容
-    if (!fonts) {
-      return;
-    }
-
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
       if (font.fontURL && !AssetManager.fontCache.has(font.fontFamily)) {
