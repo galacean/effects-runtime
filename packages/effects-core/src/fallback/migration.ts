@@ -109,6 +109,7 @@ export function version31Migration (json: JSONScene): JSONScene {
 export function version32Migration (json: JSONScene): JSONScene {
   componentMap.clear();
   itemMap.clear();
+
   const { compositions, items, components } = json;
   // 处理旧蒙版数据
 
@@ -171,11 +172,11 @@ export function version33Migration (json: JSONScene): JSONScene {
 
     const compositionComponent = {
       id: generateGUID(),
-      dataType:'CompositionComponent',
+      dataType: 'CompositionComponent',
       items: composition.items,
       timelineAsset: composition.timelineAsset,
       sceneBindings: composition.sceneBindings,
-      item:{ id:composition.id },
+      item: { id: composition.id },
     } as unknown as spec.ComponentData;
 
     //@ts-expect-error
@@ -183,7 +184,7 @@ export function version33Migration (json: JSONScene): JSONScene {
     //@ts-expect-error
     composition.sceneBindings = undefined;
     //@ts-expect-error
-    composition.components = [{ id:compositionComponent.id }];
+    composition.components = [{ id: compositionComponent.id }];
     json.components.push(compositionComponent);
   }
   // 预合成元素 refId 同步改为生成的合成 guid
@@ -224,17 +225,14 @@ export function version34Migration (json: JSONScene): JSONScene {
   for (const componentData of json.components) {
     if (componentData.dataType === spec.DataType.SpriteComponent) {
       const spriteComponentData = componentData as spec.SpriteComponentData;
-
       const renderer = spriteComponentData.renderer;
-
       const shapeData = renderer.shape as spec.ShapeGeometry;
 
       if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
-
         const geometryData = createGeometryDataByShape(shapeData);
 
         //@ts-expect-error
-        spriteComponentData.geometry = { id:geometryData.id };
+        spriteComponentData.geometry = { id: geometryData.id };
         json.geometries.push(geometryData);
       }
     }
@@ -247,17 +245,15 @@ export function version34Migration (json: JSONScene): JSONScene {
 }
 
 /**
- * @description 根据形状获取形状几何体数据
- * @param shape 形状
+ * 根据形状获取形状几何体数据
+ * @param shape - 形状
  * @returns 形状几何体数据
  */
 function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName = '形状') {
   const targetGeometry = getGeometryByShape(shape);
   const { index = [], aPoint = [] } = targetGeometry;
-
   const point = new Float32Array(aPoint);
   const position = [];
-
   const atlasOffset = [];
 
   for (let i = 0; i < point.length; i += 6) {
@@ -271,7 +267,6 @@ function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName 
     indexCount: number,
     vertexCount: number,
   }[] = [];
-
   const vertexCount = position.length / 3;
   const indexCount = index.length;
   const positionByteLength = position.length * 4;
