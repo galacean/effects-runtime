@@ -246,9 +246,10 @@ export class RichTextComponent extends TextComponent {
     let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)), textStyle.fontSize);
 
     charsInfo.forEach((charInfo, index) => {
-      const { richOptions, offsetX, width } = charInfo;
+      const { richOptions, offsetX, width, chars } = charInfo;
       let charWidth = width;
       let offset = offsetX;
+      const charsArr = chars;
 
       if (overflow === spec.TextOverflow.display) {
         if (width > canvasWidth) {
@@ -256,6 +257,14 @@ export class RichTextComponent extends TextComponent {
 
           charWidth *= canvasScale;
           offset = offsetX.map(x => x * canvasScale);
+          charsArr.forEach(
+            charArr => {
+              charArr.forEach(charDetail => {
+                charDetail.x *= canvasScale;
+                charDetail.width *= canvasScale;
+              });
+            },
+          );
         }
 
       }
