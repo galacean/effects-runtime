@@ -96,6 +96,29 @@ export function isObject (obj: unknown): obj is Record<string | symbol, unknown>
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
 
+/**
+ * 判断对象是否是`Plain Object`类型
+ *
+ * @param obj - 要判断的对象
+ * @returns
+ */
+export function isPlainObject (obj: unknown): obj is Record<string | symbol, unknown> {
+  if (obj === null || typeof obj !== 'object') { return false; }
+  // 先排除 Array/Date/Map/Set/RegExp 等
+  if (Object.prototype.toString.call(obj) !== '[object Object]') { return false; }
+
+  const proto = Object.getPrototypeOf(obj);
+
+  if (proto === null) { return true; } // Object.create(null)
+
+  const hasOwn = Object.prototype.hasOwnProperty;
+  const Ctor = hasOwn.call(proto, 'constructor') && proto.constructor;
+
+  // 构造器需要是 Object（跨 realm 用函数源码比对）
+  return typeof Ctor === 'function' &&
+    Function.prototype.toString.call(Ctor) === Function.prototype.toString.call(Object);
+}
+
 export function isCanvas (canvas: HTMLCanvasElement) {
   // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
   return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
