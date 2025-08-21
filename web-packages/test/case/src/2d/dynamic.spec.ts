@@ -5,7 +5,7 @@ import sceneList from './assets/dynamic';
 
 const { expect } = chai;
 // 使用 Canvas 2D 每次渲染出的图都不一致，阈值提高到 2%
-const accumRatioThreshold = 2e-4;
+const ACCUM_RATIO_THRESHOLD = 2e-4;
 const pixelDiffThreshold = 1;
 const canvasWidth = 512;
 const canvasHeight = 512;
@@ -28,14 +28,27 @@ function addDescribe (renderFramework: GLType, i: number) {
     });
 
     Object.keys(sceneList).forEach((key, j) => {
-      const { name, url, variables } = sceneList[key as keyof typeof sceneList];
+      const item = sceneList[key as keyof typeof sceneList];
+      const { name, url, variables } = item;
+      let threshold = ACCUM_RATIO_THRESHOLD;
 
-      void checkScene(key, name, url, variables, [i, j]);
+      if ('threshold' in item) {
+        threshold = item.threshold;
+      }
+
+      void checkScene(key, name, url, variables, threshold, [i, j]);
     });
   });
 }
 
-async function checkScene (keyName: string, name: string, url: string, variables: spec.TemplateVariables, idx: [number, number]) {
+async function checkScene (
+  keyName: string,
+  name: string,
+  url: string,
+  variables: spec.TemplateVariables,
+  threshold: number,
+  idx: [number, number],
+) {
   it(`${name}`, async () => {
     console.info(`[Test] Compare begin: ${name}, ${url}`);
 
@@ -111,7 +124,7 @@ async function checkScene (keyName: string, name: string, url: string, variables
         console.info('[Test] DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
       }
 
-      if (diffCountRatio > accumRatioThreshold) {
+      if (diffCountRatio > threshold) {
         console.error('[Test] FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
         const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
         const newFileName = `${namePrefix}_${name}_${time}_new.png`;

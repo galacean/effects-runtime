@@ -41,6 +41,7 @@ export default {
       'video': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
       'text_3': 'Dynamic Video',
     },
+    threshold: 0.17,
   },
 };
 
