@@ -488,8 +488,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const height = this.getParentRectY();
 
     // this.transform.setPosition(width / 1000 / 2, height / 1000 / 2, 0);
-    const unitPerPixelsX = 2 / (this.item.composition?.renderer.getWidth() ?? 1);
-    const unitPerPixelsY = 2 / (this.item.composition?.renderer.getHeight() ?? 1);
+    // const unitPerPixelsX = 2 / (this.item.composition?.renderer.getWidth() ?? 1);
+    // const unitPerPixelsY = 2 / (this.item.composition?.renderer.getHeight() ?? 1);
 
     const anchorLeft = this.transform.anchorLeft;
     const anchorTop = this.transform.anchorTop;
@@ -504,10 +504,10 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     let sizeX = 0;
     let sizeY = 0;
 
-    const anchorLeftPosition = (anchorLeft - 0.5) * width;
-    const anchorTopPosition = (anchorTop - 0.5) * height;
-    const anchorRightPosition = (anchorRight - 0.5) * width;
-    const anchorBottomPosition = (anchorBottom - 0.5) * height;
+    const anchorLeftPosition = (anchorLeft) * width;
+    const anchorTopPosition = (anchorTop) * height;
+    const anchorRightPosition = (anchorRight) * width;
+    const anchorBottomPosition = (anchorBottom) * height;
 
     if (anchorLeftPosition === anchorRightPosition) {
       anchorPositionX = anchorLeftPosition;
@@ -528,24 +528,23 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     const posX = anchorPositionX + this.transform.anchoredPosition.x;
     const posY = anchorPositionY + this.transform.anchoredPosition.y;
 
-    this.transform.setPosition(posX * unitPerPixelsX, posY * unitPerPixelsY, 0);
+    this.transform.setPosition(posX, posY, 0);
 
     // console.log(width, height);
     // this.transform.setSize(1, 1);
-    this.transform.setSize(sizeX * unitPerPixelsX, sizeY * unitPerPixelsY);
-    // renderer.setGlobalMatrix('effects_ObjectToWorld', new Matrix4().setFromTranslation(width / 1000 / 2, height / 1000 / 2, 0));
+    this.transform.setSize(sizeX, sizeY);
   }
 
   private draw (renderer: Renderer) {
     if (renderer.renderingData.currentFrame.globalUniforms) {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-      renderer.setGlobalMatrix('effects_MatrixVP', new Matrix4());
     }
 
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
       material.setVector2('_Size', this.transform.size);
+      material.setMatrix('effects_MatrixVP', new Matrix4().orthographic(0, this.item.composition!.renderer.getWidth(), this.item.composition!.renderer.getHeight(), 0, -10, 100));
 
       if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
         this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
