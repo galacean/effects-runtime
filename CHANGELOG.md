@@ -7,6 +7,13 @@
 
 ---
 
+## 2.6.3
+
+`2025-08-22`
+
+- Fix: the adapter returns a string when loading JSON from a relative path in the miniprogram. [#1145](https://github.com/galacean/effects-runtime/pull/1145) @yiiqii
+- Fix: plain object judgment. [#1147](https://github.com/galacean/effects-runtime/pull/1147) @wumaolinmaoan
+
 ## 2.6.2
 
 `2025-08-15`
