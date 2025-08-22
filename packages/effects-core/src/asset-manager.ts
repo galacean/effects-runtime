@@ -51,6 +51,44 @@ export class AssetManager implements Disposable {
   private timers: number[] = [];
 
   /**
+   * 字体加载方法
+   * @param fonts - 字体定义数组
+   * @param [baseURL=location.href] - URL 的 base 字段
+   * @returns
+   */
+  static async loadFontFamily (
+    fonts: spec.FontDefine[],
+    baseURL = location.href,
+  ) {
+    // 对老数据的兼容
+    if (!fonts) {
+      return;
+    }
+
+    const jobs = fonts.map(async font => {
+      // 数据模版兼容判断
+      if (font.fontURL && !AssetManager.fontCache.has(font.fontFamily)) {
+        if (!isValidFontFamily(font.fontFamily)) {
+          // 在所有设备上提醒开发者
+          console.warn(`Risky font family: ${font.fontFamily}.`);
+        }
+        try {
+          const url = new URL(font.fontURL, baseURL).href;
+          const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
+
+          await fontFace.load();
+          document.fonts.add(fontFace);
+          AssetManager.fontCache.add(font.fontFamily);
+        } catch (_) {
+          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
+        }
+      }
+    });
+
+    return Promise.all(jobs);
+  }
+
+  /**
    * 构造函数
    * @param options - 场景加载参数
    * @param downloader - 资源下载对象
@@ -224,32 +262,7 @@ export class AssetManager implements Disposable {
   }
 
   private async processFontURL (fonts: spec.FontDefine[]) {
-    // 对老数据的兼容
-    if (!fonts) {
-      return;
-    }
-
-    const jobs = fonts.map(async font => {
-      // 数据模版兼容判断
-      if (font.fontURL && !AssetManager.fontCache.has(font.fontFamily)) {
-        if (!isValidFontFamily(font.fontFamily)) {
-          // 在所有设备上提醒开发者
-          console.warn(`Risky font family: ${font.fontFamily}.`);
-        }
-        try {
-          const url = new URL(font.fontURL, this.baseUrl).href;
-          const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
-
-          await fontFace.load();
-          document.fonts.add(fontFace);
-          AssetManager.fontCache.add(font.fontFamily);
-        } catch (_) {
-          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
-        }
-      }
-    });
-
-    return Promise.all(jobs);
+    return AssetManager.loadFontFamily(fonts, this.baseUrl);
   }
 
   private async processImages (
