@@ -558,7 +558,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const { renderErrors } = this.renderer.engine;
 
     if (renderErrors.size > 0) {
-      this.handleEmitEvent('rendererror', renderErrors.values().next().value);
+      const error = renderErrors.values().next().value;
+
+      this.handleEmitEvent('rendererror', error ?? new Error('Unknown render error'));
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
