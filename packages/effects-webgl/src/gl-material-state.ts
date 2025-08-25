@@ -1,5 +1,5 @@
 import { glContext } from '@galacean/effects-core';
-import type { GLPipelineContext } from './gl-pipeline-context';
+import type { GLEngine } from './gl-engine';
 
 export class GLMaterialState {
   // Blend相关设置
@@ -257,22 +257,22 @@ export class GLMaterialState {
     this.cullFace = glContext.FRONT;
   }
 
-  apply (pipelineContext: GLPipelineContext) {
-    pipelineContext.toggle(glContext.SAMPLE_ALPHA_TO_COVERAGE, this.sampleAlphaToCoverage);
-    pipelineContext.toggle(glContext.BLEND, this.blending);
-    pipelineContext.toggle(glContext.DEPTH_TEST, this.depthTest);
-    pipelineContext.toggle(glContext.STENCIL_TEST, this.stencilTest);
-    pipelineContext.toggle(glContext.CULL_FACE, this.culling);
-    pipelineContext.toggle(glContext.POLYGON_OFFSET_FILL, this.polygonOffsetFill);
+  apply (engine: GLEngine) {
+    engine.toggle(glContext.SAMPLE_ALPHA_TO_COVERAGE, this.sampleAlphaToCoverage);
+    engine.toggle(glContext.BLEND, this.blending);
+    engine.toggle(glContext.DEPTH_TEST, this.depthTest);
+    engine.toggle(glContext.STENCIL_TEST, this.stencilTest);
+    engine.toggle(glContext.CULL_FACE, this.culling);
+    engine.toggle(glContext.POLYGON_OFFSET_FILL, this.polygonOffsetFill);
 
     if (this.stencilTest) {
       //stencil
-      pipelineContext.stencilMaskSeparate(glContext.BACK, this.stencilMask[1]);
-      pipelineContext.stencilMaskSeparate(glContext.FRONT, this.stencilMask[0]);
-      pipelineContext.stencilFuncSeparate(glContext.BACK, this.stencilFunc[0], this.stencilRef[0], this.stencilMask[0]);
-      pipelineContext.stencilFuncSeparate(glContext.FRONT, this.stencilFunc[1], this.stencilRef[1], this.stencilMask[1]);
-      pipelineContext.stencilOpSeparate(glContext.BACK, this.stencilOpFail[0], this.stencilOpZFail[0], this.stencilOpZPass[0]);
-      pipelineContext.stencilOpSeparate(glContext.FRONT, this.stencilOpFail[1], this.stencilOpZFail[1], this.stencilOpZPass[1]);
+      engine.stencilMaskSeparate(glContext.BACK, this.stencilMask[1]);
+      engine.stencilMaskSeparate(glContext.FRONT, this.stencilMask[0]);
+      engine.stencilFuncSeparate(glContext.BACK, this.stencilFunc[0], this.stencilRef[0], this.stencilMask[0]);
+      engine.stencilFuncSeparate(glContext.FRONT, this.stencilFunc[1], this.stencilRef[1], this.stencilMask[1]);
+      engine.stencilOpSeparate(glContext.BACK, this.stencilOpFail[0], this.stencilOpZFail[0], this.stencilOpZPass[0]);
+      engine.stencilOpSeparate(glContext.FRONT, this.stencilOpFail[1], this.stencilOpZFail[1], this.stencilOpZPass[1]);
     }
 
     if (this.blending) {
@@ -282,28 +282,28 @@ export class GLMaterialState {
         blendFunctionParameters,
       } = this;
 
-      pipelineContext.blendColor(blendColor[0], blendColor[1], blendColor[2], blendColor[3]);
-      pipelineContext.blendEquationSeparate(blendEquationParameters[0], blendEquationParameters[1]);
-      pipelineContext.blendFuncSeparate(blendFunctionParameters[0], blendFunctionParameters[1], blendFunctionParameters[2], blendFunctionParameters[3]);
+      engine.blendColor(blendColor[0], blendColor[1], blendColor[2], blendColor[3]);
+      engine.blendEquationSeparate(blendEquationParameters[0], blendEquationParameters[1]);
+      engine.blendFuncSeparate(blendFunctionParameters[0], blendFunctionParameters[1], blendFunctionParameters[2], blendFunctionParameters[3]);
     }
 
     //color depth
-    pipelineContext.colorMask(this.colorMask[0], this.colorMask[1], this.colorMask[2], this.colorMask[3]);
+    engine.colorMask(this.colorMask[0], this.colorMask[1], this.colorMask[2], this.colorMask[3]);
 
     if (this.depthTest) {
-      pipelineContext.depthMask(this.depthMask);
-      pipelineContext.depthFunc(this.depthFunc);
-      pipelineContext.depthRange(this.depthRange[0], this.depthRange[1]);
+      engine.depthMask(this.depthMask);
+      engine.depthFunc(this.depthFunc);
+      engine.depthRange(this.depthRange[0], this.depthRange[1]);
     }
 
     if (this.culling) {
       //face
-      pipelineContext.cullFace(this.cullFace);
-      pipelineContext.frontFace(this.frontFace);
+      engine.cullFace(this.cullFace);
+      engine.frontFace(this.frontFace);
     }
 
     if (this.polygonOffsetFill) {
-      pipelineContext.polygonOffset(this.polygonOffset[0], this.polygonOffset[1]);
+      engine.polygonOffset(this.polygonOffset[0], this.polygonOffset[1]);
     }
   }
 }

@@ -1,7 +1,6 @@
 import type { ShaderCompileResult, ShaderWithSource, Texture, Engine, math } from '@galacean/effects-core';
 import { spec, ShaderVariant } from '@galacean/effects-core';
 import type { GLProgram } from './gl-program';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
 
 type Color = math.Color;
@@ -13,7 +12,6 @@ type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
 export class GLShaderVariant extends ShaderVariant {
-  pipelineContext: GLPipelineContext;
   program: GLProgram;
   compileResult: ShaderCompileResult;
   id: string;
@@ -33,49 +31,47 @@ export class GLShaderVariant extends ShaderVariant {
     }
     // 核心初始化都在 compileShader
     // 否则会出现编译了却没有初始化的情况
-    const pipelineContext = (this.engine as GLEngine).getGLPipelineContext();
-
-    pipelineContext.shaderLibrary.compileShader(this);
+    (this.engine as GLEngine).shaderLibrary.compileShader(this);
   }
 
   setFloat (name: string, value: number) {
-    this.pipelineContext.setFloat(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setFloat(this.uniformLocations[name], value);
   }
   setInt (name: string, value: number) {
-    this.pipelineContext.setInt(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setInt(this.uniformLocations[name], value);
   }
   setFloats (name: string, value: number[]) {
-    this.pipelineContext.setFloats(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setFloats(this.uniformLocations[name], value);
   }
   setTexture (name: string, texture: Texture) {
-    this.pipelineContext.setTexture(this.uniformLocations[name], this.samplerChannels[name], texture);
+    (this.engine as GLEngine).setTexture(this.uniformLocations[name], this.samplerChannels[name], texture);
   }
   setVector2 (name: string, value: Vector2) {
-    this.pipelineContext.setVector2(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setVector2(this.uniformLocations[name], value);
   }
   setVector3 (name: string, value: Vector3) {
-    this.pipelineContext.setVector3(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setVector3(this.uniformLocations[name], value);
   }
   setVector4 (name: string, value: Vector4) {
-    this.pipelineContext.setVector4(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setVector4(this.uniformLocations[name], value);
   }
   setColor (name: string, value: Color) {
-    this.pipelineContext.setColor(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setColor(this.uniformLocations[name], value);
   }
   setQuaternion (name: string, value: Quaternion) {
-    this.pipelineContext.setQuaternion(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setQuaternion(this.uniformLocations[name], value);
   }
   setMatrix (name: string, value: Matrix4) {
-    this.pipelineContext.setMatrix(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setMatrix(this.uniformLocations[name], value);
   }
   setMatrix3 (name: string, value: Matrix3) {
-    this.pipelineContext.setMatrix3(this.uniformLocations[name], value);
+    (this.engine as GLEngine).setMatrix3(this.uniformLocations[name], value);
   }
   setVector4Array (name: string, array: number[]) {
-    this.pipelineContext.setVector4Array(this.uniformLocations[name], array);
+    (this.engine as GLEngine).setVector4Array(this.uniformLocations[name], array);
   }
   setMatrixArray (name: string, array: number[]) {
-    this.pipelineContext.setMatrixArray(this.uniformLocations[name], array);
+    (this.engine as GLEngine).setMatrixArray(this.uniformLocations[name], array);
   }
 
   fillShaderInformation (uniformNames: string[], samplers: string[]) {
@@ -83,7 +79,7 @@ export class GLShaderVariant extends ShaderVariant {
     const samplerList = samplers.slice();
 
     uniformNames = uniformNames.concat(samplerList);
-    const avaliableUniforms = this.pipelineContext.getUniforms(this.program.program, uniformNames);
+    const avaliableUniforms = (this.engine as GLEngine).getUniforms(this.program.program, uniformNames);
 
     for (let i = 0; i < uniformNames.length; i++) {
       this.uniformLocations[uniformNames[i]] = avaliableUniforms[i];

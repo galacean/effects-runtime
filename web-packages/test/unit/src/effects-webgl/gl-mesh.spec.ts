@@ -34,7 +34,7 @@ describe('webgl/gl-mesh', () => {
 
     await sleep(100);
     // @ts-expect-error private property
-    expect((material.shaderVariant as GLShaderVariant).program.pipelineContext).to.eql(renderer.pipelineContext);
+    expect((material.shaderVariant as GLShaderVariant).program.engine).to.eql((renderer.engine as GLEngine));
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);
