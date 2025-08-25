@@ -58,7 +58,7 @@ let allocateTimeout: any;
   });
 
   const engine = player.renderer.engine as GLEngine;
-  const gl = engine.getGLPipelineContext().gl;
+  const gl = engine.gl;
   const ext = gl.getExtension('WEBGL_lose_context');
 
   lostButton?.addEventListener('click', () => {

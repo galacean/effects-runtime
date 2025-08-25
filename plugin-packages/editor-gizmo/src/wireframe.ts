@@ -1,4 +1,4 @@
-import type { ShaderMacros, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
+import type { ShaderMacros, Geometry, GeometryDrawMode, Engine, spec } from '@galacean/effects';
 import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, math } from '@galacean/effects';
 
 const { Vector4 } = math;
@@ -231,7 +231,7 @@ export class SharedGeometry extends GLGeometry {
       //this.vaos = this._source.vaos;
       //创建ibo
       if (this.indices) {
-        this.indicesBuffer = this.createIndicesBuffer((this.engine as GLEngine).getGLPipelineContext(), this.indices);
+        this.indicesBuffer = this.createIndicesBuffer(this.indices);
       }
       this.flush();
       this.initialized = true;

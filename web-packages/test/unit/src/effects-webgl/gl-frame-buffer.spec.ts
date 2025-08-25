@@ -1,5 +1,6 @@
 import type { Engine, GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
+import type { GLEngine } from '@galacean/effects-webgl';
 import { GLFramebuffer, GLRenderbuffer, GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
@@ -28,7 +29,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       await sleep(3000);
       fakeRenderer = new GLRenderer(canvas, framework);
       engine = fakeRenderer.engine;
-      gl = fakeRenderer.glRenderer.pipelineContext.gl;
+      gl = fakeRenderer.glRenderer.engine.gl;
       gpu = engine.gpuCapability;
     });
 

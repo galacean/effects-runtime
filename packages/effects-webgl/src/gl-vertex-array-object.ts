@@ -16,7 +16,7 @@ export class GLVertexArrayObject implements Disposable {
     engine: GLEngine,
     name?: string,
   ) {
-    this.gl = engine.getGLPipelineContext().gl;
+    this.gl = engine.gl;
     this.vaoExt = engine.gpuCapability.vaoExt;
     this.vao = this.createVertexArray(name);
   }

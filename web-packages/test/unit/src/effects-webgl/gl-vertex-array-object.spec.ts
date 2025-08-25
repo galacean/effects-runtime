@@ -84,9 +84,9 @@ describe('webgl/gl-vertex-array-object', () => {
 
     glGeometry.initialize();
 
-    const shader = glRenderer.pipelineContext.shaderLibrary.createShader({ vertex, fragment });
+    const shader = glRenderer.engine.shaderLibrary.createShader({ vertex, fragment });
 
-    glRenderer.pipelineContext.shaderLibrary.compileShader(shader);
+    glRenderer.engine.shaderLibrary.compileShader(shader);
     const result = shader.compileResult;
 
     expect(result.status).to.eql(ShaderCompileResultStatus.success);

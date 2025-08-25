@@ -1,7 +1,7 @@
 import type { Disposable, spec } from '@galacean/effects-core';
 import { isWebGL2, glContext } from '@galacean/effects-core';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import { assignInspectorName } from './gl-renderer-internal';
+import type { GLEngine } from './gl-engine';
 
 type GPUBufferTarget =
   | WebGLRenderingContext['ARRAY_BUFFER']
@@ -47,7 +47,7 @@ export class GLGPUBuffer implements Disposable {
   private destroyed = false;
 
   constructor (
-    public readonly pipelineContext: GLPipelineContext,
+    public readonly engine: GLEngine,
     props: GLGPUBufferProps,
   ) {
     const {
@@ -80,7 +80,7 @@ export class GLGPUBuffer implements Disposable {
   }
 
   private createGLBuffer (name?: string): WebGLBuffer | null {
-    const buffer = this.pipelineContext.gl.createBuffer();
+    const buffer = this.engine.gl.createBuffer();
 
     assignInspectorName(buffer, name);
 
@@ -88,15 +88,15 @@ export class GLGPUBuffer implements Disposable {
   }
 
   bind () {
-    this.pipelineContext.gl.bindBuffer(this.target, this.glBuffer);
+    this.engine.gl.bindBuffer(this.target, this.glBuffer);
   }
 
   bufferData (data: spec.TypedArray | number): void {
     const byteLength = typeof data === 'number' ? data : data.byteLength;
 
-    if (this.pipelineContext) {
+    if (this.engine) {
       this.byteLength = byteLength;
-      const gl = this.pipelineContext.gl;
+      const gl = this.engine.gl;
       const target = this.target;
 
       gl.bindBuffer(target, this.glBuffer);
@@ -115,8 +115,8 @@ export class GLGPUBuffer implements Disposable {
   }
 
   bufferSubData (elementOffset: number, data: spec.TypedArray): void {
-    if (this.pipelineContext) {
-      const gl = this.pipelineContext.gl;
+    if (this.engine) {
+      const gl = this.engine.gl;
       const target = this.target;
       const byteOffset = elementOffset * this.bytesPerElement;
       const byteLength = byteOffset + data.byteLength;
@@ -133,7 +133,7 @@ export class GLGPUBuffer implements Disposable {
   }
 
   dispose (): void {
-    this.pipelineContext.gl.deleteBuffer(this.glBuffer);
+    this.engine.gl.deleteBuffer(this.glBuffer);
     // @ts-expect-error safe to assign
     this.glBuffer = null;
     this.destroyed = true;
@@ -141,8 +141,8 @@ export class GLGPUBuffer implements Disposable {
 
   // for test
   readSubData (elementOffset: number, dstBuffer: spec.TypedArray): boolean {
-    if (isWebGL2(this.pipelineContext.gl)) {
-      this.pipelineContext.gl.getBufferSubData(this.target, elementOffset * this.bytesPerElement, dstBuffer);
+    if (isWebGL2(this.engine.gl)) {
+      this.engine.gl.getBufferSubData(this.target, elementOffset * this.bytesPerElement, dstBuffer);
 
       return true;
     }

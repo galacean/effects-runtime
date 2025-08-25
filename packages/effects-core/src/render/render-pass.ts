@@ -614,7 +614,7 @@ export class RenderPass implements Disposable, Sortable {
       const tex = texture === outTex ? outTex : texture;
 
       // TODO 为什么要initialize？
-      //tex.initialize(this.renderer.glRenderer.pipelineContext);
+      //tex.initialize(this.renderer.glRenderer.engine);
       if (!external) {
         this.depthTexture = tex;
       }

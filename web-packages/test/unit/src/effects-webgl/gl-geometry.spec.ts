@@ -30,7 +30,7 @@ describe('webgl/gl-geometry', () => {
     canvas = document.createElement('canvas');
     renderer = new GLRenderer(canvas, 'webgl2');
     glRenderer = renderer.glRenderer;
-    pipelineContext = renderer.pipelineContext;
+    pipelineContext = (renderer.engine as GLEngine);
 
     gl = pipelineContext.gl;
     engine = new GLEngine(gl);

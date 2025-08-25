@@ -4,7 +4,7 @@ import {
   RenderPassDestroyAttachmentType, TextureSourceType, Camera, DestroyOptions, RenderPass,
   RenderFrame, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
-import type { GLShaderVariant, GLFramebuffer } from '@galacean/effects-webgl';
+import type { GLShaderVariant, GLFramebuffer, GLEngine } from '@galacean/effects-webgl';
 import { GLMaterial, GLGeometry, GLTexture, GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -26,7 +26,7 @@ describe('webgl/dispose', function () {
     canvas = document.createElement('canvas');
     renderer = new GLRenderer(canvas, 'webgl2');
     engine = renderer.engine;
-    gl = renderer.pipelineContext.gl;
+    gl = (renderer.engine as GLEngine).gl;
   });
 
   beforeEach(async () => {
@@ -34,7 +34,7 @@ describe('webgl/dispose', function () {
   });
 
   afterEach(() => {
-    const sb = renderer.pipelineContext.shaderLibrary;
+    const sb = (renderer.engine as GLEngine).shaderLibrary;
 
     sb.dispose();
     destroyMesh(result);

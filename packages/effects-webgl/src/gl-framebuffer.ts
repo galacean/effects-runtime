@@ -238,7 +238,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         gl.invalidateFramebuffer(gl.FRAMEBUFFER, attachments);
       }
     }
-    this.renderer.pipelineContext.bindSystemFramebuffer();
+    (this.renderer.engine as GLEngine).bindSystemFramebuffer();
   }
 
   override bind () {
@@ -247,7 +247,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     }
 
     const gl = this.renderer.glRenderer.gl;
-    const state = this.renderer.pipelineContext;
+    const state = this.renderer.engine as GLEngine;
     const [x, y, width, height] = this.viewport;
 
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
@@ -316,7 +316,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       }
       this.colorTextures = colors.slice();
     }
-    this.renderer.pipelineContext.activeTexture(gl.TEXTURE0);
+    (this.renderer.engine as GLEngine).activeTexture(gl.TEXTURE0);
 
     this.colorTextures.forEach((tex, index) => {
       const width = viewport[2];
