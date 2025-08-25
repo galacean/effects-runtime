@@ -1,6 +1,6 @@
 import { CompositionComponent } from '../../../comp-vfx-item';
-import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
+import type { FrameContext } from '../playable';
+import { Playable } from '../playable';
 
 export class SubCompositionClipPlayable extends Playable {
   override processFrame (context: FrameContext): void {

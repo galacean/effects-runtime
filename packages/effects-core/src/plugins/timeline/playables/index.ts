@@ -1,4 +1,5 @@
 export * from './activation-mixer-playable';
+export * from './activation-playable';
 export * from './color-property-mixer-playable';
 export * from './float-property-mixer-playable';
 export * from './particle-mixer-playable';
@@ -9,3 +10,4 @@ export * from './sub-composition-mixer-playable';
 export * from './track-mixer-playable';
 export * from './transform-mixer-playable';
 export * from './vector-property-mixer-playable';
+export * from './transform-playable';

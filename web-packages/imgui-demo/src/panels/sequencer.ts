@@ -53,9 +53,20 @@ export class Sequencer extends EditorWindow {
     const cursorLinePosition = ImGui.GetCursorScreenPos();
 
     //@ts-expect-error
+    const sceneBindings = compositionComponent.sceneBindings;
+
+    //@ts-expect-error
     for (const track of compositionComponent.timelineAsset.tracks) {
       const trackAsset = track;
-      const boundObject = trackAsset.boundObject;
+      let boundObject: object | null = null;
+
+      for (const sceneBinding of sceneBindings) {
+        if (sceneBinding.key.getInstanceId() === trackAsset.getInstanceId()) {
+          boundObject = sceneBinding.value;
+
+          break;
+        }
+      }
 
       let trackName = '';
 

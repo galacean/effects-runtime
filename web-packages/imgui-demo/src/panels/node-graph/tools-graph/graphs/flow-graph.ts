@@ -1,8 +1,6 @@
 import * as NodeGraph from '../../visual-graph';
 import { ImGui } from '../../../../imgui/index';
-import { AnimationClip } from '@galacean/effects';
 import { FlowToolsNode, GraphType } from '../nodes/flow-tools-node';
-import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { CommentNode } from '../../visual-graph/comment-node';
 
 type ImVec2 = ImGui.ImVec2;

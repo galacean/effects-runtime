@@ -1,10 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import { EffectsObject } from '../../effects-object';
-import type { AnimationClip } from '../cal/calculate-vfx-item';
 import { GraphDataSet } from './graph-data-set';
 import { getNodeDataClass } from './node-asset-type';
 import { InvalidIndex, type GraphNodeData } from './graph-node';
+import type { AnimationClip } from '../../animation/animation-clip';
 
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {

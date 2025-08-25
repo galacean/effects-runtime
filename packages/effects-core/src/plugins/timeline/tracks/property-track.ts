@@ -9,10 +9,6 @@ export abstract class PropertyTrack extends TrackAsset {
   @serialize()
   protected path = '';
 
-  override updateAnimatedObject () {
-    this.boundObject = this.parent.boundObject;
-  }
-
   override fromData (data: EffectsObjectData): void {
     super.fromData(data);
     const propertyNames = this.path.split('.');

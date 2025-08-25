@@ -16,6 +16,7 @@ export * from './camera';
 export * from './canvas-pool';
 export * from './comp-vfx-item';
 export * from './components';
+export * from './animation';
 export * from './composition';
 export * from './config';
 export * from './constants';
