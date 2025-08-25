@@ -1,9 +1,6 @@
 import type { Disposable } from '@galacean/effects-core';
-import { isWebGL2 } from '@galacean/effects-core';
 import type { GLGeometry } from './gl-geometry';
 import type { GLPipelineContext } from './gl-pipeline-context';
-import type { UniformBlockSpec } from './gl-uniform-utils';
-import { createUniformBlockDataFromProgram } from './gl-uniform-utils';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
 
@@ -25,7 +22,6 @@ export interface ProgramUniformInfo {
   readonly isTexture: boolean,
 }
 export class GLProgram implements Disposable {
-  private readonly uniformBlockMap: Record<string, UniformBlockSpec> = {};
   private attribInfoMap: Record<string, ProgramAttributeInfo>;
   private pipelineContext: GLPipelineContext;
 
@@ -35,17 +31,9 @@ export class GLProgram implements Disposable {
     private readonly id: string,
   ) {
     this.pipelineContext = engine.getGLPipelineContext();
-    const gl = this.pipelineContext.gl;
-
     this.pipelineContext.useProgram(program);
 
     this.attribInfoMap = this.createAttribMap();
-    if (isWebGL2(gl)) {
-      const { blockSpecs } = createUniformBlockDataFromProgram(gl, program);
-
-      // blockUniformNames = buns;
-      blockSpecs.forEach(b => this.uniformBlockMap[b.name] = b);
-    }
 
     this.pipelineContext.useProgram(null);
     //gl.activeTexture(gl.TEXTURE0);
