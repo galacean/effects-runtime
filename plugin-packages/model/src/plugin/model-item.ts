@@ -9,10 +9,8 @@ import type {
   ModelMeshComponentData, ModelSkyboxComponentData, AnimationComponentData,
 } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../index';
-import type { PSceneManager } from '../runtime';
-import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
-import type { Euler, Ray, Vector2 } from '../runtime/math';
-import { Vector3 } from '../runtime/math';
+import type { PSceneManager, Euler, Ray, Vector2 } from '../runtime';
+import { PCamera, PLight, PMesh, PSkybox, Vector3 } from '../runtime';
 import { RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
 
@@ -121,7 +119,7 @@ export class ModelMeshComponent extends RendererComponent {
     super.fromData(data);
     this.data = {
       ...data,
-      materials:[],
+      materials: [],
     };
 
     this.data.rootBone = data.rootBone ? this.engine.findObject(data.rootBone) : undefined;

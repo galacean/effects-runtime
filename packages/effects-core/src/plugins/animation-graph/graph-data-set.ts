@@ -1,4 +1,4 @@
-import type { AnimationClip } from '../cal/calculate-vfx-item';
+import type { AnimationClip } from '../../animation/animation-clip';
 
 export class GraphDataSet {
   resources: AnimationClip[] = [];

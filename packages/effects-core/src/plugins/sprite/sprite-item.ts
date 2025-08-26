@@ -2,14 +2,15 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { BaseRenderComponent } from '../../components';
+import { BaseRenderComponent, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
-import { Playable, PlayableAsset } from '../cal/playable-graph';
+import type { FrameContext } from '../timeline/playable';
+import { Playable, PlayableAsset } from '../timeline/playable';
 import { TrackAsset } from '../timeline/track';
 import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
+import type { VFXItem } from '../../vfx-item';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options
@@ -27,8 +28,8 @@ let seed = 0;
 export class SpriteColorPlayableAsset extends PlayableAsset {
   data: ColorPlayableAssetData;
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    const spriteColorPlayable = new ColorPlayable(graph);
+  override createPlayable (): Playable {
+    const spriteColorPlayable = new ColorPlayable();
 
     spriteColorPlayable.create(this.data);
 
@@ -41,14 +42,27 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 }
 
 export class ComponentTimeTrack extends TrackAsset {
-  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    return new TrackMixerPlayable(graph);
+  override createTrackMixer (): TrackMixerPlayable {
+    return new TrackMixerPlayable();
+  }
+}
+
+export class SpriteComponentTimeTrack extends ComponentTimeTrack {
+  override updateAnimatedObject (boundObject: object): object {
+
+    return (boundObject as VFXItem).getComponent(SpriteComponent);
+  }
+}
+
+export class EffectComponentTimeTrack extends ComponentTimeTrack {
+  override updateAnimatedObject (boundObject: object): object {
+    return (boundObject as VFXItem).getComponent(EffectComponent);
   }
 }
 
 export class ComponentTimePlayableAsset extends PlayableAsset {
-  override createPlayable (graph: PlayableGraph): Playable {
-    const componentTimePlayable = new ComponentTimePlayable(graph);
+  override createPlayable (): Playable {
+    const componentTimePlayable = new ComponentTimePlayable();
 
     return componentTimePlayable;
   }

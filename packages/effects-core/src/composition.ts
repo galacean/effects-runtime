@@ -19,7 +19,7 @@ import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { PlayState } from './plugins/cal/playable-graph';
+import { PlayState } from './plugins/timeline/playable';
 
 /**
  * 合成统计信息
