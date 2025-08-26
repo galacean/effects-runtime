@@ -42,8 +42,6 @@ export class StateMachineNodeData extends GraphNodeData {
 
     this.stateDatas = data.stateDatas;
     this.defaultStateIndex = data.defaultStateIndex;
-    // TODO: Add to spec
-    //@ts-expect-error
     this.machineName = data.machineName;
   }
 }

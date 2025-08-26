@@ -5,7 +5,6 @@ import vs from './shader/vertex.glsl';
 
 @effectsClass('FFDComponent')
 export class FFDComponent extends Component {
-  // @ts-expect-error
   private data: spec.FFDComponentData;
 
   private rowNum = 5;                     // 行数量（列控制点数）
@@ -30,7 +29,6 @@ export class FFDComponent extends Component {
     this.updateControlPoints();
   }
 
-  // @ts-expect-error
   override fromData (data: spec.FFDComponentData): void {
     super.fromData(data);
     this.data = data;
