@@ -2,20 +2,17 @@ import type {
   Engine, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams, Renderer, VFXItem,
 } from '@galacean/effects';
 import {
-  HitTestType, Behaviour, RendererComponent, effectsClass, spec,
+  HitTestType, Behaviour, RendererComponent, effectsClass, spec, AnimationClip,
 } from '@galacean/effects';
 import type {
   ModelCameraComponentData, ModelItemBounding, ModelLightComponentData,
   ModelMeshComponentData, ModelSkyboxComponentData, AnimationComponentData,
 } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../index';
-import type { PSceneManager } from '../runtime';
-import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
-import type { Euler, Ray, Vector2 } from '../runtime/math';
-import { Vector3 } from '../runtime/math';
+import type { PSceneManager, Euler, Ray, Vector2 } from '../runtime';
+import { PCamera, PLight, PMesh, PSkybox, Vector3 } from '../runtime';
 import { RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
-import { AnimationClip } from '@galacean/effects';
 
 /**
  * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
@@ -122,7 +119,7 @@ export class ModelMeshComponent extends RendererComponent {
     super.fromData(data);
     this.data = {
       ...data,
-      materials:[],
+      materials: [],
     };
 
     this.data.rootBone = data.rootBone ? this.engine.findObject(data.rootBone) : undefined;

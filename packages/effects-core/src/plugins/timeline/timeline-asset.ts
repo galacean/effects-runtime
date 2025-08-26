@@ -29,7 +29,7 @@ export class TimelineAsset extends EffectsObject {
     return this.cacheFlattenedTracks;
   }
 
-  createTrack<T extends TrackAsset>(classConstructor: Constructor<T>, parent: TrackAsset, name?: string): T {
+  createTrack<T extends TrackAsset> (classConstructor: Constructor<T>, parent: TrackAsset, name?: string): T {
     const newTrack = new classConstructor(this.engine);
 
     newTrack.name = name ? name : classConstructor.name;

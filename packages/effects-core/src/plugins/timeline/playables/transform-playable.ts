@@ -6,8 +6,7 @@ import type { ItemLinearVelOverLifetime, ValueGetter } from '../../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../../math';
 import { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../playable';
-import { Playable } from '../playable';
-import { PlayableAsset } from '../playable';
+import { Playable, PlayableAsset } from '../playable';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);

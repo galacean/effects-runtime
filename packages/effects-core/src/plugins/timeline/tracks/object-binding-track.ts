@@ -3,10 +3,12 @@ import { effectsClass } from '../../../decorators';
 import { VFXItem } from '../../../vfx-item';
 import { ParticleSystem } from '../../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
-import { ActivationTrack, ParticleTrack, TrackAsset } from '..';
-import type { TimelineAsset } from '..';
 import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
 import { EffectComponent } from '../../../components';
+import { TrackAsset } from '../track';
+import type { TimelineAsset } from '../timeline-asset';
+import { ActivationTrack } from './activation-track';
+import { ParticleTrack } from './particle-track';
 
 /**
  * @since 2.0.0
