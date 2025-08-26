@@ -1,4 +1,4 @@
-import type { Disposable, Framebuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
+import type { Disposable, Framebuffer, Renderer } from '@galacean/effects-core';
 import { GLSLVersion, Mesh, RenderPass, TextureLoadAction, TextureSourceType, glContext } from '@galacean/effects-core';
 import type { GLFramebuffer } from './gl-framebuffer';
 import { GLGeometry } from './gl-geometry';
@@ -24,7 +24,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
   ) {
     if (renderer.engine.gpuCapability.level === 1) {
       this.copyRenderPass = this.createCopyRenderPass().initialize(renderer);
-      const shaderSource = this.copyRenderPass.meshes[0].material.shaderSource as SharedShaderWithSource;
+      const shaderSource = this.copyRenderPass.meshes[0].material.shaderSource;
 
       renderer.pipelineContext.shaderLibrary.addShader(shaderSource);
     }

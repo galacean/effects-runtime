@@ -170,6 +170,11 @@ export class AssetManager implements Disposable {
 
         this.baseUrl = link;
         rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+
+        // 小程序环境下，如果产物是相对路径，adapter 返回的是字符串，需要兼容
+        if (isString(rawJSON)) {
+          rawJSON = JSON.parse(rawJSON);
+        }
       } else {
         // url 为 spec.JSONScene 或 Scene 对象
         rawJSON = url;

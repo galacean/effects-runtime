@@ -554,7 +554,6 @@ export class LoaderImpl implements Loader {
       compositionId: this.composition.id,
       compositions: [this.composition],
       images: this.images,
-      shapes: [],
       plugins: ['model'],
       textures: this.textures,
       items: this.items,

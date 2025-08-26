@@ -1,12 +1,13 @@
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import * as spec from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import { Component } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region, TimelinePlayable, TrackAsset } from './plugins';
+import type { Region, TrackAsset } from './plugins';
+import { TimelineInstance } from './plugins';
 import { HitTestType } from './plugins';
-import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
+import { PlayState } from './plugins/timeline/playable';
 import { TimelineAsset } from './plugins/timeline';
 import { noop } from './utils';
 import { VFXItem } from './vfx-item';
@@ -41,36 +42,16 @@ export class CompositionComponent extends Component {
   private sceneBindings: SceneBinding[] = [];
   @serialize()
   private timelineAsset: TimelineAsset;
-  private timelinePlayable: TimelinePlayable;
-  private graph: PlayableGraph = new PlayableGraph();
+  private timelineInstance: TimelineInstance;
 
   override onStart (): void {
     if (!this.timelineAsset) {
       this.timelineAsset = new TimelineAsset(this.engine);
     }
-    this.resolveBindings();
-    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
-
-    // 重播不销毁元素
-    if (this.item.endBehavior !== spec.EndBehavior.destroy) {
-      this.setReusable(true);
-    }
+    // this.resolveBindings();
+    this.timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
 
     this.item.composition?.refContent.push(this.item);
-  }
-
-  setReusable (value: boolean) {
-    for (const track of this.timelineAsset.tracks) {
-      const boundObject = track.boundObject;
-
-      if (boundObject instanceof VFXItem) {
-        const subCompositionComponent = boundObject.getComponent(CompositionComponent);
-
-        if (subCompositionComponent) {
-          subCompositionComponent.setReusable(value);
-        }
-      }
-    }
   }
 
   getReusable () {
@@ -91,13 +72,9 @@ export class CompositionComponent extends Component {
     }
     const time = this.time;
 
-    this.timelinePlayable.setTime(time);
+    this.timelineInstance.setTime(time);
 
-    // The properties of the object may change dynamically,
-    // so reset the track binding to avoid invalidation of the previously obtained binding object.
-    this.resolveBindings();
-    this.timelinePlayable.evaluate();
-    this.graph.evaluate(dt);
+    this.timelineInstance.evaluate(dt / 1000);
   }
 
   override onEnable () {
@@ -236,26 +213,5 @@ export class CompositionComponent extends Component {
 
   override fromData (data: any): void {
     super.fromData(data);
-  }
-
-  private resolveBindings () {
-    for (const sceneBinding of this.sceneBindings) {
-      sceneBinding.key.boundObject = sceneBinding.value;
-    }
-
-    // 为了通过帧对比，需要保证和原有的 update 时机一致。
-    // 因此这边更新一次对象绑定，后续 timeline playable 中 sort tracks 的排序才能和原先的版本对上。
-    // 如果不需要严格保证和之前的 updata 时机一致，这边的更新和 timeline asset 中的 sortTracks 都能去掉。
-    for (const masterTrack of this.timelineAsset.tracks) {
-      this.updateTrackAnimatedObject(masterTrack);
-    }
-  }
-
-  private updateTrackAnimatedObject (track: TrackAsset) {
-    for (const subTrack of track.getChildTracks()) {
-      subTrack.updateAnimatedObject();
-
-      this.updateTrackAnimatedObject(subTrack);
-    }
   }
 }
