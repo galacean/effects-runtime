@@ -21,9 +21,8 @@ describe('webgl/renderer', () => {
 
   function copy (renderer: GLRenderer) {
     setupRenderFrame(renderer);
-    const pipelineContext = (renderer.engine as GLEngine);
-    const engine = renderer.engine;
-    const gl = pipelineContext.gl;
+    const engine = renderer.engine as GLEngine;
+    const gl = engine.gl;
     const target = new GLTexture(engine, {
       sourceType: TextureSourceType.data,
       data: {

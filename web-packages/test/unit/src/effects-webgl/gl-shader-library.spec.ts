@@ -139,8 +139,8 @@ describe('webgl/gl-shader-library', () => {
   });
 
   it('compile shader async work if no extension', function (done) {
-    const pipelineContext = rendererGL2.engine as GLEngine;
-    const shaderLib = pipelineContext.shaderLibrary;
+    const glEngine = rendererGL2.engine as GLEngine;
+    const shaderLib = glEngine.shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
@@ -154,7 +154,7 @@ describe('webgl/gl-shader-library', () => {
     shaderLib.compileShader(shader, result => {
       expect(result).to.eql(shader.compileResult);
       expect(shader.compileResult?.status).to.eql(ShaderCompileResultStatus.success);
-      pipelineContext.dispose();
+      glEngine.dispose();
       done();
     });
     expect(shader.compileResult.status).to.eql(ShaderCompileResultStatus.compiling);

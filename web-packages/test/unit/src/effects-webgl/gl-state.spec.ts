@@ -32,14 +32,14 @@ describe('webgl/gl-state', () => {
     gl = null;
   });
 
-  it('GLPipelineContext default value', () => {
+  it('GLEngine default value', () => {
     const state = engine;
 
-    // gl.DITHER是为了验证pipelineContext是否初始化了
+    // gl.DITHER是为了验证glEngine是否初始化了
     assert.equal(state.get('gl.DITHER'), null);
   });
 
-  it('GLPipelineContext framebuffer and depth function test ', () => {
+  it('GLEngine framebuffer and depth function test ', () => {
     const state = engine;
     //framebuffer
     const framebuffer = gl.createFramebuffer();

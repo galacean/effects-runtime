@@ -262,7 +262,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   dispose () {
     this.deleteResource();
     // @ts-expect-error safe to assign
-    this.emptyTexture2D = this.emptyTextureCube = this.pipelineContext = this.gpu = this.gl = null;
+    this.emptyTexture2D = this.emptyTextureCube = this.gpu = this.gl = null;
     this.destroyed = true;
   }
 }

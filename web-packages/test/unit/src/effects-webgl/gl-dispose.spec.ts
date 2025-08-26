@@ -80,8 +80,6 @@ describe('webgl/dispose', function () {
     expect(spy1).has.been.called.once;
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    // @ts-expect-error
-    expect((material.shaderVariant as GLShaderVariant).program.pipelineContext).to.eql(null);
     expect(geom.isDestroyed).to.be.true;
     expect(geom.buffers).to.eql({});
     expect(geom.attributes).to.eql({});
@@ -148,7 +146,6 @@ describe('webgl/dispose', function () {
     expect(spy2).not.has.been.called;
     expect(spy1).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(Object.keys(material.textures).length).to.eql(0);
     expect(geom.isDestroyed).to.be.false;
 
@@ -176,7 +173,6 @@ describe('webgl/dispose', function () {
 
     expect(geom.isDestroyed).to.be.false;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.false;
   });
 
@@ -199,7 +195,6 @@ describe('webgl/dispose', function () {
 
     expect(geom.isDestroyed).to.be.true;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.false;
   });
 

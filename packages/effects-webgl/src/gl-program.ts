@@ -34,7 +34,7 @@ export class GLProgram implements Disposable {
 
     this.engine.useProgram(null);
     //gl.activeTexture(gl.TEXTURE0);
-    //pipelineContext.activeTexture(gl.TEXTURE0);
+    //this.engine.activeTexture(gl.TEXTURE0);
     //emptyTexture2D.bind();
     //this.uniformInfoMap = uniformMap;
   }
@@ -119,8 +119,6 @@ export class GLProgram implements Disposable {
   dispose () {
     if (this.engine) {
       this.engine.gl.deleteProgram(this.program);
-      // @ts-expect-error safe to assign
-      this.pipelineContext = null;
     }
   }
 }

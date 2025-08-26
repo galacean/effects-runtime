@@ -84,13 +84,6 @@ export class GLRenderer extends Renderer implements Disposable {
   override renderRenderFrame (renderFrame: RenderFrame) {
     const frame = renderFrame;
 
-    // TODO 需要一个贴图统一初始化的管理类，避免在渲染逻辑代码中初始化。
-    // 初始化renderframe的贴图资源
-    // if (frame.cachedTextures) {
-    //   for (const texture of frame.cachedTextures) {
-    //     (texture as GLTexture).initialize(this.pipelineContext);
-    //   }
-    // }
     if (frame.resource) {
       frame.resource.color_b.initialize();
     }
