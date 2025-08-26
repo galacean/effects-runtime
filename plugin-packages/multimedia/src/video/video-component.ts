@@ -160,7 +160,7 @@ export class VideoComponent extends BaseRenderComponent {
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
     const isEnd = (time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)
-    || Math.abs(time - duration) < this.threshold;
+      || Math.abs(time - duration) < this.threshold;
 
     if (time > 0 && !isEnd) {
       this.setVisible(true);
@@ -276,7 +276,7 @@ export class VideoComponent extends BaseRenderComponent {
       this.isPlayLoading = true;
       this.pendingPause = false;
       this.video.play().
-        then(()=>{
+        then(() => {
           this.isPlayLoading = false;
           // 如果在 play pending 期间被请求了 pause，则立即暂停并复位 played
           if (!this.played || this.pendingPause) {
@@ -290,7 +290,7 @@ export class VideoComponent extends BaseRenderComponent {
           this.isPlayLoading = false;
           this.played = false;
           this.pendingPause = false;
-          if (error.name !== 'AbortError') {this.engine.renderErrors.add(error);}
+          if (error.name !== 'AbortError') { this.engine.renderErrors.add(error); }
         });
     }
   }
@@ -303,7 +303,7 @@ export class VideoComponent extends BaseRenderComponent {
     if (this.played) {
       this.played = false;
     }
-    if (!this.video) {return;}
+    if (!this.video) { return; }
 
     if (this.isPlayLoading) {
       this.pendingPause = true;
