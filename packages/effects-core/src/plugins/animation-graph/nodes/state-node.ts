@@ -25,8 +25,6 @@ export class StateNodeData extends GraphNodeData {
     super.load(data);
 
     this.childNodeIndex = data.childNodeIndex;
-    // TODO: Add to spec
-    //@ts-expect-error
     this.stateName = data.stateName;
   }
 }

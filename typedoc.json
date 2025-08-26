@@ -12,7 +12,8 @@
     "plugin-packages/orientation-transformer",
     "plugin-packages/rich-text",
     "plugin-packages/spine",
-    "plugin-packages/stats"
+    "plugin-packages/stats",
+    "plugin-packages/ffd"
   ],
   "entryPointStrategy": "packages",
   "out": "api",

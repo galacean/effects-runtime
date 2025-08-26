@@ -147,7 +147,8 @@ export function version33Migration (json: JSONScene): JSONScene {
         let shapeData;
 
         if (Number.isInteger(shape)) {
-          shapeData = json.shapes[shape as number];
+          // @ts-expect-error
+          shapeData = json.shapes?.[shape as number];
         } else {
           shapeData = shape;
         }
