@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-multimedia",
-  "version": "2.6.3",
+  "version": "2.6.4",
   "description": "Galacean Effects player multimedia plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",

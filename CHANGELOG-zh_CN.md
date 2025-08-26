@@ -8,6 +8,12 @@
 
 ---
 
+## 2.6.4
+
+`2025-08-26`
+
+- Fix: add video assets dispose logic. [#1157](https://github.com/galacean/effects-runtime/pull/1157) @wumaolinmaoan
+
 ## 2.6.3
 
 `2025-08-22`
