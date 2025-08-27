@@ -13,13 +13,9 @@ import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-
-export const DEFAULT_FONTS = [
-  'serif',
-  'sans-serif',
-  'monospace',
-  'courier',
-];
+import type { SizeStrategy, OverflowStrategy } from './strategies/text-strategy-interfaces';
+import { TextStrategyFactory } from './strategies/text-strategy-factory';
+import { getFontDesc } from './strategies/text-strategy-utils';
 
 interface CharInfo {
   /**
@@ -130,6 +126,10 @@ export class TextComponentBase {
 
   private char: string[];
 
+  // 策略字段
+  private sizeStrategy: SizeStrategy;
+  private overflowStrategy: OverflowStrategy;
+
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
   }
@@ -139,6 +139,38 @@ export class TextComponentBase {
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text, true);
+
+    // 初始化策略
+    this.initializeStrategies();
+  }
+
+  /**
+   * 初始化策略
+   */
+  private initializeStrategies (): void {
+    // 使用工厂创建尺寸策略
+    this.sizeStrategy = TextStrategyFactory.createSizeStrategy(this.textLayout.autoWidth);
+
+    // 使用工厂创建溢出策略
+    this.overflowStrategy = TextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
+  }
+
+  /**
+   * 设置尺寸策略
+   * @param strategy - 尺寸策略
+   */
+  setSizeStrategy (strategy: SizeStrategy): void {
+    this.sizeStrategy = strategy;
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置溢出策略
+   * @param strategy - 溢出策略
+   */
+  setOverflowStrategy (strategy: OverflowStrategy): void {
+    this.overflowStrategy = strategy;
+    this.isDirty = true;
   }
 
   private getLineCount (text: string, init: boolean) {
@@ -347,7 +379,15 @@ export class TextComponentBase {
    * @param overflow - 文本溢出模式
    */
   setOverflow (overflow: spec.TextOverflow) {
+    if (this.textLayout.overflow === overflow) {
+      return;
+    }
+
     this.textLayout.overflow = overflow;
+
+    // 使用工厂更新溢出策略
+    this.overflowStrategy = TextStrategyFactory.createOverflowStrategy(overflow);
+
     this.isDirty = true;
   }
 
@@ -415,6 +455,10 @@ export class TextComponentBase {
     }
 
     this.textLayout.autoWidth = value;
+
+    // 使用工厂更新尺寸策略
+    this.sizeStrategy = TextStrategyFactory.createSizeStrategy(value);
+
     this.isDirty = true;
   }
 
@@ -431,22 +475,21 @@ export class TextComponentBase {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
-    const width = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
+    // 使用尺寸策略计算大小
+    const { width, height: calculatedHeight, transformScaleY } = this.sizeStrategy.calculateSize(
+      this.text, layout, style, context, this.lineCount
+    );
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
-    style.fontDesc = this.getFontDesc(fontSize);
+    style.fontDesc = getFontDesc(fontSize, style);
     this.char = (this.text || '').split('');
     this.canvas.width = width;
 
-    if (layout.autoWidth) {
-      this.canvas.height = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      this.canvas.height = layout.height * fontScale;
-    }
+    // 设置 canvas 高度和 transform
+    this.canvas.height = calculatedHeight;
+    this.item.transform.size.set(1, transformScaleY);
 
     const height = this.canvas.height;
 
@@ -457,12 +500,10 @@ export class TextComponentBase {
       context.translate(0, height);
       context.scale(1, -1);
     }
-    // canvas size 变化后重新刷新 context
-    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
-    } else {
-      context.font = style.fontDesc;
-    }
+
+    // 使用溢出策略设置字体
+    this.overflowStrategy.apply(context, layout, style, this.text, this.maxLineWidth);
+
     context.clearRect(0, 0, width, height);
 
     if (style.hasShadow) {
@@ -554,26 +595,6 @@ export class TextComponentBase {
     this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
-  }
-
-  private getFontDesc (size?: number): string {
-    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
-
-    if (!DEFAULT_FONTS.includes(fontFamily)) {
-      fontDesc += `"${fontFamily}"`;
-    } else {
-      fontDesc += fontFamily;
-    }
-    if (textWeight !== spec.TextWeight.normal) {
-      fontDesc = `${textWeight} ${fontDesc}`;
-    }
-
-    if (fontStyle !== spec.FontStyle.normal) {
-      fontDesc = `${fontStyle} ${fontDesc}`;
-    }
-
-    return fontDesc;
   }
 
   private setupOutline (): void {
