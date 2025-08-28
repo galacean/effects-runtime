@@ -23,7 +23,8 @@
     "prepare": "husky install && pnpm --filter \"./packages/**\" build:fbs",
     "publish": "pnpm -r publish --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
     "publish:alpha": "pnpm -r publish --tag alpha --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
-    "publish:beta": "pnpm -r publish --tag beta --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\""
+    "publish:beta": "pnpm -r publish --tag beta --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
+    "publish:experimental": "pnpm -r publish --tag experimental --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\""
   },
   "browserslist": [
     "iOS 9"
