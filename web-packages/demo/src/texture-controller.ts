@@ -128,7 +128,7 @@ export class TextureController {
     this.resetToListening(performance.now() / 1000);
   }
 
-  setVolumeThreshold(threshold: number) {
+  setVolumeThreshold (threshold: number) {
     this.volumeThreshold = threshold;
   }
 
@@ -303,11 +303,11 @@ export class TextureController {
   }
 
   enterInputStage (now: number) {
-    if (this.stopActive) return;
-    
+    if (this.stopActive) {return;}
+
     // 清 _StopSignal/_StopTime，避免旧事件影响新批次
     this.onReset?.();
-    
+
     this.currentStage = MainStage.Input;
     this.stageStartTime = now;
     this.pendingInputStage = false;
@@ -323,12 +323,12 @@ export class TextureController {
 
     // 保存当前批次ID用于回调
     const capturedBatchId = this.inputBatchId;
-    
+
     // 0.5s后创建纹理B
     const id = window.setTimeout(() => {
       // 兜底：停止了/批次变了/阶段不是Input就不生成
-      if (this.stopActive || this.currentStage !== MainStage.Input || this.inputBatchId !== capturedBatchId) return;
-      
+      if (this.stopActive || this.currentStage !== MainStage.Input || this.inputBatchId !== capturedBatchId) {return;}
+
       const texB = this.createTexture('input', performance.now() / 1000);
 
       texB.isSecondTexture = true; // 标记为第二阶段纹理
@@ -336,7 +336,6 @@ export class TextureController {
       // 复制初始偏移值
       texB.initialOffsetU = texA.initialOffsetU;
       texB.initialOffsetV = (texA.initialOffsetV || 0) - 0.1; // 继承垂直偏移量
-
 
       texB.color = this.secondStageSecondaryColor;
       texB.colorMode = 0;
@@ -356,7 +355,7 @@ export class TextureController {
         console.log('生成第二纹理', texB);
       }
     }, this.textureInterval);
-    
+
     // 保存计时器ID以便后续清理
     this.pendingTimers.push(id);
 
@@ -369,6 +368,7 @@ export class TextureController {
   stop () {
     this.currentStage = MainStage.Stop;
     const now = performance.now() / 1000;
+
     this.stopActive = true; // 设置停止激活标志
 
     // 清理所有pending计时器
@@ -383,6 +383,7 @@ export class TextureController {
       const elapsed = now - tex.startedAt;
       const outDur = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
       const newFadeOutEnd = elapsed + outDur;
+
       tex.duration = Math.max(tex.duration, newFadeOutEnd + 0.02); // 增加0.02秒缓冲
     });
 
@@ -412,7 +413,7 @@ export class TextureController {
         this.enterInputStage(now);
         this.pendingTriggerTime = 0;
       }
-      if (DEBUG) console.log(`[提前标记] 首次越阈值，目标切换=${this.pendingTriggerTime.toFixed(3)}s`);
+      if (DEBUG) {console.log(`[提前标记] 首次越阈值，目标切换=${this.pendingTriggerTime.toFixed(3)}s`);}
     }
 
     // 更新所有纹理状态，仅在未停止时检查触发点
@@ -453,6 +454,7 @@ export class TextureController {
 
     if (this.currentStage === MainStage.Stop && this.textures.length === 0) {
       this.onStage(MainStage.Stop);
+
       return; // 停止更新
     }
 
@@ -557,6 +559,7 @@ export class TextureController {
             console.log(`[组${this.listeningGroupId}] 音量${volume}未超阈值，生成新监听纹理组`);
           }
         }
+
         return; // 当前纹理的触发检查到此为止
       }
     }
@@ -593,7 +596,7 @@ export class TextureController {
     if (this.stopActive || this.currentStage !== MainStage.Input) {
       return; // 不允许再生成
     }
-    
+
     // 输入阶段触发检测：仅当允许链式生成时才启用
     if (this.allowInputChaining &&
         tex.type === 'input' && tex.batchId === this.inputBatchId && tex.isSecondTexture) {

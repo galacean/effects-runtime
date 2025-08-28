@@ -1,6 +1,5 @@
 /* eslint-disable no-console */
 
-
 /**
  * 音频可视化效果核心实现
  * 功能：
@@ -665,6 +664,7 @@ let material: Material | undefined;
 
   // 添加快照按钮和状态提示（固定在右下角）
   const snapshotContainer = document.createElement('div');
+
   snapshotContainer.style.position = 'fixed';
   snapshotContainer.style.bottom = '20px';
   snapshotContainer.style.right = '20px';
@@ -673,11 +673,10 @@ let material: Material | undefined;
   snapshotContainer.style.flexDirection = 'column';
   snapshotContainer.style.alignItems = 'flex-end';
   snapshotContainer.style.gap = '10px';
-  
 
-  
   // 创建手动捕获快照按钮
   const captureButton = document.createElement('button');
+
   captureButton.textContent = '捕获快照';
   captureButton.style.padding = '8px 16px';
   captureButton.style.backgroundColor = '#136BCD';
@@ -689,7 +688,7 @@ let material: Material | undefined;
   captureButton.addEventListener('click', () => {
     captureButton.textContent = '捕获中...';
     captureButton.disabled = true;
-    
+
     setTimeout(() => {
       controller.captureManualSnapshot();
       captureButton.textContent = '快照已保存';
@@ -702,6 +701,7 @@ let material: Material | undefined;
   snapshotContainer.appendChild(captureButton);
 
   const openFolderLink = document.createElement('a');
+
   openFolderLink.id = 'open-folder-link';
   openFolderLink.textContent = '打开下载文件夹';
   openFolderLink.style.color = '#4fc3f7';
@@ -711,7 +711,7 @@ let material: Material | undefined;
   openFolderLink.onclick = () => {
     alert('请在浏览器的下载历史中查看文件位置');
   };
-  
+
   snapshotContainer.appendChild(openFolderLink);
   document.body.appendChild(snapshotContainer);
   console.log('快照UI已添加到DOM');
@@ -727,8 +727,8 @@ let material: Material | undefined;
   // 初始化默认颜色
   // 第一阶段：蓝色和绿色
   controller.setFirstStageColors(
-    hexToRgba('#559EF7',0.7), // 蓝色
-    hexToRgba('#559EF7',0.7)  // 绿色
+    hexToRgba('#559EF7', 0.7), // 蓝色
+    hexToRgba('#559EF7', 0.7)  // 绿色
   );
   // 第二阶段：主色和副色
   controller.setSecondStageColors(
@@ -738,52 +738,55 @@ let material: Material | undefined;
 
   //初始化  volumeThreshold ；
   controller.setVolumeThreshold(0.1);
-  
 
   // 第一阶段蓝色
   const firstStageBlueInput = document.getElementById('listeningColor') as HTMLInputElement | null;
+
   if (firstStageBlueInput) {
     firstStageBlueInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
       const blue = hexToRgba(target.value);
       const green = controller.firstStageGreenColor;
-      
+
       controller.setFirstStageColors(blue, green);
     });
   }
-  
+
   // 第一阶段绿色
   const firstStageGreenInput = document.getElementById('inputSecondaryColor') as HTMLInputElement | null;
+
   if (firstStageGreenInput) {
     firstStageGreenInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
       const green = hexToRgba(target.value);
       const blue = controller.firstStageBlueColor;
-      
+
       controller.setFirstStageColors(blue, green);
     });
   }
-  
+
   // 第二阶段主色
   const secondStagePrimaryInput = document.getElementById('inputPrimaryColor') as HTMLInputElement | null;
+
   if (secondStagePrimaryInput) {
     secondStagePrimaryInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
       const primary = hexToRgba(target.value);
       const secondary = controller.secondStageSecondaryColor;
-      
+
       controller.setSecondStageColors(primary, secondary);
     });
   }
-  
+
   // 第二阶段副色
   const secondStageSecondaryInput = document.getElementById('inputSecondaryColor') as HTMLInputElement | null;
+
   if (secondStageSecondaryInput) {
     secondStageSecondaryInput.addEventListener('input', e => {
       const target = e.target as HTMLInputElement;
       const secondary = hexToRgba(target.value);
       const primary = controller.secondStagePrimaryColor;
-      
+
       controller.setSecondStageColors(primary, secondary);
     });
   }
@@ -958,6 +961,7 @@ let material: Material | undefined;
       wrapT: glContext.MIRRORED_REPEAT,
     }
   );
+
   if (item) {
     const rendererComponents = item.getComponents(RendererComponent);
 
@@ -1146,7 +1150,7 @@ let material: Material | undefined;
       material.setFloat('_Now', now);
 
       const currentVolume = getAudioVolume();
-      
+
       // 传递音量参数
       material.setFloat('_CurrentVolume', currentVolume);
       material.setFloat('_MinVolume', minVolume);
@@ -1157,9 +1161,9 @@ let material: Material | undefined;
 
       // 1) 优先选择 Input（当前批次和最近的优先），不足再补 Listening
       const inputs = all.filter(t => t.type === 'input')
-                        .sort((a, b) => b.startedAt - a.startedAt); // 新的在前
+        .sort((a, b) => b.startedAt - a.startedAt); // 新的在前
       const listenings = all.filter(t => t.type === 'listening')
-                            .sort((a, b) => b.startedAt - a.startedAt);
+        .sort((a, b) => b.startedAt - a.startedAt);
 
       const renderSet = inputs.concat(listenings).slice(0, MAX_TEXTURES);
 
@@ -1167,10 +1171,12 @@ let material: Material | undefined;
       renderSet.sort((a, b) => a.startedAt - b.startedAt);
 
       const textureCount = renderSet.length;
+
       material.setFloat('_TextureCount', textureCount);
 
       for (let i = 0; i < textureCount; i++) {
         const texture = renderSet[i];
+
         material.setFloat(`_TexStartedAt${i}`, texture.startedAt);
         material.setFloat(`_TexDuration${i}`, texture.duration);
         material.setFloat(`_TexFadeIn${i}`, texture.fadeIn);
