@@ -112,6 +112,12 @@ uniform float _VolumeCurve;        // 音量响应曲线 [0.1,2.0]
 uniform float _BrightnessCurve;    // 亮度曲线指数 [0.5,3.0]
 uniform float _MaxBrightness;      // 最大亮度增强值 [1.0,3.0]
 
+// Stop信号相关参数
+uniform float _StopSignal;         // 0/1 停止信号
+uniform float _StopTime;           // 停止时间（秒，与_Now同单位）
+uniform float _StopAffectListening;// 0/1 是否影响第一阶段
+uniform float _StopAffectInput;    // 0/1 是否影响第二阶段
+
 // 纹理的layer
 uniform float _Tex0Layer;
 uniform float _Tex1Layer;
@@ -167,6 +173,26 @@ vec3 ACESFilm(vec3 x) {
     return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
 }
 
+// 计算原时序 alpha
+float inputAlphaAt(float t, float fadeIn, float foStart, float foEnd){
+  if (t < fadeIn) return t / max(0.0001, fadeIn);
+  else if (t < foStart) return 1.0;
+  else if (t < foEnd) return 1.0 - (t - foStart) / max(0.0001, (foEnd - foStart));
+  else return 0.0;
+}
+float blueAlphaAt(float t){
+  if (t < _BlueFadeInEnd) return t / max(0.0001, _BlueFadeInEnd);
+  else if (t < _BlueFadeOutStart) return 1.0;
+  else if (t < _BlueFadeOutEnd) return 1.0 - (t - _BlueFadeOutStart) / max(0.0001, (_BlueFadeOutEnd - _BlueFadeOutStart));
+  else return 0.0;
+}
+float greenAlphaAt(float t){
+  if (t < _GreenFadeInEnd) return t / max(0.0001, _GreenFadeInEnd);
+  else if (t < _GreenFadeOutStart) return 1.0;
+  else if (t < _GreenFadeOutEnd) return 1.0 - (t - _GreenFadeOutStart) / max(0.0001, (_GreenFadeOutEnd - _GreenFadeOutStart));
+  else return 0.0;
+}
+
 // 确保UV在有效范围内采样
 vec2 clampUV(vec2 uv) {
   return clamp(uv, vec2(0.01), vec2(0.99));
@@ -192,8 +218,28 @@ vec4 sampleTexByType(float typeV, float kindV, vec2 uv) {
   }
 }
 
+// 应用提前停止逻辑
+void applyEarlyStop(float startedAt, float fadeOutStart, float fadeOutEnd, float typeV,
+                    out float effStart, out float effEnd) {
+  effStart = fadeOutStart;
+  effEnd = fadeOutEnd;
+  if (_StopSignal > 0.5) {
+    // 仅当 Stop 发生在该纹理生命周期内才生效（关键）
+    // 若你能传入 duration，可再加 _StopTime <= startedAt + duration 的上界判定
+    if (_StopTime >= startedAt) {
+      bool affect = (int(typeV) == 0) ? (_StopAffectListening > 0.5) : (_StopAffectInput > 0.5);
+      if (affect) {
+        float elapsedAtStop = _StopTime - startedAt; // 此时 >= 0
+        float outDur = max(0.0001, fadeOutEnd - fadeOutStart);
+        effStart = elapsedAtStop;
+        effEnd = effStart + outDur;
+      }
+    }
+  }
+}
+
 // 计算第一阶段蓝色位置与alpha
-void calcListeningBlue(float elapsed, float initU, float initV,
+void calcListeningBlue(float elapsed, float startedAt, float initU, float initV,
                        out float ox, out float oy, out float a) {
   // 位置
   if (elapsed < _BlueFadeInEnd) {
@@ -213,21 +259,20 @@ void calcListeningBlue(float elapsed, float initU, float initV,
     oy = initV + _BlueFadeInDeltaV + _BlueMove2TargetV;
   }
   // alpha
-  if (elapsed < _BlueFadeInEnd) {
-    a = elapsed / _BlueFadeInEnd;
-  } else if (elapsed >= _BlueFadeOutStart) {
-    if (elapsed < _BlueFadeOutEnd) {
-      a = 1.0 - (elapsed - _BlueFadeOutStart) / (_BlueFadeOutEnd - _BlueFadeOutStart);
-    } else {
-      a = 0.0;
-    }
-  } else {
-    a = 1.0;
+  float effS, effE;
+  applyEarlyStop(startedAt, _BlueFadeOutStart, _BlueFadeOutEnd, 0.0, effS, effE);
+  float baseA = blueAlphaAt(elapsed);
+  if (_StopSignal > 0.5 && elapsed >= effS){
+    float aStop = blueAlphaAt(max(0.0, effS));
+    float k = clamp((elapsed - effS) / max(0.0001, (effE - effS)), 0.0, 1.0);
+    a = mix(aStop, 0.0, k);
+  }else{
+    a = baseA;
   }
 }
 
 // 计算第一阶段绿色位置与alpha
-void calcListeningGreen(float elapsed, float initU, float initV,
+void calcListeningGreen(float elapsed, float startedAt, float initU, float initV,
                         out float ox, out float oy, out float a) {
   if (elapsed < _GreenFadeInEnd) {
     float p = elapsed / _GreenFadeInEnd;
@@ -241,21 +286,21 @@ void calcListeningGreen(float elapsed, float initU, float initV,
     ox = initU + _GreenMoveTargetU;
     oy = initV + _GreenFadeInDeltaV + _GreenMoveTargetV;
   }
-  if (elapsed < _GreenFadeInEnd) {
-    a = elapsed / _GreenFadeInEnd;
-  } else if (elapsed >= _GreenFadeOutStart) {
-    if (elapsed < _GreenFadeOutEnd) {
-      a = 1.0 - (elapsed - _GreenFadeOutStart) / (_GreenFadeOutEnd - _GreenFadeOutStart);
-    } else {
-      a = 0.0;
-    }
-  } else {
-    a = 1.0;
+  // alpha
+  float effS, effE;
+  applyEarlyStop(startedAt, _GreenFadeOutStart, _GreenFadeOutEnd, 0.0, effS, effE);
+  float baseA = greenAlphaAt(elapsed);
+  if (_StopSignal > 0.5 && elapsed >= effS){
+    float aStop = greenAlphaAt(max(0.0, effS));
+    float k = clamp((elapsed - effS) / max(0.0001, (effE - effS)), 0.0, 1.0);
+    a = mix(aStop, 0.0, k);
+  }else{
+    a = baseA;
   }
 }
 
 // 计算第二阶段位置与alpha
-void calcInput(float elapsed, float duration, float initU, float initV, float distance, float isSecond,
+void calcInput(float elapsed, float startedAt, float duration, float initU, float initV, float distance, float isSecond,
                float fadeIn, float fadeOutStart, float fadeOutEnd,
                out float ox, out float oy, out float a) {
   float lifeP = duration > 0.0 ? clamp(elapsed / duration, 0.0, 1.0) : 0.0;
@@ -264,14 +309,16 @@ void calcInput(float elapsed, float duration, float initU, float initV, float di
     ox -= 0.235; // 和 CPU 保持一致
   }
   oy = initV;
-  if (elapsed < fadeIn) {
-    a = elapsed / max(0.0001, fadeIn);
-  } else if (elapsed < fadeOutStart) {
-    a = 1.0;
-  } else if (elapsed < fadeOutEnd) {
-    a = 1.0 - (elapsed - fadeOutStart) / max(0.0001, (fadeOutEnd - fadeOutStart));
-  } else {
-    a = 0.0;
+
+  float effS, effE;
+  applyEarlyStop(startedAt, fadeOutStart, fadeOutEnd, 1.0, effS, effE);
+  float baseA = inputAlphaAt(elapsed, fadeIn, fadeOutStart, fadeOutEnd);
+  if (_StopSignal > 0.5 && elapsed >= effS){
+    float aStop = inputAlphaAt(max(0.0, effS), fadeIn, fadeOutStart, fadeOutEnd);
+    float k = clamp((elapsed - effS) / max(0.0001, (effE - effS)), 0.0, 1.0);
+    a = mix(aStop, 0.0, k);
+  }else{
+    a = baseA;
   }
 }
 
@@ -377,12 +424,12 @@ void main() {
     float ox = 0.0; float oy = 0.0; float a = 0.0;
     if (int(typeV) == 0) { // listening
       if (int(kindV) == 0) {
-        calcListeningBlue(elapsed, initU, initV, ox, oy, a);
+        calcListeningBlue(elapsed, startedAt, initU, initV, ox, oy, a);
       } else {
-        calcListeningGreen(elapsed, initU, initV, ox, oy, a);
+        calcListeningGreen(elapsed, startedAt, initU, initV, ox, oy, a);
       }
     } else { // input
-      calcInput(elapsed, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
+      calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
     }
 
     // 采样索引根据 type/kind 自动选择
@@ -465,6 +512,25 @@ let material: Material | undefined;
   const item = composition.getItemByName('effect_4');
 
   const controller = new TextureController();
+
+  // 设置stop和reset回调
+  controller.onStop = (now: number) => {
+    if (material) {
+      material.setFloat('_StopSignal', 1);
+      material.setFloat('_StopTime', now);
+      // 设置stop影响的范围：只影响第二阶段（输入阶段）
+      material.setFloat('_StopAffectListening', 0);
+      material.setFloat('_StopAffectInput', 1);
+      // 若实现了按批次控制，再设置 _StopBatchId
+    }
+  };
+
+  controller.onReset = () => {
+    if (material) {
+      material.setFloat('_StopSignal', 0);
+      material.setFloat('_StopTime', 0);
+    }
+  };
 
   // 添加颜色调试 UI
   const uiHtml = `
@@ -1027,7 +1093,7 @@ let material: Material | undefined;
   function getAudioVolume (): number {
     // 使用sin函数模拟0-1波动的音量
     const now = performance.now();
-    const timeFactor = now * 0.0006; // 转换为秒
+    const timeFactor = now * 0.0002; // 转换为秒
     // 基础sin波(0.5振幅+0.5偏移)
     const baseWave = Math.sin(timeFactor) * 0.5 + 0.5;
     // 添加次级波动增加随机感
@@ -1050,7 +1116,7 @@ let material: Material | undefined;
     return Math.max(min, Math.min(max, value));
   }
 
-  let lastTime = performance.now();
+  let lastTime = performance.now() / 1000; // 初始化为秒，避免首帧delta过大
 
   /**
    * 更新循环

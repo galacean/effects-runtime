@@ -41,6 +41,9 @@ export class TextureController {
   pendingInputStage = false;    // 标记是否在3.4s触发第二阶段
   stageStartTime = 0;           // 当前阶段开始时间
   listeningTextureColor: 'blue' | 'green' = 'blue'; // 监听阶段纹理颜色控制
+  stopActive = false; // 总闸标志，防止在停止期间生成新批次
+  allowInputChaining = true; // 是否允许输入阶段链式生成新纹理
+  pendingTimers: number[] = []; // 存储pending的计时器ID
 
   // 第一阶段参数配置
   firstStageParams = {
@@ -99,6 +102,8 @@ export class TextureController {
 
   onStage: (stage: MainStage) => void = () => {};
   onUpdate: (textures: TexState[]) => void = () => {};
+  onStop: (now: number) => void = () => {};
+  onReset: () => void = () => {};
 
   // 纹理组管理
   listeningGroupId = 0; // 监听阶段纹理组ID
@@ -137,6 +142,14 @@ export class TextureController {
     this.inputStageTriggered = false;
     this.inputBatchId = 0;
     this.pendingTriggerTime = 0; // 重置触发时间点
+    this.stopActive = false; // 重置停止激活标志
+
+    // 清理所有pending计时器
+    this.pendingTimers.forEach(id => clearTimeout(id));
+    this.pendingTimers.length = 0;
+
+    // 触发重置回调，通知Shader重置停止信号
+    this.onReset();
 
     // 创建蓝色和绿色纹理（同一组）
     this.listeningTextureColor = 'blue';
@@ -290,6 +303,11 @@ export class TextureController {
   }
 
   enterInputStage (now: number) {
+    if (this.stopActive) return;
+    
+    // 清 _StopSignal/_StopTime，避免旧事件影响新批次
+    this.onReset?.();
+    
     this.currentStage = MainStage.Input;
     this.stageStartTime = now;
     this.pendingInputStage = false;
@@ -303,8 +321,14 @@ export class TextureController {
     texA.batchTriggered = false;
     this.textures.push(texA);
 
+    // 保存当前批次ID用于回调
+    const capturedBatchId = this.inputBatchId;
+    
     // 0.5s后创建纹理B
-    setTimeout(() => {
+    const id = window.setTimeout(() => {
+      // 兜底：停止了/批次变了/阶段不是Input就不生成
+      if (this.stopActive || this.currentStage !== MainStage.Input || this.inputBatchId !== capturedBatchId) return;
+      
       const texB = this.createTexture('input', performance.now() / 1000);
 
       texB.isSecondTexture = true; // 标记为第二阶段纹理
@@ -332,6 +356,9 @@ export class TextureController {
         console.log('生成第二纹理', texB);
       }
     }, this.textureInterval);
+    
+    // 保存计时器ID以便后续清理
+    this.pendingTimers.push(id);
 
     this.onStage(MainStage.Input);
     if (DEBUG) {
@@ -342,32 +369,46 @@ export class TextureController {
   stop () {
     this.currentStage = MainStage.Stop;
     const now = performance.now() / 1000;
+    this.stopActive = true; // 设置停止激活标志
 
+    // 清理所有pending计时器
+    this.pendingTimers.forEach(id => clearTimeout(id));
+    this.pendingTimers.length = 0;
+
+    // 触发stop回调，通知Shader
+    this.onStop(now);
+
+    // 延长每个纹理的duration，确保活到淡出结束
     this.textures.forEach(tex => {
       const elapsed = now - tex.startedAt;
-
-      // 把渐隐时序改成“从当前时刻开始，持续 >=0.1s”
-      const newFadeOutStart = elapsed;
-      const fadeOutDuration = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
-      const newFadeOutEnd = newFadeOutStart + fadeOutDuration;
-
-      tex.fadeOutStart = newFadeOutStart;
-      tex.fadeOutEnd = newFadeOutEnd;
-
-      // 缩短生命周期，保证过滤能尽快清除
-      // 例如把 duration 改成 newFadeOutEnd（即可在隐去后不久移除）
-      tex.duration = Math.max(elapsed, newFadeOutEnd + 0.01);
+      const outDur = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
+      const newFadeOutEnd = elapsed + outDur;
+      tex.duration = Math.max(tex.duration, newFadeOutEnd + 0.02); // 增加0.02秒缓冲
     });
+
+    if (DEBUG) {
+      console.log('Stop triggered at', now);
+    }
   }
 
   update (delta: number, volume: number, now: number) {
+    // 先检查停止条件：在Input阶段且音量低于阈值且未激活停止
+    if (this.currentStage === MainStage.Input && volume < this.volumeThreshold && !this.stopActive) {
+      this.stopActive = true;
+      this.stop();
+      if (DEBUG) {
+        console.log('音量低于阈值，提前结束输入阶段');
+      }
+    }
 
-    // 更新所有纹理状态
+    // 更新所有纹理状态，仅在未停止时检查触发点
     this.textures.forEach(tex => {
       const elapsed = now - tex.startedAt;
 
-      // 精确时间点检测
-      this.checkTriggerPoints(tex, elapsed, volume, now);
+      // 精确时间点检测，仅在未停止时进行
+      if (!this.stopActive) {
+        this.checkTriggerPoints(tex, elapsed, volume, now);
+      }
     });
 
     // 清理结束的纹理
@@ -380,21 +421,10 @@ export class TextureController {
     });
     this.nextLayer = this.textures.length;
 
-    if (
-      this.currentStage === MainStage.Input &&
-      volume < this.volumeThreshold
-    ) {
-      this.stop();
-      if (DEBUG) {
-        console.log('音量低于阈值，提前结束输入阶段');
-      }
-
-    }
-
-    // 2.75秒处理逻辑
-    if (
-      this.currentStage === MainStage.Listening &&
-      this.pendingTriggerTime > 0
+    // 2.75秒处理逻辑，仅在未停止时进行
+    if (!this.stopActive &&
+        this.currentStage === MainStage.Listening &&
+        this.pendingTriggerTime > 0
     ) {
       const elapsedSinceTrigger = now - this.pendingTriggerTime;
       const groupElapsed = now - this.groupStartedAt;
@@ -405,20 +435,16 @@ export class TextureController {
       }
     }
 
-    // 3.4s阶段转换点 - 使用组时间检测
-    if (this.currentStage === MainStage.Listening &&
+    // 3.4s阶段转换点 - 使用组时间检测，仅在未停止时进行
+    if (!this.stopActive &&
+        this.currentStage === MainStage.Listening &&
         this.pendingInputStage &&
         now - this.groupStartedAt >= this.groupDuration) {
       this.enterInputStage(now);
     }
 
-    if (
-      this.currentStage === MainStage.Stop &&
-    this.textures.every(tex => tex.stage === TexFadeStage.Hidden || tex.alpha === 0)
-    ) {
-      this.textures = [];
+    if (this.currentStage === MainStage.Stop && this.textures.length === 0) {
       this.onStage(MainStage.Stop);
-
       return; // 停止更新
     }
 
@@ -548,8 +574,14 @@ export class TextureController {
     }
 
     // 输入阶段触发检测：在显示阶段后期（75%进度）开始检测
-    if (tex.type === 'input' && tex.batchId === this.inputBatchId&& 
-      tex.isSecondTexture) {
+    // 只有在当前阶段是Input且未停止时才允许触发，防止链式生成
+    if (this.stopActive || this.currentStage !== MainStage.Input) {
+      return; // 不允许再生成
+    }
+    
+    // 输入阶段触发检测：仅当允许链式生成时才启用
+    if (this.allowInputChaining &&
+        tex.type === 'input' && tex.batchId === this.inputBatchId && tex.isSecondTexture) {
       // 计算触发开始时间：显示阶段结束前25%时间
       const triggerStart = tex.fadeOutStart - (tex.fadeOutStart - tex.fadeIn) * 0.50;
 
