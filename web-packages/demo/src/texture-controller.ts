@@ -240,6 +240,9 @@ export class TextureController {
       // 应用初始偏移量
       tex.x = params.initialOffsetU;
       tex.y = params.initialOffsetV;
+      // 为Shader计算保存初始偏移量
+      tex.initialOffsetU = params.initialOffsetU;
+      tex.initialOffsetV = params.initialOffsetV;
 
       // 设置纹理特定颜色
       if (textureType === 'blue') {
@@ -341,18 +344,19 @@ export class TextureController {
     const now = performance.now() / 1000;
 
     this.textures.forEach(tex => {
-      // 如果还没进入渐隐阶段，则强制进入渐隐
-      if (tex.stage !== TexFadeStage.FadingOut && tex.stage !== TexFadeStage.Hidden) {
-        const elapsed = now - tex.startedAt;
+      const elapsed = now - tex.startedAt;
 
-        // 使用相对时间设置渐隐参数
-        tex.fadeOutStart = elapsed;
-        // 确保渐隐时长至少0.1秒
-        const fadeOutDuration = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
+      // 把渐隐时序改成“从当前时刻开始，持续 >=0.1s”
+      const newFadeOutStart = elapsed;
+      const fadeOutDuration = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
+      const newFadeOutEnd = newFadeOutStart + fadeOutDuration;
 
-        tex.fadeOutEnd = elapsed + fadeOutDuration;
-        tex.stage = TexFadeStage.FadingOut;
-      }
+      tex.fadeOutStart = newFadeOutStart;
+      tex.fadeOutEnd = newFadeOutEnd;
+
+      // 缩短生命周期，保证过滤能尽快清除
+      // 例如把 duration 改成 newFadeOutEnd（即可在隐去后不久移除）
+      tex.duration = Math.max(elapsed, newFadeOutEnd + 0.01);
     });
   }
 
@@ -361,138 +365,6 @@ export class TextureController {
     // 更新所有纹理状态
     this.textures.forEach(tex => {
       const elapsed = now - tex.startedAt;
-
-      // ===== 第一阶段特殊处理 =====
-      // 第一阶段纹理：只执行第一阶段的位置和透明度计算
-      if (tex.type === 'listening') {
-        if (tex.textureType === 'blue') {
-          const params = this.firstStageParams.blue;
-
-          // 蓝色光处理逻辑 - 基于相对时间
-          if (elapsed < params.fadeInEnd) {
-            const progress = elapsed / params.fadeInEnd;
-
-            tex.alpha = progress;
-            // 应用初始偏移 + 淡入阶段垂直移动
-            tex.y = params.initialOffsetV + params.fadeInDeltaV * progress;
-          } else if (elapsed < params.move1End) {
-            const progress = (elapsed - params.fadeInEnd) /
-                            (params.move1End - params.fadeInEnd);
-
-            // 第一段移动 (同时改变U和V)
-            tex.x = params.initialOffsetU + params.move1TargetU * progress;
-            tex.y = params.initialOffsetV + params.fadeInDeltaV + params.move1TargetV * progress;
-          } else if (elapsed < params.move2End) {
-            const progress = (elapsed - params.move1End) /
-                            (params.move2End - params.move1End);
-
-            // 第二段移动 (同时改变U和V)
-            tex.x = params.initialOffsetU + params.move1TargetU +
-                    (params.move2TargetU - params.move1TargetU) * progress;
-            tex.y = params.initialOffsetV + params.fadeInDeltaV + params.move1TargetV +
-                    (params.move2TargetV - params.move1TargetV) * progress;
-          }
-
-          // 透明度处理 (独立于位置变化)
-          if (elapsed < params.fadeInEnd) {
-            tex.alpha = elapsed / params.fadeInEnd;
-          } else if (elapsed >= params.fadeOutStart) {
-            if (elapsed < params.fadeOutEnd) {
-              tex.alpha = 1 - (elapsed - params.fadeOutStart) /
-                         (params.fadeOutEnd - params.fadeOutStart);
-            } else {
-              tex.alpha = 0;
-            }
-          } else {
-            tex.alpha = 1;
-          }
-        } else if (tex.textureType === 'green') {
-          const params = this.firstStageParams.green;
-
-          // 绿色光处理逻辑 - 基于相对时间
-          if (elapsed < params.fadeInEnd) {
-            const progress = elapsed / params.fadeInEnd;
-
-            tex.alpha = progress;
-            // 应用初始偏移 + 淡入阶段垂直移动
-            tex.y = params.initialOffsetV + params.fadeInDeltaV * progress;
-          } else if (elapsed < params.moveEnd) {
-            const progress = (elapsed - params.fadeInEnd) /
-                            (params.moveEnd - params.fadeInEnd);
-
-            // 移动阶段 (同时改变U和V)
-            tex.x = params.initialOffsetU + params.moveTargetU * progress;
-            tex.y = params.initialOffsetV + params.fadeInDeltaV + params.moveTargetV * progress;
-          }
-
-          // 透明度处理 (独立于位置变化)
-          if (elapsed < params.fadeInEnd) {
-            tex.alpha = elapsed / params.fadeInEnd;
-          } else if (elapsed >= params.fadeOutStart) {
-            if (elapsed < params.fadeOutEnd) {
-              tex.alpha = 1 - (elapsed - params.fadeOutStart) /
-                         (params.fadeOutEnd - params.fadeOutStart);
-            } else {
-              tex.alpha = 0;
-            }
-          } else {
-            tex.alpha = 1;
-          }
-        }
-      }
-
-      // 第二阶段纹理：只执行第二阶段的位置和透明度计算
-      else {
-        const lifeProgress = elapsed / tex.duration;
-
-        // 更新位置: 初始偏移 + 根据进度移动的距离
-        tex.x = (tex.initialOffsetU || 0) + tex.distance * lifeProgress;
-        tex.y = (tex.initialOffsetV || 0); // 使用初始V偏移量
-
-        // 为第二阶段纹理添加额外偏移
-        if (tex.isSecondTexture) {
-          tex.x -= 0.235;
-        }
-
-        // // DEBUG: 输出位置信息
-        // if (DEBUG && tex.type === 'input' && tex.isSecondTexture) {
-        //   console.log(`纹理 ${tex.id} 位置: x=${tex.x.toFixed(4)}, 初始偏移=${tex.initialOffsetU}, 距离=${tex.distance}, 进度=${lifeProgress.toFixed(4)}`);
-        // }
-
-        // 更新透明度
-        if (elapsed < tex.fadeIn) {
-          tex.alpha = elapsed / tex.fadeIn;
-          tex.stage = TexFadeStage.FadingIn;
-        } else if (elapsed < tex.fadeOutStart) {
-          tex.alpha = 1;
-          tex.stage = TexFadeStage.Showing;
-        } else if (elapsed < tex.fadeOutEnd) {
-          tex.alpha = Math.max(1 - (elapsed - tex.fadeOutStart) /
-                     (tex.fadeOutEnd - tex.fadeOutStart), 0);
-          tex.stage = TexFadeStage.FadingOut;
-        } else {
-          tex.alpha = 0;
-          tex.stage = TexFadeStage.Hidden;
-        }
-      }
-
-      // 更新颜色 (如果是动态模式)
-      if (tex.colorMode === 1 && tex.colorStops && tex.colorStops.length > 1) {
-        const t = (Math.sin(now * tex.colorSpeed) * 0.5 + 0.5);
-        const colorIndex = Math.floor(t * (tex.colorStops.length - 1));
-        const nextIndex = Math.min(colorIndex + 1, tex.colorStops.length - 1);
-        const lerpT = t * (tex.colorStops.length - 1) - colorIndex;
-
-        const colorA = tex.colorStops[colorIndex];
-        const colorB = tex.colorStops[nextIndex];
-
-        tex.color = [
-          colorA[0] + (colorB[0] - colorA[0]) * lerpT,
-          colorA[1] + (colorB[1] - colorA[1]) * lerpT,
-          colorA[2] + (colorB[2] - colorA[2]) * lerpT,
-          colorA[3] + (colorB[3] - colorA[3]) * lerpT,
-        ];
-      }
 
       // 精确时间点检测
       this.checkTriggerPoints(tex, elapsed, volume, now);

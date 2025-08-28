@@ -67,7 +67,7 @@ void main(){
 /**
  * 片段Shader
  * 实现多纹理混合效果：
- * 1. 根据偏移量计算多个纹理的UV
+ * 1. 基于统一时间_Now计算位移和透明度
  * 2. 应用透明度混合
  * 3. 确保纹理在有效范围内显示
  * 4. 按从后向前顺序混合纹理
@@ -76,44 +76,28 @@ const fragment = /*glsl*/ `
 #extension GL_OES_standard_derivatives : enable
 precision highp float;
 varying vec2 uv;
-uniform vec4 _Time; // 时间变量
+uniform float _Now; // 统一时间（秒）
+uniform vec4 _Time; // 时间向量 (t/20, t, t*2, t*3)
 uniform float _TextureCount;
 uniform float _CurrentVolume; // 当前音量 [minVolume,maxVolume]
 uniform float _MinVolume; // 最小音量
 uniform float _MaxVolume; // 最大音量
-uniform float _OffsetX0;
-uniform float _OffsetY0;
-uniform float _OffsetX1;
-uniform float _OffsetY1;
-uniform float _OffsetX2;
-uniform float _OffsetY2;
-uniform float _OffsetX3;
-uniform float _OffsetY3;
-uniform float _Alpha0;
-uniform float _Alpha1;
-uniform float _Alpha2;
-uniform float _Alpha3;
-uniform sampler2D _Tex0;
-uniform sampler2D _Tex1;
-uniform sampler2D _Tex2;
 
-uniform float _TexIndex0;
-uniform float _TexIndex1;
-uniform float _TexIndex2;
-uniform float _TexIndex3;
+// 纹理采样器
+uniform sampler2D _Tex0; // 第一阶段蓝
+uniform sampler2D _Tex1; // 第一阶段绿
+uniform sampler2D _Tex2; // 第二阶段
 
-
+// 噪声纹理和参数
 uniform sampler2D _NoiseTex; // 大尺度噪声纹理
 uniform sampler2D _T_NoiseTex; // 小尺度细节噪声纹理
 uniform float _DetailNoiseScale; // 细节噪声强度 [0,1]
-// 大尺度噪声参数
 uniform float _NoiseScaleX; // 水平噪点放大系数 [0,1]
 uniform float _NoiseScaleY; // 垂直噪点放大系数 [0,1]
 uniform float _NoiseSpeedX; // 水平扰动速度 [0,10]
 uniform float _NoiseSpeedY; // 垂直扰动速度 [0,10]
 uniform float _NoiseUVScaleX; // 噪声贴图水平缩放 [0.1,10]
 uniform float _NoiseUVScaleY; // 噪声贴图垂直缩放 [0.1,10]
-// 小尺度噪声参数
 uniform float _DetailNoiseScaleX; // 水平细节噪点放大系数 [0,1]
 uniform float _DetailNoiseScaleY; // 垂直细节噪点放大系数 [0,1]
 uniform float _DetailNoiseSpeedX; // 水平细节扰动速度 [0,10]
@@ -122,17 +106,16 @@ uniform float _DetailNoiseUVScaleX; // 细节噪声贴图水平缩放 [0.1,10]
 uniform float _DetailNoiseUVScaleY; // 细节噪声贴图垂直缩放 [0.1,10]
 uniform float _Strength; // 整体强度
 
-
 // 新增参数
 uniform float _VerticalOffset;     // 垂直偏移量 [-1.0,1.0]
-uniform float _VolumeCurve;        // 音量响应曲线 [0.1,2.0] 值越小低音量越不敏感
+uniform float _VolumeCurve;        // 音量响应曲线 [0.1,2.0]
 uniform float _BrightnessCurve;    // 亮度曲线指数 [0.5,3.0]
 uniform float _MaxBrightness;      // 最大亮度增强值 [1.0,3.0]
 
 // 纹理的layer
-uniform float _Tex0Layer; 
-uniform float _Tex1Layer; 
-uniform float _Tex2Layer; 
+uniform float _Tex0Layer;
+uniform float _Tex1Layer;
+uniform float _Tex2Layer;
 uniform float _Tex3Layer;
 
 // 颜色uniform
@@ -140,6 +123,39 @@ uniform vec4 _Color0;
 uniform vec4 _Color1;
 uniform vec4 _Color2;
 uniform vec4 _Color3;
+
+// 第一阶段蓝/绿时序常量
+uniform float _BlueFadeInEnd;
+uniform float _BlueMove1End;
+uniform float _BlueMove2End;
+uniform float _BlueFadeOutStart;
+uniform float _BlueFadeOutEnd;
+uniform float _BlueMove1TargetU;
+uniform float _BlueMove1TargetV;
+uniform float _BlueMove2TargetU;
+uniform float _BlueMove2TargetV;
+uniform float _BlueFadeInDeltaV;
+
+uniform float _GreenFadeInEnd;
+uniform float _GreenMoveEnd;
+uniform float _GreenFadeOutStart;
+uniform float _GreenFadeOutEnd;
+uniform float _GreenMoveTargetU;
+uniform float _GreenMoveTargetV;
+uniform float _GreenFadeInDeltaV;
+
+// 每纹理参数（0-3）
+uniform float _TexStartedAt0; uniform float _TexStartedAt1; uniform float _TexStartedAt2; uniform float _TexStartedAt3;
+uniform float _TexDuration0;  uniform float _TexDuration1;  uniform float _TexDuration2;  uniform float _TexDuration3;
+uniform float _TexFadeIn0;    uniform float _TexFadeIn1;    uniform float _TexFadeIn2;    uniform float _TexFadeIn3;
+uniform float _TexFadeOutStart0; uniform float _TexFadeOutStart1; uniform float _TexFadeOutStart2; uniform float _TexFadeOutStart3;
+uniform float _TexFadeOutEnd0;   uniform float _TexFadeOutEnd1;   uniform float _TexFadeOutEnd2;   uniform float _TexFadeOutEnd3;
+uniform float _TexDistance0;  uniform float _TexDistance1;  uniform float _TexDistance2;  uniform float _TexDistance3;
+uniform float _TexInitU0;     uniform float _TexInitU1;     uniform float _TexInitU2;     uniform float _TexInitU3;
+uniform float _TexInitV0;     uniform float _TexInitV1;     uniform float _TexInitV2;     uniform float _TexInitV3;
+uniform float _TexType0;      uniform float _TexType1;      uniform float _TexType2;      uniform float _TexType3; // 0=listening,1=input
+uniform float _TexKind0;      uniform float _TexKind1;      uniform float _TexKind2;      uniform float _TexKind3; // listening:0=blue,1=green
+uniform float _IsSecond0;     uniform float _IsSecond1;     uniform float _IsSecond2;     uniform float _IsSecond3;
 
 // ACES Filmic Tonemapping函数
 vec3 ACESFilm(vec3 x) {
@@ -150,7 +166,6 @@ vec3 ACESFilm(vec3 x) {
     float e = 0.14;
     return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
 }
-
 
 // 确保UV在有效范围内采样
 vec2 clampUV(vec2 uv) {
@@ -163,33 +178,127 @@ vec4 safeTexture2D(sampler2D tex, vec2 uv) {
   float edgeFactor = smoothstep(0.0, 0.1, min(uv.x, 1.0 - uv.x)) *
                      smoothstep(0.0, 0.001, min(uv.y, 1.0 - uv.y));
   color.a *= edgeFactor;
-  //转换到线性空间
-  //color.rgb = pow(color.rgb, vec3(1.0/2.4)); // 假设Gamma值为2.4
   return color;
 }
 
-// 新增的纹理采样函数
-vec4 sampleTex(float idx, vec2 uv) {
-  if (int(idx) == 0) return safeTexture2D(_Tex0, uv);
-  if (int(idx) == 1) return safeTexture2D(_Tex1, uv);
-  if (int(idx) == 2) return safeTexture2D(_Tex2, uv);
-  // 如果有更多纹理可继续扩展
-  return vec4(0.0);
+// 根据type和kind选择采样纹理
+vec4 sampleTexByType(float typeV, float kindV, vec2 uv) {
+  // type=0: listening; 1: input
+  if (int(typeV) == 0) {
+    if (int(kindV) == 0) return safeTexture2D(_Tex0, uv); // blue
+    else return safeTexture2D(_Tex1, uv);                  // green
+  } else {
+    return safeTexture2D(_Tex2, uv);                       // input
+  }
+}
+
+// 计算第一阶段蓝色位置与alpha
+void calcListeningBlue(float elapsed, float initU, float initV,
+                       out float ox, out float oy, out float a) {
+  // 位置
+  if (elapsed < _BlueFadeInEnd) {
+    float p = elapsed / _BlueFadeInEnd;
+    ox = initU;
+    oy = initV + _BlueFadeInDeltaV * p;
+  } else if (elapsed < _BlueMove1End) {
+    float p = (elapsed - _BlueFadeInEnd) / (_BlueMove1End - _BlueFadeInEnd);
+    ox = initU + _BlueMove1TargetU * p;
+    oy = initV + _BlueFadeInDeltaV + _BlueMove1TargetV * p;
+  } else if (elapsed < _BlueMove2End) {
+    float p = (elapsed - _BlueMove1End) / (_BlueMove2End - _BlueMove1End);
+    ox = initU + _BlueMove1TargetU + (_BlueMove2TargetU - _BlueMove1TargetU) * p;
+    oy = initV + _BlueFadeInDeltaV + _BlueMove1TargetV + (_BlueMove2TargetV - _BlueMove1TargetV) * p;
+  } else {
+    ox = initU + _BlueMove2TargetU;
+    oy = initV + _BlueFadeInDeltaV + _BlueMove2TargetV;
+  }
+  // alpha
+  if (elapsed < _BlueFadeInEnd) {
+    a = elapsed / _BlueFadeInEnd;
+  } else if (elapsed >= _BlueFadeOutStart) {
+    if (elapsed < _BlueFadeOutEnd) {
+      a = 1.0 - (elapsed - _BlueFadeOutStart) / (_BlueFadeOutEnd - _BlueFadeOutStart);
+    } else {
+      a = 0.0;
+    }
+  } else {
+    a = 1.0;
+  }
+}
+
+// 计算第一阶段绿色位置与alpha
+void calcListeningGreen(float elapsed, float initU, float initV,
+                        out float ox, out float oy, out float a) {
+  if (elapsed < _GreenFadeInEnd) {
+    float p = elapsed / _GreenFadeInEnd;
+    ox = initU;
+    oy = initV + _GreenFadeInDeltaV * p;
+  } else if (elapsed < _GreenMoveEnd) {
+    float p = (elapsed - _GreenFadeInEnd) / (_GreenMoveEnd - _GreenFadeInEnd);
+    ox = initU + _GreenMoveTargetU * p;
+    oy = initV + _GreenFadeInDeltaV + _GreenMoveTargetV * p;
+  } else {
+    ox = initU + _GreenMoveTargetU;
+    oy = initV + _GreenFadeInDeltaV + _GreenMoveTargetV;
+  }
+  if (elapsed < _GreenFadeInEnd) {
+    a = elapsed / _GreenFadeInEnd;
+  } else if (elapsed >= _GreenFadeOutStart) {
+    if (elapsed < _GreenFadeOutEnd) {
+      a = 1.0 - (elapsed - _GreenFadeOutStart) / (_GreenFadeOutEnd - _GreenFadeOutStart);
+    } else {
+      a = 0.0;
+    }
+  } else {
+    a = 1.0;
+  }
+}
+
+// 计算第二阶段位置与alpha
+void calcInput(float elapsed, float duration, float initU, float initV, float distance, float isSecond,
+               float fadeIn, float fadeOutStart, float fadeOutEnd,
+               out float ox, out float oy, out float a) {
+  float lifeP = duration > 0.0 ? clamp(elapsed / duration, 0.0, 1.0) : 0.0;
+  ox = initU + distance * lifeP;
+  if (isSecond > 0.5) {
+    ox -= 0.235; // 和 CPU 保持一致
+  }
+  oy = initV;
+  if (elapsed < fadeIn) {
+    a = elapsed / max(0.0001, fadeIn);
+  } else if (elapsed < fadeOutStart) {
+    a = 1.0;
+  } else if (elapsed < fadeOutEnd) {
+    a = 1.0 - (elapsed - fadeOutStart) / max(0.0001, (fadeOutEnd - fadeOutStart));
+  } else {
+    a = 0.0;
+  }
+}
+
+// 获取纹理参数
+void fetchTexParams(int idx,
+  out float startedAt, out float duration, out float fadeIn, out float fadeOutStart, out float fadeOutEnd,
+  out float distance, out float initU, out float initV, out float typeV, out float kindV, out float isSecond
+) {
+  if (idx == 0) {
+    startedAt = _TexStartedAt0; duration = _TexDuration0; fadeIn = _TexFadeIn0; fadeOutStart = _TexFadeOutStart0; fadeOutEnd = _TexFadeOutEnd0;
+    distance = _TexDistance0; initU = _TexInitU0; initV = _TexInitV0; typeV = _TexType0; kindV = _TexKind0; isSecond = _IsSecond0;
+  } else if (idx == 1) {
+    startedAt = _TexStartedAt1; duration = _TexDuration1; fadeIn = _TexFadeIn1; fadeOutStart = _TexFadeOutStart1; fadeOutEnd = _TexFadeOutEnd1;
+    distance = _TexDistance1; initU = _TexInitU1; initV = _TexInitV1; typeV = _TexType1; kindV = _TexKind1; isSecond = _IsSecond1;
+  } else if (idx == 2) {
+    startedAt = _TexStartedAt2; duration = _TexDuration2; fadeIn = _TexFadeIn2; fadeOutStart = _TexFadeOutStart2; fadeOutEnd = _TexFadeOutEnd2;
+    distance = _TexDistance2; initU = _TexInitU2; initV = _TexInitV2; typeV = _TexType2; kindV = _TexKind2; isSecond = _IsSecond2;
+  } else {
+    startedAt = _TexStartedAt3; duration = _TexDuration3; fadeIn = _TexFadeIn3; fadeOutStart = _TexFadeOutStart3; fadeOutEnd = _TexFadeOutEnd3;
+    distance = _TexDistance3; initU = _TexInitU3; initV = _TexInitV3; typeV = _TexType3; kindV = _TexKind3; isSecond = _IsSecond3;
+  }
 }
 
 void main() {
-  vec4 finalColor = vec4(0.0);
-
-  // 记录每个纹理的 layer
-  float layers[4];
-  layers[0] = _Tex0Layer;
-  layers[1] = _Tex1Layer;
-  layers[2] = _Tex2Layer;
-  layers[3] = _Tex3Layer;
-
-  // 完全按照参考Shader实现
+  // 使用 _Time.y 用于噪声计算以保持与之前一致
   float timeFactor = _Time.y;
-  
+
   // 大尺度噪声计算(使用_NoiseTex纹理)
   vec2 largeNoiseUV = uv * vec2(_NoiseUVScaleX, _NoiseUVScaleY);
   vec2 largeNoise = vec2(
@@ -227,6 +336,13 @@ void main() {
   // 最终扰动偏移，受音量和alpha值影响
   vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume)  + vec2(0.0, verticalOffset);
 
+  // 记录每个纹理的 layer
+  float layers[4];
+  layers[0] = _Tex0Layer;
+  layers[1] = _Tex1Layer;
+  layers[2] = _Tex2Layer;
+  layers[3] = _Tex3Layer;
+
   // 记录每个纹理的索引
   int indices[4];
   indices[0] = 0;
@@ -245,72 +361,53 @@ void main() {
     }
   }
 
+  vec4 finalColor = vec4(0.0);
   int textureCount = int(_TextureCount);
 
   // 按 layer 顺序混合
-  for (int k = 0; k < textureCount; k++) {
+  for (int k = 0; k < 4; k++) {
+    if (k >= textureCount) break;
+
     int i = indices[k];
-    float offsetX = 0.0;
-    float offsetY = 0.0;
-    float alpha = 0.0;
-    vec4 color = vec4(0.0);
-    vec2 sampleUV = vec2(0.0);
 
-    float texIndex = 0.0;
-    if (i == 0) {
-      offsetX = _OffsetX0;
-      offsetY = _OffsetY0;
-      alpha = _Alpha0;
-      texIndex = _TexIndex0;
-      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = sampleTex(texIndex, sampleUV);
-      color.rgb = _Color0.rgb;
-      alpha *= _Color0.a;
-    } else if (i == 1) {
-      offsetX = _OffsetX1;
-      offsetY = _OffsetY1;
-      alpha = _Alpha1;
-      texIndex = _TexIndex1;
-      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = sampleTex(texIndex, sampleUV);
-      color.rgb = _Color1.rgb;
-      alpha *= _Color1.a;
-    } else if (i == 2) {
-      offsetX = _OffsetX2;
-      offsetY = _OffsetY2;
-      alpha = _Alpha2;
-      texIndex = _TexIndex2;
-      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = sampleTex(texIndex, sampleUV);
-      color.rgb = _Color2.rgb;
-      alpha *= _Color2.a;
-    } else if (i == 3) {
-      offsetX = _OffsetX3;
-      offsetY = _OffsetY3;
-      alpha = _Alpha3;
-      texIndex = _TexIndex3;
-      sampleUV = vec2(uv.x + offsetX, 1.0 - uv.y + offsetY) + finalOffset;
-      color = sampleTex(texIndex, sampleUV);
-      color.rgb = _Color3.rgb;
-      alpha *= _Color3.a;
+    float startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond;
+    fetchTexParams(i, startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond);
+    float elapsed = _Now - startedAt;
+
+    float ox = 0.0; float oy = 0.0; float a = 0.0;
+    if (int(typeV) == 0) { // listening
+      if (int(kindV) == 0) {
+        calcListeningBlue(elapsed, initU, initV, ox, oy, a);
+      } else {
+        calcListeningGreen(elapsed, initU, initV, ox, oy, a);
+      }
+    } else { // input
+      calcInput(elapsed, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
     }
-    color.a *= alpha;
-    finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
-    finalColor.a = finalColor.a * (1.0 - color.a) + color.a;
 
+    // 采样索引根据 type/kind 自动选择
+    vec2 sampleUV = vec2(uv.x + ox, 1.0 - uv.y + oy) + finalOffset;
+    vec4 color = sampleTexByType(typeV, kindV, clamp(sampleUV, vec2(0.0), vec2(1.0)));
+
+    // 上色：使用 _Colori（JS 每帧下发）
+    if (i == 0) { color.rgb = _Color0.rgb; a *= _Color0.a; }
+    else if (i == 1) { color.rgb = _Color1.rgb; a *= _Color1.a; }
+    else if (i == 2) { color.rgb = _Color2.rgb; a *= _Color2.a; }
+    else { color.rgb = _Color3.rgb; a *= _Color3.a; }
+
+    color.a *= a;
+
+    // 按从后到前混合
+    finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
+    finalColor.a   = finalColor.a   * (1.0 - color.a) + color.a;
   }
-  finalColor.rgb *=1.3; // 增强亮度;
-  //计算非线性亮度增强
+
+  // 亮度增强与音量曲线逻辑同现有
+  finalColor.rgb *= 1.3; // 增强亮度
   float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
   finalColor.rgb *= brightnessBoost;
 
-  // float exposure = 0.0;
-  // exposure = mix(0.3, 1.5, pow(normalizedVolume, 0.3));
-  
-  // finalColor.rgb = 1.0 - exp(-finalColor.rgb * exposure);
-  
-
-  gl_FragColor = vec4(finalColor.rgb , finalColor.a);
+  gl_FragColor = vec4(finalColor.rgb, finalColor.a);
 }
 `;
 
@@ -851,6 +948,27 @@ let material: Material | undefined;
         material.setFloat('_DetailNoiseUVScaleX', 1.10);
         material.setFloat('_DetailNoiseUVScaleY', 3.00);
 
+        // 设置第一阶段蓝色时序常量
+        material.setFloat('_BlueFadeInEnd', 0.625);
+        material.setFloat('_BlueMove1End', 2.375);
+        material.setFloat('_BlueMove2End', 3.558);
+        material.setFloat('_BlueFadeOutStart', 2.375);
+        material.setFloat('_BlueFadeOutEnd', 3.417);
+        material.setFloat('_BlueMove1TargetU', 0.1198);
+        material.setFloat('_BlueMove1TargetV', -0.0);
+        material.setFloat('_BlueMove2TargetU', 0.2382);
+        material.setFloat('_BlueMove2TargetV', -0.0);
+        material.setFloat('_BlueFadeInDeltaV', 0.0);
+
+        // 设置第一阶段绿色时序常量
+        material.setFloat('_GreenFadeInEnd', 1.292);
+        material.setFloat('_GreenMoveEnd', 2.875);
+        material.setFloat('_GreenFadeOutStart', 2.375);
+        material.setFloat('_GreenFadeOutEnd', 3.458);
+        material.setFloat('_GreenMoveTargetU', 0.266);
+        material.setFloat('_GreenMoveTargetV', -0.0);
+        material.setFloat('_GreenFadeInDeltaV', 0.0);
+
         // 立即更新UI显示为新设置的值
         const setSliderValue = (id: string, value: number, precision = 3) => {
           const input = document.getElementById(id) as HTMLInputElement | null;
@@ -909,7 +1027,7 @@ let material: Material | undefined;
   function getAudioVolume (): number {
     // 使用sin函数模拟0-1波动的音量
     const now = performance.now();
-    const timeFactor = now * 0.00006; // 转换为秒
+    const timeFactor = now * 0.0006; // 转换为秒
     // 基础sin波(0.5振幅+0.5偏移)
     const baseWave = Math.sin(timeFactor) * 0.5 + 0.5;
     // 添加次级波动增加随机感
@@ -944,7 +1062,7 @@ let material: Material | undefined;
 
     lastTime = now;
 
-    const volume = getSimulatedAudioVolume();
+    const volume = getAudioVolume();
 
     // if (DEBUG) {
     console.log(`Current volume: ${volume}`);
@@ -958,9 +1076,12 @@ let material: Material | undefined;
     //console.log('Textures:', controller.textures);
 
     if (material) {
+      // 设置统一时间_Now
+      material.setFloat('_Now', now);
+
       // 更新纹理数量
       const textureCount = Math.min(controller.textures.length, MAX_TEXTURES);
-      const currentVolume = getSimulatedAudioVolume();
+      const currentVolume = getAudioVolume();
 
       //console.log(textureCount);
       material.setFloat('_TextureCount', textureCount);
@@ -974,22 +1095,23 @@ let material: Material | undefined;
       for (let i = 0; i < textureCount; i++) {
         const texture = controller.textures[i];
 
-        // 设置X和Y偏移量
-        material.setFloat(`_OffsetX${i}`, texture.x);
-        material.setFloat(`_OffsetY${i}`, texture.y);
-        material.setFloat(`_Alpha${i}`, texture.alpha);
+        // 设置每纹理参数
+        material.setFloat(`_TexStartedAt${i}`, texture.startedAt);
+        material.setFloat(`_TexDuration${i}`, texture.duration);
+        material.setFloat(`_TexFadeIn${i}`, texture.fadeIn);
+        material.setFloat(`_TexFadeOutStart${i}`, texture.fadeOutStart);
+        material.setFloat(`_TexFadeOutEnd${i}`, texture.fadeOutEnd);
+        material.setFloat(`_TexDistance${i}`, texture.distance);
+        material.setFloat(`_TexInitU${i}`, texture.initialOffsetU ?? 0);
+        material.setFloat(`_TexInitV${i}`, texture.initialOffsetV ?? 0);
+        material.setFloat(`_TexType${i}`, texture.type === 'listening' ? 0 : 1);
+        material.setFloat(`_TexKind${i}`, texture.type === 'listening'
+          ? (texture.textureType === 'blue' ? 0 : 1)
+          : 2);
+        material.setFloat(`_IsSecond${i}`, texture.isSecondTexture ? 1 : 0);
+        
         // 设置纹理层级
         material.setFloat(`_Tex${i}Layer`, texture.layer);
-
-        // 设置采样索引
-        // 0: FirstStageBlueTexture, 1: FirstStageGreenTexture, 2: cloudTexture
-        let texIndex = 0;
-        if (texture.type === 'listening') {
-          texIndex = (texture.textureType === 'blue') ? 0 : 1;
-        } else if (texture.type === 'input') {
-          texIndex = 2;
-        }
-        material.setFloat(`_TexIndex${i}`, texIndex);
 
         // 设置颜色
         if (texture.color) {
@@ -998,8 +1120,19 @@ let material: Material | undefined;
       }
       // 对于未使用的纹理，重置参数
       for (let i = textureCount; i < MAX_TEXTURES; i++) {
-        material.setFloat(`_Offset${i}`, 0.5);
-        material.setFloat(`_Alpha${i}`, 0);
+        material.setFloat(`_TexStartedAt${i}`, 0);
+        material.setFloat(`_TexDuration${i}`, 0);
+        material.setFloat(`_TexFadeIn${i}`, 0);
+        material.setFloat(`_TexFadeOutStart${i}`, 0);
+        material.setFloat(`_TexFadeOutEnd${i}`, 0);
+        material.setFloat(`_TexDistance${i}`, 0);
+        material.setFloat(`_TexInitU${i}`, 0);
+        material.setFloat(`_TexInitV${i}`, 0);
+        material.setFloat(`_TexType${i}`, 0);
+        material.setFloat(`_TexKind${i}`, 0);
+        material.setFloat(`_IsSecond${i}`, 0);
+        material.setFloat(`_Tex${i}Layer`, i);
+        material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 0));
       }
 
       // 如有必要，强制刷新
