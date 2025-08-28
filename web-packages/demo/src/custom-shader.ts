@@ -1108,7 +1108,7 @@ let material: Material | undefined;
     const now = performance.now();
     const timeFactor = now * 0.1; // 转换为秒
 
-    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 500000) {return 0.5;} else {return 1.00;}
+    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 1000) {return 0.5;} else {return 0.090;}
   }
 
   // 数值范围限制
@@ -1145,23 +1145,32 @@ let material: Material | undefined;
       // 设置统一时间_Now
       material.setFloat('_Now', now);
 
-      // 更新纹理数量
-      const textureCount = Math.min(controller.textures.length, MAX_TEXTURES);
       const currentVolume = getAudioVolume();
-
-      //console.log(textureCount);
-      material.setFloat('_TextureCount', textureCount);
+      
       // 传递音量参数
       material.setFloat('_CurrentVolume', currentVolume);
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
 
+      // 优先级挑选：输入阶段优先，且越新的越优先
+      const all = controller.textures.slice();
 
-      // 更新每个纹理的参数
+      // 1) 优先选择 Input（当前批次和最近的优先），不足再补 Listening
+      const inputs = all.filter(t => t.type === 'input')
+                        .sort((a, b) => b.startedAt - a.startedAt); // 新的在前
+      const listenings = all.filter(t => t.type === 'listening')
+                            .sort((a, b) => b.startedAt - a.startedAt);
+
+      const renderSet = inputs.concat(listenings).slice(0, MAX_TEXTURES);
+
+      // 2) 为了混合顺序可控（底->上），这里按 startedAt 从早到晚排回去
+      renderSet.sort((a, b) => a.startedAt - b.startedAt);
+
+      const textureCount = renderSet.length;
+      material.setFloat('_TextureCount', textureCount);
+
       for (let i = 0; i < textureCount; i++) {
-        const texture = controller.textures[i];
-
-        // 设置每纹理参数
+        const texture = renderSet[i];
         material.setFloat(`_TexStartedAt${i}`, texture.startedAt);
         material.setFloat(`_TexDuration${i}`, texture.duration);
         material.setFloat(`_TexFadeIn${i}`, texture.fadeIn);
@@ -1175,16 +1184,16 @@ let material: Material | undefined;
           ? (texture.textureType === 'blue' ? 0 : 1)
           : 2);
         material.setFloat(`_IsSecond${i}`, texture.isSecondTexture ? 1 : 0);
-        
-        // 设置纹理层级
-        material.setFloat(`_Tex${i}Layer`, texture.layer);
 
-        // 设置颜色
+        // 渲染顺序用本地 i 即可（底->上）
+        material.setFloat(`_Tex${i}Layer`, i);
+
         if (texture.color) {
           material.setVector4(`_Color${i}`, new Vector4(...texture.color));
         }
       }
-      // 对于未使用的纹理，重置参数
+
+      // 清空未用槽位
       for (let i = textureCount; i < MAX_TEXTURES; i++) {
         material.setFloat(`_TexStartedAt${i}`, 0);
         material.setFloat(`_TexDuration${i}`, 0);
@@ -1241,5 +1250,3 @@ const controls: Array<{ id: string, param: string, value: number, precision: num
   { id: 'detailNoiseUVScaleX', param: '_DetailNoiseUVScaleX', value: 1.10, precision: 2 },
   { id: 'detailNoiseUVScaleY', param: '_DetailNoiseUVScaleY', value: 3.00, precision: 2 },
 ];
-
-

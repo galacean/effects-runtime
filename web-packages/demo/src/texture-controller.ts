@@ -401,6 +401,20 @@ export class TextureController {
       }
     }
 
+    // 早期检测：监听阶段任何时刻首次超过阈值就标记pending
+    if (!this.stopActive &&
+        this.currentStage === MainStage.Listening &&
+        !this.pendingInputStage &&
+        volume >= this.volumeThreshold) {
+      this.pendingInputStage = true;
+      this.pendingTriggerTime = this.groupStartedAt + 2.75;
+      if (now >= this.pendingTriggerTime) {
+        this.enterInputStage(now);
+        this.pendingTriggerTime = 0;
+      }
+      if (DEBUG) console.log(`[提前标记] 首次越阈值，目标切换=${this.pendingTriggerTime.toFixed(3)}s`);
+    }
+
     // 更新所有纹理状态，仅在未停止时检查触发点
     this.textures.forEach(tex => {
       const elapsed = now - tex.startedAt;
@@ -422,16 +436,10 @@ export class TextureController {
     this.nextLayer = this.textures.length;
 
     // 2.75秒处理逻辑，仅在未停止时进行
-    if (!this.stopActive &&
-        this.currentStage === MainStage.Listening &&
-        this.pendingTriggerTime > 0
-    ) {
-      const elapsedSinceTrigger = now - this.pendingTriggerTime;
-      const groupElapsed = now - this.groupStartedAt;
-
-      if (groupElapsed >= 2.75) {
+    if (this.currentStage === MainStage.Listening && this.pendingInputStage) {
+      if (this.pendingTriggerTime > 0 && now >= this.pendingTriggerTime) {
         this.enterInputStage(now);
-        this.pendingTriggerTime = 0; // 重置触发时间
+        this.pendingTriggerTime = 0;
       }
     }
 
@@ -536,11 +544,11 @@ export class TextureController {
       groupEnded = now >= lastEndTime ;
 
       if (groupEnded) {
-        if (volume > this.volumeThreshold) {
-          this.pendingInputStage = true;
-          this.pendingTriggerTime = now; // 记录触发时间点
+        if (volume >= this.volumeThreshold) {
+          // 兜底：组结束时直接进入第二阶段（符合老版体感）
+          this.enterInputStage(now);
           if (DEBUG) {
-            console.log(`[组${this.listeningGroupId}] 音量${volume}超阈值，将在3.4s进入第二阶段`);
+            console.log(`[组${this.listeningGroupId}] 音量${volume}超阈值，直接进入第二阶段`);
           }
         } else {
           // 创建新纹理组
@@ -549,6 +557,7 @@ export class TextureController {
             console.log(`[组${this.listeningGroupId}] 音量${volume}未超阈值，生成新监听纹理组`);
           }
         }
+        return; // 当前纹理的触发检查到此为止
       }
     }
 
@@ -562,12 +571,18 @@ export class TextureController {
     ) {
       // 如果组生命周期尚未结束，则保留原有逻辑
       if (!groupEnded) {
-        if (volume > this.volumeThreshold && !this.pendingInputStage) {
+        if (volume >= this.volumeThreshold && !this.pendingInputStage) {
           this.pendingInputStage = true;
-          this.pendingTriggerTime = now; // 记录触发时间点
+          // 以组起始时间 + 2.75s 作为"绝对目标时间"
+          this.pendingTriggerTime = this.groupStartedAt + 2.75;
           tex.triggered = true;
+          // 若当前已经超过门槛，立刻进入第二阶段
+          if (now >= this.pendingTriggerTime) {
+            this.enterInputStage(now);
+            this.pendingTriggerTime = 0;
+          }
           if (DEBUG) {
-            console.log(`[精确检测] 音量${volume}超阈值，将在2.75s进入第二阶段`);
+            console.log(`[精确检测] 命中阈值，目标切换时间=${this.pendingTriggerTime.toFixed(3)}（组起点+2.75s）`);
           }
         }
       }
@@ -591,7 +606,7 @@ export class TextureController {
         // 只有当前批次所有纹理都未触发过，才允许触发
         const batchAlreadyTriggered = batchTextures.some(t => t.batchTriggered);
 
-        if (!batchAlreadyTriggered && volume > this.volumeThreshold) {
+        if (!batchAlreadyTriggered && volume >= this.volumeThreshold) {
           this.enterInputStage(now);
           batchTextures.forEach(t => t.batchTriggered = true);
           if (DEBUG) {
