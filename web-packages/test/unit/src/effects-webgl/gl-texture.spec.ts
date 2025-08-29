@@ -4,7 +4,7 @@ import type {
 } from '@galacean/effects-core';
 import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
 import type { GLEngine, GLRendererInternal } from '@galacean/effects-webgl';
-import { GLTexture, GLPipelineContext, GLRenderer } from '@galacean/effects-webgl';
+import { GLTexture, GLRenderer } from '@galacean/effects-webgl';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 
 const COMPRESSED_RGBA_ASTC_6x6_KHR = 37812;
@@ -14,7 +14,6 @@ describe('webgl/gl-texture', () => {
   let renderer: GLRenderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let canvas: HTMLCanvasElement;
-  let pipelineContext: GLPipelineContext;
   let engine: GLEngine;
 
   before(() => {
@@ -22,7 +21,6 @@ describe('webgl/gl-texture', () => {
     renderer = new GLRenderer(canvas, 'webgl');
     engine = renderer.engine as GLEngine;
     gl = renderer.context.gl as WebGLRenderingContext;
-    pipelineContext = new GLPipelineContext(engine, gl);
   });
 
   after(() => {
@@ -37,7 +35,6 @@ describe('webgl/gl-texture', () => {
     canvas = null;
     // @ts-expect-error
     gl = null;
-    pipelineContext.dispose();
   });
 
   it('load 2d astc ktx file', async () => {
@@ -638,7 +635,6 @@ describe('webgl2/gl-texture', () => {
   let renderer: GLRenderer;
   let fakeRenderer: GLRendererInternal;
   let imageHTMLElement: HTMLImageElement;
-  let pipelineContext: GLPipelineContext;
   let engine: GLEngine;
 
   before(() => {
@@ -648,7 +644,6 @@ describe('webgl2/gl-texture', () => {
     fakeRenderer = renderer.glRenderer;
     engine = renderer.engine as GLEngine;
     gl = fakeRenderer.gl;
-    pipelineContext = new GLPipelineContext(engine, gl);
     imageHTMLElement = document.createElement('img');
     imageHTMLElement.src = '../../../assets/colors.png';
   });
@@ -668,7 +663,6 @@ describe('webgl2/gl-texture', () => {
     canvas = null;
     // @ts-expect-error
     gl = null;
-    pipelineContext.dispose();
   });
 
   it('GLTexture2D default value', () => {

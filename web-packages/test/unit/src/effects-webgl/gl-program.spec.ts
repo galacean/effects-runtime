@@ -45,7 +45,7 @@
 //     });
 
 //     renderer.renderRenderFrame(frame);
-//     const gl = renderer.glRenderer.pipelineContext.gl;
+//     const gl = renderer.glRenderer.engine.gl;
 //     const glProgram = mesh.material.shader.program;
 //     const webglProgram = mesh.material.shader.program.program;
 

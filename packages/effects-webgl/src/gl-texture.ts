@@ -8,7 +8,6 @@ import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
   throwDestroyedError, canvasPool, logger,
 } from '@galacean/effects-core';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLEngine } from './gl-engine';
 
@@ -33,7 +32,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   textureBuffer: WebGLTexture | null;
   target: GLenum;
 
-  private pipelineContext: GLPipelineContext;
   private initialized = false;
 
   constructor (engine: Engine, source?: TextureSourceOptions) {
@@ -47,7 +45,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
    * 绑定当前 Texture 对象
    */
   bind (force?: boolean) {
-    this.pipelineContext.bindTexture(this.target, this.textureBuffer, force);
+    (this.engine as GLEngine).bindTexture(this.target, this.textureBuffer, force);
   }
 
   /**
@@ -60,9 +58,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const glEngine = this.engine as GLEngine;
 
     glEngine.addTexture(this);
-    this.pipelineContext = glEngine.getGLPipelineContext();
 
-    const gl = this.pipelineContext.gl;
+    const gl = (this.engine as GLEngine).gl;
     const { target = gl.TEXTURE_2D, name } = this.source;
 
     this.textureBuffer = gl.createTexture();
@@ -114,7 +111,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   }
 
   update (sourceOptions: TextureSourceOptions) {
-    if (!this.pipelineContext || !this.textureBuffer) {
+    if (!this.engine || !this.textureBuffer) {
       this.width = 0;
       this.height = 0;
 
@@ -123,7 +120,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
 
     const target = this.target;
     const source = this.source;
-    const gl = this.pipelineContext.gl;
+    const gl = (this.engine as GLEngine).gl;
     const { detail } = this.engine.gpuCapability;
     const { sourceType } = source;
     const { data } = source as Texture2DSourceOptionsData;
@@ -392,7 +389,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const { detail } = this.engine.gpuCapability;
     const maxSize = detail.maxTextureSize ?? 2048;
 
-    const gl = this.pipelineContext.gl;
+    const gl = (this.engine as GLEngine).gl;
 
     if (isWebGL2(gl) && (image.width < maxSize && image.height < maxSize)) {
       return image as HTMLImageElement;
@@ -416,7 +413,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       return;
     }
     const target = this.target;
-    const gl = this.pipelineContext.gl;
+    const gl = (this.engine as GLEngine).gl;
 
     if (gl && this.textureBuffer) {
       const data = new Uint8Array([255]);
@@ -478,8 +475,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
      * 原先Player是允许多次调用dispose，并且不会报错
      * dispose之后assignRenderer会报错
      */
-    if (this.pipelineContext && this.textureBuffer) {
-      this.pipelineContext.gl.deleteTexture(this.textureBuffer);
+    if (this.engine && this.textureBuffer) {
+      (this.engine as GLEngine).gl.deleteTexture(this.textureBuffer);
     }
     this.width = 0;
     this.height = 0;
