@@ -8,7 +8,7 @@ import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, isObject, logger, removeItem } from './utils';
+import { addItem, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 
@@ -86,7 +86,7 @@ export class Engine implements Disposable {
    */
   findObject<T> (guid: spec.DataPath): T {
     // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
-    if (!(isObject(guid) && guid.constructor === Object)) {
+    if (!(isPlainObject(guid))) {
       return guid as T;
     }
 

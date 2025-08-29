@@ -1,5 +1,6 @@
 import { lexer, richTextParser as parser, generateProgram, isRichText, type RichTextAST, type Attribute } from '@galacean/effects-plugin-rich-text';
 const { expect } = chai;
+
 const richText = `
   We are <b>absolutely <i>definitely</i> not</b> amused
   We are <color=green>green</color> with envy
@@ -188,7 +189,7 @@ describe('test lexer and parser', () => {
 });
 
 describe('test lexer and parser with wrapped rich text', () => {
-  const wrappedRichText = '<del>' + richText + '</del>';
+  const wrappedRichText = `<del>${richText}</del>`;
 
   const wrappedRichTextTokens = [{
     tokenType: 'ContextStart',
@@ -279,11 +280,14 @@ describe('test unparsable text', () => {
 
 describe('test isRichText', () => {
   it('should return true for rich text', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(isRichText(richText)).to.be.true;
   });
 
   it('should return false for unparsable rich text', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(isRichText(unparsableRichText1)).to.be.false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     expect(isRichText(unparsableRichText2)).to.be.false;
   });
 });

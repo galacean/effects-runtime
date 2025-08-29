@@ -48,8 +48,8 @@ export class BezierCurve extends ValueGetter<number> {
   private keyFrames: Keyframe[];
   private curveInfos: CurveInfo[];
 
-  override onCreate (props: Keyframe[]) {
-    this.keyFrames = props;
+  override onCreate (props: spec.BezierKeyframeValue[]) {
+    this.keyFrames = oldBezierKeyFramesToNew(props);
     const keyframes = this.keyFrames;
 
     this.curveMap = {};

@@ -2,7 +2,7 @@ import type { Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4, Color } f
 import type { GlobalUniforms, Renderer, Shader, ShaderVariant, ShaderWithSource } from '../render';
 import type { Texture } from '../texture';
 import type { DestroyOptions, Disposable } from '../utils';
-import type { UniformSemantic, UniformValue } from './types';
+import type { UniformValue } from './types';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
 
@@ -39,10 +39,6 @@ export interface MaterialProps {
    */
   name?: string,
   /**
-   * 传递的变换矩阵
-   */
-  uniformSemantics?: Record<string, UniformSemantic>,
-  /**
    * 渲染类型
    */
   renderType?: MaterialRenderType,
@@ -67,7 +63,6 @@ export abstract class Material extends EffectsObject implements Disposable {
   // TODO: 待移除
   shaderSource: ShaderWithSource;
   stringTags: Record<string, string> = {};
-  readonly uniformSemantics: Record<string, UniformSemantic>;
   readonly enabledMacros: Record<string, number | boolean> = {};
   readonly renderType: MaterialRenderType;
   readonly name: string;
@@ -94,14 +89,12 @@ export abstract class Material extends EffectsObject implements Disposable {
         name = 'Material' + seed++,
         renderType = MaterialRenderType.normal,
         shader,
-        uniformSemantics,
       } = props;
 
       this.name = name;
       this.renderType = renderType; // TODO 没有地方用到
       this.shaderSource = shader;
       this.props = props;
-      this.uniformSemantics = { ...uniformSemantics }; // TODO 废弃，待移除
     } else {
       this.name = 'Material' + seed++;
       this.renderType = MaterialRenderType.normal;

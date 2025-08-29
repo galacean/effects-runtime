@@ -731,8 +731,6 @@ export class GLMaterial extends Material {
 
     // @ts-expect-error
     this.shaderSource = null;
-    // @ts-expect-error
-    this.uniformSemantics = {};
     this.floats = {};
     this.ints = {};
     this.vector2s = {};

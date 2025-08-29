@@ -1,7 +1,7 @@
 #version 100
 precision mediump float;
 #define SHADER_VERTEX 1
-#include "./value.glsl";
+#include "./value.glsl"
 attribute vec4 aPos;
 attribute vec3 aDir;
 attribute vec3 aInfo;//lifetime section side
@@ -36,10 +36,6 @@ uniform sampler2D uColorOverLifetime;
 varying float vLife;
 varying vec2 vTexCoord;
 varying vec4 vColor;
-
-#ifdef ENV_EDITOR
-uniform vec4 uEditorTransform;
-#endif
 
 void main() {
   vec4 _pa = effects_MatrixVP * vec4(aPos.xyz, 1.);
@@ -80,8 +76,4 @@ void main() {
   vLife = time;
   vTexCoord = uTextureMap.xy + vec2(trail, aInfo.z) * uTextureMap.zw;
   vSeed = aSeed;
-
-    #ifdef ENV_EDITOR
-  gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-    #endif
 }

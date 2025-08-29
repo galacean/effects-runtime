@@ -8,6 +8,7 @@ export class FileNode {
   assetObject: EffectsObject | undefined;
   icon: WebGLTexture | undefined;
   private fileCache: File;
+  private initialized = false;
 
   get isFile () {
     return this.handle.kind === 'file';
@@ -26,9 +27,10 @@ export class FileNode {
   }
 
   instantiateAssetObject () {
-    if (this.assetObject) {
+    if (this.initialized) {
       return;
     }
+    this.initialized = true;
     void this.getFile().then(async (file: File | undefined)=>{
       if (!file) {
         return;

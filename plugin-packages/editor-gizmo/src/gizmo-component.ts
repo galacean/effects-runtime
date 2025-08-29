@@ -127,10 +127,12 @@ export class GizmoComponent extends RendererComponent {
     if (this.subType === GizmoSubType.modelWireframe) { // 模型线框
       if (this.wireframeMesh && this.targetItem) {
         //@ts-expect-error TODO 和 3D 类型解耦
-        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
+        const pMesh = this.targetItem.getComponent(RendererComponent)?.content;
+        const meshes = pMesh.subMeshes;
         const wireframeMeshes = this.wireframeMeshes;
 
         if (meshes?.length > 0) {
+          wireframeMeshes[0].worldMatrix.copyFrom(pMesh.matrix);
           updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
         }
       }

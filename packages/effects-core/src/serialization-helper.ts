@@ -3,7 +3,7 @@ import { getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { Constructor } from './utils';
-import { isArray, isCanvas, isObject, isString } from './utils';
+import { isArray, isCanvas, isObject, isPlainObject, isString } from './utils';
 
 export class SerializationHelper {
   static serialize (
@@ -122,8 +122,7 @@ export class SerializationHelper {
     return !!(isObject(value)
       && Object.keys(value).length === 1
       && 'id' in value
-      && isString(value.id)
-      && value.id.length === 32);
+      && isString(value.id));
   }
 
   // TODO 测试函数，2.0 上线后移除
@@ -163,7 +162,7 @@ export class SerializationHelper {
       const referenceObject = engine.findObject(property);
 
       return overrideDataPath ? referenceObject : property;
-    } else if (isObject(property) && property.constructor === Object) {
+    } else if (isPlainObject(property)) {
       let res: Record<string, EffectsObject>;
 
       if (type) {

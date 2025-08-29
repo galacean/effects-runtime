@@ -7,6 +7,27 @@
 
 ---
 
+## 2.6.3
+
+`2025-08-22`
+
+- Fix: the adapter returns a string when loading JSON from a relative path in the miniprogram. [#1145](https://github.com/galacean/effects-runtime/pull/1145) @yiiqii
+- Fix: plain object judgment. [#1147](https://github.com/galacean/effects-runtime/pull/1147) @wumaolinmaoan
+
+## 2.6.2
+
+`2025-08-15`
+
+- Fix: 3d editor mode demo. [#1112](https://github.com/galacean/effects-runtime/pull/1112) @wumaolinmaoan
+- Fix: rendering scale was incorrect after setting the scale of spine. [#1132](https://github.com/galacean/effects-runtime/pull/1132) @wumaolinmaoan
+  - Fix: spine start scale issue. [#1136](https://github.com/galacean/effects-runtime/pull/1136) @wumaolinmaoan
+
+## 2.6.1
+
+`2025-08-12`
+
+- Fix: spine set animation list render issue. [#1128](https://github.com/galacean/effects-runtime/pull/1128) @wumaolinmaoan
+
 ## 2.6.0
 
 `2025-07-29`

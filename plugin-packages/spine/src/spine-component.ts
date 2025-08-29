@@ -1,4 +1,4 @@
-import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
+import type { AnimationStateListener, SkeletonData, TextureAtlas, TrackEntry } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
   BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Maskable,
@@ -192,8 +192,18 @@ export class SpineComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
+    if (!this.content) {
+      return;
+    }
+
+    for (let i = 0; i < this.content.meshGroups.length; i++) {
+      const material = this.content.meshGroups[i].mesh.material;
+
+      material.setVector2('_Size', new Vector2(this.startSize * this.scaleFactor, this.startSize * this.scaleFactor));
+    }
+
     this.maskManager.drawStencilMask(renderer);
-    this.content?.render(renderer);
+    this.content.render(renderer);
   }
 
   drawStencilMask (renderer: Renderer): void {
@@ -382,9 +392,16 @@ export class SpineComponent extends RendererComponent implements Maskable {
     if (listener) {
       listener.end = () => { };
     }
-    this.state.setEmptyAnimation(0);
-    for (const animation of animationList) {
-      const trackEntry = this.state.addAnimation(0, animation, false);
+
+    for (let i = 0; i < animationList.length; i++) {
+      const animation = animationList[i];
+      let trackEntry: TrackEntry;
+
+      if (i === 0) {
+        trackEntry = this.state.setAnimation(0, animation, false);
+      } else {
+        trackEntry = this.state.addAnimation(0, animation, false);
+      }
 
       if (this.item.endBehavior === spec.EndBehavior.restart) {
         const listener: AnimationStateListener = {
@@ -427,10 +444,16 @@ export class SpineComponent extends RendererComponent implements Maskable {
     if (listener) {
       listener.end = () => { };
     }
-    this.state.setEmptyAnimation(0);
+
     for (let i = 0; i < animationList.length - 1; i++) {
       const animation = animationList[i];
-      const trackEntry = this.state.addAnimation(0, animation, false);
+      let trackEntry: TrackEntry;
+
+      if (i === 0) {
+        trackEntry = this.state.setAnimation(0, animation, false);
+      } else {
+        trackEntry = this.state.addAnimation(0, animation, false);
+      }
 
       if (i === animationList.length - 2) {
         trackEntry.listener = {
@@ -544,7 +567,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
     const { width } = res;
-    const scale = this.transform.scale;
     let scaleFactor;
 
     if (this.resizeRule) {
@@ -561,7 +583,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       scaleFactor = 1 / width;
     }
     this.scaleFactor = scaleFactor;
-    this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
+    this.transform.setScale(1, 1, this.transform.scale.z);
   }
 
   // 转换当前大小为旧缩放规则下的大小

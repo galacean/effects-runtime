@@ -107,6 +107,13 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * 当属性被动画修改时调用
+   */
+  onApplyAnimationProperties () {
+    // OVERRIDE
+  }
+
+  /**
    * @internal
    */
   enable () {

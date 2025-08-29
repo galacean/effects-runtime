@@ -34,7 +34,6 @@ export class InstantiationContext {
       return null as unknown as T;
     }
     this.nodeDatas[index].instantiate(this);
-    this.nodes[index].asset = this.nodeDatas[index];
 
     return this.nodes[index] as T;
   }

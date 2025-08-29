@@ -1,16 +1,12 @@
+import type { Editor } from '../custom-editors/editor';
+import { ImGui } from '../imgui';
 import { type EditorWindow } from '../panels/editor-window';
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
-import { ImGui } from '../imgui';
-import { editorStore, editorWindowStore, menuItemStore, objectInspectorStore } from './decorators';
-import type { ObjectInspector } from '../object-inspectors/object-inspectors';
-import type { Editor } from '../custom-editors/editor';
+import { editorStore, editorWindowStore, menuItemStore } from './decorators';
 
 export class UIManager {
   // Custom component inspector GUI
   static customEditors = new Map<Function, Editor>();
-
-  // Custom object inspector GUI
-  static objectInpectors = new Map<Function, ObjectInspector>();
 
   // Custom window GUI
   private static editorWindows: EditorWindow[] = [];
@@ -39,15 +35,6 @@ export class UIManager {
         continue;
       }
       UIManager.customEditors.set(key, new customEditorClass());
-    }
-
-    for (const key of objectInspectorStore.keys()) {
-      const objectInpectorClass = objectInspectorStore.get(key);
-
-      if (!objectInpectorClass) {
-        continue;
-      }
-      UIManager.objectInpectors.set(key, new objectInpectorClass());
     }
   }
 
@@ -82,6 +69,11 @@ export class UIManager {
 
     if (ImGui.BeginMainMenuBar()) {
       if (ImGui.BeginMenu('File')) {
+        if (ImGui.MenuItem('Save Layout', '')) {
+          if (typeof(window) !== 'undefined') {
+            window.localStorage.setItem('imgui.ini', ImGui.SaveIniSettingsToMemory());
+          }
+        }
         // ShowExampleMenuFile();
         ImGui.EndMenu();
       }

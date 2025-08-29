@@ -7,7 +7,7 @@ import { ColorCurve } from './color-curve';
 import { Vector2Curve, Vector3Curve, Vector4Curve } from './vector-curves';
 import { ValueGetter } from './value-getter';
 import { HELP_LINK } from '../../constants';
-import { BezierCurve, oldBezierKeyFramesToNew } from './bezier-curve';
+import { BezierCurve } from './bezier-curve';
 
 /**
  * Vector2 曲线
@@ -59,8 +59,7 @@ const map: Record<any, any> = {
       return new StaticValue(props[0][1][1]);
     }
 
-    // TODO: Move to migration.
-    return new BezierCurve(oldBezierKeyFramesToNew(props as spec.BezierKeyframeValue[]));
+    return new BezierCurve(props as spec.BezierKeyframeValue[]);
   },
   [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {
     if (props[0].length === 1) {

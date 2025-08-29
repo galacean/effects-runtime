@@ -3,7 +3,8 @@ import type { AnimationGraphAsset } from './animation-graph-asset';
 import { GraphContext, InstantiationContext } from './graph-context';
 import type { GraphNode, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
-import { ControlParameterTriggerNode } from './nodes';
+import type { StateMachineNodeData } from './nodes';
+import { ControlParameterTriggerNode, StateMachineNode } from './nodes';
 import { PoseResult } from './pose-result';
 import type { AnimationRecordData } from './skeleton';
 import { Skeleton } from './skeleton';
@@ -55,11 +56,11 @@ export class GraphInstance {
     }
     this.skeleton = new Skeleton(rootBone, recordProperties);
 
-    // create PoseResult
+    // Create PoseResult
     this.result = new PoseResult(this.skeleton);
     this.context.skeleton = this.skeleton;
 
-    // instantiate graph nodes
+    // Instantiate graph nodes
     const instantiationContext = new InstantiationContext();
 
     instantiationContext.nodes = this.nodes;
@@ -107,6 +108,18 @@ export class GraphInstance {
 
   isNodeActive (nodeIdx: number): boolean {
     return this.isControlParameter(nodeIdx) || this.nodes[nodeIdx].isNodeActive(this.context.updateID);
+  }
+
+  getStateMachineNode (machineName: string): StateMachineNode | null {
+    let result: StateMachineNode | null = null;
+
+    for (const node of this.nodes) {
+      if (node instanceof StateMachineNode && node.getNodeData<StateMachineNodeData>().machineName === machineName) {
+        result = node;
+      }
+    }
+
+    return result;
   }
 
   // Graph State

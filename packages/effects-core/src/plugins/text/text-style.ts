@@ -89,7 +89,9 @@ export class TextStyle {
       this.isOutlined = true;
       this.outlineColor = outline.outlineColor ?? [1, 1, 1, 1];
       this.outlineWidth = outline.outlineWidth ?? 1;
-      this.fontOffset += this.outlineWidth;
+      //this.fontOffset += this.outlineWidth;
+      //预期效果不需要因为描边而修改文字计算的宽度
+      //当描边宽度扩大，最后效果是描边重叠
     }
 
     if (shadow) {

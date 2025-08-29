@@ -20,11 +20,10 @@ export class MeshComponent extends RendererComponent {
   protected meshCollider = new MeshCollider();
 
   override render (renderer: Renderer) {
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
     for (let i = 0;i < this.materials.length;i++) {
-      renderer.drawGeometry(this.geometry, this.materials[i], i);
+      const material = this.materials[i];
+
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
     }
   }
 

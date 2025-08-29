@@ -1,6 +1,6 @@
 #version 100
 precision mediump float;
-#include "./blend.glsl";
+
 #define PATICLE_SHADER 1
 varying float vLife;
 varying vec2 vTexCoord;
@@ -40,6 +40,22 @@ vec4 getTextureColor(sampler2D tex, vec2 texCoord) {
 #define round(a) floor(0.5+a)
 #endif
 
+vec4 blendColor(vec4 color, vec4 vc, float mode) {
+  vec4 ret = color * vc;
+  float alpha = ret.a;
+
+  if(mode == 1.) {
+    ret.rgb *= alpha;
+  } else if(mode == 2.) {
+    ret.rgb *= alpha;
+    ret.a = dot(ret.rgb, vec3(0.33333333));
+  } else if(mode == 3.) {
+    alpha = color.r * alpha;
+    ret = vec4(vc.rgb * alpha, alpha);
+  }
+  return ret;
+}
+
 #ifdef PREVIEW_BORDER
 void main() {
   gl_FragColor = uPreviewColor;
@@ -73,4 +89,5 @@ void main() {
   color = vec4(pow(pow(color.rgb, vec3(2.2)) + emission, vec3(1.0 / 2.2)), color.a);
   gl_FragColor = color;
 }
+
 #endif

@@ -28,13 +28,3 @@ export function editor (ComponentType: new(...args: any[]) => any,) {
     editorStore.set(ComponentType, target);
   };
 }
-
-export const objectInspectorStore = new Map<new () => any, new () => any>();
-export function objectInspector (ObjectType: new(...args: any[]) => any) {
-  return (target: any, context?: unknown) => {
-    if (objectInspectorStore.get(ObjectType)) {
-      console.warn(`ObjectInspector Class ${target} 重复注册`);
-    }
-    objectInspectorStore.set(ObjectType, target);
-  };
-}

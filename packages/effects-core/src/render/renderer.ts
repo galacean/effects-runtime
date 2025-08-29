@@ -131,7 +131,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  drawGeometry (geometry: Geometry, material: Material, subMeshIndex = 0) {
+  drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0) {
     // OVERRIDE
   }
 
