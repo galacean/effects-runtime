@@ -8,6 +8,25 @@
 
 ---
 
+## 2.6.5
+
+`2025-08-29`
+
+- Fix: video `gotoAndStop` func. [#1159](https://github.com/galacean/effects-runtime/pull/1159) @ChengYi996
+
+## 2.6.4
+
+`2025-08-26`
+
+- Fix: add video assets dispose logic. [#1157](https://github.com/galacean/effects-runtime/pull/1157) @wumaolinmaoan
+
+## 2.6.3
+
+`2025-08-22`
+
+- Fix: the adapter returns a string when loading JSON from a relative path in the miniprogram. [#1145](https://github.com/galacean/effects-runtime/pull/1145) @yiiqii
+- Fix: plain object judgment. [#1147](https://github.com/galacean/effects-runtime/pull/1147) @wumaolinmaoan
+
 ## 2.6.2
 
 `2025-08-15`
