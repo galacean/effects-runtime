@@ -503,34 +503,6 @@ export class TextureController {
     });
   }
 
-  /**
-   * 手动捕获快照并输出到控制台
-   */
-  captureManualSnapshot () {
-    const snapshots = this.captureSnapshot();
-    const jsonData = JSON.stringify(snapshots, null, 2);
-
-    console.log('手动捕获快照:', jsonData);
-
-    // 创建Blob对象并触发下载
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-
-    a.href = url;
-    a.download = `snapshot-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-
-    // 清理资源
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-
-    return snapshots;
-  }
-
   checkTriggerPoints (tex: TexState, elapsed: number, volume: number, now: number) {
     // 监听阶段组生命周期检测 - 基于纹理结束时间
     let groupEnded = false;

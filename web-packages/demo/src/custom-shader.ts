@@ -13,8 +13,8 @@ import { math } from '@galacean/effects-core';
 const { Vector4 } = math;
 
 import { Texture, glContext } from '@galacean/effects-core';
-import { TextureController } from './texture-controller.js';
-enum MainStage { Listening, Input, Stop }
+import { TextureControllerNew } from './texture-controller-new.js';
+enum MainStage { Listening, Input }
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Rjb_SoNgcv8AAAAAQMAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
@@ -87,29 +87,10 @@ uniform sampler2D _Tex0; // 第一阶段蓝
 uniform sampler2D _Tex1; // 第一阶段绿
 uniform sampler2D _Tex2; // 第二阶段
 
-// 噪声纹理和参数
+// 噪声纹理
 uniform sampler2D _NoiseTex; // 大尺度噪声纹理
 uniform sampler2D _T_NoiseTex; // 小尺度细节噪声纹理
-uniform float _DetailNoiseScale; // 细节噪声强度 [0,1]
-uniform float _NoiseScaleX; // 水平噪点放大系数 [0,1]
-uniform float _NoiseScaleY; // 垂直噪点放大系数 [0,1]
-uniform float _NoiseSpeedX; // 水平扰动速度 [0,10]
-uniform float _NoiseSpeedY; // 垂直扰动速度 [0,10]
-uniform float _NoiseUVScaleX; // 噪声贴图水平缩放 [0.1,10]
-uniform float _NoiseUVScaleY; // 噪声贴图垂直缩放 [0.1,10]
-uniform float _DetailNoiseScaleX; // 水平细节噪点放大系数 [0,1]
-uniform float _DetailNoiseScaleY; // 垂直细节噪点放大系数 [0,1]
-uniform float _DetailNoiseSpeedX; // 水平细节扰动速度 [0,10]
-uniform float _DetailNoiseSpeedY; // 垂直细节扰动速度 [0,10]
-uniform float _DetailNoiseUVScaleX; // 细节噪声贴图水平缩放 [0.1,10]
-uniform float _DetailNoiseUVScaleY; // 细节噪声贴图垂直缩放 [0.1,10]
 uniform float _Strength; // 整体强度
-
-// 新增参数
-uniform float _VerticalOffset;     // 垂直偏移量 [-1.0,1.0]
-uniform float _VolumeCurve;        // 音量响应曲线 [0.1,2.0]
-uniform float _BrightnessCurve;    // 亮度曲线指数 [0.5,3.0]
-uniform float _MaxBrightness;      // 最大亮度增强值 [1.0,3.0]
 
 // Stop信号相关参数
 uniform float _StopSignal;         // 0/1 停止信号
@@ -117,37 +98,11 @@ uniform float _StopTime;           // 停止时间（秒，与_Now同单位）
 uniform float _StopAffectListening;// 0/1 是否影响第一阶段
 uniform float _StopAffectInput;    // 0/1 是否影响第二阶段
 
-// 纹理的layer
-uniform float _Tex0Layer;
-uniform float _Tex1Layer;
-uniform float _Tex2Layer;
-uniform float _Tex3Layer;
-
 // 颜色uniform
 uniform vec4 _Color0;
 uniform vec4 _Color1;
 uniform vec4 _Color2;
 uniform vec4 _Color3;
-
-// 第一阶段蓝/绿时序常量
-uniform float _BlueFadeInEnd;
-uniform float _BlueMove1End;
-uniform float _BlueMove2End;
-uniform float _BlueFadeOutStart;
-uniform float _BlueFadeOutEnd;
-uniform float _BlueMove1TargetU;
-uniform float _BlueMove1TargetV;
-uniform float _BlueMove2TargetU;
-uniform float _BlueMove2TargetV;
-uniform float _BlueFadeInDeltaV;
-
-uniform float _GreenFadeInEnd;
-uniform float _GreenMoveEnd;
-uniform float _GreenFadeOutStart;
-uniform float _GreenFadeOutEnd;
-uniform float _GreenMoveTargetU;
-uniform float _GreenMoveTargetV;
-uniform float _GreenFadeInDeltaV;
 
 // 每纹理参数（0-3）
 uniform float _TexStartedAt0; uniform float _TexStartedAt1; uniform float _TexStartedAt2; uniform float _TexStartedAt3;
@@ -161,6 +116,48 @@ uniform float _TexInitV0;     uniform float _TexInitV1;     uniform float _TexIn
 uniform float _TexType0;      uniform float _TexType1;      uniform float _TexType2;      uniform float _TexType3; // 0=listening,1=input
 uniform float _TexKind0;      uniform float _TexKind1;      uniform float _TexKind2;      uniform float _TexKind3; // listening:0=blue,1=green
 uniform float _IsSecond0;     uniform float _IsSecond1;     uniform float _IsSecond2;     uniform float _IsSecond3;
+
+// 硬编码参数
+const float _BlueFadeInEnd = 0.625;
+const float _BlueMove1End = 2.375;
+const float _BlueMove2End = 3.558;
+const float _BlueFadeOutStart = 2.375;
+const float _BlueFadeOutEnd = 3.417;
+const float _BlueMove1TargetU = 0.1198;
+const float _BlueMove1TargetV = -0.0;
+const float _BlueMove2TargetU = 0.2382;
+const float _BlueMove2TargetV = -0.0;
+const float _BlueFadeInDeltaV = 0.0;
+
+const float _GreenFadeInEnd = 1.292;
+const float _GreenMoveEnd = 2.875;
+const float _GreenFadeOutStart = 2.375;
+const float _GreenFadeOutEnd = 3.458;
+const float _GreenMoveTargetU = 0.266;
+const float _GreenMoveTargetV = -0.0;
+const float _GreenFadeInDeltaV = 0.0;
+
+// 噪声默认参数
+const float _NoiseScaleX = 0.10;
+const float _NoiseScaleY = 0.74;
+const float _NoiseSpeedX = 0.1;
+const float _NoiseSpeedY = 0.111;
+const float _NoiseUVScaleX = 0.081;
+const float _NoiseUVScaleY = 0.040;
+const float _DetailNoiseScale = 0.03;
+const float _DetailNoiseScaleX = 0.71;
+const float _DetailNoiseScaleY = 0.55;
+const float _DetailNoiseSpeedX = 0.30;
+const float _DetailNoiseSpeedY = 0.30;
+const float _DetailNoiseUVScaleX = 1.10;
+const float _DetailNoiseUVScaleY = 3.00;
+
+// 响应曲线默认值
+const float _VerticalOffset = -0.50;
+const float _VolumeCurve = 0.70;
+const float _BrightnessCurve = 1.5;
+const float _MaxBrightness = 0.30;
+const float _BrightnessGain = 1.3; // 亮度增益系数
 
 // ACES Filmic Tonemapping函数
 vec3 ACESFilm(vec3 x) {
@@ -382,39 +379,12 @@ void main() {
   // 最终扰动偏移，受音量和alpha值影响
   vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume)  + vec2(0.0, verticalOffset);
 
-  // 记录每个纹理的 layer
-  float layers[4];
-  layers[0] = _Tex0Layer;
-  layers[1] = _Tex1Layer;
-  layers[2] = _Tex2Layer;
-  layers[3] = _Tex3Layer;
-
-  // 记录每个纹理的索引
-  int indices[4];
-  indices[0] = 0;
-  indices[1] = 1;
-  indices[2] = 2;
-  indices[3] = 3;
-
-  // 简单选择排序，按 layer 从小到大排列 indices
-  for (int i = 0; i < 4; i++) {
-    for (int j = i + 1; j < 4; j++) {
-      if (layers[indices[i]] > layers[indices[j]]) {
-        int tmp = indices[i];
-        indices[i] = indices[j];
-        indices[j] = tmp;
-      }
-    }
-  }
-
   vec4 finalColor = vec4(0.0);
   int textureCount = int(_TextureCount);
 
-  // 按 layer 顺序混合
-  for (int k = 0; k < 4; k++) {
-    if (k >= textureCount) break;
-
-    int i = indices[k];
+  // 直接按顺序处理纹理，CPU 已经排序好了
+  for (int i = 0; i < 4; i++) {
+    if (i >= textureCount) break;
 
     float startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond;
     fetchTexParams(i, startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond);
@@ -449,7 +419,7 @@ void main() {
   }
 
   // 亮度增强与音量曲线逻辑同现有
-  finalColor.rgb *= 1.3; // 增强亮度
+  finalColor.rgb *= _BrightnessGain; // 使用硬编码的增益系数
   float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
   finalColor.rgb *= brightnessBoost;
 
@@ -497,12 +467,8 @@ let material: Material | undefined;
   jsonValue.materials[0].floats['_MaxBrightness'] = 0.30;
 
   for (let i = 0; i < MAX_TEXTURES; i++) {
-    jsonValue.materials[0].floats[`_Alpha${i}`] = 0;
     // 初始化颜色参数
     jsonValue.materials[0].vector4s[`_Color${i}`] = [1, 1, 1, 1];
-    //初始化纹理层级
-    jsonValue.materials[0].floats = jsonValue.materials[0].floats || {};
-    jsonValue.materials[0].floats[`_Tex${i}Layer`] = i;
   }
 
   jsonValue.shaders[0].vertex = vertex;
@@ -510,7 +476,7 @@ let material: Material | undefined;
   const composition = await player.loadScene(jsonValue);
   const item = composition.getItemByName('effect_4');
 
-  const controller = new TextureController();
+  const controller = new TextureControllerNew();
 
   // 设置stop和reset回调
   controller.onStop = (now: number) => {
@@ -662,59 +628,7 @@ let material: Material | undefined;
 
   document.body.insertAdjacentHTML('beforeend', uiHtml);
 
-  // 添加快照按钮和状态提示（固定在右下角）
-  const snapshotContainer = document.createElement('div');
 
-  snapshotContainer.style.position = 'fixed';
-  snapshotContainer.style.bottom = '20px';
-  snapshotContainer.style.right = '20px';
-  snapshotContainer.style.zIndex = '10000';
-  snapshotContainer.style.display = 'flex';
-  snapshotContainer.style.flexDirection = 'column';
-  snapshotContainer.style.alignItems = 'flex-end';
-  snapshotContainer.style.gap = '10px';
-
-  // 创建手动捕获快照按钮
-  const captureButton = document.createElement('button');
-
-  captureButton.textContent = '捕获快照';
-  captureButton.style.padding = '8px 16px';
-  captureButton.style.backgroundColor = '#136BCD';
-  captureButton.style.color = 'white';
-  captureButton.style.border = 'none';
-  captureButton.style.borderRadius = '4px';
-  captureButton.style.cursor = 'pointer';
-  captureButton.style.marginBottom = '10px'; // 与链接保持间距
-  captureButton.addEventListener('click', () => {
-    captureButton.textContent = '捕获中...';
-    captureButton.disabled = true;
-
-    setTimeout(() => {
-      controller.captureManualSnapshot();
-      captureButton.textContent = '快照已保存';
-      setTimeout(() => {
-        captureButton.textContent = '捕获快照';
-        captureButton.disabled = false;
-      }, 2000);
-    }, 500);
-  });
-  snapshotContainer.appendChild(captureButton);
-
-  const openFolderLink = document.createElement('a');
-
-  openFolderLink.id = 'open-folder-link';
-  openFolderLink.textContent = '打开下载文件夹';
-  openFolderLink.style.color = '#4fc3f7';
-  openFolderLink.style.cursor = 'pointer';
-  openFolderLink.style.fontSize = '14px';
-  openFolderLink.style.textDecoration = 'underline';
-  openFolderLink.onclick = () => {
-    alert('请在浏览器的下载历史中查看文件位置');
-  };
-
-  snapshotContainer.appendChild(openFolderLink);
-  document.body.appendChild(snapshotContainer);
-  console.log('快照UI已添加到DOM');
 
   function hexToRgba (hex: string, alpha: number = 1): [number, number, number, number] {
     const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -986,15 +900,10 @@ let material: Material | undefined;
         material.setTexture('_T_NoiseTex', T_noiseTexture);
         // 设置噪声强度
         material.setFloat('_Strength', 0.50);
-        // 设置纹理层级
-        material.setFloat('_Tex0Layer', 0);
-        material.setFloat('_Tex1Layer', 1);
-        material.setFloat('_Tex2Layer', 2);
-        material.setFloat('_Tex3Layer', 3);
+        // 纹理层级已在shader中硬编码，不再需要设置
 
-        // 初始化偏移、透明度和颜色矩阵参数
+        // 初始化颜色参数
         for (let i = 0; i < MAX_TEXTURES; i++) {
-          material.setFloat(`_Alpha${i}`, 0);
           // 设置默认颜色(白色)
           material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 1));
         }
@@ -1112,7 +1021,7 @@ let material: Material | undefined;
     const now = performance.now();
     const timeFactor = now * 0.1; // 转换为秒
 
-    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 1000) {return 0.5;} else {return 0.090;}
+    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 500) {return 1.0;} else {return 0.090;}
   }
 
   // 数值范围限制
@@ -1132,7 +1041,7 @@ let material: Material | undefined;
 
     lastTime = now;
 
-    const volume = getAudioVolume();
+    const volume = getSimulatedAudioVolume();
 
     // if (DEBUG) {
     console.log(`Current volume: ${volume}`);
@@ -1149,7 +1058,7 @@ let material: Material | undefined;
       // 设置统一时间_Now
       material.setFloat('_Now', now);
 
-      const currentVolume = getAudioVolume();
+      const currentVolume = getSimulatedAudioVolume();
 
       // 传递音量参数
       material.setFloat('_CurrentVolume', currentVolume);
@@ -1160,15 +1069,15 @@ let material: Material | undefined;
       const all = controller.textures.slice();
 
       // 1) 优先选择 Input（当前批次和最近的优先），不足再补 Listening
-      const inputs = all.filter(t => t.type === 'input')
-        .sort((a, b) => b.startedAt - a.startedAt); // 新的在前
-      const listenings = all.filter(t => t.type === 'listening')
-        .sort((a, b) => b.startedAt - a.startedAt);
+      const inputs = all.filter((t: any) => t.type === 'input')
+        .sort((a: any, b: any) => b.startedAt - a.startedAt); // 新的在前
+      const listenings = all.filter((t: any) => t.type === 'listening')
+        .sort((a: any, b: any) => b.startedAt - a.startedAt);
 
       const renderSet = inputs.concat(listenings).slice(0, MAX_TEXTURES);
 
       // 2) 为了混合顺序可控（底->上），这里按 startedAt 从早到晚排回去
-      renderSet.sort((a, b) => a.startedAt - b.startedAt);
+      renderSet.sort((a: any, b: any) => a.startedAt - b.startedAt);
 
       const textureCount = renderSet.length;
 
@@ -1199,22 +1108,21 @@ let material: Material | undefined;
         }
       }
 
-      // 清空未用槽位
-      for (let i = textureCount; i < MAX_TEXTURES; i++) {
-        material.setFloat(`_TexStartedAt${i}`, 0);
-        material.setFloat(`_TexDuration${i}`, 0);
-        material.setFloat(`_TexFadeIn${i}`, 0);
-        material.setFloat(`_TexFadeOutStart${i}`, 0);
-        material.setFloat(`_TexFadeOutEnd${i}`, 0);
-        material.setFloat(`_TexDistance${i}`, 0);
-        material.setFloat(`_TexInitU${i}`, 0);
-        material.setFloat(`_TexInitV${i}`, 0);
-        material.setFloat(`_TexType${i}`, 0);
-        material.setFloat(`_TexKind${i}`, 0);
-        material.setFloat(`_IsSecond${i}`, 0);
-        material.setFloat(`_Tex${i}Layer`, i);
-        material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 0));
-      }
+        // 清空未用槽位
+        for (let i = textureCount; i < MAX_TEXTURES; i++) {
+          material.setFloat(`_TexStartedAt${i}`, 0);
+          material.setFloat(`_TexDuration${i}`, 0);
+          material.setFloat(`_TexFadeIn${i}`, 0);
+          material.setFloat(`_TexFadeOutStart${i}`, 0);
+          material.setFloat(`_TexFadeOutEnd${i}`, 0);
+          material.setFloat(`_TexDistance${i}`, 0);
+          material.setFloat(`_TexInitU${i}`, 0);
+          material.setFloat(`_TexInitV${i}`, 0);
+          material.setFloat(`_TexType${i}`, 0);
+          material.setFloat(`_TexKind${i}`, 0);
+          material.setFloat(`_IsSecond${i}`, 0);
+          material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 0));
+        }
 
       // 如有必要，强制刷新
       // material.markDirty?.();
