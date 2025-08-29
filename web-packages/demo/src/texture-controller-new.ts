@@ -42,10 +42,10 @@ interface TexState {
   const TEMPLATES = {
     // 监听阶段蓝色纹理模板
     listeningBlue: {
-      duration: 3.4,
-      fadeIn: 0.6,
-      fadeOutStart: 2.4,
-      fadeOutEnd: 3.4,
+      duration: 3.417,
+      fadeIn: 0.625,
+      fadeOutStart: 2.375,
+      fadeOutEnd: 3.417,
       distance: 0.5,
       initialOffsetU: -0.30,
       initialOffsetV: 0.0,
@@ -56,10 +56,10 @@ interface TexState {
     
     // 监听阶段绿色纹理模板
     listeningGreen: {
-      duration: 3.4,
-      fadeIn: 0.6,
-      fadeOutStart: 2.4,
-      fadeOutEnd: 3.4,
+      duration: 3.458,
+      fadeIn: 1.292,
+      fadeOutStart: 2.375,
+      fadeOutEnd: 3.458,
       distance: 0.5,
       initialOffsetU: -0.20,
       initialOffsetV: -0.0,
