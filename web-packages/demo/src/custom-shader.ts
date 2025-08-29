@@ -106,16 +106,7 @@ uniform vec4 _Color3;
 
 // 每纹理参数（0-3）
 uniform float _TexStartedAt0; uniform float _TexStartedAt1; uniform float _TexStartedAt2; uniform float _TexStartedAt3;
-uniform float _TexDuration0;  uniform float _TexDuration1;  uniform float _TexDuration2;  uniform float _TexDuration3;
-uniform float _TexFadeIn0;    uniform float _TexFadeIn1;    uniform float _TexFadeIn2;    uniform float _TexFadeIn3;
-uniform float _TexFadeOutStart0; uniform float _TexFadeOutStart1; uniform float _TexFadeOutStart2; uniform float _TexFadeOutStart3;
-uniform float _TexFadeOutEnd0;   uniform float _TexFadeOutEnd1;   uniform float _TexFadeOutEnd2;   uniform float _TexFadeOutEnd3;
-uniform float _TexDistance0;  uniform float _TexDistance1;  uniform float _TexDistance2;  uniform float _TexDistance3;
-uniform float _TexInitU0;     uniform float _TexInitU1;     uniform float _TexInitU2;     uniform float _TexInitU3;
-uniform float _TexInitV0;     uniform float _TexInitV1;     uniform float _TexInitV2;     uniform float _TexInitV3;
-uniform float _TexType0;      uniform float _TexType1;      uniform float _TexType2;      uniform float _TexType3; // 0=listening,1=input
-uniform float _TexKind0;      uniform float _TexKind1;      uniform float _TexKind2;      uniform float _TexKind3; // listening:0=blue,1=green
-uniform float _IsSecond0;     uniform float _IsSecond1;     uniform float _IsSecond2;     uniform float _IsSecond3;
+uniform float _TexProfile0;   uniform float _TexProfile1;   uniform float _TexProfile2;   uniform float _TexProfile3; // 0=listeningBlue,1=listeningGreen,2=inputA,3=inputB
 
 // 硬编码参数
 const float _BlueFadeInEnd = 0.625;
@@ -295,6 +286,37 @@ void calcListeningGreen(float elapsed, float startedAt, float initU, float initV
   }
 }
 
+// 根据profile获取模板参数
+void getProfileParams(float profile,
+    out float duration, out float fadeIn, out float fadeOutStart, out float fadeOutEnd,
+    out float distance, out float initU, out float initV, out float isSecond,
+    out int samplerId, out int typeIsListening) {
+  if (int(profile) == 0) { // ListeningBlue
+    duration = 3.417; fadeIn = 0.625; fadeOutStart = 2.375; fadeOutEnd = 3.417;
+    distance = 0.0; initU = -0.30; initV = 0.0; isSecond = 0.0;
+    samplerId = 0; typeIsListening = 1;
+  } else if (int(profile) == 1) { // ListeningGreen
+    duration = 3.458; fadeIn = 1.292; fadeOutStart = 2.375; fadeOutEnd = 3.458;
+    distance = 0.0; initU = -0.20; initV = -0.0; isSecond = 0.0;
+    samplerId = 1; typeIsListening = 1;
+  } else if (int(profile) == 2) { // InputA
+    duration = 3.7; fadeIn = 0.533; fadeOutStart = 2.9333; fadeOutEnd = 3.6167;
+    distance = 1.2315; initU = -0.48; initV = 0.0; isSecond = 0.0;
+    samplerId = 2; typeIsListening = 0;
+  } else { // InputB
+    duration = 3.7; fadeIn = 0.7417; fadeOutStart = 2.9333 - 0.733; fadeOutEnd = 3.6167 - 0.733 + 0.0416;
+    distance = 1.4164; initU = -0.48; initV = -0.1; isSecond = 1.0;
+    samplerId = 2; typeIsListening = 0;
+  }
+}
+
+// 根据samplerId选择采样器
+vec4 sampleBySamplerId(int samplerId, vec2 uv) {
+  if (samplerId == 0) return safeTexture2D(_Tex0, uv);
+  else if (samplerId == 1) return safeTexture2D(_Tex1, uv);
+  else return safeTexture2D(_Tex2, uv);
+}
+
 // 计算第二阶段位置与alpha
 void calcInput(float elapsed, float startedAt, float duration, float initU, float initV, float distance, float isSecond,
                float fadeIn, float fadeOutStart, float fadeOutEnd,
@@ -318,23 +340,37 @@ void calcInput(float elapsed, float startedAt, float duration, float initU, floa
   }
 }
 
-// 获取纹理参数
+// 获取纹理参数（基于profile）
 void fetchTexParams(int idx,
   out float startedAt, out float duration, out float fadeIn, out float fadeOutStart, out float fadeOutEnd,
   out float distance, out float initU, out float initV, out float typeV, out float kindV, out float isSecond
 ) {
-  if (idx == 0) {
-    startedAt = _TexStartedAt0; duration = _TexDuration0; fadeIn = _TexFadeIn0; fadeOutStart = _TexFadeOutStart0; fadeOutEnd = _TexFadeOutEnd0;
-    distance = _TexDistance0; initU = _TexInitU0; initV = _TexInitV0; typeV = _TexType0; kindV = _TexKind0; isSecond = _IsSecond0;
-  } else if (idx == 1) {
-    startedAt = _TexStartedAt1; duration = _TexDuration1; fadeIn = _TexFadeIn1; fadeOutStart = _TexFadeOutStart1; fadeOutEnd = _TexFadeOutEnd1;
-    distance = _TexDistance1; initU = _TexInitU1; initV = _TexInitV1; typeV = _TexType1; kindV = _TexKind1; isSecond = _IsSecond1;
-  } else if (idx == 2) {
-    startedAt = _TexStartedAt2; duration = _TexDuration2; fadeIn = _TexFadeIn2; fadeOutStart = _TexFadeOutStart2; fadeOutEnd = _TexFadeOutEnd2;
-    distance = _TexDistance2; initU = _TexInitU2; initV = _TexInitV2; typeV = _TexType2; kindV = _TexKind2; isSecond = _IsSecond2;
+  // 获取startedAt
+  if (idx == 0) startedAt = _TexStartedAt0;
+  else if (idx == 1) startedAt = _TexStartedAt1;
+  else if (idx == 2) startedAt = _TexStartedAt2;
+  else startedAt = _TexStartedAt3;
+
+  // 获取profile
+  float profile;
+  if (idx == 0) profile = _TexProfile0;
+  else if (idx == 1) profile = _TexProfile1;
+  else if (idx == 2) profile = _TexProfile2;
+  else profile = _TexProfile3;
+
+  // 根据profile获取模板参数
+  int samplerId;
+  int typeIsListening;
+  getProfileParams(profile, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, isSecond, samplerId, typeIsListening);
+
+  // 设置type和kind
+  typeV = float(typeIsListening == 1 ? 0 : 1); // 0=listening, 1=input
+  if (typeIsListening == 1) {
+    // listening类型：根据profile确定是blue还是green
+    kindV = (int(profile) == 0) ? 0.0 : 1.0; // 0=blue, 1=green
   } else {
-    startedAt = _TexStartedAt3; duration = _TexDuration3; fadeIn = _TexFadeIn3; fadeOutStart = _TexFadeOutStart3; fadeOutEnd = _TexFadeOutEnd3;
-    distance = _TexDistance3; initU = _TexInitU3; initV = _TexInitV3; typeV = _TexType3; kindV = _TexKind3; isSecond = _IsSecond3;
+    // input类型：统一设置为2
+    kindV = 2.0;
   }
 }
 
@@ -927,26 +963,7 @@ let material: Material | undefined;
         material.setFloat('_DetailNoiseUVScaleX', 1.10);
         material.setFloat('_DetailNoiseUVScaleY', 3.00);
 
-        // 设置第一阶段蓝色时序常量
-        material.setFloat('_BlueFadeInEnd', 0.625);
-        material.setFloat('_BlueMove1End', 2.375);
-        material.setFloat('_BlueMove2End', 3.558);
-        material.setFloat('_BlueFadeOutStart', 2.375);
-        material.setFloat('_BlueFadeOutEnd', 3.417);
-        material.setFloat('_BlueMove1TargetU', 0.1198);
-        material.setFloat('_BlueMove1TargetV', -0.0);
-        material.setFloat('_BlueMove2TargetU', 0.2382);
-        material.setFloat('_BlueMove2TargetV', -0.0);
-        material.setFloat('_BlueFadeInDeltaV', 0.0);
-
-        // 设置第一阶段绿色时序常量
-        material.setFloat('_GreenFadeInEnd', 1.292);
-        material.setFloat('_GreenMoveEnd', 2.875);
-        material.setFloat('_GreenFadeOutStart', 2.375);
-        material.setFloat('_GreenFadeOutEnd', 3.458);
-        material.setFloat('_GreenMoveTargetU', 0.266);
-        material.setFloat('_GreenMoveTargetV', -0.0);
-        material.setFloat('_GreenFadeInDeltaV', 0.0);
+        // 注意：蓝绿阶段时序常量已在Shader中硬编码，无需CPU端重复设置
 
         // 立即更新UI显示为新设置的值
         const setSliderValue = (id: string, value: number, precision = 3) => {
@@ -1021,7 +1038,7 @@ let material: Material | undefined;
     const now = performance.now();
     const timeFactor = now * 0.1; // 转换为秒
 
-    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 500) {return 1.0;} else {return 0.090;}
+    if (timeFactor > 3000000) {return 0.8;} else if (timeFactor > 2000000) {return 0.6;} else if (timeFactor > 1000) {return 1.0;} else {return 0.090;}
   }
 
   // 数值范围限制
@@ -1041,7 +1058,7 @@ let material: Material | undefined;
 
     lastTime = now;
 
-    const volume = getSimulatedAudioVolume();
+    const volume = getAudioVolume();
 
     // if (DEBUG) {
     console.log(`Current volume: ${volume}`);
@@ -1058,7 +1075,7 @@ let material: Material | undefined;
       // 设置统一时间_Now
       material.setFloat('_Now', now);
 
-      const currentVolume = getSimulatedAudioVolume();
+      const currentVolume = getAudioVolume();
 
       // 传递音量参数
       material.setFloat('_CurrentVolume', currentVolume);
@@ -1068,10 +1085,10 @@ let material: Material | undefined;
       // 优先级挑选：输入阶段优先，且越新的越优先
       const all = controller.textures.slice();
 
-      // 1) 优先选择 Input（当前批次和最近的优先），不足再补 Listening
-      const inputs = all.filter((t: any) => t.type === 'input')
+      // 1) 优先选择 Input（profile 2/3），不足再补 Listening（profile 0/1）
+      const inputs = all.filter((t: any) => t.profile >= 2)
         .sort((a: any, b: any) => b.startedAt - a.startedAt); // 新的在前
-      const listenings = all.filter((t: any) => t.type === 'listening')
+      const listenings = all.filter((t: any) => t.profile <= 1)
         .sort((a: any, b: any) => b.startedAt - a.startedAt);
 
       const renderSet = inputs.concat(listenings).slice(0, MAX_TEXTURES);
@@ -1087,21 +1104,9 @@ let material: Material | undefined;
         const texture = renderSet[i];
 
         material.setFloat(`_TexStartedAt${i}`, texture.startedAt);
-        material.setFloat(`_TexDuration${i}`, texture.duration);
-        material.setFloat(`_TexFadeIn${i}`, texture.fadeIn);
-        material.setFloat(`_TexFadeOutStart${i}`, texture.fadeOutStart);
-        material.setFloat(`_TexFadeOutEnd${i}`, texture.fadeOutEnd);
-        material.setFloat(`_TexDistance${i}`, texture.distance);
-        material.setFloat(`_TexInitU${i}`, texture.initialOffsetU ?? 0);
-        material.setFloat(`_TexInitV${i}`, texture.initialOffsetV ?? 0);
-        material.setFloat(`_TexType${i}`, texture.type === 'listening' ? 0 : 1);
-        material.setFloat(`_TexKind${i}`, texture.type === 'listening'
-          ? (texture.textureType === 'blue' ? 0 : 1)
-          : 2);
-        material.setFloat(`_IsSecond${i}`, texture.isSecondTexture ? 1 : 0);
-
-        // 渲染顺序用本地 i 即可（底->上）
-        material.setFloat(`_Tex${i}Layer`, i);
+        
+        // 直接使用profile字段
+        material.setFloat(`_TexProfile${i}`, texture.profile);
 
         if (texture.color) {
           material.setVector4(`_Color${i}`, new Vector4(...texture.color));
@@ -1111,16 +1116,7 @@ let material: Material | undefined;
         // 清空未用槽位
         for (let i = textureCount; i < MAX_TEXTURES; i++) {
           material.setFloat(`_TexStartedAt${i}`, 0);
-          material.setFloat(`_TexDuration${i}`, 0);
-          material.setFloat(`_TexFadeIn${i}`, 0);
-          material.setFloat(`_TexFadeOutStart${i}`, 0);
-          material.setFloat(`_TexFadeOutEnd${i}`, 0);
-          material.setFloat(`_TexDistance${i}`, 0);
-          material.setFloat(`_TexInitU${i}`, 0);
-          material.setFloat(`_TexInitV${i}`, 0);
-          material.setFloat(`_TexType${i}`, 0);
-          material.setFloat(`_TexKind${i}`, 0);
-          material.setFloat(`_IsSecond${i}`, 0);
+          material.setFloat(`_TexProfile${i}`, 0);
           material.setVector4(`_Color${i}`, new Vector4(1, 1, 1, 0));
         }
 

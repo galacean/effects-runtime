@@ -24,78 +24,13 @@ interface Event {
 interface TexState {
   id: number;                   // 纹理唯一ID
   startedAt: number;            // 创建时间戳
-  duration: number;             // 总持续时间
-  fadeIn: number;               // 渐显时长
-  fadeOutStart: number;         // 渐隐开始时间
-  fadeOutEnd: number;           // 渐隐结束时间
-  distance: number;             // 移动距离
-  initialOffsetU?: number;      // 初始U偏移量
-  initialOffsetV?: number;      // 初始V偏移量
-  type: 'listening' | 'input';  // 纹理类型
-  textureType: 'blue' | 'green' | 'input'; // 纹理类型标识
-  isSecondTexture?: boolean;    // 标识是否为第二阶段纹理
-  color?: [number, number, number, number]; // 颜色值[r,g,b,a]
+  profile: 0 | 1 | 2 | 3;      // 模板类型: 0=listeningBlue, 1=listeningGreen, 2=inputA, 3=inputB
   batchId?: number;             // 所属批次ID
+  color?: [number, number, number, number]; // 颜色值[r,g,b,a]
 }
 
-  // 参数模板定义
-  const TEMPLATES = {
-    // 监听阶段蓝色纹理模板
-    listeningBlue: {
-      duration: 3.417,
-      fadeIn: 0.625,
-      fadeOutStart: 2.375,
-      fadeOutEnd: 3.417,
-      distance: 0.5,
-      initialOffsetU: -0.30,
-      initialOffsetV: 0.0,
-      type: 'listening' as const,
-      textureType: 'blue' as const,
-      isSecondTexture: false
-    },
-    
-    // 监听阶段绿色纹理模板
-    listeningGreen: {
-      duration: 3.458,
-      fadeIn: 1.292,
-      fadeOutStart: 2.375,
-      fadeOutEnd: 3.458,
-      distance: 0.5,
-      initialOffsetU: -0.20,
-      initialOffsetV: -0.0,
-      type: 'listening' as const,
-      textureType: 'green' as const,
-      isSecondTexture: false
-    },
-    
-    // 输入阶段纹理A模板
-    inputA: {
-      duration: 3.7,
-      fadeIn: 0.533,
-      fadeOutStart: 2.9333,
-      fadeOutEnd: 3.6167,
-      distance: 1.2315,
-      initialOffsetU: -0.48,
-      initialOffsetV: 0.0,
-      type: 'input' as const,
-      textureType: 'input' as const,
-      isSecondTexture: false
-    },
-    
-    // 输入阶段纹理B模板
-    inputB: {
-      duration: 3.7,
-      fadeIn: 0.7417,
-      fadeOutStart: 2.9333 - 0.733, // 调整淡出时间以匹配延迟
-      fadeOutEnd: 3.6167 - 0.733 + 0.0416,
-      distance: 1.4164,
-      initialOffsetU: -0.48,
-      initialOffsetV: -0.1, // 垂直偏移
-      type: 'input' as const,
-      textureType: 'input' as const,
-      isSecondTexture: true
-    }
-  };
+  // 参数模板定义（保留用于参考，实际参数已移至shader）
+  // 所有模板参数现在在shader的getProfileParams函数中硬编码
 
 export class TextureControllerNew {
   // 最小状态
@@ -107,6 +42,14 @@ export class TextureControllerNew {
   stopActive = false;
   volumeThreshold = 0.1;
   lastVolume = 0;
+
+  // 模板持续时间常量（与shader中的getProfileParams保持一致）
+  private readonly PROFILE_DURATION = [3.417, 3.458, 3.7, 3.7]; // LB, LG, IA, IB
+
+  // InputB 模板参数（用于链式触发窗口精确计算）
+  private readonly INPUTB_FADE_IN = 0.7417;
+  private readonly INPUTB_FADE_OUT_START = 2.2003;
+  private readonly INPUTB_FADE_OUT_END = 2.9253;
 
   // 事件
   events: Event[] = [];
@@ -137,25 +80,24 @@ export class TextureControllerNew {
 
   setVolumeThreshold(v: number) { this.volumeThreshold = v; }
 
-  // 模板
-  private T = TEMPLATES;
+  // 模板到profile的映射
+  private templateToProfile(name: string): 0 | 1 | 2 | 3 {
+    switch (name) {
+      case 'listeningBlue': return 0;
+      case 'listeningGreen': return 1;
+      case 'inputA': return 2;
+      case 'inputB': return 3;
+      default: return 0;
+    }
+  }
 
-  private createFromTemplate(name: keyof typeof TEMPLATES, start: number): TexState {
-    const t = this.T[name];
+  private createFromTemplate(name: string, start: number): TexState {
+    const profile = this.templateToProfile(name);
     return {
       id: this.nextId++,
       startedAt: start,
-      duration: t.duration,
-      fadeIn: t.fadeIn,
-      fadeOutStart: t.fadeOutStart,
-      fadeOutEnd: t.fadeOutEnd,
-      distance: t.distance,
-      initialOffsetU: t.initialOffsetU,
-      initialOffsetV: t.initialOffsetV,
-      type: t.type,
-      textureType: t.textureType,
-      isSecondTexture: t.isSecondTexture,
-      batchId: t.type === 'input' ? this.batchId : undefined,
+      profile: profile,
+      batchId: name.startsWith('input') ? this.batchId : undefined,
     };
   }
 
@@ -188,8 +130,8 @@ export class TextureControllerNew {
     green.color = this.firstStageGreenColor;
     this.textures = [blue, green];
 
-    // 等价旧逻辑：以"监听纹理 duration 的最大值=3.4s"为组结束
-    const groupEnd = this.groupStart + Math.max(blue.duration, green.duration); // 3.4
+    // 使用PROFILE_DURATION计算组结束时间
+    const groupEnd = this.groupStart + Math.max(this.PROFILE_DURATION[0], this.PROFILE_DURATION[1]); // 3.458
     this.schedule(groupEnd, EventType.GROUP_TIMEOUT);
 
     this.onStage?.(Phase.Listening);
@@ -215,29 +157,19 @@ export class TextureControllerNew {
     if (DEBUG) console.log('[Input] enter batch', this.batchId);
   }
 
-  // 提前熄灭：等价旧 stop 行为（CPU 端快速淡出 + 清 pending 事件）
+  // 提前熄灭：使用shader的_StopSignal和_StopTime机制
   stop() {
     if (this.phase !== Phase.Input || this.stopActive) return;
     const now = performance.now() / 1000;
     this.stopActive = true;
 
-    // 进入 Stop 阶段，等价旧版
+    // 进入 Stop 阶段
     this.phase = Phase.Stop;
 
     // 清掉当前批次待生成的 B
     this.events = this.events.filter(e => !(e.type === EventType.SPAWN_B && e.payload?.batchId === this.batchId));
 
-    // 将当前批次 input 纹理改为从 now 起快速淡出（淡出时长不变）
-    for (const tex of this.textures) {
-      if (tex.type === 'input' && tex.batchId === this.batchId) {
-        const elapsed = now - tex.startedAt;
-        const outDur = Math.max(0.1, tex.fadeOutEnd - tex.fadeOutStart);
-        tex.fadeOutStart = Math.max(tex.fadeIn + 0.001, elapsed);
-        tex.fadeOutEnd = tex.fadeOutStart + outDur;
-        tex.duration = Math.max(tex.duration, tex.fadeOutEnd + 0.02);
-      }
-    }
-
+    // 不再手动修改纹理参数，让shader处理快速熄灭
     this.chainArmed = false;
     this.onStop?.(now);
     if (DEBUG) console.log('[Stop] early fade, batch', this.batchId);
@@ -296,8 +228,10 @@ export class TextureControllerNew {
     if (blue) this.firstStageBlueColor = blue;
     if (green) this.firstStageGreenColor = green;
     for (const t of this.textures) {
-      if (t.type === 'listening') {
-        t.color = (t.textureType === 'blue') ? this.firstStageBlueColor : this.firstStageGreenColor;
+      if (t.profile === 0) { // listeningBlue
+        t.color = this.firstStageBlueColor;
+      } else if (t.profile === 1) { // listeningGreen
+        t.color = this.firstStageGreenColor;
       }
     }
   }
@@ -306,8 +240,10 @@ export class TextureControllerNew {
     if (primary) this.secondStagePrimaryColor = primary;
     if (secondary) this.secondStageSecondaryColor = secondary;
     for (const t of this.textures) {
-      if (t.type === 'input') {
-        t.color = t.isSecondTexture ? this.secondStageSecondaryColor : this.secondStagePrimaryColor;
+      if (t.profile === 2) { // inputA
+        t.color = this.secondStagePrimaryColor;
+      } else if (t.profile === 3) { // inputB
+        t.color = this.secondStageSecondaryColor;
       }
     }
   }
@@ -328,23 +264,32 @@ export class TextureControllerNew {
       this.stop();
     }
 
-    // 输入阶段：链式触发窗口（使用"第二张纹理B"的后半显示区间，与旧逻辑一致）
+    // 输入阶段：链式触发窗口 - 基于B纹理的时序常量精确计算
     if (this.phase === Phase.Input && this.chainArmed && !this.stopActive) {
-      const B = this.textures.find(t => t.type === 'input' && t.batchId === this.batchId && t.isSecondTexture);
+      // 查找当前批次的B纹理
+      const B = this.textures.find(t => t.profile === 3 && t.batchId === this.batchId);
       if (B) {
-        const absStart = B.startedAt + (B.fadeOutStart - (B.fadeOutStart - B.fadeIn) * 0.5); // 显示后半段开始
-        const absEnd = B.startedAt + B.fadeOutEnd;
+        // 精确计算触发窗口：基于B纹理的fade参数
+        const fadeOutStart = this.INPUTB_FADE_OUT_START; // 2.2003
+        const fadeIn = this.INPUTB_FADE_IN; // 0.7417
+        const halfDisplay = (fadeOutStart - fadeIn) * 0.5; // 后半显示段开始偏移量
+        const absStart = B.startedAt + fadeOutStart - halfDisplay; // B.startedAt + 1.471
+        const absEnd = B.startedAt + this.INPUTB_FADE_OUT_END; // B.startedAt + 2.9253
+        
         if (now >= absStart && now < absEnd && volume >= this.volumeThreshold) {
           this.handle({ time: now, type: EventType.CHAIN_TRY }, now);
         }
       }
     }
 
-    // 清理过期纹理
-    this.textures = this.textures.filter(t => (now - t.startedAt) < t.duration);
+    // 清理过期纹理 - 使用PROFILE_DURATION
+    this.textures = this.textures.filter(t => {
+      const elapsed = now - t.startedAt;
+      return elapsed < this.PROFILE_DURATION[t.profile];
+    });
 
-    // 批次耗尽后的处理
-    const hasInput = this.textures.some(t => t.type === 'input');
+    // 批次耗尽后的处理 - 检查是否有输入阶段的纹理（profile 2或3）
+    const hasInput = this.textures.some(t => t.profile === 2 || t.profile === 3);
     const hasPendingB = this.events.some(e => e.type === EventType.SPAWN_B && e.payload?.batchId === this.batchId);
 
     if (!hasInput && !hasPendingB) {
@@ -366,14 +311,14 @@ export class TextureControllerNew {
   captureSnapshot() {
     return this.textures.map(t => ({
       id: t.id,
-      x: t.initialOffsetU || 0,
-      y: t.initialOffsetV || 0,
+      x: 0, // 这些值现在由shader计算，不再需要
+      y: 0,
       alpha: 1,
-      initialU: t.initialOffsetU || 0,
-      initialV: t.initialOffsetV || 0,
-      type: t.type,
-      textureType: t.textureType,
-      isSecondTexture: t.isSecondTexture
+      initialU: 0,
+      initialV: 0,
+      type: t.profile < 2 ? 'listening' : 'input', // 根据profile推断类型
+      textureType: t.profile === 0 ? 'blue' : t.profile === 1 ? 'green' : 'input',
+      isSecondTexture: t.profile === 3 // 只有inputB是第二阶段纹理
     }));
   }
 }
