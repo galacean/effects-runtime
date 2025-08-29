@@ -5,7 +5,7 @@ import { NodeTransform } from './pose';
 import type { Constructor } from '../../utils';
 import type { Component } from '../../components';
 import { getClass } from '../../decorators';
-import type { ColorAnimationCurve, FloatAnimationCurve } from '../cal/calculate-vfx-item';
+import type { ColorAnimationCurve, FloatAnimationCurve } from '../../animation/animation-clip';
 
 export interface AnimationRecordData {
   position: string[],

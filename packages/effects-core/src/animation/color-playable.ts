@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { createValueGetter, vecFill, vecMulCombine, type ValueGetter } from '../math';
-import type { FrameContext } from '../plugins/cal/playable-graph';
-import { Playable } from '../plugins/cal/playable-graph';
+import type { FrameContext } from '../plugins/timeline/playable';
+import { Playable } from '../plugins/timeline/playable';
 import { VFXItem } from '../vfx-item';
 import type { Material } from '../material';
 import type { ColorStop } from '../utils';

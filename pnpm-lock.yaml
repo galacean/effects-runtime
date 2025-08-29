@@ -150,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.5.1
-        version: 2.5.1
+        specifier: 2.6.0-alpha.0
+        version: 2.6.0-alpha.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -207,6 +207,12 @@ importers:
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../model
+
+  plugin-packages/ffd:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
 
   plugin-packages/model:
     dependencies:
@@ -300,6 +306,9 @@ importers:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
+      '@galacean/effects-plugin-ffd':
+        specifier: workspace:*
+        version: link:../../plugin-packages/ffd
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../../plugin-packages/model
@@ -2219,6 +2228,10 @@ packages:
 
   /@galacean/effects-specification@2.5.1:
     resolution: {integrity: sha512-DXSZJl90I+Ml/A/ib2GrpUJUVMazw+FHHsBY0B2DK46etiA+YrWO/mUN0SF37gNrC++/gs9oqre78fFI+Tlr/Q==}
+
+  /@galacean/effects-specification@2.6.0-alpha.0:
+    resolution: {integrity: sha512-Zj5fgJI6jOzyImOigbsaQPalNWYVIkPVVFTTl4I556w4KUBDIotlifxx1zpt1xNEdVQeZzWfLrrQcd0eVxQqJA==}
+    dev: false
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}

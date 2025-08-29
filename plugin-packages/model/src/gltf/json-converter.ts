@@ -73,7 +73,6 @@ export class JSONConverter {
       components: [],
       materials: [],
       shaders: [],
-      geometries: [],
     };
 
     this.setImage(newScene, oldScene);

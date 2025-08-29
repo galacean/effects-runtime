@@ -1,5 +1,5 @@
 import { Component } from '../../../components/component';
-import type { FrameContext } from '../../cal/playable-graph';
+import type { FrameContext } from '../playable';
 import { PropertyClipPlayable } from './property-clip-playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 

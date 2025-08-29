@@ -233,7 +233,7 @@ void main() {
             vec2 center = _StartPoint;
             vec2 referenceVector = _EndPoint - center;
             vec2 targetVector = uv0 - center;
-            
+
             // 忽略太接近中心点的像素以避免精度问题
             if (length(targetVector) > 0.001) {
                 t = calculateAngleRatio(referenceVector, targetVector);
@@ -242,7 +242,7 @@ void main() {
 
         // 找到对应的渐变区间
         finalColor = _Colors[0];
-        
+
         for(int i = 1; i < _MAX_STOPS; i++) {
             if(i >= _StopsCount)
                 break;
@@ -725,7 +725,6 @@ void main() {
       this.maskManager.setMaskOptions(data.mask);
     }
 
-    //@ts-expect-error
     const renderer = data.renderer ?? {};
 
     this.renderer = {
@@ -783,21 +782,16 @@ void main() {
       //@ts-expect-error
       fill.fillType = fillParam.fillType ?? FillType.Solid;
 
-      //@ts-expect-error
       if (fillParam.gradient) {
         //@ts-expect-error
         fill.gradient = createValueGetter(fillParam.gradient);
       }
 
-      //@ts-expect-error
       if (fillParam.startPoint) {
-        //@ts-expect-error
         fill.startPoint.copyFrom(fillParam.startPoint);
       }
 
-      //@ts-expect-error
       if (fillParam.endPoint) {
-        //@ts-expect-error
         fill.endPoint.copyFrom(fillParam.endPoint);
       }
     }
