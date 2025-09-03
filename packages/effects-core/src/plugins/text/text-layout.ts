@@ -17,6 +17,11 @@ export class TextLayout {
    */
   autoWidth: boolean;
 
+  /**
+   * 自动换行开关
+   */
+  warp: boolean;
+
   readonly maxTextWidth: number;
   /**
    * 行高
@@ -42,6 +47,10 @@ export class TextLayout {
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
     this.lineHeight = lineHeight;
+
+    // 初始化warp字段，基于autoWidth：当autoWidth为true时，warp为false；反之亦然
+    // 暂时保持与之前错误逻辑一致，后续按文档要求修改
+    this.warp = !autoWidth;
   }
 
   /**

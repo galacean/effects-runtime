@@ -1,6 +1,6 @@
-import type { TextLayout } from '../text-layout';
-import type { TextStyle } from '../text-style';
-import type { OverflowStrategy } from './text-strategy-interfaces';
+import type { TextLayout } from '../../text-layout';
+import type { TextStyle } from '../../text-style';
+import type { OverflowStrategy } from '../text-interfaces';
 
 /**
  * Visible 溢出策略（默认）

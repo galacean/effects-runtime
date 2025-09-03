@@ -1,8 +1,8 @@
 import * as spec from '@galacean/effects-specification';
-import type { TextLayout } from '../text-layout';
-import type { TextStyle } from '../text-style';
-import type { OverflowStrategy } from './text-strategy-interfaces';
-import { getFontDesc } from './text-strategy-utils';
+import type { TextLayout } from '../../text-layout';
+import type { TextStyle } from '../../text-style';
+import type { OverflowStrategy } from '../text-interfaces';
+import { getFontDesc } from '../text-utils';
 
 /**
  * Display 溢出策略

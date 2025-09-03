@@ -13,9 +13,9 @@ import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-import type { SizeStrategy, OverflowStrategy } from './strategies/text-strategy-interfaces';
-import { TextStrategyFactory } from './strategies/text-strategy-factory';
-import { getFontDesc } from './strategies/text-strategy-utils';
+import type { SizeStrategy, OverflowStrategy, WarpStrategy } from './strategies/text-interfaces';
+import { TextStrategyFactory } from './strategies/text-factory';
+import { getFontDesc } from './strategies/text-utils';
 
 interface CharInfo {
   /**
@@ -129,6 +129,7 @@ export class TextComponentBase {
   // 策略字段
   private sizeStrategy: SizeStrategy;
   private overflowStrategy: OverflowStrategy;
+  private warpStrategy: WarpStrategy;
 
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
@@ -138,10 +139,11 @@ export class TextComponentBase {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
-    this.lineCount = this.getLineCount(options.text, true);
 
     // 初始化策略
     this.initializeStrategies();
+
+    this.lineCount = this.getLineCount(options.text, true);
   }
 
   /**
@@ -153,6 +155,9 @@ export class TextComponentBase {
 
     // 使用工厂创建溢出策略
     this.overflowStrategy = TextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
+
+    // 使用工厂创建包裹策略
+    this.warpStrategy = TextStrategyFactory.createWarpStrategy(this.textLayout.warp);
   }
 
   /**
@@ -175,46 +180,32 @@ export class TextComponentBase {
 
   private getLineCount (text: string, init: boolean) {
     const context = this.context;
-    const { letterSpace, overflow } = this.textLayout;
 
-    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
-
-    const width = (this.textLayout.width + this.textStyle.fontOffset);
-    let lineCount = 1;
-    let x = 0;
-
-    //设置context.font的字号
-    // if (context) {
-    //   context.font = this.getFontDesc(this.textStyle.fontSize);
-    // }
-    for (let i = 0; i < text.length; i++) {
-      const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
-
-      // 和浏览器行为保持一致
-      x += letterSpace;
-      // 处理文本结束行为
-      if (overflow === spec.TextOverflow.display) {
-        if (str === '\n') {
-          lineCount++;
-          x = 0;
-        } else {
-          x += textMetrics;
-          this.maxLineWidth = Math.max(this.maxLineWidth, x);
-        }
-      } else {
-        if (((x + textMetrics) > width && i > 0) || str === '\n') {
-          lineCount++;
-          this.maxLineWidth = Math.max(this.maxLineWidth, x);
-          x = 0;
-        }
-        if (str !== '\n') {
-          x += textMetrics;
-        }
-      }
+    if (!context) {
+      return 1; // 如果context为null，返回默认行数1
     }
 
-    return lineCount;
+    // 确保warpStrategy已初始化
+    if (!this.warpStrategy) {
+      this.initializeStrategies();
+    }
+
+    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    const availableWidth = this.textLayout.width + this.textStyle.fontOffset;
+
+    // 使用WarpStrategy计算行数和最大行宽
+    const result = this.warpStrategy.computeLineBreaks(
+      text,
+      availableWidth,
+      context,
+      this.textStyle,
+      this.textLayout,
+      fontScale
+    );
+
+    this.maxLineWidth = result.maxLineWidth;
+
+    return result.lineCount;
   }
 
   /**
@@ -455,9 +446,13 @@ export class TextComponentBase {
     }
 
     this.textLayout.autoWidth = value;
+    // 根据autoWidth更新warp状态
+    this.textLayout.warp = !value;
 
     // 使用工厂更新尺寸策略
     this.sizeStrategy = TextStrategyFactory.createSizeStrategy(value);
+    // 使用工厂更新包裹策略
+    this.warpStrategy = TextStrategyFactory.createWarpStrategy(this.textLayout.warp);
 
     this.isDirty = true;
   }

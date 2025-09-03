@@ -1,9 +1,11 @@
 import * as spec from '@galacean/effects-specification';
-import type { SizeStrategy, OverflowStrategy } from './text-strategy-interfaces';
-import { AutoWidthStrategy } from './auto-width-strategy';
-import { FixedSizeStrategy } from './fixed-size-strategy';
-import { DisplayOverflowStrategy } from './display-overflow-strategy';
-import { VisibleOverflowStrategy } from './visible-overflow-strategy';
+import type { SizeStrategy, OverflowStrategy, WarpStrategy } from './text-interfaces';
+import { AutoWidthStrategy } from './size/auto-width';
+import { FixedSizeStrategy } from './size/fixed-size';
+import { DisplayOverflowStrategy } from './overflow/display-overflow';
+import { VisibleOverflowStrategy } from './overflow/visible-overflow';
+import { WarpEnabledStrategy } from './warp/warp-enabled';
+import { WarpDisabledStrategy } from './warp/warp-disabled';
 
 /**
  * 文本策略工厂
@@ -33,6 +35,19 @@ export class TextStrategyFactory {
       return new DisplayOverflowStrategy();
     } else {
       return new VisibleOverflowStrategy();
+    }
+  }
+
+  /**
+   * 创建包裹策略
+   * @param warp - 是否启用自动换行
+   * @returns 包裹策略实例
+   */
+  static createWarpStrategy (warp: boolean): WarpStrategy {
+    if (warp) {
+      return new WarpEnabledStrategy();
+    } else {
+      return new WarpDisabledStrategy();
     }
   }
 }

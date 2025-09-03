@@ -10,3 +10,14 @@ export interface SizeStrategy {
 export interface OverflowStrategy {
   apply(ctx: CanvasRenderingContext2D, layout: TextLayout, style: TextStyle, text: string, maxLineWidth: number): void,
 }
+
+export interface WarpStrategy {
+  computeLineBreaks(
+    text: string,
+    availableWidth: number,
+    context: CanvasRenderingContext2D,
+    style: TextStyle,
+    layout: TextLayout,
+    fontScale: number
+  ): { lineCount: number, maxLineWidth: number },
+}

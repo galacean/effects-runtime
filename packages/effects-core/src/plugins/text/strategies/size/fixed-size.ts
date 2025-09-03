@@ -1,6 +1,6 @@
-import type { TextLayout } from '../text-layout';
-import type { TextStyle } from '../text-style';
-import type { SizeStrategy } from './text-strategy-interfaces';
+import type { TextLayout } from '../../text-layout';
+import type { TextStyle } from '../../text-style';
+import type { SizeStrategy } from '../text-interfaces';
 
 /**
  * Fixed 尺寸策略
