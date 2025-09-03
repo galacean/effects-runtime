@@ -13,6 +13,24 @@ export default {
       'text_5': '文本测试1',
     },
   },
+  textTest2: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*iIP7QYm1fiIAAAAAQfAAAAgAelB4AQ',
+    name: '文本测试2',
+    variables: {
+    },
+  },
+  textTest3: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*NYWHSYcgzJkAAAAAQfAAAAgAelB4AQ',
+    name: '文本测试3',
+    variables: {
+    },
+  },
+  textTest4: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*mci4QZs132QAAAAAQfAAAAgAelB4AQ',
+    name: '文本测试4',
+    variables: {
+    },
+  },
   richTextTest: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Z0v1T5rij5AAAAAAAAAAAAAAelB4AQ',
     name: '富文本测试',
