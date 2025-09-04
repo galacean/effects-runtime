@@ -523,6 +523,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       player: this,
       playing: false,
     });
+    this.compositions.map(composition => {
+      composition.pause();
+    });
+
     if (options && options.offloadTexture) {
       this.offloadTexture();
     }
