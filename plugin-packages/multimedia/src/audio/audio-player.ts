@@ -15,7 +15,7 @@ export interface AudioPlayerOptions {
 export class AudioPlayer {
   audio?: HTMLAudioElement;
   audioSourceInfo: AudioSourceInfo = {};
-
+  private pendingOffset = 0;
   private isSupportAudioContext = !!window['AudioContext'];
   private options: AudioPlayerOptions = {
     endBehavior: spec.EndBehavior.destroy,
@@ -77,33 +77,122 @@ export class AudioPlayer {
     }
   }
 
-  play (): void {
+  setCurrentTime (time: number) {
+    const t = Math.max(0, time);
+
     if (this.isSupportAudioContext) {
-      const { audioContext, source } = this.audioSourceInfo;
+      const { audioContext, source, gainNode } = this.audioSourceInfo;
 
-      if (source && audioContext) {
-        switch (this.options.endBehavior) {
-          case spec.EndBehavior.destroy:
-          case spec.EndBehavior.freeze:
-            source.start(0);
+      if (!audioContext || !gainNode) {
+        this.pendingOffset = t;
 
-            break;
-          case spec.EndBehavior.restart:
-            source.loop = true;
-            source.loopStart = 0;
-            source.loopEnd = this.options.duration;
-            source.start(0);
+        return;
+      }
 
-            break;
-          default:
-            break;
+      const buffer = source?.buffer;
+
+      if (!buffer) {
+        this.pendingOffset = t;
+
+        return;
+      }
+
+      const maxDuration = this.options.duration && this.options.duration > 0
+        ? this.options.duration
+        : buffer.duration;
+      const offset = Math.min(t, maxDuration);
+
+      // 保险起见，先停掉旧 source，吞掉异常（旧节点是否成功 stop 不影响后续逻辑）
+      // eslint-disable-next-line no-empty
+      try { source?.stop(); } catch {}
+
+      // 由于BufferSource只能start一次，所以创建新的 BufferSource，并继承旧参数
+      const newSource = audioContext.createBufferSource();
+
+      newSource.buffer = buffer;
+      newSource.connect(gainNode);
+      newSource.playbackRate.value = source?.playbackRate.value ?? 1;
+      newSource.loop = source?.loop ?? false;
+      newSource.loopStart = source?.loopStart ?? 0;
+      newSource.loopEnd = source?.loopEnd ?? maxDuration;
+
+      this.audioSourceInfo.source = newSource;
+      this.pendingOffset = offset;
+
+      // 如果之前已经播放过，则立即从新位置开始
+      if (this.started) {
+        if (audioContext.state === 'suspended') {
+          audioContext.resume().catch(e => this.engine.renderErrors.add(e));
+        }
+        try {
+          newSource.start(0, offset);
+        } catch (e) {
+          this.engine.renderErrors.add(e as Error);
         }
       }
-      this.started = true;
     } else {
-      this.audio?.play().catch(e => {
-        this.engine.renderErrors.add(e);
-      });
+      if (this.audio) {
+        const dur = Number.isFinite(this.audio.duration) ? this.audio.duration : undefined;
+        const clamped = dur ? Math.min(t, dur) : t;
+
+        this.audio.currentTime = clamped;
+      }
+    }
+  }
+
+  play (): void {
+    if (this.isSupportAudioContext) {
+      const { audioContext, source, gainNode } = this.audioSourceInfo;
+
+      if (!audioContext || !gainNode) {return;}
+
+      const buffer = source?.buffer;
+
+      if (!buffer) {return;}
+
+      const maxDuration = this.options.duration && this.options.duration > 0 ? this.options.duration : buffer.duration;
+
+      // 保险起见，先停掉旧 source，吞掉异常（旧节点是否成功 stop 不影响后续逻辑）
+      // eslint-disable-next-line no-empty
+      try { source?.stop(); } catch {}
+
+      // 由于BufferSource只能start一次，所以新建一个BufferSource
+      const newSource = audioContext.createBufferSource();
+
+      newSource.buffer = buffer;
+      newSource.connect(gainNode);
+
+      // 继承旧的播放参数
+      newSource.playbackRate.value = source?.playbackRate.value ?? 1;
+
+      if (this.options.endBehavior === spec.EndBehavior.restart) {
+        newSource.loop = true;
+        newSource.loopStart = 0;
+        newSource.loopEnd = maxDuration;
+      } else {
+        newSource.loop = source?.loop ?? false;
+        newSource.loopStart = source?.loopStart ?? 0;
+        newSource.loopEnd = source?.loopEnd ?? maxDuration;
+      }
+      this.audioSourceInfo.source = newSource;
+
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(e => this.engine.renderErrors.add(e));
+      }
+
+      try {
+        newSource.start(0, this.pendingOffset || 0);
+        this.pendingOffset = 0;
+        this.started = true;
+      } catch (e) {
+        this.engine.renderErrors.add(e as Error);
+      }
+    } else {
+      if (this.audio) {
+        this.audio.loop = this.options.endBehavior === spec.EndBehavior.restart;
+        this.audio.play().catch(e => this.engine.renderErrors.add(e));
+        this.started = true;
+      }
     }
   }
 
