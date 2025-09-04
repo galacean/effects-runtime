@@ -526,6 +526,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.compositions.map(composition => {
       composition.pause();
     });
+
     if (options && options.offloadTexture) {
       this.offloadTexture();
     }
@@ -546,6 +547,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resumePending = false;
       this.emit('resume');
     }
+    this.compositions.map(composition => {
+      composition.resume();
+    });
+
     this.ticker?.resume();
   }
 
@@ -738,12 +743,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   restore = async () => {
     this.renderer.restore();
     this.compositions = await Promise.all(this.compositions.map(async composition => {
-      const { time: currentTime, url, speed, keepResource, reusable, renderOrder, transform, videoState } = composition;
+      const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
       const newComposition = await this.loadScene(url);
 
       newComposition.speed = speed;
       newComposition.reusable = reusable;
-      newComposition.keepResource = keepResource;
       newComposition.renderOrder = renderOrder;
       newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
       newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);

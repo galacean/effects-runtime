@@ -6,13 +6,26 @@ import { AudioPlayer } from './audio-player';
 export class AudioComponent extends RendererComponent {
   audioPlayer: AudioPlayer;
 
-  private isVideoPlay = false;
-  private threshold = 0.03;
-
   override onAwake (): void {
     super.onAwake();
+    const updateTime = (time: number) => {
+      if (time < 0) {return;}
 
-    this.item.composition?.on('play', () => {
+      const { endBehavior, start, duration } = this.item;
+
+      if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
+        this.audioPlayer.setCurrentTime((time - start) % duration);
+      } else {
+        if (time >= duration) {
+          this.onDisable();
+        } else {
+          this.audioPlayer.setCurrentTime(time - start);
+        }
+      }
+    };
+
+    this.item.composition?.on('play', (option: { time: number }) => {
+      updateTime(option.time);
       this.audioPlayer.play();
     });
 
@@ -21,19 +34,7 @@ export class AudioComponent extends RendererComponent {
     });
 
     this.item.composition?.on('goto', (option: { time: number }) => {
-      if (option.time > 0) {
-        const { endBehavior, start, duration } = this.item;
-
-        if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
-          this.audioPlayer.setCurrentTime((option.time - start) % duration);
-        } else {
-          if (option.time >= duration) {
-            this.onDisable();
-          } else {
-            this.audioPlayer.setCurrentTime(option.time - start);
-          }
-        }
-      }
+      updateTime(option.time);
     });
   }
 

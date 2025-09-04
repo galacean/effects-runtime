@@ -252,7 +252,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private isEndCalled = false;
   private _textures: Texture[] = [];
   private videos: HTMLVideoElement[] = [];
-
   /**
    * 合成中消息元素创建/销毁时触发的回调
    */
@@ -518,6 +517,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   resume () {
     this.paused = false;
+    if (this.isEnded && this.reusable) {
+      this.restart();
+    }
+    const time = this.time;
+
+    this.emit('play', { time });
   }
 
   /**
@@ -527,7 +532,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   gotoAndPlay (time: number) {
     this.setTime(time);
     this.resume();
-    this.emit('play', { time });
   }
 
   /**
