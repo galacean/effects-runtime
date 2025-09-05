@@ -59,15 +59,16 @@ export class TextLayout {
    * @param lineCount - 渲染行数
    * @param lineHeight - 渲染时的字体行高
    * @param fontSize - 渲染时的字体大小
+   * @param totalLineHeight - 可选的实际总行高，用于替代默认计算
    * @returns - 行高偏移值
    */
-  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number) {
+  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number, totalLineHeight?: number) {
     const { outlineWidth, fontScale } = style;
     // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
     // 计算基础偏移量
     const baseOffset = fontSize + outlineWidth * fontScale;
-    const commonCalculation = lineHeight * (lineCount - 1);
+    const commonCalculation = totalLineHeight !== undefined ? totalLineHeight : lineHeight * (lineCount - 1);
     let offsetResult = 0;
 
     switch (this.textBaseline) {

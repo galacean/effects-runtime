@@ -243,7 +243,11 @@ export class RichTextComponent extends TextComponent {
     if (charsInfo.length === 0) {
       return;
     }
-    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)), textStyle.fontSize);
+
+    // 计算实际总行高
+    const totalLineHeight = charsInfo.reduce((sum, line, i) => i === 0 ? 0 : sum + (line.lineHeight - line.offsetY), 0);
+    const baselineLineHeight = fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0));
+    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, baselineLineHeight, textStyle.fontSize, totalLineHeight);
 
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX, width, chars } = charInfo;
@@ -271,7 +275,7 @@ export class RichTextComponent extends TextComponent {
       const x = this.textLayout.getOffsetX(textStyle, charWidth);
 
       if (index > 0) {
-        charsLineHeight += charsInfo[index - 1].lineHeight;
+        charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
       }
 
       richOptions.forEach((options, index) => {
