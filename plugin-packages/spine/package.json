@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-spine",
-  "version": "0.0.0-experimental-20250828",
+  "version": "0.0.0-experimental-20250905",
   "description": "Galacean Effects player spine plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
