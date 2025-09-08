@@ -90,19 +90,7 @@ export class VideoComponent extends BaseRenderComponent {
   override onAwake (): void {
     super.onAwake();
     this.item.composition?.on('goto', (option: { time: number }) => {
-      if (option.time > 0) {
-        const { endBehavior, start, duration } = this.item;
-
-        if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
-          this.setCurrentTime((option.time - start) % duration);
-        } else {
-          if (option.time >= duration) {
-            this.onDisable();
-          } else {
-            this.setCurrentTime(option.time - start);
-          }
-        }
-      }
+      this.setCurrentTime(this.item.time);
     });
   }
 
@@ -152,12 +140,12 @@ export class VideoComponent extends BaseRenderComponent {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time, duration, endBehavior, composition, start } = this.item;
+    const { time, duration, endBehavior, composition } = this.item;
 
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    const isEnd = (time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)
+    const isEnd = (time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)
     || Math.abs(time - duration) < this.threshold;
 
     if (time > 0 && !isEnd) {
@@ -167,7 +155,7 @@ export class VideoComponent extends BaseRenderComponent {
 
     this.renderer.texture.uploadCurrentVideoFrame();
 
-    if ((time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)) {
+    if ((time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
