@@ -547,6 +547,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resumePending = false;
       this.emit('resume');
     }
+    this.compositions.map(composition => {
+      composition.resume();
+    });
     this.ticker?.resume();
   }
 
