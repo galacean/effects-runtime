@@ -10,7 +10,7 @@ export class AudioComponent extends RendererComponent {
     super.onAwake();
 
     this.item.composition?.on('play', (option: { time: number }) => {
-      if (this.item.time <= 0) {return;}
+      if (this.item.time <= 0) { return; }
       this.audioPlayer.setCurrentTime(this.item.time);
       this.audioPlayer.play();
       this.isPlaying = true;
