@@ -717,7 +717,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     let isEnded = false;
 
-    if (localTime - duration > 0.001) {
+    if (localTime >= duration) {
 
       isEnded = true;
 
