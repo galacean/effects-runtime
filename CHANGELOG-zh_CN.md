@@ -8,6 +8,12 @@
 
 ---
 
+## 2.6.5
+
+`2025-08-29`
+
+- Fix: video `gotoAndStop` func. [#1159](https://github.com/galacean/effects-runtime/pull/1159) @ChengYi996
+
 ## 2.6.4
 
 `2025-08-26`

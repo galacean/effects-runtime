@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-webgl",
-  "version": "0.0.0-experimental-20250828",
+  "version": "0.0.0-experimental-20250905",
   "description": "Galacean Effects runtime webgl for the web",
   "types": "./dist/index.d.ts",
   "files": [

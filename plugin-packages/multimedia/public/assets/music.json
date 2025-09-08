@@ -1,0 +1,1433 @@
+{
+  "playerVersion": {
+    "web": "2.6.2",
+    "native": "0.0.1.202311221223"
+  },
+  "images": [
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*P-DaRKX3XCcAAAAAQOAAAAgAelB4AQ/original",
+      "id": "65c54ac938064d1493dfc19e42c27351",
+      "renderLevel": "B+",
+      "webp": "https://mdn.alipayobjects.com/mars/afts/img/A*Hg2MS4m-DCIAAAAAQMAAAAgAelB4AQ/original"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*j7GDRIjcBnsAAAAAQeAAAAgAelB4AQ/original",
+      "id": "2f7396b1a97f466b965b7e9f27ae3bd7",
+      "renderLevel": "B+",
+      "webp": "https://mdn.alipayobjects.com/mars/afts/img/A*VTYIQp7DYNYAAAAAREAAAAgAelB4AQ/original"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*aYVBT7ub9bwAAAAARAAAAAgAelB4AQ/original",
+      "id": "1af5e9c697994e1e9528706cc1674b74",
+      "renderLevel": "B+",
+      "webp": "https://mdn.alipayobjects.com/mars/afts/img/A*stq1RrhW3OEAAAAARjAAAAgAelB4AQ/original"
+    }
+  ],
+  "fonts": [],
+  "version": "3.4",
+  "shapes": [],
+  "plugins": [
+    "audio"
+  ],
+  "type": "ge",
+  "compositions": [
+    {
+      "id": "56a671780246442b9258dbdedf33b0cf",
+      "name": "弹窗BG",
+      "duration": 3,
+      "endBehavior": 2,
+      "previewSize": [750, 1624],
+      "camera": {
+        "fov": 60,
+        "far": 20,
+        "near": 0.1,
+        "clipMode": 0,
+        "position": [0, 0, 8],
+        "rotation": [0, 0, 0]
+      },
+      "components": [
+        {
+          "id": "99ddb64f5a0246c180ae99ec7db3a8b4"
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "99ddb64f5a0246c180ae99ec7db3a8b4",
+      "item": {
+        "id": ""
+      },
+      "dataType": "CompositionComponent",
+      "items": [
+        {
+          "id": "09c6b40963ef434a9c0a70a81960cc0f"
+        },
+        {
+          "id": "83645583d11b463ebc971194c6e2482a"
+        },
+        {
+          "id": "ff79ef5016a947c58ddc046f19122f47"
+        },
+        {
+          "id": "70be5e991ca548c19b03a3217164efec"
+        },
+        {
+          "id": "068212a14907466c80613fb66ab8cec6"
+        },
+        {
+          "id": "57c8d19b9cb4432cabaf321943183a7d"
+        },
+        {
+          "id": "b7f219e35fce4624842de342964eae4c"
+        },
+        {
+          "id": "7271c58f88a843a39652396ed2da2db0"
+        }
+      ],
+      "timelineAsset": {
+        "id": "86587179268746a296e765e469c9fbbd"
+      },
+      "sceneBindings": [
+        {
+          "key": {
+            "id": "94174f6e6d7c46b8832bdd102ca39a75"
+          },
+          "value": {
+            "id": "09c6b40963ef434a9c0a70a81960cc0f"
+          }
+        },
+        {
+          "key": {
+            "id": "263c903cb3a34d138f6ca870cc3d213a"
+          },
+          "value": {
+            "id": "83645583d11b463ebc971194c6e2482a"
+          }
+        },
+        {
+          "key": {
+            "id": "5fd3b790abed4df3bba2014b094835e3"
+          },
+          "value": {
+            "id": "ff79ef5016a947c58ddc046f19122f47"
+          }
+        },
+        {
+          "key": {
+            "id": "c742d00c557e4fd5ac6f9f92e91f967d"
+          },
+          "value": {
+            "id": "70be5e991ca548c19b03a3217164efec"
+          }
+        },
+        {
+          "key": {
+            "id": "9cf5ea6dc9ae4c6bb18f13cd48b46a28"
+          },
+          "value": {
+            "id": "068212a14907466c80613fb66ab8cec6"
+          }
+        },
+        {
+          "key": {
+            "id": "64122ed745044569b82c1f82d83ff46a"
+          },
+          "value": {
+            "id": "57c8d19b9cb4432cabaf321943183a7d"
+          }
+        },
+        {
+          "key": {
+            "id": "38c6845bc9944a5cb51345083a7e2700"
+          },
+          "value": {
+            "id": "b7f219e35fce4624842de342964eae4c"
+          }
+        },
+        {
+          "key": {
+            "id": "363f0e11fdb0480ba14297181fcfe957"
+          },
+          "value": {
+            "id": "7271c58f88a843a39652396ed2da2db0"
+          }
+        }
+      ],
+      "startTime": 0
+    },
+    {
+      "id": "8c18a9718dcf4efd8c26c4cafa4b5991",
+      "item": {
+        "id": "09c6b40963ef434a9c0a70a81960cc0f"
+      },
+      "dataType": "ParticleSystem",
+      "shape": {
+        "shape": "Sphere",
+        "radius": 1,
+        "arc": 360,
+        "arcMode": 0,
+        "type": 1,
+        "alignSpeedDirection": false
+      },
+      "renderer": {
+        "texture": {
+          "id": "cdfd27c6ca9b477cb0777f7a80d3530d"
+        },
+        "anchor": [0, 0]
+      },
+      "splits": [
+        [0, 0, 0.51953125, 0.51953125, 0]
+      ],
+      "emission": {
+        "rateOverTime": [0, 10]
+      },
+      "options": {
+        "maxCount": 20,
+        "startLifetime": [4, [1, 3]
+        ],
+        "startRotationZ": [4, [30, 90]
+        ],
+        "startColor": [8, [1, 1, 1, 1]
+        ],
+        "startSize": [4, [0.3, 0.8]
+        ],
+        "sizeAspect": [0, 1]
+      },
+      "colorOverLifetime": {
+        "opacity": [21, [
+            [3, [0, 0, 0.0447, 0.1788]
+            ],
+            [1, [0.0893, 1, 0.134, 1, 0.3297, 1]
+            ],
+            [1, [0.5253, 1, 0.721, 1, 0.814, 1]
+            ],
+            [2, [0.907, 0.3782, 1, 0]
+            ]
+          ]
+        ]
+      },
+      "positionOverLifetime": {
+        "startSpeed": [4, [2, 3]
+        ],
+        "gravity": [0, 0, 0],
+        "gravityOverLifetime": [0, 1]
+      }
+    },
+    {
+      "id": "73c867589f984021a8a46204404b65f0",
+      "item": {
+        "id": "83645583d11b463ebc971194c6e2482a"
+      },
+      "dataType": "ParticleSystem",
+      "shape": {
+        "shape": "Sphere",
+        "radius": 1,
+        "arc": 360,
+        "arcMode": 0,
+        "type": 1,
+        "alignSpeedDirection": false
+      },
+      "renderer": {
+        "texture": {
+          "id": "0287064fca3943d2865619684ac784e2"
+        },
+        "anchor": [0, 0]
+      },
+      "splits": [
+        [0, 0.861328125, 0.0771484375, 0.0771484375, 0]
+      ],
+      "emission": {
+        "rateOverTime": [0, 15]
+      },
+      "options": {
+        "maxCount": 50,
+        "startLifetime": [4, [1, 3]
+        ],
+        "startColor": [8, [1, 1, 1, 1]
+        ],
+        "startSize": [4, [0.2, 0.8]
+        ],
+        "sizeAspect": [0, 1]
+      },
+      "colorOverLifetime": {
+        "opacity": [21, [
+            [3, [0, 0, 0.0447, 0.1788]
+            ],
+            [1, [0.0893, 1, 0.134, 1, 0.245, 1]
+            ],
+            [1, [0.356, 1, 0.467, 1, 0.6447, 1]
+            ],
+            [2, [0.8223, 0.7226, 1, 0]
+            ]
+          ]
+        ]
+      },
+      "positionOverLifetime": {
+        "startSpeed": [0, 1],
+        "gravity": [0, 0, 0],
+        "gravityOverLifetime": [0, 1]
+      }
+    },
+    {
+      "id": "cc62601521254c029505d116f05fd2ed",
+      "item": {
+        "id": "70be5e991ca548c19b03a3217164efec"
+      },
+      "dataType": "SpriteComponent",
+      "options": {
+        "startColor": [1, 1, 1, 1]
+      },
+      "renderer": {
+        "renderMode": 1,
+        "texture": {
+          "id": "0287064fca3943d2865619684ac784e2"
+        }
+      },
+      "splits": [
+        [0, 0, 0.732421875, 0.732421875, 0]
+      ]
+    },
+    {
+      "id": "49d0613fc8a8401d8b3a24224a5aba00",
+      "item": {
+        "id": "068212a14907466c80613fb66ab8cec6"
+      },
+      "dataType": "SpriteComponent",
+      "options": {
+        "startColor": [1, 1, 1, 1]
+      },
+      "renderer": {
+        "renderMode": 1,
+        "texture": {
+          "id": "cdfd27c6ca9b477cb0777f7a80d3530d"
+        }
+      },
+      "splits": [
+        [0, 0.521484375, 0.390625, 0.390625, 0]
+      ]
+    },
+    {
+      "id": "912a1fc80a9644a99d0c62f2e6ab7e6c",
+      "item": {
+        "id": "57c8d19b9cb4432cabaf321943183a7d"
+      },
+      "dataType": "SpriteComponent",
+      "options": {
+        "startColor": [0.9804, 0.9529, 0.8078, 1]
+      },
+      "renderer": {
+        "texture": {
+          "id": "0287064fca3943d2865619684ac784e2"
+        },
+        "blending": 3
+      },
+      "splits": [
+        [0, 0.734375, 0.125, 0.125, 0]
+      ]
+    },
+    {
+      "id": "33b349e9c2604fce9dc1db1ee39bbe5c",
+      "item": {
+        "id": "b7f219e35fce4624842de342964eae4c"
+      },
+      "dataType": "ParticleSystem",
+      "shape": {
+        "shape": "Cone",
+        "radius": 0.4,
+        "arc": 182.9,
+        "arcMode": 0,
+        "angle": 44.3,
+        "type": 2,
+        "alignSpeedDirection": false
+      },
+      "renderer": {
+        "texture": {
+          "id": "45bc9709696b40caa9e1615594969f8a"
+        },
+        "anchor": [0, 0]
+      },
+      "emission": {
+        "rateOverTime": [0, 0],
+        "burstOffsets": [
+          {
+            "index": 0,
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        ],
+        "bursts": [
+          {
+            "time": 0,
+            "count": "40",
+            "cycles": "1",
+            "interval": "0.4"
+          }
+        ]
+      },
+      "options": {
+        "maxCount": 20,
+        "startLifetime": [4, [0.8, 1.5]
+        ],
+        "startColor": [8, [1, 1, 1, 1]
+        ],
+        "startSize": [4, [0.2, 0.5]
+        ],
+        "sizeAspect": [0, 1]
+      },
+      "textureSheetAnimation": {
+        "col": 2,
+        "row": 2
+      },
+      "rotationOverLifetime": {
+        "z": [4, [300, 360]
+        ]
+      },
+      "colorOverLifetime": {
+        "opacity": [21, [
+            [3, [0, 0, 0.0523, 0.2261]
+            ],
+            [1, [0.1047, 0.999, 0.157, 0.999, 0.385, 0.999]
+            ],
+            [1, [0.613, 1.0237, 0.841, 0.939, 0.894, 0.9193]
+            ],
+            [2, [0.947, 0.2657, 1, 0.001]
+            ]
+          ]
+        ]
+      },
+      "positionOverLifetime": {
+        "speedOverLifetime": [21, [
+            [3, [0, 1, 0.0723, 1]
+            ],
+            [1, [0.1446, 0.9382, 0.2169, 0.8442, 0.2891, 0.7561]
+            ],
+            [1, [0.3614, 0.1669, 0.4336, 0.1332, 0.6224, 0.0366]
+            ],
+            [2, [0.8112, 0, 1, 0]
+            ]
+          ]
+        ],
+        "linearY": [0, 0],
+        "startSpeed": [4, [7, 9]
+        ],
+        "gravity": [0, -1, 0],
+        "gravityOverLifetime": [0, 1]
+      }
+    },
+    {
+      "id": "ca35a83c7b714b2c87f150abaa8dd2c3",
+      "item": {
+        "id": "7271c58f88a843a39652396ed2da2db0"
+      },
+      "dataType": "AudioComponent",
+      "options": {
+        "muted": false,
+        "audio": {
+          "id": "f960f198db4d4976a21f28a5534f0b4d"
+        },
+        "volume": 1,
+        "playbackRate": 1
+      }
+    }
+  ],
+  "geometries": [],
+  "materials": [],
+  "items": [
+    {
+      "id": "09c6b40963ef434a9c0a70a81960cc0f",
+      "name": "星星",
+      "duration": 2,
+      "type": "2",
+      "visible": true,
+      "endBehavior": 5,
+      "delay": 0,
+      "renderLevel": "B+",
+      "content": {
+        "dataType": "ParticleSystem",
+        "shape": {
+          "shape": "Sphere",
+          "radius": 1,
+          "arc": 360,
+          "arcMode": 0,
+          "type": 1,
+          "alignSpeedDirection": false
+        },
+        "renderer": {
+          "texture": {
+            "id": "cdfd27c6ca9b477cb0777f7a80d3530d"
+          },
+          "anchor": [0, 0]
+        },
+        "emission": {
+          "rateOverTime": [0, 10]
+        },
+        "options": {
+          "maxCount": 20,
+          "startLifetime": [4, [1, 3]
+          ],
+          "startRotationZ": [4, [30, 90]
+          ],
+          "startColor": [8, [1, 1, 1, 1]
+          ],
+          "startSize": [4, [0.3, 0.8]
+          ],
+          "sizeAspect": [0, 1]
+        },
+        "colorOverLifetime": {
+          "opacity": [21, [
+              [3, [0, 0, 0.0447, 0.1788]
+              ],
+              [1, [0.0893, 1, 0.134, 1, 0.3297, 1]
+              ],
+              [1, [0.5253, 1, 0.721, 1, 0.814, 1]
+              ],
+              [2, [0.907, 0.3782, 1, 0]
+              ]
+            ]
+          ]
+        },
+        "positionOverLifetime": {
+          "startSpeed": [4, [2, 3]
+          ],
+          "gravity": [0, 0, 0],
+          "gravityOverLifetime": [0, 1]
+        }
+      },
+      "components": [
+        {
+          "id": "8c18a9718dcf4efd8c26c4cafa4b5991"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "83645583d11b463ebc971194c6e2482a",
+      "name": "粒子",
+      "duration": 2,
+      "type": "2",
+      "visible": true,
+      "endBehavior": 5,
+      "delay": 0,
+      "renderLevel": "B+",
+      "content": {
+        "dataType": "ParticleSystem",
+        "shape": {
+          "shape": "Sphere",
+          "radius": 1,
+          "arc": 360,
+          "arcMode": 0,
+          "type": 1,
+          "alignSpeedDirection": false
+        },
+        "renderer": {
+          "texture": {
+            "id": "0287064fca3943d2865619684ac784e2"
+          },
+          "anchor": [0, 0]
+        },
+        "emission": {
+          "rateOverTime": [0, 15]
+        },
+        "options": {
+          "maxCount": 50,
+          "startLifetime": [4, [1, 3]
+          ],
+          "startColor": [8, [1, 1, 1, 1]
+          ],
+          "startSize": [4, [0.2, 0.8]
+          ],
+          "sizeAspect": [0, 1]
+        },
+        "colorOverLifetime": {
+          "opacity": [21, [
+              [3, [0, 0, 0.0447, 0.1788]
+              ],
+              [1, [0.0893, 1, 0.134, 1, 0.245, 1]
+              ],
+              [1, [0.356, 1, 0.467, 1, 0.6447, 1]
+              ],
+              [2, [0.8223, 0.7226, 1, 0]
+              ]
+            ]
+          ]
+        },
+        "positionOverLifetime": {
+          "startSpeed": [0, 1],
+          "gravity": [0, 0, 0],
+          "gravityOverLifetime": [0, 1]
+        }
+      },
+      "components": [
+        {
+          "id": "73c867589f984021a8a46204404b65f0"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "ff79ef5016a947c58ddc046f19122f47",
+      "name": "null_217",
+      "duration": 2,
+      "type": "3",
+      "visible": true,
+      "endBehavior": 4,
+      "delay": 0,
+      "renderLevel": "B+",
+      "content": {
+        "options": {
+          "startColor": [1, 1, 1, 1]
+        }
+      },
+      "components": [],
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "70be5e991ca548c19b03a3217164efec",
+      "name": "炫光",
+      "duration": 20,
+      "type": "1",
+      "parentId": "ff79ef5016a947c58ddc046f19122f47",
+      "visible": true,
+      "endBehavior": 5,
+      "delay": 0,
+      "renderLevel": "B+",
+      "components": [
+        {
+          "id": "cc62601521254c029505d116f05fd2ed"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "size": {
+          "x": 7.2012,
+          "y": 7.2012
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "068212a14907466c80613fb66ab8cec6",
+      "name": "小光圈",
+      "duration": 1.5,
+      "type": "1",
+      "visible": true,
+      "endBehavior": 5,
+      "delay": 0,
+      "renderLevel": "B+",
+      "components": [
+        {
+          "id": "49d0613fc8a8401d8b3a24224a5aba00"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": -0.0376,
+          "y": 0.1681,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "size": {
+          "x": 3.9192,
+          "y": 3.9192
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "57c8d19b9cb4432cabaf321943183a7d",
+      "name": "爆炸光",
+      "duration": 1,
+      "type": "1",
+      "visible": true,
+      "endBehavior": 0,
+      "delay": 0.35,
+      "renderLevel": "B+",
+      "components": [
+        {
+          "id": "912a1fc80a9644a99d0c62f2e6ab7e6c"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": -0.0007,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "size": {
+          "x": 4,
+          "y": 4
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "b7f219e35fce4624842de342964eae4c",
+      "name": "金币",
+      "duration": 2,
+      "type": "2",
+      "visible": true,
+      "endBehavior": 0,
+      "delay": 0,
+      "renderLevel": "A+",
+      "content": {
+        "dataType": "ParticleSystem",
+        "shape": {
+          "shape": "Cone",
+          "radius": 0.4,
+          "arc": 182.9,
+          "arcMode": 0,
+          "angle": 44.3,
+          "type": 2,
+          "alignSpeedDirection": false
+        },
+        "renderer": {
+          "texture": {
+            "id": "45bc9709696b40caa9e1615594969f8a"
+          },
+          "anchor": [0, 0]
+        },
+        "emission": {
+          "rateOverTime": [0, 0],
+          "burstOffsets": [
+            {
+              "index": 0,
+              "x": 0,
+              "y": 0,
+              "z": 0
+            }
+          ],
+          "bursts": [
+            {
+              "time": 0,
+              "count": "40",
+              "cycles": "1",
+              "interval": "0.4"
+            }
+          ]
+        },
+        "options": {
+          "maxCount": 20,
+          "startLifetime": [4, [0.8, 1.5]
+          ],
+          "startColor": [8, [1, 1, 1, 1]
+          ],
+          "startSize": [4, [0.2, 0.5]
+          ],
+          "sizeAspect": [0, 1]
+        },
+        "textureSheetAnimation": {
+          "col": 2,
+          "row": 2
+        },
+        "rotationOverLifetime": {
+          "z": [4, [300, 360]
+          ]
+        },
+        "colorOverLifetime": {
+          "opacity": [21, [
+              [3, [0, 0, 0.0523, 0.2261]
+              ],
+              [1, [0.1047, 0.999, 0.157, 0.999, 0.385, 0.999]
+              ],
+              [1, [0.613, 1.0237, 0.841, 0.939, 0.894, 0.9193]
+              ],
+              [2, [0.947, 0.2657, 1, 0.001]
+              ]
+            ]
+          ]
+        },
+        "positionOverLifetime": {
+          "speedOverLifetime": [21, [
+              [3, [0, 1, 0.0723, 1]
+              ],
+              [1, [0.1446, 0.9382, 0.2169, 0.8442, 0.2891, 0.7561]
+              ],
+              [1, [0.3614, 0.1669, 0.4336, 0.1332, 0.6224, 0.0366]
+              ],
+              [2, [0.8112, 0, 1, 0]
+              ]
+            ]
+          ],
+          "linearY": [0, 0],
+          "startSpeed": [4, [7, 9]
+          ],
+          "gravity": [0, -1, 0],
+          "gravityOverLifetime": [0, 1]
+        }
+      },
+      "components": [
+        {
+          "id": "33b349e9c2604fce9dc1db1ee39bbe5c"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": 0.0261,
+          "y": 0.8428,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 72,
+          "y": 0,
+          "z": 0
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    },
+    {
+      "id": "7271c58f88a843a39652396ed2da2db0",
+      "name": "audio_17",
+      "duration": 21.7217,
+      "type": "audio",
+      "visible": true,
+      "endBehavior": 0,
+      "delay": 0,
+      "renderLevel": "B+",
+      "components": [
+        {
+          "id": "ca35a83c7b714b2c87f150abaa8dd2c3"
+        }
+      ],
+      "dataType": "VFXItemData"
+    }
+  ],
+  "shaders": [],
+  "bins": [],
+  "textures": [
+    {
+      "id": "45bc9709696b40caa9e1615594969f8a",
+      "source": {
+        "id": "65c54ac938064d1493dfc19e42c27351"
+      },
+      "flipY": true
+    },
+    {
+      "id": "cdfd27c6ca9b477cb0777f7a80d3530d",
+      "source": {
+        "id": "2f7396b1a97f466b965b7e9f27ae3bd7"
+      },
+      "flipY": true
+    },
+    {
+      "id": "0287064fca3943d2865619684ac784e2",
+      "source": {
+        "id": "1af5e9c697994e1e9528706cc1674b74"
+      },
+      "flipY": true
+    }
+  ],
+  "animations": [],
+  "miscs": [
+    {
+      "id": "86587179268746a296e765e469c9fbbd",
+      "dataType": "TimelineAsset",
+      "tracks": [
+        {
+          "id": "94174f6e6d7c46b8832bdd102ca39a75"
+        },
+        {
+          "id": "263c903cb3a34d138f6ca870cc3d213a"
+        },
+        {
+          "id": "5fd3b790abed4df3bba2014b094835e3"
+        },
+        {
+          "id": "c742d00c557e4fd5ac6f9f92e91f967d"
+        },
+        {
+          "id": "9cf5ea6dc9ae4c6bb18f13cd48b46a28"
+        },
+        {
+          "id": "64122ed745044569b82c1f82d83ff46a"
+        },
+        {
+          "id": "38c6845bc9944a5cb51345083a7e2700"
+        },
+        {
+          "id": "363f0e11fdb0480ba14297181fcfe957"
+        }
+      ]
+    },
+    {
+      "id": "9200f1e2aa884061928e81d02bbb2e4e",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "e6c164e741924c6c94ce9b13b28e6884",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 2,
+          "endBehavior": 5,
+          "asset": {
+            "id": "9200f1e2aa884061928e81d02bbb2e4e"
+          }
+        }
+      ]
+    },
+    {
+      "id": "94174f6e6d7c46b8832bdd102ca39a75",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "e6c164e741924c6c94ce9b13b28e6884"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "72cfb4edb54c4b39a7a19c279b6cb84c",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "575a3e8743e94ceba9b12e753d8f8c15",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 2,
+          "endBehavior": 5,
+          "asset": {
+            "id": "72cfb4edb54c4b39a7a19c279b6cb84c"
+          }
+        }
+      ]
+    },
+    {
+      "id": "263c903cb3a34d138f6ca870cc3d213a",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "575a3e8743e94ceba9b12e753d8f8c15"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "f951ebdaa34f44779825ab681d99b82b",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "984a06ab87e44e339124199aed4637a8",
+      "dataType": "TransformPlayableAsset",
+      "positionOverLifetime": {
+
+      },
+      "sizeOverLifetime": {
+        "size": [21, [
+            [3, [0, 0, 0.09, 0.567]
+            ],
+            [1, [0.18, 0.8151, 0.27, 0.87, 0.5133, 1.0014]
+            ],
+            [2, [0.7567, 1, 1, 1]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "ddea7a126e7e4f44accb614997780361",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 2,
+          "endBehavior": 4,
+          "asset": {
+            "id": "f951ebdaa34f44779825ab681d99b82b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cb9cb4e533ac472ebacd9d8813bceed6",
+      "dataType": "TransformTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 2,
+          "endBehavior": 4,
+          "asset": {
+            "id": "984a06ab87e44e339124199aed4637a8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "5fd3b790abed4df3bba2014b094835e3",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "ddea7a126e7e4f44accb614997780361"
+        },
+        {
+          "id": "cb9cb4e533ac472ebacd9d8813bceed6"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "f0157ec0221a48bd82e1ede84a5ea87a",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "57cc5ac3146c4740b4317655acfe9045",
+      "dataType": "TransformPlayableAsset",
+      "positionOverLifetime": {
+
+      },
+      "rotationOverLifetime": {
+        "asRotation": true,
+        "z": [21, [
+            [4, [0, 0]
+            ],
+            [4, [1, 360]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "b899cc311b3b40a5b4ba18ff343cd1a1",
+      "dataType": "SpriteColorPlayableAsset",
+      "startColor": [1, 1, 1, 1]
+    },
+    {
+      "id": "b5871e5469674e9a8330179eb7362bec",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 20,
+          "endBehavior": 5,
+          "asset": {
+            "id": "f0157ec0221a48bd82e1ede84a5ea87a"
+          }
+        }
+      ]
+    },
+    {
+      "id": "6c091183878b4a1cbeb5fe554f1686d6",
+      "dataType": "TransformTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 20,
+          "endBehavior": 5,
+          "asset": {
+            "id": "57cc5ac3146c4740b4317655acfe9045"
+          }
+        }
+      ]
+    },
+    {
+      "id": "beeaa80885964478a8df7d1fed67effe",
+      "dataType": "SpriteColorTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 20,
+          "endBehavior": 5,
+          "asset": {
+            "id": "b899cc311b3b40a5b4ba18ff343cd1a1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "c742d00c557e4fd5ac6f9f92e91f967d",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "b5871e5469674e9a8330179eb7362bec"
+        },
+        {
+          "id": "6c091183878b4a1cbeb5fe554f1686d6"
+        },
+        {
+          "id": "beeaa80885964478a8df7d1fed67effe"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "e45d034272cd41d6b0973d33fd947099",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "96fca6877ac842b7a17891ee0019f91a",
+      "dataType": "TransformPlayableAsset",
+      "positionOverLifetime": {
+
+      },
+      "sizeOverLifetime": {
+        "size": [21, [
+            [3, [0, 0, 0.09, 0.567]
+            ],
+            [1, [0.18, 0.8151, 0.27, 0.87, 0.5133, 1.0014]
+            ],
+            [2, [0.7567, 1, 1, 1]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "c0e4494309c04ce19a864eeb215ef923",
+      "dataType": "SpriteColorPlayableAsset",
+      "startColor": [1, 1, 1, 1],
+      "colorOverLifetime": {
+        "opacity": [21, [
+            [3, [0, 0, 0.169, 1.0645]
+            ],
+            [1, [0.3379, 1.001, 0.5069, 1, 0.6713, 0.9991]
+            ],
+            [2, [0.8356, 0, 1, 0]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "553aed1172bd4039a66a6f73b1740ac6",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 1.5,
+          "endBehavior": 5,
+          "asset": {
+            "id": "e45d034272cd41d6b0973d33fd947099"
+          }
+        }
+      ]
+    },
+    {
+      "id": "e38f7e17d39340ffa71c3f061cf21c8b",
+      "dataType": "TransformTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 1.5,
+          "endBehavior": 5,
+          "asset": {
+            "id": "96fca6877ac842b7a17891ee0019f91a"
+          }
+        }
+      ]
+    },
+    {
+      "id": "8ad4fa1d782a4d1099fb782e8482c2b8",
+      "dataType": "SpriteColorTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 1.5,
+          "endBehavior": 5,
+          "asset": {
+            "id": "c0e4494309c04ce19a864eeb215ef923"
+          }
+        }
+      ]
+    },
+    {
+      "id": "9cf5ea6dc9ae4c6bb18f13cd48b46a28",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "553aed1172bd4039a66a6f73b1740ac6"
+        },
+        {
+          "id": "e38f7e17d39340ffa71c3f061cf21c8b"
+        },
+        {
+          "id": "8ad4fa1d782a4d1099fb782e8482c2b8"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "09baeff9ffdb4d20a233c822add34693",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "7edc3d6475e24ab18abfded4b0a8de83",
+      "dataType": "TransformPlayableAsset",
+      "positionOverLifetime": {
+
+      },
+      "sizeOverLifetime": {
+        "size": [21, [
+            [3, [0, 0, 0.09, 1.701]
+            ],
+            [1, [0.18, 2.4453, 0.27, 2.61, 0.5133, 3.0042]
+            ],
+            [2, [0.7567, 3, 1, 3]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "4f9d88e4f67a44dea3badcda7a5ae324",
+      "dataType": "SpriteColorPlayableAsset",
+      "startColor": [0.9804, 0.9529, 0.8078, 1],
+      "colorOverLifetime": {
+        "color": [9, [
+            [0, 255, 255, 255, 255],
+            [1, 245, 166, 35, 255]
+          ]
+        ],
+        "opacity": [21, [
+            [4, [0, 1.002]
+            ],
+            [4, [0.3695, 1.002]
+            ],
+            [4, [1, 0.334]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "a60f2945f52d40d9ab863f47f4cd4e61",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0.35,
+          "duration": 1,
+          "endBehavior": 0,
+          "asset": {
+            "id": "09baeff9ffdb4d20a233c822add34693"
+          }
+        }
+      ]
+    },
+    {
+      "id": "9d59726ee9e142529462676714c5fb46",
+      "dataType": "TransformTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0.35,
+          "duration": 1,
+          "endBehavior": 0,
+          "asset": {
+            "id": "7edc3d6475e24ab18abfded4b0a8de83"
+          }
+        }
+      ]
+    },
+    {
+      "id": "52633f90bb9c4452970ea3677daba782",
+      "dataType": "SpriteColorTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0.35,
+          "duration": 1,
+          "endBehavior": 0,
+          "asset": {
+            "id": "4f9d88e4f67a44dea3badcda7a5ae324"
+          }
+        }
+      ]
+    },
+    {
+      "id": "64122ed745044569b82c1f82d83ff46a",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "a60f2945f52d40d9ab863f47f4cd4e61"
+        },
+        {
+          "id": "9d59726ee9e142529462676714c5fb46"
+        },
+        {
+          "id": "52633f90bb9c4452970ea3677daba782"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "12de3d6e83de4c7282a8b903aad729be",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "96b34110959542d5856290b8d5255f7d",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 2,
+          "endBehavior": 0,
+          "asset": {
+            "id": "12de3d6e83de4c7282a8b903aad729be"
+          }
+        }
+      ]
+    },
+    {
+      "id": "38c6845bc9944a5cb51345083a7e2700",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "96b34110959542d5856290b8d5255f7d"
+        }
+      ],
+      "clips": []
+    },
+    {
+      "id": "5ab59cfe3a2e493391c28fc63ade2d0d",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "9ad67b309dfc4847bb66c0d56b128380",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 21.7217,
+          "endBehavior": 0,
+          "asset": {
+            "id": "5ab59cfe3a2e493391c28fc63ade2d0d"
+          }
+        }
+      ]
+    },
+    {
+      "id": "363f0e11fdb0480ba14297181fcfe957",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "9ad67b309dfc4847bb66c0d56b128380"
+        }
+      ],
+      "clips": []
+    }
+  ],
+  "compositionId": "56a671780246442b9258dbdedf33b0cf",
+  "audios": [
+    {
+      "id": "f960f198db4d4976a21f28a5534f0b4d",
+      "url": "https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*QZTBQ6w_Vi4AAAAAVZAAAAgAesF2AQ"
+    }
+  ]
+}
