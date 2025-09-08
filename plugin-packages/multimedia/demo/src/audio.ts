@@ -19,14 +19,14 @@ let player: Player;
 
     await player.loadScene(json, { autoplay:true }).then(()=>{
       // debugger
-      player.gotoAndPlay(0);
+      player.gotoAndPlay(3);
       setTimeout(() => {
         player.pause();
       }, 1000);
 
       setTimeout(() => {
         void player.resume();
-      }, 1000);
+      }, 2000);
     });
   } catch (e) {
     console.error('biz', e);
