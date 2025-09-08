@@ -44,6 +44,11 @@ export class VideoComponent extends BaseRenderComponent {
    */
   isVideoActive = false;
   /**
+   * WARNING!!! : 该参数可能会导致合成重播或者 goto 时产生非预期效果，仅在确定合成只有顺序播放且没有调用 goto 的情况下使用
+   */
+  skipSetCurrentTime = false;
+
+  /**
    * 是否为透明视频
    */
   protected transparent = false;
@@ -84,19 +89,7 @@ export class VideoComponent extends BaseRenderComponent {
   override onAwake (): void {
     super.onAwake();
     this.item.composition?.on('goto', (option: { time: number }) => {
-      if (option.time > 0) {
-        const { endBehavior, start, duration } = this.item;
-
-        if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
-          this.setCurrentTime((option.time - start) % duration);
-        } else {
-          if (option.time >= duration) {
-            this.onDisable();
-          } else {
-            this.setCurrentTime(option.time - start);
-          }
-        }
-      }
+      this.setCurrentTime(this.item.time);
     });
     this.item.composition?.on('pause', () => {
       this.pauseVideo();
@@ -154,12 +147,12 @@ export class VideoComponent extends BaseRenderComponent {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time, duration, endBehavior, composition, start } = this.item;
+    const { time, duration, endBehavior, composition } = this.item;
 
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    const isEnd = (time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)
+    const isEnd = (time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)
       || Math.abs(time - duration) < this.threshold;
 
     if (time > 0 && !isEnd) {
@@ -167,14 +160,20 @@ export class VideoComponent extends BaseRenderComponent {
       this.playVideo();
     }
 
-    if ((time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)) {
+    this.renderer.texture.uploadCurrentVideoFrame();
+
+    if ((time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
-          this.setCurrentTime(time);
+          if (!this.skipSetCurrentTime) {
+            this.setCurrentTime(time);
+          }
         }
       } else {
-        this.setCurrentTime(time);
+        if (!this.skipSetCurrentTime) {
+          this.setCurrentTime(time);
+        }
       }
     }
     if (Math.abs(time - duration) < this.threshold) {
@@ -183,7 +182,9 @@ export class VideoComponent extends BaseRenderComponent {
       } else if (endBehavior === spec.EndBehavior.restart) {
         // 重播
         this.pauseVideo();
-        this.setCurrentTime(0);
+        if (!this.skipSetCurrentTime) {
+          this.setCurrentTime(0);
+        }
       }
     }
   }

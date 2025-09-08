@@ -5,42 +5,36 @@ import { AudioPlayer } from './audio-player';
 @effectsClass(spec.DataType.AudioComponent)
 export class AudioComponent extends RendererComponent {
   audioPlayer: AudioPlayer;
-
-  private isVideoPlay = false;
-  private threshold = 0.03;
-
+  private isPlaying = false;
   override onAwake (): void {
     super.onAwake();
 
-    this.item.composition?.on('play', () => {
+    this.item.composition?.on('play', (option: { time: number }) => {
+      if (this.item.time <= 0) {return;}
+      this.audioPlayer.setCurrentTime(this.item.time);
       this.audioPlayer.play();
+      this.isPlaying = true;
     });
 
     this.item.composition?.on('pause', () => {
       this.audioPlayer.pause();
+      this.isPlaying = false;
     });
 
     this.item.composition?.on('goto', (option: { time: number }) => {
-      if (option.time > 0) {
-        const { endBehavior, start, duration } = this.item;
-
-        if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
-          this.audioPlayer.setCurrentTime((option.time - start) % duration);
-        } else {
-          if (option.time >= duration) {
-            this.onDisable();
-          } else {
-            this.audioPlayer.setCurrentTime(option.time - start);
-          }
-        }
-      }
+      this.audioPlayer.setCurrentTime(this.item.time);
     });
   }
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
 
-    const { duration, endBehavior } = this.item;
+    const { time, duration, endBehavior } = this.item;
+
+    if (time > 0 && this.isPlaying == false) {
+      this.audioPlayer.play();
+      this.isPlaying = true;
+    }
 
     this.audioPlayer.setOptions({
       duration,

@@ -76,60 +76,20 @@ export class AudioPlayer {
       return this.audio?.currentTime || 0;
     }
   }
-
+  /**
+   * 设置音频当前时间
+   * WebAudio下设置 this.pendingOffset，后面play时直接从该事件play
+   * HTMLAudioElement下直接设置时间
+   */
   setCurrentTime (time: number) {
     const t = Math.max(0, time);
 
     if (this.isSupportAudioContext) {
-      const { audioContext, source, gainNode } = this.audioSourceInfo;
+      const upper = this.options.duration && this.options.duration > 0 ? this.options.duration : undefined;
 
-      if (!audioContext || !gainNode) {
-        this.pendingOffset = t;
+      this.pendingOffset = upper ? Math.min(t, upper) : t;
 
-        return;
-      }
-
-      const buffer = source?.buffer;
-
-      if (!buffer) {
-        this.pendingOffset = t;
-
-        return;
-      }
-
-      const maxDuration = this.options.duration && this.options.duration > 0
-        ? this.options.duration
-        : buffer.duration;
-      const offset = Math.min(t, maxDuration);
-
-      // 保险起见，先停掉旧 source，吞掉异常（旧节点是否成功 stop 不影响后续逻辑）
-      // eslint-disable-next-line no-empty
-      try { source?.stop(); } catch {}
-
-      // 由于BufferSource只能start一次，所以创建新的 BufferSource，并继承旧参数
-      const newSource = audioContext.createBufferSource();
-
-      newSource.buffer = buffer;
-      newSource.connect(gainNode);
-      newSource.playbackRate.value = source?.playbackRate.value ?? 1;
-      newSource.loop = source?.loop ?? false;
-      newSource.loopStart = source?.loopStart ?? 0;
-      newSource.loopEnd = source?.loopEnd ?? maxDuration;
-
-      this.audioSourceInfo.source = newSource;
-      this.pendingOffset = offset;
-
-      // 如果之前已经播放过，则立即从新位置开始
-      if (this.started) {
-        if (audioContext.state === 'suspended') {
-          audioContext.resume().catch(e => this.engine.renderErrors.add(e));
-        }
-        try {
-          newSource.start(0, offset);
-        } catch (e) {
-          this.engine.renderErrors.add(e as Error);
-        }
-      }
+      return;
     } else {
       if (this.audio) {
         const dur = Number.isFinite(this.audio.duration) ? this.audio.duration : undefined;
@@ -139,7 +99,9 @@ export class AudioPlayer {
       }
     }
   }
-
+  /**
+   * 播放音频
+   */
   play (): void {
     if (this.isSupportAudioContext) {
       const { audioContext, source, gainNode } = this.audioSourceInfo;
@@ -149,14 +111,13 @@ export class AudioPlayer {
       const buffer = source?.buffer;
 
       if (!buffer) {return;}
-
       const maxDuration = this.options.duration && this.options.duration > 0 ? this.options.duration : buffer.duration;
 
       // 保险起见，先停掉旧 source，吞掉异常（旧节点是否成功 stop 不影响后续逻辑）
       // eslint-disable-next-line no-empty
       try { source?.stop(); } catch {}
 
-      // 由于BufferSource只能start一次，所以新建一个BufferSource
+      // AudioBufferSourceNode 是一次性节点，start 后不能二次 start。无论之前是否 start 过，先调用 stop 清理旧节点。
       const newSource = audioContext.createBufferSource();
 
       newSource.buffer = buffer;
