@@ -17,7 +17,17 @@ let player: Player;
 
     await checkAutoplayPermission();
 
-    await player.loadScene(json);
+    await player.loadScene(json, { autoplay:true }).then(()=>{
+      // debugger
+      player.gotoAndPlay(3);
+      setTimeout(() => {
+        player.pause();
+      }, 1000);
+
+      setTimeout(() => {
+        void player.resume();
+      }, 2000);
+    });
   } catch (e) {
     console.error('biz', e);
   }
