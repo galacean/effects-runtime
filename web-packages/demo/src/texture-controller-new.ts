@@ -1,10 +1,10 @@
 /* eslint-disable no-console */
 const DEBUG = true;
 
-// 状态定义 - 最小化状态机
+// 状态机阶段
 enum Phase { Listening, Input, Stop }
 
-// 事件类型定义
+// 事件类型
 enum EventType {
   VOLUME_ABOVE = 'VOLUME_ABOVE',
   GROUP_TIMEOUT = 'GROUP_TIMEOUT',
@@ -29,11 +29,8 @@ interface TexState {
   color?: [number, number, number, number]; // 颜色值[r,g,b,a]
 }
 
-  // 参数模板定义（保留用于参考，实际参数已移至shader）
-  // 所有模板参数现在在shader的getProfileParams函数中硬编码
-
 export class TextureControllerNew {
-  // 最小状态
+  // 状态管理
   phase = Phase.Listening;
   groupStart = 0;
   enterAt: number | null = null;
@@ -43,31 +40,25 @@ export class TextureControllerNew {
   volumeThreshold = 0.1;
   lastVolume = 0;
 
-  // 模板持续时间常量（与shader中的getProfileParams保持一致）
+  // 模板持续时间常量（与shader保持一致）
   private readonly PROFILE_DURATION = [3.417, 3.458, 3.7, 3.7]; // LB, LG, IA, IB
 
-  // InputB 模板参数（用于链式触发窗口精确计算）
+  // InputB 模板参数（用于链式触发窗口计算）
   private readonly INPUTB_FADE_IN = 0.7417;
   private readonly INPUTB_FADE_OUT_START = 2.2003;
   private readonly INPUTB_FADE_OUT_END = 2.9253;
 
-  // 事件
+  // 事件队列
   events: Event[] = [];
 
-  // 纹理
+  // 纹理列表
   textures: TexState[] = [];
 
-  // 回调
+  // 回调函数
   onStage: (stage: Phase) => void = () => {};
   onUpdate: (textures: TexState[]) => void = () => {};
   onStop: (now: number) => void = () => {};
   onReset: () => void = () => {};
-
-  // 颜色
-  firstStageBlueColor: [number, number, number, number] = [0, 0, 1, 1];
-  firstStageGreenColor: [number, number, number, number] = [0, 1, 0, 1];
-  secondStagePrimaryColor: [number, number, number, number] = [0, 0, 1, 1];
-  secondStageSecondaryColor: [number, number, number, number] = [0, 1, 0, 1];
 
   private nextId = 1;
 
@@ -80,7 +71,7 @@ export class TextureControllerNew {
 
   setVolumeThreshold(v: number) { this.volumeThreshold = v; }
 
-  // 模板到profile的映射
+  // 模板名称到profile索引映射
   private templateToProfile(name: string): 0 | 1 | 2 | 3 {
     switch (name) {
       case 'listeningBlue': return 0;
@@ -91,6 +82,7 @@ export class TextureControllerNew {
     }
   }
 
+  // 根据模板创建纹理状态
   private createFromTemplate(name: string, start: number): TexState {
     const profile = this.templateToProfile(name);
     return {
@@ -101,11 +93,13 @@ export class TextureControllerNew {
     };
   }
 
+  // 调度事件（按时间排序）
   private schedule(time: number, type: EventType, payload?: any) {
     this.events.push({ time, type, payload });
     this.events.sort((a, b) => a.time - b.time);
   }
 
+  // 处理到期事件
   private processEvents(now: number) {
     while (this.events.length && this.events[0].time <= now) {
       const e = this.events.shift()!;
@@ -113,6 +107,7 @@ export class TextureControllerNew {
     }
   }
 
+  // 重置到监听状态
   resetToListening(now: number) {
     this.phase = Phase.Listening;
     this.groupStart = now;
@@ -125,12 +120,10 @@ export class TextureControllerNew {
     this.onReset?.();
 
     const blue = this.createFromTemplate('listeningBlue', now);
-    blue.color = this.firstStageBlueColor;
     const green = this.createFromTemplate('listeningGreen', now);
-    green.color = this.firstStageGreenColor;
     this.textures = [blue, green];
 
-    // 使用PROFILE_DURATION计算组结束时间
+    // 计算组结束时间
     const groupEnd = this.groupStart + Math.max(this.PROFILE_DURATION[0], this.PROFILE_DURATION[1]); // 3.458
     this.schedule(groupEnd, EventType.GROUP_TIMEOUT);
 
@@ -138,43 +131,42 @@ export class TextureControllerNew {
     if (DEBUG) console.log('[Listening] start at', this.groupStart, 'groupEnd@', groupEnd);
   }
 
+  // 进入输入状态
   private enterInput(now: number) {
     this.phase = Phase.Input;
     this.batchId += 1;
     this.enterAt = null;
     this.chainArmed = true;
-    this.stopActive = false; // 新批次恢复可用
+    this.stopActive = false;
 
-    // A 立即生成
+    // 生成InputA纹理
     const A = this.createFromTemplate('inputA', now);
-    A.color = this.secondStagePrimaryColor;
     this.textures.push(A);
 
-    // B 延迟 0.733s（事件队列，无 setTimeout）
+    // 延迟生成InputB纹理
     this.schedule(now + 0.733, EventType.SPAWN_B, { batchId: this.batchId });
 
     this.onStage?.(Phase.Input);
     if (DEBUG) console.log('[Input] enter batch', this.batchId);
   }
 
-  // 提前熄灭：使用shader的_StopSignal和_StopTime机制
+  // 停止输入状态（提前熄灭）
   stop() {
     if (this.phase !== Phase.Input || this.stopActive) return;
     const now = performance.now() / 1000;
     this.stopActive = true;
 
-    // 进入 Stop 阶段
     this.phase = Phase.Stop;
 
-    // 清掉当前批次待生成的 B
+    // 清除待生成的B纹理事件
     this.events = this.events.filter(e => !(e.type === EventType.SPAWN_B && e.payload?.batchId === this.batchId));
 
-    // 不再手动修改纹理参数，让shader处理快速熄灭
     this.chainArmed = false;
     this.onStop?.(now);
     if (DEBUG) console.log('[Stop] early fade, batch', this.batchId);
   }
 
+  // 事件处理器
   private handle(e: Event, now: number) {
     switch (e.type) {
       case EventType.VOLUME_ABOVE:
@@ -187,7 +179,7 @@ export class TextureControllerNew {
 
       case EventType.GROUP_TIMEOUT:
         if (this.phase === Phase.Listening && this.enterAt == null) {
-          // 等价旧逻辑：组结束时，看当时音量决定进入或重启
+          // 组结束时根据音量决定进入输入状态或重置
           if (this.lastVolume >= this.volumeThreshold) {
             this.enterInput(now);
           } else {
@@ -204,7 +196,6 @@ export class TextureControllerNew {
         const { batchId } = e.payload || {};
         if (this.phase === Phase.Input && batchId === this.batchId && !this.stopActive) {
           const B = this.createFromTemplate('inputB', now);
-          B.color = this.secondStageSecondaryColor;
           this.textures.push(B);
           if (DEBUG) console.log('[Input] spawn B for batch', this.batchId);
         }
@@ -213,7 +204,7 @@ export class TextureControllerNew {
 
       case EventType.CHAIN_TRY:
         if (this.phase === Phase.Input && this.chainArmed && !this.stopActive) {
-          this.chainArmed = false; // 只允许一次
+          this.chainArmed = false;
           this.enterInput(now);
         }
         break;
@@ -224,52 +215,28 @@ export class TextureControllerNew {
     }
   }
 
-  setFirstStageColors(blue?: [number, number, number, number], green?: [number, number, number, number]) {
-    if (blue) this.firstStageBlueColor = blue;
-    if (green) this.firstStageGreenColor = green;
-    for (const t of this.textures) {
-      if (t.profile === 0) { // listeningBlue
-        t.color = this.firstStageBlueColor;
-      } else if (t.profile === 1) { // listeningGreen
-        t.color = this.firstStageGreenColor;
-      }
-    }
-  }
 
-  setSecondStageColors(primary?: [number, number, number, number], secondary?: [number, number, number, number]) {
-    if (primary) this.secondStagePrimaryColor = primary;
-    if (secondary) this.secondStageSecondaryColor = secondary;
-    for (const t of this.textures) {
-      if (t.profile === 2) { // inputA
-        t.color = this.secondStagePrimaryColor;
-      } else if (t.profile === 3) { // inputB
-        t.color = this.secondStageSecondaryColor;
-      }
-    }
-  }
-
+  // 主更新循环
   update(delta: number, volume: number, now: number) {
     this.lastVolume = volume;
 
-    // 处理到期事件
     this.processEvents(now);
 
-    // 监听阶段：首次越阈值立即预约 enterAt（组起点+2.75 或现在）
+    // 监听阶段：音量超过阈值时安排进入输入状态
     if (this.phase === Phase.Listening && this.enterAt == null && volume >= this.volumeThreshold) {
       this.handle({ time: now, type: EventType.VOLUME_ABOVE }, now);
     }
 
-    // 输入阶段：音量跌破阈值 → 提前淡出（与旧 stop 等价）
+    // 输入阶段：音量低于阈值时停止
     if (this.phase === Phase.Input && !this.stopActive && volume < this.volumeThreshold) {
       this.stop();
     }
 
-    // 输入阶段：链式触发窗口 - 基于B纹理的时序常量精确计算
+    // 输入阶段：链式触发窗口检查
     if (this.phase === Phase.Input && this.chainArmed && !this.stopActive) {
-      // 查找当前批次的B纹理
       const B = this.textures.find(t => t.profile === 3 && t.batchId === this.batchId);
       if (B) {
-        // 精确计算触发窗口：基于B纹理的fade参数
+        // 基于B纹理的fade参数计算触发窗口
         const fadeOutStart = this.INPUTB_FADE_OUT_START; // 2.2003
         const fadeIn = this.INPUTB_FADE_IN; // 0.7417
         const halfDisplay = (fadeOutStart - fadeIn) * 0.5; // 后半显示段开始偏移量
@@ -282,43 +249,27 @@ export class TextureControllerNew {
       }
     }
 
-    // 清理过期纹理 - 使用PROFILE_DURATION
+    // 清理过期纹理
     this.textures = this.textures.filter(t => {
       const elapsed = now - t.startedAt;
       return elapsed < this.PROFILE_DURATION[t.profile];
     });
 
-    // 批次耗尽后的处理 - 检查是否有输入阶段的纹理（profile 2或3）
+    // 检查批次是否耗尽
     const hasInput = this.textures.some(t => t.profile === 2 || t.profile === 3);
     const hasPendingB = this.events.some(e => e.type === EventType.SPAWN_B && e.payload?.batchId === this.batchId);
 
     if (!hasInput && !hasPendingB) {
       if (this.phase === Phase.Input) {
-        // 仅当没有 stop 时才自动回监听
+        // 没有stop时自动返回监听状态
         if (!this.stopActive) {
-          this.handle({ time: now, type: EventType.INPUT_DRAINED }, now); // resetToListening(now)
+          this.handle({ time: now, type: EventType.INPUT_DRAINED }, now);
         }
       } else if (this.phase === Phase.Stop) {
-        // 停在 Stop，不自动重启（与老版本一致）
-        // 可在这里通知 UI：完全结束，可选
-        // this.onStage?.(Phase.Stop);
+        // 保持在Stop状态，不自动重启
       }
     }
 
     this.onUpdate?.(this.textures);
-  }
-
-  captureSnapshot() {
-    return this.textures.map(t => ({
-      id: t.id,
-      x: 0, // 这些值现在由shader计算，不再需要
-      y: 0,
-      alpha: 1,
-      initialU: 0,
-      initialV: 0,
-      type: t.profile < 2 ? 'listening' : 'input', // 根据profile推断类型
-      textureType: t.profile === 0 ? 'blue' : t.profile === 1 ? 'green' : 'input',
-      isSecondTexture: t.profile === 3 // 只有inputB是第二阶段纹理
-    }));
   }
 }
