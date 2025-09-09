@@ -6,7 +6,7 @@ import { VFXItem } from '../vfx-item';
 import type { Material } from '../material';
 import type { ColorStop } from '../utils';
 import { colorStopsFromGradient, getColorFromGradientStops } from '../utils';
-import { BaseRenderComponent } from '../components';
+import { MaskableGraphic } from '../components';
 
 export interface ColorPlayableAssetData extends spec.EffectsObjectData {
   colorOverLifetime?: spec.ColorOverLifetime,
@@ -20,7 +20,7 @@ export class ColorPlayable extends Playable {
   opacityOverLifetime: ValueGetter<number>;
   startColor: spec.RGBAColorValue;
   renderColor: spec.vec4 = [1, 1, 1, 1];
-  activeComponent?: BaseRenderComponent;
+  activeComponent?: MaskableGraphic;
   activeMaterial?: Material;
 
   override processFrame (context: FrameContext): void {
@@ -77,8 +77,8 @@ export class ColorPlayable extends Playable {
     return this;
   }
 
-  getActiveComponent (boundObject: VFXItem): BaseRenderComponent {
-    return boundObject.getComponent(BaseRenderComponent);
+  getActiveComponent (boundObject: VFXItem): MaskableGraphic {
+    return boundObject.getComponent(MaskableGraphic);
   }
 
 }

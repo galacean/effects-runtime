@@ -3,7 +3,7 @@ import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import type { ItemRenderer } from '../../components';
-import { BaseRenderComponent } from '../../components';
+import { MaskableGraphic } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
@@ -45,7 +45,7 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends BaseRenderComponent {
+export class TextComponent extends MaskableGraphic {
   isDirty = true;
   /**
    * 文本行数
