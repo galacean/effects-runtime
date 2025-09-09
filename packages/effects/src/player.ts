@@ -523,6 +523,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       player: this,
       playing: false,
     });
+    this.compositions.map(composition => {
+      composition.pause();
+    });
+
     if (options && options.offloadTexture) {
       this.offloadTexture();
     }
@@ -543,6 +547,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.resumePending = false;
       this.emit('resume');
     }
+    this.compositions.map(composition => {
+      composition.resume();
+    });
     this.ticker?.resume();
   }
 
