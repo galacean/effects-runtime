@@ -31,7 +31,7 @@ interface MaskableGraphicData extends spec.ComponentData {
 }
 
 /**
- * @since 2.1.0
+ * @since 2.7.0
  */
 export class MaskableGraphic extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
@@ -300,10 +300,10 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   override fromData (data: unknown): void {
     super.fromData(data);
 
-    const baseRenderComponentData = (data as MaskableGraphicData);
-    const renderer = baseRenderComponentData.renderer ?? {};
+    const maskableGraphicData = (data as MaskableGraphicData);
+    const renderer = maskableGraphicData.renderer ?? {};
 
-    const maskOptions = baseRenderComponentData.mask;
+    const maskOptions = maskableGraphicData.mask;
 
     if (maskOptions) {
       this.maskManager.setMaskOptions(maskOptions);

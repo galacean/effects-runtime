@@ -2,7 +2,7 @@ import { SpriteComponent, Texture, Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('core/components/base-render-component', () => {
+describe('core/components/maskable-graphic', () => {
   let player: Player;
 
   before(() => {
@@ -22,7 +22,7 @@ describe('core/components/base-render-component', () => {
   });
 
   // 纹理设置设置
-  it('baseRenderComponent setTexture by URL', async () => {
+  it('MaskableGraphic setTexture by URL', async () => {
     const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ';
     const composition = await player.loadScene(json);
     const component = composition.getItemByName('sprite_1')!.getComponent(SpriteComponent);
@@ -36,7 +36,7 @@ describe('core/components/base-render-component', () => {
     expect(newTexture.id).to.eql(texture?.id, 'final texture id');
   });
 
-  it('baseRenderComponent setTexture by Texture', async () => {
+  it('MaskableGraphic setTexture by Texture', async () => {
     const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ';
     const composition = await player.loadScene(json);
     const component = composition.getItemByName('sprite_1')!.getComponent(SpriteComponent);
