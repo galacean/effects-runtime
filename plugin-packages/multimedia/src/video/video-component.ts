@@ -1,5 +1,5 @@
 import type { Asset, Engine, GeometryFromShape, Renderer, Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { BaseRenderComponent, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
+import { MaskableGraphic, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -19,7 +19,7 @@ let seed = 0;
  *
  */
 @effectsClass(spec.DataType.VideoComponent)
-export class VideoComponent extends BaseRenderComponent {
+export class VideoComponent extends MaskableGraphic {
   video?: HTMLVideoElement;
 
   private threshold = 0.03;
