@@ -96,10 +96,14 @@ export class TestPlayer {
   async readImageBuffer () {
     await sleep(sleepTime);
     const ctx = this.canvas.getContext(this.renderFramework) as WebGL2RenderingContext;
-    const pixels = new Uint8Array(this.width * this.height * 4);
+
+    //使用实际的drawingBuffer读取，而不是使用画布尺寸
+    const originalWidth = ctx.drawingBufferWidth;
+    const originalHeight = ctx.drawingBufferHeight ;
+    const pixels = new Uint8Array(originalWidth * originalHeight * 4);
 
     ctx.flush();
-    ctx.readPixels(0, 0, this.width, this.height, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels);
+    ctx.readPixels(0, 0, originalWidth, originalHeight, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels);
 
     return pixels;
   }
