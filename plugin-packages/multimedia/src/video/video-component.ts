@@ -16,7 +16,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
 let seed = 0;
 
 /**
- *
+ * Video component class
  */
 @effectsClass(spec.DataType.VideoComponent)
 export class VideoComponent extends MaskableGraphic {
