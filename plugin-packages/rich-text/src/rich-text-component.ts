@@ -61,6 +61,9 @@ interface RichCharInfo {
 
 let seed = 0;
 
+/**
+ * RichText component class
+ */
 @effectsClass(spec.DataType.RichTextComponent)
 export class RichTextComponent extends TextComponent {
   processedTextOptions: RichTextOptions[] = [];

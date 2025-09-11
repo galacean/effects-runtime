@@ -2,6 +2,9 @@ import type { Asset } from '@galacean/effects';
 import { effectsClass, RendererComponent, spec } from '@galacean/effects';
 import { AudioPlayer } from './audio-player';
 
+/**
+ * Audio component class
+ */
 @effectsClass(spec.DataType.AudioComponent)
 export class AudioComponent extends RendererComponent {
   audioPlayer: AudioPlayer;
