@@ -84,6 +84,9 @@ export class ComponentTimePlayable extends Playable {
   }
 }
 
+/**
+ * Sprite component class
+ */
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends MaskableGraphic {
   time = 0;

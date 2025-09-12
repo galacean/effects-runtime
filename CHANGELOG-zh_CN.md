@@ -8,6 +8,13 @@
 
 ---
 
+## 2.6.6
+
+`2025-09-10`
+
+- Fix: incorrect frame comparison pixel read. [#1180](https://github.com/galacean/effects-runtime/pull/1180) @Fryt1
+- Fix: spine bounding box issue. [#1182](https://github.com/galacean/effects-runtime/pull/1182) @wumaolinmaoan
+
 ## 2.6.5
 
 `2025-08-29`
