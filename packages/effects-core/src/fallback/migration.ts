@@ -271,10 +271,59 @@ export function version34Migration (json: JSONScene): JSONScene {
     }
   }
 
+  // 参考version33Migration中处理富文本插件名称的方式
+  // 处理富文本lineGap兼容性
+  processRichTextLineGapCompatibility(json);
+
   //@ts-expect-error
   json.version = '3.5';
 
   return json;
+}
+
+/**
+ * 参考version33Migration中处理富文本插件名称的方式
+ * 处理富文本lineGap兼容性
+ */
+function processRichTextLineGapCompatibility(json: JSONScene) {
+  if (!json.components) return;
+  
+  // 遍历所有组件，处理富文本组件
+  for (const component of json.components) {
+    // 识别富文本组件并处理lineGap兼容性
+    if (component.dataType === 'RichTextComponent' && (component as any).options) {
+      ensureRichTextLineGap((component as any).options);
+    }
+  }
+}
+
+/**
+ * 确保富文本组件有lineGap字段
+ */
+function ensureRichTextLineGap(options: any) {
+  // 检查是否存在lineGap字段
+  if (!options || options.lineGap !== undefined) {
+    return;
+  }
+
+  // 如果没有lineGap字段，则添加默认值：0.571 * fontSize
+  const fontSize = options.fontSize || 40; // 默认字号40
+  const defaultLineGap = 0.571 * fontSize;
+  
+  // 添加lineGap字段
+  options.lineGap = Math.round(defaultLineGap * 1000000) / 1000000;
+  
+  // 添加迁移标记（便于调试和追踪）
+  if (!options._migrated) {
+    options._migrated = {};
+  }
+  options._migrated.lineGap = {
+    added: true,
+    defaultValue: 0.571,
+    calculatedValue: options.lineGap,
+    fontSize: fontSize,
+    reason: 'add-default-linegap-for-compatibility'
+  };
 }
 
 /**

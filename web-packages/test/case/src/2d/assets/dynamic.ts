@@ -14,7 +14,7 @@ export default {
     },
   },
   richTextTest: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Z0v1T5rij5AAAAAAAAAAAAAAelB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*hl16RL4R6VcAAAAAQOAAAAgAelB4AQ',
     name: '富文本测试',
     variables: {
       'price': '<size=68>80.15</size><size=29>元</size>',
@@ -41,7 +41,6 @@ export default {
       'video': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
       'text_3': 'Dynamic Video',
     },
-    threshold: 0.17,
   },
 };
 

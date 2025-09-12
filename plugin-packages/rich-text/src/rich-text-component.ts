@@ -147,9 +147,9 @@ export class RichTextComponent extends TextComponent {
       offsetX: [],
       width: 0,
       // 包括字体和上下行间距的高度
-      lineHeight: fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)),
+      lineHeight: fontHeight * this.singleLineHeight + (this.textLayout.lineGap || 0) * this.textStyle.fontScale,
       // 字体偏移高度（也就是行间距）
-      offsetY: fontHeight * ((this.singleLineHeight + (this.textLayout.lineGap || 0) - 1)) / 2,
+      offsetY: (this.textLayout.lineGap || 0) * this.textStyle.fontScale / 2,
       chars: [],
     };
 
@@ -165,8 +165,8 @@ export class RichTextComponent extends TextComponent {
           richOptions: [],
           offsetX: [],
           width: 0,
-          lineHeight: fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)),
-          offsetY: fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0) - 1) / 2,
+          lineHeight: fontHeight * this.singleLineHeight + (this.textLayout.lineGap || 0) * this.textStyle.fontScale,
+          offsetY: (this.textLayout.lineGap || 0) * this.textStyle.fontScale / 2,
           chars: [],
         };
         // 管理行的总高度调整canvas尺寸
@@ -175,12 +175,12 @@ export class RichTextComponent extends TextComponent {
       // 恢复默认设置
       context.font = `${options.fontWeight || textStyle.textWeight} 10px ${options.fontFamily || textStyle.fontFamily}`;
 
-      const textHeight = fontSize * (this.singleLineHeight + (this.textLayout.lineGap || 0)) * this.textStyle.fontScale;
+      const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale + (this.textLayout.lineGap || 0) * this.textStyle.fontScale;
 
       if (textHeight > charInfo.lineHeight) {
         height += textHeight - charInfo.lineHeight;
         charInfo.lineHeight = textHeight;
-        charInfo.offsetY = fontSize * this.textStyle.fontScale * ((this.singleLineHeight + (this.textLayout.lineGap || 0)) - 1) / 2;
+        charInfo.offsetY = (this.textLayout.lineGap || 0) * this.textStyle.fontScale / 2;
       }
 
       charInfo.offsetX.push(charInfo.width);
@@ -246,7 +246,7 @@ export class RichTextComponent extends TextComponent {
     if (charsInfo.length === 0) {
       return;
     }
-    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * (this.singleLineHeight + (this.textLayout.lineGap || 0)), textStyle.fontSize);
+    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight + (this.textLayout.lineGap || 0) * this.textStyle.fontScale, textStyle.fontSize);
 
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX, width, chars } = charInfo;
@@ -274,7 +274,7 @@ export class RichTextComponent extends TextComponent {
       const x = this.textLayout.getOffsetX(textStyle, charWidth);
 
       if (index > 0) {
-        charsLineHeight += charsInfo[index - 1].lineHeight;
+        charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
       }
 
       richOptions.forEach((options, index) => {
