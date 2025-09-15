@@ -54,7 +54,7 @@
     "@galacean/effects-specification": "2.5.1",
     "@galacean/effects-math": "1.1.0",
     "flatbuffers": "24.3.25",
-    "uuid": "9.0.1",
+    "uuid": "13.0.0",
     "libtess": "1.2.2"
   }
 }
