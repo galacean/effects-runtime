@@ -10,6 +10,7 @@ export class AudioComponent extends RendererComponent {
     super.onAwake();
 
     this.item.composition?.on('play', (option: { time: number }) => {
+      this.audioPlayer.setMuted(false);
       if (this.item.time <= 0) {return;}
       this.audioPlayer.setCurrentTime(this.item.time);
       this.audioPlayer.play();
@@ -17,11 +18,13 @@ export class AudioComponent extends RendererComponent {
     });
 
     this.item.composition?.on('pause', () => {
+      this.audioPlayer.setMuted(true);
       this.audioPlayer.pause();
       this.isPlaying = false;
     });
 
     this.item.composition?.on('goto', (option: { time: number }) => {
+      this.audioPlayer.setMuted(true);
       this.audioPlayer.setCurrentTime(this.item.time);
     });
   }
