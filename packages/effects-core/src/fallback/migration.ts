@@ -175,8 +175,11 @@ export function version33Migration (json: JSONScene): JSONScene {
     const compositionComponent = {
       id: generateGUID(),
       dataType: 'CompositionComponent',
+      //@ts-expect-error
       items: composition.items,
+      //@ts-expect-error
       timelineAsset: composition.timelineAsset,
+      //@ts-expect-error
       sceneBindings: composition.sceneBindings,
       item: { id: composition.id },
     } as unknown as spec.ComponentData;
@@ -185,7 +188,6 @@ export function version33Migration (json: JSONScene): JSONScene {
     composition.timelineAsset = undefined;
     //@ts-expect-error
     composition.sceneBindings = undefined;
-    //@ts-expect-error
     composition.components = [{ id: compositionComponent.id }];
     json.components.push(compositionComponent);
   }
@@ -214,10 +216,8 @@ export function version34Migration (json: JSONScene): JSONScene {
 
   // 修复合成组件的 item id 问题
   for (const composition of json.compositions) {
-    // TODO: Update spec
-    //@ts-expect-error
     for (const component of composition.components) {
-      const componentID = (component as spec.DataPath).id;
+      const componentID = (component).id;
 
       idToComponentMap[componentID].item.id = composition.id;
     }
@@ -361,6 +361,7 @@ function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName 
 }
 
 export function processContent (composition: spec.CompositionData) {
+  //@ts-expect-error
   for (const item of composition.items) {
     const itemProps = itemMap.get(item.id);
 
@@ -448,7 +449,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       result.textures.push({
         id: generateGUID(),
         dataType: DataType.Texture,
-        //@ts-expect-error
         source: { id: result.images[i].id },
         flipY: true,
       });
@@ -523,6 +523,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
     const compositionData: CompositionData = {
       ...composition,
+      //@ts-expect-error
       timelineAsset: { id: '' },
       sceneBindings: [],
     };
@@ -781,6 +782,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     dataType: 'TimelineAsset',
   };
 
+  //@ts-expect-error
   for (const itemDataPath of composition.items) {
     const item = guidToItemMap[itemDataPath.id];
     const subTrackDatas = [];
@@ -919,7 +921,9 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     trackIds.push({ id: trackData.id });
   }
 
+  //@ts-expect-error
   composition.timelineAsset = { id: timelineAssetData.id };
+  //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 
   jsonScene.miscs.push(timelineAssetData);

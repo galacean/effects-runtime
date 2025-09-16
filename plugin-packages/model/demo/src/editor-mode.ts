@@ -198,6 +198,7 @@ function addWireframeItems (scene: spec.JSONScene, hide3DModel = true) {
       id: item.id,
     });
   }
+  //@ts-expect-error
   newComposition.items = items;
   const newScene: spec.JSONScene = {
     ...scene,
