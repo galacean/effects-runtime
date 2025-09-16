@@ -38,6 +38,8 @@ export class GPUCapability {
   type: GLType;
   level: number;
   detail: Immutable<GPUCapabilityDetail>;
+  capabilityList: Map<GLCapabilityType, boolean>;
+
   UNSIGNED_INT_24_8: number;
   internalFormatDepth16: number;
   internalFormatDepth24_stencil8: number;
@@ -52,7 +54,14 @@ export class GPUCapability {
   ) {
     this.setupCapability(gl);
   }
+  get isWebGL2 (): boolean {
+    return this.level === 2;
+  }
+  canIUse (cap: GLCapabilityType): boolean {
+    const caps = this.capabilityList as unknown as ReadonlyMap<GLCapabilityType, boolean>;
 
+    return !!caps.get(cap);
+  }
   private setupCapability (gl: WebGLRenderingContext | WebGL2RenderingContext) {
     const level = isWebGL2Available && gl instanceof WebGL2RenderingContext ? 2 : 1;
     const level2 = level === 2;
@@ -81,6 +90,34 @@ export class GPUCapability {
     this.internalFormatDepth24_stencil8 = level2 ? (gl as WebGL2RenderingContext).DEPTH24_STENCIL8 : gl.DEPTH_STENCIL;
     const floatTexture = (level2 || gl.getExtension('OES_texture_float')) ? gl.FLOAT : 0;
     const halfFloatTexture = level2 ? WebGL2RenderingContext.HALF_FLOAT : (gl.getExtension('OES_texture_half_float')?.HALF_FLOAT_OES || 0);
+
+    this.capabilityList = new Map([
+      // ASTC
+      ['WEBGL_compressed_texture_astc' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_astc')],
+      ['WEBKIT_WEBGL_compressed_texture_astc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_astc')], // ETC / ETC1（标准与 WebKit 前缀）
+      // 这里把 etc 视为 etc2/eac 或 etc1 任一命中了
+      ['WEBGL_compressed_texture_etc' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBGL_compressed_texture_etc1')],
+      ['WEBKIT_WEBGL_compressed_texture_etc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
+      // 没有单独区分etc1
+      ['WEBGL_compressed_texture_etc1' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_etc1')],
+      ['WEBKIT_WEBGL_compressed_texture_etc1' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
+
+      // BC7
+      ['EXT_texture_compression_bptc' as GLCapabilityType, !!gl.getExtension('EXT_texture_compression_bptc')],
+      // S3TC（包含厂商前缀）与 sRGB 变体
+      ['WEBGL_compressed_texture_s3tc' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_s3tc') || !!gl.getExtension('MOZ_WEBGL_compressed_texture_s3tc')
+                                                            || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc')],
+      ['WEBKIT_WEBGL_compressed_texture_s3tc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_s3tc')],
+      ['WEBGL_compressed_texture_s3tc_srgb' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_s3tc_srgb')],
+
+      ['WEBGL_compressed_texture_pvrtc' as GLCapabilityType,
+        !!gl.getExtension('WEBGL_compressed_texture_pvrtc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+      ['WEBKIT_WEBGL_compressed_texture_pvrtc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+
+      // 其他
+      ['WEBGL_lose_context' as GLCapabilityType, !!gl.getExtension('WEBGL_lose_context')],
+      ['EXT_sRGB' as GLCapabilityType, !!gl.getExtension('EXT_sRGB')],
+    ]);
     const detail: GPUCapabilityDetail = {
       floatTexture,
       halfFloatTexture,
@@ -193,6 +230,27 @@ export enum COMPRESSED_TEXTURE {
   NONE = 0,
   PVRTC = 1,
   ASTC = 2,
+}
+
+/**
+ * GL Capabilities
+ * Some capabilities can be smoothed out by extension, and some capabilities must use WebGL 2.0.
+ * */
+export enum GLCapabilityType {
+  astc = 'WEBGL_compressed_texture_astc',
+  astc_webkit = 'WEBKIT_WEBGL_compressed_texture_astc',
+  etc = 'WEBGL_compressed_texture_etc',
+  etc_webkit = 'WEBKIT_WEBGL_compressed_texture_etc',
+  etc1 = 'WEBGL_compressed_texture_etc1',
+  etc1_webkit = 'WEBKIT_WEBGL_compressed_texture_etc1',
+  pvrtc = 'WEBGL_compressed_texture_pvrtc',
+  pvrtc_webkit = 'WEBKIT_WEBGL_compressed_texture_pvrtc',
+  s3tc = 'WEBGL_compressed_texture_s3tc',
+  s3tc_webkit = 'WEBKIT_WEBGL_compressed_texture_s3tc',
+  s3tc_srgb = 'WEBGL_compressed_texture_s3tc_srgb',
+  bptc = 'EXT_texture_compression_bptc',
+  WEBGL_lose_context = 'WEBGL_lose_context',
+  sRGB = 'EXT_sRGB'
 }
 
 function registerCompressedTexture (gl: WebGLRenderingContext | WebGL2RenderingContext): number {
