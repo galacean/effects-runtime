@@ -337,8 +337,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.composition = this;
 
     // Create rootItem components
-    //@ts-expect-error TODO update spec.
-    const componentPaths = sourceContent.components as spec.DataPath[];
+    const componentPaths = sourceContent.components;
 
     for (const componentPath of componentPaths) {
       const component = this.getEngine().findObject<Component>(componentPath);
