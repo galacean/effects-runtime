@@ -8,7 +8,6 @@ import {
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShaderVariant } from './gl-shader';
 import type { GLTexture } from './gl-texture';
 
@@ -268,13 +267,12 @@ export class GLMaterial extends Material {
     }
   }
 
-  setupStates (pipelineContext: GLPipelineContext) {
-    this.glMaterialState.apply(pipelineContext);
+  setupStates (engine: GLEngine) {
+    this.glMaterialState.apply(engine);
   }
 
   override use (renderer: Renderer, globalUniforms?: GlobalUniforms) {
     const engine = renderer.engine as GLEngine;
-    const pipelineContext = engine.getGLPipelineContext();
     const shaderVariant = this.shaderVariant as GLShaderVariant;
 
     if (!shaderVariant.program) {
@@ -283,7 +281,7 @@ export class GLMaterial extends Material {
       return;
     }
     shaderVariant.program.bind();
-    this.setupStates(pipelineContext);
+    this.setupStates(engine);
     let name: string;
 
     if (globalUniforms) {

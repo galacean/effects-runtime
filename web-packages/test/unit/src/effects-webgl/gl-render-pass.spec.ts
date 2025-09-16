@@ -97,7 +97,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -119,7 +119,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -146,7 +146,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -367,7 +367,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -410,7 +410,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -454,7 +454,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -494,7 +494,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -537,7 +537,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -585,7 +585,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -605,7 +605,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -615,7 +615,7 @@ describe('webgl/gl-render-pass', () => {
 
   it('RPOrderTest08 render pass resort meshes with meshes.length===1', () => {
     const spy = chai.spy(() => { });
-    const call = renderer.glRenderer.pipelineContext.viewport;
+    const call = renderer.glRenderer.engine.viewport;
     const geom = new GLGeometry(
       engine,
       {
@@ -644,11 +644,11 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
-    renderer.glRenderer.pipelineContext.viewport = spy;
+    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.glRenderer.engine.viewport = spy;
     rp1.configure(renderer);
     expect(spy).has.been.called.once;
-    renderer.glRenderer.pipelineContext.viewport = call;
+    renderer.glRenderer.engine.viewport = call;
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
     expect(rp1.meshes.length).is.eql(1);
@@ -693,7 +693,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -765,7 +765,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -865,7 +865,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -959,7 +959,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -1019,7 +1019,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -1073,7 +1073,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -1103,7 +1103,7 @@ describe('webgl/gl-render-pass', () => {
     const rp2Heigth = 440;
 
     //renderer.resize(oldWidth,oldHeight);
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     const rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       depthStencilAttachment: {
@@ -1200,7 +1200,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     expect(rp1.viewport).to.deep.equal([0, 0, oldWidth, oldHeight]);
     const colorAttachment = rp1.attachments[0];
 
@@ -1285,7 +1285,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.pipelineContext.bindSystemFramebuffer();
+    renderer.glRenderer.engine.bindSystemFramebuffer();
     expect(rp1.viewport?.[2]).to.eql(buildWidth);
     expect(rp1.viewport?.[3]).to.eql(buildHeight);
     const colorAttachment = rp1.attachments[0];

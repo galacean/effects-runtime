@@ -5,6 +5,7 @@ import { GLGeometry } from './gl-geometry';
 import { GLMaterial } from './gl-material';
 import type { GLRenderer } from './gl-renderer';
 import type { GLTexture } from './gl-texture';
+import type { GLEngine } from './gl-engine';
 
 /**
  * 常用的 GPU 方法，不是规范必须实现的
@@ -26,7 +27,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
       this.copyRenderPass = this.createCopyRenderPass().initialize(renderer);
       const shaderSource = this.copyRenderPass.meshes[0].material.shaderSource;
 
-      renderer.pipelineContext.shaderLibrary.addShader(shaderSource);
+      (renderer.engine as GLEngine).shaderLibrary.addShader(shaderSource);
     }
   }
 

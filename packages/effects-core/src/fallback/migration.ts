@@ -11,6 +11,7 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
+import { FillType, type SolidPaintData } from '../components/shape-component';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -235,6 +236,37 @@ export function version34Migration (json: JSONScene): JSONScene {
         //@ts-expect-error
         spriteComponentData.geometry = { id: geometryData.id };
         json.geometries.push(geometryData);
+      }
+    }
+
+    if (componentData.dataType === spec.DataType.ShapeComponent) {
+      const shapeComponentData = componentData as ShapeComponentData;
+
+      //@ts-expect-error
+      shapeComponentData.fills = [];
+      if (shapeComponentData.fill) {
+        const solidPaintData: SolidPaintData = {
+          type: FillType.Solid,
+          color: shapeComponentData.fill.color,
+        };
+
+        //@ts-expect-error
+        shapeComponentData.fills.push(solidPaintData);
+      }
+      delete shapeComponentData.fill;
+
+      //@ts-expect-error
+      shapeComponentData.strokes = [];
+      if (shapeComponentData.stroke) {
+        const solidPaintData: SolidPaintData = {
+          type: FillType.Solid,
+          color: shapeComponentData.stroke.color,
+        };
+
+        //@ts-expect-error
+        shapeComponentData.strokes.push(solidPaintData);
+        //@ts-expect-error
+        shapeComponentData.stroke.color = undefined;
       }
     }
   }

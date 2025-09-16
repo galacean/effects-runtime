@@ -247,6 +247,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private paused = false;
   private isEndCalled = false;
   private _textures: Texture[] = [];
+  private videos: HTMLVideoElement[] = [];
 
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -301,6 +302,15 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.renderer = renderer;
     this._textures = scene.textures;
+
+    for (const key of Object.keys(scene.assets)) {
+      const videoAsset = scene.assets[key];
+
+      if (videoAsset instanceof HTMLVideoElement) {
+        this.videos.push(videoAsset);
+      }
+    }
+
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
     this.getEngine().renderLevel = scene.renderLevel;
 
@@ -504,6 +514,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   resume () {
     this.paused = false;
+    if (this.isEnded && this.reusable) {
+      this.restart();
+    }
+    const time = this.time;
+
+    this.emit('play', { time });
   }
 
   /**
@@ -513,7 +529,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   gotoAndPlay (time: number) {
     this.setTime(time);
     this.resume();
-    this.emit('play', { time });
   }
 
   /**
@@ -707,7 +722,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     let isEnded = false;
 
-    if (localTime - duration > 0.001) {
+    if (localTime >= duration) {
 
       isEnded = true;
 
@@ -890,6 +905,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       texture.dispose();
     }
     this._textures = [];
+
+    for (const video of this.videos) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    }
+    this.videos = [];
+
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();

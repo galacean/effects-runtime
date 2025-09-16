@@ -7,7 +7,6 @@ export * from './gl-texture';
 export * from './gl-framebuffer';
 export * from './gl-gpu-buffer';
 export * from './gl-vertex-array-object';
-export * from './gl-pipeline-context';
 export * from './gl-shader-library';
 export * from './gl-engine';
 export * from './gl-shader';

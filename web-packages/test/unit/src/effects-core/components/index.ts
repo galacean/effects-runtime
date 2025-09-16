@@ -1,1 +1,1 @@
-export * from './base-render-component.spec';
+export * from './maskable-graphic.spec';

@@ -7,24 +7,56 @@ import type { Maskable, MaterialProps } from '../material';
 import { MaskMode, MaskProcessor, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import { Material, setMaskMode } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams, Polygon, ShapePath, StrokeAttributes } from '../plugins';
-import { FillType, MeshCollider } from '../plugins';
+import { MeshCollider } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { ItemRenderer } from './base-render-component';
-import { GradientValue, createValueGetter } from '../math';
+import type { GradientValue } from '../math';
+import { createValueGetter } from '../math';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture/texture';
 import { glContext } from '../gl';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import vert from '../plugins/shape/shaders/shape.vert.glsl';
+import frag from '../plugins/shape/shaders/shape.frag.glsl';
 
-interface FillAttributes {
-  fillType: FillType,
+type Paint = SolidPaint | GradientPaint | TexturePaint;
+
+export enum FillType {
+  Solid,
+  GradientLinear,
+  GradientRadial,
+  GradientAngular,
+  Texture
+}
+
+export interface SolidPaint {
+  type: FillType.Solid,
   color: Color,
-  gradient: GradientValue,
+}
+
+export interface GradientPaint {
+  type: FillType.GradientLinear | FillType.GradientAngular | FillType.GradientRadial,
+  gradientStops: GradientValue,
   startPoint: Vector2,
   endPoint: Vector2,
+}
+
+export interface TexturePaint {
+  type: FillType.Texture,
+  texture: Texture,
+  scaleMode: TexturePaintScaleMode,
+  scalingFactor: number,
+  opacity: number,
+}
+
+export enum TexturePaintScaleMode {
+  Fill,
+  Fit,
+  Crop,
+  Tile
 }
 
 interface ShapeAttributes {
@@ -148,8 +180,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private materialDirty = true;
   private graphicsPath = new GraphicsPath();
 
-  private fills: FillAttributes[] = [];
-  private strokes: StrokeAttributes[] = [];
+  private fills: Paint[] = [];
+  private strokeAttributes: StrokeAttributes = {
+    width: 1,
+    alignment: 0.5,
+    cap: spec.LineCap.Butt,
+    join: spec.LineJoin.Miter,
+    miterLimit: 10,
+  };
+  private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
 
   /**
@@ -159,108 +198,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private renderer: ItemRenderer;
   private geometry: Geometry;
   private readonly maskManager: MaskProcessor;
-
-  private vert = `
-precision highp float;
-
-attribute vec3 aPos;//x y
-attribute vec2 aUV;//x y
-
-varying vec2 uv0;
-
-uniform mat4 effects_MatrixVP;
-uniform mat4 effects_MatrixInvV;
-uniform mat4 effects_ObjectToWorld;
-
-void main() {
-  vec4 pos = vec4(aPos.xyz, 1.0);
-  uv0 = aUV;
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
-}
-`;
-
-  private frag = `
-precision highp float;
-#define _MAX_STOPS 8
-#define PI 3.14159265359
-
-uniform vec4 _Color;                   // 纯色
-uniform vec4 _Colors[_MAX_STOPS];      // 渐变颜色数组
-uniform float _Stops[_MAX_STOPS];      // 渐变控制点位置数组
-uniform int _StopsCount;               // 实际使用的渐变控制点数量
-uniform float _FillType;               // 填充类型 (0:solid, 1:linear, 2:radial, 3:angular)
-uniform vec2 _StartPoint;              // 渐变起点 (0-1范围)
-uniform vec2 _EndPoint;                // 渐变终点 (0-1范围)
-
-varying vec2 uv0;
-
-// 辅助函数：在两点之间进行平滑插值
-vec4 smoothMix(vec4 a, vec4 b, float t) {
-    return mix(a, b, smoothstep(0.0, 1.0, t));
-}
-
-// 计算向量的角度 (返回0到1之间的值)
-float calculateAngleRatio(vec2 v1, vec2 v2) {
-    float angle = atan(v2.y, v2.x) - atan(v1.y, v1.x);
-    // 确保角度在0到2PI之间
-    if (angle < 0.0) angle += 2.0 * PI;
-    return angle / (2.0 * PI);
-}
-
-void main() {
-    vec4 finalColor = vec4(1.0);
-
-    if(_FillType == 0.0) {
-        // 纯色填充
-        finalColor = _Color;
-    } else {
-        float t = 0.0;
-
-        if(_FillType == 1.0) {
-            // 线性渐变
-            vec2 gradientVector = _EndPoint - _StartPoint;
-            vec2 pixelVector = uv0 - _StartPoint;
-            t = dot(pixelVector, gradientVector) / dot(gradientVector, gradientVector);
-            t = clamp(t, 0.0, 1.0);
-        } else if(_FillType == 2.0) {
-            // 径向渐变
-            float maxRadius = distance(_EndPoint, _StartPoint);
-            maxRadius = max(maxRadius, 0.001);
-            t = distance(uv0, _StartPoint) / maxRadius;
-            t = clamp(t, 0.0, 1.0);
-        } else if(_FillType == 3.0) {
-            // 角度渐变
-            vec2 center = _StartPoint;
-            vec2 referenceVector = _EndPoint - center;
-            vec2 targetVector = uv0 - center;
-
-            // 忽略太接近中心点的像素以避免精度问题
-            if (length(targetVector) > 0.001) {
-                t = calculateAngleRatio(referenceVector, targetVector);
-            }
-        }
-
-        // 找到对应的渐变区间
-        finalColor = _Colors[0];
-
-        for(int i = 1; i < _MAX_STOPS; i++) {
-            if(i >= _StopsCount)
-                break;
-
-            float prevStop = _Stops[i - 1];
-            float currStop = _Stops[i];
-
-            if(t >= prevStop && t <= currStop) {
-                float localT = (t - prevStop) / (currStop - prevStop);
-                finalColor = smoothMix(_Colors[i - 1], _Colors[i], localT);
-                break;
-            }
-        }
-    }
-
-    gl_FragColor = finalColor;
-}
-`;
 
   get shape () {
     return this.shapeAttributes;
@@ -288,33 +225,19 @@ void main() {
     // Create Shape Attrributes
     //-------------------------------------------------------------------------
 
-    this.strokes.push({
-      width: 1,
-      alignment: 0.5,
-      cap: spec.LineCap.Butt,
-      join: spec.LineJoin.Miter,
-      miterLimit: 10,
-      color: new Color(0.25, 0.25, 0.25, 1),
-      strokeType: FillType.Solid,
-      gradient: new GradientValue([
-        [0, 1, 1, 0, 1],
-        [1, 0, 0, 1, 1],
-      ]),
-      startPoint: new Vector2(0, 0),
-      endPoint: new Vector2(1, 0),
-    });
-
-    this.fills.push({
+    const gradientStrokeFill: SolidPaint = {
+      type: FillType.Solid,
       color: new Color(1, 1, 1, 1),
-      gradient: new GradientValue([
-        [0, 0.2, 0.2, 0.8, 1],
-        [0.3, 1, 1, 0, 1],
-        [1, 1, 0.2, 0.2, 1],
-      ]),
-      fillType: FillType.Solid,
-      startPoint: new Vector2(0, 0),
-      endPoint: new Vector2(1, 0),
-    });
+    };
+
+    this.strokes.push(gradientStrokeFill);
+
+    const gradientLayerFill: SolidPaint = {
+      type: FillType.Solid,
+      color: new Color(1, 1, 1, 1),
+    };
+
+    this.fills.push(gradientLayerFill);
 
     this.shapeAttributes = {
       type: spec.ShapePrimitiveType.Custom,
@@ -367,8 +290,8 @@ void main() {
 
     const materialProps: MaterialProps = {
       shader: {
-        vertex: this.vert,
-        fragment: this.frag,
+        vertex: vert,
+        fragment: frag,
         glslVersion: GLSLVersion.GLSL1,
       },
     };
@@ -385,8 +308,6 @@ void main() {
     strokeMaterial.depthTest = true;
     strokeMaterial.blending = true;
     this.materials[1] = strokeMaterial;
-
-    this.setupMaterials();
   }
 
   override onStart (): void {
@@ -401,7 +322,7 @@ void main() {
     }
 
     if (this.materialDirty) {
-      this.setupMaterials();
+      this.updateMaterials();
       this.materialDirty = false;
     }
   }
@@ -490,7 +411,7 @@ void main() {
         const points: number[] = [];
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
-        const lineStyle = this.strokes[0];
+        const lineStyle = this.strokeAttributes;
 
         let close = true;
 
@@ -646,7 +567,7 @@ void main() {
     }
   }
 
-  private setupMaterials () {
+  private updateMaterials () {
     for (const material of this.materials) {
       const renderer = this.renderer;
       const { side, occlusion, blending: blendMode, mask, texture } = renderer;
@@ -682,25 +603,33 @@ void main() {
       }
     }
 
-    const fill = this.fills[0];
-    const stroke = this.strokes[0];
+    this.updatePaintMaterial(this.material, this.fills[0]);
+    this.updatePaintMaterial(this.materials[1], this.strokes[0]);
+  }
 
-    this.material.color = fill.color;
-    this.material.setFloat('_FillType', fill.fillType);
+  private updatePaintMaterial (material: Material, paint: Paint) {
+    material.setFloat('_FillType', paint.type);
 
-    this.materials[1].color = stroke.color;
-    this.materials[1].setFloat('_FillType', stroke.strokeType);
+    if (paint.type === FillType.Solid) {
+      material.color = paint.color;
+    } else if (paint.type === FillType.GradientLinear || paint.type === FillType.GradientAngular || paint.type === FillType.GradientRadial) {
+      this.updateGradientMaterial(material, paint.gradientStops, paint.startPoint, paint.endPoint);
+    } else if (paint.type === FillType.Texture) {
+      material.setInt('_ImageScaleMode', paint.scaleMode);
+      material.setVector2('_ImageSize', new Vector2(paint.texture.getWidth(), paint.texture.getHeight()));
 
-    if (fill.fillType !== FillType.Solid) {
-      this.setupGradientMaterial(this.material, fill.gradient, fill.startPoint, fill.endPoint);
-    }
+      const boundingBox = this.getBoundingBox();
+      const topRight = boundingBox.area[0].p1;
+      const bottomLeft = boundingBox.area[1].p2;
 
-    if (stroke.strokeType !== FillType.Solid) {
-      this.setupGradientMaterial(this.materials[1], stroke.gradient, stroke.startPoint, stroke.endPoint);
+      material.setVector2('_DestSize', new Vector2(topRight.x - bottomLeft.x, topRight.y - bottomLeft.y));
+      material.setFloat('_ImageOpacity', paint.opacity);
+      material.setFloat('_ImageScalingFactor', paint.scalingFactor);
+      material.setTexture('_ImageTex', paint.texture);
     }
   }
 
-  private setupGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {
+  private updateGradientMaterial (material: Material, gradient: GradientValue, startPoint: Vector2, endPoint: Vector2) {
     const gradientColors: Vector4[] = [];
     const gradientStops: number[] = [];
 
@@ -710,6 +639,7 @@ void main() {
       gradientColors.push(new Vector4(stopColor.r, stopColor.g, stopColor.b, stopColor.a));
       gradientStops.push(stop.time);
     }
+
     material.setVector4Array('_Colors', gradientColors);
     material.setFloats('_Stops', gradientStops);
     material.setInt('_StopsCount', gradientStops.length);
@@ -737,62 +667,35 @@ void main() {
       mask: this.maskManager.getRefValue(),
     };
 
-    const strokeParam = data.stroke;
+    const strokeAttributes = data.stroke;
 
-    if (strokeParam) {
-      this.hasStroke = true;
-      const stroke = this.strokes[0];
+    if (strokeAttributes) {
+      this.strokeAttributes = {
+        width: strokeAttributes.width,
+        alignment: 0.5,
+        cap: strokeAttributes.cap,
+        join: strokeAttributes.join,
+        miterLimit: 10,
+      };
+    }
 
-      stroke.width = strokeParam.width;
-      stroke.cap = strokeParam.cap;
-      stroke.join = strokeParam.join;
+    //@ts-expect-error
+    for (const stroke of data.strokes) {
+      const strokeParam = stroke as PaintData;
 
-      stroke.color.copyFrom(strokeParam.color);
-
-      //@ts-expect-error
-      stroke.strokeType = strokeParam.strokeType ?? FillType.Solid;
-
-      //@ts-expect-error
-      if (strokeParam.gradient) {
-        //@ts-expect-error
-        stroke.gradient = createValueGetter(strokeParam.gradient);
-      }
-
-      //@ts-expect-error
-      if (strokeParam.startPoint) {
-        //@ts-expect-error
-        stroke.startPoint.copyFrom(strokeParam.startPoint);
-      }
-
-      //@ts-expect-error
-      if (strokeParam.endPoint) {
-        //@ts-expect-error
-        stroke.endPoint.copyFrom(strokeParam.endPoint);
+      if (strokeParam) {
+        this.hasStroke = true;
+        this.strokes[0] = this.createPaint(strokeParam);
       }
     }
 
-    const fillParam = data.fill;
+    //@ts-expect-error
+    for (const fill of data.fills) {
+      const fillParam = fill as PaintData;
 
-    if (fillParam) {
-      this.hasFill = true;
-
-      const fill = this.fills[0];
-
-      fill.color.copyFrom(fillParam.color);
-      //@ts-expect-error
-      fill.fillType = fillParam.fillType ?? FillType.Solid;
-
-      if (fillParam.gradient) {
-        //@ts-expect-error
-        fill.gradient = createValueGetter(fillParam.gradient);
-      }
-
-      if (fillParam.startPoint) {
-        fill.startPoint.copyFrom(fillParam.startPoint);
-      }
-
-      if (fillParam.endPoint) {
-        fill.endPoint.copyFrom(fillParam.endPoint);
+      if (fillParam) {
+        this.hasFill = true;
+        this.fills[0] = this.createPaint(fillParam);
       }
     }
 
@@ -876,8 +779,46 @@ void main() {
         break;
       }
     }
+  }
 
-    this.setupMaterials();
+  private createPaint (paintData: PaintData): Paint {
+    let paint: Paint;
+
+    switch (paintData.type) {
+      case FillType.Solid: {
+        paint = {
+          type:paintData.type,
+          color:new Color().copyFrom(paintData.color),
+        };
+
+        break;
+      }
+      case FillType.GradientLinear:
+      case FillType.GradientAngular:
+      case FillType.GradientRadial: {
+        paint = {
+          type:paintData.type,
+          gradientStops:createValueGetter(paintData.gradientStops) as GradientValue,
+          startPoint:new Vector2().copyFrom(paintData.startPoint),
+          endPoint: new Vector2().copyFrom(paintData.endPoint),
+        };
+
+        break;
+      }
+      case FillType.Texture:{
+        paint = {
+          type:paintData.type,
+          texture: this.engine.findObject<Texture>(paintData.texture),
+          scaleMode: paintData.scaleMode,
+          scalingFactor: paintData.scalingFactor ?? 1,
+          opacity: paintData.opacity ?? 1,
+        };
+
+        break;
+      }
+    }
+
+    return paint;
   }
 
   override onApplyAnimationProperties (): void {
@@ -886,3 +827,39 @@ void main() {
   }
 }
 
+export type PaintData =
+  | SolidPaintData
+  | GradientPaintData
+  | TexturePaintData;
+
+export interface SolidPaintData {
+  type: FillType.Solid,
+  /**
+   * 填充颜色
+   */
+  color: spec.ColorData,
+}
+
+export interface GradientPaintData {
+  type: FillType.GradientLinear | FillType.GradientAngular | FillType.GradientRadial,
+  /**
+   * 渐变颜色
+   */
+  gradientStops: spec.GradientColor,
+  /**
+   * 渐变起点
+   */
+  startPoint: spec.Vector2Data,
+  /**
+   * 渐变终点
+   */
+  endPoint: spec.Vector2Data,
+}
+
+export interface TexturePaintData {
+  type: FillType.Texture,
+  texture: spec.DataPath,
+  scaleMode: TexturePaintScaleMode,
+  scalingFactor?: number,
+  opacity?: number,
+}
