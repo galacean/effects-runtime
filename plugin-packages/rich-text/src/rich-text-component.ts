@@ -246,8 +246,19 @@ export class RichTextComponent extends TextComponent {
     if (charsInfo.length === 0) {
       return;
     }
-    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight + (this.textLayout.lineGap || 0) * this.textStyle.fontScale, textStyle.fontSize);
 
+    // 行高数组
+    const lineHeights = charsInfo.map(l => l.lineHeight);
+
+    // 计算第一行基线Y坐标
+    // 获取当前行最大字号
+    const firstLine = charsInfo[0];
+    const firstLineMaxFontSize = Math.max(...(firstLine?.richOptions?.map(opt => opt.fontSize) ?? [this.textStyle.fontSize]));
+    const fontSizeForOffset = firstLineMaxFontSize * this.textStyle.fontScale * this.singleLineHeight;
+
+    let baselineY = textLayout.getOffsetYRich(this.textStyle, lineHeights, fontSizeForOffset);
+
+    // 逐行绘制
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX, width, chars } = charInfo;
       let charWidth = width;
@@ -273,11 +284,7 @@ export class RichTextComponent extends TextComponent {
       }
       const x = this.textLayout.getOffsetX(textStyle, charWidth);
 
-      if (index > 0) {
-        charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
-      }
-
-      richOptions.forEach((options, index) => {
+      richOptions.forEach((options, segIndex) => {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
         let textSize = fontSize;
@@ -288,19 +295,24 @@ export class RichTextComponent extends TextComponent {
           }
         }
 
-        const strOffsetX = offset[index] + x;
+        const strOffsetX = offset[segIndex] + x;
 
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
 
         // 遍历当前行的 chars 逐字绘制
-        const charArr = charInfo.chars[index]; // 只取当前片段的字符数组
+        const charArr = charInfo.chars[segIndex]; // 只取当前片段的字符数组
 
         charArr.forEach(charDetail => {
-          context.fillText(charDetail.char, strOffsetX + charDetail.x, charsLineHeight);
+          context.fillText(charDetail.char, strOffsetX + charDetail.x, baselineY);
         });
 
       });
+
+      // 推进到下一行
+      if (index < charsInfo.length - 1) {
+        baselineY += lineHeights[index + 1];
+      }
     });
     // 与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);

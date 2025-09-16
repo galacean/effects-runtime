@@ -35,7 +35,7 @@ export class TextLayout {
     this.height = textHeight;
 
     this.letterSpace = letterSpace;
-    this.lineGap = lineGap;
+    this.lineGap = lineGap ;
     this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
@@ -92,7 +92,6 @@ export class TextLayout {
 
         break;
       case spec.TextAlignment.right:
-
         offsetX = (this.width * style.fontScale - maxWidth);
 
         break;
@@ -101,7 +100,46 @@ export class TextLayout {
     }
 
     return offsetX;
+  }
 
+  /**
+   * 富文本垂直对齐计算
+   * @param style - 字体样式
+   * @param lineHeights - 每行高度数组
+   * @param fontSize - 字体大小（用于保持与getOffsetY相同的接口）
+   * @returns 第一行基线的Y坐标
+   */
+  getOffsetYRich (style: TextStyle, lineHeights: number[], fontSize: number): number {
+    const { outlineWidth, fontScale } = style;
+    const total = lineHeights.reduce((a, b) => a + b, 0);
+
+    // 使用与原始getOffsetY相同的经验值计算
+    // /3 计算Y轴偏移量，以匹配编辑器行为
+    const offsetY = (lineHeights[0] - fontSize) / 3;
+    // 计算基础偏移量（从画布顶部到第一行基线的距离）
+    const baseOffset = fontSize + outlineWidth * fontScale;
+    // 除第一行外的所有行的总高度
+    const commonCalculation = total - lineHeights[0]; // 使用实际总高度减去第一行高度
+    let offsetResult = 0;
+
+    switch (this.textBaseline) {
+      case spec.TextBaseline.top:
+        offsetResult = baseOffset + offsetY;
+
+        break;
+      case spec.TextBaseline.middle:
+        offsetResult = (this.height * fontScale - total + this.lineGap * fontScale) / 2 + baseOffset;
+
+        break;
+      case spec.TextBaseline.bottom:
+        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
+
+        break;
+      default:
+        break;
+    }
+
+    return offsetResult;
   }
 
   /**
