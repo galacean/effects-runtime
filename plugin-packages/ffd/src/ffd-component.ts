@@ -26,7 +26,7 @@ export class FFDComponent extends Component {
   }
 
   override onUpdate (dt: number): void {
-    this.updateData();
+    this.updateShaderUniform(false);
   }
 
   override fromData (data: spec.FFDComponentData): void {
@@ -80,36 +80,13 @@ export class FFDComponent extends Component {
       this.controlPoints.push(new math.Vector3(p.x, p.y, p.z ?? 0));
     }
     // 更新所有相关材质的 uniform
-    this.updateMaterialUniforms();
+    this.updateShaderUniform(true);
   }
-  /**
-   * 更新控制点位置
-   */
-  private updateData () {
-    if (!this.data || !this.data.controlPoints) {
-      return;
-    }
-    this.boundMax = this.data.boundMax;
-    this.boundMin = this.data.boundMin;
-    this.rowNum = this.data.rowNum;
-    this.colNum = this.data.colNum;
 
-    const capacity = this.rowNum * this.colNum;
-    const count = Math.min(this.data.controlPoints.length, capacity);
-
-    this.controlPoints.length = 0;
-    for (let i = 0; i < count; i++) {
-      const p = this.data.controlPoints[i];
-
-      this.controlPoints.push(new math.Vector3(p.x, p.y, p.z ?? 0));
-    }
-    // 更新所有相关材质的 uniform
-    this.updateMaterialUniforms();
-  }
   /**
    * 更新相关 uniform
    */
-  private updateMaterialUniforms (): void {
+  private updateShaderUniform (isInit: boolean): void {
     // 确保当前的 SpriteComponent 存在
     if (!this.currentSpriteComponent) {
       return;
@@ -117,10 +94,12 @@ export class FFDComponent extends Component {
     const material = this.currentSpriteComponent.material;
 
     if (material) {
-      material.setVector3('_BoundMin', this.boundMin);
-      material.setVector3('_BoundMax', this.boundMax);
-      material.setInt('_RowNum', this.rowNum);
-      material.setInt('_ColNum', this.colNum);
+      if (isInit) {
+        material.setVector3('_BoundMin', this.boundMin);
+        material.setVector3('_BoundMax', this.boundMax);
+        material.setInt('_RowNum', this.rowNum);
+        material.setInt('_ColNum', this.colNum);
+      }
 
       for (let i = 0; i < this.colNum; i++) {
         for (let j = 0; j < this.rowNum; j++) {
