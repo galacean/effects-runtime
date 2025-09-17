@@ -87,10 +87,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素组件是否显示，用于批量开关元素组件
    */
   private visible = true;
-  /**
-   * 元素动画的速度
-   */
-  private speed = 1;
   private listIndex = 0;
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
@@ -303,22 +299,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   getListeners<E extends keyof ItemEvent> (eventName: E) {
     return this.eventProcessor.getListeners(eventName);
-  }
-
-  /**
-   * 设置元素的动画速度
-   * @param speed - 速度
-   */
-  setSpeed (speed: number) {
-    this.speed = speed;
-  }
-
-  /**
-   * 获取元素的动画速度
-   * @returns
-   */
-  getSpeed () {
-    return this.speed;
   }
 
   /**
