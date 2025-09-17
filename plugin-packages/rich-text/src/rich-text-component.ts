@@ -157,10 +157,14 @@ export class RichTextComponent extends TextComponent {
     this.processedTextOptions.forEach(options => {
       const { text, isNewLine, fontSize } = options;
 
-      // 如果是新行，则将之前行的信息存入charsInfo并且初始化新行的charInfo
+      // 如果是新行，则结束上一行并开始新行
       if (isNewLine) {
+        // 结束上一行：累加行高并重置charInfo
+        height += charInfo.lineHeight; // 累加上一行的最终行高
         charsInfo.push(charInfo);
         width = Math.max(width, charInfo.width);
+
+        // 初始化新行
         charInfo = {
           richOptions: [],
           offsetX: [],
@@ -169,22 +173,20 @@ export class RichTextComponent extends TextComponent {
           offsetY: (this.textLayout.lineGap || 0) * this.textStyle.fontScale / 2,
           chars: [],
         };
-        // 管理行的总高度调整canvas尺寸
-        height += charInfo.lineHeight;
       }
       // 恢复默认设置
       context.font = `${options.fontWeight || textStyle.textWeight} 10px ${options.fontFamily || textStyle.fontFamily}`;
 
       const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale + (this.textLayout.lineGap || 0) * this.textStyle.fontScale;
 
+      // 更新当前行的最大行高（不立即累加到总高度）
       if (textHeight > charInfo.lineHeight) {
-        height += textHeight - charInfo.lineHeight;
         charInfo.lineHeight = textHeight;
         charInfo.offsetY = (this.textLayout.lineGap || 0) * this.textStyle.fontScale / 2;
       }
 
       charInfo.offsetX.push(charInfo.width);
-      //逐字计算宽度以实现字符间距
+      // 逐字计算宽度以实现字符间距
       let segmentInnerX = 0;
       const charArr: CharDetail[] = [];
 
@@ -204,10 +206,10 @@ export class RichTextComponent extends TextComponent {
       charInfo.width += segmentInnerX;
       charInfo.richOptions.push(options);
     });
-    // 存储最后一行的字符信息，并且更新最终的宽度和高度用于确定canvas尺寸
+    // 结束最后一行：累加行高并存储
+    height += charInfo.lineHeight; // 累加最后一行的最终行高
     charsInfo.push(charInfo);
     width = Math.max(width, charInfo.width);
-    height += charInfo.lineHeight;
     if (width === 0 || height === 0) {
       this.isDirty = false;
 
