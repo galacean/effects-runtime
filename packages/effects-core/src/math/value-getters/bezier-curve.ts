@@ -302,9 +302,9 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
 
   let lastControl: Vector2Like = { x: 0, y: 0 };
 
-  for (let i = 0; i < oldKeyframes.length - 1; i++) {
+  for (let i = 0; i < oldKeyframes.length; i++) {
     const leftKeyframe = oldKeyframes[i];
-    const rightKeyframe = oldKeyframes[i + 1];
+    const rightKeyframe = i + 1 < oldKeyframes.length ? oldKeyframes[i + 1] : oldKeyframes[i];
 
     const { p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe, true);
 
@@ -323,19 +323,6 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
 
     keyDatas.push(keyData);
     lastControl = p2;
-
-    if (i === oldKeyframes.length - 2) {
-      const res = getControlPoints(rightKeyframe, rightKeyframe, true);
-
-      assertExist(res.p3);
-
-      keyDatas.push({
-        leftControl: p2,
-        value: res.p3,
-        rightControl: { x: 0, y: 0 },
-        tangentMode: rightKeyframe[0] === spec.BezierKeyframeType.HOLD ? TangentMode.Constant : TangentMode.Cubic,
-      });
-    }
   }
 
   const calculateSlop = (p0: Vector2Like, p1: Vector2Like) => {
