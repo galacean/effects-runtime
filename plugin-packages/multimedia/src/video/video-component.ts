@@ -90,6 +90,11 @@ export class VideoComponent extends MaskableGraphic {
     this.item.composition?.on('pause', () => {
       this.pauseVideo();
     });
+    this.item.composition?.on('play', (option: { time: number }) => {
+      if (this.item.time < 0) {return;}
+      this.setCurrentTime(this.item.time);
+      this.playVideo();
+    });
   }
 
   override fromData (data: VideoItemProps): void {
@@ -143,38 +148,28 @@ export class VideoComponent extends MaskableGraphic {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time, duration, endBehavior, composition } = this.item;
+    const { time, duration, composition } = this.item;
 
     assertExist(composition);
-    const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
+    const { time: rootTime, endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    const isEnd = (time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)
-      || Math.abs(time - duration) < this.threshold;
-
-    if (time > 0 && !isEnd) {
-      this.setVisible(true);
-      this.playVideo();
-    }
-
-    this.renderer.texture.uploadCurrentVideoFrame();
-
-    if ((time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)) {
+    // time === duration：时间等于视频时长时，检测是否需要暂停
+    if (time >= duration) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
+          console.info('pause');
           this.pauseVideo();
-          this.setCurrentTime(time);
         }
-      } else {
-        this.setCurrentTime(time);
       }
     }
-    if (Math.abs(time - duration) < this.threshold) {
-      if (endBehavior === spec.EndBehavior.freeze) {
-        this.pauseVideo();
-      } else if (endBehavior === spec.EndBehavior.restart) {
-        // 重播
-        this.pauseVideo();
-        this.setCurrentTime(0);
+    // 合成播放完成后，视频未播放完成时，强制暂停
+    if (rootTime === rootDuration && time <= duration) {
+      if (rootEndBehavior === spec.EndBehavior.destroy) {
+        this.onDestroy();
+      } else {
+        if (!this.video?.paused) {
+          this.pauseVideo();
+        }
       }
     }
   }
@@ -321,12 +316,6 @@ export class VideoComponent extends MaskableGraphic {
 
     this.isVideoActive = false;
     this.pauseVideo();
-    const endBehavior = this.item?.endBehavior;
-
-    if (endBehavior === spec.EndBehavior.restart) {
-      this.setCurrentTime(0);
-    }
-
   }
 
   override onEnable (): void {
