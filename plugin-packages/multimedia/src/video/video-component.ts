@@ -157,7 +157,6 @@ export class VideoComponent extends MaskableGraphic {
     if (time >= duration) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
-          console.info('pause');
           this.pauseVideo();
         }
       }
