@@ -75,7 +75,17 @@ export class FFDComponent extends Component {
 
     this.controlPoints.length = 0;
     for (let i = 0; i < count; i++) {
-      this.controlPoints.push(this.data.controlPoints[i]);
+      const points: any = this.data.controlPoints[i];
+
+      this.controlPoints.push(
+        points instanceof math.Vector3
+          ? points
+          : new math.Vector3(points?.x ?? 0, points?.y ?? 0, points?.z ?? 0)
+      );
+    }
+
+    for (let i = count; i < capacity; i++) {
+      this.controlPoints.push(new math.Vector3(0, 0, 0));
     }
     // 更新所有相关材质的 uniform
     this.updateShaderUniform();
