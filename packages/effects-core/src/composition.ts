@@ -488,7 +488,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (this.rootComposition.isStartCalled) {
       this.gotoAndPlay(this.time - this.startTime);
     } else {
-      this.gotoAndPlay(0);
+      this.resume();
     }
   }
 

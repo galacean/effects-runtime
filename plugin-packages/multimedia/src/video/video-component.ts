@@ -92,7 +92,6 @@ export class VideoComponent extends MaskableGraphic {
     });
     this.item.composition?.on('play', (option: { time: number }) => {
       if (this.item.time < 0) {return;}
-      this.setCurrentTime(this.item.time);
       this.playVideo();
     });
   }
