@@ -22,12 +22,12 @@ let seed = 0;
 export class VideoComponent extends MaskableGraphic {
   video?: HTMLVideoElement;
 
-  private threshold = 0.03;
   /**
    * 播放标志位
    */
   private played = false;
   private pendingPause = false;
+  private isDestroying = false;
   /**
    * 解决 video 暂停报错问题
    *
@@ -163,7 +163,10 @@ export class VideoComponent extends MaskableGraphic {
     // 合成播放完成后，视频未播放完成时，强制暂停
     if (rootTime === rootDuration && time <= duration) {
       if (rootEndBehavior === spec.EndBehavior.destroy) {
-        this.onDestroy();
+        if (!this.isDestroying) {
+          this.isDestroying = true;
+          this.onDestroy();
+        }
       } else {
         if (!this.video?.paused) {
           this.pauseVideo();
@@ -186,14 +189,6 @@ export class VideoComponent extends MaskableGraphic {
    */
   getCurrentTime (): number {
     return this.video ? this.video.currentTime : 0;
-  }
-
-  /**
-   * 设置阈值（由于视频是单独的 update，有时并不能完全对其 GE 的 update）
-   * @param threshold 阈值
-   */
-  setThreshold (threshold: number) {
-    this.threshold = threshold;
   }
 
   /**
