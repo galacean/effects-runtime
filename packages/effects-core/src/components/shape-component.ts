@@ -667,17 +667,16 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       mask: this.maskManager.getRefValue(),
     };
 
-    const strokeAttributes = data.stroke;
-
-    if (strokeAttributes) {
-      this.strokeAttributes = {
-        width: strokeAttributes.width,
-        alignment: 0.5,
-        cap: strokeAttributes.cap,
-        join: strokeAttributes.join,
-        miterLimit: 10,
-      };
-    }
+    this.strokeAttributes = {
+      //@ts-expect-error
+      width: data.strokeWidth ?? 1,
+      alignment: 0.5,
+      //@ts-expect-error
+      cap: data.strokeCap ?? spec.LineCap.Butt,
+      //@ts-expect-error
+      join: data.strokeJoin ?? spec.LineJoin.Miter,
+      miterLimit: 10,
+    };
 
     //@ts-expect-error
     for (const stroke of data.strokes) {
