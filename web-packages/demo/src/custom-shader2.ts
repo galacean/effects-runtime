@@ -373,7 +373,7 @@ float getDynamicWidthCenter() {
 float getCurveAngle() {
     float audioRange = _AudioMax - _AudioMin;
     float audioNormalized = (_AudioCurrent - _AudioMin) / audioRange;
-    audioNormalized = clamp(audioNormalized * 0.5 + 0.5, 0.0, 1.0); // 映射到[0,1]
+    audioNormalized = clamp(audioNormalized , 0.0, 1.0); // 映射到[0,1]
     float base = _CurveAngle;
     float delta = abs(base) * audioNormalized * _AudioCurveInfluence;
     return base + (base >= 0.0 ? delta : -delta);
