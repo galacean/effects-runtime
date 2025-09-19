@@ -265,8 +265,15 @@ export function version34Migration (json: JSONScene): JSONScene {
 
         //@ts-expect-error
         shapeComponentData.strokes.push(solidPaintData);
+
         //@ts-expect-error
-        shapeComponentData.stroke.color = undefined;
+        shapeComponentData.strokeWidth = shapeComponentData.stroke.width;
+        //@ts-expect-error
+        shapeComponentData.strokeCap = shapeComponentData.stroke.cap;
+        //@ts-expect-error
+        shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
+
+        delete shapeComponentData.stroke;
       }
     }
   }
