@@ -8,7 +8,7 @@ import '@galacean/effects-plugin-spine';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
-import * as animationScene from './ffd-demo.json';
+import * as animationScene from './ktx-demo.json';
 
 export class GalaceanEffects {
   static player: Player;

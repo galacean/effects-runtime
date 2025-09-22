@@ -1,0 +1,236 @@
+{
+  "playerVersion": {
+    "web": "2.6.6",
+    "native": "0.0.1.202311221223"
+  },
+  "images": [
+    {
+      "id": "4b57d0e7f17c423c9121dd64fcaf70c4",
+      "compressed": {
+        "astc": "https://mdn.alipayobjects.com/mars/afts/img/A*lKYOTbyAbp4AAAAAUAAAAAgAelB4AQ/original"
+      },
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*XIgmT7hv-Q0AAAAAQUAAAAgAelB4AQ/original",
+      "renderLevel": "B+"
+    }
+  ],
+  "fonts": [],
+  "version": "3.4",
+  "shapes": [],
+  "plugins": [],
+  "type": "ge",
+  "compositions": [
+    {
+      "id": "82e9412a8ee44787a5f479815c3813fb",
+      "name": "新建合成1",
+      "duration": 5,
+      "startTime": 0,
+      "endBehavior": 4,
+      "previewSize": [750, 1624],
+      "camera": {
+        "fov": 60,
+        "far": 40,
+        "near": 0.1,
+        "clipMode": 1,
+        "position": [0, 0, 8],
+        "rotation": [0, 0, 0]
+      },
+      "components": [
+        {
+          "id": "c333549200a24a7180eafe1f41a205c9"
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "c333549200a24a7180eafe1f41a205c9",
+      "item": {
+        "id": ""
+      },
+      "dataType": "CompositionComponent",
+      "items": [
+        {
+          "id": "204e246c5f8e46a591a843e717689e58"
+        }
+      ],
+      "timelineAsset": {
+        "id": "2333a70fc8634e84ab0c7601de43214e"
+      },
+      "sceneBindings": [
+        {
+          "key": {
+            "id": "3e09ea2afbef4ccfa802b8d93e9404c9"
+          },
+          "value": {
+            "id": "204e246c5f8e46a591a843e717689e58"
+          }
+        }
+      ]
+    },
+    {
+      "id": "fbc2a95d9ca346779889bb93764a03a3",
+      "item": {
+        "id": "204e246c5f8e46a591a843e717689e58"
+      },
+      "dataType": "SpriteComponent",
+      "options": {
+        "startColor": [1, 1, 1, 1]
+      },
+      "renderer": {
+        "renderMode": 1,
+        "texture": {
+          "id": "78caafaddc754293966261baa066095c"
+        }
+      },
+      "splits": [
+        [0, 0, 0.5859375, 0.7578125, 0]
+      ]
+    }
+  ],
+  "geometries": [],
+  "materials": [],
+  "items": [
+    {
+      "id": "204e246c5f8e46a591a843e717689e58",
+      "name": "SuperAnt",
+      "duration": 5,
+      "type": "1",
+      "visible": true,
+      "endBehavior": 4,
+      "delay": 0,
+      "renderLevel": "B+",
+      "components": [
+        {
+          "id": "fbc2a95d9ca346779889bb93764a03a3"
+        }
+      ],
+      "transform": {
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "eulerHint": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "size": {
+          "x": 8.0135,
+          "y": 10.3312
+        },
+        "scale": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        }
+      },
+      "dataType": "VFXItemData"
+    }
+  ],
+  "shaders": [],
+  "bins": [],
+  "textures": [
+    {
+      "id": "78caafaddc754293966261baa066095c",
+      "source": {
+        "id": "4b57d0e7f17c423c9121dd64fcaf70c4"
+      },
+      "flipY": true
+    }
+  ],
+  "animations": [],
+  "miscs": [
+    {
+      "id": "2333a70fc8634e84ab0c7601de43214e",
+      "dataType": "TimelineAsset",
+      "tracks": [
+        {
+          "id": "3e09ea2afbef4ccfa802b8d93e9404c9"
+        }
+      ]
+    },
+    {
+      "id": "683b40f742414c44a4e0d4fe477e4aad",
+      "dataType": "ActivationPlayableAsset"
+    },
+    {
+      "id": "5142e5524bf948b1ab44d131e1ffdee5",
+      "dataType": "TransformPlayableAsset",
+      "positionOverLifetime": {
+
+      }
+    },
+    {
+      "id": "86ff05ede0254ce78af88cf27f977602",
+      "dataType": "SpriteColorPlayableAsset",
+      "startColor": [1, 1, 1, 1]
+    },
+    {
+      "id": "282ee2c62ed84c87b5cc56362cc7b9e7",
+      "dataType": "ActivationTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 5,
+          "endBehavior": 4,
+          "asset": {
+            "id": "683b40f742414c44a4e0d4fe477e4aad"
+          }
+        }
+      ]
+    },
+    {
+      "id": "7206edee87f041cb98aa0364e937a434",
+      "dataType": "TransformTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 5,
+          "endBehavior": 4,
+          "asset": {
+            "id": "5142e5524bf948b1ab44d131e1ffdee5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "2297da3663a4488cbf96fc3f735db8a4",
+      "dataType": "SpriteColorTrack",
+      "children": [],
+      "clips": [
+        {
+          "start": 0,
+          "duration": 5,
+          "endBehavior": 4,
+          "asset": {
+            "id": "86ff05ede0254ce78af88cf27f977602"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3e09ea2afbef4ccfa802b8d93e9404c9",
+      "dataType": "ObjectBindingTrack",
+      "children": [
+        {
+          "id": "282ee2c62ed84c87b5cc56362cc7b9e7"
+        },
+        {
+          "id": "7206edee87f041cb98aa0364e937a434"
+        },
+        {
+          "id": "2297da3663a4488cbf96fc3f735db8a4"
+        }
+      ],
+      "clips": []
+    }
+  ],
+  "compositionId": "82e9412a8ee44787a5f479815c3813fb"
+}
