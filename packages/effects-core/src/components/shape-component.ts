@@ -180,6 +180,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     join: spec.LineJoin.Miter,
     miterLimit: 10,
   };
+
+  private strokeWidth = 1;
+  private strokeCap = spec.LineCap.Butt;
+  private strokeJoin = spec.LineJoin.Miter;
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
 
@@ -404,6 +408,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
         const lineStyle = this.strokeAttributes;
+
+        lineStyle.cap = this.strokeCap;
+        lineStyle.join = this.strokeJoin;
+        lineStyle.width = this.strokeWidth;
 
         let close = true;
 
@@ -659,13 +667,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       mask: this.maskManager.getRefValue(),
     };
 
-    this.strokeAttributes = {
-      width: data.strokeWidth ?? 1,
-      alignment: 0.5,
-      cap: data.strokeCap ?? spec.LineCap.Butt,
-      join: data.strokeJoin ?? spec.LineJoin.Miter,
-      miterLimit: 10,
-    };
+    this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
+    this.strokeWidth = data.strokeWidth ?? 1;
+    this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
     for (const stroke of data.strokes) {
       const strokeParam = stroke;
