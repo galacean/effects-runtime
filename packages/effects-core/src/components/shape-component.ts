@@ -810,13 +810,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       }
       case spec.FillType.Texture:{
 
-        //@ts-expect-error
-        paintData.textureTransform = {
+        const textureTransform = {
           offset: { x:0, y:0 },
           rotation: 0,
           scale: { x:1, y:1 },
           //@ts-expect-error
-          ...paintData.textureTransform,
+          ...(paintData.textureTransform ?? {}),
         };
 
         paint = {
@@ -826,12 +825,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           scalingFactor: paintData.scalingFactor ?? 1,
           opacity: paintData.opacity ?? 1,
           textureTransform: {
-            //@ts-expect-error
-            offset: new Vector2().copyFrom(paintData.textureTransform.offset),
-            //@ts-expect-error
-            rotation: paintData.textureTransform.rotation,
-            //@ts-expect-error
-            scale: new Vector2().copyFrom(paintData.textureTransform.scale),
+            offset: new Vector2().copyFrom(textureTransform.offset),
+            rotation: textureTransform.rotation,
+            scale: new Vector2().copyFrom(textureTransform.scale),
           },
         };
 
