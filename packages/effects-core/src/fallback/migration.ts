@@ -11,8 +11,6 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
-import { FillType, type SolidPaintData } from '../components/shape-component';
-
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
  */
@@ -242,28 +240,29 @@ export function version34Migration (json: JSONScene): JSONScene {
     if (componentData.dataType === spec.DataType.ShapeComponent) {
       const shapeComponentData = componentData as ShapeComponentData;
 
-      //@ts-expect-error
       shapeComponentData.fills = [];
+      //@ts-expect-error
       if (shapeComponentData.fill) {
-        const solidPaintData: SolidPaintData = {
-          type: FillType.Solid,
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
           color: shapeComponentData.fill.color,
         };
 
-        //@ts-expect-error
         shapeComponentData.fills.push(solidPaintData);
       }
+      //@ts-expect-error
       delete shapeComponentData.fill;
 
-      //@ts-expect-error
       shapeComponentData.strokes = [];
+      //@ts-expect-error
       if (shapeComponentData.stroke) {
-        const solidPaintData: SolidPaintData = {
-          type: FillType.Solid,
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
           color: shapeComponentData.stroke.color,
         };
 
-        //@ts-expect-error
         shapeComponentData.strokes.push(solidPaintData);
 
         //@ts-expect-error
@@ -273,6 +272,7 @@ export function version34Migration (json: JSONScene): JSONScene {
         //@ts-expect-error
         shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
 
+        //@ts-expect-error
         delete shapeComponentData.stroke;
       }
     }
