@@ -1,29 +1,28 @@
 {
     "playerVersion": {
-        "web": "2.6.0-alpha.1",
-        "native": "2.6.0-alpha.1"
+        "web": "2.6.6",
+        "native": "2.6.6"
     },
     "images": [],
     "fonts": [],
-    "version": "3.3",
-    "shapes": [],
+    "version": "3.5",
     "plugins": [],
     "type": "ge",
     "compositions": [
         {
-            "id": "4f8a150278ae4624ab11f2f8304d8921",
-            "name": "开奖弹窗",
-            "duration": 3,
-            "endBehavior": 2,
+            "id": "ec6a1b52210945a8974f4ac792abe0ab",
+            "name": "新建合成1",
+            "duration": 5,
+            "endBehavior": 4,
             "previewSize": [
                 750,
                 1624
             ],
             "camera": {
                 "fov": 60,
-                "far": 20,
+                "far": 40,
                 "near": 0.1,
-                "clipMode": 0,
+                "clipMode": 1,
                 "position": [
                     0,
                     0,
@@ -35,31 +34,51 @@
                     0
                 ]
             },
-            "sceneBindings": [
+            "components": [
                 {
-                    "key": {
-                        "id": "2e210d8eeb774d199ec12ad8c893c340"
-                    },
-                    "value": {
-                        "id": "5da1b521e25e4ff0b2e81b6355e18ad1"
-                    }
-                }
-            ],
-            "timelineAsset": {
-                "id": "3f3cc5ebb15b4854a811bb1a8cc18643"
-            },
-            "items": [
-                {
-                    "id": "5da1b521e25e4ff0b2e81b6355e18ad1"
+                    "id": "95a922482fda417badc46d3a6f8a8966"
                 }
             ]
         }
     ],
     "components": [
         {
-            "id": "133fddeca6e64ec3a3ecb4b79ca3ca2e",
+            "id": "95a922482fda417badc46d3a6f8a8966",
             "item": {
-                "id": "5da1b521e25e4ff0b2e81b6355e18ad1"
+                "id": "ec6a1b52210945a8974f4ac792abe0ab"
+            },
+            "dataType": "CompositionComponent",
+            "items": [
+                {
+                    "id": "43ea471279c04c83b481d3bdbf866f00"
+                }
+            ],
+            "timelineAsset": {
+                "id": "fe51eb0fc85d4a0e93f81eeb2bccf156"
+            },
+            "sceneBindings": [
+                {
+                    "key": {
+                        "id": "5badef23b226455889b5b006ca71fac7"
+                    },
+                    "value": {
+                        "id": "a055f11def3f418bb06aa2b4dc63d894"
+                    }
+                },
+                {
+                    "key": {
+                        "id": "3e6e13067f6e4566b6ed3d6aecba9fb8"
+                    },
+                    "value": {
+                        "id": "43ea471279c04c83b481d3bdbf866f00"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "ec1df38ae0264c11823814db8f8af3bf",
+            "item": {
+                "id": "43ea471279c04c83b481d3bdbf866f00"
             },
             "dataType": "SpriteComponent",
             "options": {
@@ -78,17 +97,17 @@
                 ]
             },
             "geometry": {
-                "id": "7bcaa28158b84ba998228196f93ad553"
+                "id": "209f821efff44d4e8e48009987395ed9"
             }
         },
         {
-            "id": "8a4815edc37846aa9746352a600377de",
+            "id": "a055f11def3f418bb06aa2b4dc63d894",
             "item": {
-                "id": "5da1b521e25e4ff0b2e81b6355e18ad1"
+                "id": "43ea471279c04c83b481d3bdbf866f00"
             },
             "dataType": "FFDComponent",
-            "rows": 5,
-            "cols": 5,
+            "rowNum": 5,
+            "colNum": 5,
             "boundMin": {
                 "x": -0.6,
                 "y": -0.6,
@@ -99,36 +118,132 @@
                 "y": 0.6,
                 "z": 0
             },
-            "controlPoints":[
-              {"x": -0.8, "y": -0.6, "z": 0},
-              {"x": -0.3, "y": -0.6, "z": 0},
-              {"x": 0, "y": -0.6, "z": 0},
-              {"x": 0.29999999999999993, "y": -0.6, "z": 0},
-              {"x": 0.6, "y": -0.6, "z": 0},
-
-              {"x": -0.6, "y": -0.3, "z": 0},
-              {"x": -0.3, "y": -0.3, "z": 0},
-              {"x": 0, "y": -0.3, "z": 0},
-              {"x": 0.29999999999999993, "y": -0.3, "z": 0},
-              {"x": 0.6, "y": -0.3, "z": 0},
-
-              {"x": -0.6, "y": 0, "z": 0},
-              {"x": -0.3, "y": 0, "z": 0},
-              {"x": 0, "y": 0, "z": 0},
-              {"x": 0.29999999999999993, "y": 0, "z": 0},
-              {"x": 0.6, "y": 0, "z": 0},
-
-              {"x": -0.6, "y": 0.29999999999999993, "z": 0},
-              {"x": -0.3, "y": 0.29999999999999993, "z": 0},
-              {"x": 0, "y": 0.29999999999999993, "z": 0},
-              {"x": 0.29999999999999993, "y": 0.29999999999999993, "z": 0},
-              {"x": 0.6, "y": 0.29999999999999993, "z": 0},
-
-              {"x": -0.6, "y": 0.6, "z": 0},
-              {"x": -0.3, "y": 0.6, "z": 0},
-              {"x": 0, "y": 0.6, "z": 0},
-              {"x": 0.29999999999999993, "y": 0.6, "z": 0},
-              {"x": 0.6, "y": 0.6, "z": 0}
+            "controlPoints": [
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                }
             ]
         }
     ],
@@ -136,7 +251,7 @@
         {
             "mode": 4,
             "vertexData": {
-                "vertexCount": 256,
+                "vertexCount": 9,
                 "channels": [
                     {
                         "semantic": "POSITION",
@@ -146,23 +261,23 @@
                     },
                     {
                         "semantic": "TEXCOORD0",
-                        "offset": 3072,
+                        "offset": 108,
                         "format": 1,
                         "dimension": 2
                     }
                 ]
             },
-            "name": "形状_4",
+            "name": "FFDGeometry",
             "indexFormat": 1,
-            "indexOffset": 5120,
-            "buffer": "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kwCWAJcAmACcAJ0AngCiAKMApACkAKUApgCnAKgAqQCpAKoAqwCrAKwArQCtAK4ArwCzALQAtQC1ALYAtwC5ALoAuwC8AL0AvgC/AMAAwQDCAMMAxADEAMUAxgDHAMgAyQDJAMoAywDLAMwAzQDQANEA0gDTANQA1QDWANcA2ADYANkA2gDbANwA3QDeAN8A4ADgAOEA4gDjAOQA5QDnAOgA6QDrAOwA7QDuAO8A8ADyAPMA9AD0APUA9gD3APgA+QD6APsA/AD8AP0A/gD+AP8AAQACAAMABQAFAAcACAAIAAoACwAOAA8AEQAVABcAGAAcAB4AHwAfACEAIgAiACQAJgAmACcAKQApACsALQAtAC8AMAAwADIAMwAzADUANgA4ADoAOwA7AD0APwA/AEEAQgBCAEQARgBGAEcASQBKAEsATQBNAE8AUABQAFIAVABYAFoAWwBcAF4AXwBfAGEAYgBiAGMAZQBlAGcAaABoAGoAawBrAG0AbgBwAHIAdAB1AHcAeAB5AHsAfQCFAIYAiACIAIoAjACMAI4AjwCPAJEAkwCVAJYAmACcAJ4AnwCiAKQApgCmAKcAqQCpAKsArQCtAK8AsACyALMAtQC5ALsAvAC8AL4AvwC/AMEAwgDEAMYAxwDHAMkAywDLAM0AzgDQANIA0wDTANUA1gDWANgA2gDaANsA3QDdAN4A4ADgAOIA4wDjAOUA5gDmAOcA6QDqAOsA7QDtAO4A8ADxAPIA9AD0APYA9wD3APkA+gD6APwA/gD+AAEAAgACAAUACAAIAAsADAANAA4AEQAcAB8AIgAiACYAKQApAC0AMAAwADMANgA4ADsAPwA/AEIARgBGAEkASgBKAE0AUABQAFQAVQBcAF8AYgBiAGUAaABoAGsAbgB0AHUAeAB4AHkAfQCIAIwAjwCPAJMAlACcAJ8AoAChAKIApgCmAKkArQCxALIAtQC4ALkAvAC8AL8AwgDEAMcAywDLAM4AzwDQANMA1gDWANoA3QDdAOAA4wDjAOYA6QDpAOoA7QD0APcA+gD6AP4AAgAMAA0AEQAcACIAKQAwADYANwA4AD8ARgBGAEoAUABQAFUAVgBcAGIAaABoAG4AcAB4AH0AfgCIAI8AlACgAKEApgCmAK0AsACwALEAtQC8AMIAxADEAMsAzwDQANYA3QDdAOMA6QDpAO0A8AD0APoAAgAMABEAEgAcACkAMAAwADcAOAA4AEYAUABQAFYAVwBbAFwAaAB4AH4AfwCgAKYAsACwALUAtwC8AMQAzwDQAN0A6QD0AAIACAAMABIAEwAbABwAMABQAFcAWABYAFsAaAB4AH8AgACwALcAuAC8AM8A0ADQAOkA8ADxAPQACAAMABMAFAAaABsAMABQAFgAaACgALAAuAC8ANAA8ADwAPEACAAMABQAFQAZABoAMABQAGgAcACcAKAAuAC8APAACAAMABUAGAAZADAAOABQAHAAdACcALgAvAC8AAgADAAYABkAOAA4AFAAdACcALwADAAMABgAOACcAAwAOACcADgAdACZAJoAnACYAJkAnACYAJwAdACVAJgAdACUAJUAdACUAHQAeACIAJQAeACIAHgAgACIAIAAgQCFAIgAgQCEAIUAgQA=",
-            "id": "7bcaa28158b84ba998228196f93ad553",
+            "indexOffset": 180,
+            "buffer": "AAAAvwAAAD8AAAAAAAAAvwAAAL8AAAAAAAAAPwAAAL8AAAAAAAAAPwAAAD8AAAAAAAAAvwAAAAAAAAAAAAAAAAAAAL8AAAAAAAAAAAAAAAAAAAAAAAAAPwAAAAAAAAAAAAAAAAAAAD8AAAAAAAAAAAAAgD8AAAAAAAAAAAAAgD8AAAAAAACAPwAAgD8AAAAAAAAAPwAAAD8AAAAAAAAAPwAAAD8AAIA/AAAAPwAAAD8AAIA/AAAEAAYAAQAFAAQAAgAGAAUABAAFAAYAAAAGAAgAAgAHAAYAAwAIAAcABgAHAAgA",
+            "id": "209f821efff44d4e8e48009987395ed9",
             "dataType": "Geometry",
             "subMeshes": [
                 {
                     "offset": 0,
-                    "indexCount": 756,
-                    "vertexCount": 256
+                    "indexCount": 24,
+                    "vertexCount": 9
                 }
             ]
         }
@@ -170,25 +285,25 @@
     "materials": [],
     "items": [
         {
-            "id": "5da1b521e25e4ff0b2e81b6355e18ad1",
-            "name": "sprite_2",
-            "duration": 3,
+            "id": "43ea471279c04c83b481d3bdbf866f00",
+            "name": "sprite_1",
+            "duration": 5,
             "type": "1",
             "visible": true,
-            "endBehavior": 5,
+            "endBehavior": 0,
             "delay": 0,
             "renderLevel": "B+",
             "components": [
                 {
-                    "id": "133fddeca6e64ec3a3ecb4b79ca3ca2e"
+                    "id": "ec1df38ae0264c11823814db8f8af3bf"
                 },
                 {
-                    "id": "8a4815edc37846aa9746352a600377de"
+                    "id": "a055f11def3f418bb06aa2b4dc63d894"
                 }
             ],
             "transform": {
                 "position": {
-                    "x": -1.3877787807814457e-17,
+                    "x": 0,
                     "y": 0,
                     "z": 0
                 },
@@ -217,27 +332,28 @@
     "shaders": [],
     "bins": [],
     "textures": [],
+    "animations": [],
     "miscs": [
         {
-            "id": "3f3cc5ebb15b4854a811bb1a8cc18643",
+            "id": "fe51eb0fc85d4a0e93f81eeb2bccf156",
             "dataType": "TimelineAsset",
             "tracks": [
                 {
-                    "id": "2e210d8eeb774d199ec12ad8c893c340"
+                    "id": "3e6e13067f6e4566b6ed3d6aecba9fb8"
                 }
             ]
         },
         {
-            "id": "284b6c1d0f9a464ab62a47fe41b8a93b",
+            "id": "a80673fbf7fd483dbf2925a82c2c955f",
             "dataType": "ActivationPlayableAsset"
         },
         {
-            "id": "ed4ecfe91f4e483eb05bac4222605c00",
+            "id": "eaf4a324d53e45499bbff45f16776b81",
             "dataType": "TransformPlayableAsset",
             "positionOverLifetime": {}
         },
         {
-            "id": "e358ec09e8494a5da3d8207d546d8c16",
+            "id": "03e85dcd7b9c43eab1a51bfada45ac9d",
             "dataType": "SpriteColorPlayableAsset",
             "startColor": [
                 1,
@@ -247,66 +363,2202 @@
             ]
         },
         {
-            "id": "689be6889f8948b58cfd7675407281e6",
+            "id": "b715962448fc49ddabd03c45dad407ca",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "bf7a2fb6fb704a51b9c18f191aea8685",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "f63a774eca454ca2bf02e00bcedc80d4",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "3968029a171a46c895adf7ded6cc5c0e",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "26db195b88fc473b92bf55fc9ae0baa4",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "3e49413561204e64a8166c809c797461",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -2.9938541113015806
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3690534839798494
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    9.769962616701378e-15
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "4388b4e1b02b4ddfabffbc223c2af67c",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "04435301864e4bb4ac4ddbd271fa08a0",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "a9f83f27cc6d45b7bb4870ab5d7c81d2",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "1606aa9e3102475ea232f7c579ca79bc",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "4984d09079fd431288e1f5dbd8df739b",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -3.914567231032978
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.7595883237783918
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    8.881784197001252e-16
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "32b3847703274989991100f6d436bfe1",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "81a0b88f3d744119a70b23b1dc68d961",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "350f0e9f317b421e8292db7c62e23e0f",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "4a5c3b5438ba48b1985f38971f557273",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "5a53ff40c7aa46be946092bf30f12ae8",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -3.914567231032978
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    1.0595883237783916
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    8.881784197001252e-16
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "66d3f7c07168487288331516842d41b0",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "ebb9b693be40420dac668d739a8d9e70",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "517718f437df484b97f20e52ac11550a",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "5f391dd5d22c4addac37e6482ceb3593",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "23daa2f7c8e7408fb609a7f0da859094",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "3457fc26ffec490c8ed45705b10c45d4",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    -0.3
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    -0.3
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "f4a74eace061476dbfed4db17aa31ee7",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "fdde0920bf064354baf708225c097498",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.29999999999999993
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.29999999999999993
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "a0e1b4a9c8fc4c649769b55cf15da8a8",
+            "dataType": "Vector3PropertyPlayableAsset",
+            "curveData": [
+                27,
+                [
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0.6
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0.6
+                                ]
+                            ]
+                        ]
+                    ],
+                    [
+                        21,
+                        [
+                            [
+                                4,
+                                [
+                                    0,
+                                    0
+                                ]
+                            ],
+                            [
+                                4,
+                                [
+                                    0.3,
+                                    0
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        },
+        {
+            "id": "a3d505a11cfc453ca5a73f007545aab9",
             "dataType": "ActivationTrack",
             "children": [],
             "clips": [
                 {
                     "start": 0,
-                    "duration": 3,
-                    "endBehavior": 5,
+                    "duration": 5,
+                    "endBehavior": 0,
                     "asset": {
-                        "id": "284b6c1d0f9a464ab62a47fe41b8a93b"
+                        "id": "a80673fbf7fd483dbf2925a82c2c955f"
                     }
                 }
             ]
         },
         {
-            "id": "91904c4025054304b6e2c6b8de7f4516",
+            "id": "a4f21c1f99c54939b82c237cb8bfea60",
             "dataType": "TransformTrack",
             "children": [],
             "clips": [
                 {
                     "start": 0,
-                    "duration": 3,
-                    "endBehavior": 5,
+                    "duration": 5,
+                    "endBehavior": 0,
                     "asset": {
-                        "id": "ed4ecfe91f4e483eb05bac4222605c00"
+                        "id": "eaf4a324d53e45499bbff45f16776b81"
                     }
                 }
             ]
         },
         {
-            "id": "f21110a36bee4f4a81be163b7a3af9b7",
+            "id": "29cc6954d7a747d7925ccf4d6b123638",
             "dataType": "SpriteColorTrack",
             "children": [],
             "clips": [
                 {
                     "start": 0,
-                    "duration": 3,
-                    "endBehavior": 5,
+                    "duration": 5,
+                    "endBehavior": 0,
                     "asset": {
-                        "id": "e358ec09e8494a5da3d8207d546d8c16"
+                        "id": "03e85dcd7b9c43eab1a51bfada45ac9d"
                     }
                 }
             ]
         },
         {
-            "id": "2e210d8eeb774d199ec12ad8c893c340",
+            "id": "5badef23b226455889b5b006ca71fac7",
+            "dataType": "ObjectBindingTrack",
+            "clips": [],
+            "children": [
+                {
+                    "id": "32d1f4f7a49347d5871bc0e8bd8e213f"
+                },
+                {
+                    "id": "557317871035450eb62ad4d40355d0fc"
+                },
+                {
+                    "id": "7e1946f257994705b8fbf5abab816bb1"
+                },
+                {
+                    "id": "205c3f44d16c4316bcf8c2fed0738a29"
+                },
+                {
+                    "id": "29ab295eb5f84fb5b80f08a9fabe166c"
+                },
+                {
+                    "id": "fe0aae5f632045a1b090e489f6647381"
+                },
+                {
+                    "id": "09d74588a878459b971bda51f42237a2"
+                },
+                {
+                    "id": "2553f9fb2f9240348d60e3b2ba22dbab"
+                },
+                {
+                    "id": "f834036dcaa64231989a1a6b8df50a04"
+                },
+                {
+                    "id": "1e099855654b47218026485a22373392"
+                },
+                {
+                    "id": "2e7c92e28c494aa2847991edaaca6e6b"
+                },
+                {
+                    "id": "a8eb76c715de41a395c7a5965e0d94e5"
+                },
+                {
+                    "id": "42cf215a6e08481193094f7b8ff052e1"
+                },
+                {
+                    "id": "2a07b07cc3f14c66b498fa386639a325"
+                },
+                {
+                    "id": "701a16ca68e4446c8250144974a35fb8"
+                },
+                {
+                    "id": "4f81515dc0b94d8e9f8acd26e2710de3"
+                },
+                {
+                    "id": "294135a214ac4c1db5a4bdf837d6144f"
+                },
+                {
+                    "id": "ff6a87dde1cd491db6c2960c0b881070"
+                },
+                {
+                    "id": "6929335e58c347659b0c49c3edcb4360"
+                },
+                {
+                    "id": "af2c14c6a44545c09041bfbd19d56fbf"
+                },
+                {
+                    "id": "1d069c378dbd457a9a368348bafe8530"
+                },
+                {
+                    "id": "9a7cc21863c349babd8207b6c380f817"
+                },
+                {
+                    "id": "fc80e216687742eb8f69eb656cc08904"
+                },
+                {
+                    "id": "d15574981a2b47f8aadbc60dfaf6540d"
+                },
+                {
+                    "id": "759e2fb9d4904bada34cf25c9faa6aab"
+                }
+            ],
+            "targetIndex": 1
+        },
+        {
+            "id": "32d1f4f7a49347d5871bc0e8bd8e213f",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.0",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "b715962448fc49ddabd03c45dad407ca"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "557317871035450eb62ad4d40355d0fc",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.1",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "bf7a2fb6fb704a51b9c18f191aea8685"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "7e1946f257994705b8fbf5abab816bb1",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.2",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "f63a774eca454ca2bf02e00bcedc80d4"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "205c3f44d16c4316bcf8c2fed0738a29",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.3",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "3968029a171a46c895adf7ded6cc5c0e"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "29ab295eb5f84fb5b80f08a9fabe166c",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.4",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "26db195b88fc473b92bf55fc9ae0baa4"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "fe0aae5f632045a1b090e489f6647381",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.5",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "3e49413561204e64a8166c809c797461"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "09d74588a878459b971bda51f42237a2",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.6",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "4388b4e1b02b4ddfabffbc223c2af67c"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "2553f9fb2f9240348d60e3b2ba22dbab",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.7",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "04435301864e4bb4ac4ddbd271fa08a0"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "f834036dcaa64231989a1a6b8df50a04",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.8",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "a9f83f27cc6d45b7bb4870ab5d7c81d2"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "1e099855654b47218026485a22373392",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.9",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "1606aa9e3102475ea232f7c579ca79bc"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "2e7c92e28c494aa2847991edaaca6e6b",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.10",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "4984d09079fd431288e1f5dbd8df739b"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "a8eb76c715de41a395c7a5965e0d94e5",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.11",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "32b3847703274989991100f6d436bfe1"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "42cf215a6e08481193094f7b8ff052e1",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.12",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "81a0b88f3d744119a70b23b1dc68d961"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "2a07b07cc3f14c66b498fa386639a325",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.13",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "350f0e9f317b421e8292db7c62e23e0f"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "701a16ca68e4446c8250144974a35fb8",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.14",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "4a5c3b5438ba48b1985f38971f557273"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "4f81515dc0b94d8e9f8acd26e2710de3",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.15",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "5a53ff40c7aa46be946092bf30f12ae8"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "294135a214ac4c1db5a4bdf837d6144f",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.16",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "66d3f7c07168487288331516842d41b0"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "ff6a87dde1cd491db6c2960c0b881070",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.17",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "ebb9b693be40420dac668d739a8d9e70"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "6929335e58c347659b0c49c3edcb4360",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.18",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "517718f437df484b97f20e52ac11550a"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "af2c14c6a44545c09041bfbd19d56fbf",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.19",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "5f391dd5d22c4addac37e6482ceb3593"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "1d069c378dbd457a9a368348bafe8530",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.20",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "23daa2f7c8e7408fb609a7f0da859094"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "9a7cc21863c349babd8207b6c380f817",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.21",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "3457fc26ffec490c8ed45705b10c45d4"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "fc80e216687742eb8f69eb656cc08904",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.22",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "f4a74eace061476dbfed4db17aa31ee7"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "d15574981a2b47f8aadbc60dfaf6540d",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.23",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "fdde0920bf064354baf708225c097498"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "759e2fb9d4904bada34cf25c9faa6aab",
+            "dataType": "Vector3PropertyTrack",
+            "path": "controlPoints.24",
+            "children": [],
+            "clips": [
+                {
+                    "start": 0,
+                    "duration": 5,
+                    "endBehavior": 0,
+                    "asset": {
+                        "id": "a0e1b4a9c8fc4c649769b55cf15da8a8"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "3e6e13067f6e4566b6ed3d6aecba9fb8",
             "dataType": "ObjectBindingTrack",
             "children": [
                 {
-                    "id": "689be6889f8948b58cfd7675407281e6"
+                    "id": "a3d505a11cfc453ca5a73f007545aab9"
                 },
                 {
-                    "id": "91904c4025054304b6e2c6b8de7f4516"
+                    "id": "a4f21c1f99c54939b82c237cb8bfea60"
                 },
                 {
-                    "id": "f21110a36bee4f4a81be163b7a3af9b7"
+                    "id": "29cc6954d7a747d7925ccf4d6b123638"
+                },
+                {
+                    "id": "5badef23b226455889b5b006ca71fac7"
                 }
             ],
             "clips": []
         }
     ],
-    "compositionId": "4f8a150278ae4624ab11f2f8304d8921"
+    "compositionId": "ec6a1b52210945a8974f4ac792abe0ab"
 }

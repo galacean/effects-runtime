@@ -26,12 +26,13 @@ export class FFDComponent extends Component {
   }
 
   override onUpdate (dt: number): void {
-    this.updateControlPoints();
+    this.updateShaderUniform();
   }
 
   override fromData (data: spec.FFDComponentData): void {
     super.fromData(data);
     this.data = data;
+    this.initData();
   }
 
   /**
@@ -60,7 +61,7 @@ export class FFDComponent extends Component {
   /**
    * 更新控制点位置
    */
-  private updateControlPoints () {
+  private initData () {
     if (!this.data || !this.data.controlPoints) {
       return;
     }
@@ -74,18 +75,26 @@ export class FFDComponent extends Component {
 
     this.controlPoints.length = 0;
     for (let i = 0; i < count; i++) {
-      const p = this.data.controlPoints[i];
+      const points: any = this.data.controlPoints[i];
 
-      this.controlPoints.push(new math.Vector3(p.x, p.y, p.z ?? 0));
+      this.controlPoints.push(
+        points instanceof math.Vector3
+          ? points
+          : new math.Vector3(points?.x ?? 0, points?.y ?? 0, points?.z ?? 0)
+      );
+    }
+
+    for (let i = count; i < capacity; i++) {
+      this.controlPoints.push(new math.Vector3(0, 0, 0));
     }
     // 更新所有相关材质的 uniform
-    this.updateMaterialUniforms();
+    this.updateShaderUniform();
   }
 
   /**
    * 更新相关 uniform
    */
-  private updateMaterialUniforms (): void {
+  private updateShaderUniform (): void {
     // 确保当前的 SpriteComponent 存在
     if (!this.currentSpriteComponent) {
       return;

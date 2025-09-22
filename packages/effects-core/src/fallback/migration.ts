@@ -11,8 +11,6 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
-import { FillType, type SolidPaintData } from '../components/shape-component';
-
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
  */
@@ -175,8 +173,11 @@ export function version33Migration (json: JSONScene): JSONScene {
     const compositionComponent = {
       id: generateGUID(),
       dataType: 'CompositionComponent',
+      //@ts-expect-error
       items: composition.items,
+      //@ts-expect-error
       timelineAsset: composition.timelineAsset,
+      //@ts-expect-error
       sceneBindings: composition.sceneBindings,
       item: { id: composition.id },
     } as unknown as spec.ComponentData;
@@ -185,7 +186,6 @@ export function version33Migration (json: JSONScene): JSONScene {
     composition.timelineAsset = undefined;
     //@ts-expect-error
     composition.sceneBindings = undefined;
-    //@ts-expect-error
     composition.components = [{ id: compositionComponent.id }];
     json.components.push(compositionComponent);
   }
@@ -214,10 +214,8 @@ export function version34Migration (json: JSONScene): JSONScene {
 
   // 修复合成组件的 item id 问题
   for (const composition of json.compositions) {
-    // TODO: Update spec
-    //@ts-expect-error
     for (const component of composition.components) {
-      const componentID = (component as spec.DataPath).id;
+      const componentID = (component).id;
 
       idToComponentMap[componentID].item.id = composition.id;
     }
@@ -242,31 +240,40 @@ export function version34Migration (json: JSONScene): JSONScene {
     if (componentData.dataType === spec.DataType.ShapeComponent) {
       const shapeComponentData = componentData as ShapeComponentData;
 
-      //@ts-expect-error
       shapeComponentData.fills = [];
+      //@ts-expect-error
       if (shapeComponentData.fill) {
-        const solidPaintData: SolidPaintData = {
-          type: FillType.Solid,
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
           color: shapeComponentData.fill.color,
         };
 
-        //@ts-expect-error
         shapeComponentData.fills.push(solidPaintData);
       }
+      //@ts-expect-error
       delete shapeComponentData.fill;
 
-      //@ts-expect-error
       shapeComponentData.strokes = [];
+      //@ts-expect-error
       if (shapeComponentData.stroke) {
-        const solidPaintData: SolidPaintData = {
-          type: FillType.Solid,
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
           color: shapeComponentData.stroke.color,
         };
 
-        //@ts-expect-error
         shapeComponentData.strokes.push(solidPaintData);
+
         //@ts-expect-error
-        shapeComponentData.stroke.color = undefined;
+        shapeComponentData.strokeWidth = shapeComponentData.stroke.width;
+        //@ts-expect-error
+        shapeComponentData.strokeCap = shapeComponentData.stroke.cap;
+        //@ts-expect-error
+        shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
+
+        //@ts-expect-error
+        delete shapeComponentData.stroke;
       }
     }
   }
@@ -361,6 +368,7 @@ function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName 
 }
 
 export function processContent (composition: spec.CompositionData) {
+  //@ts-expect-error
   for (const item of composition.items) {
     const itemProps = itemMap.get(item.id);
 
@@ -448,7 +456,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       result.textures.push({
         id: generateGUID(),
         dataType: DataType.Texture,
-        //@ts-expect-error
         source: { id: result.images[i].id },
         flipY: true,
       });
@@ -523,6 +530,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
     const compositionData: CompositionData = {
       ...composition,
+      //@ts-expect-error
       timelineAsset: { id: '' },
       sceneBindings: [],
     };
@@ -781,6 +789,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     dataType: 'TimelineAsset',
   };
 
+  //@ts-expect-error
   for (const itemDataPath of composition.items) {
     const item = guidToItemMap[itemDataPath.id];
     const subTrackDatas = [];
@@ -919,7 +928,9 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     trackIds.push({ id: trackData.id });
   }
 
+  //@ts-expect-error
   composition.timelineAsset = { id: timelineAssetData.id };
+  //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 
   jsonScene.miscs.push(timelineAssetData);
