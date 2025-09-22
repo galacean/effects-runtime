@@ -24,28 +24,20 @@ import frag from '../plugins/shape/shaders/shape.frag.glsl';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
-export enum FillType {
-  Solid,
-  GradientLinear,
-  GradientRadial,
-  GradientAngular,
-  Texture
-}
-
 export interface SolidPaint {
-  type: FillType.Solid,
+  type: spec.FillType.Solid,
   color: Color,
 }
 
 export interface GradientPaint {
-  type: FillType.GradientLinear | FillType.GradientAngular | FillType.GradientRadial,
+  type: spec.FillType.GradientLinear | spec.FillType.GradientAngular | spec.FillType.GradientRadial,
   gradientStops: GradientValue,
   startPoint: Vector2,
   endPoint: Vector2,
 }
 
 export interface TexturePaint {
-  type: FillType.Texture,
+  type: spec.FillType.Texture,
   texture: Texture,
   scaleMode: TexturePaintScaleMode,
   scalingFactor: number,
@@ -226,14 +218,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     //-------------------------------------------------------------------------
 
     const gradientStrokeFill: SolidPaint = {
-      type: FillType.Solid,
+      type: spec.FillType.Solid,
       color: new Color(1, 1, 1, 1),
     };
 
     this.strokes.push(gradientStrokeFill);
 
     const gradientLayerFill: SolidPaint = {
-      type: FillType.Solid,
+      type: spec.FillType.Solid,
       color: new Color(1, 1, 1, 1),
     };
 
@@ -610,11 +602,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private updatePaintMaterial (material: Material, paint: Paint) {
     material.setFloat('_FillType', paint.type);
 
-    if (paint.type === FillType.Solid) {
+    if (paint.type === spec.FillType.Solid) {
       material.color = paint.color;
-    } else if (paint.type === FillType.GradientLinear || paint.type === FillType.GradientAngular || paint.type === FillType.GradientRadial) {
+    } else if (paint.type === spec.FillType.GradientLinear || paint.type === spec.FillType.GradientAngular || paint.type === spec.FillType.GradientRadial) {
       this.updateGradientMaterial(material, paint.gradientStops, paint.startPoint, paint.endPoint);
-    } else if (paint.type === FillType.Texture) {
+    } else if (paint.type === spec.FillType.Texture) {
       material.setInt('_ImageScaleMode', paint.scaleMode);
       material.setVector2('_ImageSize', new Vector2(paint.texture.getWidth(), paint.texture.getHeight()));
 
@@ -668,19 +660,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     };
 
     this.strokeAttributes = {
-      //@ts-expect-error
       width: data.strokeWidth ?? 1,
       alignment: 0.5,
-      //@ts-expect-error
       cap: data.strokeCap ?? spec.LineCap.Butt,
-      //@ts-expect-error
       join: data.strokeJoin ?? spec.LineJoin.Miter,
       miterLimit: 10,
     };
 
-    //@ts-expect-error
     for (const stroke of data.strokes) {
-      const strokeParam = stroke as PaintData;
+      const strokeParam = stroke;
 
       if (strokeParam) {
         this.hasStroke = true;
@@ -688,9 +676,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       }
     }
 
-    //@ts-expect-error
     for (const fill of data.fills) {
-      const fillParam = fill as PaintData;
+      const fillParam = fill;
 
       if (fillParam) {
         this.hasFill = true;
@@ -780,11 +767,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
   }
 
-  private createPaint (paintData: PaintData): Paint {
+  private createPaint (paintData: spec.PaintData): Paint {
     let paint: Paint;
 
     switch (paintData.type) {
-      case FillType.Solid: {
+      case spec.FillType.Solid: {
         paint = {
           type:paintData.type,
           color:new Color().copyFrom(paintData.color),
@@ -792,9 +779,9 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         break;
       }
-      case FillType.GradientLinear:
-      case FillType.GradientAngular:
-      case FillType.GradientRadial: {
+      case spec.FillType.GradientLinear:
+      case spec.FillType.GradientAngular:
+      case spec.FillType.GradientRadial: {
         paint = {
           type:paintData.type,
           gradientStops:createValueGetter(paintData.gradientStops) as GradientValue,
@@ -804,7 +791,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         break;
       }
-      case FillType.Texture:{
+      case spec.FillType.Texture:{
         paint = {
           type:paintData.type,
           texture: this.engine.findObject<Texture>(paintData.texture),
@@ -824,41 +811,4 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.shapeDirty = true;
     this.materialDirty = true;
   }
-}
-
-export type PaintData =
-  | SolidPaintData
-  | GradientPaintData
-  | TexturePaintData;
-
-export interface SolidPaintData {
-  type: FillType.Solid,
-  /**
-   * 填充颜色
-   */
-  color: spec.ColorData,
-}
-
-export interface GradientPaintData {
-  type: FillType.GradientLinear | FillType.GradientAngular | FillType.GradientRadial,
-  /**
-   * 渐变颜色
-   */
-  gradientStops: spec.GradientColor,
-  /**
-   * 渐变起点
-   */
-  startPoint: spec.Vector2Data,
-  /**
-   * 渐变终点
-   */
-  endPoint: spec.Vector2Data,
-}
-
-export interface TexturePaintData {
-  type: FillType.Texture,
-  texture: spec.DataPath,
-  scaleMode: TexturePaintScaleMode,
-  scalingFactor?: number,
-  opacity?: number,
 }
