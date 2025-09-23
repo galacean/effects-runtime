@@ -305,32 +305,22 @@ function processRichTextLineGapCompatibility (json: JSONScene) {
 }
 
 /**
- * 确保富文本组件有lineGap字段
+ * 确保富文本组件有版本标识字段
  */
 function ensureRichTextLineGap (options: any) {
-  // 检查是否存在lineGap字段
-  if (!options || options.lineGap !== undefined) {
+  // 检查是否已经处理过
+  if (!options || options._useLegacyRichText !== undefined) {
     return;
   }
 
-  // 如果没有lineGap字段，则添加默认值：0.571 * fontSize
-  const fontSize = options.fontSize || 40; // 默认字号40
-  const defaultLineGap = 0.571 * fontSize;
-
-  // 添加lineGap字段
-  options.lineGap = Math.round(defaultLineGap * 1000000) / 1000000;
-
-  // 添加迁移标记（便于调试和追踪）
-  if (!options._migrated) {
-    options._migrated = {};
+  // 根据是否存在lineGap字段来判断版本
+  if (options.lineGap === undefined) {
+    // 旧版本（没有lineGap字段）
+    options.useLegacyRichText = true;
+  } else {
+    // 新版本（有lineGap字段）
+    options.useLegacyRichText = false;
   }
-  options._migrated.lineGap = {
-    added: true,
-    defaultValue: 0.571,
-    calculatedValue: options.lineGap,
-    fontSize: fontSize,
-    reason: 'add-default-linegap-for-compatibility',
-  };
 }
 
 /**

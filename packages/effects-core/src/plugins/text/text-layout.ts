@@ -8,6 +8,7 @@ export class TextLayout {
   letterSpace: number;
   lineGap: number;
   overflow: spec.TextOverflow;// Enum  // both
+  useLegacyRichText: boolean;
 
   width = 0;
   height = 0;
@@ -24,7 +25,8 @@ export class TextLayout {
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize } = options;
+    //@ts-expect-error
+    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false } = options;
 
     const tempWidth = fontSize + letterSpace;
 
@@ -35,7 +37,8 @@ export class TextLayout {
     this.height = textHeight;
 
     this.letterSpace = letterSpace;
-    this.lineGap = lineGap ;
+    this.lineGap = lineGap;
+    this.useLegacyRichText = useLegacyRichText;
     this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
