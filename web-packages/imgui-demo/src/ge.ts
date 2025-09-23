@@ -1,5 +1,5 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
+import { GLSLVersion, Geometry, KTX2Loader, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -40,7 +40,11 @@ export class GalaceanEffects {
         }),);
       });
     } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
+      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(async composition => {
+        const loader = new KTX2Loader();
+
+        await loader.initialize(4);
+        await loader.load('./2d_astc4x4.ktx2', GalaceanEffects.player.renderer.engine);
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,

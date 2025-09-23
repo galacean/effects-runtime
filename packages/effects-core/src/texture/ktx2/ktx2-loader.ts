@@ -103,12 +103,7 @@ export class KTX2Loader {
     return null;
   }
 
-  async initialize (engine: Engine,
-    isSRGB: boolean,
-    workerCount: number): Promise<void> {
-    await this.load('https://mdn.alipayobjects.com/oasis_be/afts/img/A*iaD4QaUJRKoAAAAAAAAAAAAADkp5AQ/original/DefaultTexture.ktx2', engine).then(() => {}
-    );
-
+  initialize (workerCount: number): Promise<void> {
     return KTX2Loader._getBinomialLLCTranscoder(workerCount).init();
   }
 
