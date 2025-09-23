@@ -132,17 +132,15 @@ export class RichTextComponent extends TextComponent {
       return;
     }
 
-    // 根据_useLegacyRichText字段来判断使用哪种渲染模式
+    // 根据useLegacyRichText字段来判断使用哪种渲染模式
     const useLegacy = this.textLayout.useLegacyRichText === true;
 
     this.singleLineHeight = useLegacy ? 1.571 : 1.0;
 
     if (useLegacy) {
       this.updateTextureLegacy(flipY);
-      console.warn('老版本');
     } else {
       this.updateTextureModern(flipY);
-      console.warn('新版本');
     }
   }
 

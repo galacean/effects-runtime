@@ -109,7 +109,7 @@ export class TextLayout {
    * 富文本垂直对齐计算
    * @param style - 字体样式
    * @param lineHeights - 每行高度数组
-   * @param fontSize - 字体大小（用于保持与getOffsetY相同的接口）
+   * @param fontSize - 字体大小
    * @returns 第一行基线的Y坐标
    */
   getOffsetYRich (style: TextStyle, lineHeights: number[], fontSize: number): number {

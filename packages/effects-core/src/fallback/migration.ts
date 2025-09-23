@@ -278,7 +278,6 @@ export function version34Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // 参考version33Migration中处理富文本插件名称的方式
   // 处理富文本lineGap兼容性
   processRichTextLineGapCompatibility(json);
 
@@ -289,7 +288,6 @@ export function version34Migration (json: JSONScene): JSONScene {
 }
 
 /**
- * 参考version33Migration中处理富文本插件名称的方式
  * 处理富文本lineGap兼容性
  */
 function processRichTextLineGapCompatibility (json: JSONScene) {
