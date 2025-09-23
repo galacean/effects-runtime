@@ -10,7 +10,6 @@ import { loadBinary } from '../../downloader';
 import type { Texture2DSourceOptionsCompressed, TextureDataType } from '../types';
 import { TextureSourceType } from '../types';
 import { glContext } from '../../gl';
-
 export class KTX2Loader {
   private static _isBinomialInit: boolean = false;
   private static _binomialLLCTranscoder: BinomialTranscoder | null;
@@ -141,37 +140,15 @@ export class KTX2Loader {
     return KTX2Loader._getBinomialLLCTranscoder(workerCount).init();
   }
 
-  private static _getEngineTextureFormat (
-    basisFormat: KTX2TargetFormat,
-    transcodeResult: TranscodeResult
-  ): TextureFormat {
-    const { hasAlpha } = transcodeResult;
-
-    switch (basisFormat) {
-      case KTX2TargetFormat.ASTC:
-        return TextureFormat.ASTC_4x4;
-      case KTX2TargetFormat.ETC:
-        return hasAlpha ? TextureFormat.ETC2_RGBA8 : TextureFormat.ETC2_RGB;
-      case KTX2TargetFormat.PVRTC:
-        return hasAlpha ? TextureFormat.PVRTC_RGBA4 : TextureFormat.PVRTC_RGB4;
-      case KTX2TargetFormat.R8G8B8A8:
-        return TextureFormat.R8G8B8A8;
-    }
-
-    return TextureFormat.R8G8B8;
-  }
-
   /** @internal */
   static _createTextureByBuffer (
     engine: Engine,
     ktx2Container: KTX2Container,
     transcodeResult: TranscodeResult,
     targetFormat: KTX2TargetFormat,
-    params?: Uint8Array,
   ) {
-    const { pixelWidth, pixelHeight, faceCount, vkFormat } = ktx2Container;
-    // 映射格式
-    const { internalFormat, format, type } = KTX2Loader.mapVkFormatToWebGL(vkFormat);
+    const { pixelWidth, pixelHeight, faceCount, isSRGB, vkFormat } = ktx2Container;
+    const textureFormat = KTX2Loader._getEngineTextureFormat(targetFormat, transcodeResult);
     // 纹理目标
     const target = faceCount === 6 ? glContext.TEXTURE_CUBE_MAP : glContext.TEXTURE_2D;
     // mipmap 占位符（真实数据需异步转码）
@@ -193,13 +170,19 @@ export class KTX2Loader {
         });
       }
     }
+    const { internalFormat, format, dataType } = KTX2Loader._getGLTextureDetail(
+      textureFormat,
+      isSRGB,
+      glContext,
+      engine.gpuCapability.isWebGL2
+    );
 
     return {
       sourceType: TextureSourceType.compressed,
       target,
       internalFormat,
       format,
-      type,
+      dataType,
       mipmaps };
   }
 
@@ -208,67 +191,12 @@ export class KTX2Loader {
 
     KTX2Loader._parseBuffer(new Uint8Array(buffer), engine)
       .then(({ ktx2Container, engine, result, targetFormat, params }) =>
-        KTX2Loader._createTextureByBuffer(engine, ktx2Container, result, targetFormat, params)
-      ).catch(()=>{});
+        KTX2Loader._createTextureByBuffer(engine, ktx2Container, result, targetFormat)
+      ).catch(()=>{
+        console.info('KTX2 texture load failed');
+      });
   }
 
-  static mapVkFormatToWebGL (vkFormat: number) {
-    // format 和 type 对于压缩纹理必须为 0
-    const compressedEntry = (internalFormat: number) => ({
-      internalFormat,
-      format: 0,
-      type: 0,
-      compressed: true as const,
-    });
-
-    // 未压缩 fallback（用于 Basis 等通用编码）
-    const uncompressedEntry = () => ({
-      internalFormat: glContext.SRGB8_ALPHA8,
-      format: glContext.RGBA,
-      type: glContext.UNSIGNED_BYTE,
-      compressed: false as const,
-    });
-
-    switch (vkFormat) {
-      // --- ETC2 ---
-      case 165: // VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGB8_ETC2);
-      case 166: // VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2);
-      case 167: // VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA8_ETC2_EAC);        // --- ASTC ---
-      case 175: // VK_FORMAT_ASTC_4x4_UNORM_BLOCK
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_4x4_KHR);
-      case 176: // 5x4
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_5x4_KHR);
-      case 177: // 5x5
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_5x5_KHR);
-      case 178: // 6x5
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_6x5_KHR);
-      case 179: // 6x6
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_6x6_KHR);
-      case 180: // 8x5
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_8x5_KHR);
-      case 181: // 8x6
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_8x6_KHR);
-      case 182: // 8x8
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_ASTC_8x8_KHR);        // --- PVRTC ---
-      case 1000054008: // PVRTC1 4BPP RGB UNORM
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGB_PVRTC_4BPPV1_IMG);
-      case 1000054009: // PVRTC1 4BPP SRGB RGB
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_SRGB_PVRTC_4BPPV1_EXT);
-      case 1000054012: // PVRTC1 4BPP RGBA UNORM
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_RGBA_PVRTC_4BPPV1_IMG);
-      case 1000054013: // PVRTC1 4BPP SRGB RGBA
-        return compressedEntry(CompressedTextureFormat.COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV1_EXT);        // --- Fallback: Basis Universal 或未知格式 ---
-      case 0:
-        return uncompressedEntry();        // --- 其他不支持的格式 ---
-      default:
-        console.info(`Unsupported vkFormat: ${vkFormat}. Using RGBA8 fallback.`);
-
-        return uncompressedEntry();
-    }
-  }
   private static _getBinomialLLCTranscoder (workerCount: number = 4) {
     KTX2Loader._isBinomialInit = true;
 
@@ -281,5 +209,163 @@ export class KTX2Loader {
 
   private static isPowerOfTwo (value: number) {
     return (value & (value - 1)) === 0 && value !== 0;
+  }
+
+  private static _getEngineTextureFormat (
+    basisFormat: KTX2TargetFormat,
+    transcodeResult: TranscodeResult
+  ): TextureFormat {
+    const { hasAlpha } = transcodeResult;
+
+    switch (basisFormat) {
+      case KTX2TargetFormat.ASTC:
+        return TextureFormat.ASTC_4x4;
+      case KTX2TargetFormat.ETC:
+        return hasAlpha ? TextureFormat.ETC2_RGBA8 : TextureFormat.ETC2_RGB;
+      case KTX2TargetFormat.PVRTC:
+        return hasAlpha ? TextureFormat.PVRTC_RGBA4 : TextureFormat.PVRTC_RGB4;
+      case KTX2TargetFormat.R8G8B8A8:
+        return TextureFormat.R8G8B8A8;
+    }
+
+    return TextureFormat.R8G8B8;
+  }
+  private static _getGLTextureDetail (
+    format: TextureFormat,
+    isSRGBColorSpace: boolean,
+    gl: WebGLRenderingContext & WebGL2RenderingContext,
+    isWebGL2: boolean
+  ) {
+    // Extensions
+    const astcExt = (gl as any).getExtension('WEBGL_compressed_texture_astc');
+    const etcExt = isWebGL2 ? null : (gl as any).getExtension('WEBGL_compressed_texture_etc');
+    const pvrtcExt = (gl as any).getExtension('WEBGL_compressed_texture_pvrtc') || (gl as any).getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc');
+    const srgbExt = !isWebGL2 ? (gl as any).getExtension('EXT_sRGB') : null;
+
+    const compressed = (internalFormat: number) => ({
+      internalFormat,
+      format: 0,
+      dataType: 0,
+    });
+
+    const uncompressed = (
+      internalFormat: number,
+      format: number,
+      dataType: number = gl.UNSIGNED_BYTE
+    ) => ({ internalFormat, format, dataType });
+
+    switch (format) {
+      // --- Uncompressed ---
+      case TextureFormat.R8G8B8: {
+        if (isWebGL2) {
+          // WebGL2: sRGB is core
+          if (isSRGBColorSpace) {
+            return uncompressed((gl as WebGL2RenderingContext).SRGB8, gl.RGB, gl.UNSIGNED_BYTE);
+          }
+
+          return uncompressed((gl as WebGL2RenderingContext).RGB8, gl.RGB, gl.UNSIGNED_BYTE);
+        } else {
+          // WebGL1: need EXT_sRGB for sRGB textures
+          if (isSRGBColorSpace) {
+            if (!srgbExt) {
+              throw new Error('EXT_sRGB not supported: cannot create sRGB RGB texture on WebGL1');
+            }
+            const SRGB_EXT = (srgbExt).SRGB_EXT;
+
+            return uncompressed(SRGB_EXT, SRGB_EXT, gl.UNSIGNED_BYTE);
+          }
+
+          return uncompressed(gl.RGB, gl.RGB, gl.UNSIGNED_BYTE);
+        }
+      }
+      case TextureFormat.R8G8B8A8: {
+        if (isWebGL2) {
+          if (isSRGBColorSpace) {
+            return uncompressed((gl as WebGL2RenderingContext).SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE);
+          }
+
+          return uncompressed((gl as WebGL2RenderingContext).RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+        } else {
+          if (isSRGBColorSpace) {
+            if (!srgbExt) {
+              throw new Error('EXT_sRGB not supported: cannot create sRGB RGBA texture on WebGL1');
+            }
+            const SRGB_ALPHA_EXT = (srgbExt).SRGB_ALPHA_EXT;
+
+            return uncompressed(SRGB_ALPHA_EXT, SRGB_ALPHA_EXT, gl.UNSIGNED_BYTE);
+          }
+
+          return uncompressed(gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE);
+        }
+      }
+      // --- Compressed ASTC ---
+      case TextureFormat.ASTC_4x4: {
+        if (!astcExt) {
+          throw new Error('WEBGL_compressed_texture_astc not supported');
+        }
+
+        return compressed(
+          isSRGBColorSpace
+            ? (astcExt).COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR
+            : (astcExt).COMPRESSED_RGBA_ASTC_4x4_KHR
+        );
+      }
+      // --- Compressed ETC2 ---
+      case TextureFormat.ETC2_RGB: {
+        if (isWebGL2) {
+          return compressed(
+            isSRGBColorSpace
+              ? (gl as any).COMPRESSED_SRGB8_ETC2
+              : (gl as any).COMPRESSED_RGB8_ETC2
+          );
+        } else {
+          if (!etcExt) {
+            throw new Error('WEBGL_compressed_texture_etc not supported (ETC2)');
+          }
+
+          return compressed(
+            isSRGBColorSpace
+              ? (etcExt).COMPRESSED_SRGB8_ETC2
+              : (etcExt).COMPRESSED_RGB8_ETC2
+          );
+        }
+      }
+      case TextureFormat.ETC2_RGBA8: {
+        if (isWebGL2) {
+          return compressed(
+            isSRGBColorSpace
+              ? (gl as any).COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
+              : (gl as any).COMPRESSED_RGBA8_ETC2_EAC
+          );
+        } else {
+          if (!etcExt) {
+            throw new Error('WEBGL_compressed_texture_etc not supported (ETC2 EAC)');
+          }
+
+          return compressed(
+            isSRGBColorSpace
+              ? (etcExt).COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
+              : (etcExt).COMPRESSED_RGBA8_ETC2_EAC
+          );
+        }
+      }
+      // --- Compressed PVRTC (no sRGB variants in WebGL) ---
+      case TextureFormat.PVRTC_RGB4: {
+        if (!pvrtcExt) {
+          throw new Error('WEBGL_compressed_texture_pvrtc not supported');
+        }
+
+        return compressed((pvrtcExt).COMPRESSED_RGB_PVRTC_4BPPV1_IMG);
+      }
+      case TextureFormat.PVRTC_RGBA4: {
+        if (!pvrtcExt) {
+          throw new Error('WEBGL_compressed_texture_pvrtc not supported');
+        }
+
+        return compressed((pvrtcExt).COMPRESSED_RGBA_PVRTC_4BPPV1_IMG);
+      }
+      default:
+        throw new Error(`Unsupported TextureFormat: ${format}`);
+    }
   }
 }
