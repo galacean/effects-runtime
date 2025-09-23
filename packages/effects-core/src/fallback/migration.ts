@@ -307,7 +307,7 @@ function processRichTextLineGapCompatibility (json: JSONScene) {
  */
 function ensureRichTextLineGap (options: any) {
   // 检查是否已经处理过
-  if (!options || options._useLegacyRichText !== undefined) {
+  if (!options || options.useLegacyRichText !== undefined) {
     return;
   }
 
