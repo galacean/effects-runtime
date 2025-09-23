@@ -488,8 +488,8 @@ void main() {
 
     // 计算边界过渡抗锯齿
     float transitionRange = max(max(fwidth(signedDist)*2.0, 0.002) * (_LineWidth*2.0), 0.0045); // 增加过渡范围，避免锯齿
-
-    float inner_base_alpha = smoothstep(0.0, -transitionRange, signedDist - _LineWidth * 1.0/10.0);
+    float innerrransitionRange = max(max(fwidth(signedDist)*2.0, 0.002) * (_LineWidth*2.0), 0.0045); // 增加过渡范围，避免锯齿
+    float inner_base_alpha = smoothstep(0.0, innerrransitionRange, -(signedDist - _LineWidth * 1.0/10.0)) ;
     float line_base_alpha = smoothstep(0.0, -transitionRange, signedDist);
     float lineStrokeAA = smoothstep(0.0, 1.0, lineStroke);
     vec3 insidecolor = mix(_InsideColor.rgb, linecolor.rgb, lineStrokeAA);
@@ -501,13 +501,12 @@ void main() {
     }
 
 
-    float final_stroke_alpha = lineStroke;
-    vec4 stroke_layer = linecolor * final_stroke_alpha;
-    // 当描边透明度>0时完全显示描边颜色，但保留内侧区域透明度
-        finalColorRGB = max(stroke_layer.rgb/rampColor.a, finalColorRGB)*rampColor.a;
-        // 保持内侧区域原有的透明度计算
-        finalAlpha = max(stroke_layer.a, finalAlpha);
-    // 否则保持原有混合逻辑
+
+    float strokeA = clamp(lineStroke, 0.0, 1.0);
+    vec3 strokeRGB = rampColor.rgb; // 不做预乘/除以 a
+    finalColorRGB = mix(finalColorRGB, strokeRGB, strokeA);
+    finalAlpha = 1.0 - (1.0 - finalAlpha) ;
+    //否则保持原有混合逻辑
     
     float upperGlowMask = 0.0;
     if(_Glowmask == 0.0) {
@@ -529,9 +528,9 @@ void main() {
     finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
     
     
-    // 限制alpha值不超过1.0
-    finalAlpha = min(finalAlpha, 1.0);
-    gl_FragColor = vec4(finalColorRGB, finalAlpha);
+    // // 限制alpha值不超过1.0
+    // finalAlpha = min(finalAlpha, 1.0);
+    gl_FragColor = vec4(finalColorRGB*finalAlpha,finalAlpha);
 }
 `;
 
@@ -686,7 +685,7 @@ function createControlPanel () {
       </div>
       <div class="control-item">
         <label for="lineOffsetRatio">线条偏移比例</label>
-        <input type="range" id="lineOffsetRatio" min="0.1" max="1.0" step="0.01" value="0.5">
+        <input type="range" id="lineOffsetRatio" min="0.1" max="2.0" step="0.01" value="0.5">
         <div class="value-display" id="lineOffsetRatio-value">0.50</div>
       </div>
       <div class="control-item">
@@ -1384,7 +1383,7 @@ function togglePanel () {
 
       for (const material of componentMaterials) {
         // 使用加法混合实现变亮效果
-        setBlendMode(material, spec.BlendingMode.ADD);
+        setBlendMode(material, spec.BlendingMode.ALPHA);
         material.depthMask = false;
 
         // 设置贝塞尔uniform参数
