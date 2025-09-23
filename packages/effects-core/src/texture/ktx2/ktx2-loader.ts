@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { BinomialTranscoder } from './transcoder/binomial-transcoder';
+import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 import { DFDTransferFunction, KTX2Container } from './ktx2-container';
 import { KTX2TargetFormat, TextureFormat, CompressedTextureFormat } from './ktx2-target-format';
 import type { TranscodeResult } from './transcoder/abstract-transcoder';
@@ -12,7 +13,8 @@ import { glContext } from '../../gl';
 
 export class KTX2Loader {
   private static _isBinomialInit: boolean = false;
-  private static _binomialLLCTranscoder: BinomialTranscoder;
+  private static _binomialLLCTranscoder: BinomialTranscoder | null;
+  private static _khronosTranscoder: KhronosTranscoder | null;
   private static _priorityFormats = {
     etc1s: [
       KTX2TargetFormat.ETC,
@@ -37,14 +39,46 @@ export class KTX2Loader {
     [KTX2TargetFormat.PVRTC]: { [DFDTransferFunction.linear]: [GLCapabilityType.pvrtc, GLCapabilityType.pvrtc_webkit] },
   };
 
-  private static _getBinomialLLCTranscoder (workerCount: number = 4) {
-    KTX2Loader._isBinomialInit = true;
-
-    return (this._binomialLLCTranscoder ??= new BinomialTranscoder(workerCount));
+  /**
+   * Release ktx2 transcoder worker.
+   * @remarks If use loader after releasing, we should release again.
+   */
+  static release (): void {
+    if (this._binomialLLCTranscoder) {this._binomialLLCTranscoder.destroy();}
+    if (this._khronosTranscoder) {this._khronosTranscoder.destroy();}
+    this._binomialLLCTranscoder = null;
+    this._khronosTranscoder = null;
+    this._isBinomialInit = false;
   }
 
-  private static isPowerOfTwo (value: number) {
-    return (value & (value - 1)) === 0 && value !== 0;
+  /** @internal */
+  static _parseBuffer (buffer: Uint8Array, engine: Engine) {
+    const ktx2Container = new KTX2Container(buffer);
+
+    const formatPriorities = KTX2Loader._priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
+    const targetFormat = KTX2Loader._decideTargetFormat(engine, ktx2Container, formatPriorities);
+
+    let transcodeResultPromise: Promise<TranscodeResult>;
+
+    if (KTX2Loader._isBinomialInit || targetFormat != KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
+      const binomialLLCWorker = KTX2Loader._getBinomialLLCTranscoder();
+
+      transcodeResultPromise = binomialLLCWorker.init().then(() => binomialLLCWorker.transcode(buffer, targetFormat));
+    } else {
+      const khronosWorker = KTX2Loader._getKhronosTranscoder();
+
+      transcodeResultPromise = khronosWorker.init().then(() => khronosWorker.transcode(ktx2Container));
+    }
+
+    return transcodeResultPromise.then(result => {
+      return {
+        ktx2Container,
+        engine,
+        result,
+        targetFormat,
+        params: ktx2Container.keyValue['GalaceanTextureParams'] as Uint8Array,
+      };
+    });
   }
 
   private static _decideTargetFormat (
@@ -105,28 +139,6 @@ export class KTX2Loader {
 
   initialize (workerCount: number): Promise<void> {
     return KTX2Loader._getBinomialLLCTranscoder(workerCount).init();
-  }
-
-  /** @internal */
-  static _parseBuffer (buffer: Uint8Array, engine: Engine) {
-    const ktx2Container = new KTX2Container(buffer);
-
-    const formatPriorities = KTX2Loader._priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
-    const targetFormat = KTX2Loader._decideTargetFormat(engine, ktx2Container, formatPriorities);
-
-    const binomialLLCWorker = KTX2Loader._getBinomialLLCTranscoder();
-
-    const transcodeResultPromise = binomialLLCWorker.init().then(() => binomialLLCWorker.transcode(buffer, targetFormat));
-
-    return transcodeResultPromise.then(result => {
-      return {
-        ktx2Container,
-        engine,
-        result,
-        targetFormat,
-        params: ktx2Container.keyValue['GalaceanTextureParams'] as Uint8Array,
-      };
-    });
   }
 
   private static _getEngineTextureFormat (
@@ -256,5 +268,18 @@ export class KTX2Loader {
 
         return uncompressedEntry();
     }
+  }
+  private static _getBinomialLLCTranscoder (workerCount: number = 4) {
+    KTX2Loader._isBinomialInit = true;
+
+    return (this._binomialLLCTranscoder ??= new BinomialTranscoder(workerCount));
+  }
+
+  private static _getKhronosTranscoder (workerCount: number = 4) {
+    return (this._khronosTranscoder ??= new KhronosTranscoder(workerCount, KTX2TargetFormat.ASTC));
+  }
+
+  private static isPowerOfTwo (value: number) {
+    return (value & (value - 1)) === 0 && value !== 0;
   }
 }
