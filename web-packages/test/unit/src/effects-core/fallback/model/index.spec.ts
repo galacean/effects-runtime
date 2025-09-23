@@ -108,10 +108,13 @@ describe('core/fallback/model/plugin-items', () => {
       ],
     });
 
+    //@ts-expect-error
     const item0 = scn.items.find(item => item.id === scn.compositions[0].items[0].id);
+    //@ts-expect-error
     const item1 = scn.items.find(item => item.id === scn.compositions[0].items[1].id);
 
     expect(scn.plugins).to.deep.equal(['model']);
+    //@ts-expect-error
     expect(scn.compositions[0].items.length).to.eql(2);
     expect(scn.items.length).to.eql(2);
     expect(item0?.pn).to.eql(0);
@@ -197,9 +200,13 @@ describe('core/fallback/model/plugin-items', () => {
       ],
     });
 
+    //@ts-expect-error
     const item0From08 = scn08MeshFix.items.find(item => item.id === scn08MeshFix.compositions[0].items[0].id);
+    //@ts-expect-error
     const item1From08 = scn08MeshFix.items.find(item => item.id === scn08MeshFix.compositions[0].items[1].id);
+    //@ts-expect-error
     const item2From08 = scn08MeshFix.items.find(item => item.id === scn08MeshFix.compositions[0].items[2].id);
+    //@ts-expect-error
     const item3From08 = scn08MeshFix.items.find(item => item.id === scn08MeshFix.compositions[0].items[3].id);
 
     expect(item0From08?.endBehavior).to.eql(0);
@@ -285,9 +292,13 @@ describe('core/fallback/model/plugin-items', () => {
         },
       ],
     });
+    //@ts-expect-error
     const item0From18 = scn18MeshFix.items.find(item => item.id === scn18MeshFix.compositions[0].items[0].id);
+    //@ts-expect-error
     const item1From18 = scn18MeshFix.items.find(item => item.id === scn18MeshFix.compositions[0].items[1].id);
+    //@ts-expect-error
     const item2From18 = scn18MeshFix.items.find(item => item.id === scn18MeshFix.compositions[0].items[2].id);
+    //@ts-expect-error
     const item3From18 = scn18MeshFix.items.find(item => item.id === scn18MeshFix.compositions[0].items[3].id);
 
     expect(item0From18?.endBehavior).to.eql(0);
@@ -373,9 +384,13 @@ describe('core/fallback/model/plugin-items', () => {
         },
       ],
     });
+    //@ts-expect-error
     const item0From21 = scn21MeshFix.items.find(item => item.id === scn21MeshFix.compositions[0].items[0].id);
+    //@ts-expect-error
     const item1From21 = scn21MeshFix.items.find(item => item.id === scn21MeshFix.compositions[0].items[1].id);
+    //@ts-expect-error
     const item2From21 = scn21MeshFix.items.find(item => item.id === scn21MeshFix.compositions[0].items[2].id);
+    //@ts-expect-error
     const item3From21 = scn21MeshFix.items.find(item => item.id === scn21MeshFix.compositions[0].items[3].id);
 
     expect(item0From21?.endBehavior).to.eql(0);
@@ -461,9 +476,13 @@ describe('core/fallback/model/plugin-items', () => {
         },
       ],
     });
+    //@ts-expect-error
     const item0From22 = scn22MeshFix.items.find(item => item.id === scn22MeshFix.compositions[0].items[0].id);
+    //@ts-expect-error
     const item1From22 = scn22MeshFix.items.find(item => item.id === scn22MeshFix.compositions[0].items[1].id);
+    //@ts-expect-error
     const item2From22 = scn22MeshFix.items.find(item => item.id === scn22MeshFix.compositions[0].items[2].id);
+    //@ts-expect-error
     const item3From22 = scn22MeshFix.items.find(item => item.id === scn22MeshFix.compositions[0].items[3].id);
 
     expect(item0From22?.endBehavior).to.eql(1);
