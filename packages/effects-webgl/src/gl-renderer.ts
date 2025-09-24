@@ -11,7 +11,6 @@ import { ExtWrap } from './ext-wrap';
 import { GLContextManager } from './gl-context-manager';
 import { GLEngine } from './gl-engine';
 import { GLFramebuffer } from './gl-framebuffer';
-import { GLPipelineContext } from './gl-pipeline-context';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
 
@@ -24,7 +23,6 @@ export class GLRenderer extends Renderer implements Disposable {
   extension: ExtWrap;
   framebuffer: Framebuffer;
   temporaryRTs: Record<string, Framebuffer> = {};
-  pipelineContext: GLPipelineContext;
 
   readonly context: GLContextManager;
 
@@ -51,7 +49,6 @@ export class GLRenderer extends Renderer implements Disposable {
     // engine 先创建
     this.engine = new GLEngine(gl);
     this.engine.renderer = this;
-    this.pipelineContext = new GLPipelineContext(this.engine as GLEngine, gl);
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
     this.renderingData = {
@@ -87,13 +84,6 @@ export class GLRenderer extends Renderer implements Disposable {
   override renderRenderFrame (renderFrame: RenderFrame) {
     const frame = renderFrame;
 
-    // TODO 需要一个贴图统一初始化的管理类，避免在渲染逻辑代码中初始化。
-    // 初始化renderframe的贴图资源
-    // if (frame.cachedTextures) {
-    //   for (const texture of frame.cachedTextures) {
-    //     (texture as GLTexture).initialize(this.pipelineContext);
-    //   }
-    // }
     if (frame.resource) {
       frame.resource.color_b.initialize();
     }
@@ -214,7 +204,7 @@ export class GLRenderer extends Renderer implements Disposable {
       this.framebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
-      this.pipelineContext.bindSystemFramebuffer();
+      (this.engine as GLEngine).bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
   }
@@ -275,36 +265,36 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override setViewport (x: number, y: number, width: number, height: number) {
-    this.pipelineContext.viewport(x, y, width, height);
+    (this.engine as GLEngine).viewport(x, y, width, height);
   }
 
   override clear (action: RenderPassStoreAction | RenderPassClearAction): void {
-    const state = this.pipelineContext;
+    const engine = this.engine as GLEngine;
     let bit = 0;
 
     if (action.colorAction === TextureLoadAction.clear) {
       const clearColor = action.clearColor;
 
       if (clearColor) {
-        state.clearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+        engine.clearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
       }
-      state.colorMask(true, true, true, true);
+      engine.colorMask(true, true, true, true);
       bit = glContext.COLOR_BUFFER_BIT;
     }
     if (action.stencilAction === TextureLoadAction.clear) {
-      state.stencilMask(0xff);
-      state.clearStencil(action.clearStencil || 0);
+      engine.stencilMask(0xff);
+      engine.clearStencil(action.clearStencil || 0);
       bit = bit | glContext.STENCIL_BUFFER_BIT;
     }
     if (action.depthAction === TextureLoadAction.clear) {
       const depth = action.clearDepth as number;
 
-      state.depthMask(true);
-      state.clearDepth(Number.isFinite(depth) ? depth : 1);
+      engine.depthMask(true);
+      engine.clearDepth(Number.isFinite(depth) ? depth : 1);
       bit = bit | glContext.DEPTH_BUFFER_BIT;
     }
     if (bit) {
-      state.clear(bit);
+      engine.clear(bit);
     }
   }
 
@@ -317,7 +307,7 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override getShaderLibrary (): ShaderLibrary | undefined {
-    return this.pipelineContext.shaderLibrary;
+    return (this.engine as GLEngine).shaderLibrary;
   }
 
   override getWidth (): number {
@@ -331,7 +321,6 @@ export class GLRenderer extends Renderer implements Disposable {
   override dispose (): void {
     this.context.dispose();
     this.extension.dispose();
-    this.pipelineContext.dispose();
     this.glRenderer?.dispose();
     // @ts-expect-error
     this.canvas = null;
@@ -340,7 +329,6 @@ export class GLRenderer extends Renderer implements Disposable {
 
   override lost (e: Event) {
     e.preventDefault();
-    this.pipelineContext.dispose();
     this.extension.dispose();
     this.glRenderer.lost(e);
   }
@@ -354,7 +342,6 @@ export class GLRenderer extends Renderer implements Disposable {
     }
     this.engine.gpuCapability = new GPUCapability(gl);
     this.engine.renderer = this;
-    this.pipelineContext = new GLPipelineContext(this.engine as GLEngine, gl);
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
   }

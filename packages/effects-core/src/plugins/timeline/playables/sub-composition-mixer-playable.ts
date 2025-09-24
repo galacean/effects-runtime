@@ -1,5 +1,5 @@
 import { CompositionComponent } from '../../../comp-vfx-item';
-import type { FrameContext } from '../../cal/playable-graph';
+import type { FrameContext } from '../playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export class SubCompositionMixerPlayable extends TrackMixerPlayable {

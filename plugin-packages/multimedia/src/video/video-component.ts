@@ -1,5 +1,5 @@
-import type { Asset, Engine, GeometryFromShape, Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { BaseRenderComponent, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
+import type { Asset, Engine, GeometryFromShape, Renderer, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import { MaskableGraphic, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -16,10 +16,10 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
 let seed = 0;
 
 /**
- *
+ * Video component class
  */
 @effectsClass(spec.DataType.VideoComponent)
-export class VideoComponent extends BaseRenderComponent {
+export class VideoComponent extends MaskableGraphic {
   video?: HTMLVideoElement;
 
   private threshold = 0.03;
@@ -27,7 +27,7 @@ export class VideoComponent extends BaseRenderComponent {
    * 播放标志位
    */
   private played = false;
-
+  private pendingPause = false;
   /**
    * 解决 video 暂停报错问题
    *
@@ -85,19 +85,10 @@ export class VideoComponent extends BaseRenderComponent {
   override onAwake (): void {
     super.onAwake();
     this.item.composition?.on('goto', (option: { time: number }) => {
-      if (option.time > 0) {
-        const { endBehavior, start, duration } = this.item;
-
-        if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
-          this.setCurrentTime((option.time - start) % duration);
-        } else {
-          if (option.time >= duration) {
-            this.onDisable();
-          } else {
-            this.setCurrentTime(option.time - start);
-          }
-        }
-      }
+      this.setCurrentTime(this.item.time);
+    });
+    this.item.composition?.on('pause', () => {
+      this.pauseVideo();
     });
   }
 
@@ -145,15 +136,20 @@ export class VideoComponent extends BaseRenderComponent {
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
   }
 
+  override render (renderer: Renderer): void {
+    super.render(renderer);
+    this.renderer.texture.uploadCurrentVideoFrame();
+  }
+
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time, duration, endBehavior, composition, start } = this.item;
+    const { time, duration, endBehavior, composition } = this.item;
 
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    const isEnd = (time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)
-    || Math.abs(time - duration) < this.threshold;
+    const isEnd = (time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)
+      || Math.abs(time - duration) < this.threshold;
 
     if (time > 0 && !isEnd) {
       this.setVisible(true);
@@ -162,7 +158,7 @@ export class VideoComponent extends BaseRenderComponent {
 
     this.renderer.texture.uploadCurrentVideoFrame();
 
-    if ((time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)) {
+    if ((time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
@@ -269,15 +265,23 @@ export class VideoComponent extends BaseRenderComponent {
     if (this.video) {
       this.played = true;
       this.isPlayLoading = true;
+      this.pendingPause = false;
       this.video.play().
-        then(()=>{
+        then(() => {
           this.isPlayLoading = false;
-          if (this.played === false && this.video) {
-            this.video.pause();
+          // 如果在 play pending 期间被请求了 pause，则立即暂停并复位 played
+          if (!this.played || this.pendingPause) {
+            this.pendingPause = false;
+            this.played = false;
+            this.video?.pause();
           }
-        }).
-        catch(error => {
-          this.engine.renderErrors.add(error);
+        })
+        .catch(error => {
+          // 复位状态
+          this.isPlayLoading = false;
+          this.played = false;
+          this.pendingPause = false;
+          if (error.name !== 'AbortError') { this.engine.renderErrors.add(error); }
         });
     }
   }
@@ -290,14 +294,21 @@ export class VideoComponent extends BaseRenderComponent {
     if (this.played) {
       this.played = false;
     }
-    if (this.video && !this.isPlayLoading) {
-      this.video.pause();
+    if (!this.video) { return; }
+
+    if (this.isPlayLoading) {
+      this.pendingPause = true;
+
+      return;
     }
+    this.video.pause();
   }
 
   override onDestroy (): void {
     super.onDestroy();
-
+    this.played = false;
+    this.isPlayLoading = false;
+    this.pendingPause = false;
     if (this.video) {
       this.video.pause();
       this.video.src = '';
@@ -307,9 +318,15 @@ export class VideoComponent extends BaseRenderComponent {
 
   override onDisable (): void {
     super.onDisable();
-    this.setCurrentTime(0);
+
     this.isVideoActive = false;
     this.pauseVideo();
+    const endBehavior = this.item?.endBehavior;
+
+    if (endBehavior === spec.EndBehavior.restart) {
+      this.setCurrentTime(0);
+    }
+
   }
 
   override onEnable (): void {

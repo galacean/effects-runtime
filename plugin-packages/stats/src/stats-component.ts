@@ -1,4 +1,4 @@
-import type { GLRenderer } from '@galacean/effects';
+import type { GLEngine, GLRenderer } from '@galacean/effects';
 import { Behaviour } from '@galacean/effects';
 import { Monitor } from './monitor';
 import type { StatsOptions } from './stats';
@@ -14,7 +14,7 @@ export class StatsComponent extends Behaviour {
 
   init (options: Required<StatsOptions>): void {
     const renderer = this.engine.renderer as GLRenderer;
-    const gl = renderer.pipelineContext.gl;
+    const gl = (renderer.engine as GLEngine).gl;
 
     this.monitor = new Monitor(gl, options);
   }

@@ -1,6 +1,6 @@
 import type { ValueGetter } from '../../../math';
-import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
+import type { FrameContext } from '../playable';
+import { Playable } from '../playable';
 
 export class PropertyClipPlayable<T> extends Playable {
   value: T;

@@ -1,6 +1,5 @@
 import type { Disposable } from '@galacean/effects-core';
 import type { GLGeometry } from './gl-geometry';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
 
@@ -23,27 +22,25 @@ export interface ProgramUniformInfo {
 }
 export class GLProgram implements Disposable {
   private attribInfoMap: Record<string, ProgramAttributeInfo>;
-  private pipelineContext: GLPipelineContext;
 
   constructor (
     public engine: GLEngine,
     public readonly program: WebGLProgram,
     private readonly id: string,
   ) {
-    this.pipelineContext = engine.getGLPipelineContext();
-    this.pipelineContext.useProgram(program);
+    this.engine.useProgram(program);
 
     this.attribInfoMap = this.createAttribMap();
 
-    this.pipelineContext.useProgram(null);
+    this.engine.useProgram(null);
     //gl.activeTexture(gl.TEXTURE0);
-    //pipelineContext.activeTexture(gl.TEXTURE0);
+    //this.engine.activeTexture(gl.TEXTURE0);
     //emptyTexture2D.bind();
     //this.uniformInfoMap = uniformMap;
   }
 
   bind () {
-    this.pipelineContext.useProgram(this.program);
+    this.engine.useProgram(this.program);
   }
 
   /**
@@ -54,7 +51,7 @@ export class GLProgram implements Disposable {
    */
   setupAttributes (geometry: GLGeometry) {
     const programId = this.id;
-    const gl = this.pipelineContext.gl;
+    const gl = this.engine.gl;
     let vao: GLVertexArrayObject | undefined;
 
     if (geometry.vaos[programId]) {
@@ -98,7 +95,7 @@ export class GLProgram implements Disposable {
   }
 
   createAttribMap () {
-    const { gl } = this.pipelineContext;
+    const { gl } = this.engine;
     const program = this.program;
     const attribMap: Record<string, ProgramAttributeInfo> = {};
     const num = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
@@ -120,10 +117,8 @@ export class GLProgram implements Disposable {
   }
 
   dispose () {
-    if (this.pipelineContext) {
-      this.pipelineContext.gl.deleteProgram(this.program);
-      // @ts-expect-error safe to assign
-      this.pipelineContext = null;
+    if (this.engine) {
+      this.engine.gl.deleteProgram(this.program);
     }
   }
 }

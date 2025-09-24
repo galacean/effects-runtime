@@ -11,7 +11,6 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
-
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
  */
@@ -147,7 +146,8 @@ export function version33Migration (json: JSONScene): JSONScene {
         let shapeData;
 
         if (Number.isInteger(shape)) {
-          shapeData = json.shapes[shape as number];
+          // @ts-expect-error
+          shapeData = json.shapes?.[shape as number];
         } else {
           shapeData = shape;
         }
@@ -173,8 +173,11 @@ export function version33Migration (json: JSONScene): JSONScene {
     const compositionComponent = {
       id: generateGUID(),
       dataType: 'CompositionComponent',
+      //@ts-expect-error
       items: composition.items,
+      //@ts-expect-error
       timelineAsset: composition.timelineAsset,
+      //@ts-expect-error
       sceneBindings: composition.sceneBindings,
       item: { id: composition.id },
     } as unknown as spec.ComponentData;
@@ -183,7 +186,6 @@ export function version33Migration (json: JSONScene): JSONScene {
     composition.timelineAsset = undefined;
     //@ts-expect-error
     composition.sceneBindings = undefined;
-    //@ts-expect-error
     composition.components = [{ id: compositionComponent.id }];
     json.components.push(compositionComponent);
   }
@@ -212,10 +214,8 @@ export function version34Migration (json: JSONScene): JSONScene {
 
   // 修复合成组件的 item id 问题
   for (const composition of json.compositions) {
-    // TODO: Update spec
-    //@ts-expect-error
     for (const component of composition.components) {
-      const componentID = (component as spec.DataPath).id;
+      const componentID = (component).id;
 
       idToComponentMap[componentID].item.id = composition.id;
     }
@@ -236,12 +236,89 @@ export function version34Migration (json: JSONScene): JSONScene {
         json.geometries.push(geometryData);
       }
     }
+
+    if (componentData.dataType === spec.DataType.ShapeComponent) {
+      const shapeComponentData = componentData as ShapeComponentData;
+
+      shapeComponentData.fills = [];
+      //@ts-expect-error
+      if (shapeComponentData.fill) {
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
+          color: shapeComponentData.fill.color,
+        };
+
+        shapeComponentData.fills.push(solidPaintData);
+      }
+      //@ts-expect-error
+      delete shapeComponentData.fill;
+
+      shapeComponentData.strokes = [];
+      //@ts-expect-error
+      if (shapeComponentData.stroke) {
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
+          color: shapeComponentData.stroke.color,
+        };
+
+        shapeComponentData.strokes.push(solidPaintData);
+
+        //@ts-expect-error
+        shapeComponentData.strokeWidth = shapeComponentData.stroke.width;
+        //@ts-expect-error
+        shapeComponentData.strokeCap = shapeComponentData.stroke.cap;
+        //@ts-expect-error
+        shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
+
+        //@ts-expect-error
+        delete shapeComponentData.stroke;
+      }
+    }
   }
+
+  // 处理富文本lineGap兼容性
+  processRichTextLineGapCompatibility(json);
 
   //@ts-expect-error
   json.version = '3.5';
 
   return json;
+}
+
+/**
+ * 处理富文本lineGap兼容性
+ */
+function processRichTextLineGapCompatibility (json: JSONScene) {
+  if (!json.components) {return;}
+
+  // 遍历所有组件，处理富文本组件
+  for (const component of json.components) {
+    // 识别富文本组件并处理lineGap兼容性
+    if (component.dataType === 'RichTextComponent' && (component as any).options) {
+      ensureRichTextLineGap((component as any).options);
+    }
+  }
+}
+
+/**
+ * 确保富文本组件有版本标识字段
+ */
+function ensureRichTextLineGap (options: any) {
+  // 检查是否已经处理过
+  if (!options || options.useLegacyRichText !== undefined) {
+    return;
+  }
+
+  // 根据是否存在lineGap字段来判断版本
+  if (options.lineGap === undefined) {
+    // 旧版本（没有lineGap字段）
+    options.useLegacyRichText = true;
+  } else {
+    // 新版本（有lineGap字段）
+    options.useLegacyRichText = false;
+  }
 }
 
 /**
@@ -328,6 +405,7 @@ function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName 
 }
 
 export function processContent (composition: spec.CompositionData) {
+  //@ts-expect-error
   for (const item of composition.items) {
     const itemProps = itemMap.get(item.id);
 
@@ -415,7 +493,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       result.textures.push({
         id: generateGUID(),
         dataType: DataType.Texture,
-        //@ts-expect-error
         source: { id: result.images[i].id },
         flipY: true,
       });
@@ -490,6 +567,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
     const compositionData: CompositionData = {
       ...composition,
+      //@ts-expect-error
       timelineAsset: { id: '' },
       sceneBindings: [],
     };
@@ -748,6 +826,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     dataType: 'TimelineAsset',
   };
 
+  //@ts-expect-error
   for (const itemDataPath of composition.items) {
     const item = guidToItemMap[itemDataPath.id];
     const subTrackDatas = [];
@@ -886,7 +965,9 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     trackIds.push({ id: trackData.id });
   }
 
+  //@ts-expect-error
   composition.timelineAsset = { id: timelineAssetData.id };
+  //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 
   jsonScene.miscs.push(timelineAssetData);

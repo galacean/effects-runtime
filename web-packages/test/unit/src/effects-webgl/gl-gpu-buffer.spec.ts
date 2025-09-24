@@ -1,4 +1,4 @@
-import { GLEngine, GLGPUBuffer, GLPipelineContext } from '@galacean/effects-webgl';
+import { GLEngine, GLGPUBuffer } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { Engine, isWebGL2 } from '@galacean/effects';
 
@@ -6,25 +6,22 @@ const { assert, expect } = chai;
 
 describe('webgl/gl-gpu-buffer', () => {
   let gl: WebGLRenderingContext;
-  let pipelineContext: GLPipelineContext;
-  let engine: GLEngine;
+  let glEngine: GLEngine;
 
   before(() => {
     gl = getGL2() as WebGL2RenderingContext;
-    engine = new GLEngine(gl);
-    pipelineContext = new GLPipelineContext(engine, gl);
+    glEngine = new GLEngine(gl);
   });
 
   after(() => {
     (gl?.canvas as HTMLCanvasElement).remove();
     // @ts-expect-error
     gl = null;
-    engine.dispose();
-    pipelineContext.dispose();
+    glEngine.dispose();
   });
 
   it('create with options', () => {
-    const buffer = new GLGPUBuffer(pipelineContext, {});
+    const buffer = new GLGPUBuffer(glEngine, {});
 
     assert.equal(buffer.type, gl.FLOAT);
     assert.equal(buffer.elementCount, 0);
@@ -33,7 +30,7 @@ describe('webgl/gl-gpu-buffer', () => {
     // @ts-expect-error
     assert.equal(buffer.byteLength, 0);
 
-    const buffer2 = new GLGPUBuffer(pipelineContext, { type: gl.INT, elementCount: 4, target: gl.ELEMENT_ARRAY_BUFFER });
+    const buffer2 = new GLGPUBuffer(glEngine, { type: gl.INT, elementCount: 4, target: gl.ELEMENT_ARRAY_BUFFER });
 
     // @ts-expect-error
     assert.equal(buffer2.byteLength, 4 * Int32Array.BYTES_PER_ELEMENT);
@@ -43,7 +40,7 @@ describe('webgl/gl-gpu-buffer', () => {
   });
 
   it('buffer subData increase buffer length', () => {
-    const buffer = new GLGPUBuffer(pipelineContext, { type: gl.FLOAT });
+    const buffer = new GLGPUBuffer(glEngine, { type: gl.FLOAT });
 
     gl.getError();
     buffer.bufferSubData(5, new Float32Array([1, 2, 3]));
@@ -53,7 +50,7 @@ describe('webgl/gl-gpu-buffer', () => {
   });
 
   it('set element count when filled data', () => {
-    const buffer = new GLGPUBuffer(pipelineContext, {
+    const buffer = new GLGPUBuffer(glEngine, {
       type: gl.SHORT,
       data: new Uint16Array([1, 2, 3, 4]),
     });
@@ -61,7 +58,7 @@ describe('webgl/gl-gpu-buffer', () => {
     assert.equal(buffer.bytesPerElement, Uint16Array.BYTES_PER_ELEMENT);
     assert.equal(buffer.elementCount, 4);
 
-    if (isWebGL2(buffer.pipelineContext.gl)) {
+    if (isWebGL2(buffer.engine.gl)) {
       const dstBuffer = new Uint16Array(4);
 
       buffer.readSubData(0, dstBuffer);
@@ -70,7 +67,7 @@ describe('webgl/gl-gpu-buffer', () => {
   });
 
   it('get data with offset', () => {
-    const buffer = new GLGPUBuffer(pipelineContext, { data: new Float32Array([1, 2, 3, 4, 5, 6]) });
+    const buffer = new GLGPUBuffer(glEngine, { data: new Float32Array([1, 2, 3, 4, 5, 6]) });
 
     if (buffer instanceof WebGL2RenderingContext) {
       let dstBuffer = new Float32Array(2);

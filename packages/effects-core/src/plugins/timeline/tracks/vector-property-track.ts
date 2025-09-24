@@ -1,14 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
-import type { PlayableGraph } from '../../cal/playable-graph';
 import type { TrackMixerPlayable } from '../playables';
-import { Vector2PropertyMixerPlayable, Vector4PropertyMixerPlayable } from '../playables';
+import { Vector2PropertyMixerPlayable, Vector3PropertyMixerPlayable, Vector4PropertyMixerPlayable } from '../playables';
 import { PropertyTrack } from './property-track';
 
 @effectsClass(spec.DataType.Vector4PropertyTrack)
 export class Vector4PropertyTrack extends PropertyTrack {
-  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    const mixer = new Vector4PropertyMixerPlayable(graph);
+  override createTrackMixer (): TrackMixerPlayable {
+    const mixer = new Vector4PropertyMixerPlayable();
 
     mixer.propertyPath = this.path;
 
@@ -16,10 +15,21 @@ export class Vector4PropertyTrack extends PropertyTrack {
   }
 }
 
-@effectsClass('Vector2PropertyTrack')
+@effectsClass(spec.DataType.Vector3PropertyTrack)
+export class Vector3PropertyTrack extends PropertyTrack {
+  override createTrackMixer (): TrackMixerPlayable {
+    const mixer = new Vector3PropertyMixerPlayable();
+
+    mixer.propertyPath = this.path;
+
+    return mixer;
+  }
+}
+
+@effectsClass(spec.DataType.Vector2PropertyTrack)
 export class Vector2PropertyTrack extends PropertyTrack {
-  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    const mixer = new Vector2PropertyMixerPlayable(graph);
+  override createTrackMixer (): TrackMixerPlayable {
+    const mixer = new Vector2PropertyMixerPlayable();
 
     mixer.propertyPath = this.path;
 

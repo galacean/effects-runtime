@@ -6,7 +6,6 @@ import { ShaderCompileResultStatus, ShaderType, ShaderFactory } from '@galacean/
 import { GLProgram } from './gl-program';
 import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
 
 interface GLShaderCompileResult extends ShaderCompileResult {
@@ -26,8 +25,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   private cachedShaders: Record<string, GLShaderVariant> = {};
 
   constructor (
-    public engine: GLEngine,
-    public pipelineContext: GLPipelineContext,
+    public engine: GLEngine
   ) {
     this.glAsyncCompileExt = engine.gpuCapability.glAsyncCompileExt;
   }
@@ -126,7 +124,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       shared = true;
     }
 
-    const gl = this.pipelineContext.gl;
+    const gl = this.engine.gl;
     const result: GLShaderCompileResult = { shared, status: ShaderCompileResultStatus.compiling };
     const linkProgram = this.createProgram(gl, vertex, fragment, result);
     const ext = this.glAsyncCompileExt;
@@ -136,7 +134,6 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       result.compileTime = performance.now() - startTime;
       shader.program = glProgram;
       shader.initialized = true;
-      shader.pipelineContext = this.pipelineContext;
 
       if (this.programMap[shader.id] !== undefined) {
         console.warn(`Find duplicated shader id: ${shader.id}.`);
@@ -310,8 +307,8 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       program.dispose();
     });
     this.programMap = {};
-    if (this.pipelineContext) {
-      const gl = this.pipelineContext.gl;
+    if (this.engine) {
+      const gl = this.engine.gl;
 
       this.glFragShaderMap.forEach(shader => {
         gl.deleteShader(shader);

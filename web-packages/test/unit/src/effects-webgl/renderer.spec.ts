@@ -1,5 +1,6 @@
 import type { Renderer } from '@galacean/effects-core';
 import { TextureSourceType, RenderPass, Camera, TextureLoadAction, RenderFrame } from '@galacean/effects-core';
+import type { GLEngine } from '@galacean/effects-webgl';
 import { GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { readPixels } from './texture-utils.js';
 
@@ -20,9 +21,8 @@ describe('webgl/renderer', () => {
 
   function copy (renderer: GLRenderer) {
     setupRenderFrame(renderer);
-    const pipelineContext = renderer.pipelineContext;
-    const engine = renderer.engine;
-    const gl = pipelineContext.gl;
+    const engine = renderer.engine as GLEngine;
+    const gl = engine.gl;
     const target = new GLTexture(engine, {
       sourceType: TextureSourceType.data,
       data: {
@@ -161,7 +161,7 @@ describe('webgl/renderer', () => {
 
   it('safe to call destroy', async () => {
     const renderer = new GLRenderer(glCanvas, 'webgl');
-    const gl = renderer.pipelineContext.gl;
+    const gl = (renderer.engine as GLEngine).gl;
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
         width: 3,
