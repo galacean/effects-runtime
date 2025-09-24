@@ -152,23 +152,23 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       this.resize();
       setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
+
+      // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
+      playerMap.forEach(player => {
+        if (player.gpuCapability.type !== this.gpuCapability.type) {
+          logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
+        }
+      });
+      playerMap.set(this.canvas, this);
+
+      assertNoConcurrentPlayers();
+      broadcastPlayerEvent(this, true);
     } catch (e: any) {
       if (this.canvas && !this.useExternalCanvas) {
         this.canvas.remove();
       }
       this.handleThrowError(e);
     }
-
-    // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
-    playerMap.forEach(player => {
-      if (player.gpuCapability.type !== this.gpuCapability.type) {
-        logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
-      }
-    });
-    playerMap.set(this.canvas, this);
-
-    assertNoConcurrentPlayers();
-    broadcastPlayerEvent(this, true);
   }
 
   /**
@@ -806,10 +806,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
       this.renderer.dispose(!keepCanvas);
     }
-    if (this.event) {
-      this.event.dispose();
-    }
-    this.assetService.dispose();
+    this.event?.dispose();
+    this.assetService?.dispose();
     broadcastPlayerEvent(this, false);
     if (
       this.canvas instanceof HTMLCanvasElement &&
