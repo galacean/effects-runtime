@@ -67,6 +67,9 @@ export class InteractComponent extends RendererComponent {
 
   private lastTime = -1;
 
+  /**
+   * 是否响应点击和拖拽交互事件
+   */
   set interactive (enable: boolean) {
     this._interactive = enable;
     if (!enable) {
@@ -74,23 +77,40 @@ export class InteractComponent extends RendererComponent {
       this.bouncingArg = null;
     }
   }
-
   get interactive () {
     return this._interactive;
   }
 
+  /**
+   * 获取拖拽范围 X 轴
+   * @returns 拖拽范围 [min, max]
+   */
   getDragRangeX (): [min: number, max: number] {
     return this.dragRange.dxRange;
   }
 
+  /**
+   * 设置拖拽范围 X 轴
+   * @param min 最小值
+   * @param max 最大值
+   */
   setDragRangeX (min: number, max: number) {
     this.dragRange.dxRange = [min, max];
   }
 
+  /**
+   * 获取拖拽范围 Y 轴
+   * @returns 拖拽范围 [min, max]
+   */
   getDragRangeY (): [min: number, max: number] {
     return this.dragRange.dyRange;
   }
 
+  /**
+   * 设置拖拽范围 Y 轴
+   * @param min 最小值
+   * @param max 最大值
+   */
   setDragRangeY (min: number, max: number) {
     this.dragRange.dyRange = [min, max];
   }
@@ -345,6 +365,10 @@ export class InteractComponent extends RendererComponent {
     }
   }
 
+  /**
+   * 是否可以交互
+   * @returns
+   */
   canInteract (): boolean {
     return Boolean(this.item.composition?.interactive) && this._interactive;
   }

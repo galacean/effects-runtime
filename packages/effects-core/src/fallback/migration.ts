@@ -11,8 +11,6 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
-import { FillType, type SolidPaintData } from '../components/shape-component';
-
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
  */
@@ -242,39 +240,88 @@ export function version34Migration (json: JSONScene): JSONScene {
     if (componentData.dataType === spec.DataType.ShapeComponent) {
       const shapeComponentData = componentData as ShapeComponentData;
 
-      //@ts-expect-error
       shapeComponentData.fills = [];
+      //@ts-expect-error
       if (shapeComponentData.fill) {
-        const solidPaintData: SolidPaintData = {
-          type: FillType.Solid,
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
           color: shapeComponentData.fill.color,
         };
 
-        //@ts-expect-error
         shapeComponentData.fills.push(solidPaintData);
       }
+      //@ts-expect-error
       delete shapeComponentData.fill;
 
-      //@ts-expect-error
       shapeComponentData.strokes = [];
+      //@ts-expect-error
       if (shapeComponentData.stroke) {
-        const solidPaintData: SolidPaintData = {
-          type: FillType.Solid,
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
           color: shapeComponentData.stroke.color,
         };
 
-        //@ts-expect-error
         shapeComponentData.strokes.push(solidPaintData);
+
         //@ts-expect-error
-        shapeComponentData.stroke.color = undefined;
+        shapeComponentData.strokeWidth = shapeComponentData.stroke.width;
+        //@ts-expect-error
+        shapeComponentData.strokeCap = shapeComponentData.stroke.cap;
+        //@ts-expect-error
+        shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
+
+        //@ts-expect-error
+        delete shapeComponentData.stroke;
       }
     }
   }
+
+  // 处理富文本lineGap兼容性
+  processRichTextLineGapCompatibility(json);
 
   //@ts-expect-error
   json.version = '3.5';
 
   return json;
+}
+
+/**
+ * 处理富文本 lineGap 兼容性
+ */
+function processRichTextLineGapCompatibility (json: JSONScene) {
+  if (!json.components) { return; }
+
+  // 遍历所有组件，处理富文本组件
+  for (const component of json.components) {
+    // 识别富文本组件并处理 lineGap 兼容性
+    if (
+      component.dataType === spec.DataType.RichTextComponent &&
+      (component as any).options
+    ) {
+      ensureRichTextLineGap((component as any).options);
+    }
+  }
+}
+
+/**
+ * 确保富文本组件有版本标识字段
+ */
+function ensureRichTextLineGap (options: any) {
+  // 检查是否已经处理过
+  if (!options || options.useLegacyRichText !== undefined) {
+    return;
+  }
+
+  // 根据是否存在 lineGap 字段来判断版本
+  if (options.lineGap === undefined) {
+    // 旧版本（没有 lineGap 字段）
+    options.useLegacyRichText = true;
+  } else {
+    // 新版本（有 lineGap 字段）
+    options.useLegacyRichText = false;
+  }
 }
 
 /**

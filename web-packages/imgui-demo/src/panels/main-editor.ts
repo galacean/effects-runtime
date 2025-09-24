@@ -42,10 +42,8 @@ export class MainEditor extends EditorWindow {
 
       return;
     }
-    const sceneImageSize = ImGui.GetWindowSize();
+    const sceneImageSize = ImGui.GetContentRegionAvail();
 
-    sceneImageSize.x -= 15;
-    sceneImageSize.y -= 40;
     const player = GalaceanEffects.player;
 
     const pos = ImGui.GetWindowPos();
