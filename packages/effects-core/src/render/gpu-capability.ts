@@ -92,14 +92,15 @@ export class GPUCapability {
     const halfFloatTexture = level2 ? WebGL2RenderingContext.HALF_FLOAT : (gl.getExtension('OES_texture_half_float')?.HALF_FLOAT_OES || 0);
 
     this.capabilityList = new Map([
-      ['WEBGL_compressed_texture_astc' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_astc')],
-      ['WEBKIT_WEBGL_compressed_texture_astc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_astc')],
-      ['WEBGL_compressed_texture_etc' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBGL_compressed_texture_etc1')],
-      ['WEBKIT_WEBGL_compressed_texture_etc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
-      ['WEBGL_compressed_texture_etc1' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_etc1')],
-      ['WEBKIT_WEBGL_compressed_texture_etc1' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
-      ['WEBGL_compressed_texture_pvrtc' as GLCapabilityType, !!gl.getExtension('WEBGL_compressed_texture_pvrtc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
-      ['WEBKIT_WEBGL_compressed_texture_pvrtc' as GLCapabilityType, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+      [GLCapabilityType.astc, !!gl.getExtension('WEBGL_compressed_texture_astc')],
+      [GLCapabilityType.astc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_astc')],
+      [GLCapabilityType.etc, !!gl.getExtension('WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBGL_compressed_texture_etc1')],
+      [GLCapabilityType.etc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
+      [GLCapabilityType.etc1, !!gl.getExtension('WEBGL_compressed_texture_etc1')],
+      [GLCapabilityType.etc1_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
+      [GLCapabilityType.pvrtc, !!gl.getExtension('WEBGL_compressed_texture_pvrtc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+      [GLCapabilityType.pvrtc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+      [GLCapabilityType.sRGB, !!gl.getExtension('EXT_sRGB')],
     ]);
     const detail: GPUCapabilityDetail = {
       floatTexture,

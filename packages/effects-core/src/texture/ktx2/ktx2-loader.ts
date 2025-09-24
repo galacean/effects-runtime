@@ -10,7 +10,9 @@ import { loadBinary } from '../../downloader';
 import type { Texture2DSourceOptionsCompressed, TextureDataType } from '../types';
 import { TextureSourceType } from '../types';
 import { glContext } from '../../gl';
+
 export class KTX2Loader {
+
   private static _isBinomialInit: boolean = false;
   private static _binomialLLCTranscoder: BinomialTranscoder | null;
   private static _khronosTranscoder: KhronosTranscoder | null;
@@ -173,8 +175,7 @@ export class KTX2Loader {
     const { internalFormat, format, dataType } = KTX2Loader._getGLTextureDetail(
       textureFormat,
       isSRGB,
-      glContext,
-      engine.gpuCapability.isWebGL2
+      engine
     );
 
     return {
@@ -233,136 +234,146 @@ export class KTX2Loader {
   private static _getGLTextureDetail (
     format: TextureFormat,
     isSRGBColorSpace: boolean,
-    gl: WebGLRenderingContext & WebGL2RenderingContext,
-    isWebGL2: boolean
+    engine: Engine,
   ) {
     // Extensions
-    const astcExt = (gl as any).getExtension('WEBGL_compressed_texture_astc');
-    const etcExt = isWebGL2 ? null : (gl as any).getExtension('WEBGL_compressed_texture_etc');
-    const pvrtcExt = (gl as any).getExtension('WEBGL_compressed_texture_pvrtc') || (gl as any).getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc');
-    const srgbExt = !isWebGL2 ? (gl as any).getExtension('EXT_sRGB') : null;
-
+    const isWebGL2 = engine.gpuCapability.isWebGL2;
+    const hasASTC = engine.gpuCapability.canIUse(GLCapabilityType.astc) || engine.gpuCapability.canIUse(GLCapabilityType.astc_webkit);
+    const hasPVRTC = engine.gpuCapability.canIUse(GLCapabilityType.pvrtc) || engine.gpuCapability.canIUse(GLCapabilityType.pvrtc_webkit);
+    const hasETC1 = engine.gpuCapability.canIUse(GLCapabilityType.etc1) || engine.gpuCapability.canIUse(GLCapabilityType.etc1_webkit);
+    const hasETC2 = isWebGL2 || engine.gpuCapability.canIUse(GLCapabilityType.etc) || engine.gpuCapability.canIUse(GLCapabilityType.etc_webkit);
+    const hasSRGBExt = isWebGL2 || engine.gpuCapability.canIUse(GLCapabilityType.sRGB);
+    const GL_CONST = {
+      // base
+      RGB: 0x1907,
+      RGBA: 0x1908,
+      UNSIGNED_BYTE: 0x1401,
+      // sized internal formats (WebGL2)
+      RGB8: 0x8051,
+      RGBA8: 0x8058,
+      SRGB8: 0x8c41,
+      SRGB8_ALPHA8: 0x8c43,
+      // EXT_sRGB (WebGL1)
+      SRGB_EXT: 0x8c40,
+      SRGB_ALPHA_EXT: 0x8c42,
+      // ASTC
+      COMPRESSED_RGBA_ASTC_4x4_KHR: 0x93b0,
+      COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR: 0x93d0,
+      COMPRESSED_RGB_ETC1_WEBGL: 0x8d64,
+      // ETC2
+      COMPRESSED_RGB8_ETC2: 0x9274,
+      COMPRESSED_SRGB8_ETC2: 0x9275,
+      COMPRESSED_RGBA8_ETC2_EAC: 0x9278,
+      COMPRESSED_SRGB8_ALPHA8_ETC2_EAC: 0x9279,
+      // PVRTC
+      COMPRESSED_RGB_PVRTC_4BPPV1_IMG: 0x8c00,
+      COMPRESSED_RGBA_PVRTC_4BPPV1_IMG: 0x8c02,
+    } as const;
     const compressed = (internalFormat: number) => ({
       internalFormat,
       format: 0,
       dataType: 0,
     });
 
-    const uncompressed = (
-      internalFormat: number,
-      format: number,
-      dataType: number = gl.UNSIGNED_BYTE
-    ) => ({ internalFormat, format, dataType });
+    const uncompressed = (internalFormat: number, format: number, dataType: number = GL_CONST.UNSIGNED_BYTE) => ({
+      internalFormat,
+      format,
+      dataType,
+    });
 
     switch (format) {
-      // --- Uncompressed ---
+      // Uncompressed
       case TextureFormat.R8G8B8: {
         if (isWebGL2) {
-          // WebGL2: sRGB is core
-          if (isSRGBColorSpace) {
-            return uncompressed((gl as WebGL2RenderingContext).SRGB8, gl.RGB, gl.UNSIGNED_BYTE);
-          }
-
-          return uncompressed((gl as WebGL2RenderingContext).RGB8, gl.RGB, gl.UNSIGNED_BYTE);
+          return isSRGBColorSpace
+            ? uncompressed(GL_CONST.SRGB8, GL_CONST.RGB)
+            : uncompressed(GL_CONST.RGB8, GL_CONST.RGB);
         } else {
-          // WebGL1: need EXT_sRGB for sRGB textures
           if (isSRGBColorSpace) {
-            if (!srgbExt) {
+            if (!hasSRGBExt) {
               throw new Error('EXT_sRGB not supported: cannot create sRGB RGB texture on WebGL1');
             }
-            const SRGB_EXT = (srgbExt).SRGB_EXT;
 
-            return uncompressed(SRGB_EXT, SRGB_EXT, gl.UNSIGNED_BYTE);
+            return uncompressed(GL_CONST.SRGB_EXT, GL_CONST.SRGB_EXT);
           }
 
-          return uncompressed(gl.RGB, gl.RGB, gl.UNSIGNED_BYTE);
+          return uncompressed(GL_CONST.RGB, GL_CONST.RGB);
         }
       }
       case TextureFormat.R8G8B8A8: {
         if (isWebGL2) {
-          if (isSRGBColorSpace) {
-            return uncompressed((gl as WebGL2RenderingContext).SRGB8_ALPHA8, gl.RGBA, gl.UNSIGNED_BYTE);
-          }
-
-          return uncompressed((gl as WebGL2RenderingContext).RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+          return isSRGBColorSpace
+            ? uncompressed(GL_CONST.SRGB8_ALPHA8, GL_CONST.RGBA)
+            : uncompressed(GL_CONST.RGBA8, GL_CONST.RGBA);
         } else {
           if (isSRGBColorSpace) {
-            if (!srgbExt) {
+            if (!hasSRGBExt) {
               throw new Error('EXT_sRGB not supported: cannot create sRGB RGBA texture on WebGL1');
             }
-            const SRGB_ALPHA_EXT = (srgbExt).SRGB_ALPHA_EXT;
 
-            return uncompressed(SRGB_ALPHA_EXT, SRGB_ALPHA_EXT, gl.UNSIGNED_BYTE);
+            return uncompressed(GL_CONST.SRGB_ALPHA_EXT, GL_CONST.SRGB_ALPHA_EXT);
           }
 
-          return uncompressed(gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE);
+          return uncompressed(GL_CONST.RGBA, GL_CONST.RGBA);
         }
       }
-      // --- Compressed ASTC ---
+      // Compressed ASTC
       case TextureFormat.ASTC_4x4: {
-        if (!astcExt) {
+        if (!hasASTC) {
           throw new Error('WEBGL_compressed_texture_astc not supported');
         }
 
         return compressed(
-          isSRGBColorSpace
-            ? (astcExt).COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR
-            : (astcExt).COMPRESSED_RGBA_ASTC_4x4_KHR
+          isSRGBColorSpace ? GL_CONST.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR
+            : GL_CONST.COMPRESSED_RGBA_ASTC_4x4_KHR
         );
       }
-      // --- Compressed ETC2 ---
+      // Compressed ETC2
       case TextureFormat.ETC2_RGB: {
-        if (isWebGL2) {
-          return compressed(
-            isSRGBColorSpace
-              ? (gl as any).COMPRESSED_SRGB8_ETC2
-              : (gl as any).COMPRESSED_RGB8_ETC2
-          );
-        } else {
-          if (!etcExt) {
-            throw new Error('WEBGL_compressed_texture_etc not supported (ETC2)');
-          }
-
-          return compressed(
-            isSRGBColorSpace
-              ? (etcExt).COMPRESSED_SRGB8_ETC2
-              : (etcExt).COMPRESSED_RGB8_ETC2
-          );
+        if (!hasETC2) {
+          throw new Error('ETC2 not supported');
         }
+
+        return compressed(
+          isSRGBColorSpace ? GL_CONST.COMPRESSED_SRGB8_ETC2
+            : GL_CONST.COMPRESSED_RGB8_ETC2
+        );
       }
       case TextureFormat.ETC2_RGBA8: {
-        if (isWebGL2) {
-          return compressed(
-            isSRGBColorSpace
-              ? (gl as any).COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
-              : (gl as any).COMPRESSED_RGBA8_ETC2_EAC
-          );
-        } else {
-          if (!etcExt) {
-            throw new Error('WEBGL_compressed_texture_etc not supported (ETC2 EAC)');
-          }
-
-          return compressed(
-            isSRGBColorSpace
-              ? (etcExt).COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
-              : (etcExt).COMPRESSED_RGBA8_ETC2_EAC
-          );
+        if (!hasETC2) {
+          throw new Error('ETC2 EAC not supported');
         }
+
+        return compressed(
+          isSRGBColorSpace ? GL_CONST.COMPRESSED_SRGB8_ALPHA8_ETC2_EAC
+            : GL_CONST.COMPRESSED_RGBA8_ETC2_EAC
+        );
+      }      // Optional: ETC1 (RGB only, no sRGB/alpha)
+      case TextureFormat.ETC1_RGB: {
+        if (!hasETC1) {
+          throw new Error('WEBGL_compressed_texture_etc1 not supported');
+        }
+        if (isSRGBColorSpace) {
+          // No sRGB variant for ETC1; caller should avoid requesting sRGB with ETC1
+          throw new Error('ETC1 has no sRGB variant');
+        }
+
+        return compressed(GL_CONST.COMPRESSED_RGB_ETC1_WEBGL);
       }
-      // --- Compressed PVRTC (no sRGB variants in WebGL) ---
+      // Compressed PVRTC (no sRGB variants in WebGL)
       case TextureFormat.PVRTC_RGB4: {
-        if (!pvrtcExt) {
+        if (!hasPVRTC) {
           throw new Error('WEBGL_compressed_texture_pvrtc not supported');
         }
 
-        return compressed((pvrtcExt).COMPRESSED_RGB_PVRTC_4BPPV1_IMG);
+        return compressed(GL_CONST.COMPRESSED_RGB_PVRTC_4BPPV1_IMG);
       }
       case TextureFormat.PVRTC_RGBA4: {
-        if (!pvrtcExt) {
+        if (!hasPVRTC) {
           throw new Error('WEBGL_compressed_texture_pvrtc not supported');
         }
 
-        return compressed((pvrtcExt).COMPRESSED_RGBA_PVRTC_4BPPV1_IMG);
+        return compressed(GL_CONST.COMPRESSED_RGBA_PVRTC_4BPPV1_IMG);
       }
       default:
         throw new Error(`Unsupported TextureFormat: ${format}`);
