@@ -486,8 +486,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.restart();
     }
     if (this.rootComposition.isStartCalled) {
-      this.gotoAndPlay(this.time - this.startTime);
+      this.setTime(this.time - this.startTime);
+      this.resume();
     } else {
+      this.setTime(0);
       this.resume();
     }
   }
@@ -527,6 +529,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   gotoAndPlay (time: number) {
     this.setTime(time);
+    this.emit('goto', { time });
     this.resume();
   }
 
@@ -536,6 +539,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   gotoAndStop (time: number) {
     this.setTime(time);
+    this.emit('goto', { time });
     this.pause();
   }
 
@@ -571,7 +575,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.paused = true;
     }
-    this.emit('goto', { time });
   }
 
   addItem (item: VFXItem) {
