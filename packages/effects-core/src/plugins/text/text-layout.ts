@@ -8,6 +8,10 @@ export class TextLayout {
   letterSpace: number;
   lineGap: number;
   overflow: spec.TextOverflow;// Enum  // both
+  /**
+   * @internal
+   * 兼容旧版富文本的排版方式
+   */
   useLegacyRichText: boolean;
 
   width = 0;
@@ -25,8 +29,21 @@ export class TextLayout {
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
-    //@ts-expect-error
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false } = options;
+    const {
+      fontSize,
+      textHeight = 100,
+      textWidth = 100,
+      textOverflow = spec.TextOverflow.clip,
+      textBaseline = spec.TextBaseline.top,
+      textAlign = spec.TextAlignment.left,
+      text = ' ',
+      letterSpace = 0,
+      lineGap = 0.571,
+      autoWidth = false,
+      lineHeight = fontSize,
+      // @ts-expect-error
+      useLegacyRichText = false,
+    } = options;
 
     const tempWidth = fontSize + letterSpace;
 
@@ -110,14 +127,14 @@ export class TextLayout {
    * @param style - 字体样式
    * @param lineHeights - 每行高度数组
    * @param fontSize - 字体大小
-   * @returns 第一行基线的Y坐标
+   * @returns 第一行基线的 Y 坐标
    */
   getOffsetYRich (style: TextStyle, lineHeights: number[], fontSize: number): number {
     const { outlineWidth, fontScale } = style;
     const total = lineHeights.reduce((a, b) => a + b, 0);
 
-    // 使用与原始getOffsetY相同的经验值计算
-    // /3 计算Y轴偏移量，以匹配编辑器行为
+    // 使用与原始 getOffsetY 相同的经验值计算
+    // /3 计算 Y 轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeights[0] - fontSize) / 3;
     // 计算基础偏移量（从画布顶部到第一行基线的距离）
     const baseOffset = fontSize + outlineWidth * fontScale;

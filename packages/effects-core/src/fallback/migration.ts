@@ -288,15 +288,18 @@ export function version34Migration (json: JSONScene): JSONScene {
 }
 
 /**
- * 处理富文本lineGap兼容性
+ * 处理富文本 lineGap 兼容性
  */
 function processRichTextLineGapCompatibility (json: JSONScene) {
-  if (!json.components) {return;}
+  if (!json.components) { return; }
 
   // 遍历所有组件，处理富文本组件
   for (const component of json.components) {
-    // 识别富文本组件并处理lineGap兼容性
-    if (component.dataType === 'RichTextComponent' && (component as any).options) {
+    // 识别富文本组件并处理 lineGap 兼容性
+    if (
+      component.dataType === spec.DataType.RichTextComponent &&
+      (component as any).options
+    ) {
       ensureRichTextLineGap((component as any).options);
     }
   }
@@ -311,12 +314,12 @@ function ensureRichTextLineGap (options: any) {
     return;
   }
 
-  // 根据是否存在lineGap字段来判断版本
+  // 根据是否存在 lineGap 字段来判断版本
   if (options.lineGap === undefined) {
-    // 旧版本（没有lineGap字段）
+    // 旧版本（没有 lineGap 字段）
     options.useLegacyRichText = true;
   } else {
-    // 新版本（有lineGap字段）
+    // 新版本（有 lineGap 字段）
     options.useLegacyRichText = false;
   }
 }
