@@ -8,8 +8,8 @@ export class TextLayout {
   letterSpace: number;
   lineGap: number;
   overflow: spec.TextOverflow;// Enum  // both
+
   /**
-   * @internal
    * 兼容旧版富文本的排版方式
    */
   useLegacyRichText: boolean;
