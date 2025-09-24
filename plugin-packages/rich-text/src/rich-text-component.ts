@@ -2,6 +2,19 @@ import type { Engine } from '@galacean/effects';
 import { assertExist, math, effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
+import { RichTextStrategyFactory } from './strategies/rich-text-factory';
+
+import type {
+  RichSizeStrategy,
+  RichWarpStrategy,
+  RichOverflowStrategy,
+  RichHorizontalAlignStrategy,
+  RichVerticalAlignStrategy,
+  OverflowResult,
+  HorizontalAlignResult,
+  VerticalAlignResult,
+  RichLine,
+} from './strategies/rich-text-interfaces';
 
 /**
  *
@@ -79,10 +92,34 @@ export class RichTextComponent extends TextComponent {
    */
   private canvasSize: math.Vector2 | null = null;
 
+  // 富文本专用策略字段（避免与基类策略冲突）
+  private richSizeStrategy: RichSizeStrategy;
+  private richWarpStrategy: RichWarpStrategy;
+  private richOverflowStrategy: RichOverflowStrategy;
+  private richHorizontalAlignStrategy: RichHorizontalAlignStrategy;
+  private richVerticalAlignStrategy: RichVerticalAlignStrategy;
+
   constructor (engine: Engine) {
     super(engine);
 
     this.name = 'MRichText' + seed++;
+
+    // 延迟初始化策略，等到textLayout被赋值后再初始化
+    this.richSizeStrategy = RichTextStrategyFactory.createSizeStrategy();
+    this.richWarpStrategy = RichTextStrategyFactory.createWarpStrategy();
+    this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy('display' as any); // 使用默认值
+    this.richHorizontalAlignStrategy = RichTextStrategyFactory.createHorizontalAlignStrategy();
+    this.richVerticalAlignStrategy = RichTextStrategyFactory.createVerticalAlignStrategy();
+  }
+
+  /**
+   * 更新策略配置（当textLayout被赋值后调用）
+   */
+  private updateStrategies (): void {
+    if (this.textLayout) {
+      // 重新创建溢出策略以使用正确的overflow设置
+      this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
+    }
   }
 
   private generateTextProgram (text: string) {
@@ -140,7 +177,8 @@ export class RichTextComponent extends TextComponent {
     if (useLegacy) {
       this.updateTextureLegacy(flipY);
     } else {
-      this.updateTextureModern(flipY);
+      // 使用策略管线的新Modern路径
+      this.updateTextureWithStrategies(flipY);
     }
   }
 
@@ -592,6 +630,9 @@ export class RichTextComponent extends TextComponent {
     this.textLayout = new TextLayout(options);
     this.textLayout.textBaseline = options.textBaseline || spec.TextBaseline.middle;
     this.text = options.text ? options.text.toString() : ' ';
+
+    // 更新策略配置以使用正确的textLayout设置
+    this.updateStrategies();
   }
 
   protected override renderText (options: spec.RichTextContentOptions) {
@@ -601,6 +642,198 @@ export class RichTextComponent extends TextComponent {
       this.canvasSize = new math.Vector2(size[0], size[1]);
     }
     this.updateTexture();
+  }
+
+  /**
+   * 使用策略管线的Modern路径渲染方法
+   */
+  private updateTextureWithStrategies (flipY: boolean): void {
+    if (!this.isDirty || !this.context || !this.canvas) {
+      return;
+    }
+
+    // 解析富文本
+    this.generateTextProgram(this.text);
+    const { textLayout, textStyle } = this;
+    const { letterSpace = 0 } = textLayout;
+    const context = this.context;
+
+    if (!context) {
+      return;
+    }
+
+    context.save();
+
+    // 步骤1: 换行策略计算行信息
+    const warpResult = this.richWarpStrategy.computeLines(
+      this.processedTextOptions,
+      context,
+      textStyle,
+      textLayout,
+      this.singleLineHeight,
+      this.textStyle.fontScale,
+      letterSpace,
+      this.SCALE_FACTOR
+    );
+
+    if (warpResult.lines.length === 0 || warpResult.maxLineWidth === 0 || warpResult.totalHeight === 0) {
+      this.isDirty = false;
+      context.restore();
+
+      return;
+    }
+
+    // 步骤2: 尺寸策略计算canvas尺寸
+    const sizeResult = this.richSizeStrategy.calculate(
+      warpResult,
+      textLayout,
+      textStyle,
+      this.singleLineHeight,
+      this.textStyle.fontScale
+    );
+
+    // 首次渲染时初始化canvas尺寸和组件变换（与 updateTextureModern 对齐）
+    if (this.size === undefined || this.size === null) {
+      this.size = this.item.transform.size.clone();
+    }
+    const { x = 1, y = 1 } = this.size;
+
+    if (!this.initialized) {
+      this.canvasSize = new math.Vector2(sizeResult.canvasWidth, sizeResult.canvasHeight);
+      this.item.transform.size.set(
+        x * sizeResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+        y * sizeResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+      );
+      this.size = this.item.transform.size.clone();
+      this.initialized = true;
+    }
+
+    // 步骤3: 溢出策略处理
+    const overflowResult = this.richOverflowStrategy.apply(
+      warpResult.lines,
+      sizeResult,
+      textLayout,
+      textStyle
+    );
+
+    // 步骤4: 水平对齐策略
+    const horizontalAlignResult = this.richHorizontalAlignStrategy.getHorizontalOffsets(
+      warpResult.lines,
+      sizeResult,
+      overflowResult,
+      textLayout,
+      textStyle
+    );
+
+    // 步骤5: 垂直对齐策略
+    const verticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
+      warpResult.lines,
+      sizeResult,
+      overflowResult,
+      textLayout,
+      textStyle,
+      this.singleLineHeight
+    );
+
+    // 使用this.canvasSize统一设置画布尺寸（与updateTextureModern对齐）
+    assertExist(this.canvasSize);
+    const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
+
+    this.textLayout.width = canvasWidth / textStyle.fontScale;
+    this.textLayout.height = canvasHeight / textStyle.fontScale;
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // fix bug 1/255
+    context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
+    if (!flipY) {
+      context.translate(0, canvasHeight);
+      context.scale(1, -1);
+    }
+
+    // 步骤6: 绘制文本
+    this.drawTextWithStrategies(
+      context,
+      warpResult.lines,
+      horizontalAlignResult,
+      verticalAlignResult,
+      overflowResult,
+      textStyle
+    );
+
+    // 创建纹理
+    const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    const texture = Texture.createWithData(
+      this.engine,
+      {
+        data: new Uint8Array(imageData.data),
+        width: imageData.width,
+        height: imageData.height,
+      },
+      {
+        flipY,
+        magFilter: glContext.LINEAR,
+        minFilter: glContext.LINEAR,
+        wrapS: glContext.CLAMP_TO_EDGE,
+        wrapT: glContext.CLAMP_TO_EDGE,
+      },
+    );
+
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
+    this.isDirty = false;
+    context.restore();
+  }
+
+  /**
+   * 使用策略结果绘制文本
+   */
+  private drawTextWithStrategies (
+    context: CanvasRenderingContext2D,
+    lines: RichLine[],
+    horizontalAlignResult: HorizontalAlignResult,
+    verticalAlignResult: VerticalAlignResult,
+    overflowResult: OverflowResult,
+    textStyle: TextStyle
+  ): void {
+    let currentBaselineY = verticalAlignResult.baselineY;
+    const { lineOffsets } = horizontalAlignResult;
+
+    lines.forEach((line, index) => {
+      const { richOptions, chars } = line;
+      const xOffset = lineOffsets[index];
+      const yOffset = currentBaselineY;
+
+      richOptions.forEach((options, segIndex) => {
+        const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
+        const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
+
+        // 应用溢出缩放
+        let textSize = fontSize;
+
+        if (overflowResult.lineScales && overflowResult.lineScales.length > index) {
+          textSize *= overflowResult.lineScales[index];
+        }
+
+        context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
+        context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
+
+        // 逐字绘制
+        // 段起始偏移（已经在溢出策略中按需缩放过）
+        const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
+        const charArr = chars[segIndex];
+
+        charArr.forEach(charDetail => {
+          context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
+        });
+      });
+
+      // 推进到下一行
+      if (index < lines.length - 1) {
+        currentBaselineY += lines[index + 1].lineHeight;
+      }
+    });
   }
 
 }
