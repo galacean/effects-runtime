@@ -3,6 +3,8 @@ import { effectsClass } from '../../../decorators';
 import { VFXItem } from '../../../vfx-item';
 import { ParticleSystem } from '../../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
+import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
+import { EffectComponent } from '../../../components';
 import { TrackAsset } from '../track';
 import type { TimelineAsset } from '../timeline-asset';
 import { ActivationTrack } from './activation-track';
@@ -36,6 +38,32 @@ export class ObjectBindingTrack extends TrackAsset {
             particleClip.endBehavior = activationClip.endBehavior;
           }
 
+        }
+
+        // 添加图层帧动画动画时间 clip // TODO 待移除
+        if (boundItem.getComponent(SpriteComponent)) {
+          const componentTimeTrack = timelineAsset.createTrack(SpriteComponentTimeTrack, this, 'SpriteComponentTimeTrack');
+
+          for (const activationClip of childTrack.getClips()) {
+            const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
+
+            clip.start = activationClip.start;
+            clip.duration = activationClip.duration;
+            clip.endBehavior = activationClip.endBehavior;
+          }
+        }
+
+        // 添加图层帧动画动画时间 clip // TODO 待移除
+        if (boundItem.getComponent(EffectComponent)) {
+          const componentTimeTrack = timelineAsset.createTrack(EffectComponentTimeTrack, this, 'EffectComponentTimeTrack');
+
+          for (const activationClip of childTrack.getClips()) {
+            const clip = componentTimeTrack.createClip(ComponentTimePlayableAsset);
+
+            clip.start = activationClip.start;
+            clip.duration = activationClip.duration;
+            clip.endBehavior = activationClip.endBehavior;
+          }
         }
 
         break;

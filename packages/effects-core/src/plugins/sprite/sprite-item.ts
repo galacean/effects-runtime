@@ -2,12 +2,15 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { MaskableGraphic } from '../../components';
+import { MaskableGraphic, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { Playable } from '../timeline/playable';
-import { PlayableAsset } from '../timeline/playable';
+import type { FrameContext } from '../timeline/playable';
+import { Playable, PlayableAsset } from '../timeline/playable';
+import { TrackAsset } from '../timeline/track';
+import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
+import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render/geometry';
 import { rotateVec2 } from '../../shape';
 
@@ -42,11 +45,51 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
   }
 }
 
+export class ComponentTimeTrack extends TrackAsset {
+  override createTrackMixer (): TrackMixerPlayable {
+    return new TrackMixerPlayable();
+  }
+}
+
+export class SpriteComponentTimeTrack extends ComponentTimeTrack {
+  override updateAnimatedObject (boundObject: object): object {
+
+    return (boundObject as VFXItem).getComponent(SpriteComponent);
+  }
+}
+
+export class EffectComponentTimeTrack extends ComponentTimeTrack {
+  override updateAnimatedObject (boundObject: object): object {
+    return (boundObject as VFXItem).getComponent(EffectComponent);
+  }
+}
+
+export class ComponentTimePlayableAsset extends PlayableAsset {
+  override createPlayable (): Playable {
+    const componentTimePlayable = new ComponentTimePlayable();
+
+    return componentTimePlayable;
+  }
+}
+
+export class ComponentTimePlayable extends Playable {
+  override processFrame (context: FrameContext): void {
+    const boundObject = context.output.getUserData();
+
+    if (!('time' in boundObject)) {
+      return;
+    }
+
+    boundObject.time = this.time;
+  }
+}
+
 /**
  * Sprite component class
  */
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends MaskableGraphic {
+  time = 0;
   duration = 0;
   frameAnimationLoop = true;
   /**
@@ -66,7 +109,7 @@ export class SpriteComponent extends MaskableGraphic {
   }
 
   override onUpdate (dt: number): void {
-    let time = this.item.time;
+    let time = this.time;
     const duration = this.duration;
 
     if (time > duration && this.frameAnimationLoop) {
@@ -134,12 +177,12 @@ export class SpriteComponent extends MaskableGraphic {
       ]);
     }
 
-    this.item.time = time + dt / 1000;
+    this.time = time + dt / 1000;
   }
 
-  override onEnable (): void {
-    super.onEnable();
-    this.item.time = 0;
+  override onDisable (): void {
+    super.onDisable();
+    this.time = 0;
   }
 
   override onDestroy (): void {
