@@ -69,11 +69,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素 id 唯一
    */
   id: string;
-
-  /**
-   * 元素创建的数据图层/粒子/模型等
-   */
-  _content?: VFXItemContent;
   type: spec.ItemType = spec.ItemType.base;
   props: spec.VFXItemData;
   components: Component[] = [];
@@ -187,13 +182,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (props) {
       this.fromData(props as spec.VFXItemData);
     }
-  }
-
-  /**
-   * 返回元素创建的数据
-   */
-  get content (): VFXItemContent {
-    return this._content;
   }
 
   /**
@@ -740,7 +728,6 @@ export class VFXItem extends EffectsObject implements Disposable {
         component.dispose();
       }
       this.components = [];
-      this._content = undefined;
       this._composition = null;
       this.transform.setValid(false);
     }

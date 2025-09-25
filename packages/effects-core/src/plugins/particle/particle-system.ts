@@ -1140,7 +1140,6 @@ export class ParticleSystem extends Component implements Maskable {
       };
     }
     this.item.getHitTestParams = this.getHitTestParams;
-    this.item._content = this;
   }
 }
 

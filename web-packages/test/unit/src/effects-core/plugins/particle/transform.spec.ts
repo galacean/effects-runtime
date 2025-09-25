@@ -23,7 +23,7 @@ describe('core/plugins/particle/transform', () => {
   it('set transform', async () => {
     const comp = await generateComposition(player, [{ name: '1', type: '2', transform: { position: [0, 1, 0], rotation: [0, 90, 0] } }]);
     const item = comp.getItemByName('1')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -38,7 +38,7 @@ describe('core/plugins/particle/transform', () => {
       { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '3', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -52,7 +52,7 @@ describe('core/plugins/particle/transform', () => {
       { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '1', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -67,7 +67,7 @@ describe('core/plugins/particle/transform', () => {
       { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '2', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -83,7 +83,7 @@ describe('core/plugins/particle/transform', () => {
       { type: '3', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -100,7 +100,7 @@ describe('core/plugins/particle/transform', () => {
     ]);
 
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -116,7 +116,7 @@ describe('core/plugins/particle/transform', () => {
       { type: '2', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -133,7 +133,7 @@ describe('core/plugins/particle/transform', () => {
     ]);
 
     const item = comp.getItemByName('2')!;
-    const itemContent = item.content;
+    const itemContent = item.getComponent(ParticleSystem);
     const t = item.getWorldTransform();
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -150,7 +150,7 @@ describe('core/plugins/particle/transform', () => {
     // @ts-expect-error
     comp.forwardTime(1);
     const item = comp.getItemByName('1')!;
-    const itemContent = item.content as ParticleSystem;
+    const itemContent = item.getComponent(ParticleSystem);
     const pos = itemContent.getPointPositionByIndex(0)!;
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -167,7 +167,7 @@ describe('core/plugins/particle/transform', () => {
     // @ts-expect-error
     comp.forwardTime(1);
     const item = comp.getItemByName('1')!;
-    const itemContent = item.content as ParticleSystem;
+    const itemContent = item.getComponent(ParticleSystem);
     const pos = itemContent.getPointPositionByIndex(0)!;
 
     expect(item).to.be.an.instanceof(VFXItem);
@@ -195,7 +195,7 @@ describe('core/plugins/particle/transform', () => {
       },
     }]);
     const item = comp.getItemByName('item')!;
-    const itemContent = item.content as ParticleSystem;
+    const itemContent = item.getComponent(ParticleSystem);
 
     expect(item).to.be.instanceof(VFXItem);
     expect(itemContent).to.be.an.instanceof(ParticleSystem);
