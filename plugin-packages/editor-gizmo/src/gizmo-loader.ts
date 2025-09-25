@@ -29,12 +29,10 @@ export class EditorGizmoPlugin extends AbstractPlugin {
     return true;
   }
 
-  static onPlayerDestroy (): void {
-    iconTextures.clear();
-  }
-
   override onCompositionConstructed (composition: Composition, scene: Scene) {
     const engine = composition.renderer.engine;
+
+    iconTextures.clear();
 
     iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));

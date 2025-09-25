@@ -6,7 +6,7 @@ import type {
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, EventEmitter,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
-  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
+  isArray, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
   assertExist, AssetService,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
@@ -162,7 +162,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       playerMap.set(this.canvas, this);
 
       assertNoConcurrentPlayers();
-      broadcastPlayerEvent(this, true);
     } catch (e: any) {
       if (this.canvas && !this.useExternalCanvas) {
         this.canvas.remove();
@@ -732,7 +731,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
     this.handleEmitEvent('webglcontextlost', e);
-    broadcastPlayerEvent(this, false);
   };
 
   /**
@@ -808,7 +806,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
     this.event?.dispose();
     this.assetService?.dispose();
-    broadcastPlayerEvent(this, false);
     if (
       this.canvas instanceof HTMLCanvasElement &&
       !keepCanvas &&
@@ -967,20 +964,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
  */
 export function disableAllPlayer (disable: boolean) {
   enableDebugType = !!disable;
-}
-
-/**
- * 播放器在实例化、销毁（`dispose`）时分别触发插件的 `onPlayerCreated`、`onPlayerDestroy` 回调
- * @param player - 播放器
- * @param isCreate - 是否处于实例化时
- */
-function broadcastPlayerEvent (player: Player, isCreate: boolean) {
-  Object.keys(pluginLoaderMap).forEach(key => {
-    const ctrl = pluginLoaderMap[key];
-    const func = isCreate ? ctrl.onPlayerCreated : ctrl.onPlayerDestroy;
-
-    func?.(player);
-  });
 }
 
 /**
