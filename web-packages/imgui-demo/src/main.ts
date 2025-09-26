@@ -829,8 +829,8 @@ function styleBlack () {
   colors[ImGui.ImGuiCol.TabUnfocusedActive] = new ImGui.ImVec4(0.12, 0.12, 0.12, 1.00);
 
   // 高级颜色设置
-  colors[ImGui.ImGuiCol.PlotLines] = new ImGui.ImVec4(0.65, 0.65, 0.65, 1.00);
-  colors[ImGui.ImGuiCol.PlotLinesHovered] = new ImGui.ImVec4(1.00, 0.45, 0.35, 1.00);
+  colors[ImGui.ImGuiCol.PlotLines] = new ImGui.ImVec4(0.30, 0.60, 1.00, 0.75);
+  colors[ImGui.ImGuiCol.PlotLinesHovered] = new ImGui.ImVec4(0.09, 0.09, 0.09, 1.00);
   colors[ImGui.ImGuiCol.PlotHistogram] = new ImGui.ImVec4(0.85, 0.65, 0.00, 1.00);
   colors[ImGui.ImGuiCol.PlotHistogramHovered] = new ImGui.ImVec4(1.00, 0.70, 0.00, 1.00);
 
@@ -844,8 +844,8 @@ function styleBlack () {
 
   // 处理扩展颜色（如果存在）
   if (colors[ImGui.ImGuiCol.PlotLines + 2]) {
-    colors[ImGui.ImGuiCol.PlotLines + 2] = new ImGui.ImVec4(0.30, 0.60, 1.00, 0.75); //DockingPreview
-    colors[ImGui.ImGuiCol.PlotLinesHovered + 2] = new ImGui.ImVec4(0.09, 0.09, 0.09, 1.00); //DockingEmptyBg
+    colors[ImGui.ImGuiCol.PlotLines + 2] = new ImGui.ImVec4(0.65, 0.65, 0.65, 1.00);
+    colors[ImGui.ImGuiCol.PlotLinesHovered + 2] = new ImGui.ImVec4(1.00, 0.45, 0.35, 1.00);
     colors[ImGui.ImGuiCol.PlotHistogram + 2] = new ImGui.ImVec4(0.65, 0.65, 0.65, 1.00);
     colors[ImGui.ImGuiCol.PlotHistogramHovered + 2] = new ImGui.ImVec4(1.00, 0.45, 0.35, 1.00);
     colors[ImGui.ImGuiCol.TextSelectedBg + 2] = new ImGui.ImVec4(0.25, 0.55, 0.95, 0.40);
