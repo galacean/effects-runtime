@@ -170,14 +170,13 @@ export class VideoComponent extends MaskableGraphic {
           this.pauseVideo();
         }
       } else if (videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.restart) {
-        // （销毁可由Composition管理，此处仅重置时间）
+        // 销毁由Composition管理，此处仅重置时间
         this.setCurrentTime(0);
       }
     }
-    // 判断整个合成是否接近播放完成（开始或结束位置，考虑容差）
-    // composition.time <= threshold 表示刚启动或回到起点
+    // 判断整个合成是否接近播放完成
     // composition.time + threshold >= rootDuration 表示即将结束
-    if (composition.time <= this.threshold || composition.time + this.threshold >= rootDuration) {
+    if (composition.time + this.threshold >= rootDuration) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
