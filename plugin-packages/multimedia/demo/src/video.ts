@@ -3,7 +3,7 @@ import { Asset, Player, Texture, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { checkAutoplayPermission, VideoComponent } from '@galacean/effects-plugin-multimedia';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*HujDRrTogXsAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*dyZDQKl9KMMAAAAAQDAAAAgAelB4AQ';
 let player: Player;
 const container = document.getElementById('J-container');
 const addButton = document.getElementById('J-add');
