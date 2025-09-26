@@ -27,7 +27,7 @@ export class VideoComponent extends MaskableGraphic {
    */
   private played = false;
   private pendingPause = false;
-  private isDestroying = false;
+  private threshold = 0.03;
   /**
    * 解决 video 暂停报错问题
    *
@@ -147,34 +147,46 @@ export class VideoComponent extends MaskableGraphic {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time, duration, composition } = this.item;
+    const { time: videoTime, duration: videoDuration, endBehavior: videoEndBehavior, composition } = this.item;
 
     assertExist(composition);
-    const { time: rootTime, endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
+    const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    // time === duration：时间等于视频时长时，检测是否需要暂停
-    if (time >= duration) {
+    // 判断是否处于“结束状态”：
+    // - 视频时间为 0（未开始）
+    // - 合成时间已达最大时长（播放完毕）
+    // - 视频时间接近或等于其总时长（考虑容差阈值）
+    const isEnd = (videoTime === 0 || composition.time === rootDuration || Math.abs(videoTime - videoDuration) <= this.threshold);
+
+    // 如果视频时间大于 0，且未到结束状态，并且尚未触发播放，则开始播放视频
+    if (videoTime > 0 && !isEnd && !this.played) {
+      this.playVideo();
+    }
+
+    // 当视频播放时间接近或超过其总时长时，根据其结束行为进行处理
+    if (videoTime + this.threshold >= videoDuration) {
+      if (videoEndBehavior === spec.EndBehavior.freeze) {
+        if (!this.video?.paused) {
+          this.pauseVideo();
+        }
+      } else if (videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.restart) {
+        // （销毁可由Composition管理，此处仅重置时间）
+        this.setCurrentTime(0);
+      }
+    }
+    // 判断整个合成是否接近播放完成（开始或结束位置，考虑容差）
+    // composition.time <= threshold 表示刚启动或回到起点
+    // composition.time + threshold >= rootDuration 表示即将结束
+    if (composition.time <= this.threshold || composition.time + this.threshold >= rootDuration) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
         }
-      }
-    }
-    // 合成播放完成后，视频未播放完成时，强制暂停
-    if (rootTime === rootDuration && time <= duration) {
-      if (rootEndBehavior === spec.EndBehavior.destroy) {
-        if (!this.isDestroying) {
-          this.isDestroying = true;
-          this.onDestroy();
-        }
-      } else {
-        if (!this.video?.paused) {
-          this.pauseVideo();
-        }
+      } else if (rootEndBehavior === spec.EndBehavior.restart) {
+        this.setCurrentTime(0);
       }
     }
   }
-
   /**
    * 获取当前视频时长
    * @returns 视频时长
