@@ -1,5 +1,5 @@
 import type { Composition, TrackAsset } from '@galacean/effects';
-import { Component, CompositionComponent, VFXItem, spec } from '@galacean/effects';
+import { Component, CompositionComponent, VFXItem, spec, EffectsObject } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
@@ -7,10 +7,11 @@ import { EditorWindow } from './editor-window';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {
-  isDragging = false;
   currentTime = 0;
   trackUIOffset = 200; // 减少偏移，为时间轴留更多空间
   timeCursorPositionX = 0;
+  // 统一的时间游标颜色（手柄与竖线一致）
+  private cursorColor = new ImGui.Vec4(0.6, 0.3, 0.8, 0.9);
 
   // 时间轴配置
   private timelineStartTime = 0;
@@ -30,6 +31,10 @@ export class Sequencer extends EditorWindow {
 
   // 属性面板配置
   private propertiesPanelWidth = 300; // 属性面板宽度
+  // 属性表格行计数（保留以备需要），当前采用统一灰色行底色
+  private propertyRowIndex = 0;
+  // 统一的属性表格行底色
+  private propertyRowBgColor = new ImGui.Vec4(0.22, 0.22, 0.22, 1.0);
 
   currentComposition: Composition;
 
@@ -55,6 +60,12 @@ export class Sequencer extends EditorWindow {
 
     if (!compositionComponent) {
       return;
+    }
+
+    // 使用当前 Composition 的时长作为时间轴最大时长
+    // 不再根据窗口宽度自动拉长，确保以 Composition 为默认上限
+    if (typeof currentComposition.getDuration === 'function') {
+      this.timelineEndTime = currentComposition.getDuration();
     }
 
     // 更新窗口尺寸信息
@@ -215,92 +226,311 @@ export class Sequencer extends EditorWindow {
     // 显示选中轨道的基本信息
     ImGui.Text(`Selected Track: ${this.selectedTrack.constructor.name}`);
 
-    // 设置表格颜色样式，使用更强制和明显的颜色配置
-    ImGui.PushStyleColor(ImGui.ImGuiCol.TableRowBg, new ImGui.Vec4(0.2, 0.2, 0.2, 1.0)); // 更明显的深灰背景
-    ImGui.PushStyleColor(ImGui.ImGuiCol.TableRowBgAlt, new ImGui.Vec4(0.3, 0.3, 0.3, 1.0)); // 更明显的交替行色
-    ImGui.PushStyleColor(ImGui.ImGuiCol.TableHeaderBg, new ImGui.Vec4(0.1, 0.3, 0.5, 1.0)); // 更深的蓝色标题背景
-    ImGui.PushStyleColor(ImGui.ImGuiCol.TableBorderStrong, new ImGui.Vec4(0.6, 0.6, 0.6, 1.0)); // 更亮的强边框
-    ImGui.PushStyleColor(ImGui.ImGuiCol.TableBorderLight, new ImGui.Vec4(0.4, 0.4, 0.4, 1.0)); // 更亮的轻边框
-
-    // 同时强制设置子窗口背景颜色
-    ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, new ImGui.Vec4(0.1, 0.1, 0.1, 1.0));
-
     // 使用表格布局显示属性信息
-    if (ImGui.BeginTable('TrackProperties', 2, ImGui.ImGuiTableFlags.Borders | ImGui.ImGuiTableFlags.RowBg)) {
+    if (ImGui.BeginTable('TrackProperties', 2, ImGui.ImGuiTableFlags.Borders | ImGui.ImGuiTableFlags.RowBg | ImGui.ImGuiTableFlags.Resizable)) {
+      // 每次绘制表格时重置行计数，避免颜色闪烁
+      this.propertyRowIndex = 0;
       // 表头
       ImGui.TableSetupColumn('Property', ImGui.ImGuiTableColumnFlags.WidthFixed, 120);
       ImGui.TableSetupColumn('Value', ImGui.ImGuiTableColumnFlags.WidthStretch);
 
-      // 手动设置表头背景色
+      // 表头行
       ImGui.TableNextRow(ImGui.ImGuiTableRowFlags.Headers);
-      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new ImGui.Vec4(0.1, 0.3, 0.5, 1.0)));
+      // 表头保持原来的蓝色（同时设置 RowBg0/RowBg1 避免叠加导致色偏）
+      const headerBgU32 = ImGui.GetColorU32(new ImGui.Vec4(0.1, 0.3, 0.5, 1.0));
+
+      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, headerBgU32);
+      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg1, headerBgU32);
       ImGui.TableSetColumnIndex(0);
-      ImGui.Text('Property');
+      {
+        // 使用与内容行相同的样式，保证对齐
+        const leafFlags = ImGui.ImGuiTreeNodeFlags.Leaf | ImGui.ImGuiTreeNodeFlags.NoTreePushOnOpen | ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding;
+
+        ImGui.TreeNodeEx('Property', leafFlags);
+      }
       ImGui.TableSetColumnIndex(1);
       ImGui.Text('Value');
 
-      // Instance ID
+      // 固定信息：实例ID与类型
       ImGui.TableNextRow();
-      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.2, 0.2, 1.0)));
+      {
+        const rowU32 = ImGui.GetColorU32(this.propertyRowBgColor);
+
+        ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, rowU32);
+        ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg1, rowU32);
+        this.propertyRowIndex++;
+      }
       ImGui.TableSetColumnIndex(0);
-      ImGui.Text('Instance ID');
+      {
+        const leafFlags = ImGui.ImGuiTreeNodeFlags.Leaf | ImGui.ImGuiTreeNodeFlags.NoTreePushOnOpen | ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding;
+
+        ImGui.TreeNodeEx('Instance ID', leafFlags);
+      }
       ImGui.TableSetColumnIndex(1);
       ImGui.Text(this.selectedTrack.getInstanceId().toString());
 
-      // 轨道类型
       ImGui.TableNextRow();
-      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new ImGui.Vec4(0.3, 0.3, 0.3, 1.0)));
+      {
+        const rowU32 = ImGui.GetColorU32(this.propertyRowBgColor);
+
+        ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, rowU32);
+        ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg1, rowU32);
+        this.propertyRowIndex++;
+      }
       ImGui.TableSetColumnIndex(0);
-      ImGui.Text('Track Type');
+      {
+        const leafFlags = ImGui.ImGuiTreeNodeFlags.Leaf | ImGui.ImGuiTreeNodeFlags.NoTreePushOnOpen | ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding;
+
+        ImGui.TreeNodeEx('Track Type', leafFlags);
+      }
       ImGui.TableSetColumnIndex(1);
       ImGui.Text(this.selectedTrack.constructor.name);
 
-      // 子轨道数量
-      ImGui.TableNextRow();
-      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.2, 0.2, 1.0)));
-      ImGui.TableSetColumnIndex(0);
-      ImGui.Text('Child Tracks');
-      ImGui.TableSetColumnIndex(1);
-      ImGui.Text(this.selectedTrack.getChildTracks().length.toString());
+      // 反射：仅收集 Track 的数据属性（标记普通对象用于展开）
+      const props = this.reflectTrackProperties(this.selectedTrack);
 
-      // Clips数量
-      ImGui.TableNextRow();
-      ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new ImGui.Vec4(0.3, 0.3, 0.3, 1.0)));
-      ImGui.TableSetColumnIndex(0);
-      ImGui.Text('Clips');
-      ImGui.TableSetColumnIndex(1);
-      ImGui.Text(this.selectedTrack.getClips().length.toString());
+      for (let i = 0; i < props.length; i++) {
+        const p = props[i];
 
-      // 如果有clips，显示clips信息
-      if (this.selectedTrack.getClips().length > 0) {
         ImGui.TableNextRow();
-        ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.2, 0.2, 1.0)));
-        ImGui.TableSetColumnIndex(0);
-        ImGui.Text('Clip Details');
-        ImGui.TableSetColumnIndex(1);
+        // 设置统一灰色行背景（同时设置 RowBg0/RowBg1）
+        {
+          const rowU32 = ImGui.GetColorU32(this.propertyRowBgColor);
 
-        const clips = this.selectedTrack.getClips();
-
-        for (let i = 0; i < clips.length; i++) {
-          const clip = clips[i];
-          const clipInfo = `${clip.name || `Clip ${i + 1}`}: ${clip.start.toFixed(2)}s - ${(clip.start + clip.duration).toFixed(2)}s`;
-
-          ImGui.Text(clipInfo);
-
-          if (i < clips.length - 1) {
-            ImGui.Text(''); // 空行分隔
-          }
+          ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, rowU32);
+          ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg1, rowU32);
+          this.propertyRowIndex++;
         }
+
+        // 第一列：名称（统一使用 TreeNodeEx，非可展开项使用 Leaf+NoTreePushOnOpen 保证对齐）
+        ImGui.TableSetColumnIndex(0);
+        ImGui.PushID(`prop_${p.key}`);
+
+        if (p.kind === 'object' && p.object) {
+          const open = ImGui.TreeNodeEx(p.key, ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding);
+
+          // 第二列：对象简介
+          ImGui.TableSetColumnIndex(1);
+          ImGui.Text(this.describeNonEffectsObject(p.object));
+
+          if (open) {
+            const visited = new WeakSet<object>();
+
+            visited.add(p.object);
+            this.renderPlainObjectRows(p.object, p.key, 1, visited);
+            ImGui.TreePop();
+          }
+        } else {
+          const leafFlags = ImGui.ImGuiTreeNodeFlags.Leaf | ImGui.ImGuiTreeNodeFlags.NoTreePushOnOpen | ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding;
+
+          ImGui.TreeNodeEx(p.key, leafFlags);
+          ImGui.TableSetColumnIndex(1);
+          ImGui.Text(p.value);
+        }
+
+        ImGui.PopID();
       }
 
       ImGui.EndTable();
     }
 
-    // 恢复表格颜色设置 (6个颜色：5个表格颜色 + 1个子窗口背景)
-    ImGui.PopStyleColor(6);
-
     // 恢复文字颜色设置 (1个文字颜色)
     ImGui.PopStyleColor(1);
+  }
+
+  // 反射式收集 Track 的自有数据属性（不包含方法、getter/setter）。非 EffectsObject 的对象均可展开
+  private reflectTrackProperties (track: TrackAsset): Array<{ key: string, value: string, kind?: 'object' | 'primitive', object?: Record<string, any> }> {
+    const results: Array<{ key: string, value: string, kind?: 'object' | 'primitive', object?: Record<string, any> }> = [];
+
+    try {
+      const own = Object.getOwnPropertyNames(track as any);
+
+      for (const k of own) {
+        const desc = Object.getOwnPropertyDescriptor(track as any, k);
+
+        if (!desc || !('value' in desc)) {
+          // 跳过 accessor（getter/setter）或异常条目
+          continue;
+        }
+
+        const v = (track as any)[k];
+
+        if (typeof v === 'function') {
+          // 跳过函数
+          continue;
+        }
+
+        if (this.isExpandableObject(v)) {
+          results.push({ key: k, value: '', kind: 'object', object: v });
+        } else {
+          results.push({ key: k, value: this.formatReflectValue(v), kind: 'primitive' });
+        }
+      }
+    } catch (e) {
+      // ignore reflection error
+    }
+
+    // 尺寸控制：避免过长
+    const limit = 200;
+
+    if (results.length > limit) {
+      results.length = limit;
+      results.push({ key: '...', value: `Truncated to ${limit} items` });
+    }
+
+    return results;
+  }
+
+  private isExpandableObject (v: any): v is Record<string, any> {
+    if (!v || typeof v !== 'object') {
+      return false;
+    }
+
+    if (v instanceof EffectsObject) {
+      return false;
+    }
+
+    return true; // 其它一律可展开（包括数组、Date、自定义对象等）
+  }
+
+  // 在属性表中递归渲染普通 JS 对象（可折叠/展开）
+  private renderPlainObjectRows (obj: Record<string, any>, idPrefix: string, depth: number, visited: WeakSet<object>): void {
+    try {
+      const keys = Object.keys(obj);
+
+      for (const key of keys) {
+        const value = obj[key];
+
+        ImGui.TableNextRow();
+        // 子级行与主表一致：统一灰色底（同时设置 RowBg0/RowBg1）
+        {
+          const rowU32 = ImGui.GetColorU32(this.propertyRowBgColor);
+
+          ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg0, rowU32);
+          ImGui.TableSetBgColor(ImGui.ImGuiTableBgTarget.RowBg1, rowU32);
+          this.propertyRowIndex++;
+        }
+        ImGui.TableSetColumnIndex(0);
+        ImGui.PushID(`${idPrefix}.${key}`);
+
+        if (this.isExpandableObject(value)) {
+          const open = ImGui.TreeNodeEx(key, ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding);
+
+          ImGui.TableSetColumnIndex(1);
+          ImGui.Text(this.describeNonEffectsObject(value));
+
+          if (open) {
+            if (!visited.has(value)) {
+              visited.add(value);
+              this.renderPlainObjectRows(value, `${idPrefix}.${key}`, depth + 1, visited);
+            }
+
+            ImGui.TreePop();
+          }
+        } else {
+          const leafFlags = ImGui.ImGuiTreeNodeFlags.Leaf | ImGui.ImGuiTreeNodeFlags.NoTreePushOnOpen | ImGui.ImGuiTreeNodeFlags.SpanFullWidth | ImGui.ImGuiTreeNodeFlags.FramePadding;
+
+          ImGui.TreeNodeEx(key, leafFlags);
+          ImGui.TableSetColumnIndex(1);
+          ImGui.Text(this.formatReflectValue(value));
+        }
+
+        ImGui.PopID();
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  private describeNonEffectsObject (v: any): string {
+    if (Array.isArray(v)) {
+      return `Array(${v.length})`;
+    }
+
+    const name = v?.constructor?.name;
+
+    return name && name !== 'Object' ? name : 'Object';
+  }
+
+  private formatReflectValue (v: any): string {
+    try {
+      if (v == null) {
+        return String(v);
+      }
+
+      const t = typeof v;
+
+      if (t === 'string' || t === 'number' || t === 'boolean' || t === 'bigint') {
+        return String(v);
+      }
+
+      if (Array.isArray(v)) {
+        const preview = v.slice(0, 3).map(x => this.formatScalar(x)).join(', ');
+
+        return `[${v.length}] ${preview}${v.length > 3 ? ', ...' : ''}`;
+      }
+
+      // 识别 EffectsObject：只显示 Class 名称
+      if (v instanceof EffectsObject) {
+        return v.constructor?.name || 'EffectsObject';
+      }
+
+      if (v && v.constructor && v.constructor.name && v.constructor.name !== 'Object') {
+        // 尝试浅展开常见简单对象
+        const keys = Object.keys(v).slice(0, 3);
+
+        if (keys.length) {
+          const p = keys.map(k => `${k}: ${this.formatScalar(v[k])}`).join(', ');
+
+          return `${v.constructor.name} { ${p}${Object.keys(v).length > 3 ? ', ...' : ''} }`;
+        }
+
+        return v.constructor.name;
+      }
+
+      // 尝试 JSON 化（有上限）
+      const str = JSON.stringify(v, (_k, val) => {
+        if (typeof val === 'object' && val !== null) {
+          return undefined; // 避免深层与循环
+        }
+
+        return val;
+      });
+
+      if (str && str.length <= 120) {
+        return str;
+      }
+
+      return '[Object]';
+    } catch (e) {
+      return '[Unresolvable]';
+    }
+  }
+
+  private formatScalar (v: any): string {
+    if (v == null) {
+      return String(v);
+    }
+
+    const t = typeof v;
+
+    if (t === 'string') {
+      return v.length > 24 ? `${v.slice(0, 21)}...` : v;
+    }
+
+    if (t === 'number' || t === 'boolean' || t === 'bigint') {
+      return String(v);
+    }
+
+    if (Array.isArray(v)) {
+      return `[${v.length}]`;
+    }
+
+    if (v && v.constructor && v.constructor.name) {
+      return v.constructor.name;
+    }
+
+    return typeof v;
   }
 
   /**
@@ -346,14 +576,13 @@ export class Sequencer extends EditorWindow {
     const mainAreaWidth = this.windowContentWidth - this.propertiesPanelWidth - 10;
 
     // 时间轴区域宽度应该基于主区域宽度
-    this.timelineAreaWidth = mainAreaWidth - this.trackUIOffset;
+    this.timelineAreaWidth = Math.max(0, mainAreaWidth - this.trackUIOffset);
 
-    // 动态调整时间轴范围以适应窗口大小
-    const minTimelineWidth = this.timelineAreaWidth;
-    const requiredTimeForWidth = minTimelineWidth / this.pixelsPerSecond;
+    // 根据可用宽度动态计算像素/秒，使时间轴随窗口拉伸且刚好容纳整个合成时长
+    const duration = Math.max(0, this.timelineEndTime - this.timelineStartTime);
 
-    if (requiredTimeForWidth > this.timelineEndTime) {
-      this.timelineEndTime = Math.ceil(requiredTimeForWidth);
+    if (duration > 0 && this.timelineAreaWidth > 0) {
+      this.pixelsPerSecond = this.timelineAreaWidth / duration;
     }
   }
 
@@ -448,6 +677,33 @@ export class Sequencer extends EditorWindow {
     // 绘制时间刻度
     this.drawTimeMarkers(drawList, timelineStart, timelineEnd);
 
+    // 在时间轴区域铺设不可见交互层：点击/拖拽即可跳转时间
+    const timelineWidth = Math.max(0, timelineEnd - timelineStart.x);
+
+    ImGui.SetCursorScreenPos(timelineStart);
+    ImGui.PushID('TimelineScrubArea');
+    if (ImGui.InvisibleButton('##timeline_scrub', new ImGui.Vec2(timelineWidth, this.timelineHeight))) {
+      // 单击时根据点击位置跳转
+      const mousePos = ImGui.GetMousePos();
+      const relativeX = Math.min(Math.max(0, mousePos.x - (windowPos.x + this.trackUIOffset)), timelineWidth);
+      const newTime = Math.min(Math.max(this.pixelToTime(relativeX), this.timelineStartTime), this.timelineEndTime);
+
+      this.currentComposition.setTime(newTime);
+    }
+
+    // 允许后续控件与本控件重叠交互（使游标按钮能正确响应 hover/active）
+    ImGui.SetItemAllowOverlap();
+
+    // 支持在时间轴背景区域按下并拖动进行拖拽预览
+    if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0, 0.0)) {
+      const mousePos = ImGui.GetMousePos();
+      const relativeX = Math.min(Math.max(0, mousePos.x - (windowPos.x + this.trackUIOffset)), timelineWidth);
+      const newTime = Math.min(Math.max(this.pixelToTime(relativeX), this.timelineStartTime), this.timelineEndTime);
+
+      this.currentComposition.setTime(newTime);
+    }
+    ImGui.PopID();
+
     // 保存当前光标位置，用于后续恢复
     const originalCursorPos = ImGui.GetCursorPos();
 
@@ -499,51 +755,145 @@ export class Sequencer extends EditorWindow {
     // 计算时间轴的实际结束X坐标
     const endX = timelineEndX || (timelineStart.x + this.timelineAreaWidth);
 
-    // 主刻度（每5秒）
-    for (let time = this.timelineStartTime; time <= this.timelineEndTime; time += 5) {
-      const x = timelineStart.x + this.timeToPixel(time);
+    // 基于缩放动态选择“好看”的主刻度步长（1/2/5 系列）
+    const secondsPerPixel = 1 / Math.max(1e-6, this.pixelsPerSecond);
+    const targetPixelsPerMajor = 100; // 目标主刻度间距（像素）
+    const roughStep = secondsPerPixel * targetPixelsPerMajor;
+    const majorStep = this.getNiceStep(roughStep);
+    const minorDiv = this.getMinorDivisions(majorStep); // 主刻度划分的次刻度数量
+    const minorStep = majorStep / minorDiv;
 
-      // 只绘制在可见范围内的刻度
-      if (x > endX) {
+    // 从一个对齐的主刻度开始绘制
+    const startTime = this.timelineStartTime;
+    const endTime = this.timelineEndTime;
+    const firstMajor = Math.ceil(startTime / majorStep) * majorStep;
+
+    // 避免文本重叠：主刻度标签之间至少留 60px
+    const minLabelSpacing = 60;
+    let lastLabelX = -Infinity;
+
+    for (let tMajor = firstMajor; tMajor <= endTime + 1e-9; tMajor += majorStep) {
+      const xMajor = timelineStart.x + this.timeToPixel(tMajor);
+
+      if (xMajor > endX + 1) {
         break;
+      }
+
+      if (xMajor < timelineStart.x - 1) {
+        continue;
       }
 
       // 主刻度线
       drawList.AddLine(
-        new ImGui.Vec2(x, timelineStart.y + 5),
-        new ImGui.Vec2(x, timelineStart.y + this.timelineHeight - 5),
+        new ImGui.Vec2(xMajor, timelineStart.y + 4),
+        new ImGui.Vec2(xMajor, timelineStart.y + this.timelineHeight - 4),
         lineColor,
         2
       );
 
-      // 时间文本
-      const timeText = `${time}s`;
-      const textSize = ImGui.CalcTextSize(timeText);
+      // 主刻度标签（避免重叠）
+      if (xMajor - lastLabelX >= minLabelSpacing) {
+        const label = this.formatTimeLabel(tMajor, majorStep);
+        const size = ImGui.CalcTextSize(label);
 
-      drawList.AddText(
-        new ImGui.Vec2(x - textSize.x / 2, timelineStart.y + 8),
-        textColor,
-        timeText
-      );
-    }
+        drawList.AddText(
+          new ImGui.Vec2(xMajor - size.x / 2, timelineStart.y + 8),
+          textColor,
+          label
+        );
 
-    // 次刻度（每1秒）
-    for (let time = this.timelineStartTime; time <= this.timelineEndTime; time += 1) {
-      if (time % 5 !== 0) { // 避免与主刻度重叠
-        const x = timelineStart.x + this.timeToPixel(time);
+        lastLabelX = xMajor;
+      }
 
-        // 只绘制在可见范围内的刻度
-        if (x > endX) {
+      // 次刻度：在两个主刻度之间绘制
+      for (let i = 1; i < minorDiv; i++) {
+        const tMinor = tMajor + i * minorStep;
+
+        if (tMinor > endTime + 1e-9) {
           break;
         }
 
+        const xMinor = timelineStart.x + this.timeToPixel(tMinor);
+
+        if (xMinor > endX + 1) {
+          break;
+        }
+
+        if (xMinor < timelineStart.x - 1) {
+          continue;
+        }
+
         drawList.AddLine(
-          new ImGui.Vec2(x, timelineStart.y + 10),
-          new ImGui.Vec2(x, timelineStart.y + this.timelineHeight - 10),
+          new ImGui.Vec2(xMinor, timelineStart.y + 10),
+          new ImGui.Vec2(xMinor, timelineStart.y + this.timelineHeight - 10),
           lineColor,
           1
         );
       }
+    }
+  }
+
+  // 选择“好看”的刻度步长：使用 1/2/5 × 10^k 的序列
+  private getNiceStep (rough: number): number {
+    const minStep = 0.01; // 最小到 10ms 就够了
+    const maxStep = 3600; // 最大到 1h
+    const d = Math.min(Math.max(rough, minStep), maxStep);
+    const exp = Math.floor(Math.log10(d));
+    const base = Math.pow(10, exp);
+    const frac = d / base;
+
+    let niceFrac = 1;
+
+    if (frac < 1.5) {
+      niceFrac = 1;
+    } else if (frac < 3) {
+      niceFrac = 2;
+    } else if (frac < 7) {
+      niceFrac = 5;
+    } else {
+      niceFrac = 10;
+    }
+
+    return niceFrac * base;
+  }
+
+  // 根据主刻度步长选择次刻度划分数
+  private getMinorDivisions (majorStep: number): number {
+    const exp = Math.floor(Math.log10(majorStep));
+    const base = Math.pow(10, exp);
+    const frac = majorStep / base;
+    // 1、5、10 -> 5等分；2 -> 2等分
+
+    if (Math.abs(frac - 2) < 1e-6) {
+      return 2;
+    }
+
+    return 5;
+  }
+
+  // 根据步长动态格式化时间标签：>=60s 显示 mm:ss；<1s 显示 s.ms；其它 s 或 m:ss
+  private formatTimeLabel (seconds: number, step: number): string {
+    const abs = Math.max(0, seconds);
+    const minutes = Math.floor(abs / 60);
+    const secs = abs % 60;
+
+    // 需要到毫秒的精度
+    const needMs = step < 1;
+
+    if (minutes > 0) {
+      const mm = String(minutes);
+      const ss = needMs ? secs.toFixed(step < 0.1 ? 2 : 1) : Math.floor(secs).toString().padStart(2, '0');
+      // 当 needMs 时，secs 已含小数；否则补零对齐
+
+      return `${mm}:${typeof ss === 'string' && ss.includes('.') ? ss.padStart(4, '0') : ss.padStart(2, '0')}`;
+    } else {
+      if (needMs) {
+        const precision = step < 0.1 ? 2 : 1; // 0.01 精度显示到两位小数
+
+        return `${secs.toFixed(precision)}s`;
+      }
+
+      return `${Math.floor(secs)}s`;
     }
   }
 
@@ -933,11 +1283,11 @@ export class Sequencer extends EditorWindow {
     const drawList = ImGui.GetWindowDrawList();
     const cursorEndY = ImGui.GetCursorScreenPos().y;
 
-    // 绘制红色时间线
+    // 绘制时间游标线（与手柄同色）
     drawList.AddLine(
       new ImGui.Vec2(this.timeCursorPositionX, trackAreaStartPos.y),
       new ImGui.Vec2(this.timeCursorPositionX, cursorEndY),
-      ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.3, 0.3, 0.8)),
+      ImGui.GetColorU32(this.cursorColor),
       2
     );
   }
