@@ -1,6 +1,6 @@
 import type { TextLayout } from '@galacean/effects';
 import type { TextStyle } from '@galacean/effects';
-import type { RichSizeStrategy, SizeResult, WarpResult } from '../rich-text-interfaces';
+import type { RichSizeStrategy, SizeResult, WrapResult } from '../rich-text-interfaces';
 
 /**
  * 富文本自动宽度尺寸策略
@@ -11,13 +11,13 @@ export class RichAutoWidthStrategy implements RichSizeStrategy {
   private canvasSize: { width: number, height: number } | null = null;
 
   calculate (
-    warpResult: WarpResult,
+    WrapResult: WrapResult,
     layout: TextLayout,
     style: TextStyle,
     singleLineHeight: number,
     fontScale: number
   ): SizeResult {
-    const { maxLineWidth, totalHeight } = warpResult;
+    const { maxLineWidth, totalHeight } = WrapResult;
 
     if (maxLineWidth === 0 || totalHeight === 0) {
       return {

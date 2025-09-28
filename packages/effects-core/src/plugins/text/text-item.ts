@@ -157,7 +157,7 @@ export class TextComponentBase {
     this.overflowStrategy = TextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
 
     // 使用工厂创建包裹策略
-    this.warpStrategy = TextStrategyFactory.createWarpStrategy(this.textLayout.warp);
+    this.warpStrategy = TextStrategyFactory.createWarpStrategy(this.textLayout.wrap);
   }
 
   /**
@@ -447,12 +447,12 @@ export class TextComponentBase {
 
     this.textLayout.autoWidth = value;
     // 根据autoWidth更新warp状态
-    this.textLayout.warp = !value;
+    this.textLayout.wrap = !value;
 
     // 使用工厂更新尺寸策略
     this.sizeStrategy = TextStrategyFactory.createSizeStrategy(value);
     // 使用工厂更新包裹策略
-    this.warpStrategy = TextStrategyFactory.createWarpStrategy(this.textLayout.warp);
+    this.warpStrategy = TextStrategyFactory.createWarpStrategy(this.textLayout.wrap);
 
     this.isDirty = true;
   }

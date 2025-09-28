@@ -6,7 +6,7 @@ import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 
 import type {
   RichSizeStrategy,
-  RichWarpStrategy,
+  RichWrapStrategy,
   RichOverflowStrategy,
   RichHorizontalAlignStrategy,
   RichVerticalAlignStrategy,
@@ -94,7 +94,7 @@ export class RichTextComponent extends TextComponent {
 
   // 富文本专用策略字段（避免与基类策略冲突）
   private richSizeStrategy: RichSizeStrategy;
-  private richWarpStrategy: RichWarpStrategy;
+  private richWrapStrategy: RichWrapStrategy;
   private richOverflowStrategy: RichOverflowStrategy;
   private richHorizontalAlignStrategy: RichHorizontalAlignStrategy;
   private richVerticalAlignStrategy: RichVerticalAlignStrategy;
@@ -106,7 +106,7 @@ export class RichTextComponent extends TextComponent {
 
     // 延迟初始化策略，等到textLayout被赋值后再初始化
     this.richSizeStrategy = RichTextStrategyFactory.createSizeStrategy();
-    this.richWarpStrategy = RichTextStrategyFactory.createWarpStrategy();
+    this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy();
     this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy('display' as any); // 使用默认值
     this.richHorizontalAlignStrategy = RichTextStrategyFactory.createHorizontalAlignStrategy();
     this.richVerticalAlignStrategy = RichTextStrategyFactory.createVerticalAlignStrategy();
@@ -117,6 +117,9 @@ export class RichTextComponent extends TextComponent {
    */
   private updateStrategies (): void {
     if (this.textLayout) {
+      // 根据textLayout属性创建相应的策略
+      this.richSizeStrategy = RichTextStrategyFactory.createSizeStrategy(this.textLayout.sizeMode);
+      this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy(this.textLayout.wrapEnabled);
       // 重新创建溢出策略以使用正确的overflow设置
       this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
     }
@@ -665,7 +668,7 @@ export class RichTextComponent extends TextComponent {
     context.save();
 
     // 步骤1: 换行策略计算行信息
-    const warpResult = this.richWarpStrategy.computeLines(
+    const wrapResult = this.richWrapStrategy.computeLines(
       this.processedTextOptions,
       context,
       textStyle,
@@ -676,7 +679,7 @@ export class RichTextComponent extends TextComponent {
       this.SCALE_FACTOR
     );
 
-    if (warpResult.lines.length === 0 || warpResult.maxLineWidth === 0 || warpResult.totalHeight === 0) {
+    if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {
       this.isDirty = false;
       context.restore();
 
@@ -685,7 +688,7 @@ export class RichTextComponent extends TextComponent {
 
     // 步骤2: 尺寸策略计算canvas尺寸
     const sizeResult = this.richSizeStrategy.calculate(
-      warpResult,
+      wrapResult,
       textLayout,
       textStyle,
       this.singleLineHeight,
@@ -710,7 +713,7 @@ export class RichTextComponent extends TextComponent {
 
     // 步骤3: 溢出策略处理
     const overflowResult = this.richOverflowStrategy.apply(
-      warpResult.lines,
+      wrapResult.lines,
       sizeResult,
       textLayout,
       textStyle
@@ -718,7 +721,7 @@ export class RichTextComponent extends TextComponent {
 
     // 步骤4: 水平对齐策略
     const horizontalAlignResult = this.richHorizontalAlignStrategy.getHorizontalOffsets(
-      warpResult.lines,
+      wrapResult.lines,
       sizeResult,
       overflowResult,
       textLayout,
@@ -727,7 +730,7 @@ export class RichTextComponent extends TextComponent {
 
     // 步骤5: 垂直对齐策略
     const verticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
-      warpResult.lines,
+      wrapResult.lines,
       sizeResult,
       overflowResult,
       textLayout,
@@ -755,7 +758,7 @@ export class RichTextComponent extends TextComponent {
     // 步骤6: 绘制文本
     this.drawTextWithStrategies(
       context,
-      warpResult.lines,
+      wrapResult.lines,
       horizontalAlignResult,
       verticalAlignResult,
       overflowResult,

@@ -2,13 +2,13 @@ import type { TextLayout } from '@galacean/effects';
 import type { TextStyle } from '@galacean/effects';
 import type { RichTextOptions } from '../../rich-text-component';
 import type { RichCharDetail, RichLine } from '../rich-text-interfaces';
-import type { RichWarpStrategy, WarpResult } from '../rich-text-interfaces';
+import type { RichWrapStrategy, WrapResult } from '../rich-text-interfaces'; // 更新接口名
 
 /**
  * 富文本换行禁用策略
  * 完全基于现有Modern路径的实现逻辑：仅基于\n换行，无自动换行
  */
-export class RichWarpDisabledStrategy implements RichWarpStrategy {
+export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类名
   computeLines (
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,
@@ -18,7 +18,7 @@ export class RichWarpDisabledStrategy implements RichWarpStrategy {
     fontScale: number,
     letterSpace: number,
     scaleFactor: number
-  ): WarpResult {
+  ): WrapResult {
     const lines: RichLine[] = [];
     let currentLine: RichLine = this.createNewLine(
       singleLineHeight, fontScale, layout.lineGap || 0, style.fontSize

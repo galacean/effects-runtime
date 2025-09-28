@@ -21,9 +21,25 @@ export class TextLayout {
   /**
    * 自动换行开关
    */
-  warp: boolean;
+  wrap: boolean;
 
-  readonly maxTextWidth: number;
+  /**
+   * 文本框最大高度限制
+   */
+  maxTextHeight: number;
+  /**
+   * 文本框最大宽度限制
+   */
+  maxTextWidth: number;
+  /**
+   * 文本框大小模式
+   */
+  sizeMode: spec.TextSizeMode;
+  /**
+   * 文本框是否开启自动换行
+   */
+  wrapEnabled: boolean;
+
   /**
    * 行高
    */
@@ -31,7 +47,7 @@ export class TextLayout {
 
   constructor (options: spec.TextContentOptions) {
     //@ts-expect-error
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false } = options;
+    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, warpEnabled = false, maxTextWidth = 100, maxTextHeight = 100, sizeMode } = options;
 
     const tempWidth = fontSize + letterSpace;
 
@@ -51,7 +67,18 @@ export class TextLayout {
 
     // 初始化warp字段，基于autoWidth：当autoWidth为true时，warp为false；反之亦然
     // 暂时保持与之前错误逻辑一致，后续按文档要求修改
-    this.warp = !autoWidth;
+    this.wrap = !autoWidth;
+
+    //先对富文本进行改造，普通文本后续也要改造
+    //尺寸模式
+    this.sizeMode = (sizeMode ?? 0) as spec.TextSizeMode; // 0=autoWidth
+    //console.log('spec.TextSizeMode:', spec.TextSizeMode);
+    //文本框最大宽高
+    this.maxTextWidth = maxTextWidth;
+    //文本框最大高度
+    this.maxTextHeight = maxTextHeight;
+    //是否开启自动换行
+    this.wrapEnabled = warpEnabled;
   }
 
   /**

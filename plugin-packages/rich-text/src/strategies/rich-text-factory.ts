@@ -1,14 +1,16 @@
-import type { spec } from '@galacean/effects';
+import { spec } from '@galacean/effects';
 import type {
   RichSizeStrategy,
-  RichWarpStrategy,
+  RichWrapStrategy, // 更新接口名
   RichOverflowStrategy,
   RichHorizontalAlignStrategy,
   RichVerticalAlignStrategy,
 } from './rich-text-interfaces';
 import { RichAutoWidthStrategy } from './size/rich-auto-width';
-import { RichWarpDisabledStrategy } from './warp/rich-warp-disabled';
+import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled'; // 确保导入正确
 import { RichDisplayOverflowStrategy } from './overflow/rich-display-overflow';
+import { RichClippedOverflowStrategy } from './overflow/rich-clipped-overflow';
+import { RichVisibleOverflowStrategy } from './overflow/rich-visible-overflow';
 import { RichHorizontalAlignStrategyImpl } from './align/rich-horizontal-align';
 import { RichVerticalAlignStrategyImpl } from './align/rich-vertical-align';
 
@@ -21,25 +23,43 @@ export class RichTextStrategyFactory {
    * 创建尺寸策略
    * 当前仅支持AutoWidth模式（与现有Modern路径一致）
    */
-  static createSizeStrategy (): RichSizeStrategy {
+  static createSizeStrategy (sizeMode?: spec.TextSizeMode): RichSizeStrategy {
+    // 目前仅支持AutoWidth模式
+    // @ts-expect-error
+    if (sizeMode && sizeMode !== spec.TextSizeMode.autoWidth) {
+      console.warn(`[RichText] Size mode '${sizeMode}' is not supported, using 'autoWidth' as fallback.`);
+    }
+
     return new RichAutoWidthStrategy();
   }
 
   /**
    * 创建换行策略
-   * 当前仅支持Warp Disabled模式（仅基于\n换行）
+   * 当前仅支持Wrap Disabled模式（仅基于\n换行）
    */
-  static createWarpStrategy (): RichWarpStrategy {
-    return new RichWarpDisabledStrategy();
+  static createWrapStrategy (wrapEnabled?: boolean): RichWrapStrategy { // 更新返回接口
+    // 目前仅支持Wrap Disabled模式
+    if (wrapEnabled) {
+      console.warn('[RichText] Wrap mode is not supported, using \'disabled\' as fallback.');
+    }
+
+    return new RichWrapDisabledStrategy();
   }
 
   /**
    * 创建溢出策略
-   * 当前仅支持Display模式（对应Fit）
+   * 支持三种模式：clip（裁切）、display（行级缩放）、visible（不缩放不裁剪）
    */
-  static createOverflowStrategy (overflow: spec.TextOverflow): RichOverflowStrategy {
-    // 当前Modern路径仅支持display模式
-    return new RichDisplayOverflowStrategy();
+  static createOverflowStrategy (mode: spec.TextOverflow): RichOverflowStrategy {
+    switch (mode) {
+      case spec.TextOverflow.clip:
+        return new RichClippedOverflowStrategy();
+      case spec.TextOverflow.display:
+        return new RichDisplayOverflowStrategy();
+      case spec.TextOverflow.visible:
+      default:
+        return new RichVisibleOverflowStrategy();
+    }
   }
 
   /**

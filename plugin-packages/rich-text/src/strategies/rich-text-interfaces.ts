@@ -26,7 +26,7 @@ export interface RichLine {
 /**
  * 换行策略结果
  */
-export interface WarpResult {
+export interface WrapResult {
   lines: RichLine[],
   maxLineWidth: number,
   totalHeight: number,
@@ -77,7 +77,7 @@ export interface AlignResult {
  */
 export interface RichSizeStrategy {
   calculate(
-    warpResult: WarpResult,
+    WrapResult: WrapResult,
     layout: TextLayout,
     style: TextStyle,
     singleLineHeight: number,
@@ -88,7 +88,7 @@ export interface RichSizeStrategy {
 /**
  * 富文本换行策略接口
  */
-export interface RichWarpStrategy {
+export interface RichWrapStrategy { // 更新接口名
   computeLines(
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,
@@ -98,7 +98,7 @@ export interface RichWarpStrategy {
     fontScale: number,
     letterSpace: number,
     scaleFactor: number
-  ): WarpResult,
+  ): WrapResult,
 }
 
 /**
