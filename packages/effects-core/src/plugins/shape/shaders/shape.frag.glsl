@@ -15,7 +15,7 @@ uniform sampler2D _ImageTex;           // 图片纹理
 uniform vec2 _ImageSize;               // 图片尺寸 (px)
 uniform vec2 _DestSize;                // 目标区域尺寸 (px)
 uniform int _ImageScaleMode;           // 图片缩放模式 (0:FILL 覆盖, 1:FIT 适应, 2:CROP 裁剪, 3:TILE 平铺)
-uniform mat3 _ImageTransform;          // 图片UV变换矩阵
+uniform mat3 _TextureTransform;          // 图片UV变换矩阵
 uniform float _ImageScalingFactor;     // 平铺缩放因子( 仅 _ImageScaleMode==3 生效), 1=一屏一张
 uniform float _ImageOpacity;           // 图片不透明度 0..1
 
@@ -36,7 +36,12 @@ float calculateAngleRatio(vec2 v1, vec2 v2) {
 
 // 应用2D变换到UV
 vec2 applyTransform(mat3 m, vec2 uv) {
+    uv = uv - vec2(0.5, 0.5);
+
     vec3 p = m * vec3(uv, 1.0);
+
+    p.xy = p.xy + vec2(0.5, 0.5);
+
     return p.xy;
 }
 
@@ -117,7 +122,7 @@ void main() {
             maskOutside = true;
         } else if(_ImageScaleMode == 2) {
             // CROP 指定裁剪矩形
-            uv = applyTransform(_ImageTransform, uv0);
+            uv = applyTransform(_TextureTransform, uv0);
             maskOutside = true;
         } else if(_ImageScaleMode == 3) {
             // TILE 平铺(保持源图比例,不随容器uv拉伸)
@@ -125,8 +130,8 @@ void main() {
             float aspectFix = rDst / max(rSrc, 1e-6);
             vec2 uvTile = (uv0 - 0.5) * vec2(aspectFix, 1.0) + 0.5;
 
-            // 2) 可选：应用仅含旋转/平移的 _ImageTransform(若包含非等比缩放会再次引入拉伸)
-            // uvTile = applyTransform(_ImageTransform, uvTile);
+            // 2) 可选：应用仅含旋转/平移的 _TextureTransform(若包含非等比缩放会再次引入拉伸)
+            // uvTile = applyTransform(_TextureTransform, uvTile);
 
             // 3) 重复密度（正值放大重复次数，支持负值时可用 sign 控制翻转）
             float s = max(abs(_ImageScalingFactor), 1e-6);

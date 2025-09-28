@@ -21,6 +21,7 @@ import { glContext } from '../gl';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import vert from '../plugins/shape/shaders/shape.vert.glsl';
 import frag from '../plugins/shape/shaders/shape.frag.glsl';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
@@ -36,12 +37,19 @@ export interface GradientPaint {
   endPoint: Vector2,
 }
 
+export interface TextureTransform {
+  offset: Vector2,
+  rotation: number,
+  scale: Vector2,
+}
+
 export interface TexturePaint {
   type: spec.FillType.Texture,
   texture: Texture,
   scaleMode: TexturePaintScaleMode,
   scalingFactor: number,
   opacity: number,
+  textureTransform: TextureTransform,
 }
 
 export enum TexturePaintScaleMode {
@@ -626,6 +634,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       material.setFloat('_ImageOpacity', paint.opacity);
       material.setFloat('_ImageScalingFactor', paint.scalingFactor);
       material.setTexture('_ImageTex', paint.texture);
+
+      const transform = paint.textureTransform;
+
+      material.setMatrix3('_TextureTransform', new Matrix3()
+        .scale(transform.scale.x, transform.scale.y)
+        .rotate(transform.rotation)
+        .translate(transform.offset.x, transform.offset.y)
+        .invert()
+      );
     }
   }
 
@@ -796,12 +813,26 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         break;
       }
       case spec.FillType.Texture:{
+
+        const textureTransform = {
+          offset: { x:0, y:0 },
+          rotation: 0,
+          scale: { x:1, y:1 },
+          //@ts-expect-error
+          ...(paintData.textureTransform ?? {}),
+        };
+
         paint = {
           type:paintData.type,
           texture: this.engine.findObject<Texture>(paintData.texture),
           scaleMode: paintData.scaleMode,
           scalingFactor: paintData.scalingFactor ?? 1,
           opacity: paintData.opacity ?? 1,
+          textureTransform: {
+            offset: new Vector2().copyFrom(textureTransform.offset),
+            rotation: textureTransform.rotation,
+            scale: new Vector2().copyFrom(textureTransform.scale),
+          },
         };
 
         break;
