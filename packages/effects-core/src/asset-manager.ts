@@ -415,9 +415,9 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id, gpuCapability);
+        const texture = await createTextureOptionsBySource(image, this.sourceFrom[imageId], id, gpuCapability);
 
-        return (await texture).sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
+        return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
       throw new Error(`Invalid texture source: ${source}.`);
     });
@@ -541,7 +541,6 @@ async function createTextureOptionsBySource (
         ...options,
       };
     }
-
   } else if (
     'width' in image &&
     'height' in image &&
