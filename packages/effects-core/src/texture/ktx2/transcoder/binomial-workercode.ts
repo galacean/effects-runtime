@@ -82,11 +82,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
   enum BasisFormat {
     ETC1 = 0,
     ETC2 = 1,
-    BC1 = 2,
-    BC3 = 3,
-    BC4 = 4,
-    BC5 = 5,
-    BC7 = 7,
     PVRTC1_4_RGB = 8,
     PVRTC1_4_RGBA = 9,
     ASTC_4x4 = 10,
@@ -95,8 +90,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
 
   enum TargetFormat {
     ASTC,
-    BC7,
-    BC1_BC3,
     PVRTC,
     ETC,
     R8,
@@ -106,8 +99,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
 
   function getTranscodeFormatFromTarget (target: TargetFormat, hasAlpha: boolean) {
     switch (target) {
-      case TargetFormat.BC1_BC3:
-        return hasAlpha ? BasisFormat.BC3 : BasisFormat.BC1;
       case TargetFormat.ETC:
         return hasAlpha ? BasisFormat.ETC2 : BasisFormat.ETC1;
       case TargetFormat.PVRTC:
@@ -116,8 +107,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
         return BasisFormat.RGBA8;
       case TargetFormat.ASTC:
         return BasisFormat.ASTC_4x4;
-      case TargetFormat.BC7:
-        return BasisFormat.BC7;
     }
   }
 
@@ -157,15 +146,14 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     throw new Error('KTX2 startTranscoding failed');
   }
 
-  let width: number = ktx2File.getWidth();
-  let height: number = ktx2File.getHeight();
+  const width: number = ktx2File.getWidth();
+  const height: number = ktx2File.getHeight();
   const layerCount = ktx2File.getLayers() || 1;
   const levelCount = ktx2File.getLevels();
   const hasAlpha = ktx2File.getHasAlpha();
   const faceCount = ktx2File.getFaces();
   const format = getTranscodeFormatFromTarget(targetFormat, hasAlpha);
   const faces = new Array(faceCount);
-  const isBC = format === BasisFormat.BC1 || format === BasisFormat.BC3 || format === BasisFormat.BC7;
 
   for (let face = 0; face < faceCount; face++) {
     const mipmaps = new Array(levelCount);
@@ -177,17 +165,8 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
       for (let layer = 0; layer < layerCount; layer++) {
         const levelInfo = ktx2File.getImageLevelInfo(mip, layer, face);
 
-        // see: https://github.com/KhronosGroup/KTX-Software/issues/254
-        if (isBC && mip === 0 && (width !== levelInfo.width || height !== levelInfo.height)) {
-          width = mipWidth = levelInfo.width;
-          height = mipHeight = levelInfo.height;
-          console.warn(
-            `KTX2 transcode to BC will resize to width: ${width}, height: ${height}. You'd better use an image whose size if multiple of 4.`
-          );
-        } else {
-          mipWidth = levelInfo.origWidth;
-          mipHeight = levelInfo.origHeight;
-        }
+        mipWidth = levelInfo.origWidth;
+        mipHeight = levelInfo.origHeight;
 
         const dst = new Uint8Array(ktx2File.getImageTranscodedSizeInBytes(mip, layer, 0, format));
 

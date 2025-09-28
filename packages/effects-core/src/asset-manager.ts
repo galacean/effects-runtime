@@ -10,11 +10,11 @@ import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
-import type { Renderer } from './render';
+import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture, detectKTXVersion } from './texture';
+import type { GPUCapability, Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-
+import { KTX2Loader } from './texture/ktx2';
 let seed = 1;
 
 /**
@@ -196,7 +196,7 @@ export class AssetManager implements Disposable {
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, gpuInstance));
 
         scene = {
           timeInfos,
@@ -388,6 +388,7 @@ export class AssetManager implements Disposable {
     images: ImageLike[],
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
+    gpuCapability?: GPUCapability,
   ) {
     const textures = jsonScene.textures ?? images.map((img, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (textureOptions, idx) => {
@@ -414,9 +415,9 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
+        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id, gpuCapability);
 
-        return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
+        return (await texture).sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
       throw new Error(`Invalid texture source: ${source}.`);
     });
@@ -472,10 +473,11 @@ export class AssetManager implements Disposable {
   }
 }
 
-function createTextureOptionsBySource (
+async function createTextureOptionsBySource (
   image: TextureSourceOptions | ImageLike,
   sourceFrom: { url: string, type: TextureSourceType },
   id?: string,
+  gpuCapability?: GPUCapability,
 ) {
   const options = {
     id,
@@ -511,11 +513,35 @@ function createTextureOptionsBySource (
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
-    return {
-      ...getKTXTextureOptions(image),
-      sourceFrom,
-      ...options,
-    };
+    const data = new Uint8Array(image, 0, 12);
+    const version = detectKTXVersion(data);
+
+    if (version === 'unknown') {
+      throw new Error('Unsupported or invalid KTX format.');
+    }
+
+    if (version == 'KTX2') {
+      const ktx2Loader = new KTX2Loader();
+      const textureData = await ktx2Loader.load(sourceFrom.url, gpuCapability);
+
+      return {
+        sourceType: textureData.sourceType,
+        type: textureData.dataType,
+        target: textureData.target,
+        internalFormat: textureData.internalFormat,
+        format: textureData.format,
+        mipmaps: textureData.mipmaps,
+        sourceFrom,
+        ...options,
+      };
+    } else {
+      return {
+        ...getKTXTextureOptions(image),
+        sourceFrom,
+        ...options,
+      };
+    }
+
   } else if (
     'width' in image &&
     'height' in image &&

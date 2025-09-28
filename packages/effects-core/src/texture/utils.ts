@@ -74,3 +74,39 @@ async function loadMipmapImage (pointer: spec.BinaryPointer, bins: ArrayBuffer[]
 
   return loadImage(new Blob([new Uint8Array(bin, start, length)]));
 }
+
+export function detectKTXVersion (data: Uint8Array): 'KTX' | 'KTX2' | 'unknown' {
+  // KTX 和 KTX2 的通用头部标识（前 5 和后 5 字节相同）
+  const commonPrefix = [0xab, 0x4b, 0x54, 0x58, 0x20];
+  const commonSuffix = [0xbb, 0x0d, 0x0a, 0x1a, 0x0a];
+
+  if (data.length < 12) {
+    return 'unknown';
+  }
+
+  // 检查固定头部和尾部
+  for (let i = 0; i < 5; i++) {
+    if (data[i] !== commonPrefix[i]) {return 'unknown';}
+  }
+  for (let i = 0; i < 5; i++) {
+    if (data[7 + i] !== commonSuffix[i]) {return 'unknown';}
+  }
+
+  // 检查中间的版本号
+  const versionMinor1 = data[5];
+  const versionMinor2 = data[6];
+
+  // KTX: " 11" -> ASCII 0x20 0x31 0x31
+  // KTX2: " 20" -> ASCII 0x20 0x32 0x30
+  if (versionMinor1 === 0x31 && versionMinor2 === 0x31) {
+    return 'KTX';
+  } else if (versionMinor1 === 0x32 && versionMinor2 === 0x30) {
+    return 'KTX2';
+  }
+
+  return 'unknown';
+}
+
+export function isPowerOfTwo (value: number) {
+  return (value & (value - 1)) === 0 && value !== 0;
+}
