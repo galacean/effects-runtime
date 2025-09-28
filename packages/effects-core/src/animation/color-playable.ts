@@ -43,7 +43,7 @@ export class ColorPlayable extends Playable {
 
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
-    const life = this.time / boundObject.duration;
+    const life = this.time / this.getDuration();
 
     const opacityOverLifetime = this.opacityOverLifetime;
     const colorOverLifetime = this.colorOverLifetime;

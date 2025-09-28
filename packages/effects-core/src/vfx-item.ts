@@ -54,10 +54,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   parentId?: string;
   /**
-   * 元素动画的开始时间
-   */
-  start = 0;
-  /**
    * 元素动画结束时行为（如何处理元素）
    */
   endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
@@ -67,6 +63,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   name: string;
   /**
    * 元素 id 唯一
+   * @deprecated 2.7.0 Please use `getInstanceId` instead
    */
   id: string;
 
@@ -648,7 +645,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   override fromData (data: spec.VFXItemData): void {
     super.fromData(data);
     const {
-      id, name, delay, parentId, endBehavior, transform,
+      id, name, parentId, endBehavior, transform,
       duration = 0,
     } = data;
 
@@ -656,7 +653,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.type = data.type;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
-    this.start = delay ? delay : this.start;
 
     if (transform) {
       this.transform.fromData(transform);

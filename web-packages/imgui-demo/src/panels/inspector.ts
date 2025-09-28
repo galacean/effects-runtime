@@ -100,7 +100,7 @@ export class Inspector extends EditorWindow {
     });
 
     EditorGUILayout.FloatField('Duration', activeObject, 'duration');
-
+    EditorGUILayout.FloatField('Time', activeObject, 'time');
     EditorGUILayout.Text('End Behavior', this.endBehaviorToString(activeObject.endBehavior));
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {

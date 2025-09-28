@@ -40,7 +40,6 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -71,7 +70,6 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -102,7 +100,6 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -137,7 +134,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -171,7 +168,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -205,7 +202,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -239,7 +236,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -273,7 +270,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -308,7 +305,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -352,7 +349,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -387,7 +384,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -422,7 +419,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -456,7 +453,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
@@ -490,7 +487,7 @@ describe('videoComponent ', function () {
     if (!video) { throw new Error('video is null'); }
     expect(video.endBehavior).to.equal(options.endBehavior);
     expect(video.duration).to.equal(options.duration);
-    expect(video.start).to.equal(options.start);
+
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
