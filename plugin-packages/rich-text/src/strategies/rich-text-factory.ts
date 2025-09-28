@@ -8,6 +8,7 @@ import type {
 } from './rich-text-interfaces';
 import { RichAutoWidthStrategy } from './size/rich-auto-width';
 import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled'; // 确保导入正确
+import { RichWrapEnabledStrategy } from './wrap/rich-wrap-enabled';
 import { RichDisplayOverflowStrategy } from './overflow/rich-display-overflow';
 import { RichClippedOverflowStrategy } from './overflow/rich-clipped-overflow';
 import { RichVisibleOverflowStrategy } from './overflow/rich-visible-overflow';
@@ -35,15 +36,14 @@ export class RichTextStrategyFactory {
 
   /**
    * 创建换行策略
-   * 当前仅支持Wrap Disabled模式（仅基于\n换行）
+   * 根据wrapEnabled参数决定使用哪种策略
    */
   static createWrapStrategy (wrapEnabled?: boolean): RichWrapStrategy { // 更新返回接口
-    // 目前仅支持Wrap Disabled模式
     if (wrapEnabled) {
-      console.warn('[RichText] Wrap mode is not supported, using \'disabled\' as fallback.');
+      return new RichWrapEnabledStrategy();
+    } else {
+      return new RichWrapDisabledStrategy();
     }
-
-    return new RichWrapDisabledStrategy();
   }
 
   /**

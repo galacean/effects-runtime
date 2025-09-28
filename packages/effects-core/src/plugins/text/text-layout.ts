@@ -47,19 +47,19 @@ export class TextLayout {
 
   constructor (options: spec.TextContentOptions) {
     //@ts-expect-error
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, warpEnabled = false, maxTextWidth = 100, maxTextHeight = 100, sizeMode } = options;
+    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, wrapEnabled = false, maxTextWidth = 350, maxTextHeight = 1000, sizeMode } = options;
 
-    const tempWidth = fontSize + letterSpace;
+    //const tempWidth = fontSize + letterSpace;
 
     this.autoWidth = autoWidth;
-    this.maxTextWidth = text.length * tempWidth;
+    //this.maxTextWidth = text.length * tempWidth;
 
     this.width = textWidth;
     this.height = textHeight;
 
     this.letterSpace = letterSpace;
-    this.lineGap = lineGap;
-    this.useLegacyRichText = useLegacyRichText;
+    this.lineGap = lineGap * 40;
+    this.useLegacyRichText = false;
     this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
@@ -78,7 +78,7 @@ export class TextLayout {
     //文本框最大高度
     this.maxTextHeight = maxTextHeight;
     //是否开启自动换行
-    this.wrapEnabled = warpEnabled;
+    this.wrapEnabled = true;
   }
 
   /**

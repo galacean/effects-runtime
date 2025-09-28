@@ -67,8 +67,11 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
         const w = context.measureText(ch).width;
         const charWidth = (w <= 0 ? 0 : w) * fontSize * scaleFactor * fontScale;
 
+        if (i > 0) {
+          segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
+        }
         charArr.push({ char: ch, x: segmentInnerX, width: charWidth });
-        segmentInnerX += charWidth + letterSpace;
+        segmentInnerX += charWidth;
       }
 
       currentLine.chars.push(charArr);
