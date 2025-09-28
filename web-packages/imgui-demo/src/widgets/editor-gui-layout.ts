@@ -12,7 +12,7 @@ function access (object: any, property: string) {
 }
 
 export class EditorGUILayout {
-  static alignWidth = 300;
+  static alignWidth = 200;
 
   static Label (label: string) {
     ImGui.Text('       ' + label);

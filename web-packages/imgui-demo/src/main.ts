@@ -112,7 +112,7 @@ async function _init (): Promise<void> {
   font = await AddFontFromFileTTF('./Alibaba-PuHuiTi-Regular.ttf', 44, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
-  font.Scale = 0.5;
+  font.Scale = 0.45;
 
   // Setup Platform/Renderer backends
   // ImGui_ImplSDL2_InitForOpenGL(window, gl_context);

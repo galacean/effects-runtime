@@ -10,6 +10,10 @@ export class Sequencer extends EditorWindow {
   currentTime = 0;
   trackUIOffset = 200; // 减少偏移，为时间轴留更多空间
   timeCursorPositionX = 0;
+  private currentLabelWidth = this.trackUIOffset;
+  private trackLabelMinWidth = 120;
+  private trackLabelMaxWidth = 420;
+  private trackLabelResizeHandleWidth = 4;
   // 统一的时间游标颜色（手柄与竖线一致）
   private cursorColor = new ImGui.Vec4(0.6, 0.3, 0.8, 0.9);
 
@@ -18,16 +22,48 @@ export class Sequencer extends EditorWindow {
   private timelineEndTime = 30; // 30秒时间轴
   private pixelsPerSecond = 20; // 每秒20像素，提供更好的精度
   private timelineHeight = 30; // 时间轴区域高度
+  private timelineRightPadding = 20; // 时间轴尾部预留空间，避免内容被裁剪
+
+  // 视觉风格配置
+  private timelineBgColor = new ImGui.Vec4(0.08, 0.08, 0.08, 1.0);
+  private timelineLineColor = new ImGui.Vec4(0.3, 0.3, 0.3, 0.8);
+  private timelineTextColor = new ImGui.Vec4(0.95, 0.95, 0.95, 1.0);
+  private trackRowBgColor = new ImGui.Vec4(0.20, 0.20, 0.20, 1.0);
+  private trackRowAltBgColor = new ImGui.Vec4(0.17, 0.17, 0.17, 1.0);
+  private trackRowSelectedBgColor = new ImGui.Vec4(0.3, 0.5, 0.8, 0.3);
+  private trackRowDividerColor = new ImGui.Vec4(0.12, 0.12, 0.12, 1.0);
+  private trackTextColor = new ImGui.Vec4(0.85, 0.85, 0.85, 1.0);
+  private trackTextSelectedColor = new ImGui.Vec4(0.85, 0.85, 0.85, 1.0);
+  private clipBorderColor = new ImGui.Vec4(0.12, 0.12, 0.12, 1.0);
+  private trackLabelBgColor = new ImGui.Vec4(0.16, 0.16, 0.16, 1.0);
+  private trackLabelAltBgColor = new ImGui.Vec4(0.14, 0.14, 0.14, 1.0);
+  private trackLabelSelectedBgColor = new ImGui.Vec4(0.3, 0.5, 0.8, 0.25);
+  private trackLabelDividerColor = new ImGui.Vec4(0.08, 0.08, 0.08, 1.0);
+  private trackSeparatorColor = new ImGui.Vec4(0.07, 0.07, 0.07, 1.0);
+
+  // 布局配置
+  private trackRowHeight = 28;
+  private trackRowSpacing = 2;
+  private trackIndentWidth = 16;
+  private trackLabelPadding = 12;
+  private expanderIconSize = 9;
+  private clipVerticalPadding = 4;
+  private trackLabelClipGap = 0;
+  private clipCornerRadiusMax = 6;
 
   // 缓存窗口尺寸信息
   private windowContentWidth = 0;
   private timelineAreaWidth = 0;
+  private isScrubbing = false;
+  private resumeAfterScrub = false;
+  private trackRowCounter = 0;
 
   // 轨道选中状态
   private selectedTrack: TrackAsset | null = null;
 
   // 轨道展开状态
   private expandedTracks = new Set<string>();
+  private initializedTrackIds = new Set<string>();
 
   // 属性面板配置
   private propertiesPanelWidth = 300; // 属性面板宽度
@@ -89,12 +125,22 @@ export class Sequencer extends EditorWindow {
       // 记录轨道区域开始位置
       const trackAreaStartPos = ImGui.GetCursorScreenPos();
 
+      this.trackRowCounter = 0;
       //@ts-expect-error
       const sceneBindings = compositionComponent.sceneBindings;
 
       //@ts-expect-error
       for (const track of compositionComponent.timelineAsset.tracks) {
         const trackAsset = track;
+        const trackId = trackAsset.getInstanceId().toString();
+
+        if (!this.initializedTrackIds.has(trackId)) {
+          this.initializedTrackIds.add(trackId);
+
+          if (trackAsset.getChildTracks().length > 0) {
+            this.expandedTracks.add(trackId);
+          }
+        }
         let boundObject: object | null = null;
         let trackName = '';
 
@@ -119,7 +165,7 @@ export class Sequencer extends EditorWindow {
         }
 
         // 使用自定义绘制方式替代 CollapsingHeader，确保对齐
-        this.drawMasterTrack(trackAsset, trackName, boundObject, sceneBindings);
+        this.drawMasterTrack(trackAsset, trackName, sceneBindings);
       }
 
       // 绘制时间游标线
@@ -574,9 +620,14 @@ export class Sequencer extends EditorWindow {
     this.windowContentWidth = ImGui.GetContentRegionAvail().x;
     // 计算主区域宽度
     const mainAreaWidth = this.windowContentWidth - this.propertiesPanelWidth - 10;
+    const maxLabelWidth = Math.max(0, mainAreaWidth - this.timelineRightPadding);
+    const desiredLabelWidth = Math.min(Math.max(this.trackUIOffset, this.trackLabelMinWidth), this.trackLabelMaxWidth);
+    const labelWidth = Math.min(desiredLabelWidth, maxLabelWidth);
+
+    this.currentLabelWidth = labelWidth;
 
     // 时间轴区域宽度应该基于主区域宽度
-    this.timelineAreaWidth = Math.max(0, mainAreaWidth - this.trackUIOffset);
+    this.timelineAreaWidth = Math.max(0, mainAreaWidth - labelWidth - this.timelineRightPadding);
 
     // 根据可用宽度动态计算像素/秒，使时间轴随窗口拉伸且刚好容纳整个合成时长
     const duration = Math.max(0, this.timelineEndTime - this.timelineStartTime);
@@ -653,42 +704,144 @@ export class Sequencer extends EditorWindow {
     ImGui.Text('Forward');
 
     ImGui.Separator();
-  }  /**
+  }
+
+  /**
    * 绘制时间轴标尺
    */
   private drawTimelineRuler (): void {
     const windowPos = ImGui.GetCursorScreenPos();
     const drawList = ImGui.GetWindowDrawList();
 
-    // 获取当前子窗口的可用宽度，而不是使用全局窗口宽度
+    // 获取当前子窗口的可用宽度，并考虑垂直滚动条占用的空间
     const currentAreaWidth = ImGui.GetContentRegionAvail().x;
-    const timelineEnd = windowPos.x + currentAreaWidth;
+    const hasVerticalScrollbar = ImGui.GetScrollMaxY() > 0;
+    const scrollbarCompensation = hasVerticalScrollbar ? ImGui.GetStyle().ScrollbarSize : 0;
+    const adjustedAreaWidth = Math.max(0, currentAreaWidth - scrollbarCompensation - this.timelineRightPadding);
+
+    // 计算轨道标签区域、间隔与时间轴区域的宽度
+    const desiredLabelWidth = Math.min(Math.max(this.trackUIOffset, this.trackLabelMinWidth), this.trackLabelMaxWidth);
+    const labelWidth = Math.min(desiredLabelWidth, adjustedAreaWidth);
+
+    this.currentLabelWidth = labelWidth;
+
+    const remainingWidth = Math.max(0, adjustedAreaWidth - labelWidth);
+    const gapWidth = Math.min(this.trackLabelClipGap, remainingWidth);
+    const timelineWidth = Math.max(0, remainingWidth - gapWidth);
+    const labelAreaStart = windowPos;
+    const labelAreaEnd = new ImGui.Vec2(windowPos.x + labelWidth, windowPos.y + this.timelineHeight);
+
+    // 渲染左侧轨道标签头背景
+    drawList.AddRectFilled(
+      labelAreaStart,
+      labelAreaEnd,
+      ImGui.GetColorU32(this.trackLabelBgColor)
+    );
+
+    // 分割线
+    const dividerColor = ImGui.GetColorU32(this.trackLabelDividerColor);
+
+    drawList.AddLine(
+      new ImGui.Vec2(labelAreaEnd.x, labelAreaStart.y),
+      new ImGui.Vec2(labelAreaEnd.x, labelAreaEnd.y),
+      dividerColor,
+      1
+    );
+
+    // 标题文本
+    const headerText = 'Tracks';
+    const headerTextSize = ImGui.CalcTextSize(headerText);
+    const headerTextPos = new ImGui.Vec2(
+      labelAreaStart.x + this.trackLabelPadding,
+      labelAreaStart.y + (this.timelineHeight - headerTextSize.y) / 2
+    );
+
+    drawList.AddText(
+      headerTextPos,
+      ImGui.GetColorU32(this.trackTextColor),
+      headerText
+    );
+
+    // 时间轴区域起止坐标
+    const timelineStartX = labelAreaEnd.x + gapWidth;
+    const timelineStart = new ImGui.Vec2(timelineStartX, windowPos.y);
+    const timelineEndX = timelineStartX + timelineWidth;
+    const timelineEndPos = new ImGui.Vec2(timelineEndX, windowPos.y + this.timelineHeight);
+    const handleHalfWidth = this.trackLabelResizeHandleWidth / 2;
+    const handleStartX = timelineStartX - handleHalfWidth;
+
+    drawList.AddLine(
+      new ImGui.Vec2(timelineStartX, windowPos.y + 4),
+      new ImGui.Vec2(timelineStartX, windowPos.y + this.timelineHeight - 4),
+      dividerColor,
+      1
+    );
+
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(handleStartX, windowPos.y));
+    ImGui.PushID('TrackLabelSplitter');
+
+    if (ImGui.InvisibleButton('##track_label_splitter', new ImGui.Vec2(this.trackLabelResizeHandleWidth, this.timelineHeight))) {
+      // 捕获激活状态
+    }
+
+    if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0)) {
+      const deltaX = ImGui.GetMouseDragDelta(0).x;
+
+      if (Math.abs(deltaX) > Number.EPSILON) {
+        this.trackUIOffset = Math.min(
+          this.trackLabelMaxWidth,
+          Math.max(this.trackLabelMinWidth, this.trackUIOffset + deltaX)
+        );
+        ImGui.ResetMouseDragDelta(0);
+      }
+    }
+
+    if (ImGui.IsItemHovered()) {
+      ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.ResizeEW);
+    }
+
+    ImGui.PopID();
+
+    // 根据可见宽度更新时间轴像素映射，避免滚动条遮挡末尾
+    this.timelineAreaWidth = timelineWidth;
+    const duration = Math.max(0, this.timelineEndTime - this.timelineStartTime);
+
+    if (duration > 0 && timelineWidth > 0) {
+      this.pixelsPerSecond = timelineWidth / duration;
+    }
 
     // 时间轴背景
-    const timelineStart = new ImGui.Vec2(windowPos.x + this.trackUIOffset, windowPos.y);
-    const timelineEndPos = new ImGui.Vec2(timelineEnd, windowPos.y + this.timelineHeight);
-
     drawList.AddRectFilled(
       timelineStart,
       timelineEndPos,
-      ImGui.GetColorU32(ImGui.ImGuiCol.FrameBg)
+      ImGui.GetColorU32(this.timelineBgColor)
     );
 
-    // 绘制时间刻度
-    this.drawTimeMarkers(drawList, timelineStart, timelineEnd);
+    // Timeline bottom border 覆盖整个区域
+    drawList.AddLine(
+      new ImGui.Vec2(windowPos.x, timelineEndPos.y),
+      new ImGui.Vec2(timelineEndX, timelineEndPos.y),
+      ImGui.GetColorU32(this.timelineLineColor),
+      1
+    );
+
+    // 绘制时间刻度并缓存刻度位置供网格使用
+    this.drawTimeMarkers(drawList, timelineStart, timelineEndX);
 
     // 在时间轴区域铺设不可见交互层：点击/拖拽即可跳转时间
-    const timelineWidth = Math.max(0, timelineEnd - timelineStart.x);
-
     ImGui.SetCursorScreenPos(timelineStart);
     ImGui.PushID('TimelineScrubArea');
     if (ImGui.InvisibleButton('##timeline_scrub', new ImGui.Vec2(timelineWidth, this.timelineHeight))) {
       // 单击时根据点击位置跳转
       const mousePos = ImGui.GetMousePos();
-      const relativeX = Math.min(Math.max(0, mousePos.x - (windowPos.x + this.trackUIOffset)), timelineWidth);
+      const relativeX = Math.min(Math.max(0, mousePos.x - timelineStartX), timelineWidth);
       const newTime = Math.min(Math.max(this.pixelToTime(relativeX), this.timelineStartTime), this.timelineEndTime);
 
       this.currentComposition.setTime(newTime);
+    }
+
+    if (ImGui.IsItemActivated()) {
+      this.beginScrub();
     }
 
     // 允许后续控件与本控件重叠交互（使游标按钮能正确响应 hover/active）
@@ -697,20 +850,22 @@ export class Sequencer extends EditorWindow {
     // 支持在时间轴背景区域按下并拖动进行拖拽预览
     if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0, 0.0)) {
       const mousePos = ImGui.GetMousePos();
-      const relativeX = Math.min(Math.max(0, mousePos.x - (windowPos.x + this.trackUIOffset)), timelineWidth);
+      const relativeX = Math.min(Math.max(0, mousePos.x - timelineStartX), timelineWidth);
       const newTime = Math.min(Math.max(this.pixelToTime(relativeX), this.timelineStartTime), this.timelineEndTime);
 
       this.currentComposition.setTime(newTime);
     }
+
+    if (ImGui.IsItemDeactivated()) {
+      this.endScrub();
+    }
     ImGui.PopID();
 
-    // 保存当前光标位置，用于后续恢复
-    const originalCursorPos = ImGui.GetCursorPos();
-
     // 计算和绘制时间游标（在时间轴区域内）
-    const timelineX = windowPos.x + this.trackUIOffset;
+    const timelineX = timelineStartX;
+    const cursorPixel = this.timeToPixel(this.currentTime);
 
-    this.timeCursorPositionX = timelineX + this.timeToPixel(this.currentTime);
+    this.timeCursorPositionX = Math.min(Math.max(timelineX + cursorPixel, timelineX), timelineEndX);
 
     // 绘制游标手柄
     const cursorHandlePos = new ImGui.Vec2(this.timeCursorPositionX - 8, windowPos.y + 2);
@@ -726,13 +881,21 @@ export class Sequencer extends EditorWindow {
       // 点击逻辑
     }
 
+    if (ImGui.IsItemActivated()) {
+      this.beginScrub();
+    }
+
     // 处理时间游标拖拽
     if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0, 0.0)) {
       const mousePos = ImGui.GetMousePos();
-      const relativeX = mousePos.x - timelineX;
-      const newTime = Math.max(0, this.pixelToTime(relativeX));
+      const relativeX = Math.min(Math.max(0, mousePos.x - timelineX), timelineWidth);
+      const newTime = Math.min(Math.max(this.pixelToTime(relativeX), this.timelineStartTime), this.timelineEndTime);
 
       this.currentComposition.setTime(newTime);
+    }
+
+    if (ImGui.IsItemDeactivated()) {
+      this.endScrub();
     }
 
     ImGui.PopStyleColor(3);
@@ -749,8 +912,8 @@ export class Sequencer extends EditorWindow {
    * 绘制时间刻度标记
    */
   private drawTimeMarkers (drawList: any, timelineStart: ImGui.Vec2, timelineEndX?: number): void {
-    const textColor = ImGui.GetColorU32(ImGui.ImGuiCol.Text);
-    const lineColor = ImGui.GetColorU32(ImGui.ImGuiCol.Border);
+    const textColor = ImGui.GetColorU32(this.timelineTextColor);
+    const lineColor = ImGui.GetColorU32(this.timelineLineColor);
 
     // 计算时间轴的实际结束X坐标
     const endX = timelineEndX || (timelineStart.x + this.timelineAreaWidth);
@@ -829,6 +992,7 @@ export class Sequencer extends EditorWindow {
           lineColor,
           1
         );
+
       }
     }
   }
@@ -911,6 +1075,34 @@ export class Sequencer extends EditorWindow {
     return this.timelineStartTime + (pixel / this.pixelsPerSecond);
   }
 
+  private beginScrub (): void {
+    if (this.isScrubbing) {
+      return;
+    }
+
+    this.isScrubbing = true;
+    const isPaused = this.currentComposition.getPaused();
+
+    this.resumeAfterScrub = !isPaused;
+
+    if (!isPaused) {
+      this.currentComposition.pause();
+    }
+  }
+
+  private endScrub (): void {
+    if (!this.isScrubbing) {
+      return;
+    }
+
+    if (this.resumeAfterScrub) {
+      this.currentComposition.resume();
+    }
+
+    this.resumeAfterScrub = false;
+    this.isScrubbing = false;
+  }
+
   private drawTrack (track: TrackAsset) {
     for (const child of track.getChildTracks()) {
       this.drawSubTrack(child, 0); // 主轨道深度为0
@@ -920,153 +1112,21 @@ export class Sequencer extends EditorWindow {
   /**
    * 绘制主轨道，使用统一的行高和对齐方式
    */
-  private drawMasterTrack (trackAsset: TrackAsset, trackName: string, boundObject: object | null, sceneBindings: any[]): void {
-    const frameHeight = ImGui.GetFrameHeight();
-    const lineStartPos = ImGui.GetCursorScreenPos();
+  private drawMasterTrack (trackAsset: TrackAsset, trackName: string, sceneBindings: any[]): void {
     const hasChildren = trackAsset.getChildTracks().length > 0;
-    const isSelected = this.isTrackSelected(trackAsset);
+    const shouldRenderChildren = this.renderTrackRow(trackAsset, trackName, 0, hasChildren);
 
-    // 如果轨道被选中，绘制选中背景
-    if (isSelected) {
-      const drawList = ImGui.GetWindowDrawList();
-      const bgColor = ImGui.GetColorU32(new ImGui.Vec4(0.3, 0.5, 0.8, 0.3));
-      const bgStart = new ImGui.Vec2(lineStartPos.x, lineStartPos.y);
-      // 使用当前子窗口的可用宽度
-      const currentAreaWidth = ImGui.GetContentRegionAvail().x;
-      const bgEnd = new ImGui.Vec2(lineStartPos.x + currentAreaWidth, lineStartPos.y + frameHeight);
-
-      drawList.AddRectFilled(bgStart, bgEnd, bgColor);
+    if (shouldRenderChildren) {
+      for (const child of trackAsset.getChildTracks()) {
+        this.drawSubTrack(child, 1, sceneBindings);
+      }
     }
-
-    if (hasChildren) {
-      // 有子轨道，使用自定义的展开/收起控制
-
-      // 绘制展开/收起图标
-      const isExpanded = this.isTrackExpanded(trackAsset);
-      const arrowIcon = isExpanded ? '-' : '+';
-      const displayText = `${arrowIcon} ${trackName}`;
-      const textSize = ImGui.CalcTextSize(displayText);
-
-      // 创建可点击区域
-      const clickableStart = new ImGui.Vec2(lineStartPos.x, lineStartPos.y);
-      const clickableEnd = new ImGui.Vec2(lineStartPos.x + this.trackUIOffset - 10, lineStartPos.y + frameHeight);
-
-      ImGui.SetCursorScreenPos(clickableStart);
-      ImGui.PushID(`master_track_${trackAsset.getInstanceId()}`);
-
-      if (ImGui.InvisibleButton('track_btn', new ImGui.Vec2(clickableEnd.x - clickableStart.x, frameHeight))) {
-        // 单击只选中
-        this.selectTrack(trackAsset);
-      }
-
-      // 检查是否双击来展开/收起
-      if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(0)) {
-        this.toggleTrackExpansion(trackAsset);
-      }
-
-      ImGui.PopID();
-
-      // 绘制文本
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, lineStartPos.y));
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, new ImGui.Vec4(0.9, 0.9, 0.9, 1.0));
-      const textY = lineStartPos.y + (frameHeight - textSize.y) / 2;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, textY));
-      ImGui.Text(displayText);
-      ImGui.PopStyleColor();
-
-      // 移动到clip区域
-      const clipAreaY = lineStartPos.y;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x + this.trackUIOffset, clipAreaY));
-
-      // 绘制主轨道的clips（如果有）
-      this.drawClips(trackAsset);
-
-      // 确保换行到下一轨道
-      const nextLineY = lineStartPos.y + frameHeight + 4;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, nextLineY));
-
-      // 如果展开，绘制子轨道
-      const shouldDrawChildren = this.isTrackExpanded(trackAsset);
-
-      if (shouldDrawChildren) {
-        for (const child of trackAsset.getChildTracks()) {
-          this.drawSubTrack(child, 1, sceneBindings); // 传递 sceneBindings 到子轨道
-        }
-      }
-    } else {
-      // 没有子轨道，显示图标 + 名称，并创建可点击区域
-      const leafIcon = '';
-      const displayText = `${leafIcon} ${trackName}`;
-      const textSize = ImGui.CalcTextSize(displayText);
-
-      // 创建可点击区域
-      const clickableStart = new ImGui.Vec2(lineStartPos.x, lineStartPos.y);
-      const clickableEnd = new ImGui.Vec2(lineStartPos.x + this.trackUIOffset - 10, lineStartPos.y + frameHeight);
-
-      ImGui.SetCursorScreenPos(clickableStart);
-      ImGui.PushID(`master_track_${trackAsset.getInstanceId()}`);
-
-      if (ImGui.InvisibleButton('track_btn', new ImGui.Vec2(clickableEnd.x - clickableStart.x, frameHeight))) {
-        this.selectTrack(trackAsset);
-      }
-
-      ImGui.PopID();
-
-      // 绘制文本
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, lineStartPos.y));
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
-      const textY = lineStartPos.y + (frameHeight - textSize.y) / 2;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, textY));
-      ImGui.Text(displayText);
-      ImGui.PopStyleColor();
-
-      // 移动到clip区域
-      const clipAreaY = lineStartPos.y;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x + this.trackUIOffset, clipAreaY));
-
-      // 绘制主轨道的clips（如果有）
-      this.drawClips(trackAsset);
-
-      // 确保换行到下一轨道
-      const nextLineY = lineStartPos.y + frameHeight + 4;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, nextLineY));
-    }
-
-    // 只有在叶子轨道（无子轨道）的情况下，才需要检查和强制设置下一行位置
-    // 因为有子轨道的情况已经在上面的分支中正确处理了
   }
 
   private drawSubTrack (track: TrackAsset, depth: number = 0, sceneBindings: any[] = []) {
     const trackAsset = track;
-    const indentWidth = depth * 20; // 每层缩进20像素
-    const frameHeight = ImGui.GetFrameHeight(); // 统一行高
-    const isSelected = this.isTrackSelected(trackAsset);
-
-    // 记录当前行的开始位置
-    const lineStartPos = ImGui.GetCursorScreenPos();
-
-    // 如果轨道被选中，绘制选中背景
-    if (isSelected) {
-      const drawList = ImGui.GetWindowDrawList();
-      const bgColor = ImGui.GetColorU32(new ImGui.Vec4(0.3, 0.5, 0.8, 0.3));
-      const bgStart = new ImGui.Vec2(lineStartPos.x, lineStartPos.y);
-      // 使用当前子窗口的可用宽度
-      const currentAreaWidth = ImGui.GetContentRegionAvail().x;
-      const bgEnd = new ImGui.Vec2(lineStartPos.x + currentAreaWidth, lineStartPos.y + frameHeight);
-
-      drawList.AddRectFilled(bgStart, bgEnd, bgColor);
-    }
-
-    // 检查是否有子轨道
     const hasChildren = track.getChildTracks().length > 0;
 
-    // 查找当前轨道的绑定对象 - 每个 ObjectBindingTrack 都从 sceneBindings 中查找
     let boundObject: object | null = null;
 
     for (const sceneBinding of sceneBindings) {
@@ -1077,118 +1137,169 @@ export class Sequencer extends EditorWindow {
       }
     }
 
-    // 根据绑定对象确定轨道名称
     let trackName = trackAsset.constructor.name;
 
     if (boundObject instanceof VFXItem) {
       trackName = boundObject.name || 'VFX Item';
     } else if (boundObject instanceof Component) {
-      // 对于 Component，显示其类名
       trackName = boundObject.constructor.name;
-    } else {
-      // 如果没有绑定对象，显示轨道类型
-      trackName = trackAsset.constructor.name;
     }
 
-    // 设置缩进
-    ImGui.SetCursorPosX(ImGui.GetCursorPosX() + indentWidth);
+    const shouldRenderChildren = this.renderTrackRow(trackAsset, trackName, depth, hasChildren);
 
-    if (hasChildren) {
-      // 有子轨道，使用自定义的展开/收起控制
-      const isExpanded = this.isTrackExpanded(trackAsset);
-      const arrowIcon = isExpanded ? '-' : '+';
-      const displayText = `${arrowIcon} ${trackName}`;
-      const textSize = ImGui.CalcTextSize(displayText);
-      const textY = ImGui.GetCursorPosY() + (frameHeight - textSize.y) / 2;
+    if (shouldRenderChildren) {
+      for (const child of track.getChildTracks()) {
+        this.drawSubTrack(child, depth + 1, sceneBindings);
+      }
+    }
+  }
 
-      // 创建可点击区域
-      const clickableStart = new ImGui.Vec2(ImGui.GetCursorScreenPos().x, lineStartPos.y);
-      const clickableEnd = new ImGui.Vec2(lineStartPos.x + this.trackUIOffset - 10, lineStartPos.y + frameHeight);
+  private renderTrackRow (trackAsset: TrackAsset, trackName: string, depth: number, hasChildren: boolean): boolean {
+    const frameHeight = this.trackRowHeight;
+    const lineStartPos = ImGui.GetCursorScreenPos();
+    const currentAreaWidth = ImGui.GetContentRegionAvail().x;
+    const hasVerticalScrollbar = ImGui.GetScrollMaxY() > 0;
+    const scrollbarCompensation = hasVerticalScrollbar ? ImGui.GetStyle().ScrollbarSize : 0;
+    const usableWidth = Math.max(0, currentAreaWidth - scrollbarCompensation - this.timelineRightPadding);
+    const targetLabelWidth = this.currentLabelWidth > 0 ? this.currentLabelWidth : this.trackUIOffset;
+    const labelWidth = Math.min(targetLabelWidth, usableWidth);
+    const labelEndX = lineStartPos.x + labelWidth;
+    const rowEndX = lineStartPos.x + usableWidth;
+    const rowEnd = new ImGui.Vec2(rowEndX, lineStartPos.y + frameHeight);
+    const drawList = ImGui.GetWindowDrawList();
+    const rowIndex = this.trackRowCounter++;
+    const isSelected = this.isTrackSelected(trackAsset);
 
-      ImGui.SetCursorScreenPos(clickableStart);
-      ImGui.PushID(`sub_track_${trackAsset.getInstanceId()}`);
+    const timelineBaseColor = (rowIndex % 2 === 0) ? this.trackRowBgColor : this.trackRowAltBgColor;
+    const labelBaseColor = (rowIndex % 2 === 0) ? this.trackLabelBgColor : this.trackLabelAltBgColor;
+    const timelineBgColor = isSelected ? this.trackRowSelectedBgColor : timelineBaseColor;
+    const labelBgColor = isSelected ? this.trackLabelSelectedBgColor : labelBaseColor;
 
-      if (ImGui.InvisibleButton('track_btn', new ImGui.Vec2(clickableEnd.x - clickableStart.x, frameHeight))) {
-        // 单击只选中
+    const clipStartX = Math.min(rowEndX, labelEndX + this.trackLabelClipGap);
+
+    drawList.AddRectFilled(
+      lineStartPos,
+      new ImGui.Vec2(labelEndX, rowEnd.y),
+      ImGui.GetColorU32(labelBgColor)
+    );
+
+    if (clipStartX > labelEndX) {
+      drawList.AddRectFilled(
+        new ImGui.Vec2(labelEndX, lineStartPos.y),
+        new ImGui.Vec2(clipStartX, rowEnd.y),
+        ImGui.GetColorU32(this.trackSeparatorColor)
+      );
+    }
+
+    drawList.AddRectFilled(
+      new ImGui.Vec2(clipStartX, lineStartPos.y),
+      rowEnd,
+      ImGui.GetColorU32(timelineBgColor)
+    );
+
+    drawList.AddLine(
+      new ImGui.Vec2(labelEndX, lineStartPos.y),
+      new ImGui.Vec2(labelEndX, rowEnd.y),
+      ImGui.GetColorU32(this.trackLabelDividerColor),
+      1
+    );
+
+    drawList.AddLine(
+      new ImGui.Vec2(lineStartPos.x, rowEnd.y),
+      new ImGui.Vec2(rowEnd.x, rowEnd.y),
+      ImGui.GetColorU32(this.trackRowDividerColor),
+      1
+    );
+
+    const indentOffset = depth * this.trackIndentWidth;
+    const iconSize = this.expanderIconSize;
+    const iconLeft = lineStartPos.x + this.trackLabelPadding + indentOffset;
+    const iconRight = iconLeft + iconSize;
+    const iconTop = lineStartPos.y + (frameHeight - iconSize) / 2;
+    const iconBottom = iconTop + iconSize;
+
+    let labelHovered = false;
+
+    if (labelWidth > 0) {
+      ImGui.SetCursorScreenPos(lineStartPos);
+      ImGui.PushID(`track_label_${trackAsset.getInstanceId()}`);
+
+      if (ImGui.InvisibleButton('label', new ImGui.Vec2(labelWidth, frameHeight))) {
+        const mousePos = ImGui.GetMousePos();
+        const clickedIcon = hasChildren && mousePos.x >= iconLeft - 3 && mousePos.x <= iconRight + 3 && mousePos.y >= iconTop - 3 && mousePos.y <= iconBottom + 3;
+
+        if (clickedIcon) {
+          this.toggleTrackExpansion(trackAsset);
+        }
+
         this.selectTrack(trackAsset);
       }
 
-      // 检查是否双击来展开/收起
-      if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(0)) {
+      labelHovered = ImGui.IsItemHovered();
+
+      if (hasChildren && labelHovered && ImGui.IsMouseDoubleClicked(0)) {
         this.toggleTrackExpansion(trackAsset);
       }
 
       ImGui.PopID();
+    }
 
-      // 绘制文本
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clickableStart.x, lineStartPos.y));
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, new ImGui.Vec4(0.8, 0.8, 0.8, 1.0));
-      const subTextY = lineStartPos.y + (frameHeight - textSize.y) / 2;
+    const textColor = isSelected ? this.trackTextSelectedColor : this.trackTextColor;
+    const textColorU32 = ImGui.GetColorU32(textColor);
+    const textSize = ImGui.CalcTextSize(trackName);
+    let textStartX = lineStartPos.x + this.trackLabelPadding + indentOffset;
 
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clickableStart.x, subTextY));
-      ImGui.Text(displayText);
+    if (hasChildren) {
+      const iconCenter = new ImGui.Vec2(iconLeft + iconSize / 2, lineStartPos.y + frameHeight / 2);
+
+      this.drawExpanderIcon(drawList, iconCenter, iconSize, this.isTrackExpanded(trackAsset), textColorU32);
+      textStartX = iconRight + 6;
+    }
+
+    const textPosY = lineStartPos.y + (frameHeight - textSize.y) / 2;
+    const textClipPadding = 4;
+    const clipMin = new ImGui.Vec2(textStartX, lineStartPos.y);
+    const clipMaxX = Math.max(textStartX, labelEndX - textClipPadding);
+    const clipMax = new ImGui.Vec2(clipMaxX, rowEnd.y);
+    const hasClipSpace = clipMax.x > clipMin.x;
+
+    if (hasClipSpace) {
+      ImGui.PushClipRect(clipMin, clipMax, true);
+      ImGui.SetCursorScreenPos(new ImGui.Vec2(textStartX, textPosY));
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, textColor);
+      ImGui.Text(trackName);
       ImGui.PopStyleColor();
+      ImGui.PopClipRect();
+    }
 
-      // 移动到clip渲染区域（右侧时间轴区域）
-      const clipAreaY = lineStartPos.y;
+    // 移动到clip渲染区域（右侧时间轴区域）
+    const clipAreaY = lineStartPos.y;
 
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x + this.trackUIOffset, clipAreaY));
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(clipStartX, clipAreaY));
+    this.drawClips(trackAsset);
 
-      // 在同一行绘制clips
-      this.drawClips(trackAsset);
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, rowEnd.y + this.trackRowSpacing));
 
-      // 确保换行到下一轨道，使用统一的行高和适当的间距
-      const nextLineY = lineStartPos.y + frameHeight + 4; // 增加4像素间距使布局更清晰
+    return hasChildren && this.isTrackExpanded(trackAsset);
+  }
 
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, nextLineY));
+  private drawExpanderIcon (drawList: any, center: ImGui.Vec2, size: number, expanded: boolean, color: number): void {
+    const half = size / 2;
 
-      // 如果展开，递归绘制子轨道
-      if (this.isTrackExpanded(trackAsset)) {
-        for (const child of track.getChildTracks()) {
-          this.drawSubTrack(child, depth + 1, sceneBindings);
-        }
-      }
+    if (expanded) {
+      drawList.AddTriangleFilled(
+        new ImGui.Vec2(center.x - half, center.y - half * 0.6),
+        new ImGui.Vec2(center.x + half, center.y - half * 0.6),
+        new ImGui.Vec2(center.x, center.y + half),
+        color
+      );
     } else {
-      // 没有子轨道，使用普通文本标签，加上图标前缀以增强视觉层次
-      const leafIcon = ''; // 叶子节点图标
-      const displayText = `${leafIcon} ${trackName}`;
-      const textSize = ImGui.CalcTextSize(displayText);
-      const textY = ImGui.GetCursorPosY() + (frameHeight - textSize.y) / 2;
-
-      // 创建可点击区域
-      const clickableStart = new ImGui.Vec2(ImGui.GetCursorScreenPos().x, lineStartPos.y);
-      const clickableEnd = new ImGui.Vec2(lineStartPos.x + this.trackUIOffset - 10, lineStartPos.y + frameHeight);
-
-      ImGui.SetCursorScreenPos(clickableStart);
-      ImGui.PushID(`sub_track_${trackAsset.getInstanceId()}`);
-
-      if (ImGui.InvisibleButton('track_btn', new ImGui.Vec2(clickableEnd.x - clickableStart.x, frameHeight))) {
-        this.selectTrack(trackAsset);
-      }
-
-      ImGui.PopID();
-
-      // 绘制文本
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clickableStart.x, lineStartPos.y));
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, new ImGui.Vec4(0.8, 0.8, 0.8, 1.0));
-      const leafTextY = lineStartPos.y + (frameHeight - textSize.y) / 2;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clickableStart.x, leafTextY));
-      ImGui.Text(displayText);
-      ImGui.PopStyleColor();
-
-      // 移动到clip渲染区域（右侧时间轴区域）
-      const clipAreaY = lineStartPos.y;
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x + this.trackUIOffset, clipAreaY));
-
-      // 在同一行绘制clips
-      this.drawClips(trackAsset);
-
-      // 确保换行到下一轨道，使用统一的行高和适当的间距
-      const nextLineY = lineStartPos.y + frameHeight + 4; // 增加4像素间距使布局更清晰
-
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, nextLineY));
+      drawList.AddTriangleFilled(
+        new ImGui.Vec2(center.x - half, center.y - half),
+        new ImGui.Vec2(center.x - half, center.y + half),
+        new ImGui.Vec2(center.x + half, center.y),
+        color
+      );
     }
   }
 
@@ -1198,7 +1309,7 @@ export class Sequencer extends EditorWindow {
   private drawClips (trackAsset: TrackAsset) {
     const clips = trackAsset.getClips();
     const rowStartPos = ImGui.GetCursorScreenPos();
-    const rowHeight = ImGui.GetFrameHeight();
+    const rowHeight = this.trackRowHeight;
 
     // 如果没有clips，不需要绘制任何东西，光标位置保持不变
     if (clips.length === 0) {
@@ -1211,10 +1322,16 @@ export class Sequencer extends EditorWindow {
       // 计算clip的像素位置和大小
       const clipStartPixel = this.timeToPixel(clip.start);
       const clipWidth = clip.duration * this.pixelsPerSecond;
+      const clipTop = rowStartPos.y + this.clipVerticalPadding;
+      const clipBottom = rowStartPos.y + rowHeight - this.clipVerticalPadding;
+      const clipHeight = Math.max(1, clipBottom - clipTop);
 
       // 设置clip的绝对位置，确保与轨道标签垂直居中对齐
-      const clipPos = new ImGui.Vec2(rowStartPos.x + clipStartPixel, rowStartPos.y);
-      const clipEndPos = new ImGui.Vec2(clipPos.x + clipWidth, clipPos.y + rowHeight);
+      const clipPos = new ImGui.Vec2(rowStartPos.x + clipStartPixel, clipTop);
+      const clipEndPos = new ImGui.Vec2(clipPos.x + clipWidth, clipBottom);
+      const innerStartX = clipPos.x + 2;
+      const innerEndX = clipEndPos.x - 2;
+      const innerWidth = Math.max(0, innerEndX - innerStartX);
 
       // 绘制clip背景
       const drawList = ImGui.GetWindowDrawList();
@@ -1222,10 +1339,11 @@ export class Sequencer extends EditorWindow {
       // 根据 endBehavior 获取 clip 颜色
       const endBehaviorColor = this.getEndBehaviorColor(clip.endBehavior);
       const clipColor = ImGui.GetColorU32(endBehaviorColor);
-      const borderColor = ImGui.GetColorU32(ImGui.ImGuiCol.Border);
+      const borderColor = ImGui.GetColorU32(this.clipBorderColor);
+      const cornerRadius = Math.min(this.clipCornerRadiusMax, Math.min(clipHeight, clipWidth) * 0.25);
 
-      drawList.AddRectFilled(clipPos, clipEndPos, clipColor);
-      drawList.AddRect(clipPos, clipEndPos, borderColor);
+      drawList.AddRectFilled(clipPos, clipEndPos, clipColor, cornerRadius);
+      drawList.AddRect(clipPos, clipEndPos, borderColor, cornerRadius);
 
       // 临时设置光标位置用于创建交互区域
       ImGui.SetCursorScreenPos(clipPos);
@@ -1234,7 +1352,7 @@ export class Sequencer extends EditorWindow {
       const clipId = `##clip_${trackAsset.getInstanceId()}_${i}`;
 
       ImGui.PushID(clipId);
-      if (ImGui.InvisibleButton('clip', new ImGui.Vec2(clipWidth, rowHeight))) {
+      if (ImGui.InvisibleButton('clip', new ImGui.Vec2(clipWidth, clipHeight))) {
         // Clip点击逻辑
       }
       ImGui.PopID();
@@ -1253,7 +1371,7 @@ export class Sequencer extends EditorWindow {
         const endBehaviorHoverColor = this.getEndBehaviorHoverColor(clip.endBehavior);
         const clipHoverColor = ImGui.GetColorU32(endBehaviorHoverColor);
 
-        drawList.AddRectFilled(clipPos, clipEndPos, clipHoverColor);
+        drawList.AddRectFilled(clipPos, clipEndPos, clipHoverColor, cornerRadius);
 
         // 显示clip信息的tooltip，包含endBehavior描述
         const endBehaviorDesc = this.getEndBehaviorDescription(clip.endBehavior);
@@ -1267,7 +1385,7 @@ export class Sequencer extends EditorWindow {
       const textSize = ImGui.CalcTextSize(clipText);
       const textPos = new ImGui.Vec2(
         clipPos.x + 4,
-        clipPos.y + (rowHeight - textSize.y) / 2
+        clipPos.y + (clipHeight - textSize.y) / 2
       );
 
       drawList.AddText(textPos, ImGui.GetColorU32(ImGui.ImGuiCol.Text), clipText);
