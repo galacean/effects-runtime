@@ -334,8 +334,15 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
     const value = keyDatas[i].value;
     const rightControl = keyDatas[i].rightControl;
 
-    const outSlop = calculateSlop(value, rightControl);
-    const inSlop = calculateSlop(leftControl, value);
+    let inSlop = 0;
+    let outSlop = 0;
+
+    if (i > 0) {
+      inSlop = calculateSlop(leftControl, value);
+    }
+    if (i < keyDatas.length - 1) {
+      outSlop = calculateSlop(value, rightControl);
+    }
 
     const keyframe: Keyframe = {
       time: value.x,
