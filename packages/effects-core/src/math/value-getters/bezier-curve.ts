@@ -325,7 +325,7 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
     lastControl = p2;
   }
 
-  const calculateSlop = (p0: Vector2Like, p1: Vector2Like) => {
+  const calculateSlope = (p0: Vector2Like, p1: Vector2Like) => {
     return (p1.y - p0.y) / (p1.x - p0.x + NumberEpsilon);
   };
 
@@ -334,21 +334,21 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
     const value = keyDatas[i].value;
     const rightControl = keyDatas[i].rightControl;
 
-    let inSlop = 0;
-    let outSlop = 0;
+    let inSlope = 0;
+    let outSlope = 0;
 
     if (i > 0) {
-      inSlop = calculateSlop(leftControl, value);
+      inSlope = calculateSlope(leftControl, value);
     }
     if (i < keyDatas.length - 1) {
-      outSlop = calculateSlop(value, rightControl);
+      outSlope = calculateSlope(value, rightControl);
     }
 
     const keyframe: Keyframe = {
       time: value.x,
       value: value.y,
-      inSlope: inSlop,
-      outSlope: outSlop,
+      inSlope: inSlope,
+      outSlope: outSlope,
       inWeight: 0,
       outWeight: 0,
       tangentMode: keyDatas[i].tangentMode,
