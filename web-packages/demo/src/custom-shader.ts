@@ -1,7 +1,4 @@
-/**
- * 音频可视化效果核心实现
- * 基于音量检测的状态机控制多纹理混合动画
- */
+
 import type { Material } from '@galacean/effects';
 import { Player, RendererComponent, setBlendMode, spec } from '@galacean/effects';
 import { math } from '@galacean/effects-core';
@@ -471,31 +468,12 @@ let material: Material | undefined;
   const composition = await player.loadScene(jsonValue);
   const item = composition.getItemByName('effect_4');
 
-  const controller = new TextureControllerNew();
-
-  // 设置停止和重置回调
-  controller.onStop = (now: number) => {
-    if (material) {
-      material.setFloat('_StopSignal', 1);
-      material.setFloat('_StopTime', now);
-      material.setFloat('_StopAffectListening', 0);
-      material.setFloat('_StopAffectInput', 1);
-    }
-  };
-
-  controller.onReset = () => {
-    if (material) {
-      material.setFloat('_StopSignal', 0);
-      material.setFloat('_StopTime', 0);
-    }
-  };
+  const controller = new TextureControllerNew(0.1);
 
 
-  controller.setVolumeThreshold(0.1);
 
   const engine = composition.renderer.engine;
 
-  controller.resetToListening(performance.now() / 1000);
 
   // 加载本地图片数据
   const loadLocalImageData = (path: string): Promise<ImageData> => {
@@ -670,7 +648,7 @@ let material: Material | undefined;
     const timeFactor = now * 0.1;
     if (timeFactor > 3000000) {return 0.8;}
     else if (timeFactor > 2000000) {return 0.6;}
-    else if (timeFactor > 100) {return 1.0;}
+    else if (timeFactor > 100000) {return 1.0;}
     else {return 0.090;}
   }
 
@@ -698,34 +676,34 @@ let material: Material | undefined;
     if (material) {
       material.setFloat('_Now', now);
 
-      const currentVolume = getSimulatedAudioVolume();
+      const currentVolume = getAudioVolume();
       material.setFloat('_CurrentVolume', currentVolume);
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
 
-      // 纹理优先级处理
-      const all = controller.textures.slice();
-      const inputs = all.filter((t: any) => t.profile >= 2)
-        .sort((a: any, b: any) => b.startedAt - a.startedAt);
-      const listenings = all.filter((t: any) => t.profile <= 1)
-        .sort((a: any, b: any) => b.startedAt - a.startedAt);
+      // 使用新的 params 接口一次性应用所有参数
+      const params = controller.getParams();
 
-      const renderSet = inputs.concat(listenings).slice(0, MAX_TEXTURES);
-      renderSet.sort((a: any, b: any) => a.startedAt - b.startedAt);
-
-      const textureCount = renderSet.length;
-      material.setFloat('_TextureCount', textureCount);
-
-      for (let i = 0; i < textureCount; i++) {
-        const texture = renderSet[i];
-        material.setFloat(`_TexStartedAt${i}`, texture.startedAt);
-        material.setFloat(`_TexProfile${i}`, texture.profile);
-        // 不再传递颜色，Shader根据profile类型自动选择预设颜色
+      material.setFloat('_TextureCount', params.textureCount);
+      for (let i = 0; i < params.textureCount; i++) {
+        material.setFloat(`_TexStartedAt${i}`, params.slots[i].startedAt);
+        material.setFloat(`_TexProfile${i}`, params.slots[i].profile);
       }
-
-      for (let i = textureCount; i < MAX_TEXTURES; i++) {
+      for (let i = params.textureCount; i < 4; i++) {
         material.setFloat(`_TexStartedAt${i}`, 0);
         material.setFloat(`_TexProfile${i}`, 0);
+      }
+
+      if (params.stop?.active) {
+        material.setFloat('_StopSignal', 1);
+        material.setFloat('_StopTime', params.stop.time);
+        material.setFloat('_StopAffectListening', params.stop.affectListening ? 1 : 0);
+        material.setFloat('_StopAffectInput', params.stop.affectInput ? 1 : 0);
+      } else {
+        material.setFloat('_StopSignal', 0);
+        material.setFloat('_StopTime', 0);
+        material.setFloat('_StopAffectListening', 0);
+        material.setFloat('_StopAffectInput', 0);
       }
     }
     requestAnimationFrame(updateLoop);
