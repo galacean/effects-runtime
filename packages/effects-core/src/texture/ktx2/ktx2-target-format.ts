@@ -43,8 +43,6 @@ export enum TextureFormat {
   /** RG float format, 8 bits per channel. */
   R8G8 = 37,
   /** RGB compressed format, 4 bits per pixel. */
-  ETC1_RGB = 13,
-  /** RGB compressed format, 4 bits per pixel. */
   ETC2_RGB = 14,
   /** RGBA compressed format, 5 bits per pixel, 4 bit in RGB, 1 bit in A. */
   ETC2_RGBA5 = 15,
@@ -70,28 +68,4 @@ export enum TextureFormat {
   ASTC_10x10 = 25,
   /** RGB(A) compressed format, 128 bits per 12x12 pixel block. */
   ASTC_12x12 = 26,
-  /** Automatic depth format, engine will automatically select the supported precision. */
-  Depth = 27,
-  /** Render to stencil buffer. */
-  Stencil = 28,
-  /** Automatic depth stencil format, engine will automatically select the supported precision. */
-  DepthStencil = 29,
-  /** 16-bit depth format. */
-  Depth16 = 30,
-  /** 24-bit depth format. */
-  Depth24 = 31,
-  /** 32-bit depth format. */
-  Depth32 = 32,
-  /** 16-bit depth + 8-bit stencil format. */
-  Depth24Stencil8 = 33,
-  /** 32-bit depth + 8-bit stencil format. */
-  Depth32Stencil8 = 34,
-  /** @deprecated Use 'TextureFormat.R8' instead. */
-  Alpha8 = 5,
-  /** @deprecated Use 'TextureFormat.R8G8' instead. */
-  LuminanceAlpha = 6,
-  /** @deprecated Use `TextureFormat.BC1` instead. */
-  DXT1 = 10,
-  /** @deprecated Use `TextureFormat.BC3` instead. */
-  DXT5 = 11
 }

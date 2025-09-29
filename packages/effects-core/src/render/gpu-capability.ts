@@ -94,10 +94,8 @@ export class GPUCapability {
     this.capabilityList = new Map([
       [GLCapabilityType.astc, !!gl.getExtension('WEBGL_compressed_texture_astc')],
       [GLCapabilityType.astc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_astc')],
-      [GLCapabilityType.etc, !!gl.getExtension('WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBGL_compressed_texture_etc1')],
-      [GLCapabilityType.etc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
-      [GLCapabilityType.etc1, !!gl.getExtension('WEBGL_compressed_texture_etc1')],
-      [GLCapabilityType.etc1_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc1')],
+      [GLCapabilityType.etc, !!gl.getExtension('WEBGL_compressed_texture_etc')],
+      [GLCapabilityType.etc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc')],
       [GLCapabilityType.pvrtc, !!gl.getExtension('WEBGL_compressed_texture_pvrtc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
       [GLCapabilityType.pvrtc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
       [GLCapabilityType.sRGB, !!gl.getExtension('EXT_sRGB')],
@@ -227,19 +225,16 @@ export enum GLCapabilityType {
   astc_webkit = 'WEBKIT_WEBGL_compressed_texture_astc',
   etc = 'WEBGL_compressed_texture_etc',
   etc_webkit = 'WEBKIT_WEBGL_compressed_texture_etc',
-  etc1 = 'WEBGL_compressed_texture_etc1',
-  etc1_webkit = 'WEBKIT_WEBGL_compressed_texture_etc1',
   pvrtc = 'WEBGL_compressed_texture_pvrtc',
   pvrtc_webkit = 'WEBKIT_WEBGL_compressed_texture_pvrtc',
-  WEBGL_lose_context = 'WEBGL_lose_context',
   sRGB = 'EXT_sRGB'
 }
 
 function registerCompressedTexture (gl: WebGLRenderingContext | WebGL2RenderingContext): number {
-  if (gl.getExtension('WEBGL_compressed_texture_astc')) {
+  if (gl.getExtension(GLCapabilityType.astc) || gl.getExtension(GLCapabilityType.astc_webkit)) {
     return COMPRESSED_TEXTURE.ASTC;
   }
-  if (gl.getExtension('WEBGL_compressed_texture_pvrtc') || gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')) {
+  if (gl.getExtension(GLCapabilityType.pvrtc) || gl.getExtension(GLCapabilityType.pvrtc_webkit)) {
     return COMPRESSED_TEXTURE.PVRTC;
   }
 
