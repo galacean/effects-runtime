@@ -1,27 +1,27 @@
 import { WorkerPool } from './worker-pool';
 
 export abstract class AbstractTranscoder {
-  protected _transcodeWorkerPool: WorkerPool;
-  protected _initPromise: Promise<any>;
+  protected transcodeWorkerPool: WorkerPool;
+  protected initPromise: Promise<any>;
 
   constructor (public readonly workerLimitCount: number) {}
 
   init () {
-    if (!this._initPromise) {
-      this._initPromise = this._initTranscodeWorkerPool();
+    if (!this.initPromise) {
+      this.initPromise = this.initTranscodeWorkerPool();
     }
 
-    return this._initPromise;
+    return this.initPromise;
   }
 
   destroy () {
-    this._transcodeWorkerPool.destroy();
+    this.transcodeWorkerPool.destroy();
   }
 
-  protected abstract _initTranscodeWorkerPool (): Promise<any>;
+  protected abstract initTranscodeWorkerPool (): Promise<any>;
 
-  protected _createTranscodePool (workerURL: string, wasmBuffer: ArrayBuffer) {
-    this._transcodeWorkerPool = new WorkerPool(this.workerLimitCount, () => {
+  protected createTranscodePool (workerURL: string, wasmBuffer: ArrayBuffer) {
+    this.transcodeWorkerPool = new WorkerPool(this.workerLimitCount, () => {
       return new Promise<Worker>((resolve, reject) => {
         const worker = new Worker(workerURL);
         const msg: InitMessage = {
@@ -41,7 +41,7 @@ export abstract class AbstractTranscoder {
       });
     });
 
-    return this._transcodeWorkerPool.prepareWorker();
+    return this.transcodeWorkerPool.prepareWorker();
   }
 }
 

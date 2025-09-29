@@ -9,7 +9,7 @@ export class BinomialTranscoder extends AbstractTranscoder {
     super(workerLimitCount);
   }
 
-  _initTranscodeWorkerPool () {
+  initTranscodeWorkerPool () {
     return Promise.all([
       // eslint-disable-next-line compat/compat
       fetch('https://mdn.alipayobjects.com/rms/afts/file/A*nG8SR6vCgXgAAAAAAAAAAAAAARQnAQ/basis_transcoder.js').then(
@@ -48,7 +48,7 @@ export class BinomialTranscoder extends AbstractTranscoder {
 
         const workerURL = URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' }));
 
-        return this._createTranscodePool(workerURL, wasmBuffer);
+        return this.createTranscodePool(workerURL, wasmBuffer);
       }
     });
   }
@@ -57,7 +57,7 @@ export class BinomialTranscoder extends AbstractTranscoder {
     if (this.workerLimitCount === 0) {
       return init().then((KTX2File: any) => transcode(buffer, format, KTX2File));
     } else {
-      return this._transcodeWorkerPool.postMessage({
+      return this.transcodeWorkerPool.postMessage({
         buffer,
         format,
         type: 'transcode',

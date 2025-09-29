@@ -11,10 +11,9 @@ import { TextureSourceType } from '../types';
 import { glContext } from '../../gl';
 import { isPowerOfTwo } from '../utils';
 export class KTX2Loader {
-  private static _isBinomialInit: boolean = false;
-  private static _binomialLLCTranscoder: BinomialTranscoder | null;
-  private static _khronosTranscoder: KhronosTranscoder | null;
-  private static _priorityFormats = {
+  private static binomialLLCTranscoder: BinomialTranscoder | null;
+  private static khronosTranscoder: KhronosTranscoder | null;
+  private static priorityFormats = {
     etc1s: [
       KTX2TargetFormat.ETC,
       KTX2TargetFormat.ASTC,
@@ -28,7 +27,7 @@ export class KTX2Loader {
       KTX2TargetFormat.R8G8B8A8,
     ],
   };
-  private static _capabilityMap: Partial<Record<KTX2TargetFormat, Partial<Record<DFDTransferFunction, GLCapabilityType[]>>>> = {
+  private static capabilityMap: Partial<Record<KTX2TargetFormat, Partial<Record<DFDTransferFunction, GLCapabilityType[]>>>> = {
     [KTX2TargetFormat.ASTC]: {
       [DFDTransferFunction.linear]: [GLCapabilityType.astc, GLCapabilityType.astc_webkit],
       [DFDTransferFunction.sRGB]: [GLCapabilityType.astc, GLCapabilityType.astc_webkit],
@@ -43,20 +42,20 @@ export class KTX2Loader {
   };
 
   /** @internal */
-  static _parseBuffer (buffer: Uint8Array, gpuCapability?: GPUCapability) {
+  static parseBuffer (buffer: Uint8Array, gpuCapability?: GPUCapability) {
     const ktx2Container = new KTX2Container(buffer);
     // TODO: DIY priorityFormats
-    const formatPriorities = KTX2Loader._priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
-    const targetFormat = KTX2Loader._decideTargetFormat(ktx2Container, formatPriorities, gpuCapability);
+    const formatPriorities = KTX2Loader.priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
+    const targetFormat = KTX2Loader.decideTargetFormat(ktx2Container, formatPriorities, gpuCapability);
 
     let transcodeResultPromise: Promise<TranscodeResult>;
 
-    if (KTX2Loader._isBinomialInit || targetFormat != KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
-      const binomialLLCWorker = KTX2Loader._getBinomialLLCTranscoder();
+    if (targetFormat != KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
+      const binomialLLCWorker = KTX2Loader.getBinomialLLCTranscoder();
 
       transcodeResultPromise = binomialLLCWorker.init().then(() => binomialLLCWorker.transcode(buffer, targetFormat));
     } else {
-      const khronosWorker = KTX2Loader._getKhronosTranscoder();
+      const khronosWorker = KTX2Loader.getKhronosTranscoder();
 
       transcodeResultPromise = khronosWorker.init().then(() => khronosWorker.transcode(ktx2Container));
     }
@@ -71,7 +70,7 @@ export class KTX2Loader {
     });
   }
 
-  private static _decideTargetFormat (
+  private static decideTargetFormat (
     ktx2Container: KTX2Container,
     priorityFormats?: KTX2TargetFormat[],
     gpuCapability?: GPUCapability,
@@ -106,7 +105,7 @@ export class KTX2Loader {
     for (let i = 0; i < priorityFormats.length; i++) {
       const format = priorityFormats[i];
       const capabilities =
-        this._capabilityMap[format]?.[isSRGB ? DFDTransferFunction.sRGB : DFDTransferFunction.linear];
+        this.capabilityMap[format]?.[isSRGB ? DFDTransferFunction.sRGB : DFDTransferFunction.linear];
 
       if (capabilities) {
         for (let j = 0; j < capabilities.length; j++) {
@@ -133,7 +132,7 @@ export class KTX2Loader {
     const buffer = new Uint8Array(await loadBinary(url));
 
     try {
-      const { ktx2Container, result, targetFormat } = await KTX2Loader._parseBuffer(new Uint8Array(buffer), gpuCapability);
+      const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(new Uint8Array(buffer), gpuCapability);
 
       return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
     } catch (error) {
@@ -143,7 +142,7 @@ export class KTX2Loader {
   }
 
   initialize (useKhronosTranscoder: boolean, workerCount: number): Promise<void> {
-    if (useKhronosTranscoder) {return KTX2Loader._getKhronosTranscoder(workerCount).init();} else {return KTX2Loader._getBinomialLLCTranscoder(workerCount).init();}
+    if (useKhronosTranscoder) {return KTX2Loader.getKhronosTranscoder(workerCount).init();} else {return KTX2Loader.getBinomialLLCTranscoder(workerCount).init();}
   }
 
   /** @internal */
@@ -153,15 +152,14 @@ export class KTX2Loader {
     targetFormat: KTX2TargetFormat,
     gpuCapability?: GPUCapability,
   ): Texture2DSourceOptionsCompressed {
-    const textureFormat = KTX2Loader._getEngineTextureFormat(targetFormat, transcodeResult);
+    const textureFormat = KTX2Loader.getEngineTextureFormat(targetFormat, transcodeResult);
     const { pixelWidth, pixelHeight, faceCount, isSRGB } = ktx2Container;
-    const { internalFormat, format, type } = KTX2Loader._getGLTextureDetail(textureFormat, isSRGB, gpuCapability);
+    const { internalFormat, format, type } = KTX2Loader.getGLTextureDetail(textureFormat, isSRGB, gpuCapability);
 
     const target = faceCount === 6 ? glContext.TEXTURE_CUBE_MAP : glContext.TEXTURE_2D;
 
     const faces = transcodeResult.faces;
     const transLevels = faces[0]?.length ?? 0;
-    // 是否使用 mipmaps
     const maxDimension = Math.max(pixelWidth, pixelHeight);
     const fullChainCount = Math.floor(Math.log2(maxDimension)) + 1;
     const useMipmaps = transLevels > 1 && transLevels >= fullChainCount;
@@ -190,17 +188,15 @@ export class KTX2Loader {
     };
   }
 
-  private static _getBinomialLLCTranscoder (workerCount: number = 4) {
-    KTX2Loader._isBinomialInit = true;
-
-    return (this._binomialLLCTranscoder ??= new BinomialTranscoder(workerCount));
+  private static getBinomialLLCTranscoder (workerCount: number = 4) {
+    return (this.binomialLLCTranscoder ??= new BinomialTranscoder(workerCount));
   }
 
-  private static _getKhronosTranscoder (workerCount: number = 4) {
-    return (this._khronosTranscoder ??= new KhronosTranscoder(workerCount, KTX2TargetFormat.ASTC));
+  private static getKhronosTranscoder (workerCount: number = 4) {
+    return (this.khronosTranscoder ??= new KhronosTranscoder(workerCount, KTX2TargetFormat.ASTC));
   }
 
-  private static _getEngineTextureFormat (
+  private static getEngineTextureFormat (
     basisFormat: KTX2TargetFormat,
     transcodeResult: TranscodeResult
   ): TextureFormat {
@@ -220,7 +216,7 @@ export class KTX2Loader {
     return TextureFormat.R8G8B8;
   }
 
-  private static _getGLTextureDetail (
+  private static getGLTextureDetail (
     format: TextureFormat,
     isSRGBColorSpace: boolean,
     gpuCapability?: GPUCapability,

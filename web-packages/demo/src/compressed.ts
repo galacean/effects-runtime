@@ -246,7 +246,7 @@ const container = document.getElementById('J-container');
     },
   });
 
-  await player.loadScene(json, {
+  await player.loadScene(JSON.parse(json_ktx2), {
     useCompressedTexture: true,
   });
 })();

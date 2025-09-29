@@ -16,7 +16,7 @@ export class KhronosTranscoder extends AbstractTranscoder {
     super(workerLimitCount);
   }
 
-  _initTranscodeWorkerPool () {
+  initTranscodeWorkerPool () {
     return fetch('https://mdn.alipayobjects.com/rms/afts/file/A*0jiKRK6D1-kAAAAAAAAAAAAAARQnAQ/uastc_astc.wasm')
       .then(res => res.arrayBuffer())
       .then(wasmBuffer => {
@@ -27,7 +27,7 @@ export class KhronosTranscoder extends AbstractTranscoder {
           })
         );
 
-        return this._createTranscodePool(workerURL, wasmBuffer);
+        return this.createTranscodePool(workerURL, wasmBuffer);
       });
   }
 
@@ -73,7 +73,7 @@ export class KhronosTranscoder extends AbstractTranscoder {
       messageData[faceIndex] = mipmapData;
     }
 
-    return this._transcodeWorkerPool.postMessage(postMessageData).then(data => {
+    return this.transcodeWorkerPool.postMessage(postMessageData).then(data => {
       decodedData.faces = data;
       decodedData.hasAlpha = true;
 
@@ -81,3 +81,4 @@ export class KhronosTranscoder extends AbstractTranscoder {
     });
   }
 }
+

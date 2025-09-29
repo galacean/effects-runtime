@@ -3,20 +3,20 @@
  * WorkerPool, T is is post message type, U is return type.
  */
 export class WorkerPool<T = any, U = any> {
-  private _taskQueue: TaskItem<T, U>[] = [];
-  private _workerStatus: number = 0;
-  private _workerItems: WorkerItem<U>[];
+  private taskQueue: TaskItem<T, U>[] = [];
+  private workerStatus: number = 0;
+  private workerItems: WorkerItem<U>[];
 
   /**
    * Constructor of WorkerPool.
    * @param limitedCount - worker limit count
-   * @param _workerCreator - creator of worker
+   * @param workerCreator - creator of worker
    */
   constructor (
     public readonly limitedCount = 4,
-    private readonly _workerCreator: () => Worker | Promise<Worker>
+    private readonly workerCreator: () => Worker | Promise<Worker>
   ) {
-    this._workerItems = new Array<WorkerItem<U>>(limitedCount);
+    this.workerItems = new Array<WorkerItem<U>>(limitedCount);
   }
 
   prepareWorker () {
@@ -24,7 +24,7 @@ export class WorkerPool<T = any, U = any> {
     const promises = new Array<Promise<Worker>>(count);
 
     for (let i = 0; i < count; i++) {
-      promises.push(this._initWorker(i));
+      promises.push(this.initWorker(i));
     }
 
     return Promise.all(promises);
@@ -37,13 +37,13 @@ export class WorkerPool<T = any, U = any> {
    */
   postMessage (message: T): Promise<U> {
     return new Promise((resolve, reject) => {
-      const workerId = this._getIdleWorkerId();
+      const workerId = this.getIdleWorkerId();
 
       if (workerId !== -1) {
-        this._workerStatus |= 1 << workerId;
-        const workerItems = this._workerItems;
+        this.workerStatus |= 1 << workerId;
+        const workerItems = this.workerItems;
 
-        Promise.resolve(workerItems[workerId] ?? this._initWorker(workerId))
+        Promise.resolve(workerItems[workerId] ?? this.initWorker(workerId))
           .then(() => {
             const workerItem = workerItems[workerId];
 
@@ -53,7 +53,7 @@ export class WorkerPool<T = any, U = any> {
           })
           .catch(reject);
       } else {
-        this._taskQueue.push({ resolve, reject, message });
+        this.taskQueue.push({ resolve, reject, message });
       }
     });
   }
@@ -62,7 +62,7 @@ export class WorkerPool<T = any, U = any> {
    * Destroy the worker pool.
    */
   destroy (): void {
-    const workerItems = this._workerItems;
+    const workerItems = this.workerItems;
 
     for (let i = 0, n = workerItems.length; i < n; i++) {
       const workerItem = workerItems[i];
@@ -72,49 +72,49 @@ export class WorkerPool<T = any, U = any> {
       workerItem.resolve = ()=>{};
     }
     workerItems.length = 0;
-    this._taskQueue.length = 0;
-    this._workerStatus = 0;
+    this.taskQueue.length = 0;
+    this.workerStatus = 0;
   }
 
-  private _initWorker (workerId: number): Promise<Worker> {
-    return Promise.resolve(this._workerCreator()).then(worker => {
-      worker.addEventListener('message', this._onMessage.bind(this, workerId));
-      this._workerItems[workerId] = { worker, resolve: ()=>{}, reject: ()=>{} };
+  private initWorker (workerId: number): Promise<Worker> {
+    return Promise.resolve(this.workerCreator()).then(worker => {
+      worker.addEventListener('message', this.onMessage.bind(this, workerId));
+      this.workerItems[workerId] = { worker, resolve: ()=>{}, reject: ()=>{} };
 
       return worker;
     });
   }
 
-  private _getIdleWorkerId () {
+  private getIdleWorkerId () {
     for (let i = 0, count = this.limitedCount; i < count; i++) {
-      if (!(this._workerStatus & (1 << i))) {return i;}
+      if (!(this.workerStatus & (1 << i))) {return i;}
     }
 
     return -1;
   }
 
-  private _onMessage (workerId: number, msg: MessageEvent<U>) {
+  private onMessage (workerId: number, msg: MessageEvent<U>) {
     // onerror of web worker can't catch error in promise
     const error = (msg.data as ErrorMessageData).error;
 
     if (error) {
-      this._workerItems[workerId].reject(error);
+      this.workerItems[workerId].reject(error);
     } else {
-      this._workerItems[workerId].resolve(msg.data);
+      this.workerItems[workerId].resolve(msg.data);
     }
-    this._nextTask(workerId);
+    this.nextTask(workerId);
   }
 
-  private _nextTask (workerId: number) {
-    if (this._taskQueue.length) {
-      const taskItem = this._taskQueue.shift() as TaskItem<T, U>;
-      const workerItem = this._workerItems[workerId];
+  private nextTask (workerId: number) {
+    if (this.taskQueue.length) {
+      const taskItem = this.taskQueue.shift() as TaskItem<T, U>;
+      const workerItem = this.workerItems[workerId];
 
       workerItem.resolve = taskItem.resolve;
       workerItem.reject = taskItem.reject;
       workerItem.worker.postMessage(taskItem.message);
     } else {
-      this._workerStatus ^= 1 << workerId;
+      this.workerStatus ^= 1 << workerId;
     }
   }
 }
