@@ -17,11 +17,6 @@ export class MainEditor extends EditorWindow {
   sceneRendederTexture?: WebGLTexture;
   cameraController: OrbitController = new OrbitController();
 
-  // Inspector
-  private locked: boolean;
-  private lockedObject: object;
-  private alignWidth = 150;
-
   private lightBlue = new ImGui.ImVec4(0.25, 0.34, 0.43, 1.0);
   private highlightBlue = new ImGui.ImVec4(0.000, 0.43, 0.87, 1.000);
   private hierarchyDrawOrder: VFXItem[] = [];
@@ -33,6 +28,7 @@ export class MainEditor extends EditorWindow {
   private hierarchyEyeOutlineColor = new ImGui.Vec4(0.6, 0.6, 0.6, 1.0);
   private hierarchyEyeHoverBgColor = new ImGui.Vec4(0.92, 0.92, 0.92, 0.35);
   private hierarchyEyeSlashColor = new ImGui.Vec4(0.35, 0.35, 0.35, 1.0);
+  private hierarchyInactiveTextColor = new ImGui.Vec4(0.5, 0.5, 0.5, 1.0); // 非激活状态的置灰文字颜色
   private hierarchyVisibilityColumnLocalX = 0;
   private hierarchyVisibilityColumnScreenX = 0;
 
@@ -124,8 +120,11 @@ export class MainEditor extends EditorWindow {
     }
 
     ImGui.SetCursorPosX(this.hierarchyVisibilityColumnLocalX + this.hierarchyVisibilityColumnWidth + this.hierarchyVisibilitySpacing);
-    if (ImGui.TreeNodeEx('Composition', base_flags.value | ImGui.TreeNodeFlags.DefaultOpen)) {
-      this.drawVFXItemTreeNode(GalaceanEffects.player.getCompositions()[0].rootItem, base_flags.value);
+    const composition = GalaceanEffects.player.getCompositions()[0];
+    const compositionId = `composition_${composition.id}`;
+
+    if (ImGui.TreeNodeEx(compositionId, base_flags.value | ImGui.TreeNodeFlags.DefaultOpen, 'Composition')) {
+      this.drawVFXItemTreeNode(composition.rootItem, base_flags.value);
       ImGui.TreePop();
     }
 
@@ -156,7 +155,9 @@ export class MainEditor extends EditorWindow {
       ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, this.highlightBlue);
     }
 
-    const itemId = String(item.id);
+    // 使用层次路径和当前绘制索引创建唯一ID，确保即使同名节点也有不同的ID
+    const drawIndex = this.hierarchyDrawOrder.length;
+    const itemId = `item_${item.id}_${drawIndex}`;
 
     ImGui.PushID(itemId);
 
@@ -171,8 +172,21 @@ export class MainEditor extends EditorWindow {
     const visibilityWidth = this.hierarchyVisibilityColumnWidth;
     const treeStartX = rowStartLocal.x + visibilityWidth + this.hierarchyVisibilitySpacing;
 
+    // 根据VFXItem的isActive状态设置文字颜色
+    const needTextColorPop = !item.isActive;
+
+    if (needTextColorPop) {
+      // 设置置灰颜色
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Text, this.hierarchyInactiveTextColor);
+    }
+
     ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
-    const nodeOpen = ImGui.TreeNodeEx('Node', nodeFlags, item.name);
+    const nodeOpen = ImGui.TreeNodeEx(itemId, nodeFlags, item.name);
+
+    // 如果设置了置灰颜色，现在恢复原来的颜色
+    if (needTextColorPop) {
+      ImGui.PopStyleColor(1);
+    }
 
     ImGui.SetItemAllowOverlap();
     const postTreeCursor = ImGui.GetCursorPos();
