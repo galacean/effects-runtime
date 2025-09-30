@@ -182,7 +182,7 @@ export class EditorGUILayout {
       }
       ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
     } else {
-      ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(200, 0));
+      ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(-1, 0));
     }
 
     if (ImGui.BeginDragDropTarget()) {

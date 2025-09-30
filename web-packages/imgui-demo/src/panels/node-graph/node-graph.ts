@@ -1,5 +1,6 @@
 import type { spec } from '@galacean/effects';
 import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem } from '@galacean/effects';
+import { StateMachineNode, type StateMachineNodeData } from '@galacean/effects-core';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
@@ -23,6 +24,7 @@ import { GraphCompilationContext } from './compilation';
 import { ConstBoolToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
 import { ControlParameterToolsNode } from './tools-graph/nodes/parameter-tools-nodes';
 import { BoolControlParameterToolsNode, BoolParameterReferenceToolsNode, FloatControlParameterToolsNode } from './tools-graph/nodes/parameter-tools-nodes';
+import { AnimationParametersPanel } from './graph-parameters';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
@@ -69,6 +71,16 @@ export class AnimationGraph extends EditorWindow {
 
   private selectedNode: SelectedNode | null;
 
+  // 参数控制面板
+  private parametersPanel = new AnimationParametersPanel();
+  private showParametersPanel = true;
+  private parametersPanelWidth = 300; // 可拖拽的参数面板宽度
+  private splitterDragOffset = 0; // 分割条拖拽时的偏移量
+
+  // 状态机面板
+  private showStateMachinePanel = true;
+  private stateMachinePanelHeight = 150; // 状态机面板高度
+
   @menuItem('Window/AnimationGraph')
   static showWindow () {
     EditorWindow.getWindow(AnimationGraph).open();
@@ -77,7 +89,8 @@ export class AnimationGraph extends EditorWindow {
   constructor () {
     super();
     this.title = 'AnimationGraph';
-    this.setWindowFlags(ImGui.WindowFlags.NoScrollWithMouse | ImGui.WindowFlags.NoScrollbar);
+    this.open();
+    this.setWindowFlags(ImGui.WindowFlags.NoScrollWithMouse | ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.MenuBar);
     this.primaryGraphView = new GraphView(this.userContext);
     this.secondaryGraphView = new GraphView(this.userContext);
 
@@ -169,14 +182,29 @@ export class AnimationGraph extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (Selection.activeObject instanceof VFXItem && Selection.activeObject !== this.currentVFXItem) {
-      this.currentVFXItem = Selection.activeObject;
+    // 绘制菜单栏
+    if (ImGui.BeginMenuBar()) {
+      if (ImGui.BeginMenu('View')) {
+        if (ImGui.MenuItem('Parameters Panel', '', this.showParametersPanel)) {
+          this.showParametersPanel = !this.showParametersPanel;
+        }
+        if (ImGui.MenuItem('State Machine Panel', '', this.showStateMachinePanel)) {
+          this.showStateMachinePanel = !this.showStateMachinePanel;
+        }
+        ImGui.EndMenu();
+      }
+      ImGui.EndMenuBar();
     }
 
-    if (GalaceanEffects.player.getCompositions()[0]?.rootItem) {
-      this.currentVFXItem = GalaceanEffects.player.getCompositions()[0].rootItem;
-      if (!this.currentVFXItem.getComponent(Animator)) {
-        this.currentVFXItem.addComponent(Animator);
+    if (Selection.activeObject instanceof VFXItem && Selection.activeObject !== this.currentVFXItem) {
+      this.currentVFXItem = Selection.activeObject;
+
+      // 更新参数控制面板
+      const animator = this.currentVFXItem.getComponent(Animator);
+
+      if (animator?.graphInstance) {
+        this.graph = animator.graphInstance;
+        this.parametersPanel.setGraphInstance(animator.graphInstance);
       }
     }
 
@@ -184,18 +212,63 @@ export class AnimationGraph extends EditorWindow {
       return;
     }
 
-    if (ImGui.Button('Save') || !this.graph) {
-      // this.rebuildGraph(this.currentVFXItem);
-    }
-
-    if (!this.graph) {
-      return;
-    }
+    // if (ImGui.Button('Save') || !this.graph) {
+    // this.rebuildGraph(this.currentVFXItem);
+    // }
 
     this.userContext.m_pGraphInstance = this.graph;
     this.userContext.m_nodeIDtoIndexMap = this.compilationContext.GetUUIDToRuntimeIndexMap();
 
-    this.DrawGraphView();
+    // 创建水平分割布局：左侧参数面板，右侧图形视图
+    const contentRegion = ImGui.GetContentRegionAvail();
+    const splitterWidth = 4; // 分割条宽度
+
+    let parametersWidth = this.showParametersPanel ? this.parametersPanelWidth : 0;
+    const minParametersWidth = 200; // 最小宽度
+    const maxParametersWidth = contentRegion.x * 0.5; // 最大宽度为窗口的一半
+
+    // 限制参数面板宽度范围
+    parametersWidth = Math.max(minParametersWidth, Math.min(maxParametersWidth, parametersWidth));
+
+    const graphViewWidth = contentRegion.x - parametersWidth - (this.showParametersPanel ? splitterWidth : 0);
+
+    // 左侧：参数面板区域
+    if (this.showParametersPanel) {
+      if (ImGui.BeginChild('ParametersPanel', new ImGui.ImVec2(parametersWidth, contentRegion.y), false)) {
+        this.parametersPanel.drawPanel(parametersWidth, contentRegion.y);
+      }
+      ImGui.EndChild();
+
+      // 可拖拽的分割条
+      ImGui.SameLine();
+      this.drawResizableSplitter(splitterWidth, contentRegion.y);
+    }
+
+    // 右侧：状态机面板和图形视图区域
+    ImGui.SameLine();
+    if (ImGui.BeginChild('RightPanel', new ImGui.ImVec2(graphViewWidth, contentRegion.y), false)) {
+      // 上方：状态机面板
+      if (this.showStateMachinePanel) {
+        if (ImGui.BeginChild('StateMachinePanel', new ImGui.ImVec2(graphViewWidth, this.stateMachinePanelHeight), true)) {
+          this.drawStateMachinePanel();
+        }
+        ImGui.EndChild();
+
+        ImGui.Spacing();
+      }
+
+      // 下方：图形视图
+      const remainingHeight = contentRegion.y - (this.showStateMachinePanel ? this.stateMachinePanelHeight + 10 : 0);
+
+      if (ImGui.BeginChild('GraphView', new ImGui.ImVec2(graphViewWidth, remainingHeight), false)) {
+        if (this.graph) {
+          this.DrawGraphView();
+        }
+      }
+      ImGui.EndChild();
+    }
+    ImGui.EndChild();
+
     this.UpdateSelectedNode();
   }
 
@@ -207,6 +280,115 @@ export class AnimationGraph extends EditorWindow {
         Selection.setActiveObject(currentSelectedNode.m_pNode);
         this.selectedNode = currentSelectedNode;
       }
+    }
+  }
+
+  private drawStateMachinePanel () {
+    ImGui.Text('State Machine Status');
+    ImGui.Separator();
+
+    if (!this.graph) {
+      ImGui.TextDisabled('No graph instance available');
+
+      return;
+    }
+
+    // 获取所有状态机节点的当前状态
+    const stateMachines = this.getStateMachineNodes();
+
+    if (stateMachines.length === 0) {
+      ImGui.TextDisabled('No state machines found');
+
+      return;
+    }
+
+    // 使用表格显示状态机信息
+    const tableFlags = ImGui.TableFlags.BordersInnerV |
+                      ImGui.TableFlags.SizingFixedFit |
+                      ImGui.TableFlags.Borders;
+
+    if (ImGui.BeginTable('StateMachineTable', 2, tableFlags)) {
+      ImGui.TableSetupColumn('State Machine', ImGui.TableColumnFlags.WidthStretch);
+      ImGui.TableSetupColumn('Current State', ImGui.TableColumnFlags.WidthStretch);
+      ImGui.TableHeadersRow();
+
+      for (const stateMachine of stateMachines) {
+        ImGui.TableNextRow();
+
+        ImGui.TableSetColumnIndex(0);
+        ImGui.Text(stateMachine.name || 'State Machine');
+
+        ImGui.TableSetColumnIndex(1);
+        ImGui.Text(stateMachine.currentState || 'Unknown');
+      }
+
+      ImGui.EndTable();
+    }
+  }
+
+  private getStateMachineNodes (): Array<{ name: string, currentState: string }> {
+    if (!this.graph) {
+      return [];
+    }
+
+    const stateMachines: Array<{ name: string, currentState: string }> = [];
+
+    try {
+      // 遍历图实例的所有节点，查找StateMachineNode类型的节点
+      for (const node of this.graph.nodes) {
+        if (node instanceof StateMachineNode) {
+          const nodeData = node.getNodeData<StateMachineNodeData>();
+          const machineName = nodeData.machineName || `State Machine ${stateMachines.length}`;
+          const currentState = node.getCurrentStateName();
+
+          stateMachines.push({
+            name: machineName,
+            currentState: currentState,
+          });
+        }
+      }
+
+      // 如果没有找到状态机，显示占位信息
+      if (stateMachines.length === 0) {
+        stateMachines.push({
+          name: 'No State Machine Found',
+          currentState: 'N/A',
+        });
+      }
+    } catch (error) {
+      // 如果遍历失败，显示错误信息
+      stateMachines.push({
+        name: 'Error',
+        currentState: `Failed to read: ${error}`,
+      });
+    }
+
+    return stateMachines;
+  }
+
+  private drawResizableSplitter (width: number, height: number) {
+    // 参考animation graph的标准分割器写法
+    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
+    ImGui.Button('##ParameterSplitter', new ImVec2(width, height));
+    ImGui.PopStyleVar();
+
+    if (ImGui.IsItemHovered()) {
+      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
+    }
+
+    // 使用更简单直接的拖拽方式，参考GraphViewSplitter
+    if (ImGui.IsItemActive()) {
+      const contentRegion = ImGui.GetContentRegionAvail();
+      const mouseDelta = ImGui.GetIO().MouseDelta.x;
+
+      // 直接根据鼠标增量调整面板宽度
+      this.parametersPanelWidth += mouseDelta;
+
+      // 限制最小和最大宽度
+      const minWidth = 200;
+      const maxWidth = contentRegion.x * 0.7;
+
+      this.parametersPanelWidth = Math.max(minWidth, Math.min(maxWidth, this.parametersPanelWidth));
     }
   }
 
@@ -247,7 +429,7 @@ export class AnimationGraph extends EditorWindow {
     ImGui.Button('##GraphViewSplitter', new ImVec2(-1, 5));
     ImGui.PopStyleVar();
 
-    if (ImGui.IsItemHovered()) {
+    if (ImGui.IsItemHovered() && ImGui.IsWindowHovered()) {
       ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
     }
 

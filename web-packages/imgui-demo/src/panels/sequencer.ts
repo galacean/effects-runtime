@@ -191,50 +191,28 @@ export class Sequencer extends EditorWindow {
   private drawResizableSplitter (): void {
     const splitterWidth = 4;
     const windowHeight = ImGui.GetContentRegionAvail().y;
-    const splitterPos = ImGui.GetCursorScreenPos();
 
-    // 创建不可见按钮作为拖拽区域
-    ImGui.PushStyleColor(ImGui.ImGuiCol.Button, new ImGui.Vec4(0.0, 0.0, 0.0, 0.0)); // 透明
-    ImGui.PushStyleColor(ImGui.ImGuiCol.ButtonHovered, new ImGui.Vec4(0.3, 0.3, 0.3, 0.3)); // 悬停时半透明
-    ImGui.PushStyleColor(ImGui.ImGuiCol.ButtonActive, new ImGui.Vec4(0.4, 0.4, 0.4, 0.5)); // 拖拽时更明显
+    // 参考animation graph的标准分割器写法
+    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
+    ImGui.Button('##PropertiesSplitter', new ImGui.Vec2(splitterWidth, windowHeight));
+    ImGui.PopStyleVar();
 
-    if (ImGui.Button('##splitter', new ImGui.Vec2(splitterWidth, windowHeight))) {
-      // 点击逻辑（如果需要）
+    if (ImGui.IsItemHovered()) {
+      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
     }
 
-    // 绘制分割线
-    const drawList = ImGui.GetWindowDrawList();
-    const lineX = splitterPos.x + splitterWidth / 2;
-    const lineColor = ImGui.GetColorU32(new ImGui.Vec4(0.5, 0.5, 0.5, 0.8)); // 灰色分割线
+    // 处理拖拽调整大小 - 使用更流畅的方式
+    if (ImGui.IsItemActive()) {
+      const mouseDelta = ImGui.GetIO().MouseDelta.x;
 
-    drawList.AddLine(
-      new ImGui.Vec2(lineX, splitterPos.y),
-      new ImGui.Vec2(lineX, splitterPos.y + windowHeight),
-      lineColor,
-      1
-    );
+      // 直接根据鼠标增量调整面板宽度（注意拖拽方向）
+      this.propertiesPanelWidth -= mouseDelta;
 
-    // 处理拖拽调整大小
-    if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0)) {
-      const mouseDelta = ImGui.GetMouseDragDelta(0);
-
-      // 更新属性面板宽度（注意拖拽方向）
-      const newWidth = this.propertiesPanelWidth - mouseDelta.x;
       const minWidth = 150; // 最小宽度
       const maxWidth = this.windowContentWidth * 0.6; // 最大宽度为窗口的60%
 
-      this.propertiesPanelWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
-
-      // 重置拖拽增量
-      ImGui.ResetMouseDragDelta(0);
+      this.propertiesPanelWidth = Math.max(minWidth, Math.min(maxWidth, this.propertiesPanelWidth));
     }
-
-    // 设置鼠标光标样式为调整大小
-    if (ImGui.IsItemHovered()) {
-      ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.ResizeEW);
-    }
-
-    ImGui.PopStyleColor(3);
   }
 
   /**
@@ -768,6 +746,7 @@ export class Sequencer extends EditorWindow {
     const timelineEndX = timelineStartX + timelineWidth;
     const timelineEndPos = new ImGui.Vec2(timelineEndX, windowPos.y + this.timelineHeight);
     const handleHalfWidth = this.trackLabelResizeHandleWidth / 2;
+    // 让分割器以分割线为中心，更容易触发
     const handleStartX = timelineStartX - handleHalfWidth;
 
     drawList.AddLine(
@@ -780,24 +759,26 @@ export class Sequencer extends EditorWindow {
     ImGui.SetCursorScreenPos(new ImGui.Vec2(handleStartX, windowPos.y));
     ImGui.PushID('TrackLabelSplitter');
 
-    if (ImGui.InvisibleButton('##track_label_splitter', new ImGui.Vec2(this.trackLabelResizeHandleWidth, this.timelineHeight))) {
-      // 捕获激活状态
-    }
-
-    if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0)) {
-      const deltaX = ImGui.GetMouseDragDelta(0).x;
-
-      if (Math.abs(deltaX) > Number.EPSILON) {
-        this.trackUIOffset = Math.min(
-          this.trackLabelMaxWidth,
-          Math.max(this.trackLabelMinWidth, this.trackUIOffset + deltaX)
-        );
-        ImGui.ResetMouseDragDelta(0);
-      }
-    }
+    // 参考animation graph的标准分割器写法
+    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
+    ImGui.Button('##track_label_splitter', new ImGui.Vec2(this.trackLabelResizeHandleWidth, this.timelineHeight));
+    ImGui.PopStyleVar();
 
     if (ImGui.IsItemHovered()) {
-      ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.ResizeEW);
+      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
+    }
+
+    if (ImGui.IsItemActive()) {
+      const deltaX = ImGui.GetIO().MouseDelta.x;
+
+      // 直接根据鼠标增量调整轨道标签宽度
+      this.trackUIOffset += deltaX;
+
+      // 限制最小和最大宽度
+      this.trackUIOffset = Math.min(
+        this.trackLabelMaxWidth,
+        Math.max(this.trackLabelMinWidth, this.trackUIOffset)
+      );
     }
 
     ImGui.PopID();
