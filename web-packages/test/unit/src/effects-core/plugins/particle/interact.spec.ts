@@ -1,4 +1,4 @@
-import type { ParticleSystem } from '@galacean/effects';
+import { ParticleSystem } from '@galacean/effects';
 import { Player, math } from '@galacean/effects';
 
 const { Vector3 } = math;
@@ -35,7 +35,7 @@ describe('core/plugins/particle/interaction', () => {
     player.gotoAndStop(1);
     const item = comp.getItemByName('item');
     const vp = comp.camera.getViewProjectionMatrix();
-    const particle = item?.content as ParticleSystem;
+    const particle = item!.getComponent(ParticleSystem);
     const pos = particle.getPointPositionByIndex(0)!;
     const inPos = vp.projectPoint(pos, new Vector3());
 
@@ -64,7 +64,7 @@ describe('core/plugins/particle/interaction', () => {
     player.gotoAndPlay(1);
     const item = comp.getItemByName('item');
     const vp = comp.camera.getViewProjectionMatrix();
-    const particle = item?.content as ParticleSystem;
+    const particle = item!.getComponent(ParticleSystem);
     const pos = particle.getPointPositionByIndex(0)!;
     const inPos = vp.projectPoint(pos, new Vector3());
 
@@ -83,7 +83,7 @@ describe('core/plugins/particle/interaction', () => {
 
     const item = comp.getItemByName('item');
     const vp = comp.camera.getViewProjectionMatrix();
-    const particle = item?.content as ParticleSystem;
+    const particle = item!.getComponent(ParticleSystem);
     const pos = particle.getPointPositionByIndex(0)!;
     const inPos = vp.projectPoint(pos, new Vector3());
 

@@ -12,8 +12,8 @@ import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
 import type {
-  BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, SpriteComponent,
+  BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
+  HitTestTriangleParams,
 } from './plugins';
 import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
@@ -21,21 +21,18 @@ import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
 import { CompositionComponent } from './comp-vfx-item';
 
-export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
-export type VFXItemConstructor = new (engine: Engine, props: spec.Item, composition: Composition) => VFXItem;
-
 /**
- * 所有元素的继承的抽象类
+ * VFX 元素，包含元素的变换、组件、子元素等信息。
  */
 @effectsClass(spec.DataType.VFXItemData)
 export class VFXItem extends EffectsObject implements Disposable {
   /**
-   * 元素绑定的父元素，
-   * 1. 当元素没有绑定任何父元素时，parent为空，transform.parentTransform 为 composition.transform
-   * 2. 当元素绑定 nullItem 时，parent 为 nullItem, transform.parentTransform 为 nullItem.transform
+   * 元素绑定的父元素
    */
   parent?: VFXItem;
-
+  /**
+   * 元素的子元素列表
+   */
   children: VFXItem[] = [];
   /**
    * 元素的变换包含位置、旋转、缩放。
@@ -66,11 +63,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @deprecated 2.7.0 Please use `getInstanceId` instead
    */
   id: string;
-
-  /**
-   * 元素创建的数据图层/粒子/模型等
-   */
-  _content?: VFXItemContent;
   type: spec.ItemType = spec.ItemType.base;
   props: spec.VFXItemData;
   components: Component[] = [];
@@ -184,13 +176,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (props) {
       this.fromData(props as spec.VFXItemData);
     }
-  }
-
-  /**
-   * 返回元素创建的数据
-   */
-  get content (): VFXItemContent {
-    return this._content;
   }
 
   /**
@@ -736,7 +721,6 @@ export class VFXItem extends EffectsObject implements Disposable {
         component.dispose();
       }
       this.components = [];
-      this._content = undefined;
       this._composition = null;
       this.transform.setValid(false);
     }

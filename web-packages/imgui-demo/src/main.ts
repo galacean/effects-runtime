@@ -107,12 +107,12 @@ async function _init (): Promise<void> {
 
   const fontConfig = new ImGui.FontConfig();
 
-  fontConfig.internal.OversampleH = 2;
-  fontConfig.internal.OversampleV = 2;
+  fontConfig.internal.OversampleH = 3;
+  fontConfig.internal.OversampleV = 3;
   font = await AddFontFromFileTTF('./Alibaba-PuHuiTi-Regular.ttf', 44, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
-  font.Scale = 0.5;
+  font.Scale = 0.45;
 
   // Setup Platform/Renderer backends
   // ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
@@ -762,67 +762,117 @@ function styleBlack () {
   const style = ImGui.GetStyle();
   const colors = style.Colors;
 
-  colors[ImGui.ImGuiCol.Text] = new ImGui.ImVec4(1.000, 1.000, 1.000, 1.000);
-  colors[ImGui.ImGuiCol.TextDisabled] = new ImGui.ImVec4(0.500, 0.500, 0.500, 1.000);
-  colors[ImGui.ImGuiCol.WindowBg] = new ImGui.ImVec4(0.180, 0.180, 0.180, 1.000);
-  colors[ImGui.ImGuiCol.ChildBg] = new ImGui.ImVec4(0.280, 0.280, 0.280, 0.000);
-  colors[ImGui.ImGuiCol.PopupBg] = new ImGui.ImVec4(0.313, 0.313, 0.313, 1.000);
-  colors[ImGui.ImGuiCol.Border] = new ImGui.ImVec4(0.266, 0.266, 0.266, 1.000);
-  colors[ImGui.ImGuiCol.BorderShadow] = new ImGui.ImVec4(0.000, 0.000, 0.000, 0.000);
-  colors[ImGui.ImGuiCol.FrameBg] = new ImGui.ImVec4(0.160, 0.160, 0.160, 1.000);
-  colors[ImGui.ImGuiCol.FrameBgHovered] = new ImGui.ImVec4(0.200, 0.200, 0.200, 1.000);
-  colors[ImGui.ImGuiCol.FrameBgActive] = new ImGui.ImVec4(0.280, 0.280, 0.280, 1.000);
-  colors[ImGui.ImGuiCol.TitleBg] = new ImGui.ImVec4(0.148, 0.148, 0.148, 1.000);
-  colors[ImGui.ImGuiCol.TitleBgActive] = new ImGui.ImVec4(0.148, 0.148, 0.148, 1.000);
-  colors[ImGui.ImGuiCol.TitleBgCollapsed] = new ImGui.ImVec4(0.148, 0.148, 0.148, 1.000);
-  colors[ImGui.ImGuiCol.MenuBarBg] = new ImGui.ImVec4(0.195, 0.195, 0.195, 1.000);
-  colors[ImGui.ImGuiCol.ScrollbarBg] = new ImGui.ImVec4(0.160, 0.160, 0.160, 1.000);
-  colors[ImGui.ImGuiCol.ScrollbarGrab] = new ImGui.ImVec4(0.277, 0.277, 0.277, 1.000);
-  colors[ImGui.ImGuiCol.ScrollbarGrabHovered] = new ImGui.ImVec4(0.300, 0.300, 0.300, 1.000);
-  colors[ImGui.ImGuiCol.ScrollbarGrabActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.CheckMark] = new ImGui.ImVec4(0.000, 0.478, 0.800, 1.000);
-  colors[ImGui.ImGuiCol.SliderGrab] = new ImGui.ImVec4(0.391, 0.391, 0.391, 1.000);
-  colors[ImGui.ImGuiCol.SliderGrabActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.Button] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.000);
-  colors[ImGui.ImGuiCol.ButtonHovered] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.156);
-  colors[ImGui.ImGuiCol.ButtonActive] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.391);
-  colors[ImGui.ImGuiCol.Header] = new ImGui.ImVec4(0.313, 0.313, 0.313, 1.000);
-  colors[ImGui.ImGuiCol.HeaderHovered] = new ImGui.ImVec4(0.469, 0.469, 0.469, 1.000);
-  colors[ImGui.ImGuiCol.HeaderActive] = new ImGui.ImVec4(0.469, 0.469, 0.469, 1.000);
-  colors[ImGui.ImGuiCol.Separator] = colors[ImGui.ImGuiCol.Border];
-  colors[ImGui.ImGuiCol.SeparatorHovered] = new ImGui.ImVec4(0.391, 0.391, 0.391, 1.000);
-  colors[ImGui.ImGuiCol.SeparatorActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.ResizeGrip] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.250);
-  colors[ImGui.ImGuiCol.ResizeGripHovered] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.670);
-  colors[ImGui.ImGuiCol.ResizeGripActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.Tab] = new ImGui.ImVec4(0.098, 0.098, 0.098, 1.000);
-  colors[ImGui.ImGuiCol.TabHovered] = new ImGui.ImVec4(0.352, 0.352, 0.352, 1.000);
-  colors[ImGui.ImGuiCol.TabActive] = new ImGui.ImVec4(0.195, 0.195, 0.195, 1.000);
-  colors[ImGui.ImGuiCol.TabUnfocused] = new ImGui.ImVec4(0.098, 0.098, 0.098, 1.000);
-  colors[ImGui.ImGuiCol.TabUnfocusedActive] = new ImGui.ImVec4(0.195, 0.195, 0.195, 1.000);
-  colors[ImGui.ImGuiCol.PlotLines] = new ImGui.ImVec4(1.000, 0.391, 0.000, 0.781); //DockingPreview
-  colors[ImGui.ImGuiCol.PlotLinesHovered] = new ImGui.ImVec4(0.180, 0.180, 0.180, 1.000); //DockingEmptyBg
-  colors[ImGui.ImGuiCol.PlotLines + 2] = new ImGui.ImVec4(0.469, 0.469, 0.469, 1.000);
-  colors[ImGui.ImGuiCol.PlotLinesHovered + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.PlotHistogram + 2] = new ImGui.ImVec4(0.586, 0.586, 0.586, 1.000);
-  colors[ImGui.ImGuiCol.PlotHistogramHovered + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.TextSelectedBg + 2] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.156);
-  colors[ImGui.ImGuiCol.DragDropTarget + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.NavHighlight + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.NavWindowingHighlight + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
-  colors[ImGui.ImGuiCol.NavWindowingDimBg + 2] = new ImGui.ImVec4(0.000, 0.000, 0.000, 0.586);
-  colors[ImGui.ImGuiCol.ModalWindowDimBg + 2] = new ImGui.ImVec4(0.000, 0.000, 0.000, 0.586);
+  // 基础文本颜色 - 更接近AE的浅灰色文本
+  colors[ImGui.ImGuiCol.Text] = new ImGui.ImVec4(0.88, 0.88, 0.88, 1.00);
+  colors[ImGui.ImGuiCol.TextDisabled] = new ImGui.ImVec4(0.45, 0.45, 0.45, 1.00);
 
-  style.ChildRounding = 4.0;
-  style.FrameBorderSize = 1.0;
-  style.FrameRounding = 2.0;
-  style.GrabMinSize = 7.0;
-  style.PopupRounding = 2.0;
-  style.ScrollbarRounding = 12.0;
-  style.ScrollbarSize = 13.0;
-  style.TabBorderSize = 1.0;
-  style.TabRounding = 0.0;
-  style.WindowRounding = 0.0;
+  // 窗口背景 - 更深的背景色，模仿AE的深色调
+  colors[ImGui.ImGuiCol.WindowBg] = new ImGui.ImVec4(0.09, 0.09, 0.09, 1.00);  // 更深的主背景
+  colors[ImGui.ImGuiCol.ChildBg] = new ImGui.ImVec4(0.12, 0.12, 0.12, 1.00);   // 面板背景稍亮
+  colors[ImGui.ImGuiCol.PopupBg] = new ImGui.ImVec4(0.14, 0.14, 0.14, 0.98);
+
+  // 边框颜色 - 更微妙的边框，接近AE的分割线
+  colors[ImGui.ImGuiCol.Border] = new ImGui.ImVec4(0.20, 0.20, 0.20, 0.80);
+  colors[ImGui.ImGuiCol.BorderShadow] = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.00);
+
+  // 输入框和控件背景 - 更暗的输入框，类似AE
+  colors[ImGui.ImGuiCol.FrameBg] = new ImGui.ImVec4(0.08, 0.08, 0.08, 1.00);    // 很暗的输入框背景
+  colors[ImGui.ImGuiCol.FrameBgHovered] = new ImGui.ImVec4(0.15, 0.15, 0.15, 1.00);
+  colors[ImGui.ImGuiCol.FrameBgActive] = new ImGui.ImVec4(0.18, 0.18, 0.18, 1.00);
+
+  // 标题栏 - 与主窗口背景一致的深色
+  colors[ImGui.ImGuiCol.TitleBg] = new ImGui.ImVec4(0.07, 0.07, 0.07, 1.00);
+  colors[ImGui.ImGuiCol.TitleBgActive] = new ImGui.ImVec4(0.09, 0.09, 0.09, 1.00);
+  colors[ImGui.ImGuiCol.TitleBgCollapsed] = new ImGui.ImVec4(0.05, 0.05, 0.05, 1.00);
+
+  // 菜单栏背景 - 与面板一致
+  colors[ImGui.ImGuiCol.MenuBarBg] = new ImGui.ImVec4(0.10, 0.10, 0.10, 1.00);
+
+  // 滚动条 - 更精细的滚动条设计
+  colors[ImGui.ImGuiCol.ScrollbarBg] = new ImGui.ImVec4(0.05, 0.05, 0.05, 0.70);
+  colors[ImGui.ImGuiCol.ScrollbarGrab] = new ImGui.ImVec4(0.25, 0.25, 0.25, 1.00);
+  colors[ImGui.ImGuiCol.ScrollbarGrabHovered] = new ImGui.ImVec4(0.35, 0.35, 0.35, 1.00);
+  colors[ImGui.ImGuiCol.ScrollbarGrabActive] = new ImGui.ImVec4(0.45, 0.45, 0.45, 1.00);
+
+  // 选择标记 - 使用AE风格的亮蓝色
+  colors[ImGui.ImGuiCol.CheckMark] = new ImGui.ImVec4(0.30, 0.60, 1.00, 1.00);
+
+  // 滑块控制 - 蓝色系
+  colors[ImGui.ImGuiCol.SliderGrab] = new ImGui.ImVec4(0.28, 0.56, 0.90, 1.00);
+  colors[ImGui.ImGuiCol.SliderGrabActive] = new ImGui.ImVec4(0.30, 0.60, 1.00, 1.00);
+
+  // 按钮样式 - 更接近AE的按钮设计
+  colors[ImGui.ImGuiCol.Button] = new ImGui.ImVec4(0.15, 0.15, 0.15, 0.90);
+  colors[ImGui.ImGuiCol.ButtonHovered] = new ImGui.ImVec4(0.22, 0.22, 0.22, 1.00);
+  colors[ImGui.ImGuiCol.ButtonActive] = new ImGui.ImVec4(0.10, 0.50, 0.90, 1.00);
+
+  // 头部/列表项 - 模仿AE的列表选中效果
+  colors[ImGui.ImGuiCol.Header] = new ImGui.ImVec4(0.15, 0.15, 0.15, 0.85);
+  colors[ImGui.ImGuiCol.HeaderHovered] = new ImGui.ImVec4(0.20, 0.20, 0.20, 1.00);
+  colors[ImGui.ImGuiCol.HeaderActive] = new ImGui.ImVec4(0.20, 0.45, 0.85, 1.00);  // 蓝色选中
+
+  // 分隔线 - 更微妙的分割效果
+  colors[ImGui.ImGuiCol.Separator] = new ImGui.ImVec4(0.22, 0.22, 0.22, 0.60);
+  colors[ImGui.ImGuiCol.SeparatorHovered] = new ImGui.ImVec4(0.35, 0.35, 0.35, 0.80);
+  colors[ImGui.ImGuiCol.SeparatorActive] = new ImGui.ImVec4(0.30, 0.60, 1.00, 1.00);
+
+  // 调整大小手柄
+  colors[ImGui.ImGuiCol.ResizeGrip] = new ImGui.ImVec4(0.30, 0.60, 1.00, 0.20);
+  colors[ImGui.ImGuiCol.ResizeGripHovered] = new ImGui.ImVec4(0.30, 0.60, 1.00, 0.60);
+  colors[ImGui.ImGuiCol.ResizeGripActive] = new ImGui.ImVec4(0.30, 0.60, 1.00, 0.90);
+
+  // Tab标签页 - 更接近AE的标签页层次
+  colors[ImGui.ImGuiCol.Tab] = new ImGui.ImVec4(0.08, 0.08, 0.08, 0.90);         // 非活跃标签很暗
+  colors[ImGui.ImGuiCol.TabHovered] = new ImGui.ImVec4(0.18, 0.18, 0.18, 1.00);  // 悬停稍亮
+  colors[ImGui.ImGuiCol.TabActive] = new ImGui.ImVec4(0.15, 0.15, 0.15, 1.00);   // 活跃标签与面板一致
+  colors[ImGui.ImGuiCol.TabUnfocused] = new ImGui.ImVec4(0.06, 0.06, 0.06, 0.95);
+  colors[ImGui.ImGuiCol.TabUnfocusedActive] = new ImGui.ImVec4(0.12, 0.12, 0.12, 1.00);
+
+  // 高级颜色设置
+  colors[ImGui.ImGuiCol.PlotLines] = new ImGui.ImVec4(0.30, 0.60, 1.00, 0.75);
+  colors[ImGui.ImGuiCol.PlotLinesHovered] = new ImGui.ImVec4(0.09, 0.09, 0.09, 1.00);
+  colors[ImGui.ImGuiCol.PlotHistogram] = new ImGui.ImVec4(0.85, 0.65, 0.00, 1.00);
+  colors[ImGui.ImGuiCol.PlotHistogramHovered] = new ImGui.ImVec4(1.00, 0.70, 0.00, 1.00);
+
+  // 文本选择 - 蓝色选中背景，更接近AE
+  colors[ImGui.ImGuiCol.TextSelectedBg] = new ImGui.ImVec4(0.25, 0.55, 0.95, 0.40);
+  colors[ImGui.ImGuiCol.DragDropTarget] = new ImGui.ImVec4(1.00, 1.00, 0.00, 0.90);
+  colors[ImGui.ImGuiCol.NavHighlight] = new ImGui.ImVec4(0.30, 0.60, 1.00, 1.00);
+  colors[ImGui.ImGuiCol.NavWindowingHighlight] = new ImGui.ImVec4(1.00, 1.00, 1.00, 0.70);
+  colors[ImGui.ImGuiCol.NavWindowingDimBg] = new ImGui.ImVec4(0.80, 0.80, 0.80, 0.20);
+  colors[ImGui.ImGuiCol.ModalWindowDimBg] = new ImGui.ImVec4(0.80, 0.80, 0.80, 0.35);
+
+  // 处理扩展颜色（如果存在）
+  if (colors[ImGui.ImGuiCol.PlotLines + 2]) {
+    colors[ImGui.ImGuiCol.PlotLines + 2] = new ImGui.ImVec4(0.65, 0.65, 0.65, 1.00);
+    colors[ImGui.ImGuiCol.PlotLinesHovered + 2] = new ImGui.ImVec4(1.00, 0.45, 0.35, 1.00);
+    colors[ImGui.ImGuiCol.PlotHistogram + 2] = new ImGui.ImVec4(0.65, 0.65, 0.65, 1.00);
+    colors[ImGui.ImGuiCol.PlotHistogramHovered + 2] = new ImGui.ImVec4(1.00, 0.45, 0.35, 1.00);
+    colors[ImGui.ImGuiCol.TextSelectedBg + 2] = new ImGui.ImVec4(0.25, 0.55, 0.95, 0.40);
+    colors[ImGui.ImGuiCol.DragDropTarget + 2] = new ImGui.ImVec4(1.00, 1.00, 0.00, 0.90);
+    colors[ImGui.ImGuiCol.NavHighlight + 2] = new ImGui.ImVec4(0.30, 0.60, 1.00, 1.00);
+    colors[ImGui.ImGuiCol.NavWindowingHighlight + 2] = new ImGui.ImVec4(1.00, 1.00, 1.00, 0.70);
+    colors[ImGui.ImGuiCol.NavWindowingDimBg + 2] = new ImGui.ImVec4(0.80, 0.80, 0.80, 0.20);
+    colors[ImGui.ImGuiCol.ModalWindowDimBg + 2] = new ImGui.ImVec4(0.80, 0.80, 0.80, 0.35);
+  }
+
+  style.IndentSpacing = 20.0;       // 风格的缩进
+  style.ScrollbarSize = 12.0;       // 更细的滚动条
+  style.GrabMinSize = 8.0;          // 更小的抓取手柄
+
+  style.WindowBorderSize = 1.0;
+  style.ChildBorderSize = 1.0;
+  style.PopupBorderSize = 1.0;
+  style.FrameBorderSize = 0.0;      // 无输入框边框，符合设计
+  style.TabBorderSize = 0.0;
+
+  style.WindowRounding = 0.0;       // 窗口无圆角
+  style.ChildRounding = 0.0;        // 面板无圆角
+  style.FrameRounding = 5.0;        // 输入框轻微圆角
+  style.PopupRounding = 5.0;
+  style.ScrollbarRounding = 6.0;    // 滚动条圆角
+  style.GrabRounding = 1.0;
+  style.LogSliderDeadzone = 4.0;
 }
 
 function ApplyHue (style: ImGui.ImGuiStyle, hue: number) {

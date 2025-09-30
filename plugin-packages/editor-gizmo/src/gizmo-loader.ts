@@ -134,7 +134,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
   }
 
   removeGizmoItem (composition: Composition, gizmoVFXItem: VFXItem) {
-    const gizmoMesh = gizmoVFXItem.content as Mesh;
+    const gizmoMesh = gizmoVFXItem.getComponent(GizmoComponent).mesh;
 
     if (gizmoMesh && !gizmoMesh.isDestroyed) {
       gizmoMesh.dispose();
