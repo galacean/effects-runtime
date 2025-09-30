@@ -379,47 +379,49 @@ void main() {
 
   // 直接按顺序处理纹理，CPU 已经排序好了
   for (int i = 0; i < 4; i++) {
-    if (i >= textureCount) break;
+    if (i < textureCount){
+        float startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond, profile;
+        fetchTexParams(i, startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond, profile);
+        float elapsed = _Now - startedAt;
 
-    float startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond, profile;
-    fetchTexParams(i, startedAt, duration, fadeIn, fadeOutStart, fadeOutEnd, distance, initU, initV, typeV, kindV, isSecond, profile);
-    float elapsed = _Now - startedAt;
+        float ox = 0.0; float oy = 0.0; float a = 0.0;
+        if (int(typeV) == 0) { // listening
+          if (int(kindV) == 0) {
+            calcListeningBlue(elapsed, startedAt, initU, initV, ox, oy, a);
+          } else {
+            calcListeningGreen(elapsed, startedAt, initU, initV, ox, oy, a);
+          }
+        } else { // input
+          calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
+        }
 
-    float ox = 0.0; float oy = 0.0; float a = 0.0;
-    if (int(typeV) == 0) { // listening
-      if (int(kindV) == 0) {
-        calcListeningBlue(elapsed, startedAt, initU, initV, ox, oy, a);
-      } else {
-        calcListeningGreen(elapsed, startedAt, initU, initV, ox, oy, a);
-      }
-    } else { // input
-      calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
+        // 采样索引根据 type/kind 自动选择
+        vec2 sampleUV = vec2(uv.x + ox, 1.0 - uv.y + oy) + finalOffset;
+        vec4 color = sampleTexByType(typeV, kindV, clamp(sampleUV, vec2(0.0), vec2(1.0)));
+
+        // 根据profile编号选择预设颜色
+        if (int(profile) == 0) { // listeningBlue
+          color.rgb = _Color0.rgb;
+          a *= _Color0.a;
+        } else if (int(profile) == 1) { // listeningGreen
+          color.rgb = _Color1.rgb;
+          a *= _Color1.a;
+        } else if (int(profile) == 2) { // inputA
+          color.rgb = _Color2.rgb;
+          a *= _Color2.a;
+        } else { // inputB
+          color.rgb = _Color3.rgb;
+          a *= _Color3.a;
+        }
+
+        color.a *= a;
+
+        // 按从后到前混合
+        finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
+        finalColor.a   = finalColor.a   * (1.0 - color.a) + color.a;
     }
 
-    // 采样索引根据 type/kind 自动选择
-    vec2 sampleUV = vec2(uv.x + ox, 1.0 - uv.y + oy) + finalOffset;
-    vec4 color = sampleTexByType(typeV, kindV, clamp(sampleUV, vec2(0.0), vec2(1.0)));
-
-    // 根据profile编号选择预设颜色
-    if (int(profile) == 0) { // listeningBlue
-      color.rgb = _Color0.rgb;
-      a *= _Color0.a;
-    } else if (int(profile) == 1) { // listeningGreen
-      color.rgb = _Color1.rgb;
-      a *= _Color1.a;
-    } else if (int(profile) == 2) { // inputA
-      color.rgb = _Color2.rgb;
-      a *= _Color2.a;
-    } else { // inputB
-      color.rgb = _Color3.rgb;
-      a *= _Color3.a;
-    }
-
-    color.a *= a;
-
-    // 按从后到前混合
-    finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
-    finalColor.a   = finalColor.a   * (1.0 - color.a) + color.a;
+  
   }
 
   // 亮度增强与音量曲线逻辑同现有
@@ -665,7 +667,7 @@ let material: Material | undefined;
     const delta = (now - lastTime);
     lastTime = now;
 
-    const volume = getSimulatedAudioVolume();
+    const volume = getAudioVolume();
 
     if (DEBUG) {
       console.log(`Current volume: ${volume}`);
