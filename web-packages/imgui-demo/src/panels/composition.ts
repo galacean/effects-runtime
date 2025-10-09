@@ -34,7 +34,7 @@ export class Composition extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    const alignedSize = 200;
+    const alignedSize = 150;
 
     ImGui.Text('合成URL');
     ImGui.SameLine(alignedSize);

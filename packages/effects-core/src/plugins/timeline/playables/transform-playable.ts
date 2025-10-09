@@ -157,7 +157,7 @@ export class TransformPlayable extends Playable {
    */
   private sampleAnimation () {
     const boundItem = this.boundObject;
-    const duration = boundItem.duration;
+    const duration = this.getDuration();
     let life = this.time / duration;
 
     life = life < 0 ? 0 : (life > 1 ? 1 : life);

@@ -22,10 +22,12 @@ export class EditorWindow {
       this.firstFrame = false;
     }
 
-    ImGui.Begin(this.title, (value = this.opened) => this.opened = value, this.windowFlags);
-    this.hovered = ImGui.IsWindowHovered();
+    if (ImGui.Begin(this.title, (value = this.opened) => this.opened = value, this.windowFlags)) {
+      this.hovered = ImGui.IsWindowHovered();
 
-    this.onGUI();
+      this.onGUI();
+    }
+
     ImGui.End();
   }
 
