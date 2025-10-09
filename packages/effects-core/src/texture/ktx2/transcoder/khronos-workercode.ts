@@ -2,7 +2,6 @@
 /* eslint-disable compat/compat */
 import type { EncodedData, IKhronosMessageMessage } from './abstract-transcoder';
 
-// eslint-disable-next-line compat/compat
 interface WasmModule extends WebAssembly.Exports {
   memory: WebAssembly.Memory,
   transcode: (nBlocks: number) => number,

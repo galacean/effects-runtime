@@ -1,7 +1,10 @@
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
-//ktx2 file 'https://mdn.alipayobjects.com/oasis_be/afts/img/A*vYbvQLTyemoAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2'
+//uastc
+//https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2
+//etc1s
+//https://mdn.alipayobjects.com/oasis_be/afts/img/A*AjHmTaAxmKAAAAAAQXAAAAgAekp5AQ/original/SuperAnt.ktx2
 const json = inspireList.compressed.url;
 const json_ktx2 = `{
   "playerVersion": {
@@ -12,9 +15,9 @@ const json_ktx2 = `{
     {
       "id": "cbb3fa8a242f41c2a0d2cc8d4d2cbe0f",
       "compressed": {
-        "astc": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*vYbvQLTyemoAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2"
+        "astc": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2"
       },
-      "url": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*vYbvQLTyemoAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2"
+      "url": "https://mdn.alipayobjects.com/huamei_zuduvv/afts/img/A*oOjLT5i2-5MAAAAAQUAAAAgAehL7AQ/original"
     }
   ],
   "fonts": [],

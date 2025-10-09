@@ -521,8 +521,8 @@ async function createTextureOptionsBySource (
     }
 
     if (version == 'KTX2') {
-      const ktx2Loader = new KTX2Loader();
-      const textureData = await ktx2Loader.load(sourceFrom.url, gpuCapability);
+      await KTX2Loader.initialize(true, 4);
+      const textureData = await KTX2Loader.load(sourceFrom.url, gpuCapability);
 
       return {
         sourceType: textureData.sourceType,

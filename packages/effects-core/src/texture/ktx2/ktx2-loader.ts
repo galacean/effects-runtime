@@ -127,7 +127,7 @@ export class KTX2Loader {
     return null;
   }
 
-  async load (url: string, gpuCapability?: GPUCapability) {
+  static async load (url: string, gpuCapability?: GPUCapability) {
     if (gpuCapability == undefined) {console.error('gpuCapability undefined');}
     const buffer = new Uint8Array(await loadBinary(url));
 
@@ -141,7 +141,7 @@ export class KTX2Loader {
     }
   }
 
-  initialize (useKhronosTranscoder: boolean, workerCount: number): Promise<void> {
+  static initialize (useKhronosTranscoder = false, workerCount = 4): Promise<void> {
     if (useKhronosTranscoder) {return KTX2Loader.getKhronosTranscoder(workerCount).init();} else {return KTX2Loader.getBinomialLLCTranscoder(workerCount).init();}
   }
 
