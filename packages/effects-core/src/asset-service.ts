@@ -4,7 +4,6 @@ import type { Engine } from './engine';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Texture } from './texture';
-import { generateWhiteTexture } from './texture';
 import type { EffectsObject } from './effects-object';
 import { Asset } from './asset';
 import { Material } from './material';
@@ -22,7 +21,7 @@ export class AssetService implements Disposable {
   constructor (
     private readonly engine: Engine,
   ) {
-    this.builtinObjects.push(generateWhiteTexture(engine));
+    this.builtinObjects.push(engine.whiteTexture);
   }
 
   /**

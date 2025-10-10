@@ -5,7 +5,6 @@ export * from './render-pass';
 export * from './shader';
 export * from './gpu-capability';
 export * from './mesh';
-export * from './types';
 export * from './geometry';
 export * from './framebuffer';
 export * from './renderer';

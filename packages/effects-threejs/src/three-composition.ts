@@ -1,9 +1,8 @@
 import type {
-  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, CompositionProps,
+  Scene, ShaderLibrary, Transform, EventSystem, CompositionProps,
 } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
-import { ThreeTexture } from './three-texture';
 
 /**
  * 基础 composition 参数
@@ -89,30 +88,5 @@ export class ThreeComposition extends Composition {
         }
       }
     }
-  }
-
-  /**
-   * 获取 render 参数
-   *
-   * @returns
-   */
-  override getRendererOptions (): MeshRendererOptions {
-    const emptyTexture = ThreeTexture.createWithData(
-      this.renderer.engine,
-      {
-        data: new Uint8Array(4).fill(255),
-        width: 1,
-        height: 1,
-      });
-
-    (emptyTexture as ThreeTexture).texture.needsUpdate = true;
-    if (!this.rendererOptions) {
-      this.rendererOptions = {
-        emptyTexture,
-        cachePrefix: '-',
-      };
-    }
-
-    return this.rendererOptions;
   }
 }

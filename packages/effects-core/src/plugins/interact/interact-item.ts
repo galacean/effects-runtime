@@ -117,17 +117,12 @@ export class InteractComponent extends RendererComponent {
 
   override onStart (): void {
     const { env } = this.item.engine.renderer;
-    const composition = this.item.composition;
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
 
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
       if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
-        const rendererOptions = composition?.getRendererOptions();
-
-        if (rendererOptions !== undefined) {
-          this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
-        }
+        this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, this.transform, this.engine);
       }
     }
     if (this.previewContent) {

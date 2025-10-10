@@ -24,7 +24,7 @@ export class Engine implements Disposable {
    * 渲染等级
    */
   renderLevel?: SceneRenderLevel;
-  emptyTexture: Texture;
+  whiteTexture: Texture;
   transparentTexture: Texture;
   /**
    * GPU 能力
@@ -55,7 +55,7 @@ export class Engine implements Disposable {
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.assetLoader = new AssetLoader(this);
-    this.emptyTexture = generateWhiteTexture(this);
+    this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateTransparentTexture(this);
   }
 
