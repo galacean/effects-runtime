@@ -338,6 +338,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     const autoplayFlags: boolean[] = [];
 
+    for (const assetManager of this.assetManagers) {
+      assetManager.dispose();
+    }
     this.assetManagers = [];
     await Promise.all(
       scenes.map(async (url, index) => {
