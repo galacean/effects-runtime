@@ -357,8 +357,8 @@ void main() {
   vec2 mixedNoise = largeNoise + detailNoise;
   
   // 计算归一化音量(0-1)
-  float normalizedVolume = (_CurrentVolume - _MinVolume) / (_MaxVolume - _MinVolume);
-  
+  float normalizedVolume = clamp((_CurrentVolume - _MinVolume) / (_MaxVolume - _MinVolume), 0.0, 1.0);
+
   // 采样主纹理alpha值
   vec4 texColor = safeTexture2D(_Tex0, vec2(uv.x, 1.0 - uv.y));
   float alphaAttenuation = 1.0 - texColor.a * 0.8; // alpha越大扰动越小
