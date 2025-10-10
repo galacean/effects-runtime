@@ -336,6 +336,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.autoPlaying = true;
     }
 
+    for (const assetManager of this.assetManagers) {
+      assetManager.dispose();
+    }
+
+    this.assetManagers = [];
     const autoplayFlags: boolean[] = [];
 
     await Promise.all(
