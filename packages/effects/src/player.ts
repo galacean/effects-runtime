@@ -338,6 +338,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     const autoplayFlags: boolean[] = [];
 
+    this.assetManagers = [];
     await Promise.all(
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
