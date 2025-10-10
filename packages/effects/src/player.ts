@@ -336,12 +336,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.autoPlaying = true;
     }
 
-    const autoplayFlags: boolean[] = [];
-
     for (const assetManager of this.assetManagers) {
       assetManager.dispose();
     }
+
     this.assetManagers = [];
+    const autoplayFlags: boolean[] = [];
+
     await Promise.all(
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
