@@ -87,8 +87,6 @@ export class GLRenderer extends Renderer implements Disposable {
     if (frame.resource) {
       frame.resource.color_b.initialize();
     }
-    frame.emptyTexture.initialize();
-    frame.transparentTexture.initialize();
 
     const passes = frame._renderPasses;
 

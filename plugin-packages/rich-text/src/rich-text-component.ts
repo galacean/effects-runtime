@@ -338,6 +338,7 @@ export class RichTextComponent extends TextComponent {
       },
     );
 
+    this.disposeTextTexture();
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.isDirty = false;
