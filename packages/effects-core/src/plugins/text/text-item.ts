@@ -87,6 +87,11 @@ export class TextComponent extends MaskableGraphic {
     this.updateTexture();
   }
 
+  override onDestroy (): void {
+    super.onDestroy();
+    this.disposeTextTexture();
+  }
+
   override fromData (data: spec.TextComponentData): void {
     super.fromData(data);
     const { interaction, options } = data;
@@ -550,10 +555,20 @@ export class TextComponentBase {
       },
     );
 
+    this.disposeTextTexture();
+
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
+  }
+
+  protected disposeTextTexture () {
+    const texture = this.renderer.texture;
+
+    if (texture && texture !== this.engine.emptyTexture) {
+      texture.dispose();
+    }
   }
 
   private getFontDesc (size?: number): string {
