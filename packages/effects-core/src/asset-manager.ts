@@ -518,22 +518,27 @@ async function createTextureOptionsBySource (
 
     if (version === 'unknown') {
       throw new Error('Unsupported or invalid KTX format.');
-    }
+    } else if (version == 'KTX2') {
+      const USE_KHRONOS = false;
+      const WORKER_COUNT = 2;
 
-    if (version == 'KTX2') {
-      await KTX2Loader.initialize(true, 4);
-      const textureData = await KTX2Loader.load(sourceFrom.url, gpuCapability);
+      try {
+        await KTX2Loader.initialize(USE_KHRONOS, WORKER_COUNT);
+        const textureData = await KTX2Loader.loadFromBuffer(image, gpuCapability);
 
-      return {
-        sourceType: textureData.sourceType,
-        type: textureData.dataType,
-        target: textureData.target,
-        internalFormat: textureData.internalFormat,
-        format: textureData.format,
-        mipmaps: textureData.mipmaps,
-        sourceFrom,
-        ...options,
-      };
+        return {
+          sourceType: textureData.sourceType,
+          type: textureData.dataType,
+          target: textureData.target,
+          internalFormat: textureData.internalFormat,
+          format: textureData.format,
+          mipmaps: textureData.mipmaps,
+          sourceFrom,
+          ...options,
+        };
+      } catch (e) {
+        throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+      }
     } else {
       return {
         ...getKTXTextureOptions(image),

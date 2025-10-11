@@ -38,7 +38,7 @@ export class GPUCapability {
   type: GLType;
   level: number;
   detail: Immutable<GPUCapabilityDetail>;
-  capabilityList: Map<GLCapabilityType, boolean>;
+  compressTextureCapabilityList: Map<GLCapabilityType, boolean>;
 
   UNSIGNED_INT_24_8: number;
   internalFormatDepth16: number;
@@ -58,7 +58,7 @@ export class GPUCapability {
     return this.level === 2;
   }
   canIUse (cap: GLCapabilityType): boolean {
-    const caps = this.capabilityList as unknown as ReadonlyMap<GLCapabilityType, boolean>;
+    const caps = this.compressTextureCapabilityList as unknown as ReadonlyMap<GLCapabilityType, boolean>;
 
     return !!caps.get(cap);
   }
@@ -91,11 +91,12 @@ export class GPUCapability {
     const floatTexture = (level2 || gl.getExtension('OES_texture_float')) ? gl.FLOAT : 0;
     const halfFloatTexture = level2 ? WebGL2RenderingContext.HALF_FLOAT : (gl.getExtension('OES_texture_half_float')?.HALF_FLOAT_OES || 0);
 
-    this.capabilityList = new Map([
+    this.compressTextureCapabilityList = new Map([
       [GLCapabilityType.astc, !!gl.getExtension('WEBGL_compressed_texture_astc')],
       [GLCapabilityType.astc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_astc')],
       [GLCapabilityType.etc, !!gl.getExtension('WEBGL_compressed_texture_etc')],
       [GLCapabilityType.etc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc')],
+      [GLCapabilityType.etc1, !!gl.getExtension('WEBGL_compressed_texture_etc1')],
       [GLCapabilityType.pvrtc, !!gl.getExtension('WEBGL_compressed_texture_pvrtc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
       [GLCapabilityType.pvrtc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
       [GLCapabilityType.sRGB, !!gl.getExtension('EXT_sRGB')],
@@ -212,8 +213,6 @@ export enum COMPRESSED_TEXTURE {
   NONE = 0,
   PVRTC = 1,
   ASTC = 2,
-  ETC2 = 3,
-  ETC1 = 4,
 }
 
 /**
@@ -225,6 +224,7 @@ export enum GLCapabilityType {
   astc_webkit = 'WEBKIT_WEBGL_compressed_texture_astc',
   etc = 'WEBGL_compressed_texture_etc',
   etc_webkit = 'WEBKIT_WEBGL_compressed_texture_etc',
+  etc1 = 'WEBGL_compressed_texture_etc1',
   pvrtc = 'WEBGL_compressed_texture_pvrtc',
   pvrtc_webkit = 'WEBKIT_WEBGL_compressed_texture_pvrtc',
   sRGB = 'EXT_sRGB'

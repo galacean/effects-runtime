@@ -8,6 +8,8 @@ export enum KTX2TargetFormat {
   PVRTC,
   /** RGB(A) compressed format, 4 bits per pixel if no alpha channel, 8 bits per pixel if has alpha channel. */
   ETC,
+  /** RGB compressed format, 4 bits per pixel (no alpha support). */
+  ETC1,
   /** R format, 8 bits per pixel. */
   R8,
   /** RG format, 16 bits per pixel. */
@@ -68,4 +70,6 @@ export enum TextureFormat {
   ASTC_10x10 = 25,
   /** RGB(A) compressed format, 128 bits per 12x12 pixel block. */
   ASTC_12x12 = 26,
+  /** RGB compressed format, 4 bits per pixel (no alpha support). */
+  ETC1_RGB = 27,
 }

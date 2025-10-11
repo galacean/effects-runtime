@@ -4,7 +4,7 @@ import { AbstractTranscoder } from './abstract-transcoder';
 import { TranscodeWorkerCode, init, transcode, _init } from './binomial-workercode';
 
 /** @internal */
-export class BinomialTranscoder extends AbstractTranscoder {
+export class BinomialLLCTranscoder extends AbstractTranscoder {
   constructor (workerLimitCount: number) {
     super(workerLimitCount);
   }
