@@ -59,7 +59,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     this.renderer = {
       renderMode: spec.RenderMode.MESH,
       blending: spec.BlendingMode.ALPHA,
-      texture: this.engine.emptyTexture,
+      texture: this.engine.whiteTexture,
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
@@ -312,7 +312,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.emptyTexture,
+      texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.whiteTexture,
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,

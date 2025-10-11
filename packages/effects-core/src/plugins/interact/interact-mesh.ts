@@ -6,7 +6,7 @@ import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import { createValueGetter } from '../../math';
-import type { MeshRendererOptions, ShaderMacros } from '../../render';
+import type { ShaderMacros } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import type { Transform } from '../../transform';
 
@@ -59,12 +59,11 @@ export class InteractMesh {
 
   constructor (
     props: spec.InteractContent,
-    rendererOptions: MeshRendererOptions,
     private readonly transform: Transform,
     private readonly engine: Engine,
   ) {
     this.color = (props.options as spec.ClickInteractOption).previewColor;
-    const material = this.createMaterial(rendererOptions);
+    const material = this.createMaterial();
     const geometry = this.createGeometry();
 
     this.mesh = this.createMesh(geometry, material);
@@ -93,7 +92,7 @@ export class InteractMesh {
     material.setQuaternion('uQuat', tempQuat);
   }
 
-  private createMaterial (rendererOptions: MeshRendererOptions): Material {
+  private createMaterial (): Material {
     const macros: ShaderMacros = [
       ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
@@ -103,7 +102,6 @@ export class InteractMesh {
         vertex,
         fragment,
         glslVersion: GLSLVersion.GLSL1,
-        cacheId: `${rendererOptions.cachePrefix}_effects_interact`,
         macros,
       },
     };
