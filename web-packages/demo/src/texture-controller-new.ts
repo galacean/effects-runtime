@@ -37,6 +37,7 @@ export class TextureControllerNew {
   private spawnBAt: number | null = null;
   private lastVolume = 0;
   private volumeThreshold = 0.1;
+  private stopRequested = false; // 新增停止请求标志
 
   private params: ControllerParams = { textureCount: 0, slots: [], stop: null, phase: Phase.Listening };
 
@@ -77,6 +78,24 @@ export class TextureControllerNew {
     this.rebuildParams(now);
   }
 
+  /**
+   * 请求触发动效停止（模拟音量低于阈值的行为）
+   */
+  public requestStop() {
+    this.stopRequested = true;
+  }
+
+  public reset() {
+    this.phase = Phase.Listening;
+    this.textures = [];
+    this.stopRequested = false;
+    this.stopActive = false;
+    this.params.stop = null;
+    
+    const now = performance.now() / 1000;
+    this.resetToListening(now);
+  }
+
   update(delta: number, volume: number, now: number) {
     this.lastVolume = volume;
 
@@ -110,8 +129,9 @@ export class TextureControllerNew {
       }
     }
 
-    if (this.phase === Phase.Input && !this.stopActive && volume < this.volumeThreshold) {
+    if (this.phase === Phase.Input && !this.stopActive && this.stopRequested) {
       this.stop(now);
+      this.stopRequested = false; // 重置停止请求标志
     }
 
     this.textures = this.textures.filter(t => {

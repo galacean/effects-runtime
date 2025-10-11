@@ -270,7 +270,7 @@ void getProfileParams(float profile,
     samplerId = 2; typeIsListening = 0;
   } else { // InputB
     duration = 3.7; fadeIn = 0.7417; fadeOutStart = 2.9333 - 0.733; fadeOutEnd = 3.6167 - 0.733 + 0.0416;
-    distance = 1.4164; initU = -0.48; initV = -0.1; isSecond = 1.0;
+    distance = 1.4164; initU = -0.48; initV = 0.1; isSecond = 1.0;
     samplerId = 2; typeIsListening = 0;
   }
 }
@@ -337,21 +337,21 @@ void main() {
   // 使用 _Time.y 用于噪声计算以保持与之前一致
   float timeFactor = _Time.y;
 
-  // 大尺度噪声计算(使用_NoiseTex纹理)
+  // 大尺度噪声计算
   vec2 largeNoiseUV = uv * vec2(_NoiseUVScaleX, _NoiseUVScaleY);
   vec2 largeNoise = vec2(
     texture2D(_NoiseTex, largeNoiseUV + vec2(timeFactor * _NoiseSpeedX, 0)).r,
     texture2D(_NoiseTex, largeNoiseUV + vec2(0, timeFactor * _NoiseSpeedY)).r
   );
-  largeNoise = (largeNoise ) * vec2(_NoiseScaleX, _NoiseScaleY);
+  largeNoise = (largeNoise) * vec2(_NoiseScaleX, _NoiseScaleY);
   
-  // 小尺度细节噪声计算(使用_T_NoiseTex纹理)
+  // 小尺度细节噪声计算
   vec2 detailNoiseUV = uv * vec2(_DetailNoiseUVScaleX, _DetailNoiseUVScaleY);
   vec2 detailNoise = vec2(
     texture2D(_T_NoiseTex, detailNoiseUV + vec2(timeFactor * _DetailNoiseSpeedX, 0)).r,
     texture2D(_T_NoiseTex, detailNoiseUV + vec2(0, timeFactor * _DetailNoiseSpeedY)).r
   );
-  detailNoise = (detailNoise ) * vec2(_DetailNoiseScaleX, _DetailNoiseScaleY) * _DetailNoiseScale;
+  detailNoise = (detailNoise) * vec2(_DetailNoiseScaleX, _DetailNoiseScaleY) * _DetailNoiseScale;
   
   // 混合两种噪声
   vec2 mixedNoise = largeNoise + detailNoise;
@@ -360,7 +360,7 @@ void main() {
   float normalizedVolume = clamp((_CurrentVolume - _MinVolume) / (_MaxVolume - _MinVolume), 0.0, 1.0);
 
   // 采样主纹理alpha值
-  vec4 texColor = safeTexture2D(_Tex0, vec2(uv.x, 1.0 - uv.y));
+  vec4 texColor = safeTexture2D(_Tex0, uv);
   float alphaAttenuation = 1.0 - texColor.a * 0.8; // alpha越大扰动越小
   
   // 计算垂直偏移（音量低时下移图片）
@@ -368,10 +368,7 @@ void main() {
   float verticalOffset = mix(_VerticalOffset, 0.0, pow(normalizedVolume, _VolumeCurve));
   verticalOffset = min(max(verticalOffset, -0.2), 0.0);
   
-  // 计算y轴mask(底部不扰动，顶部完全扰动)
-  vec2 yMask = vec2(0.0, -0.35);
-
-  // 最终扰动偏移，受音量和alpha值影响
+   // 最终扰动偏移，受音量和alpha值影响
   vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume)  + vec2(0.0, verticalOffset);
 
   vec4 finalColor = vec4(0.0);
@@ -395,8 +392,8 @@ void main() {
           calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
         }
 
-        // 采样索引根据 type/kind 自动选择
-        vec2 sampleUV = vec2(uv.x + ox, 1.0 - uv.y + oy) + finalOffset;
+        // 应用动画偏移（不翻转）和噪声扰动（应用flipSign校正方向）
+        vec2 sampleUV = vec2(uv.x + ox, uv.y + oy) - finalOffset;
         vec4 color = sampleTexByType(typeV, kindV, clamp(sampleUV, vec2(0.0), vec2(1.0)));
 
         // 根据profile编号选择预设颜色
@@ -516,6 +513,7 @@ let material: Material | undefined;
     {
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
+      flipY: true,
     }
   );
   const noiseTexture = Texture.createWithData(
@@ -553,6 +551,7 @@ let material: Material | undefined;
     {
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
+      flipY: true,
     }
   );
   const FirstStageGreenTexture = Texture.createWithData(
@@ -565,6 +564,7 @@ let material: Material | undefined;
     {
       wrapS: glContext.MIRRORED_REPEAT,
       wrapT: glContext.MIRRORED_REPEAT,
+      flipY: true,
     }
   );
 
@@ -648,10 +648,16 @@ let material: Material | undefined;
   function getSimulatedAudioVolume (): number {
     const now = performance.now();
     const timeFactor = now * 0.1;
-    if (timeFactor > 3000000) {return 0.8;}
-    else if (timeFactor > 2000000) {return 0.6;}
-    else if (timeFactor > 100000) {return 1.0;}
-    else {return 0.090;}
+    
+    if (timeFactor > 3000000) {
+      return 0.8;
+    } else if (timeFactor > 2000000) {
+      return 0.6;
+    } else if (timeFactor > 500) {
+      return 0.3;
+    } else {
+      return 0.1;
+    }
   }
 
   // 数值范围限制函数
@@ -660,14 +666,14 @@ let material: Material | undefined;
   }
 
   let lastTime = performance.now() / 1000;
-
+  controller.setVolumeThreshold(0.2);
   // 更新循环 - 每帧更新状态和Shader参数
   function updateLoop () {
     const now = performance.now() / 1000;
     const delta = (now - lastTime);
     lastTime = now;
 
-    const volume = getAudioVolume();
+    const volume = getSimulatedAudioVolume();
 
     if (DEBUG) {
       console.log(`Current volume: ${volume}`);
@@ -678,7 +684,7 @@ let material: Material | undefined;
     if (material) {
       material.setFloat('_Now', now);
 
-      const currentVolume = getAudioVolume();
+      const currentVolume = getSimulatedAudioVolume();
       material.setFloat('_CurrentVolume', currentVolume);
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
@@ -710,6 +716,30 @@ let material: Material | undefined;
     }
     requestAnimationFrame(updateLoop);
   }
+
+  // 添加按钮事件监听器
+  setTimeout(() => {
+    const stopBtn = document.getElementById('stop-btn');
+    const resetBtn = document.getElementById('reset-btn');
+
+    if (stopBtn) {
+      stopBtn.addEventListener('click', () => {
+        controller.requestStop();
+        if (DEBUG) {
+          console.log('Stop button clicked');
+        }
+      });
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        controller.reset();
+        if (DEBUG) {
+          console.log('Reset button clicked');
+        }
+      });
+    }
+  }, 100);
 
   updateLoop();
   player.play();
