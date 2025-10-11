@@ -566,7 +566,7 @@ export class TextComponentBase {
   protected disposeTextTexture () {
     const texture = this.renderer.texture;
 
-    if (texture && texture !== this.engine.emptyTexture) {
+    if (texture && texture !== this.engine.whiteTexture) {
       texture.dispose();
     }
   }
