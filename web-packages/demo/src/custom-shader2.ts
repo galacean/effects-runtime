@@ -524,13 +524,14 @@ void main() {
     glow = glow * upperGlowMask * alpha;
 
     // 辉光部分使用加法混合
-    finalColorRGB = glowColor.rgb * glow * glowIntensity + finalColorRGB * (1.0 - glow * glowIntensity);
     finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
+    finalColorRGB = glowColor.rgb * glow * glowIntensity + finalColorRGB * (1.0 - glow * glowIntensity)*finalAlpha;
+    
     
     
     // // 限制alpha值不超过1.0
     // finalAlpha = min(finalAlpha, 1.0);
-    gl_FragColor = vec4(finalColorRGB*finalAlpha,finalAlpha);
+    gl_FragColor = vec4(finalColorRGB,finalAlpha);
 }
 `;
 
