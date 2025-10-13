@@ -8,7 +8,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureControllerNew } from './texture-controller-new.js';
 enum MainStage { Listening, Input }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Rjb_SoNgcv8AAAAAQMAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bDs6QIMbWgwAAAAAQaAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 const DEBUG = true; // 调试模式
 
@@ -465,7 +465,7 @@ let material: Material | undefined;
   jsonValue.shaders[0].vertex = vertex;
   jsonValue.shaders[0].fragment = fragment;
   const composition = await player.loadScene(jsonValue);
-  const item = composition.getItemByName('effect_4');
+  const item = composition.getItemByName('effect_2');
 
   const controller = new TextureControllerNew(0.1);
 
@@ -511,8 +511,8 @@ let material: Material | undefined;
       height: SecondStageImageData.height,
     },
     {
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
+      wrapS: glContext.REPEAT,
+      wrapT: glContext.REPEAT,
       flipY: true,
     }
   );
@@ -524,8 +524,8 @@ let material: Material | undefined;
       height: noiseimageData.height,
     },
     {
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
+      wrapS: glContext.REPEAT,
+      wrapT: glContext.REPEAT,
     },
 
   );
@@ -537,8 +537,8 @@ let material: Material | undefined;
       height: T_noiseimageData.height,
     },
     {
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
+      wrapS: glContext.REPEAT,
+      wrapT: glContext.REPEAT,
     },
   );
   const FirstStageBlueTexture = Texture.createWithData(
@@ -549,8 +549,8 @@ let material: Material | undefined;
       height: FirstStageBlueImageData.height,
     },
     {
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
+      wrapS: glContext.REPEAT,
+      wrapT: glContext.REPEAT,
       flipY: true,
     }
   );
@@ -562,8 +562,8 @@ let material: Material | undefined;
       height: FirstStageGreenImageData.height,
     },
     {
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
+      wrapS: glContext.REPEAT,
+      wrapT: glContext.REPEAT,
       flipY: true,
     }
   );
@@ -583,9 +583,9 @@ let material: Material | undefined;
         material.setFloat('_TextureCount', shaderParams._TextureCount);
 
         // 初始化时绑定三张纹理
-        material.setTexture('_Tex0', FirstStageBlueTexture);
-        material.setTexture('_Tex1', FirstStageGreenTexture);
-        material.setTexture('_Tex2', cloudTexture);
+        // material.setTexture('_Tex0', FirstStageBlueTexture);
+        // material.setTexture('_Tex1', FirstStageGreenTexture);
+        // material.setTexture('_Tex2', cloudTexture);
         // 设置噪声纹理
         material.setTexture('_NoiseTex', noiseTexture);
         // 设置T噪声纹理
@@ -651,12 +651,12 @@ let material: Material | undefined;
     
     if (timeFactor > 3000000) {
       return 0.8;
-    } else if (timeFactor > 2000000) {
-      return 0.6;
-    } else if (timeFactor > 500) {
+    } else if (timeFactor > 2000) {
       return 0.3;
-    } else {
+    } else if (timeFactor > 1000) {
       return 0.1;
+    } else {
+      return 0.3;
     }
   }
 

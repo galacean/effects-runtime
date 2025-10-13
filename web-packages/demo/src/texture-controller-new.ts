@@ -93,6 +93,7 @@ export class TextureControllerNew {
     this.params.stop = null;
     
     const now = performance.now() / 1000;
+    console.log('reset', now);
     this.resetToListening(now);
   }
 
@@ -106,11 +107,6 @@ export class TextureControllerNew {
       this.enterInput(now);
     }
 
-    const groupEnd = this.groupStart + Math.max(this.DURATION.LB, this.DURATION.LG);
-    if (this.phase === Phase.Listening && now >= groupEnd) {
-      volume >= this.volumeThreshold ? this.enterInput(now) : this.resetToListening(now);
-    }
-
     if (this.phase === Phase.Input && !this.stopActive && this.spawnBAt != null && now >= this.spawnBAt) {
       this.textures.push({ id: this.nextId++, startedAt: now, profile: 3, batchId: this.batchId });
       this.spawnBAt = null;
@@ -122,7 +118,7 @@ export class TextureControllerNew {
         const halfDisplay = (this.INPUTB.fadeOutStart - this.INPUTB.fadeIn) * 0.5;
         const absStart = B.startedAt + this.INPUTB.fadeOutStart - halfDisplay;
         const absEnd = B.startedAt + this.INPUTB.fadeOutEnd;
-        if (now >= absStart && now < absEnd && volume >= this.volumeThreshold) {
+        if (now >= absStart && now < absEnd ) {
           this.chainArmed = false;
           this.enterInput(now);
         }
