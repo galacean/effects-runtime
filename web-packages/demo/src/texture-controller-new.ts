@@ -68,19 +68,23 @@ export class TextureControllerNew {
   }
 
   private stop(now: number) {
-    if (this.phase !== Phase.Input || this.stopActive) return;
+    if (this.stopActive) return;
+    
+    // 保存当前阶段状态
+    const currentPhase = this.phase;
+    
     this.stopActive = true;
-    this.phase = Phase.Stop;
     this.chainArmed = false;
     this.spawnBAt = null;
 
-    this.params.stop = { active: true, time: now, affectListening: false, affectInput: true };
+    // 根据当前阶段决定影响哪些纹理
+    const affectListening = currentPhase === Phase.Listening;
+    const affectInput = currentPhase === Phase.Input;
+    
+    this.params.stop = { active: true, time: now, affectListening, affectInput };
     this.rebuildParams(now);
   }
 
-  /**
-   * 请求触发动效停止（模拟音量低于阈值的行为）
-   */
   public requestStop() {
     this.stopRequested = true;
   }
@@ -100,10 +104,10 @@ export class TextureControllerNew {
   update(delta: number, volume: number, now: number) {
     this.lastVolume = volume;
 
-    if (this.phase === Phase.Listening && this.enterAt == null && volume >= this.volumeThreshold) {
+    if (this.phase === Phase.Listening && this.enterAt == null && volume >= this.volumeThreshold && !this.stopActive) {
       this.enterAt = Math.max(this.groupStart + 2.75, now);
     }
-    if (this.phase === Phase.Listening && this.enterAt != null && now >= this.enterAt) {
+    if (this.phase === Phase.Listening && this.enterAt != null && now >= this.enterAt && !this.stopActive) {
       this.enterInput(now);
     }
 
@@ -125,7 +129,7 @@ export class TextureControllerNew {
       }
     }
 
-    if (this.phase === Phase.Input && !this.stopActive && this.stopRequested) {
+    if (!this.stopActive && this.stopRequested) {
       this.stop(now);
       this.stopRequested = false; // 重置停止请求标志
     }
@@ -139,7 +143,14 @@ export class TextureControllerNew {
     });
 
     const hasInput = this.textures.some(t => t.profile >= 2);
+    const hasListening = this.textures.some(t => t.profile <= 1);
+    
+    // 如果在输入阶段没有输入纹理，重置到监听阶段
     if (this.phase === Phase.Input && !hasInput && this.spawnBAt == null && !this.stopActive) {
+      this.resetToListening(now);
+    }
+    // 如果在监听阶段没有监听纹理，重置到监听阶段（仅在没有停止的情况下）
+    else if (this.phase === Phase.Listening && !hasListening && !this.stopActive) {
       this.resetToListening(now);
     }
 

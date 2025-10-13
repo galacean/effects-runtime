@@ -183,7 +183,7 @@ void applyEarlyStop(float startedAt, float fadeOutStart, float fadeOutEnd, float
       bool affect = (int(typeV) == 0) ? (_StopAffectListening > 0.5) : (_StopAffectInput > 0.5);
       if (affect) {
         float elapsedAtStop = _StopTime - startedAt;
-        float outDur = max(0.0001, fadeOutEnd - fadeOutStart);
+        float outDur = max(0.0001, 0.3);
         effStart = elapsedAtStop;
         effEnd = effStart + outDur;
       }
@@ -215,9 +215,9 @@ void calcListeningBlue(float elapsed, float startedAt, float initU, float initV,
   applyEarlyStop(startedAt, _BlueFadeOutStart, _BlueFadeOutEnd, 0.0, effS, effE);
   float baseA = blueAlphaAt(elapsed);
   if (_StopSignal > 0.5 && elapsed >= effS){
-    float aStop = blueAlphaAt(max(0.0, effS));
+    // 从当前实际透明度开始淡出，而不是从aStop开始
     float k = clamp((elapsed - effS) / max(0.0001, (effE - effS)), 0.0, 1.0);
-    a = mix(aStop, 0.0, k);
+    a = mix(baseA, 0.0, k);  // 使用baseA而不是aStop
   }else{
     a = baseA;
   }
@@ -243,9 +243,9 @@ void calcListeningGreen(float elapsed, float startedAt, float initU, float initV
   applyEarlyStop(startedAt, _GreenFadeOutStart, _GreenFadeOutEnd, 0.0, effS, effE);
   float baseA = greenAlphaAt(elapsed);
   if (_StopSignal > 0.5 && elapsed >= effS){
-    float aStop = greenAlphaAt(max(0.0, effS));
+    // 从当前实际透明度开始淡出，而不是从aStop开始
     float k = clamp((elapsed - effS) / max(0.0001, (effE - effS)), 0.0, 1.0);
-    a = mix(aStop, 0.0, k);
+    a = mix(baseA, 0.0, k);  // 使用baseA而不是aStop
   }else{
     a = baseA;
   }
@@ -297,9 +297,9 @@ void calcInput(float elapsed, float startedAt, float duration, float initU, floa
   applyEarlyStop(startedAt, fadeOutStart, fadeOutEnd, 1.0, effS, effE);
   float baseA = inputAlphaAt(elapsed, fadeIn, fadeOutStart, fadeOutEnd);
   if (_StopSignal > 0.5 && elapsed >= effS){
-    float aStop = inputAlphaAt(max(0.0, effS), fadeIn, fadeOutStart, fadeOutEnd);
+    // 从当前实际透明度开始淡出，而不是从aStop开始
     float k = clamp((elapsed - effS) / max(0.0001, (effE - effS)), 0.0, 1.0);
-    a = mix(aStop, 0.0, k);
+    a = mix(baseA, 0.0, k);  // 使用baseA而不是aStop
   }else{
     a = baseA;
   }
@@ -656,7 +656,7 @@ let material: Material | undefined;
     } else if (timeFactor > 1000) {
       return 0.1;
     } else {
-      return 0.3;
+      return 0.1;
     }
   }
 
