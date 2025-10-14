@@ -640,7 +640,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     setMaskMode(material, maskMode);
     setSideMode(material, side);
 
-    material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
+    material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
     material.setTexture('_ImageTex', texture);
 
