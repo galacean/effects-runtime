@@ -441,28 +441,15 @@ export class Camera {
    * 将世界坐标转换为屏幕像素坐标
    * @param position - 世界坐标
    * @param out - 输出的屏幕坐标，如果不传则创建新的 Vector3
-   * @returns 屏幕坐标 (x, y 为像素坐标，左下角为(0,0)，右上角为(width,height)，z 为相机深度距离)
+   * @returns 屏幕坐标 (x, y 为像素坐标，左下角为(0,0)，右上角为(width,height)，z 为深度比例 [0,1]，0=近平面，1=远平面)
    */
   worldToScreenPoint (position: Vector3, out?: Vector3): Vector3 {
     this.updateMatrix();
 
     const result = out ?? new Vector3();
-
-    // 计算世界坐标到相机的深度距离（沿相机朝向）
-    const viewMatrix = this.getViewMatrix();
-
-    // 将世界坐标转换到相机空间
-    const viewSpacePos = new Vector3();
-
-    viewMatrix.transformPoint(position, viewSpacePos);
-
-    // 相机空间中，相机看向 -Z 方向，所以 viewSpacePos.z 对于前方物体是负数
-    // depth = -viewSpacePos.z 得到正的深度值（在相机前方的距离）
-    const depth = -viewSpacePos.z;
-
-    // 应用视图投影矩阵，得到 NDC 坐标 [-1, 1]
     const vpMatrix = this.getViewProjectionMatrix();
 
+    // 应用视图投影矩阵，得到 NDC 坐标 [-1, 1]
     result.set(position.x, position.y, position.z);
     vpMatrix.projectPoint(result, result);
 
@@ -471,14 +458,16 @@ export class Camera {
     // Screen: x,y in [0, width/height], 其中 (0,0) 是左下角
     result.x = (result.x + 1) * 0.5 * this.pixelWidth;
     result.y = (result.y + 1) * 0.5 * this.pixelHeight;
-    result.z = depth;
+    // 将 NDC z 值从 [-1, 1] 转换为深度比例 [0, 1]
+    // -1 (近平面) -> 0, 1 (远平面) -> 1
+    result.z = (result.z + 1) * 0.5;
 
     return result;
   }
 
   /**
    * 将屏幕像素坐标转换为世界坐标
-   * @param position - 屏幕坐标 (x, y 为像素坐标，左下角为(0,0)，z 为相机深度距离)
+   * @param position - 屏幕坐标 (x, y 为像素坐标，左下角为(0,0)，z 为深度比例 [0,1]，0=近平面，1=远平面)
    * @param out - 输出的世界坐标，如果不传则创建新的 Vector3
    * @returns 世界坐标
    */
@@ -486,42 +475,18 @@ export class Camera {
     this.updateMatrix();
 
     const result = out ?? new Vector3();
+    const invVPMatrix = this.getInverseViewProjectionMatrix();
 
     // 将像素坐标转换为 NDC 坐标 [-1, 1]
     const ndcX = (position.x / this.pixelWidth) * 2 - 1;
     const ndcY = (position.y / this.pixelHeight) * 2 - 1;
+    // 将深度比例 [0, 1] 转换为 NDC z 值 [-1, 1]
+    // 0 (近平面) -> -1, 1 (远平面) -> 1
+    const ndcZ = position.z * 2 - 1;
 
-    // 在近平面和远平面处创建两个点来确定从相机出发的射线
-    const nearPoint = new Vector3(ndcX, ndcY, -1);
-    const farPoint = new Vector3(ndcX, ndcY, 1);
-
-    const invVPMatrix = this.getInverseViewProjectionMatrix();
-    const nearWorld = new Vector3();
-    const farWorld = new Vector3();
-
-    invVPMatrix.projectPoint(nearPoint, nearWorld);
-    invVPMatrix.projectPoint(farPoint, farWorld);
-
-    // 计算射线方向（从近平面到远平面，即相机朝向）
-    const rayDir = new Vector3();
-
-    rayDir.set(
-      farWorld.x - nearWorld.x,
-      farWorld.y - nearWorld.y,
-      farWorld.z - nearWorld.z
-    );
-    rayDir.normalize();
-
-    // 从相机位置沿射线方向（相机朝向，即世界空间中的 -Z 方向）前进指定深度
-    const cameraPos = this.position;
-
-    // result = cameraPos + rayDir * depth
-    // 由于 depth 是正值，rayDir 是朝向 -Z 的方向，所以会正确地在相机前方生成点
-    result.set(
-      cameraPos.x + rayDir.x * position.z,
-      cameraPos.y + rayDir.y * position.z,
-      cameraPos.z + rayDir.z * position.z
-    );
+    // 应用逆视图投影矩阵
+    result.set(ndcX, ndcY, ndcZ);
+    invVPMatrix.projectPoint(result, result);
 
     return result;
   }
