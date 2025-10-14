@@ -642,7 +642,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
     material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
-    material.setTexture('_MainTex', texture);
+    material.setTexture('_ImageTex', texture);
 
     const preMultiAlpha = getPreMultiAlpha(blendMode);
     const texParams = new Vector4();

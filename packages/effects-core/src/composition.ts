@@ -366,6 +366,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
+      pixelWidth: width,
+      pixelHeight: height,
     });
     this.url = scene.url;
     this.interactive = true;

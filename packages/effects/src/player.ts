@@ -704,6 +704,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       logger.info(`Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
       this.compositions?.forEach(comp => {
         comp.camera.aspect = aspect;
+        comp.camera.pixelHeight = this.renderer.getHeight();
+        comp.camera.pixelWidth = this.renderer.getWidth();
       });
     }
   }
