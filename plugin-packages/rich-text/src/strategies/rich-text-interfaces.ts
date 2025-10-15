@@ -45,7 +45,6 @@ export interface SizeResult {
  * 溢出策略结果
  */
 export interface OverflowResult {
-  lineScales?: number[],
   globalScale?: number,
 }
 

@@ -5,7 +5,6 @@ import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 
 import type {
-  RichSizeStrategy,
   RichWrapStrategy,
   RichOverflowStrategy,
   RichHorizontalAlignStrategy,
@@ -15,6 +14,7 @@ import type {
   VerticalAlignResult,
   RichLine,
   SizeResult,
+  WrapResult,
 } from './strategies/rich-text-interfaces';
 
 /**
@@ -94,7 +94,6 @@ export class RichTextComponent extends TextComponent {
   private canvasSize: math.Vector2 | null = null;
 
   // 富文本专用策略字段（避免与基类策略冲突）
-  private richSizeStrategy: RichSizeStrategy;
   private richWrapStrategy: RichWrapStrategy;
   private richOverflowStrategy: RichOverflowStrategy;
   private richHorizontalAlignStrategy: RichHorizontalAlignStrategy;
@@ -106,7 +105,6 @@ export class RichTextComponent extends TextComponent {
     this.name = 'MRichText' + seed++;
 
     // 延迟初始化策略，等到textLayout被赋值后再初始化
-    this.richSizeStrategy = RichTextStrategyFactory.createSizeStrategy();
     this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy();
     this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy('display' as any); // 使用默认值
     this.richHorizontalAlignStrategy = RichTextStrategyFactory.createHorizontalAlignStrategy();
@@ -119,7 +117,6 @@ export class RichTextComponent extends TextComponent {
   private updateStrategies (): void {
     if (this.textLayout) {
       // 根据textLayout属性创建相应的策略
-      this.richSizeStrategy = RichTextStrategyFactory.createSizeStrategy(this.textLayout.sizeMode);
       this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy(this.textLayout.wrapEnabled);
       // 重新创建溢出策略以使用正确的overflow设置
       this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
@@ -687,16 +684,14 @@ export class RichTextComponent extends TextComponent {
       return;
     }
 
-    // 步骤2: 尺寸策略计算canvas尺寸
-    const sizeResult = this.richSizeStrategy.calculate(
+    // 步骤2: 尺寸处理
+    const sizeResult = this.resolveCanvasSize(
       wrapResult,
       textLayout,
-      textStyle,
-      this.singleLineHeight,
-      this.textStyle.fontScale
+      textStyle
     );
 
-    // 首次渲染时初始化canvas尺寸和组件变换（与 updateTextureModern 对齐）
+    // 首次渲染时初始化canvas尺寸和组件变换
     this.setCanvasSize(sizeResult);
 
     // 步骤3: 溢出策略处理
@@ -818,6 +813,42 @@ export class RichTextComponent extends TextComponent {
   }
 
   /**
+   * 尺寸处理
+   */
+  private resolveCanvasSize (
+    wrapResult: WrapResult,
+    layout: TextLayout,
+    style: TextStyle
+  ): SizeResult {
+    const { maxLineWidth, totalHeight } = wrapResult;
+
+    if (maxLineWidth === 0 || totalHeight === 0) {
+      return {
+        canvasWidth: 1, // 避免零尺寸
+        canvasHeight: 1,
+        transformScale: { x: 1, y: 1 },
+      };
+    }
+
+    // 使用实际内容尺寸
+    const width = maxLineWidth;
+    const height = totalHeight;
+
+    const canvasWidth = width;
+    const canvasHeight = height;
+
+    // 更新textLayout的宽高
+    layout.width = canvasWidth / style.fontScale;
+    layout.height = canvasHeight / style.fontScale;
+
+    return {
+      canvasWidth,
+      canvasHeight,
+      transformScale: { x: 1, y: 1 }, // 不需要缩放
+    };
+  }
+
+  /**
    * 使用策略结果绘制文本
    */
   private drawTextWithStrategies (
@@ -843,8 +874,8 @@ export class RichTextComponent extends TextComponent {
         // 应用溢出缩放
         let textSize = fontSize;
 
-        if (overflowResult.lineScales && overflowResult.lineScales.length > index) {
-          textSize *= overflowResult.lineScales[index];
+        if (overflowResult.globalScale !== undefined) {
+          textSize *= overflowResult.globalScale;
         }
 
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;

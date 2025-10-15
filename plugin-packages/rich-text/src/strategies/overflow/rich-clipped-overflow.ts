@@ -2,7 +2,7 @@ import type { RichLine, RichOverflowStrategy, OverflowResult, SizeResult } from 
 import type { TextStyle, TextLayout } from '@galacean/effects';
 
 /**
- * Clip 溢出策略（不缩放、不改几何的 no-op）
+ * Clip 溢出策略
  * 超出画布部分自然裁切
  */
 export class RichClippedOverflowStrategy implements RichOverflowStrategy {
@@ -14,7 +14,6 @@ export class RichClippedOverflowStrategy implements RichOverflowStrategy {
   ): OverflowResult {
     // 不进行任何缩放，直接返回单位缩放系数
     return {
-      lineScales: new Array(lines.length).fill(1),
       globalScale: 1,
     };
   }
