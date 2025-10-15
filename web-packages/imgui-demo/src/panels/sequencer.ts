@@ -4,6 +4,7 @@ import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
+import { Selection } from '../core/selection';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {
@@ -78,7 +79,7 @@ export class Sequencer extends EditorWindow {
   // 统一的属性表格行底色
   private propertyRowBgColor = new ImGui.Vec4(0.22, 0.22, 0.22, 1.0);
 
-  currentComposition: Composition;
+  private currentComposition: Composition;
 
   @menuItem('Window/Sequencer')
   static showWindow () {
@@ -98,7 +99,13 @@ export class Sequencer extends EditorWindow {
 
     this.currentComposition = GalaceanEffects.player.getCompositions()[0];
     const currentComposition = this.currentComposition;
-    const compositionComponent = currentComposition.rootItem.getComponent(CompositionComponent);
+    let compositionComponent = currentComposition.rootItem.getComponent(CompositionComponent);
+
+    const selectedObject = Selection.activeObject;
+
+    if (selectedObject instanceof VFXItem && selectedObject.getComponent(CompositionComponent)) {
+      compositionComponent = selectedObject.getComponent(CompositionComponent);
+    }
 
     if (!compositionComponent) {
       return;
