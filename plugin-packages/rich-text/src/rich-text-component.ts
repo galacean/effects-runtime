@@ -14,6 +14,7 @@ import type {
   HorizontalAlignResult,
   VerticalAlignResult,
   RichLine,
+  SizeResult,
 } from './strategies/rich-text-interfaces';
 
 /**
@@ -696,20 +697,7 @@ export class RichTextComponent extends TextComponent {
     );
 
     // 首次渲染时初始化canvas尺寸和组件变换（与 updateTextureModern 对齐）
-    if (this.size === undefined || this.size === null) {
-      this.size = this.item.transform.size.clone();
-    }
-    const { x = 1, y = 1 } = this.size;
-
-    if (!this.initialized) {
-      this.canvasSize = new math.Vector2(sizeResult.canvasWidth, sizeResult.canvasHeight);
-      this.item.transform.size.set(
-        x * sizeResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
-        y * sizeResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
-      );
-      this.size = this.item.transform.size.clone();
-      this.initialized = true;
-    }
+    this.setCanvasSize(sizeResult);
 
     // 步骤3: 溢出策略处理
     const overflowResult = this.richOverflowStrategy.apply(
@@ -738,7 +726,7 @@ export class RichTextComponent extends TextComponent {
       this.singleLineHeight
     );
 
-    // 使用this.canvasSize统一设置画布尺寸（与updateTextureModern对齐）
+    // 使用this.canvasSize统一设置画布尺寸
     assertExist(this.canvasSize);
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
@@ -787,6 +775,46 @@ export class RichTextComponent extends TextComponent {
     this.material.setTexture('_MainTex', texture);
     this.isDirty = false;
     context.restore();
+  }
+
+  private setCanvasSize (sizeResult: SizeResult): void {
+    if (this.size === undefined || this.size === null) {
+      this.size = this.item.transform.size.clone();
+    }
+    const { x = 1, y = 1 } = this.size;
+
+    if (!this.initialized) {
+      switch (this.textLayout.overflow) {
+        case spec.TextOverflow.visible:
+          this.canvasSize = new math.Vector2(sizeResult.canvasWidth, sizeResult.canvasHeight);
+          this.item.transform.size.set(
+            x * sizeResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * sizeResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+          );
+          this.size = this.item.transform.size.clone();
+          this.initialized = true;
+
+          break;
+        case spec.TextOverflow.clip:
+          this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
+          this.item.transform.size.set(
+            x * this.textLayout.maxTextWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * this.textLayout.maxTextHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+          );
+          this.size = this.item.transform.size.clone();
+
+          break;
+        case spec.TextOverflow.display:
+          this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
+          this.item.transform.size.set(
+            x * this.textLayout.maxTextWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * this.textLayout.maxTextHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+          );
+          this.size = this.item.transform.size.clone();
+
+          break;
+      }
+    }
   }
 
   /**
