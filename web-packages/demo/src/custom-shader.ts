@@ -8,7 +8,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureControllerNew } from './texture-controller-new.js';
 enum MainStage { Listening, Input }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bDs6QIMbWgwAAAAAQaAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*xNoxSpP63Y8AAAAAQaAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 const DEBUG = true; // 调试模式
 
@@ -154,11 +154,12 @@ vec2 clampUV(vec2 uv) {
   return clamp(uv, vec2(0.01), vec2(0.99));
 }
 
-// 安全纹理采样（边缘淡出）
+// 安全纹理采样（边缘淡出）- 修复顶部断线问题
 vec4 safeTexture2D(sampler2D tex, vec2 uv) {
   vec4 color = texture2D(tex, clamp(uv, vec2(0.0), vec2(1.0)));
+  // 增加y方向的过渡范围，解决顶部断线问题
   float edgeFactor = smoothstep(0.0, 0.1, min(uv.x, 1.0 - uv.x)) *
-                     smoothstep(0.0, 0.001, min(uv.y, 1.0 - uv.y));
+                     smoothstep(0.0, 0.01, min(uv.y, 1.0 - uv.y));
   color.a *= edgeFactor;
   return color;
 }
@@ -654,9 +655,9 @@ let material: Material | undefined;
     } else if (timeFactor > 2000) {
       return 0.3;
     } else if (timeFactor > 1000) {
-      return 0.1;
+      return 0.2;
     } else {
-      return 0.1;
+      return 0.2;
     }
   }
 
