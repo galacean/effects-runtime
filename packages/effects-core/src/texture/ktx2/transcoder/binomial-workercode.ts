@@ -77,7 +77,7 @@ export const _init = function init () {
 };
 
 export const init = _init();
-
+// https://github.com/BinomialLLC/basis_universal/blob/master/transcoder/basisu_transcoder.h
 export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any): TranscodeResult {
   enum BasisFormat {
     ETC1 = 0,
@@ -92,8 +92,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     ASTC,
     PVRTC,
     ETC,
-    R8,
-    RG8,
     RGBA8
   }
 
@@ -196,6 +194,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     height,
     hasAlpha,
     faceCount: faceCount,
-    format: format!,
+    format: format,
   };
 }

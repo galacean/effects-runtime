@@ -56,6 +56,10 @@ export class KTX2Container {
     return this.dataFormatDescriptor.colorModel === ColorModel.UASTC;
   }
 
+  get isNotBasis () {
+    return this.vkFormat != 0;
+  }
+
   private parse (data: Uint8Array) {
     const KTX2_IDENTIFIER = new Uint8Array([
       0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,

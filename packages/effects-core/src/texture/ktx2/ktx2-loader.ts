@@ -61,6 +61,10 @@ export class KTX2Loader {
   /** @internal */
   private static parseBuffer (buffer: Uint8Array, gpuCapability?: GPUCapability) {
     const ktx2Container = new KTX2Container(buffer);
+
+    if (ktx2Container.isNotBasis) {
+      throw new Error('Unsupported KTX2: only Basis (ETC1S/UASTC) containers are supported');
+    }
     // TODO: DIY priorityFormats
     const formatPriorities = KTX2Loader.priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
     const targetFormat = KTX2Loader.decideTargetFormat(ktx2Container, formatPriorities, gpuCapability);
@@ -105,7 +109,7 @@ export class KTX2Loader {
 
     if (
       targetFormat === KTX2TargetFormat.PVRTC &&
-      (!isPowerOfTwo(pixelWidth) || !isPowerOfTwo(pixelHeight) || pixelWidth !== pixelHeight)
+      (!isPowerOfTwo(pixelWidth) || !isPowerOfTwo(pixelHeight))
     ) {
       console.warn('PVRTC image need power of 2 and width===height, downgrade to RGBA8');
 
@@ -171,31 +175,19 @@ export class KTX2Loader {
   }
 
   static async loadFromBuffer (arrBuffer: ArrayBuffer, gpuCapability?: GPUCapability) {
-    if (gpuCapability == undefined) {console.error('gpuCapability undefined');}
+    if (gpuCapability == undefined) {throw new Error('GPUCapability undefined');}
     const buffer = new Uint8Array(arrBuffer);
+    const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(buffer, gpuCapability);
 
-    try {
-      const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(buffer, gpuCapability);
-
-      return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
-    } catch (error) {
-      console.warn('KTX2 texture load failed');
-      throw error;
-    }
+    return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
   }
 
-  static async loadFormURL (url: string, gpuCapability?: GPUCapability) {
-    if (gpuCapability == undefined) {console.error('gpuCapability undefined');}
+  static async loadFromURL (url: string, gpuCapability?: GPUCapability) {
+    if (gpuCapability == undefined) {throw new Error('GPUCapability undefined');}
     const buffer = new Uint8Array(await loadBinary(url));
+    const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(buffer, gpuCapability);
 
-    try {
-      const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(buffer, gpuCapability);
-
-      return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
-    } catch (error) {
-      console.warn('KTX2 texture load failed');
-      throw error;
-    }
+    return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
   }
 
   /** @internal */
