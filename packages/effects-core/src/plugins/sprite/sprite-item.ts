@@ -91,7 +91,7 @@ export class ComponentTimePlayable extends Playable {
 export class SpriteComponent extends MaskableGraphic {
   time = 0;
   duration = 0;
-  frameAnimationLoop = true;
+  loop = true;
   /**
    * @internal
   */
@@ -112,7 +112,7 @@ export class SpriteComponent extends MaskableGraphic {
     let time = this.time;
     const duration = this.duration;
 
-    if (time > duration && this.frameAnimationLoop) {
+    if (time > duration && this.loop) {
       time = time % duration;
     }
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
@@ -331,5 +331,8 @@ export class SpriteComponent extends MaskableGraphic {
 
     //@ts-expect-error
     this.duration = data.duration ?? this.item.duration;
+
+    //@ts-expect-error
+    this.loop = data.loop ?? true;
   }
 }
