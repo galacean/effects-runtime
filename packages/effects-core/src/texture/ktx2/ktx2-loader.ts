@@ -58,7 +58,12 @@ export class KTX2Loader {
     return (this.khronosTranscoder ??= new KhronosTranscoder(workerCount, KTX2TargetFormat.ASTC));
   }
 
-  /** @internal */
+  /**
+   * @internal
+   * 初始化 KTX2 加载器使用的转码器（Binomial LLC 或 Khronos）
+   * @param useKhronosTranscoder - 是否使用 Khronos 转码器（默认使用 Binomial LLC）
+   * @param workerCount - 转码器使用的 Web Worker 数量（默认为 2）
+   */
   private static parseBuffer (buffer: Uint8Array, gpuCapability?: GPUCapability) {
     const ktx2Container = new KTX2Container(buffer);
 
@@ -68,14 +73,14 @@ export class KTX2Loader {
     // TODO: DIY priorityFormats
     const formatPriorities = KTX2Loader.priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
     const targetFormat = KTX2Loader.decideTargetFormat(ktx2Container, formatPriorities, gpuCapability);
-
+    const transcodeTarget = (targetFormat === KTX2TargetFormat.ETC1) ? KTX2TargetFormat.ETC : targetFormat;
     let transcodeResultPromise: Promise<TranscodeResult>;
 
     if (targetFormat != KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
       const binomialLLCWorker = KTX2Loader.getBinomialLLCTranscoder();
 
       transcodeResultPromise = binomialLLCWorker.init().
-        then(() => binomialLLCWorker.transcode(buffer, targetFormat));
+        then(() => binomialLLCWorker.transcode(buffer, transcodeTarget));
     } else {
       const khronosWorker = KTX2Loader.getKhronosTranscoder();
 
@@ -97,7 +102,13 @@ export class KTX2Loader {
       });
   }
 
-  /** @internal */
+  /**
+   * @internal
+   * 根据设备能力和图像属性决定最优的转码目标格式
+   * @param ktx2Container - KTX2 容器对象
+   * @param priorityFormats - 候选格式优先级列表
+   * @param gpuCapability - GPU 能力信息
+   */
   private static decideTargetFormat (
     ktx2Container: KTX2Container,
     priorityFormats?: KTX2TargetFormat[],
@@ -107,11 +118,8 @@ export class KTX2Loader {
     const hasAlpha = this.containerHasAlpha(ktx2Container);
     const targetFormat = this.detectSupportedFormat(priorityFormats ?? [], isSRGB, hasAlpha, gpuCapability) as KTX2TargetFormat;
 
-    if (
-      targetFormat === KTX2TargetFormat.PVRTC &&
-      (!isPowerOfTwo(pixelWidth) || !isPowerOfTwo(pixelHeight))
-    ) {
-      console.warn('PVRTC image need power of 2 and width===height, downgrade to RGBA8');
+    if (targetFormat === KTX2TargetFormat.PVRTC && (!isPowerOfTwo(pixelWidth) || !isPowerOfTwo(pixelHeight))) {
+      console.warn('PVRTC image need power of 2, downgrade to RGBA8');
 
       return KTX2TargetFormat.R8G8B8A8;
     }
@@ -125,6 +133,10 @@ export class KTX2Loader {
     return targetFormat;
   }
 
+  /**
+   * @internal
+   * 判断 KTX2 容器是否包含 Alpha 通道
+   */
   private static containerHasAlpha (ktx2Container: KTX2Container): boolean {
     // 对 UASTC 保守处理：可能包含 alpha，避免误选 ETC1
     if (ktx2Container.isUASTC) {return true;}
@@ -135,7 +147,14 @@ export class KTX2Loader {
 
     return globalData.imageDescs?.some(desc => desc.alphaSliceByteLength > 0) ?? false;
   }
-  /** @internal */
+
+  /**
+   * @internal
+   * 从优先级格式列表中检测设备支持的第一个可用格式
+   * @param priorityFormats - 格式优先级列表
+   * @param gpuCapability - GPU 能力信息
+   * @returns 支持的 KTX2TargetFormat，若无则返回 null
+   */
   private static detectSupportedFormat (
     priorityFormats: KTX2TargetFormat[],
     isSRGB: boolean,
@@ -164,9 +183,6 @@ export class KTX2Loader {
         switch (priorityFormats[i]) {
           case KTX2TargetFormat.R8G8B8A8:
             return format;
-          case KTX2TargetFormat.R8:
-          case KTX2TargetFormat.R8G8:
-            if (gpuCapability?.isWebGL2) {return format;}
         }
       }
     }
@@ -174,30 +190,44 @@ export class KTX2Loader {
     return null;
   }
 
+  /**
+   * 从 ArrayBuffer 加载 KTX2 纹理并返回压缩纹理源选项
+   */
   static async loadFromBuffer (arrBuffer: ArrayBuffer, gpuCapability?: GPUCapability) {
     if (gpuCapability == undefined) {throw new Error('GPUCapability undefined');}
     const buffer = new Uint8Array(arrBuffer);
     const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(buffer, gpuCapability);
 
-    return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
+    return KTX2Loader.createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
   }
 
+  /**
+   * 从 URL 加载 KTX2 纹理并返回压缩纹理源选项
+   */
   static async loadFromURL (url: string, gpuCapability?: GPUCapability) {
     if (gpuCapability == undefined) {throw new Error('GPUCapability undefined');}
     const buffer = new Uint8Array(await loadBinary(url));
     const { ktx2Container, result, targetFormat } = await KTX2Loader.parseBuffer(buffer, gpuCapability);
 
-    return KTX2Loader._createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
+    return KTX2Loader.createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
   }
 
-  /** @internal */
-  static _createTextureByBuffer (
+  /**
+   * @internal
+   * 根据转码结果创建引擎所需的压缩纹理源选项
+   * @param ktx2Container - KTX2 容器对象
+   * @param transcodeResult - 转码结果
+   * @param targetFormat - 目标格式
+   * @param gpuCapability - GPU 能力信息
+   * @returns Texture2DSourceOptionsCompressed 配置对象
+   */
+  static createTextureByBuffer (
     ktx2Container: KTX2Container,
     transcodeResult: TranscodeResult,
     targetFormat: KTX2TargetFormat,
     gpuCapability?: GPUCapability,
   ): Texture2DSourceOptionsCompressed {
-    const textureFormat = KTX2Loader.getEngineTextureFormat(targetFormat, transcodeResult);
+    const textureFormat = KTX2Loader.getEngineTextureFormat(targetFormat, transcodeResult.hasAlpha);
     const { pixelWidth, pixelHeight, faceCount, isSRGB } = ktx2Container;
     const { internalFormat, format, type } = KTX2Loader.getGLTextureDetail(textureFormat, isSRGB, gpuCapability);
 
@@ -233,12 +263,16 @@ export class KTX2Loader {
     };
   }
 
-  /** @internal */
+  /**
+   * @internal
+   * 将 KTX2 目标格式映射为引擎内部的 TextureFormat 枚举值
+   * @param basisFormat - KTX2 目标格式
+   * @returns 对应的 TextureFormat
+   */
   private static getEngineTextureFormat (
     basisFormat: KTX2TargetFormat,
-    transcodeResult: TranscodeResult
+    hasAlpha: boolean,
   ): TextureFormat {
-    const { hasAlpha } = transcodeResult;
 
     switch (basisFormat) {
       case KTX2TargetFormat.ASTC:
@@ -256,7 +290,14 @@ export class KTX2Loader {
     return TextureFormat.R8G8B8;
   }
 
-  /** @internal */
+  /**
+   * @internal
+   * 根据引擎纹理格式和色彩空间，获取 WebGL 所需的 internalFormat、format 和 type
+   * @param format - 引擎内部纹理格式
+   * @param isSRGBColorSpace - 是否为 sRGB 色彩空间
+   * @param gpuCapability - GPU 能力信息
+   * @returns 包含 internalFormat、format、type 的对象
+   */
   private static getGLTextureDetail (
     format: TextureFormat,
     isSRGBColorSpace: boolean,
@@ -409,21 +450,27 @@ export class KTX2Loader {
     }
   }
 
+  /**
+   * @internal
+   * 检查当前转码结果是否可在当前设备上上传（即 internalFormat 是否受支持）
+   * @throws 若格式不支持则抛出错误
+   */
   private static checkUploadable (
     ktx2Container: KTX2Container,
     transcodeResult: TranscodeResult,
     targetFormat: KTX2TargetFormat,
     gpuCapability?: GPUCapability
   ): void {
-    const engineFormat = KTX2Loader.getEngineTextureFormat(targetFormat, transcodeResult);
+    const engineFormat = KTX2Loader.getEngineTextureFormat(targetFormat, transcodeResult.hasAlpha);
 
     // 如果该 internalFormat 在当前设备不可用，会抛错
     KTX2Loader.getGLTextureDetail(engineFormat, ktx2Container.isSRGB, gpuCapability);
   }
 
-  private static async transcodeToRGBA8 (
-    srcBuffer: Uint8Array
-  ): Promise<{ result: TranscodeResult, targetFormat: KTX2TargetFormat }> {
+  /**
+   * 将原始 KTX2 缓冲区重新转码为 RGBA8 格式
+   */
+  private static async transcodeToRGBA8 (srcBuffer: Uint8Array): Promise<{ result: TranscodeResult, targetFormat: KTX2TargetFormat }> {
     const binomial = KTX2Loader.getBinomialLLCTranscoder();
 
     await binomial.init();
@@ -432,6 +479,10 @@ export class KTX2Loader {
     return { result, targetFormat: KTX2TargetFormat.R8G8B8A8 };
   }
 
+  /**
+   * 确保转码结果可在当前设备上传；若不可用，则尝试降级
+   * @returns 可上传的转码结果和最终目标格式
+   */
   private static async ensureUploadable (
     ktx2Container: KTX2Container,
     srcBuffer: Uint8Array,
@@ -439,11 +490,48 @@ export class KTX2Loader {
     targetFormat: KTX2TargetFormat,
     gpuCapability?: GPUCapability
   ): Promise<{ result: TranscodeResult, targetFormat: KTX2TargetFormat }> {
+    const can = (cap: GLCapabilityType) => {
+      try { return !!gpuCapability?.canIUse?.(cap); } catch { return false; }
+    };
+    const isWebGL2 = !!gpuCapability?.isWebGL2;
+    const hasETC2 = isWebGL2;
+    const hasETC1 = can(GLCapabilityType.etc1);
+
     try {
       this.checkUploadable(ktx2Container, transcodeResult, targetFormat, gpuCapability);
 
       return { result: transcodeResult, targetFormat };
     } catch (e) {
+    // 仅处理 ETC 路径的细化逻辑
+      if (targetFormat === KTX2TargetFormat.ETC) {
+      // 依据转码产物区分 ETC1/ETC2
+        const basisFormat = transcodeResult.format;
+
+        if (basisFormat === 0 /* ETC1，无 alpha */) {
+          // 设备有 ETC2（WebGL2），无 ETC1
+          if (hasETC2 && !hasETC1) {
+            console.warn('Device lacks ETC1 but has ETC2: upload ETC1 subset with ETC2 internalFormat (no re-transcode).');
+
+            return { result: transcodeResult, targetFormat: KTX2TargetFormat.ETC };
+          }
+
+          // 设备无 ETC2，但有 ETC1
+          if (!hasETC2 && hasETC1 && !ktx2Container.isSRGB) {
+            console.warn('ETC2 not supported, downgrade to ETC1 internalFormat (no re-transcode).');
+
+            return { result: transcodeResult, targetFormat: KTX2TargetFormat.ETC1 };
+          }
+        }
+
+        if (basisFormat === 1 /* ETC2 (EAC RGBA)，有 alpha */) {
+          // ETC2 EAC 不支持，必须回退到 RGBA8
+          console.warn('ETC2 EAC not supported, fallback to RGBA8 with re-transcode.');
+
+          return await this.transcodeToRGBA8(srcBuffer);
+        }
+      }
+
+      // 其他格式或无法满足条件：统一回退 RGBA8
       console.warn('KTX2 Upload format not supported, fallback to RGBA8.', {
         targetFormat,
         isSRGB: ktx2Container.isSRGB,

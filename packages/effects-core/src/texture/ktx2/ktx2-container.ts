@@ -65,7 +65,7 @@ export class KTX2Container {
       0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,
     ]);
 
-    if (!KTX2_IDENTIFIER.every((v, i) => data[i] === v)) {
+    if (data.length < KTX2_IDENTIFIER.length || !KTX2_IDENTIFIER.every((v, i) => data[i] === v)) {
       throw new Error('Texture missing KTX2 identifier.');
     }
     const buffer = data.buffer;

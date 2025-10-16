@@ -10,10 +10,6 @@ export enum KTX2TargetFormat {
   ETC,
   /** RGB compressed format, 4 bits per pixel (no alpha support). */
   ETC1,
-  /** R format, 8 bits per pixel. */
-  R8,
-  /** RG format, 16 bits per pixel. */
-  R8G8,
   /** RGBA format, 32 bits per pixel. */
   R8G8B8A8
 }
@@ -26,50 +22,20 @@ export enum TextureFormat {
   R8G8B8 = 0,
   /** RGBA format, 8 bits per channel. */
   R8G8B8A8 = 1,
-  /** RGBA format, 4 bits per channel. */
-  R4G4B4A4 = 2,
-  /** RGBA format, 5 bits in R channel, 5 bits in G channel, 5 bits in B channel, 1 bit in A channel. */
-  R5G5B5A1 = 3,
-  /** RGB format, 5 bits in R channel, 6 bits in G channel, 5 bits in B channel. */
-  R5G6B5 = 4,
-  /** RGBA format, 16 bits per channel. */
-  R16G16B16A16 = 7,
-  /** RGBA format, 32 bits per channel. */
-  R32G32B32A32 = 8,
-  /** RGBA unsigned integer format, 32 bits per channel. */
-  R32G32B32A32_UInt = 9,
-  /** RGB unsigned float format, 11 bits in R channel, 11 bits in G channel, 10 bits in B channel. */
-  R11G11B10_UFloat = 35,
-  /** R float format, 8 bits. */
-  R8 = 36,
-  /** RG float format, 8 bits per channel. */
-  R8G8 = 37,
-  /** RGB compressed format, 4 bits per pixel. */
-  ETC2_RGB = 14,
-  /** RGBA compressed format, 5 bits per pixel, 4 bit in RGB, 1 bit in A. */
-  ETC2_RGBA5 = 15,
-  /** RGB compressed format, 8 bits per pixel. */
-  ETC2_RGBA8 = 16,
-  /** RGB compressed format, 2 bits per pixel. */
-  PVRTC_RGB2 = 17,
-  /** RGBA compressed format, 2 bits per pixel. */
-  PVRTC_RGBA2 = 18,
-  /** RGB compressed format, 4 bits per pixel. */
-  PVRTC_RGB4 = 19,
-  /** RGBA compressed format, 4 bits per pixel. */
-  PVRTC_RGBA4 = 20,
   /** RGB(A) compressed format, 128 bits per 4x4 pixel block. */
-  ASTC_4x4 = 21,
-  /** RGB(A) compressed format, 128 bits per 5x5 pixel block. */
-  ASTC_5x5 = 22,
-  /** RGB(A) compressed format, 128 bits per 6x6 pixel block. */
-  ASTC_6x6 = 23,
-  /** RGB(A) compressed format, 128 bits per 8x8 pixel block. */
-  ASTC_8x8 = 24,
-  /** RGB(A) compressed format, 128 bits per 10x10 pixel block. */
-  ASTC_10x10 = 25,
-  /** RGB(A) compressed format, 128 bits per 12x12 pixel block. */
-  ASTC_12x12 = 26,
+  ASTC_4x4 = 2,
+  /** RGB compressed format, 4 bits per pixel. */
+  ETC2_RGB = 3,
+  /** RGB compressed format, 8 bits per pixel. */
+  ETC2_RGBA8 = 4,
   /** RGB compressed format, 4 bits per pixel (no alpha support). */
-  ETC1_RGB = 27,
+  ETC1_RGB = 5,
+  /** RGB compressed format, 2 bits per pixel. */
+  PVRTC_RGB2 = 6,
+  /** RGBA compressed format, 2 bits per pixel. */
+  PVRTC_RGBA2 = 7,
+  /** RGB compressed format, 4 bits per pixel. */
+  PVRTC_RGB4 = 8,
+  /** RGBA compressed format, 4 bits per pixel. */
+  PVRTC_RGBA4 = 9,
 }
