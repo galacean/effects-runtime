@@ -1,6 +1,6 @@
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { Color } from '@galacean/effects-math/es/core/color';
+import { Color } from '@galacean/effects-math/es/core/color';
 import type { Skeleton } from './skeleton';
 import type { Transform } from '../../transform';
 
@@ -46,7 +46,7 @@ export class Pose {
     }
 
     for (const defaultColor of skeleton.defaultColorPropertyValues) {
-      this.colorPropertyValues.push(defaultColor);
+      this.colorPropertyValues.push(new Color().copyFrom(defaultColor));
     }
   }
 
