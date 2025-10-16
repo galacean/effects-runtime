@@ -524,7 +524,7 @@ export class ThreeMaterial extends Material {
   }
 
   override dispose (): void {
-    if (!this.destroyed) {
+    if (this.destroyed) {
       return;
     }
 
