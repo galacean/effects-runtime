@@ -65,7 +65,9 @@ export abstract class EffectsObject {
   }
 
   /**
-   *
+   * 销毁当前对象
    */
-  dispose () { }
+  dispose () {
+    this.engine.removeInstance(this.guid);
+  }
 }

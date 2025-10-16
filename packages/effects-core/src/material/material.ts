@@ -454,11 +454,6 @@ export abstract class Material extends EffectsObject implements Disposable {
   abstract cloneUniforms (sourceMaterial: Material): void;
 
   /**
-   * 销毁当前 Material
-   */
-  abstract override dispose (): void;
-
-  /**
    * 创建 Material
    */
   static create: (engine: Engine, props?: MaterialProps) => Material;
