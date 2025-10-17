@@ -791,7 +791,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * Item 求交测试，返回求交结果列表，x 和 y 是归一化到[-1, 1]区间的值，原点在左上角
+   * Item 求交测试，返回求交结果列表，x 和 y 是归一化到[-1, 1]区间的值，x 向右，y 向上
    * @param x - 鼠标或触点的 x，已经归一化到[-1, 1]
    * @param y - 鼠标或触点的 y，已经归一化到[-1, 1]
    * @param force - 是否强制求交，没有交互信息的 Item 也要进行求交测试
