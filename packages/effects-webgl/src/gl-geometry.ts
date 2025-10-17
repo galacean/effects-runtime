@@ -534,11 +534,11 @@ export class GLGeometry extends Geometry {
 
       if (this.engine !== undefined) {
         this.engine.removeGeometry(this);
-        // @ts-expect-error
-        this.engine = undefined;
       }
     }
     this.destroyed = true;
+
+    super.dispose();
   }
 
   private createVertexTypedArray (channel: spec.VertexChannel, baseBuffer: Uint8Array, vertexCount: number) {

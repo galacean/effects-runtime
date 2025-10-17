@@ -321,7 +321,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.sourceType = sourceType;
     this.sourceFrom = sourceFrom;
     this.name = name;
-    this.guid = data.id;
   }
 
   private texImage2D (
@@ -470,7 +469,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     // TODO
   }
 
-  dispose (): void {
+  override dispose (): void {
     /**
      * 原先Player是允许多次调用dispose，并且不会报错
      * dispose之后assignRenderer会报错
@@ -490,6 +489,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.engine !== undefined) {
       this.engine.removeTexture(this);
     }
+
+    super.dispose();
   }
 }
 

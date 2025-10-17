@@ -164,6 +164,8 @@ export abstract class Component extends EffectsObject {
     if (this.item) {
       removeItem(this.item.components, this);
     }
+
+    super.dispose();
   }
 
   private start () {
