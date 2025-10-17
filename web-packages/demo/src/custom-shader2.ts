@@ -524,9 +524,8 @@ void main() {
     glow = glow * upperGlowMask * alpha;
 
     // 辉光部分使用加法混合
-    finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
     finalColorRGB = glowColor.rgb * glow * glowIntensity + finalColorRGB * (1.0 - glow * glowIntensity)*finalAlpha;
-    
+    finalAlpha = glow * glowIntensity + finalAlpha * (1.0 - glow * glowIntensity);
     
     
     // // 限制alpha值不超过1.0
