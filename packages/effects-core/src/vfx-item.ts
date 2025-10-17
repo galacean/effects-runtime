@@ -346,6 +346,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       this.composition = vfxItem.composition;
     }
     if (!this.isDuringPlay && vfxItem.isDuringPlay) {
+      this.awake();
       this.beginPlay();
     }
   }
@@ -583,7 +584,21 @@ export class VFXItem extends EffectsObject implements Disposable {
         child.beginPlay();
       }
     }
+  }
 
+  /**
+   * @internal
+   */
+  awake () {
+    for (const component of this.components) {
+      if (!component.isAwakeCalled) {
+        component.onAwake();
+        component.isAwakeCalled = true;
+      }
+    }
+    for (const child of this.children) {
+      child.awake();
+    }
   }
 
   /**
@@ -724,6 +739,8 @@ export class VFXItem extends EffectsObject implements Disposable {
       this._composition = null;
       this.transform.setValid(false);
     }
+
+    super.dispose();
   }
 
   private resetChildrenParent () {

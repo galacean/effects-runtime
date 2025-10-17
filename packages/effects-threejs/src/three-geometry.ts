@@ -329,6 +329,8 @@ export class ThreeGeometry extends Geometry {
     }
     this.geometry.dispose();
     this.destroyed = true;
+
+    super.dispose();
   }
 
   private setAttributeType (

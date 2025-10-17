@@ -150,8 +150,8 @@ export class Mesh extends RendererComponent implements Disposable {
 
     if (this.engine !== undefined) {
       this.engine.removeMesh(this);
-      // @ts-expect-error
-      this.engine = undefined;
     }
+
+    super.dispose();
   }
 }

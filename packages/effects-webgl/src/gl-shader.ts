@@ -117,5 +117,7 @@ export class GLShaderVariant extends ShaderVariant {
       return;
     }
     this.program?.dispose();
+
+    super.dispose();
   }
 }

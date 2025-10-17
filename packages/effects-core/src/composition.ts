@@ -366,6 +366,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
+      pixelWidth: width,
+      pixelHeight: height,
     });
     this.url = scene.url;
     this.interactive = true;
@@ -639,9 +641,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    // scene VFXItem components lifetime function.
+    // Scene VFXItem components lifetime function
     if (!this.rootItem.isDuringPlay) {
-      this.callAwake(this.rootItem);
+      this.rootItem.awake();
       this.rootItem.beginPlay();
     }
 
@@ -670,18 +672,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private shouldDispose () {
     return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
-  }
-
-  private callAwake (item: VFXItem) {
-    for (const component of item.components) {
-      if (!component.isAwakeCalled) {
-        component.onAwake();
-        component.isAwakeCalled = true;
-      }
-    }
-    for (const child of item.children) {
-      this.callAwake(child);
-    }
   }
 
   /**
