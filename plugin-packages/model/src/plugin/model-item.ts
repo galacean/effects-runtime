@@ -625,7 +625,7 @@ class ModelAnimationClip extends AnimationClip {
   path2Node: Record<string, VFXItem> = {};
 
   override sampleAnimation (vfxItem: VFXItem, time: number) {
-    const duration = vfxItem.duration;
+    const duration = this.duration;
     const life = Math.max(0, time) % duration;
 
     for (const curve of this.positionCurves) {

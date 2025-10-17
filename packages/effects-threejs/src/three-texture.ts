@@ -116,8 +116,10 @@ export class ThreeTexture extends Texture {
   /**
    * 释放纹理占用的内存
    */
-  dispose () {
+  override dispose () {
     this.texture.dispose();
+
+    super.dispose();
   }
 
   /**

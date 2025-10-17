@@ -1,4 +1,5 @@
-import type { PlayerConfig, Composition, SceneLoadOptions, GLType, Player, AssetManager, spec, ParticleSystem, ParticleSystemRenderer } from '@galacean/effects';
+import type { PlayerConfig, Composition, SceneLoadOptions, GLType, Player, AssetManager, spec } from '@galacean/effects';
+import { ParticleSystem, ParticleSystemRenderer } from '@galacean/effects';
 import { math } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 import { sleep } from './utilities';
@@ -139,8 +140,8 @@ export class TestPlayer {
     }
 
     this.composition.items.forEach(item => {
-      const { interaction } = item.content as ParticleSystem ?? {};
-      const content = item.content as ParticleSystemRenderer;
+      const { interaction } = item.getComponent(ParticleSystem) ?? {};
+      const content = item.getComponent(ParticleSystemRenderer);
       const { particleMesh } = content ?? {};
 
       if (interaction) {

@@ -22,12 +22,12 @@ let seed = 0;
 export class VideoComponent extends MaskableGraphic {
   video?: HTMLVideoElement;
 
-  private threshold = 0.03;
   /**
    * 播放标志位
    */
   private played = false;
   private pendingPause = false;
+  private threshold = 0.03;
   /**
    * 解决 video 暂停报错问题
    *
@@ -90,6 +90,10 @@ export class VideoComponent extends MaskableGraphic {
     this.item.composition?.on('pause', () => {
       this.pauseVideo();
     });
+    this.item.composition?.on('play', (option: { time: number }) => {
+      if (this.item.time < 0) {return;}
+      this.playVideo();
+    });
   }
 
   override fromData (data: VideoItemProps): void {
@@ -143,42 +147,45 @@ export class VideoComponent extends MaskableGraphic {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time, duration, endBehavior, composition } = this.item;
+    const { time: videoTime, duration: videoDuration, endBehavior: videoEndBehavior, composition } = this.item;
 
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    const isEnd = (time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)
-      || Math.abs(time - duration) < this.threshold;
+    // 判断是否处于“结束状态”：
+    // - 视频时间为 0（未开始）
+    // - 合成时间已达最大时长（播放完毕）
+    // - 视频时间接近或等于其总时长（考虑容差阈值）
+    const isEnd = (videoTime === 0 || composition.time === rootDuration || Math.abs(videoTime - videoDuration) <= this.threshold);
 
-    if (time > 0 && !isEnd) {
-      this.setVisible(true);
+    // 如果视频时间大于 0，且未到结束状态，并且尚未触发播放，则开始播放视频
+    if (videoTime > 0 && !isEnd && !this.played) {
       this.playVideo();
     }
 
-    this.renderer.texture.uploadCurrentVideoFrame();
-
-    if ((time === 0 || time === rootDuration || Math.abs(rootDuration - duration - time) < 1e-10)) {
+    // 当视频播放时间接近或超过其总时长时，根据其结束行为进行处理
+    if (videoTime + this.threshold >= videoDuration) {
+      if (videoEndBehavior === spec.EndBehavior.freeze) {
+        if (!this.video?.paused) {
+          this.pauseVideo();
+        }
+      } else if (videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.restart) {
+        // 销毁由Composition管理，此处仅重置时间
+        this.setCurrentTime(0);
+      }
+    }
+    // 判断整个合成是否接近播放完成
+    // composition.time + threshold >= rootDuration 表示即将结束
+    if (composition.time + this.threshold >= rootDuration) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
-          this.setCurrentTime(time);
         }
-      } else {
-        this.setCurrentTime(time);
-      }
-    }
-    if (Math.abs(time - duration) < this.threshold) {
-      if (endBehavior === spec.EndBehavior.freeze) {
-        this.pauseVideo();
-      } else if (endBehavior === spec.EndBehavior.restart) {
-        // 重播
-        this.pauseVideo();
+      } else if (rootEndBehavior === spec.EndBehavior.restart) {
         this.setCurrentTime(0);
       }
     }
   }
-
   /**
    * 获取当前视频时长
    * @returns 视频时长
@@ -193,14 +200,6 @@ export class VideoComponent extends MaskableGraphic {
    */
   getCurrentTime (): number {
     return this.video ? this.video.currentTime : 0;
-  }
-
-  /**
-   * 设置阈值（由于视频是单独的 update，有时并不能完全对其 GE 的 update）
-   * @param threshold 阈值
-   */
-  setThreshold (threshold: number) {
-    this.threshold = threshold;
   }
 
   /**
@@ -321,12 +320,6 @@ export class VideoComponent extends MaskableGraphic {
 
     this.isVideoActive = false;
     this.pauseVideo();
-    const endBehavior = this.item?.endBehavior;
-
-    if (endBehavior === spec.EndBehavior.restart) {
-      this.setCurrentTime(0);
-    }
-
   }
 
   override onEnable (): void {

@@ -281,6 +281,9 @@ export function version34Migration (json: JSONScene): JSONScene {
   // 处理富文本lineGap兼容性
   processRichTextLineGapCompatibility(json);
 
+  // 处理富文本lineGap兼容性
+  processRichTextLineGapCompatibility(json);
+
   //@ts-expect-error
   json.version = '3.5';
 

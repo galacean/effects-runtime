@@ -7,7 +7,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import type { MeshRendererOptions, Renderer } from './render';
+import type { Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
@@ -228,8 +228,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否开启后处理
    */
   postProcessingEnabled = false;
-
-  protected rendererOptions: MeshRendererOptions | null;
   /**
    * 销毁状态位
    */
@@ -368,12 +366,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
+      pixelWidth: width,
+      pixelHeight: height,
     });
     this.url = scene.url;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
-    this.rendererOptions = null;
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
@@ -486,9 +485,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.restart();
     }
     if (this.rootComposition.isStartCalled) {
-      this.gotoAndPlay(this.time - this.startTime);
+      this.setTime(this.time - this.startTime);
+      this.resume();
     } else {
-      this.gotoAndPlay(0);
+      this.setTime(0);
+      this.resume();
     }
   }
 
@@ -527,6 +528,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   gotoAndPlay (time: number) {
     this.setTime(time);
+    this.emit('goto', { time });
     this.resume();
   }
 
@@ -536,6 +538,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   gotoAndStop (time: number) {
     this.setTime(time);
+    this.emit('goto', { time });
     this.pause();
   }
 
@@ -571,7 +574,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.paused = true;
     }
-    this.emit('goto', { time });
   }
 
   addItem (item: VFXItem) {
@@ -611,7 +613,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 重置状态函数
    */
   protected reset () {
-    this.rendererOptions = null;
     this.isEnded = false;
     this.isEndCalled = false;
     this.rootComposition.time = 0;
@@ -640,9 +641,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    // scene VFXItem components lifetime function.
+    // Scene VFXItem components lifetime function
     if (!this.rootItem.isDuringPlay) {
-      this.callAwake(this.rootItem);
+      this.rootItem.awake();
       this.rootItem.beginPlay();
     }
 
@@ -671,18 +672,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private shouldDispose () {
     return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
-  }
-
-  private callAwake (item: VFXItem) {
-    for (const component of item.components) {
-      if (!component.isAwakeCalled) {
-        component.onAwake();
-        component.isAwakeCalled = true;
-      }
-    }
-    for (const child of item.children) {
-      this.callAwake(child);
-    }
   }
 
   /**
@@ -915,7 +904,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    this.rendererOptions?.emptyTexture.dispose();
     this.pluginSystem?.destroyComposition(this);
     this.update = () => {
       if (!__DEBUG__) {
@@ -1026,17 +1014,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.textures.forEach(tex => tex && tex.offloadData());
       this.textureOffloaded = true;
     }
-  }
-
-  getRendererOptions (): MeshRendererOptions {
-    if (!this.rendererOptions) {
-      this.rendererOptions = {
-        emptyTexture: this.renderFrame.emptyTexture,
-        cachePrefix: '-',
-      };
-    }
-
-    return this.rendererOptions;
   }
 
   /**

@@ -15,7 +15,7 @@ import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import type { SizeStrategy, OverflowStrategy, WarpStrategy } from './strategies/text-interfaces';
 import { TextStrategyFactory } from './strategies/text-factory';
-import { getFontDesc } from './strategies/text-utils';
+import { getFontDesc, DEFAULT_FONTS } from './strategies/text-utils';
 
 interface CharInfo {
   /**
@@ -81,6 +81,11 @@ export class TextComponent extends MaskableGraphic {
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
     this.updateTexture();
+  }
+
+  override onDestroy (): void {
+    super.onDestroy();
+    this.disposeTextTexture();
   }
 
   override fromData (data: spec.TextComponentData): void {
@@ -586,10 +591,40 @@ export class TextComponentBase {
       },
     );
 
+    this.disposeTextTexture();
+
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
+  }
+
+  protected disposeTextTexture () {
+    const texture = this.renderer.texture;
+
+    if (texture && texture !== this.engine.whiteTexture) {
+      texture.dispose();
+    }
+  }
+
+  private getFontDesc (size?: number): string {
+    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
+
+    if (!DEFAULT_FONTS.includes(fontFamily)) {
+      fontDesc += `"${fontFamily}"`;
+    } else {
+      fontDesc += fontFamily;
+    }
+    if (textWeight !== spec.TextWeight.normal) {
+      fontDesc = `${textWeight} ${fontDesc}`;
+    }
+
+    if (fontStyle !== spec.FontStyle.normal) {
+      fontDesc = `${fontStyle} ${fontDesc}`;
+    }
+
+    return fontDesc;
   }
 
   private setupOutline (): void {

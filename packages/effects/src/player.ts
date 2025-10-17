@@ -6,7 +6,7 @@ import type {
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, EventEmitter,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
-  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
+  isArray, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
   assertExist, AssetService,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
@@ -152,23 +152,22 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       this.resize();
       setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
+
+      // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
+      playerMap.forEach(player => {
+        if (player.gpuCapability.type !== this.gpuCapability.type) {
+          logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
+        }
+      });
+      playerMap.set(this.canvas, this);
+
+      assertNoConcurrentPlayers();
     } catch (e: any) {
       if (this.canvas && !this.useExternalCanvas) {
         this.canvas.remove();
       }
       this.handleThrowError(e);
     }
-
-    // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
-    playerMap.forEach(player => {
-      if (player.gpuCapability.type !== this.gpuCapability.type) {
-        logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
-      }
-    });
-    playerMap.set(this.canvas, this);
-
-    assertNoConcurrentPlayers();
-    broadcastPlayerEvent(this, true);
   }
 
   /**
@@ -337,6 +336,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.autoPlaying = true;
     }
 
+    for (const assetManager of this.assetManagers) {
+      assetManager.dispose();
+    }
+
+    this.assetManagers = [];
     const autoplayFlags: boolean[] = [];
 
     await Promise.all(
@@ -700,6 +704,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       logger.info(`Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
       this.compositions?.forEach(comp => {
         comp.camera.aspect = aspect;
+        comp.camera.pixelHeight = this.renderer.getHeight();
+        comp.camera.pixelWidth = this.renderer.getWidth();
       });
     }
   }
@@ -732,7 +738,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
     this.handleEmitEvent('webglcontextlost', e);
-    broadcastPlayerEvent(this, false);
   };
 
   /**
@@ -806,11 +811,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
       this.renderer.dispose(!keepCanvas);
     }
-    if (this.event) {
-      this.event.dispose();
-    }
-    this.assetService.dispose();
-    broadcastPlayerEvent(this, false);
+    this.event?.dispose();
+    this.assetService?.dispose();
     if (
       this.canvas instanceof HTMLCanvasElement &&
       !keepCanvas &&
@@ -969,20 +971,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
  */
 export function disableAllPlayer (disable: boolean) {
   enableDebugType = !!disable;
-}
-
-/**
- * 播放器在实例化、销毁（`dispose`）时分别触发插件的 `onPlayerCreated`、`onPlayerDestroy` 回调
- * @param player - 播放器
- * @param isCreate - 是否处于实例化时
- */
-function broadcastPlayerEvent (player: Player, isCreate: boolean) {
-  Object.keys(pluginLoaderMap).forEach(key => {
-    const ctrl = pluginLoaderMap[key];
-    const func = isCreate ? ctrl.onPlayerCreated : ctrl.onPlayerDestroy;
-
-    func?.(player);
-  });
 }
 
 /**

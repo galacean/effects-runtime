@@ -11,7 +11,6 @@ import { MeshCollider } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
-import type { ItemRenderer } from './base-render-component';
 import type { GradientValue } from '../math';
 import { createValueGetter } from '../math';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
@@ -21,6 +20,8 @@ import { glContext } from '../gl';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import vert from '../plugins/shape/shaders/shape.vert.glsl';
 import frag from '../plugins/shape/shaders/shape.frag.glsl';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import type { ItemRenderer } from './base-render-component';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
@@ -36,12 +37,19 @@ export interface GradientPaint {
   endPoint: Vector2,
 }
 
+export interface TextureTransform {
+  offset: Vector2,
+  rotation: number,
+  scale: Vector2,
+}
+
 export interface TexturePaint {
   type: spec.FillType.Texture,
   texture: Texture,
   scaleMode: TexturePaintScaleMode,
   scalingFactor: number,
   opacity: number,
+  textureTransform: TextureTransform,
 }
 
 export enum TexturePaintScaleMode {
@@ -166,8 +174,6 @@ export interface PolygonAttribute extends ShapeAttributes {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent implements Maskable {
-  private hasStroke = false;
-  private hasFill = false;
   private shapeDirty = true;
   private materialDirty = true;
   private graphicsPath = new GraphicsPath();
@@ -191,8 +197,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
    * 用于点击测试的碰撞器
    */
   private meshCollider = new MeshCollider();
-  private renderer: ItemRenderer;
+  private rendererOptions: ItemRenderer;
   private geometry: Geometry;
+  private fillMaterials: Material[] = [];
+  private strokeMaterials: Material[] = [];
   private readonly maskManager: MaskProcessor;
 
   get shape () {
@@ -206,10 +214,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   constructor (engine: Engine) {
     super(engine);
 
-    this.renderer = {
+    this.rendererOptions = {
       renderMode: spec.RenderMode.MESH,
       blending: spec.BlendingMode.ALPHA,
-      texture: this.engine.emptyTexture,
+      texture: this.engine.whiteTexture,
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
@@ -280,30 +288,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       indexCount: 0,
       vertexCount: 0,
     });
-
-    // Create Material
-    //-------------------------------------------------------------------------
-
-    const materialProps: MaterialProps = {
-      shader: {
-        vertex: vert,
-        fragment: frag,
-        glslVersion: GLSLVersion.GLSL1,
-      },
-    };
-
-    const fillMaterial = Material.create(engine, materialProps);
-    const strokeMaterial = Material.create(engine, materialProps);
-
-    fillMaterial.depthMask = false;
-    fillMaterial.depthTest = true;
-    fillMaterial.blending = true;
-    this.material = fillMaterial;
-
-    strokeMaterial.depthMask = false;
-    strokeMaterial.depthTest = true;
-    strokeMaterial.blending = true;
-    this.materials[1] = strokeMaterial;
   }
 
   override onStart (): void {
@@ -347,10 +331,12 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private draw (renderer: Renderer) {
-    for (let i = 0; i < this.materials.length; i++) {
-      const material = this.materials[i];
+    for (let i = 0; i < this.fillMaterials.length; i++) {
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
+    }
 
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
+    for (let i = 0; i < this.strokeMaterials.length; i++) {
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
     }
   }
 
@@ -367,7 +353,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           behavior: 0,
           type: area.type,
           triangles: area.area,
-          backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+          backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
         };
       }
     }
@@ -388,7 +374,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const indices: number[] = [];
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
-    if (this.hasFill) {
+    if (this.fills.length > 0) {
       for (const shapePrimitive of shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
@@ -399,9 +385,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
       }
     }
+
     const fillIndexCount = indices.length;
 
-    if (this.hasStroke) {
+    if (this.strokes.length > 0) {
       for (const shapePrimitive of shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
@@ -423,6 +410,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
       }
     }
+
     const strokeIndexCount = indices.length - fillIndexCount;
     const vertexCount = vertices.length / 2;
 
@@ -434,9 +422,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     if (!positionArray || positionArray.length < vertexCount * 3) {
       positionArray = new Float32Array(vertexCount * 3);
     }
+
     if (!uvArray || uvArray.length < vertexCount * 2) {
       uvArray = new Float32Array(vertexCount * 2);
     }
+
     if (!indexArray || indexArray.length < indices.length) {
       indexArray = new Uint16Array(indices.length);
     }
@@ -568,43 +558,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private updateMaterials () {
-    for (const material of this.materials) {
-      const renderer = this.renderer;
-      const { side, occlusion, blending: blendMode, mask, texture } = renderer;
-      const maskMode = this.maskManager.maskMode;
-
-      material.blending = true;
-      material.depthTest = true;
-      material.depthMask = occlusion;
-      material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
-
-      setBlendMode(material, blendMode);
-      // 兼容旧数据中模板需要渲染的情况
-      setMaskMode(material, maskMode);
-      setSideMode(material, side);
-
-      material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
-      material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
-      material.setTexture('_MainTex', texture);
-
-      const preMultiAlpha = getPreMultiAlpha(blendMode);
-      const texParams = new Vector4();
-
-      texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-      texParams.y = preMultiAlpha;
-      texParams.z = renderer.renderMode;
-      texParams.w = maskMode;
-      material.setVector4('_TexParams', texParams);
-
-      if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
-        material.enableMacro('ALPHA_CLIP');
-      } else {
-        material.disableMacro('ALPHA_CLIP');
-      }
+    for (let i = 0; i < this.fills.length; i++) {
+      this.updatePaintMaterial(this.fillMaterials[i], this.fills[i]);
     }
 
-    this.updatePaintMaterial(this.material, this.fills[0]);
-    this.updatePaintMaterial(this.materials[1], this.strokes[0]);
+    for (let i = 0; i < this.strokes.length; i++) {
+      this.updatePaintMaterial(this.strokeMaterials[i], this.strokes[i]);
+    }
   }
 
   private updatePaintMaterial (material: Material, paint: Paint) {
@@ -626,6 +586,15 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       material.setFloat('_ImageOpacity', paint.opacity);
       material.setFloat('_ImageScalingFactor', paint.scalingFactor);
       material.setTexture('_ImageTex', paint.texture);
+
+      const transform = paint.textureTransform;
+
+      material.setMatrix3('_TextureTransform', new Matrix3()
+        .scale(transform.scale.x, transform.scale.y)
+        .rotate(transform.rotation)
+        .translate(transform.offset.x, transform.offset.y)
+        .invert()
+      );
     }
   }
 
@@ -647,6 +616,52 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     material.setVector2('_EndPoint', endPoint);
   }
 
+  private createMaterialFromRendererOptions (rendererOptions: ItemRenderer): Material {
+    const materialProps: MaterialProps = {
+      shader: {
+        vertex: vert,
+        fragment: frag,
+        glslVersion: GLSLVersion.GLSL1,
+      },
+    };
+    const material = Material.create(this.engine, materialProps);
+
+    const renderer = rendererOptions;
+    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const maskMode = this.maskManager.maskMode;
+
+    material.blending = true;
+    material.depthTest = true;
+    material.depthMask = occlusion;
+    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
+
+    setBlendMode(material, blendMode);
+    // 兼容旧数据中模板需要渲染的情况
+    setMaskMode(material, maskMode);
+    setSideMode(material, side);
+
+    material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
+    material.setVector4('_TexOffset', new Vector4(0, 0, 1, 1));
+    material.setTexture('_ImageTex', texture);
+
+    const preMultiAlpha = getPreMultiAlpha(blendMode);
+    const texParams = new Vector4();
+
+    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+    texParams.y = preMultiAlpha;
+    texParams.z = renderer.renderMode;
+    texParams.w = maskMode;
+    material.setVector4('_TexParams', texParams);
+
+    if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
+      material.enableMacro('ALPHA_CLIP');
+    } else {
+      material.disableMacro('ALPHA_CLIP');
+    }
+
+    return material;
+  }
+
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
@@ -657,10 +672,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     const renderer = data.renderer ?? {};
 
-    this.renderer = {
+    this.rendererOptions = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.emptyTexture,
+      texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.whiteTexture,
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
@@ -671,23 +686,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
-    for (const stroke of data.strokes) {
-      const strokeParam = stroke;
-
-      if (strokeParam) {
-        this.hasStroke = true;
-        this.strokes[0] = this.createPaint(strokeParam);
-      }
-    }
-
+    this.fills.length = 0;
+    this.fillMaterials.length = 0;
     for (const fill of data.fills) {
-      const fillParam = fill;
-
-      if (fillParam) {
-        this.hasFill = true;
-        this.fills[0] = this.createPaint(fillParam);
-      }
+      this.fills.push(this.createPaint(fill));
+      this.fillMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
     }
+
+    this.strokes.length = 0;
+    this.strokeMaterials.length = 0;
+    for (const stroke of data.strokes) {
+      this.strokes.push(this.createPaint(stroke));
+      this.strokeMaterials.push(this.createMaterialFromRendererOptions(this.rendererOptions));
+    }
+
+    this.materials = [...this.fillMaterials, ...this.strokeMaterials];
 
     switch (data.type) {
       case spec.ShapePrimitiveType.Custom: {
@@ -777,8 +790,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     switch (paintData.type) {
       case spec.FillType.Solid: {
         paint = {
-          type:paintData.type,
-          color:new Color().copyFrom(paintData.color),
+          type: paintData.type,
+          color: new Color().copyFrom(paintData.color),
         };
 
         break;
@@ -787,21 +800,35 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       case spec.FillType.GradientAngular:
       case spec.FillType.GradientRadial: {
         paint = {
-          type:paintData.type,
-          gradientStops:createValueGetter(paintData.gradientStops) as GradientValue,
-          startPoint:new Vector2().copyFrom(paintData.startPoint),
+          type: paintData.type,
+          gradientStops: createValueGetter(paintData.gradientStops) as GradientValue,
+          startPoint: new Vector2().copyFrom(paintData.startPoint),
           endPoint: new Vector2().copyFrom(paintData.endPoint),
         };
 
         break;
       }
-      case spec.FillType.Texture:{
+      case spec.FillType.Texture: {
+
+        const textureTransform = {
+          offset: { x: 0, y: 0 },
+          rotation: 0,
+          scale: { x: 1, y: 1 },
+          //@ts-expect-error
+          ...(paintData.textureTransform ?? {}),
+        };
+
         paint = {
-          type:paintData.type,
+          type: paintData.type,
           texture: this.engine.findObject<Texture>(paintData.texture),
           scaleMode: paintData.scaleMode,
           scalingFactor: paintData.scalingFactor ?? 1,
           opacity: paintData.opacity ?? 1,
+          textureTransform: {
+            offset: new Vector2().copyFrom(textureTransform.offset),
+            rotation: textureTransform.rotation,
+            scale: new Vector2().copyFrom(textureTransform.scale),
+          },
         };
 
         break;

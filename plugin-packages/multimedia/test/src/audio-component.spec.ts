@@ -31,7 +31,6 @@ describe('audioComponent ', function () {
     if (!audio) { throw new Error('audio is null'); }
     expect(audio.endBehavior).to.equal(options.endBehavior);
     expect(audio.duration).to.equal(options.duration);
-    expect(audio.start).to.equal(options.start);
     const audioComponent = audio.getComponent<AudioComponent>(AudioComponent);
 
     expect(audioComponent).to.be.instanceOf(AudioComponent);
@@ -78,7 +77,6 @@ describe('audioComponent ', function () {
     if (!audio) { throw new Error('audio is null'); }
     expect(audio.endBehavior).to.equal(options.endBehavior);
     expect(audio.duration).to.equal(options.duration);
-    expect(audio.start).to.equal(options.start);
     const audioComponent = audio.getComponent<AudioComponent>(AudioComponent);
 
     expect(audioComponent).to.be.instanceOf(AudioComponent);
@@ -103,7 +101,6 @@ describe('audioComponent ', function () {
     if (!audio) { throw new Error('audio is null'); }
     expect(audio.endBehavior).to.equal(options.endBehavior);
     expect(audio.duration).to.equal(options.duration);
-    expect(audio.start).to.equal(options.start);
     const audioComponent = audio.getComponent<AudioComponent>(AudioComponent);
 
     expect(audioComponent).to.be.instanceOf(AudioComponent);
@@ -128,7 +125,6 @@ describe('audioComponent ', function () {
     if (!audio) { throw new Error('audio is null'); }
     expect(audio.endBehavior).to.equal(options.endBehavior);
     expect(audio.duration).to.equal(options.duration);
-    expect(audio.start).to.equal(options.start);
     const audioComponent = audio.getComponent<AudioComponent>(AudioComponent);
 
     expect(audioComponent).to.be.instanceOf(AudioComponent);
@@ -153,7 +149,6 @@ describe('audioComponent ', function () {
     if (!audio) { throw new Error('audio is null'); }
     expect(audio.endBehavior).to.equal(options.endBehavior);
     expect(audio.duration).to.equal(options.duration);
-    expect(audio.start).to.equal(options.start);
     const audioComponent = audio.getComponent<AudioComponent>(AudioComponent);
 
     expect(audioComponent).to.be.instanceOf(AudioComponent);

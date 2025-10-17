@@ -100,7 +100,7 @@ export class Inspector extends EditorWindow {
     });
 
     EditorGUILayout.FloatField('Duration', activeObject, 'duration');
-
+    EditorGUILayout.FloatField('Time', activeObject, 'time');
     EditorGUILayout.Text('End Behavior', this.endBehaviorToString(activeObject.endBehavior));
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
@@ -109,6 +109,7 @@ export class Inspector extends EditorWindow {
       EditorGUILayout.Vector3Field('Position', transform.position);
       EditorGUILayout.Vector3Field('Rotation', transform.rotation);
       EditorGUILayout.Vector3Field('Scale', transform.scale);
+      EditorGUILayout.Vector2Field('Size', transform.size);
 
       transform.quat.setFromEuler(transform.rotation);
       transform.quat.conjugate();

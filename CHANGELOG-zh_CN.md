@@ -8,6 +8,12 @@
 
 ---
 
+## 2.6.7
+
+`2025-10-10`
+
+- Fix: text texture not released issue. [#1222](https://github.com/galacean/effects-runtime/pull/1222) @wumaolinmaoan
+
 ## 2.6.6
 
 `2025-09-10`

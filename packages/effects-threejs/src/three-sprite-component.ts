@@ -61,10 +61,10 @@ export class ThreeSpriteComponent extends SpriteComponent {
    *
    */
   override dispose (): void {
-    super.dispose();
     if (!this.isActiveAndEnabled) {
       this.threeMesh.clear();
     }
+    super.dispose();
   }
 
   override fromData (data: spec.SpriteComponentData): void {

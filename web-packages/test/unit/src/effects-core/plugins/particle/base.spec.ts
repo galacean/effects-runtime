@@ -47,7 +47,7 @@ describe('core/plugins/particle/base', () => {
 
     player.gotoAndPlay(0.01);
     const item = scene.getItemByName('item') as VFXItem;
-    const ps = item.content as ParticleSystem;
+    const ps = item.getComponent(ParticleSystem);
 
     expect(ps).to.be.an.instanceof(ParticleSystem);
     expect(ps.options.startLifetime.getValue()).to.eql(2, 'startLifetime');

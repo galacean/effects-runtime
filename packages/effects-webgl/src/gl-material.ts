@@ -720,7 +720,7 @@ export class GLMaterial extends Material {
     }
   }
 
-  dispose () {
+  override dispose () {
     if (this.destroyed) {
       return;
     }
@@ -749,5 +749,7 @@ export class GLMaterial extends Material {
     if (this.engine !== undefined) {
       this.engine.removeMaterial(this);
     }
+
+    super.dispose();
   }
 }

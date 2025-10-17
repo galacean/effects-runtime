@@ -139,5 +139,7 @@ export class ThreeMesh extends Mesh implements Sortable {
       this.mesh.clear();
       this.destroyed = true;
     }
+
+    super.dispose();
   }
 }
