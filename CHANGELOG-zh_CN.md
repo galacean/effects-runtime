@@ -8,6 +8,12 @@
 
 ---
 
+## 2.6.8
+
+`2025-10-17`
+
+- Fix: bind pose color value reference issue. [#1231](https://github.com/galacean/effects-runtime/pull/1231) @wumaolinmaoan
+
 ## 2.6.7
 
 `2025-10-10`
