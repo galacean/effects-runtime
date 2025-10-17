@@ -1,4 +1,4 @@
-import type { Color } from '@galacean/effects-math/es/core/color';
+import { Color } from '@galacean/effects-math/es/core/color';
 import type { VFXItem } from '../../vfx-item';
 import type { Transform } from '../../transform';
 import { NodeTransform } from './pose';
@@ -147,7 +147,7 @@ export class Skeleton {
         break;
       case AnimatedPropertyType.Color:
         this.colorAnimatedObjects.push(animatedObject);
-        this.defaultColorPropertyValues.push(directTarget[lastPropertyName]);
+        this.defaultColorPropertyValues.push(new Color().copyFrom(directTarget[lastPropertyName]));
         this.pathToObjectIndex.set(totalPath, this.colorAnimatedObjects.length - 1);
     }
   }
