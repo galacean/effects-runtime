@@ -47,7 +47,7 @@ export class TextLayout {
 
   constructor (options: spec.TextContentOptions) {
     //@ts-expect-error
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, wrapEnabled = false, maxTextWidth = 350, maxTextHeight = 1000, sizeMode } = options;
+    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, wrapEnabled = false, maxTextWidth = 350, maxTextHeight = 1000, sizeMode } = options;
 
     //const tempWidth = fontSize + letterSpace;
 
@@ -59,7 +59,7 @@ export class TextLayout {
 
     this.letterSpace = letterSpace;
     this.lineGap = lineGap * 40;
-    this.useLegacyRichText = false;
+    this.useLegacyRichText = useLegacyRichText;
     this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
@@ -78,7 +78,7 @@ export class TextLayout {
     //文本框最大高度
     this.maxTextHeight = maxTextHeight;
     //是否开启自动换行
-    this.wrapEnabled = true;
+    this.wrapEnabled = wrapEnabled;
   }
 
   /**
@@ -180,6 +180,27 @@ export class TextLayout {
     }
 
     return offsetResult;
+  }
+
+  /**
+   * 富文本横向对齐计算
+   * @param style - 字体样式
+   * @param maxWidth - 文本框最大宽度
+   * @param contentW - 文本实际宽度
+   * @returns 第一行基线的Y坐标
+   */
+  getOffsetXRich (style: TextStyle, maxWidth: number, contentW: number): number {
+
+    switch (this.textAlign) {
+      case spec.TextAlignment.left:
+        return style.outlineWidth ;
+      case spec.TextAlignment.middle:
+        return (maxWidth - contentW) / 2;
+      case spec.TextAlignment.right:
+        return maxWidth - contentW ;
+      default:
+        return 0;
+    }
   }
 
   /**

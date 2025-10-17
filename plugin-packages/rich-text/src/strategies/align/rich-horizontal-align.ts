@@ -5,7 +5,7 @@ import type { RichHorizontalAlignStrategy } from '../rich-text-interfaces';
 
 /**
  * 富文本水平对齐策略
- * 封装现有TextLayout.getOffsetX逻辑，保持完全一致的行为
+ * 直接使用已缩放的行宽计算偏移量
  */
 export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrategy {
   getHorizontalOffsets (
@@ -15,19 +15,14 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
     layout: TextLayout,
     style: TextStyle,
   ): HorizontalAlignResult {
-    const lineOffsets: number[] = [];
-
-    // 完全复制现有Modern路径的水平对齐逻辑
-    lines.forEach(line => {
-      // 直接使用行宽（溢出策略已处理过缩放）
-      const charWidth = line.width;
-      const x = layout.getOffsetX(style, charWidth);
-
-      lineOffsets.push(x);
+    // 直接使用缩放后的行宽
+    const lineOffsets = lines.map(line => {
+      return layout.getOffsetXRich(style, layout.maxTextWidth, line.width);
     });
 
     return {
       lineOffsets,
     };
   }
+
 }

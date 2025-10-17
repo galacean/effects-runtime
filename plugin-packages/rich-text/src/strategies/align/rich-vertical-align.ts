@@ -5,7 +5,7 @@ import type { RichVerticalAlignStrategy } from '../rich-text-interfaces';
 
 /**
  * 富文本垂直对齐策略
- * 封装现有TextLayout.getOffsetYRich逻辑，保持完全一致的行为
+ * 直接使用已缩放的行高
  */
 export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy {
   getVerticalOffsets (
@@ -16,23 +16,24 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     style: TextStyle,
     singleLineHeight: number,
   ): VerticalAlignResult {
-    // 完全复制现有Modern路径的垂直对齐逻辑
+    // 使用缩放后的行高
     const lineHeights = lines.map(l => l.lineHeight);
 
-    // 计算第一行基线Y坐标（复制现有逻辑）
+    // 使用缩放后的字体大小计算
     const firstLine = lines[0];
-    const firstLineMaxFontSize = Math.max(...(firstLine?.richOptions?.map(opt => opt.fontSize) ?? [style.fontSize]));
+    const firstLineMaxFontSize = Math.max(
+      ...(firstLine?.richOptions?.map(opt => opt.fontSize) ?? [style.fontSize])
+    );
     const fontSizeForOffset = firstLineMaxFontSize * style.fontScale * singleLineHeight;
 
-    // 使用TextLayout.getOffsetYRich计算基线位置（复制现有逻辑）
     const baselineY = layout.getOffsetYRich(style, lineHeights, fontSizeForOffset);
 
-    // 计算每行的垂直偏移（复制现有逻辑）
-    const lineYOffsets: number[] = [0]; // 第一行偏移为0
+    // 计算行垂直偏移
+    const lineYOffsets: number[] = [0];
     let currentOffset = 0;
 
     for (let i = 1; i < lines.length; i++) {
-      currentOffset += lines[i].lineHeight;
+      currentOffset += lines[i].lineHeight; // 直接使用缩放后值
       lineYOffsets.push(currentOffset);
     }
 

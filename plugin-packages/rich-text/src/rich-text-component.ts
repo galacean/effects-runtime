@@ -731,6 +731,10 @@ export class RichTextComponent extends TextComponent {
     this.canvas.height = canvasHeight;
     context.clearRect(0, 0, canvasWidth, canvasHeight);
 
+    // 调试排版
+    context.fillStyle = 'rgba(255,0,0,255)';
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
+
     // fix bug 1/255
     context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
     if (!flipY) {
@@ -793,8 +797,8 @@ export class RichTextComponent extends TextComponent {
         case spec.TextOverflow.clip:
           this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
           this.item.transform.size.set(
-            x * this.textLayout.maxTextWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * this.textLayout.maxTextHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
           this.size = this.item.transform.size.clone();
 
@@ -802,8 +806,8 @@ export class RichTextComponent extends TextComponent {
         case spec.TextOverflow.display:
           this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
           this.item.transform.size.set(
-            x * this.textLayout.maxTextWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * this.textLayout.maxTextHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
           this.size = this.item.transform.size.clone();
 
@@ -871,22 +875,18 @@ export class RichTextComponent extends TextComponent {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
 
-        // 应用溢出缩放
-        let textSize = fontSize;
-
-        if (overflowResult.globalScale !== undefined) {
-          textSize *= overflowResult.globalScale;
-        }
+        // 直接使用原始字体大小（已在行数据中预缩放）
+        const textSize = fontSize;
 
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
 
         // 逐字绘制
-        // 段起始偏移（已经在溢出策略中按需缩放过）
         const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
         const charArr = chars[segIndex];
 
         charArr.forEach(charDetail => {
+          // 直接使用缩放后的字符位置
           context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
         });
       });
