@@ -320,14 +320,22 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMask0 = this.material.colorMask;
-    const previousColorMask1 = this.materials[1].colorMask;
 
-    this.material.colorMask = false;
-    this.materials[1].colorMask = false;
-    this.draw(renderer);
-    this.material.colorMask = previousColorMask0;
-    this.materials[1].colorMask = previousColorMask1;
+    let previousColorMask = false;
+
+    for (let i = 0; i < this.fillMaterials.length; i++) {
+      previousColorMask = this.fillMaterials[i].colorMask;
+      this.fillMaterials[i].colorMask = false;
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
+      this.fillMaterials[i].colorMask = previousColorMask;
+    }
+
+    for (let i = 0; i < this.strokeMaterials.length; i++) {
+      previousColorMask = this.strokeMaterials[i].colorMask;
+      this.strokeMaterials[i].colorMask = false;
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
+      this.strokeMaterials[i].colorMask = previousColorMask;
+    }
   }
 
   private draw (renderer: Renderer) {
