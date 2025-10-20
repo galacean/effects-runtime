@@ -15,6 +15,8 @@ export class WarpDisabledStrategy implements WarpStrategy {
       const str = text[i];
       const textMetrics = context.measureText(str).width * fontScale;
 
+      x += layout.letterSpace;
+
       // 只在换行符处断行，不自动换行
       if (str === '\n') {
         lineCount++;
