@@ -333,7 +333,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     for (let i = 0; i < this.strokeMaterials.length; i++) {
       previousColorMask = this.strokeMaterials[i].colorMask;
       this.strokeMaterials[i].colorMask = false;
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 0);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
       this.strokeMaterials[i].colorMask = previousColorMask;
     }
   }
