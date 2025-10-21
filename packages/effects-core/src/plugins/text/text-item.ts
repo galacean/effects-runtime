@@ -156,10 +156,10 @@ export class TextComponentBase {
     let lineCount = 1;
     let x = 0;
 
-    //设置context.font的字号
-    // if (context) {
-    //   context.font = this.getFontDesc(this.textStyle.fontSize);
-    // }
+    // 设置context.font的字号，确保measureText能正确计算字宽
+    if (context) {
+      context.font = this.getFontDesc(this.textStyle.fontSize);
+    }
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
       const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
