@@ -4,27 +4,6 @@ import type { RichTextOptions } from '../../rich-text-component';
 import type { RichCharDetail, RichLine, WrapResult } from '../rich-text-interfaces';
 import type { RichWrapStrategy } from '../rich-text-interfaces';
 
-// 原始测量值缓存（基于10px）
-const rawMeasureCache = new Map<string, Map<string, number>>();
-
-// 获取字符基础宽度（基于10px）
-function getCharBaseWidth (context: CanvasRenderingContext2D, fontKey: string, ch: string): number {
-  if (!rawMeasureCache.has(fontKey)) {
-    rawMeasureCache.set(fontKey, new Map());
-  }
-  const charMap = rawMeasureCache.get(fontKey)!;
-
-  if (charMap.has(ch)) {
-    return charMap.get(ch)!;
-  }
-
-  const w = context.measureText(ch).width;
-
-  charMap.set(ch, w);
-
-  return w;
-}
-
 /**
  * 富文本自动换行策略
  */
@@ -40,9 +19,9 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     scaleFactor: number
   ): WrapResult {
     const lines: RichLine[] = [];
-    let currentLine: RichLine = this.createNewLine(
-      singleLineHeight, fontScale, layout.lineGap || 0, style.fontSize
-    );
+    const baselines: number[] = [];
+    const gapPx = (layout.lineGap || 0) * fontScale;
+    let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
     let totalHeight = 0;
 
@@ -55,14 +34,22 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     // 结束当前行（含缓冲切块）
     const finishCurrentLine = () => {
       flushChunk();
-      if (currentLine.chars.length > 0) {
-        totalHeight += currentLine.lineHeight;
-        lines.push(currentLine);
-        maxLineWidth = Math.max(maxLineWidth, currentLine.width);
-      }
-      currentLine = this.createNewLine(
-        singleLineHeight, fontScale, (layout.lineGap || 0), style.fontSize
-      );
+      if (currentLine.chars.length === 0) {return;}
+
+      // 第1行用真实首行高度，其余行用 gapPx
+      currentLine.lineHeight = lines.length === 0
+        ? (currentLine.lineAscent || 0) + (currentLine.lineDescent || 0)
+        : gapPx;
+
+      // 记录本行基线
+      const baseline = lines.length === 0 ? 0 : (baselines[baselines.length - 1] + gapPx);
+
+      baselines.push(baseline);
+
+      totalHeight += currentLine.lineHeight;
+      lines.push(currentLine);
+      maxLineWidth = Math.max(maxLineWidth, currentLine.width);
+      currentLine = this.createNewLine();
       segStartX = null;
       segmentInnerX = 0;
       chunkChars = [];
@@ -92,11 +79,9 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
 
     processedOptions.forEach(options => {
       const { text, isNewLine, fontSize } = options;
-      const lineGapPx = (layout.lineGap || 0) * fontScale;
 
       // 设置测量字体（包含fontStyle）
       const fontStyle = options.fontStyle || style.fontStyle || 'normal';
-      const fontKey = `${options.fontWeight || style.textWeight}|${fontStyle}|${options.fontFamily || style.fontFamily}`;
 
       context.font = `${fontStyle} ${options.fontWeight || style.textWeight} 10px ${options.fontFamily || style.fontFamily}`;
 
@@ -111,16 +96,14 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         const ch = text[i];
 
         // 获取基础宽度并计算实际宽度（动态缩放）
-        const baseW = getCharBaseWidth(context, fontKey, ch);
+        const m = context.measureText(ch);
+        const baseW = m.width;
         const charWidth = (baseW <= 0 ? 0 : baseW) * fontSize * scaleFactor * fontScale;
 
-        // 行高更新（考虑混合字号）
-        const textHeight = fontSize * singleLineHeight * fontScale + lineGapPx;
-
-        if (textHeight > currentLine.lineHeight) {
-          currentLine.lineHeight = textHeight;
-          currentLine.offsetY = lineGapPx / 2;
-        }
+        // 测量 asc/desc 并按目标字号缩放
+        const scale = fontSize * fontScale * scaleFactor;
+        const asc = m.actualBoundingBoxAscent * scale;
+        const desc = m.actualBoundingBoxDescent * scale;
 
         // 计算预期宽度（包含字符间距）
         const spacing = chunkChars.length > 0 ? letterSpace : 0;
@@ -151,6 +134,10 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
           width: charWidth,
         });
 
+        // 累计行级 asc/desc
+        currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, asc);
+        currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, desc);
+
         // 更新位置和宽度
         segmentInnerX += charWidth;
         currentLine.width += charWidth;
@@ -163,22 +150,44 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     // 结束最后一行
     finishCurrentLine();
 
-    return { lines, maxLineWidth, totalHeight };
+    // 计算 bbox
+    let bboxTop = Infinity;
+    let bboxBottom = -Infinity;
+
+    for (let i = 0; i < lines.length; i++) {
+      bboxTop = Math.min(bboxTop, baselines[i] - (lines[i].lineAscent || 0));
+      bboxBottom = Math.max(bboxBottom, baselines[i] + (lines[i].lineDescent || 0));
+    }
+    const bboxHeight = bboxBottom - bboxTop;
+
+    const firstVisibleHeight = lines.length > 0 ? (lines[0].lineAscent || 0) + (lines[0].lineDescent || 0) : 0;
+
+    return {
+      lines,
+      maxLineWidth,
+      totalHeight,
+      gapPx,
+      baselines,
+      firstVisibleHeight,
+      bboxTop,
+      bboxBottom,
+      bboxHeight,
+    };
   }
 
   /**
    * 创建新行
    */
-  private createNewLine (singleLineHeight: number, fontScale: number, lineGap: number, baseFontSize: number): RichLine {
-    const gapPx = lineGap * fontScale;
-
+  private createNewLine (): RichLine {
     return {
       richOptions: [],
       offsetX: [],   // 切块起点（相对行起点）
       width: 0,
-      lineHeight: baseFontSize * singleLineHeight * fontScale + gapPx,
-      offsetY: gapPx / 2,
+      lineHeight: 0,  // 仅用 gapPx 作为行步进
+      offsetY: 0,
       chars: [],     // 每个元素为RichCharDetail数组（切块内字符）
+      lineAscent: 0,
+      lineDescent: 0,
     };
   }
 }

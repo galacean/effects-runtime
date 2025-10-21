@@ -47,7 +47,7 @@ export class TextLayout {
 
   constructor (options: spec.TextContentOptions) {
     //@ts-expect-error
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, wrapEnabled = false, maxTextWidth = 350, maxTextHeight = 1000, sizeMode } = options;
+    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.display, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, wrapEnabled = false, maxTextWidth = 250, maxTextHeight = 1000, sizeMode } = options;
 
     //const tempWidth = fontSize + letterSpace;
 
@@ -58,7 +58,7 @@ export class TextLayout {
     this.height = textHeight;
 
     this.letterSpace = letterSpace;
-    this.lineGap = lineGap * 40;
+    this.lineGap = lineGap * 200;
     this.useLegacyRichText = useLegacyRichText;
     this.overflow = textOverflow;
     this.textBaseline = textBaseline;
@@ -168,7 +168,7 @@ export class TextLayout {
 
         break;
       case spec.TextBaseline.middle:
-        offsetResult = (this.height * fontScale - total + this.lineGap * fontScale) / 2 + baseOffset;
+        offsetResult = (this.height * fontScale - total) / 2 + baseOffset;
 
         break;
       case spec.TextBaseline.bottom:

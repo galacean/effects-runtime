@@ -35,34 +35,19 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
     }
 
     // 统一缩放所有几何量
-    lines.forEach(line => {
+    for (const line of lines) {
       line.width *= s;
-      line.lineHeight *= s;
-
-      // 缩放段落偏移
+      line.lineHeight *= s;        // 缩小行距（你的 gap-only 模式行高=gapPx）
       if (line.offsetX) {
-        for (let i = 0; i < line.offsetX.length; i++) {
-          line.offsetX[i] *= s;
-        }
+        for (let i = 0; i < line.offsetX.length; i++) {line.offsetX[i] *= s;}
       }
-
-      // 缩放字符级几何
-      if (line.chars) {
-        for (const seg of line.chars) {
-          for (const ch of seg) {
-            ch.x *= s;
-            ch.width *= s;
-          }
-        }
+      for (const seg of (line.chars || [])) {
+        for (const ch of seg) { ch.x *= s; ch.width *= s; }
       }
-
-      // 缩放富文本选项中的字体大小
-      if (line.richOptions) {
-        for (const option of line.richOptions) {
-          option.fontSize *= s;
-        }
+      for (const opt of (line.richOptions || [])) {
+        opt.fontSize *= s;         // 缩小字形
       }
-    });
+    }
 
     return { globalScale: s };
   }

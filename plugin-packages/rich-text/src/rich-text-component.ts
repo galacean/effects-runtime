@@ -629,7 +629,7 @@ export class RichTextComponent extends TextComponent {
   override updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-    this.textLayout.textBaseline = options.textBaseline || spec.TextBaseline.middle;
+    // TextLayout 构造函数已经正确处理了 textBaseline，这里不需要再设置
     this.text = options.text ? options.text.toString() : ' ';
 
     // 更新策略配置以使用正确的textLayout设置
@@ -688,7 +688,8 @@ export class RichTextComponent extends TextComponent {
     const sizeResult = this.resolveCanvasSize(
       wrapResult,
       textLayout,
-      textStyle
+      textStyle,
+      this.singleLineHeight
     );
 
     // 首次渲染时初始化canvas尺寸和组件变换
@@ -782,36 +783,89 @@ export class RichTextComponent extends TextComponent {
     }
     const { x = 1, y = 1 } = this.size;
 
-    if (!this.initialized) {
-      switch (this.textLayout.overflow) {
-        case spec.TextOverflow.visible:
-          this.canvasSize = new math.Vector2(sizeResult.canvasWidth, sizeResult.canvasHeight);
+    switch (this.textLayout.overflow) {
+      case spec.TextOverflow.visible:
+      case spec.TextOverflow.clip: {
+        const frameW = this.textLayout.maxTextWidth;
+        const frameH = this.textLayout.maxTextHeight;
+
+        const bboxTop = sizeResult.bboxTop ?? 0;
+        const bboxHeight = sizeResult.bboxHeight ?? 0;
+
+        // 基于 frame 的自然基线（不改变你的语义）
+        let baselineYFrame = 0;
+
+        switch (this.textLayout.textBaseline) {
+          case spec.TextBaseline.top:
+            baselineYFrame = -bboxTop;
+
+            break;
+          case spec.TextBaseline.middle:
+            baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
+
+            break;
+          case spec.TextBaseline.bottom:
+            baselineYFrame = (frameH - bboxHeight) - bboxTop;
+
+            break;
+        }
+
+        // 计算"内容相对 frame 顶部的上溢出"，只看上溢出即可
+        const contentTopInFrame = baselineYFrame + bboxTop; // <0 表示越顶
+        const E = Math.max(0, -contentTopInFrame);
+
+        // 垂直方向：两边扩 2E，渲染下移 E
+        const expandTop = E;
+        const expandBottom = E;
+
+        // 水平方向：如也要对称扩张，可按左溢出对称扩；不需要可保持你原逻辑
+        const lines = sizeResult.lines || [];
+        const xOffsetsFrame = lines.map(line =>
+          this.textLayout.getOffsetXRich(this.textStyle, frameW, line.width)
+        );
+        let leftMost = 0;
+
+        if (xOffsetsFrame.length > 0) {
+          leftMost = Math.min(...xOffsetsFrame);
+
+        }
+        // 如果你也想水平"两边扩张两倍"：按左侧溢出对称扩（可选）
+        const ex = Math.max(0, -leftMost);
+        const expandLeft = ex;
+        const expandRight = ex;
+
+        const finalW = frameW + expandLeft + expandRight;
+        const finalH = frameH + expandTop + expandBottom;
+
+        // 把"渲染下移 E"和"水平左侧补偿 ex"透传给对齐策略/绘制
+        (sizeResult as any).baselineCompensationX = expandLeft;
+        (sizeResult as any).baselineCompensationY = expandTop;
+
+        sizeResult.canvasWidth = finalW;
+        sizeResult.canvasHeight = finalH;
+
+        this.canvasSize = new math.Vector2(finalW, finalH);
+        this.item.transform.size.set(
+          x * finalW * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * finalH * this.SCALE_FACTOR * this.SCALE_FACTOR
+        );
+        this.size = this.item.transform.size.clone();
+        this.initialized = true;
+
+        break;
+      }
+      case spec.TextOverflow.display: {
+        if (!this.initialized) {
+          this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
           this.item.transform.size.set(
-            x * sizeResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * sizeResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
           this.size = this.item.transform.size.clone();
           this.initialized = true;
+        }
 
-          break;
-        case spec.TextOverflow.clip:
-          this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
-          this.item.transform.size.set(
-            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
-          );
-          this.size = this.item.transform.size.clone();
-
-          break;
-        case spec.TextOverflow.display:
-          this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
-          this.item.transform.size.set(
-            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
-          );
-          this.size = this.item.transform.size.clone();
-
-          break;
+        break;
       }
     }
   }
@@ -822,34 +876,39 @@ export class RichTextComponent extends TextComponent {
   private resolveCanvasSize (
     wrapResult: WrapResult,
     layout: TextLayout,
-    style: TextStyle
+    style: TextStyle,
+    singleLineHeight: number
   ): SizeResult {
-    const { maxLineWidth, totalHeight } = wrapResult;
+    const canvasWidth = Math.max(1, wrapResult.maxLineWidth || 0);
+    const canvasHeight = Math.max(1, wrapResult.totalHeight || 0); // stepTotalHeight
 
-    if (maxLineWidth === 0 || totalHeight === 0) {
-      return {
-        canvasWidth: 1, // 避免零尺寸
-        canvasHeight: 1,
-        transformScale: { x: 1, y: 1 },
-      };
-    }
-
-    // 使用实际内容尺寸
-    const width = maxLineWidth;
-    const height = totalHeight;
-
-    const canvasWidth = width;
-    const canvasHeight = height;
-
-    // 更新textLayout的宽高
     layout.width = canvasWidth / style.fontScale;
     layout.height = canvasHeight / style.fontScale;
+
+    // 计算自然基线 baselineYPre
+    const lineHeights = wrapResult.lines.map(l => l.lineHeight);
+    const firstLine = wrapResult.lines[0];
+    const firstLineMaxFontSize = Math.max(...(firstLine?.richOptions?.map(o => o.fontSize) ?? [style.fontSize]));
+    const fontSizeForOffset = firstLineMaxFontSize * style.fontScale * singleLineHeight;
+    const baselineYPre = layout.getOffsetYRich(style, lineHeights, fontSizeForOffset);
 
     return {
       canvasWidth,
       canvasHeight,
-      transformScale: { x: 1, y: 1 }, // 不需要缩放
-    };
+      transformScale: { x: 1, y: 1 },
+      // 透传
+      naturalHeight: wrapResult.totalHeight,
+      contentWidth: wrapResult.maxLineWidth,
+      gapPx: wrapResult.gapPx,
+      baselines: wrapResult.baselines,
+      bboxTop: wrapResult.bboxTop,
+      bboxBottom: wrapResult.bboxBottom,
+      bboxHeight: wrapResult.bboxHeight,
+      firstVisibleHeight: wrapResult.firstVisibleHeight,
+      baselineYPre, // 新增
+      // 为visible模式的画布尺寸计算保留行信息
+      lines: wrapResult.lines,
+    } as SizeResult;
   }
 
   /**

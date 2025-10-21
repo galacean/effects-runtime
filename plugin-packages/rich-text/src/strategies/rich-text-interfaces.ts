@@ -21,6 +21,8 @@ export interface RichLine {
   lineHeight: number,
   offsetY: number,
   chars: RichCharDetail[][],
+  lineAscent?: number,    // 新增：行上升高度
+  lineDescent?: number,   // 新增：行下降高度
 }
 
 /**
@@ -30,6 +32,12 @@ export interface WrapResult {
   lines: RichLine[],
   maxLineWidth: number,
   totalHeight: number,
+  gapPx?: number,           // 新增：行间距像素值
+  baselines?: number[],     // 新增：每行基线位置
+  firstVisibleHeight?: number, // 新增：首行可见高度
+  bboxTop?: number,         // 新增：边界框顶部
+  bboxBottom?: number,      // 新增：边界框底部
+  bboxHeight?: number,      // 新增：边界框高度
 }
 
 /**
@@ -39,8 +47,17 @@ export interface SizeResult {
   canvasWidth: number,
   canvasHeight: number,
   transformScale: { x: number, y: number },
+  naturalHeight?: number,      // 新增：自然高度
+  contentWidth?: number,       // 新增：内容宽度
+  gapPx?: number,              // 新增：行间距像素值
+  baselines?: number[],        // 新增：每行基线位置
+  bboxTop?: number,            // 新增：边界框顶部
+  bboxBottom?: number,         // 新增：边界框底部
+  bboxHeight?: number,         // 新增：边界框高度
+  baselineCompensationY?: number, // 新增：基线补偿Y值（仅visible模式）
+  baselineCompensationX?: number, // 新增：基线补偿X值（仅visible模式）
+  lines?: RichLine[],          // 新增：行信息（仅visible模式）
 }
-
 /**
  * 溢出策略结果
  */

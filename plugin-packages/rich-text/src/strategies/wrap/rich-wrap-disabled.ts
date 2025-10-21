@@ -20,19 +20,29 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
     scaleFactor: number
   ): WrapResult {
     const lines: RichLine[] = [];
-    let currentLine: RichLine = this.createNewLine(
-      singleLineHeight, fontScale, layout.lineGap || 0, style.fontSize
-    );
+    const baselines: number[] = [];
+    const gapPx = (layout.lineGap || 0) * fontScale;
+    let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
     let totalHeight = 0;
 
     const finishCurrentLine = () => {
+      if (currentLine.chars.length === 0) {return;}
+
+      // 第1行用真实首行高度，其余行用 gapPx
+      currentLine.lineHeight = lines.length === 0
+        ? (currentLine.lineAscent || 0) + (currentLine.lineDescent || 0)
+        : gapPx;
+
+      // 记录本行基线
+      const baseline = lines.length === 0 ? 0 : (baselines[baselines.length - 1] + gapPx);
+
+      baselines.push(baseline);
+
       totalHeight += currentLine.lineHeight;
       lines.push(currentLine);
       maxLineWidth = Math.max(maxLineWidth, currentLine.width);
-      currentLine = this.createNewLine(
-        singleLineHeight, fontScale, (layout.lineGap || 0), style.fontSize
-      );
+      currentLine = this.createNewLine();
     };
 
     processedOptions.forEach(options => {
@@ -44,28 +54,32 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
       }
 
       // 用当前片段字体（权重/家族）设置测量字体（与 Modern 保持 10px 基准）
-      context.font = `${options.fontWeight || style.textWeight} 10px ${options.fontFamily || style.fontFamily}`;
+      const fontStyle = options.fontStyle || style.fontStyle || 'normal';
 
-      // 逐段更新本行最大行高（与 Modern 完全一致）
-      const textHeight =
-        fontSize * singleLineHeight * fontScale + (layout.lineGap || 0) * fontScale;
-
-      if (textHeight > currentLine.lineHeight) {
-        currentLine.lineHeight = textHeight;
-        currentLine.offsetY = (layout.lineGap || 0) * fontScale / 2;
-      }
+      context.font = `${fontStyle} ${options.fontWeight || style.textWeight} 10px ${options.fontFamily || style.fontFamily}`;
 
       // 记录段起始 x
       currentLine.offsetX.push(currentLine.width);
 
-      // 逐字宽度（与 Modern 一致）
+      // 逐字宽度和高度测量（新增 asc/desc 测量）
       let segmentInnerX = 0;
       const charArr: RichCharDetail[] = [];
+      let lineAscent = 0;
+      let lineDescent = 0;
 
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
-        const w = context.measureText(ch).width;
+        const m = context.measureText(ch);
+        const w = m.width;
         const charWidth = (w <= 0 ? 0 : w) * fontSize * scaleFactor * fontScale;
+
+        // 测量 asc/desc 并按目标字号缩放
+        const scale = fontSize * fontScale * scaleFactor;
+        const asc = m.actualBoundingBoxAscent * scale;
+        const desc = m.actualBoundingBoxDescent * scale;
+
+        lineAscent = Math.max(lineAscent, asc);
+        lineDescent = Math.max(lineDescent, desc);
 
         if (i > 0) {
           segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
@@ -77,27 +91,53 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
       currentLine.chars.push(charArr);
       currentLine.width += segmentInnerX;
       currentLine.richOptions.push(options);
+
+      // 累计行级 asc/desc
+      currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, lineAscent);
+      currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, lineDescent);
     });
 
     // 结束最后一行
     finishCurrentLine();
 
-    return { lines, maxLineWidth, totalHeight };
+    // 计算 bbox
+    let bboxTop = Infinity;
+    let bboxBottom = -Infinity;
+
+    for (let i = 0; i < lines.length; i++) {
+      bboxTop = Math.min(bboxTop, baselines[i] - (lines[i].lineAscent || 0));
+      bboxBottom = Math.max(bboxBottom, baselines[i] + (lines[i].lineDescent || 0));
+    }
+    const bboxHeight = bboxBottom - bboxTop;
+
+    const firstVisibleHeight = lines.length > 0 ? (lines[0].lineAscent || 0) + (lines[0].lineDescent || 0) : 0;
+
+    return {
+      lines,
+      maxLineWidth,
+      totalHeight,
+      gapPx,
+      baselines,
+      firstVisibleHeight,
+      bboxTop,
+      bboxBottom,
+      bboxHeight,
+    };
   }
 
   /**
    * 创建新行（复制现有Modern路径的初始化逻辑）
    */
-  private createNewLine (singleLineHeight: number, fontScale: number, lineGap: number, baseFontSize: number): RichLine {
-    const gapPx = (lineGap || 0) * fontScale;
-
+  private createNewLine (): RichLine {
     return {
       richOptions: [],
       offsetX: [],
       width: 0,
-      lineHeight: baseFontSize * singleLineHeight * fontScale + gapPx, // 初始行高 = 基础字号行高 + gap
-      offsetY: gapPx / 2, // 与 Modern 一致
+      lineHeight: 0,  // 仅用 gapPx 作为行步进
+      offsetY: 0,
       chars: [],
+      lineAscent: 0,
+      lineDescent: 0,
     };
   }
 }

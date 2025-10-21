@@ -1,4 +1,5 @@
 import type { TextLayout } from '@galacean/effects';
+import { spec } from '@galacean/effects';
 import type { TextStyle } from '@galacean/effects';
 import type { RichLine, HorizontalAlignResult, SizeResult, OverflowResult } from '../rich-text-interfaces';
 import type { RichHorizontalAlignStrategy } from '../rich-text-interfaces';
@@ -15,14 +16,18 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
     layout: TextLayout,
     style: TextStyle,
   ): HorizontalAlignResult {
-    // 直接使用缩放后的行宽
-    const lineOffsets = lines.map(line => {
-      return layout.getOffsetXRich(style, layout.maxTextWidth, line.width);
-    });
+    // 对齐容器宽：display 用 frameW，其它用最终画布宽
+    const containerWidth =
+      layout.overflow === spec.TextOverflow.display
+        ? layout.maxTextWidth
+        : (sizeResult.canvasWidth || layout.maxTextWidth);
 
-    return {
-      lineOffsets,
-    };
+    const lineOffsets = lines.map(line =>
+      layout.getOffsetXRich(style, containerWidth, line.width)
+    );
+
+    // 不再叠加 baselineCompensationX
+    return { lineOffsets };
   }
 
 }
