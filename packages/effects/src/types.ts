@@ -157,11 +157,12 @@ export type PlayerErrorCause =
 /**
  * 播放器事件
  */
-export type PlayerEvent = {
+export type PlayerEvent<P> = {
   /**
    * 播放器点击事件
    */
   ['click']: [clickInfo: Region & {
+    player: P,
     compositionId: string,
     compositionName: string,
   }],
@@ -198,7 +199,7 @@ export type PlayerEvent = {
   /**
    * 播放器更新事件
    */
-  ['update']: [updateInfo: { playing: boolean }],
+  ['update']: [updateInfo: { player: P, playing: boolean }],
   /**
    * WebGL 上下文丢失事件
    * 这个时候播放器已经自动被销毁，业务需要做兜底逻辑

@@ -31,11 +31,14 @@ export type ItemEvent = {
 /**
  * Composition 可以绑定的事件
  */
-export type CompositionEvent = {
+export type CompositionEvent<C> = {
   /**
    * 合成点击事件
    */
-  ['click']: [clickInfo: Region],
+  ['click']: [clickInfo: Region & {
+    compositionName: string,
+    compositionId: string,
+  }],
   /**
    * 合成按下事件
    */
@@ -63,7 +66,7 @@ export type CompositionEvent = {
    * 合成行为为循环时每次循环结束都会触发
    * 合成行为为销毁/冻结时只会触发一次
    */
-  ['end']: [endInfo: { }],
+  ['end']: [endInfo: { composition: C }],
   /**
    * 时间跳转事件
    * 用于在合成中跳转到指定时间

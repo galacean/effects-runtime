@@ -27,7 +27,7 @@ let seed = 1;
 /**
  * Galacean Effects 播放器
  */
-export class Player extends EventEmitter<PlayerEvent> implements Disposable, LostHandler, RestoreHandler {
+export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
   /**
    * 播放器的像素比
@@ -537,6 +537,7 @@ export class Player extends EventEmitter<PlayerEvent> implements Disposable, Los
     this.ticker?.pause();
     this.emit('pause');
     this.emit('update', {
+      player: this,
       playing: false,
     });
     this.compositions.map(composition => {
@@ -646,6 +647,7 @@ export class Player extends EventEmitter<PlayerEvent> implements Disposable, Los
 
       if (this.autoPlaying) {
         this.emit('update', {
+          player: this,
           playing: true,
         });
       }
@@ -876,13 +878,16 @@ export class Player extends EventEmitter<PlayerEvent> implements Disposable, Los
       }
 
       if (behavior === spec.InteractBehavior.NOTIFY) {
-        this.emit('click', {
+        const clickInfo = {
+          player: this,
           ...hitResult,
           compositionId: hitComposition.id,
           compositionName: hitComposition.name,
-        });
+        };
 
-        hitComposition.emit('click', hitResult);
+        this.emit('click', clickInfo);
+
+        hitComposition.emit('click', clickInfo);
       } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
         void this.resume();
       }
