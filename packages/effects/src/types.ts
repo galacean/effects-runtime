@@ -162,8 +162,17 @@ export type PlayerEvent<P> = {
    * 播放器点击事件
    */
   ['click']: [clickInfo: Region & {
+    /**
+     * @deprecated 2.7.0
+     */
     player: P,
+    /**
+     * @deprecated 2.7.0
+     */
     compositionId: string,
+    /**
+     * @deprecated 2.7.0
+     */
     compositionName: string,
   }],
   /**
@@ -199,7 +208,13 @@ export type PlayerEvent<P> = {
   /**
    * 播放器更新事件
    */
-  ['update']: [updateInfo: { player: P, playing: boolean }],
+  ['update']: [updateInfo: {
+    /**
+     * @deprecated 2.7.0
+     */
+    player: P,
+    playing: boolean,
+  }],
   /**
    * WebGL 上下文丢失事件
    * 这个时候播放器已经自动被销毁，业务需要做兜底逻辑

@@ -36,7 +36,13 @@ export type CompositionEvent<C> = {
    * 合成点击事件
    */
   ['click']: [clickInfo: Region & {
+    /**
+     * @deprecated 2.7.0
+     */
     compositionName: string,
+    /**
+     * @deprecated 2.7.0
+     */
     compositionId: string,
   }],
   /**
@@ -66,7 +72,12 @@ export type CompositionEvent<C> = {
    * 合成行为为循环时每次循环结束都会触发
    * 合成行为为销毁/冻结时只会触发一次
    */
-  ['end']: [endInfo: { composition: C }],
+  ['end']: [endInfo: {
+    /**
+     * @deprecated 2.7.0
+     */
+    composition: C,
+  }],
   /**
    * 时间跳转事件
    * 用于在合成中跳转到指定时间
