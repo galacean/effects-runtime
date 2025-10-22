@@ -1,4 +1,4 @@
-import type { GLType, MessageItem, Region } from '@galacean/effects-core';
+import type { GLType, MessageItem, PointerEventData, Region } from '@galacean/effects-core';
 
 /**
  * player 创建的构造参数
@@ -157,15 +157,26 @@ export type PlayerErrorCause =
 /**
  * 播放器事件
  */
-export type PlayerEvent<P> = {
+export type PlayerEvent = {
   /**
    * 播放器点击事件
    */
   ['click']: [clickInfo: Region & {
-    player: P,
     compositionId: string,
     compositionName: string,
   }],
+  /**
+   * 播放器按下事件
+   */
+  ['pointerdown']: [eventData: PointerEventData],
+  /**
+   * 播放器抬起事件
+   */
+  ['pointerup']: [eventData: PointerEventData],
+  /**
+   * 播放器移动事件
+   */
+  ['pointermove']: [eventData: PointerEventData],
   /**
    * 播放器消息事件（合成中元素创建/销毁时触发）
    */
@@ -187,7 +198,7 @@ export type PlayerEvent<P> = {
   /**
    * 播放器更新事件
    */
-  ['update']: [updateInfo: { player: P, playing: boolean }],
+  ['update']: [updateInfo: { playing: boolean }],
   /**
    * WebGL 上下文丢失事件
    * 这个时候播放器已经自动被销毁，业务需要做兜底逻辑

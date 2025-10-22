@@ -1,5 +1,5 @@
 import type { MessageItem } from '../composition';
-import type { Region } from '../plugins';
+import type { PointerEventData, Region } from '../plugins';
 
 /**
  * Item 可以绑定的事件
@@ -10,6 +10,18 @@ export type ItemEvent = {
    */
   ['click']: [region: Region],
   /**
+   * 元素按下事件
+   */
+  ['pointerdown']: [],
+  /**
+   * 元素按下事件
+   */
+  ['pointerup']: [],
+  /**
+   * 元素移动事件
+   */
+  ['pointermove']: [eventData: PointerEventData],
+  /**
    * 元素消息事件（元素创建/销毁时触发）
    * 注意：仅对交互元素有效
    */
@@ -19,14 +31,23 @@ export type ItemEvent = {
 /**
  * Composition 可以绑定的事件
  */
-export type CompositionEvent<C> = {
+export type CompositionEvent = {
   /**
    * 合成点击事件
    */
-  ['click']: [clickInfo: Region & {
-    compositionName: string,
-    compositionId: string,
-  }],
+  ['click']: [clickInfo: Region],
+  /**
+   * 合成按下事件
+   */
+  ['pointerdown']: [eventData: PointerEventData],
+  /**
+   * 合成抬起事件
+   */
+  ['pointerup']: [eventData: PointerEventData],
+  /**
+   * 合成移动事件
+   */
+  ['pointermove']: [eventData: PointerEventData],
   /**
    * 合成开始播放事件
    * @since 2.6.0
@@ -42,7 +63,7 @@ export type CompositionEvent<C> = {
    * 合成行为为循环时每次循环结束都会触发
    * 合成行为为销毁/冻结时只会触发一次
    */
-  ['end']: [endInfo: { composition: C }],
+  ['end']: [endInfo: { }],
   /**
    * 时间跳转事件
    * 用于在合成中跳转到指定时间

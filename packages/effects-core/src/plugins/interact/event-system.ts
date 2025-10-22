@@ -25,6 +25,12 @@ export type TouchParams = {
   target: EventTarget,
 };
 
+export enum PointerEventType {
+  PointerDown,
+  PointerUp,
+  PointerMove
+}
+
 export class EventSystem implements Disposable {
   enabled = true;
 
@@ -32,7 +38,7 @@ export class EventSystem implements Disposable {
   private nativeHandlers: Record<string, (event: Event) => void> = {};
 
   constructor (
-    private target: HTMLCanvasElement | null,
+    private target: HTMLCanvasElement,
     public allowPropagation = false,
   ) { }
 
@@ -50,6 +56,7 @@ export class EventSystem implements Disposable {
     let touchmove = 'mousemove';
     let touchend = 'mouseup';
     let touchcancel = 'mouseleave';
+
     const getTouchEventValue = (event: Event, x: number, y: number, dx = 0, dy = 0): TouchEventType => {
       let vx = 0;
       let vy = 0;
@@ -136,7 +143,7 @@ export class EventSystem implements Disposable {
     this.nativeHandlers[touchcancel] = this.nativeHandlers[touchend];
 
     Object.keys(this.nativeHandlers).forEach(name => {
-      this.target?.addEventListener(String(name), this.nativeHandlers[name]);
+      this.target.addEventListener(String(name), this.nativeHandlers[name]);
     });
   }
 
@@ -175,7 +182,6 @@ export class EventSystem implements Disposable {
         this.target?.removeEventListener(String(name), this.nativeHandlers[name]);
       });
       this.nativeHandlers = {};
-      this.target = null;
     }
   }
 }
