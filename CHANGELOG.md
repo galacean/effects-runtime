@@ -7,6 +7,12 @@
 
 ---
 
+## 2.6.9
+
+`2025-10-22`
+
+- Fix: vfx item visible deserialization. [#1241](https://github.com/galacean/effects-runtime/pull/1241) @wumaolinmaoan
+
 ## 2.6.8
 
 `2025-10-17`
