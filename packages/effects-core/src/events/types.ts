@@ -12,11 +12,11 @@ export type ItemEvent = {
   /**
    * 元素按下事件
    */
-  ['pointerdown']: [],
+  ['pointerdown']: [eventData: PointerEventData],
   /**
    * 元素按下事件
    */
-  ['pointerup']: [],
+  ['pointerup']: [eventData: PointerEventData],
   /**
    * 元素移动事件
    */

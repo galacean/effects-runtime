@@ -959,7 +959,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       const hitComposition = hitItem.composition as Composition;
 
       hitComposition.emit(eventName, eventData);
-      hitItem.emit(eventName);
+      hitItem.emit(eventName, eventData);
     }
   }
 
