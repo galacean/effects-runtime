@@ -14,7 +14,7 @@ export type ItemEvent = {
    */
   ['pointerdown']: [eventData: PointerEventData],
   /**
-   * 元素按下事件
+   * 元素抬起事件
    */
   ['pointerup']: [eventData: PointerEventData],
   /**
