@@ -669,7 +669,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     super.fromData(data);
     const {
       id, name, delay, parentId, endBehavior, transform,
-      duration = 0,
+      duration = 0, visible = true,
     } = data;
 
     this.props = data;
@@ -714,6 +714,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (VFXItem.isComposition(this)) {
       this.instantiatePreComposition();
     }
+
+    this.setVisible(visible);
   }
 
   override toData (): void {
