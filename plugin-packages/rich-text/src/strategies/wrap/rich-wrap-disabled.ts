@@ -84,7 +84,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
         if (i > 0) {
           segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
         }
-        charArr.push({ char: ch, x: segmentInnerX, width: charWidth });
+        charArr.push({ char: ch, x: segmentInnerX });
         segmentInnerX += charWidth;
       }
 
@@ -110,15 +110,10 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
     }
     const bboxHeight = bboxBottom - bboxTop;
 
-    const firstVisibleHeight = lines.length > 0 ? (lines[0].lineAscent || 0) + (lines[0].lineDescent || 0) : 0;
-
     return {
       lines,
       maxLineWidth,
       totalHeight,
-      gapPx,
-      baselines,
-      firstVisibleHeight,
       bboxTop,
       bboxBottom,
       bboxHeight,

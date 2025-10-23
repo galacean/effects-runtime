@@ -132,7 +132,6 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         chunkChars.push({
           char: ch,
           x: segmentInnerX, // 切块内相对坐标
-          width: charWidth,
         });
 
         // 累计行级 asc/desc
@@ -161,15 +160,10 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     }
     const bboxHeight = bboxBottom - bboxTop;
 
-    const firstVisibleHeight = lines.length > 0 ? (lines[0].lineAscent || 0) + (lines[0].lineDescent || 0) : 0;
-
     return {
       lines,
       maxLineWidth,
       totalHeight,
-      gapPx,
-      baselines,
-      firstVisibleHeight,
       bboxTop,
       bboxBottom,
       bboxHeight,

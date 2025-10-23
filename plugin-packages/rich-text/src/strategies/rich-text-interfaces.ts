@@ -8,7 +8,6 @@ import type { RichTextOptions } from '../rich-text-component';
 export interface RichCharDetail {
   char: string,
   x: number,
-  width: number,
 }
 
 /**
@@ -32,9 +31,6 @@ export interface WrapResult {
   lines: RichLine[],
   maxLineWidth: number,
   totalHeight: number,
-  gapPx?: number,           // 行间距像素值
-  baselines?: number[],     // 每行基线位置
-  firstVisibleHeight?: number, // 首行可见高度
   bboxTop?: number,         // 边界框顶部
   bboxBottom?: number,      // 边界框底部
   bboxHeight?: number,      // 边界框高度
@@ -46,11 +42,7 @@ export interface WrapResult {
 export interface SizeResult {
   canvasWidth: number,
   canvasHeight: number,
-  transformScale: { x: number, y: number },
-  naturalHeight?: number,      // 自然高度
   contentWidth?: number,       // 内容宽度
-  gapPx?: number,              // 行间距像素值
-  baselines?: number[],        // 每行基线位置
   bboxTop?: number,            // 边界框顶部
   bboxBottom?: number,         // 边界框底部
   bboxHeight?: number,         // 边界框高度

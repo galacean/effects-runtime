@@ -42,7 +42,7 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
         for (let i = 0; i < line.offsetX.length; i++) {line.offsetX[i] *= s;}
       }
       for (const seg of (line.chars || [])) {
-        for (const ch of seg) { ch.x *= s; ch.width *= s; }
+        for (const ch of seg) { ch.x *= s; }
       }
       for (const opt of (line.richOptions || [])) {
         opt.fontSize *= s;         // 缩小字形

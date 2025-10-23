@@ -27,7 +27,6 @@ export interface RichTextOptions {
   fontWeight?: spec.TextWeight,
   fontStyle?: spec.FontStyle,
   fontColor?: spec.vec4,
-  textStyle?: TextStyle,
   isNewLine: boolean,
 }
 
@@ -525,8 +524,8 @@ export class RichTextComponent extends TextComponent {
     context.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // 调试排版
-    // context.fillStyle = 'rgba(255,0,0,255)';
-    // context.fillRect(0, 0, canvasWidth, canvasHeight);
+    context.fillStyle = 'rgba(255,0,0,255)';
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // fix bug 1/255
     context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
@@ -735,26 +734,13 @@ export class RichTextComponent extends TextComponent {
     layout.width = canvasWidth / style.fontScale;
     layout.height = canvasHeight / style.fontScale;
 
-    // 计算基线 baselineYPre
-    const lineHeights = wrapResult.lines.map(l => l.lineHeight);
-    const firstLine = wrapResult.lines[0];
-    const firstLineMaxFontSize = Math.max(...(firstLine?.richOptions?.map(o => o.fontSize) ?? [style.fontSize]));
-    const fontSizeForOffset = firstLineMaxFontSize * style.fontScale * singleLineHeight;
-    const baselineYPre = layout.getOffsetYRich(style, lineHeights, fontSizeForOffset);
-
     return {
       canvasWidth,
       canvasHeight,
-      transformScale: { x: 1, y: 1 },
-      naturalHeight: wrapResult.totalHeight,
       contentWidth: wrapResult.maxLineWidth,
-      gapPx: wrapResult.gapPx,
-      baselines: wrapResult.baselines,
       bboxTop: wrapResult.bboxTop,
       bboxBottom: wrapResult.bboxBottom,
       bboxHeight: wrapResult.bboxHeight,
-      firstVisibleHeight: wrapResult.firstVisibleHeight,
-      baselineYPre,
       // 为visible模式的画布尺寸计算保留行信息
       lines: wrapResult.lines,
     } as SizeResult;
