@@ -896,6 +896,11 @@ export class RichTextComponent extends TextComponent {
 
         // 设置 canvas 和节点变换
         this.canvasSize = new math.Vector2(frameW, frameH);
+
+        // 把 layout 的尺寸更新为 frame 尺寸
+        this.textLayout.width = frameW / this.textStyle.fontScale;
+        this.textLayout.height = frameH / this.textStyle.fontScale;
+
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         this.item.transform.size.set(
