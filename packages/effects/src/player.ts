@@ -952,12 +952,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
         break;
     }
-    this.emit(eventName, eventData);
 
     if (hitRegion) {
       const hitItem = hitRegion.item;
       const hitComposition = hitItem.composition as Composition;
 
+      this.emit(eventName, eventData);
       hitComposition.emit(eventName, eventData);
       hitItem.emit(eventName, eventData);
     }

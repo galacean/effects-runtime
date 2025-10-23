@@ -1,4 +1,4 @@
-import type { GLType, MessageItem, PointerEventData, Region } from '@galacean/effects-core';
+import type { GLType, MessageItem, PointerEvent, Region } from '@galacean/effects-core';
 
 /**
  * player 创建的构造参数
@@ -157,7 +157,7 @@ export type PlayerErrorCause =
 /**
  * 播放器事件
  */
-export type PlayerEvent<P> = {
+export type PlayerEvent<P> = PointerEvent & {
   /**
    * 播放器点击事件
    */
@@ -175,18 +175,6 @@ export type PlayerEvent<P> = {
      */
     compositionName: string,
   }],
-  /**
-   * 播放器按下事件
-   */
-  ['pointerdown']: [eventData: PointerEventData],
-  /**
-   * 播放器抬起事件
-   */
-  ['pointerup']: [eventData: PointerEventData],
-  /**
-   * 播放器移动事件
-   */
-  ['pointermove']: [eventData: PointerEventData],
   /**
    * 播放器消息事件（合成中元素创建/销毁时触发）
    */

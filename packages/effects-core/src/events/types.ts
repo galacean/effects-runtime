@@ -1,26 +1,29 @@
 import type { MessageItem } from '../composition';
 import type { PointerEventData, Region } from '../plugins';
 
+export type PointerEvent = {
+  /**
+   * 按下事件
+   */
+  ['pointerdown']: [eventData: PointerEventData],
+  /**
+   * 抬起事件
+   */
+  ['pointerup']: [eventData: PointerEventData],
+  /**
+   * 移动事件
+   */
+  ['pointermove']: [eventData: PointerEventData],
+};
+
 /**
  * Item 可以绑定的事件
  */
-export type ItemEvent = {
+export type ItemEvent = PointerEvent & {
   /**
    * 元素点击事件（编辑器设置交互行为“消息通知”）
    */
   ['click']: [region: Region],
-  /**
-   * 元素按下事件
-   */
-  ['pointerdown']: [eventData: PointerEventData],
-  /**
-   * 元素抬起事件
-   */
-  ['pointerup']: [eventData: PointerEventData],
-  /**
-   * 元素移动事件
-   */
-  ['pointermove']: [eventData: PointerEventData],
   /**
    * 元素消息事件（元素创建/销毁时触发）
    * 注意：仅对交互元素有效
@@ -31,7 +34,7 @@ export type ItemEvent = {
 /**
  * Composition 可以绑定的事件
  */
-export type CompositionEvent<C> = {
+export type CompositionEvent<C> = PointerEvent & {
   /**
    * 合成点击事件
    */
@@ -45,18 +48,6 @@ export type CompositionEvent<C> = {
      */
     compositionId: string,
   }],
-  /**
-   * 合成按下事件
-   */
-  ['pointerdown']: [eventData: PointerEventData],
-  /**
-   * 合成抬起事件
-   */
-  ['pointerup']: [eventData: PointerEventData],
-  /**
-   * 合成移动事件
-   */
-  ['pointermove']: [eventData: PointerEventData],
   /**
    * 合成开始播放事件
    * @since 2.6.0
