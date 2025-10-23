@@ -790,9 +790,10 @@ export class RichTextComponent extends TextComponent {
         const frameH = this.textLayout.maxTextHeight;
 
         const bboxTop = sizeResult.bboxTop ?? 0;
-        const bboxHeight = sizeResult.bboxHeight ?? 0;
+        const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
+        const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
 
-        // 基于 frame 的自然基线（不改变你的语义）
+        // 计算 frame 基线
         let baselineYFrame = 0;
 
         switch (this.textLayout.textBaseline) {
@@ -810,26 +811,52 @@ export class RichTextComponent extends TextComponent {
             break;
         }
 
-        // 计算"内容相对 frame 顶部的上溢出"，只看上溢出即可
-        const contentTopInFrame = baselineYFrame + bboxTop; // <0 表示越顶
-        const E = Math.max(0, -contentTopInFrame);
+        // 上下溢出检测
+        const contentTopInFrame = baselineYFrame + bboxTop;
+        const contentBottomInFrame = baselineYFrame + bboxBottom;
 
-        // 垂直方向：两边扩 2E，渲染下移 E
-        const expandTop = E;
-        const expandBottom = E;
+        const overflowTop = Math.max(0, -contentTopInFrame);
+        const overflowBottom = Math.max(0, contentBottomInFrame - frameH);
 
-        // 水平方向：如也要对称扩张，可按左溢出对称扩；不需要可保持你原逻辑
+        // 垂直扩张
+        let expandTop = overflowTop;
+        let expandBottom = overflowBottom;
+
+        switch (this.textLayout.textBaseline) {
+          case spec.TextBaseline.top: {
+            const E = overflowBottom;
+
+            expandTop = E;
+            expandBottom = E;
+
+            break;
+          }
+          case spec.TextBaseline.bottom: {
+            const E = overflowTop;
+
+            expandTop = E;
+            expandBottom = E;
+
+            break;
+          }
+          case spec.TextBaseline.middle: {
+            // 保持非对称：上扩 overflowTop，下扩 overflowBottom
+            expandTop = overflowTop;
+            expandBottom = overflowBottom;
+
+            break;
+          }
+        }
+
+        // 位移补偿：始终使用 expandTop
+        const compY = expandTop;
+
+        // 水平扩张（保持你的原逻辑，或按需禁用）
         const lines = sizeResult.lines || [];
         const xOffsetsFrame = lines.map(line =>
           this.textLayout.getOffsetXRich(this.textStyle, frameW, line.width)
         );
-        let leftMost = 0;
-
-        if (xOffsetsFrame.length > 0) {
-          leftMost = Math.min(...xOffsetsFrame);
-
-        }
-        // 如果你也想水平"两边扩张两倍"：按左侧溢出对称扩（可选）
+        const leftMost = xOffsetsFrame.length > 0 ? Math.min(...xOffsetsFrame) : 0;
         const ex = Math.max(0, -leftMost);
         const expandLeft = ex;
         const expandRight = ex;
@@ -837,14 +864,16 @@ export class RichTextComponent extends TextComponent {
         const finalW = frameW + expandLeft + expandRight;
         const finalH = frameH + expandTop + expandBottom;
 
-        // 把"渲染下移 E"和"水平左侧补偿 ex"透传给对齐策略/绘制
+        // 记录补偿，供垂直对齐策略叠加
         (sizeResult as any).baselineCompensationX = expandLeft;
-        (sizeResult as any).baselineCompensationY = expandTop;
+        (sizeResult as any).baselineCompensationY = compY;
 
         sizeResult.canvasWidth = finalW;
         sizeResult.canvasHeight = finalH;
 
         this.canvasSize = new math.Vector2(finalW, finalH);
+        const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
+
         this.item.transform.size.set(
           x * finalW * this.SCALE_FACTOR * this.SCALE_FACTOR,
           y * finalH * this.SCALE_FACTOR * this.SCALE_FACTOR
