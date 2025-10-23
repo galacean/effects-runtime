@@ -6,7 +6,7 @@ import type { RichWrapStrategy, WrapResult } from '../rich-text-interfaces'; // 
 
 /**
  * 富文本换行禁用策略
- * 完全基于现有Modern路径的实现逻辑：仅基于\n换行，无自动换行
+ * 实现逻辑：仅基于\n换行，无自动换行
  */
 export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类名
   computeLines (
@@ -49,11 +49,11 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
       const { text, isNewLine, fontSize } = options;
 
       if (isNewLine) {
-        // 先结束上一行（保持与 Modern 顺序一致）
+        // 先结束上一行
         finishCurrentLine();
       }
 
-      // 用当前片段字体（权重/家族）设置测量字体（与 Modern 保持 10px 基准）
+      // 用当前片段字体（权重/家族）设置测量字体
       const fontStyle = options.fontStyle || style.fontStyle || 'normal';
 
       context.font = `${fontStyle} ${options.fontWeight || style.textWeight} 10px ${options.fontFamily || style.fontFamily}`;
@@ -126,14 +126,14 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
   }
 
   /**
-   * 创建新行（复制现有Modern路径的初始化逻辑）
+   * 创建新行
    */
   private createNewLine (): RichLine {
     return {
       richOptions: [],
       offsetX: [],
       width: 0,
-      lineHeight: 0,  // 仅用 gapPx 作为行步进
+      lineHeight: 0,
       offsetY: 0,
       chars: [],
       lineAscent: 0,

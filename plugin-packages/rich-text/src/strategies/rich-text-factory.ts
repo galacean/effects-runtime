@@ -1,11 +1,11 @@
 import { spec } from '@galacean/effects';
 import type {
-  RichWrapStrategy, // 更新接口名
+  RichWrapStrategy,
   RichOverflowStrategy,
   RichHorizontalAlignStrategy,
   RichVerticalAlignStrategy,
 } from './rich-text-interfaces';
-import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled'; // 确保导入正确
+import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled';
 import { RichWrapEnabledStrategy } from './wrap/rich-wrap-enabled';
 import { RichDisplayOverflowStrategy } from './overflow/rich-display-overflow';
 import { RichClippedOverflowStrategy } from './overflow/rich-clipped-overflow';
@@ -15,7 +15,7 @@ import { RichVerticalAlignStrategyImpl } from './align/rich-vertical-align';
 
 /**
  * 富文本策略工厂
- * 负责创建各种策略实例，保持与现有Modern路径行为一致
+ * 负责创建各种策略实例
  */
 export class RichTextStrategyFactory {
 
@@ -23,7 +23,7 @@ export class RichTextStrategyFactory {
    * 创建换行策略
    * 根据wrapEnabled参数决定使用哪种策略
    */
-  static createWrapStrategy (wrapEnabled?: boolean): RichWrapStrategy { // 更新返回接口
+  static createWrapStrategy (wrapEnabled?: boolean): RichWrapStrategy {
     if (wrapEnabled) {
       return new RichWrapEnabledStrategy();
     } else {

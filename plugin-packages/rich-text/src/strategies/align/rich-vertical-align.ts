@@ -21,7 +21,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     const compY = (sizeResult as any).baselineCompensationY || 0;
 
     if (layout.overflow === spec.TextOverflow.visible) {
-      // 你原来的 frame-based 计算
+      // frame-based 计算
       const frameH = layout.maxTextHeight;
       const bboxTop = (sizeResult as any).bboxTop ?? 0;
       const bboxHeight = (sizeResult as any).bboxHeight ?? lines.reduce((s, l)=>s + l.lineHeight, 0);
@@ -41,7 +41,6 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
       }
       baselineY = baselineYFrame + compY; // 关键：叠加"向下移动 E"
     } else if (layout.overflow === spec.TextOverflow.clip) {
-      // 如果你为 clip 也做了扩张（setCanvasSize 改了），也叠加 compY
       const lineHeights = lines.map(l => l.lineHeight);
       const firstLine = lines[0];
       const firstLineMaxFontSize = Math.max(...(firstLine?.richOptions?.map(opt => opt.fontSize) ?? [style.fontSize]));

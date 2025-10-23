@@ -16,18 +16,21 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
     layout: TextLayout,
     style: TextStyle,
   ): HorizontalAlignResult {
-    // 对齐容器宽：display 用 frameW，其它用最终画布宽
-    const containerWidth =
-      layout.overflow === spec.TextOverflow.display
-        ? layout.maxTextWidth
-        : (sizeResult.canvasWidth || layout.maxTextWidth);
+    const frameW = layout.maxTextWidth;
+    const compX = (sizeResult as any).baselineCompensationX || 0;
 
-    const lineOffsets = lines.map(line =>
-      layout.getOffsetXRich(style, containerWidth, line.width)
+    // 统一用 frame 宽做容器
+    const baseOffsets = lines.map(line =>
+      layout.getOffsetXRich(style, frameW, line.width)
     );
 
-    // 不再叠加 baselineCompensationX
+    // 仅 visible 叠加水平补偿，clip/display 不加
+    const lineOffsets =
+      layout.overflow === spec.TextOverflow.visible
+        ? baseOffsets.map(x => x + compX)
+        : baseOffsets;
+
     return { lineOffsets };
   }
-
 }
+

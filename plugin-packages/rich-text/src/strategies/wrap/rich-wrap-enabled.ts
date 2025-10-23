@@ -6,6 +6,7 @@ import type { RichWrapStrategy } from '../rich-text-interfaces';
 
 /**
  * 富文本自动换行策略
+ * 实现逻辑：基于\n换行及自动换行
  */
 export class RichWrapEnabledStrategy implements RichWrapStrategy {
   computeLines (
