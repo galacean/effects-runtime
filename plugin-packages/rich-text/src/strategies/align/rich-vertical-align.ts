@@ -49,13 +49,50 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
       baselineY = layout.getOffsetYRich(style, lineHeights, fontSizeForOffset) + compY;
     } else {
-      // display 保持原有
-      const lineHeights = lines.map(l => l.lineHeight);
-      const firstLine = lines[0];
-      const firstLineMaxFontSize = Math.max(...(firstLine?.richOptions?.map(opt => opt.fontSize) ?? [style.fontSize]));
-      const fontSizeForOffset = firstLineMaxFontSize * style.fontScale * singleLineHeight;
+      // display 垂直对齐改为基于 bbox，而不是 getOffsetYRich
+      const frameH = layout.maxTextHeight;
 
-      baselineY = layout.getOffsetYRich(style, lineHeights, fontSizeForOffset);
+      // 用缩放后的行数据重建 baselines 和 bbox
+      const baselines: number[] = [0];
+
+      for (let i = 1; i < lines.length; i++) {
+        baselines[i] = baselines[i - 1] + lines[i].lineHeight;
+      }
+      let bboxTop = Infinity, bboxBottom = -Infinity;
+
+      for (let i = 0; i < lines.length; i++) {
+        const asc = lines[i].lineAscent ?? 0;
+        const desc = lines[i].lineDescent ?? 0;
+
+        bboxTop = Math.min(bboxTop, baselines[i] - asc);
+        bboxBottom = Math.max(bboxBottom, baselines[i] + desc);
+      }
+      const bboxHeight = bboxBottom - bboxTop;
+
+      let baselineDisplayY = 0;
+
+      switch (layout.textBaseline) {
+        case spec.TextBaseline.top:
+          baselineDisplayY = -bboxTop;
+
+          break;
+        case spec.TextBaseline.middle:
+          baselineDisplayY = (frameH - bboxHeight) / 2 - bboxTop;
+
+          break;
+        case spec.TextBaseline.bottom:
+          baselineDisplayY = (frameH - bboxHeight) - bboxTop;
+
+          break;
+      }
+
+      // 后续 lineYOffsets 保持按行高累计
+      const lineYOffsets: number[] = [0];
+      let acc = 0;
+
+      for (let i = 1; i < lines.length; i++) { acc += lines[i].lineHeight; lineYOffsets.push(acc); }
+
+      return { baselineY: baselineDisplayY, lineYOffsets };
     }
 
     // 下面行偏移保持不变
@@ -70,3 +107,4 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     return { baselineY, lineYOffsets };
   }
 }
+
