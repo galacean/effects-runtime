@@ -784,8 +784,7 @@ export class RichTextComponent extends TextComponent {
     const { x = 1, y = 1 } = this.size;
 
     switch (this.textLayout.overflow) {
-      case spec.TextOverflow.visible:
-      case spec.TextOverflow.clip: {
+      case spec.TextOverflow.visible: {
         const frameW = this.textLayout.maxTextWidth;
         const frameH = this.textLayout.maxTextHeight;
 
@@ -877,6 +876,31 @@ export class RichTextComponent extends TextComponent {
         this.item.transform.size.set(
           x * finalW * this.SCALE_FACTOR * this.SCALE_FACTOR,
           y * finalH * this.SCALE_FACTOR * this.SCALE_FACTOR
+        );
+        this.size = this.item.transform.size.clone();
+        this.initialized = true;
+
+        break;
+      }
+      case spec.TextOverflow.clip: {
+        const frameW = this.textLayout.maxTextWidth;
+        const frameH = this.textLayout.maxTextHeight;
+
+        // 直接使用 frame 尺寸作为画布尺寸
+        sizeResult.canvasWidth = frameW;
+        sizeResult.canvasHeight = frameH;
+
+        // clip 模式不需要任何补偿
+        (sizeResult as any).baselineCompensationX = 0;
+        (sizeResult as any).baselineCompensationY = 0;
+
+        // 设置 canvas 和节点变换
+        this.canvasSize = new math.Vector2(frameW, frameH);
+        const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
+
+        this.item.transform.size.set(
+          x * frameW * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * frameH * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.size = this.item.transform.size.clone();
         this.initialized = true;
