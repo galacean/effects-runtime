@@ -13,6 +13,7 @@ import { GLEngine } from './gl-engine';
 import { GLFramebuffer } from './gl-framebuffer';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
+import { GLShaderLibrary } from './gl-shader-library';
 
 type Matrix4 = math.Matrix4;
 type Vector4 = math.Vector4;
@@ -338,8 +339,11 @@ export class GLRenderer extends Renderer implements Disposable {
     if (!gl) {
       throw new Error('Can not restore automatically because losing gl context.');
     }
-    this.engine.gpuCapability = new GPUCapability(gl);
-    this.engine.renderer = this;
+    const engine = this.engine as GLEngine;
+
+    engine.reset();
+    engine.shaderLibrary = new GLShaderLibrary(engine);
+    engine.gpuCapability = new GPUCapability(gl);
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
   }
