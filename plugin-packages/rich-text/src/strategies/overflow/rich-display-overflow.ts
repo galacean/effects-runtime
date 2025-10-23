@@ -20,8 +20,8 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
 
     const availableW = Math.max(1, layout.maxTextWidth || sizeResult.canvasWidth);
     const availableH = Math.max(1, layout.maxTextHeight || sizeResult.canvasHeight);
-    const contentW = Math.max(1, sizeResult.canvasWidth);
-    const contentH = Math.max(1, sizeResult.canvasHeight);
+    const contentW = Math.max(1, (sizeResult.contentWidth ?? sizeResult.canvasWidth));
+    const contentH = Math.max(1, (sizeResult.bboxHeight ?? sizeResult.canvasHeight));
 
     // 只缩小不放大
     const s = Math.min(1,
@@ -47,6 +47,9 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
       for (const opt of (line.richOptions || [])) {
         opt.fontSize *= s;         // 缩小字形
       }
+      // 新增：同步缩放 asc/desc
+      if (line.lineAscent != null) {line.lineAscent *= s;}
+      if (line.lineDescent != null) {line.lineDescent *= s;}
     }
 
     return { globalScale: s };
