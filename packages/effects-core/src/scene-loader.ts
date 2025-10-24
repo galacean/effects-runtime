@@ -108,7 +108,7 @@ export class SceneLoader {
     }
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
-    if (engine.renderer.env !== PLAYER_OPTIONS_ENV_EDITOR) {
+    if (engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {
       engine.assetService.createShaderVariant();
     }
 

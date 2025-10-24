@@ -159,6 +159,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         manualRender,
         fps,
       });
+      this.engine.env = env;
       this.renderer.env = env;
       this.renderer.addLostHandler({ lost: this.lost });
       this.renderer.addRestoreHandler({ restore: this.restore });
