@@ -232,7 +232,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成中消息元素创建/销毁时触发的回调
    * @internal
    */
-  onItemMessage: (message: MessageItem) => void;
+  onItemMessage?: (message: MessageItem) => void;
   /**
    * 销毁状态位
    */
@@ -810,7 +810,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.onItemMessage({
+      this.onItemMessage?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -834,7 +834,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM 的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.onItemMessage({
+      this.onItemMessage?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
