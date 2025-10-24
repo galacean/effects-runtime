@@ -331,8 +331,6 @@ export class SpriteComponent extends MaskableGraphic {
 
     //@ts-expect-error
     this.duration = data.duration ?? this.item.duration;
-
-    //@ts-expect-error
     this.loop = data.loop ?? true;
   }
 }

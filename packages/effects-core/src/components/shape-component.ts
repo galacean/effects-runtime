@@ -681,7 +681,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const renderer = data.renderer ?? {};
 
     this.rendererOptions = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
+      renderMode: spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.whiteTexture,
       occlusion: !!renderer.occlusion,
@@ -822,7 +822,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           offset: { x: 0, y: 0 },
           rotation: 0,
           scale: { x: 1, y: 1 },
-          //@ts-expect-error
           ...(paintData.textureTransform ?? {}),
         };
 
