@@ -1,7 +1,7 @@
 import { BinomialLLCTranscoder } from './transcoder/binomial-transcoder';
 import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 import { DFDTransferFunction, KTX2Container } from './ktx2-container';
-import { KTX2TargetFormat, TextureFormat } from './ktx2-target-format';
+import { KTX2TargetFormat, TextureFormat } from './ktx2-common';
 import { TextureSourceType } from '../types';
 import { glContext } from '../../gl';
 import { isPowerOfTwo } from '../utils';
@@ -20,13 +20,13 @@ export class KTX2Loader {
       KTX2TargetFormat.ASTC,
       KTX2TargetFormat.ETC1,
       KTX2TargetFormat.PVRTC,
-      KTX2TargetFormat.R8G8B8A8,
+      KTX2TargetFormat.RGBA8,
     ],
     uastc: [
       KTX2TargetFormat.ASTC,
       KTX2TargetFormat.ETC,
       KTX2TargetFormat.PVRTC,
-      KTX2TargetFormat.R8G8B8A8,
+      KTX2TargetFormat.RGBA8,
     ],
   };
   private static capabilityMap: Partial<Record<KTX2TargetFormat, Partial<Record<DFDTransferFunction, GLCapabilityType[]>>>> = {
@@ -60,9 +60,7 @@ export class KTX2Loader {
 
   /**
    * @internal
-   * 初始化 KTX2 加载器使用的转码器（Binomial LLC 或 Khronos）
-   * @param useKhronosTranscoder - 是否使用 Khronos 转码器（默认使用 Binomial LLC）
-   * @param workerCount - 转码器使用的 Web Worker 数量（默认为 2）
+   * 解析并转码 KTX2 文件
    */
   private static parseBuffer (buffer: Uint8Array, gpuCapability?: GPUCapability) {
     const ktx2Container = new KTX2Container(buffer);
@@ -76,7 +74,7 @@ export class KTX2Loader {
     const transcodeTarget = (targetFormat === KTX2TargetFormat.ETC1) ? KTX2TargetFormat.ETC : targetFormat;
     let transcodeResultPromise: Promise<TranscodeResult>;
 
-    if (targetFormat != KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
+    if (targetFormat !== KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
       const binomialLLCWorker = KTX2Loader.getBinomialLLCTranscoder();
 
       transcodeResultPromise = binomialLLCWorker.init().
@@ -121,13 +119,13 @@ export class KTX2Loader {
     if (targetFormat === KTX2TargetFormat.PVRTC && (!isPowerOfTwo(pixelWidth) || !isPowerOfTwo(pixelHeight))) {
       console.warn('PVRTC image need power of 2, downgrade to RGBA8');
 
-      return KTX2TargetFormat.R8G8B8A8;
+      return KTX2TargetFormat.RGBA8;
     }
 
     if (targetFormat === null) {
       console.warn('Can\'t support any compressed texture, downgrade to RGBA8');
 
-      return KTX2TargetFormat.R8G8B8A8;
+      return KTX2TargetFormat.RGBA8;
     }
 
     return targetFormat;
@@ -181,7 +179,7 @@ export class KTX2Loader {
         }
       } else {
         switch (priorityFormats[i]) {
-          case KTX2TargetFormat.R8G8B8A8:
+          case KTX2TargetFormat.RGBA8:
             return format;
         }
       }
@@ -284,7 +282,7 @@ export class KTX2Loader {
         return hasAlpha ? TextureFormat.PVRTC_RGBA4 : TextureFormat.PVRTC_RGB4;
       case KTX2TargetFormat.ETC1:
         return TextureFormat.ETC1_RGB;
-      case KTX2TargetFormat.R8G8B8A8:
+      case KTX2TargetFormat.RGBA8:
         return TextureFormat.R8G8B8A8;
     }
   }
@@ -401,7 +399,6 @@ export class KTX2Loader {
    * @throws 若格式不支持则抛出错误
    */
   private static checkUploadable (
-    ktx2Container: KTX2Container,
     transcodeResult: TranscodeResult,
     targetFormat: KTX2TargetFormat,
     gpuCapability?: GPUCapability
@@ -419,9 +416,9 @@ export class KTX2Loader {
     const binomial = KTX2Loader.getBinomialLLCTranscoder();
 
     await binomial.init();
-    const result = await binomial.transcode(srcBuffer, KTX2TargetFormat.R8G8B8A8);
+    const result = await binomial.transcode(srcBuffer, KTX2TargetFormat.RGBA8);
 
-    return { result, targetFormat: KTX2TargetFormat.R8G8B8A8 };
+    return { result, targetFormat: KTX2TargetFormat.RGBA8 };
   }
 
   /**
@@ -443,13 +440,13 @@ export class KTX2Loader {
     const hasETC1 = can(GLCapabilityType.etc1);
 
     try {
-      this.checkUploadable(ktx2Container, transcodeResult, targetFormat, gpuCapability);
+      this.checkUploadable(transcodeResult, targetFormat, gpuCapability);
 
       return { result: transcodeResult, targetFormat };
     } catch (e) {
-    // 仅处理 ETC 路径的细化逻辑
+      // 仅处理 ETC 路径的细化逻辑
       if (targetFormat === KTX2TargetFormat.ETC) {
-      // 依据转码产物区分 ETC1/ETC2
+        // 依据转码产物区分 ETC1/ETC2
         const basisFormat = transcodeResult.format;
 
         if (basisFormat === 0 /* ETC1，无 alpha */) {
@@ -482,7 +479,7 @@ export class KTX2Loader {
         isSRGB: ktx2Container.isSRGB,
         error: e instanceof Error ? e.message : e,
       });
-      if (targetFormat === KTX2TargetFormat.R8G8B8A8) {
+      if (targetFormat === KTX2TargetFormat.RGBA8) {
         // 已是 RGBA8 仍失败，抛出原错误
         throw e;
       }

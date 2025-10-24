@@ -121,36 +121,6 @@ export class BufferReader {
     return decodeText(uint8Array);
   }
 
-  /**
-   * image data 放在最后
-   */
-  nextImageData (count: number = 0): Uint8Array {
-    return new Uint8Array(this.data.buffer, this.data.byteOffset + this.pos);
-  }
-
-  nextImagesData (count: number): Uint8Array[] {
-    const imagesLen = new Array(count);
-
-    // Start offset of Uint32Array should be a multiple of 4. ref: https://stackoverflow.com/questions/15417310/why-typed-array-constructors-require-offset-to-be-multiple-of-underlying-type-si
-    for (let i = 0; i < count; i++) {
-      const len = this.dataView.getUint32(this.pos, this.littleEndian);
-
-      imagesLen[i] = len;
-      this.pos += 4;
-    }
-    const imagesData: Uint8Array[] = [];
-
-    for (let i = 0; i < count; i++) {
-      const len = imagesLen[i];
-      const buffer = new Uint8Array(this.data.buffer, this.dataView.byteOffset + this.pos, len);
-
-      this.pos += len;
-      imagesData.push(buffer);
-    }
-
-    return imagesData;
-  }
-
   skip (bytes: number) {
     this.pos += bytes;
 

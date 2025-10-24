@@ -88,7 +88,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     RGBA8 = 13
   }
 
-  enum TargetFormat {
+  enum KTX2TargetFormat {
     ASTC,
     PVRTC,
     ETC,
@@ -96,15 +96,15 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     RGBA8
   }
 
-  function getTranscodeFormatFromTarget (target: TargetFormat, hasAlpha: boolean) {
+  function getTranscodeFormatFromTarget (target: KTX2TargetFormat, hasAlpha: boolean) {
     switch (target) {
-      case TargetFormat.ETC:
+      case KTX2TargetFormat.ETC:
         return hasAlpha ? BasisFormat.ETC2 : BasisFormat.ETC1;
-      case TargetFormat.PVRTC:
+      case KTX2TargetFormat.PVRTC:
         return hasAlpha ? BasisFormat.PVRTC1_4_RGBA : BasisFormat.PVRTC1_4_RGB;
-      case TargetFormat.RGBA8:
+      case KTX2TargetFormat.RGBA8:
         return BasisFormat.RGBA8;
-      case TargetFormat.ASTC:
+      case KTX2TargetFormat.ASTC:
         return BasisFormat.ASTC_4x4;
     }
   }
@@ -156,7 +156,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
   const levelCount = ktx2File.getLevels();
   const hasAlpha = ktx2File.getHasAlpha();
   const faceCount = ktx2File.getFaces();
-  const format = getTranscodeFormatFromTarget(targetFormat as TargetFormat, hasAlpha) as number;
+  const format = getTranscodeFormatFromTarget(targetFormat as KTX2TargetFormat, hasAlpha) as number;
   const faces = new Array(faceCount);
 
   for (let face = 0; face < faceCount; face++) {
@@ -177,7 +177,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
         const status = ktx2File.transcodeImage(dst, mip, layer, face, format, 0, -1, -1);
 
         // 仅在 RGBA8 兜底时翻转
-        if (status && format === BasisFormat.RGBA8) {
+        if (status && format === BasisFormat.RGBA8 as number) {
           flipYInPlaceRGBA(dst, mipWidth, mipHeight);
         }
 

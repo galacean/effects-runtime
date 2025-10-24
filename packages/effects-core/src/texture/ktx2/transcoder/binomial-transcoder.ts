@@ -1,4 +1,4 @@
-import type { KTX2TargetFormat } from '../ktx2-target-format';
+import type { KTX2TargetFormat } from '../ktx2-common';
 import type { TranscodeResult } from './abstract-transcoder';
 import { AbstractTranscoder } from './abstract-transcoder';
 import { TranscodeWorkerCode, init, transcode, _init } from './binomial-workercode';

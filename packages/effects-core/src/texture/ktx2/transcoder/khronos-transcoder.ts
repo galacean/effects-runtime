@@ -1,7 +1,7 @@
 /* eslint-disable compat/compat */
 import type { KTX2Container } from '../ktx2-container';
 import { SupercompressionScheme } from '../ktx2-container';
-import type { KTX2TargetFormat } from '../ktx2-target-format';
+import type { KTX2TargetFormat } from '../ktx2-common';
 import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './abstract-transcoder';
 import { AbstractTranscoder } from './abstract-transcoder';
 import { TranscodeWorkerCode } from './khronos-workercode';
