@@ -92,6 +92,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     ASTC,
     PVRTC,
     ETC,
+    ETC1,
     RGBA8
   }
 
@@ -127,22 +128,27 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
 
     return result;
   }
+
+  function flipYInPlaceRGBA (data: Uint8Array, width: number, height: number) {
+    const rowBytes = width * 4;
+    const row = new Uint8Array(rowBytes);
+
+    for (let y = 0; y < Math.floor(height / 2); y++) {
+      const top = y * rowBytes;
+      const bot = (height - 1 - y) * rowBytes;
+
+      row.set(data.subarray(top, top + rowBytes));
+      data.set(data.subarray(bot, bot + rowBytes), top);
+      data.set(row, bot);
+    }
+  }
+
   const ktx2File = new KTX2File(new Uint8Array(buffer));
 
-  function cleanup () {
-    ktx2File.close();
-    ktx2File.delete();
-  }
+  function cleanup () { ktx2File.close(); ktx2File.delete(); }
 
-  if (!ktx2File.isValid()) {
-    cleanup();
-    throw new Error('Invalid or unsupported .ktx2 file');
-  }
-
-  if (!ktx2File.startTranscoding()) {
-    cleanup();
-    throw new Error('KTX2 startTranscoding failed');
-  }
+  if (!ktx2File.isValid()) { cleanup(); throw new Error('Invalid or unsupported .ktx2 file'); }
+  if (!ktx2File.startTranscoding()) { cleanup(); throw new Error('KTX2 startTranscoding failed'); }
 
   const width: number = ktx2File.getWidth();
   const height: number = ktx2File.getHeight();
@@ -150,7 +156,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
   const levelCount = ktx2File.getLevels();
   const hasAlpha = ktx2File.getHasAlpha();
   const faceCount = ktx2File.getFaces();
-  const format = getTranscodeFormatFromTarget(targetFormat, hasAlpha);
+  const format = getTranscodeFormatFromTarget(targetFormat as TargetFormat, hasAlpha) as number;
   const faces = new Array(faceCount);
 
   for (let face = 0; face < faceCount; face++) {
@@ -158,7 +164,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
 
     for (let mip = 0; mip < levelCount; mip++) {
       const layerMips: Uint8Array[] = new Array(layerCount);
-      let mipWidth: number = 0, mipHeight: number = 0;
+      let mipWidth = 0, mipHeight = 0;
 
       for (let layer = 0; layer < layerCount; layer++) {
         const levelInfo = ktx2File.getImageLevelInfo(mip, layer, face);
@@ -166,14 +172,16 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
         mipWidth = levelInfo.origWidth;
         mipHeight = levelInfo.origHeight;
 
-        const dst = new Uint8Array(ktx2File.getImageTranscodedSizeInBytes(mip, layer, 0, format));
-
+        const size = ktx2File.getImageTranscodedSizeInBytes(mip, layer, face, format);
+        const dst = new Uint8Array(size);
         const status = ktx2File.transcodeImage(dst, mip, layer, face, format, 0, -1, -1);
 
-        if (!status) {
-          cleanup();
-          throw new Error('transcodeImage failed.');
+        // 仅在 RGBA8 兜底时翻转
+        if (status && format === BasisFormat.RGBA8) {
+          flipYInPlaceRGBA(dst, mipWidth, mipHeight);
         }
+
+        if (!status) { cleanup(); throw new Error('transcodeImage failed.'); }
         layerMips[layer] = dst;
       }
 
@@ -194,6 +202,6 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     height,
     hasAlpha,
     faceCount: faceCount,
-    format: format,
+    format,
   };
 }

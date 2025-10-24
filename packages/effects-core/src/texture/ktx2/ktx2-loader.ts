@@ -252,9 +252,10 @@ export class KTX2Loader {
         });
       }
     }
+    const isCompressed = textureFormat !== TextureFormat.R8G8B8A8;
 
     return {
-      sourceType: TextureSourceType.compressed,
+      sourceType: isCompressed ? TextureSourceType.compressed : TextureSourceType.data,
       target,
       internalFormat,
       format,
@@ -286,8 +287,6 @@ export class KTX2Loader {
       case KTX2TargetFormat.R8G8B8A8:
         return TextureFormat.R8G8B8A8;
     }
-
-    return TextureFormat.R8G8B8;
   }
 
   /**

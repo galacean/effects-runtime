@@ -526,16 +526,28 @@ async function createTextureOptionsBySource (
         await KTX2Loader.initialize(USE_KHRONOS, WORKER_COUNT);
         const textureData = await KTX2Loader.loadFromBuffer(image, gpuCapability);
 
-        return {
-          sourceType: textureData.sourceType,
-          type: textureData.dataType,
-          target: textureData.target,
-          internalFormat: textureData.internalFormat,
-          format: textureData.format,
-          mipmaps: textureData.mipmaps,
-          sourceFrom,
-          ...options,
-        };
+        if (textureData.sourceType === TextureSourceType.compressed) {
+          return {
+            sourceType: textureData.sourceType,
+            type: textureData.dataType,
+            target: textureData.target,
+            internalFormat: textureData.internalFormat,
+            format: textureData.format,
+            mipmaps: textureData.mipmaps,
+            sourceFrom,
+            ...options,
+          };
+        } else {
+          return {
+            sourceType: TextureSourceType.data,
+            data: textureData.mipmaps[0],
+            wrapS: glContext.CLAMP_TO_EDGE,
+            wrapT: glContext.CLAMP_TO_EDGE,
+            minFilter: glContext.NEAREST,
+            magFilter: glContext.NEAREST,
+            ...options,
+          };
+        }
       } catch (e) {
         throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
       }
