@@ -134,7 +134,6 @@ export class LoaderImpl implements Loader {
       const source = textureOptions.source;
 
       if (typeof source === 'number') {
-        // @ts-expect-error
         textureOptions.source = {
           id: this.images[source].id,
         };
