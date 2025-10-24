@@ -54,7 +54,7 @@ export class GLEngine extends Engine {
     return this.getGLRenderer().glRenderer;
   }
 
-  private reset () {
+  reset () {
     this.glCapabilityCache = {};
     this.activeTextureIndex = glContext.TEXTURE0;
     this.textureUnitDict = {};
