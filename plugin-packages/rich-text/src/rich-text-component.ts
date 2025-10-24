@@ -524,8 +524,8 @@ export class RichTextComponent extends TextComponent {
     context.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // 调试排版
-    context.fillStyle = 'rgba(255,0,0,255)';
-    context.fillRect(0, 0, canvasWidth, canvasHeight);
+    // context.fillStyle = 'rgba(255,0,0,255)';
+    // context.fillRect(0, 0, canvasWidth, canvasHeight);
 
     // fix bug 1/255
     context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
