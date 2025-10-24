@@ -1,5 +1,6 @@
 import { glContext, Renderer, ShaderCompileResultStatus } from '@galacean/effects-core';
-import { GLGPUBuffer, GLGeometry, GLRenderer, GLVertexArrayObject } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLGPUBuffer, GLGeometry, GLVertexArrayObject } from '@galacean/effects-webgl';
 import { getGL, getGL2 } from './gl-utils.js';
 
 const { expect } = chai;
@@ -24,8 +25,10 @@ describe('webgl/gl-vertex-array-object', () => {
   let glRenderer;
 
   afterEach(() => {
-    renderer.dispose();
-    (renderer.canvas as HTMLCanvasElement)?.remove();
+    const engine = renderer.engine as GLEngine;
+
+    engine.dispose();
+    (engine.context.canvas as HTMLCanvasElement)?.remove();
     // @ts-expect-error
     renderer = null;
   });
@@ -172,6 +175,8 @@ describe('webgl/gl-vertex-array-object', () => {
 
 function createGLGPURenderer (type: 'webgl' | 'webgl2') {
   const gl = type === 'webgl' ? getGL() : getGL2();
+  const canvas = gl!.canvas as HTMLCanvasElement;
+  const engine = new GLEngine(canvas, { glType: type });
 
-  return new GLRenderer(gl!.canvas, type);
+  return engine.renderer as GLRenderer;
 }

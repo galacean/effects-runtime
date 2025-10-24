@@ -3,8 +3,8 @@ import type {
   Texture2DSourceOptionsImageMipmaps, TextureCubeSourceOptionsImage, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
-import type { GLEngine, GLRendererInternal } from '@galacean/effects-webgl';
-import { GLTexture, GLRenderer } from '@galacean/effects-webgl';
+import type { GLRendererInternal, GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 
 const COMPRESSED_RGBA_ASTC_6x6_KHR = 37812;
@@ -18,14 +18,14 @@ describe('webgl/gl-texture', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl');
-    engine = renderer.engine as GLEngine;
+    engine = new GLEngine(canvas, { glType: 'webgl' });
+    renderer = engine.renderer as GLRenderer;
     gl = renderer.context.gl as WebGLRenderingContext;
   });
 
   after(() => {
     // runs once after the last test in this block
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
     // @ts-expect-error
@@ -639,10 +639,10 @@ describe('webgl2/gl-texture', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl2');
+    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    renderer = engine.renderer as GLRenderer;
 
     fakeRenderer = renderer.glRenderer;
-    engine = renderer.engine as GLEngine;
     gl = fakeRenderer.gl;
     imageHTMLElement = document.createElement('img');
     imageHTMLElement.src = '../../../assets/colors.png';

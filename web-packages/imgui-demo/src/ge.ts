@@ -4,7 +4,7 @@ import '@galacean/effects-plugin-model';
 import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-ffd';
-import '@galacean/effects-plugin-spine';
+import '@galacean/effects-plugin-rich-text';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
@@ -22,7 +22,7 @@ export class GalaceanEffects {
     GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL(JSON.parse(JSON.stringify(animationScene)));
+    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*e0ceS6Bpx8MAAAAAQMAAAAgAelB4AQ');
   }
 
   static playURL (url: string, use3DConverter = false) {

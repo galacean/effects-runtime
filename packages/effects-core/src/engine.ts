@@ -11,6 +11,18 @@ import type { Disposable } from './utils';
 import { addItem, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
+import type { Composition } from './composition';
+import type { AssetManager } from './asset-manager';
+import { AssetService } from './asset-service';
+import { Ticker } from './ticker';
+import { EventSystem } from './plugins/interact/event-system';
+import type { GLType } from './gl';
+
+export interface EngineOptions extends WebGLContextAttributes {
+  manualRender?: boolean,
+  glType?: GLType,
+  fps?: number,
+}
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
@@ -33,13 +45,23 @@ export class Engine implements Disposable {
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
-
   /**
    * 渲染过程中错误队列
    */
   renderErrors: Set<Error> = new Set();
+  compositions: Composition[] = [];
+  assetManagers: AssetManager[] = [];
+  assetService: AssetService;
+  eventSystem: EventSystem;
+  env: string;
+  /**
+   * 计时器
+   * 手动渲染 `manualRender=true` 时不创建计时器
+   */
+  ticker: Ticker;
+  canvas: HTMLCanvasElement;
 
-  protected destroyed = false;
+  protected disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
@@ -51,18 +73,25 @@ export class Engine implements Disposable {
   /**
    *
    */
-  constructor () {
+  constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
+    this.canvas = canvas;
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.assetLoader = new AssetLoader(this);
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateTransparentTexture(this);
+    if (!options?.manualRender) {
+      this.ticker = new Ticker(options?.fps);
+    }
+    this.eventSystem = new EventSystem(this.canvas);
+    this.assetLoader = new AssetLoader(this);
+    this.assetService = new AssetService(this);
+
   }
 
   /**
    * 创建 Engine 对象。
    */
-  static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
+  static create: (canvas: HTMLCanvasElement, options?: EngineOptions) => Engine;
 
   clearResources () {
     this.jsonSceneData = {};
@@ -189,77 +218,91 @@ export class Engine implements Disposable {
   }
 
   addTexture (tex: Texture) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     addItem(this.textures, tex);
   }
 
   removeTexture (tex: Texture) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     removeItem(this.textures, tex);
   }
 
   addMaterial (mat: Material) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     addItem(this.materials, mat);
   }
 
   removeMaterial (mat: Material) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     removeItem(this.materials, mat);
   }
 
   addGeometry (geo: Geometry) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     addItem(this.geometries, geo);
   }
 
   removeGeometry (geo: Geometry) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     removeItem(this.geometries, geo);
   }
 
   addMesh (mesh: Mesh) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     addItem(this.meshes, mesh);
   }
 
   removeMesh (mesh: Mesh) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     removeItem(this.meshes, mesh);
   }
 
   addRenderPass (pass: RenderPass) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     addItem(this.renderPasses, pass);
   }
 
   removeRenderPass (pass: RenderPass) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     removeItem(this.renderPasses, pass);
   }
 
+  addComposition (composition: Composition) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.compositions, composition);
+  }
+
+  removeComposition (composition: Composition) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.compositions, composition);
+  }
+
   get isDestroyed (): boolean {
-    return this.destroyed;
+    return this.disposed;
   }
 
   getShaderLibrary (): ShaderLibrary {
@@ -270,10 +313,10 @@ export class Engine implements Disposable {
    * 销毁所有缓存的资源
    */
   dispose (): void {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
-    this.destroyed = true;
+    this.disposed = true;
 
     const info: string[] = [];
 
@@ -294,18 +337,23 @@ export class Engine implements Disposable {
       logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
+    this.ticker?.stop();
+    this.eventSystem?.dispose();
+    this.assetService?.dispose();
+
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());
     this.geometries.forEach(geo => geo.dispose());
     this.materials.forEach(mat => mat.dispose());
     this.textures.forEach(tex => tex.dispose());
+    this.assetManagers.forEach(assetManager => assetManager.dispose());
+    this.compositions.forEach(comp => comp.dispose());
 
     this.textures = [];
     this.materials = [];
     this.geometries = [];
     this.meshes = [];
     this.renderPasses = [];
-    // @ts-expect-error
-    this.renderer = null;
+    this.compositions = [];
   }
 }

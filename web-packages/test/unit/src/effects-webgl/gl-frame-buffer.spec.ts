@@ -1,6 +1,6 @@
 import type { Engine, GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
-import type { GLEngine } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 import { GLFramebuffer, GLRenderbuffer, GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
@@ -27,14 +27,14 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
 
     before(async () => {
       await sleep(3000);
-      fakeRenderer = new GLRenderer(canvas, framework);
-      engine = fakeRenderer.engine;
+      engine = new GLEngine(canvas, { glType: framework });
+      fakeRenderer = new GLRenderer(engine);
       gl = fakeRenderer.glRenderer.engine.gl;
       gpu = engine.gpuCapability;
     });
 
     after(() => {
-      fakeRenderer.dispose();
+      engine.dispose();
       // @ts-expect-error
       fakeRenderer = null;
       // @ts-expect-error

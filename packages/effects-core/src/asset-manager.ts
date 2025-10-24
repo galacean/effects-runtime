@@ -94,7 +94,7 @@ export class AssetManager implements Disposable {
    * @param downloader - 资源下载对象
    */
   constructor (
-    public options: Omit<SceneLoadOptions, 'speed' | 'autoplay' | 'reusable'> = {},
+    public options: SceneLoadOptions = {},
     private readonly downloader = new Downloader(),
   ) {
     this.updateOptions(options);

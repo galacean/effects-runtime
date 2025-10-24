@@ -1,6 +1,6 @@
 //@ts-nocheck
 import { TextureSourceType, RenderPass, RenderPassDestroyAttachmentType, RenderPassAttachmentStorageType, OrderType, Mesh } from '@galacean/effects-core';
-import { GLRenderer, GLTexture, GLGeometry, GLMaterial } from '@galacean/effects-webgl';
+import { GLTexture, GLGeometry, GLMaterial, GLEngine } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { MathUtils } from './math-utils';
 
@@ -8,12 +8,12 @@ const { expect } = chai;
 
 describe('webgl/gl-render-pass', () => {
   let gl = getGL2()!;
-  let renderer = new GLRenderer(gl.canvas, 'webgl2');
-  let engine = renderer.engine;
+  let engine = new GLEngine(gl.canvas, { glType: 'webgl2' });
+  let renderer = engine.renderer;
 
   after(() => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    renderer.dispose();
+    engine.dispose();
     renderer = null;
     gl.canvas.remove();
     gl = null;

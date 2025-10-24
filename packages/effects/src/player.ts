@@ -2,14 +2,20 @@ import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
   Texture2DSourceOptionsVideo, TouchEventType, MessageItem,
   Region,
+
+  AssetManager, Composition,
+  Renderer, Ticker } from '@galacean/effects-core';
+import {
+  Engine,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, EventEmitter,
-  TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
-  isArray, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
-  assertExist, AssetService,
+  EVENT_TYPE_CLICK, logger, EventEmitter,
+  TextureLoadAction, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
+  isArray, spec,
+  assertExist,
+  SceneLoader,
 } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
+import type { GLEngine, GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
@@ -41,22 +47,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   readonly container: HTMLElement | null;
   /**
-   * 播放器的渲染对象
+   * 播放器使用的引擎
    */
-  readonly renderer: Renderer;
-  /**
-   * 计时器
-   * 手动渲染 `manualRender=true` 时不创建计时器
-   */
-  readonly ticker: Ticker;
+  readonly engine: Engine;
 
-  private readonly event: EventSystem;
   private readonly reportGPUTime?: (time: number) => void;
   private readonly onError?: (e: Error, ...args: any) => void;
-  /**
-   * 当前播放的合成对象数组，请不要修改内容
-   */
-  private compositions: Composition[] = [];
   private displayAspect: number;
   private displayScale = 1;
   private forceRenderNextFrame: boolean;
@@ -64,11 +60,41 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private resumePending = false;
   private offscreenMode: boolean;
   private disposed = false;
-  private assetManagers: AssetManager[] = [];
-  private assetService: AssetService;
   private speed = 1;
-  private baseCompositionIndex = 0;
   private useExternalCanvas = false;
+  private restoreCompositionsCache: Composition[] = [];
+
+  /**
+   * 计时器
+   * 手动渲染 `manualRender=true` 时不创建计时器
+   */
+  get ticker (): Ticker {
+    return this.engine.ticker;
+  }
+  /**
+   * 播放器的渲染器对象
+   */
+  get renderer (): Renderer {
+    return this.engine.renderer;
+  }
+  /**
+   * 当前播放的合成对象数组，请不要修改内容
+   */
+  private get compositions () {
+    return this.engine.compositions;
+  }
+
+  private get assetManagers () {
+    return this.engine.assetManagers;
+  }
+
+  private get assetService () {
+    return this.engine.assetService;
+  }
+
+  private get event () {
+    return this.engine.eventSystem;
+  }
 
   /**
    * 播放器的构造函数
@@ -126,32 +152,28 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       this.container = this.canvas.parentElement;
 
-      this.renderer = Renderer.create(
-        this.canvas,
-        framework,
-        {
-          preserveDrawingBuffer,
-          premultipliedAlpha,
-        }
-      );
+      this.engine = Engine.create(this.canvas, {
+        glType: framework,
+        preserveDrawingBuffer,
+        premultipliedAlpha,
+        manualRender,
+        fps,
+      });
       this.renderer.env = env;
       this.renderer.addLostHandler({ lost: this.lost });
       this.renderer.addRestoreHandler({ restore: this.restore });
-      this.gpuCapability = this.renderer.engine.gpuCapability;
-      this.assetService = new AssetService(this.renderer.engine);
+      this.gpuCapability = this.engine.gpuCapability;
 
       if (!manualRender) {
-        this.ticker = new Ticker(fps);
         this.ticker.add(this.tick.bind(this));
       }
 
-      this.event = new EventSystem(this.canvas, !!notifyTouch);
+      this.event.allowPropagation = !!notifyTouch;
       this.event.bindListeners();
       this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
       this.interactive = interactive;
 
       this.resize();
-      setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
 
       // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
       playerMap.forEach(player => {
@@ -317,124 +339,20 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     options?: SceneLoadOptions,
   ): Promise<Composition | Composition[]> {
     assertExist(this.renderer, 'Renderer is not exist, maybe the Player has been disabled or in gl \'debug-disable\' mode.');
-
-    const last = performance.now();
-    const scenes: Scene.LoadType[] = [];
-    const compositions: Composition[] = [];
     const autoplay = options?.autoplay ?? true;
-    const asyncShaderCompile = this.renderer.engine.gpuCapability?.detail?.asyncShaderCompile;
-    const baseOrder = this.baseCompositionIndex;
-
-    if (isArray(scene)) {
-      scenes.push(...scene);
-    } else {
-      scenes.push(scene);
-    }
-    this.baseCompositionIndex += scenes.length;
 
     if (autoplay) {
       this.autoPlaying = true;
     }
 
-    for (const assetManager of this.assetManagers) {
-      assetManager.dispose();
-    }
+    const composition = await SceneLoader.load(scene, this.engine, (message: MessageItem) => {
+      this.emit('message', message);
+    }, options);
 
-    this.assetManagers = [];
-    const autoplayFlags: boolean[] = [];
-
-    await Promise.all(
-      scenes.map(async (url, index) => {
-        const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
-        const compositionAutoplay = opts?.autoplay ?? autoplay;
-        const assetManager = new AssetManager(opts);
-
-        // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-        this.assetManagers.push(assetManager);
-
-        const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
-
-        if (this.disposed) {
-          compositions.length = 0;
-
-          return;
-        }
-
-        this.assetService.prepareAssets(scene, scene.assets);
-        this.assetService.updateTextVariables(scene, assetManager.options.variables);
-        this.assetService.initializeTexture(scene);
-
-        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
-
-        const composition = this.createComposition(scene, opts);
-
-        composition.setIndex(baseOrder + index);
-        compositions[index] = composition;
-        autoplayFlags[index] = compositionAutoplay;
-      }),
-    );
-    const compileStart = performance.now();
-
-    await new Promise(resolve => {
-      this.renderer.getShaderLibrary()?.compileAllShaders(() => resolve(null));
-    });
-
-    const compileTime = performance.now() - compileStart;
-
-    for (let i = 0; i < compositions.length; i++) {
-      if (autoplayFlags[i]) {
-        compositions[i].play();
-      } else {
-        compositions[i].pause();
-      }
-
-      // 注意：不要移动此行代码，避免出现多合成加载时，非自动播放的合成在加载时就开始渲染
-      this.compositions.push(compositions[i]);
-    }
-
-    this.ticker?.start();
+    const compositions = isArray(composition) ? composition : [composition];
 
     if (compositions.some(c => !c.getPaused())) {
       this.emit('play', { time: 0 });
-    }
-
-    const compositionNames = compositions.map(composition => composition.name);
-    const firstFrameTime = performance.now() - last;
-
-    for (const composition of compositions) {
-      composition.statistic.compileTime = compileTime;
-      composition.statistic.firstFrameTime = firstFrameTime;
-    }
-    logger.info(`First frame [${compositionNames}]: ${firstFrameTime.toFixed(4)}ms.`);
-    logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${compositionNames}]: ${compileTime.toFixed(4)}ms.`);
-
-    return isArray(scene) ? compositions : compositions[0];
-  }
-
-  private createComposition (
-    scene: Scene,
-    options: Omit<SceneLoadOptions, 'speed' | 'reusable'> = {},
-  ) {
-    const renderer = this.renderer;
-    const composition = new Composition({
-      ...options,
-      renderer,
-      width: renderer.getWidth(),
-      height: renderer.getHeight(),
-      event: this.event,
-      handleItemMessage: (message: MessageItem) => {
-        this.emit('message', message);
-      },
-    }, scene);
-
-    // 中低端设备降帧到 30fps·
-    if (this.ticker && options.renderLevel === spec.RenderLevel.B) {
-      this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
-    }
-
-    // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
-    if (this.env !== PLAYER_OPTIONS_ENV_EDITOR) {
-      this.assetService.createShaderVariant();
     }
 
     return composition;
@@ -566,7 +484,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.forceRenderNextFrame = false;
   }
   private doTick (dt: number, forceRender: boolean) {
-    const { renderErrors } = this.renderer.engine;
+    const { renderErrors } = this.engine;
 
     if (renderErrors.size > 0) {
       this.handleEmitEvent('rendererror', renderErrors.values().next().value);
@@ -578,7 +496,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
-    const currentCompositions = [];
 
     for (let i = 0; i < comps.length; i++) {
       const composition = comps[i];
@@ -586,18 +503,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       if (composition.textureOffloaded) {
         skipRender = true;
         logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
-        currentCompositions.push(composition);
         continue;
       }
-      if (!composition.isDestroyed && composition.renderer) {
-        composition.update(dt);
-      }
-      if (!composition.isDestroyed) {
-        currentCompositions.push(composition);
-      }
+      composition.update(dt);
     }
-    this.compositions = currentCompositions;
-    this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.handleEmitEvent('rendererror', new Error('Play when texture offloaded.'));
 
@@ -735,6 +644,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   lost = (e: Event) => {
     this.ticker?.pause();
+    this.restoreCompositionsCache = this.compositions.slice();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
     this.handleEmitEvent('webglcontextlost', e);
@@ -746,7 +656,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   restore = async () => {
     this.renderer.restore();
-    this.compositions = await Promise.all(this.compositions.map(async composition => {
+    await Promise.all(this.restoreCompositionsCache.map(async composition => {
       const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
       const newComposition = await this.loadScene(url);
 
@@ -771,6 +681,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       return newComposition;
     }));
 
+    this.restoreCompositionsCache = [];
+
     this.emit('webglcontextrestored');
     this.ticker?.resume();
 
@@ -787,37 +699,23 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   destroyCurrentCompositions () {
     this.compositions.forEach(comp => comp.dispose());
-    this.compositions.length = 0;
-    this.baseCompositionIndex = 0;
   }
 
   /**
    * 销毁播放器
-   * @param keepCanvas - 是否保留 canvas 画面，默认不保留，canvas 不能再被使用
    */
-  dispose (keepCanvas?: boolean): void {
+  dispose (): void {
     logger.info(`Call player destroyed: ${this.name}.`);
+
     if (this.disposed) {
       return;
     }
+
     playerMap.delete(this.canvas);
     this.pause();
-    this.ticker?.stop();
-    this.assetManagers.forEach(assetManager => assetManager.dispose());
-    this.compositions.forEach(comp => comp.dispose());
-    this.compositions.length = 0;
-    if (this.renderer) {
-      (this.renderer as GLRenderer).context.removeLostHandler({ lost: this.lost });
-      (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
-      this.renderer.dispose(!keepCanvas);
-    }
-    this.event?.dispose();
-    this.assetService?.dispose();
-    if (
-      this.canvas instanceof HTMLCanvasElement &&
-      !keepCanvas &&
-      (this.renderer as GLRenderer).context
-    ) {
+    this.engine.dispose();
+
+    if (this.canvas instanceof HTMLCanvasElement && (this.engine as GLEngine).context) {
       // TODO: 数据模版下掉可以由文本模块单独管理
       canvasPool.dispose();
       // canvas will become a cry emoji in Android if still in dom
@@ -826,6 +724,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
       this.canvas.remove();
     }
+
     // 在报错函数中传入 player.name
     const errorMsg = getDestroyedErrorMessage(this.name);
     const throwErrorFunc = () => throwError(errorMsg);

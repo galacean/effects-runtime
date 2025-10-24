@@ -1,5 +1,5 @@
-import type { GLEngine, GLRendererInternal } from '@galacean/effects-webgl';
-import { GLRenderer } from '@galacean/effects-webgl';
+import type { GLRendererInternal, GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
@@ -13,14 +13,14 @@ describe('webgl/gl-state', () => {
   before(() => {
     canvas = document.createElement('canvas');
     gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
-    renderer = new GLRenderer(canvas, 'webgl2');
-    engine = renderer.engine as GLEngine;
+    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    renderer = engine.renderer as GLRenderer;
 
     fakeRenderer = renderer.glRenderer;
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
     // @ts-expect-error

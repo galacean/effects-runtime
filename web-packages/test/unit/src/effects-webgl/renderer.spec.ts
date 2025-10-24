@@ -1,7 +1,7 @@
 import type { Renderer } from '@galacean/effects-core';
 import { TextureSourceType, RenderPass, Camera, TextureLoadAction, RenderFrame } from '@galacean/effects-core';
-import type { GLEngine } from '@galacean/effects-webgl';
-import { GLRenderer, GLTexture } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { readPixels } from './texture-utils.js';
 
 const { expect } = chai;
@@ -63,7 +63,8 @@ describe('webgl/renderer', () => {
   }
 
   it('copy texture in webgl1', () => {
-    const renderer = new GLRenderer(glCanvas, 'webgl');
+    const engine = new GLEngine(glCanvas, { glType: 'webgl' });
+    const renderer = engine.renderer as GLRenderer;
 
     setupRenderFrame(renderer);
     const ex = renderer.extension;
@@ -72,22 +73,24 @@ describe('webgl/renderer', () => {
 
     copy(renderer);
     expect(spy).has.been.called.once;
-    renderer.dispose();
+    engine.dispose();
   });
 
   it('copy texture in webgl2', () => {
-    const renderer = new GLRenderer(gl2Canvas, 'webgl2');
+    const engine = new GLEngine(gl2Canvas, { glType: 'webgl2' });
+    const renderer = engine.renderer as GLRenderer;
     const ex = renderer.extension;
     const func = ex.copy2;
     const spy = ex.copy2 = chai.spy(func);
 
     copy(renderer);
     expect(spy).has.been.called.once;
-    renderer.dispose();
+    engine.dispose();
   });
 
   it('copy texture in webgl1 will not change texture size', () => {
-    const renderer = new GLRenderer(glCanvas, 'webgl');
+    const engine = new GLEngine(glCanvas, { glType: 'webgl' });
+    const renderer = engine.renderer as GLRenderer;
     const source = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.data,
       data: {
@@ -112,7 +115,8 @@ describe('webgl/renderer', () => {
   });
 
   it('copy texture in webgl2 will not change texture size', () => {
-    const renderer = new GLRenderer(gl2Canvas, 'webgl2');
+    const engine = new GLEngine(gl2Canvas, { glType: 'webgl2' });
+    const renderer = engine.renderer as GLRenderer;
     const source = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.data,
       data: {
@@ -132,11 +136,12 @@ describe('webgl/renderer', () => {
     renderer.extension.copyTexture(source, target);
     expect(target.width).to.eql(5);
     expect(target.height).to.eql(5);
-    renderer.dispose();
+    engine.dispose();
   });
 
   it('reset fbo attachments', () => {
-    const renderer = new GLRenderer(glCanvas, 'webgl');
+    const engine = new GLEngine(glCanvas, { glType: 'webgl' });
+    const renderer = engine.renderer as GLRenderer;
     const gl = renderer.context.gl;
     const rp = new RenderPass(renderer, {
       viewport: [0, 0, 515, 512],
@@ -156,11 +161,12 @@ describe('webgl/renderer', () => {
     tex = gl?.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
     expect(tex).to.eql((texture).textureBuffer);
     expect(originTex.isDestroyed).to.be.true;
-    renderer.dispose();
+    engine.dispose();
   });
 
   it('safe to call destroy', async () => {
-    const renderer = new GLRenderer(glCanvas, 'webgl');
+    const engine = new GLEngine(glCanvas, { glType: 'webgl' });
+    const renderer = engine.renderer as GLRenderer;
     const gl = (renderer.engine as GLEngine).gl;
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
@@ -178,11 +184,12 @@ describe('webgl/renderer', () => {
       // @ts-expect-error protected
       expect(texture.destroyed).to.be.true;
     }, 60);
-    renderer.dispose();
+    engine.dispose();
   });
 
   it('reset render pass color attachments', () => {
-    const renderer = new GLRenderer(gl2Canvas, 'webgl2');
+    const engine = new GLEngine(gl2Canvas, { glType: 'webgl2' });
+    const renderer = engine.renderer as GLRenderer;
     const gl = renderer.context.gl as WebGLRenderingContext;
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
@@ -215,7 +222,7 @@ describe('webgl/renderer', () => {
     expect(spy).has.been.called.twice;
     expect(renderPass.attachments[0].texture.name).to.eql('t3');
     gl.checkFramebufferStatus = ori;
-    renderer.dispose();
+    engine.dispose();
   });
 });
 

@@ -8,14 +8,9 @@ import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
-import type { GLType } from '../gl';
 
 export class Renderer implements LostHandler, RestoreHandler {
-  static create: (
-    canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: GLType,
-    renderOptions?: WebGLContextAttributes,
-  ) => Renderer;
+  static create: (engine: Engine) => Renderer;
 
   engine: Engine;
 
@@ -26,7 +21,8 @@ export class Renderer implements LostHandler, RestoreHandler {
   */
   renderingData: RenderingData;
 
-  constructor () {
+  constructor (engine: Engine) {
+    this.engine = engine;
   }
 
   setGlobalFloat (name: string, value: number) {
@@ -140,7 +136,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     return null;
   }
 
-  dispose (haltGL?: boolean): void {
+  dispose (): void {
     // OVERRIDE
   }
 }

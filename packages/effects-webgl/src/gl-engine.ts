@@ -1,9 +1,10 @@
 import type { GLRendererInternal } from './gl-renderer-internal';
-import type { GLRenderer } from './gl-renderer';
+import { GLRenderer } from './gl-renderer';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
-import type { Nullable, Texture, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, glContext } from '@galacean/effects-core';
+import type { EngineOptions, Nullable, Texture, math } from '@galacean/effects-core';
+import { Engine, GPUCapability, assertExist, glContext } from '@galacean/effects-core';
+import { GLContextManager } from './gl-context-manager';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -14,9 +15,10 @@ type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
 export class GLEngine extends Engine {
-
   textureUnitDict: Record<string, WebGLTexture | null>;
   shaderLibrary: GLShaderLibrary;
+  gl: WebGLRenderingContext | WebGL2RenderingContext;
+  context: GLContextManager;
 
   private readonly maxTextureCount: number;
   private glCapabilityCache: Record<string, any>;
@@ -26,23 +28,41 @@ export class GLEngine extends Engine {
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
 
-  constructor (public gl: WebGLRenderingContext | WebGL2RenderingContext) {
-    super();
-    this.gpuCapability = new GPUCapability(gl);
+  constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
+    super(canvas, options);
+    options = {
+      preserveDrawingBuffer: undefined,
+      alpha: true,
+      stencil: true,
+      antialias: true,
+      depth: true,
+      premultipliedAlpha: true,
+      glType: 'webgl2',
+      ...options,
+    };
+
+    this.context = new GLContextManager(canvas, options.glType, options);
+    const gl = this.context.gl;
+
+    assertExist(gl);
 
     this.gl = gl;
-    this.shaderLibrary = new GLShaderLibrary(this);
-    this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
     this.reset();
+    this.gpuCapability = new GPUCapability(gl);
+    this.shaderLibrary = new GLShaderLibrary(this);
+    this.renderer = new GLRenderer(this);
+    this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
   }
 
   override dispose () {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     super.dispose();
 
+    this.context.dispose();
     this.shaderLibrary.dispose();
+    this.renderer.dispose();
     this.reset();
   }
 

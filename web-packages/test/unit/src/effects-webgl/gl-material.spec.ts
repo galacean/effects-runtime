@@ -3,8 +3,8 @@ import {
   RenderFrame, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion,
 } from '@galacean/effects-core';
-import type { GLTexture, GLShaderVariant, GLEngine } from '@galacean/effects-webgl';
-import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
+import type { GLTexture, GLShaderVariant, GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
 const { expect, assert } = chai;
@@ -29,13 +29,15 @@ describe('webgl/gl-material', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl2');
+    const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
+
+    renderer = glEngine.renderer as GLRenderer;
     gl = renderer.glRenderer.gl;
-    engine = renderer.engine;
+    engine = glEngine;
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
     canvas.remove();

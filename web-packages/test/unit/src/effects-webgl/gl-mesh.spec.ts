@@ -1,17 +1,18 @@
 import type { MaterialProps } from '@galacean/effects';
 import { Mesh, glContext, math } from '@galacean/effects';
-import type { GLShaderVariant } from '@galacean/effects-webgl';
-import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
+import type { GLShaderVariant, GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
 const { expect } = chai;
 
 describe('webgl/gl-mesh', () => {
   let canvas = document.createElement('canvas');
-  let renderer = new GLRenderer(canvas, 'webgl2');
+  const engine = new GLEngine(canvas, { glType: 'webgl2' });
+  let renderer = engine.renderer as GLRenderer;
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
     canvas.remove();
@@ -33,8 +34,7 @@ describe('webgl/gl-mesh', () => {
     const position = material.getVector2('uPos');
 
     await sleep(100);
-    // @ts-expect-error private property
-    expect((material.shaderVariant as GLShaderVariant).program.engine).to.eql((renderer.engine as GLEngine));
+    expect((material.shaderVariant as GLShaderVariant).program.engine).to.eql(engine);
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);

@@ -714,8 +714,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      // @ts-expect-error
-      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
+      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
 

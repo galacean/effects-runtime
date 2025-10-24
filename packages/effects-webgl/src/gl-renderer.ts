@@ -1,5 +1,5 @@
 import type {
-  Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
+  Disposable, Engine, Framebuffer, Geometry, LostHandler, Material, RenderFrame, RenderPass,
   RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
   ShaderLibrary, math,
 } from '@galacean/effects-core';
@@ -8,8 +8,7 @@ import {
   Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, sortByOrder,
 } from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
-import { GLContextManager } from './gl-context-manager';
-import { GLEngine } from './gl-engine';
+import type { GLEngine } from './gl-engine';
 import { GLFramebuffer } from './gl-framebuffer';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
@@ -25,31 +24,16 @@ export class GLRenderer extends Renderer implements Disposable {
   framebuffer: Framebuffer;
   temporaryRTs: Record<string, Framebuffer> = {};
 
-  readonly context: GLContextManager;
+  get context () {
+    return (this.engine as GLEngine).context;
+  }
 
-  constructor (
-    public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: GLType,
-    renderOptions?: WebGLContextAttributes,
-  ) {
-    super();
-    const options = {
-      preserveDrawingBuffer: undefined,
-      alpha: true,
-      stencil: true,
-      antialias: true,
-      depth: true,
-      premultipliedAlpha: true,
-      ...renderOptions,
-    };
+  constructor (engine: Engine) {
+    super(engine);
 
-    this.context = new GLContextManager(canvas, framework, options);
     const { gl } = this.context;
 
     assertExist(gl);
-    // engine 先创建
-    this.engine = new GLEngine(gl);
-    this.engine.renderer = this;
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
     this.renderingData = {
@@ -318,12 +302,10 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override dispose (): void {
-    this.context.dispose();
     this.extension.dispose();
     this.glRenderer?.dispose();
     // @ts-expect-error
     this.canvas = null;
-    this.engine.dispose();
   }
 
   override lost (e: Event) {
