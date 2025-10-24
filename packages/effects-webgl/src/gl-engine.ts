@@ -60,9 +60,9 @@ export class GLEngine extends Engine {
     }
     super.dispose();
 
-    this.context.dispose();
-    this.shaderLibrary.dispose();
     this.renderer.dispose();
+    this.shaderLibrary?.dispose();
+    this.context.dispose();
     this.reset();
   }
 

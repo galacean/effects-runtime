@@ -14,7 +14,7 @@ export class SceneLoader {
     const last = performance.now();
     const sceneUrls: Scene.LoadType[] = [];
     const compositions: Composition[] = [];
-    const asyncShaderCompile = engine.renderer.engine.gpuCapability?.detail?.asyncShaderCompile;
+    const asyncShaderCompile = engine.gpuCapability?.detail?.asyncShaderCompile;
     const baseOrder = engine.compositions.length;
 
     if (isArray(scene)) {
@@ -27,7 +27,7 @@ export class SceneLoader {
       assetManager.dispose();
     }
 
-    engine.renderer.engine.assetManagers = [];
+    engine.assetManagers = [];
 
     const sceneLoadResults = await Promise.all(
       sceneUrls.map(async (url, index) => {
@@ -43,7 +43,7 @@ export class SceneLoader {
       }),
     );
 
-    for (let i = 0;i < sceneLoadResults.length;i++) {
+    for (let i = 0; i < sceneLoadResults.length; i++) {
       const loadResult = sceneLoadResults[i];
       const scene = loadResult.scene;
       const assetManager = loadResult.assetManager;
