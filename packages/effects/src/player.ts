@@ -56,7 +56,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 计时器
    * 手动渲染 `manualRender=true` 时不创建计时器
    */
-  get ticker (): Ticker {
+  get ticker (): Ticker | null {
     return this.engine.ticker;
   }
   /**

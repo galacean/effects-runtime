@@ -60,12 +60,12 @@ export class Engine implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
-  env: string;
+  env?: string;
   /**
    * 计时器
    * 手动渲染 `manualRender=true` 时不创建计时器
    */
-  ticker: Ticker;
+  ticker: Ticker | null = null;
   canvas: HTMLCanvasElement;
   /**
    * 引擎的像素比
@@ -210,7 +210,7 @@ export class Engine implements Disposable {
   }
 
   runRenderLoop (renderFunction: (dt: number) => void): void {
-    this.ticker.add(renderFunction);
+    this.ticker?.add(renderFunction);
   }
 
   renderCompositions (dt: number): void {

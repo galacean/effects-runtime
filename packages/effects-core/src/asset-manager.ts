@@ -120,7 +120,7 @@ export class AssetManager implements Disposable {
   async loadScene (
     url: Scene.LoadType,
     renderer?: Renderer,
-    options?: { env: string },
+    options?: { env?: string },
   ): Promise<Scene> {
     let rawJSON: Scene.LoadType;
     const assetUrl = isString(url) ? url : this.id;
