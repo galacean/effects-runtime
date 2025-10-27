@@ -439,7 +439,7 @@ export class TextComponentBase {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
-    const pixelRatio = this.getPixelRatio(style.autoFontScale);
+    const pixelRatio = style.getPixelRatio();
 
     const width = (layout.width + style.fontOffset) * fontScale;
     const finalHeight = layout.lineHeight * this.lineCount;
@@ -622,22 +622,6 @@ export class TextComponentBase {
       context.shadowOffsetX = shadowOffsetX;
       context.shadowOffsetY = -shadowOffsetY;
     }
-  }
-
-  private getPixelRatio (autoFontScale: boolean): number {
-    const g = typeof window !== 'undefined'
-      ? window
-      : typeof self !== 'undefined'
-        ? self
-        : globalThis as any;
-
-    const dpr = g && typeof g.devicePixelRatio === 'number' ? g.devicePixelRatio : undefined;
-
-    if (!autoFontScale) {
-      return 1;
-    }
-
-    return (typeof dpr === 'number' && isFinite(dpr) && dpr > 0) ? dpr : 1;
   }
 
 }

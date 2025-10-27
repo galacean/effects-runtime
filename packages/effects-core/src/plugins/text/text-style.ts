@@ -70,7 +70,7 @@ export class TextStyle {
   /**
    * 字体倍数
    */
-  fontScale = 1;
+  fontScale = 2;
 
   autoFontScale = true;
 
@@ -110,5 +110,25 @@ export class TextStyle {
       this.fontOffset += this.fontSize * Math.tan(12 * 0.0174532925);
     }
 
+  }
+
+  /**
+   * 获取设备像素比
+   * @returns 设备像素比
+   */
+  getPixelRatio (): number {
+    const g = typeof window !== 'undefined'
+      ? window
+      : typeof self !== 'undefined'
+        ? self
+        : globalThis as any;
+
+    const dpr = g && typeof g.devicePixelRatio === 'number' ? g.devicePixelRatio / 2 : undefined;
+
+    if (!this.autoFontScale) {
+      return 2;
+    }
+
+    return (typeof dpr === 'number' && isFinite(dpr) && dpr > 0) ? dpr : 2;
   }
 }
