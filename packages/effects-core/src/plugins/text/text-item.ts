@@ -162,7 +162,7 @@ export class TextComponentBase {
     }
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0);
+      const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
       x += letterSpace;
