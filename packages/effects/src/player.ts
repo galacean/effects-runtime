@@ -1,6 +1,6 @@
 import type {
   Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
-  Texture2DSourceOptionsVideo, TouchEventType, MessageItem,
+  Texture2DSourceOptionsVideo, MessageItem,
   Region,
 
   AssetManager, Composition,
@@ -9,7 +9,7 @@ import {
   Engine,
 } from '@galacean/effects-core';
 import {
-  EVENT_TYPE_CLICK, logger, EventEmitter,
+  logger, EventEmitter,
   TextureLoadAction, canvasPool, getPixelRatio, initErrors, isIOS,
   isArray, spec,
   assertExist,
@@ -173,7 +173,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.canvas = document.createElement('canvas');
         container.appendChild(this.canvas);
       }
-
       this.container = this.canvas.parentElement;
 
       this.engine = Engine.create(this.canvas, {
@@ -184,10 +183,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         premultipliedAlpha,
         manualRender,
         notifyTouch:notifyTouch,
+        interactive,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
       });
       this.engine.name = this.name;
       this.engine.offscreenMode = true;
+
+      // Bind engine events
       this.engine.onRenderError = (e: Event | Error) => {
         this.handleEmitEvent('rendererror', e);
       };
@@ -199,11 +201,22 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           });
         }
       };
+      this.engine.onClick = (eventData: Region) => {
+        const behavior = eventData.behavior || spec.InteractBehavior.NOTIFY;
+
+        if (behavior === spec.InteractBehavior.NOTIFY) {
+          this.emit('click', {
+            ...eventData,
+            player:this,
+            compositionId: eventData.composition.id,
+            compositionName: eventData.composition.name,
+          });
+        } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
+          void this.resume();
+        }
+      };
       this.engine.addLostHandler({ lost: this.lost });
       this.engine.addRestoreHandler({ restore: this.restore });
-
-      this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
-      this.interactive = interactive;
 
       // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
       playerMap.forEach(player => {
@@ -687,48 +700,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private offloadTexture () {
     this.compositions.forEach(comp => comp.offloadTexture());
   }
-
-  private handleClick = (e: TouchEventType) => {
-    const { x, y } = e;
-    const hitInfos: (Region & {
-      player: Player,
-      composition: Composition,
-    })[] = [];
-
-    // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
-    this.compositions.forEach(composition => {
-      const regions = composition.hitTest(x, y);
-
-      for (const region of regions) {
-        hitInfos.push({
-          ...region,
-          player: this,
-          composition,
-        });
-      }
-    });
-
-    for (let i = 0; i < hitInfos.length; i++) {
-      const hitInfo = hitInfos[i];
-      const behavior = hitInfo.behavior || spec.InteractBehavior.NOTIFY;
-
-      if (behavior === spec.InteractBehavior.NOTIFY) {
-        this.emit('click', {
-          ...hitInfo,
-          compositionId: hitInfo.composition.id,
-          compositionName: hitInfo.composition.name,
-        });
-
-        hitInfo.composition.emit('click', {
-          ...hitInfo,
-          compositionId: hitInfo.composition.id,
-          compositionName: hitInfo.composition.name,
-        });
-      } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
-        void this.resume();
-      }
-    }
-  };
 
   private handleThrowError (e: Error) {
     if (this.onError) {

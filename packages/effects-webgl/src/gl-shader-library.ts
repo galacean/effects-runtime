@@ -142,7 +142,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       // console.log('compileShader ' + result.cacheId + ' ' + result.compileTime + ' ', shader.source);
     };
     const checkComplete = () => {
-      if (this.engine.isDisposed) {
+      if (this.engine.disposed) {
         console.warn('The player is destroyed during the loadScene process. Please check the timing of calling loadScene and dispose. A common situation is that when calling loadScene, await is not added. This will cause dispose to be called before loadScene is completed.');
 
         return asyncCallback?.(result);

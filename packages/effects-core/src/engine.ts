@@ -15,9 +15,11 @@ import type { Composition } from './composition';
 import type { AssetManager } from './asset-manager';
 import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
-import { EventSystem } from './plugins/interact/event-system';
+import type { TouchEventType } from './plugins/interact/event-system';
+import { EVENT_TYPE_CLICK, EventSystem } from './plugins/interact/event-system';
 import type { GLType } from './gl/create-gl-context';
 import { HELP_LINK } from './constants';
+import type { Region } from './plugins/interact/click-handler';
 
 export interface EngineOptions extends WebGLContextAttributes {
   manualRender?: boolean,
@@ -25,6 +27,7 @@ export interface EngineOptions extends WebGLContextAttributes {
   fps?: number,
   pixelRatio?: number,
   notifyTouch?: boolean,
+  interactive?: boolean,
   env?: string,
 }
 
@@ -76,7 +79,7 @@ export class Engine implements Disposable {
   onRenderError?: (e: Event | Error) => void;
   onRenderCompositions?: (dt: number) => void;
 
-  protected disposed = false;
+  protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
@@ -85,8 +88,8 @@ export class Engine implements Disposable {
 
   private assetLoader: AssetLoader;
 
-  get isDisposed (): boolean {
-    return this.disposed;
+  get disposed (): boolean {
+    return this._disposed;
   }
 
   /**
@@ -106,8 +109,10 @@ export class Engine implements Disposable {
     }
 
     this.eventSystem = new EventSystem(this.canvas);
+    this.eventSystem.enabled = options?.interactive ?? false;
     this.eventSystem.allowPropagation = options?.notifyTouch ?? false;
     this.eventSystem.bindListeners();
+    this.eventSystem.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
 
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
@@ -386,6 +391,42 @@ export class Engine implements Disposable {
     this.renderer.addRestoreHandler(restoreHandler);
   }
 
+  onClick?: (eventData: Region) => void;
+
+  private handleClick = (e: TouchEventType) => {
+    const { x, y } = e;
+    const hitInfos: (Region & {
+      composition: Composition,
+    })[] = [];
+
+    // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
+    this.compositions.forEach(composition => {
+      const regions = composition.hitTest(x, y);
+
+      for (const region of regions) {
+        hitInfos.push({
+          ...region,
+          composition,
+        });
+      }
+    });
+
+    for (let i = 0; i < hitInfos.length; i++) {
+      const hitInfo = hitInfos[i];
+      const behavior = hitInfo.behavior || spec.InteractBehavior.NOTIFY;
+
+      this.onClick?.(hitInfo);
+
+      if (behavior === spec.InteractBehavior.NOTIFY) {
+        hitInfo.composition.emit('click', {
+          ...hitInfo,
+          compositionId: hitInfo.composition.id,
+          compositionName: hitInfo.composition.name,
+        });
+      }
+    }
+  };
+
   addTexture (tex: Texture) {
     if (this.disposed) {
       return;
@@ -481,7 +522,7 @@ export class Engine implements Disposable {
     if (this.disposed) {
       return;
     }
-    this.disposed = true;
+    this._disposed = true;
 
     const info: string[] = [];
 

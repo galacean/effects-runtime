@@ -3,7 +3,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { Component } from './components';
-import type { CompositionHitTestOptions } from './composition';
+import type { Composition, CompositionHitTestOptions } from './composition';
 import type { Region, TrackAsset } from './plugins';
 import { TimelineInstance } from './plugins';
 import { HitTestType } from './plugins';
@@ -175,6 +175,7 @@ export class CompositionComponent extends Component {
               parentId: item.parentId,
               hitPositions,
               behavior: hitParams.behavior,
+              composition: this.item.composition as Composition,
             };
 
             // 触发单个元素的点击事件
