@@ -52,6 +52,9 @@ export class GLEngine extends Engine {
     this.shaderLibrary = new GLShaderLibrary(this);
     this.renderer = new GLRenderer(this);
     this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
+
+    // resize need gl renderer initialized
+    this.resize();
   }
 
   override dispose () {

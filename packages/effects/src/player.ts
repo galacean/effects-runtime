@@ -1,5 +1,5 @@
 import type {
-  Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
+  Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
   Texture2DSourceOptionsVideo, TouchEventType, MessageItem,
   Region,
 
@@ -10,12 +10,12 @@ import {
 } from '@galacean/effects-core';
 import {
   EVENT_TYPE_CLICK, logger, EventEmitter,
-  TextureLoadAction, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
+  TextureLoadAction, canvasPool, getPixelRatio, initErrors, isIOS,
   isArray, spec,
   assertExist,
   SceneLoader,
 } from '@galacean/effects-core';
-import type { GLEngine, GLRenderer } from '@galacean/effects-webgl';
+import type { GLEngine } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
@@ -30,10 +30,6 @@ let seed = 1;
 export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
   /**
-   * 播放器的像素比
-   */
-  readonly pixelRatio: number;
-  /**
    * 播放器的 canvas 对象
    */
   readonly canvas: HTMLCanvasElement;
@@ -41,7 +37,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 播放器的唯一标识
    */
   readonly name: string;
-  readonly gpuCapability: GPUCapability;
   /**
    * 播放器的容器元素
    */
@@ -51,18 +46,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   readonly engine: Engine;
 
-  private readonly reportGPUTime?: (time: number) => void;
   private readonly onError?: (e: Error, ...args: any) => void;
-  private displayAspect: number;
-  private displayScale = 1;
-  private forceRenderNextFrame: boolean;
   private autoPlaying: boolean;
   private resumePending = false;
-  private offscreenMode: boolean;
-  private disposed = false;
-  private speed = 1;
-  private useExternalCanvas = false;
   private restoreCompositionsCache: Composition[] = [];
+  private disposed = false;
 
   /**
    * 计时器
@@ -76,6 +64,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   get renderer (): Renderer {
     return this.engine.renderer;
+  }
+
+  get gpuCapability () {
+    return this.engine.gpuCapability;
   }
   /**
    * 当前播放的合成对象数组，请不要修改内容
@@ -96,6 +88,40 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     return this.engine.eventSystem;
   }
 
+  private get displayAspect () {
+    return this.engine.displayAspect;
+  }
+
+  private set displayAspect (value: number) {
+    this.engine.displayAspect = value;
+  }
+
+  private get displayScale () {
+    return this.engine.displayScale;
+  }
+
+  private set displayScale (value: number) {
+    this.engine.displayScale = value;
+  }
+
+  private get offscreenMode () {
+    return this.engine.offscreenMode;
+  }
+
+  private set offscreenMode (value: boolean) {
+    this.engine.offscreenMode = value;
+  }
+  /**
+   * 播放器的像素比
+   */
+  private get pixelRatio () {
+    return this.engine.pixelRatio;
+  }
+
+  private set pixelRatio (value: number) {
+    this.engine.pixelRatio = value;
+  }
+
   /**
    * 播放器的构造函数
    * @param config
@@ -104,7 +130,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     super();
 
     const {
-      container, canvas, fps, name, pixelRatio, manualRender, reportGPUTime,
+      container, canvas, fps, name, pixelRatio, manualRender,
       renderFramework: glType, notifyTouch, onError,
       interactive = false,
       renderOptions = {},
@@ -127,11 +153,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       framework = glType === 'webgl' ? 'webgl' : 'webgl2';
     }
 
-    this.reportGPUTime = reportGPUTime;
-    this.pixelRatio = Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio();
-    this.offscreenMode = true;
     this.env = env;
     this.name = name || `${seed++}`;
+    let useExternalCanvas = false;
 
     try {
       if (initErrors.length) {
@@ -143,7 +167,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       if (canvas) {
         this.canvas = canvas;
-        this.useExternalCanvas = true;
+        useExternalCanvas = true;
       } else {
         assertContainer(container);
         this.canvas = document.createElement('canvas');
@@ -158,23 +182,30 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         premultipliedAlpha,
         manualRender,
         fps,
+        pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
       });
       this.engine.env = env;
+      this.engine.name = this.name;
+      this.engine.offscreenMode = true;
+      this.engine.onRenderError = (e: Event | Error) => {
+        this.handleEmitEvent('rendererror', e);
+      };
+      this.engine.onRenderCompositions = (dt: number) => {
+        if (this.autoPlaying) {
+          this.emit('update', {
+            player: this,
+            playing: true,
+          });
+        }
+      };
       this.renderer.env = env;
       this.renderer.addLostHandler({ lost: this.lost });
       this.renderer.addRestoreHandler({ restore: this.restore });
-      this.gpuCapability = this.engine.gpuCapability;
-
-      if (!manualRender) {
-        this.ticker.add(this.tick.bind(this));
-      }
 
       this.event.allowPropagation = !!notifyTouch;
       this.event.bindListeners();
       this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
       this.interactive = interactive;
-
-      this.resize();
 
       // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
       playerMap.forEach(player => {
@@ -186,7 +217,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       assertNoConcurrentPlayers();
     } catch (e: any) {
-      if (this.canvas && !this.useExternalCanvas) {
+      if (this.canvas && useExternalCanvas) {
         this.canvas.remove();
       }
       this.handleThrowError(e);
@@ -199,7 +230,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   setSpeed (speed: number) {
     if (!isNaN(speed)) {
-      this.speed = speed;
+      this.engine.speed = speed;
     }
   }
   /**
@@ -207,7 +238,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @returns
    */
   getSpeed (): number {
-    return this.speed;
+    return this.engine.speed;
   }
 
   /**
@@ -421,7 +452,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.ticker) {
       this.ticker.start();
     } else {
-      this.doTick(0, true);
+      this.tick(0);
     }
     this.emit('play', { time });
   }
@@ -440,7 +471,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       composition.gotoAndStop(time);
     });
     if (!this.ticker || this.ticker?.getPaused()) {
-      this.doTick(0, true);
+      this.tick(0);
     }
     this.emit('pause');
   }
@@ -511,74 +542,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param dt - 时间差，毫秒
    */
   tick (dt: number) {
-    this.doTick(dt, this.forceRenderNextFrame);
-    this.forceRenderNextFrame = false;
-  }
-  private doTick (dt: number, forceRender: boolean) {
-    const { renderErrors } = this.engine;
-
-    if (renderErrors.size > 0) {
-      this.handleEmitEvent('rendererror', renderErrors.values().next().value);
-      // 有渲染错误时暂停播放
-      this.ticker?.pause();
-    }
-    dt = Math.min(dt, 33) * this.speed;
-    const comps = this.compositions;
-    let skipRender = false;
-
-    comps.sort((a, b) => a.getIndex() - b.getIndex());
-
-    for (let i = 0; i < comps.length; i++) {
-      const composition = comps[i];
-
-      if (composition.textureOffloaded) {
-        skipRender = true;
-        logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
-        continue;
-      }
-      composition.update(dt);
-    }
-    if (skipRender) {
-      this.handleEmitEvent('rendererror', new Error('Play when texture offloaded.'));
-
-      return this.ticker?.pause();
-    }
-    if (!this.paused || forceRender) {
-      const { level } = this.gpuCapability;
-      const { gl } = (this.renderer as GLRenderer).context;
-      const time = (level === 2 && this.reportGPUTime) ? gpuTimer(gl as WebGL2RenderingContext) : undefined;
-
-      time?.begin();
-      if (
-        this.compositions.length ||
-        this.compositions.length < comps.length ||
-        forceRender
-      ) {
-        this.renderer.setFramebuffer(null);
-        this.renderer.clear({
-          stencilAction: TextureLoadAction.clear,
-          clearStencil: 0,
-          depthAction: TextureLoadAction.clear,
-          clearDepth: 1,
-          colorAction: TextureLoadAction.clear,
-          clearColor: [0, 0, 0, 0],
-        });
-        for (let i = 0; i < comps.length; i++) {
-          !comps[i].renderFrame.isDestroyed && this.renderer.renderRenderFrame(comps[i].renderFrame);
-        }
-      }
-      time?.end();
-      time?.getTime()
-        .then(t => this.reportGPUTime?.(t ?? 0))
-        .catch;
-
-      if (this.autoPlaying) {
-        this.emit('update', {
-          player: this,
-          playing: true,
-        });
-      }
-    }
+    this.engine.renderCompositions(dt);
   }
 
   /**
@@ -600,73 +564,22 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 将播放器重新和父容器大小对齐
    */
   resize () {
-    const { parentElement } = this.canvas;
-    let containerWidth;
-    let containerHeight;
-    let canvasWidth;
-    let canvasHeight;
-
-    if (parentElement) {
-      const size = this.getTargetSize(parentElement);
-
-      containerWidth = size[0];
-      containerHeight = size[1];
-      canvasWidth = size[2];
-      canvasHeight = size[3];
-    } else {
-      containerWidth = canvasWidth = this.canvas.width;
-      containerHeight = canvasHeight = this.canvas.height;
-    }
-    const aspect = containerWidth / containerHeight;
-
-    if (containerWidth && containerHeight) {
-      const documentWidth = document.documentElement.clientWidth;
-
-      if (canvasWidth > documentWidth * 2) {
-        logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}.`);
-      }
-      const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : 2048;
-
-      if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
-        logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}.`);
-        if (aspect > 1) {
-          canvasWidth = Math.round(maxSize);
-          canvasHeight = Math.round(maxSize / aspect);
-        } else {
-          canvasHeight = Math.round(maxSize);
-          canvasWidth = Math.round(maxSize * aspect);
-        }
-      }
-      // ios 14.1 -ios 14.3 resize canvas will cause memory leak
-      this.renderer.resize(canvasWidth, canvasHeight);
-      this.canvas.style.width = containerWidth + 'px';
-      this.canvas.style.height = containerHeight + 'px';
-      logger.info(`Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
-      this.compositions?.forEach(comp => {
-        comp.camera.aspect = aspect;
-        comp.camera.pixelHeight = this.renderer.getHeight();
-        comp.camera.pixelWidth = this.renderer.getWidth();
-      });
-    }
+    this.engine.resize();
   }
 
   /**
    * 清空 canvas 的画面
    * @param immediate - 如果立即清理，当前画面将会消失，如果 player 还有合成在渲染，可能出现闪烁
    */
-  clearCanvas (immediate?: boolean) {
-    if (immediate) {
-      this.renderer.clear({
-        stencilAction: TextureLoadAction.clear,
-        clearStencil: 0,
-        depthAction: TextureLoadAction.clear,
-        clearDepth: 1,
-        colorAction: TextureLoadAction.clear,
-        clearColor: [0, 0, 0, 0],
-      });
-    } else {
-      this.forceRenderNextFrame = true;
-    }
+  clearCanvas () {
+    this.renderer.clear({
+      stencilAction: TextureLoadAction.clear,
+      clearStencil: 0,
+      depthAction: TextureLoadAction.clear,
+      clearDepth: 1,
+      colorAction: TextureLoadAction.clear,
+      clearColor: [0, 0, 0, 0],
+    });
   }
 
   /**
@@ -818,55 +731,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
     }
   };
-
-  private getTargetSize (parentEle: HTMLElement) {
-    assertContainer(parentEle);
-    const displayAspect = this.displayAspect;
-    // 小程序环境没有 getComputedStyle
-    const computedStyle = window.getComputedStyle?.(parentEle);
-    let targetWidth;
-    let targetHeight;
-    let finalWidth = 0;
-    let finalHeight = 0;
-
-    if (computedStyle) {
-      finalWidth = parseInt(computedStyle.width, 10);
-      finalHeight = parseInt(computedStyle.height, 10);
-    } else {
-      finalWidth = parentEle.clientWidth;
-      finalHeight = parentEle.clientHeight;
-    }
-
-    if (displayAspect) {
-      const parentAspect = finalWidth / finalHeight;
-
-      if (parentAspect > displayAspect) {
-        targetHeight = finalHeight * this.displayScale;
-        targetWidth = targetHeight * displayAspect;
-      } else {
-        targetWidth = finalWidth * this.displayScale;
-        targetHeight = targetWidth / displayAspect;
-      }
-    } else {
-      targetWidth = finalWidth;
-      targetHeight = finalHeight;
-    }
-    const ratio = this.pixelRatio;
-    let containerWidth = targetWidth;
-    let containerHeight = targetHeight;
-
-    targetWidth = Math.round(targetWidth * ratio);
-    targetHeight = Math.round(targetHeight * ratio);
-    if (targetHeight < 1 || targetHeight < 1) {
-      if (this.offscreenMode) {
-        targetWidth = targetHeight = containerWidth = containerHeight = 1;
-      } else {
-        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
-      }
-    }
-
-    return [containerWidth, containerHeight, targetWidth, targetHeight];
-  }
 
   private handleThrowError (e: Error) {
     if (this.onError) {

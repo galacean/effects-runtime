@@ -6,9 +6,9 @@ import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
-import { generateTransparentTexture, generateWhiteTexture } from './texture';
+import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
-import { addItem, isPlainObject, logger, removeItem } from './utils';
+import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
 import type { Composition } from './composition';
@@ -16,18 +16,25 @@ import type { AssetManager } from './asset-manager';
 import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
 import { EventSystem } from './plugins/interact/event-system';
-import type { GLType } from './gl';
+import type { GLType } from './gl/create-gl-context';
+import { HELP_LINK } from './constants';
 
 export interface EngineOptions extends WebGLContextAttributes {
   manualRender?: boolean,
   glType?: GLType,
   fps?: number,
+  pixelRatio?: number,
 }
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine implements Disposable {
+  name = 'NewEngine';
+  speed = 1;
+  displayAspect: number;
+  displayScale = 1;
+  offscreenMode = false;
   /**
    * 渲染器
    */
@@ -60,6 +67,12 @@ export class Engine implements Disposable {
    */
   ticker: Ticker;
   canvas: HTMLCanvasElement;
+  /**
+   * 引擎的像素比
+   */
+  pixelRatio: number;
+  onRenderError?: (e: Event | Error) => void;
+  onRenderCompositions?: (dt: number) => void;
 
   protected disposed = false;
   protected textures: Texture[] = [];
@@ -69,6 +82,10 @@ export class Engine implements Disposable {
   protected renderPasses: RenderPass[] = [];
 
   private assetLoader: AssetLoader;
+
+  get isDisposed (): boolean {
+    return this.disposed;
+  }
 
   /**
    *
@@ -81,11 +98,12 @@ export class Engine implements Disposable {
     this.transparentTexture = generateTransparentTexture(this);
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
+      this.runRenderLoop(this.renderCompositions.bind(this));
     }
     this.eventSystem = new EventSystem(this.canvas);
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
-
+    this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
   }
 
   /**
@@ -191,30 +209,159 @@ export class Engine implements Disposable {
     }
   }
 
-  async createVFXItems (scene: Scene) {
-    const { jsonScene } = scene;
+  runRenderLoop (renderFunction: (dt: number) => void): void {
+    this.ticker.add(renderFunction);
+  }
 
-    for (const itemData of jsonScene.items) {
-      const itemType = itemData.type;
+  renderCompositions (dt: number): void {
+    const { renderErrors } = this;
 
-      if (!(
-        itemType === 'ECS' as spec.ItemType ||
-        itemType === 'camera' as spec.ItemType ||
-        itemType === spec.ItemType.sprite ||
-        itemType === spec.ItemType.particle ||
-        itemType === spec.ItemType.mesh ||
-        itemType === spec.ItemType.skybox ||
-        itemType === spec.ItemType.light ||
-        itemType === spec.ItemType.tree ||
-        itemType === spec.ItemType.interact ||
-        itemType === spec.ItemType.camera
-      )) {
+    if (renderErrors.size > 0) {
+      this.onRenderError?.(renderErrors.values().next().value);
+      // 有渲染错误时暂停播放
+      this.ticker?.pause();
+    }
+    dt = Math.min(dt, 33) * this.speed;
+    const comps = this.compositions;
+    let skipRender = false;
+
+    comps.sort((a, b) => a.getIndex() - b.getIndex());
+
+    for (let i = 0; i < comps.length; i++) {
+      const composition = comps[i];
+
+      if (composition.textureOffloaded) {
+        skipRender = true;
+        logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
         continue;
       }
-      if (this.database) {
-        this.assetLoader.loadGUID(itemData);
+      composition.update(dt);
+    }
+
+    if (skipRender) {
+      this.onRenderError?.(new Error('Play when texture offloaded.'));
+
+      return this.ticker?.pause();
+    }
+    this.renderer.setFramebuffer(null);
+    this.renderer.clear({
+      stencilAction: TextureLoadAction.clear,
+      clearStencil: 0,
+      depthAction: TextureLoadAction.clear,
+      clearDepth: 1,
+      colorAction: TextureLoadAction.clear,
+      clearColor: [0, 0, 0, 0],
+    });
+    for (let i = 0; i < comps.length; i++) {
+      !comps[i].renderFrame.isDestroyed && this.renderer.renderRenderFrame(comps[i].renderFrame);
+    }
+
+    this.onRenderCompositions?.(dt);
+  }
+
+  /**
+   * 将渲染器重新和父容器大小对齐
+   */
+  resize () {
+    const { parentElement } = this.canvas;
+    let containerWidth;
+    let containerHeight;
+    let canvasWidth;
+    let canvasHeight;
+
+    if (parentElement) {
+      const size = this.getTargetSize(parentElement);
+
+      containerWidth = size[0];
+      containerHeight = size[1];
+      canvasWidth = size[2];
+      canvasHeight = size[3];
+    } else {
+      containerWidth = canvasWidth = this.canvas.width;
+      containerHeight = canvasHeight = this.canvas.height;
+    }
+    const aspect = containerWidth / containerHeight;
+
+    if (containerWidth && containerHeight) {
+      const documentWidth = document.documentElement.clientWidth;
+
+      if (canvasWidth > documentWidth * 2) {
+        logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}.`);
+      }
+      const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : 2048;
+
+      if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
+        logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}.`);
+        if (aspect > 1) {
+          canvasWidth = Math.round(maxSize);
+          canvasHeight = Math.round(maxSize / aspect);
+        } else {
+          canvasHeight = Math.round(maxSize);
+          canvasWidth = Math.round(maxSize * aspect);
+        }
+      }
+      // ios 14.1 -ios 14.3 resize canvas will cause memory leak
+      this.renderer.resize(canvasWidth, canvasHeight);
+      this.canvas.style.width = containerWidth + 'px';
+      this.canvas.style.height = containerHeight + 'px';
+      logger.info(`Resize engine ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
+      this.compositions?.forEach(comp => {
+        comp.camera.aspect = aspect;
+        comp.camera.pixelHeight = this.renderer.getHeight();
+        comp.camera.pixelWidth = this.renderer.getWidth();
+      });
+    }
+  }
+
+  private getTargetSize (parentEle: HTMLElement) {
+    if (parentEle === undefined || parentEle === null) {
+      throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}.`);
+    }
+    const displayAspect = this.displayAspect;
+    // 小程序环境没有 getComputedStyle
+    const computedStyle = window.getComputedStyle?.(parentEle);
+    let targetWidth;
+    let targetHeight;
+    let finalWidth = 0;
+    let finalHeight = 0;
+
+    if (computedStyle) {
+      finalWidth = parseInt(computedStyle.width, 10);
+      finalHeight = parseInt(computedStyle.height, 10);
+    } else {
+      finalWidth = parentEle.clientWidth;
+      finalHeight = parentEle.clientHeight;
+    }
+
+    if (displayAspect) {
+      const parentAspect = finalWidth / finalHeight;
+
+      if (parentAspect > displayAspect) {
+        targetHeight = finalHeight * this.displayScale;
+        targetWidth = targetHeight * displayAspect;
+      } else {
+        targetWidth = finalWidth * this.displayScale;
+        targetHeight = targetWidth / displayAspect;
+      }
+    } else {
+      targetWidth = finalWidth;
+      targetHeight = finalHeight;
+    }
+    const ratio = this.pixelRatio;
+    let containerWidth = targetWidth;
+    let containerHeight = targetHeight;
+
+    targetWidth = Math.round(targetWidth * ratio);
+    targetHeight = Math.round(targetHeight * ratio);
+    if (targetHeight < 1 || targetHeight < 1) {
+      if (this.offscreenMode) {
+        targetWidth = targetHeight = containerWidth = containerHeight = 1;
+      } else {
+        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
       }
     }
+
+    return [containerWidth, containerHeight, targetWidth, targetHeight];
   }
 
   addTexture (tex: Texture) {
@@ -299,10 +446,6 @@ export class Engine implements Disposable {
       return;
     }
     removeItem(this.compositions, composition);
-  }
-
-  get isDestroyed (): boolean {
-    return this.disposed;
   }
 
   getShaderLibrary (): ShaderLibrary {
