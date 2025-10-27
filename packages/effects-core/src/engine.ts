@@ -7,7 +7,7 @@ import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
-import type { Disposable } from './utils';
+import type { Disposable, LostHandler, RestoreHandler } from './utils';
 import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
@@ -24,6 +24,7 @@ export interface EngineOptions extends WebGLContextAttributes {
   glType?: GLType,
   fps?: number,
   pixelRatio?: number,
+  notifyTouch?: boolean,
 }
 
 /**
@@ -60,7 +61,7 @@ export class Engine implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
-  env?: string;
+  env = '';
   /**
    * 计时器
    * 手动渲染 `manualRender=true` 时不创建计时器
@@ -96,11 +97,16 @@ export class Engine implements Disposable {
     this.objectInstance = {};
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateTransparentTexture(this);
+
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
       this.runRenderLoop(this.renderCompositions.bind(this));
     }
+
     this.eventSystem = new EventSystem(this.canvas);
+    this.eventSystem.allowPropagation = options?.notifyTouch ?? false;
+    this.eventSystem.bindListeners();
+
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
@@ -362,6 +368,20 @@ export class Engine implements Disposable {
     }
 
     return [containerWidth, containerHeight, targetWidth, targetHeight];
+  }
+
+  /**
+   * @internal
+   */
+  addLostHandler (lostHandler: LostHandler): void {
+    this.renderer.addLostHandler(lostHandler);
+  }
+
+  /**
+   * @internal
+   */
+  addRestoreHandler (restoreHandler: RestoreHandler) {
+    this.renderer.addRestoreHandler(restoreHandler);
   }
 
   addTexture (tex: Texture) {

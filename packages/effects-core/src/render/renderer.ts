@@ -13,9 +13,6 @@ export class Renderer implements LostHandler, RestoreHandler {
   static create: (engine: Engine) => Renderer;
 
   engine: Engine;
-
-  env: string;
-
   /**
   * 存放渲染需要用到的数据
   */

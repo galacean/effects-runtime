@@ -915,7 +915,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.dispose = noop;
 
-    if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+    if (this.getEngine().env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
     this.renderer.clear({

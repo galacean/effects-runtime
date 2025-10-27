@@ -181,6 +181,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         preserveDrawingBuffer,
         premultipliedAlpha,
         manualRender,
+        notifyTouch:notifyTouch,
         fps,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
       });
@@ -198,12 +199,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           });
         }
       };
-      this.renderer.env = env;
-      this.renderer.addLostHandler({ lost: this.lost });
-      this.renderer.addRestoreHandler({ restore: this.restore });
+      this.engine.addLostHandler({ lost: this.lost });
+      this.engine.addRestoreHandler({ restore: this.restore });
 
-      this.event.allowPropagation = !!notifyTouch;
-      this.event.bindListeners();
       this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
       this.interactive = interactive;
 
