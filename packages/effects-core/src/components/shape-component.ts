@@ -320,14 +320,22 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMask0 = this.material.colorMask;
-    const previousColorMask1 = this.materials[1].colorMask;
 
-    this.material.colorMask = false;
-    this.materials[1].colorMask = false;
-    this.draw(renderer);
-    this.material.colorMask = previousColorMask0;
-    this.materials[1].colorMask = previousColorMask1;
+    let previousColorMask = false;
+
+    for (let i = 0; i < this.fillMaterials.length; i++) {
+      previousColorMask = this.fillMaterials[i].colorMask;
+      this.fillMaterials[i].colorMask = false;
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
+      this.fillMaterials[i].colorMask = previousColorMask;
+    }
+
+    for (let i = 0; i < this.strokeMaterials.length; i++) {
+      previousColorMask = this.strokeMaterials[i].colorMask;
+      this.strokeMaterials[i].colorMask = false;
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
+      this.strokeMaterials[i].colorMask = previousColorMask;
+    }
   }
 
   private draw (renderer: Renderer) {
@@ -673,7 +681,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const renderer = data.renderer ?? {};
 
     this.rendererOptions = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
+      renderMode: spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.whiteTexture,
       occlusion: !!renderer.occlusion,
@@ -814,7 +822,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           offset: { x: 0, y: 0 },
           rotation: 0,
           scale: { x: 1, y: 1 },
-          //@ts-expect-error
           ...(paintData.textureTransform ?? {}),
         };
 
