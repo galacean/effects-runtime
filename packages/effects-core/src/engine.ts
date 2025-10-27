@@ -25,6 +25,7 @@ export interface EngineOptions extends WebGLContextAttributes {
   fps?: number,
   pixelRatio?: number,
   notifyTouch?: boolean,
+  env?: string,
 }
 
 /**
@@ -93,6 +94,7 @@ export class Engine implements Disposable {
    */
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     this.canvas = canvas;
+    this.env = options?.env ?? '';
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.whiteTexture = generateWhiteTexture(this);

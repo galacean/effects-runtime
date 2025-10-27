@@ -178,14 +178,14 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       this.engine = Engine.create(this.canvas, {
         glType: framework,
+        fps,
+        env,
         preserveDrawingBuffer,
         premultipliedAlpha,
         manualRender,
         notifyTouch:notifyTouch,
-        fps,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
       });
-      this.engine.env = env;
       this.engine.name = this.name;
       this.engine.offscreenMode = true;
       this.engine.onRenderError = (e: Event | Error) => {
