@@ -346,17 +346,47 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.autoPlaying = true;
     }
 
-    const composition = await SceneLoader.load(scene, this.engine, (message: MessageItem) => {
-      this.emit('message', message);
-    }, options);
+    const sceneUrls: Scene.LoadType[] = [];
+    const autoplayFlags: boolean[] = [];
 
-    const compositions = isArray(composition) ? composition : [composition];
+    if (isArray(scene)) {
+      sceneUrls.push(...scene);
+    } else {
+      sceneUrls.push(scene);
+    }
+
+    for (const assetManager of this.assetManagers) {
+      assetManager.dispose();
+    }
+
+    this.engine.assetManagers = [];
+    const baseOrder = this.engine.compositions.length;
+    const compositions = await Promise.all(sceneUrls.map(async (url, index) => {
+      const renderOrder = baseOrder + index;
+      const { source, options: compositionOptions } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
+      const compositionAutoplay = compositionOptions?.autoplay ?? true;
+      const composition = await SceneLoader.load(source, this.engine, compositionOptions);
+
+      composition.setIndex(renderOrder);
+      composition.onItemMessage = (message: MessageItem) => { this.emit('message', message);};
+      autoplayFlags[index] = compositionAutoplay;
+
+      return composition;
+    }));
+
+    for (let i = 0;i < compositions.length; i++) {
+      if (autoplayFlags[i]) {
+        compositions[i].play();
+      } else {
+        compositions[i].pause();
+      }
+    }
 
     if (compositions.some(c => !c.getPaused())) {
       this.emit('play', { time: 0 });
     }
 
-    return composition;
+    return isArray(scene) ? compositions : compositions[0];
   }
 
   /**
