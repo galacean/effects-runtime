@@ -22,14 +22,13 @@ describe('player/event', () => {
     await player.loadScene(json);
     player.pause();
     await player.resume();
-    player.on('update', (info: { player: Player, playing: boolean }) => {
+    player.on('update', (info: { playing: boolean }) => {
       if (index === 0) {
         expect(info.playing).to.be.false;
       } else {
         expect(info.playing).to.be.true;
       }
 
-      expect(info.player).to.equal(player);
       index += 1;
     });
 

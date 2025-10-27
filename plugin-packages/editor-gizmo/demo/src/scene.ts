@@ -10,7 +10,7 @@ import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
   });
 
   player.on('click', e => {
-    const { player, id } = e;
+    const { id } = e;
     const composition = player.getCompositions()[0];
     const item = composition.items.find(item => item.id === String(id))!;
 

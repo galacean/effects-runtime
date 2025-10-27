@@ -175,10 +175,8 @@ export class CompositionComponent extends Component {
               parentId: item.parentId,
               hitPositions,
               behavior: hitParams.behavior,
+              item,
             };
-
-            // 触发单个元素的点击事件
-            item.emit('click', region);
 
             regions.push(region);
 

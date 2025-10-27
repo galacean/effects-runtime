@@ -1,13 +1,19 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
   Texture2DSourceOptionsVideo, TouchEventType, MessageItem,
-  Region,
+  Region } from '@galacean/effects-core';
+import {
+  EVENT_TYPE_TOUCH_END,
+  EVENT_TYPE_TOUCH_MOVE,
+  EVENT_TYPE_TOUCH_START,
+  PointerEventType,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, EventEmitter,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
   isArray, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
   assertExist, AssetService,
+  PointerEventData,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -49,6 +55,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 手动渲染 `manualRender=true` 时不创建计时器
    */
   readonly ticker: Ticker;
+  /**
+   * 是否跳过 pointermove 事件的拾取检测
+   */
+  skipPointerMovePicking = true;
 
   private readonly event: EventSystem;
   private readonly reportGPUTime?: (time: number) => void;
@@ -147,7 +157,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       this.event = new EventSystem(this.canvas, !!notifyTouch);
       this.event.bindListeners();
-      this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
+      this.event.addEventListener(EVENT_TYPE_CLICK, this.onClick.bind(this));
+      this.event.addEventListener(EVENT_TYPE_TOUCH_START, this.onPointerDown.bind(this));
+      this.event.addEventListener(EVENT_TYPE_TOUCH_END, this.onPointerUp.bind(this));
+      this.event.addEventListener(EVENT_TYPE_TOUCH_MOVE, this.onPointerMove.bind(this));
       this.interactive = interactive;
 
       this.resize();
@@ -847,47 +860,108 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.compositions.forEach(comp => comp.offloadTexture());
   }
 
-  private handleClick = (e: TouchEventType) => {
+  private onClick (e: TouchEventType) {
     const { x, y } = e;
-    const hitInfos: (Region & {
-      player: Player,
-      composition: Composition,
-    })[] = [];
+    const hitResults: Region[] = [];
 
     // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
-    this.compositions.forEach(composition => {
-      const regions = composition.hitTest(x, y);
+    for (const composition of this.compositions) {
+      hitResults.push(...composition.hitTest(x, y));
+    }
 
-      for (const region of regions) {
-        hitInfos.push({
-          ...region,
-          player: this,
-          composition,
-        });
+    for (const hitResult of hitResults) {
+      const behavior = hitResult.behavior || spec.InteractBehavior.NOTIFY;
+      const hitComposition = hitResult.item.composition;
+
+      if (!hitComposition) {
+        continue;
       }
-    });
-
-    for (let i = 0; i < hitInfos.length; i++) {
-      const hitInfo = hitInfos[i];
-      const behavior = hitInfo.behavior || spec.InteractBehavior.NOTIFY;
 
       if (behavior === spec.InteractBehavior.NOTIFY) {
-        this.emit('click', {
-          ...hitInfo,
-          compositionId: hitInfo.composition.id,
-          compositionName: hitInfo.composition.name,
-        });
+        const clickInfo = {
+          player: this,
+          ...hitResult,
+          compositionId: hitComposition.id,
+          compositionName: hitComposition.name,
+        };
 
-        hitInfo.composition.emit('click', {
-          ...hitInfo,
-          compositionId: hitInfo.composition.id,
-          compositionName: hitInfo.composition.name,
-        });
+        this.emit('click', clickInfo);
+
+        hitComposition.emit('click', clickInfo);
       } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
         void this.resume();
       }
+
+      hitResult.item.emit('click', hitResult);
     }
-  };
+  }
+
+  private onPointerDown (e: TouchEventType) {
+    this.handlePointerEvent(e, PointerEventType.PointerDown);
+  }
+
+  private onPointerUp (e: TouchEventType) {
+    this.handlePointerEvent(e, PointerEventType.PointerUp);
+  }
+
+  private onPointerMove (e: TouchEventType) {
+    this.handlePointerEvent(e, PointerEventType.PointerMove);
+  }
+
+  private handlePointerEvent (e: TouchEventType, type: PointerEventType) {
+    let hitRegion: Region | null = null;
+    const { x, y, width, height } = e;
+
+    if (!(type === PointerEventType.PointerMove && this.skipPointerMovePicking)) {
+      for (const composition of this.compositions) {
+        const regions = composition.hitTest(x, y);
+
+        if (regions.length > 0) {
+          hitRegion = regions[regions.length - 1];
+        }
+      }
+    }
+
+    const eventData = new PointerEventData();
+
+    eventData.position.x = (x + 1) / 2 * width;
+    eventData.position.y = (y + 1) / 2 * height;
+    eventData.delta.x = e.vx * width;
+    eventData.delta.y = e.vy * height;
+
+    const raycast = eventData.pointerCurrentRaycast;
+
+    if (hitRegion) {
+      raycast.point = hitRegion.position;
+      raycast.item = hitRegion.item;
+    }
+
+    let eventName: 'pointerdown' | 'pointerup' | 'pointermove' = 'pointerdown';
+
+    switch (type) {
+      case PointerEventType.PointerDown:
+        eventName = 'pointerdown';
+
+        break;
+      case PointerEventType.PointerUp:
+        eventName = 'pointerup';
+
+        break;
+      case PointerEventType.PointerMove:
+        eventName = 'pointermove';
+
+        break;
+    }
+
+    if (hitRegion) {
+      const hitItem = hitRegion.item;
+      const hitComposition = hitItem.composition as Composition;
+
+      this.emit(eventName, eventData);
+      hitComposition.emit(eventName, eventData);
+      hitItem.emit(eventName, eventData);
+    }
+  }
 
   private getTargetSize (parentEle: HTMLElement) {
     assertContainer(parentEle);
