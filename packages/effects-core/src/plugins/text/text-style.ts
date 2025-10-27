@@ -70,7 +70,9 @@ export class TextStyle {
   /**
    * 字体倍数
    */
-  fontScale = 2;
+  fontScale = 1;
+
+  autoFontScale = true;
 
   readonly fontOffset = 0;
 

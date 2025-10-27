@@ -402,10 +402,13 @@ export class TextComponentBase {
    */
   setFontScale (value: number): void {
     if (this.textStyle.fontScale === value) {
+      this.textStyle.autoFontScale = false;
+
       return;
     }
 
     this.textStyle.fontScale = value;
+    this.textStyle.autoFontScale = false;
     this.isDirty = true;
   }
 
@@ -436,6 +439,8 @@ export class TextComponentBase {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
+    const pixelRatio = this.getPixelRatio(style.autoFontScale);
+
     const width = (layout.width + style.fontOffset) * fontScale;
     const finalHeight = layout.lineHeight * this.lineCount;
 
@@ -444,22 +449,26 @@ export class TextComponentBase {
 
     style.fontDesc = this.getFontDesc(fontSize);
     this.char = (this.text || '').split('');
-    this.canvas.width = width;
+
+    // 保存原始宽度和高度用于清理操作
+    const originalWidth = width;
+    const originalHeight = layout.height * fontScale;
+
+    // 根据设备像素比调整 canvas 尺寸
+    this.canvas.width = originalWidth * pixelRatio;
+    this.canvas.height = originalHeight * pixelRatio;
+
+    // 设置上下文的缩放以匹配设备像素比
+    context.scale(pixelRatio, pixelRatio);
 
     if (layout.autoWidth) {
-      this.canvas.height = finalHeight * fontScale;
+      this.canvas.height = finalHeight * fontScale * pixelRatio;
       this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      this.canvas.height = layout.height * fontScale;
     }
-
-    const height = this.canvas.height;
-
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
-
     if (!flipY) {
-      context.translate(0, height);
+      context.translate(0, originalHeight);
       context.scale(1, -1);
     }
     // canvas size 变化后重新刷新 context
@@ -468,7 +477,7 @@ export class TextComponentBase {
     } else {
       context.font = style.fontDesc;
     }
-    context.clearRect(0, 0, width, height);
+    context.clearRect(0, 0, originalWidth, originalHeight);
 
     if (style.hasShadow) {
       this.setupShadow();
@@ -614,6 +623,23 @@ export class TextComponentBase {
       context.shadowOffsetY = -shadowOffsetY;
     }
   }
+
+  private getPixelRatio (autoFontScale: boolean): number {
+    const g = typeof window !== 'undefined'
+      ? window
+      : typeof self !== 'undefined'
+        ? self
+        : globalThis as any;
+
+    const dpr = g && typeof g.devicePixelRatio === 'number' ? g.devicePixelRatio : undefined;
+
+    if (!autoFontScale) {
+      return 1;
+    }
+
+    return (typeof dpr === 'number' && isFinite(dpr) && dpr > 0) ? dpr : 1;
+  }
+
 }
 
 applyMixins(TextComponent, [TextComponentBase]);
