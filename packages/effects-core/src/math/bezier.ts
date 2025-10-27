@@ -325,6 +325,9 @@ export class BezierEasing {
   }
 
   private getTForX (aX: number) {
+    if (decimalEqual(this.control1.x, 1 / 3, 0.0001) && decimalEqual(this.control2.x, 2 / 3, 0.0001)) {
+      return aX;
+    }
     const mSampleValues = this.mSampleValues, lastSample = kSplineTableSize - 1;
     let intervalStart = 0, currentSample = 1;
 
