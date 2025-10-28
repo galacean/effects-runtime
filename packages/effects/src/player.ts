@@ -50,7 +50,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private readonly onError?: (e: Error, ...args: any) => void;
   private autoPlaying: boolean;
   private resumePending = false;
-  private restoreCompositionsCache: Composition[] = [];
   private disposed = false;
 
   /**
