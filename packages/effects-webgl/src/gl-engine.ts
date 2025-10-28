@@ -2,8 +2,8 @@ import type { GLRendererInternal } from './gl-renderer-internal';
 import { GLRenderer } from './gl-renderer';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
-import type { EngineOptions, Nullable, Texture, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, assertExist, glContext } from '@galacean/effects-core';
+import type { Composition, EngineOptions, Nullable, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
+import { Engine, GPUCapability, SceneLoader, assertExist, glContext, isIOS } from '@galacean/effects-core';
 import { GLContextManager } from './gl-context-manager';
 
 type Color = math.Color;
@@ -27,6 +27,7 @@ export class GLEngine extends Engine {
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
+  private restoreCompositionsCache: Composition[] = [];
 
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     super(canvas, options);
@@ -44,11 +45,53 @@ export class GLEngine extends Engine {
     this.context = new GLContextManager(canvas, options.glType, options);
     this.context.addLostHandler({
       lost: e => {
+        this.ticker?.pause();
+        this.restoreCompositionsCache = this.compositions.slice();
+        this.compositions.forEach(comp => comp.lost(e));
+        this.renderer.lost(e);
         this.emit('contextlost', { engine: this, e });
       },
     });
+
     this.context.addRestoreHandler({
-      restore: () => {
+      restore: async () => {
+        this.renderer.restore();
+        await Promise.all(this.restoreCompositionsCache.map(async composition => {
+          const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
+          const newComposition = await SceneLoader.load(url, this);
+
+          newComposition.speed = speed;
+          newComposition.reusable = reusable;
+          newComposition.renderOrder = renderOrder;
+          newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
+          newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+          newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
+          newComposition.onItemMessage = composition.onItemMessage;
+
+          for (let i = 0; i < videoState.length; i++) {
+            if (videoState[i]) {
+              const video = (newComposition.textures[i].source as Texture2DSourceOptionsVideo).video;
+
+              video.currentTime = videoState[i] ?? 0;
+              await video.play();
+            }
+          }
+          newComposition.isEnded = false;
+          newComposition.gotoAndPlay(currentTime);
+
+          return newComposition;
+        }));
+
+        this.restoreCompositionsCache = [];
+        this.ticker?.resume();
+
+        if (isIOS() && this.canvas) {
+          this.canvas.style.display = 'none';
+          window.setTimeout(() => {
+            this.canvas.style.display = '';
+          }, 0);
+        }
+
         this.emit('contextrestored', this);
       },
     });

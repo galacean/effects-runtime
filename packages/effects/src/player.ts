@@ -1,6 +1,6 @@
 import type {
   Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
-  Texture2DSourceOptionsVideo, MessageItem,
+  MessageItem,
   Region,
 
   AssetManager, Composition,
@@ -11,7 +11,7 @@ import {
 } from '@galacean/effects-core';
 import {
   logger, EventEmitter,
-  TextureLoadAction, canvasPool, getPixelRatio, initErrors, isIOS,
+  TextureLoadAction, canvasPool, getPixelRatio, initErrors,
   isArray, spec,
   assertExist,
   SceneLoader,
@@ -607,10 +607,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param e - Event
    */
   lost = (e: Event) => {
-    this.ticker?.pause();
-    this.restoreCompositionsCache = this.compositions.slice();
-    this.compositions.forEach(comp => comp.lost(e));
-    this.renderer.lost(e);
     this.handleEmitEvent('webglcontextlost', e);
   };
 
@@ -619,43 +615,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @returns
    */
   restore = async () => {
-    this.renderer.restore();
-    await Promise.all(this.restoreCompositionsCache.map(async composition => {
-      const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
-      const newComposition = await this.loadScene(url);
-
-      newComposition.speed = speed;
-      newComposition.reusable = reusable;
-      newComposition.renderOrder = renderOrder;
-      newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
-      newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
-      newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
-
-      for (let i = 0; i < videoState.length; i++) {
-        if (videoState[i]) {
-          const video = (newComposition.textures[i].source as Texture2DSourceOptionsVideo).video;
-
-          video.currentTime = videoState[i] ?? 0;
-          await video.play();
-        }
-      }
-      newComposition.isEnded = false;
-      newComposition.gotoAndPlay(currentTime);
-
-      return newComposition;
-    }));
-
-    this.restoreCompositionsCache = [];
-
     this.emit('webglcontextrestored');
-    this.ticker?.resume();
-
-    if (isIOS() && this.canvas) {
-      this.canvas.style.display = 'none';
-      window.setTimeout(() => {
-        this.canvas.style.display = '';
-      }, 0);
-    }
   };
 
   /**
