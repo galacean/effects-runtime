@@ -1,8 +1,8 @@
 import type {
-  Geometry, Material, MaterialDestroyOptions, MeshDestroyOptions, GeometryMeshProps, Sortable,
+  Geometry, Material, MeshDestroyOptions, GeometryMeshProps, Sortable,
   Engine, Renderer,
 } from '@galacean/effects-core';
-import { DestroyOptions, glContext, Mesh } from '@galacean/effects-core';
+import { glContext, Mesh } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeMaterial } from './material';
 import type { ThreeGeometry } from './three-geometry';
@@ -101,11 +101,8 @@ export class ThreeMesh extends Mesh implements Sortable {
    * @param mtl - material 对象
    * @param destroy 销毁参数
    */
-  override setMaterial (mtl: Material, destroy?: MaterialDestroyOptions | DestroyOptions.keep): void {
-    // TODO: 这里可以放到抽象类里
-    if (destroy !== DestroyOptions.keep) {
-      this.material.dispose(destroy);
-    }
+  override setMaterial (mtl: Material): void {
+    this.material.dispose();
     this.material = mtl;
     this.mesh.material = (mtl as ThreeMaterial).material;
   }
@@ -142,5 +139,7 @@ export class ThreeMesh extends Mesh implements Sortable {
       this.mesh.clear();
       this.destroyed = true;
     }
+
+    super.dispose();
   }
 }

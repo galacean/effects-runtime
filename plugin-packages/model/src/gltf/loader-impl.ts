@@ -91,6 +91,7 @@ export class LoaderImpl implements Loader {
           rotation: [0, 0, 0],
           clipMode: spec.CameraClipMode.portrait,
         },
+        //@ts-expect-error
         items: [],
         timelineAsset: { id: this.timelineAssetId },
         sceneBindings: [],
@@ -133,7 +134,6 @@ export class LoaderImpl implements Loader {
       const source = textureOptions.source;
 
       if (typeof source === 'number') {
-        // @ts-expect-error
         textureOptions.source = {
           id: this.images[source].id,
         };
@@ -542,6 +542,7 @@ export class LoaderImpl implements Loader {
     const itemIds: spec.DataPath[] = [];
 
     this.items.forEach(item => itemIds.push({ id: item.id }));
+    //@ts-expect-error
     this.composition.items = itemIds;
 
     const jsonScene: spec.JSONScene = {
@@ -554,7 +555,6 @@ export class LoaderImpl implements Loader {
       compositionId: this.composition.id,
       compositions: [this.composition],
       images: this.images,
-      shapes: [],
       plugins: ['model'],
       textures: this.textures,
       items: this.items,

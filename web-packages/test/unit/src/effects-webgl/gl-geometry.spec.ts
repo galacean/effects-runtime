@@ -5,7 +5,7 @@ import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } fro
 const { assert, expect } = chai;
 
 describe('webgl/gl-geometry', () => {
-  let canvas, engine, glRenderer, gl, renderer, pipelineContext;
+  let canvas, engine, glRenderer, gl, renderer;
   const option = {
     name: 'geo1',
     mode: glContext.TRIANGLES, // mode
@@ -30,9 +30,7 @@ describe('webgl/gl-geometry', () => {
     canvas = document.createElement('canvas');
     renderer = new GLRenderer(canvas, 'webgl2');
     glRenderer = renderer.glRenderer;
-    pipelineContext = renderer.pipelineContext;
-
-    gl = pipelineContext.gl;
+    gl = glRenderer.gl;
     engine = new GLEngine(gl);
     geometry = new GLGeometry(engine, option);
   });
@@ -44,7 +42,6 @@ describe('webgl/gl-geometry', () => {
     canvas = null;
     gl = null;
     glRenderer = null;
-    pipelineContext.dispose();
     geometry.dispose();
   });
 

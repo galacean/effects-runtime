@@ -157,11 +157,6 @@ export abstract class Texture extends EffectsObject {
   abstract updateSource (options: TextureSourceOptions): void;
 
   /**
-   * 销毁当前资源。
-   */
-  abstract override dispose (): void;
-
-  /**
    * 初始化 GPU 资源
    * @override
    */

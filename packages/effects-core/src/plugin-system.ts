@@ -3,13 +3,14 @@ import type { Composition } from './composition';
 import type { Plugin, PluginConstructor } from './plugins';
 import type { RenderFrame, Renderer } from './render';
 import type { Scene, SceneLoadOptions } from './scene';
+import type { Constructor } from './utils';
 import { addItem, removeItem, logger } from './utils';
-import type { VFXItemConstructor } from './vfx-item';
+import type { VFXItem } from './vfx-item';
 
 export const pluginLoaderMap: Record<string, PluginConstructor> = {};
 export const defaultPlugins: string[] = [];
 
-const pluginCtrlMap: Record<string, VFXItemConstructor> = {};
+const pluginCtrlMap: Record<string, Constructor<VFXItem>> = {};
 
 /**
  * 注册 plugin
@@ -21,7 +22,7 @@ const pluginCtrlMap: Record<string, VFXItemConstructor> = {};
 export function registerPlugin (
   name: string,
   pluginClass: PluginConstructor,
-  itemClass: VFXItemConstructor,
+  itemClass: Constructor<VFXItem>,
 ) {
   if (pluginCtrlMap[name]) {
     logger.error(`Duplicate registration for plugin ${name}.`);

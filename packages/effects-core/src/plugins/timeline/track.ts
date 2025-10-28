@@ -1,8 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import { VFXItem } from '../../vfx-item';
-import type { PlayableGraph } from '../cal/playable-graph';
-import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
+import { PlayState, Playable, PlayableAsset, PlayableOutput } from './playable';
 import { ParticleSystem } from '../particle/particle-system';
 import type { Constructor } from '../../utils';
 import { TrackMixerPlayable } from './playables';
@@ -43,7 +42,6 @@ export class TimelineClip {
 @effectsClass(spec.DataType.TrackAsset)
 export class TrackAsset extends PlayableAsset {
   name: string;
-  boundObject: object;
   parent: TrackAsset;
   trackType = TrackType.MasterTrack;
 
@@ -58,17 +56,15 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以获取自定义对象绑定
    */
-  updateAnimatedObject () {
-    if (this.parent) {
-      this.boundObject = this.parent.boundObject;
-    }
+  updateAnimatedObject (boundObject: object): object {
+    return boundObject;
   }
 
   /**
    * 重写该方法以创建自定义混合器
    */
-  createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    return new TrackMixerPlayable(graph);
+  createTrackMixer (): TrackMixerPlayable {
+    return new TrackMixerPlayable();
   }
 
   createOutput (): PlayableOutput {
@@ -77,32 +73,32 @@ export class TrackAsset extends PlayableAsset {
     return output;
   }
 
-  createPlayableGraph (graph: PlayableGraph, runtimeClips: RuntimeClip[]) {
-    const mixerPlayable = this.createMixerPlayableGraph(graph, runtimeClips);
+  createPlayableGraph (runtimeClips: RuntimeClip[]) {
+    const mixerPlayable = this.createMixerPlayableGraph(runtimeClips);
 
     return mixerPlayable;
   }
 
-  createMixerPlayableGraph (graph: PlayableGraph, runtimeClips: RuntimeClip[]) {
+  createMixerPlayableGraph (runtimeClips: RuntimeClip[]) {
     const clips: TimelineClip[] = [];
 
     for (const clip of this.clips) {
       clips.push(clip);
     }
-    const mixerPlayable = this.compileClips(graph, clips, runtimeClips);
+    const mixerPlayable = this.compileClips(clips, runtimeClips);
 
     return mixerPlayable;
   }
 
-  compileClips (graph: PlayableGraph, timelineClips: TimelineClip[], runtimeClips: RuntimeClip[]) {
-    const mixer = this.createTrackMixer(graph);
+  compileClips (timelineClips: TimelineClip[], runtimeClips: RuntimeClip[]) {
+    const mixer = this.createTrackMixer();
 
     for (const timelineClip of timelineClips) {
-      const clipPlayable = this.createClipPlayable(graph, timelineClip);
+      const clipPlayable = this.createClipPlayable(timelineClip);
 
       clipPlayable.setDuration(timelineClip.duration);
 
-      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer, this);
+      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer);
 
       runtimeClips.push(clip);
 
@@ -113,8 +109,8 @@ export class TrackAsset extends PlayableAsset {
     return mixer;
   }
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    return new Playable(graph);
+  override createPlayable (): Playable {
+    return new Playable();
   }
 
   getChildTracks () {
@@ -156,8 +152,8 @@ export class TrackAsset extends PlayableAsset {
     this.clips.push(clip);
   }
 
-  private createClipPlayable (graph: PlayableGraph, clip: TimelineClip) {
-    return clip.asset.createPlayable(graph);
+  private createClipPlayable (clip: TimelineClip) {
+    return clip.asset.createPlayable();
   }
 
   override fromData (data: spec.EffectsObjectData): void {
@@ -177,20 +173,14 @@ export class RuntimeClip {
   clip: TimelineClip;
   playable: Playable;
   parentMixer: TrackMixerPlayable;
-  track: TrackAsset;
 
   // TODO: 粒子结束行为有特殊逻辑，这里 cache 一下避免每帧查询组件导致 GC。粒子结束行为判断统一后可移除
-  particleSystem: ParticleSystem;
+  private particleSystem: ParticleSystem;
 
-  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: TrackMixerPlayable, track: TrackAsset) {
+  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: TrackMixerPlayable) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
-    this.track = track;
-
-    if (this.track.boundObject instanceof VFXItem) {
-      this.particleSystem = this.track.boundObject.getComponent(ParticleSystem);
-    }
   }
 
   set enable (value: boolean) {
@@ -202,16 +192,26 @@ export class RuntimeClip {
     }
   }
 
+  getParticleSystem () {
+    if (!this.particleSystem) {
+      if (this.parentMixer.trackInstance.boundObject instanceof VFXItem) {
+        this.particleSystem = this.parentMixer.trackInstance.boundObject.getComponent(ParticleSystem);
+      }
+    }
+
+    return this.particleSystem;
+  }
+
   evaluateAt (localTime: number) {
     const clip = this.clip;
 
     let weight = 1.0;
     let ended = false;
     let started = false;
-    const boundObject = this.track.boundObject;
+    const boundObject = this.parentMixer.trackInstance.boundObject;
 
     if (localTime >= clip.start + clip.duration && clip.endBehavior === spec.EndBehavior.destroy) {
-      if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.particleSystem && !this.particleSystem.destroyed) {
+      if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.getParticleSystem() && !this.getParticleSystem().destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;

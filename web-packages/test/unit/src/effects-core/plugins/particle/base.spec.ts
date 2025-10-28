@@ -1,5 +1,5 @@
 import type { GradientValue, RandomSetValue, VFXItem } from '@galacean/effects';
-import { Player, ParticleSystem, spec } from '@galacean/effects';
+import { Player, ParticleSystem, spec, math } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -47,7 +47,7 @@ describe('core/plugins/particle/base', () => {
 
     player.gotoAndPlay(0.01);
     const item = scene.getItemByName('item') as VFXItem;
-    const ps = item.content as ParticleSystem;
+    const ps = item.getComponent(ParticleSystem);
 
     expect(ps).to.be.an.instanceof(ParticleSystem);
     expect(ps.options.startLifetime.getValue()).to.eql(2, 'startLifetime');
@@ -75,8 +75,8 @@ describe('core/plugins/particle/base', () => {
 
     expect(pureStartColor.getValue()).to.eql([255, 255, 255], 'pure color');
     expect(gradientStartColor.stops).to.eql([
-      { stop: 0, color: [0.8588235294117647, 0.09411764705882353, 0.09411764705882353, 1] },
-      { stop: 1, color: [0.6980392156862745, 0.32941176470588235, 0.32941176470588235, 1] },
+      { time: 0, color: new math.Color().setFromArray([0.8588235294117647, 0.09411764705882353, 0.09411764705882353, 1]) },
+      { time: 1, color: new math.Color().setFromArray([0.6980392156862745, 0.32941176470588235, 0.32941176470588235, 1]) },
     ], 'gradient');
     // @ts-expect-error
     expect(colorsStartColor.items).to.eql([

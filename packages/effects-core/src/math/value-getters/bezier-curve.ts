@@ -48,8 +48,8 @@ export class BezierCurve extends ValueGetter<number> {
   private keyFrames: Keyframe[];
   private curveInfos: CurveInfo[];
 
-  override onCreate (props: Keyframe[]) {
-    this.keyFrames = props;
+  override onCreate (props: spec.BezierKeyframeValue[]) {
+    this.keyFrames = oldBezierKeyFramesToNew(props);
     const keyframes = this.keyFrames;
 
     this.curveMap = {};
@@ -302,9 +302,9 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
 
   let lastControl: Vector2Like = { x: 0, y: 0 };
 
-  for (let i = 0; i < oldKeyframes.length - 1; i++) {
+  for (let i = 0; i < oldKeyframes.length; i++) {
     const leftKeyframe = oldKeyframes[i];
-    const rightKeyframe = oldKeyframes[i + 1];
+    const rightKeyframe = i + 1 < oldKeyframes.length ? oldKeyframes[i + 1] : oldKeyframes[i];
 
     const { p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe, true);
 
@@ -323,22 +323,9 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
 
     keyDatas.push(keyData);
     lastControl = p2;
-
-    if (i === oldKeyframes.length - 2) {
-      const res = getControlPoints(rightKeyframe, rightKeyframe, true);
-
-      assertExist(res.p3);
-
-      keyDatas.push({
-        leftControl: p2,
-        value: res.p3,
-        rightControl: { x: 0, y: 0 },
-        tangentMode: rightKeyframe[0] === spec.BezierKeyframeType.HOLD ? TangentMode.Constant : TangentMode.Cubic,
-      });
-    }
   }
 
-  const calculateSlop = (p0: Vector2Like, p1: Vector2Like) => {
+  const calculateSlope = (p0: Vector2Like, p1: Vector2Like) => {
     return (p1.y - p0.y) / (p1.x - p0.x + NumberEpsilon);
   };
 
@@ -347,14 +334,21 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
     const value = keyDatas[i].value;
     const rightControl = keyDatas[i].rightControl;
 
-    const outSlop = calculateSlop(value, rightControl);
-    const inSlop = calculateSlop(leftControl, value);
+    let inSlope = 0;
+    let outSlope = 0;
+
+    if (i > 0) {
+      inSlope = calculateSlope(leftControl, value);
+    }
+    if (i < keyDatas.length - 1) {
+      outSlope = calculateSlope(value, rightControl);
+    }
 
     const keyframe: Keyframe = {
       time: value.x,
       value: value.y,
-      inSlope: inSlop,
-      outSlope: outSlop,
+      inSlope: inSlope,
+      outSlope: outSlope,
       inWeight: 0,
       outWeight: 0,
       tangentMode: keyDatas[i].tangentMode,

@@ -246,7 +246,7 @@ export class Project extends EditorWindow {
           icon = child.icon;
         }
         child.instantiateAssetObject();
-        if (Selection.activeObject === child || this.clickingFileNode === child) {
+        if (Selection.isSelected(child) || this.clickingFileNode === child) {
           ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(0.0, 100 / 255, 215 / 255, 1.0));
           ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(20 / 255, 122 / 255, 215 / 255, 1.0));
         } else {
@@ -255,7 +255,7 @@ export class Project extends EditorWindow {
         }
         ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
         if (ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col)) {
-          Selection.activeObject = child;
+          Selection.setActiveObject(child);
         }
         if (this.clickingFileNode === child) {
           this.clickingFileNode = undefined;
@@ -411,7 +411,7 @@ export class Project extends EditorWindow {
 
     const handle = item.handle;
 
-    if (Selection.activeObject === item) {
+    if (Selection.isSelected(item)) {
       nodeFlags |= ImGui.TreeNodeFlags.Selected;
     }
     if (handle.kind === 'file') {
@@ -427,7 +427,7 @@ export class Project extends EditorWindow {
         this.selectedFolder = item;
         void this.createFileIcons(item);
       }
-      Selection.activeObject = item;
+      Selection.setActiveObject(item);
     }
 
     if (node_open) {

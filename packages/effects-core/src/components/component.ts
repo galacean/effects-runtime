@@ -107,6 +107,13 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * 当属性被动画修改时调用
+   */
+  onApplyAnimationProperties () {
+    // OVERRIDE
+  }
+
+  /**
    * @internal
    */
   enable () {
@@ -157,6 +164,8 @@ export abstract class Component extends EffectsObject {
     if (this.item) {
       removeItem(this.item.components, this);
     }
+
+    super.dispose();
   }
 
   private start () {

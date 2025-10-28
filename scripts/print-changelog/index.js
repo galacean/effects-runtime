@@ -46,7 +46,7 @@ async function main() {
 
   console.log('\n', chalk.green('Done. Here is the log:'));
   console.log('\n');
-  printPR(prList);
+  printPR(prList.reverse());
 }
 
 main();

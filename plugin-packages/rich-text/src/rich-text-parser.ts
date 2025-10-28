@@ -2,6 +2,7 @@ enum TokenType {
   ContextStart = 'ContextStart',
   Text = 'Text',
   ContextEnd = 'ContextEnd',
+  EscapedChar = 'EscapedChar',
 }
 
 export type Token = {
@@ -13,9 +14,10 @@ const contextStartRegexp = /^<([a-z]+)(=([^>]+))?>$/;
 const contextEndRegexp = /^<\/([a-z]+)>$/;
 
 const rules: [TokenType, RegExp][] = [
+  [TokenType.EscapedChar, /^\\([=<>\\/])/],
   [TokenType.ContextStart, /^<[a-z]+(=[^>]+)?>/],
-  [TokenType.Text, /^[^</>=]+/],
   [TokenType.ContextEnd, /^<\/[a-z]+>/],
+  [TokenType.Text, /^[^</>=\\]+/],
 ];
 
 export const lexer = (input: string, lexed: Token[] = [], cursor = 0): Token[] => {
@@ -23,15 +25,29 @@ export const lexer = (input: string, lexed: Token[] = [], cursor = 0): Token[] =
     return lexed;
   }
 
+  const escapedMatch = /^\\([=<>\\/])/.exec(input);
+
+  if (escapedMatch) {
+    const actualChar = escapedMatch[1];
+
+    return lexer(input.slice(2), lexed.concat({ tokenType: TokenType.Text, value: actualChar }), cursor + 2);
+  }
+
   for (const [tokenType, regex] of rules) {
-    const [tokenMatch] = regex.exec(input) ?? [];
+    if (tokenType === TokenType.EscapedChar) { continue; }
 
-    if (tokenMatch) {
+    const match = regex.exec(input);
 
-      const len = tokenMatch.length;
+    if (!match) { continue; }
 
-      return lexer(input.slice(len), lexed.concat({ tokenType, value: tokenMatch }), cursor + len);
-    }
+    const tokenMatch = match[0];
+    const len = tokenMatch.length;
+
+    return lexer(input.slice(len), lexed.concat({ tokenType, value: tokenMatch }), cursor + len);
+  }
+
+  if (input.length > 0) {
+    return lexer(input.slice(1), lexed.concat({ tokenType: TokenType.Text, value: input[0] }), cursor + 1);
   }
 
   throw new Error(`Unexpected token: "${input[0]}" at position ${cursor} while reading "${input}"`);
@@ -83,7 +99,7 @@ export const richTextParser = (input: string): RichTextAST[] => {
       const { attributeName, attributeParam } = ContextStart();
 
       if (attributeName) {
-        Grammar(attributes.concat({ attributeName, attributeParam }), attributeName);
+        Grammar(attributes.concat({ attributeName, attributeParam: attributeParam ?? '' }), attributeName);
 
         continue;
       }
@@ -92,11 +108,11 @@ export const richTextParser = (input: string): RichTextAST[] => {
         const { attributeName: endAttributeName } = ContextEnd();
 
         if (!endAttributeName) {
-          throw new Error('Expect an end tag marker "' + expectedEndAttributeName + '" at position ' + cursor + ' but found no tag!');
+          throw new Error(`Expect an end tag marker "${expectedEndAttributeName}" at position ${cursor} but found no tag!`);
         }
 
         if (endAttributeName !== expectedEndAttributeName) {
-          throw new Error('Expect an end tag marker "' + expectedEndAttributeName + '" at position ' + cursor + ' but found tag "' + endAttributeName + '"');
+          throw new Error(`Expect an end tag marker "${expectedEndAttributeName}" at position ${cursor} but found tag "${endAttributeName}"`);
         }
 
         return;
@@ -107,15 +123,19 @@ export const richTextParser = (input: string): RichTextAST[] => {
   }
 
   function Text (): string | undefined {
-    const maybeText = peek();
+    let combinedText = '';
+    let hasTextToken = false;
 
-    if (maybeText?.tokenType === TokenType.Text) {
-      shift();
+    while (lexed.length > 0 && lexed[0]?.tokenType === TokenType.Text) {
+      const textToken = shift();
 
-      return maybeText.value;
+      if (textToken) {
+        combinedText += textToken.value;
+        hasTextToken = true;
+      }
     }
 
-    return undefined;
+    return hasTextToken ? combinedText : undefined;
   }
 
   function ContextStart (): { attributeName?: string, attributeParam?: string } {
@@ -133,7 +153,7 @@ export const richTextParser = (input: string): RichTextAST[] => {
         return { attributeName, attributeParam };
       }
 
-      throw new Error('Expected a start tag marker at position ' + cursor);
+      throw new Error(`Expected a start tag marker at position ${cursor}`);
     }
 
     return {};
@@ -153,7 +173,7 @@ export const richTextParser = (input: string): RichTextAST[] => {
         return { attributeName };
       }
 
-      throw new Error('Expect an end tag marker at position ' + cursor);
+      throw new Error(`Expect an end tag marker at position ${cursor}`);
     }
 
     return {};
@@ -214,8 +234,44 @@ export function isRichText (text: string): boolean {
       return checkPaired(restToken, startContextAttributes.slice(0, -1));
     }
 
-    throw new Error('Unexpected token: ' + token.tokenType);
+    throw new Error(`Unexpected token: ${token.tokenType}`);
   }
 
   return checkPaired(tokensOfAttribute);
+}
+
+/**
+ * 转义富文本中的特殊字符
+ * @param input - 需要转义的输入字符串
+ * @returns 转义后的字符串
+ */
+export function escape (input: string): string {
+  if (typeof input !== 'string') {
+    throw new Error('Input must be a string');
+  }
+
+  return input
+    .replace(/\\/g, '\\\\')
+    .replace(/=/g, '\\=')
+    .replace(/</g, '\\<')
+    .replace(/>/g, '\\>')
+    .replace(/\//g, '\\/');
+}
+
+/**
+ * 反转义富文本中的特殊字符
+ * @param input - 需要反转义的输入字符串
+ * @returns 反转义后的字符串
+ */
+export function unescape (input: string): string {
+  if (typeof input !== 'string') {
+    throw new Error('Input must be a string');
+  }
+
+  return input
+    .replace(/\\\//g, '/')
+    .replace(/\\>/g, '>')
+    .replace(/\\</g, '<')
+    .replace(/\\=/g, '=')
+    .replace(/\\\\/g, '\\');
 }

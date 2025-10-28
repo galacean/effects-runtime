@@ -10,7 +10,7 @@ import { PassTextureCache } from '../paas-texture-cache';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
 import {
-  Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture,
+  Texture, TextureLoadAction, TextureSourceType,
 } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, OrderType, removeItem } from '../utils';
@@ -209,14 +209,6 @@ export class RenderFrame implements Disposable {
    */
   readonly semantics: SemanticMap;
   readonly globalUniforms: GlobalUniforms;
-  /**
-   * 空纹理，大小1x1，白色
-   */
-  readonly emptyTexture: Texture;
-  /**
-   * 空纹理，大小1x1，透明
-   */
-  readonly transparentTexture: Texture;
 
   protected destroyed = false;
   protected renderPassInfoMap: WeakMap<RenderPass, RenderPassInfo> = new WeakMap();
@@ -367,8 +359,6 @@ export class RenderFrame implements Disposable {
 
     const firstRP = renderPasses[0];
 
-    this.emptyTexture = generateWhiteTexture(engine);
-    this.transparentTexture = generateTransparentTexture(engine);
     this.camera = camera;
     this.keepColorBuffer = keepColorBuffer;
     this.renderPassInfoMap.set(firstRP, { listStart: 0, listEnd: 0, renderPass: firstRP, intermedia: false });
@@ -430,8 +420,6 @@ export class RenderFrame implements Disposable {
     }
     this.passTextureCache.dispose();
     this._renderPasses.length = 0;
-    this.emptyTexture.dispose();
-    this.transparentTexture.dispose();
     if (this.resource) {
       this.resource.color_a.dispose();
       this.resource.color_b.dispose();

@@ -1,21 +1,21 @@
 import * as spec from '@galacean/effects-specification';
-import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
+import type { GraphContext, InstantiationContext } from '../graph-context';
+import { BranchState } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 import { nodeDataClass } from '../node-asset-type';
 import type { BoolValueNode } from '../graph-node';
 import { GraphNodeData, InvalidIndex, PoseNode } from '../graph-node';
-import type { StateNode } from './state-node';
+import type { StateNode, StateNodeData } from './state-node';
 import type { TransitionNode } from './transition-node';
 
 @nodeDataClass(spec.NodeDataType.StateMachineNodeData)
 export class StateMachineNodeData extends GraphNodeData {
+  machineName: string;
   stateDatas: spec.StateData[];
   defaultStateIndex: number;
 
   override instantiate (context: InstantiationContext): void {
     const node = this.createNode(StateMachineNode, context);
-
-    node.defaultStateIndex = this.defaultStateIndex;
 
     for (const stateData of this.stateDatas) {
       const state: StateInfo = {
@@ -42,6 +42,7 @@ export class StateMachineNodeData extends GraphNodeData {
 
     this.stateDatas = data.stateDatas;
     this.defaultStateIndex = data.defaultStateIndex;
+    this.machineName = data.machineName;
   }
 }
 
@@ -56,11 +57,22 @@ export interface StateInfo {
   transitions: TransitionInfo[],
 }
 
+/**
+ * 状态机节点
+ */
 export class StateMachineNode extends PoseNode {
   states: StateInfo[] = [];
-  defaultStateIndex = InvalidIndex;
   private activeTransition: TransitionNode | null = null;
   private activeStateIndex = InvalidIndex;
+
+  /**
+   * 获取当前激活状态的名称
+   * @since 2.7.0
+   * @returns 当前状态名
+   */
+  getCurrentStateName (): string {
+    return this.states[this.activeStateIndex].stateNode.getNodeData<StateNodeData>().stateName;
+  }
 
   override evaluate (context: GraphContext, result: PoseResult): PoseResult {
     this.markNodeActive(context);
@@ -187,7 +199,7 @@ export class StateMachineNode extends PoseNode {
   }
 
   private selectDefaultState (context: GraphContext): number {
-    const selectedStateIndex = this.defaultStateIndex;
+    const selectedStateIndex = this.getNodeData<StateMachineNodeData>().defaultStateIndex;
 
     return selectedStateIndex;
   }

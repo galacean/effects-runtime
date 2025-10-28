@@ -2,14 +2,17 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { BaseRenderComponent } from '../../components';
+import { MaskableGraphic, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
-import { Playable, PlayableAsset } from '../cal/playable-graph';
+import type { FrameContext } from '../timeline/playable';
+import { Playable, PlayableAsset } from '../timeline/playable';
 import { TrackAsset } from '../timeline/track';
 import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
+import type { VFXItem } from '../../vfx-item';
+import type { Geometry } from '../../render/geometry';
+import { rotateVec2 } from '../../shape';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options
@@ -21,14 +24,16 @@ export type SpriteItemOptions = {
 
 export type splitsDataType = [r: number, x: number, y: number, w: number, h: number | undefined][];
 
+const singleSplits: splitsDataType = [[0, 0, 1, 1, 0]];
+
 let seed = 0;
 
 @effectsClass(spec.DataType.SpriteColorPlayableAsset)
 export class SpriteColorPlayableAsset extends PlayableAsset {
   data: ColorPlayableAssetData;
 
-  override createPlayable (graph: PlayableGraph): Playable {
-    const spriteColorPlayable = new ColorPlayable(graph);
+  override createPlayable (): Playable {
+    const spriteColorPlayable = new ColorPlayable();
 
     spriteColorPlayable.create(this.data);
 
@@ -41,14 +46,27 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 }
 
 export class ComponentTimeTrack extends TrackAsset {
-  override createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
-    return new TrackMixerPlayable(graph);
+  override createTrackMixer (): TrackMixerPlayable {
+    return new TrackMixerPlayable();
+  }
+}
+
+export class SpriteComponentTimeTrack extends ComponentTimeTrack {
+  override updateAnimatedObject (boundObject: object): object {
+
+    return (boundObject as VFXItem).getComponent(SpriteComponent);
+  }
+}
+
+export class EffectComponentTimeTrack extends ComponentTimeTrack {
+  override updateAnimatedObject (boundObject: object): object {
+    return (boundObject as VFXItem).getComponent(EffectComponent);
   }
 }
 
 export class ComponentTimePlayableAsset extends PlayableAsset {
-  override createPlayable (graph: PlayableGraph): Playable {
-    const componentTimePlayable = new ComponentTimePlayable(graph);
+  override createPlayable (): Playable {
+    const componentTimePlayable = new ComponentTimePlayable();
 
     return componentTimePlayable;
   }
@@ -66,11 +84,20 @@ export class ComponentTimePlayable extends Playable {
   }
 }
 
+/**
+ * Sprite component class
+ */
 @effectsClass(spec.DataType.SpriteComponent)
-export class SpriteComponent extends BaseRenderComponent {
+export class SpriteComponent extends MaskableGraphic {
   time = 0;
   duration = 0;
-  frameAnimationLoop = true;
+  loop = true;
+  /**
+   * @internal
+  */
+  splits: splitsDataType = singleSplits;
+
+  protected textureSheetAnimation?: spec.TextureSheetAnimation;
 
   constructor (engine: Engine, props?: spec.SpriteComponentData) {
     super(engine);
@@ -85,7 +112,7 @@ export class SpriteComponent extends BaseRenderComponent {
     let time = this.time;
     const duration = this.duration;
 
-    if (time > duration && this.frameAnimationLoop) {
+    if (time > duration && this.loop) {
       time = time % duration;
     }
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
@@ -169,18 +196,141 @@ export class SpriteComponent extends BaseRenderComponent {
     }
   }
 
+  protected updateGeometry (geometry: Geometry) {
+    const split: number[] = this.textureSheetAnimation ? [0, 0, 1, 1, this.splits[0][4] as number] : this.splits[0] as number[];
+    const uvTransform = split;
+    const x = uvTransform[0];
+    const y = uvTransform[1];
+    const isRotate90 = Boolean(uvTransform[4]);
+    const width = isRotate90 ? uvTransform[3] : uvTransform[2];
+    const height = isRotate90 ? uvTransform[2] : uvTransform[3];
+    const angle = isRotate90 ? -Math.PI / 2 : 0;
+
+    const aUV = geometry.getAttributeData('aUV');
+    const aPos = geometry.getAttributeData('aPos');
+    const indices = geometry.getIndexData();
+
+    const tempPosition: spec.vec2 = [0, 0];
+
+    if (aUV && aPos && indices) {
+      const vertexCount = aUV.length / 2;
+
+      for (let i = 0; i < vertexCount; i++) {
+        const positionOffset = i * 3;
+        const uvOffset = i * 2;
+        const positionX = aPos[positionOffset];
+        const positionY = aPos[positionOffset + 1];
+
+        tempPosition[0] = positionX ;
+        tempPosition[1] = positionY ;
+        rotateVec2(tempPosition, tempPosition, angle);
+
+        aUV[uvOffset] = (tempPosition[0] + 0.5) * width + x;
+        aUV[uvOffset + 1] = (tempPosition[1] + 0.5) * height + y;
+      }
+
+      this.geometry.setAttributeData('aPos', aPos.slice());
+      this.geometry.setAttributeData('aUV', aUV.slice());
+      this.geometry.setIndexData(indices.slice());
+      this.geometry.setDrawCount(indices.length);
+    }
+
+    this.geometry.subMeshes.length = 0;
+    for (const subMesh of geometry.subMeshes) {
+      this.geometry.subMeshes.push({
+        offset: subMesh.offset,
+        indexCount:  subMesh.indexCount,
+        vertexCount:  subMesh.vertexCount,
+      });
+    }
+  }
+
+  /**
+   * @deprecated
+   * 原有打包纹理拆分逻辑，待移除
+   */
+  protected updateGeometryFromMultiSplit () {
+    const { splits, textureSheetAnimation } = this;
+    const sx = 1, sy = 1;
+    const geometry = this.defaultGeometry;
+
+    const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
+    const aUV = [];
+    const index = [];
+    const position = [];
+    const col = 2;
+    const row = 2;
+
+    for (let x = 0; x < col; x++) {
+      for (let y = 0; y < row; y++) {
+        const base = (y * 2 + x) * 4;
+        // @ts-expect-error
+        const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
+        const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+        const dw = ((x + x + 1) / col - 1) / 2;
+        const dh = ((y + y + 1) / row - 1) / 2;
+        const tox = split[0];
+        const toy = split[1];
+        const tsx = split[4] ? split[3] : split[2];
+        const tsy = split[4] ? split[2] : split[3];
+        const origin = [
+          originData[0] / col + dw,
+          originData[1] / row + dh,
+          originData[2] / col + dw,
+          originData[3] / row + dh,
+          originData[4] / col + dw,
+          originData[5] / row + dh,
+          originData[6] / col + dw,
+          originData[7] / row + dh,
+        ];
+
+        aUV.push(
+          texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+          texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+          texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+          texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+        );
+        position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
+          (origin[2]) * sx, (origin[3]) * sy, 0.0,
+          (origin[4]) * sx, (origin[5]) * sy, 0.0,
+          (origin[6]) * sx, (origin[7]) * sy, 0.0);
+        index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
+      }
+    }
+    geometry.setAttributeData('aPos', new Float32Array(position));
+    geometry.setIndexData(new Uint16Array(index));
+    geometry.setAttributeData('aUV', new Float32Array(aUV));
+    geometry.setDrawCount(index.length);
+  }
+
   override fromData (data: spec.SpriteComponentData): void {
     super.fromData(data);
 
-    const { interaction, options } = data;
+    const splits = data.splits ?? singleSplits;
+    const textureSheetAnimation = data.textureSheetAnimation;
 
-    this.interaction = interaction;
+    this.splits = splits;
+    this.textureSheetAnimation = textureSheetAnimation;
 
-    const startColor = options.startColor || [1, 1, 1, 1];
+    // @ts-expect-error
+    const geometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : this.defaultGeometry;
+
+    if (splits.length === 1) {
+      this.updateGeometry(geometry);
+    } else {
+      // TODO: 原有打包纹理拆分逻辑，待移除
+      //-------------------------------------------------------------------------
+      this.updateGeometryFromMultiSplit();
+    }
+
+    this.interaction = data.interaction;
+
+    const startColor = data.options.startColor || [1, 1, 1, 1];
 
     this.material.setColor('_Color', new Color().setFromArray(startColor));
 
     //@ts-expect-error
     this.duration = data.duration ?? this.item.duration;
+    this.loop = data.loop ?? true;
   }
 }

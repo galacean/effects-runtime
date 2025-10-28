@@ -6,7 +6,7 @@ import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import { createValueGetter } from '../../math';
-import type { MeshRendererOptions, ShaderMacros } from '../../render';
+import type { ShaderMacros } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import type { Transform } from '../../transform';
 
@@ -22,9 +22,6 @@ uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_MatrixVP;
 varying vec4 vColor;
-#ifdef ENV_EDITOR
-  uniform vec4 uEditorTransform;
-#endif
 
 vec3 rotateByQuat(vec3 a, vec4 quat){
   vec3 qvec = quat.xyz;
@@ -41,9 +38,6 @@ void main() {
   pos.xyz += effects_MatrixInvV[0].xyz * point.x+ effects_MatrixInvV[1].xyz * point.y;
   gl_Position = effects_MatrixVP * pos;
   vColor = uColor;
-  #ifdef ENV_EDITOR
-    gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-  #endif
 }
 `;
 const fragment = `
@@ -65,12 +59,11 @@ export class InteractMesh {
 
   constructor (
     props: spec.InteractContent,
-    rendererOptions: MeshRendererOptions,
     private readonly transform: Transform,
     private readonly engine: Engine,
   ) {
     this.color = (props.options as spec.ClickInteractOption).previewColor;
-    const material = this.createMaterial(rendererOptions);
+    const material = this.createMaterial();
     const geometry = this.createGeometry();
 
     this.mesh = this.createMesh(geometry, material);
@@ -99,7 +92,7 @@ export class InteractMesh {
     material.setQuaternion('uQuat', tempQuat);
   }
 
-  private createMaterial (rendererOptions: MeshRendererOptions): Material {
+  private createMaterial (): Material {
     const macros: ShaderMacros = [
       ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
@@ -109,14 +102,7 @@ export class InteractMesh {
         vertex,
         fragment,
         glslVersion: GLSLVersion.GLSL1,
-        cacheId: `${rendererOptions.cachePrefix}_effects_interact`,
         macros,
-      },
-      uniformSemantics: {
-        effects_MatrixVP: 'VIEWPROJECTION',
-        effects_MatrixInvV: 'VIEWINVERSE',
-        effects_ObjectToWorld: 'MODEL',
-        uEditorTransform: 'EDITOR_TRANSFORM',
       },
     };
 

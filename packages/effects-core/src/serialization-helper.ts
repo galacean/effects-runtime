@@ -122,8 +122,7 @@ export class SerializationHelper {
     return !!(isObject(value)
       && Object.keys(value).length === 1
       && 'id' in value
-      && isString(value.id)
-      && value.id.length === 32);
+      && isString(value.id));
   }
 
   // TODO 测试函数，2.0 上线后移除
