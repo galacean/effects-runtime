@@ -74,24 +74,6 @@ export class Renderer implements LostHandler, RestoreHandler {
   }
 
   /**
-   * 添加 webglcontextlost 事件回调
-   * @override
-   * @param lostHandler
-   */
-  addLostHandler (lostHandler: LostHandler) {
-    // OVERRIDE
-  }
-
-  /**
-   * 添加 webglContextrestored 事件的回调
-   * @override
-   * @param restoreHandler
-   */
-  addRestoreHandler (restoreHandler: RestoreHandler) {
-    // OVERRIDE
-  }
-
-  /**
    * @override
    * @param e
    */

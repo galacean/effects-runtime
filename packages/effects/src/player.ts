@@ -4,7 +4,8 @@ import type {
   Region,
 
   AssetManager, Composition,
-  Renderer, Ticker } from '@galacean/effects-core';
+  Renderer, Ticker,
+} from '@galacean/effects-core';
 import {
   Engine,
 } from '@galacean/effects-core';
@@ -182,7 +183,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         preserveDrawingBuffer,
         premultipliedAlpha,
         manualRender,
-        notifyTouch:notifyTouch,
+        notifyTouch: notifyTouch,
         interactive,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
       });
@@ -190,24 +191,34 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.engine.offscreenMode = true;
 
       // Bind engine events
-      this.engine.onRenderError = (e: Event | Error) => {
+      this.engine.on('rendererror', (e: Event | Error) => {
         this.handleEmitEvent('rendererror', e);
-      };
-      this.engine.onRenderCompositions = (dt: number) => {
+      });
+
+      this.engine.on('render', (dt: number) => {
         if (this.autoPlaying) {
           this.emit('update', {
             player: this,
             playing: true,
           });
         }
-      };
+      });
+
+      this.engine.on('contextlost', eventData => {
+        this.lost(eventData.e);
+      });
+
+      this.engine.on('contextrestored', async () => {
+        await this.restore();
+      });
+
       this.engine.onClick = (eventData: Region) => {
         const behavior = eventData.behavior || spec.InteractBehavior.NOTIFY;
 
         if (behavior === spec.InteractBehavior.NOTIFY) {
           this.emit('click', {
             ...eventData,
-            player:this,
+            player: this,
             compositionId: eventData.composition.id,
             compositionName: eventData.composition.name,
           });
@@ -215,8 +226,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           void this.resume();
         }
       };
-      this.engine.addLostHandler({ lost: this.lost });
-      this.engine.addRestoreHandler({ restore: this.restore });
 
       // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
       playerMap.forEach(player => {
@@ -410,13 +419,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       const composition = await SceneLoader.load(source, this.engine, compositionOptions);
 
       composition.setIndex(renderOrder);
-      composition.onItemMessage = (message: MessageItem) => { this.emit('message', message);};
+      composition.onItemMessage = (message: MessageItem) => { this.emit('message', message); };
       autoplayFlags[index] = compositionAutoplay;
 
       return composition;
     }));
 
-    for (let i = 0;i < compositions.length; i++) {
+    for (let i = 0; i < compositions.length; i++) {
       if (autoplayFlags[i]) {
         compositions[i].play();
       } else {
@@ -553,7 +562,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param dt - 时间差，毫秒
    */
   tick (dt: number) {
-    this.engine.renderCompositions(dt);
+    this.engine.render(dt);
   }
 
   /**

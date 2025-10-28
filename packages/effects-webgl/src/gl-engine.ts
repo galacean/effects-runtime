@@ -42,10 +42,20 @@ export class GLEngine extends Engine {
     };
 
     this.context = new GLContextManager(canvas, options.glType, options);
+    this.context.addLostHandler({
+      lost: e => {
+        this.emit('contextlost', { engine: this, e });
+      },
+    });
+    this.context.addRestoreHandler({
+      restore: () => {
+        this.emit('contextrestored', this);
+      },
+    });
+
     const gl = this.context.gl;
 
     assertExist(gl);
-
     this.gl = gl;
     this.reset();
     this.gpuCapability = new GPUCapability(gl);

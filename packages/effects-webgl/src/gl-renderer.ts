@@ -1,6 +1,6 @@
 import type {
-  Disposable, Engine, Framebuffer, Geometry, LostHandler, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
+  Disposable, Engine, Framebuffer, Geometry, Material, RenderFrame, RenderPass,
+  RenderPassClearAction, RenderPassStoreAction, RendererComponent,
   ShaderLibrary, math,
 } from '@galacean/effects-core';
 import {
@@ -279,14 +279,6 @@ export class GLRenderer extends Renderer implements Disposable {
     if (bit) {
       engine.clear(bit);
     }
-  }
-
-  override addLostHandler (lostHandler: LostHandler): void {
-    this.context.addLostHandler(lostHandler);
-  }
-
-  override addRestoreHandler (restoreHandler: RestoreHandler) {
-    this.context.addRestoreHandler(restoreHandler);
   }
 
   override getShaderLibrary (): ShaderLibrary | undefined {

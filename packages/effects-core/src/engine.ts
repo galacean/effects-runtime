@@ -7,7 +7,7 @@ import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
-import type { Disposable, LostHandler, RestoreHandler } from './utils';
+import type { Disposable } from './utils';
 import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
 import { passRenderLevel } from './pass-render-level';
@@ -19,6 +19,7 @@ import { EventSystem } from './plugins/interact/event-system';
 import type { GLType } from './gl/create-gl-context';
 import { HELP_LINK } from './constants';
 import type { Region } from './plugins/interact/click-handler';
+import { EventEmitter } from './events';
 
 export interface EngineOptions extends WebGLContextAttributes {
   manualRender?: boolean,
@@ -30,10 +31,17 @@ export interface EngineOptions extends WebGLContextAttributes {
   env?: string,
 }
 
+type EngineEvent = {
+  contextlost: [eventData: { engine: Engine, e: Event }],
+  contextrestored: [engine: Engine],
+  rendererror: [e: Event | Error],
+  render: [dt: number],
+};
+
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
-export class Engine implements Disposable {
+export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   name = 'NewEngine';
   speed = 1;
   displayAspect: number;
@@ -75,8 +83,8 @@ export class Engine implements Disposable {
    * 引擎的像素比
    */
   pixelRatio: number;
-  onRenderError?: (e: Event | Error) => void;
-  onRenderCompositions?: (dt: number) => void;
+  // TODO Use composition click event to instead
+  onClick?: (eventData: Region) => void;
 
   protected _disposed = false;
   protected textures: Texture[] = [];
@@ -95,6 +103,7 @@ export class Engine implements Disposable {
    *
    */
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
+    super();
     this.canvas = canvas;
     this.env = options?.env ?? '';
     this.jsonSceneData = {};
@@ -104,7 +113,7 @@ export class Engine implements Disposable {
 
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
-      this.runRenderLoop(this.renderCompositions.bind(this));
+      this.runRenderLoop(this.render.bind(this));
     }
 
     this.eventSystem = new EventSystem(this, options?.notifyTouch ?? false);
@@ -141,7 +150,7 @@ export class Engine implements Disposable {
   /**
    * @ignore
    */
-  findObject<T> (guid: spec.DataPath): T {
+  findObject<T>(guid: spec.DataPath): T {
     // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
     if (!(isPlainObject(guid))) {
       return guid as T;
@@ -223,11 +232,11 @@ export class Engine implements Disposable {
     this.ticker?.add(renderFunction);
   }
 
-  renderCompositions (dt: number): void {
+  render (dt: number): void {
     const { renderErrors } = this;
 
     if (renderErrors.size > 0) {
-      this.onRenderError?.(renderErrors.values().next().value);
+      this.emit('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
@@ -249,7 +258,7 @@ export class Engine implements Disposable {
     }
 
     if (skipRender) {
-      this.onRenderError?.(new Error('Play when texture offloaded.'));
+      this.emit('rendererror', new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
     }
@@ -266,7 +275,7 @@ export class Engine implements Disposable {
       !comps[i].renderFrame.isDestroyed && this.renderer.renderRenderFrame(comps[i].renderFrame);
     }
 
-    this.onRenderCompositions?.(dt);
+    this.emit('render', dt);
   }
 
   /**
@@ -373,22 +382,6 @@ export class Engine implements Disposable {
 
     return [containerWidth, containerHeight, targetWidth, targetHeight];
   }
-
-  /**
-   * @internal
-   */
-  addLostHandler (lostHandler: LostHandler): void {
-    this.renderer.addLostHandler(lostHandler);
-  }
-
-  /**
-   * @internal
-   */
-  addRestoreHandler (restoreHandler: RestoreHandler) {
-    this.renderer.addRestoreHandler(restoreHandler);
-  }
-
-  onClick?: (eventData: Region) => void;
 
   addTexture (tex: Texture) {
     if (this.disposed) {
