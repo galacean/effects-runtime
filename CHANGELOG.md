@@ -7,6 +7,88 @@
 
 ---
 
+## 2.7.0
+
+`2025-10-28`
+
+### Feat
+- Feat: add shape gradient color. [#1111](https://github.com/galacean/effects-runtime/pull/1111) @wumaolinmaoan
+  - Feat: shape component support multi strokes and fills. [#1115](https://github.com/galacean/effects-runtime/pull/1115) @wumaolinmaoan
+  - Feat: shape add texture paint mode. [#1174](https://github.com/galacean/effects-runtime/pull/1174) @wumaolinmaoan
+  - Refactor: color stop use Color class type. [#1120](https://github.com/galacean/effects-runtime/pull/1120) @wumaolinmaoan
+  - Refactor: move old shape logic to migration. [#1142](https://github.com/galacean/effects-runtime/pull/1142) @wumaolinmaoan
+  - Refactor: move stroke setting to shape data. [#1201](https://github.com/galacean/effects-runtime/pull/1201) @wumaolinmaoan
+  - Refactor: shape stroke attributes. [#1203](https://github.com/galacean/effects-runtime/pull/1203) @wumaolinmaoan
+  - Fix: mask shape color mask setting. [#1236](https://github.com/galacean/effects-runtime/pull/1236) @wumaolinmaoan
+- Feat: shape component support multi strokes and fills rendering. [#1220](https://github.com/galacean/effects-runtime/pull/1220) @wumaolinmaoan
+- Feat: shape component support fill and stroke property animation. [#1121](https://github.com/galacean/effects-runtime/pull/1121) @wumaolinmaoan
+- Feat: add shape texture transform. [#1204](https://github.com/galacean/effects-runtime/pull/1204) @wumaolinmaoan
+- Feat: implement variable control points FFD grid animation and allow applying multiple templates. [#1118](https://github.com/galacean/effects-runtime/pull/1118) @ChengYi996
+  - Implemented FFD (Free-Form Deformation) grid animation
+  - Supports variable rows and columns for control points
+  - Enabled template preset configurations
+  - Allows multiple templates to be stacked for combined effects
+- Feat: support ffd keyframe. [#1195](https://github.com/galacean/effects-runtime/pull/1195) @ChengYi996
+  - Fix: ffd keyframe problem. [#1198](https://github.com/galacean/effects-runtime/pull/1198) @ChengYi996
+- Feat: stop update control points num and bbx in real time. [#1196](https://github.com/galacean/effects-runtime/pull/1196) @ChengYi996
+- Feat: animation graph add `getStateMachineNode` interface. [#1124](https://github.com/galacean/effects-runtime/pull/1124) @wumaolinmaoan
+- Feat: sprite component support loop configuration. [#1228](https://github.com/galacean/effects-runtime/pull/1228) @wumaolinmaoan
+- Feat: text line letter spacing. [#1129](https://github.com/galacean/effects-runtime/pull/1129) @Fryt1
+  - Fix: outline `fontOffset` bug. [#1144](https://github.com/galacean/effects-runtime/pull/1144) @Fryt1
+  - Fix: align letter spacing logic with current overflow mode. [#1146](https://github.com/galacean/effects-runtime/pull/1146) @Fryt1
+  - Fix: rich text plugin alignment mode and `lineGap` algorithm. [#1207](https://github.com/galacean/effects-runtime/pull/1207) @Fryt1
+  - Fix: Resolve compilation errors caused by comments. [#1213](https://github.com/galacean/effects-runtime/pull/1213) @Fryt1
+  - Fix: Address the issue of font shifting due to uninitialized canvas character description when calculating line count. [#1237](https://github.com/galacean/effects-runtime/pull/1237) @Fryt1
+  - Fix: `getLineCount` ensure width calculation is correct. [#1247](https://github.com/galacean/effects-runtime/pull/1247) @Fryt1
+- Feat: rich text parser support escape. [#1141](https://github.com/galacean/effects-runtime/pull/1141) @zheeeng
+- Feat: implement `loadFontFamily`. [#1143](https://github.com/galacean/effects-runtime/pull/1143) @Fryt1
+- Feat: implement aduio component pause goto setTime func 2.7. [#1171](https://github.com/galacean/effects-runtime/pull/1171) @ChengYi996
+- Feat: add `Vector3Property` track and playable. [#1193](https://github.com/galacean/effects-runtime/pull/1193) @wumaolinmaoan
+- Feat: add world to screen space position conversion interface. [#1230](https://github.com/galacean/effects-runtime/pull/1230) @wumaolinmaoan
+- Feat: add trust xhr status 0. [#1123](https://github.com/galacean/effects-runtime/pull/1123) @yiiqii
+
+### Refactor
+- Refactor: material textures dispose. [#1114](https://github.com/galacean/effects-runtime/pull/1114) @wumaolinmaoan
+- Refactor: renderer draw geometry matrix setting. [#1119](https://github.com/galacean/effects-runtime/pull/1119) @wumaolinmaoan
+  - remove unused material uniform semantics
+- Refactor: clean unused shader. [#1122](https://github.com/galacean/effects-runtime/pull/1122) @wumaolinmaoan
+- Refactor: remove unused uniform block code. [#1152](https://github.com/galacean/effects-runtime/pull/1152) @wumaolinmaoan
+- Refactor: timeline evaluate logic. [#1133](https://github.com/galacean/effects-runtime/pull/1133) @wumaolinmaoan
+- Refactor: move gl interface to `GLEngine`. [#1153](https://github.com/galacean/effects-runtime/pull/1153) @wumaolinmaoan
+- Refactor: move frame animation and split logic to sprite component. [#1179](https://github.com/galacean/effects-runtime/pull/1179) @wumaolinmaoan
+- Refactor: remove item unused speed interface. [#1194](https://github.com/galacean/effects-runtime/pull/1194) @wumaolinmaoan
+- Refactor: video end behavior logic. [#1200](https://github.com/galacean/effects-runtime/pull/1200) @ChengYi996
+- Refactor: remove player unused create and destroy event. [#1214](https://github.com/galacean/effects-runtime/pull/1214) @wumaolinmaoan
+- Refactor: usage of item duration and start. [#1215](https://github.com/galacean/effects-runtime/pull/1215) @wumaolinmaoan
+- Refactor: remove item content. [#1216](https://github.com/galacean/effects-runtime/pull/1216) @wumaolinmaoan
+- Refactor: white and transparent texture usage. [#1225](https://github.com/galacean/effects-runtime/pull/1225) @wumaolinmaoan
+
+### Fix
+- Fix: model wireframe use wrong world matrix. [#1131](https://github.com/galacean/effects-runtime/pull/1131) @wumaolinmaoan
+- Fix: float property track bound object issue. [#1127](https://github.com/galacean/effects-runtime/pull/1127) @wumaolinmaoan
+- Fix: composition component cannot find the item from id. [#1125](https://github.com/galacean/effects-runtime/pull/1125) @wumaolinmaoan
+- Fix: 3d frame test. [#1156](https://github.com/galacean/effects-runtime/pull/1156) @wumaolinmaoan
+- Fix: opt composition restart timimg to prevent item flash. [#1175](https://github.com/galacean/effects-runtime/pull/1175) @wumaolinmaoan
+- Fix: playables export. [#1187](https://github.com/galacean/effects-runtime/pull/1187) @wumaolinmaoan
+- Fix: bezier keyframe converter. [#1197](https://github.com/galacean/effects-runtime/pull/1197) @wumaolinmaoan
+- Fix: mute audio when calling goto. [#1210](https://github.com/galacean/effects-runtime/pull/1210) @ChengYi996
+- Fix: player create and dispose error process. [#1211](https://github.com/galacean/effects-runtime/pull/1211) @wumaolinmaoan
+- Fix: bezier slope calculation issue on first and last key. [#1217](https://github.com/galacean/effects-runtime/pull/1217) @wumaolinmaoan
+- Fix: unused `assetManager` is not released. [#1224](https://github.com/galacean/effects-runtime/pull/1224) @wumaolinmaoan
+- Fix: `effectsObject` is not removed from engine object instance cache when disposed. [#1232](https://github.com/galacean/effects-runtime/pull/1232) @wumaolinmaoan
+- Fix: player restore issue. [#1244](https://github.com/galacean/effects-runtime/pull/1244) @wumaolinmaoan
+- Fix: ts type issue. [#1246](https://github.com/galacean/effects-runtime/pull/1246) @wumaolinmaoan
+- Fix: resolve conflicts. [#1251](https://github.com/galacean/effects-runtime/pull/1251) @yiiqii
+
+### Chore
+- Chore: update specification. [#1155](https://github.com/galacean/effects-runtime/pull/1155) @yiiqii
+  - Chore: bump spec to 2.6.0-alpha.2. [#1202](https://github.com/galacean/effects-runtime/pull/1202) @wumaolinmaoan
+  - Chore: update specification. [#1245](https://github.com/galacean/effects-runtime/pull/1245) @yiiqii
+- Chore: engine white texture type. [#1227](https://github.com/galacean/effects-runtime/pull/1227) @wumaolinmaoan
+
+### Test
+- Test: add cases. [#1212](https://github.com/galacean/effects-runtime/pull/1212) @yiiqii
+
 ## 2.6.9
 
 `2025-10-22`
