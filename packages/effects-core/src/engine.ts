@@ -35,7 +35,6 @@ type EngineEvent = {
   contextlost: [eventData: { engine: Engine, e: Event }],
   contextrestored: [engine: Engine],
   rendererror: [e: Event | Error],
-  render: [dt: number],
 };
 
 /**
@@ -274,8 +273,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (let i = 0; i < comps.length; i++) {
       !comps[i].renderFrame.isDestroyed && this.renderer.renderRenderFrame(comps[i].renderFrame);
     }
-
-    this.emit('render', dt);
   }
 
   /**

@@ -195,15 +195,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.handleEmitEvent('rendererror', e);
       });
 
-      this.engine.on('render', (dt: number) => {
-        if (this.autoPlaying) {
-          this.emit('update', {
-            player: this,
-            playing: true,
-          });
-        }
-      });
-
       this.engine.on('contextlost', eventData => {
         this.lost(eventData.e);
       });
@@ -226,6 +217,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           void this.resume();
         }
       };
+
+      this.engine.runRenderLoop((dt: number) => {
+        if (this.autoPlaying) {
+          this.emit('update', {
+            player: this,
+            playing: true,
+          });
+        }
+      });
 
       // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
       playerMap.forEach(player => {
