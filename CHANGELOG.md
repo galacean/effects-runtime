@@ -79,6 +79,7 @@
 - Fix: player restore issue. [#1244](https://github.com/galacean/effects-runtime/pull/1244) @wumaolinmaoan
 - Fix: ts type issue. [#1246](https://github.com/galacean/effects-runtime/pull/1246) @wumaolinmaoan
 - Fix: resolve conflicts. [#1251](https://github.com/galacean/effects-runtime/pull/1251) @yiiqii
+- Fix: loop index problem in ffd shader. [#1255](https://github.com/galacean/effects-runtime/pull/1255) @ChengYi996
 
 ### Chore
 - Chore: update specification. [#1155](https://github.com/galacean/effects-runtime/pull/1155) @yiiqii

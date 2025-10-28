@@ -7,8 +7,9 @@ varying vec2 vTexCoord;
 varying vec3 vParams;
 varying vec4 vColor;
 
-#define MAX_BLOCK_NUM 10
+#define MAX_BLOCK_NUM 20
 #define EPSILON 1e-6
+#define MAX_K 9        // (MAX_BLOCK_NUM - 1) / 2;
 
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixV;
@@ -35,7 +36,9 @@ float binomialCoefficient(int n, int k) {
     k = n - k;
 
   float result = 1.0;
-  for(int i = 1; i <= k; ++i) {
+
+  for(int i = 1; i <= MAX_K; ++i) {
+    if(i > k) break;
     result *= float(n - i + 1) / float(i);
   }
   return result;
