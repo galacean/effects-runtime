@@ -15,8 +15,7 @@ import type { Composition } from './composition';
 import type { AssetManager } from './asset-manager';
 import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
-import type { TouchEventType } from './plugins/interact/event-system';
-import { EVENT_TYPE_CLICK, EventSystem } from './plugins/interact/event-system';
+import { EventSystem } from './plugins/interact/event-system';
 import type { GLType } from './gl/create-gl-context';
 import { HELP_LINK } from './constants';
 import type { Region } from './plugins/interact/click-handler';
@@ -108,11 +107,9 @@ export class Engine implements Disposable {
       this.runRenderLoop(this.renderCompositions.bind(this));
     }
 
-    this.eventSystem = new EventSystem(this.canvas);
+    this.eventSystem = new EventSystem(this, options?.notifyTouch ?? false);
     this.eventSystem.enabled = options?.interactive ?? false;
-    this.eventSystem.allowPropagation = options?.notifyTouch ?? false;
-    this.eventSystem.bindListeners();
-    this.eventSystem.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
+    this.eventSystem.bindListeners(this.canvas);
 
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
@@ -392,40 +389,6 @@ export class Engine implements Disposable {
   }
 
   onClick?: (eventData: Region) => void;
-
-  private handleClick = (e: TouchEventType) => {
-    const { x, y } = e;
-    const hitInfos: (Region & {
-      composition: Composition,
-    })[] = [];
-
-    // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
-    this.compositions.forEach(composition => {
-      const regions = composition.hitTest(x, y);
-
-      for (const region of regions) {
-        hitInfos.push({
-          ...region,
-          composition,
-        });
-      }
-    });
-
-    for (let i = 0; i < hitInfos.length; i++) {
-      const hitInfo = hitInfos[i];
-      const behavior = hitInfo.behavior || spec.InteractBehavior.NOTIFY;
-
-      this.onClick?.(hitInfo);
-
-      if (behavior === spec.InteractBehavior.NOTIFY) {
-        hitInfo.composition.emit('click', {
-          ...hitInfo,
-          compositionId: hitInfo.composition.id,
-          compositionName: hitInfo.composition.name,
-        });
-      }
-    }
-  };
 
   addTexture (tex: Texture) {
     if (this.disposed) {
