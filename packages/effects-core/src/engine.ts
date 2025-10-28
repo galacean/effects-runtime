@@ -22,13 +22,14 @@ import type { Region } from './plugins/interact/click-handler';
 import { EventEmitter } from './events';
 
 export interface EngineOptions extends WebGLContextAttributes {
-  manualRender?: boolean,
+  name?: string,
   glType?: GLType,
   fps?: number,
+  env?: string,
+  manualRender?: boolean,
   pixelRatio?: number,
   notifyTouch?: boolean,
   interactive?: boolean,
-  env?: string,
 }
 
 type EngineEvent = {
@@ -105,6 +106,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     super();
     this.canvas = canvas;
     this.env = options?.env ?? '';
+    this.name = options?.name ?? this.name;
+    this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.whiteTexture = generateWhiteTexture(this);
@@ -121,7 +124,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
-    this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
   }
 
   /**

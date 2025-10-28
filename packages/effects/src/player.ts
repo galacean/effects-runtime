@@ -177,6 +177,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.container = this.canvas.parentElement;
 
       this.engine = Engine.create(this.canvas, {
+        name,
         glType: framework,
         fps,
         env,
@@ -187,7 +188,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         interactive,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
       });
-      this.engine.name = this.name;
       this.engine.offscreenMode = true;
 
       // Bind engine events
