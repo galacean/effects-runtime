@@ -333,10 +333,10 @@ export class RenderPass implements Disposable, Sortable {
 
   protected destroyed = false;
   protected options: RenderPassAttachmentOptions;
+  protected viewportScale: number;
   protected renderer: Renderer;
 
   private initialized = false;
-  private viewportScale: number;
   private depthTexture?: Texture;
   private stencilTexture?: Texture;
   private isCustomViewport: boolean;
@@ -695,8 +695,6 @@ export class RenderPass implements Disposable, Sortable {
       }
     }
 
-    // @ts-expect-error safe to assign
-    this.options = this.renderer = null;
     this.initialize = throwDestroyedError as unknown as (r: Renderer) => RenderPass;
   }
 }

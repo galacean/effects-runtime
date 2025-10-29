@@ -36,6 +36,7 @@ type EngineEvent = {
   contextlost: [eventData: { engine: Engine, e: Event }],
   contextrestored: [engine: Engine],
   rendererror: [e: Event | Error],
+  resize: [Engine],
 };
 
 /**
@@ -328,6 +329,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
         comp.camera.pixelHeight = this.renderer.getHeight();
         comp.camera.pixelWidth = this.renderer.getWidth();
       });
+
+      this.emit('resize', this);
     }
   }
 

@@ -21,7 +21,6 @@ export class GLRendererInternal implements Disposable, LostHandler {
   readonly textures: GLTexture[] = [];
 
   private readonly renderbuffers: GLRenderbuffer[] = [];
-  private readonly framebuffers: GLFramebuffer[] = [];
   private sourceFbo: WebGLFramebuffer | null;
   private targetFbo: WebGLFramebuffer | null;
   private destroyed = false;
@@ -129,13 +128,6 @@ export class GLRendererInternal implements Disposable, LostHandler {
       gl.canvas.width = width;
       gl.canvas.height = height;
       gl.viewport(0, 0, width, height);
-      this.framebuffers.forEach(framebuffer => {
-        const viewport = framebuffer.viewport;
-
-        if (!framebuffer.isCustomViewport) {
-          framebuffer.resize(viewport[0], viewport[1], width * framebuffer.viewportScale, height * framebuffer.viewportScale);
-        }
-      });
     }
   }
 
@@ -187,7 +179,6 @@ export class GLRendererInternal implements Disposable, LostHandler {
     const fbo = this.gl.createFramebuffer();
 
     if (fbo) {
-      addItem(this.framebuffers, framebuffer);
       assignInspectorName(fbo, name, name);
     } else {
       throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${this.gl.isContextLost()}`);
@@ -223,7 +214,6 @@ export class GLRendererInternal implements Disposable, LostHandler {
   deleteGLFramebuffer (framebuffer: GLFramebuffer) {
     if (framebuffer && !this.destroyed) {
       this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
-      removeItem(this.framebuffers, framebuffer);
       delete framebuffer.fbo;
     }
   }
@@ -245,8 +235,6 @@ export class GLRendererInternal implements Disposable, LostHandler {
       gl.deleteFramebuffer(this.targetFbo);
       this.emptyTexture2D.dispose();
       this.emptyTextureCube.dispose();
-      this.framebuffers.forEach(fb => this.deleteGLFramebuffer(fb));
-      this.framebuffers.length = 0;
       this.renderbuffers.forEach(rb => this.deleteGLRenderbuffer(rb));
       this.renderbuffers.length = 0;
       this.textures.forEach(tex => this.deleteGLTexture(tex));

@@ -160,6 +160,9 @@ void main(){
   }
 }
 
+/**
+ * @deprecated
+ */
 class CopyTexturePass extends RenderPass {
   currentFramebuffer: Framebuffer | null;
 

@@ -5,7 +5,7 @@ import type { Texture } from '../texture';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
 import { getTextureSize } from './render-frame';
-import type { RenderPassOptions } from './render-pass';
+import type { RenderPassDestroyOptions, RenderPassOptions } from './render-pass';
 import { RenderTargetHandle, TextureStoreAction } from './render-pass';
 import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
@@ -54,6 +54,9 @@ export class BloomThresholdPass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+
+    this.onResize = this.onResize.bind(this);
+    this.renderer.engine.on('resize', this.onResize);
   }
 
   override configure (renderer: Renderer): void {
@@ -74,6 +77,18 @@ export class BloomThresholdPass extends RenderPass {
     this.screenMesh.material.setFloat('_Threshold', threshold);
     renderer.renderMeshes([this.screenMesh]);
   }
+
+  private onResize (): void {
+    const viewportScale = this.viewportScale;
+    const width = this.renderer.getWidth() * viewportScale;
+    const height = this.renderer.getHeight() * viewportScale;
+
+    this.framebuffer?.resize(0, 0, width, height);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions): void {
+    this.renderer.engine.off('resize', this.onResize);
+  }
 }
 
 export class HQGaussianDownSamplePass extends RenderPass {
@@ -82,13 +97,16 @@ export class HQGaussianDownSamplePass extends RenderPass {
   private mainTexture: Texture;
   private screenMesh: Mesh;
   private readonly type: 'V' | 'H';
+  private readonly level: number;
 
   constructor (renderer: Renderer,
     type: 'V' | 'H',
+    level: number,
     options: RenderPassOptions,
   ) {
     super(renderer, options);
     this.type = type;
+    this.level = level;
     const engine = this.renderer.engine;
     const name = 'PostProcess';
     const geometry = Geometry.create(engine, {
@@ -125,6 +143,9 @@ export class HQGaussianDownSamplePass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+
+    this.onResize = this.onResize.bind(this);
+    this.renderer.engine.on('resize', this.onResize);
   }
 
   override configure (renderer: Renderer): void {
@@ -145,6 +166,19 @@ export class HQGaussianDownSamplePass extends RenderPass {
       this.gaussianResult.texture = renderer.getFramebuffer()!.getColorTextures()[0];
     }
   }
+
+  private onResize (): void {
+    const width = Math.floor(this.renderer.getWidth() / Math.pow(2, this.level + 1));
+    const height = Math.floor(this.renderer.getHeight() / Math.pow(2, this.level + 1));
+
+    this.framebuffer?.resize(0, 0, width, height);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions | undefined): void {
+    super.dispose(options);
+
+    this.renderer.engine.off('resize', this.onResize);
+  }
 }
 
 export class HQGaussianUpSamplePass extends RenderPass {
@@ -152,10 +186,12 @@ export class HQGaussianUpSamplePass extends RenderPass {
 
   private mainTexture: Texture;
   private screenMesh: Mesh;
+  private readonly level: number;
 
-  constructor (renderer: Renderer, options: RenderPassOptions) {
+  constructor (renderer: Renderer, level: number, options: RenderPassOptions) {
     super(renderer, options);
 
+    this.level = level;
     const name = 'PostProcess';
     const engine = this.renderer.engine;
     const geometry = Geometry.create(engine, {
@@ -185,6 +221,9 @@ export class HQGaussianUpSamplePass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+
+    this.onResize = this.onResize.bind(this);
+    this.renderer.engine.on('resize', this.onResize);
   }
 
   override configure (renderer: Renderer): void {
@@ -202,6 +241,18 @@ export class HQGaussianUpSamplePass extends RenderPass {
     this.screenMesh.material.setTexture('_GaussianDownTex', this.gaussianDownSampleResult.texture);
     this.screenMesh.material.setVector2('_GaussianDownTextureSize', getTextureSize(this.gaussianDownSampleResult.texture));
     renderer.renderMeshes([this.screenMesh]);
+  }
+
+  private onResize (): void {
+    const width = Math.floor(this.renderer.getWidth() / Math.pow(2, this.level - 1));
+    const height = Math.floor(this.renderer.getHeight() / Math.pow(2, this.level - 1));
+
+    this.framebuffer?.resize(0, 0, width, height);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions): void {
+    super.dispose(options);
+    this.renderer.engine.off('resize', this.onResize);
   }
 }
 
