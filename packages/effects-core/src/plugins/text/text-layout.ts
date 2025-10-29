@@ -1,15 +1,12 @@
 import * as spec from '@galacean/effects-specification';
 import type { TextStyle } from './text-style';
+import type { LayoutBase } from './layout-base';
 
-export class TextLayout {
-  // Layout common
-  textBaseline: spec.TextBaseline; // Enum
-  textAlign: spec.TextAlignment; // Enum
+export class TextLayout implements LayoutBase {
+  textBaseline: spec.TextBaseline;
+  textAlign: spec.TextAlignment;
   letterSpace: number;
-  lineGap: number;
-  overflow: spec.TextOverflow;// Enum  // both
-  useLegacyRichText: boolean;
-
+  overflow: spec.TextOverflow;
   width = 0;
   height = 0;
 
@@ -19,63 +16,32 @@ export class TextLayout {
   autoWidth: boolean;
 
   /**
-   * 自动换行开关
-   */
-  wrap: boolean;
-
-  /**
-   * 文本框最大高度限制
-   */
-  maxTextHeight: number;
-  /**
-   * 文本框最大宽度限制
-   */
-  maxTextWidth: number;
-  /**
-   * 文本框大小模式
-   */
-  sizeMode: spec.TextSizeMode;
-  /**
-   * 文本框是否开启自动换行
-   */
-  wrapEnabled: boolean;
-
-  /**
    * 行高
    */
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
-    //@ts-expect-error
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, letterSpace = 0, lineGap = 0.571, autoWidth = false, fontSize, lineHeight = fontSize, useLegacyRichText = false, wrapEnabled = false, maxTextWidth = 350, maxTextHeight = 1000 } = options;
-
-    //const tempWidth = fontSize + letterSpace;
-
-    this.autoWidth = autoWidth;
-    //this.maxTextWidth = text.length * tempWidth;
-
-    this.width = textWidth;
-    this.height = textHeight;
+    const {
+      textHeight = 100,
+      textWidth = 100,
+      textOverflow = spec.TextOverflow.clip,
+      textBaseline = spec.TextBaseline.top,
+      textAlign = spec.TextAlignment.left,
+      letterSpace = 0,
+      autoWidth = false,
+      fontSize,
+      lineHeight = fontSize,
+    } = options;
 
     this.letterSpace = letterSpace;
-    this.lineGap = lineGap;
-    this.useLegacyRichText = useLegacyRichText;
     this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
+    this.width = textWidth;
+    this.height = textHeight;
+
     this.lineHeight = lineHeight;
-
-    // 初始化warp字段，基于autoWidth：当autoWidth为true时，warp为false；反之亦然
-    // 暂时保持与之前错误逻辑一致，后续按文档要求修改
-    this.wrap = !autoWidth;
-
-    //先对富文本进行改造，普通文本后续也要改造
-    //文本框最大宽高
-    this.maxTextWidth = maxTextWidth;
-    //文本框最大高度
-    this.maxTextHeight = maxTextHeight;
-    //是否开启自动换行
-    this.wrapEnabled = wrapEnabled;
+    this.autoWidth = autoWidth;
   }
 
   /**
@@ -137,67 +103,6 @@ export class TextLayout {
     }
 
     return offsetX;
-  }
-
-  /**
-   * 富文本垂直对齐计算
-   * @param style - 字体样式
-   * @param lineHeights - 每行高度数组
-   * @param fontSize - 字体大小
-   * @returns 第一行基线的Y坐标
-   */
-  getOffsetYRich (style: TextStyle, lineHeights: number[], fontSize: number): number {
-    const { outlineWidth, fontScale } = style;
-    const total = lineHeights.reduce((a, b) => a + b, 0);
-
-    // 使用与原始getOffsetY相同的经验值计算
-    // /3 计算Y轴偏移量，以匹配编辑器行为
-    const offsetY = (lineHeights[0] - fontSize) / 3;
-    // 计算基础偏移量（从画布顶部到第一行基线的距离）
-    const baseOffset = fontSize + outlineWidth * fontScale;
-    // 除第一行外的所有行的总高度
-    const commonCalculation = total - lineHeights[0]; // 使用实际总高度减去第一行高度
-    let offsetResult = 0;
-
-    switch (this.textBaseline) {
-      case spec.TextBaseline.top:
-        offsetResult = baseOffset + offsetY;
-
-        break;
-      case spec.TextBaseline.middle:
-        offsetResult = (this.height * fontScale - total) / 2 + baseOffset;
-
-        break;
-      case spec.TextBaseline.bottom:
-        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
-
-        break;
-      default:
-        break;
-    }
-
-    return offsetResult;
-  }
-
-  /**
-   * 富文本横向对齐计算
-   * @param style - 字体样式
-   * @param maxWidth - 文本框最大宽度
-   * @param contentW - 文本实际宽度
-   * @returns 第一行基线的Y坐标
-   */
-  getOffsetXRich (style: TextStyle, maxWidth: number, contentW: number): number {
-
-    switch (this.textAlign) {
-      case spec.TextAlignment.left:
-        return style.outlineWidth ;
-      case spec.TextAlignment.middle:
-        return (maxWidth - contentW) / 2;
-      case spec.TextAlignment.right:
-        return maxWidth - contentW ;
-      default:
-        return 0;
-    }
   }
 
   /**

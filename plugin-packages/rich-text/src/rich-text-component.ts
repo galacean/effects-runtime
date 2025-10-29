@@ -1,5 +1,15 @@
 import type { Engine } from '@galacean/effects';
-import { assertExist, math, effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
+import {
+  assertExist,
+  math,
+  effectsClass,
+  spec,
+  MaskableGraphic,
+  applyMixins,
+  TextStyle,
+} from '@galacean/effects';
+import { TextComponentBase } from '@galacean/effects';
+import { RichTextLayout } from './rich-text-layout';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
@@ -17,9 +27,6 @@ import type {
   WrapResult,
 } from './strategies/rich-text-interfaces';
 
-/**
- *
- */
 export interface RichTextOptions {
   text: string,
   fontSize: number,
@@ -31,101 +38,105 @@ export interface RichTextOptions {
 }
 
 interface CharDetail {
-  /**
-   * 字符内容
-   */
   char: string,
-  /**
-   * 当前字符在本行内的起始 x 坐标（相对行起点）
-   */
   x: number,
-  /**
-   * 当前字符的宽度
-   */
   width: number,
 }
 
 interface RichCharInfo {
-  /**
-   * 每个富文本片段的起始 x 坐标
-   */
   offsetX: number[],
-  /**
-   * 字符参数
-   */
   richOptions: RichTextOptions[],
-  /**
-   * 段落宽度
-   */
   width: number,
-  /**
-   * 段落高度
-   */
   lineHeight: number,
-  /**
-   * 字体偏移高度
-   */
   offsetY: number,
-  /**
-   * 当前富文本片段内所有字符的详细信息
-   */
   chars: CharDetail[][],
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface RichTextComponent extends TextComponentBase { }
+
 let seed = 0;
 
-/**
- * RichText component class
- */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 @effectsClass(spec.DataType.RichTextComponent)
-export class RichTextComponent extends TextComponent {
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class RichTextComponent extends MaskableGraphic {
+  isDirty = true;
+  text: string = '';
+  textStyle: TextStyle;
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D | null;
+  textLayout: RichTextLayout;
+
   processedTextOptions: RichTextOptions[] = [];
-  // 字体高度的倍数（字体高度上下多出来的部分就是行间距）
   private singleLineHeight: number = 1.571;
   private size: math.Vector2 | null = null;
-  /**
-   * 获取第一次渲染的 size
-   */
   private initialized: boolean = false;
-  /**
-   * canvas 大小
-   */
   private canvasSize: math.Vector2 | null = null;
 
-  // 富文本专用策略字段
   private richWrapStrategy: RichWrapStrategy;
   private richOverflowStrategy: RichOverflowStrategy;
   private richHorizontalAlignStrategy: RichHorizontalAlignStrategy;
   private richVerticalAlignStrategy: RichVerticalAlignStrategy;
 
+  protected readonly SCALE_FACTOR = 0.1;
+  protected readonly ALPHA_FIX_VALUE = 1 / 255;
+
   constructor (engine: Engine) {
     super(engine);
-
     this.name = 'MRichText' + seed++;
 
-    // 延迟初始化策略，等到textLayout被赋值后再初始化
+    this.initTextBase(engine);
+
     this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy();
-    this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy('display' as any); // 使用默认值
+    this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(spec.TextOverflow.clip);
     this.richHorizontalAlignStrategy = RichTextStrategyFactory.createHorizontalAlignStrategy();
     this.richVerticalAlignStrategy = RichTextStrategyFactory.createVerticalAlignStrategy();
   }
 
-  /**
-   * 更新策略配置（当textLayout被赋值后调用）
-   */
+  override onUpdate (dt: number): void {
+    super.onUpdate(dt);
+    this.updateTexture();
+  }
+
+  override onDestroy (): void {
+    super.onDestroy();
+    this.disposeTextTexture();
+  }
+
+  override fromData (data: spec.RichTextComponentData): void {
+    super.fromData(data);
+    const { interaction, options } = data;
+
+    this.interaction = interaction;
+
+    this.textStyle = new TextStyle(options);
+    this.textLayout = new RichTextLayout(options);
+    this.text = options.text ? options.text.toString() : ' ';
+
+    if (this.textLayout.useLegacyRichText) {
+      this.textLayout.textBaseline = spec.TextBaseline.middle;
+    }
+
+    this.updateStrategies();
+    this.renderText(options);
+
+    // ✅ 使用 math.Color
+    this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
+  }
+
   private updateStrategies (): void {
-    if (this.textLayout) {
-      // 根据textLayout属性创建相应的策略
-      this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy(this.textLayout.wrapEnabled);
-      // 重新创建溢出策略以使用正确的overflow设置
-      this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(this.textLayout.overflow);
+    const layout = this.textLayout;
+
+    if (layout) {
+      this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy(layout.wrapEnabled);
+      this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(layout.overflow);
     }
   }
 
   private generateTextProgram (text: string) {
     this.processedTextOptions = [];
     const program = generateProgram((text, context) => {
-      //  如果富文本仅包含换行符，则在每个换行符后添加一个空格
       if (/^\n+$/.test(text)) {
         text = text.replace(/\n/g, '\n ');
       }
@@ -144,74 +155,84 @@ export class RichTextComponent extends TextComponent {
         if ('b' in context) {
           options.fontWeight = spec.TextWeight.bold;
         }
-
         if ('i' in context) {
           options.fontStyle = spec.FontStyle.italic;
         }
-
         if ('size' in context && context.size) {
           options.fontSize = parseInt(context.size, 10);
         }
-
         if ('color' in context && context.color) {
           options.fontColor = toRGBA(context.color);
         }
         this.processedTextOptions.push(options);
       });
-
     });
 
     program(text);
   }
 
-  override updateTexture (flipY = true) {
-    if (!this.isDirty || !this.context || !this.canvas) {
+  updateWithOptions (options: spec.RichTextContentOptions) {
+    this.textStyle = new TextStyle(options);
+    this.textLayout = new RichTextLayout(options);
+    this.text = options.text ? options.text.toString() : ' ';
+    if (this.textLayout.useLegacyRichText) {
+      this.textLayout.textBaseline = spec.TextBaseline.middle;
+    }
+    this.updateStrategies();
+    this.isDirty = true;
+  }
+
+  protected renderText (options: spec.RichTextContentOptions) {
+    const { size } = options;
+
+    if (size) {
+      this.canvasSize = new math.Vector2(size[0], size[1]);
+    }
+    this.updateTexture();
+  }
+
+  updateTexture (flipY = true) {
+    if (!this.isDirty || !this.context || !this.canvas || !this.textStyle || !this.textLayout) {
       return;
     }
 
-    // 根据useLegacyRichText字段来判断使用哪种渲染模式
-    const useLegacy = this.textLayout.useLegacyRichText === true;
+    const layout = this.textLayout;
+    const useLegacy = layout.useLegacyRichText === true;
 
     this.singleLineHeight = useLegacy ? 1.571 : 1.0;
 
     if (useLegacy) {
       this.updateTextureLegacy(flipY);
     } else {
-      // 使用策略管线
       this.updateTextureWithStrategies(flipY);
     }
   }
 
   private updateTextureLegacy (flipY: boolean) {
-    if (!this.isDirty || !this.context || !this.canvas) {
+    if (!this.isDirty || !this.context || !this.canvas || !this.textStyle) {
       return;
     }
-    // 解析富文本
+
     this.generateTextProgram(this.text);
     let width = 0, height = 0;
-    const { textLayout, textStyle } = this;
-    const { overflow, letterSpace = 0 } = textLayout;
+    const layout = this.textLayout;
+    const { textStyle } = this;
+    const { overflow, letterSpace = 0 } = layout;
     const context = this.context;
 
-    context.save();
-
     const charsInfo: Omit<RichCharInfo, 'chars'>[] = [];
-    const fontHeight = textStyle.fontSize * this.textStyle.fontScale;
+    const fontHeight = textStyle.fontSize * textStyle.fontScale;
     let charInfo: Omit<RichCharInfo, 'chars'> = {
       richOptions: [],
       offsetX: [],
       width: 0,
-      // 包括字体和上下行间距的高度
       lineHeight: fontHeight * this.singleLineHeight,
-      // 字体偏移高度（也就是行间距）
       offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
     };
 
-    // 遍历解析后的文本选项
     this.processedTextOptions.forEach(options => {
       const { text, isNewLine, fontSize } = options;
 
-      // 如果是新行，则将之前行的信息存入charsInfo并且初始化新行的charInfo
       if (isNewLine) {
         charsInfo.push(charInfo);
         width = Math.max(width, charInfo.width);
@@ -222,12 +243,10 @@ export class RichTextComponent extends TextComponent {
           lineHeight: fontHeight * this.singleLineHeight,
           offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
         };
-        // 管理行的总高度调整canvas尺寸
         height += charInfo.lineHeight;
       }
-      // 恢复默认设置
+
       context.font = `${options.fontWeight || textStyle.textWeight} 10px ${options.fontFamily || textStyle.fontFamily}`;
-      // 计算得到每个字段的宽度textWidth
       const textMetrics = context.measureText(text);
       let textWidth = textMetrics.width;
 
@@ -238,27 +257,26 @@ export class RichTextComponent extends TextComponent {
           textWidth = Math.max(textWidth, actualWidth);
         }
       }
-      const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
+
+      const textHeight = fontSize * this.singleLineHeight * textStyle.fontScale;
 
       if (textHeight > charInfo.lineHeight) {
         height += textHeight - charInfo.lineHeight;
         charInfo.lineHeight = textHeight;
-        charInfo.offsetY = fontSize * this.textStyle.fontScale * (this.singleLineHeight - 1) / 2;
+        charInfo.offsetY = fontSize * textStyle.fontScale * (this.singleLineHeight - 1) / 2;
       }
-      charInfo.offsetX.push(charInfo.width);
-      // 计算字段宽度*富文本字体大小*缩放因子*整体文本大小+每个字符的间距（每个字符间距存疑，因为实际测量的宽度已经包含了间距）
-      charInfo.width += (textWidth <= 0 ? 0 : textWidth) * fontSize * this.SCALE_FACTOR * this.textStyle.fontScale + text.length * letterSpace;
 
-      // 将富文本数据存入charInfo
+      charInfo.offsetX.push(charInfo.width);
+      charInfo.width += (textWidth <= 0 ? 0 : textWidth) * fontSize * this.SCALE_FACTOR * textStyle.fontScale + text.length * letterSpace;
       charInfo.richOptions.push(options);
     });
-    // 存储最后一行的字符信息，并且更新最终的宽度和高度用于确定canvas尺寸
+
     charsInfo.push(charInfo);
     width = Math.max(width, charInfo.width);
     height += charInfo.lineHeight;
+
     if (width === 0 || height === 0) {
       this.isDirty = false;
-      context.restore();
 
       return;
     }
@@ -268,172 +286,75 @@ export class RichTextComponent extends TextComponent {
     }
     const { x = 1, y = 1 } = this.size;
 
-    // 首次渲染时初始化canvas尺寸和组件变换
     if (!this.initialized) {
       this.canvasSize = !this.canvasSize ? new math.Vector2(width, height) : this.canvasSize;
       const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
-      this.item.transform.size.set(x * canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR, y * canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR);
+      this.item.transform.size.set(
+        x * canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+        y * canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+      );
       this.size = this.item.transform.size.clone();
       this.initialized = true;
     }
+
     assertExist(this.canvasSize);
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
-    this.textLayout.width = canvasWidth / textStyle.fontScale;
-    this.textLayout.height = canvasHeight / textStyle.fontScale;
-    this.canvas.width = canvasWidth;
-    this.canvas.height = canvasHeight;
-    context.clearRect(0, 0, canvasWidth, canvasHeight);
-    // fix bug 1/255
-    context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
-    if (!flipY) {
-      context.translate(0, canvasHeight);
-      context.scale(1, -1);
-    }
+    layout.width = canvasWidth / textStyle.fontScale;
+    layout.height = canvasHeight / textStyle.fontScale;
 
-    if (charsInfo.length === 0) {
-      context.restore();
-
-      return;
-    }
-    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight, textStyle.fontSize);
-
-    charsInfo.forEach((charInfo, index) => {
-      const { richOptions, offsetX, width } = charInfo;
-      let charWidth = width;
-      let offset = offsetX;
-
-      if (overflow === spec.TextOverflow.display) {
-        if (width > canvasWidth) {
-          const canvasScale = canvasWidth / width;
-
-          charWidth *= canvasScale;
-          offset = offsetX.map(x => x * canvasScale);
-        }
-
-      }
-      const x = this.textLayout.getOffsetX(textStyle, charWidth);
-
-      if (index > 0) {
-        charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
+    this.renderToTexture(canvasWidth, canvasHeight, flipY, context => {
+      if (charsInfo.length === 0) {
+        return;
       }
 
-      richOptions.forEach((options, index) => {
-        const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
-        const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
-        let textSize = fontSize;
+      let charsLineHeight = layout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight, textStyle.fontSize);
+
+      charsInfo.forEach((charInfo, index) => {
+        const { richOptions, offsetX, width } = charInfo;
+        let charWidth = width;
+        let offset = offsetX;
 
         if (overflow === spec.TextOverflow.display) {
           if (width > canvasWidth) {
-            textSize /= width / canvasWidth;
+            const canvasScale = canvasWidth / width;
+
+            charWidth *= canvasScale;
+            offset = offsetX.map(x => x * canvasScale);
           }
         }
 
-        const strOffsetX = offset[index] + x;
+        const x = layout.getOffsetX(textStyle, charWidth);
 
-        context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
-        context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
+        if (index > 0) {
+          charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
+        }
 
-        context.fillText(text, strOffsetX, charsLineHeight);
+        richOptions.forEach((options, index) => {
+          const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
+          const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
+          let textSize = fontSize;
 
+          if (overflow === spec.TextOverflow.display) {
+            if (width > canvasWidth) {
+              textSize /= width / canvasWidth;
+            }
+          }
+
+          const strOffsetX = offset[index] + x;
+
+          context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
+          const [r, g, b, a] = fontColor;
+
+          context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+
+          context.fillText(text, strOffsetX, charsLineHeight);
+        });
       });
-    });
-    // 与 toDataURL() 两种方式都需要像素读取操作
-    const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-
-    const texture = Texture.createWithData(
-      this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
-      {
-        flipY,
-        magFilter: glContext.LINEAR,
-        minFilter: glContext.LINEAR,
-        wrapS: glContext.CLAMP_TO_EDGE,
-        wrapT: glContext.CLAMP_TO_EDGE,
-      },
-    );
-
-    this.renderer.texture = texture;
-    this.material.setTexture('_MainTex', texture);
+    }, { disposeOld: false });
 
     this.isDirty = false;
-    context.restore();
-  }
-
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 水平偏移距离
-   * @returns
-   */
-  override setShadowOffsetY (value: number): void {
-    throw new Error('Method not implemented.');
-  }
-
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 模糊程度
-   */
-  override setShadowBlur (value: number): void {
-    throw new Error('Method not implemented.');
-  }
-
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 水平偏移距离
-   */
-  override setShadowOffsetX (value: number): void {
-    throw new Error('Method not implemented.');
-  }
-
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 阴影颜色
-   */
-  override setShadowColor (value: spec.RGBAColorValue): void {
-    throw new Error('Method not implemented.');
-  }
-
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 外描边宽度
-   * @returns
-   */
-  override setOutlineWidth (value: number): void {
-    throw new Error('Method not implemented.');
-  }
-
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 是否自动设置宽度
-   */
-  override setAutoWidth (value: boolean): void {
-    throw new Error('Method not implemented.');
-  }
-
-  override updateWithOptions (options: spec.TextContentOptions) {
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
-    // TextLayout 构造函数已经正确处理了 textBaseline，这里不需要再设置
-    this.text = options.text ? options.text.toString() : ' ';
-    if (this.textLayout.useLegacyRichText) {
-      this.textLayout.textBaseline = spec.TextBaseline.middle;
-    }
-    // 更新策略配置以使用正确的textLayout设置
-    this.updateStrategies();
-  }
-
-  protected override renderText (options: spec.RichTextContentOptions) {
-    const { size } = options;
-
-    if (size) {
-      this.canvasSize = new math.Vector2(size[0], size[1]);
-    }
-    this.updateTexture();
   }
 
   /**
@@ -446,22 +367,20 @@ export class RichTextComponent extends TextComponent {
 
     // 解析富文本
     this.generateTextProgram(this.text);
-    const { textLayout, textStyle } = this;
-    const { letterSpace = 0 } = textLayout;
+    const layout = this.textLayout;
+    const { letterSpace = 0 } = layout;
     const context = this.context;
 
     if (!context) {
       return;
     }
 
-    context.save();
-
     // 步骤1: 换行策略计算行信息
     const wrapResult = this.richWrapStrategy.computeLines(
       this.processedTextOptions,
       context,
-      textStyle,
-      textLayout,
+      this.textStyle,
+      layout,
       this.singleLineHeight,
       this.textStyle.fontScale,
       letterSpace,
@@ -470,7 +389,6 @@ export class RichTextComponent extends TextComponent {
 
     if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {
       this.isDirty = false;
-      context.restore();
 
       return;
     }
@@ -478,8 +396,8 @@ export class RichTextComponent extends TextComponent {
     // 步骤2: 尺寸处理
     const sizeResult = this.resolveCanvasSize(
       wrapResult,
-      textLayout,
-      textStyle,
+      layout,
+      this.textStyle,
       this.singleLineHeight
     );
 
@@ -490,8 +408,8 @@ export class RichTextComponent extends TextComponent {
     const overflowResult = this.richOverflowStrategy.apply(
       wrapResult.lines,
       sizeResult,
-      textLayout,
-      textStyle
+      layout,
+      this.textStyle
     );
 
     // 步骤4: 水平对齐策略
@@ -499,8 +417,8 @@ export class RichTextComponent extends TextComponent {
       wrapResult.lines,
       sizeResult,
       overflowResult,
-      textLayout,
-      textStyle
+      layout,
+      this.textStyle
     );
 
     // 步骤5: 垂直对齐策略
@@ -508,8 +426,8 @@ export class RichTextComponent extends TextComponent {
       wrapResult.lines,
       sizeResult,
       overflowResult,
-      textLayout,
-      textStyle,
+      layout,
+      this.textStyle,
       this.singleLineHeight
     );
 
@@ -517,55 +435,22 @@ export class RichTextComponent extends TextComponent {
     assertExist(this.canvasSize);
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
-    this.textLayout.width = canvasWidth / textStyle.fontScale;
-    this.textLayout.height = canvasHeight / textStyle.fontScale;
-    this.canvas.width = canvasWidth;
-    this.canvas.height = canvasHeight;
-    context.clearRect(0, 0, canvasWidth, canvasHeight);
+    layout.width = canvasWidth / this.textStyle.fontScale;
+    layout.height = canvasHeight / this.textStyle.fontScale;
 
-    // 调试排版
-    // context.fillStyle = 'rgba(255,0,0,255)';
-    // context.fillRect(0, 0, canvasWidth, canvasHeight);
+    this.renderToTexture(canvasWidth, canvasHeight, flipY, context => {
+      // 步骤6: 绘制文本
+      this.drawTextWithStrategies(
+        context,
+        wrapResult.lines,
+        horizontalAlignResult,
+        verticalAlignResult,
+        overflowResult,
+        this.textStyle
+      );
+    }, { disposeOld: false });
 
-    // fix bug 1/255
-    context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
-    if (!flipY) {
-      context.translate(0, canvasHeight);
-      context.scale(1, -1);
-    }
-
-    // 步骤6: 绘制文本
-    this.drawTextWithStrategies(
-      context,
-      wrapResult.lines,
-      horizontalAlignResult,
-      verticalAlignResult,
-      overflowResult,
-      textStyle
-    );
-
-    // 创建纹理
-    const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    const texture = Texture.createWithData(
-      this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
-      {
-        flipY,
-        magFilter: glContext.LINEAR,
-        minFilter: glContext.LINEAR,
-        wrapS: glContext.CLAMP_TO_EDGE,
-        wrapT: glContext.CLAMP_TO_EDGE,
-      },
-    );
-
-    this.renderer.texture = texture;
-    this.material.setTexture('_MainTex', texture);
     this.isDirty = false;
-    context.restore();
   }
 
   private setCanvasSize (sizeResult: SizeResult): void {
@@ -574,10 +459,12 @@ export class RichTextComponent extends TextComponent {
     }
     const { x = 1, y = 1 } = this.size;
 
-    switch (this.textLayout.overflow) {
+    const layout = this.textLayout;
+
+    switch (layout.overflow) {
       case spec.TextOverflow.visible: {
-        const frameW = this.textLayout.maxTextWidth;
-        const frameH = this.textLayout.maxTextHeight;
+        const frameW = layout.maxTextWidth;
+        const frameH = layout.maxTextHeight;
 
         const bboxTop = sizeResult.bboxTop ?? 0;
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
@@ -586,7 +473,7 @@ export class RichTextComponent extends TextComponent {
         // 计算 frame 基线
         let baselineYFrame = 0;
 
-        switch (this.textLayout.textBaseline) {
+        switch (layout.textBaseline) {
           case spec.TextBaseline.top:
             baselineYFrame = -bboxTop;
 
@@ -612,7 +499,7 @@ export class RichTextComponent extends TextComponent {
         let expandTop = overflowTop;
         let expandBottom = overflowBottom;
 
-        switch (this.textLayout.textBaseline) {
+        switch (layout.textBaseline) {
           case spec.TextBaseline.top: {
             const E = overflowBottom;
 
@@ -644,7 +531,7 @@ export class RichTextComponent extends TextComponent {
         // 水平扩张
         const lines = sizeResult.lines || [];
         const xOffsetsFrame = lines.map(line =>
-          this.textLayout.getOffsetXRich(this.textStyle, frameW, line.width)
+          layout.getOffsetXRich(this.textStyle, frameW, line.width)
         );
         const leftMost = xOffsetsFrame.length > 0 ? Math.min(...xOffsetsFrame) : 0;
         const ex = Math.max(0, -leftMost);
@@ -674,8 +561,8 @@ export class RichTextComponent extends TextComponent {
         break;
       }
       case spec.TextOverflow.clip: {
-        const frameW = this.textLayout.maxTextWidth;
-        const frameH = this.textLayout.maxTextHeight;
+        const frameW = layout.maxTextWidth;
+        const frameH = layout.maxTextHeight;
 
         // 直接使用 frame 尺寸作为画布尺寸
         sizeResult.canvasWidth = frameW;
@@ -689,8 +576,8 @@ export class RichTextComponent extends TextComponent {
         this.canvasSize = new math.Vector2(frameW, frameH);
 
         // 把 layout 的尺寸更新为 frame 尺寸
-        this.textLayout.width = frameW / this.textStyle.fontScale;
-        this.textLayout.height = frameH / this.textStyle.fontScale;
+        layout.width = frameW / this.textStyle.fontScale;
+        layout.height = frameH / this.textStyle.fontScale;
 
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
@@ -705,7 +592,7 @@ export class RichTextComponent extends TextComponent {
       }
       case spec.TextOverflow.display: {
         if (!this.initialized) {
-          this.canvasSize = new math.Vector2(this.textLayout.maxTextWidth, this.textLayout.maxTextHeight);
+          this.canvasSize = new math.Vector2(layout.maxTextWidth, layout.maxTextHeight);
           this.item.transform.size.set(
             x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
             y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
@@ -724,7 +611,7 @@ export class RichTextComponent extends TextComponent {
    */
   private resolveCanvasSize (
     wrapResult: WrapResult,
-    layout: TextLayout,
+    layout: RichTextLayout,
     style: TextStyle,
     singleLineHeight: number
   ): SizeResult {
@@ -773,7 +660,9 @@ export class RichTextComponent extends TextComponent {
         const textSize = fontSize;
 
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
-        context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
+        const [r, g, b, a] = fontColor;
+
+        context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
 
         // 逐字绘制
         const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
@@ -792,4 +681,64 @@ export class RichTextComponent extends TextComponent {
     });
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   * @returns
+   */
+  setShadowOffsetY (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 模糊程度
+   */
+  setShadowBlur (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   */
+  setShadowOffsetX (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 阴影颜色
+   */
+  setShadowColor (value: spec.RGBAColorValue): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 外描边宽度
+   * @returns
+   */
+  setOutlineWidth (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 是否自动设置宽度
+   */
+  setAutoWidth (value: boolean): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 设置字号大小
+   * @param value - 字号
+   * @returns
+   */
+  setFontSize (value: number): void {
+    throw new Error('Method not implemented.');
+  }
 }
+
+applyMixins(RichTextComponent, [TextComponentBase]);

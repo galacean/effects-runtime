@@ -1,6 +1,6 @@
-import type { TextLayout } from '@galacean/effects';
 import { spec } from '@galacean/effects';
 import type { TextStyle } from '@galacean/effects';
+import type { RichTextLayout } from '../../rich-text-layout';
 import type { RichLine, HorizontalAlignResult, SizeResult, OverflowResult } from '../rich-text-interfaces';
 import type { RichHorizontalAlignStrategy } from '../rich-text-interfaces';
 
@@ -13,7 +13,7 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
     lines: RichLine[],
     sizeResult: SizeResult,
     overflowResult: OverflowResult,
-    layout: TextLayout,
+    layout: RichTextLayout,
     style: TextStyle,
   ): HorizontalAlignResult {
     const frameW = layout.maxTextWidth;
@@ -21,7 +21,7 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
 
     // 统一用 frame 宽做容器
     const baseOffsets = lines.map(line =>
-      layout.getOffsetXRich(style, frameW, line.width)
+      (layout as any).getOffsetXRich(style, frameW, line.width)
     );
 
     // 仅 visible 叠加水平补偿，clip/display 不加
@@ -33,4 +33,3 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
     return { lineOffsets };
   }
 }
-

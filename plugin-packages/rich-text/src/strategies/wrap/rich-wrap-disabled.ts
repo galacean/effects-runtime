@@ -1,4 +1,4 @@
-import type { TextLayout } from '@galacean/effects';
+import type { RichTextLayout } from '../../rich-text-layout';
 import type { TextStyle } from '@galacean/effects';
 import type { RichTextOptions } from '../../rich-text-component';
 import type { RichCharDetail, RichLine } from '../rich-text-interfaces';
@@ -13,7 +13,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,
     style: TextStyle,
-    layout: TextLayout,
+    layout: RichTextLayout,
     singleLineHeight: number,
     fontScale: number,
     letterSpace: number,

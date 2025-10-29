@@ -1,5 +1,6 @@
 
-import type { TextStyle, TextLayout } from '@galacean/effects';
+import type { TextStyle } from '@galacean/effects';
+import type { RichTextLayout } from '../../rich-text-layout';
 import type { RichLine, OverflowResult, SizeResult } from '../rich-text-interfaces';
 import type { RichOverflowStrategy } from '../rich-text-interfaces';
 
@@ -11,7 +12,7 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
   apply (
     lines: RichLine[],
     sizeResult: SizeResult,
-    layout: TextLayout,
+    layout: RichTextLayout,
     style: TextStyle,
   ): OverflowResult {
     // 安全处理除零情况
