@@ -695,6 +695,8 @@ export class RenderPass implements Disposable, Sortable {
       }
     }
 
+    // @ts-expect-error safe to assign
+    this.options = null;
     this.initialize = throwDestroyedError as unknown as (r: Renderer) => RenderPass;
   }
 }

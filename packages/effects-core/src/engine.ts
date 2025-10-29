@@ -319,19 +319,24 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
           canvasWidth = Math.round(maxSize * aspect);
         }
       }
-      // ios 14.1 -ios 14.3 resize canvas will cause memory leak
-      this.renderer.resize(canvasWidth, canvasHeight);
+
       this.canvas.style.width = containerWidth + 'px';
       this.canvas.style.height = containerHeight + 'px';
       logger.info(`Resize engine ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
-      this.compositions?.forEach(comp => {
-        comp.camera.aspect = aspect;
-        comp.camera.pixelHeight = this.renderer.getHeight();
-        comp.camera.pixelWidth = this.renderer.getWidth();
-      });
 
-      this.emit('resize', this);
+      this.setSize(canvasWidth, canvasHeight);
     }
+  }
+
+  setSize (width: number, height: number) {
+    // ios 14.1 -ios 14.3 resize canvas will cause memory leak
+    this.renderer.resize(width, height);
+    this.compositions?.forEach(comp => {
+      comp.camera.aspect = width / height;
+      comp.camera.pixelHeight = this.renderer.getHeight();
+      comp.camera.pixelWidth = this.renderer.getWidth();
+    });
+    this.emit('resize', this);
   }
 
   private getTargetSize (parentEle: HTMLElement) {
