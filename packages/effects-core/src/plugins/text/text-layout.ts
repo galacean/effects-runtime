@@ -3,7 +3,7 @@ import type { TextStyle } from './text-style';
 import type { LayoutBase } from './layout-base';
 
 export class TextLayout implements LayoutBase {
-  textBaseline: spec.TextBaseline;
+  textVerticalAlign: spec.TextVerticalAlign;
   textAlign: spec.TextAlignment;
   letterSpace: number;
   overflow: spec.TextOverflow;
@@ -25,7 +25,7 @@ export class TextLayout implements LayoutBase {
       textHeight = 100,
       textWidth = 100,
       textOverflow = spec.TextOverflow.clip,
-      textBaseline = spec.TextBaseline.top,
+      textVerticalAlign = spec.TextVerticalAlign.top,
       textAlign = spec.TextAlignment.left,
       letterSpace = 0,
       autoWidth = false,
@@ -35,7 +35,7 @@ export class TextLayout implements LayoutBase {
 
     this.letterSpace = letterSpace;
     this.overflow = textOverflow;
-    this.textBaseline = textBaseline;
+    this.textVerticalAlign = textVerticalAlign;
     this.textAlign = textAlign;
     this.width = textWidth;
     this.height = textHeight;
@@ -62,16 +62,16 @@ export class TextLayout implements LayoutBase {
     const commonCalculation = totalLineHeight !== undefined ? totalLineHeight : lineHeight * (lineCount - 1);
     let offsetResult = 0;
 
-    switch (this.textBaseline) {
-      case spec.TextBaseline.top:
+    switch (this.textVerticalAlign) {
+      case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
-      case spec.TextBaseline.middle:
+      case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
-      case spec.TextBaseline.bottom:
+      case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;

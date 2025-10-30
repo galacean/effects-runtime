@@ -66,11 +66,11 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
-  setTextBaseline (value: spec.TextBaseline): void {
-    if (this.textLayout.textBaseline === value) {
+  setTextVerticalAlign (value: spec.TextVerticalAlign): void {
+    if (this.textLayout.textVerticalAlign === (value as unknown as spec.TextVerticalAlign)) {
       return;
     }
-    this.textLayout.textBaseline = value;
+    this.textLayout.textVerticalAlign = value as unknown as spec.TextVerticalAlign;
     this.isDirty = true;
   }
 

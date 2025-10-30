@@ -1,8 +1,7 @@
 import { spec } from '@galacean/effects';
 import type { TextStyle, LayoutBase } from '@galacean/effects';
-
 export class RichTextLayout implements LayoutBase {
-  textBaseline: spec.TextBaseline;
+  textVerticalAlign: spec.TextVerticalAlign;
   textAlign: spec.TextAlignment;
   letterSpace: number;
   overflow: spec.TextOverflow;
@@ -35,29 +34,31 @@ export class RichTextLayout implements LayoutBase {
   sizeMode: spec.TextSizeMode;
 
   /**
-   * 行距；在换行策略中按像素换算使用
+   * 文本行高
    */
-  lineGap: number;
+  lineHeight: number;
 
   constructor (options: spec.RichTextContentOptions) {
     const {
       size,
-      textOverflow = spec.TextOverflow.visible,
-      textBaseline = spec.TextBaseline.middle,
+      textOverflow = spec.TextOverflow.clip,
+      textVerticalAlign = spec.TextVerticalAlign.middle,
       textAlign = spec.TextAlignment.left,
       letterSpace = 0,
-      lineGap = 0.571,
+      lineHeight = 0.571,
       wrapEnabled = false,
       maxTextWidth = 350,
       maxTextHeight = 1000,
-      sizeMode = spec.TextSizeMode.fixed,
+      sizeMode = spec.TextSizeMode.autoWidth,
+      // @ts-expect-error 兼容旧版
+      useLegacyRichText = false,
     } = options;
 
     this.letterSpace = letterSpace;
-    this.lineGap = lineGap * 300;
-    this.useLegacyRichText = false;
+    this.lineHeight = lineHeight * 300;
+    this.useLegacyRichText = useLegacyRichText;
     this.overflow = textOverflow;
-    this.textBaseline = textBaseline;
+    this.textVerticalAlign = textVerticalAlign;
     this.textAlign = textAlign;
     this.width = size ? size[0] : 100;
     this.height = size ? size[1] : 100;
@@ -77,16 +78,16 @@ export class RichTextLayout implements LayoutBase {
     const commonCalculation = totalLineHeight !== undefined ? totalLineHeight : lineHeight * (lineCount - 1);
     let offsetResult = 0;
 
-    switch (this.textBaseline) {
-      case spec.TextBaseline.top:
+    switch (this.textVerticalAlign) {
+      case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
-      case spec.TextBaseline.middle:
+      case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
-      case spec.TextBaseline.bottom:
+      case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;
@@ -135,16 +136,16 @@ export class RichTextLayout implements LayoutBase {
     const commonCalculation = total - lineHeights[0];
     let offsetResult = 0;
 
-    switch (this.textBaseline) {
-      case spec.TextBaseline.top:
+    switch (this.textVerticalAlign) {
+      case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
-      case spec.TextBaseline.middle:
+      case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - total) / 2 + baseOffset;
 
         break;
-      case spec.TextBaseline.bottom:
+      case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;

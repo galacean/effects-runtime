@@ -315,7 +315,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  // 说明：setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
+  //setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
   setShadowColor (value: spec.RGBAColorValue): void {
     const v = value ?? [0, 0, 0, 1];
 

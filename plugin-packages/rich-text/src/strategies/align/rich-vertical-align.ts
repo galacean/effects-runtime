@@ -32,16 +32,16 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         // 计算 frame 基线
         let baselineYFrame = 0;
 
-        switch (layout.textBaseline) {
-          case spec.TextBaseline.top:
+        switch (layout.textVerticalAlign) {
+          case spec.TextVerticalAlign.top:
             baselineYFrame = -bboxTop;
 
             break;
-          case spec.TextBaseline.middle:
+          case spec.TextVerticalAlign.middle:
             baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
 
             break;
-          case spec.TextBaseline.bottom:
+          case spec.TextVerticalAlign.bottom:
             baselineYFrame = (frameH - bboxHeight) - bboxTop;
 
             break;
@@ -93,16 +93,16 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         // 计算 display 模式的基线
         let baselineDisplayY = 0;
 
-        switch (layout.textBaseline) {
-          case spec.TextBaseline.top:
+        switch (layout.textVerticalAlign) {
+          case spec.TextVerticalAlign.top:
             baselineDisplayY = -bboxTop;
 
             break;
-          case spec.TextBaseline.middle:
+          case spec.TextVerticalAlign.middle:
             baselineDisplayY = (frameH - bboxHeight) / 2 - bboxTop;
 
             break;
-          case spec.TextBaseline.bottom:
+          case spec.TextVerticalAlign.bottom:
             baselineDisplayY = (frameH - bboxHeight) - bboxTop;
 
             break;

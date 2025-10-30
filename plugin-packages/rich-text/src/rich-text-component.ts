@@ -118,7 +118,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     this.text = options.text ? options.text.toString() : ' ';
 
     if (this.textLayout.useLegacyRichText) {
-      this.textLayout.textBaseline = spec.TextBaseline.middle;
+      this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
 
     this.updateStrategies();
@@ -181,9 +181,9 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
     this.text = options.text ? options.text.toString() : ' ';
-    // TextLayout 构造函数已经正确处理了 textBaseline，这里不需要再设置
+    // TextLayout 构造函数已经正确处理了 textVerticalAlign，这里不需要再设置
     if (this.textLayout.useLegacyRichText) {
-      this.textLayout.textBaseline = spec.TextBaseline.middle;
+      this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
     this.updateStrategies();
     this.isDirty = true;
@@ -437,7 +437,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     );
 
     // 步骤5: 垂直对齐策略
-    const verticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
+    const TextVerticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
       wrapResult.lines,
       sizeResult,
       overflowResult,
@@ -459,7 +459,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
         context,
         wrapResult.lines,
         horizontalAlignResult,
-        verticalAlignResult,
+        TextVerticalAlignResult,
         overflowResult,
         this.textStyle
       );
@@ -488,16 +488,16 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
         // 计算 frame 基线
         let baselineYFrame = 0;
 
-        switch (layout.textBaseline) {
-          case spec.TextBaseline.top:
+        switch (layout.textVerticalAlign) {
+          case spec.TextVerticalAlign.top:
             baselineYFrame = -bboxTop;
 
             break;
-          case spec.TextBaseline.middle:
+          case spec.TextVerticalAlign.middle:
             baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
 
             break;
-          case spec.TextBaseline.bottom:
+          case spec.TextVerticalAlign.bottom:
             baselineYFrame = (frameH - bboxHeight) - bboxTop;
 
             break;
@@ -514,8 +514,8 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
         let expandTop = overflowTop;
         let expandBottom = overflowBottom;
 
-        switch (layout.textBaseline) {
-          case spec.TextBaseline.top: {
+        switch (layout.textVerticalAlign) {
+          case spec.TextVerticalAlign.top: {
             const E = overflowBottom;
 
             expandTop = E;
@@ -523,7 +523,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
             break;
           }
-          case spec.TextBaseline.bottom: {
+          case spec.TextVerticalAlign.bottom: {
             const E = overflowTop;
 
             expandTop = E;
@@ -531,7 +531,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
             break;
           }
-          case spec.TextBaseline.middle: {
+          case spec.TextVerticalAlign.middle: {
             // 保持非对称：上扩 overflowTop，下扩 overflowBottom
             expandTop = overflowTop;
             expandBottom = overflowBottom;
@@ -655,11 +655,11 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     context: CanvasRenderingContext2D,
     lines: RichLine[],
     horizontalAlignResult: HorizontalAlignResult,
-    verticalAlignResult: VerticalAlignResult,
+    TextVerticalAlignResult: VerticalAlignResult,
     overflowResult: OverflowResult,
     textStyle: TextStyle
   ): void {
-    let currentBaselineY = verticalAlignResult.baselineY;
+    let currentBaselineY = TextVerticalAlignResult.baselineY;
     const { lineOffsets } = horizontalAlignResult;
 
     lines.forEach((line, index) => {

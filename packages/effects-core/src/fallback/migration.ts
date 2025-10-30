@@ -278,11 +278,11 @@ export function version34Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // 处理富文本lineGap兼容性
-  processRichTextLineGapCompatibility(json);
+  // 处理富文本maxTextWidth兼容性
+  processRichMaxTextWidthCompatibility(json);
 
-  // 处理富文本lineGap兼容性
-  processRichTextLineGapCompatibility(json);
+  //处理文本和富文本textVerticalAlign兼容性
+  processRichVerticalAlignCompatibility(json);
 
   //@ts-expect-error
   json.version = '3.5';
@@ -291,16 +291,16 @@ export function version34Migration (json: JSONScene): JSONScene {
 }
 
 /**
- * 处理富文本lineGap兼容性
+ * 处理富文本maxTextWidth兼容性
  */
-function processRichTextLineGapCompatibility (json: JSONScene) {
+function processRichMaxTextWidthCompatibility (json: JSONScene) {
   if (!json.components) {return;}
 
   // 遍历所有组件，处理富文本组件
   for (const component of json.components) {
-    // 识别富文本组件并处理lineGap兼容性
+    // 识别富文本组件并处理lineHeight兼容性
     if (component.dataType === 'RichTextComponent' && (component as any).options) {
-      ensureRichTextLineGap((component as any).options);
+      ensureRichTextMaxTextWidth((component as any).options);
     }
   }
 }
@@ -308,19 +308,48 @@ function processRichTextLineGapCompatibility (json: JSONScene) {
 /**
  * 确保富文本组件有版本标识字段
  */
-function ensureRichTextLineGap (options: any) {
+function ensureRichTextMaxTextWidth (options: any) {
   // 检查是否已经处理过
   if (!options || options.useLegacyRichText !== undefined) {
     return;
   }
 
-  // 根据是否存在lineGap字段来判断版本
-  if (options.lineGap === undefined) {
-    // 旧版本（没有lineGap字段）
+  // 根据是否存在maxTextWidth字段来判断版本
+  if (options.maxTextWidth === undefined) {
+    // 旧版本（没有maxTextWidth字段）
     options.useLegacyRichText = true;
   } else {
-    // 新版本（有lineGap字段）
+    // 新版本（有maxTextWidth字段）
     options.useLegacyRichText = false;
+  }
+}
+/**
+ * 处理富文本textVerticalAlign兼容性
+ */
+function processRichVerticalAlignCompatibility (json: JSONScene) {
+  if (!json.components) {return;}
+
+  // 遍历所有组件，处理富文本和文本组件
+  for (const component of json.components) {
+    // 识别富文本组件并处理textVerticalAlign兼容性
+    if (component.dataType === 'TextComponent' || (component.dataType === 'RichTextComponent' && (component as any).options)) {
+      ensureTextVerticalAlign((component as any).options);
+    }
+  }
+}
+/**
+ * 确保文本组件有版本标识字段
+ */
+function ensureTextVerticalAlign (options: any) {
+  // 检查是否已经处理过
+  if (!options || options.TextVerticalAlign !== undefined) {
+    return;
+  }
+
+  // 根据是否存在TextVerticalAlign字段来判断版本
+  if (options.TextVerticalAlign === undefined) {
+    // 旧版本（没有maxTextWidth字段）
+    options.TextVerticalAlign = options.textBaseline;
   }
 }
 

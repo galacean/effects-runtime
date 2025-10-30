@@ -21,7 +21,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
   ): WrapResult {
     const lines: RichLine[] = [];
     const baselines: number[] = [];
-    const gapPx = (layout.lineGap || 0) * fontScale;
+    const gapPx = (layout.lineHeight || 0) * fontScale;
     let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
     let totalHeight = 0;
