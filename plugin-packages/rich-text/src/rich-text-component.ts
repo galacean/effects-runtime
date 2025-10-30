@@ -8,7 +8,7 @@ import {
   applyMixins,
   TextStyle,
 } from '@galacean/effects';
-import { TextComponentBase } from '@galacean/effects';
+import { TextComponentBase, type RichTextRuntimeAPI } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
@@ -57,10 +57,9 @@ export interface RichTextComponent extends TextComponentBase { }
 
 let seed = 0;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 @effectsClass(spec.DataType.RichTextComponent)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class RichTextComponent extends MaskableGraphic {
+export class RichTextComponent extends MaskableGraphic implements RichTextRuntimeAPI {
   isDirty = true;
   text: string = '';
   textStyle: TextStyle;
@@ -89,7 +88,7 @@ export class RichTextComponent extends MaskableGraphic {
     this.initTextBase(engine);
 
     this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy();
-    this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(spec.TextOverflow.clip);
+    this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(spec.TextOverflow.display);
     this.richHorizontalAlignStrategy = RichTextStrategyFactory.createHorizontalAlignStrategy();
     this.richVerticalAlignStrategy = RichTextStrategyFactory.createVerticalAlignStrategy();
   }
@@ -681,63 +680,36 @@ export class RichTextComponent extends MaskableGraphic {
     });
   }
 
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 水平偏移距离
-   * @returns
-   */
+  private unsupported (name: string): never {
+    throw new Error(`RichTextComponent does not support ${name} at runtime.`);
+  }
+
   setShadowOffsetY (value: number): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setShadowOffsetY');
   }
 
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 模糊程度
-   */
   setShadowBlur (value: number): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setShadowBlur');
   }
 
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 水平偏移距离
-   */
   setShadowOffsetX (value: number): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setShadowOffsetX');
   }
 
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 阴影颜色
-   */
   setShadowColor (value: spec.RGBAColorValue): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setShadowColor');
   }
 
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 外描边宽度
-   * @returns
-   */
   setOutlineWidth (value: number): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setOutlineWidth');
   }
 
-  /**
-   * 该方法富文本组件不支持
-   * @param value - 是否自动设置宽度
-   */
   setAutoWidth (value: boolean): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setAutoWidth');
   }
 
-  /**
-   * 设置字号大小
-   * @param value - 字号
-   * @returns
-   */
   setFontSize (value: number): void {
-    throw new Error('Method not implemented.');
+    this.unsupported('setFontSize');
   }
 }
 

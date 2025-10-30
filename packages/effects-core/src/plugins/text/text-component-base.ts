@@ -10,6 +10,24 @@ import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
 
+/**
+ * 纯文本组件特有API
+ */
+export interface TextRuntimeAPI {
+  setOutlineWidth (value: number): void,
+  setShadowBlur (value: number): void,
+  setShadowColor (value: spec.RGBAColorValue): void,
+  setShadowOffsetX (value: number): void,
+  setShadowOffsetY (value: number): void,
+  setAutoWidth (value: boolean): void,
+  setFontSize (value: number): void,
+}
+
+/**
+ * 富文本组件特有API
+ */
+export interface RichTextRuntimeAPI extends TextRuntimeAPI {}
+
 export class TextComponentBase {
   // 状态与通用字段
   textStyle: TextStyle;
@@ -30,8 +48,6 @@ export class TextComponentBase {
   // 常量
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
-
-  // 差异化方法 - 由子类实现，不在 Base 中定义
 
   // 通用 setter 方法
   setText (value: string): void {
@@ -183,14 +199,14 @@ export class TextComponentBase {
 
     const context = this.context;
 
-    // ✅ 先保存状态
+    //先保存状态
     context.save();
 
     // 设置canvas尺寸
     this.canvas.width = width;
     this.canvas.height = height;
 
-    // ✅ 重置变换
+    //重置变换
     context.setTransform(1, 0, 0, 1, 0, 0);
 
     // 处理翻转
@@ -208,7 +224,7 @@ export class TextComponentBase {
     // 执行绘制回调
     drawCallback(context);
 
-    // ✅ 创建纹理前恢复状态
+    //创建纹理前恢复状态
     context.restore();
 
     // 创建新纹理

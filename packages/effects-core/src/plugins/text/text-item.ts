@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { MaskableGraphic } from '../../components';
@@ -8,7 +7,7 @@ import { applyMixins } from '../../utils';
 import type { LayoutBase } from './layout-base';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-import { TextComponentBase } from './text-component-base';
+import { TextComponentBase, type TextRuntimeAPI } from './text-component-base';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -33,6 +32,7 @@ interface CharInfo {
   width: number,
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -41,7 +41,8 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends MaskableGraphic {
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
   isDirty = true;
   /**
    * 文本行数
@@ -272,11 +273,12 @@ export class TextComponent extends MaskableGraphic {
 
   setAutoWidth (value: boolean): void {
     const layout = this.textLayout as TextLayout;
+    const normalizedValue = !!value;
 
-    if (layout.autoWidth === value) {
+    if (layout.autoWidth === normalizedValue) {
       return;
     }
-    layout.autoWidth = value;
+    layout.autoWidth = normalizedValue;
     this.isDirty = true;
   }
 
@@ -290,6 +292,62 @@ export class TextComponent extends MaskableGraphic {
 
     layout.lineHeight += diff;
     this.textStyle.fontSize = value;
+    this.isDirty = true;
+  }
+
+  // 新增：与原版一致，非负 clamp，写入并置脏
+  setOutlineWidth (value: number): void {
+    const v = Math.max(0, Number(value) || 0);
+
+    if (this.textStyle.outlineWidth === v) {
+      return;
+    }
+    this.textStyle.outlineWidth = v;
+    this.isDirty = true;
+  }
+
+  // 新增：与原版一致，非负 clamp，写入并置脏
+  setShadowBlur (value: number): void {
+    const v = Math.max(0, Number(value) || 0);
+
+    if (this.textStyle.shadowBlur === v) {
+      return;
+    }
+    this.textStyle.shadowBlur = v;
+    this.isDirty = true;
+  }
+
+  // 新增：与原版一致，空值回退默认 [0,0,0,1]，写入并置脏
+  // 说明：保持原版行为，setupShadow 使用的是 outlineColor，更新 shadowColor 不会改变阴影颜色
+  setShadowColor (value: spec.RGBAColorValue): void {
+    const v = value ?? [0, 0, 0, 1];
+
+    if (this.textStyle.shadowColor === v) {
+      return;
+    }
+    this.textStyle.shadowColor = v;
+    this.isDirty = true;
+  }
+
+  // 新增：与原版一致，数值归一化为 Number 或 0
+  setShadowOffsetX (value: number): void {
+    const v = Number(value) || 0;
+
+    if (this.textStyle.shadowOffsetX === v) {
+      return;
+    }
+    this.textStyle.shadowOffsetX = v;
+    this.isDirty = true;
+  }
+
+  // 新增：与原版一致，数值归一化为 Number 或 0
+  setShadowOffsetY (value: number): void {
+    const v = Number(value) || 0;
+
+    if (this.textStyle.shadowOffsetY === v) {
+      return;
+    }
+    this.textStyle.shadowOffsetY = v;
     this.isDirty = true;
   }
 }
