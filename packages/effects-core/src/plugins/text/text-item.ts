@@ -64,7 +64,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
 
     this.name = 'MText' + seed++;
 
-    // 初始化 TextComponentBase - 这是关键！
+    // 初始化通用文本渲染环境
     this.initTextBase(engine);
 
     if (props) {
@@ -101,7 +101,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
       return;
     }
     this.text = value.toString();
-    // 关键：纯文本在设置文本时，立刻重算行数
+    // 设置文本后立即重算行数
     this.lineCount = this.getLineCount(this.text);
     this.isDirty = true;
   }
@@ -295,7 +295,6 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  // 新增：与原版一致，非负 clamp，写入并置脏
   setOutlineWidth (value: number): void {
     const v = Math.max(0, Number(value) || 0);
 
@@ -306,7 +305,6 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  // 新增：与原版一致，非负 clamp，写入并置脏
   setShadowBlur (value: number): void {
     const v = Math.max(0, Number(value) || 0);
 
@@ -317,8 +315,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  // 新增：与原版一致，空值回退默认 [0,0,0,1]，写入并置脏
-  // 说明：保持原版行为，setupShadow 使用的是 outlineColor，更新 shadowColor 不会改变阴影颜色
+  // 说明：setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
   setShadowColor (value: spec.RGBAColorValue): void {
     const v = value ?? [0, 0, 0, 1];
 
@@ -329,7 +326,6 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  // 新增：与原版一致，数值归一化为 Number 或 0
   setShadowOffsetX (value: number): void {
     const v = Number(value) || 0;
 
@@ -340,7 +336,6 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  // 新增：与原版一致，数值归一化为 Number 或 0
   setShadowOffsetY (value: number): void {
     const v = Number(value) || 0;
 

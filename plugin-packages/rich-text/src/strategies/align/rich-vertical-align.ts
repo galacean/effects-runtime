@@ -6,7 +6,7 @@ import type { RichVerticalAlignStrategy } from '../rich-text-interfaces';
 
 /**
  * 富文本垂直对齐策略
- * 按原版三分支实现：visible/clip/display
+ * 直接使用已缩放的行高
  */
 export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy {
   getVerticalOffsets (
@@ -23,7 +23,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
     switch (layout.overflow) {
       case spec.TextOverflow.visible: {
-        // visible：frame-based + baselineCompensationY
+        // frame-based 计算
         const frameH = layout.maxTextHeight;
         const bboxTop = sizeResult.bboxTop ?? 0;
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
@@ -47,12 +47,11 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
             break;
         }
 
-        baselineY = baselineYFrame + compY;
+        baselineY = baselineYFrame + compY; // 关键：叠加"向下移动 E"
 
         break;
       }
       case spec.TextOverflow.clip: {
-        // clip：以第一行最大字号*fontScale*singleLineHeight 作为 fontSize
         const firstLine = lines[0];
 
         if (firstLine) {
@@ -67,10 +66,10 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         break;
       }
       case spec.TextOverflow.display: {
-        // 用缩放后的行数据重建 baselines 和 bbox（使用测得的 asc/desc）
+        // display 垂直对齐改为基于 bbox，而不是 getOffsetYRich
         const frameH = layout.maxTextHeight;
 
-        // 基线序列：第一行基线为0，后续按行高累计
+        // 用缩放后的行数据重建 baselines 和 bbox
         const baselines: number[] = [0];
 
         for (let i = 1; i < lines.length; i++) {
@@ -109,7 +108,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
             break;
         }
 
-        // 行偏移：按行高累计
+        // 后续 lineYOffsets 保持按行高累计
         const lineYOffsets: number[] = [];
         let currentY = baselineDisplayY;
 
@@ -124,7 +123,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
       }
     }
 
-    // 计算每行的垂直偏移量
+    // 下面行偏移保持不变
     const lineYOffsets: number[] = [];
     let currentY = baselineY;
 

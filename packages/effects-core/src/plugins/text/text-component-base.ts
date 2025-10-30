@@ -199,7 +199,7 @@ export class TextComponentBase {
 
     const context = this.context;
 
-    //先保存状态
+    // 先保存状态
     context.save();
 
     // 设置canvas尺寸
@@ -215,16 +215,16 @@ export class TextComponentBase {
       context.scale(1, -1);
     }
 
-    // 在翻转后清空（与原版路径一致）
+    // 在翻转后清空画布
     context.clearRect(0, 0, width, height);
 
-    // 执行绘制回调前可选设置 alpha 修复的填充色（不绘制像素，保持与原版一致）
+    // 设置 alpha 修复用填充色（不实际输出像素）
     context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
 
     // 执行绘制回调
     drawCallback(context);
 
-    //创建纹理前恢复状态
+    // 创建纹理前恢复状态
     context.restore();
 
     // 创建新纹理

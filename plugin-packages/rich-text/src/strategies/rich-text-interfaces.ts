@@ -96,7 +96,7 @@ export interface RichSizeStrategy {
 /**
  * 富文本换行策略接口
  */
-export interface RichWrapStrategy { // 更新接口名
+export interface RichWrapStrategy {
   computeLines(
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,

@@ -48,7 +48,7 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
       for (const opt of (line.richOptions || [])) {
         opt.fontSize *= s;         // 缩小字形
       }
-      // 新增：同步缩放 asc/desc
+      // 同步缩放 asc/desc
       if (line.lineAscent != null) {line.lineAscent *= s;}
       if (line.lineDescent != null) {line.lineDescent *= s;}
     }

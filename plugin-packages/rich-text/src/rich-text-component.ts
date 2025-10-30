@@ -57,6 +57,9 @@ export interface RichTextComponent extends TextComponentBase { }
 
 let seed = 0;
 
+/**
+ * 富文本组件类
+ */
 @effectsClass(spec.DataType.RichTextComponent)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RichTextComponent extends MaskableGraphic implements RichTextRuntimeAPI {
@@ -87,6 +90,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
     this.initTextBase(engine);
 
+    // 延迟初始化策略，等到textLayout被赋值后再初始化
     this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy();
     this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(spec.TextOverflow.display);
     this.richHorizontalAlignStrategy = RichTextStrategyFactory.createHorizontalAlignStrategy();
@@ -120,10 +124,13 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     this.updateStrategies();
     this.renderText(options);
 
-    // ✅ 使用 math.Color
+    // 设置默认颜色（math.Color）
     this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
   }
 
+  /**
+   * 使用策略结果绘制文本
+   */
   private updateStrategies (): void {
     const layout = this.textLayout;
 
@@ -174,6 +181,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
     this.text = options.text ? options.text.toString() : ' ';
+    // TextLayout 构造函数已经正确处理了 textBaseline，这里不需要再设置
     if (this.textLayout.useLegacyRichText) {
       this.textLayout.textBaseline = spec.TextBaseline.middle;
     }
@@ -200,6 +208,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
     this.singleLineHeight = useLegacy ? 1.571 : 1.0;
 
+    // 根据useLegacyRichText字段来判断使用哪种渲染模式
     if (useLegacy) {
       this.updateTextureLegacy(flipY);
     } else {
@@ -207,6 +216,9 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     }
   }
 
+  /**
+   * 解析富文本
+   */
   private updateTextureLegacy (flipY: boolean) {
     if (!this.isDirty || !this.context || !this.canvas || !this.textStyle) {
       return;
@@ -229,6 +241,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
     };
 
+    // 遍历解析后的文本选项
     this.processedTextOptions.forEach(options => {
       const { text, isNewLine, fontSize } = options;
 
@@ -274,6 +287,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     width = Math.max(width, charInfo.width);
     height += charInfo.lineHeight;
 
+    // 存储最后一行的字符信息，并且更新最终的宽度和高度用于确定canvas尺寸
     if (width === 0 || height === 0) {
       this.isDirty = false;
 
@@ -343,6 +357,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
           const strOffsetX = offset[index] + x;
 
+          // fix bug 1/255
           context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
           const [r, g, b, a] = fontColor;
 
@@ -353,6 +368,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       });
     }, { disposeOld: false });
 
+    // 与 toDataURL() 两种方式都需要像素读取操作
     this.isDirty = false;
   }
 
@@ -684,30 +700,59 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     throw new Error(`RichTextComponent does not support ${name} at runtime.`);
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   * @returns
+   */
   setShadowOffsetY (value: number): void {
     this.unsupported('setShadowOffsetY');
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 模糊程度
+   */
   setShadowBlur (value: number): void {
     this.unsupported('setShadowBlur');
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   */
   setShadowOffsetX (value: number): void {
     this.unsupported('setShadowOffsetX');
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 阴影颜色
+   */
   setShadowColor (value: spec.RGBAColorValue): void {
     this.unsupported('setShadowColor');
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 外描边宽度
+   * @returns
+   */
   setOutlineWidth (value: number): void {
     this.unsupported('setOutlineWidth');
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 是否自动设置宽度
+   */
   setAutoWidth (value: boolean): void {
     this.unsupported('setAutoWidth');
   }
 
+  /**
+   * 该方法富文本组件不支持
+   */
   setFontSize (value: number): void {
     this.unsupported('setFontSize');
   }

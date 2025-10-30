@@ -15,7 +15,7 @@ export class RichTextLayout implements LayoutBase {
   useLegacyRichText: boolean;
 
   /**
-   * 是否启用自动换行
+   * 文本框是否开启自动换行
    */
   wrapEnabled: boolean;
 
@@ -35,7 +35,7 @@ export class RichTextLayout implements LayoutBase {
   sizeMode: spec.TextSizeMode;
 
   /**
-   * 行间距系数
+   * 行距；在换行策略中按像素换算使用
    */
   lineGap: number;
 
@@ -160,7 +160,7 @@ export class RichTextLayout implements LayoutBase {
    * @param style - 字体样式
    * @param maxWidth - 文本框最大宽度
    * @param contentW - 文本实际宽度
-   * @returns 第一行基线的Y坐标
+   * @returns 水平偏移量
    */
   getOffsetXRich (style: TextStyle, maxWidth: number, contentW: number): number {
     switch (this.textAlign) {

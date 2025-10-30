@@ -2,13 +2,13 @@ import type { RichTextLayout } from '../../rich-text-layout';
 import type { TextStyle } from '@galacean/effects';
 import type { RichTextOptions } from '../../rich-text-component';
 import type { RichCharDetail, RichLine } from '../rich-text-interfaces';
-import type { RichWrapStrategy, WrapResult } from '../rich-text-interfaces'; // 更新接口名
+import type { RichWrapStrategy, WrapResult } from '../rich-text-interfaces';
 
 /**
  * 富文本换行禁用策略
  * 实现逻辑：仅基于\n换行，无自动换行
  */
-export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类名
+export class RichWrapDisabledStrategy implements RichWrapStrategy {
   computeLines (
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,
@@ -61,7 +61,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy { // 更新类
       // 记录段起始 x
       currentLine.offsetX.push(currentLine.width);
 
-      // 逐字宽度和高度测量（新增 asc/desc 测量）
+      // 逐字宽度和高度测量（asc/desc 测量）
       let segmentInnerX = 0;
       const charArr: RichCharDetail[] = [];
       let lineAscent = 0;
