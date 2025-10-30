@@ -179,7 +179,7 @@ describe('webgl/renderer', () => {
     gl.getExtension('WEBGL_lose_context')?.loseContext();
 
     window.setTimeout(() => {
-      expect(renderer.glRenderer.isDestroyed).to.be.true;
+      expect(renderer.isDisposed).to.be.true;
       texture.dispose();
       // @ts-expect-error protected
       expect(texture.destroyed).to.be.true;

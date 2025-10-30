@@ -30,7 +30,7 @@ describe('webgl/gl-geometry', () => {
     canvas = document.createElement('canvas');
     engine = new GLEngine(canvas, { glType: 'webgl2' });
     renderer = engine.renderer;
-    glRenderer = renderer.glRenderer;
+    glRenderer = renderer;
     gl = glRenderer.gl;
     geometry = new GLGeometry(engine, option);
   });

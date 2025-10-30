@@ -1,4 +1,3 @@
-import type { GLRendererInternal } from './gl-renderer-internal';
 import { GLRenderer } from './gl-renderer';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
@@ -124,10 +123,6 @@ export class GLEngine extends Engine {
 
   getGLRenderer (): GLRenderer {
     return this.renderer as GLRenderer;
-  }
-
-  getGLRendererInternal (): GLRendererInternal {
-    return this.getGLRenderer().glRenderer;
   }
 
   reset () {

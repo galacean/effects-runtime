@@ -113,7 +113,7 @@ describe('webgl/gl-shader-library', () => {
   // // 删除webgl程序
   // shaderLib.deleteShader(shaderId);
   // programHandle = program?.glHandle;
-  // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
+  // isProgram = renderer.gl.isProgram(programHandle);
   // expect(isProgram).to.eql(false);
 
   // // 重新编译着色器
@@ -121,7 +121,7 @@ describe('webgl/gl-shader-library', () => {
   // expect(program).not.eql(null);
   // programHandle = program?.glHandle;
   // expect(programHandle).not.eql(undefined);
-  // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
+  // isProgram = renderer.gl.isProgram(programHandle);
   // expect(isProgram).to.eql(true);
   // });
 

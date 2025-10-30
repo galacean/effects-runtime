@@ -61,7 +61,7 @@ describe('webgl/gl-render-frame', () => {
         stencilAction: TextureLoadAction.clear,
       },
     });
-    const gl = renderer.glRenderer.gl;
+    const gl = renderer.gl;
 
     gl.depthMask(false);
     gl.stencilMask(0);

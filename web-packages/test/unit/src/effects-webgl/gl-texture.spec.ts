@@ -3,7 +3,7 @@ import type {
   Texture2DSourceOptionsImageMipmaps, TextureCubeSourceOptionsImage, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
-import type { GLRendererInternal, GLRenderer } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
 import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 
@@ -633,7 +633,6 @@ describe('webgl2/gl-texture', () => {
   let canvas: HTMLCanvasElement;
   let gl: WebGLRenderingContext;
   let renderer: GLRenderer;
-  let fakeRenderer: GLRendererInternal;
   let imageHTMLElement: HTMLImageElement;
   let engine: GLEngine;
 
@@ -642,17 +641,12 @@ describe('webgl2/gl-texture', () => {
     engine = new GLEngine(canvas, { glType: 'webgl2' });
     renderer = engine.renderer as GLRenderer;
 
-    fakeRenderer = renderer.glRenderer;
-    gl = fakeRenderer.gl;
+    gl = renderer.gl;
     imageHTMLElement = document.createElement('img');
     imageHTMLElement.src = '../../../assets/colors.png';
   });
 
   after(() => {
-    // runs once after the last test in this block
-    fakeRenderer.dispose();
-    // @ts-expect-error
-    fakeRenderer = null;
     renderer.dispose();
     // @ts-expect-error
     engine = null;

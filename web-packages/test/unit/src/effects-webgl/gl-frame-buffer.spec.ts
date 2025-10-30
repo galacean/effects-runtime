@@ -29,7 +29,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
       await sleep(3000);
       engine = new GLEngine(canvas, { glType: framework });
       fakeRenderer = new GLRenderer(engine);
-      gl = fakeRenderer.glRenderer.engine.gl;
+      gl = (fakeRenderer.engine as GLEngine).gl;
       gpu = engine.gpuCapability;
     });
 
