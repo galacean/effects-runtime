@@ -295,11 +295,11 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, depthTexture.textureBuffer, 0);
     }
     this.resetColorTextures(this.colorTextures);
-    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    // const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
-    if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}.`);
-    }
+    // if (status !== gl.FRAMEBUFFER_COMPLETE) {
+    //   throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}.`);
+    // }
     this.ready = true;
   }
 

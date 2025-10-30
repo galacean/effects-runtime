@@ -57,15 +57,15 @@ export class GLRenderer extends Renderer implements Disposable {
       currentFrame: {},
     };
 
-    this.framebuffer = new GLFramebuffer({
-      storeAction: {},
-      viewport: [0, 0, this.width, this.height],
-      attachments: [new GLTexture(this.engine, {
-        sourceType: TextureSourceType.framebuffer,
-        data: { width: this.width, height: this.height },
-      })],
-      depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
-    }, this);
+    // this.framebuffer = new GLFramebuffer({
+    //   storeAction: {},
+    //   viewport: [0, 0, this.width, this.height],
+    //   attachments: [new GLTexture(this.engine, {
+    //     sourceType: TextureSourceType.framebuffer,
+    //     data: { width: this.width, height: this.height },
+    //   })],
+    //   depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
+    // }, this);
   }
 
   get isDestroyed () {
@@ -203,6 +203,8 @@ export class GLRenderer extends Renderer implements Disposable {
       this.framebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
+      //@ts-expect-error
+      this.framebuffer = null;
       (this.engine as GLEngine).bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }

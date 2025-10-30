@@ -1,5 +1,7 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
+import '@galacean/effects-plugin-stats';
+import { Stats } from '@galacean/effects-plugin-stats';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*vO0wT4S4shEAAAAAAAAAAAAAelB4AQ';
 const jsons = [
@@ -31,6 +33,17 @@ const container = document.getElementById('J-container');
     },
   });
 
-  await player.loadScene(jsons);
-  await player.loadScene(json);
+  new Stats(player);
+  // await player.loadScene(jsons);
+
+  const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*iwSfQI7PQT0AAAAAQHAAAAgAelB4AQ');
+
+  const item = comp.getItemByName('sprite_6 (2)');
+
+  for (let i = 0;i < 50;i++) {
+    const newItem = item?.duplicate();
+
+    newItem?.setPosition((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, 0);
+  }
+
 })();
