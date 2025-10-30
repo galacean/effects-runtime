@@ -1,7 +1,7 @@
 import type {
   Engine, GeometryMeshProps, GeometryProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { Geometry, Material, Mesh, Texture, logger, setMaxSpriteMeshItemCount } from '@galacean/effects-core';
+import { Geometry, Material, Mesh, Texture, logger } from '@galacean/effects-core';
 import { ThreeMaterial } from './material';
 import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';
@@ -16,7 +16,6 @@ export * from './three-texture';
 export * from './three-sprite-component';
 export * from './three-text-component';
 
-setMaxSpriteMeshItemCount(8);
 /**
  * 图片的创建方法
  *

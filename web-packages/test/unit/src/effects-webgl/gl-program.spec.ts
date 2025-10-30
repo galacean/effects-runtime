@@ -31,7 +31,7 @@
 //       }),
 //     });
 
-//     mesh.initialize(renderer.glRenderer);
+//     mesh.initialize(renderer);
 //     const renderPass = new GLRenderPass({ name: 'basic', meshes: [mesh], camera: { name: '' } });
 
 //     const frame = new GLRenderFrame({
@@ -45,7 +45,7 @@
 //     });
 
 //     renderer.renderRenderFrame(frame);
-//     const gl = renderer.glRenderer.engine.gl;
+//     const gl = renderer.engine.gl;
 //     const glProgram = mesh.material.shader.program;
 //     const webglProgram = mesh.material.shader.program.program;
 
@@ -263,7 +263,7 @@
 //       }),
 //     });
 
-//     mesh.initialize(renderer.glRenderer);
+//     mesh.initialize(renderer);
 //     const renderPass = new GLRenderPass({ name: 'basic', meshes: [mesh], camera: { name: 'main' } });
 
 //     const frame = new GLRenderFrame({
@@ -314,8 +314,8 @@
 //     expect(program).to.exist;
 //     if (info && texInfo && program) {
 //       expect(info.size).to.eql(2);
-//       const state = renderer.glRenderer.state;
-//       const gl = renderer.glRenderer.gl;
+//       const state = renderer.state;
+//       const gl = renderer.gl;
 //       const TEXTURE0 = gl.TEXTURE0;
 
 //       // TODO 待补充
@@ -348,7 +348,7 @@
 //       }),
 //     });
 
-//     mesh.initialize(renderer.glRenderer);
+//     mesh.initialize(renderer);
 //     const renderPass = new GLRenderPass({ name: 'basic', meshes: [mesh], camera: { name: '' } });
 
 //     const frame = new GLRenderFrame({
@@ -380,7 +380,7 @@
 //     renderer.renderRenderFrame(frame);
 //     expect(db.uniformFlags['v4test']).not.exist;
 //     expect(spy).has.been.called.once;
-//     expect(spy).has.been.called.with(renderer.glRenderer.gl, val);
+//     expect(spy).has.been.called.with(renderer.gl, val);
 //   });
 
 //   it('render pass semantic overrides render frame semantic', () => {
@@ -399,7 +399,7 @@
 //       }),
 //     });
 
-//     mesh.initialize(renderer.glRenderer);
+//     mesh.initialize(renderer);
 
 //     mesh.material.setUniformSemantic('v4test', 'VEC4_TEST');
 //     mesh.material.defaultDataBlock.removeUniformValue('v4test');
@@ -432,7 +432,7 @@
 //     });
 
 //     renderer.renderRenderFrame(frame);
-//     expect(spy).to.has.been.called.with(renderer.glRenderer.gl, [1, 0, 0, 1]);
+//     expect(spy).to.has.been.called.with(renderer.gl, [1, 0, 0, 1]);
 //   });
 //   it('render frame semantic set by default', () => {
 //     const mesh = new GLMesh({
@@ -450,7 +450,7 @@
 //       }),
 //     });
 
-//     mesh.initialize(renderer.glRenderer);
+//     mesh.initialize(renderer);
 
 //     mesh.material.setUniformSemantic('v4test', 'VEC4_TEST');
 
@@ -482,7 +482,7 @@
 //     mesh.material.defaultDataBlock.removeUniformValue('v4test');
 //     expect(mesh.material.defaultDataBlock.hasUniformValue('v4test')).to.be.false;
 //     expect(mesh.material.uniformSemantics['v4test']).to.eql('VEC4_TEST');
-//     expect(spy).to.has.been.called.with(renderer.glRenderer.gl, [1, 2, 3, 4]);
+//     expect(spy).to.has.been.called.with(renderer.gl, [1, 2, 3, 4]);
 //   });
 //   it('shared share reset uniform value every time ignoring flag', () => {
 //     const mesh = new GLMesh({
@@ -500,7 +500,7 @@
 //       }),
 //     });
 
-//     mesh.initialize(renderer.glRenderer);
+//     mesh.initialize(renderer);
 //     const renderPass = new GLRenderPass({ name: 'basic', meshes: [mesh], camera: { name: '' } });
 
 //     const frame = new GLRenderFrame({
@@ -523,14 +523,14 @@
 //     });
 
 //     renderer.renderRenderFrame(frame);
-//     expect(spy).has.been.called.with(renderer.glRenderer.gl, val);
+//     expect(spy).has.been.called.with(renderer.gl, val);
 //     renderer.renderRenderFrame(frame);
-//     expect(spy).has.been.called.with(renderer.glRenderer.gl, val);
+//     expect(spy).has.been.called.with(renderer.gl, val);
 //     const v2 = new Float32Array([4, 5, 6, 7]);
 
 //     db.setUniformValue('v4test', v2);
 //     renderer.renderRenderFrame(frame);
-//     expect(spy).has.been.called.with(renderer.glRenderer.gl, v2);
+//     expect(spy).has.been.called.with(renderer.gl, v2);
 //   });
 // });
 

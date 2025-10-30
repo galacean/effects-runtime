@@ -105,7 +105,7 @@ export interface CompositionProps {
    * @param message
    * @returns
    */
-  handleItemMessage: (message: MessageItem) => void,
+  onItemMessage?: (message: MessageItem) => void,
   /**
    *
    */
@@ -229,6 +229,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   postProcessingEnabled = false;
   /**
+   * 合成中消息元素创建/销毁时触发的回调
+   * @internal
+   */
+  onItemMessage?: (message: MessageItem) => void;
+  /**
    * 销毁状态位
    */
   protected destroyed = false;
@@ -246,11 +251,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private isEndCalled = false;
   private _textures: Texture[] = [];
   private videos: HTMLVideoElement[] = [];
-
-  /**
-   * 合成中消息元素创建/销毁时触发的回调
-   */
-  private handleItemMessage: (message: MessageItem) => void;
 
   /**
    * @internal
@@ -295,10 +295,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       speed = 1,
       baseRenderOrder = 0,
       renderer, event, width, height,
-      handleItemMessage,
+      onItemMessage,
     } = props;
 
     this.renderer = renderer;
+    this.renderer.engine.addComposition(this);
     this._textures = scene.textures;
 
     for (const key of Object.keys(scene.assets)) {
@@ -371,7 +372,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     });
     this.url = scene.url;
     this.interactive = true;
-    this.handleItemMessage = handleItemMessage;
+    if (onItemMessage) {
+      this.onItemMessage = onItemMessage;
+    }
     this.createRenderFrame();
 
     Composition.buildItemTree(this.rootItem);
@@ -807,7 +810,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.handleItemMessage({
+      this.onItemMessage?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -831,7 +834,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM 的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.handleItemMessage({
+      this.onItemMessage?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
@@ -912,7 +915,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.dispose = noop;
 
-    if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+    if (this.getEngine().env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
     this.renderer.clear({
@@ -923,6 +926,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
+    this.renderer.engine.removeComposition(this);
   }
 
   /**

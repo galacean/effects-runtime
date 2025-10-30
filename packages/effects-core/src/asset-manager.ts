@@ -94,7 +94,7 @@ export class AssetManager implements Disposable {
    * @param downloader - 资源下载对象
    */
   constructor (
-    public options: Omit<SceneLoadOptions, 'speed' | 'autoplay' | 'reusable'> = {},
+    public options: SceneLoadOptions = {},
     private readonly downloader = new Downloader(),
   ) {
     this.updateOptions(options);
@@ -120,7 +120,7 @@ export class AssetManager implements Disposable {
   async loadScene (
     url: Scene.LoadType,
     renderer?: Renderer,
-    options?: { env: string },
+    options?: { env?: string },
   ): Promise<Scene> {
     let rawJSON: Scene.LoadType;
     const assetUrl = isString(url) ? url : this.id;

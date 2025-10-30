@@ -1,20 +1,24 @@
-import type { ShaderWithSource } from '@galacean/effects-core';
+import type { ShaderWithSource, Engine } from '@galacean/effects-core';
 import { Camera, TextureLoadAction, RenderFrame, Mesh } from '@galacean/effects-core';
-import { GLGeometry, GLMaterial, GLRenderer } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry, GLMaterial } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
 describe('webgl/gl-render-frame', () => {
   let canvas: HTMLCanvasElement;
   let renderer: GLRenderer;
+  let engine: Engine;
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl');
+    engine = new GLEngine(canvas, { glType: 'webgl' });
+
+    renderer = engine.renderer as GLRenderer;
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
     canvas.remove();
@@ -57,7 +61,7 @@ describe('webgl/gl-render-frame', () => {
         stencilAction: TextureLoadAction.clear,
       },
     });
-    const gl = renderer.glRenderer.gl;
+    const gl = renderer.gl;
 
     gl.depthMask(false);
     gl.stencilMask(0);

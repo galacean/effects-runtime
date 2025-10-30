@@ -69,6 +69,7 @@ export interface PlayerConfig {
   /**
    * 每帧渲染调用后的回调，WebGL2 上下文生效
    * @param time - GPU 渲染使用的时间，秒
+   * @deprecated 2.7.0
    */
   reportGPUTime?: (time: number) => void,
 

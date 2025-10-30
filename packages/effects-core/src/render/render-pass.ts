@@ -333,10 +333,10 @@ export class RenderPass implements Disposable, Sortable {
 
   protected destroyed = false;
   protected options: RenderPassAttachmentOptions;
+  protected viewportScale: number;
   protected renderer: Renderer;
 
   private initialized = false;
-  private viewportScale: number;
   private depthTexture?: Texture;
   private stencilTexture?: Texture;
   private isCustomViewport: boolean;
@@ -614,7 +614,7 @@ export class RenderPass implements Disposable, Sortable {
       const tex = texture === outTex ? outTex : texture;
 
       // TODO 为什么要initialize？
-      //tex.initialize(this.renderer.glRenderer.engine);
+      //tex.initialize(this.renderer.engine);
       if (!external) {
         this.depthTexture = tex;
       }
@@ -696,7 +696,7 @@ export class RenderPass implements Disposable, Sortable {
     }
 
     // @ts-expect-error safe to assign
-    this.options = this.renderer = null;
+    this.options = null;
     this.initialize = throwDestroyedError as unknown as (r: Renderer) => RenderPass;
   }
 }

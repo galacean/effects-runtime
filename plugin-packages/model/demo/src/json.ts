@@ -140,7 +140,7 @@ export function getEnv () {
 function addRealTimeTicker () {
   let elapsedTime = 3000;
 
-  player.ticker.add(
+  player.ticker?.add(
     function (dt) {
       elapsedTime += dt;
       if (elapsedTime >= 3000) {

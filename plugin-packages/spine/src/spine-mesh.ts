@@ -158,7 +158,7 @@ export class SpineMesh implements Disposable {
 }
 
 export function createShader (engine: Engine): SharedShaderWithSource {
-  const env = engine.renderer.env;
+  const env = engine.env;
   const macros: ShaderMacros = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];

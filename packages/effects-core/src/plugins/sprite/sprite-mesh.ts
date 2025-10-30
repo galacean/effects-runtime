@@ -1,6 +1,5 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
-import type { GPUCapabilityDetail } from '../../render';
 import type { Transform } from '../../transform';
 
 export type SpriteRenderData = {
@@ -20,18 +19,3 @@ export type SpriteRegionData = {
   quat: spec.vec4,
   size: spec.vec2,
 };
-
-export let maxSpriteMeshItemCount = 8;
-
-export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDetail) {
-  if (gpuCapability.maxVertexUniforms >= 256) {
-    return maxSpriteMeshItemCount = 32;
-  } else if (gpuCapability.maxVertexUniforms >= 128) {
-    return maxSpriteMeshItemCount = 16;
-  }
-}
-
-// TODO: 只有单测用
-export function setMaxSpriteMeshItemCount (count: number) {
-  maxSpriteMeshItemCount = count;
-}

@@ -49,7 +49,7 @@ describe('Single scene', function () {
       await sleep(duration * 1000 / speed);
 
       player.pause();
-      player.dispose(true);
+      player.dispose();
       const stats = memoryTool.checkWebGLLeak();
 
       expect(stats).to.eql({});
@@ -125,7 +125,7 @@ describe('Multiple scenes', function () {
       await sleep((leftTime + 8) * Math.random() * 1000 / speed);
 
       player.pause();
-      player.dispose(true);
+      player.dispose();
       const stats = memoryTool.checkWebGLLeak();
 
       expect(stats).to.eql({});

@@ -10,11 +10,15 @@ describe('webgl/gl-gpu-buffer', () => {
 
   before(() => {
     gl = getGL2() as WebGL2RenderingContext;
-    glEngine = new GLEngine(gl);
+    const canvas = gl.canvas as HTMLCanvasElement;
+
+    glEngine = new GLEngine(canvas, { glType: 'webgl2' });
   });
 
   after(() => {
-    (gl?.canvas as HTMLCanvasElement).remove();
+    const canvas = gl?.canvas as HTMLCanvasElement;
+
+    canvas?.remove();
     // @ts-expect-error
     gl = null;
     glEngine.dispose();

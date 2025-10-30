@@ -60,7 +60,7 @@ describe('显存泄漏（单合成）', function () {
 
       await sleep(duration * 1000 / speed);
       player.pause();
-      player.dispose(true);
+      player.dispose();
       const stats = memoryTool.checkWebGLLeak();
 
       expect(stats).to.eql({});

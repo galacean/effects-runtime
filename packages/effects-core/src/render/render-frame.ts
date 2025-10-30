@@ -30,6 +30,7 @@ import {
 } from './post-process-pass';
 import type { PostProcessVolume, RendererComponent } from '../components';
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { DrawObjectPass } from './draw-object-pass';
 
 /**
  * 渲染数据，保存了当前渲染使用到的数据。
@@ -257,7 +258,7 @@ export class RenderFrame implements Disposable {
       };
     }
 
-    this.drawObjectPass = new RenderPass(renderer, {
+    this.drawObjectPass = new DrawObjectPass(renderer, {
       name: RENDER_PASS_NAME_PREFIX,
       priority: RenderPassPriorityNormal,
       meshOrder: OrderType.ascending,
@@ -295,7 +296,7 @@ export class RenderFrame implements Disposable {
       this.addRenderPass(bloomThresholdPass);
       for (let i = 0; i < gaussianStep; i++) {
         gaussianDownResults[i] = new RenderTargetHandle(engine);
-        const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', {
+        const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', i, {
           name: 'GaussianDownPassH' + i,
           viewport,
           attachments: [{
@@ -307,7 +308,8 @@ export class RenderFrame implements Disposable {
             },
           }],
         });
-        const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', {
+
+        const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', i, {
           name: 'GaussianDownPassV' + i,
           viewport,
           attachments: [{
@@ -321,6 +323,7 @@ export class RenderFrame implements Disposable {
         });
 
         gaussianDownVPass.gaussianResult = gaussianDownResults[i];
+
         this.addRenderPass(gaussianDownHPass);
         this.addRenderPass(gaussianDownVPass);
         viewport[2] /= 2;
@@ -330,7 +333,7 @@ export class RenderFrame implements Disposable {
       viewport[2] *= 4;
       viewport[3] *= 4;
       for (let i = 0; i < gaussianStep - 1; i++) {
-        const gaussianUpPass = new HQGaussianUpSamplePass(renderer, {
+        const gaussianUpPass = new HQGaussianUpSamplePass(renderer, gaussianStep - i, {
           name: 'GaussianUpPass' + i,
           viewport,
           attachments: [{
@@ -696,6 +699,9 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
   return renderPasses[index - 1];
 }
 
+/**
+ * @deprecated
+ */
 class FinalCopyRP extends RenderPass {
   prePassTexture: Texture;
 

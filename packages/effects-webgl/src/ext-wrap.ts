@@ -62,7 +62,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
     // 保存当前的 fbo
     const framebuffer = this.renderer.getFramebuffer();
 
-    this.renderer.glRenderer.copy2(source, target);
+    this.renderer.copy2(source, target);
     // 还原 fbo
     this.renderer.setFramebuffer(framebuffer);
   }
@@ -78,7 +78,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
 
         fb.viewport[2] = target.getWidth() || source.getWidth();
         fb.viewport[3] = target.getHeight() || source.getHeight();
-        renderer.glRenderer.resetColorAttachments(fb, [target]);
+        renderer.resetColorAttachments(fb, [target]);
         const mesh = rp.meshes[0];
 
         mesh.material.setTexture('uTex', source);
@@ -160,6 +160,9 @@ void main(){
   }
 }
 
+/**
+ * @deprecated
+ */
 class CopyTexturePass extends RenderPass {
   currentFramebuffer: Framebuffer | null;
 

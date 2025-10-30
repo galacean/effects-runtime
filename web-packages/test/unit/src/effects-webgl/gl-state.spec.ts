@@ -1,30 +1,25 @@
-import type { GLEngine, GLRendererInternal } from '@galacean/effects-webgl';
-import { GLRenderer } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
 describe('webgl/gl-state', () => {
   let canvas: HTMLCanvasElement;
   let renderer: GLRenderer;
-  let fakeRenderer: GLRendererInternal;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let engine: GLEngine;
 
   before(() => {
     canvas = document.createElement('canvas');
     gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
-    renderer = new GLRenderer(canvas, 'webgl2');
-    engine = renderer.engine as GLEngine;
-
-    fakeRenderer = renderer.glRenderer;
+    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    renderer = engine.renderer as GLRenderer;
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
-    // @ts-expect-error
-    fakeRenderer = null;
     canvas.remove();
     // @ts-expect-error
     canvas = null;

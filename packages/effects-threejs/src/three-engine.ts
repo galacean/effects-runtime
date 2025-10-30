@@ -1,6 +1,7 @@
-import type { Composition } from '@galacean/effects-core';
+import type { Composition, EngineOptions } from '@galacean/effects-core';
 import { Engine, GPUCapability } from '@galacean/effects-core';
 import type * as THREE from 'three';
+import { ThreeRenderer } from './three-renderer';
 
 export interface ThreeEngineOptions {
   threeCamera?: THREE.Camera,
@@ -16,8 +17,10 @@ export class ThreeEngine extends Engine {
   threeGroup: THREE.Group;
   composition: Composition;
 
-  constructor (gl: WebGL2RenderingContext | WebGLRenderingContext) {
-    super();
+  constructor (gl: WebGLRenderingContext | WebGL2RenderingContext, options?: EngineOptions) {
+    super(gl.canvas as HTMLCanvasElement, options);
+
+    this.renderer = new ThreeRenderer(this);
     this.gpuCapability = new GPUCapability(gl);
   }
 
