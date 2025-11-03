@@ -28,7 +28,6 @@ let seed = 1;
 
 export class GLRenderer extends Renderer implements Disposable {
   extension: ExtWrap;
-  framebuffer: Framebuffer;
   temporaryRTs: Record<string, Framebuffer> = {};
   readonly name: string;
 
@@ -74,7 +73,7 @@ export class GLRenderer extends Renderer implements Disposable {
       currentFrame: {},
     };
 
-    this.framebuffer = new GLFramebuffer({
+    this.currentFramebuffer = new GLFramebuffer({
       storeAction: {},
       viewport: [0, 0, this.width, this.height],
       attachments: [new GLTexture(this.engine, {
@@ -245,17 +244,13 @@ export class GLRenderer extends Renderer implements Disposable {
 
   override setFramebuffer (framebuffer: Framebuffer | null) {
     if (framebuffer) {
-      this.framebuffer = framebuffer;
-      this.framebuffer.bind();
+      this.currentFramebuffer = framebuffer;
+      this.currentFramebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
       (this.engine as GLEngine).bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
-  }
-
-  override getFramebuffer (): Framebuffer {
-    return this.framebuffer;
   }
 
   override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {

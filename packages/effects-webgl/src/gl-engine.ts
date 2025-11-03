@@ -121,10 +121,6 @@ export class GLEngine extends Engine {
     this.reset();
   }
 
-  getGLRenderer (): GLRenderer {
-    return this.renderer as GLRenderer;
-  }
-
   reset () {
     this.glCapabilityCache = {};
     this.activeTextureIndex = glContext.TEXTURE0;

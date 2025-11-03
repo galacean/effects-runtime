@@ -17,6 +17,7 @@ export class Renderer implements LostHandler, RestoreHandler {
   * 存放渲染需要用到的数据
   */
   renderingData: RenderingData;
+  protected currentFramebuffer: Framebuffer;
 
   constructor (engine: Engine) {
     this.engine = engine;
@@ -42,9 +43,8 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getFramebuffer (): Framebuffer | null {
-    // OVERRIDE
-    return null;
+  getFramebuffer (): Framebuffer {
+    return this.currentFramebuffer;
   }
 
   setFramebuffer (framebuffer: Framebuffer | null) {

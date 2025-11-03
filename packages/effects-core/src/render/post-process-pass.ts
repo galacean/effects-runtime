@@ -60,7 +60,7 @@ export class BloomThresholdPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     this.sceneTextureHandle.texture = this.mainTexture;
     renderer.setFramebuffer(this.framebuffer);
   }
@@ -149,7 +149,7 @@ export class HQGaussianDownSamplePass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     renderer.setFramebuffer(this.framebuffer);
   }
 
@@ -163,7 +163,7 @@ export class HQGaussianDownSamplePass extends RenderPass {
     this.screenMesh.material.setVector2('_TextureSize', getTextureSize(this.mainTexture));
     renderer.renderMeshes([this.screenMesh]);
     if (this.type === 'V') {
-      this.gaussianResult.texture = renderer.getFramebuffer()!.getColorTextures()[0];
+      this.gaussianResult.texture = renderer.getFramebuffer().getColorTextures()[0];
     }
   }
 
@@ -227,7 +227,7 @@ export class HQGaussianUpSamplePass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     renderer.setFramebuffer(this.framebuffer);
   }
 
@@ -302,7 +302,7 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     if (!this.sceneTextureHandle.texture) {
       this.sceneTextureHandle.texture = this.mainTexture;
     }
