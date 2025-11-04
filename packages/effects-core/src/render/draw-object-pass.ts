@@ -11,9 +11,8 @@ export class DrawObjectPass extends RenderPass {
   }
 
   onResize () {
-    const viewportScale = this.viewportScale;
-    const width = this.renderer.getWidth() * viewportScale;
-    const height = this.renderer.getHeight() * viewportScale;
+    const width = this.renderer.getWidth();
+    const height = this.renderer.getHeight();
 
     this.framebuffer?.resize(0, 0, width, height);
   }

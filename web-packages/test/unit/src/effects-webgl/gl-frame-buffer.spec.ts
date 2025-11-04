@@ -455,7 +455,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
           new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
         isCustomViewport: false,
-        viewportScale: 1,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 

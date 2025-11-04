@@ -293,7 +293,6 @@ export class GLRenderer extends Renderer implements Disposable {
       name,
       storeAction: {},
       viewport: [0, 0, width, height],
-      viewportScale: 1,
       isCustomViewport: true,
       attachments: [colorAttachment],
       depthStencilAttachment: { storageType: depthType },
