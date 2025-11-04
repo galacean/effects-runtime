@@ -157,10 +157,6 @@ vec2 clampUV(vec2 uv) {
 // 安全纹理采样（边缘淡出）- 修复顶部断线问题
 vec4 safeTexture2D(sampler2D tex, vec2 uv) {
   vec4 color = texture2D(tex, clamp(uv, vec2(0.0), vec2(1.0)));
-  // 增加y方向的过渡范围，解决顶部断线问题
-  float edgeFactor = smoothstep(0.0, 0.1, min(uv.x, 1.0 - uv.x)) *
-                     smoothstep(0.0, 0.01, min(uv.y, 1.0 - uv.y));
-  color.a *= edgeFactor;
   return color;
 }
 
@@ -360,10 +356,6 @@ void main() {
   // 计算归一化音量(0-1)
   float normalizedVolume = clamp((_CurrentVolume - _MinVolume) / (_MaxVolume - _MinVolume), 0.0, 1.0);
 
-  // 采样主纹理alpha值
-  vec4 texColor = safeTexture2D(_Tex0, uv);
-  float alphaAttenuation = 1.0 - texColor.a * 0.8; // alpha越大扰动越小
-  
   // 计算垂直偏移（音量低时下移图片）
   // 使用pow曲线实现非线性响应：低音量变化平缓，高音量变化灵敏
   float verticalOffset = mix(_VerticalOffset, 0.0, pow(normalizedVolume, _VolumeCurve));
@@ -394,7 +386,7 @@ void main() {
         }
 
         // 应用动画偏移（不翻转）和噪声扰动（应用flipSign校正方向）
-        vec2 sampleUV = vec2(uv.x + ox, uv.y + oy) - finalOffset;
+        vec2 sampleUV = vec2(uv.x , uv.y ) + vec2(ox, oy) - finalOffset;
         vec4 color = sampleTexByType(typeV, kindV, clamp(sampleUV, vec2(0.0), vec2(1.0)));
 
         // 根据profile编号选择预设颜色
@@ -512,8 +504,8 @@ let material: Material | undefined;
       height: SecondStageImageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.CLAMP_TO_EDGE,
+      wrapT: glContext.CLAMP_TO_EDGE,
       flipY: true,
     }
   );
@@ -550,8 +542,8 @@ let material: Material | undefined;
       height: FirstStageBlueImageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.CLAMP_TO_EDGE,
+      wrapT: glContext.CLAMP_TO_EDGE,
       flipY: true,
     }
   );
@@ -563,8 +555,8 @@ let material: Material | undefined;
       height: FirstStageGreenImageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.CLAMP_TO_EDGE,
+      wrapT: glContext.CLAMP_TO_EDGE,
       flipY: true,
     }
   );
@@ -584,15 +576,15 @@ let material: Material | undefined;
         material.setFloat('_TextureCount', shaderParams._TextureCount);
 
         // 初始化时绑定三张纹理
-        // material.setTexture('_Tex0', FirstStageBlueTexture);
-        // material.setTexture('_Tex1', FirstStageGreenTexture);
-        // material.setTexture('_Tex2', cloudTexture);
+        material.setTexture('_Tex0', FirstStageBlueTexture);
+        material.setTexture('_Tex1', FirstStageGreenTexture);
+        material.setTexture('_Tex2', cloudTexture);
         // 设置噪声纹理
         material.setTexture('_NoiseTex', noiseTexture);
         // 设置T噪声纹理
         material.setTexture('_T_NoiseTex', T_noiseTexture);
         // 设置噪声强度
-        material.setFloat('_Strength', 1.0);
+        material.setFloat('_Strength', 0.50);
         // 纹理层级已在shader中硬编码，不再需要设置
 
         // 初始化颜色参数 - 直接在初始化时设置预设颜色
@@ -606,11 +598,11 @@ let material: Material | undefined;
         material.setFloat('_NoiseScaleY', 0.35);
         material.setFloat('_NoiseSpeedX', 0.1);
         material.setFloat('_NoiseSpeedY', 0.111);
-        material.setFloat('_NoiseUVScaleX', 0.256);
+        material.setFloat('_NoiseUVScaleX', 0.05);
         material.setFloat('_NoiseUVScaleY', 0.09);
 
         // 初始化细节噪声参数
-        material.setFloat('_DetailNoiseScale', 0.03);
+        material.setFloat('_DetailNoiseScale', 0.0);
         material.setFloat('_DetailNoiseScaleX', 0.71);
         material.setFloat('_DetailNoiseScaleY', 0.55);
         material.setFloat('_DetailNoiseSpeedX', 0.30);
@@ -651,7 +643,7 @@ let material: Material | undefined;
     const timeFactor = now * 0.1;
     
     if (timeFactor > 1000) {
-      return 0.8;
+      return 1.0;
     } else if (timeFactor > 500) {
       return 0.5;
     } else if (timeFactor > 200) {
