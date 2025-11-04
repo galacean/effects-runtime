@@ -14,7 +14,7 @@ export default {
     },
   },
   richTextTest: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*2V_bSIl10LwAAAAAQQAAAAgAelB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ahr1Taqu9XQAAAAAQQAAAAgAelB4AQ',
     name: '富文本测试',
     variables: {
       'price': '<size=68>80.15</size><size=29>元</size>',
