@@ -291,13 +291,11 @@ export function version35Migration (json: JSONScene): JSONScene {
     for (const component of json.components) {
       // 识别富文本组件并处理 lineGap 兼容性
       if (
-        component.dataType === spec.DataType.RichTextComponent ||
-        (component.dataType as string) === 'RichTextComponent' // 兼容字符串形式
+        component.dataType === spec.DataType.RichTextComponent
       ) {
         const richTextComponent = component as any;
 
         if (richTextComponent.options) {
-          // 确保富文本组件有版本标识字段
           // 检查是否已经处理过
           if (!richTextComponent.options || richTextComponent.options.useLegacyRichText === undefined) {
             // 根据是否存在 lineGap 字段来判断版本
