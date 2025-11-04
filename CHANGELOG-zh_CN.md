@@ -8,6 +8,12 @@
 
 ---
 
+## 2.7.1
+
+`2025-11-04`
+
+- Fix: add version34Migration and  move rich-text handling to version35Migration. [#1258](https://github.com/galacean/effects-runtime/pull/1258) @Fryt1
+
 ## 2.7.0
 
 `2025-10-28`
