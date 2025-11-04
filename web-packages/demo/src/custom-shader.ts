@@ -525,8 +525,8 @@ let material: Material | undefined;
       height: noiseimageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
     },
 
   );
@@ -538,8 +538,8 @@ let material: Material | undefined;
       height: T_noiseimageData.height,
     },
     {
-      wrapS: glContext.REPEAT,
-      wrapT: glContext.REPEAT,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
     },
   );
   const FirstStageBlueTexture = Texture.createWithData(
@@ -592,7 +592,7 @@ let material: Material | undefined;
         // 设置T噪声纹理
         material.setTexture('_T_NoiseTex', T_noiseTexture);
         // 设置噪声强度
-        material.setFloat('_Strength', 0.50);
+        material.setFloat('_Strength', 1.0);
         // 纹理层级已在shader中硬编码，不再需要设置
 
         // 初始化颜色参数 - 直接在初始化时设置预设颜色
@@ -619,8 +619,8 @@ let material: Material | undefined;
         material.setFloat('_DetailNoiseUVScaleY', 1.500);
 
         // 初始化响应曲线参数
-        material.setFloat('_VerticalOffset', -0.50);
-        material.setFloat('_VolumeCurve', 0.70);
+        material.setFloat('_VerticalOffset', -0.10);
+        material.setFloat('_VolumeCurve', 0.3);
         material.setFloat('_BrightnessCurve', 1.5);
         material.setFloat('_MaxBrightness', 0.30);
         material.setFloat('_BrightnessGain', 1.3);
@@ -650,11 +650,11 @@ let material: Material | undefined;
     const now = performance.now();
     const timeFactor = now * 0.1;
     
-    if (timeFactor > 3000000) {
+    if (timeFactor > 1000) {
       return 0.8;
-    } else if (timeFactor > 2000) {
-      return 0.3;
-    } else if (timeFactor > 1000) {
+    } else if (timeFactor > 500) {
+      return 0.5;
+    } else if (timeFactor > 200) {
       return 0.2;
     } else {
       return 0.2;
