@@ -293,17 +293,20 @@ export function version35Migration (json: JSONScene): JSONScene {
       if (
         component.dataType === spec.DataType.RichTextComponent
       ) {
-        const richTextComponent = component as any;
+        const richTextComponent = component as spec.RichTextComponentData;
 
         if (richTextComponent.options) {
           // 检查是否已经处理过
+          //@ts-expect-error
           if (!richTextComponent.options || richTextComponent.options.useLegacyRichText === undefined) {
             // 根据是否存在 lineGap 字段来判断版本
             if (richTextComponent.options.lineGap === undefined) {
               // 旧版本（没有 lineGap 字段）
+              //@ts-expect-error
               richTextComponent.options.useLegacyRichText = true;
             } else {
               // 新版本（有 lineGap 字段）
+              //@ts-expect-error
               richTextComponent.options.useLegacyRichText = false;
             }
           }
