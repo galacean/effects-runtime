@@ -379,7 +379,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     targetWidth = Math.round(targetWidth * ratio);
     targetHeight = Math.round(targetHeight * ratio);
-    if (targetHeight < 1 || targetHeight < 1) {
+    if (targetWidth < 1 || targetHeight < 1) {
       if (this.offscreenMode) {
         targetWidth = targetHeight = containerWidth = containerHeight = 1;
       } else {

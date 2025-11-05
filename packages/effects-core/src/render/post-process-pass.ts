@@ -87,6 +87,7 @@ export class BloomThresholdPass extends RenderPass {
 
   override dispose (options?: RenderPassDestroyOptions): void {
     this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
   }
 }
 
@@ -174,9 +175,8 @@ export class HQGaussianDownSamplePass extends RenderPass {
   }
 
   override dispose (options?: RenderPassDestroyOptions | undefined): void {
-    super.dispose(options);
-
     this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
   }
 }
 
@@ -250,8 +250,8 @@ export class HQGaussianUpSamplePass extends RenderPass {
   }
 
   override dispose (options?: RenderPassDestroyOptions): void {
-    super.dispose(options);
     this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
   }
 }
 

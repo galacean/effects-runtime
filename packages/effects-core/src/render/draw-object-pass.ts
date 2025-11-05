@@ -18,7 +18,7 @@ export class DrawObjectPass extends RenderPass {
   }
 
   override dispose (options?: RenderPassDestroyOptions): void {
-    super.dispose(options);
     this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
   }
 }
