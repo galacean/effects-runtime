@@ -150,8 +150,8 @@ export class TextComponentBase {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
 
-    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
-
+    // const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    this.maxLineWidth = 0;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
@@ -162,7 +162,7 @@ export class TextComponentBase {
     }
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+      const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
       x += letterSpace;
