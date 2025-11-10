@@ -15,7 +15,7 @@ export abstract class AbstractTranscoder {
   }
 
   destroy () {
-    this.transcodeWorkerPool.destroy();
+    this.transcodeWorkerPool?.destroy();
   }
 
   protected abstract initTranscodeWorkerPool (): Promise<any>;

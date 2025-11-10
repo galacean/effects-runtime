@@ -74,16 +74,16 @@ export class KTX2Loader {
     const transcodeTarget = (targetFormat === KTX2TargetFormat.ETC1) ? KTX2TargetFormat.ETC : targetFormat;
     let transcodeResultPromise: Promise<TranscodeResult>;
 
-    if (targetFormat !== KTX2TargetFormat.ASTC || !ktx2Container.isUASTC) {
-      const binomialLLCWorker = KTX2Loader.getBinomialLLCTranscoder();
-
-      transcodeResultPromise = binomialLLCWorker.init().
-        then(() => binomialLLCWorker.transcode(buffer, transcodeTarget));
-    } else {
+    if (targetFormat === KTX2TargetFormat.ASTC && ktx2Container.isUASTC) {
       const khronosWorker = KTX2Loader.getKhronosTranscoder();
 
       transcodeResultPromise = khronosWorker.init().
         then(() => khronosWorker.transcode(ktx2Container));
+    } else {
+      const binomialLLCWorker = KTX2Loader.getBinomialLLCTranscoder();
+
+      transcodeResultPromise = binomialLLCWorker.init().
+        then(() => binomialLLCWorker.transcode(buffer, transcodeTarget));
     }
 
     return transcodeResultPromise

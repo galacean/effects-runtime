@@ -107,6 +107,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
       case KTX2TargetFormat.ASTC:
         return BasisFormat.ASTC_4x4;
     }
+    throw new Error(`Unsupported KTX2 target format: ${target}`);
   }
 
   function concat (arrays: Uint8Array[]) {

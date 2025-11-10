@@ -27,10 +27,9 @@ export class BinomialLLCTranscoder extends AbstractTranscoder {
           scriptDom.src = URL.createObjectURL(new Blob([jsCode], { type: 'application/javascript' }));
           document.body.appendChild(scriptDom);
           scriptDom.onload = () => {
-            // eslint-disable-next-line promise/catch-or-return, promise/no-nesting
             init(wasmBuffer).then(() => {
               resolve(null);
-            });
+            }).catch(reject);
           };
           scriptDom.onerror = () => {
             reject();
