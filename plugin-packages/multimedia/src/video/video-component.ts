@@ -169,10 +169,11 @@ export class VideoComponent extends MaskableGraphic {
         if (!this.video?.paused) {
           this.pauseVideo();
         }
-      } else if (videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.restart) {
-        // 销毁由Composition管理，此处仅重置时间
-        this.setCurrentTime(0);
       }
+      // ios freeze issue
+      // else if (videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.restart) {
+      //   this.setCurrentTime(0);
+      // }
     }
     // 判断整个合成是否接近播放完成
     // composition.time + threshold >= rootDuration 表示即将结束
