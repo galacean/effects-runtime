@@ -14,9 +14,7 @@ const json_ktx2 = `{
   "images": [
     {
       "id": "80b823c7fc5b453ba72efc773c6516ba",
-      "compressed": {
-        "astc": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2"
-      },
+      "ktx2": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2",
       "url": "https://mdn.alipayobjects.com/mars/afts/file/A*Zs_yTqFmcMQAAAAAQXAAAAgAelB4AQ/original"
     }
   ],

@@ -342,6 +342,18 @@ export class AssetManager implements Disposable {
 
           return this.loadBins(bufferURL);
         }
+      } else if ('ktx2' in img && useCompressedTexture) {
+        // ktx2 压缩纹理
+        const { ktx2 } = img;
+
+        if (ktx2) {
+          const bufferURL = new URL(ktx2 as string, baseUrl).href;
+
+          this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
+
+          return this.loadBins(bufferURL);
+        }
+
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||
