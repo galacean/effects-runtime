@@ -593,6 +593,12 @@ let material: Material | undefined;
         material.setVector4('_Color2', new Vector4(0.333, 0.619, 0.968, 1.0)); // inputA
         material.setVector4('_Color3', new Vector4(0.333, 0.968, 0.847, 1.0)); // inputB
 
+        // material.setVector4('_Color0', new Vector4(142/255, 208/255, 1, 1)); // listeningBlue
+        // material.setVector4('_Color1', new Vector4(142/255, 208/255, 1, 1)); // listeningGreen
+        // material.setVector4('_Color2', new Vector4(142/255, 208/255, 1, 1)); // inputA
+        // material.setVector4('_Color3', new Vector4(69/255, 234/255, 193/255, 1.0)); // inputB
+
+
         // 初始化噪声参数（使用之前硬编码的值）
         material.setFloat('_NoiseScaleX', 0.19);
         material.setFloat('_NoiseScaleY', 0.35);
@@ -614,8 +620,8 @@ let material: Material | undefined;
         material.setFloat('_VerticalOffset', -0.10);
         material.setFloat('_VolumeCurve', 0.3);
         material.setFloat('_BrightnessCurve', 1.5);
-        material.setFloat('_MaxBrightness', 0.30);
-        material.setFloat('_BrightnessGain', 1.3);
+        material.setFloat('_MaxBrightness', 0.3);
+        material.setFloat('_BrightnessGain', 1.1);
 
         // 延迟一小段时间确保UI已加载
         setTimeout(() => {
