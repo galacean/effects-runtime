@@ -7,11 +7,17 @@
 
 ---
 
+## 2.7.2
+
+`2025-11-10`
+
+- Chore: no `setCurrentTime` when playing in video. [#1261](https://github.com/galacean/effects-runtime/pull/1261) @ChengYi996
+
 ## 2.7.1
 
 `2025-11-04`
 
-- Fix: add version34Migration and  move rich-text handling to version35Migration. [#1258](https://github.com/galacean/effects-runtime/pull/1258) @Fryt1
+- Fix: add `version34Migration` and move rich-text handling to `version35Migration`. [#1258](https://github.com/galacean/effects-runtime/pull/1258) @Fryt1
 
 ## 2.7.0
 
