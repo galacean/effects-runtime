@@ -462,7 +462,8 @@ describe('渲染插件单测', function () {
   });
 
   it('Material 测试', () => {
-    const engine = new Engine();
+    const canvas = document.createElement('canvas');
+    const engine = new Engine(canvas);
     const mat1 = new PMaterialPBR();
     const baseColorTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const metallicRoughnessTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
@@ -694,10 +695,13 @@ describe('渲染插件单测', function () {
     expect(mat2.alphaCutoff).to.eql(0.76);
     expect(mat2.isBothSide()).to.eql(true);
     expect(mat2.hasBaseColorTexture()).to.eql(true);
+
+    engine.dispose();
   });
 
   it('Skybox 测试', () => {
-    const engine = new Engine();
+    const canvas = document.createElement('canvas');
+    const engine = new Engine(canvas);
     const specularTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const brdfLUTTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const options = {
@@ -724,10 +728,13 @@ describe('渲染插件单测', function () {
     expect(skybox.specularImage).to.eql(specularTexture);
     expect(skybox.specularImageSize).to.eql(128);
     expect(skybox.specularMipCount).to.eql(6);
+
+    engine.dispose();
   });
 
   it('Mesh 测试', async () => {
-    const engine = new Engine();
+    const canvas = document.createElement('canvas');
+    const engine = new Engine(canvas);
     const loader = new LoaderImplEx();
     const loadResult = await loader.loadScene({
       gltf: {
@@ -1182,6 +1189,8 @@ describe('渲染插件单测', function () {
       expect(meshMaterial2.stringTags.RenderFace).to.eql('Front');
       expect(meshMaterial2.stringTags.RenderType).to.eql('Opaque');
     });
+
+    engine.dispose();
   });
 
   it('端上测试', async () => {

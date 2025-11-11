@@ -22,6 +22,7 @@ export class AssetService implements Disposable {
     private readonly engine: Engine,
   ) {
     this.builtinObjects.push(engine.whiteTexture);
+    this.builtinObjects.push(engine.transparentTexture);
   }
 
   /**

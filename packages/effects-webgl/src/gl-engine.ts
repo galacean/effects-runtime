@@ -1,9 +1,9 @@
-import type { GLRendererInternal } from './gl-renderer-internal';
-import type { GLRenderer } from './gl-renderer';
+import type { Composition, EngineOptions, Nullable, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
+import { Engine, GPUCapability, SceneLoader, assertExist, glContext, isIOS } from '@galacean/effects-core';
+import { GLRenderer } from './gl-renderer';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
-import type { Nullable, Texture, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, glContext } from '@galacean/effects-core';
+import { GLContextManager } from './gl-context-manager';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -14,9 +14,10 @@ type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
 export class GLEngine extends Engine {
-
   textureUnitDict: Record<string, WebGLTexture | null>;
   shaderLibrary: GLShaderLibrary;
+  gl: WebGLRenderingContext | WebGL2RenderingContext;
+  context: GLContextManager;
 
   private readonly maxTextureCount: number;
   private glCapabilityCache: Record<string, any>;
@@ -25,36 +26,102 @@ export class GLEngine extends Engine {
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
+  private restoreCompositionsCache: Composition[] = [];
 
-  constructor (public gl: WebGLRenderingContext | WebGL2RenderingContext) {
-    super();
-    this.gpuCapability = new GPUCapability(gl);
+  constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
+    super(canvas, options);
+    options = {
+      preserveDrawingBuffer: undefined,
+      alpha: true,
+      stencil: true,
+      antialias: true,
+      depth: true,
+      premultipliedAlpha: true,
+      glType: 'webgl2',
+      ...options,
+    };
 
+    this.context = new GLContextManager(canvas, options.glType, options);
+    this.context.addLostHandler({
+      lost: e => {
+        this.ticker?.pause();
+        this.restoreCompositionsCache = this.compositions.slice();
+        this.compositions.forEach(comp => comp.lost(e));
+        this.renderer.lost(e);
+        this.emit('contextlost', { engine: this, e });
+      },
+    });
+
+    this.context.addRestoreHandler({
+      restore: async () => {
+        this.renderer.restore();
+        await Promise.all(this.restoreCompositionsCache.map(async composition => {
+          const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
+          const newComposition = await SceneLoader.load(url, this);
+
+          newComposition.speed = speed;
+          newComposition.reusable = reusable;
+          newComposition.renderOrder = renderOrder;
+          newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
+          newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+          newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
+          newComposition.onItemMessage = composition.onItemMessage;
+
+          for (let i = 0; i < videoState.length; i++) {
+            if (videoState[i]) {
+              const video = (newComposition.textures[i].source as Texture2DSourceOptionsVideo).video;
+
+              video.currentTime = videoState[i] ?? 0;
+              await video.play();
+            }
+          }
+          newComposition.isEnded = false;
+          newComposition.gotoAndPlay(currentTime);
+
+          return newComposition;
+        }));
+
+        this.restoreCompositionsCache = [];
+        this.ticker?.resume();
+
+        if (isIOS() && this.canvas) {
+          this.canvas.style.display = 'none';
+          window.setTimeout(() => {
+            this.canvas.style.display = '';
+          }, 0);
+        }
+
+        this.emit('contextrestored', this);
+      },
+    });
+
+    const gl = this.context.gl;
+
+    assertExist(gl);
     this.gl = gl;
-    this.shaderLibrary = new GLShaderLibrary(this);
-    this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
     this.reset();
+    this.gpuCapability = new GPUCapability(gl);
+    this.shaderLibrary = new GLShaderLibrary(this);
+    this.renderer = new GLRenderer(this);
+    this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
+
+    // resize need gl renderer initialized
+    this.resize();
   }
 
   override dispose () {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     super.dispose();
 
-    this.shaderLibrary.dispose();
+    this.renderer.dispose();
+    this.shaderLibrary?.dispose();
+    this.context.dispose();
     this.reset();
   }
 
-  getGLRenderer (): GLRenderer {
-    return this.renderer as GLRenderer;
-  }
-
-  getGLRendererInternal (): GLRendererInternal {
-    return this.getGLRenderer().glRenderer;
-  }
-
-  private reset () {
+  reset () {
     this.glCapabilityCache = {};
     this.activeTextureIndex = glContext.TEXTURE0;
     this.textureUnitDict = {};

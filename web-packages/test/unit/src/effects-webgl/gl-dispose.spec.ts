@@ -4,8 +4,8 @@ import {
   RenderPassDestroyAttachmentType, TextureSourceType, Camera, DestroyOptions, RenderPass,
   RenderFrame, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
-import type { GLShaderVariant, GLFramebuffer, GLEngine } from '@galacean/effects-webgl';
-import { GLMaterial, GLGeometry, GLTexture, GLRenderer } from '@galacean/effects-webgl';
+import type { GLShaderVariant, GLFramebuffer, GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLMaterial, GLGeometry, GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -24,9 +24,11 @@ describe('webgl/dispose', function () {
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl2');
-    engine = renderer.engine;
-    gl = (renderer.engine as GLEngine).gl;
+    const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
+
+    renderer = glEngine.renderer as GLRenderer;
+    engine = glEngine;
+    gl = glEngine.gl;
   });
 
   beforeEach(async () => {
@@ -41,7 +43,7 @@ describe('webgl/dispose', function () {
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     // @ts-expect-error
     renderer = null;
     // @ts-expect-error
@@ -261,8 +263,6 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
     expect(renderPass.attachments).to.eql([]);
     expect(colorAttachment.texture.isDestroyed).to.be.true;
     expect(stencilTexture?.isDestroyed).to.be.true;
@@ -311,8 +311,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments).to.eql([]);
     expect(texture.isDestroyed).to.be.false;
     expect(colorAttachment.texture.isDestroyed).to.be.false;
@@ -360,8 +359,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments).to.eql([]);
     expect(texture.isDestroyed).to.be.false;
     expect(colorAttachment.texture.isDestroyed).to.be.false;
@@ -409,8 +407,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments).to.eql([]);
     expect(texture.isDestroyed).to.be.false;
     expect(colorAttachment.texture.isDestroyed).to.be.false;
@@ -459,8 +456,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments.length).to.eql(0);
     expect(att0.texture.isDestroyed).to.be.false;
     expect(att1.texture.isDestroyed).to.be.false;
@@ -506,8 +502,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments.length).to.eql(0);
     expect(externalTexture.texture.isDestroyed).to.be.false;
     expect(att1.texture.isDestroyed).to.be.true;
@@ -553,8 +548,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments.length).to.eql(0);
     expect(externalTexture.texture.isDestroyed).to.be.true;
     expect(att1.texture.isDestroyed).to.be.true;
@@ -613,8 +607,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.meshes).to.eql([]);
     // @ts-expect-error
     expect(renderPass.options).to.eql(null);
-    // @ts-expect-error
-    expect(renderPass.renderer).to.eql(null);
+
     expect(renderPass.attachments.length).to.eql(0);
     expect(externalTexture.texture.isDestroyed).to.be.true;
     expect(att1.texture.isDestroyed).to.be.true;

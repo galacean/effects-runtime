@@ -1,3 +1,7 @@
+import type * as spec from '@galacean/effects-specification';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { ShaderWithSource } from './shader';
 import { GLSLVersion } from './shader';
 import { glContext } from '../gl';
 import { Material } from '../material';
@@ -5,15 +9,10 @@ import type { Texture } from '../texture';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
 import { getTextureSize } from './render-frame';
-import type { RenderPassOptions } from './render-pass';
-import { RenderTargetHandle, TextureStoreAction } from './render-pass';
-import { RenderPass } from './render-pass';
+import type { RenderPassDestroyOptions, RenderPassOptions } from './render-pass';
+import { RenderTargetHandle, TextureStoreAction, RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
-import type { ShaderWithSource } from './shader';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type * as spec from '@galacean/effects-specification';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {
@@ -54,10 +53,13 @@ export class BloomThresholdPass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+
+    this.onResize = this.onResize.bind(this);
+    this.renderer.engine.on('resize', this.onResize);
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     this.sceneTextureHandle.texture = this.mainTexture;
     renderer.setFramebuffer(this.framebuffer);
   }
@@ -74,6 +76,18 @@ export class BloomThresholdPass extends RenderPass {
     this.screenMesh.material.setFloat('_Threshold', threshold);
     renderer.renderMeshes([this.screenMesh]);
   }
+
+  private onResize (): void {
+    const width = this.renderer.getWidth();
+    const height = this.renderer.getHeight();
+
+    this.framebuffer?.resize(0, 0, width, height);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions): void {
+    this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
+  }
 }
 
 export class HQGaussianDownSamplePass extends RenderPass {
@@ -82,13 +96,16 @@ export class HQGaussianDownSamplePass extends RenderPass {
   private mainTexture: Texture;
   private screenMesh: Mesh;
   private readonly type: 'V' | 'H';
+  private readonly level: number;
 
   constructor (renderer: Renderer,
     type: 'V' | 'H',
+    level: number,
     options: RenderPassOptions,
   ) {
     super(renderer, options);
     this.type = type;
+    this.level = level;
     const engine = this.renderer.engine;
     const name = 'PostProcess';
     const geometry = Geometry.create(engine, {
@@ -125,10 +142,13 @@ export class HQGaussianDownSamplePass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+
+    this.onResize = this.onResize.bind(this);
+    this.renderer.engine.on('resize', this.onResize);
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     renderer.setFramebuffer(this.framebuffer);
   }
 
@@ -142,8 +162,20 @@ export class HQGaussianDownSamplePass extends RenderPass {
     this.screenMesh.material.setVector2('_TextureSize', getTextureSize(this.mainTexture));
     renderer.renderMeshes([this.screenMesh]);
     if (this.type === 'V') {
-      this.gaussianResult.texture = renderer.getFramebuffer()!.getColorTextures()[0];
+      this.gaussianResult.texture = renderer.getFramebuffer().getColorTextures()[0];
     }
+  }
+
+  private onResize (): void {
+    const width = Math.floor(this.renderer.getWidth() / Math.pow(2, this.level + 1));
+    const height = Math.floor(this.renderer.getHeight() / Math.pow(2, this.level + 1));
+
+    this.framebuffer?.resize(0, 0, width, height);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions | undefined): void {
+    this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
   }
 }
 
@@ -152,10 +184,12 @@ export class HQGaussianUpSamplePass extends RenderPass {
 
   private mainTexture: Texture;
   private screenMesh: Mesh;
+  private readonly level: number;
 
-  constructor (renderer: Renderer, options: RenderPassOptions) {
+  constructor (renderer: Renderer, level: number, options: RenderPassOptions) {
     super(renderer, options);
 
+    this.level = level;
     const name = 'PostProcess';
     const engine = this.renderer.engine;
     const geometry = Geometry.create(engine, {
@@ -185,10 +219,13 @@ export class HQGaussianUpSamplePass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+
+    this.onResize = this.onResize.bind(this);
+    this.renderer.engine.on('resize', this.onResize);
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     renderer.setFramebuffer(this.framebuffer);
   }
 
@@ -202,6 +239,18 @@ export class HQGaussianUpSamplePass extends RenderPass {
     this.screenMesh.material.setTexture('_GaussianDownTex', this.gaussianDownSampleResult.texture);
     this.screenMesh.material.setVector2('_GaussianDownTextureSize', getTextureSize(this.gaussianDownSampleResult.texture));
     renderer.renderMeshes([this.screenMesh]);
+  }
+
+  private onResize (): void {
+    const width = Math.floor(this.renderer.getWidth() / Math.pow(2, this.level - 1));
+    const height = Math.floor(this.renderer.getHeight() / Math.pow(2, this.level - 1));
+
+    this.framebuffer?.resize(0, 0, width, height);
+  }
+
+  override dispose (options?: RenderPassDestroyOptions): void {
+    this.renderer.engine.off('resize', this.onResize);
+    super.dispose(options);
   }
 }
 
@@ -251,7 +300,7 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     if (!this.sceneTextureHandle.texture) {
       this.sceneTextureHandle.texture = this.mainTexture;
     }

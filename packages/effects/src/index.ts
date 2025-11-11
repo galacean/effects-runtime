@@ -1,6 +1,6 @@
 import type {
   GeometryMeshProps, GeometryProps, FramebufferProps, MaterialProps, RenderbufferProps,
-  TextureDataType, TextureSourceOptions, GLType,
+  TextureDataType, TextureSourceOptions, EngineOptions,
 } from '@galacean/effects-core';
 import {
   Framebuffer, Geometry, glContext, imageDataFromColor, Material, Mesh, Renderbuffer,
@@ -73,16 +73,12 @@ Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
   return new GLFramebuffer(props, renderer);
 };
 
-Renderer.create = (
-  canvas: HTMLCanvasElement | OffscreenCanvas,
-  framework: GLType,
-  renderOptions?: WebGLContextAttributes,
-) => {
-  return new GLRenderer(canvas, framework, renderOptions);
+Renderer.create = (engine: Engine) => {
+  return new GLRenderer(engine);
 };
 
-Engine.create = (gl: WebGLRenderingContext | WebGL2RenderingContext) => {
-  return new GLEngine(gl);
+Engine.create = (canvas: HTMLCanvasElement, options?: EngineOptions) => {
+  return new GLEngine(canvas, options);
 };
 
 /**

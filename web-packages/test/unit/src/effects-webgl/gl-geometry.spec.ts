@@ -1,4 +1,4 @@
-// @ts-nocheck
+//@ts-nocheck
 import { glContext, Camera, RenderFrame, RenderPass, Mesh } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
 
@@ -28,15 +28,15 @@ describe('webgl/gl-geometry', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl2');
-    glRenderer = renderer.glRenderer;
+    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    renderer = engine.renderer;
+    glRenderer = renderer;
     gl = glRenderer.gl;
-    engine = new GLEngine(gl);
     geometry = new GLGeometry(engine, option);
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     renderer = null;
     canvas.remove();
     canvas = null;

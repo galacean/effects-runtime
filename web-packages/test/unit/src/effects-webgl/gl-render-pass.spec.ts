@@ -1,6 +1,9 @@
-//@ts-nocheck
-import { TextureSourceType, RenderPass, RenderPassDestroyAttachmentType, RenderPassAttachmentStorageType, OrderType, Mesh } from '@galacean/effects-core';
-import { GLRenderer, GLTexture, GLGeometry, GLMaterial } from '@galacean/effects-webgl';
+// @ts-nocheck
+import {
+  TextureSourceType, RenderPass, RenderPassDestroyAttachmentType,
+  RenderPassAttachmentStorageType, OrderType, Mesh, DrawObjectPass,
+} from '@galacean/effects-core';
+import { GLTexture, GLGeometry, GLMaterial, GLEngine } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { MathUtils } from './math-utils';
 
@@ -8,12 +11,12 @@ const { expect } = chai;
 
 describe('webgl/gl-render-pass', () => {
   let gl = getGL2()!;
-  let renderer = new GLRenderer(gl.canvas, 'webgl2');
-  let engine = renderer.engine;
+  let engine = new GLEngine(gl.canvas, { glType: 'webgl2' });
+  let renderer = engine.renderer;
 
   after(() => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    renderer.dispose();
+    engine.dispose();
     renderer = null;
     gl.canvas.remove();
     gl = null;
@@ -97,7 +100,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -119,7 +122,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -146,7 +149,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -157,23 +160,22 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewportScale: 0.5,
     });
-    expect(rp1.viewport).to.deep.equals([0, 0, renderer.width * 0.5, renderer.height * 0.5]);
+    expect(rp1.viewport).to.deep.equals([0, 0, renderer.width, renderer.height]);
     expect(rp1.renderer.width).to.eql(300);
     expect(rp1.renderer.height).to.eql(150);
     expect(rp1.attachments.length).is.eql(1);
     const colorAttachment = rp1.attachments[0];
 
-    expect(colorAttachment.size).to.deep.equal([150, 75]);
+    expect(colorAttachment.size).to.deep.equal([300, 150]);
     const framebuffer = rp1.framebuffer;
 
     expect(framebuffer?.depthStencilStorageType).to.eql(RenderPassAttachmentStorageType.depth_24_stencil_8_texture);
-    expect(framebuffer?.depthTexture?.width).to.eql(150);
-    expect(framebuffer?.depthTexture?.height).to.eql(75);
+    expect(framebuffer?.depthTexture?.width).to.eql(300);
+    expect(framebuffer?.depthTexture?.height).to.eql(150);
 
-    expect(framebuffer?.viewport[2]).to.eql(150);
-    expect(framebuffer?.viewport[3]).to.eql(75);
+    expect(framebuffer?.viewport[2]).to.eql(300);
+    expect(framebuffer?.viewport[3]).to.eql(150);
     expect(framebuffer?.stencilTexture?.source.sourceType).to.eql(
       RenderPassAttachmentStorageType.depth_24_stencil_8_texture
     );
@@ -316,20 +318,17 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.configure(renderer);
     expect(rp1.viewport).to.deep.equal([0, 0, renderer.width, renderer.height]);
-    expect(rp1.viewportScale).to.eql(1);
 
     rp1.dispose();
     rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       meshes: [],
-      viewportScale: 0.5,
       meshOrder: OrderType.ascending,
     });
     rp1.initialize(renderer);
 
     rp1.configure(renderer);
-    expect(rp1.viewport).to.deep.equal([0, 0, renderer.width / 2, renderer.height / 2]);
-    expect(rp1.viewportScale).to.eql(0.5);
+    expect(rp1.viewport).to.deep.equal([0, 0, renderer.width, renderer.height]);
   });
 
   it('render pass resort meshes mesh order is ascending && lenght <= 30', () => {
@@ -367,7 +366,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -410,7 +409,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -454,7 +453,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -494,7 +493,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -537,7 +536,7 @@ describe('webgl/gl-render-pass', () => {
     });
 
     rp1.initialize(renderer);
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -585,7 +584,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -605,7 +604,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -615,7 +614,7 @@ describe('webgl/gl-render-pass', () => {
 
   it('RPOrderTest08 render pass resort meshes with meshes.length===1', () => {
     const spy = chai.spy(() => { });
-    const call = renderer.glRenderer.engine.viewport;
+    const call = renderer.engine.viewport;
     const geom = new GLGeometry(
       engine,
       {
@@ -644,11 +643,11 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
-    renderer.glRenderer.engine.viewport = spy;
+    renderer.engine.bindSystemFramebuffer();
+    renderer.engine.viewport = spy;
     rp1.configure(renderer);
     expect(spy).has.been.called.once;
-    renderer.glRenderer.engine.viewport = call;
+    renderer.engine.viewport = call;
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
     expect(rp1.meshes.length).is.eql(1);
@@ -693,7 +692,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -765,7 +764,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -865,7 +864,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -959,7 +958,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -1019,7 +1018,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -1073,7 +1072,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
     expect(rp1.attachments.length).is.eql(0);
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
@@ -1102,9 +1101,9 @@ describe('webgl/gl-render-pass', () => {
     const rp2Width = 110;
     const rp2Heigth = 440;
 
-    //renderer.resize(oldWidth,oldHeight);
-    renderer.glRenderer.engine.bindSystemFramebuffer();
-    const rp1 = new RenderPass(renderer, {
+    //engine.setSize(oldWidth,oldHeight);
+    renderer.engine.bindSystemFramebuffer();
+    const rp1 = new DrawObjectPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
@@ -1127,7 +1126,7 @@ describe('webgl/gl-render-pass', () => {
     rp1.configure(renderer);
     rp2.configure(renderer);
     const spy = chai.spy(() => { });
-    const call = renderer.glRenderer.resize;
+    const call = renderer.resize;
 
     expect(rp2.viewport?.[2]).to.eql(rp2Width);
     expect(rp1.viewport).to.deep.equals([0, 0, 300, 150]);
@@ -1145,12 +1144,12 @@ describe('webgl/gl-render-pass', () => {
     expect(rp1.framebuffer?.stencilTexture?.width).to.eql(oldWidth);
     expect(rp1.framebuffer?.viewport?.[2]).to.eql(oldWidth);
     expect(rp1.framebuffer?.viewport?.[3]).to.eql(oldHeight);
-    renderer.glRenderer.resize = spy;
+    renderer.resize = spy;
     //传入不同的宽高，renderer要做resize处理，同时renderpass的viewport和所属的color/depth-setencil都要做同步处理 但是用户传入viewport的pass不会发生改变
-    renderer.resize(newWidth, newHeight);
+    engine.setSize(newWidth, newHeight);
     expect(spy).has.been.called.once;
-    renderer.glRenderer.resize = call;
-    renderer.resize(newWidth, newHeight);
+    renderer.resize = call;
+    engine.setSize(newWidth, newHeight);
     expect(rp1.framebuffer?.colorTextures[0].height).to.eql(newHeight);
     expect(rp1.framebuffer?.colorTextures[0].width).to.eql(newWidth);
     expect(rp1.framebuffer?.depthTexture?.height).to.eql(newHeight);
@@ -1175,7 +1174,7 @@ describe('webgl/gl-render-pass', () => {
     expect(rp2.attachments[0].width).to.eql(rp2Width);
     expect(rp2.viewport?.[3]).to.eql(rp2Heigth);
     expect(rp2.viewport?.[2]).to.eql(rp2Width);
-    renderer.resize(300, 150);
+    engine.setSize(300, 150);
     rp1.dispose();
     rp2.dispose();
   });
@@ -1186,10 +1185,10 @@ describe('webgl/gl-render-pass', () => {
     const oldWidth = 300;
     const oldHeight = 150;
 
-    renderer.resize(300, 150);
+    engine.setSize(300, 150);
     const spy = chai.spy(() => {
     });
-    const call = renderer.glRenderer.resize;
+    const call = renderer.resize;
     const rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       depthStencilAttachment: {
@@ -1200,7 +1199,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     expect(rp1.viewport).to.deep.equal([0, 0, oldWidth, oldHeight]);
     const colorAttachment = rp1.attachments[0];
 
@@ -1217,11 +1216,11 @@ describe('webgl/gl-render-pass', () => {
     expect(framebuffer?.stencilTexture?.width).to.eql(oldWidth);
     expect(framebuffer?.viewport?.[2]).to.eql(oldWidth);
     expect(framebuffer?.viewport?.[3]).to.eql(oldHeight);
-    renderer.glRenderer.resize = spy;
-    renderer.resize(300, 150);
-    expect(spy).not.has.been.called.once;
-    renderer.glRenderer.resize = call;
-    renderer.resize(300, 150);
+    renderer.resize = spy;
+    engine.setSize(300, 150);
+    expect(spy).has.been.called.once;
+    renderer.resize = call;
+    engine.setSize(300, 150);
     //传入相同的宽高的时候renderpass不做resset处理
     expect(rp1.viewport).to.deep.equals([0, 0, 300, 150]);
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
@@ -1272,9 +1271,9 @@ describe('webgl/gl-render-pass', () => {
     const resizeWidth = 1024, resizeHeight = 2048;
     const spy = chai.spy(() => {
     });
-    const call = renderer.glRenderer.resize;
+    const call = renderer.resize;
     //创建的时候传入viewport
-    const rp1 = new RenderPass(renderer, {
+    const rp1 = new DrawObjectPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
@@ -1285,7 +1284,7 @@ describe('webgl/gl-render-pass', () => {
 
     rp1.initialize(renderer);
 
-    renderer.glRenderer.engine.bindSystemFramebuffer();
+    renderer.engine.bindSystemFramebuffer();
     expect(rp1.viewport?.[2]).to.eql(buildWidth);
     expect(rp1.viewport?.[3]).to.eql(buildHeight);
     const colorAttachment = rp1.attachments[0];
@@ -1303,47 +1302,46 @@ describe('webgl/gl-render-pass', () => {
     expect(framebuffer?.stencilTexture?.width).to.eql(buildWidth);
     expect(framebuffer?.viewport?.[2]).to.eql(buildWidth);
     expect(framebuffer?.viewport?.[3]).to.eql(buildHeight);
-    //reset的时候viewportScale传入0.5
+
     rp1.resetAttachments(
       {
         attachments: [{ texture: { format: gl.RGBA } }],
         depthStencilAttachment: {
           storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
         },
-        viewportScale: 0.5,
       }
     );
     //renderpass此时没有viewport值
-    expect(rp1.viewport).to.eql([0, 0, 150, 75]);
+    expect(rp1.viewport).to.eql([0, 0, 300, 150]);
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
     //reset后colorAttachment对象销毁掉了
     expect(colorAttachment.height).to.eql(0);
     expect(colorAttachment.width).to.eql(0);
-    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resetHeight * 0.5);
-    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resetWidth * 0.5);
-    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resetHeight * 0.5);
-    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resetWidth * 0.5);
-    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resetHeight * 0.5);
-    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resetWidth * 0.5);
-    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resetWidth * 0.5);
-    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resetHeight * 0.5);
+    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resetHeight);
+    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resetWidth);
+    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resetHeight);
+    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resetWidth);
+    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resetHeight);
+    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resetWidth);
+    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resetWidth);
+    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resetHeight);
     //resize后framebuffer的宽高也要跟着变
-    renderer.glRenderer.resize = spy;
-    renderer.resize(resizeWidth, resizeHeight);
+    renderer.resize = spy;
+    engine.setSize(resizeWidth, resizeHeight);
     expect(spy).has.been.called.once;
-    renderer.glRenderer.resize = call;
-    renderer.resize(resizeWidth, resizeHeight);
-    expect(rp1.viewport).to.eql([0, 0, resizeWidth * 0.5, resizeHeight * 0.5]);
-    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resizeHeight * 0.5);
-    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resizeWidth * 0.5);
-    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resizeHeight * 0.5);
-    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resizeWidth * 0.5);
-    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resizeHeight * 0.5);
-    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resizeWidth * 0.5);
-    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resizeWidth * 0.5);
-    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resizeHeight * 0.5);
+    renderer.resize = call;
+    engine.setSize(resizeWidth, resizeHeight);
+    expect(rp1.viewport).to.eql([0, 0, resizeWidth, resizeHeight]);
+    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resizeHeight);
+    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resizeWidth);
+    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resizeHeight);
+    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resizeWidth);
+    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resizeHeight);
+    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resizeWidth);
+    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resizeWidth);
+    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resizeHeight);
     //置回默认值，方便其他同学测试
-    renderer.resize(300, 150);
+    engine.setSize(300, 150);
     rp1.dispose();
   });
 });

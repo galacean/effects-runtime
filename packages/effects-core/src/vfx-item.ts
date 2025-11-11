@@ -646,7 +646,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     super.fromData(data);
     const {
       id, name, parentId, endBehavior, transform,
-      duration = 0,
+      duration = 0, visible = true,
     } = data;
 
     this.props = data;
@@ -690,6 +690,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (VFXItem.isComposition(this)) {
       this.instantiatePreComposition();
     }
+
+    this.setVisible(visible);
   }
 
   override toData (): void {
@@ -714,8 +716,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      // @ts-expect-error
-      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
+      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
 

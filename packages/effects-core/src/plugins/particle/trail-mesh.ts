@@ -88,7 +88,7 @@ export class TrailMesh {
     const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
     const keyFrameMeta = createKeyFrameMeta();
     const enableVertexTexture = detail.maxVertexTextures > 0;
-    const { env } = engine.renderer ?? {};
+    const { env } = engine ?? {};
     const uniformValues: any = {};
     // const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
     const lookUpTexture = 0;
