@@ -69,10 +69,10 @@ const container = document.getElementById('J-container');
       console.info(`[item click] - item [${e.name}] clicked.`);
     });
     item?.on('pointerdown', () => {
-      console.info(`[item pointerdown] - item [${item.name}] clicked.`);
+      console.info(`[item pointerdown] - item [${item.name}] pointerdown.`);
     });
     item?.on('pointerup', () => {
-      console.info(`[item pointerup] - item [${item.name}] clicked.`);
+      console.info(`[item pointerup] - item [${item.name}] pointerup.`);
     });
   } catch (e) {
     console.error('biz', e);
