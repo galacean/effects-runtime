@@ -40,11 +40,11 @@ export type CompositionEvent<C> = PointerEvent & {
    */
   ['click']: [clickInfo: Region & {
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     compositionName: string,
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     compositionId: string,
   }],
@@ -65,7 +65,7 @@ export type CompositionEvent<C> = PointerEvent & {
    */
   ['end']: [endInfo: {
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     composition: C,
   }],

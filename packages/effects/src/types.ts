@@ -164,15 +164,15 @@ export type PlayerEvent<P> = PointerEvent & {
    */
   ['click']: [clickInfo: Region & {
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     player: P,
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     compositionId: string,
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     compositionName: string,
   }],
@@ -199,7 +199,7 @@ export type PlayerEvent<P> = PointerEvent & {
    */
   ['update']: [updateInfo: {
     /**
-     * @deprecated 2.7.0
+     * @deprecated 2.8.0
      */
     player: P,
     playing: boolean,
