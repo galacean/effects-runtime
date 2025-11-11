@@ -1,15 +1,10 @@
 import type {
   Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene, MessageItem,
   Region, AssetManager, Composition, Renderer, Ticker,
-  TouchEventType } from '@galacean/effects-core';
+  PointerEventData } from '@galacean/effects-core';
 import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
   isArray, spec, assertExist, SceneLoader,
-  EVENT_TYPE_TOUCH_END,
-  EVENT_TYPE_TOUCH_MOVE,
-  EVENT_TYPE_TOUCH_START,
-  PointerEventData,
-  PointerEventType,
 } from '@galacean/effects-core';
 import type { GLEngine } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -46,7 +41,17 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private autoPlaying: boolean;
   private resumePending = false;
   private disposed = false;
-  private skipPointerMovePicking = true;
+
+  /**
+   * 是否跳过指针移动时的拾取检测, 开启后可以减少移动时的性能消耗，但会导致 pointermove 事件无法触发
+   */
+  get skipPointerMovePicking () {
+    return this.engine.eventSystem.skipPointerMovePicking;
+  }
+
+  set skipPointerMovePicking (value: boolean) {
+    this.engine.eventSystem.skipPointerMovePicking = value;
+  }
 
   /**
    * 计时器
@@ -198,20 +203,32 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         await this.restore();
       });
 
-      this.engine.onClick = (eventData: Region) => {
+      this.engine.on('click', (eventData: Region) => {
         const behavior = eventData.behavior || spec.InteractBehavior.NOTIFY;
 
-        if (behavior === spec.InteractBehavior.NOTIFY) {
-          this.emit('click', {
-            ...eventData,
-            player: this,
-            compositionId: eventData.composition.id,
-            compositionName: eventData.composition.name,
-          });
-        } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
+        this.emit('click', {
+          ...eventData,
+          player: this,
+          compositionId: eventData.composition.id,
+          compositionName: eventData.composition.name,
+        });
+
+        if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
           void this.resume();
         }
-      };
+      });
+
+      this.engine.on('pointerdown', (eventData: PointerEventData) => {
+        this.emit('pointerdown', eventData);
+      });
+
+      this.engine.on('pointerup', (eventData: PointerEventData) => {
+        this.emit('pointerup', eventData);
+      });
+
+      this.engine.on('pointermove', (eventData: PointerEventData) => {
+        this.emit('pointermove', eventData);
+      });
 
       this.engine.runRenderLoop((dt: number) => {
         if (this.autoPlaying) {
@@ -221,11 +238,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           });
         }
       });
-
-      // this.event.addEventListener(EVENT_TYPE_CLICK, this.onClick.bind(this));
-      this.event.addEventListener(EVENT_TYPE_TOUCH_START, this.onPointerDown.bind(this));
-      this.event.addEventListener(EVENT_TYPE_TOUCH_END, this.onPointerUp.bind(this));
-      this.event.addEventListener(EVENT_TYPE_TOUCH_MOVE, this.onPointerMove.bind(this));
 
       // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
       playerMap.forEach(player => {
@@ -667,73 +679,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
   private offloadTexture () {
     this.compositions.forEach(comp => comp.offloadTexture());
-  }
-
-  private onPointerDown (e: TouchEventType) {
-    this.handlePointerEvent(e, PointerEventType.PointerDown);
-  }
-
-  private onPointerUp (e: TouchEventType) {
-    this.handlePointerEvent(e, PointerEventType.PointerUp);
-  }
-
-  private onPointerMove (e: TouchEventType) {
-    this.handlePointerEvent(e, PointerEventType.PointerMove);
-  }
-
-  private handlePointerEvent (e: TouchEventType, type: PointerEventType) {
-    let hitRegion: Region | null = null;
-    const { x, y, width, height } = e;
-
-    if (!(type === PointerEventType.PointerMove && this.skipPointerMovePicking)) {
-      for (const composition of this.compositions) {
-        const regions = composition.hitTest(x, y);
-
-        if (regions.length > 0) {
-          hitRegion = regions[regions.length - 1];
-        }
-      }
-    }
-
-    const eventData = new PointerEventData();
-
-    eventData.position.x = (x + 1) / 2 * width;
-    eventData.position.y = (y + 1) / 2 * height;
-    eventData.delta.x = e.vx * width;
-    eventData.delta.y = e.vy * height;
-
-    const raycast = eventData.pointerCurrentRaycast;
-
-    if (hitRegion) {
-      raycast.point = hitRegion.position;
-      raycast.item = hitRegion.item;
-    }
-
-    let eventName: 'pointerdown' | 'pointerup' | 'pointermove' = 'pointerdown';
-
-    switch (type) {
-      case PointerEventType.PointerDown:
-        eventName = 'pointerdown';
-
-        break;
-      case PointerEventType.PointerUp:
-        eventName = 'pointerup';
-
-        break;
-      case PointerEventType.PointerMove:
-        eventName = 'pointermove';
-
-        break;
-    }
-
-    if (hitRegion) {
-      const hitItem = hitRegion.item;
-      const hitComposition = hitItem.composition as Composition;
-
-      this.emit(eventName, eventData);
-      hitComposition.emit(eventName, eventData);
-      hitItem.emit(eventName, eventData);
-    }
   }
 
   private handleThrowError (e: Error) {

@@ -10,6 +10,8 @@ const container = document.getElementById('J-container');
       interactive: true,
     });
 
+    player.skipPointerMovePicking = false;
+
     player.on('play', ({ time }) => {
       console.info(`[player play] - player started playing at ${time}`);
     });
