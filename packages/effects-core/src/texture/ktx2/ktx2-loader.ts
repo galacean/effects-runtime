@@ -159,7 +159,6 @@ export class KTX2Loader {
     hasAlpha: boolean,
     gpuCapability?: GPUCapability
   ): KTX2TargetFormat | null {
-    if (gpuCapability == undefined) {return null;}
     for (let i = 0; i < priorityFormats.length; i++) {
       const format = priorityFormats[i];
 
@@ -172,6 +171,7 @@ export class KTX2Loader {
         this.capabilityMap[format]?.[isSRGB ? DFDTransferFunction.sRGB : DFDTransferFunction.linear];
 
       if (capabilities) {
+        if (gpuCapability == undefined) {return null;}
         for (let j = 0; j < capabilities.length; j++) {
           if (gpuCapability?.canIUse(capabilities[j])) {
             return format;
@@ -234,6 +234,10 @@ export class KTX2Loader {
     const faces = transcodeResult.faces;
     const transLevels = faces[0]?.length ?? 0;
     const maxDimension = Math.max(pixelWidth, pixelHeight);
+
+    if (maxDimension === 0) {
+      throw new Error('Invalid KTX2 texture: both width and height are zero');
+    }
     const fullChainCount = Math.floor(Math.log2(maxDimension)) + 1;
     const useMipmaps = transLevels > 1 && transLevels >= fullChainCount;
     const levelCount = useMipmaps ? transLevels : 1;
@@ -486,5 +490,12 @@ export class KTX2Loader {
 
       return await this.transcodeToRGBA8(srcBuffer);
     }
+  }
+
+  static dispose (): void {
+    this.binomialLLCTranscoder?.destroy();
+    this.binomialLLCTranscoder = null;
+    this.khronosTranscoder?.destroy();
+    this.khronosTranscoder = null;
   }
 }

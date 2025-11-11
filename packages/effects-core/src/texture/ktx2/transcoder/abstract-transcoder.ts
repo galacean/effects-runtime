@@ -33,6 +33,7 @@ export abstract class AbstractTranscoder {
           if (e.data.error) {
             reject(e.data.error);
           } else {
+            worker.removeEventListener('message', onMessage);
             resolve(worker);
           }
         }

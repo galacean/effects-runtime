@@ -16,6 +16,8 @@ export class KhronosTranscoder extends AbstractTranscoder {
     super(workerLimitCount);
   }
 
+  private workerURL?: string;
+
   initTranscodeWorkerPool () {
     return fetch('https://mdn.alipayobjects.com/rms/afts/file/A*0jiKRK6D1-kAAAAAAAAAAAAAARQnAQ/uastc_astc.wasm')
       .then(res => res.arrayBuffer())
@@ -26,6 +28,8 @@ export class KhronosTranscoder extends AbstractTranscoder {
             type: 'application/javascript',
           })
         );
+
+        this.workerURL = workerURL;
 
         return this.createTranscodePool(workerURL, wasmBuffer);
       });
@@ -79,6 +83,14 @@ export class KhronosTranscoder extends AbstractTranscoder {
 
       return decodedData;
     });
+  }
+  override destroy (): void {
+    super.destroy();
+
+    if (this.workerURL) {
+      URL.revokeObjectURL(this.workerURL);
+      this.workerURL = undefined;
+    }
   }
 }
 
