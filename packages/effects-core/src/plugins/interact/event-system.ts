@@ -187,31 +187,29 @@ export class EventSystem implements Disposable {
 
   private onClick (e: TouchEventType) {
     const { x, y } = e;
-    const hitInfos: (Region & {
-      composition: Composition,
-    })[] = [];
+    const hitResults: Region[] = [];
 
     // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
-    this.engine.compositions.forEach(composition => {
-      const regions = composition.hitTest(x, y);
+    for (const composition of this.engine.compositions) {
+      hitResults.push(...composition.hitTest(x, y));
+    }
 
-      for (const region of regions) {
-        hitInfos.push({
-          ...region,
-          composition,
-        });
+    for (const hitResult of hitResults) {
+      const hitComposition = hitResult.item.composition;
+
+      if (!hitComposition) {
+        continue;
       }
-    });
 
-    for (let i = 0; i < hitInfos.length; i++) {
-      const hitInfo = hitInfos[i];
+      const clickInfo = {
+        ...hitResult,
+        compositionId: hitComposition.id,
+        compositionName: hitComposition.name,
+      };
 
-      hitInfo.composition.emit('click', {
-        ...hitInfo,
-        compositionId: hitInfo.composition.id,
-        compositionName: hitInfo.composition.name,
-      });
-      this.engine.emit('click', hitInfo);
+      hitResult.item.emit('click', hitResult);
+      hitComposition.emit('click', clickInfo);
+      this.engine.emit('click', clickInfo);
     }
   }
 
