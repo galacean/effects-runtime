@@ -304,6 +304,14 @@ export class SpineComponent extends RendererComponent implements Maskable {
     const p2 = new Vector3(centerX + width / 2, centerY + height / 2, 0);
     const p3 = new Vector3(centerX - width / 2, centerY + height / 2, 0);
 
+    // TODO: 优化 Spine 初始大小逻辑
+    const startSizeScaleFactor = this.startSize * this.scaleFactor;
+
+    p0.multiply(startSizeScaleFactor);
+    p1.multiply(startSizeScaleFactor);
+    p2.multiply(startSizeScaleFactor);
+    p3.multiply(startSizeScaleFactor);
+
     wm.projectPoint(p0);
     wm.projectPoint(p1);
     wm.projectPoint(p2);

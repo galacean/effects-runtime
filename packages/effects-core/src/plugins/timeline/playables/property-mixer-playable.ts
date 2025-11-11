@@ -1,10 +1,15 @@
-import type { FrameContext } from '../../cal/playable-graph';
+import { Component } from '../../../components/component';
+import type { FrameContext } from '../playable';
 import { PropertyClipPlayable } from './property-clip-playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 
 export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
-  propertyName = '';
-  propertyValue: T;
+  propertyPath = '';
+
+  protected propertyName = '';
+  protected propertyValue: T;
+
+  private directTarget: Record<string, any>;
 
   abstract resetPropertyValue (): void;
   abstract addWeightedValue (curveValue: T, weight: number): void;
@@ -16,9 +21,13 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
       return;
     }
 
+    if (!this.directTarget) {
+      this.preparePath(boundObject);
+    }
+
     let hasInput = false;
 
-    this.propertyValue = boundObject[this.propertyName] as T;
+    this.propertyValue = this.directTarget[this.propertyName] as T;
 
     if (this.propertyValue === undefined || this.propertyValue === null) {
       return;
@@ -48,7 +57,32 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
 
     // set value
     if (hasInput) {
-      boundObject[this.propertyName] = this.propertyValue;
+      this.directTarget[this.propertyName] = this.propertyValue;
+
+      if (boundObject instanceof Component) {
+        boundObject.onApplyAnimationProperties();
+      }
     }
+  }
+
+  private preparePath (target: object) {
+    const propertyPathSegments = this.propertyPath.split('.');
+
+    let directTarget = target as Record<string, any>;
+
+    for (let i = 0; i < propertyPathSegments.length - 1; i++) {
+      const property = directTarget[propertyPathSegments[i]];
+
+      if (property === undefined) {
+        console.error('The ' + propertyPathSegments[i] + ' property of ' + target + ' was not found');
+      }
+      directTarget = property;
+    }
+
+    if (propertyPathSegments.length > 0) {
+      this.propertyName = propertyPathSegments[propertyPathSegments.length - 1];
+    }
+
+    this.directTarget = directTarget;
   }
 }

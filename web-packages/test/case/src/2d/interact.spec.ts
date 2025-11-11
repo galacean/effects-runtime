@@ -13,8 +13,8 @@ const canvasWidth = 512;
 const canvasHeight = 512;
 let controller: TestController;
 
-addDescribe('webgl', 2);
-addDescribe('webgl2', 3);
+addDescribe('webgl', 0);
+addDescribe('webgl2', 1);
 
 function addDescribe (renderFramework: GLType, i: number) {
   describe(`交互测试@${renderFramework}`, function () {

@@ -3,7 +3,7 @@ import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import type { ItemRenderer } from '../../components';
-import { BaseRenderComponent } from '../../components';
+import { MaskableGraphic } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
@@ -45,7 +45,7 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends BaseRenderComponent {
+export class TextComponent extends MaskableGraphic {
   isDirty = true;
   /**
    * 文本行数
@@ -85,6 +85,11 @@ export class TextComponent extends BaseRenderComponent {
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
     this.updateTexture();
+  }
+
+  override onDestroy (): void {
+    super.onDestroy();
+    this.disposeTextTexture();
   }
 
   override fromData (data: spec.TextComponentData): void {
@@ -145,19 +150,19 @@ export class TextComponentBase {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
 
-    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
-
+    // const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    this.maxLineWidth = 0;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
 
-    //设置context.font的字号
-    // if (context) {
-    //   context.font = this.getFontDesc(this.textStyle.fontSize);
-    // }
+    // 设置context.font的字号，确保measureText能正确计算字宽
+    if (context) {
+      context.font = this.getFontDesc(this.textStyle.fontSize);
+    }
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+      const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
       x += letterSpace;
@@ -550,10 +555,20 @@ export class TextComponentBase {
       },
     );
 
+    this.disposeTextTexture();
+
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
+  }
+
+  protected disposeTextTexture () {
+    const texture = this.renderer.texture;
+
+    if (texture && texture !== this.engine.whiteTexture) {
+      texture.dispose();
+    }
   }
 
   private getFontDesc (size?: number): string {

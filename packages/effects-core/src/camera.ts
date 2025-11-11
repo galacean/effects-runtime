@@ -45,6 +45,14 @@ export interface CameraOptions extends CameraOptionsBase {
    * 相机的旋转，四元数
    */
   quat?: spec.vec4,
+  /**
+   * 画布的像素宽度
+   */
+  pixelWidth: number,
+  /**
+   * 画布的像素高度
+   */
+  pixelHeight: number,
 }
 
 export interface CameraOptionsEx extends CameraOptionsBase {
@@ -73,7 +81,14 @@ export class Camera {
    * @internal
    */
   transform: Transform = new Transform();
-
+  /**
+   * 画布的像素宽度
+   */
+  pixelWidth = 0;
+  /**
+   * 画布的像素高度
+   */
+  pixelHeight = 0;
   /**
    * 编辑器用于缩放画布
    */
@@ -104,12 +119,17 @@ export class Camera {
       clipMode = spec.CameraClipMode.portrait,
       position = [0, 0, 8],
       rotation = [0, 0, 0],
+      pixelWidth = 0,
+      pixelHeight = 0,
     } = options;
 
     const euler = new Euler(rotation[0], rotation[1], rotation[2]);
     const quat = new Quaternion().setFromEuler(euler);
 
     this.options = { near, far, fov, aspect, clipMode };
+    this.pixelWidth = pixelWidth;
+    this.pixelHeight = pixelHeight;
+
     this.transform.setPosition(position[0], position[1], position[2]);
     this.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
     this.dirty = true;
@@ -415,5 +435,59 @@ export class Camera {
       this.inverseViewProjectionMatrix = null;
       this.dirty = false;
     }
+  }
+
+  /**
+   * 将世界坐标转换为屏幕像素坐标
+   * @param position - 世界坐标
+   * @param out - 输出的屏幕坐标，如果不传则创建新的 Vector3
+   * @returns 屏幕坐标 (x, y 为像素坐标，左下角为(0,0)，右上角为(width,height)，z 为深度比例 [0,1]，0=近平面，1=远平面)
+   */
+  worldToScreenPoint (position: Vector3, out?: Vector3): Vector3 {
+    this.updateMatrix();
+
+    const result = out ?? new Vector3();
+    const vpMatrix = this.getViewProjectionMatrix();
+
+    // 应用视图投影矩阵，得到 NDC 坐标 [-1, 1]
+    result.set(position.x, position.y, position.z);
+    vpMatrix.projectPoint(result, result);
+
+    // 将 NDC 坐标转换为像素坐标
+    // NDC: x,y in [-1, 1], 其中 (-1,-1) 是左下角，(1,1) 是右上角
+    // Screen: x,y in [0, width/height], 其中 (0,0) 是左下角
+    result.x = (result.x + 1) * 0.5 * this.pixelWidth;
+    result.y = (result.y + 1) * 0.5 * this.pixelHeight;
+    // 将 NDC z 值从 [-1, 1] 转换为深度比例 [0, 1]
+    // -1 (近平面) -> 0, 1 (远平面) -> 1
+    result.z = (result.z + 1) * 0.5;
+
+    return result;
+  }
+
+  /**
+   * 将屏幕像素坐标转换为世界坐标
+   * @param position - 屏幕坐标 (x, y 为像素坐标，左下角为(0,0)，z 为深度比例 [0,1]，0=近平面，1=远平面)
+   * @param out - 输出的世界坐标，如果不传则创建新的 Vector3
+   * @returns 世界坐标
+   */
+  screenToWorldPoint (position: Vector3, out?: Vector3): Vector3 {
+    this.updateMatrix();
+
+    const result = out ?? new Vector3();
+    const invVPMatrix = this.getInverseViewProjectionMatrix();
+
+    // 将像素坐标转换为 NDC 坐标 [-1, 1]
+    const ndcX = (position.x / this.pixelWidth) * 2 - 1;
+    const ndcY = (position.y / this.pixelHeight) * 2 - 1;
+    // 将深度比例 [0, 1] 转换为 NDC z 值 [-1, 1]
+    // 0 (近平面) -> -1, 1 (远平面) -> 1
+    const ndcZ = position.z * 2 - 1;
+
+    // 应用逆视图投影矩阵
+    result.set(ndcX, ndcY, ndcZ);
+    invVPMatrix.projectPoint(result, result);
+
+    return result;
   }
 }

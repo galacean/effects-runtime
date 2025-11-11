@@ -41,6 +41,8 @@ export class GizmoComponent extends RendererComponent {
   mat = Matrix4.fromIdentity();
   wireframeMeshes: Mesh[] = [];
 
+  mesh: Mesh | null = null;
+
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
     for (const item of this.item.composition?.items ?? []) {
@@ -127,10 +129,12 @@ export class GizmoComponent extends RendererComponent {
     if (this.subType === GizmoSubType.modelWireframe) { // 模型线框
       if (this.wireframeMesh && this.targetItem) {
         //@ts-expect-error TODO 和 3D 类型解耦
-        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
+        const pMesh = this.targetItem.getComponent(RendererComponent)?.content;
+        const meshes = pMesh.subMeshes;
         const wireframeMeshes = this.wireframeMeshes;
 
         if (meshes?.length > 0) {
+          wireframeMeshes[0].worldMatrix.copyFrom(pMesh.matrix);
           updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
         }
       }
@@ -142,9 +146,9 @@ export class GizmoComponent extends RendererComponent {
     const gizmoSubType = this.subType;
 
     if (gizmoSubType === GizmoSubType.particleEmitter) { // 粒子发射器
-      if (this.targetItem && item.content) {
+      if (this.targetItem && this.mesh) {
         this.mat = this.targetItem.transform.getWorldMatrix();
-        (item.content as Mesh).material.setMatrix('u_model', this.mat);
+        this.mesh.material.setMatrix('u_model', this.mat);
       }
       if (this.wireframeMesh && this.targetItem) {
         const particle = this.targetItem.getComponent(ParticleSystemRenderer);
@@ -254,7 +258,7 @@ export class GizmoComponent extends RendererComponent {
             }
           }
         }
-        if (item.content) { // 基础几何体
+        if (this.mesh) { // 基础几何体
           const worldPos = new Vector3();
           const worldQuat = new Quaternion();
           const worldSca = new Vector3(1, 1, 1);
@@ -279,7 +283,7 @@ export class GizmoComponent extends RendererComponent {
 
           this.mat = targetTransform.getWorldMatrix();
 
-          (item.content as Mesh).material.setMatrix('u_model', targetTransform.getWorldMatrix());
+          this.mesh.material.setMatrix('u_model', targetTransform.getWorldMatrix());
         }
       }
     }
@@ -381,7 +385,7 @@ export class GizmoComponent extends RendererComponent {
 
     this.targetItem = item;
     if (shape && shape.type) {
-      const mesh = this.item._content = createMeshFromShape(engine, shape, { color: this.color });
+      const mesh = this.mesh = createMeshFromShape(engine, shape, { color: this.color });
 
       meshesToAdd.push(mesh);
     }
@@ -407,7 +411,7 @@ export class GizmoComponent extends RendererComponent {
 
     this.targetItem = item;
     if (shape) {
-      const mesh = gizmoItem._content = createMeshFromShape(engine, shape, { color: this.color, depthTest: this.depthTest });
+      const mesh = this.mesh = createMeshFromShape(engine, shape, { color: this.color, depthTest: this.depthTest });
 
       meshesToAdd.push(mesh);
     }
@@ -431,7 +435,7 @@ export class GizmoComponent extends RendererComponent {
 
     assertExist(engine);
 
-    const mesh = gizmoItem._content = createMeshFromSubType(engine, subType, this.boundingMap, iconTextures, options) as Mesh;
+    const mesh = this.mesh = createMeshFromSubType(engine, subType, this.boundingMap, iconTextures, options) as Mesh;
 
     this.targetItem = item;
     meshesToAdd.push(mesh);

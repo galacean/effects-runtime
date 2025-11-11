@@ -1,5 +1,5 @@
 import type { GLEngine, GLRendererInternal } from '@galacean/effects-webgl';
-import { GLPipelineContext, GLRenderer } from '@galacean/effects-webgl';
+import { GLRenderer } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
@@ -8,7 +8,6 @@ describe('webgl/gl-state', () => {
   let renderer: GLRenderer;
   let fakeRenderer: GLRendererInternal;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
-  let pipelineContext: GLPipelineContext;
   let engine: GLEngine;
 
   before(() => {
@@ -16,7 +15,6 @@ describe('webgl/gl-state', () => {
     gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
     renderer = new GLRenderer(canvas, 'webgl2');
     engine = renderer.engine as GLEngine;
-    pipelineContext = renderer.pipelineContext;
 
     fakeRenderer = renderer.glRenderer;
   });
@@ -27,8 +25,6 @@ describe('webgl/gl-state', () => {
     renderer = null;
     // @ts-expect-error
     fakeRenderer = null;
-    // @ts-expect-error
-    pipelineContext = null;
     canvas.remove();
     // @ts-expect-error
     canvas = null;
@@ -36,15 +32,15 @@ describe('webgl/gl-state', () => {
     gl = null;
   });
 
-  it('GLPipelineContext default value', () => {
-    const state = new GLPipelineContext(engine, gl);
+  it('GLEngine default value', () => {
+    const state = engine;
 
-    // gl.DITHER是为了验证pipelineContext是否初始化了
+    // gl.DITHER是为了验证glEngine是否初始化了
     assert.equal(state.get('gl.DITHER'), null);
   });
 
-  it('GLPipelineContext framebuffer and depth function test ', () => {
-    const state = new GLPipelineContext(engine, gl);
+  it('GLEngine framebuffer and depth function test ', () => {
+    const state = engine;
     //framebuffer
     const framebuffer = gl.createFramebuffer();
 
@@ -76,7 +72,7 @@ describe('webgl/gl-state', () => {
   });
 
   it('stencil function test', () => {
-    const state = new GLPipelineContext(engine, gl);
+    const state = engine;
 
     //stencil start
     state.clearStencil(1.0);
@@ -116,7 +112,7 @@ describe('webgl/gl-state', () => {
   });
 
   it('color function test', () => {
-    const state = new GLPipelineContext(engine, gl);
+    const state = engine;
 
     state.clearColor(1.0, 1.0, 0.8, 1.0);
     expect(gl.getParameter(gl.COLOR_CLEAR_VALUE)).deep.equal(new Float32Array([1.0, 1.0, 0.8, 1.0]));
@@ -127,7 +123,7 @@ describe('webgl/gl-state', () => {
   });
 
   it('blend function test', () => {
-    const state = new GLPipelineContext(engine, gl);
+    const state = engine;
 
     //blend color
     state.blendColor(0, 0.5, 1, 1);
@@ -149,7 +145,7 @@ describe('webgl/gl-state', () => {
   });
 
   it('texture adn others function test', () => {
-    const state = new GLPipelineContext(engine, gl);
+    const state = engine;
 
     gl.activeTexture(gl.TEXTURE0);
     assert.equal(gl.getParameter(gl.ACTIVE_TEXTURE), gl.TEXTURE0);

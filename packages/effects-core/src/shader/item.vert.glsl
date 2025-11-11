@@ -17,10 +17,6 @@ uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixV;
 
-#ifdef ENV_EDITOR
-uniform vec4 uEditorTransform;
-#endif
-
 void main() {
   vec4 texParams = _TexParams;
 
@@ -44,8 +40,4 @@ void main() {
     vec3 vertexPosition = worldPosition + camRight * aPos.x * _Size.x * _Scale.x + camUp * aPos.y * _Size.y * _Scale.y;
     gl_Position = effects_MatrixVP * vec4(vertexPosition, 1.0);
   }
-
-#ifdef ENV_EDITOR
-  gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-#endif
 }

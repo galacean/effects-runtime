@@ -1,5 +1,5 @@
 import type {
-  MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine,
+  MaterialProps, Texture, UniformValue, UndefinedAble, Engine,
   GlobalUniforms, Renderer } from '@galacean/effects-core';
 import { math, Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -57,7 +57,6 @@ export class ThreeMaterial extends Material {
     };
 
     this.uniforms['_MainTex'] = new THREE.Uniform(null);
-    this.uniforms['uEditorTransform'] = new THREE.Uniform([1, 1, 0, 0]);
     this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
     this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
     this.uniforms['effects_MatrixVP'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -8, 1]);
@@ -524,11 +523,14 @@ export class ThreeMaterial extends Material {
     throw new Error('Method not implemented.');
   }
 
-  dispose (destroyOptions?: MaterialDestroyOptions): void {
-    if (!this.destroyed) {
+  override dispose (): void {
+    if (this.destroyed) {
       return;
     }
+
     this.material.dispose();
     this.destroyed = true;
+
+    super.dispose();
   }
 }

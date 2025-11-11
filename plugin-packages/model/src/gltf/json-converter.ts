@@ -73,7 +73,6 @@ export class JSONConverter {
       components: [],
       materials: [],
       shaders: [],
-      geometries: [],
     };
 
     this.setImage(newScene, oldScene);
@@ -201,6 +200,7 @@ export class JSONConverter {
       }
     });
 
+    //@ts-expect-error
     newScene.compositions[0].items = newScene.items.map(item => {
       return { id: item.id } as spec.DataPath;
     });

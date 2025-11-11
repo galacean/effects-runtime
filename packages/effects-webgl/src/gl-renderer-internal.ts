@@ -4,7 +4,6 @@ import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLGeometry } from './gl-geometry';
 import type { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLMaterial } from './gl-material';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLRenderbuffer } from './gl-renderbuffer';
 import { GLTexture } from './gl-texture';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
@@ -16,7 +15,6 @@ let seed = 1;
 export class GLRendererInternal implements Disposable, LostHandler {
   emptyTexture2D: GLTexture;
   emptyTextureCube: GLTexture;
-  pipelineContext: GLPipelineContext;
   gl: WebGLRenderingContext | WebGL2RenderingContext;
 
   readonly name: string;
@@ -32,11 +30,9 @@ export class GLRendererInternal implements Disposable, LostHandler {
     public engine: GLEngine,
   ) {
     const d = { width: 1, height: 1, data: new Uint8Array([255]) };
-    const pipelineContext = engine.getGLPipelineContext();
-    const gl = pipelineContext.gl;
+    const gl = this.engine.gl;
 
     this.gl = gl;
-    this.pipelineContext = pipelineContext;
     this.emptyTexture2D = new GLTexture(
       engine,
       {
@@ -94,21 +90,21 @@ export class GLRendererInternal implements Disposable, LostHandler {
     if (!this.targetFbo) {
       this.targetFbo = gl.createFramebuffer();
     }
-    const state = this.pipelineContext;
+    const engine = this.engine;
 
-    state.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
-    state.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
-    state.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
-    state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
+    engine.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
+    engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
 
     const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
 
     gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
-    state.bindFramebuffer(gl.FRAMEBUFFER, null);
-    state.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-    state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
   }
 
   resetColorAttachments (rp: GLFramebuffer, colors: GLTexture[]) {
@@ -266,7 +262,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   dispose () {
     this.deleteResource();
     // @ts-expect-error safe to assign
-    this.emptyTexture2D = this.emptyTextureCube = this.pipelineContext = this.gpu = this.gl = null;
+    this.emptyTexture2D = this.emptyTextureCube = this.gpu = this.gl = null;
     this.destroyed = true;
   }
 }

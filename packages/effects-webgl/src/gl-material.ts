@@ -1,14 +1,13 @@
 import type {
-  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps,
+  Engine, GlobalUniforms, MaterialProps,
   Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  spec, Material, Shader, assertExist, generateGUID, isFunction, logger,
   math, throwDestroyedError, glContext,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShaderVariant } from './gl-shader';
 import type { GLTexture } from './gl-texture';
 
@@ -268,13 +267,12 @@ export class GLMaterial extends Material {
     }
   }
 
-  setupStates (pipelineContext: GLPipelineContext) {
-    this.glMaterialState.apply(pipelineContext);
+  setupStates (engine: GLEngine) {
+    this.glMaterialState.apply(engine);
   }
 
   override use (renderer: Renderer, globalUniforms?: GlobalUniforms) {
     const engine = renderer.engine as GLEngine;
-    const pipelineContext = engine.getGLPipelineContext();
     const shaderVariant = this.shaderVariant as GLShaderVariant;
 
     if (!shaderVariant.program) {
@@ -283,7 +281,7 @@ export class GLMaterial extends Material {
       return;
     }
     shaderVariant.program.bind();
-    this.setupStates(pipelineContext);
+    this.setupStates(engine);
     let name: string;
 
     if (globalUniforms) {
@@ -722,26 +720,15 @@ export class GLMaterial extends Material {
     }
   }
 
-  dispose (options?: MaterialDestroyOptions) {
+  override dispose () {
     if (this.destroyed) {
       return;
     }
     this.shaderVariant?.dispose();
-    if (options?.textures !== DestroyOptions.keep) {
-      Object.keys(this.textures).forEach(key => {
-        const texture = this.textures[key];
-
-        // TODO 纹理释放需要引用计数
-        if (texture !== this.engine.emptyTexture) {
-          texture.dispose();
-        }
-      });
-    }
+    this.textures = {};
 
     // @ts-expect-error
     this.shaderSource = null;
-    // @ts-expect-error
-    this.uniformSemantics = {};
     this.floats = {};
     this.ints = {};
     this.vector2s = {};
@@ -762,5 +749,7 @@ export class GLMaterial extends Material {
     if (this.engine !== undefined) {
       this.engine.removeMaterial(this);
     }
+
+    super.dispose();
   }
 }

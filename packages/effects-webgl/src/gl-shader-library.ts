@@ -6,9 +6,7 @@ import { ShaderCompileResultStatus, ShaderType, ShaderFactory } from '@galacean/
 import { GLProgram } from './gl-program';
 import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
-import { stringHash } from './gl-uniform-utils';
 
 interface GLShaderCompileResult extends ShaderCompileResult {
   program?: WebGLProgram,
@@ -27,8 +25,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   private cachedShaders: Record<string, GLShaderVariant> = {};
 
   constructor (
-    public engine: GLEngine,
-    public pipelineContext: GLPipelineContext,
+    public engine: GLEngine
   ) {
     this.glAsyncCompileExt = engine.gpuCapability.glAsyncCompileExt;
   }
@@ -127,7 +124,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       shared = true;
     }
 
-    const gl = this.pipelineContext.gl;
+    const gl = this.engine.gl;
     const result: GLShaderCompileResult = { shared, status: ShaderCompileResultStatus.compiling };
     const linkProgram = this.createProgram(gl, vertex, fragment, result);
     const ext = this.glAsyncCompileExt;
@@ -137,7 +134,6 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       result.compileTime = performance.now() - startTime;
       shader.program = glProgram;
       shader.initialized = true;
-      shader.pipelineContext = this.pipelineContext;
 
       if (this.programMap[shader.id] !== undefined) {
         console.warn(`Find duplicated shader id: ${shader.id}.`);
@@ -311,8 +307,8 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       program.dispose();
     });
     this.programMap = {};
-    if (this.pipelineContext) {
-      const gl = this.pipelineContext.gl;
+    if (this.engine) {
+      const gl = this.engine.gl;
 
       this.glFragShaderMap.forEach(shader => {
         gl.deleteShader(shader);
@@ -340,4 +336,18 @@ function checkShader (gl: WebGLRenderingContext, shader: WebGLShader, type: stri
 
     return { error, status: ShaderCompileResultStatus.fail };
   }
+}
+
+export function stringHash (...strings: string[]): number {
+  let h = 0;
+
+  for (let j = 0; j < arguments.length; j++) {
+    const s = strings[j];
+
+    for (let i = 0; i < s.length; i++) {
+      h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    }
+  }
+
+  return h;
 }

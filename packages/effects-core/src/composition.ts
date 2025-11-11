@@ -7,7 +7,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import type { MeshRendererOptions, Renderer } from './render';
+import type { Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
@@ -19,7 +19,7 @@ import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { PlayState } from './plugins/cal/playable-graph';
+import { PlayState } from './plugins/timeline/playable';
 
 /**
  * 合成统计信息
@@ -160,10 +160,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   reusable: boolean;
   /**
-   * 是否播放完成后销毁 texture 对象
-   */
-  keepResource: boolean;
-  /**
    * 合成内的元素否允许点击、拖拽交互
    * @since 1.6.0
    */
@@ -232,8 +228,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否开启后处理
    */
   postProcessingEnabled = false;
-
-  protected rendererOptions: MeshRendererOptions | null;
   /**
    * 销毁状态位
    */
@@ -319,7 +313,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.getEngine().renderLevel = scene.renderLevel;
 
     if (reusable) {
-      this.keepResource = true;
       scene.consumed = true;
     }
 
@@ -335,14 +328,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.getEngine());
+    this.rootItem.setInstanceId(sourceContent.id);
     this.rootItem.name = 'rootItem';
     this.rootItem.duration = sourceContent.duration;
     this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
     // Create rootItem components
-    //@ts-expect-error TODO update spec.
-    const componentPaths = sourceContent.components as spec.DataPath[];
+    const componentPaths = sourceContent.components;
 
     for (const componentPath of componentPaths) {
       const component = this.getEngine().findObject<Component>(componentPath);
@@ -373,12 +366,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
+      pixelWidth: width,
+      pixelHeight: height,
     });
     this.url = scene.url;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
-    this.rendererOptions = null;
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
@@ -491,9 +485,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.restart();
     }
     if (this.rootComposition.isStartCalled) {
-      this.gotoAndPlay(this.time - this.startTime);
+      this.setTime(this.time - this.startTime);
+      this.resume();
     } else {
-      this.gotoAndPlay(0);
+      this.setTime(0);
+      this.resume();
     }
   }
 
@@ -518,6 +514,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   resume () {
     this.paused = false;
+    if (this.isEnded && this.reusable) {
+      this.restart();
+    }
+    const time = this.time;
+
+    this.emit('play', { time });
   }
 
   /**
@@ -526,8 +528,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   gotoAndPlay (time: number) {
     this.setTime(time);
+    this.emit('goto', { time });
     this.resume();
-    this.emit('play', { time });
   }
 
   /**
@@ -536,6 +538,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   gotoAndStop (time: number) {
     this.setTime(time);
+    this.emit('goto', { time });
     this.pause();
   }
 
@@ -571,7 +574,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.paused = true;
     }
-    this.emit('goto', { time });
   }
 
   addItem (item: VFXItem) {
@@ -611,7 +613,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 重置状态函数
    */
   protected reset () {
-    this.rendererOptions = null;
     this.isEnded = false;
     this.isEndCalled = false;
     this.rootComposition.time = 0;
@@ -640,9 +641,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    // scene VFXItem components lifetime function.
+    // Scene VFXItem components lifetime function
     if (!this.rootItem.isDuringPlay) {
-      this.callAwake(this.rootItem);
+      this.rootItem.awake();
       this.rootItem.beginPlay();
     }
 
@@ -671,18 +672,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private shouldDispose () {
     return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
-  }
-
-  private callAwake (item: VFXItem) {
-    for (const component of item.components) {
-      if (!component.isAwakeCalled) {
-        component.onAwake();
-        component.isAwakeCalled = true;
-      }
-    }
-    for (const child of item.children) {
-      this.callAwake(child);
-    }
   }
 
   /**
@@ -721,7 +710,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     let isEnded = false;
 
-    if (localTime - duration > 0.001) {
+    if (localTime >= duration) {
 
       isEnded = true;
 
@@ -791,7 +780,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * Item 求交测试，返回求交结果列表，x 和 y 是归一化到[-1, 1]区间的值，原点在左上角
+   * Item 求交测试，返回求交结果列表，x 和 y 是归一化到[-1, 1]区间的值，x 向右，y 向上
    * @param x - 鼠标或触点的 x，已经归一化到[-1, 1]
    * @param y - 鼠标或触点的 y，已经归一化到[-1, 1]
    * @param force - 是否强制求交，没有交互信息的 Item 也要进行求交测试
@@ -900,21 +889,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.destroyed = true;
 
-    const textureDisposes: Record<string, () => void> = {};
-    const textures = this.textures;
-
-    if (textures) {
-      if (this.keepResource) {
-        textures.forEach(tex => {
-          if (tex?.dispose) {
-            textureDisposes[tex.id] = tex.dispose;
-            tex.dispose = noop;
-          }
-        });
-      } else {
-        // textures.forEach(tex => tex && tex.dispose());
-      }
+    for (const texture of this.textures) {
+      texture.dispose();
     }
+    this._textures = [];
 
     for (const video of this.videos) {
       video.pause();
@@ -926,7 +904,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    this.rendererOptions?.emptyTexture.dispose();
     this.pluginSystem?.destroyComposition(this);
     this.update = () => {
       if (!__DEBUG__) {
@@ -934,12 +911,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     };
     this.dispose = noop;
-    if (textures && this.keepResource) {
-      textures.forEach(tex => {
-        tex.dispose = textureDisposes[tex.id];
-        tex.dispose();
-      });
-    }
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
@@ -1043,17 +1014,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.textures.forEach(tex => tex && tex.offloadData());
       this.textureOffloaded = true;
     }
-  }
-
-  getRendererOptions (): MeshRendererOptions {
-    if (!this.rendererOptions) {
-      this.rendererOptions = {
-        emptyTexture: this.renderFrame.emptyTexture,
-        cachePrefix: '-',
-      };
-    }
-
-    return this.rendererOptions;
   }
 
   /**

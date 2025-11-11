@@ -1,4 +1,116 @@
 export default {
+  '11qKWVFMNi': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Su-uR7dPiE0AAAAAAAAAAAAAelB4AQ',
+    name: '游戏动效_云朵',
+  },
+  '11qKWVFMNh': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*-J8YR7bZQk0AAAAAAAAAAAAAelB4AQ',
+    name: '开关动效01',
+  },
+  '11qrALn2YL': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*fle6Q6FUouMAAAAASRAAAAgAelB4AQ',
+    name: '角色升级卡片动效',
+  },
+  'gUWSXTRZ': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*MYJISaISaBwAAAAARbAAAAgAelB4AQ',
+    name: '蛋黄的不安',
+  },
+  'gBAIFaEB': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*5vNLRZjHIRsAAAAARqAAAAgAelB4AQ',
+    name: '营销活动页面02',
+  },
+  'gBAIFaEA': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Gy5QS68pOlsAAAAAREAAAAgAelB4AQ',
+    name: '成长的小树',
+  },
+  'gBAIFaEy': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*4HRlRZHYk9cAAAAAAAAAAAAAelB4AQ',
+    name: '营销活动页面01',
+  },
+  'gBAIFaEx': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*_wWpTblz_lkAAAAAQ6AAAAgAelB4AQ',
+    name: '游戏小特效02',
+  },
+  'gBAIFaEw': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*MDIiRqMM9CsAAAAAAAAAAAAAelB4AQ',
+    name: '游戏小特效01',
+  },
+  'gBAIFaAx': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*lNhGRad6R8kAAAAAQqAAAAgAelB4AQ',
+    name: '跳动的金币',
+  },
+  '11rnFghgqj': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*BTXbTrof-MIAAAAARqAAAAgAelB4AQ',
+    name: '科技风格的芯片动效',
+  },
+  '11s0nASK3l': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*GdTTRZGzoK4AAAAAQeAAAAgAelB4AQ',
+    name: '深海光环HALO',
+  },
+  '11sjJLbtRR': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*rY3VR5xCSTQAAAAAAAAAAAAAelB4AQ',
+    name: '神秘的传送门',
+  },
+  '12Hr2NQ07l': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*HhFGSYW8eYkAAAAAQFAAAAgAelB4AQ',
+    name: '数字动效_骇客帝国',
+  },
+  '12Hr2NQ07m': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*J4ZpTbvlqTkAAAAAQGAAAAgAelB4AQ',
+    name: '基础动效01',
+  },
+  '12Hr2NQ07n': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*SrLQTIYRDVkAAAAAQFAAAAgAelB4AQ',
+    name: '基础动效02',
+  },
+  '12Hr2NQ0bm': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*3Ak2R42eGCwAAAAAQGAAAAgAelB4AQ',
+    name: '基础动效03',
+  },
+  '12Hr2NQ0bn': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*BXuFRp94Oj8AAAAAQGAAAAgAelB4AQ',
+    name: '基础动效04',
+  },
+  '12Hr2NQ0bo': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*a10VQZQk-REAAAAAQIAAAAgAelB4AQ',
+    name: '基础动效05',
+  },
+  '12Hr2NQ0bp': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ouerSoZoAIoAAAAAQIAAAAgAelB4AQ',
+    name: '基础动效06',
+  },
+  '12Hr2NQ0bq': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Kd2lRZ5I-_wAAAAAQpAAAAgAelB4AQ',
+    name: '基础动效07',
+  },
+  '12Hr2NQ0br': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*BGweQYSxByMAAAAAQFAAAAgAelB4AQ',
+    name: '基础动效08',
+  },
+  '12Hr2NQ0bs': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*z6x5RbZpqpwAAAAAQLAAAAgAelB4AQ',
+    name: '基础动效09',
+  },
+  '12Hr2NQ0bt': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*HQwxQ6Y2i08AAAAAQZAAAAgAelB4AQ',
+    name: '基础动效10',
+  },
+  '12Hr2NQ0bu': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*wUVqTLOhqKoAAAAAAAAAAAAAelB4AQ',
+    name: '基础动效11',
+  },
+  '12Hr2NQ0bv': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*gTVKSKyNDsEAAAAAAAAAAAAAelB4AQ',
+    name: '基础动效12',
+  },
+  '12I3L8rtKn': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*6rvrTLeYn6AAAAAAQ8AAAAgAelB4AQ',
+    name: '炫酷的卡片弹窗动效',
+  },
+  '12In7iKdyT': {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*e4ovTLKXULoAAAAAQ1AAAAgAelB4AQ',
+    name: '万花筒动效',
+  },
   wufu2022: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*dnU-SprU5pAAAAAAAAAAAAAADlB4AQ',
     name: '2022-集五福氛围',

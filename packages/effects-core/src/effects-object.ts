@@ -62,10 +62,15 @@ export abstract class EffectsObject {
    * @param data - 对象的序列化的数据
    */
   fromData (data: spec.EffectsObjectData) {
+    if (data.id !== undefined) {
+      this.setInstanceId(data.id);
+    }
   }
 
   /**
-   *
+   * 销毁当前对象
    */
-  dispose () { }
+  dispose () {
+    this.engine.removeInstance(this.guid);
+  }
 }

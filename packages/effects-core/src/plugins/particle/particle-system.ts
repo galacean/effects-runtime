@@ -14,7 +14,6 @@ import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../..
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
-import { DestroyOptions } from '../../utils';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
@@ -493,7 +492,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   override onDestroy (): void {
     if (this.item && this.item.composition) {
-      this.meshes.forEach(mesh => mesh.dispose({ material: { textures: DestroyOptions.keep } }));
+      this.meshes.forEach(mesh => mesh.dispose());
     }
   }
 
@@ -1141,7 +1140,6 @@ export class ParticleSystem extends Component implements Maskable {
       };
     }
     this.item.getHitTestParams = this.getHitTestParams;
-    this.item._content = this;
   }
 }
 

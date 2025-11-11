@@ -11,8 +11,8 @@ const canvasWidth = 512;
 const canvasHeight = 512;
 let controller: TestController;
 
-addDescribe('webgl', 0);
-addDescribe('webgl2', 1);
+addDescribe('webgl', 2);
+addDescribe('webgl2', 3);
 
 function addDescribe (renderFramework: GLType, i: number) {
   describe(`文本/动态换图测试@${renderFramework}`, function () {

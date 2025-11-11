@@ -4,7 +4,7 @@ import {
   RenderPassDestroyAttachmentType, TextureSourceType, Camera, DestroyOptions, RenderPass,
   RenderFrame, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
-import type { GLShaderVariant, GLFramebuffer } from '@galacean/effects-webgl';
+import type { GLShaderVariant, GLFramebuffer, GLEngine } from '@galacean/effects-webgl';
 import { GLMaterial, GLGeometry, GLTexture, GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -26,7 +26,7 @@ describe('webgl/dispose', function () {
     canvas = document.createElement('canvas');
     renderer = new GLRenderer(canvas, 'webgl2');
     engine = renderer.engine;
-    gl = renderer.pipelineContext.gl;
+    gl = (renderer.engine as GLEngine).gl;
   });
 
   beforeEach(async () => {
@@ -34,7 +34,7 @@ describe('webgl/dispose', function () {
   });
 
   afterEach(() => {
-    const sb = renderer.pipelineContext.shaderLibrary;
+    const sb = (renderer.engine as GLEngine).shaderLibrary;
 
     sb.dispose();
     destroyMesh(result);
@@ -80,8 +80,6 @@ describe('webgl/dispose', function () {
     expect(spy1).has.been.called.once;
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    // @ts-expect-error
-    expect((material.shaderVariant as GLShaderVariant).program.pipelineContext).to.eql(null);
     expect(geom.isDestroyed).to.be.true;
     expect(geom.buffers).to.eql({});
     expect(geom.attributes).to.eql({});
@@ -148,8 +146,7 @@ describe('webgl/dispose', function () {
     expect(spy2).not.has.been.called;
     expect(spy1).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
-    expect(texture.isDestroyed).to.be.true;
+    expect(Object.keys(material.textures).length).to.eql(0);
     expect(geom.isDestroyed).to.be.false;
 
   });
@@ -176,7 +173,6 @@ describe('webgl/dispose', function () {
 
     expect(geom.isDestroyed).to.be.false;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.false;
   });
 
@@ -199,7 +195,6 @@ describe('webgl/dispose', function () {
 
     expect(geom.isDestroyed).to.be.true;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.false;
   });
 

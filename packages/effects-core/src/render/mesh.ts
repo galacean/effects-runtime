@@ -103,10 +103,7 @@ export class Mesh extends RendererComponent implements Disposable {
     if (!this.getVisible()) {
       return;
     }
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.worldMatrix);
-    }
-    renderer.drawGeometry(this.geometry, this.material);
+    renderer.drawGeometry(this.geometry, this.worldMatrix, this.material);
   }
 
   /**
@@ -123,7 +120,7 @@ export class Mesh extends RendererComponent implements Disposable {
    */
   setMaterial (material: Material, destroy?: MaterialDestroyOptions | DestroyOptions.keep) {
     if (destroy !== DestroyOptions.keep) {
-      this.material.dispose(destroy);
+      this.material.dispose();
     }
     this.material = material;
   }
@@ -147,14 +144,14 @@ export class Mesh extends RendererComponent implements Disposable {
     const materialDestroyOption = options?.material;
 
     if (materialDestroyOption !== DestroyOptions.keep) {
-      this.material.dispose(materialDestroyOption);
+      this.material.dispose();
     }
     this.destroyed = true;
 
     if (this.engine !== undefined) {
       this.engine.removeMesh(this);
-      // @ts-expect-error
-      this.engine = undefined;
     }
+
+    super.dispose();
   }
 }

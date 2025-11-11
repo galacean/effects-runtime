@@ -1,4 +1,5 @@
-import type { ParticleSystem, GLGeometry, Material } from '@galacean/effects';
+import type { GLGeometry, Material } from '@galacean/effects';
+import { ParticleSystem } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
 import type { GLMaterial } from '@galacean/effects-webgl';
 
@@ -29,7 +30,7 @@ describe('core/plugins/particle/test', function () {
     const json = '[{"name":"item_2","delay":0,"id":"2","type":"2","duration":5,"content":{"shape":{"type":0,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"None"},"options":{"startLifetime":1.2,"startSize":0.2,"sizeAspect":1,"startSpeed":1,"startColor":[8,[255,255,255]],"duration":2,"maxCount":18,"renderLevel":"B+"},"emission":{"rateOverTime":5},"trails":{"lifetime":1,"maxPointPerTrail":12,"widthOverTrail":0.1,"minimumVertexDistance":0.04,"dieWithParticles":true,"colorOverTrail":{"0%":"rgb(255,255,255)","100%":"rgba(255,255,255,0)"}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"item_3","delay":0,"id":"2","start3DSize":true,"endBehavior":0,"duration":5,"type":"2","content":{"shape":{"type":0,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"None"},"options":{"startLifetime":1.2,"startSize":0.2,"sizeAspect":1,"startSpeed":1,"startColor":[8,[255,255,255]],"duration":2,"maxCount":18,"renderLevel":"B+"},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"gravity":[0,0,0],"gravityOverLifetime":[0,1]},"emission":{"rateOverTime":[0,5]},"trails":{"lifetime":[0,1],"maxPointPerTrail":12,"widthOverTrail":[0,0.1],"minimumVertexDistance":0.04,"dieWithParticles":true}}}]';
     const comp = await generateComposition(player, json, 0.01);
     const vfxItem = comp.getItemByName('item_3');
-    const content = vfxItem?.content as ParticleSystem;
+    const content = vfxItem!.getComponent(ParticleSystem);
 
     expect(vfxItem?.renderOrder).to.eql(1);
     const pMesh = content.renderer.particleMesh.mesh;
@@ -39,15 +40,6 @@ describe('core/plugins/particle/test', function () {
     // expect(pMesh.priority).to.eql(1, 'particle');
     // expect(tMesh.priority).to.eql(1, 'trail');
     expect(content.renderer.particleMesh.maxCount).to.eql(18);
-    expect(pMesh.material.uniformSemantics).to.include({
-      effects_MatrixV: 'VIEW',
-      effects_MatrixVP: 'VIEWPROJECTION',
-    }, 'particle');
-    expect(tMesh?.material.uniformSemantics).to.includes({
-      effects_ObjectToWorld: 'MODEL',
-      effects_MatrixInvV: 'VIEWINVERSE',
-      effects_MatrixVP: 'VIEWPROJECTION',
-    }, 'trail');
     const tex = content.getTextures();
 
     expect(tex).to.be.an('array').with.lengthOf(2);
@@ -82,8 +74,8 @@ describe('core/plugins/particle/test', function () {
     const comp = await generateComposition(player, json, 1);
     const p0 = comp.getItemByName('item_5');
     const p1 = comp.getItemByName('item_6');
-    const p0Content = p0?.content as ParticleSystem;
-    const p1Content = p1?.content as ParticleSystem;
+    const p0Content = p0?.getComponent(ParticleSystem) as ParticleSystem;
+    const p1Content = p1?.getComponent(ParticleSystem) as ParticleSystem;
 
     expect(p0Content.renderer.particleMesh.particleCount).to.eql(5);
 
@@ -100,31 +92,31 @@ describe('core/plugins/particle/test', function () {
 
     player.gotoAndStop(0.2);
     const billItem = comp.getItemByName('billboard');
-    const billContent = billItem?.content as ParticleSystem;
+    const billContent = billItem?.getComponent(ParticleSystem) as ParticleSystem;
     const billMaterial = billContent.renderer.particleMesh.mesh.material;
 
     expect(getMacrosValue(billMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
 
     const defaultItem = comp.getItemByName('default');
-    const defaultContent = defaultItem?.content as ParticleSystem;
+    const defaultContent = defaultItem?.getComponent(ParticleSystem) as ParticleSystem;
     const defaultMaterial = defaultContent.renderer.particleMesh.mesh.material;
 
     expect(getMacrosValue(defaultMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
 
     const meshItem = comp.getItemByName('mesh');
-    const meshContent = meshItem?.content as ParticleSystem;
+    const meshContent = meshItem?.getComponent(ParticleSystem) as ParticleSystem;
     const meshMaterial = meshContent.renderer.particleMesh.mesh.material;
 
     expect(getMacrosValue(meshMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.MESH);
 
     const verticalItem = comp.getItemByName('vertical_billboard');
-    const verticalContent = verticalItem?.content as ParticleSystem;
+    const verticalContent = verticalItem?.getComponent(ParticleSystem) as ParticleSystem;
     const verticalMaterial = verticalContent.renderer.particleMesh.mesh.material;
 
     expect(getMacrosValue(verticalMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.VERTICAL_BILLBOARD);
 
     const horizonItem = comp.getItemByName('horizon_billboard');
-    const horizonContent = horizonItem?.content as ParticleSystem;
+    const horizonContent = horizonItem?.getComponent(ParticleSystem) as ParticleSystem;
     const horizonMaterial = horizonContent.renderer.particleMesh.mesh.material;
 
     expect(getMacrosValue(horizonMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.HORIZONTAL_BILLBOARD);
@@ -135,21 +127,21 @@ describe('core/plugins/particle/test', function () {
 
     comp.gotoAndStop(0.1);
     const unsetItem = comp.getItemByName('unset');
-    const unsetContent = unsetItem?.content as ParticleSystem;
+    const unsetContent = unsetItem?.getComponent(ParticleSystem) as ParticleSystem;
     const unsetMaterial = unsetContent.renderer.particleMesh.mesh.material as GLMaterial;
 
     // @ts-expect-error
     expect(unsetMaterial.glMaterialState.stencilTest).to.be.false;
 
     const defaultItem = comp.getItemByName('default');
-    const defaultContent = defaultItem?.content as ParticleSystem;
+    const defaultContent = defaultItem?.getComponent(ParticleSystem) as ParticleSystem;
     const defaultMaterial = defaultContent.renderer.particleMesh.mesh.material as GLMaterial;
 
     // @ts-expect-error
     expect(defaultMaterial.glMaterialState.stencilTest).to.be.false;
 
     const readItem = comp.getItemByName('read');
-    const readContent = readItem?.content as ParticleSystem;
+    const readContent = readItem?.getComponent(ParticleSystem) as ParticleSystem;
     const readMaterial = readContent.renderer.particleMesh.mesh.material as GLMaterial;
     // @ts-expect-error
     const readStates = readMaterial.glMaterialState;
@@ -162,7 +154,7 @@ describe('core/plugins/particle/test', function () {
     expect(readStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
 
     const readInverseItem = comp.getItemByName('read_inverse');
-    const readInverseContent = readInverseItem?.content as ParticleSystem;
+    const readInverseContent = readInverseItem?.getComponent(ParticleSystem) as ParticleSystem;
     const readInverseMaterial = readInverseContent.renderer.particleMesh.mesh.material as GLMaterial;
     // @ts-expect-error
     const readInverseStates = readInverseMaterial.glMaterialState;
@@ -180,14 +172,14 @@ describe('core/plugins/particle/test', function () {
     const comp = await generateComposition(player, json, 0.01);
 
     const depthTestItem = comp.getItemByName('depth_test');
-    const depthTestContent = depthTestItem?.content as ParticleSystem;
+    const depthTestContent = depthTestItem?.getComponent(ParticleSystem) as ParticleSystem;
     const depthTestMaterial = depthTestContent.renderer.particleMesh.mesh.material as GLMaterial;
     // @ts-expect-error
     const depthStates = depthTestMaterial.glMaterialState;
 
     expect(depthStates.depthMask).to.be.true;
     const transparentItem = comp.getItemByName('transparent_occlusion');
-    const transparentContent = transparentItem?.content as ParticleSystem;
+    const transparentContent = transparentItem?.getComponent(ParticleSystem) as ParticleSystem;
     const transparentMaterial = transparentContent.renderer.particleMesh.mesh.material as GLMaterial;
     const uColorParams = transparentMaterial.getVector4('uColorParams');
 
@@ -201,7 +193,7 @@ describe('core/plugins/particle/test', function () {
     const comp = await generateComposition(player, json, 0.01);
 
     const alphaItem = comp.getItemByName('alpha');
-    const alphaContent = alphaItem?.content as ParticleSystem;
+    const alphaContent = alphaItem?.getComponent(ParticleSystem) as ParticleSystem;
     const alphaMaterial = alphaContent.renderer.particleMesh.mesh.material as GLMaterial;
     const alphaColorParams = alphaMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -213,7 +205,7 @@ describe('core/plugins/particle/test', function () {
     expect(alphaColorParams?.toArray()).to.eql([1, 1, 0, 0]);
 
     const additiveItem = comp.getItemByName('additive');
-    const additiveContent = additiveItem?.content as ParticleSystem;
+    const additiveContent = additiveItem?.getComponent(ParticleSystem) as ParticleSystem;
     const additiveMaterial = additiveContent.renderer.particleMesh.mesh.material as GLMaterial;
     const additiveColorParams = additiveMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -226,7 +218,7 @@ describe('core/plugins/particle/test', function () {
     expect(additiveColorParams?.toArray()).to.eql([1, 1, 0, 0]);
 
     const subtractItem = comp.getItemByName('subtract');
-    const subtractContent = subtractItem?.content as ParticleSystem;
+    const subtractContent = subtractItem?.getComponent(ParticleSystem) as ParticleSystem;
     const subtractMaterial = subtractContent.renderer.particleMesh.mesh.material as GLMaterial;
     const subtractColorParams = subtractMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -239,7 +231,7 @@ describe('core/plugins/particle/test', function () {
     expect(subtractColorParams?.toArray()).to.eql([1, 1, 0, 0]);
 
     const luAdditiveItem = comp.getItemByName('luminance_additive');
-    const luAdditiveContent = luAdditiveItem?.content as ParticleSystem;
+    const luAdditiveContent = luAdditiveItem?.getComponent(ParticleSystem) as ParticleSystem;
     const luAdditiveMaterial = luAdditiveContent.renderer.particleMesh.mesh.material as GLMaterial;
     const luAdditiveColorParams = luAdditiveMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -252,7 +244,7 @@ describe('core/plugins/particle/test', function () {
     expect(luAdditiveColorParams?.toArray()).to.eql([1, 2, 0, 0]);
 
     const multiplyItem = comp.getItemByName('multiply');
-    const multiplyContent = multiplyItem?.content as ParticleSystem;
+    const multiplyContent = multiplyItem?.getComponent(ParticleSystem) as ParticleSystem;
     const multiplyMaterial = multiplyContent.renderer.particleMesh.mesh.material as GLMaterial;
     const multiplyColorParams = multiplyMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -265,7 +257,7 @@ describe('core/plugins/particle/test', function () {
     expect(multiplyColorParams?.toArray()).to.eql([1, 0, 0, 0]);
 
     const addLightItem = comp.getItemByName('add_light');
-    const addLightContent = addLightItem?.content as ParticleSystem;
+    const addLightContent = addLightItem?.getComponent(ParticleSystem) as ParticleSystem;
     const addLightMaterial = addLightContent.renderer.particleMesh.mesh.material as GLMaterial;
     const addLightColorParams = addLightMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -278,7 +270,7 @@ describe('core/plugins/particle/test', function () {
     expect(addLightColorParams?.toArray()).to.eql([1, 1, 0, 0]);
 
     const lightItem = comp.getItemByName('light');
-    const lightContent = lightItem?.content as ParticleSystem;
+    const lightContent = lightItem?.getComponent(ParticleSystem) as ParticleSystem;
     const lightMaterial = lightContent.renderer.particleMesh.mesh.material as GLMaterial;
     const lightColorParams = lightMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -291,7 +283,7 @@ describe('core/plugins/particle/test', function () {
     expect(lightColorParams?.toArray()).to.eql([1, 1, 0, 0]);
 
     const luAlphaItem = comp.getItemByName('luminance_alpha');
-    const luAlphaContent = luAlphaItem?.content as ParticleSystem;
+    const luAlphaContent = luAlphaItem?.getComponent(ParticleSystem) as ParticleSystem;
     const luAlphaMaterial = luAlphaContent.renderer.particleMesh.mesh.material as GLMaterial;
     const luAlphaColorParams = luAlphaMaterial.getVector4('uColorParams');
     // @ts-expect-error
@@ -309,14 +301,14 @@ describe('core/plugins/particle/test', function () {
     const json = `[{"name":"both","delay":0,"id":"1","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"renderer":{"side":${spec.SideMode.DOUBLE}},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"front","delay":0,"id":"2","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"renderer":{"side":${spec.SideMode.FRONT}},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"back","delay":0,"id":"3","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"renderer":{"side":${spec.SideMode.BACK}},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}}]`;
     const comp = await generateComposition(player, json, 0.01);
     const bothItem = comp.getItemByName('both');
-    const bothContent = bothItem?.content as ParticleSystem;
+    const bothContent = bothItem?.getComponent(ParticleSystem) as ParticleSystem;
     const bothMaterial = bothContent.renderer.particleMesh.mesh.material as GLMaterial;
 
     // @ts-expect-error
     expect(bothMaterial.glMaterialState.culling).to.false;
 
     const frontItem = comp.getItemByName('front');
-    const frontContent = frontItem?.content as ParticleSystem;
+    const frontContent = frontItem?.getComponent(ParticleSystem) as ParticleSystem;
     const frontMaterial = frontContent.renderer.particleMesh.mesh.material as GLMaterial;
     // @ts-expect-error
     const frontStates = frontMaterial.glMaterialState;
@@ -326,7 +318,7 @@ describe('core/plugins/particle/test', function () {
     expect(frontStates.frontFace).to.eql(glContext.CW);
 
     const backItem = comp.getItemByName('back');
-    const backContent = backItem?.content as ParticleSystem;
+    const backContent = backItem?.getComponent(ParticleSystem) as ParticleSystem;
     const backMaterial = backContent.renderer.particleMesh.mesh.material as GLMaterial;
     // @ts-expect-error
     const backStates = backMaterial.glMaterialState;
@@ -355,7 +347,7 @@ describe('core/plugins/particle/test', function () {
 
     function checkItem (name: string, anchor: math.Vector2) {
       const item = comp.getItemByName(name);
-      const itemContent = item?.content as ParticleSystem;
+      const itemContent = item?.getComponent(ParticleSystem) as ParticleSystem;
       const rightBottomPos = itemContent.renderer.particleMesh.mesh.firstGeometry().getAttributeData('aPos');
 
       expect(rightBottomPos).to.be.an.instanceOf(Float32Array).with.lengthOf(48);

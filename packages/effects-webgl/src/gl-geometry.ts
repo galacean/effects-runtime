@@ -6,7 +6,6 @@ import {
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
-import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLVertexArrayObject } from './gl-vertex-array-object';
 
 type BufferDirtyFlag = {
@@ -94,15 +93,14 @@ export class GLGeometry extends Geometry {
     assertExist(engine);
 
     engine.addGeometry(this);
-    const pipelineContext = (this.engine as GLEngine).getGLPipelineContext();
 
     // 创建vbo
     Object.keys(this.bufferProps).forEach(name => {
-      this.buffers[name] = new GLGPUBuffer(pipelineContext, this.bufferProps[name]);
+      this.buffers[name] = new GLGPUBuffer(this.engine as GLEngine, this.bufferProps[name]);
     });
     // 创建ibo
     if (this.indices) {
-      this.indicesBuffer = this.createIndicesBuffer(pipelineContext, this.indices);
+      this.indicesBuffer = this.createIndicesBuffer(this.indices);
     }
 
     this.initialized = true;
@@ -258,7 +256,7 @@ export class GLGeometry extends Geometry {
     return attribute ? this.bufferProps[attribute.dataSource] : undefined;
   }
 
-  createIndicesBuffer (pipelineContext: GLPipelineContext, data: spec.TypedArray): GLGPUBuffer {
+  createIndicesBuffer (data: spec.TypedArray): GLGPUBuffer {
     const type = INDEX_TYPE_MAP[data.BYTES_PER_ELEMENT];
     const indexProps = {
       data,
@@ -267,7 +265,7 @@ export class GLGeometry extends Geometry {
       name: `${this.name}##index`,
     };
 
-    return new GLGPUBuffer(pipelineContext, indexProps);
+    return new GLGPUBuffer(this.engine as GLEngine, indexProps);
   }
 
   override flush () {
@@ -536,11 +534,11 @@ export class GLGeometry extends Geometry {
 
       if (this.engine !== undefined) {
         this.engine.removeGeometry(this);
-        // @ts-expect-error
-        this.engine = undefined;
       }
     }
     this.destroyed = true;
+
+    super.dispose();
   }
 
   private createVertexTypedArray (channel: spec.VertexChannel, baseBuffer: Uint8Array, vertexCount: number) {

@@ -411,6 +411,7 @@ describe('core/fallback/particle/base', () => {
       ],
     };
     const res = getStandardJSON(oldParticle);
+    //@ts-expect-error
     const pt = res.items.find(item => item.id === res.compositions[0].items[0].id);
     const r2 = pt!.transform!.eulerHint;
 

@@ -8,11 +8,17 @@ export class MaterialTrack extends TrackAsset {
   @serialize()
   index: number;
 
-  override updateAnimatedObject () {
-    if (!(this.parent.boundObject instanceof RendererComponent)) {
-      return;
+  override updateAnimatedObject (boundObject: object): object {
+    if (!(boundObject instanceof RendererComponent)) {
+      throw new Error('MaterialTrack: expected a RendererComponent bound object.');
     }
-    this.parent.boundObject;
-    this.boundObject = this.parent.boundObject.materials[this.index];
+
+    const materials = boundObject.materials;
+
+    if (this.index >= materials.length) {
+      throw new Error(`MaterialTrack: material index ${this.index} out of bounds (length=${materials.length}).`);
+    }
+
+    return materials[this.index];
   }
 }
