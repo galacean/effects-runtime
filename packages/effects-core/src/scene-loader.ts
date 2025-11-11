@@ -1,10 +1,10 @@
+import * as spec from '@galacean/effects-specification';
 import { AssetManager } from './asset-manager';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import type { Engine } from './engine';
 import type { Scene, SceneLoadOptions } from './scene';
 import { logger } from './utils';
-import * as spec from '@galacean/effects-specification';
 
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {

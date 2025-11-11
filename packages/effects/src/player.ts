@@ -1,20 +1,10 @@
 import type {
-  Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
-  MessageItem,
-  Region,
-
-  AssetManager, Composition,
-  Renderer, Ticker,
+  Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene, MessageItem,
+  Region, AssetManager, Composition, Renderer, Ticker,
 } from '@galacean/effects-core';
 import {
-  Engine,
-} from '@galacean/effects-core';
-import {
-  logger, EventEmitter,
-  TextureLoadAction, canvasPool, getPixelRatio, initErrors,
-  isArray, spec,
-  assertExist,
-  SceneLoader,
+  Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
+  isArray, spec, assertExist, SceneLoader,
 } from '@galacean/effects-core';
 import type { GLEngine } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';

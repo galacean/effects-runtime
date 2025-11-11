@@ -1,7 +1,6 @@
 import type {
   GeometryMeshProps, GeometryProps, FramebufferProps, MaterialProps, RenderbufferProps,
-  TextureDataType, TextureSourceOptions,
-  EngineOptions,
+  TextureDataType, TextureSourceOptions, EngineOptions,
 } from '@galacean/effects-core';
 import {
   Framebuffer, Geometry, glContext, imageDataFromColor, Material, Mesh, Renderbuffer,

@@ -1,9 +1,11 @@
-//@ts-nocheck
-import { TextureSourceType, RenderPass, RenderPassDestroyAttachmentType, RenderPassAttachmentStorageType, OrderType, Mesh } from '@galacean/effects-core';
+// @ts-nocheck
+import {
+  TextureSourceType, RenderPass, RenderPassDestroyAttachmentType,
+  RenderPassAttachmentStorageType, OrderType, Mesh, DrawObjectPass,
+} from '@galacean/effects-core';
 import { GLTexture, GLGeometry, GLMaterial, GLEngine } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { MathUtils } from './math-utils';
-import { DrawObjectPass } from 'packages/effects-core/src/render/draw-object-pass';
 
 const { expect } = chai;
 

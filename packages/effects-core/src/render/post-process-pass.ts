@@ -1,3 +1,7 @@
+import type * as spec from '@galacean/effects-specification';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { ShaderWithSource } from './shader';
 import { GLSLVersion } from './shader';
 import { glContext } from '../gl';
 import { Material } from '../material';
@@ -6,14 +10,9 @@ import { Geometry } from './geometry';
 import { Mesh } from './mesh';
 import { getTextureSize } from './render-frame';
 import type { RenderPassDestroyOptions, RenderPassOptions } from './render-pass';
-import { RenderTargetHandle, TextureStoreAction } from './render-pass';
-import { RenderPass } from './render-pass';
+import { RenderTargetHandle, TextureStoreAction, RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
-import type { ShaderWithSource } from './shader';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type * as spec from '@galacean/effects-specification';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {

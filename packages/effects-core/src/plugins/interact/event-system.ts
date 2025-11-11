@@ -1,5 +1,5 @@
-import type { Composition } from '../../composition';
 import * as spec from '@galacean/effects-specification';
+import type { Composition } from '../../composition';
 import type { Engine } from '../../engine';
 import type { Disposable } from '../../utils';
 import { addItem, isSimulatorCellPhone, logger, removeItem } from '../../utils';

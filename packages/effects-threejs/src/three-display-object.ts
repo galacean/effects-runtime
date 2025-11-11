@@ -1,9 +1,7 @@
 import type {
-  EventSystem, SceneLoadOptions, Composition, MessageItem, Scene,
-  Engine,
+  EventSystem, SceneLoadOptions, Composition, MessageItem, Scene, Engine,
 } from '@galacean/effects-core';
-import { AssetService, assertExist } from '@galacean/effects-core';
-import { AssetManager, isArray, logger } from '@galacean/effects-core';
+import { AssetService, assertExist, AssetManager, isArray, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeEngine } from './three-engine';

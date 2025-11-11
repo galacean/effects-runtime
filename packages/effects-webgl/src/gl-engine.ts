@@ -1,8 +1,8 @@
+import type { Composition, EngineOptions, Nullable, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
+import { Engine, GPUCapability, SceneLoader, assertExist, glContext, isIOS } from '@galacean/effects-core';
 import { GLRenderer } from './gl-renderer';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
-import type { Composition, EngineOptions, Nullable, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, SceneLoader, assertExist, glContext, isIOS } from '@galacean/effects-core';
 import { GLContextManager } from './gl-context-manager';
 
 type Color = math.Color;
