@@ -588,7 +588,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
   /**
    * 清空 canvas 的画面
-   * @param immediate - 如果立即清理，当前画面将会消失，如果 player 还有合成在渲染，可能出现闪烁
    */
   clearCanvas () {
     this.renderer.clear({
