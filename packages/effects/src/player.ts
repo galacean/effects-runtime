@@ -226,7 +226,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       assertNoConcurrentPlayers();
     } catch (e: any) {
-      if (this.canvas && useExternalCanvas) {
+      if (this.canvas && !useExternalCanvas) {
         this.canvas.remove();
       }
       this.handleThrowError(e);
