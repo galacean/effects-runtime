@@ -257,15 +257,9 @@ export interface RenderPassAttachmentOptions {
   attachments?: RenderPassColorAttachmentOptions[],
   depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
   /**
-   * RenderPass 视口大小，如果没有指定，会用 viewportScale 计算
+   * RenderPass 视口大小，如果没有指定，会用 renderer 的宽高计算
    */
   viewport?: [x: number, y: number, width: number, height: number],
-  /**
-   * 视口缩放系数
-   *  1. viewport 提供时，忽略此参数，RenderPass 视口大小由 viewport 决定；
-   *  2. 默认为1，RenderPass 视口大小由画布大小* viewportScale 决定，画布尺寸变化时，RenderPass 视口也会变化；
-   */
-  viewportScale?: number,
 }
 
 export interface RenderPassOptions extends RenderPassAttachmentOptions {
@@ -336,7 +330,6 @@ export class RenderPass implements Disposable, Sortable {
   protected renderer: Renderer;
 
   private initialized = false;
-  private viewportScale: number;
   private depthTexture?: Texture;
   private stencilTexture?: Texture;
   private isCustomViewport: boolean;
@@ -489,7 +482,6 @@ export class RenderPass implements Disposable, Sortable {
   private setViewportOptions (options: RenderPassAttachmentOptions) {
     if (options.viewport) {
       this.isCustomViewport = true;
-      this.viewportScale = 1;
       this.customViewport = options.viewport.slice(0, 4) as [x: number, y: number, width: number, height: number];
       if (this.framebuffer) {
         const vp = this.customViewport;
@@ -500,10 +492,8 @@ export class RenderPass implements Disposable, Sortable {
       }
     } else {
       this.isCustomViewport = false;
-      this.viewportScale = options.viewportScale || 1;
       if (this.framebuffer) {
         this.framebuffer.isCustomViewport = true;
-        this.framebuffer.viewportScale = this.viewportScale;
       }
     }
   }
@@ -518,9 +508,8 @@ export class RenderPass implements Disposable, Sortable {
       this.framebuffer?.dispose({ depthStencilAttachment: RenderPassDestroyAttachmentType.keepExternal });
       this.framebuffer = null;
     }
-    const vs = this.viewportScale;
     // renderpass 的 viewport 相关参数都需要动态的修改
-    const viewport = (this.isCustomViewport ? this.customViewport : [0, 0, renderer.getWidth() * vs, renderer.getHeight() * vs]) as vec4;
+    const viewport = (this.isCustomViewport ? this.customViewport : [0, 0, renderer.getWidth(), renderer.getHeight()]) as vec4;
 
     const size: [x: number, y: number] = [viewport[2], viewport[3]];
     const name = this.name;
@@ -543,7 +532,6 @@ export class RenderPass implements Disposable, Sortable {
         storeAction: this.storeAction,
         name,
         viewport,
-        viewportScale: this.viewportScale,
         isCustomViewport: this.isCustomViewport,
         attachments: attachments.map(att => att.texture),
         depthStencilAttachment: options.depthStencilAttachment || { storageType: RenderPassAttachmentStorageType.none },
@@ -567,9 +555,8 @@ export class RenderPass implements Disposable, Sortable {
       return ret;
     }
     const renderer = this.renderer;
-    const vs = this.viewportScale;
 
-    return renderer ? [0, 0, renderer.getWidth() * vs, renderer.getHeight() * vs] : [0, 0, 0, 0];
+    return renderer ? [0, 0, renderer.getWidth(), renderer.getHeight()] : [0, 0, 0, 0];
   }
 
   /**
@@ -614,7 +601,7 @@ export class RenderPass implements Disposable, Sortable {
       const tex = texture === outTex ? outTex : texture;
 
       // TODO 为什么要initialize？
-      //tex.initialize(this.renderer.glRenderer.engine);
+      //tex.initialize(this.renderer.engine);
       if (!external) {
         this.depthTexture = tex;
       }
@@ -696,7 +683,7 @@ export class RenderPass implements Disposable, Sortable {
     }
 
     // @ts-expect-error safe to assign
-    this.options = this.renderer = null;
+    this.options = null;
     this.initialize = throwDestroyedError as unknown as (r: Renderer) => RenderPass;
   }
 }

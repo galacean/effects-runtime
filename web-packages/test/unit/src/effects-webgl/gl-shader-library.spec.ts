@@ -1,7 +1,7 @@
 import type { Engine, ShaderWithSource } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
-import type { GLEngine } from '@galacean/effects-webgl';
-import { GLRenderer } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -11,6 +11,7 @@ describe('webgl/gl-shader-library', () => {
   let webglCanvas: HTMLCanvasElement;
   let webgl2Canvas: HTMLCanvasElement;
   let engine1: Engine;
+  let engine2: Engine;
 
   const vs = `#version 300 es
   layout(location = 0) in vec2 aPosition;
@@ -30,16 +31,20 @@ describe('webgl/gl-shader-library', () => {
   before(() => {
     webglCanvas = document.createElement('canvas');
     webgl2Canvas = document.createElement('canvas');
-    rendererGL1 = new GLRenderer(webglCanvas, 'webgl');
-    rendererGL2 = new GLRenderer(webgl2Canvas, 'webgl2');
-    engine1 = rendererGL1.engine;
+    const glEngine1 = new GLEngine(webglCanvas, { glType: 'webgl' });
+    const glEngine2 = new GLEngine(webgl2Canvas, { glType: 'webgl2' });
+
+    rendererGL1 = glEngine1.renderer as GLRenderer;
+    rendererGL2 = glEngine2.renderer as GLRenderer;
+    engine1 = glEngine1;
+    engine2 = glEngine2;
   });
 
   after(() => {
-    rendererGL1.dispose();
+    engine1.dispose();
     // @ts-expect-error
     rendererGL1 = null;
-    rendererGL2.dispose();
+    engine2.dispose();
     // @ts-expect-error
     rendererGL2 = null;
     webglCanvas.remove();
@@ -50,6 +55,8 @@ describe('webgl/gl-shader-library', () => {
     webgl2Canvas = null;
     // @ts-expect-error
     engine1 = null;
+    // @ts-expect-error
+    engine2 = null;
   });
 
   it('create material shader from shaderlib', async () => {
@@ -106,7 +113,7 @@ describe('webgl/gl-shader-library', () => {
   // // 删除webgl程序
   // shaderLib.deleteShader(shaderId);
   // programHandle = program?.glHandle;
-  // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
+  // isProgram = renderer.gl.isProgram(programHandle);
   // expect(isProgram).to.eql(false);
 
   // // 重新编译着色器
@@ -114,12 +121,13 @@ describe('webgl/gl-shader-library', () => {
   // expect(program).not.eql(null);
   // programHandle = program?.glHandle;
   // expect(programHandle).not.eql(undefined);
-  // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
+  // isProgram = renderer.gl.isProgram(programHandle);
   // expect(isProgram).to.eql(true);
   // });
 
   it('compile shader async', function (done) {
-    const shaderLib = (new GLRenderer(webgl2Canvas, 'webgl2').engine as GLEngine).shaderLibrary;
+    const engine = new GLEngine(webgl2Canvas, { glType: 'webgl2' });
+    const shaderLib = engine.shaderLibrary;
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
@@ -162,8 +170,9 @@ describe('webgl/gl-shader-library', () => {
 
   it('compile all shader async', function (done) {
     const canvas = document.createElement('canvas');
-    const renderer = new GLRenderer(canvas, 'webgl2');
-    const shaderLib = (renderer.engine as GLEngine).shaderLibrary;
+    const engine = new GLEngine(canvas, { glType: 'webgl2' });
+    const renderer = engine.renderer as GLRenderer;
+    const shaderLib = engine.shaderLibrary;
 
     shaderLib.addShader({
       vertex: vs,
@@ -185,8 +194,9 @@ describe('webgl/gl-shader-library', () => {
 
   it('compile all shader async work with no extension', function (done) {
     const canvas = document.createElement('canvas');
-    const renderer = new GLRenderer(canvas, 'webgl2');
-    const shaderLib = (renderer.engine as GLEngine).shaderLibrary;
+    const engine = new GLEngine(canvas, { glType: 'webgl2' });
+    const renderer = engine.renderer as GLRenderer;
+    const shaderLib = engine.shaderLibrary;
 
     shaderLib.addShader({
       vertex: vs,

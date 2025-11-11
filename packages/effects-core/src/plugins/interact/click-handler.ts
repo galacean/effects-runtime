@@ -1,6 +1,7 @@
 import type { Matrix4, Ray, TriangleLike, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
 import type { VFXItem } from '../../vfx-item';
+import type { Composition } from '../../composition';
 
 export enum HitTestType {
   triangle = 1,
@@ -62,6 +63,7 @@ export type Region = {
   behavior?: spec.InteractBehavior,
   parentId?: string,
   hitPositions: Vector3[],
+  composition: Composition,
 };
 
 export type HitTestParams = {

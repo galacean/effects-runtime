@@ -116,7 +116,7 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onStart (): void {
-    const { env } = this.item.engine.renderer;
+    const { env } = this.item.engine;
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
 
     if (type === spec.InteractType.CLICK) {
@@ -148,7 +148,7 @@ export class InteractComponent extends RendererComponent {
   override onEnable (): void {
     super.onEnable();
     const { type } = this.interactData.options as spec.ClickInteractOption;
-    const { env } = this.item.engine.renderer;
+    const { env } = this.item.engine;
 
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;

@@ -1,5 +1,9 @@
+import * as spec from '@galacean/effects-specification';
+import type { Composition } from '../../composition';
+import type { Engine } from '../../engine';
 import type { Disposable } from '../../utils';
 import { addItem, isSimulatorCellPhone, logger, removeItem } from '../../utils';
+import type { Region } from './click-handler';
 
 export const EVENT_TYPE_CLICK = 'click';
 export const EVENT_TYPE_TOUCH_START = 'touchstart';
@@ -30,13 +34,15 @@ export class EventSystem implements Disposable {
 
   private handlers: Record<string, ((event: TouchEventType) => void)[]> = {};
   private nativeHandlers: Record<string, (event: Event) => void> = {};
+  private target: HTMLCanvasElement | null = null;
 
   constructor (
-    private target: HTMLCanvasElement | null,
+    public engine: Engine,
     public allowPropagation = false,
   ) { }
 
-  bindListeners () {
+  bindListeners (target: HTMLCanvasElement | null) {
+    this.target = target;
     let x: number;
     let y: number;
     let currentTouch: Record<string, number> | 0;
@@ -137,6 +143,40 @@ export class EventSystem implements Disposable {
 
     Object.keys(this.nativeHandlers).forEach(name => {
       this.target?.addEventListener(String(name), this.nativeHandlers[name]);
+    });
+
+    this.addEventListener(EVENT_TYPE_CLICK, (e: TouchEventType) => {
+      const { x, y } = e;
+      const hitInfos: (Region & {
+        composition: Composition,
+      })[] = [];
+
+      // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
+      this.engine.compositions.forEach(composition => {
+        const regions = composition.hitTest(x, y);
+
+        for (const region of regions) {
+          hitInfos.push({
+            ...region,
+            composition,
+          });
+        }
+      });
+
+      for (let i = 0; i < hitInfos.length; i++) {
+        const hitInfo = hitInfos[i];
+        const behavior = hitInfo.behavior || spec.InteractBehavior.NOTIFY;
+
+        this.engine.onClick?.(hitInfo);
+
+        if (behavior === spec.InteractBehavior.NOTIFY) {
+          hitInfo.composition.emit('click', {
+            ...hitInfo,
+            compositionId: hitInfo.composition.id,
+            compositionName: hitInfo.composition.name,
+          });
+        }
+      }
     });
   }
 
