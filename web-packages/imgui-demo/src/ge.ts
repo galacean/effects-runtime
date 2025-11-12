@@ -1,5 +1,5 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Geometry, KTX2Loader, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
+import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -8,7 +8,7 @@ import '@galacean/effects-plugin-spine';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
-import * as animationScene from './ktx-demo.json';
+import * as animationScene from './demo.json';
 
 export class GalaceanEffects {
   static player: Player;
@@ -41,7 +41,6 @@ export class GalaceanEffects {
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(async composition => {
-        const loader = new KTX2Loader();
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',

@@ -41,7 +41,6 @@ export * from './shader';
 export * from './shape';
 export * from './template-image';
 export * from './texture';
-export * from './texture/ktx2';
 export * from './ticker';
 export * from './transform';
 export * from './utils';

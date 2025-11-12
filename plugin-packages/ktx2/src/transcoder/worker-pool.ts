@@ -146,6 +146,7 @@ export class WorkerPool<T = any, U = any> {
 
   private nextTask (workerId: number) {
     if (this.taskQueue.length) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const taskItem = this.taskQueue.shift() as TaskItem<T, U>;
       const workerItem = this.workerItems[workerId];
 
