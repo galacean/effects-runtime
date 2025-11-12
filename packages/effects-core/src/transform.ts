@@ -500,9 +500,21 @@ export class Transform implements Disposable {
       tempVector3.applyQuaternion(tempQuat);
 
       // 应用逆缩放
-      tempVector3.x /= tempVector3Second.x;
-      tempVector3.y /= tempVector3Second.y;
-      tempVector3.z /= tempVector3Second.z;
+      if (tempVector3Second.x !== 0) {
+        tempVector3.x /= tempVector3Second.x;
+      } else {
+        tempVector3.x = 0;
+      }
+      if (tempVector3Second.y !== 0) {
+        tempVector3.y /= tempVector3Second.y;
+      } else {
+        tempVector3.y = 0;
+      }
+      if (tempVector3Second.z !== 0) {
+        tempVector3.z /= tempVector3Second.z;
+      } else {
+        tempVector3.z = 0;
+      }
 
       this.setPosition(tempVector3.x, tempVector3.y, tempVector3.z);
     } else {
