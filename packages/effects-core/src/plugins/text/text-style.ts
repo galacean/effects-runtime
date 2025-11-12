@@ -1,5 +1,21 @@
 import * as spec from '@galacean/effects-specification';
 
+/**
+ * 花字特效配置接口
+ */
+export interface FancyTextEffect {
+  type: 'single-stroke' | 'multi-stroke' | 'gradient' | 'shadow' | 'texture' | 'solid-fill',
+  params?: any,
+}
+
+/**
+ * 花字样式配置
+ */
+export interface FancyTextStyle {
+  effects: FancyTextEffect[],
+  // 可以扩展更多花字相关属性
+}
+
 export class TextStyle {
   /**
    * 字重

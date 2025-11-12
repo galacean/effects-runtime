@@ -13,6 +13,9 @@ import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
+import type { TextEffect } from './text-effect-base';
+import { renderWithEffects } from './text-effect-base';
+import { TextureEffect } from './effects';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -21,7 +24,7 @@ export const DEFAULT_FONTS = [
   'courier',
 ];
 
-interface CharInfo {
+export interface CharInfo {
   /**
    * 段落 y 值
    */
@@ -134,6 +137,41 @@ export class TextComponentBase {
   protected maxLineWidth: number;
 
   private char: string[];
+
+  // 文本花字特效
+  effects: TextEffect[] = [];
+
+  // 设置文本花字特效
+  setEffects (effects: TextEffect[]) {
+    this.effects = effects || [];
+    // 为纹理特效设置加载完成回调
+    for (const effect of this.effects) {
+      if (effect instanceof TextureEffect) {
+        effect.setOnLoadCallback(() => {
+          this.isDirty = true;
+          // 触发重新渲染
+          this.updateTexture();
+        });
+      }
+    }
+    this.isDirty = true;
+  }
+
+  /**
+   * 渲染原始文本（非花字）
+   */
+  private renderOriginal (context: CanvasRenderingContext2D, charsInfo: CharInfo[], style: TextStyle, layout: TextLayout) {
+    charsInfo.forEach(charInfo => {
+      const x = layout.getOffsetX(style, charInfo.width);
+
+      charInfo.chars.forEach((str: string, i: number) => {
+        if (style.isOutlined) {
+          context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
+        }
+        context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
+      });
+    });
+  }
 
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
@@ -470,12 +508,19 @@ export class TextComponentBase {
     }
     context.clearRect(0, 0, width, height);
 
-    if (style.hasShadow) {
-      this.setupShadow();
-    }
+    const useEffects = this.effects && this.effects.length > 0;
 
-    if (style.isOutlined) {
-      this.setupOutline();
+    if (!useEffects) {
+      if (style.hasShadow) {
+        this.setupShadow();
+      }
+      if (style.isOutlined) {
+        this.setupOutline();
+      }
+    } else {
+      // 使用效果栈时，确保初始状态干净
+      context.shadowColor = 'transparent';
+      context.lineJoin = 'round';
     }
 
     // 文本颜色
@@ -521,17 +566,20 @@ export class TextComponentBase {
       charOffsetX,
     });
 
-    charsInfo.forEach(charInfo => {
-      const x = layout.getOffsetX(style, charInfo.width);
-
-      charInfo.chars.forEach((str, i) => {
-        if (style.isOutlined) {
-          context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-        }
-
-        context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
-      });
-    });
+    // 绘画花字和普通文字
+    if (!this.effects || this.effects.length === 0) {
+      // 普通文本，不是花字的逻辑
+      this.renderOriginal(context, charsInfo, style, layout);
+    } else {
+      renderWithEffects(
+        this.canvas,
+        context,
+        style,
+        layout,
+        charsInfo,
+        this.effects
+      );
+    }
 
     if (style.hasShadow) {
       context.shadowColor = 'transparent';
