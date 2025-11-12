@@ -9,8 +9,8 @@ export * from './ktx2-loader';
  */
 export const version = __VERSION__;
 
-await registerKTX2Loader({
-  useKhronosTranscoder: false,
+registerKTX2Loader({
+  preferKhronosForASTC: false,
   workerCount: 2,
 });
 

@@ -15,16 +15,12 @@ const json_ktx2 = `{
   "images": [
     {
       "id": "c04e3c0983e843e5adec11ada3a0a2b9",
-      "compressed": {
-        "astc": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*AjHmTaAxmKAAAAAAQXAAAAgAekp5AQ/original/SuperAnt.ktx2"
-      },
+      "ktx2": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*AjHmTaAxmKAAAAAAQXAAAAgAekp5AQ/original/SuperAnt.ktx2",
       "url": "https://mdn.alipayobjects.com/mars/afts/file/A*NpZ-T6ix53kAAAAAQYAAAAgAelB4AQ/original"
     },
     {
       "id": "a1411be576f24bf5bc3ee565458a5d2d",
-      "compressed": {
-        "astc": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2"
-      },
+      "ktx2": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2",
       "url": "https://mdn.alipayobjects.com/mars/afts/file/A*NpZ-T6ix53kAAAAAQYAAAAgAelB4AQ/original"
     }
   ],
