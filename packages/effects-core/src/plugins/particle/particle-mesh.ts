@@ -146,7 +146,7 @@ export class ParticleMesh implements ParticleMeshData {
     engine: Engine,
     props: ParticleMeshProps,
   ) {
-    const { env } = engine.renderer ?? {};
+    const { env } = engine ?? {};
     const {
       speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
       sprite, gravityModifier, maxCount, textureFlip, useSprite, name,

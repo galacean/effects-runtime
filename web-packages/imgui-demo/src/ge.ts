@@ -19,10 +19,10 @@ export class GalaceanEffects {
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促\
 
     GalaceanEffects.player = new Player({ container });
-    GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
+    GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL(JSON.parse(JSON.stringify(animationScene)));
+    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*sifJTL9KPmwAAAAAQHAAAAgAelB4AQ');
   }
 
   static playURL (url: string, use3DConverter = false) {

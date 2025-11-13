@@ -94,7 +94,7 @@ export class InteractMesh {
 
   private createMaterial (): Material {
     const macros: ShaderMacros = [
-      ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
+      ['ENV_EDITOR', this.engine.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const color = createValueGetter(this.color).getValue(0);
     const materialProps: MaterialProps = {
