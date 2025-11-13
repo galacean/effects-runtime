@@ -531,11 +531,10 @@ async function createTextureOptionsBySource (
     if (version === 'unknown') {
       throw new Error('Unsupported or invalid KTX format.');
     } else if (version == 'KTX2') {
+      const loader = textureLoaderRegistry.getLoader('ktx2');
 
-      try {
-        const loader = textureLoaderRegistry.getLoader('ktx2');
-
-        if (loader) {
+      if (loader) {
+        try {
           const textureData = await loader.loadFromBuffer(image, gpuCapability) as Texture2DSourceOptionsCompressed;
 
           if (textureData.sourceType === TextureSourceType.compressed) {
@@ -550,6 +549,10 @@ async function createTextureOptionsBySource (
               ...options,
             };
           } else {
+            if (!textureData.mipmaps || textureData.mipmaps.length === 0) {
+              throw new Error('KTX2 loader returned no mipmaps');
+            }
+
             return {
               sourceType: TextureSourceType.data,
               data: textureData.mipmaps[0],
@@ -560,11 +563,11 @@ async function createTextureOptionsBySource (
               ...options,
             };
           }
-        } else {
-          throw new Error('KTX2 loader not found. Please register it first.');
+        } catch (e) {
+          throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
         }
-      } catch (e) {
-        throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+      } else {
+        throw new Error('KTX2 loader not found. Please register it first.');
       }
     } else {
       return {
