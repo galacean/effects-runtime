@@ -525,7 +525,7 @@ async function createTextureOptionsBySource (
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
-    const data = new Uint8Array(image, 0, 12);
+    const data = new Uint8Array(image, 0, Math.min(image.byteLength, 12));
     const version = detectKTXVersion(data);
 
     if (version === 'unknown') {
