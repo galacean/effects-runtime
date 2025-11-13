@@ -171,9 +171,17 @@ export class KTX2Container {
       // 4-byte alignment.
       const valueData = kvdReader.nextUint8Array(keyValueByteLength - keyData.byteLength - 1);
 
-      // eslint-disable-next-line no-control-regex
-      this.keyValue[key] = key.match(/^ktx/i) ? decodeText(valueData).replace(/^(.*)\x00$/, '$1') : valueData;
+      if (/^ktx/i.test(key)) {
+        const decodedValue = decodeText(valueData);
+        let trimmedValue = decodedValue;
 
+        while (trimmedValue.length > 0 && trimmedValue.charCodeAt(trimmedValue.length - 1) === 0) {
+          trimmedValue = trimmedValue.slice(0, -1);
+        }
+        this.keyValue[key] = trimmedValue;
+      } else {
+        this.keyValue[key] = valueData;
+      }
       const kvPadding = keyValueByteLength % 4 ? 4 - (keyValueByteLength % 4) : 0; // align(4)
 
       // 4-byte alignment.

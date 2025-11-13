@@ -157,7 +157,8 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
   const levelCount = ktx2File.getLevels();
   const hasAlpha = ktx2File.getHasAlpha();
   const faceCount = ktx2File.getFaces();
-  const format = getTranscodeFormatFromTarget(targetFormat as KTX2TargetFormat, hasAlpha) as number;
+  const basisFormat = getTranscodeFormatFromTarget(targetFormat as KTX2TargetFormat, hasAlpha);
+  const format = basisFormat as number;
   const faces = new Array(faceCount);
 
   for (let face = 0; face < faceCount; face++) {
@@ -173,9 +174,9 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
         mipWidth = levelInfo.origWidth;
         mipHeight = levelInfo.origHeight;
 
-        const size = ktx2File.getImageTranscodedSizeInBytes(mip, layer, face, format);
+        const size = ktx2File.getImageTranscodedSizeInBytes(mip, layer, face, basisFormat);
         const dst = new Uint8Array(size);
-        const status = ktx2File.transcodeImage(dst, mip, layer, face, format, 0, -1, -1);
+        const status = ktx2File.transcodeImage(dst, mip, layer, face, basisFormat, 0, -1, -1);
 
         // 仅在 RGBA8 兜底时翻转
         if (status && format === BasisFormat.RGBA8 as number) {

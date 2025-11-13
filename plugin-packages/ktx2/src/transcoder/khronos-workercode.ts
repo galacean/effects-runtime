@@ -132,6 +132,7 @@ export function TranscodeWorkerCode () {
     >(faceCount);
 
     let promise = Promise.resolve();
+    const decodedLevelCache = needZstd ? new Map<number, Uint8Array>() : undefined;
 
     if (needZstd) {
       zstdDecoder.init();
@@ -148,16 +149,25 @@ export function TranscodeWorkerCode () {
         }>(mipmapCount);
 
         for (let i = 0; i < mipmapCount; i++) {
-          // eslint-disable-next-line prefer-const
-          let { buffer, levelHeight, levelWidth, uncompressedByteLength } = data[faceIndex][i];
+          const { buffer, levelHeight, levelWidth, uncompressedByteLength } = data[faceIndex][i];
+          let levelBuffer = buffer;
 
-          if (needZstd) {buffer = zstdDecoder.decode(buffer.slice(), uncompressedByteLength);}
+          if (needZstd) {
+            let decoded = decodedLevelCache!.get(i);
 
-          const faceByteLength = buffer.byteLength / faceCount;
-          const originByteOffset = buffer.byteOffset;
+            if (!decoded) {
+              decoded = zstdDecoder.decode(buffer.slice(), uncompressedByteLength);
+              decodedLevelCache!.set(i, decoded);
+            }
+
+            levelBuffer = decoded;
+          }
+
+          const faceByteLength = levelBuffer.byteLength / faceCount;
+          const originByteOffset = levelBuffer.byteOffset;
           const decodedBuffer = transcodeASTCAndBC7(
             wasmModule,
-            new Uint8Array(buffer.buffer, originByteOffset + faceIndex * faceByteLength, faceByteLength),
+            new Uint8Array(levelBuffer.buffer, originByteOffset + faceIndex * faceByteLength, faceByteLength),
             levelWidth,
             levelHeight
           );

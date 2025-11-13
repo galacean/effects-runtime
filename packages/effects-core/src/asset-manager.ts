@@ -541,7 +541,7 @@ async function createTextureOptionsBySource (
           if (textureData.sourceType === TextureSourceType.compressed) {
             return {
               sourceType: textureData.sourceType,
-              type: textureData.dataType,
+              type: textureData.type,
               target: textureData.target,
               internalFormat: textureData.internalFormat,
               format: textureData.format,

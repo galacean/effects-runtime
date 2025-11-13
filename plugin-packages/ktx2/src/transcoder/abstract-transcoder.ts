@@ -28,6 +28,10 @@ export abstract class AbstractTranscoder {
           type: 'init',
           transcoderWasm: wasmBuffer,
         };
+        const cleanup = () => {
+          worker.removeEventListener('message', onMessage);
+          worker.removeEventListener('error', onError);
+        };
 
         function onMessage (e: MessageEvent<{ error?: Error }>) {
           if (e.data.error) {
@@ -37,7 +41,13 @@ export abstract class AbstractTranscoder {
             resolve(worker);
           }
         }
+        function onError (e: ErrorEvent) {
+          cleanup();
+          worker.terminate();
+          reject(e.error ?? new Error(e.message || 'Worker init error'));
+        }
         worker.addEventListener('message', onMessage);
+        worker.addEventListener('error', onError);
         worker.postMessage(msg);
       });
     });

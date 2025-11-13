@@ -136,6 +136,34 @@ export class KTX2Loader implements TextureLoader {
   }
 
   /**
+   * 从 ArrayBuffer 加载 KTX2 纹理并返回压缩纹理源选项
+   */
+  async loadFromBuffer (arrBuffer: ArrayBuffer, gpuCapability?: GPUCapability) {
+    if (!gpuCapability) {
+      throw new Error('GPUCapability is required');
+    }
+
+    const buffer = new Uint8Array(arrBuffer);
+    const { ktx2Container, result, targetFormat } = await this.parseBuffer(buffer, gpuCapability);
+
+    return this.createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
+  }
+
+  /**
+   * 从 URL 加载 KTX2 纹理并返回压缩纹理源选项
+   */
+  async loadFromURL (url: string, gpuCapability?: GPUCapability) {
+    if (!gpuCapability) {
+      throw new Error('GPUCapability is required');
+    }
+
+    const buffer = new Uint8Array(await loadBinary(url));
+    const { ktx2Container, result, targetFormat } = await this.parseBuffer(buffer, gpuCapability);
+
+    return this.createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
+  }
+
+  /**
    * @internal
    * 解析并转码 KTX2 文件
    */
@@ -157,6 +185,7 @@ export class KTX2Loader implements TextureLoader {
     if (this.useKhronosTranscoder && targetFormat === KTX2TargetFormat.ASTC && ktx2Container.isUASTC) {
       const transcoder = await this.ensureKhronosTranscoder();
 
+      console.info('Using KhronosTranscoder for ASTC UASTC texture');
       transcodeResultPromise = transcoder.transcode(ktx2Container);
     } else {
       const transcoder = await this.ensureBinomialLLCTranscoder();
@@ -274,34 +303,6 @@ export class KTX2Loader implements TextureLoader {
     }
 
     return null;
-  }
-
-  /**
-   * 从 ArrayBuffer 加载 KTX2 纹理并返回压缩纹理源选项
-   */
-  async loadFromBuffer (arrBuffer: ArrayBuffer, gpuCapability?: GPUCapability) {
-    if (!gpuCapability) {
-      throw new Error('GPUCapability is required');
-    }
-
-    const buffer = new Uint8Array(arrBuffer);
-    const { ktx2Container, result, targetFormat } = await this.parseBuffer(buffer, gpuCapability);
-
-    return this.createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
-  }
-
-  /**
-   * 从 URL 加载 KTX2 纹理并返回压缩纹理源选项
-   */
-  async loadFromURL (url: string, gpuCapability?: GPUCapability) {
-    if (!gpuCapability) {
-      throw new Error('GPUCapability is required');
-    }
-
-    const buffer = new Uint8Array(await loadBinary(url));
-    const { ktx2Container, result, targetFormat } = await this.parseBuffer(buffer, gpuCapability);
-
-    return this.createTextureByBuffer(ktx2Container, result, targetFormat, gpuCapability);
   }
 
   /**
@@ -635,7 +636,7 @@ export function registerKTX2Loader (options?: {
   preferKhronosForASTC?: boolean,
   workerCount?: number,
 }) {
-  const { preferKhronosForASTC: useKhronosTranscoder = false, workerCount = 2 } = options ?? {};
+  const { preferKhronosForASTC: useKhronosTranscoder = true, workerCount = 2 } = options ?? {};
 
   textureLoaderRegistry.register('ktx2', () => {
     return new KTX2Loader(useKhronosTranscoder, workerCount);
