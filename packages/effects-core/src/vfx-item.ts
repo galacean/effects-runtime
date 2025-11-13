@@ -477,22 +477,32 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
   /**
-   * 设置元素在 3D 坐标轴的位置
+   * 设置本地坐标位置
    */
   setPosition (x: number, y: number, z: number) {
     this.transform.setPosition(x, y, z);
   }
   /**
-   * 设置元素在 3D 坐标轴的角度
+   * 设置本地坐标欧拉旋转
    */
   setRotation (x: number, y: number, z: number) {
     this.transform.setRotation(x, y, z);
   }
   /**
-   * 设置元素在 3D 坐标轴的缩放
+   * 设置本地坐标缩放
    */
   setScale (x: number, y: number, z: number) {
     this.transform.setScale(x, y, z);
+  }
+
+  /**
+   * 设置世界坐标位置
+   * @param x - 世界坐标 x
+   * @param y - 世界坐标 y
+   * @param z - 世界坐标 z
+   */
+  setWorldPosition (x: number, y: number, z: number) {
+    this.transform.setWorldPosition(x, y, z);
   }
 
   /**
@@ -646,7 +656,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     super.fromData(data);
     const {
       id, name, parentId, endBehavior, transform,
-      duration = 0,
+      duration = 0, visible = true,
     } = data;
 
     this.props = data;
@@ -690,6 +700,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (VFXItem.isComposition(this)) {
       this.instantiatePreComposition();
     }
+
+    this.setVisible(visible);
   }
 
   override toData (): void {
@@ -714,8 +726,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      // @ts-expect-error
-      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
+      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
 

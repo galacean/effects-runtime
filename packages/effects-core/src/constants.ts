@@ -10,4 +10,8 @@ export const PLAYER_OPTIONS_ENV_EDITOR = 'editor';
 export const HELP_LINK = {
   'Item duration can\'t be less than 0': 'https://www.galacean.com/effects/user/gasrv4ka5sacrwpg#AOnQS',
   'ValueType: 21/22 is not supported': 'https://www.galacean.com/effects/user/gasrv4ka5sacrwpg#smO1b',
+  'Container size overflowed': 'https://www.galacean.com/effects/user/gasrv4ka5sacrwpg#MvjnY',
+  'Container is not an HTMLElement': 'https://www.galacean.com/effects/user/gasrv4ka5sacrwpg#WZaWg',
+  'Invalid container size': 'https://www.galacean.com/effects/user/gasrv4ka5sacrwpg#lLlSW',
+  'DPI overflowed': 'https://www.galacean.com/effects/user/gasrv4ka5sacrwpg#ulfNT',
 };

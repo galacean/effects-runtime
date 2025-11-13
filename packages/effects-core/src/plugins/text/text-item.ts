@@ -118,11 +118,11 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
 
   getLineCount (text: string): number {
     const context = this.context;
-    const layout = this.textLayout as TextLayout;
-    const { letterSpace, overflow } = layout;
+    const { letterSpace, overflow } = this.textLayout;
 
+    // const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     this.maxLineWidth = 0;
-    const width = (layout.width + this.textStyle.fontOffset);
+    const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
 

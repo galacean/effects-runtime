@@ -9,7 +9,6 @@ export interface FramebufferProps {
   depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
   isCustomViewport?: boolean,
   viewport: [x: number, y: number, width: number, height: number],
-  viewportScale?: number,
   storeAction: RenderPassStoreAction,
   name?: string,
 }
@@ -30,7 +29,6 @@ export enum RenderTextureFormat {
 export class Framebuffer {
   depthStencilStorageType: RenderPassAttachmentStorageType;
   name: string;
-  viewportScale: number;
   viewport: [x: number, y: number, width: number, height: number];
   ready: boolean;
   externalStorage: boolean;

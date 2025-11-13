@@ -8,25 +8,19 @@ import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
-import type { GLType } from '../gl';
 
 export class Renderer implements LostHandler, RestoreHandler {
-  static create: (
-    canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: GLType,
-    renderOptions?: WebGLContextAttributes,
-  ) => Renderer;
+  static create: (engine: Engine) => Renderer;
 
   engine: Engine;
-
-  env: string;
-
   /**
   * 存放渲染需要用到的数据
   */
   renderingData: RenderingData;
+  protected currentFramebuffer: Framebuffer;
 
-  constructor () {
+  constructor (engine: Engine) {
+    this.engine = engine;
   }
 
   setGlobalFloat (name: string, value: number) {
@@ -49,9 +43,8 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getFramebuffer (): Framebuffer | null {
-    // OVERRIDE
-    return null;
+  getFramebuffer (): Framebuffer {
+    return this.currentFramebuffer;
   }
 
   setFramebuffer (framebuffer: Framebuffer | null) {
@@ -78,24 +71,6 @@ export class Renderer implements LostHandler, RestoreHandler {
   getHeight (): number {
     // OVERRIDE
     return 0;
-  }
-
-  /**
-   * 添加 webglcontextlost 事件回调
-   * @override
-   * @param lostHandler
-   */
-  addLostHandler (lostHandler: LostHandler) {
-    // OVERRIDE
-  }
-
-  /**
-   * 添加 webglContextrestored 事件的回调
-   * @override
-   * @param restoreHandler
-   */
-  addRestoreHandler (restoreHandler: RestoreHandler) {
-    // OVERRIDE
   }
 
   /**
@@ -140,7 +115,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     return null;
   }
 
-  dispose (haltGL?: boolean): void {
+  dispose (): void {
     // OVERRIDE
   }
 }

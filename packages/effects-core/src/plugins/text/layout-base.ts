@@ -2,6 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { TextStyle } from './text-style';
 
 export interface LayoutBase {
+  // @ts-expect-error
   textVerticalAlign: spec.TextVerticalAlign,
   textAlign: spec.TextAlignment,
   letterSpace: number,

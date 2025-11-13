@@ -65,11 +65,13 @@ export class TextComponentBase {
     this.textLayout.textAlign = value;
     this.isDirty = true;
   }
-
+  // @ts-expect-error
   setTextVerticalAlign (value: spec.TextVerticalAlign): void {
+    // @ts-expect-error
     if (this.textLayout.textVerticalAlign === (value as unknown as spec.TextVerticalAlign)) {
       return;
     }
+    // @ts-expect-error
     this.textLayout.textVerticalAlign = value as unknown as spec.TextVerticalAlign;
     this.isDirty = true;
   }

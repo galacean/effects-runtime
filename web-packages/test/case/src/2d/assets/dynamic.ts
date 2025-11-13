@@ -38,6 +38,13 @@ export default {
       'price': '<size=68>80.15</size><size=29>元</size>',
     },
   },
+  richTextTest2: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ahr1Taqu9XQAAAAAQQAAAAgAelB4AQ',
+    name: '富文本测试2',
+    variables: {
+      'price': '<size=68>80.15</size><size=29>元</size>',
+    },
+  },
   richText: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*k6vyTpyAkykAAAAARYAAAAgAelB4AQ',
     name: '富文本文字遮挡',

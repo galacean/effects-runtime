@@ -1,63 +1,79 @@
 import type {
-  Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
+  Disposable, Engine, Framebuffer, Geometry, Material, RenderFrame, RenderPass,
+  RenderPassClearAction, RenderPassStoreAction, RendererComponent,
   ShaderLibrary, math,
 } from '@galacean/effects-core';
 import {
   FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
-  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, sortByOrder,
+  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
-import { GLContextManager } from './gl-context-manager';
-import { GLEngine } from './gl-engine';
+import type { GLEngine } from './gl-engine';
 import { GLFramebuffer } from './gl-framebuffer';
-import { GLRendererInternal } from './gl-renderer-internal';
+import { assignInspectorName } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
 import { GLShaderLibrary } from './gl-shader-library';
+import type { GLGeometry } from './gl-geometry';
+import type { GLMaterial } from './gl-material';
+import type { GLShaderVariant } from './gl-shader';
+import type { GLRenderbuffer } from './gl-renderbuffer';
+import { GLVertexArrayObject } from './gl-vertex-array-object';
+import type { GLGPUBuffer } from './gl-gpu-buffer';
 
 type Matrix4 = math.Matrix4;
 type Vector4 = math.Vector4;
 type Vector3 = math.Vector3;
 
+let seed = 1;
+
 export class GLRenderer extends Renderer implements Disposable {
-  glRenderer: GLRendererInternal;
   extension: ExtWrap;
-  framebuffer: Framebuffer;
   temporaryRTs: Record<string, Framebuffer> = {};
+  readonly name: string;
 
-  readonly context: GLContextManager;
+  private sourceFbo: WebGLFramebuffer | null;
+  private targetFbo: WebGLFramebuffer | null;
+  private disposed = false;
 
-  constructor (
-    public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: GLType,
-    renderOptions?: WebGLContextAttributes,
-  ) {
-    super();
-    const options = {
-      preserveDrawingBuffer: undefined,
-      alpha: true,
-      stencil: true,
-      antialias: true,
-      depth: true,
-      premultipliedAlpha: true,
-      ...renderOptions,
-    };
+  get gl () {
+    return (this.engine as GLEngine).gl;
+  }
 
-    this.context = new GLContextManager(canvas, framework, options);
+  get height () {
+    return this.gl?.drawingBufferHeight;
+  }
+
+  get width () {
+    return this.gl?.drawingBufferWidth;
+  }
+
+  get canvas () {
+    return this.gl.canvas;
+  }
+
+  get isDisposed () {
+    return this.disposed;
+  }
+
+  get context () {
+    return (this.engine as GLEngine).context;
+  }
+
+  constructor (engine: Engine) {
+    super(engine);
+
+    this.name = `GLRenderer#${seed++}`;
+
     const { gl } = this.context;
 
     assertExist(gl);
-    // engine 先创建
-    this.engine = new GLEngine(gl);
-    this.engine.renderer = this;
-    this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
     this.renderingData = {
       // @ts-expect-error
       currentFrame: {},
     };
 
-    this.framebuffer = new GLFramebuffer({
+    this.currentFramebuffer = new GLFramebuffer({
       storeAction: {},
       viewport: [0, 0, this.width, this.height],
       attachments: [new GLTexture(this.engine, {
@@ -66,20 +82,6 @@ export class GLRenderer extends Renderer implements Disposable {
       })],
       depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
     }, this);
-  }
-
-  get isDestroyed () {
-    const internal = this.glRenderer;
-
-    return internal ? internal.isDestroyed : true;
-  }
-
-  get height () {
-    return this.glRenderer?.height ?? 0;
-  }
-
-  get width () {
-    return this.glRenderer?.width ?? 0;
   }
 
   override renderRenderFrame (renderFrame: RenderFrame) {
@@ -91,7 +93,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
     const passes = frame._renderPasses;
 
-    if (this.isDestroyed) {
+    if (this.isDisposed) {
       console.error('Renderer is destroyed, target: GLRenderer.');
 
       return;
@@ -179,6 +181,7 @@ export class GLRenderer extends Renderer implements Disposable {
     if (!geometry || !material) {
       return;
     }
+
     material.initialize();
     geometry.initialize();
     geometry.flush();
@@ -194,22 +197,60 @@ export class GLRenderer extends Renderer implements Disposable {
       return;
     }
 
-    this.glRenderer.drawGeometry(geometry, material, subMeshIndex);
+    const gl = (this.engine as GLEngine).gl;
+
+    if (!gl) {
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
+
+      return;
+    }
+
+    const glGeometry = geometry as GLGeometry;
+    const glMaterial = material as GLMaterial;
+    const program = (glMaterial.shaderVariant as GLShaderVariant).program;
+
+    if (!program) {
+      return;
+    }
+
+    const vao = program.setupAttributes(glGeometry);
+    const indicesBuffer = glGeometry.indicesBuffer;
+    let offset = glGeometry.drawStart;
+    let count = glGeometry.drawCount;
+    const mode = glGeometry.mode;
+    const subMeshes = glGeometry.subMeshes;
+
+    if (subMeshes && subMeshes.length) {
+      const subMesh = subMeshes[subMeshIndex];
+
+      // FIXME: 临时处理3D线框状态下隐藏模型
+      if (count < 0) {
+        return;
+      }
+      offset = subMesh.offset;
+      if (indicesBuffer) {
+        count = subMesh.indexCount ?? 0;
+      } else {
+        count = subMesh.vertexCount;
+      }
+    }
+    if (indicesBuffer) {
+      gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+    } else {
+      gl.drawArrays(mode, offset, count);
+    }
+    vao?.unbind();
   }
 
   override setFramebuffer (framebuffer: Framebuffer | null) {
     if (framebuffer) {
-      this.framebuffer = framebuffer;
-      this.framebuffer.bind();
+      this.currentFramebuffer = framebuffer;
+      this.currentFramebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
       (this.engine as GLEngine).bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
-  }
-
-  override getFramebuffer (): Framebuffer {
-    return this.framebuffer;
   }
 
   override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
@@ -252,7 +293,6 @@ export class GLRenderer extends Renderer implements Disposable {
       name,
       storeAction: {},
       viewport: [0, 0, width, height],
-      viewportScale: 1,
       isCustomViewport: true,
       attachments: [colorAttachment],
       depthStencilAttachment: { storageType: depthType },
@@ -297,14 +337,6 @@ export class GLRenderer extends Renderer implements Disposable {
     }
   }
 
-  override addLostHandler (lostHandler: LostHandler): void {
-    this.context.addLostHandler(lostHandler);
-  }
-
-  override addRestoreHandler (restoreHandler: RestoreHandler) {
-    this.context.addRestoreHandler(restoreHandler);
-  }
-
   override getShaderLibrary (): ShaderLibrary | undefined {
     return (this.engine as GLEngine).shaderLibrary;
   }
@@ -318,18 +350,19 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override dispose (): void {
-    this.context.dispose();
+    if (this.disposed) {
+      return;
+    }
     this.extension.dispose();
-    this.glRenderer?.dispose();
-    // @ts-expect-error
-    this.canvas = null;
-    this.engine.dispose();
+    this.deleteResource();
+    this.disposed = true;
   }
 
   override lost (e: Event) {
     e.preventDefault();
     this.extension.dispose();
-    this.glRenderer.lost(e);
+    logger.error(`WebGL context lost, destroying glRenderer by default to prevent memory leaks. Event target: ${e.target}.`);
+    this.deleteResource();
   }
 
   override restore () {
@@ -344,16 +377,17 @@ export class GLRenderer extends Renderer implements Disposable {
     engine.reset();
     engine.shaderLibrary = new GLShaderLibrary(engine);
     engine.gpuCapability = new GPUCapability(gl);
-    this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
   }
 
   override resize (width: number, height: number): void {
-    const internal = this.glRenderer;
+    if (this.width !== width || this.height !== height) {
+      const gl = this.gl;
 
-    if (internal) {
-      if (this.width !== width || this.height !== height) {
-        internal.resize(width, height);
+      if (gl && gl.drawingBufferWidth !== width || gl.drawingBufferHeight !== height) {
+        gl.canvas.width = width;
+        gl.canvas.height = height;
+        gl.viewport(0, 0, width, height);
       }
     }
   }
@@ -363,6 +397,104 @@ export class GLRenderer extends Renderer implements Disposable {
 
     if (!globalUniforms.uniforms.includes(name)) {
       globalUniforms.uniforms.push(name);
+    }
+  }
+
+  copy2 (source: GLTexture, target: GLTexture) {
+    const gl = this.gl as WebGL2RenderingContext;
+
+    if (!gl) {
+      return;
+    }
+
+    if (!this.sourceFbo) {
+      this.sourceFbo = gl.createFramebuffer();
+    }
+    if (!this.targetFbo) {
+      this.targetFbo = gl.createFramebuffer();
+    }
+    const engine = this.engine as GLEngine;
+
+    engine.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
+    engine.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
+    engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
+
+    const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
+
+    gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  }
+
+  resetColorAttachments (rp: GLFramebuffer, colors: GLTexture[]) {
+    rp.bind();
+    rp.resetColorTextures(colors);
+  }
+
+  createGLRenderbuffer (renderbuffer: GLRenderbuffer): WebGLRenderbuffer | null {
+    const rb = this.gl.createRenderbuffer();
+
+    return rb;
+  }
+
+  createGLFramebuffer (name?: string): WebGLFramebuffer | null {
+    const fbo = this.gl.createFramebuffer();
+
+    if (fbo) {
+      assignInspectorName(fbo, name, name);
+    } else {
+      throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+
+    return fbo;
+  }
+
+  /**创建包裹VAO对象。 */
+  createVAO (name?: string): GLVertexArrayObject | undefined {
+    const ret = new GLVertexArrayObject(this.engine as GLEngine, name);
+
+    return ret;
+  }
+
+  deleteGLTexture (texture: GLTexture) {
+    if (texture.textureBuffer && !this.disposed) {
+      this.gl.deleteTexture(texture.textureBuffer);
+      texture.textureBuffer = null;
+    }
+  }
+
+  deleteGPUBuffer (buffer: GLGPUBuffer | null) {
+    if (buffer && !this.disposed) {
+      this.gl.deleteBuffer(buffer.glBuffer);
+      // @ts-expect-error
+      delete buffer.glBuffer;
+    }
+  }
+
+  deleteGLFramebuffer (framebuffer: GLFramebuffer) {
+    if (framebuffer && !this.disposed) {
+      this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
+      delete framebuffer.fbo;
+    }
+  }
+
+  deleteGLRenderbuffer (renderbuffer: GLRenderbuffer) {
+    if (renderbuffer && !this.disposed) {
+      this.gl.deleteRenderbuffer(renderbuffer.buffer);
+      renderbuffer.buffer = null;
+    }
+  }
+
+  private deleteResource () {
+    const gl = this.gl;
+
+    if (gl) {
+      gl.deleteFramebuffer(this.sourceFbo);
+      gl.deleteFramebuffer(this.targetFbo);
     }
   }
 }

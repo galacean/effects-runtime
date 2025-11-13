@@ -118,6 +118,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     this.text = options.text ? options.text.toString() : ' ';
 
     if (this.textLayout.useLegacyRichText) {
+      // @ts-expect-error
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
 
@@ -183,6 +184,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     this.text = options.text ? options.text.toString() : ' ';
     // TextLayout 构造函数已经正确处理了 textVerticalAlign，这里不需要再设置
     if (this.textLayout.useLegacyRichText) {
+      // @ts-expect-error
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
     this.updateStrategies();
@@ -489,14 +491,17 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
         let baselineYFrame = 0;
 
         switch (layout.textVerticalAlign) {
+          // @ts-expect-error
           case spec.TextVerticalAlign.top:
             baselineYFrame = -bboxTop;
 
             break;
+            // @ts-expect-error
           case spec.TextVerticalAlign.middle:
             baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
 
             break;
+            // @ts-expect-error
           case spec.TextVerticalAlign.bottom:
             baselineYFrame = (frameH - bboxHeight) - bboxTop;
 
@@ -515,6 +520,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
         let expandBottom = overflowBottom;
 
         switch (layout.textVerticalAlign) {
+          // @ts-expect-error
           case spec.TextVerticalAlign.top: {
             const E = overflowBottom;
 
@@ -523,6 +529,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
             break;
           }
+          // @ts-expect-error
           case spec.TextVerticalAlign.bottom: {
             const E = overflowTop;
 
@@ -531,6 +538,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
 
             break;
           }
+          // @ts-expect-error
           case spec.TextVerticalAlign.middle: {
             // 保持非对称：上扩 overflowTop，下扩 overflowBottom
             expandTop = overflowTop;

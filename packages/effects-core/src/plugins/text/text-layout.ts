@@ -3,6 +3,7 @@ import type { TextStyle } from './text-style';
 import type { LayoutBase } from './layout-base';
 
 export class TextLayout implements LayoutBase {
+  // @ts-expect-error
   textVerticalAlign: spec.TextVerticalAlign;
   textAlign: spec.TextAlignment;
   letterSpace: number;
@@ -25,6 +26,7 @@ export class TextLayout implements LayoutBase {
       textHeight = 100,
       textWidth = 100,
       textOverflow = spec.TextOverflow.clip,
+      // @ts-expect-error
       textVerticalAlign = spec.TextVerticalAlign.top,
       textAlign = spec.TextAlignment.left,
       letterSpace = 0,
@@ -63,14 +65,17 @@ export class TextLayout implements LayoutBase {
     let offsetResult = 0;
 
     switch (this.textVerticalAlign) {
+      // @ts-expect-error
       case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
+        // @ts-expect-error
       case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
+        // @ts-expect-error
       case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
