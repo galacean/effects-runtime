@@ -18,7 +18,7 @@ import { Ticker } from './ticker';
 import { EventSystem } from './plugins/interact/event-system';
 import type { GLType } from './gl/create-gl-context';
 import { HELP_LINK } from './constants';
-import type { Region } from './plugins/interact/click-handler';
+import type { PointerEventData, Region } from './plugins/interact/click-handler';
 import { EventEmitter } from './events';
 
 export interface EngineOptions extends WebGLContextAttributes {
@@ -37,6 +37,10 @@ type EngineEvent = {
   contextrestored: [engine: Engine],
   rendererror: [e: Event | Error],
   resize: [Engine],
+  click: [eventData: Region],
+  pointerdown: [eventData: PointerEventData],
+  pointerup: [eventData: PointerEventData],
+  pointermove: [eventData: PointerEventData],
 };
 
 /**
@@ -84,8 +88,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 引擎的像素比
    */
   pixelRatio: number;
-  // TODO Use composition click event to instead
-  onClick?: (eventData: Region) => void;
 
   protected _disposed = false;
   protected textures: Texture[] = [];
