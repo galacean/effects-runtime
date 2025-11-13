@@ -1,7 +1,6 @@
 import { spec } from '@galacean/effects';
 import type { TextStyle, LayoutBase } from '@galacean/effects';
 export class RichTextLayout implements LayoutBase {
-  // @ts-expect-error
   textVerticalAlign: spec.TextVerticalAlign;
   textAlign: spec.TextAlignment;
   letterSpace: number;
@@ -43,19 +42,13 @@ export class RichTextLayout implements LayoutBase {
     const {
       size,
       textOverflow = spec.TextOverflow.clip,
-      // @ts-expect-error
       textVerticalAlign = spec.TextVerticalAlign.middle,
       textAlign = spec.TextAlignment.left,
       letterSpace = 0,
-      // @ts-expect-error
       lineHeight = 0.571,
-      // @ts-expect-error
       wrapEnabled = false,
-      // @ts-expect-error
       maxTextWidth = 350,
-      // @ts-expect-error
       maxTextHeight = 1000,
-      // @ts-expect-error
       sizeMode = spec.TextSizeMode.autoWidth,
       // @ts-expect-error 兼容旧版
       useLegacyRichText = false,
@@ -86,17 +79,14 @@ export class RichTextLayout implements LayoutBase {
     let offsetResult = 0;
 
     switch (this.textVerticalAlign) {
-      // @ts-expect-error
       case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
-        // @ts-expect-error
       case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
-        // @ts-expect-error
       case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
@@ -147,17 +137,14 @@ export class RichTextLayout implements LayoutBase {
     let offsetResult = 0;
 
     switch (this.textVerticalAlign) {
-      // @ts-expect-error
       case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
-        // @ts-expect-error
       case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - total) / 2 + baseOffset;
 
         break;
-        // @ts-expect-error
       case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 

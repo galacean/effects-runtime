@@ -33,17 +33,14 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         let baselineYFrame = 0;
 
         switch (layout.textVerticalAlign) {
-          // @ts-expect-error
           case spec.TextVerticalAlign.top:
             baselineYFrame = -bboxTop;
 
             break;
-            // @ts-expect-error
           case spec.TextVerticalAlign.middle:
             baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
 
             break;
-            // @ts-expect-error
           case spec.TextVerticalAlign.bottom:
             baselineYFrame = (frameH - bboxHeight) - bboxTop;
 
@@ -97,17 +94,14 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         let baselineDisplayY = 0;
 
         switch (layout.textVerticalAlign) {
-          // @ts-expect-error
           case spec.TextVerticalAlign.top:
             baselineDisplayY = -bboxTop;
 
             break;
-            // @ts-expect-error
           case spec.TextVerticalAlign.middle:
             baselineDisplayY = (frameH - bboxHeight) / 2 - bboxTop;
 
             break;
-            // @ts-expect-error
           case spec.TextVerticalAlign.bottom:
             baselineDisplayY = (frameH - bboxHeight) - bboxTop;
 
