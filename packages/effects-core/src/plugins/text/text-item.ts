@@ -16,6 +16,7 @@ import { TextStyle } from './text-style';
 import type { TextEffect } from './text-effect-base';
 import { renderWithEffects } from './text-effect-base';
 import { TextureEffect } from './effects';
+import { TextFilters, type Filter, type FilterOptions } from './text-filters';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -140,6 +141,12 @@ export class TextComponentBase {
 
   // 文本花字特效
   effects: TextEffect[] = [];
+
+  // 滤镜列表
+  filters: Filter[] = [];
+
+  // 滤镜参数
+  filterOptions: FilterOptions = {};
 
   // 设置文本花字特效
   setEffects (effects: TextEffect[]) {
@@ -585,8 +592,16 @@ export class TextComponentBase {
       context.shadowColor = 'transparent';
     }
 
-    //与 toDataURL() 两种方式都需要像素读取操作
-    const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    // 应用滤镜
+    let finalCanvas = this.canvas;
+
+    if (this.filters && this.filters.length > 0) {
+      finalCanvas = TextFilters.applyFilters(this.canvas, this.filters, this.filterOptions);
+    }
+
+    // 获取最终图像数据
+    const finalContext = finalCanvas.getContext('2d')!;
+    const imageData = finalContext.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
     const texture = Texture.createWithData(
       this.engine,
       {
@@ -607,6 +622,9 @@ export class TextComponentBase {
 
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
+
+    // 清理临时画布 - canvasPool没有releaseCanvas方法，跳过清理
+    // 临时画布会在canvasPool中自动管理
 
     this.isDirty = false;
   }

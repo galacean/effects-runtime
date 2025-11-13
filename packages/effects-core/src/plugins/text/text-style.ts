@@ -1,6 +1,20 @@
 import * as spec from '@galacean/effects-specification';
 
 /**
+ * 滤镜配置接口
+ */
+export interface FilterOptions {
+  blurRadius?: number,
+  brightness?: number,
+  contrast?: number,
+  grayscale?: number,
+  sepia?: number,
+  invert?: number,
+  saturate?: number,
+  hueRotate?: number,
+}
+
+/**
  * 花字特效配置接口
  */
 export interface FancyTextEffect {
