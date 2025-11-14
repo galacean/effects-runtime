@@ -8,6 +8,12 @@
 
 ---
 
+## 2.7.3
+
+`2025-11-14`
+
+- Fix: richText `document` object adapter inject. [#1274](https://github.com/galacean/effects-runtime/pull/1274) @yiiqii
+
 ## 2.7.2
 
 `2025-11-10`
