@@ -23,7 +23,7 @@
   },
   "typesVersions": {
     "*": {
-      "alipay": [
+      "*": [
         "./dist/index.d.ts"
       ]
     }
