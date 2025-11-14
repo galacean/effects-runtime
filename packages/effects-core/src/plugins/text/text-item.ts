@@ -165,6 +165,44 @@ export class TextComponentBase {
   }
 
   /**
+   * 设置文本滤镜
+   * @param filters - 滤镜列表，可以是CSS滤镜字符串或滤镜函数
+   * @param options - 滤镜参数选项
+   */
+  setFilters (filters: Filter[], options: FilterOptions = {}): void {
+    this.filters = filters;
+    this.filterOptions = options;
+    this.isDirty = true;
+  }
+
+  /**
+   * 清除所有滤镜
+   */
+  clearFilters (): void {
+    this.filters = [];
+    this.filterOptions = {};
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置单个滤镜
+   * @param filter - 单个滤镜
+   */
+  setFilter (filter: Filter): void {
+    this.filters = [filter];
+    this.isDirty = true;
+  }
+
+  /**
+   * 移除指定滤镜
+   * @param filter - 要移除的滤镜
+   */
+  removeFilter (filter: Filter): void {
+    this.filters = this.filters.filter(f => f !== filter);
+    this.isDirty = true;
+  }
+
+  /**
    * 渲染原始文本（非花字）
    */
   private renderOriginal (context: CanvasRenderingContext2D, charsInfo: CharInfo[], style: TextStyle, layout: TextLayout) {

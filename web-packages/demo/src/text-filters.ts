@@ -77,13 +77,6 @@ const availableFilters: Record<FilterType, FilterConfig> = {
   },
 };
 
-// 创建CPU滤镜函数
-const createCPUFilter = (type: FilterType) => {
-  const config = availableFilters[type];
-
-  return config.cpu[0] || null;
-};
-
 (async () => {
   try {
     const player = new Player({
@@ -122,7 +115,7 @@ const createCPUFilter = (type: FilterType) => {
   }
 })();
 
-// 应用滤镜列表
+// 应用滤镜列表（使用内置方法）
 function applyFilters (filters: string[], mode: string) {
   if (!textComponent) {return;}
 
@@ -133,37 +126,26 @@ function applyFilters (filters: string[], mode: string) {
 
     if (filters.includes('none') || filters.length === 0) {
       // 无滤镜
-      textComponent.filters = [];
-      textComponent.filterOptions = {};
+      textComponent.clearFilters();
     } else {
       const validFilters = filters.filter(f => f !== 'none') as FilterType[];
 
       if (mode === 'cpu') {
         // CPU模式：使用函数滤镜列表
         const cpuFilters = validFilters
-          .map(type => createCPUFilter(type))
+          .flatMap(type => availableFilters[type]?.cpu || [])
           .filter(fn => fn !== null) as ((imageData: ImageData) => ImageData)[];
 
-        textComponent.filters = cpuFilters;
+        textComponent.setFilters(cpuFilters);
         console.log(`已设置${cpuFilters.length}个CPU函数滤镜`);
       } else {
         // CSS模式：使用字符串滤镜列表
         const cssFilters = validFilters.flatMap(type => availableFilters[type]?.css || []);
 
-        textComponent.filters = cssFilters;
+        textComponent.setFilters(cssFilters);
         console.log(`已设置${cssFilters.length}个CSS字符串滤镜`);
       }
     }
-
-    textComponent.isDirty = true;
-
-    // 强制立即更新
-    setTimeout(() => {
-      if (textComponent) {
-        textComponent.isDirty = true;
-        console.log('强制更新纹理完成');
-      }
-    }, 50);
 
     console.log('当前滤镜配置:', textComponent.filters);
   } catch (error) {
