@@ -14,14 +14,14 @@ const json_ktx2 = `{
   },
   "images": [
     {
-      "id": "c04e3c0983e843e5adec11ada3a0a2b9",
-      "ktx2": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*AjHmTaAxmKAAAAAAQXAAAAgAekp5AQ/original/SuperAnt.ktx2",
-      "url": "https://mdn.alipayobjects.com/mars/afts/file/A*NpZ-T6ix53kAAAAAQYAAAAgAelB4AQ/original"
+      "id": "981c5f4c34134005854cf0cb768d45be",
+      "ktx2": "https://mdn.alipayobjects.com/mars/afts/file/A*Q0JLTZaekosAAAAAQpAAAAgAelB4AQ/original",
+      "url": "https://mdn.alipayobjects.com/mars/afts/file/A*Jo17ToPrHF8AAAAAQWAAAAgAelB4AQ/original"
     },
     {
-      "id": "a1411be576f24bf5bc3ee565458a5d2d",
-      "ktx2": "https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2",
-      "url": "https://mdn.alipayobjects.com/mars/afts/file/A*NpZ-T6ix53kAAAAAQYAAAAgAelB4AQ/original"
+      "id": "ae4e2e56505a4a4181f1911307d74cff",
+      "ktx2": "https://mdn.alipayobjects.com/mars/afts/file/A*Qz8_R7XR_lQAAAAAQmAAAAgAelB4AQ/original",
+      "url": "https://mdn.alipayobjects.com/mars/afts/file/A*WoL5TqCEmukAAAAAQYAAAAgAelB4AQ/original"
     }
   ],
   "fonts": [],
@@ -30,7 +30,7 @@ const json_ktx2 = `{
   "type": "ge",
   "compositions": [
     {
-      "id": "62c04a5ef1554eab8d455e319a332073",
+      "id": "1e96d2ae76eb4f81b3c5e589b1192419",
       "name": "新建合成1",
       "duration": 5,
       "startTime": 0,
@@ -46,16 +46,16 @@ const json_ktx2 = `{
       },
       "components": [
         {
-          "id": "0d1c0349d8b649dea12540bf1acbb3b5"
+          "id": "3971de4f490a42eda24357ee4e29807e"
         }
       ]
     }
   ],
   "components": [
     {
-      "id": "0d1c0349d8b649dea12540bf1acbb3b5",
+      "id": "3971de4f490a42eda24357ee4e29807e",
       "item": {
-        "id": "62c04a5ef1554eab8d455e319a332073"
+        "id": "1e96d2ae76eb4f81b3c5e589b1192419"
       },
       "dataType": "CompositionComponent",
       "items": [
@@ -67,12 +67,12 @@ const json_ktx2 = `{
         }
       ],
       "timelineAsset": {
-        "id": "d749350b6bac47328acdb5e6e068dc66"
+        "id": "7bbd2bf6757449e2999287e2ae1e5e4f"
       },
       "sceneBindings": [
         {
           "key": {
-            "id": "2362e1f50d5b491aa6ba89bf32655a4c"
+            "id": "356e2c53d8b04614a32ced079db61d66"
           },
           "value": {
             "id": "d0680050c92d48e4af6271ce0a7cf3ea"
@@ -80,7 +80,7 @@ const json_ktx2 = `{
         },
         {
           "key": {
-            "id": "5c76d1796ab94b60a2ee10ea237d596b"
+            "id": "3848626cb16f4d13b4d57e9c754c34f1"
           },
           "value": {
             "id": "3b0050cfb14c4f5299e9275e5f7fde6c"
@@ -89,7 +89,7 @@ const json_ktx2 = `{
       ]
     },
     {
-      "id": "274304693adc410a8ea60c625586a4d1",
+      "id": "291fc61dd0cc4ca4bbd132910db571b8",
       "item": {
         "id": "d0680050c92d48e4af6271ce0a7cf3ea"
       },
@@ -100,12 +100,12 @@ const json_ktx2 = `{
       "renderer": {
         "renderMode": 1,
         "texture": {
-          "id": "005bca74358845f4a09ff032261da9d9"
+          "id": "1c89a5f5c796475f8dd3fea2cc0c7847"
         }
       }
     },
     {
-      "id": "91b8d1776e9442cdb0d88e5413a996c3",
+      "id": "b6cfdf624dde4638be85987129a38a20",
       "item": {
         "id": "3b0050cfb14c4f5299e9275e5f7fde6c"
       },
@@ -116,7 +116,7 @@ const json_ktx2 = `{
       "renderer": {
         "renderMode": 1,
         "texture": {
-          "id": "2f88ef60b9c345fdb4b555dd4ca46571"
+          "id": "659aea660ef44becb625b9b868eab687"
         }
       }
     }
@@ -135,7 +135,7 @@ const json_ktx2 = `{
       "renderLevel": "B+",
       "components": [
         {
-          "id": "274304693adc410a8ea60c625586a4d1"
+          "id": "291fc61dd0cc4ca4bbd132910db571b8"
         }
       ],
       "transform": {
@@ -176,13 +176,13 @@ const json_ktx2 = `{
       "renderLevel": "B+",
       "components": [
         {
-          "id": "91b8d1776e9442cdb0d88e5413a996c3"
+          "id": "b6cfdf624dde4638be85987129a38a20"
         }
       ],
       "transform": {
         "position": {
-          "x": 0.4721,
-          "y": 3.2121,
+          "x": 0.148,
+          "y": 2.2322,
           "z": 0
         },
         "eulerHint": {
@@ -195,8 +195,8 @@ const json_ktx2 = `{
           "y": 0
         },
         "size": {
-          "x": 4.3396,
-          "y": 4.2421
+          "x": 2.7937,
+          "y": 3.861
         },
         "scale": {
           "x": 1,
@@ -211,16 +211,16 @@ const json_ktx2 = `{
   "bins": [],
   "textures": [
     {
-      "id": "005bca74358845f4a09ff032261da9d9",
+      "id": "1c89a5f5c796475f8dd3fea2cc0c7847",
       "source": {
-        "id": "c04e3c0983e843e5adec11ada3a0a2b9"
+        "id": "981c5f4c34134005854cf0cb768d45be"
       },
       "flipY": true
     },
     {
-      "id": "2f88ef60b9c345fdb4b555dd4ca46571",
+      "id": "659aea660ef44becb625b9b868eab687",
       "source": {
-        "id": "a1411be576f24bf5bc3ee565458a5d2d"
+        "id": "ae4e2e56505a4a4181f1911307d74cff"
       },
       "flipY": true
     }
@@ -228,35 +228,35 @@ const json_ktx2 = `{
   "animations": [],
   "miscs": [
     {
-      "id": "d749350b6bac47328acdb5e6e068dc66",
+      "id": "7bbd2bf6757449e2999287e2ae1e5e4f",
       "dataType": "TimelineAsset",
       "tracks": [
         {
-          "id": "2362e1f50d5b491aa6ba89bf32655a4c"
+          "id": "356e2c53d8b04614a32ced079db61d66"
         },
         {
-          "id": "5c76d1796ab94b60a2ee10ea237d596b"
+          "id": "3848626cb16f4d13b4d57e9c754c34f1"
         }
       ]
     },
     {
-      "id": "98a6c13066db447d83f09e0b3a92b43e",
+      "id": "ed8b2fbab2d54d17bec03191e27b01c1",
       "dataType": "ActivationPlayableAsset"
     },
     {
-      "id": "a0ec4bdb50374befa35862677f64fb9f",
+      "id": "801ee6c0e5d546f1b39ef5eaa4c2c5f4",
       "dataType": "TransformPlayableAsset",
       "positionOverLifetime": {
 
       }
     },
     {
-      "id": "aaacb167793548e69cd1be14ac13ec45",
+      "id": "1aacab2406b24540929e5c3160eddf45",
       "dataType": "SpriteColorPlayableAsset",
       "startColor": [1, 1, 1, 1]
     },
     {
-      "id": "7972e21daf954a40a905b70ad63e2cc5",
+      "id": "202c44f8f0064c39bc359a914211cd94",
       "dataType": "ActivationTrack",
       "children": [],
       "clips": [
@@ -265,13 +265,13 @@ const json_ktx2 = `{
           "duration": 5,
           "endBehavior": 0,
           "asset": {
-            "id": "98a6c13066db447d83f09e0b3a92b43e"
+            "id": "ed8b2fbab2d54d17bec03191e27b01c1"
           }
         }
       ]
     },
     {
-      "id": "c584097da0094c48a9a67341e98c4956",
+      "id": "a5955e85e37a49738d4eeaf118640c1b",
       "dataType": "TransformTrack",
       "children": [],
       "clips": [
@@ -280,13 +280,13 @@ const json_ktx2 = `{
           "duration": 5,
           "endBehavior": 0,
           "asset": {
-            "id": "a0ec4bdb50374befa35862677f64fb9f"
+            "id": "801ee6c0e5d546f1b39ef5eaa4c2c5f4"
           }
         }
       ]
     },
     {
-      "id": "95d7d0ba997641e2933c4eb467042623",
+      "id": "9942fbe490264fd29f62c4332912bf62",
       "dataType": "SpriteColorTrack",
       "children": [],
       "clips": [
@@ -295,45 +295,54 @@ const json_ktx2 = `{
           "duration": 5,
           "endBehavior": 0,
           "asset": {
-            "id": "aaacb167793548e69cd1be14ac13ec45"
+            "id": "1aacab2406b24540929e5c3160eddf45"
           }
         }
       ]
     },
     {
-      "id": "2362e1f50d5b491aa6ba89bf32655a4c",
+      "id": "356e2c53d8b04614a32ced079db61d66",
       "dataType": "ObjectBindingTrack",
       "children": [
         {
-          "id": "7972e21daf954a40a905b70ad63e2cc5"
+          "id": "202c44f8f0064c39bc359a914211cd94"
         },
         {
-          "id": "c584097da0094c48a9a67341e98c4956"
+          "id": "a5955e85e37a49738d4eeaf118640c1b"
         },
         {
-          "id": "95d7d0ba997641e2933c4eb467042623"
+          "id": "9942fbe490264fd29f62c4332912bf62"
         }
       ],
       "clips": []
     },
     {
-      "id": "133db6e80fae4fdbb685013c2768dec7",
+      "id": "4da1f85119c64feba5b52f015f0b62c9",
       "dataType": "ActivationPlayableAsset"
     },
     {
-      "id": "907469eeb1a8455a8446cd6282b1a3da",
+      "id": "1d3ec98141dd44b09353ee7ec84c40e9",
       "dataType": "TransformPlayableAsset",
       "positionOverLifetime": {
 
       }
     },
     {
-      "id": "0520f1fb121d4461906bf7207445caf4",
+      "id": "53ede6ae987849d6b8aca06cd3968a96",
       "dataType": "SpriteColorPlayableAsset",
-      "startColor": [1, 1, 1, 1]
+      "startColor": [1, 1, 1, 1],
+      "colorOverLifetime": {
+        "opacity": [21, [
+            [4, [0.128, 1]
+            ],
+            [4, [0.274, 0]
+            ]
+          ]
+        ]
+      }
     },
     {
-      "id": "49a1d797e7814e4faea43af01576390e",
+      "id": "d218c1babebe4d519842728dc51ec1a5",
       "dataType": "ActivationTrack",
       "children": [],
       "clips": [
@@ -342,13 +351,13 @@ const json_ktx2 = `{
           "duration": 5,
           "endBehavior": 0,
           "asset": {
-            "id": "133db6e80fae4fdbb685013c2768dec7"
+            "id": "4da1f85119c64feba5b52f015f0b62c9"
           }
         }
       ]
     },
     {
-      "id": "eab59a57e8d84f33840bf5ba4789bdf6",
+      "id": "2ed85474222f4df584a830e15fd03b32",
       "dataType": "TransformTrack",
       "children": [],
       "clips": [
@@ -357,13 +366,13 @@ const json_ktx2 = `{
           "duration": 5,
           "endBehavior": 0,
           "asset": {
-            "id": "907469eeb1a8455a8446cd6282b1a3da"
+            "id": "1d3ec98141dd44b09353ee7ec84c40e9"
           }
         }
       ]
     },
     {
-      "id": "97899f04448a4670bf60fa2a1aa40cfb",
+      "id": "cfba32cec3f14db197d80fcb5d759f02",
       "dataType": "SpriteColorTrack",
       "children": [],
       "clips": [
@@ -372,29 +381,29 @@ const json_ktx2 = `{
           "duration": 5,
           "endBehavior": 0,
           "asset": {
-            "id": "0520f1fb121d4461906bf7207445caf4"
+            "id": "53ede6ae987849d6b8aca06cd3968a96"
           }
         }
       ]
     },
     {
-      "id": "5c76d1796ab94b60a2ee10ea237d596b",
+      "id": "3848626cb16f4d13b4d57e9c754c34f1",
       "dataType": "ObjectBindingTrack",
       "children": [
         {
-          "id": "49a1d797e7814e4faea43af01576390e"
+          "id": "d218c1babebe4d519842728dc51ec1a5"
         },
         {
-          "id": "eab59a57e8d84f33840bf5ba4789bdf6"
+          "id": "2ed85474222f4df584a830e15fd03b32"
         },
         {
-          "id": "97899f04448a4670bf60fa2a1aa40cfb"
+          "id": "cfba32cec3f14db197d80fcb5d759f02"
         }
       ],
       "clips": []
     }
   ],
-  "compositionId": "62c04a5ef1554eab8d455e319a332073"
+  "compositionId": "1e96d2ae76eb4f81b3c5e589b1192419"
 }`;
 const container = document.getElementById('J-container');
 

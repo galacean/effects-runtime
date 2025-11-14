@@ -12,7 +12,6 @@ import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile }
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { GPUCapability, Renderer } from './render';
-import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
 let seed = 1;
@@ -127,7 +126,6 @@ export class AssetManager implements Disposable {
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
     let cancelLoading = false;
@@ -192,7 +190,7 @@ export class AssetManager implements Disposable {
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
+          hookTimeInfo('processImages', () => this.processImages(images)),
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
@@ -272,7 +270,6 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
-    compressedTexture: COMPRESSED_TEXTURE = 0,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
@@ -324,23 +321,6 @@ export class AssetManager implements Disposable {
           } catch (e) {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
-        }
-      } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
-        // 2. 压缩纹理
-        const { compressed } = img;
-        let src;
-
-        if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
-          src = compressed.astc;
-        } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
-          src = compressed.pvrtc;
-        }
-        if (src) {
-          const bufferURL = new URL(src, baseUrl).href;
-
-          this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
-
-          return this.loadBins(bufferURL);
         }
       } else if ('ktx2' in img && useCompressedTexture) {
         // ktx2 压缩纹理

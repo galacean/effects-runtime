@@ -2,7 +2,7 @@ import { KTX2TargetFormat, TextureFormat } from './ktx2-common';
 import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 import { DFDTransferFunction, KTX2Container } from './ktx2-container';
 import { BinomialLLCTranscoder } from './transcoder/binomial-transcoder';
-import { TextureSourceType, GLCapabilityType, loadBinary, isPowerOfTwo, glContext, textureLoaderRegistry } from '@galacean/effects';
+import { TextureSourceType, CompressTextureCapabilityType, loadBinary, isPowerOfTwo, glContext, textureLoaderRegistry } from '@galacean/effects';
 import type { TranscodeResult } from './transcoder/abstract-transcoder';
 import type { GPUCapability, Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader } from '@galacean/effects';
 
@@ -28,20 +28,20 @@ export class KTX2Loader implements TextureLoader {
     ],
   };
 
-  private readonly capabilityMap: Partial<Record<KTX2TargetFormat, Partial<Record<DFDTransferFunction, GLCapabilityType[]>>>> = {
+  private readonly capabilityMap: Partial<Record<KTX2TargetFormat, Partial<Record<DFDTransferFunction, CompressTextureCapabilityType[]>>>> = {
     [KTX2TargetFormat.ASTC]: {
-      [DFDTransferFunction.linear]: [GLCapabilityType.astc, GLCapabilityType.astc_webkit],
-      [DFDTransferFunction.sRGB]: [GLCapabilityType.astc, GLCapabilityType.astc_webkit],
+      [DFDTransferFunction.linear]: [CompressTextureCapabilityType.astc, CompressTextureCapabilityType.astc_webkit],
+      [DFDTransferFunction.sRGB]: [CompressTextureCapabilityType.astc, CompressTextureCapabilityType.astc_webkit],
     },
     [KTX2TargetFormat.ETC]: {
-      [DFDTransferFunction.linear]: [GLCapabilityType.etc, GLCapabilityType.etc_webkit],
-      [DFDTransferFunction.sRGB]: [GLCapabilityType.etc, GLCapabilityType.etc_webkit],
+      [DFDTransferFunction.linear]: [CompressTextureCapabilityType.etc, CompressTextureCapabilityType.etc_webkit],
+      [DFDTransferFunction.sRGB]: [CompressTextureCapabilityType.etc, CompressTextureCapabilityType.etc_webkit],
     },
     [KTX2TargetFormat.PVRTC]: {
-      [DFDTransferFunction.linear]: [GLCapabilityType.pvrtc, GLCapabilityType.pvrtc_webkit],
+      [DFDTransferFunction.linear]: [CompressTextureCapabilityType.pvrtc, CompressTextureCapabilityType.pvrtc_webkit],
     },
     [KTX2TargetFormat.ETC1]: {
-      [DFDTransferFunction.linear]: [GLCapabilityType.etc1],
+      [DFDTransferFunction.linear]: [CompressTextureCapabilityType.etc1],
     },
   };
 
@@ -289,7 +289,7 @@ export class KTX2Loader implements TextureLoader {
         }
 
         for (let j = 0; j < capabilities.length; j++) {
-          if (gpuCapability.canIUse(capabilities[j])) {
+          if (gpuCapability.isCompressedFormatSupported(capabilities[j])) {
             return format;
           }
         }
@@ -432,18 +432,18 @@ export class KTX2Loader implements TextureLoader {
 
     // 当 gpuCapability 未提供时，按"WebGL1 且无扩展"的最保守路径处理
     const isWebGL2 = !!gpuCapability?.isWebGL2;
-    const can = (cap: GLCapabilityType) => {
+    const can = (cap: CompressTextureCapabilityType) => {
       try {
-        return !!gpuCapability?.canIUse?.(cap);
+        return !!gpuCapability?.isCompressedFormatSupported?.(cap);
       } catch {
         return false;
       }
     };
 
-    const hasASTC = can(GLCapabilityType.astc) || can(GLCapabilityType.astc_webkit);
-    const hasPVRTC = can(GLCapabilityType.pvrtc) || can(GLCapabilityType.pvrtc_webkit);
+    const hasASTC = can(CompressTextureCapabilityType.astc) || can(CompressTextureCapabilityType.astc_webkit);
+    const hasPVRTC = can(CompressTextureCapabilityType.pvrtc) || can(CompressTextureCapabilityType.pvrtc_webkit);
     const hasETC2 = isWebGL2;
-    const hasETC1 = can(GLCapabilityType.etc1);
+    const hasETC1 = can(CompressTextureCapabilityType.etc1);
 
     switch (format) {
       // Uncompressed
@@ -552,16 +552,16 @@ export class KTX2Loader implements TextureLoader {
     targetFormat: KTX2TargetFormat,
     gpuCapability?: GPUCapability
   ): Promise<{ result: TranscodeResult, targetFormat: KTX2TargetFormat }> {
-    const can = (cap: GLCapabilityType) => {
+    const can = (cap: CompressTextureCapabilityType) => {
       try {
-        return !!gpuCapability?.canIUse?.(cap);
+        return !!gpuCapability?.isCompressedFormatSupported?.(cap);
       } catch {
         return false;
       }
     };
     const isWebGL2 = !!gpuCapability?.isWebGL2;
     const hasETC2 = isWebGL2;
-    const hasETC1 = can(GLCapabilityType.etc1);
+    const hasETC1 = can(CompressTextureCapabilityType.etc1);
 
     try {
       this.checkUploadable(transcodeResult, targetFormat, gpuCapability);
