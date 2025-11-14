@@ -50,6 +50,7 @@ uniform float _TextureCount;
 uniform float _CurrentVolume; // 当前音量
 uniform float _MinVolume;  // 最小音量
 uniform float _MaxVolume;  // 最大音量
+uniform float _BgIsWhite;  // 0: 黑底(原样), 1: 白底(增强对比)
 
 // 纹理采样器
 uniform sampler2D _Tex0;   // 第一阶段蓝
@@ -414,10 +415,37 @@ void main() {
   
   }
 
-  // 亮度增强与音量曲线逻辑同现有
-  finalColor.rgb *= _BrightnessGain; // 使用硬编码的增益系数
-  float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
-  finalColor.rgb *= brightnessBoost;
+  if (_BgIsWhite > 0.5) {
+    vec3 c = clamp(finalColor.rgb, 0.0, 1.0);
+    float L = dot(c, vec3(0.299, 0.587, 0.114));
+    vec3 gray = vec3(L);
+
+    // 门限 + 弯曲（让中低段更灵敏）
+    float v = clamp(normalizedVolume, 0.0, 1.0);
+    float gate = 0.08;
+    v = clamp((v - gate) / (1.0 - gate), 0.0, 1.0);
+    float lvlSat = pow(v, 0.55);          // 仅用于饱和度
+    float lvlLum = pow(v, _BrightnessCurve); // 用与你黑底一致的曲线驱动亮度
+
+    // 只改饱和度（不改亮度与透明度）
+    float satApprox = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+    float vibMask = 1.0 - clamp(satApprox / (L + 1e-3), 0.0, 1.0);
+    float satBase = 0.22;
+    float satRange = 0.45;
+    float satBoost = (satBase + satRange * lvlSat) * clamp(finalColor.a, 0.0, 1.0);
+    vec3 col = gray + (c - gray) * (1.0 + satBoost * (0.6 + 0.4 * vibMask));
+
+    // 亮度反向缩放：v 低时更亮，v 高时回到 1.0（不改透明度）
+    float brightRange = 0.35;             // v=0 时最多提亮 +35%，按需调 0.2~0.5
+    float brightnessScale = 1.0 + brightRange * (1.0 - lvlLum);
+    finalColor.rgb = clamp(col * brightnessScale, 0.0, 1.0);
+    // finalColor.a 保持不变
+  } else {
+    /* 黑底模式：保持原有亮度增强逻辑 */
+    finalColor.rgb *= _BrightnessGain;
+    float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
+    finalColor.rgb *= brightnessBoost;
+  }
 
   gl_FragColor = vec4(finalColor.rgb, finalColor.a);
 }
@@ -623,6 +651,9 @@ let material: Material | undefined;
         material.setFloat('_MaxBrightness', 0.3);
         material.setFloat('_BrightnessGain', 1.1);
 
+        // 初始化白底检测参数 - 默认黑底（0），白底为（1）
+        material.setFloat('_BgIsWhite', isWhiteBackground(container!) ? 1 : 0);
+
         // 延迟一小段时间确保UI已加载
         setTimeout(() => {
           if (DEBUG) {console.log('Material and UI initialization complete');}
@@ -747,4 +778,16 @@ let material: Material | undefined;
 // 获取JSON数据
 function getJSON (json: string): Promise<any> {
   return fetch(json).then(res => res.json());
+}
+
+// 自动判断容器背景是否偏白
+function isWhiteBackground(el: HTMLElement): boolean {
+  const cs = getComputedStyle(el);
+  const m = cs.backgroundColor.match(/rgba?\(([^)]+)\)/);
+  if (!m) return false;
+  const parts = m[1].split(',').map(v => parseFloat(v));
+  const r = parts[0], g = parts[1], b = parts[2];
+  // 使用线性亮度估算
+  const luma = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+  return luma > 0.85; // 阈值可改
 }

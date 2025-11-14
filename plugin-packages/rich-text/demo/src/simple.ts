@@ -12,15 +12,10 @@ const container = document.getElementById('J-container');
     });
     const composition = await player.loadScene(json, {
       variables: {
-        'richText_1': '<color=#ef951aff>Galacean\nEffects\n\n富文本</color>',
+        richText_1: '<color=red>Galacean\nEffects\n\n富文11本</color>',
       },
     });
-    const text = composition.getItemByName('richText_1')?.getComponent(RichTextComponent);
 
-    setTimeout(() => {
-      text?.setOverflow(spec.TextOverflow.display);
-      text?.setText('<color=#ef951aff>Galacean</color> <b>Effects</b>\n<color=#00ff00ff><i>富文本</i></color>');
-    }, 2000);
   } catch (e) {
     console.error('biz', e);
   }
