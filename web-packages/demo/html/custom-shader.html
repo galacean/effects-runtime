@@ -24,6 +24,13 @@
   <button id="reset-btn" style="position: absolute; top: 50px; left: 10px; z-index: 100; padding: 5px 10px; background: #2196F3; color: white; border: none; border-radius: 3px; cursor: pointer;">
     重置
   </button>
+  
+  <!-- 音量控制滑条 -->
+  <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px;">
+    <label for="volume-slider" style="color: white; margin-right: 10px;">音量控制:</label>
+    <input type="range" id="volume-slider" min="0" max="100" value="50" style="width: 200px;">
+    <span id="volume-value" style="color: white; margin-left: 10px;">50%</span>
+  </div>
 </div>
 
 <script type="module" src="../src/custom-shader.ts"></script>

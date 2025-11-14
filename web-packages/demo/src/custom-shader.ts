@@ -420,14 +420,12 @@ void main() {
     float L = dot(c, vec3(0.299, 0.587, 0.114));
     vec3 gray = vec3(L);
 
-    // 门限 + 弯曲（让中低段更灵敏）
+    // 无门限的音量映射
     float v = clamp(normalizedVolume, 0.0, 1.0);
-    float gate = 0.08;
-    v = clamp((v - gate) / (1.0 - gate), 0.0, 1.0);
-    float lvlSat = pow(v, 0.55);          // 仅用于饱和度
-    float lvlLum = pow(v, _BrightnessCurve); // 用与你黑底一致的曲线驱动亮度
+    float lvlSat = pow(v, 0.55);           // 饱和度响应（<1 提升低中段灵敏度）
+    float lvlLum = pow(v, _BrightnessCurve); // 亮度响应，和黑底保持一致的曲线风格
 
-    // 只改饱和度（不改亮度与透明度）
+    // Vibrance：只改饱和度，不改亮度和透明度
     float satApprox = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
     float vibMask = 1.0 - clamp(satApprox / (L + 1e-3), 0.0, 1.0);
     float satBase = 0.22;
@@ -435,13 +433,12 @@ void main() {
     float satBoost = (satBase + satRange * lvlSat) * clamp(finalColor.a, 0.0, 1.0);
     vec3 col = gray + (c - gray) * (1.0 + satBoost * (0.6 + 0.4 * vibMask));
 
-    // 亮度反向缩放：v 低时更亮，v 高时回到 1.0（不改透明度）
-    float brightRange = 0.35;             // v=0 时最多提亮 +35%，按需调 0.2~0.5
+    // 亮度反向缩放：音量低更亮，音量高回到 1.0（不改透明度）
+    float brightRange = 0.35;              // v=0 时最多 +35% 亮度
     float brightnessScale = 1.0 + brightRange * (1.0 - lvlLum);
     finalColor.rgb = clamp(col * brightnessScale, 0.0, 1.0);
-    // finalColor.a 保持不变
+    // finalColor.a 不变
   } else {
-    /* 黑底模式：保持原有亮度增强逻辑 */
     finalColor.rgb *= _BrightnessGain;
     float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
     finalColor.rgb *= brightnessBoost;
@@ -490,10 +487,7 @@ let material: Material | undefined;
 
   const controller = new TextureControllerNew(0.1);
 
-
-
   const engine = composition.renderer.engine;
-
 
   // 加载本地图片数据
   const loadLocalImageData = (path: string): Promise<ImageData> => {
@@ -502,6 +496,7 @@ let material: Material | undefined;
 
       img.onload = () => {
         const canvas = document.createElement('canvas');
+
         canvas.width = img.width;
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
@@ -510,6 +505,7 @@ let material: Material | undefined;
 
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, img.width, img.height);
+
         resolve(imageData);
       };
       img.onerror = err => {
@@ -626,7 +622,6 @@ let material: Material | undefined;
         // material.setVector4('_Color2', new Vector4(142/255, 208/255, 1, 1)); // inputA
         // material.setVector4('_Color3', new Vector4(69/255, 234/255, 193/255, 1.0)); // inputB
 
-
         // 初始化噪声参数（使用之前硬编码的值）
         material.setFloat('_NoiseScaleX', 0.19);
         material.setFloat('_NoiseScaleY', 0.35);
@@ -671,6 +666,7 @@ let material: Material | undefined;
     const timeFactor = now * 0.0002;
     const baseWave = Math.sin(timeFactor) * 0.5 + 0.5;
     const detailWave = Math.sin(timeFactor * 2.3) * 0.2;
+
     return clamp(baseWave + detailWave, 0.0, 1.0);
   }
 
@@ -678,7 +674,7 @@ let material: Material | undefined;
   function getSimulatedAudioVolume (): number {
     const now = performance.now();
     const timeFactor = now * 0.1;
-    
+
     if (timeFactor > 1000) {
       return 1.0;
     } else if (timeFactor > 500) {
@@ -696,11 +692,13 @@ let material: Material | undefined;
   }
 
   let lastTime = performance.now() / 1000;
+
   controller.setVolumeThreshold(0.2);
   // 更新循环 - 每帧更新状态和Shader参数
   function updateLoop () {
     const now = performance.now() / 1000;
     const delta = (now - lastTime);
+
     lastTime = now;
 
     const volume = getSimulatedAudioVolume();
@@ -715,6 +713,7 @@ let material: Material | undefined;
       material.setFloat('_Now', now);
 
       const currentVolume = getSimulatedAudioVolume();
+
       material.setFloat('_CurrentVolume', currentVolume);
       material.setFloat('_MinVolume', minVolume);
       material.setFloat('_MaxVolume', maxVolume);
@@ -781,13 +780,15 @@ function getJSON (json: string): Promise<any> {
 }
 
 // 自动判断容器背景是否偏白
-function isWhiteBackground(el: HTMLElement): boolean {
+function isWhiteBackground (el: HTMLElement): boolean {
   const cs = getComputedStyle(el);
   const m = cs.backgroundColor.match(/rgba?\(([^)]+)\)/);
-  if (!m) return false;
+
+  if (!m) {return false;}
   const parts = m[1].split(',').map(v => parseFloat(v));
   const r = parts[0], g = parts[1], b = parts[2];
   // 使用线性亮度估算
-  const luma = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+  const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+
   return luma > 0.85; // 阈值可改
 }
