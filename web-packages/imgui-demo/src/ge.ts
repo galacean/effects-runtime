@@ -8,7 +8,7 @@ import '@galacean/effects-plugin-spine';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
-import * as animationScene from './ffd-demo.json';
+import * as animationScene from './demo.json';
 
 export class GalaceanEffects {
   static player: Player;
@@ -40,7 +40,8 @@ export class GalaceanEffects {
         }),);
       });
     } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
+      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(async composition => {
+
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,

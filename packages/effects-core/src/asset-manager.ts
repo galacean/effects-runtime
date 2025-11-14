@@ -9,12 +9,11 @@ import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
-import type { TextureSourceOptions } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
-import type { Renderer } from './render';
-import { COMPRESSED_TEXTURE } from './render';
+import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
+import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
+import type { GPUCapability, Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-
+import { textureLoaderRegistry } from './texture/texture-loader';
 let seed = 1;
 
 /**
@@ -127,7 +126,6 @@ export class AssetManager implements Disposable {
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
     let cancelLoading = false;
@@ -192,11 +190,11 @@ export class AssetManager implements Disposable {
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
+          hookTimeInfo('processImages', () => this.processImages(images)),
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, gpuInstance));
 
         scene = {
           timeInfos,
@@ -272,7 +270,6 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
-    compressedTexture: COMPRESSED_TEXTURE = 0,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
@@ -325,23 +322,18 @@ export class AssetManager implements Disposable {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
-      } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
-        // 2. 压缩纹理
-        const { compressed } = img;
-        let src;
+      } else if ('ktx2' in img && useCompressedTexture) {
+        // ktx2 压缩纹理
+        const { ktx2 } = img;
 
-        if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
-          src = compressed.astc;
-        } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
-          src = compressed.pvrtc;
-        }
-        if (src) {
-          const bufferURL = new URL(src, baseUrl).href;
+        if (ktx2) {
+          const bufferURL = new URL(ktx2 as string, baseUrl).href;
 
           this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
 
           return this.loadBins(bufferURL);
         }
+
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||
@@ -388,6 +380,7 @@ export class AssetManager implements Disposable {
     images: ImageLike[],
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
+    gpuCapability?: GPUCapability,
   ) {
     const textures = jsonScene.textures ?? images.map((img, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (textureOptions, idx) => {
@@ -414,7 +407,7 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
+        const texture = await createTextureOptionsBySource(image, this.sourceFrom[imageId], id, gpuCapability);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -472,10 +465,11 @@ export class AssetManager implements Disposable {
   }
 }
 
-function createTextureOptionsBySource (
+async function createTextureOptionsBySource (
   image: TextureSourceOptions | ImageLike,
   sourceFrom: { url: string, type: TextureSourceType },
   id?: string,
+  gpuCapability?: GPUCapability,
 ) {
   const options = {
     id,
@@ -511,11 +505,44 @@ function createTextureOptionsBySource (
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
-    return {
-      ...getKTXTextureOptions(image),
-      sourceFrom,
-      ...options,
-    };
+    const loader = textureLoaderRegistry.getLoader('ktx2');
+
+    if (loader) {
+      try {
+        const textureData = await loader.loadFromBuffer(image, gpuCapability) as Texture2DSourceOptionsCompressed;
+
+        if (textureData.sourceType === TextureSourceType.compressed) {
+          return {
+            sourceType: textureData.sourceType,
+            type: textureData.type,
+            target: textureData.target,
+            internalFormat: textureData.internalFormat,
+            format: textureData.format,
+            mipmaps: textureData.mipmaps,
+            sourceFrom,
+            ...options,
+          };
+        } else {
+          if (!textureData.mipmaps || textureData.mipmaps.length === 0) {
+            throw new Error('KTX2 loader returned no mipmaps');
+          }
+
+          return {
+            sourceType: TextureSourceType.data,
+            data: textureData.mipmaps[0],
+            wrapS: glContext.CLAMP_TO_EDGE,
+            wrapT: glContext.CLAMP_TO_EDGE,
+            minFilter: glContext.NEAREST,
+            magFilter: glContext.NEAREST,
+            ...options,
+          };
+        }
+      } catch (e) {
+        throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+      }
+    } else {
+      throw new Error('KTX2 loader not found. Please register it first.');
+    }
   } else if (
     'width' in image &&
     'height' in image &&
