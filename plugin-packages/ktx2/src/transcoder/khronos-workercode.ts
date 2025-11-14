@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable compat/compat */
-import type { EncodedData, IKhronosMessageMessage } from './abstract-transcoder';
+import type { EncodedData, IKhronosMessageMessage } from './texture-transcoder';
 
 interface WasmModule extends WebAssembly.Exports {
   memory: WebAssembly.Memory,

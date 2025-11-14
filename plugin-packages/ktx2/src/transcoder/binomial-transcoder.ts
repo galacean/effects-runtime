@@ -1,11 +1,11 @@
 /* eslint-disable compat/compat */
 import type { KTX2TargetFormat } from '../ktx2-common';
-import type { TranscodeResult } from './abstract-transcoder';
-import { AbstractTranscoder } from './abstract-transcoder';
+import type { TranscodeResult } from './texture-transcoder';
+import { TextureTranscoder } from './texture-transcoder';
 import { TranscodeWorkerCode, init, transcode, _init } from './binomial-workercode';
 
 /** @internal */
-export class BinomialLLCTranscoder extends AbstractTranscoder {
+export class BinomialLLCTranscoder extends TextureTranscoder {
   private blobURL?: string;
   private scriptElement?: HTMLScriptElement;
 

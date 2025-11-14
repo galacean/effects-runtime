@@ -1,4 +1,4 @@
-import { decodeText } from './abstract-transcoder';
+import { decodeText } from './texture-transcoder';
 
 export class BufferReader {
   private dataView: DataView;

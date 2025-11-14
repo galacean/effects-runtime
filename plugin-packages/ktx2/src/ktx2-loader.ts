@@ -3,7 +3,7 @@ import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 import { DFDTransferFunction, KTX2Container } from './ktx2-container';
 import { BinomialLLCTranscoder } from './transcoder/binomial-transcoder';
 import { TextureSourceType, CompressTextureCapabilityType, loadBinary, isPowerOfTwo, glContext, textureLoaderRegistry } from '@galacean/effects';
-import type { TranscodeResult } from './transcoder/abstract-transcoder';
+import type { TranscodeResult } from './transcoder/texture-transcoder';
 import type { GPUCapability, Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader } from '@galacean/effects';
 
 export class KTX2Loader implements TextureLoader {
@@ -46,7 +46,7 @@ export class KTX2Loader implements TextureLoader {
   };
 
   constructor (
-    private readonly useKhronosTranscoder: boolean = false,
+    private readonly preferKhronosTranscoder: boolean = false,
     private readonly workerCount: number = 2
   ) {
   }
@@ -182,7 +182,7 @@ export class KTX2Loader implements TextureLoader {
     let transcodeResultPromise: Promise<TranscodeResult>;
 
     // 根据实际需要选择并等待 transcoder 初始化
-    if (this.useKhronosTranscoder && targetFormat === KTX2TargetFormat.ASTC && ktx2Container.isUASTC) {
+    if (this.preferKhronosTranscoder && targetFormat === KTX2TargetFormat.ASTC && ktx2Container.isUASTC) {
       const transcoder = await this.ensureKhronosTranscoder();
 
       transcodeResultPromise = transcoder.transcode(ktx2Container);
@@ -632,13 +632,13 @@ export class KTX2Loader implements TextureLoader {
  * @param options - 初始化选项
  */
 export function registerKTX2Loader (options?: {
-  preferKhronosForASTC?: boolean,
+  preferKhronosTranscoder?: boolean,
   workerCount?: number,
 }) {
-  const { preferKhronosForASTC: useKhronosTranscoder = true, workerCount = 2 } = options ?? {};
+  const { preferKhronosTranscoder: preferKhronosTranscoder = true, workerCount = 2 } = options ?? {};
 
   textureLoaderRegistry.register('ktx2', () => {
-    return new KTX2Loader(useKhronosTranscoder, workerCount);
+    return new KTX2Loader(preferKhronosTranscoder, workerCount);
   });
 }
 

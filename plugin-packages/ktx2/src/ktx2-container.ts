@@ -1,5 +1,5 @@
 import { BufferReader } from './transcoder/buffer-reader';
-import { decodeText } from './transcoder/abstract-transcoder';
+import { decodeText } from './transcoder/texture-transcoder';
 
 export enum DFDTransferFunction {
   linear = 1,

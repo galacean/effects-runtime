@@ -2,12 +2,12 @@
 import type { KTX2Container } from '../ktx2-container';
 import { SupercompressionScheme } from '../ktx2-container';
 import type { KTX2TargetFormat } from '../ktx2-common';
-import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './abstract-transcoder';
-import { AbstractTranscoder } from './abstract-transcoder';
+import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './texture-transcoder';
+import { TextureTranscoder } from './texture-transcoder';
 import { TranscodeWorkerCode } from './khronos-workercode';
 
 /** @internal */
-export class KhronosTranscoder extends AbstractTranscoder {
+export class KhronosTranscoder extends TextureTranscoder {
 
   constructor (
     workerLimitCount: number,

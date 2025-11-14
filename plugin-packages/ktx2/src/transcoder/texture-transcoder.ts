@@ -1,6 +1,6 @@
 import { WorkerPool } from './worker-pool';
 
-export abstract class AbstractTranscoder {
+export abstract class TextureTranscoder {
   protected transcodeWorkerPool: WorkerPool;
   protected initPromise: Promise<any>;
 

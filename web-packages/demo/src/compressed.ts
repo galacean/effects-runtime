@@ -1,12 +1,6 @@
 import { Player } from '@galacean/effects';
-import inspireList from './assets/inspire-list';
 import '@galacean/effects-plugin-ktx2';
-import { registerKTX2Loader } from '@galacean/effects-plugin-ktx2';
-//uastc
-//https://mdn.alipayobjects.com/oasis_be/afts/img/A*jgEpQL3iLTwAAAAAQqAAAAgAekp5AQ/original/SuperAnt.ktx2
-//etc1s
-//https://mdn.alipayobjects.com/oasis_be/afts/img/A*AjHmTaAxmKAAAAAAQXAAAAgAekp5AQ/original/SuperAnt.ktx2
-const json = inspireList.compressed.url;
+
 const json_ktx2 = `{
   "playerVersion": {
     "web": "2.7.0",

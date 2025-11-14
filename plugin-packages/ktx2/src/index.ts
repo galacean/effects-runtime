@@ -9,7 +9,7 @@ export * from './ktx2-loader';
 export const version = __VERSION__;
 
 registerKTX2Loader({
-  preferKhronosForASTC: true,
+  preferKhronosTranscoder: true,
   workerCount: 2,
 });
 

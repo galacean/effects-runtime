@@ -1,4 +1,4 @@
-import type { IBinomialMessage, TranscodeResult } from './abstract-transcoder';
+import type { IBinomialMessage, TranscodeResult } from './texture-transcoder';
 
 /** @internal */
 export function TranscodeWorkerCode () {
