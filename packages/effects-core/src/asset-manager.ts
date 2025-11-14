@@ -10,7 +10,7 @@ import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture, detectKTXVersion } from './texture';
+import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { GPUCapability, Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
@@ -525,56 +525,43 @@ async function createTextureOptionsBySource (
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
-    const data = new Uint8Array(image, 0, Math.min(image.byteLength, 12));
-    const version = detectKTXVersion(data);
+    const loader = textureLoaderRegistry.getLoader('ktx2');
 
-    if (version === 'unknown') {
-      throw new Error('Unsupported or invalid KTX format.');
-    } else if (version == 'KTX2') {
-      const loader = textureLoaderRegistry.getLoader('ktx2');
+    if (loader) {
+      try {
+        const textureData = await loader.loadFromBuffer(image, gpuCapability) as Texture2DSourceOptionsCompressed;
 
-      if (loader) {
-        try {
-          const textureData = await loader.loadFromBuffer(image, gpuCapability) as Texture2DSourceOptionsCompressed;
-
-          if (textureData.sourceType === TextureSourceType.compressed) {
-            return {
-              sourceType: textureData.sourceType,
-              type: textureData.type,
-              target: textureData.target,
-              internalFormat: textureData.internalFormat,
-              format: textureData.format,
-              mipmaps: textureData.mipmaps,
-              sourceFrom,
-              ...options,
-            };
-          } else {
-            if (!textureData.mipmaps || textureData.mipmaps.length === 0) {
-              throw new Error('KTX2 loader returned no mipmaps');
-            }
-
-            return {
-              sourceType: TextureSourceType.data,
-              data: textureData.mipmaps[0],
-              wrapS: glContext.CLAMP_TO_EDGE,
-              wrapT: glContext.CLAMP_TO_EDGE,
-              minFilter: glContext.NEAREST,
-              magFilter: glContext.NEAREST,
-              ...options,
-            };
+        if (textureData.sourceType === TextureSourceType.compressed) {
+          return {
+            sourceType: textureData.sourceType,
+            type: textureData.type,
+            target: textureData.target,
+            internalFormat: textureData.internalFormat,
+            format: textureData.format,
+            mipmaps: textureData.mipmaps,
+            sourceFrom,
+            ...options,
+          };
+        } else {
+          if (!textureData.mipmaps || textureData.mipmaps.length === 0) {
+            throw new Error('KTX2 loader returned no mipmaps');
           }
-        } catch (e) {
-          throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+
+          return {
+            sourceType: TextureSourceType.data,
+            data: textureData.mipmaps[0],
+            wrapS: glContext.CLAMP_TO_EDGE,
+            wrapT: glContext.CLAMP_TO_EDGE,
+            minFilter: glContext.NEAREST,
+            magFilter: glContext.NEAREST,
+            ...options,
+          };
         }
-      } else {
-        throw new Error('KTX2 loader not found. Please register it first.');
+      } catch (e) {
+        throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
       }
     } else {
-      return {
-        ...getKTXTextureOptions(image),
-        sourceFrom,
-        ...options,
-      };
+      throw new Error('KTX2 loader not found. Please register it first.');
     }
   } else if (
     'width' in image &&

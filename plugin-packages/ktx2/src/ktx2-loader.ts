@@ -185,7 +185,6 @@ export class KTX2Loader implements TextureLoader {
     if (this.useKhronosTranscoder && targetFormat === KTX2TargetFormat.ASTC && ktx2Container.isUASTC) {
       const transcoder = await this.ensureKhronosTranscoder();
 
-      console.info('Using KhronosTranscoder for ASTC UASTC texture');
       transcodeResultPromise = transcoder.transcode(ktx2Container);
     } else {
       const transcoder = await this.ensureBinomialLLCTranscoder();
