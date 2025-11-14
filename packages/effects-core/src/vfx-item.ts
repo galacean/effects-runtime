@@ -477,22 +477,32 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
   /**
-   * 设置元素在 3D 坐标轴的位置
+   * 设置本地坐标位置
    */
   setPosition (x: number, y: number, z: number) {
     this.transform.setPosition(x, y, z);
   }
   /**
-   * 设置元素在 3D 坐标轴的角度
+   * 设置本地坐标欧拉旋转
    */
   setRotation (x: number, y: number, z: number) {
     this.transform.setRotation(x, y, z);
   }
   /**
-   * 设置元素在 3D 坐标轴的缩放
+   * 设置本地坐标缩放
    */
   setScale (x: number, y: number, z: number) {
     this.transform.setScale(x, y, z);
+  }
+
+  /**
+   * 设置世界坐标位置
+   * @param x - 世界坐标 x
+   * @param y - 世界坐标 y
+   * @param z - 世界坐标 z
+   */
+  setWorldPosition (x: number, y: number, z: number) {
+    this.transform.setWorldPosition(x, y, z);
   }
 
   /**

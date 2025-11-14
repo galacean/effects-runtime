@@ -1,7 +1,7 @@
 import type {
   Disposable, GLType, LostHandler, RestoreHandler, SceneLoadOptions, Scene, MessageItem,
   Region, AssetManager, Composition, Renderer, Ticker,
-} from '@galacean/effects-core';
+  PointerEventData } from '@galacean/effects-core';
 import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
   isArray, spec, assertExist, SceneLoader,
@@ -41,6 +41,17 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private autoPlaying: boolean;
   private resumePending = false;
   private disposed = false;
+
+  /**
+   * 是否跳过指针移动时的拾取检测, 开启后可以减少移动时的性能消耗，但会导致 pointermove 事件无法触发
+   */
+  get skipPointerMovePicking () {
+    return this.engine.eventSystem.skipPointerMovePicking;
+  }
+
+  set skipPointerMovePicking (value: boolean) {
+    this.engine.eventSystem.skipPointerMovePicking = value;
+  }
 
   /**
    * 计时器
@@ -192,20 +203,32 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         await this.restore();
       });
 
-      this.engine.onClick = (eventData: Region) => {
+      this.engine.on('click', (eventData: Region) => {
         const behavior = eventData.behavior || spec.InteractBehavior.NOTIFY;
 
-        if (behavior === spec.InteractBehavior.NOTIFY) {
-          this.emit('click', {
-            ...eventData,
-            player: this,
-            compositionId: eventData.composition.id,
-            compositionName: eventData.composition.name,
-          });
-        } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
+        this.emit('click', {
+          ...eventData,
+          player: this,
+          compositionId: eventData.composition.id,
+          compositionName: eventData.composition.name,
+        });
+
+        if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
           void this.resume();
         }
-      };
+      });
+
+      this.engine.on('pointerdown', (eventData: PointerEventData) => {
+        this.emit('pointerdown', eventData);
+      });
+
+      this.engine.on('pointerup', (eventData: PointerEventData) => {
+        this.emit('pointerup', eventData);
+      });
+
+      this.engine.on('pointermove', (eventData: PointerEventData) => {
+        this.emit('pointermove', eventData);
+      });
 
       this.engine.runRenderLoop((dt: number) => {
         if (this.autoPlaying) {

@@ -230,7 +230,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   postProcessingEnabled = false;
   /**
    * 合成中消息元素创建/销毁时触发的回调
-   * @internal
    */
   onItemMessage?: (message: MessageItem) => void;
   /**

@@ -1,4 +1,5 @@
-import type { Matrix4, Ray, TriangleLike, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4, Ray, TriangleLike, Vector3 } from '@galacean/effects-math/es/core/index';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type * as spec from '@galacean/effects-specification';
 import type { VFXItem } from '../../vfx-item';
 import type { Composition } from '../../composition';
@@ -56,13 +57,13 @@ export interface HitTestCustomParams {
 }
 
 export type Region = {
-  compContent: VFXItem,
   name: string,
   id: string,
   position: Vector3,
   behavior?: spec.InteractBehavior,
   parentId?: string,
   hitPositions: Vector3[],
+  item: VFXItem,
   composition: Composition,
 };
 
@@ -76,3 +77,14 @@ export type HitTestParams = {
   y: number,
   inRect: (position: Vector3, width: number, height: number) => boolean,
 };
+
+export class PointerEventData {
+  position = new Vector2();
+  delta = new Vector2();
+  pointerCurrentRaycast: RaycastResult = new RaycastResult();
+}
+
+export class RaycastResult {
+  point: Vector3 | null = null;
+  item: VFXItem | null = null;
+}

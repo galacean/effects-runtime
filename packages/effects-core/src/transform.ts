@@ -16,11 +16,12 @@ export interface TransformProps {
 }
 
 const tempQuat = new Quaternion();
+const tempVector3 = new Vector3();
+const tempVector3Second = new Vector3();
 let seed = 1;
 
-// TODO 继承 Component
 /**
- *
+ * 变换组件，用于描述元素的位置、旋转、缩放等信息
  */
 export class Transform implements Disposable {
   /**
@@ -470,6 +471,44 @@ export class Transform implements Disposable {
     this.updateTRSCache();
 
     return this.worldTRSCache.position.clone();
+  }
+
+  /**
+   * 设置世界坐标位置
+   * @param x - 世界坐标 x
+   * @param y - 世界坐标 y
+   * @param z - 世界坐标 z
+   */
+  setWorldPosition (x: number, y: number, z: number) {
+    const parentMatrix = this.getParentMatrix();
+
+    if (parentMatrix) {
+      // 有父节点：需要将世界坐标转换为局部坐标
+      // 提取父矩阵的变换信息
+      tempVector3.set(0, 0, 0);
+      tempQuat.set(0, 0, 0, 1);
+      tempVector3Second.set(1, 1, 1);
+
+      parentMatrix.decompose(tempVector3, tempQuat, tempVector3Second);
+
+      // 计算局部位置：先减去父位置，再应用逆旋转和逆缩放
+      // 复用 tempVector3 作为 localPos
+      tempVector3.set(x - tempVector3.x, y - tempVector3.y, z - tempVector3.z);
+
+      // 应用逆旋转
+      tempQuat.invert();
+      tempVector3.applyQuaternion(tempQuat);
+
+      // 应用逆缩放
+      tempVector3.x = tempVector3Second.x !== 0 ? tempVector3.x / tempVector3Second.x : 0;
+      tempVector3.y = tempVector3Second.y !== 0 ? tempVector3.y / tempVector3Second.y : 0;
+      tempVector3.z = tempVector3Second.z !== 0 ? tempVector3.z / tempVector3Second.z : 0;
+
+      this.setPosition(tempVector3.x, tempVector3.y, tempVector3.z);
+    } else {
+      // 没有父节点：世界坐标 = 局部坐标
+      this.setPosition(x, y, z);
+    }
   }
 
   /**
