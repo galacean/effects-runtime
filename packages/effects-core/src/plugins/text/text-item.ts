@@ -12,11 +12,11 @@ import { Texture } from '../../texture';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
 import { TextLayout } from './text-layout';
-import { TextStyle } from './text-style';
+import { TextStyle, type FancyTextEffect, type FilterOptions } from './text-style';
 import type { TextEffect } from './text-effect-base';
 import { renderWithEffects } from './text-effect-base';
-import { TextureEffect } from './effects';
-import { TextFilters, type Filter, type FilterOptions } from './text-filters';
+import { TextureEffect, EffectFactory } from './effects';
+import { TextFilters, type Filter } from './text-filters';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -142,15 +142,17 @@ export class TextComponentBase {
   // 文本花字特效
   effects: TextEffect[] = [];
 
-  // 滤镜列表
-  filters: Filter[] = [];
-
-  // 滤镜参数
-  filterOptions: FilterOptions = {};
-
   // 设置文本花字特效
-  setEffects (effects: TextEffect[]) {
-    this.effects = effects || [];
+  setEffects (effectConfigs: FancyTextEffect[] | TextEffect[]) {
+    // 判断是配置还是已创建的特效实例
+    if (effectConfigs.length > 0 && 'type' in effectConfigs[0]) {
+      // 是配置，需要创建特效实例
+      this.effects = EffectFactory.createEffects(effectConfigs as FancyTextEffect[]);
+    } else {
+      // 已经是特效实例
+      this.effects = effectConfigs as TextEffect[];
+    }
+
     // 为纹理特效设置加载完成回调
     for (const effect of this.effects) {
       if (effect instanceof TextureEffect) {
@@ -170,17 +172,7 @@ export class TextComponentBase {
    * @param options - 滤镜参数选项
    */
   setFilters (filters: Filter[], options: FilterOptions = {}): void {
-    this.filters = filters;
-    this.filterOptions = options;
-    this.isDirty = true;
-  }
-
-  /**
-   * 清除所有滤镜
-   */
-  clearFilters (): void {
-    this.filters = [];
-    this.filterOptions = {};
+    this.textStyle.filters = filters;
     this.isDirty = true;
   }
 
@@ -189,7 +181,7 @@ export class TextComponentBase {
    * @param filter - 单个滤镜
    */
   setFilter (filter: Filter): void {
-    this.filters = [filter];
+    this.textStyle.filters = [filter];
     this.isDirty = true;
   }
 
@@ -198,7 +190,7 @@ export class TextComponentBase {
    * @param filter - 要移除的滤镜
    */
   removeFilter (filter: Filter): void {
-    this.filters = this.filters.filter(f => f !== filter);
+    this.textStyle.filters = this.textStyle.filters.filter(f => f !== filter);
     this.isDirty = true;
   }
 
@@ -227,6 +219,18 @@ export class TextComponentBase {
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text, true);
+
+    // 从 TextStyle 获取花字特效配置并创建 effects
+    const config = this.textStyle.fancyTextConfig;
+    const effects = EffectFactory.createEffects(config.effects);
+
+    this.setEffects(effects);
+
+    // 初始化滤镜（如果有的话）
+    if (this.textStyle.filters && this.textStyle.filters.length > 0) {
+      // 滤镜已经在 TextStyle 构造函数中设置，这里不需要额外操作
+      // 因为滤镜是通过 this.textStyle.filters 直接使用的
+    }
   }
 
   private getLineCount (text: string, init: boolean) {
@@ -633,8 +637,8 @@ export class TextComponentBase {
     // 应用滤镜
     let finalCanvas = this.canvas;
 
-    if (this.filters && this.filters.length > 0) {
-      finalCanvas = TextFilters.applyFilters(this.canvas, this.filters, this.filterOptions);
+    if (this.textStyle.filters && this.textStyle.filters.length > 0) {
+      finalCanvas = TextFilters.applyFilters(this.canvas, this.textStyle.filters);
     }
 
     // 获取最终图像数据

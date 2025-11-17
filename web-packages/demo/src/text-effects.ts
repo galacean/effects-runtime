@@ -1,159 +1,10 @@
 import { Player } from '@galacean/effects';
-import type { FancyTextStyle } from '../../../packages/effects-core/src/plugins/text/text-style';
-import { FancyTextEffect } from '../../../packages/effects-core/src/plugins/text/text-style';
-import { EffectFactory } from '../../../packages/effects-core/src/plugins/text/effects';
+import { TextStyle } from '../../../packages/effects-core/src/plugins/text/text-style';
 import { TextComponent } from '../../../packages/effects-core/src/plugins/text/text-item';
 
 // 使用text.ts中的JSON数据
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*H0HxT4AyjxMAAAAAQFAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
-
-// 花字特效配置 - 支持多特效组合
-const fancyTextConfigs: Record<string, FancyTextStyle> = {
-  'none': {
-    effects: [],
-  },
-  // 单描边填充花字
-  'single-stroke': {
-    effects: [
-      {
-        type: 'single-stroke',
-        params: {
-          width: 4,
-          color: [1, 0.25, 0.54, 1], // #FF3F89
-        },
-      },
-      {
-        type: 'solid-fill',
-        params: {
-          color: [1, 0.74, 0.84, 1], // #FFBCD7
-        },
-      },
-    ],
-  },
-  // 多描边花字（使用效果栈方式）
-  'multi-stroke': {
-    effects: [
-      // 效果栈演示：多描边 + 填充
-      // 顺序很关键：每一层都是"同色描边 + 同色填充"
-      {
-        type: 'single-stroke',
-        params: {
-          width: 15,
-          color: [0.75, 0.28, 0.77, 1], // #C048C5 - 最外层紫色
-        },
-      },
-      {
-        type: 'solid-fill',
-        params: {
-          color: [0.75, 0.28, 0.77, 1], // #C048C5 - 最外层紫色
-        },
-      },
-
-      {
-        type: 'single-stroke',
-        params: {
-          width: 12,
-          color: [0.44, 0.34, 0.81, 1], // #7057CF - 深紫色
-        },
-      },
-      {
-        type: 'solid-fill',
-        params: {
-          color: [0.44, 0.34, 0.81, 1], // #7057CF - 深紫色
-        },
-      },
-
-      {
-        type: 'single-stroke',
-        params: {
-          width: 9,
-          color: [0.52, 0.89, 0.19, 1], // #86E431 - 绿色
-        },
-      },
-      {
-        type: 'solid-fill',
-        params: {
-          color: [0.52, 0.89, 0.19, 1], // #86E431 - 绿色
-        },
-      },
-
-      {
-        type: 'single-stroke',
-        params: {
-          width: 6,
-          color: [1, 0.52, 0.36, 1], // #FF865B - 橙色
-        },
-      },
-      {
-        type: 'solid-fill',
-        params: {
-          color: [1, 0.52, 0.36, 1], // #FF865B - 橙色
-        },
-      },
-
-      {
-        type: 'single-stroke',
-        params: {
-          width: 3,
-          color: [0.99, 0.19, 0.51, 1], // #FC3081 - 粉色
-        },
-      },
-      {
-        type: 'solid-fill',
-        params: {
-          color: [1, 1, 1, 1], // 白色填充
-        },
-      },
-    ],
-  },
-  // 渐变花字
-  'gradient': {
-    effects: [
-      {
-        type: 'gradient',
-        params: {
-          colors: [
-            { offset: 0, color: [1, 0.23, 0.23, 1] },     // #FF3A3A - 红色
-            { offset: 1, color: [0.66, 0, 0, 1] },        // #A80101 - 深红色
-          ],
-          strokeWidth: 0.09,
-          strokeColor: '#F8E8A2',
-        },
-      },
-    ],
-  },
-  // 投影花字
-  'shadow': {
-    effects: [
-      {
-        type: 'shadow',
-        params: {
-          color: [0.93, 0.29, 0.29, 1], // #EE4949
-          offsetX: 6,
-          offsetY: 2,
-          strokeWidth: 0.12,
-          strokeColor: '#F7A4A4',
-          topStrokeWidth: 0.04,
-          topStrokeColor: '#FFFFFF',
-        },
-      },
-    ],
-  },
-  // 纹理花字
-  'texture': {
-    effects: [
-      {
-        type: 'texture',
-        params: {
-          imageUrl: '/assets/text-effects/images/E9FE8222-61DA-46FB-A616-DCF1CC243558.png',
-          strokeWidth: 0.04,
-          strokeColor: '#9C4607',
-        },
-      },
-    ],
-  },
-};
 
 let currentEffect = 'multi-stroke';
 let textItem: any = null;
@@ -189,7 +40,8 @@ let textItem: any = null;
 function applyFancyTextEffect (effectName: string) {
   if (!textItem) {return;}
 
-  const config = fancyTextConfigs[effectName];
+  // 从 TextStyle 获取花字特效配置
+  const config = TextStyle.getFancyTextConfig(effectName);
 
   if (!config) {return;}
 
@@ -206,14 +58,11 @@ function applyFancyTextEffect (effectName: string) {
     return;
   }
 
-  // 使用特效工厂创建特效实例
-  const effects = EffectFactory.createEffects(config.effects);
-
-  // 应用特效到TextComponent
-  textComponent.setEffects(effects);
+  // 直接传入配置，setEffects 内部会调用 EffectFactory.createEffects
+  textComponent.setEffects(config.effects);
 
   // eslint-disable-next-line no-console
-  console.log(`已应用 ${effects.length} 个特效到文本组件`);
+  console.log(`已应用 ${config.effects.length} 个特效配置到文本组件`);
 }
 
 // 创建控制界面
@@ -304,13 +153,13 @@ function createControls () {
     white-space: pre-wrap;
     word-wrap: break-word;
   `;
-  configDisplay.textContent = JSON.stringify(fancyTextConfigs[currentEffect], null, 2);
+  configDisplay.textContent = JSON.stringify(TextStyle.getFancyTextConfig(currentEffect), null, 2);
   configGroup.appendChild(configDisplay);
   controlPanel.appendChild(configGroup);
 
   // 监听配置变化
   const updateConfigDisplay = () => {
-    configDisplay.textContent = JSON.stringify(fancyTextConfigs[currentEffect], null, 2);
+    configDisplay.textContent = JSON.stringify(TextStyle.getFancyTextConfig(currentEffect), null, 2);
   };
 
   effectGroup.addEventListener('click', updateConfigDisplay);
@@ -335,4 +184,4 @@ function createControlGroup (label: string): HTMLDivElement {
 // eslint-disable-next-line no-console
 console.log('花字特效系统初始化成功');
 // eslint-disable-next-line no-console
-console.log('可用特效配置:', Object.keys(fancyTextConfigs));
+console.log('可用特效配置:', ['none', 'single-stroke', 'multi-stroke', 'gradient', 'shadow', 'texture']);

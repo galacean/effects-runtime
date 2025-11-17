@@ -2,80 +2,17 @@
 import { Player } from '@galacean/effects';
 import { TextComponent } from '../../../packages/effects-core/src/plugins/text/text-item';
 import { TextFilters } from '../../../packages/effects-core/src/plugins/text/text-filters';
+import { TextStyle, type FilterType, type FilterConfig } from '../../../packages/effects-core/src/plugins/text/text-style';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*BPx_SIXgnj8AAAAAQFAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 
 let currentFilters: string[] = ['none'];
-let currentMode = 'css'; // 'css' 或 'cpu'
 let textItem: any = null;
 let textComponent: TextComponent | null = null;
 
-// 重写TextFilters的检测方法以支持强制CPU模式
-const originalIsCSSFiltersSupported = TextFilters.isCSSFiltersSupported;
-
-Object.defineProperty(TextFilters, 'isCSSFiltersSupported', {
-  get: function () {
-    return currentMode === 'css' ? originalIsCSSFiltersSupported : false;
-  },
-});
-
-// 定义滤镜类型
-type FilterType = 'none' | 'blur' | 'brightness' | 'contrast' | 'grayscale' | 'invert' | 'sepia';
-
-// 定义滤镜配置接口
-interface FilterConfig {
-  name: string,
-  css: string[],
-  cpu: ((imageData: ImageData) => ImageData)[],
-  description: string,
-}
-
-// 可用的滤镜配置
-const availableFilters: Record<FilterType, FilterConfig> = {
-  none: {
-    name: '无滤镜',
-    css: [],
-    cpu: [],
-    description: '原始效果',
-  },
-  blur: {
-    name: '模糊',
-    css: ['blur(10px)'],
-    cpu: [(imageData: ImageData) => TextFilters.blur(imageData, 4)],
-    description: '10px高斯模糊',
-  },
-  brightness: {
-    name: '亮度',
-    css: ['brightness(0.3)'],
-    cpu: [(imageData: ImageData) => TextFilters.brightness(imageData, 0.3)],
-    description: '30%亮度',
-  },
-  contrast: {
-    name: '对比度',
-    css: ['contrast(0.2)'],
-    cpu: [(imageData: ImageData) => TextFilters.contrast(imageData, 0.2)],
-    description: '20%对比度',
-  },
-  grayscale: {
-    name: '灰度',
-    css: ['grayscale(1)'],
-    cpu: [(imageData: ImageData) => TextFilters.grayscale(imageData, 1)],
-    description: '完全灰度',
-  },
-  invert: {
-    name: '反色',
-    css: ['invert(1)'],
-    cpu: [(imageData: ImageData) => TextFilters.invert(imageData, 1)],
-    description: '完全反色',
-  },
-  sepia: {
-    name: '深褐色',
-    css: ['sepia(1)'],
-    cpu: [(imageData: ImageData) => TextFilters.sepia(imageData, 1)],
-    description: '深褐色效果',
-  },
-};
+// 从 TextStyle 获取滤镜配置
+const availableFilters = TextStyle.getAllFilterConfigs();
 
 (async () => {
   try {
@@ -90,7 +27,7 @@ const availableFilters: Record<FilterType, FilterConfig> = {
 
     if (textItem) {
       // 修改文本内容 - 使用彩色文本以便效果更明显
-      textItem.text = '彩色滤镜演示';
+      textItem.text = 'CSS滤镜演示';
 
       // 设置文本颜色为蓝色以便效果更明显
       if (textItem.setTextColor) {
@@ -102,7 +39,7 @@ const availableFilters: Record<FilterType, FilterConfig> = {
 
       if (textComponent) {
         // 应用默认滤镜
-        applyFilters(currentFilters, currentMode);
+        applyFilters(currentFilters);
 
         // 创建控制界面
         createControls();
@@ -115,39 +52,25 @@ const availableFilters: Record<FilterType, FilterConfig> = {
   }
 })();
 
-// 应用滤镜列表（使用内置方法）
-function applyFilters (filters: string[], mode: string) {
+// 应用滤镜列表（仅CSS滤镜）
+function applyFilters (filters: string[]) {
   if (!textComponent) {return;}
 
-  console.log(`应用滤镜: ${filters.join(', ')}, 模式: ${mode}`);
+  console.log(`应用滤镜: ${filters.join(', ')}`);
 
   try {
-    currentMode = mode;
-
     if (filters.includes('none') || filters.length === 0) {
-      // 无滤镜
-      textComponent.clearFilters();
+      // 无滤镜 - 传入空数组清除所有滤镜
+      textComponent.setFilters([]);
     } else {
       const validFilters = filters.filter(f => f !== 'none') as FilterType[];
+      const cssFilters = validFilters.flatMap(type => availableFilters[type]?.css || []);
 
-      if (mode === 'cpu') {
-        // CPU模式：使用函数滤镜列表
-        const cpuFilters = validFilters
-          .flatMap(type => availableFilters[type]?.cpu || [])
-          .filter(fn => fn !== null) as ((imageData: ImageData) => ImageData)[];
-
-        textComponent.setFilters(cpuFilters);
-        console.log(`已设置${cpuFilters.length}个CPU函数滤镜`);
-      } else {
-        // CSS模式：使用字符串滤镜列表
-        const cssFilters = validFilters.flatMap(type => availableFilters[type]?.css || []);
-
-        textComponent.setFilters(cssFilters);
-        console.log(`已设置${cssFilters.length}个CSS字符串滤镜`);
-      }
+      textComponent.setFilters(cssFilters);
+      console.log(`已设置${cssFilters.length}个CSS字符串滤镜`);
     }
 
-    console.log('当前滤镜配置:', textComponent.filters);
+    console.log('当前滤镜配置:', textComponent.textStyle.filters);
   } catch (error) {
     console.error('应用滤镜失败:', error);
   }
@@ -173,52 +96,9 @@ function createControls () {
   // 标题
   const title = document.createElement('h3');
 
-  title.textContent = '增强滤镜控制';
+  title.textContent = 'CSS滤镜控制';
   title.style.cssText = 'margin: 0 0 15px 0; font-size: 16px;';
   controlPanel.appendChild(title);
-
-  // 模式切换
-  const modeGroup = createControlGroup('渲染模式');
-  const modes = [
-    { key: 'css', name: 'CSS滤镜' },
-    { key: 'cpu', name: 'CPU滤镜' },
-  ];
-
-  modes.forEach(mode => {
-    const button = document.createElement('button');
-
-    button.textContent = mode.name;
-    button.style.cssText = `
-      display: block;
-      width: 100%;
-      padding: 8px;
-      margin: 5px 0;
-      background: #333;
-      color: white;
-      border: 1px solid #555;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    `;
-    button.addEventListener('click', () => {
-      applyFilters(currentFilters, mode.key);
-      // 更新按钮样式
-      modeGroup.querySelectorAll('button').forEach(btn => {
-        (btn as HTMLElement).style.background = '#333';
-      });
-      button.style.background = '#007bff';
-    });
-    modeGroup.appendChild(button);
-  });
-
-  // 默认选中CSS模式
-  const cssButton = modeGroup.querySelector('button') as HTMLButtonElement;
-
-  if (cssButton) {
-    cssButton.style.background = '#007bff';
-  }
-
-  controlPanel.appendChild(modeGroup);
 
   // 滤镜选择（复选框）
   const filterGroup = createControlGroup('滤镜选择（可多选）');
@@ -258,7 +138,7 @@ function createControls () {
         }
       }
 
-      applyFilters(currentFilters, currentMode);
+      applyFilters(currentFilters);
     });
 
     container.appendChild(checkbox);
@@ -284,7 +164,7 @@ function createControls () {
   `;
   clearButton.addEventListener('click', () => {
     currentFilters = ['none'];
-    applyFilters(currentFilters, currentMode);
+    applyFilters(currentFilters);
 
     // 重置复选框
     filterGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -309,16 +189,15 @@ function createControls () {
     white-space: pre-wrap;
     word-wrap: break-word;
   `;
-  configDisplay.textContent = `滤镜: ${currentFilters.join(', ')}\n模式: ${currentMode}`;
+  configDisplay.textContent = `滤镜: ${currentFilters.join(', ')}`;
   configGroup.appendChild(configDisplay);
   controlPanel.appendChild(configGroup);
 
   // 监听配置变化
   const updateConfigDisplay = () => {
-    configDisplay.textContent = `滤镜: ${currentFilters.join(', ')}\n模式: ${currentMode}`;
+    configDisplay.textContent = `滤镜: ${currentFilters.join(', ')}`;
   };
 
-  modeGroup.addEventListener('click', updateConfigDisplay);
   filterGroup.addEventListener('change', updateConfigDisplay);
 
   document.body.appendChild(controlPanel);
@@ -339,7 +218,7 @@ function createControlGroup (label: string): HTMLDivElement {
 }
 
 // 添加测试信息
-console.log('增强滤镜系统初始化成功');
+console.log('CSS滤镜系统初始化成功');
 console.log('当前CSS滤镜支持:', TextFilters.isCSSFiltersSupported);
 console.log('测试提示:');
 console.log('- 亮度: 降低亮度使黑色文本变灰');
