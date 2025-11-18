@@ -103,6 +103,8 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     this.material = material;
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
     this.maskManager = new MaskProcessor(engine);
+
+    this.configureMaterial(this.renderer);
   }
 
   /**
