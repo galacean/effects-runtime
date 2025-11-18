@@ -13,6 +13,12 @@ export default {
       'text_5': '文本测试1',
     },
   },
+  textTest2: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*NYWHSYcgzJkAAAAAQfAAAAgAelB4AQ',
+    name: '文本测试2',
+    variables: {
+    },
+  },
   richTextTest: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ahr1Taqu9XQAAAAAQQAAAAgAelB4AQ',
     name: '富文本测试',
