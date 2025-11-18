@@ -28,7 +28,29 @@ export interface FancyTextEffect {
  */
 export interface FancyTextStyle {
   effects: FancyTextEffect[],
-  // 可以扩展更多花字相关属性
+  /**
+   * 可编辑的参数列表
+   */
+  editableParams?: ('stroke' | 'shadow' | 'fill')[],
+  /**
+   * 是否启用描边（独立开关）
+   * @default false
+   */
+  enableStroke?: boolean,
+  /**
+   * 是否启用阴影（独立开关）
+   * @default false
+   */
+  enableShadow?: boolean,
+  /**
+   * 是否启用预设花字
+   * @default false
+   */
+  enablePreset?: boolean,
+  /**
+   * 当前预设名称
+   */
+  presetName?: string,
 }
 
 // 定义滤镜类型
@@ -83,7 +105,15 @@ const _availableFilters: Record<FilterType, FilterConfig> = {
 // 花字特效配置 - 支持多特效组合
 const _fancyTextConfigs: Record<string, FancyTextStyle> = {
   'none': {
-    effects: [],
+    effects: [
+      {
+        type: 'solid-fill',
+        params: {
+          color: [0, 0, 0, 1], // 初始为白色，后续会被 textColor 覆盖
+        },
+      },
+    ],
+    editableParams: ['fill'],
   },
   // 单描边填充花字
   'single-stroke': {
@@ -102,6 +132,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
+    editableParams: ['stroke'],
   },
   // 多描边花字（使用效果栈方式）
   'multi-stroke': {
@@ -178,6 +209,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
+    editableParams: ['shadow', 'fill'], // 多描边预设只允许修改阴影和填充，禁止修改描边
   },
   // 渐变花字
   'gradient': {
@@ -194,6 +226,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
+    editableParams: ['fill'],
   },
   // 投影花字
   'shadow': {
@@ -210,7 +243,14 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
           topStrokeColor: '#FFFFFF',
         },
       },
+      {
+        type: 'solid-fill',
+        params: {
+          color: [1, 0.74, 0.84, 1], // #FFBCD7
+        },
+      },
     ],
+    editableParams: ['shadow', 'fill'],
   },
   // 纹理花字
   'texture': {
@@ -224,6 +264,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
+    editableParams: [],
   },
 };
 
@@ -249,6 +290,232 @@ export class TextStyle {
    */
   static getAllFilterConfigs (): Record<FilterType, FilterConfig> {
     return { ..._availableFilters };
+  }
+
+  /**
+   * 获取所有可用的花字特效配置名称
+   */
+  static getAllFancyTextEffectNames (): string[] {
+    return Object.keys(_fancyTextConfigs);
+  }
+
+  /**
+   * 检查参数是否可编辑
+   */
+  canEditParam (key: 'stroke' | 'shadow' | 'fill'): boolean {
+    const editable = this.fancyTextConfig?.editableParams;
+
+    if (!editable || editable.length === 0) {
+      return false;
+    }
+
+    return editable.includes(key);
+  }
+
+  /**
+   * 设置预设花字
+   */
+  setPresetEffect (presetName: string): void {
+    const preset = TextStyle.getFancyTextConfig(presetName);
+
+    this.fancyTextConfig = {
+      effects: preset.effects.map(e => ({ type: e.type, params: { ...(e.params || {}) } })),
+      editableParams: preset.editableParams ? [...preset.editableParams] : [],
+      enableStroke: preset.enableStroke,
+      enableShadow: preset.enableShadow,
+      enablePreset: true,
+      presetName,
+    };
+  }
+
+  /**
+   * 启用/禁用描边
+   */
+  setStrokeEnabled (enabled: boolean): void {
+    if (!this.canEditParam('stroke')) {
+      console.warn('当前预设不允许修改描边开关');
+
+      return;
+    }
+    if (!this.fancyTextConfig) {return;}
+
+    if (!enabled) {
+      this.fancyTextConfig.effects = this.fancyTextConfig.effects.filter(e => e.type !== 'single-stroke');
+    } else {
+      const exists = this.fancyTextConfig.effects.some(e => e.type === 'single-stroke');
+
+      if (!exists) {
+        this.fancyTextConfig.effects.push({
+          type: 'single-stroke',
+          params: {
+            width: this.outlineWidth || 2,
+            color: this.outlineColor || this.textColor || [1, 1, 1, 1],
+          },
+        });
+      }
+    }
+  }
+
+  /**
+   * 启用/禁用阴影
+   */
+  setShadowEnabled (enabled: boolean): void {
+    if (!this.canEditParam('shadow')) {
+      console.warn('当前预设不允许修改阴影开关');
+
+      return;
+    }
+    if (!this.fancyTextConfig) {return;}
+
+    if (!enabled) {
+      this.fancyTextConfig.effects = this.fancyTextConfig.effects.filter(e => e.type !== 'shadow');
+    } else {
+      const exists = this.fancyTextConfig.effects.some(e => e.type === 'shadow');
+
+      if (!exists) {
+        this.fancyTextConfig.effects.push({
+          type: 'shadow',
+          params: {
+            color: this.shadowColor || [0, 0, 0, 0.8],
+            blur: this.shadowBlur || 5,
+            offsetX: this.shadowOffsetX || 5,
+            offsetY: this.shadowOffsetY || 5,
+          },
+        });
+      }
+    }
+  }
+
+  /**
+   * 更新描边参数
+   */
+  updateStrokeParams (params: { color?: spec.vec4, width?: number, enabled?: boolean }): void {
+    if (!this.canEditParam('stroke')) {
+      console.warn('当前预设不允许修改描边');
+
+      return;
+    }
+    if (!this.fancyTextConfig) {return;}
+
+    let hasStroke = false;
+
+    for (const eff of this.fancyTextConfig.effects) {
+      if (eff.type === 'single-stroke') {
+        eff.params = eff.params || {};
+        if (params.color) {eff.params.color = params.color;}
+        if (params.width != null) {eff.params.width = params.width;}
+        hasStroke = true;
+      }
+    }
+
+    if (params.enabled === false) {
+      this.fancyTextConfig.effects = this.fancyTextConfig.effects.filter(e => e.type !== 'single-stroke');
+    } else if (params.enabled === true && !hasStroke) {
+      this.fancyTextConfig.effects.push({
+        type: 'single-stroke',
+        params: {
+          width: params.width ?? 2,
+          color: params.color ?? this.textColor ?? [1, 1, 1, 1],
+        },
+      });
+    }
+  }
+
+  /**
+   * 更新阴影参数
+   */
+  updateShadowParams (params: {
+    color?: spec.vec3 | spec.vec4,
+    opacity?: number,
+    blur?: number,
+    distance?: number,
+    angle?: number,
+    offsetX?: number,
+    offsetY?: number,
+  }): void {
+    if (!this.canEditParam('shadow')) {
+      console.warn('当前预设不允许修改阴影');
+
+      return;
+    }
+    if (!this.fancyTextConfig) {return;}
+
+    let shadowEff = this.fancyTextConfig.effects.find(e => e.type === 'shadow');
+
+    if (!shadowEff) {
+      shadowEff = {
+        type: 'shadow',
+        params: {
+          color: [0, 0, 0, 0.8],
+          blur: 5,
+          offsetX: 5,
+          offsetY: 5,
+        },
+      };
+      this.fancyTextConfig.effects.push(shadowEff);
+    }
+    const p = shadowEff.params || (shadowEff.params = {});
+
+    // 颜色+透明度 -> vec4
+    if (params.color || params.opacity != null) {
+      const base = (params.color || p.color || [0, 0, 0, 1]) as number[];
+      const r = base[0], g = base[1], b = base[2];
+      const a = params.opacity != null ? params.opacity : (base[3] ?? 1);
+
+      p.color = [r, g, b, a];
+    }
+
+    if (params.blur != null) {
+      p.blur = params.blur;
+    }
+
+    // 距离+角度 -> offset
+    if (params.distance != null || params.angle != null) {
+      const distance = params.distance != null ? params.distance : Math.sqrt((p.offsetX || 0) ** 2 + (p.offsetY || 0) ** 2);
+      const angleDeg = params.angle != null ? params.angle : 0;
+      const rad = angleDeg * Math.PI / 180;
+
+      p.offsetX = distance * Math.cos(rad);
+      p.offsetY = distance * Math.sin(rad);
+    }
+
+    if (params.offsetX != null) {p.offsetX = params.offsetX;}
+    if (params.offsetY != null) {p.offsetY = params.offsetY;}
+  }
+
+  /**
+   * 更新填充参数
+   */
+  updateFillParams (params: { color?: spec.vec4 }): void {
+    if (!this.canEditParam('fill')) {
+      console.warn('当前预设不允许修改填充');
+
+      return;
+    }
+    if (!this.fancyTextConfig) {return;}
+
+    let fillEff = this.fancyTextConfig.effects.find(e => e.type === 'solid-fill');
+
+    if (!fillEff) {
+      fillEff = {
+        type: 'solid-fill',
+        params: {
+          color: this.textColor ?? [1, 1, 1, 1],
+        },
+      };
+      this.fancyTextConfig.effects.push(fillEff);
+    }
+    fillEff.params = fillEff.params || {};
+    if (params.color) {
+      fillEff.params.color = params.color;
+    }
+  }
+
+  /**
+   * 获取当前花字特效配置
+   */
+  getCurrentFancyTextConfig (): FancyTextStyle {
+    return this.fancyTextConfig;
   }
 
   /**
@@ -332,7 +599,8 @@ export class TextStyle {
    */
   fancyTextConfig: FancyTextStyle;
 
-  readonly fontOffset = 0;
+  private _fontOffset = 0;
+  get fontOffset () { return this._fontOffset; }
 
   constructor (options: spec.TextContentOptions) {
     // @ts-expect-error
@@ -344,15 +612,30 @@ export class TextStyle {
     //@ts-expect-error
     this.fontStyle = fontStyle;
     this.fontFamily = fontFamily;
-    this.fontSize = fontSize; // 暂时取消字号限制 Math.min(fontSize, this.maxFontSize);
+    this.fontSize = fontSize;
 
+    // 初始化花字配置
+    const preset = TextStyle.getFancyTextConfig(_currentEffect);
+
+    this.fancyTextConfig = {
+      effects: preset.effects.map(e => ({ type: e.type, params: { ...(e.params || {}) } })),
+      editableParams: preset.editableParams ? [...preset.editableParams] : [],
+      enableStroke: preset.enableStroke,
+      enableShadow: preset.enableShadow,
+      enablePreset: true,
+      presetName: _currentEffect,
+    };
+
+    // 处理传统属性
     if (outline) {
       this.isOutlined = true;
       this.outlineColor = outline.outlineColor ?? [1, 1, 1, 1];
       this.outlineWidth = outline.outlineWidth ?? 1;
-      //this.fontOffset += this.outlineWidth;
-      //预期效果不需要因为描边而修改文字计算的宽度
-      //当描边宽度扩大，最后效果是描边重叠
+      this.updateStrokeParams({
+        color: this.outlineColor,
+        width: this.outlineWidth,
+        enabled: true,
+      });
     }
 
     if (shadow) {
@@ -361,23 +644,22 @@ export class TextStyle {
       this.shadowColor = shadow.shadowColor ?? [0, 0, 0, 1];
       this.shadowOffsetX = shadow.shadowOffsetX ?? 0;
       this.shadowOffsetY = shadow.shadowOffsetY ?? 0;
-
+      this.updateShadowParams({
+        color: this.shadowColor,
+        blur: this.shadowBlur,
+        offsetX: this.shadowOffsetX,
+        offsetY: this.shadowOffsetY,
+      });
     }
 
     if (filters) {
       this.filters = filters;
     } else {
-      // 如果没有传入滤镜，使用配置中的无滤镜设置
-      this.filters = _availableFilters['none'].css;
+      this.filters = [];
     }
-
-    // 初始化花字特效配置
-    this.fancyTextConfig = _fancyTextConfigs[_currentEffect];
 
     if (this.fontStyle !== spec.FontStyle.normal) {
-      // 0.0174532925 = 3.141592653 / 180
-      this.fontOffset += this.fontSize * Math.tan(12 * 0.0174532925);
+      this._fontOffset += this.fontSize * Math.tan(12 * 0.0174532925);
     }
-
   }
 }

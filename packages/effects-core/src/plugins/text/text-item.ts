@@ -363,19 +363,6 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置文本颜色
-   * @param value - 颜色内容
-   * @returns
-   */
-  setTextColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.textColor === value) {
-      return;
-    }
-    this.textStyle.textColor = value;
-    this.isDirty = true;
-  }
-
-  /**
    * 设置文本字体
    * @param value - 文本字体
    * @returns
@@ -400,6 +387,10 @@ export class TextComponentBase {
       return;
     }
     this.textStyle.outlineColor = value;
+
+    // 转换为花字配置
+    this.textStyle.updateStrokeParams({ color: value, enabled: true });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -413,6 +404,10 @@ export class TextComponentBase {
       return;
     }
     this.textStyle.outlineWidth = value;
+
+    // 转换为花字配置
+    this.textStyle.updateStrokeParams({ width: value, enabled: true });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -426,6 +421,10 @@ export class TextComponentBase {
       return;
     }
     this.textStyle.shadowBlur = value;
+
+    // 转换为花字配置
+    this.textStyle.updateShadowParams({ blur: value });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -453,6 +452,10 @@ export class TextComponentBase {
       return;
     }
     this.textStyle.shadowColor = value;
+
+    // 转换为花字配置
+    this.textStyle.updateShadowParams({ color: value });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -462,24 +465,101 @@ export class TextComponentBase {
    * @returns
    */
   setShadowOffsetX (value: number): void {
+    if (!this.textStyle.canEditParam('shadow')) {
+      console.warn('当前预设不允许修改阴影水平偏移');
+
+      return;
+    }
     if (this.textStyle.shadowOffsetX === value) {
       return;
     }
     this.textStyle.shadowOffsetX = value;
+
+    // 转换为花字配置
+    this.textStyle.updateShadowParams({ offsetX: value });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
   /**
-   * 设置阴影水平偏移距离
-   * @param value - 水平偏移距离
+   * 设置阴影垂直偏移距离
+   * @param value - 垂直偏移距离
    * @returns
    */
   setShadowOffsetY (value: number): void {
+    if (!this.textStyle.canEditParam('shadow')) {
+      console.warn('当前预设不允许修改阴影垂直偏移');
+
+      return;
+    }
     if (this.textStyle.shadowOffsetY === value) {
       return;
     }
     this.textStyle.shadowOffsetY = value;
+
+    // 转换为花字配置
+    this.textStyle.updateShadowParams({ offsetY: value });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
+  }
+
+  /**
+   * 设置文本颜色
+   * @param value - 颜色内容
+   * @returns
+   */
+  setTextColor (value: spec.RGBAColorValue): void {
+    if (!this.textStyle.canEditParam('fill')) {
+      console.warn('当前预设不允许修改文本颜色');
+
+      return;
+    }
+    if (this.textStyle.textColor === value) {
+      return;
+    }
+    this.textStyle.textColor = value;
+
+    // 转换为花字配置
+    this.textStyle.updateFillParams({ color: value });
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置预设特效
+   * @param presetName - 预设名称
+   */
+  setPresetEffect (presetName: string): void {
+    this.textStyle.setPresetEffect(presetName);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 启用/禁用描边
+   * @param enabled - 是否启用描边
+   */
+  setStrokeEnabled (enabled: boolean): void {
+    this.textStyle.setStrokeEnabled(enabled);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 启用/禁用阴影
+   * @param enabled - 是否启用阴影
+   */
+  setShadowEnabled (enabled: boolean): void {
+    this.textStyle.setShadowEnabled(enabled);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 获取当前花字特效配置
+   */
+  getCurrentFancyTextConfig () {
+    return this.textStyle.getCurrentFancyTextConfig();
   }
 
   /**
@@ -557,20 +637,10 @@ export class TextComponentBase {
     }
     context.clearRect(0, 0, width, height);
 
-    const useEffects = this.effects && this.effects.length > 0;
-
-    if (!useEffects) {
-      if (style.hasShadow) {
-        this.setupShadow();
-      }
-      if (style.isOutlined) {
-        this.setupOutline();
-      }
-    } else {
-      // 使用效果栈时，确保初始状态干净
-      context.shadowColor = 'transparent';
-      context.lineJoin = 'round';
-    }
+    // 统一使用花字渲染系统
+    // 确保初始状态干净
+    context.shadowColor = 'transparent';
+    context.lineJoin = 'round';
 
     // 文本颜色
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
@@ -615,20 +685,15 @@ export class TextComponentBase {
       charOffsetX,
     });
 
-    // 绘画花字和普通文字
-    if (!this.effects || this.effects.length === 0) {
-      // 普通文本，不是花字的逻辑
-      this.renderOriginal(context, charsInfo, style, layout);
-    } else {
-      renderWithEffects(
-        this.canvas,
-        context,
-        style,
-        layout,
-        charsInfo,
-        this.effects
-      );
-    }
+    // 统一使用花字渲染系统
+    renderWithEffects(
+      this.canvas,
+      context,
+      style,
+      layout,
+      charsInfo,
+      this.effects
+    );
 
     if (style.hasShadow) {
       context.shadowColor = 'transparent';

@@ -274,6 +274,7 @@ export class ShadowEffect implements TextEffect {
     private shadowColor: string = '#EE4949',
     private shadowOffsetX: number = 2,
     private shadowOffsetY: number = 2,
+    private blur: number = 5,
     private strokeWidth: number = 0.12,
     private strokeColor: string = '#F7A4A4',
     private topStrokeWidth: number = 0.04,
@@ -298,7 +299,7 @@ export class ShadowEffect implements TextEffect {
 
     // 底层：粗描边 + 投影
     ctx.shadowColor = this.shadowColor;
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur = this.blur;
     ctx.shadowOffsetX = this.shadowOffsetX;
     ctx.shadowOffsetY = this.shadowOffsetY;
     ctx.lineWidth = this.strokeWidth * fontSize;

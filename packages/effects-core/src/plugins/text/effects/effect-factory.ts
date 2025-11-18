@@ -87,7 +87,7 @@ export class EffectFactory {
       color = [0, 0, 0, 0.8],
       offsetX = 5,
       offsetY = 5,
-      strokeWidth = 0.12,
+      blur = 5,
       strokeColor = '#F7A4A4',
       topStrokeWidth = 0.04,
       topStrokeColor = '#FFFFFF',
@@ -95,7 +95,15 @@ export class EffectFactory {
 
     const shadowColor = EffectFactory.rgbaToString(color);
 
-    return new ShadowEffect(shadowColor, offsetX, offsetY, strokeWidth, strokeColor, topStrokeWidth, topStrokeColor);
+    return new ShadowEffect(
+      shadowColor,
+      offsetX,
+      offsetY,
+      blur,
+      strokeColor,
+      topStrokeWidth,
+      topStrokeColor
+    );
   }
 
   /**
