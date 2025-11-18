@@ -209,6 +209,23 @@ export class TextComponentBase {
   }
 
   /**
+   * 设置行高
+   * 行高表示每行占用的总高度
+   * @param value - 行高像素值
+   */
+  setLineHeight (value: number): void {
+    const fontSize = this.textStyle.fontSize;
+    const safe = Math.max(fontSize, value);
+
+    if (this.textLayout.lineHeight === safe) {
+      return;
+    }
+
+    this.textLayout.lineHeight = safe;
+    this.isDirty = true;
+  }
+
+  /**
    * 设置字重
    * @param value - 字重类型
    * @returns
