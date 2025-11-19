@@ -5,7 +5,7 @@ import '@galacean/effects-plugin-spine';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*1zOzT6g_Mw8AAAAAQgAAAAgAelB4AQ';
 const json_ktx2_spine = 'https://mdn.alipayobjects.com/mars/afts/file/A*lnmBT7dsNNgAAAAAQFAAAAgAelB4AQ';
-const json_ktx2_ffd = `{
+const json_ktx2 = `{
   "playerVersion": {
     "web": "2.7.3",
     "native": "0.0.1.202311221223"
@@ -414,7 +414,7 @@ const container = document.getElementById('J-container');
     },
   });
 
-  await player.loadScene(json_ktx2_ffd, {
+  await player.loadScene(json_ktx2, {
     useCompressedTexture: true,
   });
 })();
