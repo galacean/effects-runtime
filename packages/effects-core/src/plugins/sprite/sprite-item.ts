@@ -90,7 +90,7 @@ export class ComponentTimePlayable extends Playable {
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends MaskableGraphic {
   time = 0;
-  duration = 0;
+  duration = 1;
   loop = true;
   /**
    * @internal
