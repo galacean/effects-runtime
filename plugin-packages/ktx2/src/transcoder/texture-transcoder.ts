@@ -4,7 +4,7 @@ export abstract class TextureTranscoder {
   protected transcodeWorkerPool: WorkerPool;
   protected initPromise: Promise<any>;
 
-  constructor (public readonly workerLimitCount: number) {}
+  constructor (public readonly workerLimitCount: number) { }
 
   init () {
     if (!this.initPromise) {
@@ -84,11 +84,6 @@ export type TranscodeResult = {
   faceCount: number,
 };
 
-export type TranscodeResponse = {
-  id: number,
-  type: 'transcoded',
-} & TranscodeResult;
-
 export interface EncodedData {
   buffer: Uint8Array,
   levelWidth: number,
@@ -101,6 +96,7 @@ export interface KhronosTranscoderMessage extends BaseMessage {
   format: number,
   needZstd: boolean,
   data: EncodedData[][],
+  wasmBuffer: ArrayBuffer,
 }
 
 export type IKhronosMessageMessage = InitMessage | KhronosTranscoderMessage;

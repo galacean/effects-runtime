@@ -52,12 +52,12 @@ export class AssetManager implements Disposable {
   /**
    * 字体加载方法
    * @param fonts - 字体定义数组
-   * @param [baseURL=location.href] - URL 的 base 字段
+   * @param [baseUrl=location.href] - URL 的 base 字段
    * @returns
    */
   static async loadFontFamily (
     fonts: spec.FontDefine[],
-    baseURL = location.href,
+    baseUrl = location.href,
   ) {
     // 对老数据的兼容
     if (!fonts) {
@@ -72,7 +72,7 @@ export class AssetManager implements Disposable {
           console.warn(`Risky font family: ${font.fontFamily}.`);
         }
         try {
-          const url = new URL(font.fontURL, baseURL).href;
+          const url = new URL(font.fontURL, baseUrl).href;
           const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
           await fontFace.load();
@@ -325,15 +325,12 @@ export class AssetManager implements Disposable {
       } else if ('ktx2' in img && useCompressedTexture) {
         // ktx2 压缩纹理
         const { ktx2 } = img;
+        // @ts-expect-error TODO: 待更新 spec 类型
+        const bufferURL = new URL(ktx2, baseUrl).href;
 
-        if (ktx2) {
-          const bufferURL = new URL(ktx2 as string, baseUrl).href;
+        this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
 
-          this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
-
-          return this.loadBins(bufferURL);
-        }
-
+        return this.loadBins(bufferURL);
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||

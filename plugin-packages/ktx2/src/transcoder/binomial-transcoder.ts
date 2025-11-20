@@ -1,10 +1,11 @@
-/* eslint-disable compat/compat */
+import { getConfig } from '@galacean/effects';
 import type { KTX2TargetFormat } from '../ktx2-common';
 import type { TranscodeResult } from './texture-transcoder';
 import { TextureTranscoder } from './texture-transcoder';
 import { TranscodeWorkerCode, init, transcode, _init } from './binomial-workercode';
+import { BASIS_TRANSCODER_JS, BASIS_TRANSCODER_WASM } from '../constants';
+import { loadScript, loadWasm } from './fetch';
 
-/** @internal */
 export class BinomialLLCTranscoder extends TextureTranscoder {
   private blobURL?: string;
   private scriptElement?: HTMLScriptElement;
@@ -13,61 +14,57 @@ export class BinomialLLCTranscoder extends TextureTranscoder {
     super(workerLimitCount);
   }
 
-  initTranscodeWorkerPool () {
-    return Promise.all([
-      fetch('https://mdn.alipayobjects.com/rms/afts/file/A*nG8SR6vCgXgAAAAAAAAAAAAAARQnAQ/basis_transcoder.js').then(
-        res => res.text()
-      ),
-      fetch('https://mdn.alipayobjects.com/rms/afts/file/A*qEUfQ7317KsAAAAAAAAAAAAAARQnAQ/basis_transcoder.wasm').then(
-        res => res.arrayBuffer()
-      ),
-    ]).then(([jsCode, wasmBuffer]) => {
-      if (this.workerLimitCount === 0) {
-        // 使用主线程
-        return new Promise<any>((resolve, reject) => {
-          const scriptDom = document.createElement('script');
-          const blobURL = URL.createObjectURL(new Blob([jsCode], { type: 'application/javascript' }));
+  async initTranscodeWorkerPool () {
+    const [jsCode, wasmBuffer] = await Promise.all([
+      loadScript(getConfig(BASIS_TRANSCODER_JS)),
+      loadWasm(getConfig(BASIS_TRANSCODER_WASM)),
+    ]);
 
-          this.blobURL = blobURL;
-          this.scriptElement = scriptDom;
+    if (this.workerLimitCount === 0) {
+      // 使用主线程
+      return new Promise<any>((resolve, reject) => {
+        const scriptDom = document.createElement('script');
+        const blobURL = URL.createObjectURL(new Blob([jsCode], { type: 'application/javascript' }));
 
-          scriptDom.src = blobURL;
-          document.body.appendChild(scriptDom);
+        this.blobURL = blobURL;
+        this.scriptElement = scriptDom;
 
-          scriptDom.onload = () => {
-            init(wasmBuffer).then(() => {
-              URL.revokeObjectURL(blobURL);
-              this.blobURL = undefined;
-              resolve(null);
-            }).catch((err: any) => {
-              this.cleanup();
-              reject(err);
-            });
-          };
+        scriptDom.src = blobURL;
+        document.body.appendChild(scriptDom);
 
-          scriptDom.onerror = () => {
+        scriptDom.onload = () => {
+          init(wasmBuffer).then(() => {
+            URL.revokeObjectURL(blobURL);
+            this.blobURL = undefined;
+            resolve(null);
+          }).catch((err: any) => {
             this.cleanup();
-            reject(new Error('Failed to load transcoder script'));
-          };
-        });
-      } else {
-        //使用worker
-        const funcCode = TranscodeWorkerCode.toString();
-        const transcodeString = funcCode.substring(funcCode.indexOf('{'), funcCode.lastIndexOf('}') + 1);
+            reject(err);
+          });
+        };
 
-        const workerCode = `
+        scriptDom.onerror = () => {
+          this.cleanup();
+          reject(new Error('Failed to load transcoder script'));
+        };
+      });
+    } else {
+      // 使用 Worker
+      const funcCode = TranscodeWorkerCode.toString();
+      const transcodeString = funcCode.substring(funcCode.indexOf('{'), funcCode.lastIndexOf('}') + 1);
+
+      const workerCode = `
         ${jsCode}
         ${transcode.toString()}
         ${transcodeString}
         `;
 
-        const workerURL = URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' }));
+      const workerURL = URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' }));
 
-        this.blobURL = workerURL;
+      this.blobURL = workerURL;
 
-        return this.createTranscodePool(workerURL, wasmBuffer);
-      }
-    });
+      return this.createTranscodePool(workerURL, wasmBuffer);
+    }
   }
 
   transcode (buffer: Uint8Array, format: KTX2TargetFormat): Promise<TranscodeResult> {

@@ -1,6 +1,5 @@
 import type { IBinomialMessage, TranscodeResult } from './texture-transcoder';
 
-/** @internal */
 export function TranscodeWorkerCode () {
   let initPromise: any;
 
@@ -111,7 +110,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
   }
 
   function concat (arrays: Uint8Array[]) {
-    if (arrays.length === 1) {return arrays[0];}
+    if (arrays.length === 1) { return arrays[0]; }
     let totalByteLength = 0;
 
     for (let i = 0; i < arrays.length; i++) {
@@ -203,7 +202,7 @@ export function transcode (buffer: Uint8Array, targetFormat: any, KTX2File: any)
     width,
     height,
     hasAlpha,
-    faceCount: faceCount,
+    faceCount,
     format,
   };
 }
