@@ -1,12 +1,15 @@
 import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, Renderer, Texture, VFXItem } from '@galacean/effects';
-import { RenderPass } from '@galacean/effects';
-import { Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, TextureLoadAction } from '@galacean/effects';
-import { HitTestType, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
+import {
+  RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
+  TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
+  effectsClass, glContext, math, serialize, spec,
+} from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
-import { iconTextures, type EditorGizmoPlugin } from './gizmo-loader';
-import type { GizmoItemBounding, Ray, TriangleLike } from './gizmo-vfx-item';
-import { BoundingType, type GizmoItemBoundingSphere } from './gizmo-vfx-item';
+import type { EditorGizmoPlugin } from './gizmo-loader';
+import { iconTextures } from './gizmo-loader';
+import type { GizmoItemBoundingSphere, GizmoItemBounding, Ray, TriangleLike } from './gizmo-vfx-item';
+import { BoundingType } from './gizmo-vfx-item';
 import { computeOrthographicOffCenter } from './math-utils';
 import { createMeshFromSubType } from './mesh';
 import { intersectRayLine } from './raycast';
