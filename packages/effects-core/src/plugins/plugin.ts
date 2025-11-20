@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Scene, SceneLoadOptions } from '../scene';
-import type { VFXItem } from '../vfx-item';
 import type { RenderFrame, Renderer } from '../render';
 import type { Composition } from '../composition';
 
@@ -27,41 +26,11 @@ export interface Plugin {
   onCompositionConstructed: (composition: Composition, scene: Scene) => void,
 
   /**
-   * 合成 delay 结束后触发，合成播放阶段只触发一次此函数
-   * @param composition
-   * @param item
-   */
-  onCompositionItemLifeBegin: (composition: Composition, item: VFXItem) => void,
-
-  /**
-   * 合成生命周期结束时触发（无论结束行为）
-   * 合成播放阶段只触发一次此函数
-   * @param composition
-   * @param item
-   */
-  onCompositionItemLifeEnd: (composition: Composition, item: VFXItem) => void,
-
-  /**
-   * 合成销毁时触发（当合成的结束行为是冻结、循环或合成配置了 reusable 时不触发）
-   * 元素销毁应该在合成销毁时调用。
-   * @param composition
-   * @param item
-   */
-  onCompositionItemRemoved: (composition: Composition, item: VFXItem) => void,
-
-  /**
    * 合成重播时的回调
    * @param composition
    * @param frame
    */
   onCompositionReset: (composition: Composition, frame: RenderFrame) => void,
-
-  /**
-   * 合成即将重播，此函数后 frame 会被销毁
-   * @param composition
-   * @param frame
-   */
-  onCompositionWillReset: (composition: Composition, frame: RenderFrame) => void,
 
   /**
    * 合成销毁时的会调，需要销毁 composition 中对应的资源
@@ -75,24 +44,6 @@ export interface Plugin {
    * @param dt 更新的毫秒
    */
   onCompositionUpdate: (composition: Composition, dt: number) => void,
-
-  /**
-   * 合成更新后，在渲染前进行 RenderFrame 的配置，添加渲染的 Mesh 到 renderFrame 中，
-   * 如果此函数返回 true，将进行 renderFrame 后处理函数配置
-   * mesh 的 priority 必须等于 item.listIndex，否则渲染顺序将不符合 Galacean Effects 的规则
-   * @param composition
-   * @param frame
-   * @return 默认 false，为 true 时才会执行 postProcessFrame
-   */
-  prepareRenderFrame (composition: Composition, frame: RenderFrame): boolean,
-
-  /**
-   * 当所有的 plugin 都调用过 prepareRenderFrame 后，对于需要进行后处理的 plugin，调用此函数，
-   * 此函数一般用于切割 renderPass，如果对于 renderPass 有切割，记得在销毁时还原切割
-   * @param composition
-   * @param frame
-   */
-  postProcessFrame: (composition: Composition, frame: RenderFrame) => void,
 }
 
 export interface PluginConstructor {
@@ -147,23 +98,9 @@ export abstract class AbstractPlugin implements Plugin {
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
 
-  onCompositionItemLifeBegin (composition: Composition, item: VFXItem): void { }
-
-  onCompositionItemLifeEnd (composition: Composition, item: VFXItem): void { }
-
-  onCompositionItemRemoved (composition: Composition, item: VFXItem): void { }
-
   onCompositionReset (composition: Composition, frame: RenderFrame): void { }
-
-  onCompositionWillReset (composition: Composition, frame: RenderFrame): void { }
 
   onCompositionDestroyed (composition: Composition): void { }
 
   onCompositionUpdate (composition: Composition, dt: number): void { }
-
-  prepareRenderFrame (composition: Composition, frame: RenderFrame): boolean {
-    return false;
-  }
-
-  postProcessFrame (composition: Composition, frame: RenderFrame): void { }
 }
