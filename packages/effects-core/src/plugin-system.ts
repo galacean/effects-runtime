@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Composition } from './composition';
 import type { Plugin, PluginConstructor } from './plugins';
-import type { RenderFrame, Renderer } from './render';
+import type { Renderer } from './render';
 import type { Scene, SceneLoadOptions } from './scene';
 import type { Constructor } from './utils';
 import { addItem, removeItem, logger } from './utils';
@@ -80,10 +80,6 @@ export class PluginSystem {
 
   destroyComposition (comp: Composition) {
     this.plugins.forEach(loader => loader.onCompositionDestroyed(comp));
-  }
-
-  resetComposition (comp: Composition, renderFrame: RenderFrame) {
-    this.plugins.forEach(loader => loader.onCompositionReset(comp, renderFrame));
   }
 
   async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): Promise<void[]> {

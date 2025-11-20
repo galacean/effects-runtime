@@ -30,9 +30,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
       iconTextures.set(name, createTexture(engine, image));
     });
     iconImages.clear();
-  }
 
-  override onCompositionReset (composition: Composition) {
     const items = composition.items;
     const targetMap: { [key: string]: VFXItem[] } = {};
 

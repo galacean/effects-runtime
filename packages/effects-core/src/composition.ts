@@ -377,7 +377,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
-    this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
   /**
@@ -617,7 +616,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.isEnded = false;
     this.isEndCalled = false;
     this.rootComposition.time = 0;
-    this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
   prepareRender () { }

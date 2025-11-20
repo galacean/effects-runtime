@@ -1,5 +1,5 @@
 import type {
-  Scene, SceneLoadOptions, Composition, RenderFrame, Engine, Component, Renderer,
+  Scene, SceneLoadOptions, Composition, Engine, Component, Renderer,
 } from '@galacean/effects';
 import {
   VFXItem, AbstractPlugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
@@ -102,14 +102,7 @@ export class ModelPlugin extends AbstractPlugin {
 
     this.cache = new CompositionCache(engine);
     this.cache.setup(false);
-  }
 
-  /**
-   * 每次播放都会执行，包括重播，所以这里执行“小的销毁”和新的初始化
-   * @param composition - 合成
-   * @param renderFrame - 渲染帧
-   */
-  override onCompositionReset (composition: Composition, renderFrame: RenderFrame) {
     const props = {
       id: 'ModelPluginItem',
       name: 'ModelPluginItem',
@@ -119,11 +112,10 @@ export class ModelPlugin extends AbstractPlugin {
     const item = new VFXItem(composition.getEngine(), props);
 
     composition.addItem(item);
-    //
-    const comp = item.addComponent(ModelPluginComponent);
+    const modelPluginComponent = item.addComponent(ModelPluginComponent);
 
-    comp.fromData({ cache: this.cache });
-    comp.initial(this.sceneParams);
+    modelPluginComponent.fromData({ cache: this.cache });
+    modelPluginComponent.sceneParams = this.sceneParams;
   }
 
   /**
@@ -179,6 +171,8 @@ export class ModelPluginComponent extends Behaviour {
    */
   scene: PSceneManager;
 
+  sceneParams: Record<string, any>;
+
   /**
    * 构造函数，创建场景管理器
    * @param engine - 引擎
@@ -189,6 +183,10 @@ export class ModelPluginComponent extends Behaviour {
     if (options) {
       this.fromData(options);
     }
+  }
+
+  override onAwake (): void {
+    this.initial(this.sceneParams);
   }
 
   /**

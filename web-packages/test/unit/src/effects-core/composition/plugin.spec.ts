@@ -40,12 +40,6 @@ describe('core/composition/plugin', () => {
         updateSpy(ipp());
       }
 
-      override onCompositionReset (composition: Composition) {
-        expect(composition.items).to.be.an('array').with.lengthOf(1);
-        // @ts-expect-error
-        resetSpy(ipp());
-      }
-
       override onCompositionConstructed (composition: Composition, scene: Scene) {
         expect(scene.storage.xx).to.eql(1);
         expect(composition.items.length).to.eql(1);
@@ -59,9 +53,8 @@ describe('core/composition/plugin', () => {
 
     player.gotoAndStop(0.1);
 
-    expect(resetSpy).to.have.been.called.with(1);
     expect(constructSpy).to.have.been.called.with(0);
-    expect(updateSpy).to.have.been.called.with(2);
+    expect(updateSpy).to.have.been.called.with(1);
   });
 
   // TODO 与老版JsonScene加载逻辑判断不同，没有考虑重复加载的情况。

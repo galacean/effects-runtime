@@ -9,13 +9,11 @@ export class OrientationPluginLoader extends AbstractPlugin implements Disposabl
 
   private adapter: OrientationAdapterAcceler | null = null;
 
-  override onCompositionConstructed () {
+  override onCompositionConstructed (composition: Composition) {
     this.adapter = getAdapter();
     this.adapter?.connect();
     this.bindAccelerDocumentEvent();
-  }
 
-  override onCompositionReset (composition: Composition): void {
     const transformer = composition.loaderData.deviceTransformer = new CompositionTransformerAcceler(composition);
 
     this.adapter?.addTransformer(transformer);

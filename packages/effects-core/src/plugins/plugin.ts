@@ -1,6 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Scene, SceneLoadOptions } from '../scene';
-import type { RenderFrame, Renderer } from '../render';
+import type { Renderer } from '../render';
 import type { Composition } from '../composition';
 
 export interface Plugin {
@@ -24,13 +24,6 @@ export interface Plugin {
    * @param scene
    */
   onCompositionConstructed: (composition: Composition, scene: Scene) => void,
-
-  /**
-   * 合成重播时的回调
-   * @param composition
-   * @param frame
-   */
-  onCompositionReset: (composition: Composition, frame: RenderFrame) => void,
 
   /**
    * 合成销毁时的会调，需要销毁 composition 中对应的资源
@@ -97,8 +90,6 @@ export abstract class AbstractPlugin implements Plugin {
   precompile (compositions: spec.CompositionData[], renderer: Renderer): void { }
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
-
-  onCompositionReset (composition: Composition, frame: RenderFrame): void { }
 
   onCompositionDestroyed (composition: Composition): void { }
 
