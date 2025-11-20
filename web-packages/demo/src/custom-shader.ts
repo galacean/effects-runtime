@@ -8,7 +8,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureControllerNew } from './texture-controller-new.js';
 enum MainStage { Listening, Input }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*xNoxSpP63Y8AAAAAQaAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*QP8eRJ6h2s8AAAAAQZAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 const DEBUG = true; // 调试模式
 
@@ -363,9 +363,9 @@ void main() {
 
   // Y 方向 mask：0.2 以下为 0，以上从 0→1 且越上越快（写死参数）
   float y = uv.y;
-  float start = 0.2;                         // 起始 Y，以下不受噪声影响
+  float start = 0.01;                         // 起始 Y，以下不受噪声影响
   float rawMask = clamp((y - start) / (1.0 - start), 0.0, 1.0);
-  float power = 2.0;                         // >1 越靠上变化越快
+  float power =  1.3;                         // >1 越靠上变化越快
   float yMask = pow(rawMask, power);
 
   // 最终扰动偏移，噪声部分乘以 yMask，verticalOffset 保持原逻辑
@@ -422,7 +422,7 @@ void main() {
   
   }
 
-  if (_BgIsWhite > 0.5) {
+  if (0.0 > 0.5) {
     vec3 c = clamp(finalColor.rgb, 0.0, 1.0);
     float L = dot(c, vec3(0.299, 0.587, 0.114));
     vec3 gray = vec3(L);
@@ -607,13 +607,13 @@ let material: Material | undefined;
         material.setFloat('_TextureCount', shaderParams._TextureCount);
 
         // 初始化时绑定三张纹理
-        material.setTexture('_Tex0', FirstStageBlueTexture);
-        material.setTexture('_Tex1', FirstStageGreenTexture);
-        material.setTexture('_Tex2', cloudTexture);
-        // 设置噪声纹理
-        material.setTexture('_NoiseTex', noiseTexture);
-        // 设置T噪声纹理
-        material.setTexture('_T_NoiseTex', T_noiseTexture);
+        // material.setTexture('_Tex0', FirstStageBlueTexture);
+        // material.setTexture('_Tex1', FirstStageGreenTexture);
+        // material.setTexture('_Tex2', cloudTexture);
+        // // 设置噪声纹理
+        // material.setTexture('_NoiseTex', noiseTexture);
+        // // 设置T噪声纹理
+        // material.setTexture('_T_NoiseTex', T_noiseTexture);
         // 设置噪声强度
         material.setFloat('_Strength', 2.0);
         // 纹理层级已在shader中硬编码，不再需要设置
@@ -631,14 +631,14 @@ let material: Material | undefined;
 
         // 初始化噪声参数（使用之前硬编码的值）
         material.setFloat('_NoiseScaleX', 0.1);
-        material.setFloat('_NoiseScaleY', -0.35);
+        material.setFloat('_NoiseScaleY', -0.19);
         material.setFloat('_NoiseSpeedX', 0.1);
         material.setFloat('_NoiseSpeedY', 0.1);
-        material.setFloat('_NoiseUVScaleX', 0.1);
+        material.setFloat('_NoiseUVScaleX', 0.35);
         material.setFloat('_NoiseUVScaleY', 0.1);
 
         // 初始化细节噪声参数
-        material.setFloat('_DetailNoiseScale', 0.1);
+        material.setFloat('_DetailNoiseScale', 0.05);
         material.setFloat('_DetailNoiseScaleX', 0.35);
         material.setFloat('_DetailNoiseScaleY', 0.55);
         material.setFloat('_DetailNoiseSpeedX', 0.30);
