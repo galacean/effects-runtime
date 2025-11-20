@@ -1,24 +1,23 @@
-import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-ktx2';
-import '@galacean/effects-plugin-ffd';
+import { Player, setConfig } from '@galacean/effects';
+import { BASIS_TRANSCODER_JS, BASIS_TRANSCODER_WASM, KHRONOS_UASTC_ASTC_WASM, KHRONOS_ZSTD_DECODER_WASM } from '@galacean/effects-plugin-ktx2';
 import '@galacean/effects-plugin-spine';
-
+import '@galacean/effects-plugin-ffd';
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*1zOzT6g_Mw8AAAAAQgAAAAgAelB4AQ';
 const json_ktx2_spine = 'https://mdn.alipayobjects.com/mars/afts/file/A*lnmBT7dsNNgAAAAAQFAAAAgAelB4AQ';
 const json_ktx2 = `{
   "playerVersion": {
-    "web": "2.7.3",
+    "web": "2.7.0",
     "native": "0.0.1.202311221223"
   },
   "images": [
     {
-      "id": "6a7f84aea6c044a4b055fcdeeef8d49e",
-      "ktx2": "https://mdn.alipayobjects.com/mars/afts/file/A*mTDtSbgkNUoAAAAAQIAAAAgAelB4AQ/original",
+      "id": "981c5f4c34134005854cf0cb768d45be",
+      "ktx2": "https://mdn.alipayobjects.com/mars/afts/file/A*Q0JLTZaekosAAAAAQpAAAAgAelB4AQ/original",
       "url": "https://mdn.alipayobjects.com/mars/afts/file/A*Jo17ToPrHF8AAAAAQWAAAAgAelB4AQ/original"
     },
     {
-      "id": "329790a354254d6fb9ebb8004abf9a00",
-      "ktx2": "https://mdn.alipayobjects.com/mars/afts/file/A*_ocyQKtPvR8AAAAAQKAAAAgAelB4AQ/original",
+      "id": "ae4e2e56505a4a4181f1911307d74cff",
+      "ktx2": "https://mdn.alipayobjects.com/mars/afts/file/A*Qz8_R7XR_lQAAAAAQmAAAAgAelB4AQ/original",
       "url": "https://mdn.alipayobjects.com/mars/afts/file/A*WoL5TqCEmukAAAAAQYAAAAgAelB4AQ/original"
     }
   ],
@@ -28,7 +27,7 @@ const json_ktx2 = `{
   "type": "ge",
   "compositions": [
     {
-      "id": "4a18d8d3c87a43e7975608f28d481760",
+      "id": "1e96d2ae76eb4f81b3c5e589b1192419",
       "name": "新建合成1",
       "duration": 5,
       "startTime": 0,
@@ -44,16 +43,16 @@ const json_ktx2 = `{
       },
       "components": [
         {
-          "id": "677c3ae1a28c4a05980abf510208475f"
+          "id": "3971de4f490a42eda24357ee4e29807e"
         }
       ]
     }
   ],
   "components": [
     {
-      "id": "677c3ae1a28c4a05980abf510208475f",
+      "id": "3971de4f490a42eda24357ee4e29807e",
       "item": {
-        "id": "4a18d8d3c87a43e7975608f28d481760"
+        "id": "1e96d2ae76eb4f81b3c5e589b1192419"
       },
       "dataType": "CompositionComponent",
       "items": [
@@ -65,12 +64,12 @@ const json_ktx2 = `{
         }
       ],
       "timelineAsset": {
-        "id": "ea328671aa284b5da74fefc67f28a378"
+        "id": "7bbd2bf6757449e2999287e2ae1e5e4f"
       },
       "sceneBindings": [
         {
           "key": {
-            "id": "5d14464a734a47b2888a8edbd5146ba2"
+            "id": "356e2c53d8b04614a32ced079db61d66"
           },
           "value": {
             "id": "d0680050c92d48e4af6271ce0a7cf3ea"
@@ -78,7 +77,7 @@ const json_ktx2 = `{
         },
         {
           "key": {
-            "id": "53c6b3a6790145108808883dd9f67434"
+            "id": "3848626cb16f4d13b4d57e9c754c34f1"
           },
           "value": {
             "id": "3b0050cfb14c4f5299e9275e5f7fde6c"
@@ -87,7 +86,7 @@ const json_ktx2 = `{
       ]
     },
     {
-      "id": "83bf293fb5d444878274ce7ed22658f4",
+      "id": "291fc61dd0cc4ca4bbd132910db571b8",
       "item": {
         "id": "d0680050c92d48e4af6271ce0a7cf3ea"
       },
@@ -98,12 +97,12 @@ const json_ktx2 = `{
       "renderer": {
         "renderMode": 1,
         "texture": {
-          "id": "362bdc0d384d499c82e198bc916241c8"
+          "id": "1c89a5f5c796475f8dd3fea2cc0c7847"
         }
       }
     },
     {
-      "id": "97053e05ed194bafb5bd0eaeb35d11e3",
+      "id": "b6cfdf624dde4638be85987129a38a20",
       "item": {
         "id": "3b0050cfb14c4f5299e9275e5f7fde6c"
       },
@@ -114,7 +113,7 @@ const json_ktx2 = `{
       "renderer": {
         "renderMode": 1,
         "texture": {
-          "id": "813bca9a61e94edf97b14465ab03f046"
+          "id": "659aea660ef44becb625b9b868eab687"
         }
       }
     }
@@ -128,12 +127,12 @@ const json_ktx2 = `{
       "duration": 5,
       "type": "1",
       "visible": true,
-      "endBehavior": 0,
+      "endBehavior": 2,
       "delay": 0,
       "renderLevel": "B+",
       "components": [
         {
-          "id": "83bf293fb5d444878274ce7ed22658f4"
+          "id": "291fc61dd0cc4ca4bbd132910db571b8"
         }
       ],
       "transform": {
@@ -169,12 +168,12 @@ const json_ktx2 = `{
       "duration": 5,
       "type": "1",
       "visible": true,
-      "endBehavior": 0,
+      "endBehavior": 2,
       "delay": 0,
       "renderLevel": "B+",
       "components": [
         {
-          "id": "97053e05ed194bafb5bd0eaeb35d11e3"
+          "id": "b6cfdf624dde4638be85987129a38a20"
         }
       ],
       "transform": {
@@ -209,16 +208,16 @@ const json_ktx2 = `{
   "bins": [],
   "textures": [
     {
-      "id": "362bdc0d384d499c82e198bc916241c8",
+      "id": "1c89a5f5c796475f8dd3fea2cc0c7847",
       "source": {
-        "id": "6a7f84aea6c044a4b055fcdeeef8d49e"
+        "id": "981c5f4c34134005854cf0cb768d45be"
       },
       "flipY": true
     },
     {
-      "id": "813bca9a61e94edf97b14465ab03f046",
+      "id": "659aea660ef44becb625b9b868eab687",
       "source": {
-        "id": "329790a354254d6fb9ebb8004abf9a00"
+        "id": "ae4e2e56505a4a4181f1911307d74cff"
       },
       "flipY": true
     }
@@ -226,107 +225,107 @@ const json_ktx2 = `{
   "animations": [],
   "miscs": [
     {
-      "id": "ea328671aa284b5da74fefc67f28a378",
+      "id": "7bbd2bf6757449e2999287e2ae1e5e4f",
       "dataType": "TimelineAsset",
       "tracks": [
         {
-          "id": "5d14464a734a47b2888a8edbd5146ba2"
+          "id": "356e2c53d8b04614a32ced079db61d66"
         },
         {
-          "id": "53c6b3a6790145108808883dd9f67434"
+          "id": "3848626cb16f4d13b4d57e9c754c34f1"
         }
       ]
     },
     {
-      "id": "a0015638f99140128af2916ac7e6fddc",
+      "id": "ed8b2fbab2d54d17bec03191e27b01c1",
       "dataType": "ActivationPlayableAsset"
     },
     {
-      "id": "7e69de4e7c5b48e4867ebee3fa15cada",
+      "id": "801ee6c0e5d546f1b39ef5eaa4c2c5f4",
       "dataType": "TransformPlayableAsset",
       "positionOverLifetime": {
 
       }
     },
     {
-      "id": "99da978afa734db38e260a4286483fc8",
+      "id": "1aacab2406b24540929e5c3160eddf45",
       "dataType": "SpriteColorPlayableAsset",
       "startColor": [1, 1, 1, 1]
     },
     {
-      "id": "7802e10ee5a1448ca3948a14437091dd",
+      "id": "202c44f8f0064c39bc359a914211cd94",
       "dataType": "ActivationTrack",
       "children": [],
       "clips": [
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
-            "id": "a0015638f99140128af2916ac7e6fddc"
+            "id": "ed8b2fbab2d54d17bec03191e27b01c1"
           }
         }
       ]
     },
     {
-      "id": "b530d2f083294eb2b7b2ad66667078c1",
+      "id": "a5955e85e37a49738d4eeaf118640c1b",
       "dataType": "TransformTrack",
       "children": [],
       "clips": [
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
-            "id": "7e69de4e7c5b48e4867ebee3fa15cada"
+            "id": "801ee6c0e5d546f1b39ef5eaa4c2c5f4"
           }
         }
       ]
     },
     {
-      "id": "bb7da4436d664b52b7b76f0679e93737",
+      "id": "9942fbe490264fd29f62c4332912bf62",
       "dataType": "SpriteColorTrack",
       "children": [],
       "clips": [
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
-            "id": "99da978afa734db38e260a4286483fc8"
+            "id": "1aacab2406b24540929e5c3160eddf45"
           }
         }
       ]
     },
     {
-      "id": "5d14464a734a47b2888a8edbd5146ba2",
+      "id": "356e2c53d8b04614a32ced079db61d66",
       "dataType": "ObjectBindingTrack",
       "children": [
         {
-          "id": "7802e10ee5a1448ca3948a14437091dd"
+          "id": "202c44f8f0064c39bc359a914211cd94"
         },
         {
-          "id": "b530d2f083294eb2b7b2ad66667078c1"
+          "id": "a5955e85e37a49738d4eeaf118640c1b"
         },
         {
-          "id": "bb7da4436d664b52b7b76f0679e93737"
+          "id": "9942fbe490264fd29f62c4332912bf62"
         }
       ],
       "clips": []
     },
     {
-      "id": "e8fec4f74ce64407907e4c71cd22b2bf",
+      "id": "4da1f85119c64feba5b52f015f0b62c9",
       "dataType": "ActivationPlayableAsset"
     },
     {
-      "id": "e7b1916a928d478784212419b7b2d576",
+      "id": "1d3ec98141dd44b09353ee7ec84c40e9",
       "dataType": "TransformPlayableAsset",
       "positionOverLifetime": {
 
       }
     },
     {
-      "id": "cecacce5574f4557888bd8c46635aff7",
+      "id": "53ede6ae987849d6b8aca06cd3968a96",
       "dataType": "SpriteColorPlayableAsset",
       "startColor": [1, 1, 1, 1],
       "colorOverLifetime": {
@@ -340,70 +339,75 @@ const json_ktx2 = `{
       }
     },
     {
-      "id": "f68c7d7d50c54954ab0bca70c7e76a99",
+      "id": "d218c1babebe4d519842728dc51ec1a5",
       "dataType": "ActivationTrack",
       "children": [],
       "clips": [
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
-            "id": "e8fec4f74ce64407907e4c71cd22b2bf"
+            "id": "4da1f85119c64feba5b52f015f0b62c9"
           }
         }
       ]
     },
     {
-      "id": "8ec7ebbf8ebe42c2a332f1747422d709",
+      "id": "2ed85474222f4df584a830e15fd03b32",
       "dataType": "TransformTrack",
       "children": [],
       "clips": [
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
-            "id": "e7b1916a928d478784212419b7b2d576"
+            "id": "1d3ec98141dd44b09353ee7ec84c40e9"
           }
         }
       ]
     },
     {
-      "id": "a1e4fabf9d8c4018b34b346fb4b3dbc2",
+      "id": "cfba32cec3f14db197d80fcb5d759f02",
       "dataType": "SpriteColorTrack",
       "children": [],
       "clips": [
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
-            "id": "cecacce5574f4557888bd8c46635aff7"
+            "id": "53ede6ae987849d6b8aca06cd3968a96"
           }
         }
       ]
     },
     {
-      "id": "53c6b3a6790145108808883dd9f67434",
+      "id": "3848626cb16f4d13b4d57e9c754c34f1",
       "dataType": "ObjectBindingTrack",
       "children": [
         {
-          "id": "f68c7d7d50c54954ab0bca70c7e76a99"
+          "id": "d218c1babebe4d519842728dc51ec1a5"
         },
         {
-          "id": "8ec7ebbf8ebe42c2a332f1747422d709"
+          "id": "2ed85474222f4df584a830e15fd03b32"
         },
         {
-          "id": "a1e4fabf9d8c4018b34b346fb4b3dbc2"
+          "id": "cfba32cec3f14db197d80fcb5d759f02"
         }
       ],
       "clips": []
     }
   ],
-  "compositionId": "4a18d8d3c87a43e7975608f28d481760"
+  "compositionId": "1e96d2ae76eb4f81b3c5e589b1192419"
 }`;
 const container = document.getElementById('J-container');
+
+setConfig(BASIS_TRANSCODER_JS, 'https://mdn.alipayobjects.com/rms/afts/file/A*nG8SR6vCgXgAAAAAAAAAAAAAARQnAQ/basis_transcoder.js');
+setConfig(BASIS_TRANSCODER_WASM, 'https://mdn.alipayobjects.com/rms/afts/file/A*qEUfQ7317KsAAAAAAAAAAAAAARQnAQ/basis_transcoder.wasm');
+setConfig(KHRONOS_UASTC_ASTC_WASM, 'https://mdn.alipayobjects.com/rms/afts/file/A*0jiKRK6D1-kAAAAAAAAAAAAAARQnAQ/uastc_astc.wasm');
+setConfig(KHRONOS_ZSTD_DECODER_WASM, 'https://mdn.alipayobjects.com/rms/afts/file/A*awNJR7KqIAEAAAAAAAAAAAAAARQnAQ/zstddec.wasm');
 
 (async () => {
   const player = new Player({
@@ -414,7 +418,7 @@ const container = document.getElementById('J-container');
     },
   });
 
-  await player.loadScene(json_ktx2, {
+  await player.loadScene(json_ktx2_spine, {
     useCompressedTexture: true,
   });
 })();
