@@ -223,45 +223,12 @@ export enum CompressTextureCapabilityType {
 }
 
 /**
- * 检测 Web Worker 支持
- * @returns 是否支持 Web Worker
- */
-function checkWebWorkerSupport (): boolean {
-  // 检查 Worker 构造函数
-  if (typeof Worker === 'undefined') {
-    return false;
-  }
-
-  try {
-    // 检查 Blob 和 URL 支持（某些环境如小程序可能不支持）
-    if (typeof Blob === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
-      return false;
-    }
-
-    // 尝试创建一个简单的 Worker 来验证
-    const blob = new Blob(['self.postMessage(1);'], { type: 'application/javascript' });
-    const url = URL.createObjectURL(blob);
-    const worker = new Worker(url);
-
-    // 立即终止，避免资源占用
-    worker.terminate();
-    URL.revokeObjectURL(url);
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
  * 检测 KTX2 支持
  * KTX2 可以包含多种压缩格式，需要检测是否支持至少一种
  */
 function detectKTX2Support (compressTextureCapabilityList: Map<CompressTextureCapabilityType, boolean>): boolean {
   // KTX2 转码通常需要 Web Worker 来提升性能
-  if (!checkWebWorkerSupport()) {
-    return false;
-  }
+  if (!window.Worker) {return false;}
 
   // KTX2 文件可以包含多种压缩格式，检测是否支持至少一种
   const hasCompressedTextureSupport =
