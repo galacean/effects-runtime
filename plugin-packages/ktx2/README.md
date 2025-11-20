@@ -1,4 +1,4 @@
-# Galacean Effects Free-form deformation Plugin
+# Galacean Effects KTX2 Plugin
 
 ## Usage
 

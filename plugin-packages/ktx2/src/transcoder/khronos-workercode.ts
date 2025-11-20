@@ -37,23 +37,12 @@ export function TranscodeWorkerCode () {
       },
     };
     public static instance: { exports: DecoderExports };
-    public static WasmModuleURL =
-      'https://mdn.alipayobjects.com/rms/afts/file/A*awNJR7KqIAEAAAAAAAAAAAAAARQnAQ/zstddec.wasm';
 
     public _initPromise: Promise<any>;
 
-    init (): Promise<void> {
+    init (wasmBuffer: ArrayBuffer): Promise<void> {
       if (!this._initPromise) {
-        this._initPromise = fetch(ZSTDDecoder.WasmModuleURL)
-          .then(response => {
-            if (response.ok) {
-              return response.arrayBuffer();
-            }
-            throw new Error(
-              `Could not fetch the wasm component for the Zstandard decompression lib: ${response.status} - ${response.statusText}`
-            );
-          })
-          .then(arrayBuffer => WebAssembly.instantiate(arrayBuffer, ZSTDDecoder.IMPORT_OBJECT))
+        this._initPromise = WebAssembly.instantiate(wasmBuffer, ZSTDDecoder.IMPORT_OBJECT)
           .then(this._init);
       }
 
@@ -102,7 +91,7 @@ export function TranscodeWorkerCode () {
     const memory = wasmTranscoder.memory;
     const delta = texMemoryPages + 1 - (memory.buffer.byteLength >> 16);
 
-    if (delta > 0) {memory.grow(delta);}
+    if (delta > 0) { memory.grow(delta); }
 
     const textureView = new Uint8Array(memory.buffer, 65536, nBlocks * 16);
 
@@ -121,21 +110,24 @@ export function TranscodeWorkerCode () {
 
   const zstdDecoder = new ZSTDDecoder();
 
-  function transcode (data: EncodedData[][], needZstd: boolean, wasmModule: WasmModule) {
+  function transcode (
+    data: EncodedData[][],
+    needZstd: boolean,
+    wasmModule: WasmModule,
+    wasmBuffer?: ArrayBuffer,
+  ) {
     const faceCount = data.length;
-    const result = new Array<
-    {
+    const result = new Array<{
       width: number,
       height: number,
       data: Uint8Array,
-    }[]
-    >(faceCount);
+    }[]>(faceCount);
 
     let promise = Promise.resolve();
     const decodedLevelCache = needZstd ? new Map<number, Uint8Array>() : undefined;
 
-    if (needZstd) {
-      zstdDecoder.init();
+    if (needZstd && wasmBuffer) {
+      zstdDecoder.init(wasmBuffer);
       promise = zstdDecoder._initPromise;
     }
 
@@ -207,7 +199,7 @@ export function TranscodeWorkerCode () {
       case 'transcode':
         // eslint-disable-next-line promise/catch-or-return
         wasmPromise.then(module => {
-          transcode(message.data, message.needZstd, module)
+          transcode(message.data, message.needZstd, module, message.wasmBuffer)
             .then(decodedData => {
               self.postMessage(decodedData);
             })

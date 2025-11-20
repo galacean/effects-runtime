@@ -1,5 +1,5 @@
-import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-ktx2';
+import { Player, setConfig } from '@galacean/effects';
+import { BASIS_TRANSCODER_JS, BASIS_TRANSCODER_WASM, KHRONOS_UASTC_ASTC_WASM, KHRONOS_ZSTD_DECODER_WASM } from '@galacean/effects-plugin-ktx2';
 
 const json_ktx2 = `{
   "playerVersion": {
@@ -124,7 +124,7 @@ const json_ktx2 = `{
       "duration": 5,
       "type": "1",
       "visible": true,
-      "endBehavior": 0,
+      "endBehavior": 2,
       "delay": 0,
       "renderLevel": "B+",
       "components": [
@@ -165,7 +165,7 @@ const json_ktx2 = `{
       "duration": 5,
       "type": "1",
       "visible": true,
-      "endBehavior": 0,
+      "endBehavior": 2,
       "delay": 0,
       "renderLevel": "B+",
       "components": [
@@ -257,7 +257,7 @@ const json_ktx2 = `{
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
             "id": "ed8b2fbab2d54d17bec03191e27b01c1"
           }
@@ -272,7 +272,7 @@ const json_ktx2 = `{
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
             "id": "801ee6c0e5d546f1b39ef5eaa4c2c5f4"
           }
@@ -287,7 +287,7 @@ const json_ktx2 = `{
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
             "id": "1aacab2406b24540929e5c3160eddf45"
           }
@@ -343,7 +343,7 @@ const json_ktx2 = `{
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
             "id": "4da1f85119c64feba5b52f015f0b62c9"
           }
@@ -358,7 +358,7 @@ const json_ktx2 = `{
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
             "id": "1d3ec98141dd44b09353ee7ec84c40e9"
           }
@@ -373,7 +373,7 @@ const json_ktx2 = `{
         {
           "start": 0,
           "duration": 5,
-          "endBehavior": 0,
+          "endBehavior": 2,
           "asset": {
             "id": "53ede6ae987849d6b8aca06cd3968a96"
           }
@@ -400,6 +400,11 @@ const json_ktx2 = `{
   "compositionId": "1e96d2ae76eb4f81b3c5e589b1192419"
 }`;
 const container = document.getElementById('J-container');
+
+setConfig(BASIS_TRANSCODER_JS, '/transcoders/basis_transcoder.js');
+setConfig(BASIS_TRANSCODER_WASM, '/transcoders/basis_transcoder.wasm');
+setConfig(KHRONOS_UASTC_ASTC_WASM, '/transcoders/uastc_astc.wasm');
+setConfig(KHRONOS_ZSTD_DECODER_WASM, '/transcoders/zstddec.wasm');
 
 (async () => {
   const player = new Player({

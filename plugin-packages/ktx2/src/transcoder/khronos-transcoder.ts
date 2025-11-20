@@ -1,13 +1,16 @@
-/* eslint-disable compat/compat */
+import { getConfig } from '@galacean/effects';
 import type { KTX2Container } from '../ktx2-container';
 import { SupercompressionScheme } from '../ktx2-container';
 import type { KTX2TargetFormat } from '../ktx2-common';
 import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './texture-transcoder';
 import { TextureTranscoder } from './texture-transcoder';
 import { TranscodeWorkerCode } from './khronos-workercode';
+import { KHRONOS_UASTC_ASTC_WASM, KHRONOS_ZSTD_DECODER_WASM } from '../constants';
+import { loadWasm } from './fetch';
 
-/** @internal */
 export class KhronosTranscoder extends TextureTranscoder {
+  private workerURL?: string;
+  private zstdWasmPromise?: Promise<ArrayBuffer>;
 
   constructor (
     workerLimitCount: number,
@@ -16,42 +19,43 @@ export class KhronosTranscoder extends TextureTranscoder {
     super(workerLimitCount);
   }
 
-  private workerURL?: string;
+  async initTranscodeWorkerPool () {
+    const wasmBuffer = await loadWasm(getConfig(KHRONOS_UASTC_ASTC_WASM));
+    const funcCode = TranscodeWorkerCode.toString();
+    const workerURL = URL.createObjectURL(
+      new Blob([funcCode.substring(funcCode.indexOf('{') + 1, funcCode.lastIndexOf('}'))], {
+        type: 'application/javascript',
+      })
+    );
 
-  initTranscodeWorkerPool () {
-    return fetch('https://mdn.alipayobjects.com/rms/afts/file/A*0jiKRK6D1-kAAAAAAAAAAAAAARQnAQ/uastc_astc.wasm')
-      .then(res => res.arrayBuffer())
-      .then(wasmBuffer => {
-        const funcCode = TranscodeWorkerCode.toString();
-        const workerURL = URL.createObjectURL(
-          new Blob([funcCode.substring(funcCode.indexOf('{') + 1, funcCode.lastIndexOf('}'))], {
-            type: 'application/javascript',
-          })
-        );
+    this.workerURL = workerURL;
 
-        this.workerURL = workerURL;
-
-        return this.createTranscodePool(workerURL, wasmBuffer);
-      });
+    return this.createTranscodePool(workerURL, wasmBuffer);
   }
 
-  transcode (ktx2Container: KTX2Container): Promise<TranscodeResult> {
+  async transcode (ktx2Container: KTX2Container): Promise<TranscodeResult> {
     const needZstd = ktx2Container.supercompressionScheme === SupercompressionScheme.Zstd;
-
     const levelCount = ktx2Container.levels.length;
     const faceCount = ktx2Container.faceCount;
-
-    const decodedData: any = {
+    const decodedData: TranscodeResult = {
       width: ktx2Container.pixelWidth,
       height: ktx2Container.pixelHeight,
+      // @ts-expect-error TODO: mipmaps 类型待确认
       mipmaps: null,
     };
+    let wasmBuffer: ArrayBuffer | undefined;
+
+    if (needZstd) {
+      this.zstdWasmPromise ??= loadWasm(getConfig(KHRONOS_ZSTD_DECODER_WASM));
+      wasmBuffer = await this.zstdWasmPromise;
+    }
 
     const postMessageData: KhronosTranscoderMessage = {
       type: 'transcode',
       format: 0,
       needZstd,
       data: new Array<EncodedData[]>(faceCount),
+      wasmBuffer,
     };
 
     const messageData = postMessageData.data;
@@ -77,12 +81,14 @@ export class KhronosTranscoder extends TextureTranscoder {
       messageData[faceIndex] = mipmapData;
     }
 
-    return this.transcodeWorkerPool.postMessage(postMessageData).then(data => {
-      decodedData.faces = data;
-      decodedData.hasAlpha = true;
+    return this.transcodeWorkerPool
+      .postMessage(postMessageData)
+      .then(data => {
+        decodedData.faces = data;
+        decodedData.hasAlpha = true;
 
-      return decodedData;
-    });
+        return decodedData;
+      });
   }
   override destroy (): void {
     super.destroy();
