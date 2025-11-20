@@ -59,10 +59,40 @@ export class TextComponent extends MaskableGraphic {
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
+  static getDefaultProps (): spec.TextComponentData {
+    return {
+      id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
+      item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
+      dataType: spec.DataType.TextComponent,
+      options: {
+        text: '默认文本',
+        fontFamily: 'AlibabaSans-BoldItalic',
+        fontSize: 40,
+        textColor: [255, 255, 255, 1],
+        fontWeight: spec.TextWeight.normal,
+        letterSpace: 0,
+        textAlign: 1,
+        fontStyle: spec.FontStyle.normal,
+        autoWidth: false,
+        textWidth: 722.6878055675425,
+        textHeight: 113,
+        lineHeight: 40.148,
+      },
+      renderer: {
+        renderMode: 1,
+        anchor: [0.5, 0.5],
+      },
+    };
+  }
+
   constructor (engine: Engine, props?: spec.TextComponentData) {
     super(engine);
 
     this.name = 'MText' + seed++;
+
+    if (!props) {
+      props = TextComponent.getDefaultProps() ;
+    }
 
     if (props) {
       this.fromData(props);
