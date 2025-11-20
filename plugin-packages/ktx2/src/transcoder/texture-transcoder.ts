@@ -96,7 +96,7 @@ export interface KhronosTranscoderMessage extends BaseMessage {
   format: number,
   needZstd: boolean,
   data: EncodedData[][],
-  wasmBuffer: ArrayBuffer,
+  wasmBuffer?: ArrayBuffer,
 }
 
 export type IKhronosMessageMessage = InitMessage | KhronosTranscoderMessage;

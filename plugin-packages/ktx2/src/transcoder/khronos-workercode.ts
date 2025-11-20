@@ -114,7 +114,7 @@ export function TranscodeWorkerCode () {
     data: EncodedData[][],
     needZstd: boolean,
     wasmModule: WasmModule,
-    wasmBuffer: ArrayBuffer,
+    wasmBuffer?: ArrayBuffer,
   ) {
     const faceCount = data.length;
     const result = new Array<{
@@ -126,7 +126,7 @@ export function TranscodeWorkerCode () {
     let promise = Promise.resolve();
     const decodedLevelCache = needZstd ? new Map<number, Uint8Array>() : undefined;
 
-    if (needZstd) {
+    if (needZstd && wasmBuffer) {
       zstdDecoder.init(wasmBuffer);
       promise = zstdDecoder._initPromise;
     }
