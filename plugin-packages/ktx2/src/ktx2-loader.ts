@@ -1,10 +1,15 @@
+import type {
+  GPUCapability, Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader,
+} from '@galacean/effects';
+import {
+  TextureSourceType, CompressTextureCapabilityType, loadBinary, isPowerOfTwo, glContext,
+  textureLoaderRegistry,
+} from '@galacean/effects';
 import { KTX2TargetFormat, TextureFormat } from './ktx2-common';
-import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 import { DFDTransferFunction, KTX2Container } from './ktx2-container';
-import { BinomialLLCTranscoder } from './transcoder/binomial-transcoder';
-import { TextureSourceType, CompressTextureCapabilityType, loadBinary, isPowerOfTwo, glContext, textureLoaderRegistry } from '@galacean/effects';
 import type { TranscodeResult } from './transcoder/texture-transcoder';
-import type { GPUCapability, Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader } from '@galacean/effects';
+import { KhronosTranscoder } from './transcoder/khronos-transcoder';
+import { BinomialLLCTranscoder } from './transcoder/binomial-transcoder';
 
 export class KTX2Loader implements TextureLoader {
   private binomialLLCTranscoder: BinomialLLCTranscoder | null = null;
@@ -46,10 +51,9 @@ export class KTX2Loader implements TextureLoader {
   };
 
   constructor (
-    private readonly preferKhronosTranscoder: boolean = false,
-    private readonly workerCount: number = 2
-  ) {
-  }
+    private readonly preferKhronosTranscoder = false,
+    private readonly workerCount = 2,
+  ) { }
 
   /**
    * 初始化 BinomialLLC Transcoder
@@ -177,7 +181,7 @@ export class KTX2Loader implements TextureLoader {
     // TODO: DIY priorityFormats
     const formatPriorities = this.priorityFormats[ktx2Container.isUASTC ? 'uastc' : 'etc1s'];
     const targetFormat = this.decideTargetFormat(ktx2Container, formatPriorities, gpuCapability);
-    const transcodeTarget = (targetFormat === KTX2TargetFormat.ETC1) ? KTX2TargetFormat.ETC : targetFormat;
+    const transcodeTarget = targetFormat === KTX2TargetFormat.ETC1 ? KTX2TargetFormat.ETC : targetFormat;
 
     let transcodeResultPromise: Promise<TranscodeResult>;
 
@@ -269,7 +273,7 @@ export class KTX2Loader implements TextureLoader {
     priorityFormats: KTX2TargetFormat[],
     isSRGB: boolean,
     hasAlpha: boolean,
-    gpuCapability?: GPUCapability
+    gpuCapability?: GPUCapability,
   ): KTX2TargetFormat | null {
     for (let i = 0; i < priorityFormats.length; i++) {
       const format = priorityFormats[i];
@@ -430,7 +434,7 @@ export class KTX2Loader implements TextureLoader {
       type,
     });
 
-    // 当 gpuCapability 未提供时，按"WebGL1 且无扩展"的最保守路径处理
+    // 当 gpuCapability 未提供时，按“WebGL1 且无扩展”的最保守路径处理
     const isWebGL2 = !!gpuCapability?.isWebGL2;
     const can = (cap: CompressTextureCapabilityType) => {
       try {
@@ -516,7 +520,7 @@ export class KTX2Loader implements TextureLoader {
   private checkUploadable (
     transcodeResult: TranscodeResult,
     targetFormat: KTX2TargetFormat,
-    gpuCapability?: GPUCapability
+    gpuCapability?: GPUCapability,
   ): void {
     const engineFormat = this.getEngineTextureFormat(targetFormat, transcodeResult.hasAlpha);
 
@@ -550,7 +554,7 @@ export class KTX2Loader implements TextureLoader {
     srcBuffer: Uint8Array,
     transcodeResult: TranscodeResult,
     targetFormat: KTX2TargetFormat,
-    gpuCapability?: GPUCapability
+    gpuCapability?: GPUCapability,
   ): Promise<{ result: TranscodeResult, targetFormat: KTX2TargetFormat }> {
     const can = (cap: CompressTextureCapabilityType) => {
       try {
@@ -635,7 +639,7 @@ export function registerKTX2Loader (options?: {
   preferKhronosTranscoder?: boolean,
   workerCount?: number,
 }) {
-  const { preferKhronosTranscoder: preferKhronosTranscoder = true, workerCount = 2 } = options ?? {};
+  const { preferKhronosTranscoder = true, workerCount = 2 } = options ?? {};
 
   textureLoaderRegistry.register('ktx2', () => {
     return new KTX2Loader(preferKhronosTranscoder, workerCount);

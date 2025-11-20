@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-floating-promises */
-/* eslint-disable compat/compat */
+/* eslint-disable promise/no-nesting */
 import type { EncodedData, IKhronosMessageMessage } from './texture-transcoder';
 
+// eslint-disable-next-line compat/compat
 interface WasmModule extends WebAssembly.Exports {
   memory: WebAssembly.Memory,
   transcode: (nBlocks: number) => number,
@@ -15,10 +15,14 @@ interface DecoderExports {
     uncompressedPtr: number,
     uncompressedSize: number,
     compressedPtr: number,
-    compressedSize: number
+    compressedSize: number,
   ) => number,
   malloc: (ptr: number) => number,
   free: (ptr: number) => void,
+}
+
+interface DecoderInstance {
+  readonly exports: DecoderExports,
 }
 
 export function TranscodeWorkerCode () {
@@ -36,24 +40,21 @@ export function TranscodeWorkerCode () {
         },
       },
     };
-    public static instance: { exports: DecoderExports };
-
-    public _initPromise: Promise<any>;
+    public static instance: DecoderInstance;
+    public initPromise: Promise<any>;
 
     init (wasmBuffer: ArrayBuffer): Promise<void> {
-      if (!this._initPromise) {
-        this._initPromise = WebAssembly.instantiate(wasmBuffer, ZSTDDecoder.IMPORT_OBJECT)
-          .then(this._init);
+      if (!this.initPromise) {
+        this.initPromise = WebAssembly
+          .instantiate(wasmBuffer, ZSTDDecoder.IMPORT_OBJECT)
+          .then(this.initInstance);
       }
 
-      return this._initPromise;
+      return this.initPromise;
     }
 
-    _init (result: WebAssembly.WebAssemblyInstantiatedSource): void {
-      ZSTDDecoder.instance = result.instance as unknown as {
-        exports: DecoderExports,
-      };
-
+    initInstance (result: WebAssembly.WebAssemblyInstantiatedSource): void {
+      ZSTDDecoder.instance = result.instance as unknown as DecoderInstance;
       ZSTDDecoder.IMPORT_OBJECT.env.emscripten_notify_memory_growth(); // initialize heap.
     }
 
@@ -84,7 +85,13 @@ export function TranscodeWorkerCode () {
       return dec;
     }
   }
-  function transcodeASTCAndBC7 (wasmTranscoder: WasmModule, compressedData: Uint8Array, width: number, height: number) {
+
+  function transcodeASTCAndBC7 (
+    wasmTranscoder: WasmModule,
+    compressedData: Uint8Array,
+    width: number,
+    height: number,
+  ) {
     const nBlocks = ((width + 3) >> 2) * ((height + 3) >> 2);
 
     const texMemoryPages = (nBlocks * 16 + 65535) >> 16;
@@ -101,9 +108,13 @@ export function TranscodeWorkerCode () {
   }
 
   function initWasm (buffer: ArrayBuffer): Promise<WasmModule> {
-    wasmPromise = WebAssembly.instantiate(buffer, {
-      env: { memory: new WebAssembly.Memory({ initial: 16 }) },
-    }).then(moduleWrapper => <WasmModule>moduleWrapper.instance.exports);
+    // eslint-disable-next-line compat/compat
+    wasmPromise = WebAssembly
+      .instantiate(buffer, {
+        // eslint-disable-next-line compat/compat
+        env: { memory: new WebAssembly.Memory({ initial: 16 }) },
+      })
+      .then(moduleWrapper => <WasmModule>moduleWrapper.instance.exports);
 
     return wasmPromise;
   }
@@ -122,13 +133,12 @@ export function TranscodeWorkerCode () {
       height: number,
       data: Uint8Array,
     }[]>(faceCount);
-
-    let promise = Promise.resolve();
     const decodedLevelCache = needZstd ? new Map<number, Uint8Array>() : undefined;
+    let promise = Promise.resolve();
 
     if (needZstd && wasmBuffer) {
-      zstdDecoder.init(wasmBuffer);
-      promise = zstdDecoder._initPromise;
+      void zstdDecoder.init(wasmBuffer);
+      promise = zstdDecoder.initPromise;
     }
 
     return promise.then(() => {
@@ -145,11 +155,11 @@ export function TranscodeWorkerCode () {
           let levelBuffer = buffer;
 
           if (needZstd) {
-            let decoded = decodedLevelCache!.get(i);
+            let decoded = decodedLevelCache?.get(i);
 
             if (!decoded) {
               decoded = zstdDecoder.decode(buffer.slice(), uncompressedByteLength);
-              decodedLevelCache!.set(i, decoded);
+              decodedLevelCache?.set(i, decoded);
             }
 
             levelBuffer = decoded;
@@ -172,7 +182,7 @@ export function TranscodeWorkerCode () {
               height: levelHeight,
             };
           } else {
-            throw 'buffer decoded error';
+            throw new Error('buffer decoded error');
           }
         }
         result[faceIndex] = decodedData;
@@ -191,20 +201,22 @@ export function TranscodeWorkerCode () {
           .then(() => {
             self.postMessage('init-completed');
           })
-          .catch(e => {
-            self.postMessage({ error: e });
+          .catch(error => {
+            self.postMessage({ error });
           });
 
         break;
       case 'transcode':
-        // eslint-disable-next-line promise/catch-or-return
-        wasmPromise.then(module => {
-          transcode(message.data, message.needZstd, module, message.wasmBuffer)
-            .then(decodedData => {
-              self.postMessage(decodedData);
-            })
-            .catch(e => self.postMessage({ error: e }));
-        });
+        wasmPromise
+          .then(module => {
+            transcode(message.data, message.needZstd, module, message.wasmBuffer)
+              .then(decodedData => {
+                self.postMessage(decodedData);
+              })
+              .catch(error => self.postMessage({ error }));
+          }).catch(error => {
+            self.postMessage({ error });
+          });
 
         break;
     }

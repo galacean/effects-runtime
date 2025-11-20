@@ -8,14 +8,14 @@ export class BufferReader {
 
   constructor (
     public data: Uint8Array,
-    byteOffset: number = 0,
+    byteOffset = 0,
     byteLength?: number,
-    littleEndian: boolean = true
+    littleEndian = true,
   ) {
     this.dataView = new DataView(
       data.buffer,
       data.byteOffset + byteOffset,
-      byteLength ?? data.byteLength - byteOffset
+      byteLength ?? data.byteLength - byteOffset,
     );
     this.littleEndian = littleEndian;
     this.pos = 0;
@@ -136,7 +136,7 @@ export class BufferReader {
       this.pos++;
     }
 
-    if (byteLength < maxByteLength) {this.pos++;}
+    if (byteLength < maxByteLength) { this.pos++; }
 
     return new Uint8Array(this.dataView.buffer, this.dataView.byteOffset + byteOffset, byteLength);
   }

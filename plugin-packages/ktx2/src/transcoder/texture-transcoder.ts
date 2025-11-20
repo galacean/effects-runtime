@@ -2,9 +2,11 @@ import { WorkerPool } from './worker-pool';
 
 export abstract class TextureTranscoder {
   protected transcodeWorkerPool: WorkerPool;
-  protected initPromise: Promise<any>;
+  protected initPromise: Promise<Worker[]>;
 
-  constructor (public readonly workerLimitCount: number) { }
+  constructor (
+    public readonly workerLimitCount: number,
+  ) { }
 
   init () {
     if (!this.initPromise) {
@@ -18,7 +20,7 @@ export abstract class TextureTranscoder {
     this.transcodeWorkerPool?.destroy();
   }
 
-  protected abstract initTranscodeWorkerPool (): Promise<any>;
+  protected abstract initTranscodeWorkerPool (): Promise<Worker[]>;
 
   protected createTranscodePool (workerURL: string, wasmBuffer: ArrayBuffer) {
     this.transcodeWorkerPool = new WorkerPool(this.workerLimitCount, () => {

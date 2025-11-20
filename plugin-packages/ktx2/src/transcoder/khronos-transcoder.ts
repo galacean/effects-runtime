@@ -14,7 +14,7 @@ export class KhronosTranscoder extends TextureTranscoder {
 
   constructor (
     workerLimitCount: number,
-    public readonly type: KTX2TargetFormat
+    public readonly type: KTX2TargetFormat,
   ) {
     super(workerLimitCount);
   }
@@ -81,15 +81,14 @@ export class KhronosTranscoder extends TextureTranscoder {
       messageData[faceIndex] = mipmapData;
     }
 
-    return this.transcodeWorkerPool
-      .postMessage(postMessageData)
-      .then(data => {
-        decodedData.faces = data;
-        decodedData.hasAlpha = true;
+    const faces = await this.transcodeWorkerPool.postMessage(postMessageData);
 
-        return decodedData;
-      });
+    decodedData.faces = faces;
+    decodedData.hasAlpha = true;
+
+    return decodedData;
   }
+
   override destroy (): void {
     super.destroy();
 

@@ -12,7 +12,7 @@ export enum KTX2TargetFormat {
   /** RGB compressed format, 4 bits per pixel (no alpha support). */
   ETC1,
   /** RGBA format, 32 bits per pixel. */
-  RGBA8
+  RGBA8,
 }
 
 /**

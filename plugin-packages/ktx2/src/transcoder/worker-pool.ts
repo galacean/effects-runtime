@@ -8,14 +8,14 @@ export class WorkerPool<T = any, U = any> {
   private workerItems: WorkerItem<U>[];
   private initPromises: Map<number, Promise<Worker>> = new Map();
   private destroyed = false;
-  /*
-  WorkerPool 的构造函数。
-  @param limitedCount - worker数量上限
-  @param workerCreator - worker创建器
-  */
+  /**
+   * WorkerPool 的构造函数。
+   * @param limitedCount - worker数量上限
+   * @param workerCreator - worker创建器
+   */
   constructor (
     public readonly limitedCount = 3,
-    private readonly workerCreator: () => Worker | Promise<Worker>
+    private readonly workerCreator: () => Worker | Promise<Worker>,
   ) {
     if (limitedCount > 32 || limitedCount < 1) {
       throw new Error('limitedCount must be between 1 and 32');
@@ -42,11 +42,11 @@ export class WorkerPool<T = any, U = any> {
     return this.initPromises.get(workerId)!;
   }
 
-  /*
-  *向 worker 发送消息。
-  *@param message - 要发送给 worker 的消息
-  *@returns 返回一个消息处理结果的 Promise
-  */
+  /**
+   * 向 worker 发送消息。
+   * @param message - 要发送给 worker 的消息
+   * @returns 返回一个消息处理结果的 Promise
+   */
   postMessage (message: T): Promise<U> {
     if (this.destroyed) {
       return Promise.reject(new Error('Worker Pool destroyed'));
@@ -100,8 +100,8 @@ export class WorkerPool<T = any, U = any> {
 
       this.workerItems[workerId] = {
         worker,
-        resolve: () => {},
-        reject: () => {},
+        resolve: () => { },
+        reject: () => { },
         onMessage,
         onError,
       };
@@ -146,7 +146,6 @@ export class WorkerPool<T = any, U = any> {
 
   private nextTask (workerId: number) {
     if (this.taskQueue.length) {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       const taskItem = this.taskQueue.shift() as TaskItem<T, U>;
       const workerItem = this.workerItems[workerId];
 

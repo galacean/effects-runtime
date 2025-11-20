@@ -3,22 +3,21 @@ import { decodeText } from './transcoder/texture-transcoder';
 
 export enum DFDTransferFunction {
   linear = 1,
-  sRGB = 2
+  sRGB = 2,
 }
 
 enum ColorModel {
   ETC1S = 163,
-  UASTC = 166
+  UASTC = 166,
 }
 
 export enum SupercompressionScheme {
   None,
   BasisLZ,
   Zstd,
-  ZLib
+  ZLib,
 }
 
-/** @internal */
 export class KTX2Container {
   vkFormat = 0;
 
@@ -40,7 +39,7 @@ export class KTX2Container {
 
   dataFormatDescriptor: KTX2DataFormatDescriptorBasicFormat;
 
-  keyValue: { [key: string]: string | Uint8Array } = {};
+  keyValue: Record<string, string | Uint8Array> = {};
 
   globalData: KTX2GlobalDataBasisLZ | null = null;
 
@@ -68,6 +67,7 @@ export class KTX2Container {
     if (data.length < KTX2_IDENTIFIER.length || !KTX2_IDENTIFIER.every((v, i) => data[i] === v)) {
       throw new Error('Texture missing KTX2 identifier.');
     }
+
     const buffer = data.buffer;
     const byteOffset = data.byteOffset;
 
@@ -108,6 +108,7 @@ export class KTX2Container {
         uncompressedByteLength: levelReader.nextUint64(),
       };
     }
+
     // Data Format Descriptor (DFD).
     const dfdReader = new BufferReader(data, dfdByteOffset, dfdByteLength);
 
@@ -120,7 +121,12 @@ export class KTX2Container {
       colorPrimaries: dfdReader.nextUint8(),
       transferFunction: dfdReader.nextUint8(),
       flags: dfdReader.nextUint8(),
-      texelBlockDimension: [dfdReader.nextUint8(), dfdReader.nextUint8(), dfdReader.nextUint8(), dfdReader.nextUint8()],
+      texelBlockDimension: [
+        dfdReader.nextUint8(),
+        dfdReader.nextUint8(),
+        dfdReader.nextUint8(),
+        dfdReader.nextUint8(),
+      ],
       bytesPlane: [
         dfdReader.nextUint8(),
         dfdReader.nextUint8(),
@@ -145,7 +151,12 @@ export class KTX2Container {
         bitOffset: dfdReader.nextUint16(),
         bitLength: dfdReader.nextUint8(),
         channelType: dfdReader.nextUint8(),
-        samplePosition: [dfdReader.nextUint8(), dfdReader.nextUint8(), dfdReader.nextUint8(), dfdReader.nextUint8()],
+        samplePosition: [
+          dfdReader.nextUint8(),
+          dfdReader.nextUint8(),
+          dfdReader.nextUint8(),
+          dfdReader.nextUint8(),
+        ],
         sampleLower: -Infinity,
         sampleUpper: Infinity,
       };
@@ -188,7 +199,7 @@ export class KTX2Container {
       kvdReader.skip(kvPadding);
     }
 
-    if (sgdByteLength <= 0) {return this;}
+    if (sgdByteLength <= 0) { return this; }
 
     const sgdReader = new BufferReader(data, sgdByteOffset, sgdByteLength, true);
 
@@ -252,11 +263,10 @@ interface KTX2DataFormatDescriptorBasicFormat {
   bytesPlane: [number, number, number, number, number, number, number, number],
   samples: KTX2BasicFormatSample[],
 }
+
 interface KTX2BasicFormatSample {
   bitOffset: number,
   bitLength: number,
-  /** @deprecated Renamed to 'channelType'. */
-  channelID?: number,
   channelType: number,
   samplePosition: number[],
   sampleLower: number,
