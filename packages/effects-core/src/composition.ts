@@ -6,7 +6,7 @@ import { CompositionComponent } from './comp-vfx-item';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
-import type { EventSystem, Plugin, Region } from './plugins';
+import type { EventSystem, Region } from './plugins';
 import type { Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
@@ -240,7 +240,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否是否每次渲染时清除 RenderFrame 颜色缓存
    */
   protected readonly keepColorBuffer: boolean;
-  protected readonly postLoaders: Plugin[] = [];
   protected rootComposition: CompositionComponent;
 
   /**
@@ -621,18 +620,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
-  prepareRender () {
-    const frame = this.renderFrame;
-
-    this.postLoaders.length = 0;
-    this.pluginSystem.plugins.forEach(loader => {
-      if (loader.prepareRenderFrame(this, frame)) {
-        this.postLoaders.push(loader);
-      }
-    });
-
-    this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
-  }
+  prepareRender () { }
 
   /**
    * 合成更新，针对所有 item 的更新
@@ -854,18 +842,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
-    if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.EndBehavior.freeze) {
-        const contentItems = item.getComponent(CompositionComponent).items;
-
-        contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));
-      }
-    } else {
+    if (item.type !== spec.ItemType.composition) {
       // this.content.removeItem(item);
       // 预合成中的元素移除
       // this.refContent.forEach(content => content.removeItem(item));
       removeItem(this.items, item);
-      this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, item));
     }
   }
 
