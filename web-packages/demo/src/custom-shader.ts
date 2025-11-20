@@ -357,13 +357,20 @@ void main() {
   // 计算归一化音量(0-1)
   float normalizedVolume = clamp((_CurrentVolume - _MinVolume) / (_MaxVolume - _MinVolume), 0.0, 1.0);
 
-  // 计算垂直偏移（音量低时下移图片）
-  // 使用pow曲线实现非线性响应：低音量变化平缓，高音量变化灵敏
+  // 计算垂直偏移
   float verticalOffset = mix(_VerticalOffset, 0.0, pow(normalizedVolume, _VolumeCurve));
   verticalOffset = min(max(verticalOffset, -0.2), 0.0);
-  
-   // 最终扰动偏移，受音量和alpha值影响
-  vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * (normalizedVolume)  + vec2(0.0, verticalOffset);
+
+  // Y 方向 mask：0.2 以下为 0，以上从 0→1 且越上越快（写死参数）
+  float y = uv.y;
+  float start = 0.2;                         // 起始 Y，以下不受噪声影响
+  float rawMask = clamp((y - start) / (1.0 - start), 0.0, 1.0);
+  float power = 2.0;                         // >1 越靠上变化越快
+  float yMask = pow(rawMask, power);
+
+  // 最终扰动偏移，噪声部分乘以 yMask，verticalOffset 保持原逻辑
+  vec2 finalOffset = -vec2(mixedNoise.x, mixedNoise.y) * _Strength * normalizedVolume * yMask
+                     + vec2(0.0, verticalOffset);
 
   vec4 finalColor = vec4(0.0);
   int textureCount = int(_TextureCount);
@@ -420,7 +427,7 @@ void main() {
     float L = dot(c, vec3(0.299, 0.587, 0.114));
     vec3 gray = vec3(L);
 
-    // 无门限的音量映射
+    // 音量映射
     float v = clamp(normalizedVolume, 0.0, 1.0);
     float lvlSat = pow(v, 0.55);           // 饱和度响应（<1 提升低中段灵敏度）
     float lvlLum = pow(v, _BrightnessCurve); // 亮度响应，和黑底保持一致的曲线风格
@@ -434,8 +441,8 @@ void main() {
     vec3 col = gray + (c - gray) * (1.0 + satBoost * (0.6 + 0.4 * vibMask));
 
     // 亮度反向缩放：音量低更亮，音量高回到 1.0（不改透明度）
-    float brightRange = 0.35;              // v=0 时最多 +35% 亮度
-    float brightnessScale = 1.0 + brightRange * (1.0 - lvlLum);
+    float brightRange = 0.2;              // v=0 时最多 +20% 亮度
+    float brightnessScale = 0.95 + brightRange * (1.0 - lvlLum);
     finalColor.rgb = clamp(col * brightnessScale, 0.0, 1.0);
     // finalColor.a 不变
   } else {
@@ -608,7 +615,7 @@ let material: Material | undefined;
         // 设置T噪声纹理
         material.setTexture('_T_NoiseTex', T_noiseTexture);
         // 设置噪声强度
-        material.setFloat('_Strength', 0.50);
+        material.setFloat('_Strength', 2.0);
         // 纹理层级已在shader中硬编码，不再需要设置
 
         // 初始化颜色参数 - 直接在初始化时设置预设颜色
@@ -623,28 +630,28 @@ let material: Material | undefined;
         // material.setVector4('_Color3', new Vector4(69/255, 234/255, 193/255, 1.0)); // inputB
 
         // 初始化噪声参数（使用之前硬编码的值）
-        material.setFloat('_NoiseScaleX', 0.19);
-        material.setFloat('_NoiseScaleY', 0.35);
+        material.setFloat('_NoiseScaleX', 0.1);
+        material.setFloat('_NoiseScaleY', -0.35);
         material.setFloat('_NoiseSpeedX', 0.1);
-        material.setFloat('_NoiseSpeedY', 0.111);
-        material.setFloat('_NoiseUVScaleX', 0.05);
-        material.setFloat('_NoiseUVScaleY', 0.09);
+        material.setFloat('_NoiseSpeedY', 0.1);
+        material.setFloat('_NoiseUVScaleX', 0.1);
+        material.setFloat('_NoiseUVScaleY', 0.1);
 
         // 初始化细节噪声参数
-        material.setFloat('_DetailNoiseScale', 0.0);
-        material.setFloat('_DetailNoiseScaleX', 0.71);
+        material.setFloat('_DetailNoiseScale', 0.1);
+        material.setFloat('_DetailNoiseScaleX', 0.35);
         material.setFloat('_DetailNoiseScaleY', 0.55);
         material.setFloat('_DetailNoiseSpeedX', 0.30);
         material.setFloat('_DetailNoiseSpeedY', 0.30);
-        material.setFloat('_DetailNoiseUVScaleX', 1.10);
+        material.setFloat('_DetailNoiseUVScaleX', 1.0);
         material.setFloat('_DetailNoiseUVScaleY', 1.500);
 
         // 初始化响应曲线参数
-        material.setFloat('_VerticalOffset', -0.10);
+        material.setFloat('_VerticalOffset', -0.15);
         material.setFloat('_VolumeCurve', 0.3);
-        material.setFloat('_BrightnessCurve', 1.5);
+        material.setFloat('_BrightnessCurve', 2.0);
         material.setFloat('_MaxBrightness', 0.3);
-        material.setFloat('_BrightnessGain', 1.1);
+        material.setFloat('_BrightnessGain', 1.3);
 
         // 初始化白底检测参数 - 默认黑底（0），白底为（1）
         material.setFloat('_BgIsWhite', isWhiteBackground(container!) ? 1 : 0);
@@ -660,30 +667,15 @@ let material: Material | undefined;
   const minVolume = 0.0; // 最小音量
   const maxVolume = 1.0; // 最大音量
 
-  // 模拟音频音量
-  function getAudioVolume (): number {
-    const now = performance.now();
-    const timeFactor = now * 0.0002;
-    const baseWave = Math.sin(timeFactor) * 0.5 + 0.5;
-    const detailWave = Math.sin(timeFactor * 2.3) * 0.2;
+  // 获取滑条控制的音量值
+  function getSliderVolume (): number {
+    const slider = document.getElementById('volume-slider') as HTMLInputElement;
 
-    return clamp(baseWave + detailWave, 0.0, 1.0);
-  }
-
-  // 定时模拟音量（备用）
-  function getSimulatedAudioVolume (): number {
-    const now = performance.now();
-    const timeFactor = now * 0.1;
-
-    if (timeFactor > 1000) {
-      return 1.0;
-    } else if (timeFactor > 500) {
-      return 0.5;
-    } else if (timeFactor > 200) {
-      return 0.2;
-    } else {
-      return 0.2;
+    if (slider) {
+      return parseFloat(slider.value) / 100;
     }
+
+    return 0.5; // 默认值
   }
 
   // 数值范围限制函数
@@ -701,7 +693,7 @@ let material: Material | undefined;
 
     lastTime = now;
 
-    const volume = getSimulatedAudioVolume();
+    const volume = getSliderVolume();
 
     if (DEBUG) {
       console.log(`Current volume: ${volume}`);
@@ -712,7 +704,7 @@ let material: Material | undefined;
     if (material) {
       material.setFloat('_Now', now);
 
-      const currentVolume = getSimulatedAudioVolume();
+      const currentVolume = getSliderVolume();
 
       material.setFloat('_CurrentVolume', currentVolume);
       material.setFloat('_MinVolume', minVolume);
@@ -750,6 +742,8 @@ let material: Material | undefined;
   setTimeout(() => {
     const stopBtn = document.getElementById('stop-btn');
     const resetBtn = document.getElementById('reset-btn');
+    const volumeSlider = document.getElementById('volume-slider') as HTMLInputElement;
+    const volumeValue = document.getElementById('volume-value');
 
     if (stopBtn) {
       stopBtn.addEventListener('click', () => {
@@ -765,6 +759,17 @@ let material: Material | undefined;
         controller.reset();
         if (DEBUG) {
           console.log('Reset button clicked');
+        }
+      });
+    }
+
+    if (volumeSlider && volumeValue) {
+      volumeSlider.addEventListener('input', e => {
+        const value = parseFloat((e.target as HTMLInputElement).value);
+
+        volumeValue.textContent = `${value}%`;
+        if (DEBUG) {
+          console.log(`Volume slider changed to: ${value / 100}`);
         }
       });
     }
