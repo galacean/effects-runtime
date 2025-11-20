@@ -17,6 +17,7 @@ export interface GPUCapabilityDetail {
   maxTextureAnisotropy: number,
   shaderTextureLod: boolean,
   instanceDraw?: boolean,
+  ktx2Support: boolean,
   drawBuffers?: boolean,
   asyncShaderCompile: boolean,
   //draw elements use uint32 Array
@@ -115,6 +116,7 @@ export class GPUCapability {
       maxTextureAnisotropy: textureAnisotropicExt ? gl.getParameter(textureAnisotropicExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0,
       shaderTextureLod: level2 || !!gl.getExtension('EXT_shader_texture_lod'),
       instanceDraw: level2 || !!gl.getExtension('ANGLE_instanced_arrays'),
+      ktx2Support: detectKTX2Support(this.compressTextureCapabilityList),
       drawBuffers: level2 || !!this.drawBufferExtension,
       asyncShaderCompile: !!this.glAsyncCompileExt,
       intIndexElementBuffer: !!gl.getExtension('OES_element_index_uint'),
@@ -218,4 +220,60 @@ export enum CompressTextureCapabilityType {
   pvrtc = 'WEBGL_compressed_texture_pvrtc',
   pvrtc_webkit = 'WEBKIT_WEBGL_compressed_texture_pvrtc',
   sRGB = 'EXT_sRGB'
+}
+
+/**
+ * 检测 Web Worker 支持
+ * @returns 是否支持 Web Worker
+ */
+function checkWebWorkerSupport (): boolean {
+  // 检查 Worker 构造函数
+  if (typeof Worker === 'undefined') {
+    return false;
+  }
+
+  try {
+    // 检查 Blob 和 URL 支持（某些环境如小程序可能不支持）
+    if (typeof Blob === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
+      return false;
+    }
+
+    // 尝试创建一个简单的 Worker 来验证
+    const blob = new Blob(['self.postMessage(1);'], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    const worker = new Worker(url);
+
+    // 立即终止，避免资源占用
+    worker.terminate();
+    URL.revokeObjectURL(url);
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 检测 KTX2 支持
+ * KTX2 可以包含多种压缩格式，需要检测是否支持至少一种
+ */
+function detectKTX2Support (compressTextureCapabilityList: Map<CompressTextureCapabilityType, boolean>): boolean {
+  // KTX2 转码通常需要 Web Worker 来提升性能
+  if (!checkWebWorkerSupport()) {
+    return false;
+  }
+
+  // KTX2 文件可以包含多种压缩格式，检测是否支持至少一种
+  const hasCompressedTextureSupport =
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.astc) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.astc_webkit) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.etc) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.etc_webkit) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.etc1) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.pvrtc) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.pvrtc_webkit);
+
+  // KTX2 可以回退到未压缩的格式（如 RGBA8），所以即使不支持压缩格式也可以使用
+  // 但为了性能考虑，至少支持一种压缩格式
+  return !!hasCompressedTextureSupport;
 }

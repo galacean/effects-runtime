@@ -126,6 +126,7 @@ export class AssetManager implements Disposable {
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
+    const isKTX2Supported = gpuInstance?.detail.ktx2Support ?? false;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
     let cancelLoading = false;
@@ -190,7 +191,7 @@ export class AssetManager implements Disposable {
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images)),
+          hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
@@ -270,6 +271,7 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
+    canUseKTX2: boolean = false
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
@@ -322,7 +324,7 @@ export class AssetManager implements Disposable {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
-      } else if ('ktx2' in img && useCompressedTexture) {
+      } else if ('ktx2' in img && useCompressedTexture && canUseKTX2) {
         // ktx2 压缩纹理
         const { ktx2 } = img;
         // @ts-expect-error TODO: 待更新 spec 类型
