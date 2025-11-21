@@ -98,7 +98,7 @@ export interface KhronosTranscoderMessage extends BaseMessage {
   format: number,
   needZstd: boolean,
   data: EncodedData[][],
-  zstddecWasmModule?: Response,
+  zstddecWasmModule?: WebAssembly.Module,
 }
 
 export type IKhronosMessageMessage = InitMessage | KhronosTranscoderMessage;
