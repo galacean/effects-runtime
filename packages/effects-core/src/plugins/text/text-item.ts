@@ -175,13 +175,27 @@ export class TextComponentBase {
 
   private char: string[];
 
+  constructor () {
+  }
+
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
+    // 初始化 textStyle 和 textLayout
+    if (!this.textStyle) {
+      this.textStyle = new TextStyle(options);
+    } else {
+      this.textStyle.update(options);
+    }
+
+    if (!this.textLayout) {
+      this.textLayout = new TextLayout(options);
+    } else {
+      this.textLayout.update(options);
+    }
+
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text, true);
   }
