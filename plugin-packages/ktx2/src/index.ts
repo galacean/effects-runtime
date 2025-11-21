@@ -2,7 +2,6 @@ import * as EFFECTS from '@galacean/effects';
 import { registerKTX2Loader } from './ktx2-loader';
 
 export * from './ktx2-loader';
-export * from './constants';
 
 /**
  * 插件版本号

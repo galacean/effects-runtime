@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import legacy from '@vitejs/plugin-legacy';
 import ip from 'ip';
-import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
+import { glslInner, getSWCPlugin, wasm } from '../../scripts/rollup-config-helper';
 
 export default defineConfig(({ mode }) => {
   const development = mode === 'development';
@@ -37,6 +37,9 @@ export default defineConfig(({ mode }) => {
         modernPolyfills: ['es/global-this'],
       }),
       glslInner(),
+      wasm({
+        targetEnv: 'auto-inline', // auto-inline
+      }),
       getSWCPlugin({
         baseUrl: resolve(__dirname, '..', '..'),
       }),

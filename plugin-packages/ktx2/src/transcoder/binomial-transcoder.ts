@@ -1,10 +1,7 @@
-import { getConfig } from '@galacean/effects';
 import type { KTX2TargetFormat } from '../ktx2-common';
 import type { TranscodeResult } from './texture-transcoder';
 import { TextureTranscoder } from './texture-transcoder';
 import { TranscodeWorkerCode, init, transcode, _init } from './binomial-workercode';
-import { BASIS_TRANSCODER_JS, BASIS_TRANSCODER_WASM } from '../constants';
-import { loadScript, loadWasm } from './fetch';
 
 export class BinomialLLCTranscoder extends TextureTranscoder {
   private blobURL?: string;
@@ -16,8 +13,14 @@ export class BinomialLLCTranscoder extends TextureTranscoder {
 
   async initTranscodeWorkerPool () {
     const [jsCode, wasmBuffer] = await Promise.all([
-      loadScript(getConfig(BASIS_TRANSCODER_JS)),
-      loadWasm(getConfig(BASIS_TRANSCODER_WASM)),
+      // eslint-disable-next-line compat/compat
+      fetch('https://mdn.alipayobjects.com/rms/afts/file/A*nG8SR6vCgXgAAAAAAAAAAAAAARQnAQ/basis_transcoder.js').then(
+        res => res.text()
+      ),
+      // eslint-disable-next-line compat/compat
+      fetch('https://mdn.alipayobjects.com/rms/afts/file/A*qEUfQ7317KsAAAAAAAAAAAAAARQnAQ/basis_transcoder.wasm').then(
+        res => res.arrayBuffer()
+      ),
     ]);
 
     if (this.workerLimitCount === 0) {

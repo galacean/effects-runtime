@@ -28,6 +28,7 @@ export function TranscodeWorkerCode () {
 
     switch (message.type) {
       case 'init':
+        // @ts-expect-error
         init(message.transcoderWasm)
           .then(() => {
             self.postMessage('init-completed');

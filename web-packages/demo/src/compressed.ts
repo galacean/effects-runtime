@@ -1,7 +1,8 @@
-import { Player, setConfig } from '@galacean/effects';
-import { BASIS_TRANSCODER_JS, BASIS_TRANSCODER_WASM, KHRONOS_UASTC_ASTC_WASM, KHRONOS_ZSTD_DECODER_WASM } from '@galacean/effects-plugin-ktx2';
+import { Player } from '@galacean/effects';
+import '@galacean/effects-plugin-ktx2';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-ffd';
+
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*1zOzT6g_Mw8AAAAAQgAAAAgAelB4AQ';
 const json_ktx2_spine = 'https://mdn.alipayobjects.com/mars/afts/file/A*lnmBT7dsNNgAAAAAQFAAAAgAelB4AQ';
 const json_ktx2 = `{
@@ -403,11 +404,6 @@ const json_ktx2 = `{
   "compositionId": "1e96d2ae76eb4f81b3c5e589b1192419"
 }`;
 const container = document.getElementById('J-container');
-
-setConfig(BASIS_TRANSCODER_JS, 'https://mdn.alipayobjects.com/rms/afts/file/A*nG8SR6vCgXgAAAAAAAAAAAAAARQnAQ/basis_transcoder.js');
-setConfig(BASIS_TRANSCODER_WASM, 'https://mdn.alipayobjects.com/rms/afts/file/A*qEUfQ7317KsAAAAAAAAAAAAAARQnAQ/basis_transcoder.wasm');
-setConfig(KHRONOS_UASTC_ASTC_WASM, 'https://mdn.alipayobjects.com/rms/afts/file/A*0jiKRK6D1-kAAAAAAAAAAAAAARQnAQ/uastc_astc.wasm');
-setConfig(KHRONOS_ZSTD_DECODER_WASM, 'https://mdn.alipayobjects.com/rms/afts/file/A*awNJR7KqIAEAAAAAAAAAAAAAARQnAQ/zstddec.wasm');
 
 (async () => {
   const player = new Player({

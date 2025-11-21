@@ -1,11 +1,12 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
+import { wasm } from '@rollup/plugin-wasm';
 import { swc, defineRollupSwcOption, minify } from 'rollup-plugin-swc3';
 import glslInner from './rollup-plugin-glsl-inner';
 
 export function getPlugins(pkg, options = {}) {
-  const { min = false, target, external } = options;
+  const { min = false, target, external, useWasm = false } = options;
   const defines = {
     __VERSION__: JSON.stringify(pkg.version),
     __DEBUG__: false,
@@ -21,6 +22,12 @@ export function getPlugins(pkg, options = {}) {
     commonjs(),
   ];
 
+  if (useWasm) {
+    plugins.unshift(wasm({
+      targetEnv: 'auto-inline', // auto-inline
+    }));
+  }
+
   if (min) {
     plugins.push(minify({ sourceMap: true }));
   }
@@ -28,7 +35,7 @@ export function getPlugins(pkg, options = {}) {
   return plugins;
 }
 
-export { glslInner };
+export { glslInner, wasm };
 
 export function getSWCPlugin(
   jscOptions = {},

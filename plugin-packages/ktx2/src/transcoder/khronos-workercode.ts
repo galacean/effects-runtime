@@ -2,7 +2,7 @@
 import type { EncodedData, IKhronosMessageMessage } from './texture-transcoder';
 
 // eslint-disable-next-line compat/compat
-interface WasmModule extends WebAssembly.Exports {
+interface WasmTranscoder extends WebAssembly.Exports {
   memory: WebAssembly.Memory,
   transcode: (nBlocks: number) => number,
 }
@@ -26,7 +26,7 @@ interface DecoderInstance {
 }
 
 export function TranscodeWorkerCode () {
-  let wasmPromise: Promise<WasmModule>;
+  let wasmPromise: Promise<WasmTranscoder>;
 
   /**
    * ZSTD (Zstandard) decoder.
@@ -43,18 +43,18 @@ export function TranscodeWorkerCode () {
     public static instance: DecoderInstance;
     public initPromise: Promise<any>;
 
-    init (wasmBuffer: ArrayBuffer): Promise<void> {
+    init (zstddecWasmModule: WebAssembly.Module): Promise<void> {
       if (!this.initPromise) {
         this.initPromise = WebAssembly
-          .instantiate(wasmBuffer, ZSTDDecoder.IMPORT_OBJECT)
+          .instantiate(zstddecWasmModule, ZSTDDecoder.IMPORT_OBJECT)
           .then(this.initInstance);
       }
 
       return this.initPromise;
     }
 
-    initInstance (result: WebAssembly.WebAssemblyInstantiatedSource): void {
-      ZSTDDecoder.instance = result.instance as unknown as DecoderInstance;
+    initInstance (result: WebAssembly.Instance): void {
+      ZSTDDecoder.instance = result as unknown as DecoderInstance;
       ZSTDDecoder.IMPORT_OBJECT.env.emscripten_notify_memory_growth(); // initialize heap.
     }
 
@@ -87,7 +87,7 @@ export function TranscodeWorkerCode () {
   }
 
   function transcodeASTCAndBC7 (
-    wasmTranscoder: WasmModule,
+    wasmTranscoder: WasmTranscoder,
     compressedData: Uint8Array,
     width: number,
     height: number,
@@ -107,14 +107,14 @@ export function TranscodeWorkerCode () {
     return wasmTranscoder.transcode(nBlocks) === 0 ? textureView : null;
   }
 
-  function initWasm (buffer: ArrayBuffer): Promise<WasmModule> {
+  function initTranscoder (transcoderWasmModule: WebAssembly.Module): Promise<WasmTranscoder> {
     // eslint-disable-next-line compat/compat
     wasmPromise = WebAssembly
-      .instantiate(buffer, {
+      .instantiate(transcoderWasmModule, {
         // eslint-disable-next-line compat/compat
         env: { memory: new WebAssembly.Memory({ initial: 16 }) },
       })
-      .then(moduleWrapper => <WasmModule>moduleWrapper.instance.exports);
+      .then(moduleWrapper => <WasmTranscoder>moduleWrapper.exports);
 
     return wasmPromise;
   }
@@ -124,8 +124,8 @@ export function TranscodeWorkerCode () {
   function transcode (
     data: EncodedData[][],
     needZstd: boolean,
-    wasmModule: WasmModule,
-    wasmBuffer?: ArrayBuffer,
+    transcoderWasmModule: WasmTranscoder,
+    zstddecWasmModule?: WebAssembly.Module,
   ) {
     const faceCount = data.length;
     const result = new Array<{
@@ -136,8 +136,8 @@ export function TranscodeWorkerCode () {
     const decodedLevelCache = needZstd ? new Map<number, Uint8Array>() : undefined;
     let promise = Promise.resolve();
 
-    if (needZstd && wasmBuffer) {
-      void zstdDecoder.init(wasmBuffer);
+    if (needZstd && zstddecWasmModule) {
+      void zstdDecoder.init(zstddecWasmModule);
       promise = zstdDecoder.initPromise;
     }
 
@@ -168,7 +168,7 @@ export function TranscodeWorkerCode () {
           const faceByteLength = levelBuffer.byteLength / faceCount;
           const originByteOffset = levelBuffer.byteOffset;
           const decodedBuffer = transcodeASTCAndBC7(
-            wasmModule,
+            transcoderWasmModule,
             new Uint8Array(levelBuffer.buffer, originByteOffset + faceIndex * faceByteLength, faceByteLength),
             levelWidth,
             levelHeight
@@ -197,7 +197,7 @@ export function TranscodeWorkerCode () {
 
     switch (message.type) {
       case 'init':
-        initWasm(message.transcoderWasm)
+        initTranscoder(message.transcoderWasm)
           .then(() => {
             self.postMessage('init-completed');
           })
@@ -208,8 +208,8 @@ export function TranscodeWorkerCode () {
         break;
       case 'transcode':
         wasmPromise
-          .then(module => {
-            transcode(message.data, message.needZstd, module, message.wasmBuffer)
+          .then(transcoderWasmModule => {
+            transcode(message.data, message.needZstd, transcoderWasmModule, message.zstddecWasmModule)
               .then(decodedData => {
                 self.postMessage(decodedData);
               })
