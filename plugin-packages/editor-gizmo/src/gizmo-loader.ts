@@ -11,20 +11,16 @@ export const iconTextures: Map<string, Texture> = new Map();
 export class EditorGizmoPlugin extends AbstractPlugin {
   override order = 1001;
 
-  static override async prepareResource (scene: Scene): Promise<any> {
+  override async onCompositionConstructed (composition: Composition, scene: Scene) {
+    const engine = composition.renderer.engine;
+
+    iconTextures.clear();
+
     if (iconImages.size !== axisIconMap.size) {
       for (const [name, data] of axisIconMap) {
         iconImages.set(name, await createImage(data));
       }
     }
-
-    return true;
-  }
-
-  override onCompositionConstructed (composition: Composition, scene: Scene) {
-    const engine = composition.renderer.engine;
-
-    iconTextures.clear();
 
     iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));

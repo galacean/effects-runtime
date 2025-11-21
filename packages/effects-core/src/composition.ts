@@ -5,7 +5,7 @@ import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
-import type { PluginSystem } from './plugin-system';
+import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
 import type { Renderer } from './render';
 import { RenderFrame } from './render';
@@ -185,10 +185,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly event?: EventSystem;
   /**
-   * 插件系统，保存当前加载的插件对象，负责插件事件和创建插件的 Item 对象
-   */
-  readonly pluginSystem: PluginSystem;
-  /**
    * 当前合成名称
    */
   readonly name: string;
@@ -360,8 +356,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    this.pluginSystem = scene.pluginSystem;
-    this.pluginSystem.initializeComposition(this, scene);
+    PluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
@@ -675,7 +670,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param deltaTime - 更新的时间步长
    */
   private updatePluginLoaders (deltaTime: number) {
-    this.pluginSystem.plugins.forEach(loader => loader.onCompositionUpdate(this, deltaTime));
+    PluginSystem.getPlugins().forEach(loader => loader.onCompositionUpdate(this, deltaTime));
   }
 
   /**
@@ -885,7 +880,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    this.pluginSystem?.destroyComposition(this);
+    PluginSystem.destroyComposition(this);
     this.update = () => {
       if (!__DEBUG__) {
         logger.error(`Update disposed composition: ${this.name}.`);

@@ -1,16 +1,13 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Composition } from './composition';
-import type { Plugin, PluginConstructor } from './plugins';
-import type { Renderer } from './render';
+import type { AbstractPlugin, PluginConstructor } from './plugins';
 import type { Scene, SceneLoadOptions } from './scene';
-import type { Constructor } from './utils';
-import { addItem, removeItem, logger } from './utils';
-import type { VFXItem } from './vfx-item';
+import { logger } from './utils';
+import type { Engine } from './engine';
 
 export const pluginLoaderMap: Record<string, PluginConstructor> = {};
-export const defaultPlugins: string[] = [];
 
-const pluginCtrlMap: Record<string, Constructor<VFXItem>> = {};
+const plugins: AbstractPlugin[] = [];
 
 /**
  * 注册 plugin
@@ -19,104 +16,59 @@ const pluginCtrlMap: Record<string, Constructor<VFXItem>> = {};
  * @param itemClass class of item
  * @param isDefault load
  */
-export function registerPlugin (
-  name: string,
-  pluginClass: PluginConstructor,
-  itemClass: Constructor<VFXItem>,
-) {
-  if (pluginCtrlMap[name]) {
+export function registerPlugin (name: string, pluginClass: PluginConstructor) {
+  if (pluginLoaderMap[name]) {
     logger.error(`Duplicate registration for plugin ${name}.`);
   }
 
-  pluginCtrlMap[name] = itemClass;
   pluginLoaderMap[name] = pluginClass;
 
-  addItem(defaultPlugins, name);
+  const pluginInstance = new pluginClass();
+
+  pluginInstance.name = name;
+  plugins.push(pluginInstance);
+  plugins.sort((a, b) => a.order - b.order);
 }
+
+/**
+ * 注销 plugin
+ */
 export function unregisterPlugin (name: string) {
-  delete pluginCtrlMap[name];
   delete pluginLoaderMap[name];
-  removeItem(defaultPlugins, name);
+  const pluginIndex = plugins.findIndex(plugin => plugin.name === name);
+
+  if (pluginIndex !== -1) {
+    plugins.splice(pluginIndex, 1);
+  }
 }
 
 export class PluginSystem {
-  readonly plugins: Plugin[];
-
-  constructor (pluginNames: string[]) {
-    const loaders: Record<string, PluginConstructor> = {};
-    const loaded: PluginConstructor[] = [];
-    const addLoader = (name: string) => {
-      const loader = pluginLoaderMap[name];
-
-      if (!loaded.includes(loader)) {
-        loaded.push(loader);
-        loaders[name] = loader;
-      }
-    };
-
-    defaultPlugins.forEach(addLoader);
-
-    for (const customPluginName of pluginNames) {
-      if (!pluginLoaderMap[customPluginName]) {
-        throw new Error(`The plugin '${customPluginName}' not found.` + getPluginUsageInfo(customPluginName));
-      }
-    }
-
-    this.plugins = Object.keys(loaders)
-      .map(name => {
-        const pluginConstructor = pluginLoaderMap[name];
-        const loader = new pluginConstructor();
-
-        loader.name = name;
-
-        return loader;
-      })
-      .sort((a, b) => a.order - b.order);
+  static getPlugins (): AbstractPlugin[] {
+    return plugins;
   }
 
-  initializeComposition (composition: Composition, scene: Scene) {
-    this.plugins.forEach(loader => loader.onCompositionConstructed(composition, scene));
+  static initializeComposition (composition: Composition, scene: Scene) {
+    plugins.forEach(loader => loader.onCompositionConstructed(composition, scene));
   }
 
-  destroyComposition (comp: Composition) {
-    this.plugins.forEach(loader => loader.onCompositionDestroyed(comp));
+  static destroyComposition (comp: Composition) {
+    plugins.forEach(loader => loader.onCompositionDestroyed(comp));
   }
 
-  async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): Promise<void[]> {
-    return this.callStatic('processRawJSON', json, options);
+  static processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): void {
+    plugins.forEach(loader => loader.processRawJSON(json, options));
   }
 
-  async processAssets (json: spec.JSONScene, options?: SceneLoadOptions) {
-    return this.callStatic<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>('processAssets', json, options);
+  static async processAssets (json: spec.JSONScene, options?: SceneLoadOptions) {
+    return Promise.all(
+      plugins.map(plugin => plugin.processAssets(json, options)),
+    );
   }
 
-  precompile (
-    compositions: spec.CompositionData[],
-    renderer: Renderer,
-  ) {
-    for (const plugin of this.plugins) {
-      plugin.precompile(compositions, renderer);
-    }
-  }
-
-  async loadResources (scene: Scene, options: SceneLoadOptions) {
-    return this.callStatic('prepareResource', scene, options);
-  }
-
-  private async callStatic<T> (name: string, ...args: any[]): Promise<T[]> {
-    const pendings = [];
-    const plugins = this.plugins;
-
-    for (let i = 0; i < plugins.length; i++) {
-      const plugin = plugins[i];
-      const ctrl = pluginLoaderMap[plugin.name];
-
-      if (name in ctrl) {
-        pendings.push(Promise.resolve<T>(ctrl[name]?.(...args)));
-      }
-    }
-
-    return Promise.all(pendings);
+  static async loadResources (scene: Scene, options: SceneLoadOptions, engine: Engine) {
+    return Promise.all(
+      plugins.map(plugin => plugin.prepareResource(scene, options, engine)),
+    );
   }
 }
 
@@ -132,7 +84,7 @@ const pluginInfoMap: Record<string, string> = {
   'spine': '@galacean/effects-plugin-spine',
 };
 
-function getPluginUsageInfo (name: string) {
+export function getPluginUsageInfo (name: string) {
   const info = pluginInfoMap[name];
 
   if (info) {

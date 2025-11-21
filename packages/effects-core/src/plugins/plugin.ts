@@ -1,46 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Scene, SceneLoadOptions } from '../scene';
-import type { Renderer } from '../render';
 import type { Composition } from '../composition';
-
-export interface Plugin {
-  /**
-   * plugin 的数组内排序，按照升序排列
-   * @default 100
-   */
-  order: number,
-  name: string,
-
-  /**
-   * 在加载到 JSON 后，就可以进行提前编译
-   * @param json
-   * @param player
-   */
-  precompile: (compositions: spec.CompositionData[], renderer: Renderer) => void,
-
-  /**
-   * 合成创建时调用，用于触发元素在合成创建时的回调
-   * @param composition
-   * @param scene
-   */
-  onCompositionConstructed: (composition: Composition, scene: Scene) => void,
-
-  /**
-   * 合成销毁时的会调，需要销毁 composition 中对应的资源
-   * @param composition
-   */
-  onCompositionDestroyed: (composition: Composition) => void,
-
-  /**
-   * 合成更新时的回调，每帧都会进行调用，在每个元素调用 onUpdate 之前被触发
-   * @param composition
-   * @param dt 更新的毫秒
-   */
-  onCompositionUpdate: (composition: Composition, dt: number) => void,
-}
+import type { Engine } from '../engine';
 
 export interface PluginConstructor {
-  new(): Plugin,
+  new(): AbstractPlugin,
 
   [key: string]: any,
 }
@@ -49,7 +13,7 @@ export interface PluginConstructor {
  * 抽象插件类
  * 注册合成不同生命周期的回调函数
  */
-export abstract class AbstractPlugin implements Plugin {
+export abstract class AbstractPlugin {
   order = 100;
   name = '';
 
@@ -60,7 +24,8 @@ export abstract class AbstractPlugin implements Plugin {
    * @param json 动画资源
    * @param options 加载参数
    */
-  static processRawJSON: (json: spec.JSONScene, options: SceneLoadOptions) => Promise<void>;
+  processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): void {
+  }
 
   /**
    * loadScene 函数调用的时候会触发此函数，
@@ -69,7 +34,9 @@ export abstract class AbstractPlugin implements Plugin {
    * @param options
    * @returns
    */
-  static processAssets: (json: spec.JSONScene, options?: SceneLoadOptions) => Promise<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>;
+  async processAssets (json: spec.JSONScene, options?: SceneLoadOptions): Promise<{ assets: spec.AssetBase[], loadedAssets: unknown[] }> {
+    return { assets: [], loadedAssets: [] };
+  }
 
   /**
    * loadScene 函数调用的时候会触发此函数，
@@ -80,14 +47,8 @@ export abstract class AbstractPlugin implements Plugin {
    * @param {Scene} scene
    * @param {SceneLoadOptions} options
    */
-  static prepareResource: (scene: Scene, options: SceneLoadOptions) => Promise<void>;
-
-  /**
-   * 在加载到 JSON 后，就可以进行提前编译
-   * @param json
-   * @param player
-   */
-  precompile (compositions: spec.CompositionData[], renderer: Renderer): void { }
+  async prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): Promise<void> {
+  }
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
 

@@ -7,7 +7,7 @@ import { processMultimedia } from '../utils';
  */
 export class VideoLoader extends AbstractPlugin {
 
-  static override async processAssets (
+  override async processAssets (
     json: spec.JSONScene,
     options: SceneLoadOptions = {},
   ) {

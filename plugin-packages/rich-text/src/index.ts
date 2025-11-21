@@ -1,5 +1,5 @@
 import * as EFFECTS from '@galacean/effects';
-import { logger, registerPlugin, VFXItem } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { RichTextLoader } from './rich-text-loader';
 
 export * from './rich-text-parser';
@@ -11,7 +11,7 @@ export * from './rich-text-loader';
  */
 export const version = __VERSION__;
 
-registerPlugin('rich-text', RichTextLoader, VFXItem);
+registerPlugin('rich-text', RichTextLoader);
 
 logger.info(`Plugin rich text version: ${version}.`);
 

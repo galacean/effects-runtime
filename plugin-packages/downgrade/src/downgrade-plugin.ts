@@ -12,7 +12,7 @@ import { getDefaultRenderLevel } from './utils';
  * 和默认的渲染等级规则设置其中的 renderLevel 。
  */
 export class DowngradePlugin extends AbstractPlugin {
-  static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions = {}) {
+  override processRawJSON (json: spec.JSONScene, options: SceneLoadOptions = {}) {
     const downgradeResult = options.pluginData?.['downgrade'];
 
     if (downgradeResult) {
