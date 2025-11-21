@@ -635,9 +635,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateCompositionTime(deltaTime * this.speed / 1000);
     const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
 
-    // 更新 model-tree-plugin
-    this.updatePluginLoaders(deltaTimeInMs);
-
     this.sceneTicking.update.tick(deltaTimeInMs);
     this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
 
@@ -663,14 +660,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private updateCamera () {
     this.camera.updateMatrix();
-  }
-
-  /**
-   * 插件更新，来自 CompVFXItem 的更新调用
-   * @param deltaTime - 更新的时间步长
-   */
-  private updatePluginLoaders (deltaTime: number) {
-    PluginSystem.getPlugins().forEach(loader => loader.onCompositionUpdate(this, deltaTime));
   }
 
   /**

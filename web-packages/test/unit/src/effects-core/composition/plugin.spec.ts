@@ -35,11 +35,6 @@ describe('core/composition/plugin', () => {
         return Promise.resolve();
       }
 
-      override onCompositionUpdate () {
-        // @ts-expect-error
-        updateSpy(ipp());
-      }
-
       override onCompositionConstructed (composition: Composition, scene: Scene) {
         expect(scene.storage.xx).to.eql(1);
         expect(composition.items.length).to.eql(1);
@@ -54,7 +49,6 @@ describe('core/composition/plugin', () => {
     player.gotoAndStop(0.1);
 
     expect(constructSpy).to.have.been.called.with(0);
-    expect(updateSpy).to.have.been.called.with(1);
 
     unregisterPlugin('test-plugin');
   });

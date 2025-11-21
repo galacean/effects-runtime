@@ -19,14 +19,6 @@ export class OrientationPluginLoader extends AbstractPlugin implements Disposabl
     this.adapter?.addTransformer(transformer);
   }
 
-  override onCompositionUpdate (composition: Composition) {
-    const transformer = composition.loaderData.deviceTransformer as CompositionTransformerAcceler;
-
-    if (transformer) {
-      transformer.updateOrientation();
-    }
-  }
-
   override onCompositionDestroyed (composition: Composition): void {
     const empty = this.adapter?.removeTransformer(composition.loaderData.deviceTransformer);
 

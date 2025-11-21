@@ -53,6 +53,4 @@ export abstract class AbstractPlugin {
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
 
   onCompositionDestroyed (composition: Composition): void { }
-
-  onCompositionUpdate (composition: Composition, dt: number): void { }
 }
