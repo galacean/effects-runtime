@@ -422,7 +422,7 @@ void main() {
   
   }
 
-  if (0.0 > 0.5) {
+  if (_BgIsWhite > 0.5) {
     vec3 c = clamp(finalColor.rgb, 0.0, 1.0);
     float L = dot(c, vec3(0.299, 0.587, 0.114));
     vec3 gray = vec3(L);
