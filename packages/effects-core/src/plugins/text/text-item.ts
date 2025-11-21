@@ -68,14 +68,14 @@ export class TextComponent extends MaskableGraphic {
         text: '默认文本',
         fontFamily: 'AlibabaSans-BoldItalic',
         fontSize: 40,
-        textColor: [255, 255, 255, 1],
+        textColor: [255, 0, 0, 1],
         fontWeight: spec.TextWeight.normal,
         letterSpace: 0,
         textAlign: 1,
         fontStyle: spec.FontStyle.normal,
         autoWidth: false,
-        textWidth: 722.6878055675425,
-        textHeight: 113,
+        textWidth: 200,
+        textHeight: 42,
         lineHeight: 40.148,
       },
       renderer: {
@@ -85,31 +85,22 @@ export class TextComponent extends MaskableGraphic {
     };
   }
 
-  constructor (engine: Engine, props?: spec.TextComponentData) {
+  constructor (engine: Engine) {
     super(engine);
 
     this.name = 'MText' + seed++;
 
-    if (!props) {
-      props = TextComponent.getDefaultProps() ;
-    }
-
-    if (props) {
-      this.fromData(props);
-    }
-
+    // 初始化canvas资源
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
 
-    if (!props) {
-      return;
-    }
+    // 使用默认值初始化
+    const defaultData = TextComponent.getDefaultProps();
 
-    const { options } = props;
+    const { options } = defaultData;
 
     this.updateWithOptions(options);
-    this.updateTexture();
   }
 
   override onUpdate (dt: number): void {
@@ -128,13 +119,32 @@ export class TextComponent extends MaskableGraphic {
 
     this.interaction = interaction;
 
+    this.resetState();
+
     // TextComponentBase
     this.updateWithOptions(options);
     this.renderText(options);
 
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
+  }
 
+  private resetState (): void {
+    // 清理纹理资源
+    this.disposeTextTexture();
+
+    // 重置状态变量
+    this.isDirty = true;
+    this.lineCount = 0;
+    this.maxLineWidth = 0;
+  }
+
+  protected disposeTextTexture (): void {
+    const texture = this.renderer.texture;
+
+    if (texture && texture !== this.engine.whiteTexture) {
+      texture.dispose();
+    }
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
