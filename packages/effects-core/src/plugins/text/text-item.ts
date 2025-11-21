@@ -59,7 +59,7 @@ export class TextComponent extends MaskableGraphic {
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
-  static getDefaultProps (): spec.TextComponentData {
+  private getDefaultProps (): spec.TextComponentData {
     return {
       id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
       item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
@@ -96,7 +96,7 @@ export class TextComponent extends MaskableGraphic {
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
 
     // 使用默认值初始化
-    const defaultData = TextComponent.getDefaultProps();
+    const defaultData = this.getDefaultProps();
 
     const { options } = defaultData;
 
