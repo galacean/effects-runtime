@@ -22,13 +22,13 @@ export abstract class TextureTranscoder {
 
   protected abstract initTranscodeWorkerPool (): Promise<Worker[]>;
 
-  protected createTranscodePool (workerURL: string, wasmBuffer: ArrayBuffer) {
+  protected createTranscodePool (workerURL: string, transcoderWasm: WebAssembly.Module) {
     this.transcodeWorkerPool = new WorkerPool(this.workerLimitCount, () => {
       return new Promise<Worker>((resolve, reject) => {
         const worker = new Worker(workerURL);
         const msg: InitMessage = {
           type: 'init',
-          transcoderWasm: wasmBuffer,
+          transcoderWasm,
         };
         const cleanup = () => {
           worker.removeEventListener('message', onMessage);
@@ -66,7 +66,7 @@ export interface BaseMessage {
 
 export interface InitMessage extends BaseMessage {
   type: 'init',
-  transcoderWasm: ArrayBuffer,
+  transcoderWasm: WebAssembly.Module,
 }
 
 export interface BinomialTranscodeMessage extends BaseMessage {
@@ -98,7 +98,7 @@ export interface KhronosTranscoderMessage extends BaseMessage {
   format: number,
   needZstd: boolean,
   data: EncodedData[][],
-  wasmBuffer?: ArrayBuffer,
+  zstddecWasmModule?: WebAssembly.Module,
 }
 
 export type IKhronosMessageMessage = InitMessage | KhronosTranscoderMessage;

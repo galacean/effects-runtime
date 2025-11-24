@@ -6,7 +6,7 @@ const globals = {
 };
 const external = Object.keys(globals);
 const banner = getBanner(pkg);
-const plugins = getPlugins(pkg, { external });
+const plugins = getPlugins(pkg, { useWasm: true, external });
 
 export default () => {
   return [{
@@ -35,6 +35,6 @@ export default () => {
       sourcemap: true,
     },
     external,
-    plugins: getPlugins(pkg, { min: true, external }),
+    plugins: getPlugins(pkg, { min: true, useWasm: true, external }),
   }];
 };

@@ -1,16 +1,14 @@
-import { getConfig } from '@galacean/effects';
 import type { KTX2Container } from '../ktx2-container';
 import { SupercompressionScheme } from '../ktx2-container';
 import type { KTX2TargetFormat } from '../ktx2-common';
 import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './texture-transcoder';
 import { TextureTranscoder } from './texture-transcoder';
 import { TranscodeWorkerCode } from './khronos-workercode';
-import { KHRONOS_UASTC_ASTC_WASM, KHRONOS_ZSTD_DECODER_WASM } from '../constants';
-import { loadWasm } from './fetch';
+import uastcAstcWasm from '../libs/uastc_astc.wasm';
+import zstddecWasm from '../libs/zstddec.wasm';
 
 export class KhronosTranscoder extends TextureTranscoder {
   private workerURL?: string;
-  private zstdWasmPromise?: Promise<ArrayBuffer>;
 
   constructor (
     workerLimitCount: number,
@@ -20,7 +18,7 @@ export class KhronosTranscoder extends TextureTranscoder {
   }
 
   async initTranscodeWorkerPool () {
-    const wasmBuffer = await loadWasm(getConfig(KHRONOS_UASTC_ASTC_WASM));
+    const transcoderWasm = await uastcAstcWasm();
     const funcCode = TranscodeWorkerCode.toString();
     const workerURL = URL.createObjectURL(
       new Blob([funcCode.substring(funcCode.indexOf('{') + 1, funcCode.lastIndexOf('}'))], {
@@ -30,7 +28,7 @@ export class KhronosTranscoder extends TextureTranscoder {
 
     this.workerURL = workerURL;
 
-    return this.createTranscodePool(workerURL, wasmBuffer);
+    return this.createTranscodePool(workerURL, transcoderWasm);
   }
 
   async transcode (ktx2Container: KTX2Container): Promise<TranscodeResult> {
@@ -43,19 +41,14 @@ export class KhronosTranscoder extends TextureTranscoder {
       // @ts-expect-error TODO: mipmaps 类型待确认
       mipmaps: null,
     };
-    let wasmBuffer: ArrayBuffer | undefined;
-
-    if (needZstd) {
-      this.zstdWasmPromise ??= loadWasm(getConfig(KHRONOS_ZSTD_DECODER_WASM));
-      wasmBuffer = await this.zstdWasmPromise;
-    }
+    const zstddecWasmModule = await zstddecWasm();
 
     const postMessageData: KhronosTranscoderMessage = {
       type: 'transcode',
       format: 0,
       needZstd,
       data: new Array<EncodedData[]>(faceCount),
-      wasmBuffer,
+      zstddecWasmModule,
     };
 
     const messageData = postMessageData.data;
