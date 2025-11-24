@@ -68,7 +68,7 @@ export class TextComponent extends MaskableGraphic {
         text: '默认文本',
         fontFamily: 'AlibabaSans-BoldItalic',
         fontSize: 40,
-        textColor: [255, 0, 0, 1],
+        textColor: [255, 255, 255, 1],
         fontWeight: spec.TextWeight.normal,
         letterSpace: 0,
         textAlign: 1,
@@ -137,14 +137,6 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
     this.lineCount = 0;
     this.maxLineWidth = 0;
-  }
-
-  protected disposeTextTexture (): void {
-    const texture = this.renderer.texture;
-
-    if (texture && texture !== this.engine.whiteTexture) {
-      texture.dispose();
-    }
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
@@ -269,6 +261,7 @@ export class TextComponentBase {
    */
   setLineHeight (value: number): void {
     const fontSize = this.textStyle.fontSize;
+    //设置行高不能小于字号大小
     const safe = Math.max(fontSize, value);
 
     if (this.textLayout.lineHeight === safe) {
