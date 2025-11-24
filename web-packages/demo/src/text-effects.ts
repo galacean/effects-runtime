@@ -146,17 +146,17 @@ function createControls () {
   const controlPanel = document.createElement('div');
 
   controlPanel.style.cssText = `
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 15px;
-    border-radius: 8px;
-    font-family: Arial, sans-serif;
-    z-index: 1000;
-    max-width: 250px;
-  `;
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      z-index: 1000;
+      max-width: 250px;
+    `;
 
   // 标题
   const title = document.createElement('h3');
@@ -183,17 +183,17 @@ function createControls () {
 
     button.textContent = effect.name;
     button.style.cssText = `
-      display: block;
-      width: 100%;
-      padding: 8px;
-      margin: 5px 0;
-      background: #333;
-      color: white;
-      border: 1px solid #555;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    `;
+        display: block;
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        background: #333;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      `;
     button.addEventListener('click', () => {
       currentEffect = effect.key;
       applyFancyTextEffect(currentEffect);
@@ -214,6 +214,22 @@ function createControls () {
   }
 
   controlPanel.appendChild(effectGroup);
+
+  // 曲线文本控制
+  const curvedTextGroup = createControlGroup('曲线文本');
+  const curvedTextControls = document.createElement('div');
+
+  curvedTextControls.innerHTML = `
+      <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 5px; font-size: 12px;">曲线强度: <span id="powerValue">0</span></label>
+        <input type="range" id="curvedPower" min="-100" max="100" value="0" style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 10px;">
+        <button id="disableCurvedText" style="width: 100%; padding: 6px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 11px;">禁用曲线文本</button>
+      </div>
+    `;
+  curvedTextGroup.appendChild(curvedTextControls);
+  controlPanel.appendChild(curvedTextGroup);
 
   // 手动控制组
   const manualGroup = createControlGroup('手动控制');
@@ -301,6 +317,62 @@ function createControls () {
 
   // 先将HTML元素添加到DOM中
   document.body.appendChild(controlPanel);
+
+  // 现在可以安全地获取DOM元素并绑定事件
+  const powerSlider = document.getElementById('curvedPower') as HTMLInputElement;
+  const powerValue = document.getElementById('powerValue');
+
+  // 定义更新曲线文本强度的函数
+  const updateCurvedTextPower = () => {
+    if (powerSlider && powerValue && textItem) {
+      const power = parseInt(powerSlider.value);
+
+      // 更新显示值
+      powerValue.textContent = power.toString();
+
+      const textComponent = textItem.getComponent(TextComponent);
+
+      if (textComponent) {
+        textComponent.setCurvedTextPower(power);
+
+        // 验证设置是否生效
+        const configAfter = textComponent.getCurrentFancyTextConfig();
+
+        // 只更新配置显示，不调用 updateDisplays() 避免覆盖滑块值
+        configDisplay.textContent = JSON.stringify(configAfter, null, 2);
+      }
+    }
+  };
+
+  if (powerSlider && powerValue) {
+    powerSlider.addEventListener('input', updateCurvedTextPower);
+
+    // 初始化时也更新一次
+    const power = parseInt(powerSlider.value);
+
+    powerValue.textContent = power.toString();
+  }
+
+  document.getElementById('disableCurvedText')?.addEventListener('click', () => {
+    if (textItem) {
+      const textComponent = textItem.getComponent(TextComponent);
+
+      textComponent?.setCurvedTextPower(0);
+
+      // 确保更新纹理以触发重绘
+      textComponent.isDirty = true;
+      textComponent.updateTexture();
+
+      // 重置滑块
+      if (powerSlider) {
+        powerSlider.value = '0';
+        if (powerValue) {
+          powerValue.textContent = '0';
+        }
+      }
+      updateDisplays();
+    }
+  });
 
   // 添加CSS样式用于禁用状态的视觉表示
   const style = document.createElement('style');
@@ -518,6 +590,30 @@ function createControls () {
           textColor.classList.add('disabled-control');
         }
       }
+
+      // 控制曲线文本控件
+      const curvedPower = document.getElementById('curvedPower') as HTMLInputElement;
+      const disableCurvedText = document.getElementById('disableCurvedText') as HTMLButtonElement;
+
+      if (curvedPower) {
+        if (editableParams.includes('curve')) {
+          curvedPower.removeAttribute('disabled');
+          curvedPower.classList.remove('disabled-control');
+        } else {
+          curvedPower.setAttribute('disabled', 'true');
+          curvedPower.classList.add('disabled-control');
+        }
+      }
+
+      if (disableCurvedText) {
+        if (editableParams.includes('curve')) {
+          disableCurvedText.removeAttribute('disabled');
+          disableCurvedText.classList.remove('disabled-control');
+        } else {
+          disableCurvedText.setAttribute('disabled', 'true');
+          disableCurvedText.classList.add('disabled-control');
+        }
+      }
     } else {
       // 没有editableParams时启用所有控件
       const strokeToggle = document.getElementById('strokeToggle');
@@ -527,8 +623,10 @@ function createControls () {
       const shadowColor = document.getElementById('shadowColor') as HTMLInputElement;
       const shadowBlur = document.getElementById('shadowBlur') as HTMLInputElement;
       const textColor = document.getElementById('textColor') as HTMLInputElement;
+      const curvedPower = document.getElementById('curvedPower') as HTMLInputElement;
+      const disableCurvedText = document.getElementById('disableCurvedText') as HTMLButtonElement;
 
-      [strokeToggle, strokeColor, strokeWidth, shadowToggle, shadowColor, shadowBlur, textColor].forEach(control => {
+      [strokeToggle, strokeColor, strokeWidth, shadowToggle, shadowColor, shadowBlur, textColor, curvedPower, disableCurvedText].forEach(control => {
         if (control) {
           (control as HTMLInputElement | HTMLButtonElement).removeAttribute('disabled');
           control.classList.remove('disabled-control');
@@ -650,6 +748,24 @@ function createControls () {
         }
       }
     });
+
+    // 同步曲线文本参数 - 暂时注释掉，避免覆盖用户输入
+    // 曲线参数完全由滑块控制，不需要从配置反向同步
+    // if (config.curvedTextPower !== undefined) {
+    //   const curvedPowerInput = document.getElementById('curvedPower') as HTMLInputElement;
+    //   const curvedPowerValue = document.getElementById('powerValue');
+
+    //   if (curvedPowerInput && curvedPowerValue) {
+    //     const currentValue = parseInt(curvedPowerInput.value);
+    //     const configValue = config.curvedTextPower;
+
+    //     // 只有当配置值与当前值不同时才更新
+    //     if (currentValue !== configValue) {
+    //       curvedPowerInput.value = configValue.toString();
+    //       curvedPowerValue.textContent = configValue.toString();
+    //     }
+    //   }
+    // }
   };
 
   // 监听配置变化

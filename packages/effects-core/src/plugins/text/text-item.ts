@@ -17,6 +17,7 @@ import type { TextEffect } from './text-effect-base';
 import { renderWithEffects } from './text-effect-base';
 import { TextureEffect, EffectFactory } from './effects';
 import { TextFilters, type Filter } from './text-filters';
+import { CurvedTextUtils } from './curved-text-utils';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -138,9 +139,93 @@ export class TextComponentBase {
   protected maxLineWidth: number;
 
   private char: string[];
+  private curvedTextPath: string = '';  // 存储曲线路径
+  private pathLength: number = 0;       // 缓存路径长度
+  private curvedTextPower: number = 0;  // 曲线强度参数
 
   // 文本花字特效
   effects: TextEffect[] = [];
+
+  /**
+   * 设置曲线文本路径
+   * @param path SVG路径字符串，空字符串表示禁用曲线文本
+   */
+  setCurvedTextPath (path: string): void {
+    if (this.curvedTextPath === path) {return;}
+    this.curvedTextPath = path;
+    this.pathLength = path ? CurvedTextUtils.calculatePathLength(path) : 0;
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置曲线文本强度
+   * @param power 曲线强度，0表示直线，>0向上弯曲，<0向下弯曲
+   */
+  setCurvedTextPower (power: number): void {
+    if (this.curvedTextPower === power) {return;}
+    this.curvedTextPower = power;
+
+    // 确保花字配置存在
+    if (!this.textStyle.fancyTextConfig) {
+      this.textStyle.fancyTextConfig = {
+        effects: [],
+        editableParams: ['curve'],
+        curvedTextPower: 0,
+        curvedTextPath: '',
+      };
+    }
+
+    // 同步到花字配置
+    this.textStyle.fancyTextConfig.curvedTextPower = power;
+
+    // 根据power值生成对应的SVG路径
+    if (power === 0) {
+      this.curvedTextPath = '';
+      this.pathLength = 0;
+      this.textStyle.fancyTextConfig.curvedTextPath = '';
+    } else {
+      // 测量文本宽度
+      if (this.context) {
+        this.context.font = this.getFontDesc();
+        let textWidth = 0;
+
+        for (const char of this.text || '') {
+          textWidth += this.context.measureText(char).width;
+        }
+        // 加上字符间距
+        textWidth += (this.text?.length || 0) * this.textLayout.letterSpace;
+
+        // 生成曲线路径
+        this.curvedTextPath = this.generateCurvedPath(textWidth, power);
+        this.pathLength = CurvedTextUtils.calculatePathLength(this.curvedTextPath);
+
+        // 同步路径到花字配置
+        this.textStyle.fancyTextConfig.curvedTextPath = this.curvedTextPath;
+      }
+    }
+
+    this.isDirty = true;
+  }
+
+  /**
+   * 根据文本宽度和power值生成SVG路径
+   * @param width 文本宽度
+   * @param power 曲线强度
+   * @returns SVG路径字符串
+   */
+  private generateCurvedPath (width: number, power: number): string {
+    if (power === 0) {
+      // 直线路径
+      return `M0,0 L${width},0`;
+    }
+
+    // 控制点偏移量，根据power值调整
+    const controlOffset = power * width * 0.01; // 调整系数使效果更明显
+
+    // 三次贝塞尔曲线路径
+    // M: 起点, C: 三次贝塞尔曲线
+    return `M0,0 C${width / 3},${controlOffset} ${2 * width / 3},${controlOffset} ${width},0`;
+  }
 
   // 设置文本花字特效
   setEffects (effectConfigs: FancyTextEffect[] | TextEffect[]) {
@@ -598,6 +683,7 @@ export class TextComponentBase {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
+
     const context = this.context;
     const style = this.textStyle;
     const layout = this.textLayout;
@@ -646,44 +732,51 @@ export class TextComponentBase {
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
     const charsInfo: CharInfo[] = [];
 
-    let x = 0;
-    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
-    let charsArray = [];
-    let charOffsetX = [];
+    // 检查是否启用曲线文本
+    if (this.isCurvedTextEnabled()) {
+      // 曲线文本渲染逻辑
+      this.renderCharsOnPath(context, style, layout, fontScale, charsInfo);
+    } else {
+      // 直线文本渲染逻辑
+      let x = 0;
+      let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+      let charsArray = [];
+      let charOffsetX = [];
 
-    for (let i = 0; i < this.char.length; i++) {
-      const str = this.char[i];
-      const textMetrics = context.measureText(str);
+      for (let i = 0; i < this.char.length; i++) {
+        const str = this.char[i];
+        const textMetrics = context.measureText(str);
 
-      // 和浏览器行为保持一致
-      x += layout.letterSpace * fontScale;
+        // 和浏览器行为保持一致
+        x += layout.letterSpace * fontScale;
 
-      if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
-        charsInfo.push({
-          y,
-          width: x,
-          chars: charsArray,
-          charOffsetX,
-        });
-        x = 0;
-        y += lineHeight;
-        charsArray = [];
-        charOffsetX = [];
+        if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
+          charsInfo.push({
+            y,
+            width: x,
+            chars: charsArray,
+            charOffsetX,
+          });
+          x = 0;
+          y += lineHeight;
+          charsArray = [];
+          charOffsetX = [];
+        }
+
+        if (str !== '\n') {
+          charsArray.push(str);
+          charOffsetX.push(x);
+
+          x += textMetrics.width;
+        }
       }
-
-      if (str !== '\n') {
-        charsArray.push(str);
-        charOffsetX.push(x);
-
-        x += textMetrics.width;
-      }
+      charsInfo.push({
+        y,
+        width: x,
+        chars: charsArray,
+        charOffsetX,
+      });
     }
-    charsInfo.push({
-      y,
-      width: x,
-      chars: charsArray,
-      charOffsetX,
-    });
 
     // 统一使用花字渲染系统
     renderWithEffects(
@@ -734,6 +827,116 @@ export class TextComponentBase {
     // 临时画布会在canvasPool中自动管理
 
     this.isDirty = false;
+  }
+
+  /**
+   * 判断是否启用曲线文本
+   * @returns 是否启用曲线文本
+   */
+  private isCurvedTextEnabled (): boolean {
+    return (this.curvedTextPower !== 0 || !!this.curvedTextPath) && this.pathLength > 0 && !!this.context;
+  }
+
+  /**
+   * 在路径上渲染字符
+   * @param context Canvas渲染上下文
+   * @param style 文本样式
+   * @param layout 文本布局
+   * @param fontScale 字体缩放
+   * @param charsInfo 字符信息数组
+   */
+  private renderCharsOnPath (
+    context: CanvasRenderingContext2D,
+    style: TextStyle,
+    layout: TextLayout,
+    fontScale: number,
+    charsInfo: CharInfo[]
+  ): void {
+    // 测量字符宽度
+    const charWidths: number[] = [];
+    let totalWidth = 0;
+
+    for (const char of this.char) {
+      const width = context.measureText(char).width;
+
+      charWidths.push(width);
+      totalWidth += width;
+    }
+
+    // 计算字符间距
+    const letterSpacing = layout.letterSpace * fontScale;
+    const textWidthOnPath = totalWidth + (this.char.length - 1) * letterSpacing;
+
+    // 计算起始偏移
+    let offset = 0;
+
+    if (layout.textAlign === spec.TextAlignment.middle) {
+      offset = Math.max(0, (this.pathLength - textWidthOnPath) / 2);
+    } else if (layout.textAlign === spec.TextAlignment.right) {
+      offset = Math.max(0, this.pathLength - textWidthOnPath);
+    }
+
+    // 清空原有的charsInfo
+    charsInfo.length = 0;
+
+    // 为每个字符创建新的charsInfo条目
+    let currentPos = offset;
+    const charsArray: string[] = [];
+    const charOffsetX: number[] = [];
+    const y = layout.getOffsetY(style, 1, layout.lineHeight * fontScale, style.fontSize * fontScale);
+
+    // 保存变换前的状态
+    context.save();
+
+    for (let i = 0; i < this.char.length; i++) {
+      const charWidth = charWidths[i];
+      const charWidthOnPath = charWidth + (i === this.char.length - 1 ? 0 : letterSpacing);
+
+      // 获取字符中心位置
+      const midPos = currentPos + charWidth / 2;
+
+      if (midPos > this.pathLength) {break;}
+
+      const point = CurvedTextUtils.getPointAtLength(this.curvedTextPath, midPos);
+
+      if (!point) {break;}
+
+      // 保存字符信息，用于花字渲染系统
+      charsArray.push(this.char[i]);
+      // 使用路径上的x坐标作为偏移量，并考虑曲线的y偏移
+      charOffsetX.push(point.x * fontScale);
+
+      // 直接在路径上绘制字符
+      context.save();
+      context.translate(point.x * fontScale, y + point.y * fontScale);
+      context.rotate(point.angle);
+
+      // 设置文本样式
+      context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
+      context.font = style.fontDesc;
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+
+      // 绘制字符
+      context.fillText(this.char[i], -charWidth / 2, 0);
+
+      context.restore();
+
+      currentPos += charWidthOnPath;
+    }
+
+    // 恢复变换状态
+    context.restore();
+
+    // 添加字符信息到charsInfo数组（用于花字效果）
+    if (charsArray.length > 0) {
+      charsInfo.push({
+        y: y,
+        width: textWidthOnPath * fontScale,
+        chars: charsArray,
+        charOffsetX: charOffsetX,
+      });
+    }
   }
 
   protected disposeTextTexture () {

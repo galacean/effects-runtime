@@ -31,7 +31,7 @@ export interface FancyTextStyle {
   /**
    * 可编辑的参数列表
    */
-  editableParams?: ('stroke' | 'shadow' | 'fill')[],
+  editableParams?: ('stroke' | 'shadow' | 'fill' | 'curve')[],
   /**
    * 是否启用描边（独立开关）
    * @default false
@@ -51,6 +51,15 @@ export interface FancyTextStyle {
    * 当前预设名称
    */
   presetName?: string,
+  /**
+   * 曲线文本强度
+   * @default 0
+   */
+  curvedTextPower?: number,
+  /**
+   * 曲线文本路径（SVG路径字符串）
+   */
+  curvedTextPath?: string,
 }
 
 // 定义滤镜类型
@@ -113,7 +122,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
-    editableParams: ['fill'],
+    editableParams: ['fill', 'curve'],
   },
   // 单描边填充花字
   'single-stroke': {
@@ -132,7 +141,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
-    editableParams: ['stroke'],
+    editableParams: ['stroke', 'curve'],
   },
   // 多描边花字（使用效果栈方式）
   'multi-stroke': {
@@ -209,7 +218,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
-    editableParams: ['shadow', 'fill'], // 多描边预设只允许修改阴影和填充，禁止修改描边
+    editableParams: ['shadow', 'fill', 'curve'], // 多描边预设允许修改阴影、填充和曲线
   },
   // 渐变花字
   'gradient': {
@@ -226,7 +235,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
-    editableParams: ['fill'],
+    editableParams: ['fill', 'curve'],
   },
   // 投影花字
   'shadow': {
@@ -250,7 +259,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
-    editableParams: ['shadow', 'fill'],
+    editableParams: ['shadow', 'fill', 'curve'],
   },
   // 纹理花字
   'texture': {
@@ -264,7 +273,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
         },
       },
     ],
-    editableParams: [],
+    editableParams: ['curve'],
   },
 };
 
@@ -302,7 +311,7 @@ export class TextStyle {
   /**
    * 检查参数是否可编辑
    */
-  canEditParam (key: 'stroke' | 'shadow' | 'fill'): boolean {
+  canEditParam (key: 'stroke' | 'shadow' | 'fill' | 'curve'): boolean {
     const editable = this.fancyTextConfig?.editableParams;
 
     if (!editable || editable.length === 0) {
@@ -515,7 +524,11 @@ export class TextStyle {
    * 获取当前花字特效配置
    */
   getCurrentFancyTextConfig (): FancyTextStyle {
-    return this.fancyTextConfig;
+    return {
+      ...this.fancyTextConfig,
+      curvedTextPower: this.fancyTextConfig.curvedTextPower ?? 0,
+      curvedTextPath: this.fancyTextConfig.curvedTextPath ?? '',
+    };
   }
 
   /**
