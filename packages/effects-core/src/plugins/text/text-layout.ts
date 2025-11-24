@@ -22,13 +22,17 @@ export class TextLayout {
    */
   autoWidth: boolean;
 
-  readonly maxTextWidth: number;
+  maxTextWidth: number;
   /**
    * 行高
    */
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
+    this.update(options);
+  }
+
+  update (options: spec.TextContentOptions): void {
     const {
       fontSize,
       textHeight = 100,
