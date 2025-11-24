@@ -22,12 +22,16 @@ export class ModelPlugin extends AbstractPlugin {
    */
   override name = 'model';
 
+  override async processAssets (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
+    await CompositionCache.loadStaticResources();
+  }
+
   /**
    * 整个 load 阶段都不会创建 GL 相关的对象，只创建 JS 对象
    * @param scene - 场景
    * @param options - 加载选项
    */
-  override async prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): Promise<void> {
+  override prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
     if (options.pluginData !== undefined) {
       const keyList = [
         'compatibleMode',
@@ -50,8 +54,6 @@ export class ModelPlugin extends AbstractPlugin {
 
     //
     PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode);
-    await CompositionCache.loadStaticResources();
-
     // Add PBR and Unlit shader data
     const isWebGL2 = engine.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode();

@@ -31,8 +31,6 @@ describe('core/composition/plugin', () => {
         scene.storage.xx = 1;
         // @ts-expect-error
         expect(options.player).not.exist;
-
-        return Promise.resolve();
       }
 
       override onCompositionConstructed (composition: Composition, scene: Scene) {

@@ -37,7 +37,7 @@ export abstract class AbstractPlugin {
    * @param {Scene} scene
    * @param {SceneLoadOptions} options
    */
-  async prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): Promise<void> {
+  prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
   }
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }

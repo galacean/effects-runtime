@@ -57,8 +57,6 @@ describe('core/composition/load-textures', () => {
         expect(scene.textureOptions[0]).to.exist;
         texOpt = scene.textureOptions[0];
         spy();
-
-        return Promise.resolve(undefined);
       }
     });
     const scn = await player.loadScene(a);
@@ -122,8 +120,6 @@ describe('core/composition/load-textures', () => {
         expect(texOpt.minFilter).to.eql(glContext.NEAREST_MIPMAP_NEAREST, 'tex filter');
         expect(scene.textureOptions.length).to.eql(2);
         spy();
-
-        return Promise.resolve(undefined);
       }
     });
     const scn = await player.loadScene(a);
@@ -193,8 +189,6 @@ describe('core/composition/load-textures', () => {
         expect(texOpt.flipY).to.be.true;
         expect(texOpt.minFilter).to.eql(glContext.NEAREST_MIPMAP_NEAREST, 'tex filter');
         spy();
-
-        return Promise.resolve(undefined);
       }
     });
     const scn = await player.loadScene(a);
@@ -274,8 +268,6 @@ describe('core/composition/load-textures', () => {
         scene.textures[1].magFilter = glContext.LINEAR;
         expect(scene.textures[1].name).to.eql('abc');
         spy(1);
-
-        return Promise.resolve(undefined);
       }
 
       onCompositionConstructed (composition, scene) {
@@ -333,8 +325,6 @@ describe('core/composition/load-textures', () => {
         expect(scene.bins[0]).to.be.an.instanceof(ArrayBuffer);
         expect(scene.bins[1]).to.eql(data);
         scene.storage.key = 1;
-
-        return Promise.resolve(undefined);
       }
 
       onCompositionConstructed (composition, scene) {

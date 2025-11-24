@@ -62,10 +62,8 @@ export class PluginSystem {
     );
   }
 
-  static async loadResources (scene: Scene, options: SceneLoadOptions, engine: Engine) {
-    return Promise.all(
-      plugins.map(plugin => plugin.prepareResource(scene, options, engine)),
-    );
+  static loadResources (scene: Scene, options: SceneLoadOptions, engine: Engine) {
+    plugins.forEach(loader => loader.prepareResource(scene, options, engine));
   }
 }
 
