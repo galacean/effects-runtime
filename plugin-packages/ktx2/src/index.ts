@@ -9,8 +9,8 @@ export * from './ktx2-loader';
 export const version = __VERSION__;
 
 registerKTX2Loader({
-  preferKhronosTranscoder: true,
   workerCount: 2,
+  useWebWorker: false,
 });
 
 if (version !== EFFECTS.version) {

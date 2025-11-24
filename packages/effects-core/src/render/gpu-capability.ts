@@ -227,18 +227,10 @@ export enum CompressTextureCapabilityType {
  * KTX2 可以包含多种压缩格式，需要检测是否支持至少一种
  */
 function detectKTX2Support (compressTextureCapabilityList: Map<CompressTextureCapabilityType, boolean>): boolean {
-  // KTX2 转码通常需要 Web Worker 来提升性能
-  if (!window.Worker) {return false;}
-
   // KTX2 文件可以包含多种压缩格式，检测是否支持至少一种
   const hasCompressedTextureSupport =
     compressTextureCapabilityList.get(CompressTextureCapabilityType.astc) ||
-    compressTextureCapabilityList.get(CompressTextureCapabilityType.astc_webkit) ||
-    compressTextureCapabilityList.get(CompressTextureCapabilityType.etc) ||
-    compressTextureCapabilityList.get(CompressTextureCapabilityType.etc_webkit) ||
-    compressTextureCapabilityList.get(CompressTextureCapabilityType.etc1) ||
-    compressTextureCapabilityList.get(CompressTextureCapabilityType.pvrtc) ||
-    compressTextureCapabilityList.get(CompressTextureCapabilityType.pvrtc_webkit);
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.astc_webkit);
 
   // KTX2 可以回退到未压缩的格式（如 RGBA8），所以即使不支持压缩格式也可以使用
   // 但为了性能考虑，至少支持一种压缩格式

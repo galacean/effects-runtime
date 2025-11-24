@@ -14,10 +14,10 @@ export class WorkerPool<T = any, U = any> {
    * @param workerCreator - worker创建器
    */
   constructor (
-    public readonly limitedCount = 3,
+    public readonly limitedCount = 2,
     private readonly workerCreator: () => Worker | Promise<Worker>,
   ) {
-    if (limitedCount > 32 || limitedCount < 1) {
+    if (limitedCount > 8 || limitedCount < 1) {
       throw new Error('limitedCount must be between 1 and 32');
     }
     this.workerItems = new Array<WorkerItem<U>>(limitedCount);
