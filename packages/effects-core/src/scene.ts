@@ -12,9 +12,8 @@ export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | s
 export interface Scene {
   readonly jsonScene: spec.JSONScene,
   readonly bins: ArrayBuffer[],
-  readonly renderLevel?: SceneRenderLevel,
   readonly storage: Record<string, any>,
-
+  renderLevel?: SceneRenderLevel,
   textureOptions: Record<string, any>[],
   textures: Texture[],
   images: ImageLike[],

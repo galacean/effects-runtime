@@ -1,4 +1,3 @@
-import type * as spec from '@galacean/effects-specification';
 import type { Composition } from './composition';
 import type { AbstractPlugin, PluginConstructor } from './plugins';
 import type { Scene, SceneLoadOptions } from './scene';
@@ -26,6 +25,8 @@ export function registerPlugin (name: string, pluginClass: PluginConstructor) {
   const pluginInstance = new pluginClass();
 
   pluginInstance.name = name;
+  pluginInstance.initialize();
+
   plugins.push(pluginInstance);
   plugins.sort((a, b) => a.order - b.order);
 }
@@ -55,13 +56,9 @@ export class PluginSystem {
     plugins.forEach(loader => loader.onCompositionDestroyed(comp));
   }
 
-  static processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): void {
-    plugins.forEach(loader => loader.processRawJSON(json, options));
-  }
-
-  static async processAssets (json: spec.JSONScene, options?: SceneLoadOptions) {
+  static async processAssets (scene: Scene, options?: SceneLoadOptions) {
     return Promise.all(
-      plugins.map(plugin => plugin.processAssets(json, options)),
+      plugins.map(plugin => plugin.processAssets(scene, options)),
     );
   }
 

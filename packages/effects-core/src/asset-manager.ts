@@ -188,28 +188,36 @@ export class AssetManager implements Disposable {
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+
+        scene = {
+          timeInfos,
+          url,
+          storage: {},
+          jsonScene,
+          bins: [],
+          textureOptions: [],
+          textures: [],
+          images: [],
+          assets: this.assets,
+        };
+
+        await hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(scene, this.options));
+
         const { bins = [], images, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
-        scene = {
-          timeInfos,
-          url,
-          renderLevel: this.options.renderLevel,
-          storage: {},
-          jsonScene,
-          bins: loadedBins,
-          textureOptions: loadedTextures,
-          textures: [],
-          images: loadedImages,
-          assets: this.assets,
-        };
+        scene.bins.push(...loadedBins);
+        scene.textureOptions.push(...loadedTextures);
+        scene.images.push(...loadedImages);
+
+        // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
+        scene.renderLevel = this.options.renderLevel;
       }
 
       const totalTime = performance.now() - startTime;
@@ -241,8 +249,6 @@ export class AssetManager implements Disposable {
         throw new Error(`The plugin '${customPluginName}' not found.` + getPluginUsageInfo(customPluginName));
       }
     }
-
-    PluginSystem.processRawJSON(jsonScene, this.options);
 
     return {
       jsonScene,
@@ -367,20 +373,10 @@ export class AssetManager implements Disposable {
   }
 
   private async processPluginAssets (
-    jsonScene: spec.JSONScene,
+    scene: Scene,
     options?: SceneLoadOptions,
   ) {
-    const pluginResult = await PluginSystem.processAssets(jsonScene, options);
-    const { assets, loadedAssets } = pluginResult.reduce((acc, cur) => {
-      acc.assets = acc.assets.concat(cur.assets);
-      acc.loadedAssets = acc.loadedAssets.concat(cur.loadedAssets);
-
-      return acc;
-    }, { assets: [], loadedAssets: [] });
-
-    for (let i = 0; i < assets.length; i++) {
-      this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
-    }
+    await PluginSystem.processAssets(scene, options);
   }
 
   private async processTextures (
