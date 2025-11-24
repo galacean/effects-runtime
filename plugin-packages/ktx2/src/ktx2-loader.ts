@@ -85,7 +85,7 @@ export class KTX2Loader implements TextureLoader {
     }
 
     try {
-      const transcoder = new KhronosTranscoder(this.workerCount, KTX2TargetFormat.ASTC);
+      const transcoder = new KhronosTranscoder(this.workerCount, KTX2TargetFormat.ASTC, true);
 
       await transcoder.init();
       this.khronosTranscoder = transcoder;

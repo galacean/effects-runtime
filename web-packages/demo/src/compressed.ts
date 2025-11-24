@@ -4,7 +4,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-ffd';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*1zOzT6g_Mw8AAAAAQgAAAAgAelB4AQ';
-const json_ktx2_spine = 'https://mdn.alipayobjects.com/mars/afts/file/A*lnmBT7dsNNgAAAAAQFAAAAgAelB4AQ';
+const json_ktx2_spine = 'https://mdn.alipayobjects.com/mars/afts/file/A*mTBPSqc6ckUAAAAAQaAAAAgAelB4AQ';
 const json_ktx2 = `{
   "playerVersion": {
     "web": "2.7.0",
