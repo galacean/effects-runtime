@@ -4,7 +4,7 @@ declare module '*.glsl' {
 }
 
 declare module '*.wasm' {
-  const content: () => Promise<WebAssembly.Instance | WebAssembly.Module>;;
+  const content: () => Promise<WebAssembly.Instance | WebAssembly.Module>;
   export default content;
 }
 

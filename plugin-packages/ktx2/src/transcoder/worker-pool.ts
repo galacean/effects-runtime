@@ -28,7 +28,7 @@ export class WorkerPool<T = any, U = any> {
     const promises = new Array<Promise<Worker>>(count);
 
     for (let i = 0; i < count; i++) {
-      promises.push(this.initWorker(i));
+      promises.push(this.ensureWorker(i));
     }
 
     return Promise.all(promises);
