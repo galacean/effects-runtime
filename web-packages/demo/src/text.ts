@@ -1,6 +1,6 @@
 import { Player, TextComponent } from '@galacean/effects';
 
-const json = 'https://g.alicdn.com/ani-assets/5bcd4da9b51e051c3422bdbcee7fa4ff/0.0.1/mars.json';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*cUOFTpkoAf0AAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -14,19 +14,14 @@ const container = document.getElementById('J-container');
         text_1: 'Galacean Effects'.toLocaleUpperCase().split('').reverse().join(''),
       },
     });
-    const textItem = compostion.getItemByName('text_1');
+    const textItem = compostion.getItemByName('text_2');
     const textComponent = textItem?.getComponent(TextComponent);
 
     textComponent?.setTextColor([255, 0, 0, 1]);
 
-    let lotteryTimes = 999;
-
-    textComponent?.setText(`${lotteryTimes}`); // 设置初始值
-
-    const timer = setInterval(() => {
-      lotteryTimes += 1;
-      textComponent?.setText(`${lotteryTimes}`);
-    }, 1000); // 每秒增加1
+    setTimeout(() => {
+      textComponent?.setText('基于 Web\n效果丰富，氛围粒子、陀螺仪特效、3D 模型渲染\n100%还原');
+    }, 1500);
   } catch (e) {
     console.error('biz', e);
   }

@@ -15,12 +15,17 @@ export class TextLayout implements LayoutBase {
    */
   autoWidth: boolean;
 
+  maxTextWidth: number;
   /**
    * 行高
    */
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
+    this.update(options);
+  }
+
+  update (options: spec.TextContentOptions): void {
     const {
       textHeight = 100,
       textWidth = 100,

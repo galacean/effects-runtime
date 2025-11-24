@@ -1,17 +1,26 @@
-import type { GeometryDrawMode, HitTestCustomParams, Renderer, Texture, VFXItem } from '@galacean/effects';
-import { Mesh } from '@galacean/effects';
-import { HitTestType, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, Renderer, Texture, VFXItem } from '@galacean/effects';
+import {
+  RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
+  TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
+  effectsClass, glContext, math, serialize, spec,
+} from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
-import { iconTextures, type EditorGizmoPlugin } from './gizmo-loader';
-import type { GizmoItemBounding, Ray, TriangleLike } from './gizmo-vfx-item';
-import { BoundingType, type GizmoItemBoundingSphere } from './gizmo-vfx-item';
+import type { EditorGizmoPlugin } from './gizmo-loader';
+import { iconTextures } from './gizmo-loader';
+import type { GizmoItemBoundingSphere, GizmoItemBounding, Ray, TriangleLike } from './gizmo-vfx-item';
+import { BoundingType } from './gizmo-vfx-item';
 import { computeOrthographicOffCenter } from './math-utils';
 import { createMeshFromSubType } from './mesh';
 import { intersectRayLine } from './raycast';
 import { createMeshFromShape } from './shape';
 import { moveToPointWidthFixDistance } from './util';
-import { WireframeGeometryType, createModeWireframe, updateWireframeMesh } from './wireframe';
+import { WireframeGeometryType, createModeWireframe, destroyWireframeMesh, updateWireframeMesh } from './wireframe';
+import { GeometryType } from './geometry';
+
+const editorRenderPassName = 'editor-gizmo';
+const frontRenderPassName = 'front-gizmo';
+const behindRenderPassName = 'behind-gizmo';
 
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
@@ -40,7 +49,7 @@ export class GizmoComponent extends RendererComponent {
   depthTest?: boolean;
   mat = Matrix4.fromIdentity();
   wireframeMeshes: Mesh[] = [];
-
+  meshes: Mesh[] = [];
   mesh: Mesh | null = null;
 
   override onStart (): void {
@@ -73,12 +82,12 @@ export class GizmoComponent extends RendererComponent {
 
     switch (gizmoSubType) {
       case GizmoSubType.particleEmitter:
-        this.createParticleContent(targetItem, gizmoPlugin.meshToAdd);
+        this.createParticleContent(targetItem);
 
         break;
       case GizmoSubType.modelWireframe:
         this.needCreateModelContent = true;
-        this.createModelContent(targetItem, gizmoPlugin.meshToAdd);
+        this.createModelContent(targetItem);
 
         break;
       case GizmoSubType.box:
@@ -92,26 +101,26 @@ export class GizmoComponent extends RendererComponent {
       case GizmoSubType.pointLight:
       case GizmoSubType.spotLight:
       case GizmoSubType.floorGrid:
-        this.createBasicContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType);
+        this.createBasicContent(targetItem, gizmoSubType);
 
         break;
       case GizmoSubType.camera:
       case GizmoSubType.light:
-        this.createBasicContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType, iconTextures);
+        this.createBasicContent(targetItem, gizmoSubType, iconTextures);
 
         break;
       case GizmoSubType.rotation:
       case GizmoSubType.scale:
       case GizmoSubType.translation:
-        this.createCombinationContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType);
+        this.createCombinationContent(targetItem, gizmoSubType);
 
         break;
       case GizmoSubType.viewHelper:
-        this.createCombinationContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType, iconTextures);
+        this.createCombinationContent(targetItem, gizmoSubType, iconTextures);
 
         break;
       case GizmoSubType.boundingBox:
-        this.createBoundingBoxContent(targetItem, gizmoPlugin.meshToAdd);
+        this.createBoundingBoxContent(targetItem);
 
         break;
       default:
@@ -120,8 +129,100 @@ export class GizmoComponent extends RendererComponent {
     composition?.loaderData.gizmoItems.push(this.item);
   }
 
+  override onEnable (): void {
+    super.onEnable();
+    if (!this.item.composition) {
+      return;
+    }
+
+    const renderFrame = this.item.composition.renderFrame;
+
+    for (const mesh of this.meshes) {
+      if (mesh.name === GeometryType.FloorGrid.toString() || mesh.name === 'Box') {
+        this.getFrontRenderPass(renderFrame).addMesh(mesh);
+      } else if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
+        this.getBehindRenderPass(renderFrame).addMesh(mesh);
+      } else {
+        this.getEditorRenderPass(renderFrame).addMesh(mesh);
+      }
+    }
+  }
+
+  override onDisable (): void {
+    super.onDisable();
+    if (!this.item.composition) {
+      return;
+    }
+
+    const renderFrame = this.item.composition.renderFrame;
+
+    for (const mesh of this.meshes) {
+      if (mesh.name === GeometryType.FloorGrid.toString() || mesh.name === 'Box') {
+        this.getFrontRenderPass(renderFrame).removeMesh(mesh);
+      } else if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
+        this.getBehindRenderPass(renderFrame).removeMesh(mesh);
+      } else {
+        this.getEditorRenderPass(renderFrame).removeMesh(mesh);
+      }
+    }
+  }
+
   override onUpdate (dt: number): void {
     this.updateRenderData();
+  }
+
+  override onDestroy (): void {
+    const gizmoMesh = this.mesh;
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return;
+    }
+
+    if (gizmoMesh && !gizmoMesh.isDestroyed) {
+      gizmoMesh.dispose();
+
+      if (gizmoMesh.name === GeometryType.FloorGrid.toString() || gizmoMesh.name === 'Box') {
+        this.getFrontRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
+      } else {
+        this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
+      }
+    }
+    if (this.contents) {
+      for (const [mesh] of this.contents) {
+        if (!mesh.isDestroyed) {
+          mesh.dispose();
+          if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
+            this.getBehindRenderPass(composition.renderFrame).removeMesh(mesh);
+          } else {
+            this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
+          }
+        }
+      }
+    }
+
+    if (this && this.wireframeMeshes.length > 0) {
+      this.wireframeMeshes.forEach(mesh => {
+        if (!mesh.isDestroyed) {
+          destroyWireframeMesh(mesh);
+          this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
+        }
+      });
+    } else {
+      const wireframeMesh = this.wireframeMesh;
+
+      if (wireframeMesh && !wireframeMesh.isDestroyed) {
+        destroyWireframeMesh(wireframeMesh);
+        this.getEditorRenderPass(composition.renderFrame).removeMesh(wireframeMesh);
+      }
+    }
+
+    const arr: VFXItem[] = composition.loaderData.gizmoItems;
+    const index = arr.indexOf(this.item);
+
+    if (index > -1) {
+      arr.splice(index, 1);
+    }
   }
 
   override render (renderer: Renderer): void {
@@ -351,7 +452,7 @@ export class GizmoComponent extends RendererComponent {
     return result;
   }
 
-  createModelContent (item: VFXItem, meshesToAdd: Mesh[]) {
+  createModelContent (item: VFXItem) {
     const modelComponent = item.getComponent(RendererComponent);
     //@ts-expect-error TODO 和 3D 类型解耦
     const psubMesh = modelComponent.content.subMeshes[0];
@@ -373,11 +474,11 @@ export class GizmoComponent extends RendererComponent {
       const mesh = this.wireframeMesh = createModeWireframe(engine, originMesh, this.color);
 
       this.wireframeMeshes.push(mesh);
-      meshesToAdd.push(mesh);
+      this.meshes.push(mesh);
     }
   }
 
-  createParticleContent (item: VFXItem, meshesToAdd: Mesh[]) {
+  createParticleContent (item: VFXItem) {
     const shape = (item as any).props.content.shape;
     const engine = this.item.composition?.renderer.engine;
 
@@ -387,16 +488,15 @@ export class GizmoComponent extends RendererComponent {
     if (shape && shape.type) {
       const mesh = this.mesh = createMeshFromShape(engine, shape, { color: this.color });
 
-      meshesToAdd.push(mesh);
+      this.meshes.push(mesh);
     }
   }
 
   /**
    * 创建 BoundingBox 几何体模型
    * @param item - VFXItem
-   * @param meshesToAdd - 插件缓存的 Mesh 数组
    */
-  createBoundingBoxContent (item: VFXItem, meshesToAdd: Mesh[]) {
+  createBoundingBoxContent (item: VFXItem) {
     const gizmoItem = this.item;
     const shape = {
       shape: 'Box',
@@ -413,17 +513,16 @@ export class GizmoComponent extends RendererComponent {
     if (shape) {
       const mesh = this.mesh = createMeshFromShape(engine, shape, { color: this.color, depthTest: this.depthTest });
 
-      meshesToAdd.push(mesh);
+      this.meshes.push(mesh);
     }
   }
 
   /**
    * 创建基础几何体模型
    * @param item - VFXItem
-   * @param meshesToAdd - 插件缓存的 Mesh 数组
    * @param subType - GizmoSubType 类型
    */
-  createBasicContent (item: VFXItem, meshesToAdd: Mesh[], subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
+  createBasicContent (item: VFXItem, subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
     const gizmoItem = this.item;
     const options = {
       size: this.size,
@@ -438,17 +537,16 @@ export class GizmoComponent extends RendererComponent {
     const mesh = this.mesh = createMeshFromSubType(engine, subType, this.boundingMap, iconTextures, options) as Mesh;
 
     this.targetItem = item;
-    meshesToAdd.push(mesh);
+    this.meshes.push(mesh);
   }
 
   /**
    * 创建组合几何体模型
    * @param item - VFXItem
-   * @param meshesToAdd - 插件缓存的 Mesh 数组
    * @param subType - GizmoSubType 类型
    * @param iconTextures - XYZ 图标纹理（viewHelper 专用）
    */
-  createCombinationContent (item: VFXItem, meshesToAdd: Mesh[], subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
+  createCombinationContent (item: VFXItem, subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
     const gizmoItem = this.item;
     const options = {
       size: this.size,
@@ -461,7 +559,7 @@ export class GizmoComponent extends RendererComponent {
 
     this.contents = createMeshFromSubType(engine, subType, this.boundingMap, iconTextures, options) as Map<Mesh, Transform>;
     for (const mesh of this.contents.keys()) {
-      meshesToAdd.push(mesh);
+      this.meshes.push(mesh);
     }
     this.targetItem = item;
   }
@@ -726,6 +824,52 @@ export class GizmoComponent extends RendererComponent {
       };
     }
   };
+
+  getBehindRenderPass (pipeline: RenderFrame): RenderPass {
+    let rp = pipeline.renderPasses.find(renderPass => renderPass.name === behindRenderPassName);
+
+    if (!rp) {
+      rp = new RenderPass(pipeline.renderer, {
+        name: behindRenderPassName,
+        priority: RenderPassPriorityPostprocess + RenderPassPriorityPostprocess,
+        clearAction: {
+          depthAction: TextureLoadAction.clear,
+        },
+      });
+      pipeline.addRenderPass(rp);
+    }
+
+    return rp;
+  }
+
+  getEditorRenderPass (pipeline: RenderFrame): RenderPass {
+    let rp = pipeline.renderPasses.find(renderPass => renderPass.name === editorRenderPassName);
+
+    if (!rp) {
+      rp = new RenderPass(pipeline.renderer, {
+        name: editorRenderPassName,
+        priority: RenderPassPriorityPostprocess + 2,
+      });
+      pipeline.addRenderPass(rp);
+    }
+
+    return rp;
+  }
+
+  getFrontRenderPass (pipeline: RenderFrame): RenderPass {
+    let rp = pipeline.renderPasses.find(renderPass => renderPass.name === frontRenderPassName);
+
+    if (!rp) {
+      rp = new RenderPass(pipeline.renderer, {
+        name: frontRenderPassName,
+        priority: RenderPassPriorityPrepare + 2,
+      });
+      pipeline.addRenderPass(rp);
+    }
+
+    return rp;
+  }
+
 }
 
 export enum CoordinateSpace {
