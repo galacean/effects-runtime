@@ -16,6 +16,7 @@ export interface TextEnv {
   lines: CharInfo[],
   dpr: number,
   layer: LayerManager,
+  isCurvedText?: boolean,
 }
 
 export class LayerManager {
@@ -68,6 +69,9 @@ export function createTextEnv (
   layout: any, // TextLayout
   charsInfo: CharInfo[]
 ): TextEnv {
+  // 检查是否为曲线文本
+  const isCurvedText = charsInfo.length > 0 && charsInfo[0].isCurved === true;
+
   return {
     canvas,
     ctx: context,
@@ -77,6 +81,7 @@ export function createTextEnv (
     lines: charsInfo,
     dpr: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
     layer: new LayerManager(canvas.width, canvas.height),
+    isCurvedText,
   };
 }
 

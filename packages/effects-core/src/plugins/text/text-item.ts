@@ -40,6 +40,18 @@ export interface CharInfo {
    * 段落宽度
    */
   width: number,
+  /**
+   * 是否为曲线文本
+   */
+  isCurved?: boolean,
+  /**
+   * 每个字符的旋转角度（弧度）
+   */
+  rotations?: number[],
+  /**
+   * 每个字符的 Y 轴偏移（用于曲线）
+   */
+  curvedOffsetY?: number[],
 }
 
 export interface TextComponent extends TextComponentBase { }
@@ -838,7 +850,7 @@ export class TextComponentBase {
   }
 
   /**
-   * 在路径上渲染字符
+   * 构建路径上的字符信息（不直接绘制）
    * @param context Canvas渲染上下文
    * @param style 文本样式
    * @param layout 文本布局
@@ -879,14 +891,13 @@ export class TextComponentBase {
     // 清空原有的charsInfo
     charsInfo.length = 0;
 
-    // 为每个字符创建新的charsInfo条目
+    // 构建路径字符信息
     let currentPos = offset;
     const charsArray: string[] = [];
     const charOffsetX: number[] = [];
+    const rotations: number[] = [];
+    const curvedOffsetY: number[] = [];
     const y = layout.getOffsetY(style, 1, layout.lineHeight * fontScale, style.fontSize * fontScale);
-
-    // 保存变换前的状态
-    context.save();
 
     for (let i = 0; i < this.char.length; i++) {
       const charWidth = charWidths[i];
@@ -901,40 +912,25 @@ export class TextComponentBase {
 
       if (!point) {break;}
 
-      // 保存字符信息，用于花字渲染系统
+      // 保存字符信息，供花字渲染系统使用
       charsArray.push(this.char[i]);
-      // 使用路径上的x坐标作为偏移量，并考虑曲线的y偏移
       charOffsetX.push(point.x * fontScale);
-
-      // 直接在路径上绘制字符
-      context.save();
-      context.translate(point.x * fontScale, y + point.y * fontScale);
-      context.rotate(point.angle);
-
-      // 设置文本样式
-      context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
-      context.font = style.fontDesc;
-      context.textAlign = 'left';
-      context.textBaseline = 'middle';
-
-      // 绘制字符
-      context.fillText(this.char[i], -charWidth / 2, 0);
-
-      context.restore();
+      rotations.push(point.angle);
+      curvedOffsetY.push(point.y * fontScale);
 
       currentPos += charWidthOnPath;
     }
 
-    // 恢复变换状态
-    context.restore();
-
-    // 添加字符信息到charsInfo数组（用于花字效果）
+    // 添加字符信息到charsInfo数组（包含路径信息）
     if (charsArray.length > 0) {
       charsInfo.push({
         y: y,
         width: textWidthOnPath * fontScale,
         chars: charsArray,
         charOffsetX: charOffsetX,
+        isCurved: true,
+        rotations: rotations,
+        curvedOffsetY: curvedOffsetY,
       });
     }
   }

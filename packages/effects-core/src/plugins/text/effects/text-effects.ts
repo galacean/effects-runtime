@@ -9,6 +9,31 @@ function toPxWidth (width: number, unit: 'px' | 'em', env: TextEnv): number {
 }
 
 /**
+ * 渲染字符的通用函数，支持直线和曲线文本
+ */
+function renderCharWithTransform (
+  ctx: CanvasRenderingContext2D,
+  char: string,
+  x: number,
+  y: number,
+  line: any,
+  charIndex: number,
+  renderCallback: (ctx: CanvasRenderingContext2D, char: string, x: number, y: number) => void
+): void {
+  if (line.isCurved && line.rotations && line.curvedOffsetY) {
+    // 曲线文本渲染
+    ctx.save();
+    ctx.translate(x, y + line.curvedOffsetY[charIndex]);
+    ctx.rotate(line.rotations[charIndex]);
+    renderCallback(ctx, char, 0, 0);
+    ctx.restore();
+  } else {
+    // 直线文本渲染
+    renderCallback(ctx, char, x, y);
+  }
+}
+
+/**
  * 单描边特效 - 只负责描边装饰
  */
 export class SingleStrokeEffect implements TextEffect {
@@ -40,7 +65,11 @@ export class SingleStrokeEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.strokeText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.strokeText(char, tx, ty);
+        });
       });
     });
   }
@@ -84,7 +113,11 @@ export class SolidFillEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.fillText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.fillText(char, tx, ty);
+        });
       });
     });
   }
@@ -128,13 +161,15 @@ export class MultiStrokeEffect implements TextEffect {
         const x0 = env.layout.getOffsetX(env.style, line.width);
 
         for (let i = 0; i < line.chars.length; i++) {
-          const x = x0 + line.charOffsetX[i], y = line.y;
+          const charX = x0 + line.charOffsetX[i];
 
-          ctx.strokeText(line.chars[i], x, y);
-          if (this.perLayerFill) {
-            ctx.fillStyle = layer.color;
-            ctx.fillText(line.chars[i], x, y);
-          }
+          renderCharWithTransform(ctx, line.chars[i], charX, line.y, line, i, (ctx, char, tx, ty) => {
+            ctx.strokeText(char, tx, ty);
+            if (this.perLayerFill) {
+              ctx.fillStyle = layer.color;
+              ctx.fillText(char, tx, ty);
+            }
+          });
         }
       });
     }
@@ -146,7 +181,11 @@ export class MultiStrokeEffect implements TextEffect {
         const x = env.layout.getOffsetX(env.style, line.width);
 
         line.chars.forEach((str: string, i: number) => {
-          ctx.fillText(str, x + line.charOffsetX[i], line.y);
+          const charX = x + line.charOffsetX[i];
+
+          renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+            ctx.fillText(char, tx, ty);
+          });
         });
       });
     }
@@ -170,7 +209,11 @@ export class MultiStrokeEffect implements TextEffect {
           const x = env.layout.getOffsetX(env.style, line.width);
 
           line.chars.forEach((str: string, i: number) => {
-            ctx.strokeText(str, x + line.charOffsetX[i], line.y);
+            const charX = x + line.charOffsetX[i];
+
+            renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+              ctx.strokeText(char, tx, ty);
+            });
           });
         });
       }
@@ -187,7 +230,11 @@ export class MultiStrokeEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.fillText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.fillText(char, tx, ty);
+        });
       });
     });
   }
@@ -231,7 +278,11 @@ export class GradientEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.strokeText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.strokeText(char, tx, ty);
+        });
       });
     });
   }
@@ -258,7 +309,11 @@ export class GradientEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.fillText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.fillText(char, tx, ty);
+        });
       });
     });
   }
@@ -309,7 +364,11 @@ export class ShadowEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.strokeText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.strokeText(char, tx, ty);
+        });
       });
     });
 
@@ -322,7 +381,11 @@ export class ShadowEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.strokeText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.strokeText(char, tx, ty);
+        });
       });
     });
   }
@@ -415,7 +478,11 @@ export class TextureEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.strokeText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.strokeText(char, tx, ty);
+        });
       });
     });
   }
@@ -441,7 +508,11 @@ export class TextureEffect implements TextEffect {
       const x = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((str: string, i: number) => {
-        ctx.fillText(str, x + line.charOffsetX[i], line.y);
+        const charX = x + line.charOffsetX[i];
+
+        renderCharWithTransform(ctx, str, charX, line.y, line, i, (ctx, char, tx, ty) => {
+          ctx.fillText(char, tx, ty);
+        });
       });
     });
   }
