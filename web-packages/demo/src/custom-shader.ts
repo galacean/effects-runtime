@@ -8,7 +8,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureControllerNew } from './texture-controller-new.js';
 enum MainStage { Listening, Input }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*QP8eRJ6h2s8AAAAAQZAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bLBWQI5N_KwAAAAAQZAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 const DEBUG = true; // 调试模式
 
@@ -97,6 +97,11 @@ const float _GreenFadeOutEnd = 3.458;
 const float _GreenMoveTargetU = 0.266;
 const float _GreenMoveTargetV = -0.0;
 const float _GreenFadeInDeltaV = 0.0;
+
+// InputB 偏移常量
+const float B_OFFSET_START = 0.06;   // 生命周期前/中段的偏移（更贴）
+const float B_OFFSET_END   = 0.1775; // 生命周期末段的偏移（保证终点对齐）
+const float B_OFFSET_POW   = 0.8;    // 插值曲线幂：0.6~1.2 可按观感微调
 
 // 噪声参数
 uniform float _NoiseScaleX;
@@ -267,8 +272,16 @@ void getProfileParams(float profile,
     distance = 1.2315; initU = -0.48; initV = 0.0; isSecond = 0.0;
     samplerId = 2; typeIsListening = 0;
   } else { // InputB
-    duration = 3.7; fadeIn = 0.7417; fadeOutStart = 2.9333 - 0.733; fadeOutEnd = 3.6167 - 0.733 + 0.0416;
-    distance = 1.4164; initU = -0.48; initV = 0.1; isSecond = 1.0;
+    duration = 3.7;
+    // 可选：把时间窗拉近 A，重叠更明显；若不想动时间，也可保留你原来的三项
+    fadeIn = 0.60;             
+    fadeOutStart = 2.9333;     
+    fadeOutEnd   = 3.6167;     
+
+    distance = 1.2315;         // 与 A 一致，减少"越走越开"
+    initU = -0.48;
+    initV = 0.02;              // 上下更贴（也可用 0.0）
+    isSecond = 1.0;
     samplerId = 2; typeIsListening = 0;
   }
 }
@@ -287,7 +300,8 @@ void calcInput(float elapsed, float startedAt, float duration, float initU, floa
   float lifeP = duration > 0.0 ? clamp(elapsed / duration, 0.0, 1.0) : 0.0;
   ox = initU + distance * lifeP;
   if (isSecond > 0.5) {
-    ox -= 0.235; // 与CPU逻辑保持一致
+    float offsetU = mix(B_OFFSET_START, B_OFFSET_END, pow(lifeP, B_OFFSET_POW));
+    ox -= offsetU;
   }
   oy = initV;
 
@@ -615,7 +629,7 @@ let material: Material | undefined;
         // // 设置T噪声纹理
         // material.setTexture('_T_NoiseTex', T_noiseTexture);
         // 设置噪声强度
-        material.setFloat('_Strength', 2.0);
+        material.setFloat('_Strength', 1.0);
         // 纹理层级已在shader中硬编码，不再需要设置
 
         // 初始化颜色参数 - 直接在初始化时设置预设颜色
