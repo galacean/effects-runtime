@@ -155,7 +155,7 @@ export interface Texture2DSourceOptionsImageMipmaps extends TextureOptionsBase {
 }
 
 export interface Texture2DSourceOptionsCompressed extends TextureOptionsBase {
-  sourceType?: TextureSourceType.compressed | TextureSourceType.data,
+  sourceType?: TextureSourceType.compressed,
   mipmaps: TextureDataType[],
   target?: WebGLRenderingContext['TEXTURE_2D'] | WebGLRenderingContext['TEXTURE_CUBE_MAP'],
 }

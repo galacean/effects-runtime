@@ -510,32 +510,18 @@ async function createTextureOptionsBySource (
       try {
         const textureData = await loader.loadFromBuffer(image, gpuCapability) as Texture2DSourceOptionsCompressed;
 
-        if (textureData.sourceType === TextureSourceType.compressed) {
-          return {
-            sourceType: textureData.sourceType,
-            type: textureData.type,
-            target: textureData.target,
-            internalFormat: textureData.internalFormat,
-            format: textureData.format,
-            mipmaps: textureData.mipmaps,
-            sourceFrom,
-            ...options,
-          };
-        } else {
-          if (!textureData.mipmaps || textureData.mipmaps.length === 0) {
-            throw new Error('KTX2 loader returned no mipmaps');
-          }
-
-          return {
-            sourceType: TextureSourceType.data,
-            data: textureData.mipmaps[0],
-            wrapS: glContext.CLAMP_TO_EDGE,
-            wrapT: glContext.CLAMP_TO_EDGE,
-            minFilter: glContext.NEAREST,
-            magFilter: glContext.NEAREST,
-            ...options,
-          };
-        }
+        return {
+          sourceType: textureData.sourceType,
+          type: textureData.type,
+          target: textureData.target,
+          internalFormat: textureData.internalFormat,
+          format: textureData.format,
+          mipmaps: textureData.mipmaps,
+          minFilter: glContext.LINEAR,
+          magFilter: glContext.LINEAR,
+          sourceFrom,
+          ...options,
+        };
       } catch (e) {
         throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
       }
