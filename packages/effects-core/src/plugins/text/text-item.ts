@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
@@ -7,7 +8,8 @@ import type { Engine } from '../../engine';
 import { applyMixins } from '../../utils';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-import { TextComponentBase, type TextRuntimeAPI } from './text-component-base';
+import type { ITextComponent } from './text-component-base';
+import { TextComponentBase } from './text-component-base';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -32,7 +34,6 @@ interface CharInfo {
   width: number,
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -41,8 +42,7 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
+export class TextComponent extends MaskableGraphic implements ITextComponent {
   isDirty = true;
   /**
    * 文本行数
@@ -178,7 +178,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     let lineCount = 1;
     let x = 0;
 
-    // 设置context.font的字号，确保measureText能正确计算字宽
+    // 设置 context.font 的字号，确保 measureText 能正确计算字宽
     if (context) {
       context.font = this.getFontDesc(this.textStyle.fontSize);
     }
@@ -357,7 +357,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
         this.setupOutline();
       }
 
-      // 文本颜色 - 直接使用vec4原值，不乘以255
+      // 文本颜色 - 直接使用 vec4 原值，不乘以 255
       const [r, g, b, a] = style.textColor;
 
       context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
@@ -469,7 +469,7 @@ export class TextComponent extends MaskableGraphic implements TextRuntimeAPI {
     this.isDirty = true;
   }
 
-  //setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
+  // setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
   setShadowColor (value: spec.RGBAColorValue): void {
     const v = value ?? [0, 0, 0, 1];
 

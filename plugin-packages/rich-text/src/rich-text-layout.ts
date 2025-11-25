@@ -1,6 +1,7 @@
+import type { TextStyle, BaseLayout } from '@galacean/effects';
 import { spec } from '@galacean/effects';
-import type { TextStyle, LayoutBase } from '@galacean/effects';
-export class RichTextLayout implements LayoutBase {
+
+export class RichTextLayout implements BaseLayout {
   textVerticalAlign: spec.TextVerticalAlign;
   textAlign: spec.TextAlignment;
   letterSpace: number;
@@ -69,7 +70,13 @@ export class RichTextLayout implements LayoutBase {
     this.sizeMode = sizeMode;
   }
 
-  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number, totalLineHeight?: number): number {
+  getOffsetY (
+    style: TextStyle,
+    lineCount: number,
+    lineHeight: number,
+    fontSize: number,
+    totalLineHeight?: number,
+  ): number {
     const { outlineWidth, fontScale } = style;
     // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
@@ -128,7 +135,11 @@ export class RichTextLayout implements LayoutBase {
    * @param fontSize - 字体大小
    * @returns 第一行基线的Y坐标
    */
-  getOffsetYRich (style: TextStyle, lineHeights: number[], fontSize: number): number {
+  getOffsetYRich (
+    style: TextStyle,
+    lineHeights: number[],
+    fontSize: number,
+  ): number {
     const { outlineWidth, fontScale } = style;
     const total = lineHeights.reduce((a, b) => a + b, 0);
     const offsetY = (lineHeights[0] - fontSize) / 3;

@@ -1,8 +1,9 @@
 import { spec } from '@galacean/effects';
 import type { TextStyle } from '@galacean/effects';
 import type { RichTextLayout } from '../../rich-text-layout';
-import type { RichLine, VerticalAlignResult, SizeResult, OverflowResult } from '../rich-text-interfaces';
-import type { RichVerticalAlignStrategy } from '../rich-text-interfaces';
+import type {
+  RichLine, VerticalAlignResult, SizeResult, OverflowResult, RichVerticalAlignStrategy,
+} from '../rich-text-interfaces';
 
 /**
  * 富文本垂直对齐策略

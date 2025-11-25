@@ -1,8 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import type { TextStyle } from './text-style';
-import type { LayoutBase } from './layout-base';
+import type { BaseLayout } from './base-layout';
 
-export class TextLayout implements LayoutBase {
+export class TextLayout implements BaseLayout {
   textVerticalAlign: spec.TextVerticalAlign;
   textAlign: spec.TextAlignment;
   letterSpace: number;
@@ -112,8 +112,8 @@ export class TextLayout implements LayoutBase {
 
   /**
    * 设置文本框的宽度和高度
-   * @param width 文本框宽度
-   * @param height 文本框高度
+   * @param width - 文本框宽度
+   * @param height - 文本框高度
    */
   setSize (width: number, height: number) {
     this.width = width;

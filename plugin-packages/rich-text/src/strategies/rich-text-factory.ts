@@ -1,9 +1,6 @@
 import { spec } from '@galacean/effects';
 import type {
-  RichWrapStrategy,
-  RichOverflowStrategy,
-  RichHorizontalAlignStrategy,
-  RichVerticalAlignStrategy,
+  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichVerticalAlignStrategy,
 } from './rich-text-interfaces';
 import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled';
 import { RichWrapEnabledStrategy } from './wrap/rich-wrap-enabled';

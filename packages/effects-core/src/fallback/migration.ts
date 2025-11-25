@@ -323,17 +323,22 @@ export function version35Migration (json: JSONScene): JSONScene {
   return json;
 }
 /**
- * 处理富文本textVerticalAlign兼容性
+ * 处理富文本 textVerticalAlign 兼容性
  */
 function processRichVerticalAlignCompatibility (json: JSONScene) {
-  if (!json.components) {return;}
+  if (!json.components) { return; }
 
   // 遍历所有组件，处理富文本和文本组件
   for (const component of json.components) {
-    // 识别富文本组件并处理textVerticalAlign兼容性
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-    if (component.dataType === 'TextComponent' || (component.dataType === 'RichTextComponent' && (component as any).options)) {
-      ensureTextVerticalAlign((component as any).options);
+    // 识别富文本组件并处理 textVerticalAlign 兼容性
+    if (
+      component.dataType === spec.DataType.TextComponent ||
+      (
+        component.dataType === spec.DataType.RichTextComponent &&
+        (component as spec.RichTextComponentData).options
+      )
+    ) {
+      ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
     }
   }
 }

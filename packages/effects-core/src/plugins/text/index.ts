@@ -1,4 +1,4 @@
-export * from './layout-base';
+export * from './base-layout';
 export * from './text-item';
 export * from './text-layout';
 export * from './text-style';

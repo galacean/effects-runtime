@@ -1,5 +1,5 @@
-import type { RichTextLayout } from '../rich-text-layout';
 import type { TextStyle } from '@galacean/effects';
+import type { RichTextLayout } from '../rich-text-layout';
 import type { RichTextOptions } from '../rich-text-component';
 
 /**
@@ -84,7 +84,7 @@ export interface AlignResult {
  * 富文本尺寸策略接口
  */
 export interface RichSizeStrategy {
-  calculate(
+  calculate (
     WrapResult: WrapResult,
     layout: RichTextLayout,
     style: TextStyle,
@@ -97,7 +97,7 @@ export interface RichSizeStrategy {
  * 富文本换行策略接口
  */
 export interface RichWrapStrategy {
-  computeLines(
+  computeLines (
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,
     style: TextStyle,
@@ -113,7 +113,7 @@ export interface RichWrapStrategy {
  * 富文本溢出策略接口
  */
 export interface RichOverflowStrategy {
-  apply(
+  apply (
     lines: RichLine[],
     sizeResult: SizeResult,
     layout: RichTextLayout,
@@ -125,7 +125,7 @@ export interface RichOverflowStrategy {
  * 富文本水平对齐策略接口
  */
 export interface RichHorizontalAlignStrategy {
-  getHorizontalOffsets(
+  getHorizontalOffsets (
     lines: RichLine[],
     sizeResult: SizeResult,
     overflowResult: OverflowResult,
@@ -138,7 +138,7 @@ export interface RichHorizontalAlignStrategy {
  * 富文本垂直对齐策略接口
  */
 export interface RichVerticalAlignStrategy {
-  getVerticalOffsets(
+  getVerticalOffsets (
     lines: RichLine[],
     sizeResult: SizeResult,
     overflowResult: OverflowResult,

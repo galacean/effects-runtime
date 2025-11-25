@@ -1,11 +1,10 @@
 
 import type { TextStyle } from '@galacean/effects';
 import type { RichTextLayout } from '../../rich-text-layout';
-import type { RichLine, OverflowResult, SizeResult } from '../rich-text-interfaces';
-import type { RichOverflowStrategy } from '../rich-text-interfaces';
+import type { RichLine, OverflowResult, SizeResult, RichOverflowStrategy } from '../rich-text-interfaces';
 
 /**
- * 富文本Display溢出策略
+ * 富文本 Display 溢出策略
  * 在溢出策略中对所有几何量进行一次性缩放
  */
 export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
@@ -40,7 +39,7 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
       line.width *= s;
       line.lineHeight *= s;        // 缩小行距（你的 gap-only 模式行高=gapPx）
       if (line.offsetX) {
-        for (let i = 0; i < line.offsetX.length; i++) {line.offsetX[i] *= s;}
+        for (let i = 0; i < line.offsetX.length; i++) { line.offsetX[i] *= s; }
       }
       for (const seg of (line.chars || [])) {
         for (const ch of seg) { ch.x *= s; }
@@ -49,8 +48,8 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
         opt.fontSize *= s;         // 缩小字形
       }
       // 同步缩放 asc/desc
-      if (line.lineAscent != null) {line.lineAscent *= s;}
-      if (line.lineDescent != null) {line.lineDescent *= s;}
+      if (line.lineAscent != null) { line.lineAscent *= s; }
+      if (line.lineDescent != null) { line.lineDescent *= s; }
     }
 
     return { globalScale: s };

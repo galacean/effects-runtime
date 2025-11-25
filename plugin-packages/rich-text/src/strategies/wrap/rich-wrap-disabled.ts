@@ -1,8 +1,7 @@
-import type { RichTextLayout } from '../../rich-text-layout';
 import type { TextStyle } from '@galacean/effects';
+import type { RichTextLayout } from '../../rich-text-layout';
 import type { RichTextOptions } from '../../rich-text-component';
-import type { RichCharDetail, RichLine } from '../rich-text-interfaces';
-import type { RichWrapStrategy, WrapResult } from '../rich-text-interfaces';
+import type { RichCharDetail, RichLine, RichWrapStrategy, WrapResult } from '../rich-text-interfaces';
 
 /**
  * 富文本换行禁用策略
@@ -27,7 +26,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     let totalHeight = 0;
 
     const finishCurrentLine = () => {
-      if (currentLine.chars.length === 0) {return;}
+      if (currentLine.chars.length === 0) { return; }
 
       // 第1行用真实首行高度，其余行用 gapPx
       currentLine.lineHeight = lines.length === 0

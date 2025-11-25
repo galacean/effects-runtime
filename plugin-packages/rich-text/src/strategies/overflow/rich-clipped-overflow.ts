@@ -1,5 +1,5 @@
-import type { RichLine, RichOverflowStrategy, OverflowResult, SizeResult } from '../rich-text-interfaces';
 import type { TextStyle } from '@galacean/effects';
+import type { RichLine, RichOverflowStrategy, OverflowResult, SizeResult } from '../rich-text-interfaces';
 import type { RichTextLayout } from '../../rich-text-layout';
 
 /**

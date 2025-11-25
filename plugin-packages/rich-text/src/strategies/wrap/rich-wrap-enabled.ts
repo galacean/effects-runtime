@@ -1,8 +1,7 @@
-import type { RichTextLayout } from '../../rich-text-layout';
 import type { TextStyle } from '@galacean/effects';
+import type { RichTextLayout } from '../../rich-text-layout';
 import type { RichTextOptions } from '../../rich-text-component';
-import type { RichCharDetail, RichLine, WrapResult } from '../rich-text-interfaces';
-import type { RichWrapStrategy } from '../rich-text-interfaces';
+import type { RichCharDetail, RichLine, WrapResult, RichWrapStrategy } from '../rich-text-interfaces';
 
 /**
  * 富文本自动换行策略
@@ -35,7 +34,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     // 结束当前行（含缓冲切块）
     const finishCurrentLine = () => {
       flushChunk();
-      if (currentLine.chars.length === 0) {return;}
+      if (currentLine.chars.length === 0) { return; }
 
       // 第1行用真实首行高度，其余行用 gapPx
       currentLine.lineHeight = lines.length === 0
@@ -59,7 +58,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
 
     // 刷新当前切块
     const flushChunk = () => {
-      if (chunkChars.length === 0) {return;}
+      if (chunkChars.length === 0) { return; }
 
       if (segStartX === null) {
         segStartX = currentLine.width;

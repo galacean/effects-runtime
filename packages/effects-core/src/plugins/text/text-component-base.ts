@@ -1,19 +1,19 @@
+import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import type { Material } from '../../material';
 import { Texture } from '../../texture';
 import type { ItemRenderer } from '../../components';
 import type { VFXItem } from '../../vfx-item';
-import type { LayoutBase } from './layout-base';
+import type { BaseLayout } from './base-layout';
 import type { TextStyle } from './text-style';
-import * as spec from '@galacean/effects-specification';
 import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
 
 /**
- * 纯文本组件特有API
+ * 纯文本组件特有 API
  */
-export interface TextRuntimeAPI {
+export interface ITextComponent {
   setOutlineWidth (value: number): void,
   setShadowBlur (value: number): void,
   setShadowColor (value: spec.RGBAColorValue): void,
@@ -24,14 +24,14 @@ export interface TextRuntimeAPI {
 }
 
 /**
- * 富文本组件特有API
+ * 富文本组件特有 API
  */
-export interface RichTextRuntimeAPI extends TextRuntimeAPI {}
+export interface IRichTextComponent extends ITextComponent { }
 
 export class TextComponentBase {
   // 状态与通用字段
   textStyle: TextStyle;
-  textLayout: LayoutBase;
+  textLayout: BaseLayout;
   text: string;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
@@ -43,8 +43,8 @@ export class TextComponentBase {
   item: VFXItem;
   renderer: ItemRenderer;
   lineCount = 0;
-  protected maxLineWidth = 0;
 
+  protected maxLineWidth = 0;
   // 常量
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
@@ -65,6 +65,7 @@ export class TextComponentBase {
     this.textLayout.textAlign = value;
     this.isDirty = true;
   }
+
   setTextVerticalAlign (value: spec.TextVerticalAlign): void {
     if (this.textLayout.textVerticalAlign === (value as unknown as spec.TextVerticalAlign)) {
       return;

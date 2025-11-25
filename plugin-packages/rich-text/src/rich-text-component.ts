@@ -1,30 +1,17 @@
-import type { Engine } from '@galacean/effects';
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
+import type { Engine, IRichTextComponent } from '@galacean/effects';
 import {
-  assertExist,
-  math,
-  effectsClass,
-  spec,
-  MaskableGraphic,
-  applyMixins,
-  TextStyle,
+  assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
+  TextComponentBase,
 } from '@galacean/effects';
-import { TextComponentBase, type RichTextRuntimeAPI } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
-
 import type {
-  RichWrapStrategy,
-  RichOverflowStrategy,
-  RichHorizontalAlignStrategy,
-  RichVerticalAlignStrategy,
-  OverflowResult,
-  HorizontalAlignResult,
-  VerticalAlignResult,
-  RichLine,
-  SizeResult,
-  WrapResult,
+  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
+  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
+  SizeResult, WrapResult,
 } from './strategies/rich-text-interfaces';
 
 export interface RichTextOptions {
@@ -52,7 +39,6 @@ interface RichCharInfo {
   chars: CharDetail[][],
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RichTextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -61,8 +47,7 @@ let seed = 0;
  * 富文本组件类
  */
 @effectsClass(spec.DataType.RichTextComponent)
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class RichTextComponent extends MaskableGraphic implements RichTextRuntimeAPI {
+export class RichTextComponent extends MaskableGraphic implements IRichTextComponent {
   isDirty = true;
   text: string = '';
   textStyle: TextStyle;
@@ -399,7 +384,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       this.singleLineHeight,
       this.textStyle.fontScale,
       letterSpace,
-      this.SCALE_FACTOR
+      this.SCALE_FACTOR,
     );
 
     if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {
@@ -413,10 +398,10 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       wrapResult,
       layout,
       this.textStyle,
-      this.singleLineHeight
+      this.singleLineHeight,
     );
 
-    // 首次渲染时初始化canvas尺寸和组件变换
+    // 首次渲染时初始化 canvas 尺寸和组件变换
     this.setCanvasSize(sizeResult);
 
     // 步骤3: 溢出策略处理
@@ -424,7 +409,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       wrapResult.lines,
       sizeResult,
       layout,
-      this.textStyle
+      this.textStyle,
     );
 
     // 步骤4: 水平对齐策略
@@ -433,7 +418,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       sizeResult,
       overflowResult,
       layout,
-      this.textStyle
+      this.textStyle,
     );
 
     // 步骤5: 垂直对齐策略
@@ -443,10 +428,10 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       overflowResult,
       layout,
       this.textStyle,
-      this.singleLineHeight
+      this.singleLineHeight,
     );
 
-    // 使用this.canvasSize统一设置画布尺寸
+    // 使用 this.canvasSize 统一设置画布尺寸
     assertExist(this.canvasSize);
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
@@ -461,7 +446,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
         horizontalAlignResult,
         TextVerticalAlignResult,
         overflowResult,
-        this.textStyle
+        this.textStyle,
       );
     }, { disposeOld: false });
 
@@ -628,7 +613,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
     wrapResult: WrapResult,
     layout: RichTextLayout,
     style: TextStyle,
-    singleLineHeight: number
+    singleLineHeight: number,
   ): SizeResult {
     const canvasWidth = Math.max(1, wrapResult.maxLineWidth || 0);
     const canvasHeight = Math.max(1, wrapResult.totalHeight || 0); // stepTotalHeight
@@ -643,7 +628,7 @@ export class RichTextComponent extends MaskableGraphic implements RichTextRuntim
       bboxTop: wrapResult.bboxTop,
       bboxBottom: wrapResult.bboxBottom,
       bboxHeight: wrapResult.bboxHeight,
-      // 为visible模式的画布尺寸计算保留行信息
+      // 为 visible 模式的画布尺寸计算保留行信息
       lines: wrapResult.lines,
     } as SizeResult;
   }
