@@ -73,14 +73,12 @@ export class KhronosTranscoder extends TextureTranscoder {
 
   async initTranscodeWorkerPool () {
     if (!this.useWorker) {
-      // 主线程模式：直接初始化主线程转码器
       this.mainThreadTranscoder = new KhronosMainThreadTranscoder();
       await this.mainThreadTranscoder.init();
 
       return [];
     }
 
-    // Worker 模式：创建 Worker 池
     const transcoderWasm = await uastcAstcWasm();
     const workerCode = generateWorkerBlobCode();
     const workerURL = URL.createObjectURL(

@@ -103,6 +103,9 @@ export class BufferReader {
   }
 
   nextUint64 () {
+    if (!this.littleEndian) {
+      throw new Error('nextUint64 only supports little-endian');
+    }
     const left = this.dataView.getUint32(this.pos, this.littleEndian);
     const right = this.dataView.getUint32(this.pos + 4, this.littleEndian);
     const value = left + 2 ** 32 * right;

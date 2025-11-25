@@ -8,6 +8,7 @@ export class WorkerPool<T = any, U = any> {
   private workerItems: WorkerItem<U>[];
   private initPromises: Map<number, Promise<Worker>> = new Map();
   private destroyed = false;
+
   /**
    * WorkerPool 的构造函数。
    * @param limitedCount - worker数量上限
@@ -18,7 +19,7 @@ export class WorkerPool<T = any, U = any> {
     private readonly workerCreator: () => Worker | Promise<Worker>,
   ) {
     if (limitedCount > 8 || limitedCount < 1) {
-      throw new Error('limitedCount must be between 1 and 32');
+      throw new Error('limitedCount must be between 1 and 8');
     }
     this.workerItems = new Array<WorkerItem<U>>(limitedCount);
   }

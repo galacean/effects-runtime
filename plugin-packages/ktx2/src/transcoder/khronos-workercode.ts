@@ -72,6 +72,11 @@ export class ZSTDDecoder {
     const uncompressedPtr = exports.malloc(uncompressedSize);
     const actualSize = exports.ZSTD_decompress(uncompressedPtr, uncompressedSize, compressedPtr, compressedSize);
 
+    if (actualSize < 0) {
+      exports.free(compressedPtr);
+      exports.free(uncompressedPtr);
+      throw new Error('ZSTDDecoder: decompression failed.');
+    }
     // Read decompressed data and free WASM memory
     const dec = ZSTDDecoder.heap.slice(uncompressedPtr, uncompressedPtr + actualSize);
 
@@ -228,7 +233,12 @@ class ZSTDDecoder {
     uncompressedSize = uncompressedSize || Number(exports.ZSTD_findDecompressedSize(compressedPtr, compressedSize));
     const uncompressedPtr = exports.malloc(uncompressedSize);
     const actualSize = exports.ZSTD_decompress(uncompressedPtr, uncompressedSize, compressedPtr, compressedSize);
-
+    
+    if (actualSize < 0) {
+      exports.free(compressedPtr);
+      exports.free(uncompressedPtr);
+      throw new Error('ZSTDDecoder: decompression failed');
+    }
     const dec = ZSTDDecoder.heap.slice(uncompressedPtr, uncompressedPtr + actualSize);
 
     exports.free(compressedPtr);
