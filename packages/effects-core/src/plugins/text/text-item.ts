@@ -196,16 +196,20 @@ export class TextComponentBase {
       this.pathLength = 0;
       this.textStyle.fancyTextConfig.curvedTextPath = '';
     } else {
-      // 测量文本宽度
+      // 测量文本宽度（使用缩放后的像素）
       if (this.context) {
-        this.context.font = this.getFontDesc();
+        const fontScale = this.textStyle.fontScale;
+
+        this.context.font = this.getFontDesc(this.textStyle.fontSize * fontScale);
         let textWidth = 0;
 
         for (const char of this.text || '') {
           textWidth += this.context.measureText(char).width;
         }
-        // 加上字符间距
-        textWidth += (this.text?.length || 0) * this.textLayout.letterSpace;
+        // 加上字符间距（每个字符都加，与直线逻辑一致）
+        const letterSpacingPx = this.textLayout.letterSpace * fontScale;
+
+        textWidth += (this.text?.length || 0) * letterSpacingPx;
 
         // 生成曲线路径
         this.curvedTextPath = this.generateCurvedPath(textWidth, power);
@@ -875,9 +879,9 @@ export class TextComponentBase {
       totalWidth += width;
     }
 
-    // 计算字符间距
+    // 计算字符间距（与直线逻辑一致：每个字符都加）
     const letterSpacing = layout.letterSpace * fontScale;
-    const textWidthOnPath = totalWidth + (this.char.length - 1) * letterSpacing;
+    const textWidthOnPath = totalWidth + this.char.length * letterSpacing;
 
     // 计算起始偏移
     let offset = 0;
@@ -901,22 +905,26 @@ export class TextComponentBase {
 
     for (let i = 0; i < this.char.length; i++) {
       const charWidth = charWidths[i];
-      const charWidthOnPath = charWidth + (i === this.char.length - 1 ? 0 : letterSpacing);
+      // 每个字符都加字距（包括最后一个），与直线逻辑一致
+      const charWidthOnPath = charWidth + letterSpacing;
 
-      // 获取字符中心位置
-      const midPos = currentPos + charWidth / 2;
+      // 使用字符起点位置取点（修复字间距问题）
+      const startPos = currentPos;
 
-      if (midPos > this.pathLength) {break;}
+      if (startPos > this.pathLength) {break;}
 
-      const point = CurvedTextUtils.getPointAtLength(this.curvedTextPath, midPos);
+      const startPoint = CurvedTextUtils.getPointAtLength(this.curvedTextPath, startPos);
 
-      if (!point) {break;}
+      if (!startPoint) {break;}
 
-      // 保存字符信息，供花字渲染系统使用
+      // 角度使用中点计算（更平滑）
+      const anglePoint = CurvedTextUtils.getPointAtLength(this.curvedTextPath, startPos + charWidth / 2) || startPoint;
+
+      // 保存字符信息，供花字渲染系统使用（不再重复乘 fontScale，避免双重缩放）
       charsArray.push(this.char[i]);
-      charOffsetX.push(point.x * fontScale);
-      rotations.push(point.angle);
-      curvedOffsetY.push(point.y * fontScale);
+      charOffsetX.push(startPoint.x);
+      rotations.push(anglePoint.angle);
+      curvedOffsetY.push(startPoint.y);
 
       currentPos += charWidthOnPath;
     }
@@ -925,7 +933,7 @@ export class TextComponentBase {
     if (charsArray.length > 0) {
       charsInfo.push({
         y: y,
-        width: textWidthOnPath * fontScale,
+        width: textWidthOnPath,
         chars: charsArray,
         charOffsetX: charOffsetX,
         isCurved: true,
