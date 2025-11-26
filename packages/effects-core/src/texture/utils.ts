@@ -74,7 +74,3 @@ async function loadMipmapImage (pointer: spec.BinaryPointer, bins: ArrayBuffer[]
 
   return loadImage(new Blob([new Uint8Array(bin, start, length)]));
 }
-
-export function isPowerOfTwo (value: number) {
-  return (value & (value - 1)) === 0 && value !== 0;
-}

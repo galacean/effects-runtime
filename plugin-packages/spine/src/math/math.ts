@@ -47,10 +47,6 @@ export class MathUtils {
 
     return max - Math.sqrt((1 - u) * d * (max - mode));
   }
-
-  static isPowerOfTwo (value: number) {
-    return value && (value & (value - 1)) === 0;
-  }
 }
 
 export abstract class Interpolation {
