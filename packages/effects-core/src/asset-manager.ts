@@ -331,8 +331,10 @@ export class AssetManager implements Disposable {
         let src;
 
         if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
+          // @ts-expect-error
           src = compressed.astc;
         } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
+          // @ts-expect-error
           src = compressed.pvrtc;
         }
         if (src) {

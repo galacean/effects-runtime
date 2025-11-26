@@ -152,6 +152,7 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
     return {
       id: generateGUID(),
       url: image.url,
+      // @ts-expect-error
       compressed: {
         astc: image.compressed.android,
         pvrtc: image.compressed.iOS,

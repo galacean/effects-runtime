@@ -312,6 +312,16 @@ export function version35Migration (json: JSONScene): JSONScene {
           }
         }
       }
+      // 识别富文本组件并处理 textVerticalAlign 兼容性
+      if (
+        component.dataType === spec.DataType.TextComponent ||
+        (
+          component.dataType === spec.DataType.RichTextComponent &&
+          (component as spec.RichTextComponentData).options
+        )
+      ) {
+        ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
+      }
     }
   }
 
@@ -319,6 +329,22 @@ export function version35Migration (json: JSONScene): JSONScene {
   json.version = '3.6';
 
   return json;
+}
+
+/**
+ * 确保文本组件有版本标识字段
+ */
+function ensureTextVerticalAlign (options: any) {
+  // 检查是否已经处理过
+  if (!options || options.TextVerticalAlign !== undefined) {
+    return;
+  }
+
+  // 根据是否存在TextVerticalAlign字段来判断版本
+  if (options.TextVerticalAlign === undefined) {
+    //旧版本（没有 TextVerticalAlign 字段）
+    options.TextVerticalAlign = options.textBaseline;
+  }
 }
 
 /**
