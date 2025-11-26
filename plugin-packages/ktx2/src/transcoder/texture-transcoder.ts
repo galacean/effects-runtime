@@ -93,6 +93,12 @@ export interface EncodedData {
   uncompressedByteLength: number,
 }
 
+export interface DecodedData {
+  width: number,
+  height: number,
+  data: Uint8Array,
+}
+
 export interface KhronosTranscoderMessage extends BaseMessage {
   type: 'transcode',
   format: number,

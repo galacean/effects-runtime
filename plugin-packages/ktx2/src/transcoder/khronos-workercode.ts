@@ -1,5 +1,7 @@
 /* eslint-disable compat/compat */
 /* eslint-disable promise/no-nesting */
+import type { DecodedData, EncodedData } from './texture-transcoder';
+
 // eslint-disable-next-line compat/compat
 export interface WasmTranscoder extends WebAssembly.Exports {
   memory: WebAssembly.Memory,
@@ -29,7 +31,7 @@ export interface DecoderInstance {
  * Worker 中使用时需要拼接消息处理代码
  */
 export function TranscodeWorkerCode () {
-  let wasmPromise: Promise<any>;
+  let wasmPromise: Promise<WebAssembly.Exports>;
 
   /**
    * ZSTD (Zstandard) decoder.
@@ -43,8 +45,8 @@ export function TranscodeWorkerCode () {
         },
       },
     };
-    public static instance: any;
-    public initPromise: Promise<any> | undefined;
+    public static instance: DecoderInstance;
+    public initPromise: Promise<void> | undefined;
 
     init (zstddecWasmModule: WebAssembly.Module): Promise<void> {
       if (!this.initPromise) {
@@ -57,7 +59,7 @@ export function TranscodeWorkerCode () {
     }
 
     initInstance (result: WebAssembly.Instance): void {
-      ZSTDDecoder.instance = result;
+      ZSTDDecoder.instance = result as unknown as DecoderInstance;
       ZSTDDecoder.IMPORT_OBJECT.env.emscripten_notify_memory_growth();
     }
 
@@ -93,7 +95,7 @@ export function TranscodeWorkerCode () {
   }
 
   function transcodeASTC (
-    wasmTranscoder: any,
+    wasmTranscoder: WasmTranscoder,
     compressedData: Uint8Array,
     width: number,
     height: number,
@@ -113,9 +115,10 @@ export function TranscodeWorkerCode () {
   }
 
   function initTranscoder (transcoderWasmModule: WebAssembly.Module) {
-    wasmPromise = WebAssembly.instantiate(transcoderWasmModule, {
-      env: { memory: new WebAssembly.Memory({ initial: 16 }) },
-    })
+    wasmPromise = WebAssembly
+      .instantiate(transcoderWasmModule, {
+        env: { memory: new WebAssembly.Memory({ initial: 16 }) },
+      })
       .then(moduleWrapper => moduleWrapper.exports);
 
     return wasmPromise;
@@ -124,13 +127,13 @@ export function TranscodeWorkerCode () {
   const zstdDecoder = new ZSTDDecoder();
 
   function transcode (
-    data: any[][],
+    data: EncodedData[][],
     needZstd: boolean,
-    transcoderWasmModule: any,
+    transcoderWasmModule: WasmTranscoder,
     zstddecWasmModule?: WebAssembly.Module,
   ) {
     const faceCount = data.length;
-    const result = new Array(faceCount);
+    const result: DecodedData[][] = new Array(faceCount);
     const decodedLevelCache = needZstd ? new Map() : undefined;
     let promise = Promise.resolve();
 
@@ -142,7 +145,7 @@ export function TranscodeWorkerCode () {
     return promise.then(() => {
       for (let faceIndex = 0; faceIndex < faceCount; faceIndex++) {
         const mipmapCount = data[faceIndex].length;
-        const decodedData = new Array(mipmapCount);
+        const decodedData: DecodedData[] = new Array(mipmapCount);
 
         for (let i = 0; i < mipmapCount; i++) {
           const { buffer, levelHeight, levelWidth, uncompressedByteLength } = data[faceIndex][i];
@@ -185,23 +188,7 @@ export function TranscodeWorkerCode () {
     });
   }
 
-  // 主线程使用
-  return {
-    ZSTDDecoder,
-    transcodeASTC,
-    initTranscoder,
-    zstdDecoder,
-    transcode,
-    getWasmPromise: () => wasmPromise,
-  };
-}
-
-/**
- * Worker 消息处理代码（字符串形式）
- * 会被拼接到 TranscodeWorkerCode 后面
- */
-export const WorkerMessageHandler = `
-  self.onmessage = function onmessage(event) {
+  self.onmessage = function onmessage (event) {
     const message = event.data;
 
     switch (message.type) {
@@ -213,21 +200,35 @@ export const WorkerMessageHandler = `
           .catch(error => {
             self.postMessage({ error });
           });
-        break;
 
+        break;
       case 'transcode':
         wasmPromise
           .then(transcoderWasmModule => {
-            transcode(message.data, message.needZstd, transcoderWasmModule, message.zstddecWasmModule)
-              .then(decodedData => {
-                self.postMessage(decodedData);
-              })
-              .catch(error => self.postMessage({ error }));
+            transcode(
+              message.data,
+              message.needZstd,
+              transcoderWasmModule as unknown as WasmTranscoder,
+              message.zstddecWasmModule,
+            ).then(decodedData => {
+              self.postMessage(decodedData);
+            }).catch(error => self.postMessage({ error }));
           })
           .catch(error => {
             self.postMessage({ error });
           });
+
         break;
     }
   };
-`;
+
+  // 主线程使用
+  return {
+    ZSTDDecoder,
+    transcodeASTC,
+    initTranscoder,
+    zstdDecoder,
+    transcode,
+    getWasmPromise: () => wasmPromise,
+  };
+}
