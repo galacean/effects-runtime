@@ -8,7 +8,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureControllerNew } from './texture-controller-new.js';
 enum MainStage { Listening, Input }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bLBWQI5N_KwAAAAAQZAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*BnWQSaj0ghgAAAAAQaAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 const DEBUG = true; // 调试模式
 
@@ -409,18 +409,18 @@ void main() {
 
         // ---- 统一整体下移 + 顶部渐隐 ----
         // 写死的常量：整体下移/顶部淡出范围
-        const float GLOBAL_Y_OFFSET = 0.05; // 负值往下，按效果可微调 -0.01 ~ -0.05
-        const float TOP_FADE_START  = 0.9;  // 顶部从哪里开始淡出（0~1，越接近1越靠上）
+        const float GLOBAL_Y_OFFSET = 0.11; // 负值往下，按效果可微调 -0.01 ~ -0.05
+        const float TOP_FADE_START  = 0.95;  // 顶部从哪里开始淡出（0~1，越接近1越靠上）
         const float TOP_FADE_END    = 1.0;   // 顶部完全透明的位置（必须 > START）
 
         // 应用动画偏移
-        vec2 sampleUV = vec2(uv.x, uv.y) + vec2(ox, oy);
+        vec2 sampleUV = vec2(uv.x, uv.y) + vec2(ox, oy) - finalOffset;
 
         // 整体往下移一点，避免采到纹理最上沿的硬边
         sampleUV.y += GLOBAL_Y_OFFSET;
 
         // clamp UV 避免越界
-        sampleUV = clamp(sampleUV, vec2(0.0), vec2(1.0));
+        //sampleUV = clamp(sampleUV, vec2(0.0), vec2(1.0));
 
         // 采样纹理
         vec4 color = sampleTexByType(typeV, kindV, sampleUV);
