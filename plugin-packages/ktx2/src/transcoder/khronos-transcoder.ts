@@ -4,7 +4,7 @@ import { SupercompressionScheme } from '../ktx2-container';
 import type { KTX2TargetFormat } from '../ktx2-common';
 import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './texture-transcoder';
 import { TextureTranscoder } from './texture-transcoder';
-import { generateWorkerBlobCode, initTranscoder, transcodeData } from './khronos-workercode';
+import { TranscodeWorkerCode, WorkerMessageHandler } from './khronos-workercode';
 import uastcAstcWasm from '../libs/uastc_astc.wasm';
 import zstddecWasm from '../libs/zstddec.wasm';
 
@@ -12,23 +12,16 @@ import zstddecWasm from '../libs/zstddec.wasm';
  * 主线程 ASTC/UASTC 转码器
  */
 class KhronosMainThreadTranscoder {
-  private wasmTranscoder: any = null;
-  private wasmTranscoderPromise: Promise<any> | null = null;
+  private context: any = null;
 
   async init (): Promise<void> {
-    if (!this.wasmTranscoderPromise) {
-      this.wasmTranscoderPromise = this.initWasm();
+    if (!this.context) {
+      this.context = TranscodeWorkerCode();
+
+      const transcoderWasmModule = await uastcAstcWasm();
+
+      await this.context.initTranscoder(transcoderWasmModule);
     }
-
-    await this.wasmTranscoderPromise;
-  }
-
-  private async initWasm (): Promise<any> {
-    const transcoderWasmModule = await uastcAstcWasm();
-
-    this.wasmTranscoder = await initTranscoder(transcoderWasmModule);
-
-    return this.wasmTranscoder;
   }
 
   async transcode (
@@ -36,20 +29,17 @@ class KhronosMainThreadTranscoder {
     needZstd: boolean,
     zstddecWasmModule?: WebAssembly.Module,
   ): Promise<Array<{ width: number, height: number, data: Uint8Array }[]>> {
-    if (!this.wasmTranscoder) {
+    if (!this.context) {
       await this.init();
     }
 
-    if (!this.wasmTranscoder) {
-      throw new Error('WASM transcoder not initialized');
-    }
+    const wasmModule = await this.context.getWasmPromise();
 
-    return transcodeData(data, needZstd, this.wasmTranscoder, zstddecWasmModule);
+    return this.context.transcode(data, needZstd, wasmModule, zstddecWasmModule);
   }
 
   destroy (): void {
-    this.wasmTranscoder = null;
-    this.wasmTranscoderPromise = null;
+    this.context = null;
   }
 }
 
@@ -72,6 +62,7 @@ export class KhronosTranscoder extends TextureTranscoder {
   }
 
   async initTranscodeWorkerPool () {
+    // 主线程模式
     if (!this.useWorker) {
       this.mainThreadTranscoder = new KhronosMainThreadTranscoder();
       await this.mainThreadTranscoder.init();
@@ -79,8 +70,18 @@ export class KhronosTranscoder extends TextureTranscoder {
       return [];
     }
 
+    // Worker 模式
     const transcoderWasm = await uastcAstcWasm();
-    const workerCode = generateWorkerBlobCode();
+    const funcCode = TranscodeWorkerCode.toString();
+    const funcBody = funcCode.substring(funcCode.indexOf('{') + 1, funcCode.lastIndexOf('}'));
+
+    // 移除主线程的 return 语句，添加 Worker 消息处理
+    const returnIndex = funcBody.lastIndexOf('return {');
+    const codeWithoutReturn = funcBody.substring(0, returnIndex);
+
+    console.info('!213');
+    const workerCode = codeWithoutReturn + WorkerMessageHandler;
+
     const workerURL = URL.createObjectURL(
       new Blob([workerCode], {
         type: 'application/javascript',
@@ -97,6 +98,7 @@ export class KhronosTranscoder extends TextureTranscoder {
     const levelCount = ktx2Container.levels.length;
     const faceCount = ktx2Container.faceCount;
 
+    // 准备编码数据
     const encodedData: EncodedData[][] = new Array<EncodedData[]>(faceCount);
 
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex++) {
@@ -122,30 +124,23 @@ export class KhronosTranscoder extends TextureTranscoder {
 
     const zstddecWasmModule = needZstd ? await zstddecWasm() : undefined;
 
+    let faces: Array<{ width: number, height: number, data: Uint8Array }[]>;
+
     // 主线程模式
-    if (this.useWorker === false && this.mainThreadTranscoder) {
-      const faces = await this.mainThreadTranscoder.transcode(encodedData, needZstd, zstddecWasmModule);
-
-      return {
-        width: ktx2Container.pixelWidth,
-        height: ktx2Container.pixelHeight,
-        hasAlpha: true,
+    if (!this.useWorker && this.mainThreadTranscoder) {
+      faces = await this.mainThreadTranscoder.transcode(encodedData, needZstd, zstddecWasmModule);
+    } else {
+      // WebWorker 模式
+      const postMessageData: KhronosTranscoderMessage = {
+        type: 'transcode',
         format: 0,
-        faces,
-        faceCount,
+        needZstd,
+        data: encodedData,
+        zstddecWasmModule,
       };
+
+      faces = await this.transcodeWorkerPool.postMessage(postMessageData);
     }
-
-    // WebWorker 模式
-    const postMessageData: KhronosTranscoderMessage = {
-      type: 'transcode',
-      format: 0,
-      needZstd,
-      data: encodedData,
-      zstddecWasmModule,
-    };
-
-    const faces = await this.transcodeWorkerPool.postMessage(postMessageData);
 
     return {
       width: ktx2Container.pixelWidth,
