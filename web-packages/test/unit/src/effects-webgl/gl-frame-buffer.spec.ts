@@ -59,7 +59,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
         ],
-        isCustomViewport: false,
         depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -92,7 +91,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
           depthAction: TextureStoreAction.clear,
           colorAction: TextureStoreAction.clear,
         },
-        isCustomViewport: false,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 
@@ -125,7 +123,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         storeAction: {
           depthAction: TextureStoreAction.clear,
         },
-        isCustomViewport: false,
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -427,7 +424,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         attachments: [
           new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
-        isCustomViewport: false,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 
@@ -454,7 +450,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         attachments: [
           new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
-        isCustomViewport: false,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 

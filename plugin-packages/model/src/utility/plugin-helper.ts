@@ -2,11 +2,11 @@ import type {
   Scene, Attribute, GeometryProps, TextureSourceOptions, TextureSourceCubeData,
   TextureConfigOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
   Engine, math,
-} from '@galacean/effects';
+  RenderPass } from '@galacean/effects';
 import {
   Player, spec, Transform, glContext, Material, Mesh, Texture, Geometry, Renderer,
-  TextureSourceType, getDefaultTextureFactory, RenderPass, RenderPassDestroyAttachmentType,
-  TextureLoadAction, DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion,
+  TextureSourceType, getDefaultTextureFactory, RenderPassDestroyAttachmentType,
+  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion,
 } from '@galacean/effects';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -15,7 +15,6 @@ import type {
   ModelCameraOptions, ModelSkyboxOptions, ModelSkinOptions, ModelPrimitiveOptions,
   ModelTextureTransform, ModelTreeOptions, ModelAnimTrackOptions, ModelMeshComponent,
 } from '../index';
-import type { FBOOptions } from './ri-helper';
 import type { PMaterialBase, PImageBufferData } from '../runtime';
 import { Matrix3, Matrix4, Vector3, Vector4, DEG2RAD, PMorph, PGlobalState } from '../runtime';
 import { RayTriangleTesting } from './hit-test-helper';
@@ -301,38 +300,6 @@ export class WebGLHelper {
     };
 
     return Texture.create(engine, options);
-  }
-
-  /**
-   * 创建渲染 Pass
-   * @param renderer - 渲染器
-   * @param name - 名称
-   * @param priority - 优先级
-   * @param meshData - Mesh 数据或数据列表
-   * @param fboOpts - FBO 参数
-   * @returns
-   */
-  static createRenderPass (renderer: Renderer, name: string, priority: number, meshData: Mesh | Mesh[], fboOpts: FBOOptions): RenderPass {
-    const meshList = meshData instanceof Mesh ? [meshData] : meshData;
-
-    return new RenderPass(renderer, {
-      name,
-      priority,
-      attachments: fboOpts.colorAttachments,
-      depthStencilAttachment: fboOpts.depthAttachment,
-      clearAction: {
-        clearDepth: 1,
-        clearStencil: 0,
-        clearColor: [0, 0, 0, 0],
-        colorAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.clear,
-      },
-      // storeAction: {
-      //   colorAction: TextureStoreAction.store,
-      // },
-      meshes: meshList,
-      viewport: fboOpts.viewport,
-    });
   }
 
   /**

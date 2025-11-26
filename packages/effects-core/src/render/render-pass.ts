@@ -256,10 +256,6 @@ export interface RenderPassDelegate {
 export interface RenderPassAttachmentOptions {
   attachments?: RenderPassColorAttachmentOptions[],
   depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
-  /**
-   * RenderPass 视口大小，如果没有指定，会用 renderer 的宽高计算
-   */
-  viewport?: [x: number, y: number, width: number, height: number],
 }
 
 export interface RenderPassOptions extends RenderPassAttachmentOptions {
@@ -365,7 +361,6 @@ export class RenderPass implements Disposable, Sortable {
     this.semantics = new SemanticMap(semantics);
     this.options = options;
     this.delegate = delegate;
-    this.setViewportOptions(options);
   }
 
   get isDestroyed (): boolean {
@@ -400,17 +395,6 @@ export class RenderPass implements Disposable, Sortable {
     return this.meshes;
   }
 
-  /**
-   * 获取当前 Attachment 数组，注意 RenderPass 可能没有创建完成
-   */
-  getInitAttachments () {
-    if (this.attachments.length > 0) {
-      return this.attachments;
-    } else {
-      return this.options.attachments;
-    }
-  }
-
   // TODO 所有pass在子类配置
   /**
    * 配置当前pass的RT，在每帧渲染前调用
@@ -439,63 +423,6 @@ export class RenderPass implements Disposable, Sortable {
    */
   frameCleanup (renderer: Renderer) {
 
-  }
-
-  /**
-   * 重置 ColorAttachment 数组，会直接替换掉
-   * @param colors - 纹理数组，作为新的 ColorAttachment
-   */
-  resetColorAttachments (colors: Texture[]) {
-    if (!colors.length) {
-      this.resetAttachments({ attachments: [] });
-    }
-    if (!this.attachments.length) {
-      this.resetAttachments({ attachments: colors.map(t => ({ texture: t })) });
-    } else {
-      const attachments = colors.map(texture => {
-        texture.updateSource({ sourceType: TextureSourceType.framebuffer });
-
-        return new RenderTargetHandle(this.renderer.engine, { texture });
-      });
-
-      this.attachments.forEach(att => !att.externalTexture && att.dispose());
-      this.attachments = attachments;
-      if (this.framebuffer) {
-        this.framebuffer.bind();
-        this.framebuffer.resetColorTextures(colors.map(color => color));
-      }
-    }
-  }
-
-  /**
-   * 重置所有 Attachment，会替换掉所有 Attachment
-   * @param options - Attachment 和视口数据
-   */
-  resetAttachments (options: RenderPassAttachmentOptions) {
-    this.options = options;
-    this.setViewportOptions(options);
-    if (this.renderer) {
-      this._resetAttachments();
-    }
-  }
-
-  private setViewportOptions (options: RenderPassAttachmentOptions) {
-    if (options.viewport) {
-      this.isCustomViewport = true;
-      this.customViewport = options.viewport.slice(0, 4) as [x: number, y: number, width: number, height: number];
-      if (this.framebuffer) {
-        const vp = this.customViewport;
-
-        // TODO 为什么framebuffer和renderpass的isCustomViewport不一样？
-        this.framebuffer.isCustomViewport = false;
-        this.framebuffer.resize(vp[0], vp[1], vp[2], vp[3]);
-      }
-    } else {
-      this.isCustomViewport = false;
-      if (this.framebuffer) {
-        this.framebuffer.isCustomViewport = true;
-      }
-    }
   }
 
   private _resetAttachments () {
@@ -532,7 +459,6 @@ export class RenderPass implements Disposable, Sortable {
         storeAction: this.storeAction,
         name,
         viewport,
-        isCustomViewport: this.isCustomViewport,
         attachments: attachments.map(att => att.texture),
         depthStencilAttachment: options.depthStencilAttachment || { storageType: RenderPassAttachmentStorageType.none },
       }, renderer);
