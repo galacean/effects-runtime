@@ -407,9 +407,23 @@ void main() {
           calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
         }
 
-        // 应用动画偏移（不翻转）和噪声扰动（应用flipSign校正方向）
-        vec2 sampleUV = vec2(uv.x , uv.y ) + vec2(ox, oy) - finalOffset;
-        vec4 color = sampleTexByType(typeV, kindV, clamp(sampleUV, vec2(0.0), vec2(1.0)));
+        // ---- 统一整体下移 + 顶部渐隐 ----
+        // 写死的常量：整体下移/顶部淡出范围
+        const float GLOBAL_Y_OFFSET = 0.05; // 负值往下，按效果可微调 -0.01 ~ -0.05
+        const float TOP_FADE_START  = 0.9;  // 顶部从哪里开始淡出（0~1，越接近1越靠上）
+        const float TOP_FADE_END    = 1.0;   // 顶部完全透明的位置（必须 > START）
+
+        // 应用动画偏移
+        vec2 sampleUV = vec2(uv.x, uv.y) + vec2(ox, oy);
+
+        // 整体往下移一点，避免采到纹理最上沿的硬边
+        sampleUV.y += GLOBAL_Y_OFFSET;
+
+        // clamp UV 避免越界
+        sampleUV = clamp(sampleUV, vec2(0.0), vec2(1.0));
+
+        // 采样纹理
+        vec4 color = sampleTexByType(typeV, kindV, sampleUV);
 
         // 根据profile编号选择预设颜色
         if (int(profile) == 0) { // listeningBlue
@@ -427,6 +441,19 @@ void main() {
         }
 
         color.a *= a;
+
+        // 顶部渐隐：让靠近纹理上边缘的区域 alpha 逐渐变为 0，消掉"割裂边"
+        float topMask = 1.0;
+        if (TOP_FADE_END > TOP_FADE_START) {
+          float t = (sampleUV.y - TOP_FADE_START) / max(1e-4, (TOP_FADE_END - TOP_FADE_START));
+          // t < 0 => 还没到顶部淡出区，mask=1
+          // t in [0,1] => 从1线性降到0
+          // t > 1 => 顶部以外，mask=0
+          topMask = 1.0 - clamp(t, 0.0, 1.0);
+          // 稍微软一点的曲线
+          topMask = pow(topMask, 1.5);
+        }
+        color.a *= topMask;
 
         // 按从后到前混合
         finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
