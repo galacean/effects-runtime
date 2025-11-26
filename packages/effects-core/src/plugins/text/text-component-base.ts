@@ -83,9 +83,12 @@ export class TextComponentBase {
   }
 
   setFontFamily (value: string): void {
-    if (this.textStyle.fontFamily === value && !isValidFontFamily(value)) {
-      console.warn('The font is either the current font or a risky font family.');
+    if (!isValidFontFamily(value)) {
+      console.warn('Risky font family, ignored:', value);
 
+      return;
+    }
+    if (this.textStyle.fontFamily === value) {
       return;
     }
     this.textStyle.fontFamily = value;

@@ -14,7 +14,7 @@ const container = document.getElementById('J-container');
       variables: {
       },
     });
-    const text = composition.getItemByName('richText_1')?.getComponent(RichTextComponent);
+
   } catch (e) {
     console.error('biz', e);
   }

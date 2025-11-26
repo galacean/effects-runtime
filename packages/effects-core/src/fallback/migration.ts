@@ -312,8 +312,16 @@ export function version35Migration (json: JSONScene): JSONScene {
           }
         }
       }
-      //处理文本和富文本 textVerticalAlign 兼容性
-      processRichVerticalAlignCompatibility(json);
+      // 识别富文本组件并处理 textVerticalAlign 兼容性
+      if (
+        component.dataType === spec.DataType.TextComponent ||
+        (
+          component.dataType === spec.DataType.RichTextComponent &&
+          (component as spec.RichTextComponentData).options
+        )
+      ) {
+        ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
+      }
     }
   }
 
@@ -322,26 +330,7 @@ export function version35Migration (json: JSONScene): JSONScene {
 
   return json;
 }
-/**
- * 处理富文本 textVerticalAlign 兼容性
- */
-function processRichVerticalAlignCompatibility (json: JSONScene) {
-  if (!json.components) { return; }
 
-  // 遍历所有组件，处理富文本和文本组件
-  for (const component of json.components) {
-    // 识别富文本组件并处理 textVerticalAlign 兼容性
-    if (
-      component.dataType === spec.DataType.TextComponent ||
-      (
-        component.dataType === spec.DataType.RichTextComponent &&
-        (component as spec.RichTextComponentData).options
-      )
-    ) {
-      ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
-    }
-  }
-}
 /**
  * 确保文本组件有版本标识字段
  */
@@ -353,7 +342,7 @@ function ensureTextVerticalAlign (options: any) {
 
   // 根据是否存在TextVerticalAlign字段来判断版本
   if (options.TextVerticalAlign === undefined) {
-    // 旧版本（没有maxTextWidth字段）
+    //旧版本（没有 TextVerticalAlign 字段）
     options.TextVerticalAlign = options.textBaseline;
   }
 }

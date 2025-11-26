@@ -22,6 +22,10 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     const compY = (sizeResult as any).baselineCompensationY || 0;
     let baselineY = 0;
 
+    if (lines.length === 0) {
+      return { baselineY: 0, lineYOffsets: [] };
+    }
+
     switch (layout.overflow) {
       case spec.TextOverflow.visible: {
         // frame-based 计算
@@ -56,7 +60,8 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         const firstLine = lines[0];
 
         if (firstLine) {
-          const firstMax = Math.max(...(firstLine.richOptions.map(o => o.fontSize) || [style.fontSize]));
+          const richSizes = firstLine.richOptions.map(o => o.fontSize);
+          const firstMax = Math.max(...(richSizes.length ? richSizes : [style.fontSize]));
           const fontSizeForOffset = firstMax * style.fontScale * singleLineHeight;
 
           baselineY = (layout as any).getOffsetYRich(style, lineHeights, fontSizeForOffset) + compY;

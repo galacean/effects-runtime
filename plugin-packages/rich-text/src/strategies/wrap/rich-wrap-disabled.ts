@@ -103,6 +103,17 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     let bboxTop = Infinity;
     let bboxBottom = -Infinity;
 
+    if (lines.length === 0) {
+      return {
+        lines,
+        maxLineWidth,
+        totalHeight,
+        bboxTop: 0,
+        bboxBottom: 0,
+        bboxHeight: 0,
+      };
+    }
+
     for (let i = 0; i < lines.length; i++) {
       bboxTop = Math.min(bboxTop, baselines[i] - (lines[i].lineAscent || 0));
       bboxBottom = Math.max(bboxBottom, baselines[i] + (lines[i].lineDescent || 0));

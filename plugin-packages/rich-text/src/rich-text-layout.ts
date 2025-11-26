@@ -140,6 +140,10 @@ export class RichTextLayout implements BaseLayout {
     lineHeights: number[],
     fontSize: number,
   ): number {
+    if (lineHeights.length === 0) {
+      // 空文本时返回 0，避免计算异常；后续策略可按需要再调整
+      return 0;
+    }
     const { outlineWidth, fontScale } = style;
     const total = lineHeights.reduce((a, b) => a + b, 0);
     const offsetY = (lineHeights[0] - fontSize) / 3;
