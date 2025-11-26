@@ -436,7 +436,7 @@ export class RenderPass implements Disposable, Sortable {
       this.framebuffer = null;
     }
     // renderpass 的 viewport 相关参数都需要动态的修改
-    const viewport = (this.isCustomViewport ? this.customViewport : [0, 0, renderer.getWidth(), renderer.getHeight()]) as vec4;
+    const viewport: [x: number, y: number, z:number, w:number] = [0, 0, renderer.getWidth(), renderer.getHeight()];
 
     const size: [x: number, y: number] = [viewport[2], viewport[3]];
     const name = this.name;
