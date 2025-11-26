@@ -7,7 +7,7 @@ export interface WasmTranscoder extends WebAssembly.Exports {
 }
 
 export interface DecoderExports {
-  memory: Uint8Array,
+  memory: WebAssembly.Memory,
   ZSTD_findDecompressedSize: (compressedPtr: number, compressedSize: number) => number,
   ZSTD_decompress: (
     uncompressedPtr: number,
