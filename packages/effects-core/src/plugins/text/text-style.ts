@@ -72,12 +72,16 @@ export class TextStyle {
    */
   fontScale = 2;
 
-  readonly fontOffset = 0;
+  fontOffset = 0;
 
   constructor (options: spec.TextContentOptions) {
+    this.update(options);
+  }
+
+  update (options: spec.TextContentOptions): void {
     const { textColor = [1, 1, 1, 1], fontSize = 40, outline, shadow, fontWeight = 'normal', fontStyle = 'normal', fontFamily = 'sans-serif' } = options;
 
-    this.textColor = textColor;
+    this.textColor = [...textColor];
     //@ts-expect-error
     this.textWeight = fontWeight;
     //@ts-expect-error
@@ -85,28 +89,37 @@ export class TextStyle {
     this.fontFamily = fontFamily;
     this.fontSize = fontSize; // 暂时取消字号限制 Math.min(fontSize, this.maxFontSize);
 
+    // 重置描边状态
+    this.isOutlined = false;
+    this.outlineColor = [1, 1, 1, 1];
+    this.outlineWidth = 0;
+
     if (outline) {
       this.isOutlined = true;
-      this.outlineColor = outline.outlineColor ?? [1, 1, 1, 1];
+      this.outlineColor = [...(outline.outlineColor ?? [1, 1, 1, 1])];
       this.outlineWidth = outline.outlineWidth ?? 1;
-      //this.fontOffset += this.outlineWidth;
-      //预期效果不需要因为描边而修改文字计算的宽度
-      //当描边宽度扩大，最后效果是描边重叠
     }
+
+    // 重置阴影状态
+    this.hasShadow = false;
+    this.shadowBlur = 2;
+    this.shadowColor = [0, 0, 0, 1];
+    this.shadowOffsetX = 0;
+    this.shadowOffsetY = 0;
 
     if (shadow) {
       this.hasShadow = true;
       this.shadowBlur = shadow.shadowBlur ?? 2;
-      this.shadowColor = shadow.shadowColor ?? [0, 0, 0, 1];
+      this.shadowColor = [...(shadow.shadowColor ?? [0, 0, 0, 1])];
       this.shadowOffsetX = shadow.shadowOffsetX ?? 0;
       this.shadowOffsetY = shadow.shadowOffsetY ?? 0;
-
     }
 
+    // 重置字体偏移
+    this.fontOffset = 0;
     if (this.fontStyle !== spec.FontStyle.normal) {
       // 0.0174532925 = 3.141592653 / 180
       this.fontOffset += this.fontSize * Math.tan(12 * 0.0174532925);
     }
-
   }
 }
