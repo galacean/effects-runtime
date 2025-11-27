@@ -2,13 +2,12 @@ import type {
   Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader,
 } from '@galacean/effects';
 import {
-  TextureSourceType, loadBinary, glContext,
-  textureLoaderRegistry,
+  TextureSourceType, loadBinary, glContext, textureLoaderRegistry,
 } from '@galacean/effects';
 import { KTX2TargetFormat } from './ktx2-common';
 import { KTX2Container } from './ktx2-container';
-import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 import type { TranscodeResult } from './transcoder/texture-transcoder';
+import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 
 /**
  * KTX2 加载器 - 专用于 UASTC 转 ASTC
@@ -19,10 +18,12 @@ export class KTX2Loader implements TextureLoader {
 
   /**
    * KTX2 加载器
-   * - workerCount 大于0时使用WebWorker
+   * - workerCount 大于 0 时使用 WebWorker
    * - 默认使用主线程
    */
-  constructor (private readonly workerCount = 0) { }
+  constructor (
+    private readonly workerCount = 0,
+  ) { }
 
   /**
    * 初始化 Khronos Transcoder
@@ -184,9 +185,9 @@ export class KTX2Loader implements TextureLoader {
 
 /**
  * 注册 KTX2 加载器到全局注册表
- * @param workerCount 大于0时使用WebWorker，默认使用主线程
+ * @param workerCount - 大于 0 时使用 WebWorker，默认使用主线程
  */
-export function registerKTX2Loader (workerCount: number = 0) {
+export function registerKTX2Loader (workerCount = 0) {
   textureLoaderRegistry.register('ktx2', () => {
     return new KTX2Loader(workerCount);
   });

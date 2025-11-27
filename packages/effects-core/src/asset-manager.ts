@@ -14,6 +14,7 @@ import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture'
 import type { Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
+
 let seed = 1;
 
 /**
@@ -271,7 +272,7 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
-    canUseKTX2: boolean = false
+    canUseKTX2 = false,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
