@@ -6,8 +6,9 @@ import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacea
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
-
+import { registerKTX2Loader, unregisterKTX2Loader } from '@galacean/effects-plugin-ktx2';
 const COMPRESSED_RGBA_ASTC_6x6_KHR = 37812;
+const COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93b0;
 const { assert, expect } = chai;
 
 describe('webgl/gl-texture', () => {
@@ -38,20 +39,21 @@ describe('webgl/gl-texture', () => {
   });
 
   it('load 2d astc ktx file', async () => {
+    registerKTX2Loader(0);
     const ret = await getDefaultTextureFactory().loadSource({
       type: TextureSourceType.compressed,
-      url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RCFCUBLGCIMW/-901396496-767d5.ktx',
+      url: 'https://mdn.alipayobjects.com/mars/afts/file/A*b3SLT7ZBMYQAAAAAbZAAAAgAelB4AQ/original',
     });
 
     expect(ret.target).is.eql(gl.TEXTURE_2D);
-    expect(ret.internalFormat).is.eql(COMPRESSED_RGBA_ASTC_6x6_KHR);
+    expect(ret.internalFormat).is.eql(COMPRESSED_RGBA_ASTC_4x4_KHR);
     const source = ret as Texture2DSourceOptionsCompressed;
 
-    expect(source.mipmaps[0].width).is.eql(512);
-    expect(source.mipmaps[0].height).is.eql(512);
+    expect(source.mipmaps[0].width).is.eql(2048);
+    expect(source.mipmaps[0].height).is.eql(2048);
     const mipmaps = source.mipmaps;
 
-    expect(mipmaps.length).is.eql(10);
+    expect(mipmaps.length).is.eql(1);
     for (let i = 0; i < mipmaps.length; i++) {
       expect(mipmaps[i].data.byteLength).is.eql(byteLengthForASTC(ret.internalFormat!, mipmaps[i].width, mipmaps[i].height), 'mipmap ' + i);
     }
@@ -103,13 +105,13 @@ describe('webgl/gl-texture', () => {
   it('upload 2d astc', async () => {
     const ret = await getDefaultTextureFactory().loadSource({
       type: TextureSourceType.compressed,
-      url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RCFCUBLGCIMW/-901396496-767d5.ktx',
+      url: 'https://mdn.alipayobjects.com/mars/afts/file/A*b3SLT7ZBMYQAAAAAbZAAAAgAelB4AQ/original',
     });
     const texture = new GLTexture(engine, ret);
 
     texture.initialize();
-    expect(texture.width).is.eql(512);
-    expect(texture.height).is.eql(512);
+    expect(texture.width).is.eql(2048);
+    expect(texture.height).is.eql(2048);
     expect(texture.textureBuffer).is.not.null;
     // @ts-expect-error
     expect(texture.gl).is.not.null;
@@ -119,7 +121,7 @@ describe('webgl/gl-texture', () => {
     const gpuInfo = getTextureGPUInfo(texture, ret);
 
     expect(gpuInfo).to.deep.equals(
-      [37812, 0, gl.TEXTURE_2D, [[512, 512], [256, 256], [128, 128], [64, 64], [32, 32], [16, 16], [8, 8], [4, 4], [2, 2], [1, 1]]]
+      [37808, 0, gl.TEXTURE_2D, [[2048, 2048]]]
     );
     const mipmaps = gpuInfo[3];
     let memory = 0;
@@ -127,7 +129,7 @@ describe('webgl/gl-texture', () => {
     for (let i = 0; i < mipmaps.length; i++) {
       const mipmap = mipmaps[i];
 
-      memory += byteLengthForASTC(37812, mipmap[0], mipmap[1]);
+      memory += byteLengthForASTC(37808, mipmap[0], mipmap[1]);
     }
 
     expect(getTextureMemory(texture, gpuInfo)).to.eql(memory);
@@ -622,8 +624,8 @@ function byteLengthForASTC (
   width: number,
   height: number,
 ) {
-  if (type === COMPRESSED_RGBA_ASTC_6x6_KHR) {
-    return Math.floor((width + 5) / 6) * Math.floor((height + 5) / 6) * 16;
+  if (type === COMPRESSED_RGBA_ASTC_4x4_KHR) {
+    return Math.floor((width + 3) / 4) * Math.floor((height + 3) / 4) * 16;
   }
 
   throw new Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
