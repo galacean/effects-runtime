@@ -3,6 +3,11 @@ declare module '*.glsl' {
   export default value;
 }
 
+declare module '*.wasm' {
+  const content: () => Promise<WebAssembly.Instance | WebAssembly.Module>;
+  export default content;
+}
+
 declare const __DEBUG__: boolean;
 declare const __VERSION__: string;
 

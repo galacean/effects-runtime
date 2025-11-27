@@ -15,9 +15,9 @@ export interface GPUCapabilityDetail {
   maxShaderTexCount: number,
   maxTextureSize: number,
   maxTextureAnisotropy: number,
-  compressedTexture: number,
   shaderTextureLod: boolean,
   instanceDraw?: boolean,
+  ktx2Support: boolean,
   drawBuffers?: boolean,
   asyncShaderCompile: boolean,
   //draw elements use uint32 Array
@@ -38,6 +38,8 @@ export class GPUCapability {
   type: GLType;
   level: number;
   detail: Immutable<GPUCapabilityDetail>;
+  private compressTextureCapabilityList: Map<CompressTextureCapabilityType, boolean>;
+
   UNSIGNED_INT_24_8: number;
   internalFormatDepth16: number;
   internalFormatDepth24_stencil8: number;
@@ -52,7 +54,12 @@ export class GPUCapability {
   ) {
     this.setupCapability(gl);
   }
-
+  get isWebGL2 (): boolean {
+    return this.level === 2;
+  }
+  isCompressedFormatSupported (cap: CompressTextureCapabilityType): boolean {
+    return !!this.compressTextureCapabilityList.get(cap);
+  }
   private setupCapability (gl: WebGLRenderingContext | WebGL2RenderingContext) {
     const level = isWebGL2Available && gl instanceof WebGL2RenderingContext ? 2 : 1;
     const level2 = level === 2;
@@ -81,6 +88,17 @@ export class GPUCapability {
     this.internalFormatDepth24_stencil8 = level2 ? (gl as WebGL2RenderingContext).DEPTH24_STENCIL8 : gl.DEPTH_STENCIL;
     const floatTexture = (level2 || gl.getExtension('OES_texture_float')) ? gl.FLOAT : 0;
     const halfFloatTexture = level2 ? WebGL2RenderingContext.HALF_FLOAT : (gl.getExtension('OES_texture_half_float')?.HALF_FLOAT_OES || 0);
+
+    this.compressTextureCapabilityList = new Map([
+      [CompressTextureCapabilityType.astc, !!gl.getExtension('WEBGL_compressed_texture_astc')],
+      [CompressTextureCapabilityType.astc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_astc')],
+      [CompressTextureCapabilityType.etc, !!gl.getExtension('WEBGL_compressed_texture_etc')],
+      [CompressTextureCapabilityType.etc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_etc')],
+      [CompressTextureCapabilityType.etc1, !!gl.getExtension('WEBGL_compressed_texture_etc1')],
+      [CompressTextureCapabilityType.pvrtc, !!gl.getExtension('WEBGL_compressed_texture_pvrtc') || !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+      [CompressTextureCapabilityType.pvrtc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
+      [CompressTextureCapabilityType.sRGB, !!gl.getExtension('EXT_sRGB')],
+    ]);
     const detail: GPUCapabilityDetail = {
       floatTexture,
       halfFloatTexture,
@@ -93,12 +111,12 @@ export class GPUCapability {
       halfFloatColorAttachment: level2 ? !!gl.getExtension('EXT_color_buffer_float') : (halfFloatTexture > 0 && !!gl.getExtension('EXT_color_buffer_half_float')),
       maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
       maxShaderTexCount: gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS),
-      compressedTexture: registerCompressedTexture(gl),
       halfFloatLinear,
       floatLinear,
       maxTextureAnisotropy: textureAnisotropicExt ? gl.getParameter(textureAnisotropicExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0,
       shaderTextureLod: level2 || !!gl.getExtension('EXT_shader_texture_lod'),
       instanceDraw: level2 || !!gl.getExtension('ANGLE_instanced_arrays'),
+      ktx2Support: detectKTX2Support(this.compressTextureCapabilityList),
       drawBuffers: level2 || !!this.drawBufferExtension,
       asyncShaderCompile: !!this.glAsyncCompileExt,
       intIndexElementBuffer: !!gl.getExtension('OES_element_index_uint'),
@@ -189,19 +207,32 @@ function checkLinearTextureFilter (gl: WebGL2RenderingContext, type: number): bo
   return ret;
 }
 
-export enum COMPRESSED_TEXTURE {
-  NONE = 0,
-  PVRTC = 1,
-  ASTC = 2,
+/**
+ * GL Capabilities
+ * Some capabilities can be smoothed out by extension, and some capabilities must use WebGL 2.0.
+ * */
+export enum CompressTextureCapabilityType {
+  astc = 'WEBGL_compressed_texture_astc',
+  astc_webkit = 'WEBKIT_WEBGL_compressed_texture_astc',
+  etc = 'WEBGL_compressed_texture_etc',
+  etc_webkit = 'WEBKIT_WEBGL_compressed_texture_etc',
+  etc1 = 'WEBGL_compressed_texture_etc1',
+  pvrtc = 'WEBGL_compressed_texture_pvrtc',
+  pvrtc_webkit = 'WEBKIT_WEBGL_compressed_texture_pvrtc',
+  sRGB = 'EXT_sRGB'
 }
 
-function registerCompressedTexture (gl: WebGLRenderingContext | WebGL2RenderingContext): number {
-  if (gl.getExtension('WEBGL_compressed_texture_astc')) {
-    return COMPRESSED_TEXTURE.ASTC;
-  }
-  if (gl.getExtension('WEBGL_compressed_texture_pvrtc') || gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')) {
-    return COMPRESSED_TEXTURE.PVRTC;
-  }
+/**
+ * 检测 KTX2 支持
+ * KTX2 可以包含多种压缩格式，需要检测是否支持至少一种
+ */
+function detectKTX2Support (compressTextureCapabilityList: Map<CompressTextureCapabilityType, boolean>): boolean {
+  // KTX2 文件可以包含多种压缩格式，检测是否支持至少一种
+  const hasCompressedTextureSupport =
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.astc) ||
+    compressTextureCapabilityList.get(CompressTextureCapabilityType.astc_webkit);
 
-  return COMPRESSED_TEXTURE.NONE;
+  // KTX2 可以回退到未压缩的格式（如 RGBA8），所以即使不支持压缩格式也可以使用
+  // 但为了性能考虑，至少支持一种压缩格式
+  return !!hasCompressedTextureSupport;
 }

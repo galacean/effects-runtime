@@ -6,7 +6,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
-  throwDestroyedError, canvasPool, logger,
+  throwDestroyedError, canvasPool, logger, isPowerOfTwo,
 } from '@galacean/effects-core';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLEngine } from './gl-engine';
@@ -515,8 +515,4 @@ function resizeImageByCanvas (
 
     return canvas;
   }
-}
-
-function isPowerOfTwo (value: number) {
-  return (value & (value - 1)) === 0 && value !== 0;
 }

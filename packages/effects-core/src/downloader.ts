@@ -71,6 +71,16 @@ export class Downloader {
     this.download(url, 'blob', onSuccess, onError);
   }
 
+  /**
+   * 下载一个文本文件
+   * @param url - 要下载的文本文件的 URL
+   * @param onSuccess - 下载成功后的回调函数
+   * @param onError - 下载失败后的回调函数
+   */
+  downloadText (url: string, onSuccess: SuccessHandler<string>, onError: ErrorHandler) {
+    this.download(url, 'text', onSuccess, onError);
+  }
+
   private download (url: string, responseType: XMLHttpRequestResponseType = 'json', onSuccess: SuccessHandler<any>, onError: ErrorHandler) {
     if (this.start(url, onSuccess, onError)) {
       return;
