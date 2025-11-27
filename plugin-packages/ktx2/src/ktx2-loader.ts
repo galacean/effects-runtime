@@ -16,7 +16,13 @@ import type { TranscodeResult } from './transcoder/texture-transcoder';
 export class KTX2Loader implements TextureLoader {
   private khronosTranscoder: KhronosTranscoder | null = null;
   private khronosInitPromise?: Promise<void>;
-  public static workerCount = 0; // 大于 0 使用WebWorker, 默认主线程
+
+  /**
+   * KTX2 加载器
+   * - workerCount 大于0时使用WebWorker
+   * - 默认使用主线程
+   */
+  constructor (private readonly workerCount = 0) { }
 
   /**
    * 初始化 Khronos Transcoder
@@ -27,7 +33,7 @@ export class KTX2Loader implements TextureLoader {
     }
 
     try {
-      const transcoder = new KhronosTranscoder(KTX2Loader.workerCount, KTX2TargetFormat.ASTC);
+      const transcoder = new KhronosTranscoder(this.workerCount, KTX2TargetFormat.ASTC);
 
       await transcoder.init();
       this.khronosTranscoder = transcoder;
@@ -178,11 +184,11 @@ export class KTX2Loader implements TextureLoader {
 
 /**
  * 注册 KTX2 加载器到全局注册表
- * @param options - 初始化选项
+ * @param workerCount 大于0时使用WebWorker，默认使用主线程
  */
-export function registerKTX2Loader () {
+export function registerKTX2Loader (workerCount: number = 0) {
   textureLoaderRegistry.register('ktx2', () => {
-    return new KTX2Loader();
+    return new KTX2Loader(workerCount);
   });
 }
 
