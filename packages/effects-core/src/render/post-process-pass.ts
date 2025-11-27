@@ -53,6 +53,7 @@ export class BloomThresholdPass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+    this.name = 'BloomThresholdPass';
 
     this.onResize = this.onResize.bind(this);
     this.renderer.engine.on('resize', this.onResize);
@@ -142,6 +143,7 @@ export class HQGaussianDownSamplePass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+    this.name = 'GaussianDownPass' + type + level;
 
     this.onResize = this.onResize.bind(this);
     this.renderer.engine.on('resize', this.onResize);
@@ -226,6 +228,7 @@ export class HQGaussianUpSamplePass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+    this.name = 'GaussianUpPass' + level;
 
     this.onResize = this.onResize.bind(this);
     this.renderer.engine.on('resize', this.onResize);
@@ -311,6 +314,7 @@ export class ToneMappingPass extends RenderPass {
       priority: 0,
     });
     this.priority = 5000;
+    this.name = 'ToneMappingPass';
   }
 
   override configure (renderer: Renderer): void {

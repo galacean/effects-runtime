@@ -8,6 +8,7 @@ export class DrawObjectPass extends RenderPass {
     super(renderer, options);
 
     this.priority = RenderPassPriorityNormal;
+    this.name = 'DrawObjectPass';
 
     this.onResize = this.onResize.bind(this);
     this.renderer.engine.on('resize', this.onResize);

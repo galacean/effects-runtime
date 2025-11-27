@@ -216,16 +216,9 @@ export type RenderPassDestroyOptions = {
   depthStencilAttachment?: RenderPassDestroyAttachmentType,
 };
 
-/**
- * RenderPass Attachment 选项
- */
-export interface RenderPassAttachmentOptions {
+export interface RenderPassOptions {
   attachments?: RenderPassColorAttachmentOptions[],
   depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
-}
-
-export interface RenderPassOptions extends RenderPassAttachmentOptions {
-  name?: string,
 }
 
 let seed = 1;
@@ -246,7 +239,7 @@ export class RenderPass implements Disposable, Sortable {
   /**
    * 名称
    */
-  readonly name: string;
+  name: string = 'RenderPass' + seed++;
   /**
    * 包含的 Mesh 列表
    */
@@ -269,7 +262,7 @@ export class RenderPass implements Disposable, Sortable {
   readonly storeAction: RenderPassStoreAction;
 
   protected disposed = false;
-  protected options: RenderPassAttachmentOptions;
+  protected options: RenderPassOptions;
   protected renderer: Renderer;
 
   private initialized = false;
@@ -278,11 +271,9 @@ export class RenderPass implements Disposable, Sortable {
 
   constructor (renderer: Renderer, options: RenderPassOptions) {
     const {
-      name = 'RenderPass_' + seed++,
       depthStencilAttachment,
     } = options;
 
-    this.name = name;
     this.renderer = renderer;
     this.depthStencilType = depthStencilAttachment?.storageType || RenderPassAttachmentStorageType.none;
 

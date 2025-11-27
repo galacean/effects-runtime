@@ -34,13 +34,11 @@ export class GalaceanEffects {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-          name: 'OutlinePass',
         }),);
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-          name: 'OutlinePass',
         }));
       });
     }
@@ -108,6 +106,7 @@ export class OutlinePass extends RenderPass {
   constructor (renderer: Renderer, options: RenderPassOptions) {
     super(renderer, options);
     this.priority = RenderPassPriorityPostprocess;
+    this.name = 'OutlinePass';
   }
 
   override configure (renderer: Renderer): void {

@@ -242,7 +242,6 @@ export class RenderFrame implements Disposable {
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer, {
-      name: RENDER_PASS_NAME_PREFIX,
       depthStencilAttachment,
       attachments,
     });
@@ -261,7 +260,6 @@ export class RenderFrame implements Disposable {
       const enableHDR = true;
       const textureType = enableHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
       const bloomThresholdPass = new BloomThresholdPass(renderer, {
-        name: 'BloomThresholdPass',
         attachments: [{
           texture: {
             format: glContext.RGBA,
@@ -277,7 +275,6 @@ export class RenderFrame implements Disposable {
       for (let i = 0; i < gaussianStep; i++) {
         gaussianDownResults[i] = new RenderTargetHandle(engine);
         const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', i, {
-          name: 'GaussianDownPassH' + i,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -289,7 +286,6 @@ export class RenderFrame implements Disposable {
         });
 
         const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', i, {
-          name: 'GaussianDownPassV' + i,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -312,7 +308,6 @@ export class RenderFrame implements Disposable {
       viewport[3] *= 4;
       for (let i = 0; i < gaussianStep - 1; i++) {
         const gaussianUpPass = new HQGaussianUpSamplePass(renderer, gaussianStep - i, {
-          name: 'GaussianUpPass' + i,
           attachments: [{
             texture: {
               format: glContext.RGBA,

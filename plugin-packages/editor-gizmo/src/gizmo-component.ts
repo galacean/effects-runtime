@@ -830,7 +830,6 @@ export class GizmoComponent extends RendererComponent {
 
     if (!rp) {
       rp = new DrawGizmoBehindPass(pipeline.renderer, {
-        name: behindRenderPassName,
       });
       pipeline.addRenderPass(rp);
     }
@@ -843,7 +842,6 @@ export class GizmoComponent extends RendererComponent {
 
     if (!rp) {
       rp = new DrawGizmoEditorPass(pipeline.renderer, {
-        name: editorRenderPassName,
       });
       pipeline.addRenderPass(rp);
     }
@@ -856,7 +854,6 @@ export class GizmoComponent extends RendererComponent {
 
     if (!rp) {
       rp = new DrawGizmoFrontPass(pipeline.renderer, {
-        name: frontRenderPassName,
       });
       pipeline.addRenderPass(rp);
     }
@@ -875,6 +872,7 @@ class DrawGizmoBehindPass extends RenderPass {
   constructor (renderer: Renderer, options: RenderPassOptions) {
     super(renderer, options);
     this.priority = RenderPassPriorityPostprocess + RenderPassPriorityPostprocess;
+    this.name = behindRenderPassName;
   }
 
   override execute (renderer: Renderer): void {
@@ -887,6 +885,7 @@ class DrawGizmoFrontPass extends RenderPass {
   constructor (renderer: Renderer, options: RenderPassOptions) {
     super(renderer, options);
     this.priority = RenderPassPriorityPrepare + 2;
+    this.name = frontRenderPassName;
   }
 
   override execute (renderer: Renderer): void {
@@ -898,6 +897,7 @@ class DrawGizmoEditorPass extends RenderPass {
   constructor (renderer: Renderer, options: RenderPassOptions) {
     super(renderer, options);
     this.priority = RenderPassPriorityPostprocess + 2;
+    this.name = editorRenderPassName;
   }
 
   override execute (renderer: Renderer): void {

@@ -67,7 +67,6 @@ describe('webgl/dispose', function () {
     const spy1 = geom.dispose = chai.spy(geom.dispose);
     const spy2 = material.dispose = chai.spy(material.dispose);
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
@@ -100,7 +99,6 @@ describe('webgl/dispose', function () {
     const spy1 = material.dispose = chai.spy(material.dispose);
     const spy2 = geom.dispose = chai.spy(geom.dispose);
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
@@ -138,7 +136,6 @@ describe('webgl/dispose', function () {
     const spy1 = material.dispose = chai.spy(material.dispose);
     const spy2 = geom.dispose = chai.spy(geom.dispose);
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
@@ -163,7 +160,6 @@ describe('webgl/dispose', function () {
     const geom = result.geom;
     const texture = result.texture;
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
@@ -189,7 +185,6 @@ describe('webgl/dispose', function () {
     const geom = result.geom;
     const texture = result.texture;
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
@@ -215,7 +210,6 @@ describe('webgl/dispose', function () {
     const spy2 = geom.dispose = chai.spy(geom.dispose);
 
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
@@ -248,7 +242,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -288,7 +281,6 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -336,7 +328,6 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -384,7 +375,6 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -433,7 +423,6 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -481,7 +470,6 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -528,7 +516,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -585,7 +572,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_stencil_opaque,
         storage: rp1.depthAttachment?.storage,
@@ -635,7 +621,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -668,7 +653,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
@@ -697,7 +681,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
     });
 
     renderPass.addMesh(mesh);
