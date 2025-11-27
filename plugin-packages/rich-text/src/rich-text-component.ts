@@ -741,6 +741,20 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   setFontSize (value: number): void {
     this.unsupported('setFontSize');
   }
+
+  /**
+   * @deprecated 请使用 setTextVerticalAlign 替代。
+   *
+   * 本方法已废弃,现调用setTextVerticalAlign兼容。
+   */
+  setTextBaseline (value: spec.TextBaseline): void {
+    console.warn(
+      'RichTextComponent.setTextBaseline 已废弃，请改用 setTextVerticalAlign。' +
+      '本次调用将转调用 setTextVerticalAlign。'
+    );
+
+    this.setTextVerticalAlign(value as unknown as spec.TextVerticalAlign);
+  }
 }
 
 applyMixins(RichTextComponent, [TextComponentBase]);
