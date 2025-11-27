@@ -147,6 +147,13 @@ export class HQGaussianDownSamplePass extends RenderPass {
     this.renderer.engine.on('resize', this.onResize);
   }
 
+  override initialize (renderer: Renderer): RenderPass {
+    super.initialize(renderer);
+    this.onResize();
+
+    return this;
+  }
+
   override configure (renderer: Renderer): void {
     this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     renderer.setFramebuffer(this.framebuffer);
@@ -222,6 +229,13 @@ export class HQGaussianUpSamplePass extends RenderPass {
 
     this.onResize = this.onResize.bind(this);
     this.renderer.engine.on('resize', this.onResize);
+  }
+
+  override initialize (renderer: Renderer): RenderPass {
+    super.initialize(renderer);
+    this.onResize();
+
+    return this;
   }
 
   override configure (renderer: Renderer): void {

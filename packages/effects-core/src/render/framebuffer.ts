@@ -7,7 +7,6 @@ import type { Renderer } from './renderer';
 export interface FramebufferProps {
   attachments: Texture[],
   depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
-  isCustomViewport?: boolean,
   viewport: [x: number, y: number, width: number, height: number],
   storeAction: RenderPassStoreAction,
   name?: string,
@@ -33,7 +32,6 @@ export class Framebuffer {
   ready: boolean;
   externalStorage: boolean;
   storeAction: RenderPassStoreAction;
-  isCustomViewport: boolean;
 
   static create: (props: FramebufferProps, renderer: Renderer) => Framebuffer;
 

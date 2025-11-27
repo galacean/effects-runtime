@@ -7,7 +7,6 @@ import {
   FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
   Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
-import { ExtWrap } from './ext-wrap';
 import type { GLEngine } from './gl-engine';
 import { GLFramebuffer } from './gl-framebuffer';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -27,7 +26,6 @@ type Vector3 = math.Vector3;
 let seed = 1;
 
 export class GLRenderer extends Renderer implements Disposable {
-  extension: ExtWrap;
   temporaryRTs: Record<string, Framebuffer> = {};
   readonly name: string;
 
@@ -67,7 +65,6 @@ export class GLRenderer extends Renderer implements Disposable {
     const { gl } = this.context;
 
     assertExist(gl);
-    this.extension = new ExtWrap(this);
     this.renderingData = {
       // @ts-expect-error
       currentFrame: {},
@@ -86,11 +83,6 @@ export class GLRenderer extends Renderer implements Disposable {
 
   override renderRenderFrame (renderFrame: RenderFrame) {
     const frame = renderFrame;
-
-    if (frame.resource) {
-      frame.resource.color_b.initialize();
-    }
-
     const passes = frame._renderPasses;
 
     if (this.isDisposed) {
@@ -293,7 +285,6 @@ export class GLRenderer extends Renderer implements Disposable {
       name,
       storeAction: {},
       viewport: [0, 0, width, height],
-      isCustomViewport: true,
       attachments: [colorAttachment],
       depthStencilAttachment: { storageType: depthType },
     }, this);
@@ -353,14 +344,12 @@ export class GLRenderer extends Renderer implements Disposable {
     if (this.disposed) {
       return;
     }
-    this.extension.dispose();
     this.deleteResource();
     this.disposed = true;
   }
 
   override lost (e: Event) {
     e.preventDefault();
-    this.extension.dispose();
     logger.error(`WebGL context lost, destroying glRenderer by default to prevent memory leaks. Event target: ${e.target}.`);
     this.deleteResource();
   }
@@ -377,7 +366,6 @@ export class GLRenderer extends Renderer implements Disposable {
     engine.reset();
     engine.shaderLibrary = new GLShaderLibrary(engine);
     engine.gpuCapability = new GPUCapability(gl);
-    this.extension = new ExtWrap(this);
   }
 
   override resize (width: number, height: number): void {
@@ -428,11 +416,6 @@ export class GLRenderer extends Renderer implements Disposable {
     engine.bindFramebuffer(gl.FRAMEBUFFER, null);
     engine.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
     engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-  }
-
-  resetColorAttachments (rp: GLFramebuffer, colors: GLTexture[]) {
-    rp.bind();
-    rp.resetColorTextures(colors);
   }
 
   createGLRenderbuffer (renderbuffer: GLRenderbuffer): WebGLRenderbuffer | null {

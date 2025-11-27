@@ -247,7 +247,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass);
 
@@ -288,7 +287,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass);
 
@@ -336,7 +334,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass);
 
@@ -384,7 +381,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass);
 
@@ -433,7 +429,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass);
 
@@ -481,7 +476,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass);
 
@@ -572,7 +566,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_stencil_opaque,
       },
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
@@ -666,7 +659,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
     const frame = createRenderFrame(renderer, renderPass, { t: marsTexture });
 
