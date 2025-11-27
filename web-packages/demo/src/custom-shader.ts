@@ -155,12 +155,21 @@ float greenAlphaAt(float t){
   else return 0.0;
 }
 
+// 阈值+线性映射alpha处理函数
+float alphaThresholdMapping(float alpha, float threshold) {
+  if (alpha <= threshold) {
+    return 0.0;
+  } else {
+    return (alpha - threshold) / (1.0 - threshold);
+  }
+}
+
 // UV范围限制
 vec2 clampUV(vec2 uv) {
   return clamp(uv, vec2(0.01), vec2(0.99));
 }
 
-// 安全纹理采样（边缘淡出）- 修复顶部断线问题
+// 安全纹理采样（边缘淡出）
 vec4 safeTexture2D(sampler2D tex, vec2 uv) {
   vec4 color = texture2D(tex, clamp(uv, vec2(0.0), vec2(1.0)));
   return color;
@@ -278,7 +287,7 @@ void getProfileParams(float profile,
     fadeOutStart = 2.9333;     
     fadeOutEnd   = 3.6167;     
 
-    distance = 1.2315;         // 与 A 一致，减少"越走越开"
+    distance = 1.3515;         // 与 A 一致，减少"越走越开"
     initU = -0.48;
     initV = 0.02;              // 上下更贴（也可用 0.0）
     isSecond = 1.0;
@@ -406,17 +415,10 @@ void main() {
         } else { // input
           calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
         }
-
-        // ---- 统一整体下移 + 顶部渐隐 ----
-        // 写死的常量：整体下移/顶部淡出范围
-        const float GLOBAL_Y_OFFSET = 0.11; // 负值往下，按效果可微调 -0.01 ~ -0.05
-        const float TOP_FADE_START  = 0.95;  // 顶部从哪里开始淡出（0~1，越接近1越靠上）
-        const float TOP_FADE_END    = 1.0;   // 顶部完全透明的位置（必须 > START）
-
+        const float GLOBAL_Y_OFFSET = 0.12; // 负值往下，按效果可微调 -0.01 ~ -0.05
         // 应用动画偏移
         vec2 sampleUV = vec2(uv.x, uv.y) + vec2(ox, oy) - finalOffset;
 
-        // 整体往下移一点，避免采到纹理最上沿的硬边
         sampleUV.y += GLOBAL_Y_OFFSET;
 
         // clamp UV 避免越界
@@ -442,18 +444,8 @@ void main() {
 
         color.a *= a;
 
-        // 顶部渐隐：让靠近纹理上边缘的区域 alpha 逐渐变为 0，消掉"割裂边"
-        float topMask = 1.0;
-        if (TOP_FADE_END > TOP_FADE_START) {
-          float t = (sampleUV.y - TOP_FADE_START) / max(1e-4, (TOP_FADE_END - TOP_FADE_START));
-          // t < 0 => 还没到顶部淡出区，mask=1
-          // t in [0,1] => 从1线性降到0
-          // t > 1 => 顶部以外，mask=0
-          topMask = 1.0 - clamp(t, 0.0, 1.0);
-          // 稍微软一点的曲线
-          topMask = pow(topMask, 1.5);
-        }
-        color.a *= topMask;
+        // 阈值+线性映射方案：解决顶部残留问题
+        color.a = alphaThresholdMapping(color.a, 0.013);
 
         // 按从后到前混合
         finalColor.rgb = finalColor.rgb * (1.0 - color.a) + color.rgb * color.a;
@@ -491,6 +483,9 @@ void main() {
     float brightnessBoost = pow(normalizedVolume, _BrightnessCurve) * _MaxBrightness + 1.0;
     finalColor.rgb *= brightnessBoost;
   }
+  //采样 _Tex2 作为整体亮度调整参考
+  // vec4 referenceColor = texture2D(_Tex2, uv);
+  // referenceColor.a = alphaThresholdMapping(referenceColor.a,0.03);
 
   gl_FragColor = vec4(finalColor.rgb, finalColor.a);
 }
@@ -563,7 +558,7 @@ let material: Material | undefined;
     });
   };
 
-  const SecondStageImageData = await loadLocalImageData('../public/拉伸绿光调整.png');
+    const SecondStageImageData = await loadLocalImageData('../public/9F0EF51C-6711-4BEC-B0F3-EFB9A3D56C85.png');
   const noiseimageData = await loadLocalImageData('../public/Perlin.png');
   const T_noiseimageData = await loadLocalImageData('../public/T_Noise.png');
   const FirstStageBlueImageData = await loadLocalImageData('../public/蓝光裁切.png');
@@ -650,7 +645,7 @@ let material: Material | undefined;
         // 初始化时绑定三张纹理
         // material.setTexture('_Tex0', FirstStageBlueTexture);
         // material.setTexture('_Tex1', FirstStageGreenTexture);
-        // material.setTexture('_Tex2', cloudTexture);
+        material.setTexture('_Tex2', cloudTexture);
         // // 设置噪声纹理
         // material.setTexture('_NoiseTex', noiseTexture);
         // // 设置T噪声纹理
