@@ -277,12 +277,15 @@ export class AssetManager implements Disposable {
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
+      const { ktx2 } = img as spec.CompressedImage;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
       // eslint-disable-next-line compat/compat
       const webpURL = (!disableWebP && webp) ? new URL(webp, baseUrl).href : undefined;
       // eslint-disable-next-line compat/compat
       const avifURL = (!disableAVIF && avif) ? new URL(avif, baseUrl).href : undefined;
+      // eslint-disable-next-line compat/compat
+      const ktx2URL = (ktx2 && useCompressedTexture && canUseKTX2) ? new URL(ktx2, baseUrl).href : undefined;
 
       const id = img.id;
 
@@ -324,15 +327,11 @@ export class AssetManager implements Disposable {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
-      } else if ('ktx2' in img && useCompressedTexture && canUseKTX2) {
+      } else if ('ktx2' in img && ktx2URL) {
         // ktx2 压缩纹理
-        const { ktx2 } = img;
-        // @ts-expect-error TODO: 待更新 spec 类型
-        const bufferURL = new URL(ktx2, baseUrl).href;
+        this.sourceFrom[id] = { url: ktx2URL, type: TextureSourceType.compressed };
 
-        this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
-
-        return this.loadBins(bufferURL);
+        return this.loadBins(ktx2URL);
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||

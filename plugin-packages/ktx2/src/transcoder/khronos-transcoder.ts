@@ -2,9 +2,10 @@
 import type { KTX2Container } from '../ktx2-container';
 import { SupercompressionScheme } from '../ktx2-container';
 import type { KTX2TargetFormat } from '../ktx2-common';
-import type { EncodedData, KhronosTranscoderMessage, TranscodeResult } from './texture-transcoder';
+import type { DecodedData, EncodedData, KhronosTranscoderMessage, TranscodeResult } from './texture-transcoder';
 import { TextureTranscoder } from './texture-transcoder';
-import { TranscodeWorkerCode, WorkerMessageHandler } from './khronos-workercode';
+import type { WasmTranscoder } from './khronos-workercode';
+import { TranscodeWorkerCode } from './khronos-workercode';
 import uastcAstcWasm from '../libs/uastc_astc.wasm';
 import zstddecWasm from '../libs/zstddec.wasm';
 
@@ -12,7 +13,7 @@ import zstddecWasm from '../libs/zstddec.wasm';
  * 主线程 ASTC/UASTC 转码器
  */
 class KhronosMainThreadTranscoder {
-  private context: any = null;
+  private context: ReturnType<typeof TranscodeWorkerCode> | null = null;
 
   async init (): Promise<void> {
     if (!this.context) {
@@ -28,14 +29,12 @@ class KhronosMainThreadTranscoder {
     data: EncodedData[][],
     needZstd: boolean,
     zstddecWasmModule?: WebAssembly.Module,
-  ): Promise<Array<{ width: number, height: number, data: Uint8Array }[]>> {
-    if (!this.context) {
-      await this.init();
-    }
+  ): Promise<DecodedData[][]> {
+    await this.init();
 
-    const wasmModule = await this.context.getWasmPromise();
+    const wasmModule = await this.context?.getWasmPromise() as unknown as WasmTranscoder;
 
-    return this.context.transcode(data, needZstd, wasmModule, zstddecWasmModule);
+    return this.context!.transcode(data, needZstd, wasmModule, zstddecWasmModule);
   }
 
   destroy (): void {
@@ -55,7 +54,7 @@ export class KhronosTranscoder extends TextureTranscoder {
   constructor (
     workerLimitCount: number,
     public readonly type: KTX2TargetFormat,
-    useWorker: boolean = false,
+    useWorker = false,
   ) {
     super(workerLimitCount);
     this.useWorker = useWorker;
@@ -77,10 +76,7 @@ export class KhronosTranscoder extends TextureTranscoder {
 
     // 移除主线程的 return 语句，添加 Worker 消息处理
     const returnIndex = funcBody.lastIndexOf('return {');
-    const codeWithoutReturn = funcBody.substring(0, returnIndex);
-
-    console.info('!213');
-    const workerCode = codeWithoutReturn + WorkerMessageHandler;
+    const workerCode = funcBody.substring(0, returnIndex);
 
     const workerURL = URL.createObjectURL(
       new Blob([workerCode], {

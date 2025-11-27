@@ -19,7 +19,7 @@ export class KTX2Loader implements TextureLoader {
 
   constructor (
     private readonly workerCount = 2,
-    private readonly useWebWorker = true
+    private readonly useWebWorker = true,
   ) { }
 
   /**
