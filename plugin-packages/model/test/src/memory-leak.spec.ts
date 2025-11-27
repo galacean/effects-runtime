@@ -1,4 +1,4 @@
-import { Player, registerPlugin, AbstractPlugin, VFXItem, spec } from '@galacean/effects';
+import { Player, registerPlugin, AbstractPlugin, VFXItem, spec, unregisterPlugin } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 import sceneList from './scene-list';
 import { sleep, GPUMemoryTool } from '../../../../web-packages/test/memory/src/common';
@@ -7,7 +7,7 @@ const { expect } = chai;
 
 class CustomePlugin extends AbstractPlugin { }
 
-registerPlugin('orientation-transformer', CustomePlugin, VFXItem);
+registerPlugin('orientation-transformer', CustomePlugin);
 
 describe('显存泄漏（单合成）', function () {
   this.timeout(60 * 1000);
@@ -28,6 +28,8 @@ describe('显存泄漏（单合成）', function () {
     canvas.remove();
     // @ts-expect-error
     canvas = null;
+
+    unregisterPlugin('orientation-transformer');
   });
 
   // @ts-expect-error

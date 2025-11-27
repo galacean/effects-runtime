@@ -1,5 +1,5 @@
 import * as EFFECTS from '@galacean/effects';
-import { logger, registerPlugin, VFXItem } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { VideoLoader } from './video/video-loader';
 import { AudioLoader } from './audio/audio-loader';
 
@@ -14,8 +14,8 @@ export * from './utils';
  */
 export const version = __VERSION__;
 
-registerPlugin('video', VideoLoader, VFXItem);
-registerPlugin('audio', AudioLoader, VFXItem);
+registerPlugin('video', VideoLoader);
+registerPlugin('audio', AudioLoader);
 
 logger.info(`Plugin multimedia version: ${version}.`);
 

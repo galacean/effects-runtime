@@ -27,23 +27,10 @@ describe('core/composition/plugin', () => {
     }
 
     class TestPlugin extends AbstractPlugin {
-      static override prepareResource (scene: Scene, options: SceneLoadOptions) {
+      override prepareResource (scene: Scene, options: SceneLoadOptions) {
         scene.storage.xx = 1;
         // @ts-expect-error
         expect(options.player).not.exist;
-
-        return Promise.resolve();
-      }
-
-      override onCompositionUpdate () {
-        // @ts-expect-error
-        updateSpy(ipp());
-      }
-
-      override onCompositionReset (composition: Composition) {
-        expect(composition.items).to.be.an('array').with.lengthOf(1);
-        // @ts-expect-error
-        resetSpy(ipp());
       }
 
       override onCompositionConstructed (composition: Composition, scene: Scene) {
@@ -54,14 +41,14 @@ describe('core/composition/plugin', () => {
       }
     }
 
-    registerPlugin('test-plugin', TestPlugin, VFXItem);
+    registerPlugin('test-plugin', TestPlugin);
     await player.loadScene(generateScene());
 
     player.gotoAndStop(0.1);
 
-    expect(resetSpy).to.have.been.called.with(1);
     expect(constructSpy).to.have.been.called.with(0);
-    expect(updateSpy).to.have.been.called.with(2);
+
+    unregisterPlugin('test-plugin');
   });
 
   // TODO 与老版JsonScene加载逻辑判断不同，没有考虑重复加载的情况。

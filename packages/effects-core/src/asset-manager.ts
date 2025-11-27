@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
-import { PluginSystem } from './plugin-system';
+import { PluginSystem, getPluginUsageInfo, pluginLoaderMap } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
 import type { ImageLike, SceneLoadOptions } from './scene';
@@ -187,33 +187,37 @@ export class AssetManager implements Disposable {
         };
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-        const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+        const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+
+        scene = {
+          timeInfos,
+          url,
+          storage: {},
+          jsonScene,
+          bins: [],
+          textureOptions: [],
+          textures: [],
+          images: [],
+          assets: this.assets,
+        };
+
+        await hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(scene, this.options));
+
         const { bins = [], images, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
-        scene = {
-          timeInfos,
-          url,
-          renderLevel: this.options.renderLevel,
-          storage: {},
-          pluginSystem,
-          jsonScene,
-          bins: loadedBins,
-          textureOptions: loadedTextures,
-          textures: [],
-          images: loadedImages,
-          assets: this.assets,
-        };
+        scene.bins.push(...loadedBins);
+        scene.textureOptions.push(...loadedTextures);
+        scene.images.push(...loadedImages);
 
-        // 触发插件系统 pluginSystem 的回调 prepareResource
-        await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
+        // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
+        scene.renderLevel = this.options.renderLevel;
       }
 
       const totalTime = performance.now() - startTime;
@@ -239,13 +243,15 @@ export class AssetManager implements Disposable {
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
     const { plugins = [] } = jsonScene;
-    const pluginSystem = new PluginSystem(plugins);
 
-    await pluginSystem.processRawJSON(jsonScene, this.options);
+    for (const customPluginName of plugins) {
+      if (!pluginLoaderMap[customPluginName]) {
+        throw new Error(`The plugin '${customPluginName}' not found.` + getPluginUsageInfo(customPluginName));
+      }
+    }
 
     return {
       jsonScene,
-      pluginSystem,
     };
   }
 
@@ -369,21 +375,10 @@ export class AssetManager implements Disposable {
   }
 
   private async processPluginAssets (
-    jsonScene: spec.JSONScene,
-    pluginSystem: PluginSystem,
+    scene: Scene,
     options?: SceneLoadOptions,
   ) {
-    const pluginResult = await pluginSystem.processAssets(jsonScene, options);
-    const { assets, loadedAssets } = pluginResult.reduce((acc, cur) => {
-      acc.assets = acc.assets.concat(cur.assets);
-      acc.loadedAssets = acc.loadedAssets.concat(cur.loadedAssets);
-
-      return acc;
-    }, { assets: [], loadedAssets: [] });
-
-    for (let i = 0; i < assets.length; i++) {
-      this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
-    }
+    await PluginSystem.processAssets(scene, options);
   }
 
   private async processTextures (

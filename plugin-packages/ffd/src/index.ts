@@ -1,5 +1,5 @@
 import * as EFFECTS from '@galacean/effects';
-import { logger, registerPlugin, VFXItem } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { FFDLoader } from './ffd-loader';
 
 export * from './ffd-component';
@@ -9,7 +9,7 @@ export * from './ffd-component';
  */
 export const version = __VERSION__;
 
-registerPlugin('ffd', FFDLoader, VFXItem);
+registerPlugin('ffd', FFDLoader);
 
 logger.info(`Plugin ffd version: ${version}.`);
 
