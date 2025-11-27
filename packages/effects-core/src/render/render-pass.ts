@@ -226,7 +226,6 @@ export interface RenderPassAttachmentOptions {
 
 export interface RenderPassOptions extends RenderPassAttachmentOptions {
   name?: string,
-  priority?: number,
 }
 
 let seed = 1;
@@ -238,7 +237,7 @@ export class RenderPass implements Disposable, Sortable {
   /**
    * 优先级
    */
-  priority: number;
+  priority: number = 0;
   /**
    * ColorAttachment 数组
    */
@@ -281,12 +280,10 @@ export class RenderPass implements Disposable, Sortable {
     const {
       name = 'RenderPass_' + seed++,
       depthStencilAttachment,
-      priority = 0,
     } = options;
 
     this.name = name;
     this.renderer = renderer;
-    this.priority = priority;
     this.depthStencilType = depthStencilAttachment?.storageType || RenderPassAttachmentStorageType.none;
 
     this.storeAction = {

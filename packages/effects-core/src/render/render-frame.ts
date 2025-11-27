@@ -17,7 +17,7 @@ import { DrawObjectPass } from './draw-object-pass';
 import type { Mesh } from './mesh';
 import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
 import type { RenderPass, RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction } from './render-pass';
-import { RenderPassAttachmentStorageType, RenderPassPriorityNormal, RenderTargetHandle } from './render-pass';
+import { RenderPassAttachmentStorageType, RenderTargetHandle } from './render-pass';
 import type { Renderer } from './renderer';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
@@ -243,7 +243,6 @@ export class RenderFrame implements Disposable {
 
     this.drawObjectPass = new DrawObjectPass(renderer, {
       name: RENDER_PASS_NAME_PREFIX,
-      priority: RenderPassPriorityNormal,
       depthStencilAttachment,
       attachments,
     });
