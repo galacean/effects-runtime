@@ -161,8 +161,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     program(text);
   }
-
-  updateWithOptions (options: spec.RichTextContentOptions) {
+  /**
+   * 根据配置更新文本样式和布局
+   */
+  protected updateWithOptions (options: spec.RichTextContentOptions): void {
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
     this.text = options.text ? options.text.toString() : ' ';
@@ -183,7 +185,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.updateTexture();
   }
 
-  updateTexture (flipY = true) {
+  /**
+   * 更新文本
+   * @returns
+   */
+  protected updateTexture (flipY = true): void {
     if (!this.isDirty || !this.context || !this.canvas || !this.textStyle || !this.textLayout) {
       return;
     }
