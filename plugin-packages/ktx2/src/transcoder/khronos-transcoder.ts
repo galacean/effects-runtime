@@ -76,8 +76,7 @@ export class KhronosTranscoder extends TextureTranscoder {
 
     // 移除主线程的 return 语句，添加 Worker 消息处理
     const returnIndex = funcBody.lastIndexOf('return {');
-    const codeWithoutReturn = funcBody.substring(0, returnIndex);
-    const workerCode = codeWithoutReturn;
+    const workerCode = funcBody.substring(0, returnIndex);
 
     const workerURL = URL.createObjectURL(
       new Blob([workerCode], {
