@@ -107,12 +107,9 @@ export class GLRenderer extends Renderer implements Disposable {
 
     // 根据 priority 排序 pass
     sortByOrder(passes);
-    for (const pass of passes) {
-      const delegate = pass.delegate;
 
-      delegate.willBeginRenderPass?.(pass, this.renderingData);
+    for (const pass of passes) {
       this.renderRenderPass(pass);
-      delegate.didEndRenderPass?.(pass, this.renderingData);
     }
 
     for (const pass of passes) {
@@ -131,12 +128,8 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override renderMeshes (meshes: RendererComponent[]) {
-    const delegate = this.renderingData.currentPass.delegate;
-
     for (const mesh of meshes) {
-      delegate.willRenderMesh?.(mesh, this.renderingData);
       mesh.render(this);
-      delegate.didRenderMesh?.(mesh, this.renderingData);
     }
   }
 

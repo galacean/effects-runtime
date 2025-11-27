@@ -36,7 +36,6 @@ export class GalaceanEffects {
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,
-          meshOrder: OrderType.ascending,
         }),);
       });
     } else {
@@ -44,7 +43,6 @@ export class GalaceanEffects {
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,
-          meshOrder: OrderType.ascending,
         }));
       });
     }

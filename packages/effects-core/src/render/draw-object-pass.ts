@@ -1,3 +1,4 @@
+import { TextureLoadAction } from '../texture/types';
 import type { RenderPassDestroyOptions, RenderPassOptions } from './render-pass';
 import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
@@ -8,6 +9,16 @@ export class DrawObjectPass extends RenderPass {
 
     this.onResize = this.onResize.bind(this);
     this.renderer.engine.on('resize', this.onResize);
+  }
+
+  override execute (renderer: Renderer) {
+    renderer.clear({
+      colorAction: TextureLoadAction.clear,
+      depthAction: TextureLoadAction.clear,
+      stencilAction: TextureLoadAction.clear,
+    });
+    renderer.renderMeshes(this.meshes);
+    renderer.clear(this.storeAction);
   }
 
   onResize () {

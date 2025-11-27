@@ -540,9 +540,9 @@ describe('webgl/gl-geometry', () => {
     const ret = createMesh(glRenderer, -2);
     const pass = new RenderPass(glRenderer, {
       name: 'test',
-      meshes: [ret.mesh],
     });
 
+    pass.addMesh(ret.mesh);
     ret.geom.drawCount = -1;
     const frame = new RenderFrame({
       renderer,
@@ -563,8 +563,9 @@ describe('webgl/gl-geometry', () => {
     const ret = createMesh(renderer, 0);
     const pass = new RenderPass(glRenderer, {
       name: 'test',
-      meshes: [ret.mesh],
     });
+
+    pass.addMesh(ret.mesh);
     const frame = new RenderFrame({
       renderer,
       camera: new Camera(),

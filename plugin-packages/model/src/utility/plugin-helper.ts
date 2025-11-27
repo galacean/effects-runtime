@@ -339,7 +339,6 @@ export class WebGLHelper {
       },
       depthStencilAttachment: RenderPassDestroyAttachmentType.force,
       colorAttachment: RenderPassDestroyAttachmentType.force,
-      semantics: DestroyOptions.destroy,
     });
   }
 

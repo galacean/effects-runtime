@@ -11,7 +11,7 @@ import { PassTextureCache } from '../paas-texture-cache';
 import type { Texture } from '../texture';
 import { TextureLoadAction } from '../texture';
 import type { Disposable } from '../utils';
-import { DestroyOptions, OrderType, removeItem } from '../utils';
+import { DestroyOptions, removeItem } from '../utils';
 import { createCopyShader } from './create-copy-shader';
 import { DrawObjectPass } from './draw-object-pass';
 import type { Mesh } from './mesh';
@@ -225,7 +225,6 @@ export class RenderFrame implements Disposable {
     this.globalUniforms = new GlobalUniforms();
     let attachments: RenderPassColorAttachmentOptions[] = [];  //渲染场景物体Pass的RT
     let depthStencilAttachment;
-    let drawObjectPassClearAction = {};
 
     this.renderer = renderer;
     if (postProcessingEnabled) {
@@ -240,20 +239,13 @@ export class RenderFrame implements Disposable {
 
       attachments = [{ texture: { format: glContext.RGBA, type: textureType, magFilter: glContext.LINEAR, minFilter: glContext.LINEAR } }];
       depthStencilAttachment = { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque };
-      drawObjectPassClearAction = {
-        colorAction: TextureLoadAction.clear,
-        stencilAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.clear,
-      };
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer, {
       name: RENDER_PASS_NAME_PREFIX,
       priority: RenderPassPriorityNormal,
-      meshOrder: OrderType.ascending,
       depthStencilAttachment,
       attachments,
-      clearAction: drawObjectPassClearAction,
     });
 
     const renderPasses = [this.drawObjectPass];

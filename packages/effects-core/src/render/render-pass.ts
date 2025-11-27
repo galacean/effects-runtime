@@ -6,14 +6,11 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Mesh, MeshDestroyOptions, Renderer } from '../render';
 import { Framebuffer } from '../render';
-import type { SemanticGetter } from './semantic-map';
-import { SemanticMap } from './semantic-map';
 import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
 import type { Disposable, Sortable } from '../utils';
 import { addByOrder, DestroyOptions, OrderType, removeItem, sortByOrder, throwDestroyedError } from '../utils';
 import type { Renderbuffer } from './renderbuffer';
-import type { RenderingData } from './render-frame';
 
 export const RenderPassPriorityPrepare = 0;
 export const RenderPassPriorityNormal = 1000;
@@ -215,40 +212,9 @@ export enum RenderPassDestroyAttachmentType {
 
 export type RenderPassDestroyOptions = {
   meshes?: MeshDestroyOptions | DestroyOptions.keep,
-  semantics?: DestroyOptions,
   colorAttachment?: RenderPassDestroyAttachmentType,
   depthStencilAttachment?: RenderPassDestroyAttachmentType,
 };
-
-/**
- * RenderPass 渲染过程回调
- */
-export interface RenderPassDelegate {
-  /**
-   * 开始前回调
-   * @param renderPass - 当前 RenderPass
-   * @param state - 当前渲染状态
-   */
-  willBeginRenderPass?: (renderPass: RenderPass, state: RenderingData) => void,
-  /**
-   * 结束后回调
-   * @param renderPass - 当前 RenderPass
-   * @param state - 当前渲染状态
-   */
-  didEndRenderPass?: (renderPass: RenderPass, state: RenderingData) => void,
-  /**
-   * Mesh 渲染前回调
-   * @param mesh - 当前 Mesh
-   * @param state - 当前渲染状态
-   */
-  willRenderMesh?: (mesh: RendererComponent, state: RenderingData) => void,
-  /**
-   * Mesh 渲染后回调
-   * @param mesh - 当前 Mesh
-   * @param state - 当前渲染状态
-   */
-  didRenderMesh?: (mesh: RendererComponent, state: RenderingData) => void,
-}
 
 /**
  * RenderPass Attachment 选项
@@ -260,13 +226,7 @@ export interface RenderPassAttachmentOptions {
 
 export interface RenderPassOptions extends RenderPassAttachmentOptions {
   name?: string,
-  meshes?: RendererComponent[],
   priority?: number,
-  meshOrder?: OrderType,
-  clearAction?: RenderPassClearAction,
-  storeAction?: RenderPassStoreAction,
-  semantics?: Record<string, SemanticGetter>,
-  delegate?: RenderPassDelegate,
 }
 
 let seed = 1;
@@ -280,10 +240,6 @@ export class RenderPass implements Disposable, Sortable {
    */
   priority: number;
   /**
-   * 渲染时的回调函数
-   */
-  delegate: RenderPassDelegate;
-  /**
    * ColorAttachment 数组
    */
   attachments: RenderTargetHandle[] = [];
@@ -295,11 +251,11 @@ export class RenderPass implements Disposable, Sortable {
   /**
    * 包含的 Mesh 列表
    */
-  readonly meshes: RendererComponent[];
+  readonly meshes: RendererComponent[] = [];
   /**
    * Mesh 渲染顺序，按照优先级升序或降序
    */
-  readonly meshOrder: OrderType;
+  readonly meshOrder: OrderType = OrderType.ascending;
   /**
    * 相机
    */
@@ -309,62 +265,40 @@ export class RenderPass implements Disposable, Sortable {
    */
   readonly depthStencilType: RenderPassAttachmentStorageType;
   /**
-   * 渲染前清除缓冲区操作
-   */
-  readonly clearAction: RenderPassClearAction;
-  /**
    * 渲染后清除缓冲区操作，iOS 上有性能提升, 默认关闭
    */
   readonly storeAction: RenderPassStoreAction;
-  /**
-   * RenderPass 公用的 Shader Uniform 变量
-   */
-  readonly semantics: SemanticMap;
 
-  protected destroyed = false;
+  protected disposed = false;
   protected options: RenderPassAttachmentOptions;
   protected renderer: Renderer;
 
   private initialized = false;
   private depthTexture?: Texture;
   private stencilTexture?: Texture;
-  private isCustomViewport: boolean;
-  private customViewport?: [x: number, y: number, width: number, height: number];
 
   constructor (renderer: Renderer, options: RenderPassOptions) {
     const {
       name = 'RenderPass_' + seed++,
-      clearAction, semantics,
-      depthStencilAttachment, storeAction,
+      depthStencilAttachment,
       priority = 0,
-      meshOrder = OrderType.ascending,
-      meshes = [],
-      delegate = {},
     } = options;
 
     this.name = name;
     this.renderer = renderer;
     this.priority = priority;
-    this.meshOrder = meshOrder;
-    this.meshes = sortByOrder(meshes.slice(), this.meshOrder);
     this.depthStencilType = depthStencilAttachment?.storageType || RenderPassAttachmentStorageType.none;
 
-    this.clearAction = {
-      ...clearAction,
-    };
     this.storeAction = {
       colorAction: TextureStoreAction.store,
       depthAction: TextureStoreAction.store,
       stencilAction: TextureStoreAction.store,
-      ...storeAction,
     };
-    this.semantics = new SemanticMap(semantics);
     this.options = options;
-    this.delegate = delegate;
   }
 
   get isDestroyed (): boolean {
-    return this.destroyed;
+    return this.disposed;
   }
 
   get viewport () {
@@ -413,16 +347,14 @@ export class RenderPass implements Disposable, Sortable {
    * 执行当前pass，每帧调用一次
    */
   execute (renderer: Renderer) {
-    renderer.clear(this.clearAction);
-    renderer.renderMeshes(this.meshes);
-    renderer.clear(this.storeAction);
+    // OVERRIDE
   }
 
   /**
    * 每帧所有的pass渲染完后调用，通常用于清空临时的RT资源
    */
   frameCleanup (renderer: Renderer) {
-
+    // OVERRIDE
   }
 
   private _resetAttachments () {
@@ -475,7 +407,7 @@ export class RenderPass implements Disposable, Sortable {
    * 获取当前视口大小，格式：[x偏移，y偏移，宽度，高度]
    */
   getViewport (): vec4 {
-    const ret = this.framebuffer?.viewport || this.customViewport;
+    const ret = this.framebuffer?.viewport;
 
     if (ret) {
       return ret;
@@ -568,7 +500,7 @@ export class RenderPass implements Disposable, Sortable {
    * @param options - 有选择销毁内部对象
    */
   dispose (options?: RenderPassDestroyOptions) {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     const destroyMeshOption = options?.meshes || undefined;
@@ -590,11 +522,8 @@ export class RenderPass implements Disposable, Sortable {
       }
     });
     this.attachments.length = 0;
-    if (options?.semantics !== DestroyOptions.keep) {
-      this.semantics.dispose();
-    }
 
-    this.destroyed = true;
+    this.disposed = true;
     const depthStencilOpt = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
     const fbo = this.framebuffer;
 

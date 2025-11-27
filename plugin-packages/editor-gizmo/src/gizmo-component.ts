@@ -829,12 +829,9 @@ export class GizmoComponent extends RendererComponent {
     let rp = pipeline.renderPasses.find(renderPass => renderPass.name === behindRenderPassName);
 
     if (!rp) {
-      rp = new RenderPass(pipeline.renderer, {
+      rp = new DrawGizmoBehindPass(pipeline.renderer, {
         name: behindRenderPassName,
         priority: RenderPassPriorityPostprocess + RenderPassPriorityPostprocess,
-        clearAction: {
-          depthAction: TextureLoadAction.clear,
-        },
       });
       pipeline.addRenderPass(rp);
     }
@@ -846,7 +843,7 @@ export class GizmoComponent extends RendererComponent {
     let rp = pipeline.renderPasses.find(renderPass => renderPass.name === editorRenderPassName);
 
     if (!rp) {
-      rp = new RenderPass(pipeline.renderer, {
+      rp = new DrawGizmoEditorPass(pipeline.renderer, {
         name: editorRenderPassName,
         priority: RenderPassPriorityPostprocess + 2,
       });
@@ -860,7 +857,7 @@ export class GizmoComponent extends RendererComponent {
     let rp = pipeline.renderPasses.find(renderPass => renderPass.name === frontRenderPassName);
 
     if (!rp) {
-      rp = new RenderPass(pipeline.renderer, {
+      rp = new DrawGizmoFrontPass(pipeline.renderer, {
         name: frontRenderPassName,
         priority: RenderPassPriorityPrepare + 2,
       });
@@ -875,4 +872,23 @@ export class GizmoComponent extends RendererComponent {
 export enum CoordinateSpace {
   Local,
   World
+}
+
+class DrawGizmoBehindPass extends RenderPass {
+  override execute (renderer: Renderer): void {
+    renderer.clear({ depthAction: TextureLoadAction.clear });
+    renderer.renderMeshes(this.meshes);
+  }
+}
+
+class DrawGizmoFrontPass extends RenderPass {
+  override execute (renderer: Renderer): void {
+    renderer.renderMeshes(this.meshes);
+  }
+}
+
+class DrawGizmoEditorPass extends RenderPass {
+  override execute (renderer: Renderer): void {
+    renderer.renderMeshes(this.meshes);
+  }
 }
