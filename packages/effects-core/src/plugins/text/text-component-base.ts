@@ -81,7 +81,7 @@ export class TextComponentBase {
    */
   setTextBaseline (value: spec.TextBaseline): void {
     console.warn(
-      'RichTextComponent.setTextBaseline 已废弃，请改用 setTextVerticalAlign。' +
+      'setTextBaseline 已废弃，请改用 setTextVerticalAlign。' +
       '本次调用将转调用 setTextVerticalAlign。'
     );
 
