@@ -11,7 +11,7 @@ const json_ktx2_spine = 'https://mdn.alipayobjects.com/mars/afts/file/A*mTBPSqc6
 const container = document.getElementById('J-container');
 
 const usektx2 = true;
-const useWebWorker = true;
+const useWebWorker = false;
 
 (async () => {
   const player = new Player({

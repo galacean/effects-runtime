@@ -11,7 +11,7 @@ import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
-import type { GPUCapability, Renderer } from './render';
+import type { Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
 let seed = 1;
@@ -195,7 +195,7 @@ export class AssetManager implements Disposable {
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, gpuInstance));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
           timeInfos,
@@ -378,7 +378,6 @@ export class AssetManager implements Disposable {
     images: ImageLike[],
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
-    gpuCapability?: GPUCapability,
   ) {
     const textures = jsonScene.textures ?? images.map((img, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (textureOptions, idx) => {
@@ -405,7 +404,7 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = await createTextureOptionsBySource(image, this.sourceFrom[imageId], id, gpuCapability);
+        const texture = await createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -467,7 +466,6 @@ async function createTextureOptionsBySource (
   image: TextureSourceOptions | ImageLike,
   sourceFrom: { url: string, type: TextureSourceType },
   id?: string,
-  gpuCapability?: GPUCapability,
 ) {
   const options = {
     id,
@@ -507,7 +505,7 @@ async function createTextureOptionsBySource (
 
     if (loader) {
       try {
-        const textureData = await loader.loadFromBuffer(image, gpuCapability) as Texture2DSourceOptionsCompressed;
+        const textureData = await loader.loadFromBuffer(image) as Texture2DSourceOptionsCompressed;
 
         return {
           sourceType: textureData.sourceType,

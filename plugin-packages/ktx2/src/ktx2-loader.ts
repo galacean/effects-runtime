@@ -1,8 +1,8 @@
 import type {
-  GPUCapability, Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader,
+  Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader,
 } from '@galacean/effects';
 import {
-  TextureSourceType, CompressTextureCapabilityType, loadBinary, glContext,
+  TextureSourceType, loadBinary, glContext,
   textureLoaderRegistry,
 } from '@galacean/effects';
 import { KTX2TargetFormat } from './ktx2-common';
@@ -63,36 +63,29 @@ export class KTX2Loader implements TextureLoader {
   /**
    * 从 ArrayBuffer 加载 KTX2 纹理并返回压缩纹理源选项
    */
-  async loadFromBuffer (arrBuffer: ArrayBuffer, gpuCapability?: GPUCapability) {
-    if (!gpuCapability) {
-      throw new Error('GPUCapability is required');
-    }
-
+  async loadFromBuffer (arrBuffer: ArrayBuffer) {
     const buffer = new Uint8Array(arrBuffer);
-    const { ktx2Container, result } = await this.parseBuffer(buffer, gpuCapability);
+    const { ktx2Container, result } = await this.parseBuffer(buffer);
 
-    return this.createTextureByBuffer(ktx2Container, result, gpuCapability);
+    return this.createTextureByBuffer(ktx2Container, result);
   }
 
   /**
    * 从 URL 加载 KTX2 纹理并返回压缩纹理源选项
    */
-  async loadFromURL (url: string, gpuCapability?: GPUCapability) {
-    if (!gpuCapability) {
-      throw new Error('GPUCapability is required');
-    }
+  async loadFromURL (url: string) {
 
     const buffer = new Uint8Array(await loadBinary(url));
-    const { ktx2Container, result } = await this.parseBuffer(buffer, gpuCapability);
+    const { ktx2Container, result } = await this.parseBuffer(buffer);
 
-    return this.createTextureByBuffer(ktx2Container, result, gpuCapability);
+    return this.createTextureByBuffer(ktx2Container, result);
   }
 
   /**
    * @internal
    * 解析并转码 KTX2 文件
    */
-  private async parseBuffer (buffer: Uint8Array, gpuCapability: GPUCapability) {
+  private async parseBuffer (buffer: Uint8Array) {
     const ktx2Container = new KTX2Container(buffer);
 
     // 验证格式支持
@@ -100,10 +93,7 @@ export class KTX2Loader implements TextureLoader {
       throw new Error('Unsupported KTX2: only UASTC format is supported');
     }
 
-    // 验证 ASTC 支持
-    this.checkASTCSupport(gpuCapability);
-
-    // 转码
+    // 前置在gpucapability已经检测过可用 直接转码
     const transcoder = await this.ensureKhronosTranscoder();
     const result = await transcoder.transcode(ktx2Container);
 
@@ -115,29 +105,14 @@ export class KTX2Loader implements TextureLoader {
 
   /**
    * @internal
-   * 检查设备是否支持 ASTC
-   */
-  private checkASTCSupport (gpuCapability: GPUCapability): void {
-    const hasASTC =
-      gpuCapability.isCompressedFormatSupported(CompressTextureCapabilityType.astc) ||
-      gpuCapability.isCompressedFormatSupported(CompressTextureCapabilityType.astc_webkit);
-
-    if (!hasASTC) {
-      throw new Error('ASTC compressed texture is not supported on this device');
-    }
-  }
-
-  /**
-   * @internal
    * 根据转码结果创建引擎所需的压缩纹理源选项
    */
   private createTextureByBuffer (
     ktx2Container: KTX2Container,
-    transcodeResult: TranscodeResult,
-    gpuCapability: GPUCapability,
+    transcodeResult: TranscodeResult
   ): Texture2DSourceOptionsCompressed {
     const { pixelWidth, pixelHeight, faceCount } = ktx2Container;
-    const { internalFormat, format, type } = this.getGLTextureDetail(gpuCapability);
+    const { internalFormat, format, type } = this.getASTC4x4TextureDetail();
 
     const target = faceCount === 6 ? glContext.TEXTURE_CUBE_MAP : glContext.TEXTURE_2D;
 
@@ -181,16 +156,8 @@ export class KTX2Loader implements TextureLoader {
    * @internal
    * 获取 ASTC 4x4 的 WebGL 格式信息
    */
-  private getGLTextureDetail (gpuCapability: GPUCapability) {
+  private getASTC4x4TextureDetail () {
     const COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93b0;
-
-    const hasASTC =
-      gpuCapability.isCompressedFormatSupported(CompressTextureCapabilityType.astc) ||
-      gpuCapability.isCompressedFormatSupported(CompressTextureCapabilityType.astc_webkit);
-
-    if (!hasASTC) {
-      throw new Error('WEBGL_compressed_texture_astc not supported');
-    }
 
     return {
       internalFormat: COMPRESSED_RGBA_ASTC_4x4_KHR,
