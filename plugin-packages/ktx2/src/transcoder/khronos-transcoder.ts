@@ -49,20 +49,17 @@ class KhronosMainThreadTranscoder {
 export class KhronosTranscoder extends TextureTranscoder {
   private mainThreadTranscoder: KhronosMainThreadTranscoder | null = null;
   private workerURL?: string;
-  private useWorker: boolean;
 
   constructor (
     workerLimitCount: number,
     public readonly type: KTX2TargetFormat,
-    useWorker = false,
   ) {
     super(workerLimitCount);
-    this.useWorker = useWorker;
   }
 
   async initTranscodeWorkerPool () {
     // 主线程模式
-    if (!this.useWorker) {
+    if (this.workerLimitCount <= 0) {
       this.mainThreadTranscoder = new KhronosMainThreadTranscoder();
       await this.mainThreadTranscoder.init();
 
@@ -123,7 +120,7 @@ export class KhronosTranscoder extends TextureTranscoder {
     let faces: Array<{ width: number, height: number, data: Uint8Array }[]>;
 
     // 主线程模式
-    if (!this.useWorker && this.mainThreadTranscoder) {
+    if (this.workerLimitCount <= 0 && this.mainThreadTranscoder) {
       faces = await this.mainThreadTranscoder.transcode(encodedData, needZstd, zstddecWasmModule);
     } else {
       // WebWorker 模式

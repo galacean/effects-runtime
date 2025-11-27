@@ -8,10 +8,7 @@ export * from './ktx2-loader';
  */
 export const version = __VERSION__;
 
-registerKTX2Loader({
-  workerCount: 2,
-  useWebWorker: false,
-});
+registerKTX2Loader();
 
 if (version !== EFFECTS.version) {
   console.error(
