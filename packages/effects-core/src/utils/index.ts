@@ -124,6 +124,10 @@ export function isCanvas (canvas: HTMLCanvasElement) {
   return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
 }
 
+export function isPowerOfTwo (value: number) {
+  return (value & (value - 1)) === 0 && value !== 0;
+}
+
 /**
  * 生成一个位于 min 和 max 之间的随机数
  * @param min

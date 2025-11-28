@@ -31,6 +31,9 @@ export class RichTextLayout implements BaseLayout {
 
   /**
    * 文本框大小模式
+   * - autoWidth: 根据内容自动扩展宽度
+   * - autoHeight: 根据内容自动扩展高度
+   * - fixed: 使用固定 width / height
    */
   sizeMode: spec.TextSizeMode;
 
@@ -56,7 +59,7 @@ export class RichTextLayout implements BaseLayout {
     } = options;
 
     this.letterSpace = letterSpace;
-    this.lineHeight = lineHeight * 300;
+    this.lineHeight = lineHeight;
     this.useLegacyRichText = useLegacyRichText;
     this.overflow = textOverflow;
     this.textVerticalAlign = textVerticalAlign;
@@ -82,6 +85,7 @@ export class RichTextLayout implements BaseLayout {
     const offsetY = (lineHeight - fontSize) / 3;
     // 计算基础偏移量
     const baseOffset = fontSize + outlineWidth * fontScale;
+    // 除去首行之外的总高度，用于 bottom 对齐时将第一行向上偏移
     const commonCalculation = totalLineHeight !== undefined ? totalLineHeight : lineHeight * (lineCount - 1);
     let offsetResult = 0;
 
@@ -191,6 +195,10 @@ export class RichTextLayout implements BaseLayout {
     }
   }
 
+  /**
+   * 设置文本框尺寸
+   * - 不包含 fontScale 缩放
+   */
   setSize (width: number, height: number): void {
     this.width = width;
     this.height = height;

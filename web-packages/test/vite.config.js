@@ -1,7 +1,7 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
+import { glslInner, getSWCPlugin, wasm } from '../../scripts/rollup-config-helper';
 
 const defines = {
   __VERSION__: 0,
@@ -19,6 +19,9 @@ export default defineConfig({
   define: defines,
   plugins: [
     glslInner(),
+    wasm({
+      targetEnv: 'auto-inline', // auto-inline
+    }),
     getSWCPlugin({
       baseUrl: resolve(__dirname, '..', '..'),
     }),

@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import legacy from '@vitejs/plugin-legacy';
 import { viteExternalsPlugin } from 'vite-plugin-externals';
-import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
+import { glslInner, getSWCPlugin, wasm } from '../../scripts/rollup-config-helper';
 
 export default defineConfig(({ mode }) => {
   const development = mode === 'development';
@@ -56,6 +56,9 @@ export default defineConfig(({ mode }) => {
         targets: ['iOS >= 9'],
       }),
       glslInner(),
+      wasm({
+        targetEnv: 'auto-inline', // auto-inline
+      }),
       getSWCPlugin({
         target: 'ES6',
         baseUrl: resolve(__dirname, '..', '..'),
