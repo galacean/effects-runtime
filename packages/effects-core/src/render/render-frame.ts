@@ -5,15 +5,12 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { vec4 } from '@galacean/effects-specification';
 import type { Camera } from '../camera';
 import type { PostProcessVolume, RendererComponent } from '../components';
-import { PassTextureCache } from '../paas-texture-cache';
 import type { Texture } from '../texture';
-import { TextureLoadAction } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, removeItem } from '../utils';
-import { createCopyShader } from './create-copy-shader';
 import { DrawObjectPass } from './draw-object-pass';
 import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
-import type { RenderPass, RenderPassClearAction, RenderPassDestroyOptions } from './render-pass';
+import type { RenderPass, RenderPassDestroyOptions } from './render-pass';
 import { RenderTargetHandle } from './render-pass';
 import type { Renderer } from './renderer';
 
@@ -45,18 +42,6 @@ export interface RenderFrameOptions {
    */
   editorTransform?: vec4,
   /**
-   * 是否每次渲染时清除 RenderFrame 颜色缓存
-   */
-  keepColorBuffer?: boolean,
-  /**
-   * 渲染视口大小
-   */
-  viewport?: vec4,
-  /**
-   * 每个 RenderPass 使用前进行的 Clear 操作
-   */
-  clearAction?: RenderPassClearAction,
-  /**
    * 后处理渲染配置
    */
   globalVolume?: PostProcessVolume,
@@ -87,32 +72,15 @@ export class RenderFrame implements Disposable {
    */
   _renderPasses: RenderPass[];
   /**
-   * RenderPass 清除帧缓存操作
-   */
-  clearAction: RenderPassClearAction;
-  /**
-   * 滤镜中 RenderPass 用到的纹理缓存器
-   */
-  passTextureCache: PassTextureCache;
-  /**
    * 渲染时的相机
    */
   camera: Camera;
-  /**
-   * Composition中用到的所有纹理缓存
-   */
-  cachedTextures: Texture[];
   /**
    * 存放后处理的属性设置
    */
   globalVolume?: PostProcessVolume;
   renderer: Renderer;
-  keepColorBuffer?: boolean;
   editorTransform: Vector4;
-
-  // TODO: 是否有用
-  renderQueue: RendererComponent[] = [];
-
   /**
    * 名称
    */
@@ -126,15 +94,10 @@ export class RenderFrame implements Disposable {
 
   constructor (options: RenderFrameOptions) {
     const {
-      camera, keepColorBuffer, renderer,
+      camera, renderer,
       editorTransform = [1, 1, 0, 0],
       globalVolume,
       postProcessingEnabled = false,
-      clearAction = {
-        colorAction: TextureLoadAction.whatever,
-        stencilAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.whatever,
-      },
     } = options;
     const engine = renderer.engine;
 
@@ -194,25 +157,10 @@ export class RenderFrame implements Disposable {
       this.addRenderPass(postProcessPass);
     }
 
-    this.clearAction = clearAction;
     this.name = `RenderFrame${seed++}`;
 
     this.camera = camera;
-    this.keepColorBuffer = keepColorBuffer;
     this.editorTransform = Vector4.fromArray(editorTransform);
-
-    if (!options.clearAction) {
-      this.resetClearActions();
-    }
-
-    this.passTextureCache = new PassTextureCache(engine);
-
-    // FIXME: addShader是为了性能考虑，如果影响不大，下面代码可以删除
-    const { detail, level } = engine.gpuCapability;
-    const writeDepth = detail.readableDepthStencilTextures && detail.writableFragDepth;
-    const shader = createCopyShader(level, writeDepth);
-
-    this.renderer.getShaderLibrary()?.addShader(shader);
   }
 
   get renderPasses () {
@@ -259,20 +207,8 @@ export class RenderFrame implements Disposable {
         renderPass.dispose(pass);
       });
     }
-    this.passTextureCache.dispose();
     this._renderPasses.length = 0;
     this.disposed = true;
-  }
-
-  protected resetClearActions () {
-    const action = this.renderPasses.length > 1 ? TextureLoadAction.clear : TextureLoadAction.whatever;
-
-    this.clearAction.stencilAction = action;
-    this.clearAction.depthAction = action;
-    this.clearAction.colorAction = action;
-    if (this.keepColorBuffer) {
-      this.clearAction.colorAction = TextureLoadAction.whatever;
-    }
   }
 
   /**
@@ -302,12 +238,6 @@ export class RenderFrame implements Disposable {
 
 export function getTextureSize (tex?: Texture): Vector2 {
   return tex ? new Vector2(tex.getWidth(), tex.getHeight()) : new Vector2();
-}
-
-export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: RenderPass): RenderPass | undefined {
-  const index = renderPasses.indexOf(renderPass);
-
-  return renderPasses[index - 1];
 }
 
 export class GlobalUniforms {

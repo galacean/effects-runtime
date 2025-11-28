@@ -85,7 +85,6 @@ export class GLRenderer extends Renderer implements Disposable {
     frame.setup();
 
     this.setFramebuffer(null);
-    this.clear(frame.clearAction);
 
     const currentCamera = frame.camera;
 
@@ -108,8 +107,6 @@ export class GLRenderer extends Renderer implements Disposable {
     for (const pass of passes) {
       pass.onCameraCleanup(this);
     }
-
-    this.renderTargetPool.flush();
   }
 
   renderRenderPass (pass: RenderPass): void {

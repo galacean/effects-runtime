@@ -18,8 +18,8 @@ export class Renderer implements LostHandler, RestoreHandler {
   * 存放渲染需要用到的数据
   */
   renderingData: RenderingData;
+  renderTargetPool: RenderTargetPool;
   protected currentFramebuffer: Framebuffer | null = null;
-  protected renderTargetPool: RenderTargetPool;
 
   constructor (engine: Engine) {
     this.engine = engine;

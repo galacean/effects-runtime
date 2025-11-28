@@ -236,10 +236,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 销毁状态位
    */
   protected destroyed = false;
-  /**
-   * 是否是否每次渲染时清除 RenderFrame 颜色缓存
-   */
-  protected readonly keepColorBuffer: boolean;
   protected rootComposition: CompositionComponent;
 
   /**
@@ -550,12 +546,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderFrame = new RenderFrame({
       camera: this.camera,
       renderer: this.renderer,
-      keepColorBuffer: this.keepColorBuffer,
       globalVolume: this.globalVolume,
       postProcessingEnabled: this.postProcessingEnabled,
     });
-    // TODO 考虑放到构造函数
-    this.renderFrame.cachedTextures = this.textures;
   }
 
   /**

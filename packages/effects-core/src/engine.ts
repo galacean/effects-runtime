@@ -278,6 +278,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (let i = 0; i < comps.length; i++) {
       !comps[i].renderFrame.isDisposed && this.renderer.renderRenderFrame(comps[i].renderFrame);
     }
+
+    this.renderer.renderTargetPool.flush();
   }
 
   /**

@@ -611,10 +611,6 @@ function createRenderFrame (
   const frame = new RenderFrame({
     renderer,
     camera: new Camera(''),
-    clearAction: {
-      colorAction: TextureLoadAction.clear,
-      clearColor: [0, 0, 0, 0],
-    },
   });
 
   frame.setRenderPasses([renderPass]);
