@@ -161,8 +161,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     program(text);
   }
-
-  updateWithOptions (options: spec.RichTextContentOptions) {
+  /**
+   * 根据配置更新文本样式和布局
+   */
+  protected updateWithOptions (options: spec.RichTextContentOptions): void {
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
     this.text = options.text ? options.text.toString() : ' ';
@@ -183,7 +185,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.updateTexture();
   }
 
-  updateTexture (flipY = true) {
+  /**
+   * 更新文本
+   * @returns
+   */
+  protected updateTexture (flipY = true): void {
     if (!this.isDirty || !this.context || !this.canvas || !this.textStyle || !this.textLayout) {
       return;
     }
@@ -740,6 +746,18 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
    */
   setFontSize (value: number): void {
     this.unsupported('setFontSize');
+  }
+
+  /**
+   * @deprecated 2.8.0 本方法已废弃，请使用 setTextVerticalAlign 替代。
+   */
+  setTextBaseline (value: spec.TextBaseline): void {
+    console.warn(
+      'setTextBaseline 已废弃，请改用 setTextVerticalAlign。' +
+      '本次调用将转调用 setTextVerticalAlign。'
+    );
+
+    this.setTextVerticalAlign(value as unknown as spec.TextVerticalAlign);
   }
 }
 

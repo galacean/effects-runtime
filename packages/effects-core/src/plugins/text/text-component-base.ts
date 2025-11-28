@@ -74,6 +74,18 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * @deprecated 2.8.0 本方法已废弃，请使用 setTextVerticalAlign 替代。
+   */
+  setTextBaseline (value: spec.TextBaseline): void {
+    console.warn(
+      'setTextBaseline 已废弃，请改用 setTextVerticalAlign。' +
+      '本次调用将转调用 setTextVerticalAlign。'
+    );
+
+    this.setTextVerticalAlign(value as unknown as spec.TextVerticalAlign);
+  }
+
   setTextColor (value: spec.RGBAColorValue): void {
     if (this.textStyle.textColor === value) {
       return;

@@ -150,7 +150,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.isDirty = true;
   }
 
-  updateWithOptions (options: spec.TextContentOptions) {
+  /**
+   * 根据配置更新文本样式和布局
+   */
+  protected updateWithOptions (options: spec.TextContentOptions): void {
     // 初始化 textStyle 和 textLayout
     if (!this.textStyle) {
       this.textStyle = new TextStyle(options);
@@ -314,7 +317,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    * 更新文本
    * @returns
    */
-  updateTexture (flipY = true) {
+  protected updateTexture (flipY = true): void {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
