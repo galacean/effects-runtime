@@ -75,9 +75,7 @@ export class TextComponentBase {
   }
 
   /**
-   * @deprecated 请使用 setTextVerticalAlign 替代。
-   *
-   * 本方法已废弃,现调用setTextVerticalAlign兼容。
+   * @deprecated 2.8.0 本方法已废弃，请使用 setTextVerticalAlign 替代。
    */
   setTextBaseline (value: spec.TextBaseline): void {
     console.warn(
