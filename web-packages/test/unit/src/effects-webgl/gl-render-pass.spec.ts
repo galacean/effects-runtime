@@ -42,8 +42,6 @@ describe('webgl/gl-render-pass', () => {
     const mesh2 = new Mesh(engine, { geometry: geom, material, priority: 2 });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
-      meshOrder: OrderType.ascending,
     });
 
     rp1.initialize(renderer);
@@ -58,8 +56,6 @@ describe('webgl/gl-render-pass', () => {
   it('custom viewport after binding', () => {
     let rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
-      meshes: [],
-      meshOrder: OrderType.ascending,
     });
 
     rp1.initialize(renderer);
@@ -70,8 +66,6 @@ describe('webgl/gl-render-pass', () => {
     rp1.dispose();
     rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
-      meshes: [],
-      meshOrder: OrderType.ascending,
     });
     rp1.initialize(renderer);
 
@@ -108,9 +102,11 @@ describe('webgl/gl-render-pass', () => {
     }
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes,
     });
 
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
     rp1.initialize(renderer);
 
     renderer.engine.bindSystemFramebuffer();
@@ -123,224 +119,12 @@ describe('webgl/gl-render-pass', () => {
 
       expect(tempJ.priority >= tempI.priority).is.eql(true);
     }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is descending && lenght <= 30', () => {
-    const meshes = [];
-    const length = 20;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: MathUtils.randInt(0, length) });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.descending,
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0, j = length - 1; i <= j; i++, j--) {
-      const tempI = rp1.meshes[i];
-      const tempJ = rp1.meshes[j];
-
-      expect(tempJ.priority <= tempI.priority).is.eql(true);
-    }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is none && lenght <= 30', () => {
-    const meshes = [];
-    const order = [8, 8, 4, 12, 20, 16, 16, 17, 17, 15, 1, 14, 15, 0, 6, 16, 1, 10, 10, 17];
-    const length = 20;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: order[index] });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.none,
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0; i < length; i++) {
-      expect(rp1.meshes[i].priority).is.eql(order[i]);
-    }
-
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is ascending && lenght > 30', () => {
-    const meshes = [];
-    const length = 70;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: MathUtils.randInt(0, length) });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0, j = length - 1; i <= j; i++, j--) {
-      const tempI = rp1.meshes[i];
-      const tempJ = rp1.meshes[j];
-
-      expect(tempJ.priority >= tempI.priority).is.eql(true);
-    }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is descending && lenght > 30', () => {
-    const meshes = [];
-    const length = 70;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: MathUtils.randInt(0, 200) });
-
-      meshes.push(mesh);
-    }
-
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.descending,
-    });
-
-    rp1.initialize(renderer);
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0, j = length - 1; i <= j; i++, j--) {
-      const tempI = rp1.meshes[i];
-      const tempJ = rp1.meshes[j];
-
-      expect(tempJ.priority <= tempI.priority).is.eql(true);
-    }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is none && lenght > 30', () => {
-    const meshes = [];
-    const order = [
-      185, 69, 191, 12, 141, 30, 2, 61, 75, 151, 22, 134, 126, 169, 176, 112, 160, 24, 131, 58, 133, 151, 104, 113, 73,
-      196, 184, 104, 130, 17, 160, 102, 195, 106, 176, 167, 51, 101, 126, 167, 179, 5, 109, 122, 82, 123, 44, 16, 98,
-      71, 140, 156, 200, 177, 193, 110, 160, 84, 20, 23, 12, 74, 21, 66, 199, 49, 88, 152, 172, 151,
-    ];
-    const length = 70;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: order[index] });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.none,
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0; i < length; i++) {
-      expect(rp1.meshes[i].priority).is.eql(order[i]);
-    }
-
     rp1.dispose();
   });
 
   it('RPOrderTest07 render pass resort meshes with meshes.length===0', () => {
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -378,10 +162,10 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [mesh],
     });
 
     rp1.initialize(renderer);
+    rp1.addMesh(mesh);
 
     renderer.engine.bindSystemFramebuffer();
     renderer.engine.viewport = spy;
@@ -426,10 +210,11 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [mesh1, mesh],
     });
 
     rp1.initialize(renderer);
+    rp1.addMesh(mesh1);
+    rp1.addMesh(mesh);
 
     renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
@@ -497,8 +282,11 @@ describe('webgl/gl-render-pass', () => {
     const rp1 = new RenderPass(renderer,
       {
         attachments: [],
-        meshes,
       });
+
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
 
     rp1.initialize(renderer);
 
@@ -595,9 +383,13 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes,
-      meshOrder: OrderType.descending,
     });
+
+    rp1.meshOrder = OrderType.descending;
+
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
 
     rp1.initialize(renderer);
 
@@ -688,9 +480,13 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes,
-      meshOrder: OrderType.none,
     });
+
+    rp1.meshOrder = OrderType.none;
+
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
 
     rp1.initialize(renderer);
 
@@ -748,7 +544,6 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -801,7 +596,6 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -842,7 +636,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -851,7 +644,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp2.initialize(renderer);
@@ -910,7 +702,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -959,7 +750,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -967,7 +757,6 @@ describe('webgl/gl-render-pass', () => {
     const rp2 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       depthStencilAttachment: rp1.depthAttachment,
-      meshes: [],
     });
 
     rp2.initialize(renderer);
@@ -994,7 +783,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);

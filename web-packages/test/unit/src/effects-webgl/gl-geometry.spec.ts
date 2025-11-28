@@ -539,10 +539,9 @@ describe('webgl/gl-geometry', () => {
   it('geometry with drawCount < 0 would not trigger draw call', function () {
     const ret = createMesh(glRenderer, -2);
     const pass = new RenderPass(glRenderer, {
-      name: 'test',
-      meshes: [ret.mesh],
     });
 
+    pass.addMesh(ret.mesh);
     ret.geom.drawCount = -1;
     const frame = new RenderFrame({
       renderer,
@@ -562,9 +561,9 @@ describe('webgl/gl-geometry', () => {
   it('geometry with drawCount == 0 would not invoke draw call', function () {
     const ret = createMesh(renderer, 0);
     const pass = new RenderPass(glRenderer, {
-      name: 'test',
-      meshes: [ret.mesh],
     });
+
+    pass.addMesh(ret.mesh);
     const frame = new RenderFrame({
       renderer,
       camera: new Camera(),

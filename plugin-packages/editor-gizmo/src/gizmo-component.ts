@@ -1,4 +1,4 @@
-import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, Renderer, Texture, VFXItem } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, RenderPassOptions, Renderer, Texture, VFXItem } from '@galacean/effects';
 import {
   RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
   TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
@@ -829,12 +829,7 @@ export class GizmoComponent extends RendererComponent {
     let rp = pipeline.renderPasses.find(renderPass => renderPass.name === behindRenderPassName);
 
     if (!rp) {
-      rp = new RenderPass(pipeline.renderer, {
-        name: behindRenderPassName,
-        priority: RenderPassPriorityPostprocess + RenderPassPriorityPostprocess,
-        clearAction: {
-          depthAction: TextureLoadAction.clear,
-        },
+      rp = new DrawGizmoBehindPass(pipeline.renderer, {
       });
       pipeline.addRenderPass(rp);
     }
@@ -846,9 +841,7 @@ export class GizmoComponent extends RendererComponent {
     let rp = pipeline.renderPasses.find(renderPass => renderPass.name === editorRenderPassName);
 
     if (!rp) {
-      rp = new RenderPass(pipeline.renderer, {
-        name: editorRenderPassName,
-        priority: RenderPassPriorityPostprocess + 2,
+      rp = new DrawGizmoEditorPass(pipeline.renderer, {
       });
       pipeline.addRenderPass(rp);
     }
@@ -860,9 +853,7 @@ export class GizmoComponent extends RendererComponent {
     let rp = pipeline.renderPasses.find(renderPass => renderPass.name === frontRenderPassName);
 
     if (!rp) {
-      rp = new RenderPass(pipeline.renderer, {
-        name: frontRenderPassName,
-        priority: RenderPassPriorityPrepare + 2,
+      rp = new DrawGizmoFrontPass(pipeline.renderer, {
       });
       pipeline.addRenderPass(rp);
     }
@@ -875,4 +866,41 @@ export class GizmoComponent extends RendererComponent {
 export enum CoordinateSpace {
   Local,
   World
+}
+
+class DrawGizmoBehindPass extends RenderPass {
+  constructor (renderer: Renderer, options: RenderPassOptions) {
+    super(renderer, options);
+    this.priority = RenderPassPriorityPostprocess + RenderPassPriorityPostprocess;
+    this.name = behindRenderPassName;
+  }
+
+  override execute (renderer: Renderer): void {
+    renderer.clear({ depthAction: TextureLoadAction.clear });
+    renderer.renderMeshes(this.meshes);
+  }
+}
+
+class DrawGizmoFrontPass extends RenderPass {
+  constructor (renderer: Renderer, options: RenderPassOptions) {
+    super(renderer, options);
+    this.priority = RenderPassPriorityPrepare + 2;
+    this.name = frontRenderPassName;
+  }
+
+  override execute (renderer: Renderer): void {
+    renderer.renderMeshes(this.meshes);
+  }
+}
+
+class DrawGizmoEditorPass extends RenderPass {
+  constructor (renderer: Renderer, options: RenderPassOptions) {
+    super(renderer, options);
+    this.priority = RenderPassPriorityPostprocess + 2;
+    this.name = editorRenderPassName;
+  }
+
+  override execute (renderer: Renderer): void {
+    renderer.renderMeshes(this.meshes);
+  }
 }

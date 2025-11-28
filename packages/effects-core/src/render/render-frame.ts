@@ -11,13 +11,13 @@ import { PassTextureCache } from '../paas-texture-cache';
 import type { Texture } from '../texture';
 import { TextureLoadAction } from '../texture';
 import type { Disposable } from '../utils';
-import { DestroyOptions, OrderType, removeItem } from '../utils';
+import { DestroyOptions, removeItem } from '../utils';
 import { createCopyShader } from './create-copy-shader';
 import { DrawObjectPass } from './draw-object-pass';
 import type { Mesh } from './mesh';
 import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
 import type { RenderPass, RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction } from './render-pass';
-import { RenderPassAttachmentStorageType, RenderPassPriorityNormal, RenderTargetHandle } from './render-pass';
+import { RenderPassAttachmentStorageType, RenderTargetHandle } from './render-pass';
 import type { Renderer } from './renderer';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
@@ -225,7 +225,6 @@ export class RenderFrame implements Disposable {
     this.globalUniforms = new GlobalUniforms();
     let attachments: RenderPassColorAttachmentOptions[] = [];  //渲染场景物体Pass的RT
     let depthStencilAttachment;
-    let drawObjectPassClearAction = {};
 
     this.renderer = renderer;
     if (postProcessingEnabled) {
@@ -240,20 +239,11 @@ export class RenderFrame implements Disposable {
 
       attachments = [{ texture: { format: glContext.RGBA, type: textureType, magFilter: glContext.LINEAR, minFilter: glContext.LINEAR } }];
       depthStencilAttachment = { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque };
-      drawObjectPassClearAction = {
-        colorAction: TextureLoadAction.clear,
-        stencilAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.clear,
-      };
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer, {
-      name: RENDER_PASS_NAME_PREFIX,
-      priority: RenderPassPriorityNormal,
-      meshOrder: OrderType.ascending,
       depthStencilAttachment,
       attachments,
-      clearAction: drawObjectPassClearAction,
     });
 
     const renderPasses = [this.drawObjectPass];
@@ -270,7 +260,6 @@ export class RenderFrame implements Disposable {
       const enableHDR = true;
       const textureType = enableHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
       const bloomThresholdPass = new BloomThresholdPass(renderer, {
-        name: 'BloomThresholdPass',
         attachments: [{
           texture: {
             format: glContext.RGBA,
@@ -286,7 +275,6 @@ export class RenderFrame implements Disposable {
       for (let i = 0; i < gaussianStep; i++) {
         gaussianDownResults[i] = new RenderTargetHandle(engine);
         const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', i, {
-          name: 'GaussianDownPassH' + i,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -298,7 +286,6 @@ export class RenderFrame implements Disposable {
         });
 
         const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', i, {
-          name: 'GaussianDownPassV' + i,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -321,7 +308,6 @@ export class RenderFrame implements Disposable {
       viewport[3] *= 4;
       for (let i = 0; i < gaussianStep - 1; i++) {
         const gaussianUpPass = new HQGaussianUpSamplePass(renderer, gaussianStep - i, {
-          name: 'GaussianUpPass' + i,
           attachments: [{
             texture: {
               format: glContext.RGBA,

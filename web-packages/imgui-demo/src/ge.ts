@@ -1,5 +1,5 @@
-import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
+import type { MaterialProps, RenderPassOptions, Renderer } from '@galacean/effects';
+import { GLSLVersion, Geometry, Material, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -34,18 +34,12 @@ export class GalaceanEffects {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-          name: 'OutlinePass',
-          priority: RenderPassPriorityPostprocess,
-          meshOrder: OrderType.ascending,
         }),);
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(async composition => {
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-          name: 'OutlinePass',
-          priority: RenderPassPriorityPostprocess,
-          meshOrder: OrderType.ascending,
         }));
       });
     }
@@ -109,6 +103,12 @@ export class OutlinePass extends RenderPass {
     gl_FragColor = color;
   }
   `;
+
+  constructor (renderer: Renderer, options: RenderPassOptions) {
+    super(renderer, options);
+    this.priority = RenderPassPriorityPostprocess;
+    this.name = 'OutlinePass';
+  }
 
   override configure (renderer: Renderer): void {
     if (!this.geometry) {
