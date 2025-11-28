@@ -229,7 +229,7 @@ export class RenderPass implements Disposable, Sortable {
   readonly meshes: RendererComponent[] = [];
 
   protected disposed = false;
-  protected framebuffer: Framebuffer | null;
+  protected framebuffer: Framebuffer | null = null;
   protected renderer: Renderer;
 
   constructor (renderer: Renderer) {

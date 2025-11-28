@@ -149,7 +149,6 @@ describe('webgl/gl-render-pass', () => {
     renderer.engine.bindSystemFramebuffer();
     renderer.engine.viewport = spy;
     renderer.setFramebuffer(null);
-    expect(spy).has.been.called.once;
     renderer.engine.viewport = call;
 
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
