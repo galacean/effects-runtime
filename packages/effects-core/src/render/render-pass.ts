@@ -1,15 +1,14 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec4 } from '@galacean/effects-specification';
-import type { Camera } from '../camera';
 import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Mesh, MeshDestroyOptions, Renderer } from '../render';
-import { Framebuffer } from '../render';
+import type { Framebuffer } from '../render';
 import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
 import type { Disposable, Sortable } from '../utils';
-import { addByOrder, DestroyOptions, OrderType, removeItem, sortByOrder, throwDestroyedError } from '../utils';
+import { addByOrder, DestroyOptions, removeItem } from '../utils';
 import type { Renderbuffer } from './renderbuffer';
 
 export const RenderPassPriorityPrepare = 0;
@@ -24,7 +23,7 @@ export enum RenderPassAttachmentStorageType {
   color = 1,
   //stencil 8 render buffer
   stencil_8_opaque = 2,
-  //stencil 16 render buffer
+  //depth 16 render buffer
   depth_16_opaque = 3,
   //depth 16 & stencil 8 render buffer
   depth_stencil_opaque = 4,
@@ -176,12 +175,6 @@ export class RenderTargetHandle implements Disposable {
   }
 }
 
-export interface RenderPassDepthStencilAttachment {
-  readonly storageType: RenderPassAttachmentStorageType,
-  readonly storage?: Renderbuffer,
-  readonly texture?: Texture,
-}
-
 export interface RenderPassDepthStencilAttachmentOptions {
   storageType: RenderPassAttachmentStorageType,
   storage?: Renderbuffer,
@@ -216,11 +209,6 @@ export type RenderPassDestroyOptions = {
   depthStencilAttachment?: RenderPassDestroyAttachmentType,
 };
 
-export interface RenderPassOptions {
-  attachments?: RenderPassColorAttachmentOptions[],
-  depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
-}
-
 let seed = 1;
 
 /**
@@ -232,11 +220,6 @@ export class RenderPass implements Disposable, Sortable {
    */
   priority: number = 0;
   /**
-   * ColorAttachment 数组
-   */
-  attachments: RenderTargetHandle[] = [];
-  framebuffer: Framebuffer | null;
-  /**
    * 名称
    */
   name: string = 'RenderPass' + seed++;
@@ -244,48 +227,16 @@ export class RenderPass implements Disposable, Sortable {
    * 包含的 Mesh 列表
    */
   readonly meshes: RendererComponent[] = [];
-  /**
-   * Mesh 渲染顺序，按照优先级升序或降序
-   */
-  readonly meshOrder: OrderType = OrderType.ascending;
-  /**
-   * 相机
-   */
-  readonly camera?: Camera;
-  /**
-   * 深度和蒙版 Attachment 类型，注意区分纹理和 Renderbuffer
-   */
-  readonly depthStencilType: RenderPassAttachmentStorageType;
-  /**
-   * 渲染后清除缓冲区操作，iOS 上有性能提升, 默认关闭
-   */
-  readonly storeAction: RenderPassStoreAction;
 
   protected disposed = false;
-  protected options: RenderPassOptions;
+  protected framebuffer: Framebuffer | null;
   protected renderer: Renderer;
 
-  private initialized = false;
-  private depthTexture?: Texture;
-  private stencilTexture?: Texture;
-
-  constructor (renderer: Renderer, options: RenderPassOptions) {
-    const {
-      depthStencilAttachment,
-    } = options;
-
+  constructor (renderer: Renderer) {
     this.renderer = renderer;
-    this.depthStencilType = depthStencilAttachment?.storageType || RenderPassAttachmentStorageType.none;
-
-    this.storeAction = {
-      colorAction: TextureStoreAction.store,
-      depthAction: TextureStoreAction.store,
-      stencilAction: TextureStoreAction.store,
-    };
-    this.options = options;
   }
 
-  get isDestroyed (): boolean {
+  get isDisposed (): boolean {
     return this.disposed;
   }
 
@@ -293,42 +244,19 @@ export class RenderPass implements Disposable, Sortable {
     return this.getViewport();
   }
 
-  get stencilAttachment () {
-    return this.getStencilAttachment();
-  }
-
-  get depthAttachment () {
-    return this.getDepthAttachment();
-  }
-
   addMesh (mesh: RendererComponent): void {
-    addByOrder(this.meshes, mesh, this.meshOrder);
+    addByOrder(this.meshes, mesh);
   }
 
   removeMesh (mesh: RendererComponent): void {
     removeItem(this.meshes, mesh);
   }
 
-  setMeshes (meshes: RendererComponent[]): RendererComponent[] {
-    this.meshes.length = 0;
-    this.meshes.splice(0, 0, ...meshes);
-    sortByOrder(this.meshes, this.meshOrder);
-
-    return this.meshes;
-  }
-
-  // TODO 所有pass在子类配置
   /**
    * 配置当前pass的RT，在每帧渲染前调用
    */
   configure (renderer: Renderer) {
-    if (this.framebuffer) {
-      renderer.setFramebuffer(this.framebuffer);
-    } else {
-      const [x, y, width, height] = this.getViewport();
-
-      renderer.setViewport(x, y, width, height);
-    }
+    // OVERRIDE
   }
 
   /**
@@ -339,56 +267,10 @@ export class RenderPass implements Disposable, Sortable {
   }
 
   /**
-   * 每帧所有的pass渲染完后调用，通常用于清空临时的RT资源
+   * 每帧所有的pass渲染完后调用，用于清空临时的RT资源
    */
-  frameCleanup (renderer: Renderer) {
+  onCameraCleanup (renderer: Renderer) {
     // OVERRIDE
-  }
-
-  private _resetAttachments () {
-    const renderer = this.renderer;
-    const options = this.options;
-
-    if (this.attachments.length) {
-      this.attachments.forEach(att => !att.externalTexture && att.dispose());
-      this.attachments.length = 0;
-      this.framebuffer?.dispose({ depthStencilAttachment: RenderPassDestroyAttachmentType.keepExternal });
-      this.framebuffer = null;
-    }
-    // renderpass 的 viewport 相关参数都需要动态的修改
-    const viewport: [x: number, y: number, z:number, w:number] = [0, 0, renderer.getWidth(), renderer.getHeight()];
-
-    const size: [x: number, y: number] = [viewport[2], viewport[3]];
-    const name = this.name;
-
-    if (options.attachments?.length) {
-      const attachments = options.attachments.map((attr, index) => {
-        const attachment = new RenderTargetHandle(
-          this.renderer.engine,
-          {
-            size,
-            name: attr.texture?.name || `${name}##color_${index}`,
-            ...attr,
-          });
-
-        return attachment;
-      });
-
-      this.attachments = attachments;
-      const framebuffer = Framebuffer.create({
-        storeAction: this.storeAction,
-        name,
-        viewport,
-        attachments: attachments.map(att => att.texture),
-        depthStencilAttachment: options.depthStencilAttachment || { storageType: RenderPassAttachmentStorageType.none },
-      }, renderer);
-
-      framebuffer.bind();
-      framebuffer.unbind();
-      this.framebuffer = framebuffer;
-    } else {
-      this.attachments.length = 0;
-    }
   }
 
   /**
@@ -403,84 +285,6 @@ export class RenderPass implements Disposable, Sortable {
     const renderer = this.renderer;
 
     return renderer ? [0, 0, renderer.getWidth(), renderer.getHeight()] : [0, 0, 0, 0];
-  }
-
-  /**
-   * 获取深度 Attachment，可能没有
-   */
-  getDepthAttachment (): RenderPassDepthStencilAttachment | undefined {
-    const framebuffer = this.framebuffer;
-
-    if (framebuffer) {
-      const depthTexture = framebuffer.getDepthTexture();
-      const texture = depthTexture ? this.getDepthTexture(depthTexture, framebuffer.externalStorage) : undefined;
-
-      return {
-        storageType: framebuffer.depthStencilStorageType,
-        storage: framebuffer.depthStorage,
-        texture,
-      };
-    }
-  }
-
-  /**
-   * 获取蒙版 Attachment，可能没有
-   */
-  getStencilAttachment (): RenderPassDepthStencilAttachment | undefined {
-    const framebuffer = this.framebuffer;
-
-    if (framebuffer) {
-      const stencilTexture = framebuffer.getStencilTexture();
-      const texture = stencilTexture ? this.getDepthTexture(stencilTexture, framebuffer.externalStorage) : undefined;
-
-      return {
-        storageType: framebuffer.depthStencilStorageType,
-        storage: framebuffer.stencilStorage,
-        texture,
-      };
-    }
-  }
-
-  private getDepthTexture (texture: Texture, external: boolean): Texture {
-    if (!this.depthTexture) {
-      const outTex = this.options.depthStencilAttachment?.texture;
-      const tex = texture === outTex ? outTex : texture;
-
-      // TODO 为什么要initialize？
-      //tex.initialize(this.renderer.engine);
-      if (!external) {
-        this.depthTexture = tex;
-      }
-
-      return tex;
-    }
-
-    return this.depthTexture;
-  }
-
-  private getStencilTexture (texture: Texture, external: boolean): Texture {
-    if (!this.stencilTexture) {
-      const outTex = this.options.depthStencilAttachment?.texture;
-      const tex = texture === outTex ? outTex : texture;
-
-      if (!external) {
-        this.stencilTexture = tex;
-      }
-
-      return tex;
-    }
-
-    return this.stencilTexture;
-  }
-
-  // 生成并初始化帧缓冲
-  initialize (renderer: Renderer): RenderPass {
-    if (!this.initialized) {
-      this._resetAttachments();
-      this.initialized = true;
-    }
-
-    return this;
   }
 
   /**
@@ -500,33 +304,6 @@ export class RenderPass implements Disposable, Sortable {
     }
     this.meshes.length = 0;
 
-    const colorOpt = options?.colorAttachment ? options.colorAttachment : RenderPassDestroyAttachmentType.force;
-
-    this.attachments.forEach(att => {
-      const keep = (att.externalTexture && colorOpt === RenderPassDestroyAttachmentType.keepExternal) || colorOpt === RenderPassDestroyAttachmentType.keep;
-
-      if (!keep) {
-        att.dispose();
-      }
-    });
-    this.attachments.length = 0;
-
     this.disposed = true;
-    const depthStencilOpt = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
-    const fbo = this.framebuffer;
-
-    if (fbo) {
-      fbo.dispose({ depthStencilAttachment: depthStencilOpt });
-      const keep = (fbo.externalStorage && depthStencilOpt === RenderPassDestroyAttachmentType.keepExternal) || depthStencilOpt === RenderPassDestroyAttachmentType.keep;
-
-      if (!keep) {
-        this.stencilTexture?.dispose();
-        this.depthTexture?.dispose();
-      }
-    }
-
-    // @ts-expect-error safe to assign
-    this.options = null;
-    this.initialize = throwDestroyedError as unknown as (r: Renderer) => RenderPass;
   }
 }

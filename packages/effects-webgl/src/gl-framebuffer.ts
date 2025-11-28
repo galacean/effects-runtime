@@ -354,6 +354,13 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         this.depthStencilRenderbuffer?.dispose();
         this.depthTexture?.dispose();
       }
+
+      for (const texture of this.colorTextures) {
+        texture.dispose();
+      }
+
+      this.stencilTexture?.dispose();
+
       // @ts-expect-error safe to assign
       this.renderer = this.stencilRenderbuffer = this.depthStencilRenderbuffer = null;
     }

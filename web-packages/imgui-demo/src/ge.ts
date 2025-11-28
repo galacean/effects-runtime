@@ -1,4 +1,4 @@
-import type { MaterialProps, RenderPassOptions, Renderer } from '@galacean/effects';
+import type { MaterialProps, Renderer } from '@galacean/effects';
 import { GLSLVersion, Geometry, Material, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
@@ -22,7 +22,7 @@ export class GalaceanEffects {
     GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*sifJTL9KPmwAAAAAQHAAAAgAelB4AQ');
+    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*r2WXT6t4a_8AAAAAQIAAAAgAelB4AQ');
   }
 
   static playURL (url: string, use3DConverter = false) {
@@ -33,13 +33,11 @@ export class GalaceanEffects {
       void converter.processScene(url).then(async (scene: any) => {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
-        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-        }),);
+        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer));
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-        }));
+        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer));
       });
     }
 
@@ -103,13 +101,11 @@ export class OutlinePass extends RenderPass {
   }
   `;
 
-  constructor (renderer: Renderer, options: RenderPassOptions) {
-    super(renderer, options);
-    this.priority = RenderPassPriorityPostprocess;
+  constructor (renderer: Renderer) {
+    super(renderer);
+    this.priority = 5000;
     this.name = 'OutlinePass';
-  }
 
-  override configure (renderer: Renderer): void {
     if (!this.geometry) {
       this.geometry = Geometry.create(renderer.engine, {
         attributes: {
@@ -146,6 +142,10 @@ export class OutlinePass extends RenderPass {
       this.material.depthTest = true;
       this.material.blending = true;
     }
+  }
+
+  override configure (renderer: Renderer): void {
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
