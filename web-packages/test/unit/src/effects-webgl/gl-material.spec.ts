@@ -570,10 +570,6 @@ describe('webgl/gl-material', () => {
     const renderFrame = new RenderFrame({
       renderer,
       camera: new Camera(''),
-      clearAction: {
-        colorAction: TextureLoadAction.clear,
-        clearColor: [0, 0, 0, 0],
-      },
     });
     const testData = [
       1, 2, 3, 4,
