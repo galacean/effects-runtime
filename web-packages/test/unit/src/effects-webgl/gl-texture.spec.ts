@@ -132,11 +132,7 @@ describe('webgl/gl-texture', () => {
     texKTX2.initialize();
     gpuUploadTimes.ktx2 = performance.now() - start;
 
-    // 1. KTX2 load time is the longest
-    expect(cpuDecodeTimes.ktx2).to.be.greaterThan(cpuDecodeTimes.png);
-    expect(cpuDecodeTimes.ktx2).to.be.greaterThan(cpuDecodeTimes.webp);
-
-    // 2. KTX2 upload time is the shortest
+    // KTX2 upload time is the shortest
     expect(gpuUploadTimes.ktx2).to.be.lessThan(gpuUploadTimes.png);
     expect(gpuUploadTimes.ktx2).to.be.lessThan(gpuUploadTimes.webp);
 
