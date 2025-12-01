@@ -26,6 +26,13 @@ export const DEFAULT_FONTS = [
   'courier',
 ];
 
+export interface Bounds {
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+}
+
 export interface CharInfo {
   /**
    * 段落 y 值
@@ -295,22 +302,6 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
-  /**
-   * 渲染原始文本（非花字）
-   */
-  private renderOriginal (context: CanvasRenderingContext2D, charsInfo: CharInfo[], style: TextStyle, layout: TextLayout) {
-    charsInfo.forEach(charInfo => {
-      const x = layout.getOffsetX(style, charInfo.width);
-
-      charInfo.chars.forEach((str: string, i: number) => {
-        if (style.isOutlined) {
-          context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-        }
-        context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
-      });
-    });
-  }
-
   protected renderText (options: spec.TextContentOptions) {
     this.updateTexture();
   }
@@ -376,6 +367,193 @@ export class TextComponentBase {
     }
 
     return lineCount;
+  }
+
+  /**
+   * 在逻辑尺寸下测量文本（直线/曲线）的包围盒
+   * 坐标单位：canvas 逻辑像素（已包含 fontScale）
+   */
+  private measureTextBounds (
+    context: CanvasRenderingContext2D,
+    style: TextStyle,
+    layout: TextLayout,
+    fontScale: number,
+    layoutWidth: number,
+    layoutHeight: number,
+  ): Bounds {
+    const fontSize = style.fontSize * fontScale;
+    const lineHeight = layout.lineHeight * fontScale;
+
+    context.font = this.getFontDesc(fontSize);
+
+    const bounds: Bounds = {
+      minX: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      minY: Number.POSITIVE_INFINITY,
+      maxY: Number.NEGATIVE_INFINITY,
+    };
+
+    const updateBounds = (x: number, y: number) => {
+      if (x < bounds.minX) {bounds.minX = x;}
+      if (x > bounds.maxX) {bounds.maxX = x;}
+      if (y < bounds.minY) {bounds.minY = y;}
+      if (y > bounds.maxY) {bounds.maxY = y;}
+    };
+
+    // 统一使用当前文本
+    const chars = this.char || [];
+
+    if (this.isCurvedTextEnabled()) {
+      // ==== 曲线文本测量 ====
+      const charWidths: number[] = [];
+      let totalWidth = 0;
+
+      for (const ch of chars) {
+        const w = context.measureText(ch).width;
+
+        charWidths.push(w);
+        totalWidth += w;
+      }
+
+      const letterSpacing = layout.letterSpace * fontScale;
+      const textWidthOnPath = totalWidth + chars.length * letterSpacing;
+
+      // 路径上的起始 offset（按 textAlign）
+      let offset = 0;
+
+      if (layout.textAlign === spec.TextAlignment.middle) {
+        offset = Math.max(0, (this.pathLength - textWidthOnPath) / 2);
+      } else if (layout.textAlign === spec.TextAlignment.right) {
+        offset = Math.max(0, this.pathLength - textWidthOnPath);
+      }
+
+      const baseY = layout.getOffsetY(style, 1, lineHeight, fontSize);
+      const compensation = this.calculateControlPointCompensation();
+
+      let currentPos = offset;
+
+      for (let i = 0; i < chars.length; i++) {
+        const charWidth = charWidths[i];
+        const charWidthOnPath = charWidth + letterSpacing;
+        const startPos = currentPos;
+
+        if (startPos > this.pathLength) {break;}
+
+        const startPoint = CurvedTextUtils.getPointAtLength(this.curvedTextPath, startPos);
+
+        if (!startPoint) {break;}
+
+        // 字符参考点坐标（与 renderCharsOnPath 中保持一致）
+        const x = startPoint.x;
+        const y = baseY + startPoint.y + compensation;
+
+        // 用字高上下扩一圈，确保能捕获到弯曲后的外溢
+        updateBounds(x, y - fontSize);
+        updateBounds(x, y + fontSize);
+
+        currentPos += charWidthOnPath;
+      }
+
+    } else {
+      // ==== 直线文本测量 ====
+      let x = 0;
+      const letterSpacing = layout.letterSpace * fontScale;
+      let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i];
+        const textMetrics = context.measureText(ch);
+
+        x += letterSpacing;
+
+        // 换行逻辑与 updateTexture 中保持一致
+        if (((x + textMetrics.width) > layoutWidth && i > 0) || ch === '\n') {
+          x = 0;
+          y += lineHeight;
+        }
+
+        if (ch !== '\n') {
+          const charX = x;
+          const charY = y;
+
+          // 用字高上下扩一圈
+          updateBounds(charX, charY - fontSize);
+          updateBounds(charX, charY + fontSize);
+
+          x += textMetrics.width;
+        }
+      }
+    }
+
+    // 防守型处理：无字符时避免 Infinity
+    if (!isFinite(bounds.minX)) {
+      bounds.minX = 0;
+      bounds.maxX = 0;
+      bounds.minY = 0;
+      bounds.maxY = 0;
+    }
+
+    return bounds;
+  }
+
+  /**
+   * 直线文本排版：根据 layoutWidth 计算换行，并在最终坐标上加 offset 补偿
+   */
+  private renderLinearCharsWithOffset (
+    context: CanvasRenderingContext2D,
+    style: TextStyle,
+    layout: TextLayout,
+    fontScale: number,
+    charsInfo: CharInfo[],
+    offsetX: number,
+    offsetY: number,
+    layoutWidth: number,
+  ): void {
+    const lineHeight = layout.lineHeight * fontScale;
+    const fontSize = style.fontSize * fontScale;
+
+    let x = 0;
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+    let charsArray: string[] = [];
+    let charOffsetX: number[] = [];
+
+    const chars = this.char || [];
+
+    for (let i = 0; i < chars.length; i++) {
+      const str = chars[i];
+      const textMetrics = context.measureText(str);
+
+      // 与原逻辑一致：每个字符前先加 letterSpace
+      x += layout.letterSpace * fontScale;
+
+      if (((x + textMetrics.width) > layoutWidth && i > 0) || str === '\n') {
+        charsInfo.push({
+          y: y + offsetY,
+          width: x,
+          chars: charsArray,
+          charOffsetX: charOffsetX.map(v => v + offsetX),
+        });
+        x = 0;
+        y += lineHeight;
+        charsArray = [];
+        charOffsetX = [];
+      }
+
+      if (str !== '\n') {
+        charsArray.push(str);
+        charOffsetX.push(x);
+
+        x += textMetrics.width;
+      }
+    }
+
+    // 尾行
+    charsInfo.push({
+      y: y + offsetY,
+      width: x,
+      chars: charsArray,
+      charOffsetX: charOffsetX.map(v => v + offsetX),
+    });
   }
 
   /**
@@ -692,8 +870,7 @@ export class TextComponentBase {
   }
 
   /**
-   * 更新文本
-   * @returns
+   * 更新文本纹理：支持根据文本真实包围盒扩展 canvas，并用 offset 补偿排版
    */
   updateTexture (flipY = true) {
     if (!this.isDirty || !this.context || !this.canvas) {
@@ -705,25 +882,79 @@ export class TextComponentBase {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
-    const width = (layout.width + style.fontOffset) * fontScale;
     const finalHeight = layout.lineHeight * this.lineCount;
-
     const fontSize = style.fontSize * fontScale;
-    const lineHeight = layout.lineHeight * fontScale;
 
     style.fontDesc = this.getFontDesc(fontSize);
     this.char = (this.text || '').split('');
-    this.canvas.width = width;
 
-    if (layout.autoWidth) {
-      this.canvas.height = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
+    // 1. 逻辑排版宽高（不带扩展）
+    const layoutWidth = (layout.width + style.fontOffset) * fontScale;
+    const layoutHeight = (layout.autoWidth
+      ? finalHeight * fontScale
+      : layout.height * fontScale);
+
+    // 2. 先在逻辑尺寸下测量文本真实包围盒
+    context.font = style.fontDesc;
+    const bounds = this.measureTextBounds(context, style, layout, fontScale, layoutWidth, layoutHeight);
+
+    // 3. 计算相对逻辑画布的外溢量
+    const overflowLeft = Math.max(0, -bounds.minX);
+    const overflowRight = Math.max(0, bounds.maxX - layoutWidth);
+    const overflowTop = Math.max(0, -bounds.minY);
+    const overflowBottom = Math.max(0, bounds.maxY - layoutHeight);
+
+    // 临时极端扩展开关：设为 true 可验证补偿机制是否起作用
+    const EXTREME_TEST_MODE = false;
+
+    let extraLeft, extraRight, extraTop, extraBottom;
+
+    if (EXTREME_TEST_MODE) {
+      // 临时：上下左右各扩 200 像素
+      const extremePadding = 200;
+
+      extraLeft = extremePadding;
+      extraRight = extremePadding;
+      extraTop = extremePadding;
+      extraBottom = extremePadding;
     } else {
-      this.canvas.height = layout.height * fontScale;
+      // 正常逻辑：基于实际测量结果扩展
+      const margin = 0; // 可调整成 2, 4 等安全边距
+
+      extraLeft = overflowLeft + margin;
+      extraRight = overflowRight + margin;
+      extraTop = overflowTop + margin;
+      extraBottom = overflowBottom + margin;
+    }
+
+    // 4. 新的 canvas 尺寸
+    const canvasWidth = layoutWidth + extraLeft + extraRight;
+    const canvasHeight = layoutHeight + extraTop + extraBottom;
+
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+
+    // 5. 根据扩展量计算补偿 offset（这里用「从中心扩展 + δ/2 补偿」思路）
+    const deltaW = canvasWidth - layoutWidth;
+    const deltaH = canvasHeight - layoutHeight;
+
+    // 你的例子：扩高 100，下移 50 就是 offsetY = deltaH / 2
+    const offsetX = deltaW / 2;
+    const offsetY = deltaH / 2;
+
+    // 如果你希望 top 对齐完全不动，可以改成：
+    // const offsetX = extraLeft;
+    // const offsetY = extraTop;
+
+    // 6. transform.size：保持使用原 finalHeight，外部世界尺寸不带扩展
+    if (layout.autoWidth) {
+      this.item.transform.size.set(1, finalHeight / layout.height);
     }
 
     const height = this.canvas.height;
 
+    // 7. 初始化 context
+    context.setTransform(1, 0, 0, 1, 0, 0);
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
 
@@ -731,70 +962,35 @@ export class TextComponentBase {
       context.translate(0, height);
       context.scale(1, -1);
     }
-    // canvas size 变化后重新刷新 context
-    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // canvas size 变化后重新刷新字体
+    if (this.maxLineWidth > layoutWidth && layout.overflow === spec.TextOverflow.display) {
+      context.font = this.getFontDesc(fontSize * layoutWidth / this.maxLineWidth);
     } else {
       context.font = style.fontDesc;
     }
-    context.clearRect(0, 0, width, height);
 
     // 统一使用花字渲染系统
-    // 确保初始状态干净
     context.shadowColor = 'transparent';
     context.lineJoin = 'round';
 
-    // 文本颜色
+    // 文本颜色只是占位色，真正颜色由效果系统控制
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
+
+    context.fillStyle = 'rgba(255, 0, 0, 1)';
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
     const charsInfo: CharInfo[] = [];
 
-    // 检查是否启用曲线文本
+    // 8. 用 offset 补偿排版
     if (this.isCurvedTextEnabled()) {
-      // 曲线文本渲染逻辑
-      this.renderCharsOnPath(context, style, layout, fontScale, charsInfo);
+      this.renderCharsOnPathWithOffset(context, style, layout, fontScale, charsInfo, offsetX, offsetY);
     } else {
-      // 直线文本渲染逻辑
-      let x = 0;
-      let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
-      let charsArray = [];
-      let charOffsetX = [];
-
-      for (let i = 0; i < this.char.length; i++) {
-        const str = this.char[i];
-        const textMetrics = context.measureText(str);
-
-        // 和浏览器行为保持一致
-        x += layout.letterSpace * fontScale;
-
-        if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
-          charsInfo.push({
-            y,
-            width: x,
-            chars: charsArray,
-            charOffsetX,
-          });
-          x = 0;
-          y += lineHeight;
-          charsArray = [];
-          charOffsetX = [];
-        }
-
-        if (str !== '\n') {
-          charsArray.push(str);
-          charOffsetX.push(x);
-
-          x += textMetrics.width;
-        }
-      }
-      charsInfo.push({
-        y,
-        width: x,
-        chars: charsArray,
-        charOffsetX,
-      });
+      this.renderLinearCharsWithOffset(context, style, layout, fontScale, charsInfo, offsetX, offsetY, layoutWidth);
     }
 
-    // 统一使用花字渲染系统
+    // 9. 使用花字渲染系统
     renderWithEffects(
       this.canvas,
       context,
@@ -808,14 +1004,14 @@ export class TextComponentBase {
       context.shadowColor = 'transparent';
     }
 
-    // 应用滤镜
+    // 10. 应用滤镜
     let finalCanvas = this.canvas;
 
     if (this.textStyle.filters && this.textStyle.filters.length > 0) {
       finalCanvas = TextFilters.applyFilters(this.canvas, this.textStyle.filters);
     }
 
-    // 获取最终图像数据
+    // 11. 生成纹理
     const finalContext = finalCanvas.getContext('2d')!;
     const imageData = finalContext.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
     const texture = Texture.createWithData(
@@ -839,8 +1035,16 @@ export class TextComponentBase {
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
 
-    // 清理临时画布 - canvasPool没有releaseCanvas方法，跳过清理
-    // 临时画布会在canvasPool中自动管理
+    // 关键：同步更新几何体尺寸，确保扩展后的canvas不被裁剪
+    const scaleX = canvasWidth / layoutWidth;
+    const scaleY = canvasHeight / layoutHeight;
+
+    // 更新transform.size以匹配扩展后的canvas
+    if (layout.autoWidth) {
+      this.item.transform.size.set(scaleX, scaleY * finalHeight / layout.height);
+    } else {
+      this.item.transform.size.set(scaleX, scaleY);
+    }
 
     this.isDirty = false;
   }
@@ -894,25 +1098,23 @@ export class TextComponentBase {
   }
 
   /**
-   * 构建路径上的字符信息（不直接绘制）
-   * @param context Canvas渲染上下文
-   * @param style 文本样式
-   * @param layout 文本布局
-   * @param fontScale 字体缩放
-   * @param charsInfo 字符信息数组
+   * 曲线文本排版：在路径上排字符，并在最终坐标上加 offset 补偿
    */
-  private renderCharsOnPath (
+  private renderCharsOnPathWithOffset (
     context: CanvasRenderingContext2D,
     style: TextStyle,
     layout: TextLayout,
     fontScale: number,
-    charsInfo: CharInfo[]
+    charsInfo: CharInfo[],
+    offsetX: number,
+    offsetY: number,
   ): void {
     // 测量字符宽度
     const charWidths: number[] = [];
     let totalWidth = 0;
+    const chars = this.char || [];
 
-    for (const char of this.char) {
+    for (const char of chars) {
       const width = context.measureText(char).width;
 
       charWidths.push(width);
@@ -921,9 +1123,9 @@ export class TextComponentBase {
 
     // 计算字符间距（与直线逻辑一致：每个字符都加）
     const letterSpacing = layout.letterSpace * fontScale;
-    const textWidthOnPath = totalWidth + this.char.length * letterSpacing;
+    const textWidthOnPath = totalWidth + chars.length * letterSpacing;
 
-    // 计算起始偏移
+    // 计算路径上的起始 offset
     let offset = 0;
 
     if (layout.textAlign === spec.TextAlignment.middle) {
@@ -932,10 +1134,10 @@ export class TextComponentBase {
       offset = Math.max(0, this.pathLength - textWidthOnPath);
     }
 
-    // 清空原有的charsInfo
-    charsInfo.length = 0;
+    // 清空原有的 charsInfo 由调用方控制，这里不再清空
+    // charsInfo.length = 0;
 
-    // 计算补偿值
+    // 计算贝塞尔控制点补偿
     const compensation = this.calculateControlPointCompensation();
 
     // 构建路径字符信息
@@ -946,12 +1148,10 @@ export class TextComponentBase {
     const curvedOffsetY: number[] = [];
     const y = layout.getOffsetY(style, 1, layout.lineHeight * fontScale, style.fontSize * fontScale);
 
-    for (let i = 0; i < this.char.length; i++) {
+    for (let i = 0; i < chars.length; i++) {
       const charWidth = charWidths[i];
-      // 每个字符都加字距（包括最后一个），与直线逻辑一致
       const charWidthOnPath = charWidth + letterSpacing;
 
-      // 使用字符起点位置取点（修复字间距问题）
       const startPos = currentPos;
 
       if (startPos > this.pathLength) {break;}
@@ -960,29 +1160,26 @@ export class TextComponentBase {
 
       if (!startPoint) {break;}
 
-      // 角度使用中点计算（更平滑）
       const anglePoint = CurvedTextUtils.getPointAtLength(this.curvedTextPath, startPos + charWidth / 2) || startPoint;
 
-      // 保存字符信息，供花字渲染系统使用（不再重复乘 fontScale，避免双重缩放）
-      charsArray.push(this.char[i]);
+      charsArray.push(chars[i]);
+      // 这里是路径上的 x，再加 offsetX 由最终 push 处理
       charOffsetX.push(startPoint.x);
       rotations.push(anglePoint.angle);
-      // 应用Y轴补偿
       curvedOffsetY.push(startPoint.y + compensation);
 
       currentPos += charWidthOnPath;
     }
 
-    // 添加字符信息到charsInfo数组（包含路径信息）
     if (charsArray.length > 0) {
       charsInfo.push({
-        y: y,
+        y: y + offsetY,
         width: textWidthOnPath,
         chars: charsArray,
-        charOffsetX: charOffsetX,
+        charOffsetX: charOffsetX.map(v => v + offsetX),
         isCurved: true,
-        rotations: rotations,
-        curvedOffsetY: curvedOffsetY,
+        rotations,
+        curvedOffsetY,
       });
     }
   }
@@ -1015,29 +1212,6 @@ export class TextComponentBase {
     return fontDesc;
   }
 
-  private setupOutline (): void {
-    const context = this.context;
-    const { outlineColor, outlineWidth } = this.textStyle;
-    const [r, g, b, a] = outlineColor;
-
-    if (context) {
-      context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.lineWidth = outlineWidth * 2;
-    }
-  }
-
-  private setupShadow (): void {
-    const context = this.context;
-    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
-    const [r, g, b, a] = outlineColor;
-
-    if (context) {
-      context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.shadowBlur = shadowBlur;
-      context.shadowOffsetX = shadowOffsetX;
-      context.shadowOffsetY = -shadowOffsetY;
-    }
-  }
 }
 
 applyMixins(TextComponent, [TextComponentBase]);
