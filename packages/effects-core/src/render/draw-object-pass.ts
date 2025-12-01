@@ -25,11 +25,13 @@ export class DrawObjectPass extends RenderPass {
   }
 
   override execute (renderer: Renderer) {
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      depthAction: TextureLoadAction.clear,
-      stencilAction: TextureLoadAction.clear,
-    });
+    if (this.useRenderTarget) {
+      renderer.clear({
+        colorAction: TextureLoadAction.clear,
+        depthAction: TextureLoadAction.clear,
+        stencilAction: TextureLoadAction.clear,
+      });
+    }
 
     renderer.renderMeshes(this.meshes);
   }
