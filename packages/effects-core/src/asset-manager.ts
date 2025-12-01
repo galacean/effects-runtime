@@ -190,6 +190,7 @@ export class AssetManager implements Disposable {
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, fonts } = jsonScene;
 
+        await hookTimeInfo('selectVideoCodec', () => processVideoURL(jsonScene));
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
@@ -543,4 +544,31 @@ async function createTextureOptionsBySource (
   }
 
   throw new Error('Invalid texture options.');
+}
+async function processVideoURL (jsonScene: any): Promise<void> {
+  if (!jsonScene?.videos || !Array.isArray(jsonScene.videos)) {return;}
+
+  // 限制并发数
+  const concurrency = 3;
+
+  for (let i = 0; i < jsonScene.videos.length; i += concurrency) {
+    const batch = jsonScene.videos.slice(i, i + concurrency);
+
+    await Promise.all(batch.map(processVideo));
+  }
+}
+
+async function processVideo (video: any): Promise<void> {
+  const hevc = video.hevc as { url?: string, codec?: string } | undefined;
+
+  if (!hevc?.url || !hevc?.codec) {return;}
+  if (canPlayHevcCodec(hevc.codec)) {video.url = hevc.url;}
+}
+
+function canPlayHevcCodec (codecString: string): boolean {
+  const v = document.createElement('video');
+  const contentType = `video/mp4; codecs="${codecString}"`;
+  const result = v.canPlayType(contentType);
+
+  return result === 'probably' || result === 'maybe';
 }
