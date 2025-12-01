@@ -854,6 +854,46 @@ export class TextComponentBase {
   }
 
   /**
+   * 基于控制点直接计算补偿（针对自动生成的曲线路径）
+   * @returns Y轴补偿值
+   */
+  private calculateControlPointCompensation (): number {
+    // 只对自动生成的曲线路径有效（通过setCurvedTextPower设置的）
+    if (this.curvedTextPower === 0) {
+      return 0;
+    }
+
+    // 获取文本宽度
+    const fontScale = this.textStyle.fontScale;
+    let textWidth = 0;
+
+    if (this.context) {
+      this.context.font = this.getFontDesc(this.textStyle.fontSize * fontScale);
+      for (const char of this.char || '') {
+        textWidth += this.context.measureText(char).width;
+      }
+      const letterSpacingPx = this.textLayout.letterSpace * fontScale;
+
+      textWidth += (this.char?.length || 0) * letterSpacingPx;
+    }
+
+    if (textWidth <= 0) {
+      return 0;
+    }
+
+    // 计算控制点偏移量
+    // 这与 generateCurvedPath 中的计算保持一致
+    const controlOffset = this.curvedTextPower * textWidth * 0.01;
+
+    // 对于对称的贝塞尔曲线，中点的Y坐标是控制点Y坐标的 0.75 倍
+    // 但我们希望文本保持在基线位置（Y=0），所以需要补偿这个偏移
+    const midpointOffset = controlOffset * 0.75;
+
+    // 补偿值是中点偏移的相反数
+    return -midpointOffset;
+  }
+
+  /**
    * 构建路径上的字符信息（不直接绘制）
    * @param context Canvas渲染上下文
    * @param style 文本样式
@@ -895,6 +935,9 @@ export class TextComponentBase {
     // 清空原有的charsInfo
     charsInfo.length = 0;
 
+    // 计算补偿值
+    const compensation = this.calculateControlPointCompensation();
+
     // 构建路径字符信息
     let currentPos = offset;
     const charsArray: string[] = [];
@@ -924,7 +967,8 @@ export class TextComponentBase {
       charsArray.push(this.char[i]);
       charOffsetX.push(startPoint.x);
       rotations.push(anglePoint.angle);
-      curvedOffsetY.push(startPoint.y);
+      // 应用Y轴补偿
+      curvedOffsetY.push(startPoint.y + compensation);
 
       currentPos += charWidthOnPath;
     }
