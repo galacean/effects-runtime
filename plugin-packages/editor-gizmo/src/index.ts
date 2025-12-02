@@ -1,10 +1,10 @@
 import * as EFFECTS from '@galacean/effects';
-import { VFXItem, logger, registerPlugin } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { EditorGizmoPlugin } from './gizmo-loader';
 import { GizmoSubType } from './define';
 import { GeometryType, createGeometry } from './geometry';
 
-registerPlugin('editor-gizmo', EditorGizmoPlugin, VFXItem);
+registerPlugin('editor-gizmo', EditorGizmoPlugin);
 
 export { DirectionLightData } from './geometry/direction-light';
 export {

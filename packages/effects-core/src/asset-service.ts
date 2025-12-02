@@ -94,8 +94,6 @@ export class AssetService implements Disposable {
     scene: Scene,
     assets: Record<string, ImageLike>,
   ) {
-    this.engine.clearResources();
-
     for (const assetId of Object.keys(assets)) {
       const asset = assets[assetId];
       const engineAsset = new Asset(this.engine);

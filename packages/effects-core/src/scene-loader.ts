@@ -5,6 +5,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import type { Engine } from './engine';
 import type { Scene, SceneLoadOptions } from './scene';
 import { logger } from './utils';
+import { PluginSystem } from './plugin-system';
 
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
@@ -17,13 +18,16 @@ export class SceneLoader {
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     engine.assetManagers.push(assetManager);
 
-    const loadedScene = await assetManager.loadScene(scene, engine.renderer, { env: engine.env });
+    const loadedScene = await assetManager.loadScene(scene, engine.renderer);
+
+    engine.clearResources();
+
+    // 触发插件系统 pluginSystem 的回调 prepareResource
+    PluginSystem.loadResources(loadedScene, assetManager.options, engine);
 
     engine.assetService.prepareAssets(loadedScene, loadedScene.assets);
     engine.assetService.updateTextVariables(loadedScene, options.variables);
     engine.assetService.initializeTexture(loadedScene);
-
-    loadedScene.pluginSystem.precompile(loadedScene.jsonScene.compositions, engine.renderer);
 
     const composition = this.createComposition(loadedScene, engine, options);
 
