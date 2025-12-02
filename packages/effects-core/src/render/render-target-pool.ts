@@ -16,7 +16,9 @@ export class RenderTargetPool {
   private currentFrame = 0;
   private readonly maxUnusedFrames = 4;
 
-  constructor (public engine: Engine) {}
+  constructor (
+    public engine: Engine,
+  ) { }
 
   /**
    * 清理 RenderTarget 池
@@ -39,7 +41,14 @@ export class RenderTargetPool {
     }
   }
 
-  get (name: string, width: number, height: number, depthBuffer = 0, filter = FilterMode.Linear, format = RenderTextureFormat.RGBA32): Framebuffer {
+  get (
+    name: string,
+    width: number,
+    height: number,
+    depthBuffer = 0,
+    filter = FilterMode.Linear,
+    format = RenderTextureFormat.RGBA32,
+  ): Framebuffer {
     // 使用参数计算 hash 值作为缓存 key
     const hash = `${width}_${height}_${depthBuffer}_${filter}_${format}`;
 

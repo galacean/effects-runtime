@@ -1,7 +1,4 @@
-import type {
-  RenderPassDestroyOptions,
-  spec,
-} from '@galacean/effects-core';
+import type { RenderPassDestroyOptions, spec } from '@galacean/effects-core';
 import { RenderPass } from '@galacean/effects-core';
 
 /**

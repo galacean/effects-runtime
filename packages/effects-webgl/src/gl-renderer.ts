@@ -1,11 +1,9 @@
 import type {
   Disposable, Engine, Framebuffer, Geometry, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RendererComponent,
-  ShaderLibrary, math,
+  RenderPassClearAction, RendererComponent, ShaderLibrary, math,
 } from '@galacean/effects-core';
 import {
-  GPUCapability,
-  Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
+  GPUCapability, Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLFramebuffer } from './gl-framebuffer';

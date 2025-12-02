@@ -13,7 +13,6 @@ import { RenderTargetPool } from './render-target-pool';
 export class Renderer implements LostHandler, RestoreHandler {
   static create: (engine: Engine) => Renderer;
 
-  engine: Engine;
   /**
   * 存放渲染需要用到的数据
   */
@@ -21,8 +20,9 @@ export class Renderer implements LostHandler, RestoreHandler {
   renderTargetPool: RenderTargetPool;
   protected currentFramebuffer: Framebuffer | null = null;
 
-  constructor (engine: Engine) {
-    this.engine = engine;
+  constructor (
+    public engine: Engine,
+  ) {
     this.renderTargetPool = new RenderTargetPool(engine);
   }
 
@@ -113,7 +113,14 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
+  getTemporaryRT (
+    name: string,
+    width: number,
+    height: number,
+    depthBuffer: number,
+    filter: FilterMode,
+    format: RenderTextureFormat,
+  ): Framebuffer {
     return this.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
   }
 
