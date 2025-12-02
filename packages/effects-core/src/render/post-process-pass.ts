@@ -1,7 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { ShaderWithSource } from './shader';
 import { GLSLVersion } from './shader';
 import { glContext } from '../gl';
 import { Material } from '../material';
@@ -13,233 +12,161 @@ import type { RenderPassDestroyOptions } from './render-pass';
 import { RenderTargetHandle, RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
-import { FilterMode, RenderTextureFormat } from './framebuffer';
+import { FilterMode, type Framebuffer, RenderTextureFormat } from './framebuffer';
 
-// Bloom 阈值 Pass
-export class BloomThresholdPass extends RenderPass {
+// Bloom Pass - 包含阈值提取、高斯模糊（Down Sample 和 Up Sample）
+export class BloomPass extends RenderPass {
   sceneTextureHandle: RenderTargetHandle;
 
+  private readonly iterationCount: number;
+  private thresholdMaterial: Material;
+  private downSampleHMaterial: Material;
+  private downSampleVMaterial: Material;
+  private upSampleMaterial: Material;
+  private tempRTs: Framebuffer[] = [];
+  private thresholdRT: Framebuffer;
   private mainTexture: Texture;
-  private screenMesh: Mesh;
 
-  constructor (renderer: Renderer) {
+  constructor (renderer: Renderer, iterationCount = 4) {
     super(renderer);
-    const engine = this.renderer.engine;
-    const geometry = Geometry.create(engine, {
-      mode: glContext.TRIANGLE_STRIP,
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
-        },
-      },
-      drawCount: 4,
-    });
+    this.iterationCount = iterationCount;
 
-    const material = Material.create(engine, {
+    const engine = this.renderer.engine;
+
+    // Threshold material
+    this.thresholdMaterial = Material.create(engine, {
       shader: {
         vertex: screenMeshVert,
         fragment: thresholdFrag,
         glslVersion: GLSLVersion.GLSL1,
       },
     });
+    this.thresholdMaterial.blending = false;
+    this.thresholdMaterial.depthTest = false;
+    this.thresholdMaterial.culling = false;
 
-    material.blending = false;
-    material.depthTest = false;
-    material.culling = false;
-
-    this.screenMesh = Mesh.create(engine, {
-      geometry, material,
-      priority: 0,
+    // Down sample H material
+    this.downSampleHMaterial = Material.create(engine, {
+      shader: {
+        vertex: screenMeshVert,
+        fragment: gaussianDownHFrag,
+        glslVersion: GLSLVersion.GLSL1,
+      },
     });
+    this.downSampleHMaterial.blending = false;
+    this.downSampleHMaterial.depthTest = false;
+    this.downSampleHMaterial.culling = false;
+
+    // Down sample V material
+    this.downSampleVMaterial = Material.create(engine, {
+      shader: {
+        vertex: screenMeshVert,
+        fragment: gaussianDownVFrag,
+        glslVersion: GLSLVersion.GLSL1,
+      },
+    });
+    this.downSampleVMaterial.blending = false;
+    this.downSampleVMaterial.depthTest = false;
+    this.downSampleVMaterial.culling = false;
+
+    // Up sample material
+    this.upSampleMaterial = Material.create(engine, {
+      shader: {
+        vertex: screenMeshVert,
+        fragment: gaussianUpFrag,
+        glslVersion: GLSLVersion.GLSL1,
+      },
+    });
+    this.upSampleMaterial.blending = false;
+    this.upSampleMaterial.depthTest = false;
+    this.upSampleMaterial.culling = false;
+
     this.priority = 5000;
-    this.name = 'BloomThresholdPass';
+    this.name = 'BloomPass';
   }
 
   override configure (renderer: Renderer): void {
-    this.framebuffer = renderer.getTemporaryRT(this.name, renderer.getWidth(), renderer.getHeight(), 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+    // 获取场景纹理用于 ToneMappingPass
     this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
     this.sceneTextureHandle.texture = this.mainTexture;
-    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      depthAction: TextureLoadAction.clear,
-      stencilAction: TextureLoadAction.clear,
-    });
-    this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
+    const baseWidth = renderer.getWidth();
+    const baseHeight = renderer.getHeight();
+
+    // 1. Threshold pass - 提取高亮区域
     const threshold = renderer.renderingData.currentFrame.globalVolume?.bloom?.threshold ?? 1.0;
 
-    this.screenMesh.material.setFloat('_Threshold', threshold);
-    renderer.renderMeshes([this.screenMesh]);
+    this.thresholdRT = renderer.getTemporaryRT('_BloomThreshold', baseWidth, baseHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+    this.thresholdMaterial.setFloat('_Threshold', threshold);
+    renderer.blit(this.mainTexture, this.thresholdRT, this.thresholdMaterial);
+
+    let currentTexture = this.thresholdRT.getColorTextures()[0];
+
+    // 2. Down sample passes
+    for (let i = 0; i < this.iterationCount; i++) {
+      const downWidth = Math.floor(baseWidth / Math.pow(2, i + 1));
+      const downHeight = Math.floor(baseHeight / Math.pow(2, i + 1));
+
+      // Horizontal pass
+      const tempH = renderer.getTemporaryRT(`_BloomDownH${i}`, downWidth, downHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+
+      this.downSampleHMaterial.setVector2('_TextureSize', getTextureSize(currentTexture));
+      renderer.blit(currentTexture, tempH, this.downSampleHMaterial);
+
+      // Vertical pass
+      const tempV = renderer.getTemporaryRT(`_BloomDownV${i}`, downWidth, downHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+
+      this.downSampleVMaterial.setVector2('_TextureSize', getTextureSize(tempH.getColorTextures()[0]));
+      renderer.blit(tempH.getColorTextures()[0], tempV, this.downSampleVMaterial);
+
+      // 释放 H pass RT，保留 V pass RT 用于 up sample
+      renderer.releaseTemporaryRT(tempH);
+      this.tempRTs.push(tempV);
+      currentTexture = tempV.getColorTextures()[0];
+    }
+
+    // 释放 threshold RT
+    renderer.releaseTemporaryRT(this.thresholdRT);
+
+    // 3. Up sample passes
+    for (let i = this.iterationCount - 1; i > 0; i--) {
+      const upWidth = Math.floor(baseWidth / Math.pow(2, i - 1));
+      const upHeight = Math.floor(baseHeight / Math.pow(2, i - 1));
+
+      const tempUp = renderer.getTemporaryRT(`_BloomUp${i}`, upWidth, upHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+
+      // 获取下一层的 down sample 结果
+      const downSampleTexture = this.tempRTs[i - 1].getColorTextures()[0];
+
+      this.upSampleMaterial.setTexture('_GaussianDownTex', downSampleTexture);
+      this.upSampleMaterial.setVector2('_GaussianDownTextureSize', getTextureSize(downSampleTexture));
+      renderer.blit(currentTexture, tempUp, this.upSampleMaterial);
+
+      currentTexture = tempUp.getColorTextures()[0];
+      this.tempRTs.push(tempUp);
+    }
+
+    // 设置最终输出到当前 framebuffer
+    renderer.setFramebuffer(this.tempRTs[this.tempRTs.length - 1]);
   }
 
   override onCameraCleanup (renderer: Renderer): void {
-    if (this.framebuffer) {
-      renderer.releaseTemporaryRT(this.framebuffer);
+    // 释放所有临时 RT
+    for (let i = 0; i < this.tempRTs.length; i++) {
+      renderer.releaseTemporaryRT(this.tempRTs[i]);
     }
+
+    this.tempRTs = [];
   }
 
   override dispose (options?: RenderPassDestroyOptions): void {
+    this.thresholdMaterial?.dispose();
+    this.downSampleHMaterial?.dispose();
+    this.downSampleVMaterial?.dispose();
+    this.upSampleMaterial?.dispose();
     super.dispose(options);
-  }
-}
-
-export class HQGaussianDownSamplePass extends RenderPass {
-  gaussianResult: RenderTargetHandle;
-
-  private mainTexture: Texture;
-  private screenMesh: Mesh;
-  private readonly type: 'V' | 'H';
-  private readonly level: number;
-
-  constructor (renderer: Renderer,
-    type: 'V' | 'H',
-    level: number,
-  ) {
-    super(renderer);
-    this.type = type;
-    this.level = level;
-    const engine = this.renderer.engine;
-    const name = 'PostProcess';
-    const geometry = Geometry.create(engine, {
-      name,
-      mode: glContext.TRIANGLE_STRIP,
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
-        },
-      },
-      drawCount: 4,
-    });
-
-    const fragment = type === 'H' ? gaussianDownHFrag : gaussianDownVFrag;
-    const shader: ShaderWithSource = {
-      vertex: screenMeshVert,
-      fragment,
-      glslVersion: GLSLVersion.GLSL1,
-    };
-
-    const material = Material.create(engine, {
-      name,
-      shader,
-    });
-
-    material.blending = false;
-    material.depthTest = false;
-    material.culling = false;
-
-    this.screenMesh = Mesh.create(engine, {
-      name, geometry, material,
-      priority: 0,
-    });
-    this.priority = 5000;
-    this.name = 'GaussianDownPass' + type + level;
-  }
-
-  override configure (renderer: Renderer): void {
-    const width = Math.floor(this.renderer.getWidth() / Math.pow(2, this.level + 1));
-    const height = Math.floor(this.renderer.getHeight() / Math.pow(2, this.level + 1));
-
-    this.framebuffer = renderer.getTemporaryRT(this.name, width, height, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
-    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
-    renderer.setFramebuffer(this.framebuffer);
-  }
-
-  override execute (renderer: Renderer): void {
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      depthAction: TextureLoadAction.clear,
-      stencilAction: TextureLoadAction.clear,
-    });
-    this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
-    this.screenMesh.material.setVector2('_TextureSize', getTextureSize(this.mainTexture));
-    renderer.renderMeshes([this.screenMesh]);
-    if (this.type === 'V') {
-      this.gaussianResult.texture = renderer.getFramebuffer().getColorTextures()[0];
-    }
-  }
-
-  override onCameraCleanup (renderer: Renderer): void {
-    if (this.framebuffer) {
-      renderer.releaseTemporaryRT(this.framebuffer);
-    }
-  }
-}
-
-export class HQGaussianUpSamplePass extends RenderPass {
-  gaussianDownSampleResult: RenderTargetHandle;
-
-  private mainTexture: Texture;
-  private screenMesh: Mesh;
-  private readonly level: number;
-
-  constructor (renderer: Renderer, level: number) {
-    super(renderer);
-
-    this.level = level;
-    const name = 'PostProcess';
-    const engine = this.renderer.engine;
-    const geometry = Geometry.create(engine, {
-      name,
-      mode: glContext.TRIANGLE_STRIP,
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
-        },
-      },
-      drawCount: 4,
-    });
-    const shader: ShaderWithSource = { vertex: screenMeshVert, fragment: gaussianUpFrag };
-    const material = Material.create(engine, {
-      name,
-      shader,
-    });
-
-    material.blending = false;
-    material.depthTest = false;
-    material.culling = false;
-
-    this.screenMesh = Mesh.create(engine, {
-      name, geometry, material,
-      priority: 0,
-    });
-    this.priority = 5000;
-    this.name = 'GaussianUpPass' + level;
-  }
-
-  override configure (renderer: Renderer): void {
-    const width = Math.floor(this.renderer.getWidth() / Math.pow(2, this.level - 1));
-    const height = Math.floor(this.renderer.getHeight() / Math.pow(2, this.level - 1));
-
-    this.framebuffer = renderer.getTemporaryRT(this.name, width, height, 0, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
-    this.mainTexture = renderer.getFramebuffer().getColorTextures()[0];
-    renderer.setFramebuffer(this.framebuffer);
-  }
-
-  override execute (renderer: Renderer): void {
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      depthAction: TextureLoadAction.clear,
-      stencilAction: TextureLoadAction.clear,
-    });
-    this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
-    this.screenMesh.material.setTexture('_GaussianDownTex', this.gaussianDownSampleResult.texture);
-    this.screenMesh.material.setVector2('_GaussianDownTextureSize', getTextureSize(this.gaussianDownSampleResult.texture));
-    renderer.renderMeshes([this.screenMesh]);
-  }
-
-  override onCameraCleanup (renderer: Renderer): void {
-    if (this.framebuffer) {
-      renderer.releaseTemporaryRT(this.framebuffer);
-    }
   }
 }
 

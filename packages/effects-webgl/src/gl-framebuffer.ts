@@ -72,15 +72,24 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   }
 
   private updateAttachmentTextures () {
+    const width = this.viewport[2];
+    const height = this.viewport[3];
+
     this.attachmentTextures.length = 0;
     this.colorTextures.forEach(tex => {
+      const data = { width, height, data: new Uint8Array(0) };
+
       tex.initialize();
+      tex.update({ data });
       addItem(this.attachmentTextures, tex.textureBuffer);
     });
+
     if (this.stencilTexture) {
       addItem(this.attachmentTextures, this.stencilTexture.textureBuffer);
     }
+
     if (this.depthTexture) {
+      this.depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
       addItem(this.attachmentTextures, this.depthTexture.textureBuffer);
     }
   }
