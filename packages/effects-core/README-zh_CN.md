@@ -1,164 +1,302 @@
 # Galacean Effects Core
 
+Galacean Effects 的核心运行时库，负责动效的资源加载、场景管理和渲染。
+
 ## 基本概念
-合成（composition）是 Galacean Effects 中动画播放的单位，抽象类 `Composition` 管理着一段动画从数据解析（JSON -> VFXItem -> mesh）到渲染帧（`renderFrame`）和渲染通道 (renderPass) 的创建、更新与销毁。
 
-每个合成用到的动画数据来自不同类型的元素（`VFXItem`）和其对应的组件（`Component`），包括相机属性、若干图层、粒子和交互元素；
-合成创建时，会完成各类数据资产的加载、元素（`VFXItem`）和其对应的组件（`Component`）的创建、动画纹理贴图（`Texture`）的加载和创建, `renderFrame` 和 `renderPass` 的初始化；
-元素在生命周期开始时，对应的 mesh 会被合成添加到默认的 `renderPass` 中；
-生命周期进行时，mesh 中包含的`Geometry` 和 `Material` 等数据会被更新；
-当需要进行后处理时，mesh 会被拆解到合适的 `renderPass` 中；
-生命周期结束后，对应的 mesh 会从 `renderFrame` 中移除。
+合成（Composition）是 Galacean Effects 中动画播放的基本单位。`Composition` 类管理动画从数据解析（JSON -> VFXItem -> RendererComponent）到渲染帧（`RenderFrame`）和渲染通道（`RenderPass`）的完整生命周期。
 
-要完成动画的播放，引擎需要通过 `renderFrame` 获取 mesh 并添加到场景上，在渲染循环中不断调用 `Composition` 的 `update` 函数完成数据的刷新。
+### 核心架构
 
-## 流程
-### 1、资源加载和创建
-- 资源下载 [AssetManager](./src/asset-manager.ts)：
-动画播放前需要对 JSON 和其中的二进制（`processBins`）、图像（`processImages`）等资源进行下载，图像下载后会返回用于创建 texture 的参数。除了基本的资源下载外，还支持以下功能：
-  1. 根据渲染分级选择性下载资源；
-  2. 加载图像后根据配置进行图像/文字的替换，在 Canvas 上绘制后保存成 `imageData` 对象；
-  3. 启用 gl 扩展 `KHR_parallel_shader_compile`，在资源加载完成后对 shader 进行编译；
-- 资产创建 [engine](./src/engine.ts)
-通过网络加载好的场景数据，需要挂载到`engine`对象(`addPackageDatas`)上并通过`engine`对象创建实例。
-  1. 纹理创建 [Texture](./src/texture/texture.ts)：`Texture` 抽象类中的 `create` 和 `createWithData` 静态方法用于根据上面返回的参数创建真正的 texture
-  纹理对象，目前的纹理对象可能基于的创建类型在 `TextureSourceType` 中枚举。
-  2. 元素创建 [VFXItem](./src/vfx-item.ts)：调用 `engine.createVFXItems()` 创建 VFXItem 实例。
-
-### 2、动画播放
-- [Composition](./src/composition.ts)：合成管理着动画播放的数据处理与渲染设置，引擎需要通过 `composition.renderFrame` 获取 mesh，并把获取到的 mesh 添加场景中。
-  1. 构造函数中会完成以下函数的调用，接入时无需再调用：
-      - 插件系统 `pluginSystem.initializeComposition()`
-      - `composition.createRenderFrame()`：`renderFrame` 的创建和初始化
-      - `composition.reset()`：动画数据解析、Mesh 等渲染实例的状态初始化
-      - `composition.play()`：合成播放
-  2. `update` 方法：用于调用 `renderFrame` 的方法增加/修改/删除 mesh，驱动 `VFXItem` 更新并刷新顶点数据、uniform 变量值等，以下函数会被调用，需要实现：
-     - `updateVideo`：更新视频帧，用于视频播放使用
-     - `getRendererOptions`：返回使用数据创建的空白 `Texture`
-     - `reloadTexture/offloadTexture`：纹理的 `reload` 和 `offload`
-  3. 添加到场景中的 mesh 或渲染对象通过 `renderFrame` 获取，在 `Composition` 根据引擎需要自由设计接口即可。
-  4. `dispose` 方法：在合成生命周期结束时，会根据结束行为调用该函数，执行 `VFXItem` 的合成销毁回调，同时会把 mesh、texture 等对象一并销毁。
-
-- [RenderFrame](./src/render/render-frame.ts)：`RenderFrame` 可以理解为合成每帧对应的渲染数据对象，除了管理 `renderPass`，也保存了合成对应的相机属性、公共 uniform 变量表
-（semantics）等数据；各类型元素对应的 mesh 会通过 `renderFrame` 的 `addMeshToDefaultRenderPass` 和 `removeMeshFromDefaultRenderPass` 来添加和移除。
-mesh 会根据 `priority` 属性被添加到 `renderPass` 合适位置上。
-  1. `addMeshToDefaultRenderPass/removeMeshFromDefaultRenderPass`：
-     - 对于不含滤镜元素的合成，引擎可以通过 `defRenderPass` 管理全部 mesh，也可以直接把传递进来的 mesh 放置到引擎自己的场景，也可以在此完成引擎需要的 mesh 组织管理；
-     - 对于包含滤镜元素的合成，涉及到后处理，effects-core 会调用 `splitDefaultRenderPassByMesh` 函数利用切分参数把对 `renderPass` 进行切分。此时引擎就需要遍历 `renderFrame._renderPasses` 来获取 mesh 并添加到场景；
-     - 添加 mesh 时 material 用到的公共 uniform 需要通过 `mesh.material.uniformSemantics` 获取，包括 MVP 变换涉及的矩阵、使用的 attachment 等；
-  2. `setEditorTransformUniform`：用于设置元素在模型变换后的位移/缩放变换，引擎可以不理解这个概念，把值设置到 `semantics[EDITOR_TRANSFORM]` 上即可。
-
-- [RenderPass](./src/render/render-pass.ts)：添加到场景中的 mesh 可以通过 `renderPass.meshes` 获取，渲染通道 `renderPass` 包含当前通道的 mesh、渲染前后清除缓冲区的操作类型和附件，用到颜色、深度和模板附件。`delegate` 属性用于指定 `renderPass` 在渲染前后的回调，在 [filters](./src/filters) 中定义，引擎需要在真正渲染 mesh 前执行这些回调确保滤镜的正确运行。
-
-- [Mesh](./src/render/mesh.ts)：
-每个 `VFXItem` 在初始化时会调用 `Mesh.create()` 函数, 传入 geometry、material 等参数，并通过 `priority` 设置/获取当前 mesh 对应的渲染顺序。
-  1. 静态 `create` 方法 用于创建一个新的引擎能够渲染的 `Mesh` 对象。引擎需要在这里把 geometry、material 等对象添加到 mesh 上。
-     - 要渲染的图元类型可以通过传入的 `geometry.mode` 获取
-  2. `priority` 的 `setter` 和 `getter` 函数用于设置当前 mesh 的渲染顺序，`priority` 值小的 mesh 应该比值大的先绘制。
-  3. `setVisible/getVisible` 设置 mesh 的可见性。
-
-> Tips
->
-> - 需要使用元素组件上的方法时，可以通过 `VFXItem.getComponent(XXXComponent)` 进行获取。
-> - 若要获取当前 `VFXItem` 对应的 mesh，可以调用 `VFXItem.content.mesh` 进行获取。
-
-### 3、[Geometry](./src/render/geometry.ts)
-每个 `VFXItem` 在初始化时会调用 `Geometry.create()` 函数, 传入绘制类型、元素的顶点和索引数据，并在每帧更新时传入新的顶点数据传入的 attribute 数据中。
-1. 静态 `create` 方法：处理传入的 attribute 数据，若包含 dataSource 属性，则表示该 attribute 与 dataSource 共用buffer
-   - `size`、`offset`、`stride` 会一并传入，data 的长度为0，引擎如不允许动态修改长 GPU 缓存长度，需要使用 `maxVertex` 参数创建初始化数组。
-2. `setAttributeData/getAttributeData`：设置/获取指定名字的 attribute 数据
-3. `setAttributeSubData`：设置 attribute 部分更新
-4. `getIndexData/setIndexData`：设置/获取索引数据
-5. `setDrawCount/getDrawCount`：设置/获取 drawCount
-
-涉及的 attribute：
-#### 图层 sprite
 ```
-1. aPoint 顶点数据，Float32Array
-2. aIndex Float32Array, 与aPoint共用buffer
-3. 索引数据： Uint16Array
+Engine
+  ├── Composition（合成）
+  │     ├── VFXItem（元素）
+  │     │     ├── Component（组件）
+  │     │     │     └── RendererComponent（渲染组件）
+  │     │     └── Transform（变换）
+  │     ├── RenderFrame（渲染帧）
+  │     │     └── RenderPass（渲染通道）
+  │     └── Camera（相机）
+  └── 资源管理
+        ├── Texture（纹理）
+        ├── Material（材质）
+        └── Geometry（几何体）
 ```
 
-#### 粒子 particle
-```
-1. aPos Float32Array
-2. aVel Float32Array 与aPos共用buffer
-3. aDirX Float32Array 与aPos共用buffer
-4. aDirY Float32Array 与aPos共用buffer
-5. aRot Float32Array 与aPos共用buffer
-6. aSeed Float32Array 与aRot共用buffer
-7. aColor Float32Array 与aRot共用buffer
-8. aOffset Float32Array
-9. aSprite Float32Array
-10. 索引数据：Uint16Array
+每个合成包含不同类型的元素（`VFXItem`）及其组件（`Component`），包括：
+- 相机组件
+- 图层（Sprite）组件
+- 粒子（Particle）系统
+- 文本组件
+- 交互组件
+
+合成创建时会完成：
+1. 数据资产的加载
+2. 元素（`VFXItem`）及其组件的创建
+3. 纹理（`Texture`）的加载和创建
+4. `RenderFrame` 和 `RenderPass` 的初始化
+
+## 核心模块
+
+### 1. 引擎 [Engine](./src/engine.ts)
+
+`Engine` 是核心入口，负责管理所有 GPU 资源和合成的生命周期。
+
+```typescript
+import { Engine } from '@galacean/effects-core';
+
+// 创建引擎
+const engine = Engine.create(canvas, {
+  fps: 60,
+  pixelRatio: window.devicePixelRatio,
+});
 ```
 
-#### 拖尾 particle-trail
-```
-1. aColor Float32Array
-2. aSeed  Float32Array  与aColor共用buffer
-3. aInfo  Float32Array  与aColor共用buffer
-4. aPos   Float32Array  与aColor共用buffer
-5. aTime  Float32Array
-6. aDir   Float32Array
-7. aTrailStart Float32Array
-8. aTrailStartIndex Float32Array
+主要功能：
+- 管理渲染器（`Renderer`）
+- 管理 GPU 资源（纹理、材质、几何体）
+- 管理合成的创建和销毁
+- 提供计时器（`Ticker`）驱动渲染循环
+- 处理交互事件
+
+### 2. 资源管理 [AssetManager](./src/asset-manager.ts)
+
+负责加载动效所需的所有资源：
+
+```typescript
+import { AssetManager } from '@galacean/effects-core';
+
+const assetManager = new AssetManager(options);
 ```
 
-### 4、[Material](./src/material/material.ts)
-每个 `VFXItem` 在初始化时会调用 `Material.create()` 函数, 传入 shader、uniformSemantics，material 的 states 和uniform 数据不会在构造参数中传入，会在 material 创建后通过函数设置。
-1. 静态 `create` 方法：需要处理传入的 shader 文本和设置 `uniformSemantics`
-2. states 的 `setter/getter` 方法实现：传入的常量类型为 `glContext`, 引擎可能需要转换成引擎自己定义的常量；
-3. uniform 的 `set[dataType]/get[dataType]` 方法，effects-core 会根据 uniform 的类型调用对应的方法设置数据
+支持的功能：
+1. JSON 和二进制资源的加载
+2. 图像和视频资源的加载
+3. 根据渲染等级选择性下载资源
+4. 图像/文字模板替换
+5. 字体加载（通过 `AssetManager.loadFontFamily`）
 
-> ⚠️注意:
-> **目前 ubo 的相关调用已废弃，`material-data-block` 不需要实现**
+### 3. 合成 [Composition](./src/composition.ts)
 
-涉及的 uniform 及其类型：
-#### 图层 sprite
-```
-1. uMainData mat4
-2. uTexParams vec4
-3. uTexOffset vec4
-4. uSampler\[i] sampler2D
-5. uSamplerPre sampler2D
-6. uFeatherSampler sampler2D
+管理动画播放的数据处理与渲染：
+
+```typescript
+const composition = new Composition(props, scene);
+
+// 播放控制
+composition.play();
+composition.pause();
+composition.resume();
+
+// 更新
+composition.update(deltaTime);
+
+// 销毁
+composition.dispose();
 ```
 
-#### 粒子 particle
+主要属性：
+- `renderFrame`：当前帧的渲染数据对象
+- `rootItem`：合成根元素
+- `camera`：合成相机
+- `speed`：播放速度
+
+### 4. VFX 元素 [VFXItem](./src/vfx-item.ts)
+
+所有动效元素的基类，支持组件化架构：
+
+```typescript
+// 获取组件
+const component = item.getComponent(SpriteComponent);
+
+// 遍历子元素
+item.children.forEach(child => {
+  // ...
+});
+
+// 变换操作
+item.transform.setPosition(x, y, z);
 ```
-1. uSprite vec4
-2. uParams vec4
-3. uAcceleration vec4
-4. uGravityModifierValue vec4
-5. uOpacityOverLifetimeValue vec4
-6. uRXByLifeTimeValue vec4
-7. uRYByLifeTimeValue vec4
-8. uRZByLifeTimeValue vec4
-9. uLinearXByLifetimeValue vec4
-10. uLinearYByLifetimeValue vec4
-11. uLinearZByLifetimeValue vec4
-12. uSpeedLifetimeValue vec4
-13. uOrbXByLifetimeValue vec4
-14. uOrbYByLifetimeValue vec4
-15. uOrbZByLifetimeValue vec4
-16. uSizeByLifetimeValue vec4
-17. uSizeYByLifetimeValue vec4
-18. uColorParams vec4
-19. uFSprite vec4
-20. uPreviewColor vec4
-21. uVCurveValues vec4Array
-22. uFCurveValues vec4
-23. uFinalTarget vec3
-24. uForceCurve vec4
-25. uOrbCenter vec3
-26. uTexOffset vec2
-27. uPeriodValue vec4
-28. uMovementValue vec4
-29. uStrengthValue vec4
-30. uWaveParams vec4
+
+主要属性：
+- `transform`：位置、旋转、缩放变换
+- `components`：组件列表
+- `children`：子元素列表
+
+### 5. 组件系统 [Component](./src/components/component.ts)
+
+组件是附加到 VFXItem 上的功能单元：
+
+```typescript
+abstract class Component extends EffectsObject {
+  item: VFXItem;           // 所属元素
+  enabled: boolean;        // 是否启用
+  
+  onAwake() {}             // 初始化
+  onEnable() {}            // 启用时
+  onDisable() {}           // 禁用时
+  onStart() {}             // 首次更新前
+  onUpdate(dt: number) {}  // 每帧更新
+  onLateUpdate(dt: number) {} // 延迟更新
+  onDestroy() {}           // 销毁时
+}
 ```
+
+### 6. 渲染组件 [RendererComponent](./src/components/renderer-component.ts)
+
+所有渲染组件的基类，负责将可渲染对象添加到渲染通道：
+
+```typescript
+class RendererComponent extends Component {
+  material: Material;      // 材质
+  materials: Material[];   // 材质列表
+  priority: number;        // 渲染优先级
+  
+  render(renderer: Renderer): void {}  // 渲染方法
+}
+```
+
+当组件启用时，会自动添加到 `RenderFrame` 的默认渲染通道中。
+
+### 7. 渲染帧 [RenderFrame](./src/render/render-frame.ts)
+
+每帧对应的渲染数据对象，管理渲染通道和全局 uniform：
+
+```typescript
+interface RenderFrameOptions {
+  camera: Camera,
+  renderer: Renderer,
+  globalVolume?: PostProcessVolume,
+  postProcessingEnabled?: boolean,
+}
+```
+
+主要功能：
+- 管理 `RenderPass` 列表
+- 存储相机属性
+- 管理全局 uniform 变量（`GlobalUniforms`）
+- 支持后处理（Bloom、ToneMapping）
+
+主要方法：
+- `addMeshToDefaultRenderPass(mesh: RendererComponent)`：添加渲染组件到默认渲染通道
+- `removeMeshFromDefaultRenderPass(mesh: RendererComponent)`：从默认渲染通道移除渲染组件
+
+### 8. 渲染通道 [RenderPass](./src/render/render-pass.ts)
+
+管理一组需要渲染的对象：
+
+```typescript
+interface RenderPassClearAction {
+  clearColor?: vec4,
+  colorAction?: TextureLoadAction,
+  clearDepth?: number,
+  depthAction?: TextureLoadAction,
+}
+```
+
+功能：
+- 管理渲染对象列表
+- 配置颜色、深度、模板附件
+- 设置清除行为
+
+### 9. 几何体 [Geometry](./src/render/geometry.ts)
+
+管理顶点和索引数据的抽象类：
+
+```typescript
+const geometry = Geometry.create(engine, {
+  attributes: {
+    aPosition: { size: 3, data: positions },
+    aTexCoord: { size: 2, data: texCoords },
+  },
+  indices: { data: indices },
+  mode: WebGLRenderingContext.TRIANGLES,
+});
+
+// 更新数据
+geometry.setAttributeData('aPosition', newPositions);
+geometry.setAttributeSubData('aPosition', offset, partialData);
+geometry.setIndexData(newIndices);
+geometry.setDrawCount(count);
+```
+
+### 10. 材质 [Material](./src/material/material.ts)
+
+管理着色器和渲染状态的抽象类：
+
+```typescript
+const material = Material.create(engine, {
+  shader: shaderSource,
+  uniformValues: {
+    uColor: [1, 0, 0, 1],
+  },
+});
+
+// 设置渲染状态
+material.blending = true;
+material.depthTest = true;
+material.depthMask = true;
+```
+
+渲染状态属性：
+- `blending`：颜色混合开关
+- `blendFunction`：混合函数
+- `depthTest`：深度测试开关
+- `depthMask`：深度写入开关
+- `stencilTest`：模板测试开关
+- `culling`：背面剔除开关
+
+### 11. 纹理 [Texture](./src/texture/texture.ts)
+
+管理 GPU 纹理资源的抽象类：
+
+```typescript
+// 从图片创建
+const texture = await Texture.fromImage(url, engine);
+
+// 从视频创建
+const texture = await Texture.fromVideo(url, engine);
+
+// 从数据创建
+const texture = Texture.create(engine, {
+  sourceType: TextureSourceType.data,
+  data: {
+    width: 256,
+    height: 256,
+    data: pixelData,
+  },
+});
+```
+
+## 插件系统
+
+支持通过插件扩展功能：
+
+```typescript
+import { registerPlugin } from '@galacean/effects-core';
+
+registerPlugin('custom', CustomLoader);
+```
+
+内置插件：
+- `sprite`：图层渲染
+- `particle`：粒子系统
+- `text`：文本渲染
+- `interact`：交互处理
+- `camera`：相机控制
+
+## 安装
+
+```bash
+npm install @galacean/effects-core
+```
+
+## 依赖
+
+- `@galacean/effects-specification`：数据规范定义
+- `@galacean/effects-math`：数学库
 
 ## API 文档
 
-[Galacean Effects Core API 文档](https://www.galacean.com/effects/api/effects-core)
+详细 API 文档请访问：[Galacean Effects API 文档](https://galacean.antgroup.com/effects/#/api)
