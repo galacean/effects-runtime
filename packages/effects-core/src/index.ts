@@ -3,7 +3,6 @@ import {
   CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
 import { logger } from './utils';
-import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
 export * as spec from '@galacean/effects-specification';
@@ -51,12 +50,12 @@ export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
 
-registerPlugin('camera', CameraVFXItemLoader, VFXItem);
-registerPlugin('text', TextLoader, VFXItem);
-registerPlugin('sprite', SpriteLoader, VFXItem);
-registerPlugin('particle', ParticleLoader, VFXItem);
-registerPlugin('cal', CalculateLoader, VFXItem);
-registerPlugin('interact', InteractLoader, VFXItem);
+registerPlugin('camera', CameraVFXItemLoader);
+registerPlugin('text', TextLoader);
+registerPlugin('sprite', SpriteLoader);
+registerPlugin('particle', ParticleLoader);
+registerPlugin('cal', CalculateLoader);
+registerPlugin('interact', InteractLoader);
 
 export const version = __VERSION__;
 

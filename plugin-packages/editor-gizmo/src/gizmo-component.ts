@@ -2,7 +2,7 @@ import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, RenderPassOpti
 import {
   RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
   TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
-  effectsClass, glContext, math, serialize, spec,
+  effectsClass, glContext, math, serialize, spec, PluginSystem,
 } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
@@ -67,7 +67,7 @@ export class GizmoComponent extends RendererComponent {
     }
     const composition = this.item.composition;
 
-    for (const plugin of composition?.pluginSystem.plugins ?? []) {
+    for (const plugin of PluginSystem.getPlugins() ?? []) {
       if (plugin.name === 'editor-gizmo') {
         this.gizmoPlugin = plugin as EditorGizmoPlugin;
       }

@@ -1,4 +1,4 @@
-import type { SceneLoadOptions } from '@galacean/effects';
+import type { Scene, SceneLoadOptions } from '@galacean/effects';
 import { spec, AbstractPlugin } from '@galacean/effects';
 import { processMultimedia } from '../utils';
 
@@ -7,16 +7,17 @@ import { processMultimedia } from '../utils';
  */
 export class VideoLoader extends AbstractPlugin {
 
-  static override async processAssets (
-    json: spec.JSONScene,
+  override async processAssets (
+    scene: Scene,
     options: SceneLoadOptions = {},
   ) {
-    const { videos = [] } = json;
+    const { videos = [] } = scene.jsonScene;
     const loadedAssets = await processMultimedia<HTMLVideoElement>(videos, spec.MultimediaType.video, options);
 
-    return {
-      assets: videos,
-      loadedAssets,
-    };
+    for (let i = 0;i < videos.length;i++) {
+      const video = videos[i];
+
+      scene.assets[video.id] = loadedAssets[i];
+    }
   }
 }
