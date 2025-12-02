@@ -9,6 +9,8 @@ import type { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
+import { EffectFactory } from './effect-factory';
+import type { TextEffect } from './fancy-types';
 
 /**
  * 纯文本组件特有 API
@@ -35,6 +37,7 @@ export class TextComponentBase {
   text: string;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
+  effects: TextEffect[];
 
   // 通用状态字段
   isDirty = true;
@@ -87,10 +90,8 @@ export class TextComponentBase {
   }
 
   setTextColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.textColor === value) {
-      return;
-    }
-    this.textStyle.textColor = value;
+    this.textStyle.setTextColor(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -124,10 +125,8 @@ export class TextComponentBase {
   }
 
   setOutlineColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.outlineColor === value) {
-      return;
-    }
-    this.textStyle.outlineColor = value;
+    this.textStyle.setOutlineColor(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 

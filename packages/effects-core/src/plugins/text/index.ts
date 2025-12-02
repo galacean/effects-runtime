@@ -4,3 +4,8 @@ export * from './text-layout';
 export * from './text-style';
 export * from './text-loader';
 export * from './text-component-base';
+export * from './fancy-types';
+export * from './text-effects';
+export * from './effect-factory';
+export * from './render-with-effects';
+export * from './fancy-text-configs';

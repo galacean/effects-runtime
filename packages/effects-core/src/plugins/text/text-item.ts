@@ -10,6 +10,9 @@ import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import type { ITextComponent } from './text-component-base';
 import { TextComponentBase } from './text-component-base';
+import { EffectFactory } from './effect-factory';
+import type { CharInfo } from './render-with-effects';
+import { renderWithEffects } from './render-with-effects';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -17,22 +20,6 @@ export const DEFAULT_FONTS = [
   'monospace',
   'courier',
 ];
-
-interface CharInfo {
-  /**
-   * 段落 y 值
-   */
-  y: number,
-  /**
-   * 段落字符
-   */
-  chars: string[],
-  charOffsetX: number[],
-  /**
-   * 段落宽度
-   */
-  width: number,
-}
 
 export interface TextComponent extends TextComponentBase { }
 
@@ -53,6 +40,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
+  effects: any[];
 
   /**
    * 每一行文本的最大宽度
@@ -169,6 +157,9 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text);
+
+    // 初始化 effects
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
   }
 
   getLineCount (text: string): number {
@@ -279,10 +270,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    * @returns
    */
   setTextColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.textColor === value) {
-      return;
-    }
-    this.textStyle.textColor = value;
+    this.textStyle.setTextColor(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -292,10 +281,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    * @returns
    */
   setOutlineColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.outlineColor === value) {
-      return;
-    }
-    this.textStyle.outlineColor = value;
+    this.textStyle.setOutlineColor(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
@@ -352,24 +339,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         context.font = style.fontDesc;
       }
 
-      if (style.hasShadow) {
-        this.setupShadow();
-      }
-
-      if (style.isOutlined) {
-        this.setupOutline();
-      }
-
-      // 文本颜色 - 直接使用 vec4 原值，不乘以 255
-      const [r, g, b, a] = style.textColor;
-
-      context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-
+      // 计算字符信息
       const charsInfo: CharInfo[] = [];
       let x = 0;
       let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
-      let charsArray = [];
-      let charOffsetX = [];
+      let charsArray: string[] = [];
+      let charOffsetX: number[] = [];
 
       for (let i = 0; i < char.length; i++) {
         const str = char[i];
@@ -405,20 +380,15 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         charOffsetX,
       });
 
-      charsInfo.forEach(charInfo => {
-        const x = layout.getOffsetX(style, charInfo.width);
-
-        charInfo.chars.forEach((str, i) => {
-          if (style.isOutlined) {
-            context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-          }
-          context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
-        });
-      });
-
-      if (style.hasShadow) {
-        context.shadowColor = 'transparent';
-      }
+      // 使用花字系统渲染文本
+      renderWithEffects(
+        this.canvas,
+        context,
+        this.textStyle,
+        this.textLayout,
+        charsInfo,
+        this.effects,
+      );
     });
 
     this.isDirty = false;
@@ -453,54 +423,77 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   }
 
   setOutlineWidth (value: number): void {
-    const v = Math.max(0, Number(value) || 0);
-
-    if (this.textStyle.outlineWidth === v) {
-      return;
-    }
-    this.textStyle.outlineWidth = v;
+    this.textStyle.setOutlineWidth(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
   setShadowBlur (value: number): void {
-    const v = Math.max(0, Number(value) || 0);
-
-    if (this.textStyle.shadowBlur === v) {
-      return;
-    }
-    this.textStyle.shadowBlur = v;
+    this.textStyle.setShadowBlur(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
   // setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
   setShadowColor (value: spec.RGBAColorValue): void {
-    const v = value ?? [0, 0, 0, 1];
-
-    if (this.textStyle.shadowColor === v) {
-      return;
-    }
-    this.textStyle.shadowColor = v;
+    this.textStyle.setShadowColor(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
   setShadowOffsetX (value: number): void {
-    const v = Number(value) || 0;
-
-    if (this.textStyle.shadowOffsetX === v) {
-      return;
-    }
-    this.textStyle.shadowOffsetX = v;
+    this.textStyle.setShadowOffsetX(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
   }
 
   setShadowOffsetY (value: number): void {
-    const v = Number(value) || 0;
-
-    if (this.textStyle.shadowOffsetY === v) {
-      return;
-    }
-    this.textStyle.shadowOffsetY = v;
+    this.textStyle.setShadowOffsetY(value);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
     this.isDirty = true;
+  }
+
+  /**
+   * 设置花字预设
+   */
+  setPresetEffect (presetName: string): void {
+    this.textStyle.setPresetEffect(presetName);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置描边启用状态
+   */
+  setStrokeEnabled (enabled: boolean): void {
+    this.textStyle.setStrokeEnabled(enabled);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置阴影启用状态
+   */
+  setShadowEnabled (enabled: boolean): void {
+    this.textStyle.setShadowEnabled(enabled);
+    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置曲线文本强度
+   */
+  setCurvedTextPower (power: number): void {
+    // 曲线文本功能需要额外实现
+    // 这里只是占位符
+    this.isDirty = true;
+  }
+
+  /**
+   * 获取当前花字配置
+   */
+  getCurrentFancyTextConfig (): any {
+    return this.textStyle.getCurrentFancyTextConfig();
   }
 }
 
