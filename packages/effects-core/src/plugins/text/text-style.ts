@@ -277,7 +277,7 @@ const _fancyTextConfigs: Record<string, FancyTextStyle> = {
   },
 };
 
-const _currentEffect = 'multi-stroke';
+const _currentEffect = 'none';
 
 export class TextStyle {
   /**

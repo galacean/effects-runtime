@@ -979,8 +979,8 @@ export class TextComponentBase {
     // 文本颜色只是占位色，真正颜色由效果系统控制
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
 
-    context.fillStyle = 'rgba(255, 0, 0, 1)';
-    context.fillRect(0, 0, canvasWidth, canvasHeight);
+    // context.fillStyle = 'rgba(255, 0, 0, 1)';
+    // context.fillRect(0, 0, canvasWidth, canvasHeight);
     const charsInfo: CharInfo[] = [];
 
     // 8. 用 offset 补偿排版
