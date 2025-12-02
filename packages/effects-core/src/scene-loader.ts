@@ -18,7 +18,7 @@ export class SceneLoader {
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     engine.assetManagers.push(assetManager);
 
-    const loadedScene = await assetManager.loadScene(scene, engine.renderer, { env: engine.env });
+    const loadedScene = await assetManager.loadScene(scene, engine.renderer);
 
     engine.clearResources();
 

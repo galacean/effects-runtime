@@ -117,11 +117,7 @@ export class AssetManager implements Disposable {
    * @param options - 扩展参数
    * @returns
    */
-  async loadScene (
-    url: Scene.LoadType,
-    renderer?: Renderer,
-    options?: { env?: string },
-  ): Promise<Scene> {
+  async loadScene (url: Scene.LoadType, renderer?: Renderer): Promise<Scene> {
     let rawJSON: Scene.LoadType;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
@@ -201,7 +197,7 @@ export class AssetManager implements Disposable {
           assets: this.assets,
         };
 
-        await hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(scene, this.options));
+        await hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(scene));
 
         const { bins = [], images, fonts } = jsonScene;
 
@@ -372,11 +368,8 @@ export class AssetManager implements Disposable {
     return loadedImages;
   }
 
-  private async processPluginAssets (
-    scene: Scene,
-    options?: SceneLoadOptions,
-  ) {
-    await PluginSystem.processAssets(scene, options);
+  private async processPluginAssets (scene: Scene) {
+    await PluginSystem.processAssets(scene, this.options);
   }
 
   private async processTextures (
