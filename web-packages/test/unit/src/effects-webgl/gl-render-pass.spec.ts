@@ -23,257 +23,6 @@ describe('webgl/gl-render-pass', () => {
     engine = null;
   });
 
-  it('reset gl viewport', () => {
-    const rp1 = new RenderPass(renderer, {
-      attachments: [{ texture: { format: gl.RGBA } }],
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    rp1.configure(renderer);
-    const vp0 = gl.getParameter(gl.VIEWPORT);
-
-    expect(Array.from(vp0)).is.deep.equal([0, 0, 128, 256]);
-    expect(rp1.attachments[0].texture.width).is.eql(128);
-    expect(rp1.attachments[0].texture.height).is.eql(256);
-    const rp2 = new RenderPass(renderer, {
-      name: 'draw',
-      meshes: [],
-    });
-
-    rp2.initialize(renderer);
-
-    rp2.configure(renderer);
-    const vp1 = Array.from(gl.getParameter(gl.VIEWPORT));
-
-    expect(vp1).is.deep.equal([
-      0,
-      0,
-      gl.drawingBufferWidth,
-      gl.drawingBufferHeight,
-    ]);
-    rp1.dispose();
-    rp2.dispose();
-  });
-
-  it('fbo accept texture as color attachment', () => {
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const rp1 = new RenderPass(renderer, {
-      attachments: [{ texture }],
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-
-    rp1.configure(renderer);
-    expect(texture.width).is.eql(128);
-    expect(texture.height).is.eql(256);
-    const rp2 = new RenderPass(renderer, {
-      attachments: [{ texture }],
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp2.initialize(renderer);
-
-    rp2.configure(renderer);
-    expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
-
-    texture.destroyed = chai.spy(texture.destroyed);
-    rp2.dispose({ colorAttachment: RenderPassDestroyAttachmentType.keepExternal });
-    expect(texture.destroyed).not.has.been.called.once;
-    expect(texture.width).is.eql(128);
-    expect(texture.height).is.eql(256);
-    rp1.dispose();
-    expect(texture.destroyed).is.true;
-
-    expect(texture.width).is.eql(0);
-    expect(texture.height).is.eql(0);
-  });
-
-  it('render pass reset attachments', () => {
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    rp1.resetAttachments({
-      attachments: [{ texture: { format: gl.RGBA } }],
-    });
-    expect(rp1.attachments.length).is.eql(1);
-    const colorAttachment = rp1.attachments[0];
-
-    expect(colorAttachment.size).to.deep.equal([gl.drawingBufferWidth, gl.drawingBufferHeight]);
-    rp1.dispose();
-    expect(rp1.attachments.length).is.eql(0);
-  });
-
-  it('render pass reset attachments with viewport', () => {
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    expect(rp1.viewport?.[2]).to.eql(128);
-    expect(rp1.viewport?.[3]).to.eql(256);
-    rp1.resetAttachments({
-      attachments: [{ texture: { format: gl.RGBA } }],
-      viewport: [0, 0, 1024, 1024],
-    });
-    expect(rp1.viewport?.[2]).to.eql(1024);
-    expect(rp1.viewport?.[3]).to.eql(1024);
-    expect(rp1.attachments.length).is.eql(1);
-    const colorAttachment = rp1.attachments[0];
-
-    expect(colorAttachment.size).to.deep.equal([1024, 1024]);
-    rp1.dispose();
-    expect(rp1.attachments.length).is.eql(0);
-  });
-
-  it('render pass reset attachments with viewportScale(default 1)', () => {
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    expect(rp1.viewport?.[2]).to.eql(128);
-    expect(rp1.viewport?.[3]).to.eql(256);
-    rp1.resetAttachments({
-      attachments: [{ texture: { format: gl.RGBA } }],
-      depthStencilAttachment: {
-        storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
-      },
-    });
-    expect(rp1.viewport).to.deep.equals([0, 0, renderer.width, renderer.height]);
-    expect(rp1.renderer.width).to.eql(300);
-    expect(rp1.renderer.height).to.eql(150);
-    expect(rp1.attachments.length).is.eql(1);
-    const colorAttachment = rp1.attachments[0];
-
-    expect(colorAttachment.size).to.deep.equal([300, 150]);
-    const framebuffer = rp1.framebuffer;
-
-    expect(framebuffer?.depthStencilStorageType).to.eql(RenderPassAttachmentStorageType.depth_24_stencil_8_texture);
-    expect(framebuffer?.depthTexture?.width).to.eql(300);
-    expect(framebuffer?.depthTexture?.height).to.eql(150);
-
-    expect(framebuffer?.viewport[2]).to.eql(300);
-    expect(framebuffer?.viewport[3]).to.eql(150);
-    expect(framebuffer?.stencilTexture?.source.sourceType).to.eql(
-      RenderPassAttachmentStorageType.depth_24_stencil_8_texture
-    );
-
-    rp1.dispose();
-    expect(rp1.attachments.length).is.eql(0);
-  });
-
-  it('render pass will keep external texture after reset attachments', () => {
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const rp0 = new RenderPass(renderer, {
-      attachments: [{ texture: { format: gl.RGBA } }],
-      depthStencilAttachment: {
-        storageType: RenderPassAttachmentStorageType.depth_stencil_opaque,
-      },
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp0.initialize(renderer);
-
-    rp0.configure(renderer);
-    expect(rp0.framebuffer.externalStorage).is.false;
-    const rp1 = new RenderPass(renderer, {
-      attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      depthStencilAttachment: {
-        storageType: RenderPassAttachmentStorageType.depth_stencil_opaque,
-        storage: rp0.depthAttachment?.storage,
-      },
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(2);
-    const att0 = rp1.attachments[0];
-    const att1 = rp1.attachments[1];
-
-    expect(att0.size).to.deep.equal([128, 256], 's0');
-    expect(att0.externalTexture).is.true;
-    expect(att1.size).to.deep.equal([128, 256], 's1');
-    expect(att1.externalTexture).is.false;
-    expect(rp1.depthAttachment).is.exist;
-    expect(rp1.framebuffer.externalStorage).is.true;
-    rp1.resetAttachments({ attachments: [] });
-    expect(att0.size).to.deep.equal([128, 256], 's2');
-    expect(att1.size).to.deep.equal([0, 0], 's3');
-    expect(att1.texture.isDestroyed).to.be.true;
-    expect(att0.texture.isDestroyed).to.be.false;
-    expect(rp1.depthAttachment).is.not.exist;
-    expect(rp0.depthAttachment?.storage).is.exist;
-    expect(rp0.depthAttachment?.storage.size).is.deep.equal([128, 256], 's4');
-    rp0.dispose();
-    expect(rp0.depthAttachment?.storage).is.not.exist;
-  });
-
-  it('fbo accept texture as depth stencil texture', () => {
-    const rp1 = new RenderPass(renderer, {
-      attachments: [{ texture: { format: gl.RGBA } }],
-      depthStencilAttachment: {
-        storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
-      },
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    rp1.configure(renderer);
-    expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
-    const texture = rp1.depthAttachment?.texture;
-
-    expect(texture.width).is.eql(128);
-    expect(texture.height).is.eql(256);
-    const rp2 = new RenderPass(renderer, {
-      attachments: [{ texture: { format: gl.RGBA } }],
-      depthStencilAttachment: {
-        storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
-        storage: rp1.depthAttachment?.storage,
-      },
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp2.initialize(renderer);
-    rp2.configure(renderer);
-    expect(rp1.depthAttachment?.storage).is.eql(rp2.depthAttachment?.storage);
-    expect(rp2.depthAttachment?.storage).is.not.null;
-
-    rp2.dispose({ depthStencilAttachment: RenderPassDestroyAttachmentType.keepExternal });
-    expect(texture.destroyed).is.eql(false);
-    expect(texture.width).is.eql(128);
-    expect(texture.height).is.eql(256);
-    rp1.dispose();
-    expect(texture.destroyed).is.eql(true);
-    expect(texture.width).is.eql(0);
-    expect(texture.height).is.eql(0);
-  });
-
   it('if priority is the same,last added item will in behind', () => {
     const geom = new GLGeometry(
       engine,
@@ -293,9 +42,6 @@ describe('webgl/gl-render-pass', () => {
     const mesh2 = new Mesh(engine, { geometry: geom, material, priority: 2 });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
-      meshOrder: OrderType.ascending,
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
@@ -310,8 +56,6 @@ describe('webgl/gl-render-pass', () => {
   it('custom viewport after binding', () => {
     let rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
-      meshes: [],
-      meshOrder: OrderType.ascending,
     });
 
     rp1.initialize(renderer);
@@ -322,8 +66,6 @@ describe('webgl/gl-render-pass', () => {
     rp1.dispose();
     rp1 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
-      meshes: [],
-      meshOrder: OrderType.ascending,
     });
     rp1.initialize(renderer);
 
@@ -360,10 +102,11 @@ describe('webgl/gl-render-pass', () => {
     }
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes,
-      viewport: [0, 0, 128, 256],
     });
 
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
     rp1.initialize(renderer);
 
     renderer.engine.bindSystemFramebuffer();
@@ -376,230 +119,12 @@ describe('webgl/gl-render-pass', () => {
 
       expect(tempJ.priority >= tempI.priority).is.eql(true);
     }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is descending && lenght <= 30', () => {
-    const meshes = [];
-    const length = 20;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: MathUtils.randInt(0, length) });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.descending,
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0, j = length - 1; i <= j; i++, j--) {
-      const tempI = rp1.meshes[i];
-      const tempJ = rp1.meshes[j];
-
-      expect(tempJ.priority <= tempI.priority).is.eql(true);
-    }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is none && lenght <= 30', () => {
-    const meshes = [];
-    const order = [8, 8, 4, 12, 20, 16, 16, 17, 17, 15, 1, 14, 15, 0, 6, 16, 1, 10, 10, 17];
-    const length = 20;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: order[index] });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.none,
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0; i < length; i++) {
-      expect(rp1.meshes[i].priority).is.eql(order[i]);
-    }
-
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is ascending && lenght > 30', () => {
-    const meshes = [];
-    const length = 70;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: MathUtils.randInt(0, length) });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0, j = length - 1; i <= j; i++, j--) {
-      const tempI = rp1.meshes[i];
-      const tempJ = rp1.meshes[j];
-
-      expect(tempJ.priority >= tempI.priority).is.eql(true);
-    }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is descending && lenght > 30', () => {
-    const meshes = [];
-    const length = 70;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: MathUtils.randInt(0, 200) });
-
-      meshes.push(mesh);
-    }
-
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.descending,
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0, j = length - 1; i <= j; i++, j--) {
-      const tempI = rp1.meshes[i];
-      const tempJ = rp1.meshes[j];
-
-      expect(tempJ.priority <= tempI.priority).is.eql(true);
-    }
-    rp1.dispose();
-  });
-
-  it('render pass resort meshes mesh order is none && lenght > 30', () => {
-    const meshes = [];
-    const order = [
-      185, 69, 191, 12, 141, 30, 2, 61, 75, 151, 22, 134, 126, 169, 176, 112, 160, 24, 131, 58, 133, 151, 104, 113, 73,
-      196, 184, 104, 130, 17, 160, 102, 195, 106, 176, 167, 51, 101, 126, 167, 179, 5, 109, 122, 82, 123, 44, 16, 98,
-      71, 140, 156, 200, 177, 193, 110, 160, 84, 20, 23, 12, 74, 21, 66, 199, 49, 88, 152, 172, 151,
-    ];
-    const length = 70;
-    const geom = new GLGeometry(
-      engine,
-      {
-        attributes: {},
-      });
-
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: { vertex: '', fragment: '' },
-        states: {},
-      });
-
-    for (let index = 0; index < length; index++) {
-      const mesh = new Mesh(engine, { geometry: geom, material, priority: order[index] });
-
-      meshes.push(mesh);
-    }
-    const rp1 = new RenderPass(renderer, {
-      attachments: [],
-      meshes,
-      meshOrder: OrderType.none,
-      viewport: [0, 0, 128, 256],
-    });
-
-    rp1.initialize(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    rp1.configure(renderer);
-    expect(rp1.attachments.length).is.eql(0);
-    expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
-    for (let i = 0; i < length; i++) {
-      expect(rp1.meshes[i].priority).is.eql(order[i]);
-    }
-
     rp1.dispose();
   });
 
   it('RPOrderTest07 render pass resort meshes with meshes.length===0', () => {
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
@@ -637,11 +162,10 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [mesh],
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
+    rp1.addMesh(mesh);
 
     renderer.engine.bindSystemFramebuffer();
     renderer.engine.viewport = spy;
@@ -686,11 +210,11 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [mesh1, mesh],
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
+    rp1.addMesh(mesh1);
+    rp1.addMesh(mesh);
 
     renderer.engine.bindSystemFramebuffer();
     rp1.configure(renderer);
@@ -758,9 +282,11 @@ describe('webgl/gl-render-pass', () => {
     const rp1 = new RenderPass(renderer,
       {
         attachments: [],
-        meshes,
-        viewport: [0, 0, 128, 256],
       });
+
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
 
     rp1.initialize(renderer);
 
@@ -857,10 +383,13 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes,
-      meshOrder: OrderType.descending,
-      viewport: [0, 0, 128, 256],
     });
+
+    rp1.meshOrder = OrderType.descending;
+
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
 
     rp1.initialize(renderer);
 
@@ -951,10 +480,13 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes,
-      meshOrder: OrderType.none,
-      viewport: [0, 0, 128, 256],
     });
+
+    rp1.meshOrder = OrderType.none;
+
+    for (const mesh of meshes) {
+      rp1.addMesh(mesh);
+    }
 
     rp1.initialize(renderer);
 
@@ -1012,8 +544,6 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
@@ -1066,8 +596,6 @@ describe('webgl/gl-render-pass', () => {
       });
     const rp1 = new RenderPass(renderer, {
       attachments: [],
-      meshes: [],
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
@@ -1108,7 +636,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -1117,8 +644,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
-      viewport: [0, 0, rp2Width, rp2Heigth],
     });
 
     rp2.initialize(renderer);
@@ -1127,10 +652,6 @@ describe('webgl/gl-render-pass', () => {
     rp2.configure(renderer);
     const spy = chai.spy(() => { });
     const call = renderer.resize;
-
-    expect(rp2.viewport?.[2]).to.eql(rp2Width);
-    expect(rp1.viewport).to.deep.equals([0, 0, 300, 150]);
-    expect(rp2.viewport?.[3]).to.eql(rp2Heigth);
     const colorAttachment = rp1.attachments[0];
 
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
@@ -1161,19 +682,6 @@ describe('webgl/gl-render-pass', () => {
     expect(rp1.attachments[0].height).to.eql(newHeight);
     expect(rp1.attachments[0].width).to.eql(newWidth);
     expect(rp1.viewport).to.eql([0, 0, newWidth, newHeight]);
-    //rp2不会发生改变,rp2为用户传入的viewport
-    expect(rp2.framebuffer?.colorTextures[0].height).to.eql(rp2Heigth);
-    expect(rp2.framebuffer?.colorTextures[0].width).to.eql(rp2Width);
-    expect(rp2.framebuffer?.depthTexture?.height).to.eql(rp2Heigth);
-    expect(rp2.framebuffer?.depthTexture?.width).to.eql(rp2Width);
-    expect(rp2.framebuffer?.stencilTexture?.height).to.eql(rp2Heigth);
-    expect(rp2.framebuffer?.stencilTexture?.width).to.eql(rp2Width);
-    expect(rp2.framebuffer?.viewport?.[2]).to.eql(rp2Width);
-    expect(rp2.framebuffer?.viewport?.[3]).to.eql(rp2Heigth);
-    expect(rp2.attachments[0].height).to.eql(rp2Heigth);
-    expect(rp2.attachments[0].width).to.eql(rp2Width);
-    expect(rp2.viewport?.[3]).to.eql(rp2Heigth);
-    expect(rp2.viewport?.[2]).to.eql(rp2Width);
     engine.setSize(300, 150);
     rp1.dispose();
     rp2.dispose();
@@ -1194,7 +702,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -1243,7 +750,6 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      meshes: [],
     });
 
     rp1.initialize(renderer);
@@ -1251,7 +757,6 @@ describe('webgl/gl-render-pass', () => {
     const rp2 = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
       depthStencilAttachment: rp1.depthAttachment,
-      meshes: [],
     });
 
     rp2.initialize(renderer);
@@ -1278,53 +783,12 @@ describe('webgl/gl-render-pass', () => {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, buildWidth, buildHeight],
-      meshes: [],
     });
 
     rp1.initialize(renderer);
 
     renderer.engine.bindSystemFramebuffer();
-    expect(rp1.viewport?.[2]).to.eql(buildWidth);
-    expect(rp1.viewport?.[3]).to.eql(buildHeight);
-    const colorAttachment = rp1.attachments[0];
 
-    expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
-    expect(colorAttachment.height).to.eql(buildHeight);
-    expect(colorAttachment.width).to.eql(buildWidth);
-    const framebuffer = rp1.framebuffer;
-
-    expect(framebuffer?.colorTextures[0].height).to.eql(buildHeight);
-    expect(framebuffer?.colorTextures[0].width).to.eql(buildWidth);
-    expect(framebuffer?.depthTexture?.height).to.eql(buildHeight);
-    expect(framebuffer?.depthTexture?.width).to.eql(buildWidth);
-    expect(framebuffer?.stencilTexture?.height).to.eql(buildHeight);
-    expect(framebuffer?.stencilTexture?.width).to.eql(buildWidth);
-    expect(framebuffer?.viewport?.[2]).to.eql(buildWidth);
-    expect(framebuffer?.viewport?.[3]).to.eql(buildHeight);
-
-    rp1.resetAttachments(
-      {
-        attachments: [{ texture: { format: gl.RGBA } }],
-        depthStencilAttachment: {
-          storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
-        },
-      }
-    );
-    //renderpass此时没有viewport值
-    expect(rp1.viewport).to.eql([0, 0, 300, 150]);
-    expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
-    //reset后colorAttachment对象销毁掉了
-    expect(colorAttachment.height).to.eql(0);
-    expect(colorAttachment.width).to.eql(0);
-    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resetHeight);
-    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resetWidth);
-    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resetHeight);
-    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resetWidth);
-    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resetHeight);
-    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resetWidth);
-    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resetWidth);
-    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resetHeight);
     //resize后framebuffer的宽高也要跟着变
     renderer.resize = spy;
     engine.setSize(resizeWidth, resizeHeight);

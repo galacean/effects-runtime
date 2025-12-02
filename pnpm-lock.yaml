@@ -32,6 +32,9 @@ importers:
       '@rollup/plugin-terser':
         specifier: ^0.4.4
         version: 0.4.4(rollup@2.79.2)
+      '@rollup/plugin-wasm':
+        specifier: ^6.2.2
+        version: 6.2.2(rollup@2.79.2)
       '@swc/core':
         specifier: ^1.4.13
         version: 1.4.14(@swc/helpers@0.5.15)
@@ -150,8 +153,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.6.0
-        version: 2.6.0
+        specifier: 2.7.0-alpha.0
+        version: 2.7.0-alpha.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -209,6 +212,12 @@ importers:
         version: link:../model
 
   plugin-packages/ffd:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
+  plugin-packages/ktx2:
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -2229,6 +2238,10 @@ packages:
   /@galacean/effects-specification@2.6.0:
     resolution: {integrity: sha512-H5mzyE5d0mx2Fa7iUSuwRe7UPsEfszN+Is+EoqrZYtGlTP1R1E88YEkg1FvznRo6D1L7XcOIwUpY8JrNUZHn9A==}
 
+  /@galacean/effects-specification@2.7.0-alpha.0:
+    resolution: {integrity: sha512-609ZqtVoFH2WDIR7UWaIzwbkx3TgIKDjBUW3QOJxCYaVfAPDGidkn0XBl7uR1cVBMJ50aDcWrnb1imd8585mGw==}
+    dev: false
+
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
     engines: {node: '>=10.10.0'}
@@ -2453,6 +2466,19 @@ packages:
       serialize-javascript: 6.0.2
       smob: 1.5.0
       terser: 5.19.1
+    dev: true
+
+  /@rollup/plugin-wasm@6.2.2(rollup@2.79.2):
+    resolution: {integrity: sha512-gpC4R1G9Ni92ZIRTexqbhX7U+9estZrbhP+9SRb0DW9xpB9g7j34r+J2hqrcW/lRI7dJaU84MxZM0Rt82tqYPQ==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+    dependencies:
+      '@rollup/pluginutils': 5.1.0(rollup@2.79.2)
+      rollup: 2.79.2
     dev: true
 
   /@rollup/pluginutils@3.1.0(rollup@2.79.2):

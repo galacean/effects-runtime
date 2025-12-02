@@ -9,11 +9,11 @@ import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
-import type { TextureSourceOptions } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
+import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
+import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { Renderer } from './render';
-import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
+import { textureLoaderRegistry } from './texture/texture-loader';
 
 let seed = 1;
 
@@ -53,12 +53,12 @@ export class AssetManager implements Disposable {
   /**
    * 字体加载方法
    * @param fonts - 字体定义数组
-   * @param [baseURL=location.href] - URL 的 base 字段
+   * @param [baseUrl=location.href] - URL 的 base 字段
    * @returns
    */
   static async loadFontFamily (
     fonts: spec.FontDefine[],
-    baseURL = location.href,
+    baseUrl = location.href,
   ) {
     // 对老数据的兼容
     if (!fonts) {
@@ -73,7 +73,7 @@ export class AssetManager implements Disposable {
           console.warn(`Risky font family: ${font.fontFamily}.`);
         }
         try {
-          const url = new URL(font.fontURL, baseURL).href;
+          const url = new URL(font.fontURL, baseUrl).href;
           const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
           await fontFace.load();
@@ -123,7 +123,7 @@ export class AssetManager implements Disposable {
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
+    const isKTX2Supported = gpuInstance?.detail.ktx2Support ?? false;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
     let cancelLoading = false;
@@ -203,7 +203,7 @@ export class AssetManager implements Disposable {
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
+          hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
@@ -274,18 +274,21 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
-    compressedTexture: COMPRESSED_TEXTURE = 0,
+    canUseKTX2 = false,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
+      const { ktx2 } = img as spec.CompressedImage;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
       // eslint-disable-next-line compat/compat
       const webpURL = (!disableWebP && webp) ? new URL(webp, baseUrl).href : undefined;
       // eslint-disable-next-line compat/compat
       const avifURL = (!disableAVIF && avif) ? new URL(avif, baseUrl).href : undefined;
+      // eslint-disable-next-line compat/compat
+      const ktx2URL = (ktx2 && useCompressedTexture && canUseKTX2) ? new URL(ktx2, baseUrl).href : undefined;
 
       const id = img.id;
 
@@ -327,23 +330,11 @@ export class AssetManager implements Disposable {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
-      } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
-        // 2. 压缩纹理
-        const { compressed } = img;
-        let src;
+      } else if ('ktx2' in img && ktx2URL) {
+        // ktx2 压缩纹理
+        this.sourceFrom[id] = { url: ktx2URL, type: TextureSourceType.compressed };
 
-        if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
-          src = compressed.astc;
-        } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
-          src = compressed.pvrtc;
-        }
-        if (src) {
-          const bufferURL = new URL(src, baseUrl).href;
-
-          this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
-
-          return this.loadBins(bufferURL);
-        }
+        return this.loadBins(ktx2URL);
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||
@@ -402,7 +393,7 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
+        const texture = await createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -460,7 +451,7 @@ export class AssetManager implements Disposable {
   }
 }
 
-function createTextureOptionsBySource (
+async function createTextureOptionsBySource (
   image: TextureSourceOptions | ImageLike,
   sourceFrom: { url: string, type: TextureSourceType },
   id?: string,
@@ -499,11 +490,30 @@ function createTextureOptionsBySource (
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
-    return {
-      ...getKTXTextureOptions(image),
-      sourceFrom,
-      ...options,
-    };
+    const loader = textureLoaderRegistry.getLoader('ktx2');
+
+    if (loader) {
+      try {
+        const textureData = await loader.loadFromBuffer(image) as Texture2DSourceOptionsCompressed;
+
+        return {
+          sourceType: textureData.sourceType,
+          type: textureData.type,
+          target: textureData.target,
+          internalFormat: textureData.internalFormat,
+          format: textureData.format,
+          mipmaps: textureData.mipmaps,
+          minFilter: glContext.LINEAR,
+          magFilter: glContext.LINEAR,
+          sourceFrom,
+          ...options,
+        };
+      } catch (e) {
+        throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+      }
+    } else {
+      throw new Error('KTX2 loader not found. Please register it first.');
+    }
   } else if (
     'width' in image &&
     'height' in image &&

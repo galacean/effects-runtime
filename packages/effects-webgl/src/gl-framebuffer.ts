@@ -32,7 +32,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   ) {
     super();
     const {
-      depthStencilAttachment, viewport, isCustomViewport, storeAction,
+      depthStencilAttachment, viewport, storeAction,
       name = `GLFramebuffer${seed++}`,
     } = props;
 
@@ -40,7 +40,6 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     this.engine = renderer.engine as GLEngine;
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
     this.viewport = viewport;
-    this.isCustomViewport = !!isCustomViewport;
     this.name = name;
     this.storeAction = storeAction;
     this.updateProps(props);

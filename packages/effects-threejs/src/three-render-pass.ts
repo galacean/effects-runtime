@@ -1,5 +1,5 @@
 import type {
-  Texture, RenderPassOptions, RenderPassAttachmentOptions,
+  RenderPassOptions,
   RenderPassDepthStencilAttachment, RenderPassDestroyOptions,
   spec,
 } from '@galacean/effects-core';
@@ -16,22 +16,6 @@ export class ThreeRenderPass extends RenderPass {
    */
   constructor (renderer: any, options: RenderPassOptions) {
     super(renderer, options);
-  }
-
-  /**
-   * 重置颜色附件
-   * @param colors - 颜色附件数组
-   */
-  override resetColorAttachments (colors: Texture[]) {
-
-  }
-
-  /**
-   * 重置所有附件
-   * @param options - 返回渲染目标附件的选项
-   */
-  override resetAttachments (options: RenderPassAttachmentOptions) {
-
   }
 
   /**

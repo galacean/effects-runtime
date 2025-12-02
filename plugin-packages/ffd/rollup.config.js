@@ -39,6 +39,6 @@ export default () => {
       external,
       plugins: getPlugins(pkg, { min: true, external }),
     },
-    ...appxConfig.map(config => ({ ...config, plugins: config.plugins.concat(plugins) }))
+    ...appxConfig.map(config => ({ ...config, plugins: plugins.concat(config.plugins) }))
   ];
 };

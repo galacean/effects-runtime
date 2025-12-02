@@ -169,7 +169,7 @@ export class CompositionComponent extends Component {
           if (success) {
             const region = {
               compContent: this.item,
-              id: item.id,
+              id: item.getInstanceId(),
               name: item.name,
               position: hitPositions[hitPositions.length - 1],
               parentId: item.parentId,

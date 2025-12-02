@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-stats",
-  "version": "2.7.1",
+  "version": "2.7.3",
   "description": "Galacean Effects runtime stats for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",

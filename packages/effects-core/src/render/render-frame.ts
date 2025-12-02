@@ -1,36 +1,26 @@
-import type { vec4 } from '@galacean/effects-specification';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import type { vec4 } from '@galacean/effects-specification';
 import type { Camera } from '../camera';
+import type { PostProcessVolume, RendererComponent } from '../components';
 import { glContext } from '../gl';
 import type { UniformValue } from '../material';
-import { Material } from '../material';
 import { PassTextureCache } from '../paas-texture-cache';
+import type { Texture } from '../texture';
+import { TextureLoadAction } from '../texture';
+import type { Disposable } from '../utils';
+import { DestroyOptions, removeItem } from '../utils';
+import { createCopyShader } from './create-copy-shader';
+import { DrawObjectPass } from './draw-object-pass';
+import type { Mesh } from './mesh';
+import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
+import type { RenderPass, RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction } from './render-pass';
+import { RenderPassAttachmentStorageType, RenderTargetHandle } from './render-pass';
+import type { Renderer } from './renderer';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
-import {
-  Texture, TextureLoadAction, TextureSourceType,
-} from '../texture';
-import type { Disposable } from '../utils';
-import { DestroyOptions, OrderType, removeItem } from '../utils';
-import { createCopyShader, EFFECTS_COPY_MESH_NAME } from './create-copy-shader';
-import { Geometry } from './geometry';
-import { Mesh } from './mesh';
-import type {
-  RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassColorAttachmentTextureOptions,
-  RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction,
-} from './render-pass';
-import {
-  RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassPriorityNormal,
-} from './render-pass';
-import type { Renderer } from './renderer';
-import {
-  BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass,
-} from './post-process-pass';
-import type { PostProcessVolume, RendererComponent } from '../components';
-import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { DrawObjectPass } from './draw-object-pass';
 
 /**
  * 渲染数据，保存了当前渲染使用到的数据。
@@ -194,7 +184,6 @@ export class RenderFrame implements Disposable {
    */
   globalVolume?: PostProcessVolume;
   renderer: Renderer;
-  resource: RenderFrameResource;
   keepColorBuffer?: boolean;
   editorTransform: Vector4;
 
@@ -236,7 +225,6 @@ export class RenderFrame implements Disposable {
     this.globalUniforms = new GlobalUniforms();
     let attachments: RenderPassColorAttachmentOptions[] = [];  //渲染场景物体Pass的RT
     let depthStencilAttachment;
-    let drawObjectPassClearAction = {};
 
     this.renderer = renderer;
     if (postProcessingEnabled) {
@@ -251,20 +239,11 @@ export class RenderFrame implements Disposable {
 
       attachments = [{ texture: { format: glContext.RGBA, type: textureType, magFilter: glContext.LINEAR, minFilter: glContext.LINEAR } }];
       depthStencilAttachment = { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque };
-      drawObjectPassClearAction = {
-        colorAction: TextureLoadAction.clear,
-        stencilAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.clear,
-      };
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer, {
-      name: RENDER_PASS_NAME_PREFIX,
-      priority: RenderPassPriorityNormal,
-      meshOrder: OrderType.ascending,
       depthStencilAttachment,
       attachments,
-      clearAction: drawObjectPassClearAction,
     });
 
     const renderPasses = [this.drawObjectPass];
@@ -281,7 +260,6 @@ export class RenderFrame implements Disposable {
       const enableHDR = true;
       const textureType = enableHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
       const bloomThresholdPass = new BloomThresholdPass(renderer, {
-        name: 'BloomThresholdPass',
         attachments: [{
           texture: {
             format: glContext.RGBA,
@@ -297,8 +275,6 @@ export class RenderFrame implements Disposable {
       for (let i = 0; i < gaussianStep; i++) {
         gaussianDownResults[i] = new RenderTargetHandle(engine);
         const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', i, {
-          name: 'GaussianDownPassH' + i,
-          viewport,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -310,8 +286,6 @@ export class RenderFrame implements Disposable {
         });
 
         const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', i, {
-          name: 'GaussianDownPassV' + i,
-          viewport,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -334,8 +308,6 @@ export class RenderFrame implements Disposable {
       viewport[3] *= 4;
       for (let i = 0; i < gaussianStep - 1; i++) {
         const gaussianUpPass = new HQGaussianUpSamplePass(renderer, gaussianStep - i, {
-          name: 'GaussianUpPass' + i,
-          viewport,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -423,43 +395,7 @@ export class RenderFrame implements Disposable {
     }
     this.passTextureCache.dispose();
     this._renderPasses.length = 0;
-    if (this.resource) {
-      this.resource.color_a.dispose();
-      this.resource.color_b.dispose();
-      this.resource.depthStencil?.texture?.dispose();
-      this.resource.finalCopyRP.dispose();
-      this.resource.resRP.dispose();
-      // @ts-expect-error
-      this.resource = null;
-    }
     this.destroyed = true;
-  }
-
-  /**
-   * 重置 RenderPass ColorAttachment，解决 Framebuffer 即读又写的问题
-   * @param renderPasses - RenderPass 对象数组
-   * @param startIndex - 开始重置的索引
-   */
-  resetRenderPassDefaultAttachment (renderPasses: RenderPass[], startIndex: number) {
-    let pre: Texture;
-    const { color_a, color_b } = this.resource;
-
-    for (let i = startIndex; i < renderPasses.length; i++) {
-      const rp = renderPasses[i];
-      let tex = rp.attachments[0]?.texture;
-
-      // @ts-expect-error
-      if (tex && pre === tex) {
-        const next = tex === color_a ? color_b : color_a;
-
-        rp.resetColorAttachments([next]);
-        //this.renderer.extension.resetColorAttachments?.(rp as GLRenderPass, [next as GLTexture]);
-      }
-      tex = rp.attachments[0]?.texture;
-      if (tex) {
-        pre = tex;
-      }
-    }
   }
 
   /**
@@ -502,30 +438,6 @@ export class RenderFrame implements Disposable {
     renderPass.addMesh(mesh);
   }
 
-  protected getRPAttachments (
-    attachments: RenderPassColorAttachmentOptions[],
-    preRP?: RenderPass,
-  ): RenderPassColorAttachmentOptions[] {
-    if (attachments?.length === 1) {
-      const { texture, persistent } = attachments[0];
-      const { format } = texture as RenderPassColorAttachmentTextureOptions;
-      const previousAttachmens = preRP?.getInitAttachments() ?? [];
-
-      if (format === glContext.RGBA && !persistent) {
-        const texA = this.resource.color_a;
-
-        if (previousAttachmens.length === 0) {
-          return [{ texture: texA }];
-        }
-        const texture = previousAttachmens[0].texture === texA ? this.resource.color_b : texA;
-
-        return [{ texture }];
-      }
-    }
-
-    return attachments;
-  }
-
   protected resetClearActions () {
     const action = this.renderPasses.length > 1 ? TextureLoadAction.clear : TextureLoadAction.whatever;
 
@@ -560,127 +472,6 @@ export class RenderFrame implements Disposable {
   }
 
   /**
-   * 创建 RenderPass 切分时需要的 GPU 资源
-   */
-  createResource () {
-    const engine = this.renderer.engine;
-
-    if (!this.resource) {
-      const { detail, level } = engine.gpuCapability;
-      const width = this.renderer.getWidth();
-      const height = this.renderer.getHeight();
-      const filter = level === 2 ? glContext.LINEAR : glContext.NEAREST;
-      const texA = Texture.create(
-        engine,
-        {
-          sourceType: TextureSourceType.framebuffer,
-          format: glContext.RGBA,
-          name: 'frame_a',
-          minFilter: filter,
-          magFilter: filter,
-        }
-      );
-      const texB = Texture.create(
-        engine,
-        {
-          sourceType: TextureSourceType.framebuffer,
-          format: glContext.RGBA,
-          data: {
-            width,
-            height,
-          },
-          minFilter: filter,
-          magFilter: filter,
-          name: 'frame_b',
-        }
-      );
-
-      const depthStencilType = detail.readableDepthStencilTextures && detail.writableFragDepth ?
-        RenderPassAttachmentStorageType.depth_24_stencil_8_texture :
-        RenderPassAttachmentStorageType.depth_stencil_opaque;
-      const resRP = new RenderPass(this.renderer, {
-        depthStencilAttachment: { storageType: depthStencilType },
-        attachments: [{ texture: texA }],
-      }).initialize(this.renderer);
-      const finalCopyRP = new FinalCopyRP(this.renderer, {
-        name: 'effects-final-copy',
-        priority: RenderPassPriorityNormal + 600,
-        clearAction: {
-          depthAction: TextureLoadAction.clear,
-          stencilAction: TextureLoadAction.clear,
-          colorAction: TextureLoadAction.clear,
-        },
-        meshOrder: OrderType.ascending,
-        meshes: [this.createCopyMesh({ blend: true, depthTexture: resRP.getDepthAttachment()?.texture })],
-      });
-
-      this.resource = {
-        color_a: resRP.attachments[0].texture,
-        color_b: texB,
-        finalCopyRP,
-        depthStencil: resRP.depthAttachment,
-        resRP,
-      };
-    }
-  }
-
-  // TODO tex和size没有地方用到。
-  /**
-   * 创建拷贝 RenderPass 用到的 Mesh 对象
-   * @param semantics - RenderPass 渲染时 Framebuffer 的颜色和深度纹理、大小和是否混合
-   */
-  createCopyMesh (semantics?: { tex?: string, size?: string, blend?: boolean, depthTexture?: Texture }): Mesh {
-    const name = EFFECTS_COPY_MESH_NAME;
-    const engine = this.renderer.engine;
-
-    const geometry = Geometry.create(
-      engine,
-      {
-        name,
-        mode: glContext.TRIANGLE_STRIP,
-        attributes: {
-          aPos: {
-            type: glContext.FLOAT,
-            size: 2,
-            data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
-          },
-        },
-        drawCount: 4,
-      });
-    const shader = createCopyShader(engine.gpuCapability.level, !!semantics?.depthTexture);
-
-    // FIXME: 如果不把shader添加进shaderLibrary，这里可以移到core中，有性能上的考虑
-    this.renderer.getShaderLibrary()?.addShader(shader);
-    const material = Material.create(
-      engine,
-      {
-        uniformValues: {
-          // @ts-expect-error
-          uDepth: semantics?.depthTexture,
-        },
-        name,
-        shader,
-      });
-
-    material.blending = false;
-    material.depthTest = false;
-    material.culling = false;
-
-    if (semantics?.blend) {
-      material.blending = true;
-      material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA];
-    }
-
-    return Mesh.create(
-      engine,
-      {
-        name, geometry, material,
-        priority: 0,
-      },
-    );
-  }
-
-  /**
    * 移除 RenderPass
    * @param pass - 需要移除的 RenderPass
    */
@@ -697,32 +488,6 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
   const index = renderPasses.indexOf(renderPass);
 
   return renderPasses[index - 1];
-}
-
-/**
- * @deprecated
- */
-class FinalCopyRP extends RenderPass {
-  prePassTexture: Texture;
-
-  override configure (renderer: Renderer): void {
-    const framebuffer = renderer.getFramebuffer();
-
-    if (framebuffer) {
-      this.prePassTexture = framebuffer.getColorTextures()[0];
-    }
-    renderer.setFramebuffer(null);
-  }
-
-  override execute (renderer: Renderer): void {
-    renderer.clear(this.clearAction);
-    this.meshes[0].material.setTexture('uFilterSource', this.prePassTexture);
-    this.meshes[0].material.setVector2('uFilterSourceSize', getTextureSize(this.prePassTexture));
-    renderer.renderMeshes(this.meshes);
-    if (this.storeAction) {
-      renderer.clear(this.storeAction);
-    }
-  }
 }
 
 export class GlobalUniforms {

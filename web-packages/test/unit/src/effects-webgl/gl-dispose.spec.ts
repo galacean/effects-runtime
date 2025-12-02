@@ -67,9 +67,9 @@ describe('webgl/dispose', function () {
     const spy1 = geom.dispose = chai.spy(geom.dispose);
     const spy2 = material.dispose = chai.spy(material.dispose);
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -99,9 +99,9 @@ describe('webgl/dispose', function () {
     const spy1 = material.dispose = chai.spy(material.dispose);
     const spy2 = geom.dispose = chai.spy(geom.dispose);
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -136,9 +136,9 @@ describe('webgl/dispose', function () {
     const spy1 = material.dispose = chai.spy(material.dispose);
     const spy2 = geom.dispose = chai.spy(geom.dispose);
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -160,9 +160,9 @@ describe('webgl/dispose', function () {
     const geom = result.geom;
     const texture = result.texture;
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -185,9 +185,9 @@ describe('webgl/dispose', function () {
     const geom = result.geom;
     const texture = result.texture;
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -210,9 +210,9 @@ describe('webgl/dispose', function () {
     const spy2 = geom.dispose = chai.spy(geom.dispose);
 
     const renderPass = new RenderPass(renderer, {
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -242,13 +242,12 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -268,7 +267,6 @@ describe('webgl/dispose', function () {
     expect(stencilTexture?.isDestroyed).to.be.true;
     expect(depthTexture?.isDestroyed).to.be.true;
     expect(framebuffer?.renderer).to.eql(null);
-    expect(renderPass.semantics.semantics).to.eql({});
     expect(texture.isDestroyed).to.be.true;
   });
 
@@ -283,13 +281,12 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -331,13 +328,12 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -379,13 +375,12 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -428,13 +423,12 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -476,13 +470,12 @@ describe('webgl/dispose', function () {
     });
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -523,12 +516,12 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -572,7 +565,6 @@ describe('webgl/dispose', function () {
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_stencil_opaque,
       },
-      viewport: [0, 0, 128, 256],
     });
 
     rp1.initialize(renderer);
@@ -580,13 +572,13 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_stencil_opaque,
         storage: rp1.depthAttachment?.storage,
       },
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
@@ -629,12 +621,12 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass, { t: marsTexture });
 
     renderer.renderRenderFrame(frame);
@@ -661,13 +653,12 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }],
-      name: 'basic',
-      meshes: [mesh],
       depthStencilAttachment: {
         storageType: RenderPassAttachmentStorageType.depth_24_stencil_8_texture,
       },
-      viewport: [0, 0, 128, 256],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass, { t: marsTexture });
 
     renderer.renderRenderFrame(frame);
@@ -690,9 +681,9 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
-      name: 'basic',
-      meshes: [mesh],
     });
+
+    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass, { t: marsTexture });
 
     renderer.renderRenderFrame(frame);

@@ -71,7 +71,7 @@ describe('webgl/gl-render-frame', () => {
     gl.clearStencil(0);
     renderer.renderRenderFrame(frame);
     expect(gl.getParameter(gl.DEPTH_CLEAR_VALUE)).to.eql(1);
-    expect(gl.getParameter(gl.STENCIL_CLEAR_VALUE)).to.eql(0xff);
+    expect(gl.getParameter(gl.STENCIL_CLEAR_VALUE)).to.eql(0);
     expect(new Uint8Array(gl.getParameter(gl.COLOR_CLEAR_VALUE))).to.deep.equal(new Uint8Array([0, 0, 0, 0]));
     expect(gl.getParameter(gl.DEPTH_WRITEMASK)).to.be.true;
     expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equal([true, true, true, true]);
