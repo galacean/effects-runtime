@@ -863,16 +863,20 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
     PluginSystem.destroyComposition(this);
+
     this.update = () => {
       if (!__DEBUG__) {
         logger.error(`Update disposed composition: ${this.name}.`);
       }
     };
+
     this.dispose = noop;
+    this.renderer.engine.removeComposition(this);
 
     if (this.getEngine().env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
+
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
       clearStencil: 0,
@@ -881,7 +885,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
-    this.renderer.engine.removeComposition(this);
   }
 
   /**
