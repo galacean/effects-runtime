@@ -296,8 +296,9 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
     if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}.`);
+      throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}. width=${width}, height=${height}.`);
     }
+
     this.ready = true;
   }
 
@@ -354,6 +355,13 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         this.depthStencilRenderbuffer?.dispose();
         this.depthTexture?.dispose();
       }
+
+      for (const texture of this.colorTextures) {
+        texture.dispose();
+      }
+
+      this.stencilTexture?.dispose();
+
       // @ts-expect-error safe to assign
       this.renderer = this.stencilRenderbuffer = this.depthStencilRenderbuffer = null;
     }

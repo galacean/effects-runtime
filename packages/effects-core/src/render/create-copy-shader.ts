@@ -1,6 +1,3 @@
-import type { SharedShaderWithSource } from './shader';
-import { GLSLVersion } from './shader';
-
 export const EFFECTS_COPY_MESH_NAME = 'effects-internal-copy';
 export const COPY_MESH_SHADER_ID = 'effects-internal-copy-mesh';
 
@@ -26,19 +23,3 @@ void main(){
     #endif
 }
 `;
-
-export function createCopyShader (level: number, writeDepth?: boolean): SharedShaderWithSource {
-  const webgl2 = level === 2;
-
-  return {
-    name: EFFECTS_COPY_MESH_NAME,
-    vertex: COPY_VERTEX_SHADER,
-    fragment: COPY_FRAGMENT_SHADER,
-    glslVersion: webgl2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-    macros: [
-      ['DEPTH_TEXTURE', !!writeDepth],
-    ],
-    // @ts-expect-error
-    cacheId: COPY_MESH_SHADER_ID + (+writeDepth),
-  };
-}

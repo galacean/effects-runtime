@@ -1,16 +1,14 @@
 import type {
   Disposable, Engine, Framebuffer, Geometry, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RenderPassStoreAction, RendererComponent,
-  ShaderLibrary, math,
+  RenderPassClearAction, RendererComponent, ShaderLibrary, math,
 } from '@galacean/effects-core';
 import {
-  FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
-  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, logger, sortByOrder,
+  GPUCapability, Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
-import { GLFramebuffer } from './gl-framebuffer';
+import type { GLFramebuffer } from './gl-framebuffer';
 import { assignInspectorName } from './gl-renderer-internal';
-import { GLTexture } from './gl-texture';
+import type { GLTexture } from './gl-texture';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLGeometry } from './gl-geometry';
 import type { GLMaterial } from './gl-material';
@@ -69,16 +67,6 @@ export class GLRenderer extends Renderer implements Disposable {
       // @ts-expect-error
       currentFrame: {},
     };
-
-    this.currentFramebuffer = new GLFramebuffer({
-      storeAction: {},
-      viewport: [0, 0, this.width, this.height],
-      attachments: [new GLTexture(this.engine, {
-        sourceType: TextureSourceType.framebuffer,
-        data: { width: this.width, height: this.height },
-      })],
-      depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
-    }, this);
   }
 
   override renderRenderFrame (renderFrame: RenderFrame) {
@@ -90,9 +78,11 @@ export class GLRenderer extends Renderer implements Disposable {
 
       return;
     }
+
     frame.renderer.getShaderLibrary()?.compileAllShaders();
+    frame.setup();
+
     this.setFramebuffer(null);
-    this.clear(frame.clearAction);
 
     const currentCamera = frame.camera;
 
@@ -113,14 +103,12 @@ export class GLRenderer extends Renderer implements Disposable {
     }
 
     for (const pass of passes) {
-      pass.frameCleanup(this);
+      pass.onCameraCleanup(this);
     }
   }
 
   renderRenderPass (pass: RenderPass): void {
     this.renderingData.currentPass = pass;
-    // 初始化 pass attachment GPU资源
-    pass.initialize(this);
     // 配置当前 renderer 的 RT
     pass.configure(this);
     // 执行当前 pass
@@ -228,9 +216,14 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override setFramebuffer (framebuffer: Framebuffer | null) {
+    if (this.currentFramebuffer === framebuffer) {
+      return;
+    }
+
+    this.currentFramebuffer = framebuffer;
+
     if (framebuffer) {
-      this.currentFramebuffer = framebuffer;
-      this.currentFramebuffer.bind();
+      framebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
       (this.engine as GLEngine).bindSystemFramebuffer();
@@ -238,60 +231,11 @@ export class GLRenderer extends Renderer implements Disposable {
     }
   }
 
-  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
-    if (this.temporaryRTs[name]) {
-      return this.temporaryRTs[name];
-    }
-
-    let textureFilter;
-    let textureType;
-    let depthType = RenderPassAttachmentStorageType.none;
-
-    // TODO 建立Map映射
-    if (filter === FilterMode.Linear) {
-      textureFilter = glContext.LINEAR;
-    } else if (filter === FilterMode.Nearest) {
-      textureFilter = glContext.NEAREST;
-    }
-    if (format === RenderTextureFormat.RGBA32) {
-      textureType = glContext.UNSIGNED_BYTE;
-    } else if (format === RenderTextureFormat.RGBAHalf) {
-      textureType = glContext.HALF_FLOAT;
-    }
-    if (depthBuffer === 0) {
-      depthType = RenderPassAttachmentStorageType.none;
-    } else if (depthBuffer === 16) {
-      depthType = RenderPassAttachmentStorageType.depth_16_opaque;
-    } else if (depthBuffer === 24) {
-      depthType = RenderPassAttachmentStorageType.depth_24_stencil_8_texture;
-    }
-
-    const colorAttachment = new GLTexture(this.engine, {
-      sourceType: TextureSourceType.framebuffer,
-      minFilter: textureFilter,
-      magFilter: textureFilter,
-      internalFormat: glContext.RGBA,
-      format: glContext.RGBA,
-      type: textureType,
-    });
-    const newFramebuffer = new GLFramebuffer({
-      name,
-      storeAction: {},
-      viewport: [0, 0, width, height],
-      attachments: [colorAttachment],
-      depthStencilAttachment: { storageType: depthType },
-    }, this);
-
-    this.temporaryRTs[name] = newFramebuffer;
-
-    return newFramebuffer;
-  }
-
   override setViewport (x: number, y: number, width: number, height: number) {
     (this.engine as GLEngine).viewport(x, y, width, height);
   }
 
-  override clear (action: RenderPassStoreAction | RenderPassClearAction): void {
+  override clear (action: RenderPassClearAction): void {
     const engine = this.engine as GLEngine;
     let bit = 0;
 
@@ -338,6 +282,7 @@ export class GLRenderer extends Renderer implements Disposable {
       return;
     }
     this.deleteResource();
+    this.renderTargetPool.dispose();
     this.disposed = true;
   }
 
