@@ -128,6 +128,8 @@ const pluginInfoMap: Record<string, string> = {
   'alipay-downgrade': '@galacean/effects-plugin-alipay-downgrade',
   'downgrade': '@galacean/effects-plugin-downgrade',
   'editor-gizmo': '@galacean/effects-plugin-editor-gizmo',
+  'ffd': '@galacean/effects-plugin-ffd',
+  'ktx2': '@galacean/effects-plugin-ktx2',
   'model': '@galacean/effects-plugin-model',
   'video': '@galacean/effects-plugin-multimedia',
   'audio': '@galacean/effects-plugin-multimedia',
