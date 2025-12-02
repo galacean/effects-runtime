@@ -59,12 +59,18 @@ export class GradientEffect implements TextEffect {
     ctx.textBaseline = 'alphabetic';
 
     // 创建渐变
-    const canvas = env.layer as any;
+    const { canvas } = env;
     const angleRad = (this.angle * Math.PI) / 180;
-    const x0 = 0;
-    const y0 = 0;
-    const x1 = canvas.width * Math.cos(angleRad);
-    const y1 = canvas.height * Math.sin(angleRad);
+
+    // 使用画布对角线做渐变基线
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const halfLen = Math.sqrt(cx * cx + cy * cy);
+
+    const x0 = cx - halfLen * Math.cos(angleRad);
+    const y0 = cy - halfLen * Math.sin(angleRad);
+    const x1 = cx + halfLen * Math.cos(angleRad);
+    const y1 = cy + halfLen * Math.sin(angleRad);
 
     const gradient = ctx.createLinearGradient(x0, y0, x1, y1);
 
@@ -73,7 +79,7 @@ export class GradientEffect implements TextEffect {
       const R = Math.round(r * 255);
       const G = Math.round(g * 255);
       const B = Math.round(b * 255);
-      const stop = index / (this.colors.length - 1);
+      const stop = this.colors.length === 1 ? 0 : index / (this.colors.length - 1);
 
       gradient.addColorStop(stop, `rgba(${R}, ${G}, ${B}, ${a})`);
     });

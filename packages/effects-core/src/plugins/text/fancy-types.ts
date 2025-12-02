@@ -18,7 +18,7 @@ export interface TextEnv {
   layer: {
     dispose: () => void,
   },
-  canvas?: HTMLCanvasElement,
+  canvas: HTMLCanvasElement,
 }
 
 export interface TextEffect {

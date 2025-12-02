@@ -86,21 +86,28 @@ export const _fancyTextConfigs: Record<string, FancyTextStyle> = {
   // 渐变
   'gradient': {
     effects: [
+      // 先描边
+      {
+        type: 'single-stroke',
+        params: {
+          width: 4,
+          color: [0, 0, 0, 1],  // 黑描边
+          unit: 'px',
+        },
+      },
+      // 再渐变填充
       {
         type: 'gradient',
         params: {
           colors: [
-            [1, 0, 0, 1],
-            [1, 1, 0, 1],
-            [0, 1, 0, 1],
-            [0, 1, 1, 1],
-            [0, 0, 1, 1],
+            [1, 0, 0, 1],   // 红
+            [0, 0, 1, 1],   // 蓝
           ],
-          angle: 90,
+          angle: 0,        // 水平渐变
         },
       },
     ],
-    editableParams: ['stroke', 'shadow', 'curve'],
+    editableParams: ['stroke', 'shadow', 'fill', 'curve'],
     enablePreset: true,
     presetName: 'gradient',
   },

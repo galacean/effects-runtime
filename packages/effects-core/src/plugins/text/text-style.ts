@@ -197,6 +197,14 @@ export class TextStyle {
    */
   setPresetEffect (presetName: string): void {
     this._currentPreset = presetName;
+
+    // 如果是none预设，使用基于当前textColor的基础效果
+    if (presetName === 'none') {
+      this.fancyTextConfig = this.getBaseEffectsFromNativeStyle();
+
+      return;
+    }
+
     const preset = getFancyTextConfig(presetName);
 
     // 深拷贝预设配置

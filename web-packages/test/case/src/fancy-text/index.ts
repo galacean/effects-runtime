@@ -10,6 +10,40 @@ const container = document.getElementById('J-container');
 let currentEffect = 'multi-stroke';
 let textItem: any = null;
 
+// 设置纹理pattern
+async function setupTexturePattern (textComponent: TextComponent) {
+  const ctx = document.createElement('canvas').getContext('2d');
+
+  if (!ctx) {return;}
+
+  const img = new Image();
+
+  img.crossOrigin = 'anonymous';
+  img.src = 'https://gw.alipayobjects.com/mdn/rms_2e421e/afts/img/A*fRtNTKrsq3YAAAAAAAAAAAAAARQnAQ'; // 纹理图片
+
+  await new Promise((resolve, reject) => {
+    img.onload = resolve;
+    img.onerror = reject;
+  });
+
+  const pattern = ctx.createPattern(img, 'repeat');
+
+  if (!pattern) {return;}
+
+  // 找到当前花字配置中的 texture effect，写入 pattern
+  const config = textComponent.textStyle.fancyTextConfig;
+
+  for (const eff of config.effects) {
+    if (eff.type === 'texture') {
+      eff.params = eff.params || {};
+      eff.params.pattern = pattern;
+    }
+  }
+
+  textComponent.effects = EffectFactory.createEffects(config.effects);
+  textComponent.isDirty = true;
+}
+
 (async () => {
   try {
     const player = new Player({
@@ -23,7 +57,7 @@ let textItem: any = null;
 
     if (textItem) {
       // 修改文本内容
-      textItem.text = '花字特效';
+      textItem.text = 'GRADIENT TEST';
 
       // 应用默认花字特效
       applyFancyTextEffect(currentEffect);
@@ -53,6 +87,11 @@ function applyFancyTextEffect (effectName: string) {
 
   // 使用新的预设方法
   textComponent.setPresetEffect(effectName);
+
+  // 如果是纹理效果，需要设置pattern
+  if (effectName === 'texture') {
+    setupTexturePattern(textComponent).catch(console.error);
+  }
 
   // eslint-disable-next-line no-console
   console.log(`应用花字特效: ${effectName}`, textComponent.getCurrentFancyTextConfig());
