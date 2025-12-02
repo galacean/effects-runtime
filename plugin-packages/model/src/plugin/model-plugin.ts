@@ -1,6 +1,4 @@
-import type {
-  Scene, SceneLoadOptions, Composition, Engine, Component,
-} from '@galacean/effects';
+import type { Scene, SceneLoadOptions, Composition, Engine, Component } from '@galacean/effects';
 import {
   VFXItem, AbstractPlugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
   GLSLVersion, Geometry,

@@ -2,8 +2,7 @@ import type { GeometryDrawMode, HitTestCustomParams, RenderFrame, RenderPassOpti
 import {
   RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
   TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
-  effectsClass, glContext, math, serialize, spec,
-  PluginSystem,
+  effectsClass, glContext, math, serialize, spec, PluginSystem,
 } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
