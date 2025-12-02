@@ -162,10 +162,10 @@ export class BloomPass extends RenderPass {
   }
 
   override dispose (options?: RenderPassDestroyOptions): void {
-    this.thresholdMaterial?.dispose();
-    this.downSampleHMaterial?.dispose();
-    this.downSampleVMaterial?.dispose();
-    this.upSampleMaterial?.dispose();
+    this.thresholdMaterial.dispose();
+    this.downSampleHMaterial.dispose();
+    this.downSampleVMaterial.dispose();
+    this.upSampleMaterial.dispose();
     super.dispose(options);
   }
 }
