@@ -297,6 +297,4 @@ npm install @galacean/effects-core
 - `@galacean/effects-specification`: Data specification definitions
 - `@galacean/effects-math`: Math library
 
-## API Documentation
-
-For detailed API documentation, please visit: [Galacean Effects API Documentation](https://galacean.antgroup.com/effects/#/api)
+## [API Documentation](https://www.galacean.com/effects/api/effects-core)
