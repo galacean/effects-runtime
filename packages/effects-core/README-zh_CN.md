@@ -299,4 +299,4 @@ npm install @galacean/effects-core
 
 ## API 文档
 
-详细 API 文档请访问：[Galacean Effects API 文档](https://galacean.antgroup.com/effects/#/api)
+[Galacean Effects Core API 文档](https://www.galacean.com/effects/api/effects-core)
