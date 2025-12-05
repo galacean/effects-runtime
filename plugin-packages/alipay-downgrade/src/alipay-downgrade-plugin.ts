@@ -17,7 +17,7 @@ export class AlipayDowngradePlugin extends Plugin {
     this.order = 1;
   }
 
-  override async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
+  override async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
     options = options || {};
     const downgradeResult = options.pluginData?.['downgrade'];
 

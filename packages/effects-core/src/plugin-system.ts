@@ -57,12 +57,12 @@ export class PluginSystem {
 
   static async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions) {
     return Promise.all(
-      plugins.map(plugin => plugin.onSceneLoadStart(scene, options)),
+      plugins.map(plugin => plugin.onAssetsLoadStart(scene, options)),
     );
   }
 
   static onSceneLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
-    plugins.forEach(loader => loader.onSceneLoadFinish(scene, options, engine));
+    plugins.forEach(loader => loader.onAssetsLoadFinish(scene, options, engine));
   }
 }
 

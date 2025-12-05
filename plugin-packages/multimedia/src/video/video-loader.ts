@@ -7,7 +7,7 @@ import { processMultimedia } from '../utils';
  */
 export class VideoLoader extends Plugin {
 
-  override async onSceneLoadStart (
+  override async onAssetsLoadStart (
     scene: Scene,
     options: SceneLoadOptions = {},
   ) {

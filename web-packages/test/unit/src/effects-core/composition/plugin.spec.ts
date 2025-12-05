@@ -27,7 +27,7 @@ describe('core/composition/plugin', () => {
     }
 
     class TestPlugin extends Plugin {
-      override onSceneLoadFinish (scene: Scene, options: SceneLoadOptions) {
+      override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions) {
         scene.storage.xx = 1;
         // @ts-expect-error
         expect(options.player).not.exist;

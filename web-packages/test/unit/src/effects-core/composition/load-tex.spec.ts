@@ -48,7 +48,7 @@ describe('core/composition/load-textures', () => {
     let texOpt;
 
     registerPlugin('test-load-tex-0', class TestPlugin extends Plugin {
-      override onSceneLoadFinish (scene: Scene) {
+      override onAssetsLoadFinish (scene: Scene) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
 
@@ -109,7 +109,7 @@ describe('core/composition/load-textures', () => {
     let texOpt;
 
     registerPlugin('test-load-tex-2', class TestPlugin extends Plugin {
-      onSceneLoadFinish (scene, options) {
+      onAssetsLoadFinish (scene, options) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
         expect(scene.textureOptions).to.exist;
@@ -176,7 +176,7 @@ describe('core/composition/load-textures', () => {
     let texOpt;
 
     registerPlugin('test-load-tex-3', class TestPlugin extends Plugin {
-      onSceneLoadFinish (scene, options) {
+      onAssetsLoadFinish (scene, options) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
         expect(scene.textureOptions.length).to.eql(2);
@@ -264,7 +264,7 @@ describe('core/composition/load-textures', () => {
     });
 
     registerPlugin('test-load-tex-4', class TestPlugin extends Plugin {
-      onSceneLoadFinish (scene, options, data) {
+      onAssetsLoadFinish (scene, options, data) {
         scene.textures[1].magFilter = glContext.LINEAR;
         expect(scene.textures[1].name).to.eql('abc');
         spy(1);
@@ -319,7 +319,7 @@ describe('core/composition/load-textures', () => {
     const spy = chai.spy('bins');
 
     registerPlugin('bins-test-plugin', class BinsPlugin extends Plugin {
-      onSceneLoadFinish (scene, options) {
+      onAssetsLoadFinish (scene, options) {
         spy();
         expect(scene.bins.length).to.eql(2);
         expect(scene.bins[0]).to.be.an.instanceof(ArrayBuffer);

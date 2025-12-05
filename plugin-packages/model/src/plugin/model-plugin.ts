@@ -20,7 +20,7 @@ export class ModelPlugin extends Plugin {
    */
   override name = 'model';
 
-  override async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
+  override async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
     await CompositionCache.loadStaticResources();
   }
 
@@ -29,7 +29,7 @@ export class ModelPlugin extends Plugin {
    * @param scene - 场景
    * @param options - 加载选项
    */
-  override onSceneLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
+  override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
     if (options.pluginData !== undefined) {
       const keyList = [
         'compatibleMode',

@@ -7,7 +7,7 @@ import { processMultimedia } from '../utils';
  */
 export class AudioLoader extends Plugin {
 
-  override async onSceneLoadStart (
+  override async onAssetsLoadStart (
     scene: Scene,
     options: SceneLoadOptions = {},
   ) {

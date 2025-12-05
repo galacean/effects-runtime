@@ -14,7 +14,7 @@ export interface PluginConstructor {
  */
 export abstract class Plugin {
   order = 100;
-  name = '';
+  name = 'Plugin';
 
   /**
    * 场景加载时触发，用于加载插件所需的自定义资源。
@@ -22,7 +22,7 @@ export abstract class Plugin {
    * @param scene - 场景对象
    * @param options - 场景加载选项
    */
-  async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions): Promise<void> { }
+  async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions): Promise<void> { }
 
   /**
    * 场景资源加载完成后触发。
@@ -31,7 +31,7 @@ export abstract class Plugin {
    * @param options - 场景加载选项
    * @param engine - 引擎实例
    */
-  onSceneLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
+  onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
 
   /**
    * 合成创建完成后触发。
