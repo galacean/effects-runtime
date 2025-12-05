@@ -55,13 +55,13 @@ export class PluginSystem {
     plugins.forEach(loader => loader.onCompositionDestroy(comp));
   }
 
-  static async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions) {
+  static async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions) {
     return Promise.all(
       plugins.map(plugin => plugin.onAssetsLoadStart(scene, options)),
     );
   }
 
-  static onSceneLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
+  static onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
     plugins.forEach(loader => loader.onAssetsLoadFinish(scene, options, engine));
   }
 }
