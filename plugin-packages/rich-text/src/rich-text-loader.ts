@@ -1,5 +1,5 @@
-import { AbstractPlugin } from '@galacean/effects';
+import { Plugin } from '@galacean/effects';
 
-export class RichTextLoader extends AbstractPlugin {
+export class RichTextLoader extends Plugin {
   override name = 'rich-text';
 }

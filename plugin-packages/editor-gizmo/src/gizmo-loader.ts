@@ -1,5 +1,5 @@
 import type { Composition, Scene, Texture, VFXItem } from '@galacean/effects';
-import { AbstractPlugin } from '@galacean/effects';
+import { Plugin } from '@galacean/effects';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
 import { GizmoComponent } from './gizmo-component';
@@ -8,10 +8,10 @@ const iconImages: Map<string, HTMLImageElement> = new Map();
 
 export const iconTextures: Map<string, Texture> = new Map();
 
-export class EditorGizmoPlugin extends AbstractPlugin {
+export class EditorGizmoPlugin extends Plugin {
   override order = 1001;
 
-  override async onCompositionConstructed (composition: Composition, scene: Scene) {
+  override async onCompositionCreated (composition: Composition, scene: Scene) {
     const engine = composition.renderer.engine;
 
     iconTextures.clear();

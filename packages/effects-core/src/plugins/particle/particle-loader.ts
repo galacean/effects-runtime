@@ -1,6 +1,6 @@
 import type { Engine } from '../../engine';
-import { AbstractPlugin } from '../plugin';
+import { Plugin } from '../plugin';
 
-export class ParticleLoader extends AbstractPlugin {
+export class ParticleLoader extends Plugin {
   engine: Engine;
 }

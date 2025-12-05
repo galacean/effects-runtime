@@ -1,13 +1,13 @@
 import type { ImageLike, Scene, SceneLoadOptions } from '@galacean/effects';
-import { spec, AbstractPlugin } from '@galacean/effects';
+import { spec, Plugin } from '@galacean/effects';
 import { processMultimedia } from '../utils';
 
 /**
  * 音频加载插件
  */
-export class AudioLoader extends AbstractPlugin {
+export class AudioLoader extends Plugin {
 
-  override async processAssets (
+  override async onAssetsLoadStart (
     scene: Scene,
     options: SceneLoadOptions = {},
   ) {
