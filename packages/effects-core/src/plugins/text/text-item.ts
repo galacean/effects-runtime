@@ -153,7 +153,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   /**
    * 根据配置更新文本样式和布局
    */
-  protected updateWithOptions (options: spec.TextContentOptions): void {
+  updateWithOptions (options: spec.TextContentOptions): void {
     // 初始化 textStyle 和 textLayout
     if (!this.textStyle) {
       this.textStyle = new TextStyle(options);
