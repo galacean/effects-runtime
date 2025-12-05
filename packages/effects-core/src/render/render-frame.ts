@@ -9,7 +9,7 @@ import type { Texture } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, removeItem } from '../utils';
 import { DrawObjectPass } from './draw-object-pass';
-import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
+import { BloomPass, ToneMappingPass } from './post-process-pass';
 import type { RenderPass, RenderPassDestroyOptions } from './render-pass';
 import { RenderTargetHandle } from './render-pass';
 import type { Renderer } from './renderer';
@@ -122,36 +122,14 @@ export class RenderFrame implements Disposable {
       const sceneTextureHandle = new RenderTargetHandle(engine);  //保存后处理前的屏幕图像
 
       const gaussianStep = 7; // 高斯模糊的迭代次数，次数越高模糊范围越大
-      const viewport: vec4 = [0, 0, this.renderer.getWidth() / 2, this.renderer.getHeight() / 2];
 
-      const gaussianDownResults = new Array<RenderTargetHandle>(gaussianStep);  //存放多个高斯Pass的模糊结果，用于Bloom
-      const bloomThresholdPass = new BloomThresholdPass(renderer);
+      // Bloom Pass（包含阈值提取、高斯模糊）
+      const bloomPass = new BloomPass(renderer, gaussianStep);
 
-      bloomThresholdPass.sceneTextureHandle = sceneTextureHandle;
-      this.addRenderPass(bloomThresholdPass);
-      for (let i = 0; i < gaussianStep; i++) {
-        gaussianDownResults[i] = new RenderTargetHandle(engine);
-        const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', i);
-        const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', i);
+      bloomPass.sceneTextureHandle = sceneTextureHandle;
+      this.addRenderPass(bloomPass);
 
-        gaussianDownVPass.gaussianResult = gaussianDownResults[i];
-
-        this.addRenderPass(gaussianDownHPass);
-        this.addRenderPass(gaussianDownVPass);
-        viewport[2] /= 2;
-        viewport[3] /= 2;
-        // TODO 限制最大迭代
-      }
-      viewport[2] *= 4;
-      viewport[3] *= 4;
-      for (let i = 0; i < gaussianStep - 1; i++) {
-        const gaussianUpPass = new HQGaussianUpSamplePass(renderer, gaussianStep - i);
-
-        gaussianUpPass.gaussianDownSampleResult = gaussianDownResults[gaussianStep - 2 - i];
-        this.addRenderPass(gaussianUpPass);
-        viewport[2] *= 2;
-        viewport[3] *= 2;
-      }
+      // Tone Mapping Pass
       const postProcessPass = new ToneMappingPass(renderer, sceneTextureHandle);
 
       this.addRenderPass(postProcessPass);
