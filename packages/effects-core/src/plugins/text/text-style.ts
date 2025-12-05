@@ -1,6 +1,5 @@
 import * as spec from '@galacean/effects-specification';
 import type { FancyTextStyle, FancyTextEffect } from './fancy-types';
-import { getFancyTextConfig } from './fancy-text-configs';
 
 function normalizeColor (rgba: number[]): [number, number, number, number] {
   if (!rgba || rgba.length < 3) {return [1, 1, 1, 1];}
@@ -12,6 +11,101 @@ function normalizeColor (rgba: number[]): [number, number, number, number] {
 
   return [r, g, b, a];
 }
+
+/**
+ * ========= 前端 JSON 模拟结构：开始 =========
+ */
+
+/** 整体花字配置 JSON：只是一个效果栈 */
+export interface FancyConfigJSON {
+  effects: FancyEffectJSON[],
+}
+
+/** 单个效果层 JSON，与核心基础 type 对应 */
+export type FancyEffectJSON =
+  | SolidFillJSON
+  | SingleStrokeJSON
+  | GradientJSON
+  | ShadowJSON
+  | TextureJSON;
+
+export interface SolidFillJSON {
+  type: 'solid-fill',
+  color: number[],              // [r,g,b,a]，0-1 或 0-255
+}
+
+export interface SingleStrokeJSON {
+  type: 'single-stroke',
+  width: number,
+  color: number[],
+  unit?: 'px' | 'em',
+}
+
+export interface GradientJSON {
+  type: 'gradient',
+  colors: number[][],           // 多个渐变颜色
+  angle?: number,               // 角度（度），0=水平，90=垂直
+}
+
+export interface ShadowJSON {
+  type: 'shadow',
+  color?: number[],
+  blur?: number,
+  offsetX?: number,
+  offsetY?: number,
+}
+
+export interface TextureJSON {
+  type: 'texture',
+  imageUrl: string,             // 纹理图片 URL，pattern 运行时再填
+}
+
+/**
+ * 一个模拟 JSON 示例：多描边 + 填充
+ * 可以在 demo 或测试中直接用 TextStyle.parseFancyConfigJSON(MULTI_STROKE_SAMPLE)
+ */
+export const MULTI_STROKE_SAMPLE: FancyConfigJSON = {
+  effects: [
+    { type: 'single-stroke', width: 15, color: [0.75, 0.28, 0.77, 1] },
+    { type: 'single-stroke', width: 12, color: [0.44, 0.34, 0.81, 1] },
+    { type: 'single-stroke', width: 9, color: [0.52, 0.89, 0.19, 1] },
+    { type: 'single-stroke', width: 6, color: [1, 0.52, 0.36, 1] },
+    { type: 'single-stroke', width: 3, color: [0.99, 0.19, 0.51, 1] },
+    { type: 'solid-fill', color: [1, 1, 1, 1] },
+  ],
+};
+
+/**
+ * 一个模拟 JSON 示例：阴影 + 描边 + 渐变填充
+ */
+export const GRADIENT_WITH_STROKE_SAMPLE: FancyConfigJSON = {
+  effects: [
+    {
+      type: 'shadow',
+      color: [0, 0, 0, 0.6],
+      blur: 8,
+      offsetX: 4,
+      offsetY: 4,
+    },
+    {
+      type: 'single-stroke',
+      width: 3,
+      color: [0, 0, 0, 1],
+    },
+    {
+      type: 'gradient',
+      colors: [
+        [1, 0, 0, 1],
+        [0, 0, 1, 1],
+      ],
+      angle: 0,
+    },
+  ],
+};
+
+/**
+ * ========= 前端 JSON 模拟结构：结束 =========
+ */
 
 export class TextStyle {
   /**
@@ -88,17 +182,23 @@ export class TextStyle {
    */
   fancyTextConfig: FancyTextStyle;
 
-  /**
-   * 当前预设名称
-   */
-  private _currentPreset = 'none';
-
   constructor (options: spec.TextContentOptions) {
     this.update(options);
   }
 
   update (options: spec.TextContentOptions): void {
-    const { textColor = [1, 1, 1, 1], fontSize = 40, outline, shadow, fontWeight = 'normal', fontStyle = 'normal', fontFamily = 'sans-serif' } = options;
+    const {
+      textColor = [1, 1, 1, 1],
+      fontSize = 40,
+      outline,
+      shadow,
+      fontWeight = 'normal',
+      fontStyle = 'normal',
+      fontFamily = 'sans-serif',
+      // 模拟：options 可能带 fancyConfigJSON
+      // @ts-expect-error
+      fancyConfigJSON = MULTI_STROKE_SAMPLE,
+    } = options;
 
     this.textColor = normalizeColor([...textColor]);
     //@ts-expect-error
@@ -141,8 +241,14 @@ export class TextStyle {
       this.fontOffset += this.fontSize * Math.tan(12 * 0.0174532925);
     }
 
-    // 初始化花字配置为基础效果
-    this.fancyTextConfig = this.getBaseEffectsFromNativeStyle();
+    // 关键：初始化花字配置
+    if (fancyConfigJSON && fancyConfigJSON.effects && fancyConfigJSON.effects.length > 0) {
+      // 从前端 JSON 解析花字配置
+      this.fancyTextConfig = TextStyle.parseFancyConfigJSON(fancyConfigJSON, this.textColor);
+    } else {
+      // 没有 JSON：使用基础样式（none）
+      this.fancyTextConfig = this.getBaseEffectsFromNativeStyle();
+    }
   }
 
   /**
@@ -193,34 +299,120 @@ export class TextStyle {
   }
 
   /**
-   * 设置花字预设
-   */
-  setPresetEffect (presetName: string): void {
-    this._currentPreset = presetName;
-
-    // 如果是none预设，使用基于当前textColor的基础效果
-    if (presetName === 'none') {
-      this.fancyTextConfig = this.getBaseEffectsFromNativeStyle();
-
-      return;
-    }
-
-    const preset = getFancyTextConfig(presetName);
-
-    // 深拷贝预设配置
-    this.fancyTextConfig = {
-      effects: JSON.parse(JSON.stringify(preset.effects)),
-      editableParams: [...(preset.editableParams || [])],
-      enablePreset: preset.enablePreset,
-      presetName: preset.presetName,
-    };
-  }
-
-  /**
    * 获取当前花字配置
    */
   getCurrentFancyTextConfig (): FancyTextStyle {
     return this.fancyTextConfig;
+  }
+
+  /**
+   * 静态工具：将前端 JSON 配置解析为 FancyTextStyle（花字配置）
+   * @param json - 前端 JSON（仅描述效果栈）
+   * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色（可传 this.textColor）
+   */
+  static parseFancyConfigJSON (json: FancyConfigJSON, fallbackFillColor?: number[]): FancyTextStyle {
+    const effects: FancyTextEffect[] = [];
+
+    const layers = json.effects || [];
+
+    if (layers.length === 0) {
+      // 如果没有任何效果，默认给一个 solid-fill
+      effects.push({
+        type: 'solid-fill',
+        params: {
+          color: normalizeColor(fallbackFillColor ?? [0, 0, 0, 1]),
+        },
+      });
+    } else {
+      for (const layer of layers) {
+        switch (layer.type) {
+          case 'shadow': {
+            const l = layer;
+
+            effects.push({
+              type: 'shadow',
+              params: {
+                color: normalizeColor(l.color ?? [0, 0, 0, 0.8]),
+                blur: l.blur ?? 5,
+                offsetX: l.offsetX ?? 0,
+                offsetY: l.offsetY ?? 0,
+              },
+            });
+
+            break;
+          }
+          case 'single-stroke': {
+            const l = layer;
+
+            effects.push({
+              type: 'single-stroke',
+              params: {
+                width: l.width,
+                color: normalizeColor(l.color),
+                unit: l.unit ?? 'px',
+              },
+            });
+
+            break;
+          }
+          case 'solid-fill': {
+            const l = layer;
+
+            effects.push({
+              type: 'solid-fill',
+              params: {
+                color: normalizeColor(l.color ?? fallbackFillColor ?? [0, 0, 0, 1]),
+              },
+            });
+
+            break;
+          }
+          case 'gradient': {
+            const l = layer;
+            const colors = (l.colors ?? [[1, 1, 1, 1]]).map(c => normalizeColor(c));
+            const angle = l.angle ?? 0;
+
+            effects.push({
+              type: 'gradient',
+              params: { colors, angle },
+            });
+
+            break;
+          }
+          case 'texture': {
+            const l = layer;
+
+            effects.push({
+              type: 'texture',
+              params: {
+                imageUrl: l.imageUrl,
+                pattern: null, // pattern 由运行时加载图片后设置
+              },
+            });
+
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      effects,
+      editableParams: ['stroke', 'shadow', 'fill', 'curve'],
+      enablePreset: true,
+      presetName: 'custom-json',
+    };
+  }
+
+  /**
+   * 实例方法：应用 JSON 配置覆盖当前 fancyTextConfig
+   * @param json - 前端 JSON（仅描述效果栈）
+   */
+  applyFancyJson (json: FancyConfigJSON): void {
+    // 使用当前 textColor 作为 solid-fill 的默认颜色
+    const style = TextStyle.parseFancyConfigJSON(json, this.textColor);
+
+    this.fancyTextConfig = style;
   }
 
   /**
@@ -488,12 +680,5 @@ export class TextStyle {
     }
     this.shadowOffsetY = v;
     this.updateShadowParams({});
-  }
-
-  /**
-   * 静态方法：获取花字配置
-   */
-  static getFancyTextConfig (presetName: string): FancyTextStyle {
-    return getFancyTextConfig(presetName);
   }
 }

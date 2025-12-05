@@ -1,14 +1,15 @@
 import { Player } from '@galacean/effects';
-import { TextStyle } from '@galacean/effects-core';
 import { TextComponent } from '@galacean/effects-core';
 import { EffectFactory } from '@galacean/effects-core';
+import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*H0HxT4AyjxMAAAAAQFAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 
-let currentEffect = 'multi-stroke';
+let currentEffect = 'none';
 let textItem: any = null;
+let initialFancyConfig: any = null;  // 存 TextStyle 初始的 fancyTextConfig 快照
 
 // 设置纹理pattern
 async function setupTexturePattern (textComponent: TextComponent) {
@@ -56,10 +57,18 @@ async function setupTexturePattern (textComponent: TextComponent) {
     textItem = composition.getItemByName('text_3');
 
     if (textItem) {
-      // 修改文本内容
+      // 修改文本内容（这句可有可无，看你需求）
       textItem.text = 'GRADIENT TEST';
 
-      // 应用默认花字特效
+      // 获取 TextComponent
+      const textComponent = textItem.getComponent(TextComponent);
+
+      if (textComponent) {
+        // 记录一份初始 fancyTextConfig 的深拷贝快照
+        initialFancyConfig = JSON.parse(JSON.stringify(textComponent.getCurrentFancyTextConfig()));
+      }
+
+      // 应用默认花字特效（none）
       applyFancyTextEffect(currentEffect);
 
       // 创建控制界面
@@ -75,26 +84,40 @@ async function setupTexturePattern (textComponent: TextComponent) {
 function applyFancyTextEffect (effectName: string) {
   if (!textItem) {return;}
 
-  // 获取TextComponent
   const textComponent = textItem.getComponent(TextComponent);
 
   if (!textComponent) {
-    // eslint-disable-next-line no-console
     console.warn('未找到TextComponent');
 
     return;
   }
 
-  // 使用新的预设方法
-  textComponent.setPresetEffect(effectName);
+  const style = textComponent.textStyle;
 
-  // 如果是纹理效果，需要设置pattern
+  if (effectName === 'none') {
+    // 恢复到 demo 记录的"初始 fancyTextConfig 快照"
+    if (initialFancyConfig) {
+      // 深拷贝回去，避免后续修改影响快照本身
+      style.fancyTextConfig = JSON.parse(JSON.stringify(initialFancyConfig));
+    } else {
+      // 万一没记录到快照，就退回 core 的基础栈
+      style.fancyTextConfig = style.getBaseEffectsFromNativeStyle();
+    }
+  } else {
+    // 其它预设：使用 JSON 配置
+    const json = getDemoFancyJsonConfig(effectName);
+
+    style.applyFancyJson(json);
+  }
+
+  // 按当前 fancyTextConfig.effects 重建 effects
+  textComponent.effects = EffectFactory.createEffects(style.fancyTextConfig.effects);
+  textComponent.isDirty = true;
+
   if (effectName === 'texture') {
     setupTexturePattern(textComponent).catch(console.error);
   }
 
-  // eslint-disable-next-line no-console
-  console.log(`应用花字特效: ${effectName}`, textComponent.getCurrentFancyTextConfig());
 }
 
 // 手动控制描边
@@ -209,7 +232,7 @@ function createControls () {
   // 特效按钮
   const effectGroup = createControlGroup('特效选择');
   const effects = [
-    { key: 'none', name: '无特效' },
+    { key: 'none', name: '无特效(core默认)' },
     { key: 'single-stroke', name: '单描边' },
     { key: 'multi-stroke', name: '多描边' },
     { key: 'gradient', name: '渐变' },
@@ -245,11 +268,11 @@ function createControls () {
     effectGroup.appendChild(button);
   });
 
-  // 默认选中多描边
-  const multiStrokeButton = effectGroup.querySelector('button:nth-child(3)') as HTMLButtonElement;
+  // 默认选中“无特效(core默认)”
+  const noneButton = effectGroup.querySelector('button:nth-child(1)') as HTMLButtonElement;
 
-  if (multiStrokeButton) {
-    multiStrokeButton.style.background = '#007bff';
+  if (noneButton) {
+    noneButton.style.background = '#007bff';
   }
 
   controlPanel.appendChild(effectGroup);
@@ -350,7 +373,13 @@ function createControls () {
     white-space: pre-wrap;
     word-wrap: break-word;
   `;
-  configDisplay.textContent = JSON.stringify(TextStyle.getFancyTextConfig(currentEffect), null, 2);
+
+  // 初始显示快照配置或core的实际配置
+  const textComponent = textItem?.getComponent(TextComponent);
+  const initialConfigForDisplay = initialFancyConfig ||
+    (textComponent ? textComponent.getCurrentFancyTextConfig() : getDemoFancyJsonConfig(currentEffect));
+
+  configDisplay.textContent = JSON.stringify(initialConfigForDisplay, null, 2);
   configGroup.appendChild(configDisplay);
   controlPanel.appendChild(configGroup);
 

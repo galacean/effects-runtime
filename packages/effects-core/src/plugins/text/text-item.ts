@@ -454,15 +454,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   }
 
   /**
-   * 设置花字预设
-   */
-  setPresetEffect (presetName: string): void {
-    this.textStyle.setPresetEffect(presetName);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
-    this.isDirty = true;
-  }
-
-  /**
    * 设置描边启用状态
    */
   setStrokeEnabled (enabled: boolean): void {
