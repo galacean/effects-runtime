@@ -32,7 +32,5 @@ export class EffectComponent extends MeshComponent {
   override fromData (data: spec.EffectComponentData): void {
     super.fromData(data);
     this.material = this.materials[0];
-
-    this.material.depthMask = false;
   }
 }
