@@ -1,4 +1,4 @@
-import { AbstractPlugin } from '../plugin';
+import { Plugin } from '../plugin';
 
-export class CameraVFXItemLoader extends AbstractPlugin {
+export class CameraVFXItemLoader extends Plugin {
 }

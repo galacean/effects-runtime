@@ -1,12 +1,12 @@
 import type { Composition } from './composition';
-import type { AbstractPlugin, PluginConstructor } from './plugins';
+import type { Plugin, PluginConstructor } from './plugins';
 import type { Scene, SceneLoadOptions } from './scene';
 import { logger } from './utils';
 import type { Engine } from './engine';
 
 export const pluginLoaderMap: Record<string, PluginConstructor> = {};
 
-const plugins: AbstractPlugin[] = [];
+const plugins: Plugin[] = [];
 
 /**
  * 注册 plugin
@@ -25,7 +25,6 @@ export function registerPlugin (name: string, pluginClass: PluginConstructor) {
   const pluginInstance = new pluginClass();
 
   pluginInstance.name = name;
-  pluginInstance.initialize();
 
   plugins.push(pluginInstance);
   plugins.sort((a, b) => a.order - b.order);
@@ -44,26 +43,26 @@ export function unregisterPlugin (name: string) {
 }
 
 export class PluginSystem {
-  static getPlugins (): AbstractPlugin[] {
+  static getPlugins (): Plugin[] {
     return plugins;
   }
 
   static initializeComposition (composition: Composition, scene: Scene) {
-    plugins.forEach(loader => loader.onCompositionConstructed(composition, scene));
+    plugins.forEach(loader => loader.onCompositionCreated(composition, scene));
   }
 
   static destroyComposition (comp: Composition) {
-    plugins.forEach(loader => loader.onCompositionDestroyed(comp));
+    plugins.forEach(loader => loader.onCompositionDestroy(comp));
   }
 
-  static async processAssets (scene: Scene, options?: SceneLoadOptions) {
+  static async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions) {
     return Promise.all(
-      plugins.map(plugin => plugin.processAssets(scene, options)),
+      plugins.map(plugin => plugin.onSceneLoadStart(scene, options)),
     );
   }
 
-  static loadResources (scene: Scene, options: SceneLoadOptions, engine: Engine) {
-    plugins.forEach(loader => loader.prepareResource(scene, options, engine));
+  static onSceneLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine) {
+    plugins.forEach(loader => loader.onSceneLoadFinish(scene, options, engine));
   }
 }
 

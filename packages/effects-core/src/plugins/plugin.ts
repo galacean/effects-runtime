@@ -3,7 +3,7 @@ import type { Composition } from '../composition';
 import type { Engine } from '../engine';
 
 export interface PluginConstructor {
-  new(): AbstractPlugin,
+  new(): Plugin,
 
   [key: string]: any,
 }
@@ -12,35 +12,37 @@ export interface PluginConstructor {
  * 抽象插件类
  * 注册合成不同生命周期的回调函数
  */
-export abstract class AbstractPlugin {
+export abstract class Plugin {
   order = 100;
   name = '';
 
-  initialize (): void { }
+  /**
+   * 场景加载时触发，用于加载插件所需的自定义资源。
+   * 此阶段适合发起异步资源请求。
+   * @param scene - 场景对象
+   * @param options - 场景加载选项
+   */
+  async onSceneLoadStart (scene: Scene, options?: SceneLoadOptions): Promise<void> { }
 
   /**
-   * loadScene 函数调用的时候会触发此函数，
-   * 此阶段可以加载插件所需类型资源，并返回原始资源和加载后的资源。
-   * @param scene
-   * @param options
-   * @returns
+   * 场景资源加载完成后触发。
+   * 此时 JSON 中的图片和二进制已加载完成，可对资源做进一步处理。
+   * @param scene - 场景对象
+   * @param options - 场景加载选项
+   * @param engine - 引擎实例
    */
-  async processAssets (scene: Scene, options?: SceneLoadOptions): Promise<void> {
-  }
+  onSceneLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
 
   /**
-   * loadScene 函数调用的时候会触发此函数，
-   * 此阶段时，json 中的图片和二进制已经被加载完成，可以对加载好的资源做进一步处理，
-   * 如果 promise 被 reject, loadScene 函数同样会被 reject，表示场景加载失败。
-   * 请记住，整个 load 阶段都不要创建 GL 相关的对象，只创建 JS 对象
-   * 此阶段晚于 processAssets
-   * @param {Scene} scene
-   * @param {SceneLoadOptions} options
+   * 合成创建完成后触发。
+   * @param composition - 合成对象
+   * @param scene - 场景对象
    */
-  prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
-  }
+  onCompositionCreated (composition: Composition, scene: Scene): void { }
 
-  onCompositionConstructed (composition: Composition, scene: Scene): void { }
-
-  onCompositionDestroyed (composition: Composition): void { }
+  /**
+   * 合成销毁时触发。
+   * @param composition - 合成对象
+   */
+  onCompositionDestroy (composition: Composition): void { }
 }

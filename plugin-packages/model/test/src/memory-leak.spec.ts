@@ -1,11 +1,11 @@
-import { Player, registerPlugin, AbstractPlugin, VFXItem, spec, unregisterPlugin } from '@galacean/effects';
+import { Player, registerPlugin, VFXItem, spec, unregisterPlugin, Plugin } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 import sceneList from './scene-list';
 import { sleep, GPUMemoryTool } from '../../../../web-packages/test/memory/src/common';
 
 const { expect } = chai;
 
-class CustomePlugin extends AbstractPlugin { }
+class CustomePlugin extends Plugin { }
 
 registerPlugin('orientation-transformer', CustomePlugin);
 

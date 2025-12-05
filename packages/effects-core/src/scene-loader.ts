@@ -22,8 +22,8 @@ export class SceneLoader {
 
     engine.clearResources();
 
-    // 触发插件系统 pluginSystem 的回调 prepareResource
-    PluginSystem.loadResources(loadedScene, assetManager.options, engine);
+    // 触发插件系统 pluginSystem 的回调 onSceneLoadFinish
+    PluginSystem.onSceneLoadFinish(loadedScene, assetManager.options, engine);
 
     engine.assetService.prepareAssets(loadedScene, loadedScene.assets);
     engine.assetService.updateTextVariables(loadedScene, options.variables);
