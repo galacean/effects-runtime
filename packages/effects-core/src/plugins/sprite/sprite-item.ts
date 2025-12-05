@@ -91,7 +91,6 @@ export class ComponentTimePlayable extends Playable {
 export class SpriteComponent extends MaskableGraphic {
   time = 0;
   duration = 1;
-  loop = true;
   /**
    * @internal
   */
@@ -111,16 +110,19 @@ export class SpriteComponent extends MaskableGraphic {
   override onUpdate (dt: number): void {
     let time = this.time;
     const duration = this.duration;
+    const textureAnimation = this.textureSheetAnimation;
+    // TODO: Update textureAnimation spec.
+    // @ts-expect-error
+    const loop = textureAnimation?.loop ?? true;
 
-    if (time > duration && this.loop) {
+    if (time > duration && loop) {
       time = time % duration;
     }
+
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
-    const ta = this.textureSheetAnimation;
     const { video } = this.renderer.texture.source as Texture2DSourceOptionsVideo;
 
     if (video) {
-
       if (time === 0) {
         video.pause();
       } else {
@@ -128,8 +130,8 @@ export class SpriteComponent extends MaskableGraphic {
       }
       this.renderer.texture.uploadCurrentVideoFrame();
     }
-    if (ta) {
-      const total = ta.total || (ta.row * ta.col);
+    if (textureAnimation) {
+      const total = textureAnimation.total || (textureAnimation.row * textureAnimation.col);
       let texRectX = 0;
       let texRectY = 0;
       let texRectW = 1;
@@ -153,20 +155,20 @@ export class SpriteComponent extends MaskableGraphic {
       let dx, dy;
 
       if (flip) {
-        dx = 1 / ta.row * texRectW;
-        dy = 1 / ta.col * texRectH;
+        dx = 1 / textureAnimation.row * texRectW;
+        dy = 1 / textureAnimation.col * texRectH;
       } else {
-        dx = 1 / ta.col * texRectW;
-        dy = 1 / ta.row * texRectH;
+        dx = 1 / textureAnimation.col * texRectW;
+        dy = 1 / textureAnimation.row * texRectH;
       }
       let texOffset;
 
-      if (ta.animate) {
+      if (textureAnimation.animate) {
         const frameIndex = Math.round(life * (total - 1));
-        const yIndex = Math.floor(frameIndex / ta.col);
-        const xIndex = frameIndex - yIndex * ta.col;
+        const yIndex = Math.floor(frameIndex / textureAnimation.col);
+        const xIndex = frameIndex - yIndex * textureAnimation.col;
 
-        texOffset = flip ? [dx * yIndex, dy * (ta.col - xIndex)] : [dx * xIndex, dy * (1 + yIndex)];
+        texOffset = flip ? [dx * yIndex, dy * (textureAnimation.col - xIndex)] : [dx * xIndex, dy * (1 + yIndex)];
       } else {
         texOffset = [0, dy];
       }
@@ -331,6 +333,5 @@ export class SpriteComponent extends MaskableGraphic {
 
     //@ts-expect-error
     this.duration = data.duration ?? this.item.duration;
-    this.loop = data.loop ?? true;
   }
 }
