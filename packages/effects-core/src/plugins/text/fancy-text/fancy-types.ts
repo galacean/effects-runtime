@@ -10,26 +10,41 @@ export type FancyLayerKind =
 
 export type FancyLayerCategory = 'base' | 'decorative';
 
-export interface FancyLayerJSONBase {
+/**
+ * 花字层配置基类
+ */
+export interface FancyLayerConfigBase {
   kind: FancyLayerKind,
   category?: FancyLayerCategory,
 }
 
-export interface BaseLayerJSON extends FancyLayerJSONBase {
+/**
+ * 基础绘制层配置（描边/填充/渐变/纹理），可以挂装饰层
+ */
+export interface BaseLayerConfig extends FancyLayerConfigBase {
   kind: 'single-stroke' | 'solid-fill' | 'gradient' | 'texture',
   params?: Record<string, any>,
-  decorations?: DecorativeLayerJSON[],
+  decorations?: DecorativeLayerConfig[],
 }
 
-export interface DecorativeLayerJSON extends FancyLayerJSONBase {
+/**
+ * 装饰层配置（目前只有 shadow，将来可以扩展 glow 等）
+ */
+export interface DecorativeLayerConfig extends FancyLayerConfigBase {
   kind: 'shadow',
   params?: Record<string, any>,
 }
 
-export type FancyLayerJSON = BaseLayerJSON | DecorativeLayerJSON;
+/**
+ * 花字层配置：基础层或装饰层
+ */
+export type FancyLayerConfig = BaseLayerConfig | DecorativeLayerConfig;
 
-export interface FancyConfigJSON {
-  layers: FancyLayerJSON[],
+/**
+ * 花字整体配置（编辑器 <-> runtime 协议）
+ */
+export interface FancyConfig {
+  layers: FancyLayerConfig[],
 }
 
 export type FancyRenderLayerCategory = 'base' | 'decorative';

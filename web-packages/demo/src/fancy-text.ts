@@ -104,10 +104,10 @@ function applyFancyPreset (presetName: string) {
       style.fancyRenderStyle = style.getBaseRenderStyle();
     }
   } else {
-    // 其它预设：使用 JSON 配置
-    const json = getDemoFancyJsonConfig(presetName);
+    // 其它预设：使用花字配置
+    const config = getDemoFancyJsonConfig(presetName);
 
-    style.applyFancyJson(json);
+    style.applyFancyConfig(config);
   }
 
   // 按当前 fancyRenderStyle.layers 重建 layerDrawers

@@ -1,10 +1,10 @@
-import type { FancyConfigJSON } from '@galacean/effects-core';
+import type { FancyConfig } from '@galacean/effects-core';
 
 /**
  * Demo 花字预设配置集合
  * 这些配置展示了各种花字层的组合方式
  */
-export const demoFancyJsonConfigs: Record<string, FancyConfigJSON> = {
+export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
   none: {
     layers: [
       // 空数组，表示"没有额外 JSON 配置"，将使用 core 默认样式
@@ -99,8 +99,8 @@ export const demoFancyJsonConfigs: Record<string, FancyConfigJSON> = {
 /**
  * 获取指定名称的花字预设配置
  * @param name - 预设名称
- * @returns 对应的花字配置 JSON
+ * @returns 对应的花字配置
  */
-export function getDemoFancyJsonConfig (name: string): FancyConfigJSON {
+export function getDemoFancyJsonConfig (name: string): FancyConfig {
   return demoFancyJsonConfigs[name] || demoFancyJsonConfigs['none'];
 }

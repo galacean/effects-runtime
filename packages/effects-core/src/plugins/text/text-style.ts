@@ -1,5 +1,10 @@
 import * as spec from '@galacean/effects-specification';
-import type { FancyRenderStyle, FancyRenderLayer, FancyConfigJSON, DecorativeLayerJSON } from './fancy-text/fancy-types';
+import type {
+  FancyRenderStyle,
+  FancyRenderLayer,
+  FancyConfig,
+  DecorativeLayerConfig,
+} from './fancy-text/fancy-types';
 
 function normalizeColor (rgba: number[]): [number, number, number, number] {
   if (!rgba || rgba.length < 3) {return [1, 1, 1, 1];}
@@ -100,9 +105,9 @@ export class TextStyle {
       fontWeight = 'normal',
       fontStyle = 'normal',
       fontFamily = 'sans-serif',
-      // 模拟：options 可能带 fancyConfigJSON
+      // 模拟：options 可能带 fancyConfig
       // @ts-expect-error
-      fancyConfigJSON,
+      fancyConfig,
     } = options;
 
     this.textColor = normalizeColor([...textColor]);
@@ -147,9 +152,9 @@ export class TextStyle {
     }
 
     // 关键：初始化花字配置
-    if (fancyConfigJSON && fancyConfigJSON.layers && fancyConfigJSON.layers.length > 0) {
+    if (fancyConfig && fancyConfig.layers && fancyConfig.layers.length > 0) {
       // 新格式：解析为 FancyRenderStyle
-      this.fancyRenderStyle = TextStyle.parseFancyConfigJSON(fancyConfigJSON, this.textColor);
+      this.fancyRenderStyle = TextStyle.parseFancyConfig(fancyConfig, this.textColor);
     } else {
     // 没有 JSON：使用基础样式（none）
       this.fancyRenderStyle = this.getBaseRenderStyle();
@@ -209,18 +214,18 @@ export class TextStyle {
   }
 
   /**
-   * 静态工具：将前端 JSON 配置解析为 FancyRenderStyle
+   * 静态工具：将花字配置解析为 FancyRenderStyle
    *
-   * 本方法会把 BaseLayerJSON.decorations 中挂载的装饰层扁平化到渲染层数组中。
+   * 本方法会把 BaseLayerConfig.decorations 中挂载的装饰层扁平化到渲染层数组中。
    * 处理顺序：先展开 decorations（shadow 等），再添加当前 base 层本身。
    *
-   * @param json - JSON
+   * @param config - 花字配置
    * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色（可传 this.textColor）
    * @returns FancyRenderStyle - 扁平化后的渲染层配置
    */
-  static parseFancyConfigJSON (json: FancyConfigJSON, fallbackFillColor?: number[]): FancyRenderStyle {
+  static parseFancyConfig (config: FancyConfig, fallbackFillColor?: number[]): FancyRenderStyle {
     const layers: FancyRenderLayer[] = [];
-    const srcLayers = json.layers || [];
+    const srcLayers = config.layers || [];
 
     if (srcLayers.length === 0) {
       layers.push({
@@ -232,9 +237,9 @@ export class TextStyle {
       });
     } else {
       for (const src of srcLayers) {
-        // 1. 如果是 BaseLayerJSON，先展开 decorations
+        // 1. 如果是 BaseLayerConfig，先展开 decorations
         const srcAny = src as any;
-        const decorations = srcAny.decorations as DecorativeLayerJSON[] | undefined;
+        const decorations = srcAny.decorations as DecorativeLayerConfig[] | undefined;
 
         if (decorations && decorations.length > 0) {
           for (const d of decorations) {
@@ -332,12 +337,12 @@ export class TextStyle {
   }
 
   /**
-   * 实例方法：应用 JSON 配置覆盖当前 fancyRenderStyle
-   * @param json - 前端 JSON（仅描述花字层配置）
+   * 实例方法：应用花字配置覆盖当前 fancyRenderStyle
+   * @param config - 花字配置
    */
-  applyFancyJson (json: FancyConfigJSON): void {
+  applyFancyConfig (config: FancyConfig): void {
     // 使用当前 textColor 作为 solid-fill 的默认颜色
-    const style = TextStyle.parseFancyConfigJSON(json, this.textColor);
+    const style = TextStyle.parseFancyConfig(config, this.textColor);
 
     this.fancyRenderStyle = style;
   }
@@ -594,9 +599,9 @@ export class TextStyle {
 
 /**
  * 一个模拟 JSON 示例：外发光 + 内发光 + 多重描边 + 渐变填充（挂载版本）
- * 可在 demo 或测试中直接用 TextStyle.parseFancyConfigJSON(GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE)
+ * 可在 demo 或测试中直接用 TextStyle.parseFancyConfig(GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE)
  */
-export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfigJSON = {
+export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
   layers: [
     // 外层描边 + 挂在它上面的外发光
     {
@@ -667,8 +672,9 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfigJSON = {
 
 /**
  * 一个模拟 JSON 示例：金属质感效果（挂载版本）
+ * 可在 demo 或测试中直接用 TextStyle.parseFancyConfig(METALLIC_SAMPLE)
  */
-export const METALLIC_SAMPLE: FancyConfigJSON = {
+export const METALLIC_SAMPLE: FancyConfig = {
   layers: [
     // 金属光泽效果
     {
@@ -710,8 +716,9 @@ export const METALLIC_SAMPLE: FancyConfigJSON = {
 
 /**
  * 一个模拟 JSON 示例：霓虹灯效果（挂载版本）
+ * 可在 demo 或测试中直接用 TextStyle.parseFancyConfig(NEON_SAMPLE)
  */
-export const NEON_SAMPLE: FancyConfigJSON = {
+export const NEON_SAMPLE: FancyConfig = {
   layers: [
     // 霓虹边框 + 挂在它上面的霓虹光晕
     {
