@@ -197,7 +197,7 @@ export class AssetManager implements Disposable {
           assets: this.assets,
         };
 
-        await hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(scene));
+        await hookTimeInfo('plugin:onAssetsLoadStart', () => this.onPluginSceneLoadStart(scene));
 
         const { bins = [], images, fonts } = jsonScene;
 
@@ -359,8 +359,8 @@ export class AssetManager implements Disposable {
     return loadedImages;
   }
 
-  private async processPluginAssets (scene: Scene) {
-    await PluginSystem.processAssets(scene, this.options);
+  private async onPluginSceneLoadStart (scene: Scene) {
+    await PluginSystem.onAssetsLoadStart(scene, this.options);
   }
 
   private async processTextures (

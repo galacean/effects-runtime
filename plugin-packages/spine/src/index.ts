@@ -1,5 +1,5 @@
 import * as EFFECTS from '@galacean/effects';
-import { AbstractPlugin, logger, registerPlugin } from '@galacean/effects';
+import { Plugin, logger, registerPlugin } from '@galacean/effects';
 import {
   createSkeletonData, getAnimationDuration, getAnimationList, getAtlasFromBuffer,
   getSkeletonFromBuffer, getSkinList, getSpineVersion, getTextureOptions,
@@ -18,7 +18,7 @@ export {
   getSkeletonFromBuffer,
 };
 
-class SpineLoader extends AbstractPlugin { }
+class SpineLoader extends Plugin { }
 
 registerPlugin('spine', SpineLoader);
 

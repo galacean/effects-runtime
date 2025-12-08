@@ -1,5 +1,5 @@
 import type { SceneLoadOptions, Scene, Composition } from '@galacean/effects';
-import { Player, AbstractPlugin, VFXItem, registerPlugin, unregisterPlugin } from '@galacean/effects';
+import { Player, Plugin, VFXItem, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -26,14 +26,14 @@ describe('core/composition/plugin', () => {
       return i++;
     }
 
-    class TestPlugin extends AbstractPlugin {
-      override prepareResource (scene: Scene, options: SceneLoadOptions) {
+    class TestPlugin extends Plugin {
+      override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions) {
         scene.storage.xx = 1;
         // @ts-expect-error
         expect(options.player).not.exist;
       }
 
-      override onCompositionConstructed (composition: Composition, scene: Scene) {
+      override onCompositionCreated (composition: Composition, scene: Scene) {
         expect(scene.storage.xx).to.eql(1);
         expect(composition.items.length).to.eql(1);
         // @ts-expect-error

@@ -49,7 +49,7 @@ describe('Player downgrade', () => {
       });
       playerFunc();
     } catch (e: any) {
-      expect(e.message).to.equal('Load error in plugin:processAssets, Error: Downgraded, reason: mock.');
+      expect(e.message).to.equal('Load error in plugin:onAssetsLoadStart, Error: Downgraded, reason: mock.');
     }
     expect(playerFunc).not.to.have.been.called();
   });
@@ -122,7 +122,7 @@ describe('Player downgrade', () => {
       playerFunc();
     } catch (e: any) {
       catchFunc();
-      expect(e.message).to.equal('Load error in plugin:processAssets, Error: Downgraded, reason: downgrade test.');
+      expect(e.message).to.equal('Load error in plugin:onAssetsLoadStart, Error: Downgraded, reason: downgrade test.');
     }
     expect(catchFunc).to.have.been.called.once;
     expect(playerFunc).not.to.have.been.called();

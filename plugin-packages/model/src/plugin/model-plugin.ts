@@ -1,6 +1,6 @@
 import type { Scene, SceneLoadOptions, Composition, Engine, Component } from '@galacean/effects';
 import {
-  VFXItem, AbstractPlugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
+  VFXItem, Plugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
   GLSLVersion, Geometry,
 } from '@galacean/effects';
 import {
@@ -14,13 +14,13 @@ import { fetchPBRShaderCode, fetchUnlitShaderCode, PluginHelper } from '../utili
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
  */
-export class ModelPlugin extends AbstractPlugin {
+export class ModelPlugin extends Plugin {
   /**
    * 插件名称
    */
   override name = 'model';
 
-  override async processAssets (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
+  override async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
     await CompositionCache.loadStaticResources();
   }
 
@@ -29,7 +29,7 @@ export class ModelPlugin extends AbstractPlugin {
    * @param scene - 场景
    * @param options - 加载选项
    */
-  override prepareResource (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
+  override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
     if (options.pluginData !== undefined) {
       const keyList = [
         'compatibleMode',
@@ -84,7 +84,7 @@ export class ModelPlugin extends AbstractPlugin {
    * @param composition - 合成
    * @param scene - 场景
    */
-  override onCompositionConstructed (composition: Composition, scene: Scene): void {
+  override onCompositionCreated (composition: Composition, scene: Scene): void {
     const props = {
       id: 'ModelPluginItem',
       name: 'ModelPluginItem',
