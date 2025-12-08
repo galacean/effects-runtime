@@ -10,9 +10,10 @@ import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import type { ITextComponent } from './text-component-base';
 import { TextComponentBase } from './text-component-base';
-import { EffectFactory } from './effect-factory';
-import type { CharInfo } from './render-with-effects';
-import { renderWithEffects } from './render-with-effects';
+import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
+import type { CharInfo } from './fancy-text/render-with-text-layers';
+import { renderWithTextLayers } from './fancy-text/render-with-text-layers';
+import type { TextLayerDrawer } from './fancy-text/fancy-types';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -40,7 +41,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
-  effects: any[];
+  layerDrawers: TextLayerDrawer[];
 
   /**
    * 每一行文本的最大宽度
@@ -158,8 +159,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text);
 
-    // 初始化 effects
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    // 初始化 layerDrawers
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
   }
 
   getLineCount (text: string): number {
@@ -271,7 +272,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   setTextColor (value: spec.RGBAColorValue): void {
     this.textStyle.setTextColor(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -282,7 +283,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   setOutlineColor (value: spec.RGBAColorValue): void {
     this.textStyle.setOutlineColor(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -381,13 +382,13 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
       });
 
       // 使用花字系统渲染文本
-      renderWithEffects(
+      renderWithTextLayers(
         this.canvas,
         context,
         this.textStyle,
         this.textLayout,
         charsInfo,
-        this.effects,
+        this.layerDrawers,
       );
     });
 
@@ -424,32 +425,32 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
   setOutlineWidth (value: number): void {
     this.textStyle.setOutlineWidth(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
   setShadowBlur (value: number): void {
     this.textStyle.setShadowBlur(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
   // setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
   setShadowColor (value: spec.RGBAColorValue): void {
     this.textStyle.setShadowColor(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
   setShadowOffsetX (value: number): void {
     this.textStyle.setShadowOffsetX(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
   setShadowOffsetY (value: number): void {
     this.textStyle.setShadowOffsetY(value);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -458,7 +459,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   setStrokeEnabled (enabled: boolean): void {
     this.textStyle.setStrokeEnabled(enabled);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -467,7 +468,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   setShadowEnabled (enabled: boolean): void {
     this.textStyle.setShadowEnabled(enabled);
-    this.effects = EffectFactory.createEffects(this.textStyle.fancyTextConfig.effects);
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 

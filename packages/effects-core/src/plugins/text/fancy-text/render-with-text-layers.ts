@@ -1,4 +1,4 @@
-import type { TextEffect } from './fancy-types';
+import type { TextLayerDrawer } from './fancy-types';
 
 export interface CharInfo {
   y: number,
@@ -12,7 +12,7 @@ function createTextEnv (
   context: CanvasRenderingContext2D,
   style: any,
   layout: any,
-  charsInfo: CharInfo[]
+  charsInfo: CharInfo[],
 ) {
   return {
     fontDesc: style.fontDesc,
@@ -21,31 +21,34 @@ function createTextEnv (
     lines: charsInfo,
     layer: {
       dispose: () => {
-        // 释放资源的逻辑
+        // 释放资源逻辑
       },
     },
     canvas,
   };
 }
 
-export function renderWithEffects (
+/**
+ * 使用一组 TextLayerDrawer 按顺序绘制文本
+ */
+export function renderWithTextLayers (
   canvas: HTMLCanvasElement,
   context: CanvasRenderingContext2D,
   style: any,
   layout: any,
   charsInfo: CharInfo[],
-  effects: TextEffect[]
+  layerDrawers: TextLayerDrawer[],
 ) {
   const env = createTextEnv(canvas, context, style, layout, charsInfo);
-  const effs = effects || [];
+  const drawers = layerDrawers || [];
 
   context.save();
-  for (const eff of effs) {
-    if (typeof eff.render === 'function') {
-      eff.render(context, env);
+  for (const drawer of drawers) {
+    if (typeof drawer.render === 'function') {
+      drawer.render(context, env);
     } else {
-      eff.renderDecorations?.(context, env);
-      eff.renderFill?.(context, env);
+      drawer.renderDecorations?.(context, env);
+      drawer.renderFill?.(context, env);
     }
   }
   context.restore();

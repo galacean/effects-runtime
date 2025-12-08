@@ -445,6 +445,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     layout.height = canvasHeight / this.textStyle.fontScale;
 
     this.renderToTexture(canvasWidth, canvasHeight, flipY, context => {
+      // 绘制红色背景
+      context.fillStyle = 'red';
+      context.fillRect(0, 0, canvasWidth, canvasHeight);
+
       // 步骤6: 绘制文本
       this.drawTextWithStrategies(
         context,

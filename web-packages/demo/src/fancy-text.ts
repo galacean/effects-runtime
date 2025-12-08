@@ -1,15 +1,15 @@
 import { Player } from '@galacean/effects';
 import { TextComponent } from '@galacean/effects-core';
-import { EffectFactory } from '@galacean/effects-core';
+import { FancyLayerFactory } from '@galacean/effects-core';
 import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*H0HxT4AyjxMAAAAAQFAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 
-let currentEffect = 'none';
+let currentPreset = 'none';
 let textItem: any = null;
-let initialFancyConfig: any = null;  // 存 TextStyle 初始的 fancyTextConfig 快照
+let initialFancyConfig: any = null;  // 存 TextStyle 初始的 fancyRenderStyle 快照
 
 // 设置纹理pattern
 async function setupTexturePattern (textComponent: TextComponent) {
@@ -31,17 +31,17 @@ async function setupTexturePattern (textComponent: TextComponent) {
 
   if (!pattern) {return;}
 
-  // 找到当前花字配置中的 texture effect，写入 pattern
-  const config = textComponent.textStyle.fancyTextConfig;
+  // 找到当前花字配置中的 texture layer，写入 pattern
+  const config = textComponent.textStyle.fancyRenderStyle;
 
-  for (const eff of config.effects) {
-    if (eff.type === 'texture') {
-      eff.params = eff.params || {};
-      eff.params.pattern = pattern;
+  for (const layer of config.layers) {
+    if (layer.kind === 'texture') {
+      layer.params = layer.params || {};
+      layer.params.pattern = pattern;
     }
   }
 
-  textComponent.effects = EffectFactory.createEffects(config.effects);
+  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(config.layers);
   textComponent.isDirty = true;
 }
 
@@ -64,12 +64,12 @@ async function setupTexturePattern (textComponent: TextComponent) {
       const textComponent = textItem.getComponent(TextComponent);
 
       if (textComponent) {
-        // 记录一份初始 fancyTextConfig 的深拷贝快照
+        // 记录一份初始 fancyRenderStyle 的深拷贝快照
         initialFancyConfig = JSON.parse(JSON.stringify(textComponent.getCurrentFancyTextConfig()));
       }
 
-      // 应用默认花字特效（none）
-      applyFancyTextEffect(currentEffect);
+      // 应用默认花字预设（none）
+      applyFancyPreset(currentPreset);
 
       // 创建控制界面
       createControls();
@@ -80,8 +80,8 @@ async function setupTexturePattern (textComponent: TextComponent) {
   }
 })();
 
-// 应用花字特效
-function applyFancyTextEffect (effectName: string) {
+// 应用花字预设
+function applyFancyPreset (presetName: string) {
   if (!textItem) {return;}
 
   const textComponent = textItem.getComponent(TextComponent);
@@ -94,27 +94,27 @@ function applyFancyTextEffect (effectName: string) {
 
   const style = textComponent.textStyle;
 
-  if (effectName === 'none') {
-    // 恢复到 demo 记录的"初始 fancyTextConfig 快照"
+  if (presetName === 'none') {
+    // 恢复到 demo 记录的"初始 fancyRenderStyle 快照"
     if (initialFancyConfig) {
       // 深拷贝回去，避免后续修改影响快照本身
-      style.fancyTextConfig = JSON.parse(JSON.stringify(initialFancyConfig));
+      style.fancyRenderStyle = JSON.parse(JSON.stringify(initialFancyConfig));
     } else {
       // 万一没记录到快照，就退回 core 的基础栈
-      style.fancyTextConfig = style.getBaseEffectsFromNativeStyle();
+      style.fancyRenderStyle = style.getBaseRenderStyle();
     }
   } else {
     // 其它预设：使用 JSON 配置
-    const json = getDemoFancyJsonConfig(effectName);
+    const json = getDemoFancyJsonConfig(presetName);
 
     style.applyFancyJson(json);
   }
 
-  // 按当前 fancyTextConfig.effects 重建 effects
-  textComponent.effects = EffectFactory.createEffects(style.fancyTextConfig.effects);
+  // 按当前 fancyRenderStyle.layers 重建 layerDrawers
+  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(style.fancyRenderStyle.layers);
   textComponent.isDirty = true;
 
-  if (effectName === 'texture') {
+  if (presetName === 'texture') {
     setupTexturePattern(textComponent).catch(console.error);
   }
 
@@ -182,8 +182,8 @@ function updateShadowParams (params: {
   // 使用 TextStyle 的 updateShadowParams 方法，支持完整参数
   textComponent.textStyle.updateShadowParams(params);
 
-  // 更新 effects
-  textComponent.effects = EffectFactory.createEffects(textComponent.textStyle.fancyTextConfig.effects);
+  // 更新 layerDrawers
+  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(textComponent.textStyle.fancyRenderStyle.layers);
   textComponent.isDirty = true;
 
   // eslint-disable-next-line no-console
@@ -223,16 +223,16 @@ function createControls () {
   // 标题
   const title = document.createElement('h3');
 
-  title.textContent = '花字特效控制';
+  title.textContent = '花字样式控制';
   title.style.cssText = 'margin: 0 0 15px 0; font-size: 16px;';
   controlPanel.appendChild(title);
 
   // 字体大小
 
-  // 特效按钮
-  const effectGroup = createControlGroup('特效选择');
-  const effects = [
-    { key: 'none', name: '无特效(core默认)' },
+  // 预设按钮
+  const presetGroup = createControlGroup('样式预设');
+  const presets = [
+    { key: 'none', name: '默认样式(core)' },
     { key: 'single-stroke', name: '单描边' },
     { key: 'multi-stroke', name: '多描边' },
     { key: 'gradient', name: '渐变' },
@@ -240,10 +240,10 @@ function createControls () {
     { key: 'texture', name: '纹理' },
   ];
 
-  effects.forEach(effect => {
+  presets.forEach(preset => {
     const button = document.createElement('button');
 
-    button.textContent = effect.name;
+    button.textContent = preset.name;
     button.style.cssText = `
         display: block;
         width: 100%;
@@ -257,25 +257,25 @@ function createControls () {
         font-size: 12px;
       `;
     button.addEventListener('click', () => {
-      currentEffect = effect.key;
-      applyFancyTextEffect(currentEffect);
+      currentPreset = preset.key;
+      applyFancyPreset(currentPreset);
       // 更新按钮样式
-      effectGroup.querySelectorAll('button').forEach(btn => {
+      presetGroup.querySelectorAll('button').forEach(btn => {
         (btn as HTMLElement).style.background = '#333';
       });
       button.style.background = '#007bff';
     });
-    effectGroup.appendChild(button);
+    presetGroup.appendChild(button);
   });
 
-  // 默认选中“无特效(core默认)”
-  const noneButton = effectGroup.querySelector('button:nth-child(1)') as HTMLButtonElement;
+  // 默认选中"默认样式(core)"
+  const noneButton = presetGroup.querySelector('button:nth-child(1)') as HTMLButtonElement;
 
   if (noneButton) {
     noneButton.style.background = '#007bff';
   }
 
-  controlPanel.appendChild(effectGroup);
+  controlPanel.appendChild(presetGroup);
 
   // 曲线文本控制
   const curvedTextGroup = createControlGroup('曲线文本');
@@ -377,7 +377,7 @@ function createControls () {
   // 初始显示快照配置或core的实际配置
   const textComponent = textItem?.getComponent(TextComponent);
   const initialConfigForDisplay = initialFancyConfig ||
-    (textComponent ? textComponent.getCurrentFancyTextConfig() : getDemoFancyJsonConfig(currentEffect));
+    (textComponent ? textComponent.getCurrentFancyTextConfig() : getDemoFancyJsonConfig(currentPreset));
 
   configDisplay.textContent = JSON.stringify(initialConfigForDisplay, null, 2);
   configGroup.appendChild(configDisplay);
@@ -572,163 +572,51 @@ function createControls () {
     // 同步参数值到UI控件
     syncParamsToUI(config);
 
-    // 根据editableParams控制UI控件状态
-    if (config.editableParams) {
-      const editableParams = config.editableParams;
+    // 启用所有控件
+    const strokeToggle = document.getElementById('strokeToggle');
+    const strokeColor = document.getElementById('strokeColor') as HTMLInputElement;
+    const strokeWidth = document.getElementById('strokeWidth') as HTMLInputElement;
+    const shadowToggle = document.getElementById('shadowToggle');
+    const shadowColor = document.getElementById('shadowColor') as HTMLInputElement;
+    const shadowBlur = document.getElementById('shadowBlur') as HTMLInputElement;
+    const textColor = document.getElementById('textColor') as HTMLInputElement;
+    const curvedPower = document.getElementById('curvedPower') as HTMLInputElement;
+    const disableCurvedText = document.getElementById('disableCurvedText') as HTMLButtonElement;
 
-      // 控制描边控件
-      const strokeToggle = document.getElementById('strokeToggle');
-      const strokeColor = document.getElementById('strokeColor') as HTMLInputElement;
-      const strokeWidth = document.getElementById('strokeWidth') as HTMLInputElement;
-
-      if (strokeToggle) {
-        if (editableParams.includes('stroke')) {
-          strokeToggle.removeAttribute('disabled');
-          strokeToggle.classList.remove('disabled-control');
-        } else {
-          strokeToggle.setAttribute('disabled', 'true');
-          strokeToggle.classList.add('disabled-control');
-        }
+    [strokeToggle, strokeColor, strokeWidth, shadowToggle, shadowColor, shadowBlur, textColor, curvedPower, disableCurvedText].forEach(control => {
+      if (control) {
+        (control as HTMLInputElement | HTMLButtonElement).removeAttribute('disabled');
+        control.classList.remove('disabled-control');
       }
-
-      if (strokeColor) {
-        if (editableParams.includes('stroke')) {
-          strokeColor.removeAttribute('disabled');
-          strokeColor.classList.remove('disabled-control');
-        } else {
-          strokeColor.setAttribute('disabled', 'true');
-          strokeColor.classList.add('disabled-control');
-        }
-      }
-
-      if (strokeWidth) {
-        if (editableParams.includes('stroke')) {
-          strokeWidth.removeAttribute('disabled');
-          strokeWidth.classList.remove('disabled-control');
-        } else {
-          strokeWidth.setAttribute('disabled', 'true');
-          strokeWidth.classList.add('disabled-control');
-        }
-      }
-
-      // 控制阴影控件
-      const shadowToggle = document.getElementById('shadowToggle');
-      const shadowColor = document.getElementById('shadowColor') as HTMLInputElement;
-      const shadowBlur = document.getElementById('shadowBlur') as HTMLInputElement;
-
-      if (shadowToggle) {
-        if (editableParams.includes('shadow')) {
-          shadowToggle.removeAttribute('disabled');
-          shadowToggle.classList.remove('disabled-control');
-        } else {
-          shadowToggle.setAttribute('disabled', 'true');
-          shadowToggle.classList.add('disabled-control');
-        }
-      }
-
-      if (shadowColor) {
-        if (editableParams.includes('shadow')) {
-          shadowColor.removeAttribute('disabled');
-          shadowColor.classList.remove('disabled-control');
-        } else {
-          shadowColor.setAttribute('disabled', 'true');
-          shadowColor.classList.add('disabled-control');
-        }
-      }
-
-      if (shadowBlur) {
-        if (editableParams.includes('shadow')) {
-          shadowBlur.removeAttribute('disabled');
-          shadowBlur.classList.remove('disabled-control');
-        } else {
-          shadowBlur.setAttribute('disabled', 'true');
-          shadowBlur.classList.add('disabled-control');
-        }
-      }
-
-      // 控制填充控件
-      const textColor = document.getElementById('textColor') as HTMLInputElement;
-
-      if (textColor) {
-        if (editableParams.includes('fill')) {
-          textColor.removeAttribute('disabled');
-          textColor.classList.remove('disabled-control');
-        } else {
-          textColor.setAttribute('disabled', 'true');
-          textColor.classList.add('disabled-control');
-        }
-      }
-
-      // 控制曲线文本控件
-      const curvedPower = document.getElementById('curvedPower') as HTMLInputElement;
-      const disableCurvedText = document.getElementById('disableCurvedText') as HTMLButtonElement;
-
-      if (curvedPower) {
-        if (editableParams.includes('curve')) {
-          curvedPower.removeAttribute('disabled');
-          curvedPower.classList.remove('disabled-control');
-        } else {
-          curvedPower.setAttribute('disabled', 'true');
-          curvedPower.classList.add('disabled-control');
-        }
-      }
-
-      if (disableCurvedText) {
-        if (editableParams.includes('curve')) {
-          disableCurvedText.removeAttribute('disabled');
-          disableCurvedText.classList.remove('disabled-control');
-        } else {
-          disableCurvedText.setAttribute('disabled', 'true');
-          disableCurvedText.classList.add('disabled-control');
-        }
-      }
-    } else {
-      // 没有editableParams时启用所有控件
-      const strokeToggle = document.getElementById('strokeToggle');
-      const strokeColor = document.getElementById('strokeColor') as HTMLInputElement;
-      const strokeWidth = document.getElementById('strokeWidth') as HTMLInputElement;
-      const shadowToggle = document.getElementById('shadowToggle');
-      const shadowColor = document.getElementById('shadowColor') as HTMLInputElement;
-      const shadowBlur = document.getElementById('shadowBlur') as HTMLInputElement;
-      const textColor = document.getElementById('textColor') as HTMLInputElement;
-      const curvedPower = document.getElementById('curvedPower') as HTMLInputElement;
-      const disableCurvedText = document.getElementById('disableCurvedText') as HTMLButtonElement;
-
-      [strokeToggle, strokeColor, strokeWidth, shadowToggle, shadowColor, shadowBlur, textColor, curvedPower, disableCurvedText].forEach(control => {
-        if (control) {
-          (control as HTMLInputElement | HTMLButtonElement).removeAttribute('disabled');
-          control.classList.remove('disabled-control');
-        }
-      });
-    }
+    });
   };
 
   // 同步参数值到UI控件
   const syncParamsToUI = (config: any) => {
-    if (!config.effects) {return;}
+    if (!config.layers) {return;}
 
-    // 遍历特效配置，提取参数并更新UI
-    config.effects.forEach((effect: any) => {
-      if (effect.type === 'single-stroke' && effect.params) {
+    // 遍历花字层配置，提取参数并更新UI
+    config.layers.forEach((layer: any) => {
+      if (layer.kind === 'single-stroke' && layer.params) {
         // 更新描边参数
-        if (effect.params.width !== undefined) {
+        if (layer.params.width !== undefined) {
           const strokeWidthInput = document.getElementById('strokeWidth') as HTMLInputElement;
           const strokeWidthValue = document.getElementById('strokeWidthValue');
 
           if (strokeWidthInput) {
-            strokeWidthInput.value = effect.params.width.toString();
+            strokeWidthInput.value = layer.params.width.toString();
           }
           if (strokeWidthValue) {
-            strokeWidthValue.textContent = effect.params.width.toFixed(1);
+            strokeWidthValue.textContent = layer.params.width.toFixed(1);
           }
         }
 
-        if (effect.params.color) {
+        if (layer.params.color) {
           const strokeColorInput = document.getElementById('strokeColor') as HTMLInputElement;
 
           if (strokeColorInput) {
             // 将vec4颜色转换为hex颜色
-            const [r, g, b] = effect.params.color;
+            const [r, g, b] = layer.params.color;
             const hexColor = rgbToHex(r * 255, g * 255, b * 255);
 
             strokeColorInput.value = hexColor;
@@ -736,46 +624,46 @@ function createControls () {
         }
       }
 
-      if (effect.type === 'shadow' && effect.params) {
+      if (layer.kind === 'shadow' && layer.params) {
         // 更新阴影参数
-        if (effect.params.blur !== undefined) {
+        if (layer.params.blur !== undefined) {
           const shadowBlurInput = document.getElementById('shadowBlur') as HTMLInputElement;
           const shadowBlurValue = document.getElementById('shadowBlurValue');
 
           if (shadowBlurInput) {
-            shadowBlurInput.value = effect.params.blur.toString();
+            shadowBlurInput.value = layer.params.blur.toString();
           }
           if (shadowBlurValue) {
-            shadowBlurValue.textContent = effect.params.blur.toFixed(1);
+            shadowBlurValue.textContent = layer.params.blur.toFixed(1);
           }
         }
 
-        if (effect.params.color) {
+        if (layer.params.color) {
           const shadowColorInput = document.getElementById('shadowColor') as HTMLInputElement;
           const shadowOpacityInput = document.getElementById('shadowOpacity') as HTMLInputElement;
           const shadowOpacityValue = document.getElementById('shadowOpacityValue');
 
           if (shadowColorInput) {
             // 将vec4颜色转换为hex颜色
-            const [r, g, b, a = 1] = effect.params.color;
+            const [r, g, b, a = 1] = layer.params.color;
             const hexColor = rgbToHex(r * 255, g * 255, b * 255);
 
             shadowColorInput.value = hexColor;
           }
 
           if (shadowOpacityInput) {
-            shadowOpacityInput.value = (effect.params.color[3] || 1).toString();
+            shadowOpacityInput.value = (layer.params.color[3] || 1).toString();
           }
 
           if (shadowOpacityValue) {
-            shadowOpacityValue.textContent = (effect.params.color[3] || 1).toFixed(2);
+            shadowOpacityValue.textContent = (layer.params.color[3] || 1).toFixed(2);
           }
         }
 
         // 从 offsetX / offsetY 反算 distance / angle，填回控件
-        if (effect.params.offsetX !== undefined || effect.params.offsetY !== undefined) {
-          const ox = effect.params.offsetX || 0;
-          const oy = effect.params.offsetY || 0;
+        if (layer.params.offsetX !== undefined || layer.params.offsetY !== undefined) {
+          const ox = layer.params.offsetX || 0;
+          const oy = layer.params.offsetY || 0;
           const distance = Math.sqrt(ox * ox + oy * oy);
           let angle = Math.atan2(oy, ox) * 180 / Math.PI;
 
@@ -801,14 +689,14 @@ function createControls () {
         }
       }
 
-      if (effect.type === 'solid-fill' && effect.params) {
+      if (layer.kind === 'solid-fill' && layer.params) {
         // 更新填充参数
-        if (effect.params.color) {
+        if (layer.params.color) {
           const textColorInput = document.getElementById('textColor') as HTMLInputElement;
 
           if (textColorInput) {
             // 将vec4颜色转换为hex颜色
-            const [r, g, b] = effect.params.color;
+            const [r, g, b] = layer.params.color;
             const hexColor = rgbToHex(r * 255, g * 255, b * 255);
 
             textColorInput.value = hexColor;
@@ -841,7 +729,7 @@ function createControls () {
     updateDisplays();
   };
 
-  effectGroup.addEventListener('click', updateConfigDisplay);
+  presetGroup.addEventListener('click', updateConfigDisplay);
 
   // 辅助函数：颜色转换
   function hexToRgba (hex: string): number[] {
@@ -879,6 +767,6 @@ function createControlGroup (label: string): HTMLDivElement {
 }
 
 // eslint-disable-next-line no-console
-console.log('花字特效系统初始化成功');
+console.log('花字样式系统初始化成功');
 // eslint-disable-next-line no-console
-console.log('可用特效配置:', ['none', 'single-stroke', 'multi-stroke', 'gradient', 'shadow', 'texture']);
+console.log('可用花字预设配置:', ['none', 'single-stroke', 'multi-stroke', 'gradient', 'shadow', 'texture']);

@@ -1,9 +1,9 @@
-import type { TextEffect, TextEnv } from './fancy-types';
+import type { TextLayerDrawer, TextEnv } from './fancy-types';
 
 /**
- * 单层描边效果
+ * 单层描边层绘制器
  */
-export class SingleStrokeEffect implements TextEffect {
+export class SingleStrokeDrawer implements TextLayerDrawer {
   name = 'single-stroke';
 
   constructor (
@@ -44,9 +44,9 @@ export class SingleStrokeEffect implements TextEffect {
 }
 
 /**
- * 渐变效果
+ * 渐变层绘制器
  */
-export class GradientEffect implements TextEffect {
+export class GradientDrawer implements TextLayerDrawer {
   name = 'gradient';
 
   constructor (
@@ -58,11 +58,9 @@ export class GradientEffect implements TextEffect {
     ctx.font = env.fontDesc;
     ctx.textBaseline = 'alphabetic';
 
-    // 创建渐变
     const { canvas } = env;
     const angleRad = (this.angle * Math.PI) / 180;
 
-    // 使用画布对角线做渐变基线
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     const halfLen = Math.sqrt(cx * cx + cy * cy);
@@ -99,9 +97,9 @@ export class GradientEffect implements TextEffect {
 }
 
 /**
- * 阴影效果
+ * 阴影层绘制器
  */
-export class ShadowEffect implements TextEffect {
+export class ShadowDrawer implements TextLayerDrawer {
   name = 'shadow';
 
   constructor (
@@ -125,9 +123,9 @@ export class ShadowEffect implements TextEffect {
 }
 
 /**
- * 纹理效果
+ * 纹理层绘制器
  */
-export class TextureEffect implements TextEffect {
+export class TextureDrawer implements TextLayerDrawer {
   name = 'texture';
 
   constructor (
@@ -135,9 +133,7 @@ export class TextureEffect implements TextEffect {
   ) {}
 
   render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
-    if (!this.pattern) {
-      return;
-    }
+    if (!this.pattern) {return;}
 
     ctx.font = env.fontDesc;
     ctx.textBaseline = 'alphabetic';
@@ -156,9 +152,9 @@ export class TextureEffect implements TextEffect {
 }
 
 /**
- * 纯色填充效果
+ * 纯色填充层绘制器
  */
-export class SolidFillEffect implements TextEffect {
+export class SolidFillDrawer implements TextLayerDrawer {
   name = 'solid-fill';
 
   constructor (
