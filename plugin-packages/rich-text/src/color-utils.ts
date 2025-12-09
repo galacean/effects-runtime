@@ -23,7 +23,7 @@ export function colorNameToRGBA (colorName: string): string {
       return result;
     } finally {
       // Clean up DOM element
-      canvas.remove();
+      canvas.remove?.();
     }
   }
 
