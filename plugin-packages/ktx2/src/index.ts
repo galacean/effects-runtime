@@ -1,4 +1,5 @@
 import * as EFFECTS from '@galacean/effects';
+import { logger } from '@galacean/effects';
 import { registerKTX2Loader } from './ktx2-loader';
 
 export * from './ktx2-loader';
@@ -9,6 +10,8 @@ export * from './ktx2-loader';
 export const version = __VERSION__;
 
 registerKTX2Loader();
+
+logger.info(`Plugin ktx2 version: ${version}.`);
 
 if (version !== EFFECTS.version) {
   console.error(

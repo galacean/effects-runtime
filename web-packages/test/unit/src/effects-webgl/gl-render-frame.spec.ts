@@ -48,35 +48,6 @@ describe('webgl/gl-render-frame', () => {
     // expect(frame.renderPasses).contains(frame.resource.finalCopyRP);
     // expect(frame.defRenderPasses.length).to.eql(2);
   });
-
-  it('clear success', () => {
-    const frame = new RenderFrame({
-      renderer, camera: new Camera(''),
-      clearAction: {
-        clearColor: [0, 0, 0, 0],
-        clearDepth: 1,
-        clearStencil: 0xff,
-        colorAction: TextureLoadAction.clear,
-        depthAction: TextureLoadAction.clear,
-        stencilAction: TextureLoadAction.clear,
-      },
-    });
-    const gl = renderer.gl;
-
-    gl.depthMask(false);
-    gl.stencilMask(0);
-    gl.colorMask(false, false, false, false);
-    gl.clearDepth(0.5);
-    gl.clearColor(1, 1, 1, 1);
-    gl.clearStencil(0);
-    renderer.renderRenderFrame(frame);
-    expect(gl.getParameter(gl.DEPTH_CLEAR_VALUE)).to.eql(1);
-    expect(gl.getParameter(gl.STENCIL_CLEAR_VALUE)).to.eql(0);
-    expect(new Uint8Array(gl.getParameter(gl.COLOR_CLEAR_VALUE))).to.deep.equal(new Uint8Array([0, 0, 0, 0]));
-    expect(gl.getParameter(gl.DEPTH_WRITEMASK)).to.be.true;
-    expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equal([true, true, true, true]);
-    expect(gl.getParameter(gl.STENCIL_WRITEMASK)).to.eql(0xff);
-  });
 });
 
 function generateMeshes (renderer: GLRenderer, num: number, priority = 0) {

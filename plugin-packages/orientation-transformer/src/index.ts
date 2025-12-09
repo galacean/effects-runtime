@@ -1,8 +1,8 @@
 import * as EFFECTS from '@galacean/effects';
-import { VFXItem, logger, registerPlugin } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { OrientationPluginLoader } from './orientation-plugin-loader';
 
-registerPlugin('orientation-transformer', OrientationPluginLoader, VFXItem);
+registerPlugin('orientation-transformer', OrientationPluginLoader);
 
 export { getAdapter, closeDeviceMotion, openDeviceMotion, OrientationPluginLoader } from './orientation-plugin-loader';
 export { OrientationAdapterAcceler } from './orientation-adapter-acceler';

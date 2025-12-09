@@ -1,38 +1,46 @@
 import { TextureLoadAction } from '../texture/types';
-import type { RenderPassDestroyOptions, RenderPassOptions } from './render-pass';
+import { FilterMode, RenderTextureFormat } from './framebuffer';
 import { RenderPass, RenderPassPriorityNormal } from './render-pass';
 import type { Renderer } from './renderer';
 
 export class DrawObjectPass extends RenderPass {
-  constructor (renderer: Renderer, options: RenderPassOptions) {
-    super(renderer, options);
+  private useRenderTarget = false;
+
+  constructor (renderer: Renderer) {
+    super(renderer);
 
     this.priority = RenderPassPriorityNormal;
     this.name = 'DrawObjectPass';
+  }
 
-    this.onResize = this.onResize.bind(this);
-    this.renderer.engine.on('resize', this.onResize);
+  setup (useRenderTarget: boolean) {
+    this.useRenderTarget = useRenderTarget;
+  }
+
+  override configure (renderer: Renderer): void {
+    if (this.useRenderTarget) {
+      this.framebuffer = renderer.getTemporaryRT('DrawObjectPass', renderer.getWidth(), renderer.getHeight(), 16, FilterMode.Linear, RenderTextureFormat.RGBAHalf);
+      renderer.setFramebuffer(this.framebuffer);
+    }
   }
 
   override execute (renderer: Renderer) {
-    renderer.clear({
-      colorAction: TextureLoadAction.clear,
-      depthAction: TextureLoadAction.clear,
-      stencilAction: TextureLoadAction.clear,
-    });
+    if (this.useRenderTarget) {
+      renderer.clear({
+        colorAction: TextureLoadAction.clear,
+        depthAction: TextureLoadAction.clear,
+        stencilAction: TextureLoadAction.clear,
+      });
+    }
+
+    this.meshes.sort((a, b) => a.priority - b.priority);
+
     renderer.renderMeshes(this.meshes);
-    renderer.clear(this.storeAction);
   }
 
-  onResize () {
-    const width = this.renderer.getWidth();
-    const height = this.renderer.getHeight();
-
-    this.framebuffer?.resize(0, 0, width, height);
-  }
-
-  override dispose (options?: RenderPassDestroyOptions): void {
-    this.renderer.engine.off('resize', this.onResize);
-    super.dispose(options);
+  override onCameraCleanup (renderer: Renderer): void {
+    if (this.useRenderTarget && this.framebuffer) {
+      renderer.releaseTemporaryRT(this.framebuffer);
+    }
   }
 }

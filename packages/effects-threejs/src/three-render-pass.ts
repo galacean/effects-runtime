@@ -1,8 +1,4 @@
-import type {
-  RenderPassOptions,
-  RenderPassDepthStencilAttachment, RenderPassDestroyOptions,
-  spec,
-} from '@galacean/effects-core';
+import type { RenderPassDestroyOptions, spec } from '@galacean/effects-core';
 import { RenderPass } from '@galacean/effects-core';
 
 /**
@@ -14,8 +10,8 @@ export class ThreeRenderPass extends RenderPass {
    * 构造函数
    * @param options - 设置 RenderPass 的参数选项
    */
-  constructor (renderer: any, options: RenderPassOptions) {
-    super(renderer, options);
+  constructor (renderer: any) {
+    super(renderer);
   }
 
   /**
@@ -24,22 +20,6 @@ export class ThreeRenderPass extends RenderPass {
    */
   override getViewport (): spec.vec4 {
     return [0, 0, 0, 0];
-  }
-
-  /**
-   * 获取深度附件
-   * @returns 返回深度附件信息
-   */
-  override getDepthAttachment (): RenderPassDepthStencilAttachment | undefined {
-    return;
-  }
-
-  /**
-   * 获取模板附件
-   * @returns 返回模板附件信息
-   */
-  override getStencilAttachment (): RenderPassDepthStencilAttachment | undefined {
-    return;
   }
 
   /**

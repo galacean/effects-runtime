@@ -72,15 +72,24 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   }
 
   private updateAttachmentTextures () {
+    const width = this.viewport[2];
+    const height = this.viewport[3];
+
     this.attachmentTextures.length = 0;
     this.colorTextures.forEach(tex => {
+      const data = { width, height, data: new Uint8Array(0) };
+
       tex.initialize();
+      tex.update({ data });
       addItem(this.attachmentTextures, tex.textureBuffer);
     });
+
     if (this.stencilTexture) {
       addItem(this.attachmentTextures, this.stencilTexture.textureBuffer);
     }
+
     if (this.depthTexture) {
+      this.depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
       addItem(this.attachmentTextures, this.depthTexture.textureBuffer);
     }
   }
@@ -296,8 +305,9 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
     if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}.`);
+      throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}. width=${width}, height=${height}.`);
     }
+
     this.ready = true;
   }
 
@@ -354,6 +364,13 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
         this.depthStencilRenderbuffer?.dispose();
         this.depthTexture?.dispose();
       }
+
+      for (const texture of this.colorTextures) {
+        texture.dispose();
+      }
+
+      this.stencilTexture?.dispose();
+
       // @ts-expect-error safe to assign
       this.renderer = this.stencilRenderbuffer = this.depthStencilRenderbuffer = null;
     }

@@ -1,8 +1,6 @@
-import type {
-  Scene, SceneLoadOptions, Composition, RenderFrame, Engine, Component, Renderer,
-} from '@galacean/effects';
+import type { Scene, SceneLoadOptions, Composition, Engine, Component } from '@galacean/effects';
 import {
-  VFXItem, AbstractPlugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
+  VFXItem, Plugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
   GLSLVersion, Geometry,
 } from '@galacean/effects';
 import {
@@ -16,26 +14,22 @@ import { fetchPBRShaderCode, fetchUnlitShaderCode, PluginHelper } from '../utili
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
  */
-export class ModelPlugin extends AbstractPlugin {
+export class ModelPlugin extends Plugin {
   /**
    * 插件名称
    */
   override name = 'model';
-  /**
-   * 合成缓存器
-   */
-  cache: CompositionCache;
-  /**
-   * 场景参数
-   */
-  sceneParams: Record<string, any>;
+
+  override async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
+    await CompositionCache.loadStaticResources();
+  }
 
   /**
    * 整个 load 阶段都不会创建 GL 相关的对象，只创建 JS 对象
    * @param scene - 场景
    * @param options - 加载选项
    */
-  static override async prepareResource (scene: Scene, options: SceneLoadOptions): Promise<void> {
+  override onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void {
     if (options.pluginData !== undefined) {
       const keyList = [
         'compatibleMode',
@@ -58,11 +52,8 @@ export class ModelPlugin extends AbstractPlugin {
 
     //
     PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode);
-    await CompositionCache.loadStaticResources();
-  }
-
-  override precompile (compositions: spec.CompositionData[], renderer: Renderer): Promise<void> {
-    const isWebGL2 = renderer.engine.gpuCapability.level === 2;
+    // Add PBR and Unlit shader data
+    const isWebGL2 = engine.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode();
     const unlitShaderCode = fetchUnlitShaderCode();
     const pbrShaderData: spec.ShaderData = {
@@ -84,10 +75,8 @@ export class ModelPlugin extends AbstractPlugin {
       glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     };
 
-    renderer.engine.addEffectsObjectData(pbrShaderData);
-    renderer.engine.addEffectsObjectData(unlitShaderData);
-
-    return Promise.resolve();
+    engine.addEffectsObjectData(pbrShaderData);
+    engine.addEffectsObjectData(unlitShaderData);
   }
 
   /**
@@ -95,21 +84,7 @@ export class ModelPlugin extends AbstractPlugin {
    * @param composition - 合成
    * @param scene - 场景
    */
-  override onCompositionConstructed (composition: Composition, scene: Scene): void {
-    this.sceneParams = scene.storage;
-
-    const engine = composition.renderer.engine;
-
-    this.cache = new CompositionCache(engine);
-    this.cache.setup(false);
-  }
-
-  /**
-   * 每次播放都会执行，包括重播，所以这里执行“小的销毁”和新的初始化
-   * @param composition - 合成
-   * @param renderFrame - 渲染帧
-   */
-  override onCompositionReset (composition: Composition, renderFrame: RenderFrame) {
+  override onCompositionCreated (composition: Composition, scene: Scene): void {
     const props = {
       id: 'ModelPluginItem',
       name: 'ModelPluginItem',
@@ -119,28 +94,10 @@ export class ModelPlugin extends AbstractPlugin {
     const item = new VFXItem(composition.getEngine(), props);
 
     composition.addItem(item);
-    //
-    const comp = item.addComponent(ModelPluginComponent);
+    const modelPluginComponent = item.addComponent(ModelPluginComponent);
 
-    comp.fromData({ cache: this.cache });
-    comp.initial(this.sceneParams);
+    modelPluginComponent.sceneParams = scene.storage;
   }
-
-  /**
-   * 合成销毁，同时销毁 3D 场景对象和缓存
-   * @param composition - 合成
-   */
-  override onCompositionDestroyed (composition: Composition) {
-    this.cache.dispose();
-    // @ts-expect-error
-    this.cache = null;
-    // @ts-expect-error
-    this.sceneParams = null;
-  }
-}
-
-export interface ModelPluginOptions {
-  cache: CompositionCache,
 }
 
 /**
@@ -173,22 +130,28 @@ export class ModelPluginComponent extends Behaviour {
   /**
    * 合成缓存器
    */
-  cache: CompositionCache;
+  private cache: CompositionCache;
   /**
    * 场景管理器
    */
   scene: PSceneManager;
+
+  sceneParams: Record<string, any>;
 
   /**
    * 构造函数，创建场景管理器
    * @param engine - 引擎
    * @param options - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelPluginOptions) {
+  constructor (engine: Engine) {
     super(engine);
-    if (options) {
-      this.fromData(options);
-    }
+  }
+
+  override onAwake (): void {
+    this.cache = new CompositionCache(this.engine);
+    this.cache.setup(false);
+    this.scene = new PSceneManager(this.engine);
+    this.initial(this.sceneParams);
   }
 
   /**
@@ -251,21 +214,9 @@ export class ModelPluginComponent extends Behaviour {
     this.scene.dispose();
     // @ts-expect-error
     this.scene = null;
+    this.cache.dispose();
     // @ts-expect-error
     this.cache = null;
-  }
-
-  /**
-   * 反序列化，创建场景管理器
-   * @param date - 组件参数
-   */
-  override fromData (data: ModelPluginOptions): void {
-    super.fromData(data);
-    //
-    const options = data;
-
-    this.cache = options.cache;
-    this.scene = new PSceneManager(this.engine);
   }
 
   /**

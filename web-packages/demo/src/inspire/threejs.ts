@@ -1,9 +1,9 @@
 // @ts-nocheck
-import { registerPlugin, AbstractPlugin, VFXItem, isWebGL2 } from '@galacean/effects-threejs';
+import { registerPlugin, Plugin, isWebGL2 } from '@galacean/effects-threejs';
 import { createThreePlayer, renderbyThreeDisplayObject } from '../common/three-display-object';
 
 // 假装注册陀螺仪插件，兼容有陀螺仪的合成报错
-registerPlugin('orientation-transformer', AbstractPlugin, VFXItem);
+registerPlugin('orientation-transformer', Plugin);
 
 const container = document.getElementById('J-container');
 let player;

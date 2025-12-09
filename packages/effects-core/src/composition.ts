@@ -5,7 +5,7 @@ import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
-import type { PluginSystem } from './plugin-system';
+import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
 import type { Renderer } from './render';
 import { RenderFrame } from './render';
@@ -185,10 +185,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly event?: EventSystem;
   /**
-   * 插件系统，保存当前加载的插件对象，负责插件事件和创建插件的 Item 对象
-   */
-  readonly pluginSystem: PluginSystem;
-  /**
    * 当前合成名称
    */
   readonly name: string;
@@ -236,10 +232,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 销毁状态位
    */
   protected destroyed = false;
-  /**
-   * 是否是否每次渲染时清除 RenderFrame 颜色缓存
-   */
-  protected readonly keepColorBuffer: boolean;
   protected rootComposition: CompositionComponent;
 
   /**
@@ -360,8 +352,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    this.pluginSystem = scene.pluginSystem;
-    this.pluginSystem.initializeComposition(this, scene);
+    PluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
@@ -377,7 +368,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
-    this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
   /**
@@ -550,12 +540,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderFrame = new RenderFrame({
       camera: this.camera,
       renderer: this.renderer,
-      keepColorBuffer: this.keepColorBuffer,
       globalVolume: this.globalVolume,
       postProcessingEnabled: this.postProcessingEnabled,
     });
-    // TODO 考虑放到构造函数
-    this.renderFrame.cachedTextures = this.textures;
   }
 
   /**
@@ -617,7 +604,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.isEnded = false;
     this.isEndCalled = false;
     this.rootComposition.time = 0;
-    this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
   prepareRender () { }
@@ -641,9 +627,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.updateCompositionTime(deltaTime * this.speed / 1000);
     const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
-
-    // 更新 model-tree-plugin
-    this.updatePluginLoaders(deltaTimeInMs);
 
     this.sceneTicking.update.tick(deltaTimeInMs);
     this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
@@ -670,14 +653,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private updateCamera () {
     this.camera.updateMatrix();
-  }
-
-  /**
-   * 插件更新，来自 CompVFXItem 的更新调用
-   * @param deltaTime - 更新的时间步长
-   */
-  private updatePluginLoaders (deltaTime: number) {
-    this.pluginSystem.plugins.forEach(loader => loader.onCompositionUpdate(this, deltaTime));
   }
 
   /**
@@ -887,17 +862,21 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    this.pluginSystem?.destroyComposition(this);
+    PluginSystem.destroyComposition(this);
+
     this.update = () => {
       if (!__DEBUG__) {
         logger.error(`Update disposed composition: ${this.name}.`);
       }
     };
+
     this.dispose = noop;
+    this.renderer.engine.removeComposition(this);
 
     if (this.getEngine().env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
+
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
       clearStencil: 0,
@@ -906,7 +885,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
-    this.renderer.engine.removeComposition(this);
   }
 
   /**

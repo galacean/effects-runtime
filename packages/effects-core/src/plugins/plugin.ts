@@ -1,50 +1,6 @@
-import type * as spec from '@galacean/effects-specification';
 import type { Scene, SceneLoadOptions } from '../scene';
-import type { RenderFrame, Renderer } from '../render';
 import type { Composition } from '../composition';
-
-export interface Plugin {
-  /**
-   * plugin 的数组内排序，按照升序排列
-   * @default 100
-   */
-  order: number,
-  name: string,
-
-  /**
-   * 在加载到 JSON 后，就可以进行提前编译
-   * @param json
-   * @param player
-   */
-  precompile: (compositions: spec.CompositionData[], renderer: Renderer) => void,
-
-  /**
-   * 合成创建时调用，用于触发元素在合成创建时的回调
-   * @param composition
-   * @param scene
-   */
-  onCompositionConstructed: (composition: Composition, scene: Scene) => void,
-
-  /**
-   * 合成重播时的回调
-   * @param composition
-   * @param frame
-   */
-  onCompositionReset: (composition: Composition, frame: RenderFrame) => void,
-
-  /**
-   * 合成销毁时的会调，需要销毁 composition 中对应的资源
-   * @param composition
-   */
-  onCompositionDestroyed: (composition: Composition) => void,
-
-  /**
-   * 合成更新时的回调，每帧都会进行调用，在每个元素调用 onUpdate 之前被触发
-   * @param composition
-   * @param dt 更新的毫秒
-   */
-  onCompositionUpdate: (composition: Composition, dt: number) => void,
-}
+import type { Engine } from '../engine';
 
 export interface PluginConstructor {
   new(): Plugin,
@@ -56,51 +12,37 @@ export interface PluginConstructor {
  * 抽象插件类
  * 注册合成不同生命周期的回调函数
  */
-export abstract class AbstractPlugin implements Plugin {
+export abstract class Plugin {
   order = 100;
-  name = '';
-
-  /***
-   * loadScene 函数调用的时候会触发此函数，
-   * 此阶段可以对资源 JSON 进行处理，替换调 JSON 中的数据，或者直接终止加载流程
-   * 一旦被 reject，加载过程将失败
-   * @param json 动画资源
-   * @param options 加载参数
-   */
-  static processRawJSON: (json: spec.JSONScene, options: SceneLoadOptions) => Promise<void>;
+  name = 'Plugin';
 
   /**
-   * loadScene 函数调用的时候会触发此函数，
-   * 此阶段可以加载插件所需类型资源，并返回原始资源和加载后的资源。
-   * @param json
-   * @param options
-   * @returns
+   * 场景加载时触发，用于加载插件所需的自定义资源。
+   * 此阶段适合发起异步资源请求。
+   * @param scene - 场景对象
+   * @param options - 场景加载选项
    */
-  static processAssets: (json: spec.JSONScene, options?: SceneLoadOptions) => Promise<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>;
+  async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions): Promise<void> { }
 
   /**
-   * loadScene 函数调用的时候会触发此函数，
-   * 此阶段时，json 中的图片和二进制已经被加载完成，可以对加载好的资源做进一步处理，
-   * 如果 promise 被 reject, loadScene 函数同样会被 reject，表示场景加载失败。
-   * 请记住，整个 load 阶段都不要创建 GL 相关的对象，只创建 JS 对象
-   * 此阶段晚于 processRawJSON
-   * @param {Scene} scene
-   * @param {SceneLoadOptions} options
+   * 场景资源加载完成后触发。
+   * 此时 JSON 中的图片和二进制已加载完成，可对资源做进一步处理。
+   * @param scene - 场景对象
+   * @param options - 场景加载选项
+   * @param engine - 引擎实例
    */
-  static prepareResource: (scene: Scene, options: SceneLoadOptions) => Promise<void>;
+  onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
 
   /**
-   * 在加载到 JSON 后，就可以进行提前编译
-   * @param json
-   * @param player
+   * 合成创建完成后触发。
+   * @param composition - 合成对象
+   * @param scene - 场景对象
    */
-  precompile (compositions: spec.CompositionData[], renderer: Renderer): void { }
+  onCompositionCreated (composition: Composition, scene: Scene): void { }
 
-  onCompositionConstructed (composition: Composition, scene: Scene): void { }
-
-  onCompositionReset (composition: Composition, frame: RenderFrame): void { }
-
-  onCompositionDestroyed (composition: Composition): void { }
-
-  onCompositionUpdate (composition: Composition, dt: number): void { }
+  /**
+   * 合成销毁时触发。
+   * @param composition - 合成对象
+   */
+  onCompositionDestroy (composition: Composition): void { }
 }

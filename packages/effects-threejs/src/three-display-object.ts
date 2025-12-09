@@ -1,7 +1,7 @@
 import type {
   EventSystem, SceneLoadOptions, Composition, MessageItem, Scene, Engine,
 } from '@galacean/effects-core';
-import { AssetService, assertExist, AssetManager, isArray, logger } from '@galacean/effects-core';
+import { AssetService, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeEngine } from './three-engine';
@@ -98,13 +98,17 @@ export class ThreeDisplayObject extends THREE.Group {
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
         const assetManager = new AssetManager(opts);
-        const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
+        const scene = await assetManager.loadScene(source, this.renderer);
 
+        const engine = this.engine;
+
+        engine.clearResources();
+
+        // 触发插件系统 pluginSystem 的回调 onAssetsLoadFinish
+        PluginSystem.onAssetsLoadFinish(scene, assetManager.options, engine);
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
-
-        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
 
         const composition = this.createComposition(scene, opts);
 

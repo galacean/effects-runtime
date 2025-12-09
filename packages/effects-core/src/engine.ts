@@ -276,8 +276,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       clearColor: [0, 0, 0, 0],
     });
     for (let i = 0; i < comps.length; i++) {
-      !comps[i].renderFrame.isDestroyed && this.renderer.renderRenderFrame(comps[i].renderFrame);
+      !comps[i].renderFrame.isDisposed && this.renderer.renderRenderFrame(comps[i].renderFrame);
     }
+
+    this.renderer.renderTargetPool.flush();
   }
 
   /**

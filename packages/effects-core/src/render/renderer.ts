@@ -6,21 +6,25 @@ import type { LostHandler, RestoreHandler } from '../utils';
 import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
 import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
-import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
+import type { RenderPassClearAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
+import { RenderTargetPool } from './render-target-pool';
+import type { Texture } from '../texture';
 
 export class Renderer implements LostHandler, RestoreHandler {
   static create: (engine: Engine) => Renderer;
 
-  engine: Engine;
   /**
   * 存放渲染需要用到的数据
   */
   renderingData: RenderingData;
-  protected currentFramebuffer: Framebuffer;
+  renderTargetPool: RenderTargetPool;
+  protected currentFramebuffer: Framebuffer | null = null;
 
-  constructor (engine: Engine) {
-    this.engine = engine;
+  constructor (
+    public engine: Engine,
+  ) {
+    this.renderTargetPool = new RenderTargetPool(engine);
   }
 
   setGlobalFloat (name: string, value: number) {
@@ -44,7 +48,7 @@ export class Renderer implements LostHandler, RestoreHandler {
   }
 
   getFramebuffer (): Framebuffer {
-    return this.currentFramebuffer;
+    return this.currentFramebuffer as Framebuffer;
   }
 
   setFramebuffer (framebuffer: Framebuffer | null) {
@@ -59,7 +63,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  clear (action: RenderPassClearAction | RenderPassStoreAction) {
+  clear (action: RenderPassClearAction) {
     // OVERRIDE
   }
 
@@ -110,9 +114,29 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer | null {
+  getTemporaryRT (
+    name: string,
+    width: number,
+    height: number,
+    depthBuffer: number,
+    filter: FilterMode,
+    format: RenderTextureFormat,
+  ): Framebuffer {
+    return this.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
+  }
+
+  releaseTemporaryRT (rt: Framebuffer): void {
+    this.renderTargetPool.release(rt);
+  }
+
+  /**
+   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * @param source - 源纹理
+   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param material - 可选的自定义材质，不传则使用默认复制材质
+   */
+  blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
     // OVERRIDE
-    return null;
   }
 
   dispose (): void {

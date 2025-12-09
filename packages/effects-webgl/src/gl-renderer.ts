@@ -1,16 +1,16 @@
 import type {
-  Disposable, Engine, Framebuffer, Geometry, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RenderPassStoreAction, RendererComponent,
-  ShaderLibrary, math,
+  Disposable, Engine, Framebuffer, RenderFrame, RenderPass,
+  RenderPassClearAction, RendererComponent,
+  ShaderLibrary, Texture,
 } from '@galacean/effects-core';
 import {
-  FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
-  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, logger, sortByOrder,
+  GPUCapability, Geometry, Material, math,
+  Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
-import { GLFramebuffer } from './gl-framebuffer';
+import type { GLFramebuffer } from './gl-framebuffer';
 import { assignInspectorName } from './gl-renderer-internal';
-import { GLTexture } from './gl-texture';
+import type { GLTexture } from './gl-texture';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLGeometry } from './gl-geometry';
 import type { GLMaterial } from './gl-material';
@@ -23,6 +23,24 @@ type Matrix4 = math.Matrix4;
 type Vector4 = math.Vector4;
 type Vector3 = math.Vector3;
 
+// Blit shader 定义
+const BLIT_VERTEX_SHADER = `
+precision highp float;
+attribute vec2 aPos;
+varying vec2 vTex;
+void main(){
+    gl_Position = vec4(aPos, 0.0, 1.0);
+    vTex = (aPos + vec2(1.0)) / 2.0;
+}`;
+
+const BLIT_FRAGMENT_SHADER = `
+precision mediump float;
+varying vec2 vTex;
+uniform sampler2D _MainTex;
+void main(){
+    gl_FragColor = texture2D(_MainTex, vTex);
+}`;
+
 let seed = 1;
 
 export class GLRenderer extends Renderer implements Disposable {
@@ -32,6 +50,8 @@ export class GLRenderer extends Renderer implements Disposable {
   private sourceFbo: WebGLFramebuffer | null;
   private targetFbo: WebGLFramebuffer | null;
   private disposed = false;
+  private blitGeometry: Geometry | null = null;
+  private blitMaterial: Material | null = null;
 
   get gl () {
     return (this.engine as GLEngine).gl;
@@ -69,16 +89,6 @@ export class GLRenderer extends Renderer implements Disposable {
       // @ts-expect-error
       currentFrame: {},
     };
-
-    this.currentFramebuffer = new GLFramebuffer({
-      storeAction: {},
-      viewport: [0, 0, this.width, this.height],
-      attachments: [new GLTexture(this.engine, {
-        sourceType: TextureSourceType.framebuffer,
-        data: { width: this.width, height: this.height },
-      })],
-      depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
-    }, this);
   }
 
   override renderRenderFrame (renderFrame: RenderFrame) {
@@ -90,9 +100,11 @@ export class GLRenderer extends Renderer implements Disposable {
 
       return;
     }
+
     frame.renderer.getShaderLibrary()?.compileAllShaders();
+    frame.setup();
+
     this.setFramebuffer(null);
-    this.clear(frame.clearAction);
 
     const currentCamera = frame.camera;
 
@@ -113,14 +125,12 @@ export class GLRenderer extends Renderer implements Disposable {
     }
 
     for (const pass of passes) {
-      pass.frameCleanup(this);
+      pass.onCameraCleanup(this);
     }
   }
 
   renderRenderPass (pass: RenderPass): void {
     this.renderingData.currentPass = pass;
-    // 初始化 pass attachment GPU资源
-    pass.initialize(this);
     // 配置当前 renderer 的 RT
     pass.configure(this);
     // 执行当前 pass
@@ -228,9 +238,14 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override setFramebuffer (framebuffer: Framebuffer | null) {
+    if (this.currentFramebuffer === framebuffer) {
+      return;
+    }
+
+    this.currentFramebuffer = framebuffer;
+
     if (framebuffer) {
-      this.currentFramebuffer = framebuffer;
-      this.currentFramebuffer.bind();
+      framebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
       (this.engine as GLEngine).bindSystemFramebuffer();
@@ -238,60 +253,11 @@ export class GLRenderer extends Renderer implements Disposable {
     }
   }
 
-  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
-    if (this.temporaryRTs[name]) {
-      return this.temporaryRTs[name];
-    }
-
-    let textureFilter;
-    let textureType;
-    let depthType = RenderPassAttachmentStorageType.none;
-
-    // TODO 建立Map映射
-    if (filter === FilterMode.Linear) {
-      textureFilter = glContext.LINEAR;
-    } else if (filter === FilterMode.Nearest) {
-      textureFilter = glContext.NEAREST;
-    }
-    if (format === RenderTextureFormat.RGBA32) {
-      textureType = glContext.UNSIGNED_BYTE;
-    } else if (format === RenderTextureFormat.RGBAHalf) {
-      textureType = glContext.HALF_FLOAT;
-    }
-    if (depthBuffer === 0) {
-      depthType = RenderPassAttachmentStorageType.none;
-    } else if (depthBuffer === 16) {
-      depthType = RenderPassAttachmentStorageType.depth_16_opaque;
-    } else if (depthBuffer === 24) {
-      depthType = RenderPassAttachmentStorageType.depth_24_stencil_8_texture;
-    }
-
-    const colorAttachment = new GLTexture(this.engine, {
-      sourceType: TextureSourceType.framebuffer,
-      minFilter: textureFilter,
-      magFilter: textureFilter,
-      internalFormat: glContext.RGBA,
-      format: glContext.RGBA,
-      type: textureType,
-    });
-    const newFramebuffer = new GLFramebuffer({
-      name,
-      storeAction: {},
-      viewport: [0, 0, width, height],
-      attachments: [colorAttachment],
-      depthStencilAttachment: { storageType: depthType },
-    }, this);
-
-    this.temporaryRTs[name] = newFramebuffer;
-
-    return newFramebuffer;
-  }
-
   override setViewport (x: number, y: number, width: number, height: number) {
     (this.engine as GLEngine).viewport(x, y, width, height);
   }
 
-  override clear (action: RenderPassStoreAction | RenderPassClearAction): void {
+  override clear (action: RenderPassClearAction): void {
     const engine = this.engine as GLEngine;
     let bit = 0;
 
@@ -338,6 +304,11 @@ export class GLRenderer extends Renderer implements Disposable {
       return;
     }
     this.deleteResource();
+    this.renderTargetPool.dispose();
+    this.blitGeometry?.dispose();
+    this.blitGeometry = null;
+    this.blitMaterial?.dispose();
+    this.blitMaterial = null;
     this.disposed = true;
   }
 
@@ -371,6 +342,67 @@ export class GLRenderer extends Renderer implements Disposable {
         gl.viewport(0, 0, width, height);
       }
     }
+  }
+
+  /**
+   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * @param source - 源纹理
+   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param material - 可选的自定义材质，不传则使用默认复制材质
+   */
+  override blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
+    // 懒加载创建 blit geometry
+    if (!this.blitGeometry) {
+      this.blitGeometry = Geometry.create(this.engine, {
+        mode: glContext.TRIANGLE_STRIP,
+        attributes: {
+          aPos: {
+            type: glContext.FLOAT,
+            size: 2,
+            data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
+          },
+        },
+        drawCount: 4,
+      });
+    }
+
+    // 懒加载创建默认 blit material
+    if (!this.blitMaterial) {
+      this.blitMaterial = Material.create(this.engine, {
+        shader: {
+          vertex: BLIT_VERTEX_SHADER,
+          fragment: BLIT_FRAGMENT_SHADER,
+        },
+      });
+      this.blitMaterial.blending = false;
+      this.blitMaterial.depthTest = false;
+      this.blitMaterial.culling = false;
+    }
+
+    const blitMat = material || this.blitMaterial;
+
+    // 设置源纹理
+    blitMat.setTexture('_MainTex', source);
+
+    // 保存当前 framebuffer
+    const prevFramebuffer = this.currentFramebuffer;
+
+    // 设置目标
+    if (destination) {
+      const [x, y, width, height] = destination.viewport;
+
+      this.setFramebuffer(destination);
+      this.setViewport(x, y, width, height);
+    } else {
+      // 渲染到屏幕
+      this.setFramebuffer(null);
+      this.setViewport(0, 0, this.getWidth(), this.getHeight());
+    }
+
+    this.drawGeometry(this.blitGeometry, math.Matrix4.IDENTITY, blitMat);
+
+    // 恢复之前的 framebuffer
+    this.setFramebuffer(prevFramebuffer);
   }
 
   private checkGlobalUniform (name: string) {

@@ -1,5 +1,5 @@
 import type { Composition, Scene, Texture, VFXItem } from '@galacean/effects';
-import { AbstractPlugin } from '@galacean/effects';
+import { Plugin } from '@galacean/effects';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
 import { GizmoComponent } from './gizmo-component';
@@ -8,31 +8,25 @@ const iconImages: Map<string, HTMLImageElement> = new Map();
 
 export const iconTextures: Map<string, Texture> = new Map();
 
-export class EditorGizmoPlugin extends AbstractPlugin {
+export class EditorGizmoPlugin extends Plugin {
   override order = 1001;
 
-  static override async prepareResource (scene: Scene): Promise<any> {
+  override async onCompositionCreated (composition: Composition, scene: Scene) {
+    const engine = composition.renderer.engine;
+
+    iconTextures.clear();
+
     if (iconImages.size !== axisIconMap.size) {
       for (const [name, data] of axisIconMap) {
         iconImages.set(name, await createImage(data));
       }
     }
 
-    return true;
-  }
-
-  override onCompositionConstructed (composition: Composition, scene: Scene) {
-    const engine = composition.renderer.engine;
-
-    iconTextures.clear();
-
     iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));
     });
     iconImages.clear();
-  }
 
-  override onCompositionReset (composition: Composition) {
     const items = composition.items;
     const targetMap: { [key: string]: VFXItem[] } = {};
 
