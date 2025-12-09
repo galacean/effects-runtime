@@ -8,7 +8,7 @@ import { Texture, glContext } from '@galacean/effects-core';
 import { TextureControllerNew } from './texture-controller-new.js';
 enum MainStage { Listening, Input }
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*BnWQSaj0ghgAAAAAQaAAAAgAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*EOS4TpejsbUAAAAAQZAAAAgAelB4AQ';
 const container = document.getElementById('J-container');
 const DEBUG = true; // 调试模式
 
@@ -281,15 +281,13 @@ void getProfileParams(float profile,
     distance = 1.2315; initU = -0.48; initV = 0.0; isSecond = 0.0;
     samplerId = 2; typeIsListening = 0;
   } else { // InputB
-    duration = 3.7;
-    // 可选：把时间窗拉近 A，重叠更明显；若不想动时间，也可保留你原来的三项
-    fadeIn = 0.60;             
-    fadeOutStart = 2.9333;     
-    fadeOutEnd   = 3.6167;     
-
-    distance = 1.3515;         // 与 A 一致，减少"越走越开"
+  duration = 3.7;
+    fadeIn = 0.7417;
+    fadeOutStart = 2.9333 - 0.733;
+    fadeOutEnd   = 3.6167 - 0.733 + 0.0416;
+    distance = 1.4164;
     initU = -0.48;
-    initV = 0.02;              // 上下更贴（也可用 0.0）
+    initV = 0.1;
     isSecond = 1.0;
     samplerId = 2; typeIsListening = 0;
   }
@@ -309,8 +307,7 @@ void calcInput(float elapsed, float startedAt, float duration, float initU, floa
   float lifeP = duration > 0.0 ? clamp(elapsed / duration, 0.0, 1.0) : 0.0;
   ox = initU + distance * lifeP;
   if (isSecond > 0.5) {
-    float offsetU = mix(B_OFFSET_START, B_OFFSET_END, pow(lifeP, B_OFFSET_POW));
-    ox -= offsetU;
+    ox -= 0.235; // 与CPU逻辑保持一致
   }
   oy = initV;
 
@@ -388,7 +385,7 @@ void main() {
   float y = uv.y;
   float start = 0.01;                         // 起始 Y，以下不受噪声影响
   float rawMask = clamp((y - start) / (1.0 - start), 0.0, 1.0);
-  float power =  1.3;                         // >1 越靠上变化越快
+  float power =  2.0  ;                         // >1 越靠上变化越快
   float yMask = pow(rawMask, power);
 
   // 最终扰动偏移，噪声部分乘以 yMask，verticalOffset 保持原逻辑
@@ -415,7 +412,7 @@ void main() {
         } else { // input
           calcInput(elapsed, startedAt, duration, initU, initV, distance, isSecond, fadeIn, fadeOutStart, fadeOutEnd, ox, oy, a);
         }
-        const float GLOBAL_Y_OFFSET = 0.12; // 负值往下，按效果可微调 -0.01 ~ -0.05
+        const float GLOBAL_Y_OFFSET = 0.0; // 负值往下，按效果可微调 -0.01 ~ -0.05
         // 应用动画偏移
         vec2 sampleUV = vec2(uv.x, uv.y) + vec2(ox, oy) - finalOffset;
 
@@ -557,8 +554,7 @@ let material: Material | undefined;
       img.src = path;
     });
   };
-
-    const SecondStageImageData = await loadLocalImageData('../public/9F0EF51C-6711-4BEC-B0F3-EFB9A3D56C85.png');
+  const SecondStageImageData = await loadLocalImageData('../public/48ff2173abb5946b7c6a3db7d068b6c9.png');
   const noiseimageData = await loadLocalImageData('../public/Perlin.png');
   const T_noiseimageData = await loadLocalImageData('../public/T_Noise.png');
   const FirstStageBlueImageData = await loadLocalImageData('../public/蓝光裁切.png');
@@ -645,7 +641,7 @@ let material: Material | undefined;
         // 初始化时绑定三张纹理
         // material.setTexture('_Tex0', FirstStageBlueTexture);
         // material.setTexture('_Tex1', FirstStageGreenTexture);
-        material.setTexture('_Tex2', cloudTexture);
+        //material.setTexture('_Tex2', cloudTexture);
         // // 设置噪声纹理
         // material.setTexture('_NoiseTex', noiseTexture);
         // // 设置T噪声纹理
@@ -655,15 +651,15 @@ let material: Material | undefined;
         // 纹理层级已在shader中硬编码，不再需要设置
 
         // 初始化颜色参数 - 直接在初始化时设置预设颜色
-        material.setVector4('_Color0', new Vector4(0.333, 0.619, 0.968, 0.7)); // listeningBlue
-        material.setVector4('_Color1', new Vector4(0.333, 0.619, 0.968, 0.7)); // listeningGreen
-        material.setVector4('_Color2', new Vector4(0.333, 0.619, 0.968, 1.0)); // inputA
-        material.setVector4('_Color3', new Vector4(0.333, 0.968, 0.847, 1.0)); // inputB
+        // material.setVector4('_Color0', new Vector4(0.333, 0.619, 0.968, 0.7)); // listeningBlue
+        // material.setVector4('_Color1', new Vector4(0.333, 0.619, 0.968, 0.7)); // listeningGreen
+        // material.setVector4('_Color2', new Vector4(0.333, 0.619, 0.968, 1.0)); // inputA
+        // material.setVector4('_Color3', new Vector4(0.333, 0.968, 0.847, 1.0)); // inputB
 
-        // material.setVector4('_Color0', new Vector4(142/255, 208/255, 1, 1)); // listeningBlue
-        // material.setVector4('_Color1', new Vector4(142/255, 208/255, 1, 1)); // listeningGreen
-        // material.setVector4('_Color2', new Vector4(142/255, 208/255, 1, 1)); // inputA
-        // material.setVector4('_Color3', new Vector4(69/255, 234/255, 193/255, 1.0)); // inputB
+        material.setVector4('_Color0', new Vector4(0.5568627, 0.8156863, 1.0, 1.0));
+        material.setVector4('_Color1', new Vector4(0.5568627, 0.8156863, 1.0, 1.0));
+        material.setVector4('_Color2', new Vector4(0.5568627, 0.8156863, 1.0, 1.0));
+        material.setVector4('_Color3', new Vector4(0.2705882, 0.9176471, 0.7568628, 1.0));
 
         // 初始化噪声参数（使用之前硬编码的值）
         material.setFloat('_NoiseScaleX', 0.1);
@@ -685,7 +681,7 @@ let material: Material | undefined;
         // 初始化响应曲线参数
         material.setFloat('_VerticalOffset', -0.15);
         material.setFloat('_VolumeCurve', 0.3);
-        material.setFloat('_BrightnessCurve', 2.0);
+        material.setFloat('_BrightnessCurve', 1.0);
         material.setFloat('_MaxBrightness', 0.3);
         material.setFloat('_BrightnessGain', 1.3);
 
