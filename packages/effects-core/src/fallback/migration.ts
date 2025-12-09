@@ -356,7 +356,7 @@ function ensureTextVerticalAlign (options: any) {
 /**
  * 将文本颜色从 0-255 转换到 0-1
  */
-function convertTextColorTo01 (options: any) {
+function convertTextColorTo01 (options: spec.TextContentOptions) {
   if (!options || !options.textColor) {
     return;
   }
