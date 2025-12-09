@@ -68,7 +68,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         text: '默认文本',
         fontFamily: 'AlibabaSans-BoldItalic',
         fontSize: 40,
-        textColor: [255, 255, 255, 1],
+        // 统一使用 0-1 颜色值
+        textColor: [1, 1, 1, 1],
         fontWeight: spec.TextWeight.normal,
         letterSpace: 0,
         textAlign: 1,
@@ -360,10 +361,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         this.setupOutline();
       }
 
-      // 文本颜色 - 直接使用 vec4 原值，不乘以 255
+      // textColor 统一是 0-1，写入 canvas 时乘 255
       const [r, g, b, a] = style.textColor;
 
-      context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+      context.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
 
       const charsInfo: CharInfo[] = [];
       let x = 0;
