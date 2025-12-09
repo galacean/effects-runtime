@@ -60,12 +60,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   protected maxLineWidth = 0;
 
   /**
-   * 初始文本宽度,用于计算缩放比例
+   * 初始文本宽度，用于计算缩放比例
    */
   private baseTextWidth = 0;
 
   /**
-   * 初始 transform.size.x,用于按比例更新显示宽度
+   * 初始 `transform.size.x`，用于按比例更新显示宽度
    */
   private baseScaleX = 1;
 
@@ -135,8 +135,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.updateWithOptions(options);
     this.renderText(options);
 
-    // 记录初始的 textWidth 和 x 缩放,用于后续按比例更新显示宽度
-    // 添加兜底值 1 防止除0
+    // 记录初始的 textWidth 和 x 缩放，用于后续按比例更新显示宽度
+    // 添加兜底值 1 防止除 0
     this.baseTextWidth = options.textWidth || this.textLayout.width || 1;
     this.baseScaleX = this.item.transform.size.x;
 
@@ -456,8 +456,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
   /**
    * 设置文本框宽度
-   * 手动设置宽度时会自动关闭 autoWidth
-   * 同时会按比例更新 transform.size.x,让 UI 框宽度也跟着变化
+   * 手动设置宽度时会自动关闭 `autoWidth`
+   * 同时会按比例更新 `transform.size.x`，让 UI 框宽度也跟着变化
    * @param value - 文本框宽度
    */
   setTextWidth (value: number): void {
@@ -477,7 +477,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.lineCount = this.getLineCount(this.text || '');
     this.isDirty = true;
 
-    //  同步更新外层显示宽度(按比例缩放 transform)
+    // 同步更新外层显示宽度(按比例缩放 transform)
     // 这样 UI 框的视觉宽度也会跟着文本宽度变化
     if (this.baseTextWidth > 0) {
       const scale = width / this.baseTextWidth;
