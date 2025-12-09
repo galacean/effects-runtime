@@ -13,6 +13,7 @@ import { BloomPass, ToneMappingPass } from './post-process-pass';
 import type { RenderPass, RenderPassDestroyOptions } from './render-pass';
 import { RenderTargetHandle } from './render-pass';
 import type { Renderer } from './renderer';
+import type { Composition } from '../composition';
 
 /**
  * 渲染数据，保存了当前渲染使用到的数据。
@@ -30,6 +31,10 @@ export interface RenderingData {
    * 当前渲染的 RenderPass
    */
   currentPass: RenderPass,
+  /**
+   * 当前渲染的合成
+   */
+  currentComposition: Composition,
 }
 
 /**

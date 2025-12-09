@@ -88,6 +88,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 引擎的像素比
    */
   pixelRatio: number;
+  /**
+   * @experimental 2D 渲染模式
+   */
+  use2DRenderer = false;
 
   protected _disposed = false;
   protected textures: Texture[] = [];
@@ -276,7 +280,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       clearColor: [0, 0, 0, 0],
     });
     for (let i = 0; i < comps.length; i++) {
-      !comps[i].renderFrame.isDisposed && this.renderer.renderRenderFrame(comps[i].renderFrame);
+      !comps[i].renderFrame.isDisposed && this.renderer.renderComposition(comps[i]);
     }
 
     this.renderer.renderTargetPool.flush();

@@ -10,6 +10,7 @@ import type { RenderPassClearAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
 import { RenderTargetPool } from './render-target-pool';
 import type { Texture } from '../texture';
+import type { Composition } from '../composition';
 
 export class Renderer implements LostHandler, RestoreHandler {
   static create: (engine: Engine) => Renderer;
@@ -100,6 +101,14 @@ export class Renderer implements LostHandler, RestoreHandler {
   getShaderLibrary (): ShaderLibrary | undefined {
     // OVERRIDE
     return undefined;
+  }
+
+  /**
+   * @internal
+   */
+  renderComposition (composition: Composition) {
+    this.renderingData.currentComposition = composition;
+    this.renderRenderFrame(composition.renderFrame);
   }
 
   renderRenderFrame (renderFrame: RenderFrame) {
