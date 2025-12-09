@@ -224,10 +224,10 @@ const json = `{
     {
       "id": "e38870f6cc7c4a689b07ea6adb33d3a0",
       "hevc": {
-          "url": "https://gw.alipayobjects.com/v/huamei_sudmkl/afts/video/B9nsTZyXsJUAAAAASfAAAAgAfoeUAQBr",
-          "codec": "hev1.1.6.L93.B0"
+          "url": "http://vod.alipayobjects.com/VIDEO_CONVERT/afts/video/A*Sd-lQ4WM73AAAAAAgBAAAAgAesF2AQ/720P_h265?t=MhDiXxh9eg_NmXTpMp7COqaWShflfMHNlzZp8IsNe5wDAAAAAAAAAABpMmVA",
+          "codec": "L63"
         },
-      "url": "https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*45DbSrlgav8AAAAAXkAAAAgAesF2AQ"
+      "url": "http://vod.alipayobjects.com/VIDEO_CONVERT/afts/video/A*Sd-lQ4WM73AAAAAAgBAAAAgAesF2AQ/720P?t=MhDiXxh9eg_NmXTpMp7COqaWShflfMHNlzZp8IsNe5wDAAAAAAAAAABpMmVA"
     }
   ]
 }`;
