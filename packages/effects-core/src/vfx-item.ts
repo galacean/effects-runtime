@@ -349,7 +349,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   setParent (vfxItem: VFXItem) {
-    if (vfxItem === this && !vfxItem) {
+    if (vfxItem === this || !vfxItem) {
       return;
     }
     if (this.parent) {
