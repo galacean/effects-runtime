@@ -104,8 +104,8 @@ export class ThreeDisplayObject extends THREE.Group {
 
         engine.clearResources();
 
-        // 触发插件系统 pluginSystem 的回调 prepareResource
-        PluginSystem.loadResources(scene, assetManager.options, engine);
+        // 触发插件系统 pluginSystem 的回调 onAssetsLoadFinish
+        PluginSystem.onAssetsLoadFinish(scene, assetManager.options, engine);
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);

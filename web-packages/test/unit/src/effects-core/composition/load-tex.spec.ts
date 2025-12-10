@@ -1,6 +1,6 @@
 // @ts-nocheck
 import type { Scene } from '@galacean/effects';
-import { Player, AbstractPlugin, Texture, TextureSourceType, VFXItem, getDefaultTextureFactory, glContext, registerPlugin, unregisterPlugin } from '@galacean/effects';
+import { Player, Plugin, Texture, TextureSourceType, VFXItem, getDefaultTextureFactory, glContext, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -47,8 +47,8 @@ describe('core/composition/load-textures', () => {
     const spy = chai.spy();
     let texOpt;
 
-    registerPlugin('test-load-tex-0', class TestPlugin extends AbstractPlugin {
-      override prepareResource (scene: Scene) {
+    registerPlugin('test-load-tex-0', class TestPlugin extends Plugin {
+      override onAssetsLoadFinish (scene: Scene) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
 
@@ -108,8 +108,8 @@ describe('core/composition/load-textures', () => {
     const spy = chai.spy('loadPlugin');
     let texOpt;
 
-    registerPlugin('test-load-tex-2', class TestPlugin extends AbstractPlugin {
-      prepareResource (scene, options) {
+    registerPlugin('test-load-tex-2', class TestPlugin extends Plugin {
+      onAssetsLoadFinish (scene, options) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
         expect(scene.textureOptions).to.exist;
@@ -175,8 +175,8 @@ describe('core/composition/load-textures', () => {
     const spy = chai.spy('loadPlugin');
     let texOpt;
 
-    registerPlugin('test-load-tex-3', class TestPlugin extends AbstractPlugin {
-      prepareResource (scene, options) {
+    registerPlugin('test-load-tex-3', class TestPlugin extends Plugin {
+      onAssetsLoadFinish (scene, options) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
         expect(scene.textureOptions.length).to.eql(2);
@@ -263,14 +263,14 @@ describe('core/composition/load-textures', () => {
     const spy = chai.spy(() => {
     });
 
-    registerPlugin('test-load-tex-4', class TestPlugin extends AbstractPlugin {
-      prepareResource (scene, options, data) {
+    registerPlugin('test-load-tex-4', class TestPlugin extends Plugin {
+      onAssetsLoadFinish (scene, options, data) {
         scene.textures[1].magFilter = glContext.LINEAR;
         expect(scene.textures[1].name).to.eql('abc');
         spy(1);
       }
 
-      onCompositionConstructed (composition, scene) {
+      onCompositionCreated (composition, scene) {
         expect(composition.textures[1].name).to.eql('abc');
       }
 
@@ -318,8 +318,8 @@ describe('core/composition/load-textures', () => {
     };
     const spy = chai.spy('bins');
 
-    registerPlugin('bins-test-plugin', class BinsPlugin extends AbstractPlugin {
-      prepareResource (scene, options) {
+    registerPlugin('bins-test-plugin', class BinsPlugin extends Plugin {
+      onAssetsLoadFinish (scene, options) {
         spy();
         expect(scene.bins.length).to.eql(2);
         expect(scene.bins[0]).to.be.an.instanceof(ArrayBuffer);
@@ -327,7 +327,7 @@ describe('core/composition/load-textures', () => {
         scene.storage.key = 1;
       }
 
-      onCompositionConstructed (composition, scene) {
+      onCompositionCreated (composition, scene) {
         expect(scene.storage.key).to.eql(1);
         spy();
       }

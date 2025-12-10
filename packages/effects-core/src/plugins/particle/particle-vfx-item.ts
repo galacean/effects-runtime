@@ -37,7 +37,7 @@ export class ParticleBehaviourPlayable extends Playable {
       ) {
         particleSystem.reset();
       }
-      particleSystem.update(this.time - particleSystem.time);
+      particleSystem.simulate(this.time - particleSystem.time);
     }
     this.lastTime = this.time;
   }

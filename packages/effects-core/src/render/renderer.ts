@@ -9,6 +9,7 @@ import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
 import { RenderTargetPool } from './render-target-pool';
+import type { Texture } from '../texture';
 
 export class Renderer implements LostHandler, RestoreHandler {
   static create: (engine: Engine) => Renderer;
@@ -126,6 +127,16 @@ export class Renderer implements LostHandler, RestoreHandler {
 
   releaseTemporaryRT (rt: Framebuffer): void {
     this.renderTargetPool.release(rt);
+  }
+
+  /**
+   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * @param source - 源纹理
+   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param material - 可选的自定义材质，不传则使用默认复制材质
+   */
+  blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
+    // OVERRIDE
   }
 
   dispose (): void {

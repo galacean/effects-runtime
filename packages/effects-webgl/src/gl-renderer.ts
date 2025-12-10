@@ -1,9 +1,11 @@
 import type {
-  Disposable, Engine, Framebuffer, Geometry, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RendererComponent, ShaderLibrary, math,
+  Disposable, Engine, Framebuffer, RenderFrame, RenderPass,
+  RenderPassClearAction, RendererComponent,
+  ShaderLibrary, Texture,
 } from '@galacean/effects-core';
 import {
-  GPUCapability, Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
+  GPUCapability, Geometry, Material, math,
+  Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLFramebuffer } from './gl-framebuffer';
@@ -21,6 +23,24 @@ type Matrix4 = math.Matrix4;
 type Vector4 = math.Vector4;
 type Vector3 = math.Vector3;
 
+// Blit shader 定义
+const BLIT_VERTEX_SHADER = `
+precision highp float;
+attribute vec2 aPos;
+varying vec2 vTex;
+void main(){
+    gl_Position = vec4(aPos, 0.0, 1.0);
+    vTex = (aPos + vec2(1.0)) / 2.0;
+}`;
+
+const BLIT_FRAGMENT_SHADER = `
+precision mediump float;
+varying vec2 vTex;
+uniform sampler2D _MainTex;
+void main(){
+    gl_FragColor = texture2D(_MainTex, vTex);
+}`;
+
 let seed = 1;
 
 export class GLRenderer extends Renderer implements Disposable {
@@ -30,6 +50,8 @@ export class GLRenderer extends Renderer implements Disposable {
   private sourceFbo: WebGLFramebuffer | null;
   private targetFbo: WebGLFramebuffer | null;
   private disposed = false;
+  private blitGeometry: Geometry | null = null;
+  private blitMaterial: Material | null = null;
 
   get gl () {
     return (this.engine as GLEngine).gl;
@@ -283,6 +305,10 @@ export class GLRenderer extends Renderer implements Disposable {
     }
     this.deleteResource();
     this.renderTargetPool.dispose();
+    this.blitGeometry?.dispose();
+    this.blitGeometry = null;
+    this.blitMaterial?.dispose();
+    this.blitMaterial = null;
     this.disposed = true;
   }
 
@@ -316,6 +342,67 @@ export class GLRenderer extends Renderer implements Disposable {
         gl.viewport(0, 0, width, height);
       }
     }
+  }
+
+  /**
+   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * @param source - 源纹理
+   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param material - 可选的自定义材质，不传则使用默认复制材质
+   */
+  override blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
+    // 懒加载创建 blit geometry
+    if (!this.blitGeometry) {
+      this.blitGeometry = Geometry.create(this.engine, {
+        mode: glContext.TRIANGLE_STRIP,
+        attributes: {
+          aPos: {
+            type: glContext.FLOAT,
+            size: 2,
+            data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
+          },
+        },
+        drawCount: 4,
+      });
+    }
+
+    // 懒加载创建默认 blit material
+    if (!this.blitMaterial) {
+      this.blitMaterial = Material.create(this.engine, {
+        shader: {
+          vertex: BLIT_VERTEX_SHADER,
+          fragment: BLIT_FRAGMENT_SHADER,
+        },
+      });
+      this.blitMaterial.blending = false;
+      this.blitMaterial.depthTest = false;
+      this.blitMaterial.culling = false;
+    }
+
+    const blitMat = material || this.blitMaterial;
+
+    // 设置源纹理
+    blitMat.setTexture('_MainTex', source);
+
+    // 保存当前 framebuffer
+    const prevFramebuffer = this.currentFramebuffer;
+
+    // 设置目标
+    if (destination) {
+      const [x, y, width, height] = destination.viewport;
+
+      this.setFramebuffer(destination);
+      this.setViewport(x, y, width, height);
+    } else {
+      // 渲染到屏幕
+      this.setFramebuffer(null);
+      this.setViewport(0, 0, this.getWidth(), this.getHeight());
+    }
+
+    this.drawGeometry(this.blitGeometry, math.Matrix4.IDENTITY, blitMat);
+
+    // 恢复之前的 framebuffer
+    this.setFramebuffer(prevFramebuffer);
   }
 
   private checkGlobalUniform (name: string) {

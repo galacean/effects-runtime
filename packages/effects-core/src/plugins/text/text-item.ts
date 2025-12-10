@@ -59,6 +59,16 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   protected maxLineWidth = 0;
 
+  /**
+   * 初始文本宽度，用于计算缩放比例
+   */
+  private baseTextWidth = 0;
+
+  /**
+   * 初始 `transform.size.x`，用于按比例更新显示宽度
+   */
+  private baseScaleX = 1;
+
   private getDefaultProps (): spec.TextComponentData {
     return {
       id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
@@ -68,7 +78,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         text: '默认文本',
         fontFamily: 'AlibabaSans-BoldItalic',
         fontSize: 40,
-        textColor: [255, 255, 255, 1],
+        // 统一使用 0-1 颜色值
+        textColor: [1, 1, 1, 1],
         fontWeight: spec.TextWeight.normal,
         letterSpace: 0,
         textAlign: 1,
@@ -125,6 +136,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.updateWithOptions(options);
     this.renderText(options);
 
+    // 记录初始的 textWidth 和 x 缩放，用于后续按比例更新显示宽度
+    // 添加兜底值 1 防止除 0
+    this.baseTextWidth = options.textWidth || this.textLayout.width || 1;
+    this.baseScaleX = this.item.transform.size.x;
+
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
   }
@@ -153,7 +169,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   /**
    * 根据配置更新文本样式和布局
    */
-  protected updateWithOptions (options: spec.TextContentOptions): void {
+  updateWithOptions (options: spec.TextContentOptions): void {
     // 初始化 textStyle 和 textLayout
     if (!this.textStyle) {
       this.textStyle = new TextStyle(options);
@@ -360,10 +376,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         this.setupOutline();
       }
 
-      // 文本颜色 - 直接使用 vec4 原值，不乘以 255
+      // textColor 统一是 0-1，写入 canvas 时乘 255
       const [r, g, b, a] = style.textColor;
 
-      context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+      context.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
 
       const charsInfo: CharInfo[] = [];
       let x = 0;
@@ -437,6 +453,38 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
     layout.autoWidth = normalizedValue;
     this.isDirty = true;
+  }
+
+  /**
+   * 设置文本框宽度
+   * 手动设置宽度时会自动关闭 `autoWidth`
+   * 同时会按比例更新 `transform.size.x`，让 UI 框宽度也跟着变化
+   * @param value - 文本框宽度
+   */
+  setTextWidth (value: number): void {
+    const width = Math.max(0, Number(value) || 0);
+    const layout = this.textLayout;
+
+    // 宽度没变且已是非 autoWidth 模式,直接返回
+    if (layout.width === width && layout.autoWidth === false) {
+      return;
+    }
+
+    // 手动设置宽度时关闭 autoWidth
+    layout.autoWidth = false;
+    layout.width = width;
+
+    // 按当前 overflow 模式重新计算行数和 maxLineWidth
+    this.lineCount = this.getLineCount(this.text || '');
+    this.isDirty = true;
+
+    // 同步更新外层显示宽度(按比例缩放 transform)
+    // 这样 UI 框的视觉宽度也会跟着文本宽度变化
+    if (this.baseTextWidth > 0) {
+      const scale = width / this.baseTextWidth;
+
+      this.item.transform.size.x = this.baseScaleX * scale;
+    }
   }
 
   setFontSize (value: number): void {
