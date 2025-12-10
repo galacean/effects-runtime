@@ -322,6 +322,12 @@ export function version35Migration (json: JSONScene): JSONScene {
       ) {
         ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
       }
+      // 处理文本颜色从 0-255 到 0-1 的转换
+      if (
+        component.dataType === spec.DataType.TextComponent
+      ) {
+        convertTextColorTo01((component as spec.TextComponentData).options);
+      }
     }
   }
 
@@ -345,6 +351,25 @@ function ensureTextVerticalAlign (options: any) {
     //旧版本（没有 TextVerticalAlign 字段）
     options.TextVerticalAlign = options.textBaseline;
   }
+}
+
+/**
+ * 将文本颜色从 0-255 转换到 0-1
+ */
+function convertTextColorTo01 (options: spec.TextContentOptions) {
+  if (!options || !options.textColor) {
+    return;
+  }
+
+  const textColor = options.textColor;
+
+  // 将 RGB 从 0-255 转换到 0-1（alpha 通道已经是 0-1，不需要转换）
+  options.textColor = [
+    textColor[0] / 255.0,
+    textColor[1] / 255.0,
+    textColor[2] / 255.0,
+    textColor[3] ?? 1, // alpha 保持不变
+  ];
 }
 
 /**

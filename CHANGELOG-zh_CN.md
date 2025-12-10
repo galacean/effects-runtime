@@ -8,6 +8,12 @@
 
 ---
 
+## 2.7.4
+
+`2025-11-25`
+
+- Fix: particles did not replay during the composition replay. [#1286](https://github.com/galacean/effects-runtime/pull/1286) @wumaolinmaoan
+
 ## 2.7.3
 
 `2025-11-14`
