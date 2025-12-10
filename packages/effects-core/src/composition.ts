@@ -366,13 +366,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成中所有元素
    */
   get items (): VFXItem[] {
-    const result: VFXItem[] = [];
-
-    for (const item of this.rootItem.children) {
-      this.collectItemsRecursively(item, result);
-    }
-
-    return result;
+    return this.rootComposition.items;
   }
 
   /**
