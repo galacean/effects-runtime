@@ -4,7 +4,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import { Composition } from './composition';
+import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
@@ -674,6 +674,12 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.duration = duration;
     this.endBehavior = endBehavior;
 
+    if (parentId) {
+      const parent = this.engine.findObject<VFXItem>({ id: parentId });
+
+      this.setParent(parent);
+    }
+
     if (!data.content) {
       data.content = { options: {} };
     }
@@ -806,11 +812,16 @@ export class VFXItem extends EffectsObject implements Disposable {
             component.setInstanceId(generateGUID());
           }
         }
+
+        for (const item of component.items) {
+          if (!item.parent) {
+            item.setParent(this);
+          }
+        }
       }
     }
-    this.setInstanceId(prevInstanceId);
 
-    Composition.buildItemTree(this);
+    this.setInstanceId(prevInstanceId);
   }
 
   private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {

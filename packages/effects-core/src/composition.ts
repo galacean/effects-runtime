@@ -243,33 +243,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private videos: HTMLVideoElement[] = [];
 
   /**
-   * @internal
-   * 构建父子树，同时保存到 itemCacheMap 中便于查找
-   */
-  static buildItemTree (compVFXItem: VFXItem) {
-    const itemMap = new Map<string, VFXItem>();
-    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
-
-    for (const item of contentItems) {
-      itemMap.set(item.id, item);
-    }
-
-    for (const item of contentItems) {
-      if (item.parentId === undefined) {
-        item.setParent(compVFXItem);
-      } else {
-        const parent = itemMap.get(item.parentId);
-
-        if (parent) {
-          item.setParent(parent);
-        } else {
-          throw new Error('The element references a non-existent element, please check the data.');
-        }
-      }
-    }
-  }
-
-  /**
    * Composition 构造函数
    * @param props - composition 的创建参数
    * @param scene
@@ -336,6 +309,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.rootComposition = this.rootItem.getComponent(CompositionComponent);
 
+    for (const item of this.rootComposition.items) {
+      if (!item.parent) {
+        item.setParent(this.rootItem);
+      }
+    }
+
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
@@ -366,7 +345,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.createRenderFrame();
 
-    Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
   }
 
@@ -388,7 +366,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成中所有元素
    */
   get items (): VFXItem[] {
-    return this.rootComposition.items;
+    const result: VFXItem[] = [];
+
+    for (const item of this.rootItem.children) {
+      this.collectItemsRecursively(item, result);
+    }
+
+    return result;
   }
 
   /**
@@ -985,6 +969,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (this.textureOffloaded) {
       await Promise.all(this.textures.map(tex => tex?.reloadData()));
       this.textureOffloaded = false;
+    }
+  }
+
+  /**
+   * 递归收集所有子元素
+   */
+  private collectItemsRecursively (item: VFXItem, result: VFXItem[]): void {
+    result.push(item);
+
+    for (const child of item.children) {
+      this.collectItemsRecursively(child, result);
     }
   }
 }
