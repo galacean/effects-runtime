@@ -122,7 +122,7 @@ export class InteractComponent extends RendererComponent {
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
       if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
-        this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, this.transform, this.engine);
+        this.previewContent = new InteractMesh((this.item.defination as spec.InteractItem).content, this.transform, this.engine);
       }
     }
     if (this.previewContent) {
@@ -137,7 +137,7 @@ export class InteractComponent extends RendererComponent {
     if (this.item && this.item.composition) {
       // Triggers the Message end event, do not trigger when reverse playback
       if (this.duringPlay && !this.item.transform.getValid() && this.item.composition.getSpeed() > 0) {
-        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+        this.item.composition.removeInteractiveItem(this.item, (this.item.defination as spec.InteractItem).content.options.type);
         this.duringPlay = false;
       }
       this.clickable = false;
@@ -172,14 +172,14 @@ export class InteractComponent extends RendererComponent {
     // Trigger messageBegin when item enter
     if (this.lastTime <= this.item.time) {
       if (this.item.time >= 0 && this.lastTime < 0) {
-        const options = this.item.props.content.options as spec.DragInteractOption;
+        const options = this.item.defination.content.options as spec.DragInteractOption;
 
         this.item.composition?.addInteractiveItem(this.item, options.type);
       }
     } else {
       // Loop trigger, do not trigger when reverse playback
       if (this.item.time >= 0 && dt > 0) {
-        const options = this.item.props.content.options as spec.DragInteractOption;
+        const options = this.item.defination.content.options as spec.DragInteractOption;
 
         this.item.composition?.addInteractiveItem(this.item, options.type);
       }
@@ -317,7 +317,7 @@ export class InteractComponent extends RendererComponent {
     if (!this.clickable) {
       return;
     }
-    const { behavior } = (this.item.props as spec.InteractItem).content.options as spec.ClickInteractOption;
+    const { behavior } = (this.item.defination as spec.InteractItem).content.options as spec.ClickInteractOption;
     const area = this.getBoundingBox();
 
     if (area) {

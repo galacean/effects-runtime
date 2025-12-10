@@ -47,10 +47,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   duration = 0;
   /**
-   * 父元素的 id
-   */
-  parentId?: string;
-  /**
    * 元素动画结束时行为（如何处理元素）
    */
   endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
@@ -63,11 +59,23 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @deprecated 2.7.0 Please use `getInstanceId` instead
    */
   id: string;
+  /**
+   * 元素类型
+   */
   type: spec.ItemType = spec.ItemType.base;
+  /**
+   * @deprecated 2.8.0 Please use `defination` instead
+   */
   props: spec.VFXItemData;
+  /**
+   * 元素组件列表
+   */
   components: Component[] = [];
+  /**
+   * @internal
+   * 元素是否在播放过程中
+   */
   isDuringPlay = false;
-
   /**
    * 元素是否激活
    */
@@ -211,6 +219,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   get renderOrder () {
     return this.listIndex;
   }
+
   set renderOrder (value: number) {
     if (this.listIndex !== value) {
       this.listIndex = value;
@@ -220,6 +229,13 @@ export class VFXItem extends EffectsObject implements Disposable {
         }
       }
     }
+  }
+
+  /**
+   * @deprecated 2.8.0 Please use `parent.getInstanceId()` instead
+   */
+  get parentId (): string | undefined {
+    return this.defination.parentId;
   }
 
   /**
@@ -670,7 +686,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-    this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
 
@@ -784,7 +799,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   private instantiatePreComposition () {
-    const compositionContent = this.props.content as unknown as spec.CompositionContent;
+    const compositionContent = this.defination.content as unknown as spec.CompositionContent;
     const refId = compositionContent.options.refId;
     const props = this.engine.findEffectsObjectData(refId);
 
