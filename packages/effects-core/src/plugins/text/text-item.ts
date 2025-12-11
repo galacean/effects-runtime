@@ -493,6 +493,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   setTextHeight (value: number): void {
     const height = Math.max(0, Number(value) || 0);
+
+    if (height === 0) {
+      return;
+    }
+
     const layout = this.textLayout;
 
     if (layout.height === height) {
