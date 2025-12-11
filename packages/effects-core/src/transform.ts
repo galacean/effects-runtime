@@ -589,4 +589,13 @@ export class Transform implements Disposable {
       c.parentMatrixDirty = true;
     });
   }
+
+  /**
+   * 强制触发值变化，用于确保变换更新能正确传播
+   */
+  forceUpdate () {
+    this.dispatchValueChange();
+    // 标记本地数据为脏，确保矩阵会被重新计算
+    this.dirtyFlags.localData = true;
+  }
 }

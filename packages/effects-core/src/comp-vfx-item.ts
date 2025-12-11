@@ -75,6 +75,15 @@ export class CompositionComponent extends Component {
     this.timelineInstance.setTime(time);
 
     this.timelineInstance.evaluate(dt / 1000);
+    
+    // 确保预合成元素的子元素变换能正确更新
+    for (const item of this.items) {
+      // 只在变换无效时进行处理
+      if (!item.transform.getValid()) {
+        item.transform.setValid(true);
+        item.transform.forceUpdate();
+      }
+    }
   }
 
   override onEnable () {
