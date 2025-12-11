@@ -419,22 +419,27 @@ export class AssetManager implements Disposable {
       }
     }
   }
-
+  // @ts-expect-error
   private stringToHevcVideoCodec (codecString: string): spec.HevcVideoCodec | undefined {
     // 传入的是完整的枚举值
+    // @ts-expect-error
     if (Object.values(spec.HevcVideoCodec).includes(codecString as spec.HevcVideoCodec)) {
+      // @ts-expect-error
       return codecString as spec.HevcVideoCodec;
     }
     // 传入的是枚举名称
+    // @ts-expect-error
     const enumKey = codecString as keyof typeof spec.HevcVideoCodec;
 
+    // @ts-expect-error
     if (enumKey in spec.HevcVideoCodec) {
+      // @ts-expect-error
       return spec.HevcVideoCodec[enumKey];
     }
 
     return undefined;
   }
-
+  // @ts-expect-error
   private canPlayHevcCodec (codecString: spec.HevcVideoCodec): boolean {
     const v = document.createElement('video');
     const contentType = `video/mp4; codecs="${codecString}"`;
