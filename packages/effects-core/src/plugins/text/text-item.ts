@@ -487,6 +487,22 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
   }
 
+  /**
+   * 设置文本框高度
+   * @param value - 文本框高度
+   */
+  setTextHeight (value: number): void {
+    const height = Math.max(0, Number(value) || 0);
+    const layout = this.textLayout;
+
+    if (layout.height === height) {
+      return;
+    }
+
+    layout.height = height;
+    this.isDirty = true;
+  }
+
   setFontSize (value: number): void {
     if (this.textStyle.fontSize === value) {
       return;
