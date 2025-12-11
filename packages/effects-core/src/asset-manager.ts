@@ -410,7 +410,8 @@ export class AssetManager implements Disposable {
     for (const video of jsonScene.videos) {
       const hevc = video.hevc as { url?: string, codec?: string } | undefined;
 
-      if (!hevc?.url || !hevc?.codec) {return;}
+      // @ts-expect-error
+      if (!hevc?.url || !hevc?.codec || !spec.HevcVideoCodec) {return;}
 
       const codec = this.stringToHevcVideoCodec(hevc.codec);
 
