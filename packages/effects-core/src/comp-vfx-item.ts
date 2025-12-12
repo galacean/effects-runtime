@@ -78,24 +78,25 @@ export class CompositionComponent extends Component {
   }
 
   override onEnable () {
-    for (const item of this.items) {
+    this.item.getDescendants(false, item => {
       item.setActive(true);
-    }
+
+      return false;
+    });
   }
 
   override onDisable () {
-    for (const item of this.items) {
+    this.item.getDescendants(false, item => {
       item.setActive(false);
-    }
+
+      return false;
+    });
   }
 
   override onDestroy (): void {
-    if (this.item.composition) {
-      if (this.items) {
-        this.items.forEach(item => item.dispose());
-        this.items.length = 0;
-      }
-    }
+    const items = this.item.getDescendants();
+
+    items.forEach(item => item.dispose());
   }
 
   hitTest (

@@ -19,7 +19,6 @@ import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
-import { CompositionComponent } from './comp-vfx-item';
 
 /**
  * VFX 元素，包含元素的变换、组件、子元素等信息。
@@ -330,6 +329,14 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     return res;
+  }
+
+  getDescendants (directDescendantsOnly?: boolean, predicate?: (node: VFXItem) => boolean): VFXItem[] {
+    const results: VFXItem[] = [];
+
+    this.getDescendantsInternal(results, directDescendantsOnly, predicate);
+
+    return results;
   }
 
   setParent (vfxItem: VFXItem) {
@@ -798,19 +805,29 @@ export class VFXItem extends EffectsObject implements Disposable {
       component.item = this;
       this.components.push(component);
       component.setInstanceId(generateGUID());
-
-      if (component instanceof CompositionComponent) {
-        for (const vfxItem of component.items) {
-          vfxItem.setInstanceId(generateGUID());
-          for (const component of vfxItem.components) {
-            component.setInstanceId(generateGUID());
-          }
-        }
-      }
     }
-    this.setInstanceId(prevInstanceId);
 
     Composition.buildItemTree(this);
+
+    const resetGUIDRecursive = (item: VFXItem)=>{
+      item.setInstanceId(generateGUID());
+
+      for (const component of item.components) {
+        component.setInstanceId(generateGUID());
+      }
+
+      if (!VFXItem.isComposition(item)) {
+        for (const child of item.children) {
+          resetGUIDRecursive(child);
+        }
+      }
+    };
+
+    for (const child of this.children) {
+      resetGUIDRecursive(child);
+    }
+
+    this.setInstanceId(prevInstanceId);
   }
 
   private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
@@ -836,6 +853,24 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     for (const child of this.children) {
       child.gatherPreviousObjectID(previousObjectIDMap);
+    }
+  }
+
+  private getDescendantsInternal (results: VFXItem[], directDescendantsOnly: boolean = false, predicate?: (node: VFXItem) => boolean): void {
+    if (!this.children) {
+      return;
+    }
+
+    for (let index = 0; index < this.children.length; index++) {
+      const item = this.children[index];
+
+      if (!predicate || predicate(item)) {
+        results.push(item);
+      }
+
+      if (!directDescendantsOnly) {
+        item.getDescendantsInternal(results, false, predicate);
+      }
     }
   }
 }

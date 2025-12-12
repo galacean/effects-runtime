@@ -13,7 +13,7 @@ import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
-import { assertExist, logger, noop, removeItem } from './utils';
+import { assertExist, logger, noop } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
@@ -352,7 +352,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    PluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
@@ -368,6 +367,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
+
+    PluginSystem.initializeComposition(this, scene);
   }
 
   /**
@@ -388,7 +389,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成中所有元素
    */
   get items (): VFXItem[] {
-    return this.rootComposition.items;
+    return this.rootItem.getDescendants();
   }
 
   /**
@@ -565,7 +566,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   addItem (item: VFXItem) {
-    this.items.push(item);
     item.setParent(this.rootItem);
   }
 
@@ -817,12 +817,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
-    if (item.type !== spec.ItemType.composition) {
-      // this.content.removeItem(item);
-      // 预合成中的元素移除
-      // this.refContent.forEach(content => content.removeItem(item));
-      removeItem(this.items, item);
-    }
+    // if (item.type !== spec.ItemType.composition) {
+    // this.content.removeItem(item);
+    // 预合成中的元素移除
+    // this.refContent.forEach(content => content.removeItem(item));
+    // removeItem(this.items, item);
+    // }
   }
 
   lost (e: Event): void {
