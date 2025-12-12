@@ -87,6 +87,12 @@ export interface SceneLoadOptions {
   useCompressedTexture?: boolean,
 
   /**
+   * 是否使用 Hevc 视频
+   * @default undefined
+   */
+  useHevcVideo?: boolean,
+
+  /**
    * 渲染分级。
    * 分级之后，只会加载当前渲染等级的资源。
    * 当渲染等级被设置为 B 后，player 的 fps 会降到 30 帧

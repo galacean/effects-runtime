@@ -201,7 +201,9 @@ export class AssetManager implements Disposable {
 
         const { bins = [], images, fonts } = jsonScene;
 
-        await hookTimeInfo('selectVideoCodec', () => this.processVideoURL(jsonScene));
+        if (this.options.useHevcVideo) {
+          await hookTimeInfo('selectVideoCodec', () => this.processVideoURL(jsonScene));
+        }
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
