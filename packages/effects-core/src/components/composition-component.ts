@@ -2,16 +2,16 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
-import { Component } from './components';
-import type { Composition, CompositionHitTestOptions } from './composition';
-import type { Region, TrackAsset } from './plugins';
-import { TimelineInstance } from './plugins';
-import { HitTestType } from './plugins';
-import { PlayState } from './plugins/timeline/playable';
-import { TimelineAsset } from './plugins/timeline';
-import { noop } from './utils';
-import { VFXItem } from './vfx-item';
-import { effectsClass, serialize } from './decorators';
+import type { Composition, CompositionHitTestOptions } from '../composition';
+import type { Region, TrackAsset } from '../plugins';
+import { TimelineInstance } from '../plugins';
+import { HitTestType } from '../plugins';
+import { PlayState } from '../plugins/timeline/playable';
+import { TimelineAsset } from '../plugins/timeline';
+import { noop } from '../utils';
+import { VFXItem } from '../vfx-item';
+import { effectsClass, serialize } from '../decorators';
+import { Component } from './component';
 
 export interface SceneBinding {
   key: TrackAsset,

@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { CompositionComponent } from '../../../comp-vfx-item';
+import { CompositionComponent } from '../../../components/composition-component';
 import { effectsClass } from '../../../decorators';
 import { VFXItem } from '../../../vfx-item';
 import type { TrackMixerPlayable } from '../playables';

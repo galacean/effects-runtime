@@ -2,7 +2,6 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { MaskableGraphic, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
@@ -13,6 +12,8 @@ import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
 import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render/geometry';
 import { rotateVec2 } from '../../shape';
+import { MaskableGraphic } from '../../components/base-render-component';
+import { EffectComponent } from '../../components/effect-component';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options

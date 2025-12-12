@@ -1,4 +1,4 @@
-import { CompositionComponent } from '../../../comp-vfx-item';
+import { CompositionComponent } from '../../../components/composition-component';
 import type { FrameContext } from '../playable';
 import { Playable } from '../playable';
 
