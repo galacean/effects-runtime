@@ -1,4 +1,4 @@
-import { CompositionComponent } from '../../../comp-vfx-item';
+import { CompositionComponent } from '../../../components';
 import type { FrameContext } from '../playable';
 import { TrackMixerPlayable } from './track-mixer-playable';
 

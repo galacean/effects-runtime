@@ -9,5 +9,4 @@ export * from './mesh';
 export * from './geometry';
 export * from './framebuffer';
 export * from './renderer';
-export * from './semantic-map';
 export * from './draw-object-pass';

@@ -2,16 +2,13 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
-import { Component } from './components';
-import type { Composition, CompositionHitTestOptions } from './composition';
-import type { Region, TrackAsset } from './plugins';
-import { TimelineInstance } from './plugins';
-import { HitTestType } from './plugins';
-import { PlayState } from './plugins/timeline/playable';
-import { TimelineAsset } from './plugins/timeline';
-import { noop } from './utils';
-import { VFXItem } from './vfx-item';
-import { effectsClass, serialize } from './decorators';
+import type { Composition, CompositionHitTestOptions } from '../composition';
+import type { Region, TrackAsset } from '../plugins';
+import { TimelineInstance, HitTestType, PlayState, TimelineAsset } from '../plugins';
+import { noop } from '../utils';
+import { VFXItem } from '../vfx-item';
+import { effectsClass, serialize } from '../decorators';
+import { Component } from './component';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -78,24 +75,25 @@ export class CompositionComponent extends Component {
   }
 
   override onEnable () {
-    for (const item of this.items) {
+    this.item.getDescendants(false, item => {
       item.setActive(true);
-    }
+
+      return false;
+    });
   }
 
   override onDisable () {
-    for (const item of this.items) {
+    this.item.getDescendants(false, item => {
       item.setActive(false);
-    }
+
+      return false;
+    });
   }
 
   override onDestroy (): void {
-    if (this.item.composition) {
-      if (this.items) {
-        this.items.forEach(item => item.dispose());
-        this.items.length = 0;
-      }
-    }
+    const items = this.item.getDescendants();
+
+    items.forEach(item => item.dispose());
   }
 
   hitTest (

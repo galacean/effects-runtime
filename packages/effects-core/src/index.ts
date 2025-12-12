@@ -1,6 +1,6 @@
 import { registerPlugin } from './plugin-system';
 import {
-  CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
+  CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
 import { logger } from './utils';
 
@@ -13,7 +13,6 @@ export * from './asset-manager';
 export * from './asset-service';
 export * from './camera';
 export * from './canvas-pool';
-export * from './comp-vfx-item';
 export * from './components';
 export * from './animation';
 export * from './composition';
@@ -54,7 +53,6 @@ registerPlugin('camera', CameraVFXItemLoader);
 registerPlugin('text', TextLoader);
 registerPlugin('sprite', SpriteLoader);
 registerPlugin('particle', ParticleLoader);
-registerPlugin('cal', CalculateLoader);
 registerPlugin('interact', InteractLoader);
 
 export const version = __VERSION__;
