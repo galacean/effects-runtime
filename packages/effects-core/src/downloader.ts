@@ -286,16 +286,16 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   return new Promise<HTMLVideoElement>((resolve, reject) => {
     const handleLoadedData = function listener () {
       resolve(video);
-      video.removeEventListener('loadeddata', listener);
+      video.removeEventListener('canplay', handleLoadedData);
       video.removeEventListener('error', handleError);
     };
     const handleError = (e: any) => {
-      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('canplay', handleLoadedData);
       video.removeEventListener('error', handleError);
       reject('Load video fail.');
     };
 
-    video.addEventListener('loadeddata', handleLoadedData, true);
+    video.addEventListener('canplay', handleLoadedData, true);
     video.addEventListener('error', handleError);
 
     // 显式触发视频加载
