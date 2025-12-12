@@ -238,16 +238,12 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override setFramebuffer (framebuffer: Framebuffer | null) {
-    if (this.currentFramebuffer === framebuffer) {
-      return;
-    }
-
-    this.currentFramebuffer = framebuffer;
-
     if (framebuffer) {
-      framebuffer.bind();
+      this.currentFramebuffer = framebuffer;
+      this.currentFramebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
+      this.currentFramebuffer = null;
       (this.engine as GLEngine).bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
