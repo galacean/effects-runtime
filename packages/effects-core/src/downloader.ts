@@ -284,21 +284,22 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   video.setAttribute('playsinline', 'playsinline');
 
   return new Promise<HTMLVideoElement>((resolve, reject) => {
-    const pending = video.play().catch(e => {
-      reject(e);
-    });
-
-    if (pending) {
-      void pending.then(() => resolve(video));
-    } else {
-      video.addEventListener('loadeddata', function listener () {
-        resolve(video);
-        video.removeEventListener('loadeddata', listener);
-      }, true);
-    }
-    video.addEventListener('error', e => {
+    const handleLoadedData = function listener () {
+      resolve(video);
+      video.removeEventListener('loadeddata', listener);
+      video.removeEventListener('error', handleError);
+    };
+    const handleError = (e: any) => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('error', handleError);
       reject('Load video fail.');
-    });
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData, true);
+    video.addEventListener('error', handleError);
+
+    // 显式触发视频加载
+    video.load();
   });
 }
 
