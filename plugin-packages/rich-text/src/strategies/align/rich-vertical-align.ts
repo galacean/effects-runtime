@@ -18,7 +18,6 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     style: TextStyle,
     singleLineHeight: number,
   ): VerticalAlignResult {
-    const lineHeights = lines.map(line => line.lineHeight);
     const compY = (sizeResult as any).baselineCompensationY || 0;
     let baselineY = 0;
 
@@ -57,17 +56,46 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         break;
       }
       case spec.TextOverflow.clip: {
-        const firstLine = lines[0];
+        // 让 clip 垂直对齐逻辑与 display 保持一致（基于 bbox 的几何模型）
+        const frameHpx = layout.maxTextHeight * style.fontScale;
 
-        if (firstLine) {
-          const richSizes = firstLine.richOptions.map(o => o.fontSize);
-          const firstMax = Math.max(...(richSizes.length ? richSizes : [style.fontSize]));
-          const fontSizeForOffset = firstMax * style.fontScale * singleLineHeight;
+        // 用缩放后的行数据重建 baselines 和 bbox
+        const baselines: number[] = [0];
 
-          baselineY = (layout as any).getOffsetYRich(style, lineHeights, fontSizeForOffset) + compY;
-        } else {
-          baselineY = (layout as any).getOffsetYRich(style, lineHeights, style.fontSize * style.fontScale) + compY;
+        for (let i = 1; i < lines.length; i++) {
+          baselines[i] = baselines[i - 1] + lines[i].lineHeight;
         }
+
+        let bboxTop = Infinity;
+        let bboxBottom = -Infinity;
+
+        for (let i = 0; i < lines.length; i++) {
+          const asc = lines[i].lineAscent ?? 0;
+          const desc = lines[i].lineDescent ?? 0;
+
+          bboxTop = Math.min(bboxTop, baselines[i] - asc);
+          bboxBottom = Math.max(bboxBottom, baselines[i] + desc);
+        }
+        const bboxHeight = bboxBottom - bboxTop;
+
+        let baselineClipY = 0;
+
+        switch (layout.textVerticalAlign) {
+          case spec.TextVerticalAlign.top:
+            baselineClipY = -bboxTop;
+
+            break;
+          case spec.TextVerticalAlign.middle:
+            baselineClipY = (frameHpx - bboxHeight) / 2 - bboxTop;
+
+            break;
+          case spec.TextVerticalAlign.bottom:
+            baselineClipY = (frameHpx - bboxHeight) - bboxTop;
+
+            break;
+        }
+
+        baselineY = baselineClipY;
 
         break;
       }

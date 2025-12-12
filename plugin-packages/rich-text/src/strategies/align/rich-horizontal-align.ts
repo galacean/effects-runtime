@@ -19,16 +19,17 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
   ): HorizontalAlignResult {
     const containerWidthPx =
       (sizeResult as any).containerWidth ?? (layout.maxTextWidth * style.fontScale);
+    const compX = (sizeResult as any).baselineCompensationX || 0;
 
     // 使用像素单位的容器宽度
     const baseOffsets = lines.map(line =>
       (layout as any).getOffsetXRich(style, containerWidthPx, line.width)
     );
 
-    // visible 模式下不再重复叠加 compX，因为已经在 setCanvasSize 阶段体现
+    // visible 模式下使用 baseOffset + baselineCompensationX
     const lineOffsets =
       layout.overflow === spec.TextOverflow.visible
-        ? baseOffsets
+        ? baseOffsets.map(x => x + compX)
         : baseOffsets;
 
     return { lineOffsets };

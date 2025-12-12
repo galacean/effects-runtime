@@ -540,21 +540,48 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
         // 水平扩张（使用像素单位）
         const lines = sizeResult.lines || [];
+
+        // 1. 先按 frameWpx 计算每行的对齐起点（逻辑对齐）
         const xOffsetsFrame = lines.map(line =>
           layout.getOffsetXRich(this.textStyle, frameWpx, line.width)
         );
-        const leftMost = xOffsetsFrame.length > 0 ? Math.min(...xOffsetsFrame) : 0;
-        const ex = Math.max(0, -leftMost);
-        const expandLeft = ex;
-        const expandRight = ex;
 
+        // 2. 用对齐后的偏移 + 行宽算出内容的左右边界
+        let contentMinX = Infinity;
+        let contentMaxX = -Infinity;
+
+        for (let i = 0; i < lines.length; i++) {
+          const off = xOffsetsFrame[i] ?? 0;
+          const w = lines[i].width ?? 0; // 像素宽
+
+          contentMinX = Math.min(contentMinX, off);
+          contentMaxX = Math.max(contentMaxX, off + w);
+        }
+
+        if (!isFinite(contentMinX)) {
+          contentMinX = 0;
+        }
+        if (!isFinite(contentMaxX)) {
+          contentMaxX = 0;
+        }
+
+        // 3. 计算内容相对于 frame 的越界量
+        const overflowLeft = Math.max(0, -contentMinX);               // 内容左边 < 0
+        const overflowRight = Math.max(0, contentMaxX - frameWpx);    // 内容右边 > frameWpx?
+
+        // 4. 让 canvas 左右都扩张到能容下整个内容 bbox
+        const expandLeft = overflowLeft;
+        const expandRight = overflowRight;
+
+        // 5. 最终 canvas 宽高
         const finalWpx = frameWpx + expandLeft + expandRight;
         const finalHpx = frameHpx + expandTop + expandBottom;
 
         // 记录补偿，供垂直对齐策略叠加
         (sizeResult as any).baselineCompensationX = expandLeft;
         (sizeResult as any).baselineCompensationY = compY;
-        (sizeResult as any).containerWidth = finalWpx;
+        // containerWidth 用 frameWpx，而不是 finalWpx
+        (sizeResult as any).containerWidth = frameWpx;
 
         sizeResult.canvasWidth = finalWpx;
         sizeResult.canvasHeight = finalHpx;
