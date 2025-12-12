@@ -2,11 +2,13 @@ import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
-import { CompositionComponent } from './components/composition-component';
+import type { Component, PostProcessVolume } from './components';
+import { CompositionComponent } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
+import { PlayState } from './plugins';
 import type { Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
@@ -17,9 +19,7 @@ import { assertExist, logger, noop } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { PlayState } from './plugins/timeline/playable';
 
 /**
  * 合成统计信息

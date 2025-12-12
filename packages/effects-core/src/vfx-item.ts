@@ -809,7 +809,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     Composition.buildItemTree(this);
 
-    const resetGUIDRecursive = (item: VFXItem)=>{
+    const resetGUIDRecursive = (item: VFXItem) => {
       item.setInstanceId(generateGUID());
 
       for (const component of item.components) {
@@ -856,7 +856,11 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
-  private getDescendantsInternal (results: VFXItem[], directDescendantsOnly: boolean = false, predicate?: (node: VFXItem) => boolean): void {
+  private getDescendantsInternal (
+    results: VFXItem[],
+    directDescendantsOnly = false,
+    predicate?: (node: VFXItem) => boolean,
+  ): void {
     if (!this.children) {
       return;
     }

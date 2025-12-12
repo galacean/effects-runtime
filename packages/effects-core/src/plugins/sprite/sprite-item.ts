@@ -5,15 +5,12 @@ import { ColorPlayable } from '../../animation';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { FrameContext } from '../timeline/playable';
-import { Playable, PlayableAsset } from '../timeline/playable';
-import { TrackAsset } from '../timeline/track';
-import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
+import type { FrameContext } from '../timeline';
+import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
-import type { Geometry } from '../../render/geometry';
+import type { Geometry } from '../../render';
 import { rotateVec2 } from '../../shape';
-import { MaskableGraphic } from '../../components/base-render-component';
-import { EffectComponent } from '../../components/effect-component';
+import { MaskableGraphic, EffectComponent } from '../../components';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options
@@ -224,8 +221,8 @@ export class SpriteComponent extends MaskableGraphic {
         const positionX = aPos[positionOffset];
         const positionY = aPos[positionOffset + 1];
 
-        tempPosition[0] = positionX ;
-        tempPosition[1] = positionY ;
+        tempPosition[0] = positionX;
+        tempPosition[1] = positionY;
         rotateVec2(tempPosition, tempPosition, angle);
 
         aUV[uvOffset] = (tempPosition[0] + 0.5) * width + x;
@@ -242,8 +239,8 @@ export class SpriteComponent extends MaskableGraphic {
     for (const subMesh of geometry.subMeshes) {
       this.geometry.subMeshes.push({
         offset: subMesh.offset,
-        indexCount:  subMesh.indexCount,
-        vertexCount:  subMesh.vertexCount,
+        indexCount: subMesh.indexCount,
+        vertexCount: subMesh.vertexCount,
       });
     }
   }
