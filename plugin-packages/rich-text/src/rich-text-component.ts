@@ -441,10 +441,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     assertExist(this.canvasSize);
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
-    layout.width = canvasWidth / this.textStyle.fontScale;
-    layout.height = canvasHeight / this.textStyle.fontScale;
+    // 确保canvas宽高至少为1
+    const safeW = Math.max(1, canvasWidth | 0);
+    const safeH = Math.max(1, canvasHeight | 0);
 
-    this.renderToTexture(canvasWidth, canvasHeight, flipY, context => {
+    layout.width = safeW / this.textStyle.fontScale;
+    layout.height = safeH / this.textStyle.fontScale;
+
+    this.renderToTexture(safeW, safeH, flipY, context => {
       // 步骤6: 绘制文本
       this.drawTextWithStrategies(
         context,
@@ -466,13 +470,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const { x = 1, y = 1 } = this.size;
 
     const layout = this.textLayout;
+    const fontScale = this.textStyle.fontScale || 1;
+
+    // 防止 frameW / frameH 为 0
+    const frameW = Math.max(1, layout.maxTextWidth || 0);
+    const frameH = Math.max(1, layout.maxTextHeight || 0);
 
     switch (layout.overflow) {
       case spec.TextOverflow.visible: {
-        const frameW = layout.maxTextWidth;
-        const frameH = layout.maxTextHeight;
-        const fontScale = this.textStyle.fontScale;
-
         const frameWpx = frameW * fontScale;
         const frameHpx = frameH * fontScale;
 
@@ -599,10 +604,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         break;
       }
       case spec.TextOverflow.clip: {
-        const frameW = layout.maxTextWidth;
-        const frameH = layout.maxTextHeight;
-        const fontScale = this.textStyle.fontScale;
-
         const frameWpx = frameW * fontScale;
         const frameHpx = frameH * fontScale;
 
@@ -634,8 +635,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       }
       case spec.TextOverflow.display: {
         if (!this.initialized) {
-          const frameWpx = layout.maxTextWidth * this.textStyle.fontScale;
-          const frameHpx = layout.maxTextHeight * this.textStyle.fontScale;
+          const frameWpx = frameW * fontScale;
+          const frameHpx = frameH * fontScale;
 
           this.canvasSize = new math.Vector2(frameWpx, frameHpx);
           this.item.transform.size.set(

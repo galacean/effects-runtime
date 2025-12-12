@@ -68,8 +68,9 @@ export class RichTextLayout implements BaseLayout {
     this.height = size ? size[1] : 100;
 
     this.wrapEnabled = wrapEnabled;
-    this.maxTextWidth = maxTextWidth;
-    this.maxTextHeight = maxTextHeight;
+    // 兜底，避免 0 / 负数
+    this.maxTextWidth = Math.max(1, maxTextWidth || 0);
+    this.maxTextHeight = Math.max(1, maxTextHeight || 0);
     this.sizeMode = sizeMode;
   }
 
