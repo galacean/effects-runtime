@@ -28,13 +28,13 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
     switch (layout.overflow) {
       case spec.TextOverflow.visible: {
-        // frame-based 计算
-        const frameH = layout.maxTextHeight;
+        // frame-based 计算（使用像素单位）
+        const frameHpx = layout.maxTextHeight * style.fontScale;
         const bboxTop = sizeResult.bboxTop ?? 0;
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
         const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
 
-        // 计算 frame 基线
+        // 计算 frame 基线（使用像素单位）
         let baselineYFrame = 0;
 
         switch (layout.textVerticalAlign) {
@@ -43,11 +43,11 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
             break;
           case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
+            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
 
             break;
           case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameH - bboxHeight) - bboxTop;
+            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
 
             break;
         }
@@ -73,7 +73,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
       }
       case spec.TextOverflow.display: {
         // display 垂直对齐改为基于 bbox，而不是 getOffsetYRich
-        const frameH = layout.maxTextHeight;
+        const frameHpx = layout.maxTextHeight * style.fontScale;
 
         // 用缩放后的行数据重建 baselines 和 bbox
         const baselines: number[] = [0];
@@ -96,7 +96,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
         const bboxHeight = bboxBottom - bboxTop;
 
-        // 计算 display 模式的基线
+        // 计算 display 模式的基线（使用像素单位）
         let baselineDisplayY = 0;
 
         switch (layout.textVerticalAlign) {
@@ -105,11 +105,11 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
             break;
           case spec.TextVerticalAlign.middle:
-            baselineDisplayY = (frameH - bboxHeight) / 2 - bboxTop;
+            baselineDisplayY = (frameHpx - bboxHeight) / 2 - bboxTop;
 
             break;
           case spec.TextVerticalAlign.bottom:
-            baselineDisplayY = (frameH - bboxHeight) - bboxTop;
+            baselineDisplayY = (frameHpx - bboxHeight) - bboxTop;
 
             break;
         }

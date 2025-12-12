@@ -471,12 +471,16 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       case spec.TextOverflow.visible: {
         const frameW = layout.maxTextWidth;
         const frameH = layout.maxTextHeight;
+        const fontScale = this.textStyle.fontScale;
+
+        const frameWpx = frameW * fontScale;
+        const frameHpx = frameH * fontScale;
 
         const bboxTop = sizeResult.bboxTop ?? 0;
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
         const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
 
-        // 计算 frame 基线
+        // 计算 frame 基线（使用像素单位）
         let baselineYFrame = 0;
 
         switch (layout.textVerticalAlign) {
@@ -485,23 +489,23 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
             break;
           case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
+            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
 
             break;
           case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameH - bboxHeight) - bboxTop;
+            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
 
             break;
         }
 
-        // 上下溢出检测
+        // 上下溢出检测（使用像素单位）
         const contentTopInFrame = baselineYFrame + bboxTop;
         const contentBottomInFrame = baselineYFrame + bboxBottom;
 
         const overflowTop = Math.max(0, -contentTopInFrame);
-        const overflowBottom = Math.max(0, contentBottomInFrame - frameH);
+        const overflowBottom = Math.max(0, contentBottomInFrame - frameHpx);
 
-        // 垂直扩张
+        // 垂直扩张（使用像素单位）
         let expandTop = overflowTop;
         let expandBottom = overflowBottom;
 
@@ -534,32 +538,33 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         // 位移补偿：始终使用 expandTop
         const compY = expandTop;
 
-        // 水平扩张
+        // 水平扩张（使用像素单位）
         const lines = sizeResult.lines || [];
         const xOffsetsFrame = lines.map(line =>
-          layout.getOffsetXRich(this.textStyle, frameW, line.width)
+          layout.getOffsetXRich(this.textStyle, frameWpx, line.width)
         );
         const leftMost = xOffsetsFrame.length > 0 ? Math.min(...xOffsetsFrame) : 0;
         const ex = Math.max(0, -leftMost);
         const expandLeft = ex;
         const expandRight = ex;
 
-        const finalW = frameW + expandLeft + expandRight;
-        const finalH = frameH + expandTop + expandBottom;
+        const finalWpx = frameWpx + expandLeft + expandRight;
+        const finalHpx = frameHpx + expandTop + expandBottom;
 
         // 记录补偿，供垂直对齐策略叠加
         (sizeResult as any).baselineCompensationX = expandLeft;
         (sizeResult as any).baselineCompensationY = compY;
+        (sizeResult as any).containerWidth = finalWpx;
 
-        sizeResult.canvasWidth = finalW;
-        sizeResult.canvasHeight = finalH;
+        sizeResult.canvasWidth = finalWpx;
+        sizeResult.canvasHeight = finalHpx;
 
-        this.canvasSize = new math.Vector2(finalW, finalH);
+        this.canvasSize = new math.Vector2(finalWpx, finalHpx);
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         this.item.transform.size.set(
-          x * finalW * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * finalH * this.SCALE_FACTOR * this.SCALE_FACTOR
+          x * finalWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * finalHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.size = this.item.transform.size.clone();
         this.initialized = true;
@@ -569,27 +574,31 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       case spec.TextOverflow.clip: {
         const frameW = layout.maxTextWidth;
         const frameH = layout.maxTextHeight;
+        const fontScale = this.textStyle.fontScale;
 
-        // 直接使用 frame 尺寸作为画布尺寸
-        sizeResult.canvasWidth = frameW;
-        sizeResult.canvasHeight = frameH;
+        const frameWpx = frameW * fontScale;
+        const frameHpx = frameH * fontScale;
+
+        // 直接使用 frame 尺寸作为画布尺寸（像素单位）
+        sizeResult.canvasWidth = frameWpx;
+        sizeResult.canvasHeight = frameHpx;
 
         // clip 模式不需要任何补偿
         (sizeResult as any).baselineCompensationX = 0;
         (sizeResult as any).baselineCompensationY = 0;
 
-        // 设置 canvas 和节点变换
-        this.canvasSize = new math.Vector2(frameW, frameH);
+        // 设置 canvas 和节点变换（像素单位）
+        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
 
-        // 把 layout 的尺寸更新为 frame 尺寸
-        layout.width = frameW / this.textStyle.fontScale;
-        layout.height = frameH / this.textStyle.fontScale;
+        // 把 layout 的尺寸更新为 frame 尺寸（逻辑单位）
+        layout.width = frameW;
+        layout.height = frameH;
 
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         this.item.transform.size.set(
-          x * frameW * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * frameH * this.SCALE_FACTOR * this.SCALE_FACTOR
+          x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.size = this.item.transform.size.clone();
         this.initialized = true;
@@ -598,10 +607,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       }
       case spec.TextOverflow.display: {
         if (!this.initialized) {
-          this.canvasSize = new math.Vector2(layout.maxTextWidth, layout.maxTextHeight);
+          const frameWpx = layout.maxTextWidth * this.textStyle.fontScale;
+          const frameHpx = layout.maxTextHeight * this.textStyle.fontScale;
+
+          this.canvasSize = new math.Vector2(frameWpx, frameHpx);
           this.item.transform.size.set(
-            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
+            x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
           this.size = this.item.transform.size.clone();
           this.initialized = true;
