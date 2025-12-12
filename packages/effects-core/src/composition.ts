@@ -237,7 +237,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成暂停/播放 标识
    */
-  private paused = false;
+  private paused = true;
   private isEndCalled = false;
   private _textures: Texture[] = [];
   private videos: HTMLVideoElement[] = [];
