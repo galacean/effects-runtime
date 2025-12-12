@@ -201,13 +201,11 @@ export class AssetManager implements Disposable {
 
         const { bins = [], images, fonts } = jsonScene;
 
-        if (this.options.useHevcVideo) {
-          await hookTimeInfo('selectVideoCodec', () => this.processVideoURL(jsonScene));
-        }
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
+          ...(this.options.useHevcVideo ? [hookTimeInfo('processVideoURL', () => this.processVideoURL(jsonScene))] : []),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
@@ -406,14 +404,14 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  private async processVideoURL (jsonScene: any): Promise<void> {
+  private async processVideoURL (jsonScene: spec.JSONScene): Promise<void> {
     if (!jsonScene?.videos || !Array.isArray(jsonScene.videos)) {return;}
 
     for (const video of jsonScene.videos) {
+      // @ts-expect-error
       const hevc = video.hevc as { url?: string, codec?: string } | undefined;
 
-      // @ts-expect-error
-      if (!hevc?.url || !hevc?.codec || !spec.HevcVideoCodec) {return;}
+      if (!hevc?.url || !hevc?.codec) {return;}
 
       const codec = this.stringToHevcVideoCodec(hevc.codec);
 
