@@ -18,7 +18,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     style: TextStyle,
     singleLineHeight: number,
   ): VerticalAlignResult {
-    const compY = (sizeResult as any).baselineCompensationY || 0;
+    const compY = sizeResult.baselineCompensationY ?? 0;
     let baselineY = 0;
 
     if (lines.length === 0) {
@@ -95,7 +95,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
             break;
         }
 
-        baselineY = baselineClipY;
+        baselineY = baselineClipY + compY;
 
         break;
       }

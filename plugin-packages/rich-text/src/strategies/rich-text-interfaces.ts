@@ -48,6 +48,7 @@ export interface SizeResult {
   bboxHeight?: number,         // 边界框高度
   baselineCompensationY?: number, // 基线补偿Y值（仅visible模式）
   baselineCompensationX?: number, // 基线补偿X值（仅visible模式）
+  containerWidth?: number,     // 容器宽度（仅visible模式）
   lines?: RichLine[],          // 行信息（仅visible模式）
 }
 /**

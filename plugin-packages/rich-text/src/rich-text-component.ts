@@ -442,8 +442,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
     // 确保canvas宽高至少为1
-    const safeW = Math.max(1, canvasWidth | 0);
-    const safeH = Math.max(1, canvasHeight | 0);
+    const safeW = Math.max(1, Math.ceil(canvasWidth));
+    const safeH = Math.max(1, Math.ceil(canvasHeight));
 
     layout.width = safeW / this.textStyle.fontScale;
     layout.height = safeH / this.textStyle.fontScale;
@@ -579,14 +579,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         const expandRight = overflowRight;
 
         // 5. 最终 canvas 宽高
-        const finalWpx = frameWpx + expandLeft + expandRight;
-        const finalHpx = frameHpx + expandTop + expandBottom;
+        const finalWpx = Math.ceil(frameWpx + expandLeft + expandRight);
+        const finalHpx = Math.ceil(frameHpx + expandTop + expandBottom);
 
         // 记录补偿，供垂直对齐策略叠加
-        (sizeResult as any).baselineCompensationX = expandLeft;
-        (sizeResult as any).baselineCompensationY = compY;
+        sizeResult.baselineCompensationX = expandLeft;
+        sizeResult.baselineCompensationY = compY;
         // containerWidth 用 frameWpx，而不是 finalWpx
-        (sizeResult as any).containerWidth = frameWpx;
+        sizeResult.containerWidth = frameWpx;
 
         sizeResult.canvasWidth = finalWpx;
         sizeResult.canvasHeight = finalHpx;
@@ -598,7 +598,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           x * finalWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
           y * finalHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
-        this.size = this.item.transform.size.clone();
         this.initialized = true;
 
         break;
@@ -612,8 +611,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         sizeResult.canvasHeight = frameHpx;
 
         // clip 模式不需要任何补偿
-        (sizeResult as any).baselineCompensationX = 0;
-        (sizeResult as any).baselineCompensationY = 0;
+        sizeResult.baselineCompensationX = 0;
+        sizeResult.baselineCompensationY = 0;
 
         // 设置 canvas 和节点变换（像素单位）
         this.canvasSize = new math.Vector2(frameWpx, frameHpx);
@@ -628,7 +627,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
           y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
-        this.size = this.item.transform.size.clone();
         this.initialized = true;
 
         break;
@@ -643,7 +641,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
             x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
             y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
-          this.size = this.item.transform.size.clone();
           this.initialized = true;
         }
 

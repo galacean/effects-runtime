@@ -18,12 +18,12 @@ export class RichHorizontalAlignStrategyImpl implements RichHorizontalAlignStrat
     style: TextStyle,
   ): HorizontalAlignResult {
     const containerWidthPx =
-      (sizeResult as any).containerWidth ?? (layout.maxTextWidth * style.fontScale);
-    const compX = (sizeResult as any).baselineCompensationX || 0;
+      sizeResult.containerWidth ?? (layout.maxTextWidth * style.fontScale);
+    const compX = sizeResult.baselineCompensationX ?? 0;
 
     // 使用像素单位的容器宽度
     const baseOffsets = lines.map(line =>
-      (layout as any).getOffsetXRich(style, containerWidthPx, line.width)
+      layout.getOffsetXRich(style, containerWidthPx, line.width)
     );
 
     // visible 模式下使用 baseOffset + baselineCompensationX
