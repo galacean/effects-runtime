@@ -93,6 +93,7 @@ export function getStandardSpriteContent (sprite: any, transform: BaseItemTransf
   const texAni = sprite.textureSheetAnimation;
 
   if (texAni) {
+    // @ts-expect-error
     ret.textureSheetAnimation = {
       row: texAni.row,
       col: texAni.col,

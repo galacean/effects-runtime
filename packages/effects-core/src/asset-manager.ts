@@ -8,7 +8,7 @@ import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIF
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
-import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
+import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile, canPlayHevcCodec, parseCodec } from './utils';
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { Renderer } from './render';
@@ -405,48 +405,23 @@ export class AssetManager implements Disposable {
   }
 
   private async processVideoURL (jsonScene: spec.JSONScene): Promise<void> {
-    if (!jsonScene?.videos || !Array.isArray(jsonScene.videos)) {return;}
+    if (!jsonScene?.videos || !Array.isArray(jsonScene.videos)) {
+      return;
+    }
 
-    for (const video of jsonScene.videos) {
-      // @ts-expect-error
-      const hevc = video.hevc as { url?: string, codec?: string } | undefined;
+    jsonScene.videos.forEach(video => {
+      const { hevc } = video;
 
-      if (!hevc?.url || !hevc?.codec) {return;}
-
-      const codec = this.stringToHevcVideoCodec(hevc.codec);
-
-      if (codec && this.canPlayHevcCodec(codec)) {
-        video.url = hevc.url;
+      if (!hevc?.url || !hevc?.codec) {
+        return;
       }
-    }
-  }
-  // @ts-expect-error
-  private stringToHevcVideoCodec (codecString: string): spec.HevcVideoCodec | undefined {
-    // 传入的是完整的枚举值
-    // @ts-expect-error
-    if (Object.values(spec.HevcVideoCodec).includes(codecString as spec.HevcVideoCodec)) {
-      // @ts-expect-error
-      return codecString as spec.HevcVideoCodec;
-    }
-    // 传入的是枚举名称
-    // @ts-expect-error
-    const enumKey = codecString as keyof typeof spec.HevcVideoCodec;
 
-    // @ts-expect-error
-    if (enumKey in spec.HevcVideoCodec) {
-      // @ts-expect-error
-      return spec.HevcVideoCodec[enumKey];
-    }
+      const codec = parseCodec(hevc.codec);
 
-    return undefined;
-  }
-  // @ts-expect-error
-  private canPlayHevcCodec (codecString: spec.HevcVideoCodec): boolean {
-    const v = document.createElement('video');
-    const contentType = `video/mp4; codecs="${codecString}"`;
-    const result = v.canPlayType(contentType);
-
-    return result === 'probably' || result === 'maybe';
+      if (codec && canPlayHevcCodec(codec)) {
+        video.url = hevc.url as string;
+      }
+    });
   }
 
   private async loadJSON (url: string) {

@@ -111,8 +111,6 @@ export class SpriteComponent extends MaskableGraphic {
     let time = this.time;
     const duration = this.duration;
     const textureAnimation = this.textureSheetAnimation;
-    // TODO: Update textureAnimation spec.
-    // @ts-expect-error
     const loop = textureAnimation?.loop ?? true;
 
     if (time > duration && loop) {
@@ -223,8 +221,8 @@ export class SpriteComponent extends MaskableGraphic {
         const positionX = aPos[positionOffset];
         const positionY = aPos[positionOffset + 1];
 
-        tempPosition[0] = positionX ;
-        tempPosition[1] = positionY ;
+        tempPosition[0] = positionX;
+        tempPosition[1] = positionY;
         rotateVec2(tempPosition, tempPosition, angle);
 
         aUV[uvOffset] = (tempPosition[0] + 0.5) * width + x;
@@ -241,8 +239,8 @@ export class SpriteComponent extends MaskableGraphic {
     for (const subMesh of geometry.subMeshes) {
       this.geometry.subMeshes.push({
         offset: subMesh.offset,
-        indexCount:  subMesh.indexCount,
-        vertexCount:  subMesh.vertexCount,
+        indexCount: subMesh.indexCount,
+        vertexCount: subMesh.vertexCount,
       });
     }
   }
