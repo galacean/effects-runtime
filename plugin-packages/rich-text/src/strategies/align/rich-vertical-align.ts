@@ -27,13 +27,13 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
     switch (layout.overflow) {
       case spec.TextOverflow.visible: {
-        // frame-based 计算（使用像素单位）
+        // frame-based 计算
         const frameHpx = layout.maxTextHeight * style.fontScale;
         const bboxTop = sizeResult.bboxTop ?? 0;
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
         const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
 
-        // 计算 frame 基线（使用像素单位）
+        // 计算 frame 基线
         let baselineYFrame = 0;
 
         switch (layout.textVerticalAlign) {
@@ -124,7 +124,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
 
         const bboxHeight = bboxBottom - bboxTop;
 
-        // 计算 display 模式的基线（使用像素单位）
+        // 计算 display 模式的基线
         let baselineDisplayY = 0;
 
         switch (layout.textVerticalAlign) {

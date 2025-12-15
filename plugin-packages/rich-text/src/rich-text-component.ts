@@ -485,7 +485,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
         const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
 
-        // 计算 frame 基线（使用像素单位）
+        // 计算 frame 基线
         let baselineYFrame = 0;
 
         switch (layout.textVerticalAlign) {
@@ -503,14 +503,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
             break;
         }
 
-        // 上下溢出检测（使用像素单位）
+        // 上下溢出检测
         const contentTopInFrame = baselineYFrame + bboxTop;
         const contentBottomInFrame = baselineYFrame + bboxBottom;
 
         const overflowTop = Math.max(0, -contentTopInFrame);
         const overflowBottom = Math.max(0, contentBottomInFrame - frameHpx);
 
-        // 垂直扩张（使用像素单位）
+        // 垂直扩张
         let expandTop = overflowTop;
         let expandBottom = overflowBottom;
 
@@ -543,7 +543,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         // 位移补偿：始终使用 expandTop
         const compY = expandTop;
 
-        // 水平扩张（使用像素单位）
+        // 水平扩张
         const lines = sizeResult.lines || [];
 
         // 1. 先按 frameWpx 计算每行的对齐起点（逻辑对齐）
@@ -606,7 +606,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         const frameWpx = frameW * fontScale;
         const frameHpx = frameH * fontScale;
 
-        // 直接使用 frame 尺寸作为画布尺寸（像素单位）
+        // 直接使用 frame 尺寸作为画布尺寸
         sizeResult.canvasWidth = frameWpx;
         sizeResult.canvasHeight = frameHpx;
 
@@ -614,10 +614,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         sizeResult.baselineCompensationX = 0;
         sizeResult.baselineCompensationY = 0;
 
-        // 设置 canvas 和节点变换（像素单位）
+        // 设置 canvas 和节点变换
         this.canvasSize = new math.Vector2(frameWpx, frameHpx);
 
-        // 把 layout 的尺寸更新为 frame 尺寸（逻辑单位）
+        // 把 layout 的尺寸更新为 frame 尺寸
         layout.width = frameW;
         layout.height = frameH;
 
