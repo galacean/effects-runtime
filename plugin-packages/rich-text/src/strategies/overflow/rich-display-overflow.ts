@@ -18,15 +18,17 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
     const safeDiv = (a: number, b: number) =>
       Math.abs(b) > 1e-5 ? a / b : 1;
 
-    const availableW = Math.max(1, layout.maxTextWidth || sizeResult.canvasWidth);
-    const availableH = Math.max(1, layout.maxTextHeight || sizeResult.canvasHeight);
-    const contentW = Math.max(1, (sizeResult.contentWidth ?? sizeResult.canvasWidth));
-    const contentH = Math.max(1, (sizeResult.bboxHeight ?? sizeResult.canvasHeight));
+    // 用像素空间计算
+    const frameWpx = layout.maxTextWidth * style.fontScale;
+    const frameHpx = layout.maxTextHeight * style.fontScale;
 
-    // 只缩小不放大
+    const contentWpx = Math.max(1, sizeResult.contentWidth ?? sizeResult.canvasWidth);
+    const contentHpx = Math.max(1, sizeResult.bboxHeight ?? sizeResult.canvasHeight);
+
+    // 只缩小不放大（基于像素空间计算）
     const s = Math.min(1,
-      safeDiv(availableW, contentW),
-      safeDiv(availableH, contentH)
+      safeDiv(frameWpx, contentWpx),
+      safeDiv(frameHpx, contentHpx)
     );
 
     // 浮点精度处理

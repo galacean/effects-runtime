@@ -68,8 +68,12 @@ export class RichTextLayout implements BaseLayout {
     this.height = size ? size[1] : 100;
 
     this.wrapEnabled = wrapEnabled;
-    this.maxTextWidth = maxTextWidth;
-    this.maxTextHeight = maxTextHeight;
+    // 兜底，避免 0/负数/NaN/Infinity
+    const safeMaxW = Number.isFinite(maxTextWidth) ? maxTextWidth : 0;
+    const safeMaxH = Number.isFinite(maxTextHeight) ? maxTextHeight : 0;
+
+    this.maxTextWidth = Math.max(1, safeMaxW);
+    this.maxTextHeight = Math.max(1, safeMaxH);
     this.sizeMode = sizeMode;
   }
 
@@ -185,7 +189,7 @@ export class RichTextLayout implements BaseLayout {
   getOffsetXRich (style: TextStyle, maxWidth: number, contentW: number): number {
     switch (this.textAlign) {
       case spec.TextAlignment.left:
-        return style.outlineWidth;
+        return style.outlineWidth * style.fontScale;
       case spec.TextAlignment.middle:
         return (maxWidth - contentW) / 2;
       case spec.TextAlignment.right:
