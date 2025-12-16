@@ -18,7 +18,7 @@ export async function processMultimedia<T> (
   const jobs = media.map(medium => {
     if (passRenderLevel(medium.renderLevel, renderLevel)) {
       if (type === spec.MultimediaType.video) {
-        const videoURL = getVideoUrl(medium as spec.VideoInfo, options) as string;
+        const videoURL = getVideoUrl(medium, options);
         const url = new URL(videoURL, location.href).href;
 
         return loadVideo(url);

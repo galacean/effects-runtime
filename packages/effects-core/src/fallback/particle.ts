@@ -143,7 +143,6 @@ export function getStandardParticleContent (particle: any): ParticleContent {
   const textureSheetAnimation = particle.textureSheetAnimation;
 
   if (textureSheetAnimation) {
-    // @ts-expect-error
     ret.textureSheetAnimation = {
       row: textureSheetAnimation.row,
       col: textureSheetAnimation.col,
