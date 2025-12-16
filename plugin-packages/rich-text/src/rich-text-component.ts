@@ -441,10 +441,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     assertExist(this.canvasSize);
     const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
-    layout.width = canvasWidth / this.textStyle.fontScale;
-    layout.height = canvasHeight / this.textStyle.fontScale;
+    // 确保canvas宽高至少为1
+    const safeW = Math.max(1, Math.ceil(canvasWidth));
+    const safeH = Math.max(1, Math.ceil(canvasHeight));
 
-    this.renderToTexture(canvasWidth, canvasHeight, flipY, context => {
+    layout.width = safeW / this.textStyle.fontScale;
+    layout.height = safeH / this.textStyle.fontScale;
+
+    this.renderToTexture(safeW, safeH, flipY, context => {
       // 步骤6: 绘制文本
       this.drawTextWithStrategies(
         context,
@@ -466,11 +470,16 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const { x = 1, y = 1 } = this.size;
 
     const layout = this.textLayout;
+    const fontScale = this.textStyle.fontScale || 1;
+
+    // 防止 frameW / frameH 为 0
+    const frameW = Math.max(1, layout.maxTextWidth || 0);
+    const frameH = Math.max(1, layout.maxTextHeight || 0);
 
     switch (layout.overflow) {
       case spec.TextOverflow.visible: {
-        const frameW = layout.maxTextWidth;
-        const frameH = layout.maxTextHeight;
+        const frameWpx = frameW * fontScale;
+        const frameHpx = frameH * fontScale;
 
         const bboxTop = sizeResult.bboxTop ?? 0;
         const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
@@ -485,11 +494,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
             break;
           case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameH - bboxHeight) / 2 - bboxTop;
+            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
 
             break;
           case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameH - bboxHeight) - bboxTop;
+            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
 
             break;
         }
@@ -499,7 +508,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         const contentBottomInFrame = baselineYFrame + bboxBottom;
 
         const overflowTop = Math.max(0, -contentTopInFrame);
-        const overflowBottom = Math.max(0, contentBottomInFrame - frameH);
+        const overflowBottom = Math.max(0, contentBottomInFrame - frameHpx);
 
         // 垂直扩张
         let expandTop = overflowTop;
@@ -536,74 +545,102 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
         // 水平扩张
         const lines = sizeResult.lines || [];
-        const xOffsetsFrame = lines.map(line =>
-          layout.getOffsetXRich(this.textStyle, frameW, line.width)
-        );
-        const leftMost = xOffsetsFrame.length > 0 ? Math.min(...xOffsetsFrame) : 0;
-        const ex = Math.max(0, -leftMost);
-        const expandLeft = ex;
-        const expandRight = ex;
 
-        const finalW = frameW + expandLeft + expandRight;
-        const finalH = frameH + expandTop + expandBottom;
+        // 1. 先按 frameWpx 计算每行的对齐起点（逻辑对齐）
+        const xOffsetsFrame = lines.map(line =>
+          layout.getOffsetXRich(this.textStyle, frameWpx, line.width)
+        );
+
+        // 2. 用对齐后的偏移 + 行宽算出内容的左右边界
+        let contentMinX = Infinity;
+        let contentMaxX = -Infinity;
+
+        for (let i = 0; i < lines.length; i++) {
+          const off = xOffsetsFrame[i] ?? 0;
+          const w = lines[i].width ?? 0; // 像素宽
+
+          contentMinX = Math.min(contentMinX, off);
+          contentMaxX = Math.max(contentMaxX, off + w);
+        }
+
+        if (!isFinite(contentMinX)) {
+          contentMinX = 0;
+        }
+        if (!isFinite(contentMaxX)) {
+          contentMaxX = 0;
+        }
+
+        // 3. 计算内容相对于 frame 的越界量
+        const overflowLeft = Math.max(0, -contentMinX);               // 内容左边 < 0
+        const overflowRight = Math.max(0, contentMaxX - frameWpx);    // 内容右边 > frameWpx?
+
+        // 4. 让 canvas 左右都扩张到能容下整个内容 bbox
+        const expandLeft = overflowLeft;
+        const expandRight = overflowRight;
+
+        // 5. 最终 canvas 宽高
+        const finalWpx = Math.ceil(frameWpx + expandLeft + expandRight);
+        const finalHpx = Math.ceil(frameHpx + expandTop + expandBottom);
 
         // 记录补偿，供垂直对齐策略叠加
-        (sizeResult as any).baselineCompensationX = expandLeft;
-        (sizeResult as any).baselineCompensationY = compY;
+        sizeResult.baselineCompensationX = expandLeft;
+        sizeResult.baselineCompensationY = compY;
+        // containerWidth 用 frameWpx，而不是 finalWpx
+        sizeResult.containerWidth = frameWpx;
 
-        sizeResult.canvasWidth = finalW;
-        sizeResult.canvasHeight = finalH;
+        sizeResult.canvasWidth = finalWpx;
+        sizeResult.canvasHeight = finalHpx;
 
-        this.canvasSize = new math.Vector2(finalW, finalH);
+        this.canvasSize = new math.Vector2(finalWpx, finalHpx);
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         this.item.transform.size.set(
-          x * finalW * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * finalH * this.SCALE_FACTOR * this.SCALE_FACTOR
+          x * finalWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * finalHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
-        this.size = this.item.transform.size.clone();
         this.initialized = true;
 
         break;
       }
       case spec.TextOverflow.clip: {
-        const frameW = layout.maxTextWidth;
-        const frameH = layout.maxTextHeight;
+        const frameWpx = frameW * fontScale;
+        const frameHpx = frameH * fontScale;
 
         // 直接使用 frame 尺寸作为画布尺寸
-        sizeResult.canvasWidth = frameW;
-        sizeResult.canvasHeight = frameH;
+        sizeResult.canvasWidth = frameWpx;
+        sizeResult.canvasHeight = frameHpx;
 
         // clip 模式不需要任何补偿
-        (sizeResult as any).baselineCompensationX = 0;
-        (sizeResult as any).baselineCompensationY = 0;
+        sizeResult.baselineCompensationX = 0;
+        sizeResult.baselineCompensationY = 0;
 
         // 设置 canvas 和节点变换
-        this.canvasSize = new math.Vector2(frameW, frameH);
+        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
 
         // 把 layout 的尺寸更新为 frame 尺寸
-        layout.width = frameW / this.textStyle.fontScale;
-        layout.height = frameH / this.textStyle.fontScale;
+        layout.width = frameW;
+        layout.height = frameH;
 
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         this.item.transform.size.set(
-          x * frameW * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * frameH * this.SCALE_FACTOR * this.SCALE_FACTOR
+          x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
-        this.size = this.item.transform.size.clone();
         this.initialized = true;
 
         break;
       }
       case spec.TextOverflow.display: {
         if (!this.initialized) {
-          this.canvasSize = new math.Vector2(layout.maxTextWidth, layout.maxTextHeight);
+          const frameWpx = frameW * fontScale;
+          const frameHpx = frameH * fontScale;
+
+          this.canvasSize = new math.Vector2(frameWpx, frameHpx);
           this.item.transform.size.set(
-            x * this.canvasSize.x * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * this.canvasSize.y * this.SCALE_FACTOR * this.SCALE_FACTOR
+            x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
-          this.size = this.item.transform.size.clone();
           this.initialized = true;
         }
 

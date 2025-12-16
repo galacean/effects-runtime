@@ -2,17 +2,15 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { MaskableGraphic, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { FrameContext } from '../timeline/playable';
-import { Playable, PlayableAsset } from '../timeline/playable';
-import { TrackAsset } from '../timeline/track';
-import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
+import type { FrameContext } from '../timeline';
+import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
-import type { Geometry } from '../../render/geometry';
+import type { Geometry } from '../../render';
 import { rotateVec2 } from '../../shape';
+import { MaskableGraphic, EffectComponent } from '../../components';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options

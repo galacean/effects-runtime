@@ -2,24 +2,24 @@ import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
-import { CompositionComponent } from './comp-vfx-item';
+import type { Component, PostProcessVolume } from './components';
+import { CompositionComponent } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
+import { PlayState } from './plugins';
 import type { Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
-import { assertExist, logger, noop, removeItem } from './utils';
+import { assertExist, logger, noop } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { PlayState } from './plugins/timeline/playable';
 
 /**
  * 合成统计信息
@@ -237,7 +237,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成暂停/播放 标识
    */
-  private paused = false;
+  private paused = true;
   private isEndCalled = false;
   private _textures: Texture[] = [];
   private videos: HTMLVideoElement[] = [];
@@ -352,7 +352,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    PluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
@@ -368,6 +367,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
+
+    PluginSystem.initializeComposition(this, scene);
   }
 
   /**
@@ -388,7 +389,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成中所有元素
    */
   get items (): VFXItem[] {
-    return this.rootComposition.items;
+    return this.rootItem.getDescendants();
   }
 
   /**
@@ -565,7 +566,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   addItem (item: VFXItem) {
-    this.items.push(item);
     item.setParent(this.rootItem);
   }
 
@@ -817,12 +817,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
-    if (item.type !== spec.ItemType.composition) {
-      // this.content.removeItem(item);
-      // 预合成中的元素移除
-      // this.refContent.forEach(content => content.removeItem(item));
-      removeItem(this.items, item);
-    }
+    // if (item.type !== spec.ItemType.composition) {
+    // this.content.removeItem(item);
+    // 预合成中的元素移除
+    // this.refContent.forEach(content => content.removeItem(item));
+    // removeItem(this.items, item);
+    // }
   }
 
   lost (e: Event): void {

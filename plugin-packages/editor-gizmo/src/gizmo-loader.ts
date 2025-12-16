@@ -1,4 +1,4 @@
-import type { Composition, Scene, Texture, VFXItem } from '@galacean/effects';
+import type { Composition, Scene, SceneLoadOptions, Texture, VFXItem } from '@galacean/effects';
 import { Plugin } from '@galacean/effects';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
@@ -11,9 +11,7 @@ export const iconTextures: Map<string, Texture> = new Map();
 export class EditorGizmoPlugin extends Plugin {
   override order = 1001;
 
-  override async onCompositionCreated (composition: Composition, scene: Scene) {
-    const engine = composition.renderer.engine;
-
+  override async onAssetsLoadStart (scene: Scene, options?: SceneLoadOptions | undefined): Promise<void> {
     iconTextures.clear();
 
     if (iconImages.size !== axisIconMap.size) {
@@ -21,6 +19,10 @@ export class EditorGizmoPlugin extends Plugin {
         iconImages.set(name, await createImage(data));
       }
     }
+  }
+
+  override onCompositionCreated (composition: Composition, scene: Scene) {
+    const engine = composition.renderer.engine;
 
     iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));

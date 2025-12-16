@@ -1,6 +1,7 @@
 export * from './animator';
 export * from './renderer-component';
 export * from './component';
+export * from './composition-component';
 export * from './effect-component';
 export * from './position-constraint';
 export * from './post-process-volume';
