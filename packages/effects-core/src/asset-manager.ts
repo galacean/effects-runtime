@@ -8,7 +8,7 @@ import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIF
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
-import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile, canPlayHevcCodec, parseCodec } from './utils';
+import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { Renderer } from './render';
@@ -205,7 +205,6 @@ export class AssetManager implements Disposable {
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
-          ...(this.options.useHevcVideo ? [hookTimeInfo('processVideoURL', () => this.processVideoURL(jsonScene))] : []),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
@@ -402,26 +401,6 @@ export class AssetManager implements Disposable {
     });
 
     return Promise.all(jobs);
-  }
-
-  private async processVideoURL (jsonScene: spec.JSONScene): Promise<void> {
-    if (!jsonScene?.videos || !Array.isArray(jsonScene.videos)) {
-      return;
-    }
-
-    jsonScene.videos.forEach(video => {
-      const { hevc } = video;
-
-      if (!hevc?.url || !hevc?.codec) {
-        return;
-      }
-
-      const codec = parseCodec(hevc.codec);
-
-      if (codec && canPlayHevcCodec(codec)) {
-        video.url = hevc.url as string;
-      }
-    });
   }
 
   private async loadJSON (url: string) {
