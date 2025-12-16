@@ -109,8 +109,6 @@ export class SpriteComponent extends MaskableGraphic {
     let time = this.time;
     const duration = this.duration;
     const textureAnimation = this.textureSheetAnimation;
-    // TODO: Update textureAnimation spec.
-    // @ts-expect-error
     const loop = textureAnimation?.loop ?? true;
 
     if (time > duration && loop) {
