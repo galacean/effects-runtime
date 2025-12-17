@@ -44,7 +44,9 @@ class TextureLoaderRegistry {
    */
   register (type: string, factory: TextureLoaderFactory): void {
     if (this.loaders.has(type)) {
-      console.warn(`TextureLoader for type "${type}" is already registered, overwriting.`);
+      console.warn(`TextureLoader for type "${type}" is already registered, skipping.`);
+
+      return; // 阻止重复注册
     }
     this.loaders.set(type, factory);
   }
