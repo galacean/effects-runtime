@@ -36,19 +36,16 @@ export class ParticleBehaviourPlayable extends Playable {
       return;
     }
 
-    if (this.time < particleSystem.time) {
-      particleSystem.reset();
+    if (particleSystem) {
+      if (
+        this.time >= 0 &&
+        this.time < particleSystem.item.duration &&
+        particleSystem.isEnded()
+      ) {
+        particleSystem.reset();
+      }
+      particleSystem.simulate(context.deltaTime);
     }
-
-    let time = this.time - particleSystem.time;
-    const maxDeltaTime = 0.032; // 32ms
-
-    while (time > maxDeltaTime) {
-      particleSystem.simulate(maxDeltaTime);
-      time -= maxDeltaTime;
-    }
-
-    particleSystem.simulate(time);
   }
 }
 
