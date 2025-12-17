@@ -7,39 +7,48 @@ import { ParticleSystem } from './particle-system';
  * @since 2.0.0
  */
 export class ParticleBehaviourPlayable extends Playable {
-  lastTime = 0;
-  particleSystem: ParticleSystem;
+  private particleSystem: ParticleSystem;
 
-  start (context: FrameContext): void {
+  getParticleSystem (context: FrameContext): ParticleSystem | null {
     const boundObject = context.output.getUserData();
 
-    if (this.particleSystem || !(boundObject instanceof VFXItem)) {
-      return;
+    if (this.particleSystem) {
+      return this.particleSystem;
     }
+
+    if (!(boundObject instanceof VFXItem)) {
+      return null;
+    }
+
     this.particleSystem = boundObject.getComponent(ParticleSystem);
 
     if (this.particleSystem) {
       this.particleSystem.name = boundObject.name;
     }
+
+    return this.particleSystem;
   }
 
   override processFrame (context: FrameContext): void {
-    if (this.time >= 0) {
-      this.start(context);
-    }
-    const particleSystem = this.particleSystem;
+    const particleSystem = this.getParticleSystem(context);
 
-    if (particleSystem) {
-      if (
-        this.time >= 0 &&
-        this.time < particleSystem.item.duration &&
-        particleSystem.isEnded()
-      ) {
-        particleSystem.reset();
-      }
-      particleSystem.simulate(this.time - particleSystem.time);
+    if (!particleSystem) {
+      return;
     }
-    this.lastTime = this.time;
+
+    if (this.time < particleSystem.time) {
+      particleSystem.reset();
+    }
+
+    let time = this.time - particleSystem.time;
+    const maxDeltaTime = 0.032; // 32ms
+
+    while (time > maxDeltaTime) {
+      particleSystem.simulate(maxDeltaTime);
+      time -= maxDeltaTime;
+    }
+
+    particleSystem.simulate(time);
   }
 }
 
