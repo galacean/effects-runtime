@@ -343,20 +343,21 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
+    const metrics = this.context.measureText('Hg'); // 使用 Hg 获取较为准确的字体高度
+    const descent = metrics.actualBoundingBoxDescent;
+
     const lineHeight = layout.lineHeight * fontScale;
+    const perLineStep = layout.lineHeight + descent / fontScale;
+
+    const finalHeight = perLineStep * this.lineCount;
 
     style.fontDesc = this.getFontDesc(fontSize);
     const char = (this.text || '').split('');
 
-    if (layout.autoWidth) {
-      this.canvas.height = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      this.canvas.height = layout.height * fontScale;
-    }
+    this.canvas.height = finalHeight * fontScale;
+    this.item.transform.size.set(1, finalHeight / layout.height);
 
     const height = this.canvas.height;
 
@@ -402,7 +403,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
             charOffsetX,
           });
           x = 0;
-          y += lineHeight;
+          y += lineHeight + descent;
           charsArray = [];
           charOffsetX = [];
         }
