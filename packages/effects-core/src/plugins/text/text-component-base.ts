@@ -15,6 +15,7 @@ import { canvasPool } from '../../canvas-pool';
  */
 export interface ITextComponent {
   setOutlineWidth (value: number): void,
+  setOutlineEnabled (value: boolean): void,
   setShadowBlur (value: number): void,
   setShadowColor (value: spec.RGBAColorValue): void,
   setShadowOffsetX (value: number): void,
@@ -128,6 +129,14 @@ export class TextComponentBase {
       return;
     }
     this.textStyle.outlineColor = value;
+    this.isDirty = true;
+  }
+
+  setOutlineEnabled (value: boolean): void {
+    if (this.textStyle.isOutlined === value) {
+      return;
+    }
+    this.textStyle.isOutlined = value;
     this.isDirty = true;
   }
 
