@@ -1,19 +1,12 @@
 import * as spec from '@galacean/effects-specification';
 import type { TextStyle } from './text-style';
+import type { BaseLayout } from './base-layout';
 
-export class TextLayout {
-  // Layout common
-  textBaseline: spec.TextBaseline; // Enum
-  textAlign: spec.TextAlignment; // Enum
+export class TextLayout implements BaseLayout {
+  textVerticalAlign: spec.TextVerticalAlign;
+  textAlign: spec.TextAlignment;
   letterSpace: number;
-  lineGap: number;
-  overflow: spec.TextOverflow;// Enum  // both
-
-  /**
-   * 兼容旧版富文本的排版方式
-   */
-  useLegacyRichText: boolean;
-
+  overflow: spec.TextOverflow;
   width = 0;
   height = 0;
 
@@ -22,44 +15,38 @@ export class TextLayout {
    */
   autoWidth: boolean;
 
-  readonly maxTextWidth: number;
+  maxTextWidth: number;
   /**
    * 行高
    */
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
+    this.update(options);
+  }
+
+  update (options: spec.TextContentOptions): void {
     const {
-      fontSize,
       textHeight = 100,
       textWidth = 100,
       textOverflow = spec.TextOverflow.clip,
-      textBaseline = spec.TextBaseline.top,
+      textVerticalAlign = spec.TextVerticalAlign.top,
       textAlign = spec.TextAlignment.left,
-      text = ' ',
       letterSpace = 0,
-      lineGap = 0.571,
       autoWidth = false,
+      fontSize,
       lineHeight = fontSize,
-      // @ts-expect-error
-      useLegacyRichText = false,
     } = options;
 
-    const tempWidth = fontSize + letterSpace;
-
-    this.autoWidth = autoWidth;
-    this.maxTextWidth = text.length * tempWidth;
-
+    this.letterSpace = letterSpace;
+    this.overflow = textOverflow;
+    this.textVerticalAlign = textVerticalAlign;
+    this.textAlign = textAlign;
     this.width = textWidth;
     this.height = textHeight;
 
-    this.letterSpace = letterSpace;
-    this.lineGap = lineGap;
-    this.useLegacyRichText = useLegacyRichText;
-    this.overflow = textOverflow;
-    this.textBaseline = textBaseline;
-    this.textAlign = textAlign;
     this.lineHeight = lineHeight;
+    this.autoWidth = autoWidth;
   }
 
   /**
@@ -68,27 +55,28 @@ export class TextLayout {
    * @param lineCount - 渲染行数
    * @param lineHeight - 渲染时的字体行高
    * @param fontSize - 渲染时的字体大小
+   * @param totalLineHeight - 可选的实际总行高，用于替代默认计算
    * @returns - 行高偏移值
    */
-  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number) {
+  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number, totalLineHeight?: number) {
     const { outlineWidth, fontScale } = style;
     // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
     // 计算基础偏移量
     const baseOffset = fontSize + outlineWidth * fontScale;
-    const commonCalculation = lineHeight * (lineCount - 1);
+    const commonCalculation = totalLineHeight !== undefined ? totalLineHeight : lineHeight * (lineCount - 1);
     let offsetResult = 0;
 
-    switch (this.textBaseline) {
-      case spec.TextBaseline.top:
+    switch (this.textVerticalAlign) {
+      case spec.TextVerticalAlign.top:
         offsetResult = baseOffset + offsetY;
 
         break;
-      case spec.TextBaseline.middle:
+      case spec.TextVerticalAlign.middle:
         offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
-      case spec.TextBaseline.bottom:
+      case spec.TextVerticalAlign.bottom:
         offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;
@@ -123,49 +111,9 @@ export class TextLayout {
   }
 
   /**
-   * 富文本垂直对齐计算
-   * @param style - 字体样式
-   * @param lineHeights - 每行高度数组
-   * @param fontSize - 字体大小
-   * @returns 第一行基线的 Y 坐标
-   */
-  getOffsetYRich (style: TextStyle, lineHeights: number[], fontSize: number): number {
-    const { outlineWidth, fontScale } = style;
-    const total = lineHeights.reduce((a, b) => a + b, 0);
-
-    // 使用与原始 getOffsetY 相同的经验值计算
-    // /3 计算 Y 轴偏移量，以匹配编辑器行为
-    const offsetY = (lineHeights[0] - fontSize) / 3;
-    // 计算基础偏移量（从画布顶部到第一行基线的距离）
-    const baseOffset = fontSize + outlineWidth * fontScale;
-    // 除第一行外的所有行的总高度
-    const commonCalculation = total - lineHeights[0]; // 使用实际总高度减去第一行高度
-    let offsetResult = 0;
-
-    switch (this.textBaseline) {
-      case spec.TextBaseline.top:
-        offsetResult = baseOffset + offsetY;
-
-        break;
-      case spec.TextBaseline.middle:
-        offsetResult = (this.height * fontScale - total + this.lineGap * fontScale) / 2 + baseOffset;
-
-        break;
-      case spec.TextBaseline.bottom:
-        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
-
-        break;
-      default:
-        break;
-    }
-
-    return offsetResult;
-  }
-
-  /**
    * 设置文本框的宽度和高度
-   * @param width 文本框宽度
-   * @param height 文本框高度
+   * @param width - 文本框宽度
+   * @param height - 文本框高度
    */
   setSize (width: number, height: number) {
     this.width = width;

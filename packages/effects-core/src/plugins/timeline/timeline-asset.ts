@@ -2,11 +2,11 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import type { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from './track';
-import { ObjectBindingTrack } from './tracks/object-binding-track';
+import { ObjectBindingTrack } from './tracks';
 import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
-import type { SceneBinding } from '../../comp-vfx-item';
+import type { SceneBinding } from '../../components';
 import { EffectsObject } from '../../effects-object';
 
 @effectsClass(spec.DataType.TimelineAsset)

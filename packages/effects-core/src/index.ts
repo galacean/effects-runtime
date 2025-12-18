@@ -1,9 +1,8 @@
 import { registerPlugin } from './plugin-system';
 import {
-  CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
+  CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
 import { logger } from './utils';
-import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
 export * as spec from '@galacean/effects-specification';
@@ -14,7 +13,6 @@ export * from './asset-manager';
 export * from './asset-service';
 export * from './camera';
 export * from './canvas-pool';
-export * from './comp-vfx-item';
 export * from './components';
 export * from './animation';
 export * from './composition';
@@ -33,6 +31,7 @@ export * from './material';
 export * from './math';
 export * from './paas-texture-cache';
 export * from './plugin-system';
+export * from './scene-loader';
 export * from './plugins';
 export * from './render';
 export * from './scene';
@@ -50,12 +49,11 @@ export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
 
-registerPlugin('camera', CameraVFXItemLoader, VFXItem);
-registerPlugin('text', TextLoader, VFXItem);
-registerPlugin('sprite', SpriteLoader, VFXItem);
-registerPlugin('particle', ParticleLoader, VFXItem);
-registerPlugin('cal', CalculateLoader, VFXItem);
-registerPlugin('interact', InteractLoader, VFXItem);
+registerPlugin('camera', CameraVFXItemLoader);
+registerPlugin('text', TextLoader);
+registerPlugin('sprite', SpriteLoader);
+registerPlugin('particle', ParticleLoader);
+registerPlugin('interact', InteractLoader);
 
 export const version = __VERSION__;
 

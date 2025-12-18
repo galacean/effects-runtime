@@ -22,6 +22,7 @@ export class AssetService implements Disposable {
     private readonly engine: Engine,
   ) {
     this.builtinObjects.push(engine.whiteTexture);
+    this.builtinObjects.push(engine.transparentTexture);
   }
 
   /**
@@ -93,8 +94,6 @@ export class AssetService implements Disposable {
     scene: Scene,
     assets: Record<string, ImageLike>,
   ) {
-    this.engine.clearResources();
-
     for (const assetId of Object.keys(assets)) {
       const asset = assets[assetId];
       const engineAsset = new Asset(this.engine);

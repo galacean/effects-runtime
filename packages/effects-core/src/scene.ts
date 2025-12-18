@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Texture } from './texture';
-import type { PluginSystem } from './plugin-system';
 import type { PickEnum } from './utils';
 import { isObject } from './utils';
 
@@ -13,10 +12,8 @@ export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | s
 export interface Scene {
   readonly jsonScene: spec.JSONScene,
   readonly bins: ArrayBuffer[],
-  readonly pluginSystem: PluginSystem,
-  readonly renderLevel?: SceneRenderLevel,
   readonly storage: Record<string, any>,
-
+  renderLevel?: SceneRenderLevel,
   textureOptions: Record<string, any>[],
   textures: Texture[],
   images: ImageLike[],
@@ -88,6 +85,12 @@ export interface SceneLoadOptions {
    * @default undefined
    */
   useCompressedTexture?: boolean,
+
+  /**
+   * 是否使用 Hevc 视频
+   * @default undefined
+   */
+  useHevcVideo?: boolean,
 
   /**
    * 渲染分级。

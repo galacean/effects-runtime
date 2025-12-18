@@ -2,18 +2,18 @@ import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
-import { PluginSystem } from './plugin-system';
+import { PluginSystem, getPluginUsageInfo, pluginLoaderMap } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
-import type { TextureSourceOptions } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
+import type { TextureSourceOptions, Texture2DSourceOptionsCompressed } from './texture';
+import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture';
 import type { Renderer } from './render';
-import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
+import { textureLoaderRegistry } from './texture/texture-loader';
 
 let seed = 1;
 
@@ -53,12 +53,12 @@ export class AssetManager implements Disposable {
   /**
    * 字体加载方法
    * @param fonts - 字体定义数组
-   * @param [baseURL=location.href] - URL 的 base 字段
+   * @param [baseUrl=location.href] - URL 的 base 字段
    * @returns
    */
   static async loadFontFamily (
     fonts: spec.FontDefine[],
-    baseURL = location.href,
+    baseUrl = location.href,
   ) {
     // 对老数据的兼容
     if (!fonts) {
@@ -73,7 +73,7 @@ export class AssetManager implements Disposable {
           console.warn(`Risky font family: ${font.fontFamily}.`);
         }
         try {
-          const url = new URL(font.fontURL, baseURL).href;
+          const url = new URL(font.fontURL, baseUrl).href;
           const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
           await fontFace.load();
@@ -94,7 +94,7 @@ export class AssetManager implements Disposable {
    * @param downloader - 资源下载对象
    */
   constructor (
-    public options: Omit<SceneLoadOptions, 'speed' | 'autoplay' | 'reusable'> = {},
+    public options: SceneLoadOptions = {},
     private readonly downloader = new Downloader(),
   ) {
     this.updateOptions(options);
@@ -117,17 +117,13 @@ export class AssetManager implements Disposable {
    * @param options - 扩展参数
    * @returns
    */
-  async loadScene (
-    url: Scene.LoadType,
-    renderer?: Renderer,
-    options?: { env: string },
-  ): Promise<Scene> {
+  async loadScene (url: Scene.LoadType, renderer?: Renderer): Promise<Scene> {
     let rawJSON: Scene.LoadType;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
+    const isKTX2Supported = gpuInstance?.detail.ktx2Support ?? false;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
     let cancelLoading = false;
@@ -187,33 +183,37 @@ export class AssetManager implements Disposable {
         };
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-        const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
-        const { bins = [], images, fonts } = jsonScene;
-
-        const [loadedBins, loadedImages] = await Promise.all([
-          hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
-          hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
-        ]);
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        const { jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
 
         scene = {
           timeInfos,
           url,
-          renderLevel: this.options.renderLevel,
           storage: {},
-          pluginSystem,
           jsonScene,
-          bins: loadedBins,
-          textureOptions: loadedTextures,
+          bins: [],
+          textureOptions: [],
           textures: [],
-          images: loadedImages,
+          images: [],
           assets: this.assets,
         };
 
-        // 触发插件系统 pluginSystem 的回调 prepareResource
-        await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
+        await hookTimeInfo('plugin:onAssetsLoadStart', () => this.onPluginSceneLoadStart(scene));
+
+        const { bins = [], images, fonts } = jsonScene;
+
+        const [loadedBins, loadedImages] = await Promise.all([
+          hookTimeInfo('processBins', () => this.processBins(bins)),
+          hookTimeInfo('processImages', () => this.processImages(images, isKTX2Supported)),
+          hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
+        ]);
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+
+        scene.bins.push(...loadedBins);
+        scene.textureOptions.push(...loadedTextures);
+        scene.images.push(...loadedImages);
+
+        // 降级插件会修改 this.options.renderLevel, 在 processPluginAssets 后赋值
+        scene.renderLevel = this.options.renderLevel;
       }
 
       const totalTime = performance.now() - startTime;
@@ -239,13 +239,15 @@ export class AssetManager implements Disposable {
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
     const { plugins = [] } = jsonScene;
-    const pluginSystem = new PluginSystem(plugins);
 
-    await pluginSystem.processRawJSON(jsonScene, this.options);
+    for (const customPluginName of plugins) {
+      if (!pluginLoaderMap[customPluginName]) {
+        throw new Error(`The plugin '${customPluginName}' not found.` + getPluginUsageInfo(customPluginName));
+      }
+    }
 
     return {
       jsonScene,
-      pluginSystem,
     };
   }
 
@@ -272,18 +274,21 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: spec.ImageSource[],
-    compressedTexture: COMPRESSED_TEXTURE = 0,
+    canUseKTX2 = false,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
+      const { ktx2 } = img as spec.CompressedImage;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
       // eslint-disable-next-line compat/compat
       const webpURL = (!disableWebP && webp) ? new URL(webp, baseUrl).href : undefined;
       // eslint-disable-next-line compat/compat
       const avifURL = (!disableAVIF && avif) ? new URL(avif, baseUrl).href : undefined;
+      // eslint-disable-next-line compat/compat
+      const ktx2URL = (ktx2 && useCompressedTexture && canUseKTX2) ? new URL(ktx2, baseUrl).href : undefined;
 
       const id = img.id;
 
@@ -325,23 +330,11 @@ export class AssetManager implements Disposable {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
-      } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
-        // 2. 压缩纹理
-        const { compressed } = img;
-        let src;
+      } else if ('ktx2' in img && ktx2URL) {
+        // ktx2 压缩纹理
+        this.sourceFrom[id] = { url: ktx2URL, type: TextureSourceType.compressed };
 
-        if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
-          src = compressed.astc;
-        } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
-          src = compressed.pvrtc;
-        }
-        if (src) {
-          const bufferURL = new URL(src, baseUrl).href;
-
-          this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
-
-          return this.loadBins(bufferURL);
-        }
+        return this.loadBins(ktx2URL);
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||
@@ -366,22 +359,8 @@ export class AssetManager implements Disposable {
     return loadedImages;
   }
 
-  private async processPluginAssets (
-    jsonScene: spec.JSONScene,
-    pluginSystem: PluginSystem,
-    options?: SceneLoadOptions,
-  ) {
-    const pluginResult = await pluginSystem.processAssets(jsonScene, options);
-    const { assets, loadedAssets } = pluginResult.reduce((acc, cur) => {
-      acc.assets = acc.assets.concat(cur.assets);
-      acc.loadedAssets = acc.loadedAssets.concat(cur.loadedAssets);
-
-      return acc;
-    }, { assets: [], loadedAssets: [] });
-
-    for (let i = 0; i < assets.length; i++) {
-      this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
-    }
+  private async onPluginSceneLoadStart (scene: Scene) {
+    await PluginSystem.onAssetsLoadStart(scene, this.options);
   }
 
   private async processTextures (
@@ -414,7 +393,7 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
+        const texture = await createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -472,7 +451,7 @@ export class AssetManager implements Disposable {
   }
 }
 
-function createTextureOptionsBySource (
+async function createTextureOptionsBySource (
   image: TextureSourceOptions | ImageLike,
   sourceFrom: { url: string, type: TextureSourceType },
   id?: string,
@@ -511,11 +490,30 @@ function createTextureOptionsBySource (
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
-    return {
-      ...getKTXTextureOptions(image),
-      sourceFrom,
-      ...options,
-    };
+    const loader = textureLoaderRegistry.getLoader('ktx2');
+
+    if (loader) {
+      try {
+        const textureData = await loader.loadFromBuffer(image) as Texture2DSourceOptionsCompressed;
+
+        return {
+          sourceType: textureData.sourceType,
+          type: textureData.type,
+          target: textureData.target,
+          internalFormat: textureData.internalFormat,
+          format: textureData.format,
+          mipmaps: textureData.mipmaps,
+          minFilter: glContext.LINEAR,
+          magFilter: glContext.LINEAR,
+          sourceFrom,
+          ...options,
+        };
+      } catch (e) {
+        throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+      }
+    } else {
+      throw new Error('KTX2 loader not found. Please register it first.');
+    }
   } else if (
     'width' in image &&
     'height' in image &&

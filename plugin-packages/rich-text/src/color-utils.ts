@@ -23,7 +23,8 @@ export function colorNameToRGBA (colorName: string): string {
       return result;
     } finally {
       // Clean up DOM element
-      canvas.remove();
+      // 支付宝小程序不支持 remove 方法
+      canvas.remove?.();
     }
   }
 

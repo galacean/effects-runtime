@@ -71,6 +71,16 @@ export class Downloader {
     this.download(url, 'blob', onSuccess, onError);
   }
 
+  /**
+   * 下载一个文本文件
+   * @param url - 要下载的文本文件的 URL
+   * @param onSuccess - 下载成功后的回调函数
+   * @param onError - 下载失败后的回调函数
+   */
+  downloadText (url: string, onSuccess: SuccessHandler<string>, onError: ErrorHandler) {
+    this.download(url, 'text', onSuccess, onError);
+  }
+
   private download (url: string, responseType: XMLHttpRequestResponseType = 'json', onSuccess: SuccessHandler<any>, onError: ErrorHandler) {
     if (this.start(url, onSuccess, onError)) {
       return;
@@ -274,21 +284,20 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   video.setAttribute('playsinline', 'playsinline');
 
   return new Promise<HTMLVideoElement>((resolve, reject) => {
-    const pending = video.play().catch(e => {
-      reject(e);
-    });
-
-    if (pending) {
-      void pending.then(() => resolve(video));
-    } else {
-      video.addEventListener('loadeddata', function listener () {
-        resolve(video);
-        video.removeEventListener('loadeddata', listener);
-      }, true);
-    }
-    video.addEventListener('error', e => {
+    const handleCanPlay = () => {
+      resolve(video);
+      video.removeEventListener('error', handleError);
+    };
+    const handleError = (e: any) => {
+      video.removeEventListener('canplay', handleCanPlay);
       reject('Load video fail.');
-    });
+    };
+
+    video.addEventListener('canplay', handleCanPlay, { once: true });
+    video.addEventListener('error', handleError, { once: true });
+
+    // 显式触发视频加载
+    video.load();
   });
 }
 

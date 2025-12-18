@@ -1,12 +1,10 @@
 import type {
-  EventSystem, SceneLoadOptions, Renderer, Composition, MessageItem, Scene,
+  EventSystem, SceneLoadOptions, Composition, MessageItem, Scene, Engine,
 } from '@galacean/effects-core';
-import { AssetService, assertExist } from '@galacean/effects-core';
-import { AssetManager, isArray, logger } from '@galacean/effects-core';
+import { AssetService, assertExist, AssetManager, isArray, logger, PluginSystem } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
-import { ThreeRenderer } from './three-renderer';
-import type { ThreeEngine } from './three-engine';
+import { ThreeEngine } from './three-engine';
 
 export type ThreeDisplayObjectOptions = {
   width: number,
@@ -31,12 +29,16 @@ export type ThreeDisplayObjectOptions = {
 export class ThreeDisplayObject extends THREE.Group {
   compositions: ThreeComposition[] = [];
   camera?: THREE.Camera;
-  renderer: Renderer;
+  engine: Engine;
   assetManager: AssetManager;
   env = '';
 
   readonly width: number;
   readonly height: number;
+
+  get renderer () {
+    return this.engine.renderer;
+  }
 
   private baseCompositionIndex = 0;
   private assetService: AssetService;
@@ -53,8 +55,8 @@ export class ThreeDisplayObject extends THREE.Group {
 
     const { width, height, camera } = options;
 
-    this.renderer = new ThreeRenderer(context);
-    this.assetService = new AssetService(this.renderer.engine);
+    this.engine = new ThreeEngine(context);
+    this.assetService = new AssetService(this.engine);
     this.width = width;
     this.height = height;
     this.camera = camera;
@@ -96,13 +98,17 @@ export class ThreeDisplayObject extends THREE.Group {
       scenes.map(async (url, index) => {
         const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
         const assetManager = new AssetManager(opts);
-        const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
+        const scene = await assetManager.loadScene(source, this.renderer);
 
+        const engine = this.engine;
+
+        engine.clearResources();
+
+        // 触发插件系统 pluginSystem 的回调 onAssetsLoadFinish
+        PluginSystem.onAssetsLoadFinish(scene, assetManager.options, engine);
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
-
-        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer);
 
         const composition = this.createComposition(scene, opts);
 
@@ -140,7 +146,7 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
-      handleItemMessage: (message: MessageItem) => {
+      onItemMessage: (message: MessageItem) => {
         this.dispatchEvent({ type: 'message', message });
       },
     }, scene);

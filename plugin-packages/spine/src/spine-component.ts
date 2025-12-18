@@ -327,7 +327,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
 
   getHitTestParams (force?: boolean): HitTestTriangleParams | void {
     const box = this.getBoundingBox();
-    const env = this.engine.renderer?.env;
+    const env = this.engine.env;
 
     if (!box.area.length) {
       return;

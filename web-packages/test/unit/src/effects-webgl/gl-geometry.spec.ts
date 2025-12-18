@@ -1,4 +1,4 @@
-// @ts-nocheck
+//@ts-nocheck
 import { glContext, Camera, RenderFrame, RenderPass, Mesh } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
 
@@ -28,15 +28,15 @@ describe('webgl/gl-geometry', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas, 'webgl2');
-    glRenderer = renderer.glRenderer;
+    engine = new GLEngine(canvas, { glType: 'webgl2' });
+    renderer = engine.renderer;
+    glRenderer = renderer;
     gl = glRenderer.gl;
-    engine = new GLEngine(gl);
     geometry = new GLGeometry(engine, option);
   });
 
   after(() => {
-    renderer.dispose();
+    engine.dispose();
     renderer = null;
     canvas.remove();
     canvas = null;
@@ -538,11 +538,9 @@ describe('webgl/gl-geometry', () => {
   // drawCount小于0时不会触发drawCall
   it('geometry with drawCount < 0 would not trigger draw call', function () {
     const ret = createMesh(glRenderer, -2);
-    const pass = new RenderPass(glRenderer, {
-      name: 'test',
-      meshes: [ret.mesh],
-    });
+    const pass = new RenderPass(glRenderer);
 
+    pass.addMesh(ret.mesh);
     ret.geom.drawCount = -1;
     const frame = new RenderFrame({
       renderer,
@@ -561,10 +559,9 @@ describe('webgl/gl-geometry', () => {
   // drawCount等于0时不会触发drawCall
   it('geometry with drawCount == 0 would not invoke draw call', function () {
     const ret = createMesh(renderer, 0);
-    const pass = new RenderPass(glRenderer, {
-      name: 'test',
-      meshes: [ret.mesh],
-    });
+    const pass = new RenderPass(glRenderer);
+
+    pass.addMesh(ret.mesh);
     const frame = new RenderFrame({
       renderer,
       camera: new Camera(),

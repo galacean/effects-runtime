@@ -6,27 +6,25 @@ import type { LostHandler, RestoreHandler } from '../utils';
 import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
 import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
-import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
+import type { RenderPassClearAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
-import type { GLType } from '../gl';
+import { RenderTargetPool } from './render-target-pool';
+import type { Texture } from '../texture';
 
 export class Renderer implements LostHandler, RestoreHandler {
-  static create: (
-    canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: GLType,
-    renderOptions?: WebGLContextAttributes,
-  ) => Renderer;
-
-  engine: Engine;
-
-  env: string;
+  static create: (engine: Engine) => Renderer;
 
   /**
   * 存放渲染需要用到的数据
   */
   renderingData: RenderingData;
+  renderTargetPool: RenderTargetPool;
+  protected currentFramebuffer: Framebuffer | null = null;
 
-  constructor () {
+  constructor (
+    public engine: Engine,
+  ) {
+    this.renderTargetPool = new RenderTargetPool(engine);
   }
 
   setGlobalFloat (name: string, value: number) {
@@ -49,9 +47,8 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getFramebuffer (): Framebuffer | null {
-    // OVERRIDE
-    return null;
+  getFramebuffer (): Framebuffer {
+    return this.currentFramebuffer as Framebuffer;
   }
 
   setFramebuffer (framebuffer: Framebuffer | null) {
@@ -66,7 +63,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  clear (action: RenderPassClearAction | RenderPassStoreAction) {
+  clear (action: RenderPassClearAction) {
     // OVERRIDE
   }
 
@@ -78,24 +75,6 @@ export class Renderer implements LostHandler, RestoreHandler {
   getHeight (): number {
     // OVERRIDE
     return 0;
-  }
-
-  /**
-   * 添加 webglcontextlost 事件回调
-   * @override
-   * @param lostHandler
-   */
-  addLostHandler (lostHandler: LostHandler) {
-    // OVERRIDE
-  }
-
-  /**
-   * 添加 webglContextrestored 事件的回调
-   * @override
-   * @param restoreHandler
-   */
-  addRestoreHandler (restoreHandler: RestoreHandler) {
-    // OVERRIDE
   }
 
   /**
@@ -135,12 +114,32 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer | null {
-    // OVERRIDE
-    return null;
+  getTemporaryRT (
+    name: string,
+    width: number,
+    height: number,
+    depthBuffer: number,
+    filter: FilterMode,
+    format: RenderTextureFormat,
+  ): Framebuffer {
+    return this.renderTargetPool.get(name, width, height, depthBuffer, filter, format);
   }
 
-  dispose (haltGL?: boolean): void {
+  releaseTemporaryRT (rt: Framebuffer): void {
+    this.renderTargetPool.release(rt);
+  }
+
+  /**
+   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * @param source - 源纹理
+   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param material - 可选的自定义材质，不传则使用默认复制材质
+   */
+  blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
+    // OVERRIDE
+  }
+
+  dispose (): void {
     // OVERRIDE
   }
 }

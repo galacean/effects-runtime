@@ -1,104 +1,110 @@
 import type {
-  Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
-  RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
-  ShaderLibrary, math,
+  Disposable, Engine, Framebuffer, RenderFrame, RenderPass,
+  RenderPassClearAction, RendererComponent,
+  ShaderLibrary, Texture,
 } from '@galacean/effects-core';
 import {
-  FilterMode, GPUCapability, RenderPassAttachmentStorageType, RenderTextureFormat,
-  Renderer, TextureLoadAction, TextureSourceType, assertExist, glContext, sortByOrder,
+  GPUCapability, Geometry, Material, math,
+  Renderer, TextureLoadAction, assertExist, glContext, logger, sortByOrder,
 } from '@galacean/effects-core';
-import { ExtWrap } from './ext-wrap';
-import { GLContextManager } from './gl-context-manager';
-import { GLEngine } from './gl-engine';
-import { GLFramebuffer } from './gl-framebuffer';
-import { GLRendererInternal } from './gl-renderer-internal';
-import { GLTexture } from './gl-texture';
+import type { GLEngine } from './gl-engine';
+import type { GLFramebuffer } from './gl-framebuffer';
+import { assignInspectorName } from './gl-renderer-internal';
+import type { GLTexture } from './gl-texture';
 import { GLShaderLibrary } from './gl-shader-library';
+import type { GLGeometry } from './gl-geometry';
+import type { GLMaterial } from './gl-material';
+import type { GLShaderVariant } from './gl-shader';
+import type { GLRenderbuffer } from './gl-renderbuffer';
+import { GLVertexArrayObject } from './gl-vertex-array-object';
+import type { GLGPUBuffer } from './gl-gpu-buffer';
 
 type Matrix4 = math.Matrix4;
 type Vector4 = math.Vector4;
 type Vector3 = math.Vector3;
 
+// Blit shader 定义
+const BLIT_VERTEX_SHADER = `
+precision highp float;
+attribute vec2 aPos;
+varying vec2 vTex;
+void main(){
+    gl_Position = vec4(aPos, 0.0, 1.0);
+    vTex = (aPos + vec2(1.0)) / 2.0;
+}`;
+
+const BLIT_FRAGMENT_SHADER = `
+precision mediump float;
+varying vec2 vTex;
+uniform sampler2D _MainTex;
+void main(){
+    gl_FragColor = texture2D(_MainTex, vTex);
+}`;
+
+let seed = 1;
+
 export class GLRenderer extends Renderer implements Disposable {
-  glRenderer: GLRendererInternal;
-  extension: ExtWrap;
-  framebuffer: Framebuffer;
   temporaryRTs: Record<string, Framebuffer> = {};
+  readonly name: string;
 
-  readonly context: GLContextManager;
+  private sourceFbo: WebGLFramebuffer | null;
+  private targetFbo: WebGLFramebuffer | null;
+  private disposed = false;
+  private blitGeometry: Geometry | null = null;
+  private blitMaterial: Material | null = null;
 
-  constructor (
-    public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: GLType,
-    renderOptions?: WebGLContextAttributes,
-  ) {
-    super();
-    const options = {
-      preserveDrawingBuffer: undefined,
-      alpha: true,
-      stencil: true,
-      antialias: true,
-      depth: true,
-      premultipliedAlpha: true,
-      ...renderOptions,
-    };
+  get gl () {
+    return (this.engine as GLEngine).gl;
+  }
 
-    this.context = new GLContextManager(canvas, framework, options);
+  get height () {
+    return this.gl?.drawingBufferHeight;
+  }
+
+  get width () {
+    return this.gl?.drawingBufferWidth;
+  }
+
+  get canvas () {
+    return this.gl.canvas;
+  }
+
+  get isDisposed () {
+    return this.disposed;
+  }
+
+  get context () {
+    return (this.engine as GLEngine).context;
+  }
+
+  constructor (engine: Engine) {
+    super(engine);
+
+    this.name = `GLRenderer#${seed++}`;
+
     const { gl } = this.context;
 
     assertExist(gl);
-    // engine 先创建
-    this.engine = new GLEngine(gl);
-    this.engine.renderer = this;
-    this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
-    this.extension = new ExtWrap(this);
     this.renderingData = {
       // @ts-expect-error
       currentFrame: {},
     };
-
-    this.framebuffer = new GLFramebuffer({
-      storeAction: {},
-      viewport: [0, 0, this.width, this.height],
-      attachments: [new GLTexture(this.engine, {
-        sourceType: TextureSourceType.framebuffer,
-        data: { width: this.width, height: this.height },
-      })],
-      depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
-    }, this);
-  }
-
-  get isDestroyed () {
-    const internal = this.glRenderer;
-
-    return internal ? internal.isDestroyed : true;
-  }
-
-  get height () {
-    return this.glRenderer?.height ?? 0;
-  }
-
-  get width () {
-    return this.glRenderer?.width ?? 0;
   }
 
   override renderRenderFrame (renderFrame: RenderFrame) {
     const frame = renderFrame;
-
-    if (frame.resource) {
-      frame.resource.color_b.initialize();
-    }
-
     const passes = frame._renderPasses;
 
-    if (this.isDestroyed) {
+    if (this.isDisposed) {
       console.error('Renderer is destroyed, target: GLRenderer.');
 
       return;
     }
+
     frame.renderer.getShaderLibrary()?.compileAllShaders();
+    frame.setup();
+
     this.setFramebuffer(null);
-    this.clear(frame.clearAction);
 
     const currentCamera = frame.camera;
 
@@ -113,23 +119,18 @@ export class GLRenderer extends Renderer implements Disposable {
 
     // 根据 priority 排序 pass
     sortByOrder(passes);
-    for (const pass of passes) {
-      const delegate = pass.delegate;
 
-      delegate.willBeginRenderPass?.(pass, this.renderingData);
+    for (const pass of passes) {
       this.renderRenderPass(pass);
-      delegate.didEndRenderPass?.(pass, this.renderingData);
     }
 
     for (const pass of passes) {
-      pass.frameCleanup(this);
+      pass.onCameraCleanup(this);
     }
   }
 
   renderRenderPass (pass: RenderPass): void {
     this.renderingData.currentPass = pass;
-    // 初始化 pass attachment GPU资源
-    pass.initialize(this);
     // 配置当前 renderer 的 RT
     pass.configure(this);
     // 执行当前 pass
@@ -137,12 +138,8 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override renderMeshes (meshes: RendererComponent[]) {
-    const delegate = this.renderingData.currentPass.delegate;
-
     for (const mesh of meshes) {
-      delegate.willRenderMesh?.(mesh, this.renderingData);
       mesh.render(this);
-      delegate.didRenderMesh?.(mesh, this.renderingData);
     }
   }
 
@@ -179,6 +176,7 @@ export class GLRenderer extends Renderer implements Disposable {
     if (!geometry || !material) {
       return;
     }
+
     material.initialize();
     geometry.initialize();
     geometry.flush();
@@ -194,80 +192,68 @@ export class GLRenderer extends Renderer implements Disposable {
       return;
     }
 
-    this.glRenderer.drawGeometry(geometry, material, subMeshIndex);
+    const gl = (this.engine as GLEngine).gl;
+
+    if (!gl) {
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
+
+      return;
+    }
+
+    const glGeometry = geometry as GLGeometry;
+    const glMaterial = material as GLMaterial;
+    const program = (glMaterial.shaderVariant as GLShaderVariant).program;
+
+    if (!program) {
+      return;
+    }
+
+    const vao = program.setupAttributes(glGeometry);
+    const indicesBuffer = glGeometry.indicesBuffer;
+    let offset = glGeometry.drawStart;
+    let count = glGeometry.drawCount;
+    const mode = glGeometry.mode;
+    const subMeshes = glGeometry.subMeshes;
+
+    if (subMeshes && subMeshes.length) {
+      const subMesh = subMeshes[subMeshIndex];
+
+      // FIXME: 临时处理3D线框状态下隐藏模型
+      if (count < 0) {
+        return;
+      }
+      offset = subMesh.offset;
+      if (indicesBuffer) {
+        count = subMesh.indexCount ?? 0;
+      } else {
+        count = subMesh.vertexCount;
+      }
+    }
+    if (indicesBuffer) {
+      gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+    } else {
+      gl.drawArrays(mode, offset, count);
+    }
+    vao?.unbind();
   }
 
   override setFramebuffer (framebuffer: Framebuffer | null) {
     if (framebuffer) {
-      this.framebuffer = framebuffer;
-      this.framebuffer.bind();
+      this.currentFramebuffer = framebuffer;
+      this.currentFramebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
+      this.currentFramebuffer = null;
       (this.engine as GLEngine).bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
-  }
-
-  override getFramebuffer (): Framebuffer {
-    return this.framebuffer;
-  }
-
-  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
-    if (this.temporaryRTs[name]) {
-      return this.temporaryRTs[name];
-    }
-
-    let textureFilter;
-    let textureType;
-    let depthType = RenderPassAttachmentStorageType.none;
-
-    // TODO 建立Map映射
-    if (filter === FilterMode.Linear) {
-      textureFilter = glContext.LINEAR;
-    } else if (filter === FilterMode.Nearest) {
-      textureFilter = glContext.NEAREST;
-    }
-    if (format === RenderTextureFormat.RGBA32) {
-      textureType = glContext.UNSIGNED_BYTE;
-    } else if (format === RenderTextureFormat.RGBAHalf) {
-      textureType = glContext.HALF_FLOAT;
-    }
-    if (depthBuffer === 0) {
-      depthType = RenderPassAttachmentStorageType.none;
-    } else if (depthBuffer === 16) {
-      depthType = RenderPassAttachmentStorageType.depth_16_opaque;
-    } else if (depthBuffer === 24) {
-      depthType = RenderPassAttachmentStorageType.depth_24_stencil_8_texture;
-    }
-
-    const colorAttachment = new GLTexture(this.engine, {
-      sourceType: TextureSourceType.framebuffer,
-      minFilter: textureFilter,
-      magFilter: textureFilter,
-      internalFormat: glContext.RGBA,
-      format: glContext.RGBA,
-      type: textureType,
-    });
-    const newFramebuffer = new GLFramebuffer({
-      name,
-      storeAction: {},
-      viewport: [0, 0, width, height],
-      viewportScale: 1,
-      isCustomViewport: true,
-      attachments: [colorAttachment],
-      depthStencilAttachment: { storageType: depthType },
-    }, this);
-
-    this.temporaryRTs[name] = newFramebuffer;
-
-    return newFramebuffer;
   }
 
   override setViewport (x: number, y: number, width: number, height: number) {
     (this.engine as GLEngine).viewport(x, y, width, height);
   }
 
-  override clear (action: RenderPassStoreAction | RenderPassClearAction): void {
+  override clear (action: RenderPassClearAction): void {
     const engine = this.engine as GLEngine;
     let bit = 0;
 
@@ -297,14 +283,6 @@ export class GLRenderer extends Renderer implements Disposable {
     }
   }
 
-  override addLostHandler (lostHandler: LostHandler): void {
-    this.context.addLostHandler(lostHandler);
-  }
-
-  override addRestoreHandler (restoreHandler: RestoreHandler) {
-    this.context.addRestoreHandler(restoreHandler);
-  }
-
   override getShaderLibrary (): ShaderLibrary | undefined {
     return (this.engine as GLEngine).shaderLibrary;
   }
@@ -318,18 +296,22 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override dispose (): void {
-    this.context.dispose();
-    this.extension.dispose();
-    this.glRenderer?.dispose();
-    // @ts-expect-error
-    this.canvas = null;
-    this.engine.dispose();
+    if (this.disposed) {
+      return;
+    }
+    this.deleteResource();
+    this.renderTargetPool.dispose();
+    this.blitGeometry?.dispose();
+    this.blitGeometry = null;
+    this.blitMaterial?.dispose();
+    this.blitMaterial = null;
+    this.disposed = true;
   }
 
   override lost (e: Event) {
     e.preventDefault();
-    this.extension.dispose();
-    this.glRenderer.lost(e);
+    logger.error(`WebGL context lost, destroying glRenderer by default to prevent memory leaks. Event target: ${e.target}.`);
+    this.deleteResource();
   }
 
   override restore () {
@@ -344,18 +326,79 @@ export class GLRenderer extends Renderer implements Disposable {
     engine.reset();
     engine.shaderLibrary = new GLShaderLibrary(engine);
     engine.gpuCapability = new GPUCapability(gl);
-    this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
-    this.extension = new ExtWrap(this);
   }
 
   override resize (width: number, height: number): void {
-    const internal = this.glRenderer;
+    if (this.width !== width || this.height !== height) {
+      const gl = this.gl;
 
-    if (internal) {
-      if (this.width !== width || this.height !== height) {
-        internal.resize(width, height);
+      if (gl && gl.drawingBufferWidth !== width || gl.drawingBufferHeight !== height) {
+        gl.canvas.width = width;
+        gl.canvas.height = height;
+        gl.viewport(0, 0, width, height);
       }
     }
+  }
+
+  /**
+   * 将源纹理复制到目标 Framebuffer，可使用自定义材质进行处理
+   * @param source - 源纹理
+   * @param destination - 目标 Framebuffer，如果为 null 则渲染到屏幕
+   * @param material - 可选的自定义材质，不传则使用默认复制材质
+   */
+  override blit (source: Texture, destination: Framebuffer | null, material?: Material): void {
+    // 懒加载创建 blit geometry
+    if (!this.blitGeometry) {
+      this.blitGeometry = Geometry.create(this.engine, {
+        mode: glContext.TRIANGLE_STRIP,
+        attributes: {
+          aPos: {
+            type: glContext.FLOAT,
+            size: 2,
+            data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),
+          },
+        },
+        drawCount: 4,
+      });
+    }
+
+    // 懒加载创建默认 blit material
+    if (!this.blitMaterial) {
+      this.blitMaterial = Material.create(this.engine, {
+        shader: {
+          vertex: BLIT_VERTEX_SHADER,
+          fragment: BLIT_FRAGMENT_SHADER,
+        },
+      });
+      this.blitMaterial.blending = false;
+      this.blitMaterial.depthTest = false;
+      this.blitMaterial.culling = false;
+    }
+
+    const blitMat = material || this.blitMaterial;
+
+    // 设置源纹理
+    blitMat.setTexture('_MainTex', source);
+
+    // 保存当前 framebuffer
+    const prevFramebuffer = this.currentFramebuffer;
+
+    // 设置目标
+    if (destination) {
+      const [x, y, width, height] = destination.viewport;
+
+      this.setFramebuffer(destination);
+      this.setViewport(x, y, width, height);
+    } else {
+      // 渲染到屏幕
+      this.setFramebuffer(null);
+      this.setViewport(0, 0, this.getWidth(), this.getHeight());
+    }
+
+    this.drawGeometry(this.blitGeometry, math.Matrix4.IDENTITY, blitMat);
+
+    // 恢复之前的 framebuffer
+    this.setFramebuffer(prevFramebuffer);
   }
 
   private checkGlobalUniform (name: string) {
@@ -363,6 +406,99 @@ export class GLRenderer extends Renderer implements Disposable {
 
     if (!globalUniforms.uniforms.includes(name)) {
       globalUniforms.uniforms.push(name);
+    }
+  }
+
+  copy2 (source: GLTexture, target: GLTexture) {
+    const gl = this.gl as WebGL2RenderingContext;
+
+    if (!gl) {
+      return;
+    }
+
+    if (!this.sourceFbo) {
+      this.sourceFbo = gl.createFramebuffer();
+    }
+    if (!this.targetFbo) {
+      this.targetFbo = gl.createFramebuffer();
+    }
+    const engine = this.engine as GLEngine;
+
+    engine.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
+    engine.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
+    engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
+
+    const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
+
+    gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
+    engine.bindFramebuffer(gl.FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    engine.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+  }
+
+  createGLRenderbuffer (renderbuffer: GLRenderbuffer): WebGLRenderbuffer | null {
+    const rb = this.gl.createRenderbuffer();
+
+    return rb;
+  }
+
+  createGLFramebuffer (name?: string): WebGLFramebuffer | null {
+    const fbo = this.gl.createFramebuffer();
+
+    if (fbo) {
+      assignInspectorName(fbo, name, name);
+    } else {
+      throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+
+    return fbo;
+  }
+
+  /**创建包裹VAO对象。 */
+  createVAO (name?: string): GLVertexArrayObject | undefined {
+    const ret = new GLVertexArrayObject(this.engine as GLEngine, name);
+
+    return ret;
+  }
+
+  deleteGLTexture (texture: GLTexture) {
+    if (texture.textureBuffer && !this.disposed) {
+      this.gl.deleteTexture(texture.textureBuffer);
+      texture.textureBuffer = null;
+    }
+  }
+
+  deleteGPUBuffer (buffer: GLGPUBuffer | null) {
+    if (buffer && !this.disposed) {
+      this.gl.deleteBuffer(buffer.glBuffer);
+      // @ts-expect-error
+      delete buffer.glBuffer;
+    }
+  }
+
+  deleteGLFramebuffer (framebuffer: GLFramebuffer) {
+    if (framebuffer && !this.disposed) {
+      this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
+      delete framebuffer.fbo;
+    }
+  }
+
+  deleteGLRenderbuffer (renderbuffer: GLRenderbuffer) {
+    if (renderbuffer && !this.disposed) {
+      this.gl.deleteRenderbuffer(renderbuffer.buffer);
+      renderbuffer.buffer = null;
+    }
+  }
+
+  private deleteResource () {
+    const gl = this.gl;
+
+    if (gl) {
+      gl.deleteFramebuffer(this.sourceFbo);
+      gl.deleteFramebuffer(this.targetFbo);
     }
   }
 }
