@@ -278,6 +278,7 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   }
   video.crossOrigin = 'anonymous';
   video.muted = true;
+  video.autoplay = false;
   if (isAndroid()) {
     video.setAttribute('renderer', 'standard');
   }
