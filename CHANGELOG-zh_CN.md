@@ -8,6 +8,12 @@
 
 ---
 
+## 2.7.5
+
+`2025-12-18`
+
+- Fix: revert particle update logic. [#1322](https://github.com/galacean/effects-runtime/pull/1322) @wumaolinmaoan
+
 ## 2.7.4
 
 `2025-11-25`
