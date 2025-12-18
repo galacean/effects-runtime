@@ -531,6 +531,19 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.isDirty = true;
   }
 
+  /**
+   * 设置是否启用文本描边
+   * @param value - 是否启用描边
+   * @returns
+   */
+  setOutlineEnabled (value: boolean): void {
+    if (this.textStyle.isOutlined === value) {
+      return;
+    }
+    this.textStyle.isOutlined = value;
+    this.isDirty = true;
+  }
+
   setShadowBlur (value: number): void {
     const v = Math.max(0, Number(value) || 0);
 
