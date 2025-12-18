@@ -335,144 +335,135 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override onUpdate (dt: number): void {
-    if (!this.frozen) {
-      this.update(dt);
-    }
+    this.update(dt);
   }
 
-  simulate (time: number) {
-    this.update(time * 1000);
-    this.frozen = true;
-  }
+  update (delta: number) {
+    if (this.started && !this.frozen) {
+      const now = this.time + delta / 1000;
+      const options = this.options;
+      const loopStartTime = this.loopStartTime;
+      const emission = this.emission;
 
-  private update (delta: number) {
-    if (!this.started) {
-      return;
-    }
+      this.time = now;
+      this.upDirectionWorld = null;
+      this.renderer.updateTime(now, delta);
 
-    const now = this.time + delta / 1000;
-    const options = this.options;
-    const loopStartTime = this.loopStartTime;
-    const emission = this.emission;
-
-    this.time = now;
-    this.upDirectionWorld = null;
-    this.renderer.updateTime(now, delta);
-
-    const link = this.particleLink;
-    const emitterLifetime = (now - loopStartTime) / this.item.duration;
-    const timePassed = this.timePassed;
-    let trailUpdated = false;
-    const updateTrail = () => {
-      if (this.trails && !trailUpdated) {
-        trailUpdated = true;
-        link.forEach(([time, pointIndex, delay, point]) => {
-          if (time < timePassed) {
-            this.clearPointTrail(pointIndex);
-          } else if (timePassed > delay) {
-            this.updatePointTrail(pointIndex, emitterLifetime, point, delay);
-          }
-        });
-      }
-    };
-
-    if (!this.ended) {
-      const duration = this.item.duration;
-      const lifetime = this.lifetime;
-
-      if (timePassed < duration) {
-        const interval = 1 / emission.rateOverTime.getValue(lifetime);
-        const pointCount = Math.floor((timePassed - this.lastEmitTime) / interval);
-        const maxEmissionCount = pointCount;
-        const timeDelta = interval / pointCount;
-        const meshTime = now;
-        const maxCount = options.maxCount;
-
-        this.updateEmitterTransform(timePassed);
-        const shouldSkipGenerate = () => {
-          const first = link.first;
-
-          return this.emissionStopped || (link.length === maxCount && first && (first.content[0] - loopStartTime) > timePassed);
-        };
-
-        for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
-          if (shouldSkipGenerate()) {
-            break;
-          }
-          const p = this.createPoint(lifetime);
-
-          p.delay += meshTime + i * timeDelta;
-          this.addParticle(p, maxCount);
-          this.lastEmitTime = timePassed;
-        }
-        const bursts = emission.bursts;
-
-        for (let j = bursts?.length - 1, cursor = 0; j >= 0 && cursor < maxCount; j--) {
-          if (shouldSkipGenerate()) {
-            break;
-          }
-          const burst = bursts[j];
-          const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
-
-          if (opts) {
-            const originVec = [0, 0, 0] as vec3;
-            const offsets = emission.burstOffsets[j];
-            const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
-
-            if (burst.once) {
-              this.removeBurst(j);
+      const link = this.particleLink;
+      const emitterLifetime = (now - loopStartTime) / this.item.duration;
+      const timePassed = this.timePassed;
+      let trailUpdated = false;
+      const updateTrail = () => {
+        if (this.trails && !trailUpdated) {
+          trailUpdated = true;
+          link.forEach(([time, pointIndex, delay, point]) => {
+            if (time < timePassed) {
+              this.clearPointTrail(pointIndex);
+            } else if (timePassed > delay) {
+              this.updatePointTrail(pointIndex, emitterLifetime, point, delay);
             }
+          });
+        }
+      };
 
-            for (let i = 0; i < opts.count && cursor < maxCount; i++) {
-              if (shouldSkipGenerate()) {
-                break;
+      if (!this.ended) {
+        const duration = this.item.duration;
+        const lifetime = this.lifetime;
+
+        if (timePassed < duration) {
+          const interval = 1 / emission.rateOverTime.getValue(lifetime);
+          const pointCount = Math.floor((timePassed - this.lastEmitTime) / interval);
+          const maxEmissionCount = pointCount;
+          const timeDelta = interval / pointCount;
+          const meshTime = now;
+          const maxCount = options.maxCount;
+
+          this.updateEmitterTransform(timePassed);
+          const shouldSkipGenerate = () => {
+            const first = link.first;
+
+            return this.emissionStopped || (link.length === maxCount && first && (first.content[0] - loopStartTime) > timePassed);
+          };
+
+          for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
+            if (shouldSkipGenerate()) {
+              break;
+            }
+            const p = this.createPoint(lifetime);
+
+            p.delay += meshTime + i * timeDelta;
+            this.addParticle(p, maxCount);
+            this.lastEmitTime = timePassed;
+          }
+          const bursts = emission.bursts;
+
+          for (let j = bursts?.length - 1, cursor = 0; j >= 0 && cursor < maxCount; j--) {
+            if (shouldSkipGenerate()) {
+              break;
+            }
+            const burst = bursts[j];
+            const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
+
+            if (opts) {
+              const originVec = [0, 0, 0] as vec3;
+              const offsets = emission.burstOffsets[j];
+              const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
+
+              if (burst.once) {
+                this.removeBurst(j);
               }
-              const p = this.initPoint(this.shape.generate({
-                total: opts.total,
-                index: opts.index,
-                burstIndex: i,
-                burstCount: opts.count,
-              }));
 
-              p.delay += meshTime;
-              cursor++;
-              p.transform.translate(...burstOffset);
+              for (let i = 0; i < opts.count && cursor < maxCount; i++) {
+                if (shouldSkipGenerate()) {
+                  break;
+                }
+                const p = this.initPoint(this.shape.generate({
+                  total: opts.total,
+                  index: opts.index,
+                  burstIndex: i,
+                  burstCount: opts.count,
+                }));
 
-              this.addParticle(p, maxCount);
+                p.delay += meshTime;
+                cursor++;
+                p.transform.translate(...burstOffset);
+
+                this.addParticle(p, maxCount);
+              }
             }
           }
+        } else if (this.item.endBehavior === spec.EndBehavior.restart) {
+          updateTrail();
+          this.loopStartTime = now - duration;
+          this.lastEmitTime -= duration;
+          this.time -= duration;
+          emission.bursts.forEach(b => b.reset());
+          this.particleLink.forEach(content => {
+            content[0] -= duration;
+            content[2] -= duration;
+            content[3].delay -= duration;
+          });
+
+          this.renderer.minusTimeForLoop(duration);
+        } else {
+          this.ended = true;
+          const endBehavior = this.item.endBehavior;
+
+          if (endBehavior === spec.EndBehavior.freeze) {
+            this.frozen = true;
+          }
         }
-      } else if (this.item.endBehavior === spec.EndBehavior.restart) {
-        updateTrail();
-        this.loopStartTime = now - duration;
-        this.lastEmitTime -= duration;
-        this.time -= duration;
-        emission.bursts.forEach(b => b.reset());
-        this.particleLink.forEach(content => {
-          content[0] -= duration;
-          content[2] -= duration;
-          content[3].delay -= duration;
-        });
+      } else if (this.item.endBehavior !== spec.EndBehavior.restart) {
+        if (spec.EndBehavior.destroy === this.item.endBehavior) {
+          const node = link.last;
 
-        this.renderer.minusTimeForLoop(duration);
-      } else {
-        this.ended = true;
-        const endBehavior = this.item.endBehavior;
-
-        if (endBehavior === spec.EndBehavior.freeze) {
-          this.frozen = true;
+          if (node && (node.content[0]) < this.time) {
+            this.destroyed = true;
+          }
         }
       }
-    } else if (this.item.endBehavior !== spec.EndBehavior.restart) {
-      if (spec.EndBehavior.destroy === this.item.endBehavior) {
-        const node = link.last;
-
-        if (node && (node.content[0]) < this.time) {
-          this.destroyed = true;
-        }
-      }
+      updateTrail();
     }
-    updateTrail();
   }
 
   drawStencilMask (renderer: Renderer): void {
