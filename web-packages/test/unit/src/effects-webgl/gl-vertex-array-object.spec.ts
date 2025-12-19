@@ -1,5 +1,6 @@
 import { glContext, Renderer, ShaderCompileResultStatus } from '@galacean/effects-core';
-import { GLGPUBuffer, GLGeometry, GLRenderer, GLVertexArrayObject } from '@galacean/effects-webgl';
+import type { GLRenderer } from '@galacean/effects-webgl';
+import { GLEngine, GLGPUBuffer, GLGeometry, GLVertexArrayObject } from '@galacean/effects-webgl';
 import { getGL, getGL2 } from './gl-utils.js';
 
 const { expect } = chai;
@@ -24,15 +25,17 @@ describe('webgl/gl-vertex-array-object', () => {
   let glRenderer;
 
   afterEach(() => {
-    renderer.dispose();
-    (renderer.canvas as HTMLCanvasElement)?.remove();
+    const engine = renderer.engine as GLEngine;
+
+    engine.dispose();
+    (engine.context.canvas as HTMLCanvasElement)?.remove();
     // @ts-expect-error
     renderer = null;
   });
 
   it('create vao use extension when webgl', () => {
     renderer = createGLGPURenderer('webgl');
-    glRenderer = renderer.glRenderer;
+    glRenderer = renderer;
     const vao = glRenderer.createVAO()!;
     const ext = glRenderer.gl.getExtension('OES_vertex_array_object');
 
@@ -46,7 +49,7 @@ describe('webgl/gl-vertex-array-object', () => {
 
   it('create vao when webgl2', () => {
     renderer = createGLGPURenderer('webgl2');
-    glRenderer = renderer.glRenderer;
+    glRenderer = renderer;
     const gl = glRenderer.gl as WebGL2RenderingContext;
     const vao = glRenderer.createVAO()!;
 
@@ -58,7 +61,7 @@ describe('webgl/gl-vertex-array-object', () => {
 
   it('bind vertexPointer', () => {
     renderer = createGLGPURenderer('webgl');
-    glRenderer = renderer.glRenderer;
+    glRenderer = renderer;
     const engine = renderer.engine;
     const glGeometry = new GLGeometry(engine, {
       name: 'vao1',
@@ -84,9 +87,9 @@ describe('webgl/gl-vertex-array-object', () => {
 
     glGeometry.initialize();
 
-    const shader = glRenderer.engine.shaderLibrary.createShader({ vertex, fragment });
+    const shader = (glRenderer.engine as GLEngine).shaderLibrary.createShader({ vertex, fragment });
 
-    glRenderer.engine.shaderLibrary.compileShader(shader);
+    (glRenderer.engine as GLEngine).shaderLibrary.compileShader(shader);
     const result = shader.compileResult;
 
     expect(result.status).to.eql(ShaderCompileResultStatus.success);
@@ -126,7 +129,7 @@ describe('webgl/gl-vertex-array-object', () => {
 
   it('use state to reduce binding call', () => {
     renderer = createGLGPURenderer('webgl2');
-    glRenderer = renderer.glRenderer;
+    glRenderer = renderer;
     const engine = renderer.engine;
     const glGeometry = new GLGeometry(engine, {
       name: 'vao2',
@@ -172,6 +175,8 @@ describe('webgl/gl-vertex-array-object', () => {
 
 function createGLGPURenderer (type: 'webgl' | 'webgl2') {
   const gl = type === 'webgl' ? getGL() : getGL2();
+  const canvas = gl!.canvas as HTMLCanvasElement;
+  const engine = new GLEngine(canvas, { glType: type });
 
-  return new GLRenderer(gl!.canvas, type);
+  return engine.renderer as GLRenderer;
 }

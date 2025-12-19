@@ -98,7 +98,13 @@ export class BezierCurve extends ValueGetter<number> {
           const timeInterval = curveInfo.timeInterval;
           const valueInterval = curveInfo.valueInterval;
           const normalizeTime = (time - p0.x) / timeInterval;
-          const value = curveInfo.curve.getValue(normalizeTime);
+          let value = 0;
+
+          if (this.keyFrames[i].tangentMode === TangentMode.Linear) {
+            value = normalizeTime;
+          } else {
+            value = curveInfo.curve.getValue(normalizeTime);
+          }
 
           result = p0.y + valueInterval * value;
 
@@ -306,7 +312,7 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
     const leftKeyframe = oldKeyframes[i];
     const rightKeyframe = i + 1 < oldKeyframes.length ? oldKeyframes[i + 1] : oldKeyframes[i];
 
-    const { p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe, true);
+    const { p0, p1, p2, p3, type } = getControlPoints(leftKeyframe, rightKeyframe, true);
 
     assertExist(p2);
     assertExist(p3);
@@ -314,7 +320,7 @@ export function oldBezierKeyFramesToNew (props: spec.BezierKeyframeValue[]): Key
       leftControl: lastControl,
       value: p0,
       rightControl: p1,
-      tangentMode: TangentMode.Cubic,
+      tangentMode: type === 'line' ? TangentMode.Linear : TangentMode.Cubic,
     };
 
     if (leftKeyframe[0] === spec.BezierKeyframeType.HOLD) {

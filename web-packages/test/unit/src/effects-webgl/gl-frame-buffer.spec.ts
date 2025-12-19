@@ -1,6 +1,6 @@
 import type { Engine, GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
-import type { GLEngine } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 import { GLFramebuffer, GLRenderbuffer, GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
@@ -27,14 +27,14 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
 
     before(async () => {
       await sleep(3000);
-      fakeRenderer = new GLRenderer(canvas, framework);
-      engine = fakeRenderer.engine;
-      gl = fakeRenderer.glRenderer.engine.gl;
+      engine = new GLEngine(canvas, { glType: framework });
+      fakeRenderer = new GLRenderer(engine);
+      gl = (fakeRenderer.engine as GLEngine).gl;
       gpu = engine.gpuCapability;
     });
 
     after(() => {
-      fakeRenderer.dispose();
+      engine.dispose();
       // @ts-expect-error
       fakeRenderer = null;
       // @ts-expect-error
@@ -59,7 +59,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
             data: { width: 256, height: 256 },
           } as TextureSourceOptions),
         ],
-        isCustomViewport: false,
         depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -92,7 +91,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
           depthAction: TextureStoreAction.clear,
           colorAction: TextureStoreAction.clear,
         },
-        isCustomViewport: false,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 
@@ -125,7 +123,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         storeAction: {
           depthAction: TextureStoreAction.clear,
         },
-        isCustomViewport: false,
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -427,7 +424,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         attachments: [
           new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
-        isCustomViewport: false,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 
@@ -454,8 +450,6 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
         attachments: [
           new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
-        isCustomViewport: false,
-        viewportScale: 1,
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
 

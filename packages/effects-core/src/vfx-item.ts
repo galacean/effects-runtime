@@ -19,7 +19,6 @@ import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
-import { CompositionComponent } from './comp-vfx-item';
 
 /**
  * VFX 元素，包含元素的变换、组件、子元素等信息。
@@ -332,6 +331,14 @@ export class VFXItem extends EffectsObject implements Disposable {
     return res;
   }
 
+  getDescendants (directDescendantsOnly?: boolean, predicate?: (node: VFXItem) => boolean): VFXItem[] {
+    const results: VFXItem[] = [];
+
+    this.getDescendantsInternal(results, directDescendantsOnly, predicate);
+
+    return results;
+  }
+
   setParent (vfxItem: VFXItem) {
     if (vfxItem === this && !vfxItem) {
       return;
@@ -477,22 +484,32 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
   /**
-   * 设置元素在 3D 坐标轴的位置
+   * 设置本地坐标位置
    */
   setPosition (x: number, y: number, z: number) {
     this.transform.setPosition(x, y, z);
   }
   /**
-   * 设置元素在 3D 坐标轴的角度
+   * 设置本地坐标欧拉旋转
    */
   setRotation (x: number, y: number, z: number) {
     this.transform.setRotation(x, y, z);
   }
   /**
-   * 设置元素在 3D 坐标轴的缩放
+   * 设置本地坐标缩放
    */
   setScale (x: number, y: number, z: number) {
     this.transform.setScale(x, y, z);
+  }
+
+  /**
+   * 设置世界坐标位置
+   * @param x - 世界坐标 x
+   * @param y - 世界坐标 y
+   * @param z - 世界坐标 z
+   */
+  setWorldPosition (x: number, y: number, z: number) {
+    this.transform.setWorldPosition(x, y, z);
   }
 
   /**
@@ -716,8 +733,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      // @ts-expect-error
-      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
+      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
 
@@ -789,19 +805,29 @@ export class VFXItem extends EffectsObject implements Disposable {
       component.item = this;
       this.components.push(component);
       component.setInstanceId(generateGUID());
-
-      if (component instanceof CompositionComponent) {
-        for (const vfxItem of component.items) {
-          vfxItem.setInstanceId(generateGUID());
-          for (const component of vfxItem.components) {
-            component.setInstanceId(generateGUID());
-          }
-        }
-      }
     }
-    this.setInstanceId(prevInstanceId);
 
     Composition.buildItemTree(this);
+
+    const resetGUIDRecursive = (item: VFXItem) => {
+      item.setInstanceId(generateGUID());
+
+      for (const component of item.components) {
+        component.setInstanceId(generateGUID());
+      }
+
+      if (!VFXItem.isComposition(item)) {
+        for (const child of item.children) {
+          resetGUIDRecursive(child);
+        }
+      }
+    };
+
+    for (const child of this.children) {
+      resetGUIDRecursive(child);
+    }
+
+    this.setInstanceId(prevInstanceId);
   }
 
   private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
@@ -827,6 +853,28 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     for (const child of this.children) {
       child.gatherPreviousObjectID(previousObjectIDMap);
+    }
+  }
+
+  private getDescendantsInternal (
+    results: VFXItem[],
+    directDescendantsOnly = false,
+    predicate?: (node: VFXItem) => boolean,
+  ): void {
+    if (!this.children) {
+      return;
+    }
+
+    for (let index = 0; index < this.children.length; index++) {
+      const item = this.children[index];
+
+      if (!predicate || predicate(item)) {
+        results.push(item);
+      }
+
+      if (!directDescendantsOnly) {
+        item.getDescendantsInternal(results, false, predicate);
+      }
     }
   }
 }

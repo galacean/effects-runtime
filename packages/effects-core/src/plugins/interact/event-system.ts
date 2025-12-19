@@ -1,5 +1,8 @@
+import type { Composition } from '../../composition';
+import type { Engine } from '../../engine';
 import type { Disposable } from '../../utils';
 import { addItem, isSimulatorCellPhone, logger, removeItem } from '../../utils';
+import { PointerEventData, type Region } from './click-handler';
 
 export const EVENT_TYPE_CLICK = 'click';
 export const EVENT_TYPE_TOUCH_START = 'touchstart';
@@ -25,18 +28,27 @@ export type TouchParams = {
   target: EventTarget,
 };
 
+export enum PointerEventType {
+  PointerDown,
+  PointerUp,
+  PointerMove
+}
+
 export class EventSystem implements Disposable {
   enabled = true;
+  skipPointerMovePicking = true;
 
   private handlers: Record<string, ((event: TouchEventType) => void)[]> = {};
   private nativeHandlers: Record<string, (event: Event) => void> = {};
+  private target: HTMLCanvasElement | null = null;
 
   constructor (
-    private target: HTMLCanvasElement | null,
+    public engine: Engine,
     public allowPropagation = false,
   ) { }
 
-  bindListeners () {
+  bindListeners (target: HTMLCanvasElement | null) {
+    this.target = target;
     let x: number;
     let y: number;
     let currentTouch: Record<string, number> | 0;
@@ -50,6 +62,7 @@ export class EventSystem implements Disposable {
     let touchmove = 'mousemove';
     let touchend = 'mouseup';
     let touchcancel = 'mouseleave';
+
     const getTouchEventValue = (event: Event, x: number, y: number, dx = 0, dy = 0): TouchEventType => {
       let vx = 0;
       let vy = 0;
@@ -138,6 +151,11 @@ export class EventSystem implements Disposable {
     Object.keys(this.nativeHandlers).forEach(name => {
       this.target?.addEventListener(String(name), this.nativeHandlers[name]);
     });
+
+    this.addEventListener(EVENT_TYPE_CLICK, this.onClick.bind(this));
+    this.addEventListener(EVENT_TYPE_TOUCH_START, this.onPointerDown.bind(this));
+    this.addEventListener(EVENT_TYPE_TOUCH_END, this.onPointerUp.bind(this));
+    this.addEventListener(EVENT_TYPE_TOUCH_MOVE, this.onPointerMove.bind(this));
   }
 
   dispatchEvent (type: string, event: TouchEventType) {
@@ -167,6 +185,101 @@ export class EventSystem implements Disposable {
     }
   }
 
+  private onClick (e: TouchEventType) {
+    const { x, y } = e;
+    const hitResults: Region[] = [];
+
+    // 收集所有的点击测试结果，click 回调执行可能会对 composition 点击结果有影响，放在点击测试执行完后再统一触发。
+    for (const composition of this.engine.compositions) {
+      hitResults.push(...composition.hitTest(x, y));
+    }
+
+    for (const hitResult of hitResults) {
+      const hitComposition = hitResult.item.composition;
+
+      if (!hitComposition) {
+        continue;
+      }
+
+      const clickInfo = {
+        ...hitResult,
+        compositionId: hitComposition.id,
+        compositionName: hitComposition.name,
+      };
+
+      hitResult.item.emit('click', hitResult);
+      hitComposition.emit('click', clickInfo);
+      this.engine.emit('click', clickInfo);
+    }
+  }
+
+  private onPointerDown (e: TouchEventType) {
+    this.handlePointerEvent(e, PointerEventType.PointerDown);
+  }
+
+  private onPointerUp (e: TouchEventType) {
+    this.handlePointerEvent(e, PointerEventType.PointerUp);
+  }
+
+  private onPointerMove (e: TouchEventType) {
+    this.handlePointerEvent(e, PointerEventType.PointerMove);
+  }
+
+  private handlePointerEvent (e: TouchEventType, type: PointerEventType) {
+    let hitRegion: Region | null = null;
+    const { x, y, width, height } = e;
+
+    if (!(type === PointerEventType.PointerMove && this.skipPointerMovePicking)) {
+      for (const composition of this.engine.compositions) {
+        const regions = composition.hitTest(x, y);
+
+        if (regions.length > 0) {
+          hitRegion = regions[regions.length - 1];
+        }
+      }
+    }
+
+    const eventData = new PointerEventData();
+
+    eventData.position.x = (x + 1) / 2 * width;
+    eventData.position.y = (y + 1) / 2 * height;
+    eventData.delta.x = e.vx * width;
+    eventData.delta.y = e.vy * height;
+
+    const raycast = eventData.pointerCurrentRaycast;
+
+    if (hitRegion) {
+      raycast.point = hitRegion.position;
+      raycast.item = hitRegion.item;
+    }
+
+    let eventName: 'pointerdown' | 'pointerup' | 'pointermove' = 'pointerdown';
+
+    switch (type) {
+      case PointerEventType.PointerDown:
+        eventName = 'pointerdown';
+
+        break;
+      case PointerEventType.PointerUp:
+        eventName = 'pointerup';
+
+        break;
+      case PointerEventType.PointerMove:
+        eventName = 'pointermove';
+
+        break;
+    }
+
+    if (hitRegion) {
+      const hitItem = hitRegion.item;
+      const hitComposition = hitItem.composition as Composition;
+
+      hitItem.emit(eventName, eventData);
+      hitComposition.emit(eventName, eventData);
+      this.engine.emit(eventName, eventData);
+    }
+  }
+
   dispose (): void {
     if (this.target) {
       this.handlers = {};
@@ -175,7 +288,6 @@ export class EventSystem implements Disposable {
         this.target?.removeEventListener(String(name), this.nativeHandlers[name]);
       });
       this.nativeHandlers = {};
-      this.target = null;
     }
   }
 }

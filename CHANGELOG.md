@@ -7,6 +7,80 @@
 
 ---
 
+## 2.8.0
+
+`2025-12-18`
+
+### Feat
+- Feat: add pointer up down and move event. [#1243](https://github.com/galacean/effects-runtime/pull/1243) @wumaolinmaoan
+  - Fix: hit test id null issue. [#1283](https://github.com/galacean/effects-runtime/pull/1283) @wumaolinmaoan
+- Feat: support for parsing etc1s and uastc ktx2 textures. [#1263](https://github.com/galacean/effects-runtime/pull/1263) @ChengYi996
+  - Feat: add unit test for ktx2 loading time and memory usage. [#1293](https://github.com/galacean/effects-runtime/pull/1293) @ChengYi996
+  - Fix: compressed texture unit test. [#1290](https://github.com/galacean/effects-runtime/pull/1290) @ChengYi996
+  - Fix: remove ktx2 unreasonable test. [#1295](https://github.com/galacean/effects-runtime/pull/1295) @ChengYi996
+  - Chore: prevent duplicate texture loader registration. [#1321](https://github.com/galacean/effects-runtime/pull/1321) @ChengYi996
+- Feat: refactor rich text and layout, add some api. [#1285](https://github.com/galacean/effects-runtime/pull/1285) @Fryt1
+  - Feat: add `setWorldPosition` interface. [#1271](https://github.com/galacean/effects-runtime/pull/1271) @wumaolinmaoan
+  - Feat: add `PositionConstraint` component. [#1272](https://github.com/galacean/effects-runtime/pull/1272) @wumaolinmaoan
+  - Feat: add `setLineHeight` function. [#1276](https://github.com/galacean/effects-runtime/pull/1276) @Fryt1
+  - Feat: add get default props. [#1281](https://github.com/galacean/effects-runtime/pull/1281) @Fryt1
+  - Feat: add setOutlineEnabled method. [#1325](https://github.com/galacean/effects-runtime/pull/1325) @Fryt1
+  - Fix: text compatibility and expose comments. [#1292](https://github.com/galacean/effects-runtime/pull/1292) @Fryt1
+  - Fix: rich text layout alignment and overflow handling. [#1317](https://github.com/galacean/effects-runtime/pull/1317) @Fryt1
+- Feat: add render target pool. [#1294](https://github.com/galacean/effects-runtime/pull/1294) @wumaolinmaoan
+- Feat: add render target blit func. [#1298](https://github.com/galacean/effects-runtime/pull/1298) @wumaolinmaoan
+  - refactor post process pass using blit function
+- Feat: effects component support mask settings. [#1300](https://github.com/galacean/effects-runtime/pull/1300) @wumaolinmaoan
+- Feat: change method access public. [#1301](https://github.com/galacean/effects-runtime/pull/1301) @Fryt1
+- Feat: unify color range 0 - 1. [#1305](https://github.com/galacean/effects-runtime/pull/1305) @Fryt1
+- Feat: add `setTextWidth`. [#1307](https://github.com/galacean/effects-runtime/pull/1307) @Fryt1
+- Feat: add `setTextHeight` method. [#1312](https://github.com/galacean/effects-runtime/pull/1312) @Fryt1
+- Feat: add hevc video detection and play function. [#1311](https://github.com/galacean/effects-runtime/pull/1311) @ChengYi996
+- Feat: add item `getDescendants` func. [#1315](https://github.com/galacean/effects-runtime/pull/1315) @wumaolinmaoan
+
+### Refactor
+- Refactor: player engine creation logic. [#1248](https://github.com/galacean/effects-runtime/pull/1248) @wumaolinmaoan
+- Refactor: remove unused plugin lifetime func. [#1278](https://github.com/galacean/effects-runtime/pull/1278) @wumaolinmaoan
+- Refactor: plugin creation logic. [#1280](https://github.com/galacean/effects-runtime/pull/1280) @wumaolinmaoan
+  - Fix: supply new plugin info. [#1296](https://github.com/galacean/effects-runtime/pull/1296) @yiiqii
+- Refactor: clean up render pass code. [#1288](https://github.com/galacean/effects-runtime/pull/1288) @wumaolinmaoan
+- Refactor: render pass options initialization and execute logic. [#1291](https://github.com/galacean/effects-runtime/pull/1291) @wumaolinmaoan
+- Refactor: opt plugin system lifetime func name and notes. [#1303](https://github.com/galacean/effects-runtime/pull/1303) @wumaolinmaoan
+
+### Perf
+- Perf: opt linear curve calculation performance. [#1270](https://github.com/galacean/effects-runtime/pull/1270) @wumaolinmaoan
+
+### Fix
+- Fix: composition `onItemMessage` build type issue. [#1269](https://github.com/galacean/effects-runtime/pull/1269) @wumaolinmaoan
+- Fix: `maskableGraphic` property default value initialization logic. [#1277](https://github.com/galacean/effects-runtime/pull/1277) @wumaolinmaoan
+- Fix: compositions were not removed from the engine in editor mode. [#1297](https://github.com/galacean/effects-runtime/pull/1297) @wumaolinmaoan
+- Fix: item render order invalid. [#1304](https://github.com/galacean/effects-runtime/pull/1304) @wumaolinmaoan
+- Fix: gizmo plugin image load cause initialization error. [#1313](https://github.com/galacean/effects-runtime/pull/1313) @wumaolinmaoan
+- Fix: prevent video from auto-playing when it finishes loading. [#1316](https://github.com/galacean/effects-runtime/pull/1316) @ChengYi996
+- Fix: video element autoplay false. [#1326](https://github.com/galacean/effects-runtime/pull/1326) @wumaolinmaoan
+- Fix: system frame buffer view port setting. [#1318](https://github.com/galacean/effects-runtime/pull/1318) @wumaolinmaoan
+
+### Chore
+- Chore: sprite loop use textureSheetAnimation property. [#1302](https://github.com/galacean/effects-runtime/pull/1302) @wumaolinmaoan
+
+## 2.7.5
+
+`2025-12-18`
+
+- Fix: revert particle update logic. [#1322](https://github.com/galacean/effects-runtime/pull/1322) @wumaolinmaoan
+
+## 2.7.4
+
+`2025-11-25`
+
+- Fix: particles did not replay during the composition replay. [#1286](https://github.com/galacean/effects-runtime/pull/1286) @wumaolinmaoan
+
+## 2.7.3
+
+`2025-11-14`
+
+- Fix: richText `document` object adapter inject. [#1274](https://github.com/galacean/effects-runtime/pull/1274) @yiiqii
+
 ## 2.7.2
 
 `2025-11-10`

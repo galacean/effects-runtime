@@ -1,7 +1,6 @@
 import type { Mesh, Geometry, TextureSourceOptions, RenderPass, spec, Engine } from '@galacean/effects';
 import { Texture } from '@galacean/effects';
 import type { ModelSkyboxOptions } from '../index';
-import type { FBOOptions } from '../utility/ri-helper';
 import type { PMaterialBase } from './material';
 import type { PSkyboxParams } from './skybox';
 import { PSkyboxCreator } from './skybox';
@@ -173,40 +172,6 @@ export class CompositionCache {
     this.meshCache.set(name, mesh);
 
     return mesh;
-  }
-
-  getShadowBasePass (name: string, priority: number, meshList: Mesh[], fboOptions: FBOOptions): RenderPass {
-    return this.getRenderPass(name, priority, meshList, fboOptions);
-  }
-
-  getShadowFilterPass (name: string, priority: number, meshList: Mesh[], fboOptions: FBOOptions): RenderPass {
-    return this.getRenderPass(name, priority, meshList, fboOptions);
-  }
-
-  /**
-   * 获取渲染 Pass
-   * @param name - 名称
-   * @param priority - 优先级
-   * @param meshList - Mesh 列表
-   * @param fboOptions - FBO 参数
-   * @returns
-   */
-  getRenderPass (name: string, priority: number, meshList: Mesh[], fboOptions: FBOOptions): RenderPass {
-    const cachedPass = this.renderPassCache.get(name);
-
-    if (cachedPass !== undefined) {
-      cachedPass.setMeshes([]);
-      meshList.forEach(mesh => { cachedPass.addMesh(mesh); });
-
-      return cachedPass;
-    } else {
-      const renderer = this.engine.renderer;
-      const renderPass = WebGLHelper.createRenderPass(renderer, name, priority, meshList, fboOptions);
-
-      this.renderPassCache.set(name, renderPass);
-
-      return renderPass;
-    }
   }
 
   /**

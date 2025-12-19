@@ -2,17 +2,14 @@
 import { Color } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
-import type { ItemRenderer } from '../../components';
 import { MaskableGraphic } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import type { Material } from '../../material';
-import { Texture } from '../../texture';
-import { applyMixins, isValidFontFamily } from '../../utils';
-import type { VFXItem } from '../../vfx-item';
+import { applyMixins } from '../../utils';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
+import type { ITextComponent } from './text-component-base';
+import { TextComponentBase } from './text-component-base';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -45,41 +42,76 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends MaskableGraphic {
+export class TextComponent extends MaskableGraphic implements ITextComponent {
   isDirty = true;
   /**
    * 文本行数
    */
   lineCount = 0;
+  textStyle: TextStyle;
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D | null;
+  textLayout: TextLayout;
+  text: string;
 
   /**
    * 每一行文本的最大宽度
    */
   protected maxLineWidth = 0;
-  protected readonly SCALE_FACTOR = 0.1;
-  protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
-  constructor (engine: Engine, props?: spec.TextComponentData) {
+  /**
+   * 初始文本宽度，用于计算缩放比例
+   */
+  private baseTextWidth = 0;
+
+  /**
+   * 初始 `transform.size.x`，用于按比例更新显示宽度
+   */
+  private baseScaleX = 1;
+
+  private getDefaultProps (): spec.TextComponentData {
+    return {
+      id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
+      item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
+      dataType: spec.DataType.TextComponent,
+      options: {
+        text: '默认文本',
+        fontFamily: 'AlibabaSans-BoldItalic',
+        fontSize: 40,
+        // 统一使用 0-1 颜色值
+        textColor: [1, 1, 1, 1],
+        fontWeight: spec.TextWeight.normal,
+        letterSpace: 0,
+        textAlign: 1,
+        fontStyle: spec.FontStyle.normal,
+        autoWidth: false,
+        textWidth: 200,
+        textHeight: 42,
+        lineHeight: 40.148,
+      },
+      renderer: {
+        renderMode: 1,
+        anchor: [0.5, 0.5],
+      },
+    };
+  }
+
+  constructor (engine: Engine) {
     super(engine);
 
     this.name = 'MText' + seed++;
 
-    if (props) {
-      this.fromData(props);
-    }
-
+    // 初始化canvas资源
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
 
-    if (!props) {
-      return;
-    }
+    // 使用默认值初始化
+    const defaultData = this.getDefaultProps();
 
-    const { options } = props;
+    const { options } = defaultData;
 
     this.updateWithOptions(options);
-    this.updateTexture();
   }
 
   override onUpdate (dt: number): void {
@@ -98,55 +130,64 @@ export class TextComponent extends MaskableGraphic {
 
     this.interaction = interaction;
 
+    this.resetState();
+
     // TextComponentBase
     this.updateWithOptions(options);
     this.renderText(options);
 
+    // 记录初始的 textWidth 和 x 缩放，用于后续按比例更新显示宽度
+    // 添加兜底值 1 防止除 0
+    this.baseTextWidth = options.textWidth || this.textLayout.width || 1;
+    this.baseScaleX = this.item.transform.size.x;
+
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
-
   }
 
-  updateWithOptions (options: spec.TextContentOptions) {
-    // OVERRIDE by mixins
+  private resetState (): void {
+    // 清理纹理资源
+    this.disposeTextTexture();
+
+    // 重置状态变量
+    this.isDirty = true;
+    this.lineCount = 0;
+    this.maxLineWidth = 0;
   }
 
-  updateTexture (flipY = true) {
-    // OVERRIDE by mixins
-  }
-}
-
-export class TextComponentBase {
-  textStyle: TextStyle;
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D | null;
-  textLayout: TextLayout;
-  text: string;
-  /***** mix 类型兼容用 *****/
-  isDirty: boolean;
-  engine: Engine;
-  material: Material;
-  lineCount: number;
-  item: VFXItem;
-  renderer: ItemRenderer;
-  /***** mix 类型兼容用 *****/
-
-  protected maxLineWidth: number;
-
-  private char: string[];
-
-  protected renderText (options: spec.TextContentOptions) {
-    this.updateTexture();
+  // 在 TextComponent 类内新增覆盖 setText
+  setText (value: string): void {
+    if (this.text === value) {
+      return;
+    }
+    this.text = value.toString();
+    // 设置文本后立即重算行数
+    this.lineCount = this.getLineCount(this.text);
+    this.isDirty = true;
   }
 
-  updateWithOptions (options: spec.TextContentOptions) {
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
+  /**
+   * 根据配置更新文本样式和布局
+   */
+  updateWithOptions (options: spec.TextContentOptions): void {
+    // 初始化 textStyle 和 textLayout
+    if (!this.textStyle) {
+      this.textStyle = new TextStyle(options);
+    } else {
+      this.textStyle.update(options);
+    }
+
+    if (!this.textLayout) {
+      this.textLayout = new TextLayout(options);
+    } else {
+      this.textLayout.update(options);
+    }
+
     this.text = options.text.toString();
-    this.lineCount = this.getLineCount(options.text, true);
+    this.lineCount = this.getLineCount(options.text);
   }
 
-  private getLineCount (text: string, init: boolean) {
+  getLineCount (text: string): number {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
 
@@ -156,7 +197,7 @@ export class TextComponentBase {
     let lineCount = 1;
     let x = 0;
 
-    // 设置context.font的字号，确保measureText能正确计算字宽
+    // 设置 context.font 的字号，确保 measureText 能正确计算字宽
     if (context) {
       context.font = this.getFontDesc(this.textStyle.fontSize);
     }
@@ -191,20 +232,20 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置字号大小
-   * @param value - 字号
-   * @returns
+   * 设置行高
+   * 行高表示每行占用的总高度
+   * @param value - 行高像素值
    */
-  setFontSize (value: number): void {
-    if (this.textStyle.fontSize === value) {
+  setLineHeight (value: number): void {
+    const fontSize = this.textStyle.fontSize;
+    //设置行高不能小于字号大小
+    const safe = Math.max(fontSize, value);
+
+    if (this.textLayout.lineHeight === safe) {
       return;
     }
-    // 保证字号变化后位置正常
-    const diff = this.textStyle.fontSize - value;
 
-    this.textLayout.lineHeight += diff;
-    this.textStyle.fontSize = value;
-
+    this.textLayout.lineHeight = safe;
     this.isDirty = true;
   }
 
@@ -236,20 +277,6 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置文本
-   * @param value - 文本内容
-   * @returns
-   */
-  setText (value: string): void {
-    if (this.text === value) {
-      return;
-    }
-    this.text = value.toString();
-    this.lineCount = this.getLineCount(value, false);
-    this.isDirty = true;
-  }
-
-  /**
    * 设置文本水平布局
    * @param value - 布局选项
    * @returns
@@ -259,19 +286,6 @@ export class TextComponentBase {
       return;
     }
     this.textLayout.textAlign = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置文本垂直布局
-   * @param value - 布局选项
-   * @returns
-   */
-  setTextBaseline (value: spec.TextBaseline): void {
-    if (this.textLayout.textBaseline === value) {
-      return;
-    }
-    this.textLayout.textBaseline = value;
     this.isDirty = true;
   }
 
@@ -289,21 +303,6 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置文本字体
-   * @param value - 文本字体
-   * @returns
-   */
-  setFontFamily (value: string): void {
-    if (this.textStyle.fontFamily === value && !isValidFontFamily(value)) {
-      console.warn('The font is either the current font or an risky font family.');
-
-      return;
-    }
-    this.textStyle.fontFamily = value;
-    this.isDirty = true;
-  }
-
-  /**
    * 设置外描边文本颜色
    * @param value - 颜色内容
    * @returns
@@ -313,85 +312,6 @@ export class TextComponentBase {
       return;
     }
     this.textStyle.outlineColor = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置外描边文本宽度
-   * @param value - 外描边宽度
-   * @returns
-   */
-  setOutlineWidth (value: number): void {
-    if (this.textStyle.outlineWidth === value) {
-      return;
-    }
-    this.textStyle.outlineWidth = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置阴影模糊
-   * @param value - 阴影模糊强度
-   * @returns
-   */
-  setShadowBlur (value: number): void {
-    if (this.textStyle.shadowBlur === value) {
-      return;
-    }
-    this.textStyle.shadowBlur = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置文本溢出模式
-   *
-   * - clip: 当文本内容超出边界框时，多余的会被截断。
-   * - display: 该模式下会显示所有文本，会自动调整文本字号以保证显示完整。
-   * > 当存在多行时，部分行内文本可能存在文本字号变小的情况，其他行为正常情况
-   *
-   * @param overflow - 文本溢出模式
-   */
-  setOverflow (overflow: spec.TextOverflow) {
-    this.textLayout.overflow = overflow;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置阴影颜色
-   * @param value - 阴影颜色
-   * @returns
-   */
-  setShadowColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.shadowColor === value) {
-      return;
-    }
-    this.textStyle.shadowColor = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置阴影水平偏移距离
-   * @param value - 水平偏移距离
-   * @returns
-   */
-  setShadowOffsetX (value: number): void {
-    if (this.textStyle.shadowOffsetX === value) {
-      return;
-    }
-    this.textStyle.shadowOffsetX = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置阴影水平偏移距离
-   * @param value - 水平偏移距离
-   * @returns
-   */
-  setShadowOffsetY (value: number): void {
-    if (this.textStyle.shadowOffsetY === value) {
-      return;
-    }
-    this.textStyle.shadowOffsetY = value;
     this.isDirty = true;
   }
 
@@ -410,28 +330,14 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置自适应宽高开关
-   * @param value - 是否自适应宽高开关
-   * @returns
-   */
-  setAutoWidth (value: boolean): void {
-    if (this.textLayout.autoWidth === value) {
-      return;
-    }
-
-    this.textLayout.autoWidth = value;
-    this.isDirty = true;
-  }
-
-  /**
    * 更新文本
    * @returns
    */
-  updateTexture (flipY = true) {
+  protected updateTexture (flipY = true): void {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
-    const context = this.context;
+
     const style = this.textStyle;
     const layout = this.textLayout;
     const fontScale = style.fontScale;
@@ -443,8 +349,7 @@ export class TextComponentBase {
     const lineHeight = layout.lineHeight * fontScale;
 
     style.fontDesc = this.getFontDesc(fontSize);
-    this.char = (this.text || '').split('');
-    this.canvas.width = width;
+    const char = (this.text || '').split('');
 
     if (layout.autoWidth) {
       this.canvas.height = finalHeight * fontScale;
@@ -455,164 +360,229 @@ export class TextComponentBase {
 
     const height = this.canvas.height;
 
-    // fix bug 1/255
-    context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
-
-    if (!flipY) {
-      context.translate(0, height);
-      context.scale(1, -1);
-    }
-    // canvas size 变化后重新刷新 context
-    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
-    } else {
-      context.font = style.fontDesc;
-    }
-    context.clearRect(0, 0, width, height);
-
-    if (style.hasShadow) {
-      this.setupShadow();
-    }
-
-    if (style.isOutlined) {
-      this.setupOutline();
-    }
-
-    // 文本颜色
-    context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
-    const charsInfo: CharInfo[] = [];
-
-    let x = 0;
-    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
-    let charsArray = [];
-    let charOffsetX = [];
-
-    for (let i = 0; i < this.char.length; i++) {
-      const str = this.char[i];
-      const textMetrics = context.measureText(str);
-
-      // 和浏览器行为保持一致
-      x += layout.letterSpace * fontScale;
-
-      if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
-        charsInfo.push({
-          y,
-          width: x,
-          chars: charsArray,
-          charOffsetX,
-        });
-        x = 0;
-        y += lineHeight;
-        charsArray = [];
-        charOffsetX = [];
+    this.renderToTexture(width, height, flipY, context => {
+      // canvas size 变化后重新刷新 context
+      if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
+        context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+      } else {
+        context.font = style.fontDesc;
       }
 
-      if (str !== '\n') {
-        charsArray.push(str);
-        charOffsetX.push(x);
-
-        x += textMetrics.width;
+      if (style.hasShadow) {
+        this.setupShadow();
       }
-    }
-    charsInfo.push({
-      y,
-      width: x,
-      chars: charsArray,
-      charOffsetX,
-    });
 
-    charsInfo.forEach(charInfo => {
-      const x = layout.getOffsetX(style, charInfo.width);
+      if (style.isOutlined) {
+        this.setupOutline();
+      }
 
-      charInfo.chars.forEach((str, i) => {
-        if (style.isOutlined) {
-          context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
+      // textColor 统一是 0-1，写入 canvas 时乘 255
+      const [r, g, b, a] = style.textColor;
+
+      context.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+
+      const charsInfo: CharInfo[] = [];
+      let x = 0;
+      let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
+      let charsArray = [];
+      let charOffsetX = [];
+
+      for (let i = 0; i < char.length; i++) {
+        const str = char[i];
+        const textMetrics = context.measureText(str);
+
+        // 和浏览器行为保持一致
+        x += layout.letterSpace * fontScale;
+
+        if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
+          charsInfo.push({
+            y,
+            width: x,
+            chars: charsArray,
+            charOffsetX,
+          });
+          x = 0;
+          y += lineHeight;
+          charsArray = [];
+          charOffsetX = [];
         }
 
-        context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
+        if (str !== '\n') {
+          charsArray.push(str);
+          charOffsetX.push(x);
+          x += textMetrics.width;
+        }
+      }
+
+      charsInfo.push({
+        y,
+        width: x,
+        chars: charsArray,
+        charOffsetX,
       });
+
+      charsInfo.forEach(charInfo => {
+        const x = layout.getOffsetX(style, charInfo.width);
+
+        charInfo.chars.forEach((str, i) => {
+          if (style.isOutlined) {
+            context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
+          }
+          context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
+        });
+      });
+
+      if (style.hasShadow) {
+        context.shadowColor = 'transparent';
+      }
     });
-
-    if (style.hasShadow) {
-      context.shadowColor = 'transparent';
-    }
-
-    //与 toDataURL() 两种方式都需要像素读取操作
-    const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    const texture = Texture.createWithData(
-      this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
-      {
-        flipY,
-        magFilter: glContext.LINEAR,
-        minFilter: glContext.LINEAR,
-        wrapS: glContext.CLAMP_TO_EDGE,
-        wrapT: glContext.CLAMP_TO_EDGE,
-      },
-    );
-
-    this.disposeTextTexture();
-
-    this.renderer.texture = texture;
-    this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
   }
 
-  protected disposeTextTexture () {
-    const texture = this.renderer.texture;
+  renderText (options: spec.TextContentOptions) {
+    this.updateTexture();
+  }
 
-    if (texture && texture !== this.engine.whiteTexture) {
-      texture.dispose();
+  setAutoWidth (value: boolean): void {
+    const layout = this.textLayout;
+    const normalizedValue = !!value;
+
+    if (layout.autoWidth === normalizedValue) {
+      return;
+    }
+    layout.autoWidth = normalizedValue;
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置文本框宽度
+   * 手动设置宽度时会自动关闭 `autoWidth`
+   * 同时会按比例更新 `transform.size.x`，让 UI 框宽度也跟着变化
+   * @param value - 文本框宽度
+   */
+  setTextWidth (value: number): void {
+    const width = Math.max(0, Number(value) || 0);
+    const layout = this.textLayout;
+
+    // 宽度没变且已是非 autoWidth 模式,直接返回
+    if (layout.width === width && layout.autoWidth === false) {
+      return;
+    }
+
+    // 手动设置宽度时关闭 autoWidth
+    layout.autoWidth = false;
+    layout.width = width;
+
+    // 按当前 overflow 模式重新计算行数和 maxLineWidth
+    this.lineCount = this.getLineCount(this.text || '');
+    this.isDirty = true;
+
+    // 同步更新外层显示宽度(按比例缩放 transform)
+    // 这样 UI 框的视觉宽度也会跟着文本宽度变化
+    if (this.baseTextWidth > 0) {
+      const scale = width / this.baseTextWidth;
+
+      this.item.transform.size.x = this.baseScaleX * scale;
     }
   }
 
-  private getFontDesc (size?: number): string {
-    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
+  /**
+   * 设置文本框高度
+   * @param value - 文本框高度
+   */
+  setTextHeight (value: number): void {
+    const height = Math.max(0, Number(value) || 0);
 
-    if (!DEFAULT_FONTS.includes(fontFamily)) {
-      fontDesc += `"${fontFamily}"`;
-    } else {
-      fontDesc += fontFamily;
-    }
-    if (textWeight !== spec.TextWeight.normal) {
-      fontDesc = `${textWeight} ${fontDesc}`;
+    if (height === 0) {
+      return;
     }
 
-    if (fontStyle !== spec.FontStyle.normal) {
-      fontDesc = `${fontStyle} ${fontDesc}`;
+    const layout = this.textLayout;
+
+    if (layout.height === height) {
+      return;
     }
 
-    return fontDesc;
+    layout.height = height;
+    this.isDirty = true;
   }
 
-  private setupOutline (): void {
-    const context = this.context;
-    const { outlineColor, outlineWidth } = this.textStyle;
-    const [r, g, b, a] = outlineColor;
-
-    if (context) {
-      context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.lineWidth = outlineWidth * 2;
+  setFontSize (value: number): void {
+    if (this.textStyle.fontSize === value) {
+      return;
     }
+    // 保证字号变化后位置正常
+    const diff = this.textStyle.fontSize - value;
+    const layout = this.textLayout;
+
+    layout.lineHeight += diff;
+    this.textStyle.fontSize = value;
+    this.isDirty = true;
   }
 
-  private setupShadow (): void {
-    const context = this.context;
-    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
-    const [r, g, b, a] = outlineColor;
+  setOutlineWidth (value: number): void {
+    const v = Math.max(0, Number(value) || 0);
 
-    if (context) {
-      context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.shadowBlur = shadowBlur;
-      context.shadowOffsetX = shadowOffsetX;
-      context.shadowOffsetY = -shadowOffsetY;
+    if (this.textStyle.outlineWidth === v) {
+      return;
     }
+    this.textStyle.outlineWidth = v;
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置是否启用文本描边
+   * @param value - 是否启用描边
+   * @returns
+   */
+  setOutlineEnabled (value: boolean): void {
+    if (this.textStyle.isOutlined === value) {
+      return;
+    }
+    this.textStyle.isOutlined = value;
+    this.isDirty = true;
+  }
+
+  setShadowBlur (value: number): void {
+    const v = Math.max(0, Number(value) || 0);
+
+    if (this.textStyle.shadowBlur === v) {
+      return;
+    }
+    this.textStyle.shadowBlur = v;
+    this.isDirty = true;
+  }
+
+  // setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
+  setShadowColor (value: spec.RGBAColorValue): void {
+    const v = value ?? [0, 0, 0, 1];
+
+    if (this.textStyle.shadowColor === v) {
+      return;
+    }
+    this.textStyle.shadowColor = v;
+    this.isDirty = true;
+  }
+
+  setShadowOffsetX (value: number): void {
+    const v = Number(value) || 0;
+
+    if (this.textStyle.shadowOffsetX === v) {
+      return;
+    }
+    this.textStyle.shadowOffsetX = v;
+    this.isDirty = true;
+  }
+
+  setShadowOffsetY (value: number): void {
+    const v = Number(value) || 0;
+
+    if (this.textStyle.shadowOffsetY === v) {
+      return;
+    }
+    this.textStyle.shadowOffsetY = v;
+    this.isDirty = true;
   }
 }
 

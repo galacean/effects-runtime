@@ -16,3 +16,4 @@ import './texture.spec';
 import './transform.spec';
 import './utils.spec';
 import './event-emitter.spec';
+import './render-target-pool.spec';

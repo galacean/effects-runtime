@@ -2,17 +2,15 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import { MaskableGraphic, EffectComponent } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { TextureSourceType, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { FrameContext } from '../timeline/playable';
-import { Playable, PlayableAsset } from '../timeline/playable';
-import { TrackAsset } from '../timeline/track';
-import { TrackMixerPlayable } from '../timeline/playables/track-mixer-playable';
+import type { FrameContext } from '../timeline';
+import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
-import type { Geometry } from '../../render/geometry';
+import type { Geometry } from '../../render';
 import { rotateVec2 } from '../../shape';
+import { MaskableGraphic, EffectComponent } from '../../components';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options
@@ -90,8 +88,7 @@ export class ComponentTimePlayable extends Playable {
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends MaskableGraphic {
   time = 0;
-  duration = 0;
-  loop = true;
+  duration = 1;
   /**
    * @internal
   */
@@ -111,16 +108,17 @@ export class SpriteComponent extends MaskableGraphic {
   override onUpdate (dt: number): void {
     let time = this.time;
     const duration = this.duration;
+    const textureAnimation = this.textureSheetAnimation;
+    const loop = textureAnimation?.loop ?? true;
 
-    if (time > duration && this.loop) {
+    if (time > duration && loop) {
       time = time % duration;
     }
+
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
-    const ta = this.textureSheetAnimation;
     const { video } = this.renderer.texture.source as Texture2DSourceOptionsVideo;
 
     if (video) {
-
       if (time === 0) {
         video.pause();
       } else {
@@ -128,8 +126,8 @@ export class SpriteComponent extends MaskableGraphic {
       }
       this.renderer.texture.uploadCurrentVideoFrame();
     }
-    if (ta) {
-      const total = ta.total || (ta.row * ta.col);
+    if (textureAnimation) {
+      const total = textureAnimation.total || (textureAnimation.row * textureAnimation.col);
       let texRectX = 0;
       let texRectY = 0;
       let texRectW = 1;
@@ -153,20 +151,20 @@ export class SpriteComponent extends MaskableGraphic {
       let dx, dy;
 
       if (flip) {
-        dx = 1 / ta.row * texRectW;
-        dy = 1 / ta.col * texRectH;
+        dx = 1 / textureAnimation.row * texRectW;
+        dy = 1 / textureAnimation.col * texRectH;
       } else {
-        dx = 1 / ta.col * texRectW;
-        dy = 1 / ta.row * texRectH;
+        dx = 1 / textureAnimation.col * texRectW;
+        dy = 1 / textureAnimation.row * texRectH;
       }
       let texOffset;
 
-      if (ta.animate) {
+      if (textureAnimation.animate) {
         const frameIndex = Math.round(life * (total - 1));
-        const yIndex = Math.floor(frameIndex / ta.col);
-        const xIndex = frameIndex - yIndex * ta.col;
+        const yIndex = Math.floor(frameIndex / textureAnimation.col);
+        const xIndex = frameIndex - yIndex * textureAnimation.col;
 
-        texOffset = flip ? [dx * yIndex, dy * (ta.col - xIndex)] : [dx * xIndex, dy * (1 + yIndex)];
+        texOffset = flip ? [dx * yIndex, dy * (textureAnimation.col - xIndex)] : [dx * xIndex, dy * (1 + yIndex)];
       } else {
         texOffset = [0, dy];
       }
@@ -221,8 +219,8 @@ export class SpriteComponent extends MaskableGraphic {
         const positionX = aPos[positionOffset];
         const positionY = aPos[positionOffset + 1];
 
-        tempPosition[0] = positionX ;
-        tempPosition[1] = positionY ;
+        tempPosition[0] = positionX;
+        tempPosition[1] = positionY;
         rotateVec2(tempPosition, tempPosition, angle);
 
         aUV[uvOffset] = (tempPosition[0] + 0.5) * width + x;
@@ -239,8 +237,8 @@ export class SpriteComponent extends MaskableGraphic {
     for (const subMesh of geometry.subMeshes) {
       this.geometry.subMeshes.push({
         offset: subMesh.offset,
-        indexCount:  subMesh.indexCount,
-        vertexCount:  subMesh.vertexCount,
+        indexCount: subMesh.indexCount,
+        vertexCount: subMesh.vertexCount,
       });
     }
   }
@@ -331,6 +329,5 @@ export class SpriteComponent extends MaskableGraphic {
 
     //@ts-expect-error
     this.duration = data.duration ?? this.item.duration;
-    this.loop = data.loop ?? true;
   }
 }

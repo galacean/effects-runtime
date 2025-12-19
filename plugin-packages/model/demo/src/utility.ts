@@ -167,7 +167,7 @@ export function createPlayer (env: string, showFPS = true) {
       }
     );
 
-    player.ticker.add(meter.tick);
+    player.ticker?.add(meter.tick);
     // @ts-expect-error
     player.meter = meter;
   }

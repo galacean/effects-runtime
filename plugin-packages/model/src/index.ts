@@ -1,9 +1,9 @@
 import * as EFFECTS from '@galacean/effects';
 import type { spec } from '@galacean/effects';
-import { VFXItem, logger, registerPlugin } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { ModelPlugin } from './plugin';
 
-registerPlugin('model', ModelPlugin, VFXItem);
+registerPlugin('model', ModelPlugin);
 
 /**
  * 插件版本号

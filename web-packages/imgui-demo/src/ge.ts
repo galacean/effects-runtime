@@ -1,5 +1,5 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
+import { GLSLVersion, Geometry, Material, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -8,7 +8,7 @@ import '@galacean/effects-plugin-spine';
 import { Selection } from './core/selection';
 import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
-import * as animationScene from './ffd-demo.json';
+import * as animationScene from './demo.json';
 
 export class GalaceanEffects {
   static player: Player;
@@ -19,10 +19,10 @@ export class GalaceanEffects {
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促\
 
     GalaceanEffects.player = new Player({ container });
-    GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
+    GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL(JSON.parse(JSON.stringify(animationScene)));
+    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*6SdxS7QndJAAAAAAQGAAAAgAelB4AQ');
   }
 
   static playURL (url: string, use3DConverter = false) {
@@ -33,19 +33,11 @@ export class GalaceanEffects {
       void converter.processScene(url).then(async (scene: any) => {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
-        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-          name: 'OutlinePass',
-          priority: RenderPassPriorityPostprocess,
-          meshOrder: OrderType.ascending,
-        }),);
+        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer));
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
-          name: 'OutlinePass',
-          priority: RenderPassPriorityPostprocess,
-          meshOrder: OrderType.ascending,
-        }));
+        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer));
       });
     }
 
@@ -109,7 +101,11 @@ export class OutlinePass extends RenderPass {
   }
   `;
 
-  override configure (renderer: Renderer): void {
+  constructor (renderer: Renderer) {
+    super(renderer);
+    this.priority = 5000;
+    this.name = 'OutlinePass';
+
     if (!this.geometry) {
       this.geometry = Geometry.create(renderer.engine, {
         attributes: {
@@ -146,6 +142,10 @@ export class OutlinePass extends RenderPass {
       this.material.depthTest = true;
       this.material.blending = true;
     }
+  }
+
+  override configure (renderer: Renderer): void {
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {

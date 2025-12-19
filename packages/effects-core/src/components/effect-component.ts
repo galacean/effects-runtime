@@ -29,7 +29,7 @@ export class EffectComponent extends MeshComponent {
     this.time += dt / 1000;
   }
 
-  override fromData (data: unknown): void {
+  override fromData (data: spec.EffectComponentData): void {
     super.fromData(data);
     this.material = this.materials[0];
   }

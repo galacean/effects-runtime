@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-model",
-  "version": "2.7.2",
+  "version": "2.8.0",
   "description": "Galacean Effects player model plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",

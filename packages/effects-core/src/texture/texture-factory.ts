@@ -4,8 +4,8 @@ import { TextureSourceType } from './types';
 import { glContext } from '../gl';
 import { isString } from '../utils';
 import { loadBinary, loadImage, loadVideo } from '../downloader';
-import { getKTXTextureOptions } from './ktx-texture';
 import type { Texture } from './texture';
+import { textureLoaderRegistry } from './texture-loader';
 
 export class TextureFactory {
   reloadPending: Record<string, boolean>;
@@ -107,11 +107,32 @@ export class TextureFactory {
     } else if (type === TextureSourceType.compressed) {
       const buffer = await loadBinary(url);
 
-      return {
-        ...getKTXTextureOptions(buffer),
-        ...config,
-        sourceFrom: { url, type: TextureSourceType.compressed },
-      };
+      const loader = textureLoaderRegistry.getLoader('ktx2');
+
+      if (loader) {
+        try {
+          const textureData = await loader.loadFromBuffer(buffer);
+
+          if (textureData.sourceType === TextureSourceType.compressed) {
+            return {
+              sourceType: textureData.sourceType,
+              type: textureData.type,
+              target: textureData.target,
+              internalFormat: textureData.internalFormat,
+              format: textureData.format,
+              mipmaps: textureData.mipmaps,
+              minFilter: glContext.LINEAR,
+              magFilter: glContext.LINEAR,
+              sourceFrom,
+              ...config,
+            };
+          }
+        } catch (e) {
+          throw new Error(`Failed to parse KTX2 from ${sourceFrom?.url ?? 'buffer'}: ${(e as Error).message || e}`);
+        }
+      } else {
+        throw new Error('KTX2 loader not found. Please register it first.');
+      }
     } else if (type === TextureSourceType.mipmaps) {
       if (bin) {
         const data = await loadBinary(bin);

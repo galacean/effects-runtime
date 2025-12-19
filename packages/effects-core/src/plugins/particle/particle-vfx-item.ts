@@ -37,6 +37,9 @@ export class ParticleBehaviourPlayable extends Playable {
       ) {
         particleSystem.reset();
       }
+
+      // TODO: There is one less conversion from second to millisecond here,
+      // which is retained for frame test.
       particleSystem.update(this.time - particleSystem.time);
     }
     this.lastTime = this.time;

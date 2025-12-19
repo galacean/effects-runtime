@@ -10,6 +10,8 @@ const container = document.getElementById('J-container');
       interactive: true,
     });
 
+    player.skipPointerMovePicking = false;
+
     player.on('play', ({ time }) => {
       console.info(`[player play] - player started playing at ${time}`);
     });
@@ -18,6 +20,15 @@ const container = document.getElementById('J-container');
     });
     player.on('click', e => {
       console.info(`[player click] - item [${e.name}] clicked.`);
+    });
+    player.on('pointerdown', e => {
+      console.info(`[player pointerdown] - item [${e.pointerCurrentRaycast.item?.name}] pointerdown.`);
+    });
+    player.on('pointerup', e => {
+      console.info(`[player pointerup] - item [${e.pointerCurrentRaycast.item?.name}] pointerup.`);
+    });
+    player.on('pointermove', e => {
+      console.info('[player pointermove]', e.position, e.delta);
     });
     player.on('message', e => {
       console.info(`[player message] - item [${e.name}] trigger message, type [${e.phrase}].`);
@@ -45,8 +56,23 @@ const container = document.getElementById('J-container');
     composition.on('pause', () => {
       console.info('[composition pause] - composition paused');
     });
+    composition.on('click', e => {
+      console.info(`[composition click] - item [${e.item?.name}] click.`);
+    });
+    composition.on('pointerdown', e => {
+      console.info(`[composition pointerdown] - item [${e.pointerCurrentRaycast.item?.name}] pointerdown.`);
+    });
+    composition.on('pointerup', e => {
+      console.info(`[composition pointerup] - item [${e.pointerCurrentRaycast.item?.name}] pointerup.`);
+    });
     item?.on('click', e => {
       console.info(`[item click] - item [${e.name}] clicked.`);
+    });
+    item?.on('pointerdown', () => {
+      console.info(`[item pointerdown] - item [${item.name}] pointerdown.`);
+    });
+    item?.on('pointerup', () => {
+      console.info(`[item pointerup] - item [${item.name}] pointerup.`);
     });
   } catch (e) {
     console.error('biz', e);

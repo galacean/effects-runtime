@@ -1,35 +1,25 @@
 import type { Composition, Disposable } from '@galacean/effects';
-import { AbstractPlugin } from '@galacean/effects';
+import { Plugin } from '@galacean/effects';
 import { CompositionTransformerAcceler } from './composition-transformer-acceler';
 import type { OrientationAdapterAcceler } from './orientation-adapter-acceler';
 import { getAccelerAdapter } from './orientation-adapter-acceler';
 
-export class OrientationPluginLoader extends AbstractPlugin implements Disposable {
+export class OrientationPluginLoader extends Plugin implements Disposable {
   override order = 90;
 
   private adapter: OrientationAdapterAcceler | null = null;
 
-  override onCompositionConstructed () {
+  override onCompositionCreated (composition: Composition) {
     this.adapter = getAdapter();
     this.adapter?.connect();
     this.bindAccelerDocumentEvent();
-  }
 
-  override onCompositionReset (composition: Composition): void {
     const transformer = composition.loaderData.deviceTransformer = new CompositionTransformerAcceler(composition);
 
     this.adapter?.addTransformer(transformer);
   }
 
-  override onCompositionUpdate (composition: Composition) {
-    const transformer = composition.loaderData.deviceTransformer as CompositionTransformerAcceler;
-
-    if (transformer) {
-      transformer.updateOrientation();
-    }
-  }
-
-  override onCompositionDestroyed (composition: Composition): void {
+  override onCompositionDestroy (composition: Composition): void {
     const empty = this.adapter?.removeTransformer(composition.loaderData.deviceTransformer);
 
     if (empty) {

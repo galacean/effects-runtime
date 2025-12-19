@@ -2,24 +2,24 @@ import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
-import { CompositionComponent } from './comp-vfx-item';
+import type { Component, PostProcessVolume } from './components';
+import { CompositionComponent } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
-import type { PluginSystem } from './plugin-system';
-import type { EventSystem, Plugin, Region } from './plugins';
+import { PluginSystem } from './plugin-system';
+import type { EventSystem, Region } from './plugins';
+import { PlayState } from './plugins';
 import type { Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
-import { assertExist, logger, noop, removeItem } from './utils';
+import { assertExist, logger, noop } from './utils';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { Component, PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
-import { PlayState } from './plugins/timeline/playable';
 
 /**
  * 合成统计信息
@@ -105,7 +105,7 @@ export interface CompositionProps {
    * @param message
    * @returns
    */
-  handleItemMessage: (message: MessageItem) => void,
+  onItemMessage?: (message: MessageItem) => void,
   /**
    *
    */
@@ -185,10 +185,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly event?: EventSystem;
   /**
-   * 插件系统，保存当前加载的插件对象，负责插件事件和创建插件的 Item 对象
-   */
-  readonly pluginSystem: PluginSystem;
-  /**
    * 当前合成名称
    */
   readonly name: string;
@@ -229,28 +225,22 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   postProcessingEnabled = false;
   /**
+   * 合成中消息元素创建/销毁时触发的回调
+   */
+  onItemMessage?: (message: MessageItem) => void;
+  /**
    * 销毁状态位
    */
   protected destroyed = false;
-  /**
-   * 是否是否每次渲染时清除 RenderFrame 颜色缓存
-   */
-  protected readonly keepColorBuffer: boolean;
-  protected readonly postLoaders: Plugin[] = [];
   protected rootComposition: CompositionComponent;
 
   /**
    * 合成暂停/播放 标识
    */
-  private paused = false;
+  private paused = true;
   private isEndCalled = false;
   private _textures: Texture[] = [];
   private videos: HTMLVideoElement[] = [];
-
-  /**
-   * 合成中消息元素创建/销毁时触发的回调
-   */
-  private handleItemMessage: (message: MessageItem) => void;
 
   /**
    * @internal
@@ -295,10 +285,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       speed = 1,
       baseRenderOrder = 0,
       renderer, event, width, height,
-      handleItemMessage,
+      onItemMessage,
     } = props;
 
     this.renderer = renderer;
+    this.renderer.engine.addComposition(this);
     this._textures = scene.textures;
 
     for (const key of Object.keys(scene.assets)) {
@@ -361,8 +352,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    this.pluginSystem = scene.pluginSystem;
-    this.pluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
@@ -371,12 +360,15 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     });
     this.url = scene.url;
     this.interactive = true;
-    this.handleItemMessage = handleItemMessage;
+    if (onItemMessage) {
+      this.onItemMessage = onItemMessage;
+    }
     this.createRenderFrame();
 
     Composition.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
-    this.pluginSystem.resetComposition(this, this.renderFrame);
+
+    PluginSystem.initializeComposition(this, scene);
   }
 
   /**
@@ -397,7 +389,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成中所有元素
    */
   get items (): VFXItem[] {
-    return this.rootComposition.items;
+    return this.rootItem.getDescendants();
   }
 
   /**
@@ -549,12 +541,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderFrame = new RenderFrame({
       camera: this.camera,
       renderer: this.renderer,
-      keepColorBuffer: this.keepColorBuffer,
       globalVolume: this.globalVolume,
       postProcessingEnabled: this.postProcessingEnabled,
     });
-    // TODO 考虑放到构造函数
-    this.renderFrame.cachedTextures = this.textures;
   }
 
   /**
@@ -577,7 +566,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   addItem (item: VFXItem) {
-    this.items.push(item);
     item.setParent(this.rootItem);
   }
 
@@ -616,21 +604,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.isEnded = false;
     this.isEndCalled = false;
     this.rootComposition.time = 0;
-    this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
-  prepareRender () {
-    const frame = this.renderFrame;
-
-    this.postLoaders.length = 0;
-    this.pluginSystem.plugins.forEach(loader => {
-      if (loader.prepareRenderFrame(this, frame)) {
-        this.postLoaders.push(loader);
-      }
-    });
-
-    this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
-  }
+  prepareRender () { }
 
   /**
    * 合成更新，针对所有 item 的更新
@@ -651,9 +627,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.updateCompositionTime(deltaTime * this.speed / 1000);
     const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
-
-    // 更新 model-tree-plugin
-    this.updatePluginLoaders(deltaTimeInMs);
 
     this.sceneTicking.update.tick(deltaTimeInMs);
     this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
@@ -680,14 +653,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private updateCamera () {
     this.camera.updateMatrix();
-  }
-
-  /**
-   * 插件更新，来自 CompVFXItem 的更新调用
-   * @param deltaTime - 更新的时间步长
-   */
-  private updatePluginLoaders (deltaTime: number) {
-    this.pluginSystem.plugins.forEach(loader => loader.onCompositionUpdate(this, deltaTime));
   }
 
   /**
@@ -807,7 +772,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.handleItemMessage({
+      this.onItemMessage?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -831,7 +796,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM 的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.handleItemMessage({
+      this.onItemMessage?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
@@ -852,19 +817,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
-    if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.EndBehavior.freeze) {
-        const contentItems = item.getComponent(CompositionComponent).items;
-
-        contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));
-      }
-    } else {
-      // this.content.removeItem(item);
-      // 预合成中的元素移除
-      // this.refContent.forEach(content => content.removeItem(item));
-      removeItem(this.items, item);
-      this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, item));
-    }
+    // if (item.type !== spec.ItemType.composition) {
+    // this.content.removeItem(item);
+    // 预合成中的元素移除
+    // this.refContent.forEach(content => content.removeItem(item));
+    // removeItem(this.items, item);
+    // }
   }
 
   lost (e: Event): void {
@@ -904,17 +862,21 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    this.pluginSystem?.destroyComposition(this);
+    PluginSystem.destroyComposition(this);
+
     this.update = () => {
       if (!__DEBUG__) {
         logger.error(`Update disposed composition: ${this.name}.`);
       }
     };
-    this.dispose = noop;
 
-    if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+    this.dispose = noop;
+    this.renderer.engine.removeComposition(this);
+
+    if (this.getEngine().env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
+
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
       clearStencil: 0,
