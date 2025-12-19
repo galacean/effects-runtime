@@ -5,11 +5,7 @@ import type { FancyConfig } from '@galacean/effects-core';
  * 这些配置展示了各种花字层的组合方式
  */
 export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
-  none: {
-    layers: [
-      // 空数组，表示"没有额外 JSON 配置"，将使用 core 默认样式
-    ],
-  },
+  none: { layers: [] },
   'single-stroke': {
     layers: [
       { kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } },
@@ -30,7 +26,6 @@ export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
     layers: [
       {
         kind: 'single-stroke',
-        category: 'base',
         params: {
           width: 3,
           color: [0, 0, 0, 1],
@@ -38,7 +33,6 @@ export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
         decorations: [
           {
             kind: 'shadow',
-            category: 'decorative',
             params: {
               color: [0, 0, 0, 0.6],
               blur: 8,
@@ -50,7 +44,6 @@ export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
       },
       {
         kind: 'gradient',
-        category: 'base',
         params: {
           colors: [
             [1, 0, 0, 1],
@@ -65,14 +58,12 @@ export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
     layers: [
       {
         kind: 'solid-fill',
-        category: 'base',
         params: {
           color: [0, 0, 0, 1],
         },
         decorations: [
           {
             kind: 'shadow',
-            category: 'decorative',
             params: {
               color: [0, 0, 0, 0.8],
               blur: 10,
@@ -89,7 +80,9 @@ export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
       {
         kind: 'texture',
         params: {
-          imageUrl: 'https://gw.alipayobjects.com/mdn/rms_2e421e/afts/img/A*fRtNTKrsq3YAAAAAAAAAAAAAARQnAQ',
+          pattern: {
+            imageUrl: 'https://gw.alipayobjects.com/mdn/rms_2e421e/afts/img/A*fRtNTKrsq3YAAAAAAAAAAAAAARQnAQ',
+          },
         },
       },
     ],

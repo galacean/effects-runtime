@@ -3,7 +3,6 @@ import type {
   FancyRenderStyle,
   FancyRenderLayer,
   FancyConfig,
-  DecorativeLayerConfig,
 } from './fancy-text/fancy-types';
 
 function normalizeColor (rgba: number[]): [number, number, number, number] {
@@ -105,9 +104,6 @@ export class TextStyle {
       fontWeight = 'normal',
       fontStyle = 'normal',
       fontFamily = 'sans-serif',
-      // 模拟：options 可能带 fancyConfig
-      // @ts-expect-error
-      fancyConfig,
     } = options;
 
     this.textColor = normalizeColor([...textColor]);
@@ -151,12 +147,13 @@ export class TextStyle {
       this.fontOffset += this.fontSize * Math.tan(12 * 0.0174532925);
     }
 
-    // 关键：初始化花字配置
-    if (fancyConfig && fancyConfig.layers && fancyConfig.layers.length > 0) {
-      // 新格式：解析为 FancyRenderStyle
-      this.fancyRenderStyle = TextStyle.parseFancyConfig(fancyConfig, this.textColor);
+    // 只使用编辑器给的平铺结果
+    const frs = (options as unknown as { fancyRenderStyle?: FancyRenderStyle }).fancyRenderStyle;
+
+    if (frs?.layers?.length) {
+      this.fancyRenderStyle = frs;
     } else {
-    // 没有 JSON：使用基础样式（none）
+      // 没给花字：使用基础样式（由 outline/shadow/textColor 决定）
       this.fancyRenderStyle = this.getBaseRenderStyle();
     }
   }
@@ -171,7 +168,6 @@ export class TextStyle {
     if (this.hasShadow) {
       layers.push({
         kind: 'shadow',
-        category: 'decorative',
         params: {
           color: this.shadowColor,
           blur: this.shadowBlur,
@@ -185,7 +181,6 @@ export class TextStyle {
     if (this.isOutlined && this.outlineWidth > 0) {
       layers.push({
         kind: 'single-stroke',
-        category: 'base',
         params: {
           width: this.outlineWidth,
           color: this.outlineColor,
@@ -197,7 +192,6 @@ export class TextStyle {
     // 3. 填充
     layers.push({
       kind: 'solid-fill',
-      category: 'base',
       params: {
         color: this.textColor,
       },
@@ -223,35 +217,33 @@ export class TextStyle {
    * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色（可传 this.textColor）
    * @returns FancyRenderStyle - 扁平化后的渲染层配置
    */
-  static parseFancyConfig (config: FancyConfig, fallbackFillColor?: number[]): FancyRenderStyle {
+  static parseFancyConfig (config: FancyConfig, fallbackFillColor?: spec.vec4): FancyRenderStyle {
     const layers: FancyRenderLayer[] = [];
     const srcLayers = config.layers || [];
+    const fallback = fallbackFillColor ?? ([0, 0, 0, 1] as spec.vec4);
 
     if (srcLayers.length === 0) {
       layers.push({
         kind: 'solid-fill',
-        category: 'base',
         params: {
-          color: normalizeColor(fallbackFillColor ?? [0, 0, 0, 1]),
+          color: fallback,
         },
       });
     } else {
       for (const src of srcLayers) {
         // 1. 如果是 BaseLayerConfig，先展开 decorations
-        const srcAny = src as any;
-        const decorations = srcAny.decorations as DecorativeLayerConfig[] | undefined;
+        const decorations = src.decorations;
 
         if (decorations && decorations.length > 0) {
           for (const d of decorations) {
             if (d.kind === 'shadow') {
               layers.push({
                 kind: 'shadow',
-                category: 'decorative',
                 params: {
-                  color: normalizeColor(d.params?.color ?? [0, 0, 0, 0.8]),
-                  blur: d.params?.blur ?? 5,
-                  offsetX: d.params?.offsetX ?? 0,
-                  offsetY: d.params?.offsetY ?? 0,
+                  color: d.params.color,
+                  blur: d.params.blur ?? 5,
+                  offsetX: d.params.offsetX ?? 0,
+                  offsetY: d.params.offsetY ?? 0,
                 },
               });
             }
@@ -264,11 +256,10 @@ export class TextStyle {
           case 'single-stroke': {
             layers.push({
               kind: 'single-stroke',
-              category: 'base',
               params: {
-                width: srcAny.params?.width,
-                color: normalizeColor(srcAny.params?.color),
-                unit: srcAny.params?.unit ?? 'px',
+                width: src.params.width,
+                color: src.params.color,
+                unit: src.params.unit ?? 'px',
               },
             });
 
@@ -277,24 +268,19 @@ export class TextStyle {
           case 'solid-fill': {
             layers.push({
               kind: 'solid-fill',
-              category: 'base',
               params: {
-                color: normalizeColor(
-                  srcAny.params?.color ?? fallbackFillColor ?? [0, 0, 0, 1],
-                ),
+                color: src.params.color,
               },
             });
 
             break;
           }
           case 'gradient': {
-            const srcColors = srcAny.params?.colors ?? [[1, 1, 1, 1]];
-            const colors = srcColors.map((c: number[]) => normalizeColor(c));
-            const angle = srcAny.params?.angle ?? 0;
+            const colors = src.params.colors;
+            const angle = src.params.angle ?? 0;
 
             layers.push({
               kind: 'gradient',
-              category: 'base',
               params: { colors, angle },
             });
 
@@ -303,30 +289,15 @@ export class TextStyle {
           case 'texture': {
             layers.push({
               kind: 'texture',
-              category: 'base',
               params: {
-                imageUrl: srcAny.params?.imageUrl,
-                pattern: null,
+                pattern: src.params.pattern,
               },
+              runtimePattern: null,
             });
 
             break;
           }
-          case 'shadow': {
-            // 顶层直接给 shadow 的旧数据也兼容
-            layers.push({
-              kind: 'shadow',
-              category: 'decorative',
-              params: {
-                color: normalizeColor(srcAny.params?.color ?? [0, 0, 0, 0.8]),
-                blur: srcAny.params?.blur ?? 5,
-                offsetX: srcAny.params?.offsetX ?? 0,
-                offsetY: srcAny.params?.offsetY ?? 0,
-              },
-            });
 
-            break;
-          }
         }
       }
     }
@@ -339,6 +310,7 @@ export class TextStyle {
   /**
    * 实例方法：应用花字配置覆盖当前 fancyRenderStyle
    * @param config - 花字配置
+   * @deprecated runtime 不再解析 FancyConfig（层级结构），请在编辑器侧 flatten 后传 fancyRenderStyle
    */
   applyFancyConfig (config: FancyConfig): void {
     // 使用当前 textColor 作为 solid-fill 的默认颜色
@@ -362,7 +334,6 @@ export class TextStyle {
         const fillIndex = this.fancyRenderStyle.layers.findIndex(l => l.kind === 'solid-fill');
         const strokeLayer: FancyRenderLayer = {
           kind: 'single-stroke',
-          category: 'base',
           params: {
             width: this.outlineWidth || 3,
             color: this.outlineColor || [1, 0, 0, 1],
@@ -396,7 +367,6 @@ export class TextStyle {
         // 阴影应该在最前面
         this.fancyRenderStyle.layers.unshift({
           kind: 'shadow',
-          category: 'decorative',
           params: {
             color: this.shadowColor || [0, 0, 0, 0.8],
             blur: this.shadowBlur || 5,
@@ -416,7 +386,7 @@ export class TextStyle {
    */
   updateStrokeParams (params: { color?: number[], width?: number }): void {
     if (params.color) {
-      this.outlineColor = normalizeColor(params.color);
+      this.outlineColor = normalizeColor(params.color) as spec.vec4;
     }
     if (params.width !== undefined) {
       this.outlineWidth = params.width;
@@ -425,14 +395,8 @@ export class TextStyle {
     // 更新所有描边效果
     this.fancyRenderStyle.layers.forEach(layer => {
       if (layer.kind === 'single-stroke') {
-        if (params.color) {
-          layer.params = layer.params || {};
-          layer.params.color = this.outlineColor;
-        }
-        if (params.width !== undefined) {
-          layer.params = layer.params || {};
-          layer.params.width = params.width;
-        }
+        if (params.color) {layer.params.color = this.outlineColor;}
+        if (params.width !== undefined) {layer.params.width = params.width;}
       }
     });
   }
@@ -452,7 +416,7 @@ export class TextStyle {
       const [r, g, b] = normalizeColor(params.color);
       const a = params.opacity !== undefined ? params.opacity : this.shadowColor[3];
 
-      this.shadowColor = [r, g, b, a];
+      this.shadowColor = [r, g, b, a] as spec.vec4;
     } else if (params.opacity !== undefined) {
       this.shadowColor[3] = params.opacity;
     }
@@ -474,7 +438,6 @@ export class TextStyle {
     // 更新所有阴影效果
     this.fancyRenderStyle.layers.forEach(layer => {
       if (layer.kind === 'shadow') {
-        layer.params = layer.params || {};
         layer.params.color = this.shadowColor;
         layer.params.blur = this.shadowBlur;
         layer.params.offsetX = this.shadowOffsetX;
@@ -488,12 +451,11 @@ export class TextStyle {
    */
   updateFillParams (params: { color?: number[] }): void {
     if (params.color) {
-      this.textColor = normalizeColor(params.color);
+      this.textColor = normalizeColor(params.color) as spec.vec4;
 
       // 更新所有填充效果
       this.fancyRenderStyle.layers.forEach(layer => {
         if (layer.kind === 'solid-fill') {
-          layer.params = layer.params || {};
           layer.params.color = this.textColor;
         }
       });
@@ -606,7 +568,6 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
     // 外层描边 + 挂在它上面的外发光
     {
       kind: 'single-stroke',
-      category: 'base',
       params: {
         width: 8,
         color: [0.1, 0.1, 0.1, 1],
@@ -614,7 +575,6 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
       decorations: [
         {
           kind: 'shadow',
-          category: 'decorative',
           params: {
             color: [0.3, 0.6, 1, 0.8],
             blur: 15,
@@ -627,7 +587,6 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
     // 中层描边
     {
       kind: 'single-stroke',
-      category: 'base',
       params: {
         width: 5,
         color: [0.3, 0.3, 0.3, 1],
@@ -636,7 +595,6 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
     // 内层描边 + 挂在它上面的内发光
     {
       kind: 'single-stroke',
-      category: 'base',
       params: {
         width: 2,
         color: [0.6, 0.6, 0.6, 1],
@@ -644,7 +602,6 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
       decorations: [
         {
           kind: 'shadow',
-          category: 'decorative',
           params: {
             color: [1, 0.9, 0.5, 0.6],
             blur: 5,
@@ -657,7 +614,6 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
     // 渐变填充
     {
       kind: 'gradient',
-      category: 'base',
       params: {
         colors: [
           [1, 0.2, 0.5, 1],
@@ -671,6 +627,36 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
 };
 
 /**
+ * 将花字配置解析为平铺的渲染样式
+ * 供编辑器调用，将层级结构的 fancyConfig 转换为平铺的 fancyRenderStyle
+ *
+ * @param fancyConfig - 层级结构的花字配置
+ * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色
+ * @returns FancyRenderStyle - 平铺后的渲染层配置
+ */
+export function flattenFancyConfigToRenderStyle (
+  fancyConfig: FancyConfig,
+  fallbackFillColor?: spec.vec4,
+): FancyRenderStyle {
+  return TextStyle.parseFancyConfig(fancyConfig, fallbackFillColor);
+}
+
+/**
+ * 将花字配置解析为平铺的渲染层数组
+ * 供编辑器调用，将层级结构的 fancyConfig 转换为平铺的 layers 数组
+ *
+ * @param fancyConfig - 层级结构的花字配置
+ * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色
+ * @returns FancyRenderLayer[] - 平铺后的渲染层数组
+ */
+export function flattenFancyConfigToLayers (
+  fancyConfig: FancyConfig,
+  fallbackFillColor?: spec.vec4,
+): FancyRenderLayer[] {
+  return TextStyle.parseFancyConfig(fancyConfig, fallbackFillColor).layers;
+}
+
+/**
  * 一个模拟 JSON 示例：金属质感效果（挂载版本）
  * 可在 demo 或测试中直接用 TextStyle.parseFancyConfig(METALLIC_SAMPLE)
  */
@@ -679,7 +665,6 @@ export const METALLIC_SAMPLE: FancyConfig = {
     // 金属光泽效果
     {
       kind: 'gradient',
-      category: 'base',
       params: {
         colors: [
           [0.9, 0.9, 0.9, 1],
@@ -693,7 +678,6 @@ export const METALLIC_SAMPLE: FancyConfig = {
     // 金属边框 + 挂在它上面的高光
     {
       kind: 'single-stroke',
-      category: 'base',
       params: {
         width: 3,
         color: [0.3, 0.3, 0.3, 1],
@@ -701,7 +685,6 @@ export const METALLIC_SAMPLE: FancyConfig = {
       decorations: [
         {
           kind: 'shadow',
-          category: 'decorative',
           params: {
             color: [1, 1, 1, 0.4],
             blur: 2,
@@ -723,7 +706,6 @@ export const NEON_SAMPLE: FancyConfig = {
     // 霓虹边框 + 挂在它上面的霓虹光晕
     {
       kind: 'single-stroke',
-      category: 'base',
       params: {
         width: 4,
         color: [0, 0.8, 0.8, 1],
@@ -731,7 +713,6 @@ export const NEON_SAMPLE: FancyConfig = {
       decorations: [
         {
           kind: 'shadow',
-          category: 'decorative',
           params: {
             color: [0, 1, 1, 0.8],
             blur: 20,
@@ -744,7 +725,6 @@ export const NEON_SAMPLE: FancyConfig = {
     // 霓虹核心
     {
       kind: 'single-stroke',
-      category: 'base',
       params: {
         width: 2,
         color: [1, 1, 1, 1],
@@ -753,7 +733,6 @@ export const NEON_SAMPLE: FancyConfig = {
     // 霓虹填充
     {
       kind: 'solid-fill',
-      category: 'base',
       params: {
         color: [0, 0.6, 0.6, 1],
       },

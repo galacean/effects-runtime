@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
-import { TextComponent } from '@galacean/effects-core';
-import { FancyLayerFactory } from '@galacean/effects-core';
+import type { FancyConfig, FancyRenderLayer } from '@galacean/effects-core';
+import { flattenFancyConfigToRenderStyle, FancyLayerFactory, TextComponent } from '@galacean/effects-core';
 import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据
@@ -17,27 +17,33 @@ async function setupTexturePattern (textComponent: TextComponent) {
 
   if (!ctx) {return;}
 
+  // 找到当前花字配置中的 texture layer，获取 imageUrl 和 repeat
+  const config = textComponent.textStyle.fancyRenderStyle;
+  const textureLayer = config.layers.find(
+    (l): l is Extract<FancyRenderLayer, { kind: 'texture' }> => l.kind === 'texture'
+  );
+
+  if (!textureLayer) {return;}
+
   const img = new Image();
 
   img.crossOrigin = 'anonymous';
-  img.src = 'https://gw.alipayobjects.com/mdn/rms_2e421e/afts/img/A*fRtNTKrsq3YAAAAAAAAAAAAAARQnAQ'; // 纹理图片
+  img.src = textureLayer.params.pattern.imageUrl; // 使用配置中的 imageUrl
 
   await new Promise((resolve, reject) => {
     img.onload = resolve;
     img.onerror = reject;
   });
 
-  const pattern = ctx.createPattern(img, 'repeat');
+  const repeat = textureLayer.params.pattern.repeat ?? 'repeat';
+  const pattern = ctx.createPattern(img, repeat);
 
   if (!pattern) {return;}
 
   // 找到当前花字配置中的 texture layer，写入 pattern
-  const config = textComponent.textStyle.fancyRenderStyle;
-
   for (const layer of config.layers) {
     if (layer.kind === 'texture') {
-      layer.params = layer.params || {};
-      layer.params.pattern = pattern;
+      layer.runtimePattern = pattern;
     }
   }
 
@@ -104,10 +110,22 @@ function applyFancyPreset (presetName: string) {
       style.fancyRenderStyle = style.getBaseRenderStyle();
     }
   } else {
-    // 其它预设：使用花字配置
-    const config = getDemoFancyJsonConfig(presetName);
+    const config: FancyConfig = getDemoFancyJsonConfig(presetName);
 
-    style.applyFancyConfig(config);
+    // 2) 平铺（demo 充当编辑器）
+    const flat = flattenFancyConfigToRenderStyle(config, style.textColor);
+
+    // 4) 可选校验：如果原来有 decorations.shadow，则平铺后应该出现 shadow 且在对应 base 之前
+    //    （这里只做一个轻校验：看到 shadow 且 shadow 不在最后）
+    const hasAnyShadow = flat.layers.some(l => l.kind === 'shadow');
+
+    if (hasAnyShadow) {
+      const lastIsShadow = flat.layers[flat.layers.length - 1]?.kind === 'shadow';
+
+    }
+
+    // 5) runtime 只吃平铺结果（关键）
+    style.fancyRenderStyle = flat;
   }
 
   // 按当前 fancyRenderStyle.layers 重建 layerDrawers

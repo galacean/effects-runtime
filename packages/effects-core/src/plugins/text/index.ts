@@ -8,3 +8,4 @@ export * from './fancy-text/fancy-types';
 export * from './fancy-text/text-layer-drawers';
 export * from './fancy-text/fancy-layer-factory';
 export * from './fancy-text/render-with-text-layers';
+export { flattenFancyConfigToRenderStyle, flattenFancyConfigToLayers } from './text-style';
