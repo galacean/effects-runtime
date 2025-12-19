@@ -68,7 +68,7 @@ export class AssetService implements Disposable {
       if (item.type === spec.ItemType.text || item.type === spec.ItemType.richtext) {
         const textVariable = variables[item.name] as string;
 
-        if (!textVariable) {
+        if (textVariable === undefined || textVariable === null) {
           return;
         }
 
