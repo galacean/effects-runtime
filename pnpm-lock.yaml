@@ -166,7 +166,7 @@ importers:
         version: 9.0.1
 
   packages/effects-helper:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../effects
@@ -191,19 +191,19 @@ importers:
         version: link:../effects-core
 
   plugin-packages/alipay-downgrade:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
 
   plugin-packages/downgrade:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
 
   plugin-packages/editor-gizmo:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
@@ -212,26 +212,26 @@ importers:
         version: link:../model
 
   plugin-packages/ffd:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
 
   plugin-packages/ktx2:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
 
   plugin-packages/model:
     dependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
       '@galacean/effects-helper':
         specifier: workspace:*
         version: link:../../packages/effects-helper
     devDependencies:
-      '@galacean/effects':
-        specifier: workspace:*
-        version: link:../../packages/effects
       '@galacean/effects-plugin-editor-gizmo':
         specifier: workspace:*
         version: link:../editor-gizmo
@@ -249,19 +249,19 @@ importers:
         version: 2.0.8
 
   plugin-packages/multimedia:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
 
   plugin-packages/orientation-transformer:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
 
   plugin-packages/rich-text:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
@@ -271,16 +271,16 @@ importers:
       '@esotericsoftware/spine-core':
         specifier: ~4.2.43
         version: 4.2.43
-    devDependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
+    devDependencies:
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
 
   plugin-packages/stats:
-    devDependencies:
+    dependencies:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
