@@ -189,6 +189,8 @@ export class GLRenderer extends Renderer implements Disposable {
     } catch (e) {
       console.error(e);
 
+      this.engine.renderErrors.add(e as Error);
+
       return;
     }
 
