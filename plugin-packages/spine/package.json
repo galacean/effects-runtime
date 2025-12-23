@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-spine",
-  "version": "1.6.9",
+  "version": "1.6.10",
   "description": "Galacean Effects player spine plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -49,10 +49,10 @@
     "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
-    "@galacean/effects": "workspace:*",
     "fpsmeter": "^0.3.1"
   },
   "dependencies": {
+    "@galacean/effects": "workspace:*",
     "@esotericsoftware/spine-core": "~4.2.43"
   }
 }

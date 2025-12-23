@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-helper",
-  "version": "1.6.9",
+  "version": "1.6.10",
   "description": "Galacean Effects runtime helper for the web",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -35,7 +35,7 @@
     "access": "public",
     "registry": "https://registry.npmjs.org"
   },
-  "devDependencies": {
+  "dependencies": {
     "@galacean/effects": "workspace:*"
   }
 }

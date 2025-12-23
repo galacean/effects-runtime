@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.10
+
+`2025-12-23`
+
+- Chore: modify plugin package.json devDependencies to dependencies. [#1330](https://github.com/galacean/effects-runtime/pull/1330) @wumaolinmaoan
+
 ## 1.6.9
 
 `2024-11-08`

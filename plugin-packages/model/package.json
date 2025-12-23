@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-model",
-  "version": "1.6.9",
+  "version": "1.6.10",
   "description": "Galacean Effects player model plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -54,10 +54,10 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects-helper": "workspace:*"
+    "@galacean/effects-helper": "workspace:*",
+    "@galacean/effects": "workspace:*"
   },
   "devDependencies": {
-    "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
     "@vvfx/resource-detection": "0.4.2-alpha.22",
     "@types/hammerjs": "^2.0.45",
