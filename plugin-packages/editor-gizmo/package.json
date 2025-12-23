@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-editor-gizmo",
-  "version": "1.6.9",
+  "version": "1.6.10",
   "description": "Galacean Effects player editor gizmo plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -40,7 +40,9 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects": "workspace:*",
+    "@galacean/effects": "workspace:*"
+  },
+  "devDependencies": {
     "@galacean/effects-plugin-model": "workspace:*"
   }
 }
