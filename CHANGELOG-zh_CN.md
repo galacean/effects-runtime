@@ -12,7 +12,6 @@
 
 `2025-12-23`
 
-- Chore: modify plugin package.json devDependencies to dependencies. [#1331](https://github.com/galacean/effects-runtime/pull/1331) @wumaolinmaoan
 - Chore: catch render errors during material use. [#1333](https://github.com/galacean/effects-runtime/pull/1333) @wumaolinmaoan
 
 ## 2.8.0
