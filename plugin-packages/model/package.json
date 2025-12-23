@@ -59,10 +59,10 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
+    "@galacean/effects": "workspace:*",
     "@galacean/effects-helper": "workspace:*"
   },
   "devDependencies": {
-    "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
     "@vvfx/resource-detection": "^0.10.0",
     "@types/hammerjs": "^2.0.45",
