@@ -40,7 +40,9 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects": "workspace:*",
+    "@galacean/effects": "workspace:*"
+  },
+  "devDependencies": {
     "@galacean/effects-plugin-model": "workspace:*"
   }
 }

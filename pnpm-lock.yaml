@@ -207,6 +207,7 @@ importers:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
+    devDependencies:
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../model
