@@ -3,8 +3,8 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import type { Composition, CompositionHitTestOptions } from '../composition';
-import type { Region, TrackAsset } from '../plugins';
-import { TimelineInstance, HitTestType, PlayState, TimelineAsset } from '../plugins';
+import type { Region, TrackAsset, TimelineAsset } from '../plugins';
+import { TimelineInstance, HitTestType, PlayState } from '../plugins';
 import { noop } from '../utils';
 import { VFXItem } from '../vfx-item';
 import { effectsClass, serialize } from '../decorators';
@@ -38,16 +38,18 @@ export class CompositionComponent extends Component {
   @serialize()
   private sceneBindings: SceneBinding[] = [];
   @serialize()
-  private timelineAsset: TimelineAsset;
-  private timelineInstance: TimelineInstance;
+  private timelineAsset: TimelineAsset | null = null;
+  private _timelineInstance: TimelineInstance | null = null;
+
+  private get timelineInstance (): TimelineInstance | null {
+    if (!this._timelineInstance && this.timelineAsset) {
+      this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
+    }
+
+    return this._timelineInstance;
+  }
 
   override onStart (): void {
-    if (!this.timelineAsset) {
-      this.timelineAsset = new TimelineAsset(this.engine);
-    }
-    // this.resolveBindings();
-    this.timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
-
     this.item.composition?.refContent.push(this.item);
   }
 
@@ -67,11 +69,11 @@ export class CompositionComponent extends Component {
     if (this.state === PlayState.Paused) {
       return;
     }
-    const time = this.time;
 
-    this.timelineInstance.setTime(time);
-
-    this.timelineInstance.evaluate(dt / 1000);
+    if (this.timelineInstance) {
+      this.timelineInstance.setTime(this.time);
+      this.timelineInstance.evaluate(dt / 1000);
+    }
   }
 
   override onEnable () {
@@ -195,9 +197,18 @@ export class CompositionComponent extends Component {
    * @internal
    */
   setChildrenRenderOrder (startOrder: number): number {
-    for (const item of this.items) {
-      item.renderOrder = startOrder++;
+    if (!this.timelineInstance) {
+      return startOrder;
+    }
 
+    for (const masterTrack of this.timelineInstance.masterTrackInstances) {
+      const item = masterTrack.boundObject;
+
+      if (!(item instanceof VFXItem)) {
+        continue;
+      }
+
+      item.renderOrder = startOrder++;
       const subCompositionComponent = item.getComponent(CompositionComponent);
 
       if (subCompositionComponent) {
