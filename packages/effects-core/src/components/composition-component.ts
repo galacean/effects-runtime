@@ -1,7 +1,7 @@
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { Composition, CompositionHitTestOptions } from '../composition';
 import type { Region, TrackAsset } from '../plugins';
 import { TimelineInstance, HitTestType, PlayState, TimelineAsset } from '../plugins';
@@ -103,22 +103,59 @@ export class CompositionComponent extends Component {
     regions: Region[],
     force?: boolean,
     options?: CompositionHitTestOptions,
-  ): Region[] {
+  ): boolean {
+    const isHitTestSuccess = this.hitTestRecursive(this.item, ray, x, y, regions, force, options);
+
+    // 子元素碰撞测试成功加入当前预合成元素，判断是否是合成根元素，根元素不加入
+    if (isHitTestSuccess && this.item !== this.item.composition?.rootItem) {
+      const item = this.item;
+      const lastRegion = regions[regions.length - 1];
+      const hitPositions: Vector3[] = lastRegion.hitPositions;
+
+      const region = {
+        id: item.getInstanceId(),
+        name: item.name,
+        position: hitPositions[hitPositions.length - 1],
+        parentId: item.parentId,
+        hitPositions,
+        behavior: spec.InteractBehavior.NONE,
+        item: item,
+        composition: item.composition as Composition,
+      };
+
+      regions.push(region);
+    }
+
+    return isHitTestSuccess;
+  }
+
+  private hitTestRecursive (
+    item: VFXItem,
+    ray: Ray,
+    x: number,
+    y: number,
+    regions: Region[],
+    force?: boolean,
+    options?: CompositionHitTestOptions
+  ): boolean {
     const hitPositions: Vector3[] = [];
     const stop = options?.stop || noop;
     const skip = options?.skip || noop;
-    const maxCount = options?.maxCount || this.items.length;
+    const maxCount = options?.maxCount;
 
-    for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
-      const item = this.items[i];
+    if (maxCount !== undefined && regions.length >= maxCount) {
+      return false;
+    }
 
+    let hitTestSuccess = false;
+
+    for (const hitTestItem of item.children) {
       if (
-        item.isActive
-        && item.transform.getValid()
-        && !VFXItem.isComposition(item)
-        && !skip(item)
+        hitTestItem.isActive
+        && hitTestItem.transform.getValid()
+        && !skip(hitTestItem)
       ) {
-        const hitParams = item.getHitTestParams(force);
+        const hitParams = hitTestItem.getHitTestParams(force);
 
         if (hitParams) {
           let success = false;
@@ -166,28 +203,38 @@ export class CompositionComponent extends Component {
           }
           if (success) {
             const region = {
-              compContent: this.item,
-              id: item.getInstanceId(),
-              name: item.name,
+              id: hitTestItem.getInstanceId(),
+              name: hitTestItem.name,
               position: hitPositions[hitPositions.length - 1],
-              parentId: item.parentId,
+              parentId: hitTestItem.parentId,
               hitPositions,
               behavior: hitParams.behavior,
-              item,
+              item: hitTestItem,
               composition: this.item.composition as Composition,
             };
 
             regions.push(region);
+            hitTestSuccess = true;
 
             if (stop(region)) {
-              return regions;
+              return true;
             }
+          }
+        }
+
+        if (VFXItem.isComposition(hitTestItem)) {
+          if (hitTestItem.getComponent(CompositionComponent).hitTest(ray, x, y, regions, force, options)) {
+            hitTestSuccess = true;
+          }
+        } else {
+          if (this.hitTestRecursive(hitTestItem, ray, x, y, regions, force, options)) {
+            hitTestSuccess = true;
           }
         }
       }
     }
 
-    return regions;
+    return hitTestSuccess;
   }
 
   /**
