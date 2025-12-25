@@ -58,9 +58,13 @@ export class TimelineAsset extends EffectsObject {
 }
 
 export class TimelineInstance {
+  /**
+   * @internal
+   */
+  masterTrackInstances: TrackInstance[] = [];
+
   private time = 0;
   private clips: RuntimeClip[] = [];
-  private masterTrackInstances: TrackInstance[] = [];
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
     const sceneBindingMap: Record<string, VFXItem> = {};
