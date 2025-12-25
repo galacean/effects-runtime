@@ -758,9 +758,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const regions: Region[] = [];
     const ray = this.getHitTestRay(x, y);
 
-    this.refContent.forEach(ref => {
-      ref.getComponent(CompositionComponent)?.hitTest(ray, x, y, regions, force, options);
-    });
+    this.rootComposition.hitTest(ray, x, y, regions, force, options);
 
     return regions;
   }
