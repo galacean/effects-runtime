@@ -285,20 +285,35 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   video.setAttribute('playsinline', 'playsinline');
 
   return new Promise<HTMLVideoElement>((resolve, reject) => {
-    const handleCanPlay = () => {
+    let settled = false;
+
+    const handleSuccess = () => {
+      if (settled) {return;}
+      settled = true;
+      cleanup();
       resolve(video);
-      video.removeEventListener('error', handleError);
     };
-    const handleError = (e: any) => {
-      video.removeEventListener('canplay', handleCanPlay);
+
+    const handleError = () => {
+      if (settled) {return;}
+      settled = true;
+      cleanup();
       reject('Load video fail.');
     };
 
-    video.addEventListener('canplay', handleCanPlay, { once: true });
-    video.addEventListener('error', handleError, { once: true });
+    const cleanup = () => {
+      video.removeEventListener('loadeddata', handleSuccess);
+      video.removeEventListener('canplay', handleSuccess);
+      video.removeEventListener('error', handleError);
+    };
 
-    // 显式触发视频加载
-    video.load();
+    video.addEventListener('loadeddata', handleSuccess);
+    video.addEventListener('canplay', handleSuccess);
+    video.addEventListener('error', handleError);
+
+    video.play().catch(err => {
+      console.warn('Autoplay blocked:', err);
+    });
   });
 }
 
