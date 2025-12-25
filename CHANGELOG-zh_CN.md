@@ -8,6 +8,16 @@
 
 ---
 
+## 2.8.2
+
+`2025-12-25`
+
+- Fix: update textVariable assignment logic. [#1329](https://github.com/galacean/effects-runtime/pull/1329) @Fryt1
+- Fix: unify line height configuration on business side. [#1339](https://github.com/galacean/effects-runtime/pull/1339) @Fryt1
+- Fix: improve video loading compatibility. [#1342](https://github.com/galacean/effects-runtime/pull/1342) @ChengYi996
+- Fix: lost old gl context when player dispose. [#1340](https://github.com/galacean/effects-runtime/pull/1340) @wumaolinmaoan
+- Fix: pre composition and dynamic added item hit test process. [#1337](https://github.com/galacean/effects-runtime/pull/1337) @wumaolinmaoan
+
 ## 2.8.1
 
 `2025-12-23`
