@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-ffd",
-  "version": "2.8.0",
+  "version": "2.8.2",
   "description": "Galacean Effects player Free-form deformation plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
