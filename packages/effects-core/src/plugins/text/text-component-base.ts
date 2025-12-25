@@ -22,12 +22,13 @@ export interface ITextComponent {
   setShadowOffsetY (value: number): void,
   setAutoWidth (value: boolean): void,
   setFontSize (value: number): void,
+  getTextWidth(): number,
 }
 
 /**
  * 富文本组件特有 API
  */
-export interface IRichTextComponent extends ITextComponent { }
+export interface IRichTextComponent { }
 
 export class TextComponentBase {
   // 状态与通用字段

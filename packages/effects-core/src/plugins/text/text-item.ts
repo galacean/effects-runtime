@@ -584,6 +584,62 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.textStyle.shadowOffsetY = v;
     this.isDirty = true;
   }
+
+  /**
+   * 计算文本在当前样式与布局规则下的建议宽度（逻辑像素）。
+   *
+   * 说明：
+   * - 使用 Canvas 2D 的 measureText，并按当前实现的逐字符排版规则累加宽度（与 updateTexture 保持一致）。
+   * - 结果为"逻辑宽度"（已除去 fontScale，并扣除 fontOffset），可直接写回 options.textWidth。
+   * - 通过 padding 追加少量冗余像素，用于降低边缘裁切风险。
+   *
+   * @returns 文本宽度（>= 0）
+   */
+  getTextWidth (): number {
+    const ctx = this.context;
+
+    if (!ctx) {return this.textLayout?.width ?? 0;}
+
+    const text = (this.text ?? '').toString();
+    const layout = this.textLayout;
+    const style = this.textStyle;
+
+    const fontScale = style.fontScale || 1;
+    const renderFontSize = style.fontSize * fontScale;
+
+    // 与 updateTexture 一致：用 render 字号测量
+    ctx.font = this.getFontDesc(renderFontSize);
+
+    let maxLineWidthRender = 0;
+    let x = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+
+      if (ch === '\n') {
+        maxLineWidthRender = Math.max(maxLineWidthRender, x);
+        x = 0;
+        continue;
+      }
+
+      // 与 updateTexture 一致：每个字符前加一次 letterSpace * fontScale
+      x += (layout.letterSpace || 0) * fontScale;
+      x += ctx.measureText(ch).width;
+    }
+
+    maxLineWidthRender = Math.max(maxLineWidthRender, x);
+
+    // render -> 逻辑宽度
+    const logicalMax = maxLineWidthRender / fontScale;
+
+    // 反推 layout.width：renderWidth = (layout.width + fontOffset) * fontScale
+    const padding = 2;
+    const EPS = 1e-4;
+
+    const w = Math.ceil(logicalMax - (style.fontOffset || 0) - EPS) + padding;
+
+    return Math.max(0, w);
+  }
 }
 
 applyMixins(TextComponent, [TextComponentBase]);
