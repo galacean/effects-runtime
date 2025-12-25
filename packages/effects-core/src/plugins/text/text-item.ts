@@ -509,11 +509,13 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   }
 
   setFontSize (value: number): void {
-    const v = Math.max(1, Number(value) || 1);
+    const size = Math.max(1, Number(value) || 1);
 
-    if (this.textStyle.fontSize === v) {return;}
+    if (this.textStyle.fontSize === size) {
+      return;
+    }
 
-    this.textStyle.fontSize = v;
+    this.textStyle.fontSize = size;
     this.isDirty = true;
   }
 
