@@ -208,22 +208,15 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
         });
       } else {
         [width, height] = this.texImage2DData(gl, target, 0, internalFormat, format, type, data);
-        const wantsMip =
-          source.minFilter === gl.LINEAR_MIPMAP_LINEAR ||
-          source.minFilter === gl.LINEAR_MIPMAP_NEAREST ||
-          source.minFilter === gl.NEAREST_MIPMAP_LINEAR ||
-          source.minFilter === gl.NEAREST_MIPMAP_NEAREST;
 
         const canGenMip =
           !!generateMipmap && ((isPowerOfTwo(width) && isPowerOfTwo(height)) || isWebGL2(gl));
 
-        if (wantsMip) {
-          if (canGenMip) {
-            gl.generateMipmap(target); // 生成 mipmap
-          } else {
-            // 如果过滤方式需要 mipmap，但无法生成，则降级为 LINEAR
-            source.minFilter = gl.LINEAR;
-          }
+        if (canGenMip) {
+          gl.generateMipmap(target); // 生成 mipmap
+        } else {
+          // 如果过滤方式需要 mipmap，但无法生成，则降级为 LINEAR
+          source.minFilter = gl.LINEAR;
         }
       }
     } else if (
