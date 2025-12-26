@@ -131,7 +131,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const { mipmaps: cubeMipmaps } = source as TextureCubeSourceOptionsImageMipmaps;
     const { data: optionsData } = sourceOptions as Texture2DSourceOptionsFramebuffer;
     const { cube: optionsCube } = sourceOptions as TextureCubeSourceOptionsImage;
-    const { generateMipmap } = sourceOptions as Texture2DSourceOptionsImage | Texture2DSourceOptionsData;
+    const { generateMipmap = false } = sourceOptions as Texture2DSourceOptionsImage | Texture2DSourceOptionsData;
     const { mipmaps: optionsMipmaps } = sourceOptions as Texture2DSourceOptionsCompressed;
     let { format, type, internalFormat } = source as Required<TextureSourceOptions>;
     let width = 0;
@@ -186,6 +186,14 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     // gl的状态可能在外面被改变了，这里必须重新设置
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, source.flipY);
 
+    const createMipmap = (textureWidth: number, textureHeight: number) => {
+      if ((isPowerOfTwo(textureWidth) && isPowerOfTwo(textureHeight)) || isWebGL2(gl)) {
+        gl.generateMipmap(target);
+      } else {
+        console.error('Mipmap generation failed. Texture width and height must be power of two in WebGL1.');
+      }
+    };
+
     // 根据不同的 TextureSourceType 传输对应贴图数据到 GPU
     if (sourceType === TextureSourceType.framebuffer) {
       if (optionsData) {
@@ -209,14 +217,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       } else {
         [width, height] = this.texImage2DData(gl, target, 0, internalFormat, format, type, data);
 
-        const canGenMip =
-          !!generateMipmap && ((isPowerOfTwo(width) && isPowerOfTwo(height)) || isWebGL2(gl));
-
-        if (canGenMip) {
-          gl.generateMipmap(target); // 生成 mipmap
-        } else {
-          // 如果过滤方式需要 mipmap，但无法生成，则降级为 LINEAR
-          source.minFilter = gl.LINEAR;
+        if (generateMipmap) {
+          createMipmap(width, height);
         }
       }
     } else if (
@@ -235,10 +237,9 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
 
         [width, height] = this.texImage2D(gl, target, 0, internalFormat, format, type, imageData);
       }
+
       if (generateMipmap) {
-        if ((isPowerOfTwo(width) && isPowerOfTwo(height)) || isWebGL2(gl)) {
-          gl.generateMipmap(target);
-        }
+        createMipmap(width, height);
       }
     } else if (sourceType === TextureSourceType.mipmaps) {
       let ret;
