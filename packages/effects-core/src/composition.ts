@@ -336,6 +336,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.rootComposition = this.rootItem.getComponent(CompositionComponent);
 
+    // Bind animation event
+    this.rootItem.on('animationevent', eventData => {
+      this.emit('animationevent', eventData);
+    });
+
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
@@ -575,7 +580,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
+  getComponent<T extends Component>(classConstructor: Constructor<T>): T {
     return this.rootItem.getComponent(classConstructor);
   }
 
