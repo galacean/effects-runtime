@@ -34,6 +34,7 @@ Texture.createWithData = (
     minFilter = glContext.NEAREST,
     magFilter = glContext.NEAREST,
     flipY = false,
+    generateMipmap = false,
   } = options as TextureSourceOptions;
   const tex = new GLTexture(
     engine,
@@ -48,6 +49,7 @@ Texture.createWithData = (
       minFilter,
       magFilter,
       flipY,
+      generateMipmap,
     } as unknown as TextureSourceOptions);
 
   return tex;
