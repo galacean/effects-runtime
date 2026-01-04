@@ -29,6 +29,16 @@ export interface ITextComponent {
  */
 export interface IRichTextComponent extends ITextComponent { }
 
+/**
+ * 排版逻辑尺寸接口
+ */
+export interface LayoutBoundsSize {
+  /** 宽度 */
+  width: number,
+  /** 高度 */
+  height: number,
+}
+
 export class TextComponentBase {
   // 状态与通用字段
   textStyle: TextStyle;
@@ -53,9 +63,9 @@ export class TextComponentBase {
   /**
    * 排版逻辑尺寸
    * 单位与 textWidth/textHeight 一致
-   * @returns { width: number; height: number } 排版逻辑尺寸
+   * @returns 排版逻辑尺寸
    */
-  public getLayoutBoundsSize (): { width: number, height: number } {
+  public getLayoutBoundsSize (): LayoutBoundsSize {
     const style = this.textStyle;
     const layout = this.textLayout as any;
 
