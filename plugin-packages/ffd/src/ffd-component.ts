@@ -7,6 +7,7 @@ import vs from './shader/vertex.glsl';
 export class FFDComponent extends Component {
   private data: spec.FFDComponentData;
 
+  private enableFFD = true;
   private rowNum = 5;                     // 行数量（列控制点数）
   private colNum = 5;                     // 列数量（行控制点数）
 
@@ -18,6 +19,7 @@ export class FFDComponent extends Component {
 
   constructor (engine: Engine) {
     super(engine);
+    if (engine.gpuCapability.detail.maxVertexUniforms < 256) {this.enableFFD = false;}
   }
 
   override onStart (): void {
@@ -44,15 +46,18 @@ export class FFDComponent extends Component {
 
       if (currentComponent) {
         // 修改当前 sprite 组件的 shader
-        const shader = new Shader(this.engine);
+        if (this.enableFFD) {
+          const shader = new Shader(this.engine);
 
-        shader.fromData({
-          vertex: vs,
-          fragment: fs,
-          id: generateGUID(),
-          dataType: spec.DataType.Shader,
-        });
-        currentComponent.material.shader = shader;
+          shader.fromData({
+            vertex: vs,
+            fragment: fs,
+            id: generateGUID(),
+            dataType: spec.DataType.Shader,
+          });
+          currentComponent.material.shader = shader;
+        }
+
         this.currentSpriteComponent = currentComponent;
       }
     }
