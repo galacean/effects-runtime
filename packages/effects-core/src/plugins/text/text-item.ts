@@ -169,16 +169,20 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
   /**
    * 同步 transform.size，考虑布局尺寸比例和特效扩容比例
-   * @param baseWidthPx 原始排版宽度（像素）
-   * @param baseHeightPx 原始排版高度（像素）
-   * @param texWidthPx 扩容后纹理宽度（像素）
-   * @param texHeightPx 扩容后纹理高度（像素）
+   * @param baseWidthPx - 原始排版宽度（像素）
+   * @param baseHeightPx - 原始排版高度（像素）
+   * @param texWidthPx - 扩容后纹理宽度（像素）
+   * @param texHeightPx - 扩容后纹理高度（像素）
    */
-  private syncRenderSizeToTexture (baseWidthPx: number, baseHeightPx: number, texWidthPx: number, texHeightPx: number) {
+  private syncRenderSizeToTexture (
+    baseWidthPx: number,
+    baseHeightPx: number,
+    texWidthPx: number,
+    texHeightPx: number,
+  ) {
     // 注意：这里用的是“布局尺寸比例” * “描边扩容比例”
     // 布局尺寸比例：layout.width / baseTextWidth
     // 特效扩容比例：texWidth/baseWidth
-
     const layout = this.textLayout;
     const sxLayout = this.baseTextWidth > 0 ? (layout.width / this.baseTextWidth) : 1;
     const syLayout = this.baseTextHeight > 0 ? (layout.height / this.baseTextHeight) : 1;
@@ -386,8 +390,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
     // 不同基准高度
     const baseHeight = layout.autoWidth
-      ? (finalHeight * fontScale)
-      : (layout.height * fontScale);
+      ? finalHeight * fontScale
+      : layout.height * fontScale;
 
     // 是否有“真实描边/阴影”需要扩容
     const { padL, padT, padB } = this.getEffectPaddingPx();
@@ -403,6 +407,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const shiftY = hasEffect ? padY : 0;
 
     style.fontDesc = this.getFontDesc(fontSize);
+
     const char = (this.text || '').split('');
 
     this.renderToTexture(texWidth, texHeight, flipY, context => {

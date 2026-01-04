@@ -9,6 +9,7 @@ import type { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
+import type { TextLayout } from './text-layout';
 
 /**
  * 纯文本组件特有 API
@@ -67,16 +68,16 @@ export class TextComponentBase {
    */
   public getLayoutBoundsSize (): LayoutBoundsSize {
     const style = this.textStyle;
-    const layout = this.textLayout as any;
+    const layout = this.textLayout as TextLayout;
 
-    const width = (layout.width + style.fontOffset);
+    const width = layout.width + style.fontOffset;
     const height = layout.autoWidth
-      ? (layout.lineHeight * this.lineCount)
+      ? layout.lineHeight * this.lineCount
       : layout.height;
 
     return {
-      width: width,
-      height: height,
+      width,
+      height,
     };
   }
 
@@ -188,14 +189,12 @@ export class TextComponentBase {
    * @returns { padL: number; padR: number; padT: number; padB: number } padding 值
    */
   protected getEffectPaddingPx () {
-    const s = this.textStyle;
-
-    const hasDrawOutline = s.isOutlined && s.outlineWidth > 0;
-    const outlinePad = hasDrawOutline ? Math.ceil(s.outlineWidth * 2 * s.fontScale) : 0;
-
-    const hasShadow = s.hasShadow && (s.shadowBlur > 0 || s.shadowOffsetX !== 0 || s.shadowOffsetY !== 0);
+    const style = this.textStyle;
+    const hasDrawOutline = style.isOutlined && style.outlineWidth > 0;
+    const outlinePad = hasDrawOutline ? Math.ceil(style.outlineWidth * 2 * style.fontScale) : 0;
+    const hasShadow = style.hasShadow && (style.shadowBlur > 0 || style.shadowOffsetX !== 0 || style.shadowOffsetY !== 0);
     const shadowPad = hasShadow
-      ? Math.ceil((Math.abs(s.shadowOffsetX) + Math.abs(s.shadowOffsetY) + s.shadowBlur) * s.fontScale)
+      ? Math.ceil((Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur) * style.fontScale)
       : 0;
 
     const pad = outlinePad + shadowPad;
