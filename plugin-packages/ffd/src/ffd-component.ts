@@ -19,7 +19,10 @@ export class FFDComponent extends Component {
 
   constructor (engine: Engine) {
     super(engine);
-    if (engine.gpuCapability.detail.maxVertexUniforms < 256) {this.enableFFD = false;}
+
+    if (engine.gpuCapability.detail.maxVertexUniforms < 256) {
+      this.enableFFD = false;
+    }
   }
 
   override onStart (): void {
