@@ -50,6 +50,26 @@ export class TextComponentBase {
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
+  /**
+   * 排版逻辑尺寸
+   * 单位与 textWidth/textHeight 一致
+   * @returns { width: number; height: number } 排版逻辑尺寸
+   */
+  public getLayoutBoundsSize (): { width: number, height: number } {
+    const style = this.textStyle;
+    const layout = this.textLayout as any;
+
+    const width = (layout.width + style.fontOffset);
+    const height = layout.autoWidth
+      ? (layout.lineHeight * this.lineCount)
+      : layout.height;
+
+    return {
+      width: width,
+      height: height,
+    };
+  }
+
   // 通用 setter 方法
   setText (value: string): void {
     if (this.text === value) {
