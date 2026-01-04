@@ -153,6 +153,26 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 获取描边和阴影的 padding 值
+   * @returns { padL: number; padR: number; padT: number; padB: number } padding 值
+   */
+  protected getEffectPaddingPx () {
+    const s = this.textStyle;
+
+    const hasDrawOutline = s.isOutlined && s.outlineWidth > 0;
+    const outlinePad = hasDrawOutline ? Math.ceil(s.outlineWidth * 2 * s.fontScale) : 0;
+
+    const hasShadow = s.hasShadow && (s.shadowBlur > 0 || s.shadowOffsetX !== 0 || s.shadowOffsetY !== 0);
+    const shadowPad = hasShadow
+      ? Math.ceil((Math.abs(s.shadowOffsetX) + Math.abs(s.shadowOffsetY) + s.shadowBlur) * s.fontScale)
+      : 0;
+
+    const pad = outlinePad + shadowPad;
+
+    return { padL: pad, padR: pad, padT: pad, padB: pad };
+  }
+
   // 通用工具方法
   protected getFontDesc (size?: number): string {
     const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;

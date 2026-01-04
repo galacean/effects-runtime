@@ -97,7 +97,8 @@ export class TextStyle {
     if (outline) {
       this.isOutlined = true;
       this.outlineColor = [...(outline.outlineColor ?? [1, 1, 1, 1])];
-      this.outlineWidth = outline.outlineWidth ?? 1;
+
+      this.outlineWidth = outline.outlineWidth ?? 0;
     }
 
     // 重置阴影状态
