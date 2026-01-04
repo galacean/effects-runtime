@@ -564,16 +564,18 @@ export class GLGeometry extends Geometry {
 
   private createIndexTypedArray (type: spec.IndexFormatType, baseBuffer: Uint8Array, offset: number) {
     const arrayBuffer = baseBuffer.buffer;
+    const byteOffset = baseBuffer.byteOffset + offset;
+    const byteLength = baseBuffer.byteLength - offset;
 
     switch (type) {
       case spec.IndexFormatType.UInt16:
-        return new Uint16Array(arrayBuffer, baseBuffer.byteOffset + offset);
+        return new Uint16Array(arrayBuffer, byteOffset, byteLength / Uint16Array.BYTES_PER_ELEMENT);
       case spec.IndexFormatType.UInt32:
-        return new Uint32Array(arrayBuffer, baseBuffer.byteOffset + offset);
+        return new Uint32Array(arrayBuffer, byteOffset, byteLength / Uint32Array.BYTES_PER_ELEMENT);
       default:
         console.error(`Invalid index format type: ${type}.`);
 
-        return new Uint32Array(arrayBuffer, baseBuffer.byteOffset + offset);
+        return new Uint32Array(arrayBuffer, byteOffset, byteLength / Uint32Array.BYTES_PER_ELEMENT);
     }
   }
 
