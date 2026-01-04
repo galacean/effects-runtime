@@ -65,9 +65,19 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   private baseTextWidth = 0;
 
   /**
+   * 初始文本高度，用于计算缩放比例
+   */
+  private baseTextHeight = 0;
+
+  /**
    * 初始 `transform.size.x`，用于按比例更新显示宽度
    */
   private baseScaleX = 1;
+
+  /**
+   * 初始 `transform.size.y`，用于按比例更新显示高度
+   */
+  private baseScaleY = 1;
 
   private getDefaultProps (): spec.TextComponentData {
     return {
@@ -136,10 +146,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.updateWithOptions(options);
     this.renderText(options);
 
-    // 记录初始的 textWidth 和 x 缩放，用于后续按比例更新显示宽度
+    // 记录初始的 textWidth/textHeight 和缩放，用于后续按比例更新显示尺寸
     // 添加兜底值 1 防止除 0
     this.baseTextWidth = options.textWidth || this.textLayout.width || 1;
+    this.baseTextHeight = options.textHeight || this.textLayout.height || 1;
     this.baseScaleX = this.item.transform.size.x;
+    this.baseScaleY = this.item.transform.size.y;
 
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
@@ -153,6 +165,33 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.isDirty = true;
     this.lineCount = 0;
     this.maxLineWidth = 0;
+  }
+
+  /**
+   * 同步 transform.size，考虑布局尺寸比例和特效扩容比例
+   * @param baseWidthPx - 原始排版宽度（像素）
+   * @param baseHeightPx - 原始排版高度（像素）
+   * @param texWidthPx - 扩容后纹理宽度（像素）
+   * @param texHeightPx - 扩容后纹理高度（像素）
+   */
+  private syncRenderSizeToTexture (
+    baseWidthPx: number,
+    baseHeightPx: number,
+    texWidthPx: number,
+    texHeightPx: number,
+  ) {
+    // 注意：这里用的是“布局尺寸比例” * “描边扩容比例”
+    // 布局尺寸比例：layout.width / baseTextWidth
+    // 特效扩容比例：texWidth/baseWidth
+    const layout = this.textLayout;
+    const sxLayout = this.baseTextWidth > 0 ? (layout.width / this.baseTextWidth) : 1;
+    const syLayout = this.baseTextHeight > 0 ? (layout.height / this.baseTextHeight) : 1;
+
+    const sxEffect = baseWidthPx > 0 ? (texWidthPx / baseWidthPx) : 1;
+    const syEffect = baseHeightPx > 0 ? (texHeightPx / baseHeightPx) : 1;
+
+    this.item.transform.size.x = this.baseScaleX * sxLayout * sxEffect;
+    this.item.transform.size.y = this.baseScaleY * syLayout * syEffect;
   }
 
   // 在 TextComponent 类内新增覆盖 setText
@@ -342,28 +381,38 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
-    const width = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
+    // 老基准尺寸（决定换行/排版）
+    const baseWidth = (layout.width + style.fontOffset) * fontScale;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
+    const finalHeight = layout.lineHeight * this.lineCount;
+
+    // 不同基准高度
+    const baseHeight = layout.autoWidth
+      ? finalHeight * fontScale
+      : layout.height * fontScale;
+
+    // 是否有“真实描边/阴影”需要扩容
+    const { padL, padT, padB } = this.getEffectPaddingPx();
+    const padY = flipY ? padT : padB;
+    const hasEffect = (padL | padY) !== 0;
+
+    // 最终纹理尺寸：无特效=老尺寸；有特效=扩容
+    const texWidth = hasEffect ? Math.ceil(baseWidth + padL * 2) : baseWidth;
+    const texHeight = hasEffect ? Math.ceil(baseHeight + padY * 2) : baseHeight;
+
+    // 只在有特效时整体平移
+    const shiftX = hasEffect ? padL : 0;
+    const shiftY = hasEffect ? padY : 0;
 
     style.fontDesc = this.getFontDesc(fontSize);
+
     const char = (this.text || '').split('');
 
-    if (layout.autoWidth) {
-      this.canvas.height = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      this.canvas.height = layout.height * fontScale;
-    }
-
-    const height = this.canvas.height;
-
-    this.renderToTexture(width, height, flipY, context => {
-      // canvas size 变化后重新刷新 context
-      if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-        context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+    this.renderToTexture(texWidth, texHeight, flipY, context => {
+      if (this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display) {
+        context.font = this.getFontDesc(fontSize * baseWidth / this.maxLineWidth);
       } else {
         context.font = style.fontDesc;
       }
@@ -394,7 +443,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         // 和浏览器行为保持一致
         x += layout.letterSpace * fontScale;
 
-        if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
+        if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
           charsInfo.push({
             y,
             width: x,
@@ -425,10 +474,13 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         const x = layout.getOffsetX(style, charInfo.width);
 
         charInfo.chars.forEach((str, i) => {
+          const drawX = shiftX + x + charInfo.charOffsetX[i];
+          const drawY = shiftY + charInfo.y;
+
           if (style.isOutlined) {
-            context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
+            context.strokeText(str, drawX, drawY);
           }
-          context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
+          context.fillText(str, drawX, drawY);
         });
       });
 
@@ -436,6 +488,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         context.shadowColor = 'transparent';
       }
     });
+
+    // 同步放大 transform.size
+    // autoWidth 和非 autoWidth 分支使用相同的逻辑
+    this.syncRenderSizeToTexture(baseWidth, baseHeight, texWidth, texHeight);
 
     this.isDirty = false;
   }

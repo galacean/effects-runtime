@@ -9,6 +9,7 @@ import type { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
+import type { TextLayout } from './text-layout';
 
 /**
  * 纯文本组件特有 API
@@ -28,6 +29,16 @@ export interface ITextComponent {
  * 富文本组件特有 API
  */
 export interface IRichTextComponent extends ITextComponent { }
+
+/**
+ * 排版逻辑尺寸接口
+ */
+export interface LayoutBoundsSize {
+  /** 宽度 */
+  width: number,
+  /** 高度 */
+  height: number,
+}
 
 export class TextComponentBase {
   // 状态与通用字段
@@ -49,6 +60,26 @@ export class TextComponentBase {
   // 常量
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
+
+  /**
+   * 排版逻辑尺寸
+   * 单位与 textWidth/textHeight 一致
+   * @returns 排版逻辑尺寸
+   */
+  public getLayoutBoundsSize (): LayoutBoundsSize {
+    const style = this.textStyle;
+    const layout = this.textLayout as TextLayout;
+
+    const width = layout.width + style.fontOffset;
+    const height = layout.autoWidth
+      ? layout.lineHeight * this.lineCount
+      : layout.height;
+
+    return {
+      width,
+      height,
+    };
+  }
 
   // 通用 setter 方法
   setText (value: string): void {
@@ -151,6 +182,24 @@ export class TextComponentBase {
   setOverflow (overflow: spec.TextOverflow): void {
     this.textLayout.overflow = overflow;
     this.isDirty = true;
+  }
+
+  /**
+   * 获取描边和阴影的 padding 值
+   * @returns { padL: number; padR: number; padT: number; padB: number } padding 值
+   */
+  protected getEffectPaddingPx () {
+    const style = this.textStyle;
+    const hasDrawOutline = style.isOutlined && style.outlineWidth > 0;
+    const outlinePad = hasDrawOutline ? Math.ceil(style.outlineWidth * 2 * style.fontScale) : 0;
+    const hasShadow = style.hasShadow && (style.shadowBlur > 0 || style.shadowOffsetX !== 0 || style.shadowOffsetY !== 0);
+    const shadowPad = hasShadow
+      ? Math.ceil((Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur) * style.fontScale)
+      : 0;
+
+    const pad = outlinePad + shadowPad;
+
+    return { padL: pad, padR: pad, padT: pad, padB: pad };
   }
 
   // 通用工具方法
