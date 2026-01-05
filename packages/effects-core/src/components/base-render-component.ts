@@ -1,6 +1,5 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
@@ -9,7 +8,7 @@ import type { Maskable } from '../material';
 import {
   MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams, TextComponent } from '../plugins';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { MeshCollider } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
@@ -188,6 +187,21 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     this.material.setTexture('_MainTex', texture);
   }
 
+  override onUpdate (dt: number): void {
+    for (let i = 0; i < this.materials.length; i++) {
+      const material = this.materials[i];
+
+      material.setVector2('_Size', this.transform.size);
+
+      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
+      ) {
+        material.setVector3('_Scale', this.transform.scale);
+      }
+    }
+  }
+
   override render (renderer: Renderer) {
     if (!this.getVisible()) {
       return;
@@ -285,36 +299,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
   private draw (renderer: Renderer) {
     for (let i = 0; i < this.materials.length; i++) {
-      const material = this.materials[i];
-
-      let sizeX = this.transform.size.x;
-      let sizeY = this.transform.size.y;
-
-      // 只对文本组件应用扩展缩放
-      const comps = this.item.components ?? [];
-
-      for (const c of comps) {
-        // 检查是否具有 getTextureExpandScale 方法
-        if (c && typeof (c as TextComponent).getTextureExpandScale === 'function') {
-          const [effectScaleX, effectScaleY] = (c as TextComponent).getTextureExpandScale();
-
-          sizeX *= effectScaleX;
-          sizeY *= effectScaleY;
-
-          break;
-        }
-      }
-
-      material.setVector2('_Size', new Vector2(sizeX, sizeY));
-
-      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
-      ) {
-        material.setVector3('_Scale', this.transform.scale);
-      }
-
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.materials[i], i);
     }
   }
 

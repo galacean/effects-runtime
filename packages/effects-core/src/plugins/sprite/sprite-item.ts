@@ -106,6 +106,7 @@ export class SpriteComponent extends MaskableGraphic {
   }
 
   override onUpdate (dt: number): void {
+    super.onUpdate(dt);
     let time = this.time;
     const duration = this.duration;
     const textureAnimation = this.textureSheetAnimation;

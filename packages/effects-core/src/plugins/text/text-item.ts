@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import { Color } from '@galacean/effects-math/es/core/index';
+import { Color, Vector2 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import { MaskableGraphic } from '../../components';
@@ -123,6 +123,18 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
     this.updateTexture();
+
+    // 覆盖基类每帧更新 size 行为，应用扩容比例
+    for (const material of this.materials) {
+      let sizeX = this.transform.size.x;
+      let sizeY = this.transform.size.y;
+      const [scalex, scaley] = this.getTextureExpandScale();
+
+      sizeX *= scalex;
+      sizeY *= scaley;
+
+      material.setVector2('_Size', new Vector2(sizeX, sizeY));
+    }
   }
 
   override onDestroy (): void {

@@ -87,6 +87,12 @@ export class TextLayout implements BaseLayout {
     return offsetResult;
   }
 
+  /**
+   * 获取初始的水平偏移值
+   * @param style - 字体基础数据
+   * @param maxWidth - 最大行宽
+   * @returns - 水平偏移值
+   */
   getOffsetX (style: TextStyle, maxWidth: number) {
     let offsetX = 0;
 
