@@ -7,7 +7,7 @@ varying vec2 vTexCoord;
 varying vec3 vParams;
 varying vec4 vColor;
 
-#define MAX_BLOCK_NUM 20
+#define MAX_BLOCK_NUM 13
 #define EPSILON 1e-6
 #define MAX_K 9        // (MAX_BLOCK_NUM - 1) / 2;
 
