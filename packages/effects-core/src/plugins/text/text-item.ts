@@ -57,8 +57,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   /**
    * 描边/阴影等特效导致的纹理扩容比例 X/Y
    */
-  protected _effectScaleX = 1;
-  protected _effectScaleY = 1;
+  protected effectScaleX = 1;
+  protected effectScaleY = 1;
 
   /**
    * 每一行文本的最大宽度
@@ -378,7 +378,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
       baseHeight = layout.height * fontScale;
     }
 
-    const { padL, padR, padT, padB } = this.getEffectPaddingPx();
+    const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
 
     const texWidth = hasEffect ? Math.ceil(baseWidth + padL + padR) : baseWidth;
@@ -388,8 +388,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const shiftY = hasEffect ? (flipY ? padT : padB) : 0;
 
     // 给渲染层用：扩容比例
-    this._effectScaleX = baseWidth > 0 ? (texWidth / baseWidth) : 1;
-    this._effectScaleY = baseHeight > 0 ? (texHeight / baseHeight) : 1;
+    this.effectScaleX = baseWidth > 0 ? (texWidth / baseWidth) : 1;
+    this.effectScaleY = baseHeight > 0 ? (texHeight / baseHeight) : 1;
 
     this.renderToTexture(texWidth, texHeight, flipY, context => {
       // canvas size 变化后重新刷新 context
@@ -494,20 +494,25 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
   /**
    * 给渲染层用：获取特效扩容比例（描边/阴影导致的纹理扩容）
+   * @returns
    */
   public getTextureExpandScale (): [number, number] {
-    return [this._effectScaleX, this._effectScaleY];
+    return [this.effectScaleX, this.effectScaleY];
   }
 
-  protected getEffectPaddingPx () {
-    const s = this.textStyle;
+  /**
+   * 获取描边和阴影的 padding 值（单位：px）
+   * @returns
+   */
+  protected getEffectPadding () {
+    const style = this.textStyle;
 
-    const hasDrawOutline = s.isOutlined && s.outlineWidth > 0;
-    const outlinePad = hasDrawOutline ? Math.ceil(s.outlineWidth * 2 * s.fontScale) : 0;
+    const hasDrawOutline = style.isOutlined && style.outlineWidth > 0;
+    const outlinePad = hasDrawOutline ? Math.ceil(style.outlineWidth * 2 * style.fontScale) : 0;
 
-    const hasShadow = s.hasShadow && (s.shadowBlur > 0 || s.shadowOffsetX !== 0 || s.shadowOffsetY !== 0);
+    const hasShadow = style.hasShadow && (style.shadowBlur > 0 || style.shadowOffsetX !== 0 || style.shadowOffsetY !== 0);
     const shadowPad = hasShadow
-      ? Math.ceil((Math.abs(s.shadowOffsetX) + Math.abs(s.shadowOffsetY) + s.shadowBlur) * s.fontScale)
+      ? Math.ceil((Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur) * style.fontScale)
       : 0;
 
     const pad = outlinePad + shadowPad;
