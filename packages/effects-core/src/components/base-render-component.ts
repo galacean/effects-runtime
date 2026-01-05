@@ -294,9 +294,9 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
       const comps = this.item.components ?? [];
 
       for (const c of comps) {
-        // 检查是否具有 getEffectScaleXY 方法
-        if (c && typeof (c as TextComponent).getEffectScaleXY === 'function') {
-          const [effectScaleX, effectScaleY] = (c as TextComponent).getEffectScaleXY();
+        // 检查是否具有 getTextureExpandScale 方法
+        if (c && typeof (c as TextComponent).getTextureExpandScale === 'function') {
+          const [effectScaleX, effectScaleY] = (c as TextComponent).getTextureExpandScale();
 
           sizeX *= effectScaleX;
           sizeY *= effectScaleY;

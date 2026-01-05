@@ -440,18 +440,32 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         charOffsetX,
       });
 
+      // 先描边
+      if (style.isOutlined) {
+        charsInfo.forEach(charInfo => {
+          const ox = layout.getOffsetX(style, charInfo.width);
+
+          for (let i = 0; i < charInfo.chars.length; i++) {
+            const str = charInfo.chars[i];
+            const drawX = shiftX + ox + charInfo.charOffsetX[i];
+            const drawY = shiftY + charInfo.y;
+
+            context.strokeText(str, drawX, drawY);
+          }
+        });
+      }
+
+      // 再填充
       charsInfo.forEach(charInfo => {
         const ox = layout.getOffsetX(style, charInfo.width);
 
-        charInfo.chars.forEach((str, i) => {
+        for (let i = 0; i < charInfo.chars.length; i++) {
+          const str = charInfo.chars[i];
           const drawX = shiftX + ox + charInfo.charOffsetX[i];
           const drawY = shiftY + charInfo.y;
 
-          if (style.isOutlined) {
-            context.strokeText(str, drawX, drawY);
-          }
           context.fillText(str, drawX, drawY);
-        });
+        }
       });
 
       if (style.hasShadow) {
@@ -469,7 +483,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   /**
    * 给渲染层用：获取特效扩容比例（描边/阴影导致的纹理扩容）
    */
-  public getEffectScaleXY (): [number, number] {
+  public getTextureExpandScale (): [number, number] {
     return [this._effectScaleX, this._effectScaleY];
   }
 
