@@ -187,6 +187,21 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     this.material.setTexture('_MainTex', texture);
   }
 
+  override onUpdate (dt: number): void {
+    for (let i = 0; i < this.materials.length; i++) {
+      const material = this.materials[i];
+
+      material.setVector2('_Size', this.transform.size);
+
+      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
+        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
+      ) {
+        material.setVector3('_Scale', this.transform.scale);
+      }
+    }
+  }
+
   override render (renderer: Renderer) {
     if (!this.getVisible()) {
       return;
@@ -284,18 +299,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
   private draw (renderer: Renderer) {
     for (let i = 0; i < this.materials.length; i++) {
-      const material = this.materials[i];
-
-      material.setVector2('_Size', this.transform.size);
-
-      if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
-        this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
-      ) {
-        material.setVector3('_Scale', this.transform.scale);
-      }
-
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
+      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.materials[i], i);
     }
   }
 

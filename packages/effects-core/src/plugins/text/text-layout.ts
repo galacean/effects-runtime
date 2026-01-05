@@ -59,10 +59,11 @@ export class TextLayout implements BaseLayout {
    * @returns - 行高偏移值
    */
   getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number, totalLineHeight?: number) {
-    // /3 计算Y轴偏移量，以匹配编辑器行为
     const { fontScale } = style;
+    // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
-    const baseOffset = fontSize; // 不加 layoutOutlineWidth
+    // 计算基础偏移量
+    const baseOffset = fontSize;
     const commonCalculation = totalLineHeight !== undefined ? totalLineHeight : lineHeight * (lineCount - 1);
     let offsetResult = 0;
 
