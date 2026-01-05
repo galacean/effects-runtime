@@ -8,6 +8,16 @@
 
 ---
 
+## 2.8.3
+
+`2026-01-05`
+
+- Fix: create with data support mipmap. [#1347](https://github.com/galacean/effects-runtime/pull/1347) @Fryt1
+- Fix: don't render outline when outlineWidth is undefined. [#1351](https://github.com/galacean/effects-runtime/pull/1351) @Fryt1
+- Fix: geometry indices deserialize issue. [#1350](https://github.com/galacean/effects-runtime/pull/1350) @wumaolinmaoan
+- Fix: outline layout. [#1352](https://github.com/galacean/effects-runtime/pull/1352) [#1356](https://github.com/galacean/effects-runtime/pull/1356) @Fryt1
+- Fix: adapt ffd shader to fit max vertex uniform vectors. [#1355](https://github.com/galacean/effects-runtime/pull/1355) @ChengYi996
+
 ## 2.8.2
 
 `2025-12-25`
