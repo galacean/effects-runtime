@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import { Color } from '@galacean/effects-math/es/core/index';
+import { Color, Vector2 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import { MaskableGraphic } from '../../components';
@@ -53,6 +53,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
+
+  /**
+   * 描边/阴影等特效导致的纹理扩容比例 X/Y
+   */
+  protected effectScaleX = 1;
+  protected effectScaleY = 1;
 
   /**
    * 每一行文本的最大宽度
@@ -117,6 +123,18 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
     this.updateTexture();
+
+    // 覆盖基类每帧更新 size 行为，应用扩容比例
+    for (const material of this.materials) {
+      let sizeX = this.transform.size.x;
+      let sizeY = this.transform.size.y;
+      const [scalex, scaley] = this.getTextureExpandScale();
+
+      sizeX *= scalex;
+      sizeY *= scaley;
+
+      material.setVector2('_Size', new Vector2(sizeX, sizeY));
+    }
   }
 
   override onDestroy (): void {
@@ -342,7 +360,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
-    const width = (layout.width + style.fontOffset) * fontScale;
+    const baseWidth = (layout.width + style.fontOffset) * fontScale;
     const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
@@ -351,19 +369,32 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     style.fontDesc = this.getFontDesc(fontSize);
     const char = (this.text || '').split('');
 
+    let baseHeight = 0;
+
     if (layout.autoWidth) {
-      this.canvas.height = finalHeight * fontScale;
+      baseHeight = finalHeight * fontScale;
       this.item.transform.size.set(1, finalHeight / layout.height);
     } else {
-      this.canvas.height = layout.height * fontScale;
+      baseHeight = layout.height * fontScale;
     }
 
-    const height = this.canvas.height;
+    const { padL, padR, padT, padB } = this.getEffectPadding();
+    const hasEffect = (padL | padR | padT | padB) !== 0;
 
-    this.renderToTexture(width, height, flipY, context => {
+    const texWidth = hasEffect ? Math.ceil(baseWidth + padL + padR) : baseWidth;
+    const texHeight = hasEffect ? Math.ceil(baseHeight + padT + padB) : baseHeight;
+
+    const shiftX = hasEffect ? padL : 0;
+    const shiftY = hasEffect ? (flipY ? padT : padB) : 0;
+
+    // 给渲染层用：扩容比例
+    this.effectScaleX = baseWidth > 0 ? (texWidth / baseWidth) : 1;
+    this.effectScaleY = baseHeight > 0 ? (texHeight / baseHeight) : 1;
+
+    this.renderToTexture(texWidth, texHeight, flipY, context => {
       // canvas size 变化后重新刷新 context
-      if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
-        context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+      if (this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display) {
+        context.font = this.getFontDesc(fontSize * baseWidth / this.maxLineWidth);
       } else {
         context.font = style.fontDesc;
       }
@@ -394,7 +425,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         // 和浏览器行为保持一致
         x += layout.letterSpace * fontScale;
 
-        if (((x + textMetrics.width) > width && i > 0) || str === '\n') {
+        if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
           charsInfo.push({
             y,
             width: x,
@@ -421,15 +452,32 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         charOffsetX,
       });
 
-      charsInfo.forEach(charInfo => {
-        const x = layout.getOffsetX(style, charInfo.width);
+      // 先描边
+      if (style.isOutlined) {
+        charsInfo.forEach(charInfo => {
+          const ox = layout.getOffsetX(style, charInfo.width);
 
-        charInfo.chars.forEach((str, i) => {
-          if (style.isOutlined) {
-            context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
+          for (let i = 0; i < charInfo.chars.length; i++) {
+            const str = charInfo.chars[i];
+            const drawX = shiftX + ox + charInfo.charOffsetX[i];
+            const drawY = shiftY + charInfo.y;
+
+            context.strokeText(str, drawX, drawY);
           }
-          context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
         });
+      }
+
+      // 再填充
+      charsInfo.forEach(charInfo => {
+        const ox = layout.getOffsetX(style, charInfo.width);
+
+        for (let i = 0; i < charInfo.chars.length; i++) {
+          const str = charInfo.chars[i];
+          const drawX = shiftX + ox + charInfo.charOffsetX[i];
+          const drawY = shiftY + charInfo.y;
+
+          context.fillText(str, drawX, drawY);
+        }
       });
 
       if (style.hasShadow) {
@@ -442,6 +490,34 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
   renderText (options: spec.TextContentOptions) {
     this.updateTexture();
+  }
+
+  /**
+   * 给渲染层用：获取特效扩容比例（描边/阴影导致的纹理扩容）
+   * @returns
+   */
+  public getTextureExpandScale (): [number, number] {
+    return [this.effectScaleX, this.effectScaleY];
+  }
+
+  /**
+   * 获取描边和阴影的 padding 值（单位：px）
+   * @returns
+   */
+  protected getEffectPadding () {
+    const style = this.textStyle;
+
+    const hasDrawOutline = style.isOutlined && style.outlineWidth > 0;
+    const outlinePad = hasDrawOutline ? Math.ceil(style.outlineWidth * 2 * style.fontScale) : 0;
+
+    const hasShadow = style.hasShadow && (style.shadowBlur > 0 || style.shadowOffsetX !== 0 || style.shadowOffsetY !== 0);
+    const shadowPad = hasShadow
+      ? Math.ceil((Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur) * style.fontScale)
+      : 0;
+
+    const pad = outlinePad + shadowPad;
+
+    return { padL: pad, padR: pad, padT: pad, padB: pad };
   }
 
   setAutoWidth (value: boolean): void {
