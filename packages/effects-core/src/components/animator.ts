@@ -137,6 +137,15 @@ export class Animator extends Component {
         animatedObject.target.onApplyAnimationProperties();
       }
     }
+
+    // Trigger animation events
+    //-------------------------------------------------------------------------
+    for (const eventReference of this.graphInstance.activeEvents) {
+      const eventInfo = eventReference.event;
+      const event = eventInfo.event;
+
+      event.onEvent(this.item, eventInfo.clip, eventReference);
+    }
   }
 
   override fromData (data: spec.AnimatorData): void {

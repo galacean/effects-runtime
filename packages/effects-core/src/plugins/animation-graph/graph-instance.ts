@@ -1,3 +1,4 @@
+import type { AnimationEventReference } from '../../animation';
 import type { VFXItem } from '../../vfx-item';
 import type { AnimationGraphAsset } from './animation-graph-asset';
 import { GraphContext, InstantiationContext } from './graph-context';
@@ -12,6 +13,7 @@ import { Skeleton } from './skeleton';
 export class GraphInstance {
   nodes: GraphNode[] = [];
   skeleton: Skeleton;
+  activeEvents: AnimationEventReference[] = [];
 
   private rootNode: PoseNode;
   private context = new GraphContext();
@@ -59,6 +61,7 @@ export class GraphInstance {
     // Create PoseResult
     this.result = new PoseResult(this.skeleton);
     this.context.skeleton = this.skeleton;
+    this.context.activeEvents = this.activeEvents;
 
     // Instantiate graph nodes
     const instantiationContext = new InstantiationContext();
@@ -76,6 +79,8 @@ export class GraphInstance {
   }
 
   evaluateGraph (deltaTime: number) {
+    this.activeEvents.length = 0;
+
     this.context.update(deltaTime);
 
     if (!this.rootNode.isInitialized()) {
