@@ -8,7 +8,9 @@ import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Material } from '../material';
 import { GraphicsPath } from '../math/shape/graphics-path';
+import type { StrokeAttributes } from '../math/shape/build-line';
 import { buildLine } from '../math/shape/build-line';
+import type { ShapePrimitive } from '../math/shape/shape-primitive';
 
 export class Render2D {
   private geometry: Geometry;
@@ -19,6 +21,18 @@ export class Render2D {
   private colors: number[] = [];
   private indices: number[] = [];
 
+  private lineStyle: StrokeAttributes = {
+    width: 1,
+    alignment: 0.5,
+    cap: spec.LineCap.Butt,
+    join: spec.LineJoin.Miter,
+    miterLimit: 10,
+  };
+
+  // 变换栈和缓存（使用 Matrix3 进行 2D 变换）
+  private transformStack: Matrix3[] = [];
+  private currentTransform: Matrix3 = Matrix3.fromIdentity();
+
   private get currentVertexCount () {
     return this.vertices.length / 2;
   }
@@ -26,10 +40,6 @@ export class Render2D {
   private get currentIndexCount () {
     return this.indices.length;
   }
-
-  // 变换栈和缓存（使用 Matrix3 进行 2D 变换）
-  private transformStack: Matrix3[] = [];
-  private currentTransform: Matrix3 = Matrix3.fromIdentity();
 
   constructor (private engine: Engine) {
     this.geometry = Geometry.create(this.engine, {
@@ -175,23 +185,7 @@ export class Render2D {
       this.graphicsPath.lineTo(points[i].x, points[i].y);
     }
 
-    const buildPoints: number[] = [];
-    const shape = this.graphicsPath.shapePath.shapePrimitives[0].shape;
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
-
-    shape.build(buildPoints);
-    buildLine(buildPoints, {
-      width: thickness,
-      alignment: 0,
-      cap: spec.LineCap.Butt,
-      join: spec.LineJoin.Miter,
-      miterLimit: 0,
-    }, false, false, this.vertices, 2, vertexOffset, this.indices, indexOffset);
-
-    const vertexCount = this.vertices.length / 2 - vertexOffset;
-
-    this.applyTransformAndColor(vertexOffset, vertexCount, color);
+    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness);
   }
 
   /**
@@ -206,6 +200,22 @@ export class Render2D {
   }
 
   /**
+   * 绘制矩形边框
+   * @param x - 矩形左下角 X 坐标
+   * @param y - 矩形左下角 Y 坐标
+   * @param width - 矩形宽度
+   * @param height - 矩形高度
+   * @param color - 矩形颜色
+   */
+  drawRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.moveTo(x, y);
+    this.graphicsPath.rect(x, y, width, height, 0);
+
+    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, true);
+  }
+
+  /**
    * 绘制填充矩形
    * @param x - 矩形左下角 X 坐标
    * @param y - 矩形左下角 Y 坐标
@@ -216,20 +226,37 @@ export class Render2D {
   fillRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1)): void {
     this.graphicsPath.clear();
     this.graphicsPath.moveTo(x, y);
-
     this.graphicsPath.rect(x, y, width, height, 0);
 
+    this.buildShape(this.graphicsPath.shapePath.shapePrimitives[0].shape, color);
+  }
+
+  dispose (): void {
+    this.geometry.dispose();
+    this.material.dispose();
+  }
+
+  private buildShape (shape: ShapePrimitive, color: Color) {
     const buildPoints: number[] = [];
-    const shape = this.graphicsPath.shapePath.shapePrimitives[0].shape;
     const indexOffset = this.indices.length;
     const vertexOffset = this.vertices.length / 2;
 
     shape.build(buildPoints);
     shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
 
-    const vertexCount = this.vertices.length / 2 - vertexOffset;
+    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+  }
 
-    this.applyTransformAndColor(vertexOffset, vertexCount, color);
+  private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
+    const buildPoints: number[] = [];
+    const indexOffset = this.indices.length;
+    const vertexOffset = this.vertices.length / 2;
+
+    shape.build(buildPoints);
+    this.lineStyle.width = thickness;
+    buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
+
+    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
   }
 
   private applyTransformAndColor (vertexOffset: number, count: number, color: Color): void {
