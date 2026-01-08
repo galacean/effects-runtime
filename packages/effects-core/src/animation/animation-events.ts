@@ -1,4 +1,4 @@
-import type { AnimationClip } from '.';
+import type { AnimationClip } from './animation-clip';
 import type { VFXItem } from '../vfx-item';
 
 export interface AnimationEventReference {

@@ -1,4 +1,4 @@
-import type { AnimationEventReference } from '../../animation/animation-events';
+import type { AnimationEventReference } from '../../animation';
 import type { GraphDataSet } from './graph-data-set';
 import type { GraphNode, GraphNodeData } from './graph-node';
 import type { Skeleton } from './skeleton';

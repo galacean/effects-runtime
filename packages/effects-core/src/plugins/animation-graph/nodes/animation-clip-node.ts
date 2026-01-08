@@ -6,8 +6,9 @@ import { nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
 import type { Skeleton } from '../skeleton';
 import type { Pose } from '../pose';
-import type { AnimationClip, AnimationCurve, FloatAnimationCurve, ColorAnimationCurve } from '../../../animation';
-import type { AnimationEventReference } from 'packages/effects-core/src/animation/animation-events';
+import type {
+  AnimationClip, AnimationCurve, FloatAnimationCurve, ColorAnimationCurve, AnimationEventReference,
+} from '../../../animation';
 
 @nodeDataClass(spec.NodeDataType.AnimationClipNodeData)
 export class AnimationClipNodeData extends GraphNodeData {

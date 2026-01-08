@@ -1,4 +1,4 @@
-import type { AnimationEventReference } from '../../animation/animation-events';
+import type { AnimationEventReference } from '../../animation';
 import type { VFXItem } from '../../vfx-item';
 import type { AnimationGraphAsset } from './animation-graph-asset';
 import { GraphContext, InstantiationContext } from './graph-context';

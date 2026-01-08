@@ -1,4 +1,4 @@
-import type { AnimationEventReference } from '../animation/animation-events';
+import type { AnimationEventReference } from '../animation';
 import type { MessageItem } from '../composition';
 import type { PointerEventData, Region } from '../plugins';
 
@@ -32,6 +32,7 @@ export type ItemEvent = PointerEvent & {
   ['message']: [message: Omit<MessageItem, 'compositionId'>],
   /**
    * 动画事件
+   * @since 2.9.0
    */
   ['animationevent']: [eventData: AnimationEventReference],
 };
@@ -81,6 +82,7 @@ export type CompositionEvent<C> = PointerEvent & {
   ['goto']: [gotoInfo: { time: number }],
   /**
    * 动画事件
+   * @since 2.9.0
    */
   ['animationevent']: [eventData: AnimationEventReference],
 };
