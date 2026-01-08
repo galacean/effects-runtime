@@ -136,13 +136,15 @@ export class Render2D {
    * 恢复上一个变换
    */
   popTransform (): void {
-    if (this.transformStack.length === 0) {
+    const transform = this.transformStack.pop();
+
+    if (!transform) {
       console.warn('Render2D: 变换栈为空，无法弹出');
 
       return;
     }
 
-    this.currentTransform = this.transformStack.pop()!;
+    this.currentTransform = transform;
   }
 
   /**
@@ -178,6 +180,12 @@ export class Render2D {
       return;
     }
 
+    const closed = points[0].x === points[points.length - 1].x && points[0].y === points[points.length - 1].y;
+
+    if (closed) {
+      points.pop();
+    }
+
     this.graphicsPath.clear();
     this.graphicsPath.moveTo(points[0].x, points[0].y);
 
@@ -185,7 +193,7 @@ export class Render2D {
       this.graphicsPath.lineTo(points[i].x, points[i].y);
     }
 
-    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness);
+    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, closed);
   }
 
   /**
@@ -209,7 +217,6 @@ export class Render2D {
    */
   drawRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
     this.graphicsPath.clear();
-    this.graphicsPath.moveTo(x, y);
     this.graphicsPath.rect(x, y, width, height, 0);
 
     this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, true);
