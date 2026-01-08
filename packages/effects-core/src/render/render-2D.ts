@@ -112,20 +112,6 @@ export class Render2D {
   }
 
   /**
-   * 应用自定义变换到点
-   * @param x - 点的 x 坐标
-   * @param y - 点的 y 坐标
-   * @param result - 变换结果存储数组
-   * @param offset - 存储数组的偏移位置
-   */
-  private applyTransform (x: number, y: number, result: number[], offset = 0): void {
-    const m = this.currentTransform.elements;
-
-    result[offset] = m[0] * x + m[3] * y + m[6];
-    result[offset + 1] = m[1] * x + m[4] * y + m[7];
-  }
-
-  /**
    * 将当前变换压入栈，并设置新的变换
    * @param transform - 新的变换矩阵（会与当前变换相乘）
    */
@@ -203,17 +189,7 @@ export class Render2D {
 
     const vertexCount = this.vertices.length / 2 - vertexOffset;
 
-    for (let i = 0; i < vertexCount; i++) {
-      const vertexStart = (vertexOffset + i) * 2;
-      const colorIndex = (vertexOffset + i) * 4;
-
-      this.applyTransform(this.vertices[vertexStart], this.vertices[vertexStart + 1], this.vertices, vertexStart);
-
-      this.colors[colorIndex] = color.r;
-      this.colors[colorIndex + 1] = color.g;
-      this.colors[colorIndex + 2] = color.b;
-      this.colors[colorIndex + 3] = color.a;
-    }
+    this.applyTransformAndColor(vertexOffset, vertexCount, color);
   }
 
   /**
@@ -225,5 +201,60 @@ export class Render2D {
    */
   drawLine (p1: Vector2, p2: Vector2, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
     this.drawLines([p1, p2], color, thickness);
+  }
+
+  /**
+   * 绘制填充矩形
+   * @param x - 矩形左下角 X 坐标
+   * @param y - 矩形左下角 Y 坐标
+   * @param width - 矩形宽度
+   * @param height - 矩形高度
+   * @param color - 矩形颜色
+   */
+  fillRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1)): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.moveTo(x, y);
+
+    this.graphicsPath.rect(x, y, width, height, 0);
+
+    const buildPoints: number[] = [];
+    const shape = this.graphicsPath.shapePath.shapePrimitives[0].shape;
+    const indexOffset = this.indices.length;
+    const vertexOffset = this.vertices.length / 2;
+
+    shape.build(buildPoints);
+    shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
+
+    const vertexCount = this.vertices.length / 2 - vertexOffset;
+
+    this.applyTransformAndColor(vertexOffset, vertexCount, color);
+  }
+
+  private applyTransformAndColor (vertexOffset: number, count: number, color: Color): void {
+    for (let i = 0; i < count; i++) {
+      const vertexStart = (vertexOffset + i) * 2;
+      const colorStart = (vertexOffset + i) * 4;
+
+      this.applyTransform(this.vertices[vertexStart], this.vertices[vertexStart + 1], this.vertices, vertexStart);
+
+      this.colors[colorStart] = color.r;
+      this.colors[colorStart + 1] = color.g;
+      this.colors[colorStart + 2] = color.b;
+      this.colors[colorStart + 3] = color.a;
+    }
+  }
+
+  /**
+   * 应用自定义变换到点
+   * @param x - 点的 x 坐标
+   * @param y - 点的 y 坐标
+   * @param result - 变换结果存储数组
+   * @param offset - 存储数组的偏移位置
+   */
+  private applyTransform (x: number, y: number, result: number[], offset = 0): void {
+    const m = this.currentTransform.elements;
+
+    result[offset] = m[0] * x + m[3] * y + m[6];
+    result[offset + 1] = m[1] * x + m[4] * y + m[7];
   }
 }
