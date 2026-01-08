@@ -93,6 +93,8 @@ export class Render2D {
   begin (): void {
     this.indices.length = 0;
     this.vertices.length = 0;
+    this.colors.length = 0;
+
     this.transformStack = [];
     this.currentTransform = Matrix3.fromIdentity();
 
@@ -141,13 +143,13 @@ export class Render2D {
       return;
     }
 
-    const verticesView = new Float32Array(this.vertices.slice(0, this.currentVertexCount * 3));
-    const colorsView = new Float32Array(this.colors.slice(0, this.currentVertexCount * 4));
-    const indicesView = new Uint16Array(this.indices.slice(0, this.currentIndexCount));
+    const verticesArray = new Float32Array(this.vertices);
+    const colorsArray = new Float32Array(this.colors);
+    const indicesArray = new Uint16Array(this.indices);
 
-    this.geometry.setAttributeData('aPos', verticesView);
-    this.geometry.setAttributeData('aColor', colorsView);
-    this.geometry.setIndexData(indicesView);
+    this.geometry.setAttributeData('aPos', verticesArray);
+    this.geometry.setAttributeData('aColor', colorsArray);
+    this.geometry.setIndexData(indicesArray);
     this.geometry.setDrawCount(this.currentIndexCount);
 
     this.engine.renderer.drawGeometry(this.geometry, Matrix4.IDENTITY, this.material);
