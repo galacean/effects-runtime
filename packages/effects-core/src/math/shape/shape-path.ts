@@ -40,6 +40,11 @@ export class ShapePath {
 
           break;
         }
+        case 'lineTo': {
+          this.lineTo(data[0], data[1]);
+
+          break;
+        }
         case 'ellipse': {
           this.ellipse(data[0], data[1], data[2], data[3], data[4]);
 
@@ -98,6 +103,27 @@ export class ShapePath {
 
   moveTo (x: number, y: number): ShapePath {
     this.startPoly(x, y);
+
+    return this;
+  }
+
+  /**
+     * Connects the current point to a new point with a straight line. This method updates the current path.
+     * @param x - The x-coordinate of the new point to connect to.
+     * @param y - The y-coordinate of the new point to connect to.
+     * @returns The instance of the current object for chaining.
+     */
+  public lineTo (x: number, y: number): this {
+    this.ensurePoly();
+
+    const points = (this.currentPoly as Polygon).points;
+
+    const fromX = points[points.length - 2];
+    const fromY = points[points.length - 1];
+
+    if (fromX !== x || fromY !== y) {
+      points.push(x, y);
+    }
 
     return this;
   }
