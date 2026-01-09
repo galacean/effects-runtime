@@ -5,29 +5,52 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Geometry } from '../../render/geometry';
 import type { BoundingBoxTriangle } from './click-handler';
 import { HitTestType } from './click-handler';
+import type { Vector2 } from '@galacean/effects-math/es/core';
+import { BoundingBox } from '../../culling/bounding-box';
 
 /**
- *
+ * 包围盒信息
  */
-export class MeshCollider {
-  private boundingBoxData: BoundingBoxTriangle;
+export class BoundingBoxInfo {
+  /**
+   * 包围盒
+   */
+  readonly boundingBox = new BoundingBox(new Vector3(), new Vector3());
+
   private triangles: TriangleLike[] = [];
+  private boundingBoxTriangle: BoundingBoxTriangle;
   private worldMatrix = new Matrix4();
 
-  getBoundingBoxData (): BoundingBoxTriangle {
-    this.applyWorldMatrix(this.boundingBoxData.area);
-
-    return this.boundingBoxData;
+  /**
+   * 重新构建包围盒信息
+   * @param min - 新的最小点（局部空间）
+   * @param max - 新的最大点（局部空间）
+   * @param worldMatrix - 新的世界矩阵
+   */
+  reConstruct (min: Vector3, max: Vector3, worldMatrix?: Matrix4) {
+    this.boundingBox.reConstruct(min, max, worldMatrix);
   }
 
-  getBoundingBox (): BoundingBoxTriangle {
+  /**
+   * @deprecated
+   */
+  getRawBoundingBoxTriangle (): BoundingBoxTriangle {
+    this.applyWorldMatrix(this.boundingBoxTriangle.area);
+
+    return this.boundingBoxTriangle;
+  }
+
+  /**
+   * @deprecated
+   */
+  getBoundingBoxTriangle (size?: Vector2): BoundingBoxTriangle {
     let maxX = -Number.MAX_VALUE;
     let maxY = -Number.MAX_VALUE;
 
     let minX = Number.MAX_VALUE;
     let minY = Number.MAX_VALUE;
 
-    for (const triangle of this.boundingBoxData.area) {
+    for (const triangle of this.boundingBoxTriangle.area) {
       maxX = Math.max(triangle.p0.x, triangle.p1.x, triangle.p2.x, maxX);
       maxY = Math.max(triangle.p0.y, triangle.p1.y, triangle.p2.y, maxY);
       minX = Math.min(triangle.p0.x, triangle.p1.x, triangle.p2.x, minX);
@@ -52,6 +75,9 @@ export class MeshCollider {
     };
   }
 
+  /**
+   * @deprecated
+   */
   setGeometry (geometry: Geometry, worldMatrix?: Matrix4) {
     this.triangles = this.geometryToTriangles(geometry);
     const area = [];
@@ -63,7 +89,7 @@ export class MeshCollider {
       this.worldMatrix.copyFrom(worldMatrix);
     }
 
-    this.boundingBoxData = {
+    this.boundingBoxTriangle = {
       type: HitTestType.triangle,
       area,
     };

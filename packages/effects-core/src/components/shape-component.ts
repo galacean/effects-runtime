@@ -7,7 +7,7 @@ import type { Maskable, MaterialProps } from '../material';
 import { MaskMode, MaskProcessor, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import { Material, setMaskMode } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { MeshCollider } from '../plugins';
+import { BoundingBoxInfo } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
@@ -195,7 +195,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   /**
    * 用于点击测试的碰撞器
    */
-  private meshCollider = new MeshCollider();
+  private boundingBoxInfo = new BoundingBoxInfo();
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
   private fillMaterials: Material[] = [];
@@ -352,8 +352,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
 
     if (force) {
-      this.meshCollider.setGeometry(this.geometry, worldMatrix);
-      const area = this.meshCollider.getBoundingBoxData();
+      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
 
       if (area) {
         return {
@@ -369,10 +369,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   getBoundingBox (): BoundingBoxTriangle {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.meshCollider.getBoundingBox();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle();
 
     return boundingBox;
+  }
+
+  getBoundingBoxInfo (): BoundingBoxInfo {
+    return this.boundingBoxInfo;
   }
 
   private buildGeometryFromPath (shapePath: ShapePath) {

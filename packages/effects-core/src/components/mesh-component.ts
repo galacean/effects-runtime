@@ -4,7 +4,7 @@ import { MaskProcessor } from '../material/mask-ref-manager';
 import type { Maskable } from '../material/types';
 import { setMaskMode } from '../material/utils';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { MeshCollider } from '../plugins';
+import { BoundingBoxInfo } from '../plugins';
 import type { Geometry } from '../render/geometry';
 import type { Renderer } from '../render/renderer';
 import { RendererComponent } from './renderer-component';
@@ -21,7 +21,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
   /**
    * 用于点击测试的碰撞器
    */
-  protected meshCollider = new MeshCollider();
+  protected boundingBoxInfo = new BoundingBoxInfo();
   private readonly maskManager: MaskProcessor;
 
   constructor (engine: Engine) {
@@ -56,8 +56,8 @@ export class MeshComponent extends RendererComponent implements Maskable {
   getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const area = this.meshCollider.getBoundingBoxData();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
 
     if (area) {
       return {
@@ -70,10 +70,14 @@ export class MeshComponent extends RendererComponent implements Maskable {
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.meshCollider.getBoundingBox();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle();
 
     return boundingBox;
+  }
+
+  getBoundingBoxInfo (): BoundingBoxInfo {
+    return this.boundingBoxInfo;
   }
 
   // TODO: Update data spec

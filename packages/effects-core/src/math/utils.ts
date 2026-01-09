@@ -4,6 +4,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Ray } from '@galacean/effects-math/es/core/ray';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import type { Camera } from '../camera';
+import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 export type vec = number[];
 
@@ -91,4 +92,59 @@ export function numberToFix (a: number, fixed = 2) {
   const base = Math.pow(10, fixed);
 
   return Math.floor(a * base) / base;
+}
+
+/**
+ * 最小最大值结果
+ */
+export interface MinMaxResult {
+  /** 最小值向量 */
+  minimum: Vector3,
+  /** 最大值向量 */
+  maximum: Vector3,
+}
+
+/**
+ * 从位置数组中提取最小和最大值
+ * @param positions - 位置数据数组
+ * @param start - 起始索引
+ * @param count - 要处理的顶点数量
+ * @param bias - 可选的偏移值
+ * @param stride - 步长（默认为 3，即 x, y, z）
+ * @returns 包含 minimum 和 maximum Vector3 的对象
+ */
+export function extractMinAndMax (positions: number[] | Float32Array, start: number, count: number, bias: Vector2 | null = null, stride?: number): MinMaxResult {
+  const minimum = new Vector3(Number.MAX_VALUE, Number.MAX_VALUE, Number.MAX_VALUE);
+  const maximum = new Vector3(-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE);
+
+  if (!stride) {
+    stride = 3;
+  }
+
+  for (let index = start, offset = start * stride; index < start + count; index++, offset += stride) {
+    const x = positions[offset];
+    const y = positions[offset + 1];
+    const z = positions[offset + 2];
+
+    minimum.x = Math.min(minimum.x, x);
+    minimum.y = Math.min(minimum.y, y);
+    minimum.z = Math.min(minimum.z, z);
+    maximum.x = Math.max(maximum.x, x);
+    maximum.y = Math.max(maximum.y, y);
+    maximum.z = Math.max(maximum.z, z);
+  }
+
+  if (bias) {
+    minimum.x -= minimum.x * bias.x + bias.y;
+    minimum.y -= minimum.y * bias.x + bias.y;
+    minimum.z -= minimum.z * bias.x + bias.y;
+    maximum.x += maximum.x * bias.x + bias.y;
+    maximum.y += maximum.y * bias.x + bias.y;
+    maximum.z += maximum.z * bias.x + bias.y;
+  }
+
+  return {
+    minimum,
+    maximum,
+  };
 }
