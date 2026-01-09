@@ -7,11 +7,11 @@ import type { Maskable, MaterialProps } from '../material';
 import { MaskMode, MaskProcessor, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import { Material, setMaskMode } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { BoundingBoxInfo } from '../plugins';
+import type { BoundingBoxInfo } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
-import { buildLine, createValueGetter, GraphicsPath, StarType } from '../math';
+import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture/texture';
@@ -192,10 +192,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
 
-  /**
-   * 用于点击测试的碰撞器
-   */
-  private boundingBoxInfo = new BoundingBoxInfo();
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
   private fillMaterials: Material[] = [];
@@ -375,7 +371,19 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
-  getBoundingBoxInfo (): BoundingBoxInfo {
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+
+    if (positionArray) {
+      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
+
+      minMaxResult.minimum.x *= this.transform.size.x;
+      minMaxResult.minimum.y *= this.transform.size.y;
+      minMaxResult.maximum.x *= this.transform.size.x;
+      minMaxResult.maximum.y *= this.transform.size.y;
+      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+    }
+
     return this.boundingBoxInfo;
   }
 

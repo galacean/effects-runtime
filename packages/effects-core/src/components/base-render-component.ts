@@ -8,8 +8,7 @@ import type { Maskable } from '../material';
 import {
   MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
 } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { BoundingBoxInfo } from '../plugins';
+import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
 import { itemFrag, itemVert } from '../shader';
@@ -42,10 +41,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   protected visible = true;
   protected readonly maskManager: MaskProcessor;
 
-  /**
-   * 用于点击测试的碰撞器
-   */
-  protected boundingBoxInfo = new BoundingBoxInfo();
   protected defaultGeometry: Geometry;
 
   private _color = new Color(1, 1, 1, 1);
@@ -264,7 +259,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
-  getBoundingBoxInfo (): BoundingBoxInfo {
+  override getBoundingBoxInfo (): BoundingBoxInfo {
     const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
 
     if (positionArray) {

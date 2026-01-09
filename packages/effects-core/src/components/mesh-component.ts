@@ -3,8 +3,9 @@ import type { Engine } from '../engine';
 import { MaskProcessor } from '../material/mask-ref-manager';
 import type { Maskable } from '../material/types';
 import { setMaskMode } from '../material/utils';
+import { extractMinAndMax } from '../math/utils';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { BoundingBoxInfo } from '../plugins';
+import type { BoundingBoxInfo } from '../plugins';
 import type { Geometry } from '../render/geometry';
 import type { Renderer } from '../render/renderer';
 import { RendererComponent } from './renderer-component';
@@ -18,10 +19,6 @@ export class MeshComponent extends RendererComponent implements Maskable {
    */
   @serialize()
   protected geometry: Geometry;
-  /**
-   * 用于点击测试的碰撞器
-   */
-  protected boundingBoxInfo = new BoundingBoxInfo();
   private readonly maskManager: MaskProcessor;
 
   constructor (engine: Engine) {
@@ -76,7 +73,19 @@ export class MeshComponent extends RendererComponent implements Maskable {
     return boundingBox;
   }
 
-  getBoundingBoxInfo (): BoundingBoxInfo {
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+
+    if (positionArray) {
+      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
+
+      minMaxResult.minimum.x *= this.transform.size.x;
+      minMaxResult.minimum.y *= this.transform.size.y;
+      minMaxResult.maximum.x *= this.transform.size.x;
+      minMaxResult.maximum.y *= this.transform.size.y;
+      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+    }
+
     return this.boundingBoxInfo;
   }
 
