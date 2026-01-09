@@ -453,7 +453,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
       });
 
       // 先描边
-      if (style.isOutlined) {
+      if (style.isOutlined && style.outlineWidth > 0) {
         charsInfo.forEach(charInfo => {
           const ox = layout.getOffsetX(style, charInfo.width);
 
