@@ -208,6 +208,23 @@ export class Render2D {
   }
 
   /**
+   * 绘制贝塞尔曲线
+   * @param p1 - 起点
+   * @param p2 - 控制点1
+   * @param p3 - 控制点2
+   * @param p4 - 终点
+   * @param color - 线条颜色
+   * @param thickness - 线宽
+   */
+  drawBezier (p1: Vector2, p2: Vector2, p3: Vector2, p4: Vector2, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.moveTo(p1.x, p1.y);
+    this.graphicsPath.bezierCurveTo(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
+
+    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, false);
+  }
+
+  /**
    * 绘制矩形边框
    * @param x - 矩形左下角 X 坐标
    * @param y - 矩形左下角 Y 坐标
