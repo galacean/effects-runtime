@@ -68,12 +68,12 @@ export class RichTextLayout implements BaseLayout {
     this.height = size ? size[1] : 100;
 
     this.wrapEnabled = wrapEnabled;
-    // 兜底，避免 0/负数/NaN/Infinity
-    const safeMaxW = Number.isFinite(maxTextWidth) ? maxTextWidth : 0;
-    const safeMaxH = Number.isFinite(maxTextHeight) ? maxTextHeight : 0;
 
-    this.maxTextWidth = Math.max(1, safeMaxW);
-    this.maxTextHeight = Math.max(1, safeMaxH);
+    // TODO: 统一富文本和图层 size 单位，这边先临时做个转换
+    const scaleFactor = 50;
+
+    this.maxTextWidth = maxTextWidth * scaleFactor;
+    this.maxTextHeight = maxTextHeight * scaleFactor;
     this.sizeMode = sizeMode;
   }
 

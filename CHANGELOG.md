@@ -7,6 +7,15 @@
 
 ---
 
+## 2.8.4
+
+`2026-01-09`
+
+- Chore: opt valid font family check logic in desktop. [#1360](https://github.com/galacean/effects-runtime/pull/1360) @wumaolinmaoan
+  - Fix: text font family unit test. [#1366](https://github.com/galacean/effects-runtime/pull/1366) @wumaolinmaoan
+- Fix: text outline should not draw when outline width is 0. [#1361](https://github.com/galacean/effects-runtime/pull/1361) @wumaolinmaoan
+- Fix: unify the rendering size units for rich text and sprite. [#1363](https://github.com/galacean/effects-runtime/pull/1363) @wumaolinmaoan
+
 ## 2.8.3
 
 `2026-01-05`
