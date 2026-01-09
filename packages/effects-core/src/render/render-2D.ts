@@ -232,7 +232,6 @@ export class Render2D {
    */
   fillRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1)): void {
     this.graphicsPath.clear();
-    this.graphicsPath.moveTo(x, y);
     this.graphicsPath.rect(x, y, width, height, 0);
 
     this.buildShape(this.graphicsPath.shapePath.shapePrimitives[0].shape, color);
