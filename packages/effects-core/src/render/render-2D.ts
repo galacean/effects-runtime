@@ -10,7 +10,7 @@ import { Material } from '../material';
 import { GraphicsPath } from '../math/shape/graphics-path';
 import type { StrokeAttributes } from '../math/shape/build-line';
 import { buildLine } from '../math/shape/build-line';
-import type { ShapePrimitive } from '../math/shape/shape-primitive';
+import type { ShapePath } from '../math/shape/shape-path';
 
 export class Render2D {
   private geometry: Geometry;
@@ -193,7 +193,7 @@ export class Render2D {
       this.graphicsPath.lineTo(points[i].x, points[i].y);
     }
 
-    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, closed);
+    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, closed);
   }
 
   /**
@@ -221,7 +221,7 @@ export class Render2D {
     this.graphicsPath.moveTo(p1.x, p1.y);
     this.graphicsPath.bezierCurveTo(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
 
-    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, false);
+    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, false);
   }
 
   /**
@@ -236,7 +236,7 @@ export class Render2D {
     this.graphicsPath.clear();
     this.graphicsPath.rect(x, y, width, height, 0);
 
-    this.buildShapeLine(this.graphicsPath.shapePath.shapePrimitives[0].shape, color, thickness, true);
+    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
   }
 
   /**
@@ -251,7 +251,7 @@ export class Render2D {
     this.graphicsPath.clear();
     this.graphicsPath.rect(x, y, width, height, 0);
 
-    this.buildShape(this.graphicsPath.shapePath.shapePrimitives[0].shape, color);
+    this.buildShape(this.graphicsPath.shapePath, color);
   }
 
   dispose (): void {
@@ -259,27 +259,33 @@ export class Render2D {
     this.material.dispose();
   }
 
-  private buildShape (shape: ShapePrimitive, color: Color) {
-    const buildPoints: number[] = [];
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
+  private buildShape (shape: ShapePath, color: Color) {
+    for (const shapePrimitive of shape.shapePrimitives) {
+      const shape = shapePrimitive.shape;
+      const buildPoints: number[] = [];
+      const indexOffset = this.indices.length;
+      const vertexOffset = this.vertices.length / 2;
 
-    shape.build(buildPoints);
-    shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
+      shape.build(buildPoints);
+      shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
 
-    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+      this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+    }
   }
 
-  private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
-    const buildPoints: number[] = [];
-    const indexOffset = this.indices.length;
-    const vertexOffset = this.vertices.length / 2;
+  private buildShapeLine (shape: ShapePath, color: Color, thickness: number, closed = false): void {
+    for (const shapePrimitive of shape.shapePrimitives) {
+      const shape = shapePrimitive.shape;
+      const buildPoints: number[] = [];
+      const indexOffset = this.indices.length;
+      const vertexOffset = this.vertices.length / 2;
 
-    shape.build(buildPoints);
-    this.lineStyle.width = thickness;
-    buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
+      shape.build(buildPoints);
+      this.lineStyle.width = thickness;
+      buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
 
-    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+      this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+    }
   }
 
   private applyTransformAndColor (vertexOffset: number, count: number, color: Color): void {
