@@ -9,5 +9,12 @@ import { isSimulatorCellPhone } from './device';
  */
 export function isValidFontFamily (fontFamily: string): boolean {
   // iOS 11/12 不支持自定义字体开头为数字的名称，特殊字符也有风险
-  return /^[^\d.][\w-]*$/.test(fontFamily) || !isSimulatorCellPhone();
+  return isSafeFontFamily(fontFamily) || !isSimulatorCellPhone();
+}
+
+/**
+ * @internal
+ */
+export function isSafeFontFamily (fontFamily: string): boolean {
+  return /^[^\d.][\w-]*$/.test(fontFamily);
 }
