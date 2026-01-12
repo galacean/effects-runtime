@@ -3,12 +3,15 @@ import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { OrbitController } from '../core/orbit-controller';
+import { Camera2DController } from '../core/camera-2d-controller';
 import { Selection } from '../core/selection';
 
 @editorWindow()
 export class Scene extends EditorWindow {
   sceneRendederTexture?: WebGLTexture;
   cameraController: OrbitController = new OrbitController();
+  camera2DController: Camera2DController = new Camera2DController();
+  is2DMode: boolean = false;
 
   @menuItem('Window/Scene')
   static showWindow () {
@@ -27,6 +30,47 @@ export class Scene extends EditorWindow {
 
       return;
     }
+
+    const toolbarBgColor = new ImGui.Vec4(0.22, 0.22, 0.22, 1.0);
+    const toolbarHeight = 22;
+
+    // 绘制工具栏背景
+    const drawList = ImGui.GetWindowDrawList();
+    const cursorPos = ImGui.GetCursorScreenPos();
+    const toolbarMin = new ImGui.Vec2(cursorPos.x, cursorPos.y);
+    const toolbarMax = new ImGui.Vec2(cursorPos.x + ImGui.GetContentRegionAvail().x, cursorPos.y + toolbarHeight);
+
+    drawList.AddRectFilled(toolbarMin, toolbarMax, ImGui.GetColorU32(toolbarBgColor));
+
+    // 工具栏按钮样式
+    const buttonActiveColor = new ImGui.Vec4(0.26, 0.37, 0.48, 1.0);
+    const buttonNormalColor = new ImGui.Vec4(0.20, 0.20, 0.20, 0.0); // 透明（未选中状态）
+    const buttonHoverColor = new ImGui.Vec4(0.30, 0.30, 0.30, 1.0); // 浅灰色（悬停状态） 70，96，124
+
+    // 设置按钮位置在工具栏内
+    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 1);
+    ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 4);
+
+    // 2D 切换按钮
+    ImGui.PushStyleColor(ImGui.ImGuiCol.Button, this.is2DMode ? buttonActiveColor : buttonNormalColor);
+    ImGui.PushStyleColor(ImGui.ImGuiCol.ButtonHovered, this.is2DMode ? new ImGui.Vec4(0.30, 0.63, 1.0, 1.0) : buttonHoverColor);
+    ImGui.PushStyleColor(ImGui.ImGuiCol.ButtonActive, buttonActiveColor);
+    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.FrameRounding, 2.0);
+    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.FramePadding, new ImGui.Vec2(8, 2));
+
+    if (ImGui.Button('2D', new ImGui.Vec2(32, 18))) {
+      this.is2DMode = !this.is2DMode;
+      if (!this.is2DMode) {
+        // 切换回 3D 模式时重置 2D 控制器
+        this.camera2DController.reset();
+      }
+    }
+    ImGui.PopStyleVar(2);
+    ImGui.PopStyleColor(3);
+
+    // 移动光标到工具栏后面
+    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 2);
+
     const sceneImageSize = ImGui.GetContentRegionAvail();
 
     const player = GalaceanEffects.player;
@@ -79,7 +123,12 @@ export class Scene extends EditorWindow {
           }
         }
 
-        this.cameraController.update(player.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
+        // 根据当前模式使用不同的相机控制器
+        if (this.is2DMode) {
+          this.camera2DController.update(player.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
+        } else {
+          this.cameraController.update(player.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
+        }
       }
     }
   }
