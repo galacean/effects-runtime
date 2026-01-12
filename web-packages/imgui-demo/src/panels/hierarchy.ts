@@ -1,22 +1,12 @@
 import { VFXItem } from '@galacean/effects';
-import { editorWindow } from '../core/decorators';
-import { OrbitController } from '../core/orbit-controller';
+import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
 
-type char = number;
-type int = number;
-type short = number;
-type float = number;
-type double = number;
-
 @editorWindow()
-export class MainEditor extends EditorWindow {
-  sceneRendederTexture?: WebGLTexture;
-  cameraController: OrbitController = new OrbitController();
-
+export class Hierarchy extends EditorWindow {
   private lightBlue = new ImGui.ImVec4(0.25, 0.34, 0.43, 1.0);
   private highlightBlue = new ImGui.ImVec4(0.000, 0.43, 0.87, 1.000);
   private hierarchyDrawOrder: VFXItem[] = [];
@@ -32,61 +22,18 @@ export class MainEditor extends EditorWindow {
   private hierarchyVisibilityColumnLocalX = 0;
   private hierarchyVisibilityColumnScreenX = 0;
 
+  @menuItem('Window/Hierarchy')
+  static showWindow () {
+    EditorWindow.getWindow(Hierarchy).open();
+  }
+
   constructor () {
     super();
+    this.title = 'Hierarchy';
     this.open();
   }
 
-  override draw () {
-    this.drawHierarchyGUI();
-    this.drawSceneGUI();
-  }
-
-  private drawSceneGUI () {
-    ImGui.Begin('Scene', null, ImGui.ImGuiWindowFlags.NoCollapse);
-    if (!GalaceanEffects.player.getCompositions()[0]) {
-      ImGui.End();
-
-      return;
-    }
-    const sceneImageSize = ImGui.GetContentRegionAvail();
-
-    const player = GalaceanEffects.player;
-
-    const pos = ImGui.GetWindowPos();
-    const windowSize = ImGui.GetWindowSize();
-    const divElement = player.container;
-
-    if (divElement) {
-      divElement.style.position = 'absolute';
-      divElement.style.left = (pos.x + windowSize.x / 2) + 'px';
-      divElement.style.top = (pos.y + windowSize.y * 0.9) + 'px';
-    }
-
-    if (player.container && (player.container.style.width !== sceneImageSize.x + 'px' ||
-      player.container.style.height !== sceneImageSize.y + 'px')
-    ) {
-      player.container.style.width = sceneImageSize.x + 'px';
-      player.container.style.height = sceneImageSize.y + 'px';
-      player.resize();
-    }
-    if (GalaceanEffects.sceneRendederTexture && player.container && player.container.style.zIndex !== '999') {
-      const frame_padding: int = 0;                             // -1 === uses default padding (style.FramePadding)
-      const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
-      const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
-      const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
-
-      ImGui.ImageButton(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
-      if (ImGui.IsItemHovered()) {
-        this.cameraController.update(player.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
-      }
-
-    }
-    ImGui.End();
-  }
-
-  private drawHierarchyGUI () {
-    ImGui.Begin('Hierarchy');
+  override onGUI () {
     if (!GalaceanEffects.player.getCompositions()[0]) {
       ImGui.End();
 
@@ -129,8 +76,6 @@ export class MainEditor extends EditorWindow {
     }
 
     ImGui.PopStyleColor(3);
-
-    ImGui.End();
   }
 
   private drawVFXItemTreeNode (item: VFXItem, baseFlags: ImGui.TreeNodeFlags) {
