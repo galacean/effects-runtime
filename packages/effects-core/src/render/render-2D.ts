@@ -95,6 +95,9 @@ export class Render2D {
         }`,
       },
     });
+
+    this.material.depthTest = false;
+    this.material.depthMask = false;
   }
 
   /**
