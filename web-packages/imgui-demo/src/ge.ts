@@ -6,7 +6,7 @@ import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-rich-text';
 import '@galacean/effects-plugin-spine';
 import { AssetDatabase } from './core/asset-data-base';
-import { CanvasGizmoComponent } from './core/gizmo-component';
+import { CanvasGizmo } from './core/canvas-gizmo';
 import { ImGui_Impl } from './imgui';
 
 export class GalaceanEffects {
@@ -586,11 +586,11 @@ export class GalaceanEffects {
       void converter.processScene(url).then(async (scene: any) => {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
-        composition.rootItem.addComponent(CanvasGizmoComponent);
+        composition.rootItem.addComponent(CanvasGizmo);
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        composition.rootItem.addComponent(CanvasGizmoComponent);
+        composition.rootItem.addComponent(CanvasGizmo);
       });
     }
 

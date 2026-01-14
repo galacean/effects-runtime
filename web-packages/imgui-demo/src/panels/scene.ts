@@ -3,17 +3,32 @@ import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { OrbitController } from '../core/orbit-controller';
-import { Camera2DController } from '../core/camera-2d-controller';
 import { Selection } from '../core/selection';
-import { CanvasGizmoComponent } from '../core/gizmo-component';
+import { CanvasGizmo } from '../core/canvas-gizmo';
 import { VFXItem } from '@galacean/effects-core';
 
 @editorWindow()
 export class Scene extends EditorWindow {
   sceneRendederTexture?: WebGLTexture;
   cameraController: OrbitController = new OrbitController();
-  camera2DController: Camera2DController = new Camera2DController();
-  is2DMode: boolean = false;
+
+  private _is2DMode: boolean = false;
+
+  get is2DMode (): boolean {
+    return this._is2DMode;
+  }
+
+  set is2DMode (value: boolean) {
+    const geContainer = document.getElementById('J-container')!;
+
+    if (!value) {
+      geContainer.style.zIndex = '0';
+    } else {
+      geContainer.style.zIndex = '999';
+      GalaceanEffects.player.getCompositions()[0]?.getComponent(CanvasGizmo)?.reset2DCamera();
+    }
+    this._is2DMode = value;
+  }
 
   @menuItem('Window/Scene')
   static showWindow () {
@@ -24,6 +39,8 @@ export class Scene extends EditorWindow {
     super();
     this.title = 'Scene';
     this.open();
+
+    this.is2DMode = true;
   }
 
   protected override onGUI (): void {
@@ -61,18 +78,10 @@ export class Scene extends EditorWindow {
     ImGui.PushStyleVar(ImGui.ImGuiStyleVar.FrameRounding, 2.0);
     ImGui.PushStyleVar(ImGui.ImGuiStyleVar.FramePadding, new ImGui.Vec2(8, 2));
 
-    const canvasGizmo = player.getCompositions()[0].getComponent(CanvasGizmoComponent);
+    const canvasGizmo = player.getCompositions()[0].getComponent(CanvasGizmo);
 
     if (ImGui.Button('2D', new ImGui.Vec2(32, 20))) {
       this.is2DMode = !this.is2DMode;
-      const geContainer = document.getElementById('J-container')!;
-
-      if (!this.is2DMode) {
-        geContainer.style.zIndex = '0';
-      } else {
-        geContainer.style.zIndex = '999';
-        canvasGizmo.reset2DCamera();
-      }
     }
     ImGui.PopStyleVar(2);
     ImGui.PopStyleColor(3);

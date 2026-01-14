@@ -140,8 +140,8 @@ async function _init (): Promise<void> {
     ImGui_Impl.Init(null);
   }
 
-  uiManager.createWindows();
   await GalaceanEffects.initialize();
+  uiManager.createWindows();
 
   StartUpImage();
   StartUpVideo();

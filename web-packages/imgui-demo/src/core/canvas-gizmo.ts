@@ -35,7 +35,7 @@ interface TransformStartData {
   mousePos: Vector2,
 }
 
-export class CanvasGizmoComponent extends RendererComponent {
+export class CanvasGizmo extends RendererComponent {
   selectedObjects: VFXItem[] = [];
 
   private render2D: Render2D;
@@ -576,9 +576,13 @@ export class CanvasGizmoComponent extends RendererComponent {
   }
 
   private updateCursor (handle: HandleType, e: MouseEvent): void {
-    let cursorStyle = 'default';
+    const item = this.activeObject;
 
-    const item = this.activeObject!;
+    if (!item) {
+      return;
+    }
+
+    let cursorStyle = 'default';
     const rotation = -item.transform.rotation.z;
 
     switch (handle) {
