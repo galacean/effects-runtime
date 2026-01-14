@@ -1,4 +1,4 @@
-import type { Camera, Renderer } from '@galacean/effects-core';
+import type { Camera, Region, Renderer } from '@galacean/effects-core';
 import { math, Render2D, RendererComponent, VFXItem } from '@galacean/effects-core';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;
@@ -40,6 +40,7 @@ export class CanvasGizmo extends RendererComponent {
 
   private render2D: Render2D;
   private canvas: HTMLCanvasElement;
+  private hoveredObject: VFXItem | null = null;
 
   // 2D Camera control properties
   private viewCenter: Vector3 = new Vector3(0, 0, 0);
@@ -80,10 +81,20 @@ export class CanvasGizmo extends RendererComponent {
 
   private onMouseDown = (e: MouseEvent): void => {
     if (e.button === 0) {
-      this.pickItem(e.clientX, e.clientY);
 
       // 检查是否点击了 gizmo 手柄
-      const handle = this.getHandleAtPosition(e.clientX, e.clientY);
+      let handle = this.getHandleAtPosition(e.clientX, e.clientY);
+
+      if (handle === HandleType.None) {
+        const pickedItems = this.pickItems(e.clientX, e.clientY);
+
+        this.selectedObjects = [];
+        if (pickedItems.length > 0) {
+          this.selectedObjects = [pickedItems[pickedItems.length - 1]];
+        }
+
+        handle = this.getHandleAtPosition(e.clientX, e.clientY);
+      }
 
       if (handle !== HandleType.None && this.activeObject instanceof VFXItem) {
       // 开始 gizmo 操作
@@ -130,6 +141,10 @@ export class CanvasGizmo extends RendererComponent {
       return;
     }
 
+    const pickedItems = this.pickItems(e.clientX, e.clientY);
+
+    this.hoveredObject = pickedItems[pickedItems.length - 1] || null;
+
     // 更新鼠标悬停时的光标
     const handle = this.getHandleAtPosition(e.clientX, e.clientY);
 
@@ -142,7 +157,6 @@ export class CanvasGizmo extends RendererComponent {
       this.activeHandle = HandleType.None;
       this.gizmoMode = GizmoMode.None;
       this.transformStart = null;
-      this.canvas.style.cursor = 'default';
 
       return;
     }
@@ -230,7 +244,7 @@ export class CanvasGizmo extends RendererComponent {
     }
   }
 
-  private pickItem (x: number, y: number): void {
+  private pickItems (x: number, y: number): VFXItem[] {
     // 计算鼠标在画布上的位置
     const rect = this.canvas.getBoundingClientRect();
     const mouseX = x - rect.left;
@@ -240,13 +254,17 @@ export class CanvasGizmo extends RendererComponent {
     const normalizedX = (mouseX / rect.width) * 2 - 1;
     const normalizedY = (1 - mouseY / rect.height) * 2 - 1;
 
+    const res = [];
+
     if (this.item.composition) {
       const hitResults = this.item.composition.hitTest(normalizedX, normalizedY, true);
 
-      if (hitResults.length > 0) {
-        this.selectedObjects = [hitResults[hitResults.length - 1].item];
+      for (const hitResult of hitResults) {
+        res.push(hitResult.item);
       }
     }
+
+    return res;
   }
 
   // Transform Gizmo 相关方法
@@ -714,6 +732,25 @@ export class CanvasGizmo extends RendererComponent {
           rotationHandleRadius * 2 - lineWidth * 2,
           new Color(0.6, 1, 0.8, 1)
         );
+      }
+    }
+
+    if (this.hoveredObject) {
+      const rendererComponent = this.hoveredObject.getComponent(RendererComponent);
+
+      if (rendererComponent) {
+        const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
+        const screenPoints: math.Vector3[] = [];
+
+        for (let i = 0; i < 4; i++) {
+          screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+        }
+
+        const linePoints = [];
+
+        linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
+        linePoints.push(linePoints[0].clone());
+        this.render2D.drawLines(linePoints, lineColor, lineWidth + 2);
       }
     }
 
