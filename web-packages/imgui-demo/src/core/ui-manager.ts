@@ -14,8 +14,6 @@ export class UIManager {
   // Top menu nodes
   private menuNodes: MenuNode[] = [];
 
-  private showCanvas = false;
-
   constructor () {
   }
 
@@ -57,16 +55,6 @@ export class UIManager {
       panel.draw();
     }
 
-    const geContainer = document.getElementById('J-container');
-
-    if (geContainer) {
-      if (this.showCanvas) {
-        geContainer.style.zIndex = '999';
-      } else {
-        geContainer.style.zIndex = '0';
-      }
-    }
-
     if (ImGui.BeginMainMenuBar()) {
       if (ImGui.BeginMenu('File')) {
         if (ImGui.MenuItem('Save Layout', '')) {
@@ -78,10 +66,6 @@ export class UIManager {
         ImGui.EndMenu();
       }
       if (ImGui.BeginMenu('Edit')) {
-        if (ImGui.MenuItem('Show Canvas', '', (_ = this.showCanvas)=>this.showCanvas = _)) {
-          // ShowExampleMenuFile();
-          ImGui.EndMenu();
-        }
         // if (ImGui.MenuItem('Undo', 'CTRL+Z')) {}
         // if (ImGui.MenuItem('Redo', 'CTRL+Y', false, false)) {}  // Disabled item
         // ImGui.Separator();
