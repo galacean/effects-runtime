@@ -214,6 +214,23 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
+   * 设置当前视频是否为透明视频
+   * @param transparent 是否为透明视频
+   */
+  setTransparent (transparent: boolean): void {
+    if (this.transparent === transparent) {
+      return;
+    }
+
+    if (transparent) {
+      this.material.enableMacro('TRANSPARENT_VIDEO', true);
+    } else {
+      this.material.disableMacro('TRANSPARENT_VIDEO');
+    }
+    this.transparent = transparent;
+  }
+
+  /**
    * 设置视频是否循环播放
    * @param loop 是否循环播放
    */
