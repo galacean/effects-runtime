@@ -8,6 +8,13 @@
 
 ---
 
+## 2.8.5
+
+`2026-01-15`
+
+- Fix: particle should emit click event when interact behavior is remove. [#1371](https://github.com/galacean/effects-runtime/pull/1371) @wumaolinmaoan
+- Fix: use `Array.from` to split emoji string char. [#1369](https://github.com/galacean/effects-runtime/pull/1369) @wumaolinmaoan
+
 ## 2.8.4
 
 `2026-01-09`
