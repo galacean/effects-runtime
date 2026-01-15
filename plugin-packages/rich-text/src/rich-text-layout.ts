@@ -6,6 +6,7 @@ export class RichTextLayout implements BaseLayout {
   textAlign: spec.TextAlignment;
   letterSpace: number;
   overflow: spec.TextOverflow;
+  // TODO: width 和 height 新版富文本计算没有地方用到
   width = 0;
   height = 0;
 
@@ -70,7 +71,7 @@ export class RichTextLayout implements BaseLayout {
     this.wrapEnabled = wrapEnabled;
 
     // TODO: 统一富文本和图层 size 单位，这边先临时做个转换
-    const scaleFactor = 50;
+    const scaleFactor = 100;
 
     this.maxTextWidth = maxTextWidth * scaleFactor;
     this.maxTextHeight = maxTextHeight * scaleFactor;

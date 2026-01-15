@@ -594,9 +594,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         this.canvasSize = new math.Vector2(finalWpx, finalHpx);
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
+        // 实际元素渲染尺寸不随着 fontScale 改变
         this.item.transform.size.set(
-          x * finalWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * finalHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
+          x * finalWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * finalHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.initialized = true;
 
@@ -624,8 +625,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         this.item.transform.size.set(
-          x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
+          x * frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.initialized = true;
 
@@ -638,8 +639,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
           this.canvasSize = new math.Vector2(frameWpx, frameHpx);
           this.item.transform.size.set(
-            x * frameWpx * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * frameHpx * this.SCALE_FACTOR * this.SCALE_FACTOR
+            x * frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+            y * frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
           );
           this.initialized = true;
         }
