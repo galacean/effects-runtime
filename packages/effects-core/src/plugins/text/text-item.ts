@@ -367,7 +367,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const lineHeight = layout.lineHeight * fontScale;
 
     style.fontDesc = this.getFontDesc(fontSize);
-    const char = (this.text || '').split('');
+    // 使用 Array.from 正确分割 Unicode 字符（包括 emoji）
+    const char = Array.from(this.text || '');
 
     let baseHeight = 0;
 

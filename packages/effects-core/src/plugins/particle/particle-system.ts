@@ -17,6 +17,7 @@ import { Transform } from '../../transform';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
+import type { LinkNode } from './link';
 import { Link } from './link';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import { ParticleSystemRenderer } from './particle-system-renderer';
@@ -172,6 +173,7 @@ export class ParticleSystem extends Component implements Maskable {
   private upDirectionWorld: Vector3 | null;
   private uvs: number[][];
   private basicTransform: ParticleTransform;
+  private clickedPoint: LinkNode<ParticleContent>;
 
   constructor (
     engine: Engine,
@@ -332,6 +334,16 @@ export class ParticleSystem extends Component implements Maskable {
   override onStart (): void {
     this.startEmit();
     this.initEmitterTransform();
+
+    this.item.on('click', ()=>{
+      if (this.interaction?.behavior === spec.ParticleInteractionBehavior.removeParticle) {
+        const pointIndex = this.clickedPoint.content[1];
+
+        this.renderer.removeParticlePoint(pointIndex);
+        this.clearPointTrail(pointIndex);
+        this.clickedPoint.content = [0] as unknown as ParticleContent;
+      }
+    });
   }
 
   override onUpdate (dt: number): void {
@@ -441,7 +453,11 @@ export class ParticleSystem extends Component implements Maskable {
           this.particleLink.forEach(content => {
             content[0] -= duration;
             content[2] -= duration;
-            content[3].delay -= duration;
+
+            // TODO 优化粒子销毁逻辑
+            if (content[3]) {
+              content[3].delay -= duration;
+            }
           });
 
           this.renderer.minusTimeForLoop(duration);
@@ -533,7 +549,6 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     return res;
-
   }
 
   raycast (options: ParticleSystemRayCastOptions): Vector3[] | undefined {
@@ -550,7 +565,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     if (node && node.content) {
       do {
-        const [currentTime, pointIndex, _, point] = node.content;
+        const [currentTime,, _, point] = node.content;
 
         if (currentTime > this.timePassed) {
           const pos = this.getPointPosition(point);
@@ -564,11 +579,7 @@ export class ParticleSystem extends Component implements Maskable {
             }, temp);
           }
           if (pass) {
-            if (options.removeParticle) {
-              renderer.removeParticlePoint(pointIndex);
-              this.clearPointTrail(pointIndex);
-              node.content = [0] as unknown as ParticleContent;
-            }
+            this.clickedPoint = node;
             hitPositions.push(pos);
             if (!options.multiple) {
               finish = true;
