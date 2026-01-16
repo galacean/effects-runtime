@@ -70,11 +70,8 @@ export class RichTextLayout implements BaseLayout {
 
     this.wrapEnabled = wrapEnabled;
 
-    // TODO: 统一富文本和图层 size 单位，这边先临时做个转换
-    const scaleFactor = 100;
-
-    this.maxTextWidth = maxTextWidth * scaleFactor;
-    this.maxTextHeight = maxTextHeight * scaleFactor;
+    this.maxTextWidth = maxTextWidth;
+    this.maxTextHeight = maxTextHeight;
     this.sizeMode = sizeMode;
   }
 

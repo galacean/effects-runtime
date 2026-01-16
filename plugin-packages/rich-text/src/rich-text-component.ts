@@ -66,7 +66,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   private richHorizontalAlignStrategy: RichHorizontalAlignStrategy;
   private richVerticalAlignStrategy: RichVerticalAlignStrategy;
 
-  protected readonly SCALE_FACTOR = 0.1;
+  protected readonly SCALE_FACTOR = 0.111;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
   constructor (engine: Engine) {
@@ -215,6 +215,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
+    const legacyScaleFactor = 0.1;
+
     this.generateTextProgram(this.text);
     let width = 0, height = 0;
     const layout = this.textLayout;
@@ -270,7 +272,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       }
 
       charInfo.offsetX.push(charInfo.width);
-      charInfo.width += (textWidth <= 0 ? 0 : textWidth) * fontSize * this.SCALE_FACTOR * textStyle.fontScale + text.length * letterSpace;
+      charInfo.width += (textWidth <= 0 ? 0 : textWidth) * fontSize * legacyScaleFactor * textStyle.fontScale + text.length * letterSpace;
       charInfo.richOptions.push(options);
     });
 
@@ -295,8 +297,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
 
       this.item.transform.size.set(
-        x * canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
-        y * canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+        x * canvasWidth * legacyScaleFactor * legacyScaleFactor,
+        y * canvasHeight * legacyScaleFactor * legacyScaleFactor
       );
       this.size = this.item.transform.size.clone();
       this.initialized = true;

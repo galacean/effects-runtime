@@ -47,7 +47,6 @@ export class TextComponentBase {
 
   protected maxLineWidth = 0;
   // 常量
-  protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
   // 通用 setter 方法
