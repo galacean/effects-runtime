@@ -65,16 +65,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    */
   protected maxLineWidth = 0;
 
-  /**
-   * 初始文本宽度，用于计算缩放比例
-   */
-  private baseTextWidth = 0;
-
-  /**
-   * 初始 `transform.size.x`，用于按比例更新显示宽度
-   */
-  private baseScaleX = 1;
-
   private getDefaultProps (): spec.TextComponentData {
     return {
       id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
@@ -153,11 +143,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     // TextComponentBase
     this.updateWithOptions(options);
     this.renderText(options);
-
-    // 记录初始的 textWidth 和 x 缩放，用于后续按比例更新显示宽度
-    // 添加兜底值 1 防止除 0
-    this.baseTextWidth = options.textWidth || this.textLayout.width || 1;
-    this.baseScaleX = this.item.transform.size.x;
 
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
@@ -392,6 +377,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.effectScaleX = baseWidth > 0 ? (texWidth / baseWidth) : 1;
     this.effectScaleY = baseHeight > 0 ? (texHeight / baseHeight) : 1;
 
+    // 默认 camera 下的 world per pixel
+    const scaleFactor = 0.11092565;
+    const scaleFactor2 = scaleFactor * scaleFactor;
+
+    this.transform.setSize(baseWidth * scaleFactor2 / fontScale, baseHeight * scaleFactor2 / fontScale);
+
     this.renderToTexture(texWidth, texHeight, flipY, context => {
       // canvas size 变化后重新刷新 context
       if (this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display) {
@@ -554,14 +545,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     // 按当前 overflow 模式重新计算行数和 maxLineWidth
     this.lineCount = this.getLineCount(this.text || '');
     this.isDirty = true;
-
-    // 同步更新外层显示宽度(按比例缩放 transform)
-    // 这样 UI 框的视觉宽度也会跟着文本宽度变化
-    if (this.baseTextWidth > 0) {
-      const scale = width / this.baseTextWidth;
-
-      this.item.transform.size.x = this.baseScaleX * scale;
-    }
   }
 
   /**
