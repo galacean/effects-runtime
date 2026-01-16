@@ -348,9 +348,9 @@ export function version36Migration (json: JSONScene): JSONScene {
 
       for (const item of json.items) {
         if (item.parentId === textItem.id && item.transform) {
-          item.transform.scale.x *= textItem.transform.scale.x;
-          item.transform.scale.y *= textItem.transform.scale.y;
-          item.transform.scale.z *= textItem.transform.scale.z;
+          item.transform.scale.x *= textItem.transform.scale.x / scaleFactor;
+          item.transform.scale.y *= textItem.transform.scale.y / scaleFactor;
+          item.transform.scale.z *= textItem.transform.scale.z / scaleFactor;
         }
       }
 
