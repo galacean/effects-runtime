@@ -110,7 +110,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         const willWidth = currentLine.width + spacing + charWidth;
 
         // 自动换行判断
-        if (willWidth > (layout.maxTextWidth || Infinity)) {
+        if (willWidth > (layout.maxTextWidth * fontScale || Infinity)) {
           flushChunk();
           finishCurrentLine();
         }
