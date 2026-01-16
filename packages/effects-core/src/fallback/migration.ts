@@ -337,6 +337,35 @@ export function version35Migration (json: JSONScene): JSONScene {
   return json;
 }
 
+export function version36Migration (json: JSONScene): JSONScene {
+  for (const textItem of json.items) {
+    if (textItem.type === spec.ItemType.text && textItem.transform) {
+      const textComponent = json.components.find(comp => textItem.components[0].id === comp.id) as spec.TextComponentData;
+
+      const itemWorldPerPixel = textItem.transform.scale.x / (textComponent.options?.textWidth ?? 1);
+      const defaultWorldPerPixel = 0.0123;
+      const scaleFactor = itemWorldPerPixel / defaultWorldPerPixel;
+
+      for (const item of json.items) {
+        if (item.parentId === textItem.id && item.transform) {
+          item.transform.scale.x *= textItem.transform.scale.x;
+          item.transform.scale.y *= textItem.transform.scale.y;
+          item.transform.scale.z *= textItem.transform.scale.z;
+        }
+      }
+
+      textItem.transform.scale.x = scaleFactor;
+      textItem.transform.scale.y = scaleFactor;
+      textItem.transform.scale.z = scaleFactor;
+    }
+  }
+
+  //@ts-expect-error
+  json.version = '3.7';
+
+  return json;
+}
+
 /**
  * 确保文本组件有版本标识字段
  */
