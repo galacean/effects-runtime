@@ -7,6 +7,13 @@
 
 ---
 
+## 2.8.6
+
+`2026-01-15`
+
+- Fix: error caused by the dispose of the ticker array during iteration. [#1379](https://github.com/galacean/effects-runtime/pull/1379) @wumaolinmaoan
+- Fix: destroy engine if player creation fails. [#1378](https://github.com/galacean/effects-runtime/pull/1378) @wumaolinmaoan
+
 ## 2.8.5
 
 `2026-01-15`
