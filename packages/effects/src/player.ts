@@ -251,6 +251,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       if (this.canvas && !useExternalCanvas) {
         this.canvas.remove();
       }
+      this.engine?.dispose();
+      this.disposed = true;
       this.handleThrowError(e);
     }
   }
