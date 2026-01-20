@@ -11,6 +11,7 @@ import type { StarType } from './poly-star';
 import { PolyStar } from './poly-star';
 import { Rectangle } from './rectangle';
 import { Triangle } from './triangle';
+import { Circle } from './circle';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
@@ -48,6 +49,11 @@ export class ShapePath {
         }
         case 'ellipse': {
           this.ellipse(data[0], data[1], data[2], data[3], data[4]);
+
+          break;
+        }
+        case 'circle': {
+          this.circle(data[0], data[1], data[2], data[3]);
 
           break;
         }
@@ -159,6 +165,20 @@ export class ShapePath {
     // TODO apply rotation to transform...
 
     this.drawShape(new Ellipse(x, y, radiusX, radiusY), transform);
+
+    return this;
+  }
+
+  /**
+   * Draws a circle shape. This method adds a new circle path to the current drawing.
+   * @param x - The x-coordinate of the center of the circle.
+   * @param y - The y-coordinate of the center of the circle.
+   * @param radius - The radius of the circle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the circle.
+   * @returns The instance of the current object for chaining.
+   */
+  circle (x: number, y: number, radius: number, transform?: Matrix4): this {
+    this.drawShape(new Circle(x, y, radius), transform);
 
     return this;
   }

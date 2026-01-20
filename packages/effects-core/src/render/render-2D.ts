@@ -258,6 +258,19 @@ export class Render2D {
   }
 
   /**
+   * 绘制圆形边框
+   * @param center - 圆心坐标
+   * @param radius - 半径
+   * @param color - 线条颜色
+   * @param thickness - 线宽
+   */
+  drawCircle (center: Vector2, radius: number, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.circle(center.x, center.y, radius);
+    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
+  }
+
+  /**
    * 绘制填充三角形
    * @param p1 - 顶点1
    * @param p2 - 顶点2
@@ -283,6 +296,18 @@ export class Render2D {
     this.graphicsPath.clear();
     this.graphicsPath.rect(x, y, width, height, 0);
 
+    this.buildShape(this.graphicsPath.shapePath, color);
+  }
+
+  /**
+   * 绘制填充圆形
+   * @param center - 圆心坐标
+   * @param radius - 半径
+   * @param color - 线条颜色
+   */
+  fillCircle (center: Vector2, radius: number, color: Color = new Color(1, 1, 1, 1)): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.circle(center.x, center.y, radius);
     this.buildShape(this.graphicsPath.shapePath, color);
   }
 

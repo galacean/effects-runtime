@@ -113,6 +113,22 @@ export class GraphicsPath {
   }
 
   /**
+   * Draws a circle shape. This method adds a new circle path to the current drawing.
+   * @param x - The x-coordinate of the center of the circle.
+   * @param y - The y-coordinate of the center of the circle.
+   * @param radius - The radius of the circle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the circle.
+   * @returns The instance of the current object for chaining.
+   */
+  circle (x: number, y: number, radius: number, transform?: Matrix4): this {
+    this.instructions.push({ action: 'circle', data: [x, y, radius, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
    * Draws a rectangle shape. This method adds a new rectangle path to the current drawing.
    * @param x - The x-coordinate of the upper-left corner of the rectangle.
    * @param y - The y-coordinate of the upper-left corner of the rectangle.
