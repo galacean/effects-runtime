@@ -129,6 +129,25 @@ export class GraphicsPath {
     return this;
   }
 
+  /**
+   * Draws a triangle shape. This method adds a new triangle path to the current drawing.
+   * @param x1 - The x-coordinate of the first vertex of the triangle.
+   * @param y1 - The y-coordinate of the first vertex of the triangle.
+   * @param x2 - The x-coordinate of the second vertex of the triangle.
+   * @param y2 - The y-coordinate of the second vertex of the triangle.
+   * @param x3 - The x-coordinate of the third vertex of the triangle.
+   * @param y3 - The y-coordinate of the third vertex of the triangle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the triangle.
+   * @returns The instance of the current object for chaining.
+   */
+  triangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, transform?: Matrix4) {
+    this.instructions.push({ action: 'triangle', data: [x1, y1, x2, y2, x3, y3, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
   polyStar (pointCount: number, outerRadius: number, innerRadius: number, outerRoundness: number, innerRoundness: number, starType: StarType, transform?: Matrix4) {
     this.instructions.push({ action: 'polyStar', data: [pointCount, outerRadius, innerRadius, outerRoundness, innerRoundness, starType, transform] });
 
@@ -167,6 +186,7 @@ export interface PathInstruction {
   | 'filletRect'
   | 'chamferRect'
   | 'polyStar'
+  | 'triangle'
   ,
   data: any[],
 }

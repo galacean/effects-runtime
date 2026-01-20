@@ -228,6 +228,21 @@ export class Render2D {
   }
 
   /**
+   * 绘制三角形边框
+   * @param p1 - 顶点1
+   * @param p2 - 顶点2
+   * @param p3 - 顶点3
+   * @param color - 线条颜色
+   * @param thickness - 线宽
+   */
+  drawTriangle (p1: Vector2, p2: Vector2, p3: Vector2, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.triangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+
+    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
+  }
+
+  /**
    * 绘制矩形边框
    * @param x - 矩形左下角 X 坐标
    * @param y - 矩形左下角 Y 坐标
@@ -240,6 +255,20 @@ export class Render2D {
     this.graphicsPath.rect(x, y, width, height, 0);
 
     this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
+  }
+
+  /**
+   * 绘制填充三角形
+   * @param p1 - 顶点1
+   * @param p2 - 顶点2
+   * @param p3 - 顶点3
+   * @param color - 线条颜色
+   */
+  fillTriangle (p1: Vector2, p2: Vector2, p3: Vector2, color: Color = new Color(1, 1, 1, 1)): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.triangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+
+    this.buildShape(this.graphicsPath.shapePath, color);
   }
 
   /**

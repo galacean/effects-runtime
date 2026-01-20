@@ -782,6 +782,22 @@ export class CanvasGizmo extends RendererComponent {
       new Color(0.8, 0.2, 0.8, 1),
       4
     );
+
+    this.render2D.fillTriangle(
+      new Vector2(20, 550),
+      new Vector2(170, 550),
+      new Vector2(95, 650),
+      new Color(0.2, 0.8, 0.8, 1),
+    );
+
+    this.render2D.drawTriangle(
+      new Vector2(20, 700),
+      new Vector2(170, 700),
+      new Vector2(95, 800),
+      new Color(0.8, 0.4, 0.1, 1),
+      4
+    );
+
     this.render2D.end();
   }
 }
