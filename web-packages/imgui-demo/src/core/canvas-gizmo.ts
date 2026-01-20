@@ -662,6 +662,9 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   override render (renderer: Renderer): void {
+
+    const render2D = this.render2D;
+
     this.render2D.begin();
     const lineColor = new math.Color(0.2, 0.4, 1, 1);
     const lineWidth = 3;
@@ -678,10 +681,14 @@ export class CanvasGizmo extends RendererComponent {
             screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
           }
 
-          const linePoints = [];
+          const linePoints: number[] = [];
 
-          linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
-          linePoints.push(linePoints[0].clone());
+          const p0 = screenPoints[0].toVector2();
+          const p1 = screenPoints[1].toVector2();
+          const p2 = screenPoints[2].toVector2();
+          const p3 = screenPoints[3].toVector2();
+
+          linePoints.push(p0.x, p0.y, p2.x, p2.y, p1.x, p1.y, p3.x, p3.y, p0.x, p0.y);
           this.render2D.drawLines(linePoints, lineColor, lineWidth + 2);
         }
       }
@@ -698,10 +705,14 @@ export class CanvasGizmo extends RendererComponent {
             screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
           }
 
-          const linePoints = [];
+          const linePoints: number[] = [];
 
-          linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
-          linePoints.push(linePoints[0].clone());
+          const p0 = screenPoints[0].toVector2();
+          const p1 = screenPoints[1].toVector2();
+          const p2 = screenPoints[2].toVector2();
+          const p3 = screenPoints[3].toVector2();
+
+          linePoints.push(p0.x, p0.y, p2.x, p2.y, p1.x, p1.y, p3.x, p3.y, p0.x, p0.y);
           this.render2D.drawLines(linePoints, lineColor, lineWidth);
 
           const resizeHandleSize = 20;
@@ -732,24 +743,22 @@ export class CanvasGizmo extends RendererComponent {
           const rotationHandleY = topMid.y + rotationHandleDistance; // 在左下角坐标系中，+y 是向上
 
           // 绘制连接线
-          this.render2D.drawLine(new Vector2(topMid.x, topMid.y), new Vector2(topMid.x, rotationHandleY), lineColor, 2);
+          this.render2D.drawLine(topMid.x, topMid.y, topMid.x, rotationHandleY, lineColor, 2);
 
           // 绘制旋转手柄（圆形）
           const rotationHandleRadius = 8;
 
-          this.render2D.drawRectangle(
-            topMid.x - rotationHandleRadius,
-            rotationHandleY - rotationHandleRadius,
-            rotationHandleRadius * 2,
-            rotationHandleRadius * 2,
+          this.render2D.drawCircle(
+            topMid.x,
+            rotationHandleY,
+            rotationHandleRadius,
             new Color(0.2, 1, 0.4, 1),
             lineWidth
           );
-          this.render2D.fillRectangle(
-            topMid.x - rotationHandleRadius + lineWidth,
-            rotationHandleY - rotationHandleRadius + lineWidth,
-            rotationHandleRadius * 2 - lineWidth * 2,
-            rotationHandleRadius * 2 - lineWidth * 2,
+          this.render2D.fillCircle(
+            topMid.x,
+            rotationHandleY,
+            rotationHandleRadius - lineWidth,
             new Color(0.6, 1, 0.8, 1)
           );
         }
@@ -764,8 +773,8 @@ export class CanvasGizmo extends RendererComponent {
     //-------------------------------------------------------------------------
 
     // 绘制两条交叉的线
-    this.render2D.drawLine(new Vector2(20, 20), new Vector2(170, 120), new Color(0.8, 0.2, 0.2, 1), 4);
-    this.render2D.drawLine(new Vector2(20, 120), new Vector2(170, 20), new Color(0.2, 0.2, 0.8, 1), 4);
+    this.render2D.drawLine(20, 20, 170, 120, new Color(0.8, 0.2, 0.2, 1), 4);
+    this.render2D.drawLine(20, 120, 170, 20, new Color(0.2, 0.2, 0.8, 1), 4);
 
     // 绘制填充矩形
     this.render2D.fillRectangle(20, 150, 150, 100, new Color(0.2, 0.8, 0.2, 1));
@@ -775,26 +784,39 @@ export class CanvasGizmo extends RendererComponent {
 
     // 绘制贝塞尔曲线 - 明显的弯曲效果
     this.render2D.drawBezier(
-      new Vector2(20, 410),      // 起点（左下）
-      new Vector2(95, 410),      // 控制点1（中间偏上）
-      new Vector2(95, 510),      // 控制点2（中间偏下）
-      new Vector2(170, 510),     // 终点（右下）
+      20, 410,      // 起点（左下）
+      95, 410,      // 控制点1（中间偏上）
+      95, 510,      // 控制点2（中间偏下）
+      170, 510,     // 终点（右下）
       new Color(0.8, 0.2, 0.8, 1),
       4
     );
 
     this.render2D.fillTriangle(
-      new Vector2(20, 550),
-      new Vector2(170, 550),
-      new Vector2(95, 650),
+      20, 550,
+      170, 550,
+      95, 650,
       new Color(0.2, 0.8, 0.8, 1),
     );
 
     this.render2D.drawTriangle(
-      new Vector2(20, 700),
-      new Vector2(170, 700),
-      new Vector2(95, 800),
+      20, 700,
+      170, 700,
+      95, 800,
       new Color(0.8, 0.4, 0.1, 1),
+      4
+    );
+
+    this.render2D.fillCircle(
+      95, 900,
+      50,
+      new Color(0.1, 0.6, 0.3, 1),
+    );
+
+    this.render2D.drawCircle(
+      95, 1050,
+      50,
+      new Color(0.6, 0.1, 0.9, 1),
       4
     );
 
