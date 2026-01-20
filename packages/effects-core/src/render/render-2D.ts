@@ -90,13 +90,16 @@ export class Render2D {
         fragment: `precision mediump float;
         varying vec4 vColor;
         void main() { 
-          gl_FragColor = vColor;
+          vec4 color = vColor;
+          color.rgb *= color.a;
+          gl_FragColor = color;
         }`,
       },
     });
 
     this.material.depthTest = false;
     this.material.depthMask = false;
+    this.material.blending = true;
   }
 
   /**
