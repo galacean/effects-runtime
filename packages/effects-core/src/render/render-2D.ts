@@ -3,7 +3,6 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
-import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Material } from '../material';
@@ -172,28 +171,26 @@ export class Render2D {
 
   /**
    * 线段顶点按顺序连接 (p0-p1, p1-p2, p2-p3, ...)
-   * @param points - 点数组，至少需要2个点
+   * @param points - 点数组，格式 [x1,y1,x2,y2,...]，至少需要2个点（4个数值）
    * @param color - 线条颜色，范围 0-1
    * @param thickness - 线宽（像素）
    */
-  drawLines (points: Vector2[], color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
-    if (!points || points.length < 2) {
-      console.warn('drawLines: 至少需要2个点');
+  drawLines (points: number[], color: Color = Color.WHITE, thickness: number = 1.0): void {
+    if (!points || points.length < 4 || points.length % 2 !== 0) {
+      console.warn('drawLines: 至少需要2个点(4个数值), 且数组长度必须为偶数');
 
       return;
     }
 
-    const closed = points[0].x === points[points.length - 1].x && points[0].y === points[points.length - 1].y;
-
-    if (closed) {
-      points.pop();
-    }
+    const numPoints = points.length / 2;
+    const closed = points[0] === points[points.length - 2] && points[1] === points[points.length - 1];
+    const actualPoints = closed ? numPoints - 1 : numPoints;
 
     this.graphicsPath.clear();
-    this.graphicsPath.moveTo(points[0].x, points[0].y);
+    this.graphicsPath.moveTo(points[0], points[1]);
 
-    for (let i = 1; i < points.length; i++) {
-      this.graphicsPath.lineTo(points[i].x, points[i].y);
+    for (let i = 1; i < actualPoints; i++) {
+      this.graphicsPath.lineTo(points[i * 2], points[i * 2 + 1]);
     }
 
     this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, closed);
@@ -201,43 +198,56 @@ export class Render2D {
 
   /**
    * 绘制单条线段
-   * @param p1 - 起点
-   * @param p2 - 终点
+   * @param x1 - 起点x
+   * @param y1 - 起点y
+   * @param x2 - 终点x
+   * @param y2 - 终点y
    * @param color - 线条颜色
    * @param thickness - 线宽
    */
-  drawLine (p1: Vector2, p2: Vector2, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
-    this.drawLines([p1, p2], color, thickness);
+  drawLine (x1: number, y1: number, x2: number, y2: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
+    this.graphicsPath.clear();
+    this.graphicsPath.moveTo(x1, y1);
+    this.graphicsPath.lineTo(x2, y2);
+
+    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, closed);
   }
 
   /**
    * 绘制贝塞尔曲线
-   * @param p1 - 起点
-   * @param p2 - 控制点1
-   * @param p3 - 控制点2
-   * @param p4 - 终点
+   * @param x1 - 起点x
+   * @param y1 - 起点y
+   * @param x2 - 控制点1x
+   * @param y2 - 控制点1y
+   * @param x3 - 控制点2x
+   * @param y3 - 控制点2y
+   * @param x4 - 终点x
+   * @param y4 - 终点y
    * @param color - 线条颜色
    * @param thickness - 线宽
    */
-  drawBezier (p1: Vector2, p2: Vector2, p3: Vector2, p4: Vector2, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+  drawBezier (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
     this.graphicsPath.clear();
-    this.graphicsPath.moveTo(p1.x, p1.y);
-    this.graphicsPath.bezierCurveTo(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
+    this.graphicsPath.moveTo(x1, y1);
+    this.graphicsPath.bezierCurveTo(x2, y2, x3, y3, x4, y4);
 
     this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, false);
   }
 
   /**
    * 绘制三角形边框
-   * @param p1 - 顶点1
-   * @param p2 - 顶点2
-   * @param p3 - 顶点3
+   * @param x1 - 顶点1x
+   * @param y1 - 顶点1y
+   * @param x2 - 顶点2x
+   * @param y2 - 顶点2y
+   * @param x3 - 顶点3x
+   * @param y3 - 顶点3y
    * @param color - 线条颜色
    * @param thickness - 线宽
    */
-  drawTriangle (p1: Vector2, p2: Vector2, p3: Vector2, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+  drawTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
     this.graphicsPath.clear();
-    this.graphicsPath.triangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    this.graphicsPath.triangle(x1, y1, x2, y2, x3, y3);
 
     this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
   }
@@ -250,7 +260,7 @@ export class Render2D {
    * @param height - 矩形高度
    * @param color - 矩形颜色
    */
-  drawRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+  drawRectangle (x: number, y: number, width: number, height: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
     this.graphicsPath.clear();
     this.graphicsPath.rect(x, y, width, height, 0);
 
@@ -259,27 +269,31 @@ export class Render2D {
 
   /**
    * 绘制圆形边框
-   * @param center - 圆心坐标
+   * @param cx - 圆心x
+   * @param cy - 圆心y
    * @param radius - 半径
    * @param color - 线条颜色
    * @param thickness - 线宽
    */
-  drawCircle (center: Vector2, radius: number, color: Color = new Color(1, 1, 1, 1), thickness: number = 1.0): void {
+  drawCircle (cx: number, cy: number, radius: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
     this.graphicsPath.clear();
-    this.graphicsPath.circle(center.x, center.y, radius);
+    this.graphicsPath.circle(cx, cy, radius);
     this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
   }
 
   /**
    * 绘制填充三角形
-   * @param p1 - 顶点1
-   * @param p2 - 顶点2
-   * @param p3 - 顶点3
-   * @param color - 线条颜色
+   * @param x1 - 顶点1x
+   * @param y1 - 顶点1y
+   * @param x2 - 顶点2x
+   * @param y2 - 顶点2y
+   * @param x3 - 顶点3x
+   * @param y3 - 顶点3y
+   * @param color - 填充颜色
    */
-  fillTriangle (p1: Vector2, p2: Vector2, p3: Vector2, color: Color = new Color(1, 1, 1, 1)): void {
+  fillTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE): void {
     this.graphicsPath.clear();
-    this.graphicsPath.triangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+    this.graphicsPath.triangle(x1, y1, x2, y2, x3, y3);
 
     this.buildShape(this.graphicsPath.shapePath, color);
   }
@@ -292,7 +306,7 @@ export class Render2D {
    * @param height - 矩形高度
    * @param color - 矩形颜色
    */
-  fillRectangle (x: number, y: number, width: number, height: number, color: Color = new Color(1, 1, 1, 1)): void {
+  fillRectangle (x: number, y: number, width: number, height: number, color: Color = Color.WHITE): void {
     this.graphicsPath.clear();
     this.graphicsPath.rect(x, y, width, height, 0);
 
@@ -301,13 +315,14 @@ export class Render2D {
 
   /**
    * 绘制填充圆形
-   * @param center - 圆心坐标
+   * @param cx - 圆心x
+   * @param cy - 圆心y
    * @param radius - 半径
-   * @param color - 线条颜色
+   * @param color - 填充颜色
    */
-  fillCircle (center: Vector2, radius: number, color: Color = new Color(1, 1, 1, 1)): void {
+  fillCircle (cx: number, cy: number, radius: number, color: Color = Color.WHITE): void {
     this.graphicsPath.clear();
-    this.graphicsPath.circle(center.x, center.y, radius);
+    this.graphicsPath.circle(cx, cy, radius);
     this.buildShape(this.graphicsPath.shapePath, color);
   }
 
