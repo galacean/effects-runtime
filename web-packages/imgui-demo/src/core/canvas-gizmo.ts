@@ -666,91 +666,93 @@ export class CanvasGizmo extends RendererComponent {
     const lineColor = new math.Color(0.2, 0.4, 1, 1);
     const lineWidth = 3;
 
-    if (this.selectedObjects.length > 0) {
-      const selectedItem = this.selectedObjects[0];
-      const mesh = selectedItem.getComponent(RendererComponent);
+    if (this.gizmoMode !== GizmoMode.Move) {
+      if (this.hoveredObject) {
+        const rendererComponent = this.hoveredObject.getComponent(RendererComponent);
 
-      if (mesh) {
-        const boundingBox = mesh.getBoundingBoxInfo().boundingBox;
-        const screenPoints: math.Vector3[] = [];
+        if (rendererComponent) {
+          const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
+          const screenPoints: math.Vector3[] = [];
 
-        for (let i = 0; i < 4; i++) {
-          screenPoints.push(mesh.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+          for (let i = 0; i < 4; i++) {
+            screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+          }
+
+          const linePoints = [];
+
+          linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
+          linePoints.push(linePoints[0].clone());
+          this.render2D.drawLines(linePoints, lineColor, lineWidth + 2);
         }
-
-        const linePoints = [];
-
-        linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
-        linePoints.push(linePoints[0].clone());
-        this.render2D.drawLines(linePoints, lineColor, lineWidth);
-
-        const resizeHandleSize = 20;
-        const fillSize = resizeHandleSize - lineWidth;
-        const rotationHandleDistance = 40;
-
-        // 绘制四个角的缩放手柄
-        for (const screenPoint of screenPoints) {
-          this.render2D.drawRectangle(screenPoint.x - resizeHandleSize / 2, screenPoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
-          this.render2D.fillRectangle(screenPoint.x - fillSize / 2, screenPoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
-        }
-
-        // 绘制边缘中点的缩放手柄
-        const edges = [
-          this.midPoint(screenPoints[3], screenPoints[1]), // Top
-          this.midPoint(screenPoints[0], screenPoints[2]), // Bottom
-          this.midPoint(screenPoints[3], screenPoints[0]), // Left
-          this.midPoint(screenPoints[1], screenPoints[2]), // Right
-        ];
-
-        for (const edgePoint of edges) {
-          this.render2D.drawRectangle(edgePoint.x - resizeHandleSize / 2, edgePoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
-          this.render2D.fillRectangle(edgePoint.x - fillSize / 2, edgePoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
-        }
-
-        // 绘制旋转手柄（顶部中点上方）
-        const topMid = this.midPoint(screenPoints[3], screenPoints[1]);
-        const rotationHandleY = topMid.y + rotationHandleDistance; // 在左下角坐标系中，+y 是向上
-
-        // 绘制连接线
-        this.render2D.drawLine(new Vector2(topMid.x, topMid.y), new Vector2(topMid.x, rotationHandleY), lineColor, 2);
-
-        // 绘制旋转手柄（圆形）
-        const rotationHandleRadius = 8;
-
-        this.render2D.drawRectangle(
-          topMid.x - rotationHandleRadius,
-          rotationHandleY - rotationHandleRadius,
-          rotationHandleRadius * 2,
-          rotationHandleRadius * 2,
-          new Color(0.2, 1, 0.4, 1),
-          lineWidth
-        );
-        this.render2D.fillRectangle(
-          topMid.x - rotationHandleRadius + lineWidth,
-          rotationHandleY - rotationHandleRadius + lineWidth,
-          rotationHandleRadius * 2 - lineWidth * 2,
-          rotationHandleRadius * 2 - lineWidth * 2,
-          new Color(0.6, 1, 0.8, 1)
-        );
       }
-    }
 
-    if (this.hoveredObject) {
-      const rendererComponent = this.hoveredObject.getComponent(RendererComponent);
+      if (this.selectedObjects.length > 0) {
+        const selectedItem = this.selectedObjects[0];
+        const rendererComponent = selectedItem.getComponent(RendererComponent);
 
-      if (rendererComponent) {
-        const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
-        const screenPoints: math.Vector3[] = [];
+        if (rendererComponent) {
+          const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
+          const screenPoints: math.Vector3[] = [];
 
-        for (let i = 0; i < 4; i++) {
-          screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+          for (let i = 0; i < 4; i++) {
+            screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+          }
+
+          const linePoints = [];
+
+          linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
+          linePoints.push(linePoints[0].clone());
+          this.render2D.drawLines(linePoints, lineColor, lineWidth);
+
+          const resizeHandleSize = 20;
+          const fillSize = resizeHandleSize - lineWidth;
+          const rotationHandleDistance = 40;
+
+          // 绘制四个角的缩放手柄
+          for (const screenPoint of screenPoints) {
+            this.render2D.drawRectangle(screenPoint.x - resizeHandleSize / 2, screenPoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
+            this.render2D.fillRectangle(screenPoint.x - fillSize / 2, screenPoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
+          }
+
+          // 绘制边缘中点的缩放手柄
+          const edges = [
+            this.midPoint(screenPoints[3], screenPoints[1]), // Top
+            this.midPoint(screenPoints[0], screenPoints[2]), // Bottom
+            this.midPoint(screenPoints[3], screenPoints[0]), // Left
+            this.midPoint(screenPoints[1], screenPoints[2]), // Right
+          ];
+
+          for (const edgePoint of edges) {
+            this.render2D.drawRectangle(edgePoint.x - resizeHandleSize / 2, edgePoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
+            this.render2D.fillRectangle(edgePoint.x - fillSize / 2, edgePoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
+          }
+
+          // 绘制旋转手柄（顶部中点上方）
+          const topMid = this.midPoint(screenPoints[3], screenPoints[1]);
+          const rotationHandleY = topMid.y + rotationHandleDistance; // 在左下角坐标系中，+y 是向上
+
+          // 绘制连接线
+          this.render2D.drawLine(new Vector2(topMid.x, topMid.y), new Vector2(topMid.x, rotationHandleY), lineColor, 2);
+
+          // 绘制旋转手柄（圆形）
+          const rotationHandleRadius = 8;
+
+          this.render2D.drawRectangle(
+            topMid.x - rotationHandleRadius,
+            rotationHandleY - rotationHandleRadius,
+            rotationHandleRadius * 2,
+            rotationHandleRadius * 2,
+            new Color(0.2, 1, 0.4, 1),
+            lineWidth
+          );
+          this.render2D.fillRectangle(
+            topMid.x - rotationHandleRadius + lineWidth,
+            rotationHandleY - rotationHandleRadius + lineWidth,
+            rotationHandleRadius * 2 - lineWidth * 2,
+            rotationHandleRadius * 2 - lineWidth * 2,
+            new Color(0.6, 1, 0.8, 1)
+          );
         }
-
-        const linePoints = [];
-
-        linePoints.push(screenPoints[0].toVector2(), screenPoints[2].toVector2(), screenPoints[1].toVector2(), screenPoints[3].toVector2());
-        linePoints.push(linePoints[0].clone());
-        this.render2D.drawLines(linePoints, lineColor, lineWidth + 2);
       }
     }
 
