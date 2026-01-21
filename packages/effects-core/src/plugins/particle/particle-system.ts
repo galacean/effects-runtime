@@ -347,11 +347,18 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override onUpdate (dt: number): void {
-    this.update(dt);
+    if (!this.frozen) {
+      this.update(dt);
+    }
   }
 
-  update (delta: number) {
-    if (this.started && !this.frozen) {
+  simulate (time: number) {
+    this.update(time * 1000);
+    this.frozen = true;
+  }
+
+  private update (delta: number) {
+    if (this.started) {
       const now = this.time + delta / 1000;
       const options = this.options;
       const loopStartTime = this.loopStartTime;
