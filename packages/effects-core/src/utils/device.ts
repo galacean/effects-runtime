@@ -1,6 +1,7 @@
 export function getPixelRatio (): number {
   if (typeof window === 'object') {
-    return Math.min(2, window.devicePixelRatio ?? 1);
+    window.alert(window.devicePixelRatio || 1)
+    return Math.min(2, window.devicePixelRatio || 1);
   }
 
   return 1;
