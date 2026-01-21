@@ -66,7 +66,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   private richHorizontalAlignStrategy: RichHorizontalAlignStrategy;
   private richVerticalAlignStrategy: RichVerticalAlignStrategy;
 
-  protected readonly SCALE_FACTOR = 0.111;
+  protected readonly SCALE_FACTOR = 0.11092565;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
   constructor (engine: Engine) {
