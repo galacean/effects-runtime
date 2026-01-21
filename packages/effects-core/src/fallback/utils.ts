@@ -83,14 +83,6 @@ export function ensureNumberExpression (a: any): NumberExpression | undefined {
   return ensureFixedNumber(a);
 }
 
-export function ensureValueGetter (a: any): any {
-  if (Array.isArray(a) && typeof a[0] === 'string') {
-    return ensureNumberExpression(a) || ensureFixedVec3(a) || ensureColorExpression(a) || a;
-  }
-
-  return a;
-}
-
 export function ensureGradient (a: any, normalized?: boolean): GradientColor | undefined {
   if (a) {
     let stops: GradientStop[] = [];
@@ -313,6 +305,7 @@ export const particleOriginTranslateMap: Record<number, vec2> = {
   [ParticleOrigin.PARTICLE_ORIGIN_RIGHT_BOTTOM]: [0.5, -0.5],
   [ParticleOrigin.PARTICLE_ORIGIN_RIGHT_TOP]: [0.5, 0.5],
 };
+
 function getBezierCurveFromHermite (m0: number, m1: number, p0: number[], p3: number[]) {
   const xStart = p0[0];
   const yStart = p0[1];

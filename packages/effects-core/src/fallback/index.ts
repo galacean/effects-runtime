@@ -8,11 +8,8 @@ import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
 import {
   version21Migration, version22Migration, version24Migration, version30Migration,
-  version31Migration, version32Migration,
-  version33Migration,
-  version34Migration,
-  version35Migration,
-  version36Migration,
+  version31Migration, version32Migration, version33Migration, version34Migration,
+  version35Migration, version36Migration,
 } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
