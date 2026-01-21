@@ -12,6 +12,7 @@ import {
   version33Migration,
   version34Migration,
   version35Migration,
+  version36Migration,
 } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
@@ -40,14 +41,15 @@ export function getStandardJSON (json: any): JSONScene {
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
 
-    return version35Migration(
-      version34Migration(
-        version33Migration(
-          version32Migration(
-            version31Migration(
-              version30Migration(
-                version21Migration(
-                  getStandardJSONFromV0(json))))))));
+    return version36Migration(
+      version35Migration(
+        version34Migration(
+          version33Migration(
+            version32Migration(
+              version31Migration(
+                version30Migration(
+                  version21Migration(
+                    getStandardJSONFromV0(json)))))))));
   }
 
   reverseParticle = false;
@@ -83,6 +85,9 @@ export function getStandardJSON (json: any): JSONScene {
       }
       if (minorVersion < 6) {
         json = version35Migration(json);
+      }
+      if (minorVersion < 7) {
+        json = version36Migration(json);
       }
     }
 
