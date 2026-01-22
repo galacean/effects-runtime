@@ -45,12 +45,16 @@ export class CanvasGizmo extends RendererComponent {
   // 2D Camera control properties
   private viewCenter: Vector3 = new Vector3(0, 0, 0);
   private zoomLevel: number = 1.0;
-  private isDragging: boolean = false;
+  private isPanning: boolean = false;
   private lastMousePos: Vector2 = new Vector2(0, 0);
+  private dragStartPosition: Vector2 = new Vector2(0, 0);
 
   private activeHandle: HandleType = HandleType.None;
   private gizmoMode: GizmoMode = GizmoMode.None;
   private transformStart: TransformStartData | null = null;
+
+  private isDragging = false;
+  private dragStarted = false; // 是否已经开始拖动
 
   private get activeObject (): VFXItem | null {
     return this.selectedObjects.length > 0 ? this.selectedObjects[0] : null;
@@ -80,8 +84,12 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   private onMouseDown = (e: MouseEvent): void => {
-    if (e.button === 0) {
+    this.isDragging = false;
+    this.dragStarted = false;
+    this.lastMousePos.set(e.clientX, e.clientY);
+    this.dragStartPosition.set(e.clientX, e.clientY);
 
+    if (e.button === 0) {
       // 检查是否点击了 gizmo 手柄
       let handle = this.getHandleAtPosition(e.clientX, e.clientY);
 
@@ -102,20 +110,42 @@ export class CanvasGizmo extends RendererComponent {
         this.startTransform(e);
         e.preventDefault();
       }
-
-      // 记录鼠标按下位置，用于检测点击事件
-      this.lastMousePos.set(e.clientX, e.clientY);
     }
 
     if (e.button === 1) { // Middle mouse button for panning
-      this.isDragging = true;
-      this.lastMousePos.set(e.clientX, e.clientY);
+      this.isPanning = true;
       this.canvas.style.cursor = 'grabbing';
       e.preventDefault();
     }
   };
 
   private onMouseMove = (e: MouseEvent): void => {
+    // 进行拖动检测
+    if (e.buttons !== 0) {
+      if (!this.dragStarted) {
+        const dx = e.clientX - this.dragStartPosition.x;
+        const dy = e.clientY - this.dragStartPosition.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 5) {
+          this.isDragging = true;
+          this.dragStarted = true;
+        }
+      }
+
+      if (this.dragStarted) {
+        const dx = e.clientX - this.lastMousePos.x;
+        const dy = e.clientY - this.lastMousePos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > 0) {
+          this.onDragging(dx, dy, e);
+        }
+
+        this.lastMousePos.set(e.clientX, e.clientY);
+      }
+    }
+
     // 更新 gizmo 变换
     if (this.activeHandle !== HandleType.None) {
       this.updateTransform(e);
@@ -123,35 +153,35 @@ export class CanvasGizmo extends RendererComponent {
       return;
     }
 
-    // 相机平移
-    if (this.isDragging) {
-      const dx = e.clientX - this.lastMousePos.x;
-      const dy = e.clientY - this.lastMousePos.y;
+    if (!this.isPanning) {
+      const pickedItems = this.pickItems(e.clientX, e.clientY);
 
-      // 根据当前缩放级别调整移动速度
-      const moveSpeed = 0.01 / this.zoomLevel;
+      this.hoveredObject = pickedItems[pickedItems.length - 1] || null;
 
-      // 在 2D 平面上移动视图中心
-      this.viewCenter.x -= dx * moveSpeed;
-      this.viewCenter.y += dy * moveSpeed; // Y 轴方向相反
+      // 更新鼠标悬停时的光标
+      const handle = this.getHandleAtPosition(e.clientX, e.clientY);
 
-      this.lastMousePos.set(e.clientX, e.clientY);
-      this.updateCameraTransform();
-
-      return;
+      this.updateCursor(handle, e);
     }
-
-    const pickedItems = this.pickItems(e.clientX, e.clientY);
-
-    this.hoveredObject = pickedItems[pickedItems.length - 1] || null;
-
-    // 更新鼠标悬停时的光标
-    const handle = this.getHandleAtPosition(e.clientX, e.clientY);
-
-    this.updateCursor(handle, e);
   };
 
   private onMouseUp = (e: MouseEvent): void => {
+    if (this.dragStarted) {
+      this.onDragEnd(e);
+    } else {
+      const dx = e.clientX - this.lastMousePos.x;
+      const dy = e.clientY - this.lastMousePos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // 如果移动距离小于 5 像素，视为点击
+      if (distance < 5) {
+        this.onClick(e.clientX, e.clientY, e);
+      }
+    }
+
+    this.isDragging = false;
+    this.dragStarted = false;
+
     // 结束 gizmo 操作
     if (this.activeHandle !== HandleType.None) {
       this.activeHandle = HandleType.None;
@@ -162,26 +192,30 @@ export class CanvasGizmo extends RendererComponent {
     }
 
     if (e.button === 1) {
-      this.isDragging = false;
+      this.isPanning = false;
       this.canvas.style.cursor = 'default';
-    }
-
-    // 检测左键点击事件（鼠标按下和抬起位置相近）
-    if (e.button === 0) {
-      const dx = e.clientX - this.lastMousePos.x;
-      const dy = e.clientY - this.lastMousePos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // 如果移动距离小于 5 像素，视为点击
-      if (distance < 5) {
-        this.onClick(e.clientX, e.clientY, e);
-      }
     }
   };
 
   // 鼠标点击事件回调
   private onClick (x: number, y: number, event: MouseEvent): void {
 
+  }
+
+  private onDragging (dx: number, dy: number, event: MouseEvent) {
+    if (this.isPanning) {
+      // 根据当前缩放级别调整移动速度
+      const moveSpeed = 0.01 / this.zoomLevel;
+
+      // 在 2D 平面上移动视图中心
+      this.viewCenter.x -= dx * moveSpeed;
+      this.viewCenter.y += dy * moveSpeed; // Y 轴方向相反
+
+      this.updateCameraTransform();
+    }
+  }
+
+  private onDragEnd (event: MouseEvent) {
   }
 
   private onWheel = (e: WheelEvent): void => {
@@ -662,14 +696,14 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   override render (renderer: Renderer): void {
-
     const render2D = this.render2D;
 
     this.render2D.begin();
     const lineColor = new math.Color(0.2, 0.4, 1, 1);
     const lineWidth = 3;
 
-    if (this.gizmoMode !== GizmoMode.Move) {
+    // 移动物体时不绘制 gizmo，避免干扰
+    if (!(this.gizmoMode === GizmoMode.Move && this.isDragging)) {
       if (this.hoveredObject) {
         const rendererComponent = this.hoveredObject.getComponent(RendererComponent);
 
