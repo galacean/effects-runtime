@@ -8,6 +8,10 @@ let clipboard_text: string = '';
 
 let canvas: HTMLCanvasElement | null = null;
 
+export function getCanvas (): HTMLCanvasElement | null {
+  return canvas;
+}
+
 export let gl: WebGL2RenderingContext | WebGLRenderingContext | null = null;
 let g_ShaderHandle: WebGLProgram | null = null;
 let g_VertHandle: WebGLShader | null = null;
