@@ -544,7 +544,7 @@ describe('webgl/gl-geometry', () => {
     ret.geom.drawCount = -1;
     const frame = new RenderFrame({
       renderer,
-      camera: new Camera(),
+      camera: new Camera(renderer.engine),
       renderPasses: [pass],
     });
     const d = gl.drawElements;
@@ -564,7 +564,7 @@ describe('webgl/gl-geometry', () => {
     pass.addMesh(ret.mesh);
     const frame = new RenderFrame({
       renderer,
-      camera: new Camera(),
+      camera: new Camera(renderer.engine),
       renderPasses: [pass],
     });
     const d = gl.drawElements;

@@ -337,8 +337,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderer.resize(width, height);
     this.compositions?.forEach(comp => {
       comp.camera.aspect = width / height;
-      comp.camera.pixelHeight = this.renderer.getHeight();
-      comp.camera.pixelWidth = this.renderer.getWidth();
     });
     this.emit('resize', this);
   }

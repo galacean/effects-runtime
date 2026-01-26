@@ -352,11 +352,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    this.camera = new Camera(this.name, {
+    this.camera = new Camera(this.getEngine(), this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
-      pixelWidth: width,
-      pixelHeight: height,
     });
     this.url = scene.url;
     this.interactive = true;

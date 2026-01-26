@@ -316,13 +316,9 @@ export class CanvasGizmo extends RendererComponent {
     // 将 client 坐标转换为 canvas 坐标系（左下角为原点）
     const rect = this.canvas.getBoundingClientRect();
 
-    // 计算 canvas 实际分辨率和显示大小的比例
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-
     // 转换为 canvas 实际坐标（考虑缩放）
-    const canvasX = (x - rect.left) * scaleX;
-    const canvasY = (rect.height - (y - rect.top)) * scaleY; // 翻转 Y 轴并缩放
+    const canvasX = (x - rect.left);
+    const canvasY = (rect.height - (y - rect.top)); // 翻转 Y 轴并缩放
 
     const boundingBox = mesh.getBoundingBoxInfo().boundingBox;
     const screenPoints: Vector3[] = [];
@@ -475,14 +471,8 @@ export class CanvasGizmo extends RendererComponent {
     const screenDx = e.clientX - this.transformStart.mousePos.x;
     const screenDy = e.clientY - this.transformStart.mousePos.y;
 
-    // 获取 canvas 分辨率缩放比例
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
-
-    // 转换为 canvas 像素空间（与 worldToScreenPoint 一致）
-    const canvasDx = screenDx * scaleX;
-    const canvasDy = -screenDy * scaleY; // Y 轴翻转（屏幕向下是正，世界向上是正）
+    const canvasDx = screenDx;
+    const canvasDy = -screenDy; // Y 轴翻转（屏幕向下是正，世界向上是正）
 
     // 将屏幕空间的移动转换为世界空间
     const worldDelta = this.screenToWorld(canvasDx, canvasDy, camera);
@@ -513,11 +503,9 @@ export class CanvasGizmo extends RendererComponent {
 
     // 将 client 坐标转换为 canvas 坐标系（左下角为原点）
     const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
 
-    const currentCanvasX = (e.clientX - rect.left) * scaleX;
-    const currentCanvasY = (rect.height - (e.clientY - rect.top)) * scaleY;
+    const currentCanvasX = (e.clientX - rect.left);
+    const currentCanvasY = (rect.height - (e.clientY - rect.top));
 
     // 计算当前鼠标相对于物体中心的角度
     const currentAngle = Math.atan2(
@@ -526,8 +514,8 @@ export class CanvasGizmo extends RendererComponent {
     );
 
     // 计算起始时鼠标相对于物体中心的角度
-    const startCanvasX = (this.transformStart.mousePos.x - rect.left) * scaleX;
-    const startCanvasY = (rect.height - (this.transformStart.mousePos.y - rect.top)) * scaleY;
+    const startCanvasX = (this.transformStart.mousePos.x - rect.left);
+    const startCanvasY = (rect.height - (this.transformStart.mousePos.y - rect.top));
     const startAngle = Math.atan2(
       startCanvasY - screenCenter.y,
       startCanvasX - screenCenter.x
@@ -552,17 +540,13 @@ export class CanvasGizmo extends RendererComponent {
     const screenDx = e.clientX - this.transformStart.mousePos.x;
     const screenDy = e.clientY - this.transformStart.mousePos.y;
 
-    // 获取 canvas 分辨率缩放比例
-    const rect = this.canvas.getBoundingClientRect();
-    const scaleX = this.canvas.width / rect.width;
-    const scaleY = this.canvas.height / rect.height;
+    const canvasDx = screenDx;
+    const canvasDy = -screenDy; // Y 轴翻转（屏幕向下是正，世界向上是正）
 
-    // 转换为 canvas 像素空间（与 worldToScreenPoint 一致）
-    const canvasDx = screenDx * scaleX;
-    const canvasDy = -screenDy * scaleY; // Y 轴翻转（屏幕向下是正，世界向上是正）
+    const { width, height } = this.canvas.getBoundingClientRect();
 
     // 根据相机 Z 位置计算世界空间每像素的比例
-    const res = calculateWorldPerPixelPerspective(camera.getProjectionMatrix().elements, this.canvas.width, this.canvas.height, camera.position.z);
+    const res = calculateWorldPerPixelPerspective(camera.getProjectionMatrix().elements, width, height, camera.position.z);
 
     const worldDx = canvasDx * res * 2;
     const worldDy = canvasDy * res * 2;
@@ -621,8 +605,9 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   private screenToWorld (dx: number, dy: number, camera: Camera): Vector2 {
+    const { width, height } = this.canvas.getBoundingClientRect();
     // 根据相机 Z 位置计算世界空间每像素的比例
-    const WorldPerPixel = calculateWorldPerPixelPerspective(camera.getProjectionMatrix().elements, this.canvas.width, this.canvas.height, camera.position.z);
+    const WorldPerPixel = calculateWorldPerPixelPerspective(camera.getProjectionMatrix().elements, width, height, camera.position.z);
 
     return new Vector2(dx * WorldPerPixel, dy * WorldPerPixel);
   }
@@ -807,51 +792,51 @@ export class CanvasGizmo extends RendererComponent {
     //-------------------------------------------------------------------------
 
     // 绘制两条交叉的线
-    this.render2D.drawLine(20, 20, 170, 120, new Color(0.8, 0.2, 0.2, 1), 4);
-    this.render2D.drawLine(20, 120, 170, 20, new Color(0.2, 0.2, 0.8, 1), 4);
+    this.render2D.drawLine(10, 10, 85, 60, new Color(0.8, 0.2, 0.2, 1), 2);
+    this.render2D.drawLine(10, 60, 85, 10, new Color(0.2, 0.2, 0.8, 1), 2);
 
     // 绘制填充矩形
-    this.render2D.fillRectangle(20, 150, 150, 100, new Color(0.2, 0.8, 0.2, 1));
+    this.render2D.fillRectangle(10, 75, 75, 50, new Color(0.2, 0.8, 0.2, 1));
 
     // 绘制描边矩形
-    this.render2D.drawRectangle(20, 280, 150, 100, new Color(0.8, 0.6, 0.2, 1), 6);
+    this.render2D.drawRectangle(10, 140, 75, 50, new Color(0.8, 0.6, 0.2, 1), 3);
 
     // 绘制贝塞尔曲线 - 明显的弯曲效果
     this.render2D.drawBezier(
-      20, 410,      // 起点（左下）
-      95, 410,      // 控制点1（中间偏上）
-      95, 510,      // 控制点2（中间偏下）
-      170, 510,     // 终点（右下）
+      10, 205,      // 起点（左下）
+      47.5, 205,    // 控制点1（中间偏上）
+      47.5, 255,    // 控制点2（中间偏下）
+      85, 255,      // 终点（右下）
       new Color(0.8, 0.2, 0.8, 1),
-      4
+      2
     );
 
     this.render2D.fillTriangle(
-      20, 550,
-      170, 550,
-      95, 650,
+      10, 275,
+      85, 275,
+      47.5, 325,
       new Color(0.2, 0.8, 0.8, 1),
     );
 
     this.render2D.drawTriangle(
-      20, 700,
-      170, 700,
-      95, 800,
+      10, 350,
+      85, 350,
+      47.5, 400,
       new Color(0.8, 0.4, 0.1, 1),
-      4
+      2
     );
 
     this.render2D.fillCircle(
-      95, 900,
-      50,
+      47.5, 450,
+      25,
       new Color(0.1, 0.6, 0.3, 1),
     );
 
     this.render2D.drawCircle(
-      95, 1050,
-      50,
+      47.5, 525,
+      25,
       new Color(0.6, 0.1, 0.9, 1),
-      4
+      2
     );
 
     this.render2D.end();

@@ -114,8 +114,7 @@ export class Render2D {
     this.currentTransform = Matrix3.fromIdentity();
 
     // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标: (0, 0) 在左下角, (width, height) 在右上角
-    const width = this.engine.renderer.getWidth();
-    const height = this.engine.renderer.getHeight();
+    const { width, height } = this.engine.canvas.getBoundingClientRect();
 
     // 正交投影矩阵：将屏幕坐标 [0, width] x [0, height] 映射到 NDC [-1, 1] x [-1, 1]
     const projectionMatrix = new Matrix4(
