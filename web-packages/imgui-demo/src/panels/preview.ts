@@ -31,14 +31,16 @@ export class Preview extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (!(Selection.activeObject instanceof FileNode) || Selection.activeObject.handle.kind === 'directory') {
+    const selectedObject = Selection.getSelectedObjects()[0];
+
+    if (!(selectedObject instanceof FileNode) || selectedObject.handle.kind === 'directory') {
       ImGui.End();
 
       return;
     }
 
-    if (Selection.activeObject !== this.previewObject) {
-      void Selection.activeObject.handle.getFile().then(async (file: File)=>{
+    if (selectedObject !== this.previewObject) {
+      void selectedObject.handle.getFile().then(async (file: File)=>{
         if (file.name.endsWith('.json')) {
           const json = await this.readFile(file);
           const packageData: spec.EffectsPackageData = JSON.parse(json);
@@ -70,7 +72,7 @@ export class Preview extends EditorWindow {
           }
         }
       });
-      this.previewObject = Selection.activeObject;
+      this.previewObject = selectedObject;
     }
     const sceneImageSize = ImGui.GetWindowSize();
 

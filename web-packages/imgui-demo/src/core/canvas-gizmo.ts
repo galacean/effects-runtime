@@ -91,12 +91,12 @@ export class CanvasGizmo extends RendererComponent {
       if (handle === HandleType.None) {
         const pickedItems = this.pickItems(e.clientX, e.clientY);
 
-        Selection.setActiveObject(pickedItems[pickedItems.length - 1]);
+        Selection.select(pickedItems[pickedItems.length - 1]);
 
         handle = this.getHandleAtPosition(e.clientX, e.clientY);
       }
 
-      if (handle !== HandleType.None && Selection.activeObject instanceof VFXItem) {
+      if (handle !== HandleType.None && Selection.getSelectedObjects()[0] instanceof VFXItem) {
       // 开始 gizmo 操作
         this.activeHandle = handle;
         this.startTransform(e);
@@ -295,11 +295,13 @@ export class CanvasGizmo extends RendererComponent {
 
   // Transform Gizmo 相关方法
   private getHandleAtPosition (x: number, y: number): HandleType {
-    if (!(Selection.activeObject instanceof VFXItem)) {
+    const activeObject = Selection.getSelectedObjects()[0];
+
+    if (!(activeObject instanceof VFXItem)) {
       return HandleType.None;
     }
 
-    const mesh = Selection.activeObject.getComponent(RendererComponent);
+    const mesh = activeObject.getComponent(RendererComponent);
 
     if (!(mesh instanceof RendererComponent)) {
       return HandleType.None;
@@ -409,11 +411,13 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   private startTransform (e: MouseEvent): void {
-    if (!(Selection.activeObject instanceof VFXItem)) {
+    const activeObject = Selection.getSelectedObjects()[0];
+
+    if (!(activeObject instanceof VFXItem)) {
       return;
     }
 
-    const item = Selection.activeObject;
+    const item = activeObject;
 
     this.transformStart = {
       position: item.transform.position.clone(),
@@ -433,11 +437,13 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   private updateTransform (e: MouseEvent): void {
-    if (!this.transformStart || !(Selection.activeObject instanceof VFXItem)) {
+    const activeObject = Selection.getSelectedObjects()[0];
+
+    if (!this.transformStart || !(activeObject instanceof VFXItem)) {
       return;
     }
 
-    const item = Selection.activeObject;
+    const item = activeObject;
     const camera = item.composition!.camera;
 
     switch (this.gizmoMode) {
@@ -605,7 +611,7 @@ export class CanvasGizmo extends RendererComponent {
   }
 
   private updateCursor (handle: HandleType, e: MouseEvent): void {
-    const item = Selection.activeObject;
+    const item = Selection.getSelectedObjects()[0];
 
     if (!(item instanceof VFXItem)) {
       return;
@@ -704,8 +710,10 @@ export class CanvasGizmo extends RendererComponent {
         }
       }
 
-      if (Selection.activeObject instanceof VFXItem) {
-        const selectedItem = Selection.activeObject;
+      const activeObject = Selection.getSelectedObjects()[0];
+
+      if (activeObject instanceof VFXItem) {
+        const selectedItem = activeObject;
         const rendererComponent = selectedItem.getComponent(RendererComponent);
 
         if (rendererComponent) {

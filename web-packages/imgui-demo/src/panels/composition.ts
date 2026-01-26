@@ -48,7 +48,7 @@ export class Composition extends EditorWindow {
     ImGui.SameLine(alignedSize);
     if (ImGui.ListBox('', (value = this.currentItem) => this.currentItem = value, this.compositionNames, this.compositionNames.length, this.compositionNames.length)) {
       this.currentCompositionURL = this.compositionURLs[this.currentItem];
-      Selection.setActiveObject(null);
+      Selection.select(null);
       void GalaceanEffects.playURL(this.currentCompositionURL);
     }
   }

@@ -101,7 +101,7 @@ export class Sequencer extends EditorWindow {
     const currentComposition = this.currentComposition;
     let compositionComponent = currentComposition.rootItem.getComponent(CompositionComponent);
 
-    const selectedObject = Selection.activeObject;
+    const selectedObject = Selection.getSelectedObjects()[0];
 
     if (selectedObject instanceof VFXItem && selectedObject.getComponent(CompositionComponent)) {
       compositionComponent = selectedObject.getComponent(CompositionComponent);

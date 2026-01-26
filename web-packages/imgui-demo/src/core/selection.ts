@@ -1,80 +1,87 @@
-export class Selection {
-  static activeObject: object | null;
-  private static readonly _selectedObjects: Set<object> = new Set();
+type SelectionChangedCallback = () => void;
 
-  static get selectedObjects (): ReadonlySet<object> {
-    return Selection._selectedObjects;
+/**
+ * 选择管理器
+ */
+export class Selection {
+  private static readonly _selectedObjects: Set<object> = new Set();
+  private static readonly _listeners: Set<SelectionChangedCallback> = new Set();
+
+  static select (object: object | null): void {
+    if (object === null) {
+      Selection.clear();
+
+      return;
+    }
+
+    if (Selection._selectedObjects.has(object) && Selection._selectedObjects.size === 1) {
+      return;
+    }
+
+    Selection._selectedObjects.clear();
+    Selection._selectedObjects.add(object);
+    Selection.emitSelectionChanged();
   }
 
+  /**
+   * 添加对象到选择
+   * @param object 要添加的对象
+   */
+  static addObject (object: object): void {
+    if (Selection._selectedObjects.has(object)) {
+      return;
+    }
+
+    Selection._selectedObjects.add(object);
+    Selection.emitSelectionChanged();
+  }
+
+  /**
+   * 从选择中移除对象
+   * @param object 要移除的对象
+   */
+  static removeObject (object: object): void {
+    if (!Selection._selectedObjects.has(object)) {
+      return;
+    }
+
+    Selection._selectedObjects.delete(object);
+    Selection.emitSelectionChanged();
+  }
+
+  static isSelected (object: object): boolean {
+    return Selection._selectedObjects.has(object);
+  }
+
+  /**
+   * 获取所有已选择对象的数组
+   */
   static getSelectedObjects<T extends object> (): T[] {
     return Array.from(Selection._selectedObjects) as T[];
   }
 
-  static isSelected (object: object | null | undefined): boolean {
-    return !!object && Selection._selectedObjects.has(object);
-  }
+  /**
+   * 清空所有选择
+   */
+  static clear (): void {
+    if (Selection._selectedObjects.size === 0) {
+      return;
+    }
 
-  static clear () {
     Selection._selectedObjects.clear();
-    Selection.activeObject = null;
+    Selection.emitSelectionChanged();
   }
 
-  static replaceSelection (objects: Iterable<object>, activeObject?: object | null) {
-    Selection._selectedObjects.clear();
-    let lastSelected: object | null = null;
-
-    for (const object of objects) {
-      Selection._selectedObjects.add(object);
-      lastSelected = object;
-    }
-
-    Selection.activeObject = (activeObject ?? lastSelected) ?? null;
-  }
-
-  static add (object: object, makeActive = true) {
-    Selection._selectedObjects.add(object);
-
-    if (makeActive || !Selection.activeObject) {
-      Selection.activeObject = object;
-    }
-  }
-
-  static toggle (object: object): boolean {
-    if (Selection._selectedObjects.has(object)) {
-      Selection._selectedObjects.delete(object);
-
-      if (Selection.activeObject === object) {
-        Selection.activeObject = Selection.getLastSelected();
+  /**
+   * 发送选择变更事件
+   */
+  private static emitSelectionChanged (): void {
+    for (const listener of Selection._listeners) {
+      try {
+        listener();
+      } catch (error) {
+        console.error('Selection change listener error:', error);
       }
-
-      if (Selection._selectedObjects.size === 0) {
-        Selection.activeObject = null;
-      }
-
-      return false;
     }
-
-    Selection._selectedObjects.add(object);
-    Selection.activeObject = object;
-
-    return true;
-  }
-
-  static setActiveObject (activeObject: object | null) {
-    if (activeObject) {
-      Selection.replaceSelection([activeObject], activeObject);
-    } else {
-      Selection.clear();
-    }
-  }
-
-  private static getLastSelected (): object | null {
-    let last: object | null = null;
-
-    for (const object of Selection._selectedObjects) {
-      last = object;
-    }
-
-    return last;
   }
 }

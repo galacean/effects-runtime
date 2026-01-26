@@ -46,7 +46,7 @@ export class Hierarchy extends EditorWindow {
     );
 
     this.hierarchyDrawOrder.length = 0;
-    if (Selection.selectedObjects.size === 0) {
+    if (Selection.getSelectedObjects().length === 0) {
       this.hierarchySelectionAnchor = null;
     }
 
@@ -213,17 +213,19 @@ export class Hierarchy extends EditorWindow {
       if (range && this.hierarchySelectionAnchor && this.hierarchySelectionAnchor !== item) {
         this.applyHierarchyRangeSelection(this.hierarchySelectionAnchor, item);
       } else if (additive) {
-        const nowSelected = Selection.toggle(item);
+        if (Selection.isSelected(item)) {
+          Selection.removeObject(item);
+          if (this.hierarchySelectionAnchor === item) {
+            const active = Selection.getSelectedObjects<VFXItem>()[0] ?? null;
 
-        if (nowSelected) {
+            this.hierarchySelectionAnchor = active && Selection.isSelected(active) ? active : null;
+          }
+        } else {
+          Selection.addObject(item);
           this.hierarchySelectionAnchor = item;
-        } else if (this.hierarchySelectionAnchor === item) {
-          const active = Selection.activeObject as VFXItem | null;
-
-          this.hierarchySelectionAnchor = active && Selection.isSelected(active) ? active : null;
         }
       } else {
-        Selection.setActiveObject(item);
+        Selection.select(item);
         this.hierarchySelectionAnchor = item;
       }
     }
@@ -235,7 +237,7 @@ export class Hierarchy extends EditorWindow {
     const targetIndex = order.indexOf(target);
 
     if (anchorIndex === -1 || targetIndex === -1) {
-      Selection.setActiveObject(target);
+      Selection.select(target);
       this.hierarchySelectionAnchor = target;
 
       return;
@@ -245,7 +247,10 @@ export class Hierarchy extends EditorWindow {
     const end = Math.max(anchorIndex, targetIndex);
     const rangeItems = order.slice(start, end + 1);
 
-    Selection.replaceSelection(rangeItems, target);
+    Selection.clear();
+    for (const item of rangeItems) {
+      Selection.addObject(item);
+    }
   }
 
   private getHierarchyVisibilityTargets (item: VFXItem): VFXItem[] {
