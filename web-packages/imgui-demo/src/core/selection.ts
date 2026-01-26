@@ -1,11 +1,8 @@
-type SelectionChangedCallback = () => void;
-
 /**
  * 选择管理器
  */
 export class Selection {
   private static readonly _selectedObjects: Set<object> = new Set();
-  private static readonly _listeners: Set<SelectionChangedCallback> = new Set();
 
   static select (object: object | null): void {
     if (object === null) {
@@ -76,12 +73,6 @@ export class Selection {
    * 发送选择变更事件
    */
   private static emitSelectionChanged (): void {
-    for (const listener of Selection._listeners) {
-      try {
-        listener();
-      } catch (error) {
-        console.error('Selection change listener error:', error);
-      }
-    }
+    // TODO: 实现事件分发机制
   }
 }
