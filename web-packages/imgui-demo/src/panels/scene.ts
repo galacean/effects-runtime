@@ -143,13 +143,5 @@ export class Scene extends EditorWindow {
         this.cameraController.update(player.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
       }
     }
-
-    if (canvasGizmo) {
-      if (this.is2DMode) {
-        Selection.setActiveObject(canvasGizmo.selectedObjects[0] || null);
-      } else if (Selection.activeObject instanceof VFXItem) {
-        canvasGizmo.selectedObjects = [Selection.activeObject];
-      }
-    }
   }
 }
