@@ -104,7 +104,7 @@ export class CanvasGizmo extends RendererComponent {
       }
     }
 
-    if (e.button === 1) { // Middle mouse button for panning
+    if (e.button === 2) { // Middle mouse button for panning
       this.isPanning = true;
       this.canvas.style.cursor = 'grabbing';
       e.preventDefault();
@@ -183,7 +183,7 @@ export class CanvasGizmo extends RendererComponent {
       return;
     }
 
-    if (e.button === 1) {
+    if (e.button === 2) {
       this.isPanning = false;
       this.canvas.style.cursor = 'default';
     }
