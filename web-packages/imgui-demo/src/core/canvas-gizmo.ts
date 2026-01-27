@@ -54,6 +54,7 @@ export class CanvasGizmo extends RendererComponent {
 
   private isDragging = false;
   private dragStarted = false; // 是否已经开始拖动
+  private mouseDownSelected = false; // 鼠标按下时是否通过拾取选中对象
 
   override onAwake (): void {
     this.priority = 5000;
@@ -88,12 +89,15 @@ export class CanvasGizmo extends RendererComponent {
       // 检查是否点击了 gizmo 手柄
       let handle = this.getHandleAtPosition(e.clientX, e.clientY);
 
+      this.mouseDownSelected = false;
       if (handle === HandleType.None) {
         const pickedItems = this.pickItems(e.clientX, e.clientY);
 
         Selection.select(pickedItems[pickedItems.length - 1]);
 
         handle = this.getHandleAtPosition(e.clientX, e.clientY);
+
+        this.mouseDownSelected = true;
       }
 
       if (handle !== HandleType.None && Selection.getSelectedObjects()[0] instanceof VFXItem) {
@@ -150,9 +154,9 @@ export class CanvasGizmo extends RendererComponent {
 
       this.hoveredObject = pickedItems[pickedItems.length - 1] || null;
 
-      // 更新鼠标悬停时的光标
       const handle = this.getHandleAtPosition(e.clientX, e.clientY);
 
+      // 更新鼠标悬停时的光标
       this.updateCursor(handle, e);
     }
   };
@@ -191,7 +195,11 @@ export class CanvasGizmo extends RendererComponent {
 
   // 鼠标点击事件回调
   private onClick (x: number, y: number, event: MouseEvent): void {
+    if (event.button === 0 && this.activeHandle === HandleType.Center && this.mouseDownSelected === false) {
+      const pickedItems = this.pickItems(event.clientX, event.clientY);
 
+      Selection.select(pickedItems[pickedItems.length - 1]);
+    }
   }
 
   private onDragging (dx: number, dy: number, event: MouseEvent) {
