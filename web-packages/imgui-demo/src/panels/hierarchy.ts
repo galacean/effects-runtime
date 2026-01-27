@@ -34,9 +34,21 @@ export class Hierarchy extends EditorWindow {
   private visibilityColumnScreenX = 0;
 
   // 搜索相关
-  private searchFilter = '';
-  private searchMatchedItems: Set<VFXItem> = new Set();
-  private expandedForSearch: Set<VFXItem> = new Set();
+  private searchFilterBuffer: ImGui.ImScalar<string> = [''];
+  private searchMatchedItems: VFXItem[] = [];
+
+  private get searchFilter (): string {
+    return this.searchFilterBuffer[0];
+  }
+
+  private set searchFilter (value: string) {
+    this.searchFilterBuffer[0] = value;
+  }
+
+  // 自动展开相关
+  private itemsToExpand: Set<VFXItem> = new Set();
+  private lastSelectedItem: VFXItem | null = null;
+  private wasInSearchMode = false;
 
   @menuItem('Window/Hierarchy')
   static showWindow () {
@@ -61,6 +73,9 @@ export class Hierarchy extends EditorWindow {
     // 绘制搜索框
     this.drawSearchBar();
 
+    // 检测选中项变化，自动展开到选中元素
+    this.checkSelectionChanged();
+
     // 重置绘制顺序缓存
     this.hierarchyDrawOrder.length = 0;
     if (Selection.getSelectedObjects().length === 0) {
@@ -74,17 +89,22 @@ export class Hierarchy extends EditorWindow {
     // 设置选中样式
     this.pushSelectionColors();
 
-    // 绘制树形结构
-    const baseFlags = ImGui.TreeNodeFlags.OpenOnArrow |
-      ImGui.TreeNodeFlags.OpenOnDoubleClick |
-      ImGui.TreeNodeFlags.SpanAvailWidth;
+    // 如果有搜索条件，显示平铺的搜索结果
+    if (this.searchFilter.length > 0) {
+      this.drawFlatSearchResults();
+    } else {
+      // 正常的树形结构
+      const baseFlags = ImGui.TreeNodeFlags.OpenOnArrow |
+        ImGui.TreeNodeFlags.OpenOnDoubleClick |
+        ImGui.TreeNodeFlags.SpanAvailWidth;
 
-    ImGui.SetCursorPosX(this.visibilityColumnLocalX + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing);
-    const compositionId = `composition_${composition.id}`;
+      ImGui.SetCursorPosX(this.visibilityColumnLocalX + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing);
+      const compositionId = `composition_${composition.id}`;
 
-    if (ImGui.TreeNodeEx(compositionId, baseFlags | ImGui.TreeNodeFlags.DefaultOpen, 'Composition')) {
-      this.drawVFXItemTreeNode(composition.rootItem, baseFlags);
-      ImGui.TreePop();
+      if (ImGui.TreeNodeEx(compositionId, baseFlags | ImGui.TreeNodeFlags.DefaultOpen, 'Composition')) {
+        this.drawVFXItemTreeNode(composition.rootItem, baseFlags);
+        ImGui.TreePop();
+      }
     }
 
     ImGui.PopStyleColor(3);
@@ -94,6 +114,8 @@ export class Hierarchy extends EditorWindow {
     const availWidth = ImGui.GetContentRegionAvail().x;
     const iconSize = 16;
     const iconPadding = 4;
+    const clearButtonSize = 18;
+    const hasClearButton = this.searchFilter.length > 0;
 
     // 绘制搜索图标
     const cursorPos = ImGui.GetCursorScreenPos();
@@ -119,33 +141,120 @@ export class Hierarchy extends EditorWindow {
 
     drawList.AddLine(handleStart, handleEnd, iconColor, 1.5);
 
-    // 输入框左侧留出图标空间
-    ImGui.SetCursorPosX(ImGui.GetCursorPosX() + iconSize + iconPadding);
+    // 输入框左侧留出图标空间，输入框占满剩余宽度
+    const inputStartX = ImGui.GetCursorPosX() + iconSize + iconPadding;
+
+    ImGui.SetCursorPosX(inputStartX);
     ImGui.PushItemWidth(availWidth - iconSize - iconPadding);
 
     const prevFilter = this.searchFilter;
 
-    if (ImGui.InputTextWithHint('##HierarchySearch', 'Search...', (value = this.searchFilter) => this.searchFilter = value)) {
+    if (ImGui.InputText('##HierarchySearch', this.searchFilterBuffer, 256)) {
       // 搜索内容变化时更新匹配项
       if (this.searchFilter !== prevFilter) {
         this.updateSearchMatches();
       }
     }
 
+    // 允许后面的控件覆盖输入框接收事件
+    ImGui.SetItemAllowOverlap();
+
+    const inputRectMin = ImGui.GetItemRectMin();
+    const inputRectMax = ImGui.GetItemRectMax();
+    const postInputCursor = ImGui.GetCursorPos();
+
     ImGui.PopItemWidth();
 
-    // 显示搜索结果数量
-    if (this.searchFilter.length > 0) {
-      ImGui.SameLine();
-      ImGui.TextDisabled(`(${this.searchMatchedItems.size})`);
+    // 清除按钮覆盖在输入框内部右侧
+    if (hasClearButton) {
+      const clearBtnX = inputRectMax.x - clearButtonSize - 2;
+      const clearBtnY = inputRectMin.y + (frameHeight - clearButtonSize) / 2;
+
+      // 使用 InvisibleButton 作为点击区域，覆盖在输入框上
+      ImGui.SetCursorScreenPos(new ImGui.Vec2(clearBtnX, clearBtnY));
+
+      // ButtonFlags 用于确保按钮优先接收事件
+      if (ImGui.InvisibleButton('##ClearSearchBtn', new ImGui.Vec2(clearButtonSize, clearButtonSize))) {
+        this.searchFilter = '';
+        this.updateSearchMatches();
+      }
+
+      const isHovered = ImGui.IsItemHovered();
+
+      // 悬停时设置鼠标光标为箭头
+      if (isHovered) {
+        ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.Arrow);
+      }
+
+      // 绘制悬停背景
+      if (isHovered) {
+        drawList.AddRectFilled(
+          new ImGui.Vec2(clearBtnX, clearBtnY),
+          new ImGui.Vec2(clearBtnX + clearButtonSize, clearBtnY + clearButtonSize),
+          ImGui.GetColorU32(new ImGui.ImVec4(0.5, 0.5, 0.5, 0.3)),
+          3
+        );
+      }
+
+      // 绘制叉号
+      const crossPadding = 5;
+      const crossColor = ImGui.GetColorU32(isHovered ? COLORS.eyeActive : COLORS.searchIcon);
+
+      drawList.AddLine(
+        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + crossPadding),
+        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + clearButtonSize - crossPadding),
+        crossColor,
+        1.5
+      );
+      drawList.AddLine(
+        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + crossPadding),
+        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + clearButtonSize - crossPadding),
+        crossColor,
+        1.5
+      );
+
+      // 恢复光标位置
+      ImGui.SetCursorPos(postInputCursor);
     }
 
     ImGui.Separator();
   }
 
+  private checkSelectionChanged (): void {
+    const selectedItems = Selection.getSelectedObjects<VFXItem>()
+      .filter((obj): obj is VFXItem => obj instanceof VFXItem);
+    const currentSelected = selectedItems[0] ?? null;
+    const isInSearchMode = this.searchFilter.length > 0;
+
+    // 检测从搜索模式退出
+    if (this.wasInSearchMode && !isInSearchMode && currentSelected) {
+      this.expandToItem(currentSelected);
+    }
+
+    // 检测选中项是否变化
+    if (currentSelected !== this.lastSelectedItem) {
+      this.lastSelectedItem = currentSelected;
+
+      // 如果有选中项且不在搜索模式，展开到选中元素
+      if (currentSelected && !isInSearchMode) {
+        this.expandToItem(currentSelected);
+      }
+    }
+
+    this.wasInSearchMode = isInSearchMode;
+  }
+
+  private expandToItem (item: VFXItem): void {
+    let parent = item.parent;
+
+    while (parent) {
+      this.itemsToExpand.add(parent);
+      parent = parent.parent;
+    }
+  }
+
   private updateSearchMatches (): void {
-    this.searchMatchedItems.clear();
-    this.expandedForSearch.clear();
+    this.searchMatchedItems = [];
 
     if (this.searchFilter.length === 0) {
       return;
@@ -159,53 +268,20 @@ export class Hierarchy extends EditorWindow {
 
     const filterLower = this.searchFilter.toLowerCase();
 
-    // 递归搜索匹配项
-    this.searchInItem(composition.rootItem, filterLower);
+    // 递归收集所有匹配项（平铺列表）
+    this.collectMatchedItems(composition.rootItem, filterLower);
   }
 
-  private searchInItem (item: VFXItem, filterLower: string): boolean {
-    let hasMatchInSubtree = false;
-
-    // 检查子项
-    for (const child of item.children) {
-      if (this.searchInItem(child, filterLower)) {
-        hasMatchInSubtree = true;
-      }
-    }
-
+  private collectMatchedItems (item: VFXItem, filterLower: string): void {
     // 检查当前项是否匹配
-    const nameMatches = item.name.toLowerCase().includes(filterLower);
-
-    if (nameMatches) {
-      this.searchMatchedItems.add(item);
-      hasMatchInSubtree = true;
+    if (item.name.toLowerCase().includes(filterLower)) {
+      this.searchMatchedItems.push(item);
     }
 
-    // 如果子树中有匹配项，展开当前节点
-    if (hasMatchInSubtree && !nameMatches) {
-      this.expandedForSearch.add(item);
+    // 递归检查子项
+    for (const child of item.children) {
+      this.collectMatchedItems(child, filterLower);
     }
-
-    return hasMatchInSubtree;
-  }
-
-  private isItemVisible (item: VFXItem): boolean {
-    // 无搜索过滤时，所有项都可见
-    if (this.searchFilter.length === 0) {
-      return true;
-    }
-
-    // 匹配的项可见
-    if (this.searchMatchedItems.has(item)) {
-      return true;
-    }
-
-    // 需要展开以显示匹配子项的项可见
-    if (this.expandedForSearch.has(item)) {
-      return true;
-    }
-
-    return false;
   }
 
   private pushSelectionColors (): void {
@@ -221,15 +297,10 @@ export class Hierarchy extends EditorWindow {
   }
 
   private drawVFXItemTreeNode (item: VFXItem, baseFlags: ImGui.TreeNodeFlags): void {
-    // 搜索过滤
-    if (!this.isItemVisible(item)) {
-      return;
-    }
-
     this.hierarchyDrawOrder.push(item);
 
     const isSelected = Selection.isSelected(item);
-    const shouldForceOpen = this.expandedForSearch.has(item);
+    const shouldForceOpen = this.itemsToExpand.has(item);
 
     // 构建节点标志
     let nodeFlags: ImGui.TreeNodeFlags = baseFlags;
@@ -237,11 +308,17 @@ export class Hierarchy extends EditorWindow {
     if (isSelected) {
       nodeFlags |= ImGui.TreeNodeFlags.Selected;
     }
-    if (item.children.length === 0 || !this.hasVisibleChildren(item)) {
+    if (item.children.length === 0) {
       nodeFlags |= ImGui.TreeNodeFlags.Leaf;
     }
-    if (item.name === 'rootItem' || shouldForceOpen) {
+    if (item.name === 'rootItem') {
       nodeFlags |= ImGui.TreeNodeFlags.DefaultOpen;
+    }
+
+    // 使用 SetNextItemOpen 强制展开节点（这会覆盖缓存的状态）
+    if (shouldForceOpen) {
+      ImGui.SetNextItemOpen(true);
+      this.itemsToExpand.delete(item);
     }
 
     const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
@@ -340,12 +417,110 @@ export class Hierarchy extends EditorWindow {
     ImGui.PopID();
   }
 
-  private hasVisibleChildren (item: VFXItem): boolean {
-    if (this.searchFilter.length === 0) {
-      return item.children.length > 0;
-    }
+  private drawFlatSearchResults (): void {
+    const baseFlags = ImGui.TreeNodeFlags.Leaf |
+      ImGui.TreeNodeFlags.NoTreePushOnOpen |
+      ImGui.TreeNodeFlags.SpanAvailWidth;
 
-    return item.children.some(child => this.isItemVisible(child));
+    for (const item of this.searchMatchedItems) {
+      this.hierarchyDrawOrder.push(item);
+
+      const isSelected = Selection.isSelected(item);
+      let nodeFlags = baseFlags;
+
+      if (isSelected) {
+        nodeFlags |= ImGui.TreeNodeFlags.Selected;
+      }
+
+      const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
+
+      if (isHoverSelectedNode) {
+        ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
+      }
+
+      // 设置非激活项的置灰文字颜色
+      const needTextColorPop = !item.isActive;
+
+      if (needTextColorPop) {
+        ImGui.PushStyleColor(ImGui.ImGuiCol.Text, COLORS.inactiveText);
+      }
+
+      const itemId = `search_item_${item.getInstanceId()}`;
+
+      ImGui.PushID(itemId);
+
+      const drawList = ImGui.GetWindowDrawList();
+
+      drawList.ChannelsSplit(2);
+      drawList.ChannelsSetCurrent(1);
+
+      const rowStartLocal = ImGui.GetCursorPos();
+      const treeStartX = rowStartLocal.x + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing;
+
+      ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
+
+      // 只显示元素自身的名字
+      ImGui.TreeNodeEx(itemId, nodeFlags, item.name);
+
+      // 恢复文字颜色
+      if (needTextColorPop) {
+        ImGui.PopStyleColor(1);
+      }
+
+      ImGui.SetItemAllowOverlap();
+      const postTreeCursor = ImGui.GetCursorPos();
+      const rowHovered = ImGui.IsItemHovered();
+      const rowRectMin = ImGui.GetItemRectMin();
+      const rowRectMax = ImGui.GetItemRectMax();
+      const rowHeight = rowRectMax.y - rowRectMin.y;
+
+      const buttonBounds = {
+        min: new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y),
+        max: new ImGui.Vec2(this.visibilityColumnScreenX + LAYOUT.visibilityColumnWidth, rowRectMin.y + rowHeight),
+      };
+      const buttonHovered = ImGui.IsMouseHoveringRect(buttonBounds.min, buttonBounds.max, false);
+      const eyeClicking = buttonHovered && ImGui.IsMouseClicked(0);
+
+      this.handleHierarchySelection(item, eyeClicking);
+
+      if (isHoverSelectedNode) {
+        ImGui.PopStyleColor(1);
+      }
+
+      // 绘制行背景
+      const rowActive = ImGui.IsItemActive();
+      const shouldHighlight = isSelected || rowHovered || rowActive || buttonHovered;
+
+      drawList.ChannelsSetCurrent(0);
+      if (shouldHighlight) {
+        const windowPos = ImGui.GetWindowPos();
+        const contentRegionMax = ImGui.GetWindowContentRegionMax();
+        const rowBgMin = new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y);
+        const rowBgMax = new ImGui.Vec2(windowPos.x + contentRegionMax.x, rowRectMin.y + rowHeight);
+        const bgColor = isSelected
+          ? ImGui.GetColorU32(ImGui.ImGuiCol.Header)
+          : rowActive
+            ? ImGui.GetColorU32(ImGui.ImGuiCol.HeaderActive)
+            : ImGui.GetColorU32(ImGui.ImGuiCol.HeaderHovered);
+
+        drawList.AddRectFilled(rowBgMin, rowBgMax, bgColor);
+      }
+      drawList.ChannelsSetCurrent(1);
+
+      // 绘制可见性切换按钮
+      ImGui.SetCursorPos(new ImGui.Vec2(this.visibilityColumnLocalX, rowStartLocal.y));
+      const toggleTriggered = this.drawVisibilityToggle(item, buttonBounds, isSelected);
+
+      ImGui.SetCursorPos(postTreeCursor);
+
+      if (toggleTriggered) {
+        this.toggleVisibility(item);
+      }
+
+      drawList.ChannelsMerge();
+
+      ImGui.PopID();
+    }
   }
 
   private handleHierarchySelection (item: VFXItem, suppressSelection: boolean): void {
