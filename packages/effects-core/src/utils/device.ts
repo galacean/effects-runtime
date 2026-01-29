@@ -1,10 +1,6 @@
 export function getPixelRatio (): number {
-  if (typeof screen === 'object' && typeof document === 'object') {
-    const viewportWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-    const screenWidth = screen.width;
-    const viewportScale = screenWidth / viewportWidth;
-
-    return Math.min(2 * viewportScale, 2);
+  if (typeof window === 'object') {
+    return Math.min(2, window.devicePixelRatio || 1);
   }
 
   return 1;
