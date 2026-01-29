@@ -12,7 +12,7 @@
 
 `2026-01-30`
 
-- Fix: rich text warp enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
+- Fix: rich text wrap enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
 - Fix: use window.devicePixelRatio to calculate default pixel ratio. [#1382](https://github.com/galacean/effects-runtime/pull/1382) @wumaolinmaoan
 
 ## 2.8.6
