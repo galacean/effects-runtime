@@ -466,24 +466,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 设置元素在画布上的像素位置
-   * Tips:
-   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
-   *  - 设置后会覆盖原有的位置信息
-   * @param x - x 坐标
-   * @param y - y 坐标
-   */
-  setPositionByPixel (x: number, y: number) {
-    if (this.composition) {
-      const { z } = this.transform.getWorldPosition();
-      const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-      const width = this.composition.renderer.getWidth() / 2;
-      const height = this.composition.renderer.getHeight() / 2;
-
-      this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
-    }
-  }
-  /**
    * 设置本地坐标位置
    */
   setPosition (x: number, y: number, z: number) {
@@ -510,6 +492,34 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   setWorldPosition (x: number, y: number, z: number) {
     this.transform.setWorldPosition(x, y, z);
+  }
+
+  /**
+   * 设置元素在画布上的像素位置
+   * Tips:
+   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   *  - 设置后会覆盖原有的位置信息
+   * @param x - x 坐标
+   * @param y - y 坐标
+   */
+  setPositionByPixel (x: number, y: number) {
+    if (this.composition) {
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
+      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
+
+      this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
+    }
+  }
+
+  translateByPixel (x: number, y: number) {
+    if (this.composition) {
+      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
+
+      this.transform.translate(2 * x * rx / width, -2 * y * ry / height, 0);
+    }
   }
 
   /**
@@ -729,16 +739,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
     this.defination.content = {};
-  }
-
-  translateByPixel (x: number, y: number) {
-    if (this.composition) {
-      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
-      const { z } = this.transform.getWorldPosition();
-      const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-
-      this.transform.translate(2 * x * rx / width, -2 * y * ry / height, 0);
-    }
   }
 
   /**

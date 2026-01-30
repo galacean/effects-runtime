@@ -8,6 +8,27 @@
 
 ---
 
+## 2.8.7
+
+`2026-01-30`
+
+- Fix: rich text wrap enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
+- Fix: use window.devicePixelRatio to calculate default pixel ratio. [#1382](https://github.com/galacean/effects-runtime/pull/1382) @wumaolinmaoan
+
+## 2.8.6
+
+`2026-01-15`
+
+- Fix: error caused by the dispose of the ticker array during iteration. [#1379](https://github.com/galacean/effects-runtime/pull/1379) @wumaolinmaoan
+- Fix: destroy engine if player creation fails. [#1378](https://github.com/galacean/effects-runtime/pull/1378) @wumaolinmaoan
+
+## 2.8.5
+
+`2026-01-15`
+
+- Fix: particle should emit click event when interact behavior is remove. [#1371](https://github.com/galacean/effects-runtime/pull/1371) @wumaolinmaoan
+- Fix: use `Array.from` to split emoji string char. [#1369](https://github.com/galacean/effects-runtime/pull/1369) @wumaolinmaoan
+
 ## 2.8.4
 
 `2026-01-09`

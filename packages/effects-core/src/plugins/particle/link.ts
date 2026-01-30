@@ -1,4 +1,4 @@
-class LinkNode<T> {
+export class LinkNode<T> {
   next: LinkNode<T> | null;
   pre: LinkNode<T> | null;
 
