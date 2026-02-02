@@ -1,5 +1,5 @@
 import type { Asset, Engine, GeometryFromShape, Renderer, Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { MaskableGraphic, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
+import { MaskableGraphic, Texture, assertExist, effectsClass, logger, math, spec } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -112,20 +112,24 @@ export class VideoComponent extends MaskableGraphic {
     this.transparent = transparent;
 
     if (video) {
-      const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
+      if (!video.id) {
+        logger.warn('Video id is undefined. It may be a template video that will be replaced via setTexture.');
+      } else {
+        const videoAsset = this.engine.findObject<Asset<HTMLVideoElement>>(video);
 
-      if (videoAsset) {
-        this.video = videoAsset.data;
-        this.setPlaybackRate(playbackRate);
-        this.setVolume(volume);
-        this.setMuted(muted);
-        const endBehavior = this.item.defination.endBehavior;
+        if (videoAsset) {
+          this.video = videoAsset.data;
+          this.setPlaybackRate(playbackRate);
+          this.setVolume(volume);
+          this.setMuted(muted);
+          const endBehavior = this.item.defination.endBehavior;
 
-        // 如果元素设置为 destroy
-        if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
-          this.setLoop(false);
-        } else if (endBehavior === spec.EndBehavior.restart) {
-          this.setLoop(true);
+          // 如果元素设置为 destroy
+          if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
+            this.setLoop(false);
+          } else if (endBehavior === spec.EndBehavior.restart) {
+            this.setLoop(true);
+          }
         }
       }
     }
