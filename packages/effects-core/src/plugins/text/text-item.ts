@@ -135,6 +135,8 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
       material.setVector2('_Size', new Vector2(sizeX, sizeY));
     }
+
+    this.isDirty = true;
   }
 
   override onDestroy (): void {
@@ -224,7 +226,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
       const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
-      x += letterSpace;
+      // 字符间距只应用在字符之间，不包括第一个字符
+      if (i > 0) {
+        x += letterSpace;
+      }
+
       // 处理文本结束行为
       if (overflow === spec.TextOverflow.display) {
         if (str === '\n') {
@@ -424,7 +430,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         const textMetrics = context.measureText(str);
 
         // 和浏览器行为保持一致
-        x += layout.letterSpace * fontScale;
+        // 字符间距只应用在字符之间，每行第一个字符不加间距
+        if (charsArray.length > 0) {
+          x += layout.letterSpace * fontScale;
+        }
 
         if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
           charsInfo.push({
