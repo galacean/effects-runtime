@@ -14,8 +14,6 @@ export class TextLayout implements BaseLayout {
    * 自适应宽高开关
    */
   autoWidth: boolean;
-
-  maxTextWidth: number;
   /**
    * 行高
    */

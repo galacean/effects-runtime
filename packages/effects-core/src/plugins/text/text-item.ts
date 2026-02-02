@@ -10,6 +10,7 @@ import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import type { ITextComponent } from './text-component-base';
 import { TextComponentBase } from './text-component-base';
+import type { Renderer } from '../../render/renderer';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -125,6 +126,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
       material.setVector2('_Size', new Vector2(sizeX, sizeY));
     }
+  }
+
+  override render (renderer: Renderer) {
+    this.maskManager.drawStencilMask(renderer);
+
+    renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.material);
   }
 
   override onDestroy (): void {
@@ -345,8 +352,13 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
+    if (layout.autoWidth) {
+      layout.width = this.getTextWidth();
+      layout.height = layout.lineHeight * this.lineCount;
+    }
+
     const baseWidth = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
+    const baseHeight = layout.height * fontScale;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
@@ -354,15 +366,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     style.fontDesc = this.getFontDesc(fontSize);
     // 使用 Array.from 正确分割 Unicode 字符（包括 emoji）
     const char = Array.from(this.text || '');
-
-    let baseHeight = 0;
-
-    if (layout.autoWidth) {
-      baseHeight = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      baseHeight = layout.height * fontScale;
-    }
 
     const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
