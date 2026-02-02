@@ -165,17 +165,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.maxLineWidth = 0;
   }
 
-  // 在 TextComponent 类内新增覆盖 setText
-  setText (value: string): void {
-    if (this.text === value) {
-      return;
-    }
-    this.text = value.toString();
-    // 设置文本后立即重算行数
-    this.lineCount = this.getLineCount(this.text);
-    this.isDirty = true;
-  }
-
   /**
    * 根据配置更新文本样式和布局
    */
@@ -194,7 +183,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
 
     this.text = options.text.toString();
-    this.lineCount = this.getLineCount(options.text);
   }
 
   getLineCount (text: string): number {
@@ -354,7 +342,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
     if (layout.autoWidth) {
       layout.width = this.getTextWidth();
-      layout.height = layout.lineHeight * this.lineCount;
+      layout.height = layout.lineHeight;
+      this.lineCount = 1;
+    } else {
+      this.lineCount = this.getLineCount(this.text);
     }
 
     const baseWidth = (layout.width + style.fontOffset) * fontScale;
@@ -545,8 +536,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     layout.autoWidth = false;
     layout.width = width;
 
-    // 按当前 overflow 模式重新计算行数和 maxLineWidth
-    this.lineCount = this.getLineCount(this.text || '');
+    // 按当前 overflow 模式重新计算 maxLineWidth
     this.isDirty = true;
   }
 

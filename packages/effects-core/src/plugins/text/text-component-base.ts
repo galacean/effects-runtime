@@ -44,7 +44,6 @@ export class TextComponentBase {
   material: Material;
   item: VFXItem;
   renderer: ItemRenderer;
-  lineCount = 0;
 
   protected maxLineWidth = 0;
   // 常量
