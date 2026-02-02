@@ -135,8 +135,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
 
       material.setVector2('_Size', new Vector2(sizeX, sizeY));
     }
-
-    this.isDirty = true;
   }
 
   override onDestroy (): void {
