@@ -2,6 +2,7 @@ import { registerPlugin } from './plugin-system';
 import {
   CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
+import { MSDFTextLoader } from './plugins/msdfText';
 import { logger } from './utils';
 
 export * as math from '@galacean/effects-math/es/core/index';
@@ -54,6 +55,7 @@ registerPlugin('text', TextLoader);
 registerPlugin('sprite', SpriteLoader);
 registerPlugin('particle', ParticleLoader);
 registerPlugin('interact', InteractLoader);
+registerPlugin('msdfText', MSDFTextLoader);
 
 export const version = __VERSION__;
 

@@ -84,6 +84,19 @@ export class GLProgram implements Disposable {
         buffer.bind();
         gl.enableVertexAttribArray(attrInfo.loc);
         gl.vertexAttribPointer(attrInfo.loc, attribute.size, attribute.type, attribute.normalize as boolean, attribute.stride || 0, attribute.offset || 0);
+
+        // 设置实例化除数
+        if (attribute.instanceDivisor !== undefined) {
+          const ext = (gl as any).vertexAttribDivisor ? gl : (gl as WebGLRenderingContext).getExtension('ANGLE_instanced_arrays');
+
+          if (ext) {
+            if ((gl as any).vertexAttribDivisor) {
+              (gl as WebGL2RenderingContext).vertexAttribDivisor(attrInfo.loc, attribute.instanceDivisor);
+            } else {
+              (ext as ANGLE_instanced_arrays).vertexAttribDivisorANGLE(attrInfo.loc, attribute.instanceDivisor);
+            }
+          }
+        }
       }
     });
     geometry.indicesBuffer?.bind();

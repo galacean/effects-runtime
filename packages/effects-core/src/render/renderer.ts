@@ -114,6 +114,10 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
+  drawGeometryInstanced (geometry: Geometry, material: Material, instanceCount: number, subMeshIndex = 0) {
+    // OVERRIDE
+  }
+
   getTemporaryRT (
     name: string,
     width: number,

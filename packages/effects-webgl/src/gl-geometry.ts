@@ -352,7 +352,7 @@ export class GLGeometry extends Geometry {
 
     Object.keys(props.attributes).forEach(name => {
       const attr = props.attributes[name];
-      const { size, stride, offset, normalize } = attr;
+      const { size, stride, offset, normalize, instanceDivisor } = attr;
       const { type = glContext.FLOAT, releasable } = attr as spec.AttributeWithData;
       let { data } = attr as spec.AttributeWithData;
 
@@ -373,6 +373,7 @@ export class GLGeometry extends Geometry {
           type: type ?? glType,
           normalize: !!normalize,
           dataSource: name,
+          instanceDivisor,
         };
         attributesReleasable[name] = releasable ?? false;
         dirtyFlags[name] = {
@@ -394,6 +395,7 @@ export class GLGeometry extends Geometry {
             type,
             dataSource,
             normalize: !!normalize,
+            instanceDivisor,
           };
         }
       }

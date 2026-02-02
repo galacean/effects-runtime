@@ -18,3 +18,5 @@ export * from './particle/particle-system-renderer';
 export * from './timeline';
 export * from './text';
 export * from './animation-graph';
+export * from './msdfText';
+
