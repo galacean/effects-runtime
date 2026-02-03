@@ -314,8 +314,8 @@ export class TextComponent extends MaskableGraphic {
 
     if (layout.autoResize === spec.TextSizeMode.autoWidth) {
       layout.width = this.getTextWidth();
-      layout.height = layout.lineHeight;
-      this.lineCount = 1;
+      this.lineCount = this.getLineCount(this.text);
+      layout.height = layout.lineHeight * this.lineCount;
     } else {
       this.lineCount = this.getLineCount(this.text);
     }
