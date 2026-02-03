@@ -11,21 +11,6 @@ import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
 
 /**
- * 纯文本组件特有 API
- */
-export interface ITextComponent {
-  setOutlineWidth (value: number): void,
-  setOutlineEnabled (value: boolean): void,
-  setShadowBlur (value: number): void,
-  setShadowColor (value: spec.RGBAColorValue): void,
-  setShadowOffsetX (value: number): void,
-  setShadowOffsetY (value: number): void,
-  setAutoWidth (value: boolean): void,
-  setFontSize (value: number): void,
-  getTextWidth(): number,
-}
-
-/**
  * 富文本组件特有 API
  */
 export interface IRichTextComponent { }
