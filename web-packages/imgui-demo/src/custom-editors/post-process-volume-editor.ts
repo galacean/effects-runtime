@@ -12,12 +12,21 @@ const FONT_FAMILY_OPTIONS = ['Inter', 'Arial', 'Helvetica', 'sans-serif', 'serif
 const FONT_WEIGHT_OPTIONS: { label: string, value: spec.TextWeight }[] = [
   { label: 'Regular', value: spec.TextWeight.normal },
   { label: 'Bold', value: spec.TextWeight.bold },
+  { label: 'Lighter', value: spec.TextWeight.lighter },
+];
+
+// 字体样式选项
+const FONT_STYLE_OPTIONS: { label: string, value: spec.FontStyle }[] = [
+  { label: 'Normal', value: spec.FontStyle.normal },
+  { label: 'Italic', value: spec.FontStyle.italic },
+  { label: 'Oblique', value: spec.FontStyle.oblique },
 ];
 
 @editor(TextComponentBase)
 export class TextComponentEditor extends Editor {
   private fontFamilyIndex = 0;
   private fontWeightIndex = 0;
+  private fontStyleIndex = 0;
   private textAlignIndex = 0;
   private verticalAlignIndex = 1; // 默认 middle
   private letterSpacingPercent = 0;
@@ -35,12 +44,14 @@ export class TextComponentEditor extends Editor {
     // 同步当前值到编辑器状态
     this.syncFromComponent(style, layout);
 
+    ImGui.Spacing();
+    ImGui.Separator();
+    ImGui.Spacing();
+
     // Typography 标题区域 - 对齐到 Label 位置
     ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
     ImGui.Text('       TYPOGRAPHY');
     ImGui.PopStyleColor();
-    ImGui.Separator();
-    ImGui.Spacing();
 
     // 按钮颜色定义 - 使用更深的蓝色
     const buttonWidth = 100;
@@ -86,6 +97,27 @@ export class TextComponentEditor extends Editor {
       if (ImGui.Button(FONT_WEIGHT_OPTIONS[i].label + '##FontWeight' + i, buttonSize)) {
         this.fontWeightIndex = i;
         style.textWeight = FONT_WEIGHT_OPTIONS[i].value;
+        textComponent.isDirty = true;
+      }
+      ImGui.PopStyleColor(3);
+    }
+
+    ImGui.Spacing();
+
+    // 字体样式按钮组
+    EditorGUILayout.Label('Font Style');
+    for (let i = 0; i < FONT_STYLE_OPTIONS.length; i++) {
+      if (i > 0) {
+        ImGui.SameLine();
+      }
+      const isActive = this.fontStyleIndex === i;
+
+      ImGui.PushStyleColor(ImGui.Col.Button, isActive ? activeColor : inactiveColor);
+      ImGui.PushStyleColor(ImGui.Col.ButtonHovered, isActive ? hoverColor : inactiveHoverColor);
+      ImGui.PushStyleColor(ImGui.Col.ButtonActive, isActive ? activeColor : inactiveColor);
+      if (ImGui.Button(FONT_STYLE_OPTIONS[i].label + '##FontStyle' + i, buttonSize)) {
+        this.fontStyleIndex = i;
+        style.fontStyle = FONT_STYLE_OPTIONS[i].value;
         textComponent.isDirty = true;
       }
       ImGui.PopStyleColor(3);
@@ -328,7 +360,18 @@ export class TextComponentEditor extends Editor {
     }
 
     // 同步字重
-    this.fontWeightIndex = style.textWeight === spec.TextWeight.bold ? 1 : 0;
+    const weightIndex = FONT_WEIGHT_OPTIONS.findIndex(opt => opt.value === style.textWeight);
+
+    if (weightIndex >= 0) {
+      this.fontWeightIndex = weightIndex;
+    }
+
+    // 同步字体样式
+    const styleIndex = FONT_STYLE_OPTIONS.findIndex(opt => opt.value === style.fontStyle);
+
+    if (styleIndex >= 0) {
+      this.fontStyleIndex = styleIndex;
+    }
 
     // 字号现在直接从 style.fontSize 读取，不需要同步索引
 
