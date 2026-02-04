@@ -209,11 +209,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
 
-    // const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     this.maxLineWidth = 0;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
+    let charCountInLine = 0; // 跟踪当前行的字符数
 
     // 设置 context.font 的字号，确保 measureText 能正确计算字宽
     if (context) {
@@ -224,14 +224,19 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
       const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
-      x += letterSpace;
+      // 字符间距只应用在字符之间，每行第一个字符不加间距
+      if (charCountInLine > 0) {
+        x += letterSpace;
+      }
       // 处理文本结束行为
       if (overflow === spec.TextOverflow.display) {
         if (str === '\n') {
           lineCount++;
           x = 0;
+          charCountInLine = 0; // 重置行字符计数
         } else {
           x += textMetrics;
+          charCountInLine++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
         }
       } else {
@@ -239,9 +244,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
           lineCount++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
           x = 0;
+          charCountInLine = 0; // 重置行字符计数
         }
         if (str !== '\n') {
           x += textMetrics;
+          charCountInLine++;
         }
       }
     }
@@ -424,7 +431,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         const textMetrics = context.measureText(str);
 
         // 和浏览器行为保持一致
-        x += layout.letterSpace * fontScale;
+        // 字符间距只应用在字符之间，每行第一个字符不加间距
+        if (charsArray.length > 0) {
+          x += layout.letterSpace * fontScale;
+        }
 
         if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
           charsInfo.push({
