@@ -186,8 +186,8 @@ export class TextComponentBase {
 
   protected setupShadow (): void {
     const context = this.context;
-    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
-    const [r, g, b, a] = outlineColor;
+    const { shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
+    const [r, g, b, a] = shadowColor;
 
     if (context) {
       context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
