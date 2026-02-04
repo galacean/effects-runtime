@@ -16,11 +16,11 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     singleLineHeight: number,
     fontScale: number,
     letterSpace: number,
-    scaleFactor: number
   ): WrapResult {
     const lines: RichLine[] = [];
     const baselines: number[] = [];
     const gapPx = (layout.lineHeight || 0) * fontScale;
+    const scaleFactor = 1 / 10; // 1/10px, 后面 context.font 设置的字号为10px
     let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
     let totalHeight = 0;
