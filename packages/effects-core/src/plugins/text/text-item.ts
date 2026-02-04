@@ -8,8 +8,8 @@ import type { Engine } from '../../engine';
 import { applyMixins } from '../../utils';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-import type { ITextComponent } from './text-component-base';
 import { TextComponentBase } from './text-component-base';
+import type { Renderer } from '../../render/renderer';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -42,7 +42,7 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends MaskableGraphic implements ITextComponent {
+export class TextComponent extends MaskableGraphic {
   isDirty = true;
   /**
    * 文本行数
@@ -64,33 +64,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    * 每一行文本的最大宽度
    */
   protected maxLineWidth = 0;
-
-  private getDefaultProps (): spec.TextComponentData {
-    return {
-      id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
-      item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
-      dataType: spec.DataType.TextComponent,
-      options: {
-        text: '默认文本',
-        fontFamily: 'AlibabaSans-BoldItalic',
-        fontSize: 40,
-        // 统一使用 0-1 颜色值
-        textColor: [1, 1, 1, 1],
-        fontWeight: spec.TextWeight.normal,
-        letterSpace: 0,
-        textAlign: 1,
-        fontStyle: spec.FontStyle.normal,
-        autoWidth: false,
-        textWidth: 200,
-        textHeight: 42,
-        lineHeight: 40.148,
-      },
-      renderer: {
-        renderMode: 1,
-        anchor: [0.5, 0.5],
-      },
-    };
-  }
 
   constructor (engine: Engine) {
     super(engine);
@@ -127,6 +100,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
   }
 
+  override render (renderer: Renderer) {
+    this.maskManager.drawStencilMask(renderer);
+
+    renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.material);
+  }
+
   override onDestroy (): void {
     super.onDestroy();
     this.disposeTextTexture();
@@ -158,17 +137,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.maxLineWidth = 0;
   }
 
-  // 在 TextComponent 类内新增覆盖 setText
-  setText (value: string): void {
-    if (this.text === value) {
-      return;
-    }
-    this.text = value.toString();
-    // 设置文本后立即重算行数
-    this.lineCount = this.getLineCount(this.text);
-    this.isDirty = true;
-  }
-
   /**
    * 根据配置更新文本样式和布局
    */
@@ -187,7 +155,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
 
     this.text = options.text.toString();
-    this.lineCount = this.getLineCount(options.text);
   }
 
   getLineCount (text: string): number {
@@ -345,8 +312,16 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
+    if (layout.autoResize === spec.TextSizeMode.autoWidth) {
+      layout.width = this.getTextWidth();
+      this.lineCount = this.getLineCount(this.text);
+      layout.height = layout.lineHeight * this.lineCount;
+    } else {
+      this.lineCount = this.getLineCount(this.text);
+    }
+
     const baseWidth = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
+    const baseHeight = layout.height * fontScale;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
@@ -354,15 +329,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     style.fontDesc = this.getFontDesc(fontSize);
     // 使用 Array.from 正确分割 Unicode 字符（包括 emoji）
     const char = Array.from(this.text || '');
-
-    let baseHeight = 0;
-
-    if (layout.autoWidth) {
-      baseHeight = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      baseHeight = layout.height * fontScale;
-    }
 
     const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
@@ -512,14 +478,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     return { padL: pad, padR: pad, padT: pad, padB: pad };
   }
 
-  setAutoWidth (value: boolean): void {
-    const layout = this.textLayout;
-    const normalizedValue = !!value;
-
-    if (layout.autoWidth === normalizedValue) {
+  setAutoResize (value: spec.TextSizeMode): void {
+    if (this.textLayout.autoResize === value) {
       return;
     }
-    layout.autoWidth = normalizedValue;
+    this.textLayout.autoResize = value;
     this.isDirty = true;
   }
 
@@ -534,16 +497,15 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
 
     // 宽度没变且已是非 autoWidth 模式,直接返回
-    if (layout.width === width && layout.autoWidth === false) {
+    if (layout.width === width && layout.autoResize === spec.TextSizeMode.autoWidth) {
       return;
     }
 
     // 手动设置宽度时关闭 autoWidth
-    layout.autoWidth = false;
+    layout.autoResize = spec.TextSizeMode.autoHeight;
     layout.width = width;
 
-    // 按当前 overflow 模式重新计算行数和 maxLineWidth
-    this.lineCount = this.getLineCount(this.text || '');
+    // 按当前 overflow 模式重新计算 maxLineWidth
     this.isDirty = true;
   }
 
@@ -697,6 +659,33 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const w = Math.ceil(logicalMax - (style.fontOffset || 0) - EPS) + padding;
 
     return Math.max(0, w);
+  }
+
+  private getDefaultProps (): spec.TextComponentData {
+    return {
+      id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
+      item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
+      dataType: spec.DataType.TextComponent,
+      options: {
+        text: '默认文本',
+        fontFamily: 'AlibabaSans-BoldItalic',
+        fontSize: 40,
+        // 统一使用 0-1 颜色值
+        textColor: [1, 1, 1, 1],
+        fontWeight: spec.TextWeight.normal,
+        letterSpace: 0,
+        textAlign: 1,
+        fontStyle: spec.FontStyle.normal,
+        autoWidth: false,
+        textWidth: 200,
+        textHeight: 42,
+        lineHeight: 40.148,
+      },
+      renderer: {
+        renderMode: 1,
+        anchor: [0.5, 0.5],
+      },
+    };
   }
 }
 
