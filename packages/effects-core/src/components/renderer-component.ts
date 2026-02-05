@@ -1,5 +1,6 @@
 import { serialize } from '../decorators';
-import type { Material } from '../material';
+import type { Maskable, Material } from '../material';
+import { MaskProcessor } from '../material';
 import type { Renderer } from '../render';
 import { Component } from './component';
 
@@ -8,9 +9,16 @@ import { Component } from './component';
  * @since 2.0.0
  */
 export class RendererComponent extends Component {
-
   @serialize()
   materials: Material[] = [];
+  /**
+   * @internal
+   */
+  frameClipMask: Maskable | null = null;
+  /**
+   * @internal
+   */
+  maskManager: MaskProcessor = new MaskProcessor();
 
   @serialize()
   protected _priority = 0;
@@ -33,13 +41,11 @@ export class RendererComponent extends Component {
     }
   }
 
-  render (renderer: Renderer): void { }
-
-  override onEnable (): void {
-    this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
+  render (renderer: Renderer): void {
+    // OVERRIDE
   }
 
-  override onDisable (): void {
-    this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
+  onPreRender (renderer: Renderer): void {
+    // OVERRIDE
   }
 }

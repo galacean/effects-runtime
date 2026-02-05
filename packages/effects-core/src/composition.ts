@@ -363,14 +363,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       pixelWidth: width,
       pixelHeight: height,
     });
+
     this.url = scene.url;
     this.interactive = true;
+
     if (onItemMessage) {
       this.onItemMessage = onItemMessage;
     }
+
     this.createRenderFrame();
 
     Composition.buildItemTree(this.rootItem);
+
     this.rootComposition.setChildrenRenderOrder(0);
 
     PluginSystem.initializeComposition(this, scene);
@@ -626,6 +630,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (!this.rootItem.isDuringPlay) {
       this.rootItem.awake();
       this.rootItem.beginPlay();
+      this.renderFrame.addMeshToDefaultRenderPass(this.rootComposition);
     }
 
     const previousCompositionTime = this.time;

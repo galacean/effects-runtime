@@ -4,8 +4,8 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { Maskable, MaterialProps } from '../material';
-import { MaskMode, MaskProcessor, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
-import { Material, setMaskMode } from '../material';
+import { MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import { Material } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams, Polygon, ShapePath, StrokeAttributes } from '../plugins';
 import { MeshCollider } from '../plugins';
 import { GraphicsPath, StarType, buildLine } from '../plugins';
@@ -201,7 +201,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private geometry: Geometry;
   private fillMaterials: Material[] = [];
   private strokeMaterials: Material[] = [];
-  private readonly maskManager: MaskProcessor;
 
   get shape () {
     return this.shapeAttributes;
@@ -223,8 +222,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       side: spec.SideMode.DOUBLE,
       mask: 0,
     };
-
-    this.maskManager = new MaskProcessor(this.engine);
 
     // Create Shape Attrributes
     //-------------------------------------------------------------------------
@@ -308,7 +305,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    this.maskManager.drawStencilMask(renderer);
+    this.maskManager.drawStencilMask(renderer, this);
 
     this.draw(renderer);
   }
@@ -316,25 +313,17 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   /**
    * @internal
    */
-  drawStencilMask (renderer: Renderer) {
+  drawStencilMask (maskRef: number) {
     if (!this.isActiveAndEnabled) {
       return;
     }
 
-    let previousColorMask = false;
-
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      previousColorMask = this.fillMaterials[i].colorMask;
-      this.fillMaterials[i].colorMask = false;
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
-      this.fillMaterials[i].colorMask = previousColorMask;
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, 0);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      previousColorMask = this.strokeMaterials[i].colorMask;
-      this.strokeMaterials[i].colorMask = false;
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
-      this.strokeMaterials[i].colorMask = previousColorMask;
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, 1);
     }
   }
 
@@ -635,17 +624,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const material = Material.create(this.engine, materialProps);
 
     const renderer = rendererOptions;
-    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const { side, occlusion, blending: blendMode, texture } = renderer;
     const maskMode = this.maskManager.maskMode;
 
     material.blending = true;
     material.depthTest = true;
     material.depthMask = occlusion;
-    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
 
     setBlendMode(material, blendMode);
-    // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, maskMode);
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
@@ -675,7 +661,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.shapeDirty = true;
 
     if (data.mask) {
-      this.maskManager.setMaskOptions(data.mask);
+      this.maskManager.setMaskOptions(this.engine, data.mask);
     }
 
     const renderer = data.renderer ?? {};

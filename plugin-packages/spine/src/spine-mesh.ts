@@ -3,7 +3,7 @@ import type {
   Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture, math,
 } from '@galacean/effects';
 import {
-  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, setMaskMode,
+  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext,
 } from '@galacean/effects';
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
@@ -105,10 +105,8 @@ export class SpineMesh implements Disposable {
     material.culling = false;
     material.depthTest = false;
     material.depthMask = false;
-    material.stencilRef = maskOrder !== undefined ? [maskOrder, maskOrder] : undefined;
 
     setBlending(material, this.blendMode);
-    setMaskMode(material, maskMode);
 
     return material;
   }

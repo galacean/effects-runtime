@@ -8,7 +8,8 @@ import { TimelineInstance, HitTestType, PlayState } from '../plugins';
 import { noop } from '../utils';
 import { VFXItem } from '../vfx-item';
 import { effectsClass, serialize } from '../decorators';
-import { Component } from './component';
+import { RendererComponent } from './renderer-component';
+import type { Renderer } from '../render';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -24,7 +25,7 @@ export interface SceneBindingData {
  * @since 2.0.0
  */
 @effectsClass('CompositionComponent')
-export class CompositionComponent extends Component {
+export class CompositionComponent extends RendererComponent {
   time = 0;
   @serialize()
   items: VFXItem[] = [];  // 场景的所有元素
@@ -40,6 +41,8 @@ export class CompositionComponent extends Component {
   @serialize()
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
+
+  private rendererComponents: RendererComponent[] = [];
 
   private get timelineInstance (): TimelineInstance | null {
     if (!this._timelineInstance && this.timelineAsset) {
@@ -63,6 +66,15 @@ export class CompositionComponent extends Component {
 
   resume () {
     this.state = PlayState.Playing;
+  }
+
+  override render (renderer: Renderer): void {
+    this.collectRendererComponents();
+    this.rendererComponents.sort((a, b) => a.priority - b.priority);
+
+    for (const rendererComponent of this.rendererComponents) {
+      rendererComponent.render(renderer);
+    }
   }
 
   override onUpdate (dt: number): void {
@@ -268,5 +280,30 @@ export class CompositionComponent extends Component {
 
   override fromData (data: any): void {
     super.fromData(data);
+  }
+
+  private collectRendererComponents (): void {
+    this.rendererComponents = [];
+
+    for (const item of this.item.children) {
+      this.collectRendererComponentRecursive(item, this.rendererComponents);
+    }
+  }
+
+  private collectRendererComponentRecursive (item: VFXItem, result: RendererComponent[]): void {
+    const rendererComponent = item.getComponent(RendererComponent);
+
+    if (rendererComponent && rendererComponent.isActiveAndEnabled) {
+      result.push(rendererComponent);
+    }
+
+    // 预合成组件自己处理渲染
+    if (rendererComponent instanceof CompositionComponent) {
+      return;
+    }
+
+    for (const child of item.children) {
+      this.collectRendererComponentRecursive(child, result);
+    }
   }
 }
