@@ -24,12 +24,7 @@ export class MaskProcessor {
   /**
    * 多个蒙版引用列表，支持正面和反面蒙版
    */
-  maskReferences: MaskReference[] = [];
-
-  /**
-   * 当前正在绘制的蒙版索引，用于分配 bit
-   */
-  private currentMaskIndex = 0;
+  private maskReferences: MaskReference[] = [];
 
   /**
    * 当前活动蒙版的 bit 组合（所有蒙版的 bit OR）
@@ -67,8 +62,11 @@ export class MaskProcessor {
     this.stencilClearAction = { stencilAction: TextureLoadAction.clear };
   }
 
+  /**
+   * @deprecated
+   */
   getRefValue (): number {
-    return 1 << this.currentMaskIndex;
+    return 1;
   }
 
   /**
@@ -106,6 +104,11 @@ export class MaskProcessor {
     const exists = this.maskReferences.some(ref => ref.maskable === maskable);
 
     if (!exists) {
+      if (this.maskReferences.length >= 8) {
+        console.warn('Maximum of 8 mask references exceeded. Additional masks will be ignored.');
+
+        return;
+      }
       this.maskReferences.push({ maskable, inverted });
     }
   }
@@ -180,11 +183,21 @@ export class MaskProcessor {
    */
   drawGeometryMask (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
     const previousColorMask = material.colorMask;
+    const prevStencilTest = material.stencilTest;
+    const prevStencilFunc = material.stencilFunc;
+    const prevStencilOpZPass = material.stencilOpZPass;
+    const prevStencilRef = material.stencilRef;
+    const prevStencilMask = material.stencilMask;
 
     this.setupMaskMaterial(material, maskRef);
-    material.colorMask = false;
     renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
+
     material.colorMask = previousColorMask;
+    material.stencilTest = prevStencilTest;
+    material.stencilFunc = prevStencilFunc;
+    material.stencilOpZPass = prevStencilOpZPass;
+    material.stencilRef = prevStencilRef;
+    material.stencilMask = prevStencilMask;
   }
 
   /**
@@ -201,6 +214,8 @@ export class MaskProcessor {
     // 使用传入的 maskRef
     material.stencilRef = [maskRef, maskRef];
     material.stencilMask = [maskRef, maskRef];  // 只写入当前 bit，不影响其他 bit
+
+    material.colorMask = false; // 不写入颜色
   }
 
   /**
