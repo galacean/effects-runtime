@@ -72,7 +72,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.material = material;
   }
 
-  override onUpdate (dt: number): void {
+  override onPreRender (): void {
     this.setClipRectangle();
 
     this.material.setColor('_Color', this.color);

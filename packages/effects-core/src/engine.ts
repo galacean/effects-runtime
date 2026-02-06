@@ -118,7 +118,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
-      this.runRenderLoop(this.render.bind(this));
+      this.runRenderLoop(this.mainLoop.bind(this));
     }
 
     this.eventSystem = new EventSystem(this, options?.notifyTouch ?? false);
@@ -236,7 +236,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.add(renderFunction);
   }
 
-  render (dt: number): void {
+  mainLoop (dt: number): void {
     const { renderErrors } = this;
 
     if (renderErrors.size > 0) {
@@ -275,6 +275,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
+
+    for (const composition of comps) {
+      composition.sceneTicking.preRender.tick(0);
+    }
+
     for (let i = 0; i < comps.length; i++) {
       !comps[i].renderFrame.isDisposed && this.renderer.renderRenderFrame(comps[i].renderFrame);
     }

@@ -44,8 +44,4 @@ export class RendererComponent extends Component {
   render (renderer: Renderer): void {
     // OVERRIDE
   }
-
-  onPreRender (renderer: Renderer): void {
-    // OVERRIDE
-  }
 }
