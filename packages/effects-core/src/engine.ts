@@ -3,7 +3,7 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
-import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
+import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, ShaderLibrary } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
@@ -97,6 +97,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderPasses: RenderPass[] = [];
 
   private assetLoader: AssetLoader;
+  private clearAction: RenderPassClearAction = {
+    stencilAction: TextureLoadAction.clear,
+    clearStencil: 0,
+    depthAction: TextureLoadAction.clear,
+    clearDepth: 1,
+    colorAction: TextureLoadAction.clear,
+    clearColor: [0, 0, 0, 0],
+  };
 
   get disposed (): boolean {
     return this._disposed;
@@ -243,45 +251,55 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.emit('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
+
+      return;
     }
+
     dt = Math.min(dt, 33) * this.speed;
-    const comps = this.compositions;
+
+    // Sort compositions by index
+    //-------------------------------------------------------------------------
+
+    const compositions = this.compositions;
+
+    compositions.sort((a, b) => a.getIndex() - b.getIndex());
+
     let skipRender = false;
 
-    comps.sort((a, b) => a.getIndex() - b.getIndex());
+    // Update Compositions
+    //-------------------------------------------------------------------------
 
-    for (let i = 0; i < comps.length; i++) {
-      const composition = comps[i];
-
+    for (const composition of compositions) {
       if (composition.textureOffloaded) {
         skipRender = true;
         logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
         continue;
       }
+
       composition.update(dt);
     }
 
     if (skipRender) {
       this.emit('rendererror', new Error('Play when texture offloaded.'));
+      this.ticker?.pause();
 
-      return this.ticker?.pause();
+      return;
     }
 
-    this.renderer.setFramebuffer(null);
-    this.renderer.clear({
-      stencilAction: TextureLoadAction.clear,
-      clearStencil: 0,
-      depthAction: TextureLoadAction.clear,
-      clearDepth: 1,
-      colorAction: TextureLoadAction.clear,
-      clearColor: [0, 0, 0, 0],
-    });
+    // Tick compositions onPreRender
+    //-------------------------------------------------------------------------
 
-    for (const composition of comps) {
+    for (const composition of compositions) {
       composition.sceneTicking.preRender.tick(0);
     }
 
-    for (const composition of comps) {
+    // Render Compositions
+    //-------------------------------------------------------------------------
+
+    this.renderer.setFramebuffer(null);
+    this.renderer.clear(this.clearAction);
+
+    for (const composition of compositions) {
       this.renderer.renderRenderFrame(composition.renderFrame);
     }
 
