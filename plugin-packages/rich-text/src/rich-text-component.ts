@@ -107,7 +107,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }
 
     this.updateStrategies();
-    this.renderText(options);
+    this.updateTexture();
 
     // 设置默认颜色（math.Color）
     this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
@@ -174,15 +174,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }
     this.updateStrategies();
     this.isDirty = true;
-  }
-
-  protected renderText (options: spec.RichTextContentOptions) {
-    const { size } = options;
-
-    if (size) {
-      this.canvasSize = new math.Vector2(size[0], size[1]);
-    }
-    this.updateTexture();
   }
 
   /**
@@ -392,7 +383,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       this.singleLineHeight,
       this.textStyle.fontScale,
       letterSpace,
-      this.SCALE_FACTOR,
     );
 
     if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {

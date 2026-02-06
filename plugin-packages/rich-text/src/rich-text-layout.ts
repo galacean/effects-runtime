@@ -200,6 +200,7 @@ export class RichTextLayout implements BaseLayout {
   /**
    * 设置文本框尺寸
    * - 不包含 fontScale 缩放
+   * @deprecated use maxTextWidth / maxTextHeight instead
    */
   setSize (width: number, height: number): void {
     this.width = width;

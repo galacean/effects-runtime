@@ -106,7 +106,6 @@ export interface RichWrapStrategy {
     singleLineHeight: number,
     fontScale: number,
     letterSpace: number,
-    scaleFactor: number
   ): WrapResult,
 }
 

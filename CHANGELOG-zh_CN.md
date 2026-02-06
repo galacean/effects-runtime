@@ -8,6 +8,15 @@
 
 ---
 
+## 2.8.8
+
+`2026-02-04`
+
+- Fix: correct letter spacing calculation in text component. [#1392](https://github.com/galacean/effects-runtime/pull/1392) @wumaolinmaoan
+- Fix: text component shadow color setting. [#1391](https://github.com/galacean/effects-runtime/pull/1391) @wumaolinmaoan
+- Fix: improve floating-point precision handling in bernstein function. [#1388](https://github.com/galacean/effects-runtime/pull/1388) @ChengYi996
+- Fix: rich text wrap width calculation issue. [#1394](https://github.com/galacean/effects-runtime/pull/1394) @wumaolinmaoan
+
 ## 2.8.7
 
 `2026-01-30`
