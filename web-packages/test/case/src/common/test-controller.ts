@@ -4,7 +4,7 @@ import { TestPlayer } from './test-player';
 import { loadScript } from './utilities';
 
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '2.7.5';  // 旧版 Player 版本
+const oldVersion = params.get('version') || '2.8.8';  // 旧版 Player 版本
 
 const playerOptions: PlayerConfig = {
   env: 'editor',

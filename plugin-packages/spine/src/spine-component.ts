@@ -6,7 +6,7 @@ import type {
 } from '@galacean/effects';
 import {
   effectsClass, HitTestType, MaskMode, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
-  serialize, spec, MaskProcessor,
+  serialize, spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import {
@@ -95,8 +95,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
   @serialize()
   cache: SpineDataCache;
 
-  readonly maskManager: MaskProcessor;
-
   private content: SlotGroup | null;
   private skeleton: Skeleton;
   private state: AnimationState;
@@ -114,7 +112,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
 
   constructor (engine: Engine) {
     super(engine);
-    this.maskManager = new MaskProcessor(engine);
   }
 
   override fromData (data: spec.SpineComponent) {
@@ -129,7 +126,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
     if (data.mask) {
-      this.maskManager.setMaskOptions(data.mask);
+      this.maskManager.setMaskOptions(this.engine, data.mask);
     }
 
     this.rendererOptions.maskMode = this.maskManager.maskMode;
@@ -176,6 +173,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.state.apply(this.skeleton);
     this.onUpdate(0);
     this.resize();
+    this.materials = this.content?.meshGroups.map(mg => mg.mesh.material) ?? [];
   }
 
   override onUpdate (dt: number) {
@@ -196,39 +194,34 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return;
     }
 
+    this.maskManager.drawStencilMask(renderer, this);
+
     for (let i = 0; i < this.content.meshGroups.length; i++) {
       const material = this.content.meshGroups[i].mesh.material;
 
       material.setVector2('_Size', new Vector2(this.startSize * this.scaleFactor, this.startSize * this.scaleFactor));
     }
 
-    this.maskManager.drawStencilMask(renderer);
     this.content.render(renderer);
   }
 
-  drawStencilMask (renderer: Renderer): void {
+  drawStencilMask (maskRef: number): void {
     if (!this.isActiveAndEnabled) {
       return;
     }
     if (!this.content) {
       return;
     }
-    const previousColorMasks: boolean[] = [];
 
-    for (let i = 0; i < this.content.meshGroups.length; i++) {
-      const material = this.content.meshGroups[i].mesh.material;
+    const worldMatrix = this.content.transform.getWorldMatrix();
 
-      previousColorMasks.push(material.colorMask);
-      material.colorMask = false;
-    }
+    this.content.meshGroups.forEach(spineMesh => {
+      const mesh = spineMesh.mesh;
 
-    this.content.render(renderer);
+      mesh.worldMatrix = worldMatrix;
 
-    for (let i = 0; i < this.content.meshGroups.length; i++) {
-      const material = this.content.meshGroups[i].mesh.material;
-
-      material.colorMask = previousColorMasks[i];
-    }
+      this.maskManager.drawGeometryMask(this.engine.renderer, mesh.geometry, worldMatrix, mesh.material, maskRef);
+    });
   }
 
   override onDestroy () {

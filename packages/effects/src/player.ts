@@ -575,7 +575,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param dt - 时间差，毫秒
    */
   tick (dt: number) {
-    this.engine.render(dt);
+    this.engine.mainLoop(dt);
   }
 
   /**
