@@ -217,6 +217,7 @@ export class MaskProcessor {
       material.stencilRef = [this.expectedMaskBits, this.expectedMaskBits];
       material.stencilMask = [this.activeMaskBits, this.activeMaskBits];  // 检查所有相关 bit
       material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
+      material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
     } else {
       // 无蒙版：关闭 stencil 测试
       material.stencilTest = false;
