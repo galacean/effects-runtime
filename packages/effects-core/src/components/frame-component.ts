@@ -78,6 +78,33 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.material.setColor('_Color', this.color);
   }
 
+  override render (renderer: Renderer): void {
+    // 直接按列缩放矩阵元素以实现右乘 size 矩阵（column-major）
+    this.worldMatrix.copyFrom(this.transform.getWorldMatrix());
+
+    multiplyMatrixByScale(this.worldMatrix, this.transform.size.x, this.transform.size.y);
+
+    renderer.drawGeometry(this.clipGeometry, this.worldMatrix, this.material);
+  }
+
+  override onDestroy (): void {
+    this.clipGeometry.dispose();
+    this.material.dispose();
+  }
+
+  drawStencilMask (maskRef: number): void {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
+
+    // 直接按列缩放矩阵元素以实现右乘 size 矩阵（column-major）
+    this.worldMatrix.copyFrom(this.transform.getWorldMatrix());
+
+    multiplyMatrixByScale(this.worldMatrix, this.transform.size.x, this.transform.size.y);
+
+    this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.material, maskRef);
+  }
+
   private setClipRectangle (): void {
     this.setClipRectangleRecursive(this.item);
   }
@@ -94,28 +121,6 @@ export class FrameComponent extends RendererComponent implements Maskable {
         this.setClipRectangleRecursive(child);
       }
     }
-  }
-
-  override render (renderer: Renderer): void {
-    // 直接按列缩放矩阵元素以实现右乘 size 矩阵（column-major）
-    this.worldMatrix.copyFrom(this.transform.getWorldMatrix());
-
-    multiplyMatrixByScale(this.worldMatrix, this.transform.size.x, this.transform.size.y);
-
-    renderer.drawGeometry(this.clipGeometry, this.worldMatrix, this.material);
-  }
-
-  drawStencilMask (maskRef: number): void {
-    if (!this.isActiveAndEnabled) {
-      return;
-    }
-
-    // 直接按列缩放矩阵元素以实现右乘 size 矩阵（column-major）
-    this.worldMatrix.copyFrom(this.transform.getWorldMatrix());
-
-    multiplyMatrixByScale(this.worldMatrix, this.transform.size.x, this.transform.size.y);
-
-    this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.material, maskRef);
   }
 }
 

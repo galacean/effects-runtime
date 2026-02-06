@@ -266,6 +266,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
       return this.ticker?.pause();
     }
+
     this.renderer.setFramebuffer(null);
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
@@ -280,8 +281,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       composition.sceneTicking.preRender.tick(0);
     }
 
-    for (let i = 0; i < comps.length; i++) {
-      !comps[i].renderFrame.isDisposed && this.renderer.renderRenderFrame(comps[i].renderFrame);
+    for (const composition of comps) {
+      this.renderer.renderRenderFrame(composition.renderFrame);
     }
 
     this.renderer.renderTargetPool.flush();

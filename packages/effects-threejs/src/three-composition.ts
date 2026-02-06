@@ -66,6 +66,6 @@ export class ThreeComposition extends Composition {
 
     frame._renderPasses[0].meshes.length = 0;
 
-    this.rootItem.getComponent(RendererComponent).render(render);
+    this.rootItem.getComponent(RendererComponent)?.render(render);
   }
 }

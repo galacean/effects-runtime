@@ -978,6 +978,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   /**
    * 卸载贴图纹理方法，减少内存
+   * @deprecated
    */
   offloadTexture () {
     if (!this.textureOffloaded) {
@@ -988,6 +989,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   /**
    * 重新加载纹理
+   * @deprecated
    */
   async reloadTexture () {
     if (this.textureOffloaded) {
