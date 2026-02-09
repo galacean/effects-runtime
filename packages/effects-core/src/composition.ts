@@ -363,14 +363,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       pixelWidth: width,
       pixelHeight: height,
     });
+
     this.url = scene.url;
     this.interactive = true;
+
     if (onItemMessage) {
       this.onItemMessage = onItemMessage;
     }
+
     this.createRenderFrame();
 
     Composition.buildItemTree(this.rootItem);
+
     this.rootComposition.setChildrenRenderOrder(0);
 
     PluginSystem.initializeComposition(this, scene);
@@ -626,6 +630,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (!this.rootItem.isDuringPlay) {
       this.rootItem.awake();
       this.rootItem.beginPlay();
+      this.renderFrame.addMeshToDefaultRenderPass(this.rootComposition);
     }
 
     const previousCompositionTime = this.time;
@@ -973,6 +978,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   /**
    * 卸载贴图纹理方法，减少内存
+   * @deprecated
    */
   offloadTexture () {
     if (!this.textureOffloaded) {
@@ -983,6 +989,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   /**
    * 重新加载纹理
+   * @deprecated
    */
   async reloadTexture () {
     if (this.textureOffloaded) {

@@ -2,7 +2,6 @@ import type * as spec from '@galacean/effects-specification';
 import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
-import type { Renderer } from '../render';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -88,7 +87,21 @@ export enum ShaderType {
  *
  */
 export interface Maskable {
-  drawStencilMask (renderer: Renderer): void,
+  drawStencilMask (maskRef: number): void,
+}
+
+/**
+ * 蒙版引用信息，支持正面和反面蒙版
+ */
+export interface MaskReference {
+  /**
+   * 蒙版对象
+   */
+  maskable: Maskable,
+  /**
+   * 是否反向蒙版（true: 反向遮挡，false: 正向遮挡）
+   */
+  inverted: boolean,
 }
 
 export enum MaskMode {
