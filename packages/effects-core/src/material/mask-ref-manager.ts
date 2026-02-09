@@ -27,14 +27,9 @@ export class MaskProcessor {
   private maskReferences: MaskReference[] = [];
 
   /**
-   * 当前活动蒙版的 bit 组合（所有蒙版的 bit OR）
+   * 期望的 stencil 值（等于正向蒙版的数量）
    */
-  private activeMaskBits = 0;
-
-  /**
-   * 期望的 stencil 值（根据每个蒙版的 inverted 属性计算）
-   */
-  private expectedMaskBits = 0;
+  private expectedStencilValue = 0;
 
   private stencilClearAction: RenderPassClearAction;
 
@@ -104,8 +99,8 @@ export class MaskProcessor {
     const exists = this.maskReferences.some(ref => ref.maskable === maskable);
 
     if (!exists) {
-      if (this.maskReferences.length >= 8) {
-        console.warn('Maximum of 8 mask references exceeded. Additional masks will be ignored.');
+      if (this.maskReferences.length >= 255) {
+        console.warn('Maximum of 255 mask references exceeded. Additional masks will be ignored.');
 
         return;
       }
@@ -133,48 +128,65 @@ export class MaskProcessor {
   }
 
   /**
-   * 绘制所有蒙版，被蒙版的元素调用
+   * 绘制所有蒙版，被蒙版的元素调用。
+   *
+   * 使用递增 stencil 计数法实现任意数量蒙版的交集：
+   * 1. 正向蒙版按顺序渲染，每个仅在 stencil == 当前步数时递增（增量求交集）
+   * 2. 反向蒙版渲染，将已通过所有正向蒙版的像素标记为无效
+   * 3. 最终只有 stencil == 正向蒙版数量 的像素才通过测试
+   *
+   * 最多支持 255 个蒙版引用（受 8 位 stencil buffer 限制）
    */
   drawStencilMask (renderer: Renderer, maskedComponent: RendererComponent): void {
-    const frameClipMask = maskedComponent.frameClipMask;
+    const frameClipMasks = maskedComponent.frameClipMasks;
 
-    if (frameClipMask) {
+    for (const frameClipMask of frameClipMasks) {
       this.addMaskReference(frameClipMask, false);
     }
 
     if (this.maskReferences.length > 0) {
       renderer.clear(this.stencilClearAction);
 
-      // 重置 bit 组合
-      this.activeMaskBits = 0;
-      this.expectedMaskBits = 0;
+      // 分离正向和反向蒙版
+      const forwardMasks: MaskReference[] = [];
+      const reverseMasks: MaskReference[] = [];
 
-      // 为每个蒙版分配一个 bit 并绘制
-      for (let i = 0; i < this.maskReferences.length; i++) {
-        const maskBit = 1 << i;
-
-        this.activeMaskBits |= maskBit;
-
-        const reference = this.maskReferences[i];
-
-        // 如果是正向蒙版（不是 inverted），期望该 bit 为 1
-        if (!reference.inverted) {
-          this.expectedMaskBits |= maskBit;
+      for (const ref of this.maskReferences) {
+        if (ref.inverted) {
+          reverseMasks.push(ref);
+        } else {
+          forwardMasks.push(ref);
         }
-        // 如果是反向蒙版（inverted），期望该 bit 为 0（不设置）
-
-        // 传入 maskBit 作为 maskref 值
-        reference.maskable.drawStencilMask(maskBit);
       }
+
+      // 阶段一：绘制正向蒙版（增量求交集）
+      // 每个正向蒙版传入当前步数 i，setupMaskMaterial 会设置
+      // stencilFunc=EQUAL ref=i，只有已通过前 i 个蒙版的像素才会递增
+      for (let i = 0; i < forwardMasks.length; i++) {
+        forwardMasks[i].maskable.drawStencilMask(i);
+      }
+
+      // 阶段二：绘制反向蒙版（"dirty"被覆盖的像素）
+      // 传入 forwardCount，只在 stencil == forwardCount 的像素上递增
+      // 被任意反向蒙版覆盖的像素 stencil 值会 > forwardCount
+      const forwardCount = forwardMasks.length;
+
+      for (const ref of reverseMasks) {
+        ref.maskable.drawStencilMask(forwardCount);
+      }
+
+      // 期望的 stencil 值 = 正向蒙版数量
+      this.expectedStencilValue = forwardCount;
     }
 
     for (const material of maskedComponent.materials) {
       this.setupMaskedMaterial(material);
     }
 
-    if (frameClipMask) {
+    for (const frameClipMask of frameClipMasks) {
       this.removeMaskReference(frameClipMask);
-      maskedComponent.frameClipMask = null;
+
+      maskedComponent.frameClipMasks = [];
     }
   }
 
@@ -186,6 +198,8 @@ export class MaskProcessor {
     const prevStencilTest = material.stencilTest;
     const prevStencilFunc = material.stencilFunc;
     const prevStencilOpZPass = material.stencilOpZPass;
+    // const prevStencilOpFail = material.stencilOpFail;
+    // const prevStencilOpZFail = material.stencilOpZFail;
     const prevStencilRef = material.stencilRef;
     const prevStencilMask = material.stencilMask;
 
@@ -196,41 +210,52 @@ export class MaskProcessor {
     material.stencilTest = prevStencilTest;
     material.stencilFunc = prevStencilFunc;
     material.stencilOpZPass = prevStencilOpZPass;
+    // material.stencilOpFail = prevStencilOpFail;
+    // material.stencilOpZFail = prevStencilOpZFail;
     material.stencilRef = prevStencilRef;
     material.stencilMask = prevStencilMask;
   }
 
   /**
    * 设置蒙版材质的 stencil 属性（写入蒙版）
+   *
+   * 使用递增计数法：
+   * - stencilFunc=EQUAL, ref=maskRef：仅在 stencil 值等于当前步数时通过
+   * - stencilOpZPass=INCR：通过时递增 stencil 值
+   * - stencilOpFail=KEEP：不通过时保持不变
+   *
    * @param material - 要设置的材质
-   * @param maskRef - 蒙版的 bit 值
+   * @param maskRef - 当前步数（正向蒙版索引或正向蒙版总数）
    */
   private setupMaskMaterial (material: Material, maskRef: number): void {
-    // 蒙版元素：写入 stencil buffer
     material.stencilTest = true;
-    material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
-    material.stencilOpZPass = [glContext.REPLACE, glContext.REPLACE];
-
-    // 使用传入的 maskRef
+    // 仅在 stencil 值等于当前步数时通过
+    material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
     material.stencilRef = [maskRef, maskRef];
-    material.stencilMask = [maskRef, maskRef];  // 只写入当前 bit，不影响其他 bit
+    material.stencilMask = [0xFF, 0xFF];
+
+    // 通过时递增 stencil 值，不通过时保持不变
+    material.stencilOpZPass = [glContext.INCR, glContext.INCR];
+    // material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
+    // material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
 
     material.colorMask = false; // 不写入颜色
   }
 
   /**
    * 设置被蒙版材质的 stencil 属性（多蒙版交集）
+   *
+   * stencil 值等于 expectedStencilValue（正向蒙版数量）表示：
+   * - 该像素通过了所有正向蒙版（每个正向蒙版递增一次）
+   * - 未被任何反向蒙版覆盖（否则会被进一步递增，值 > expectedStencilValue）
+   *
    * @param material - 要设置的材质
    */
   private setupMaskedMaterial (material: Material): void {
     if (this.maskReferences.length > 0) {
-      // 被蒙版元素：根据 stencil buffer 判断是否绘制
       material.stencilTest = true;
-
-      // 使用期望的 ref 值（根据每个蒙版的 inverted 属性计算）
-      // 只有当 stencil 值等于期望值时才绘制（所有蒙版条件都满足，即交集）
-      material.stencilRef = [this.expectedMaskBits, this.expectedMaskBits];
-      material.stencilMask = [this.activeMaskBits, this.activeMaskBits];  // 检查所有相关 bit
+      material.stencilRef = [this.expectedStencilValue, this.expectedStencilValue];
+      material.stencilMask = [0xFF, 0xFF];
       material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
     } else {

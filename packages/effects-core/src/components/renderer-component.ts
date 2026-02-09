@@ -14,7 +14,7 @@ export class RendererComponent extends Component {
   /**
    * @internal
    */
-  frameClipMask: Maskable | null = null;
+  frameClipMasks: Maskable[] = [];
   /**
    * @internal
    */
