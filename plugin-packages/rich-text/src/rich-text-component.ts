@@ -619,17 +619,15 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         break;
       }
       case spec.TextOverflow.display: {
-        if (!this.initialized) {
-          const frameWpx = frameW * fontScale;
-          const frameHpx = frameH * fontScale;
+        const frameWpx = frameW * fontScale;
+        const frameHpx = frameH * fontScale;
 
-          this.canvasSize = new math.Vector2(frameWpx, frameHpx);
-          this.item.transform.size.set(
-            x * frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-          );
-          this.initialized = true;
-        }
+        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
+        this.item.transform.size.set(
+          x * frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          y * frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
+        );
+        this.initialized = true;
 
         break;
       }
