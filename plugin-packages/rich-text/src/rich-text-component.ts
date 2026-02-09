@@ -385,12 +385,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       letterSpace,
     );
 
-    if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {
-      this.isDirty = false;
-
-      return;
-    }
-
     // 步骤2: 尺寸处理
     const sizeResult = this.resolveCanvasSize(
       wrapResult,
