@@ -14,10 +14,8 @@ export class VideoLoader extends Plugin {
     const { videos = [] } = scene.jsonScene;
     const loadedAssets = await processMultimedia<HTMLVideoElement>(videos, spec.MultimediaType.video, options);
 
-    for (let i = 0;i < videos.length;i++) {
-      const video = videos[i];
-
-      scene.assets[video.id] = loadedAssets[i];
-    }
+    videos.forEach((video, index) => {
+      scene.assets[video.id] = loadedAssets[index];
+    });
   }
 }
