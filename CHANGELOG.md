@@ -9,7 +9,7 @@
 
 ## 2.8.9
 
-`2026-02-11`
+`2026-02-12`
 
 - Fix: text item shadow rendering and rich text display overflow. [#1399](https://github.com/galacean/effects-runtime/pull/1399) @wumaolinmaoan
 - Fix: rich text auto resize calculation logic. [#1400](https://github.com/galacean/effects-runtime/pull/1400) @wumaolinmaoan
