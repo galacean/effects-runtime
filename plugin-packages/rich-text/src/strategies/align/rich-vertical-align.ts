@@ -72,9 +72,11 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
         for (let i = 0; i < lines.length; i++) {
           const asc = lines[i].lineAscent ?? 0;
           const desc = lines[i].lineDescent ?? 0;
+          const textHeight = asc + desc;
+          const margin = (lines[i].lineHeight - textHeight) / 2;
 
-          bboxTop = Math.min(bboxTop, baselines[i] - asc);
-          bboxBottom = Math.max(bboxBottom, baselines[i] + desc);
+          bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
+          bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
         }
         const bboxHeight = bboxBottom - bboxTop;
 
@@ -110,16 +112,18 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
           baselines[i] = baselines[i - 1] + lines[i].lineHeight;
         }
 
-        // 计算 bboxTop / bboxBottom（使用行的测量值 lineAscent/lineDescent）
+        // 计算 bboxTop / bboxBottom（使用行的测量值 lineAscent/lineDescent，包含行高边距）
         let bboxTop = Infinity;
         let bboxBottom = -Infinity;
 
         for (let i = 0; i < lines.length; i++) {
           const asc = lines[i].lineAscent ?? 0;
           const desc = lines[i].lineDescent ?? 0;
+          const textHeight = asc + desc;
+          const margin = (lines[i].lineHeight - textHeight) / 2;
 
-          bboxTop = Math.min(bboxTop, baselines[i] - asc);
-          bboxBottom = Math.max(bboxBottom, baselines[i] + desc);
+          bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
+          bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
         }
 
         const bboxHeight = bboxBottom - bboxTop;
