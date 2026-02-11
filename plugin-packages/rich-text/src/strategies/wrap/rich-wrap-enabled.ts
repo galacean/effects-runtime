@@ -21,6 +21,8 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     const baselines: number[] = [];
     const gapPx = (layout.lineHeight || 0) * fontScale;
     const scaleFactor = 1 / 10; // 1/10px, 后面 context.font 设置的字号为10px
+    const scaledLetterSpace = letterSpace * fontScale;
+
     let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
     let totalHeight = 0;
@@ -36,10 +38,8 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
       flushChunk();
       if (currentLine.chars.length === 0) { return; }
 
-      // 第1行用真实首行高度，其余行用 gapPx
-      currentLine.lineHeight = lines.length === 0
-        ? (currentLine.lineAscent || 0) + (currentLine.lineDescent || 0)
-        : gapPx;
+      // 所有行都使用配置的行高（gapPx）
+      currentLine.lineHeight = gapPx;
 
       // 记录本行基线
       const baseline = lines.length === 0 ? 0 : (baselines[baselines.length - 1] + gapPx);
@@ -106,7 +106,7 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         const desc = m.actualBoundingBoxDescent * scale;
 
         // 计算预期宽度（包含字符间距）
-        const spacing = chunkChars.length > 0 ? letterSpace : 0;
+        const spacing = chunkChars.length > 0 ? scaledLetterSpace : 0;
         const willWidth = currentLine.width + spacing + charWidth;
 
         // 自动换行判断
@@ -123,8 +123,8 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
 
         // 添加字符间距（非首字符）
         if (chunkChars.length > 0) {
-          segmentInnerX += letterSpace;
-          currentLine.width += letterSpace;
+          segmentInnerX += scaledLetterSpace;
+          currentLine.width += scaledLetterSpace;
         }
 
         // 添加字符到切块（x为切块内相对坐标）
@@ -149,13 +149,29 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     // 结束最后一行
     finishCurrentLine();
 
-    // 计算 bbox
+    // 计算 bbox（包含行高带来的上下边距）
     let bboxTop = Infinity;
     let bboxBottom = -Infinity;
 
+    if (lines.length === 0) {
+      return {
+        lines,
+        maxLineWidth,
+        totalHeight,
+        bboxTop: 0,
+        bboxBottom: 0,
+        bboxHeight: 0,
+      };
+    }
+
     for (let i = 0; i < lines.length; i++) {
-      bboxTop = Math.min(bboxTop, baselines[i] - (lines[i].lineAscent || 0));
-      bboxBottom = Math.max(bboxBottom, baselines[i] + (lines[i].lineDescent || 0));
+      const asc = lines[i].lineAscent || 0;
+      const desc = lines[i].lineDescent || 0;
+      const textHeight = asc + desc;
+      const margin = (gapPx - textHeight) / 2;
+
+      bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
+      bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
     }
     const bboxHeight = bboxBottom - bboxTop;
 

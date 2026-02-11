@@ -57,6 +57,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   processedTextOptions: RichTextOptions[] = [];
   private singleLineHeight: number = 1.571;
+  /** @deprecated Use for legacy mode*/
   private size: math.Vector2 | null = null;
   private initialized: boolean = false;
   private canvasSize: math.Vector2 | null = null;
@@ -374,6 +375,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
+    // autoWidth 模式下先去掉宽度约束，避免内容被提前换行
+    if (layout.autoResize === spec.TextSizeMode.autoWidth) {
+      layout.maxTextWidth = Number.MAX_SAFE_INTEGER;
+    }
+
     // 步骤1: 换行策略计算行信息
     const wrapResult = this.richWrapStrategy.computeLines(
       this.processedTextOptions,
@@ -385,10 +391,24 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       letterSpace,
     );
 
-    if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {
-      this.isDirty = false;
+    // 根据 sizeMode 和实际内容尺寸回写 maxTextWidth / maxTextHeight
+    const fontScale = this.textStyle.fontScale;
 
-      return;
+    switch (layout.autoResize) {
+      case spec.TextSizeMode.autoWidth:
+        // 宽高均自适应内容
+        layout.maxTextWidth = Math.max(1, (wrapResult.maxLineWidth || 0) / fontScale);
+        layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
+
+        break;
+      case spec.TextSizeMode.autoHeight:
+        // 仅高度自适应内容
+        layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
+
+        break;
+      case spec.TextSizeMode.fixed:
+        // 固定宽高，保持原值
+        break;
     }
 
     // 步骤2: 尺寸处理
@@ -456,11 +476,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   private setCanvasSize (sizeResult: SizeResult): void {
-    if (this.size === undefined || this.size === null) {
-      this.size = this.item.transform.size.clone();
-    }
-    const { x = 1, y = 1 } = this.size;
-
     const layout = this.textLayout;
     const fontScale = this.textStyle.fontScale || 1;
 
@@ -584,12 +599,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         sizeResult.canvasHeight = finalHpx;
 
         this.canvasSize = new math.Vector2(finalWpx, finalHpx);
-        const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
 
         // 实际元素渲染尺寸不随着 fontScale 改变
         this.item.transform.size.set(
-          x * finalWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * finalHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
+          finalWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          finalHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.initialized = true;
 
@@ -614,28 +628,24 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         layout.width = frameW;
         layout.height = frameH;
 
-        const { x = 1, y = 1 } = this.size ?? this.item.transform.size;
-
         this.item.transform.size.set(
-          x * frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          y * frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
+          frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
         );
         this.initialized = true;
 
         break;
       }
       case spec.TextOverflow.display: {
-        if (!this.initialized) {
-          const frameWpx = frameW * fontScale;
-          const frameHpx = frameH * fontScale;
+        const frameWpx = frameW * fontScale;
+        const frameHpx = frameH * fontScale;
 
-          this.canvasSize = new math.Vector2(frameWpx, frameHpx);
-          this.item.transform.size.set(
-            x * frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-            y * frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-          );
-          this.initialized = true;
-        }
+        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
+        this.item.transform.size.set(
+          frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+          frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
+        );
+        this.initialized = true;
 
         break;
       }
