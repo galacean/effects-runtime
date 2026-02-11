@@ -184,9 +184,7 @@ export class VideoComponent extends MaskableGraphic {
     // - 视频时间为 0（未开始）
     // - 合成时间已达最大时长（播放完毕）
     // - 视频时间接近或等于其总时长（考虑容差阈值）
-    const isEnd = videoTime === 0 ||
-      composition.time === rootDuration ||
-      Math.abs(videoTime - videoDuration) <= TIME_THRESHOLD;
+    const isEnd = (videoTime === 0 || Math.abs(composition.time - rootDuration) <= TIME_THRESHOLD || Math.abs(videoTime - videoDuration) <= TIME_THRESHOLD);
 
     // 如果视频时间大于等于 0，且未到结束状态，并且尚未触发播放，则开始播放视频
     if (videoTime >= 0 && !isEnd && !this.played && this.isVideoActive) {
