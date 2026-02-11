@@ -371,7 +371,7 @@ export class VideoComponent extends MaskableGraphic {
     this.played = false;
     // 重播时确保视频同步到当前时间
     if (this.video && this.item.composition) {
-      this.setCurrentTime(this.item.time);
+      this.setCurrentTime(Math.max(0, this.item.time));
     }
     this.playVideo();
   }
