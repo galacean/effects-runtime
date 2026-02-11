@@ -28,10 +28,8 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     const finishCurrentLine = () => {
       if (currentLine.chars.length === 0) { return; }
 
-      // 第1行用真实首行高度，其余行用 gapPx
-      currentLine.lineHeight = lines.length === 0
-        ? (currentLine.lineAscent || 0) + (currentLine.lineDescent || 0)
-        : gapPx;
+      // 所有行都使用配置的行高（gapPx）
+      currentLine.lineHeight = gapPx;
 
       // 记录本行基线
       const baseline = lines.length === 0 ? 0 : (baselines[baselines.length - 1] + gapPx);
@@ -81,7 +79,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
         lineDescent = Math.max(lineDescent, desc);
 
         if (i > 0) {
-          segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
+          segmentInnerX += letterSpace * fontScale; // 先加"前一个字符与当前字符之间"的间距
         }
         charArr.push({ char: ch, x: segmentInnerX });
         segmentInnerX += charWidth;
@@ -99,7 +97,7 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     // 结束最后一行
     finishCurrentLine();
 
-    // 计算 bbox
+    // 计算 bbox（包含行高带来的上下边距）
     let bboxTop = Infinity;
     let bboxBottom = -Infinity;
 
@@ -115,8 +113,13 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     }
 
     for (let i = 0; i < lines.length; i++) {
-      bboxTop = Math.min(bboxTop, baselines[i] - (lines[i].lineAscent || 0));
-      bboxBottom = Math.max(bboxBottom, baselines[i] + (lines[i].lineDescent || 0));
+      const asc = lines[i].lineAscent || 0;
+      const desc = lines[i].lineDescent || 0;
+      const textHeight = asc + desc;
+      const margin = (gapPx - textHeight) / 2;
+
+      bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
+      bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
     }
     const bboxHeight = bboxBottom - bboxTop;
 
