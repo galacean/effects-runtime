@@ -59,6 +59,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   private singleLineHeight: number = 1.571;
   /** @deprecated Use for legacy mode*/
   private size: math.Vector2 | null = null;
+  /** @deprecated Use for legacy mode*/
   private initialized: boolean = false;
   private canvasSize: math.Vector2 | null = null;
 
@@ -419,15 +420,20 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       this.singleLineHeight,
     );
 
-    // 首次渲染时初始化 canvas 尺寸和组件变换
-    this.setCanvasSize(sizeResult);
-
     // 步骤3: 溢出策略处理
     const overflowResult = this.richOverflowStrategy.apply(
       wrapResult.lines,
       sizeResult,
       layout,
       this.textStyle,
+    );
+
+    this.canvasSize = new math.Vector2(sizeResult.canvasWidth, sizeResult.canvasHeight);
+
+    // 实际元素渲染尺寸不随着 fontScale 改变
+    this.item.transform.size.set(
+      this.canvasSize.x / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
+      this.canvasSize.y / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
     );
 
     // 步骤4: 水平对齐策略
@@ -473,306 +479,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }, { disposeOld: false });
 
     this.isDirty = false;
-  }
-
-  private setCanvasSize (sizeResult: SizeResult): void {
-    const layout = this.textLayout;
-    const fontScale = this.textStyle.fontScale || 1;
-
-    // 防止 frameW / frameH 为 0
-    const frameW = Math.max(1, layout.maxTextWidth || 0);
-    const frameH = Math.max(1, layout.maxTextHeight || 0);
-
-    switch (layout.overflow) {
-      case spec.TextOverflow.visible: {
-        const frameWpx = frameW * fontScale;
-        const frameHpx = frameH * fontScale;
-
-        const bboxTop = sizeResult.bboxTop ?? 0;
-        const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
-        const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
-
-        // 计算 frame 基线
-        let baselineYFrame = 0;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-            baselineYFrame = -bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
-
-            break;
-        }
-
-        // 水平扩张也要用到 lines，提前获取
-        const lines = sizeResult.lines || [];
-
-        // 用行数据重建各行基线
-        const baselines: number[] = [];
-
-        for (let i = 0; i < lines.length; i++) {
-          baselines[i] = i === 0 ? 0 : baselines[i - 1] + (lines[i].lineHeight || 0);
-        }
-
-        // 计算实际字形渲染范围（baseline ± ascent/descent）
-        // 当 lineHeight < 文字高度时，字形会超出 bbox 边界
-        let glyphTopInFrame = baselineYFrame;
-        let glyphBottomInFrame = baselineYFrame;
-
-        for (let i = 0; i < lines.length; i++) {
-          const asc = lines[i].lineAscent ?? 0;
-          const desc = lines[i].lineDescent ?? 0;
-
-          glyphTopInFrame = Math.min(glyphTopInFrame, baselineYFrame + baselines[i] - asc);
-          glyphBottomInFrame = Math.max(glyphBottomInFrame, baselineYFrame + baselines[i] + desc);
-        }
-
-        // 上下溢出检测：取 bbox 和字形范围的最大包围
-        const contentTopInFrame = Math.min(baselineYFrame + bboxTop, glyphTopInFrame);
-        const contentBottomInFrame = Math.max(baselineYFrame + bboxBottom, glyphBottomInFrame);
-
-        const overflowTop = Math.max(0, -contentTopInFrame);
-        const overflowBottom = Math.max(0, contentBottomInFrame - frameHpx);
-
-        // 垂直扩张
-        let expandTop = overflowTop;
-        let expandBottom = overflowBottom;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top: {
-            const E = Math.max(overflowTop, overflowBottom);
-
-            expandTop = E;
-            expandBottom = E;
-
-            break;
-          }
-          case spec.TextVerticalAlign.bottom: {
-            const E = Math.max(overflowTop, overflowBottom);
-
-            expandTop = E;
-            expandBottom = E;
-
-            break;
-          }
-          case spec.TextVerticalAlign.middle: {
-            // 保持非对称：上扩 overflowTop，下扩 overflowBottom
-            expandTop = overflowTop;
-            expandBottom = overflowBottom;
-
-            break;
-          }
-        }
-
-        // 位移补偿：始终使用 expandTop
-        const compY = expandTop;
-
-        // 1. 先按 frameWpx 计算每行的对齐起点（逻辑对齐）
-        const xOffsetsFrame = lines.map(line =>
-          layout.getOffsetXRich(this.textStyle, frameWpx, line.width)
-        );
-
-        // 2. 用对齐后的偏移 + 行宽算出内容的左右边界
-        let contentMinX = Infinity;
-        let contentMaxX = -Infinity;
-
-        for (let i = 0; i < lines.length; i++) {
-          const off = xOffsetsFrame[i] ?? 0;
-          const w = lines[i].width ?? 0; // 像素宽
-
-          contentMinX = Math.min(contentMinX, off);
-          contentMaxX = Math.max(contentMaxX, off + w);
-        }
-
-        if (!isFinite(contentMinX)) {
-          contentMinX = 0;
-        }
-        if (!isFinite(contentMaxX)) {
-          contentMaxX = 0;
-        }
-
-        // 3. 计算内容相对于 frame 的越界量
-        const overflowLeft = Math.max(0, -contentMinX);               // 内容左边 < 0
-        const overflowRight = Math.max(0, contentMaxX - frameWpx);    // 内容右边 > frameWpx?
-
-        // 4. 水平扩张：对称处理，与垂直方向的 top/bottom 处理一致
-        // 防止元素以中心点对称膨胀导致文本视觉偏移
-        let expandLeft = overflowLeft;
-        let expandRight = overflowRight;
-
-        switch (layout.textAlign) {
-          case spec.TextAlignment.left:
-          case spec.TextAlignment.right: {
-            const E = Math.max(overflowLeft, overflowRight);
-
-            expandLeft = E;
-            expandRight = E;
-
-            break;
-          }
-          case spec.TextAlignment.middle:
-          default:
-            // 居中对齐时左右溢出天然对称，保持原始值
-            break;
-        }
-
-        // 5. 最终 canvas 宽高
-        const finalWpx = Math.ceil(frameWpx + expandLeft + expandRight);
-        const finalHpx = Math.ceil(frameHpx + expandTop + expandBottom);
-
-        // 记录补偿，供垂直对齐策略叠加
-        sizeResult.baselineCompensationX = expandLeft;
-        sizeResult.baselineCompensationY = compY;
-        // containerWidth 用 frameWpx，而不是 finalWpx
-        sizeResult.containerWidth = frameWpx;
-
-        sizeResult.canvasWidth = finalWpx;
-        sizeResult.canvasHeight = finalHpx;
-
-        this.canvasSize = new math.Vector2(finalWpx, finalHpx);
-
-        // 实际元素渲染尺寸不随着 fontScale 改变
-        this.item.transform.size.set(
-          finalWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          finalHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-        );
-        this.initialized = true;
-
-        break;
-      }
-      case spec.TextOverflow.clip: {
-        const frameWpx = frameW * fontScale;
-        const frameHpx = frameH * fontScale;
-
-        // 直接使用 frame 尺寸作为画布尺寸
-        sizeResult.canvasWidth = frameWpx;
-        sizeResult.canvasHeight = frameHpx;
-
-        // clip 模式不需要任何补偿
-        sizeResult.baselineCompensationX = 0;
-        sizeResult.baselineCompensationY = 0;
-
-        // 设置 canvas 和节点变换
-        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
-
-        // 把 layout 的尺寸更新为 frame 尺寸
-        layout.width = frameW;
-        layout.height = frameH;
-
-        this.item.transform.size.set(
-          frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-        );
-        this.initialized = true;
-
-        break;
-      }
-      case spec.TextOverflow.display: {
-        // display 模式：内容已被溢出策略缩放至 frame 内，
-        // 画布不做水平扩张。
-        // 仅当 lineHeight < 文字高度时，垂直方向可能有少量字形溢出需补偿。
-        const frameWpx = frameW * fontScale;
-        const frameHpx = frameH * fontScale;
-
-        const bboxTop = sizeResult.bboxTop ?? 0;
-        const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
-        const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
-
-        // 计算 frame 基线（用于检测字形垂直溢出）
-        let baselineYFrame = 0;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-            baselineYFrame = -bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
-
-            break;
-        }
-
-        const lines = sizeResult.lines || [];
-        const baselines: number[] = [];
-
-        for (let i = 0; i < lines.length; i++) {
-          baselines[i] = i === 0 ? 0 : baselines[i - 1] + (lines[i].lineHeight || 0);
-        }
-
-        // 计算实际字形渲染范围（baseline ± ascent/descent）
-        let glyphTopInFrame = baselineYFrame;
-        let glyphBottomInFrame = baselineYFrame;
-
-        for (let i = 0; i < lines.length; i++) {
-          const asc = lines[i].lineAscent ?? 0;
-          const desc = lines[i].lineDescent ?? 0;
-
-          glyphTopInFrame = Math.min(glyphTopInFrame, baselineYFrame + baselines[i] - asc);
-          glyphBottomInFrame = Math.max(glyphBottomInFrame, baselineYFrame + baselines[i] + desc);
-        }
-
-        const contentTopInFrame = Math.min(baselineYFrame + bboxTop, glyphTopInFrame);
-        const contentBottomInFrame = Math.max(baselineYFrame + bboxBottom, glyphBottomInFrame);
-
-        const overflowTop = Math.max(0, -contentTopInFrame);
-        const overflowBottom = Math.max(0, contentBottomInFrame - frameHpx);
-
-        // 垂直扩张：对称处理，防止元素中心点偏移
-        let expandTop = overflowTop;
-        let expandBottom = overflowBottom;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-          case spec.TextVerticalAlign.bottom: {
-            const E = Math.max(overflowTop, overflowBottom);
-
-            expandTop = E;
-            expandBottom = E;
-
-            break;
-          }
-          case spec.TextVerticalAlign.middle: {
-            expandTop = overflowTop;
-            expandBottom = overflowBottom;
-
-            break;
-          }
-        }
-
-        const compY = expandTop;
-        const finalHpx = Math.ceil(frameHpx + expandTop + expandBottom);
-
-        // 水平不扩张，直接用 frame 宽度
-        sizeResult.canvasWidth = frameWpx;
-        sizeResult.canvasHeight = finalHpx;
-
-        sizeResult.baselineCompensationX = 0;
-        sizeResult.baselineCompensationY = compY;
-
-        this.canvasSize = new math.Vector2(frameWpx, finalHpx);
-
-        layout.width = frameW;
-        layout.height = frameH;
-
-        this.item.transform.size.set(
-          frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          finalHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-        );
-        this.initialized = true;
-
-        break;
-      }
-    }
   }
 
   /**
