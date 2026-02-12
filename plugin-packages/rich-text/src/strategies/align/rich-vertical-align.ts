@@ -146,18 +146,9 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
             break;
         }
 
-        // 后续 lineYOffsets 保持按行高累计
-        const lineYOffsets: number[] = [];
-        let currentY = baselineDisplayY;
+        baselineY = baselineDisplayY + compY; // 关键：叠加"向下移动 E"
 
-        for (let i = 0; i < lines.length; i++) {
-          lineYOffsets.push(currentY);
-          if (i < lines.length - 1) {
-            currentY += lines[i + 1].lineHeight;
-          }
-        }
-
-        return { baselineY: baselineDisplayY, lineYOffsets };
+        break;
       }
     }
 
