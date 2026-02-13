@@ -20,7 +20,7 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     frameHeight: number,
     layout: RichTextLayout,
     style: TextStyle,
-    _singleLineHeight: number,
+    singleLineHeight: number,
   ): VerticalAlignResult {
     if (lines.length === 0) {
       return { baselineY: 0, lineYOffsets: [] };
