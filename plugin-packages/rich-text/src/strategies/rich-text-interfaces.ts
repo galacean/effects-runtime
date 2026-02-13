@@ -73,7 +73,6 @@ export interface RichWrapStrategy {
     context: CanvasRenderingContext2D,
     style: TextStyle,
     layout: RichTextLayout,
-    singleLineHeight: number,
     letterSpace: number,
   ): WrapResult,
 }
@@ -170,7 +169,5 @@ export interface RichVerticalAlignStrategy {
     lines: RichLine[],
     frameHeight: number,
     layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
   ): VerticalAlignResult,
 }

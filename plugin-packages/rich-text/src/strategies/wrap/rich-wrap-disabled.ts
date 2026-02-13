@@ -13,7 +13,6 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     context: CanvasRenderingContext2D,
     style: TextStyle,
     layout: RichTextLayout,
-    singleLineHeight: number,
     letterSpace: number,
   ): WrapResult {
     const lines: RichLine[] = [];

@@ -1,5 +1,4 @@
 import { spec } from '@galacean/effects';
-import type { TextStyle } from '@galacean/effects';
 import type { RichTextLayout } from '../../rich-text-layout';
 import type {
   RichLine, VerticalAlignResult, RichVerticalAlignStrategy,
@@ -19,8 +18,6 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
     lines: RichLine[],
     frameHeight: number,
     layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
   ): VerticalAlignResult {
     if (lines.length === 0) {
       return { baselineY: 0, lineYOffsets: [] };

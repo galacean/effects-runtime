@@ -57,11 +57,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   textLayout: RichTextLayout;
 
   processedTextOptions: RichTextOptions[] = [];
+  /** @deprecated Use for legacy mode*/
   private singleLineHeight: number = 1.571;
   /** @deprecated Use for legacy mode*/
   private size: math.Vector2 | null = null;
   /** @deprecated Use for legacy mode*/
   private initialized: boolean = false;
+  /** @deprecated Use for legacy mode*/
   private canvasSize: math.Vector2 | null = null;
 
   private richWrapStrategy: RichWrapStrategy;
@@ -398,7 +400,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       context,
       this.textStyle,
       layout,
-      this.singleLineHeight,
       letterSpace,
     );
 
@@ -446,8 +447,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       wrapResult.lines,
       frameH,
       layout,
-      this.textStyle,
-      this.singleLineHeight,
     );
 
     // ── 步骤 5: 溢出 / 画布解析（不依赖对齐模式枚举）──
@@ -458,8 +457,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       horizontalAlignResult,
       verticalAlignResult,
     );
-
-    this.canvasSize = new math.Vector2(overflowResult.canvasWidth, overflowResult.canvasHeight);
 
     // 排版结果（逻辑单位）→ 物理像素画布
     const physicalW = Math.max(1, Math.ceil(overflowResult.canvasWidth * fontScale));
