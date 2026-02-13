@@ -10,9 +10,10 @@ import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
-  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
-  SizeResult, WrapResult,
+  RichVerticalAlignStrategy, OverflowResult,
+  HorizontalAlignResult, VerticalAlignResult,
 } from './strategies/rich-text-interfaces';
+import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 
 export interface RichTextOptions {
   text: string,
@@ -116,7 +117,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   /**
-   * 使用策略结果绘制文本
+   * 根据布局配置更新策略实例
    */
   private updateStrategies (): void {
     const layout = this.textLayout;
@@ -360,6 +361,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   /**
    * 使用策略管线路径的渲染方法
+   *
+   * 管线顺序：
+   * 1. Wrap        → 换行与度量
+   * 2. SizeMode    → 根据 autoResize 回写帧尺寸
+   * 3. ContentScale → 内容缩放（仅 display 模式）
+   * 4. Alignment   → 在帧坐标系中对齐（不依赖 overflow）
+   * 5. Overflow    → 画布解析：确定最终画布尺寸与渲染偏移（不依赖对齐模式）
+   * 6. Render      → 绘制
    */
   private updateTextureWithStrategies (flipY: boolean): void {
     if (!this.isDirty || !this.context || !this.canvas) {
@@ -376,59 +385,77 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
+    const fontScale = this.textStyle.fontScale;
+
     // autoWidth 模式下先去掉宽度约束，避免内容被提前换行
     if (layout.autoResize === spec.TextSizeMode.autoWidth) {
       layout.maxTextWidth = Number.MAX_SAFE_INTEGER;
     }
 
-    // 步骤1: 换行策略计算行信息
+    // ── 步骤 1: 换行策略 ──
     const wrapResult = this.richWrapStrategy.computeLines(
       this.processedTextOptions,
       context,
       this.textStyle,
       layout,
       this.singleLineHeight,
-      this.textStyle.fontScale,
+      fontScale,
       letterSpace,
     );
 
-    // 根据 sizeMode 和实际内容尺寸回写 maxTextWidth / maxTextHeight
-    const fontScale = this.textStyle.fontScale;
-
+    // ── 步骤 2: SizeMode 回写帧尺寸 ──
     switch (layout.autoResize) {
       case spec.TextSizeMode.autoWidth:
-        // 宽高均自适应内容
         layout.maxTextWidth = Math.max(1, (wrapResult.maxLineWidth || 0) / fontScale);
         layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
 
         break;
       case spec.TextSizeMode.autoHeight:
-        // 仅高度自适应内容
         layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
 
         break;
       case spec.TextSizeMode.fixed:
-        // 固定宽高，保持原值
         break;
     }
 
-    // 步骤2: 尺寸处理
-    const sizeResult = this.resolveCanvasSize(
-      wrapResult,
+    // 帧尺寸（像素）
+    const frameW = layout.maxTextWidth * fontScale;
+    const frameH = layout.maxTextHeight * fontScale;
+
+    // ── 步骤 3: 内容缩放（display 模式缩小以适配帧，其他模式跳过）──
+    if (layout.overflow === spec.TextOverflow.display) {
+      const contentW = Math.max(1, wrapResult.maxLineWidth || 0);
+      const contentH = Math.max(1, wrapResult.totalHeight || 0);
+
+      scaleLinesToFit(wrapResult.lines, contentW, contentH, frameW, frameH);
+    }
+
+    // ── 步骤 4: 对齐（在帧坐标系中，不依赖 overflow 模式）──
+    const horizontalAlignResult = this.richHorizontalAlignStrategy.getHorizontalOffsets(
+      wrapResult.lines,
+      frameW,
+      layout,
+      this.textStyle,
+    );
+
+    const verticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
+      wrapResult.lines,
+      frameH,
       layout,
       this.textStyle,
       this.singleLineHeight,
     );
 
-    // 步骤3: 溢出策略处理
-    const overflowResult = this.richOverflowStrategy.apply(
+    // ── 步骤 5: 溢出 / 画布解析（不依赖对齐模式枚举）──
+    const overflowResult = this.richOverflowStrategy.resolveCanvas(
       wrapResult.lines,
-      sizeResult,
-      layout,
-      this.textStyle,
+      frameW,
+      frameH,
+      horizontalAlignResult,
+      verticalAlignResult,
     );
 
-    this.canvasSize = new math.Vector2(sizeResult.canvasWidth, sizeResult.canvasHeight);
+    this.canvasSize = new math.Vector2(overflowResult.canvasWidth, overflowResult.canvasHeight);
 
     // 实际元素渲染尺寸不随着 fontScale 改变
     this.item.transform.size.set(
@@ -436,43 +463,20 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       this.canvasSize.y / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
     );
 
-    // 步骤4: 水平对齐策略
-    const horizontalAlignResult = this.richHorizontalAlignStrategy.getHorizontalOffsets(
-      wrapResult.lines,
-      sizeResult,
-      overflowResult,
-      layout,
-      this.textStyle,
-    );
+    // 画布尺寸确保至少为 1
+    const safeW = Math.max(1, Math.ceil(this.canvasSize.x));
+    const safeH = Math.max(1, Math.ceil(this.canvasSize.y));
 
-    // 步骤5: 垂直对齐策略
-    const TextVerticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
-      wrapResult.lines,
-      sizeResult,
-      overflowResult,
-      layout,
-      this.textStyle,
-      this.singleLineHeight,
-    );
-
-    // 使用 this.canvasSize 统一设置画布尺寸
-    assertExist(this.canvasSize);
-    const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
-
-    // 确保canvas宽高至少为1
-    const safeW = Math.max(1, Math.ceil(canvasWidth));
-    const safeH = Math.max(1, Math.ceil(canvasHeight));
-
-    layout.width = safeW / this.textStyle.fontScale;
-    layout.height = safeH / this.textStyle.fontScale;
+    layout.width = safeW / fontScale;
+    layout.height = safeH / fontScale;
 
     this.renderToTexture(safeW, safeH, flipY, context => {
-      // 步骤6: 绘制文本
+      // ── 步骤 6: 绘制 ──
       this.drawTextWithStrategies(
         context,
         wrapResult.lines,
         horizontalAlignResult,
-        TextVerticalAlignResult,
+        verticalAlignResult,
         overflowResult,
         this.textStyle,
       );
@@ -482,56 +486,30 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   /**
-   * 尺寸处理
-   */
-  private resolveCanvasSize (
-    wrapResult: WrapResult,
-    layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
-  ): SizeResult {
-    const canvasWidth = Math.max(1, wrapResult.maxLineWidth || 0);
-    const canvasHeight = Math.max(1, wrapResult.totalHeight || 0); // stepTotalHeight
-
-    layout.width = canvasWidth / style.fontScale;
-    layout.height = canvasHeight / style.fontScale;
-
-    return {
-      canvasWidth,
-      canvasHeight,
-      contentWidth: wrapResult.maxLineWidth,
-      bboxTop: wrapResult.bboxTop,
-      bboxBottom: wrapResult.bboxBottom,
-      bboxHeight: wrapResult.bboxHeight,
-      // 为 visible 模式的画布尺寸计算保留行信息
-      lines: wrapResult.lines,
-    } as SizeResult;
-  }
-
-  /**
    * 使用策略结果绘制文本
+   * 坐标 = 帧坐标（对齐结果） + 渲染偏移（溢出结果）
    */
   private drawTextWithStrategies (
     context: CanvasRenderingContext2D,
     lines: RichLine[],
     horizontalAlignResult: HorizontalAlignResult,
-    TextVerticalAlignResult: VerticalAlignResult,
+    verticalAlignResult: VerticalAlignResult,
     overflowResult: OverflowResult,
     textStyle: TextStyle
   ): void {
-    let currentBaselineY = TextVerticalAlignResult.baselineY;
+    const { renderOffsetX, renderOffsetY } = overflowResult;
+    let currentBaselineY = verticalAlignResult.baselineY + renderOffsetY;
     const { lineOffsets } = horizontalAlignResult;
 
     lines.forEach((line, index) => {
       const { richOptions, chars } = line;
-      const xOffset = lineOffsets[index];
+      const xOffset = lineOffsets[index] + renderOffsetX;
       const yOffset = currentBaselineY;
 
       richOptions.forEach((options, segIndex) => {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
 
-        // 直接使用原始字体大小（已在行数据中预缩放）
         const textSize = fontSize;
 
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
@@ -539,12 +517,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
         context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
 
-        // 逐字绘制
         const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
         const charArr = chars[segIndex];
 
         charArr.forEach(charDetail => {
-          // 直接使用缩放后的字符位置
           context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
         });
       });
