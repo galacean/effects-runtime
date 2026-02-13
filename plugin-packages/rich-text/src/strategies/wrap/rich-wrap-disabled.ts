@@ -60,24 +60,20 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
       // 预计算缩放因子：measureText 基于 10px，乘 fontSize/10 得到逻辑像素
       const glyphScale = fontSize * scaleFactor;
 
-      // 逐字宽度和高度测量（asc/desc 测量）
+      // 使用字体级别度量（不随具体字符变化），保证基线位置稳定
+      const refMetrics = context.measureText('x');
+      const fontAsc = refMetrics.fontBoundingBoxAscent * glyphScale;
+      const fontDesc = refMetrics.fontBoundingBoxDescent * glyphScale;
+
+      // 逐字宽度测量
       let segmentInnerX = 0;
       const charArr: RichCharDetail[] = [];
-      let lineAscent = 0;
-      let lineDescent = 0;
 
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
         const m = context.measureText(ch);
         const w = m.width;
         const charWidth = (w <= 0 ? 0 : w) * glyphScale;
-
-        // 测量 asc/desc 并按目标字号缩放
-        const asc = m.actualBoundingBoxAscent * glyphScale;
-        const desc = m.actualBoundingBoxDescent * glyphScale;
-
-        lineAscent = Math.max(lineAscent, asc);
-        lineDescent = Math.max(lineDescent, desc);
 
         if (i > 0) {
           segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
@@ -90,9 +86,9 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
       currentLine.width += segmentInnerX;
       currentLine.richOptions.push(options);
 
-      // 累计行级 asc/desc
-      currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, lineAscent);
-      currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, lineDescent);
+      // 累计行级 asc/desc（字体级别，不因字符形状改变）
+      currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, fontAsc);
+      currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, fontDesc);
     });
 
     // 结束最后一行
