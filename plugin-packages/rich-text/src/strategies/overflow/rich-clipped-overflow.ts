@@ -10,11 +10,11 @@ import type {
  */
 export class RichClippedOverflowStrategy implements RichOverflowStrategy {
   resolveCanvas (
-    _lines: RichLine[],
+    lines: RichLine[],
     frameWidth: number,
     frameHeight: number,
-    _horizontalResult: HorizontalAlignResult,
-    _verticalResult: VerticalAlignResult,
+    horizontalResult: HorizontalAlignResult,
+    verticalResult: VerticalAlignResult,
   ): OverflowResult {
     return {
       canvasWidth: Math.max(1, Math.ceil(frameWidth)),
