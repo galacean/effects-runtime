@@ -392,35 +392,39 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       layout.maxTextWidth = Number.MAX_SAFE_INTEGER;
     }
 
-    // ── 步骤 1: 换行策略 ──
+    // ── 步骤 1: 换行策略（逻辑坐标系，fontScale 不参与排版）──
     const wrapResult = this.richWrapStrategy.computeLines(
       this.processedTextOptions,
       context,
       this.textStyle,
       layout,
       this.singleLineHeight,
-      fontScale,
       letterSpace,
     );
 
-    // ── 步骤 2: SizeMode 回写帧尺寸 ──
+    // ── 步骤 2: SizeMode → 帧尺寸（逻辑单位）──
+    // fontScale 不参与排版，全部在逻辑坐标系中完成。
+    let frameW: number;
+    let frameH: number;
+
     switch (layout.autoResize) {
       case spec.TextSizeMode.autoWidth:
-        layout.maxTextWidth = Math.max(1, (wrapResult.maxLineWidth || 0) / fontScale);
-        layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
+        frameW = Math.max(1, wrapResult.maxLineWidth || 0);
+        frameH = Math.max(1, wrapResult.totalHeight || 0);
 
         break;
       case spec.TextSizeMode.autoHeight:
-        layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
+        frameW = layout.maxTextWidth;
+        frameH = Math.max(1, wrapResult.totalHeight || 0);
 
         break;
       case spec.TextSizeMode.fixed:
+      default:
+        frameW = layout.maxTextWidth;
+        frameH = layout.maxTextHeight;
+
         break;
     }
-
-    // 帧尺寸（像素）
-    const frameW = layout.maxTextWidth * fontScale;
-    const frameH = layout.maxTextHeight * fontScale;
 
     // ── 步骤 3: 内容缩放（display 模式缩小以适配帧，其他模式跳过）──
     if (layout.overflow === spec.TextOverflow.display) {
@@ -457,20 +461,25 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     this.canvasSize = new math.Vector2(overflowResult.canvasWidth, overflowResult.canvasHeight);
 
-    // 实际元素渲染尺寸不随着 fontScale 改变
+    // 排版结果（逻辑单位）→ 物理像素画布
+    const physicalW = Math.max(1, Math.ceil(overflowResult.canvasWidth * fontScale));
+    const physicalH = Math.max(1, Math.ceil(overflowResult.canvasHeight * fontScale));
+
+    // 渲染尺寸不随 fontScale 改变
     this.item.transform.size.set(
-      this.canvasSize.x / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-      this.canvasSize.y / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
+      overflowResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+      overflowResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
     );
 
-    // 画布尺寸确保至少为 1
-    const safeW = Math.max(1, Math.ceil(this.canvasSize.x));
-    const safeH = Math.max(1, Math.ceil(this.canvasSize.y));
+    // 统一回写布局属性（逻辑单位）
+    layout.maxTextWidth = frameW;
+    layout.maxTextHeight = frameH;
+    layout.width = overflowResult.canvasWidth;
+    layout.height = overflowResult.canvasHeight;
 
-    layout.width = safeW / fontScale;
-    layout.height = safeH / fontScale;
-
-    this.renderToTexture(safeW, safeH, flipY, context => {
+    this.renderToTexture(physicalW, physicalH, flipY, context => {
+      // fontScale 仅作为渲染分辨率倍率，排版坐标全部为逻辑单位
+      context.scale(fontScale, fontScale);
       // ── 步骤 6: 绘制 ──
       this.drawTextWithStrategies(
         context,
@@ -507,12 +516,12 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       const yOffset = currentBaselineY;
 
       richOptions.forEach((options, segIndex) => {
-        const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
+        const { textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
 
         const textSize = fontSize;
 
-        context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
+        context.font = `${fontStyle} ${fontWeight} ${textSize}px ${fontFamily}`;
         const [r, g, b, a] = fontColor;
 
         context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;

@@ -14,12 +14,11 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
     style: TextStyle,
     layout: RichTextLayout,
     singleLineHeight: number,
-    fontScale: number,
     letterSpace: number,
   ): WrapResult {
     const lines: RichLine[] = [];
     const baselines: number[] = [];
-    const gapPx = (layout.lineHeight || 0) * fontScale;
+    const gapPx = layout.lineHeight || 0;
     const scaleFactor = 1 / 10; // 1/10px, 后面 context.font 设置的字号为10px
     let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
@@ -58,6 +57,9 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
       // 记录段起始 x
       currentLine.offsetX.push(currentLine.width);
 
+      // 预计算缩放因子：measureText 基于 10px，乘 fontSize/10 得到逻辑像素
+      const glyphScale = fontSize * scaleFactor;
+
       // 逐字宽度和高度测量（asc/desc 测量）
       let segmentInnerX = 0;
       const charArr: RichCharDetail[] = [];
@@ -68,18 +70,17 @@ export class RichWrapDisabledStrategy implements RichWrapStrategy {
         const ch = text[i];
         const m = context.measureText(ch);
         const w = m.width;
-        const charWidth = (w <= 0 ? 0 : w) * fontSize * scaleFactor * fontScale;
+        const charWidth = (w <= 0 ? 0 : w) * glyphScale;
 
         // 测量 asc/desc 并按目标字号缩放
-        const scale = fontSize * fontScale * scaleFactor;
-        const asc = m.actualBoundingBoxAscent * scale;
-        const desc = m.actualBoundingBoxDescent * scale;
+        const asc = m.actualBoundingBoxAscent * glyphScale;
+        const desc = m.actualBoundingBoxDescent * glyphScale;
 
         lineAscent = Math.max(lineAscent, asc);
         lineDescent = Math.max(lineDescent, desc);
 
         if (i > 0) {
-          segmentInnerX += letterSpace * fontScale; // 先加"前一个字符与当前字符之间"的间距
+          segmentInnerX += letterSpace; // 先加"前一个字符与当前字符之间"的间距
         }
         charArr.push({ char: ch, x: segmentInnerX });
         segmentInnerX += charWidth;

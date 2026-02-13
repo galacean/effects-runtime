@@ -74,7 +74,6 @@ export interface RichWrapStrategy {
     style: TextStyle,
     layout: RichTextLayout,
     singleLineHeight: number,
-    fontScale: number,
     letterSpace: number,
   ): WrapResult,
 }
