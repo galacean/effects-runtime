@@ -46,9 +46,18 @@ export class RichDisplayOverflowStrategy implements RichOverflowStrategy {
       for (const seg of (line.chars || [])) {
         for (const ch of seg) { ch.x *= s; }
       }
-      for (const opt of (line.richOptions || [])) {
-        opt.fontSize *= s;         // 缩小字形
+      // 创建新的 richOptions 数组，避免修改原始对象
+      const originalOptions = line.richOptions || [];
+      const newOptions = [];
+
+      for (let i = 0; i < originalOptions.length; i++) {
+        newOptions.push({
+          ...originalOptions[i],
+          fontSize: originalOptions[i].fontSize * s,  // 缩小字形
+        });
       }
+
+      line.richOptions = newOptions;
       // 同步缩放 asc/desc
       if (line.lineAscent != null) { line.lineAscent *= s; }
       if (line.lineDescent != null) { line.lineDescent *= s; }

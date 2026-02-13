@@ -36,7 +36,7 @@ export class RichTextLayout implements BaseLayout {
    * - autoHeight: 根据内容自动扩展高度
    * - fixed: 使用固定 width / height
    */
-  sizeMode: spec.TextSizeMode;
+  autoResize: spec.TextSizeMode;
 
   /**
    * 文本行高
@@ -54,7 +54,7 @@ export class RichTextLayout implements BaseLayout {
       wrapEnabled = false,
       maxTextWidth = 350,
       maxTextHeight = 1000,
-      sizeMode = spec.TextSizeMode.autoWidth,
+      autoResize = spec.TextSizeMode.autoWidth,
       // @ts-expect-error 兼容旧版
       useLegacyRichText = false,
     } = options;
@@ -72,7 +72,7 @@ export class RichTextLayout implements BaseLayout {
 
     this.maxTextWidth = maxTextWidth;
     this.maxTextHeight = maxTextHeight;
-    this.sizeMode = sizeMode;
+    this.autoResize = autoResize;
   }
 
   getOffsetY (
