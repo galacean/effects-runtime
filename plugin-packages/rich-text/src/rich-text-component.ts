@@ -10,9 +10,10 @@ import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
-  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
-  SizeResult, WrapResult,
+  RichVerticalAlignStrategy, OverflowResult,
+  HorizontalAlignResult, VerticalAlignResult,
 } from './strategies/rich-text-interfaces';
+import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 
 export interface RichTextOptions {
   text: string,
@@ -56,10 +57,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   textLayout: RichTextLayout;
 
   processedTextOptions: RichTextOptions[] = [];
+  /** @deprecated Use for legacy mode*/
   private singleLineHeight: number = 1.571;
   /** @deprecated Use for legacy mode*/
   private size: math.Vector2 | null = null;
+  /** @deprecated Use for legacy mode*/
   private initialized: boolean = false;
+  /** @deprecated Use for legacy mode*/
   private canvasSize: math.Vector2 | null = null;
 
   private richWrapStrategy: RichWrapStrategy;
@@ -115,7 +119,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   /**
-   * 使用策略结果绘制文本
+   * 根据布局配置更新策略实例
    */
   private updateStrategies (): void {
     const layout = this.textLayout;
@@ -359,6 +363,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   /**
    * 使用策略管线路径的渲染方法
+   *
+   * 管线顺序：
+   * 1. Wrap        → 换行与度量
+   * 2. SizeMode    → 根据 autoResize 回写帧尺寸
+   * 3. ContentScale → 内容缩放（仅 display 模式）
+   * 4. Alignment   → 在帧坐标系中对齐（不依赖 overflow）
+   * 5. Overflow    → 画布解析：确定最终画布尺寸与渲染偏移（不依赖对齐模式）
+   * 6. Render      → 绘制
    */
   private updateTextureWithStrategies (flipY: boolean): void {
     if (!this.isDirty || !this.context || !this.canvas) {
@@ -375,98 +387,102 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
+    const fontScale = this.textStyle.fontScale;
+
     // autoWidth 模式下先去掉宽度约束，避免内容被提前换行
     if (layout.autoResize === spec.TextSizeMode.autoWidth) {
       layout.maxTextWidth = Number.MAX_SAFE_INTEGER;
     }
 
-    // 步骤1: 换行策略计算行信息
+    // ── 步骤 1: 换行策略（逻辑坐标系，fontScale 不参与排版）──
     const wrapResult = this.richWrapStrategy.computeLines(
       this.processedTextOptions,
       context,
       this.textStyle,
       layout,
-      this.singleLineHeight,
-      this.textStyle.fontScale,
       letterSpace,
     );
 
-    // 根据 sizeMode 和实际内容尺寸回写 maxTextWidth / maxTextHeight
-    const fontScale = this.textStyle.fontScale;
+    // ── 步骤 2: SizeMode → 帧尺寸（逻辑单位）──
+    // fontScale 不参与排版，全部在逻辑坐标系中完成。
+    let frameW: number;
+    let frameH: number;
 
     switch (layout.autoResize) {
       case spec.TextSizeMode.autoWidth:
-        // 宽高均自适应内容
-        layout.maxTextWidth = Math.max(1, (wrapResult.maxLineWidth || 0) / fontScale);
-        layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
+        frameW = Math.max(1, wrapResult.maxLineWidth || 0);
+        frameH = Math.max(1, wrapResult.totalHeight || 0);
 
         break;
       case spec.TextSizeMode.autoHeight:
-        // 仅高度自适应内容
-        layout.maxTextHeight = Math.max(1, (wrapResult.totalHeight || 0) / fontScale);
+        frameW = layout.maxTextWidth;
+        frameH = Math.max(1, wrapResult.totalHeight || 0);
 
         break;
       case spec.TextSizeMode.fixed:
-        // 固定宽高，保持原值
+      default:
+        frameW = layout.maxTextWidth;
+        frameH = layout.maxTextHeight;
+
         break;
     }
 
-    // 步骤2: 尺寸处理
-    const sizeResult = this.resolveCanvasSize(
-      wrapResult,
-      layout,
-      this.textStyle,
-      this.singleLineHeight,
-    );
+    // ── 步骤 3: 内容缩放（display 模式缩小以适配帧，其他模式跳过）──
+    if (layout.overflow === spec.TextOverflow.display) {
+      const contentW = Math.max(1, wrapResult.maxLineWidth || 0);
+      const contentH = Math.max(1, wrapResult.totalHeight || 0);
 
-    // 首次渲染时初始化 canvas 尺寸和组件变换
-    this.setCanvasSize(sizeResult);
+      scaleLinesToFit(wrapResult.lines, contentW, contentH, frameW, frameH);
+    }
 
-    // 步骤3: 溢出策略处理
-    const overflowResult = this.richOverflowStrategy.apply(
-      wrapResult.lines,
-      sizeResult,
-      layout,
-      this.textStyle,
-    );
-
-    // 步骤4: 水平对齐策略
+    // ── 步骤 4: 对齐（在帧坐标系中，不依赖 overflow 模式）──
     const horizontalAlignResult = this.richHorizontalAlignStrategy.getHorizontalOffsets(
       wrapResult.lines,
-      sizeResult,
-      overflowResult,
+      frameW,
       layout,
       this.textStyle,
     );
 
-    // 步骤5: 垂直对齐策略
-    const TextVerticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
+    const verticalAlignResult = this.richVerticalAlignStrategy.getVerticalOffsets(
       wrapResult.lines,
-      sizeResult,
-      overflowResult,
+      frameH,
       layout,
-      this.textStyle,
-      this.singleLineHeight,
     );
 
-    // 使用 this.canvasSize 统一设置画布尺寸
-    assertExist(this.canvasSize);
-    const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
+    // ── 步骤 5: 溢出 / 画布解析（不依赖对齐模式枚举）──
+    const overflowResult = this.richOverflowStrategy.resolveCanvas(
+      wrapResult.lines,
+      frameW,
+      frameH,
+      horizontalAlignResult,
+      verticalAlignResult,
+    );
 
-    // 确保canvas宽高至少为1
-    const safeW = Math.max(1, Math.ceil(canvasWidth));
-    const safeH = Math.max(1, Math.ceil(canvasHeight));
+    // 排版结果（逻辑单位）→ 物理像素画布
+    const physicalW = Math.max(1, Math.ceil(overflowResult.canvasWidth * fontScale));
+    const physicalH = Math.max(1, Math.ceil(overflowResult.canvasHeight * fontScale));
 
-    layout.width = safeW / this.textStyle.fontScale;
-    layout.height = safeH / this.textStyle.fontScale;
+    // 渲染尺寸不随 fontScale 改变
+    this.item.transform.size.set(
+      overflowResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
+      overflowResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
+    );
 
-    this.renderToTexture(safeW, safeH, flipY, context => {
-      // 步骤6: 绘制文本
+    // 统一回写布局属性（逻辑单位）
+    layout.maxTextWidth = frameW;
+    layout.maxTextHeight = frameH;
+    layout.width = overflowResult.canvasWidth;
+    layout.height = overflowResult.canvasHeight;
+
+    this.renderToTexture(physicalW, physicalH, flipY, context => {
+      // fontScale 仅作为渲染分辨率倍率，排版坐标全部为逻辑单位
+      context.scale(fontScale, fontScale);
+      // ── 步骤 6: 绘制 ──
       this.drawTextWithStrategies(
         context,
         wrapResult.lines,
         horizontalAlignResult,
-        TextVerticalAlignResult,
+        verticalAlignResult,
         overflowResult,
         this.textStyle,
       );
@@ -475,247 +491,42 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.isDirty = false;
   }
 
-  private setCanvasSize (sizeResult: SizeResult): void {
-    const layout = this.textLayout;
-    const fontScale = this.textStyle.fontScale || 1;
-
-    // 防止 frameW / frameH 为 0
-    const frameW = Math.max(1, layout.maxTextWidth || 0);
-    const frameH = Math.max(1, layout.maxTextHeight || 0);
-
-    switch (layout.overflow) {
-      case spec.TextOverflow.visible: {
-        const frameWpx = frameW * fontScale;
-        const frameHpx = frameH * fontScale;
-
-        const bboxTop = sizeResult.bboxTop ?? 0;
-        const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
-        const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
-
-        // 计算 frame 基线
-        let baselineYFrame = 0;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-            baselineYFrame = -bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
-
-            break;
-        }
-
-        // 上下溢出检测
-        const contentTopInFrame = baselineYFrame + bboxTop;
-        const contentBottomInFrame = baselineYFrame + bboxBottom;
-
-        const overflowTop = Math.max(0, -contentTopInFrame);
-        const overflowBottom = Math.max(0, contentBottomInFrame - frameHpx);
-
-        // 垂直扩张
-        let expandTop = overflowTop;
-        let expandBottom = overflowBottom;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top: {
-            const E = overflowBottom;
-
-            expandTop = E;
-            expandBottom = E;
-
-            break;
-          }
-          case spec.TextVerticalAlign.bottom: {
-            const E = overflowTop;
-
-            expandTop = E;
-            expandBottom = E;
-
-            break;
-          }
-          case spec.TextVerticalAlign.middle: {
-            // 保持非对称：上扩 overflowTop，下扩 overflowBottom
-            expandTop = overflowTop;
-            expandBottom = overflowBottom;
-
-            break;
-          }
-        }
-
-        // 位移补偿：始终使用 expandTop
-        const compY = expandTop;
-
-        // 水平扩张
-        const lines = sizeResult.lines || [];
-
-        // 1. 先按 frameWpx 计算每行的对齐起点（逻辑对齐）
-        const xOffsetsFrame = lines.map(line =>
-          layout.getOffsetXRich(this.textStyle, frameWpx, line.width)
-        );
-
-        // 2. 用对齐后的偏移 + 行宽算出内容的左右边界
-        let contentMinX = Infinity;
-        let contentMaxX = -Infinity;
-
-        for (let i = 0; i < lines.length; i++) {
-          const off = xOffsetsFrame[i] ?? 0;
-          const w = lines[i].width ?? 0; // 像素宽
-
-          contentMinX = Math.min(contentMinX, off);
-          contentMaxX = Math.max(contentMaxX, off + w);
-        }
-
-        if (!isFinite(contentMinX)) {
-          contentMinX = 0;
-        }
-        if (!isFinite(contentMaxX)) {
-          contentMaxX = 0;
-        }
-
-        // 3. 计算内容相对于 frame 的越界量
-        const overflowLeft = Math.max(0, -contentMinX);               // 内容左边 < 0
-        const overflowRight = Math.max(0, contentMaxX - frameWpx);    // 内容右边 > frameWpx?
-
-        // 4. 让 canvas 左右都扩张到能容下整个内容 bbox
-        const expandLeft = overflowLeft;
-        const expandRight = overflowRight;
-
-        // 5. 最终 canvas 宽高
-        const finalWpx = Math.ceil(frameWpx + expandLeft + expandRight);
-        const finalHpx = Math.ceil(frameHpx + expandTop + expandBottom);
-
-        // 记录补偿，供垂直对齐策略叠加
-        sizeResult.baselineCompensationX = expandLeft;
-        sizeResult.baselineCompensationY = compY;
-        // containerWidth 用 frameWpx，而不是 finalWpx
-        sizeResult.containerWidth = frameWpx;
-
-        sizeResult.canvasWidth = finalWpx;
-        sizeResult.canvasHeight = finalHpx;
-
-        this.canvasSize = new math.Vector2(finalWpx, finalHpx);
-
-        // 实际元素渲染尺寸不随着 fontScale 改变
-        this.item.transform.size.set(
-          finalWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          finalHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-        );
-        this.initialized = true;
-
-        break;
-      }
-      case spec.TextOverflow.clip: {
-        const frameWpx = frameW * fontScale;
-        const frameHpx = frameH * fontScale;
-
-        // 直接使用 frame 尺寸作为画布尺寸
-        sizeResult.canvasWidth = frameWpx;
-        sizeResult.canvasHeight = frameHpx;
-
-        // clip 模式不需要任何补偿
-        sizeResult.baselineCompensationX = 0;
-        sizeResult.baselineCompensationY = 0;
-
-        // 设置 canvas 和节点变换
-        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
-
-        // 把 layout 的尺寸更新为 frame 尺寸
-        layout.width = frameW;
-        layout.height = frameH;
-
-        this.item.transform.size.set(
-          frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-        );
-        this.initialized = true;
-
-        break;
-      }
-      case spec.TextOverflow.display: {
-        const frameWpx = frameW * fontScale;
-        const frameHpx = frameH * fontScale;
-
-        this.canvasSize = new math.Vector2(frameWpx, frameHpx);
-        this.item.transform.size.set(
-          frameWpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR,
-          frameHpx / fontScale * this.SCALE_FACTOR * this.SCALE_FACTOR
-        );
-        this.initialized = true;
-
-        break;
-      }
-    }
-  }
-
-  /**
-   * 尺寸处理
-   */
-  private resolveCanvasSize (
-    wrapResult: WrapResult,
-    layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
-  ): SizeResult {
-    const canvasWidth = Math.max(1, wrapResult.maxLineWidth || 0);
-    const canvasHeight = Math.max(1, wrapResult.totalHeight || 0); // stepTotalHeight
-
-    layout.width = canvasWidth / style.fontScale;
-    layout.height = canvasHeight / style.fontScale;
-
-    return {
-      canvasWidth,
-      canvasHeight,
-      contentWidth: wrapResult.maxLineWidth,
-      bboxTop: wrapResult.bboxTop,
-      bboxBottom: wrapResult.bboxBottom,
-      bboxHeight: wrapResult.bboxHeight,
-      // 为 visible 模式的画布尺寸计算保留行信息
-      lines: wrapResult.lines,
-    } as SizeResult;
-  }
-
   /**
    * 使用策略结果绘制文本
+   * 坐标 = 帧坐标（对齐结果） + 渲染偏移（溢出结果）
    */
   private drawTextWithStrategies (
     context: CanvasRenderingContext2D,
     lines: RichLine[],
     horizontalAlignResult: HorizontalAlignResult,
-    TextVerticalAlignResult: VerticalAlignResult,
+    verticalAlignResult: VerticalAlignResult,
     overflowResult: OverflowResult,
     textStyle: TextStyle
   ): void {
-    let currentBaselineY = TextVerticalAlignResult.baselineY;
+    const { renderOffsetX, renderOffsetY } = overflowResult;
+    let currentBaselineY = verticalAlignResult.baselineY + renderOffsetY;
     const { lineOffsets } = horizontalAlignResult;
 
     lines.forEach((line, index) => {
       const { richOptions, chars } = line;
-      const xOffset = lineOffsets[index];
+      const xOffset = lineOffsets[index] + renderOffsetX;
       const yOffset = currentBaselineY;
 
       richOptions.forEach((options, segIndex) => {
-        const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
+        const { textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
 
-        // 直接使用原始字体大小（已在行数据中预缩放）
         const textSize = fontSize;
 
-        context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
+        context.font = `${fontStyle} ${fontWeight} ${textSize}px ${fontFamily}`;
         const [r, g, b, a] = fontColor;
 
         context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
 
-        // 逐字绘制
         const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
         const charArr = chars[segIndex];
 
         charArr.forEach(charDetail => {
-          // 直接使用缩放后的字符位置
           context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
         });
       });

@@ -37,61 +37,31 @@ export interface WrapResult {
 }
 
 /**
- * 尺寸策略结果
- */
-export interface SizeResult {
-  canvasWidth: number,
-  canvasHeight: number,
-  contentWidth?: number,       // 内容宽度
-  bboxTop?: number,            // 边界框顶部
-  bboxBottom?: number,         // 边界框底部
-  bboxHeight?: number,         // 边界框高度
-  baselineCompensationY?: number, // 基线补偿Y值（仅visible模式）
-  baselineCompensationX?: number, // 基线补偿X值（仅visible模式）
-  containerWidth?: number,     // 容器宽度（仅visible模式）
-  lines?: RichLine[],          // 行信息（仅visible模式）
-}
-/**
  * 溢出策略结果
+ * 包含最终画布尺寸和渲染坐标偏移
  */
 export interface OverflowResult {
-  globalScale?: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  /** 渲染时叠加到所有 X 坐标的偏移（帧→画布坐标系补偿） */
+  renderOffsetX: number,
+  /** 渲染时叠加到所有 Y 坐标的偏移（帧→画布坐标系补偿） */
+  renderOffsetY: number,
 }
 
 /**
  * 水平对齐策略结果
  */
 export interface HorizontalAlignResult {
-  lineOffsets: number[], // 每行的水平偏移量
+  lineOffsets: number[], // 每行在帧坐标系中的水平偏移量
 }
 
 /**
  * 垂直对齐策略结果
  */
 export interface VerticalAlignResult {
-  baselineY: number, // 第一行基线Y坐标
-  lineYOffsets: number[], // 每行的垂直偏移量
-}
-
-/**
- * 对齐策略结果（组合水平和垂直对齐）
- */
-export interface AlignResult {
-  horizontal: HorizontalAlignResult,
-  vertical: VerticalAlignResult,
-}
-
-/**
- * 富文本尺寸策略接口
- */
-export interface RichSizeStrategy {
-  calculate (
-    WrapResult: WrapResult,
-    layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
-    fontScale: number
-  ): SizeResult,
+  baselineY: number,      // 第一行基线在帧坐标系中的 Y 坐标
+  lineYOffsets: number[],  // 每行在帧坐标系中的垂直偏移量
 }
 
 /**
@@ -103,32 +73,88 @@ export interface RichWrapStrategy {
     context: CanvasRenderingContext2D,
     style: TextStyle,
     layout: RichTextLayout,
-    singleLineHeight: number,
-    fontScale: number,
     letterSpace: number,
   ): WrapResult,
 }
 
 /**
- * 富文本溢出策略接口
+ * 富文本溢出策略接口（画布解析）
+ * 根据对齐后的内容位置确定最终画布尺寸和渲染偏移
+ * 不依赖对齐模式（textAlign/textVerticalAlign）的枚举值，
+ * 仅使用对齐策略输出的位置数据
  */
 export interface RichOverflowStrategy {
-  apply (
+  resolveCanvas (
     lines: RichLine[],
-    sizeResult: SizeResult,
-    layout: RichTextLayout,
-    style: TextStyle,
+    frameWidth: number,
+    frameHeight: number,
+    horizontalResult: HorizontalAlignResult,
+    verticalResult: VerticalAlignResult,
   ): OverflowResult,
 }
 
 /**
+ * 将行数据等比缩小以适配帧尺寸（display 模式使用）
+ * 只缩小不放大，就地修改行数据
+ */
+export function scaleLinesToFit (
+  lines: RichLine[],
+  contentWidth: number,
+  contentHeight: number,
+  frameWidth: number,
+  frameHeight: number,
+): void {
+  const safeDiv = (a: number, b: number) =>
+    Math.abs(b) > 1e-5 ? a / b : 1;
+
+  const safeContentW = Math.max(1, contentWidth);
+  const safeContentH = Math.max(1, contentHeight);
+
+  // 只缩小不放大
+  const s = Math.min(1,
+    safeDiv(frameWidth, safeContentW),
+    safeDiv(frameHeight, safeContentH)
+  );
+
+  // 浮点精度处理
+  if (s > 0.9999) {
+    return;
+  }
+
+  for (const line of lines) {
+    line.width *= s;
+    line.lineHeight *= s;
+    if (line.offsetX) {
+      for (let i = 0; i < line.offsetX.length; i++) { line.offsetX[i] *= s; }
+    }
+    for (const seg of (line.chars || [])) {
+      for (const ch of seg) { ch.x *= s; }
+    }
+    // 创建新的 richOptions 数组，避免修改原始对象
+    const originalOptions = line.richOptions || [];
+    const newOptions = [];
+
+    for (let i = 0; i < originalOptions.length; i++) {
+      newOptions.push({
+        ...originalOptions[i],
+        fontSize: originalOptions[i].fontSize * s,
+      });
+    }
+
+    line.richOptions = newOptions;
+    if (line.lineAscent != null) { line.lineAscent *= s; }
+    if (line.lineDescent != null) { line.lineDescent *= s; }
+  }
+}
+
+/**
  * 富文本水平对齐策略接口
+ * 在帧坐标系中定位内容，不依赖溢出模式
  */
 export interface RichHorizontalAlignStrategy {
   getHorizontalOffsets (
     lines: RichLine[],
-    sizeResult: SizeResult,
-    overflowResult: OverflowResult,
+    frameWidth: number,
     layout: RichTextLayout,
     style: TextStyle,
   ): HorizontalAlignResult,
@@ -136,14 +162,12 @@ export interface RichHorizontalAlignStrategy {
 
 /**
  * 富文本垂直对齐策略接口
+ * 在帧坐标系中定位内容，不依赖溢出模式
  */
 export interface RichVerticalAlignStrategy {
   getVerticalOffsets (
     lines: RichLine[],
-    sizeResult: SizeResult,
-    overflowResult: OverflowResult,
+    frameHeight: number,
     layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
   ): VerticalAlignResult,
 }

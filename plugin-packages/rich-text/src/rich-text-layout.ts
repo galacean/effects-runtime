@@ -187,7 +187,7 @@ export class RichTextLayout implements BaseLayout {
   getOffsetXRich (style: TextStyle, maxWidth: number, contentW: number): number {
     switch (this.textAlign) {
       case spec.TextAlignment.left:
-        return style.outlineWidth * style.fontScale;
+        return style.outlineWidth;
       case spec.TextAlignment.middle:
         return (maxWidth - contentW) / 2;
       case spec.TextAlignment.right:

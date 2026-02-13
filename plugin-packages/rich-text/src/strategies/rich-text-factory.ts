@@ -1,24 +1,25 @@
 import { spec } from '@galacean/effects';
 import type {
-  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichVerticalAlignStrategy,
+  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy,
+  RichVerticalAlignStrategy,
 } from './rich-text-interfaces';
 import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled';
 import { RichWrapEnabledStrategy } from './wrap/rich-wrap-enabled';
-import { RichDisplayOverflowStrategy } from './overflow/rich-display-overflow';
 import { RichClippedOverflowStrategy } from './overflow/rich-clipped-overflow';
-import { RichVisibleOverflowStrategy } from './overflow/rich-visible-overflow';
+import { RichExpandingOverflowStrategy } from './overflow/rich-expanding-overflow';
 import { RichHorizontalAlignStrategyImpl } from './align/rich-horizontal-align';
 import { RichVerticalAlignStrategyImpl } from './align/rich-vertical-align';
 
 /**
  * 富文本策略工厂
  * 负责创建各种策略实例
+ *
+ * 管线顺序：Wrap → scaleLinesToFit（display）→ Align → Overflow.resolveCanvas
  */
 export class RichTextStrategyFactory {
 
   /**
    * 创建换行策略
-   * 根据wrapEnabled参数决定使用哪种策略
    */
   static createWrapStrategy (wrapEnabled?: boolean): RichWrapStrategy {
     if (wrapEnabled) {
@@ -29,18 +30,18 @@ export class RichTextStrategyFactory {
   }
 
   /**
-   * 创建溢出策略
-   * 支持三种模式：clip（裁切）、display（行级缩放）、visible（不缩放不裁剪）
+   * 创建溢出策略（画布解析）
+   * clip：画布=帧，超出裁切
+   * display/visible：检测溢出并对称扩展画布
    */
   static createOverflowStrategy (mode: spec.TextOverflow): RichOverflowStrategy {
     switch (mode) {
       case spec.TextOverflow.clip:
         return new RichClippedOverflowStrategy();
       case spec.TextOverflow.display:
-        return new RichDisplayOverflowStrategy();
       case spec.TextOverflow.visible:
       default:
-        return new RichVisibleOverflowStrategy();
+        return new RichExpandingOverflowStrategy();
     }
   }
 
