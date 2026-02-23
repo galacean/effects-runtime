@@ -41,7 +41,7 @@ export class CompositionComponent extends Component {
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
 
-  private get timelineInstance (): TimelineInstance | null {
+  get timelineInstance (): TimelineInstance | null {
     if (!this._timelineInstance && this.timelineAsset) {
       this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
     }

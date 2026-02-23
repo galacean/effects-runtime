@@ -1,9 +1,10 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from './track';
 import { ObjectBindingTrack } from './tracks';
 import { PlayState } from './playable';
+import type { Playable } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
 import type { SceneBinding } from '../../components';
@@ -65,6 +66,7 @@ export class TimelineInstance {
 
   private time = 0;
   private clips: RuntimeClip[] = [];
+  private playableMap: Record<string, Playable[]> = {};
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
     const sceneBindingMap: Record<string, VFXItem> = {};
@@ -146,6 +148,9 @@ export class TimelineInstance {
     for (const trackInstance of this.masterTrackInstances) {
       this.updateTrackAnimatedObject(trackInstance);
     }
+
+    // Build playable map for quick lookup by VFXItem id
+    this.buildPlayableMap();
   }
 
   private tickTrack (track: TrackInstance, deltaTime: number) {
@@ -178,5 +183,64 @@ export class TimelineInstance {
       }
       this.updateTrackAnimatedObject(subTrack);
     }
+  }
+
+  /**
+   * 构建 VFXItem id 到 Playable 的映射表
+   * @internal
+   */
+  private buildPlayableMap () {
+    this.playableMap = {};
+
+    for (const trackInstance of this.masterTrackInstances) {
+      this.collectPlayables(trackInstance);
+    }
+  }
+
+  /**
+   * 递归收集所有 Playable 并建立映射
+   * @internal
+   */
+  private collectPlayables (trackInstance: TrackInstance) {
+    const boundObject = trackInstance.boundObject;
+
+    if (boundObject instanceof VFXItem) {
+      const itemId = boundObject.getInstanceId();
+
+      if (!this.playableMap[itemId]) {
+        this.playableMap[itemId] = [];
+      }
+
+      // 收集该轨道的所有 Playable
+      for (const clipPlayable of trackInstance.mixer.clipPlayables) {
+        this.playableMap[itemId].push(clipPlayable);
+      }
+    }
+
+    // 递归处理子轨道
+    for (const child of trackInstance.children) {
+      this.collectPlayables(child);
+    }
+  }
+
+  /**
+   * 通过 VFXItem 的 id 获取对应的 Playable 数组
+   * @param itemId - VFXItem 的实例 id
+   * @returns Playable 数组，如果没有找到则返回空数组
+   */
+  getPlayablesByItemId (itemId: string): Playable[] {
+    return this.playableMap[itemId] || [];
+  }
+
+  /**
+   * 通过 VFXItem 的 id 获取指定类型的 Playable
+   * @param itemId - VFXItem 的实例 id
+   * @param playableType - Playable 的类型构造函数
+   * @returns 指定类型的 Playable 数组，如果没有找到则返回空数组
+   */
+  getPlayablesByItemIdAndType<T extends Playable> (itemId: string, playableType: new (...args: any[]) => T): T[] {
+    const playables = this.getPlayablesByItemId(itemId);
+
+    return playables.filter(playable => playable instanceof playableType) as T[];
   }
 }
