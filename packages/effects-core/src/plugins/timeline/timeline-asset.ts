@@ -201,25 +201,26 @@ export class TimelineInstance {
    * 递归收集所有 Playable 并建立映射
    * @internal
    */
-  private collectPlayables (trackInstance: TrackInstance) {
+  private collectPlayables (trackInstance: TrackInstance, inheritedItemId?: string) {
     const boundObject = trackInstance.boundObject;
+    let currentItemId = inheritedItemId;
 
     if (boundObject instanceof VFXItem) {
-      const itemId = boundObject.getInstanceId();
+      currentItemId = boundObject.getInstanceId();
+    }
 
-      if (!this.playableMap[itemId]) {
-        this.playableMap[itemId] = [];
+    if (currentItemId) {
+      if (!this.playableMap[currentItemId]) {
+        this.playableMap[currentItemId] = [];
       }
 
-      // 收集该轨道的所有 Playable
       for (const clipPlayable of trackInstance.mixer.clipPlayables) {
-        this.playableMap[itemId].push(clipPlayable);
+        this.playableMap[currentItemId].push(clipPlayable);
       }
     }
 
-    // 递归处理子轨道
     for (const child of trackInstance.children) {
-      this.collectPlayables(child);
+      this.collectPlayables(child, currentItemId);
     }
   }
 
