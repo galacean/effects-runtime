@@ -70,7 +70,7 @@ export class RenderFrame implements Disposable {
   /**
    * 当前使用的全部 RenderPass
    */
-  _renderPasses: RenderPass[];
+  renderPasses: RenderPass[];
   /**
    * 渲染时的相机
    */
@@ -81,7 +81,7 @@ export class RenderFrame implements Disposable {
   globalVolume?: PostProcessVolume;
   renderer: Renderer;
   editorTransform: Vector4;
-  rootComposition: CompositionComponent | null = null;
+  rootComposition: CompositionComponent;
   /**
    * 名称
    */
@@ -142,10 +142,6 @@ export class RenderFrame implements Disposable {
     this.editorTransform = Vector4.fromArray(editorTransform);
   }
 
-  get renderPasses () {
-    return this._renderPasses.slice();
-  }
-
   get isDisposed () {
     return this.disposed;
   }
@@ -182,11 +178,11 @@ export class RenderFrame implements Disposable {
     const pass = options?.passes ? options.passes : undefined;
 
     if (pass !== DestroyOptions.keep) {
-      this._renderPasses.forEach(renderPass => {
+      this.renderPasses.forEach(renderPass => {
         renderPass.dispose(pass);
       });
     }
-    this._renderPasses.length = 0;
+    this.renderPasses.length = 0;
     this.disposed = true;
   }
 
@@ -195,7 +191,7 @@ export class RenderFrame implements Disposable {
    * @param passes - RenderPass 数组
    */
   setRenderPasses (passes: RenderPass[]) {
-    this._renderPasses = passes.slice();
+    this.renderPasses = passes.slice();
   }
 
   /**
@@ -203,7 +199,7 @@ export class RenderFrame implements Disposable {
    * @param pass - 需要添加的 RenderPass
    */
   addRenderPass (pass: RenderPass): void {
-    this._renderPasses.push(pass);
+    this.renderPasses.push(pass);
   }
 
   /**
@@ -211,7 +207,7 @@ export class RenderFrame implements Disposable {
    * @param pass - 需要移除的 RenderPass
    */
   removeRenderPass (pass: RenderPass): void {
-    removeItem(this._renderPasses, pass);
+    removeItem(this.renderPasses, pass);
   }
 }
 

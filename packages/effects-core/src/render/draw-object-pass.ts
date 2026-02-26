@@ -5,7 +5,7 @@ import { RenderPass, RenderPassPriorityNormal } from './render-pass';
 import type { Renderer } from './renderer';
 
 export class DrawObjectPass extends RenderPass {
-  private rootComposition: CompositionComponent | null = null;
+  private rootComposition: CompositionComponent;
   private useRenderTarget = false;
 
   constructor (renderer: Renderer) {
@@ -15,7 +15,7 @@ export class DrawObjectPass extends RenderPass {
     this.name = 'DrawObjectPass';
   }
 
-  setup (useRenderTarget: boolean, rootComposition: CompositionComponent | null) {
+  setup (useRenderTarget: boolean, rootComposition: CompositionComponent) {
     this.useRenderTarget = useRenderTarget;
     this.rootComposition = rootComposition;
   }
@@ -40,7 +40,7 @@ export class DrawObjectPass extends RenderPass {
 
     // renderer.renderMeshes(this.meshes);
 
-    if (this.rootComposition && this.rootComposition.isActiveAndEnabled) {
+    if (this.rootComposition.item.isDuringPlay && this.rootComposition.isActiveAndEnabled) {
       this.rootComposition.render(renderer);
     }
   }
