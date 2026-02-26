@@ -4,7 +4,7 @@ import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { vec4 } from '@galacean/effects-specification';
 import type { Camera } from '../camera';
-import type { CompositionComponent, PostProcessVolume, RendererComponent } from '../components';
+import type { PostProcessVolume, RendererComponent } from '../components';
 import type { Texture } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, removeItem } from '../utils';
@@ -81,7 +81,6 @@ export class RenderFrame implements Disposable {
   globalVolume?: PostProcessVolume;
   renderer: Renderer;
   editorTransform: Vector4;
-  rootComposition: CompositionComponent;
   /**
    * 名称
    */
@@ -150,7 +149,7 @@ export class RenderFrame implements Disposable {
    * 设置 RenderPasses 参数，此函数每帧调用一次
    */
   setup () {
-    this.drawObjectPass.setup(this.postProcessingEnabled, this.rootComposition);
+    this.drawObjectPass.setup(this.postProcessingEnabled);
   }
 
   /**

@@ -553,8 +553,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       globalVolume: this.globalVolume,
       postProcessingEnabled: this.postProcessingEnabled,
     });
-
-    this.renderFrame.rootComposition = this.rootComposition;
   }
 
   /**

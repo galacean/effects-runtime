@@ -210,13 +210,13 @@ export class VFXItem extends EffectsObject implements Disposable {
   get renderOrder () {
     return this.listIndex;
   }
+
   set renderOrder (value: number) {
-    if (this.listIndex !== value) {
-      this.listIndex = value;
-      for (const component of this.components) {
-        if (component instanceof RendererComponent) {
-          component.priority = value;
-        }
+    this.listIndex = value;
+
+    for (const component of this.components) {
+      if (component instanceof RendererComponent) {
+        component.priority = value;
       }
     }
   }
