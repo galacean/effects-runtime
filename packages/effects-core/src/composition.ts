@@ -630,12 +630,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (!this.rootItem.isDuringPlay) {
       this.rootItem.awake();
       this.rootItem.beginPlay();
-    }
-
-    if (this.rootComposition.isActiveAndEnabled) {
-      this.renderFrame.addMeshToDefaultRenderPass(this.rootComposition);
-    } else {
-      this.renderFrame.removeMeshFromDefaultRenderPass(this.rootComposition);
+      this.renderFrame.rootComposition = this.rootComposition;
     }
 
     const previousCompositionTime = this.time;

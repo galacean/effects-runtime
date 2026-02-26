@@ -1,9 +1,11 @@
+import type { CompositionComponent } from '../components';
 import { TextureLoadAction } from '../texture/types';
 import { FilterMode, RenderTextureFormat } from './framebuffer';
 import { RenderPass, RenderPassPriorityNormal } from './render-pass';
 import type { Renderer } from './renderer';
 
 export class DrawObjectPass extends RenderPass {
+  private rootComposition: CompositionComponent | null = null;
   private useRenderTarget = false;
 
   constructor (renderer: Renderer) {
@@ -13,8 +15,9 @@ export class DrawObjectPass extends RenderPass {
     this.name = 'DrawObjectPass';
   }
 
-  setup (useRenderTarget: boolean) {
+  setup (useRenderTarget: boolean, rootComposition: CompositionComponent | null) {
     this.useRenderTarget = useRenderTarget;
+    this.rootComposition = rootComposition;
   }
 
   override configure (renderer: Renderer): void {
@@ -33,9 +36,13 @@ export class DrawObjectPass extends RenderPass {
       });
     }
 
-    this.meshes.sort((a, b) => a.priority - b.priority);
+    // this.meshes.sort((a, b) => a.priority - b.priority);
 
-    renderer.renderMeshes(this.meshes);
+    // renderer.renderMeshes(this.meshes);
+
+    if (this.rootComposition && this.rootComposition.isActiveAndEnabled) {
+      this.rootComposition.render(renderer);
+    }
   }
 
   override onCameraCleanup (renderer: Renderer): void {
