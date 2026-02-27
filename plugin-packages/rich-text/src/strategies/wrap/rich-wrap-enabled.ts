@@ -13,15 +13,14 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     context: CanvasRenderingContext2D,
     style: TextStyle,
     layout: RichTextLayout,
-    singleLineHeight: number,
-    fontScale: number,
     letterSpace: number,
   ): WrapResult {
     const lines: RichLine[] = [];
     const baselines: number[] = [];
-    const gapPx = (layout.lineHeight || 0) * fontScale;
+    const gapPx = layout.lineHeight || 0;
     const scaleFactor = 1 / 10; // 1/10px, 后面 context.font 设置的字号为10px
-    const scaledLetterSpace = letterSpace * fontScale;
+    // 换行阈值，预计算避免每字符重复读取
+    const wrapWidth = layout.maxTextWidth || Infinity;
 
     let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
@@ -91,6 +90,14 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         finishCurrentLine();
       }
 
+      // 预计算缩放因子：measureText 基于 10px，乘 fontSize/10 得到逻辑像素
+      const glyphScale = fontSize * scaleFactor;
+
+      // 使用字体级别度量（不随具体字符变化），保证基线位置稳定
+      const refMetrics = context.measureText('x');
+      const fontAsc = refMetrics.fontBoundingBoxAscent * glyphScale;
+      const fontDesc = refMetrics.fontBoundingBoxDescent * glyphScale;
+
       // 逐字符处理
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
@@ -98,19 +105,14 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         // 获取基础宽度并计算实际宽度（动态缩放）
         const m = context.measureText(ch);
         const baseW = m.width;
-        const charWidth = (baseW <= 0 ? 0 : baseW) * fontSize * scaleFactor * fontScale;
-
-        // 测量 asc/desc 并按目标字号缩放
-        const scale = fontSize * fontScale * scaleFactor;
-        const asc = m.actualBoundingBoxAscent * scale;
-        const desc = m.actualBoundingBoxDescent * scale;
+        const charWidth = (baseW <= 0 ? 0 : baseW) * glyphScale;
 
         // 计算预期宽度（包含字符间距）
-        const spacing = chunkChars.length > 0 ? scaledLetterSpace : 0;
+        const spacing = chunkChars.length > 0 ? letterSpace : 0;
         const willWidth = currentLine.width + spacing + charWidth;
 
         // 自动换行判断
-        if (willWidth > (layout.maxTextWidth * fontScale || Infinity)) {
+        if (willWidth > wrapWidth) {
           flushChunk();
           finishCurrentLine();
         }
@@ -123,8 +125,8 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
 
         // 添加字符间距（非首字符）
         if (chunkChars.length > 0) {
-          segmentInnerX += scaledLetterSpace;
-          currentLine.width += scaledLetterSpace;
+          segmentInnerX += letterSpace;
+          currentLine.width += letterSpace;
         }
 
         // 添加字符到切块（x为切块内相对坐标）
@@ -133,9 +135,9 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
           x: segmentInnerX, // 切块内相对坐标
         });
 
-        // 累计行级 asc/desc
-        currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, asc);
-        currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, desc);
+        // 累计行级 asc/desc（字体级别，不因字符形状改变）
+        currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, fontAsc);
+        currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, fontDesc);
 
         // 更新位置和宽度
         segmentInnerX += charWidth;
