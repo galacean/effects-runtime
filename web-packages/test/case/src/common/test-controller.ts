@@ -11,6 +11,7 @@ const playerOptions: PlayerConfig = {
   renderOptions: {
     willCaptureImage: true,
   },
+  pixelRatio: 2,
   manualRender: true,
 };
 
