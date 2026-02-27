@@ -93,7 +93,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
   override renderRenderFrame (renderFrame: RenderFrame) {
     const frame = renderFrame;
-    const passes = frame._renderPasses;
+    const passes = frame.renderPasses;
 
     if (this.isDisposed) {
       console.error('Renderer is destroyed, target: GLRenderer.');

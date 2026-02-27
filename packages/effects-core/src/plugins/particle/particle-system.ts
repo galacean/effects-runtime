@@ -7,7 +7,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
-import type { Mesh, Renderer } from '../../render';
+import type { Mesh } from '../../render';
 import type { Maskable } from '../../material';
 import { MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
@@ -181,7 +181,8 @@ export class ParticleSystem extends Component implements Maskable {
   ) {
     super(engine);
 
-    this.maskManager = new MaskProcessor(engine);
+    this.maskManager = new MaskProcessor();
+
     if (props) {
       this.fromData(props);
     }
@@ -489,27 +490,13 @@ export class ParticleSystem extends Component implements Maskable {
     }
   }
 
-  drawStencilMask (renderer: Renderer): void {
+  drawStencilMask (maskRef: number): void {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMasks: boolean[] = [];
-
-    for (let i = 0; i < this.renderer.meshes.length; i++) {
-      const material = this.renderer.meshes[i].material;
-
-      previousColorMasks.push(material.colorMask);
-      material.colorMask = false;
-    }
 
     for (const mesh of this.renderer.meshes) {
-      mesh.render(renderer);
-    }
-
-    for (let i = 0; i < this.renderer.meshes.length; i++) {
-      const material = this.renderer.meshes[i].material;
-
-      material.colorMask = previousColorMasks[i];
+      this.maskManager.drawGeometryMask(this.engine.renderer, mesh.geometry, mesh.worldMatrix, mesh.material, maskRef);
     }
   }
 
@@ -1011,7 +998,7 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     if (props.mask) {
-      this.maskManager.setMaskOptions(props.mask);
+      this.maskManager.setMaskOptions(this.engine, props.mask);
     }
 
     const particleMeshProps: ParticleMeshProps = {
@@ -1112,7 +1099,7 @@ export class ParticleSystem extends Component implements Maskable {
       };
 
       if (trails.mask) {
-        this.maskManager.setMaskOptions(trails.mask);
+        this.maskManager.setMaskOptions(this.engine, trails.mask);
       }
 
       trailMeshProps = {
