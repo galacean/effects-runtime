@@ -49,6 +49,11 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
+  // 事件处理器引用，用于正确移除事件监听
+  private handleGoto?: (option: { time: number }) => void;
+  private handlePause?: () => void;
+  private handlePlay?: (option: { time: number }) => void;
+
   constructor (engine: Engine) {
     super(engine);
 
@@ -84,16 +89,27 @@ export class VideoComponent extends MaskableGraphic {
 
   override onAwake (): void {
     super.onAwake();
-    this.item.composition?.on('goto', (option: { time: number }) => {
+
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return;
+    }
+
+    this.handleGoto = (option: { time: number }) => {
       this.setCurrentTime(this.item.time);
-    });
-    this.item.composition?.on('pause', () => {
+    };
+    this.handlePause = () => {
       this.pauseVideo();
-    });
-    this.item.composition?.on('play', (option: { time: number }) => {
+    };
+    this.handlePlay = (option: { time: number }) => {
       if (this.item.time < 0) {return;}
       this.playVideo();
-    });
+    };
+
+    composition.on('goto', this.handleGoto);
+    composition.on('pause', this.handlePause);
+    composition.on('play', this.handlePlay);
   }
 
   override fromData (data: VideoItemProps): void {
@@ -152,14 +168,14 @@ export class VideoComponent extends MaskableGraphic {
     assertExist(composition);
     const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
-    // 判断是否处于“结束状态”：
+    // 判断是否处于"结束状态"：
     // - 视频时间为 0（未开始）
     // - 合成时间已达最大时长（播放完毕）
     // - 视频时间接近或等于其总时长（考虑容差阈值）
-    const isEnd = (videoTime === 0 || composition.time === rootDuration || Math.abs(videoTime - videoDuration) <= this.threshold);
+    const isEnd = (videoTime === 0 || Math.abs(composition.time - rootDuration) <= this.threshold || Math.abs(videoTime - videoDuration) <= this.threshold);
 
-    // 如果视频时间大于 0，且未到结束状态，并且尚未触发播放，则开始播放视频
-    if (videoTime > 0 && !isEnd && !this.played) {
+    // 如果视频时间大于等于 0，且未到结束状态，并且尚未触发播放，则开始播放视频
+    if (videoTime >= 0 && !isEnd && !this.played && this.isVideoActive) {
       this.playVideo();
     }
 
@@ -170,10 +186,6 @@ export class VideoComponent extends MaskableGraphic {
           this.pauseVideo();
         }
       }
-      // ios freeze issue
-      // else if (videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.restart) {
-      //   this.setCurrentTime(0);
-      // }
     }
     // 判断整个合成是否接近播放完成
     // composition.time + threshold >= rootDuration 表示即将结束
@@ -306,14 +318,44 @@ export class VideoComponent extends MaskableGraphic {
 
   override onDestroy (): void {
     super.onDestroy();
+
+    // 清理播放状态
     this.played = false;
     this.isPlayLoading = false;
     this.pendingPause = false;
+    this.isVideoActive = false;
+
+    // 清理video资源
     if (this.video) {
+      // 暂停视频
       this.video.pause();
-      this.video.src = '';
+
+      // 移除video源，帮助垃圾回收
+      this.video.removeAttribute('src');
       this.video.load();
+
+      // 清理video引用
+      this.video = undefined;
     }
+
+    // 清理事件监听
+    const composition = this.item?.composition;
+
+    if (composition) {
+      if (this.handleGoto) {
+        composition.off('goto', this.handleGoto);
+      }
+      if (this.handlePause) {
+        composition.off('pause', this.handlePause);
+      }
+      if (this.handlePlay) {
+        composition.off('play', this.handlePlay);
+      }
+    }
+    // 清理处理器引用
+    this.handleGoto = undefined;
+    this.handlePause = undefined;
+    this.handlePlay = undefined;
   }
 
   override onDisable (): void {
@@ -326,6 +368,11 @@ export class VideoComponent extends MaskableGraphic {
   override onEnable (): void {
     super.onEnable();
     this.isVideoActive = true;
+    this.played = false;
+    // 重播时确保视频同步到当前时间
+    if (this.video && this.item.composition) {
+      this.setCurrentTime(Math.max(0, this.item.time));
+    }
     this.playVideo();
   }
 }

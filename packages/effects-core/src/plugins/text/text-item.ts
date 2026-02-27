@@ -407,14 +407,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         context.font = style.fontDesc;
       }
 
-      if (style.hasShadow) {
-        this.setupShadow();
-      }
-
-      if (style.isOutlined) {
-        this.setupOutline();
-      }
-
       // textColor 统一是 0-1，写入 canvas 时乘 255
       const [r, g, b, a] = style.textColor;
 
@@ -463,8 +455,15 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         charOffsetX,
       });
 
-      // 先描边
-      if (style.isOutlined && style.outlineWidth > 0) {
+      const hasOutline = style.isOutlined && style.outlineWidth > 0;
+
+      if (hasOutline) {
+        // 有描边：在描边时启用阴影
+        if (style.hasShadow) {
+          this.setupShadow();
+        }
+        this.setupOutline();
+
         charsInfo.forEach(charInfo => {
           const ox = layout.getOffsetX(style, charInfo.width);
 
@@ -476,9 +475,18 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
             context.strokeText(str, drawX, drawY);
           }
         });
+
+        // 描边完成后立即禁用阴影，避免填充时重复绘制阴影
+        if (style.hasShadow) {
+          context.shadowColor = 'transparent';
+        }
       }
 
-      // 再填充
+      // 填充阶段：无描边时才启用阴影
+      if (!hasOutline && style.hasShadow) {
+        this.setupShadow();
+      }
+
       charsInfo.forEach(charInfo => {
         const ox = layout.getOffsetX(style, charInfo.width);
 
@@ -491,6 +499,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         }
       });
 
+      // 清理阴影状态
       if (style.hasShadow) {
         context.shadowColor = 'transparent';
       }
