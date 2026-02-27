@@ -33,6 +33,11 @@ export class MaskProcessor {
 
   private stencilClearAction: RenderPassClearAction;
 
+  private prevStencilFunc: [number, number] = [0, 0];
+  private prevStencilOpZPass: [number, number] = [0, 0];
+  private prevStencilRef: [number, number] = [0, 0];
+  private prevStencilMask: [number, number] = [0, 0];
+
   /**
    * @deprecated 使用 maskReferences 替代
    */
@@ -196,24 +201,25 @@ export class MaskProcessor {
   drawGeometryMask (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
     const previousColorMask = material.colorMask;
     const prevStencilTest = material.stencilTest;
-    const prevStencilFunc = material.stencilFunc;
-    const prevStencilOpZPass = material.stencilOpZPass;
+
+    this.copyStencilArrayValue(this.prevStencilFunc, material.stencilFunc);
+    this.copyStencilArrayValue(this.prevStencilOpZPass, material.stencilOpZPass);
+    this.copyStencilArrayValue(this.prevStencilRef, material.stencilRef);
+    this.copyStencilArrayValue(this.prevStencilMask, material.stencilMask);
     // const prevStencilOpFail = material.stencilOpFail;
     // const prevStencilOpZFail = material.stencilOpZFail;
-    const prevStencilRef = material.stencilRef;
-    const prevStencilMask = material.stencilMask;
 
     this.setupMaskMaterial(material, maskRef);
     renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
 
     material.colorMask = previousColorMask;
     material.stencilTest = prevStencilTest;
-    material.stencilFunc = prevStencilFunc;
-    material.stencilOpZPass = prevStencilOpZPass;
+    material.stencilFunc = this.prevStencilFunc;
+    material.stencilOpZPass = this.prevStencilOpZPass;
     // material.stencilOpFail = prevStencilOpFail;
     // material.stencilOpZFail = prevStencilOpZFail;
-    material.stencilRef = prevStencilRef;
-    material.stencilMask = prevStencilMask;
+    material.stencilRef = this.prevStencilRef;
+    material.stencilMask = this.prevStencilMask;
   }
 
   /**
@@ -262,5 +268,14 @@ export class MaskProcessor {
       // 无蒙版：关闭 stencil 测试
       material.stencilTest = false;
     }
+  }
+
+  private copyStencilArrayValue (target: [number, number], source: [number, number] | undefined): void {
+    if (!source) {
+      return;
+    }
+
+    target[0] = source[0];
+    target[1] = source[1];
   }
 }
