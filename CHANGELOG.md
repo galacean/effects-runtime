@@ -7,6 +7,56 @@
 
 ---
 
+## 2.8.9
+
+`2026-02-27`
+
+- Fix: text item shadow rendering and rich text display overflow. [#1399](https://github.com/galacean/effects-runtime/pull/1399) @wumaolinmaoan
+- Fix: rich text auto resize calculation logic. [#1400](https://github.com/galacean/effects-runtime/pull/1400) @wumaolinmaoan
+- Fix: adjust letter spacing and line height calculations. [#1403](https://github.com/galacean/effects-runtime/pull/1403) @wumaolinmaoan
+- Fix: item hit test recursive logic. [#1406](https://github.com/galacean/effects-runtime/pull/1406) @wumaolinmaoan
+- Fix: rich text visible and display over flow mode text clipping issue. [#1405](https://github.com/galacean/effects-runtime/pull/1405) @wumaolinmaoan
+- Fix: video play logic and resource cleanup on destroy. [#1404](https://github.com/galacean/effects-runtime/pull/1404) @ChengYi996
+
+## 2.8.8
+
+`2026-02-04`
+
+- Fix: correct letter spacing calculation in text component. [#1392](https://github.com/galacean/effects-runtime/pull/1392) @wumaolinmaoan
+- Fix: text component shadow color setting. [#1391](https://github.com/galacean/effects-runtime/pull/1391) @wumaolinmaoan
+- Fix: improve floating-point precision handling in bernstein function. [#1388](https://github.com/galacean/effects-runtime/pull/1388) @ChengYi996
+- Fix: rich text wrap width calculation issue. [#1394](https://github.com/galacean/effects-runtime/pull/1394) @wumaolinmaoan
+
+## 2.8.7
+
+`2026-01-30`
+
+- Fix: rich text wrap enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
+- Fix: use window.devicePixelRatio to calculate default pixel ratio. [#1382](https://github.com/galacean/effects-runtime/pull/1382) @wumaolinmaoan
+
+## 2.8.6
+
+`2026-01-15`
+
+- Fix: error caused by the dispose of the ticker array during iteration. [#1379](https://github.com/galacean/effects-runtime/pull/1379) @wumaolinmaoan
+- Fix: destroy engine if player creation fails. [#1378](https://github.com/galacean/effects-runtime/pull/1378) @wumaolinmaoan
+
+## 2.8.5
+
+`2026-01-15`
+
+- Fix: particle should emit click event when interact behavior is remove. [#1371](https://github.com/galacean/effects-runtime/pull/1371) @wumaolinmaoan
+- Fix: use `Array.from` to split emoji string char. [#1369](https://github.com/galacean/effects-runtime/pull/1369) @wumaolinmaoan
+
+## 2.8.4
+
+`2026-01-09`
+
+- Chore: opt valid font family check logic in desktop. [#1360](https://github.com/galacean/effects-runtime/pull/1360) @wumaolinmaoan
+  - Fix: text font family unit test. [#1366](https://github.com/galacean/effects-runtime/pull/1366) @wumaolinmaoan
+- Fix: text outline should not draw when outline width is 0. [#1361](https://github.com/galacean/effects-runtime/pull/1361) @wumaolinmaoan
+- Fix: unify the rendering size units for rich text and sprite. [#1363](https://github.com/galacean/effects-runtime/pull/1363) @wumaolinmaoan
+
 ## 2.8.3
 
 `2026-01-05`

@@ -9,17 +9,14 @@ export class TextLayout implements BaseLayout {
   overflow: spec.TextOverflow;
   width = 0;
   height = 0;
-
-  /**
-   * 自适应宽高开关
-   */
-  autoWidth: boolean;
-
-  maxTextWidth: number;
   /**
    * 行高
    */
   lineHeight: number;
+  /**
+   * 自动宽高模式
+   */
+  autoResize = spec.TextSizeMode.fixed;
 
   constructor (options: spec.TextContentOptions) {
     this.update(options);
@@ -33,7 +30,6 @@ export class TextLayout implements BaseLayout {
       textVerticalAlign = spec.TextVerticalAlign.top,
       textAlign = spec.TextAlignment.left,
       letterSpace = 0,
-      autoWidth = false,
       fontSize,
       lineHeight = fontSize,
     } = options;
@@ -46,7 +42,6 @@ export class TextLayout implements BaseLayout {
     this.height = textHeight;
 
     this.lineHeight = lineHeight;
-    this.autoWidth = autoWidth;
   }
 
   /**

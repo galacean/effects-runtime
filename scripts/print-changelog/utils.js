@@ -28,9 +28,10 @@ function printPR(prList) {
 }
 
 function queryWithJSDOM(txt) {
-  const QUERY_TITLE = '.gh-header-title .js-issue-title';
+  // const QUERY_TITLE = '.gh-header-title .js-issue-title';
+  const QUERY_TITLE = '[data-component="PH_Title"] .markdown-title';
   const QUERY_DESCRIPTION_LINES = '.comment-body>ul:first-child li';
-  const QUERY_AUTHOR = '.pull-discussion-timeline>.js-discussion>.TimelineItem .author';
+  const QUERY_AUTHOR = '.pull-discussion-timeline>.js-discussion .TimelineItem .author';
   const dom = new JSDOM(txt);
   const { document } = dom.window;
   const prTitle = document.querySelector(QUERY_TITLE).textContent.trim();

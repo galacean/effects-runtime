@@ -1,17 +1,26 @@
 import { serialize } from '../decorators';
 import type { Material } from '../material';
 import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
-import type { Renderer } from '../render';
+import type { Maskable } from '../material';
+import { MaskProcessor } from '../material';
 import { Component } from './component';
+import type { Renderer } from '../render/renderer';
 
 /**
  * 所有渲染组件的基类
  * @since 2.0.0
  */
 export class RendererComponent extends Component {
-
   @serialize()
   materials: Material[] = [];
+  /**
+   * @internal
+   */
+  frameClipMasks: Maskable[] = [];
+  /**
+   * @internal
+   */
+  maskManager: MaskProcessor = new MaskProcessor();
 
   @serialize()
   protected _priority = 0;
@@ -38,8 +47,6 @@ export class RendererComponent extends Component {
     }
   }
 
-  render (renderer: Renderer): void { }
-
   override onEnable (): void {
     this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
   }
@@ -53,5 +60,9 @@ export class RendererComponent extends Component {
    */
   getBoundingBoxInfo (): BoundingBoxInfo {
     return this.boundingBoxInfo;
+  }
+
+  render (renderer: Renderer): void {
+    // OVERRIDE
   }
 }

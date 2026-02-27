@@ -1,8 +1,6 @@
 import { serialize } from '../decorators';
 import type { Engine } from '../engine';
-import { MaskProcessor } from '../material/mask-ref-manager';
 import type { Maskable } from '../material/types';
-import { setMaskMode } from '../material/utils';
 import { extractMinAndMax } from '../math/utils';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { BoundingBoxInfo } from '../plugins';
@@ -19,14 +17,14 @@ export class MeshComponent extends RendererComponent implements Maskable {
    */
   @serialize()
   protected geometry: Geometry;
-  private readonly maskManager: MaskProcessor;
 
   constructor (engine: Engine) {
     super(engine);
-    this.maskManager = new MaskProcessor(engine);
   }
 
   override render (renderer: Renderer) {
+    this.maskManager.drawStencilMask(renderer, this);
+
     for (let i = 0;i < this.materials.length;i++) {
       const material = this.materials[i];
 
@@ -34,18 +32,15 @@ export class MeshComponent extends RendererComponent implements Maskable {
     }
   }
 
-  drawStencilMask (renderer: Renderer): void {
+  drawStencilMask (maskRef: number): void {
     if (!this.isActiveAndEnabled) {
       return;
     }
 
     for (let i = 0;i < this.materials.length;i++) {
       const material = this.materials[i];
-      const previousColorMask = material.colorMask;
 
-      material.colorMask = false;
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
-      material.colorMask = previousColorMask;
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), material, maskRef, i);
     }
   }
 
@@ -97,14 +92,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
     const maskOptions = maskableRendererData.mask;
 
     if (maskOptions) {
-      this.maskManager.setMaskOptions(maskOptions);
-    }
-
-    for (const material of this.materials) {
-      const stencilRef = this.maskManager.getRefValue();
-
-      material.stencilRef = [stencilRef, stencilRef];
-      setMaskMode(material, this.maskManager.maskMode);
+      this.maskManager.setMaskOptions(this.engine, maskOptions);
     }
   }
 }

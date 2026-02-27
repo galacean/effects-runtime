@@ -1,5 +1,6 @@
-import type { Camera, Region, Renderer } from '@galacean/effects-core';
-import { math, Render2D, RendererComponent, VFXItem } from '@galacean/effects-core';
+import type { Camera, Renderer } from '@galacean/effects-core';
+import { Graphics } from '@galacean/effects-core';
+import { math, RendererComponent, VFXItem } from '@galacean/effects-core';
 import { Selection } from './selection';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;
@@ -37,7 +38,7 @@ interface TransformStartData {
 }
 
 export class CanvasGizmo extends RendererComponent {
-  private render2D: Render2D;
+  private render2D: Graphics;
   private canvas: HTMLCanvasElement;
   private hoveredObject: VFXItem | null = null;
 
@@ -59,7 +60,7 @@ export class CanvasGizmo extends RendererComponent {
   override onAwake (): void {
     this.priority = 5000;
     this.canvas = this.engine.canvas;
-    this.render2D = new Render2D(this.engine);
+    this.render2D = new Graphics(this.engine);
 
     // Setup mouse event listeners for 2D camera control
     this.setupMouseListeners();

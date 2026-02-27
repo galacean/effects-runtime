@@ -251,6 +251,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       if (this.canvas && !useExternalCanvas) {
         this.canvas.remove();
       }
+      this.engine?.dispose();
+      this.disposed = true;
       this.handleThrowError(e);
     }
   }
@@ -573,7 +575,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param dt - 时间差，毫秒
    */
   tick (dt: number) {
-    this.engine.render(dt);
+    this.engine.mainLoop(dt);
   }
 
   /**

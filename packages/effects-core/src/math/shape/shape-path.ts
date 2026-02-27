@@ -120,12 +120,12 @@ export class ShapePath {
   }
 
   /**
-     * Connects the current point to a new point with a straight line. This method updates the current path.
-     * @param x - The x-coordinate of the new point to connect to.
-     * @param y - The y-coordinate of the new point to connect to.
-     * @returns The instance of the current object for chaining.
-     */
-  public lineTo (x: number, y: number): this {
+   * Connects the current point to a new point with a straight line. This method updates the current path.
+   * @param x - The x-coordinate of the new point to connect to.
+   * @param y - The y-coordinate of the new point to connect to.
+   * @returns The instance of the current object for chaining.
+   */
+  lineTo (x: number, y: number): this {
     this.ensurePoly();
 
     const points = (this.currentPoly as Polygon).points;

@@ -7,7 +7,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
-import { Material, getPreMultiAlpha, setBlendMode, setMaskMode } from '../../material';
+import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
 import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue, ValueGetter } from '../../math';
 import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
@@ -73,8 +73,6 @@ export class TrailMesh {
       name,
       occlusion,
       blending,
-      maskMode,
-      mask,
       // order,
       textureMap = [0, 0, 1, 1],
       texture,
@@ -189,8 +187,6 @@ export class TrailMesh {
     material.blending = true;
     material.depthMask = occlusion;
     material.depthTest = true;
-    material.stencilRef = mask ? [mask, mask] : undefined;
-    setMaskMode(material, maskMode);
     setBlendMode(material, blending);
 
     const mesh = this.mesh = Mesh.create(

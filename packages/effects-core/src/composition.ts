@@ -336,6 +336,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     this.rootComposition = this.rootItem.getComponent(CompositionComponent);
 
+    // Bind animation event
+    this.rootItem.on('animationevent', eventData => {
+      this.emit('animationevent', eventData);
+    });
+
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
@@ -356,14 +361,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       ...sourceContent?.camera,
       aspect: width / height,
     });
+
     this.url = scene.url;
     this.interactive = true;
+
     if (onItemMessage) {
       this.onItemMessage = onItemMessage;
     }
+
     this.createRenderFrame();
 
     Composition.buildItemTree(this.rootItem);
+
     this.rootComposition.setChildrenRenderOrder(0);
 
     PluginSystem.initializeComposition(this, scene);
@@ -573,7 +582,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
+  getComponent<T extends Component>(classConstructor: Constructor<T>): T {
     return this.rootItem.getComponent(classConstructor);
   }
 
@@ -966,6 +975,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   /**
    * 卸载贴图纹理方法，减少内存
+   * @deprecated
    */
   offloadTexture () {
     if (!this.textureOffloaded) {
@@ -976,6 +986,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   /**
    * 重新加载纹理
+   * @deprecated
    */
   async reloadTexture () {
     if (this.textureOffloaded) {
