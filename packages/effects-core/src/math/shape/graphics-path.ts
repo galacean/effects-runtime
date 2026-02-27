@@ -54,6 +54,20 @@ export class GraphicsPath {
   }
 
   /**
+   * Connects the current point to a new point with a straight line. This method updates the current path.
+   * @param x - The x-coordinate of the new point to connect to.
+   * @param y - The y-coordinate of the new point to connect to.
+   * @returns The instance of the current object for chaining.
+   */
+  lineTo (x: number, y: number): GraphicsPath {
+    this.instructions.push({ action: 'lineTo', data: [x, y] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
    * Sets the starting point for a new sub-path. Any subsequent drawing commands are considered part of this path.
    * @param x - The x-coordinate for the starting point.
    * @param y - The y-coordinate for the starting point.
