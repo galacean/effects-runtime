@@ -11,21 +11,6 @@ import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
 
 /**
- * 纯文本组件特有 API
- */
-export interface ITextComponent {
-  setOutlineWidth (value: number): void,
-  setOutlineEnabled (value: boolean): void,
-  setShadowBlur (value: number): void,
-  setShadowColor (value: spec.RGBAColorValue): void,
-  setShadowOffsetX (value: number): void,
-  setShadowOffsetY (value: number): void,
-  setAutoWidth (value: boolean): void,
-  setFontSize (value: number): void,
-  getTextWidth(): number,
-}
-
-/**
  * 富文本组件特有 API
  */
 export interface IRichTextComponent { }
@@ -44,11 +29,9 @@ export class TextComponentBase {
   material: Material;
   item: VFXItem;
   renderer: ItemRenderer;
-  lineCount = 0;
 
   protected maxLineWidth = 0;
   // 常量
-  protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
   // 通用 setter 方法
@@ -188,8 +171,8 @@ export class TextComponentBase {
 
   protected setupShadow (): void {
     const context = this.context;
-    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
-    const [r, g, b, a] = outlineColor;
+    const { shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
+    const [r, g, b, a] = shadowColor;
 
     if (context) {
       context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;

@@ -6,6 +6,7 @@ import { Component } from '../components';
 export class SceneTicking {
   update: UpdateTickData = new UpdateTickData();
   lateUpdate: LateUpdateTickData = new LateUpdateTickData();
+  preRender: PreRenderTickData = new PreRenderTickData();
 
   /**
    *
@@ -15,8 +16,13 @@ export class SceneTicking {
     if (obj.onUpdate !== Component.prototype.onUpdate) {
       this.update.addComponent(obj);
     }
+
     if (obj.onLateUpdate !== Component.prototype.onLateUpdate) {
       this.lateUpdate.addComponent(obj);
+    }
+
+    if (obj.onPreRender !== Component.prototype.onPreRender) {
+      this.preRender.addComponent(obj);
     }
   }
 
@@ -28,8 +34,13 @@ export class SceneTicking {
     if (obj.onUpdate !== Component.prototype.onUpdate) {
       this.update.removeComponent(obj);
     }
+
     if (obj.onLateUpdate !== Component.prototype.onLateUpdate) {
       this.lateUpdate.removeComponent(obj);
+    }
+
+    if (obj.onPreRender !== Component.prototype.onPreRender) {
+      this.preRender.removeComponent(obj);
     }
   }
 
@@ -100,6 +111,14 @@ class LateUpdateTickData extends TickData {
   override tickComponents (components: Component[], dt: number): void {
     for (const component of components) {
       component.onLateUpdate(dt);
+    }
+  }
+}
+
+class PreRenderTickData extends TickData {
+  override tickComponents (components: Component[], dt: number): void {
+    for (const component of components) {
+      component.onPreRender();
     }
   }
 }

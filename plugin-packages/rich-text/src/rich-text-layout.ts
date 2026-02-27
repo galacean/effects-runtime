@@ -6,6 +6,7 @@ export class RichTextLayout implements BaseLayout {
   textAlign: spec.TextAlignment;
   letterSpace: number;
   overflow: spec.TextOverflow;
+  // TODO: width 和 height 新版富文本计算没有地方用到
   width = 0;
   height = 0;
 
@@ -35,7 +36,7 @@ export class RichTextLayout implements BaseLayout {
    * - autoHeight: 根据内容自动扩展高度
    * - fixed: 使用固定 width / height
    */
-  sizeMode: spec.TextSizeMode;
+  autoResize: spec.TextSizeMode;
 
   /**
    * 文本行高
@@ -53,7 +54,7 @@ export class RichTextLayout implements BaseLayout {
       wrapEnabled = false,
       maxTextWidth = 350,
       maxTextHeight = 1000,
-      sizeMode = spec.TextSizeMode.autoWidth,
+      autoResize = spec.TextSizeMode.autoWidth,
       // @ts-expect-error 兼容旧版
       useLegacyRichText = false,
     } = options;
@@ -68,13 +69,10 @@ export class RichTextLayout implements BaseLayout {
     this.height = size ? size[1] : 100;
 
     this.wrapEnabled = wrapEnabled;
-    // 兜底，避免 0/负数/NaN/Infinity
-    const safeMaxW = Number.isFinite(maxTextWidth) ? maxTextWidth : 0;
-    const safeMaxH = Number.isFinite(maxTextHeight) ? maxTextHeight : 0;
 
-    this.maxTextWidth = Math.max(1, safeMaxW);
-    this.maxTextHeight = Math.max(1, safeMaxH);
-    this.sizeMode = sizeMode;
+    this.maxTextWidth = maxTextWidth;
+    this.maxTextHeight = maxTextHeight;
+    this.autoResize = autoResize;
   }
 
   getOffsetY (
@@ -189,7 +187,7 @@ export class RichTextLayout implements BaseLayout {
   getOffsetXRich (style: TextStyle, maxWidth: number, contentW: number): number {
     switch (this.textAlign) {
       case spec.TextAlignment.left:
-        return style.outlineWidth * style.fontScale;
+        return style.outlineWidth;
       case spec.TextAlignment.middle:
         return (maxWidth - contentW) / 2;
       case spec.TextAlignment.right:
@@ -202,6 +200,7 @@ export class RichTextLayout implements BaseLayout {
   /**
    * 设置文本框尺寸
    * - 不包含 fontScale 缩放
+   * @deprecated use maxTextWidth / maxTextHeight instead
    */
   setSize (width: number, height: number): void {
     this.width = width;

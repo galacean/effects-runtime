@@ -12,7 +12,7 @@ import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { MaterialProps } from '../../material';
 import {
-  getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
+  getPreMultiAlpha, Material, setBlendMode, setSideMode,
 } from '../../material';
 import {
   createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
@@ -151,7 +151,7 @@ export class ParticleMesh implements ParticleMeshData {
       speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
       sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
       gravity, forceTarget, side, occlusion, anchor, blending,
-      maskMode, mask, transparentOcclusion, meshSlots,
+      transparentOcclusion, meshSlots,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),
     } = props;
@@ -331,8 +331,6 @@ export class ParticleMesh implements ParticleMeshData {
     material.blending = true;
     material.depthTest = true;
     material.depthMask = !!occlusion;
-    material.stencilRef = mask ? [mask, mask] : undefined;
-    setMaskMode(material, maskMode);
     setBlendMode(material, blending);
     setSideMode(material, side);
 

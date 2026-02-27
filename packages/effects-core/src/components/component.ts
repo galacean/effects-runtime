@@ -100,6 +100,13 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * 生命周期函数，每帧调用一次，在合成渲染之前调用
+   */
+  onPreRender (): void {
+    // OVERRIDE
+  }
+
+  /**
    * 生命周期函数，在组件销毁时调用
    */
   onDestroy () {

@@ -6,7 +6,7 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
 import {
-  MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
+  MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode,
 } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { MeshCollider } from '../plugins';
@@ -39,7 +39,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   geometry: Geometry;
 
   protected visible = true;
-  protected readonly maskManager: MaskProcessor;
 
   /**
    * 用于点击测试的碰撞器
@@ -102,7 +101,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
     this.material = material;
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
-    this.maskManager = new MaskProcessor(engine);
 
     this.configureMaterial(this.renderer);
   }
@@ -206,24 +204,23 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     if (!this.getVisible()) {
       return;
     }
-
-    this.maskManager.drawStencilMask(renderer);
+    this.maskManager.drawStencilMask(renderer, this);
 
     this.draw(renderer);
+
   }
 
   /**
    * @internal
    */
-  drawStencilMask (renderer: Renderer) {
+  drawStencilMask (maskRef: number) {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMask = this.material.colorMask;
 
-    this.material.colorMask = false;
-    this.draw(renderer);
-    this.material.colorMask = previousColorMask;
+    for (let i = 0; i < this.materials.length; i++) {
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.materials[i], maskRef, i);
+    }
   }
 
   override onStart (): void {
@@ -261,18 +258,15 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   }
 
   private configureMaterial (renderer: ItemRenderer): Material {
-    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const { side, occlusion, blending: blendMode, texture } = renderer;
     const maskMode = this.maskManager.maskMode;
     const material = this.material;
 
     material.blending = true;
     material.depthTest = true;
     material.depthMask = occlusion;
-    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
 
     setBlendMode(material, blendMode);
-    // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, maskMode);
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
@@ -312,7 +306,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     const maskOptions = maskableGraphicData.mask;
 
     if (maskOptions) {
-      this.maskManager.setMaskOptions(maskOptions);
+      this.maskManager.setMaskOptions(this.engine, maskOptions);
     }
 
     this.renderer = {

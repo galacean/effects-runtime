@@ -8,8 +8,8 @@ import type { Engine } from '../../engine';
 import { applyMixins } from '../../utils';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-import type { ITextComponent } from './text-component-base';
 import { TextComponentBase } from './text-component-base';
+import type { Renderer } from '../../render/renderer';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -42,7 +42,7 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends MaskableGraphic implements ITextComponent {
+export class TextComponent extends MaskableGraphic {
   isDirty = true;
   /**
    * 文本行数
@@ -64,43 +64,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
    * 每一行文本的最大宽度
    */
   protected maxLineWidth = 0;
-
-  /**
-   * 初始文本宽度，用于计算缩放比例
-   */
-  private baseTextWidth = 0;
-
-  /**
-   * 初始 `transform.size.x`，用于按比例更新显示宽度
-   */
-  private baseScaleX = 1;
-
-  private getDefaultProps (): spec.TextComponentData {
-    return {
-      id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
-      item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
-      dataType: spec.DataType.TextComponent,
-      options: {
-        text: '默认文本',
-        fontFamily: 'AlibabaSans-BoldItalic',
-        fontSize: 40,
-        // 统一使用 0-1 颜色值
-        textColor: [1, 1, 1, 1],
-        fontWeight: spec.TextWeight.normal,
-        letterSpace: 0,
-        textAlign: 1,
-        fontStyle: spec.FontStyle.normal,
-        autoWidth: false,
-        textWidth: 200,
-        textHeight: 42,
-        lineHeight: 40.148,
-      },
-      renderer: {
-        renderMode: 1,
-        anchor: [0.5, 0.5],
-      },
-    };
-  }
 
   constructor (engine: Engine) {
     super(engine);
@@ -137,6 +100,12 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
   }
 
+  override render (renderer: Renderer) {
+    this.maskManager.drawStencilMask(renderer, this);
+
+    renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.material);
+  }
+
   override onDestroy (): void {
     super.onDestroy();
     this.disposeTextTexture();
@@ -154,11 +123,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.updateWithOptions(options);
     this.renderText(options);
 
-    // 记录初始的 textWidth 和 x 缩放，用于后续按比例更新显示宽度
-    // 添加兜底值 1 防止除 0
-    this.baseTextWidth = options.textWidth || this.textLayout.width || 1;
-    this.baseScaleX = this.item.transform.size.x;
-
     // 恢复默认颜色
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
   }
@@ -171,17 +135,6 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.isDirty = true;
     this.lineCount = 0;
     this.maxLineWidth = 0;
-  }
-
-  // 在 TextComponent 类内新增覆盖 setText
-  setText (value: string): void {
-    if (this.text === value) {
-      return;
-    }
-    this.text = value.toString();
-    // 设置文本后立即重算行数
-    this.lineCount = this.getLineCount(this.text);
-    this.isDirty = true;
   }
 
   /**
@@ -202,18 +155,17 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     }
 
     this.text = options.text.toString();
-    this.lineCount = this.getLineCount(options.text);
   }
 
   getLineCount (text: string): number {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
 
-    // const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     this.maxLineWidth = 0;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
+    let charCountInLine = 0; // 跟踪当前行的字符数
 
     // 设置 context.font 的字号，确保 measureText 能正确计算字宽
     if (context) {
@@ -224,14 +176,19 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
       const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
-      x += letterSpace;
+      // 字符间距只应用在字符之间，每行第一个字符不加间距
+      if (charCountInLine > 0) {
+        x += letterSpace;
+      }
       // 处理文本结束行为
       if (overflow === spec.TextOverflow.display) {
         if (str === '\n') {
           lineCount++;
           x = 0;
+          charCountInLine = 0; // 重置行字符计数
         } else {
           x += textMetrics;
+          charCountInLine++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
         }
       } else {
@@ -239,9 +196,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
           lineCount++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
           x = 0;
+          charCountInLine = 0; // 重置行字符计数
         }
         if (str !== '\n') {
           x += textMetrics;
+          charCountInLine++;
         }
       }
     }
@@ -360,23 +319,23 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
     const fontScale = style.fontScale;
 
+    if (layout.autoResize === spec.TextSizeMode.autoWidth) {
+      layout.width = this.getTextWidth();
+      this.lineCount = this.getLineCount(this.text);
+      layout.height = layout.lineHeight * this.lineCount;
+    } else {
+      this.lineCount = this.getLineCount(this.text);
+    }
+
     const baseWidth = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
+    const baseHeight = layout.height * fontScale;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
     style.fontDesc = this.getFontDesc(fontSize);
-    const char = (this.text || '').split('');
-
-    let baseHeight = 0;
-
-    if (layout.autoWidth) {
-      baseHeight = finalHeight * fontScale;
-      this.item.transform.size.set(1, finalHeight / layout.height);
-    } else {
-      baseHeight = layout.height * fontScale;
-    }
+    // 使用 Array.from 正确分割 Unicode 字符（包括 emoji）
+    const char = Array.from(this.text || '');
 
     const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
@@ -391,20 +350,18 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     this.effectScaleX = baseWidth > 0 ? (texWidth / baseWidth) : 1;
     this.effectScaleY = baseHeight > 0 ? (texHeight / baseHeight) : 1;
 
+    // 默认 camera 下的 world per pixel
+    const scaleFactor = 0.11092565;
+    const scaleFactor2 = scaleFactor * scaleFactor;
+
+    this.transform.setSize(baseWidth * scaleFactor2 / fontScale, baseHeight * scaleFactor2 / fontScale);
+
     this.renderToTexture(texWidth, texHeight, flipY, context => {
       // canvas size 变化后重新刷新 context
       if (this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display) {
         context.font = this.getFontDesc(fontSize * baseWidth / this.maxLineWidth);
       } else {
         context.font = style.fontDesc;
-      }
-
-      if (style.hasShadow) {
-        this.setupShadow();
-      }
-
-      if (style.isOutlined) {
-        this.setupOutline();
       }
 
       // textColor 统一是 0-1，写入 canvas 时乘 255
@@ -423,7 +380,10 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         const textMetrics = context.measureText(str);
 
         // 和浏览器行为保持一致
-        x += layout.letterSpace * fontScale;
+        // 字符间距只应用在字符之间，每行第一个字符不加间距
+        if (charsArray.length > 0) {
+          x += layout.letterSpace * fontScale;
+        }
 
         if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
           charsInfo.push({
@@ -452,8 +412,15 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         charOffsetX,
       });
 
-      // 先描边
-      if (style.isOutlined) {
+      const hasOutline = style.isOutlined && style.outlineWidth > 0;
+
+      if (hasOutline) {
+        // 有描边：在描边时启用阴影
+        if (style.hasShadow) {
+          this.setupShadow();
+        }
+        this.setupOutline();
+
         charsInfo.forEach(charInfo => {
           const ox = layout.getOffsetX(style, charInfo.width);
 
@@ -465,9 +432,18 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
             context.strokeText(str, drawX, drawY);
           }
         });
+
+        // 描边完成后立即禁用阴影，避免填充时重复绘制阴影
+        if (style.hasShadow) {
+          context.shadowColor = 'transparent';
+        }
       }
 
-      // 再填充
+      // 填充阶段：无描边时才启用阴影
+      if (!hasOutline && style.hasShadow) {
+        this.setupShadow();
+      }
+
       charsInfo.forEach(charInfo => {
         const ox = layout.getOffsetX(style, charInfo.width);
 
@@ -480,6 +456,7 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
         }
       });
 
+      // 清理阴影状态
       if (style.hasShadow) {
         context.shadowColor = 'transparent';
       }
@@ -520,14 +497,11 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     return { padL: pad, padR: pad, padT: pad, padB: pad };
   }
 
-  setAutoWidth (value: boolean): void {
-    const layout = this.textLayout;
-    const normalizedValue = !!value;
-
-    if (layout.autoWidth === normalizedValue) {
+  setAutoResize (value: spec.TextSizeMode): void {
+    if (this.textLayout.autoResize === value) {
       return;
     }
-    layout.autoWidth = normalizedValue;
+    this.textLayout.autoResize = value;
     this.isDirty = true;
   }
 
@@ -542,25 +516,16 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const layout = this.textLayout;
 
     // 宽度没变且已是非 autoWidth 模式,直接返回
-    if (layout.width === width && layout.autoWidth === false) {
+    if (layout.width === width && layout.autoResize === spec.TextSizeMode.autoWidth) {
       return;
     }
 
     // 手动设置宽度时关闭 autoWidth
-    layout.autoWidth = false;
+    layout.autoResize = spec.TextSizeMode.autoHeight;
     layout.width = width;
 
-    // 按当前 overflow 模式重新计算行数和 maxLineWidth
-    this.lineCount = this.getLineCount(this.text || '');
+    // 按当前 overflow 模式重新计算 maxLineWidth
     this.isDirty = true;
-
-    // 同步更新外层显示宽度(按比例缩放 transform)
-    // 这样 UI 框的视觉宽度也会跟着文本宽度变化
-    if (this.baseTextWidth > 0) {
-      const scale = width / this.baseTextWidth;
-
-      this.item.transform.size.x = this.baseScaleX * scale;
-    }
   }
 
   /**
@@ -713,6 +678,33 @@ export class TextComponent extends MaskableGraphic implements ITextComponent {
     const w = Math.ceil(logicalMax - (style.fontOffset || 0) - EPS) + padding;
 
     return Math.max(0, w);
+  }
+
+  private getDefaultProps (): spec.TextComponentData {
+    return {
+      id: `default-id-${Math.random().toString(36).substr(2, 9)}`,
+      item: { id: `default-item-${Math.random().toString(36).substr(2, 9)}` },
+      dataType: spec.DataType.TextComponent,
+      options: {
+        text: '默认文本',
+        fontFamily: 'AlibabaSans-BoldItalic',
+        fontSize: 40,
+        // 统一使用 0-1 颜色值
+        textColor: [1, 1, 1, 1],
+        fontWeight: spec.TextWeight.normal,
+        letterSpace: 0,
+        textAlign: 1,
+        fontStyle: spec.FontStyle.normal,
+        autoWidth: false,
+        textWidth: 200,
+        textHeight: 42,
+        lineHeight: 40.148,
+      },
+      renderer: {
+        renderMode: 1,
+        anchor: [0.5, 0.5],
+      },
+    };
   }
 }
 

@@ -11,6 +11,11 @@ import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
+
+let currentMaskComponent: string;
+const componentMap: Map<string, spec.ComponentData> = new Map();
+const itemMap: Map<string, spec.VFXItemData> = new Map();
+
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
  */
@@ -51,462 +56,18 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
   return json;
 }
 
-let currentMaskComponent: string;
-const componentMap: Map<string, spec.ComponentData> = new Map();
-const itemMap: Map<string, spec.VFXItemData> = new Map();
-
 /**
- * 3.1 版本数据适配
- * - 富文本插件名称的适配
+ * 2.5 以下版本 赫尔米特数据转换成贝塞尔数据
  */
-export function version31Migration (json: JSONScene): JSONScene {
-  // Custom shape fill 属性位置迁移
-  for (const component of json.components) {
-    if (component.dataType === DataType.ShapeComponent) {
-      const shapeComponent = component as ShapeComponentData;
-
-      if (shapeComponent.type === ShapePrimitiveType.Custom) {
-        const customShapeComponent = shapeComponent as CustomShapeData;
-
-        //@ts-expect-error
-        if (customShapeComponent.shapes?.length > 0 && customShapeComponent.shapes[0].fill) {
-          // @ts-expect-error
-          customShapeComponent.fill = customShapeComponent.shapes[0].fill;
-        }
-
-        // easingIn 和 easingOut 绝对坐标转相对坐标
-        const easingInFlag = new Array(customShapeComponent.easingIns.length);
-        const easingOutFlag = new Array(customShapeComponent.easingOuts.length).fill(false);
-
-        for (const shape of customShapeComponent.shapes) {
-          for (const index of shape.indexes) {
-            const point = customShapeComponent.points[index.point];
-            const easingIn = customShapeComponent.easingIns[index.easingIn];
-            const easingOut = customShapeComponent.easingOuts[index.easingOut];
-
-            if (!easingInFlag[index.easingIn]) {
-              easingIn.x -= point.x;
-              easingIn.y -= point.y;
-              easingInFlag[index.easingIn] = true;
-            }
-            if (!easingOutFlag[index.easingOut]) {
-              easingOut.x -= point.x;
-              easingOut.y -= point.y;
-              easingOutFlag[index.easingOut] = true;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  json.version = JSONSceneVersion['3_2'];
-
-  return json;
-}
-
-export function version32Migration (json: JSONScene): JSONScene {
-  componentMap.clear();
-  itemMap.clear();
-
-  const { compositions, items, components } = json;
-  // 处理旧蒙版数据
-
-  for (const component of components) {
-    componentMap.set(component.id, component);
-  }
-  for (const item of items) {
-    itemMap.set(item.id, item);
-  }
-
-  for (const comp of compositions) {
-    processContent(comp);
-  }
-
-  json.version = JSONSceneVersion['3_3'];
-
-  return json;
-}
-
-export function version33Migration (json: JSONScene): JSONScene {
-  // 修正老版本数据中，富文本插件名称的问题
-  json.plugins?.forEach((plugin, index) => {
-    if (plugin === 'richtext') {
-      json.plugins[index] = 'rich-text';
+export function version24Migration (json: JSONScene): JSONScene {
+  // 曲线转换成贝塞尔
+  json.compositions.map((comp: any) => {
+    for (const item of comp.items) {
+      convertParam(item.content);
     }
   });
 
-  // 老 shape 数据兼容
-  for (const item of json.items) {
-    if (item.type === spec.ItemType.sprite) {
-      const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
-
-      if (spriteComponent) {
-        const shape = spriteComponent.renderer.shape;
-        let shapeData;
-
-        if (Number.isInteger(shape)) {
-          // @ts-expect-error
-          shapeData = json.shapes?.[shape as number];
-        } else {
-          shapeData = shape;
-        }
-
-        spriteComponent.renderer.shape = shapeData;
-      }
-    }
-  }
-
-  // Composition id 转 guid, Composition 分离 CompositionComponent
-  const compositionId = json.compositionId;
-  const compositionIdToGUIDMap: Record<string, string> = {};
-
-  for (const composition of json.compositions) {
-    const guid = generateGUID();
-
-    compositionIdToGUIDMap[composition.id] = guid;
-    if (composition.id === compositionId) {
-      json.compositionId = guid;
-    }
-    composition.id = guid;
-
-    const compositionComponent = {
-      id: generateGUID(),
-      dataType: 'CompositionComponent',
-      //@ts-expect-error
-      items: composition.items,
-      //@ts-expect-error
-      timelineAsset: composition.timelineAsset,
-      //@ts-expect-error
-      sceneBindings: composition.sceneBindings,
-      item: { id: composition.id },
-    } as unknown as spec.ComponentData;
-
-    //@ts-expect-error
-    composition.timelineAsset = undefined;
-    //@ts-expect-error
-    composition.sceneBindings = undefined;
-    composition.components = [{ id: compositionComponent.id }];
-    json.components.push(compositionComponent);
-  }
-  // 预合成元素 refId 同步改为生成的合成 guid
-  for (const item of json.items) {
-    if (item.content) {
-      const compositionOptions = (item.content as CompositionContent).options;
-
-      if (compositionOptions && compositionOptions.refId !== undefined) {
-        compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
-      }
-    }
-  }
-
-  json.version = JSONSceneVersion['3_4'];
-
   return json;
-}
-
-export function version34Migration (json: JSONScene): JSONScene {
-  const idToComponentMap: Record<string, spec.ComponentData> = {};
-
-  for (const componentData of json.components) {
-    idToComponentMap[componentData.id] = componentData;
-  }
-
-  // 修复合成组件的 item id 问题
-  for (const composition of json.compositions) {
-    for (const component of composition.components) {
-      const componentID = (component).id;
-
-      idToComponentMap[componentID].item.id = composition.id;
-    }
-  }
-
-  // 兼容老 Shape 资源
-  for (const componentData of json.components) {
-    if (componentData.dataType === spec.DataType.SpriteComponent) {
-      const spriteComponentData = componentData as spec.SpriteComponentData;
-      const renderer = spriteComponentData.renderer;
-      const shapeData = renderer.shape as spec.ShapeGeometry;
-
-      if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
-        const geometryData = createGeometryDataByShape(shapeData);
-
-        //@ts-expect-error
-        spriteComponentData.geometry = { id: geometryData.id };
-        json.geometries.push(geometryData);
-      }
-    }
-
-    if (componentData.dataType === spec.DataType.ShapeComponent) {
-      const shapeComponentData = componentData as ShapeComponentData;
-
-      shapeComponentData.fills = [];
-      //@ts-expect-error
-      if (shapeComponentData.fill) {
-        const solidPaintData: spec.SolidPaintData = {
-          type: spec.FillType.Solid,
-          //@ts-expect-error
-          color: shapeComponentData.fill.color,
-        };
-
-        shapeComponentData.fills.push(solidPaintData);
-      }
-      //@ts-expect-error
-      delete shapeComponentData.fill;
-
-      shapeComponentData.strokes = [];
-      //@ts-expect-error
-      if (shapeComponentData.stroke) {
-        const solidPaintData: spec.SolidPaintData = {
-          type: spec.FillType.Solid,
-          //@ts-expect-error
-          color: shapeComponentData.stroke.color,
-        };
-
-        shapeComponentData.strokes.push(solidPaintData);
-
-        //@ts-expect-error
-        shapeComponentData.strokeWidth = shapeComponentData.stroke.width;
-        //@ts-expect-error
-        shapeComponentData.strokeCap = shapeComponentData.stroke.cap;
-        //@ts-expect-error
-        shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
-
-        //@ts-expect-error
-        delete shapeComponentData.stroke;
-      }
-    }
-  }
-
-  //@ts-expect-error
-  json.version = '3.5';
-
-  return json;
-}
-
-export function version35Migration (json: JSONScene): JSONScene {
-  // 处理富文本 lineGap 兼容性
-  if (json.components) {
-    // 遍历所有组件，处理富文本组件
-    for (const component of json.components) {
-      // 识别富文本组件并处理 lineGap 兼容性
-      if (
-        component.dataType === spec.DataType.RichTextComponent
-      ) {
-        const richTextComponent = component as spec.RichTextComponentData;
-
-        if (richTextComponent.options) {
-          // 检查是否已经处理过
-          //@ts-expect-error
-          if (richTextComponent.options.useLegacyRichText === undefined) {
-            // 根据是否存在 lineGap 字段来判断版本
-            if (richTextComponent.options.lineGap === undefined) {
-              // 旧版本（没有 lineGap 字段）
-              //@ts-expect-error
-              richTextComponent.options.useLegacyRichText = true;
-            } else {
-              // 新版本（有 lineGap 字段）
-              //@ts-expect-error
-              richTextComponent.options.useLegacyRichText = false;
-            }
-          }
-        }
-      }
-      // 识别富文本组件并处理 textVerticalAlign 兼容性
-      if (
-        component.dataType === spec.DataType.TextComponent ||
-        (
-          component.dataType === spec.DataType.RichTextComponent &&
-          (component as spec.RichTextComponentData).options
-        )
-      ) {
-        ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
-      }
-      // 处理文本颜色从 0-255 到 0-1 的转换
-      if (
-        component.dataType === spec.DataType.TextComponent
-      ) {
-        convertTextColorTo01((component as spec.TextComponentData).options);
-      }
-    }
-  }
-
-  //@ts-expect-error
-  json.version = '3.6';
-
-  return json;
-}
-
-/**
- * 确保文本组件有版本标识字段
- */
-function ensureTextVerticalAlign (options: any) {
-  // 检查是否已经处理过
-  if (!options || options.TextVerticalAlign !== undefined) {
-    return;
-  }
-
-  // 根据是否存在TextVerticalAlign字段来判断版本
-  if (options.TextVerticalAlign === undefined) {
-    //旧版本（没有 TextVerticalAlign 字段）
-    options.TextVerticalAlign = options.textBaseline;
-  }
-}
-
-/**
- * 将文本颜色从 0-255 转换到 0-1
- */
-function convertTextColorTo01 (options: spec.TextContentOptions) {
-  if (!options || !options.textColor) {
-    return;
-  }
-
-  const textColor = options.textColor;
-
-  // 将 RGB 从 0-255 转换到 0-1（alpha 通道已经是 0-1，不需要转换）
-  options.textColor = [
-    textColor[0] / 255.0,
-    textColor[1] / 255.0,
-    textColor[2] / 255.0,
-    textColor[3] ?? 1, // alpha 保持不变
-  ];
-}
-
-/**
- * 根据形状获取形状几何体数据
- * @param shape - 形状
- * @returns 形状几何体数据
- */
-function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName = '形状') {
-  const targetGeometry = getGeometryByShape(shape);
-  const { index = [], aPoint = [] } = targetGeometry;
-  const point = new Float32Array(aPoint);
-  const position = [];
-  const atlasOffset = [];
-
-  for (let i = 0; i < point.length; i += 6) {
-    atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
-    position.push(point[i], point[i + 1], 0.0);
-  }
-
-  // 用 position altasOffset index 创建GeometryData
-  const subMeshes: {
-    offset: number,
-    indexCount: number,
-    vertexCount: number,
-  }[] = [];
-  const vertexCount = position.length / 3;
-  const indexCount = index.length;
-  const positionByteLength = position.length * 4;
-  const uvByteLength = atlasOffset.length * 4;
-  const vertexByteLength = positionByteLength + uvByteLength;
-  const indexByteLength = index.length * 2;
-
-  const geometryData: spec.GeometryData = {
-    mode: spec.GeometryType.TRIANGLES,
-    vertexData: {
-      vertexCount,
-      channels: [],
-    },
-    name: geometryDataName,
-    indexFormat: spec.IndexFormatType.UInt16,
-    indexOffset: vertexByteLength,
-    buffer: '',
-    id: generateGUID(),
-    dataType: spec.DataType.Geometry,
-    subMeshes,
-  };
-
-  geometryData.vertexData.channels.push({
-    semantic: spec.VertexBufferSemantic.Position,
-    offset: 0,
-    format: spec.VertexFormatType.Float32,
-    dimension: 3,
-  });
-
-  geometryData.vertexData.channels.push({
-    semantic: spec.VertexBufferSemantic.Uv,
-    offset: positionByteLength,
-    format: spec.VertexFormatType.Float32,
-    dimension: 2,
-  });
-
-  geometryData.subMeshes.push({
-    offset: 0,
-    indexCount,
-    vertexCount,
-  });
-
-  const supByteLength = indexByteLength % 4 === 0 ? 0 : 2;
-  const infoBuffer = new ArrayBuffer(vertexByteLength + indexByteLength + supByteLength);
-  const vertexArray = new Float32Array(infoBuffer);
-
-  vertexArray.set(position, 0);
-  vertexArray.set(atlasOffset, position.length);
-
-  const indexArray = new Uint16Array(infoBuffer, vertexByteLength);
-
-  indexArray.set(index, 0);
-
-  const uint8View = new Uint8Array(infoBuffer).slice(0, vertexByteLength + indexByteLength);
-
-  geometryData.binaryData = uint8View;
-
-  return geometryData;
-}
-
-export function processContent (composition: spec.CompositionData) {
-  //@ts-expect-error
-  for (const item of composition.items) {
-    const itemProps = itemMap.get(item.id);
-
-    if (!itemProps) {
-      return;
-    }
-
-    if (
-      itemProps.type === spec.ItemType.sprite ||
-      itemProps.type === spec.ItemType.particle ||
-      itemProps.type === spec.ItemType.spine ||
-      itemProps.type === spec.ItemType.text ||
-      itemProps.type === spec.ItemType.richtext ||
-      itemProps.type === spec.ItemType.video ||
-      itemProps.type === spec.ItemType.shape
-    ) {
-      const component = componentMap.get(itemProps.components[0].id);
-
-      if (component) {
-        processMask(component);
-      }
-    }
-  }
-}
-
-export function processMask (renderContent: any) {
-  const renderer = renderContent.renderer;
-  const maskMode = renderer?.maskMode;
-
-  if (!maskMode || maskMode === MaskMode.NONE) {
-
-    return;
-  }
-
-  if (maskMode === MaskMode.MASK) {
-    renderContent.mask = {
-      isMask: true,
-    };
-    currentMaskComponent = renderContent.id;
-  } else if (
-    maskMode === spec.ObscuredMode.OBSCURED ||
-    maskMode === spec.ObscuredMode.REVERSE_OBSCURED
-  ) {
-    renderContent.mask = {
-      inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED ? true : false,
-      reference: {
-        'id': currentMaskComponent,
-      },
-    };
-  }
 }
 
 /**
@@ -833,17 +394,484 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 }
 
 /**
- * 2.5 以下版本 赫尔米特数据转换成贝塞尔数据
+ * 3.1 版本数据适配
+ * - 富文本插件名称的适配
  */
-export function version24Migration (json: JSONScene): JSONScene {
-  // 曲线转换成贝塞尔
-  json.compositions.map((comp: any) => {
-    for (const item of comp.items) {
-      convertParam(item.content);
+export function version31Migration (json: JSONScene): JSONScene {
+  // Custom shape fill 属性位置迁移
+  for (const component of json.components) {
+    if (component.dataType === DataType.ShapeComponent) {
+      const shapeComponent = component as ShapeComponentData;
+
+      if (shapeComponent.type === ShapePrimitiveType.Custom) {
+        const customShapeComponent = shapeComponent as CustomShapeData;
+
+        //@ts-expect-error
+        if (customShapeComponent.shapes?.length > 0 && customShapeComponent.shapes[0].fill) {
+          // @ts-expect-error
+          customShapeComponent.fill = customShapeComponent.shapes[0].fill;
+        }
+
+        // easingIn 和 easingOut 绝对坐标转相对坐标
+        const easingInFlag = new Array(customShapeComponent.easingIns.length);
+        const easingOutFlag = new Array(customShapeComponent.easingOuts.length).fill(false);
+
+        for (const shape of customShapeComponent.shapes) {
+          for (const index of shape.indexes) {
+            const point = customShapeComponent.points[index.point];
+            const easingIn = customShapeComponent.easingIns[index.easingIn];
+            const easingOut = customShapeComponent.easingOuts[index.easingOut];
+
+            if (!easingInFlag[index.easingIn]) {
+              easingIn.x -= point.x;
+              easingIn.y -= point.y;
+              easingInFlag[index.easingIn] = true;
+            }
+            if (!easingOutFlag[index.easingOut]) {
+              easingOut.x -= point.x;
+              easingOut.y -= point.y;
+              easingOutFlag[index.easingOut] = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  json.version = JSONSceneVersion['3_2'];
+
+  return json;
+}
+
+export function version32Migration (json: JSONScene): JSONScene {
+  componentMap.clear();
+  itemMap.clear();
+
+  const { compositions, items, components } = json;
+  // 处理旧蒙版数据
+
+  for (const component of components) {
+    componentMap.set(component.id, component);
+  }
+  for (const item of items) {
+    itemMap.set(item.id, item);
+  }
+
+  for (const comp of compositions) {
+    processContent(comp);
+  }
+
+  json.version = JSONSceneVersion['3_3'];
+
+  return json;
+}
+
+export function version33Migration (json: JSONScene): JSONScene {
+  // 修正老版本数据中，富文本插件名称的问题
+  json.plugins?.forEach((plugin, index) => {
+    if (plugin === 'richtext') {
+      json.plugins[index] = 'rich-text';
     }
   });
 
+  // 老 shape 数据兼容
+  for (const item of json.items) {
+    if (item.type === spec.ItemType.sprite) {
+      const spriteComponent = componentMap.get(item.components[0].id) as spec.SpriteComponentData;
+
+      if (spriteComponent) {
+        const shape = spriteComponent.renderer.shape;
+        let shapeData;
+
+        if (Number.isInteger(shape)) {
+          // @ts-expect-error
+          shapeData = json.shapes?.[shape as number];
+        } else {
+          shapeData = shape;
+        }
+
+        spriteComponent.renderer.shape = shapeData;
+      }
+    }
+  }
+
+  // Composition id 转 guid, Composition 分离 CompositionComponent
+  const compositionId = json.compositionId;
+  const compositionIdToGUIDMap: Record<string, string> = {};
+
+  for (const composition of json.compositions) {
+    const guid = generateGUID();
+
+    compositionIdToGUIDMap[composition.id] = guid;
+    if (composition.id === compositionId) {
+      json.compositionId = guid;
+    }
+    composition.id = guid;
+
+    const compositionComponent = {
+      id: generateGUID(),
+      dataType: 'CompositionComponent',
+      //@ts-expect-error
+      items: composition.items,
+      //@ts-expect-error
+      timelineAsset: composition.timelineAsset,
+      //@ts-expect-error
+      sceneBindings: composition.sceneBindings,
+      item: { id: composition.id },
+    } as unknown as spec.ComponentData;
+
+    //@ts-expect-error
+    composition.timelineAsset = undefined;
+    //@ts-expect-error
+    composition.sceneBindings = undefined;
+    composition.components = [{ id: compositionComponent.id }];
+    json.components.push(compositionComponent);
+  }
+  // 预合成元素 refId 同步改为生成的合成 guid
+  for (const item of json.items) {
+    if (item.content) {
+      const compositionOptions = (item.content as CompositionContent).options;
+
+      if (compositionOptions && compositionOptions.refId !== undefined) {
+        compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
+      }
+    }
+  }
+
+  json.version = JSONSceneVersion['3_4'];
+
   return json;
+}
+
+export function version34Migration (json: JSONScene): JSONScene {
+  const idToComponentMap: Record<string, spec.ComponentData> = {};
+
+  for (const componentData of json.components) {
+    idToComponentMap[componentData.id] = componentData;
+  }
+
+  // 修复合成组件的 item id 问题
+  for (const composition of json.compositions) {
+    for (const component of composition.components) {
+      const componentID = (component).id;
+
+      idToComponentMap[componentID].item.id = composition.id;
+    }
+  }
+
+  // 兼容老 Shape 资源
+  for (const componentData of json.components) {
+    if (componentData.dataType === spec.DataType.SpriteComponent) {
+      const spriteComponentData = componentData as spec.SpriteComponentData;
+      const renderer = spriteComponentData.renderer;
+      const shapeData = renderer.shape as spec.ShapeGeometry;
+
+      if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
+        const geometryData = createGeometryDataByShape(shapeData);
+
+        //@ts-expect-error
+        spriteComponentData.geometry = { id: geometryData.id };
+        json.geometries.push(geometryData);
+      }
+    }
+
+    if (componentData.dataType === spec.DataType.ShapeComponent) {
+      const shapeComponentData = componentData as ShapeComponentData;
+
+      shapeComponentData.fills = [];
+      //@ts-expect-error
+      if (shapeComponentData.fill) {
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
+          color: shapeComponentData.fill.color,
+        };
+
+        shapeComponentData.fills.push(solidPaintData);
+      }
+      //@ts-expect-error
+      delete shapeComponentData.fill;
+
+      shapeComponentData.strokes = [];
+      //@ts-expect-error
+      if (shapeComponentData.stroke) {
+        const solidPaintData: spec.SolidPaintData = {
+          type: spec.FillType.Solid,
+          //@ts-expect-error
+          color: shapeComponentData.stroke.color,
+        };
+
+        shapeComponentData.strokes.push(solidPaintData);
+
+        //@ts-expect-error
+        shapeComponentData.strokeWidth = shapeComponentData.stroke.width;
+        //@ts-expect-error
+        shapeComponentData.strokeCap = shapeComponentData.stroke.cap;
+        //@ts-expect-error
+        shapeComponentData.strokeJoin = shapeComponentData.stroke.join;
+
+        //@ts-expect-error
+        delete shapeComponentData.stroke;
+      }
+    }
+  }
+
+  json.version = JSONSceneVersion['3_5'];
+
+  return json;
+}
+
+export function version35Migration (json: JSONScene): JSONScene {
+  // 处理富文本 lineGap 兼容性
+  if (json.components) {
+    // 遍历所有组件，处理富文本组件
+    for (const component of json.components) {
+      // 识别富文本组件并处理 lineGap 兼容性
+      if (
+        component.dataType === spec.DataType.RichTextComponent
+      ) {
+        const richTextComponent = component as spec.RichTextComponentData;
+
+        if (richTextComponent.options) {
+          // 检查是否已经处理过
+          //@ts-expect-error
+          if (richTextComponent.options.useLegacyRichText === undefined) {
+            // 根据是否存在 lineGap 字段来判断版本
+            if (richTextComponent.options.lineGap === undefined) {
+              // 旧版本（没有 lineGap 字段）
+              //@ts-expect-error
+              richTextComponent.options.useLegacyRichText = true;
+            } else {
+              // 新版本（有 lineGap 字段）
+              //@ts-expect-error
+              richTextComponent.options.useLegacyRichText = false;
+            }
+          }
+        }
+      }
+      // 识别富文本组件并处理 textVerticalAlign 兼容性
+      if (
+        component.dataType === spec.DataType.TextComponent ||
+        (
+          component.dataType === spec.DataType.RichTextComponent &&
+          (component as spec.RichTextComponentData).options
+        )
+      ) {
+        ensureTextVerticalAlign((component as spec.RichTextComponentData).options);
+      }
+      // 处理文本颜色从 0-255 到 0-1 的转换
+      if (
+        component.dataType === spec.DataType.TextComponent
+      ) {
+        convertTextColorTo01((component as spec.TextComponentData).options);
+      }
+    }
+  }
+
+  json.version = JSONSceneVersion['3_6'];
+
+  return json;
+}
+
+export function version36Migration (json: JSONScene): JSONScene {
+  for (const textItem of json.items) {
+    if (textItem.type === spec.ItemType.text && textItem.transform) {
+      const textComponent = json.components.find(comp => textItem.components[0].id === comp.id) as spec.TextComponentData;
+
+      const itemWorldPerPixel = textItem.transform.scale.x / (textComponent.options?.textWidth ?? 1);
+      const defaultWorldPerPixel = 0.0123;
+      const scaleFactor = itemWorldPerPixel / defaultWorldPerPixel;
+
+      for (const item of json.items) {
+        if (item.parentId === textItem.id && item.transform) {
+          item.transform.scale.x *= textItem.transform.scale.x / scaleFactor;
+          item.transform.scale.y *= textItem.transform.scale.y / scaleFactor;
+          item.transform.scale.z *= textItem.transform.scale.z / scaleFactor;
+        }
+      }
+
+      textItem.transform.scale.x = scaleFactor;
+      textItem.transform.scale.y = scaleFactor;
+      textItem.transform.scale.z = scaleFactor;
+    }
+  }
+
+  // @ts-expect-error
+  json.version = JSONSceneVersion['3_7'];
+
+  return json;
+}
+
+/**
+ * 确保文本组件有版本标识字段
+ */
+function ensureTextVerticalAlign (options: any) {
+  // 检查是否已经处理过
+  if (!options || options.TextVerticalAlign !== undefined) {
+    return;
+  }
+
+  // 根据是否存在TextVerticalAlign字段来判断版本
+  if (options.TextVerticalAlign === undefined) {
+    //旧版本（没有 TextVerticalAlign 字段）
+    options.TextVerticalAlign = options.textBaseline;
+  }
+}
+
+/**
+ * 将文本颜色从 0-255 转换到 0-1
+ */
+function convertTextColorTo01 (options: spec.TextContentOptions) {
+  if (!options || !options.textColor) {
+    return;
+  }
+
+  const textColor = options.textColor;
+
+  // 将 RGB 从 0-255 转换到 0-1（alpha 通道已经是 0-1，不需要转换）
+  options.textColor = [
+    textColor[0] / 255.0,
+    textColor[1] / 255.0,
+    textColor[2] / 255.0,
+    textColor[3] ?? 1, // alpha 保持不变
+  ];
+}
+
+/**
+ * 根据形状获取形状几何体数据
+ * @param shape - 形状
+ * @returns 形状几何体数据
+ */
+function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName = '形状') {
+  const targetGeometry = getGeometryByShape(shape);
+  const { index = [], aPoint = [] } = targetGeometry;
+  const point = new Float32Array(aPoint);
+  const position = [];
+  const atlasOffset = [];
+
+  for (let i = 0; i < point.length; i += 6) {
+    atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
+    position.push(point[i], point[i + 1], 0.0);
+  }
+
+  // 用 position altasOffset index 创建GeometryData
+  const subMeshes: {
+    offset: number,
+    indexCount: number,
+    vertexCount: number,
+  }[] = [];
+  const vertexCount = position.length / 3;
+  const indexCount = index.length;
+  const positionByteLength = position.length * 4;
+  const uvByteLength = atlasOffset.length * 4;
+  const vertexByteLength = positionByteLength + uvByteLength;
+  const indexByteLength = index.length * 2;
+
+  const geometryData: spec.GeometryData = {
+    mode: spec.GeometryType.TRIANGLES,
+    vertexData: {
+      vertexCount,
+      channels: [],
+    },
+    name: geometryDataName,
+    indexFormat: spec.IndexFormatType.UInt16,
+    indexOffset: vertexByteLength,
+    buffer: '',
+    id: generateGUID(),
+    dataType: spec.DataType.Geometry,
+    subMeshes,
+  };
+
+  geometryData.vertexData.channels.push({
+    semantic: spec.VertexBufferSemantic.Position,
+    offset: 0,
+    format: spec.VertexFormatType.Float32,
+    dimension: 3,
+  });
+
+  geometryData.vertexData.channels.push({
+    semantic: spec.VertexBufferSemantic.Uv,
+    offset: positionByteLength,
+    format: spec.VertexFormatType.Float32,
+    dimension: 2,
+  });
+
+  geometryData.subMeshes.push({
+    offset: 0,
+    indexCount,
+    vertexCount,
+  });
+
+  const supByteLength = indexByteLength % 4 === 0 ? 0 : 2;
+  const infoBuffer = new ArrayBuffer(vertexByteLength + indexByteLength + supByteLength);
+  const vertexArray = new Float32Array(infoBuffer);
+
+  vertexArray.set(position, 0);
+  vertexArray.set(atlasOffset, position.length);
+
+  const indexArray = new Uint16Array(infoBuffer, vertexByteLength);
+
+  indexArray.set(index, 0);
+
+  const uint8View = new Uint8Array(infoBuffer).slice(0, vertexByteLength + indexByteLength);
+
+  geometryData.binaryData = uint8View;
+
+  return geometryData;
+}
+
+export function processContent (composition: spec.CompositionData) {
+  //@ts-expect-error
+  for (const item of composition.items) {
+    const itemProps = itemMap.get(item.id);
+
+    if (!itemProps) {
+      return;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape
+    ) {
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMask(component);
+      }
+    }
+  }
+}
+
+export function processMask (renderContent: any) {
+  const renderer = renderContent.renderer;
+  const maskMode = renderer?.maskMode;
+
+  if (!maskMode || maskMode === MaskMode.NONE) {
+
+    return;
+  }
+
+  if (maskMode === MaskMode.MASK) {
+    renderContent.mask = {
+      isMask: true,
+    };
+    currentMaskComponent = renderContent.id;
+  } else if (
+    maskMode === spec.ObscuredMode.OBSCURED ||
+    maskMode === spec.ObscuredMode.REVERSE_OBSCURED
+  ) {
+    renderContent.mask = {
+      inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED ? true : false,
+      reference: {
+        'id': currentMaskComponent,
+      },
+    };
+  }
 }
 
 export function convertParam (content?: BaseContent) {

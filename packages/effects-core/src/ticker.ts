@@ -120,9 +120,7 @@ export class Ticker {
         this.resetTickers = false;
       }
 
-      for (let i = 0, len = this.tickers.length; i < len; i++) {
-        const tick = this.tickers[i];
-
+      for (const tick of this.tickers) {
         tick(this.dt);
       }
     }
