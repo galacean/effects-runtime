@@ -12,7 +12,7 @@ import type { StrokeAttributes } from '../math/shape/build-line';
 import { buildLine } from '../math/shape/build-line';
 import type { ShapePath } from '../math/shape/shape-path';
 
-export class Render2D {
+export class Graphics {
   private geometry: Geometry;
   private material: Material;
   private graphicsPath = new GraphicsPath();
