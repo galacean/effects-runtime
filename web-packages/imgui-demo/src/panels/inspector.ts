@@ -32,12 +32,14 @@ export class Inspector extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (!Selection.activeObject) {
+    const selectedObject = Selection.getSelectedObjects()[0];
+
+    if (!selectedObject) {
       ImGui.End();
 
       return;
     }
-    let activeObject = Selection.activeObject;
+    let activeObject = selectedObject;
 
     if (this.locked) {
       activeObject = this.lockedObject;
@@ -81,8 +83,10 @@ export class Inspector extends EditorWindow {
     ImGui.Text('Lock');
     ImGui.SameLine();
     if (ImGui.Checkbox('##Lock', (value = this.locked)=>this.locked = value)) {
-      if (Selection.activeObject) {
-        this.lockedObject = Selection.activeObject;
+      const selectedObject = Selection.getSelectedObjects()[0];
+
+      if (selectedObject) {
+        this.lockedObject = selectedObject;
       }
     }
     ImGui.Separator();

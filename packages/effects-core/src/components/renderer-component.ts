@@ -1,8 +1,9 @@
 import { serialize } from '../decorators';
-import type { Maskable, Material } from '../material';
+import type { Material, Maskable } from '../material';
 import { MaskProcessor } from '../material';
-import type { Renderer } from '../render';
+import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
+import type { Renderer } from '../render/renderer';
 
 /**
  * 所有渲染组件的基类
@@ -22,6 +23,10 @@ export class RendererComponent extends Component {
 
   @serialize()
   protected _priority = 0;
+  /**
+   * 用于点击测试的碰撞器
+   */
+  protected boundingBoxInfo = new BoundingBoxInfo();
 
   get priority (): number {
     return this._priority;
@@ -47,6 +52,13 @@ export class RendererComponent extends Component {
 
   override onDisable (): void {
     this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
+  }
+
+  /**
+   * 获取包围盒信息
+   */
+  getBoundingBoxInfo (): BoundingBoxInfo {
+    return this.boundingBoxInfo;
   }
 
   render (renderer: Renderer): void {

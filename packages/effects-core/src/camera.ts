@@ -5,6 +5,7 @@ import { Euler } from '@galacean/effects-math/es/core/euler';
 import { DEG2RAD } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
+import type { Engine } from './engine';
 
 interface CameraOptionsBase {
   /**
@@ -45,14 +46,6 @@ export interface CameraOptions extends CameraOptionsBase {
    * 相机的旋转，四元数
    */
   quat?: spec.vec4,
-  /**
-   * 画布的像素宽度
-   */
-  pixelWidth: number,
-  /**
-   * 画布的像素高度
-   */
-  pixelHeight: number,
 }
 
 export interface CameraOptionsEx extends CameraOptionsBase {
@@ -82,14 +75,6 @@ export class Camera {
    */
   transform: Transform = new Transform();
   /**
-   * 画布的像素宽度
-   */
-  pixelWidth = 0;
-  /**
-   * 画布的像素高度
-   */
-  pixelHeight = 0;
-  /**
    * 编辑器用于缩放画布
    */
   private viewportMatrix = Matrix4.fromIdentity();
@@ -108,6 +93,7 @@ export class Camera {
    * @param options
    */
   constructor (
+    public engine: Engine,
     public name: string,
     options: Partial<CameraOptions> = {},
   ) {
@@ -119,16 +105,12 @@ export class Camera {
       clipMode = spec.CameraClipMode.portrait,
       position = [0, 0, 8],
       rotation = [0, 0, 0],
-      pixelWidth = 0,
-      pixelHeight = 0,
     } = options;
 
     const euler = new Euler(rotation[0], rotation[1], rotation[2]);
     const quat = new Quaternion().setFromEuler(euler);
 
     this.options = { near, far, fov, aspect, clipMode };
-    this.pixelWidth = pixelWidth;
-    this.pixelHeight = pixelHeight;
 
     this.transform.setPosition(position[0], position[1], position[2]);
     this.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
@@ -453,11 +435,13 @@ export class Camera {
     result.set(position.x, position.y, position.z);
     vpMatrix.projectPoint(result, result);
 
+    const { width, height } = this.engine.canvas.getBoundingClientRect();
+
     // 将 NDC 坐标转换为像素坐标
     // NDC: x,y in [-1, 1], 其中 (-1,-1) 是左下角，(1,1) 是右上角
     // Screen: x,y in [0, width/height], 其中 (0,0) 是左下角
-    result.x = (result.x + 1) * 0.5 * this.pixelWidth;
-    result.y = (result.y + 1) * 0.5 * this.pixelHeight;
+    result.x = (result.x + 1) * 0.5 * width;
+    result.y = (result.y + 1) * 0.5 * height;
     // 将 NDC z 值从 [-1, 1] 转换为深度比例 [0, 1]
     // -1 (近平面) -> 0, 1 (远平面) -> 1
     result.z = (result.z + 1) * 0.5;
@@ -477,9 +461,11 @@ export class Camera {
     const result = out ?? new Vector3();
     const invVPMatrix = this.getInverseViewProjectionMatrix();
 
+    const { width, height } = this.engine.canvas.getBoundingClientRect();
+
     // 将像素坐标转换为 NDC 坐标 [-1, 1]
-    const ndcX = (position.x / this.pixelWidth) * 2 - 1;
-    const ndcY = (position.y / this.pixelHeight) * 2 - 1;
+    const ndcX = (position.x / width) * 2 - 1;
+    const ndcY = (position.y / height) * 2 - 1;
     // 将深度比例 [0, 1] 转换为 NDC z 值 [-1, 1]
     // 0 (近平面) -> -1, 1 (远平面) -> 1
     const ndcZ = position.z * 2 - 1;

@@ -1,25 +1,23 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { Maskable, MaterialProps } from '../material';
-import { MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
-import { Material } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { MeshCollider } from '../plugins';
+import { Material, MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
-import { buildLine, createValueGetter, GraphicsPath, StarType } from '../math';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture/texture';
 import { glContext } from '../gl';
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import type { ItemRenderer } from './base-render-component';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
@@ -192,10 +190,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
 
-  /**
-   * 用于点击测试的碰撞器
-   */
-  private meshCollider = new MeshCollider();
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
   private fillMaterials: Material[] = [];
@@ -341,8 +335,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
 
     if (force) {
-      this.meshCollider.setGeometry(this.geometry, worldMatrix);
-      const area = this.meshCollider.getBoundingBoxData();
+      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
 
       if (area) {
         return {
@@ -358,10 +352,26 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   getBoundingBox (): BoundingBoxTriangle {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.meshCollider.getBoundingBox();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle();
 
     return boundingBox;
+  }
+
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+
+    if (positionArray) {
+      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
+
+      minMaxResult.minimum.x *= this.transform.size.x;
+      minMaxResult.minimum.y *= this.transform.size.y;
+      minMaxResult.maximum.x *= this.transform.size.x;
+      minMaxResult.maximum.y *= this.transform.size.y;
+      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+    }
+
+    return this.boundingBoxInfo;
   }
 
   private buildGeometryFromPath (shapePath: ShapePath) {

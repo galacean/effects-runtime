@@ -113,6 +113,22 @@ export class GraphicsPath {
   }
 
   /**
+   * Draws a circle shape. This method adds a new circle path to the current drawing.
+   * @param x - The x-coordinate of the center of the circle.
+   * @param y - The y-coordinate of the center of the circle.
+   * @param radius - The radius of the circle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the circle.
+   * @returns The instance of the current object for chaining.
+   */
+  circle (x: number, y: number, radius: number, transform?: Matrix4): this {
+    this.instructions.push({ action: 'circle', data: [x, y, radius, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
    * Draws a rectangle shape. This method adds a new rectangle path to the current drawing.
    * @param x - The x-coordinate of the upper-left corner of the rectangle.
    * @param y - The y-coordinate of the upper-left corner of the rectangle.
@@ -123,6 +139,25 @@ export class GraphicsPath {
    */
   rect (x: number, y: number, w: number, h: number, roundness: number, transform?: Matrix4): this {
     this.instructions.push({ action: 'rect', data: [x, y, w, h, roundness, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
+   * Draws a triangle shape. This method adds a new triangle path to the current drawing.
+   * @param x1 - The x-coordinate of the first vertex of the triangle.
+   * @param y1 - The y-coordinate of the first vertex of the triangle.
+   * @param x2 - The x-coordinate of the second vertex of the triangle.
+   * @param y2 - The y-coordinate of the second vertex of the triangle.
+   * @param x3 - The x-coordinate of the third vertex of the triangle.
+   * @param y3 - The y-coordinate of the third vertex of the triangle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the triangle.
+   * @returns The instance of the current object for chaining.
+   */
+  triangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, transform?: Matrix4) {
+    this.instructions.push({ action: 'triangle', data: [x1, y1, x2, y2, x3, y3, transform] });
 
     this.dirty = true;
 
@@ -167,6 +202,7 @@ export interface PathInstruction {
   | 'filletRect'
   | 'chamferRect'
   | 'polyStar'
+  | 'triangle'
   ,
   data: any[],
 }

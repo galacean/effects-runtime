@@ -27,7 +27,7 @@ describe('webgl/gl-render-frame', () => {
   });
 
   it('add default render Pass with info', () => {
-    const frame = new RenderFrame({ renderer, camera: new Camera('') });
+    const frame = new RenderFrame({ renderer, camera: new Camera(renderer.engine, '') });
     const meshes = generateMeshes(renderer, 3);
 
     frame.addMeshToDefaultRenderPass(meshes[0]);

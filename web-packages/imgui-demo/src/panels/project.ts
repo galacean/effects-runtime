@@ -255,7 +255,7 @@ export class Project extends EditorWindow {
         }
         ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
         if (ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col)) {
-          Selection.setActiveObject(child);
+          Selection.select(child);
         }
         if (this.clickingFileNode === child) {
           this.clickingFileNode = undefined;
@@ -427,7 +427,7 @@ export class Project extends EditorWindow {
         this.selectedFolder = item;
         void this.createFileIcons(item);
       }
-      Selection.setActiveObject(item);
+      Selection.select(item);
     }
 
     if (node_open) {

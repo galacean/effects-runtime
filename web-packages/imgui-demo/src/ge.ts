@@ -1,14 +1,13 @@
-import type { MaterialProps, Renderer } from '@galacean/effects';
-import { Component, FrameComponent, GLSLVersion, Geometry, Material, Player, RenderPass, RenderPassPriorityPostprocess, TextComponent, VFXItem, glContext, math } from '@galacean/effects';
-import '@galacean/effects-plugin-model';
-import { JSONConverter, Matrix4 } from '@galacean/effects-plugin-model';
-import '@galacean/effects-plugin-orientation-transformer';
+import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-ffd';
+import '@galacean/effects-plugin-model';
+import { JSONConverter } from '@galacean/effects-plugin-model';
+import '@galacean/effects-plugin-orientation-transformer';
+import '@galacean/effects-plugin-rich-text';
 import '@galacean/effects-plugin-spine';
-import { Selection } from './core/selection';
-import { ImGui_Impl } from './imgui';
 import { AssetDatabase } from './core/asset-data-base';
-import * as animationScene from './demo.json';
+import { CanvasGizmo } from './core/canvas-gizmo';
+import { ImGui_Impl } from './imgui';
 
 export class GalaceanEffects {
   static player: Player;
@@ -19,32 +18,28 @@ export class GalaceanEffects {
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促\
 
     GalaceanEffects.player = new Player({ container });
+
     GalaceanEffects.player.ticker?.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    //@ts-expect-error
+    // @ts-expect-error
     GalaceanEffects.playURL({
       'playerVersion': {
-        'web': '2.7.3',
+        'web': '2.8.3',
         'native': '0.0.1.202311221223',
       },
-      'images': [
-        {
-          'url': 'https://mdn.alipayobjects.com/mars/afts/file/A*P1hBTbDWL_kAAAAAgCAAAAgAelB4AQ/original',
-          'id': '1b22e860410749338c6b4f3b358c948c',
-          'renderLevel': 'B+',
-          'webp': 'https://mdn.alipayobjects.com/mars/afts/file/A*k-2pR5Tngy0AAAAAWQAAAAgAelB4AQ/original',
-        },
-      ],
+      'images': [],
       'fonts': [],
-      'version': '3.5',
-      'plugins': [],
+      'version': '3.6',
+      'plugins': [
+        'rich-text',
+      ],
       'type': 'ge',
       'compositions': [
         {
-          'id': '0df1fb78819d44529097e0272ba6bb36',
-          'name': '新建合成2',
-          'duration': 3,
+          'id': 'dee7c98fc5f34aad957bc756c8face77',
+          'name': '新建合成1',
+          'duration': 5,
           'startTime': 0,
           'endBehavior': 5,
           'previewSize': [
@@ -69,52 +64,63 @@ export class GalaceanEffects {
           },
           'components': [
             {
-              'id': '4826dfcdf84a46b68c69e4b8c30afc11',
+              'id': 'e02717491c664d06aa9a3d26395abee1',
             },
           ],
         },
       ],
       'components': [
         {
-          'id': '4826dfcdf84a46b68c69e4b8c30afc11',
+          'id': 'e02717491c664d06aa9a3d26395abee1',
           'item': {
-            'id': '0df1fb78819d44529097e0272ba6bb36',
+            'id': 'dee7c98fc5f34aad957bc756c8face77',
           },
           'dataType': 'CompositionComponent',
           'items': [
             {
-              'id': '7a02696874c94d2a8dbfd41fdd9f45e2',
+              'id': 'a1f56cce115b4339bbe60faef95fa6db',
             },
             {
-              'id': 'ba1bdd9fdce043d0bfc4d809b5bb7158',
+              'id': '085daf4d06674a36aa91f4509bfe2d54',
+            },
+            {
+              'id': '8f3ef2117bd146f18db0b50381981016',
             },
           ],
           'timelineAsset': {
-            'id': 'e6a56b1387ea42538b77fb2abfdd261a',
+            'id': '59576d5cf5fc4a6b8201370b3369e9e2',
           },
           'sceneBindings': [
             {
               'key': {
-                'id': '663f496ddb804037bfb002090f57f0fa',
+                'id': '5c332f21ea1147f9abe7c0a65fdfb788',
               },
               'value': {
-                'id': '7a02696874c94d2a8dbfd41fdd9f45e2',
+                'id': 'a1f56cce115b4339bbe60faef95fa6db',
               },
             },
             {
               'key': {
-                'id': '9a3fb9e674f042568b068e4bbc007c85',
+                'id': '739a5a4f62b54ecfb971d9c82dceb02d',
               },
               'value': {
-                'id': 'ba1bdd9fdce043d0bfc4d809b5bb7158',
+                'id': '085daf4d06674a36aa91f4509bfe2d54',
+              },
+            },
+            {
+              'key': {
+                'id': '55c137146caf4efc8b5858f5ee97c9f5',
+              },
+              'value': {
+                'id': '8f3ef2117bd146f18db0b50381981016',
               },
             },
           ],
         },
         {
-          'id': 'd2f1a50e026b479baf944bd863fcc830',
+          'id': '3b9fd8872df34628a86eece2164b268c',
           'item': {
-            'id': '7a02696874c94d2a8dbfd41fdd9f45e2',
+            'id': 'a1f56cce115b4339bbe60faef95fa6db',
           },
           'dataType': 'SpriteComponent',
           'options': {
@@ -127,15 +133,69 @@ export class GalaceanEffects {
           },
           'renderer': {
             'renderMode': 1,
-            'texture': {
-              'id': '36adeb8d3147469186c57b4fa8a3c9c3',
-            },
+            'anchor': [
+              0.5,
+              0.5,
+            ],
           },
-          'textureSheetAnimation': {
-            'col': 8,
-            'row': 8,
-            'total': 64,
-            'animate': true,
+        },
+        {
+          'id': '5d16a80b4eed4d9fac7ffc8f1f11b82d',
+          'item': {
+            'id': '085daf4d06674a36aa91f4509bfe2d54',
+          },
+          'dataType': 'SpriteComponent',
+          'options': {
+            'startColor': [
+              0.5,
+              0.8,
+              0.5,
+              1,
+            ],
+          },
+          'renderer': {
+            'renderMode': 1,
+            'anchor': [
+              0.5,
+              0.5,
+            ],
+          },
+        },
+        {
+          'id': '6b4acd6f1197459ab360a6bec154413f',
+          'item': {
+            'id': '8f3ef2117bd146f18db0b50381981016',
+          },
+          'dataType': 'RichTextComponent',
+          'options': {
+            'useLegacyRichText': false,
+            'text': '富文本',
+            'maxTextWidth': 7.26,
+            'maxTextHeight': 7.26,
+            'fontFamily': 'sans-serif',
+            'fontSize': 40,
+            'textColor': [
+              255,
+              255,
+              255,
+              1,
+            ],
+            'fontWeight': 'normal',
+            'fontStyle': 'normal',
+            'textVerticalAlign': 0,
+            'textAlign': 0,
+            'textOverflow': 2,
+            'letterSpace': 0,
+            'lineHeight': 40,
+            'wrapEnabled': false,
+            'sizeMode': 2,
+          },
+          'renderer': {
+            'renderMode': 1,
+            'anchor': [
+              0.5,
+              0.5,
+            ],
           },
         },
       ],
@@ -143,18 +203,17 @@ export class GalaceanEffects {
       'materials': [],
       'items': [
         {
-          'id': '7a02696874c94d2a8dbfd41fdd9f45e2',
-          'name': 'sprite_4',
-          'duration': 3,
+          'id': 'a1f56cce115b4339bbe60faef95fa6db',
+          'name': 'sprite_1',
+          'duration': 5,
           'type': '1',
-          'parentId': 'ba1bdd9fdce043d0bfc4d809b5bb7158',
           'visible': true,
           'endBehavior': 0,
           'delay': 0,
           'renderLevel': 'B+',
           'components': [
             {
-              'id': 'd2f1a50e026b479baf944bd863fcc830',
+              'id': '3b9fd8872df34628a86eece2164b268c',
             },
           ],
           'transform': {
@@ -173,8 +232,8 @@ export class GalaceanEffects {
               'y': 0,
             },
             'size': {
-              'x': 9.3911,
-              'y': 9.3911,
+              'x': 1.2,
+              'y': 1.2,
             },
             'scale': {
               'x': 1,
@@ -185,25 +244,55 @@ export class GalaceanEffects {
           'dataType': 'VFXItemData',
         },
         {
-          'id': 'ba1bdd9fdce043d0bfc4d809b5bb7158',
-          'name': 'null_2',
-          'duration': 3,
-          'type': '3',
+          'id': '085daf4d06674a36aa91f4509bfe2d54',
+          'name': 'ssss',
+          'duration': 5,
+          'type': '1',
           'visible': true,
-          'endBehavior': 4,
+          'endBehavior': 0,
           'delay': 0,
           'renderLevel': 'B+',
-          'content': {
-            'options': {
-              'startColor': [
-                1,
-                1,
-                1,
-                1,
-              ],
+          'components': [
+            {
+              'id': '5d16a80b4eed4d9fac7ffc8f1f11b82d',
+            },
+          ],
+          'transform': {
+            'position': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'eulerHint': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'anchor': {
+              'x': 0,
+              'y': 0,
+            },
+            'size': {
+              'x': 7.2604,
+              'y': 7.2604,
+            },
+            'scale': {
+              'x': 1,
+              'y': 1,
+              'z': 1,
             },
           },
-          'components': [],
+          'dataType': 'VFXItemData',
+        },
+        {
+          'id': '8f3ef2117bd146f18db0b50381981016',
+          'name': 'richText_3',
+          'duration': 5,
+          'type': 'richtext',
+          'visible': true,
+          'endBehavior': 0,
+          'delay': 0,
+          'renderLevel': 'B+',
           'transform': {
             'position': {
               'x': 0,
@@ -221,45 +310,45 @@ export class GalaceanEffects {
               'z': 1,
             },
           },
+          'components': [
+            {
+              'id': '6b4acd6f1197459ab360a6bec154413f',
+            },
+          ],
           'dataType': 'VFXItemData',
         },
       ],
       'shaders': [],
       'bins': [],
-      'textures': [
-        {
-          'id': '36adeb8d3147469186c57b4fa8a3c9c3',
-          'source': {
-            'id': '1b22e860410749338c6b4f3b358c948c',
-          },
-          'flipY': true,
-        },
-      ],
+      'textures': [],
       'animations': [],
       'miscs': [
         {
-          'id': 'e6a56b1387ea42538b77fb2abfdd261a',
+          'id': '59576d5cf5fc4a6b8201370b3369e9e2',
           'dataType': 'TimelineAsset',
           'tracks': [
             {
-              'id': '663f496ddb804037bfb002090f57f0fa',
+              'id': '5c332f21ea1147f9abe7c0a65fdfb788',
             },
             {
-              'id': '9a3fb9e674f042568b068e4bbc007c85',
+              'id': '739a5a4f62b54ecfb971d9c82dceb02d',
+            },
+            {
+              'id': '55c137146caf4efc8b5858f5ee97c9f5',
             },
           ],
         },
         {
-          'id': '96f74f07f77b4e5eacff646c13be5b67',
+          'id': '5080a59081be4b72bed11ac513343535',
           'dataType': 'ActivationPlayableAsset',
         },
         {
-          'id': '0c823c9bc6f240caa30581507ece79f8',
+          'id': 'b728d0ab2d244f95851c7c0253e95ed2',
           'dataType': 'TransformPlayableAsset',
           'positionOverLifetime': {},
         },
         {
-          'id': 'e1c5b5f28ded4a9caaa0fb2c11a4f9e6',
+          'id': 'a14b9ac9f627402d9bd1e06271e6915f',
           'dataType': 'SpriteColorPlayableAsset',
           'startColor': [
             1,
@@ -269,120 +358,223 @@ export class GalaceanEffects {
           ],
         },
         {
-          'id': '180742d3fae345658a632d3bb094b40c',
+          'id': '958d0c60991f42fbaa5a87b26b1990c0',
           'dataType': 'ActivationTrack',
           'children': [],
           'clips': [
             {
               'start': 0,
-              'duration': 3,
+              'duration': 5,
               'endBehavior': 0,
               'asset': {
-                'id': '96f74f07f77b4e5eacff646c13be5b67',
+                'id': '5080a59081be4b72bed11ac513343535',
               },
             },
           ],
         },
         {
-          'id': '249a24ed230740c780ac4bf26af1b0c3',
+          'id': 'f65cbe1e13cb4d778ea6dbc39749ef4f',
           'dataType': 'TransformTrack',
           'children': [],
           'clips': [
             {
               'start': 0,
-              'duration': 3,
+              'duration': 5,
               'endBehavior': 0,
               'asset': {
-                'id': '0c823c9bc6f240caa30581507ece79f8',
+                'id': 'b728d0ab2d244f95851c7c0253e95ed2',
               },
             },
           ],
         },
         {
-          'id': 'b88f0fd47cac45ea87bb4898f8a8a7ec',
+          'id': '6b6af572be224fd28a592028f092534a',
           'dataType': 'SpriteColorTrack',
           'children': [],
           'clips': [
             {
               'start': 0,
-              'duration': 3,
+              'duration': 5,
               'endBehavior': 0,
               'asset': {
-                'id': 'e1c5b5f28ded4a9caaa0fb2c11a4f9e6',
+                'id': 'a14b9ac9f627402d9bd1e06271e6915f',
               },
             },
           ],
         },
         {
-          'id': '663f496ddb804037bfb002090f57f0fa',
+          'id': '5c332f21ea1147f9abe7c0a65fdfb788',
           'dataType': 'ObjectBindingTrack',
           'children': [
             {
-              'id': '180742d3fae345658a632d3bb094b40c',
+              'id': '958d0c60991f42fbaa5a87b26b1990c0',
             },
             {
-              'id': '249a24ed230740c780ac4bf26af1b0c3',
+              'id': 'f65cbe1e13cb4d778ea6dbc39749ef4f',
             },
             {
-              'id': 'b88f0fd47cac45ea87bb4898f8a8a7ec',
+              'id': '6b6af572be224fd28a592028f092534a',
             },
           ],
           'clips': [],
         },
         {
-          'id': 'aca19ee9066542d08b107fd920b2a879',
+          'id': '459bb93ab59a4bcda83fea85d4d90873',
           'dataType': 'ActivationPlayableAsset',
         },
         {
-          'id': '804a10e656cb4548b609ef28dd96d959',
+          'id': '5e86e66102c04c2c81a40090de18f10e',
           'dataType': 'TransformPlayableAsset',
           'positionOverLifetime': {},
         },
         {
-          'id': '3c1a8e2ee01f49958453a628f4bbca5a',
+          'id': '3a8a5fb1173d46e2a13ec05d63148c19',
+          'dataType': 'SpriteColorPlayableAsset',
+          'startColor': [
+            1,
+            0,
+            0,
+            1,
+          ],
+        },
+        {
+          'id': '8c84bd81afe240b58377ffb2bbc79c01',
           'dataType': 'ActivationTrack',
           'children': [],
           'clips': [
             {
               'start': 0,
-              'duration': 3,
-              'endBehavior': 4,
+              'duration': 5,
+              'endBehavior': 0,
               'asset': {
-                'id': 'aca19ee9066542d08b107fd920b2a879',
+                'id': '459bb93ab59a4bcda83fea85d4d90873',
               },
             },
           ],
         },
         {
-          'id': 'c197250764324032a2fb8359b3201b1d',
+          'id': 'de32a003d7c94760880d96e1ee858627',
           'dataType': 'TransformTrack',
           'children': [],
           'clips': [
             {
               'start': 0,
-              'duration': 3,
-              'endBehavior': 4,
+              'duration': 5,
+              'endBehavior': 0,
               'asset': {
-                'id': '804a10e656cb4548b609ef28dd96d959',
+                'id': '5e86e66102c04c2c81a40090de18f10e',
               },
             },
           ],
         },
         {
-          'id': '9a3fb9e674f042568b068e4bbc007c85',
+          'id': '27e43d8782b34f99abce0a0da11acc9a',
+          'dataType': 'SpriteColorTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '3a8a5fb1173d46e2a13ec05d63148c19',
+              },
+            },
+          ],
+        },
+        {
+          'id': '739a5a4f62b54ecfb971d9c82dceb02d',
           'dataType': 'ObjectBindingTrack',
           'children': [
             {
-              'id': '3c1a8e2ee01f49958453a628f4bbca5a',
+              'id': '8c84bd81afe240b58377ffb2bbc79c01',
             },
             {
-              'id': 'c197250764324032a2fb8359b3201b1d',
+              'id': 'de32a003d7c94760880d96e1ee858627',
+            },
+            {
+              'id': '27e43d8782b34f99abce0a0da11acc9a',
+            },
+          ],
+          'clips': [],
+        },
+        {
+          'id': '2f145352f26f4673a747fb207c3057f9',
+          'dataType': 'ActivationPlayableAsset',
+        },
+        {
+          'id': '721641c297904954a594013fe6865b2e',
+          'dataType': 'TransformPlayableAsset',
+          'positionOverLifetime': {},
+        },
+        {
+          'id': 'aa84ef60f0254411852214d3b68ce61a',
+          'dataType': 'SpriteColorPlayableAsset',
+        },
+        {
+          'id': '12b6df2a72f54069902d45a64653828c',
+          'dataType': 'ActivationTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '2f145352f26f4673a747fb207c3057f9',
+              },
+            },
+          ],
+        },
+        {
+          'id': 'e9f79d4cfdd447c499aba04d31885127',
+          'dataType': 'TransformTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '721641c297904954a594013fe6865b2e',
+              },
+            },
+          ],
+        },
+        {
+          'id': '974de3c583b045f0bcfe4087003bd9b1',
+          'dataType': 'SpriteColorTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': 'aa84ef60f0254411852214d3b68ce61a',
+              },
+            },
+          ],
+        },
+        {
+          'id': '55c137146caf4efc8b5858f5ee97c9f5',
+          'dataType': 'ObjectBindingTrack',
+          'children': [
+            {
+              'id': '12b6df2a72f54069902d45a64653828c',
+            },
+            {
+              'id': 'e9f79d4cfdd447c499aba04d31885127',
+            },
+            {
+              'id': '974de3c583b045f0bcfe4087003bd9b1',
             },
           ],
           'clips': [],
         },
       ],
-      'compositionId': '0df1fb78819d44529097e0272ba6bb36',
+      'compositionId': 'dee7c98fc5f34aad957bc756c8face77',
+      'shapes': [],
     });
   }
 
@@ -394,13 +586,11 @@ export class GalaceanEffects {
       void converter.processScene(url).then(async (scene: any) => {
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
-        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer));
+        composition.rootItem.addComponent(CanvasGizmo);
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
-        composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer));
-
-        composition.rootItem.addComponent(FrameComponent);
+        composition.rootItem.addComponent(CanvasGizmo);
       });
     }
 
@@ -428,104 +618,6 @@ export class GalaceanEffects {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, GalaceanEffects.player.canvas);
-    }
-  }
-}
-
-export class OutlinePass extends RenderPass {
-  private material: Material;
-  private geometry: Geometry;
-
-  private vert = `precision highp float;
-
-  attribute vec3 aPos;//x y
-
-  varying vec4 vColor;
-
-  uniform vec4 _Color;
-  uniform mat4 effects_MatrixVP;
-  uniform mat4 effects_MatrixInvV;
-  uniform mat4 effects_ObjectToWorld;
-
-  void main() {
-    vColor = _Color;
-    vec4 pos = vec4(aPos.xyz, 1.0);
-    gl_Position = effects_MatrixVP * pos;
-  }
-  `;
-
-  private frag = `precision highp float;
-
-  varying vec4 vColor;
-
-  void main() {
-    vec4 color = vec4(1.0,1.0,1.0,1.0);
-    gl_FragColor = color;
-  }
-  `;
-
-  constructor (renderer: Renderer) {
-    super(renderer);
-    this.priority = 5000;
-    this.name = 'OutlinePass';
-
-    if (!this.geometry) {
-      this.geometry = Geometry.create(renderer.engine, {
-        attributes: {
-          aPos: {
-            type: glContext.FLOAT,
-            size: 3,
-            data: new Float32Array([
-              -0.5, 0.5, 0, //左上
-              -0.5, -0.5, 0, //左下
-              0.5, 0.5, 0, //右上
-              0.5, -0.5, 0, //右下
-              0, 0, 0,
-              10, 10, 10,
-            ]),
-          },
-        },
-        mode: glContext.LINE_LOOP,
-        drawCount: 6,
-      });
-    }
-
-    if (!this.material) {
-      const materialProps: MaterialProps = {
-        shader: {
-          vertex: this.vert,
-          fragment: this.frag,
-          glslVersion: GLSLVersion.GLSL1,
-        },
-      };
-
-      this.material = Material.create(renderer.engine, materialProps);
-      this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
-      this.material.depthMask = true;
-      this.material.depthTest = true;
-      this.material.blending = true;
-    }
-  }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
-  }
-
-  override execute (renderer: Renderer): void {
-    if (Selection.activeObject instanceof VFXItem) {
-      const transform = Selection.activeObject.transform;
-      const position = transform.getWorldPosition();
-      const size = transform.getWorldScale().clone().multiply(new math.Vector3(transform.size.x, transform.size.y, 0));
-      const halfWidth = size.x / 2;
-      const halfHeight = size.y / 2;
-      const point1 = position.clone().add(new math.Vector3(halfWidth, halfHeight, 0));
-      const point2 = position.clone().add(new math.Vector3(halfWidth, -halfHeight, 0));
-      const point3 = position.clone().add(new math.Vector3(-halfWidth, -halfHeight, 0));
-      const point4 = position.clone().add(new math.Vector3(-halfWidth, halfHeight, 0));
-
-      this.geometry.setDrawCount(4);
-      this.geometry.setAttributeData('aPos', new Float32Array(point1.toArray().concat(point2.toArray(), point3.toArray(), point4.toArray())));
-      renderer.drawGeometry(this.geometry, Matrix4.IDENTITY, this.material);
     }
   }
 }

@@ -5,16 +5,14 @@ import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
-import {
-  MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode,
-} from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { MeshCollider } from '../plugins';
+import { MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
 import { itemFrag, itemVert } from '../shader';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
+import { extractMinAndMax } from '../math';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -40,10 +38,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
   protected visible = true;
 
-  /**
-   * 用于点击测试的碰撞器
-   */
-  protected meshCollider = new MeshCollider();
   protected defaultGeometry: Geometry;
 
   private _color = new Color(1, 1, 1, 1);
@@ -234,8 +228,8 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     const ui = this.interaction;
 
     if (force || ui) {
-      this.meshCollider.setGeometry(this.geometry, worldMatrix);
-      const area = this.meshCollider.getBoundingBoxData();
+      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
 
       if (area) {
         return {
@@ -248,13 +242,32 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   };
 
+  /**
+   * @deprecated 2.9.0 Please use getBoundingBoxInfo
+   */
   getBoundingBox (): BoundingBoxTriangle {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.meshCollider.getBoundingBox();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle(this.transform.size);
 
     return boundingBox;
+  }
+
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+
+    if (positionArray) {
+      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
+
+      minMaxResult.minimum.x *= this.transform.size.x;
+      minMaxResult.minimum.y *= this.transform.size.y;
+      minMaxResult.maximum.x *= this.transform.size.x;
+      minMaxResult.maximum.y *= this.transform.size.y;
+      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+    }
+
+    return this.boundingBoxInfo;
   }
 
   private configureMaterial (renderer: ItemRenderer): Material {
