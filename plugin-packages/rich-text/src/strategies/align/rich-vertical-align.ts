@@ -1,176 +1,71 @@
 import { spec } from '@galacean/effects';
-import type { TextStyle } from '@galacean/effects';
 import type { RichTextLayout } from '../../rich-text-layout';
 import type {
-  RichLine, VerticalAlignResult, SizeResult, OverflowResult, RichVerticalAlignStrategy,
+  RichLine, VerticalAlignResult, RichVerticalAlignStrategy,
 } from '../rich-text-interfaces';
 
 /**
  * 富文本垂直对齐策略
- * 直接使用已缩放的行高
+ * 在帧坐标系中计算基线位置，不依赖溢出模式
+ *
+ * 算法：
+ * 1. 从行数据重建各行基线（baseline[0]=0, baseline[i]=baseline[i-1]+lineHeight[i]）
+ * 2. 计算 bbox（包含行高边距）
+ * 3. 根据 textVerticalAlign 将内容定位到帧中
  */
 export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy {
   getVerticalOffsets (
     lines: RichLine[],
-    sizeResult: SizeResult,
-    overflowResult: OverflowResult,
+    frameHeight: number,
     layout: RichTextLayout,
-    style: TextStyle,
-    singleLineHeight: number,
   ): VerticalAlignResult {
-    const compY = sizeResult.baselineCompensationY ?? 0;
-    let baselineY = 0;
-
     if (lines.length === 0) {
       return { baselineY: 0, lineYOffsets: [] };
     }
 
-    switch (layout.overflow) {
-      case spec.TextOverflow.visible: {
-        // frame-based 计算
-        const frameHpx = layout.maxTextHeight * style.fontScale;
-        const bboxTop = sizeResult.bboxTop ?? 0;
-        const bboxBottom = sizeResult.bboxBottom ?? (bboxTop + (sizeResult.bboxHeight ?? 0));
-        const bboxHeight = sizeResult.bboxHeight ?? (bboxBottom - bboxTop);
+    // 1. 重建各行基线（相对于第一行基线=0）
+    const baselines: number[] = [0];
 
-        // 计算 frame 基线
-        let baselineYFrame = 0;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-            baselineYFrame = -bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.middle:
-            baselineYFrame = (frameHpx - bboxHeight) / 2 - bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.bottom:
-            baselineYFrame = (frameHpx - bboxHeight) - bboxTop;
-
-            break;
-        }
-
-        baselineY = baselineYFrame + compY; // 关键：叠加"向下移动 E"
-
-        break;
-      }
-      case spec.TextOverflow.clip: {
-        // 让 clip 垂直对齐逻辑与 display 保持一致（基于 bbox 的几何模型）
-        const frameHpx = layout.maxTextHeight * style.fontScale;
-
-        // 用缩放后的行数据重建 baselines 和 bbox
-        const baselines: number[] = [0];
-
-        for (let i = 1; i < lines.length; i++) {
-          baselines[i] = baselines[i - 1] + lines[i].lineHeight;
-        }
-
-        let bboxTop = Infinity;
-        let bboxBottom = -Infinity;
-
-        for (let i = 0; i < lines.length; i++) {
-          const asc = lines[i].lineAscent ?? 0;
-          const desc = lines[i].lineDescent ?? 0;
-          const textHeight = asc + desc;
-          const margin = (lines[i].lineHeight - textHeight) / 2;
-
-          bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
-          bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
-        }
-        const bboxHeight = bboxBottom - bboxTop;
-
-        let baselineClipY = 0;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-            baselineClipY = -bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.middle:
-            baselineClipY = (frameHpx - bboxHeight) / 2 - bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.bottom:
-            baselineClipY = (frameHpx - bboxHeight) - bboxTop;
-
-            break;
-        }
-
-        baselineY = baselineClipY + compY;
-
-        break;
-      }
-      case spec.TextOverflow.display: {
-        // display 垂直对齐改为基于 bbox，而不是 getOffsetYRich
-        const frameHpx = layout.maxTextHeight * style.fontScale;
-
-        // 用缩放后的行数据重建 baselines 和 bbox
-        const baselines: number[] = [0];
-
-        for (let i = 1; i < lines.length; i++) {
-          baselines[i] = baselines[i - 1] + lines[i].lineHeight;
-        }
-
-        // 计算 bboxTop / bboxBottom（使用行的测量值 lineAscent/lineDescent，包含行高边距）
-        let bboxTop = Infinity;
-        let bboxBottom = -Infinity;
-
-        for (let i = 0; i < lines.length; i++) {
-          const asc = lines[i].lineAscent ?? 0;
-          const desc = lines[i].lineDescent ?? 0;
-          const textHeight = asc + desc;
-          const margin = (lines[i].lineHeight - textHeight) / 2;
-
-          bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
-          bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
-        }
-
-        const bboxHeight = bboxBottom - bboxTop;
-
-        // 计算 display 模式的基线
-        let baselineDisplayY = 0;
-
-        switch (layout.textVerticalAlign) {
-          case spec.TextVerticalAlign.top:
-            baselineDisplayY = -bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.middle:
-            baselineDisplayY = (frameHpx - bboxHeight) / 2 - bboxTop;
-
-            break;
-          case spec.TextVerticalAlign.bottom:
-            baselineDisplayY = (frameHpx - bboxHeight) - bboxTop;
-
-            break;
-        }
-
-        // 后续 lineYOffsets 保持按行高累计
-        const lineYOffsets: number[] = [];
-        let currentY = baselineDisplayY;
-
-        for (let i = 0; i < lines.length; i++) {
-          lineYOffsets.push(currentY);
-          if (i < lines.length - 1) {
-            currentY += lines[i + 1].lineHeight;
-          }
-        }
-
-        return { baselineY: baselineDisplayY, lineYOffsets };
-      }
+    for (let i = 1; i < lines.length; i++) {
+      baselines[i] = baselines[i - 1] + lines[i].lineHeight;
     }
 
-    // 下面行偏移保持不变
-    const lineYOffsets: number[] = [];
-    let currentY = baselineY;
+    // 2. 计算内容 bbox（含行高边距）
+    let bboxTop = Infinity;
+    let bboxBottom = -Infinity;
 
-    lines.forEach((line, index) => {
-      lineYOffsets.push(currentY);
-      if (index < lines.length - 1) {
-        currentY += lines[index + 1].lineHeight;
-      }
-    });
+    for (let i = 0; i < lines.length; i++) {
+      const asc = lines[i].lineAscent ?? 0;
+      const desc = lines[i].lineDescent ?? 0;
+      const textHeight = asc + desc;
+      const margin = (lines[i].lineHeight - textHeight) / 2;
+
+      bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
+      bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
+    }
+
+    const bboxHeight = bboxBottom - bboxTop;
+
+    // 3. 在帧坐标系 [0, frameHeight] 中定位第一行基线
+    let baselineY = 0;
+
+    switch (layout.textVerticalAlign) {
+      case spec.TextVerticalAlign.top:
+        baselineY = -bboxTop;
+
+        break;
+      case spec.TextVerticalAlign.middle:
+        baselineY = (frameHeight - bboxHeight) / 2 - bboxTop;
+
+        break;
+      case spec.TextVerticalAlign.bottom:
+        baselineY = (frameHeight - bboxHeight) - bboxTop;
+
+        break;
+    }
+
+    // 4. 各行 Y 坐标
+    const lineYOffsets = baselines.map(b => baselineY + b);
 
     return { baselineY, lineYOffsets };
   }

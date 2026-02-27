@@ -221,15 +221,15 @@ export class CompositionComponent extends Component {
             }
           }
         }
+      }
 
-        if (VFXItem.isComposition(hitTestItem)) {
-          if (hitTestItem.getComponent(CompositionComponent).hitTest(ray, x, y, regions, force, options)) {
-            hitTestSuccess = true;
-          }
-        } else {
-          if (this.hitTestRecursive(hitTestItem, ray, x, y, regions, force, options)) {
-            hitTestSuccess = true;
-          }
+      if (VFXItem.isComposition(hitTestItem)) {
+        if (hitTestItem.getComponent(CompositionComponent).hitTest(ray, x, y, regions, force, options)) {
+          hitTestSuccess = true;
+        }
+      } else {
+        if (this.hitTestRecursive(hitTestItem, ray, x, y, regions, force, options)) {
+          hitTestSuccess = true;
         }
       }
     }
