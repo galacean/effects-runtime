@@ -1,8 +1,7 @@
 import { serialize } from '../decorators';
-import type { Material } from '../material';
-import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
-import type { Maskable } from '../material';
+import type { Material, Maskable } from '../material';
 import { MaskProcessor } from '../material';
+import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
 import type { Renderer } from '../render/renderer';
 

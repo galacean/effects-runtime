@@ -1,10 +1,10 @@
 import * as spec from '@galacean/effects-specification';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
+import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Ray } from '@galacean/effects-math/es/core/ray';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import type { Camera } from '../camera';
-import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 export type vec = number[];
 

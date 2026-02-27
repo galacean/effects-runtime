@@ -1,11 +1,9 @@
 import { serialize } from '../decorators';
 import type { Engine } from '../engine';
-import type { Maskable } from '../material/types';
-import { extractMinAndMax } from '../math/utils';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import type { BoundingBoxInfo } from '../plugins';
-import type { Geometry } from '../render/geometry';
-import type { Renderer } from '../render/renderer';
+import type { Maskable } from '../material';
+import { extractMinAndMax } from '../math';
+import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
+import type { Geometry, Renderer } from '../render';
 import { RendererComponent } from './renderer-component';
 
 /**
@@ -25,7 +23,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer, this);
 
-    for (let i = 0;i < this.materials.length;i++) {
+    for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
       renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), material, i);
@@ -37,7 +35,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
       return;
     }
 
-    for (let i = 0;i < this.materials.length;i++) {
+    for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
 
       this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), material, maskRef, i);

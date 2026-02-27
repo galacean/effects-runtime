@@ -5,9 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
-import {
-  MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode,
-} from '../material';
+import { MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';

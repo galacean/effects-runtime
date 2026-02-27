@@ -1,15 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import { Color } from '@galacean/effects-math/es/core/color';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Material } from '../material';
-import { GraphicsPath } from '../math/shape/graphics-path';
-import type { StrokeAttributes } from '../math/shape/build-line';
-import { buildLine } from '../math/shape/build-line';
-import type { ShapePath } from '../math/shape/shape-path';
+import { GraphicsPath, buildLine } from '../math';
+import type { StrokeAttributes, ShapePath } from '../math';
 
 export class Graphics {
   private geometry: Geometry;
@@ -89,7 +87,7 @@ export class Graphics {
         }`,
         fragment: `precision mediump float;
         varying vec4 vColor;
-        void main() { 
+        void main() {
           vec4 color = vColor;
           color.rgb *= color.a;
           gl_FragColor = color;

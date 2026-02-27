@@ -1,6 +1,5 @@
 import type {
-  RichLine, RichOverflowStrategy, OverflowResult,
-  HorizontalAlignResult, VerticalAlignResult,
+  RichLine, RichOverflowStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
 } from '../rich-text-interfaces';
 
 /**
