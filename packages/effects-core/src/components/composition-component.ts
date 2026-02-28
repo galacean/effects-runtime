@@ -54,7 +54,7 @@ export class CompositionComponent extends Component {
   @serialize()
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
-  private subCompositionComponents: CompositionComponent[] = [];
+  private nestedCompositions: CompositionComponent[] = [];
 
   private get timelineInstance (): TimelineInstance | null {
     if (!this._timelineInstance && this.timelineAsset) {
@@ -72,13 +72,13 @@ export class CompositionComponent extends Component {
         const boundObject = masterTrack.boundObject;
 
         if (boundObject instanceof VFXItem && VFXItem.isComposition(boundObject)) {
-          this.subCompositionComponents.push(boundObject.getComponent(CompositionComponent));
+          this.nestedCompositions.push(boundObject.getComponent(CompositionComponent));
         }
       }
     }
 
-    for (const subComposition of this.subCompositionComponents) {
-      subComposition.updateMode = UpdateModes.Manual;
+    for (const nestedComposition of this.nestedCompositions) {
+      nestedComposition.updateMode = UpdateModes.Manual;
     }
 
     if (this.playOnStart) {
@@ -93,7 +93,7 @@ export class CompositionComponent extends Component {
   pause () {
     this.state = PlayState.Paused;
 
-    for (const subComposition of this.subCompositionComponents) {
+    for (const subComposition of this.nestedCompositions) {
       subComposition.pause();
     }
   }
@@ -101,7 +101,7 @@ export class CompositionComponent extends Component {
   play () {
     this.state = PlayState.Playing;
 
-    for (const subComposition of this.subCompositionComponents) {
+    for (const subComposition of this.nestedCompositions) {
       subComposition.play();
     }
   }

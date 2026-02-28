@@ -346,6 +346,8 @@ export class TextComponentEditor extends Editor {
       textComponent.isDirty = true;
     }
     ImGui.PopStyleColor(3);
+
+    super.onInspectorGUI();
   }
 
   /**
