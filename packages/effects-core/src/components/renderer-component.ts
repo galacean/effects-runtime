@@ -12,13 +12,9 @@ import type { Renderer } from '../render/renderer';
 export class RendererComponent extends Component {
   @serialize()
   materials: Material[] = [];
-  /**
-   * @internal
-   */
+
   frameClipMasks: Maskable[] = [];
-  /**
-   * @internal
-   */
+
   maskManager: MaskProcessor = new MaskProcessor();
 
   @serialize()

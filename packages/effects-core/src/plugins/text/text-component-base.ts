@@ -15,6 +15,9 @@ import { canvasPool } from '../../canvas-pool';
  */
 export interface IRichTextComponent { }
 
+/**
+ * 文本组件基础类，包含文本组件和富文本组件的共有逻辑
+ */
 export class TextComponentBase {
   // 状态与通用字段
   textStyle: TextStyle;
@@ -34,7 +37,10 @@ export class TextComponentBase {
   // 常量
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
-  // 通用 setter 方法
+  /**
+   * 设置文本内容
+   * @param value - 文本内容
+   */
   setText (value: string): void {
     if (this.text === value) {
       return;
@@ -43,6 +49,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置文本水平布局
+   * @param value - 布局选项
+   */
   setTextAlign (value: spec.TextAlignment): void {
     if (this.textLayout.textAlign === value) {
       return;
@@ -51,6 +61,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置文本垂直布局
+   * @param value - 布局选项
+   */
   setTextVerticalAlign (value: spec.TextVerticalAlign): void {
     if (this.textLayout.textVerticalAlign === (value as unknown as spec.TextVerticalAlign)) {
       return;
@@ -71,6 +85,11 @@ export class TextComponentBase {
     this.setTextVerticalAlign(value as unknown as spec.TextVerticalAlign);
   }
 
+  /**
+   * 设置文本颜色
+   * @param value - 颜色内容
+   * @default [1, 1, 1, 1]
+   */
   setTextColor (value: spec.RGBAColorValue): void {
     if (this.textStyle.textColor === value) {
       return;
@@ -79,6 +98,11 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置字体
+   * @param value - 字体名称，如："Arial", "Times New Roman" 等
+   * @default "sans-serif"
+   */
   setFontFamily (value: string): void {
     if (!isValidFontFamily(value)) {
       console.warn('Risky font family, ignored:', value);
@@ -92,6 +116,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置字重
+   * @param value - 字重类型
+   */
   setFontWeight (value: spec.TextWeight): void {
     if (this.textStyle.textWeight === value) {
       return;
@@ -100,6 +128,11 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置字体样式
+   * @param value - 字体样式
+   * @default "normal"
+   */
   setFontStyle (value: spec.FontStyle): void {
     if (this.textStyle.fontStyle === value) {
       return;
@@ -108,6 +141,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置外描边文本颜色
+   * @param value - 颜色内容
+   */
   setOutlineColor (value: spec.RGBAColorValue): void {
     if (this.textStyle.outlineColor === value) {
       return;
@@ -116,6 +153,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置是否启用外描边
+   * @param value - 是否启用外描边
+   */
   setOutlineEnabled (value: boolean): void {
     if (this.textStyle.isOutlined === value) {
       return;
@@ -124,6 +165,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置字体清晰度
+   * @param value - 字体清晰度
+   */
   setFontScale (value: number): void {
     if (this.textStyle.fontScale === value) {
       return;
@@ -132,6 +177,10 @@ export class TextComponentBase {
     this.isDirty = true;
   }
 
+  /**
+   * 设置文本溢出方式
+   * @param overflow - 溢出方式
+   */
   setOverflow (overflow: spec.TextOverflow): void {
     this.textLayout.overflow = overflow;
     this.isDirty = true;
