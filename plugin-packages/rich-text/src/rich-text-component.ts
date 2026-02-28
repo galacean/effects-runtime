@@ -377,6 +377,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       return;
     }
 
+    this.updateStrategies();
+
     // 解析富文本
     this.generateTextProgram(this.text);
     const layout = this.textLayout;
