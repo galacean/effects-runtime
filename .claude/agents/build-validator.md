@@ -39,7 +39,7 @@ pnpm lint
 ### 4. Tests
 
 ```sh
-pnpm lint
+pnpm test
 ```
 
 - Temporarily requires opening browser for manual confirmation
