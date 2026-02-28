@@ -20,7 +20,7 @@ Give Claude verification loops for 2-3x quality improvement:
 
 <!-- Customize these for your project's conventions -->
 
-- Prefer `type` over `interface`; Prefer use `enum` (use string literal unions instead)
+- Prefer `type` over `interface`; As much as possible avoid use `enum` (use string literal unions instead)
 - Use descriptive variable names
 - Keep functions small and focused
 - Write tests for new functionality

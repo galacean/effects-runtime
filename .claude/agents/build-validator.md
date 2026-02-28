@@ -38,7 +38,11 @@ pnpm lint
 
 ### 4. Tests
 
-TODO: Temporarily skip tests, will improve later
+```sh
+pnpm lint
+```
+
+- Temporarily requires opening browser for manual confirmation
 
 ### 5. Bundle Analysis (if applicable)
 
