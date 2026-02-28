@@ -65,8 +65,6 @@ export class CompositionComponent extends Component {
   }
 
   override onStart (): void {
-    this.item.composition?.refContent.push(this.item);
-
     if (this.timelineInstance) {
       for (const masterTrack of this.timelineInstance.masterTrackInstances) {
         const boundObject = masterTrack.boundObject;

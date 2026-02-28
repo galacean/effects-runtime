@@ -205,10 +205,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly rootItem: VFXItem;
   /**
-   * 预合成数组
-   */
-  readonly refContent: VFXItem[] = [];
-  /**
    * 合成的相机对象
    */
   readonly camera: Camera;
