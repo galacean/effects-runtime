@@ -15,6 +15,7 @@ export class RendererComponent extends Component {
 
   /**
    * @hidden
+   * @internal
    * Internal utility.
    * Not part of the public API — do not rely on this in your code.
    */
