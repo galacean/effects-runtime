@@ -12,12 +12,19 @@ import type { Renderer } from '../render/renderer';
 export class RendererComponent extends Component {
   @serialize()
   materials: Material[] = [];
+
   /**
+   * @hidden
    * @internal
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
    */
   frameClipMasks: Maskable[] = [];
+
   /**
-   * @internal
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
    */
   maskManager: MaskProcessor = new MaskProcessor();
 

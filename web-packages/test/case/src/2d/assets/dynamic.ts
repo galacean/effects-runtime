@@ -1,4 +1,10 @@
 export default {
+  richTextClipText: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*USLUS5p9X0IAAAAAQoAAAAgAelB4AQ',
+    name: '富文本裁切模式测试',
+    variables: {
+    },
+  },
   customFont: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*de5zRbIjhBUAAAAAAAAAAAAADlB4AQ',
     name: '自定义字体',
