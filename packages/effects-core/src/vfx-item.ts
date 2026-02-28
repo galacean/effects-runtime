@@ -583,11 +583,11 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
-    this.resetGUID();
+    this.refreshGUIDRecursive();
     const newItem = this.engine.findObject<VFXItem>({ id: this.defination.id });
 
-    newItem.resetGUID();
-    this.resetGUID(previousObjectIDMap);
+    newItem.refreshGUIDRecursive();
+    this.refreshGUIDRecursive(previousObjectIDMap);
 
     if (this.composition) {
       newItem.setParent(this.composition.rootItem);
@@ -830,7 +830,10 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.setInstanceId(prevInstanceId);
   }
 
-  private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
+  /**
+   * @internal
+   */
+  refreshGUIDRecursive (previousObjectIDMap?: Map<EffectsObject, string>) {
     const itemGUID = previousObjectIDMap?.get(this) ?? generateGUID();
 
     this.setInstanceId(itemGUID);
@@ -841,7 +844,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     for (const child of this.children) {
-      child.resetGUID(previousObjectIDMap);
+      child.refreshGUIDRecursive(previousObjectIDMap);
     }
   }
 

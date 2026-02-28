@@ -3,7 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
-import { CompositionComponent } from './components';
+import { CompositionComponent, UpdateModes } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
@@ -217,6 +217,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly startTime: number = 0;
   /**
+   * 场景中视频列表
+   */
+  videos: HTMLVideoElement[] = [];
+  /**
    * 后处理渲染配置
    */
   globalVolume?: PostProcessVolume;
@@ -233,14 +237,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   protected destroyed = false;
   protected rootComposition: CompositionComponent;
-
   /**
    * 合成暂停/播放 标识
    */
   private paused = true;
   private isEndCalled = false;
   private _textures: Texture[] = [];
-  private videos: HTMLVideoElement[] = [];
 
   /**
    * @internal
@@ -335,6 +337,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       component.item = this.rootItem;
     }
     this.rootComposition = this.rootItem.getComponent(CompositionComponent);
+    this.rootComposition.updateMode = UpdateModes.Manual;
+    this.rootComposition.play();
 
     // Bind animation event
     this.rootItem.on('animationevent', eventData => {
@@ -373,8 +377,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     Composition.buildItemTree(this.rootItem);
 
-    this.rootComposition.setChildrenRenderOrder(0);
-
     PluginSystem.initializeComposition(this, scene);
   }
 
@@ -403,7 +405,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成当前时间
    */
   get time () {
-    return this.rootComposition.time;
+    return this.rootComposition.getTime();
   }
 
   /**
@@ -610,7 +612,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   protected reset () {
     this.isEnded = false;
     this.isEndCalled = false;
-    this.rootComposition.time = 0;
+    this.rootComposition.setTime(0);
   }
 
   prepareRender () { }
@@ -629,11 +631,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.rootItem.awake();
       this.rootItem.beginPlay();
     }
-
     const previousCompositionTime = this.time;
 
     this.updateCompositionTime(deltaTime * this.speed / 1000);
     const deltaTimeInMs = (this.time - previousCompositionTime) * 1000;
+
+    this.rootComposition.setChildrenRenderOrder(0);
 
     this.sceneTicking.update.tick(deltaTimeInMs);
     this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
@@ -666,7 +669,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 更新主合成组件
    */
   private updateCompositionTime (deltaTime: number) {
-    if (this.rootComposition.state === PlayState.Paused || !this.rootComposition.isActiveAndEnabled) {
+    if (this.rootComposition.state !== PlayState.Playing || !this.rootComposition.isActiveAndEnabled) {
       return;
     }
 
@@ -709,7 +712,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     }
 
-    this.rootComposition.time = localTime + this.startTime;
+    this.rootComposition.tick(localTime + this.startTime - this.rootComposition.getTime());
 
     // end state changed, handle onEnd flags
     if (this.isEnded !== isEnded) {
@@ -855,6 +858,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     for (const texture of this.textures) {
       texture.dispose();
     }
+
     this._textures = [];
 
     for (const video of this.videos) {
@@ -862,6 +866,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       video.removeAttribute('src');
       video.load();
     }
+
     this.videos = [];
 
     this.rootItem.dispose();

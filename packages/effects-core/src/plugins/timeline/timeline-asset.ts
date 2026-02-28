@@ -63,7 +63,6 @@ export class TimelineInstance {
    */
   masterTrackInstances: TrackInstance[] = [];
 
-  private time = 0;
   private clips: RuntimeClip[] = [];
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
@@ -83,17 +82,7 @@ export class TimelineInstance {
     this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
   }
 
-  setTime (time: number) {
-    this.time = time;
-  }
-
-  getTime () {
-    return this.time;
-  }
-
-  evaluate (deltaTime: number) {
-    const time = this.getTime();
-
+  evaluate (time: number, deltaTime: number) {
     // TODO search active clips
 
     for (const clip of this.clips) {
