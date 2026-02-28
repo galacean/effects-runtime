@@ -13,8 +13,18 @@ export class RendererComponent extends Component {
   @serialize()
   materials: Material[] = [];
 
+  /**
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
+   */
   frameClipMasks: Maskable[] = [];
 
+  /**
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
+   */
   maskManager: MaskProcessor = new MaskProcessor();
 
   @serialize()
