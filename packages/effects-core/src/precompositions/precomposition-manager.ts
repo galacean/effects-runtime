@@ -78,7 +78,6 @@ export class PrecompositionManager {
     // 4. 构建 item 树
     //-------------------------------------------------------------------------
 
-    // @ts-expect-error TODO update spec
     for (const childId of compositionData.children ?? []) {
       const childItem = engine.findObject<VFXItem>(childId);
 

@@ -707,13 +707,11 @@ export function version36Migration (json: JSONScene): JSONScene {
   }
 
   for (const item of json.items) {
-    //@ts-expect-error
     item.children = [];
     itemMap.set(item.id, item);
   }
 
   for (const composition of json.compositions) {
-    //@ts-expect-error
     composition.children = [];
 
     for (const componentDataPath of composition.components) {
@@ -726,7 +724,6 @@ export function version36Migration (json: JSONScene): JSONScene {
           const item = itemMap.get(itemPath.id) as spec.VFXItemData;
 
           if (item.parentId === undefined) {
-            //@ts-expect-error
             composition.children.push({ id: item.id });
           }
         }
@@ -750,7 +747,6 @@ export function version36Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // @ts-expect-error
   json.version = JSONSceneVersion['3_7'];
 
   return json;

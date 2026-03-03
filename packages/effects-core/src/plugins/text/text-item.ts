@@ -648,7 +648,6 @@ export class TextComponent extends MaskableGraphic {
         letterSpace: 0,
         textAlign: spec.TextAlignment.middle,
         fontStyle: spec.FontStyle.normal,
-        autoWidth: false,
         textWidth: 200,
         textHeight: 42,
         lineHeight: 40.148,

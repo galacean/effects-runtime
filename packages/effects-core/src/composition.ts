@@ -297,7 +297,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
-    // @ts-expect-error TODO update spec
     for (const child of sourceContent.children ?? []) {
       const item = this.engine.findObject<VFXItem>(child);
 

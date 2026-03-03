@@ -714,7 +714,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
 
-    // @ts-expect-error TODO update spec
     for (const child of data.children ?? []) {
       const childItem = this.engine.findObject<VFXItem>(child);
 
@@ -794,14 +793,13 @@ export class VFXItem extends EffectsObject implements Disposable {
   private instantiatePreComposition () {
     const compositionContent = this.props.content as unknown as spec.CompositionContent;
     const refId = compositionContent.options.refId;
-    const props = this.engine.findEffectsObjectData(refId);
+    const props = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
     if (!props) {
       throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
     }
 
-    //@ts-expect-error TODO update spec.
-    const componentPaths = props.components as spec.DataPath[];
+    const componentPaths = props.components;
     const prevInstanceId = this.getInstanceId();
 
     // Set the current preComposition item id to the referenced composition id to prevent the composition component from not finding the correct item
@@ -814,7 +812,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       component.setInstanceId(generateGUID());
     }
 
-    // @ts-expect-error TODO update spec
     for (const child of props.children ?? []) {
       const childItem = this.engine.findObject<VFXItem>(child);
 
