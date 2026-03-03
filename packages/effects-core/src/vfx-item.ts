@@ -4,7 +4,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import { Composition } from './composition';
+import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
@@ -714,6 +714,13 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
 
+    // @ts-expect-error TODO update spec
+    for (const child of data.children ?? []) {
+      const childItem = this.engine.findObject<VFXItem>(child);
+
+      childItem.setParent(this);
+    }
+
     if (VFXItem.isComposition(this)) {
       this.instantiatePreComposition();
     }
@@ -807,7 +814,12 @@ export class VFXItem extends EffectsObject implements Disposable {
       component.setInstanceId(generateGUID());
     }
 
-    Composition.buildItemTree(this);
+    // @ts-expect-error TODO update spec
+    for (const child of props.children ?? []) {
+      const childItem = this.engine.findObject<VFXItem>(child);
+
+      childItem.setParent(this);
+    }
 
     for (const child of this.children) {
       child.refreshGUIDRecursive();

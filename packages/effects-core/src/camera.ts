@@ -69,7 +69,7 @@ const tmpScale = new Vector3(1, 1, 1);
  * 合成的相机对象，采用透视投影
  */
 export class Camera {
-
+  engine: Engine;
   /**
    * @internal
    */
@@ -93,7 +93,6 @@ export class Camera {
    * @param options
    */
   constructor (
-    public engine: Engine,
     public name: string,
     options: Partial<CameraOptions> = {},
   ) {

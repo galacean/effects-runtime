@@ -1,5 +1,5 @@
 import { CompositionComponent, type Component } from '../components';
-import { Composition } from '../composition';
+import type { Composition } from '../composition';
 import { PluginSystem } from '../plugin-system';
 import type { Texture } from '../texture/texture';
 import { VFXItem } from '../vfx-item';
@@ -77,7 +77,12 @@ export class PrecompositionManager {
     // 4. 构建 item 树
     //-------------------------------------------------------------------------
 
-    Composition.buildItemTree(rootItem);
+    // @ts-expect-error TODO update spec
+    for (const childId of compositionData.children ?? []) {
+      const childItem = engine.findObject<VFXItem>(childId);
+
+      childItem.setParent(rootItem);
+    }
 
     rootItem.refreshGUIDRecursive();
 

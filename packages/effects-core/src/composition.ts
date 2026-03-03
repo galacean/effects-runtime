@@ -241,33 +241,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private _textures: Texture[] = [];
 
   /**
-   * @internal
-   * 构建父子树，同时保存到 itemCacheMap 中便于查找
-   */
-  static buildItemTree (compVFXItem: VFXItem) {
-    const itemMap = new Map<string, VFXItem>();
-    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
-
-    for (const item of contentItems) {
-      itemMap.set(item.id, item);
-    }
-
-    for (const item of contentItems) {
-      if (item.parentId === undefined) {
-        item.setParent(compVFXItem);
-      } else {
-        const parent = itemMap.get(item.parentId);
-
-        if (parent) {
-          item.setParent(parent);
-        } else {
-          throw new Error('The element references a non-existent element, please check the data.');
-        }
-      }
-    }
-  }
-
-  /**
    * Composition 构造函数
    * @param props - composition 的创建参数
    * @param scene
@@ -289,12 +262,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderer = renderer;
     this.renderer.engine.addComposition(this);
 
-    for (let i = 0; i < scene.textureOptions.length; i++) {
-      const texture = this.engine.findObject<Texture>({ id: scene.textureOptions[i].id });
-
-      texture.initialize();
-      this._textures.push(texture);
-    }
+    this.createTexturesFromData(scene.textureOptions);
 
     for (const key of Object.keys(scene.assets)) {
       const videoAsset = scene.assets[key];
@@ -328,6 +296,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.duration = sourceContent.duration;
     this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
+
+    // @ts-expect-error TODO update spec
+    for (const child of sourceContent.children ?? []) {
+      const item = this.engine.findObject<VFXItem>(child);
+
+      item.setParent(this.rootItem);
+    }
 
     // Create rootItem components
     const componentPaths = sourceContent.components;
@@ -363,10 +338,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    this.camera = new Camera(this.engine, this.name, {
+    this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
     });
+
+    this.camera.engine = this.engine;
 
     this.url = scene.url;
     this.interactive = true;
@@ -376,8 +353,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     this.createRenderFrame();
-
-    Composition.buildItemTree(this.rootItem);
 
     PluginSystem.initializeComposition(this, scene);
   }
@@ -728,6 +703,15 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.isEnded = false;
         this.isEndCalled = false;
       }
+    }
+  }
+
+  private createTexturesFromData (textureDataList: Record<string, any>[]) {
+    for (const textureData of textureDataList) {
+      const texture = this.engine.findObject<Texture>({ id: textureData.id });
+
+      texture.initialize();
+      this._textures.push(texture);
     }
   }
 

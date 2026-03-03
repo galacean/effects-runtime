@@ -610,7 +610,7 @@ function createRenderFrame (
 ) {
   const frame = new RenderFrame({
     renderer,
-    camera: new Camera(renderer.engine, ''),
+    camera: new Camera(''),
   });
 
   frame.setRenderPasses([renderPass]);
