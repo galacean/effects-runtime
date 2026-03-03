@@ -9,7 +9,8 @@ export class PrecompositionManager {
   /**
    * 从预合成数据实例化一棵 VFXItem 树。
    * 可挂载到现有合成的节点下。
-   * @param engine - 引擎实例
+   * @param precomposition 预合成数据
+   * @param composition 目标合成
    * @returns 实例化生成的根 VFXItem，其子树包含指定合成的所有元素
    */
   static instantiate (precomposition: Precomposition, composition: Composition): VFXItem {
