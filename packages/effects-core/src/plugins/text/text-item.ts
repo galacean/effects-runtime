@@ -157,6 +157,11 @@ export class TextComponent extends MaskableGraphic {
     this.text = options.text.toString();
   }
 
+  /**
+   * 获取文本行数
+   * @param text - 文本内容
+   * @returns 行数
+   */
   getLineCount (text: string): number {
     const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
@@ -227,88 +232,7 @@ export class TextComponent extends MaskableGraphic {
   }
 
   /**
-   * 设置字重
-   * @param value - 字重类型
-   * @returns
-   */
-  setFontWeight (value: spec.TextWeight): void {
-    if (this.textStyle.textWeight === value) {
-      return;
-    }
-    this.textStyle.textWeight = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置字体样式
-   * @param value 设置字体样式
-   * @default "normal"
-   * @returns
-   */
-  setFontStyle (value: spec.FontStyle): void {
-    if (this.textStyle.fontStyle === value) {
-      return;
-    }
-    this.textStyle.fontStyle = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置文本水平布局
-   * @param value - 布局选项
-   * @returns
-   */
-  setTextAlign (value: spec.TextAlignment): void {
-    if (this.textLayout.textAlign === value) {
-      return;
-    }
-    this.textLayout.textAlign = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置文本颜色
-   * @param value - 颜色内容
-   * @returns
-   */
-  setTextColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.textColor === value) {
-      return;
-    }
-    this.textStyle.textColor = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置外描边文本颜色
-   * @param value - 颜色内容
-   * @returns
-   */
-  setOutlineColor (value: spec.RGBAColorValue): void {
-    if (this.textStyle.outlineColor === value) {
-      return;
-    }
-    this.textStyle.outlineColor = value;
-    this.isDirty = true;
-  }
-
-  /**
-   * 设置字体清晰度
-   * @param value - 字体清晰度
-   * @returns
-   */
-  setFontScale (value: number): void {
-    if (this.textStyle.fontScale === value) {
-      return;
-    }
-
-    this.textStyle.fontScale = value;
-    this.isDirty = true;
-  }
-
-  /**
    * 更新文本
-   * @returns
    */
   protected updateTexture (flipY = true): void {
     if (!this.isDirty || !this.context || !this.canvas) {
@@ -549,6 +473,11 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
   }
 
+  /**
+   * 设置字体大小
+   * @param value - 字体大小
+   * @default 40
+   */
   setFontSize (value: number): void {
     const size = Math.max(1, Number(value) || 1);
 
@@ -560,6 +489,11 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
   }
 
+  /**
+   * 设置描边宽度
+   * @param value - 描边宽度
+   * @default 0
+   */
   setOutlineWidth (value: number): void {
     const v = Math.max(0, Number(value) || 0);
 
@@ -573,7 +507,6 @@ export class TextComponent extends MaskableGraphic {
   /**
    * 设置是否启用文本描边
    * @param value - 是否启用描边
-   * @returns
    */
   setOutlineEnabled (value: boolean): void {
     if (this.textStyle.isOutlined === value) {
@@ -583,6 +516,11 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
   }
 
+  /**
+   * 设置阴影模糊度
+   * @param value - 阴影模糊度
+   * @default 0
+   */
   setShadowBlur (value: number): void {
     const v = Math.max(0, Number(value) || 0);
 
@@ -593,7 +531,12 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
   }
 
-  // setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
+  /**
+   * 设置阴影颜色
+   * > setupShadow 使用 outlineColor 作为阴影颜色，更新 shadowColor 不影响阴影颜色
+   * @param value - 阴影颜色
+   * @returns
+   */
   setShadowColor (value: spec.RGBAColorValue): void {
     const v = value ?? [0, 0, 0, 1];
 
@@ -604,6 +547,11 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
   }
 
+  /**
+   * 设置阴影偏移 X
+   * @param value - 阴影偏移值
+   * @returns
+   */
   setShadowOffsetX (value: number): void {
     const v = Number(value) || 0;
 
@@ -614,6 +562,11 @@ export class TextComponent extends MaskableGraphic {
     this.isDirty = true;
   }
 
+  /**
+   * 设置阴影偏移 Y
+   * @param value - 阴影偏移值
+   * @returns
+   */
   setShadowOffsetY (value: number): void {
     const v = Number(value) || 0;
 
@@ -637,7 +590,7 @@ export class TextComponent extends MaskableGraphic {
   getTextWidth (): number {
     const ctx = this.context;
 
-    if (!ctx) {return this.textLayout?.width ?? 0;}
+    if (!ctx) { return this.textLayout?.width ?? 0; }
 
     const text = (this.text ?? '').toString();
     const layout = this.textLayout;
@@ -693,7 +646,7 @@ export class TextComponent extends MaskableGraphic {
         textColor: [1, 1, 1, 1],
         fontWeight: spec.TextWeight.normal,
         letterSpace: 0,
-        textAlign: 1,
+        textAlign: spec.TextAlignment.middle,
         fontStyle: spec.FontStyle.normal,
         autoWidth: false,
         textWidth: 200,
