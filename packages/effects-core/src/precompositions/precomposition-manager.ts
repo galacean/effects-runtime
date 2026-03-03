@@ -1,6 +1,7 @@
 import { CompositionComponent, type Component } from '../components';
 import { Composition } from '../composition';
 import { PluginSystem } from '../plugin-system';
+import type { Texture } from '../texture/texture';
 import { VFXItem } from '../vfx-item';
 import type { Precomposition } from './precomposition';
 
@@ -15,7 +16,7 @@ export class PrecompositionManager {
     const scene = precomposition.scene;
     const jsonScene = precomposition.scene.jsonScene;
     const options = precomposition.options;
-    const engine = composition.getEngine();
+    const engine = composition.engine;
 
     engine.clearResources();
 
@@ -24,9 +25,13 @@ export class PrecompositionManager {
 
     engine.assetService.prepareAssets(scene, scene.assets);
     engine.assetService.updateTextVariables(scene, options.variables);
-    engine.assetService.initializeTexture(scene);
 
-    composition.textures.push(...scene.textures);
+    for (let i = 0; i < scene.textureOptions.length; i++) {
+      const texture = engine.findObject<Texture>({ id: scene.textureOptions[i].id });
+
+      texture.initialize();
+      composition.textures.push(texture);
+    }
 
     for (const key of Object.keys(scene.assets)) {
       const videoAsset = scene.assets[key];

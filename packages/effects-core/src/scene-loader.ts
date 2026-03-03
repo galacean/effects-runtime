@@ -30,7 +30,6 @@ export class SceneLoader {
 
     engine.assetService.prepareAssets(loadedScene, loadedScene.assets);
     engine.assetService.updateTextVariables(loadedScene, options.variables);
-    engine.assetService.initializeTexture(loadedScene);
 
     const composition = this.createComposition(loadedScene, engine, options);
 

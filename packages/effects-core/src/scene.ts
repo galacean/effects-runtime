@@ -15,7 +15,6 @@ export interface Scene {
   readonly storage: Record<string, any>,
   renderLevel?: SceneRenderLevel,
   textureOptions: Record<string, any>[],
-  textures: Texture[],
   images: ImageLike[],
   assets: Record<string, ImageLike>,
   consumed?: boolean,

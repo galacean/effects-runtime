@@ -200,7 +200,6 @@ export class AssetManager implements Disposable {
           jsonScene,
           bins: [],
           textureOptions: [],
-          textures: [],
           images: [],
           assets: this.assets,
         };

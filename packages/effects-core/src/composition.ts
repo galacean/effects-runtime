@@ -288,7 +288,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.renderer = renderer;
     this.renderer.engine.addComposition(this);
-    this._textures = scene.textures;
+
+    for (let i = 0; i < scene.textureOptions.length; i++) {
+      const texture = this.engine.findObject<Texture>({ id: scene.textureOptions[i].id });
+
+      texture.initialize();
+      this._textures.push(texture);
+    }
 
     for (const key of Object.keys(scene.assets)) {
       const videoAsset = scene.assets[key];
@@ -299,7 +305,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
-    this.getEngine().renderLevel = scene.renderLevel;
+    this.engine.renderLevel = scene.renderLevel;
 
     if (reusable) {
       scene.consumed = true;
@@ -316,7 +322,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     assertExist(sourceContent);
 
     // Instantiate composition rootItem
-    this.rootItem = new VFXItem(this.getEngine());
+    this.rootItem = new VFXItem(this.engine);
     this.rootItem.setInstanceId(sourceContent.id);
     this.rootItem.name = 'rootItem';
     this.rootItem.duration = sourceContent.duration;
@@ -327,7 +333,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const componentPaths = sourceContent.components;
 
     for (const componentPath of componentPaths) {
-      const component = this.getEngine().findObject<Component>(componentPath);
+      const component = this.engine.findObject<Component>(componentPath);
 
       this.rootItem.components.push(component);
       component.item = this.rootItem;
@@ -357,7 +363,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.reusable = reusable;
     this.speed = speed;
     this.name = sourceContent.name;
-    this.camera = new Camera(this.getEngine(), this.name, {
+    this.camera = new Camera(this.engine, this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
     });
@@ -374,6 +380,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     Composition.buildItemTree(this.rootItem);
 
     PluginSystem.initializeComposition(this, scene);
+  }
+
+  get engine () {
+    return this.getEngine();
   }
 
   /**
@@ -879,7 +889,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.dispose = noop;
     this.renderer.engine.removeComposition(this);
 
-    if (this.getEngine().env === PLAYER_OPTIONS_ENV_EDITOR) {
+    if (this.engine.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;
     }
 

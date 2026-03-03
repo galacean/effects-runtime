@@ -506,7 +506,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (this.composition) {
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
+      const { width, height } = this.composition.engine.canvas.getBoundingClientRect();
 
       this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
     }
@@ -514,7 +514,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
+      const { width, height } = this.composition.engine.canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
 
@@ -809,22 +809,8 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     Composition.buildItemTree(this);
 
-    const resetGUIDRecursive = (item: VFXItem) => {
-      item.setInstanceId(generateGUID());
-
-      for (const component of item.components) {
-        component.setInstanceId(generateGUID());
-      }
-
-      if (!VFXItem.isComposition(item)) {
-        for (const child of item.children) {
-          resetGUIDRecursive(child);
-        }
-      }
-    };
-
     for (const child of this.children) {
-      resetGUIDRecursive(child);
+      child.refreshGUIDRecursive();
     }
 
     this.setInstanceId(prevInstanceId);
