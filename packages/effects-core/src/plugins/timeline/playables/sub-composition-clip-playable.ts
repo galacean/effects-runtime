@@ -7,7 +7,7 @@ export class SubCompositionClipPlayable extends Playable {
     const boundObject = context.output.getUserData();
 
     if (boundObject instanceof CompositionComponent) {
-      boundObject.time = this.getTime();
+      boundObject.tick(this.getTime() - boundObject.getTime());
     }
   }
 }

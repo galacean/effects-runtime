@@ -151,4 +151,5 @@ export interface FrameContext {
 export enum PlayState {
   Playing,
   Paused,
+  Stopped,
 }

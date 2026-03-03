@@ -9,6 +9,7 @@ import { noop } from '../utils';
 import { VFXItem } from '../vfx-item';
 import { effectsClass, serialize } from '../decorators';
 import { Component } from './component';
+import { decimalEqual } from '../math';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -20,26 +21,40 @@ export interface SceneBindingData {
   value: spec.DataPath,
 }
 
+export enum UpdateModes {
+  EveryUpdate,
+  Manual,
+}
+
 /**
  * @since 2.0.0
  */
 @effectsClass('CompositionComponent')
 export class CompositionComponent extends Component {
-  time = 0;
   @serialize()
   items: VFXItem[] = [];  // 场景的所有元素
-
   /**
    * @internal
    */
-  state: PlayState = PlayState.Playing;
+  state: PlayState = PlayState.Stopped;
+  /**
+   * 更新模式，决定了组件更新时间的方式
+   * - EveryUpdate：每帧自动更新，适用于大多数情况
+   * - Manual：需要手动调用 tick 接口更新，适用于需要精确控制更新时间的情况
+   */
+  updateMode: UpdateModes = UpdateModes.EveryUpdate;
+
+  playOnStart = false;
 
   private reusable = false;
+  private time = 0;
+  private lastTime = 0;
   @serialize()
   private sceneBindings: SceneBinding[] = [];
   @serialize()
   private timelineAsset: TimelineAsset | null = null;
   private _timelineInstance: TimelineInstance | null = null;
+  private nestedCompositions: CompositionComponent[] = [];
 
   private get timelineInstance (): TimelineInstance | null {
     if (!this._timelineInstance && this.timelineAsset) {
@@ -50,7 +65,23 @@ export class CompositionComponent extends Component {
   }
 
   override onStart (): void {
-    this.item.composition?.refContent.push(this.item);
+    if (this.timelineInstance) {
+      for (const masterTrack of this.timelineInstance.masterTrackInstances) {
+        const boundObject = masterTrack.boundObject;
+
+        if (boundObject instanceof VFXItem && VFXItem.isComposition(boundObject)) {
+          this.nestedCompositions.push(boundObject.getComponent(CompositionComponent));
+        }
+      }
+    }
+
+    for (const nestedComposition of this.nestedCompositions) {
+      nestedComposition.updateMode = UpdateModes.Manual;
+    }
+
+    if (this.playOnStart) {
+      this.play();
+    }
   }
 
   getReusable () {
@@ -59,21 +90,52 @@ export class CompositionComponent extends Component {
 
   pause () {
     this.state = PlayState.Paused;
+
+    for (const subComposition of this.nestedCompositions) {
+      subComposition.pause();
+    }
   }
 
-  resume () {
+  play () {
     this.state = PlayState.Playing;
+
+    for (const subComposition of this.nestedCompositions) {
+      subComposition.play();
+    }
+  }
+
+  getTime () {
+    return this.time;
+  }
+
+  setTime (time: number) {
+    this.time = time;
   }
 
   override onUpdate (dt: number): void {
-    if (this.state === PlayState.Paused) {
+    if (this.state !== PlayState.Playing) {
       return;
     }
 
-    if (this.timelineInstance) {
-      this.timelineInstance.setTime(this.time);
-      this.timelineInstance.evaluate(dt / 1000);
+    if (this.updateMode === UpdateModes.EveryUpdate) {
+      this.tick(dt / 1000);
     }
+  }
+
+  tick (deltaTime: number) {
+    if (!this.timelineInstance) {
+      return;
+    }
+
+    let time = this.time;
+
+    if (decimalEqual(this.lastTime, this.time)) {
+      time += deltaTime;
+    }
+
+    this.timelineInstance.evaluate(time, deltaTime);
+
+    this.lastTime = this.time = time;
   }
 
   override onEnable () {
@@ -241,6 +303,12 @@ export class CompositionComponent extends Component {
 
   /**
    * 设置当前合成子元素的渲染顺序
+   *
+   * 1. 按场景树递归（DFS）顺序遍历所有子元素，得到默认排序队列
+   * 2. 收集队列中属于 masterTrackInstances 绑定的 item 及其坑位索引
+   * 3. 按 masterTrackInstances 的顺序重新分配这些坑位，非 track 绑定的元素坑位不变
+   * 4. 最终按调整后的队列依次分配 renderOrder
+   *
    * @internal
    */
   setChildrenRenderOrder (startOrder: number): number {
@@ -248,15 +316,47 @@ export class CompositionComponent extends Component {
       return startOrder;
     }
 
+    // 1. 场景树 DFS 顺序收集直接子元素
+    const sceneOrder: VFXItem[] = [];
+
+    this.collectChildren(this.item, sceneOrder);
+
+    // 2. 构建 masterTrackInstances 绑定的 item 集合
+    const trackedItems = new Set<VFXItem>();
+
     for (const masterTrack of this.timelineInstance.masterTrackInstances) {
-      const item = masterTrack.boundObject;
-
-      if (!(item instanceof VFXItem)) {
-        continue;
+      if (masterTrack.boundObject instanceof VFXItem) {
+        trackedItems.add(masterTrack.boundObject);
       }
+    }
 
-      item.renderOrder = startOrder++;
-      const subCompositionComponent = item.getComponent(CompositionComponent);
+    // 3. 收集 tracked items 在场景队列中的坑位索引
+    const slotIndices: number[] = [];
+
+    for (let i = 0; i < sceneOrder.length; i++) {
+      if (trackedItems.has(sceneOrder[i])) {
+        slotIndices.push(i);
+      }
+    }
+
+    // 4. 按 masterTrackInstances 顺序取出 tracked items
+    const sortedTrackedItems: VFXItem[] = [];
+
+    for (const masterTrack of this.timelineInstance.masterTrackInstances) {
+      if (masterTrack.boundObject instanceof VFXItem) {
+        sortedTrackedItems.push(masterTrack.boundObject);
+      }
+    }
+
+    // 5. 将排序后的 tracked items 填回原坑位
+    for (let i = 0; i < slotIndices.length && i < sortedTrackedItems.length; i++) {
+      sceneOrder[slotIndices[i]] = sortedTrackedItems[i];
+    }
+
+    // 6. 分配 renderOrder
+    for (const child of sceneOrder) {
+      child.renderOrder = startOrder++;
+      const subCompositionComponent = child.getComponent(CompositionComponent);
 
       if (subCompositionComponent) {
         startOrder = subCompositionComponent.setChildrenRenderOrder(startOrder);
@@ -264,6 +364,19 @@ export class CompositionComponent extends Component {
     }
 
     return startOrder;
+  }
+
+  /**
+   * 递归收集场景树中的直接子元素（DFS 前序）
+   */
+  private collectChildren (item: VFXItem, result: VFXItem[]) {
+    for (const child of item.children) {
+      result.push(child);
+
+      if (!VFXItem.isComposition(child)) {
+        this.collectChildren(child, result);
+      }
+    }
   }
 
   override fromData (data: any): void {

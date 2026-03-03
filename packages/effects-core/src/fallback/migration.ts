@@ -674,6 +674,7 @@ export function version35Migration (json: JSONScene): JSONScene {
 }
 
 export function version36Migration (json: JSONScene): JSONScene {
+  // 兼容老数据 text item 的 transform scale 问题，老版本 text item 的 scale 实际上是 size，新的版本中 scale 和 size 分离
   for (const textItem of json.items) {
     if (textItem.type === spec.ItemType.text && textItem.transform) {
       const textComponent = json.components.find(comp => textItem.components[0].id === comp.id) as spec.TextComponentData;
@@ -696,7 +697,56 @@ export function version36Migration (json: JSONScene): JSONScene {
     }
   }
 
-  // @ts-expect-error
+  // 生成 item 的 children 字段，CompositionComponent 的 children 字段
+  const itemMap = new Map<string, spec.VFXItemData>();
+  const compositionMap = new Map<string, spec.CompositionData>();
+  const componentMap = new Map<string, spec.ComponentData>();
+
+  for (const component of json.components) {
+    componentMap.set(component.id, component);
+  }
+
+  for (const item of json.items) {
+    item.children = [];
+    itemMap.set(item.id, item);
+  }
+
+  for (const composition of json.compositions) {
+    composition.children = [];
+
+    for (const componentDataPath of composition.components) {
+      const componentData = componentMap.get(componentDataPath.id) as spec.ComponentData;
+
+      if (componentData.dataType === spec.DataType.CompositionComponent) {
+        const compositionComponent = componentData as spec.CompositionComponentData;
+
+        for (const itemPath of compositionComponent.items) {
+          const item = itemMap.get(itemPath.id) as spec.VFXItemData;
+
+          if (item.parentId === undefined) {
+            composition.children.push({ id: item.id });
+          }
+        }
+
+        //@ts-expect-error
+        delete compositionComponent.items;
+      }
+    }
+
+    compositionMap.set(composition.id, composition);
+  }
+
+  for (const item of json.items) {
+    if (item.parentId) {
+      const parentItem = itemMap.get(item.parentId);
+
+      if (parentItem) {
+        //@ts-expect-error
+        parentItem.children.push({ id: item.id });
+      }
+    }
+  }
+
   json.version = JSONSceneVersion['3_7'];
 
   return json;

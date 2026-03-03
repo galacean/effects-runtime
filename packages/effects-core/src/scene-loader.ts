@@ -7,6 +7,9 @@ import type { Scene, SceneLoadOptions } from './scene';
 import { logger } from './utils';
 import { PluginSystem } from './plugin-system';
 
+/**
+ * @internal
+ */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
     const last = performance.now();
@@ -27,7 +30,6 @@ export class SceneLoader {
 
     engine.assetService.prepareAssets(loadedScene, loadedScene.assets);
     engine.assetService.updateTextVariables(loadedScene, options.variables);
-    engine.assetService.initializeTexture(loadedScene);
 
     const composition = this.createComposition(loadedScene, engine, options);
 

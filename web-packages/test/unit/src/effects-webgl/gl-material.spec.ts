@@ -569,7 +569,7 @@ describe('webgl/gl-material', () => {
       });
     const renderFrame = new RenderFrame({
       renderer,
-      camera: new Camera(renderer.engine, ''),
+      camera: new Camera(''),
     });
     const testData = [
       1, 2, 3, 4,

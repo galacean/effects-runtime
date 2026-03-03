@@ -4,7 +4,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import { Composition } from './composition';
+import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
@@ -506,7 +506,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (this.composition) {
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
+      const { width, height } = this.composition.engine.canvas.getBoundingClientRect();
 
       this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
     }
@@ -514,7 +514,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      const { width, height } = this.composition.getEngine().canvas.getBoundingClientRect();
+      const { width, height } = this.composition.engine.canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
 
@@ -583,11 +583,11 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
-    this.resetGUID();
+    this.refreshGUIDRecursive();
     const newItem = this.engine.findObject<VFXItem>({ id: this.defination.id });
 
-    newItem.resetGUID();
-    this.resetGUID(previousObjectIDMap);
+    newItem.refreshGUIDRecursive();
+    this.refreshGUIDRecursive(previousObjectIDMap);
 
     if (this.composition) {
       newItem.setParent(this.composition.rootItem);
@@ -714,6 +714,12 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
 
+    for (const child of data.children ?? []) {
+      const childItem = this.engine.findObject<VFXItem>(child);
+
+      childItem.setParent(this);
+    }
+
     if (VFXItem.isComposition(this)) {
       this.instantiatePreComposition();
     }
@@ -787,14 +793,13 @@ export class VFXItem extends EffectsObject implements Disposable {
   private instantiatePreComposition () {
     const compositionContent = this.props.content as unknown as spec.CompositionContent;
     const refId = compositionContent.options.refId;
-    const props = this.engine.findEffectsObjectData(refId);
+    const props = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
     if (!props) {
       throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
     }
 
-    //@ts-expect-error TODO update spec.
-    const componentPaths = props.components as spec.DataPath[];
+    const componentPaths = props.components;
     const prevInstanceId = this.getInstanceId();
 
     // Set the current preComposition item id to the referenced composition id to prevent the composition component from not finding the correct item
@@ -807,30 +812,23 @@ export class VFXItem extends EffectsObject implements Disposable {
       component.setInstanceId(generateGUID());
     }
 
-    Composition.buildItemTree(this);
+    for (const child of props.children ?? []) {
+      const childItem = this.engine.findObject<VFXItem>(child);
 
-    const resetGUIDRecursive = (item: VFXItem) => {
-      item.setInstanceId(generateGUID());
-
-      for (const component of item.components) {
-        component.setInstanceId(generateGUID());
-      }
-
-      if (!VFXItem.isComposition(item)) {
-        for (const child of item.children) {
-          resetGUIDRecursive(child);
-        }
-      }
-    };
+      childItem.setParent(this);
+    }
 
     for (const child of this.children) {
-      resetGUIDRecursive(child);
+      child.refreshGUIDRecursive();
     }
 
     this.setInstanceId(prevInstanceId);
   }
 
-  private resetGUID (previousObjectIDMap?: Map<EffectsObject, string>) {
+  /**
+   * @internal
+   */
+  refreshGUIDRecursive (previousObjectIDMap?: Map<EffectsObject, string>) {
     const itemGUID = previousObjectIDMap?.get(this) ?? generateGUID();
 
     this.setInstanceId(itemGUID);
@@ -841,7 +839,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     for (const child of this.children) {
-      child.resetGUID(previousObjectIDMap);
+      child.refreshGUIDRecursive(previousObjectIDMap);
     }
   }
 
