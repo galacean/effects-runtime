@@ -292,26 +292,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.engine);
     this.rootItem.setInstanceId(sourceContent.id);
-    this.rootItem.name = 'rootItem';
-    this.rootItem.duration = sourceContent.duration;
-    this.rootItem.endBehavior = sourceContent.endBehavior;
+    this.rootItem.instantiatePreComposition(sourceContent, false);
     this.rootItem.composition = this;
+    this.rootItem.name = 'rootItem';
 
-    for (const child of sourceContent.children ?? []) {
-      const item = this.engine.findObject<VFXItem>(child);
-
-      item.setParent(this.rootItem);
-    }
-
-    // Create rootItem components
-    const componentPaths = sourceContent.components;
-
-    for (const componentPath of componentPaths) {
-      const component = this.engine.findObject<Component>(componentPath);
-
-      this.rootItem.components.push(component);
-      component.item = this.rootItem;
-    }
     this.rootComposition = this.rootItem.getComponent(CompositionComponent);
     this.rootComposition.updateMode = UpdateModes.Manual;
     this.rootComposition.play();

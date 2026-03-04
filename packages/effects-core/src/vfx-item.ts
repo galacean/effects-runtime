@@ -802,7 +802,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * @internal
    */
-  instantiatePreComposition (compositionData: spec.CompositionData) {
+  instantiatePreComposition (compositionData: spec.CompositionData, refreshId = true) {
     this.name = compositionData.name;
     this.duration = compositionData.duration;
     this.endBehavior = compositionData.endBehavior;
@@ -811,12 +811,12 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     // Set the current preComposition item id to the referenced composition id to prevent the composition component from not finding the correct item
     this.setInstanceId(compositionData.id);
+
     for (const componentPath of compositionData.components) {
       const component = this.engine.findObject<Component>(componentPath);
 
       component.item = this;
       this.components.push(component);
-      component.setInstanceId(generateGUID());
     }
 
     for (const child of compositionData.children ?? []) {
@@ -825,8 +825,14 @@ export class VFXItem extends EffectsObject implements Disposable {
       childItem.setParent(this);
     }
 
-    for (const child of this.children) {
-      child.refreshGUIDRecursive();
+    if (refreshId) {
+      for (const component of this.components) {
+        component.setInstanceId(generateGUID());
+      }
+
+      for (const child of this.children) {
+        child.refreshGUIDRecursive();
+      }
     }
 
     this.setInstanceId(prevInstanceId);
