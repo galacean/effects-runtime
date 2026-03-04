@@ -705,7 +705,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
   }
 
-  private createTexturesFromData (textureDataList: Record<string, any>[]) {
+  /**
+   * @internal
+   */
+  createTexturesFromData (textureDataList: Record<string, any>[]) {
     for (const textureData of textureDataList) {
       const texture = this.engine.findObject<Texture>({ id: textureData.id });
 

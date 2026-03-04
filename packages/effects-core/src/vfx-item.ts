@@ -62,8 +62,17 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @deprecated 2.7.0 Please use `getInstanceId` instead
    */
   id: string;
+  /**
+   * 元素类型
+   */
   type: spec.ItemType = spec.ItemType.base;
+  /**
+   * @deprecated 2.9.0 Please use `defination` instead
+   */
   props: spec.VFXItemData;
+  /**
+   * 元素绑定的组件列表
+   */
   components: Component[] = [];
   isDuringPlay = false;
 
@@ -676,10 +685,27 @@ export class VFXItem extends EffectsObject implements Disposable {
       duration = 0, visible = true,
     } = data;
 
-    this.props = data;
     this.type = data.type;
+    this.props = data;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
+    this.parentId = parentId;
+    this.components.length = 0;
+
+    if (VFXItem.isComposition(this)) {
+      const refId = (this.defination as spec.CompositionItem).content.options.refId;
+      const compositionData = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
+
+      if (!compositionData) {
+        throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
+      }
+
+      this.instantiatePreComposition(compositionData);
+    }
+
+    // 在预合成实例化后赋值，覆盖预合成的属性值
     this.name = name;
+    this.duration = duration;
+    this.endBehavior = endBehavior;
 
     if (transform) {
       this.transform.fromData(transform);
@@ -687,9 +713,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-    this.parentId = parentId;
-    this.duration = duration;
-    this.endBehavior = endBehavior;
 
     if (!data.content) {
       data.content = { options: {} };
@@ -700,7 +723,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     if (data.components) {
-      this.components.length = 0;
       for (const componentPath of data.components) {
         const component = this.engine.findObject<Component>(componentPath);
 
@@ -718,10 +740,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       const childItem = this.engine.findObject<VFXItem>(child);
 
       childItem.setParent(this);
-    }
-
-    if (VFXItem.isComposition(this)) {
-      this.instantiatePreComposition();
     }
 
     this.setVisible(visible);
@@ -775,36 +793,25 @@ export class VFXItem extends EffectsObject implements Disposable {
         child.setParent(this.parent);
       }
     }
+
     if (this.parent) {
       removeItem(this.parent?.children, this);
     }
-    // const contentItems = compositonVFXItem.getComponent(CompositionComponent)!.items;
-
-    // contentItems.splice(contentItems.indexOf(this), 1);
-
-    // else {
-    //   // 普通元素正常销毁逻辑, 子元素不继承
-    // if (this.parent) {
-    //   removeItem(this.parent?.children, this);
-    // }
-    // }
   }
 
-  private instantiatePreComposition () {
-    const compositionContent = this.props.content as unknown as spec.CompositionContent;
-    const refId = compositionContent.options.refId;
-    const props = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
+  /**
+   * @internal
+   */
+  instantiatePreComposition (compositionData: spec.CompositionData) {
+    this.name = compositionData.name;
+    this.duration = compositionData.duration;
+    this.endBehavior = compositionData.endBehavior;
 
-    if (!props) {
-      throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
-    }
-
-    const componentPaths = props.components;
     const prevInstanceId = this.getInstanceId();
 
     // Set the current preComposition item id to the referenced composition id to prevent the composition component from not finding the correct item
-    this.setInstanceId(props.id);
-    for (const componentPath of componentPaths) {
+    this.setInstanceId(compositionData.id);
+    for (const componentPath of compositionData.components) {
       const component = this.engine.findObject<Component>(componentPath);
 
       component.item = this;
@@ -812,7 +819,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       component.setInstanceId(generateGUID());
     }
 
-    for (const child of props.children ?? []) {
+    for (const child of compositionData.children ?? []) {
       const childItem = this.engine.findObject<VFXItem>(child);
 
       childItem.setParent(this);
