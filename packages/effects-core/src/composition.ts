@@ -157,6 +157,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   renderOrder: number;
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
+   * @deprecated
    */
   reusable: boolean;
   /**

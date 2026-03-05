@@ -74,8 +74,15 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素绑定的组件列表
    */
   components: Component[] = [];
+  /**
+   * @internal
+   */
   isDuringPlay = false;
-
+  /**
+   * 元素渲染顺序是否由用户手动设置，手动设置后会覆盖默认的渲染顺序
+   * @internal
+   */
+  isManuallySetRenderOrder = false;
   /**
    * 元素是否激活
    */
@@ -87,9 +94,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   private listIndex = 0;
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
-  /**
-   * 合成属性
-   */
   private _composition: Composition | null;
 
   /**
@@ -208,6 +212,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会 dispose
+   * @deprecated
    */
   get compositionReusable (): boolean {
     return this.composition?.reusable ?? false;
@@ -222,12 +227,8 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   set renderOrder (value: number) {
     this.listIndex = value;
-
-    for (const component of this.components) {
-      if (component instanceof RendererComponent) {
-        component.priority = value;
-      }
-    }
+    this.isManuallySetRenderOrder = true;
+    this.setRendererComponentOrder(value);
   }
 
   /**
@@ -674,6 +675,17 @@ export class VFXItem extends EffectsObject implements Disposable {
     for (const component of this.components) {
       if (component.enabled && component.isEnableCalled) {
         component.disable();
+      }
+    }
+  }
+
+  /**
+   * @internal
+   */
+  setRendererComponentOrder (renderOrder: number) {
+    for (const component of this.components) {
+      if (component instanceof RendererComponent) {
+        component.priority = renderOrder;
       }
     }
   }

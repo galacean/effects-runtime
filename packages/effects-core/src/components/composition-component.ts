@@ -355,7 +355,13 @@ export class CompositionComponent extends Component {
 
     // 6. 分配 renderOrder
     for (const child of sceneOrder) {
-      child.renderOrder = startOrder++;
+      const renderOrder = startOrder++;
+
+      // 用户手动设置的 renderOrder 优先级最高，覆盖默认顺序
+      if (!child.isManuallySetRenderOrder) {
+        child.setRendererComponentOrder(renderOrder);
+      }
+
       const subCompositionComponent = child.getComponent(CompositionComponent);
 
       if (subCompositionComponent) {
