@@ -48,7 +48,6 @@ export class CompositionComponent extends Component {
 
   endBehavior = spec.EndBehavior.forward;
 
-  private reusable = false;
   private time = 0;
   private lastTime = 0;
   @serialize()
@@ -84,10 +83,6 @@ export class CompositionComponent extends Component {
     if (this.playOnStart) {
       this.play();
     }
-  }
-
-  getReusable () {
-    return this.reusable;
   }
 
   pause () {
@@ -200,7 +195,7 @@ export class CompositionComponent extends Component {
     force?: boolean,
     options?: CompositionHitTestOptions,
   ): boolean {
-    const isHitTestSuccess = this.hitTestRecursive(this.item, ray, x, y, regions, force, options);
+    const isHitTestSuccess = hitTestRecursive(this.item, ray, x, y, regions, force, options);
 
     // 子元素碰撞测试成功加入当前预合成元素，判断是否是合成根元素，根元素不加入
     if (isHitTestSuccess && this.item !== this.item.composition?.rootItem) {
@@ -223,114 +218,6 @@ export class CompositionComponent extends Component {
     }
 
     return isHitTestSuccess;
-  }
-
-  private hitTestRecursive (
-    item: VFXItem,
-    ray: Ray,
-    x: number,
-    y: number,
-    regions: Region[],
-    force?: boolean,
-    options?: CompositionHitTestOptions
-  ): boolean {
-    const hitPositions: Vector3[] = [];
-    const stop = options?.stop || noop;
-    const skip = options?.skip || noop;
-    const maxCount = options?.maxCount;
-
-    if (maxCount !== undefined && regions.length >= maxCount) {
-      return false;
-    }
-
-    let hitTestSuccess = false;
-
-    for (const hitTestItem of item.children) {
-      if (
-        hitTestItem.isActive
-        && hitTestItem.transform.getValid()
-        && !skip(hitTestItem)
-      ) {
-        const hitParams = hitTestItem.getHitTestParams(force);
-
-        if (hitParams) {
-          let success = false;
-          const intersectPoint = new Vector3();
-
-          if (hitParams.type === HitTestType.triangle) {
-
-            const { triangles, backfaceCulling } = hitParams;
-
-            for (let j = 0; j < triangles.length; j++) {
-              const triangle = triangles[j];
-
-              if (ray.intersectTriangle(triangle, intersectPoint, backfaceCulling)) {
-                success = true;
-                hitPositions.push(intersectPoint);
-
-                break;
-              }
-            }
-          } else if (hitParams.type === HitTestType.box) {
-            const { center, size } = hitParams;
-            const boxMin = center.clone().addScaledVector(size, 0.5);
-            const boxMax = center.clone().addScaledVector(size, -0.5);
-
-            if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
-              success = true;
-              hitPositions.push(intersectPoint);
-            }
-          } else if (hitParams.type === HitTestType.sphere) {
-            const { center, radius } = hitParams;
-
-            if (ray.intersectSphere({ center, radius }, intersectPoint)) {
-              success = true;
-              hitPositions.push(intersectPoint);
-            }
-          } else if (hitParams.type === HitTestType.custom) {
-            const tempPosition = hitParams.collect(ray, new Vector2(x, y));
-
-            if (tempPosition && tempPosition.length > 0) {
-              tempPosition.forEach(pos => {
-                hitPositions.push(pos);
-              });
-              success = true;
-            }
-          }
-          if (success) {
-            const region = {
-              id: hitTestItem.getInstanceId(),
-              name: hitTestItem.name,
-              position: hitPositions[hitPositions.length - 1],
-              parentId: hitTestItem.parentId,
-              hitPositions,
-              behavior: hitParams.behavior,
-              item: hitTestItem,
-              composition: this.item.composition as Composition,
-            };
-
-            regions.push(region);
-            hitTestSuccess = true;
-
-            if (stop(region)) {
-              return true;
-            }
-          }
-        }
-      }
-
-      if (VFXItem.isComposition(hitTestItem)) {
-        if (hitTestItem.getComponent(CompositionComponent).hitTest(ray, x, y, regions, force, options)) {
-          hitTestSuccess = true;
-        }
-      } else {
-        if (this.hitTestRecursive(hitTestItem, ray, x, y, regions, force, options)) {
-          hitTestSuccess = true;
-        }
-      }
-    }
-
-    return hitTestSuccess;
   }
 
   /**
@@ -420,4 +307,112 @@ export class CompositionComponent extends Component {
   override fromData (data: any): void {
     super.fromData(data);
   }
+}
+
+function hitTestRecursive (
+  item: VFXItem,
+  ray: Ray,
+  x: number,
+  y: number,
+  regions: Region[],
+  force?: boolean,
+  options?: CompositionHitTestOptions
+): boolean {
+  const hitPositions: Vector3[] = [];
+  const stop = options?.stop || noop;
+  const skip = options?.skip || noop;
+  const maxCount = options?.maxCount;
+
+  if (maxCount !== undefined && regions.length >= maxCount) {
+    return false;
+  }
+
+  let hitTestSuccess = false;
+
+  for (const hitTestItem of item.children) {
+    if (
+      hitTestItem.isActive
+        && hitTestItem.transform.getValid()
+        && !skip(hitTestItem)
+    ) {
+      const hitParams = hitTestItem.getHitTestParams(force);
+
+      if (hitParams) {
+        let success = false;
+        const intersectPoint = new Vector3();
+
+        if (hitParams.type === HitTestType.triangle) {
+
+          const { triangles, backfaceCulling } = hitParams;
+
+          for (let j = 0; j < triangles.length; j++) {
+            const triangle = triangles[j];
+
+            if (ray.intersectTriangle(triangle, intersectPoint, backfaceCulling)) {
+              success = true;
+              hitPositions.push(intersectPoint);
+
+              break;
+            }
+          }
+        } else if (hitParams.type === HitTestType.box) {
+          const { center, size } = hitParams;
+          const boxMin = center.clone().addScaledVector(size, 0.5);
+          const boxMax = center.clone().addScaledVector(size, -0.5);
+
+          if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
+            success = true;
+            hitPositions.push(intersectPoint);
+          }
+        } else if (hitParams.type === HitTestType.sphere) {
+          const { center, radius } = hitParams;
+
+          if (ray.intersectSphere({ center, radius }, intersectPoint)) {
+            success = true;
+            hitPositions.push(intersectPoint);
+          }
+        } else if (hitParams.type === HitTestType.custom) {
+          const tempPosition = hitParams.collect(ray, new Vector2(x, y));
+
+          if (tempPosition && tempPosition.length > 0) {
+            tempPosition.forEach(pos => {
+              hitPositions.push(pos);
+            });
+            success = true;
+          }
+        }
+        if (success) {
+          const region = {
+            id: hitTestItem.getInstanceId(),
+            name: hitTestItem.name,
+            position: hitPositions[hitPositions.length - 1],
+            parentId: hitTestItem.parentId,
+            hitPositions,
+            behavior: hitParams.behavior,
+            item: hitTestItem,
+            composition: hitTestItem.composition as Composition,
+          };
+
+          regions.push(region);
+          hitTestSuccess = true;
+
+          if (stop(region)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    if (VFXItem.isComposition(hitTestItem)) {
+      if (hitTestItem.getComponent(CompositionComponent).hitTest(ray, x, y, regions, force, options)) {
+        hitTestSuccess = true;
+      }
+    } else {
+      if (hitTestRecursive(hitTestItem, ray, x, y, regions, force, options)) {
+        hitTestSuccess = true;
+      }
+    }
+  }
+
+  return hitTestSuccess;
 }
