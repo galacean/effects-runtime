@@ -7,6 +7,7 @@ import { glContext } from '../gl';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { effectsClass } from '../decorators';
+import type { HitTestTriangleParams } from '../plugins';
 
 @effectsClass('FrameComponent')
 export class FrameComponent extends RendererComponent implements Maskable {
@@ -72,6 +73,10 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.material = material;
   }
 
+  override onStart (): void {
+    this.item.getHitTestParams = this.getHitTestParams;
+  }
+
   override onPreRender (): void {
     this.setClipRectangle();
 
@@ -106,6 +111,31 @@ export class FrameComponent extends RendererComponent implements Maskable {
 
     this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.material, maskRef);
   }
+
+  override fromData (data: any): void {
+    super.fromData(data);
+
+    if (data.color) {
+      this.color.copyFrom(data.color);
+    }
+  }
+
+  private getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
+    const sizeMatrix = Matrix4.fromScale(this.transform.size.x, this.transform.size.y, 1);
+    const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
+
+    if (force) {
+      this.boundingBoxInfo.setGeometry(this.clipGeometry, worldMatrix);
+      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
+
+      if (area) {
+        return {
+          type: area.type,
+          triangles: area.area,
+        };
+      }
+    }
+  };
 
   private setClipRectangle (): void {
     this.setClipRectangleRecursive(this.item);
