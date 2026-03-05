@@ -60,26 +60,26 @@ export class CompositionComponent extends Component {
   private get timelineInstance (): TimelineInstance | null {
     if (!this._timelineInstance && this.timelineAsset) {
       this._timelineInstance = new TimelineInstance(this.timelineAsset, this.sceneBindings);
+
+      this.nestedCompositions = [];
+
+      // 收集所有嵌套预合成实例
+      for (const masterTrack of this._timelineInstance.masterTrackInstances) {
+        const boundObject = masterTrack.boundObject;
+
+        if (boundObject instanceof VFXItem && VFXItem.isComposition(boundObject)) {
+          const nestedComposition = boundObject.getComponent(CompositionComponent);
+
+          nestedComposition.updateMode = UpdateModes.Manual;  // 嵌套预合成由父级预合成驱动更新
+          this.nestedCompositions.push(nestedComposition);
+        }
+      }
     }
 
     return this._timelineInstance;
   }
 
   override onStart (): void {
-    if (this.timelineInstance) {
-      for (const masterTrack of this.timelineInstance.masterTrackInstances) {
-        const boundObject = masterTrack.boundObject;
-
-        if (boundObject instanceof VFXItem && VFXItem.isComposition(boundObject)) {
-          this.nestedCompositions.push(boundObject.getComponent(CompositionComponent));
-        }
-      }
-    }
-
-    for (const nestedComposition of this.nestedCompositions) {
-      nestedComposition.updateMode = UpdateModes.Manual;
-    }
-
     if (this.playOnStart) {
       this.play();
     }
@@ -306,6 +306,8 @@ export class CompositionComponent extends Component {
 
   override fromData (data: any): void {
     super.fromData(data);
+
+    this._timelineInstance = null;
   }
 }
 
