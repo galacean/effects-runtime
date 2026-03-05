@@ -46,6 +46,8 @@ export class CompositionComponent extends Component {
 
   playOnStart = false;
 
+  endBehavior = spec.EndBehavior.forward;
+
   private reusable = false;
   private time = 0;
   private lastTime = 0;
@@ -104,6 +106,16 @@ export class CompositionComponent extends Component {
     }
   }
 
+  stop () {
+    this.state = PlayState.Stopped;
+    this.time = 0;
+    this.lastTime = 0;
+
+    for (const subComposition of this.nestedCompositions) {
+      subComposition.stop();
+    }
+  }
+
   getTime () {
     return this.time;
   }
@@ -131,6 +143,26 @@ export class CompositionComponent extends Component {
 
     if (decimalEqual(this.lastTime, this.time)) {
       time += deltaTime;
+    }
+
+    if (time > this.item.duration) {
+      switch (this.endBehavior) {
+        case spec.EndBehavior.forward:
+
+          break;
+        case spec.EndBehavior.freeze:
+          time = this.item.duration;
+
+          break;
+        case spec.EndBehavior.restart:
+          time = time % this.item.duration;
+
+          break;
+        case spec.EndBehavior.destroy:
+          this.item.dispose();
+
+          return;
+      }
     }
 
     this.timelineInstance.evaluate(time, deltaTime);

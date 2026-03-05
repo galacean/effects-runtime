@@ -58,6 +58,7 @@ export class PrecompositionManager {
     rootItem.instantiatePreComposition(compositionData);
 
     rootItem.getComponent(CompositionComponent).playOnStart = options.autoplay ?? true;
+    rootItem.getComponent(CompositionComponent).endBehavior = 0;
 
     composition.addItem(rootItem);
 

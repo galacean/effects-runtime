@@ -781,7 +781,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 销毁元素
    */
   override dispose (): void {
-    this.resetChildrenParent();
 
     if (this.composition) {
       this.composition.destroyItem(this);
@@ -793,6 +792,8 @@ export class VFXItem extends EffectsObject implements Disposable {
       this._composition = null;
       this.transform.setValid(false);
     }
+
+    this.resetChildrenParent();
 
     super.dispose();
   }
