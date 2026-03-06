@@ -344,6 +344,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           type: area.type,
           triangles: area.area,
           backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
+          clipMasks: this.frameClipMasks,
         };
       }
     }

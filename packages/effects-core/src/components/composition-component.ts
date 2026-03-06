@@ -3,6 +3,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Composition, CompositionHitTestOptions } from '../composition';
+import type { Maskable } from '../material';
 import type { Region, TrackAsset, TimelineAsset } from '../plugins';
 import { TimelineInstance, HitTestType, PlayState } from '../plugins';
 import { noop } from '../utils';
@@ -343,6 +344,13 @@ function hitTestRecursive (
         let success = false;
         const intersectPoint = new Vector3();
 
+        const clipMasks = hitParams.clipMasks;
+
+        // 如果存在遮罩，先进行遮罩测试，未通过则不进行后续的几何测试
+        if (clipMasks.length > 0 && !hitTestMask(ray, clipMasks)) {
+          continue;
+        }
+
         if (hitParams.type === HitTestType.triangle) {
 
           const { triangles, backfaceCulling } = hitParams;
@@ -417,4 +425,44 @@ function hitTestRecursive (
   }
 
   return hitTestSuccess;
+}
+
+/**
+ * 遮罩命中测试：检查射线是否通过所有遮罩区域
+ * 根据每个遮罩的 transform（size、scale、position、rotation、anchor）构建世界空间矩形，
+ * 然后检测射线是否与该矩形相交。所有遮罩都必须通过才算测试通过。
+ * @param ray - 射线
+ * @param clipMasks - 遮罩列表
+ * @returns 射线是否通过所有遮罩测试
+ */
+function hitTestMask (ray: Ray, clipMasks: Maskable[]): boolean {
+  for (const mask of clipMasks) {
+    const item = mask.item;
+
+    if (!item.isActive || !item.transform.getValid()) {
+      continue;
+    }
+
+    const transform = item.transform;
+    const worldMatrix = transform.getWorldMatrix();
+    const sx = transform.size.x;
+    const sy = transform.size.y;
+
+    // 将遮罩矩形的四个顶点从本地空间变换到世界空间
+    // 本地空间顶点为单位矩形 (-0.5, -0.5) 到 (0.5, 0.5)，按 size 缩放
+    const p0 = new Vector3(-0.5 * sx, 0.5 * sy, 0).applyMatrix(worldMatrix);
+    const p1 = new Vector3(-0.5 * sx, -0.5 * sy, 0).applyMatrix(worldMatrix);
+    const p2 = new Vector3(0.5 * sx, 0.5 * sy, 0).applyMatrix(worldMatrix);
+    const p3 = new Vector3(0.5 * sx, -0.5 * sy, 0).applyMatrix(worldMatrix);
+
+    // 矩形由两个三角形组成，检测射线与任一三角形的相交
+    const triangle1 = { p0, p1, p2 };
+    const triangle2 = { p0: p2, p1, p2: p3 };
+
+    if (!ray.intersectTriangle(triangle1) && !ray.intersectTriangle(triangle2)) {
+      return false;
+    }
+  }
+
+  return true;
 }

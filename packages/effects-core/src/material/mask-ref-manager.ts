@@ -190,8 +190,6 @@ export class MaskProcessor {
 
     for (const frameClipMask of frameClipMasks) {
       this.removeMaskReference(frameClipMask);
-
-      maskedComponent.frameClipMasks = [];
     }
   }
 

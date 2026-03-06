@@ -121,6 +121,13 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * 当父级或间接父级发生改变时调用
+   */
+  onParentChanged () {
+    // OVERRIDE
+  }
+
+  /**
    * @internal
    */
   enable () {

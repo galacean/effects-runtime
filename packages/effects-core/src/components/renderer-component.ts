@@ -61,6 +61,10 @@ export class RendererComponent extends Component {
     this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
   }
 
+  override onParentChanged (): void {
+    this.frameClipMasks = [];
+  }
+
   /**
    * 获取包围盒信息
    */

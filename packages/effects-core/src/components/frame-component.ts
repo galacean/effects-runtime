@@ -8,6 +8,7 @@ import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Color } from '@galacean/effects-math/es/core/color';
 import { effectsClass } from '../decorators';
 import type { HitTestTriangleParams } from '../plugins';
+import { addItem } from '../utils';
 
 @effectsClass('FrameComponent')
 export class FrameComponent extends RendererComponent implements Maskable {
@@ -132,6 +133,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
         return {
           type: area.type,
           triangles: area.area,
+          clipMasks:this.frameClipMasks,
         };
       }
     }
@@ -146,7 +148,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
       const childFrameComponent = child.getComponent(RendererComponent);
 
       if (childFrameComponent) {
-        childFrameComponent.frameClipMasks.push(this);
+        addItem(childFrameComponent.frameClipMasks, this);
       }
 
       this.setClipRectangleRecursive(child);

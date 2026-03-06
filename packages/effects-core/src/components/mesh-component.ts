@@ -53,6 +53,7 @@ export class MeshComponent extends RendererComponent implements Maskable {
       return {
         type: area.type,
         triangles: area.area,
+        clipMasks:this.frameClipMasks,
       };
     }
   };

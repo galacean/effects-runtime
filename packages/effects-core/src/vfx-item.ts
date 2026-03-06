@@ -353,15 +353,21 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (vfxItem === this && !vfxItem) {
       return;
     }
+
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
+
     this.parent = vfxItem;
     this.transform.parentTransform = vfxItem.transform;
     vfxItem.children.push(this);
+
     if (!this.composition && vfxItem.composition) {
       this.composition = vfxItem.composition;
     }
+
+    this.onParentChanged();
+
     if (!this.isDuringPlay && vfxItem.isDuringPlay) {
       this.awake();
       this.beginPlay();
@@ -676,6 +682,16 @@ export class VFXItem extends EffectsObject implements Disposable {
       if (component.enabled && component.isEnableCalled) {
         component.disable();
       }
+    }
+  }
+
+  private onParentChanged () {
+    for (const component of this.components) {
+      component.onParentChanged();
+    }
+
+    for (const child of this.children) {
+      child.onParentChanged();
     }
   }
 
