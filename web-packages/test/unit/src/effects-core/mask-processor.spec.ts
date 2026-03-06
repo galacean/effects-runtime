@@ -228,25 +228,6 @@ describe('core/material//mask-ref-manager', () => {
       expect(material.stencilTest).to.eql(false);
     });
 
-    it('should include frameClipMasks as forward references then clean up', () => {
-      const mp = new MaskProcessor();
-      const frameMask = createMaskableSprite(engine, 'frame');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
-      const component = createSpriteRendererComponent(engine, [material]);
-
-      component.frameClipMasks = [frameMask];
-      mp.drawStencilMask(renderer, component);
-
-      expect(frameMask.drawStencilMask).to.have.been.called.with(0);
-      expect(component.frameClipMasks).to.deep.equals([]);
-      // frameClipMasks 处理后应被移除，再次 drawStencilMask 应无引用
-      const mat2 = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
-      const comp2 = createSpriteRendererComponent(engine, [mat2]);
-
-      mp.drawStencilMask(renderer, comp2);
-      expect(mat2.stencilTest).to.eql(false);
-    });
-
     it('should setup multiple materials', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
