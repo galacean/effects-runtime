@@ -260,8 +260,8 @@ export class Inspector extends EditorWindow {
         if (texture instanceof GLTexture) {
           let __inspectorTexture = (texture as any).__imguiInspectorTexture as WebGLTexture;
 
-          if (!__inspectorTexture && texture.defination.image) {
-            __inspectorTexture = createImguiTextureFromImage(texture.defination.image);
+          if (!__inspectorTexture && texture.definition.image) {
+            __inspectorTexture = createImguiTextureFromImage(texture.definition.image);
             (texture as any).__imguiInspectorTexture = __inspectorTexture;
           }
           ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));

@@ -67,7 +67,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   type: spec.ItemType = spec.ItemType.base;
   /**
-   * @deprecated 2.9.0 Please use `defination` instead
+   * @deprecated 2.9.0 Please use `definition` instead
    */
   props: spec.VFXItemData;
   /**
@@ -600,7 +600,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
     this.refreshGUIDRecursive();
-    const newItem = this.engine.findObject<VFXItem>({ id: this.defination.id });
+    const newItem = this.engine.findObject<VFXItem>({ id: this.definition.id });
 
     newItem.refreshGUIDRecursive();
     this.refreshGUIDRecursive(previousObjectIDMap);
@@ -720,7 +720,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.components.length = 0;
 
     if (VFXItem.isComposition(this)) {
-      const refId = (this.defination as spec.CompositionItem).content.options.refId;
+      const refId = (this.definition as spec.CompositionItem).content.options.refId;
       const compositionData = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
       if (!compositionData) {
@@ -774,23 +774,23 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   override toData (): void {
-    this.defination.id = this.guid;
-    this.defination.transform = this.transform.toData();
-    this.defination.dataType = spec.DataType.VFXItemData;
+    this.definition.id = this.guid;
+    this.definition.transform = this.transform.toData();
+    this.definition.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {
-      this.defination.parentId = this.parent?.guid;
+      this.definition.parentId = this.parent?.guid;
     }
 
     // TODO 统一 sprite 等其他组件的序列化逻辑
-    if (!this.defination.components) {
-      this.defination.components = [];
+    if (!this.definition.components) {
+      this.definition.components = [];
       for (const component of this.components) {
         if (component instanceof EffectComponent) {
-          this.defination.components.push(component);
+          this.definition.components.push(component);
         }
       }
     }
-    this.defination.content = {};
+    this.definition.content = {};
   }
 
   /**

@@ -8,7 +8,7 @@ import { logger } from './utils';
 import { PluginSystem } from './plugin-system';
 
 /**
- * @internal
+ * @hidden
  */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
