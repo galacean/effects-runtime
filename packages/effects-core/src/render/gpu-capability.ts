@@ -16,7 +16,7 @@ export interface GPUCapabilityDetail {
   maxTextureSize: number,
   maxTextureAnisotropy: number,
   shaderTextureLod: boolean,
-  instanceDraw?: boolean,
+  instancedArrays?: boolean,
   ktx2Support: boolean,
   drawBuffers?: boolean,
   asyncShaderCompile: boolean,
@@ -75,15 +75,19 @@ export class GPUCapability {
 
     this.UNSIGNED_INT_24_8 = (gl as WebGL2RenderingContext).UNSIGNED_INT_24_8;
     this.drawBufferExtension = gl.getExtension('WEBGL_draw_buffers');
+
     if (depthTextureExtension) {
       this.UNSIGNED_INT_24_8 = depthTextureExtension.UNSIGNED_INT_24_8_WEBGL;
     }
+
     if (level2 && !halfFloatLinear) {
       halfFloatLinear = checkLinearTextureFilter(gl as WebGL2RenderingContext, (gl as WebGL2RenderingContext).HALF_FLOAT);
     }
+
     if (level2 && !floatLinear) {
       floatLinear = checkLinearTextureFilter(gl as WebGL2RenderingContext, (gl as WebGL2RenderingContext).FLOAT);
     }
+
     this.internalFormatDepth16 = level2 ? (gl as WebGL2RenderingContext).DEPTH_COMPONENT16 : gl.DEPTH_COMPONENT;
     this.internalFormatDepth24_stencil8 = level2 ? (gl as WebGL2RenderingContext).DEPTH24_STENCIL8 : gl.DEPTH_STENCIL;
     const floatTexture = (level2 || gl.getExtension('OES_texture_float')) ? gl.FLOAT : 0;
@@ -99,6 +103,7 @@ export class GPUCapability {
       [CompressTextureCapabilityType.pvrtc_webkit, !!gl.getExtension('WEBKIT_WEBGL_compressed_texture_pvrtc')],
       [CompressTextureCapabilityType.sRGB, !!gl.getExtension('EXT_sRGB')],
     ]);
+
     const detail: GPUCapabilityDetail = {
       floatTexture,
       halfFloatTexture,
@@ -115,7 +120,7 @@ export class GPUCapability {
       floatLinear,
       maxTextureAnisotropy: textureAnisotropicExt ? gl.getParameter(textureAnisotropicExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 0,
       shaderTextureLod: level2 || !!gl.getExtension('EXT_shader_texture_lod'),
-      instanceDraw: level2 || !!gl.getExtension('ANGLE_instanced_arrays'),
+      instancedArrays: false,
       ktx2Support: detectKTX2Support(this.compressTextureCapabilityList),
       drawBuffers: level2 || !!this.drawBufferExtension,
       asyncShaderCompile: !!this.glAsyncCompileExt,
@@ -125,7 +130,24 @@ export class GPUCapability {
       writableFragDepth: level2 || !!gl.getExtension('EXT_frag_depth'),
     };
 
-    this['detail'] = detail;
+    // Instances count
+    if (this.level > 1) {
+      detail.instancedArrays = true;
+    } else {
+      const instanceExtension = <ANGLE_instanced_arrays> gl.getExtension('ANGLE_instanced_arrays');
+
+      if (instanceExtension != null) {
+        detail.instancedArrays = true;
+        (gl as WebGL2RenderingContext).drawArraysInstanced = instanceExtension.drawArraysInstancedANGLE.bind(instanceExtension);
+        (gl as WebGL2RenderingContext).drawElementsInstanced = instanceExtension.drawElementsInstancedANGLE.bind(instanceExtension);
+        (gl as WebGL2RenderingContext).vertexAttribDivisor = instanceExtension.vertexAttribDivisorANGLE.bind(instanceExtension);
+      } else {
+        detail.instancedArrays = false;
+      }
+    }
+
+    this.detail = detail;
+
     if (textureAnisotropicExt) {
       this.textureMaxAnisotropyExt = textureAnisotropicExt.TEXTURE_MAX_ANISOTROPY_EXT;
     }

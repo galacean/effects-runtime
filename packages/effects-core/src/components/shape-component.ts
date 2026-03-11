@@ -19,6 +19,8 @@ import { glContext } from '../gl';
 import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
+import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import { buildFeatherMeshData, buildStrokeFeatherMeshData, ensureCCW } from '../math/shape/feather-mesh-builder';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
@@ -195,6 +197,18 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private fillMaterials: Material[] = [];
   private strokeMaterials: Material[] = [];
 
+  /**
+   * 羽化半径（局部坐标空间），0 表示不启用羽化
+   */
+  featherRadius = 0;
+  /**
+   * 羽化颜色，默认使用第一个 fill 的颜色
+   */
+  featherColor: Color = new Color(1, 1, 1, 1);
+
+  private featherRenderer: VectorFeatherRenderer | null = null;
+  private featherDirty = true;
+
   get shape () {
     return this.shapeAttributes;
   }
@@ -288,6 +302,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     if (this.shapeDirty) {
       this.buildPath(this.shapeAttributes);
       this.buildGeometryFromPath(this.graphicsPath.shapePath);
+      this.featherDirty = true;
       this.shapeDirty = false;
     }
 
@@ -295,12 +310,26 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       this.updateMaterials();
       this.materialDirty = false;
     }
+
+    if (this.featherDirty && this.featherRadius > 0) {
+      this.buildFeatherMesh(this.graphicsPath.shapePath);
+      this.featherDirty = false;
+    }
   }
 
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer, this);
 
-    this.draw(renderer);
+    if (this.featherRadius > 0 && this.featherRenderer) {
+      this.featherRenderer.render(
+        renderer,
+        this.transform.getWorldMatrix(),
+        this.featherRadius,
+        this.featherColor,
+      );
+    } else {
+      this.draw(renderer);
+    }
   }
 
   /**
@@ -489,6 +518,78 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     fillSubMesh.indexCount = fillIndexCount;
     strokeSubMesh.offset = fillIndexCount * u16Size;
     strokeSubMesh.indexCount = strokeIndexCount;
+  }
+
+  /**
+   * 从形状路径中提取顶点并构建羽化网格
+   * 支持 fill 和 stroke 两种形状类型
+   */
+  private buildFeatherMesh (shapePath: ShapePath): void {
+    const shapePrimitives = shapePath.shapePrimitives;
+
+    if (shapePrimitives.length === 0) {
+      return;
+    }
+
+    const hasFills = this.fills.length > 0;
+    const hasStrokes = this.strokes.length > 0;
+
+    for (const shapePrimitive of shapePrimitives) {
+      const shape = shapePrimitive.shape;
+      const points: number[] = [];
+
+      shape.build(points);
+
+      if (points.length < 6) { // 至少 3 个顶点
+        continue;
+      }
+
+      let meshData;
+
+      if (hasFills) {
+        // Fill 形状: 使用路径构建扇形 indicator + 路径边 scatter
+        const firstX = points[0];
+        const firstY = points[1];
+        const lastX = points[points.length - 2];
+        const lastY = points[points.length - 1];
+
+        if (firstX !== lastX || firstY !== lastY) {
+          points.push(firstX, firstY);
+        }
+
+        const ccwPoints = ensureCCW(points);
+
+        meshData = buildFeatherMeshData(ccwPoints);
+      } else if (hasStrokes) {
+        // Stroke 形状: 从路径构建外圈/内圈轮廓，复用 fan+scatter 方案
+        let close = true;
+
+        if (this.shapeAttributes.type === spec.ShapePrimitiveType.Custom) {
+          close = (shape as Polygon).closePath;
+        }
+
+        meshData = buildStrokeFeatherMeshData(points, this.strokeWidth, close);
+      } else {
+        continue;
+      }
+
+      // 延迟创建 featherRenderer
+      if (!this.featherRenderer) {
+        this.featherRenderer = new VectorFeatherRenderer(this.engine);
+      }
+
+      this.featherRenderer.updateMeshData(meshData);
+
+      // 继承颜色: 优先从 fill, 其次从 stroke
+      if (hasFills && this.fills[0].type === spec.FillType.Solid) {
+        this.featherColor = this.fills[0].color;
+      } else if (hasStrokes && this.strokes[0].type === spec.FillType.Solid) {
+        this.featherColor = this.strokes[0].color;
+      }
+
+      // 目前只处理第一个 shape primitive
+      break;
+    }
   }
 
   private buildPath (shapeAttribute: ShapeAttributes) {
@@ -690,6 +791,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
+    // 读取羽化参数 (spec 类型可能尚未定义这些字段，使用类型断言)
+    const extData = data as spec.ShapeComponentData & { featherRadius?: number, featherColor?: { r: number, g: number, b: number, a: number } };
+
+    this.featherRadius = extData.featherRadius ?? 10;
+    if (extData.featherColor) {
+      this.featherColor = new Color(extData.featherColor.r, extData.featherColor.g, extData.featherColor.b, extData.featherColor.a);
+    }
+
     this.fills.length = 0;
     this.fillMaterials.length = 0;
     for (const fill of data.fills) {
@@ -844,5 +953,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override onApplyAnimationProperties (): void {
     this.shapeDirty = true;
     this.materialDirty = true;
+    this.featherDirty = true;
   }
 }

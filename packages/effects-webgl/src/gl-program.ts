@@ -84,8 +84,14 @@ export class GLProgram implements Disposable {
         buffer.bind();
         gl.enableVertexAttribArray(attrInfo.loc);
         gl.vertexAttribPointer(attrInfo.loc, attribute.size, attribute.type, attribute.normalize as boolean, attribute.stride || 0, attribute.offset || 0);
+
+        // 设置实例化除数
+        if (attribute.instanceDivisor !== undefined) {
+          (gl as WebGL2RenderingContext).vertexAttribDivisor(attrInfo.loc, attribute.instanceDivisor);
+        }
       }
     });
+
     geometry.indicesBuffer?.bind();
     if (vao) {
       vao.ready = true;

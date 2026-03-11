@@ -239,6 +239,72 @@ export class GLRenderer extends Renderer implements Disposable {
     vao?.unbind();
   }
 
+  override drawGeometryInstanced (geometry: Geometry, material: Material, instanceCount: number, subMeshIndex = 0): void {
+    if (!geometry || !material || instanceCount <= 0) {
+      return;
+    }
+
+    material.initialize();
+    geometry.initialize();
+    geometry.flush();
+    const renderingData = this.renderingData;
+
+    try {
+      material.use(this, renderingData.currentFrame.globalUniforms);
+    } catch (e) {
+      console.error(e);
+
+      this.engine.renderErrors.add(e as Error);
+
+      return;
+    }
+
+    const gl = (this.engine as GLEngine).gl;
+
+    if (!gl) {
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
+
+      return;
+    }
+
+    const glGeometry = geometry as GLGeometry;
+    const glMaterial = material as GLMaterial;
+    const program = (glMaterial.shaderVariant as GLShaderVariant).program;
+
+    if (!program) {
+      return;
+    }
+
+    const vao = program.setupAttributes(glGeometry);
+    const indicesBuffer = glGeometry.indicesBuffer;
+    let offset = glGeometry.drawStart;
+    let count = glGeometry.drawCount;
+    const mode = glGeometry.mode;
+    const subMeshes = glGeometry.subMeshes;
+
+    if (subMeshes && subMeshes.length) {
+      const subMesh = subMeshes[subMeshIndex];
+
+      if (count < 0) {
+        return;
+      }
+      offset = subMesh.offset;
+      if (indicesBuffer) {
+        count = subMesh.indexCount ?? 0;
+      } else {
+        count = subMesh.vertexCount;
+      }
+    }
+
+    if (indicesBuffer) {
+      (gl as WebGL2RenderingContext).drawElementsInstanced(mode, count, indicesBuffer.type, offset ?? 0, instanceCount);
+    } else {
+      (gl as WebGL2RenderingContext).drawArraysInstanced(mode, offset, count, instanceCount);
+    }
+
+    vao?.unbind();
+  }
+
   override setFramebuffer (framebuffer: Framebuffer | null) {
     if (framebuffer) {
       this.currentFramebuffer = framebuffer;
