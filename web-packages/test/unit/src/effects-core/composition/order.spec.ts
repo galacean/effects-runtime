@@ -1,4 +1,4 @@
-import { Player } from '@galacean/effects';
+import { Player, RendererComponent } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -791,11 +791,11 @@ describe('core/composition/order', () => {
     const comp = await player.loadScene(json);
 
     player.play();
-    const face = comp.getItemByName('face');
-    const sprite = comp.getItemByName('sprite_1');
+    const face = comp.getItemByName('face')!.getComponent(RendererComponent);
+    const sprite = comp.getItemByName('sprite_1')!.getComponent(RendererComponent);
 
-    expect(face?.renderOrder).to.be.eql(2);
-    expect(sprite?.renderOrder).to.be.eql(4);
+    expect(face?.priority).to.be.eql(2);
+    expect(sprite?.priority).to.be.eql(4);
   });
 });
 

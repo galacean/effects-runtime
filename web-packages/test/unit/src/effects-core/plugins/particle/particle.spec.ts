@@ -1,5 +1,5 @@
 import type { GLGeometry, Material } from '@galacean/effects';
-import { ParticleSystem } from '@galacean/effects';
+import { ParticleSystem, ParticleSystemRenderer, RendererComponent } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
 import type { GLMaterial } from '@galacean/effects-webgl';
 
@@ -32,7 +32,7 @@ describe('core/plugins/particle/test', function () {
     const vfxItem = comp.getItemByName('item_3');
     const content = vfxItem!.getComponent(ParticleSystem);
 
-    expect(vfxItem?.renderOrder).to.eql(1);
+    expect(vfxItem?.getComponent(ParticleSystemRenderer).priority).to.eql(1);
     const pMesh = content.renderer.particleMesh.mesh;
     // @ts-expect-error
     const tMesh = content.renderer.trailMesh?.mesh;

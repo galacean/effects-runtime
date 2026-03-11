@@ -1,7 +1,6 @@
-import { CompositionComponent, type Component } from '../components';
+import { CompositionComponent } from '../components';
 import type { Composition } from '../composition';
 import { PluginSystem } from '../plugin-system';
-import type { Texture } from '../texture/texture';
 import { VFXItem } from '../vfx-item';
 import type { Precomposition } from './precomposition';
 
@@ -27,12 +26,7 @@ export class PrecompositionManager {
     engine.assetService.prepareAssets(scene, scene.assets);
     engine.assetService.updateTextVariables(scene, options.variables);
 
-    for (let i = 0; i < scene.textureOptions.length; i++) {
-      const texture = engine.findObject<Texture>({ id: scene.textureOptions[i].id });
-
-      texture.initialize();
-      composition.textures.push(texture);
-    }
+    composition.createTexturesFromData(scene.textureOptions);
 
     for (const key of Object.keys(scene.assets)) {
       const videoAsset = scene.assets[key];
@@ -58,33 +52,13 @@ export class PrecompositionManager {
 
     const rootItem = new VFXItem(engine);
 
-    rootItem.setInstanceId(compositionData.id);
-    rootItem.name = compositionData.name ?? 'instantiatedItem';
-    rootItem.duration = compositionData.duration;
-    rootItem.endBehavior = compositionData.endBehavior;
-
-    // 3. 加载合成的组件
+    // 3. 实例化预合成
     //-------------------------------------------------------------------------
 
-    for (const componentPath of compositionData.components) {
-      const component = engine.findObject<Component>(componentPath);
-
-      rootItem.components.push(component);
-      component.item = rootItem;
-    }
+    rootItem.instantiatePreComposition(compositionData);
 
     rootItem.getComponent(CompositionComponent).playOnStart = options.autoplay ?? true;
-
-    // 4. 构建 item 树
-    //-------------------------------------------------------------------------
-
-    for (const childId of compositionData.children ?? []) {
-      const childItem = engine.findObject<VFXItem>(childId);
-
-      childItem.setParent(rootItem);
-    }
-
-    rootItem.refreshGUIDRecursive();
+    rootItem.getComponent(CompositionComponent).endBehavior = 0;
 
     composition.addItem(rootItem);
 

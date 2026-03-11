@@ -157,6 +157,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   renderOrder: number;
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
+   * @deprecated
    */
   reusable: boolean;
   /**
@@ -292,26 +293,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.engine);
     this.rootItem.setInstanceId(sourceContent.id);
-    this.rootItem.name = 'rootItem';
-    this.rootItem.duration = sourceContent.duration;
-    this.rootItem.endBehavior = sourceContent.endBehavior;
+    this.rootItem.instantiatePreComposition(sourceContent, false);
     this.rootItem.composition = this;
+    this.rootItem.name = 'rootItem';
 
-    for (const child of sourceContent.children ?? []) {
-      const item = this.engine.findObject<VFXItem>(child);
-
-      item.setParent(this.rootItem);
-    }
-
-    // Create rootItem components
-    const componentPaths = sourceContent.components;
-
-    for (const componentPath of componentPaths) {
-      const component = this.engine.findObject<Component>(componentPath);
-
-      this.rootItem.components.push(component);
-      component.item = this.rootItem;
-    }
     this.rootComposition = this.rootItem.getComponent(CompositionComponent);
     this.rootComposition.updateMode = UpdateModes.Manual;
     this.rootComposition.play();
@@ -705,7 +690,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
   }
 
-  private createTexturesFromData (textureDataList: Record<string, any>[]) {
+  /**
+   * @internal
+   */
+  createTexturesFromData (textureDataList: Record<string, any>[]) {
     for (const textureData of textureDataList) {
       const texture = this.engine.findObject<Texture>({ id: textureData.id });
 
