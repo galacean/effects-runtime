@@ -579,86 +579,82 @@ export class VFXItem extends EffectsObject implements Disposable {
     force?: boolean,
     options?: CompositionHitTestOptions,
   ): boolean {
-    if (!this.isActive || !this.transform.getValid()) {
+    if (!this.isActive) {
       return false;
     }
 
     let hitTestSuccess = false;
     const maxCount = options?.maxCount;
-    const isCompositionItem = VFXItem.isComposition(this);
+    const hitParams = this.getHitTestParams(force);
 
-    // 1. 测试自身（composition 元素跳过自身几何测试）
-    if (!isCompositionItem) {
-      const hitParams = this.getHitTestParams(force);
+    // 1. 测试自身
+    if (hitParams) {
+      const clipMasks = hitParams.clipMasks;
+      let clipPassed = true;
 
-      if (hitParams) {
-        const clipMasks = hitParams.clipMasks;
-        let clipPassed = true;
+      if (clipMasks.length > 0 && !hitTestMask(ray, clipMasks)) {
+        clipPassed = false;
+      }
 
-        if (clipMasks.length > 0 && !hitTestMask(ray, clipMasks)) {
-          clipPassed = false;
-        }
+      if (clipPassed) {
+        let success = false;
+        const intersectPoint = new Vector3();
 
-        if (clipPassed) {
-          let success = false;
-          const intersectPoint = new Vector3();
+        if (hitParams.type === HitTestType.triangle) {
+          const { triangles, backfaceCulling } = hitParams;
 
-          if (hitParams.type === HitTestType.triangle) {
-            const { triangles, backfaceCulling } = hitParams;
-
-            for (let j = 0; j < triangles.length; j++) {
-              if (ray.intersectTriangle(triangles[j], intersectPoint, backfaceCulling)) {
-                success = true;
-                hitPositions.push(intersectPoint);
-
-                break;
-              }
-            }
-          } else if (hitParams.type === HitTestType.box) {
-            const { center, size } = hitParams;
-            const boxMin = center.clone().addScaledVector(size, 0.5);
-            const boxMax = center.clone().addScaledVector(size, -0.5);
-
-            if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
+          for (let j = 0; j < triangles.length; j++) {
+            if (ray.intersectTriangle(triangles[j], intersectPoint, backfaceCulling)) {
               success = true;
               hitPositions.push(intersectPoint);
-            }
-          } else if (hitParams.type === HitTestType.sphere) {
-            const { center, radius } = hitParams;
 
-            if (ray.intersectSphere({ center, radius }, intersectPoint)) {
-              success = true;
-              hitPositions.push(intersectPoint);
-            }
-          } else if (hitParams.type === HitTestType.custom) {
-            const tempPosition = hitParams.collect(ray, new Vector2(x, y));
-
-            if (tempPosition && tempPosition.length > 0) {
-              tempPosition.forEach(pos => {
-                hitPositions.push(pos);
-              });
-              success = true;
+              break;
             }
           }
+        } else if (hitParams.type === HitTestType.box) {
+          const { center, size } = hitParams;
+          const boxMin = center.clone().addScaledVector(size, 0.5);
+          const boxMax = center.clone().addScaledVector(size, -0.5);
 
-          if (success) {
-            const region: Region = {
-              id: this.getInstanceId(),
-              name: this.name,
-              position: hitPositions[hitPositions.length - 1],
-              parentId: this.parentId,
-              hitPositions,
-              behavior: hitParams.behavior,
-              item: this,
-              composition: this.composition as Composition,
-            };
+          if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
+            success = true;
+            hitPositions.push(intersectPoint);
+          }
+        } else if (hitParams.type === HitTestType.sphere) {
+          const { center, radius } = hitParams;
 
-            regions.push(region);
-            hitTestSuccess = true;
+          if (ray.intersectSphere({ center, radius }, intersectPoint)) {
+            success = true;
+            hitPositions.push(intersectPoint);
+          }
+        } else if (hitParams.type === HitTestType.custom) {
+          const tempPosition = hitParams.collect(ray, new Vector2(x, y));
 
-            if (options?.stop?.(region)) {
-              return true;
-            }
+          if (tempPosition && tempPosition.length > 0) {
+            tempPosition.forEach(pos => {
+              hitPositions.push(pos);
+            });
+            success = true;
+          }
+        }
+
+        if (success) {
+          const region: Region = {
+            id: this.getInstanceId(),
+            name: this.name,
+            position: hitPositions[hitPositions.length - 1],
+            parentId: this.parentId,
+            hitPositions,
+            behavior: hitParams.behavior,
+            item: this,
+            composition: this.composition as Composition,
+          };
+
+          regions.push(region);
+          hitTestSuccess = true;
+
+          if (options?.stop?.(region)) {
+            return true;
           }
         }
       }
@@ -678,7 +674,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     // 3. composition 元素：子元素命中时，将自身也加入结果（根元素除外）
-    if (isCompositionItem && hitTestSuccess && this !== this.composition?.rootItem) {
+    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.rootItem) {
       regions.push({
         id: this.getInstanceId(),
         name: this.name,
