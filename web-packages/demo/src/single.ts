@@ -19,7 +19,7 @@ const json = {
       'name': '新建合成47',
       'duration': 5,
       'startTime': 0,
-      'endBehavior': 4,
+      'endBehavior': 5,
       'previewSize': [
         750,
         1624,
@@ -6659,7 +6659,7 @@ const container = document.getElementById('J-container');
     onError: (err, ...args) => {
       console.error('biz', err.message);
     },
-    renderFramework: 'webgl',
+    renderFramework: 'webgl2',
   });
 
   new Stats(player);

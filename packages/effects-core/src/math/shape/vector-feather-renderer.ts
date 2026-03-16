@@ -8,6 +8,7 @@ import { Material } from '../../material';
 import type { Renderer } from '../../render';
 import { Geometry, GLSLVersion } from '../../render';
 import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
+import type { Texture } from '../../texture';
 import { TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
 import type { FeatherMeshData } from './feather-mesh-builder';
@@ -17,6 +18,15 @@ import scatterVert from './shaders/feather-scatter.vert.glsl';
 import scatterFrag from './shaders/feather-scatter.frag.glsl';
 import upsampleVert from './shaders/feather-upsample.vert.glsl';
 import upsampleFrag from './shaders/feather-upsample.frag.glsl';
+
+/**
+ * 羽化渲染参数（用于批处理提交）
+ */
+export type FeatherRenderParams = {
+  fboW: number,
+  fboH: number,
+  orthoProjection: Matrix4,
+};
 
 /**
  * 矢量羽化渲染器
@@ -156,7 +166,7 @@ export class VectorFeatherRenderer {
   /**
    * 更新 upsample 四边形，覆盖 bbox + feather 区域
    */
-  private updateUpsampleQuad (featherRadius: number): void {
+  updateUpsampleQuad (featherRadius: number): void {
     const [bx, by, bw, bh] = this.currentBbox;
     const minX = bx - featherRadius;
     const minY = by - featherRadius;
@@ -181,7 +191,86 @@ export class VectorFeatherRenderer {
   }
 
   /**
-   * 执行 3-pass 羽化渲染
+   * 计算渲染参数（FBO 尺寸、正交投影），不执行渲染
+   */
+  computeRenderParams (
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    featherRadius: number,
+  ): FeatherRenderParams | null {
+    if (!this.indicatorGeometry || this.currentBbox[2] <= 0 || this.currentBbox[3] <= 0) {
+      return null;
+    }
+
+    const [bx, by, bw, bh] = this.currentBbox;
+    const expandedW = bw + featherRadius * 2;
+    const expandedH = bh + featherRadius * 2;
+    const expandedMinX = bx - featherRadius;
+    const expandedMinY = by - featherRadius;
+
+    const downsample = Math.max(featherRadius / 10.0, 1.0);
+
+    const screenExtent = this.computeScreenExtent(
+      renderer, worldMatrix,
+      expandedMinX, expandedMinY, expandedW, expandedH,
+    );
+    const maxFboSize = 2048;
+    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
+    const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
+
+    const orthoProjection = createOrthoMatrix(
+      expandedMinX, expandedMinX + expandedW,
+      expandedMinY, expandedMinY + expandedH,
+    );
+
+    return { fboW, fboH, orthoProjection };
+  }
+
+  /**
+   * 绘制 Indicator Pass（调用者需已设置好 FBO 和 viewport）
+   */
+  drawIndicatorPass (renderer: Renderer, orthoProjection: Matrix4): void {
+    this.indicatorMaterial.setMatrix('uProjection', orthoProjection);
+    renderer.drawGeometry(
+      this.indicatorGeometry, Matrix4.IDENTITY, this.indicatorMaterial,
+    );
+  }
+
+  /**
+   * 绘制 Scatter Pass（调用者需已设置好 FBO 和 viewport）
+   */
+  drawScatterPass (renderer: Renderer, orthoProjection: Matrix4, featherRadius: number): void {
+    this.scatterMaterial.setMatrix('uProjection', orthoProjection);
+    this.scatterMaterial.setFloat('uRadius', featherRadius);
+    renderer.drawGeometryInstanced(
+      this.scatterGeometry, this.scatterMaterial, this.scatterInstanceCount,
+    );
+  }
+
+  /**
+   * 绘制 Upsample Pass（用于批处理模式，指定 atlas 纹理参数）
+   */
+  drawUpsamplePass (
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    atlasTexture: Texture,
+    textureSize: Vector2,
+    atlasSize: Vector2,
+    textureOffset: Vector2,
+    color: Color,
+  ): void {
+    this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
+    this.upsampleMaterial.setVector2('uTextureSize', textureSize);
+    this.upsampleMaterial.setVector2('uAtlasSize', atlasSize);
+    this.upsampleMaterial.setVector2('uTextureOffset', textureOffset);
+    this.upsampleMaterial.setVector4('uColor', new Vector4(color.r, color.g, color.b, color.a));
+    renderer.drawGeometry(
+      this.upsampleGeometry, worldMatrix, this.upsampleMaterial,
+    );
+  }
+
+  /**
+   * 执行 3-pass 羽化渲染（单 shape 独立渲染，未走批处理时使用）
    * @param renderer - 渲染器
    * @param worldMatrix - 世界变换矩阵
    * @param featherRadius - 羽化半径（局部坐标空间）
@@ -193,33 +282,13 @@ export class VectorFeatherRenderer {
     featherRadius: number,
     color: Color,
   ): void {
-    if (!this.indicatorGeometry || this.currentBbox[2] <= 0 || this.currentBbox[3] <= 0) {
+    const params = this.computeRenderParams(renderer, worldMatrix, featherRadius);
+
+    if (!params) {
       return;
     }
 
-    const [bx, by, bw, bh] = this.currentBbox;
-    const expandedW = bw + featherRadius * 2;
-    const expandedH = bh + featherRadius * 2;
-    const expandedMinX = bx - featherRadius;
-    const expandedMinY = by - featherRadius;
-
-    // 计算降采样倍率
-    const downsample = Math.max(featherRadius / 10.0, 1.0);
-
-    // 通过 MVP 矩阵将局部坐标 bbox 投影到屏幕像素空间，确定 FBO 分辨率
-    const screenExtent = this.computeScreenExtent(
-      renderer, worldMatrix,
-      expandedMinX, expandedMinY, expandedW, expandedH,
-    );
-    const maxFboSize = 2048;
-    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
-    const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
-
-    // 构建正交投影矩阵 (局部坐标 → NDC)
-    const orthoProjection = createOrthoMatrix(
-      expandedMinX, expandedMinX + expandedW,
-      expandedMinY, expandedMinY + expandedH,
-    );
+    const { fboW, fboH, orthoProjection } = params;
 
     // 获取临时渲染目标
     const atlas = renderer.getTemporaryRT(
@@ -238,18 +307,8 @@ export class VectorFeatherRenderer {
       clearColor: [0, 0, 0, 0],
     });
 
-    // Pass 1: Indicator
-    this.indicatorMaterial.setMatrix('uProjection', orthoProjection);
-    renderer.drawGeometry(
-      this.indicatorGeometry, Matrix4.IDENTITY, this.indicatorMaterial,
-    );
-
-    // Pass 2: Scatter (实例化渲染)
-    this.scatterMaterial.setMatrix('uProjection', orthoProjection);
-    this.scatterMaterial.setFloat('uRadius', featherRadius);
-    renderer.drawGeometryInstanced(
-      this.scatterGeometry, this.scatterMaterial, this.scatterInstanceCount,
-    );
+    this.drawIndicatorPass(renderer, orthoProjection);
+    this.drawScatterPass(renderer, orthoProjection, featherRadius);
 
     // === Pass 3: Upsample → 屏幕 ===
     renderer.setFramebuffer(prevFramebuffer);
@@ -258,18 +317,13 @@ export class VectorFeatherRenderer {
     // 更新 upsample 四边形覆盖区域
     this.updateUpsampleQuad(featherRadius);
 
-    // 设置 upsample 材质参数
+    // 绘制 upsample
     const atlasTexture = atlas.getColorTextures()[0];
 
-    this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
-    this.upsampleMaterial.setVector2('uTextureSize', new Vector2(fboW, fboH));
-    this.upsampleMaterial.setVector2('uAtlasSize', new Vector2(fboW, fboH));
-    this.upsampleMaterial.setVector2('uTextureOffset', new Vector2(0, 0));
-    this.upsampleMaterial.setVector4('uColor', new Vector4(color.r, color.g, color.b, color.a));
-
-    // 使用世界变换矩阵绘制 upsample 四边形
-    renderer.drawGeometry(
-      this.upsampleGeometry, worldMatrix, this.upsampleMaterial,
+    this.drawUpsamplePass(
+      renderer, worldMatrix, atlasTexture,
+      new Vector2(fboW, fboH), new Vector2(fboW, fboH), new Vector2(0, 0),
+      color,
     );
 
     // 释放临时渲染目标
