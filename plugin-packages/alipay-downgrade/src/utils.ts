@@ -1,4 +1,4 @@
-import { spec, getActivePlayers, logger, isAlipayMiniApp, isIOS, canUseBOM } from '@galacean/effects';
+import { spec, getActivePlayers, logger, isAlipayMiniApp, canUseBOM } from '@galacean/effects';
 import type { DowngradeOptions, DowngradeResult, SystemInfo } from './types';
 import { DeviceProxy } from './device-proxy';
 
@@ -149,7 +149,7 @@ async function getDowngradeResultJSAPI (bizId: string, options: DowngradeOptions
  * @returns 渲染等级
  */
 export function getDefaultRenderLevel () {
-  return isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
+  return spec.RenderLevel.S;
 }
 
 function pauseAllActivePlayers (e: Event) {
