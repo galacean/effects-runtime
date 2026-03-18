@@ -19,39 +19,14 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   private trailMesh?: TrailMesh;
 
-  constructor (
-    engine: Engine,
-    particleMeshProps?: ParticleMeshProps,
-    trailMeshProps?: TrailMeshProps,
-  ) {
+  constructor (engine: Engine) {
     super(engine);
 
     this.name = 'ParticleSystemRenderer';
-    if (particleMeshProps) {
-      this.particleMesh = new ParticleMesh(engine, particleMeshProps);
-    }
-
-    if (trailMeshProps) {
-      this.trailMesh = new TrailMesh(engine, trailMeshProps);
-    }
-
-    const meshes = [this.particleMesh.mesh];
-
-    this.materials.push(this.particleMesh.mesh.material);
-
-    if (this.trailMesh) {
-      meshes.push(this.trailMesh.mesh);
-      this.materials.push(this.trailMesh.mesh.material);
-    }
-
-    this.meshes = meshes;
   }
 
   override onStart (): void {
     this._priority = this.item.renderOrder;
-    for (const mesh of this.meshes) {
-      mesh.onStart();
-    }
   }
 
   override onUpdate (dt: number): void {
@@ -66,6 +41,28 @@ export class ParticleSystemRenderer extends RendererComponent {
 
     for (const mesh of this.meshes) {
       mesh.render(renderer);
+    }
+  }
+
+  /**
+   * @internal
+   */
+  setup (particleMeshProps: ParticleMeshProps, trailMeshProps: TrailMeshProps | null = null,) {
+    this.meshes = [];
+    this.materials = [];
+
+    this.particleMesh = new ParticleMesh(this.engine, particleMeshProps);
+
+    if (trailMeshProps) {
+      this.trailMesh = new TrailMesh(this.engine, trailMeshProps);
+    }
+
+    this.meshes.push(this.particleMesh.mesh);
+    this.materials.push(this.particleMesh.mesh.material);
+
+    if (this.trailMesh) {
+      this.meshes.push(this.trailMesh.mesh);
+      this.materials.push(this.trailMesh.mesh.material);
     }
   }
 

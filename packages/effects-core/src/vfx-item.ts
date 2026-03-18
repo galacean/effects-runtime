@@ -15,7 +15,6 @@ import type {
   BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams,
 } from './plugins';
-import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
@@ -739,12 +738,6 @@ export class VFXItem extends EffectsObject implements Disposable {
         const component = this.engine.findObject<Component>(componentPath);
 
         this.components.push(component);
-        // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
-        if (component instanceof ParticleSystem) {
-          if (!this.components.includes(component.renderer)) {
-            this.components.push(component.renderer);
-          }
-        }
       }
     }
 
