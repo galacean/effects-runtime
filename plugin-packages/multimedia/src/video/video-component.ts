@@ -39,7 +39,6 @@ export class VideoComponent extends MaskableGraphic {
    * 视频是否已加载完成
    */
   private videoLoaded = false;
-  private readonly threshold = 0.01;
 
   /**
    * 是否由用户手动控制播放速率（覆盖合成的播放速率）
@@ -92,6 +91,8 @@ export class VideoComponent extends MaskableGraphic {
    * 存储事件监听器的移除函数，用于销毁时清理
    */
   private eventDisposers: (() => void)[] = [];
+
+  private static readonly threshold = 0.01;
 
   constructor (engine: Engine) {
     super(engine);
@@ -310,7 +311,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return this.video!.currentTime + this.threshold >= this.video!.duration;
+    return this.video!.currentTime + VideoComponent.threshold >= this.video!.duration;
   }
 
   /**
@@ -323,7 +324,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return composition.time + this.threshold >= composition.rootItem.duration;
+    return composition.time + VideoComponent.threshold >= composition.rootItem.duration;
   }
 
   /**
