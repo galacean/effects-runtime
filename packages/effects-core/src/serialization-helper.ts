@@ -48,8 +48,8 @@ export class SerializationHelper {
     }
 
     // TODO 待移除 tagggedProperties 为没有装饰器的临时方案
-    for (const key of Object.keys(effectsObject.defination)) {
-      const value = effectsObject.defination[key];
+    for (const key of Object.keys(effectsObject.definition)) {
+      const value = effectsObject.definition[key];
 
       if (
         typeof value === 'number' ||
@@ -82,7 +82,7 @@ export class SerializationHelper {
     serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {
-    effectsObject.defination = serializedData;
+    effectsObject.definition = serializedData;
 
     const serializedProperties = getMergedStore(effectsObject);
     const engine = effectsObject.engine;
@@ -101,7 +101,7 @@ export class SerializationHelper {
         effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0, propertyType);
       }
     }
-    effectsObject.fromData(effectsObject.defination as spec.EffectsObjectData);
+    effectsObject.fromData(effectsObject.definition as spec.EffectsObjectData);
   }
 
   static checkTypedArray (obj: unknown): boolean {

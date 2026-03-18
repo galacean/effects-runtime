@@ -744,8 +744,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     const regions: Region[] = [];
     const ray = this.getHitTestRay(x, y);
+    // 所有命中的元素共享同一个 hitPositions 数组，保持与原有行为一致
+    const hitPositions: Region['hitPositions'] = [];
 
-    this.rootComposition.hitTest(ray, x, y, regions, force, options);
+    this.rootItem.hitTest(ray, x, y, regions, hitPositions, force, options);
 
     return regions;
   }

@@ -325,6 +325,7 @@ export class InteractComponent extends RendererComponent {
         type: area.type,
         triangles: area.area,
         behavior,
+        clipMasks:this.frameClipMasks,
       };
     }
   };

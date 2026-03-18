@@ -187,6 +187,7 @@ export class ModelMeshComponent extends RendererComponent {
           const customHitTest: HitTestCustomParams = {
             behavior: bounding.behavior as number,
             type: HitTestType.custom,
+            clipMasks:this.frameClipMasks,
             collect: function (ray: Ray, pointInCanvas: Vector2) {
               const result = mesh.hitTesting(ray.origin, ray.direction);
 
@@ -200,6 +201,7 @@ export class ModelMeshComponent extends RendererComponent {
           const customHitTest: HitTestCustomParams = {
             behavior: bounding.behavior as number,
             type: HitTestType.custom,
+            clipMasks:this.frameClipMasks,
             collect: function (ray: Ray, pointInCanvas: Vector2) {
               const result = RayIntersectsBoxWithRotation(ray, worldMatrixData, bounding);
 
@@ -226,6 +228,7 @@ export class ModelMeshComponent extends RendererComponent {
           behavior: bounding.behavior as number,
           radius: bounding.radius || 0,
           center,
+          clipMasks:this.frameClipMasks,
         };
       }
     }

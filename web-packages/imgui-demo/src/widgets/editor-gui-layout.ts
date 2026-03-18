@@ -176,8 +176,8 @@ export class EditorGUILayout {
     if (targetObject instanceof GLTexture) {
       let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
 
-      if (!__inspectorTexture && targetObject.defination.image) {
-        __inspectorTexture = createImguiTextureFromImage(targetObject.defination.image);
+      if (!__inspectorTexture && targetObject.definition.image) {
+        __inspectorTexture = createImguiTextureFromImage(targetObject.definition.image);
         (targetObject as any).__imguiInspectorTexture = __inspectorTexture;
       }
       ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
