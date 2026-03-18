@@ -105,6 +105,9 @@ export class VideoComponent extends MaskableGraphic {
   override async setTexture (input: Texture | string): Promise<void> {
     const oldTexture = this.renderer.texture;
     const composition = this.item.composition;
+
+    if (!composition) { return; }
+
     let texture: Texture;
 
     if (typeof input === 'string') {
@@ -112,8 +115,6 @@ export class VideoComponent extends MaskableGraphic {
     } else {
       texture = input;
     }
-
-    if (!composition) { return; }
 
     composition.textures.forEach((cachedTexture, index) => {
       if (cachedTexture === oldTexture) {
