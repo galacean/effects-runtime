@@ -496,7 +496,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   private computeScreenScale (): number {
-    const defaultPpu = 5;
+    const defaultPpu = 1;
     const composition = this.item.composition;
 
     if (!composition) {
