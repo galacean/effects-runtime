@@ -208,12 +208,14 @@ export class VectorFeatherRenderer {
     const expandedMinX = bx - featherRadius;
     const expandedMinY = by - featherRadius;
 
-    const downsample = Math.max(featherRadius / 10.0, 1.0);
-
     const screenExtent = this.computeScreenExtent(
       renderer, worldMatrix,
       expandedMinX, expandedMinY, expandedW, expandedH,
     );
+
+    const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
+    const downsample = Math.max(featherRadiusScreen / 10.0, 1.0);
+
     const maxFboSize = 2048;
     const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
     const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
