@@ -3,12 +3,12 @@ import '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 const short_video_jsons = [
   // 合成重播
-  'https://mdn.alipayobjects.com/mars/afts/file/A*yxdUSow5r_YAAAAAQDAAAAgAelB4AQ', //合成重播 视频冻结
+  'https://mdn.alipayobjects.com/mars/afts/file/A*8t8vRKsoon0AAAAAQDAAAAgAelB4AQ', //合成重播 视频冻结
   'https://mdn.alipayobjects.com/mars/afts/file/A*VJMvSYFHqBgAAAAAQDAAAAgAelB4AQ', //合成重播 视频销毁
   'https://mdn.alipayobjects.com/mars/afts/file/A*Bo19SqnCGP8AAAAAQDAAAAgAelB4AQ', //合成重播 视频循环
   // 合成无限播放
   'https://mdn.alipayobjects.com/mars/afts/file/A*PHWLR44J9ZcAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*yYiHSZwy-wgAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频销毁
+  'https://mdn.alipayobjects.com/mars/afts/file/A*P_k4Q7y6zXsAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频销毁
   'https://mdn.alipayobjects.com/mars/afts/file/A*eLlnS7RaogoAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频循环
   // 合成冻结
   'https://mdn.alipayobjects.com/mars/afts/file/A*hiL7SYfNdpQAAAAAQDAAAAgAelB4AQ', //合成冻结 视频冻结
@@ -670,7 +670,7 @@ videoPauseBtn.style.cssText = 'background:#27ae60;color:#fff;border:none;padding
 videoPauseBtn.onclick = () => {
   const compositions = player.getCompositions();
   const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_3');
+  const videoItem = composition?.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
 
   videoComp?.pauseVideo();
@@ -684,7 +684,7 @@ videoPlayBtn.style.cssText = 'background:#27ae60;color:#fff;border:none;padding:
 videoPlayBtn.onclick = () => {
   const compositions = player.getCompositions();
   const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_3');
+  const videoItem = composition?.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
 
   videoComp?.playVideo();
@@ -726,7 +726,7 @@ speed05Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6p
 speed05Btn.onclick = () => {
   const compositions = player.getCompositions();
   const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_3');
+  const videoItem = composition?.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
 
   videoComp?.setPlaybackRate(0.5);
@@ -740,7 +740,7 @@ speed1Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px
 speed1Btn.onclick = () => {
   const compositions = player.getCompositions();
   const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_3');
+  const videoItem = composition?.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
 
   videoComp?.setPlaybackRate(1);
@@ -754,7 +754,7 @@ speed2Btn.style.cssText = 'background:#f39c12;color:#fff;border:none;padding:6px
 speed2Btn.onclick = () => {
   const compositions = player.getCompositions();
   const composition = compositions[0];
-  const videoItem = composition?.getItemByName('video_3');
+  const videoItem = composition?.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
 
   videoComp?.setPlaybackRate(2);
@@ -781,6 +781,6 @@ document.body.appendChild(controlPanel);
 
   updateInfo();
   const sc = await player.loadScene(allVideos[currentIndex].url, { autoplay: true, useHevcVideo: true });
-  const videoItem = sc.getItemByName('video_3');
+  const videoItem = sc.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
 })();
