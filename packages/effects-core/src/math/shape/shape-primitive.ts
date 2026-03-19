@@ -21,7 +21,7 @@ export abstract class ShapePrimitive {
   /** The Y coordinate of the shape */
   // abstract getY (): number;
 
-  abstract build (points: number[]): void;
+  abstract build (points: number[], screenScale?: number): void;
 
   abstract triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void;
 }

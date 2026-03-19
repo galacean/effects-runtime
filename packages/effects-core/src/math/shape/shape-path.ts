@@ -33,7 +33,7 @@ export class ShapePath {
 
       switch (action) {
         case 'bezierCurveTo': {
-          this.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
+          this.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 
           break;
         }
@@ -99,6 +99,7 @@ export class ShapePath {
     cp1x: number, cp1y: number, cp2x: number, cp2y: number,
     x: number, y: number,
     smoothness?: number,
+    scale?: number,
   ): ShapePath {
     this.ensurePoly();
     const currentPoly = this.currentPoly as Polygon;
@@ -108,6 +109,7 @@ export class ShapePath {
       currentPoly.lastX, currentPoly.lastY,
       cp1x, cp1y, cp2x, cp2y, x, y,
       smoothness,
+      scale,
     );
 
     return this;
