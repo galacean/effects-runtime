@@ -649,6 +649,7 @@ export class GizmoComponent extends RendererComponent {
 
       return {
         type: HitTestType.custom,
+        clipMasks:this.frameClipMasks,
         /**
          * 自定义射线检测算法
          * @param ray 射线参数

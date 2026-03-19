@@ -9,7 +9,7 @@ const container = document.getElementById('J-container');
     interactive: true,
   });
 
-  const composition = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*2tyvSqaKJxMAAAAAAAAAAAAAelB4AQ');
+  const composition = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*k6jXT7tbo54AAAAAQ2AAAAgAelB4AQ');
   const sceneRendererComponents: RendererComponent[] = [];
   const hitResText = composition.getItemByName('text')?.getComponent(TextComponent);
 
@@ -25,8 +25,12 @@ const container = document.getElementById('J-container');
       }
     }
 
-    if (hitRes[0]) {
-      const shape = composition.getItemByName(hitRes[0].name)!.getComponent(RendererComponent);
+    for (const hit of hitRes) {
+      const shape = composition.getItemByName(hit.name)?.getComponent(RendererComponent);
+
+      if (!shape) {
+        continue;
+      }
 
       hitResText?.setText(shape.item.name);
       if (!sceneRendererComponents.includes(shape)) {

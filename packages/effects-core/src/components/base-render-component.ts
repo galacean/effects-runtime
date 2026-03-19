@@ -237,6 +237,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
           type: area.type,
           triangles: area.area,
           backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+          clipMasks:this.frameClipMasks,
         };
       }
     }

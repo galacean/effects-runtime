@@ -166,7 +166,7 @@ export class VideoComponent extends MaskableGraphic {
         this.video.playbackRate = playbackRate;
         this.setVolume(volume);
         this.setMuted(muted);
-        const endBehavior = this.item.defination.endBehavior;
+        const endBehavior = this.item.definition.endBehavior;
 
         if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
           this.video.loop = false;

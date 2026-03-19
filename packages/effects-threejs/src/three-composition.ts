@@ -66,6 +66,17 @@ export class ThreeComposition extends Composition {
 
     frame.renderPasses[0].meshes.length = 0;
 
-    this.rootItem.getComponent(RendererComponent)?.render(render);
+    const items = this.rootItem.getDescendants();
+
+    // 主合成元素
+    for (const vfxItem of items) {
+      const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+      for (const rendererComponent of rendererComponents) {
+        if (rendererComponent.isActiveAndEnabled) {
+          rendererComponent.render(render);
+        }
+      }
+    }
   }
 }
