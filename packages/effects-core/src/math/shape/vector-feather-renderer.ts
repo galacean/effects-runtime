@@ -34,7 +34,6 @@ export type FeatherRenderParams = {
  * 1. Indicator Pass - 绘制形状指示图到离屏纹理
  * 2. Scatter (Integration) Pass - 计算边界羽化值
  * 3. Upsample Pass - 从离屏纹理采样到屏幕
- * @since 2.1.0
  */
 export class VectorFeatherRenderer {
   private engine: Engine;
