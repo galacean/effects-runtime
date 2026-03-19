@@ -259,14 +259,19 @@ export class VideoComponent extends MaskableGraphic {
    * 处理合成 play 事件（合成开始/重播/恢复时触发）
    */
   private handleCompositionPlay (): void {
-    // 合成未结束时（暂停后恢复），不需要重置视频状态
+    // 合成未结束时（暂停后恢复），恢复视频播放
     if (!this.checkCompositionEnded()) {
+      // 如果正在 seeking，不恢复播放，等 seek 完成后再恢复
+      if (!this.manualPause && !this.videoSeeking && this.video?.paused) {
+        this.safePlay();
+      }
+
       return;
     }
 
     this.playTriggered = false;
     this.manualPause = false;
-    const videoEndBehavior = this.item.defination.endBehavior;
+    const videoEndBehavior = this.item.endBehavior;
 
     if (videoEndBehavior === spec.EndBehavior.freeze && this.video) {
       this.pendingSeekTime = 0;
