@@ -528,7 +528,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const ndcToPixels = Math.max(canvasRect.width, canvasRect.height) / 2;
 
     // pixelsPerUnit: 1个局部空间单位在屏幕上对应多少像素
-    // 贝塞尔调用方将 ppu 折算进 smoothness: effectiveSmooth = 1 - (1-smooth)/ppu
     // 椭圆/圆/矩形中使用 n = ceil(√(ppu × (rx+ry))) 确保圆弧误差 ≈ 1.2px
     const pixelsPerUnit = maxNdcScale * ndcToPixels * this.engine.pixelRatio;
 
