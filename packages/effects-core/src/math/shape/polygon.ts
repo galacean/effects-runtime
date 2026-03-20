@@ -142,7 +142,7 @@ export class Polygon extends ShapePrimitive {
     return this.points[this.points.length - 1];
   }
 
-  override build (points: number[]): void {
+  override build (points: number[], screenScale?: number): void {
     for (let i = 0; i < this.points.length; i++) {
       points[i] = this.points[i];
     }
