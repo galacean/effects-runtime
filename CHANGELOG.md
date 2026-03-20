@@ -11,7 +11,7 @@
 
 `2026-03-20`
 
-- Chore: 部分包引用 /alipay、/wexin、/douyin 等模块没有类型提示. [#1427](https://github.com/galacean/effects-runtime/pull/1427) @zheeeng
+- Chore: add type hints for /alipay, /wechat, /douyin and other module imports in some packages.. [#1427](https://github.com/galacean/effects-runtime/pull/1427) @zheeeng
 - Fix: rich text overflow setting invalid. [#1413](https://github.com/galacean/effects-runtime/pull/1413) @wumaolinmaoan
 
 ## 2.8.9
