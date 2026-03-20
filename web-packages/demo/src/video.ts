@@ -8,7 +8,7 @@ const short_video_jsons = [
   'https://mdn.alipayobjects.com/mars/afts/file/A*Bo19SqnCGP8AAAAAQDAAAAgAelB4AQ', //合成重播 视频循环
   // 合成无限播放
   'https://mdn.alipayobjects.com/mars/afts/file/A*PHWLR44J9ZcAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频冻结
-  'https://mdn.alipayobjects.com/mars/afts/file/A*P_k4Q7y6zXsAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频销毁
+  'https://mdn.alipayobjects.com/mars/afts/file/A*FkDGRYxT3MkAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频销毁
   'https://mdn.alipayobjects.com/mars/afts/file/A*eLlnS7RaogoAAAAAQDAAAAgAelB4AQ', //合成无限播放 视频循环
   // 合成冻结
   'https://mdn.alipayobjects.com/mars/afts/file/A*hiL7SYfNdpQAAAAAQDAAAAgAelB4AQ', //合成冻结 视频冻结
@@ -575,10 +575,10 @@ async function playStuckVideo () {
 
   await player.loadScene(stuckVideoJson as any as string, { useHevcVideo: true });
   setTimeout(() => {
-    player.gotoAndPlay(0);
+    player.gotoAndPlay(1);
   }, 1000);
   setTimeout(() => {
-    player.gotoAndPlay(1);
+    player.gotoAndPlay(2);
   }, 2000);
 }
 

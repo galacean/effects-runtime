@@ -83,6 +83,17 @@ export class VideoComponent extends MaskableGraphic {
   private pendingSeekTime: number | null = null;
 
   /**
+   * 是否正在处理 gotoAndStop 的 seek
+   * 用于跳过 pause 事件触发的 pauseVideoElement，等 seek 完成后再暂停
+   */
+  private isGotoAndStopSeeking = false;
+
+  /**
+   * 是否刚收到 goto 事件，等待后续 play/pause 事件来区分场景
+   */
+  private isWaitingForGotoResult = false;
+
+  /**
    * 当前正在执行的 play() Promise，用于串行化 play 调用，避免上的竞态
    */
   private playPromise: Promise<void> | null = null;
@@ -138,7 +149,7 @@ export class VideoComponent extends MaskableGraphic {
     this.eventDisposers.push(
       composition.on('goto', () => this.handleGoto()),
       composition.on('play', () => this.handleCompositionPlay()),
-      composition.on('pause', () => this.pauseVideoElement()),
+      composition.on('pause', () => this.handleCompositionPause()),
       composition.on('end', () => this.handleCompositionEnd()),
     );
   }
@@ -250,15 +261,40 @@ export class VideoComponent extends MaskableGraphic {
    * 处理 goto 事件：重置播放状态，记录待 seek 时间
    */
   private handleGoto (): void {
+    // 通过后续事件区分 gotoAndPlay 和 gotoAndStop
+    this.isWaitingForGotoResult = true;
     this.playTriggered = false;
     this.manualPause = false;
     this.pendingSeekTime = this.item.time;
   }
 
   /**
+   * 处理合成 pause 事件
+   * 如果刚收到 goto 事件且等待结果，说明是 gotoAndStop 场景
+   */
+  private handleCompositionPause (): void {
+    // gotoAndStop 场景
+    if (this.isWaitingForGotoResult) {
+      this.isWaitingForGotoResult = false;
+      if (this.video && this.videoLoaded) {
+        this.isGotoAndStopSeeking = true;
+        this.performSeek(this.item.time, false, true);
+      }
+
+      return;
+    }
+    // 普通 pause 事件：暂停视频
+    this.pauseVideoElement();
+  }
+
+  /**
    * 处理合成 play 事件（合成开始/重播/恢复时触发）
    */
   private handleCompositionPlay (): void {
+    // 如果正在等待 goto 结果，说明是 gotoAndPlay 场景
+    if (this.isWaitingForGotoResult) {
+      this.isWaitingForGotoResult = false;
+    }
     // 合成未结束时（暂停后恢复），恢复视频播放
     if (!this.checkCompositionEnded()) {
       // 如果正在 seeking，不恢复播放，等 seek 完成后再恢复
@@ -471,44 +507,41 @@ export class VideoComponent extends MaskableGraphic {
       return;
     }
 
-    const doPlay = () => {
-      if (!this.video) {
-        return;
-      }
-
-      const promise = this.video.play();
-
-      this.playPromise = promise;
-
-      void promise
-        .then(() => {
-          if (this.playPromise === promise) {
-            this.playPromise = null;
-          }
-          this.updatePlaybackRate();
-        })
-        .catch(error => {
-          if (this.playPromise === promise) {
-            this.playPromise = null;
-          }
-          if (error.name === 'AbortError') {
-            this.playTriggered = false;
-            this.engine.renderErrors.add(error);
-          }
-        });
-    };
-
+    // 已有 play() 在执行中，不重复调用，避免 AbortError
     if (this.playPromise) {
-      void this.playPromise.then(() => doPlay());
-    } else {
-      doPlay();
+      return;
     }
+
+    const promise = this.video.play();
+
+    this.playPromise = promise;
+
+    void promise
+      .then(() => {
+        if (this.playPromise === promise) {
+          this.playPromise = null;
+        }
+        this.updatePlaybackRate();
+      })
+      .catch(error => {
+        if (this.playPromise === promise) {
+          this.playPromise = null;
+        }
+        if (error.name === 'AbortError') {
+          this.playTriggered = false;
+          this.engine.renderErrors.add(error);
+        }
+      });
   }
 
   /**
    * 暂停底层视频元素
    */
   private pauseVideoElement (): void {
+    // gotoAndStop 场景：跳过暂停，等 seek 完成后再暂停
+    if (this.isGotoAndStopSeeking) {
+      return;
+    }
     if (!this.video || this.video.paused) {
       return;
     }
@@ -526,31 +559,56 @@ export class VideoComponent extends MaskableGraphic {
    * seek 期间设置 videoSeeking=true，阻止 uploadCurrentVideoFrame 上传旧帧
    * @param time 目标时间
    * @param clearTexture 是否在 seek 期间清空纹理，避免旧帧残留（仅视频 destroy 行为 seek 回 0 时使用）
+   * @param isGotoAndStop 是否为 gotoAndStop 场景，seek 完成后暂停而非恢复播放
    */
-  private performSeek (time: number, clearTexture = false): void {
+  private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
     const wasPlaying = !this.video!.paused;
 
-    if (wasPlaying) {
-      this.video!.pause();
-    }
-    this.videoSeeking = true;
-    if (clearTexture) {
-      this.material.setTexture('_MainTex', this.engine.transparentTexture);
-    }
-    this.video!.addEventListener('seeked', () => {
-      this.videoSeeking = false;
+    const doSeek = () => {
+      this.videoSeeking = true;
       if (clearTexture) {
-        this.material.setTexture('_MainTex', this.renderer.texture);
+        this.material.setTexture('_MainTex', this.engine.transparentTexture);
       }
-      if (this.video) {
-        this.renderer.texture.uploadCurrentVideoFrame();
-        // 如果视频之前在播放，seek 完成后恢复播放
-        if (wasPlaying && !this.manualPause) {
-          this.safePlay();
+      this.video!.addEventListener('seeked', () => {
+        this.videoSeeking = false;
+        this.isGotoAndStopSeeking = false;
+        if (clearTexture) {
+          this.material.setTexture('_MainTex', this.renderer.texture);
         }
+        if (this.video) {
+          this.renderer.texture.uploadCurrentVideoFrame();
+          // gotoAndStop 场景：seek 完成后暂停
+          if (isGotoAndStop) {
+            this.video.pause();
+          } else if (wasPlaying && !this.manualPause) {
+            // 如果视频之前在播放（包括 goto 前在播放），seek 完成后恢复播放
+            this.safePlay();
+          }
+        }
+      }, { once: true });
+      this.video!.currentTime = time;
+    };
+
+    // gotoAndStop 场景：iPhone 上视频暂停时 seek 可能不触发 seeked 事件，需要先确保视频在播放状态
+    if (isGotoAndStop) {
+      if (wasPlaying) {
+        // 视频正在播放，直接 seek（iPhone 上 pause 后 seek 可能不触发 seeked）
+        doSeek();
+      } else {
+        // 视频暂停，先 play() 再 seek
+        this.video!.play().then(() => {
+          doSeek();
+        }).catch(() => {
+          // play 失败时也尝试 seek
+          doSeek();
+        });
       }
-    }, { once: true });
-    this.video!.currentTime = time;
+    } else {
+      if (wasPlaying) {
+        this.video!.pause();
+      }
+      doSeek();
+    }
   }
 
   /**
