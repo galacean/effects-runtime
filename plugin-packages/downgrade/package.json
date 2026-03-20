@@ -31,6 +31,13 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
   "scripts": {
     "dev": "vite",
     "preview": "concurrently -k \"vite build -w\" \"sleep 6 && vite preview\"",
