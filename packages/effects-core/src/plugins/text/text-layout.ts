@@ -32,6 +32,7 @@ export class TextLayout implements BaseLayout {
       letterSpace = 0,
       fontSize,
       lineHeight = fontSize,
+      autoResize = spec.TextSizeMode.fixed,
     } = options;
 
     this.letterSpace = letterSpace;
@@ -40,6 +41,7 @@ export class TextLayout implements BaseLayout {
     this.textAlign = textAlign;
     this.width = textWidth;
     this.height = textHeight;
+    this.autoResize = autoResize;
 
     this.lineHeight = lineHeight;
   }

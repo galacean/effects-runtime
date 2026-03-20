@@ -26,7 +26,7 @@ export class AlipayDowngradePlugin extends Plugin {
         throw new Error(`Downgraded, reason: ${downgradeResult.reason}`);
       }
     } else {
-      logger.warn('No downgrade result in pluginData of SceneLoadOptions.');
+      logger.warn('No downgrade result in pluginData of SceneLoadOptions.\nThis will cause renderLevel to fallback to "S" and load S/A+/B+ level assets.');
     }
 
     if (!options.renderLevel) {

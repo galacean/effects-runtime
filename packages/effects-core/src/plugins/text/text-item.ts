@@ -247,6 +247,9 @@ export class TextComponent extends MaskableGraphic {
       layout.width = this.getTextWidth();
       this.lineCount = this.getLineCount(this.text);
       layout.height = layout.lineHeight * this.lineCount;
+    } else if (layout.autoResize === spec.TextSizeMode.autoHeight) {
+      this.lineCount = this.getLineCount(this.text);
+      layout.height = layout.lineHeight * this.lineCount;
     } else {
       this.lineCount = this.getLineCount(this.text);
     }
@@ -440,12 +443,15 @@ export class TextComponent extends MaskableGraphic {
     const layout = this.textLayout;
 
     // 宽度没变且已是非 autoWidth 模式,直接返回
-    if (layout.width === width && layout.autoResize === spec.TextSizeMode.autoWidth) {
+    if (layout.width === width) {
       return;
     }
 
     // 手动设置宽度时关闭 autoWidth
-    layout.autoResize = spec.TextSizeMode.autoHeight;
+    if (layout.autoResize === spec.TextSizeMode.autoWidth) {
+      layout.autoResize = spec.TextSizeMode.autoHeight;
+    }
+
     layout.width = width;
 
     // 按当前 overflow 模式重新计算 maxLineWidth

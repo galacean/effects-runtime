@@ -174,6 +174,8 @@ export interface PolygonAttribute extends ShapeAttributes {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent implements Maskable {
+  private static readonly tempMVP = Matrix4.fromIdentity();
+
   private shapeDirty = true;
   private materialDirty = true;
   private graphicsPath = new GraphicsPath();
@@ -305,8 +307,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   override onUpdate (dt: number): void {
     if (this.shapeDirty) {
-      this.buildPath(this.shapeAttributes);
-      this.buildGeometryFromPath(this.graphicsPath.shapePath);
+      const screenScale = this.computeScreenScale();
+
+      this.buildPath(this.shapeAttributes, screenScale);
+      this.buildGeometryFromPath(this.graphicsPath.shapePath, screenScale);
       this.featherDirty = true;
       this.shapeDirty = false;
     }
@@ -430,7 +434,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.boundingBoxInfo;
   }
 
-  private buildGeometryFromPath (shapePath: ShapePath) {
+  private buildGeometryFromPath (shapePath: ShapePath, screenScale: number) {
     const shapePrimitives = shapePath.shapePrimitives;
     const vertices: number[] = [];
     const indices: number[] = [];
@@ -443,7 +447,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
 
-        shape.build(points);
+        shape.build(points, screenScale);
         shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
       }
     }
@@ -468,7 +472,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           close = (shape as Polygon).closePath;
         }
 
-        shape.build(points);
+        shape.build(points, screenScale);
         buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
       }
     }
@@ -618,8 +622,51 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     }
   }
 
-  private buildPath (shapeAttribute: ShapeAttributes) {
+  private computeScreenScale (): number {
+    const defaultPpu = 1;
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return defaultPpu;
+    }
+
+    const camera = composition.camera;
+
+    if (!camera) {
+      return defaultPpu;
+    }
+
+    const mvp = camera.getModelViewProjection(
+      ShapeComponent.tempMVP, this.transform.getWorldMatrix()
+    );
+    const e = mvp.elements;
+
+    // 列优先：col0=[e[0],e[1]], col1=[e[4],e[5]]
+    // 透视投影下 MVP 不含 w-divide，cols 0-1 的长度是 clip-space 缩放
+    // 需要除以物体中心的 w 值才能得到 NDC 缩放
+    // 物体局部原点 [0,0,0,1] 经 MVP 后 w = e[15]（≈ 物体到相机距离）
+    const w = Math.abs(e[15]) || 1;
+    const sx = Math.sqrt(e[0] * e[0] + e[1] * e[1]) / w;
+    const sy = Math.sqrt(e[4] * e[4] + e[5] * e[5]) / w;
+    const maxNdcScale = Math.max(sx, sy);
+
+    // NDC -> 像素: canvasSize / 2
+    const canvasRect = this.engine.canvas.getBoundingClientRect();
+    const ndcToPixels = Math.max(canvasRect.width, canvasRect.height) / 2;
+
+    // pixelsPerUnit: 1个局部空间单位在屏幕上对应多少像素
+    // 椭圆/圆/矩形中使用 n = ceil(√(ppu × (rx+ry))) 确保圆弧误差 ≈ 1.2px
+    const pixelsPerUnit = maxNdcScale * ndcToPixels * this.engine.pixelRatio;
+
+    const minPpu = 1;
+    const maxPpu = 2000;
+
+    return Math.max(minPpu, Math.min(maxPpu, pixelsPerUnit));
+  }
+
+  private buildPath (shapeAttribute: ShapeAttributes, screenScale = 1) {
     this.graphicsPath.clear();
+    const ppu = screenScale;
 
     switch (shapeAttribute.type) {
       case spec.ShapePrimitiveType.Custom: {
@@ -642,7 +689,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             const control1 = easingOuts[lastPointIndex.easingOut];
             const control2 = easingIns[pointIndex.easingIn];
 
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
           }
 
           if (shape.close) {
@@ -653,7 +700,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             const control1 = easingOuts[lastPointIndex.easingOut];
             const control2 = easingIns[pointIndex.easingIn];
 
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
             this.graphicsPath.closePath();
           }
         }

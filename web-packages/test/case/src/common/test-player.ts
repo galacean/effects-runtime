@@ -2,9 +2,6 @@ import type { PlayerConfig, Composition, SceneLoadOptions, GLType, Player, Asset
 import { ParticleSystem, ParticleSystemRenderer } from '@galacean/effects';
 import { math } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
-import { sleep } from './utilities';
-
-const sleepTime = 20;
 
 export class TestPlayer {
   player: Player;
@@ -95,15 +92,16 @@ export class TestPlayer {
   }
 
   async readImageBuffer () {
-    await sleep(sleepTime);
     const ctx = this.canvas.getContext(this.renderFramework) as WebGL2RenderingContext;
+
+    // 强制等待 GPU 完成所有渲染命令
+    ctx.finish();
 
     //使用实际的drawingBuffer读取，而不是使用画布尺寸
     const originalWidth = ctx.drawingBufferWidth;
     const originalHeight = ctx.drawingBufferHeight ;
     const pixels = new Uint8Array(originalWidth * originalHeight * 4);
 
-    ctx.flush();
     ctx.readPixels(0, 0, originalWidth, originalHeight, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels);
 
     return pixels;
@@ -178,7 +176,11 @@ export class TestPlayer {
   }
 
   async saveCanvasToImage (filename: string, idx: [number, number], isNew?: boolean) {
-    await sleep(sleepTime);
+    const ctx = this.canvas.getContext(this.renderFramework) as WebGL2RenderingContext;
+
+    // 强制等待 GPU 完成所有渲染命令
+    ctx.finish();
+
     const url = this.canvas.toDataURL('image/png');
     const img = document.createElement('img');
     const suite = document.querySelectorAll('.suite');

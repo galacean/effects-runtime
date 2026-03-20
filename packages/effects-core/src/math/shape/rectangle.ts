@@ -101,7 +101,7 @@ export class Rectangle extends ShapePrimitive {
     return rectangle;
   }
 
-  override build (points: number[]): void {
+  override build (points: number[], screenScale?: number): void {
     let ry;
 
     const halfWidth = this.width / 2;
@@ -117,10 +117,10 @@ export class Rectangle extends ShapePrimitive {
       return;
     }
 
-    // 控制边缘的平滑程度
-    const densityScale = 5;
-    // Choose a number of segments such that the maximum absolute deviation from the circle is approximately 0.029
-    const n = densityScale * Math.ceil(2.3 * Math.sqrt(rx + ry));
+    // n 个等分段逼近四分之一圆角弧，最大弦高误差 ε = R·π²/(8n²)
+    // 屏幕误差 = ε × ppu，令 n = √(ppu·(rx+ry))，则误差 ≈ π²/8 ≈ 1.2px
+    const ppu = screenScale ?? 1;
+    const n = Math.ceil(Math.sqrt(ppu * (rx + ry)));
     const m = (n * 8) + (dx ? 4 : 0) + (dy ? 4 : 0);
 
     if (m === 0) {
