@@ -786,4 +786,8 @@ document.body.appendChild(controlPanel);
   const sc = await player.loadScene(allVideos[currentIndex].url, { autoplay: true, useHevcVideo: true });
   const videoItem = sc.getItemByName('video_2');
   const videoComp = videoItem?.getComponent(VideoComponent);
+
+  setTimeout(() => {
+    player.gotoAndStop(3.5);
+  }, 2000);
 })();

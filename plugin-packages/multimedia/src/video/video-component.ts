@@ -322,6 +322,7 @@ export class VideoComponent extends MaskableGraphic {
         this.pendingSeekTime = 0;
       }
       this.playTriggered = false;
+      this.videoDestroyed = false;
 
       return;
     }
@@ -387,7 +388,7 @@ export class VideoComponent extends MaskableGraphic {
    * 是否应该启动视频播放
    */
   private shouldStartVideo (): boolean {
-    if (this.playTriggered || this.manualPause || this.checkVideoEnded()) {
+    if (this.playTriggered || this.manualPause || this.videoDestroyed || this.checkVideoEnded()) {
       return false;
     }
 
@@ -477,7 +478,6 @@ export class VideoComponent extends MaskableGraphic {
     if (isVideoEnded && this.item.endBehavior === spec.EndBehavior.destroy) {
       this.videoDestroyed = true;
       this.playTriggered = false;
-      this.lastVideoTime = -1;
       this.performSeek(0, true);
     }
   }
@@ -523,8 +523,8 @@ export class VideoComponent extends MaskableGraphic {
         }
         if (error.name === 'AbortError') {
           this.playTriggered = false;
-          this.engine.renderErrors.add(error);
         }
+        this.engine.renderErrors.add(error);
       });
   }
 
