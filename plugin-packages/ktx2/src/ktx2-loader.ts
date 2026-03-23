@@ -1,8 +1,8 @@
 import type {
-  Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader,
+  Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader, Scene, SceneLoadOptions,
 } from '@galacean/effects';
 import {
-  TextureSourceType, loadBinary, glContext, textureLoaderRegistry,
+  TextureSourceType, loadBinary, glContext, textureLoaderRegistry, Plugin,
 } from '@galacean/effects';
 import { KTX2TargetFormat } from './ktx2-common';
 import { KTX2Container } from './ktx2-container';
@@ -10,9 +10,9 @@ import type { TranscodeResult } from './transcoder/texture-transcoder';
 import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 
 /**
- * KTX2 加载器 - 专用于 UASTC 转 ASTC
+ * KTX2 加载器插件
  */
-export class KTX2Loader implements TextureLoader {
+export class KTX2Loader extends Plugin implements TextureLoader {
   private khronosTranscoder: KhronosTranscoder | null = null;
   private khronosInitPromise?: Promise<void>;
 
@@ -23,7 +23,16 @@ export class KTX2Loader implements TextureLoader {
    */
   constructor (
     private readonly workerCount = 0,
-  ) { }
+  ) {
+    super();
+  }
+
+  override async onAssetsLoadStart (_scene: Scene, _options?: SceneLoadOptions): Promise<void> {
+    // 仅在未手动注册时才自动注册，避免覆盖用户通过 registerKTX2Loader(workerCount) 的自定义配置
+    if (!textureLoaderRegistry.has('ktx2')) {
+      registerKTX2Loader(this.workerCount);
+    }
+  }
 
   /**
    * 初始化 Khronos Transcoder
@@ -81,7 +90,6 @@ export class KTX2Loader implements TextureLoader {
    * 从 URL 加载 KTX2 纹理并返回压缩纹理源选项
    */
   async loadFromURL (url: string) {
-
     const buffer = new Uint8Array(await loadBinary(url));
     const { ktx2Container, result } = await this.parseBuffer(buffer);
 
@@ -90,7 +98,7 @@ export class KTX2Loader implements TextureLoader {
 
   /**
    * @internal
-   * 解析并转码 KTX2 文件
+   * 解析并转码 KTX2 文件 - 专用于 UASTC 转 ASTC
    */
   private async parseBuffer (buffer: Uint8Array) {
     const ktx2Container = new KTX2Container(buffer);
