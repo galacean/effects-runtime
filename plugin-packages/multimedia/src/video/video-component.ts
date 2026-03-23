@@ -744,6 +744,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 播放视频，同时取消手动暂停状态
+   * @since 2.3.0
    */
   playVideo (): void {
     this.manualPause = false;
@@ -752,6 +753,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 手动暂停视频
+   * @since 2.3.0
    */
   pauseVideo (): void {
     this.manualPause = true;
