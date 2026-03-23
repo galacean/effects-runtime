@@ -13,6 +13,7 @@ const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
 
 type FeatherEntry = {
+  component: ShapeComponent,
   featherRenderer: VectorFeatherRenderer,
   params: FeatherRenderParams,
   atlas: Framebuffer,
@@ -44,6 +45,7 @@ export class FeatherOffscreenPass extends RenderPass {
   override execute (renderer: Renderer): void {
     // 1. 收集需要羽化的 ShapeComponent
     const featheredComponents: {
+      component: ShapeComponent,
       featherRenderer: VectorFeatherRenderer,
       params: FeatherRenderParams,
     }[] = [];
@@ -57,7 +59,7 @@ export class FeatherOffscreenPass extends RenderPass {
         const params = fr.computeRenderParams(renderer, worldMatrix, fr.featherRadius);
 
         if (!params) { continue; }
-        featheredComponents.push({ featherRenderer: fr, params });
+        featheredComponents.push({ component: mesh, featherRenderer: fr, params });
       }
     }
 
@@ -91,9 +93,9 @@ export class FeatherOffscreenPass extends RenderPass {
       renderer.setViewport(0, 0, atlasW, atlasH);
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
 
-      for (const { featherRenderer, params, rect } of this.entries) {
+      for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-        featherRenderer.drawIndicatorPass(renderer, params.orthoProjection);
+        component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
         featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
 
         featherRenderer.atlasInfo = {
