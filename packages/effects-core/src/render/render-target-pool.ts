@@ -92,6 +92,7 @@ export class RenderTargetPool {
       format: glContext.RGBA,
       type: textureType,
     });
+
     const newFramebuffer = Framebuffer.create({
       name,
       storeAction: {},

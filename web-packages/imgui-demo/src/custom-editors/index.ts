@@ -1,1 +1,1 @@
-export * from './post-process-volume-editor';
+export * from './text-editor';

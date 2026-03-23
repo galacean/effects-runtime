@@ -7,7 +7,7 @@ varying vec2 vTexCoord;
 varying vec3 vParams;
 varying vec4 vColor;
 
-#define MAX_BLOCK_NUM 20
+#define MAX_BLOCK_NUM 13
 #define EPSILON 1e-6
 #define MAX_K 9        // (MAX_BLOCK_NUM - 1) / 2;
 
@@ -46,9 +46,10 @@ float binomialCoefficient(int n, int k) {
 
 // 计算 n 阶第 k 项的基函数值 Bernstein(n, k, t)
 float bernstein(int n, int k, float t) {
-  // t 在 [0, 1] 范围外直接返回 0
-  if(t < 0.0 || t > 1.0)
-    return 0.0;
+  // t 截断至 [0, 1] 范围
+  t = clamp(t, 0.0, 1.0);
+  
+  if(k < 0 || k > n) return 0.0; 
 
   // 端点精度处理
   if(abs(t) < EPSILON && k == 0)

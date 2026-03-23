@@ -1,5 +1,5 @@
-import { AbstractPlugin } from '../plugin';
+import { Plugin } from '../plugin';
 
-export class SpriteLoader extends AbstractPlugin {
+export class SpriteLoader extends Plugin {
   override name = 'sprite';
 }

@@ -1,4 +1,4 @@
-import { AbstractPlugin } from '../plugin';
+import { Plugin } from '../plugin';
 
-export class InteractLoader extends AbstractPlugin {
+export class InteractLoader extends Plugin {
 }

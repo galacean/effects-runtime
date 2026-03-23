@@ -1,4 +1,4 @@
-import { CompositionComponent } from '../../../comp-vfx-item';
+import { CompositionComponent } from '../../../components';
 import type { FrameContext } from '../playable';
 import { Playable } from '../playable';
 
@@ -7,7 +7,7 @@ export class SubCompositionClipPlayable extends Playable {
     const boundObject = context.output.getUserData();
 
     if (boundObject instanceof CompositionComponent) {
-      boundObject.time = this.getTime();
+      boundObject.tick(this.getTime() - boundObject.getTime());
     }
   }
 }

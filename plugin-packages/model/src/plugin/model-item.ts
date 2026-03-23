@@ -41,6 +41,8 @@ export class ModelMeshComponent extends RendererComponent {
    */
   morphWeights: number[] = [];
 
+  private firstUpdate = true;
+
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
@@ -76,6 +78,11 @@ export class ModelMeshComponent extends RendererComponent {
   override onUpdate (dt: number): void {
     if (this.sceneManager) {
       this.content.build(this.sceneManager);
+
+      if (this.firstUpdate) {
+        this.materials = this.content.subMeshes.map(subMesh => subMesh.getEffectsMaterial());
+        this.firstUpdate = false;
+      }
     }
 
     this.content.update();
@@ -98,6 +105,8 @@ export class ModelMeshComponent extends RendererComponent {
     if (!this.getVisible() || !this.sceneManager) {
       return;
     }
+
+    this.maskManager.drawStencilMask(renderer, this);
 
     this.content.render(this.sceneManager, renderer);
   }
@@ -178,6 +187,7 @@ export class ModelMeshComponent extends RendererComponent {
           const customHitTest: HitTestCustomParams = {
             behavior: bounding.behavior as number,
             type: HitTestType.custom,
+            clipMasks:this.frameClipMasks,
             collect: function (ray: Ray, pointInCanvas: Vector2) {
               const result = mesh.hitTesting(ray.origin, ray.direction);
 
@@ -191,6 +201,7 @@ export class ModelMeshComponent extends RendererComponent {
           const customHitTest: HitTestCustomParams = {
             behavior: bounding.behavior as number,
             type: HitTestType.custom,
+            clipMasks:this.frameClipMasks,
             collect: function (ray: Ray, pointInCanvas: Vector2) {
               const result = RayIntersectsBoxWithRotation(ray, worldMatrixData, bounding);
 
@@ -217,6 +228,7 @@ export class ModelMeshComponent extends RendererComponent {
           behavior: bounding.behavior as number,
           radius: bounding.radius || 0,
           center,
+          clipMasks:this.frameClipMasks,
         };
       }
     }
@@ -288,6 +300,10 @@ export class ModelSkyboxComponent extends RendererComponent {
     this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
     this.setVisible(true);
+
+    if (this.content.skyboxMesh) {
+      this.materials = [this.content.skyboxMesh.material];
+    }
   }
 
   /**
@@ -299,6 +315,8 @@ export class ModelSkyboxComponent extends RendererComponent {
     if (!this.getVisible() || !this.sceneManager) {
       return;
     }
+
+    this.maskManager.drawStencilMask(renderer, this);
 
     this.content.render(this.sceneManager, renderer);
   }

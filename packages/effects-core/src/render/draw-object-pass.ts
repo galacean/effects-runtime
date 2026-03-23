@@ -33,6 +33,8 @@ export class DrawObjectPass extends RenderPass {
       });
     }
 
+    this.meshes.sort((a, b) => a.priority - b.priority);
+
     renderer.renderMeshes(this.meshes);
   }
 

@@ -13,14 +13,15 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     context: CanvasRenderingContext2D,
     style: TextStyle,
     layout: RichTextLayout,
-    singleLineHeight: number,
-    fontScale: number,
     letterSpace: number,
-    scaleFactor: number
   ): WrapResult {
     const lines: RichLine[] = [];
     const baselines: number[] = [];
-    const gapPx = (layout.lineHeight || 0) * fontScale;
+    const gapPx = layout.lineHeight || 0;
+    const scaleFactor = 1 / 10; // 1/10px, 后面 context.font 设置的字号为10px
+    // 换行阈值，预计算避免每字符重复读取
+    const wrapWidth = layout.maxTextWidth || Infinity;
+
     let currentLine: RichLine = this.createNewLine();
     let maxLineWidth = 0;
     let totalHeight = 0;
@@ -36,10 +37,8 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
       flushChunk();
       if (currentLine.chars.length === 0) { return; }
 
-      // 第1行用真实首行高度，其余行用 gapPx
-      currentLine.lineHeight = lines.length === 0
-        ? (currentLine.lineAscent || 0) + (currentLine.lineDescent || 0)
-        : gapPx;
+      // 所有行都使用配置的行高（gapPx）
+      currentLine.lineHeight = gapPx;
 
       // 记录本行基线
       const baseline = lines.length === 0 ? 0 : (baselines[baselines.length - 1] + gapPx);
@@ -91,6 +90,14 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         finishCurrentLine();
       }
 
+      // 预计算缩放因子：measureText 基于 10px，乘 fontSize/10 得到逻辑像素
+      const glyphScale = fontSize * scaleFactor;
+
+      // 使用字体级别度量（不随具体字符变化），保证基线位置稳定
+      const refMetrics = context.measureText('x');
+      const fontAsc = refMetrics.fontBoundingBoxAscent * glyphScale;
+      const fontDesc = refMetrics.fontBoundingBoxDescent * glyphScale;
+
       // 逐字符处理
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
@@ -98,19 +105,14 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
         // 获取基础宽度并计算实际宽度（动态缩放）
         const m = context.measureText(ch);
         const baseW = m.width;
-        const charWidth = (baseW <= 0 ? 0 : baseW) * fontSize * scaleFactor * fontScale;
-
-        // 测量 asc/desc 并按目标字号缩放
-        const scale = fontSize * fontScale * scaleFactor;
-        const asc = m.actualBoundingBoxAscent * scale;
-        const desc = m.actualBoundingBoxDescent * scale;
+        const charWidth = (baseW <= 0 ? 0 : baseW) * glyphScale;
 
         // 计算预期宽度（包含字符间距）
         const spacing = chunkChars.length > 0 ? letterSpace : 0;
         const willWidth = currentLine.width + spacing + charWidth;
 
         // 自动换行判断
-        if (willWidth > (layout.maxTextWidth || Infinity)) {
+        if (willWidth > wrapWidth) {
           flushChunk();
           finishCurrentLine();
         }
@@ -133,9 +135,9 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
           x: segmentInnerX, // 切块内相对坐标
         });
 
-        // 累计行级 asc/desc
-        currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, asc);
-        currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, desc);
+        // 累计行级 asc/desc（字体级别，不因字符形状改变）
+        currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, fontAsc);
+        currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, fontDesc);
 
         // 更新位置和宽度
         segmentInnerX += charWidth;
@@ -149,13 +151,29 @@ export class RichWrapEnabledStrategy implements RichWrapStrategy {
     // 结束最后一行
     finishCurrentLine();
 
-    // 计算 bbox
+    // 计算 bbox（包含行高带来的上下边距）
     let bboxTop = Infinity;
     let bboxBottom = -Infinity;
 
+    if (lines.length === 0) {
+      return {
+        lines,
+        maxLineWidth,
+        totalHeight,
+        bboxTop: 0,
+        bboxBottom: 0,
+        bboxHeight: 0,
+      };
+    }
+
     for (let i = 0; i < lines.length; i++) {
-      bboxTop = Math.min(bboxTop, baselines[i] - (lines[i].lineAscent || 0));
-      bboxBottom = Math.max(bboxBottom, baselines[i] + (lines[i].lineDescent || 0));
+      const asc = lines[i].lineAscent || 0;
+      const desc = lines[i].lineDescent || 0;
+      const textHeight = asc + desc;
+      const margin = (gapPx - textHeight) / 2;
+
+      bboxTop = Math.min(bboxTop, baselines[i] - asc - margin);
+      bboxBottom = Math.max(bboxBottom, baselines[i] + desc + margin);
     }
     const bboxHeight = bboxBottom - bboxTop;
 

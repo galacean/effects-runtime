@@ -1,3 +1,4 @@
+import type { AnimationEventReference } from '../../animation';
 import type { GraphDataSet } from './graph-data-set';
 import type { GraphNode, GraphNodeData } from './graph-node';
 import type { Skeleton } from './skeleton';
@@ -13,6 +14,7 @@ export class GraphContext {
   updateID = 0;
   skeleton: Skeleton;
   branchState = BranchState.Active;
+  activeEvents: AnimationEventReference[];
 
   update (deltaTime: number) {
     this.deltaTime = deltaTime;

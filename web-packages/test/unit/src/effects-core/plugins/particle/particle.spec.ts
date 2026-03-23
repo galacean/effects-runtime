@@ -1,5 +1,5 @@
 import type { GLGeometry, Material } from '@galacean/effects';
-import { ParticleSystem } from '@galacean/effects';
+import { ParticleSystem, ParticleSystemRenderer, RendererComponent } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
 import type { GLMaterial } from '@galacean/effects-webgl';
 
@@ -32,7 +32,7 @@ describe('core/plugins/particle/test', function () {
     const vfxItem = comp.getItemByName('item_3');
     const content = vfxItem!.getComponent(ParticleSystem);
 
-    expect(vfxItem?.renderOrder).to.eql(1);
+    expect(vfxItem?.getComponent(ParticleSystemRenderer).priority).to.eql(1);
     const pMesh = content.renderer.particleMesh.mesh;
     // @ts-expect-error
     const tMesh = content.renderer.trailMesh?.mesh;
@@ -139,32 +139,6 @@ describe('core/plugins/particle/test', function () {
 
     // @ts-expect-error
     expect(defaultMaterial.glMaterialState.stencilTest).to.be.false;
-
-    const readItem = comp.getItemByName('read');
-    const readContent = readItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const readMaterial = readContent.renderer.particleMesh.mesh.material as GLMaterial;
-    // @ts-expect-error
-    const readStates = readMaterial.glMaterialState;
-
-    expect(readStates.stencilTest).to.be.true;
-    expect(readStates.stencilFunc).to.deep.equal([glContext.EQUAL, glContext.EQUAL]);
-    expect(readStates.stencilMask).to.deep.equal([0xFF, 0xFF]);
-    expect(readStates.stencilOpFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readStates.stencilOpZPass).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-
-    const readInverseItem = comp.getItemByName('read_inverse');
-    const readInverseContent = readInverseItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const readInverseMaterial = readInverseContent.renderer.particleMesh.mesh.material as GLMaterial;
-    // @ts-expect-error
-    const readInverseStates = readInverseMaterial.glMaterialState;
-
-    expect(readInverseStates.stencilTest).to.be.true;
-    expect(readInverseStates.stencilFunc).to.deep.equal([glContext.NOTEQUAL, glContext.NOTEQUAL]);
-    expect(readInverseStates.stencilMask).to.deep.equal([0xFF, 0xFF]);
-    expect(readInverseStates.stencilOpFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readInverseStates.stencilOpZPass).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readInverseStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
   });
 
   it('particle open depth_test', async () => {

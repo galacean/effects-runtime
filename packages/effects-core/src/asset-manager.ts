@@ -14,6 +14,7 @@ import { deserializeMipmapTexture, TextureSourceType, Texture } from './texture'
 import type { Renderer } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { textureLoaderRegistry } from './texture/texture-loader';
+import { Precomposition } from './precompositions/precomposition';
 
 let seed = 1;
 
@@ -86,6 +87,13 @@ export class AssetManager implements Disposable {
     });
 
     return Promise.all(jobs);
+  }
+
+  static async loadPrecomposition (jsonScene: spec.JSONScene | string, options?: SceneLoadOptions): Promise<Precomposition> {
+    const assetManager = new AssetManager(options);
+    const scene = await assetManager.loadScene(jsonScene);
+
+    return new Precomposition(scene, options);
   }
 
   /**
@@ -192,12 +200,11 @@ export class AssetManager implements Disposable {
           jsonScene,
           bins: [],
           textureOptions: [],
-          textures: [],
           images: [],
           assets: this.assets,
         };
 
-        await hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(scene));
+        await hookTimeInfo('plugin:onAssetsLoadStart', () => this.onPluginSceneLoadStart(scene));
 
         const { bins = [], images, fonts } = jsonScene;
 
@@ -359,8 +366,8 @@ export class AssetManager implements Disposable {
     return loadedImages;
   }
 
-  private async processPluginAssets (scene: Scene) {
-    await PluginSystem.processAssets(scene, this.options);
+  private async onPluginSceneLoadStart (scene: Scene) {
+    await PluginSystem.onAssetsLoadStart(scene, this.options);
   }
 
   private async processTextures (

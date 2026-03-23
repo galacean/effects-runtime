@@ -32,12 +32,14 @@ export class Inspector extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (!Selection.activeObject) {
+    const selectedObject = Selection.getSelectedObjects()[0];
+
+    if (!selectedObject) {
       ImGui.End();
 
       return;
     }
-    let activeObject = Selection.activeObject;
+    let activeObject = selectedObject;
 
     if (this.locked) {
       activeObject = this.lockedObject;
@@ -81,8 +83,10 @@ export class Inspector extends EditorWindow {
     ImGui.Text('Lock');
     ImGui.SameLine();
     if (ImGui.Checkbox('##Lock', (value = this.locked)=>this.locked = value)) {
-      if (Selection.activeObject) {
-        this.lockedObject = Selection.activeObject;
+      const selectedObject = Selection.getSelectedObjects()[0];
+
+      if (selectedObject) {
+        this.lockedObject = selectedObject;
       }
     }
     ImGui.Separator();
@@ -256,8 +260,8 @@ export class Inspector extends EditorWindow {
         if (texture instanceof GLTexture) {
           let __inspectorTexture = (texture as any).__imguiInspectorTexture as WebGLTexture;
 
-          if (!__inspectorTexture && texture.defination.image) {
-            __inspectorTexture = createImguiTextureFromImage(texture.defination.image);
+          if (!__inspectorTexture && texture.definition.image) {
+            __inspectorTexture = createImguiTextureFromImage(texture.definition.image);
             (texture as any).__imguiInspectorTexture = __inspectorTexture;
           }
           ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));

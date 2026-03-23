@@ -1,3 +1,4 @@
+import type { AnimationEventReference } from '../animation';
 import type { MessageItem } from '../composition';
 import type { PointerEventData, Region } from '../plugins';
 
@@ -29,6 +30,11 @@ export type ItemEvent = PointerEvent & {
    * 注意：仅对交互元素有效
    */
   ['message']: [message: Omit<MessageItem, 'compositionId'>],
+  /**
+   * 动画事件
+   * @since 2.9.0
+   */
+  ['animationevent']: [eventData: AnimationEventReference],
 };
 
 /**
@@ -74,4 +80,9 @@ export type CompositionEvent<C> = PointerEvent & {
    * 用于在合成中跳转到指定时间
    */
   ['goto']: [gotoInfo: { time: number }],
+  /**
+   * 动画事件
+   * @since 2.9.0
+   */
+  ['animationevent']: [eventData: AnimationEventReference],
 };

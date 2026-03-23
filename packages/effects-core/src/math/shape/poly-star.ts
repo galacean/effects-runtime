@@ -70,7 +70,7 @@ export class PolyStar extends ShapePrimitive {
     destination.copyFrom(this);
   }
 
-  override build (points: number[]): void {
+  override build (points: number[], screenScale?: number): void {
     switch (this.starType) {
       case StarType.Star: {
         this.buildStarPath();
@@ -84,14 +84,15 @@ export class PolyStar extends ShapePrimitive {
       }
     }
 
-    const smoothness = 1;
+    const ppu = screenScale ?? 1;
 
     for (let i = 0; i < this.v.length - 2; i += 2) {
       buildAdaptiveBezier(
         points,
         this.v[i], this.v[i + 1],
         this.out[i], this.out[i + 1], this.in[i + 2], this.in[i + 3], this.v[i + 2], this.v[i + 3],
-        smoothness
+        undefined,
+        ppu,
       );
     }
 
@@ -102,7 +103,8 @@ export class PolyStar extends ShapePrimitive {
       points,
       this.v[lastIndex - 1], this.v[lastIndex],
       this.out[lastIndex - 1], this.out[lastIndex], this.in[0], this.in[1], this.v[0], this.v[1],
-      smoothness
+      undefined,
+      ppu,
     );
 
   }
