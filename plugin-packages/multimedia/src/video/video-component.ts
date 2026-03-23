@@ -683,6 +683,10 @@ export class VideoComponent extends MaskableGraphic {
    */
   resetLoop () {
     this.manualLoop = false;
+    // 将 video.loop 同步回合成应有的值，避免残留用户手动设置的状态
+    if (this.video) {
+      this.video.loop = this.item.endBehavior === spec.EndBehavior.restart;
+    }
   }
 
   /**
