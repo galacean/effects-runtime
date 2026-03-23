@@ -20,8 +20,18 @@ import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
 import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
-import type { FeatherBatchEntry } from '../math/shape/vector-feather-batch';
 import { buildFeatherMeshData, buildStrokeFeatherMeshData, ensureCCW } from '../math/shape/feather-mesh-builder';
+
+/**
+ * @internal
+ * 由 FeatherOffscreenPass 每帧设置，供 ShapeComponent.render() 执行 upsample
+ */
+export type FeatherAtlasInfo = {
+  atlasTexture: Texture,
+  atlasSize: Vector2,
+  textureOffset: Vector2,
+  textureSize: Vector2,
+};
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
@@ -212,8 +222,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private featherRenderer: VectorFeatherRenderer | null = null;
   private featherDirty = true;
 
+  /**
+   * @internal
+   * 由 FeatherOffscreenPass 每帧设置，render() 中用于绘制 upsample
+   */
+  _featherAtlasInfo: FeatherAtlasInfo | null = null;
+
   get featherBatchable (): boolean {
     return this.featherRadius > 0 && !!this.featherRenderer;
+  }
+
+  /**
+   * @internal
+   */
+  getFeatherRenderer (): VectorFeatherRenderer | null {
+    return this.featherRenderer;
   }
 
   get shape () {
@@ -329,37 +352,20 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer, this);
 
-    if (this.featherRadius > 0 && this.featherRenderer) {
-      // 羽化 shape 由 DrawObjectPass 统一批处理渲染，此处仅处理 stencil mask
+    if (this._featherAtlasInfo && this.featherRenderer) {
+      const info = this._featherAtlasInfo;
+
+      this.featherRenderer.updateUpsampleQuad(this.featherRadius);
+      this.featherRenderer.drawUpsamplePass(
+        renderer, this.transform.getWorldMatrix(),
+        info.atlasTexture, info.textureSize, info.atlasSize,
+        info.textureOffset, this.featherColor,
+      );
+
       return;
     }
 
     this.draw(renderer);
-  }
-
-  /**
-   * 构建羽化批处理条目，供 DrawObjectPass 收集
-   */
-  getFeatherBatchEntry (renderer: Renderer): FeatherBatchEntry | null {
-    if (!this.featherRenderer) {
-      return null;
-    }
-    const worldMatrix = this.transform.getWorldMatrix();
-    const params = this.featherRenderer.computeRenderParams(
-      renderer, worldMatrix, this.featherRadius,
-    );
-
-    if (!params) {
-      return null;
-    }
-
-    return {
-      featherRenderer: this.featherRenderer,
-      params,
-      worldMatrix,
-      featherRadius: this.featherRadius,
-      color: this.featherColor,
-    };
   }
 
   /**

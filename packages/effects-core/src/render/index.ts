@@ -11,3 +11,4 @@ export * from './framebuffer';
 export * from './renderer';
 export * from './graphics';
 export * from './draw-object-pass';
+export * from './feather-offscreen-pass';

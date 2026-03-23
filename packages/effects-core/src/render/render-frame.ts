@@ -9,6 +9,7 @@ import type { Texture } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, removeItem } from '../utils';
 import { DrawObjectPass } from './draw-object-pass';
+import { FeatherOffscreenPass } from './feather-offscreen-pass';
 import { BloomPass, ToneMappingPass } from './post-process-pass';
 import type { RenderPass, RenderPassDestroyOptions } from './render-pass';
 import { RenderTargetHandle } from './render-pass';
@@ -114,7 +115,8 @@ export class RenderFrame implements Disposable {
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer);
-    const renderPasses = [this.drawObjectPass];
+    const featherOffscreenPass = new FeatherOffscreenPass(renderer, this.drawObjectPass.meshes);
+    const renderPasses = [featherOffscreenPass, this.drawObjectPass];
 
     this.setRenderPasses(renderPasses);
 
