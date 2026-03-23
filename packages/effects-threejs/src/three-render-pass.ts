@@ -1,4 +1,3 @@
-import type { RenderPassDestroyOptions, spec } from '@galacean/effects-core';
 import { RenderPass } from '@galacean/effects-core';
 
 /**
@@ -15,18 +14,10 @@ export class ThreeRenderPass extends RenderPass {
   }
 
   /**
-   * 获取视口
-   * @returns vec4 类型的值，表示视口的左上角 x 和 y 坐标以及宽度和高度
-   */
-  override getViewport (): spec.vec4 {
-    return [0, 0, 0, 0];
-  }
-
-  /**
    * 销毁渲染目标及其所有附件
    * @param options - 销毁渲染目标的选项
    */
-  override dispose (options?: RenderPassDestroyOptions) {
+  override dispose () {
 
   }
 }

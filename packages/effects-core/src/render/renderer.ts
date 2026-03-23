@@ -47,6 +47,10 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
+  setGlobalTexture (name: string, value: Texture) {
+    // OVERRIDE
+  }
+
   getFramebuffer (): Framebuffer {
     return this.currentFramebuffer as Framebuffer;
   }

@@ -7,11 +7,11 @@ import type { Camera } from '../camera';
 import type { PostProcessVolume, RendererComponent } from '../components';
 import type { Texture } from '../texture';
 import type { Disposable } from '../utils';
-import { DestroyOptions, removeItem } from '../utils';
+import { addByOrder, removeItem } from '../utils';
 import { DrawObjectPass } from './draw-object-pass';
 import { FeatherOffscreenPass } from './feather-offscreen-pass';
 import { BloomPass, ToneMappingPass } from './post-process-pass';
-import type { RenderPass, RenderPassDestroyOptions } from './render-pass';
+import type { RenderPass } from './render-pass';
 import { RenderTargetHandle } from './render-pass';
 import type { Renderer } from './renderer';
 
@@ -57,11 +57,6 @@ export interface RenderFrameOptions {
   renderer: Renderer,
 }
 
-export type RenderFrameDestroyOptions = {
-  passes?: RenderPassDestroyOptions | DestroyOptions.keep,
-  semantics?: DestroyOptions,
-};
-
 let seed = 1;
 
 /**
@@ -71,7 +66,7 @@ export class RenderFrame implements Disposable {
   /**
    * 当前使用的全部 RenderPass
    */
-  renderPasses: RenderPass[];
+  renderPasses: RenderPass[] = [];
   /**
    * 渲染时的相机
    */
@@ -81,15 +76,24 @@ export class RenderFrame implements Disposable {
    */
   globalVolume?: PostProcessVolume;
   renderer: Renderer;
+  /**
+   * @deprecated
+   */
   editorTransform: Vector4;
+  /**
+   * 场景中需要渲染的元素组件列表
+   * @internal
+   */
+  renderList: RendererComponent[] = [];
   /**
    * 名称
    */
   readonly name: string;
   readonly globalUniforms: GlobalUniforms;
 
-  private disposed = false;
+  private featherOffscreenPass: FeatherOffscreenPass;
   private drawObjectPass: DrawObjectPass;
+  private disposed = false;
   private postProcessingEnabled: boolean = false;
   private enableHDR: boolean = true;
 
@@ -115,10 +119,10 @@ export class RenderFrame implements Disposable {
     }
 
     this.drawObjectPass = new DrawObjectPass(renderer);
-    const featherOffscreenPass = new FeatherOffscreenPass(renderer, this.drawObjectPass.meshes);
-    const renderPasses = [featherOffscreenPass, this.drawObjectPass];
+    this.featherOffscreenPass = new FeatherOffscreenPass(renderer);
 
-    this.setRenderPasses(renderPasses);
+    this.addRenderPass(this.featherOffscreenPass);
+    this.addRenderPass(this.drawObjectPass);
 
     if (postProcessingEnabled) {
       const sceneTextureHandle = new RenderTargetHandle(engine);  //保存后处理前的屏幕图像
@@ -129,11 +133,11 @@ export class RenderFrame implements Disposable {
       const bloomPass = new BloomPass(renderer, gaussianStep);
 
       bloomPass.sceneTextureHandle = sceneTextureHandle;
-      this.addRenderPass(bloomPass);
 
       // Tone Mapping Pass
       const postProcessPass = new ToneMappingPass(renderer, sceneTextureHandle);
 
+      this.addRenderPass(bloomPass);
       this.addRenderPass(postProcessPass);
     }
 
@@ -159,7 +163,7 @@ export class RenderFrame implements Disposable {
    * @param mesh - 要添加的 Mesh 对象
    */
   addMeshToDefaultRenderPass (mesh: RendererComponent) {
-    this.drawObjectPass.addMesh(mesh);
+    addByOrder(this.renderList, mesh);
   }
 
   /**
@@ -168,21 +172,17 @@ export class RenderFrame implements Disposable {
    * @param mesh - 要删除的 Mesh 对象
    */
   removeMeshFromDefaultRenderPass (mesh: RendererComponent) {
-    this.drawObjectPass.removeMesh(mesh);
+    removeItem(this.renderList, mesh);
   }
 
   /**
    * 销毁 RenderFrame
    * @param options - 可以有选择销毁一些对象
    */
-  dispose (options?: RenderFrameDestroyOptions) {
-    const pass = options?.passes ? options.passes : undefined;
-
-    if (pass !== DestroyOptions.keep) {
-      this.renderPasses.forEach(renderPass => {
-        renderPass.dispose(pass);
-      });
-    }
+  dispose () {
+    this.renderPasses.forEach(renderPass => {
+      renderPass.dispose();
+    });
     this.renderPasses.length = 0;
     this.disposed = true;
   }
@@ -222,6 +222,7 @@ export class GlobalUniforms {
   vector3s: Record<string, Vector3> = {};
   vector4s: Record<string, Vector4> = {};
   matrices: Record<string, Matrix4> = {};
+  textures: Record<string, Texture> = {};
   //...
 
   samplers: string[] = [];  // 存放的sampler名称。

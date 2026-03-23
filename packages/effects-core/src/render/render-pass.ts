@@ -1,17 +1,16 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec4 } from '@galacean/effects-specification';
-import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Mesh, MeshDestroyOptions, Renderer } from '../render';
+import type { Renderer } from '../render';
 import type { Framebuffer } from '../render';
 import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
 import type { Disposable, Sortable } from '../utils';
-import { addByOrder, DestroyOptions, removeItem } from '../utils';
 import type { Renderbuffer } from './renderbuffer';
 
 export const RenderPassPriorityPrepare = 0;
+export const RenderPassPriorityFeatherOffscreen = 900;
 export const RenderPassPriorityNormal = 1000;
 export const RenderPassPriorityPostprocess = 3000;
 
@@ -203,12 +202,6 @@ export enum RenderPassDestroyAttachmentType {
   destroy = force
 }
 
-export type RenderPassDestroyOptions = {
-  meshes?: MeshDestroyOptions | DestroyOptions.keep,
-  colorAttachment?: RenderPassDestroyAttachmentType,
-  depthStencilAttachment?: RenderPassDestroyAttachmentType,
-};
-
 let seed = 1;
 
 /**
@@ -223,10 +216,6 @@ export class RenderPass implements Disposable, Sortable {
    * 名称
    */
   name: string = 'RenderPass' + seed++;
-  /**
-   * 包含的 Mesh 列表
-   */
-  readonly meshes: RendererComponent[] = [];
 
   protected disposed = false;
   protected framebuffer: Framebuffer | null = null;
@@ -238,18 +227,6 @@ export class RenderPass implements Disposable, Sortable {
 
   get isDisposed (): boolean {
     return this.disposed;
-  }
-
-  get viewport () {
-    return this.getViewport();
-  }
-
-  addMesh (mesh: RendererComponent): void {
-    addByOrder(this.meshes, mesh);
-  }
-
-  removeMesh (mesh: RendererComponent): void {
-    removeItem(this.meshes, mesh);
   }
 
   /**
@@ -274,35 +251,13 @@ export class RenderPass implements Disposable, Sortable {
   }
 
   /**
-   * 获取当前视口大小，格式：[x偏移，y偏移，宽度，高度]
-   */
-  getViewport (): vec4 {
-    const ret = this.framebuffer?.viewport;
-
-    if (ret) {
-      return ret;
-    }
-    const renderer = this.renderer;
-
-    return renderer ? [0, 0, renderer.getWidth(), renderer.getHeight()] : [0, 0, 0, 0];
-  }
-
-  /**
    * 销毁 RenderPass
    * @param options - 有选择销毁内部对象
    */
-  dispose (options?: RenderPassDestroyOptions) {
+  dispose () {
     if (this.disposed) {
       return;
     }
-    const destroyMeshOption = options?.meshes || undefined;
-
-    if (destroyMeshOption !== DestroyOptions.keep) {
-      this.meshes.forEach(mesh => {
-        (mesh as Mesh).dispose(destroyMeshOption);
-      });
-    }
-    this.meshes.length = 0;
 
     this.disposed = true;
   }

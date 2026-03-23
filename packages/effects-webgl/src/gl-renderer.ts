@@ -153,10 +153,6 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.vector4s[name] = value;
   }
 
-  getGlobalVector4 (name: string): Vector4 {
-    return this.renderingData.currentFrame.globalUniforms.vector4s[name];
-  }
-
   override setGlobalInt (name: string, value: number) {
     this.checkGlobalUniform(name);
     this.renderingData.currentFrame.globalUniforms.ints[name] = value;
@@ -170,6 +166,16 @@ export class GLRenderer extends Renderer implements Disposable {
   override setGlobalVector3 (name: string, value: Vector3) {
     this.checkGlobalUniform(name);
     this.renderingData.currentFrame.globalUniforms.vector3s[name] = value;
+  }
+
+  override setGlobalTexture (name: string, value: Texture): void {
+    const globalUniforms = this.renderingData.currentFrame.globalUniforms;
+
+    if (!globalUniforms.samplers.includes(name)) {
+      globalUniforms.samplers.push(name);
+    }
+
+    globalUniforms.textures[name] = value;
   }
 
   override drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0): void {

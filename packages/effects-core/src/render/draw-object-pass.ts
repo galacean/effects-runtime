@@ -33,9 +33,11 @@ export class DrawObjectPass extends RenderPass {
       });
     }
 
-    this.meshes.sort((a, b) => a.priority - b.priority);
+    const renderList = renderer.renderingData.currentFrame.renderList;
 
-    for (const mesh of this.meshes) {
+    renderList.sort((a, b) => a.priority - b.priority);
+
+    for (const mesh of renderList) {
       mesh.render(renderer);
     }
   }

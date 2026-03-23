@@ -8,7 +8,6 @@ import { TextureLoadAction, type Texture } from '../texture';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
 import { getTextureSize } from './render-frame';
-import type { RenderPassDestroyOptions } from './render-pass';
 import { RenderTargetHandle, RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
@@ -161,12 +160,11 @@ export class BloomPass extends RenderPass {
     this.tempRTs = [];
   }
 
-  override dispose (options?: RenderPassDestroyOptions): void {
+  override dispose (): void {
     this.thresholdMaterial.dispose();
     this.downSampleHMaterial.dispose();
     this.downSampleVMaterial.dispose();
     this.upSampleMaterial.dispose();
-    super.dispose(options);
   }
 }
 

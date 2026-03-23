@@ -62,10 +62,6 @@ export class ThreeComposition extends Composition {
 
   override prepareRender (): void {
     const render = this.renderer;
-    const frame = this.renderFrame;
-
-    frame.renderPasses[0].meshes.length = 0;
-
     const items = this.rootItem.getDescendants();
 
     // 主合成元素

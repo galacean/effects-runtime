@@ -2,7 +2,7 @@
  * 羽化网格构建数据
  */
 export interface FeatherMeshData {
-  /** Indicator pass 使用的扇形网格顶点 (vec2) */
+  /** Indicator pass 使用的扇形网格顶点 (vec3, z=0) */
   indicatorVertices: Float32Array,
   /** Indicator pass 索引 */
   indicatorIndices: Uint16Array,
@@ -20,22 +20,113 @@ export interface FeatherMeshData {
   bbox: [number, number, number, number],
 }
 
+const emptyFeatherMeshData: FeatherMeshData = {
+  indicatorVertices: new Float32Array(0),
+  indicatorIndices: new Uint16Array(0),
+  scatterEdgeVertices: new Float32Array(0),
+  scatterEdgeCount: 0,
+  bbox: [0, 0, 0, 0],
+};
+
+/**
+ * 合并多个 FeatherMeshData 为一个
+ */
+export function mergeFeatherMeshData (meshDataList: FeatherMeshData[]): FeatherMeshData {
+  if (meshDataList.length === 0) {
+    return emptyFeatherMeshData;
+  }
+
+  if (meshDataList.length === 1) {
+    return meshDataList[0];
+  }
+
+  // 计算总顶点数、索引数、边数
+  let totalIndicatorVerts = 0;
+  let totalIndicatorIndices = 0;
+  let totalScatterEdges = 0;
+  let minX = Number.MAX_VALUE, minY = Number.MAX_VALUE;
+  let maxX = -Number.MAX_VALUE, maxY = -Number.MAX_VALUE;
+
+  for (const data of meshDataList) {
+    totalIndicatorVerts += data.indicatorVertices.length / 3;
+    totalIndicatorIndices += data.indicatorIndices.length;
+    totalScatterEdges += data.scatterEdgeCount;
+    if (data.bbox[2] > 0 && data.bbox[3] > 0) {
+      minX = Math.min(minX, data.bbox[0]);
+      minY = Math.min(minY, data.bbox[1]);
+      maxX = Math.max(maxX, data.bbox[0] + data.bbox[2]);
+      maxY = Math.max(maxY, data.bbox[1] + data.bbox[3]);
+    }
+  }
+
+  const indicatorVertices = new Float32Array(totalIndicatorVerts * 3);
+  const indicatorIndices = new Uint16Array(totalIndicatorIndices);
+  const scatterEdgeVertices = new Float32Array(totalScatterEdges * 2 * 2); // 每条边2个顶点
+
+  let vertOffset = 0;
+  let indexOffset = 0;
+  let scatterOffset = 0;
+  let indexVertexOffset = 0;
+
+  for (const data of meshDataList) {
+    // 复制 indicator 顶点 (vec3)
+    indicatorVertices.set(data.indicatorVertices, vertOffset * 3);
+    vertOffset += data.indicatorVertices.length / 3;
+
+    // 复制并偏移索引
+    for (let i = 0; i < data.indicatorIndices.length; i++) {
+      indicatorIndices[indexOffset + i] = data.indicatorIndices[i] + indexVertexOffset;
+    }
+    indexOffset += data.indicatorIndices.length;
+    indexVertexOffset += data.indicatorVertices.length / 3;
+
+    // 复制 scatter 边数据
+    scatterEdgeVertices.set(data.scatterEdgeVertices, scatterOffset * 4);
+    scatterOffset += data.scatterEdgeCount;
+  }
+
+  return {
+    indicatorVertices,
+    indicatorIndices,
+    scatterEdgeVertices,
+    scatterEdgeCount: totalScatterEdges,
+    bbox: minX < Number.MAX_VALUE ? [minX, minY, maxX - minX, maxY - minY] : [0, 0, 0, 0],
+  };
+}
+
 /**
  * 从形状路径的 2D 顶点数组构建羽化网格
- * @param pathVertices - 形状路径的 2D 坐标数组 [x0, y0, x1, y1, ...]，路径应已闭合（最后一个点等于第一个点）
+ * 自动处理路径闭合和CCW方向
+ * @param pathVertices - 形状路径的 2D 坐标数组 [x0, y0, x1, y1, ...]
  */
 export function buildFeatherMeshData (pathVertices: number[]): FeatherMeshData {
-  const numPathPts = pathVertices.length / 2;
-
-  if (numPathPts < 3) {
-    return {
-      indicatorVertices: new Float32Array(0),
-      indicatorIndices: new Uint16Array(0),
-      scatterEdgeVertices: new Float32Array(0),
-      scatterEdgeCount: 0,
-      bbox: [0, 0, 0, 0],
-    };
+  if (pathVertices.length < 6) {
+    return emptyFeatherMeshData;
   }
+
+  // 确保路径闭合（首尾相同）
+  const firstX = pathVertices[0];
+  const firstY = pathVertices[1];
+  const lastX = pathVertices[pathVertices.length - 2];
+  const lastY = pathVertices[pathVertices.length - 1];
+
+  let vertices = pathVertices;
+
+  if (firstX !== lastX || firstY !== lastY) {
+    vertices = [...pathVertices, firstX, firstY];
+  }
+
+  // 确保 CCW 方向
+  vertices = ensureCCW(vertices);
+
+  return buildFeatherMeshDataInternal(vertices);
+}
+
+/**
+ * 内部函数：假设路径已闭合且为 CCW，直接构建网格数据
+ */
+function buildFeatherMeshDataInternal (vertices: number[]): FeatherMeshData {
+  const numPathPts = vertices.length / 2;
 
   // 计算几何中心和包围盒
   let cx = 0, cy = 0;
@@ -43,8 +134,8 @@ export function buildFeatherMeshData (pathVertices: number[]): FeatherMeshData {
   let maxX = -Number.MAX_VALUE, maxY = -Number.MAX_VALUE;
 
   for (let i = 0; i < numPathPts; i++) {
-    const x = pathVertices[i * 2];
-    const y = pathVertices[i * 2 + 1];
+    const x = vertices[i * 2];
+    const y = vertices[i * 2 + 1];
 
     cx += x;
     cy += y;
@@ -57,15 +148,21 @@ export function buildFeatherMeshData (pathVertices: number[]): FeatherMeshData {
   cy /= numPathPts;
 
   // --- Indicator 扇形网格 ---
-  // 顶点: [center, v0, v1, ..., v(n-1)]
+  // 顶点: [center, v0, v1, ..., v(n-1)]，vec3 格式 (z=0)
   const indicatorVertCount = 1 + numPathPts;
-  const indicatorVertices = new Float32Array(indicatorVertCount * 2);
+  const indicatorVertices = new Float32Array(indicatorVertCount * 3);
 
+  // center
   indicatorVertices[0] = cx;
   indicatorVertices[1] = cy;
+  indicatorVertices[2] = 0;
+  // 路径顶点
   for (let i = 0; i < numPathPts; i++) {
-    indicatorVertices[(i + 1) * 2] = pathVertices[i * 2];
-    indicatorVertices[(i + 1) * 2 + 1] = pathVertices[i * 2 + 1];
+    const dstIdx = (i + 1) * 3;
+
+    indicatorVertices[dstIdx] = vertices[i * 2];
+    indicatorVertices[dstIdx + 1] = vertices[i * 2 + 1];
+    indicatorVertices[dstIdx + 2] = 0;
   }
 
   // 索引: 三角扇 [center, vi, vi+1]
@@ -82,7 +179,7 @@ export function buildFeatherMeshData (pathVertices: number[]): FeatherMeshData {
   // 路径已闭合，edge[i] = v[i] → v[i+1]
   // 直接使用路径顶点数组: aStart 从 offset 0 读取, aEnd 从 offset 8 读取
   const numEdges = numPathPts - 1;
-  const scatterEdgeVertices = new Float32Array(pathVertices);
+  const scatterEdgeVertices = new Float32Array(vertices);
 
   return {
     indicatorVertices,
@@ -112,13 +209,7 @@ export function buildStrokeFeatherMeshData (
   let n = pts.length / 2;
 
   if (n < 2) {
-    return {
-      indicatorVertices: new Float32Array(0),
-      indicatorIndices: new Uint16Array(0),
-      scatterEdgeVertices: new Float32Array(0),
-      scatterEdgeCount: 0,
-      bbox: [0, 0, 0, 0],
-    };
+    return emptyFeatherMeshData;
   }
 
   // 对闭合路径确保 CCW 方向，使法线一致指向外侧
@@ -204,7 +295,8 @@ export function buildStrokeFeatherMeshData (
     outline.push(outer[0], outer[1]); // 闭合路径
   }
 
-  return buildFeatherMeshData(outline);
+  // outline 已闭合且绕序正确，直接使用 unchecked 版本避免重复处理
+  return buildFeatherMeshDataInternal(outline);
 }
 
 /**

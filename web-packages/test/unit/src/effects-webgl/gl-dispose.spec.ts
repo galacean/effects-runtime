@@ -68,7 +68,6 @@ describe('webgl/dispose', function () {
     const spy2 = material.dispose = chai.spy(material.dispose);
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -99,7 +98,6 @@ describe('webgl/dispose', function () {
     const spy2 = geom.dispose = chai.spy(geom.dispose);
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -135,7 +133,6 @@ describe('webgl/dispose', function () {
     const spy2 = geom.dispose = chai.spy(geom.dispose);
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -158,7 +155,6 @@ describe('webgl/dispose', function () {
     const texture = result.texture;
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -182,7 +178,6 @@ describe('webgl/dispose', function () {
     const texture = result.texture;
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -206,7 +201,6 @@ describe('webgl/dispose', function () {
 
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     material.setTexture('uTexColor', texture);
@@ -228,234 +222,22 @@ describe('webgl/dispose', function () {
 
   // 使用默认参数销毁renderPass(mesh和相关attachment都会被销毁)
   it('render pass dispose with no params', async () => {
-    const mesh = result.mesh;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-
     const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass);
 
     renderer.renderRenderFrame(frame);
 
     renderPass.dispose();
     expect(renderPass.isDisposed).to.be.true;
-    expect(mesh.isDestroyed).to.be.true;
-    expect(renderPass.meshes).to.eql([]);
-  });
-
-  // 销毁renderPass时保留mesh和相关attachment等资源
-  it('render pass dispose with all keep', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    renderPass.dispose({
-      meshes: DestroyOptions.keep,
-      colorAttachment: RenderPassDestroyAttachmentType.keep,
-      depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
-    });
-
-    expect(renderPass.isDisposed).to.be.true;
-    expect(mesh.isDestroyed).to.be.false;
-    expect(material.isDestroyed).to.be.false;
-    expect(geometry.isDestroyed).to.be.false;
-    expect(renderPass.meshes).to.eql([]);
-    expect(texture.isDestroyed).to.be.false;
-  });
-
-  // 销毁renderPass时销毁geometry，保留colorAttachment、depthStencilAttachment和mesh的material
-  it('render pass dispose with destroying geometry，keeping material，colorAttachment and depthStencilAttachment', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    renderPass.dispose({
-      meshes: { geometries: DestroyOptions.destroy, material: DestroyOptions.keep },
-      colorAttachment: RenderPassDestroyAttachmentType.keep,
-      depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
-    });
-
-    expect(renderPass.isDisposed).to.be.true;
-    expect(mesh.isDestroyed).to.be.true;
-    expect(material.isDestroyed).to.be.false;
-    expect(geometry.isDestroyed).to.be.true;
-    expect(renderPass.meshes).to.eql([]);
-    expect(texture.isDestroyed).to.be.false;
-  });
-
-  // 销毁renderPass同时销毁material
-  it('render pass dispose with destroying material, keeping geometry, colorAttachment and depthStencilAttachment', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    renderPass.dispose({
-      meshes: { geometries: DestroyOptions.keep, material: DestroyOptions.destroy },
-      colorAttachment: RenderPassDestroyAttachmentType.keep,
-      depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
-    });
-
-    expect(renderPass.isDisposed).to.be.true;
-    expect(mesh.isDestroyed).to.be.true;
-    expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.false;
-    expect(renderPass.meshes).to.eql([]);
-    expect(texture.isDestroyed).to.be.false;
-  });
-
-  // 销毁renderPass,不销毁colorAttachment 销毁depthStencilAttachment
-  it('render pass dispose with colorAttachment keep', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    //删除meshes和attachments
-    renderPass.dispose({
-      colorAttachment: RenderPassDestroyAttachmentType.keep,
-      depthStencilAttachment: RenderPassDestroyAttachmentType.destroy,
-    });
-
-    expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
-
-    expect(renderPass.meshes).to.eql([]);
-  });
-
-  // 销毁renderPass,colorAttachment保留external
-  it('render pass dispose with colorAttachment keepExternal', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    renderPass.dispose({
-      colorAttachment: RenderPassDestroyAttachmentType.keepExternal,
-    });
-
-    expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
-    expect(renderPass.meshes).to.eql([]);
-  });
-
-  // 销毁renderPass，保留depthStencilAttachment
-  it('render pass dispose with depthStencilAttachment keep', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    renderPass.dispose({
-      depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
-    });
-
-    expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
-    expect(renderPass.meshes).to.eql([]);
-  });
-
-  // 销毁renderPass，保留depthStencilAttachment的extenal
-  it('render pass dispose with depthStencilAttachment keepExternal }', async () => {
-    const mesh = result.mesh;
-    const material = result.material;
-    const geometry = result.geom;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-
-    const rp1 = new RenderPass(renderer);
-
-    rp1.configure(renderer);
-
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass);
-
-    renderer.renderRenderFrame(frame);
-
-    renderPass.dispose({
-      depthStencilAttachment: RenderPassDestroyAttachmentType.keepExternal,
-    });
-
-    expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
-    expect(renderPass.meshes).to.eql([]);
   });
 
   // 销毁renderFrame
   it('render frame dispose with no params', async () => {
-    const mesh = result.mesh;
     const material = result.material;
     const geom = result.geom;
 
     const renderPass = new RenderPass(renderer);
 
-    renderPass.addMesh(mesh);
     const frame = createRenderFrame(renderer, renderPass,);
 
     renderer.renderRenderFrame(frame);
@@ -464,55 +246,6 @@ describe('webgl/dispose', function () {
     expect(frame.isDisposed).to.be.true;
     expect(frame.renderPasses.length).to.eql(0);
     expect(renderPass.isDisposed).to.be.true;
-    expect(mesh.isDestroyed).to.be.true;
-    expect(geom.isDestroyed).to.be.true;
-    expect(material.isDestroyed).to.be.true;
-  });
-
-  //  销毁renderFrame，保留semantics
-  it('render frame dispose with semantics keep', async () => {
-    const mesh = result.mesh;
-    const marsTexture = result.texture;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass,);
-
-    renderer.renderRenderFrame(frame);
-    frame.dispose({ semantics: DestroyOptions.keep });
-
-    expect(frame.isDisposed).to.be.true;
-    expect(frame.renderPasses.length).to.eql(0);
-    expect(renderPass.isDisposed).to.be.true;
-  });
-
-  //
-  it('render frame dispose with passes keep ', async () => {
-    const mesh = result.mesh;
-    const marsTexture = result.texture;
-    const texture = new GLTexture(engine, {
-      sourceType: TextureSourceType.framebuffer,
-      format: gl.RGBA,
-    });
-
-    const renderPass = new RenderPass(renderer);
-
-    renderPass.addMesh(mesh);
-    const frame = createRenderFrame(renderer, renderPass,);
-
-    renderer.renderRenderFrame(frame);
-
-    frame.dispose({ passes: DestroyOptions.keep });
-
-    expect(frame.isDisposed).to.be.true;
-    expect(frame.renderPasses.length).to.eql(0);
-    expect(renderPass.isDisposed).to.be.false;
-    expect(marsTexture.isDestroyed).to.be.false;
   });
 });
 

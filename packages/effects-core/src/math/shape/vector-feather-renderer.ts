@@ -1,4 +1,4 @@
-import type { Color } from '@galacean/effects-math/es/core/color';
+import { Color } from '@galacean/effects-math/es/core/color';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
@@ -29,6 +29,17 @@ export type FeatherRenderParams = {
 };
 
 /**
+ * @internal
+ * 由 FeatherOffscreenPass 每帧设置，供 render() 执行 upsample
+ */
+export type FeatherAtlasInfo = {
+  atlasTexture: Texture,
+  atlasSize: Vector2,
+  textureOffset: Vector2,
+  textureSize: Vector2,
+};
+
+/**
  * 矢量羽化渲染器
  * 实现基于下采样的 3-pass 羽化管线:
  * 1. Indicator Pass - 绘制形状指示图到离屏纹理
@@ -49,6 +60,22 @@ export class VectorFeatherRenderer {
   private meshDataDirty = true;
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
+
+  /**
+   * 羽化半径（局部坐标空间），0 表示不启用羽化
+   */
+  featherRadius = 0;
+
+  /**
+   * 羽化颜色，默认使用第一个 fill 的颜色
+   */
+  featherColor: Color = new Color(1, 1, 1, 1);
+
+  /**
+   * @internal
+   * 由 FeatherOffscreenPass 每帧设置，render() 中用于绘制 upsample
+   */
+  atlasInfo: FeatherAtlasInfo | null = null;
 
   constructor (engine: Engine) {
     this.engine = engine;
@@ -83,7 +110,7 @@ export class VectorFeatherRenderer {
       attributes: {
         aPos: {
           type: glContext.FLOAT,
-          size: 2,
+          size: 3,
           data: new Float32Array(0),
         },
       },

@@ -5,7 +5,7 @@ import type {
   RenderPass } from '@galacean/effects';
 import {
   Player, spec, Transform, glContext, Material, Mesh, Texture, Geometry, Renderer,
-  TextureSourceType, getDefaultTextureFactory, RenderPassDestroyAttachmentType,
+  TextureSourceType, getDefaultTextureFactory,
   DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion,
 } from '@galacean/effects';
 import { deserializeGeometry } from '@galacean/effects-helper';
@@ -333,13 +333,7 @@ export class WebGLHelper {
    * @param pass - 渲染 Pass
    */
   static deleteRenderPass (pass: RenderPass) {
-    pass.dispose({
-      meshes: {
-        geometries: DestroyOptions.destroy,
-      },
-      depthStencilAttachment: RenderPassDestroyAttachmentType.force,
-      colorAttachment: RenderPassDestroyAttachmentType.force,
-    });
+    pass.dispose();
   }
 
   /**

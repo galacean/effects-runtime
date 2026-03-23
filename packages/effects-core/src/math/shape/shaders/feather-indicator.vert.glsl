@@ -1,9 +1,9 @@
 precision highp float;
 
-attribute vec2 aPos;
+attribute vec3 aPos;
 
 uniform mat4 uProjection;
 
 void main() {
-  gl_Position = uProjection * vec4(aPos, 0.0, 1.0);
+  gl_Position = uProjection * vec4(aPos, 1.0);
 }
