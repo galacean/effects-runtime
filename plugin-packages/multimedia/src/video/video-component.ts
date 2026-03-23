@@ -36,11 +36,6 @@ export class VideoComponent extends MaskableGraphic {
   protected transparent = false;
 
   /**
-   * 视频是否已加载完成
-   */
-  private videoLoaded = false;
-
-  /**
    * 是否由用户手动控制播放速率（覆盖合成的播放速率）
    */
   private manualPlaybackRate = false;
@@ -185,7 +180,6 @@ export class VideoComponent extends MaskableGraphic {
           this.video.loop = true;
         }
 
-        this.videoLoaded = this.video.readyState >= 2;
       }
     }
 
@@ -201,7 +195,7 @@ export class VideoComponent extends MaskableGraphic {
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
 
-    if (!this.video || !this.videoLoaded) {
+    if (!this.video || this.video.readyState < 2) {
       return;
     }
 
@@ -276,7 +270,7 @@ export class VideoComponent extends MaskableGraphic {
     // gotoAndStop 场景
     if (this.isWaitingForGotoResult) {
       this.isWaitingForGotoResult = false;
-      if (this.video && this.videoLoaded) {
+      if (this.video && this.video.readyState >= 2) {
         this.isGotoAndStopSeeking = true;
         this.performSeek(this.item.time, false, true);
       }
