@@ -136,8 +136,8 @@ const stuckVideoJson = {
   'items': [
     {
       'id': '94516c5160b3406bb94018cf80c40fb8',
-      'name': 'video_4',
-      'duration': 3.3333,
+      'name': 'video_2',
+      'duration': 1.84,
       'type': 'video',
       'visible': true,
       'endBehavior': 0,
@@ -376,8 +376,8 @@ const stuckVideoJson2 = {
   'items': [
     {
       'id': '94516c5160b3406bb94018cf80c40fb8',
-      'name': 'video_4',
-      'duration': 3.3333,
+      'name': 'video_2',
+      'duration': 1.84,
       'type': 'video',
       'visible': true,
       'endBehavior': 0,
@@ -461,7 +461,7 @@ const stuckVideoJson2 = {
       'clips': [
         {
           'start': 0,
-          'duration': 3.3333,
+          'duration': 1.84,
           'endBehavior': 0,
           'asset': {
             'id': '49f3553ba1fc4d8cade9e1518e45b408',
@@ -476,7 +476,7 @@ const stuckVideoJson2 = {
       'clips': [
         {
           'start': 0,
-          'duration': 3.3333,
+          'duration': 1.84,
           'endBehavior': 0,
           'asset': {
             'id': 'f2db194025414fe39e3f28d3ac93f853',
@@ -491,7 +491,7 @@ const stuckVideoJson2 = {
       'clips': [
         {
           'start': 0,
-          'duration': 3.3333,
+          'duration': 1.84,
           'endBehavior': 0,
           'asset': {
             'id': 'd387215f2d9a42239d36468cfc315999',
@@ -601,6 +601,9 @@ async function playStuckVideo2 () {
 
   await player.loadScene(stuckVideoJson2 as any as string, { useHevcVideo: true });
   player.gotoAndPlay(0);
+  setTimeout(() => {
+    player.gotoAndPlay(0);
+  }, 1300);
 }
 
 // 创建控制面板
