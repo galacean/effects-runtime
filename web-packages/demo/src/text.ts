@@ -22,6 +22,10 @@ const container = document.getElementById('J-container');
     setTimeout(() => {
       textComponent?.setText('基于 Web\n效果丰富，氛围粒子、陀螺仪特效、3D 模型渲染\n100%还原');
     }, 1500);
+
+    setTimeout(() => {
+      textComponent?.setText('استنادًا إلى الويب، فإن التأثيرات غنية، بما في ذلك الجسيمات المحيطة وتأثيرات الجيروسكوب وعرض النماذج ثلاثية الأبعاد، مما يحقق دقة بنسبة 100٪.');
+    }, 3000);
   } catch (e) {
     console.error('biz', e);
   }
