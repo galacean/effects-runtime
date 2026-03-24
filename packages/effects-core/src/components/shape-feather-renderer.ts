@@ -169,40 +169,60 @@ export class ShapeFeatherRenderer {
     // 恢复原来的 VP 矩阵
     renderer.setGlobalMatrix('effects_MatrixVP', vpMatrix);
 
-    // Step 3: 高斯模糊 (ping-pong)
-    const texSize = new Vector2(rtWidth, rtHeight);
+    // Step 3: 降采样 + 高斯模糊
+    // 13-tap 核最多优质覆盖 ~6 像素半径，超出时先降采样到核能覆盖的尺寸
+    const MAX_KERNEL_RADIUS = 6;
+    const downsample = Math.max(1, Math.ceil(featherRadius / MAX_KERNEL_RADIUS));
+    const dsWidth = Math.max(1, Math.ceil(rtWidth / downsample));
+    const dsHeight = Math.max(1, Math.ceil(rtHeight / downsample));
+    const effectiveRadius = featherRadius / downsample;
+
+    // 降采样: shapeRT(全分辨率) -> blurRT(低分辨率), 双线性过滤自动做预模糊
+    let blurRT = renderer.getTemporaryRT('ShapeFeatherDS', dsWidth, dsHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+
+    if (downsample > 1) {
+      renderer.blit(shapeRT.getColorTextures()[0], blurRT);
+      renderer.releaseTemporaryRT(shapeRT);
+    } else {
+      // 无需降采样，直接用 shapeRT 作为 blurRT
+      renderer.releaseTemporaryRT(blurRT);
+      blurRT = shapeRT;
+    }
+
+    // 在低分辨率上执行高斯模糊 (ping-pong)
+    const texSize = new Vector2(dsWidth, dsHeight);
 
     for (let i = 0; i < iterationCount; i++) {
-      const tempRT = renderer.getTemporaryRT(`ShapeFeatherTemp${i}`, rtWidth, rtHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+      const tempRT = renderer.getTemporaryRT(`ShapeFeatherTemp${i}`, dsWidth, dsHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
 
-      // 水平模糊: shapeRT -> tempRT
+      // 水平模糊: blurRT -> tempRT
       this.blurHMaterial.setVector2('_TextureSize', texSize);
-      this.blurHMaterial.setFloat('_BlurRadius', featherRadius);
-      renderer.blit(shapeRT.getColorTextures()[0], tempRT, this.blurHMaterial);
+      this.blurHMaterial.setFloat('_BlurRadius', effectiveRadius);
+      renderer.blit(blurRT.getColorTextures()[0], tempRT, this.blurHMaterial);
 
-      // 垂直模糊: tempRT -> shapeRT
+      // 垂直模糊: tempRT -> blurRT
       this.blurVMaterial.setVector2('_TextureSize', texSize);
-      this.blurVMaterial.setFloat('_BlurRadius', featherRadius);
-      renderer.blit(tempRT.getColorTextures()[0], shapeRT, this.blurVMaterial);
+      this.blurVMaterial.setFloat('_BlurRadius', effectiveRadius);
+      renderer.blit(tempRT.getColorTextures()[0], blurRT, this.blurVMaterial);
 
       renderer.releaseTemporaryRT(tempRT);
     }
 
-    // Step 4: 输出到默认缓冲区
+    // Step 4: 输出到默认缓冲区（双线性上采样自动聚合低分辨率结果）
     renderer.setFramebuffer(prevFramebuffer);
 
     // 计算输出矩形在 NDC 空间中的位置
     const screenRect = new Vector4(ndcMinX, ndcMinY, ndcW, ndcH);
 
-    this.outputMaterial.setTexture('_MainTex', shapeRT.getColorTextures()[0]);
+    this.outputMaterial.setTexture('_MainTex', blurRT.getColorTextures()[0]);
     this.outputMaterial.setVector4('_ScreenRect', screenRect);
 
     const identity = Matrix4.IDENTITY;
 
     renderer.drawGeometry(this.outputGeometry, identity, this.outputMaterial);
 
-    // 释放 shapeRT
-    renderer.releaseTemporaryRT(shapeRT);
+    // 释放 blurRT
+    renderer.releaseTemporaryRT(blurRT);
   }
 
   dispose (): void {

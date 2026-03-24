@@ -784,7 +784,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
     // 羽化参数（如果 spec 中提供）
-    this.featherRadius = (data as unknown as Record<string, unknown>).featherRadius as number ?? 10;
+    this.featherRadius = (data as unknown as Record<string, unknown>).featherRadius as number ?? 50;
     this.featherIterations = (data as unknown as Record<string, unknown>).featherIterations as number ?? 2;
 
     this.fills.length = 0;
