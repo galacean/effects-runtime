@@ -196,8 +196,10 @@ export class AnimationGraph extends EditorWindow {
       ImGui.EndMenuBar();
     }
 
-    if (Selection.activeObject instanceof VFXItem && Selection.activeObject !== this.currentVFXItem) {
-      this.currentVFXItem = Selection.activeObject;
+    const selectedObject = Selection.getSelectedObjects()[0];
+
+    if (selectedObject instanceof VFXItem && selectedObject !== this.currentVFXItem) {
+      this.currentVFXItem = selectedObject;
 
       // 更新参数控制面板
       const animator = this.currentVFXItem.getComponent(Animator);
@@ -277,7 +279,7 @@ export class AnimationGraph extends EditorWindow {
       const currentSelectedNode = this.selectedNodes[this.selectedNodes.length - 1];
 
       if (this.selectedNode !== currentSelectedNode) {
-        Selection.setActiveObject(currentSelectedNode.m_pNode);
+        Selection.select(currentSelectedNode.m_pNode);
         this.selectedNode = currentSelectedNode;
       }
     }

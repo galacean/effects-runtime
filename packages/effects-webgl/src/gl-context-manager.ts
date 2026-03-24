@@ -37,6 +37,11 @@ export class GLContextManager {
       this.canvas.removeEventListener('webglcontextlost', this.contextLostListener);
       this.canvas.removeEventListener('webglcontextrestored', this.contextRestoredListener);
     }
+
+    if (this.gl) {
+      this.gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+
     this.gl = null;
     this.canvas = null;
   }

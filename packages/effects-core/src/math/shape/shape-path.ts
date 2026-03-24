@@ -10,6 +10,8 @@ import { Ellipse } from './ellipse';
 import type { StarType } from './poly-star';
 import { PolyStar } from './poly-star';
 import { Rectangle } from './rectangle';
+import { Triangle } from './triangle';
+import { Circle } from './circle';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
@@ -31,7 +33,7 @@ export class ShapePath {
 
       switch (action) {
         case 'bezierCurveTo': {
-          this.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
+          this.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]);
 
           break;
         }
@@ -40,8 +42,18 @@ export class ShapePath {
 
           break;
         }
+        case 'lineTo': {
+          this.lineTo(data[0], data[1]);
+
+          break;
+        }
         case 'ellipse': {
           this.ellipse(data[0], data[1], data[2], data[3], data[4]);
+
+          break;
+        }
+        case 'circle': {
+          this.circle(data[0], data[1], data[2], data[3]);
 
           break;
         }
@@ -52,6 +64,11 @@ export class ShapePath {
         }
         case 'rect': {
           this.rect(data[0], data[1], data[2], data[3], data[4]);
+
+          break;
+        }
+        case 'triangle':{
+          this.triangle(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
 
           break;
         }
@@ -82,6 +99,7 @@ export class ShapePath {
     cp1x: number, cp1y: number, cp2x: number, cp2y: number,
     x: number, y: number,
     smoothness?: number,
+    scale?: number,
   ): ShapePath {
     this.ensurePoly();
     const currentPoly = this.currentPoly as Polygon;
@@ -91,6 +109,7 @@ export class ShapePath {
       currentPoly.lastX, currentPoly.lastY,
       cp1x, cp1y, cp2x, cp2y, x, y,
       smoothness,
+      scale,
     );
 
     return this;
@@ -98,6 +117,27 @@ export class ShapePath {
 
   moveTo (x: number, y: number): ShapePath {
     this.startPoly(x, y);
+
+    return this;
+  }
+
+  /**
+   * Connects the current point to a new point with a straight line. This method updates the current path.
+   * @param x - The x-coordinate of the new point to connect to.
+   * @param y - The y-coordinate of the new point to connect to.
+   * @returns The instance of the current object for chaining.
+   */
+  lineTo (x: number, y: number): this {
+    this.ensurePoly();
+
+    const points = (this.currentPoly as Polygon).points;
+
+    const fromX = points[points.length - 2];
+    const fromY = points[points.length - 1];
+
+    if (fromX !== x || fromY !== y) {
+      points.push(x, y);
+    }
 
     return this;
   }
@@ -131,6 +171,20 @@ export class ShapePath {
     return this;
   }
 
+  /**
+   * Draws a circle shape. This method adds a new circle path to the current drawing.
+   * @param x - The x-coordinate of the center of the circle.
+   * @param y - The y-coordinate of the center of the circle.
+   * @param radius - The radius of the circle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the circle.
+   * @returns The instance of the current object for chaining.
+   */
+  circle (x: number, y: number, radius: number, transform?: Matrix4): this {
+    this.drawShape(new Circle(x, y, radius), transform);
+
+    return this;
+  }
+
   polyStar (pointCount: number, outerRadius: number, innerRadius: number, outerRoundness: number, innerRoundness: number, starType: StarType, transform?: Matrix4) {
     this.drawShape(new PolyStar(pointCount, outerRadius, innerRadius, outerRoundness, innerRoundness, starType), transform);
 
@@ -148,6 +202,23 @@ export class ShapePath {
    */
   rect (x: number, y: number, w: number, h: number, roundness: number, transform?: Matrix4): this {
     this.drawShape(new Rectangle(x, y, w, h, roundness), transform);
+
+    return this;
+  }
+
+  /**
+   * Draws a triangle shape. This method adds a new triangle path to the current drawing.
+   * @param x1 - The x-coordinate of the first vertex of the triangle.
+   * @param y1 - The y-coordinate of the first vertex of the triangle.
+   * @param x2 - The x-coordinate of the second vertex of the triangle.
+   * @param y2 - The y-coordinate of the second vertex of the triangle.
+   * @param x3 - The x-coordinate of the third vertex of the triangle.
+   * @param y3 - The y-coordinate of the third vertex of the triangle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the triangle.
+   * @returns The instance of the current object for chaining.
+   */
+  triangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, transform?: Matrix4): this {
+    this.drawShape(new Triangle(x1, y1, x2, y2, x3, y3), transform);
 
     return this;
   }

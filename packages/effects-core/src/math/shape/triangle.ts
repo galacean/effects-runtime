@@ -171,7 +171,7 @@ export class Triangle extends ShapePrimitive {
     return this.y;
   }
 
-  override build (points: number[]): void {
+  override build (points: number[], screenScale?: number): void {
     points[0] = this.x;
     points[1] = this.y;
     points[2] = this.x2;

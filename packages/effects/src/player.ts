@@ -6,7 +6,6 @@ import {
   Engine, logger, EventEmitter, TextureLoadAction, canvasPool, getPixelRatio, initErrors,
   isArray, spec, assertExist, SceneLoader,
 } from '@galacean/effects-core';
-import type { GLEngine } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
@@ -252,6 +251,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       if (this.canvas && !useExternalCanvas) {
         this.canvas.remove();
       }
+      this.engine?.dispose();
+      this.disposed = true;
       this.handleThrowError(e);
     }
   }
@@ -574,7 +575,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param dt - 时间差，毫秒
    */
   tick (dt: number) {
-    this.engine.render(dt);
+    this.engine.mainLoop(dt);
   }
 
   /**
@@ -650,7 +651,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.pause();
     this.engine.dispose();
 
-    if (this.canvas instanceof HTMLCanvasElement && (this.engine as GLEngine).context) {
+    if (this.canvas instanceof HTMLCanvasElement) {
       // TODO: 数据模版下掉可以由文本模块单独管理
       canvasPool.dispose();
       // canvas will become a cry emoji in Android if still in dom

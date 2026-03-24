@@ -7,7 +7,7 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
-import type { Mesh, Renderer } from '../../render';
+import type { Mesh } from '../../render';
 import type { Maskable } from '../../material';
 import { MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
@@ -17,6 +17,7 @@ import { Transform } from '../../transform';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
+import type { LinkNode } from './link';
 import { Link } from './link';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import { ParticleSystemRenderer } from './particle-system-renderer';
@@ -172,6 +173,7 @@ export class ParticleSystem extends Component implements Maskable {
   private upDirectionWorld: Vector3 | null;
   private uvs: number[][];
   private basicTransform: ParticleTransform;
+  private clickedPoint: LinkNode<ParticleContent>;
 
   constructor (
     engine: Engine,
@@ -179,7 +181,8 @@ export class ParticleSystem extends Component implements Maskable {
   ) {
     super(engine);
 
-    this.maskManager = new MaskProcessor(engine);
+    this.maskManager = new MaskProcessor();
+
     if (props) {
       this.fromData(props);
     }
@@ -332,6 +335,16 @@ export class ParticleSystem extends Component implements Maskable {
   override onStart (): void {
     this.startEmit();
     this.initEmitterTransform();
+
+    this.item.on('click', ()=>{
+      if (this.interaction?.behavior === spec.ParticleInteractionBehavior.removeParticle) {
+        const pointIndex = this.clickedPoint.content[1];
+
+        this.renderer.removeParticlePoint(pointIndex);
+        this.clearPointTrail(pointIndex);
+        this.clickedPoint.content = [0] as unknown as ParticleContent;
+      }
+    });
   }
 
   override onUpdate (dt: number): void {
@@ -346,156 +359,144 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   private update (delta: number) {
-    if (!this.started) {
-      return;
-    }
+    if (this.started) {
+      const now = this.time + delta / 1000;
+      const options = this.options;
+      const loopStartTime = this.loopStartTime;
+      const emission = this.emission;
 
-    const now = this.time + delta / 1000;
-    const options = this.options;
-    const loopStartTime = this.loopStartTime;
-    const emission = this.emission;
+      this.time = now;
+      this.upDirectionWorld = null;
+      this.renderer.updateTime(now, delta);
 
-    this.time = now;
-    this.upDirectionWorld = null;
-    this.renderer.updateTime(now, delta);
-
-    const link = this.particleLink;
-    const emitterLifetime = (now - loopStartTime) / this.item.duration;
-    const timePassed = this.timePassed;
-    let trailUpdated = false;
-    const updateTrail = () => {
-      if (this.trails && !trailUpdated) {
-        trailUpdated = true;
-        link.forEach(([time, pointIndex, delay, point]) => {
-          if (time < timePassed) {
-            this.clearPointTrail(pointIndex);
-          } else if (timePassed > delay) {
-            this.updatePointTrail(pointIndex, emitterLifetime, point, delay);
-          }
-        });
-      }
-    };
-
-    if (!this.ended) {
-      const duration = this.item.duration;
-      const lifetime = this.lifetime;
-
-      if (timePassed < duration) {
-        const interval = 1 / emission.rateOverTime.getValue(lifetime);
-        const pointCount = Math.floor((timePassed - this.lastEmitTime) / interval);
-        const maxEmissionCount = pointCount;
-        const timeDelta = interval / pointCount;
-        const meshTime = now;
-        const maxCount = options.maxCount;
-
-        this.updateEmitterTransform(timePassed);
-        const shouldSkipGenerate = () => {
-          const first = link.first;
-
-          return this.emissionStopped || (link.length === maxCount && first && (first.content[0] - loopStartTime) > timePassed);
-        };
-
-        for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
-          if (shouldSkipGenerate()) {
-            break;
-          }
-          const p = this.createPoint(lifetime);
-
-          p.delay += meshTime + i * timeDelta;
-          this.addParticle(p, maxCount);
-          this.lastEmitTime = timePassed;
-        }
-        const bursts = emission.bursts;
-
-        for (let j = bursts?.length - 1, cursor = 0; j >= 0 && cursor < maxCount; j--) {
-          if (shouldSkipGenerate()) {
-            break;
-          }
-          const burst = bursts[j];
-          const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
-
-          if (opts) {
-            const originVec = [0, 0, 0] as vec3;
-            const offsets = emission.burstOffsets[j];
-            const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
-
-            if (burst.once) {
-              this.removeBurst(j);
+      const link = this.particleLink;
+      const emitterLifetime = (now - loopStartTime) / this.item.duration;
+      const timePassed = this.timePassed;
+      let trailUpdated = false;
+      const updateTrail = () => {
+        if (this.trails && !trailUpdated) {
+          trailUpdated = true;
+          link.forEach(([time, pointIndex, delay, point]) => {
+            if (time < timePassed) {
+              this.clearPointTrail(pointIndex);
+            } else if (timePassed > delay) {
+              this.updatePointTrail(pointIndex, emitterLifetime, point, delay);
             }
+          });
+        }
+      };
 
-            for (let i = 0; i < opts.count && cursor < maxCount; i++) {
-              if (shouldSkipGenerate()) {
-                break;
+      if (!this.ended) {
+        const duration = this.item.duration;
+        const lifetime = this.lifetime;
+
+        if (timePassed < duration) {
+          const interval = 1 / emission.rateOverTime.getValue(lifetime);
+          const pointCount = Math.floor((timePassed - this.lastEmitTime) / interval);
+          const maxEmissionCount = pointCount;
+          const timeDelta = interval / pointCount;
+          const meshTime = now;
+          const maxCount = options.maxCount;
+
+          this.updateEmitterTransform(timePassed);
+          const shouldSkipGenerate = () => {
+            const first = link.first;
+
+            return this.emissionStopped || (link.length === maxCount && first && (first.content[0] - loopStartTime) > timePassed);
+          };
+
+          for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
+            if (shouldSkipGenerate()) {
+              break;
+            }
+            const p = this.createPoint(lifetime);
+
+            p.delay += meshTime + i * timeDelta;
+            this.addParticle(p, maxCount);
+            this.lastEmitTime = timePassed;
+          }
+          const bursts = emission.bursts;
+
+          for (let j = bursts?.length - 1, cursor = 0; j >= 0 && cursor < maxCount; j--) {
+            if (shouldSkipGenerate()) {
+              break;
+            }
+            const burst = bursts[j];
+            const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
+
+            if (opts) {
+              const originVec = [0, 0, 0] as vec3;
+              const offsets = emission.burstOffsets[j];
+              const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
+
+              if (burst.once) {
+                this.removeBurst(j);
               }
-              const p = this.initPoint(this.shape.generate({
-                total: opts.total,
-                index: opts.index,
-                burstIndex: i,
-                burstCount: opts.count,
-              }));
 
-              p.delay += meshTime;
-              cursor++;
-              p.transform.translate(...burstOffset);
+              for (let i = 0; i < opts.count && cursor < maxCount; i++) {
+                if (shouldSkipGenerate()) {
+                  break;
+                }
+                const p = this.initPoint(this.shape.generate({
+                  total: opts.total,
+                  index: opts.index,
+                  burstIndex: i,
+                  burstCount: opts.count,
+                }));
 
-              this.addParticle(p, maxCount);
+                p.delay += meshTime;
+                cursor++;
+                p.transform.translate(...burstOffset);
+
+                this.addParticle(p, maxCount);
+              }
             }
           }
+        } else if (this.item.endBehavior === spec.EndBehavior.restart) {
+          updateTrail();
+          this.loopStartTime = now - duration;
+          this.lastEmitTime -= duration;
+          this.time -= duration;
+          emission.bursts.forEach(b => b.reset());
+          this.particleLink.forEach(content => {
+            content[0] -= duration;
+            content[2] -= duration;
+
+            // TODO 优化粒子销毁逻辑
+            if (content[3]) {
+              content[3].delay -= duration;
+            }
+          });
+
+          this.renderer.minusTimeForLoop(duration);
+        } else {
+          this.ended = true;
+          const endBehavior = this.item.endBehavior;
+
+          if (endBehavior === spec.EndBehavior.freeze) {
+            this.frozen = true;
+          }
         }
-      } else if (this.item.endBehavior === spec.EndBehavior.restart) {
-        updateTrail();
-        this.loopStartTime = now - duration;
-        this.lastEmitTime -= duration;
-        this.time -= duration;
-        emission.bursts.forEach(b => b.reset());
-        this.particleLink.forEach(content => {
-          content[0] -= duration;
-          content[2] -= duration;
-          content[3].delay -= duration;
-        });
+      } else if (this.item.endBehavior !== spec.EndBehavior.restart) {
+        if (spec.EndBehavior.destroy === this.item.endBehavior) {
+          const node = link.last;
 
-        this.renderer.minusTimeForLoop(duration);
-      } else {
-        this.ended = true;
-        const endBehavior = this.item.endBehavior;
-
-        if (endBehavior === spec.EndBehavior.freeze) {
-          this.frozen = true;
+          if (node && (node.content[0]) < this.time) {
+            this.destroyed = true;
+          }
         }
       }
-    } else if (this.item.endBehavior !== spec.EndBehavior.restart) {
-      if (spec.EndBehavior.destroy === this.item.endBehavior) {
-        const node = link.last;
-
-        if (node && (node.content[0]) < this.time) {
-          this.destroyed = true;
-        }
-      }
+      updateTrail();
     }
-    updateTrail();
   }
 
-  drawStencilMask (renderer: Renderer): void {
+  drawStencilMask (maskRef: number): void {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMasks: boolean[] = [];
-
-    for (let i = 0; i < this.renderer.meshes.length; i++) {
-      const material = this.renderer.meshes[i].material;
-
-      previousColorMasks.push(material.colorMask);
-      material.colorMask = false;
-    }
 
     for (const mesh of this.renderer.meshes) {
-      mesh.render(renderer);
-    }
-
-    for (let i = 0; i < this.renderer.meshes.length; i++) {
-      const material = this.renderer.meshes[i].material;
-
-      material.colorMask = previousColorMasks[i];
+      this.maskManager.drawGeometryMask(this.engine.renderer, mesh.geometry, mesh.worldMatrix, mesh.material, maskRef);
     }
   }
 
@@ -542,7 +543,6 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     return res;
-
   }
 
   raycast (options: ParticleSystemRayCastOptions): Vector3[] | undefined {
@@ -559,7 +559,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     if (node && node.content) {
       do {
-        const [currentTime, pointIndex, _, point] = node.content;
+        const [currentTime,, _, point] = node.content;
 
         if (currentTime > this.timePassed) {
           const pos = this.getPointPosition(point);
@@ -573,11 +573,7 @@ export class ParticleSystem extends Component implements Maskable {
             }, temp);
           }
           if (pass) {
-            if (options.removeParticle) {
-              renderer.removeParticlePoint(pointIndex);
-              this.clearPointTrail(pointIndex);
-              node.content = [0] as unknown as ParticleContent;
-            }
+            this.clickedPoint = node;
             hitPositions.push(pos);
             if (!options.multiple) {
               finish = true;
@@ -862,6 +858,7 @@ export class ParticleSystem extends Component implements Maskable {
     if (force || interactParams) {
       return {
         type: HitTestType.custom,
+        clipMasks:this.renderer.frameClipMasks,
         collect: (ray: Ray): Vector3[] | void =>
           this.raycast({
             radius: interactParams?.radius || 0.4,
@@ -1002,7 +999,7 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     if (props.mask) {
-      this.maskManager.setMaskOptions(props.mask);
+      this.maskManager.setMaskOptions(this.engine, props.mask);
     }
 
     const particleMeshProps: ParticleMeshProps = {
@@ -1103,7 +1100,7 @@ export class ParticleSystem extends Component implements Maskable {
       };
 
       if (trails.mask) {
-        this.maskManager.setMaskOptions(trails.mask);
+        this.maskManager.setMaskOptions(this.engine, trails.mask);
       }
 
       trailMeshProps = {

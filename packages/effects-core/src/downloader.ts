@@ -278,26 +278,41 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   }
   video.crossOrigin = 'anonymous';
   video.muted = true;
+  video.autoplay = false;
   if (isAndroid()) {
     video.setAttribute('renderer', 'standard');
   }
   video.setAttribute('playsinline', 'playsinline');
 
   return new Promise<HTMLVideoElement>((resolve, reject) => {
-    const pending = video.play().catch(e => {
-      reject(e);
-    });
+    let settled = false;
 
-    if (pending) {
-      void pending.then(() => resolve(video));
-    } else {
-      video.addEventListener('loadeddata', function listener () {
-        resolve(video);
-        video.removeEventListener('loadeddata', listener);
-      }, true);
-    }
-    video.addEventListener('error', e => {
+    const handleSuccess = () => {
+      if (settled) {return;}
+      settled = true;
+      cleanup();
+      resolve(video);
+    };
+
+    const handleError = () => {
+      if (settled) {return;}
+      settled = true;
+      cleanup();
       reject('Load video fail.');
+    };
+
+    const cleanup = () => {
+      video.removeEventListener('loadeddata', handleSuccess);
+      video.removeEventListener('canplay', handleSuccess);
+      video.removeEventListener('error', handleError);
+    };
+
+    video.addEventListener('loadeddata', handleSuccess);
+    video.addEventListener('canplay', handleSuccess);
+    video.addEventListener('error', handleError);
+
+    video.play().catch(err => {
+      console.warn('Autoplay blocked:', err);
     });
   });
 }

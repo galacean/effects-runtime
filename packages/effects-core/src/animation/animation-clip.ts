@@ -7,6 +7,7 @@ import { EffectsObject } from '../effects-object';
 import type { ValueGetter, Vector3Curve, BezierCurve, ColorCurve } from '../math';
 import { createValueGetter } from '../math';
 import type { VFXItem } from '../vfx-item';
+import { NotifyEvent, type AnimationEventInfo } from './animation-events';
 
 export interface AnimationCurve {
   path: string,
@@ -50,6 +51,8 @@ export class AnimationClip extends EffectsObject {
   scaleCurves: ScaleAnimationCurve[] = [];
   floatCurves: FloatAnimationCurve[] = [];
   colorCurves: ColorAnimationCurve[] = [];
+
+  events: AnimationEventInfo[] = [];
 
   sampleAnimation (vfxItem: VFXItem, time: number) {
     const life = clamp(time, 0, this.duration);
@@ -181,6 +184,23 @@ export class AnimationClip extends EffectsObject {
       this.duration = data.duration;
     } else {
       this.duration = keyFramesDuration;
+    }
+
+    // TODO: Update spec.
+    //@ts-expect-error
+    if (data.events) {
+      //@ts-expect-error
+      for (const eventData of data.events) {
+        const event: AnimationEventInfo = {
+          name: eventData.name,
+          startTime: eventData.startTime,
+          duration: eventData.duration ?? 0,
+          event: new NotifyEvent(),
+          clip: this,
+        };
+
+        this.events.push(event);
+      }
     }
   }
 

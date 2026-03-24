@@ -91,7 +91,7 @@ export class ModelPlugin extends Plugin {
       duration: 9999999,
       endBehavior: spec.END_BEHAVIOR_FORWARD,
     } as unknown as spec.Item;
-    const item = new VFXItem(composition.getEngine(), props);
+    const item = new VFXItem(composition.engine, props);
 
     composition.addItem(item);
     const modelPluginComponent = item.addComponent(ModelPluginComponent);

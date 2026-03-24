@@ -606,7 +606,7 @@ export class GLMaterial extends Material {
    */
   override toData (): spec.MaterialData {
     // @ts-expect-error
-    const materialData: spec.MaterialData = this.defination;
+    const materialData: spec.MaterialData = this.definition;
 
     if (this.shader) {
       // @ts-expect-error

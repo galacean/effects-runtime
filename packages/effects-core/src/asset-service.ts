@@ -3,7 +3,6 @@ import type { Disposable } from './utils';
 import type { Engine } from './engine';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
-import type { Texture } from './texture';
 import type { EffectsObject } from './effects-object';
 import { Asset } from './asset';
 import { Material } from './material';
@@ -68,7 +67,7 @@ export class AssetService implements Disposable {
       if (item.type === spec.ItemType.text || item.type === spec.ItemType.richtext) {
         const textVariable = variables[item.name] as string;
 
-        if (!textVariable) {
+        if (textVariable === undefined || textVariable === null) {
           return;
         }
 
@@ -81,13 +80,6 @@ export class AssetService implements Disposable {
         });
       }
     });
-  }
-
-  initializeTexture (scene: Scene) {
-    for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textures[i] = this.engine.findObject<Texture>({ id: scene.textureOptions[i].id });
-      scene.textures[i].initialize();
-    }
   }
 
   prepareAssets (

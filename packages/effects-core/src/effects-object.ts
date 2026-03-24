@@ -19,7 +19,7 @@ export abstract class EffectsObject {
   /**
    * 存储需要序列化的数据
    */
-  defination: Record<string, any>;
+  definition: Record<string, any>;
 
   /**
    *
@@ -29,7 +29,7 @@ export abstract class EffectsObject {
     public engine: Engine,
   ) {
     this.guid = generateGUID();
-    this.defination = {};
+    this.definition = {};
     this.engine.addInstance(this);
   }
 

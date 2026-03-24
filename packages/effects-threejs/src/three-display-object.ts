@@ -108,7 +108,6 @@ export class ThreeDisplayObject extends THREE.Group {
         PluginSystem.onAssetsLoadFinish(scene, assetManager.options, engine);
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
-        this.assetService.initializeTexture(scene);
 
         const composition = this.createComposition(scene, opts);
 

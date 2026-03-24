@@ -153,8 +153,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.7.0-alpha.0
-        version: 2.7.0-alpha.0
+        specifier: 2.8.0-alpha.0
+        version: 2.8.0-alpha.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -2235,11 +2235,11 @@ packages:
     resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
 
-  /@galacean/effects-specification@2.6.0:
-    resolution: {integrity: sha512-H5mzyE5d0mx2Fa7iUSuwRe7UPsEfszN+Is+EoqrZYtGlTP1R1E88YEkg1FvznRo6D1L7XcOIwUpY8JrNUZHn9A==}
+  /@galacean/effects-specification@2.7.2:
+    resolution: {integrity: sha512-bFCbQsaefD/OE8iHbBzt/ZUra8RysEUO9rIBXgis1JBpywrHrSjJD4PLcH4z0FJeA3YwMStrEAaVf2SBl2Dm4Q==}
 
-  /@galacean/effects-specification@2.7.0-alpha.0:
-    resolution: {integrity: sha512-609ZqtVoFH2WDIR7UWaIzwbkx3TgIKDjBUW3QOJxCYaVfAPDGidkn0XBl7uR1cVBMJ50aDcWrnb1imd8585mGw==}
+  /@galacean/effects-specification@2.8.0-alpha.0:
+    resolution: {integrity: sha512-2BOZh/aJdcwMamdoUONxuJN1Z5B/WIK0SDyb0Hb5/lYzS0TFojjEJShfgeTn2EwodJ6iQ083mweSfGvEaRledA==}
     dev: false
 
   /@humanwhocodes/config-array@0.11.14:
@@ -3044,7 +3044,7 @@ packages:
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-math': 1.1.0
-      '@galacean/effects-specification': 2.6.0
+      '@galacean/effects-specification': 2.7.2
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1

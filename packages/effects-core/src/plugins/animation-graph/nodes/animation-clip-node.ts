@@ -6,7 +6,9 @@ import { nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
 import type { Skeleton } from '../skeleton';
 import type { Pose } from '../pose';
-import type { AnimationClip, AnimationCurve, FloatAnimationCurve, ColorAnimationCurve } from '../../../animation';
+import type {
+  AnimationClip, AnimationCurve, FloatAnimationCurve, ColorAnimationCurve, AnimationEventReference,
+} from '../../../animation';
 
 @nodeDataClass(spec.NodeDataType.AnimationClipNodeData)
 export class AnimationClipNodeData extends GraphNodeData {
@@ -60,11 +62,46 @@ export class AnimationClipNode extends PoseNode {
       }
     }
 
+    // Sample Events
+    //-------------------------------------------------------------------------
+    this.sampleEvents(context);
+
     const time = this.currentTime * this.duration;
 
     this.animatable.getPose(time, result.pose);
 
     return result;
+  }
+
+  private sampleEvents (context: GraphContext): void {
+    if (!this.animatable || this.animatable.events.length === 0) {
+      return;
+    }
+
+    const previousTimeInSeconds = this.previousTime * this.duration;
+    const currentTimeInSeconds = this.currentTime * this.duration;
+
+    for (const eventReference of this.animatable.events) {
+      const eventTime = eventReference.event.startTime;
+
+      // Check if event falls within the current time interval
+      let shouldTrigger = false;
+
+      // Looping: handle wrap-around at 1.0
+      if (this.previousTime <= this.currentTime) {
+        // Normal case: no wrap-around
+        shouldTrigger = previousTimeInSeconds < eventTime && eventTime <= currentTimeInSeconds;
+      } else {
+        // Wrap-around case: previousTime > currentTime (e.g., 0.9 -> 0.1)
+        shouldTrigger = eventTime > previousTimeInSeconds || eventTime <= currentTimeInSeconds;
+      }
+
+      if (shouldTrigger) {
+        eventReference.currentTime = currentTimeInSeconds;
+        eventReference.deltaTime = context.deltaTime;
+        context.activeEvents.push(eventReference);
+      }
+    }
   }
 
   protected override initializeInternal (context: GraphContext): void {
@@ -102,8 +139,12 @@ export interface ColorCurveInfo {
 }
 
 export class Animatable {
-  private transformCurveInfos: TransformCurveInfo[] = [];
+  /**
+   * @internal
+   */
+  events: AnimationEventReference[] = [];
 
+  private transformCurveInfos: TransformCurveInfo[] = [];
   private floatCurveInfos: FloatCurveInfo[] = [];
   private colorCurveInfos: ColorCurveInfo[] = [];
 
@@ -128,6 +169,14 @@ export class Animatable {
     }
     for (const curve of animationClip.colorCurves) {
       this.addColorCurveInfo(curve);
+    }
+
+    for (const eventInfo of this.animationClip.events) {
+      this.events.push({
+        event: eventInfo,
+        currentTime: 0,
+        deltaTime: 0,
+      });
     }
   }
 

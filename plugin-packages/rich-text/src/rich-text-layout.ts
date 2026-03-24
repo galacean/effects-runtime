@@ -6,6 +6,7 @@ export class RichTextLayout implements BaseLayout {
   textAlign: spec.TextAlignment;
   letterSpace: number;
   overflow: spec.TextOverflow;
+  // TODO: width 和 height 新版富文本计算没有地方用到
   width = 0;
   height = 0;
 
@@ -35,7 +36,7 @@ export class RichTextLayout implements BaseLayout {
    * - autoHeight: 根据内容自动扩展高度
    * - fixed: 使用固定 width / height
    */
-  sizeMode: spec.TextSizeMode;
+  autoResize: spec.TextSizeMode;
 
   /**
    * 文本行高
@@ -44,7 +45,6 @@ export class RichTextLayout implements BaseLayout {
 
   constructor (options: spec.RichTextContentOptions) {
     const {
-      size,
       textOverflow = spec.TextOverflow.clip,
       textVerticalAlign = spec.TextVerticalAlign.middle,
       textAlign = spec.TextAlignment.left,
@@ -53,7 +53,7 @@ export class RichTextLayout implements BaseLayout {
       wrapEnabled = false,
       maxTextWidth = 350,
       maxTextHeight = 1000,
-      sizeMode = spec.TextSizeMode.autoWidth,
+      autoResize = spec.TextSizeMode.autoWidth,
       // @ts-expect-error 兼容旧版
       useLegacyRichText = false,
     } = options;
@@ -64,13 +64,14 @@ export class RichTextLayout implements BaseLayout {
     this.overflow = textOverflow;
     this.textVerticalAlign = textVerticalAlign;
     this.textAlign = textAlign;
-    this.width = size ? size[0] : 100;
-    this.height = size ? size[1] : 100;
+    this.width = 100;
+    this.height = 100;
 
     this.wrapEnabled = wrapEnabled;
+
     this.maxTextWidth = maxTextWidth;
     this.maxTextHeight = maxTextHeight;
-    this.sizeMode = sizeMode;
+    this.autoResize = autoResize;
   }
 
   getOffsetY (
@@ -198,6 +199,7 @@ export class RichTextLayout implements BaseLayout {
   /**
    * 设置文本框尺寸
    * - 不包含 fontScale 缩放
+   * @deprecated use maxTextWidth / maxTextHeight instead
    */
   setSize (width: number, height: number): void {
     this.width = width;
