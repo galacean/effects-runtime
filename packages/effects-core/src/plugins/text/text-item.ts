@@ -254,11 +254,11 @@ export class TextComponent extends MaskableGraphic {
       this.lineCount = this.getLineCount(this.text);
     }
 
-    const baseWidth = (layout.width + style.fontOffset) * fontScale;
-    const baseHeight = layout.height * fontScale;
+    const baseWidth = layout.width + style.fontOffset;
+    const baseHeight = layout.height;
 
-    const fontSize = style.fontSize * fontScale;
-    const lineHeight = layout.lineHeight * fontScale;
+    const fontSize = style.fontSize;
+    const lineHeight = layout.lineHeight;
 
     style.fontDesc = this.getFontDesc(fontSize);
     // 使用 Array.from 正确分割 Unicode 字符（包括 emoji）
@@ -267,23 +267,24 @@ export class TextComponent extends MaskableGraphic {
     const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
 
-    const texWidth = hasEffect ? Math.ceil(baseWidth + padL + padR) : baseWidth;
-    const texHeight = hasEffect ? Math.ceil(baseHeight + padT + padB) : baseHeight;
+    const texWidth = Math.ceil((hasEffect ? baseWidth + padL + padR : baseWidth) * fontScale);
+    const texHeight = Math.ceil((hasEffect ? baseHeight + padT + padB : baseHeight) * fontScale);
 
     const shiftX = hasEffect ? padL : 0;
     const shiftY = hasEffect ? (flipY ? padT : padB) : 0;
 
     // 给渲染层用：扩容比例
-    this.effectScaleX = baseWidth > 0 ? (texWidth / baseWidth) : 1;
-    this.effectScaleY = baseHeight > 0 ? (texHeight / baseHeight) : 1;
+    this.effectScaleX = baseWidth > 0 ? (texWidth / (baseWidth * fontScale)) : 1;
+    this.effectScaleY = baseHeight > 0 ? (texHeight / (baseHeight * fontScale)) : 1;
 
     // 默认 camera 下的 world per pixel
     const scaleFactor = 0.11092565;
     const scaleFactor2 = scaleFactor * scaleFactor;
 
-    this.transform.setSize(baseWidth * scaleFactor2 / fontScale, baseHeight * scaleFactor2 / fontScale);
+    this.transform.setSize(baseWidth * scaleFactor2, baseHeight * scaleFactor2);
 
     this.renderToTexture(texWidth, texHeight, flipY, context => {
+      context.scale(fontScale, fontScale);
       // canvas size 变化后重新刷新 context
       if (this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display) {
         context.font = this.getFontDesc(fontSize * baseWidth / this.maxLineWidth);
@@ -309,7 +310,7 @@ export class TextComponent extends MaskableGraphic {
         // 和浏览器行为保持一致
         // 字符间距只应用在字符之间，每行第一个字符不加间距
         if (charsArray.length > 0) {
-          x += layout.letterSpace * fontScale;
+          x += layout.letterSpace;
         }
 
         if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
@@ -412,11 +413,11 @@ export class TextComponent extends MaskableGraphic {
     const style = this.textStyle;
 
     const hasDrawOutline = style.isOutlined && style.outlineWidth > 0;
-    const outlinePad = hasDrawOutline ? Math.ceil(style.outlineWidth * 2 * style.fontScale) : 0;
+    const outlinePad = hasDrawOutline ? Math.ceil(style.outlineWidth * 2) : 0;
 
     const hasShadow = style.hasShadow && (style.shadowBlur > 0 || style.shadowOffsetX !== 0 || style.shadowOffsetY !== 0);
     const shadowPad = hasShadow
-      ? Math.ceil((Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur) * style.fontScale)
+      ? Math.ceil(Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur)
       : 0;
 
     const pad = outlinePad + shadowPad;
@@ -588,7 +589,7 @@ export class TextComponent extends MaskableGraphic {
    *
    * 说明：
    * - 使用 Canvas 2D 的 measureText，并按当前实现的逐字符排版规则累加宽度（与 updateTexture 保持一致）。
-   * - 结果为"逻辑宽度"（已除去 fontScale，并扣除 fontOffset），可直接写回 options.textWidth。
+   * - 结果为"逻辑宽度"（扣除 fontOffset），可直接写回 options.textWidth。，可直接写回 options.textWidth。
    * - 通过 padding 追加少量冗余像素，用于降低边缘裁切风险。
    *
    * @returns 文本宽度（>= 0）
@@ -602,11 +603,8 @@ export class TextComponent extends MaskableGraphic {
     const layout = this.textLayout;
     const style = this.textStyle;
 
-    const fontScale = style.fontScale || 1;
-    const renderFontSize = style.fontSize * fontScale;
-
-    // 与 updateTexture 一致：用 render 字号测量
-    ctx.font = this.getFontDesc(renderFontSize);
+    // 与 updateTexture 一致：用逻辑字号测量
+    ctx.font = this.getFontDesc(style.fontSize);
 
     let maxLineWidthRender = 0;
     let x = 0;
@@ -620,21 +618,17 @@ export class TextComponent extends MaskableGraphic {
         continue;
       }
 
-      // 与 updateTexture 一致：每个字符前加一次 letterSpace * fontScale
-      x += (layout.letterSpace || 0) * fontScale;
+      // 与 updateTexture 一致：每个字符前加一次 letterSpace
+      x += layout.letterSpace || 0;
       x += ctx.measureText(ch).width;
     }
 
     maxLineWidthRender = Math.max(maxLineWidthRender, x);
 
-    // render -> 逻辑宽度
-    const logicalMax = maxLineWidthRender / fontScale;
-
-    // 反推 layout.width：renderWidth = (layout.width + fontOffset) * fontScale
     const padding = 2;
     const EPS = 1e-4;
 
-    const w = Math.ceil(logicalMax - (style.fontOffset || 0) - EPS) + padding;
+    const w = Math.ceil(maxLineWidthRender - (style.fontOffset || 0) - EPS) + padding;
 
     return Math.max(0, w);
   }
