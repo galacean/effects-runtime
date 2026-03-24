@@ -417,7 +417,7 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
-   * 检测合成是否发生了 restart（item.time 从大跳小），并重置相关状态
+   * 检测合成是否发生了 restart，并重置相关状态
    */
   private detectCompositionRestart (): void {
     const videoTime = this.item.time;
@@ -552,8 +552,8 @@ export class VideoComponent extends MaskableGraphic {
   /**
    * seek 期间设置 videoSeeking=true，阻止 uploadCurrentVideoFrame 上传旧帧
    * @param time 目标时间
-   * @param clearTexture 是否在 seek 期间清空纹理，避免旧帧残留（仅视频 destroy 行为 seek 回 0 时使用）
-   * @param isGotoAndStop 是否为 gotoAndStop 场景，seek 完成后暂停而非恢复播放
+   * @param clearTexture 是否在 seek 期间清空纹理
+   * @param isGotoAndStop 是否为 gotoAndStop 场景
    */
   private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
     const wasPlaying = !this.video!.paused;
@@ -583,10 +583,9 @@ export class VideoComponent extends MaskableGraphic {
       this.video!.currentTime = time;
     };
 
-    // gotoAndStop 场景：iPhone 上视频暂停时 seek 可能不触发 seeked 事件，需要先确保视频在播放状态
     if (isGotoAndStop) {
       if (wasPlaying) {
-        // 视频正在播放，直接 seek（iPhone 上 pause 后 seek 可能不触发 seeked）
+        // 视频正在播放，直接 seek
         doSeek();
       } else {
         // 视频暂停，先 play() 再 seek
@@ -670,6 +669,7 @@ export class VideoComponent extends MaskableGraphic {
   /**
    * 设置视频是否循环播放，调用后会覆盖合成的结束行为，改为由用户手动控制循环。
    * 调用 {@link resetLoop} 可恢复为由合成结束行为自动控制。
+   * @param loop 是否循环播放
    */
   setLoop (loop: boolean) {
     this.manualLoop = true;
@@ -691,6 +691,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 设置视频是否静音
+   * @param muted 是否静音
    */
   setMuted (muted: boolean) {
     if (this.video && this.video.muted !== muted) {
@@ -700,6 +701,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 设置视频音量
+   * @param volume 视频音量
    */
   setVolume (volume: number) {
     if (this.video && this.video.volume !== volume) {
@@ -709,6 +711,7 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 设置当前视频是否为透明视频
+   * @param transparent 是否为透明视频
    */
   setTransparent (transparent: boolean): void {
     if (this.transparent === transparent) {
@@ -725,6 +728,7 @@ export class VideoComponent extends MaskableGraphic {
   /**
    * 设置视频播放速率，调用后会覆盖合成的速率，改为由用户手动控制速率。
    * 调用 {@link resetPlaybackRate} 可恢复为由合成速率自动控制。
+   * @param rate 视频播放速率
    */
   setPlaybackRate (rate: number) {
     this.manualPlaybackRate = true;
