@@ -27,6 +27,9 @@ export interface ShapeFeatherBounds {
  * @since 2.9.0
  */
 export class ShapeFeatherRenderer {
+  private static readonly maxKernelRadius = 6;
+  private static readonly maxDownsampleLevels = 6;
+
   private blurHMaterial: Material;
   private blurVMaterial: Material;
   private outputMaterial: Material;
@@ -88,7 +91,7 @@ export class ShapeFeatherRenderer {
    * 以高斯模糊羽化方式渲染 shape
    * @param renderer - 渲染器
    * @param featherRadius - 羽化半径（屏幕像素）
-   * @param iterationCount - 模糊迭代次数
+    * @param iterationCount - 多层 down/up 采样最小层数
    * @param drawCallback - 绘制 shape 的回调
    * @param worldMatrix - shape 的世界变换矩阵
    * @param bounds - shape 的局部空间 AABB
@@ -169,46 +172,54 @@ export class ShapeFeatherRenderer {
     // 恢复原来的 VP 矩阵
     renderer.setGlobalMatrix('effects_MatrixVP', vpMatrix);
 
-    // Step 3: 降采样 + 高斯模糊
-    // 13-tap 核最多优质覆盖 ~6 像素半径，超出时先降采样到核能覆盖的尺寸
-    const MAX_KERNEL_RADIUS = 6;
-    const downsample = Math.max(1, Math.ceil(featherRadius / MAX_KERNEL_RADIUS));
-    const dsWidth = Math.max(1, Math.ceil(rtWidth / downsample));
-    const dsHeight = Math.max(1, Math.ceil(rtHeight / downsample));
-    const effectiveRadius = featherRadius / downsample;
+    // Step 3: 多层降采样仅用于线性过滤加速，真正的模糊仍在最小层执行 separable gaussian
+    const requestedDownsample = Math.max(1, Math.ceil(featherRadius / ShapeFeatherRenderer.maxKernelRadius));
+    const downsampleLevelCount = this.resolveDownsampleLevelCount(requestedDownsample, iterationCount, rtWidth, rtHeight);
+    const retainedRTs = [shapeRT];
+    const downsampleRTs = [shapeRT];
+    let blurRT = shapeRT;
 
-    // 降采样: shapeRT(全分辨率) -> blurRT(低分辨率), 双线性过滤自动做预模糊
-    let blurRT = renderer.getTemporaryRT('ShapeFeatherDS', dsWidth, dsHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+    for (let i = 0; i < downsampleLevelCount; i++) {
+      const sourceTexture = blurRT.getColorTextures()[0];
+      const nextWidth = Math.max(1, Math.ceil(sourceTexture.getWidth() / 2));
+      const nextHeight = Math.max(1, Math.ceil(sourceTexture.getHeight() / 2));
+      const downsampleRT = renderer.getTemporaryRT(`ShapeFeatherDS${i}`, nextWidth, nextHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
 
-    if (downsample > 1) {
-      renderer.blit(shapeRT.getColorTextures()[0], blurRT);
-      renderer.releaseTemporaryRT(shapeRT);
-    } else {
-      // 无需降采样，直接用 shapeRT 作为 blurRT
-      renderer.releaseTemporaryRT(blurRT);
-      blurRT = shapeRT;
+      renderer.blit(sourceTexture, downsampleRT);
+      retainedRTs.push(downsampleRT);
+      downsampleRTs.push(downsampleRT);
+      blurRT = downsampleRT;
     }
 
-    // 在低分辨率上执行高斯模糊 (ping-pong)
+    const actualDownsample = Math.max(1, shapeRT.getColorTextures()[0].getWidth() / blurRT.getColorTextures()[0].getWidth());
+    const dsWidth = blurRT.getColorTextures()[0].getWidth();
+    const dsHeight = blurRT.getColorTextures()[0].getHeight();
+    const effectiveRadius = featherRadius / actualDownsample;
+
     const texSize = new Vector2(dsWidth, dsHeight);
+    const tempRT = renderer.getTemporaryRT('ShapeFeatherBlur', dsWidth, dsHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
 
-    for (let i = 0; i < iterationCount; i++) {
-      const tempRT = renderer.getTemporaryRT(`ShapeFeatherTemp${i}`, dsWidth, dsHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+    this.blurHMaterial.setVector2('_TextureSize', texSize);
+    this.blurHMaterial.setFloat('_BlurRadius', effectiveRadius);
+    renderer.blit(blurRT.getColorTextures()[0], tempRT, this.blurHMaterial);
 
-      // 水平模糊: blurRT -> tempRT
-      this.blurHMaterial.setVector2('_TextureSize', texSize);
-      this.blurHMaterial.setFloat('_BlurRadius', effectiveRadius);
-      renderer.blit(blurRT.getColorTextures()[0], tempRT, this.blurHMaterial);
+    this.blurVMaterial.setVector2('_TextureSize', texSize);
+    this.blurVMaterial.setFloat('_BlurRadius', effectiveRadius);
+    renderer.blit(tempRT.getColorTextures()[0], blurRT, this.blurVMaterial);
 
-      // 垂直模糊: tempRT -> blurRT
-      this.blurVMaterial.setVector2('_TextureSize', texSize);
-      this.blurVMaterial.setFloat('_BlurRadius', effectiveRadius);
-      renderer.blit(tempRT.getColorTextures()[0], blurRT, this.blurVMaterial);
+    renderer.releaseTemporaryRT(tempRT);
 
-      renderer.releaseTemporaryRT(tempRT);
+    // Step 4: 渐进式上采样回更高分辨率，只做线性重建，不与各层内容混合，避免 bloom 式中心增强
+    for (let i = downsampleRTs.length - 2; i >= 0; i--) {
+      const upsampleSource = downsampleRTs[i].getColorTextures()[0];
+      const upsampleRT = renderer.getTemporaryRT(`ShapeFeatherUS${i}`, upsampleSource.getWidth(), upsampleSource.getHeight(), 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+
+      renderer.blit(blurRT.getColorTextures()[0], upsampleRT);
+      retainedRTs.push(upsampleRT);
+      blurRT = upsampleRT;
     }
 
-    // Step 4: 输出到默认缓冲区（双线性上采样自动聚合低分辨率结果）
+    // Step 5: 输出到默认缓冲区
     renderer.setFramebuffer(prevFramebuffer);
 
     // 计算输出矩形在 NDC 空间中的位置
@@ -221,8 +232,9 @@ export class ShapeFeatherRenderer {
 
     renderer.drawGeometry(this.outputGeometry, identity, this.outputMaterial);
 
-    // 释放 blurRT
-    renderer.releaseTemporaryRT(blurRT);
+    for (const rt of retainedRTs) {
+      renderer.releaseTemporaryRT(rt);
+    }
   }
 
   dispose (): void {
@@ -291,6 +303,37 @@ export class ShapeFeatherRenderer {
       e[1] * x + e[5] * y + e[9] * z + e[13] * w,
       e[2] * x + e[6] * y + e[10] * z + e[14] * w,
       e[3] * x + e[7] * y + e[11] * z + e[15] * w,
+    );
+  }
+
+  private resolveDownsampleLevelCount (downsample: number, iterationCount: number, width: number, height: number): number {
+    const requestedLevelCount = Math.max(0, Math.floor(iterationCount));
+    let remainingDownsample = downsample;
+    let currentWidth = width;
+    let currentHeight = height;
+    let levelCount = 0;
+
+    while (
+      remainingDownsample > 1
+      && levelCount < ShapeFeatherRenderer.maxDownsampleLevels
+      && (currentWidth > 1 || currentHeight > 1)
+    ) {
+      const nextWidth = Math.max(1, Math.ceil(currentWidth / 2));
+      const nextHeight = Math.max(1, Math.ceil(currentHeight / 2));
+
+      if (nextWidth === currentWidth && nextHeight === currentHeight) {
+        break;
+      }
+
+      currentWidth = nextWidth;
+      currentHeight = nextHeight;
+      remainingDownsample = Math.ceil(remainingDownsample / 2);
+      levelCount++;
+    }
+
+    return Math.min(
+      ShapeFeatherRenderer.maxDownsampleLevels,
+      Math.max(requestedLevelCount, levelCount),
     );
   }
 }

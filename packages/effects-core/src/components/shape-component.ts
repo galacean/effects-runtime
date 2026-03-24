@@ -205,7 +205,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
    */
   featherRadius = 0;
   /**
-   * 高斯模糊迭代次数，越大越平滑但性能开销越大
+   * 高斯模糊最小迭代次数，大半径时会在此基础上自适应增加
    * @since 2.9.0
    */
   featherIterations = 2;
@@ -784,7 +784,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
     // 羽化参数（如果 spec 中提供）
-    this.featherRadius = (data as unknown as Record<string, unknown>).featherRadius as number ?? 50;
+    this.featherRadius = (data as unknown as Record<string, unknown>).featherRadius as number ?? 100;
     this.featherIterations = (data as unknown as Record<string, unknown>).featherIterations as number ?? 2;
 
     this.fills.length = 0;
