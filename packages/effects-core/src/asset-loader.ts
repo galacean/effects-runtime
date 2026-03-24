@@ -25,7 +25,7 @@ export class AssetLoader {
     let effectsObject: EffectsObject | undefined;
 
     if (!effectsObjectData) {
-      console.error(`Object data with uuid: ${guid} not found.`);
+      console.warn(`Object data with uuid: ${guid} not found.`);
 
       return undefined as T;
     }
@@ -53,7 +53,7 @@ export class AssetLoader {
     }
 
     if (!effectsObject) {
-      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
+      console.warn(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
