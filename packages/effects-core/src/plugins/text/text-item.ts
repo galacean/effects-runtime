@@ -241,7 +241,7 @@ export class TextComponent extends MaskableGraphic {
 
     const style = this.textStyle;
     const layout = this.textLayout;
-    const fontScale = style.fontScale;
+    let fontScale = style.fontScale;
 
     if (layout.autoResize === spec.TextSizeMode.autoWidth) {
       layout.width = this.getTextWidth();
@@ -267,8 +267,16 @@ export class TextComponent extends MaskableGraphic {
     const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
 
-    const texWidth = Math.ceil((hasEffect ? baseWidth + padL + padR : baseWidth) * fontScale);
-    const texHeight = Math.ceil((hasEffect ? baseHeight + padT + padB : baseHeight) * fontScale);
+    // 限制 fontScale，确保纹理尺寸不超过 maxTextureSize / 2
+    const maxTexSize = this.engine.gpuCapability.detail.maxTextureSize / 2;
+    const logicalWidth = hasEffect ? baseWidth + padL + padR : baseWidth;
+    const logicalHeight = hasEffect ? baseHeight + padT + padB : baseHeight;
+    const maxLogical = Math.max(logicalWidth, logicalHeight, 1);
+
+    fontScale = Math.min(fontScale, maxTexSize / maxLogical);
+
+    const texWidth = Math.ceil(logicalWidth * fontScale);
+    const texHeight = Math.ceil(logicalHeight * fontScale);
 
     const shiftX = hasEffect ? padL : 0;
     const shiftY = hasEffect ? (flipY ? padT : padB) : 0;
