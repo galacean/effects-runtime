@@ -69,7 +69,7 @@ export class KhronosTranscoder extends TextureTranscoder {
     // Worker 模式
     const transcoderWasm = await uastcAstcWasm();
 
-    // 将 TranscodeWorkerCode 整体序列化，在 Worker 中调用执行（不依赖 return { 的位置）
+    // 将 TranscodeWorkerCode 整体序列化
     const workerEntryCode = `
       (${TranscodeWorkerCode.toString()})();
       `;
@@ -122,6 +122,10 @@ export class KhronosTranscoder extends TextureTranscoder {
       faces = await this.mainThreadTranscoder.transcode(encodedData, needZstd, zstddecWasmModule);
     } else {
       // WebWorker 模式
+      if (!this.transcodeWorkerPool) {
+        throw new Error('KhronosTranscoder: transcodeWorkerPool is not initialized.');
+      }
+
       const postMessageData: KhronosTranscoderMessage = {
         type: 'transcode',
         format: 0,
