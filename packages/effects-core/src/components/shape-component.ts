@@ -14,6 +14,8 @@ import { GLSLVersion, Geometry } from '../render';
 import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
 import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
 import { RendererComponent } from './renderer-component';
+import type { ShapeFeatherRenderer } from './shape-feather-renderer';
+import { createShapeFeatherRenderer } from './shape-feather-renderer';
 import type { Texture } from '../texture/texture';
 import { glContext } from '../gl';
 import vert from '../math/shape/shaders/shape.vert.glsl';
@@ -197,6 +199,18 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private fillMaterials: Material[] = [];
   private strokeMaterials: Material[] = [];
 
+  /**
+   * 羽化半径（屏幕像素），0 表示不启用羽化
+   * @since 2.9.0
+   */
+  featherRadius = 0;
+  /**
+   * 高斯模糊迭代次数，越大越平滑但性能开销越大
+   * @since 2.9.0
+   */
+  featherIterations = 2;
+  private featherRenderer: ShapeFeatherRenderer | null = null;
+
   get shape () {
     return this.shapeAttributes;
   }
@@ -304,7 +318,39 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override render (renderer: Renderer) {
     this.maskManager.drawStencilMask(renderer, this);
 
-    this.draw(renderer);
+    if (this.featherRadius > 0) {
+      if (!this.featherRenderer) {
+        this.featherRenderer = createShapeFeatherRenderer(this.engine);
+      }
+
+      // 计算局部空间 AABB
+      const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+      const bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+
+      if (positionArray && positionArray.length >= 3) {
+        bounds.minX = Number.MAX_VALUE;
+        bounds.minY = Number.MAX_VALUE;
+        bounds.maxX = -Number.MAX_VALUE;
+        bounds.maxY = -Number.MAX_VALUE;
+        for (let i = 0; i < positionArray.length; i += 3) {
+          bounds.minX = Math.min(bounds.minX, positionArray[i]);
+          bounds.minY = Math.min(bounds.minY, positionArray[i + 1]);
+          bounds.maxX = Math.max(bounds.maxX, positionArray[i]);
+          bounds.maxY = Math.max(bounds.maxY, positionArray[i + 1]);
+        }
+      }
+
+      this.featherRenderer.renderFeathered(
+        renderer,
+        this.featherRadius,
+        this.featherIterations,
+        r => this.draw(r),
+        this.transform.getWorldMatrix(),
+        bounds,
+      );
+    } else {
+      this.draw(renderer);
+    }
   }
 
   /**
@@ -737,6 +783,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
+    // 羽化参数（如果 spec 中提供）
+    this.featherRadius = (data as unknown as Record<string, unknown>).featherRadius as number ?? 10;
+    this.featherIterations = (data as unknown as Record<string, unknown>).featherIterations as number ?? 2;
+
     this.fills.length = 0;
     this.fillMaterials.length = 0;
     for (const fill of data.fills) {
@@ -891,5 +941,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   override onApplyAnimationProperties (): void {
     this.shapeDirty = true;
     this.materialDirty = true;
+  }
+
+  override onDestroy (): void {
+    this.featherRenderer?.dispose();
+    this.featherRenderer = null;
   }
 }
