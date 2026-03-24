@@ -26,7 +26,7 @@ export class WorkerPool<T = any, U = any> {
 
   prepareWorker () {
     const count = this.limitedCount;
-    const promises = new Array<Promise<Worker>>(count);
+    const promises: Promise<Worker>[] = [];
 
     for (let i = 0; i < count; i++) {
       promises.push(this.ensureWorker(i));

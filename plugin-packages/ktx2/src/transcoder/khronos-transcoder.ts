@@ -68,15 +68,14 @@ export class KhronosTranscoder extends TextureTranscoder {
 
     // Worker 模式
     const transcoderWasm = await uastcAstcWasm();
-    const funcCode = TranscodeWorkerCode.toString();
-    const funcBody = funcCode.substring(funcCode.indexOf('{') + 1, funcCode.lastIndexOf('}'));
 
-    // 移除主线程的 return 语句，添加 Worker 消息处理
-    const returnIndex = funcBody.lastIndexOf('return {');
-    const workerCode = funcBody.substring(0, returnIndex);
+    // 将 TranscodeWorkerCode 整体序列化，在 Worker 中调用执行（不依赖 return { 的位置）
+    const workerEntryCode = `
+      (${TranscodeWorkerCode.toString()})();
+      `;
 
     const workerURL = URL.createObjectURL(
-      new Blob([workerCode], {
+      new Blob([workerEntryCode], {
         type: 'application/javascript',
       })
     );
