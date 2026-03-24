@@ -245,6 +245,8 @@ export function buildStrokeFeatherMeshData (
     inner.push(x - nx * halfW, y - ny * halfW);
   }
 
+  const contours: number[][] = [];
+
   if (closed) {
     const outerContour = [...outer, outer[0], outer[1]];
     const innerContour: number[] = [];
@@ -254,50 +256,38 @@ export function buildStrokeFeatherMeshData (
     }
     innerContour.push(inner[(n - 1) * 2], inner[(n - 1) * 2 + 1]);
 
-    const outerEdgeCount = appendContourFeatherMeshData(
-      outerContour,
+    contours.push(outerContour, innerContour);
+  } else {
+    // 拼合为单一闭合轮廓多边形 (首点 = 尾点)
+    const outline: number[] = [];
+
+    // 开放路径: outer 正向 → inner 反向 → 首尾相连
+    for (let i = 0; i < n; i++) {
+      outline.push(outer[i * 2], outer[i * 2 + 1]);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      outline.push(inner[i * 2], inner[i * 2 + 1]);
+    }
+    outline.push(outer[0], outer[1]);
+    contours.push(outline);
+  }
+
+  let edgeCount = 0;
+  let contourVertOffset = vertOffset;
+
+  for (const contour of contours) {
+    edgeCount += appendContourFeatherMeshData(
+      contour,
       outputVertices,
-      vertOffset,
+      contourVertOffset,
       indices,
       scatterEdgeVertices,
       bbox,
     );
-
-    const innerVertOffset = outputVertices.length / 2;
-
-    const innerEdgeCount = appendContourFeatherMeshData(
-      innerContour,
-      outputVertices,
-      innerVertOffset,
-      indices,
-      scatterEdgeVertices,
-      bbox,
-    );
-
-    return outerEdgeCount + innerEdgeCount;
+    contourVertOffset = outputVertices.length / 2;
   }
 
-  // 拼合为单一闭合轮廓多边形 (首点 = 尾点)
-  const outline: number[] = [];
-
-  // 开放路径: outer 正向 → inner 反向 → 首尾相连
-  for (let i = 0; i < n; i++) {
-    outline.push(outer[i * 2], outer[i * 2 + 1]);
-  }
-  for (let i = n - 1; i >= 0; i--) {
-    outline.push(inner[i * 2], inner[i * 2 + 1]);
-  }
-  outline.push(outer[0], outer[1]); // 闭合路径
-
-  // outline 已闭合且绕序正确，直接使用 unchecked 版本避免重复处理
-  return buildFeatherMeshDataInternal(
-    outline,
-    outputVertices,
-    vertOffset,
-    indices,
-    scatterEdgeVertices,
-    bbox,
-  );
+  return edgeCount;
 }
 
 /**
