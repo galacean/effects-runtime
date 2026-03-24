@@ -833,7 +833,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     // 读取羽化参数 (spec 类型可能尚未定义这些字段，使用类型断言)
     const extData = data as spec.ShapeComponentData & { featherRadius?: number, featherColor?: { r: number, g: number, b: number, a: number } };
 
-    this.featherRenderer.featherRadius = extData.featherRadius ?? 5;
+    this.featherRenderer.featherRadius = extData.featherRadius ?? 1;
     if (extData.featherColor) {
       this.featherRenderer.featherColor = new Color(extData.featherColor.r, extData.featherColor.g, extData.featherColor.b, extData.featherColor.a);
     }
