@@ -1,8 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import type {
-  FancyRenderStyle,
-  FancyRenderLayer,
   FancyConfig,
+  FancyRenderLayer,
+  FancyRenderStyle,
 } from './fancy-text/fancy-types';
 
 function normalizeColor (rgba: number[]): [number, number, number, number] {

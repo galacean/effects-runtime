@@ -1,4 +1,4 @@
-import type { TextLayerDrawer, TextEnv } from './fancy-types';
+import type { TextEnv, TextLayerDrawer } from './fancy-types';
 
 /**
  * 单层描边层绘制器

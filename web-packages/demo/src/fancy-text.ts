@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
 import type { FancyConfig, FancyRenderLayer } from '@galacean/effects-core';
-import { flattenFancyConfigToRenderStyle, FancyLayerFactory, TextComponent } from '@galacean/effects-core';
+import { FancyLayerFactory, flattenFancyConfigToRenderStyle, TextComponent } from '@galacean/effects-core';
 import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据

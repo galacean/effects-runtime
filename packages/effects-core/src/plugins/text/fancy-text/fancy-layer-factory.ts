@@ -1,10 +1,10 @@
 import type { FancyRenderLayer, TextLayerDrawer } from './fancy-types';
 import {
-  SingleStrokeDrawer,
   GradientDrawer,
   ShadowDrawer,
-  TextureDrawer,
+  SingleStrokeDrawer,
   SolidFillDrawer,
+  TextureDrawer,
 } from './text-layer-drawers';
 
 /**
