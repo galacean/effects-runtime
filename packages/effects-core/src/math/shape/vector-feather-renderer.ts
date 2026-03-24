@@ -112,7 +112,7 @@ export class VectorFeatherRenderer {
         aStart: {
           type: glContext.FLOAT,
           size: 2,
-          stride: 2 * 4,
+          stride: 4 * 4,
           offset: 0,
           dataSource: 'aEdgeData',
           instanceDivisor: 1,
@@ -120,7 +120,7 @@ export class VectorFeatherRenderer {
         aEnd: {
           type: glContext.FLOAT,
           size: 2,
-          stride: 2 * 4,
+          stride: 4 * 4,
           offset: 2 * 4,
           dataSource: 'aEdgeData',
           instanceDivisor: 1,

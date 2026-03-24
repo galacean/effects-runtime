@@ -116,22 +116,57 @@ function buildFeatherMeshDataInternal (
   }
 
   // --- Scatter 边顶点数据 (用于实例化渲染) ---
-  // 路径已闭合，edge[i] = v[i] → v[i+1]
-  // 直接使用路径顶点数组: aStart 从 offset 0 读取, aEnd 从 offset 8 读取
+  // 显式写入每条边的起点和终点，避免多 contour 串接时产生伪边
   const numEdges = numPathPts - 1;
 
-  scatterEdgeVertices.push(...pathVertices);
+  for (let i = 0; i < numEdges; i++) {
+    scatterEdgeVertices.push(
+      pathVertices[i * 2],
+      pathVertices[i * 2 + 1],
+      pathVertices[(i + 1) * 2],
+      pathVertices[(i + 1) * 2 + 1],
+    );
+  }
   expandFeatherBBox(bbox, minX, minY, maxX, maxY);
 
   return numEdges;
 }
 
+function appendContourFeatherMeshData (
+  pathVertices: number[],
+  outputVertices: number[],
+  vertOffset: number,
+  indices: number[],
+  scatterEdgeVertices: number[],
+  bbox: FeatherBBox,
+): number {
+  if (pathVertices.length < 6) {
+    return 0;
+  }
+
+  const firstX = pathVertices[0];
+  const firstY = pathVertices[1];
+  const lastX = pathVertices[pathVertices.length - 2];
+  const lastY = pathVertices[pathVertices.length - 1];
+  const closedVertices = firstX === lastX && firstY === lastY
+    ? pathVertices
+    : [...pathVertices, firstX, firstY];
+
+  return buildFeatherMeshDataInternal(
+    closedVertices,
+    outputVertices,
+    vertOffset,
+    indices,
+    scatterEdgeVertices,
+    bbox,
+  );
+}
+
 /**
  * 从 stroke 路径构建羽化网格数据。
  * 将路径沿法线方向偏移 ±strokeWidth/2 得到外圈和内圈，
- * 拼合成一个闭合轮廓多边形后复用 buildFeatherMeshData 的 fan+scatter 方案。
- * 对于闭合路径，使用 bridge 边连接外圈和内圈形成环形多边形，
- * winding number 会自动抵消内部区域。
+ * 对于闭合路径，外圈和内圈分别作为独立 contour 提交，
+ * 依靠 indicator pass 的前后面符号相加抵消内部区域，避免 seam 处 bridge 三角形重叠。
  * @param pathVertices - 形状路径的 2D 坐标数组 [x0, y0, x1, y1, ...]
  * @param strokeWidth - 描边宽度
  * @param closed - 路径是否闭合
@@ -210,31 +245,49 @@ export function buildStrokeFeatherMeshData (
     inner.push(x - nx * halfW, y - ny * halfW);
   }
 
+  if (closed) {
+    const outerContour = [...outer, outer[0], outer[1]];
+    const innerContour: number[] = [];
+
+    for (let i = n - 1; i >= 0; i--) {
+      innerContour.push(inner[i * 2], inner[i * 2 + 1]);
+    }
+    innerContour.push(inner[(n - 1) * 2], inner[(n - 1) * 2 + 1]);
+
+    const outerEdgeCount = appendContourFeatherMeshData(
+      outerContour,
+      outputVertices,
+      vertOffset,
+      indices,
+      scatterEdgeVertices,
+      bbox,
+    );
+
+    const innerVertOffset = outputVertices.length / 2;
+
+    const innerEdgeCount = appendContourFeatherMeshData(
+      innerContour,
+      outputVertices,
+      innerVertOffset,
+      indices,
+      scatterEdgeVertices,
+      bbox,
+    );
+
+    return outerEdgeCount + innerEdgeCount;
+  }
+
   // 拼合为单一闭合轮廓多边形 (首点 = 尾点)
   const outline: number[] = [];
 
-  if (closed) {
-    // 环形轮廓: 外圈 CCW → bridge → 内圈 CW(反向) → bridge 回到起点
-    for (let i = 0; i < n; i++) {
-      outline.push(outer[i * 2], outer[i * 2 + 1]);
-    }
-    outline.push(outer[0], outer[1]); // 闭合外圈
-    outline.push(inner[0], inner[1]); // bridge: outer[0] → inner[0]
-    for (let i = n - 1; i >= 1; i--) {
-      outline.push(inner[i * 2], inner[i * 2 + 1]);
-    }
-    outline.push(inner[0], inner[1]); // 闭合内圈
-    outline.push(outer[0], outer[1]); // bridge 回到起点 (首尾相同)
-  } else {
-    // 开放路径: outer 正向 → inner 反向 → 首尾相连
-    for (let i = 0; i < n; i++) {
-      outline.push(outer[i * 2], outer[i * 2 + 1]);
-    }
-    for (let i = n - 1; i >= 0; i--) {
-      outline.push(inner[i * 2], inner[i * 2 + 1]);
-    }
-    outline.push(outer[0], outer[1]); // 闭合路径
+  // 开放路径: outer 正向 → inner 反向 → 首尾相连
+  for (let i = 0; i < n; i++) {
+    outline.push(outer[i * 2], outer[i * 2 + 1]);
   }
+  for (let i = n - 1; i >= 0; i--) {
+    outline.push(inner[i * 2], inner[i * 2 + 1]);
+  }
+  outline.push(outer[0], outer[1]); // 闭合路径
 
   // outline 已闭合且绕序正确，直接使用 unchecked 版本避免重复处理
   return buildFeatherMeshDataInternal(
