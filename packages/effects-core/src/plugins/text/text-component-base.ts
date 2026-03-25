@@ -187,8 +187,8 @@ export class TextComponentBase {
 
   // 通用工具方法
   protected getFontDesc (size?: number): string {
-    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
+    const { fontSize, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(size || fontSize).toString()}px `;
 
     if (!['serif', 'sans-serif', 'monospace', 'courier'].includes(fontFamily)) {
       fontDesc += `"${fontFamily}"`;
@@ -219,14 +219,14 @@ export class TextComponentBase {
 
   protected setupShadow (): void {
     const context = this.context;
-    const { shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
+    const { shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY, fontScale } = this.textStyle;
     const [r, g, b, a] = shadowColor;
 
     if (context) {
       context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.shadowBlur = shadowBlur;
-      context.shadowOffsetX = shadowOffsetX;
-      context.shadowOffsetY = -shadowOffsetY;
+      context.shadowBlur = shadowBlur * fontScale;
+      context.shadowOffsetX = shadowOffsetX * fontScale;
+      context.shadowOffsetY = -shadowOffsetY * fontScale;
     }
   }
 

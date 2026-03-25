@@ -56,7 +56,6 @@ export class TextLayout implements BaseLayout {
    * @returns - 行高偏移值
    */
   getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number, totalLineHeight?: number) {
-    const { fontScale } = style;
     // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
     // 计算基础偏移量
@@ -70,11 +69,11 @@ export class TextLayout implements BaseLayout {
 
         break;
       case spec.TextVerticalAlign.middle:
-        offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
+        offsetResult = (this.height - commonCalculation + baseOffset) / 2;
 
         break;
       case spec.TextVerticalAlign.bottom:
-        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
+        offsetResult = (this.height - commonCalculation) - offsetY;
 
         break;
       default:
@@ -99,11 +98,11 @@ export class TextLayout implements BaseLayout {
 
         break;
       case spec.TextAlignment.middle:
-        offsetX = (this.width * style.fontScale - maxWidth) / 2;
+        offsetX = (this.width - maxWidth) / 2;
 
         break;
       case spec.TextAlignment.right:
-        offsetX = (this.width * style.fontScale - maxWidth);
+        offsetX = (this.width - maxWidth);
 
         break;
       default:
