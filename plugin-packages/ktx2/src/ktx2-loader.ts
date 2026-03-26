@@ -82,8 +82,12 @@ export class KTX2Loader extends Plugin implements TextureLoader {
   async loadFromBuffer (arrBuffer: ArrayBuffer) {
     const buffer = new Uint8Array(arrBuffer);
     const { ktx2Container, result, hasFullMipmapChain } = await this.parseBuffer(buffer);
+    const textureOptions = this.createTextureByBuffer(ktx2Container, result, hasFullMipmapChain);
 
-    return this.createTextureByBuffer(ktx2Container, result, hasFullMipmapChain);
+    // 转码完成后释放原始 KTX2 数据
+    ktx2Container.clear();
+
+    return textureOptions;
   }
 
   /**
@@ -92,8 +96,12 @@ export class KTX2Loader extends Plugin implements TextureLoader {
   async loadFromURL (url: string) {
     const buffer = new Uint8Array(await loadBinary(url));
     const { ktx2Container, result, hasFullMipmapChain } = await this.parseBuffer(buffer);
+    const textureOptions = this.createTextureByBuffer(ktx2Container, result, hasFullMipmapChain);
 
-    return this.createTextureByBuffer(ktx2Container, result, hasFullMipmapChain);
+    // 转码完成后释放原始 KTX2 数据
+    ktx2Container.clear();
+
+    return textureOptions;
   }
 
   /**
