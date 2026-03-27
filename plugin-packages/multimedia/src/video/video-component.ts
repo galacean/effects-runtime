@@ -135,7 +135,7 @@ export class VideoComponent extends MaskableGraphic {
         this.setPlaybackRate(playbackRate);
         this.setVolume(volume);
         this.setMuted(muted);
-        const endBehavior = this.item.defination.endBehavior;
+        const endBehavior = this.item.definition.endBehavior;
 
         // 如果元素设置为 destroy
         if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {

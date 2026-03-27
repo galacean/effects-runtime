@@ -160,7 +160,7 @@ export class Ellipse extends ShapePrimitive {
     return this.y;
   }
 
-  build (points: number[]) {
+  build (points: number[], screenScale?: number) {
     const x = this.x;
     const y = this.y;
     const rx = this.halfWidth;
@@ -172,9 +172,10 @@ export class Ellipse extends ShapePrimitive {
       return points;
     }
 
-    // Choose a number of segments such that the maximum absolute deviation from the circle is approximately 0.029
-    const sampleDensity = 5;
-    const n = Math.ceil(sampleDensity * Math.sqrt(rx + ry));
+    // n 个等分段逼近四分之一椭圆弧，最大弦高误差 ε = R·π²/(8n²)
+    // 屏幕误差 = ε × ppu = ppu·R·π²/(8n²)，令 n = √(ppu·(rx+ry))，则误差 ≈ π²/8 ≈ 1.2px
+    const ppu = screenScale ?? 1;
+    const n = Math.ceil(Math.sqrt(ppu * (rx + ry)));
     const m = (n * 8) + (dx ? 4 : 0) + (dy ? 4 : 0);
 
     if (m === 0) {

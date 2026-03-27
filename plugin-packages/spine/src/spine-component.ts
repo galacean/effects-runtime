@@ -331,6 +331,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
       return {
         type: HitTestType.triangle,
         triangles: box.area,
+        clipMasks:this.frameClipMasks,
         backfaceCulling: false,
         behavior: spec.InteractBehavior.NOTIFY,
       };

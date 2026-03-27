@@ -15,7 +15,6 @@ export class RendererComponent extends Component {
 
   /**
    * @hidden
-   * @internal
    * Internal utility.
    * Not part of the public API — do not rely on this in your code.
    */
@@ -59,6 +58,10 @@ export class RendererComponent extends Component {
 
   override onDisable (): void {
     this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
+  }
+
+  override onParentChanged (): void {
+    this.frameClipMasks = [];
   }
 
   /**

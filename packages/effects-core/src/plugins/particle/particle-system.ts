@@ -838,6 +838,7 @@ export class ParticleSystem extends Component implements Maskable {
     if (force || interactParams) {
       return {
         type: HitTestType.custom,
+        clipMasks:this.renderer.frameClipMasks,
         collect: (ray: Ray): Vector3[] | void =>
           this.raycast({
             radius: interactParams?.radius || 0.4,

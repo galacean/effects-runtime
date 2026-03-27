@@ -1,20 +1,24 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Component } from './components';
 import { EffectComponent, RendererComponent } from './components';
-import type { Composition } from './composition';
+import type { Composition, CompositionHitTestOptions } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
+import type { Maskable } from './material';
 import type {
   BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams,
+  HitTestTriangleParams, Region,
 } from './plugins';
+import { HitTestType } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
@@ -66,7 +70,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   type: spec.ItemType = spec.ItemType.base;
   /**
-   * @deprecated 2.9.0 Please use `defination` instead
+   * @deprecated 2.9.0 Please use `definition` instead
    */
   props: spec.VFXItemData;
   /**
@@ -352,15 +356,21 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (vfxItem === this && !vfxItem) {
       return;
     }
+
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
+
     this.parent = vfxItem;
     this.transform.parentTransform = vfxItem.transform;
     vfxItem.children.push(this);
+
     if (!this.composition && vfxItem.composition) {
       this.composition = vfxItem.composition;
     }
+
+    this.onParentChanged();
+
     if (!this.isDuringPlay && vfxItem.isDuringPlay) {
       this.awake();
       this.beginPlay();
@@ -549,6 +559,138 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
+   * 对当前元素及其子节点进行射线命中测试
+   *
+   * @param ray - 射线
+   * @param x - 归一化屏幕坐标 x
+   * @param y - 归一化屏幕坐标 y
+   * @param regions - 命中结果收集数组
+   * @param hitPositions - 共享的命中位置数组，所有 region 共享同一引用
+   * @param force - 是否强制测试无交互信息的元素
+   * @param options - 额外选项（maxCount、stop、skip）
+   * @returns 是否有任何命中
+   */
+  hitTest (
+    ray: Ray,
+    x: number,
+    y: number,
+    regions: Region[],
+    hitPositions: Vector3[],
+    force?: boolean,
+    options?: CompositionHitTestOptions,
+  ): boolean {
+    if (!this.isActive) {
+      return false;
+    }
+
+    let hitTestSuccess = false;
+    const maxCount = options?.maxCount;
+    const hitParams = this.getHitTestParams(force);
+
+    // 1. 测试自身
+    if (hitParams) {
+      const clipMasks = hitParams.clipMasks;
+      let clipPassed = true;
+
+      if (clipMasks.length > 0 && !hitTestMask(ray, clipMasks)) {
+        clipPassed = false;
+      }
+
+      if (clipPassed) {
+        let success = false;
+        const intersectPoint = new Vector3();
+
+        if (hitParams.type === HitTestType.triangle) {
+          const { triangles, backfaceCulling } = hitParams;
+
+          for (let j = 0; j < triangles.length; j++) {
+            if (ray.intersectTriangle(triangles[j], intersectPoint, backfaceCulling)) {
+              success = true;
+              hitPositions.push(intersectPoint);
+
+              break;
+            }
+          }
+        } else if (hitParams.type === HitTestType.box) {
+          const { center, size } = hitParams;
+          const boxMin = center.clone().addScaledVector(size, 0.5);
+          const boxMax = center.clone().addScaledVector(size, -0.5);
+
+          if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
+            success = true;
+            hitPositions.push(intersectPoint);
+          }
+        } else if (hitParams.type === HitTestType.sphere) {
+          const { center, radius } = hitParams;
+
+          if (ray.intersectSphere({ center, radius }, intersectPoint)) {
+            success = true;
+            hitPositions.push(intersectPoint);
+          }
+        } else if (hitParams.type === HitTestType.custom) {
+          const tempPosition = hitParams.collect(ray, new Vector2(x, y));
+
+          if (tempPosition && tempPosition.length > 0) {
+            tempPosition.forEach(pos => {
+              hitPositions.push(pos);
+            });
+            success = true;
+          }
+        }
+
+        if (success) {
+          const region: Region = {
+            id: this.getInstanceId(),
+            name: this.name,
+            position: hitPositions[hitPositions.length - 1],
+            parentId: this.parentId,
+            hitPositions,
+            behavior: hitParams.behavior,
+            item: this,
+            composition: this.composition as Composition,
+          };
+
+          regions.push(region);
+          hitTestSuccess = true;
+
+          if (options?.stop?.(region)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 2. 递归测试子节点
+    for (const child of this.children) {
+      if (maxCount !== undefined && regions.length >= maxCount) {
+        break;
+      }
+      if (options?.skip?.(child)) {
+        continue;
+      }
+      if (child.hitTest(ray, x, y, regions, hitPositions, force, options)) {
+        hitTestSuccess = true;
+      }
+    }
+
+    // 3. composition 元素：子元素命中时，将自身也加入结果（根元素除外）
+    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.rootItem) {
+      regions.push({
+        id: this.getInstanceId(),
+        name: this.name,
+        position: hitPositions[hitPositions.length - 1],
+        parentId: this.parentId,
+        hitPositions,
+        behavior: spec.InteractBehavior.NONE,
+        item: this,
+        composition: this.composition as Composition,
+      });
+    }
+
+    return hitTestSuccess;
+  }
+
+  /**
    * 获取元素当前世界坐标
    */
   getCurrentPosition (): Vector3 {
@@ -593,7 +735,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.gatherPreviousObjectID(previousObjectIDMap);
     // 重新设置当前元素和组件的 ID 以及子元素和子元素组件的 ID，避免实例化新的对象时产生碰撞
     this.refreshGUIDRecursive();
-    const newItem = this.engine.findObject<VFXItem>({ id: this.defination.id });
+    const newItem = this.engine.findObject<VFXItem>({ id: this.definition.id });
 
     newItem.refreshGUIDRecursive();
     this.refreshGUIDRecursive(previousObjectIDMap);
@@ -678,6 +820,16 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
+  private onParentChanged () {
+    for (const component of this.components) {
+      component.onParentChanged();
+    }
+
+    for (const child of this.children) {
+      child.onParentChanged();
+    }
+  }
+
   /**
    * @internal
    */
@@ -703,7 +855,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.components.length = 0;
 
     if (VFXItem.isComposition(this)) {
-      const refId = (this.defination as spec.CompositionItem).content.options.refId;
+      const refId = (this.definition as spec.CompositionItem).content.options.refId;
       const compositionData = this.engine.findEffectsObjectData(refId) as unknown as spec.CompositionData;
 
       if (!compositionData) {
@@ -751,23 +903,23 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   override toData (): void {
-    this.defination.id = this.guid;
-    this.defination.transform = this.transform.toData();
-    this.defination.dataType = spec.DataType.VFXItemData;
+    this.definition.id = this.guid;
+    this.definition.transform = this.transform.toData();
+    this.definition.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {
-      this.defination.parentId = this.parent?.guid;
+      this.definition.parentId = this.parent?.guid;
     }
 
     // TODO 统一 sprite 等其他组件的序列化逻辑
-    if (!this.defination.components) {
-      this.defination.components = [];
+    if (!this.definition.components) {
+      this.definition.components = [];
       for (const component of this.components) {
         if (component instanceof EffectComponent) {
-          this.defination.components.push(component);
+          this.definition.components.push(component);
         }
       }
     }
-    this.defination.content = {};
+    this.definition.content = {};
   }
 
   /**
@@ -912,4 +1064,44 @@ export namespace Item {
   export function isNull (item: spec.Item): item is spec.NullItem {
     return item.type === spec.ItemType.null;
   }
+}
+
+/**
+ * 遮罩命中测试：检查射线是否通过所有遮罩区域
+ * 根据每个遮罩的 transform（size、scale、position、rotation、anchor）构建世界空间矩形，
+ * 然后检测射线是否与该矩形相交。所有遮罩都必须通过才算测试通过。
+ * @param ray - 射线
+ * @param clipMasks - 遮罩列表
+ * @returns 射线是否通过所有遮罩测试
+ */
+function hitTestMask (ray: Ray, clipMasks: Maskable[]): boolean {
+  for (const mask of clipMasks) {
+    const item = mask.item;
+
+    if (!item.isActive || !item.transform.getValid()) {
+      continue;
+    }
+
+    const transform = item.transform;
+    const worldMatrix = transform.getWorldMatrix();
+    const sx = transform.size.x;
+    const sy = transform.size.y;
+
+    // 将遮罩矩形的四个顶点从本地空间变换到世界空间
+    // 本地空间顶点为单位矩形 (-0.5, -0.5) 到 (0.5, 0.5)，按 size 缩放
+    const p0 = new Vector3(-0.5 * sx, 0.5 * sy, 0).applyMatrix(worldMatrix);
+    const p1 = new Vector3(-0.5 * sx, -0.5 * sy, 0).applyMatrix(worldMatrix);
+    const p2 = new Vector3(0.5 * sx, 0.5 * sy, 0).applyMatrix(worldMatrix);
+    const p3 = new Vector3(0.5 * sx, -0.5 * sy, 0).applyMatrix(worldMatrix);
+
+    // 矩形由两个三角形组成，检测射线与任一三角形的相交
+    const triangle1 = { p0, p1, p2 };
+    const triangle2 = { p0: p2, p1, p2: p3 };
+
+    if (!ray.intersectTriangle(triangle1) && !ray.intersectTriangle(triangle2)) {
+      return false;
+    }
+  }
+
+  return true;
 }

@@ -1,4 +1,3 @@
-import * as spec from '@galacean/effects-specification';
 import { AssetManager } from './asset-manager';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
@@ -8,7 +7,7 @@ import { logger } from './utils';
 import { PluginSystem } from './plugin-system';
 
 /**
- * @internal
+ * @hidden
  */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
@@ -64,11 +63,6 @@ export class SceneLoader {
       height: renderer.getHeight(),
       event: engine.eventSystem,
     }, scene);
-
-    // 中低端设备降帧到 30fps·
-    if (engine.ticker && options.renderLevel === spec.RenderLevel.B) {
-      engine.ticker.setFPS(Math.min(engine.ticker.getFPS(), 30));
-    }
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
     if (engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {
