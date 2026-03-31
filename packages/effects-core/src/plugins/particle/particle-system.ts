@@ -156,7 +156,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   constructor (
     engine: Engine,
-    props?: ParticleSystemProps,
+    props?: spec.ParticleSystemData,
   ) {
     super(engine);
 
@@ -850,9 +850,9 @@ export class ParticleSystem extends Component implements Maskable {
     }
   };
 
-  override fromData (data: unknown): void {
+  override fromData (data: spec.ParticleSystemData): void {
     super.fromData(data);
-    const props = data as ParticleSystemProps;
+    const props = data;
 
     this.props = props;
     const cachePrefix = '';

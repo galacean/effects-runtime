@@ -518,7 +518,7 @@ export class ThreeMaterial extends Material {
     throw new Error('Method not implemented.');
   }
 
-  override fromData (data: unknown): void {
+  override fromData (data: spec.MaterialData): void {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }

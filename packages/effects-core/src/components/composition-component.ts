@@ -266,7 +266,7 @@ export class CompositionComponent extends Component {
     }
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.CompositionComponentData): void {
     super.fromData(data);
 
     this._timelineInstance = null;
