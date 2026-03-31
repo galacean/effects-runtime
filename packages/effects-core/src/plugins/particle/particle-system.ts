@@ -1,6 +1,6 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
+import type { vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
@@ -97,7 +97,6 @@ type TrailOptions = {
   blending: number,
   occlusion: boolean,
   transparentOcclusion: boolean,
-  textureMap?: vec4,
 };
 
 interface ParticleTextureSheetAnimation {
@@ -118,29 +117,7 @@ type ParticleInteraction = {
   radius: number,
 };
 
-export interface ParticleSystemOptions extends spec.ParticleOptions {
-  meshSlots?: number[],
-}
-
-export interface ParticleSystemProps extends Omit<spec.ParticleContent, 'options' | 'renderer' | 'trails' | 'mask'> {
-  options: ParticleSystemOptions,
-  renderer: ParticleSystemRendererOptions,
-  trails?: ParticleTrailProps,
-  mask?: spec.MaskOptions,
-}
-
-// spec.RenderOptions 经过处理
-export interface ParticleSystemRendererOptions extends Required<Omit<spec.RendererOptions, 'texture' | 'anchor' | 'particleOrigin'>> {
-  // mask: number,
-  texture: Texture,
-  anchor?: vec2,
-  particleOrigin?: spec.ParticleOrigin,
-}
-
-export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' | 'mask'> {
-  texture: Texture,
-  textureMap: vec4,
-  mask?: spec.MaskOptions,
+export interface ParticleSystemProps extends spec.ParticleContent {
 }
 
 // 粒子节点包含的数据
@@ -157,7 +134,6 @@ export class ParticleSystem extends Component implements Maskable {
   textureSheetAnimation?: ParticleTextureSheetAnimation;
   interaction?: ParticleInteraction;
   emissionStopped: boolean;
-  destroyed = false;
   props: ParticleSystemProps;
   time: number;
 
@@ -174,6 +150,9 @@ export class ParticleSystem extends Component implements Maskable {
   private uvs: number[][];
   private basicTransform: ParticleTransform;
   private clickedPoint: LinkNode<ParticleContent>;
+
+  private particleMeshProps: ParticleMeshProps | null = null;
+  private trailMeshProps: TrailMeshProps | null = null;
 
   constructor (
     engine: Engine,
@@ -329,10 +308,19 @@ export class ParticleSystem extends Component implements Maskable {
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
     this.ended = false;
-    this.destroyed = false;
   }
 
   override onStart (): void {
+    if (!this.particleMeshProps) {
+      return;
+    }
+
+    this.renderer = this.item.addComponent(ParticleSystemRenderer);
+
+    this.renderer.setup(this.particleMeshProps, this.trailMeshProps);
+    this.renderer.maskManager = this.maskManager;
+    this.meshes = this.renderer.meshes;
+
     this.startEmit();
     this.initEmitterTransform();
 
@@ -452,7 +440,7 @@ export class ParticleSystem extends Component implements Maskable {
               }
             }
           }
-        } else if (this.item.endBehavior === spec.EndBehavior.restart) {
+        } else if (this.options.looping) {
           updateTrail();
           this.loopStartTime = now - duration;
           this.lastEmitTime -= duration;
@@ -475,14 +463,6 @@ export class ParticleSystem extends Component implements Maskable {
 
           if (endBehavior === spec.EndBehavior.freeze) {
             this.frozen = true;
-          }
-        }
-      } else if (this.item.endBehavior !== spec.EndBehavior.restart) {
-        if (spec.EndBehavior.destroy === this.item.endBehavior) {
-          const node = link.last;
-
-          if (node && (node.content[0]) < this.time) {
-            this.destroyed = true;
           }
         }
       }
@@ -875,7 +855,6 @@ export class ParticleSystem extends Component implements Maskable {
     const props = data as ParticleSystemProps;
 
     this.props = props;
-    this.destroyed = false;
     const cachePrefix = '';
     const { options, positionOverLifetime = {}, shape } = props;
     const gravityModifier = positionOverLifetime?.gravityOverLifetime;
@@ -968,7 +947,8 @@ export class ParticleSystem extends Component implements Maskable {
       startSpeed: createValueGetter(positionOverLifetime.startSpeed || 0),
       startColor: createValueGetter(options.startColor),
       // duration:vfxItem.duration || 1,
-      looping: false,
+      // @ts-expect-error TODO: Update spec
+      looping: options.looping ?? false,
       maxCount: options.maxCount ?? 0,
       gravityModifier: createValueGetter(gravityModifier || 0),
       gravity,
@@ -1004,7 +984,6 @@ export class ParticleSystem extends Component implements Maskable {
 
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
-      meshSlots: options.meshSlots,
       name: this.name,
       matrix: Matrix4.IDENTITY,
       shaderCachePrefix,
@@ -1099,10 +1078,6 @@ export class ParticleSystem extends Component implements Maskable {
         parentAffectsPosition: !!trails.parentAffectsPosition,
       };
 
-      if (trails.mask) {
-        this.maskManager.setMaskOptions(this.engine, trails.mask);
-      }
-
       trailMeshProps = {
         name: 'Trail',
         matrix: Matrix4.IDENTITY,
@@ -1118,7 +1093,6 @@ export class ParticleSystem extends Component implements Maskable {
         lifetime: this.trails.lifetime,
         occlusion: !!trails.occlusion,
         transparentOcclusion: !!trails.transparentOcclusion,
-        textureMap: trails.textureMap,
         mask: this.maskManager.getRefValue(),
         maskMode: this.maskManager.maskMode,
       };
@@ -1131,10 +1105,11 @@ export class ParticleSystem extends Component implements Maskable {
       }
     }
 
-    this.renderer = new ParticleSystemRenderer(this.engine, particleMeshProps, trailMeshProps);
-    this.renderer.item = this.item;
-    this.renderer.maskManager = this.maskManager;
-    this.meshes = this.renderer.meshes;
+    this.particleMeshProps = particleMeshProps;
+
+    if (trailMeshProps) {
+      this.trailMeshProps = trailMeshProps;
+    }
 
     const interaction = props.interaction;
 
