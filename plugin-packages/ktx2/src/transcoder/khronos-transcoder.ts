@@ -87,7 +87,12 @@ export class KhronosTranscoder extends TextureTranscoder {
 
   async transcode (ktx2Container: KTX2Container, neededLevelCount?: number): Promise<TranscodeResult> {
     const needZstd = ktx2Container.supercompressionScheme === SupercompressionScheme.Zstd;
-    const levelCount = neededLevelCount ?? ktx2Container.levels.length;
+    const availableLevelCount = ktx2Container.levels.length;
+    const levelCount = neededLevelCount ?? availableLevelCount;
+
+    if (levelCount < 1 || levelCount > availableLevelCount) {
+      throw new Error(`neededLevelCount ${levelCount} is out of range [1, ${availableLevelCount}].`);
+    }
     const faceCount = ktx2Container.faceCount;
     // 准备编码数据，只处理需要的 level，避免转码后丢弃多余结果
     const encodedData: EncodedData[][] = new Array<EncodedData[]>(faceCount);
