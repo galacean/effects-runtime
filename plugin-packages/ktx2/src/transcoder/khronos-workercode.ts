@@ -204,6 +204,12 @@ export function TranscodeWorkerCode () {
 
           break;
         case 'transcode':
+          if (!wasmPromise) {
+            self.postMessage({ error: new Error('Transcoder not initialized.') });
+
+            break;
+          }
+
           wasmPromise
             .then(transcoderWasmModule => {
               transcode(
