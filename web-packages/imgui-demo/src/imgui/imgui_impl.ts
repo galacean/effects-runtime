@@ -76,6 +76,10 @@ function window_on_gamepaddisconnected (event: any /* GamepadEvent */): void {
 }
 
 function canvas_on_blur (event: FocusEvent): void {
+  // 焦点转移到 IME 隐藏输入框时不重置状态，否则会丢失鼠标点击
+  if (event.relatedTarget === ime_input) {
+    return;
+  }
   const io = ImGui.GetIO();
 
   io.KeyCtrl = false;
@@ -126,6 +130,88 @@ function canvas_on_keyup (event: KeyboardEvent): void {
   io.KeysDown[key_index] = false;
   if (io.WantCaptureKeyboard) {
     event.preventDefault();
+  }
+}
+
+let ime_input: HTMLTextAreaElement | null = null;
+let is_composing = false;
+
+function ime_on_compositionstart (): void {
+  is_composing = true;
+}
+
+function ime_on_compositionend (): void {
+  is_composing = false;
+  ime_flush();
+}
+
+function ime_on_input (): void {
+  if (!is_composing) {
+    ime_flush();
+  }
+}
+
+function ime_flush (): void {
+  if (!ime_input) {
+    return;
+  }
+  const text = ime_input.value;
+
+  ime_input.value = '';
+  if (!text) {
+    return;
+  }
+  const io = ImGui.GetIO();
+
+  for (const ch of text) {
+    io.AddInputCharacter(ch.codePointAt(0));
+  }
+}
+
+function ime_create (): void {
+  if (ime_input || typeof document === 'undefined') {
+    return;
+  }
+  ime_input = document.createElement('textarea');
+  ime_input.style.cssText =
+    'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;';
+  document.body.appendChild(ime_input);
+
+  ime_input.addEventListener('compositionstart', ime_on_compositionstart);
+  ime_input.addEventListener('compositionend', ime_on_compositionend);
+  ime_input.addEventListener('input', ime_on_input);
+
+  ime_input.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (!is_composing && !e.isComposing) {
+      canvas_on_keydown(e);
+    }
+  });
+  ime_input.addEventListener('keyup', (e: KeyboardEvent) => {
+    if (!is_composing && !e.isComposing) {
+      canvas_on_keyup(e);
+    }
+  });
+}
+
+function ime_destroy (): void {
+  if (ime_input) {
+    ime_input.remove();
+    ime_input = null;
+  }
+  is_composing = false;
+}
+
+function ime_focus (): void {
+  if (ime_input && document.activeElement !== ime_input) {
+    ime_input.focus();
+  }
+}
+
+function ime_blur (): void {
+  if (ime_input && document.activeElement === ime_input) {
+    if (canvas) {
+      canvas.focus();
+    }
   }
 }
 
@@ -290,6 +376,8 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
     canvas.addEventListener('wheel', canvas_on_wheel);
   }
 
+  ime_create();
+
   // Setup back-end capabilities flags
   io.BackendFlags |= ImGui.BackendFlags.HasMouseCursors;   // We can honor GetMouseCursor() values (optional)
 
@@ -335,6 +423,8 @@ export function Shutdown (): void {
     canvas.removeEventListener('wheel', canvas_on_wheel);
   }
 
+  ime_destroy();
+
   gl = null;
   ctx = null;
   canvas = null;
@@ -360,6 +450,13 @@ export function NewFrame (time: number): void {
     if (typeof(window) !== 'undefined') {
       window.localStorage.setItem('imgui.ini', ImGui.SaveIniSettingsToMemory());
     }
+  }
+
+  // 当 ImGui 需要文字输入时，焦点切到隐藏 textarea 以激活 IME
+  if (io.WantTextInput) {
+    ime_focus();
+  } else {
+    ime_blur();
   }
 
   const w: number = canvas && canvas.scrollWidth || 640;
