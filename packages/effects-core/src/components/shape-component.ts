@@ -320,13 +320,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.maskManager.drawStencilMask(renderer, this);
 
     const atlasInfo = this.featherRenderer.atlasInfo;
-
+    
     if (atlasInfo) {
       this.featherRenderer.updateUpsampleQuad(this.featherRenderer.featherRadius);
       this.featherRenderer.drawUpsamplePass(
         renderer, this.transform.getWorldMatrix(),
         atlasInfo.atlasTexture, atlasInfo.textureSize, atlasInfo.atlasSize,
-        atlasInfo.textureOffset, this.featherRenderer.featherColor,
+        atlasInfo.textureOffset, this.featherRenderer.featherColor, atlasInfo.featherRadiusScreen,
       );
 
       return;

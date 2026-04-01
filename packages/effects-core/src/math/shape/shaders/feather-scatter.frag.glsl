@@ -21,7 +21,8 @@ float integBoundaryLine_Polar_3 (float r2, float b, float y1, float y2) {
   float c4 = b * (-1.0 / 56.0 / r6);
   float integ1 = (((c4 * y1_2 + c3) * y1_2 + c2) * y1_2 + c1) * y1;
   float integ2 = (((c4 * y2_2 + c3) * y2_2 + c2) * y2_2 + c1) * y2;
-  float integArc = 0.125 * r2 * (atan(y2 / b) - atan(y1 / b));
+  float integArc = 0.125 * r2 * (atan(y2 / b) - atan(y1 / b));   // 虽然这里可能除以0，但实际上不影响。因为atan会把值限制在pi/2
+  // float integArc = 0.125 * r2 * atan(b * (y2 - y1), b2 + y1 * y2);  // 这个看起来没有除以0，也许会更好？
 
   return (integ2 - integ1 - integArc) / (r2 * PI_4);
 }

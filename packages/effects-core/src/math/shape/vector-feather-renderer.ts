@@ -25,6 +25,7 @@ export type FeatherRenderParams = {
   fboW: number,
   fboH: number,
   orthoProjection: Matrix4,
+  featherRadiusScreen: number // 这个用于在片段着色器里做抗亮斑
 };
 
 /**
@@ -36,6 +37,7 @@ export type FeatherAtlasInfo = {
   atlasSize: Vector2,
   textureOffset: Vector2,
   textureSize: Vector2,
+  featherRadiusScreen: number,
 };
 
 /**
@@ -108,6 +110,7 @@ export class VectorFeatherRenderer {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+          // data: new Float32Array([-1, 0, 1, 0, -1, 1, 1, 1]),
         },
         aStart: {
           type: glContext.FLOAT,
@@ -220,7 +223,7 @@ export class VectorFeatherRenderer {
     );
 
     const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
-    const downsample = Math.max(featherRadiusScreen / 10.0, 1.0);
+    const downsample = Math.floor(Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 32));  // rive似乎限制它们的降采样最大为32，我们也限制一下
 
     const maxFboSize = 2048;
     const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
@@ -231,7 +234,7 @@ export class VectorFeatherRenderer {
       expandedMinY, expandedMinY + expandedH,
     );
 
-    return { fboW, fboH, orthoProjection };
+    return { fboW, fboH, orthoProjection, featherRadiusScreen };
   }
 
   /**
@@ -271,7 +274,9 @@ export class VectorFeatherRenderer {
     atlasSize: Vector2,
     textureOffset: Vector2,
     color: Color,
+    featherRadiusScreen: number,
   ): void {
+    this.upsampleMaterial.setFloat("uScreenRadius", featherRadiusScreen);
     this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
     this.upsampleMaterial.setVector2('uTextureSize', textureSize);
     this.upsampleMaterial.setVector2('uAtlasSize', atlasSize);
@@ -338,7 +343,7 @@ export class VectorFeatherRenderer {
     this.drawUpsamplePass(
       renderer, worldMatrix, atlasTexture,
       new Vector2(fboW, fboH), new Vector2(fboW, fboH), new Vector2(0, 0),
-      color,
+      color, params.featherRadiusScreen,
     );
 
     // 释放临时渲染目标

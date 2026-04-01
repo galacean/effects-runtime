@@ -1,3 +1,5 @@
+import { unionMax } from "./split-union";
+
 export type FeatherBBox = {
   minX: number,
   minY: number,
@@ -248,15 +250,21 @@ export function buildStrokeFeatherMeshData (
   const contours: number[][] = [];
 
   if (closed) {
-    const outerContour = [...outer, outer[0], outer[1]];
-    const innerContour: number[] = [];
+    const outerContour = ensureCCW(unionMax([...outer, outer[0], outer[1]]));
+    const innerContour = ensureCCW(unionMax([...inner, inner[0], inner[1]]));
 
-    for (let i = n - 1; i >= 0; i--) {
-      innerContour.push(inner[i * 2], inner[i * 2 + 1]);
+    const innerReversed: number[] = [];
+    for (let i = innerContour.length / 2 - 1; i >= 0; i--) {
+      innerReversed.push(innerContour[i * 2], innerContour[i * 2 + 1]);
+    } //debugger;
+    if(innerReversed[0] != innerReversed[innerReversed.length - 2] || innerReversed[1] != innerReversed[innerReversed.length - 1] ){
+      innerReversed.push(innerReversed[0], innerReversed[1]);
+    } 
+    if (outerContour[0] != outerContour[outerContour.length - 2] || outerContour[1] != outerContour[outerContour.length - 1]){
+      outerContour.push(outerContour[0], outerContour[1]);
     }
-    innerContour.push(inner[(n - 1) * 2], inner[(n - 1) * 2 + 1]);
-
-    contours.push(outerContour, innerContour);
+    
+    contours.push(outerContour, innerReversed);
   } else {
     // 拼合为单一闭合轮廓多边形 (首点 = 尾点)
     const outline: number[] = [];

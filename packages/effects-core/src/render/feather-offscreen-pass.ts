@@ -103,6 +103,7 @@ export class FeatherOffscreenPass extends RenderPass {
           atlasSize: new Vector2(atlasW, atlasH),
           textureOffset: new Vector2(rect.x, rect.y),
           textureSize: new Vector2(rect.w, rect.h),
+          featherRadiusScreen: params.featherRadiusScreen,
         };
       }
     };
