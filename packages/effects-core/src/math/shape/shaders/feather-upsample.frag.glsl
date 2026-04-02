@@ -11,20 +11,10 @@ uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
 
 varying vec2 vTexCoord;
 
-// 估计图像中合理的最大梯度。
-// 假设输入是随机{0，1}噪声，应用卷积核。最大梯度发生在一侧是0一侧是1的情况。
-// 让千问AI计算得到最大梯度的估计：256/(35 * PI * R) = 2.33/R
-// 考虑到降采样R/10，相邻像素的最大可能梯度为：0.233 (R>10)
-// 不过，对于巨大半径，此时不存在一侧1一侧0的可能，看作在随机噪声纹理的卷积上求极值
-// 此时最大梯度是一个期望，千问AI算出来是0.874/(R^2) * sqrt(2lnWH)，WH为图像尺寸
-// 取W=H=1000,最大梯度期望为4.594 / (R^2)
-// 在N倍降采样下，期望是0.874 / (R/N)^2 * sqrt(2ln(WH/N^2))  
-
-// 看起来这个修复函数也不能完全解决问题。（就是那个亮斑问题）
 vec4 fixGatherSave (vec4 gathered) {
   float downSample = floor(min(max(1.0, uScreenRadius / 10.0), 32.0)); 
   float downRadius = uScreenRadius / downSample;
-  float varyingThres = min(2.33 / downRadius, 0.18);
+  float varyingThres = min(1.6 / downRadius, 0.18);
 
   float sum = gathered.x + gathered.y + gathered.z + gathered.w;
   float maxVal = max(gathered.x, gathered.y);
@@ -38,10 +28,10 @@ vec4 fixGatherSave (vec4 gathered) {
   vec4 val = gathered; 
 
   // 这里先处理以下大于1或小于0的明显异常 不使用if以避免发散
-  val.x += (mix(0.0, 1.0, float(val.x < 0.0)) - mix(0.0, 1.0, float(val.x > 1.0))) * float(abs(val.x - middle) >= 0.2);
-  val.y += (mix(0.0, 1.0, float(val.y < 0.0)) - mix(0.0, 1.0, float(val.y > 1.0))) * float(abs(val.y - middle) >= 0.2);
-  val.z += (mix(0.0, 1.0, float(val.z < 0.0)) - mix(0.0, 1.0, float(val.z > 1.0))) * float(abs(val.z - middle) >= 0.2);
-  val.w += (mix(0.0, 1.0, float(val.w < 0.0)) - mix(0.0, 1.0, float(val.w > 1.0))) * float(abs(val.w - middle) >= 0.2);
+  val.x += (mix(0.0, 1.0, float(val.x < 0.0)) - mix(0.0, 1.0, float(val.x > 1.0))) * float(abs(val.x - middle) >= 0.25);
+  val.y += (mix(0.0, 1.0, float(val.y < 0.0)) - mix(0.0, 1.0, float(val.y > 1.0))) * float(abs(val.y - middle) >= 0.25);
+  val.z += (mix(0.0, 1.0, float(val.z < 0.0)) - mix(0.0, 1.0, float(val.z > 1.0))) * float(abs(val.z - middle) >= 0.25);
+  val.w += (mix(0.0, 1.0, float(val.w < 0.0)) - mix(0.0, 1.0, float(val.w > 1.0))) * float(abs(val.w - middle) >= 0.25);
 
   // 这个更新看起来很有道理，但是会导致小半径下自相交部分的错误。该死的自相交...为什么？？
   // sum = val.x + val.y + val.z + val.w;

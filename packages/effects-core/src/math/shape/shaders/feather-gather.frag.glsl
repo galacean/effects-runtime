@@ -13,7 +13,7 @@ const float PI_4 = 0.7853981633;
 const float PI_3 = 1.0471975512;
 const float PI = 3.14159265359;
 const float _2PI = 6.28318530718;
-const int MAX_LOAD_EDGES_PER_MESH = 1024;
+const int MAX_LOAD_EDGES_PER_MESH = 520;  // 比scatter-edge-simplifier中限制稍大一些的值。
 
 vec4 getPackedCoord(int index)
 {
@@ -38,7 +38,7 @@ float gatherFeather(vec2 coord)
         vec4 packedEdge = getPackedCoord(index);
         p1 = packedEdge.xy;
         p2 = packedEdge.zw;
-        if (distance(p1, p2) < 0.001) continue;  // 这一句应该放在cpu执行。
+        // if (distance(p1, p2) < 0.001) continue;  // 这一句由CPU的顶点简化过程实现。
         front = p2 - p1;
         frontDir = normalize(front);  // edge direction
         poleAxis = vec2(frontDir.y, -frontDir.x);

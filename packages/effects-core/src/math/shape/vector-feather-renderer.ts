@@ -11,6 +11,7 @@ import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
 import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
+import { simplifyScatterEdges, removeShortEdges } from './scatter-edge-simplifier';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
 import indicatorFrag from './shaders/feather-indicator.frag.glsl';
 import scatterVert from './shaders/feather-scatter.vert.glsl';
@@ -183,12 +184,13 @@ export class VectorFeatherRenderer {
     this.scatterInstanceCount = scatterEdgeCount;
 
     // 将边数据写入 RGBAHalf 纹理：每条边占一个纹素 (rgba = x1, y1, x2, y2)
-    if (scatterEdgeCount > 0) {
-      const edgeData = new Float32Array(scatterEdgeVertices);
-      const halfData = new Float16ArrayWrapper(edgeData).data;
+    // 注意简化边以避免超限
+    if (scatterEdgeCount > 0) { 
+      const edgeData = simplifyScatterEdges(scatterEdgeVertices);
+      const halfData = removeShortEdges(new Float16ArrayWrapper(edgeData).data);  // fp量化丢精度可能导致0长度边。这里剔除。
       const newTexture = Texture.createWithData(
         this.engine,
-        { data: halfData, width: scatterEdgeCount, height: 1 },
+        { data: halfData, width: halfData.length / 4, height: 1 },
         {
           type: glContext.HALF_FLOAT,
           format: glContext.RGBA,
