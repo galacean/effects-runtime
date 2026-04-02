@@ -13,8 +13,7 @@ export class StatsComponent extends Component {
   monitor: Monitor;
 
   init (options: Required<StatsOptions>): void {
-    const renderer = this.engine.renderer;
-    const gl = (renderer.engine as GLEngine).gl;
+    const gl = (this.engine as GLEngine).gl;
 
     this.monitor = new Monitor(gl, options);
   }
