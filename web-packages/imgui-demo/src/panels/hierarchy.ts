@@ -627,7 +627,7 @@ export class Hierarchy extends EditorWindow {
     }
   }
 
-  private drawItemTypeIcon (drawList: any, itemType: spec.ItemType, rowRectMin: ImGui.Vec2, rowHeight: number): void {
+  private drawItemTypeIcon (drawList: ImGui.ImDrawList, itemType: spec.ItemType, rowRectMin: ImGui.Vec2, rowHeight: number): void {
     // 图标中心：树节点箭头之后，文本之前
     const fontSize = ImGui.GetFontSize();
     const cx = rowRectMin.x + fontSize + 8;

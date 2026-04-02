@@ -1,4 +1,4 @@
-import type { Composition, TrackAsset } from '@galacean/effects';
+import type { Composition, TimelineClip, TrackAsset } from '@galacean/effects';
 import type { ImGui } from '../../imgui';
 import type { SelectedKeyframeInfo } from './types';
 
@@ -30,7 +30,7 @@ export class SequencerState {
 
   // 选中状态
   selectedTrack: TrackAsset | null = null;
-  selectedClip: any = null;
+  selectedClip: TimelineClip | null = null;
   selectedClipTrack: TrackAsset | null = null;
   clipDragMode: 'none' | 'move' | 'resize-left' | 'resize-right' = 'none';
   selectedKeyframeInfo: SelectedKeyframeInfo | null = null;

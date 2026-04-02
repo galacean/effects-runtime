@@ -114,7 +114,19 @@ export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: n
     }
     const type = expr[0] as number;
 
-    if (type === 21 || type === 5) { // BEZIER_CURVE or LINEAR
+    if (type === 21) { // BEZIER_CURVE: time is nested in kf[1][0]
+      const keyframes = expr[1] as unknown[][];
+
+      if (Array.isArray(keyframes)) {
+        for (const kf of keyframes) {
+          if (Array.isArray(kf) && kf.length >= 2 && Array.isArray(kf[1])) {
+            const absTime = clipStart + (kf[1] as number[])[0] * clipDuration;
+
+            timeSet.add(Math.round(absTime * 1000) / 1000);
+          }
+        }
+      }
+    } else if (type === 5) { // LINEAR: time is kf[0]
       const keyframes = expr[1] as number[][];
 
       if (Array.isArray(keyframes)) {
@@ -122,7 +134,7 @@ export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: n
           if (Array.isArray(kf) && kf.length >= 2) {
             const absTime = clipStart + kf[0] * clipDuration;
 
-            timeSet.add(Math.round(absTime * 1000) / 1000); // 精度到 ms
+            timeSet.add(Math.round(absTime * 1000) / 1000);
           }
         }
       }

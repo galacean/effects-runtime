@@ -1,3 +1,4 @@
+import { ActivationTrack } from '@galacean/effects';
 import type { TrackAsset } from '@galacean/effects';
 import type { SequencerState } from './sequencer-state';
 
@@ -12,7 +13,7 @@ export function selectTrack (state: SequencerState, track: TrackAsset): void {
 
   if (!clips || clips.length === 0) {
     for (const child of track.getChildTracks()) {
-      if (child.constructor.name === 'ActivationTrack' || child.constructor.name.includes('Activation')) {
+      if (child instanceof ActivationTrack) {
         const childClips = typeof child.getClips === 'function' ? child.getClips() : [];
 
         if (childClips && childClips.length > 0) {

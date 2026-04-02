@@ -59,6 +59,15 @@ export class Sequencer extends EditorWindow {
 
     if (state.lastCompositionId !== compositionId) {
       state.trackColorMap.clear();
+      state.selectedTrack = null;
+      state.selectedClip = null;
+      state.selectedClipTrack = null;
+      state.selectedKeyframeInfo = null;
+      state.selectedKeyframes.clear();
+      state.selectedPropertyGroup = null;
+      state.selectedChannel = null;
+      state.expandedTracks.clear();
+      state.expandedPropertyGroups.clear();
       state.lastCompositionId = compositionId;
     }
 

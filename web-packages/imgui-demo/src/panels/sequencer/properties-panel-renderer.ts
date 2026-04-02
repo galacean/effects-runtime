@@ -104,6 +104,10 @@ export class PropertiesPanelRenderer {
   private drawClipDetails (drawList: any, headerBg: ImGui.Vec4, labelColor: ImGui.Vec4): void {
     const state = this.state;
     const clip = state.selectedClip;
+
+    if (!clip) {
+      return;
+    }
     const clipColor = state.selectedClipTrack
       ? getTrackColor(state.selectedClipTrack, state)
       : new ImGui.Vec4(0.4, 0.4, 0.4, 1.0);

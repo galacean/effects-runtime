@@ -445,10 +445,11 @@ export class TrackLabelRenderer {
     let drawColor = color;
 
     if (isHovered) {
-      const r = ((color >> 24) & 0xFF) / 255;
-      const g = ((color >> 16) & 0xFF) / 255;
-      const b = ((color >> 8) & 0xFF) / 255;
-      const a = (color & 0xFF) / 255;
+      // ImGui GetColorU32 returns ABGR byte order
+      const r = (color & 0xFF) / 255;
+      const g = ((color >> 8) & 0xFF) / 255;
+      const b = ((color >> 16) & 0xFF) / 255;
+      const a = ((color >> 24) & 0xFF) / 255;
 
       const brightR = Math.min(1.0, r + 0.3);
       const brightG = Math.min(1.0, g + 0.3);
