@@ -256,7 +256,7 @@ export function buildStrokeFeatherMeshData (
     const innerReversed: number[] = [];
     for (let i = innerContour.length / 2 - 1; i >= 0; i--) {
       innerReversed.push(innerContour[i * 2], innerContour[i * 2 + 1]);
-    } //debugger;
+    } 
     if(innerReversed[0] != innerReversed[innerReversed.length - 2] || innerReversed[1] != innerReversed[innerReversed.length - 1] ){
       innerReversed.push(innerReversed[0], innerReversed[1]);
     } 

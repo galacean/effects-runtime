@@ -15,3 +15,5 @@ temp
 api
 www
 **/__definations__/*.ts
+AGENTS.md
+MEMORY.md

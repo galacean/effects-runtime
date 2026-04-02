@@ -92,12 +92,16 @@ export class FeatherOffscreenPass extends RenderPass {
       renderer.setFramebuffer(currentAtlas);
       renderer.setViewport(0, 0, atlasW, atlasH);
       renderer.clear({ colorAction: TextureLoadAction.clear, clearColor: [0, 0, 0, 0] });
-
+          // ADJUST_HERE
       for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-        component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
-        featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
-
+        if (params.featherRadiusScreen < 200.0){  // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
+          component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
+          featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
+        }else{
+          featherRenderer.updateUpsampleQuad(featherRenderer.featherRadius);
+          featherRenderer.drawGatherPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
+        }
         featherRenderer.atlasInfo = {
           atlasTexture: currentAtlas.getColorTextures()[0],
           atlasSize: new Vector2(atlasW, atlasH),

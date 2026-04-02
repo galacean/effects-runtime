@@ -24,8 +24,7 @@ varying vec2 vTexCoord;
 vec4 fixGatherSave (vec4 gathered) {
   float downSample = floor(min(max(1.0, uScreenRadius / 10.0), 32.0)); 
   float downRadius = uScreenRadius / downSample;
-  float varyingMax = 1.33 / downRadius;
-  float varyingThres = min(varyingMax, 0.18);
+  float varyingThres = min(2.33 / downRadius, 0.18);
 
   float sum = gathered.x + gathered.y + gathered.z + gathered.w;
   float maxVal = max(gathered.x, gathered.y);
@@ -39,10 +38,10 @@ vec4 fixGatherSave (vec4 gathered) {
   vec4 val = gathered; 
 
   // 这里先处理以下大于1或小于0的明显异常 不使用if以避免发散
-  val.x += (mix(0.0, 1.0, float(val.x < 0.0)) - mix(0.0, 1.0, float(val.x > 1.0))) * float(abs(val.x - middle) >= 0.1);
-  val.y += (mix(0.0, 1.0, float(val.y < 0.0)) - mix(0.0, 1.0, float(val.y > 1.0))) * float(abs(val.y - middle) >= 0.1);
-  val.z += (mix(0.0, 1.0, float(val.z < 0.0)) - mix(0.0, 1.0, float(val.z > 1.0))) * float(abs(val.z - middle) >= 0.1);
-  val.w += (mix(0.0, 1.0, float(val.w < 0.0)) - mix(0.0, 1.0, float(val.w > 1.0))) * float(abs(val.w - middle) >= 0.1);
+  val.x += (mix(0.0, 1.0, float(val.x < 0.0)) - mix(0.0, 1.0, float(val.x > 1.0))) * float(abs(val.x - middle) >= 0.2);
+  val.y += (mix(0.0, 1.0, float(val.y < 0.0)) - mix(0.0, 1.0, float(val.y > 1.0))) * float(abs(val.y - middle) >= 0.2);
+  val.z += (mix(0.0, 1.0, float(val.z < 0.0)) - mix(0.0, 1.0, float(val.z > 1.0))) * float(abs(val.z - middle) >= 0.2);
+  val.w += (mix(0.0, 1.0, float(val.w < 0.0)) - mix(0.0, 1.0, float(val.w > 1.0))) * float(abs(val.w - middle) >= 0.2);
 
   // 这个更新看起来很有道理，但是会导致小半径下自相交部分的错误。该死的自相交...为什么？？
   // sum = val.x + val.y + val.z + val.w;

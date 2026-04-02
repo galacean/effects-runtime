@@ -8,13 +8,15 @@ import { Material } from '../../material';
 import type { Renderer } from '../../render';
 import { Geometry, GLSLVersion } from '../../render';
 import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
-import type { Texture } from '../../texture';
-import { TextureLoadAction } from '../../texture';
+import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
+import { Float16ArrayWrapper } from '../float16array-wrapper';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
 import indicatorFrag from './shaders/feather-indicator.frag.glsl';
 import scatterVert from './shaders/feather-scatter.vert.glsl';
 import scatterFrag from './shaders/feather-scatter.frag.glsl';
+import gatherVert from './shaders/feather-gather.vert.glsl';
+import gatherFrag from './shaders/feather-gather.frag.glsl';
 import upsampleVert from './shaders/feather-upsample.vert.glsl';
 import upsampleFrag from './shaders/feather-upsample.frag.glsl';
 
@@ -55,10 +57,12 @@ export class VectorFeatherRenderer {
 
   private indicatorMaterial: Material;
   private scatterMaterial: Material;
+  private gatherMaterial: Material;
   private upsampleMaterial: Material;
 
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
+  private scatterEdgeTexture?: Texture;
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -93,6 +97,14 @@ export class VectorFeatherRenderer {
     this.scatterMaterial.depthTest = false;
     this.scatterMaterial.culling = false;
 
+    // --- Gather Pass 材质
+    this.gatherMaterial = this.createFeatherMaterial(gatherVert, gatherFrag);
+    this.gatherMaterial.blending = true;
+    this.gatherMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
+    this.gatherMaterial.depthTest = false;
+    this.gatherMaterial.culling = false;
+    this.gatherMaterial.shader.shaderData.properties = 'uEdgeTexture("uEdgeTexture",2D) = "white" {}';
+
     // --- Upsample Pass 材质 ---
     this.upsampleMaterial = this.createFeatherMaterial(upsampleVert, upsampleFrag);
     this.upsampleMaterial.blending = true;
@@ -110,7 +122,6 @@ export class VectorFeatherRenderer {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-          // data: new Float32Array([-1, 0, 1, 0, -1, 1, 1, 1]),
         },
         aStart: {
           type: glContext.FLOAT,
@@ -170,6 +181,36 @@ export class VectorFeatherRenderer {
     // 更新 scatter geometry (实例化边数据)
     this.scatterGeometry.setAttributeData('aEdgeData', new Float32Array(scatterEdgeVertices));
     this.scatterInstanceCount = scatterEdgeCount;
+
+    // 将边数据写入 RGBAHalf 纹理：每条边占一个纹素 (rgba = x1, y1, x2, y2)
+    if (scatterEdgeCount > 0) {
+      const edgeData = new Float32Array(scatterEdgeVertices);
+      const halfData = new Float16ArrayWrapper(edgeData).data;
+      const newTexture = Texture.createWithData(
+        this.engine,
+        { data: halfData, width: scatterEdgeCount, height: 1 },
+        {
+          type: glContext.HALF_FLOAT,
+          format: glContext.RGBA,
+          internalFormat: glContext.RGBA,
+          minFilter: glContext.NEAREST,
+          magFilter: glContext.NEAREST,
+          wrapS: glContext.CLAMP_TO_EDGE,
+          wrapT: glContext.CLAMP_TO_EDGE,
+        },
+      );
+      newTexture.initialize();
+
+      if (this.scatterEdgeTexture) {
+        this.scatterEdgeTexture.dispose();
+      }
+      this.scatterEdgeTexture = newTexture;
+    } else {
+      if (this.scatterEdgeTexture) {
+        this.scatterEdgeTexture.dispose();
+        this.scatterEdgeTexture = undefined;
+      }
+    }
   }
 
   /**
@@ -263,6 +304,25 @@ export class VectorFeatherRenderer {
     );
   }
 
+  /*
+  * 绘制 Gather Pass。注意Gather Pass不需要对应的Indicator
+  * 在upsample使用几何空间quad时，这个quad可以直接用于gather。
+  */
+  drawGatherPass(renderer: Renderer, orthoProjection: Matrix4, featherRadius: number): void{
+    this.gatherMaterial.setMatrix('uProjection', orthoProjection);
+    this.gatherMaterial.setFloat('uRadius', featherRadius);
+    this.gatherMaterial.setInt('uMeshStart', 0); 
+    var numEdges : number = this.scatterEdgeTexture?.getWidth() || 0;
+    this.gatherMaterial.setInt('uMeshEnd', numEdges); 
+    this.gatherMaterial.setInt('uEdgeTextureWidth', numEdges);
+    if (this.scatterEdgeTexture != undefined){
+      this.gatherMaterial.setTexture('uEdgeTexture', this.scatterEdgeTexture);
+    }
+    renderer.drawGeometry(  
+      this.upsampleGeometry, Matrix4.IDENTITY, this.gatherMaterial
+    );
+  }
+
   /**
    * 绘制 Upsample Pass（用于批处理模式，指定 atlas 纹理参数）
    */
@@ -327,9 +387,13 @@ export class VectorFeatherRenderer {
       clearColor: [0, 0, 0, 0],
     });
 
-    this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
-    this.drawScatterPass(renderer, orthoProjection, featherRadius);
-
+    if (params.featherRadiusScreen < 200.0){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
+      this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
+      this.drawScatterPass(renderer, orthoProjection, featherRadius);
+    }else{
+      this.updateUpsampleQuad(featherRadius);  // ToDo: 和后面面那个updateUpsampleQuad合并
+      this.drawGatherPass(renderer, orthoProjection, featherRadius);
+    }
     // === Pass 3: Upsample → 屏幕 ===
     renderer.setFramebuffer(prevFramebuffer);
     renderer.setViewport(0, 0, renderer.getWidth(), renderer.getHeight());
@@ -407,6 +471,8 @@ export class VectorFeatherRenderer {
     this.indicatorMaterial?.dispose();
     this.scatterMaterial?.dispose();
     this.upsampleMaterial?.dispose();
+    this.scatterEdgeTexture?.dispose();
+    this.scatterEdgeTexture = undefined;
   }
 
   private createFeatherMaterial (vertexShader: string, fragmentShader: string): Material {
