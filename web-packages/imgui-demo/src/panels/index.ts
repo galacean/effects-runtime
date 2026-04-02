@@ -6,3 +6,4 @@ export * from './preview';
 export * from './inspector';
 export * from './node-graph';
 export * from './scene';
+export * from './content-browser';
