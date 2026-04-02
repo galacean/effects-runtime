@@ -1,5 +1,5 @@
 import type { Composition } from '@galacean/effects';
-import { Component, CompositionComponent, VFXItem } from '@galacean/effects';
+import { Component, CompositionComponent, TransformTrack, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
@@ -11,7 +11,9 @@ import { TrackLabelRenderer } from './track-label-renderer';
 import { ClipRenderer } from './clip-renderer';
 import { KeyframeRenderer } from './keyframe-renderer';
 import { PropertiesPanelRenderer } from './properties-panel-renderer';
+import { CurveRenderer } from './curve-renderer';
 import { timeToPixel, pixelToTime, drawTimeMarkers, beginScrub, endScrub } from './timeline-utils';
+import { collectCurveChannelsForSelection, computeSharedValueRange } from './data-extraction';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {
@@ -19,6 +21,7 @@ export class Sequencer extends EditorWindow {
   private trackLabelRenderer: TrackLabelRenderer;
   private clipRenderer: ClipRenderer;
   private keyframeRenderer: KeyframeRenderer;
+  private curveRenderer: CurveRenderer;
   private propertiesPanelRenderer: PropertiesPanelRenderer;
 
   @menuItem('Window/Sequencer')
@@ -34,9 +37,10 @@ export class Sequencer extends EditorWindow {
     this.trackLabelRenderer = new TrackLabelRenderer(this.state);
     this.clipRenderer = new ClipRenderer(this.state);
     this.keyframeRenderer = new KeyframeRenderer(this.state);
+    this.curveRenderer = new CurveRenderer(this.state);
     this.propertiesPanelRenderer = new PropertiesPanelRenderer(this.state);
 
-    // 注入 KeyframeRenderer 到 ClipRenderer 避免循环依赖
+    // 注入渲染器到 ClipRenderer 避免循环依赖
     this.clipRenderer.setKeyframeRenderer(this.keyframeRenderer);
   }
 
@@ -305,33 +309,42 @@ export class Sequencer extends EditorWindow {
         }
 
         state.trackRowCounter = 0;
-        //@ts-expect-error
-        const sceneBindings = compositionComponent.sceneBindings;
 
-        //@ts-expect-error
-        for (const track of compositionComponent.timelineAsset.tracks) {
-          const trackAsset = track;
+        if (state.curveMode && state.selectedTrack instanceof TransformTrack) {
+          // 曲线画布模式：右侧整体渲染曲线画布
+          const channels = collectCurveChannelsForSelection(state, state.selectedTrack);
+          const canvasHeight = Math.max(clipsAreaHeight, 200);
 
-          let boundObject: object | null = null;
-          let trackName = '';
+          this.curveRenderer.drawCurveCanvas(channels, canvasHeight);
+        } else {
+          //@ts-expect-error
+          const sceneBindings = compositionComponent.sceneBindings;
 
-          for (const sceneBinding of sceneBindings) {
-            if (sceneBinding.key.getInstanceId() === trackAsset.getInstanceId()) {
-              boundObject = sceneBinding.value;
+          //@ts-expect-error
+          for (const track of compositionComponent.timelineAsset.tracks) {
+            const trackAsset = track;
 
-              break;
+            let boundObject: object | null = null;
+            let trackName = '';
+
+            for (const sceneBinding of sceneBindings) {
+              if (sceneBinding.key.getInstanceId() === trackAsset.getInstanceId()) {
+                boundObject = sceneBinding.value;
+
+                break;
+              }
             }
-          }
 
-          if (boundObject instanceof VFXItem) {
-            trackName = boundObject.name || 'VFX Item';
-          } else if (boundObject instanceof Component) {
-            trackName = boundObject.constructor.name;
-          } else {
-            trackName = trackAsset.constructor.name;
-          }
+            if (boundObject instanceof VFXItem) {
+              trackName = boundObject.name || 'VFX Item';
+            } else if (boundObject instanceof Component) {
+              trackName = boundObject.constructor.name;
+            } else {
+              trackName = trackAsset.constructor.name;
+            }
 
-          this.clipRenderer.drawTrackClips(trackAsset, trackName, sceneBindings, 0);
+            this.clipRenderer.drawTrackClips(trackAsset, trackName, sceneBindings, 0);
+          }
         }
 
         // 绘制时间游标线，并覆盖掉间隙
@@ -542,6 +555,35 @@ export class Sequencer extends EditorWindow {
     const stopCy = stopPos.y + btnSize / 2;
 
     drawList.AddRectFilled(new ImGui.Vec2(stopCx - 4, stopCy - 4), new ImGui.Vec2(stopCx + 4, stopCy + 4), iconColor);
+
+    ImGui.SameLine();
+
+    // === 曲线模式切换按钮 ===
+    const curvePos = ImGui.GetCursorScreenPos();
+    const curveActive = state.curveMode;
+
+    if (ImGui.InvisibleButton('##curve_mode', new ImGui.Vec2(btnSize, btnSize))) {
+      state.curveMode = !state.curveMode;
+    }
+    if (ImGui.IsItemHovered()) {
+      drawList.AddRectFilled(curvePos, new ImGui.Vec2(curvePos.x + btnSize, curvePos.y + btnSize), ImGui.GetColorU32(COLORS.hover));
+      ImGui.SetTooltip(curveActive ? 'Switch to Keyframe View' : 'Switch to Curve View');
+    }
+    // 曲线图标 — S 形波浪线
+    const curveCx = curvePos.x + btnSize / 2;
+    const curveCy = curvePos.y + btnSize / 2;
+    const curveIconColor = curveActive
+      ? ImGui.GetColorU32(COLORS.selection)
+      : iconColor;
+
+    drawList.AddBezierCubic(
+      new ImGui.Vec2(curveCx - 6, curveCy + 4),
+      new ImGui.Vec2(curveCx - 2, curveCy + 4),
+      new ImGui.Vec2(curveCx + 2, curveCy - 4),
+      new ImGui.Vec2(curveCx + 6, curveCy - 4),
+      curveIconColor,
+      1.5
+    );
 
     ImGui.SameLine();
 

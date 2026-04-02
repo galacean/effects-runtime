@@ -3,9 +3,9 @@ import { ActivationTrack, Component, ParticleTrack, SpriteColorTrack, SubComposi
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
-import { selectTrack, isTrackSelected, isTrackExpanded, toggleTrackExpansion } from './selection';
+import { selectTrack, isTrackSelected, isTrackExpanded, toggleTrackExpansion, getCurveChannelId } from './selection';
 import { getTrackColor } from './timeline-utils';
-import { getTransformPropertyGroups } from './data-extraction';
+import { getTransformPropertyGroups, getCurvePropertyGroups } from './data-extraction';
 
 export class TrackLabelRenderer {
   constructor (private readonly state: SequencerState) {}
@@ -201,18 +201,41 @@ export class TrackLabelRenderer {
     // TransformTrack 展开时，显示属性分组
     if (isTrackExpanded(state, trackAsset) && trackAsset instanceof TransformTrack) {
       const trackId = trackAsset.getInstanceId().toString();
-      const propertyGroups = getTransformPropertyGroups(trackAsset);
 
-      for (const group of propertyGroups) {
-        const groupId = `${trackId}_${group.name}`;
-        const groupHasChildren = group.channels.length > 0;
-        const isExpanded = groupHasChildren && state.expandedPropertyGroups.has(groupId);
+      if (state.curveMode) {
+        const curveGroups = getCurvePropertyGroups(trackAsset);
 
-        this.drawPropertyGroupLabel(groupId, group.name, depth + 1, groupHasChildren);
+        for (const group of curveGroups) {
+          const groupId = `${trackId}_${group.name}`;
+          const groupHasChildren = group.channels.length > 0;
+          const isExpanded = groupHasChildren && state.expandedPropertyGroups.has(groupId);
 
-        if (isExpanded) {
-          for (const channel of group.channels) {
-            this.drawPropertyLabel(channel.label, depth + 2, channel.color);
+          this.drawPropertyGroupLabel(groupId, group.name, depth + 1, groupHasChildren);
+
+          if (isExpanded) {
+            for (const channel of group.channels) {
+              const channelId = getCurveChannelId(trackId, group.name, channel.label);
+
+              this.drawPropertyLabel(channel.label, depth + 2, channel.color, undefined, channelId, groupId);
+            }
+          }
+        }
+      } else {
+        const propertyGroups = getTransformPropertyGroups(trackAsset);
+
+        for (const group of propertyGroups) {
+          const groupId = `${trackId}_${group.name}`;
+          const groupHasChildren = group.channels.length > 0;
+          const isExpanded = groupHasChildren && state.expandedPropertyGroups.has(groupId);
+
+          this.drawPropertyGroupLabel(groupId, group.name, depth + 1, groupHasChildren);
+
+          if (isExpanded) {
+            for (const channel of group.channels) {
+              const channelId = getCurveChannelId(trackId, group.name, channel.label);
+
+              this.drawPropertyLabel(channel.label, depth + 2, channel.color, undefined, channelId, groupId);
+            }
           }
         }
       }
@@ -230,6 +253,8 @@ export class TrackLabelRenderer {
     const rowIndex = state.trackRowCounter++;
     const windowWidth = ImGui.GetContentRegionAvail().x;
 
+    const isGroupSelected = state.selectedPropertyGroup === groupId && state.selectedChannel === null;
+
     const groupBgColor = (rowIndex % 2 === 0)
       ? new ImGui.Vec4(0.10, 0.10, 0.10, 1.0)
       : new ImGui.Vec4(0.11, 0.11, 0.11, 1.0);
@@ -246,6 +271,16 @@ export class TrackLabelRenderer {
       LAYOUT.sectionCornerRadius
     );
 
+    // 选中高亮
+    if (isGroupSelected) {
+      drawList.AddRectFilled(
+        bgStart,
+        bgEnd,
+        ImGui.GetColorU32(new ImGui.Vec4(COLORS.selection.x, COLORS.selection.y, COLORS.selection.z, 0.2)),
+        LAYOUT.sectionCornerRadius
+      );
+    }
+
     const indentOffset = depth * LAYOUT.trackIndentWidth;
     let textStartX = lineStartPos.x + LAYOUT.trackLabelPadding + indentOffset;
 
@@ -261,26 +296,49 @@ export class TrackLabelRenderer {
       textStartX += iconSize + 4;
     }
 
+    const textColor = isGroupSelected ? new ImGui.Vec4(1.0, 1.0, 1.0, 1.0) : new ImGui.Vec4(0.85, 0.85, 0.85, 1.0);
     const textSize = ImGui.CalcTextSize(groupName);
     const textPosY = lineStartPos.y + (frameHeight - textSize.y) / 2;
 
     drawList.AddText(
       new ImGui.Vec2(textStartX, textPosY),
-      ImGui.GetColorU32(new ImGui.Vec4(0.85, 0.85, 0.85, 1.0)),
+      ImGui.GetColorU32(textColor),
       groupName
     );
 
     ImGui.SetCursorScreenPos(lineStartPos);
     ImGui.PushID(groupId);
 
-    if (hasChildren && ImGui.InvisibleButton('group', new ImGui.Vec2(windowWidth, frameHeight))) {
+    if (ImGui.InvisibleButton('group', new ImGui.Vec2(windowWidth, frameHeight))) {
+      if (hasChildren) {
+        // 仅点击箭头区域才展开
+        const mousePos = ImGui.GetMousePos();
+        const iconLeft = lineStartPos.x + LAYOUT.trackLabelPadding + indentOffset;
+        const iconRight = iconLeft + iconSize;
+        const iconTop = lineStartPos.y + (frameHeight - iconSize) / 2;
+        const iconBottom = iconTop + iconSize;
+        const clickedIcon = mousePos.x >= iconLeft - 3 && mousePos.x <= iconRight + 3
+          && mousePos.y >= iconTop - 3 && mousePos.y <= iconBottom + 3;
+
+        if (clickedIcon) {
+          if (state.expandedPropertyGroups.has(groupId)) {
+            state.expandedPropertyGroups.delete(groupId);
+          } else {
+            state.expandedPropertyGroups.add(groupId);
+          }
+        }
+      }
+      // 选中属性分组
+      state.selectedPropertyGroup = groupId;
+      state.selectedChannel = null;
+    }
+
+    if (hasChildren && ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(0)) {
       if (state.expandedPropertyGroups.has(groupId)) {
         state.expandedPropertyGroups.delete(groupId);
       } else {
         state.expandedPropertyGroups.add(groupId);
       }
-    } else if (!hasChildren) {
-      ImGui.Dummy(new ImGui.Vec2(windowWidth, frameHeight));
     }
 
     ImGui.PopID();
@@ -291,13 +349,14 @@ export class TrackLabelRenderer {
   /**
    * 绘制属性子行标签
    */
-  drawPropertyLabel (label: string, depth: number, color?: ImGui.Vec4): void {
+  drawPropertyLabel (label: string, depth: number, color?: ImGui.Vec4, height?: number, channelId?: string, groupId?: string): void {
     const state = this.state;
-    const frameHeight = LAYOUT.channelHeight;
+    const frameHeight = height ?? LAYOUT.channelHeight;
     const lineStartPos = ImGui.GetCursorScreenPos();
     const drawList = ImGui.GetWindowDrawList();
     const rowIndex = state.trackRowCounter++;
     const windowWidth = ImGui.GetContentRegionAvail().x;
+    const isChannelSelected = channelId !== undefined && state.selectedChannel === channelId;
 
     const propertyBgColor = (rowIndex % 2 === 0)
       ? new ImGui.Vec4(0.08, 0.08, 0.08, 1.0)
@@ -315,6 +374,16 @@ export class TrackLabelRenderer {
       LAYOUT.sectionCornerRadius
     );
 
+    // 选中高亮
+    if (isChannelSelected) {
+      drawList.AddRectFilled(
+        bgStart,
+        bgEnd,
+        ImGui.GetColorU32(new ImGui.Vec4(COLORS.selection.x, COLORS.selection.y, COLORS.selection.z, 0.2)),
+        LAYOUT.sectionCornerRadius
+      );
+    }
+
     const indentOffset = depth * LAYOUT.trackIndentWidth;
     let textStartX = lineStartPos.x + LAYOUT.trackLabelPadding + indentOffset;
 
@@ -329,18 +398,27 @@ export class TrackLabelRenderer {
       textStartX += barWidth + 4;
     }
 
+    const textColor = isChannelSelected ? new ImGui.Vec4(1.0, 1.0, 1.0, 1.0) : new ImGui.Vec4(0.8, 0.8, 0.8, 1.0);
     const textSize = ImGui.CalcTextSize(label);
     const textPosY = lineStartPos.y + (frameHeight - textSize.y) / 2;
 
     drawList.AddText(
       new ImGui.Vec2(textStartX, textPosY),
-      ImGui.GetColorU32(new ImGui.Vec4(0.8, 0.8, 0.8, 1.0)),
+      ImGui.GetColorU32(textColor),
       label
     );
 
     ImGui.SetCursorScreenPos(lineStartPos);
     ImGui.PushID(`prop_label_${label}_${rowIndex}`);
-    ImGui.InvisibleButton('prop', new ImGui.Vec2(windowWidth, frameHeight));
+
+    if (ImGui.InvisibleButton('prop', new ImGui.Vec2(windowWidth, frameHeight))) {
+      // 选中通道
+      if (channelId !== undefined && groupId !== undefined) {
+        state.selectedChannel = channelId;
+        state.selectedPropertyGroup = groupId;
+      }
+    }
+
     ImGui.PopID();
 
     ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, lineStartPos.y + frameHeight));

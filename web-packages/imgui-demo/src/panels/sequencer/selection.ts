@@ -3,6 +3,8 @@ import type { SequencerState } from './sequencer-state';
 
 export function selectTrack (state: SequencerState, track: TrackAsset): void {
   state.selectedTrack = track;
+  state.selectedPropertyGroup = null;
+  state.selectedChannel = null;
 
   // Try to find the ActivationTrack or any track with clips to select its first clip
   let targetTrackToSelectClip = track;
@@ -69,4 +71,8 @@ export function toggleKeyframeSelection (state: SequencerState, keyframeId: stri
 
 export function clearKeyframeSelection (state: SequencerState): void {
   state.selectedKeyframes.clear();
+}
+
+export function getCurveChannelId (trackId: string, groupName: string, channelLabel: string): string {
+  return `${trackId}_${groupName}_${channelLabel}`;
 }

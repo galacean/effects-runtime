@@ -54,6 +54,13 @@ export class SequencerState {
   // 属性面板
   propertiesPanelWidth = 280;
 
+  // 曲线模式
+  curveMode = false;
+  selectedPropertyGroup: string | null = null;
+  selectedChannel: string | null = null;
+  curveCanvasValueMin = -1;
+  curveCanvasValueMax = 1;
+
   // 当前合成引用
   currentComposition!: Composition;
 }

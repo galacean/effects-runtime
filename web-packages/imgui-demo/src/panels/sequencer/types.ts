@@ -26,3 +26,39 @@ export type SelectedKeyframeInfo = {
   clipStart: number,
   clipDuration: number,
 };
+
+export type CurveSegmentData = {
+  startTime: number,
+  startValue: number,
+  endTime: number,
+  endValue: number,
+  cp1: { x: number, y: number },
+  cp2: { x: number, y: number },
+  interpolation: 'bezier' | 'linear' | 'constant',
+};
+
+export type CurveChannelData = {
+  label: string,
+  keyframes: KeyframeData[],
+  segments: CurveSegmentData[],
+  color: ImGui.Vec4,
+  valueMin: number,
+  valueMax: number,
+};
+
+export type CurvePropertyGroup = {
+  name: string,
+  channels: CurveChannelData[],
+  clipStart: number,
+  clipDuration: number,
+};
+
+export type CurveCanvasChannel = {
+  id: string,
+  trackId: string,
+  groupName: string,
+  channelLabel: string,
+  channelData: CurveChannelData,
+  clipStart: number,
+  clipDuration: number,
+};

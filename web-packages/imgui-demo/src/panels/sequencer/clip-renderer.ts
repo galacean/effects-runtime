@@ -85,23 +85,24 @@ export class ClipRenderer {
       }
     }
 
-    // TransformTrack 展开时，绘制属性分组的关键帧
+    // TransformTrack 展开时，绘制属性分组的关键帧或曲线
     if (isTrackExpanded(state, trackAsset) && trackAsset instanceof TransformTrack) {
       const trackId = trackAsset.getInstanceId().toString();
-      const propertyGroups = getTransformPropertyGroups(trackAsset);
 
-      for (const group of propertyGroups) {
-        const groupId = `${trackId}_${group.name}`;
-        const groupHasChildren = group.channels.length > 0;
-        const isExpanded = groupHasChildren && state.expandedPropertyGroups.has(groupId);
+      {
+        const propertyGroups = getTransformPropertyGroups(trackAsset);
 
-        // 绘制分组标题行（右侧无关键帧）
-        this.keyframeRenderer?.drawPropertyGroupKeyframes(group.name);
+        for (const group of propertyGroups) {
+          const groupId = `${trackId}_${group.name}`;
+          const groupHasChildren = group.channels.length > 0;
+          const isExpanded = groupHasChildren && state.expandedPropertyGroups.has(groupId);
 
-        // 如果分组展开，绘制子通道关键帧
-        if (isExpanded) {
-          for (const channel of group.channels) {
-            this.keyframeRenderer?.drawPropertyChannelKeyframes(channel, trackId, group.name, group.clipStart, group.clipDuration);
+          this.keyframeRenderer?.drawPropertyGroupKeyframes(group.name);
+
+          if (isExpanded) {
+            for (const channel of group.channels) {
+              this.keyframeRenderer?.drawPropertyChannelKeyframes(channel, trackId, group.name, group.clipStart, group.clipDuration);
+            }
           }
         }
       }

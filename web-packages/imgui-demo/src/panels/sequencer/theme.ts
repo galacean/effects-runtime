@@ -35,6 +35,13 @@ export const COLORS = {
 
   propertyRowBg: new ImGui.Vec4(0.12, 0.12, 0.13, 1.0),
 
+  curveGrid: new ImGui.Vec4(0.2, 0.2, 0.2, 0.4),
+  curveGridZero: new ImGui.Vec4(0.3, 0.3, 0.3, 0.6),
+  curveValueLabel: new ImGui.Vec4(0.5, 0.5, 0.5, 0.8),
+  curveTangentLine: new ImGui.Vec4(0.6, 0.6, 0.6, 0.6),
+  curveTangentHandle: new ImGui.Vec4(1.0, 1.0, 1.0, 0.9),
+  curveCanvasBg: new ImGui.Vec4(0.08, 0.08, 0.09, 1.0),
+
   trackCategory: {
     TransformTrack: new ImGui.Vec4(0.95, 0.45, 0.15, 1.0), // Vibrant Orange
     ActivationTrack: new ImGui.Vec4(0.20, 0.95, 0.40, 1.0), // Vibrant Green
@@ -58,4 +65,11 @@ export const LAYOUT = {
   expanderIconSize: 10,
   clipVerticalPadding: 3,
   clipsAreaLeftPadding: 8,
+  curveRowHeight: 120,
+  curveVerticalPadding: 8,
+  curveTangentHandleRadius: 4,
+  curveTangentLineWidth: 1,
+  curveLineWidth: 1.5,
+  curveKeyDotRadius: 4,
+  curveGridLineCount: 5,
 };
