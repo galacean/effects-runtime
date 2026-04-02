@@ -83,7 +83,7 @@ export class Shader extends EffectsObject {
         shaderMacros.push([key, macros[key]]);
       }
     }
-    const shaderVariant = this.engine.getShaderLibrary().createShader(this.shaderData, shaderMacros);
+    const shaderVariant = this.engine.getShaderLibrary()!.createShader(this.shaderData, shaderMacros);
 
     shaderVariant.shader = this;
 

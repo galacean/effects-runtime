@@ -47,7 +47,7 @@ export class PluginSystem {
     return plugins;
   }
 
-  static initializeComposition (composition: Composition, scene: Scene) {
+  static initializeComposition (composition: Composition, scene?: Scene) {
     plugins.forEach(loader => loader.onCompositionCreated(composition, scene));
   }
 

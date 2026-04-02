@@ -1,9 +1,9 @@
-import type { Engine, ShaderWithSource } from '@galacean/effects-core';
+import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
 import {
   RenderFrame, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion,
 } from '@galacean/effects-core';
-import type { GLTexture, GLShaderVariant, GLRenderer } from '@galacean/effects-webgl';
+import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
 import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
@@ -11,7 +11,7 @@ const { expect, assert } = chai;
 
 describe('webgl/gl-material', () => {
   let canvas: HTMLCanvasElement;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let engine: Engine;
   const vs = `attribute vec2 aPosition;
@@ -31,8 +31,8 @@ describe('webgl/gl-material', () => {
     canvas = document.createElement('canvas');
     const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
 
-    renderer = glEngine.renderer as GLRenderer;
-    gl = renderer.gl;
+    renderer = glEngine.renderer;
+    gl = glEngine.gl;
     engine = glEngine;
   });
 
@@ -1673,7 +1673,7 @@ function generateGLMaterial (
   engine: Engine,
   shader: ShaderWithSource,
   states: Record<string, any>,
-  renderer: GLRenderer,
+  renderer: Renderer,
 ) {
   const material = new GLMaterial(engine, { shader });
 

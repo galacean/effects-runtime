@@ -38,7 +38,7 @@ export abstract class Plugin {
    * @param composition - 合成对象
    * @param scene - 场景对象
    */
-  onCompositionCreated (composition: Composition, scene: Scene): void { }
+  onCompositionCreated (composition: Composition, scene?: Scene): void { }
 
   /**
    * 合成销毁时触发。

@@ -1,6 +1,5 @@
-import type { Engine } from '@galacean/effects-core';
+import type { Engine, Renderer } from '@galacean/effects-core';
 import { MaskProcessor, MaskMode, glContext, SpriteComponent, math, VFXItem } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
 import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -44,14 +43,14 @@ function createSpriteRendererComponent (engine: Engine, materials: GLMaterial[])
 describe('core/material//mask-ref-manager', () => {
   let canvas: HTMLCanvasElement;
   let engine: Engine;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
 
   before(() => {
     canvas = document.createElement('canvas');
     const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
 
     engine = glEngine;
-    renderer = glEngine.renderer as GLRenderer;
+    renderer = glEngine.renderer;
 
     const existingMask = createMaskableSprite(engine, 'existing-mask');
 

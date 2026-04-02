@@ -7,10 +7,10 @@ import {
   Renderer, Texture, TextureSourceType, Engine, logger,
 } from '@galacean/effects-core';
 import {
-  GLFramebuffer, GLGeometry, GLMaterial, GLRenderbuffer, GLRenderer, GLTexture, GLEngine,
+  GLFramebuffer, GLGeometry, GLMaterial, GLRenderbuffer, GLTexture, GLEngine,
 } from '@galacean/effects-webgl';
 
-export { GLGeometry, GLEngine, GLRenderer } from '@galacean/effects-webgl';
+export { GLGeometry, GLEngine } from '@galacean/effects-webgl';
 export * from '@galacean/effects-core';
 export * from './types';
 export * from './player';
@@ -76,7 +76,7 @@ Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
 };
 
 Renderer.create = (engine: Engine) => {
-  return new GLRenderer(engine);
+  return new Renderer(engine);
 };
 
 Engine.create = (canvas: HTMLCanvasElement, options?: EngineOptions) => {

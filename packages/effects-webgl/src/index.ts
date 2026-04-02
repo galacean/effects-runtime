@@ -1,5 +1,4 @@
 export * from './gl-geometry';
-export * from './gl-renderer';
 export * from './gl-material';
 export * from './gl-renderer-internal';
 export * from './gl-renderbuffer';

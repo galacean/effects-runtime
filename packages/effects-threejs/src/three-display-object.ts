@@ -140,11 +140,8 @@ export class ThreeDisplayObject extends THREE.Group {
     scene: Scene,
     options: SceneLoadOptions = {},
   ): Composition {
-    const composition = new ThreeComposition({
+    const composition = new ThreeComposition(this.engine, {
       ...options,
-      width: this.width,
-      height: this.height,
-      renderer: this.renderer,
       onItemMessage: (message: MessageItem) => {
         this.dispatchEvent({ type: 'message', message });
       },

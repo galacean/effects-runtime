@@ -3,7 +3,8 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
-import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, ShaderLibrary } from './render';
+import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary } from './render';
+import { RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
@@ -20,6 +21,7 @@ import type { GLType } from './gl/create-gl-context';
 import { HELP_LINK } from './constants';
 import type { PointerEventData, Region } from './plugins/interact/click-handler';
 import { EventEmitter } from './events';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -89,6 +91,15 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   pixelRatio: number;
 
+  /**
+   * @internal
+   */
+  renderTargetPool: RenderTargetPool;
+  /**
+   * 存放渲染需要用到的数据
+   */
+  renderingData: RenderingData;
+
   protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
@@ -135,6 +146,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
+    this.renderTargetPool = new RenderTargetPool(this);
+
+    this.renderingData = {
+      // @ts-expect-error
+      currentFrame: {},
+    };
   }
 
   /**
@@ -303,7 +320,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       this.renderer.renderRenderFrame(composition.renderFrame);
     }
 
-    this.renderer.renderTargetPool.flush();
+    this.renderTargetPool.flush();
   }
 
   /**
@@ -357,11 +374,16 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   setSize (width: number, height: number) {
-    // ios 14.1 -ios 14.3 resize canvas will cause memory leak
-    this.renderer.resize(width, height);
+    if (this.getWidth() !== width || this.getHeight() !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.viewport(0, 0, width, height);
+    }
+
     this.compositions?.forEach(comp => {
       comp.camera.aspect = width / height;
     });
+
     this.emit('resize', this);
   }
 
@@ -500,8 +522,45 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.compositions, composition);
   }
 
-  getShaderLibrary (): ShaderLibrary {
-    return this.renderer.getShaderLibrary() as ShaderLibrary;
+  getWidth (): number {
+    // OVERRIDE
+    return 0;
+  }
+
+  getHeight (): number {
+    // OVERRIDE
+    return 0;
+  }
+
+  getShaderLibrary (): ShaderLibrary | null {
+    //OVERRIDE
+
+    return null;
+  }
+
+  bindSystemFramebuffer () {
+    // OVERRIDE
+  }
+
+  /**
+   * 用来设置视口，即指定从标准设备到窗口坐标的x、y仿射变换。
+   * @param x
+   * @param y
+   * @param width
+   * @param height
+   * example:
+   * gl.viewport(0, 0, width, height);
+   */
+  viewport (x: number, y: number, width: number, height: number) {
+    // OVERRIDE
+  }
+
+  clear (action: RenderPassClearAction) {
+    // OVERRIDE
+  }
+
+  drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0) {
+    // OVERRIDE
   }
 
   /**
