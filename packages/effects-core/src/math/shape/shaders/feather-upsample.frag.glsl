@@ -12,9 +12,9 @@ uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
 varying vec2 vTexCoord;
 
 vec4 fixGatherSave (vec4 gathered) {
-  float downSample = floor(min(max(1.0, uScreenRadius / 10.0), 32.0)); 
+  float downSample = min(max(1.0, uScreenRadius / 10.0), 9999.0); 
   float downRadius = uScreenRadius / downSample;
-  float varyingThres = min(1.6 / downRadius, 0.18);
+  float varyingThres = min(1.0 / downRadius, 0.18);
 
   float sum = gathered.x + gathered.y + gathered.z + gathered.w;
   float maxVal = max(gathered.x, gathered.y);
@@ -28,20 +28,11 @@ vec4 fixGatherSave (vec4 gathered) {
   vec4 val = gathered; 
 
   // 这里先处理以下大于1或小于0的明显异常 不使用if以避免发散
-  val.x += (mix(0.0, 1.0, float(val.x < 0.0)) - mix(0.0, 1.0, float(val.x > 1.0))) * float(abs(val.x - middle) >= 0.25);
-  val.y += (mix(0.0, 1.0, float(val.y < 0.0)) - mix(0.0, 1.0, float(val.y > 1.0))) * float(abs(val.y - middle) >= 0.25);
-  val.z += (mix(0.0, 1.0, float(val.z < 0.0)) - mix(0.0, 1.0, float(val.z > 1.0))) * float(abs(val.z - middle) >= 0.25);
-  val.w += (mix(0.0, 1.0, float(val.w < 0.0)) - mix(0.0, 1.0, float(val.w > 1.0))) * float(abs(val.w - middle) >= 0.25);
-
-  // 这个更新看起来很有道理，但是会导致小半径下自相交部分的错误。该死的自相交...为什么？？
-  // sum = val.x + val.y + val.z + val.w;
-  // maxVal = max(val.x, val.y);
-  // maxVal = max(maxVal, val.z);
-  // maxVal = max(maxVal, val.w);
-  // minVal = min(val.x, val.y);
-  // minVal = min(minVal, val.z);
-  // minVal = min(minVal, val.w);
-  // middle = (sum - minVal - maxVal) * 0.5;
+  // 使用fixSingleLayer时可以不用这一段。
+  // val.x += (step(val.x, 0.0) - step(1.0, val.x)) * step(0.25, abs(val.x - middle));
+  // val.y += (step(val.y, 0.0) - step(1.0, val.y)) * step(0.25, abs(val.y - middle));
+  // val.z += (step(val.z, 0.0) - step(1.0, val.z)) * step(0.25, abs(val.z - middle));
+  // val.w += (step(val.w, 0.0) - step(1.0, val.w)) * step(0.25, abs(val.w - middle));
 
   // 约束变化率
   // val.x -= floor((max(val.x - middle, 0.0) / varyingThres)) * varyingThres;
@@ -71,7 +62,7 @@ vec4 fixGatherSave (vec4 gathered) {
   return val;
 }
 
-vec4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
+mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
   vec2 invTexSize = 1.0 / uAtlasSize;
   vec2 unnormalizedCoords = uv * texSize - 0.5 + uTextureOffset;
   vec2 iuv = floor(unnormalizedCoords);
@@ -81,18 +72,42 @@ vec4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
   vec2 uv_tl = (iuv + vec2(0.5, 1.5)) * invTexSize;
   vec2 uv_tr = (iuv + vec2(1.5, 1.5)) * invTexSize;
 
-  float bl = texture2D(sampler, uv_bl).r;
-  float br = texture2D(sampler, uv_br).r;
-  float tl = texture2D(sampler, uv_tl).r;
-  float tr = texture2D(sampler, uv_tr).r;
+  vec4 bl = texture2D(sampler, uv_bl);
+  vec4 br = texture2D(sampler, uv_br);
+  vec4 tl = texture2D(sampler, uv_tl);
+  vec4 tr = texture2D(sampler, uv_tr);
 
-  return vec4(tl, tr, br, bl);
+  return mat4(tl, tr, br, bl);
+}
+
+// 我们假设1.同一个轮廓不自交，2.有两个通道可用（目前纹理是RGBA，用了RG），则可以使用这个函数
+// 如果不满足条件，则应该用32行注释掉的那段。
+float fixSingleLayer(float indicator, float integration)
+{
+  // if (integration < -0.01) return 1.0 + integration;
+  // else if (integration > 0.01) return integration;
+  // else return indicator + integration;
+  // 无发散版本
+  return (1.0 + integration) * step(integration, -0.01) + 
+  integration * step(0.01, integration) + 
+  (indicator + integration) * step(-0.01, integration) * step(integration, 0.01);
 }
 
 float sampleBilinearGather (vec2 uv, vec2 texSize) {
   vec2 pixel = uv * texSize - 0.5;
   vec2 f = fract(pixel);
-  vec4 vals = fixGatherSave(softGather(uAtlasTex, uv, texSize));
+
+  // vec4 vals = fixGatherSave(softGather(uAtlasTex, uv, texSize));
+  mat4 gathered = softGather(uAtlasTex, uv, texSize);
+  vec4 indicators = vec4(gathered[0][0], gathered[1][0], gathered[2][0], gathered[3][0]);
+  vec4 integs = vec4(gathered[0][1], gathered[1][1], gathered[2][1], gathered[3][1]);
+  vec4 vals = vec4(
+    fixSingleLayer(indicators.x, integs.x),
+    fixSingleLayer(indicators.y, integs.y),
+    fixSingleLayer(indicators.z, integs.z),
+    fixSingleLayer(indicators.w, integs.w)
+  );
+  vals = fixGatherSave(vals);
 
   float bottom = mix(vals.w, vals.z, f.x);
   float top = mix(vals.x, vals.y, f.x);

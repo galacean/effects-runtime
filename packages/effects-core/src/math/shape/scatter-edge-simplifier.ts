@@ -1,3 +1,4 @@
+import { Float16ArrayWrapper } from '../float16array-wrapper';
 const MAX_SCATTER_EDGES = 512; // 低于 shader 中 MAX_LOAD_EDGES_PER_MESH 的一个安全余量
 const GAP_EPSILON = 1e-4;
 
@@ -19,6 +20,26 @@ function fromHalf (h: number): number {
 
   return (s ? -1 : 1) * Math.pow(2, e - 15) * (1 + m / 1024);
 }
+
+
+export function removeShortEdgesFloat (floatData: number[]): Float32Array{
+  const halfData: Uint16Array = new Float16ArrayWrapper(floatData).data;
+  const n = halfData.length / 4;
+  const out: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const x1 = fromHalf(halfData[i * 4]);
+    const y1 = fromHalf(halfData[i * 4 + 1]);
+    const x2 = fromHalf(halfData[i * 4 + 2]);
+    const y2 = fromHalf(halfData[i * 4 + 3]);
+
+    if (x1 !== x2 || y1 !== y2) {
+      out.push(x1, y1, x2, y2);
+    }
+  }
+
+  return new Float32Array(out);
+} 
 
 /**
  * 移除 fp16 量化后长度为零的边，避免 shader 中因精度问题导致计算发散。

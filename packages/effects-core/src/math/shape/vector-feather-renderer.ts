@@ -11,7 +11,7 @@ import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
 import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
-import { simplifyScatterEdges, removeShortEdges } from './scatter-edge-simplifier';
+import { simplifyScatterEdges, removeShortEdges, removeShortEdgesFloat } from './scatter-edge-simplifier';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
 import indicatorFrag from './shaders/feather-indicator.frag.glsl';
 import scatterVert from './shaders/feather-scatter.vert.glsl';
@@ -69,7 +69,7 @@ export class VectorFeatherRenderer {
   /**
    * 控制使用scatter还是gather的阈值。
    */
-  featherSwitchThreshold = 100000;
+  featherSwitchThreshold = 0.2;
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -272,7 +272,7 @@ export class VectorFeatherRenderer {
     );
 
     const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
-    const downsample = Math.floor(Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 32));  // rive似乎限制它们的降采样最大为32，我们也限制一下
+    const downsample = Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 9999);  // rive似乎限制它们的降采样最大为32
     const kernelCoverage = 2 * featherRadius / Math.max(bw, bh);
 
     const maxFboSize = 2048;
