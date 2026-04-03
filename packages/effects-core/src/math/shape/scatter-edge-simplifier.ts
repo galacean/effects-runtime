@@ -78,7 +78,7 @@ export function simplifyScatterEdges (scatterEdgeVertices: number[]): number[] {
     } else {
       const firstEdge = edges[currentContour[0]];
       const currEdge = edges[i];
-      const gap = Math.hypot(currEdge.x1 - firstEdge.x2, currEdge.y1 - firstEdge.y2);
+      const gap = Math.hypot(currEdge.x2 - firstEdge.x1, currEdge.y2 - firstEdge.y1);
 
       if (gap < GAP_EPSILON) {   // 遇到首顶点了，即结束轮廓。（如果有自相交就不能这么做）
         currentContour.push(i);  // 插入最后一个边
@@ -92,7 +92,7 @@ export function simplifyScatterEdges (scatterEdgeVertices: number[]): number[] {
   if (currentContour.length > 0) {
     contours.push(currentContour);
   }
-
+  
   // 将每个轮廓解析为闭合点序列（去除末尾重复的首顶点）
   const contourPoints: Point[][] = [];
   let totalOriginalEdges = 0;
@@ -248,6 +248,6 @@ function simplifyClosedContour (points: Point[], targetEdges: number): number[] 
     result.push(points[curr].x, points[curr].y, points[nxt].x, points[nxt].y);
     curr = nxt;
   } while (curr !== start && curr >= 0 && curr < n);
-
+  
   return result;
 }

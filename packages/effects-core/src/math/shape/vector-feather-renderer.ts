@@ -28,7 +28,8 @@ export type FeatherRenderParams = {
   fboW: number,
   fboH: number,
   orthoProjection: Matrix4,
-  featherRadiusScreen: number // 这个用于在片段着色器里做抗亮斑
+  featherRadiusScreen: number, // 这个用于在片段着色器里做抗亮斑
+  kernelCoverage: number,
 };
 
 /**
@@ -64,6 +65,11 @@ export class VectorFeatherRenderer {
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
   private scatterEdgeTexture?: Texture;
+
+  /**
+   * 控制使用scatter还是gather的阈值。
+   */
+  featherSwitchThreshold = 100000;
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -186,7 +192,7 @@ export class VectorFeatherRenderer {
     // 将边数据写入 RGBAHalf 纹理：每条边占一个纹素 (rgba = x1, y1, x2, y2)
     // 注意简化边以避免超限
     if (scatterEdgeCount > 0) { 
-      const edgeData = simplifyScatterEdges(scatterEdgeVertices);
+      const edgeData = simplifyScatterEdges(scatterEdgeVertices); 
       const halfData = removeShortEdges(new Float16ArrayWrapper(edgeData).data);  // fp量化丢精度可能导致0长度边。这里剔除。
       const newTexture = Texture.createWithData(
         this.engine,
@@ -267,6 +273,7 @@ export class VectorFeatherRenderer {
 
     const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
     const downsample = Math.floor(Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 32));  // rive似乎限制它们的降采样最大为32，我们也限制一下
+    const kernelCoverage = 2 * featherRadius / Math.max(bw, bh);
 
     const maxFboSize = 2048;
     const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
@@ -277,7 +284,7 @@ export class VectorFeatherRenderer {
       expandedMinY, expandedMinY + expandedH,
     );
 
-    return { fboW, fboH, orthoProjection, featherRadiusScreen };
+    return { fboW, fboH, orthoProjection, featherRadiusScreen, kernelCoverage };
   }
 
   /**
@@ -388,8 +395,8 @@ export class VectorFeatherRenderer {
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
-
-    if (params.featherRadiusScreen < 200.0){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
+    
+    if (params.kernelCoverage < this.featherSwitchThreshold){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
       this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
       this.drawScatterPass(renderer, orthoProjection, featherRadius);
     }else{

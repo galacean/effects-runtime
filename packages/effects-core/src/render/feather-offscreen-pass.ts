@@ -95,7 +95,7 @@ export class FeatherOffscreenPass extends RenderPass {
        
       for (const { component, featherRenderer, params, rect } of this.entries) {
         renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-        if (params.featherRadiusScreen < 200.0){  // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
+        if (params.kernelCoverage < featherRenderer.featherSwitchThreshold){  // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
           component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
           featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
         }else{
