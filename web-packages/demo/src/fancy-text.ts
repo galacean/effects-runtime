@@ -11,6 +11,51 @@ let currentPreset = 'none';
 let textItem: any = null;
 let initialFancyConfig: any = null;  // 存 TextStyle 初始的 fancyRenderStyle 快照
 
+/**
+ * 编辑器状态接口
+ */
+interface EditorState {
+  fills: FillLayerState[],
+  strokes: StrokeLayerState[],
+  effects: EffectLayerState[],
+}
+
+interface FillLayerState {
+  id: string,
+  type: 'solid' | 'linear' | 'texture',
+  visible: boolean,
+  opacity: number,
+  color?: number[],
+  gradientColors?: number[][],
+  gradientAngle?: number,
+  textureUrl?: string,
+}
+
+interface StrokeLayerState {
+  id: string,
+  visible: boolean,
+  opacity: number,
+  color: number[],
+  width: number,
+}
+
+interface EffectLayerState {
+  id: string,
+  type: 'shadow',
+  visible: boolean,
+  color: number[],
+  blur: number,
+  distance: number,
+  angle: number,
+}
+
+// 编辑器状态
+let editorState: EditorState = {
+  fills: [],
+  strokes: [],
+  effects: [],
+};
+
 // 设置纹理pattern
 async function setupTexturePattern (textComponent: TextComponent) {
   const ctx = document.createElement('canvas').getContext('2d');
@@ -221,36 +266,29 @@ function updateTextColor (color: number[]) {
   console.log('更新文本颜色:', color);
 }
 
-// 创建控制界面
+// 创建控制界面（Figma 风格）
 function createControls () {
+  // 注入 Figma 风格的 CSS 样式
+  injectFigmaStyles();
+
   const controlPanel = document.createElement('div');
 
-  controlPanel.style.cssText = `
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 15px;
-      border-radius: 8px;
-      font-family: Arial, sans-serif;
-      z-index: 1000;
-      max-width: 250px;
-    `;
+  controlPanel.className = 'figma-panel';
 
   // 标题
-  const title = document.createElement('h3');
+  const title = document.createElement('div');
 
-  title.textContent = '花字样式控制';
-  title.style.cssText = 'margin: 0 0 15px 0; font-size: 16px;';
+  title.className = 'figma-panel-title';
+  title.textContent = '花字样式编辑器';
   controlPanel.appendChild(title);
 
-  // 字体大小
+  // 预设按钮区域（精简为一行横排小按钮）
+  const presetSection = document.createElement('div');
 
-  // 预设按钮
-  const presetGroup = createControlGroup('样式预设');
+  presetSection.className = 'figma-preset-section';
+
   const presets = [
-    { key: 'none', name: '默认样式(core)' },
+    { key: 'none', name: '默认' },
     { key: 'single-stroke', name: '单描边' },
     { key: 'multi-stroke', name: '多描边' },
     { key: 'gradient', name: '渐变' },
@@ -261,512 +299,109 @@ function createControls () {
   presets.forEach(preset => {
     const button = document.createElement('button');
 
+    button.className = 'figma-preset-btn';
     button.textContent = preset.name;
-    button.style.cssText = `
-        display: block;
-        width: 100%;
-        padding: 8px;
-        margin: 5px 0;
-        background: #333;
-        color: white;
-        border: 1px solid #555;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-      `;
+    button.dataset.preset = preset.key;
+
+    if (preset.key === currentPreset) {
+      button.classList.add('active');
+    }
+
     button.addEventListener('click', () => {
       currentPreset = preset.key;
       applyFancyPreset(currentPreset);
+      // 从预设配置解析到编辑器状态
+      parsePresetToEditorState(currentPreset);
+      // 重新渲染面板
+      renderAllSections(controlPanel);
       // 更新按钮样式
-      presetGroup.querySelectorAll('button').forEach(btn => {
-        (btn as HTMLElement).style.background = '#333';
-      });
-      button.style.background = '#007bff';
+      presetSection.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
     });
-    presetGroup.appendChild(button);
+
+    presetSection.appendChild(button);
   });
 
-  // 默认选中"默认样式(core)"
-  const noneButton = presetGroup.querySelector('button:nth-child(1)') as HTMLButtonElement;
+  controlPanel.appendChild(presetSection);
 
-  if (noneButton) {
-    noneButton.style.background = '#007bff';
-  }
+  // 创建 Fill 区域
+  const fillSection = createFillSection();
 
-  controlPanel.appendChild(presetGroup);
+  controlPanel.appendChild(fillSection);
 
-  // 曲线文本控制
-  const curvedTextGroup = createControlGroup('曲线文本');
-  const curvedTextControls = document.createElement('div');
+  // 创建 Stroke 区域
+  const strokeSection = createStrokeSection();
 
-  curvedTextControls.innerHTML = `
-      <div style="margin-bottom: 10px;">
-        <label style="display: block; margin-bottom: 5px; font-size: 12px;">曲线强度: <span id="powerValue">0</span></label>
-        <input type="range" id="curvedPower" min="-100" max="100" value="0" style="width: 100%;">
-      </div>
-      <div style="margin-bottom: 10px;">
-        <button id="disableCurvedText" style="width: 100%; padding: 6px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 11px;">禁用曲线文本</button>
-      </div>
-    `;
-  curvedTextGroup.appendChild(curvedTextControls);
-  controlPanel.appendChild(curvedTextGroup);
+  controlPanel.appendChild(strokeSection);
 
-  // 手动控制组
-  const manualGroup = createControlGroup('手动控制');
+  // 创建 Effects 区域
+  const effectsSection = createEffectsSection();
 
-  // 描边控制
-  const strokeControls = document.createElement('div');
+  controlPanel.appendChild(effectsSection);
 
-  strokeControls.innerHTML = `
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">描边开关</label>
-      <button id="strokeToggle" style="width: 100%; padding: 6px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 11px;">启用描边</button>
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">描边颜色</label>
-      <input type="color" id="strokeColor" value="#ff0000" style="width: 100%; height: 25px; border: 1px solid #555; border-radius: 4px;">
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">描边宽度: <span id="strokeWidthValue">3</span></label>
-      <input type="range" id="strokeWidth" min="1" max="10" value="3" style="width: 100%;">
-    </div>
-  `;
-  manualGroup.appendChild(strokeControls);
+  // 曲线文本控制（保留）
+  const curvedTextSection = createCurvedTextSection();
 
-  // 阴影控制
-  const shadowControls = document.createElement('div');
+  controlPanel.appendChild(curvedTextSection);
 
-  shadowControls.innerHTML = `
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">阴影开关</label>
-      <button id="shadowToggle" style="width: 100%; padding: 6px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 11px;">启用阴影</button>
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">阴影颜色</label>
-      <input type="color" id="shadowColor" value="#000000" style="width: 100%; height: 25px; border: 1px solid #555; border-radius: 4px;">
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">阴影透明度: <span id="shadowOpacityValue">1.0</span></label>
-      <input type="range" id="shadowOpacity" min="0" max="1" step="0.01" value="1" style="width: 100%;">
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">阴影模糊: <span id="shadowBlurValue">5</span></label>
-      <input type="range" id="shadowBlur" min="0" max="20" value="5" style="width: 100%;">
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">阴影距离: <span id="shadowDistanceValue">5</span></label>
-      <input type="range" id="shadowDistance" min="0" max="50" value="5" style="width: 100%;">
-    </div>
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">阴影角度(度): <span id="shadowAngleValue">45</span></label>
-      <input type="range" id="shadowAngle" min="0" max="360" value="45" style="width: 100%;">
-    </div>
-  `;
-  manualGroup.appendChild(shadowControls);
+  // 配置显示区域
+  const configSection = document.createElement('div');
 
-  // 文本颜色控制
-  const textControls = document.createElement('div');
+  configSection.className = 'figma-config-section';
 
-  textControls.innerHTML = `
-    <div style="margin-bottom: 10px;">
-      <label style="display: block; margin-bottom: 5px; font-size: 12px;">文本颜色</label>
-      <input type="color" id="textColor" value="#ffffff" style="width: 100%; height: 25px; border: 1px solid #555; border-radius: 4px;">
-    </div>
-  `;
-  manualGroup.appendChild(textControls);
+  const configTitle = document.createElement('div');
 
-  controlPanel.appendChild(manualGroup);
+  configTitle.className = 'figma-section-header';
+  configTitle.textContent = '当前配置';
+  configSection.appendChild(configTitle);
 
-  // 配置显示
-  const configGroup = createControlGroup('当前配置');
   const configDisplay = document.createElement('pre');
 
-  configDisplay.style.cssText = `
-    background: #222;
-    padding: 10px;
-    border-radius: 4px;
-    font-size: 10px;
-    max-height: 200px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-  `;
+  configDisplay.className = 'figma-config-display';
+  configDisplay.id = 'config-display';
 
-  // 初始显示快照配置或core的实际配置
   const textComponent = textItem?.getComponent(TextComponent);
   const initialConfigForDisplay = initialFancyConfig ||
     (textComponent ? textComponent.getCurrentFancyTextConfig() : getDemoFancyJsonConfig(currentPreset));
 
   configDisplay.textContent = JSON.stringify(initialConfigForDisplay, null, 2);
-  configGroup.appendChild(configDisplay);
-  controlPanel.appendChild(configGroup);
+  configSection.appendChild(configDisplay);
+  controlPanel.appendChild(configSection);
 
-  // 先将HTML元素添加到DOM中
   document.body.appendChild(controlPanel);
 
-  // 现在可以安全地获取DOM元素并绑定事件
-  const powerSlider = document.getElementById('curvedPower') as HTMLInputElement;
-  const powerValue = document.getElementById('powerValue');
+  // 从当前预设初始化编辑器状态
+  parsePresetToEditorState(currentPreset);
+}
 
-  // 定义更新曲线文本强度的函数
-  const updateCurvedTextPower = () => {
-    if (powerSlider && powerValue && textItem) {
-      const power = parseInt(powerSlider.value);
+/**
+ * 渲染所有区域（预设切换时重新渲染）
+ */
+function renderAllSections (panel: HTMLElement) {
+  // 移除旧的 Fill、Stroke、Effects 区域
+  const oldFill = panel.querySelector('.figma-fill-section');
+  const oldStroke = panel.querySelector('.figma-stroke-section');
+  const oldEffects = panel.querySelector('.figma-effects-section');
 
-      // 更新显示值
-      powerValue.textContent = power.toString();
+  if (oldFill) {oldFill.remove();}
+  if (oldStroke) {oldStroke.remove();}
+  if (oldEffects) {oldEffects.remove();}
 
-      const textComponent = textItem.getComponent(TextComponent);
+  // 在预设区域后插入新的区域
+  const presetSection = panel.querySelector('.figma-preset-section');
 
-      if (textComponent) {
-        textComponent.setCurvedTextPower(power);
+  if (presetSection) {
+    presetSection.after(createFillSection());
+    const fillSection = panel.querySelector('.figma-fill-section');
 
-        // 验证设置是否生效
-        const configAfter = textComponent.getCurrentFancyTextConfig();
+    if (fillSection) {
+      fillSection.after(createStrokeSection());
+      const strokeSection = panel.querySelector('.figma-stroke-section');
 
-        // 只更新配置显示，不调用 updateDisplays() 避免覆盖滑块值
-        configDisplay.textContent = JSON.stringify(configAfter, null, 2);
+      if (strokeSection) {
+        strokeSection.after(createEffectsSection());
       }
     }
-  };
-
-  if (powerSlider && powerValue) {
-    powerSlider.addEventListener('input', updateCurvedTextPower);
-
-    // 初始化时也更新一次
-    const power = parseInt(powerSlider.value);
-
-    powerValue.textContent = power.toString();
-  }
-
-  document.getElementById('disableCurvedText')?.addEventListener('click', () => {
-    if (textItem) {
-      const textComponent = textItem.getComponent(TextComponent);
-
-      textComponent?.setCurvedTextPower(0);
-
-      // 确保更新纹理以触发重绘
-      textComponent.isDirty = true;
-      textComponent.updateTexture();
-
-      // 重置滑块
-      if (powerSlider) {
-        powerSlider.value = '0';
-        if (powerValue) {
-          powerValue.textContent = '0';
-        }
-      }
-      updateDisplays();
-    }
-  });
-
-  // 添加CSS样式用于禁用状态的视觉表示
-  const style = document.createElement('style');
-
-  style.textContent = `
-    .disabled-control {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-  `;
-  document.head.appendChild(style);
-
-  // 绑定手动控制事件
-  let strokeEnabled = false;
-  let shadowEnabled = false;
-
-  document.getElementById('strokeToggle')?.addEventListener('click', e => {
-    strokeEnabled = !strokeEnabled;
-    const btn = e.target as HTMLButtonElement;
-
-    btn.textContent = strokeEnabled ? '禁用描边' : '启用描边';
-    btn.style.background = strokeEnabled ? '#007bff' : '#333';
-    toggleStroke(strokeEnabled);
-    updateDisplays();
-  });
-
-  document.getElementById('shadowToggle')?.addEventListener('click', e => {
-    shadowEnabled = !shadowEnabled;
-    const btn = e.target as HTMLButtonElement;
-
-    btn.textContent = shadowEnabled ? '禁用阴影' : '启用阴影';
-    btn.style.background = shadowEnabled ? '#007bff' : '#333';
-    toggleShadow(shadowEnabled);
-    updateDisplays();
-  });
-
-  document.getElementById('strokeColor')?.addEventListener('input', e => {
-    const color = hexToRgba((e.target as HTMLInputElement).value);
-
-    updateStrokeParams({ color });
-    updateDisplays();
-  });
-
-  document.getElementById('strokeWidth')?.addEventListener('input', e => {
-    const width = parseFloat((e.target as HTMLInputElement).value);
-    const valueDisplay = document.getElementById('strokeWidthValue');
-
-    if (valueDisplay) {
-      valueDisplay.textContent = width.toFixed(1);
-    }
-    updateStrokeParams({ width });
-    updateDisplays();
-  });
-
-  document.getElementById('shadowColor')?.addEventListener('input', e => {
-    const color = hexToRgba((e.target as HTMLInputElement).value);
-
-    updateShadowParams({ color });
-    updateDisplays();
-  });
-
-  document.getElementById('shadowBlur')?.addEventListener('input', e => {
-    const blur = parseFloat((e.target as HTMLInputElement).value);
-    const valueDisplay = document.getElementById('shadowBlurValue');
-
-    if (valueDisplay) {
-      valueDisplay.textContent = blur.toFixed(1);
-    }
-    updateShadowParams({ blur });
-    updateDisplays();
-  });
-
-  // 阴影透明度
-  document.getElementById('shadowOpacity')?.addEventListener('input', e => {
-    const opacity = parseFloat((e.target as HTMLInputElement).value);
-    const valueDisplay = document.getElementById('shadowOpacityValue');
-
-    if (valueDisplay) {
-      valueDisplay.textContent = opacity.toFixed(2);
-    }
-    updateShadowParams({ opacity });
-    updateDisplays();
-  });
-
-  // 阴影距离
-  document.getElementById('shadowDistance')?.addEventListener('input', e => {
-    const distance = parseFloat((e.target as HTMLInputElement).value);
-    const valueDisplay = document.getElementById('shadowDistanceValue');
-
-    if (valueDisplay) {
-      valueDisplay.textContent = distance.toFixed(1);
-    }
-    updateShadowParams({ distance });
-    updateDisplays();
-  });
-
-  // 阴影角度
-  document.getElementById('shadowAngle')?.addEventListener('input', e => {
-    const angle = parseFloat((e.target as HTMLInputElement).value);
-    const valueDisplay = document.getElementById('shadowAngleValue');
-
-    if (valueDisplay) {
-      valueDisplay.textContent = angle.toFixed(0);
-    }
-    updateShadowParams({ angle });
-    updateDisplays();
-  });
-
-  document.getElementById('textColor')?.addEventListener('input', e => {
-    const color = hexToRgba((e.target as HTMLInputElement).value);
-
-    updateTextColor(color);
-    updateDisplays();
-  });
-
-  // 更新显示函数
-  const updateDisplays = () => {
-    if (!textItem) {return;}
-
-    const textComponent = textItem.getComponent(TextComponent);
-
-    if (!textComponent) {return;}
-
-    // 更新配置显示
-    const config = textComponent.getCurrentFancyTextConfig();
-
-    configDisplay.textContent = JSON.stringify(config, null, 2);
-
-    // 同步参数值到UI控件
-    syncParamsToUI(config);
-
-    // 启用所有控件
-    const strokeToggle = document.getElementById('strokeToggle');
-    const strokeColor = document.getElementById('strokeColor') as HTMLInputElement;
-    const strokeWidth = document.getElementById('strokeWidth') as HTMLInputElement;
-    const shadowToggle = document.getElementById('shadowToggle');
-    const shadowColor = document.getElementById('shadowColor') as HTMLInputElement;
-    const shadowBlur = document.getElementById('shadowBlur') as HTMLInputElement;
-    const textColor = document.getElementById('textColor') as HTMLInputElement;
-    const curvedPower = document.getElementById('curvedPower') as HTMLInputElement;
-    const disableCurvedText = document.getElementById('disableCurvedText') as HTMLButtonElement;
-
-    [strokeToggle, strokeColor, strokeWidth, shadowToggle, shadowColor, shadowBlur, textColor, curvedPower, disableCurvedText].forEach(control => {
-      if (control) {
-        (control as HTMLInputElement | HTMLButtonElement).removeAttribute('disabled');
-        control.classList.remove('disabled-control');
-      }
-    });
-  };
-
-  // 同步参数值到UI控件
-  const syncParamsToUI = (config: any) => {
-    if (!config.layers) {return;}
-
-    // 遍历花字层配置，提取参数并更新UI
-    config.layers.forEach((layer: any) => {
-      if (layer.kind === 'single-stroke' && layer.params) {
-        // 更新描边参数
-        if (layer.params.width !== undefined) {
-          const strokeWidthInput = document.getElementById('strokeWidth') as HTMLInputElement;
-          const strokeWidthValue = document.getElementById('strokeWidthValue');
-
-          if (strokeWidthInput) {
-            strokeWidthInput.value = layer.params.width.toString();
-          }
-          if (strokeWidthValue) {
-            strokeWidthValue.textContent = layer.params.width.toFixed(1);
-          }
-        }
-
-        if (layer.params.color) {
-          const strokeColorInput = document.getElementById('strokeColor') as HTMLInputElement;
-
-          if (strokeColorInput) {
-            // 将vec4颜色转换为hex颜色
-            const [r, g, b] = layer.params.color;
-            const hexColor = rgbToHex(r * 255, g * 255, b * 255);
-
-            strokeColorInput.value = hexColor;
-          }
-        }
-      }
-
-      if (layer.kind === 'shadow' && layer.params) {
-        // 更新阴影参数
-        if (layer.params.blur !== undefined) {
-          const shadowBlurInput = document.getElementById('shadowBlur') as HTMLInputElement;
-          const shadowBlurValue = document.getElementById('shadowBlurValue');
-
-          if (shadowBlurInput) {
-            shadowBlurInput.value = layer.params.blur.toString();
-          }
-          if (shadowBlurValue) {
-            shadowBlurValue.textContent = layer.params.blur.toFixed(1);
-          }
-        }
-
-        if (layer.params.color) {
-          const shadowColorInput = document.getElementById('shadowColor') as HTMLInputElement;
-          const shadowOpacityInput = document.getElementById('shadowOpacity') as HTMLInputElement;
-          const shadowOpacityValue = document.getElementById('shadowOpacityValue');
-
-          if (shadowColorInput) {
-            // 将vec4颜色转换为hex颜色
-            const [r, g, b, a = 1] = layer.params.color;
-            const hexColor = rgbToHex(r * 255, g * 255, b * 255);
-
-            shadowColorInput.value = hexColor;
-          }
-
-          if (shadowOpacityInput) {
-            shadowOpacityInput.value = (layer.params.color[3] || 1).toString();
-          }
-
-          if (shadowOpacityValue) {
-            shadowOpacityValue.textContent = (layer.params.color[3] || 1).toFixed(2);
-          }
-        }
-
-        // 从 offsetX / offsetY 反算 distance / angle，填回控件
-        if (layer.params.offsetX !== undefined || layer.params.offsetY !== undefined) {
-          const ox = layer.params.offsetX || 0;
-          const oy = layer.params.offsetY || 0;
-          const distance = Math.sqrt(ox * ox + oy * oy);
-          let angle = Math.atan2(oy, ox) * 180 / Math.PI;
-
-          if (angle < 0) {angle += 360;}
-
-          const shadowDistanceInput = document.getElementById('shadowDistance') as HTMLInputElement;
-          const shadowDistanceValue = document.getElementById('shadowDistanceValue');
-          const shadowAngleInput = document.getElementById('shadowAngle') as HTMLInputElement;
-          const shadowAngleValue = document.getElementById('shadowAngleValue');
-
-          if (shadowDistanceInput) {
-            shadowDistanceInput.value = distance.toFixed(1);
-          }
-          if (shadowDistanceValue) {
-            shadowDistanceValue.textContent = distance.toFixed(1);
-          }
-          if (shadowAngleInput) {
-            shadowAngleInput.value = angle.toFixed(0);
-          }
-          if (shadowAngleValue) {
-            shadowAngleValue.textContent = angle.toFixed(0);
-          }
-        }
-      }
-
-      if (layer.kind === 'solid-fill' && layer.params) {
-        // 更新填充参数
-        if (layer.params.color) {
-          const textColorInput = document.getElementById('textColor') as HTMLInputElement;
-
-          if (textColorInput) {
-            // 将vec4颜色转换为hex颜色
-            const [r, g, b] = layer.params.color;
-            const hexColor = rgbToHex(r * 255, g * 255, b * 255);
-
-            textColorInput.value = hexColor;
-          }
-        }
-      }
-    });
-
-    // 同步曲线文本参数 - 暂时注释掉，避免覆盖用户输入
-    // 曲线参数完全由滑块控制，不需要从配置反向同步
-    // if (config.curvedTextPower !== undefined) {
-    //   const curvedPowerInput = document.getElementById('curvedPower') as HTMLInputElement;
-    //   const curvedPowerValue = document.getElementById('powerValue');
-
-    //   if (curvedPowerInput && curvedPowerValue) {
-    //     const currentValue = parseInt(curvedPowerInput.value);
-    //     const configValue = config.curvedTextPower;
-
-    //     // 只有当配置值与当前值不同时才更新
-    //     if (currentValue !== configValue) {
-    //       curvedPowerInput.value = configValue.toString();
-    //       curvedPowerValue.textContent = configValue.toString();
-    //     }
-    //   }
-    // }
-  };
-
-  // 监听配置变化
-  const updateConfigDisplay = () => {
-    updateDisplays();
-  };
-
-  presetGroup.addEventListener('click', updateConfigDisplay);
-
-  // 辅助函数：颜色转换
-  function hexToRgba (hex: string): number[] {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-
-    return [r, g, b, 1];
-  }
-
-  // 辅助函数：RGB转HEX
-  function rgbToHex (r: number, g: number, b: number): string {
-    const toHex = (n: number) => {
-      const hex = Math.round(n).toString(16);
-
-      return hex.length === 1 ? '0' + hex : hex;
-    };
-
-    return '#' + toHex(r) + toHex(g) + toHex(b);
   }
 }
 
@@ -782,6 +417,1786 @@ function createControlGroup (label: string): HTMLDivElement {
   group.appendChild(labelElement);
 
   return group;
+}
+
+/**
+ * 注入 Figma 风格的 CSS 样式
+ */
+function injectFigmaStyles () {
+  const style = document.createElement('style');
+
+  style.textContent = `
+    /* Figma 面板主样式 */
+    .figma-panel {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #2c2c2c;
+      color: #e0e0e0;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px;
+      z-index: 1000;
+      width: 280px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .figma-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .figma-panel::-webkit-scrollbar-track {
+      background: #2c2c2c;
+    }
+
+    .figma-panel::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 3px;
+    }
+
+    .figma-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+
+    /* 预设按钮区域 */
+    .figma-preset-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #3d3d3d;
+    }
+
+    .figma-preset-btn {
+      flex: 1;
+      min-width: 60px;
+      padding: 6px 8px;
+      background: #3d3d3d;
+      color: #999;
+      border: 1px solid #4a4a4a;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+
+    .figma-preset-btn:hover {
+      background: #4a4a4a;
+      color: #e0e0e0;
+    }
+
+    .figma-preset-btn.active {
+      background: #0d99ff;
+      color: #fff;
+      border-color: #0d99ff;
+    }
+
+    /* 区域标题 */
+    .figma-section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      margin-bottom: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .figma-section-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    /* 层条目 */
+    .figma-layer-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #3d3d3d;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .figma-layer-item:hover {
+      background: #4a4a4a;
+    }
+
+    .figma-layer-item.hidden {
+      opacity: 0.5;
+    }
+
+    /* 颜色预览块 */
+    .figma-color-preview {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid #4a4a4a;
+      flex-shrink: 0;
+    }
+
+    .figma-color-preview.gradient {
+      background: linear-gradient(135deg, #ff0000, #0000ff);
+    }
+
+    .figma-color-preview.texture {
+      background: repeating-linear-gradient(
+        45deg,
+        #666,
+        #666 2px,
+        #888 2px,
+        #888 4px
+      );
+    }
+
+    /* 层信息 */
+    .figma-layer-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .figma-layer-type {
+      font-size: 11px;
+      color: #999;
+    }
+
+    .figma-layer-value {
+      font-size: 12px;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 层操作按钮 */
+    .figma-layer-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .figma-icon-btn {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 14px;
+      transition: all 0.15s;
+    }
+
+    .figma-icon-btn:hover {
+      background: #555;
+      color: #e0e0e0;
+    }
+
+    .figma-icon-btn.active {
+      color: #0d99ff;
+    }
+
+    /* 参数编辑区域 */
+    .figma-layer-params {
+      padding: 8px;
+      background: #353535;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    .figma-param-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .figma-param-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .figma-param-label {
+      min-width: 60px;
+      font-size: 11px;
+      color: #999;
+    }
+
+    .figma-param-input {
+      flex: 1;
+      padding: 4px 8px;
+      background: #2c2c2c;
+      border: 1px solid #4a4a4a;
+      border-radius: 3px;
+      color: #e0e0e0;
+      font-size: 11px;
+      outline: none;
+    }
+
+    .figma-param-input:focus {
+      border-color: #0d99ff;
+    }
+
+    .figma-param-input[type="range"] {
+      -webkit-appearance: none;
+      background: #2c2c2c;
+      border: none;
+      padding: 0;
+    }
+
+    .figma-param-input[type="range"]::-webkit-slider-track {
+      background: #4a4a4a;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .figma-param-input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      background: #0d99ff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .figma-param-input[type="color"] {
+      padding: 2px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .figma-param-value {
+      min-width: 40px;
+      text-align: right;
+      font-size: 11px;
+      color: #e0e0e0;
+    }
+
+    .figma-param-select {
+      flex: 1;
+      padding: 4px 8px;
+      background: #2c2c2c;
+      border: 1px solid #4a4a4a;
+      border-radius: 3px;
+      color: #e0e0e0;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .figma-param-select:focus {
+      border-color: #0d99ff;
+    }
+
+    /* 添加按钮 */
+    .figma-add-btn {
+      width: 100%;
+      padding: 6px;
+      background: transparent;
+      border: 1px dashed #4a4a4a;
+      border-radius: 4px;
+      color: #999;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.15s;
+    }
+
+    .figma-add-btn:hover {
+      border-color: #0d99ff;
+      color: #0d99ff;
+    }
+
+    /* 曲线文本区域 */
+    .figma-curved-section {
+      padding-top: 12px;
+      border-top: 1px solid #3d3d3d;
+      margin-top: 12px;
+    }
+
+    /* 配置显示区域 */
+    .figma-config-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #3d3d3d;
+    }
+
+    .figma-config-display {
+      background: #1e1e1e;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      color: #999;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .figma-config-display::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .figma-config-display::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 2px;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+/**
+ * 创建 Fill 区域
+ */
+function createFillSection (): HTMLElement {
+  const section = document.createElement('div');
+
+  section.className = 'figma-fill-section';
+
+  // 标题行
+  const header = document.createElement('div');
+
+  header.className = 'figma-section-header';
+
+  const title = document.createElement('span');
+
+  title.textContent = '填充';
+
+  const actions = document.createElement('div');
+
+  actions.className = 'figma-section-actions';
+
+  const addBtn = document.createElement('button');
+
+  addBtn.className = 'figma-icon-btn';
+  addBtn.textContent = '+';
+  addBtn.title = '添加填充层';
+  addBtn.addEventListener('click', () => {
+    if (editorState.fills.length < 5) {
+      addFillLayer();
+      renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+    }
+  });
+
+  actions.appendChild(addBtn);
+  header.appendChild(title);
+  header.appendChild(actions);
+  section.appendChild(header);
+
+  // 层列表容器
+  const layersContainer = document.createElement('div');
+
+  layersContainer.className = 'figma-fill-layers';
+
+  editorState.fills.forEach((fill, index) => {
+    const layerItem = createFillLayerItem(fill, index);
+
+    layersContainer.appendChild(layerItem);
+  });
+
+  section.appendChild(layersContainer);
+
+  return section;
+}
+
+/**
+ * 创建单个 Fill 层条目
+ */
+function createFillLayerItem (fill: FillLayerState, index: number): HTMLElement {
+  const item = document.createElement('div');
+
+  item.className = 'figma-layer-item';
+  if (!fill.visible) {item.classList.add('hidden');}
+
+  // 颜色预览
+  const colorPreview = document.createElement('div');
+
+  colorPreview.className = 'figma-color-preview';
+
+  if (fill.type === 'solid') {
+    const [r, g, b] = fill.color || [1, 1, 1];
+    const opacity = fill.opacity;
+
+    colorPreview.style.background = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+  } else if (fill.type === 'linear') {
+    colorPreview.classList.add('gradient');
+    const colors = fill.gradientColors || [[1, 0, 0, 1], [0, 0, 1, 1]];
+    const angle = fill.gradientAngle || 0;
+
+    colorPreview.style.background = `linear-gradient(${angle}deg, ${colors.map(c => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${c[3] || 1})`).join(', ')})`;
+  } else if (fill.type === 'texture') {
+    colorPreview.classList.add('texture');
+  }
+
+  item.appendChild(colorPreview);
+
+  // 层信息
+  const info = document.createElement('div');
+
+  info.className = 'figma-layer-info';
+
+  const typeSpan = document.createElement('span');
+
+  typeSpan.className = 'figma-layer-type';
+  typeSpan.textContent = fill.type === 'solid' ? '纯色' : fill.type === 'linear' ? '渐变' : '纹理';
+
+  const valueSpan = document.createElement('span');
+
+  valueSpan.className = 'figma-layer-value';
+
+  if (fill.type === 'solid') {
+    const [r, g, b] = fill.color || [1, 1, 1];
+    const hex = rgbToHex(r * 255, g * 255, b * 255);
+
+    valueSpan.textContent = `${hex} ${Math.round(fill.opacity * 100)}%`;
+  } else if (fill.type === 'linear') {
+    valueSpan.textContent = `${fill.gradientAngle || 0}°`;
+  } else {
+    valueSpan.textContent = '纹理';
+  }
+
+  info.appendChild(typeSpan);
+  info.appendChild(valueSpan);
+  item.appendChild(info);
+
+  // 操作按钮
+  const actions = document.createElement('div');
+
+  actions.className = 'figma-layer-actions';
+
+  const visibleBtn = document.createElement('button');
+
+  visibleBtn.className = 'figma-icon-btn';
+  visibleBtn.textContent = '👁';
+  if (fill.visible) {visibleBtn.classList.add('active');}
+  visibleBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    fill.visible = !fill.visible;
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  const deleteBtn = document.createElement('button');
+
+  deleteBtn.className = 'figma-icon-btn';
+  deleteBtn.textContent = '−';
+  deleteBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    editorState.fills.splice(index, 1);
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  actions.appendChild(visibleBtn);
+  actions.appendChild(deleteBtn);
+  item.appendChild(actions);
+
+  // 点击展开参数编辑
+  item.addEventListener('click', () => {
+    const paramsEditor = createFillParamsEditor(fill, index);
+
+    const existingParams = item.parentElement?.querySelector(`.fill-params-${index}`);
+
+    if (existingParams) {
+      existingParams.remove();
+
+      return;
+    }
+
+    // 移除其他展开的参数编辑器
+    item.parentElement?.querySelectorAll('.figma-layer-params').forEach(p => p.remove());
+
+    item.after(paramsEditor);
+  });
+
+  return item;
+}
+
+/**
+ * 创建 Fill 参数编辑器
+ */
+function createFillParamsEditor (fill: FillLayerState, index: number): HTMLElement {
+  const params = document.createElement('div');
+
+  params.className = `figma-layer-params fill-params-${index}`;
+
+  // 类型选择
+  const typeRow = document.createElement('div');
+
+  typeRow.className = 'figma-param-row';
+
+  const typeLabel = document.createElement('span');
+
+  typeLabel.className = 'figma-param-label';
+  typeLabel.textContent = '类型';
+
+  const typeSelect = document.createElement('select');
+
+  typeSelect.className = 'figma-param-select';
+
+  ['solid', 'linear', 'texture'].forEach(t => {
+    const option = document.createElement('option');
+
+    option.value = t;
+    option.textContent = t === 'solid' ? '纯色' : t === 'linear' ? '渐变' : '纹理';
+    if (t === fill.type) {option.selected = true;}
+    typeSelect.appendChild(option);
+  });
+
+  typeSelect.addEventListener('change', e => {
+    const newType = (e.target as HTMLSelectElement).value as FillLayerState['type'];
+
+    fill.type = newType;
+    if (newType === 'solid' && !fill.color) {
+      fill.color = [1, 1, 1, 1];
+    } else if (newType === 'linear') {
+      fill.gradientColors = fill.gradientColors || [[1, 0, 0, 1], [0, 0, 1, 1]];
+      fill.gradientAngle = fill.gradientAngle || 0;
+    } else if (newType === 'texture') {
+      fill.textureUrl = fill.textureUrl || '';
+    }
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  typeRow.appendChild(typeLabel);
+  typeRow.appendChild(typeSelect);
+  params.appendChild(typeRow);
+
+  // 根据类型显示不同参数
+  if (fill.type === 'solid') {
+    // 颜色
+    const colorRow = createColorParamRow('颜色', fill.color || [1, 1, 1, 1], color => {
+      fill.color = color;
+      applyEditorStateToRuntime();
+      // 只更新颜色预览，不重新渲染整个面板
+      const layerItem = params.previousElementSibling as HTMLElement;
+
+      updateLayerColorPreview(layerItem, fill);
+    });
+
+    params.appendChild(colorRow);
+
+    // 透明度
+    const opacityRow = createSliderParamRow('透明度', fill.opacity * 100, 0, 100, 1, value => {
+      fill.opacity = value / 100;
+      applyEditorStateToRuntime();
+      // 只更新颜色预览和显示值，不重新渲染整个面板
+      const layerItem = params.previousElementSibling as HTMLElement;
+
+      updateLayerColorPreview(layerItem, fill);
+      const valueSpan = layerItem.querySelector('.figma-layer-value');
+
+      if (valueSpan) {
+        const [r, g, b] = fill.color || [1, 1, 1];
+        const hex = rgbToHex(r * 255, g * 255, b * 255);
+
+        valueSpan.textContent = `${hex} ${Math.round(fill.opacity * 100)}%`;
+      }
+    });
+
+    params.appendChild(opacityRow);
+  } else if (fill.type === 'linear') {
+    // 渐变颜色
+    const colors = fill.gradientColors || [[1, 0, 0, 1], [0, 0, 1, 1]];
+
+    colors.forEach((color, colorIndex) => {
+      const colorRow = createColorParamRow(`颜色 ${colorIndex + 1}`, color, newColor => {
+        colors[colorIndex] = newColor;
+        fill.gradientColors = colors;
+        applyEditorStateToRuntime();
+        // 更新渐变预览
+        const layerItem = params.previousElementSibling as HTMLElement;
+
+        updateLayerColorPreview(layerItem, fill);
+      });
+
+      params.appendChild(colorRow);
+    });
+
+    // 角度
+    const angleRow = createSliderParamRow('角度', fill.gradientAngle || 0, 0, 360, 1, value => {
+      fill.gradientAngle = value;
+      applyEditorStateToRuntime();
+      // 只更新显示值，不重新渲染整个面板
+      const layerItem = params.previousElementSibling as HTMLElement;
+
+      updateLayerColorPreview(layerItem, fill);
+      const valueSpan = layerItem.querySelector('.figma-layer-value');
+
+      if (valueSpan) {
+        valueSpan.textContent = `${fill.gradientAngle || 0}°`;
+      }
+    });
+
+    params.appendChild(angleRow);
+
+    // 透明度
+    const opacityRow = createSliderParamRow('透明度', fill.opacity * 100, 0, 100, 1, value => {
+      fill.opacity = value / 100;
+      applyEditorStateToRuntime();
+      // 更新渐变预览
+      const layerItem = params.previousElementSibling as HTMLElement;
+
+      updateLayerColorPreview(layerItem, fill);
+    });
+
+    params.appendChild(opacityRow);
+  } else if (fill.type === 'texture') {
+    // URL 输入
+    const urlRow = document.createElement('div');
+
+    urlRow.className = 'figma-param-row';
+
+    const urlLabel = document.createElement('span');
+
+    urlLabel.className = 'figma-param-label';
+    urlLabel.textContent = 'URL';
+
+    const urlInput = document.createElement('input');
+
+    urlInput.className = 'figma-param-input';
+    urlInput.type = 'text';
+    urlInput.value = fill.textureUrl || '';
+    urlInput.addEventListener('change', e => {
+      fill.textureUrl = (e.target as HTMLInputElement).value;
+      applyEditorStateToRuntime();
+    });
+
+    urlRow.appendChild(urlLabel);
+    urlRow.appendChild(urlInput);
+    params.appendChild(urlRow);
+  }
+
+  // 上移/下移按钮
+  if (editorState.fills.length > 1) {
+    const moveRow = document.createElement('div');
+
+    moveRow.className = 'figma-param-row';
+    moveRow.style.justifyContent = 'center';
+
+    const upBtn = document.createElement('button');
+
+    upBtn.className = 'figma-icon-btn';
+    upBtn.textContent = '↑';
+    upBtn.style.width = 'auto';
+    upBtn.style.padding = '4px 12px';
+    upBtn.disabled = index === 0;
+    upBtn.addEventListener('click', () => {
+      if (index > 0) {
+        const temp = editorState.fills[index - 1];
+
+        editorState.fills[index - 1] = editorState.fills[index];
+        editorState.fills[index] = temp;
+        applyEditorStateToRuntime();
+        renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+      }
+    });
+
+    const downBtn = document.createElement('button');
+
+    downBtn.className = 'figma-icon-btn';
+    downBtn.textContent = '↓';
+    downBtn.style.width = 'auto';
+    downBtn.style.padding = '4px 12px';
+    downBtn.disabled = index === editorState.fills.length - 1;
+    downBtn.addEventListener('click', () => {
+      if (index < editorState.fills.length - 1) {
+        const temp = editorState.fills[index + 1];
+
+        editorState.fills[index + 1] = editorState.fills[index];
+        editorState.fills[index] = temp;
+        applyEditorStateToRuntime();
+        renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+      }
+    });
+
+    moveRow.appendChild(upBtn);
+    moveRow.appendChild(downBtn);
+    params.appendChild(moveRow);
+  }
+
+  return params;
+}
+
+/**
+ * 创建 Stroke 区域
+ */
+function createStrokeSection (): HTMLElement {
+  const section = document.createElement('div');
+
+  section.className = 'figma-stroke-section';
+
+  // 标题行
+  const header = document.createElement('div');
+
+  header.className = 'figma-section-header';
+
+  const title = document.createElement('span');
+
+  title.textContent = '描边';
+
+  const actions = document.createElement('div');
+
+  actions.className = 'figma-section-actions';
+
+  const addBtn = document.createElement('button');
+
+  addBtn.className = 'figma-icon-btn';
+  addBtn.textContent = '+';
+  addBtn.title = '添加描边层';
+  addBtn.addEventListener('click', () => {
+    addStrokeLayer();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  actions.appendChild(addBtn);
+  header.appendChild(title);
+  header.appendChild(actions);
+  section.appendChild(header);
+
+  // 层列表容器
+  const layersContainer = document.createElement('div');
+
+  layersContainer.className = 'figma-stroke-layers';
+
+  editorState.strokes.forEach((stroke, index) => {
+    const layerItem = createStrokeLayerItem(stroke, index);
+
+    layersContainer.appendChild(layerItem);
+  });
+
+  section.appendChild(layersContainer);
+
+  return section;
+}
+
+/**
+ * 创建单个 Stroke 层条目
+ */
+function createStrokeLayerItem (stroke: StrokeLayerState, index: number): HTMLElement {
+  const item = document.createElement('div');
+
+  item.className = 'figma-layer-item';
+  if (!stroke.visible) {item.classList.add('hidden');}
+
+  // 颜色预览
+  const colorPreview = document.createElement('div');
+
+  colorPreview.className = 'figma-color-preview';
+  const [r, g, b] = stroke.color || [1, 0, 0, 1];
+  const opacity = stroke.opacity;
+
+  colorPreview.style.background = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+
+  item.appendChild(colorPreview);
+
+  // 层信息
+  const info = document.createElement('div');
+
+  info.className = 'figma-layer-info';
+
+  const valueSpan = document.createElement('span');
+
+  valueSpan.className = 'figma-layer-value';
+  const hex = rgbToHex(r * 255, g * 255, b * 255);
+
+  valueSpan.textContent = `${hex} ${stroke.width}px`;
+
+  info.appendChild(valueSpan);
+  item.appendChild(info);
+
+  // 操作按钮
+  const actions = document.createElement('div');
+
+  actions.className = 'figma-layer-actions';
+
+  const visibleBtn = document.createElement('button');
+
+  visibleBtn.className = 'figma-icon-btn';
+  visibleBtn.textContent = '👁';
+  if (stroke.visible) {visibleBtn.classList.add('active');}
+  visibleBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    stroke.visible = !stroke.visible;
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  const deleteBtn = document.createElement('button');
+
+  deleteBtn.className = 'figma-icon-btn';
+  deleteBtn.textContent = '−';
+  deleteBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    editorState.strokes.splice(index, 1);
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  actions.appendChild(visibleBtn);
+  actions.appendChild(deleteBtn);
+  item.appendChild(actions);
+
+  // 点击展开参数编辑
+  item.addEventListener('click', () => {
+    const paramsEditor = createStrokeParamsEditor(stroke, index);
+
+    const existingParams = item.parentElement?.querySelector(`.stroke-params-${index}`);
+
+    if (existingParams) {
+      existingParams.remove();
+
+      return;
+    }
+
+    // 移除其他展开的参数编辑器
+    item.parentElement?.querySelectorAll('.figma-layer-params').forEach(p => p.remove());
+
+    item.after(paramsEditor);
+  });
+
+  return item;
+}
+
+/**
+ * 创建 Stroke 参数编辑器
+ */
+function createStrokeParamsEditor (stroke: StrokeLayerState, index: number): HTMLElement {
+  const params = document.createElement('div');
+
+  params.className = `figma-layer-params stroke-params-${index}`;
+
+  // 颜色
+  const colorRow = createColorParamRow('颜色', stroke.color, color => {
+    stroke.color = color;
+    applyEditorStateToRuntime();
+    // 只更新颜色预览，不重新渲染整个面板
+    const layerItem = params.previousElementSibling as HTMLElement;
+
+    updateStrokeLayerDisplay(layerItem, stroke);
+  });
+
+  params.appendChild(colorRow);
+
+  // 透明度
+  const opacityRow = createSliderParamRow('透明度', stroke.opacity * 100, 0, 100, 1, value => {
+    stroke.opacity = value / 100;
+    applyEditorStateToRuntime();
+    const layerItem = params.previousElementSibling as HTMLElement;
+
+    updateStrokeLayerDisplay(layerItem, stroke);
+  });
+
+  params.appendChild(opacityRow);
+
+  // 宽度
+  const widthRow = createSliderParamRow('宽度', stroke.width, 1, 20, 0.5, value => {
+    stroke.width = value;
+    applyEditorStateToRuntime();
+    const layerItem = params.previousElementSibling as HTMLElement;
+
+    updateStrokeLayerDisplay(layerItem, stroke);
+  });
+
+  params.appendChild(widthRow);
+
+  // 上移/下移按钮
+  if (editorState.strokes.length > 1) {
+    const moveRow = document.createElement('div');
+
+    moveRow.className = 'figma-param-row';
+    moveRow.style.justifyContent = 'center';
+
+    const upBtn = document.createElement('button');
+
+    upBtn.className = 'figma-icon-btn';
+    upBtn.textContent = '↑';
+    upBtn.style.width = 'auto';
+    upBtn.style.padding = '4px 12px';
+    upBtn.disabled = index === 0;
+    upBtn.addEventListener('click', () => {
+      if (index > 0) {
+        const temp = editorState.strokes[index - 1];
+
+        editorState.strokes[index - 1] = editorState.strokes[index];
+        editorState.strokes[index] = temp;
+        applyEditorStateToRuntime();
+        renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+      }
+    });
+
+    const downBtn = document.createElement('button');
+
+    downBtn.className = 'figma-icon-btn';
+    downBtn.textContent = '↓';
+    downBtn.style.width = 'auto';
+    downBtn.style.padding = '4px 12px';
+    downBtn.disabled = index === editorState.strokes.length - 1;
+    downBtn.addEventListener('click', () => {
+      if (index < editorState.strokes.length - 1) {
+        const temp = editorState.strokes[index + 1];
+
+        editorState.strokes[index + 1] = editorState.strokes[index];
+        editorState.strokes[index] = temp;
+        applyEditorStateToRuntime();
+        renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+      }
+    });
+
+    moveRow.appendChild(upBtn);
+    moveRow.appendChild(downBtn);
+    params.appendChild(moveRow);
+  }
+
+  return params;
+}
+
+/**
+ * 创建 Effects 区域
+ */
+function createEffectsSection (): HTMLElement {
+  const section = document.createElement('div');
+
+  section.className = 'figma-effects-section';
+
+  // 标题行
+  const header = document.createElement('div');
+
+  header.className = 'figma-section-header';
+
+  const title = document.createElement('span');
+
+  title.textContent = 'Effects';
+
+  const actions = document.createElement('div');
+
+  actions.className = 'figma-section-actions';
+
+  const addBtn = document.createElement('button');
+
+  addBtn.className = 'figma-icon-btn';
+  addBtn.textContent = '+';
+  addBtn.title = '添加 Effect';
+  addBtn.addEventListener('click', () => {
+    addEffectLayer();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  actions.appendChild(addBtn);
+  header.appendChild(title);
+  header.appendChild(actions);
+  section.appendChild(header);
+
+  // 层列表容器
+  const layersContainer = document.createElement('div');
+
+  layersContainer.className = 'figma-effects-layers';
+
+  editorState.effects.forEach((effect, index) => {
+    const layerItem = createEffectLayerItem(effect, index);
+
+    layersContainer.appendChild(layerItem);
+  });
+
+  section.appendChild(layersContainer);
+
+  return section;
+}
+
+/**
+ * 创建单个 Effect 层条目
+ */
+function createEffectLayerItem (effect: EffectLayerState, index: number): HTMLElement {
+  const item = document.createElement('div');
+
+  item.className = 'figma-layer-item';
+  if (!effect.visible) {item.classList.add('hidden');}
+
+  // 颜色预览（阴影颜色）
+  const colorPreview = document.createElement('div');
+
+  colorPreview.className = 'figma-color-preview';
+  const [r, g, b] = effect.color || [0, 0, 0, 1];
+
+  colorPreview.style.background = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, 1)`;
+
+  item.appendChild(colorPreview);
+
+  // 层信息
+  const info = document.createElement('div');
+
+  info.className = 'figma-layer-info';
+
+  const typeSpan = document.createElement('span');
+
+  typeSpan.className = 'figma-layer-type';
+  typeSpan.textContent = effect.type === 'shadow' ? '阴影' : effect.type;
+
+  const valueSpan = document.createElement('span');
+
+  valueSpan.className = 'figma-layer-value';
+  valueSpan.textContent = `${effect.blur}px`;
+
+  info.appendChild(typeSpan);
+  info.appendChild(valueSpan);
+  item.appendChild(info);
+
+  // 操作按钮
+  const actions = document.createElement('div');
+
+  actions.className = 'figma-layer-actions';
+
+  const visibleBtn = document.createElement('button');
+
+  visibleBtn.className = 'figma-icon-btn';
+  visibleBtn.textContent = '👁';
+  if (effect.visible) {visibleBtn.classList.add('active');}
+  visibleBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    effect.visible = !effect.visible;
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  const deleteBtn = document.createElement('button');
+
+  deleteBtn.className = 'figma-icon-btn';
+  deleteBtn.textContent = '−';
+  deleteBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    editorState.effects.splice(index, 1);
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  actions.appendChild(visibleBtn);
+  actions.appendChild(deleteBtn);
+  item.appendChild(actions);
+
+  // 点击展开参数编辑
+  item.addEventListener('click', () => {
+    const paramsEditor = createEffectParamsEditor(effect, index);
+
+    const existingParams = item.parentElement?.querySelector(`.effect-params-${index}`);
+
+    if (existingParams) {
+      existingParams.remove();
+
+      return;
+    }
+
+    // 移除其他展开的参数编辑器
+    item.parentElement?.querySelectorAll('.figma-layer-params').forEach(p => p.remove());
+
+    item.after(paramsEditor);
+  });
+
+  return item;
+}
+
+/**
+ * 创建 Effect 参数编辑器
+ */
+function createEffectParamsEditor (effect: EffectLayerState, index: number): HTMLElement {
+  const params = document.createElement('div');
+
+  params.className = `figma-layer-params effect-params-${index}`;
+
+  // 类型选择
+  const typeRow = document.createElement('div');
+
+  typeRow.className = 'figma-param-row';
+
+  const typeLabel = document.createElement('span');
+
+  typeLabel.className = 'figma-param-label';
+  typeLabel.textContent = 'Type';
+
+  const typeSelect = document.createElement('select');
+
+  typeSelect.className = 'figma-param-select';
+
+  const option = document.createElement('option');
+
+  option.value = 'shadow';
+  option.textContent = '阴影';
+  option.selected = true;
+  typeSelect.appendChild(option);
+
+  typeRow.appendChild(typeLabel);
+  typeRow.appendChild(typeSelect);
+  params.appendChild(typeRow);
+
+  // 颜色
+  const colorRow = createColorParamRow('颜色', effect.color, color => {
+    effect.color = color;
+    applyEditorStateToRuntime();
+    // 只更新颜色预览，不重新渲染整个面板
+    const layerItem = params.previousElementSibling as HTMLElement;
+
+    updateEffectLayerDisplay(layerItem, effect);
+  });
+
+  params.appendChild(colorRow);
+
+  // 模糊
+  const blurRow = createSliderParamRow('模糊', effect.blur, 0, 50, 1, value => {
+    effect.blur = value;
+    applyEditorStateToRuntime();
+    const layerItem = params.previousElementSibling as HTMLElement;
+
+    updateEffectLayerDisplay(layerItem, effect);
+  });
+
+  params.appendChild(blurRow);
+
+  // 距离
+  const distanceRow = createSliderParamRow('距离', effect.distance, 0, 50, 1, value => {
+    effect.distance = value;
+    applyEditorStateToRuntime();
+    // 距离变化不需要更新显示
+  });
+
+  params.appendChild(distanceRow);
+
+  // 角度
+  const angleRow = createSliderParamRow('角度', effect.angle, 0, 360, 1, value => {
+    effect.angle = value;
+    applyEditorStateToRuntime();
+    // 角度变化不需要更新显示
+  });
+
+  params.appendChild(angleRow);
+
+  return params;
+}
+
+/**
+ * 创建曲线文本控制区域
+ */
+function createCurvedTextSection (): HTMLElement {
+  const section = document.createElement('div');
+
+  section.className = 'figma-curved-section';
+
+  // 标题
+  const header = document.createElement('div');
+
+  header.className = 'figma-section-header';
+  header.textContent = '曲线文本';
+  section.appendChild(header);
+
+  // 曲线强度滑块
+  const powerRow = createSliderParamRow('强度', 0, -100, 100, 1, value => {
+    if (textItem) {
+      const textComponent = textItem.getComponent(TextComponent);
+
+      if (textComponent) {
+        textComponent.setCurvedTextPower(value);
+        updateConfigDisplay();
+      }
+    }
+  });
+
+  powerRow.id = 'curved-power-row';
+  section.appendChild(powerRow);
+
+  // 禁用按钮
+  const disableBtn = document.createElement('button');
+
+  disableBtn.className = 'figma-add-btn';
+  disableBtn.textContent = '禁用曲线文本';
+  disableBtn.addEventListener('click', () => {
+    if (textItem) {
+      const textComponent = textItem.getComponent(TextComponent);
+
+      textComponent?.setCurvedTextPower(0);
+      textComponent.isDirty = true;
+      textComponent.updateTexture();
+
+      // 重置滑块
+      const slider = powerRow.querySelector('input[type="range"]') as HTMLInputElement;
+      const valueDisplay = powerRow.querySelector('.figma-param-value') as HTMLElement;
+
+      if (slider) {slider.value = '0';}
+      if (valueDisplay) {valueDisplay.textContent = '0';}
+
+      updateConfigDisplay();
+    }
+  });
+
+  section.appendChild(disableBtn);
+
+  return section;
+}
+
+/**
+ * 创建颜色参数行
+ */
+function createColorParamRow (
+  label: string,
+  color: number[],
+  onChange: (color: number[]) => void
+): HTMLElement {
+  const row = document.createElement('div');
+
+  row.className = 'figma-param-row';
+
+  const labelEl = document.createElement('span');
+
+  labelEl.className = 'figma-param-label';
+  labelEl.textContent = label;
+
+  const input = document.createElement('input');
+
+  input.className = 'figma-param-input';
+  input.type = 'color';
+
+  const [r, g, b] = color;
+  const hex = rgbToHex(r * 255, g * 255, b * 255);
+
+  input.value = hex;
+
+  input.addEventListener('input', e => {
+    const newHex = (e.target as HTMLInputElement).value;
+    const newColor = hexToRgba(newHex);
+
+    // 保持原有的 alpha 值
+    newColor[3] = color[3] || 1;
+    onChange(newColor);
+  });
+
+  row.appendChild(labelEl);
+  row.appendChild(input);
+
+  return row;
+}
+
+/**
+ * 创建滑块参数行
+ */
+function createSliderParamRow (
+  label: string,
+  value: number,
+  min: number,
+  max: number,
+  step: number,
+  onChange: (value: number) => void
+): HTMLElement {
+  const row = document.createElement('div');
+
+  row.className = 'figma-param-row';
+
+  const labelEl = document.createElement('span');
+
+  labelEl.className = 'figma-param-label';
+  labelEl.textContent = label;
+
+  const input = document.createElement('input');
+
+  input.className = 'figma-param-input';
+  input.type = 'range';
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(value);
+
+  const valueDisplay = document.createElement('span');
+
+  valueDisplay.className = 'figma-param-value';
+  valueDisplay.textContent = String(value);
+
+  input.addEventListener('input', e => {
+    const newValue = parseFloat((e.target as HTMLInputElement).value);
+
+    valueDisplay.textContent = String(newValue);
+    onChange(newValue);
+  });
+
+  row.appendChild(labelEl);
+  row.appendChild(input);
+  row.appendChild(valueDisplay);
+
+  return row;
+}
+
+/**
+ * 添加 Fill 层
+ */
+function addFillLayer () {
+  const newFill: FillLayerState = {
+    id: generateId(),
+    type: 'solid',
+    visible: true,
+    opacity: 1,
+    color: [1, 1, 1, 1],
+  };
+
+  editorState.fills.push(newFill);
+  applyEditorStateToRuntime();
+}
+
+/**
+ * 添加 Stroke 层
+ */
+function addStrokeLayer () {
+  const newStroke: StrokeLayerState = {
+    id: generateId(),
+    visible: true,
+    opacity: 1,
+    color: [1, 0, 0, 1],
+    width: 3,
+  };
+
+  editorState.strokes.push(newStroke);
+  applyEditorStateToRuntime();
+}
+
+/**
+ * 添加 Effect 层
+ */
+function addEffectLayer () {
+  const newEffect: EffectLayerState = {
+    id: generateId(),
+    type: 'shadow',
+    visible: true,
+    color: [0, 0, 0, 0.8],
+    blur: 10,
+    distance: 5,
+    angle: 45,
+  };
+
+  editorState.effects.push(newEffect);
+  applyEditorStateToRuntime();
+}
+
+/**
+ * 生成唯一 ID
+ */
+function generateId (): string {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+/**
+ * 从预设配置解析到编辑器状态
+ */
+function parsePresetToEditorState (presetName: string) {
+  const config = getDemoFancyJsonConfig(presetName);
+
+  editorState = {
+    fills: [],
+    strokes: [],
+    effects: [],
+  };
+
+  if (!config.layers) {return;}
+
+  // 标记是否已经提取过阴影（只提取一次）
+  let shadowExtracted = false;
+
+  config.layers.forEach(layer => {
+    if (layer.kind === 'solid-fill') {
+      const fill: FillLayerState = {
+        id: generateId(),
+        type: 'solid',
+        visible: true,
+        opacity: layer.params.color[3] || 1,
+        color: layer.params.color,
+      };
+
+      editorState.fills.push(fill);
+
+      // 检查装饰层（阴影）- 只提取一次
+      if (!shadowExtracted && layer.decorations) {
+        layer.decorations.forEach(dec => {
+          if (dec.kind === 'shadow') {
+            const effect: EffectLayerState = {
+              id: generateId(),
+              type: 'shadow',
+              visible: true,
+              color: dec.params.color,
+              blur: dec.params.blur,
+              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
+              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
+            };
+
+            editorState.effects.push(effect);
+            shadowExtracted = true;
+          }
+        });
+      }
+    } else if (layer.kind === 'gradient') {
+      const fill: FillLayerState = {
+        id: generateId(),
+        type: 'linear',
+        visible: true,
+        opacity: 1,
+        gradientColors: layer.params.colors,
+        gradientAngle: layer.params.angle,
+      };
+
+      editorState.fills.push(fill);
+
+      // 检查装饰层（阴影）- 只提取一次
+      if (!shadowExtracted && layer.decorations) {
+        layer.decorations.forEach(dec => {
+          if (dec.kind === 'shadow') {
+            const effect: EffectLayerState = {
+              id: generateId(),
+              type: 'shadow',
+              visible: true,
+              color: dec.params.color,
+              blur: dec.params.blur,
+              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
+              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
+            };
+
+            editorState.effects.push(effect);
+            shadowExtracted = true;
+          }
+        });
+      }
+    } else if (layer.kind === 'texture') {
+      const fill: FillLayerState = {
+        id: generateId(),
+        type: 'texture',
+        visible: true,
+        opacity: 1,
+        textureUrl: layer.params.pattern.imageUrl,
+      };
+
+      editorState.fills.push(fill);
+
+      // 检查装饰层（阴影）- 只提取一次
+      if (!shadowExtracted && layer.decorations) {
+        layer.decorations.forEach(dec => {
+          if (dec.kind === 'shadow') {
+            const effect: EffectLayerState = {
+              id: generateId(),
+              type: 'shadow',
+              visible: true,
+              color: dec.params.color,
+              blur: dec.params.blur,
+              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
+              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
+            };
+
+            editorState.effects.push(effect);
+            shadowExtracted = true;
+          }
+        });
+      }
+    } else if (layer.kind === 'single-stroke') {
+      const stroke: StrokeLayerState = {
+        id: generateId(),
+        visible: true,
+        opacity: layer.params.color[3] || 1,
+        color: layer.params.color,
+        width: layer.params.width,
+      };
+
+      editorState.strokes.push(stroke);
+
+      // 检查装饰层（阴影）- 只提取一次
+      if (!shadowExtracted && layer.decorations) {
+        layer.decorations.forEach(dec => {
+          if (dec.kind === 'shadow') {
+            const effect: EffectLayerState = {
+              id: generateId(),
+              type: 'shadow',
+              visible: true,
+              color: dec.params.color,
+              blur: dec.params.blur,
+              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
+              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
+            };
+
+            editorState.effects.push(effect);
+            shadowExtracted = true;
+          }
+        });
+      }
+    }
+  });
+}
+
+/**
+ * 将编辑器状态应用到运行时
+ */
+function applyEditorStateToRuntime () {
+  if (!textItem) {return;}
+
+  const textComponent = textItem.getComponent(TextComponent);
+
+  if (!textComponent) {return;}
+
+  // 直接构建 FancyRenderStyle（包含 FancyRenderLayer[]）
+  const layers: FancyRenderLayer[] = [];
+
+  const visibleStrokes = editorState.strokes.filter(s => s.visible);
+  const visibleFills = editorState.fills.filter(f => f.visible);
+  const visibleShadows = editorState.effects.filter(e => e.visible && e.type === 'shadow');
+
+  // 构建阴影层
+  const buildShadowLayer = (effect: EffectLayerState) => {
+    const angleRad = effect.angle * Math.PI / 180;
+    const offsetX = effect.distance * Math.cos(angleRad);
+    const offsetY = effect.distance * Math.sin(angleRad);
+
+    return {
+      kind: 'shadow' as const,
+      params: {
+        color: [effect.color[0], effect.color[1], effect.color[2], effect.color[3] || 1] as [number, number, number, number],
+        blur: effect.blur,
+        offsetX,
+        offsetY,
+      },
+    };
+  };
+
+  // 如果有阴影，先渲染所有层带阴影的效果（阴影在最底层）
+  if (visibleShadows.length > 0) {
+    // 1. 渲染所有 Stroke 层带阴影的效果
+    visibleStrokes.forEach(stroke => {
+      // 先设置阴影
+      visibleShadows.forEach(effect => {
+        layers.push(buildShadowLayer(effect));
+      });
+      // 再绘制 Stroke（带出阴影）
+      layers.push({
+        kind: 'single-stroke',
+        params: {
+          color: [...stroke.color.slice(0, 3), stroke.opacity] as [number, number, number, number],
+          width: stroke.width,
+          unit: 'px',
+        },
+      });
+    });
+
+    // 2. 渲染所有 Fill 层带阴影的效果
+    visibleFills.forEach(fill => {
+      // 先设置阴影
+      visibleShadows.forEach(effect => {
+        layers.push(buildShadowLayer(effect));
+      });
+      // 再绘制 Fill（带出阴影）
+      if (fill.type === 'solid') {
+        layers.push({
+          kind: 'solid-fill',
+          params: {
+            color: [...(fill.color || [1, 1, 1]).slice(0, 3), fill.opacity] as [number, number, number, number],
+          },
+        });
+      } else if (fill.type === 'linear') {
+        const colors = fill.gradientColors || [[1, 0, 0, 1], [0, 0, 1, 1]];
+
+        layers.push({
+          kind: 'gradient',
+          params: {
+            angle: fill.gradientAngle || 0,
+            colors: colors.map(c => [c[0], c[1], c[2], c[3] || 1] as [number, number, number, number]),
+          },
+        });
+      } else if (fill.type === 'texture') {
+        layers.push({
+          kind: 'texture',
+          params: {
+            pattern: {
+              imageUrl: fill.textureUrl || '',
+            },
+          },
+        });
+      }
+    });
+  } else {
+    // 没有阴影，按正常顺序渲染
+    // 1. 添加 Stroke 层
+    visibleStrokes.forEach(stroke => {
+      layers.push({
+        kind: 'single-stroke',
+        params: {
+          color: [...stroke.color.slice(0, 3), stroke.opacity] as [number, number, number, number],
+          width: stroke.width,
+          unit: 'px',
+        },
+      });
+    });
+
+    // 2. 添加 Fill 层
+    visibleFills.forEach(fill => {
+      if (fill.type === 'solid') {
+        layers.push({
+          kind: 'solid-fill',
+          params: {
+            color: [...(fill.color || [1, 1, 1]).slice(0, 3), fill.opacity] as [number, number, number, number],
+          },
+        });
+      } else if (fill.type === 'linear') {
+        const colors = fill.gradientColors || [[1, 0, 0, 1], [0, 0, 1, 1]];
+
+        layers.push({
+          kind: 'gradient',
+          params: {
+            angle: fill.gradientAngle || 0,
+            colors: colors.map(c => [c[0], c[1], c[2], c[3] || 1] as [number, number, number, number]),
+          },
+        });
+      } else if (fill.type === 'texture') {
+        layers.push({
+          kind: 'texture',
+          params: {
+            pattern: {
+              imageUrl: fill.textureUrl || '',
+            },
+          },
+        });
+      }
+    });
+  }
+
+  // 应用到运行时
+  const style = textComponent.textStyle;
+
+  style.fancyRenderStyle = { layers };
+
+  // 重建 layerDrawers
+  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(layers);
+  textComponent.isDirty = true;
+
+  // 如果有纹理，需要设置纹理 pattern
+  const hasTexture = editorState.fills.some(f => f.type === 'texture' && f.textureUrl && f.visible);
+
+  if (hasTexture) {
+    setupTexturePattern(textComponent).catch(console.error);
+  }
+
+  // 更新配置显示
+  updateConfigDisplay();
+}
+
+/**
+ * 更新配置显示
+ */
+function updateConfigDisplay () {
+  const configDisplay = document.getElementById('config-display');
+
+  if (!configDisplay || !textItem) {return;}
+
+  const textComponent = textItem.getComponent(TextComponent);
+
+  if (!textComponent) {return;}
+
+  const config = textComponent.getCurrentFancyTextConfig();
+
+  configDisplay.textContent = JSON.stringify(config, null, 2);
+}
+
+/**
+ * 更新 Fill 层颜色预览
+ */
+function updateLayerColorPreview (item: HTMLElement, fill: FillLayerState) {
+  if (!item) {return;}
+
+  const colorPreview = item.querySelector('.figma-color-preview') as HTMLElement;
+
+  if (!colorPreview) {return;}
+
+  if (fill.type === 'solid') {
+    const [r, g, b] = fill.color || [1, 1, 1];
+    const opacity = fill.opacity;
+
+    colorPreview.style.background = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+  } else if (fill.type === 'linear') {
+    const colors = fill.gradientColors || [[1, 0, 0, 1], [0, 0, 1, 1]];
+    const angle = fill.gradientAngle || 0;
+
+    colorPreview.style.background = `linear-gradient(${angle}deg, ${colors.map(c => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${c[3] || 1})`).join(', ')})`;
+  }
+}
+
+/**
+ * 更新 Stroke 层显示
+ */
+function updateStrokeLayerDisplay (item: HTMLElement, stroke: StrokeLayerState) {
+  if (!item) {return;}
+
+  const colorPreview = item.querySelector('.figma-color-preview') as HTMLElement;
+  const valueSpan = item.querySelector('.figma-layer-value');
+
+  if (colorPreview) {
+    const [r, g, b] = stroke.color || [1, 0, 0, 1];
+    const opacity = stroke.opacity;
+
+    colorPreview.style.background = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+  }
+
+  if (valueSpan) {
+    const [r, g, b] = stroke.color || [1, 0, 0, 1];
+    const hex = rgbToHex(r * 255, g * 255, b * 255);
+
+    valueSpan.textContent = `${hex} ${stroke.width}px`;
+  }
+}
+
+/**
+ * 更新 Effect 层显示
+ */
+function updateEffectLayerDisplay (item: HTMLElement, effect: EffectLayerState) {
+  if (!item) {return;}
+
+  const colorPreview = item.querySelector('.figma-color-preview') as HTMLElement;
+  const valueSpan = item.querySelector('.figma-layer-value');
+
+  if (colorPreview) {
+    const [r, g, b] = effect.color || [0, 0, 0, 1];
+
+    colorPreview.style.background = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, 1)`;
+  }
+
+  if (valueSpan) {
+    valueSpan.textContent = `${effect.blur}px`;
+  }
+}
+
+/**
+ * 辅助函数：颜色转换 hex -> rgba
+ */
+function hexToRgba (hex: string): number[] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  return [r, g, b, 1];
+}
+
+/**
+ * 辅助函数：RGB 转 HEX
+ */
+function rgbToHex (r: number, g: number, b: number): string {
+  const toHex = (n: number) => {
+    const hex = Math.round(n).toString(16);
+
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+
+  return '#' + toHex(r) + toHex(g) + toHex(b);
 }
 
 // eslint-disable-next-line no-console

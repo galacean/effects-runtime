@@ -159,8 +159,8 @@ export class TextStyle {
   }
 
   /**
-   * 根据当前样式参数构造基础渲染样式（不含复杂花字预设）
-   */
+    * 根据当前样式参数构造基础渲染样式（不含复杂花字预设）
+    */
   getBaseRenderStyle (): FancyRenderStyle {
     const layers: FancyRenderLayer[] = [];
 
@@ -208,15 +208,15 @@ export class TextStyle {
   }
 
   /**
-   * 静态工具：将花字配置解析为 FancyRenderStyle
-   *
-   * 本方法会把 BaseLayerConfig.decorations 中挂载的装饰层扁平化到渲染层数组中。
-   * 处理顺序：先展开 decorations（shadow 等），再添加当前 base 层本身。
-   *
-   * @param config - 花字配置
-   * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色（可传 this.textColor）
-   * @returns FancyRenderStyle - 扁平化后的渲染层配置
-   */
+    * 静态工具：将花字配置解析为 FancyRenderStyle
+    *
+    * 本方法会把 BaseLayerConfig.decorations 中挂载的装饰层扁平化到渲染层数组中。
+    * 处理顺序：先展开 decorations（shadow 等），再添加当前 base 层本身。
+    *
+    * @param config - 花字配置
+    * @param fallbackFillColor - 当 solid-fill 没有给 color 时使用的默认颜色（可传 this.textColor）
+    * @returns FancyRenderStyle - 扁平化后的渲染层配置
+    */
   static parseFancyConfig (config: FancyConfig, fallbackFillColor?: spec.vec4): FancyRenderStyle {
     const layers: FancyRenderLayer[] = [];
     const srcLayers = config.layers || [];
@@ -302,9 +302,7 @@ export class TextStyle {
       }
     }
 
-    return {
-      layers,
-    };
+    return { layers };
   }
 
   /**

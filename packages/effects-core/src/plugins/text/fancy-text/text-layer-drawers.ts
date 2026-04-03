@@ -2,6 +2,7 @@ import type { TextEnv, TextLayerDrawer } from './fancy-types';
 
 /**
  * 单层描边层绘制器
+ * 只绘制描边的外边部分,不绘制文字内部的描边部分
  */
 export class SingleStrokeDrawer implements TextLayerDrawer {
   name = 'single-stroke';
@@ -31,6 +32,20 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
 
     ctx.strokeStyle = `rgba(${R}, ${G}, ${B}, ${a})`;
 
+    // 只绘制描边的外边部分
+    this.renderOutsideOnly(ctx, env);
+  }
+
+  /**
+   * 只绘制描边的外边部分
+   * 实现原理:
+   * 1. 先绘制完整的描边
+   * 2. 使用 globalCompositeOperation='destination-out' 清除文字内部区域
+   */
+  private renderOutsideOnly (ctx: CanvasRenderingContext2D, env: TextEnv): void {
+    ctx.save();
+
+    // 先绘制完整描边
     env.lines.forEach(line => {
       const baseX = env.layout.getOffsetX(env.style, line.width);
 
@@ -40,6 +55,22 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
         ctx.strokeText(ch, x, line.y);
       });
     });
+
+    // 使用 destination-out 清除内部
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'white';
+
+    env.lines.forEach(line => {
+      const baseX = env.layout.getOffsetX(env.style, line.width);
+
+      line.chars.forEach((ch: string, i: number) => {
+        const x = baseX + line.charOffsetX[i];
+
+        ctx.fillText(ch, x, line.y);
+      });
+    });
+
+    ctx.restore();
   }
 }
 
