@@ -485,28 +485,15 @@ export class ContentBrowser extends EditorWindow {
       const textX = origin.x + 4;
 
       // 名称文字（截断处理）
-      let text = name;
-
-      if (ImGui.CalcTextSize(text).x > maxTextW) {
-        while (text.length > 1 && ImGui.CalcTextSize(text + '..').x > maxTextW) {
-          text = text.slice(0, -1);
-        }
-        text += '..';
-      }
+      const text = this.truncateText(name, maxTextW);
 
       dl.AddText(new ImGui.Vec2(textX, nameAreaTop),
         colU32(isSel ? [1, 1, 1, 1] : THEME.textPrimary), text);
 
       // 类型标签（单数形式 + 省略号截断）
       if (cat) {
-        let typeLabel = this.getCategorySingular(cat);
+        const typeLabel = this.truncateText(this.getCategorySingular(cat), maxTextW);
 
-        if (ImGui.CalcTextSize(typeLabel).x > maxTextW) {
-          while (typeLabel.length > 1 && ImGui.CalcTextSize(typeLabel + '..').x > maxTextW) {
-            typeLabel = typeLabel.slice(0, -1);
-          }
-          typeLabel += '..';
-        }
         dl.AddText(new ImGui.Vec2(textX, nameAreaTop + nameLineH),
           colU32(THEME.textMuted), typeLabel);
       }
@@ -515,7 +502,8 @@ export class ContentBrowser extends EditorWindow {
       ImGui.SetCursorScreenPos(origin);
       ImGui.InvisibleButton('##card', new ImGui.Vec2(cardW, cardH));
 
-      if (ImGui.IsItemClicked()) { Selection.select(obj); }
+      // 仅在鼠标释放时选中（拖拽不触发选中）
+      if (ImGui.IsItemHovered() && ImGui.IsMouseReleased(0)) { Selection.select(obj); }
 
       // 悬停态
       if (ImGui.IsItemHovered()) {
@@ -541,10 +529,10 @@ export class ContentBrowser extends EditorWindow {
         );
       }
 
-      // 拖拽
+      // 拖拽预览（网格卡片样式，限制最大尺寸）
       if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
         ImGui.SetDragDropPayload(obj.constructor.name, obj);
-        ImGui.Text(name);
+        this.drawTileDragPreview(obj, name, cat);
         ImGui.EndDragDropSource();
       }
 
@@ -619,9 +607,18 @@ export class ContentBrowser extends EditorWindow {
 
       ImGui.SetCursorPosX(nameColX);
       ImGui.PushStyleColor(ImGui.ImGuiCol.Text, col4(THEME.textPrimary));
-      if (ImGui.Selectable(`${name}##row`, isSel,
-        ImGui.SelectableFlags.SpanAllColumns, new ImGui.Vec2(0, rowH))) {
+      ImGui.Selectable(`${name}##row`, isSel,
+        ImGui.SelectableFlags.SpanAllColumns, new ImGui.Vec2(0, rowH));
+      // 仅在鼠标释放时选中（拖拽不触发选中）
+      if (ImGui.IsItemHovered() && ImGui.IsMouseReleased(0)) {
         Selection.select(obj);
+      }
+
+      // 拖拽预览（列表行样式，绑定到 Selectable）
+      if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
+        ImGui.SetDragDropPayload(obj.constructor.name, obj);
+        this.drawListDragPreview(obj, name, cat);
+        ImGui.EndDragDropSource();
       }
       ImGui.PopStyleColor(1);
 
@@ -656,13 +653,6 @@ export class ContentBrowser extends EditorWindow {
         const iconCy = iconBgY + iconBgSize / 2;
 
         this.drawListRowIcon(dl, cat, iconCx, iconCy, colU32([ar, ag, ab, 1]));
-      }
-
-      // 拖拽
-      if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
-        ImGui.SetDragDropPayload(obj.constructor.name, obj);
-        ImGui.Text(name);
-        ImGui.EndDragDropSource();
       }
 
       // 详情列
@@ -889,6 +879,174 @@ export class ContentBrowser extends EditorWindow {
     }
   }
 
+  // ── 拖拽预览 ──────────────────────────────────────────────────────
+
+  /** 网格视图拖拽预览：与网格卡片一致 */
+  private drawTileDragPreview (obj: EffectsObject, name: string, cat: string | null): void {
+    const ts = this.viewScale;
+    const pad = Math.max(3, ts * 0.05);
+    const fontSize = ImGui.GetFontSize();
+    const nameLineH = fontSize + 2;
+    const nameAreaH = nameLineH * 2 + 6;
+    const cardW = ts + pad * 2;
+    const stripH = Math.max(3, ts * 0.035);
+    const cardH = ts + pad + stripH + nameAreaH;
+    const col = CATEGORY_COLORS[cat ?? 'Textures'];
+
+    const origin = ImGui.GetCursorScreenPos();
+    const dl = ImGui.GetWindowDrawList();
+
+    // 卡片整体背景
+    dl.AddRectFilled(
+      origin,
+      new ImGui.Vec2(origin.x + cardW, origin.y + cardH),
+      colU32([0.15, 0.15, 0.15, 1]), 4,
+    );
+
+    // 缩略图区域背景
+    const thumbMax = new ImGui.Vec2(origin.x + cardW, origin.y + ts);
+
+    dl.AddRectFilled(origin, thumbMax, colU32([0.08, 0.08, 0.08, 1]), 4);
+
+    // 缩略图内容（用 DrawList.AddImage 避免影响布局高度）
+    let drewThumb = false;
+
+    if (obj instanceof Texture && obj.definition?.image) {
+      const thumb = this.getOrCreateThumbnail(obj);
+
+      if (thumb) {
+        const thumbSize = ts - pad * 2;
+
+        dl.AddImage(thumb,
+          new ImGui.Vec2(origin.x + pad, origin.y + pad),
+          new ImGui.Vec2(origin.x + pad + thumbSize, origin.y + pad + thumbSize),
+        );
+        drewThumb = true;
+      }
+    }
+    if (!drewThumb && cat) {
+      const [ar, ag, ab] = col.accent;
+
+      this.drawAssetIcon(dl, cat,
+        origin.x + cardW / 2, origin.y + ts / 2,
+        Math.max(0.4, ts / 100),
+        new ImGui.Vec4(ar, ag, ab, 1),
+      );
+    }
+
+    // 类型色条
+    const [sr, sg, sb] = col.accent;
+
+    dl.AddRectFilled(
+      new ImGui.Vec2(origin.x, thumbMax.y),
+      new ImGui.Vec2(origin.x + cardW, thumbMax.y + stripH),
+      colU32([sr, sg, sb, 1]),
+    );
+
+    // 名称区
+    const nameAreaTop = thumbMax.y + stripH + 3;
+    const maxTextW = cardW - 8;
+    const textX = origin.x + 4;
+
+    let text = name;
+
+    if (ImGui.CalcTextSize(text).x > maxTextW) {
+      while (text.length > 1 && ImGui.CalcTextSize(text + '..').x > maxTextW) {
+        text = text.slice(0, -1);
+      }
+      text += '..';
+    }
+    dl.AddText(new ImGui.Vec2(textX, nameAreaTop), colU32(THEME.textPrimary), text);
+
+    // 类型标签
+    if (cat) {
+      let typeLabel = this.getCategorySingular(cat);
+
+      if (ImGui.CalcTextSize(typeLabel).x > maxTextW) {
+        while (typeLabel.length > 1 && ImGui.CalcTextSize(typeLabel + '..').x > maxTextW) {
+          typeLabel = typeLabel.slice(0, -1);
+        }
+        typeLabel += '..';
+      }
+      dl.AddText(new ImGui.Vec2(textX, nameAreaTop + nameLineH), colU32(THEME.textMuted), typeLabel);
+    }
+
+    ImGui.Dummy(new ImGui.Vec2(cardW, cardH));
+  }
+
+  /** 列表视图拖拽预览：图标 + 名称 + 类型，与列表行样式一致 */
+  private drawListDragPreview (obj: EffectsObject, name: string, cat: string | null): void {
+    const rowH = 24;
+    const iconBgSize = 18;
+    const col = CATEGORY_COLORS[cat ?? 'Textures'];
+    const [ar, ag, ab] = col.accent;
+    const previewW = Math.max(180, ImGui.CalcTextSize(name).x + 60);
+
+    const origin = ImGui.GetCursorScreenPos();
+    const dl = ImGui.GetWindowDrawList();
+
+    // 行背景
+    dl.AddRectFilled(
+      origin,
+      new ImGui.Vec2(origin.x + previewW, origin.y + rowH),
+      colU32([0.18, 0.18, 0.18, 1]), 3,
+    );
+
+    // 图标背景
+    const iconBgX = origin.x + 3;
+    const iconBgY = origin.y + (rowH - iconBgSize) / 2;
+
+    dl.AddRectFilled(
+      new ImGui.Vec2(iconBgX, iconBgY),
+      new ImGui.Vec2(iconBgX + iconBgSize, iconBgY + iconBgSize),
+      colU32([0.08, 0.08, 0.08, 1]), 2,
+    );
+
+    // 图标内容（用 DrawList.AddImage 避免影响布局高度）
+    let drewThumb = false;
+
+    if (obj instanceof Texture && obj.definition?.image) {
+      const thumb = this.getOrCreateThumbnail(obj);
+
+      if (thumb) {
+        const thumbSize = iconBgSize - 2;
+
+        dl.AddImage(thumb,
+          new ImGui.Vec2(iconBgX + 1, iconBgY + 1),
+          new ImGui.Vec2(iconBgX + 1 + thumbSize, iconBgY + 1 + thumbSize),
+        );
+        drewThumb = true;
+      }
+    }
+    if (!drewThumb) {
+      const iconCx = iconBgX + iconBgSize / 2;
+      const iconCy = iconBgY + iconBgSize / 2;
+
+      this.drawListRowIcon(dl, cat, iconCx, iconCy, colU32([ar, ag, ab, 1]));
+    }
+
+    // 名称
+    const nameX = origin.x + 28;
+
+    dl.AddText(
+      new ImGui.Vec2(nameX, origin.y + (rowH - ImGui.GetFontSize()) / 2),
+      colU32(THEME.textPrimary), name,
+    );
+
+    // 类型标签（右侧）
+    if (cat) {
+      const typeLabel = this.getCategorySingular(cat);
+      const typeLabelW = ImGui.CalcTextSize(typeLabel).x;
+
+      dl.AddText(
+        new ImGui.Vec2(origin.x + previewW - typeLabelW - 8, origin.y + (rowH - ImGui.GetFontSize()) / 2),
+        colU32([ar, ag, ab, 0.85]), typeLabel,
+      );
+    }
+
+    ImGui.Dummy(new ImGui.Vec2(previewW, rowH));
+  }
+
   // ── 矢量图标 ──────────────────────────────────────────────────────
 
   private drawAssetIcon (
@@ -997,9 +1155,20 @@ export class ContentBrowser extends EditorWindow {
     }
     if (obj instanceof Shader && obj.shaderData?.name) { return obj.shaderData.name; }
     if (obj instanceof ShaderVariant && obj.source?.name) { return obj.source.name; }
-    const g = obj.getInstanceId();
 
-    return g.length > 10 ? g.substring(0, 10) + '..' : g;
+    return obj.getInstanceId();
+  }
+
+  /** 将文本截断到指定像素宽度内，超出部分用 '..' 替代 */
+  private truncateText (text: string, maxWidth: number): string {
+    if (ImGui.CalcTextSize(text).x <= maxWidth) { return text; }
+    const ellipsis = '..';
+
+    while (text.length > 1 && ImGui.CalcTextSize(text + ellipsis).x > maxWidth) {
+      text = text.slice(0, -1);
+    }
+
+    return text + ellipsis;
   }
 
   private getAssetSummary (obj: EffectsObject): string {

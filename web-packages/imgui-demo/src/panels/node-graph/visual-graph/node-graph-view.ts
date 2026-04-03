@@ -277,6 +277,7 @@ export class GraphView {
   private m_hoveredConnectionID: UUID = generateGUID();
   private m_textBuffer: string = '';
   private m_pNodeBeingOperatedOn: BaseNode | null = null;
+  private m_pendingFitToView = false;
 
   constructor (pUserContext: UserContext) {
     this.m_ID = generateGUID();
@@ -405,6 +406,7 @@ export class GraphView {
 
       if (!visibleCanvasRect.Overlaps(canvasAreaWithNodes)) {
         this.m_pViewOffset = canvasAreaWithNodes.Min;
+        this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
       }
 
       this.m_pGraph.OnShowGraph();
@@ -538,9 +540,12 @@ export class GraphView {
     const deltaScale = newViewScale - this.m_pGraph.m_viewScaleFactor;
 
     if (!(Math.abs(deltaScale) < Number.EPSILON)) {
-      this.m_pGraph.m_viewOffset = add(this.m_pGraph.m_viewOffset,
-        multiplyScalar(subtract(ctx.m_mouseCanvasPos, this.m_pGraph.m_viewOffset), deltaScale * 1 / newViewScale)
+      const newOffset = add(this.m_pViewOffset,
+        multiplyScalar(subtract(ctx.m_mouseCanvasPos, this.m_pViewOffset), deltaScale * 1 / newViewScale)
       );
+
+      this.m_pViewOffset = newOffset;
+      this.m_pGraph.m_viewOffset = new ImVec2(newOffset.x, newOffset.y);
       this.m_pGraph.m_viewScaleFactor = newViewScale;
 
       for (const nodeInstance of this.m_pGraph.m_nodes) {
@@ -668,8 +673,12 @@ export class GraphView {
       return;
     }
 
-    const pStartState = this.m_pGraph!.FindNode(pTransitionConduit.m_startStateID) as StateNode;
-    const pEndState = this.m_pGraph!.FindNode(pTransitionConduit.m_endStateID) as StateNode;
+    const pStartState = this.m_pGraph!.FindNode(pTransitionConduit.m_startStateID) as StateNode | null;
+    const pEndState = this.m_pGraph!.FindNode(pTransitionConduit.m_endStateID) as StateNode | null;
+
+    if (!pStartState || !pEndState) {
+      return;
+    }
 
     const startNodeRect = pStartState.GetRect();
     const scaledEndNodeRect = pEndState.GetRect();
@@ -1061,6 +1070,11 @@ export class GraphView {
     drawingContext.m_isReadOnly = this.m_isReadOnly;
 
     if (this.BeginDrawCanvas(childHeightOverride)) {
+      if (this.m_pendingFitToView) {
+        this.m_pendingFitToView = false;
+        this.FitToView();
+      }
+
       const mousePos = ImGui.GetMousePos();
 
       drawingContext.SetViewScaleFactor(this.m_pGraph !== null ? this.m_pGraph.m_viewScaleFactor : 1.0);
@@ -1238,6 +1252,78 @@ export class GraphView {
       }
 
       this.m_pViewOffset = subtract(totalRect.GetCenter(), div(this.m_canvasSize, 2));
+      this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
+    }
+  }
+
+  RequestFitToView (): void {
+    this.m_pendingFitToView = true;
+  }
+
+  FitToView (): void {
+    if (this.m_pGraph === null || this.m_pGraph.m_nodes.length === 0) {
+      return;
+    }
+
+    // 计算所有可见节点的包围盒
+    let hasVisibleNodes = false;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const node of this.m_pGraph.m_nodes) {
+      if (node.IsVisible()) {
+        const pos = node.GetPosition();
+        const size = node.GetSize();
+
+        minX = Math.min(minX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x + size.x);
+        maxY = Math.max(maxY, pos.y + size.y);
+        hasVisibleNodes = true;
+      }
+    }
+
+    if (!hasVisibleNodes) {
+      return;
+    }
+
+    // 添加 padding
+    const padding = 80;
+
+    minX -= padding;
+    minY -= padding;
+    maxX += padding;
+    maxY += padding;
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+
+    // 恢复像素尺寸（m_canvasSize 已除过 scale，需要乘回来）
+    const currentScale = this.m_pGraph.m_viewScaleFactor;
+    const pixelWidth = this.m_canvasSize.x * currentScale;
+    const pixelHeight = this.m_canvasSize.y * currentScale;
+
+    if (pixelWidth <= 0 || pixelHeight <= 0) {
+      return;
+    }
+
+    // 计算缩放比例：内容 * scale 应适配像素视口
+    const scaleX = pixelWidth / contentWidth;
+    const scaleY = pixelHeight / contentHeight;
+    const desiredScale = clamp(Math.min(scaleX, scaleY), 0.2, 1.0);
+
+    this.m_pGraph.m_viewScaleFactor = desiredScale;
+
+    // 居中：视口在 canvas 坐标系下的尺寸 = pixelSize / newScale
+    const viewCanvasWidth = pixelWidth / desiredScale;
+    const viewCanvasHeight = pixelHeight / desiredScale;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    this.m_pViewOffset = new ImVec2(centerX - viewCanvasWidth / 2, centerY - viewCanvasHeight / 2);
+    this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
+
+    for (const node of this.m_pGraph.m_nodes) {
+      node.ResetCalculatedNodeSizes();
     }
   }
 
@@ -1253,6 +1339,9 @@ export class GraphView {
     const nodeCenter = add(pNode.GetPosition(), nodeHalfSize);
 
     this.m_pViewOffset = subtract(nodeCenter, div(this.m_canvasSize, 2));
+    if (this.m_pGraph !== null) {
+      this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
+    }
   }
 
   RefreshNodeSizes (): void {
@@ -1680,6 +1769,9 @@ export class GraphView {
     this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
 
     this.m_pViewOffset = subtract(this.m_dragState.m_startValue, ctx.WindowToCanvas(mouseDragDelta));
+    if (this.m_pGraph !== null) {
+      this.m_pGraph.m_viewOffset = new ImVec2(this.m_pViewOffset.x, this.m_pViewOffset.y);
+    }
   }
 
   private StopDraggingView (ctx: DrawContext): void {
