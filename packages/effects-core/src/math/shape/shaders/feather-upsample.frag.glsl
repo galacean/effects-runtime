@@ -12,7 +12,7 @@ uniform float uScreenRadius; // 屏幕上的卷积核尺寸。
 varying vec2 vTexCoord;
 
 vec4 fixGatherSave (vec4 gathered) {
-  float downSample = min(max(1.0, uScreenRadius / 10.0), 9999.0); 
+  float downSample = floor(min(max(1.0, uScreenRadius / 10.0), 9999.0)); 
   float downRadius = uScreenRadius / downSample;
   float varyingThres = min(1.0 / downRadius, 0.18);
 
@@ -84,6 +84,7 @@ mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
 // 如果不满足条件，则应该用32行注释掉的那段。
 float fixSingleLayer(float indicator, float integration)
 {
+  return indicator + integration;
   // if (integration < -0.01) return 1.0 + integration;
   // else if (integration > 0.01) return integration;
   // else return indicator + integration;
@@ -115,10 +116,23 @@ float sampleBilinearGather (vec2 uv, vec2 texSize) {
   return mix(bottom, top, f.y);
 }
 
+float sampleAtlas(vec2 uv, vec2 texSize){
+  vec2 invTexSize = 1.0 / uAtlasSize;
+  vec2 atlasUV = (uv * texSize + uTextureOffset) * invTexSize;
+  vec4 vals = texture2D(uAtlasTex, atlasUV);
+  return fixSingleLayer(vals.x, vals.y);
+}
+
 void main() {
   vec2 texSize = uTextureSize;
-  float opacity = sampleBilinearGather(vTexCoord, texSize);
-
+  float opacity;
+  float downSample = floor(min(max(1.0, uScreenRadius / 10.0), 9999.0));
+  if (downSample < 2.0){
+    opacity = sampleAtlas(vTexCoord, texSize);
+  }else{
+    opacity = sampleBilinearGather(vTexCoord, texSize);
+  }
+  
   opacity = clamp(opacity, 0.0, 1.0);
   gl_FragColor = vec4(uColor.rgb * uColor.a * opacity, uColor.a * opacity);
 }

@@ -739,14 +739,13 @@ export function buildLineContour(
 
     perpX = -(y0 - y1); 
     perpY = x0 - x1;
-
     dist = Math.sqrt(perpX * perpX + perpY * perpY) + NumberEpsilon;
     perpX = perpX / dist * width; 
     perpY = perpY / dist * width;
 
-    dist = Math.sqrt(perp1x * perp1x + perp1y * perp1y) + NumberEpsilon;
     perp1x = -(y1 - y2); 
     perp1y = x1 - x2;
+    dist = Math.sqrt(perp1x * perp1x + perp1y * perp1y) + NumberEpsilon;
     perp1x = perp1x / dist * width; 
     perp1y = perp1y / dist * width;
 

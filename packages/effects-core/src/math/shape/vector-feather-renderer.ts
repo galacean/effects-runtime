@@ -272,7 +272,7 @@ export class VectorFeatherRenderer {
     );
 
     const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
-    const downsample = Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 9999);  // rive似乎限制它们的降采样最大为32
+    const downsample = Math.floor(Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 9999));  // rive似乎限制它们的降采样最大为32
     const kernelCoverage = 2 * featherRadius / Math.max(bw, bh);
 
     const maxFboSize = 2048;
