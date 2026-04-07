@@ -310,6 +310,57 @@ export function buildStrokeFeatherMeshData (
   return edgeCount;
 }
 
+export function buildContoursFeatherMeshData (
+  contours: number[][],
+  outputVertices: number[],
+  vertOffset: number,
+  indices: number[],
+  scatterEdgeVertices: number[],
+  bbox: FeatherBBox,
+): number{
+  let edgeCount = 0;
+  let contourVertOffset = vertOffset;
+
+  const parsedContours: number[][] = [];
+
+  for (let c= 0; c < contours.length; ++c){
+    const contour: number[] = contours[c];
+    const parsed: number[][] = union([...contour, contour[0], contour[1]]);
+
+    if (c==0) {
+      for (const currParsed of parsed){
+        parsedContours.push(currParsed);
+      }
+    }else{
+      for (const currParsed of parsed){
+        const currReversed: number[] = [];
+        for (let i = currParsed.length / 2 - 1; i >= 0; i--) {
+          currReversed.push(currParsed[i * 2], currParsed[i * 2 + 1]);
+        } 
+        parsedContours.push(currReversed);
+      }
+    }
+  }
+  
+  // for(let c=0; c < contours.length; ++c){
+  //   parsedContours.push(contours[c]);
+  // }
+
+  for (const contour of parsedContours) {
+    edgeCount += appendContourFeatherMeshData(
+      contour,
+      outputVertices,
+      contourVertOffset,
+      indices,
+      scatterEdgeVertices,
+      bbox,
+    );
+    contourVertOffset = outputVertices.length / 2;
+  }
+
+  return edgeCount;
+}
+
 /**
  * 确保路径顶点是逆时针方向（CCW）
  * @param pathVertices - 形状路径的 2D 坐标数组

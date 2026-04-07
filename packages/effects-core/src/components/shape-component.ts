@@ -12,7 +12,7 @@ import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
 import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
-import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
+import { buildLine, buildLineContour, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture/texture';
 import { glContext } from '../gl';
@@ -20,7 +20,7 @@ import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
 import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
-import { buildFeatherMeshData, buildStrokeFeatherMeshData } from '../math/shape/feather-mesh-builder';
+import { buildFeatherMeshData, buildStrokeFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
 import type { FeatherBBox } from '../math/shape/feather-mesh-builder';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
@@ -478,15 +478,24 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         // 构建羽化数据
         if (needFeatherMesh) {
-          scatterEdgeCount += buildStrokeFeatherMeshData(
-            points,
+          // scatterEdgeCount += buildStrokeFeatherMeshData(
+          //   points,
+          //   vertices,
+          //   vertices.length / 2,
+          //   indices,
+          //   scatterEdgeVertices,
+          //   featherBBox,
+          //   this.strokeWidth,
+          //   close,
+          // );
+          const featherLineContours = buildLineContour(points, lineStyle, false, close);
+          scatterEdgeCount += buildContoursFeatherMeshData(
+            featherLineContours,
             vertices,
             vertices.length / 2,
             indices,
             scatterEdgeVertices,
             featherBBox,
-            this.strokeWidth,
-            close,
           );
         } else {
           buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
