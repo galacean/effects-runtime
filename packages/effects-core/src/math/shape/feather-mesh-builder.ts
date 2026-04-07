@@ -1,4 +1,4 @@
-import { split, union, unionMax } from "./split-union";
+import { split, union, unionContours, splitContours } from "./split-union";
 
 export type FeatherBBox = {
   minX: number,
@@ -54,15 +54,15 @@ export function buildFeatherMeshData (
     closedVertices = [...pathVertices, firstX, firstY];
   }
 
-  // 确保 CCW 方向
-  const outerContours: number[][] = union(ensureCCW(closedVertices));
+  // 确保 CCW 方向 Union函数自带显式闭合
+  const outerContours: number[][] = union(ensureCCW(closedVertices), true);
   
   let edgeCount = 0;
   let contourVertOffset = vertOffset;
 
   for (let c = 0; c < outerContours.length; c++){
     const outerContour: number[] = outerContours[c];
-      edgeCount += appendContourFeatherMeshData(
+      edgeCount += buildFeatherMeshDataInternal(
       outerContour,
       outputVertices,
       contourVertOffset,
@@ -140,36 +140,6 @@ function buildFeatherMeshDataInternal (
   expandFeatherBBox(bbox, minX, minY, maxX, maxY);
 
   return numEdges;
-}
-
-function appendContourFeatherMeshData (
-  pathVertices: number[],
-  outputVertices: number[],
-  vertOffset: number,
-  indices: number[],
-  scatterEdgeVertices: number[],
-  bbox: FeatherBBox,
-): number {
-  if (pathVertices.length < 6) {
-    return 0;
-  }
-
-  const firstX = pathVertices[0];
-  const firstY = pathVertices[1];
-  const lastX = pathVertices[pathVertices.length - 2];
-  const lastY = pathVertices[pathVertices.length - 1];
-  const closedVertices = firstX === lastX && firstY === lastY
-    ? pathVertices
-    : [...pathVertices, firstX, firstY];
-
-  return buildFeatherMeshDataInternal(
-    closedVertices,
-    outputVertices,
-    vertOffset,
-    indices,
-    scatterEdgeVertices,
-    bbox,
-  );
 }
 
 /**
@@ -258,8 +228,8 @@ export function buildStrokeFeatherMeshData (
   const contours: number[][] = [];
 
   if (closed) {
-    const outerContours: number[][] = union([...outer, outer[0], outer[1]]); 
-    const innerContours: number[][] = union([...inner, inner[0], inner[1]]);
+    const outerContours: number[][] = union([...outer]); 
+    const innerContours: number[][] = union([...inner]);
 
     for (let c = 0; c < outerContours.length; c++){
       const outerContour: number[] = outerContours[c];
@@ -296,7 +266,7 @@ export function buildStrokeFeatherMeshData (
   let contourVertOffset = vertOffset;
 
   for (const contour of contours) {
-    edgeCount += appendContourFeatherMeshData(
+    edgeCount += buildFeatherMeshDataInternal(
       contour,
       outputVertices,
       contourVertOffset,
@@ -321,33 +291,11 @@ export function buildContoursFeatherMeshData (
   let edgeCount = 0;
   let contourVertOffset = vertOffset;
 
-  const parsedContours: number[][] = [];
-
-  for (let c= 0; c < contours.length; ++c){
-    const contour: number[] = contours[c];
-    const parsed: number[][] = union([...contour, contour[0], contour[1]]);
-
-    if (c==0) {
-      for (const currParsed of parsed){
-        parsedContours.push(currParsed);
-      }
-    }else{
-      for (const currParsed of parsed){
-        const currReversed: number[] = [];
-        for (let i = currParsed.length / 2 - 1; i >= 0; i--) {
-          currReversed.push(currParsed[i * 2], currParsed[i * 2 + 1]);
-        } 
-        parsedContours.push(currReversed);
-      }
-    }
-  }
+  // 这里保证了路径闭合和CCW
+  const parsedContours = unionContours(contours, true);
   
-  // for(let c=0; c < contours.length; ++c){
-  //   parsedContours.push(contours[c]);
-  // }
-
   for (const contour of parsedContours) {
-    edgeCount += appendContourFeatherMeshData(
+    edgeCount += buildFeatherMeshDataInternal(
       contour,
       outputVertices,
       contourVertOffset,

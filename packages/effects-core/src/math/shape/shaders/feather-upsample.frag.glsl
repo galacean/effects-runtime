@@ -84,7 +84,7 @@ mat4 softGather (sampler2D sampler, vec2 uv, vec2 texSize) {
 // 如果不满足条件，则应该用32行注释掉的那段。
 float fixSingleLayer(float indicator, float integration)
 {
-  return indicator + integration;
+  // return indicator + integration;
   // if (integration < -0.01) return 1.0 + integration;
   // else if (integration > 0.01) return integration;
   // else return indicator + integration;
