@@ -7,37 +7,22 @@ import {
   TextureDrawer,
 } from './text-layer-drawers';
 
-/** 花字层工厂：从层配置创建对应的 TextLayerDrawer */
+/** 花字层工厂 */
 export class FancyLayerFactory {
   static createDrawerFromLayer (layer: FancyRenderLayer): TextLayerDrawer | null {
     switch (layer.kind) {
       case 'single-stroke':
-        return new SingleStrokeDrawer(
-          layer.params.width,
-          layer.params.color,
-          layer.params.unit ?? 'px',
-        );
+        return new SingleStrokeDrawer(layer.params.width, layer.params.color, layer.params.unit ?? 'px');
       case 'gradient':
-        return new GradientDrawer(
-          layer.params.colors,
-          layer.params.angle ?? 0,
-        );
+        return new GradientDrawer(layer.params.colors, layer.params.angle ?? 0);
       case 'shadow':
-        return new ShadowDrawer(
-          layer.params.color,
-          layer.params.blur,
-          layer.params.offsetX,
-          layer.params.offsetY,
-        );
+        return new ShadowDrawer(layer.params.color, layer.params.blur, layer.params.offsetX, layer.params.offsetY);
       case 'texture':
         return new TextureDrawer(layer.runtimePattern ?? null, layer.params.opacity ?? 1);
       case 'solid-fill':
-        return new SolidFillDrawer(
-          layer.params.color,
-        );
+        return new SolidFillDrawer(layer.params.color);
       default: {
         const _never: never = layer;
-
         console.warn('未知的花字层种类:', _never);
 
         return null;

@@ -7,7 +7,8 @@ export interface TexturePatternConfig {
   repeat?: PatternRepeat,
 }
 
-/** 装饰层配置 */
+// ========== 装饰层配置 ==========
+
 export interface ShadowLayerConfig {
   kind: 'shadow',
   params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number },
@@ -15,7 +16,8 @@ export interface ShadowLayerConfig {
 
 export type DecorativeLayerConfig = ShadowLayerConfig;
 
-/** 基础绘制层配置，可挂装饰层 */
+// ========== 基础绘制层配置 ==========
+
 export interface SingleStrokeLayerConfig {
   kind: 'single-stroke',
   params: { color: spec.vec4, width: number, unit?: 'px' },
@@ -46,7 +48,8 @@ export type BaseLayerConfig =
   | GradientLayerConfig
   | TextureLayerConfig;
 
-/** 花字整体配置 */
+// ========== 花字整体配置 ==========
+
 export interface FancyConfig {
   layers: BaseLayerConfig[],
   presetName?: string,
@@ -54,6 +57,8 @@ export interface FancyConfig {
 
 export type BaseLayerKind = 'single-stroke' | 'solid-fill' | 'gradient' | 'texture';
 export type DecorativeLayerKind = 'shadow';
+
+// ========== 运行时渲染层 ==========
 
 export type FancyRenderLayer =
   | { kind: 'shadow', params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number } }
@@ -67,15 +72,14 @@ export interface FancyRenderStyle {
   presetName?: string,
 }
 
-/** 文字绘制环境 */
+// ========== 文字绘制环境 ==========
+
 export interface TextEnv {
   fontDesc: string,
   style: any,
   layout: any,
   lines: any[],
-  layer: {
-    dispose: () => void,
-  },
+  layer: { dispose: () => void },
   canvas: HTMLCanvasElement,
 }
 
