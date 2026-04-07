@@ -1,7 +1,5 @@
-/**
- * 花字层类型定义
- */
 import type * as spec from '@galacean/effects-specification';
+
 export type PatternRepeat = 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
 
 export interface TexturePatternConfig {
@@ -9,9 +7,7 @@ export interface TexturePatternConfig {
   repeat?: PatternRepeat,
 }
 
-/**
- * 装饰层配置（目前只有 shadow，将来可以扩展 glow 等）
- */
+/** 装饰层配置 */
 export interface ShadowLayerConfig {
   kind: 'shadow',
   params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number },
@@ -19,9 +15,7 @@ export interface ShadowLayerConfig {
 
 export type DecorativeLayerConfig = ShadowLayerConfig;
 
-/**
- * 基础绘制层配置（描边/填充/渐变/纹理），可以挂装饰层
- */
+/** 基础绘制层配置，可挂装饰层 */
 export interface SingleStrokeLayerConfig {
   kind: 'single-stroke',
   params: { color: spec.vec4, width: number, unit?: 'px' },
@@ -52,9 +46,7 @@ export type BaseLayerConfig =
   | GradientLayerConfig
   | TextureLayerConfig;
 
-/**
- * 花字整体配置（编辑器 <-> runtime 协议）
- */
+/** 花字整体配置 */
 export interface FancyConfig {
   layers: BaseLayerConfig[],
   presetName?: string,
@@ -75,9 +67,7 @@ export interface FancyRenderStyle {
   presetName?: string,
 }
 
-/**
- * 文字绘制环境变量
- */
+/** 文字绘制环境 */
 export interface TextEnv {
   fontDesc: string,
   style: any,
@@ -89,9 +79,7 @@ export interface TextEnv {
   canvas: HTMLCanvasElement,
 }
 
-/**
- * 单个文本层绘制器：由花字层配置生成，用于绘制这一层的样式（描边/填充/渐变/阴影等）
- */
+/** 文本层绘制器接口 */
 export interface TextLayerDrawer {
   name?: string,
   render?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,

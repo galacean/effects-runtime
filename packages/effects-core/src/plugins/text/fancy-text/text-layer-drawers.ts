@@ -1,8 +1,36 @@
 import type { TextEnv, TextLayerDrawer } from './fancy-types';
 
+/** 抗锯齿补偿宽度（px），用于 fill 层向外扩展以消除与 stroke 之间的缝隙 */
+const ANTIALIAS_PADDING = 1;
+
 /**
- * 单层描边层绘制器
- * 只绘制描边的外边部分,不绘制文字内部的描边部分
+ * 逐字符 fillText + 微小 strokeText，补偿抗锯齿边缘
+ */
+function fillTextWithPadding (
+  ctx: CanvasRenderingContext2D,
+  env: TextEnv,
+): void {
+  ctx.save();
+  ctx.lineWidth = ANTIALIAS_PADDING;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = ctx.fillStyle;
+
+  env.lines.forEach(line => {
+    const baseX = env.layout.getOffsetX(env.style, line.width);
+
+    line.chars.forEach((ch: string, i: number) => {
+      const x = baseX + line.charOffsetX[i];
+
+      ctx.fillText(ch, x, line.y);
+      ctx.strokeText(ch, x, line.y);
+    });
+  });
+
+  ctx.restore();
+}
+
+/**
+ * 外描边绘制器：通过离屏 canvas 实现仅保留文字外侧描边
  */
 export class SingleStrokeDrawer implements TextLayerDrawer {
   name = 'single-stroke';
@@ -14,69 +42,71 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
   ) {}
 
   render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
-    ctx.font = env.fontDesc;
-    ctx.textBaseline = 'alphabetic';
-    ctx.lineJoin = 'round';
+    const { canvas } = env;
+    const offscreen = document.createElement('canvas');
+
+    offscreen.width = canvas.width;
+    offscreen.height = canvas.height;
+
+    const offCtx = offscreen.getContext('2d');
+
+    if (!offCtx) {
+      return;
+    }
+
+    // 同步主 canvas 变换矩阵，保证渲染精度一致
+    offCtx.setTransform(ctx.getTransform());
 
     const fontScale = env.style.fontScale || 1;
     const widthPx = this.unit === 'em'
       ? this.width * env.style.fontSize * fontScale
       : this.width * fontScale;
 
-    ctx.lineWidth = widthPx;
-
     const [r, g, b, a] = this.color;
     const R = Math.round(r * 255);
     const G = Math.round(g * 255);
     const B = Math.round(b * 255);
 
-    ctx.strokeStyle = `rgba(${R}, ${G}, ${B}, ${a})`;
+    offCtx.font = env.fontDesc;
+    offCtx.textBaseline = 'alphabetic';
+    offCtx.lineJoin = 'round';
+    offCtx.lineWidth = widthPx;
+    offCtx.strokeStyle = `rgba(${R}, ${G}, ${B}, ${a})`;
 
-    // 只绘制描边的外边部分
-    this.renderOutsideOnly(ctx, env);
-  }
+    // 绘制完整描边
+    env.lines.forEach(line => {
+      const baseX = env.layout.getOffsetX(env.style, line.width);
 
-  /**
-   * 只绘制描边的外边部分
-   * 实现原理:
-   * 1. 先绘制完整的描边
-   * 2. 使用 globalCompositeOperation='destination-out' 清除文字内部区域
-   */
-  private renderOutsideOnly (ctx: CanvasRenderingContext2D, env: TextEnv): void {
+      line.chars.forEach((ch: string, i: number) => {
+        const x = baseX + line.charOffsetX[i];
+
+        offCtx.strokeText(ch, x, line.y);
+      });
+    });
+
+    // destination-out 擦除文字内部
+    offCtx.globalCompositeOperation = 'destination-out';
+    offCtx.fillStyle = 'white';
+
+    env.lines.forEach(line => {
+      const baseX = env.layout.getOffsetX(env.style, line.width);
+
+      line.chars.forEach((ch: string, i: number) => {
+        const x = baseX + line.charOffsetX[i];
+
+        offCtx.fillText(ch, x, line.y);
+      });
+    });
+
+    // 重置变换后按像素 1:1 合成到主 canvas
     ctx.save();
-
-    // 先绘制完整描边
-    env.lines.forEach(line => {
-      const baseX = env.layout.getOffsetX(env.style, line.width);
-
-      line.chars.forEach((ch: string, i: number) => {
-        const x = baseX + line.charOffsetX[i];
-
-        ctx.strokeText(ch, x, line.y);
-      });
-    });
-
-    // 使用 destination-out 清除内部
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = 'white';
-
-    env.lines.forEach(line => {
-      const baseX = env.layout.getOffsetX(env.style, line.width);
-
-      line.chars.forEach((ch: string, i: number) => {
-        const x = baseX + line.charOffsetX[i];
-
-        ctx.fillText(ch, x, line.y);
-      });
-    });
-
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(offscreen, 0, 0);
     ctx.restore();
   }
 }
 
-/**
- * 渐变层绘制器
- */
+/** 渐变填充绘制器 */
 export class GradientDrawer implements TextLayerDrawer {
   name = 'gradient';
 
@@ -115,21 +145,11 @@ export class GradientDrawer implements TextLayerDrawer {
 
     ctx.fillStyle = gradient;
 
-    env.lines.forEach(line => {
-      const baseX = env.layout.getOffsetX(env.style, line.width);
-
-      line.chars.forEach((ch: string, i: number) => {
-        const x = baseX + line.charOffsetX[i];
-
-        ctx.fillText(ch, x, line.y);
-      });
-    });
+    fillTextWithPadding(ctx, env);
   }
 }
 
-/**
- * 阴影层绘制器
- */
+/** 阴影绘制器 */
 export class ShadowDrawer implements TextLayerDrawer {
   name = 'shadow';
 
@@ -153,9 +173,7 @@ export class ShadowDrawer implements TextLayerDrawer {
   }
 }
 
-/**
- * 纹理层绘制器
- */
+/** 纹理填充绘制器 */
 export class TextureDrawer implements TextLayerDrawer {
   name = 'texture';
 
@@ -170,21 +188,11 @@ export class TextureDrawer implements TextLayerDrawer {
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = this.pattern;
 
-    env.lines.forEach(line => {
-      const baseX = env.layout.getOffsetX(env.style, line.width);
-
-      line.chars.forEach((ch: string, i: number) => {
-        const x = baseX + line.charOffsetX[i];
-
-        ctx.fillText(ch, x, line.y);
-      });
-    });
+    fillTextWithPadding(ctx, env);
   }
 }
 
-/**
- * 纯色填充层绘制器
- */
+/** 纯色填充绘制器 */
 export class SolidFillDrawer implements TextLayerDrawer {
   name = 'solid-fill';
 
@@ -203,14 +211,6 @@ export class SolidFillDrawer implements TextLayerDrawer {
 
     ctx.fillStyle = `rgba(${R}, ${G}, ${B}, ${a})`;
 
-    env.lines.forEach(line => {
-      const baseX = env.layout.getOffsetX(env.style, line.width);
-
-      line.chars.forEach((ch: string, i: number) => {
-        const x = baseX + line.charOffsetX[i];
-
-        ctx.fillText(ch, x, line.y);
-      });
-    });
+    fillTextWithPadding(ctx, env);
   }
 }

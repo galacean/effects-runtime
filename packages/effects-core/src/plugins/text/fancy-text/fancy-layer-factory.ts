@@ -7,9 +7,7 @@ import {
   TextureDrawer,
 } from './text-layer-drawers';
 
-/**
- * 花字层工厂：从层配置创建对应的层绘制器（TextLayerDrawer 实例）
- */
+/** 花字层工厂：从层配置创建对应的 TextLayerDrawer */
 export class FancyLayerFactory {
   static createDrawerFromLayer (layer: FancyRenderLayer): TextLayerDrawer | null {
     switch (layer.kind) {

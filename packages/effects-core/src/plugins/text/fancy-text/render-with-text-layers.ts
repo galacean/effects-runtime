@@ -20,17 +20,13 @@ function createTextEnv (
     layout,
     lines: charsInfo,
     layer: {
-      dispose: () => {
-        // 释放资源逻辑
-      },
+      dispose: () => {},
     },
     canvas,
   };
 }
 
-/**
- * 使用一组 TextLayerDrawer 按顺序绘制文本
- */
+/** 按顺序执行一组 TextLayerDrawer 绘制文本 */
 export function renderWithTextLayers (
   canvas: HTMLCanvasElement,
   context: CanvasRenderingContext2D,
