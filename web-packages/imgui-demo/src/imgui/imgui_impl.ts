@@ -203,7 +203,12 @@ function ime_destroy (): void {
 
 function ime_focus (): void {
   if (ime_input && document.activeElement !== ime_input) {
-    ime_input.focus();
+    // 仅当焦点在 canvas 或 body 上时才切换到 IME 输入框，避免从无关 DOM 控件抢走焦点
+    const active = document.activeElement;
+
+    if (active === canvas || active === document.body || active === null) {
+      ime_input.focus();
+    }
   }
 }
 
