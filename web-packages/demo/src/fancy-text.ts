@@ -757,6 +757,53 @@ function injectFigmaStyles () {
       background: #555;
       border-radius: 2px;
     }
+
+    /* Toggle 开关 */
+    .figma-toggle {
+      position: relative;
+      width: 32px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .figma-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .figma-toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #4a4a4a;
+      border-radius: 9px;
+      transition: background 0.2s;
+    }
+
+    .figma-toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 2px;
+      bottom: 2px;
+      background: #999;
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .figma-toggle input:checked + .figma-toggle-slider {
+      background: #0d99ff;
+    }
+
+    .figma-toggle input:checked + .figma-toggle-slider::before {
+      transform: translateX(14px);
+      background: #fff;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -1383,7 +1430,7 @@ function createEffectsSection (): HTMLElement {
 
   const title = document.createElement('span');
 
-  title.textContent = 'Effects';
+  title.textContent = '效果';
 
   const actions = document.createElement('div');
 
@@ -1393,7 +1440,7 @@ function createEffectsSection (): HTMLElement {
 
   addBtn.className = 'figma-icon-btn';
   addBtn.textContent = '+';
-  addBtn.title = '添加 Effect';
+  addBtn.title = '添加效果';
   addBtn.addEventListener('click', () => {
     addEffectLayer();
     renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
@@ -1429,6 +1476,34 @@ function createEffectLayerItem (effect: EffectLayerState, index: number): HTMLEl
   item.className = 'figma-layer-item';
   if (!effect.visible) {item.classList.add('hidden');}
 
+  // Toggle 开关
+  const toggle = document.createElement('label');
+
+  toggle.className = 'figma-toggle';
+
+  const toggleInput = document.createElement('input');
+
+  toggleInput.type = 'checkbox';
+  toggleInput.checked = effect.visible;
+  toggleInput.addEventListener('change', e => {
+    e.stopPropagation();
+    effect.visible = toggleInput.checked;
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  const toggleSlider = document.createElement('span');
+
+  toggleSlider.className = 'figma-toggle-slider';
+
+  toggle.appendChild(toggleInput);
+  toggle.appendChild(toggleSlider);
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+  });
+
+  item.appendChild(toggle);
+
   // 颜色预览（阴影颜色）
   const colorPreview = document.createElement('div');
 
@@ -1458,22 +1533,10 @@ function createEffectLayerItem (effect: EffectLayerState, index: number): HTMLEl
   info.appendChild(valueSpan);
   item.appendChild(info);
 
-  // 操作按钮
+  // 操作按钮（只保留删除按钮）
   const actions = document.createElement('div');
 
   actions.className = 'figma-layer-actions';
-
-  const visibleBtn = document.createElement('button');
-
-  visibleBtn.className = 'figma-icon-btn';
-  visibleBtn.textContent = '👁';
-  if (effect.visible) {visibleBtn.classList.add('active');}
-  visibleBtn.addEventListener('click', e => {
-    e.stopPropagation();
-    effect.visible = !effect.visible;
-    applyEditorStateToRuntime();
-    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
-  });
 
   const deleteBtn = document.createElement('button');
 
@@ -1486,7 +1549,6 @@ function createEffectLayerItem (effect: EffectLayerState, index: number): HTMLEl
     renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
   });
 
-  actions.appendChild(visibleBtn);
   actions.appendChild(deleteBtn);
   item.appendChild(actions);
 

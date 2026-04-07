@@ -1,5 +1,5 @@
 import type { CharInfo, TextEnv, TextLayerDrawer } from '@galacean/effects-core';
-import { renderWithTextLayers } from '@galacean/effects-core';
+import { renderWithTextLayers, ShadowDrawer, SolidFillDrawer, SingleStrokeDrawer } from '@galacean/effects-core';
 
 const { expect } = chai;
 
@@ -234,6 +234,87 @@ describe('core/plugins/text/render-with-text-layers', () => {
       // 但由于 restore 后才返回，我们在外部无法直接验证
       // 这个测试主要是确保不会抛出异常
       expect(true).to.be.true;
+    });
+  });
+
+  describe('shadow rendering', () => {
+    it('should skip ShadowDrawer in non-shadow drawers rendering', () => {
+      const calls: string[] = [];
+      const shadowDrawer = new ShadowDrawer([0, 0, 0, 0.8], 5, 2, 2);
+      const fillDrawer: TextLayerDrawer = {
+        name: 'fill',
+        render: () => { calls.push('fill'); },
+      };
+
+      renderWithTextLayers(canvas, ctx, style, layout, charsInfo, [shadowDrawer, fillDrawer]);
+
+      // fill 应该被调用，shadow 的 render 不应该影响 fill
+      expect(calls).to.eql(['fill']);
+    });
+
+    it('should not set shadow state on context when ShadowDrawer is present', () => {
+      const shadowDrawer = new ShadowDrawer([1, 0, 0, 1], 10, 5, 5);
+      let capturedShadowColor = '';
+      let capturedShadowBlur = 0;
+      const fillDrawer: TextLayerDrawer = {
+        name: 'fill',
+        render: context => {
+          // 在 fill drawer 执行时，ctx 不应该有 shadow 状态
+          capturedShadowColor = context.shadowColor;
+          capturedShadowBlur = context.shadowBlur;
+        },
+      };
+
+      renderWithTextLayers(canvas, ctx, style, layout, charsInfo, [shadowDrawer, fillDrawer]);
+
+      // fill drawer 执行时不应该有阴影状态泄漏
+      // 默认 shadowColor 是 'rgba(0, 0, 0, 0)' 或类似的透明值
+      expect(capturedShadowBlur).to.eql(0);
+    });
+
+    it('should render without errors when only shadow drawer is present', () => {
+      const shadowDrawer = new ShadowDrawer([0, 0, 0, 0.5], 5, 3, 3);
+
+      expect(() => {
+        renderWithTextLayers(canvas, ctx, style, layout, charsInfo, [shadowDrawer]);
+      }).to.not.throw();
+    });
+
+    it('should render shadow + stroke + fill without errors', () => {
+      const shadowDrawer = new ShadowDrawer([0, 0, 0, 0.8], 5, 2, 2);
+      const strokeDrawer = new SingleStrokeDrawer(3, [1, 0, 0, 1], 'px');
+      const fillDrawer = new SolidFillDrawer([1, 1, 1, 1]);
+
+      expect(() => {
+        renderWithTextLayers(canvas, ctx, style, layout, charsInfo, [shadowDrawer, strokeDrawer, fillDrawer]);
+      }).to.not.throw();
+    });
+
+    it('should handle multiple shadow drawers without errors', () => {
+      const shadow1 = new ShadowDrawer([0, 0, 0, 0.8], 5, 2, 2);
+      const shadow2 = new ShadowDrawer([1, 0, 0, 0.5], 10, -3, 3);
+      const fillDrawer = new SolidFillDrawer([1, 1, 1, 1]);
+
+      expect(() => {
+        renderWithTextLayers(canvas, ctx, style, layout, charsInfo, [shadow1, shadow2, fillDrawer]);
+      }).to.not.throw();
+    });
+
+    it('should render non-shadow drawers on offscreen canvas when shadows exist', () => {
+      const shadowDrawer = new ShadowDrawer([0, 0, 0, 0.8], 5, 2, 2);
+      let renderContext: CanvasRenderingContext2D | null = null;
+      const fillDrawer: TextLayerDrawer = {
+        name: 'fill',
+        render: context => {
+          renderContext = context;
+        },
+      };
+
+      renderWithTextLayers(canvas, ctx, style, layout, charsInfo, [shadowDrawer, fillDrawer]);
+
+      // 当有阴影时，fill drawer 应该在离屏 canvas 上渲染（不是主 canvas 的 ctx）
+      expect(renderContext).to.exist;
+      expect(renderContext).to.not.eql(ctx);
     });
   });
 });

@@ -160,16 +160,27 @@ export class ShadowDrawer implements TextLayerDrawer {
     private offsetY: number,
   ) {}
 
-  render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
+  /**
+   * 获取阴影参数（供 renderWithTextLayers 使用）
+   */
+  getShadowParams (): { color: string, blur: number, offsetX: number, offsetY: number } {
     const [r, g, b, a] = this.color;
     const R = Math.round(r * 255);
     const G = Math.round(g * 255);
     const B = Math.round(b * 255);
 
-    ctx.shadowColor = `rgba(${R}, ${G}, ${B}, ${a})`;
-    ctx.shadowBlur = this.blur;
-    ctx.shadowOffsetX = this.offsetX;
-    ctx.shadowOffsetY = this.offsetY;
+    return {
+      color: `rgba(${R}, ${G}, ${B}, ${a})`,
+      blur: this.blur,
+      offsetX: this.offsetX,
+      offsetY: this.offsetY,
+    };
+  }
+
+  render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
+    // 阴影渲染已移至 renderWithTextLayers 中统一处理
+    // 此方法保留为空，不再直接设置 ctx.shadow* 状态
+    // 避免阴影状态泄漏到后续的 fill/stroke drawer
   }
 }
 

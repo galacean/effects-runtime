@@ -215,37 +215,46 @@ describe('core/plugins/text/text-layer-drawers', () => {
   });
 
   describe('ShadowDrawer', () => {
-    it('should set shadowColor with converted color', () => {
+    it('should return correct shadow params via getShadowParams', () => {
       const drawer = new ShadowDrawer([0.5, 0.5, 0.5, 0.5], 10, 2, 3);
 
-      drawer.render(ctx, mockEnv);
+      const params = drawer.getShadowParams();
 
-      const color = parseColor(ctx.shadowColor);
-
-      expect(color).to.eql([128, 128, 128, 0.5]);
+      expect(params.color).to.eql('rgba(128, 128, 128, 0.5)');
+      expect(params.blur).to.eql(10);
+      expect(params.offsetX).to.eql(2);
+      expect(params.offsetY).to.eql(3);
     });
 
-    it('should set shadowBlur', () => {
-      const drawer = new ShadowDrawer([0, 0, 0, 1], 15, 0, 0);
+    it('should not modify context shadow state in render', () => {
+      const drawer = new ShadowDrawer([0.5, 0.5, 0.5, 0.5], 15, 3, -2);
+
+      const originalShadowColor = ctx.shadowColor;
+      const originalShadowBlur = ctx.shadowBlur;
+      const originalShadowOffsetX = ctx.shadowOffsetX;
+      const originalShadowOffsetY = ctx.shadowOffsetY;
 
       drawer.render(ctx, mockEnv);
 
-      expect(ctx.shadowBlur).to.eql(15);
-    });
-
-    it('should set shadowOffsetX and shadowOffsetY', () => {
-      const drawer = new ShadowDrawer([0, 0, 0, 1], 5, 3, -2);
-
-      drawer.render(ctx, mockEnv);
-
-      expect(ctx.shadowOffsetX).to.eql(3);
-      expect(ctx.shadowOffsetY).to.eql(-2);
+      // render 不应该修改 ctx 的 shadow 状态
+      expect(ctx.shadowColor).to.eql(originalShadowColor);
+      expect(ctx.shadowBlur).to.eql(originalShadowBlur);
+      expect(ctx.shadowOffsetX).to.eql(originalShadowOffsetX);
+      expect(ctx.shadowOffsetY).to.eql(originalShadowOffsetY);
     });
 
     it('should have correct name', () => {
       const drawer = new ShadowDrawer([0, 0, 0, 1], 5, 0, 0);
 
       expect(drawer.name).to.eql('shadow');
+    });
+
+    it('should correctly convert color values in getShadowParams', () => {
+      const drawer = new ShadowDrawer([1, 0, 0.5, 0.8], 5, 0, 0);
+
+      const params = drawer.getShadowParams();
+
+      expect(params.color).to.eql('rgba(255, 0, 128, 0.8)');
     });
   });
 
