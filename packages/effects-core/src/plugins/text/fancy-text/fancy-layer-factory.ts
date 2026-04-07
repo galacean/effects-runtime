@@ -30,7 +30,7 @@ export class FancyLayerFactory {
           layer.params.offsetY,
         );
       case 'texture':
-        return new TextureDrawer(layer.runtimePattern ?? null);
+        return new TextureDrawer(layer.runtimePattern ?? null, layer.params.opacity ?? 1);
       case 'solid-fill':
         return new SolidFillDrawer(
           layer.params.color,

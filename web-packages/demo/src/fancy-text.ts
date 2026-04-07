@@ -1129,6 +1129,14 @@ function createFillParamsEditor (fill: FillLayerState, index: number): HTMLEleme
     urlRow.appendChild(urlLabel);
     urlRow.appendChild(urlInput);
     params.appendChild(urlRow);
+
+    // 透明度
+    const opacityRow = createSliderParamRow('透明度', fill.opacity * 100, 0, 100, 1, value => {
+      fill.opacity = value / 100;
+      applyEditorStateToRuntime();
+    });
+
+    params.appendChild(opacityRow);
   }
 
   // 上移/下移按钮
@@ -1940,7 +1948,7 @@ function parsePresetToEditorState (presetName: string) {
         id: generateId(),
         type: 'texture',
         visible: true,
-        opacity: 1,
+        opacity: layer.params.opacity ?? 1,
         textureUrl: layer.params.pattern.imageUrl,
       };
 
@@ -2073,7 +2081,7 @@ function applyEditorStateToRuntime () {
           kind: 'gradient',
           params: {
             angle: fill.gradientAngle || 0,
-            colors: colors.map(c => [c[0], c[1], c[2], c[3] || 1] as [number, number, number, number]),
+            colors: colors.map(c => [c[0], c[1], c[2], (c[3] ?? 1) * fill.opacity] as [number, number, number, number]),
           },
         });
       } else if (fill.type === 'texture') {
@@ -2083,6 +2091,7 @@ function applyEditorStateToRuntime () {
             pattern: {
               imageUrl: fill.textureUrl || '',
             },
+            opacity: fill.opacity,
           },
         });
       }
@@ -2117,7 +2126,7 @@ function applyEditorStateToRuntime () {
           kind: 'gradient',
           params: {
             angle: fill.gradientAngle || 0,
-            colors: colors.map(c => [c[0], c[1], c[2], c[3] || 1] as [number, number, number, number]),
+            colors: colors.map(c => [c[0], c[1], c[2], (c[3] ?? 1) * fill.opacity] as [number, number, number, number]),
           },
         });
       } else if (fill.type === 'texture') {
@@ -2127,6 +2136,7 @@ function applyEditorStateToRuntime () {
             pattern: {
               imageUrl: fill.textureUrl || '',
             },
+            opacity: fill.opacity,
           },
         });
       }

@@ -190,6 +190,7 @@ export class TextureDrawer implements TextLayerDrawer {
 
   constructor (
     private pattern: CanvasPattern | null,
+    private opacity: number = 1,
   ) {}
 
   render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
@@ -199,7 +200,13 @@ export class TextureDrawer implements TextLayerDrawer {
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = this.pattern;
 
+    const prevAlpha = ctx.globalAlpha;
+
+    ctx.globalAlpha = prevAlpha * this.opacity;
+
     fillTextWithPadding(ctx, env);
+
+    ctx.globalAlpha = prevAlpha;
   }
 }
 

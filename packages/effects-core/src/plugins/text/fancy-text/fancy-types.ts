@@ -36,7 +36,7 @@ export interface GradientLayerConfig {
 
 export interface TextureLayerConfig {
   kind: 'texture',
-  params: { pattern: TexturePatternConfig },
+  params: { pattern: TexturePatternConfig, opacity?: number },
   decorations?: DecorativeLayerConfig[],
 }
 
@@ -60,7 +60,7 @@ export type FancyRenderLayer =
   | { kind: 'single-stroke', params: { color: spec.vec4, width: number, unit: 'px' } }
   | { kind: 'solid-fill', params: { color: spec.vec4 } }
   | { kind: 'gradient', params: { angle: number, colors: spec.vec4[] } }
-  | { kind: 'texture', params: { pattern: TexturePatternConfig }, runtimePattern?: CanvasPattern | null };
+  | { kind: 'texture', params: { pattern: TexturePatternConfig, opacity?: number }, runtimePattern?: CanvasPattern | null };
 
 export interface FancyRenderStyle {
   layers: FancyRenderLayer[],

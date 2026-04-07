@@ -291,6 +291,7 @@ export class TextStyle {
               kind: 'texture',
               params: {
                 pattern: src.params.pattern,
+                opacity: src.params.opacity,
               },
               runtimePattern: null,
             });
