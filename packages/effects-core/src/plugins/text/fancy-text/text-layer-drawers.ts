@@ -14,6 +14,7 @@ function fillTextWithPadding (ctx: CanvasRenderingContext2D, env: TextEnv): void
 
     line.chars.forEach((ch: string, i: number) => {
       const x = baseX + line.charOffsetX[i];
+
       ctx.fillText(ch, x, line.y);
       ctx.strokeText(ch, x, line.y);
     });
@@ -66,6 +67,7 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
 
       line.chars.forEach((ch: string, i: number) => {
         const x = baseX + line.charOffsetX[i];
+
         offCtx.strokeText(ch, x, line.y);
       });
     });
@@ -79,6 +81,7 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
 
       line.chars.forEach((ch: string, i: number) => {
         const x = baseX + line.charOffsetX[i];
+
         offCtx.fillText(ch, x, line.y);
       });
     });
@@ -120,6 +123,7 @@ export class GradientDrawer implements TextLayerDrawer {
     this.colors.forEach((color, index) => {
       const [r, g, b, a] = color;
       const stop = this.colors.length === 1 ? 0 : index / (this.colors.length - 1);
+
       gradient.addColorStop(stop, `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`);
     });
 
@@ -173,6 +177,7 @@ export class TextureDrawer implements TextLayerDrawer {
     ctx.fillStyle = this.pattern;
 
     const prevAlpha = ctx.globalAlpha;
+
     ctx.globalAlpha = prevAlpha * this.opacity;
     fillTextWithPadding(ctx, env);
     ctx.globalAlpha = prevAlpha;
@@ -192,6 +197,7 @@ export class SolidFillDrawer implements TextLayerDrawer {
     ctx.textBaseline = 'alphabetic';
 
     const [r, g, b, a] = this.color;
+
     ctx.fillStyle = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
     fillTextWithPadding(ctx, env);
   }

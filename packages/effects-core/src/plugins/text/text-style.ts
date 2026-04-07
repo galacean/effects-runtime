@@ -173,15 +173,19 @@ export class TextStyle {
               kind: 'single-stroke',
               params: { width: src.params.width, color: src.params.color, unit: src.params.unit ?? 'px' },
             });
+
             break;
           case 'solid-fill':
             layers.push({ kind: 'solid-fill', params: { color: src.params.color } });
+
             break;
           case 'gradient':
             layers.push({ kind: 'gradient', params: { colors: src.params.colors, angle: src.params.angle ?? 0 } });
+
             break;
           case 'texture':
             layers.push({ kind: 'texture', params: { pattern: src.params.pattern, opacity: src.params.opacity }, runtimePattern: null });
+
             break;
         }
       }
@@ -261,6 +265,7 @@ export class TextStyle {
     if (params.color) {
       const [r, g, b] = normalizeColor(params.color);
       const a = params.opacity !== undefined ? params.opacity : this.shadowColor[3];
+
       this.shadowColor = [r, g, b, a] as spec.vec4;
     } else if (params.opacity !== undefined) {
       this.shadowColor[3] = params.opacity;
@@ -274,6 +279,7 @@ export class TextStyle {
       const distance = params.distance ?? Math.sqrt(this.shadowOffsetX ** 2 + this.shadowOffsetY ** 2);
       const angle = params.angle ?? Math.atan2(this.shadowOffsetY, this.shadowOffsetX) * 180 / Math.PI;
       const angleRad = angle * Math.PI / 180;
+
       this.shadowOffsetX = distance * Math.cos(angleRad);
       this.shadowOffsetY = distance * Math.sin(angleRad);
     }

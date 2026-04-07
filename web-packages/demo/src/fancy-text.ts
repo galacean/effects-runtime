@@ -108,7 +108,7 @@ async function setupTexturePattern (textComponent: TextComponent) {
     textItem = composition.getItemByName('text_3');
 
     if (textItem) {
-      // 修改文本内容（这句可有可无，看你需求）
+      // 修改文本内容（测试用）
       textItem.text = 'GRADIENT TEST';
 
       // 获取 TextComponent

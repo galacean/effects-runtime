@@ -23,6 +23,7 @@ export class FancyLayerFactory {
         return new SolidFillDrawer(layer.params.color);
       default: {
         const _never: never = layer;
+
         console.warn('未知的花字层种类:', _never);
 
         return null;
