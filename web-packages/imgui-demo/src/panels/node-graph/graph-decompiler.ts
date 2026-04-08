@@ -27,6 +27,13 @@ import type * as NodeGraph from './visual-graph';
 
 const ImVec2 = ImGui.ImVec2;
 
+// Layout constants
+const H_GAP = 300; // horizontal spacing between node columns
+const V_GAP = 50;  // vertical gap between sibling subtrees
+const LEAF_H = 60; // estimated height of a leaf node
+
+type LayoutResult = { node: FlowToolsNode, height: number };
+
 export interface DecompileResult {
   graph: FlowGraph,
   /** 工具节点 UUID → 运行时 nodeDatas 索引 */
@@ -66,11 +73,11 @@ export class GraphDecompiler {
 
     // 3. 从 rootNodeIndex 开始构建图
     if (this.rootNodeIndex !== InvalidIndex && this.rootNodeIndex < this.nodeDatas.length) {
-      const rootToolsNode = this.buildNode(this.rootNodeIndex, rootGraph);
+      const rootResult = this.buildNode(this.rootNodeIndex, rootGraph, new ImVec2(400, 100));
 
-      if (rootToolsNode) {
+      if (rootResult) {
         rootGraph.TryMakeConnection(
-          rootToolsNode, rootToolsNode.GetOutputPin(0)!,
+          rootResult.node, rootResult.node.GetOutputPin(0)!,
           resultNode, resultNode.GetInputPin(0)!
         );
       }
@@ -135,8 +142,9 @@ export class GraphDecompiler {
 
   /**
    * 根据编译数据索引在目标图中创建对应的工具节点
+   * basePos: 子树根节点（输出端）的位置，输入端在其左侧
    */
-  private buildNode (nodeIndex: number, targetGraph: FlowGraph): FlowToolsNode | null {
+  private buildNode (nodeIndex: number, targetGraph: FlowGraph, basePos = new ImVec2(0, 0)): LayoutResult | null {
     if (nodeIndex === InvalidIndex || nodeIndex >= this.nodeDatas.length) {
       return null;
     }
@@ -149,36 +157,51 @@ export class GraphDecompiler {
 
     // 如果是控制参数引用，创建参数引用节点
     if (this.controlParameterNodes.has(nodeIndex)) {
-      return this.buildParameterReference(nodeIndex, targetGraph);
+      return this.buildParameterReference(nodeIndex, targetGraph, basePos);
     }
 
     switch (nodeData.type) {
       case 'StateMachineNodeData':
-        return this.buildStateMachine(nodeIndex, nodeData as spec.StateMachineNodeData, targetGraph);
-      case 'AnimationClipNodeData':
-        return this.buildAnimationClip(nodeIndex, nodeData as spec.AnimationClipNodeData, targetGraph);
+        return this.buildStateMachine(nodeIndex, nodeData as spec.StateMachineNodeData, targetGraph, basePos);
+      case 'AnimationClipNodeData': {
+        const node = this.buildAnimationClip(nodeIndex, nodeData as spec.AnimationClipNodeData, targetGraph);
+
+        node.SetPosition(basePos);
+
+        return { node, height: LEAF_H };
+      }
       case 'BlendNodeData':
-        return this.buildBlendNode(nodeIndex, nodeData as spec.BlendNodeData, targetGraph);
+        return this.buildBlendNode(nodeIndex, nodeData as spec.BlendNodeData, targetGraph, basePos);
       case 'LayerBlendNodeData':
-        return this.buildLayerBlendNode(nodeIndex, nodeData as spec.LayerBlendNodeData, targetGraph);
-      case 'ConstBoolNodeData':
-        return this.buildConstBool(nodeIndex, nodeData as spec.ConstBoolNodeData, targetGraph);
-      case 'ConstFloatNodeData':
-        return this.buildConstFloat(nodeIndex, nodeData as spec.ConstFloatNodeData, targetGraph);
+        return this.buildLayerBlendNode(nodeIndex, nodeData as spec.LayerBlendNodeData, targetGraph, basePos);
+      case 'ConstBoolNodeData': {
+        const node = this.buildConstBool(nodeIndex, nodeData as spec.ConstBoolNodeData, targetGraph);
+
+        node.SetPosition(basePos);
+
+        return { node, height: LEAF_H };
+      }
+      case 'ConstFloatNodeData': {
+        const node = this.buildConstFloat(nodeIndex, nodeData as spec.ConstFloatNodeData, targetGraph);
+
+        node.SetPosition(basePos);
+
+        return { node, height: LEAF_H };
+      }
       case 'AndNodeData':
-        return this.buildAndNode(nodeIndex, nodeData as spec.AndNodeData, targetGraph);
+        return this.buildAndNode(nodeIndex, nodeData as spec.AndNodeData, targetGraph, basePos);
       case 'OrNodeData':
-        return this.buildOrNode(nodeIndex, nodeData as spec.OrNodeData, targetGraph);
+        return this.buildOrNode(nodeIndex, nodeData as spec.OrNodeData, targetGraph, basePos);
       case 'NotNodeData':
-        return this.buildNotNode(nodeIndex, nodeData as spec.NotNodeData, targetGraph);
+        return this.buildNotNode(nodeIndex, nodeData as spec.NotNodeData, targetGraph, basePos);
       case 'EqualNodeData':
-        return this.buildEqualNode(nodeIndex, nodeData as spec.EqualNodeData, targetGraph);
+        return this.buildEqualNode(nodeIndex, nodeData as spec.EqualNodeData, targetGraph, basePos);
       case 'GreaterNodeData':
-        return this.buildComparisonNode(nodeIndex, nodeData as spec.GreaterNodeData, targetGraph, 'greater');
+        return this.buildComparisonNode(nodeIndex, nodeData as spec.GreaterNodeData, targetGraph, basePos, 'greater');
       case 'LessNodeData':
-        return this.buildComparisonNode(nodeIndex, nodeData as spec.LessNodeData, targetGraph, 'less');
+        return this.buildComparisonNode(nodeIndex, nodeData as spec.LessNodeData, targetGraph, basePos, 'less');
       case 'ApplyAdditiveNodeData':
-        return this.buildApplyAdditiveNode(nodeIndex, nodeData as spec.ApplyAdditiveNodeData, targetGraph);
+        return this.buildApplyAdditiveNode(nodeIndex, nodeData as spec.ApplyAdditiveNodeData, targetGraph, basePos);
       case 'StateNodeData': {
         // StateNodeData 不应该作为独立节点被引用
         console.warn(`[GraphDecompiler] Encountered StateNodeData at index ${nodeIndex}. StateNode is a wrapper and should not be directly referenced.`, nodeData);
@@ -187,7 +210,7 @@ export class GraphDecompiler {
         const stateData = nodeData as spec.StateNodeData;
 
         if (stateData.childNodeIndex !== undefined && stateData.childNodeIndex !== InvalidIndex) {
-          return this.buildNode(stateData.childNodeIndex, targetGraph);
+          return this.buildNode(stateData.childNodeIndex, targetGraph, basePos);
         }
 
         return null;
@@ -198,7 +221,7 @@ export class GraphDecompiler {
       case 'ControlParameterBoolNodeData':
       case 'ControlParameterFloatNodeData':
       case 'ControlParameterTriggerNodeData':
-        return this.buildParameterReference(nodeIndex, targetGraph);
+        return this.buildParameterReference(nodeIndex, targetGraph, basePos);
       default:
         console.warn(`[GraphDecompiler] Unhandled node type: "${nodeData.type}" at index ${nodeIndex}`, nodeData);
 
@@ -206,7 +229,36 @@ export class GraphDecompiler {
     }
   }
 
-  private buildParameterReference (nodeIndex: number, targetGraph: FlowGraph): FlowToolsNode | null {
+  /**
+   * 构建子节点并连接到父节点的指定 pin
+   * 返回子树高度，失败返回 null
+   */
+  private buildAndConnect (
+    nodeIndex: number | undefined,
+    targetGraph: FlowGraph,
+    parentNode: FlowToolsNode,
+    pinIndex: number,
+    inputPos: ImGui.ImVec2,
+  ): LayoutResult | null {
+    if (nodeIndex === undefined || nodeIndex === InvalidIndex) {
+      return null;
+    }
+
+    const result = this.buildNode(nodeIndex, targetGraph, inputPos);
+
+    if (!result) {
+      return null;
+    }
+
+    targetGraph.TryMakeConnection(
+      result.node, result.node.GetOutputPin(0)!,
+      parentNode, parentNode.GetInputPin(pinIndex)!
+    );
+
+    return result;
+  }
+
+  private buildParameterReference (nodeIndex: number, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult | null {
     const paramNode = this.controlParameterNodes.get(nodeIndex);
 
     if (!paramNode) {
@@ -216,24 +268,26 @@ export class GraphDecompiler {
     if (paramNode instanceof BoolControlParameterToolsNode) {
       const refNode = targetGraph.CreateNode(BoolParameterReferenceToolsNode, paramNode);
 
-      // 参数引用节点映射到控制参数的运行时索引（位置由调用方控制）
       this.registerMapping(refNode, nodeIndex);
+      refNode.SetPosition(basePos);
 
-      return refNode;
+      return { node: refNode, height: LEAF_H };
     } else if (paramNode instanceof FloatControlParameterToolsNode) {
       const refNode = targetGraph.CreateNode(FloatParameterReferenceToolsNode, paramNode);
 
       this.registerMapping(refNode, nodeIndex);
+      refNode.SetPosition(basePos);
 
-      return refNode;
+      return { node: refNode, height: LEAF_H };
     }
 
     return null;
   }
 
-  private buildStateMachine (nodeIndex: number, data: spec.StateMachineNodeData, targetGraph: FlowGraph): FlowToolsNode {
-    const smNode = targetGraph.CreateNode(StateMachineToolsNode, new ImVec2(400, 200));
+  private buildStateMachine (nodeIndex: number, data: spec.StateMachineNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+    const smNode = targetGraph.CreateNode(StateMachineToolsNode);
 
+    smNode.SetPosition(basePos);
     this.registerMapping(smNode, nodeIndex);
 
     if (data.machineName) {
@@ -322,11 +376,12 @@ export class GraphDecompiler {
         const conduit = smGraph.CreateNode(TransitionConduitToolsNode, sourceState, targetState);
         const conduitGraph = conduit.GetSecondaryGraph() as FlowGraph;
 
+        let transYCursor = 50;
+
         for (let tIdx = 0; tIdx < transitions.length; tIdx++) {
           const transData = transitions[tIdx];
           const transNodeData = this.nodeDatas[transData.transitionNodeIndex] as spec.TransitionNodeData | undefined;
-          const transYPos = 50 + tIdx * 200;
-          const transNode = conduitGraph.CreateNode(TransitionToolsNode, new ImVec2(300, transYPos));
+          const transNode = conduitGraph.CreateNode(TransitionToolsNode, new ImVec2(300, transYCursor));
 
           // 注册 TransitionToolsNode → transitionNodeIndex 映射
           this.registerMapping(transNode, transData.transitionNodeIndex);
@@ -338,28 +393,26 @@ export class GraphDecompiler {
           }
 
           // 构建条件节点并连接
-          if (transData.conditionNodeIndex !== undefined && transData.conditionNodeIndex !== InvalidIndex) {
-            const conditionNode = this.buildNode(transData.conditionNodeIndex, conduitGraph);
+          let condHeight = LEAF_H;
 
-            if (conditionNode) {
-              conditionNode.SetPosition(new ImVec2(0, transYPos));
-              const connected = conduitGraph.TryMakeConnection(
-                conditionNode, conditionNode.GetOutputPin(0)!,
+          if (transData.conditionNodeIndex !== undefined && transData.conditionNodeIndex !== InvalidIndex) {
+            const condResult = this.buildNode(transData.conditionNodeIndex, conduitGraph, new ImVec2(-50, transYCursor));
+
+            if (condResult) {
+              conduitGraph.TryMakeConnection(
+                condResult.node, condResult.node.GetOutputPin(0)!,
                 transNode, transNode.GetInputPin(0)!
               );
-
-              if (!connected) {
-                console.warn(`[GraphDecompiler] Transition condition connection FAILED: output type="${conditionNode.GetOutputPin(0)?.m_type}", input type="${transNode.GetInputPin(0)?.m_type}"`);
-              }
-            } else {
-              console.warn(`[GraphDecompiler] Transition condition buildNode returned null for index ${transData.conditionNodeIndex}, type="${this.nodeDatas[transData.conditionNodeIndex]?.type}"`);
+              condHeight = condResult.height;
             }
           }
+
+          transYCursor += Math.max(condHeight, LEAF_H) + V_GAP;
         }
       }
     }
 
-    return smNode;
+    return { node: smNode, height: LEAF_H };
   }
 
   private buildStateBlendTree (stateNode: StateToolsNode, childNodeIndex: number): void {
@@ -379,13 +432,11 @@ export class GraphDecompiler {
 
     resultNode.SetPosition(new ImVec2(600, 200));
 
-    const blendTreeNode = this.buildNode(childNodeIndex, childGraph);
+    const blendTreeResult = this.buildNode(childNodeIndex, childGraph, new ImVec2(200, 50));
 
-    if (blendTreeNode) {
-      blendTreeNode.SetPosition(new ImVec2(100, 200));
-
+    if (blendTreeResult) {
       childGraph.TryMakeConnection(
-        blendTreeNode, blendTreeNode.GetOutputPin(0)!,
+        blendTreeResult.node, blendTreeResult.node.GetOutputPin(0)!,
         resultNode, resultNode.GetInputPin(0)!
       );
     }
@@ -407,124 +458,77 @@ export class GraphDecompiler {
     return clipNode;
   }
 
-  private buildBlendNode (nodeIndex: number, blendData: spec.BlendNodeData, targetGraph: FlowGraph): FlowToolsNode {
-    const blendNode = targetGraph.CreateNode(BlendToolsNode, new ImVec2(300, 250));
+  private buildBlendNode (nodeIndex: number, blendData: spec.BlendNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+    const blendNode = targetGraph.CreateNode(BlendToolsNode);
 
     this.registerMapping(blendNode, nodeIndex);
 
-    // Source0
-    if (blendData.sourceNodeIndex0 !== undefined && blendData.sourceNodeIndex0 !== InvalidIndex) {
-      const source0 = this.buildNode(blendData.sourceNodeIndex0, targetGraph);
+    const inputX = basePos.x - H_GAP;
+    let cursorY = basePos.y;
+    let hasChildren = false;
 
-      if (source0) {
-        source0.SetPosition(new ImVec2(-100, 50));
-        targetGraph.TryMakeConnection(
-          source0, source0.GetOutputPin(0)!,
-          blendNode, blendNode.GetInputPin(0)!
-        );
-      }
-    }
+    // Source0
+    const r0 = this.buildAndConnect(blendData.sourceNodeIndex0, targetGraph, blendNode, 0, new ImVec2(inputX, cursorY));
+
+    if (r0) { cursorY += r0.height + V_GAP; hasChildren = true; }
 
     // Source1
-    if (blendData.sourceNodeIndex1 !== undefined && blendData.sourceNodeIndex1 !== InvalidIndex) {
-      const source1 = this.buildNode(blendData.sourceNodeIndex1, targetGraph);
+    const r1 = this.buildAndConnect(blendData.sourceNodeIndex1, targetGraph, blendNode, 1, new ImVec2(inputX, cursorY));
 
-      if (source1) {
-        source1.SetPosition(new ImVec2(-100, 400));
-        targetGraph.TryMakeConnection(
-          source1, source1.GetOutputPin(0)!,
-          blendNode, blendNode.GetInputPin(1)!
-        );
-      }
-    }
+    if (r1) { cursorY += r1.height + V_GAP; hasChildren = true; }
 
     // BlendWeight
-    if (blendData.inputParameterValueNodeIndex !== undefined && blendData.inputParameterValueNodeIndex !== InvalidIndex) {
-      const weightNode = this.buildNode(blendData.inputParameterValueNodeIndex, targetGraph);
+    const r2 = this.buildAndConnect(blendData.inputParameterValueNodeIndex, targetGraph, blendNode, 2, new ImVec2(inputX, cursorY));
 
-      if (weightNode) {
-        weightNode.SetPosition(new ImVec2(-100, 550));
-        targetGraph.TryMakeConnection(
-          weightNode, weightNode.GetOutputPin(0)!,
-          blendNode, blendNode.GetInputPin(2)!
-        );
-      }
-    }
+    if (r2) { cursorY += r2.height + V_GAP; hasChildren = true; }
 
-    return blendNode;
+    const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
+    const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
+
+    blendNode.SetPosition(new ImVec2(basePos.x, centerY));
+
+    return { node: blendNode, height: totalHeight };
   }
 
-  private buildLayerBlendNode (nodeIndex: number, data: spec.LayerBlendNodeData, targetGraph: FlowGraph): FlowToolsNode {
+  private buildLayerBlendNode (nodeIndex: number, data: spec.LayerBlendNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
     const numLayers = data.layerDatas?.length ?? 0;
-    const layerBlendNode = targetGraph.CreateNode(LayerBlendToolsNode, new ImVec2(300, 250), numLayers);
+    const layerBlendNode = targetGraph.CreateNode(LayerBlendToolsNode, new ImVec2(0, 0), numLayers);
 
     this.registerMapping(layerBlendNode, nodeIndex);
 
-    // Base input
-    if (data.baseNodeIndex !== undefined && data.baseNodeIndex !== InvalidIndex) {
-      const baseNode = this.buildNode(data.baseNodeIndex, targetGraph);
+    const inputX = basePos.x - H_GAP;
+    const weightX = basePos.x - H_GAP - 150;
+    let cursorY = basePos.y;
+    let hasChildren = false;
 
-      if (baseNode) {
-        baseNode.SetPosition(new ImVec2(-100, 50));
-        const connected = targetGraph.TryMakeConnection(
-          baseNode, baseNode.GetOutputPin(0)!,
-          layerBlendNode, layerBlendNode.GetInputPin(0)!
-        );
+    // Base input (pin 0)
+    const baseResult = this.buildAndConnect(data.baseNodeIndex, targetGraph, layerBlendNode, 0, new ImVec2(inputX, cursorY));
 
-        if (!connected) {
-          console.warn(`[GraphDecompiler] LayerBlend base connection FAILED: output type="${baseNode.GetOutputPin(0)?.m_type}", input type="${layerBlendNode.GetInputPin(0)?.m_type}"`);
-        }
-      } else {
-        console.warn(`[GraphDecompiler] LayerBlend base buildNode returned null for index ${data.baseNodeIndex}, type="${this.nodeDatas[data.baseNodeIndex]?.type}"`);
-      }
-    }
+    if (baseResult) { cursorY += baseResult.height + V_GAP; hasChildren = true; }
 
     // Layer inputs
     if (data.layerDatas) {
       for (let i = 0; i < data.layerDatas.length; i++) {
         const layerData = data.layerDatas[i];
 
-        // Layer pose input
-        if (layerData.inputNodeIndex !== undefined && layerData.inputNodeIndex !== InvalidIndex) {
-          const inputNode = this.buildNode(layerData.inputNodeIndex, targetGraph);
+        // Layer pose input (pin 1 + i*2)
+        const poseResult = this.buildAndConnect(layerData.inputNodeIndex, targetGraph, layerBlendNode, 1 + i * 2, new ImVec2(inputX, cursorY));
 
-          if (inputNode) {
-            inputNode.SetPosition(new ImVec2(-100, 300 + i * 200));
-            const connected = targetGraph.TryMakeConnection(
-              inputNode, inputNode.GetOutputPin(0)!,
-              layerBlendNode, layerBlendNode.GetInputPin(1 + i * 2)!
-            );
+        if (poseResult) { cursorY += poseResult.height + V_GAP; hasChildren = true; }
 
-            if (!connected) {
-              console.warn(`[GraphDecompiler] LayerBlend layer[${i}] input connection FAILED: output type="${inputNode.GetOutputPin(0)?.m_type}", input type="${layerBlendNode.GetInputPin(1 + i * 2)?.m_type}", pinIndex=${1 + i * 2}`);
-            }
-          } else {
-            console.warn(`[GraphDecompiler] LayerBlend layer[${i}] input buildNode returned null for index ${layerData.inputNodeIndex}, type="${this.nodeDatas[layerData.inputNodeIndex]?.type}"`);
-          }
-        }
+        // Layer weight input (pin 2 + i*2) — offset further left
+        const weightResult = this.buildAndConnect(layerData.weightValueNodeIndex, targetGraph, layerBlendNode, 2 + i * 2, new ImVec2(weightX, cursorY));
 
-        // Layer weight input
-        if (layerData.weightValueNodeIndex !== undefined && layerData.weightValueNodeIndex !== InvalidIndex) {
-          const weightNode = this.buildNode(layerData.weightValueNodeIndex, targetGraph);
-
-          if (weightNode) {
-            weightNode.SetPosition(new ImVec2(-250, 350 + i * 200));
-            const connected = targetGraph.TryMakeConnection(
-              weightNode, weightNode.GetOutputPin(0)!,
-              layerBlendNode, layerBlendNode.GetInputPin(2 + i * 2)!
-            );
-
-            if (!connected) {
-              console.warn(`[GraphDecompiler] LayerBlend layer[${i}] weight connection FAILED: output type="${weightNode.GetOutputPin(0)?.m_type}", input type="${layerBlendNode.GetInputPin(2 + i * 2)?.m_type}", pinIndex=${2 + i * 2}`);
-            }
-          } else {
-            console.warn(`[GraphDecompiler] LayerBlend layer[${i}] weight buildNode returned null for index ${layerData.weightValueNodeIndex}, type="${this.nodeDatas[layerData.weightValueNodeIndex]?.type}"`);
-          }
-        }
+        if (weightResult) { cursorY += weightResult.height + V_GAP; hasChildren = true; }
       }
     }
 
-    return layerBlendNode;
+    const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
+    const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
+
+    layerBlendNode.SetPosition(new ImVec2(basePos.x, centerY));
+
+    return { node: layerBlendNode, height: totalHeight };
   }
 
   private buildConstBool (nodeIndex: number, data: spec.ConstBoolNodeData, targetGraph: FlowGraph): FlowToolsNode {
@@ -547,194 +551,148 @@ export class GraphDecompiler {
     return node;
   }
 
-  private buildAndNode (nodeIndex: number, data: spec.AndNodeData, targetGraph: FlowGraph): FlowToolsNode {
-    const numInputs = data.conditionNodeIndices?.length ?? 0;
-    const andNode = targetGraph.CreateNode(AndToolsNode, new ImVec2(200, 200), numInputs);
+  private buildMultiInputNode (
+    nodeIndex: number,
+    targetGraph: FlowGraph,
+    rootNode: FlowToolsNode,
+    conditionIndices: number[] | undefined,
+    basePos: ImGui.ImVec2,
+  ): LayoutResult {
+    this.registerMapping(rootNode, nodeIndex);
 
-    this.registerMapping(andNode, nodeIndex);
+    const inputX = basePos.x - H_GAP;
+    let cursorY = basePos.y;
+    let hasChildren = false;
 
-    if (data.conditionNodeIndices) {
-      for (let i = 0; i < data.conditionNodeIndices.length; i++) {
-        const condIdx = data.conditionNodeIndices[i];
+    if (conditionIndices) {
+      for (let i = 0; i < conditionIndices.length; i++) {
+        const condIdx = conditionIndices[i];
 
         if (condIdx !== undefined && condIdx !== InvalidIndex) {
-          const inputNode = this.buildNode(condIdx, targetGraph);
+          const result = this.buildAndConnect(condIdx, targetGraph, rootNode, i, new ImVec2(inputX, cursorY));
 
-          if (inputNode) {
-            inputNode.SetPosition(new ImVec2(-100, 50 + i * 150));
-            targetGraph.TryMakeConnection(
-              inputNode, inputNode.GetOutputPin(0)!,
-              andNode, andNode.GetInputPin(i)!
-            );
-          }
+          if (result) { cursorY += result.height + V_GAP; hasChildren = true; }
         }
       }
     }
 
-    return andNode;
+    const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
+    const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
+
+    rootNode.SetPosition(new ImVec2(basePos.x, centerY));
+
+    return { node: rootNode, height: totalHeight };
   }
 
-  private buildOrNode (nodeIndex: number, data: spec.OrNodeData, targetGraph: FlowGraph): FlowToolsNode {
+  private buildAndNode (nodeIndex: number, data: spec.AndNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
     const numInputs = data.conditionNodeIndices?.length ?? 0;
-    const orNode = targetGraph.CreateNode(OrToolsNode, new ImVec2(200, 200), numInputs);
+    const andNode = targetGraph.CreateNode(AndToolsNode, new ImVec2(0, 0), numInputs);
 
-    this.registerMapping(orNode, nodeIndex);
-
-    if (data.conditionNodeIndices) {
-      for (let i = 0; i < data.conditionNodeIndices.length; i++) {
-        const condIdx = data.conditionNodeIndices[i];
-
-        if (condIdx !== undefined && condIdx !== InvalidIndex) {
-          const inputNode = this.buildNode(condIdx, targetGraph);
-
-          if (inputNode) {
-            inputNode.SetPosition(new ImVec2(-100, 50 + i * 150));
-            targetGraph.TryMakeConnection(
-              inputNode, inputNode.GetOutputPin(0)!,
-              orNode, orNode.GetInputPin(i)!
-            );
-          }
-        }
-      }
-    }
-
-    return orNode;
+    return this.buildMultiInputNode(nodeIndex, targetGraph, andNode, data.conditionNodeIndices, basePos);
   }
 
-  private buildNotNode (nodeIndex: number, data: spec.NotNodeData, targetGraph: FlowGraph): FlowToolsNode {
-    const notNode = targetGraph.CreateNode(NotToolsNode, new ImVec2(200, 200));
+  private buildOrNode (nodeIndex: number, data: spec.OrNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+    const numInputs = data.conditionNodeIndices?.length ?? 0;
+    const orNode = targetGraph.CreateNode(OrToolsNode, new ImVec2(0, 0), numInputs);
+
+    return this.buildMultiInputNode(nodeIndex, targetGraph, orNode, data.conditionNodeIndices, basePos);
+  }
+
+  private buildNotNode (nodeIndex: number, data: spec.NotNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+    const notNode = targetGraph.CreateNode(NotToolsNode);
 
     this.registerMapping(notNode, nodeIndex);
 
-    if (data.inputValueNodeIndex !== undefined && data.inputValueNodeIndex !== InvalidIndex) {
-      const inputNode = this.buildNode(data.inputValueNodeIndex, targetGraph);
+    const inputX = basePos.x - H_GAP;
+    let totalHeight = LEAF_H;
 
-      if (inputNode) {
-        inputNode.SetPosition(new ImVec2(-100, 200));
-        targetGraph.TryMakeConnection(
-          inputNode, inputNode.GetOutputPin(0)!,
-          notNode, notNode.GetInputPin(0)!
-        );
-      }
-    }
+    const result = this.buildAndConnect(data.inputValueNodeIndex, targetGraph, notNode, 0, new ImVec2(inputX, basePos.y));
 
-    return notNode;
+    if (result) { totalHeight = Math.max(LEAF_H, result.height); }
+
+    notNode.SetPosition(new ImVec2(basePos.x, basePos.y + totalHeight / 2 - LEAF_H / 2));
+
+    return { node: notNode, height: totalHeight };
   }
 
-  private buildEqualNode (nodeIndex: number, data: spec.EqualNodeData, targetGraph: FlowGraph): FlowToolsNode {
-    const equalNode = targetGraph.CreateNode(EqualToolsNode, new ImVec2(200, 200));
+  private buildBinaryNode (
+    nodeIndex: number,
+    targetGraph: FlowGraph,
+    rootNode: FlowToolsNode,
+    inputIdx: number | undefined,
+    comparandIdx: number | undefined,
+    basePos: ImGui.ImVec2,
+  ): LayoutResult {
+    this.registerMapping(rootNode, nodeIndex);
 
-    this.registerMapping(equalNode, nodeIndex);
+    const inputX = basePos.x - H_GAP;
+    let cursorY = basePos.y;
+    let hasChildren = false;
 
-    if (data.inputValueNodeIndex !== undefined && data.inputValueNodeIndex !== InvalidIndex) {
-      const inputNode = this.buildNode(data.inputValueNodeIndex, targetGraph);
+    const r0 = this.buildAndConnect(inputIdx, targetGraph, rootNode, 0, new ImVec2(inputX, cursorY));
 
-      if (inputNode) {
-        inputNode.SetPosition(new ImVec2(-100, 100));
-        targetGraph.TryMakeConnection(
-          inputNode, inputNode.GetOutputPin(0)!,
-          equalNode, equalNode.GetInputPin(0)!
-        );
-      }
-    }
+    if (r0) { cursorY += r0.height + V_GAP; hasChildren = true; }
 
-    if (data.comparandValueNodeIndex !== undefined && data.comparandValueNodeIndex !== InvalidIndex) {
-      const comparandNode = this.buildNode(data.comparandValueNodeIndex, targetGraph);
+    const r1 = this.buildAndConnect(comparandIdx, targetGraph, rootNode, 1, new ImVec2(inputX, cursorY));
 
-      if (comparandNode) {
-        comparandNode.SetPosition(new ImVec2(-100, 300));
-        targetGraph.TryMakeConnection(
-          comparandNode, comparandNode.GetOutputPin(0)!,
-          equalNode, equalNode.GetInputPin(1)!
-        );
-      }
-    }
+    if (r1) { cursorY += r1.height + V_GAP; hasChildren = true; }
 
-    return equalNode;
+    const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
+    const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
+
+    rootNode.SetPosition(new ImVec2(basePos.x, centerY));
+
+    return { node: rootNode, height: totalHeight };
+  }
+
+  private buildEqualNode (nodeIndex: number, data: spec.EqualNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+    const equalNode = targetGraph.CreateNode(EqualToolsNode);
+
+    return this.buildBinaryNode(nodeIndex, targetGraph, equalNode, data.inputValueNodeIndex, data.comparandValueNodeIndex, basePos);
   }
 
   private buildComparisonNode (
     nodeIndex: number,
     data: spec.FloatComparisonNodeData,
     targetGraph: FlowGraph,
+    basePos: ImGui.ImVec2,
     comparison: 'greater' | 'less'
-  ): FlowToolsNode {
+  ): LayoutResult {
     const NodeClass = comparison === 'greater' ? GreaterToolsNode : LessToolsNode;
-    const compNode = targetGraph.CreateNode(NodeClass, new ImVec2(200, 200));
+    const compNode = targetGraph.CreateNode(NodeClass);
 
-    this.registerMapping(compNode, nodeIndex);
-
-    if (data.inputValueNodeIndex !== undefined && data.inputValueNodeIndex !== InvalidIndex) {
-      const inputNode = this.buildNode(data.inputValueNodeIndex, targetGraph);
-
-      if (inputNode) {
-        inputNode.SetPosition(new ImVec2(-100, 100));
-        targetGraph.TryMakeConnection(
-          inputNode, inputNode.GetOutputPin(0)!,
-          compNode, compNode.GetInputPin(0)!
-        );
-      }
-    }
-
-    if (data.comparandValueNodeIndex !== undefined && data.comparandValueNodeIndex !== InvalidIndex) {
-      const comparandNode = this.buildNode(data.comparandValueNodeIndex, targetGraph);
-
-      if (comparandNode) {
-        comparandNode.SetPosition(new ImVec2(-100, 300));
-        targetGraph.TryMakeConnection(
-          comparandNode, comparandNode.GetOutputPin(0)!,
-          compNode, compNode.GetInputPin(1)!
-        );
-      }
-    }
-
-    return compNode;
+    return this.buildBinaryNode(nodeIndex, targetGraph, compNode, data.inputValueNodeIndex, data.comparandValueNodeIndex, basePos);
   }
 
-  private buildApplyAdditiveNode (nodeIndex: number, data: spec.ApplyAdditiveNodeData, targetGraph: FlowGraph): FlowToolsNode {
-    const additiveNode = targetGraph.CreateNode(ApplyAdditiveToolsNode, new ImVec2(300, 250));
+  private buildApplyAdditiveNode (nodeIndex: number, data: spec.ApplyAdditiveNodeData, targetGraph: FlowGraph, basePos: ImGui.ImVec2): LayoutResult {
+    const additiveNode = targetGraph.CreateNode(ApplyAdditiveToolsNode);
 
     this.registerMapping(additiveNode, nodeIndex);
 
-    // Base input
-    if (data.baseNodeIndex !== undefined && data.baseNodeIndex !== InvalidIndex) {
-      const baseNode = this.buildNode(data.baseNodeIndex, targetGraph);
+    const inputX = basePos.x - H_GAP;
+    let cursorY = basePos.y;
+    let hasChildren = false;
 
-      if (baseNode) {
-        baseNode.SetPosition(new ImVec2(-100, 50));
-        targetGraph.TryMakeConnection(
-          baseNode, baseNode.GetOutputPin(0)!,
-          additiveNode, additiveNode.GetInputPin(0)!
-        );
-      }
-    }
+    // Base input (pin 0)
+    const r0 = this.buildAndConnect(data.baseNodeIndex, targetGraph, additiveNode, 0, new ImVec2(inputX, cursorY));
 
-    // Additive input
-    if (data.additiveNodeIndex !== undefined && data.additiveNodeIndex !== InvalidIndex) {
-      const addNode = this.buildNode(data.additiveNodeIndex, targetGraph);
+    if (r0) { cursorY += r0.height + V_GAP; hasChildren = true; }
 
-      if (addNode) {
-        addNode.SetPosition(new ImVec2(-100, 300));
-        targetGraph.TryMakeConnection(
-          addNode, addNode.GetOutputPin(0)!,
-          additiveNode, additiveNode.GetInputPin(1)!
-        );
-      }
-    }
+    // Additive input (pin 1)
+    const r1 = this.buildAndConnect(data.additiveNodeIndex, targetGraph, additiveNode, 1, new ImVec2(inputX, cursorY));
 
-    // Weight input
-    if (data.inputParameterValueNodeIndex !== undefined && data.inputParameterValueNodeIndex !== InvalidIndex) {
-      const weightNode = this.buildNode(data.inputParameterValueNodeIndex, targetGraph);
+    if (r1) { cursorY += r1.height + V_GAP; hasChildren = true; }
 
-      if (weightNode) {
-        weightNode.SetPosition(new ImVec2(-100, 500));
-        targetGraph.TryMakeConnection(
-          weightNode, weightNode.GetOutputPin(0)!,
-          additiveNode, additiveNode.GetInputPin(2)!
-        );
-      }
-    }
+    // Weight input (pin 2)
+    const r2 = this.buildAndConnect(data.inputParameterValueNodeIndex, targetGraph, additiveNode, 2, new ImVec2(inputX, cursorY));
 
-    return additiveNode;
+    if (r2) { cursorY += r2.height + V_GAP; hasChildren = true; }
+
+    const totalHeight = hasChildren ? cursorY - basePos.y - V_GAP : LEAF_H;
+    const centerY = basePos.y + totalHeight / 2 - LEAF_H / 2;
+
+    additiveNode.SetPosition(new ImVec2(basePos.x, centerY));
+
+    return { node: additiveNode, height: totalHeight };
   }
 }

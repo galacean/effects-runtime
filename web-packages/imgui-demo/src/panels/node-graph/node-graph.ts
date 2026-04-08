@@ -1,6 +1,6 @@
 import type { spec } from '@galacean/effects';
 import { AnimationGraphAsset, Animator, GraphInstance, InvalidIndex, SerializationHelper, VFXItem } from '@galacean/effects';
-import { StateMachineNode, type StateMachineNodeData } from '@galacean/effects-core';
+
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
@@ -23,6 +23,7 @@ import { GraphCompilationContext } from './compilation';
 import { ControlParameterToolsNode } from './tools-graph/nodes/parameter-tools-nodes';
 import { AnimationParametersPanel } from './graph-parameters';
 import { GraphDecompiler } from './graph-decompiler';
+import { TransitionConduitToolsNode, TransitionToolsNode, TimeMatchMode } from './tools-graph/nodes/transition-tools-node';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
@@ -59,12 +60,9 @@ export class AnimationGraph extends EditorWindow {
   stateMachineGraph: StateMachineGraph;
   flowGraph = new FlowGraph();
 
-  private m_primaryGraphViewProportionalHeight = 0.6;
   private primaryGraphView: GraphView;
-  private secondaryGraphView: GraphView;
   private loadedGraphStack: LoadedGraphData[] = [];
   private selectedNodes: SelectedNode[] = [];
-  private m_pFocusedGraphView: GraphView;
   private breadcrumbPopupContext: NodeGraph.BaseNode | null = null;
 
   private selectedNode: SelectedNode | null;
@@ -72,12 +70,11 @@ export class AnimationGraph extends EditorWindow {
   // 参数控制面板
   private parametersPanel = new AnimationParametersPanel();
   private showParametersPanel = true;
-  private parametersPanelWidth = 250; // 可拖拽的参数面板宽度
-  private splitterDragOffset = 0; // 分割条拖拽时的偏移量
+  private parametersPanelWidth = 250;
 
-  // 状态机面板
-  private showStateMachinePanel = true;
-  private stateMachinePanelHeight = 120; // 状态机面板高度
+  // 属性面板
+  private showDetailsPanel = true;
+  private detailsPanelWidth = 250;
 
   @menuItem('Window/AnimationGraph')
   static showWindow () {
@@ -90,7 +87,6 @@ export class AnimationGraph extends EditorWindow {
     this.open();
     this.setWindowFlags(ImGui.WindowFlags.NoScrollWithMouse | ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.MenuBar);
     this.primaryGraphView = new GraphView(this.userContext);
-    this.secondaryGraphView = new GraphView(this.userContext);
 
     const graphDefinition = new GraphDefinition();
 
@@ -164,9 +160,10 @@ export class AnimationGraph extends EditorWindow {
         if (ImGui.MenuItem('Parameters Panel', '', this.showParametersPanel)) {
           this.showParametersPanel = !this.showParametersPanel;
         }
-        if (ImGui.MenuItem('State Machine Panel', '', this.showStateMachinePanel)) {
-          this.showStateMachinePanel = !this.showStateMachinePanel;
+        if (ImGui.MenuItem('Details Panel', '', this.showDetailsPanel)) {
+          this.showDetailsPanel = !this.showDetailsPanel;
         }
+
         ImGui.EndMenu();
       }
       ImGui.EndMenuBar();
@@ -197,55 +194,52 @@ export class AnimationGraph extends EditorWindow {
     this.userContext.m_pGraphInstance = this.graph;
     this.userContext.m_nodeIDtoIndexMap = this.compilationContext.GetUUIDToRuntimeIndexMap();
 
-    // 创建水平分割布局：左侧参数面板，右侧图形视图
+    // 三栏布局：左侧参数面板 | 中间图形视图 | 右侧属性面板
     const contentRegion = ImGui.GetContentRegionAvail();
-    const splitterWidth = 4; // 分割条宽度
+    const splitterWidth = 4;
 
     let parametersWidth = this.showParametersPanel ? this.parametersPanelWidth : 0;
-    const minParametersWidth = 180; // 最小宽度
-    const maxParametersWidth = contentRegion.x * 0.5; // 最大宽度为窗口的一半
+    let detailsWidth = this.showDetailsPanel ? this.detailsPanelWidth : 0;
+    const minPanelWidth = 180;
+    const maxPanelWidth = contentRegion.x * 0.3;
 
-    // 限制参数面板宽度范围
-    parametersWidth = Math.max(minParametersWidth, Math.min(maxParametersWidth, parametersWidth));
+    parametersWidth = Math.max(minPanelWidth, Math.min(maxPanelWidth, parametersWidth));
+    detailsWidth = Math.max(minPanelWidth, Math.min(maxPanelWidth, detailsWidth));
 
-    const graphViewWidth = contentRegion.x - parametersWidth - (this.showParametersPanel ? splitterWidth : 0);
+    const splitterCount = (this.showParametersPanel ? 1 : 0) + (this.showDetailsPanel ? 1 : 0);
+    const graphViewWidth = contentRegion.x - parametersWidth - detailsWidth - splitterCount * splitterWidth;
 
-    // 左侧：参数面板区域
+    // 左侧：参数面板
     if (this.showParametersPanel) {
-      if (ImGui.BeginChild('ParametersPanel', new ImGui.ImVec2(parametersWidth, contentRegion.y), false)) {
+      if (ImGui.BeginChild('ParametersPanel', new ImVec2(parametersWidth, contentRegion.y), false)) {
         this.parametersPanel.drawPanel(parametersWidth, contentRegion.y);
       }
       ImGui.EndChild();
 
-      // 可拖拽的分割条
       ImGui.SameLine();
-      this.drawResizableSplitter(splitterWidth, contentRegion.y);
+      this.drawResizableSplitter('##LeftSplitter', splitterWidth, contentRegion.y, 'parametersPanelWidth');
     }
 
-    // 右侧：状态机面板和图形视图区域
+    // 中间：图形视图
     ImGui.SameLine();
-    if (ImGui.BeginChild('RightPanel', new ImGui.ImVec2(graphViewWidth, contentRegion.y), false)) {
-      // 上方：状态机面板
-      if (this.showStateMachinePanel) {
-        if (ImGui.BeginChild('StateMachinePanel', new ImGui.ImVec2(graphViewWidth, this.stateMachinePanelHeight), true)) {
-          this.drawStateMachinePanel();
-        }
-        ImGui.EndChild();
-
-        ImGui.Spacing();
+    if (ImGui.BeginChild('CenterPanel', new ImVec2(graphViewWidth, contentRegion.y), false)) {
+      if (this.graph) {
+        this.DrawGraphView();
       }
+    }
+    ImGui.EndChild();
 
-      // 下方：图形视图
-      const remainingHeight = contentRegion.y - (this.showStateMachinePanel ? this.stateMachinePanelHeight + 10 : 0);
+    // 右侧：属性面板
+    if (this.showDetailsPanel) {
+      ImGui.SameLine();
+      this.drawResizableSplitter('##RightSplitter', splitterWidth, contentRegion.y, 'detailsPanelWidth', true);
 
-      if (ImGui.BeginChild('GraphView', new ImGui.ImVec2(graphViewWidth, remainingHeight), false)) {
-        if (this.graph) {
-          this.DrawGraphView();
-        }
+      ImGui.SameLine();
+      if (ImGui.BeginChild('DetailsPanel', new ImVec2(detailsWidth, contentRegion.y), true)) {
+        this.drawDetailsPanel();
       }
       ImGui.EndChild();
     }
-    ImGui.EndChild();
 
     this.UpdateSelectedNode();
   }
@@ -255,101 +249,184 @@ export class AnimationGraph extends EditorWindow {
       const currentSelectedNode = this.selectedNodes[this.selectedNodes.length - 1];
 
       if (this.selectedNode !== currentSelectedNode) {
-        Selection.select(currentSelectedNode.m_pNode);
         this.selectedNode = currentSelectedNode;
       }
     }
   }
 
-  private drawStateMachinePanel () {
-    ImGui.Text('State Machine Status');
+  private drawDetailsPanel () {
+    ImGui.Text('Details');
     ImGui.Separator();
 
-    if (!this.graph) {
-      ImGui.TextDisabled('No graph instance available');
+    if (this.selectedNodes.length === 0) {
+      ImGui.TextDisabled('No Selection');
 
       return;
     }
 
-    // 获取所有状态机节点的当前状态
-    const stateMachines = this.getStateMachineNodes();
+    const selected = this.selectedNodes[this.selectedNodes.length - 1].m_pNode;
 
-    if (stateMachines.length === 0) {
-      ImGui.TextDisabled('No state machines found');
+    if (!selected) {
+      ImGui.TextDisabled('No Selection');
 
       return;
     }
 
-    // 使用表格显示状态机信息
-    const tableFlags = ImGui.TableFlags.BordersInnerV |
-                      ImGui.TableFlags.SizingFixedFit |
-                      ImGui.TableFlags.Borders;
+    // Transition 属性
+    if (selected instanceof TransitionConduitToolsNode) {
+      this.drawTransitionDetails(selected);
 
-    if (ImGui.BeginTable('StateMachineTable', 2, tableFlags)) {
-      ImGui.TableSetupColumn('State Machine', ImGui.TableColumnFlags.WidthStretch);
-      ImGui.TableSetupColumn('Current State', ImGui.TableColumnFlags.WidthStretch);
-      ImGui.TableHeadersRow();
-
-      for (const stateMachine of stateMachines) {
-        ImGui.TableNextRow();
-
-        ImGui.TableSetColumnIndex(0);
-        ImGui.Text(stateMachine.name || 'State Machine');
-
-        ImGui.TableSetColumnIndex(1);
-        ImGui.Text(stateMachine.currentState || 'Unknown');
-      }
-
-      ImGui.EndTable();
+      return;
     }
+
+    // State 属性
+    if (selected instanceof StateToolsNode) {
+      this.drawStateDetails(selected);
+
+      return;
+    }
+
+    // 通用节点属性
+    this.drawGenericNodeDetails(selected);
   }
 
-  private getStateMachineNodes (): Array<{ name: string, currentState: string }> {
-    if (!this.graph) {
-      return [];
+  private drawTransitionDetails (conduit: TransitionConduitToolsNode) {
+    ImGui.Text('Transition');
+    ImGui.Spacing();
+
+    const transitions = conduit.GetSecondaryGraph()!.FindAllNodesOfType<TransitionToolsNode>(TransitionToolsNode);
+
+    if (transitions.length === 0) {
+      ImGui.TextDisabled('No transition rules');
+
+      return;
     }
 
-    const stateMachines: Array<{ name: string, currentState: string }> = [];
+    for (let i = 0; i < transitions.length; i++) {
+      const t = transitions[i];
 
-    try {
-      // 遍历图实例的所有节点，查找StateMachineNode类型的节点
-      for (const node of this.graph.nodes) {
-        if (node instanceof StateMachineNode) {
-          const nodeData = node.getNodeData<StateMachineNodeData>();
-          const machineName = nodeData.machineName || `State Machine ${stateMachines.length}`;
-          const currentState = node.getCurrentStateName();
-
-          stateMachines.push({
-            name: machineName,
-            currentState: currentState,
-          });
+      if (transitions.length > 1) {
+        if (!ImGui.CollapsingHeader(`Rule ${i}##rule_${i}`, ImGui.TreeNodeFlags.DefaultOpen)) {
+          continue;
         }
       }
 
-      // 如果没有找到状态机，显示占位信息
-      if (stateMachines.length === 0) {
-        stateMachines.push({
-          name: 'No State Machine Found',
-          currentState: 'N/A',
-        });
-      }
-    } catch (error) {
-      // 如果遍历失败，显示错误信息
-      stateMachines.push({
-        name: 'Error',
-        currentState: `Failed to read: ${error}`,
-      });
-    }
+      ImGui.PushItemWidth(-1);
 
-    return stateMachines;
+      // Duration
+      ImGui.Text('Duration');
+      let duration = t.m_duration;
+
+      if (ImGui.DragFloat('##duration', (v = duration) => duration = v, 0.01, 0, 10, '%.2f s')) {
+        t.m_duration = duration;
+      }
+
+      // Clamp Duration To Source
+      let clamp = t.m_clampDurationToSource;
+
+      if (ImGui.Checkbox('Clamp To Source', (v = clamp) => clamp = v)) {
+        t.m_clampDurationToSource = clamp;
+      }
+
+      // Can Be Forced
+      let forced = t.m_canBeForced;
+
+      if (ImGui.Checkbox('Can Be Forced', (v = forced) => forced = v)) {
+        t.m_canBeForced = forced;
+      }
+
+      ImGui.Separator();
+
+      // Has Exit Time
+      let hasExit = t.hasExitTime;
+
+      if (ImGui.Checkbox('Has Exit Time', (v = hasExit) => hasExit = v)) {
+        t.hasExitTime = hasExit;
+      }
+
+      if (t.hasExitTime) {
+        ImGui.Text('Exit Time');
+        let exitTime = t.exitTime;
+
+        if (ImGui.DragFloat('##exitTime', (v = exitTime) => exitTime = v, 0.01, 0, 1, '%.2f')) {
+          t.exitTime = exitTime;
+        }
+      }
+
+      ImGui.Separator();
+
+      // Time Match Mode
+      ImGui.Text('Time Match Mode');
+      const modeNames = ['None', 'Synchronized', 'Match Sync Idx', 'Match Sync %%', 'Match Sync Idx + %%', 'Match Sync ID', 'Match Closest ID', 'Match ID + %%', 'Match Closest ID + %%'];
+      let currentMode = t.m_timeMatchMode;
+
+      if (ImGui.Combo('##timeMatch', (v = currentMode) => currentMode = v, modeNames, modeNames.length)) {
+        t.m_timeMatchMode = currentMode;
+      }
+
+      // Sync Event Offset
+      ImGui.Text('Sync Event Offset');
+      let syncOffset = t.m_syncEventOffset;
+
+      if (ImGui.DragFloat('##syncOffset', (v = syncOffset) => syncOffset = v, 0.01, -10, 10, '%.2f')) {
+        t.m_syncEventOffset = syncOffset;
+      }
+
+      // Bone Mask Blend In
+      ImGui.Text('Bone Mask Blend In %%');
+      let boneMask = t.m_boneMaskBlendInTimePercentage;
+
+      if (ImGui.DragFloat('##boneMask', (v = boneMask) => boneMask = v, 0.01, 0, 1, '%.2f')) {
+        t.m_boneMaskBlendInTimePercentage = boneMask;
+      }
+
+      ImGui.PopItemWidth();
+    }
   }
 
-  private drawResizableSplitter (width: number, height: number) {
+  private drawStateDetails (state: StateToolsNode) {
+    const stateType = state.IsBlendTreeState() ? 'Blend Tree' : state.IsStateMachineState() ? 'State Machine' : 'Off';
+
+    ImGui.Text('State');
+    ImGui.Spacing();
+
+    ImGui.Text('Name');
+    ImGui.PushItemWidth(-1);
+    let name = state.GetName();
+
+    if (ImGui.InputText('##stateName', (v = name) => name = v, 256)) {
+      state.Rename(name);
+    }
+    ImGui.PopItemWidth();
+
+    ImGui.Text('Type');
+    ImGui.TextDisabled(stateType);
+  }
+
+  private drawGenericNodeDetails (node: BaseNode) {
+    ImGui.Text(node.GetTypeName());
+    ImGui.Spacing();
+
+    ImGui.Text('Name');
+    ImGui.PushItemWidth(-1);
+    let name = node.GetName();
+
+    if (node.IsRenameable()) {
+      if (ImGui.InputText('##nodeName', (v = name) => name = v, 256)) {
+        node.Rename(name);
+      }
+    } else {
+      ImGui.TextDisabled(name || node.GetTypeName());
+    }
+    ImGui.PopItemWidth();
+  }
+
+  private drawResizableSplitter (id: string, width: number, height: number, widthProp: 'parametersPanelWidth' | 'detailsPanelWidth', invert = false) {
     ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
-    ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.ImColor(0.22, 0.22, 0.22, 1));
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.ImColor(0.45, 0.65, 0.95, 1));
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.ImColor(0.45, 0.65, 0.95, 1));
-    ImGui.Button('##ParameterSplitter', new ImVec2(width, height));
+    ImGui.PushStyleColor(ImGui.Col.Button, new ImColor(0.22, 0.22, 0.22, 1));
+    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImColor(0.45, 0.65, 0.95, 1));
+    ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImColor(0.45, 0.65, 0.95, 1));
+    ImGui.Button(id, new ImVec2(width, height));
     ImGui.PopStyleColor(3);
     ImGui.PopStyleVar();
 
@@ -358,15 +435,10 @@ export class AnimationGraph extends EditorWindow {
     }
 
     if (ImGui.IsItemActive()) {
-      const contentRegion = ImGui.GetContentRegionAvail();
       const mouseDelta = ImGui.GetIO().MouseDelta.x;
 
-      this.parametersPanelWidth += mouseDelta;
-
-      const minWidth = 180;
-      const maxWidth = contentRegion.x * 0.7;
-
-      this.parametersPanelWidth = Math.max(minWidth, Math.min(maxWidth, this.parametersPanelWidth));
+      this[widthProp] += invert ? -mouseDelta : mouseDelta;
+      this[widthProp] = Math.max(180, Math.min(this[widthProp], 600));
     }
   }
 
@@ -377,7 +449,7 @@ export class AnimationGraph extends EditorWindow {
   }
 
   DrawGraphView () {
-    // Navigation Bar + Toolbar
+    // Navigation Bar
     //-------------------------------------------------------------------------
 
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 3));
@@ -389,45 +461,13 @@ export class AnimationGraph extends EditorWindow {
     ImGui.EndChild();
     ImGui.PopStyleVar(3);
 
-    // Primary View
+    // Graph View
     //-------------------------------------------------------------------------
 
-    const availableRegion = ImGui.GetContentRegionAvail();
-
-    this.primaryGraphView.UpdateAndDraw(availableRegion.y * this.m_primaryGraphViewProportionalHeight);
+    this.primaryGraphView.UpdateAndDraw();
 
     if (this.primaryGraphView.HasSelectionChangedThisFrame()) {
       this.SetSelectedNodes(this.primaryGraphView.GetSelectedNodes());
-    }
-
-    // Splitter
-    //-------------------------------------------------------------------------
-
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
-    ImGui.Button('##GraphViewSplitter', new ImVec2(-1, 5));
-    ImGui.PopStyleVar();
-
-    if (ImGui.IsItemHovered() && ImGui.IsWindowHovered()) {
-      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
-    }
-
-    if (ImGui.IsItemActive()) {
-      this.m_primaryGraphViewProportionalHeight += (ImGui.GetIO().MouseDelta.y / availableRegion.y);
-      this.m_primaryGraphViewProportionalHeight = Math.max(0.1, this.m_primaryGraphViewProportionalHeight);
-    }
-
-    // SecondaryView
-    //-------------------------------------------------------------------------
-
-    this.UpdateSecondaryViewState();
-    this.secondaryGraphView.UpdateAndDraw();
-
-    if (this.secondaryGraphView.HasSelectionChangedThisFrame()) {
-      this.SetSelectedNodes(this.secondaryGraphView.GetSelectedNodes());
-
-      if (this.selectedNodes.length === 0) {
-        this.selectedNodes = this.primaryGraphView.GetSelectedNodes();
-      }
     }
   }
 
@@ -669,49 +709,32 @@ export class AnimationGraph extends EditorWindow {
   }
 
   NavigateToNode (pNode: BaseNode, focusViewOnNode: boolean): void {
-    // Navigate to the appropriate graph
     const pParentGraph = pNode.GetParentGraph()!;
 
     this.NavigateToGraph(pParentGraph);
 
-    // Select node
     if (this.primaryGraphView.GetViewedGraph()!.FindNode(pNode.GetID())) {
       this.primaryGraphView.SelectNode(pNode);
       this.SetSelectedNodes([new SelectedNode(pNode)]);
       if (focusViewOnNode) {
         this.primaryGraphView.CenterView(pNode);
       }
-    } else if (this.secondaryGraphView.GetViewedGraph() !== null &&
-      this.secondaryGraphView.GetViewedGraph()!.FindNode(pNode.GetID())) {
-      this.secondaryGraphView.SelectNode(pNode);
-      this.SetSelectedNodes([new SelectedNode(pNode)]);
-      if (focusViewOnNode) {
-        this.secondaryGraphView.CenterView(pNode);
-      }
     }
   }
 
-  NavigateToGraph (pGraph: BaseGraph, focusViewOnNode?: boolean): void {
+  NavigateToGraph (pGraph: BaseGraph): void {
     this.ClearSelection();
 
-    // If the graph we wish to navigate to is a secondary graph, we need to set the primary view and selection accordingly
-    const pParentNode = pGraph.GetParentNode();
+    if (this.primaryGraphView.GetViewedGraph() !== pGraph) {
+      const stackIdx = this.GetStackIndexForGraph(pGraph);
 
-    if (pParentNode !== null && pParentNode.GetSecondaryGraph() === pGraph) {
-      this.NavigateToGraph(pParentNode.GetParentGraph()!);
-      this.primaryGraphView.SelectNode(pParentNode);
-      this.UpdateSecondaryViewState();
-    } else { // Directly update the primary view
-      if (this.primaryGraphView.GetViewedGraph() !== pGraph) {
-        const stackIdx = this.GetStackIndexForGraph(pGraph);
-
+      if (stackIdx !== InvalidIndex) {
         while (stackIdx < (this.loadedGraphStack.length - 1)) {
           this.PopGraphStack();
         }
-
-        this.primaryGraphView.SetGraphToView(pGraph);
-        this.UpdateSecondaryViewState();
       }
+
+      this.primaryGraphView.SetGraphToView(pGraph);
     }
   }
 
@@ -724,38 +747,6 @@ export class AnimationGraph extends EditorWindow {
 
   ClearSelection () {
     this.selectedNodes.length = 0;
-  }
-
-  private UpdateSecondaryViewState (): void {
-    let pSecondaryGraphToView: BaseGraph | null = null;
-
-    if (this.primaryGraphView.HasSelectedNodes()) {
-      if (this.primaryGraphView.GetSelectedNodes().length === 1) {
-        const pSelectedNode = this.primaryGraphView.GetSelectedNodes()[this.primaryGraphView.GetSelectedNodes().length - 1].m_pNode;
-
-        if (pSelectedNode!.HasSecondaryGraph()) {
-          const pSecondaryGraph = pSelectedNode!.GetSecondaryGraph() as NodeGraph.FlowGraph;
-
-          if (pSecondaryGraph) {
-            pSecondaryGraphToView = pSecondaryGraph;
-          }
-        } else {
-          // const pParameterReference = (pSelectedNode) as ParameterReferenceToolsNode;
-
-          // if (pParameterReference) {
-          //   const pVP = pParameterReference.GetReferencedVirtualParameter();
-
-          //   if (pVP) {
-          //     pSecondaryGraphToView = pVP.GetChildGraph();
-          //   }
-          // }
-        }
-      }
-    }
-
-    if (this.secondaryGraphView.GetViewedGraph() !== pSecondaryGraphToView) {
-      this.secondaryGraphView.SetGraphToView(pSecondaryGraphToView);
-    }
   }
 
   private GetStackIndexForGraph (pGraph: BaseGraph): number {
