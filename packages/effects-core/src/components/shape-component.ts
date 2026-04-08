@@ -19,7 +19,7 @@ import { glContext } from '../gl';
 import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
-import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import { VectorFeatherRenderer, getExpandedRadius } from '../math/shape/vector-feather-renderer';
 import { buildFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
 import type { FeatherBBox } from '../math/shape/feather-mesh-builder';
 
@@ -322,7 +322,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const atlasInfo = this.featherRenderer.atlasInfo;
     
     if (atlasInfo) {
-      this.featherRenderer.updateUpsampleQuad(this.featherRenderer.featherRadius);
+      this.featherRenderer.updateUpsampleQuad(getExpandedRadius(this.featherRenderer.featherRadius, atlasInfo.featherRadiusScreen));
       this.featherRenderer.drawUpsamplePass(
         renderer, this.transform.getWorldMatrix(),
         atlasInfo.atlasTexture, atlasInfo.textureSize, atlasInfo.atlasSize,

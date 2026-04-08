@@ -264,31 +264,22 @@ export class VectorFeatherRenderer {
       renderer, worldMatrix, setFeatherRadius
     );  
     // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）。
-    // 不过我发现1px时scatter可能出问题，暂时不确定原因（可能是由于光栅化太小像素不够？），所以2px。
-    const refinedScreenRadius = Math.max(featherRadiusScreen, 2);
+    const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);
     // 这里传递回去修改原始羽化
     this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
 
+    // 包围盒向外扩展一个像素，避免半径太小的时候由于光栅化误差缺像素。
+    const expandRadius = getExpandedRadius(this.featherRadius, refinedScreenRadius);  
     const [bx, by, bw, bh] = this.currentBbox;
-    const expandedW = bw + this.featherRadius * 2;
-    const expandedH = bh + this.featherRadius * 2;
-    const expandedMinX = bx - this.featherRadius;
-    const expandedMinY = by - this.featherRadius;
-    // const expandedW = bw + setFeatherRadius * 2;
-    // const expandedH = bh + setFeatherRadius * 2;
-    // const expandedMinX = bx - setFeatherRadius;
-    // const expandedMinY = by - setFeatherRadius;
+    const expandedW = bw + expandRadius * 2;
+    const expandedH = bh + expandRadius * 2;
+    const expandedMinX = bx - expandRadius;
+    const expandedMinY = by - expandRadius;
 
     const screenExtent = this.computeScreenExtent(
       renderer, worldMatrix,
       expandedMinX, expandedMinY, expandedW, expandedH,
     );
-
-    // const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * setFeatherRadius;
-    // // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）。
-    // const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);  debugger;
-    // // 这里传递回去修改原始羽化
-    // this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
 
     const downsample = Math.min(Math.max(refinedScreenRadius / 10.0, 1.0), 9999);  // rive似乎限制它们的降采样最大为32
     const kernelCoverage = 2 * this.featherRadius / Math.max(bw, bh);
@@ -328,7 +319,11 @@ export class VectorFeatherRenderer {
   /**
    * 绘制 Scatter Pass（调用者需已设置好 FBO 和 viewport）
    */
-  drawScatterPass (renderer: Renderer, orthoProjection: Matrix4, featherRadius: number): void {
+  drawScatterPass (
+    renderer: Renderer, 
+    orthoProjection: Matrix4, 
+    featherRadius: number,
+  ): void {
     this.scatterMaterial.setMatrix('uProjection', orthoProjection);
     this.scatterMaterial.setFloat('uRadius', featherRadius);
     renderer.drawGeometryInstanced(
@@ -340,7 +335,11 @@ export class VectorFeatherRenderer {
   * 绘制 Gather Pass。注意Gather Pass不需要对应的Indicator
   * 在upsample使用几何空间quad时，这个quad可以直接用于gather。
   */
-  drawGatherPass(renderer: Renderer, orthoProjection: Matrix4, featherRadius: number): void{
+  drawGatherPass(
+    renderer: Renderer, 
+    orthoProjection: Matrix4, 
+    featherRadius: number
+  ): void{
     this.gatherMaterial.setMatrix('uProjection', orthoProjection);
     this.gatherMaterial.setFloat('uRadius', featherRadius);
     this.gatherMaterial.setInt('uMeshStart', 0); 
@@ -431,7 +430,7 @@ export class VectorFeatherRenderer {
     renderer.setViewport(0, 0, renderer.getWidth(), renderer.getHeight());
 
     // 更新 upsample 四边形覆盖区域
-    this.updateUpsampleQuad(this.featherRadius);
+    this.updateUpsampleQuad(getExpandedRadius(this.featherRadius, params.featherRadiusScreen));
 
     // 绘制 upsample
     const atlasTexture = atlas.getColorTextures()[0];
@@ -587,4 +586,14 @@ function createOrthoMatrix (
   data[15] = 1;
 
   return mat;
+}
+
+/**
+ * 基于它在屏幕的尺寸，将featherRadius扩展1px宽度
+ */
+export function getExpandedRadius(
+  featherRadius: number, 
+  featherRadiusScreen: number
+):number {
+  return featherRadius + featherRadius / featherRadiusScreen;
 }

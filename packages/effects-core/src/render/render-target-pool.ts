@@ -48,6 +48,7 @@ export class RenderTargetPool {
     depthBuffer = 0,
     filter = FilterMode.Linear,
     format = RenderTextureFormat.RGBA32,
+    anisotropic?: number,
   ): Framebuffer {
     // 使用参数计算 hash 值作为缓存 key
     const hash = `${width}_${height}_${depthBuffer}_${filter}_${format}`;
@@ -91,6 +92,7 @@ export class RenderTargetPool {
       internalFormat: glContext.RGBA,
       format: glContext.RGBA,
       type: textureType,
+      anisotropic: anisotropic ?? 4,  // 默认 4，可传入 1 禁用
     });
 
     const newFramebuffer = Framebuffer.create({

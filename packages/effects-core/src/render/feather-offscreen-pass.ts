@@ -7,7 +7,7 @@ import type { Renderer } from './renderer';
 import { TextureLoadAction } from '../texture';
 import type { AtlasRect } from '../math/shape/atlas-allocator';
 import { AtlasAllocator } from '../math/shape/atlas-allocator';
-import type { FeatherRenderParams, VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
+import { FeatherRenderParams, VectorFeatherRenderer, getExpandedRadius } from '../math/shape/vector-feather-renderer';
 
 const MAX_ATLAS_SIZE = 4096;
 const ATLAS_PADDING = 2;
@@ -99,7 +99,7 @@ export class FeatherOffscreenPass extends RenderPass {
           component.drawFeatherIndicatorPass(renderer, params.orthoProjection);
           featherRenderer.drawScatterPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
         }else{
-          featherRenderer.updateUpsampleQuad(featherRenderer.featherRadius);
+          featherRenderer.updateUpsampleQuad(getExpandedRadius(featherRenderer.featherRadius, params.featherRadiusScreen));
           featherRenderer.drawGatherPass(renderer, params.orthoProjection, featherRenderer.featherRadius);
         }
         featherRenderer.atlasInfo = {
@@ -122,6 +122,7 @@ export class FeatherOffscreenPass extends RenderPass {
           currentAtlas = renderer.getTemporaryRT(
             '_FeatherAtlas', atlasW, atlasH, 0,
             FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+            1  // anisotropic = 1，禁用各向异性过滤。在使用texture2D模拟texelFetch时，必须关闭各向异性。
           );
         }
         this.entries.push({ ...entry, atlas: currentAtlas, rect });
@@ -135,6 +136,7 @@ export class FeatherOffscreenPass extends RenderPass {
         currentAtlas = renderer.getTemporaryRT(
           '_FeatherAtlas', atlasW, atlasH, 0,
           FilterMode.Nearest, RenderTextureFormat.RGBAHalf,
+          1,  // anisotropic = 1，禁用各向异性过滤
         );
 
         this.allocator.allocate(entry.params.fboW, entry.params.fboH, rect);
