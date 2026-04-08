@@ -6,6 +6,7 @@ import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
 import { EditorWindow } from '../editor-window';
+import { splitter } from '../../widgets';
 import { GraphView } from './visual-graph/node-graph-view';
 import type { StateMachineGraph } from './tools-graph/graphs/state-machine-graph';
 import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
@@ -217,7 +218,7 @@ export class AnimationGraph extends EditorWindow {
       ImGui.EndChild();
 
       ImGui.SameLine();
-      this.drawResizableSplitter('##LeftSplitter', splitterWidth, contentRegion.y, 'parametersPanelWidth');
+      this.parametersPanelWidth = splitter('##LeftSplitter', this.parametersPanelWidth, { thickness: splitterWidth, min: 180, max: 600 });
     }
 
     // 中间：图形视图
@@ -232,7 +233,7 @@ export class AnimationGraph extends EditorWindow {
     // 右侧：属性面板
     if (this.showDetailsPanel) {
       ImGui.SameLine();
-      this.drawResizableSplitter('##RightSplitter', splitterWidth, contentRegion.y, 'detailsPanelWidth', true);
+      this.detailsPanelWidth = splitter('##RightSplitter', this.detailsPanelWidth, { thickness: splitterWidth, min: 180, max: 600, invert: true });
 
       ImGui.SameLine();
       if (ImGui.BeginChild('DetailsPanel', new ImVec2(detailsWidth, contentRegion.y), true)) {
@@ -419,27 +420,6 @@ export class AnimationGraph extends EditorWindow {
       ImGui.TextDisabled(name || node.GetTypeName());
     }
     ImGui.PopItemWidth();
-  }
-
-  private drawResizableSplitter (id: string, width: number, height: number, widthProp: 'parametersPanelWidth' | 'detailsPanelWidth', invert = false) {
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
-    ImGui.PushStyleColor(ImGui.Col.Button, new ImColor(0.22, 0.22, 0.22, 1));
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImColor(0.45, 0.65, 0.95, 1));
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImColor(0.45, 0.65, 0.95, 1));
-    ImGui.Button(id, new ImVec2(width, height));
-    ImGui.PopStyleColor(3);
-    ImGui.PopStyleVar();
-
-    if (ImGui.IsItemHovered()) {
-      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
-    }
-
-    if (ImGui.IsItemActive()) {
-      const mouseDelta = ImGui.GetIO().MouseDelta.x;
-
-      this[widthProp] += invert ? -mouseDelta : mouseDelta;
-      this[widthProp] = Math.max(180, Math.min(this[widthProp], 600));
-    }
   }
 
   private GetEditedRootGraph (): NodeGraph.FlowGraph | null {

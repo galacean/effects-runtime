@@ -4,13 +4,15 @@ import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { Selection } from '../core/selection';
+import { EditorColors } from './theme';
+import { searchBar } from '../widgets';
 
 type InspireEntry = { url: string, name: string };
 
 const COLORS = {
-  selectedFocused: new ImGui.ImVec4(0.17, 0.37, 0.57, 1.0),
-  selectedUnfocused: new ImGui.ImVec4(0.25, 0.30, 0.35, 1.0),
-  hovered: new ImGui.ImVec4(0.22, 0.26, 0.30, 1.0),
+  selectedFocused: EditorColors.selectionFocused,
+  selectedUnfocused: EditorColors.selectionUnfocused,
+  hovered: EditorColors.selectionHovered,
   playingBg: new ImGui.ImVec4(0.14, 0.35, 0.22, 1.0),
   playingHovered: new ImGui.ImVec4(0.18, 0.42, 0.28, 1.0),
   // 图标 - 深黄色文件夹风格
@@ -21,10 +23,10 @@ const COLORS = {
   iconSelectedFill: new ImGui.ImVec4(0.92, 0.78, 0.40, 1.0),
   iconSelectedBorder: new ImGui.ImVec4(0.80, 0.66, 0.28, 1.0),
   iconSelectedHole: new ImGui.ImVec4(0.70, 0.55, 0.18, 1.0),
-  listBg: new ImGui.ImVec4(0.12, 0.12, 0.12, 1.0),
-  listBorder: new ImGui.ImVec4(0.08, 0.08, 0.08, 1.0),
-  searchIcon: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
-  dimText: new ImGui.Vec4(0.45, 0.45, 0.45, 1.0),
+  listBg: EditorColors.childBg,
+  listBorder: EditorColors.border,
+  searchIcon: EditorColors.iconDefault,
+  dimText: EditorColors.textWeak,
 } as const;
 
 const LAYOUT = {
@@ -229,46 +231,9 @@ export class Composition extends EditorWindow {
   }
 
   private drawSearchBar (): void {
-    const availWidth = ImGui.GetContentRegionAvail().x;
-    const iconSize = 16;
-    const iconPadding = 4;
-
-    const originalCursorX = ImGui.GetCursorPosX();
-    const cursorPos = ImGui.GetCursorScreenPos();
-    const frameHeight = ImGui.GetFrameHeight();
-    const drawList = ImGui.GetWindowDrawList();
-    const iconColor = ImGui.GetColorU32(COLORS.searchIcon);
-
-    const circleCenter = new ImGui.Vec2(cursorPos.x + iconSize * 0.4, cursorPos.y + frameHeight * 0.4);
-    const circleRadius = iconSize * 0.28;
-
-    drawList.AddCircle(circleCenter, circleRadius, iconColor, 12, 1.5);
-
-    const handleStart = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 0.7,
-      circleCenter.y + circleRadius * 0.7,
-    );
-    const handleEnd = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 1.8,
-      circleCenter.y + circleRadius * 1.8,
-    );
-
-    drawList.AddLine(handleStart, handleEnd, iconColor, 1.5);
-
-    const inputStartX = originalCursorX + iconSize + iconPadding;
-
-    ImGui.SetCursorPosX(inputStartX);
-    ImGui.PushItemWidth(availWidth - iconSize - iconPadding);
-
-    const prevFilter = this.searchFilterBuffer[0];
-
-    if (ImGui.InputText('##CompositionSearch', this.searchFilterBuffer, 256)) {
-      if (this.searchFilterBuffer[0] !== prevFilter) {
-        this.updateFilteredList();
-      }
+    if (searchBar('##CompositionSearch', this.searchFilterBuffer, { showClearButton: false })) {
+      this.updateFilteredList();
     }
-
-    ImGui.PopItemWidth();
   }
 
   private updateFilteredList (): void {

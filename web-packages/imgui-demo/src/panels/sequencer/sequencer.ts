@@ -7,6 +7,7 @@ import { EditorWindow } from '../editor-window';
 import { Selection } from '../../core/selection';
 import { COLORS, LAYOUT } from './theme';
 import { SequencerState } from './sequencer-state';
+import { splitter } from '../../widgets';
 import { TrackLabelRenderer } from './track-label-renderer';
 import { ClipRenderer } from './clip-renderer';
 import { KeyframeRenderer } from './keyframe-renderer';
@@ -416,7 +417,16 @@ export class Sequencer extends EditorWindow {
 
     // 绘制可拖拽的分割器
     ImGui.SameLine();
-    this.drawResizableSplitter();
+    this.state.propertiesPanelWidth = splitter('##PropertiesSplitter', this.state.propertiesPanelWidth, {
+      min: 150,
+      max: this.state.windowContentWidth * 0.6,
+      invert: true,
+      colors: {
+        normal: COLORS.trackSeparator,
+        hovered: COLORS.selectionAlpha,
+        active: COLORS.selection,
+      },
+    });
 
     // 右侧属性面板
     ImGui.SameLine();
@@ -424,39 +434,6 @@ export class Sequencer extends EditorWindow {
       this.propertiesPanelRenderer.drawTrackPropertiesPanel();
     }
     ImGui.EndChild();
-  }
-
-  /**
-   * 绘制可拖拽的分割器
-   */
-  private drawResizableSplitter (): void {
-    const state = this.state;
-    const splitterWidth = 2; // thinner splitter
-    const windowHeight = ImGui.GetContentRegionAvail().y;
-
-    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
-    // 隐藏按钮边框和背景，让它看起来像一条分割线
-    ImGui.PushStyleColor(ImGui.Col.Button, ImGui.GetColorU32(COLORS.trackSeparator));
-    ImGui.PushStyleColor(ImGui.Col.ButtonHovered, ImGui.GetColorU32(COLORS.selectionAlpha));
-    ImGui.PushStyleColor(ImGui.Col.ButtonActive, ImGui.GetColorU32(COLORS.selection));
-    ImGui.Button('##PropertiesSplitter', new ImGui.Vec2(splitterWidth, windowHeight));
-    ImGui.PopStyleColor(3);
-    ImGui.PopStyleVar();
-
-    if (ImGui.IsItemHovered()) {
-      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
-    }
-
-    if (ImGui.IsItemActive()) {
-      const mouseDelta = ImGui.GetIO().MouseDelta.x;
-
-      state.propertiesPanelWidth -= mouseDelta;
-
-      const minWidth = 150;
-      const maxWidth = state.windowContentWidth * 0.6;
-
-      state.propertiesPanelWidth = Math.max(minWidth, Math.min(maxWidth, state.propertiesPanelWidth));
-    }
   }
 
   /**

@@ -4,17 +4,19 @@ import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
+import { EditorColors } from './theme';
+import { searchBar } from '../widgets';
 
 // 颜色常量
 const COLORS = {
-  lightBlue: new ImGui.ImVec4(0.25, 0.34, 0.43, 1.0),
-  highlightBlue: new ImGui.ImVec4(0.0, 0.43, 0.87, 1.0),
-  eyeActive: new ImGui.Vec4(0.72, 0.72, 0.72, 1.0),
+  selectionFocused: EditorColors.selectionFocused,
+  selectionUnfocused: EditorColors.selectionUnfocused,
+  eyeActive: EditorColors.iconActive,
   eyeInactive: new ImGui.Vec4(0.46, 0.46, 0.46, 1.0),
   eyeOutline: new ImGui.Vec4(0.6, 0.6, 0.6, 1.0),
   eyeSlash: new ImGui.Vec4(0.35, 0.35, 0.35, 1.0),
-  inactiveText: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
-  searchIcon: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
+  inactiveText: EditorColors.textSecondary,
+  searchIcon: EditorColors.iconDefault,
 } as const;
 
 // 布局常量
@@ -112,112 +114,9 @@ export class Hierarchy extends EditorWindow {
   }
 
   private drawSearchBar (): void {
-    const availWidth = ImGui.GetContentRegionAvail().x;
-    const iconSize = 16;
-    const iconPadding = 4;
-    const clearButtonSize = 18;
-    const hasClearButton = this.searchFilter.length > 0;
-
-    // 绘制搜索图标
-    const cursorPos = ImGui.GetCursorScreenPos();
-    const frameHeight = ImGui.GetFrameHeight();
-    const drawList = ImGui.GetWindowDrawList();
-    const iconColor = ImGui.GetColorU32(COLORS.searchIcon);
-
-    // 绘制放大镜圆圈 - 与输入框垂直居中对齐
-    const circleCenter = new ImGui.Vec2(cursorPos.x + iconSize * 0.4, cursorPos.y + frameHeight * 0.4);
-    const circleRadius = iconSize * 0.28;
-
-    drawList.AddCircle(circleCenter, circleRadius, iconColor, 12, 1.5);
-
-    // 绘制放大镜手柄
-    const handleStart = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 0.7,
-      circleCenter.y + circleRadius * 0.7
-    );
-    const handleEnd = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 1.8,
-      circleCenter.y + circleRadius * 1.8
-    );
-
-    drawList.AddLine(handleStart, handleEnd, iconColor, 1.5);
-
-    // 输入框左侧留出图标空间，输入框占满剩余宽度
-    const inputStartX = ImGui.GetCursorPosX() + iconSize + iconPadding;
-
-    ImGui.SetCursorPosX(inputStartX);
-    ImGui.PushItemWidth(availWidth - iconSize - iconPadding);
-
-    const prevFilter = this.searchFilter;
-
-    if (ImGui.InputText('##HierarchySearch', this.searchFilterBuffer, 256)) {
-      // 搜索内容变化时更新匹配项
-      if (this.searchFilter !== prevFilter) {
-        this.updateSearchMatches();
-      }
+    if (searchBar('##HierarchySearch', this.searchFilterBuffer)) {
+      this.updateSearchMatches();
     }
-
-    // 允许后面的控件覆盖输入框接收事件
-    ImGui.SetItemAllowOverlap();
-
-    const inputRectMin = ImGui.GetItemRectMin();
-    const inputRectMax = ImGui.GetItemRectMax();
-    const postInputCursor = ImGui.GetCursorPos();
-
-    ImGui.PopItemWidth();
-
-    // 清除按钮覆盖在输入框内部右侧
-    if (hasClearButton) {
-      const clearBtnX = inputRectMax.x - clearButtonSize - 2;
-      const clearBtnY = inputRectMin.y + (frameHeight - clearButtonSize) / 2;
-
-      // 使用 InvisibleButton 作为点击区域，覆盖在输入框上
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clearBtnX, clearBtnY));
-
-      // ButtonFlags 用于确保按钮优先接收事件
-      if (ImGui.InvisibleButton('##ClearSearchBtn', new ImGui.Vec2(clearButtonSize, clearButtonSize))) {
-        this.searchFilter = '';
-        this.updateSearchMatches();
-      }
-
-      const isHovered = ImGui.IsItemHovered();
-
-      // 悬停时设置鼠标光标为箭头
-      if (isHovered) {
-        ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.Arrow);
-      }
-
-      // 绘制悬停背景
-      if (isHovered) {
-        drawList.AddRectFilled(
-          new ImGui.Vec2(clearBtnX, clearBtnY),
-          new ImGui.Vec2(clearBtnX + clearButtonSize, clearBtnY + clearButtonSize),
-          ImGui.GetColorU32(new ImGui.ImVec4(0.5, 0.5, 0.5, 0.3)),
-          3
-        );
-      }
-
-      // 绘制叉号
-      const crossPadding = 5;
-      const crossColor = ImGui.GetColorU32(isHovered ? COLORS.eyeActive : COLORS.searchIcon);
-
-      drawList.AddLine(
-        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + crossPadding),
-        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + clearButtonSize - crossPadding),
-        crossColor,
-        1.5
-      );
-      drawList.AddLine(
-        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + crossPadding),
-        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + clearButtonSize - crossPadding),
-        crossColor,
-        1.5
-      );
-
-      // 恢复光标位置
-      ImGui.SetCursorPos(postInputCursor);
-    }
-
     ImGui.Separator();
   }
 
@@ -287,13 +186,13 @@ export class Hierarchy extends EditorWindow {
 
   private pushSelectionColors (): void {
     if (ImGui.IsWindowFocused()) {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.highlightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.highlightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.selectionFocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionUnfocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.selectionFocused);
     } else {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.lightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.selectionUnfocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionUnfocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.selectionUnfocused);
     }
   }
 
@@ -325,7 +224,7 @@ export class Hierarchy extends EditorWindow {
     const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
 
     if (isHoverSelectedNode) {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionFocused);
     }
 
     // 设置非激活项的置灰文字颜色
@@ -439,7 +338,7 @@ export class Hierarchy extends EditorWindow {
       const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
 
       if (isHoverSelectedNode) {
-        ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
+        ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionFocused);
       }
 
       // 设置非激活项的置灰文字颜色
