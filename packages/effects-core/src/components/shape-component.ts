@@ -20,7 +20,7 @@ import vert from '../math/shape/shaders/shape.vert.glsl';
 import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
 import { VectorFeatherRenderer } from '../math/shape/vector-feather-renderer';
-import { buildFeatherMeshData, buildStrokeFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
+import { buildFeatherMeshData, buildContoursFeatherMeshData } from '../math/shape/feather-mesh-builder';
 import type { FeatherBBox } from '../math/shape/feather-mesh-builder';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
@@ -478,16 +478,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         // 构建羽化数据
         if (needFeatherMesh) {
-          // scatterEdgeCount += buildStrokeFeatherMeshData(
-          //   points,
-          //   vertices,
-          //   vertices.length / 2,
-          //   indices,
-          //   scatterEdgeVertices,
-          //   featherBBox,
-          //   this.strokeWidth,
-          //   close,
-          // );
           const featherLineContours = buildLineContour(points, lineStyle, false, close);
           scatterEdgeCount += buildContoursFeatherMeshData(
             featherLineContours,

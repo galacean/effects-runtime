@@ -254,29 +254,47 @@ export class VectorFeatherRenderer {
   computeRenderParams (
     renderer: Renderer,
     worldMatrix: Matrix4,
-    featherRadius: number,
+    setFeatherRadius: number,
   ): FeatherRenderParams | null {
     if (this.currentBbox[2] <= 0 || this.currentBbox[3] <= 0) {
       return null;
     }
+    // 这里计算屏幕radius。
+    const featherRadiusScreen = this.computeScreenRadius(
+      renderer, worldMatrix, setFeatherRadius
+    );  
+    // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）。
+    // 不过我发现1px时scatter可能出问题，暂时不确定原因（可能是由于光栅化太小像素不够？），所以2px。
+    const refinedScreenRadius = Math.max(featherRadiusScreen, 2);
+    // 这里传递回去修改原始羽化
+    this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
 
     const [bx, by, bw, bh] = this.currentBbox;
-    const expandedW = bw + featherRadius * 2;
-    const expandedH = bh + featherRadius * 2;
-    const expandedMinX = bx - featherRadius;
-    const expandedMinY = by - featherRadius;
+    const expandedW = bw + this.featherRadius * 2;
+    const expandedH = bh + this.featherRadius * 2;
+    const expandedMinX = bx - this.featherRadius;
+    const expandedMinY = by - this.featherRadius;
+    // const expandedW = bw + setFeatherRadius * 2;
+    // const expandedH = bh + setFeatherRadius * 2;
+    // const expandedMinX = bx - setFeatherRadius;
+    // const expandedMinY = by - setFeatherRadius;
 
     const screenExtent = this.computeScreenExtent(
       renderer, worldMatrix,
       expandedMinX, expandedMinY, expandedW, expandedH,
     );
 
-    const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
-    const downsample = Math.floor(Math.min(Math.max(featherRadiusScreen / 10.0, 1.0), 9999));  // rive似乎限制它们的降采样最大为32
-    const kernelCoverage = 2 * featherRadius / Math.max(bw, bh);
+    // const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * setFeatherRadius;
+    // // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）。
+    // const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);  debugger;
+    // // 这里传递回去修改原始羽化
+    // this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
+
+    const downsample = Math.min(Math.max(refinedScreenRadius / 10.0, 1.0), 9999);  // rive似乎限制它们的降采样最大为32
+    const kernelCoverage = 2 * this.featherRadius / Math.max(bw, bh);
 
     const maxFboSize = 2048;
-    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
+    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);   // 这里表明实际降采样未必是计算的downsample...
     const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
 
     const orthoProjection = createOrthoMatrix(
@@ -284,7 +302,12 @@ export class VectorFeatherRenderer {
       expandedMinY, expandedMinY + expandedH,
     );
 
-    return { fboW, fboH, orthoProjection, featherRadiusScreen, kernelCoverage };
+    return { 
+      fboW:fboW, 
+      fboH:fboH, 
+      orthoProjection:orthoProjection,
+      featherRadiusScreen:refinedScreenRadius, // 注意这里传修改后的
+      kernelCoverage:kernelCoverage };
   }
 
   /**
@@ -398,17 +421,17 @@ export class VectorFeatherRenderer {
     
     if (params.kernelCoverage < this.featherSwitchThreshold){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
       this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
-      this.drawScatterPass(renderer, orthoProjection, featherRadius);
+      this.drawScatterPass(renderer, orthoProjection, this.featherRadius);
     }else{
-      this.updateUpsampleQuad(featherRadius);  // ToDo: 和后面面那个updateUpsampleQuad合并
-      this.drawGatherPass(renderer, orthoProjection, featherRadius);
+      this.updateUpsampleQuad(this.featherRadius);  // ToDo: 和后面面那个updateUpsampleQuad合并
+      this.drawGatherPass(renderer, orthoProjection, this.featherRadius);
     }
     // === Pass 3: Upsample → 屏幕 ===
     renderer.setFramebuffer(prevFramebuffer);
     renderer.setViewport(0, 0, renderer.getWidth(), renderer.getHeight());
 
     // 更新 upsample 四边形覆盖区域
-    this.updateUpsampleQuad(featherRadius);
+    this.updateUpsampleQuad(this.featherRadius);
 
     // 绘制 upsample
     const atlasTexture = atlas.getColorTextures()[0];
@@ -472,6 +495,40 @@ export class VectorFeatherRenderer {
       Math.max(sxMax - sxMin, 1),
       Math.max(syMax - syMin, 1),
     ];
+  }
+
+  /**
+   * 简化版的computeScreenExtent，用于计算屏幕空间羽化尺寸
+   * 实际上计算了一个[0,0,r,r]的矩形变换后的最短边
+   * @param renderer 
+   * @param worldMatrix 
+   * @param featherRadius 
+   */
+  private computeScreenRadius(
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    featherRadius: number,
+  ){
+    const vpMatrix = renderer.renderingData.currentCamera.getViewProjectionMatrix();
+    const mvp = new Matrix4().multiplyMatrices(vpMatrix, worldMatrix);
+    const e = mvp.elements;
+    const screenW = renderer.getWidth();
+    const screenH = renderer.getHeight();
+    // [0, 0, 0, 1]
+    const ox = e[12];
+    const oy = e[13];
+    const ow = e[15];
+    // [r, r, 0, 1]
+    const rx = (e[0] + e[4]) * featherRadius + e[12];
+    const ry = (e[1] + e[5]) * featherRadius + e[13];
+    const rw = (e[3] + e[7]) * featherRadius + e[15];
+
+    const osx = (ox / ow * 0.5 + 0.5) * screenW;
+    const osy = (oy / ow * 0.5 + 0.5) * screenH;
+    const rsx = (rx / rw * 0.5 + 0.5) * screenW;
+    const rsy = (ry / rw * 0.5 + 0.5) * screenH;
+
+    return Math.min(Math.abs(rsx - osx), Math.abs(rsy - osy));
   }
 
   dispose (): void {
