@@ -1,6 +1,6 @@
 import type { Engine, Renderer } from '@galacean/effects-core';
-import { MaskProcessor, MaskMode, glContext, SpriteComponent, math, VFXItem } from '@galacean/effects-core';
-import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
+import { MaskProcessor, MaskMode, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -32,7 +32,7 @@ function createMaskableSprite (engine: Engine, name = 'mask'): SpriteComponent {
 /**
  * 创建用作 RendererComponent 的 SpriteComponent，使用指定的材质列表
  */
-function createSpriteRendererComponent (engine: Engine, materials: GLMaterial[]): SpriteComponent {
+function createSpriteRendererComponent (engine: Engine, materials: Material[]): SpriteComponent {
   const item = new VFXItem(engine);
   const sprite = item.addComponent(SpriteComponent);
 
@@ -92,7 +92,7 @@ describe('core/material//mask-ref-manager', () => {
     it('addMaskReference should add a mask reference', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite);
@@ -104,7 +104,7 @@ describe('core/material//mask-ref-manager', () => {
     it('addMaskReference should not add duplicate maskable', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite);
@@ -118,7 +118,7 @@ describe('core/material//mask-ref-manager', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
       const sprite2 = createMaskableSprite(engine, 'm2');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite1);
@@ -133,7 +133,7 @@ describe('core/material//mask-ref-manager', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
       const sprite2 = createMaskableSprite(engine, 'm2');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite1);
@@ -147,7 +147,7 @@ describe('core/material//mask-ref-manager', () => {
     it('removeMaskReference should do nothing for non-existent maskable', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.removeMaskReference(sprite);
@@ -157,7 +157,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('clearMaskReferences should remove all references', () => {
       const mp = new MaskProcessor();
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(createMaskableSprite(engine, 'm1'));
@@ -175,7 +175,7 @@ describe('core/material//mask-ref-manager', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
       const sprite2 = createMaskableSprite(engine, 'm2');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite1, false);
@@ -190,7 +190,7 @@ describe('core/material//mask-ref-manager', () => {
       const mp = new MaskProcessor();
       const forward = createMaskableSprite(engine, 'f1');
       const reverse = createMaskableSprite(engine, 'r1');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(forward, false);
@@ -204,7 +204,7 @@ describe('core/material//mask-ref-manager', () => {
     it('should setup stencil on masked material (forward only)', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite, false);
@@ -219,7 +219,7 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should disable stencil when no mask references', () => {
       const mp = new MaskProcessor();
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.drawStencilMask(renderer, component);
@@ -230,8 +230,8 @@ describe('core/material//mask-ref-manager', () => {
     it('should setup multiple materials', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
-      const mat1 = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
-      const mat2 = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const mat1 = new Material(engine, { shader: { vertex: vs, fragment: fs } });
+      const mat2 = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [mat1, mat2]);
 
       mp.addMaskReference(sprite, false);
@@ -249,7 +249,7 @@ describe('core/material//mask-ref-manager', () => {
       const f2 = createMaskableSprite(engine, 'f2');
       const f3 = createMaskableSprite(engine, 'f3');
       const r1 = createMaskableSprite(engine, 'r1');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(f1, false);
@@ -268,7 +268,7 @@ describe('core/material//mask-ref-manager', () => {
   describe('drawGeometryMask', () => {
     it('should restore material state after drawing', () => {
       const mp = new MaskProcessor();
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const geometry = new GLGeometry(engine, {
         drawStart: 0,
         drawCount: 3,
@@ -345,7 +345,7 @@ describe('core/material//mask-ref-manager', () => {
       const mp = new MaskProcessor();
       const sprite1 = createMaskableSprite(engine, 'm1');
       const sprite2 = createMaskableSprite(engine, 'm2');
-      const material = new GLMaterial(engine, { shader: { vertex: vs, fragment: fs } });
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
       const component = createSpriteRendererComponent(engine, [material]);
 
       mp.addMaskReference(sprite1);

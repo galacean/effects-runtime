@@ -1,6 +1,6 @@
 import type { ShaderWithSource, Engine, Renderer } from '@galacean/effects-core';
-import { Camera, RenderFrame, Mesh } from '@galacean/effects-core';
-import { GLEngine, GLGeometry, GLMaterial } from '@galacean/effects-webgl';
+import { Camera, RenderFrame, Mesh, Material } from '@galacean/effects-core';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -57,7 +57,7 @@ function generateMeshes (renderer: Renderer, num: number, priority = 0) {
     meshs.push(new Mesh(engine, {
       name: 'm' + i,
       priority: i + 1 + priority,
-      material: new GLMaterial(engine, { shader: { cacheId: 'xxx' } as ShaderWithSource }),
+      material: new Material(engine, { shader: { cacheId: 'xxx' } as ShaderWithSource }),
       geometry: new GLGeometry(engine, { attributes: {} }),
     }));
   }

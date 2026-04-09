@@ -563,6 +563,84 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     // OVERRIDE
   }
 
+  /*** 渲染状态控制 ***/
+
+  setSampleAlphaToCoverage (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setBlending (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setDepthTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setStencilTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setCulling (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setPolygonOffsetFill (enable: boolean) {
+    // OVERRIDE
+  }
+
+  blendColor (r: number, g: number, b: number, a: number) {
+    // OVERRIDE
+  }
+
+  blendFuncSeparate (srcRGB: number, dstRGB: number, srcAlpha: number, dstAlpha: number) {
+    // OVERRIDE
+  }
+
+  blendEquationSeparate (modeRGB: number, modeAlpha: number) {
+    // OVERRIDE
+  }
+
+  colorMask (r: boolean, g: boolean, b: boolean, a: boolean) {
+    // OVERRIDE
+  }
+
+  depthMask (flag: boolean) {
+    // OVERRIDE
+  }
+
+  depthFunc (func: number) {
+    // OVERRIDE
+  }
+
+  depthRange (near: number, far: number) {
+    // OVERRIDE
+  }
+
+  polygonOffset (factor: number, units: number) {
+    // OVERRIDE
+  }
+
+  cullFace (mode: number) {
+    // OVERRIDE
+  }
+
+  frontFace (mode: number) {
+    // OVERRIDE
+  }
+
+  stencilMaskSeparate (face: number, mask: number) {
+    // OVERRIDE
+  }
+
+  stencilFuncSeparate (face: number, func: number, ref: number, mask: number) {
+    // OVERRIDE
+  }
+
+  stencilOpSeparate (face: number, fail: number, zfail: number, zpass: number) {
+    // OVERRIDE
+  }
+
   /**
    * 销毁所有缓存的资源
    */

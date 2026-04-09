@@ -1,6 +1,6 @@
 //@ts-nocheck
-import { glContext, Camera, RenderFrame, RenderPass, Mesh } from '@galacean/effects-core';
-import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
+import { glContext, Camera, RenderFrame, RenderPass, Mesh, Material } from '@galacean/effects-core';
+import { GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
@@ -593,7 +593,7 @@ void main() {
   outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 `;
-  const mtl = new GLMaterial(
+  const mtl = new Material(
     engine,
     {
       shader: {

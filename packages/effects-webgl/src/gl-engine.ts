@@ -9,7 +9,6 @@ import type { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLRenderbuffer } from './gl-renderbuffer';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLGeometry } from './gl-geometry';
-import type { GLMaterial } from './gl-material';
 import type { GLShaderVariant } from './gl-shader';
 
 type Color = math.Color;
@@ -217,12 +216,8 @@ export class GLEngine extends Engine {
     }
 
     const glGeometry = geometry as GLGeometry;
-    const glMaterial = material as GLMaterial;
-    const program = (glMaterial.shaderVariant as GLShaderVariant).program;
 
-    if (!program) {
-      return;
-    }
+    const program = (material.shaderVariant as GLShaderVariant).program;
 
     const vao = program.setupAttributes(glGeometry);
     const indicesBuffer = glGeometry.indicesBuffer;
@@ -304,11 +299,51 @@ export class GLEngine extends Engine {
     this.currentRenderbuffer = {};
   }
 
-  toggle (capability: GLenum, enable?: boolean) {
+  override setSampleAlphaToCoverage (enable: boolean) {
     if (enable) {
-      this.enable(capability);
+      this.enable(glContext.SAMPLE_ALPHA_TO_COVERAGE);
     } else {
-      this.disable(capability);
+      this.disable(glContext.SAMPLE_ALPHA_TO_COVERAGE);
+    }
+  }
+
+  override setBlending (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.BLEND);
+    } else {
+      this.disable(glContext.BLEND);
+    }
+  }
+
+  override setDepthTest (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.DEPTH_TEST);
+    } else {
+      this.disable(glContext.DEPTH_TEST);
+    }
+  }
+
+  override setStencilTest (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.STENCIL_TEST);
+    } else {
+      this.disable(glContext.STENCIL_TEST);
+    }
+  }
+
+  override setCulling (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.CULL_FACE);
+    } else {
+      this.disable(glContext.CULL_FACE);
+    }
+  }
+
+  override setPolygonOffsetFill (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.POLYGON_OFFSET_FILL);
+    } else {
+      this.disable(glContext.POLYGON_OFFSET_FILL);
     }
   }
 
@@ -401,7 +436,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.DEPTH_TEST);
    * gl.depthFunc(gl.NEVER);
    */
-  depthFunc (func: GLenum) {
+  override depthFunc (func: GLenum) {
     this.set1('depthFunc', func);
   }
 
@@ -411,11 +446,11 @@ export class GLEngine extends Engine {
    * example:
    * gl.depthMask(false);
    */
-  depthMask (flag: boolean) {
+  override depthMask (flag: boolean) {
     this.set1('depthMask', flag);
   }
 
-  polygonOffset (factor: number, unit: number) {
+  override polygonOffset (factor: number, unit: number) {
     this.set2('polygonOffset', factor, unit);
   }
 
@@ -426,7 +461,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.depthRange(0.2, 0.6);
    */
-  depthRange (zNear: number, zFar: number) {
+  override depthRange (zNear: number, zFar: number) {
     this.set2('depthRange', zNear, zFar);
   }
 
@@ -482,7 +517,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.STENCIL_TEST);
    * gl.stencilFuncSeparate(gl.FRONT, gl.LESS, 0.2, 1110011);
    */
-  stencilFuncSeparate (face: GLenum, func: GLenum, ref: GLint, mask: GLuint) {
+  override stencilFuncSeparate (face: GLenum, func: GLenum, ref: GLint, mask: GLuint) {
     this.set4('stencilFuncSeparate', face, func, ref, mask);
   }
 
@@ -493,7 +528,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.stencilMaskSeparate(gl.FRONT, 110101);
    */
-  stencilMaskSeparate (face: GLenum, mask: GLuint) {
+  override stencilMaskSeparate (face: GLenum, mask: GLuint) {
     this.set2('stencilMaskSeparate', face, mask);
   }
 
@@ -521,7 +556,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.STENCIL_TEST);
    * gl.stencilOpSeparate(gl.FRONT, gl.INCR, gl.DECR, gl.INVERT);
    */
-  stencilOpSeparate (face: GLenum, fail: GLenum, zfail: GLenum, zpass: GLenum) {
+  override stencilOpSeparate (face: GLenum, fail: GLenum, zfail: GLenum, zpass: GLenum) {
     this.set4('stencilOpSeparate', face, fail, zfail, zpass);
   }
 
@@ -535,7 +570,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.CULL_FACE);
    * gl.cullFace(gl.FRONT_AND_BACK);
    */
-  cullFace (mode: GLenum) {
+  override cullFace (mode: GLenum) {
     this.set1('cullFace', mode);
   }
 
@@ -545,7 +580,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.frontFace(gl.CW);
    */
-  frontFace (mode: GLenum) {
+  override frontFace (mode: GLenum) {
     this.set1('frontFace', mode);
   }
 
@@ -574,7 +609,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.colorMask(true, true, true, false);
    */
-  colorMask (red: boolean, green: boolean, blue: boolean, alpha: boolean) {
+  override colorMask (red: boolean, green: boolean, blue: boolean, alpha: boolean) {
     this.set4('colorMask', red, green, blue, alpha);
   }
 
@@ -587,7 +622,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.blendColor(0, 0.5, 1, 1);
    */
-  blendColor (red: GLclampf, green: GLclampf, blue: GLclampf, alpha: GLclampf) {
+  override blendColor (red: GLclampf, green: GLclampf, blue: GLclampf, alpha: GLclampf) {
     this.set4('blendColor', red, green, blue, alpha);
   }
 
@@ -613,7 +648,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.BLEND);
    * gl.blendFuncSeparate(gl.SRC_COLOR, gl.DST_COLOR, gl.ONE, gl.ZERO);
    */
-  blendFuncSeparate (srcRGB: GLenum, dstRGB: GLenum, srcAlpha: GLenum, dstAlpha: GLenum) {
+  override blendFuncSeparate (srcRGB: GLenum, dstRGB: GLenum, srcAlpha: GLenum, dstAlpha: GLenum) {
     this.set4('blendFuncSeparate', srcRGB, dstRGB, srcAlpha, dstAlpha);
   }
 
@@ -636,7 +671,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_SUBTRACT);
    */
-  blendEquationSeparate (modeRGB: GLenum, modeAlpha: GLenum) {
+  override blendEquationSeparate (modeRGB: GLenum, modeAlpha: GLenum) {
     this.set2('blendEquationSeparate', modeRGB, modeAlpha);
   }
 

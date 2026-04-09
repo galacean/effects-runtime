@@ -1,9 +1,10 @@
 import {
   DrawObjectPass,
+  Material,
   Mesh,
   RenderPass,
 } from '@galacean/effects-core';
-import { GLEngine, GLGeometry, GLMaterial } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { MathUtils } from './math-utils';
 
@@ -34,7 +35,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
@@ -74,7 +75,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
@@ -130,7 +131,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
@@ -165,7 +166,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
@@ -210,7 +211,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
@@ -296,7 +297,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
@@ -335,7 +336,7 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },

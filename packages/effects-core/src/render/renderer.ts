@@ -31,7 +31,9 @@ void main(){
 }`;
 
 export class Renderer {
-  static create: (engine: Engine) => Renderer;
+  static create (engine: Engine): Renderer {
+    return new Renderer(engine);
+  }
 
   /**
   * 存放渲染需要用到的数据

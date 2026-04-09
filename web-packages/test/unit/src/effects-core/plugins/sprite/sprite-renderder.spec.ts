@@ -1,6 +1,5 @@
 import { Player, SpriteComponent, VFXItem, glContext, math, spec } from '@galacean/effects';
 import { loadSceneAndPlay } from './utils';
-import { GLMaterial } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 

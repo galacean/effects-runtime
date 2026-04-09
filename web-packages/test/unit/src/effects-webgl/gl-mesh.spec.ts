@@ -1,7 +1,7 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { Mesh, glContext, math } from '@galacean/effects';
+import { Mesh, glContext, math, Material } from '@galacean/effects';
 import type { GLShaderVariant } from '@galacean/effects-webgl';
-import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
 const { expect } = chai;
@@ -69,7 +69,7 @@ void main() {
       depthTest: true,
     },
   };
-  const material = new GLMaterial(renderer.engine, mtlOption as unknown as MaterialProps);
+  const material = new Material(renderer.engine, mtlOption as unknown as MaterialProps);
 
   material.setVector2('uPos', new math.Vector2(1, 2));
   const position = {
