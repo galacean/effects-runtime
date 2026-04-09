@@ -20,6 +20,9 @@ export class Scene extends EditorWindow {
   }
 
   set is2DMode (value: boolean) {
+    if (this._is2DMode === value) {
+      return;
+    }
     this._is2DMode = value;
     if (value) {
       GalaceanEffects.player.getCompositions()[0]?.getComponent(CanvasGizmo)?.reset2DCamera();
