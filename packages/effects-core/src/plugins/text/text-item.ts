@@ -34,6 +34,12 @@ interface CharInfo {
   width: number,
 }
 
+/** 检测字符串是否包含需要 RTL 和连写排版的字符（阿拉伯语等） */
+const HAS_RTL_OR_JOINING = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+/** 可换行断点：空格、制表符等 */
+const IS_BREAK_CHAR = (ch: string) => ch === ' ' || ch === '\t' || ch === '\u00A0';
+
 export interface TextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -170,46 +176,80 @@ export class TextComponent extends MaskableGraphic {
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
-    let charCountInLine = 0; // 跟踪当前行的字符数
+    let charCountInLine = 0;
 
-    // 设置 context.font 的字号，确保 measureText 能正确计算字宽
     if (context) {
       context.font = this.getFontDesc(this.textStyle.fontSize);
     }
-    for (let i = 0; i < text.length; i++) {
-      const str = text[i];
-      const textMetrics = context?.measureText(str)?.width ?? 0;
 
-      // 和浏览器行为保持一致
-      // 字符间距只应用在字符之间，每行第一个字符不加间距
-      if (charCountInLine > 0) {
-        x += letterSpace;
-      }
-      // 处理文本结束行为
-      if (overflow === spec.TextOverflow.display) {
+    const chars = Array.from(text);
+
+    if (overflow === spec.TextOverflow.display) {
+      for (let i = 0; i < chars.length; i++) {
+        const str = chars[i];
+        const textMetrics = context?.measureText(str)?.width ?? 0;
         if (str === '\n') {
           lineCount++;
           x = 0;
-          charCountInLine = 0; // 重置行字符计数
+          charCountInLine = 0;
         } else {
+          if (charCountInLine > 0) {
+            x += letterSpace;
+          }
           x += textMetrics;
           charCountInLine++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
-        }
-      } else {
-        if (((x + textMetrics) > width && i > 0) || str === '\n') {
-          lineCount++;
-          this.maxLineWidth = Math.max(this.maxLineWidth, x);
-          x = 0;
-          charCountInLine = 0; // 重置行字符计数
-        }
-        if (str !== '\n') {
-          x += textMetrics;
-          charCountInLine++;
         }
       }
+      return lineCount;
     }
 
+    let lastBreakX = 0;
+    let countAtBreak = 0;
+    for (let i = 0; i < chars.length; i++) {
+      const str = chars[i];
+      const textMetrics = context?.measureText(str)?.width ?? 0;
+
+      if (str === '\n') {
+        lineCount++;
+        this.maxLineWidth = Math.max(this.maxLineWidth, x);
+        x = 0;
+        charCountInLine = 0;
+        lastBreakX = 0;
+        countAtBreak = 0;
+        continue;
+      }
+
+      const spacing = charCountInLine > 0 ? letterSpace : 0;
+      const willWidth = x + spacing + textMetrics;
+
+      if (willWidth > width && charCountInLine > 0) {
+        lineCount++;
+        if (countAtBreak > 0) {
+          this.maxLineWidth = Math.max(this.maxLineWidth, lastBreakX);
+          x = x - lastBreakX;
+          charCountInLine = charCountInLine - countAtBreak;
+        } else {
+          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+          x = 0;
+          charCountInLine = 0;
+        }
+        lastBreakX = 0;
+        countAtBreak = 0;
+      }
+
+      if (charCountInLine > 0) {
+        x += letterSpace;
+      }
+      x += textMetrics;
+      charCountInLine++;
+
+      if (IS_BREAK_CHAR(str)) {
+        lastBreakX = x;
+        countAtBreak = charCountInLine;
+      }
+    }
+    this.maxLineWidth = Math.max(this.maxLineWidth, x);
     return lineCount;
   }
 
@@ -261,8 +301,6 @@ export class TextComponent extends MaskableGraphic {
     const lineHeight = layout.lineHeight;
 
     style.fontDesc = this.getFontDesc(fontSize);
-    // 使用 Array.from 正确分割 Unicode 字符（包括 emoji）
-    const char = Array.from(this.text || '');
 
     const { padL, padR, padT, padB } = this.getEffectPadding();
     const hasEffect = (padL | padR | padT | padB) !== 0;
@@ -305,48 +343,99 @@ export class TextComponent extends MaskableGraphic {
 
       context.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
 
-      const charsInfo: CharInfo[] = [];
-      let x = 0;
       let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
-      let charsArray = [];
-      let charOffsetX = [];
+      const charsInfo: CharInfo[] = [];
+      const chars = Array.from(this.text || '');
+      let x = 0;
+      let charsArray: string[] = [];
+      let charOffsetX: number[] = [];
+      let lastBreakIdx = -1;
 
-      for (let i = 0; i < char.length; i++) {
-        const str = char[i];
+      const recalcLine = (arr: string[]) => {
+        let lineW = 0;
+        const offsets: number[] = [];
+        for (let j = 0; j < arr.length; j++) {
+          if (j > 0) { lineW += layout.letterSpace; }
+          offsets.push(lineW);
+          lineW += context.measureText(arr[j]).width;
+        }
+        return { lineW, offsets };
+      };
+
+      const pushLine = (lineChars: string[], offsets: number[], width: number) => {
+        charsInfo.push({
+          y,
+          width,
+          chars: lineChars,
+          charOffsetX: offsets,
+        });
+        y += lineHeight;
+      };
+
+      for (let i = 0; i < chars.length; i++) {
+        const str = chars[i];
         const textMetrics = context.measureText(str);
 
-        // 和浏览器行为保持一致
-        // 字符间距只应用在字符之间，每行第一个字符不加间距
+        if (str === '\n') {
+          pushLine(charsArray, charOffsetX, x);
+          x = 0;
+          charsArray = [];
+          charOffsetX = [];
+          lastBreakIdx = -1;
+          continue;
+        }
+
+        const spacing = charsArray.length > 0 ? layout.letterSpace : 0;
+        const willWidth = x + spacing + textMetrics.width;
+
+        if (willWidth > baseWidth && charsArray.length > 0) {
+          if (lastBreakIdx >= 0) {
+            const lineChars = charsArray.slice(0, lastBreakIdx);
+            const lineOffsets = charOffsetX.slice(0, lastBreakIdx);
+            const lineWidth = lineChars.length > 0
+              ? lineOffsets[lineOffsets.length - 1] + context.measureText(lineChars[lineChars.length - 1]).width
+              : 0;
+
+            pushLine(lineChars, lineOffsets, lineWidth);
+
+            charsArray = charsArray.slice(lastBreakIdx + 1);
+            const { lineW, offsets } = recalcLine(charsArray);
+
+            x = lineW;
+            charOffsetX = offsets;
+            lastBreakIdx = -1;
+            for (let k = charsArray.length - 1; k >= 0; k--) {
+              if (IS_BREAK_CHAR(charsArray[k])) {
+                lastBreakIdx = k;
+                break;
+              }
+            }
+          } else {
+            pushLine(charsArray, charOffsetX, x);
+            x = 0;
+            charsArray = [];
+            charOffsetX = [];
+            lastBreakIdx = -1;
+          }
+          i--;
+          continue;
+        }
+
         if (charsArray.length > 0) {
           x += layout.letterSpace;
         }
+        charOffsetX.push(x);
+        charsArray.push(str);
+        x += textMetrics.width;
 
-        if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
-          charsInfo.push({
-            y,
-            width: x,
-            chars: charsArray,
-            charOffsetX,
-          });
-          x = 0;
-          y += lineHeight;
-          charsArray = [];
-          charOffsetX = [];
-        }
-
-        if (str !== '\n') {
-          charsArray.push(str);
-          charOffsetX.push(x);
-          x += textMetrics.width;
+        if (IS_BREAK_CHAR(str)) {
+          lastBreakIdx = charsArray.length - 1;
         }
       }
 
-      charsInfo.push({
-        y,
-        width: x,
-        chars: charsArray,
-        charOffsetX,
-      });
+      if (charsArray.length > 0) {
+        pushLine(charsArray, charOffsetX, x);
+      }
 
       const hasOutline = style.isOutlined && style.outlineWidth > 0;
 
@@ -359,13 +448,22 @@ export class TextComponent extends MaskableGraphic {
 
         charsInfo.forEach(charInfo => {
           const ox = layout.getOffsetX(style, charInfo.width);
+          const drawY = shiftY + charInfo.y;
+          const lineStr = charInfo.chars.join('');
+          const needRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
 
-          for (let i = 0; i < charInfo.chars.length; i++) {
-            const str = charInfo.chars[i];
-            const drawX = shiftX + ox + charInfo.charOffsetX[i];
-            const drawY = shiftY + charInfo.y;
+          if (needRtl) {
+            context.save();
+            context.direction = 'rtl';
+            context.strokeText(lineStr, shiftX + ox + charInfo.width, drawY);
+            context.restore();
+          } else {
+            for (let i = 0; i < charInfo.chars.length; i++) {
+              const str = charInfo.chars[i];
+              const drawX = shiftX + ox + charInfo.charOffsetX[i];
 
-            context.strokeText(str, drawX, drawY);
+              context.strokeText(str, drawX, drawY);
+            }
           }
         });
 
@@ -382,13 +480,22 @@ export class TextComponent extends MaskableGraphic {
 
       charsInfo.forEach(charInfo => {
         const ox = layout.getOffsetX(style, charInfo.width);
+        const drawY = shiftY + charInfo.y;
+        const lineStr = charInfo.chars.join('');
+        const needRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
 
-        for (let i = 0; i < charInfo.chars.length; i++) {
-          const str = charInfo.chars[i];
-          const drawX = shiftX + ox + charInfo.charOffsetX[i];
-          const drawY = shiftY + charInfo.y;
+        if (needRtl) {
+          context.save();
+          context.direction = 'rtl';
+          context.fillText(lineStr, shiftX + ox + charInfo.width, drawY);
+          context.restore();
+        } else {
+          for (let i = 0; i < charInfo.chars.length; i++) {
+            const str = charInfo.chars[i];
+            const drawX = shiftX + ox + charInfo.charOffsetX[i];
 
-          context.fillText(str, drawX, drawY);
+            context.fillText(str, drawX, drawY);
+          }
         }
       });
 
@@ -616,9 +723,10 @@ export class TextComponent extends MaskableGraphic {
 
     let maxLineWidthRender = 0;
     let x = 0;
+    const chars = Array.from(text);
 
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
 
       if (ch === '\n') {
         maxLineWidthRender = Math.max(maxLineWidthRender, x);
