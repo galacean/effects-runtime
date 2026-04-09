@@ -7,7 +7,6 @@ import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
 import { Editor } from '../custom-editors/editor';
-import type { GLMaterial } from '@galacean/effects-webgl';
 import { GLTexture } from '@galacean/effects-webgl';
 import type { FileNode } from '../core/file-node';
 import { GalaceanEffects } from '../ge';
@@ -156,7 +155,7 @@ export class Inspector extends EditorWindow {
     if (!material) {
       return;
     }
-    const glMaterial = material as GLMaterial;
+    const glMaterial = material;
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
     let dirtyFlag = false;

@@ -1,5 +1,6 @@
 import type {
   Scene, ShaderLibrary, Transform, EventSystem, CompositionProps,
+  Engine,
 } from '@galacean/effects-core';
 import { Composition, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
@@ -54,10 +55,11 @@ export class ThreeComposition extends Composition {
   static shape: Record<string, number> = {};
 
   constructor (
+    engine: Engine,
     props: ThreeCompositionProps,
     scene: Scene,
   ) {
-    super(props, scene);
+    super(engine, props, scene);
   }
 
   override prepareRender (): void {

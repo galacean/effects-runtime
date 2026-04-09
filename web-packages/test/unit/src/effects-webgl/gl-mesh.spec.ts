@@ -1,7 +1,7 @@
-import type { MaterialProps } from '@galacean/effects';
-import { Mesh, glContext, math } from '@galacean/effects';
-import type { GLShaderVariant, GLRenderer } from '@galacean/effects-webgl';
-import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
+import type { MaterialProps, Renderer } from '@galacean/effects';
+import { Mesh, glContext, math, Material } from '@galacean/effects';
+import type { GLShaderVariant } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
 const { expect } = chai;
@@ -9,7 +9,7 @@ const { expect } = chai;
 describe('webgl/gl-mesh', () => {
   let canvas = document.createElement('canvas');
   const engine = new GLEngine(canvas, { glType: 'webgl2' });
-  let renderer = engine.renderer as GLRenderer;
+  let renderer = engine.renderer;
 
   after(() => {
     engine.dispose();
@@ -46,7 +46,7 @@ describe('webgl/gl-mesh', () => {
   });
 });
 
-function generateGLMesh (renderer: GLRenderer) {
+function generateGLMesh (renderer: Renderer) {
   const vertex = `attribute vec2 aPosition;
 uniform vec2 uPos;
 void main() {
@@ -69,7 +69,7 @@ void main() {
       depthTest: true,
     },
   };
-  const material = new GLMaterial(renderer.engine, mtlOption as unknown as MaterialProps);
+  const material = new Material(renderer.engine, mtlOption as unknown as MaterialProps);
 
   material.setVector2('uPos', new math.Vector2(1, 2));
   const position = {
