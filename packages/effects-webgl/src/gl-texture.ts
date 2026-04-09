@@ -37,7 +37,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   constructor (engine: Engine, source?: TextureSourceOptions) {
     super(engine);
     if (source) {
-      this.fromData(source);
+      this.fromData(source as unknown as spec.EffectsObjectData);
     }
   }
 
@@ -322,9 +322,9 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.EffectsObjectData): void {
     super.fromData(data);
-    const source = data as TextureSourceOptions;
+    const source = data as unknown as TextureSourceOptions;
     const options = this.assembleOptions(source);
     const { sourceType, sourceFrom, name = '' } = options;
 

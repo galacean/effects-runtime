@@ -311,13 +311,12 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   }
 
-  override fromData (data: unknown): void {
+  override fromData (data: MaskableGraphicData): void {
     super.fromData(data);
 
-    const maskableGraphicData = (data as MaskableGraphicData);
-    const renderer = maskableGraphicData.renderer ?? {};
+    const renderer = data.renderer ?? {};
 
-    const maskOptions = maskableGraphicData.mask;
+    const maskOptions = data.mask;
 
     if (maskOptions) {
       this.maskManager.setMaskOptions(this.engine, maskOptions);

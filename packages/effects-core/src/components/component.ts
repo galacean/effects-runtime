@@ -1,3 +1,4 @@
+import type * as spec from '@galacean/effects-specification';
 import { serialize } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
@@ -163,7 +164,7 @@ export abstract class Component extends EffectsObject {
     }
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.ComponentData): void {
     super.fromData(data);
   }
 

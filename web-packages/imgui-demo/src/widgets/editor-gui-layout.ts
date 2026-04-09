@@ -188,18 +188,12 @@ export class EditorGUILayout {
     if (ImGui.BeginDragDropTarget()) {
       const payload = ImGui.AcceptDragDropPayload(targetObject.constructor.name);
 
-      if (payload) {
-        void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
-          if (!file) {
-            return;
-          }
-          const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
-
-          if (!effectsPackage) {
-            return;
-          }
-          (object as Record<string, any>)[property] = effectsPackage.exportObjects[0];
-        });
+      if (payload && payload.Data) {
+        try {
+          (object as Record<string, any>)[property] = payload.Data;
+        } catch (error) {
+          console.warn('[ObjectField] Failed to assign dropped object:', error);
+        }
       }
 
       ImGui.EndDragDropTarget();

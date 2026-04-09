@@ -1,4 +1,4 @@
-import type { Material } from '@galacean/effects';
+import type { Material, Texture } from '@galacean/effects';
 import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
@@ -49,27 +49,38 @@ export class Inspector extends EditorWindow {
       this.drawObjectTitle('VFXItem');
       this.drawVFXItemInspector(activeObject);
     } else {
-      this.drawDefaultInspector(activeObject);
+      this.drawObject(activeObject);
     }
   }
 
-  private drawDefaultInspector (activeObject: object) {
-    for (const propertyName of Object.keys(activeObject)) {
+  private drawObject (object: object) {
+    for (const propertyName of Object.keys(object)) {
       const key = propertyName as keyof object;
-      const property: any = activeObject[key];
+      const property = object[key] as any;
+
+      if (property === undefined || property === null) {
+        continue;
+      }
 
       if (typeof property === 'number') {
-        EditorGUILayout.FloatField(propertyName, activeObject, key);
-      } else if (typeof property === 'string') {
-        EditorGUILayout.TextField(propertyName, activeObject, key);
+        EditorGUILayout.FloatField(propertyName, object, key);
       } else if (typeof property === 'boolean') {
-        EditorGUILayout.Checkbox(propertyName, activeObject, key);
+        EditorGUILayout.Checkbox(propertyName, object, key);
+      } else if (typeof property === 'string') {
+        EditorGUILayout.TextField(propertyName, object, key);
       } else if (property instanceof math.Vector3) {
         EditorGUILayout.Vector3Field(propertyName, property);
+      } else if (property instanceof math.Vector2) {
+        EditorGUILayout.Vector2Field(propertyName, property);
       } else if (property instanceof math.Color) {
         EditorGUILayout.ColorField(propertyName, property);
       } else if (property instanceof EffectsObject) {
-        EditorGUILayout.ObjectField(propertyName, activeObject, key);
+        EditorGUILayout.ObjectField(propertyName, object, key);
+      } else if (property instanceof Object) {
+        if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
+          this.drawObject(property);
+          ImGui.TreePop();
+        }
       }
     }
   }
@@ -271,14 +282,16 @@ export class Inspector extends EditorWindow {
         if (ImGui.BeginDragDropTarget()) {
           const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
 
-          if (payload) {
+          if (payload && payload.Data) {
+
+            const droppedTexture = payload.Data as Texture;
+
             if (!serializedData.textures[uniformName]) {
-              serializedData.textures[uniformName] = {
-                texture:{ id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' },
-              };
+              serializedData.textures[uniformName] = { texture: droppedTexture };
             } else {
-              serializedData.textures[uniformName].texture = { id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' };
+              serializedData.textures[uniformName].texture = droppedTexture;
             }
+
             dirtyFlag = true;
           }
 

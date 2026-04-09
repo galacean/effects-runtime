@@ -15,7 +15,7 @@ export class StateMachineNode extends BaseNode {
   override GetTypeName (): string {
     return 'StateMachineNode';
   }
-  protected DrawContextMenuOptions (ctx: DrawContext, pUserContext: UserContext, mouseCanvasPos: ImVec2): void {}
+  DrawContextMenuOptions (ctx: DrawContext, pUserContext: UserContext, mouseCanvasPos: ImVec2): void {}
 }
 
 export class StateNode extends StateMachineNode {
@@ -178,11 +178,11 @@ export abstract class StateMachineGraph extends BaseGraph {
     super.PostDestroyNode(nodeID);
   }
 
-  protected DrawContextMenuOptions (ctx: DrawContext, pUserContext: UserContext, mouseCanvasPos: ImVec2, filterTokens: string[]): boolean {
+  DrawContextMenuOptions (ctx: DrawContext, pUserContext: UserContext, mouseCanvasPos: ImVec2, filterTokens: string[]): boolean {
     return false;
   }
 
-  protected HasContextMenuFilter (): boolean {
+  HasContextMenuFilter (): boolean {
     return true;
   }
 }

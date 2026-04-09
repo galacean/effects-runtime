@@ -1,6 +1,11 @@
 /* eslint-disable no-console */
 import { spec } from '@galacean/effects';
 import { InvalidIndex } from '@galacean/effects';
+import { BlendToolsNode } from './tools-graph/nodes/blend-tools-node';
+import { ApplyAdditiveToolsNode } from './tools-graph/nodes/apply-additive-tools-node';
+import { AndToolsNode, OrToolsNode, NotToolsNode } from './tools-graph/nodes/bool-tools-nodes';
+import { LayerBlendToolsNode } from './tools-graph/nodes/layer-blend-tools-node';
+import { EqualToolsNode, GreaterToolsNode, LessToolsNode } from './tools-graph/nodes/operator-tools-nodes';
 import { StateMachineToolsNode } from './tools-graph/nodes/state-machine-tools-node';
 import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
 import { TransitionConduitToolsNode, TransitionToolsNode } from './tools-graph/nodes/transition-tools-node';
@@ -342,6 +347,24 @@ export class GraphCompilationContext {
       return spec.NodeDataType.ControlParameterFloatNodeData;
     } else if (node instanceof BoolControlParameterToolsNode) {
       return spec.NodeDataType.ControlParameterBoolNodeData;
+    } else if (node instanceof BlendToolsNode) {
+      return spec.NodeDataType.BlendNodeData;
+    } else if (node instanceof LayerBlendToolsNode) {
+      return spec.NodeDataType.LayerBlendNodeData;
+    } else if (node instanceof AndToolsNode) {
+      return spec.NodeDataType.AndNodeData;
+    } else if (node instanceof OrToolsNode) {
+      return spec.NodeDataType.OrNodeData;
+    } else if (node instanceof NotToolsNode) {
+      return spec.NodeDataType.NotNodeData;
+    } else if (node instanceof EqualToolsNode) {
+      return spec.NodeDataType.EqualNodeData;
+    } else if (node instanceof GreaterToolsNode) {
+      return spec.NodeDataType.GreaterNodeData;
+    } else if (node instanceof LessToolsNode) {
+      return spec.NodeDataType.LessNodeData;
+    } else if (node instanceof ApplyAdditiveToolsNode) {
+      return spec.NodeDataType.ApplyAdditiveNodeData;
     }
   }
 }

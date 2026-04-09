@@ -1,3 +1,4 @@
+import type * as spec from '@galacean/effects-specification';
 import { RendererComponent } from './renderer-component';
 import type { VFXItem } from '../vfx-item';
 import { Material, type Maskable } from '../material';
@@ -9,6 +10,10 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import { effectsClass } from '../decorators';
 import type { HitTestTriangleParams } from '../plugins';
 import { addItem } from '../utils';
+
+interface FrameComponentData extends spec.ComponentData {
+  color?: spec.ColorData,
+}
 
 @effectsClass('FrameComponent')
 export class FrameComponent extends RendererComponent implements Maskable {
@@ -113,7 +118,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
     this.maskManager.drawGeometryMask(this.engine.renderer, this.clipGeometry, this.worldMatrix, this.material, maskRef);
   }
 
-  override fromData (data: any): void {
+  override fromData (data: FrameComponentData): void {
     super.fromData(data);
 
     if (data.color) {
