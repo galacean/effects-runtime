@@ -8,3 +8,4 @@ export * from './shape/ellipse';
 export * from './shape/poly-star';
 export * from './shape/polygon';
 export * from './shape/shape-path';
+export * from './bezier';

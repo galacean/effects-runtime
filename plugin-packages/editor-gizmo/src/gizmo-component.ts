@@ -20,6 +20,12 @@ import { moveToPointWidthFixDistance } from './util';
 import { WireframeGeometryType, createModeWireframe, destroyWireframeMesh, updateWireframeMesh } from './wireframe';
 import { GeometryType } from './geometry';
 
+// TODO: Move to spec
+interface GizmoComponentData extends spec.ComponentData {
+  options: GizmoVFXItemOptions,
+  transform?: Record<string, unknown>,
+}
+
 const editorRenderPassName = 'editor-gizmo';
 const frontRenderPassName = 'front-gizmo';
 const behindRenderPassName = 'behind-gizmo';
@@ -566,7 +572,7 @@ export class GizmoComponent extends RendererComponent {
     this.targetItem = item;
   }
 
-  override fromData (data: any): void {
+  override fromData (data: GizmoComponentData): void {
     super.fromData(data);
     const item = this.item;
 
@@ -574,7 +580,7 @@ export class GizmoComponent extends RendererComponent {
     const {
       target, subType, renderMode, size, depthTest,
       color = [255, 255, 255],
-    } = data.options as GizmoVFXItemOptions;
+    } = data.options;
 
     this.target = target;
     this.subType = subType;

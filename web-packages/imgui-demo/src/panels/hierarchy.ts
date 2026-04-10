@@ -1,26 +1,29 @@
-import { VFXItem } from '@galacean/effects';
+import { spec, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
+import { EditorColors } from './theme';
+import { searchBar } from '../widgets';
 
 // 颜色常量
 const COLORS = {
-  lightBlue: new ImGui.ImVec4(0.25, 0.34, 0.43, 1.0),
-  highlightBlue: new ImGui.ImVec4(0.0, 0.43, 0.87, 1.0),
-  eyeActive: new ImGui.Vec4(0.72, 0.72, 0.72, 1.0),
+  selectionFocused: EditorColors.selectionFocused,
+  selectionUnfocused: EditorColors.selectionUnfocused,
+  eyeActive: EditorColors.iconActive,
   eyeInactive: new ImGui.Vec4(0.46, 0.46, 0.46, 1.0),
   eyeOutline: new ImGui.Vec4(0.6, 0.6, 0.6, 1.0),
   eyeSlash: new ImGui.Vec4(0.35, 0.35, 0.35, 1.0),
-  inactiveText: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
-  searchIcon: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
+  inactiveText: EditorColors.textSecondary,
+  searchIcon: EditorColors.iconDefault,
 } as const;
 
 // 布局常量
 const LAYOUT = {
   visibilityColumnWidth: 16,
   visibilitySpacing: 6,
+  iconPadding: '   ',
 } as const;
 
 @editorWindow()
@@ -111,112 +114,9 @@ export class Hierarchy extends EditorWindow {
   }
 
   private drawSearchBar (): void {
-    const availWidth = ImGui.GetContentRegionAvail().x;
-    const iconSize = 16;
-    const iconPadding = 4;
-    const clearButtonSize = 18;
-    const hasClearButton = this.searchFilter.length > 0;
-
-    // 绘制搜索图标
-    const cursorPos = ImGui.GetCursorScreenPos();
-    const frameHeight = ImGui.GetFrameHeight();
-    const drawList = ImGui.GetWindowDrawList();
-    const iconColor = ImGui.GetColorU32(COLORS.searchIcon);
-
-    // 绘制放大镜圆圈 - 与输入框垂直居中对齐
-    const circleCenter = new ImGui.Vec2(cursorPos.x + iconSize * 0.4, cursorPos.y + frameHeight * 0.4);
-    const circleRadius = iconSize * 0.28;
-
-    drawList.AddCircle(circleCenter, circleRadius, iconColor, 12, 1.5);
-
-    // 绘制放大镜手柄
-    const handleStart = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 0.7,
-      circleCenter.y + circleRadius * 0.7
-    );
-    const handleEnd = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 1.8,
-      circleCenter.y + circleRadius * 1.8
-    );
-
-    drawList.AddLine(handleStart, handleEnd, iconColor, 1.5);
-
-    // 输入框左侧留出图标空间，输入框占满剩余宽度
-    const inputStartX = ImGui.GetCursorPosX() + iconSize + iconPadding;
-
-    ImGui.SetCursorPosX(inputStartX);
-    ImGui.PushItemWidth(availWidth - iconSize - iconPadding);
-
-    const prevFilter = this.searchFilter;
-
-    if (ImGui.InputText('##HierarchySearch', this.searchFilterBuffer, 256)) {
-      // 搜索内容变化时更新匹配项
-      if (this.searchFilter !== prevFilter) {
-        this.updateSearchMatches();
-      }
+    if (searchBar('##HierarchySearch', this.searchFilterBuffer)) {
+      this.updateSearchMatches();
     }
-
-    // 允许后面的控件覆盖输入框接收事件
-    ImGui.SetItemAllowOverlap();
-
-    const inputRectMin = ImGui.GetItemRectMin();
-    const inputRectMax = ImGui.GetItemRectMax();
-    const postInputCursor = ImGui.GetCursorPos();
-
-    ImGui.PopItemWidth();
-
-    // 清除按钮覆盖在输入框内部右侧
-    if (hasClearButton) {
-      const clearBtnX = inputRectMax.x - clearButtonSize - 2;
-      const clearBtnY = inputRectMin.y + (frameHeight - clearButtonSize) / 2;
-
-      // 使用 InvisibleButton 作为点击区域，覆盖在输入框上
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clearBtnX, clearBtnY));
-
-      // ButtonFlags 用于确保按钮优先接收事件
-      if (ImGui.InvisibleButton('##ClearSearchBtn', new ImGui.Vec2(clearButtonSize, clearButtonSize))) {
-        this.searchFilter = '';
-        this.updateSearchMatches();
-      }
-
-      const isHovered = ImGui.IsItemHovered();
-
-      // 悬停时设置鼠标光标为箭头
-      if (isHovered) {
-        ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.Arrow);
-      }
-
-      // 绘制悬停背景
-      if (isHovered) {
-        drawList.AddRectFilled(
-          new ImGui.Vec2(clearBtnX, clearBtnY),
-          new ImGui.Vec2(clearBtnX + clearButtonSize, clearBtnY + clearButtonSize),
-          ImGui.GetColorU32(new ImGui.ImVec4(0.5, 0.5, 0.5, 0.3)),
-          3
-        );
-      }
-
-      // 绘制叉号
-      const crossPadding = 5;
-      const crossColor = ImGui.GetColorU32(isHovered ? COLORS.eyeActive : COLORS.searchIcon);
-
-      drawList.AddLine(
-        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + crossPadding),
-        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + clearButtonSize - crossPadding),
-        crossColor,
-        1.5
-      );
-      drawList.AddLine(
-        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + crossPadding),
-        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + clearButtonSize - crossPadding),
-        crossColor,
-        1.5
-      );
-
-      // 恢复光标位置
-      ImGui.SetCursorPos(postInputCursor);
-    }
-
     ImGui.Separator();
   }
 
@@ -286,13 +186,13 @@ export class Hierarchy extends EditorWindow {
 
   private pushSelectionColors (): void {
     if (ImGui.IsWindowFocused()) {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.highlightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.highlightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.selectionFocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionUnfocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.selectionFocused);
     } else {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.lightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.selectionUnfocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionUnfocused);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.selectionUnfocused);
     }
   }
 
@@ -324,7 +224,7 @@ export class Hierarchy extends EditorWindow {
     const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
 
     if (isHoverSelectedNode) {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionFocused);
     }
 
     // 设置非激活项的置灰文字颜色
@@ -347,7 +247,7 @@ export class Hierarchy extends EditorWindow {
     const treeStartX = rowStartLocal.x + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing;
 
     ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
-    const nodeOpen = ImGui.TreeNodeEx(itemId, nodeFlags, item.name);
+    const nodeOpen = ImGui.TreeNodeEx(itemId, nodeFlags, LAYOUT.iconPadding + item.name);
 
     // 恢复文字颜色
     if (needTextColorPop) {
@@ -360,6 +260,9 @@ export class Hierarchy extends EditorWindow {
     const rowRectMin = ImGui.GetItemRectMin();
     const rowRectMax = ImGui.GetItemRectMax();
     const rowHeight = rowRectMax.y - rowRectMin.y;
+
+    // 绘制类型图标
+    this.drawItemTypeIcon(drawList, item.type, rowRectMin, rowHeight);
 
     const buttonBounds = {
       min: new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y),
@@ -435,7 +338,7 @@ export class Hierarchy extends EditorWindow {
       const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
 
       if (isHoverSelectedNode) {
-        ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
+        ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.selectionFocused);
       }
 
       // 设置非激活项的置灰文字颜色
@@ -460,7 +363,7 @@ export class Hierarchy extends EditorWindow {
       ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
 
       // 只显示元素自身的名字
-      ImGui.TreeNodeEx(itemId, nodeFlags, item.name);
+      ImGui.TreeNodeEx(itemId, nodeFlags, LAYOUT.iconPadding + item.name);
 
       // 恢复文字颜色
       if (needTextColorPop) {
@@ -473,6 +376,9 @@ export class Hierarchy extends EditorWindow {
       const rowRectMin = ImGui.GetItemRectMin();
       const rowRectMax = ImGui.GetItemRectMax();
       const rowHeight = rowRectMax.y - rowRectMin.y;
+
+      // 绘制类型图标
+      this.drawItemTypeIcon(drawList, item.type, rowRectMin, rowHeight);
 
       const buttonBounds = {
         min: new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y),
@@ -617,6 +523,236 @@ export class Hierarchy extends EditorWindow {
     for (const child of item.children) {
       collection.add(child);
       this.collectDescendants(child, collection);
+    }
+  }
+
+  private drawItemTypeIcon (drawList: ImGui.ImDrawList, itemType: spec.ItemType, rowRectMin: ImGui.Vec2, rowHeight: number): void {
+    // 图标中心：树节点箭头之后，文本之前
+    const fontSize = ImGui.GetFontSize();
+    const cx = rowRectMin.x + fontSize + 8;
+    const cy = rowRectMin.y + rowHeight / 2;
+    const lw = 1.5; // 稍粗的描边增加现代感
+
+    switch (itemType) {
+      case spec.ItemType.sprite: {
+        // 图片/图层 — 扁平化圆角矩形背景 + 实心山峰 + 太阳
+        const cBg = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.6, 1.0, 0.2));
+        const cFg = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.6, 1.0, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5.5, cy - 4.5), new ImGui.Vec2(cx + 5.5, cy + 4.5), cBg, 2);
+        drawList.AddRect(new ImGui.Vec2(cx - 5.5, cy - 4.5), new ImGui.Vec2(cx + 5.5, cy + 4.5), cFg, 2, 0, 1.2);
+        drawList.AddTriangleFilled(new ImGui.Vec2(cx - 5, cy + 3.5), new ImGui.Vec2(cx - 1, cy - 1), new ImGui.Vec2(cx + 2, cy + 3.5), cFg);
+        drawList.AddTriangleFilled(new ImGui.Vec2(cx - 1, cy + 3.5), new ImGui.Vec2(cx + 2, cy + 0.5), new ImGui.Vec2(cx + 5, cy + 3.5), cFg);
+        drawList.AddCircleFilled(new ImGui.Vec2(cx + 2.5, cy - 1.5), 1.2, cFg, 6);
+
+        break;
+      }
+      case spec.ItemType.particle: {
+        // 粒子/火花 — 更复杂、对称的八角星芒与散落粒子
+        const cCore = ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.9, 0.4, 1.0));
+        const cGlow = ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.6, 0.1, 1.0));
+
+        // 主四角星
+        const r1 = 5;
+        const w1 = 1.0;
+
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx, cy - r1), new ImGui.Vec2(cx + w1, cy),
+          new ImGui.Vec2(cx, cy + r1), new ImGui.Vec2(cx - w1, cy), cGlow
+        );
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx - r1, cy), new ImGui.Vec2(cx, cy - w1),
+          new ImGui.Vec2(cx + r1, cy), new ImGui.Vec2(cx, cy + w1), cGlow
+        );
+
+        // 次小四角星（对角旋转45度）
+        const rDi = 3.5;
+        const wDi = 0.7;
+        const sin45 = 0.7071;
+        const offR = rDi * sin45;
+        const offW = wDi * sin45;
+
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx + offR, cy - offR), new ImGui.Vec2(cx + offW, cy + offW),
+          new ImGui.Vec2(cx - offR, cy + offR), new ImGui.Vec2(cx - offW, cy - offW), cGlow
+        );
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx - offR, cy - offR), new ImGui.Vec2(cx + offW, cy - offW),
+          new ImGui.Vec2(cx + offR, cy + offR), new ImGui.Vec2(cx - offW, cy + offW), cGlow
+        );
+
+        // 内层高亮十字
+        const r2 = 2.5;
+        const w2 = 0.7;
+
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx, cy - r2), new ImGui.Vec2(cx + w2, cy),
+          new ImGui.Vec2(cx, cy + r2), new ImGui.Vec2(cx - w2, cy), cCore
+        );
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx - r2, cy), new ImGui.Vec2(cx, cy - w2),
+          new ImGui.Vec2(cx + r2, cy), new ImGui.Vec2(cx, cy + w2), cCore
+        );
+
+        // 散落粒子
+        drawList.AddCircleFilled(new ImGui.Vec2(cx - 3.5, cy - 3), 0.8, cCore, 4);
+        drawList.AddCircleFilled(new ImGui.Vec2(cx + 3.5, cy + 3.5), 0.8, cCore, 4);
+
+        // 中心高亮圆点
+        drawList.AddCircleFilled(new ImGui.Vec2(cx, cy), 1.2, ImGui.GetColorU32(new ImGui.Vec4(1, 1, 1, 1)), 6);
+
+        break;
+      }
+      case spec.ItemType.null: {
+        // 空节点 — 深黄色文件夹图标（颜色加深，参考图片）
+        const cBack = ImGui.GetColorU32(new ImGui.Vec4(0.7, 0.5, 0.05, 1.0));
+        const cFront = ImGui.GetColorU32(new ImGui.Vec4(0.85, 0.65, 0.1, 1.0));
+
+        // 文件夹背板和切角标签
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 3.5), new ImGui.Vec2(cx - 0.5, cy - 2), cBack, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 2.5), new ImGui.Vec2(cx + 5, cy + 3.5), cBack, 1.0);
+
+        // 文件夹前层盖板
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 1), new ImGui.Vec2(cx + 5, cy + 3.5), cFront, 1.0);
+
+        break;
+      }
+      case spec.ItemType.camera: {
+        // 摄像机 — 扁平化实心机身 + 镜头
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.75, 0.4, 0.85, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 3), new ImGui.Vec2(cx + 1, cy + 3), c, 1.5);
+        drawList.AddTriangleFilled(
+          new ImGui.Vec2(cx + 1, cy - 1.5),
+          new ImGui.Vec2(cx + 5, cy - 3.5),
+          new ImGui.Vec2(cx + 5, cy + 3.5),
+          c
+        );
+
+        break;
+      }
+      case spec.ItemType.composition: {
+        // 预合成 — 等距透视的堆叠层，代表图层组合
+        const c1 = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.8, 0.6, 0.4));
+        const c2 = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.8, 0.6, 1.0));
+
+        drawList.AddQuadFilled(new ImGui.Vec2(cx, cy - 4), new ImGui.Vec2(cx + 5, cy - 1.5), new ImGui.Vec2(cx, cy + 1), new ImGui.Vec2(cx - 5, cy - 1.5), c2);
+        drawList.AddQuad(new ImGui.Vec2(cx, cy - 1), new ImGui.Vec2(cx + 5, cy + 1.5), new ImGui.Vec2(cx, cy + 4), new ImGui.Vec2(cx - 5, cy + 1.5), c2, lw);
+
+        break;
+      }
+      case spec.ItemType.mesh: {
+        // 3D 网格 — 等距透视实心正方体（三面不同明度）
+        const cTop = ImGui.GetColorU32(new ImGui.Vec4(0.5, 0.85, 0.5, 1.0));
+        const cLeft = ImGui.GetColorU32(new ImGui.Vec4(0.35, 0.7, 0.35, 1.0));
+        const cRight = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.55, 0.2, 1.0));
+
+        const topY = cy - 4, botY = cy + 4;
+        const leftX = cx - 4, rightX = cx + 4;
+        const midY = cy - 0.5;
+
+        // 顶面
+        drawList.AddQuadFilled(new ImGui.Vec2(cx, topY), new ImGui.Vec2(rightX, midY - 1.5), new ImGui.Vec2(cx, cy - 0.5), new ImGui.Vec2(leftX, midY - 1.5), cTop);
+        // 左面
+        drawList.AddQuadFilled(new ImGui.Vec2(leftX, midY - 1.5), new ImGui.Vec2(cx, cy - 0.5), new ImGui.Vec2(cx, botY), new ImGui.Vec2(leftX, botY - 1.5), cLeft);
+        // 右面
+        drawList.AddQuadFilled(new ImGui.Vec2(cx, cy - 0.5), new ImGui.Vec2(rightX, midY - 1.5), new ImGui.Vec2(rightX, botY - 1.5), new ImGui.Vec2(cx, botY), cRight);
+
+        break;
+      }
+      case spec.ItemType.text:
+      case spec.ItemType.richtext as spec.ItemType: {
+        // 文本 — 粗体无衬线 T，现代清晰
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.3, 0.65, 1.0, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 4.5, cy - 4.5), new ImGui.Vec2(cx + 4.5, cy - 1.5), c, 0.5);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 1.5, cy - 1.5), new ImGui.Vec2(cx + 1.5, cy + 4.5), c, 0.5);
+
+        break;
+      }
+      case spec.ItemType.light: {
+        // 灯光 — 清新太阳形发光体
+        const c = ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.75, 0.1, 1.0));
+
+        drawList.AddCircleFilled(new ImGui.Vec2(cx, cy), 2.2, c, 12);
+        // 发散光线
+        for (let i = 0; i < 8; i++) {
+          const angle = i * Math.PI / 4;
+
+          drawList.AddLine(new ImGui.Vec2(cx + Math.cos(angle) * 3.5, cy + Math.sin(angle) * 3.5), new ImGui.Vec2(cx + Math.cos(angle) * 5, cy + Math.sin(angle) * 5), c, 1.5);
+        }
+
+        break;
+      }
+      case spec.ItemType.tree: {
+        // 节点树 — 块状横向树状拓扑图
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.8, 0.6, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 4.5, cy - 1), new ImGui.Vec2(cx - 1.5, cy + 1), c, 0.5);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 1.5, cy - 4), new ImGui.Vec2(cx + 4.5, cy - 2), c, 0.5);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 1.5, cy + 2), new ImGui.Vec2(cx + 4.5, cy + 4), c, 0.5);
+        drawList.AddLine(new ImGui.Vec2(cx - 1.5, cy), new ImGui.Vec2(cx + 0.5, cy), c, 1.2);
+        drawList.AddLine(new ImGui.Vec2(cx + 0.5, cy - 3), new ImGui.Vec2(cx + 0.5, cy + 3), c, 1.2);
+        drawList.AddLine(new ImGui.Vec2(cx + 0.5, cy - 3), new ImGui.Vec2(cx + 1.5, cy - 3), c, 1.2);
+        drawList.AddLine(new ImGui.Vec2(cx + 0.5, cy + 3), new ImGui.Vec2(cx + 1.5, cy + 3), c, 1.2);
+
+        break;
+      }
+      case spec.ItemType.interact: {
+        // 交互 — 现代同心波纹（类似触控反馈）
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.9, 0.45, 0.45, 1.0));
+
+        drawList.AddCircleFilled(new ImGui.Vec2(cx, cy), 1.5, c, 8);
+        drawList.AddCircle(new ImGui.Vec2(cx, cy), 3.5, c, 12, 1.5);
+        drawList.AddCircle(new ImGui.Vec2(cx, cy), 5.5, ImGui.GetColorU32(new ImGui.Vec4(0.9, 0.45, 0.45, 0.3)), 12, 1.2);
+
+        break;
+      }
+      case spec.ItemType.video: {
+        // 视频 — 扁平圆角媒体块，中间镂空播放键
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.9, 0.35, 0.45, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 3.5), new ImGui.Vec2(cx + 5, cy + 3.5), c, 1.5);
+        drawList.AddTriangleFilled(
+          new ImGui.Vec2(cx - 1.5, cy - 1.5),
+          new ImGui.Vec2(cx + 2, cy),
+          new ImGui.Vec2(cx - 1.5, cy + 1.5),
+          ImGui.GetColorU32(new ImGui.Vec4(0.1, 0.1, 0.1, 1.0)) // 黑色镂空视觉
+        );
+
+        break;
+      }
+      case spec.ItemType.audio: {
+        // 音频 — 清晰等距的柱状律动条
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.5, 0.8, 0.4, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 4, cy - 1), new ImGui.Vec2(cx - 2, cy + 3), c, 1);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 1, cy - 4), new ImGui.Vec2(cx + 1, cy + 3), c, 1);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 2, cy - 2), new ImGui.Vec2(cx + 4, cy + 3), c, 1);
+
+        break;
+      }
+      case spec.ItemType.spine as spec.ItemType: {
+        // 骨骼动画 — 圆润相连的关节点
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.85, 0.7, 0.5, 1.0));
+
+        drawList.AddCircleFilled(new ImGui.Vec2(cx - 2.5, cy + 1.5), 2.0, c, 8);
+        drawList.AddCircleFilled(new ImGui.Vec2(cx + 2.5, cy - 1.5), 2.5, c, 8);
+        drawList.AddLine(new ImGui.Vec2(cx - 2.5, cy + 1.5), new ImGui.Vec2(cx + 2.5, cy - 1.5), c, 3.0);
+
+        break;
+      }
+      default: {
+        // 默认 — 高度对称的四个方块网格
+        const c1 = ImGui.GetColorU32(new ImGui.Vec4(0.65, 0.65, 0.7, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5.0, cy - 5.0), new ImGui.Vec2(cx - 0.5, cy - 0.5), c1, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 0.5, cy - 5.0), new ImGui.Vec2(cx + 5.0, cy - 0.5), c1, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5.0, cy + 0.5), new ImGui.Vec2(cx - 0.5, cy + 5.0), c1, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 0.5, cy + 0.5), new ImGui.Vec2(cx + 5.0, cy + 5.0), c1, 1.0);
+
+        break;
+      }
     }
   }
 

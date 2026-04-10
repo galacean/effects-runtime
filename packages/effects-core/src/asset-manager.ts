@@ -503,6 +503,8 @@ async function createTextureOptionsBySource (
       try {
         const textureData = await loader.loadFromBuffer(image) as Texture2DSourceOptionsCompressed;
 
+        logger.info('Loading KTX2 texture.');
+
         return {
           sourceType: textureData.sourceType,
           type: textureData.type,

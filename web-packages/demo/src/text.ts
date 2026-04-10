@@ -22,6 +22,11 @@ const container = document.getElementById('J-container');
     setTimeout(() => {
       textComponent?.setText('基于 Web\n效果丰富，氛围粒子、陀螺仪特效、3D 模型渲染\n100%还原');
     }, 1500);
+
+    // 阿语示例：RTL、连写、按词换行
+    setTimeout(() => {
+      textComponent?.setText('معتمد على الويب تأثيرات غنية، جزيئات أجواء، تأثيرات الجيروسكوب، عرض نماذج ثلاثية الأبعاد استعادة 100%');
+    }, 3000);
   } catch (e) {
     console.error('biz', e);
   }
