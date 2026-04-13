@@ -8,13 +8,16 @@ import { Material } from '../../material';
 import type { Renderer } from '../../render';
 import { Geometry, GLSLVersion } from '../../render';
 import { FilterMode, RenderTextureFormat } from '../../render/framebuffer';
-import type { Texture } from '../../texture';
-import { TextureLoadAction } from '../../texture';
+import { Texture, TextureLoadAction } from '../../texture';
 import { glContext } from '../../gl';
+import { Float16ArrayWrapper } from '../float16array-wrapper';
+import { simplifyScatterEdges, removeShortEdges, removeShortEdgesFloat } from './scatter-edge-simplifier';
 import indicatorVert from './shaders/feather-indicator.vert.glsl';
 import indicatorFrag from './shaders/feather-indicator.frag.glsl';
 import scatterVert from './shaders/feather-scatter.vert.glsl';
 import scatterFrag from './shaders/feather-scatter.frag.glsl';
+import gatherVert from './shaders/feather-gather.vert.glsl';
+import gatherFrag from './shaders/feather-gather.frag.glsl';
 import upsampleVert from './shaders/feather-upsample.vert.glsl';
 import upsampleFrag from './shaders/feather-upsample.frag.glsl';
 
@@ -25,6 +28,8 @@ export type FeatherRenderParams = {
   fboW: number,
   fboH: number,
   orthoProjection: Matrix4,
+  featherRadiusScreen: number, // 这个用于在片段着色器里做抗亮斑
+  kernelCoverage: number,
 };
 
 /**
@@ -36,6 +41,7 @@ export type FeatherAtlasInfo = {
   atlasSize: Vector2,
   textureOffset: Vector2,
   textureSize: Vector2,
+  featherRadiusScreen: number,
 };
 
 /**
@@ -53,10 +59,17 @@ export class VectorFeatherRenderer {
 
   private indicatorMaterial: Material;
   private scatterMaterial: Material;
+  private gatherMaterial: Material;
   private upsampleMaterial: Material;
 
   private currentBbox: [number, number, number, number] = [0, 0, 0, 0];
   private scatterInstanceCount = 0;
+  private scatterEdgeTexture?: Texture;
+
+  /**
+   * 控制使用scatter还是gather的阈值。
+   */
+  featherSwitchThreshold = 0.2;
 
   /**
    * 羽化半径（局部坐标空间），0 表示不启用羽化
@@ -90,6 +103,14 @@ export class VectorFeatherRenderer {
     this.scatterMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
     this.scatterMaterial.depthTest = false;
     this.scatterMaterial.culling = false;
+
+    // --- Gather Pass 材质
+    this.gatherMaterial = this.createFeatherMaterial(gatherVert, gatherFrag);
+    this.gatherMaterial.blending = true;
+    this.gatherMaterial.blendFunction = [glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE];
+    this.gatherMaterial.depthTest = false;
+    this.gatherMaterial.culling = false;
+    this.gatherMaterial.shader.shaderData.properties = 'uEdgeTexture("uEdgeTexture",2D) = "white" {}';
 
     // --- Upsample Pass 材质 ---
     this.upsampleMaterial = this.createFeatherMaterial(upsampleVert, upsampleFrag);
@@ -167,6 +188,37 @@ export class VectorFeatherRenderer {
     // 更新 scatter geometry (实例化边数据)
     this.scatterGeometry.setAttributeData('aEdgeData', new Float32Array(scatterEdgeVertices));
     this.scatterInstanceCount = scatterEdgeCount;
+
+    // 将边数据写入 RGBAHalf 纹理：每条边占一个纹素 (rgba = x1, y1, x2, y2)
+    // 注意简化边以避免超限
+    if (scatterEdgeCount > 0) { 
+      const edgeData = simplifyScatterEdges(scatterEdgeVertices); 
+      const halfData = removeShortEdges(new Float16ArrayWrapper(edgeData).data);  // fp量化丢精度可能导致0长度边。这里剔除。
+      const newTexture = Texture.createWithData(
+        this.engine,
+        { data: halfData, width: halfData.length / 4, height: 1 },
+        {
+          type: glContext.HALF_FLOAT,
+          format: glContext.RGBA,
+          internalFormat: glContext.RGBA,
+          minFilter: glContext.NEAREST,
+          magFilter: glContext.NEAREST,
+          wrapS: glContext.CLAMP_TO_EDGE,
+          wrapT: glContext.CLAMP_TO_EDGE,
+        },
+      );
+      newTexture.initialize();
+
+      if (this.scatterEdgeTexture) {
+        this.scatterEdgeTexture.dispose();
+      }
+      this.scatterEdgeTexture = newTexture;
+    } else {
+      if (this.scatterEdgeTexture) {
+        this.scatterEdgeTexture.dispose();
+        this.scatterEdgeTexture = undefined;
+      }
+    }
   }
 
   /**
@@ -202,28 +254,38 @@ export class VectorFeatherRenderer {
   computeRenderParams (
     renderer: Renderer,
     worldMatrix: Matrix4,
-    featherRadius: number,
+    setFeatherRadius: number,
   ): FeatherRenderParams | null {
     if (this.currentBbox[2] <= 0 || this.currentBbox[3] <= 0) {
       return null;
     }
+    // 这里计算屏幕radius。
+    const featherRadiusScreen = this.computeScreenRadius(
+      renderer, worldMatrix, setFeatherRadius
+    );  
+    // 羽化半径至少要有1px，否则只会导致一些奇奇怪怪的锯齿（当使用1px羽化时，表现为抗锯齿效果）。
+    const refinedScreenRadius = Math.max(featherRadiusScreen, 1.0);
+    // 这里传递回去修改原始羽化
+    this.featherRadius = setFeatherRadius * refinedScreenRadius / Math.max(featherRadiusScreen, 0.0001);
 
+    // 包围盒向外扩展一个像素，避免半径太小的时候由于光栅化误差缺像素。
+    const expandRadius = getExpandedRadius(this.featherRadius, refinedScreenRadius);  
     const [bx, by, bw, bh] = this.currentBbox;
-    const expandedW = bw + featherRadius * 2;
-    const expandedH = bh + featherRadius * 2;
-    const expandedMinX = bx - featherRadius;
-    const expandedMinY = by - featherRadius;
+    const expandedW = bw + expandRadius * 2;
+    const expandedH = bh + expandRadius * 2;
+    const expandedMinX = bx - expandRadius;
+    const expandedMinY = by - expandRadius;
 
     const screenExtent = this.computeScreenExtent(
       renderer, worldMatrix,
       expandedMinX, expandedMinY, expandedW, expandedH,
     );
 
-    const featherRadiusScreen = Math.min(screenExtent[0] / expandedW, screenExtent[1] / expandedH) * featherRadius;
-    const downsample = Math.max(featherRadiusScreen / 10.0, 1.0);
+    const downsample = Math.min(Math.max(refinedScreenRadius / 10.0, 1.0), 9999);  // rive似乎限制它们的降采样最大为32
+    const kernelCoverage = 2 * this.featherRadius / Math.max(bw, bh);
 
     const maxFboSize = 2048;
-    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);
+    const fboW = Math.min(Math.max(Math.ceil(screenExtent[0] / downsample), 1), maxFboSize);   // 这里表明实际降采样未必是计算的downsample...
     const fboH = Math.min(Math.max(Math.ceil(screenExtent[1] / downsample), 1), maxFboSize);
 
     const orthoProjection = createOrthoMatrix(
@@ -231,7 +293,12 @@ export class VectorFeatherRenderer {
       expandedMinY, expandedMinY + expandedH,
     );
 
-    return { fboW, fboH, orthoProjection };
+    return { 
+      fboW:fboW, 
+      fboH:fboH, 
+      orthoProjection:orthoProjection,
+      featherRadiusScreen:refinedScreenRadius, // 注意这里传修改后的
+      kernelCoverage:kernelCoverage };
   }
 
   /**
@@ -252,11 +319,38 @@ export class VectorFeatherRenderer {
   /**
    * 绘制 Scatter Pass（调用者需已设置好 FBO 和 viewport）
    */
-  drawScatterPass (renderer: Renderer, orthoProjection: Matrix4, featherRadius: number): void {
+  drawScatterPass (
+    renderer: Renderer, 
+    orthoProjection: Matrix4, 
+    featherRadius: number,
+  ): void {
     this.scatterMaterial.setMatrix('uProjection', orthoProjection);
     this.scatterMaterial.setFloat('uRadius', featherRadius);
     renderer.drawGeometryInstanced(
       this.scatterGeometry, this.scatterMaterial, this.scatterInstanceCount,
+    );
+  }
+
+  /*
+  * 绘制 Gather Pass。注意Gather Pass不需要对应的Indicator
+  * 在upsample使用几何空间quad时，这个quad可以直接用于gather。
+  */
+  drawGatherPass(
+    renderer: Renderer, 
+    orthoProjection: Matrix4, 
+    featherRadius: number
+  ): void{
+    this.gatherMaterial.setMatrix('uProjection', orthoProjection);
+    this.gatherMaterial.setFloat('uRadius', featherRadius);
+    this.gatherMaterial.setInt('uMeshStart', 0); 
+    var numEdges : number = this.scatterEdgeTexture?.getWidth() || 0;
+    this.gatherMaterial.setInt('uMeshEnd', numEdges); 
+    this.gatherMaterial.setInt('uEdgeTextureWidth', numEdges);
+    if (this.scatterEdgeTexture != undefined){
+      this.gatherMaterial.setTexture('uEdgeTexture', this.scatterEdgeTexture);
+    }
+    renderer.drawGeometry(  
+      this.upsampleGeometry, Matrix4.IDENTITY, this.gatherMaterial
     );
   }
 
@@ -271,7 +365,9 @@ export class VectorFeatherRenderer {
     atlasSize: Vector2,
     textureOffset: Vector2,
     color: Color,
+    featherRadiusScreen: number,
   ): void {
+    this.upsampleMaterial.setFloat("uScreenRadius", featherRadiusScreen);
     this.upsampleMaterial.setTexture('uAtlasTex', atlasTexture);
     this.upsampleMaterial.setVector2('uTextureSize', textureSize);
     this.upsampleMaterial.setVector2('uAtlasSize', atlasSize);
@@ -321,16 +417,20 @@ export class VectorFeatherRenderer {
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
-
-    this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
-    this.drawScatterPass(renderer, orthoProjection, featherRadius);
-
+    
+    if (params.kernelCoverage < this.featherSwitchThreshold){ // ToDo：根据后续测试决定这里具体的值——增大则更容易出亮斑但性能更好
+      this.drawIndicatorPass(renderer, orthoProjection, indicatorGeometry, indicatorSubMeshIndex);
+      this.drawScatterPass(renderer, orthoProjection, this.featherRadius);
+    }else{
+      this.updateUpsampleQuad(this.featherRadius);  // ToDo: 和后面面那个updateUpsampleQuad合并
+      this.drawGatherPass(renderer, orthoProjection, this.featherRadius);
+    }
     // === Pass 3: Upsample → 屏幕 ===
     renderer.setFramebuffer(prevFramebuffer);
     renderer.setViewport(0, 0, renderer.getWidth(), renderer.getHeight());
 
     // 更新 upsample 四边形覆盖区域
-    this.updateUpsampleQuad(featherRadius);
+    this.updateUpsampleQuad(getExpandedRadius(this.featherRadius, params.featherRadiusScreen));
 
     // 绘制 upsample
     const atlasTexture = atlas.getColorTextures()[0];
@@ -338,7 +438,7 @@ export class VectorFeatherRenderer {
     this.drawUpsamplePass(
       renderer, worldMatrix, atlasTexture,
       new Vector2(fboW, fboH), new Vector2(fboW, fboH), new Vector2(0, 0),
-      color,
+      color, params.featherRadiusScreen,
     );
 
     // 释放临时渲染目标
@@ -396,12 +496,48 @@ export class VectorFeatherRenderer {
     ];
   }
 
+  /**
+   * 简化版的computeScreenExtent，用于计算屏幕空间羽化尺寸
+   * 实际上计算了一个[0,0,r,r]的矩形变换后的最短边
+   * @param renderer 
+   * @param worldMatrix 
+   * @param featherRadius 
+   */
+  private computeScreenRadius(
+    renderer: Renderer,
+    worldMatrix: Matrix4,
+    featherRadius: number,
+  ){
+    const vpMatrix = renderer.renderingData.currentCamera.getViewProjectionMatrix();
+    const mvp = new Matrix4().multiplyMatrices(vpMatrix, worldMatrix);
+    const e = mvp.elements;
+    const screenW = renderer.getWidth();
+    const screenH = renderer.getHeight();
+    // [0, 0, 0, 1]
+    const ox = e[12];
+    const oy = e[13];
+    const ow = e[15];
+    // [r, r, 0, 1]
+    const rx = (e[0] + e[4]) * featherRadius + e[12];
+    const ry = (e[1] + e[5]) * featherRadius + e[13];
+    const rw = (e[3] + e[7]) * featherRadius + e[15];
+
+    const osx = (ox / ow * 0.5 + 0.5) * screenW;
+    const osy = (oy / ow * 0.5 + 0.5) * screenH;
+    const rsx = (rx / rw * 0.5 + 0.5) * screenW;
+    const rsy = (ry / rw * 0.5 + 0.5) * screenH;
+
+    return Math.min(Math.abs(rsx - osx), Math.abs(rsy - osy));
+  }
+
   dispose (): void {
     this.scatterGeometry?.dispose();
     this.upsampleGeometry?.dispose();
     this.indicatorMaterial?.dispose();
     this.scatterMaterial?.dispose();
     this.upsampleMaterial?.dispose();
+    this.scatterEdgeTexture?.dispose();
+    this.scatterEdgeTexture = undefined;
   }
 
   private createFeatherMaterial (vertexShader: string, fragmentShader: string): Material {
@@ -450,4 +586,14 @@ function createOrthoMatrix (
   data[15] = 1;
 
   return mat;
+}
+
+/**
+ * 基于它在屏幕的尺寸，将featherRadius扩展1px宽度
+ */
+export function getExpandedRadius(
+  featherRadius: number, 
+  featherRadiusScreen: number
+):number {
+  return featherRadius + featherRadius / featherRadiusScreen;
 }
