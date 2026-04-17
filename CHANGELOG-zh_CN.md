@@ -8,11 +8,17 @@
 
 ---
 
+## 2.8.11
+
+`2026-04-17`
+
+- Fix: shape gradient interpolation issue. [#1440](https://github.com/galacean/effects-runtime/pull/1440) @wumaolinmaoan
+
 ## 2.8.10
 
 `2026-03-20`
 
-- Chore: 部分包引用 /alipay、/wechat/douyin 等模块没有类型提示. [#1427](https://github.com/galacean/effects-runtime/pull/1427) @zheeeng
+- Chore: 部分包引用 /alipay、/wechat、/douyin 等模块没有类型提示。 [#1427](https://github.com/galacean/effects-runtime/pull/1427) @zheeeng
 - Fix: rich text overflow setting invalid. [#1413](https://github.com/galacean/effects-runtime/pull/1413) @wumaolinmaoan
 
 ## 2.8.9
