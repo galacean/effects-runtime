@@ -77,19 +77,26 @@ void main() {
         }
 
         // 渐变区间插值
-        finalColor = _Colors[0];
-        for(int i = 1; i < _MAX_STOPS; i++) {
-            if(i >= _StopsCount)
-                break;
-            float prevStop = _Stops[i - 1];
-            float currStop = _Stops[i];
-            if(t >= prevStop && t <= currStop) {
-                float localT = (t - prevStop) / max(currStop - prevStop, 1e-6);
-                finalColor = smoothMix(_Colors[i - 1], _Colors[i], localT);
-                break;
+        if(_StopsCount > 0) {
+            if(t <= _Stops[0]) {
+                finalColor = _Colors[0];
+            } else if(t >= _Stops[_StopsCount - 1]) {
+                finalColor = _Colors[_StopsCount - 1];
+            } else {
+                finalColor = _Colors[0];
+                for(int i = 1; i < _MAX_STOPS; i++) {
+                    if(i >= _StopsCount)
+                        break;
+                    float prevStop = _Stops[i - 1];
+                    float currStop = _Stops[i];
+                    if(t >= prevStop && t <= currStop) {
+                        float localT = (t - prevStop) / max(currStop - prevStop, 1e-6);
+                        finalColor = smoothMix(_Colors[i - 1], _Colors[i], localT);
+                        break;
+                    }
+                }
             }
         }
-
     } else if(_FillType == 4.0) {
         // 图片填充 (Image Paint)
         vec2 uv = uv0;
