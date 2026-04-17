@@ -7,11 +7,17 @@
 
 ---
 
+## 2.8.11
+
+`2026-04-17`
+
+- Fix: shape gradient interpolation issue. [#1440](https://github.com/galacean/effects-runtime/pull/1440) @wumaolinmaoan
+
 ## 2.8.10
 
 `2026-03-20`
 
-- Chore: add type hints for /alipay, /wechat, /douyin and other module imports in some packages.. [#1427](https://github.com/galacean/effects-runtime/pull/1427) @zheeeng
+- Chore: add type hints for /alipay, /wechat, /douyin and other module imports in some packages. [#1427](https://github.com/galacean/effects-runtime/pull/1427) @zheeeng
 - Fix: rich text overflow setting invalid. [#1413](https://github.com/galacean/effects-runtime/pull/1413) @wumaolinmaoan
 
 ## 2.8.9
