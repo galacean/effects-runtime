@@ -28,7 +28,6 @@ export interface ShapeFeatherBounds {
  */
 export class ShapeFeatherRenderer {
   private static readonly maxKernelRadius = 6;
-  private static readonly maxDownsampleLevels = 6;
 
   private blurHMaterial: Material;
   private blurVMaterial: Material;
@@ -89,9 +88,16 @@ export class ShapeFeatherRenderer {
 
   /**
    * 以高斯模糊羽化方式渲染 shape
+   *
+   * 流程参考 Unity PostProcessing 的 Kawase/Gaussian blur：
+   * 1. 将 shape 绘制到局部裁剪 FBO
+   * 2. 降采样到较小 RT
+   * 3. 在降采样 RT 上做 N 次迭代的水平+垂直 separable gaussian blur（ping-pong）
+   * 4. 输出模糊结果到默认缓冲区
+   *
    * @param renderer - 渲染器
    * @param featherRadius - 羽化半径（屏幕像素）
-    * @param iterationCount - 多层 down/up 采样最小层数
+   * @param iterationCount - 模糊迭代次数（每次迭代包含一次水平+垂直模糊）
    * @param drawCallback - 绘制 shape 的回调
    * @param worldMatrix - shape 的世界变换矩阵
    * @param bounds - shape 的局部空间 AABB
@@ -109,11 +115,9 @@ export class ShapeFeatherRenderer {
     const screenWidth = renderer.getWidth();
     const screenHeight = renderer.getHeight();
 
-    // Step 1: 计算 shape 在屏幕空间的 AABB
+    // Step 1: 计算 shape 在屏幕空间的 AABB，向外扩展 featherRadius 作为 padding
     const mvpMatrix = new Matrix4().multiplyMatrices(vpMatrix, worldMatrix);
     const screenBounds = this.projectBoundsToScreen(mvpMatrix, bounds, screenWidth, screenHeight);
-
-    // 向外扩展 featherRadius 作为 padding
     const padding = Math.ceil(featherRadius);
 
     screenBounds.minX = Math.max(0, Math.floor(screenBounds.minX) - padding);
@@ -121,18 +125,17 @@ export class ShapeFeatherRenderer {
     screenBounds.maxX = Math.min(screenWidth, Math.ceil(screenBounds.maxX) + padding);
     screenBounds.maxY = Math.min(screenHeight, Math.ceil(screenBounds.maxY) + padding);
 
-    const rtWidth = screenBounds.maxX - screenBounds.minX;
-    const rtHeight = screenBounds.maxY - screenBounds.minY;
+    const regionWidth = screenBounds.maxX - screenBounds.minX;
+    const regionHeight = screenBounds.maxY - screenBounds.minY;
 
-    if (rtWidth <= 0 || rtHeight <= 0) {
+    if (regionWidth <= 0 || regionHeight <= 0) {
       return;
     }
 
-    // 保存当前状态
     const prevFramebuffer = renderer.getFramebuffer();
 
     // Step 2: 在临时 FBO 中绘制 shape
-    const shapeRT = renderer.getTemporaryRT('ShapeFeather', rtWidth, rtHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+    const shapeRT = renderer.getTemporaryRT('ShapeFeather', regionWidth, regionHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
 
     renderer.setFramebuffer(shapeRT);
     renderer.clear({
@@ -140,101 +143,72 @@ export class ShapeFeatherRenderer {
       clearColor: [0, 0, 0, 0],
     });
 
-    // 构建一个自定义的 VP 矩阵，将世界空间映射到 FBO 的视口区域
-    // FBO 对应屏幕上的 [screenBounds.minX, screenBounds.minY, rtWidth, rtHeight]
-    // 需要从原始 VP 变换中截取这个区域
+    // 构建裁剪 VP 矩阵：将世界空间映射到局部 FBO 区域
     const ndcMinX = (screenBounds.minX / screenWidth) * 2.0 - 1.0;
     const ndcMinY = (screenBounds.minY / screenHeight) * 2.0 - 1.0;
     const ndcMaxX = (screenBounds.maxX / screenWidth) * 2.0 - 1.0;
     const ndcMaxY = (screenBounds.maxY / screenHeight) * 2.0 - 1.0;
-
     const ndcW = ndcMaxX - ndcMinX;
     const ndcH = ndcMaxY - ndcMinY;
     const ndcCenterX = (ndcMinX + ndcMaxX) / 2.0;
     const ndcCenterY = (ndcMinY + ndcMaxY) / 2.0;
 
-    // 构建裁剪矩阵：将 [ndcMinX..ndcMaxX, ndcMinY..ndcMaxY] 映射到 [-1..1, -1..1]
-    // scale = 2/ndcW, 2/ndcH; translate = -ndcCenterX * scaleX, -ndcCenterY * scaleY
     const cropMatrix = new Matrix4(
       2.0 / ndcW, 0, 0, 0,
       0, 2.0 / ndcH, 0, 0,
       0, 0, 1, 0,
       -ndcCenterX * (2.0 / ndcW), -ndcCenterY * (2.0 / ndcH), 0, 1,
     );
-
-    // 新的 VP = cropMatrix * originalVP
     const croppedVP = new Matrix4().multiplyMatrices(cropMatrix, vpMatrix);
 
     renderer.setGlobalMatrix('effects_MatrixVP', croppedVP);
-
     drawCallback(renderer);
-
-    // 恢复原来的 VP 矩阵
     renderer.setGlobalMatrix('effects_MatrixVP', vpMatrix);
 
-    // Step 3: 多层降采样仅用于线性过滤加速，真正的模糊仍在最小层执行 separable gaussian
-    const requestedDownsample = Math.max(1, Math.ceil(featherRadius / ShapeFeatherRenderer.maxKernelRadius));
-    const downsampleLevelCount = this.resolveDownsampleLevelCount(requestedDownsample, iterationCount, rtWidth, rtHeight);
-    const retainedRTs = [shapeRT];
-    const downsampleRTs = [shapeRT];
-    let blurRT = shapeRT;
+    // Step 3: 降采样到较小 RT
+    const downscaleFactor = 1;
+    const rtWidth = Math.max(1, Math.floor(regionWidth / downscaleFactor));
+    const rtHeight = Math.max(1, Math.floor(regionHeight / downscaleFactor));
 
-    for (let i = 0; i < downsampleLevelCount; i++) {
-      const sourceTexture = blurRT.getColorTextures()[0];
-      const nextWidth = Math.max(1, Math.ceil(sourceTexture.getWidth() / 2));
-      const nextHeight = Math.max(1, Math.ceil(sourceTexture.getHeight() / 2));
-      const downsampleRT = renderer.getTemporaryRT(`ShapeFeatherDS${i}`, nextWidth, nextHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+    const bufferRT1 = renderer.getTemporaryRT('ShapeFeatherBuf1', rtWidth, rtHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
+    const bufferRT2 = renderer.getTemporaryRT('ShapeFeatherBuf2', rtWidth, rtHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
 
-      renderer.blit(sourceTexture, downsampleRT);
-      retainedRTs.push(downsampleRT);
-      downsampleRTs.push(downsampleRT);
-      blurRT = downsampleRT;
+    // 降采样：将 shape FBO 内容复制到较小的 bufferRT1
+    renderer.blit(shapeRT.getColorTextures()[0], bufferRT1);
+
+    // Step 4: 多次迭代水平+垂直 separable gaussian blur（ping-pong）
+    // 多次高斯模糊的 sigma 叠加关系：σ_total² = N × σ_per²
+    // 因此每次迭代的 radius = effectiveRadius / √N
+    const effectiveRadius = featherRadius / downscaleFactor;
+    const clampedIterationCount = Math.max(1, iterationCount);
+    const perIterationRadius = effectiveRadius / Math.sqrt(clampedIterationCount);
+    const texSize = new Vector2(rtWidth, rtHeight);
+
+    for (let i = 0; i < clampedIterationCount; i++) {
+      // 水平模糊: bufferRT1 -> bufferRT2
+      this.blurHMaterial.setVector2('_TextureSize', texSize);
+      this.blurHMaterial.setFloat('_BlurRadius', perIterationRadius);
+      renderer.blit(bufferRT1.getColorTextures()[0], bufferRT2, this.blurHMaterial);
+
+      // 垂直模糊: bufferRT2 -> bufferRT1
+      this.blurVMaterial.setVector2('_TextureSize', texSize);
+      this.blurVMaterial.setFloat('_BlurRadius', perIterationRadius);
+      renderer.blit(bufferRT2.getColorTextures()[0], bufferRT1, this.blurVMaterial);
     }
 
-    const actualDownsample = Math.max(1, shapeRT.getColorTextures()[0].getWidth() / blurRT.getColorTextures()[0].getWidth());
-    const dsWidth = blurRT.getColorTextures()[0].getWidth();
-    const dsHeight = blurRT.getColorTextures()[0].getHeight();
-    const effectiveRadius = featherRadius / actualDownsample;
-
-    const texSize = new Vector2(dsWidth, dsHeight);
-    const tempRT = renderer.getTemporaryRT('ShapeFeatherBlur', dsWidth, dsHeight, 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
-
-    this.blurHMaterial.setVector2('_TextureSize', texSize);
-    this.blurHMaterial.setFloat('_BlurRadius', effectiveRadius);
-    renderer.blit(blurRT.getColorTextures()[0], tempRT, this.blurHMaterial);
-
-    this.blurVMaterial.setVector2('_TextureSize', texSize);
-    this.blurVMaterial.setFloat('_BlurRadius', effectiveRadius);
-    renderer.blit(tempRT.getColorTextures()[0], blurRT, this.blurVMaterial);
-
-    renderer.releaseTemporaryRT(tempRT);
-
-    // Step 4: 渐进式上采样回更高分辨率，只做线性重建，不与各层内容混合，避免 bloom 式中心增强
-    for (let i = downsampleRTs.length - 2; i >= 0; i--) {
-      const upsampleSource = downsampleRTs[i].getColorTextures()[0];
-      const upsampleRT = renderer.getTemporaryRT(`ShapeFeatherUS${i}`, upsampleSource.getWidth(), upsampleSource.getHeight(), 0, FilterMode.Linear, RenderTextureFormat.RGBA32);
-
-      renderer.blit(blurRT.getColorTextures()[0], upsampleRT);
-      retainedRTs.push(upsampleRT);
-      blurRT = upsampleRT;
-    }
-
-    // Step 5: 输出到默认缓冲区
+    // Step 5: 输出模糊结果到默认缓冲区
     renderer.setFramebuffer(prevFramebuffer);
 
-    // 计算输出矩形在 NDC 空间中的位置
     const screenRect = new Vector4(ndcMinX, ndcMinY, ndcW, ndcH);
 
-    this.outputMaterial.setTexture('_MainTex', blurRT.getColorTextures()[0]);
+    this.outputMaterial.setTexture('_MainTex', bufferRT1.getColorTextures()[0]);
     this.outputMaterial.setVector4('_ScreenRect', screenRect);
+    renderer.drawGeometry(this.outputGeometry, Matrix4.IDENTITY, this.outputMaterial);
 
-    const identity = Matrix4.IDENTITY;
-
-    renderer.drawGeometry(this.outputGeometry, identity, this.outputMaterial);
-
-    for (const rt of retainedRTs) {
-      renderer.releaseTemporaryRT(rt);
-    }
+    // Step 6: 释放所有临时 RT
+    renderer.releaseTemporaryRT(bufferRT1);
+    renderer.releaseTemporaryRT(bufferRT2);
+    renderer.releaseTemporaryRT(shapeRT);
   }
 
   dispose (): void {
@@ -303,37 +277,6 @@ export class ShapeFeatherRenderer {
       e[1] * x + e[5] * y + e[9] * z + e[13] * w,
       e[2] * x + e[6] * y + e[10] * z + e[14] * w,
       e[3] * x + e[7] * y + e[11] * z + e[15] * w,
-    );
-  }
-
-  private resolveDownsampleLevelCount (downsample: number, iterationCount: number, width: number, height: number): number {
-    const requestedLevelCount = Math.max(0, Math.floor(iterationCount));
-    let remainingDownsample = downsample;
-    let currentWidth = width;
-    let currentHeight = height;
-    let levelCount = 0;
-
-    while (
-      remainingDownsample > 1
-      && levelCount < ShapeFeatherRenderer.maxDownsampleLevels
-      && (currentWidth > 1 || currentHeight > 1)
-    ) {
-      const nextWidth = Math.max(1, Math.ceil(currentWidth / 2));
-      const nextHeight = Math.max(1, Math.ceil(currentHeight / 2));
-
-      if (nextWidth === currentWidth && nextHeight === currentHeight) {
-        break;
-      }
-
-      currentWidth = nextWidth;
-      currentHeight = nextHeight;
-      remainingDownsample = Math.ceil(remainingDownsample / 2);
-      levelCount++;
-    }
-
-    return Math.min(
-      ShapeFeatherRenderer.maxDownsampleLevels,
-      Math.max(requestedLevelCount, levelCount),
     );
   }
 }

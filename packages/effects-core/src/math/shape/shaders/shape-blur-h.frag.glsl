@@ -29,7 +29,8 @@ void main() {
   vec4 color = vec4(0.0);
   for (int i = 0; i < 13; i++) {
     float offset = (float(i) - 6.0) * scale * pixelSize;
-    color += texture2D(_MainTex, uv + vec2(offset, 0.0)) * weights[i];
+    vec2 sampleUV = clamp(uv + vec2(offset, 0.0), 0.0, 1.0);
+    color += texture2D(_MainTex, sampleUV) * weights[i];
   }
 
   gl_FragColor = color;
