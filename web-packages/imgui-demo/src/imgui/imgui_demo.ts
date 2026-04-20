@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-loss-of-precision */
 /* eslint-disable brace-style */
 /* eslint-disable no-empty */
-// dear imgui, v1.80
+// dear imgui, v1.92.7 WIP (docking branch)
 // (demo code)
 
 // Help:
@@ -13,7 +13,7 @@
 // - Newcomers, read 'Programmer guide' in imgui.cpp for notes on how to setup Dear ImGui in your codebase.
 // - Call and read ImGui.ShowDemoWindow() in imgui_demo.cpp. All applications in examples/ are doing that.
 // Read imgui.cpp for more details, documentation and comments.
-// Get latest version at https://github.com/ocornut/imgui
+// Get the latest version at https://github.com/ocornut/imgui
 
 // Message to the person tempted to delete this file when integrating Dear ImGui into their code base:
 // Do NOT remove this file from your project! Think again! It is the most useful reference code that you and other
@@ -59,9 +59,10 @@ Index of this file:
 // - sub section: ShowDemoWindowLayout()
 // - sub section: ShowDemoWindowPopups()
 // - sub section: ShowDemoWindowTables()
-// - sub section: ShowDemoWindowMisc()
+// - sub section: ShowDemoWindowInputs()
 // [SECTION] About Window / ShowAboutWindow()
 // [SECTION] Style Editor / ShowStyleEditor()
+// [SECTION] User Guide / ShowUserGuide()
 // [SECTION] Example App: Main Menu Bar / ShowExampleAppMainMenuBar()
 // [SECTION] Example App: Debug Console / ShowExampleAppConsole()
 // [SECTION] Example App: Debug Log / ShowExampleAppLog()
@@ -71,9 +72,11 @@ Index of this file:
 // [SECTION] Example App: Auto Resize / ShowExampleAppAutoResize()
 // [SECTION] Example App: Constrained Resize / ShowExampleAppConstrainedResize()
 // [SECTION] Example App: Simple Overlay / ShowExampleAppSimpleOverlay()
+// [SECTION] Example App: Fullscreen Window / ShowExampleAppFullscreen()
 // [SECTION] Example App: Manipulating Window Titles / ShowExampleAppWindowTitles()
 // [SECTION] Example App: Custom Rendering using ImDrawList API / ShowExampleAppCustomRendering()
 // [SECTION] Example App: Documents Handling / ShowExampleAppDocuments()
+// [SECTION] Example App: Assets Browser / ShowExampleAppAssetsBrowser()
 
 */
 
@@ -233,8 +236,7 @@ function IM_CLAMP (V: float, MN: float, MX: float): float { return V < MN ? MN :
 // In your own code you may want to display an actual icon if you are using a merged icon fonts (see docs/FONTS.md)
 function HelpMarker (desc: string): void {
   ImGui.TextDisabled('(?)');
-  if (ImGui.IsItemHovered()) {
-    ImGui.BeginTooltip();
+  if (ImGui.BeginItemTooltip()) {
     ImGui.PushTextWrapPos(ImGui.GetFontSize() * 35.0);
     ImGui.TextUnformatted(desc);
     ImGui.PopTextWrapPos();
@@ -248,28 +250,29 @@ function /*ImGui.*/ShowUserGuide (): void {
 
   ImGui.BulletText('Double-click on title bar to collapse window.');
   ImGui.BulletText(
-    'Click and drag on lower corner to resize window\n' +
-        '(double-click to auto fit window to its contents).');
-  ImGui.BulletText('CTRL+Click on a slider or drag box to input value as text.');
-  ImGui.BulletText('TAB/SHIFT+TAB to cycle through keyboard editable fields.');
-  if (io.FontAllowUserScaling) {ImGui.BulletText('CTRL+Mouse Wheel to zoom window contents.');}
-  ImGui.BulletText('While inputing text:\n');
+    'Click and drag on lower corner or border to resize window.\n' +
+    '(double-click to auto fit window to its contents)');
+  ImGui.BulletText('Ctrl+Click on a slider or drag box to input value as text.');
+  ImGui.BulletText('Tab/Shift+Tab to cycle through keyboard editable fields.');
+  ImGui.BulletText('Ctrl+Tab/Ctrl+Shift+Tab to focus windows.');
+  if (io.FontAllowUserScaling)
+  {ImGui.BulletText('Ctrl+Mouse Wheel to zoom window contents.');}
+  ImGui.BulletText('While inputting text:\n');
   ImGui.Indent();
-  ImGui.BulletText('CTRL+Left/Right to word jump.');
-  ImGui.BulletText('CTRL+A or double-click to select all.');
-  ImGui.BulletText('CTRL+X/C/V to use clipboard cut/copy/paste.');
-  ImGui.BulletText('CTRL+Z,CTRL+Y to undo/redo.');
-  ImGui.BulletText('ESCAPE to revert.');
-  ImGui.BulletText('You can apply arithmetic operators +,*,/ on numerical values.\nUse +- to subtract.');
+  ImGui.BulletText('Ctrl+Left/Right to word jump.');
+  ImGui.BulletText('Ctrl+A or double-click to select all.');
+  ImGui.BulletText('Ctrl+X/C/V to use clipboard cut/copy/paste.');
+  ImGui.BulletText('Ctrl+Z to undo, Ctrl+Y/Ctrl+Shift+Z to redo.');
+  ImGui.BulletText('Escape to revert.');
   ImGui.Unindent();
-  ImGui.BulletText('With keyboard navigation enabled:');
+  ImGui.BulletText('With Keyboard controls enabled:');
   ImGui.Indent();
-  ImGui.BulletText('Arrow keys to navigate.');
+  ImGui.BulletText('Arrow keys or Home/End/PageUp/PageDown to navigate.');
   ImGui.BulletText('Space to activate a widget.');
   ImGui.BulletText('Return to input text into a widget.');
-  ImGui.BulletText('Escape to deactivate a widget, close popup, exit child window.');
+  ImGui.BulletText('Escape to deactivate a widget, close popup,\nexit a child window or the menu layer, clear focus.');
   ImGui.BulletText('Alt to jump to the menu layer of a window.');
-  ImGui.BulletText('CTRL+Tab to select a window.');
+  ImGui.BulletText('Menu or Shift+F10 to open a context menu.');
   ImGui.Unindent();
 }
 
@@ -293,7 +296,937 @@ function /*ImGui.*/ShowUserGuide (): void {
 // static void ShowDemoWindowColumns();
 // static void ShowDemoWindowMisc();
 
+//-----------------------------------------------------------------------------
+// [SECTION] ExampleTreeNode, ExampleMemberInfo
+//-----------------------------------------------------------------------------
+
+class ExampleTreeNode {
+  Name: string = '';
+  UID: number = 0;
+  Parent: ExampleTreeNode | null = null;
+  Childs: ExampleTreeNode[] = [];
+  IndexInParent: number = 0;
+
+  // Leaf Data
+  HasData: boolean = false;
+  DataMyBool: boolean = true;
+  DataMyInt: number = 128;
+  DataMyVec2: [number, number] = [0.0, 3.141592];
+}
+
+interface ExampleMemberInfo {
+  Name: string,
+  DataType: ImGui.DataType,
+  DataCount: number,
+  Field: string, // TS: field name instead of C++ offsetof
+}
+
+const ExampleTreeNodeMemberInfos: ExampleMemberInfo[] = [
+  { Name: 'MyName', DataType: ImGui.DataType.String, DataCount: 1, Field: 'Name' },
+  { Name: 'MyBool', DataType: ImGui.DataType.Bool, DataCount: 1, Field: 'DataMyBool' },
+  { Name: 'MyInt', DataType: ImGui.DataType.S32, DataCount: 1, Field: 'DataMyInt' },
+  { Name: 'MyVec2', DataType: ImGui.DataType.Float, DataCount: 2, Field: 'DataMyVec2' },
+];
+
+function ExampleTree_CreateNode (name: string, uid: number, parent: ExampleTreeNode | null): ExampleTreeNode {
+  const node = new ExampleTreeNode();
+
+  node.Name = name;
+  node.UID = uid;
+  node.Parent = parent;
+  node.IndexInParent = parent ? parent.Childs.length : 0;
+  if (parent)
+  {parent.Childs.push(node);}
+
+  return node;
+}
+
+function ExampleTree_CreateDemoTree (): ExampleTreeNode {
+  const ROOT_ITEMS_COUNT = 20;
+  const category_names = ['Apple', 'Banana', 'Cherry', 'Kiwi', 'Mango', 'Orange', 'Pear', 'Pineapple', 'Strawberry', 'Watermelon'];
+  const category_count = category_names.length;
+  let uid = 0;
+  const node_L0 = ExampleTree_CreateNode('<ROOT>', ++uid, null);
+
+  for (let idx_L0 = 0; idx_L0 < ROOT_ITEMS_COUNT; idx_L0++) {
+    const name = `${category_names[Math.floor(idx_L0 / (ROOT_ITEMS_COUNT / category_count))]} ${idx_L0 % (ROOT_ITEMS_COUNT / category_count)}`;
+    const node_L1 = ExampleTree_CreateNode(name, ++uid, node_L0);
+    const number_of_childs = node_L1.Name.length;
+
+    for (let idx_L1 = 0; idx_L1 < number_of_childs; idx_L1++) {
+      const node_L2 = ExampleTree_CreateNode(`Child ${idx_L1}`, ++uid, node_L1);
+
+      node_L2.HasData = true;
+      if (idx_L1 === 0) {
+        const node_L3 = ExampleTree_CreateNode('Sub-child 0', ++uid, node_L2);
+
+        node_L3.HasData = true;
+      }
+    }
+  }
+
+  return node_L0;
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] Multi-Select support: ExampleNames, ExampleSelectionWithDeletion, ExampleDualListBox
+//-----------------------------------------------------------------------------
+
+const ExampleNames: string[] = [
+  'Artichoke', 'Arugula', 'Asparagus', 'Avocado', 'Bamboo Shoots', 'Bean Sprouts', 'Beans', 'Beet',
+  'Belgian Endive', 'Bell Pepper', 'Bitter Gourd', 'Bok Choy', 'Broccoli', 'Brussels Sprouts',
+  'Burdock Root', 'Cabbage', 'Calabash', 'Capers', 'Carrot', 'Cassava', 'Cauliflower', 'Celery',
+  'Celery Root', 'Celcute', 'Chayote', 'Chinese Broccoli', 'Corn', 'Cucumber',
+];
+
+class ExampleSelectionWithDeletion extends ImGui.SelectionBasicStorage {
+  // Find which item should be Focused after deletion.
+  // Call _before_ item loop. The _
+  ApplyDeletionPreLoop (ms_io: ImGui.MultiSelectIO, items_count: number): number {
+    if (this.PreserveOrder) { this.PreserveOrder = false; } // Disable order preservation for deletion
+    // If focused item is not selected...
+    const focused_idx = ms_io.NavIdItem;
+
+    if (focused_idx < items_count && this.Contains(focused_idx) === false)
+    {return -1;}
+    // If focused item is going to be deleted, scan forward, then backward
+    for (let i = focused_idx + 1; i < items_count; i++)
+    {if (!this.Contains(i)) {return i > focused_idx ? i - 1 : i;}}
+    for (let i = Math.min(focused_idx, items_count) - 1; i >= 0; i--)
+    {if (!this.Contains(i)) {return i;}}
+
+    return -1;
+  }
+
+  // Rewrite item list (delete items) + update selection.
+  // Call _after_ item loop.
+  ApplyDeletionPostLoop (ms_io: ImGui.MultiSelectIO, items: number[], item_curr_idx_to_focus: number): void {
+    // Rewrite item list (delete items) and update selection
+    const new_items: number[] = [];
+
+    for (let n = 0; n < items.length; n++) {
+      if (!this.Contains(n))
+      {new_items.push(items[n]);}
+    }
+    items.length = 0;
+    for (const item of new_items) {items.push(item);}
+    // Update selection
+    this.Clear();
+    if (item_curr_idx_to_focus !== -1)
+    {ms_io.RangeSrcReset = true;} // Request to recover RangeSrc from NavId next frame
+  }
+}
+
+class ExampleDualListBox {
+  Items: [number[], number[]] = [[], []];
+  Selections: [ImGui.SelectionBasicStorage, ImGui.SelectionBasicStorage] = [new ImGui.SelectionBasicStorage(), new ImGui.SelectionBasicStorage()];
+  OptKeepSorted: boolean = true;
+
+  MoveAll (src: number, dst: number): void {
+    for (const item of this.Items[src]) {this.Items[dst].push(item);}
+    this.Items[src].length = 0;
+    this.Selections[src].Clear();
+    this.SortItems(dst);
+  }
+
+  MoveSelected (src: number, dst: number): void {
+    const new_src: number[] = [];
+
+    for (let n = 0; n < this.Items[src].length; n++) {
+      if (this.Selections[src].Contains(n)) {
+        this.Items[dst].push(this.Items[src][n]);
+      } else {
+        new_src.push(this.Items[src][n]);
+      }
+    }
+    this.Items[src] = new_src;
+    this.Selections[src].Clear();
+    this.SortItems(dst);
+  }
+
+  SortItems (n: number): void {
+    if (this.OptKeepSorted)
+    {this.Items[n].sort((a, b) => a - b);}
+  }
+
+  Show (): void {
+    // Adapted from C++ ExampleDualListBox::Show()
+    if (ImGui.BeginTable('##split', 3, ImGui.TableFlags.None)) {
+      ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthStretch);
+      ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthFixed);
+      ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthStretch);
+
+      // Left list
+      ImGui.TableNextColumn();
+      if (ImGui.BeginChild('##LeftChild', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 14), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        const ms_flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d;
+        let ms_io = ImGui.BeginMultiSelect(ms_flags, this.Selections[0].Size, this.Items[0].length);
+
+        this.Selections[0].ApplyRequests(ms_io);
+        for (let n = 0; n < this.Items[0].length; n++) {
+          const item_id = this.Items[0][n];
+          const label = `${ExampleNames[item_id % ExampleNames.length]}##L${item_id}`;
+
+          ImGui.SetNextItemSelectionUserData(n);
+          ImGui.Selectable(label, this.Selections[0].Contains(n));
+        }
+        ms_io = ImGui.EndMultiSelect();
+        this.Selections[0].ApplyRequests(ms_io);
+      }
+      ImGui.EndChild();
+
+      // Buttons
+      ImGui.TableNextColumn();
+      ImGui.NewLine();
+      const button_sz = new ImGui.Vec2(ImGui.CalcTextSize('>').x + ImGui.GetStyle().FramePadding.x * 2.0, 0);
+
+      if (ImGui.Button('>>', button_sz)) { this.MoveAll(0, 1); }
+      if (ImGui.Button('>', button_sz)) { this.MoveSelected(0, 1); }
+      if (ImGui.Button('<', button_sz)) { this.MoveSelected(1, 0); }
+      if (ImGui.Button('<<', button_sz)) { this.MoveAll(1, 0); }
+
+      // Right list
+      ImGui.TableNextColumn();
+      if (ImGui.BeginChild('##RightChild', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 14), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        const ms_flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d;
+        let ms_io = ImGui.BeginMultiSelect(ms_flags, this.Selections[1].Size, this.Items[1].length);
+
+        this.Selections[1].ApplyRequests(ms_io);
+        for (let n = 0; n < this.Items[1].length; n++) {
+          const item_id = this.Items[1][n];
+          const label = `${ExampleNames[item_id % ExampleNames.length]}##R${item_id}`;
+
+          ImGui.SetNextItemSelectionUserData(n);
+          ImGui.Selectable(label, this.Selections[1].Contains(n));
+        }
+        ms_io = ImGui.EndMultiSelect();
+        this.Selections[1].ApplyRequests(ms_io);
+      }
+      ImGui.EndChild();
+
+      ImGui.EndTable();
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+// [SECTION] DemoWindowWidgetsSelectionAndMultiSelect()
+//-----------------------------------------------------------------------------
+
+function DemoWindowWidgetsSelectionAndMultiSelect (): void {
+  if (ImGui.TreeNode('Selection State & Multi-Select')) {
+    HelpMarker('Selections can be built using Selectable(), TreeNode() or other widgets. Selection state is owned by application code/data.');
+
+    ImGui.BulletText('Wiki page:');
+    ImGui.SameLine();
+    ImGui.TextLinkOpenURL('imgui/wiki/Multi-Select', 'https://github.com/ocornut/imgui/wiki/Multi-Select');
+
+    // 1. Single-Select
+    if (ImGui.TreeNode('Single-Select')) {
+      const selected = STATIC<int>(UNIQUE('selected#single'), -1);
+
+      for (let n = 0; n < 5; n++) {
+        if (ImGui.Selectable(`Object ${n}`, selected.value === n))
+        {selected.value = n;}
+      }
+      ImGui.TreePop();
+    }
+
+    // 2. Multi-Select (manual)
+    if (ImGui.TreeNode('Multi-Select (manual/simplified, without BeginMultiSelect)')) {
+      HelpMarker('Hold Ctrl and Click to select multiple items.');
+      const selection = STATIC_ARRAY<boolean>(5, UNIQUE('selection#manual'), [false, false, false, false, false]).value;
+
+      for (let n = 0; n < 5; n++) {
+        if (ImGui.Selectable(`Object ${n}`, selection[n])) {
+          if (!ImGui.GetIO().KeyCtrl)
+          {for (let i = 0; i < 5; i++) {selection[i] = false;}}
+          selection[n] = !selection[n];
+        }
+      }
+      ImGui.TreePop();
+    }
+
+    // 3. Multi-Select
+    if (ImGui.TreeNode('Multi-Select')) {
+      ImGui.Text('Supported features:');
+      ImGui.BulletText('Keyboard navigation (arrows, page up/down, home/end, space).');
+      ImGui.BulletText('Ctrl modifier to preserve and toggle selection.');
+      ImGui.BulletText('Shift modifier for range selection.');
+      ImGui.BulletText('Ctrl+A to select all.');
+      ImGui.BulletText('Escape to clear selection.');
+      ImGui.BulletText('Click and drag to box-select.');
+      ImGui.Text('Tip: Use \'Demo->Tools->Debug Log->Selection\' to see selection requests as they happen.');
+
+      const ITEMS_COUNT = 50;
+      const selection = STATIC<ImGui.SelectionBasicStorage>(UNIQUE('selection#multi'), new ImGui.SelectionBasicStorage());
+
+      ImGui.Text(`Selection: ${selection.value.Size}/${ITEMS_COUNT}`);
+
+      if (ImGui.BeginChild('##Basket', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 20), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        const flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d;
+        let ms_io = ImGui.BeginMultiSelect(flags, selection.value.Size, ITEMS_COUNT);
+
+        selection.value.ApplyRequests(ms_io);
+
+        for (let n = 0; n < ITEMS_COUNT; n++) {
+          const label = `Object ${String(n).padStart(5, '0')}: ${ExampleNames[n % ExampleNames.length]}`;
+          const item_is_selected = selection.value.Contains(n);
+
+          ImGui.SetNextItemSelectionUserData(n);
+          ImGui.Selectable(label, item_is_selected);
+        }
+
+        ms_io = ImGui.EndMultiSelect();
+        selection.value.ApplyRequests(ms_io);
+      }
+      ImGui.EndChild();
+      ImGui.TreePop();
+    }
+
+    // 4. Multi-Select (with clipper)
+    if (ImGui.TreeNode('Multi-Select (with clipper)')) {
+      const selection = STATIC<ImGui.SelectionBasicStorage>(UNIQUE('selection#clipper'), new ImGui.SelectionBasicStorage());
+
+      ImGui.Text('Added features:');
+      ImGui.BulletText('Using ImGuiListClipper.');
+
+      const ITEMS_COUNT = 10000;
+
+      ImGui.Text(`Selection: ${selection.value.Size}/${ITEMS_COUNT}`);
+      if (ImGui.BeginChild('##Basket', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 20), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        const flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d;
+        let ms_io = ImGui.BeginMultiSelect(flags, selection.value.Size, ITEMS_COUNT);
+
+        selection.value.ApplyRequests(ms_io);
+
+        const clipper = new ImGui.ListClipper();
+
+        clipper.Begin(ITEMS_COUNT);
+        if (ms_io !== null && ms_io.RangeSrcItem !== -1)
+        {clipper.IncludeItemByIndex(ms_io.RangeSrcItem);}
+        while (clipper.Step()) {
+          for (let n = clipper.DisplayStart; n < clipper.DisplayEnd; n++) {
+            const label = `Object ${String(n).padStart(5, '0')}: ${ExampleNames[n % ExampleNames.length]}`;
+            const item_is_selected = selection.value.Contains(n);
+
+            ImGui.SetNextItemSelectionUserData(n);
+            ImGui.Selectable(label, item_is_selected);
+          }
+        }
+
+        ms_io = ImGui.EndMultiSelect();
+        selection.value.ApplyRequests(ms_io);
+      }
+      ImGui.EndChild();
+      ImGui.TreePop();
+    }
+
+    // 5. Multi-Select (with deletion)
+    if (ImGui.TreeNode('Multi-Select (with deletion)')) {
+      const items = STATIC<number[]>(UNIQUE('items#deletion'), []);
+      const selection = STATIC<ExampleSelectionWithDeletion>(UNIQUE('selection#deletion'), new ExampleSelectionWithDeletion());
+      const items_next_id = STATIC<number>(UNIQUE('items_next_id#deletion'), 0);
+
+      ImGui.Text('Added features:');
+      ImGui.BulletText('Dynamic list with Delete key support.');
+      ImGui.Text(`Selection size: ${selection.value.Size}/${items.value.length}`);
+
+      // Initialize
+      if (items_next_id.value === 0) {
+        for (let n = 0; n < 50; n++) {items.value.push(items_next_id.value++);}
+      }
+      if (ImGui.SmallButton('Add 20 items')) { for (let n = 0; n < 20; n++) {items.value.push(items_next_id.value++);} }
+      ImGui.SameLine();
+      if (ImGui.SmallButton('Remove 20 items')) { for (let n = Math.min(20, items.value.length); n > 0; n--) { selection.value.SetItemSelected(items.value[items.value.length - 1], false); items.value.pop(); } }
+
+      const items_height = ImGui.GetTextLineHeightWithSpacing();
+
+      ImGui.SetNextWindowContentSize(new ImGui.Vec2(0.0, items.value.length * items_height));
+
+      if (ImGui.BeginChild('##Basket', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 20), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        const flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d;
+        let ms_io = ImGui.BeginMultiSelect(flags, selection.value.Size, items.value.length)!;
+
+        selection.value.ApplyRequests(ms_io);
+
+        const want_delete = ImGui.Shortcut(ImGui.Key.Delete, ImGui.InputFlags.Repeat) && (selection.value.Size > 0);
+        const item_curr_idx_to_focus = want_delete ? selection.value.ApplyDeletionPreLoop(ms_io, items.value.length) : -1;
+
+        for (let n = 0; n < items.value.length; n++) {
+          const item_id = items.value[n];
+          const label = `Object ${String(item_id).padStart(5, '0')}: ${ExampleNames[item_id % ExampleNames.length]}`;
+          const item_is_selected = selection.value.Contains(item_id);
+
+          ImGui.SetNextItemSelectionUserData(n);
+          ImGui.Selectable(label, item_is_selected);
+          if (item_curr_idx_to_focus === n)
+          {ImGui.SetKeyboardFocusHere(-1);}
+        }
+
+        ms_io = ImGui.EndMultiSelect()!;
+        selection.value.ApplyRequests(ms_io);
+        if (want_delete)
+        {selection.value.ApplyDeletionPostLoop(ms_io, items.value, item_curr_idx_to_focus);}
+      }
+      ImGui.EndChild();
+      ImGui.TreePop();
+    }
+
+    // 6. Multi-Select (dual list box)
+    if (ImGui.TreeNode('Multi-Select (dual list box)')) {
+      const dlb = STATIC<ExampleDualListBox>(UNIQUE('dlb#duallist'), new ExampleDualListBox());
+
+      if (dlb.value.Items[0].length === 0 && dlb.value.Items[1].length === 0)
+      {for (let item_id = 0; item_id < ExampleNames.length; item_id++)
+      {dlb.value.Items[0].push(item_id);}}
+      dlb.value.Show();
+      ImGui.TreePop();
+    }
+
+    // 7. Multi-Select (in a table)
+    if (ImGui.TreeNode('Multi-Select (in a table)')) {
+      const selection = STATIC<ImGui.SelectionBasicStorage>(UNIQUE('selection#table'), new ImGui.SelectionBasicStorage());
+
+      const ITEMS_COUNT = 10000;
+
+      ImGui.Text(`Selection: ${selection.value.Size}/${ITEMS_COUNT}`);
+      if (ImGui.BeginTable('##Basket', 2, ImGui.TableFlags.ScrollY | ImGui.TableFlags.RowBg | ImGui.TableFlags.BordersOuter, new ImGui.Vec2(0.0, ImGui.GetFontSize() * 20))) {
+        ImGui.TableSetupColumn('Object');
+        ImGui.TableSetupColumn('Action');
+        ImGui.TableSetupScrollFreeze(0, 1);
+        ImGui.TableHeadersRow();
+
+        const flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d;
+        let ms_io = ImGui.BeginMultiSelect(flags, selection.value.Size, ITEMS_COUNT);
+
+        selection.value.ApplyRequests(ms_io);
+
+        const clipper = new ImGui.ListClipper();
+
+        clipper.Begin(ITEMS_COUNT);
+        if (ms_io !== null && ms_io.RangeSrcItem !== -1)
+        {clipper.IncludeItemByIndex(ms_io.RangeSrcItem);}
+        while (clipper.Step()) {
+          for (let n = clipper.DisplayStart; n < clipper.DisplayEnd; n++) {
+            ImGui.TableNextRow();
+            ImGui.TableNextColumn();
+            ImGui.PushID(n);
+            const label = `Object ${String(n).padStart(5, '0')}: ${ExampleNames[n % ExampleNames.length]}`;
+            const item_is_selected = selection.value.Contains(n);
+
+            ImGui.SetNextItemSelectionUserData(n);
+            ImGui.Selectable(label, item_is_selected, ImGui.SelectableFlags.SpanAllColumns | ImGui.SelectableFlags.AllowOverlap);
+            ImGui.TableNextColumn();
+            ImGui.SmallButton('hello');
+            ImGui.PopID();
+          }
+        }
+
+        ms_io = ImGui.EndMultiSelect();
+        selection.value.ApplyRequests(ms_io);
+        ImGui.EndTable();
+      }
+      ImGui.TreePop();
+    }
+
+    // 8. Multi-Select (checkboxes)
+    if (ImGui.TreeNode('Multi-Select (checkboxes)')) {
+      ImGui.Text('In a list of checkboxes (not selectable):');
+      ImGui.BulletText('Using _NoAutoSelect + _NoAutoClear flags.');
+      ImGui.BulletText('Shift+Click to check multiple boxes.');
+      ImGui.BulletText('Shift+Keyboard to copy current value to other boxes.');
+
+      const items = STATIC_ARRAY<boolean>(20, UNIQUE('items#checkboxes'), Array(20).fill(false)).value;
+      const flags = STATIC<ImGui.MultiSelectFlags>(UNIQUE('flags#checkboxes'),
+        ImGui.MultiSelectFlags.NoAutoSelect | ImGui.MultiSelectFlags.NoAutoClear | ImGui.MultiSelectFlags.ClearOnEscape);
+
+      ImGui.CheckboxFlags('ImGuiMultiSelectFlags_NoAutoSelect', flags.access, ImGui.MultiSelectFlags.NoAutoSelect);
+      ImGui.CheckboxFlags('ImGuiMultiSelectFlags_NoAutoClear', flags.access, ImGui.MultiSelectFlags.NoAutoClear);
+      ImGui.CheckboxFlags('ImGuiMultiSelectFlags_BoxSelect2d', flags.access, ImGui.MultiSelectFlags.BoxSelect2d);
+
+      if (ImGui.BeginChild('##Basket', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 20), ImGui.ChildFlags.Borders | ImGui.ChildFlags.ResizeY)) {
+        let ms_io = ImGui.BeginMultiSelect(flags.value, -1, 20);
+        const storage = new ImGui.SelectionExternalStorage();
+
+        storage.UserData = items;
+        storage.AdapterSetItemSelected = (self: ImGui.SelectionExternalStorage, n: number, selected: boolean) => {
+          (self.UserData as boolean[])[n] = selected;
+        };
+        storage.ApplyRequests(ms_io);
+        for (let n = 0; n < 20; n++) {
+          ImGui.SetNextItemSelectionUserData(n);
+          ImGui.Checkbox(`Item ${n}`, (value = items[n]) => items[n] = value);
+        }
+        ms_io = ImGui.EndMultiSelect();
+        storage.ApplyRequests(ms_io);
+      }
+      ImGui.EndChild();
+      ImGui.TreePop();
+    }
+
+    // 9. Multi-Select (multiple scopes)
+    if (ImGui.TreeNode('Multi-Select (multiple scopes)')) {
+      const SCOPES_COUNT = 3;
+      const ITEMS_COUNT = 8;
+      const selections_data = STATIC_ARRAY<ImGui.SelectionBasicStorage>(SCOPES_COUNT, UNIQUE('selections#scopes'),
+        Array.from({ length: SCOPES_COUNT }, () => new ImGui.SelectionBasicStorage())).value;
+
+      const flags = STATIC<ImGui.MultiSelectFlags>(UNIQUE('flags#scopes'),
+        ImGui.MultiSelectFlags.ScopeRect | ImGui.MultiSelectFlags.ClearOnEscape);
+
+      if (ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ScopeWindow', flags.access, ImGui.MultiSelectFlags.ScopeWindow) && (flags.value & ImGui.MultiSelectFlags.ScopeWindow))
+      {flags.value &= ~ImGui.MultiSelectFlags.ScopeRect;}
+      if (ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ScopeRect', flags.access, ImGui.MultiSelectFlags.ScopeRect) && (flags.value & ImGui.MultiSelectFlags.ScopeRect))
+      {flags.value &= ~ImGui.MultiSelectFlags.ScopeWindow;}
+      ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ClearOnClickVoid', flags.access, ImGui.MultiSelectFlags.ClearOnClickVoid);
+      ImGui.CheckboxFlags('ImGuiMultiSelectFlags_BoxSelect1d', flags.access, ImGui.MultiSelectFlags.BoxSelect1d);
+
+      for (let selection_scope_n = 0; selection_scope_n < SCOPES_COUNT; selection_scope_n++) {
+        ImGui.PushID(selection_scope_n);
+        const selection = selections_data[selection_scope_n];
+        let ms_io = ImGui.BeginMultiSelect(flags.value, selection.Size, ITEMS_COUNT);
+
+        selection.ApplyRequests(ms_io);
+
+        ImGui.SeparatorText('Selection scope');
+        ImGui.Text(`Selection size: ${selection.Size}/${ITEMS_COUNT}`);
+
+        for (let n = 0; n < ITEMS_COUNT; n++) {
+          const label = `Object ${String(n).padStart(5, '0')}: ${ExampleNames[n % ExampleNames.length]}`;
+          const item_is_selected = selection.Contains(n);
+
+          ImGui.SetNextItemSelectionUserData(n);
+          ImGui.Selectable(label, item_is_selected);
+        }
+
+        ms_io = ImGui.EndMultiSelect();
+        selection.ApplyRequests(ms_io);
+        ImGui.PopID();
+      }
+      ImGui.TreePop();
+    }
+
+    // 10. Multi-Select (tiled assets browser)
+    if (ImGui.TreeNode('Multi-Select (tiled assets browser)')) {
+      ImGui.Checkbox('Assets Browser', (_ = demo_data.ShowAppAssetsBrowser) => demo_data.ShowAppAssetsBrowser = _);
+      ImGui.Text('(also access from \'Examples->Assets Browser\' in menu)');
+      ImGui.TreePop();
+    }
+
+    // 11. Multi-Select (trees)
+    if (ImGui.TreeNode('Multi-Select (trees)')) {
+      HelpMarker(
+        'This is rather advanced and experimental. If you are getting started with multi-select, ' +
+        'please don\'t start by looking at how to use it for a tree!\n\n' +
+        'Future versions will try to simplify and formalize some of this.');
+
+      const selection = STATIC<ImGui.SelectionBasicStorage>(UNIQUE('selection#trees'), new ImGui.SelectionBasicStorage());
+      const demo_tree = STATIC<ExampleTreeNode | null>(UNIQUE('demo_tree#trees'), null);
+
+      if (demo_tree.value === null)
+      {demo_tree.value = ExampleTree_CreateDemoTree();}
+      ImGui.Text(`Selection size: ${selection.value.Size}`);
+
+      // Tree helper functions (nested scope equivalent)
+      const DrawTreeNode = (node: ExampleTreeNode, sel: ImGui.SelectionBasicStorage): void => {
+        let tree_node_flags: ImGui.TreeNodeFlags = ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.OpenOnArrow | ImGui.TreeNodeFlags.OpenOnDoubleClick;
+
+        tree_node_flags |= ImGui.TreeNodeFlags.NavLeftJumpsToParent;
+        if (node.Childs.length === 0)
+        {tree_node_flags |= ImGui.TreeNodeFlags.Bullet | ImGui.TreeNodeFlags.Leaf;}
+        if (sel.Contains(node.UID))
+        {tree_node_flags |= ImGui.TreeNodeFlags.Selected;}
+
+        ImGui.SetNextItemSelectionUserData(node.UID);
+        ImGui.SetNextItemStorageID(node.UID);
+        if (ImGui.TreeNodeEx(node.Name, tree_node_flags)) {
+          for (const child of node.Childs)
+          {DrawTreeNode(child, sel);}
+          ImGui.TreePop();
+        } else if (ImGui.IsItemToggledOpen()) {
+          TreeCloseAndUnselectChildNodes(node, sel);
+        }
+      };
+
+      const TreeCloseAndUnselectChildNodes = (node: ExampleTreeNode, sel: ImGui.SelectionBasicStorage, depth: number = 0): number => {
+        let unselected_count = sel.Contains(node.UID) ? 1 : 0;
+
+        if (depth === 0 || ImGui.TreeNodeGetOpen(node.UID)) {
+          for (const child of node.Childs)
+          {unselected_count += TreeCloseAndUnselectChildNodes(child, sel, depth + 1);}
+          ImGui.TreeNodeSetOpen(node.UID, false);
+        }
+        sel.SetItemSelected(node.UID, (depth === 0 && unselected_count > 0));
+
+        return unselected_count;
+      };
+
+      const TreeApplySelectionRequests = (ms_io: ImGui.MultiSelectIO, tree: ExampleTreeNode, sel: ImGui.SelectionBasicStorage): void => {
+        for (const req of ms_io.Requests) {
+          if (req.Type === ImGui.SelectionRequestType.SetAll) {
+            if (req.Selected)
+            {TreeSetAllInOpenNodes(tree, sel, req.Selected);}
+            else
+            {sel.Clear();}
+          } else if (req.Type === ImGui.SelectionRequestType.SetRange) {
+            // For tree multi-select, RangeFirstItem/RangeLastItem are UIDs stored via SetNextItemSelectionUserData
+            const first_uid = req.RangeFirstItem;
+            const last_uid = req.RangeLastItem;
+            const first_node = findNodeByUID(tree, first_uid);
+            const last_node = findNodeByUID(tree, last_uid);
+
+            if (first_node && last_node) {
+              for (let node: ExampleTreeNode | null = first_node; node !== null; node = TreeGetNextNodeInVisibleOrder(node, last_node))
+              {sel.SetItemSelected(node.UID, req.Selected);}
+            }
+          }
+        }
+      };
+
+      const TreeSetAllInOpenNodes = (node: ExampleTreeNode, sel: ImGui.SelectionBasicStorage, selected: boolean): void =>{
+        if (node.Parent !== null) // Root node isn't visible nor selectable
+        {sel.SetItemSelected(node.UID, selected);}
+        if (node.Parent === null || ImGui.TreeNodeGetOpen(node.UID))
+        {for (const child of node.Childs)
+        {TreeSetAllInOpenNodes(child, sel, selected);}}
+      };
+
+      const TreeGetNextNodeInVisibleOrder = (curr_node: ExampleTreeNode, last_node: ExampleTreeNode): ExampleTreeNode | null=> {
+        if (curr_node === last_node) {return null;}
+        if (curr_node.Childs.length > 0 && ImGui.TreeNodeGetOpen(curr_node.UID))
+        {return curr_node.Childs[0];}
+        while (curr_node.Parent !== null) {
+          if (curr_node.IndexInParent + 1 < curr_node.Parent.Childs.length)
+          {return curr_node.Parent.Childs[curr_node.IndexInParent + 1];}
+          curr_node = curr_node.Parent;
+        }
+
+        return null;
+      };
+
+      const findNodeByUID = (root: ExampleTreeNode, uid: number): ExampleTreeNode | null=> {
+        if (root.UID === uid) {return root;}
+        for (const child of root.Childs) {
+          const found = findNodeByUID(child, uid);
+
+          if (found) {return found;}
+        }
+
+        return null;
+      };
+
+      if (ImGui.BeginChild('##Tree', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 20), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        const tree = demo_tree.value;
+        const ms_flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect2d;
+        let ms_io = ImGui.BeginMultiSelect(ms_flags, selection.value.Size, -1)!;
+
+        TreeApplySelectionRequests(ms_io, tree, selection.value);
+        for (const node of tree.Childs)
+        {DrawTreeNode(node, selection.value);}
+        ms_io = ImGui.EndMultiSelect()!;
+        TreeApplySelectionRequests(ms_io, tree, selection.value);
+      }
+      ImGui.EndChild();
+
+      ImGui.TreePop();
+    }
+
+    // 12. Multi-Select (advanced)
+    if (ImGui.TreeNode('Multi-Select (advanced)')) {
+      const WidgetType_Selectable = 0, WidgetType_TreeNode = 1;
+      const use_clipper = STATIC<boolean>(UNIQUE('use_clipper#adv'), true);
+      const use_deletion = STATIC<boolean>(UNIQUE('use_deletion#adv'), true);
+      const use_drag_drop = STATIC<boolean>(UNIQUE('use_drag_drop#adv'), true);
+      const show_in_table = STATIC<boolean>(UNIQUE('show_in_table#adv'), false);
+      const show_color_button = STATIC<boolean>(UNIQUE('show_color_button#adv'), true);
+      const flags = STATIC<ImGui.MultiSelectFlags>(UNIQUE('flags#adv'), ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.BoxSelect1d);
+      const widget_type = STATIC<number>(UNIQUE('widget_type#adv'), WidgetType_Selectable);
+
+      if (ImGui.TreeNode('Options')) {
+        if (ImGui.RadioButton('Selectables', widget_type.value === WidgetType_Selectable)) { widget_type.value = WidgetType_Selectable; }
+        ImGui.SameLine();
+        if (ImGui.RadioButton('Tree nodes', widget_type.value === WidgetType_TreeNode)) { widget_type.value = WidgetType_TreeNode; }
+        ImGui.Checkbox('Enable clipper', use_clipper.access);
+        ImGui.Checkbox('Enable deletion', use_deletion.access);
+        ImGui.Checkbox('Enable drag & drop', use_drag_drop.access);
+        ImGui.Checkbox('Show in a table', show_in_table.access);
+        ImGui.Checkbox('Show color button', show_color_button.access);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_SingleSelect', flags.access, ImGui.MultiSelectFlags.SingleSelect);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_NoSelectAll', flags.access, ImGui.MultiSelectFlags.NoSelectAll);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_NoRangeSelect', flags.access, ImGui.MultiSelectFlags.NoRangeSelect);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_NoAutoSelect', flags.access, ImGui.MultiSelectFlags.NoAutoSelect);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_NoAutoClear', flags.access, ImGui.MultiSelectFlags.NoAutoClear);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_BoxSelect1d', flags.access, ImGui.MultiSelectFlags.BoxSelect1d);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_BoxSelect2d', flags.access, ImGui.MultiSelectFlags.BoxSelect2d);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_BoxSelectNoScroll', flags.access, ImGui.MultiSelectFlags.BoxSelectNoScroll);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ClearOnEscape', flags.access, ImGui.MultiSelectFlags.ClearOnEscape);
+        ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ClearOnClickVoid', flags.access, ImGui.MultiSelectFlags.ClearOnClickVoid);
+        if (ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ScopeWindow', flags.access, ImGui.MultiSelectFlags.ScopeWindow) && (flags.value & ImGui.MultiSelectFlags.ScopeWindow))
+        {flags.value &= ~ImGui.MultiSelectFlags.ScopeRect;}
+        if (ImGui.CheckboxFlags('ImGuiMultiSelectFlags_ScopeRect', flags.access, ImGui.MultiSelectFlags.ScopeRect) && (flags.value & ImGui.MultiSelectFlags.ScopeRect))
+        {flags.value &= ~ImGui.MultiSelectFlags.ScopeWindow;}
+        ImGui.TreePop();
+      }
+
+      // Initialize
+      const items = STATIC<number[]>(UNIQUE('items#adv'), []);
+      const items_next_id = STATIC<number>(UNIQUE('items_next_id#adv'), 0);
+
+      if (items_next_id.value === 0) { for (let n = 0; n < 1000; n++) {items.value.push(items_next_id.value++);} }
+      const selection = STATIC<ExampleSelectionWithDeletion>(UNIQUE('selection#adv'), new ExampleSelectionWithDeletion());
+      const request_deletion_from_menu = STATIC<boolean>(UNIQUE('request_deletion#adv'), false);
+
+      ImGui.Text(`Selection size: ${selection.value.Size}/${items.value.length}`);
+
+      const items_height = (widget_type.value === WidgetType_TreeNode) ? ImGui.GetTextLineHeight() : ImGui.GetTextLineHeightWithSpacing();
+
+      ImGui.SetNextWindowContentSize(new ImGui.Vec2(0.0, items.value.length * items_height));
+      if (ImGui.BeginChild('##Basket', new ImGui.Vec2(-FLT_MIN, ImGui.GetFontSize() * 20), ImGui.ChildFlags.FrameStyle | ImGui.ChildFlags.ResizeY)) {
+        if (widget_type.value === WidgetType_TreeNode)
+        {ImGui.PushStyleVarY(ImGui.StyleVar.ItemSpacing, 0.0);}
+
+        let ms_io = ImGui.BeginMultiSelect(flags.value, selection.value.Size, items.value.length)!;
+
+        selection.value.ApplyRequests(ms_io);
+
+        const want_delete = (ImGui.Shortcut(ImGui.Key.Delete, ImGui.InputFlags.Repeat) && (selection.value.Size > 0)) || request_deletion_from_menu.value;
+        const item_curr_idx_to_focus = want_delete ? selection.value.ApplyDeletionPreLoop(ms_io, items.value.length) : -1;
+
+        request_deletion_from_menu.value = false;
+
+        if (show_in_table.value) {
+          if (widget_type.value === WidgetType_TreeNode)
+          {ImGui.PushStyleVar(ImGui.StyleVar.CellPadding, new ImGui.Vec2(0.0, 0.0));}
+          ImGui.BeginTable('##Split', 2, ImGui.TableFlags.Resizable | ImGui.TableFlags.NoSavedSettings);
+          ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthStretch, 0.70);
+          ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthStretch, 0.30);
+        }
+
+        const clipper = new ImGui.ListClipper();
+
+        if (use_clipper.value) {
+          clipper.Begin(items.value.length);
+          if (item_curr_idx_to_focus !== -1)
+          {clipper.IncludeItemByIndex(item_curr_idx_to_focus);}
+          if (ms_io !== null && ms_io.RangeSrcItem !== -1)
+          {clipper.IncludeItemByIndex(ms_io.RangeSrcItem);}
+        }
+
+        while (!use_clipper.value || clipper.Step()) {
+          const item_begin = use_clipper.value ? clipper.DisplayStart : 0;
+          const item_end = use_clipper.value ? clipper.DisplayEnd : items.value.length;
+
+          for (let n = item_begin; n < item_end; n++) {
+            if (show_in_table.value)
+            {ImGui.TableNextColumn();}
+
+            const item_id = items.value[n];
+            const item_category = ExampleNames[item_id % ExampleNames.length];
+            const label = `Object ${String(item_id).padStart(5, '0')}: ${item_category}`;
+
+            ImGui.PushID(item_id);
+
+            // Color button
+            if (show_color_button.value) {
+              const dummy_col = ((item_id * 0xC250B74B) >>> 0) | 0xFF000000;
+
+              ImGui.ColorButton('##', new ImGui.Color(dummy_col).Value, ImGui.ColorEditFlags.NoTooltip, new ImGui.Vec2(ImGui.GetFontSize(), ImGui.GetFontSize()));
+              ImGui.SameLine();
+            }
+
+            // Submit item
+            const item_is_selected = selection.value.Contains(n);
+            let item_is_open = false;
+
+            ImGui.SetNextItemSelectionUserData(n);
+            if (widget_type.value === WidgetType_Selectable) {
+              ImGui.Selectable(label, item_is_selected);
+            } else if (widget_type.value === WidgetType_TreeNode) {
+              let tree_node_flags: ImGui.TreeNodeFlags = ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.OpenOnArrow | ImGui.TreeNodeFlags.OpenOnDoubleClick;
+
+              if (item_is_selected) {tree_node_flags |= ImGui.TreeNodeFlags.Selected;}
+              item_is_open = ImGui.TreeNodeEx(label, tree_node_flags);
+            }
+
+            // Focus (for after deletion)
+            if (item_curr_idx_to_focus === n)
+            {ImGui.SetKeyboardFocusHere(-1);}
+
+            // Drag and Drop
+            if (use_drag_drop.value && ImGui.BeginDragDropSource()) {
+              if (ImGui.GetDragDropPayload() === null) {
+                const payload_items: number[] = [];
+
+                if (!item_is_selected) {
+                  payload_items.push(item_id);
+                } else {
+                  const it: ImGui.ImScalar<number | null> = [null];
+                  const out_id: ImGui.ImScalar<ImGui.ImGuiID> = [0];
+
+                  while (selection.value.GetNextSelectedItem(it, out_id))
+                  {payload_items.push(out_id[0]);}
+                }
+                ImGui.SetDragDropPayload('MULTISELECT_DEMO_ITEMS', payload_items);
+              }
+
+              const payload = ImGui.GetDragDropPayload<number[]>();
+
+              if (payload !== null && payload.Data !== null) {
+                const payload_items = payload.Data;
+
+                if (payload_items.length === 1)
+                {ImGui.Text(`Object ${String(payload_items[0]).padStart(5, '0')}: ${ExampleNames[payload_items[0] % ExampleNames.length]}`);}
+                else
+                {ImGui.Text(`Dragging ${payload_items.length} objects`);}
+              }
+
+              ImGui.EndDragDropSource();
+            }
+
+            if (widget_type.value === WidgetType_TreeNode && item_is_open)
+            {ImGui.TreePop();}
+
+            // Right-click: context menu
+            if (ImGui.BeginPopupContextItem()) {
+              ImGui.BeginDisabled(!use_deletion.value || selection.value.Size === 0);
+              if (ImGui.Selectable(`Delete ${selection.value.Size} item(s)###DeleteSelected`))
+              {request_deletion_from_menu.value = true;}
+              ImGui.EndDisabled();
+              ImGui.Selectable('Close');
+              ImGui.EndPopup();
+            }
+
+            // Demo content within a table
+            if (show_in_table.value) {
+              ImGui.TableNextColumn();
+              ImGui.SetNextItemWidth(-FLT_MIN);
+              ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(0, 0));
+              ImGui.InputText('##NoLabel', new ImGui.StringBuffer(128, item_category), 128, ImGui.InputTextFlags.ReadOnly);
+              ImGui.PopStyleVar();
+            }
+
+            ImGui.PopID();
+          }
+          if (!use_clipper.value)
+          {break;}
+        }
+
+        if (show_in_table.value) {
+          ImGui.EndTable();
+          if (widget_type.value === WidgetType_TreeNode)
+          {ImGui.PopStyleVar();}
+        }
+
+        // Apply multi-select requests
+        ms_io = ImGui.EndMultiSelect()!;
+        selection.value.ApplyRequests(ms_io);
+        if (want_delete)
+        {selection.value.ApplyDeletionPostLoop(ms_io, items.value, item_curr_idx_to_focus);}
+
+        if (widget_type.value === WidgetType_TreeNode)
+        {ImGui.PopStyleVar();}
+      }
+      ImGui.EndChild();
+      ImGui.TreePop();
+    }
+
+    ImGui.TreePop();
+  }
+}
+
 let done: boolean = false;
+
+// Stored data for the demo window
+class ImGuiDemoWindowData {
+  // Examples Apps (accessible from the "Examples" menu)
+  ShowMainMenuBar: boolean = false;
+  ShowAppAssetsBrowser: boolean = false;
+  ShowAppConsole: boolean = false;
+  ShowAppCustomRendering: boolean = false;
+  ShowAppDocuments: boolean = false;
+  ShowAppDockSpace: boolean = false;
+  ShowAppLog: boolean = false;
+  ShowAppLayout: boolean = false;
+  ShowAppPropertyEditor: boolean = false;
+  ShowAppSimpleOverlay: boolean = false;
+  ShowAppAutoResize: boolean = false;
+  ShowAppConstrainedResize: boolean = false;
+  ShowAppFullscreen: boolean = false;
+  ShowAppLongText: boolean = false;
+  ShowAppWindowTitles: boolean = false;
+
+  // Dear ImGui Tools (accessible from the "Tools" menu)
+  ShowMetrics: boolean = false;
+  ShowDebugLog: boolean = false;
+  ShowIDStackTool: boolean = false;
+  ShowStyleEditor: boolean = false;
+  ShowAbout: boolean = false;
+
+  // Other data
+  DisableSections: boolean = false;
+}
+
+const demo_data = new ImGuiDemoWindowData();
+
+function DemoWindowMenuBar (): void {
+  if (ImGui.BeginMenuBar()) {
+    if (ImGui.BeginMenu('Menu')) {
+      ShowExampleMenuFile();
+      ImGui.EndMenu();
+    }
+    if (ImGui.BeginMenu('Examples')) {
+      ImGui.MenuItem('Main menu bar', null, (_ = demo_data.ShowMainMenuBar) => demo_data.ShowMainMenuBar = _);
+
+      ImGui.SeparatorText('Mini apps');
+      ImGui.MenuItem('Assets Browser', null, (_ = demo_data.ShowAppAssetsBrowser) => demo_data.ShowAppAssetsBrowser = _);
+      ImGui.MenuItem('Console', null, (_ = demo_data.ShowAppConsole) => demo_data.ShowAppConsole = _);
+      ImGui.MenuItem('Custom rendering', null, (_ = demo_data.ShowAppCustomRendering) => demo_data.ShowAppCustomRendering = _);
+      ImGui.MenuItem('Documents', null, (_ = demo_data.ShowAppDocuments) => demo_data.ShowAppDocuments = _);
+      ImGui.MenuItem('Dockspace', null, (_ = demo_data.ShowAppDockSpace) => demo_data.ShowAppDockSpace = _);
+      ImGui.MenuItem('Log', null, (_ = demo_data.ShowAppLog) => demo_data.ShowAppLog = _);
+      ImGui.MenuItem('Property editor', null, (_ = demo_data.ShowAppPropertyEditor) => demo_data.ShowAppPropertyEditor = _);
+      ImGui.MenuItem('Simple layout', null, (_ = demo_data.ShowAppLayout) => demo_data.ShowAppLayout = _);
+      ImGui.MenuItem('Simple overlay', null, (_ = demo_data.ShowAppSimpleOverlay) => demo_data.ShowAppSimpleOverlay = _);
+
+      ImGui.SeparatorText('Concepts');
+      ImGui.MenuItem('Auto-resizing window', null, (_ = demo_data.ShowAppAutoResize) => demo_data.ShowAppAutoResize = _);
+      ImGui.MenuItem('Constrained-resizing window', null, (_ = demo_data.ShowAppConstrainedResize) => demo_data.ShowAppConstrainedResize = _);
+      ImGui.MenuItem('Fullscreen window', null, (_ = demo_data.ShowAppFullscreen) => demo_data.ShowAppFullscreen = _);
+      ImGui.MenuItem('Long text display', null, (_ = demo_data.ShowAppLongText) => demo_data.ShowAppLongText = _);
+      ImGui.MenuItem('Manipulating window titles', null, (_ = demo_data.ShowAppWindowTitles) => demo_data.ShowAppWindowTitles = _);
+
+      ImGui.EndMenu();
+    }
+    //if (ImGui.MenuItem("MenuItem")) {} // You can also use MenuItem() inside a menu bar!
+    if (ImGui.BeginMenu('Tools')) {
+      const io: ImGui.IO = ImGui.GetIO();
+      const has_debug_tools: boolean = true;
+
+      ImGui.MenuItem('Metrics/Debugger', null, (_ = demo_data.ShowMetrics) => demo_data.ShowMetrics = _, has_debug_tools);
+      if (ImGui.BeginMenu('Debug Options')) {
+        ImGui.BeginDisabled(!has_debug_tools);
+        ImGui.Checkbox('Highlight ID Conflicts', (_ = io.ConfigDebugHighlightIdConflicts) => io.ConfigDebugHighlightIdConflicts = _);
+        ImGui.EndDisabled();
+        ImGui.TextDisabled('(see Demo->Configuration for details & more)');
+        ImGui.EndMenu();
+      }
+      ImGui.MenuItem('Debug Log', null, (_ = demo_data.ShowDebugLog) => demo_data.ShowDebugLog = _, has_debug_tools);
+      ImGui.MenuItem('ID Stack Tool', null, (_ = demo_data.ShowIDStackTool) => demo_data.ShowIDStackTool = _, has_debug_tools);
+      const is_debugger_present: boolean = io.ConfigDebugIsDebuggerPresent;
+
+      if (ImGui.MenuItem('Item Picker', null, false, has_debug_tools))
+      {ImGui.DebugStartItemPicker();}
+      if (!is_debugger_present)
+      {ImGui.SetItemTooltip('Requires io.ConfigDebugIsDebuggerPresent=true to be set.\n\nWe otherwise disable some extra features to avoid casual users crashing the application.');}
+      ImGui.MenuItem('Style Editor', null, (_ = demo_data.ShowStyleEditor) => demo_data.ShowStyleEditor = _);
+      ImGui.MenuItem('About Dear ImGui', null, (_ = demo_data.ShowAbout) => demo_data.ShowAbout = _);
+
+      ImGui.EndMenu();
+    }
+    ImGui.EndMenuBar();
+  }
+}
 
 // Demonstrate most Dear ImGui features (this is big function!)
 // You may execute this function to experiment with the UI and understand what it does.
@@ -306,44 +1239,29 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
   ImGui.ASSERT(ImGui.GetCurrentContext() !== null && 'Missing dear imgui context. Refer to examples app!');
 
   // Examples Apps (accessible from the "Examples" menu)
-  const show_app_main_menu_bar = STATIC<boolean>(UNIQUE('show_app_main_menu_bar#6a959c6a'), false);
-  const show_app_documents = STATIC<boolean>(UNIQUE('show_app_documents#f11837e5'), false);
-  const show_app_dockspace = STATIC<boolean>(UNIQUE('show_app_dockspace#b61837e5'), false);
-  const show_app_console = STATIC<boolean>(UNIQUE('show_app_console#26eaa5a6'), false);
-  const show_app_log = STATIC<boolean>(UNIQUE('show_app_log#3b0346ee'), false);
-  const show_app_layout = STATIC<boolean>(UNIQUE('show_app_layout#671683e7'), false);
-  const show_app_property_editor = STATIC<boolean>(UNIQUE('show_app_property_editor#c66a5861'), false);
-  const show_app_long_text = STATIC<boolean>(UNIQUE('show_app_long_text#eed4ab47'), false);
-  const show_app_auto_resize = STATIC<boolean>(UNIQUE('show_app_auto_resize#2852aedd'), false);
-  const show_app_constrained_resize = STATIC<boolean>(UNIQUE('show_app_constrained_resize#17933c5a'), false);
-  const show_app_simple_overlay = STATIC<boolean>(UNIQUE('show_app_simple_overlay#6a9175fc'), false);
-  const show_app_window_titles = STATIC<boolean>(UNIQUE('show_app_window_titles#d283f989'), false);
-  const show_app_custom_rendering = STATIC<boolean>(UNIQUE('show_app_custom_rendering#7338d302'), false);
+  if (demo_data.ShowMainMenuBar) { ShowExampleAppMainMenuBar(); }
+  if (demo_data.ShowAppDockSpace) { ShowExampleAppDockspace((value = demo_data.ShowAppDockSpace) => demo_data.ShowAppDockSpace = value); }
+  if (demo_data.ShowAppDocuments) { ShowExampleAppDocuments((value = demo_data.ShowAppDocuments) => demo_data.ShowAppDocuments = value); }
+  if (demo_data.ShowAppAssetsBrowser) { ShowExampleAppAssetsBrowser((value = demo_data.ShowAppAssetsBrowser) => demo_data.ShowAppAssetsBrowser = value); }
+  if (demo_data.ShowAppConsole) { ShowExampleAppConsole((value = demo_data.ShowAppConsole) => demo_data.ShowAppConsole = value); }
+  if (demo_data.ShowAppCustomRendering) { ShowExampleAppCustomRendering((value = demo_data.ShowAppCustomRendering) => demo_data.ShowAppCustomRendering = value); }
+  if (demo_data.ShowAppLog) { ShowExampleAppLog((value = demo_data.ShowAppLog) => demo_data.ShowAppLog = value); }
+  if (demo_data.ShowAppLayout) { ShowExampleAppLayout((value = demo_data.ShowAppLayout) => demo_data.ShowAppLayout = value); }
+  if (demo_data.ShowAppPropertyEditor) { ShowExampleAppPropertyEditor((value = demo_data.ShowAppPropertyEditor) => demo_data.ShowAppPropertyEditor = value); }
+  if (demo_data.ShowAppSimpleOverlay) { ShowExampleAppSimpleOverlay((value = demo_data.ShowAppSimpleOverlay) => demo_data.ShowAppSimpleOverlay = value); }
+  if (demo_data.ShowAppAutoResize) { ShowExampleAppAutoResize((value = demo_data.ShowAppAutoResize) => demo_data.ShowAppAutoResize = value); }
+  if (demo_data.ShowAppConstrainedResize) { ShowExampleAppConstrainedResize((value = demo_data.ShowAppConstrainedResize) => demo_data.ShowAppConstrainedResize = value); }
+  if (demo_data.ShowAppFullscreen) { ShowExampleAppFullscreen((value = demo_data.ShowAppFullscreen) => demo_data.ShowAppFullscreen = value); }
+  if (demo_data.ShowAppLongText) { ShowExampleAppLongText((value = demo_data.ShowAppLongText) => demo_data.ShowAppLongText = value); }
+  if (demo_data.ShowAppWindowTitles) { ShowExampleAppWindowTitles((value = demo_data.ShowAppWindowTitles) => demo_data.ShowAppWindowTitles = value); }
 
-  if (show_app_main_menu_bar.value) {ShowExampleAppMainMenuBar();}
-  if (show_app_dockspace.value) {ShowExampleAppDockspace((value = show_app_dockspace.value) => show_app_dockspace.value = value);}
-  if (show_app_documents.value) {ShowExampleAppDocuments(show_app_documents.access);}
-
-  if (show_app_console.value) {ShowExampleAppConsole(show_app_console.access);}
-  if (show_app_log.value) {ShowExampleAppLog(show_app_log.access);}
-  if (show_app_layout.value) {ShowExampleAppLayout(show_app_layout.access);}
-  if (show_app_property_editor.value) {ShowExampleAppPropertyEditor(show_app_property_editor.access);}
-  if (show_app_long_text.value) {ShowExampleAppLongText(show_app_long_text.access);}
-  if (show_app_auto_resize.value) {ShowExampleAppAutoResize(show_app_auto_resize.access);}
-  if (show_app_constrained_resize.value) {ShowExampleAppConstrainedResize(show_app_constrained_resize.access);}
-  if (show_app_simple_overlay.value) {ShowExampleAppSimpleOverlay(show_app_simple_overlay.access);}
-  if (show_app_window_titles.value) {ShowExampleAppWindowTitles(show_app_window_titles.access);}
-  if (show_app_custom_rendering.value) {ShowExampleAppCustomRendering(show_app_custom_rendering.access);}
-
-  // Dear ImGui Apps (accessible from the "Tools" menu)
-  const show_app_metrics = STATIC<boolean>(UNIQUE('show_app_metrics#d0dce1b4'), false);
-  const show_app_style_editor = STATIC<boolean>(UNIQUE('show_app_style_editor#d0a84f54'), false);
-  const show_app_about = STATIC<boolean>(UNIQUE('show_app_about#75d624f8'), false);
-
-  if (show_app_metrics.value) { ImGui.ShowMetricsWindow(show_app_metrics.access); }
-  if (show_app_about.value) { /*ImGui.*/ShowAboutWindow(show_app_about.access); }
-  if (show_app_style_editor.value) {
-    ImGui.Begin('Dear ImGui Style Editor', show_app_style_editor.access);
+  // Dear ImGui Tools (accessible from the "Tools" menu)
+  if (demo_data.ShowMetrics) { ImGui.ShowMetricsWindow((value = demo_data.ShowMetrics) => demo_data.ShowMetrics = value); }
+  if (demo_data.ShowDebugLog) { ImGui.ShowDebugLogWindow((value = demo_data.ShowDebugLog) => demo_data.ShowDebugLog = value); }
+  if (demo_data.ShowIDStackTool) { ImGui.ShowIDStackToolWindow((value = demo_data.ShowIDStackTool) => demo_data.ShowIDStackTool = value); }
+  if (demo_data.ShowAbout) { /*ImGui.*/ShowAboutWindow((value = demo_data.ShowAbout) => demo_data.ShowAbout = value); }
+  if (demo_data.ShowStyleEditor) {
+    ImGui.Begin('Dear ImGui Style Editor', (value = demo_data.ShowStyleEditor) => demo_data.ShowStyleEditor = value);
     /*ImGui.*/ShowStyleEditor();
     ImGui.End();
   }
@@ -397,57 +1315,29 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
   ImGui.PushItemWidth(ImGui.GetFontSize() * -12);
 
   // Menu Bar
-  if (ImGui.BeginMenuBar()) {
-    if (ImGui.BeginMenu('Menu')) {
-      ShowExampleMenuFile();
-      ImGui.EndMenu();
-    }
-    if (ImGui.BeginMenu('Examples')) {
-      ImGui.MenuItem('Main menu bar', null, show_app_main_menu_bar.access);
-      ImGui.MenuItem('Console', null, show_app_console.access);
-      ImGui.MenuItem('Log', null, show_app_log.access);
-      ImGui.MenuItem('Simple layout', null, show_app_layout.access);
-      ImGui.MenuItem('Property editor', null, show_app_property_editor.access);
-      ImGui.MenuItem('Long text display', null, show_app_long_text.access);
-      ImGui.MenuItem('Auto-resizing window', null, show_app_auto_resize.access);
-      ImGui.MenuItem('Constrained-resizing window', null, show_app_constrained_resize.access);
-      ImGui.MenuItem('Simple overlay', null, show_app_simple_overlay.access);
-      ImGui.MenuItem('Manipulating window titles', null, show_app_window_titles.access);
-      ImGui.MenuItem('Custom rendering', null, show_app_custom_rendering.access);
-      ImGui.MenuItem('Dockspace', null, show_app_dockspace.access);
-      ImGui.MenuItem('Documents', null, show_app_documents.access);
-      ImGui.EndMenu();
-    }
-    if (ImGui.BeginMenu('Tools')) {
-      ImGui.MenuItem('Metrics/Debugger', null, show_app_metrics.access);
-      ImGui.MenuItem('Style Editor', null, show_app_style_editor.access);
-      ImGui.MenuItem('About Dear ImGui', null, show_app_about.access);
-      ImGui.EndMenu();
-    }
-    ImGui.EndMenuBar();
-  }
+  DemoWindowMenuBar();
 
   ImGui.Text(`dear imgui says hello. (${ImGui.VERSION})`);
   ImGui.Spacing();
 
   if (ImGui.CollapsingHeader('Help')) {
-    ImGui.Text('ABOUT THIS DEMO:');
+    ImGui.SeparatorText('ABOUT THIS DEMO:');
     ImGui.BulletText('Sections below are demonstrating many aspects of the library.');
     ImGui.BulletText('The "Examples" menu above leads to more demo contents.');
     ImGui.BulletText('The "Tools" menu above gives access to: About Box, Style Editor,\n' +
                           'and Metrics/Debugger (general purpose Dear ImGui debugging tool).');
-    ImGui.Separator();
 
-    ImGui.Text('PROGRAMMER GUIDE:');
+    ImGui.SeparatorText('PROGRAMMER GUIDE:');
     ImGui.BulletText('See the ShowDemoWindow() code in imgui_demo.cpp. <- you are here!');
     ImGui.BulletText('See comments in imgui.cpp.');
     ImGui.BulletText('See example applications in the examples/ folder.');
-    ImGui.BulletText('Read the FAQ at http://www.dearimgui.org/faq/');
+    ImGui.BulletText('Read the FAQ at ');
+    ImGui.SameLine(0, 0);
+    ImGui.TextLinkOpenURL('http://www.dearimgui.org/faq/');
     ImGui.BulletText('Set \'io.ConfigFlags |= NavEnableKeyboard\' for keyboard controls.');
     ImGui.BulletText('Set \'io.ConfigFlags |= NavEnableGamepad\' for gamepad controls.');
-    ImGui.Separator();
 
-    ImGui.Text('USER GUIDE:');
+    ImGui.SeparatorText('USER GUIDE:');
     /*ImGui.*/ShowUserGuide();
   }
 
@@ -455,6 +1345,7 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
     const io: ImGui.IO = ImGui.GetIO();
 
     if (ImGui.TreeNode('Configuration##2')) {
+      ImGui.SeparatorText('General');
       ImGui.CheckboxFlags('io.ConfigFlags: NavEnableKeyboard', (_ = io.ConfigFlags) => io.ConfigFlags = _, ImGui.ConfigFlags.NavEnableKeyboard);
       ImGui.SameLine(); HelpMarker('Enable keyboard controls.');
       ImGui.CheckboxFlags('io.ConfigFlags: NavEnableGamepad', (_ = io.ConfigFlags) => io.ConfigFlags = _, ImGui.ConfigFlags.NavEnableGamepad);
@@ -468,9 +1359,10 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
           ImGui.SameLine();
           ImGui.Text('<<PRESS SPACE TO DISABLE>>');
         }
-        if (ImGui.IsKeyPressed(ImGui.GetKeyIndex(ImGui.Key.Space))) {io.ConfigFlags &= ~ImGui.ConfigFlags.NoMouse;}
+        if (ImGui.IsKeyPressed(ImGui.Key.Space)) {io.ConfigFlags &= ~ImGui.ConfigFlags.NoMouse;}
       }
 
+      ImGui.SeparatorText('Docking');
       ImGui.CheckboxFlags('io.ConfigFlags: DockingEnable', (value = io.ConfigFlags) => io.ConfigFlags = value, ImGui.ConfigFlags.DockingEnable);
       ImGui.SameLine(); HelpMarker(io.ConfigDockingWithShift ? '[beta] Use SHIFT to dock window into each others.' : '[beta] Drag from title bar to dock windows into each others.');
       if (io.ConfigFlags & ImGui.ConfigFlags.DockingEnable) {
@@ -488,16 +1380,20 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
 
       ImGui.CheckboxFlags('io.ConfigFlags: NoMouseCursorChange', (_ = io.ConfigFlags) => io.ConfigFlags = _, ImGui.ConfigFlags.NoMouseCursorChange);
       ImGui.SameLine(); HelpMarker('Instruct backend to not alter mouse cursor shape and visibility.');
-      ImGui.Checkbox('io.ConfigInputTextCursorBlink', (_ = io.ConfigInputTextCursorBlink) => io.ConfigInputTextCursorBlink = _);
-      ImGui.SameLine(); HelpMarker('Enable blinking cursor (optional as some users consider it to be distracting)');
-      ImGui.Checkbox('io.ConfigDragClickToInputText', (_ = io.ConfigDragClickToInputText) => io.ConfigDragClickToInputText = _);
-      ImGui.SameLine(); HelpMarker('Enable turning DragXXX widgets into text input with a simple mouse click-release (without moving).');
-      ImGui.Checkbox('io.ConfigWindowsResizeFromEdges', (_ = io.ConfigWindowsResizeFromEdges) => io.ConfigWindowsResizeFromEdges = _);
-      ImGui.SameLine(); HelpMarker('Enable resizing of windows from their edges and from the lower-left corner.\nThis requires (io.BackendFlags & ImGui.BackendFlags.HasMouseCursors) because it needs mouse cursor feedback.');
-      ImGui.Checkbox('io.ConfigWindowsMoveFromTitleBarOnly', (_ = io.ConfigWindowsMoveFromTitleBarOnly) => io.ConfigWindowsMoveFromTitleBarOnly = _);
       ImGui.Checkbox('io.MouseDrawCursor', (_ = io.MouseDrawCursor) => io.MouseDrawCursor = _);
       ImGui.SameLine(); HelpMarker('Instruct Dear ImGui to render a mouse cursor itself. Note that a mouse cursor rendered via your application GPU rendering path will feel more laggy than hardware cursor, but will be more in sync with your other visuals.\n\nSome desktop applications may use both kinds of cursors (e.g. enable software cursor only when resizing/dragging something).');
-      ImGui.Text('Also see Style.Rendering for rendering options.');
+
+      ImGui.SeparatorText('Windows');
+      ImGui.Checkbox('io.ConfigWindowsResizeFromEdges', (_ = io.ConfigWindowsResizeFromEdges) => io.ConfigWindowsResizeFromEdges = _);
+      ImGui.SameLine(); HelpMarker('Enable resizing of windows from their edges and from the lower-left corner.\nThis requires ImGuiBackendFlags_HasMouseCursors for better mouse cursor feedback.');
+      ImGui.Checkbox('io.ConfigWindowsMoveFromTitleBarOnly', (_ = io.ConfigWindowsMoveFromTitleBarOnly) => io.ConfigWindowsMoveFromTitleBarOnly = _);
+
+      ImGui.SeparatorText('Widgets');
+      ImGui.Checkbox('io.ConfigInputTextCursorBlink', (_ = io.ConfigInputTextCursorBlink) => io.ConfigInputTextCursorBlink = _);
+      ImGui.SameLine(); HelpMarker('Enable blinking cursor (optional as some users consider it to be distracting).');
+      ImGui.Checkbox('io.ConfigDragClickToInputText', (_ = io.ConfigDragClickToInputText) => io.ConfigDragClickToInputText = _);
+      ImGui.SameLine(); HelpMarker('Enable turning DragXXX widgets into text input with a simple mouse click-release (without moving).');
+      ImGui.Text('Also see Style->Rendering for rendering options.');
       ImGui.TreePop();
       ImGui.Separator();
     }
@@ -564,7 +1460,7 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
   ShowDemoWindowLayout();
   ShowDemoWindowPopups();
   ShowDemoWindowTables();
-  ShowDemoWindowMisc();
+  ShowDemoWindowInputs();
 
   // End of ShowDemoWindow()
   ImGui.PopItemWidth();
@@ -576,7 +1472,11 @@ export function /*ImGui.*/ShowDemoWindow (p_open: ImGui.Access<boolean> | null):
 function ShowDemoWindowWidgets (): void {
   if (!ImGui.CollapsingHeader('Widgets')) {return;}
 
+  ImGui.BeginDisabled(demo_data.DisableSections);
+
   if (ImGui.TreeNode('Basic')) {
+    ImGui.SeparatorText('General');
+
     const clicked = STATIC<int>(UNIQUE('clicked#5b278903'), 0);
 
     if (ImGui.Button('Button')) {clicked.value++;}
@@ -640,9 +1540,9 @@ function ShowDemoWindowWidgets (): void {
       ImGui.EndTooltip();
     }
 
-    ImGui.Separator();
-
     ImGui.LabelText('label', 'Value');
+
+    ImGui.SeparatorText('Inputs');
 
     {
       // Using the _simplified_ one-liner Combo() api here
@@ -707,6 +1607,8 @@ function ShowDemoWindowWidgets (): void {
       ImGui.InputFloat3('input float3', vec4a.value);
     }
 
+    ImGui.SeparatorText('Drags');
+
     {
       const i1 = STATIC<int>(UNIQUE('i1#cc2f2f26'), 50);
       const i2 = STATIC<int>(UNIQUE('i2#8b24152f'), 42);
@@ -725,6 +1627,8 @@ function ShowDemoWindowWidgets (): void {
       ImGui.DragFloat('drag float', f1.access, 0.005);
       ImGui.DragFloat('drag small float', f2.access, 0.0001, 0.0, 0.0, '%.06f ns');
     }
+
+    ImGui.SeparatorText('Sliders');
 
     {
       const i1 = STATIC<int>(UNIQUE('i1#ec30714c'), 0);
@@ -753,6 +1657,8 @@ function ShowDemoWindowWidgets (): void {
       ImGui.SliderInt('slider enum', elem.access, 0, Element.COUNT - 1, elem_name);
       ImGui.SameLine(); HelpMarker('Using the format string parameter to display a name instead of the underlying integer.');
     }
+
+    ImGui.SeparatorText('Selectors/Pickers');
 
     {
       const col1 = STATIC<ImGui.Tuple3<float>>(UNIQUE('col1#dccda06c'), [1.0, 0.0, 0.2]);
@@ -1018,10 +1924,8 @@ function ShowDemoWindowWidgets (): void {
       const pos: ImGui.Vec2 = ImGui.GetCursorScreenPos();
       const uv_min: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                 // Top-left
       const uv_max: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);                 // Lower-right
-      const tint_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0);   // No tint
-      const border_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 0.5); // 50% opaque white
 
-      ImGui.Image(my_tex_id, new ImGui.Vec2(my_tex_w, my_tex_h), uv_min, uv_max, tint_col, border_col);
+      ImGui.Image(my_tex_id, new ImGui.Vec2(my_tex_w, my_tex_h), uv_min, uv_max);
       if (ImGui.IsItemHovered()) {
         ImGui.BeginTooltip();
         const region_sz: float = 32.0;
@@ -1036,7 +1940,7 @@ function ShowDemoWindowWidgets (): void {
         const uv0: ImGui.Vec2 = new ImGui.Vec2((region_x) / my_tex_w, (region_y) / my_tex_h);
         const uv1: ImGui.Vec2 = new ImGui.Vec2((region_x + region_sz) / my_tex_w, (region_y + region_sz) / my_tex_h);
 
-        ImGui.Image(my_tex_id, new ImGui.Vec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
+        ImGui.Image(my_tex_id, new ImGui.Vec2(region_sz * zoom, region_sz * zoom), uv0, uv1);
         ImGui.EndTooltip();
       }
     }
@@ -1045,14 +1949,13 @@ function ShowDemoWindowWidgets (): void {
 
     for (let i = 0; i < 8; i++) {
       ImGui.PushID(i);
-      const frame_padding: int = -1 + i;                             // -1 === uses default padding (style.FramePadding)
       const size: ImGui.Vec2 = new ImGui.Vec2(32.0, 32.0);                     // Size of the image we want to make visible
       const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
       const uv1: ImGui.Vec2 = new ImGui.Vec2(32.0 / my_tex_w, 32.0 / my_tex_h);// UV coordinates for (32,32) in our texture
       const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
       const tint_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0);       // No tint
 
-      if (ImGui.ImageButton(my_tex_id, size, uv0, uv1, frame_padding, bg_col, tint_col)) {pressed_count.value += 1;}
+      if (ImGui.ImageButton('', my_tex_id, size, uv0, uv1, bg_col, tint_col)) {pressed_count.value += 1;}
       ImGui.PopID();
       ImGui.SameLine();
     }
@@ -1101,10 +2004,8 @@ function ShowDemoWindowWidgets (): void {
 
     // Simplified one-liner Combo() using an accessor function
     class Funcs {
-      public static ItemGetter (data: string[], n: float, out_str: [string]): boolean {
-        out_str[0] = data[n];
-
-        return true;
+      public static ItemGetter (data: string[], n: number): string {
+        return data[n];
       }
     }
     const item_current_4 = STATIC<int>(UNIQUE('item_current_4#4a9812a5'), 0);
@@ -1629,12 +2530,19 @@ function ShowDemoWindowWidgets (): void {
     const buf: string = `${Math.floor(progress_saturated * 1753)}/${1753}`;
 
     ImGui.ProgressBar(progress.value, new ImGui.Vec2(0., 0.), buf);
+
+    // Pass an animated negative value for indeterminate progress bar
+    ImGui.ProgressBar(-1.0 * ImGui.GetTime(), new ImGui.Vec2(0.0, 0.0), 'Searching..');
+    ImGui.SameLine(0.0, ImGui.GetStyle().ItemInnerSpacing.x);
+    ImGui.Text('Indeterminate');
+
     ImGui.TreePop();
   }
 
   if (ImGui.TreeNode('Color/Picker Widgets')) {
     const color = STATIC<ImGui.Vec4>(UNIQUE('color#60ccdb0e'), new ImGui.Vec4(114.0 / 255.0, 144.0 / 255.0, 154.0 / 255.0, 200.0 / 255.0));
 
+    ImGui.SeparatorText('Options');
     const alpha_preview = STATIC<boolean>(UNIQUE('alpha_preview#63bcbd34'), true);
     const alpha_half_preview = STATIC<boolean>(UNIQUE('alpha_half_preview#133a6af8'), false);
     const drag_and_drop = STATIC<boolean>(UNIQUE('drag_and_drop#ef0593da'), true);
@@ -1648,6 +2556,7 @@ function ShowDemoWindowWidgets (): void {
     ImGui.Checkbox('With HDR', hdr.access); ImGui.SameLine(); HelpMarker('Currently all this does is to lift the 0..1 limits on dragging widgets.');
     const misc_flags: ImGui.ColorEditFlags = (hdr.value ? ImGui.ColorEditFlags.HDR : 0) | (drag_and_drop ? 0 : ImGui.ColorEditFlags.NoDragDrop) | (alpha_half_preview ? ImGui.ColorEditFlags.AlphaPreviewHalf : (alpha_preview ? ImGui.ColorEditFlags.AlphaPreview : 0)) | (options_menu ? 0 : ImGui.ColorEditFlags.NoOptions);
 
+    ImGui.SeparatorText('Inline color editor');
     ImGui.Text('Color widget:');
     ImGui.SameLine(); HelpMarker(
       'Click on the color square to open a color picker.\n' +
@@ -1744,7 +2653,7 @@ function ShowDemoWindowWidgets (): void {
     ImGui.Checkbox('ImGui.ColorEditFlags.NoBorder', no_border.access);
     ImGui.ColorButton('MyColor##3c', color.value, misc_flags | (no_border.value ? ImGui.ColorEditFlags.NoBorder : 0), new ImGui.Vec2(80, 80));
 
-    ImGui.Text('Color picker:');
+    ImGui.SeparatorText('Color picker');
     const alpha = STATIC<boolean>(UNIQUE('alpha#ae11fb55'), true);
     const alpha_bar = STATIC<boolean>(UNIQUE('alpha_bar#ea0fc5b4'), true);
     const side_preview = STATIC<boolean>(UNIQUE('side_preview#89f2df34'), true);
@@ -1824,6 +2733,7 @@ function ShowDemoWindowWidgets (): void {
     ImGui.SameLine(); HelpMarker('Disable CTRL+Click or Enter key allowing to input text directly into the widget.');
 
     // Drags
+    ImGui.SeparatorText('Drags');
     const drag_f = STATIC<float>(UNIQUE('drag_f#7359d6d0'), 0.5);
     const drag_i = STATIC<int>(UNIQUE('drag_i#41c5d1fc'), 50);
 
@@ -1835,6 +2745,7 @@ function ShowDemoWindowWidgets (): void {
     ImGui.DragInt('DragInt (0 -> 100)', drag_i.access, 0.5, 0, 100, '%d', flags.value);
 
     // Sliders
+    ImGui.SeparatorText('Sliders');
     const slider_f = STATIC<float>(UNIQUE('slider_f#92e25be0'), 0.5);
     const slider_i = STATIC<int>(UNIQUE('slider_i#e09018d8'), 50);
 
@@ -1846,6 +2757,7 @@ function ShowDemoWindowWidgets (): void {
   }
 
   if (ImGui.TreeNode('Range Widgets')) {
+    ImGui.SeparatorText('Ranges');
     const begin = STATIC<float>(UNIQUE('begin#b1b30e14'), 10);
     const end = STATIC<float>(UNIQUE('end#9a95d5a1'), 90);
     const begin_i = STATIC<int>(UNIQUE('begin_i#45d3bd56'), 100);
@@ -1906,7 +2818,7 @@ function ShowDemoWindowWidgets (): void {
     const drag_speed: float = 0.2;
     const drag_clamp = STATIC<boolean>(UNIQUE('drag_clamp#971f27eb'), false);
 
-    ImGui.Text('Drags:');
+    ImGui.SeparatorText('Drags');
     ImGui.Checkbox('Clamp integers to 0..50', drag_clamp.access);
     ImGui.SameLine(); HelpMarker(
       'As with every widgets in dear imgui, we never modify values unless there is a user interaction.\n' +
@@ -1924,7 +2836,7 @@ function ShowDemoWindowWidgets (): void {
     ImGui.DragScalar('drag double', /*ImGui.DataType.Double,*/ f64_v.value, 0.0005, f64_zero, null, '%.10f grams');
     ImGui.DragScalar('drag double log', /*ImGui.DataType.Double,*/ f64_v.value, 0.0005, f64_zero, f64_one, '0 < %.10f < 1', ImGui.SliderFlags.Logarithmic);
 
-    ImGui.Text('Sliders');
+    ImGui.SeparatorText('Sliders');
     ImGui.SliderScalar('slider s8 full', /*ImGui.DataType.S8,    */ s8_v.value, s8_min, s8_max, '%d');
     ImGui.SliderScalar('slider u8 full', /*ImGui.DataType.U8,    */ u8_v.value, u8_min, u8_max, '%u');
     ImGui.SliderScalar('slider s16 full', /*ImGui.DataType.S16,   */ s16_v.value, s16_min, s16_max, '%d');
@@ -1948,7 +2860,7 @@ function ShowDemoWindowWidgets (): void {
     ImGui.SliderScalar('slider double low log', /*ImGui.DataType.Double,*/ f64_v.value, f64_zero, f64_one, '%.10f', ImGui.SliderFlags.Logarithmic);
     ImGui.SliderScalar('slider double high', /*ImGui.DataType.Double,*/ f64_v.value, f64_lo_a, f64_hi_a, '%e grams');
 
-    ImGui.Text('Sliders (reverse)');
+    ImGui.SeparatorText('Sliders (reverse)');
     ImGui.SliderScalar('slider s8 reverse', /*ImGui.DataType.S8, */ s8_v.value, s8_max, s8_min, '%d');
     ImGui.SliderScalar('slider u8 reverse', /*ImGui.DataType.U8, */ u8_v.value, u8_max, u8_min, '%u');
     ImGui.SliderScalar('slider s32 reverse', /*ImGui.DataType.S32,*/ s32_v.value, s32_fifty, s32_zero, '%d');
@@ -1958,7 +2870,7 @@ function ShowDemoWindowWidgets (): void {
 
     const inputs_step = STATIC<boolean>(UNIQUE('inputs_step#fa9045ed'), true);
 
-    ImGui.Text('Inputs');
+    ImGui.SeparatorText('Inputs');
     ImGui.Checkbox('Show step buttons', inputs_step.access);
     ImGui.InputScalar('input s8', /*ImGui.DataType.S8,    */ s8_v.value, inputs_step.value ? s8_one : null, null, '%d');
     ImGui.InputScalar('input u8', /*ImGui.DataType.U8,    */ u8_v.value, inputs_step.value ? u8_one : null, null, '%u');
@@ -1980,22 +2892,23 @@ function ShowDemoWindowWidgets (): void {
     const vec4f = STATIC<ImGui.Tuple4<float>/*float[4]*/>(UNIQUE('vec4f#a0b1ae28'), [0.10, 0.20, 0.30, 0.44]);
     const vec4i = STATIC<ImGui.Tuple4<int>/*int[4]*/>(UNIQUE('vec4i#b2973986'), [1, 5, 100, 255]);
 
+    ImGui.SeparatorText('2-wide');
     ImGui.InputFloat2('input float2', vec4f.value);
     ImGui.DragFloat2('drag float2', vec4f.value, 0.01, 0.0, 1.0);
     ImGui.SliderFloat2('slider float2', vec4f.value, 0.0, 1.0);
     ImGui.InputInt2('input int2', vec4i.value);
     ImGui.DragInt2('drag int2', vec4i.value, 1, 0, 255);
     ImGui.SliderInt2('slider int2', vec4i.value, 0, 255);
-    ImGui.Spacing();
 
+    ImGui.SeparatorText('3-wide');
     ImGui.InputFloat3('input float3', vec4f.value);
     ImGui.DragFloat3('drag float3', vec4f.value, 0.01, 0.0, 1.0);
     ImGui.SliderFloat3('slider float3', vec4f.value, 0.0, 1.0);
     ImGui.InputInt3('input int3', vec4i.value);
     ImGui.DragInt3('drag int3', vec4i.value, 1, 0, 255);
     ImGui.SliderInt3('slider int3', vec4i.value, 0, 255);
-    ImGui.Spacing();
 
+    ImGui.SeparatorText('4-wide');
     ImGui.InputFloat4('input float4', vec4f.value);
     ImGui.DragFloat4('drag float4', vec4f.value, 0.01, 0.0, 1.0);
     ImGui.SliderFloat4('slider float4', vec4f.value, 0.0, 1.0);
@@ -2173,6 +3086,121 @@ function ShowDemoWindowWidgets (): void {
     ImGui.TreePop();
   }
 
+  if (ImGui.TreeNode('Tooltips')) {
+    // Tooltips are windows following the mouse. They do not take focus away.
+    ImGui.SeparatorText('General');
+
+    HelpMarker(
+      'Tooltip are typically created by using a IsItemHovered() + SetTooltip() sequence.\n\n' +
+      'We provide a helper SetItemTooltip() function to perform the two with standards flags.');
+
+    const sz: ImGui.Vec2 = new ImGui.Vec2(-Number.MIN_VALUE, 0.0);
+
+    ImGui.Button('Basic', sz);
+    ImGui.SetItemTooltip('I am a tooltip');
+
+    ImGui.Button('Fancy', sz);
+    if (ImGui.BeginItemTooltip()) {
+      ImGui.Text('I am a fancy tooltip');
+      const arr = [0.6, 0.1, 1.0, 0.5, 0.92, 0.1, 0.2];
+
+      ImGui.PlotLines('Curve', (_: null, idx: number): number => arr[idx], null, arr.length);
+      ImGui.Text(`Sin(time) = ${Math.sin(ImGui.GetTime()).toFixed(6)}`);
+      ImGui.EndTooltip();
+    }
+
+    ImGui.SeparatorText('Always On');
+
+    // Showcase NOT relying on a IsItemHovered() to emit a tooltip.
+    const always_on = STATIC<int>(UNIQUE('always_on#tooltip'), 0);
+
+    ImGui.RadioButton('Off', always_on.access, 0);
+    ImGui.SameLine();
+    ImGui.RadioButton('Always On (Simple)', always_on.access, 1);
+    ImGui.SameLine();
+    ImGui.RadioButton('Always On (Advanced)', always_on.access, 2);
+    if (always_on.value === 1)
+    {ImGui.SetTooltip('I am following you around.');}
+    else if (always_on.value === 2) {
+      ImGui.BeginTooltip();
+      ImGui.ProgressBar(Math.sin(ImGui.GetTime()) * 0.5 + 0.5, new ImGui.Vec2(ImGui.GetFontSize() * 25, 0.0));
+      ImGui.EndTooltip();
+    }
+
+    ImGui.SeparatorText('Custom');
+
+    HelpMarker(
+      'Passing ImGuiHoveredFlags_ForTooltip to IsItemHovered() is the preferred way to standardize ' +
+      'tooltip activation details across your application. You may however decide to use custom ' +
+      'flags for a specific tooltip instance.');
+
+    ImGui.Button('Manual', sz);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.ForTooltip))
+    {ImGui.SetTooltip('I am a manually emitted tooltip.');}
+
+    ImGui.Button('DelayNone', sz);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNone))
+    {ImGui.SetTooltip('I am a tooltip with no delay.');}
+
+    ImGui.Button('DelayShort', sz);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayShort | ImGui.HoveredFlags.NoSharedDelay))
+    {ImGui.SetTooltip('I am a tooltip with a short delay.');}
+
+    ImGui.Button('DelayLong', sz);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.DelayNormal | ImGui.HoveredFlags.NoSharedDelay))
+    {ImGui.SetTooltip('I am a tooltip with a long delay.');}
+
+    ImGui.Button('Stationary', sz);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.Stationary))
+    {ImGui.SetTooltip('I am a tooltip requiring mouse to be stationary before activating.');}
+
+    // Using ImGuiHoveredFlags_ForTooltip will pull flags from 'style.HoverFlagsForTooltipMouse'
+    ImGui.BeginDisabled();
+    ImGui.Button('Disabled item', sz);
+    if (ImGui.IsItemHovered(ImGui.HoveredFlags.ForTooltip))
+    {ImGui.SetTooltip('I am a tooltip for a disabled item.');}
+    ImGui.EndDisabled();
+
+    ImGui.TreePop();
+  }
+
+  if (ImGui.TreeNode('Disable Blocks')) {
+    ImGui.Text('Demonstrate using BeginDisabled()/EndDisabled() to disable sections of widgets.');
+
+    const disable_btn = STATIC<boolean>(UNIQUE('disable_btn#demo'), false);
+
+    ImGui.Checkbox('Disable buttons below', disable_btn.access);
+
+    ImGui.BeginDisabled(disable_btn.value);
+    ImGui.Button('Button A');
+    ImGui.SameLine();
+    ImGui.Button('Button B');
+    ImGui.SameLine();
+    ImGui.Button('Button C');
+    ImGui.EndDisabled();
+
+    // Show nested disabled
+    if (ImGui.TreeNode('Nested Disabled')) {
+      const disable_outer = STATIC<boolean>(UNIQUE('disable_outer#demo'), true);
+      const disable_inner = STATIC<boolean>(UNIQUE('disable_inner#demo'), false);
+
+      ImGui.Checkbox('Outer disable', disable_outer.access);
+      ImGui.Checkbox('Inner disable (no-op when outer is disabled)', disable_inner.access);
+      ImGui.BeginDisabled(disable_outer.value);
+      ImGui.Text('Outer section is disabled');
+      ImGui.SliderFloat('Slider (disabled)', [0.5], 0.0, 1.0);
+      ImGui.BeginDisabled(disable_inner.value);
+      ImGui.Text('Inner section cannot re-enable itself when outer is disabled');
+      ImGui.EndDisabled();
+      ImGui.EndDisabled();
+      ImGui.TreePop();
+    }
+
+    ImGui.TreePop();
+  }
+
+  DemoWindowWidgetsSelectionAndMultiSelect();
+
   if (ImGui.TreeNode('Querying Status (Edited/Active/Focused/Hovered etc.)')) {
     // Select an item type
     const item_names: string[] =
@@ -2225,7 +3253,9 @@ function ShowDemoWindowWidgets (): void {
             `IsItemHovered() = ${ImGui.IsItemHovered()}\n` +
             `IsItemHovered(_AllowWhenBlockedByPopup) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenBlockedByPopup)}\n` +
             `IsItemHovered(_AllowWhenBlockedByActiveItem) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenBlockedByActiveItem)}\n` +
-            `IsItemHovered(_AllowWhenOverlapped) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenOverlapped)}\n` +
+            `IsItemHovered(_AllowWhenOverlappedByItem) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenOverlappedByItem)}\n` +
+            `IsItemHovered(_AllowWhenOverlappedByWindow) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenOverlappedByWindow)}\n` +
+            `IsItemHovered(_AllowWhenDisabled) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.AllowWhenDisabled)}\n` +
             `IsItemHovered(_RectOnly) = ${ImGui.IsItemHovered(ImGui.HoveredFlags.RectOnly)}\n` +
             `IsItemActive() = ${ImGui.IsItemActive()}\n` +
             `IsItemEdited() = ${ImGui.IsItemEdited()}\n` +
@@ -2243,30 +3273,37 @@ function ShowDemoWindowWidgets (): void {
     const embed_all_inside_a_child_window = STATIC<boolean>(UNIQUE('embed_all_inside_a_child_window#4a40e4ac'), false);
 
     ImGui.Checkbox('Embed everything inside a child window (for additional testing)', embed_all_inside_a_child_window.access);
-    if (embed_all_inside_a_child_window.value) {ImGui.BeginChild('outer_child', new ImGui.Vec2(0, ImGui.GetFontSize() * 20.0), true);}
+    if (embed_all_inside_a_child_window.value) {ImGui.BeginChild('outer_child', new ImGui.Vec2(0, ImGui.GetFontSize() * 20.0), ImGui.ChildFlags.Borders);}
 
     // Testing IsWindowFocused() function with its various flags.
-    // Note that the ImGui.FocusedFlags.XXX flags can be combined.
     ImGui.BulletText(
       `IsWindowFocused() = ${ImGui.IsWindowFocused()}\n` +
             `IsWindowFocused(_ChildWindows) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.ChildWindows)}\n` +
+            `IsWindowFocused(_ChildWindows|_NoPopupHierarchy) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.ChildWindows | ImGui.FocusedFlags.NoPopupHierarchy)}\n` +
+            `IsWindowFocused(_ChildWindows|_DockHierarchy) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.ChildWindows | ImGui.FocusedFlags.DockHierarchy)}\n` +
             `IsWindowFocused(_ChildWindows|_RootWindow) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.ChildWindows | ImGui.FocusedFlags.RootWindow)}\n` +
             `IsWindowFocused(_RootWindow) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.RootWindow)}\n` +
+            `IsWindowFocused(_RootWindow|_NoPopupHierarchy) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.RootWindow | ImGui.FocusedFlags.NoPopupHierarchy)}\n` +
+            `IsWindowFocused(_RootWindow|_DockHierarchy) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.RootWindow | ImGui.FocusedFlags.DockHierarchy)}\n` +
             `IsWindowFocused(_AnyWindow) = ${ImGui.IsWindowFocused(ImGui.FocusedFlags.AnyWindow)}\n`);
 
     // Testing IsWindowHovered() function with its various flags.
-    // Note that the ImGui.HoveredFlags.XXX flags can be combined.
     ImGui.BulletText(
       `IsWindowHovered() = ${ImGui.IsWindowHovered()}\n` +
             `IsWindowHovered(_AllowWhenBlockedByPopup) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.AllowWhenBlockedByPopup)}\n` +
             `IsWindowHovered(_AllowWhenBlockedByActiveItem) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.AllowWhenBlockedByActiveItem)}\n` +
             `IsWindowHovered(_ChildWindows) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows)}\n` +
+            `IsWindowHovered(_ChildWindows|_NoPopupHierarchy) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows | ImGui.HoveredFlags.NoPopupHierarchy)}\n` +
+            `IsWindowHovered(_ChildWindows|_DockHierarchy) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows | ImGui.HoveredFlags.DockHierarchy)}\n` +
             `IsWindowHovered(_ChildWindows|_RootWindow) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows | ImGui.HoveredFlags.RootWindow)}\n` +
-            `IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows | ImGui.HoveredFlags.AllowWhenBlockedByPopup)}\n` +
             `IsWindowHovered(_RootWindow) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.RootWindow)}\n` +
-            `IsWindowHovered(_AnyWindow) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.AnyWindow)}\n`);
+            `IsWindowHovered(_RootWindow|_NoPopupHierarchy) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.RootWindow | ImGui.HoveredFlags.NoPopupHierarchy)}\n` +
+            `IsWindowHovered(_RootWindow|_DockHierarchy) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.RootWindow | ImGui.HoveredFlags.DockHierarchy)}\n` +
+            `IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows | ImGui.HoveredFlags.AllowWhenBlockedByPopup)}\n` +
+            `IsWindowHovered(_AnyWindow) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.AnyWindow)}\n` +
+            `IsWindowHovered(_Stationary) = ${ImGui.IsWindowHovered(ImGui.HoveredFlags.Stationary)}\n`);
 
-    ImGui.BeginChild('child', new ImGui.Vec2(0, 50), true);
+    ImGui.BeginChild('child', new ImGui.Vec2(0, 50), ImGui.ChildFlags.Borders);
     ImGui.Text('This is another child window for testing the _ChildWindows flag.');
     ImGui.EndChild();
     if (embed_all_inside_a_child_window.value) {ImGui.EndChild();}
@@ -2295,12 +3332,34 @@ function ShowDemoWindowWidgets (): void {
 
     ImGui.TreePop();
   }
+
+  if (ImGui.TreeNode('Text Filter')) {
+    // Helper class to easy setup a text filter.
+    // You may want to implement a more feature-full filtering scheme in your own application.
+    const filter = STATIC<ImGui.TextFilter>(UNIQUE('filter#51f8d318'), new ImGui.TextFilter());
+
+    ImGui.Text('Filter usage:\n' +
+                    '  ""         display all lines\n' +
+                    '  "xxx"      display lines containing "xxx"\n' +
+                    '  "xxx,yyy"  display lines containing "xxx" or "yyy"\n' +
+                    '  "-xxx"     hide lines containing "xxx"');
+    filter.value.Draw();
+    const lines: string[] = ['aaa1.c', 'bbb1.c', 'ccc1.c', 'aaa2.cpp', 'bbb2.cpp', 'ccc2.cpp', 'abc.h', 'hello, world'];
+
+    for (let i = 0; i < ImGui.ARRAYSIZE(lines); i++) {
+      if (filter.value.PassFilter(lines[i])) { ImGui.BulletText(`${lines[i]}`); }
+    }
+    ImGui.TreePop();
+  }
+
+  ImGui.EndDisabled();
 }
 
 function ShowDemoWindowLayout (): void {
   if (!ImGui.CollapsingHeader('Layout & Scrolling')) {return;}
 
   if (ImGui.TreeNode('Child windows')) {
+    ImGui.SeparatorText('Child windows');
     HelpMarker('Use child windows to begin into a self-contained independent scrolling/clipping regions within a host window.');
     const disable_mouse_wheel = STATIC<boolean>(UNIQUE('disable_mouse_wheel#8959bc69'), false);
     const disable_menu = STATIC<boolean>(UNIQUE('disable_menu#b6ebebfa'), false);
@@ -2313,7 +3372,7 @@ function ShowDemoWindowLayout (): void {
       let window_flags: ImGui.WindowFlags = ImGui.WindowFlags.HorizontalScrollbar;
 
       if (disable_mouse_wheel.value) {window_flags |= ImGui.WindowFlags.NoScrollWithMouse;}
-      ImGui.BeginChild('ChildL', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.5, 260), false, window_flags);
+      ImGui.BeginChild('ChildL', new ImGui.Vec2(ImGui.GetContentRegionAvail().x * 0.5, 260), ImGui.ChildFlags.None, window_flags);
       for (let i = 0; i < 100; i++) {ImGui.Text(`${i.toString().padStart(4, '0')}: scrollable region`);}
       ImGui.EndChild();
     }
@@ -2327,7 +3386,7 @@ function ShowDemoWindowLayout (): void {
       if (disable_mouse_wheel.value) {window_flags |= ImGui.WindowFlags.NoScrollWithMouse;}
       if (!disable_menu.value) {window_flags |= ImGui.WindowFlags.MenuBar;}
       ImGui.PushStyleVar(ImGui.StyleVar.ChildRounding, 5.0);
-      ImGui.BeginChild('ChildR', new ImGui.Vec2(0, 260), true, window_flags);
+      ImGui.BeginChild('ChildR', new ImGui.Vec2(0, 260), ImGui.ChildFlags.Borders, window_flags);
       if (!disable_menu && ImGui.BeginMenuBar()) {
         if (ImGui.BeginMenu('Menu')) {
           ShowExampleMenuFile();
@@ -2348,7 +3407,37 @@ function ShowDemoWindowLayout (): void {
       ImGui.PopStyleVar();
     }
 
-    ImGui.Separator();
+    // Child 3: manual-resize
+    ImGui.SeparatorText('Manual-resize');
+    {
+      HelpMarker('Drag bottom border to resize. Double-click bottom border to auto-fit to vertical contents.');
+      ImGui.PushStyleColor(ImGui.Col.ChildBg, ImGui.GetStyleColorVec4(ImGui.Col.FrameBg));
+      if (ImGui.BeginChild('ResizableChild', new ImGui.Vec2(-FLT_MIN, ImGui.GetTextLineHeightWithSpacing() * 8), ImGui.ChildFlags.Borders | ImGui.ChildFlags.ResizeY))
+      {for (let n = 0; n < 10; n++)
+      {ImGui.Text(`Line ${n.toString().padStart(4, '0')}`);}}
+      ImGui.PopStyleColor();
+      ImGui.EndChild();
+    }
+
+    // Child 4: auto-resizing height with a limit
+    ImGui.SeparatorText('Auto-resize with constraints');
+    {
+      const draw_lines = STATIC<int>(UNIQUE('draw_lines#autoresz'), 3);
+      const max_height_in_lines = STATIC<int>(UNIQUE('max_height_lines#autoresz'), 10);
+
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+      ImGui.DragInt('Lines Count', (_ = draw_lines.value) => draw_lines.value = _, 0.2);
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+      ImGui.DragInt('Max Height (in Lines)', (_ = max_height_in_lines.value) => max_height_in_lines.value = _, 0.2);
+
+      ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0.0, ImGui.GetTextLineHeightWithSpacing() * 1), new ImGui.Vec2(FLT_MAX, ImGui.GetTextLineHeightWithSpacing() * max_height_in_lines.value));
+      if (ImGui.BeginChild('ConstrainedChild', new ImGui.Vec2(-FLT_MIN, 0.0), ImGui.ChildFlags.Borders | ImGui.ChildFlags.AutoResizeY))
+      {for (let n = 0; n < draw_lines.value; n++)
+      {ImGui.Text(`Line ${n.toString().padStart(4, '0')}`);}}
+      ImGui.EndChild();
+    }
+
+    ImGui.SeparatorText('Misc/Advanced');
 
     // Demonstrate a few extra things
     // - Changing ImGui.Col.ChildBg (which is transparent black in default styles)
@@ -2365,7 +3454,7 @@ function ShowDemoWindowLayout (): void {
 
       ImGui.SetCursorPosX(ImGui.GetCursorPosX() + offset_x.value);
       ImGui.PushStyleColor(ImGui.Col.ChildBg, ImGui.COL32(255, 0, 0, 100));
-      ImGui.BeginChild('Red', new ImGui.Vec2(200, 100), true, ImGui.WindowFlags.None);
+      ImGui.BeginChild('Red', new ImGui.Vec2(200, 100), ImGui.ChildFlags.Borders, ImGui.WindowFlags.None);
       for (let n = 0; n < 50; n++) {ImGui.Text(`Some test ${n}`);}
       ImGui.EndChild();
       const child_is_hovered: boolean = ImGui.IsItemHovered();
@@ -2579,10 +3668,10 @@ function ShowDemoWindowLayout (): void {
     ImGui.Button('LEVERAGE\nBUZZWORD', size);
     ImGui.SameLine();
 
-    if (ImGui.ListBoxHeader('List', size)) {
+    if (ImGui.BeginListBox('List', size)) {
       ImGui.Selectable('Selected', true);
       ImGui.Selectable('Not Selected', false);
-      ImGui.ListBoxFooter();
+      ImGui.EndListBox();
     }
 
     ImGui.TreePop();
@@ -2744,7 +3833,7 @@ function ShowDemoWindowLayout (): void {
 
       const child_flags: ImGui.WindowFlags = enable_extra_decorations.value ? ImGui.WindowFlags.MenuBar : 0;
       const child_id: ImGui.ID = ImGui.GetID(/*(void*)(intptr_t)*/i);
-      const child_is_visible: boolean = ImGui.BeginChild(child_id, new ImGui.Vec2(child_w, 200.0), true, child_flags);
+      const child_is_visible: boolean = ImGui.BeginChild(child_id, new ImGui.Vec2(child_w, 200.0), ImGui.ChildFlags.Borders, child_flags);
 
       if (ImGui.BeginMenuBar()) {
         ImGui.TextUnformatted('abc');
@@ -2784,7 +3873,7 @@ function ShowDemoWindowLayout (): void {
       const child_height: float = ImGui.GetTextLineHeight() + style.ScrollbarSize + style.WindowPadding.y * 2.0;
       const child_flags: ImGui.WindowFlags = ImGui.WindowFlags.HorizontalScrollbar | (enable_extra_decorations ? ImGui.WindowFlags.AlwaysVerticalScrollbar : 0);
       const child_id: ImGui.ID = ImGui.GetID(/*(void*)(intptr_t)*/i);
-      const child_is_visible: boolean = ImGui.BeginChild(child_id, new ImGui.Vec2(-100, child_height), true, child_flags);
+      const child_is_visible: boolean = ImGui.BeginChild(child_id, new ImGui.Vec2(-100, child_height), ImGui.ChildFlags.Borders, child_flags);
 
       if (scroll_to_off) {ImGui.SetScrollX(scroll_to_off_px.value);}
       if (scroll_to_pos) {ImGui.SetScrollFromPosX(ImGui.GetCursorStartPos().x + scroll_to_pos_px.value, i * 0.25);}
@@ -2823,7 +3912,7 @@ function ShowDemoWindowLayout (): void {
     ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(2.0, 1.0));
     const scrolling_child_size: ImGui.Vec2 = new ImGui.Vec2(0, ImGui.GetFrameHeightWithSpacing() * 7 + 30);
 
-    ImGui.BeginChild('scrolling', scrolling_child_size, true, ImGui.WindowFlags.HorizontalScrollbar);
+    ImGui.BeginChild('scrolling', scrolling_child_size, ImGui.ChildFlags.Borders, ImGui.WindowFlags.HorizontalScrollbar);
     for (let line = 0; line < lines.value; line++) {
       // Display random stuff. For the sake of this trivial demo we are using basic Button() + SameLine()
       // If you want to create your own time line for a real application you may be better off manipulating
@@ -2954,7 +4043,7 @@ function ShowDemoWindowLayout (): void {
         ImGui.EndTabBar();
       }
       if (show_child.value) {
-        ImGui.BeginChild('child', new ImGui.Vec2(0, 0), true);
+        ImGui.BeginChild('child', new ImGui.Vec2(0, 0), ImGui.ChildFlags.Borders);
         ImGui.EndChild();
       }
       ImGui.End();
@@ -2963,23 +4052,37 @@ function ShowDemoWindowLayout (): void {
     ImGui.TreePop();
   }
 
-  if (ImGui.TreeNode('Clipping')) {
+  if (ImGui.TreeNode('Text Clipping')) {
     const size = STATIC<ImGui.Vec2>(UNIQUE('size#db17ebc1'), new ImGui.Vec2(100.0, 100.0));
     const offset = STATIC<ImGui.Vec2>(UNIQUE('offset#345f2a79'), new ImGui.Vec2(30.0, 30.0));
 
     ImGui.DragFloat2('size', size.value, 0.5, 1.0, 200.0, '%.0f');
     ImGui.TextWrapped('(Click and drag to scroll)');
 
+    HelpMarker(
+      '(Left) Using ImGui.PushClipRect():\n' +
+      'Will alter ImGui hit-testing logic + ImDrawList rendering.\n' +
+      '(use this if you want your clipping rectangle to affect interactions)\n\n' +
+      '(Center) Using ImDrawList.PushClipRect():\n' +
+      'Will alter ImDrawList rendering only.\n' +
+      '(use this as a shortcut if you are only using ImDrawList calls)\n\n' +
+      '(Right) Using ImDrawList.AddText() with a fine ClipRect:\n' +
+      'Will alter only this specific ImDrawList.AddText() rendering.\n' +
+      'This is often used internally to avoid altering the clipping rectangle and minimize draw calls.');
+
     for (let n = 0; n < 3; n++) {
       if (n > 0) {ImGui.SameLine();}
-      ImGui.PushID(n);
-      ImGui.BeginGroup(); // Lock X position
 
-      ImGui.InvisibleButton('##empty', size.value);
+      ImGui.PushID(n);
+      ImGui.InvisibleButton('##canvas', size.value);
       if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGui.MouseButton.Left)) {
         offset.value.x += ImGui.GetIO().MouseDelta.x;
         offset.value.y += ImGui.GetIO().MouseDelta.y;
       }
+      ImGui.PopID();
+      if (!ImGui.IsItemVisible()) // Skip rendering as ImDrawList elements are not clipped.
+      {continue;}
+
       const p0: ImGui.Vec2 = ImGui.GetItemRectMin();
       const p1: ImGui.Vec2 = ImGui.GetItemRectMax();
       const text_str: string = 'Line 1 hello\nLine 2 clip me!';
@@ -2988,10 +4091,6 @@ function ShowDemoWindowLayout (): void {
 
       switch (n) {
         case 0:
-          HelpMarker(
-            'Using ImGui.PushClipRect():\n' +
-                    'Will alter ImGui hit-testing logic + ImDrawList rendering.\n' +
-                    '(use this if you want your clipping rectangle to affect interactions)');
           ImGui.PushClipRect(p0, p1, true);
           draw_list.AddRectFilled(p0, p1, ImGui.COL32(90, 90, 120, 255));
           draw_list.AddText(text_pos, ImGui.COL32_WHITE, text_str);
@@ -2999,10 +4098,6 @@ function ShowDemoWindowLayout (): void {
 
           break;
         case 1:
-          HelpMarker(
-            'Using ImDrawList.PushClipRect():\n' +
-                    'Will alter ImDrawList rendering only.\n' +
-                    '(use this as a shortcut if you are only using ImDrawList calls)');
           draw_list.PushClipRect(p0, p1, true);
           draw_list.AddRectFilled(p0, p1, ImGui.COL32(90, 90, 120, 255));
           draw_list.AddText(text_pos, ImGui.COL32_WHITE, text_str);
@@ -3010,20 +4105,44 @@ function ShowDemoWindowLayout (): void {
 
           break;
         case 2:
-          HelpMarker(
-            'Using ImDrawList.AddText() with a fine ClipRect:\n' +
-                    'Will alter only this specific ImDrawList.AddText() rendering.\n' +
-                    '(this is often used internally to avoid altering the clipping rectangle and minimize draw calls)');
-          const clip_rect: ImGui.Vec4 = new ImGui.Vec4(p0.x, p0.y, p1.x, p1.y); // AddText() takes a ImGui.Vec4* here so let's convert.
+          const clip_rect: ImGui.Vec4 = new ImGui.Vec4(p0.x, p0.y, p1.x, p1.y);
 
           draw_list.AddRectFilled(p0, p1, ImGui.COL32(90, 90, 120, 255));
           draw_list.AddText(ImGui.GetFont(), ImGui.GetFontSize(), text_pos, ImGui.COL32_WHITE, text_str, null, 0.0, clip_rect);
 
           break;
       }
-      ImGui.EndGroup();
-      ImGui.PopID();
     }
+
+    ImGui.TreePop();
+  }
+
+  if (ImGui.TreeNode('Overlap Mode')) {
+    const enable_allow_overlap = STATIC<boolean>(UNIQUE('enable_allow_overlap#ovlp'), true);
+
+    HelpMarker(
+      'Hit-testing is by default performed in item submission order, which generally is perceived as \'back-to-front\'.\n\n' +
+      'By using SetNextItemAllowOverlap() you can notify that an item may be overlapped by another. ' +
+      'Doing so alters the hovering logic: items using AllowOverlap mode requires an extra frame to accept hovered state.');
+    ImGui.Checkbox('Enable AllowOverlap', (_ = enable_allow_overlap.value) => enable_allow_overlap.value = _);
+
+    const button1_pos: ImGui.Vec2 = ImGui.GetCursorScreenPos();
+    const button2_pos: ImGui.Vec2 = new ImGui.Vec2(button1_pos.x + 50.0, button1_pos.y + 50.0);
+
+    if (enable_allow_overlap.value)
+    {ImGui.SetNextItemAllowOverlap();}
+    ImGui.Button('Button 1', new ImGui.Vec2(80, 80));
+    ImGui.SetCursorScreenPos(button2_pos);
+    ImGui.Button('Button 2', new ImGui.Vec2(80, 80));
+
+    // This is typically used with width-spanning items.
+    // (note that Selectable() has a dedicated flag ImGuiSelectableFlags.AllowOverlap, which is a shortcut
+    // for using SetNextItemAllowOverlap(). For demo purpose we use SetNextItemAllowOverlap() here.)
+    if (enable_allow_overlap.value)
+    {ImGui.SetNextItemAllowOverlap();}
+    ImGui.Selectable('Some Selectable', false);
+    ImGui.SameLine();
+    ImGui.SmallButton('++');
 
     ImGui.TreePop();
   }
@@ -3065,8 +4184,7 @@ function ShowDemoWindowPopups (): void {
     ImGui.SameLine();
     ImGui.TextUnformatted(selected_fish.value === -1 ? '<None>' : names[selected_fish.value]);
     if (ImGui.BeginPopup('my_select_popup')) {
-      ImGui.Text('Aquarium');
-      ImGui.Separator();
+      ImGui.SeparatorText('Aquarium');
       for (let i = 0; i < ImGui.ARRAYSIZE(names); i++) {
         if (ImGui.Selectable(names[i])) {selected_fish.value = i;}
       }
@@ -3104,9 +4222,21 @@ function ShowDemoWindowPopups (): void {
     }
 
     // Call the more complete ShowExampleMenuFile which we use in various places of this demo
-    if (ImGui.Button('File Menu..')) {ImGui.OpenPopup('my_file_popup');}
-    if (ImGui.BeginPopup('my_file_popup')) {
-      ShowExampleMenuFile();
+    if (ImGui.Button('With a menu..')) {ImGui.OpenPopup('my_file_popup');}
+    if (ImGui.BeginPopup('my_file_popup', ImGui.WindowFlags.MenuBar)) {
+      if (ImGui.BeginMenuBar()) {
+        if (ImGui.BeginMenu('File')) {
+          ShowExampleMenuFile();
+          ImGui.EndMenu();
+        }
+        if (ImGui.BeginMenu('Edit')) {
+          ImGui.MenuItem('Dummy');
+          ImGui.EndMenu();
+        }
+        ImGui.EndMenuBar();
+      }
+      ImGui.Text('Hello from popup!');
+      ImGui.Button('This is a dummy button..');
       ImGui.EndPopup();
     }
 
@@ -3114,44 +4244,70 @@ function ShowDemoWindowPopups (): void {
   }
 
   if (ImGui.TreeNode('Context menus')) {
-    // BeginPopupContextItem() is a helper to provide common/simple popup behavior of essentially doing:
-    //    if (IsItemHovered() && IsMouseReleased(ImGui.MouseButton.Right))
-    //       OpenPopup(id);
-    //    return BeginPopup(id);
-    // For more advanced uses you may want to replicate and customize this code.
-    // See details in BeginPopupContextItem().
-    const value = STATIC<float>(UNIQUE('value#779ba8c7'), 0.5);
+    HelpMarker('"Context" functions are simple helpers to associate a Popup to a given Item or Window identifier.');
 
-    ImGui.Text(`Value = ${value.value.toFixed(3)} (<-- right-click here)`);
-    if (ImGui.BeginPopupContextItem('item context menu')) {
-      if (ImGui.Selectable('Set to zero')) {value.value = 0.0;}
-      if (ImGui.Selectable('Set to PI')) {value.value = 3.1415;}
-      ImGui.SetNextItemWidth(-1);
-      ImGui.DragFloat('##Value', value.access, 0.1, 0.0, 0.0);
-      ImGui.EndPopup();
+    // Example 1
+    // When used after an item that has an ID (e.g. Button), we can skip providing an ID to BeginPopupContextItem(),
+    // and BeginPopupContextItem() will use the last item ID as the popup ID.
+    {
+      const ctx_names: string[] = ['Label1', 'Label2', 'Label3', 'Label4', 'Label5'];
+      const ctx_selected = STATIC<int>(UNIQUE('ctx_selected#e2a7b011'), -1);
+
+      for (let n = 0; n < 5; n++) {
+        if (ImGui.Selectable(ctx_names[n], ctx_selected.value === n)) {ctx_selected.value = n;}
+        if (ImGui.BeginPopupContextItem()) { // use last item id as popup id
+          ctx_selected.value = n;
+          ImGui.Text(`This is a popup for "${ctx_names[n]}"!`);
+          if (ImGui.Button('Close')) {ImGui.CloseCurrentPopup();}
+          ImGui.EndPopup();
+        }
+        ImGui.SetItemTooltip('Right-click to open popup');
+      }
     }
 
-    // We can also use OpenPopupOnItemClick() which is the same as BeginPopupContextItem() but without the
-    // Begin() call. So here we will make it that clicking on the text field with the right mouse button (1)
-    // will toggle the visibility of the popup above.
-    ImGui.Text('(You can also right-click me to open the same popup as above.)');
-    ImGui.OpenPopupOnItemClick('item context menu', 1);
+    // Example 2
+    // Popup on a Text() element which doesn't have an identifier: we need to provide one.
+    // Using an explicit identifier is also convenient if you want to activate the popups from different locations.
+    {
+      HelpMarker('Text() elements don\'t have stable identifiers so we need to provide one.');
+      const value = STATIC<float>(UNIQUE('value#779ba8c7'), 0.5);
 
-    // When used after an item that has an ID (e.g.Button), we can skip providing an ID to BeginPopupContextItem().
-    // BeginPopupContextItem() will use the last item ID as the popup ID.
-    // In addition here, we want to include your editable label inside the button label.
-    // We use the ### operator to override the ID (read FAQ about ID for details)
-    const name = STATIC<ImGui.StringBuffer>(UNIQUE('name#c8522cc0'), new ImGui.StringBuffer(32, 'Label1'));
-    const buf: string = `Button: ${name.value}###Button`;
+      ImGui.Text(`Value = ${value.value.toFixed(3)} <-- (1) right-click this text`);
+      if (ImGui.BeginPopupContextItem('my popup')) {
+        if (ImGui.Selectable('Set to zero')) {value.value = 0.0;}
+        if (ImGui.Selectable('Set to PI')) {value.value = 3.1415;}
+        ImGui.SetNextItemWidth(-FLT_MIN);
+        ImGui.DragFloat('##Value', value.access, 0.1, 0.0, 0.0);
+        ImGui.EndPopup();
+      }
 
-    ImGui.Button(buf);
-    if (ImGui.BeginPopupContextItem()) {
-      ImGui.Text('Edit name:');
-      ImGui.InputText('##edit', name.value, ImGui.ARRAYSIZE(name.value));
-      if (ImGui.Button('Close')) {ImGui.CloseCurrentPopup();}
-      ImGui.EndPopup();
+      // We can also use OpenPopupOnItemClick() to toggle the visibility of a given popup.
+      // Here we make it that right-clicking this other text element opens the same popup as above.
+      ImGui.Text('(2) Or right-click this text');
+      ImGui.OpenPopupOnItemClick('my popup', ImGui.PopupFlags.MouseButtonRight);
+
+      // Back to square one: manually open the same popup.
+      if (ImGui.Button('(3) Or click this button')) {ImGui.OpenPopup('my popup');}
     }
-    ImGui.SameLine(); ImGui.Text('(<-- right-click here)');
+
+    // Example 3
+    // When using BeginPopupContextItem() with an implicit identifier (NULL == use last item ID),
+    // we need to make sure your item identifier is stable.
+    // In this example we showcase altering the item label while preserving its identifier, using the ### operator (see FAQ).
+    {
+      HelpMarker('Showcase using a popup ID linked to item ID, with the item having a changing label + stable ID using the ### operator.');
+      const name = STATIC<ImGui.StringBuffer>(UNIQUE('name#c8522cc0'), new ImGui.StringBuffer(32, 'Label1'));
+      const buf: string = `Button: ${name.value}###Button`; // ### operator override ID ignoring the preceding label
+
+      ImGui.Button(buf);
+      if (ImGui.BeginPopupContextItem()) {
+        ImGui.Text('Edit name:');
+        ImGui.InputText('##edit', name.value, ImGui.ARRAYSIZE(name.value));
+        if (ImGui.Button('Close')) {ImGui.CloseCurrentPopup();}
+        ImGui.EndPopup();
+      }
+      ImGui.SameLine(); ImGui.Text('(<-- right-click here)');
+    }
 
     ImGui.TreePop();
   }
@@ -4635,6 +5791,71 @@ function ShowDemoWindowTables (): void {
     ImGui.TreePop();
   }
 
+  if (open_action !== -1) {ImGui.SetNextItemOpen(open_action !== 0);}
+  if (ImGui.TreeNode('Angled headers')) {
+    const column_names: string[] = ['Track', 'cabasa', 'ride', 'smash', 'tom-hi', 'tom-mid', 'tom-low', 'hihat-o', 'hihat-c', 'snare-s', 'snare-c', 'clap', 'rim', 'kick'];
+    const columns_count: int = column_names.length;
+    const rows_count: int = 12;
+
+    const table_flags = STATIC<ImGui.TableFlags>(UNIQUE('table_flags#anghdr'),
+      ImGui.TableFlags.SizingFixedFit | ImGui.TableFlags.ScrollX | ImGui.TableFlags.ScrollY
+      | ImGui.TableFlags.BordersOuter | ImGui.TableFlags.BordersInnerH | ImGui.TableFlags.Hideable
+      | ImGui.TableFlags.Resizable | ImGui.TableFlags.Reorderable | ImGui.TableFlags.HighlightHoveredColumn);
+    const column_flags = STATIC<ImGui.TableColumnFlags>(UNIQUE('column_flags#anghdr'),
+      ImGui.TableColumnFlags.AngledHeader | ImGui.TableColumnFlags.WidthFixed);
+    const bools = STATIC_ARRAY<boolean>(columns_count * rows_count, UNIQUE('bools#anghdr'), Array(columns_count * rows_count).fill(false));
+    const frozen_cols = STATIC<int>(UNIQUE('frozen_cols#anghdr'), 1);
+    const frozen_rows = STATIC<int>(UNIQUE('frozen_rows#anghdr'), 2);
+
+    ImGui.CheckboxFlags('_ScrollX', (_ = table_flags.value) => table_flags.value = _, ImGui.TableFlags.ScrollX);
+    ImGui.CheckboxFlags('_ScrollY', (_ = table_flags.value) => table_flags.value = _, ImGui.TableFlags.ScrollY);
+    ImGui.CheckboxFlags('_Resizable', (_ = table_flags.value) => table_flags.value = _, ImGui.TableFlags.Resizable);
+    ImGui.CheckboxFlags('_Sortable', (_ = table_flags.value) => table_flags.value = _, ImGui.TableFlags.Sortable);
+    ImGui.CheckboxFlags('_NoBordersInBody', (_ = table_flags.value) => table_flags.value = _, ImGui.TableFlags.NoBordersInBody);
+    ImGui.CheckboxFlags('_HighlightHoveredColumn', (_ = table_flags.value) => table_flags.value = _, ImGui.TableFlags.HighlightHoveredColumn);
+    ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+    ImGui.SliderInt('Frozen columns', (_ = frozen_cols.value) => frozen_cols.value = _, 0, 2);
+    ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+    ImGui.SliderInt('Frozen rows', (_ = frozen_rows.value) => frozen_rows.value = _, 0, 2);
+    ImGui.CheckboxFlags('Disable header contributing to column width', (_ = column_flags.value) => column_flags.value = _, ImGui.TableColumnFlags.NoHeaderWidth);
+
+    if (ImGui.TreeNode('Style settings')) {
+      ImGui.SameLine();
+      HelpMarker('Giving access to some ImGuiStyle value in this demo for convenience.');
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+      ImGui.SliderAngle('style.TableAngledHeadersAngle', (_ = ImGui.GetStyle().TableAngledHeadersAngle) => ImGui.GetStyle().TableAngledHeadersAngle = _, -50.0, +50.0);
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 8);
+      ImGui.SliderFloat2('style.TableAngledHeadersTextAlign', ImGui.GetStyle().TableAngledHeadersTextAlign, 0.0, 1.0, '%.2f');
+      ImGui.TreePop();
+    }
+
+    if (ImGui.BeginTable('table_angled_headers', columns_count, table_flags.value, new ImGui.Vec2(0.0, TEXT_BASE_HEIGHT * 12))) {
+      ImGui.TableSetupColumn(column_names[0], ImGui.TableColumnFlags.NoHide | ImGui.TableColumnFlags.NoReorder);
+      for (let n = 1; n < columns_count; n++)
+      {ImGui.TableSetupColumn(column_names[n], column_flags.value);}
+      ImGui.TableSetupScrollFreeze(frozen_cols.value, frozen_rows.value);
+
+      ImGui.TableAngledHeadersRow();
+      ImGui.TableHeadersRow();
+      for (let row = 0; row < rows_count; row++) {
+        ImGui.PushID(row);
+        ImGui.TableNextRow();
+        ImGui.TableSetColumnIndex(0);
+        ImGui.AlignTextToFramePadding();
+        ImGui.Text(`Track ${row}`);
+        for (let column = 1; column < columns_count; column++)
+        {if (ImGui.TableSetColumnIndex(column)) {
+          ImGui.PushID(column);
+          ImGui.Checkbox('', (_ = bools.value[row * columns_count + column]) => bools.value[row * columns_count + column] = _);
+          ImGui.PopID();
+        }}
+        ImGui.PopID();
+      }
+      ImGui.EndTable();
+    }
+    ImGui.TreePop();
+  }
+
   //ImGui.SetNextItemOpen(true, ImGui.Cond.Once); // [DEBUG]
   if (open_action !== -1) {ImGui.SetNextItemOpen(open_action !== 0);}
   if (ImGui.TreeNode('Advanced')) {
@@ -5050,7 +6271,7 @@ function ShowDemoWindowColumns (): void {
     ImGui.SetNextWindowContentSize(new ImGui.Vec2(1500.0, 0.0));
     const child_size: ImGui.Vec2 = new ImGui.Vec2(0, ImGui.GetFontSize() * 20.0);
 
-    ImGui.BeginChild('##ScrollingRegion', child_size, false, ImGui.WindowFlags.HorizontalScrollbar);
+    ImGui.BeginChild('##ScrollingRegion', child_size, ImGui.ChildFlags.None, ImGui.WindowFlags.HorizontalScrollbar);
     ImGui.Columns(10);
 
     // Also demonstrate using clipper for large vertical lists
@@ -5105,62 +6326,181 @@ function ShowDemoWindowColumns (): void {
   ImGui.TreePop();
 }
 
-function ShowDemoWindowMisc (): void {
-  if (ImGui.CollapsingHeader('Filtering')) {
-    // Helper class to easy setup a text filter.
-    // You may want to implement a more feature-full filtering scheme in your own application.
-    const filter = STATIC<ImGui.TextFilter>(UNIQUE('filter#51f8d318'), new ImGui.TextFilter());
-
-    ImGui.Text('Filter usage:\n' +
-                    '  ""         display all lines\n' +
-                    '  "xxx"      display lines containing "xxx"\n' +
-                    '  "xxx,yyy"  display lines containing "xxx" or "yyy"\n' +
-                    '  "-xxx"     hide lines containing "xxx"');
-    filter.value.Draw();
-    const lines: string[] = ['aaa1.c', 'bbb1.c', 'ccc1.c', 'aaa2.cpp', 'bbb2.cpp', 'ccc2.cpp', 'abc.h', 'hello, world'];
-
-    for (let i = 0; i < ImGui.ARRAYSIZE(lines); i++) {
-      if (filter.value.PassFilter(lines[i])) {ImGui.BulletText(`${lines[i]}`);}
-    }
-  }
-
-  if (ImGui.CollapsingHeader('Inputs, Navigation & Focus')) {
+function ShowDemoWindowInputs (): void {
+  if (ImGui.CollapsingHeader('Inputs & Focus')) {
     const io: ImGui.IO = ImGui.GetIO();
 
-    // Display ImGui.IO output flags
-    ImGui.Text(`WantCaptureMouse: ${io.WantCaptureMouse}`);
-    ImGui.Text(`WantCaptureKeyboard: ${io.WantCaptureKeyboard}`);
-    ImGui.Text(`WantTextInput: ${io.WantTextInput}`);
-    ImGui.Text(`WantSetMousePos: ${io.WantSetMousePos}`);
-    ImGui.Text(`NavActive: ${io.NavActive}, NavVisible: ${io.NavVisible}`);
+    // Display inputs submitted to ImGuiIO
+    ImGui.SetNextItemOpen(true, ImGui.Cond.Once);
+    const inputs_opened = ImGui.TreeNode('Inputs');
 
-    // Display Keyboard/Mouse state
-    if (ImGui.TreeNode('Keyboard, Mouse & Navigation State')) {
-      if (ImGui.IsMousePosValid()) {ImGui.Text(`Mouse pos: (${io.MousePos.x}, ${io.MousePos.y})`);} else {ImGui.Text('Mouse pos: <INVALID>');}
+    ImGui.SameLine();
+    HelpMarker(
+      'This is a simplified view. See more detailed input state:\n' +
+      '- in \'Tools->Metrics/Debugger->Inputs\'.\n' +
+      '- in \'Tools->Debug Log->IO\'.');
+    if (inputs_opened) {
+      if (ImGui.IsMousePosValid()) { ImGui.Text(`Mouse pos: (${io.MousePos.x}, ${io.MousePos.y})`); } else { ImGui.Text('Mouse pos: <INVALID>'); }
       ImGui.Text(`Mouse delta: (${io.MouseDelta.x}, ${io.MouseDelta.y})`);
-      ImGui.Text('Mouse down:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.MouseDown); i++) {if (io.MouseDownDuration[i] >= 0.0) { ImGui.SameLine(); ImGui.Text(`b${i} (${io.MouseDownDuration[i].toFixed(2)} secs)`); }}
-      ImGui.Text('Mouse clicked:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.MouseDown); i++) {if (ImGui.IsMouseClicked(i)) { ImGui.SameLine(); ImGui.Text(`b${i}`); }}
-      ImGui.Text('Mouse dblclick:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.MouseDown); i++) {if (ImGui.IsMouseDoubleClicked(i)) { ImGui.SameLine(); ImGui.Text(`b${i}`); }}
-      ImGui.Text('Mouse released:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.MouseDown); i++) {if (ImGui.IsMouseReleased(i)) { ImGui.SameLine(); ImGui.Text(`b${i}`); }}
+      ImGui.Text('Mouse down:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.MouseDown); i++) { if (ImGui.IsMouseDown(i)) { ImGui.SameLine(); ImGui.Text(`b${i} (${io.MouseDownDuration[i].toFixed(2)} secs)`); } }
       ImGui.Text(`Mouse wheel: ${io.MouseWheel.toFixed(1)}`);
+      ImGui.Text('Mouse clicked count:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.MouseDown); i++) { if (io.MouseClickedCount[i] > 0) { ImGui.SameLine(); ImGui.Text(`b${i}: ${io.MouseClickedCount[i]}`); } }
 
-      ImGui.Text('Keys down:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.KeysDown); i++) {if (io.KeysDownDuration[i] >= 0.0) { ImGui.SameLine(); ImGui.Text(`${i} (0x${i.toString(16).toUpperCase()}) (${io.KeysDownDuration[i].toFixed(2)} secs)`); }}
-      ImGui.Text('Keys pressed:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.KeysDown); i++) {if (ImGui.IsKeyPressed(i)) { ImGui.SameLine(); ImGui.Text(`${i} (0x${i.toString(16).toUpperCase()})`); }}
-      ImGui.Text('Keys release:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.KeysDown); i++) {if (ImGui.IsKeyReleased(i)) { ImGui.SameLine(); ImGui.Text(`${i} (0x${i.toString(16).toUpperCase()})`); }}
+      ImGui.Text('Keys down:'); for (let key = ImGui.Key.NamedKey_BEGIN; key < ImGui.Key.NamedKey_END; key++) { if (!ImGui.IsKeyDown(key)) {continue;} ImGui.SameLine(); ImGui.Text(`"${ImGui.GetKeyName(key)}" ${key}`); }
       ImGui.Text(`Keys mods: ${io.KeyCtrl ? 'CTRL ' : ''}${io.KeyShift ? 'SHIFT ' : ''}${io.KeyAlt ? 'ALT ' : ''}${io.KeySuper ? 'SUPER ' : ''}`);
-      // TODO(imgui-js): ImGui.IO.InputQueueCharacters
-      // ImGui.Text("Chars queue:");    for (let i = 0; i < io.InputQueueCharacters.Size; i++) { const c = io.InputQueueCharacters[i]; ImGui.SameLine();  ImGui.Text("\'%c\' (0x%04X)", (c > ' ' && c <= 255) ? (char)c : '?', c); } // FIXME: We should convert 'c' to UTF-8 here but the functions are not public.
 
-      ImGui.Text('NavInputs down:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.NavInputs); i++) {if (io.NavInputs[i] > 0.0) { ImGui.SameLine(); ImGui.Text(`[${i}] ${io.NavInputs[i].toFixed(2)}`); }}
-      ImGui.Text('NavInputs pressed:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.NavInputs); i++) {if (io.NavInputsDownDuration[i] === 0.0) { ImGui.SameLine(); ImGui.Text(`[${i}]`); }}
-      ImGui.Text('NavInputs duration:'); for (let i = 0; i < ImGui.ARRAYSIZE(io.NavInputs); i++) {if (io.NavInputsDownDuration[i] >= 0.0) { ImGui.SameLine(); ImGui.Text('[${i}] ${io.NavInputsDownDuration[i].toFixed(2)}'); }}
+      ImGui.TreePop();
+    }
 
-      ImGui.Button('Hovering me sets the\nkeyboard capture flag');
-      if (ImGui.IsItemHovered()) {ImGui.CaptureKeyboardFromApp(true);}
-      ImGui.SameLine();
-      ImGui.Button('Holding me clears the\nthe keyboard capture flag');
-      if (ImGui.IsItemActive()) {ImGui.CaptureKeyboardFromApp(false);}
+    // Display ImGuiIO output flags
+    ImGui.SetNextItemOpen(true, ImGui.Cond.Once);
+    const outputs_opened = ImGui.TreeNode('Outputs');
 
+    ImGui.SameLine();
+    HelpMarker(
+      'The value of io.WantCaptureMouse and io.WantCaptureKeyboard are normally set by Dear ImGui ' +
+      'to instruct your application of how to route inputs. Typically, when a value is true, it means ' +
+      'Dear ImGui wants the corresponding inputs and we expect the underlying application to ignore them.\n\n' +
+      'The most typical case is: when hovering a window, Dear ImGui set io.WantCaptureMouse to true, ' +
+      'and underlying application should ignore mouse inputs (in practice there are many and more subtle ' +
+      'rules leading to how those flags are set).');
+    if (outputs_opened) {
+      ImGui.Text(`io.WantCaptureMouse: ${io.WantCaptureMouse}`);
+      ImGui.Text(`io.WantCaptureKeyboard: ${io.WantCaptureKeyboard}`);
+      ImGui.Text(`io.WantTextInput: ${io.WantTextInput}`);
+      ImGui.Text(`io.WantSetMousePos: ${io.WantSetMousePos}`);
+      ImGui.Text(`io.NavActive: ${io.NavActive}, io.NavVisible: ${io.NavVisible}`);
+
+      if (ImGui.TreeNode('WantCapture override')) {
+        HelpMarker(
+          'Hovering the colored canvas will override io.WantCaptureXXX fields.\n' +
+          'Notice how normally (when set to none), the value of io.WantCaptureKeyboard would be false when hovering ' +
+          'and true when clicking.');
+        const capture_override_mouse = STATIC<int>(UNIQUE('capture_override_mouse#inputs'), -1);
+        const capture_override_keyboard = STATIC<int>(UNIQUE('capture_override_keyboard#inputs'), -1);
+        const capture_override_desc = ['None', 'Set to false', 'Set to true'];
+
+        ImGui.SetNextItemWidth(ImGui.GetFontSize() * 15);
+        ImGui.SliderInt('SetNextFrameWantCaptureMouse() on hover', capture_override_mouse.access, -1, +1, capture_override_desc[capture_override_mouse.value + 1], ImGui.SliderFlags.AlwaysClamp);
+        ImGui.SetNextItemWidth(ImGui.GetFontSize() * 15);
+        ImGui.SliderInt('SetNextFrameWantCaptureKeyboard() on hover', capture_override_keyboard.access, -1, +1, capture_override_desc[capture_override_keyboard.value + 1], ImGui.SliderFlags.AlwaysClamp);
+
+        ImGui.ColorButton('##panel', new ImGui.Vec4(0.7, 0.1, 0.7, 1.0), ImGui.ColorEditFlags.NoTooltip | ImGui.ColorEditFlags.NoDragDrop, new ImGui.Vec2(128.0, 96.0));
+        if (ImGui.IsItemHovered() && capture_override_mouse.value !== -1)
+        {ImGui.SetNextFrameWantCaptureMouse(capture_override_mouse.value === 1);}
+        if (ImGui.IsItemHovered() && capture_override_keyboard.value !== -1)
+        {ImGui.SetNextFrameWantCaptureKeyboard(capture_override_keyboard.value === 1);}
+
+        ImGui.TreePop();
+      }
+      ImGui.TreePop();
+    }
+
+    // Demonstrate using Shortcut() and Routing Policies
+    if (ImGui.TreeNode('Shortcuts')) {
+      const route_options = STATIC<ImGui.InputFlags>(UNIQUE('route_options#shortcuts'), ImGui.InputFlags.Repeat);
+      const route_type = STATIC<ImGui.InputFlags>(UNIQUE('route_type#shortcuts'), ImGui.InputFlags.RouteFocused);
+
+      ImGui.CheckboxFlags('ImGuiInputFlags_Repeat', route_options.access, ImGui.InputFlags.Repeat);
+      if (ImGui.RadioButton('ImGuiInputFlags_RouteActive', route_type.value === ImGui.InputFlags.RouteActive)) {route_type.value = ImGui.InputFlags.RouteActive;}
+      if (ImGui.RadioButton('ImGuiInputFlags_RouteFocused (default)', route_type.value === ImGui.InputFlags.RouteFocused)) {route_type.value = ImGui.InputFlags.RouteFocused;}
+      ImGui.Indent();
+      ImGui.BeginDisabled(route_type.value !== ImGui.InputFlags.RouteFocused);
+      ImGui.CheckboxFlags('ImGuiInputFlags_RouteOverActive##0', route_options.access, ImGui.InputFlags.RouteOverActive);
+      ImGui.EndDisabled();
+      ImGui.Unindent();
+      if (ImGui.RadioButton('ImGuiInputFlags_RouteGlobal', route_type.value === ImGui.InputFlags.RouteGlobal)) {route_type.value = ImGui.InputFlags.RouteGlobal;}
+      ImGui.Indent();
+      ImGui.BeginDisabled(route_type.value !== ImGui.InputFlags.RouteGlobal);
+      ImGui.CheckboxFlags('ImGuiInputFlags_RouteOverFocused', route_options.access, ImGui.InputFlags.RouteOverFocused);
+      ImGui.CheckboxFlags('ImGuiInputFlags_RouteOverActive', route_options.access, ImGui.InputFlags.RouteOverActive);
+      ImGui.CheckboxFlags('ImGuiInputFlags_RouteUnlessBgFocused', route_options.access, ImGui.InputFlags.RouteUnlessBgFocused);
+      ImGui.EndDisabled();
+      ImGui.Unindent();
+      if (ImGui.RadioButton('ImGuiInputFlags_RouteAlways', route_type.value === ImGui.InputFlags.RouteAlways)) {route_type.value = ImGui.InputFlags.RouteAlways;}
+      let flags: ImGui.InputFlags = route_type.value | route_options.value;
+
+      if (route_type.value !== ImGui.InputFlags.RouteGlobal)
+      {flags &= ~(ImGui.InputFlags.RouteOverFocused | ImGui.InputFlags.RouteOverActive | ImGui.InputFlags.RouteUnlessBgFocused);}
+
+      ImGui.SeparatorText('Using SetNextItemShortcut()');
+      ImGui.Text('Ctrl+S');
+      ImGui.SetNextItemShortcut(ImGui.Mod.Ctrl | ImGui.Key.S, flags | ImGui.InputFlags.Tooltip);
+      ImGui.Button('Save');
+      ImGui.Text('Alt+F');
+      ImGui.SetNextItemShortcut(ImGui.Mod.Alt | ImGui.Key.F, flags | ImGui.InputFlags.Tooltip);
+      const shortcut_f = STATIC<float>(UNIQUE('shortcut_f#shortcuts'), 0.5);
+
+      ImGui.SliderFloat('Factor', shortcut_f.access, 0.0, 1.0);
+
+      ImGui.SeparatorText('Using Shortcut()');
+      const line_height = ImGui.GetTextLineHeightWithSpacing();
+      const key_chord: ImGui.ImGuiKeyChord = ImGui.Mod.Ctrl | ImGui.Key.A;
+
+      ImGui.Text('Ctrl+A');
+      ImGui.Text(`IsWindowFocused: ${ImGui.IsWindowFocused()}, Shortcut: ${ImGui.Shortcut(key_chord, flags) ? 'PRESSED' : '...'}`);
+
+      ImGui.PushStyleColor(ImGui.Col.ChildBg, new ImGui.Vec4(1.0, 0.0, 1.0, 0.1));
+
+      ImGui.BeginChild('WindowA', new ImGui.Vec2(-FLT_MIN, line_height * 14), ImGui.ChildFlags.Borders);
+      ImGui.Text('Press Ctrl+A and see who receives it!');
+      ImGui.Separator();
+
+      // 1: Window polling for Ctrl+A
+      ImGui.Text('(in WindowA)');
+      ImGui.Text(`IsWindowFocused: ${ImGui.IsWindowFocused()}, Shortcut: ${ImGui.Shortcut(key_chord, flags) ? 'PRESSED' : '...'}`);
+
+      // 3: Dummy child not claiming the route
+      ImGui.BeginChild('ChildD', new ImGui.Vec2(-FLT_MIN, line_height * 4), ImGui.ChildFlags.Borders);
+      ImGui.Text('(in ChildD: not using same Shortcut)');
+      ImGui.Text(`IsWindowFocused: ${ImGui.IsWindowFocused()}`);
+      ImGui.EndChild();
+
+      // 4: Child window polling for Ctrl+A
+      ImGui.BeginChild('ChildE', new ImGui.Vec2(-FLT_MIN, line_height * 4), ImGui.ChildFlags.Borders);
+      ImGui.Text('(in ChildE: using same Shortcut)');
+      ImGui.Text(`IsWindowFocused: ${ImGui.IsWindowFocused()}, Shortcut: ${ImGui.Shortcut(key_chord, flags) ? 'PRESSED' : '...'}`);
+      ImGui.EndChild();
+
+      // 5: In a popup
+      if (ImGui.Button('Open Popup'))
+      {ImGui.OpenPopup('PopupF');}
+      if (ImGui.BeginPopup('PopupF')) {
+        ImGui.Text('(in PopupF)');
+        ImGui.Text(`IsWindowFocused: ${ImGui.IsWindowFocused()}, Shortcut: ${ImGui.Shortcut(key_chord, flags) ? 'PRESSED' : '...'}`);
+        ImGui.EndPopup();
+      }
+      ImGui.EndChild();
+      ImGui.PopStyleColor();
+
+      ImGui.TreePop();
+    }
+
+    // Display mouse cursors
+    if (ImGui.TreeNode('Mouse Cursors')) {
+      const mouse_cursors_names: string[] = ['Arrow', 'TextInput', 'ResizeAll', 'ResizeNS', 'ResizeEW', 'ResizeNESW', 'ResizeNWSE', 'Hand', 'Wait', 'Progress', 'NotAllowed'];
+
+      ImGui.ASSERT(ImGui.ARRAYSIZE(mouse_cursors_names) === ImGui.MouseCursor.COUNT);
+
+      const current: ImGui.MouseCursor = ImGui.GetMouseCursor();
+      const cursor_name = (current >= 0 && current < ImGui.MouseCursor.COUNT) ? mouse_cursors_names[current] : 'N/A';
+
+      ImGui.Text(`Current mouse cursor = ${current}: ${cursor_name}`);
+      ImGui.BeginDisabled(true);
+      ImGui.CheckboxFlags('io.BackendFlags: HasMouseCursors', (_ = io.BackendFlags) => io.BackendFlags = _, ImGui.BackendFlags.HasMouseCursors);
+      ImGui.EndDisabled();
+
+      ImGui.Text('Hover to see mouse cursors:');
+      ImGui.SameLine(); HelpMarker(
+        'Your application can render a different mouse cursor based on what ImGui.GetMouseCursor() returns. ' +
+                'If software cursor rendering (io.MouseDrawCursor) is set ImGui will draw the right cursor for you, ' +
+                'otherwise your backend needs to handle it.');
+      for (let i = 0; i < ImGui.MouseCursor.COUNT; i++) {
+        const label: string = `Mouse cursor ${i}: ${mouse_cursors_names[i]}`;
+
+        ImGui.Bullet(); ImGui.Selectable(label, false);
+        if (ImGui.IsItemHovered()) { ImGui.SetMouseCursor(i); }
+      }
       ImGui.TreePop();
     }
 
@@ -5173,7 +6513,7 @@ function ShowDemoWindowMisc (): void {
       ImGui.InputText('3', buf.value, ImGui.ARRAYSIZE(buf.value));
       ImGui.PushAllowKeyboardFocus(false);
       ImGui.InputText('4 (tab skip)', buf.value, ImGui.ARRAYSIZE(buf.value));
-      //ImGui.SameLine(); HelpMarker("Use ImGui.PushAllowKeyboardFocus(boolean) to disable tabbing through certain widgets.");
+      ImGui.SameLine(); HelpMarker('Item won\'t be cycled through when using TAB or Shift+Tab.');
       ImGui.PopAllowKeyboardFocus();
       ImGui.InputText('5', buf.value, ImGui.ARRAYSIZE(buf.value));
       ImGui.TreePop();
@@ -5190,21 +6530,22 @@ function ShowDemoWindowMisc (): void {
       let has_focus: int = 0;
       const buf = STATIC<ImGui.StringBuffer>(UNIQUE('buf#f50d3898'), new ImGui.StringBuffer(128, 'click on a button to set focus'));
 
-      if (focus_1) {ImGui.SetKeyboardFocusHere();}
+      if (focus_1) { ImGui.SetKeyboardFocusHere(); }
       ImGui.InputText('1', buf.value, ImGui.ARRAYSIZE(buf.value));
-      if (ImGui.IsItemActive()) {has_focus = 1;}
+      if (ImGui.IsItemActive()) { has_focus = 1; }
 
-      if (focus_2) {ImGui.SetKeyboardFocusHere();}
+      if (focus_2) { ImGui.SetKeyboardFocusHere(); }
       ImGui.InputText('2', buf.value, ImGui.ARRAYSIZE(buf.value));
-      if (ImGui.IsItemActive()) {has_focus = 2;}
+      if (ImGui.IsItemActive()) { has_focus = 2; }
 
       ImGui.PushAllowKeyboardFocus(false);
-      if (focus_3) {ImGui.SetKeyboardFocusHere();}
+      if (focus_3) { ImGui.SetKeyboardFocusHere(); }
       ImGui.InputText('3 (tab skip)', buf.value, ImGui.ARRAYSIZE(buf.value));
-      if (ImGui.IsItemActive()) {has_focus = 3;}
+      if (ImGui.IsItemActive()) { has_focus = 3; }
+      ImGui.SameLine(); HelpMarker('Item won\'t be cycled through when using TAB or Shift+Tab.');
       ImGui.PopAllowKeyboardFocus();
 
-      if (has_focus) {ImGui.Text(`Item with focus: ${has_focus}`);} else {ImGui.Text('Item with focus: <none>');}
+      if (has_focus) { ImGui.Text(`Item with focus: ${has_focus}`); } else { ImGui.Text('Item with focus: <none>'); }
 
       // Use >= 0 parameter to SetKeyboardFocusHere() to focus an upcoming item
       const f3 = STATIC<ImGui.Tuple3<float>>(UNIQUE('f3#80d7c310'), [0.0, 0.0, 0.0]);
@@ -5213,7 +6554,7 @@ function ShowDemoWindowMisc (): void {
       if (ImGui.Button('Focus on X')) { focus_ahead = 0; } ImGui.SameLine();
       if (ImGui.Button('Focus on Y')) { focus_ahead = 1; } ImGui.SameLine();
       if (ImGui.Button('Focus on Z')) { focus_ahead = 2; }
-      if (focus_ahead !== -1) {ImGui.SetKeyboardFocusHere(focus_ahead);}
+      if (focus_ahead !== -1) { ImGui.SetKeyboardFocusHere(focus_ahead); }
       ImGui.SliderFloat3('Float3', f3.value, 0.0, 1.0);
 
       ImGui.TextWrapped('NB: Cursor & selection are preserved when refocusing last used item in code.');
@@ -5230,11 +6571,8 @@ function ShowDemoWindowMisc (): void {
       }
 
       ImGui.Button('Drag Me');
-      if (ImGui.IsItemActive()) {ImGui.GetForegroundDrawList().AddLine(io.MouseClickedPos[0], io.MousePos, ImGui.GetColorU32(ImGui.Col.Button), 4.0);} // Draw a line between the button and the mouse cursor
+      if (ImGui.IsItemActive()) { ImGui.GetForegroundDrawList().AddLine(io.MouseClickedPos[0], io.MousePos, ImGui.GetColorU32(ImGui.Col.Button), 4.0); }
 
-      // Drag operations gets "unlocked" when the mouse has moved past a certain threshold
-      // (the default threshold is stored in io.MouseDragThreshold). You can request a lower or higher
-      // threshold using the second parameter of IsMouseDragging() and GetMouseDragDelta().
       const value_raw: ImGui.Vec2 = ImGui.GetMouseDragDelta(0, 0.0);
       const value_with_lock_threshold: ImGui.Vec2 = ImGui.GetMouseDragDelta(0);
       const mouse_delta: ImGui.Vec2 = io.MouseDelta;
@@ -5243,28 +6581,6 @@ function ShowDemoWindowMisc (): void {
       ImGui.Text(`  w/ default threshold: (${value_with_lock_threshold.x.toFixed(1)}, ${value_with_lock_threshold.y.toFixed(1)})`);
       ImGui.Text(`  w/ zero threshold: (${value_raw.x.toFixed(1)}, ${value_raw.y.toFixed(1)})`);
       ImGui.Text(`io.MouseDelta: (${mouse_delta.x.toFixed(1)}, ${mouse_delta.y.toFixed(1)})`);
-      ImGui.TreePop();
-    }
-
-    if (ImGui.TreeNode('Mouse cursors')) {
-      const mouse_cursors_names: string[] = ['Arrow', 'TextInput', 'ResizeAll', 'ResizeNS', 'ResizeEW', 'ResizeNESW', 'ResizeNWSE', 'Hand', 'NotAllowed'];
-
-      ImGui.ASSERT(ImGui.ARRAYSIZE(mouse_cursors_names) === ImGui.MouseCursor.COUNT);
-
-      const current: ImGui.MouseCursor = ImGui.GetMouseCursor();
-
-      ImGui.Text(`Current mouse cursor = ${current}: ${mouse_cursors_names[current]}`);
-      ImGui.Text('Hover to see mouse cursors:');
-      ImGui.SameLine(); HelpMarker(
-        'Your application can render a different mouse cursor based on what ImGui.GetMouseCursor() returns. ' +
-                'If software cursor rendering (io.MouseDrawCursor) is set ImGui will draw the right cursor for you, ' +
-                'otherwise your backend needs to handle it.');
-      for (let i = 0; i < ImGui.MouseCursor.COUNT; i++) {
-        const label: string = `Mouse cursor ${i}: ${mouse_cursors_names[i]}`;
-
-        ImGui.Bullet(); ImGui.Selectable(label, false);
-        if (ImGui.IsItemHovered()) {ImGui.SetMouseCursor(i);}
-      }
       ImGui.TreePop();
     }
   }
@@ -5281,10 +6597,21 @@ function /*ImGui.*/ShowAboutWindow (p_open: ImGui.Access<boolean>): void {
 
     return;
   }
-  ImGui.Text(`Dear ImGui ${ImGui.GetVersion()}`);
+  ImGui.Text(`Dear ImGui ${ImGui.GetVersion()} (${ImGui.VERSION_NUM})`);
+
+  ImGui.TextLinkOpenURL('Homepage', 'https://github.com/ocornut/imgui');
+  ImGui.SameLine();
+  ImGui.TextLinkOpenURL('FAQ', 'https://github.com/ocornut/imgui/blob/master/docs/FAQ.md');
+  ImGui.SameLine();
+  ImGui.TextLinkOpenURL('Wiki', 'https://github.com/ocornut/imgui/wiki');
+  ImGui.SameLine();
+  ImGui.TextLinkOpenURL('Releases', 'https://github.com/ocornut/imgui/releases');
+
   ImGui.Separator();
-  ImGui.Text('By Omar Cornut and all Dear ImGui contributors.');
+  ImGui.Text('(c) 2014-2026 Omar Cornut');
+  ImGui.Text('Developed by Omar Cornut and all Dear ImGui contributors.');
   ImGui.Text('Dear ImGui is licensed under the MIT License, see LICENSE for more information.');
+  ImGui.Text('If your company uses this, please consider funding the project.');
 
   const show_config_info = STATIC<boolean>(UNIQUE('show_config_info#714b2250'), false);
 
@@ -5296,7 +6623,7 @@ function /*ImGui.*/ShowAboutWindow (p_open: ImGui.Access<boolean>): void {
     const copy_to_clipboard: boolean = ImGui.Button('Copy to clipboard');
     const child_size: ImGui.Vec2 = new ImGui.Vec2(0, ImGui.GetTextLineHeightWithSpacing() * 18);
 
-    ImGui.BeginChildFrame(ImGui.GetID('cfg_infos'), child_size, ImGui.WindowFlags.NoMove);
+    ImGui.BeginChild(ImGui.GetID('cfg_infos'), child_size, ImGui.ChildFlags.FrameStyle);
     if (copy_to_clipboard) {
       ImGui.LogToClipboard();
       ImGui.LogText('```\n'); // Back quotes will make text appears without formatting when pasting on GitHub
@@ -5405,7 +6732,7 @@ function /*ImGui.*/ShowAboutWindow (p_open: ImGui.Access<boolean>): void {
       ImGui.LogText('\n```\n');
       ImGui.LogFinish();
     }
-    ImGui.EndChildFrame();
+    ImGui.EndChild();
   }
   ImGui.End();
 }
@@ -5479,19 +6806,11 @@ function NodeFont (font: ImGui.Font): void {
   ImGui.PushFont(font);
   ImGui.Text('The quick brown fox jumps over the lazy dog');
   ImGui.PopFont();
-  ImGui.DragFloat('Font scale', (_ = font.Scale) => font.Scale = _, 0.005, 0.3, 2.0, '%.1f');   // Scale only this font
-  ImGui.SameLine(); HelpMarker(
-    'Note than the default embedded font is NOT meant to be scaled.\n\n' +
-        'Font are currently rendered into bitmaps at a given size at the time of building the atlas. ' +
-        'You may oversample them to get some flexibility with scaling. ' +
-        'You can also render at multiple sizes and select which one to use at runtime.\n\n' +
-        '(Glimmer of hope: the atlas system will be rewritten in the future to make scaling more flexible.)');
-  ImGui.Text(`Ascent: ${font.Ascent}, Descent: ${font.Descent}, Height: ${font.Ascent - font.Descent}`);
+  // Note: In v1.92, font.Scale, font.Ascent/Descent, font.MetricsTotalSurface have been moved to ImFontBaked.
+  // The C++ demo now uses ShowFontAtlas() instead of displaying these directly.
   ImGui.Text(`Fallback character: '${String.fromCharCode(font.FallbackChar)}' (U+${font.FallbackChar.toString().padStart(4, '0')})`);
   ImGui.Text(`Ellipsis character: '${String.fromCharCode(font.EllipsisChar)}' (U+${font.EllipsisChar.toString().padStart(4, '0')})`);
-  const surface_sqrt: int = Math.floor(/*(int)*/Math.sqrt(font.MetricsTotalSurface));
-
-  ImGui.Text(`Texture Area: about ${font.MetricsTotalSurface} px ~${surface_sqrt}x${surface_sqrt} px`);
+  ImGui.Text(`Font size (LegacySize): ${font.FontSize}`);
   for (let config_i = 0, cfg: ImGui.FontConfig; config_i < font.ConfigDataCount; config_i++) {
     if (font.ConfigData) {
       if (cfg = font.ConfigData[config_i]) {ImGui.BulletText(`Input ${config_i}: '${cfg.Name}', Oversample: (${cfg.OversampleH},${cfg.OversampleV}), PixelSnapH: ${cfg.PixelSnapH}, Offset: (${cfg.GlyphOffset.x.toFixed(1)},${cfg.GlyphOffset.x.toFixed(1)})`);}
@@ -5565,6 +6884,7 @@ function /*ImGui.*/ShowStyleEditor (ref: ImGui.Style | null = null): void {
 
   ImGui.PushItemWidth(ImGui.GetWindowWidth() * 0.50);
 
+  ImGui.SeparatorText('General');
   if (/*ImGui.*/ShowStyleSelector('Colors##Selector')) {ref_saved_style.value.Copy(style);} // ref_saved_style = style;
   /*ImGui.*/ShowFontSelector('Fonts##Selector');
 
@@ -5591,48 +6911,72 @@ function /*ImGui.*/ShowStyleEditor (ref: ImGui.Style | null = null): void {
     'Save/Revert in local non-persistent storage. Default Colors definition are not affected. ' +
         'Use "Export" below to save them somewhere.');
 
-  ImGui.Separator();
+  ImGui.SeparatorText('Details');
 
   if (ImGui.BeginTabBar('##tabs', ImGui.TabBarFlags.None)) {
     if (ImGui.BeginTabItem('Sizes')) {
-      ImGui.Text('Main');
+      ImGui.SeparatorText('Main');
       ImGui.SliderFloat2('WindowPadding', style.WindowPadding, 0.0, 20.0, '%.0f');
       ImGui.SliderFloat2('FramePadding', style.FramePadding, 0.0, 20.0, '%.0f');
-      ImGui.SliderFloat2('CellPadding', style.CellPadding, 0.0, 20.0, '%.0f');
       ImGui.SliderFloat2('ItemSpacing', style.ItemSpacing, 0.0, 20.0, '%.0f');
       ImGui.SliderFloat2('ItemInnerSpacing', style.ItemInnerSpacing, 0.0, 20.0, '%.0f');
       ImGui.SliderFloat2('TouchExtraPadding', style.TouchExtraPadding, 0.0, 10.0, '%.0f');
       ImGui.SliderFloat('IndentSpacing', (_ = style.IndentSpacing) => style.IndentSpacing = _, 0.0, 30.0, '%.0f');
-      ImGui.SliderFloat('ScrollbarSize', (_ = style.ScrollbarSize) => style.ScrollbarSize = _, 1.0, 20.0, '%.0f');
       ImGui.SliderFloat('GrabMinSize', (_ = style.GrabMinSize) => style.GrabMinSize = _, 1.0, 20.0, '%.0f');
-      ImGui.Text('Borders');
+
+      ImGui.SeparatorText('Borders');
       ImGui.SliderFloat('WindowBorderSize', (_ = style.WindowBorderSize) => style.WindowBorderSize = _, 0.0, 1.0, '%.0f');
       ImGui.SliderFloat('ChildBorderSize', (_ = style.ChildBorderSize) => style.ChildBorderSize = _, 0.0, 1.0, '%.0f');
       ImGui.SliderFloat('PopupBorderSize', (_ = style.PopupBorderSize) => style.PopupBorderSize = _, 0.0, 1.0, '%.0f');
       ImGui.SliderFloat('FrameBorderSize', (_ = style.FrameBorderSize) => style.FrameBorderSize = _, 0.0, 1.0, '%.0f');
-      ImGui.SliderFloat('TabBorderSize', (_ = style.TabBorderSize) => style.TabBorderSize = _, 0.0, 1.0, '%.0f');
-      ImGui.Text('Rounding');
+
+      ImGui.SeparatorText('Rounding');
       ImGui.SliderFloat('WindowRounding', (_ = style.WindowRounding) => style.WindowRounding = _, 0.0, 12.0, '%.0f');
       ImGui.SliderFloat('ChildRounding', (_ = style.ChildRounding) => style.ChildRounding = _, 0.0, 12.0, '%.0f');
       ImGui.SliderFloat('FrameRounding', (_ = style.FrameRounding) => style.FrameRounding = _, 0.0, 12.0, '%.0f');
       ImGui.SliderFloat('PopupRounding', (_ = style.PopupRounding) => style.PopupRounding = _, 0.0, 12.0, '%.0f');
-      ImGui.SliderFloat('ScrollbarRounding', (_ = style.ScrollbarRounding) => style.ScrollbarRounding = _, 0.0, 12.0, '%.0f');
       ImGui.SliderFloat('GrabRounding', (_ = style.GrabRounding) => style.GrabRounding = _, 0.0, 12.0, '%.0f');
-      ImGui.SliderFloat('LogSliderDeadzone', (_ = style.LogSliderDeadzone) => style.LogSliderDeadzone = _, 0.0, 12.0, '%.0f');
+
+      ImGui.SeparatorText('Scrollbar');
+      ImGui.SliderFloat('ScrollbarSize', (_ = style.ScrollbarSize) => style.ScrollbarSize = _, 1.0, 20.0, '%.0f');
+      ImGui.SliderFloat('ScrollbarRounding', (_ = style.ScrollbarRounding) => style.ScrollbarRounding = _, 0.0, 12.0, '%.0f');
+
+      ImGui.SeparatorText('Tabs');
+      ImGui.SliderFloat('TabBorderSize', (_ = style.TabBorderSize) => style.TabBorderSize = _, 0.0, 1.0, '%.0f');
+      ImGui.SliderFloat('TabBarBorderSize', (_ = style.TabBarBorderSize) => style.TabBarBorderSize = _, 0.0, 1.0, '%.0f');
+      ImGui.SliderFloat('TabBarOverlineSize', (_ = style.TabBarOverlineSize) => style.TabBarOverlineSize = _, 0.0, 3.0, '%.0f');
+      ImGui.SameLine(); HelpMarker('Overline is only drawn over the selected tab when ImGuiTabBarFlags_DrawSelectedOverline is set.');
       ImGui.SliderFloat('TabRounding', (_ = style.TabRounding) => style.TabRounding = _, 0.0, 12.0, '%.0f');
-      ImGui.Text('Alignment');
+
+      ImGui.SeparatorText('Tables');
+      ImGui.SliderFloat2('CellPadding', style.CellPadding, 0.0, 20.0, '%.0f');
+
+      ImGui.SeparatorText('Trees');
+      ImGui.SliderFloat('TreeLinesSize', (_ = style.TreeLinesSize) => style.TreeLinesSize = _, 0.0, 1.0, '%.0f');
+      ImGui.SliderFloat('TreeLinesRounding', (_ = style.TreeLinesRounding) => style.TreeLinesRounding = _, 0.0, 12.0, '%.0f');
+
+      ImGui.SeparatorText('Windows');
       ImGui.SliderFloat2('WindowTitleAlign', style.WindowTitleAlign, 0.0, 1.0, '%.2f');
       let window_menu_button_position: int = style.WindowMenuButtonPosition + 1;
 
       if (ImGui.Combo('WindowMenuButtonPosition', (_ = window_menu_button_position) => window_menu_button_position = _, 'None\0Left\0Right\0')) {style.WindowMenuButtonPosition = window_menu_button_position - 1;}
+
+      ImGui.SeparatorText('Widgets');
       ImGui.Combo('ColorButtonPosition', (_ = style.ColorButtonPosition) => style.ColorButtonPosition = _, 'Left\0Right\0');
       ImGui.SliderFloat2('ButtonTextAlign', style.ButtonTextAlign, 0.0, 1.0, '%.2f');
       ImGui.SameLine(); HelpMarker('Alignment applies when a button is larger than its text content.');
       ImGui.SliderFloat2('SelectableTextAlign', style.SelectableTextAlign, 0.0, 1.0, '%.2f');
       ImGui.SameLine(); HelpMarker('Alignment applies when a selectable is larger than its text content.');
-      ImGui.Text('Safe Area Padding');
-      ImGui.SameLine(); HelpMarker('Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).');
+      ImGui.SliderFloat('SeparatorSize', (_ = style.SeparatorSize) => style.SeparatorSize = _, 0.0, 10.0, '%.0f');
+      ImGui.SliderFloat('SeparatorTextBorderSize', (_ = style.SeparatorTextBorderSize) => style.SeparatorTextBorderSize = _, 0.0, 10.0, '%.0f');
+      ImGui.SliderFloat('LogSliderDeadzone', (_ = style.LogSliderDeadzone) => style.LogSliderDeadzone = _, 0.0, 12.0, '%.0f');
+
+      ImGui.SeparatorText('Docking');
+      ImGui.SliderFloat('DockingSeparatorSize', (_ = style.DockingSeparatorSize) => style.DockingSeparatorSize = _, 0.0, 12.0, '%.0f');
+
+      ImGui.SeparatorText('Misc');
       ImGui.SliderFloat2('DisplaySafeAreaPadding', style.DisplaySafeAreaPadding, 0.0, 30.0, '%.0f');
+      ImGui.SameLine(); HelpMarker('Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).');
       ImGui.EndTabItem();
     }
 
@@ -5668,7 +7012,7 @@ function /*ImGui.*/ShowStyleEditor (ref: ImGui.Style | null = null): void {
                 'Left-click on color square to open color picker,\n' +
                 'Right-click to open edit options menu.');
 
-      ImGui.BeginChild('##colors', new ImGui.Vec2(0, 0), true, ImGui.WindowFlags.AlwaysVerticalScrollbar | ImGui.WindowFlags.AlwaysHorizontalScrollbar | ImGui.WindowFlags.NavFlattened);
+      ImGui.BeginChild('##colors', new ImGui.Vec2(0, 0), ImGui.ChildFlags.Borders, ImGui.WindowFlags.AlwaysVerticalScrollbar | ImGui.WindowFlags.AlwaysHorizontalScrollbar | ImGui.WindowFlags.NavFlattened);
       ImGui.PushItemWidth(-160);
       for (let i = 0; i < ImGui.Col.COUNT; i++) {
         const name: string = ImGui.GetStyleColorName(i);
@@ -5707,15 +7051,13 @@ function /*ImGui.*/ShowStyleEditor (ref: ImGui.Style | null = null): void {
         ImGui.PopID();
       }
       if (ImGui.TreeNode('Atlas texture', `Atlas texture (${atlas.TexWidth}x${atlas.TexHeight} pixels)`)) {
-        const tint_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0);
-        const border_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 0.5);
-
-        ImGui.Image(atlas.TexID, new ImGui.Vec2(atlas.TexWidth, atlas.TexHeight), new ImGui.Vec2(0, 0), new ImGui.Vec2(1, 1), tint_col, border_col);
+        ImGui.Image(atlas.TexID, new ImGui.Vec2(atlas.TexWidth, atlas.TexHeight));
         ImGui.TreePop();
       }
 
       // Post-baking font scaling. Note that this is NOT the nice way of scaling fonts, read below.
       // (we enforce hard clamping manually as by default DragFloat/SliderFloat allows CTRL+Click text to get out of bounds).
+      ImGui.SeparatorText('Legacy Scaling');
       const MIN_SCALE: float = 0.3;
       const MAX_SCALE: float = 2.0;
 
@@ -5749,7 +7091,7 @@ function /*ImGui.*/ShowStyleEditor (ref: ImGui.Style | null = null): void {
       if (style.CurveTessellationTol < 0.10) {style.CurveTessellationTol = 0.10;}
 
       // When editing the "Circle Segment Max Error" value, draw a preview of its effect on auto-tessellated circles.
-      ImGui.DragFloat('Circle Segment Max Error', (_ = style.CircleSegmentMaxError) => style.CircleSegmentMaxError = _, 0.01, 0.10, 10.0, '%.2f');
+      ImGui.DragFloat('Circle Segment Max Error', (_ = style.CircleTessellationMaxError) => style.CircleTessellationMaxError = _, 0.01, 0.10, 10.0, '%.2f');
       if (ImGui.IsItemActive()) {
         ImGui.SetNextWindowPos(ImGui.GetCursorScreenPos());
         ImGui.BeginTooltip();
@@ -5841,7 +7183,7 @@ function ShowExampleMenuFile (): void {
     const enabled = STATIC<boolean>(UNIQUE('enabled#5f4b3785'), true);
 
     ImGui.MenuItem('Enabled', '', enabled.access);
-    ImGui.BeginChild('child', new ImGui.Vec2(0, 60), true);
+    ImGui.BeginChild('child', new ImGui.Vec2(0, 60), ImGui.ChildFlags.Borders);
     for (let i = 0; i < 10; i++) {ImGui.Text(`Scrolling Text ${i}`);}
     ImGui.EndChild();
     const f = STATIC<float>(UNIQUE('f#cddcae77'), 0.5);
@@ -5996,7 +7338,7 @@ class ExampleAppConsole {
     // Reserve enough left-over height for 1 separator + 1 input text
     const footer_height_to_reserve: float = ImGui.GetStyle().ItemSpacing.y + ImGui.GetFrameHeightWithSpacing();
 
-    ImGui.BeginChild('ScrollingRegion', new ImGui.Vec2(0, -footer_height_to_reserve), false, ImGui.WindowFlags.HorizontalScrollbar);
+    ImGui.BeginChild('ScrollingRegion', new ImGui.Vec2(0, -footer_height_to_reserve), ImGui.ChildFlags.None, ImGui.WindowFlags.HorizontalScrollbar);
     if (ImGui.BeginPopupContextWindow()) {
       if (ImGui.Selectable('Clear')) {this.ClearLog();}
       ImGui.EndPopup();
@@ -6295,7 +7637,7 @@ class ExampleAppLog {
     this.Filter.Draw('Filter', -100.0);
 
     ImGui.Separator();
-    ImGui.BeginChild('scrolling', new ImGui.Vec2(0, 0), false, ImGui.WindowFlags.HorizontalScrollbar);
+    ImGui.BeginChild('scrolling', new ImGui.Vec2(0, 0), ImGui.ChildFlags.None, ImGui.WindowFlags.HorizontalScrollbar);
 
     if (clear) {this.Clear();}
     if (copy) {ImGui.LogToClipboard();}
@@ -6404,7 +7746,7 @@ function ShowExampleAppLayout (p_open: ImGui.Access<boolean>): void {
     const selected = STATIC<int>(UNIQUE('selected#079abfa7'), 0);
 
     {
-      ImGui.BeginChild('left pane', new ImGui.Vec2(150, 0), true);
+      ImGui.BeginChild('left pane', new ImGui.Vec2(150, 0), ImGui.ChildFlags.Borders);
       for (let i = 0; i < 100; i++) {
         const label: string = `MyObject ${i}`;
 
@@ -6445,49 +7787,143 @@ function ShowExampleAppLayout (p_open: ImGui.Access<boolean>): void {
 // [SECTION] Example App: Property Editor / ShowExampleAppPropertyEditor()
 //-----------------------------------------------------------------------------
 
-function ShowPlaceholderObject (prefix: string, uid: int): void {
-  // Use object uid as identifier. Most commonly you could also use the object pointer as a base ID.
-  ImGui.PushID(uid);
+// Property editor class matching C++ ExampleAppPropertyEditor
+class ExampleAppPropertyEditor {
+  Filter: ImGui.TextFilter = new ImGui.TextFilter();
+  SelectedNode: ExampleTreeNode | null = null;
 
-  // Text and Tree nodes are less high than framed widgets, using AlignTextToFramePadding() we add vertical spacing to make the tree lines equal high.
-  ImGui.TableNextRow();
-  ImGui.TableSetColumnIndex(0);
-  ImGui.AlignTextToFramePadding();
-  const node_open: boolean = ImGui.TreeNode('Object', `${prefix}_${uid}`);
+  Draw (root_node: ExampleTreeNode): void {
+    // Left side: draw tree
+    if (ImGui.BeginChild('##tree', new ImGui.Vec2(300, 0), ImGui.ChildFlags.ResizeX | ImGui.ChildFlags.Borders | ImGui.ChildFlags.NavFlattened)) {
+      const ImGuiItemFlags_NoNavDefaultFocus = 1 << 2;
 
-  ImGui.TableSetColumnIndex(1);
-  ImGui.Text('my sailor is rich');
+      ImGui.PushItemFlag(ImGuiItemFlags_NoNavDefaultFocus, true);
+      ImGui.Text(`(${root_node.Childs.length} root nodes)`);
+      ImGui.SetNextItemWidth(-FLT_MIN);
+      ImGui.SetNextItemShortcut(ImGui.Mod.Ctrl | ImGui.Key.F, ImGui.InputFlags.Tooltip);
+      if (this.Filter.Draw('##Filter'))
+      {this.Filter.Build();}
+      ImGui.PopItemFlag();
 
-  if (node_open) {
-    const placeholder_members = STATIC_ARRAY<float>(8, UNIQUE('placeholder_members#9a0bf6da'), [0.0, 0.0, 1.0, 3.1416, 100.0, 999.0]);
-
-    for (let i = 0; i < 8; i++) {
-      ImGui.PushID(i); // Use field index as identifier.
-      if (i < 2) {
-        ShowPlaceholderObject('Child', 424242);
-      } else {
-        // Here we use a TreeNode to highlight on hover (we could use e.g. Selectable as well)
-        ImGui.TableNextRow();
-        ImGui.TableSetColumnIndex(0);
-        ImGui.AlignTextToFramePadding();
-        const flags: ImGui.TreeNodeFlags = ImGui.TreeNodeFlags.Leaf | ImGui.TreeNodeFlags.NoTreePushOnOpen | ImGui.TreeNodeFlags.Bullet;
-
-        ImGui.TreeNodeEx('Field', flags, `Field_${i}`);
-
-        ImGui.TableSetColumnIndex(1);
-        ImGui.SetNextItemWidth(-FLT_MIN);
-        if (i >= 5) {ImGui.InputFloat('##value', placeholder_members.access(i), 1.0);} else {ImGui.DragFloat('##value', placeholder_members.access(i), 0.01);}
-        ImGui.NextColumn();
+      if (ImGui.BeginTable('##list', 1, ImGui.TableFlags.RowBg)) {
+        this.DrawTree(root_node);
+        ImGui.EndTable();
       }
-      ImGui.PopID();
     }
-    ImGui.TreePop();
+    ImGui.EndChild();
+
+    // Right side: draw properties
+    ImGui.SameLine();
+
+    ImGui.BeginGroup();
+    const node = this.SelectedNode;
+
+    if (node !== null) {
+      ImGui.Text(node.Name);
+      ImGui.TextDisabled(`UID: 0x${(node.UID >>> 0).toString(16).toUpperCase().padStart(8, '0')}`);
+      ImGui.Separator();
+      if (ImGui.BeginTable('##properties', 2, ImGui.TableFlags.Resizable | ImGui.TableFlags.ScrollY)) {
+        ImGui.PushID(node.UID);
+        ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthFixed);
+        ImGui.TableSetupColumn('', ImGui.TableColumnFlags.WidthStretch, 2.0);
+        if (node.HasData) {
+          for (const field_desc of ExampleTreeNodeMemberInfos) {
+            ImGui.TableNextRow();
+            ImGui.PushID(field_desc.Name);
+            ImGui.TableNextColumn();
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted(field_desc.Name);
+            ImGui.TableNextColumn();
+            switch (field_desc.DataType) {
+              case ImGui.DataType.Bool:
+                ImGui.Checkbox('##Editor', (value = (node as any)[field_desc.Field]) => (node as any)[field_desc.Field] = value);
+
+                break;
+              case ImGui.DataType.S32:
+                ImGui.SetNextItemWidth(-FLT_MIN);
+                ImGui.DragInt('##Editor', (value = (node as any)[field_desc.Field]) => (node as any)[field_desc.Field] = value);
+
+                break;
+              case ImGui.DataType.Float:
+                if (field_desc.DataCount === 2) {
+                  ImGui.SetNextItemWidth(-FLT_MIN);
+                  const vec2 = node.DataMyVec2;
+
+                  ImGui.SliderFloat2('##Editor', vec2, 0.0, 1.0);
+                } else {
+                  ImGui.SetNextItemWidth(-FLT_MIN);
+                  ImGui.SliderFloat('##Editor', (value = (node as any)[field_desc.Field]) => (node as any)[field_desc.Field] = value, 0.0, 1.0);
+                }
+
+                break;
+              case ImGui.DataType.String: {
+                const buf = new ImGui.StringBuffer(28, node.Name);
+
+                if (ImGui.InputText('##Editor', buf, 28))
+                {node.Name = buf.buffer;}
+
+                break;
+              }
+            }
+            ImGui.PopID();
+          }
+        }
+        ImGui.PopID();
+        ImGui.EndTable();
+      }
+    }
+    ImGui.EndGroup();
   }
-  ImGui.PopID();
+
+  IsNodePassingFilter (node: ExampleTreeNode): boolean {
+    return node.Parent?.Parent !== null || this.Filter.PassFilter(node.Name);
+  }
+
+  DrawTree (node: ExampleTreeNode): void {
+    for (const child of node.Childs)
+    {if (this.IsNodePassingFilter(child) && this.DrawTreeNode(child)) {
+      this.DrawTree(child);
+      ImGui.TreePop();
+    }}
+  }
+
+  DrawTreeNode (node: ExampleTreeNode): boolean {
+    ImGui.TableNextRow();
+    ImGui.TableNextColumn();
+    let tree_flags: ImGui.TreeNodeFlags = ImGui.TreeNodeFlags.None;
+
+    tree_flags |= ImGui.TreeNodeFlags.OpenOnArrow | ImGui.TreeNodeFlags.OpenOnDoubleClick;
+    tree_flags |= ImGui.TreeNodeFlags.NavLeftJumpsToParent;
+    tree_flags |= ImGui.TreeNodeFlags.SpanFullWidth;
+    tree_flags |= ImGui.TreeNodeFlags.DrawLinesToNodes;
+    if (node === this.SelectedNode)
+    {tree_flags |= ImGui.TreeNodeFlags.Selected;}
+    if (node.Childs.length === 0)
+    {tree_flags |= ImGui.TreeNodeFlags.Leaf | ImGui.TreeNodeFlags.Bullet | ImGui.TreeNodeFlags.NoTreePushOnOpen;}
+    if (node.DataMyBool === false)
+    {ImGui.PushStyleColor(ImGui.Col.Text, ImGui.GetStyleColorVec4(ImGui.Col.TextDisabled));}
+    ImGui.SetNextItemStorageID(node.UID);
+    let is_open = ImGui.TreeNodeEx(node.UID, tree_flags, node.Name);
+
+    if (node.Childs.length === 0)
+    {is_open = false;}
+    if (node.DataMyBool === false)
+    {ImGui.PopStyleColor();}
+    if (ImGui.IsItemFocused())
+    {this.SelectedNode = node;}
+
+    return is_open;
+  }
 }
 
-// Demonstrate create a simple property editor.
+// Demonstrate create a property editor.
 function ShowExampleAppPropertyEditor (p_open: ImGui.Access<boolean>): void {
+  const prop_editor = STATIC<ExampleAppPropertyEditor>(UNIQUE('prop_editor#pe'), new ExampleAppPropertyEditor());
+  const demo_tree = STATIC<ExampleTreeNode | null>(UNIQUE('demo_tree#pe'), null);
+
+  if (demo_tree.value === null)
+  {demo_tree.value = ExampleTree_CreateDemoTree();}
+
   ImGui.SetNextWindowSize(new ImGui.Vec2(430, 450), ImGui.Cond.FirstUseEver);
   if (!ImGui.Begin('Example: Property editor', p_open)) {
     ImGui.End();
@@ -6495,22 +7931,7 @@ function ShowExampleAppPropertyEditor (p_open: ImGui.Access<boolean>): void {
     return;
   }
 
-  HelpMarker(
-    'This example shows how you may implement a property editor using two columns.\n' +
-        'All objects/fields data are dummies here.\n' +
-        'Remember that in many simple cases, you can use ImGui.SameLine(xxx) to position\n' +
-        'your cursor horizontally instead of using the Columns() API.');
-
-  ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(2, 2));
-  if (ImGui.BeginTable('split', 2, ImGui.TableFlags.BordersOuter | ImGui.TableFlags.Resizable)) {
-    // Iterate placeholder objects (all the same data)
-    for (let obj_i = 0; obj_i < 4; obj_i++) {
-      ShowPlaceholderObject('Object', obj_i);
-      //ImGui.Separator();
-    }
-    ImGui.EndTable();
-  }
-  ImGui.PopStyleVar();
+  prop_editor.value.Draw(demo_tree.value);
   ImGui.End();
 }
 
@@ -6607,50 +8028,83 @@ function ShowExampleAppAutoResize (p_open: ImGui.Access<boolean>): void {
 // Demonstrate creating a window with custom resize constraints.
 function ShowExampleAppConstrainedResize (p_open: ImGui.Access<boolean>): void {
   class CustomConstraints {
-    // Helper functions to demonstrate programmatic constraints
-    static Square<T>(data: ImGui.SizeCallbackData<T>): void { data.DesiredSize.x = data.DesiredSize.y = IM_MAX(data.DesiredSize.x, data.DesiredSize.y); }
+    static AspectRatio (data: ImGui.SizeCallbackData<float>): void {
+      const aspect_ratio = data.UserData;
+
+      data.DesiredSize.y = Math.floor(data.DesiredSize.x / aspect_ratio);
+    }
+    static Square<T>(cbData: ImGui.SizeCallbackData<T>): void { cbData.DesiredSize.x = cbData.DesiredSize.y = IM_MAX(cbData.DesiredSize.x, cbData.DesiredSize.y); }
     static Step (data: ImGui.SizeCallbackData<float>): void {
       const step = data.UserData;
 
-      data.DesiredSize.Set(Math.floor/*(int)*/(data.DesiredSize.x / step + 0.5) * step, Math.floor/*(int)*/(data.DesiredSize.y / step + 0.5) * step);
+      data.DesiredSize.Set(Math.floor(data.DesiredSize.x / step + 0.5) * step, Math.floor(data.DesiredSize.y / step + 0.5) * step);
     }
   }
 
   const test_desc: string[] =
     [
-      'Resize vertical only',
-      'Resize horizontal only',
-      'Width > 100, Height > 100',
-      'Width 400-500',
-      'Height 400-500',
+      'Between 100x100 and 500x500',
+      'At least 100x100',
+      'Resize vertical + lock current width',
+      'Resize horizontal + lock current height',
+      'Width Between 400 and 500',
+      'Height at least 400',
+      'Custom: Aspect Ratio 16:9',
       'Custom: Always Square',
       'Custom: Fixed Steps (100)',
     ];
 
+  // Options
   const auto_resize = STATIC<boolean>(UNIQUE('auto_resize#3fd1e552'), false);
-  const type = STATIC<int>(UNIQUE('type#2ea441c9'), 0);
+  const window_padding = STATIC<boolean>(UNIQUE('window_padding#constrained'), true);
+  const type = STATIC<int>(UNIQUE('type#2ea441c9'), 6); // Aspect Ratio
   const display_lines = STATIC<int>(UNIQUE('display_lines#154bc4b5'), 10);
 
-  if (type.value === 0) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(-1, 0), new ImGui.Vec2(-1, FLT_MAX));}      // Vertical only
-  if (type.value === 1) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, -1), new ImGui.Vec2(FLT_MAX, -1));}      // Horizontal only
-  if (type.value === 2) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(100, 100), new ImGui.Vec2(FLT_MAX, FLT_MAX));} // Width > 100, Height > 100
-  if (type.value === 3) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(400, -1), new ImGui.Vec2(500, -1));}          // Width 400-500
-  if (type.value === 4) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(-1, 400), new ImGui.Vec2(-1, 500));}          // Height 400-500
-  if (type.value === 5) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, 0), new ImGui.Vec2(FLT_MAX, FLT_MAX), CustomConstraints.Square);}                     // Always Square
-  if (type.value === 6) {ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, 0), new ImGui.Vec2(FLT_MAX, FLT_MAX), CustomConstraints.Step, /*(void*)(intptr_t)*/100);} // Fixed Step
+  // Submit constraint
+  const aspect_ratio = 16.0 / 9.0;
+  const fixed_step = 100.0;
 
-  const flags: ImGui.WindowFlags = auto_resize ? ImGui.WindowFlags.AlwaysAutoResize : 0;
+  if (type.value === 0) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(100, 100), new ImGui.Vec2(500, 500)); }
+  if (type.value === 1) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(100, 100), new ImGui.Vec2(FLT_MAX, FLT_MAX)); }
+  if (type.value === 2) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(-1, 0), new ImGui.Vec2(-1, FLT_MAX)); }
+  if (type.value === 3) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, -1), new ImGui.Vec2(FLT_MAX, -1)); }
+  if (type.value === 4) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(400, -1), new ImGui.Vec2(500, -1)); }
+  if (type.value === 5) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(-1, 400), new ImGui.Vec2(-1, FLT_MAX)); }
+  if (type.value === 6) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, 0), new ImGui.Vec2(FLT_MAX, FLT_MAX), CustomConstraints.AspectRatio, aspect_ratio); }
+  if (type.value === 7) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, 0), new ImGui.Vec2(FLT_MAX, FLT_MAX), CustomConstraints.Square); }
+  if (type.value === 8) { ImGui.SetNextWindowSizeConstraints(new ImGui.Vec2(0, 0), new ImGui.Vec2(FLT_MAX, FLT_MAX), CustomConstraints.Step, fixed_step); }
 
-  if (ImGui.Begin('Example: Constrained Resize', p_open, flags)) {
-    if (ImGui.Button('200x200')) { ImGui.SetWindowSize(new ImGui.Vec2(200, 200)); } ImGui.SameLine();
-    if (ImGui.Button('500x500')) { ImGui.SetWindowSize(new ImGui.Vec2(500, 500)); } ImGui.SameLine();
-    if (ImGui.Button('800x200')) { ImGui.SetWindowSize(new ImGui.Vec2(800, 200)); }
-    ImGui.SetNextItemWidth(200);
-    ImGui.Combo('Constraint', type.access, test_desc, ImGui.ARRAYSIZE(test_desc));
-    ImGui.SetNextItemWidth(200);
-    ImGui.DragInt('Lines', display_lines.access, 0.2, 1, 100);
-    ImGui.Checkbox('Auto-resize', auto_resize.access);
-    for (let i = 0; i < display_lines.value; i++) {ImGui.Text(`${''.padStart(i * 4)}Hello, sailor! Making this line long enough for the example.`);}
+  // Submit window
+  if (!window_padding.value)
+  {ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0.0, 0.0));}
+  const window_flags: ImGui.WindowFlags = auto_resize.value ? ImGui.WindowFlags.AlwaysAutoResize : 0;
+  const window_open = ImGui.Begin('Example: Constrained Resize', p_open, window_flags);
+
+  if (!window_padding.value)
+  {ImGui.PopStyleVar();}
+  if (window_open) {
+    if (ImGui.GetIO().KeyShift) {
+      const avail_size = ImGui.GetContentRegionAvail();
+      const pos = ImGui.GetCursorScreenPos();
+
+      ImGui.ColorButton('viewport', new ImGui.Vec4(0.5, 0.2, 0.5, 1.0), ImGui.ColorEditFlags.NoTooltip | ImGui.ColorEditFlags.NoDragDrop, avail_size);
+      ImGui.SetCursorScreenPos(new ImGui.Vec2(pos.x + 10, pos.y + 10));
+      ImGui.Text(`${avail_size.x.toFixed(2)} x ${avail_size.y.toFixed(2)}`);
+    } else {
+      ImGui.Text('(Hold Shift to display a dummy viewport)');
+      if (ImGui.IsWindowDocked())
+      {ImGui.Text('Warning: Sizing Constraints won\'t work if the window is docked!');}
+      if (ImGui.Button('Set 200x200')) { ImGui.SetWindowSize(new ImGui.Vec2(200, 200)); } ImGui.SameLine();
+      if (ImGui.Button('Set 500x500')) { ImGui.SetWindowSize(new ImGui.Vec2(500, 500)); } ImGui.SameLine();
+      if (ImGui.Button('Set 800x200')) { ImGui.SetWindowSize(new ImGui.Vec2(800, 200)); }
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 20);
+      ImGui.Combo('Constraint', type.access, test_desc, ImGui.ARRAYSIZE(test_desc));
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 20);
+      ImGui.DragInt('Lines', display_lines.access, 0.2, 1, 100);
+      ImGui.Checkbox('Auto-resize', auto_resize.access);
+      ImGui.Checkbox('Window padding', window_padding.access);
+      for (let i = 0; i < display_lines.value; i++) { ImGui.Text(`${''.padStart(i * 4)}Hello, sailor! Making this line long enough for the example.`); }
+    }
   }
   ImGui.End();
 }
@@ -6693,8 +8147,450 @@ function ShowExampleAppSimpleOverlay (p_open: ImGui.Access<boolean>): void {
 }
 
 //-----------------------------------------------------------------------------
+// [SECTION] Example App: Assets Browser / ShowExampleAppAssetsBrowser()
+//-----------------------------------------------------------------------------
+
+class ExampleAsset {
+  ID: number;
+  Type: number;
+
+  constructor (id: number, type: number) {
+    this.ID = id;
+    this.Type = type;
+  }
+
+  static s_current_sort_specs: ImGui.TableSortSpecs | null = null;
+
+  static SortWithSortSpecs (sort_specs: ImGui.TableSortSpecs, items: ExampleAsset[]): void {
+    ExampleAsset.s_current_sort_specs = sort_specs;
+    if (items.length > 1)
+    {items.sort(ExampleAsset.CompareWithSortSpecs);}
+    ExampleAsset.s_current_sort_specs = null;
+  }
+
+  static CompareWithSortSpecs (a: ExampleAsset, b: ExampleAsset): number {
+    const sort_specs = ExampleAsset.s_current_sort_specs!;
+
+    for (let n = 0; n < sort_specs.SpecsCount; n++) {
+      const sort_spec = sort_specs.Specs[n];
+      let delta = 0;
+
+      if (sort_spec.ColumnIndex === 0)
+      {delta = a.ID - b.ID;}
+      else if (sort_spec.ColumnIndex === 1)
+      {delta = a.Type - b.Type;}
+      if (delta > 0)
+      {return (sort_spec.SortDirection === ImGui.SortDirection.Ascending) ? +1 : -1;}
+      if (delta < 0)
+      {return (sort_spec.SortDirection === ImGui.SortDirection.Ascending) ? -1 : +1;}
+    }
+
+    return a.ID - b.ID;
+  }
+}
+
+class ExampleAssetsBrowser {
+  // Options
+  ShowTypeOverlay: boolean = true;
+  AllowSorting: boolean = true;
+  AllowBoxSelect: boolean = true;
+  AllowBoxSelectInsideSelection: boolean = false;
+  AllowDragUnselected: boolean = false;
+  IconSize: number = 32.0;
+  IconSpacing: number = 10;
+  IconHitSpacing: number = 4;
+  StretchSpacing: boolean = true;
+
+  // State
+  Items: ExampleAsset[] = [];
+  Selection: ExampleSelectionWithDeletion = new ExampleSelectionWithDeletion();
+  NextItemId: number = 0;
+  RequestDelete: boolean = false;
+  RequestSort: boolean = false;
+  ZoomWheelAccum: number = 0.0;
+
+  // Calculated sizes for layout
+  LayoutItemSize: ImGui.Vec2 = new ImGui.Vec2(0, 0);
+  LayoutItemStep: ImGui.Vec2 = new ImGui.Vec2(0, 0);
+  LayoutItemSpacing: number = 0.0;
+  LayoutSelectableSpacing: number = 0.0;
+  LayoutOuterPadding: number = 0.0;
+  LayoutColumnCount: number = 0;
+  LayoutLineCount: number = 0;
+
+  constructor () {
+    this.AddItems(10000);
+  }
+
+  AddItems (count: number): void {
+    if (this.Items.length === 0)
+    {this.NextItemId = 0;}
+    for (let n = 0; n < count; n++, this.NextItemId++)
+    {this.Items.push(new ExampleAsset(this.NextItemId, (this.NextItemId % 20) < 15 ? 0 : (this.NextItemId % 20) < 18 ? 1 : 2));}
+    this.RequestSort = true;
+  }
+
+  ClearItems (): void {
+    this.Items.length = 0;
+    this.Selection.Clear();
+  }
+
+  UpdateLayoutSizes (avail_width: number): void {
+    this.LayoutItemSpacing = this.IconSpacing;
+    if (!this.StretchSpacing)
+    {avail_width += Math.floor(this.LayoutItemSpacing * 0.5);}
+
+    this.LayoutItemSize = new ImGui.Vec2(Math.floor(this.IconSize), Math.floor(this.IconSize));
+    this.LayoutColumnCount = Math.max(Math.floor(avail_width / (this.LayoutItemSize.x + this.LayoutItemSpacing)), 1);
+    this.LayoutLineCount = Math.ceil(this.Items.length / this.LayoutColumnCount);
+
+    if (this.StretchSpacing && this.LayoutColumnCount > 1)
+    {this.LayoutItemSpacing = Math.floor(avail_width - this.LayoutItemSize.x * this.LayoutColumnCount) / this.LayoutColumnCount;}
+
+    this.LayoutItemStep = new ImGui.Vec2(this.LayoutItemSize.x + this.LayoutItemSpacing, this.LayoutItemSize.y + this.LayoutItemSpacing);
+    this.LayoutSelectableSpacing = Math.max(Math.floor(this.LayoutItemSpacing) - this.IconHitSpacing, 0.0);
+    this.LayoutOuterPadding = Math.floor(this.LayoutItemSpacing * 0.5);
+  }
+
+  Draw (title: string, p_open: ImGui.Access<boolean>): void {
+    ImGui.SetNextWindowSize(new ImGui.Vec2(this.IconSize * 25, this.IconSize * 15), ImGui.Cond.FirstUseEver);
+    if (!ImGui.Begin(title, p_open, ImGui.WindowFlags.MenuBar)) {
+      ImGui.End();
+
+      return;
+    }
+
+    // Menu bar
+    if (ImGui.BeginMenuBar()) {
+      if (ImGui.BeginMenu('File')) {
+        if (ImGui.MenuItem('Add 10000 items'))
+        {this.AddItems(10000);}
+        if (ImGui.MenuItem('Clear items'))
+        {this.ClearItems();}
+        ImGui.Separator();
+        if (ImGui.MenuItem('Close', null, false, p_open !== null))
+        {p_open(false);}
+        ImGui.EndMenu();
+      }
+      if (ImGui.BeginMenu('Edit')) {
+        if (ImGui.MenuItem('Delete', 'Del', false, this.Selection.Size > 0))
+        {this.RequestDelete = true;}
+        ImGui.EndMenu();
+      }
+      if (ImGui.BeginMenu('Options')) {
+        ImGui.PushItemWidth(ImGui.GetFontSize() * 10);
+
+        ImGui.SeparatorText('Contents');
+        ImGui.Checkbox('Show Type Overlay', (_ = this.ShowTypeOverlay) => this.ShowTypeOverlay = _);
+        ImGui.Checkbox('Allow Sorting', (_ = this.AllowSorting) => this.AllowSorting = _);
+
+        ImGui.SeparatorText('Selection Behavior');
+        ImGui.Checkbox('Allow box-selection', (_ = this.AllowBoxSelect) => this.AllowBoxSelect = _);
+        if (ImGui.Checkbox('Allow box-selection from selected items', (_ = this.AllowBoxSelectInsideSelection) => this.AllowBoxSelectInsideSelection = _) && this.AllowBoxSelectInsideSelection)
+        {this.AllowDragUnselected = false;}
+        if (ImGui.Checkbox('Allow dragging unselected item', (_ = this.AllowDragUnselected) => this.AllowDragUnselected = _) && this.AllowDragUnselected)
+        {this.AllowBoxSelectInsideSelection = false;}
+
+        ImGui.SeparatorText('Layout');
+        ImGui.SliderFloat('Icon Size', (_ = this.IconSize) => this.IconSize = _, 16.0, 128.0, '%.0f');
+        ImGui.SameLine(); HelpMarker('Use Ctrl+Wheel to zoom');
+        ImGui.SliderInt('Icon Spacing', (_ = this.IconSpacing) => this.IconSpacing = _, 0, 32);
+        ImGui.SliderInt('Icon Hit Spacing', (_ = this.IconHitSpacing) => this.IconHitSpacing = _, 0, 32);
+        ImGui.Checkbox('Stretch Spacing', (_ = this.StretchSpacing) => this.StretchSpacing = _);
+        ImGui.PopItemWidth();
+        ImGui.EndMenu();
+      }
+      ImGui.EndMenuBar();
+    }
+
+    // Show a table with ONLY one header row to showcase sorting UI
+    if (this.AllowSorting) {
+      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
+      const table_flags_for_sort_specs = ImGui.TableFlags.Sortable | ImGui.TableFlags.SortMulti | ImGui.TableFlags.SizingFixedFit | ImGui.TableFlags.Borders;
+
+      if (ImGui.BeginTable('for_sort_specs_only', 2, table_flags_for_sort_specs, new ImGui.Vec2(0.0, ImGui.GetFrameHeight()))) {
+        ImGui.TableSetupColumn('Index');
+        ImGui.TableSetupColumn('Type');
+        ImGui.TableHeadersRow();
+        const sort_specs = ImGui.TableGetSortSpecs();
+
+        if (sort_specs !== null) {
+          if (sort_specs.SpecsDirty || this.RequestSort) {
+            ExampleAsset.SortWithSortSpecs(sort_specs, this.Items);
+            sort_specs.SpecsDirty = false;
+            this.RequestSort = false;
+          }
+        }
+        ImGui.EndTable();
+      }
+      ImGui.PopStyleVar();
+    }
+
+    const io = ImGui.GetIO();
+
+    ImGui.SetNextWindowContentSize(new ImGui.Vec2(0.0, this.LayoutOuterPadding + this.LayoutLineCount * (this.LayoutItemSize.y + this.LayoutItemSpacing)));
+    if (ImGui.BeginChild('Assets', new ImGui.Vec2(0.0, -ImGui.GetTextLineHeightWithSpacing()), ImGui.ChildFlags.Borders, ImGui.WindowFlags.NoMove)) {
+      const draw_list = ImGui.GetWindowDrawList();
+
+      const avail_width = ImGui.GetContentRegionAvail().x;
+
+      this.UpdateLayoutSizes(avail_width);
+
+      // Calculate and store start position.
+      const start_pos_raw = ImGui.GetCursorScreenPos();
+      const start_pos = new ImGui.Vec2(start_pos_raw.x + this.LayoutOuterPadding, start_pos_raw.y + this.LayoutOuterPadding);
+
+      ImGui.SetCursorScreenPos(start_pos);
+
+      // Multi-select
+      let ms_flags: ImGui.MultiSelectFlags = ImGui.MultiSelectFlags.ClearOnEscape | ImGui.MultiSelectFlags.ClearOnClickVoid;
+
+      if (this.AllowBoxSelect)
+      {ms_flags |= ImGui.MultiSelectFlags.BoxSelect2d;}
+
+      if (this.AllowDragUnselected)
+      {ms_flags |= ImGui.MultiSelectFlags.SelectOnClickRelease;}
+      else if (this.AllowBoxSelectInsideSelection)
+      {ms_flags |= ImGui.MultiSelectFlags.SelectOnClickAlways;}
+
+      ms_flags |= ImGui.MultiSelectFlags.NavWrapX;
+
+      let ms_io = ImGui.BeginMultiSelect(ms_flags, this.Selection.Size, this.Items.length)!;
+
+      // Use custom selection adapter: store ID in selection
+      this.Selection.AdapterIndexToStorageId = (_self: ImGui.SelectionBasicStorage, idx: number): ImGui.ImGuiID => {
+        return this.Items[idx].ID;
+      };
+      this.Selection.ApplyRequests(ms_io);
+
+      const want_delete = (ImGui.Shortcut(ImGui.Key.Delete, ImGui.InputFlags.Repeat) && (this.Selection.Size > 0)) || this.RequestDelete;
+      const item_curr_idx_to_focus = want_delete ? this.ApplyDeletionPreLoop(ms_io, this.Items.length) : -1;
+
+      this.RequestDelete = false;
+
+      // Push LayoutSelectableSpacing
+      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(this.LayoutSelectableSpacing, this.LayoutSelectableSpacing));
+
+      // Rendering parameters
+      const icon_type_overlay_colors: number[] = [0, ImGui.IM_COL32(200, 70, 70, 255), ImGui.IM_COL32(70, 170, 70, 255)];
+      const icon_bg_color = ImGui.GetColorU32(ImGui.IM_COL32(35, 35, 35, 220));
+      const icon_type_overlay_size = new ImGui.Vec2(4.0, 4.0);
+      const display_label = (this.LayoutItemSize.x >= ImGui.CalcTextSize('999').x);
+
+      const column_count = this.LayoutColumnCount;
+      const clipper = new ImGui.ListClipper();
+
+      clipper.Begin(this.LayoutLineCount, this.LayoutItemStep.y);
+      if (item_curr_idx_to_focus !== -1)
+      {clipper.IncludeItemByIndex(Math.floor(item_curr_idx_to_focus / column_count));}
+      if (ms_io.RangeSrcItem !== -1)
+      {clipper.IncludeItemByIndex(Math.floor((ms_io.RangeSrcItem) / column_count));}
+      while (clipper.Step()) {
+        for (let line_idx = clipper.DisplayStart; line_idx < clipper.DisplayEnd; line_idx++) {
+          const item_min_idx_for_current_line = line_idx * column_count;
+          const item_max_idx_for_current_line = Math.min((line_idx + 1) * column_count, this.Items.length);
+
+          for (let item_idx = item_min_idx_for_current_line; item_idx < item_max_idx_for_current_line; ++item_idx) {
+            const item_data = this.Items[item_idx];
+
+            ImGui.PushID(item_data.ID);
+
+            // Position item
+            const pos = new ImGui.Vec2(start_pos.x + (item_idx % column_count) * this.LayoutItemStep.x, start_pos.y + line_idx * this.LayoutItemStep.y);
+
+            ImGui.SetCursorScreenPos(pos);
+
+            ImGui.SetNextItemSelectionUserData(item_idx);
+            let item_is_selected = this.Selection.Contains(item_data.ID);
+            const item_is_visible = ImGui.IsRectVisible(this.LayoutItemSize);
+
+            ImGui.Selectable('', item_is_selected, ImGui.SelectableFlags.None, this.LayoutItemSize);
+
+            // Update our selection state immediately
+            if (ImGui.IsItemToggledSelection())
+            {item_is_selected = !item_is_selected;}
+
+            // Focus (for after deletion)
+            if (item_curr_idx_to_focus === item_idx)
+            {ImGui.SetKeyboardFocusHere(-1);}
+
+            // Drag and drop
+            if (ImGui.BeginDragDropSource()) {
+              // Create payload with full selection OR single unselected item
+              if (ImGui.GetDragDropPayload() === null) {
+                const payload_items: number[] = [];
+
+                if (!item_is_selected) {
+                  payload_items.push(item_data.ID);
+                } else {
+                  // Iterate through selected items
+                  for (let i = 0; i < this.Items.length; i++) {
+                    if (this.Selection.Contains(this.Items[i].ID))
+                    {payload_items.push(this.Items[i].ID);}
+                  }
+                }
+                ImGui.SetDragDropPayload('ASSETS_BROWSER_ITEMS', payload_items);
+              }
+
+              const payload = ImGui.GetDragDropPayload();
+
+              if (payload !== null) {
+                const payload_count = (payload.Data as number[]).length;
+
+                ImGui.Text(`${payload_count} assets`);
+              }
+
+              ImGui.EndDragDropSource();
+            }
+
+            // Render icon (a real app would likely display an image/thumbnail here)
+            if (item_is_visible) {
+              const box_min = new ImGui.Vec2(pos.x - 1, pos.y - 1);
+              const box_max = new ImGui.Vec2(box_min.x + this.LayoutItemSize.x + 2, box_min.y + this.LayoutItemSize.y + 2);
+
+              draw_list.AddRectFilled(box_min, box_max, icon_bg_color);
+              if (this.ShowTypeOverlay && item_data.Type !== 0) {
+                const type_col = icon_type_overlay_colors[item_data.Type % icon_type_overlay_colors.length];
+
+                draw_list.AddRectFilled(
+                  new ImGui.Vec2(box_max.x - 2 - icon_type_overlay_size.x, box_min.y + 2),
+                  new ImGui.Vec2(box_max.x - 2, box_min.y + 2 + icon_type_overlay_size.y),
+                  type_col
+                );
+              }
+              if (display_label) {
+                const label_col = ImGui.GetColorU32(item_is_selected ? ImGui.Col.Text : ImGui.Col.TextDisabled);
+                const label = `${item_data.ID}`;
+
+                draw_list.AddText(new ImGui.Vec2(box_min.x, box_max.y - ImGui.GetFontSize()), label_col, label);
+              }
+            }
+
+            ImGui.PopID();
+          }
+        }
+      }
+      clipper.End();
+      ImGui.PopStyleVar(); // ImGuiStyleVar_ItemSpacing
+
+      // Context menu
+      if (ImGui.BeginPopupContextWindow()) {
+        ImGui.Text(`Selection: ${this.Selection.Size} items`);
+        ImGui.Separator();
+        if (ImGui.MenuItem('Delete', 'Del', false, this.Selection.Size > 0))
+        {this.RequestDelete = true;}
+        ImGui.EndPopup();
+      }
+
+      ms_io = ImGui.EndMultiSelect()!;
+      this.Selection.ApplyRequests(ms_io);
+      if (want_delete)
+      {this.ApplyDeletionPostLoop(ms_io, item_curr_idx_to_focus);}
+
+      // Zooming with Ctrl+Wheel
+      if (ImGui.IsWindowAppearing())
+      {this.ZoomWheelAccum = 0.0;}
+      if (ImGui.IsWindowHovered() && io.MouseWheel !== 0.0 && ImGui.IsKeyDown(ImGui.Mod.Ctrl as unknown as ImGui.ImGuiKey) && ImGui.IsAnyItemActive() === false) {
+        this.ZoomWheelAccum += io.MouseWheel;
+        if (Math.abs(this.ZoomWheelAccum) >= 1.0) {
+          const hovered_item_nx = (io.MousePos.x - start_pos.x + this.LayoutItemSpacing * 0.5) / this.LayoutItemStep.x;
+          const hovered_item_ny = (io.MousePos.y - start_pos.y + this.LayoutItemSpacing * 0.5) / this.LayoutItemStep.y;
+          const hovered_item_idx = (Math.floor(hovered_item_ny) * this.LayoutColumnCount) + Math.floor(hovered_item_nx);
+
+          // Zoom
+          this.IconSize *= Math.pow(1.1, Math.floor(this.ZoomWheelAccum));
+          this.IconSize = Math.max(16.0, Math.min(128.0, this.IconSize));
+          this.ZoomWheelAccum -= Math.floor(this.ZoomWheelAccum);
+          this.UpdateLayoutSizes(avail_width);
+
+          // Manipulate scroll to land at same Y location of currently hovered item
+          let hovered_item_rel_pos_y = (Math.floor(hovered_item_idx / this.LayoutColumnCount) + (hovered_item_ny % 1.0)) * this.LayoutItemStep.y;
+
+          hovered_item_rel_pos_y += ImGui.GetStyle().WindowPadding.y;
+          const mouse_local_y = io.MousePos.y - ImGui.GetWindowPos().y;
+
+          ImGui.SetScrollY(hovered_item_rel_pos_y - mouse_local_y);
+        }
+      }
+    }
+    ImGui.EndChild();
+
+    ImGui.Text(`Selected: ${this.Selection.Size}/${this.Items.length} items`);
+    ImGui.End();
+  }
+
+  // Custom deletion pre-loop that uses item IDs instead of indices
+  ApplyDeletionPreLoop (ms_io: ImGui.MultiSelectIO, items_count: number): number {
+    const focused_idx = ms_io.NavIdItem;
+
+    if (focused_idx < items_count && !this.Selection.Contains(this.Items[focused_idx].ID))
+    {return -1;}
+    for (let i = focused_idx + 1; i < items_count; i++)
+    {if (!this.Selection.Contains(this.Items[i].ID)) {return i > focused_idx ? i - 1 : i;}}
+    for (let i = Math.min(focused_idx, items_count) - 1; i >= 0; i--)
+    {if (!this.Selection.Contains(this.Items[i].ID)) {return i;}}
+
+    return -1;
+  }
+
+  // Custom deletion post-loop that works with ExampleAsset[]
+  ApplyDeletionPostLoop (ms_io: ImGui.MultiSelectIO, item_curr_idx_to_focus: number): void {
+    const new_items: ExampleAsset[] = [];
+
+    for (let n = 0; n < this.Items.length; n++) {
+      if (!this.Selection.Contains(this.Items[n].ID))
+      {new_items.push(this.Items[n]);}
+    }
+    this.Items.length = 0;
+    for (const item of new_items) {this.Items.push(item);}
+    this.Selection.Clear();
+    if (item_curr_idx_to_focus !== -1)
+    {ms_io.RangeSrcReset = true;}
+  }
+}
+
+function ShowExampleAppAssetsBrowser (p_open: ImGui.Access<boolean>): void {
+  const assets_browser = STATIC<ExampleAssetsBrowser>(UNIQUE('assets_browser#ab'), new ExampleAssetsBrowser());
+
+  assets_browser.value.Draw('Example: Assets Browser', p_open);
+}
+
+//-----------------------------------------------------------------------------
 // [SECTION] Example App: Manipulating Window Titles / ShowExampleAppWindowTitles()
 //-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// [SECTION] Example App: Fullscreen window / ShowExampleAppFullscreen()
+//-----------------------------------------------------------------------------
+
+function ShowExampleAppFullscreen (p_open: ImGui.Access<boolean>): void {
+  const use_work_area = STATIC<boolean>(UNIQUE('use_work_area#fullscreen'), true);
+  const flags = STATIC<ImGui.WindowFlags>(UNIQUE('flags#fullscreen'), ImGui.WindowFlags.NoDecoration | ImGui.WindowFlags.NoMove | ImGui.WindowFlags.NoSavedSettings);
+
+  // We demonstrate using the full viewport area or the work area (without menu-bars, task-bars etc.)
+  const viewport = ImGui.GetMainViewport()!;
+
+  ImGui.SetNextWindowPos(use_work_area.value ? viewport.WorkPos : viewport.Pos);
+  ImGui.SetNextWindowSize(use_work_area.value ? viewport.WorkSize : viewport.Size);
+
+  if (ImGui.Begin('Example: Fullscreen window', p_open, flags.value)) {
+    ImGui.Checkbox('Use work area instead of main area', use_work_area.access);
+    ImGui.SameLine();
+    HelpMarker('Main Area = entire viewport,\nWork Area = entire viewport minus sections used by the main menu bars, task bars etc.\n\nEnable the main-menu bar in Examples menu to see the difference.');
+
+    ImGui.CheckboxFlags('ImGuiWindowFlags_NoBackground', flags.access, ImGui.WindowFlags.NoBackground);
+    ImGui.CheckboxFlags('ImGuiWindowFlags_NoDecoration', flags.access, ImGui.WindowFlags.NoDecoration);
+    ImGui.Indent();
+    ImGui.CheckboxFlags('ImGuiWindowFlags_NoTitleBar', flags.access, ImGui.WindowFlags.NoTitleBar);
+    ImGui.CheckboxFlags('ImGuiWindowFlags_NoCollapse', flags.access, ImGui.WindowFlags.NoCollapse);
+    ImGui.CheckboxFlags('ImGuiWindowFlags_NoScrollbar', flags.access, ImGui.WindowFlags.NoScrollbar);
+    ImGui.Unindent();
+
+    if (ImGui.Button('Close this window'))
+    {p_open(false);}
+  }
+  ImGui.End();
+}
 
 // Demonstrate using "##" and "###" in identifiers to manipulate ID generation.
 // This apply to all regular items as well.
@@ -6726,6 +8622,17 @@ function ShowExampleAppWindowTitles (p_open: ImGui.Access<boolean>): void {
 //-----------------------------------------------------------------------------
 // [SECTION] Example App: Custom Rendering using ImDrawList API / ShowExampleAppCustomRendering()
 //-----------------------------------------------------------------------------
+
+// Add a |_| looking shape
+function PathConcaveShape (draw_list: ImGui.DrawList, x: float, y: float, sz: float): void {
+  const pos_norms: ImGui.Vec2[] = [
+    new ImGui.Vec2(0.0, 0.0), new ImGui.Vec2(0.3, 0.0), new ImGui.Vec2(0.3, 0.7), new ImGui.Vec2(0.7, 0.7),
+    new ImGui.Vec2(0.7, 0.0), new ImGui.Vec2(1.0, 0.0), new ImGui.Vec2(1.0, 1.0), new ImGui.Vec2(0.0, 1.0),
+  ];
+
+  for (const pn of pos_norms)
+  {draw_list.PathLineTo(new ImGui.Vec2(x + 0.5 + Math.floor(sz * pn.x), y + 0.5 + Math.floor(sz * pn.y)));}
+}
 
 // Demonstrate using the low-level ImDrawList to draw custom shapes.
 function ShowExampleAppCustomRendering (p_open: ImGui.Access<boolean>): void {
@@ -6798,8 +8705,11 @@ function ShowExampleAppCustomRendering (p_open: ImGui.Access<boolean>): void {
       const corners_none: ImGui.DrawCornerFlags = 0;
       const corners_all: ImGui.DrawCornerFlags = ImGui.DrawCornerFlags.All;
       const corners_tl_br: ImGui.DrawCornerFlags = ImGui.DrawCornerFlags.TopLeft | ImGui.DrawCornerFlags.BotRight;
+      const rounding: float = sz.value / 5.0;
       const circle_segments: int = circle_segments_override.value ? circle_segments_override_v.value : 0;
       const curve_segments: int = curve_segments_override.value ? curve_segments_override_v.value : 0;
+      const cp3: ImGui.Vec2[] = [new ImGui.Vec2(0.0, sz.value * 0.6), new ImGui.Vec2(sz.value * 0.5, -sz.value * 0.4), new ImGui.Vec2(sz.value, sz.value)];
+      const cp4: ImGui.Vec2[] = [new ImGui.Vec2(0.0, 0.0), new ImGui.Vec2(sz.value * 1.3, sz.value * 0.3), new ImGui.Vec2(sz.value - sz.value * 1.3, sz.value - sz.value * 0.3), new ImGui.Vec2(sz.value, sz.value)];
       let x: float = p.x + 4.0;
       let y: float = p.y + 4.0;
 
@@ -6809,41 +8719,58 @@ function ShowExampleAppCustomRendering (p_open: ImGui.Access<boolean>): void {
 
         draw_list.AddNgon(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), sz.value * 0.5, col, ngon_sides.value, th); x += sz.value + spacing;  // N-gon
         draw_list.AddCircle(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), sz.value * 0.5, col, circle_segments, th); x += sz.value + spacing;  // Circle
+        draw_list.AddEllipse(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), new ImGui.Vec2(sz.value * 0.5, sz.value * 0.3), col, -0.3, circle_segments, th); x += sz.value + spacing;  // Ellipse
         draw_list.AddRect(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, 0.0, corners_none, th); x += sz.value + spacing;  // Square
-        draw_list.AddRect(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, 10.0, corners_all, th); x += sz.value + spacing;  // Square with all rounded corners
-        draw_list.AddRect(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, 10.0, corners_tl_br, th); x += sz.value + spacing;  // Square with two rounded corners
+        draw_list.AddRect(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, rounding, corners_all, th); x += sz.value + spacing;  // Square with all rounded corners
+        draw_list.AddRect(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, rounding, corners_tl_br, th); x += sz.value + spacing;  // Square with two rounded corners
         draw_list.AddTriangle(new ImGui.Vec2(x + sz.value * 0.5, y), new ImGui.Vec2(x + sz.value, y + sz.value - 0.5), new ImGui.Vec2(x, y + sz.value - 0.5), col, th);x += sz.value + spacing;  // Triangle
-        //draw_list.AddTriangle(new ImGui.Vec2(x+sz.value*0.2,y), new ImGui.Vec2(x, y+sz.value-0.5), new ImGui.Vec2(x+sz.value*0.4, y+sz.value-0.5), col, th);x+= sz.value*0.4 + spacing; // Thin triangle
-        draw_list.AddLine(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y), col, th); x += sz.value + spacing;  // Horizontal line (note: drawing a filled rectangle will be faster!)
-        draw_list.AddLine(new ImGui.Vec2(x, y), new ImGui.Vec2(x, y + sz.value), col, th); x += spacing;       // Vertical line (note: drawing a filled rectangle will be faster!)
+        PathConcaveShape(draw_list, x, y, sz.value); draw_list.PathStroke(col, ImGui.DrawFlags.Closed, th); x += sz.value + spacing;  // Concave Shape
+        draw_list.AddLine(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y), col, th); x += sz.value + spacing;  // Horizontal line
+        draw_list.AddLine(new ImGui.Vec2(x, y), new ImGui.Vec2(x, y + sz.value), col, th); x += spacing;       // Vertical line
         draw_list.AddLine(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, th); x += sz.value + spacing;  // Diagonal line
 
-        // Quadratic Bezier Curve (3 control points)
-        const cp3: ImGui.Vec2[/*3*/] = [new ImGui.Vec2(x, y + sz.value * 0.6), new ImGui.Vec2(x + sz.value * 0.5, y - sz.value * 0.4), new ImGui.Vec2(x + sz.value, y + sz.value)];
+        // Path
+        draw_list.PathArcTo(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), sz.value * 0.5, 3.141592, 3.141592 * -0.5);
+        draw_list.PathStroke(col, ImGui.DrawFlags.None, th);
+        x += sz.value + spacing;
 
-        draw_list.AddBezierQuadratic(cp3[0], cp3[1], cp3[2], col, th, curve_segments); x += sz.value + spacing;
+        // Quadratic Bezier Curve (3 control points)
+        draw_list.AddBezierQuadratic(new ImGui.Vec2(x + cp3[0].x, y + cp3[0].y), new ImGui.Vec2(x + cp3[1].x, y + cp3[1].y), new ImGui.Vec2(x + cp3[2].x, y + cp3[2].y), col, th, curve_segments); x += sz.value + spacing;
 
         // Cubic Bezier Curve (4 control points)
-        const cp4: ImGui.Vec2[/*4*/] = [new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value * 1.3, y + sz.value * 0.3), new ImGui.Vec2(x + sz.value - sz.value * 1.3, y + sz.value - sz.value * 0.3), new ImGui.Vec2(x + sz.value, y + sz.value)];
-
-        draw_list.AddBezierCubic(cp4[0], cp4[1], cp4[2], cp4[3], col, th, curve_segments);
+        draw_list.AddBezierCubic(new ImGui.Vec2(x + cp4[0].x, y + cp4[0].y), new ImGui.Vec2(x + cp4[1].x, y + cp4[1].y), new ImGui.Vec2(x + cp4[2].x, y + cp4[2].y), new ImGui.Vec2(x + cp4[3].x, y + cp4[3].y), col, th, curve_segments);
 
         x = p.x + 4;
         y += sz.value + spacing;
       }
+
+      // Filled shapes
       draw_list.AddNgonFilled(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), sz.value * 0.5, col, ngon_sides.value); x += sz.value + spacing;  // N-gon
       draw_list.AddCircleFilled(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), sz.value * 0.5, col, circle_segments); x += sz.value + spacing;  // Circle
+      draw_list.AddEllipseFilled(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), new ImGui.Vec2(sz.value * 0.5, sz.value * 0.3), col, -0.3, circle_segments); x += sz.value + spacing;  // Ellipse
       draw_list.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col); x += sz.value + spacing;  // Square
       draw_list.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, 10.0); x += sz.value + spacing;  // Square with all rounded corners
       draw_list.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), col, 10.0, corners_tl_br); x += sz.value + spacing;  // Square with two rounded corners
       draw_list.AddTriangleFilled(new ImGui.Vec2(x + sz.value * 0.5, y), new ImGui.Vec2(x + sz.value, y + sz.value - 0.5), new ImGui.Vec2(x, y + sz.value - 0.5), col); x += sz.value + spacing;  // Triangle
-      //draw_list.AddTriangleFilled(new ImGui.Vec2(x+sz.value*0.2,y), new ImGui.Vec2(x, y+sz.value-0.5), new ImGui.Vec2(x+sz.value*0.4, y+sz.value-0.5), col); x += sz.value*0.4 + spacing; // Thin triangle
+      PathConcaveShape(draw_list, x, y, sz.value); draw_list.PathFillConcave(col); x += sz.value + spacing;  // Concave shape
       draw_list.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + thickness.value), col); x += sz.value + spacing;  // Horizontal line (faster than AddLine, but only handle integer thickness)
       draw_list.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + thickness.value, y + sz.value), col); x += spacing * 2.0;// Vertical line (faster than AddLine, but only handle integer thickness)
       draw_list.AddRectFilled(new ImGui.Vec2(x, y), new ImGui.Vec2(x + 1, y + 1), col); x += sz.value;            // Pixel (faster than AddLine)
+
+      // Path
+      draw_list.PathArcTo(new ImGui.Vec2(x + sz.value * 0.5, y + sz.value * 0.5), sz.value * 0.5, 3.141592 * -0.5, 3.141592);
+      draw_list.PathFillConvex(col);
+      x += sz.value + spacing;
+
+      // Quadratic Bezier Curve (3 control points)
+      draw_list.PathLineTo(new ImGui.Vec2(x + cp3[0].x, y + cp3[0].y));
+      draw_list.PathBezierQuadraticCurveTo(new ImGui.Vec2(x + cp3[1].x, y + cp3[1].y), new ImGui.Vec2(x + cp3[2].x, y + cp3[2].y), curve_segments);
+      draw_list.PathFillConvex(col);
+      x += sz.value + spacing;
+
       draw_list.AddRectFilledMultiColor(new ImGui.Vec2(x, y), new ImGui.Vec2(x + sz.value, y + sz.value), ImGui.COL32(0, 0, 0, 255), ImGui.COL32(255, 0, 0, 255), ImGui.COL32(255, 255, 0, 255), ImGui.COL32(0, 255, 0, 255));
 
-      ImGui.Dummy(new ImGui.Vec2((sz.value + spacing) * 10.2, (sz.value + spacing) * 3.0));
+      ImGui.Dummy(new ImGui.Vec2((sz.value + spacing) * 13.2, (sz.value + spacing) * 3.0));
       ImGui.PopItemWidth();
       ImGui.EndTabItem();
     }
@@ -7143,81 +9070,105 @@ function ShowExampleAppDockspaceAlt (p_open: ImGui.Access<boolean>): void {
 
 // Simplified structure to mimic a Document model
 class MyDocument {
-  static ID: float = 0;
-  ID: float;
-  Name: string;       // Document title
-  Open: boolean;       // Set when open (we keep an array of all available documents to simplify demo code!)
-  OpenPrev: boolean;   // Copy of Open from last update.
-  Dirty: boolean;      // Set when the document has been modified
-  WantClose: boolean;  // Set when the document
-  Color: ImGui.Vec4;      // An arbitrary variable associated to the document
+  UID: number;
+  Name: ImGui.StringBuffer;
+  Open: boolean;
+  OpenPrev: boolean;
+  Dirty: boolean;
+  Color: ImGui.Vec4;
 
-  constructor (name: string, open: boolean = true, color: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0)) {
-    this.ID = MyDocument.ID++;
-    this.Name = name;
+  constructor (uid: number, name: string, open: boolean = true, color: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0)) {
+    this.UID = uid;
+    this.Name = new ImGui.StringBuffer(32, name);
     this.Open = this.OpenPrev = open;
     this.Dirty = false;
-    this.WantClose = false;
     this.Color = color;
   }
+  get NameStr (): string { return this.Name.buffer; }
   DoOpen (): void { this.Open = true; }
-  DoQueueClose (): void { this.WantClose = true; }
   DoForceClose (): void { this.Open = false; this.Dirty = false; }
   DoSave (): void { this.Dirty = false; }
+}
 
-  // Display placeholder contents for the Document
-  static DisplayContents (doc: MyDocument): void {
-    ImGui.PushID(doc.ID);
-    ImGui.Text(`Document "${doc.Name}"`);
-    ImGui.PushStyleColor(ImGui.Col.Text, doc.Color);
-    ImGui.TextWrapped('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.');
-    ImGui.PopStyleColor();
-    if (ImGui.Button('Modify', new ImGui.Vec2(100, 0))) {doc.Dirty = true;}
-    ImGui.SameLine();
-    if (ImGui.Button('Save', new ImGui.Vec2(100, 0))) {doc.DoSave();}
-    ImGui.ColorEdit3('color', doc.Color);  // Useful to test drag and drop and hold-dragged-to-open-tab behavior.
-    ImGui.PopID();
-  }
-
-  // Display context menu for the Document
-  static DisplayContextMenu (doc: MyDocument): void {
-    if (!ImGui.BeginPopupContextItem()) {return;}
-
-    const buf: string = `Save ${doc.Name}`;
-
-    if (ImGui.MenuItem(buf, 'CTRL+S', false, doc.Open)) {doc.DoSave();}
-    if (ImGui.MenuItem('Close', 'CTRL+W', false, doc.Open)) {doc.DoQueueClose();}
-    ImGui.EndPopup();
-  }
+const enum DocTarget {
+  None = 0,
+  Tab = 1,
+  DockSpaceAndWindow = 2,
 }
 
 class ExampleAppDocuments {
   readonly Documents: ImGui.Vector<MyDocument> = new ImGui.Vector();
+  readonly CloseQueue: ImGui.Vector<MyDocument> = new ImGui.Vector();
+  RenamingDoc: MyDocument | null = null;
+  RenamingStarted: boolean = false;
 
   constructor () {
-    this.Documents.push_back(new MyDocument('Lettuce', true, new ImGui.Vec4(0.4, 0.8, 0.4, 1.0)));
-    this.Documents.push_back(new MyDocument('Eggplant', true, new ImGui.Vec4(0.8, 0.5, 1.0, 1.0)));
-    this.Documents.push_back(new MyDocument('Carrot', true, new ImGui.Vec4(1.0, 0.8, 0.5, 1.0)));
-    this.Documents.push_back(new MyDocument('Tomato', false, new ImGui.Vec4(1.0, 0.3, 0.4, 1.0)));
-    this.Documents.push_back(new MyDocument('A Rather Long Title', false));
-    this.Documents.push_back(new MyDocument('Some Document', false));
+    this.Documents.push_back(new MyDocument(0, 'Lettuce', true, new ImGui.Vec4(0.4, 0.8, 0.4, 1.0)));
+    this.Documents.push_back(new MyDocument(1, 'Eggplant', true, new ImGui.Vec4(0.8, 0.5, 1.0, 1.0)));
+    this.Documents.push_back(new MyDocument(2, 'Carrot', true, new ImGui.Vec4(1.0, 0.8, 0.5, 1.0)));
+    this.Documents.push_back(new MyDocument(3, 'Tomato', false, new ImGui.Vec4(1.0, 0.3, 0.4, 1.0)));
+    this.Documents.push_back(new MyDocument(4, 'A Rather Long Title', false, new ImGui.Vec4(0.4, 0.8, 0.8, 1.0)));
+    this.Documents.push_back(new MyDocument(5, 'Some Document', false, new ImGui.Vec4(0.8, 0.8, 1.0, 1.0)));
   }
-}
 
-// [Optional] Notify the system of Tabs/Windows closure that happened outside the regular tab interface.
-// If a tab has been closed programmatically (aka closed from another source such as the Checkbox() in the demo,
-// as opposed to clicking on the regular tab closing button) and stops being submitted, it will take a frame for
-// the tab bar to notice its absence. During this frame there will be a gap in the tab bar, and if the tab that has
-// disappeared was the selected one, the tab bar will report no selected tab during the frame. This will effectively
-// give the impression of a flicker for one frame.
-// We call SetTabItemClosed() to manually notify the Tab Bar or Docking system of removed tabs to avoid this glitch.
-// Note that this completely optional, and only affect tab bars with the ImGui.TabBarFlags.Reorderable flag.
-function NotifyOfDocumentsClosedElsewhere (app: ExampleAppDocuments): void {
-  for (let doc_n = 0; doc_n < app.Documents.Size; doc_n++) {
-    const doc: MyDocument = app.Documents[doc_n];
+  // As we allow to change document name, we append a never-changing document ID so tabs are stable
+  GetTabName (doc: MyDocument): string {
+    return `${doc.NameStr}###doc${doc.UID}`;
+  }
 
-    if (!doc.Open && doc.OpenPrev) {ImGui.SetTabItemClosed(doc.Name);}
-    doc.OpenPrev = doc.Open;
+  // Display placeholder contents for the Document
+  DisplayDocContents (doc: MyDocument): void {
+    ImGui.PushID(doc.UID);
+    ImGui.Text(`Document "${doc.NameStr}"`);
+    ImGui.PushStyleColor(ImGui.Col.Text, doc.Color);
+    ImGui.TextWrapped('Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.');
+    ImGui.PopStyleColor();
+
+    ImGui.SetNextItemShortcut(ImGui.Mod.Ctrl | ImGui.Key.R, ImGui.InputFlags.Tooltip);
+    if (ImGui.Button('Rename..')) {
+      this.RenamingDoc = doc;
+      this.RenamingStarted = true;
+    }
+    ImGui.SameLine();
+
+    ImGui.SetNextItemShortcut(ImGui.Mod.Ctrl | ImGui.Key.M, ImGui.InputFlags.Tooltip);
+    if (ImGui.Button('Modify'))
+    {doc.Dirty = true;}
+
+    ImGui.SameLine();
+    ImGui.SetNextItemShortcut(ImGui.Mod.Ctrl | ImGui.Key.S, ImGui.InputFlags.Tooltip);
+    if (ImGui.Button('Save'))
+    {doc.DoSave();}
+
+    ImGui.SameLine();
+    ImGui.SetNextItemShortcut(ImGui.Mod.Ctrl | ImGui.Key.W, ImGui.InputFlags.Tooltip);
+    if (ImGui.Button('Close'))
+    {this.CloseQueue.push_back(doc);}
+    ImGui.ColorEdit3('color', doc.Color);
+    ImGui.PopID();
+  }
+
+  // Display context menu for the Document
+  DisplayDocContextMenu (doc: MyDocument): void {
+    if (!ImGui.BeginPopupContextItem()) {return;}
+
+    if (ImGui.MenuItem(`Save ${doc.NameStr}`, 'Ctrl+S', false, doc.Open))
+    {doc.DoSave();}
+    if (ImGui.MenuItem('Rename...', 'Ctrl+R', false, doc.Open))
+    {this.RenamingDoc = doc;}
+    if (ImGui.MenuItem('Close', 'Ctrl+W', false, doc.Open))
+    {this.CloseQueue.push_back(doc);}
+    ImGui.EndPopup();
+  }
+
+  NotifyOfDocumentsClosedElsewhere (): void {
+    for (let doc_n = 0; doc_n < this.Documents.Size; doc_n++) {
+      const doc = this.Documents[doc_n];
+
+      if (!doc.Open && doc.OpenPrev)
+      {ImGui.SetTabItemClosed(doc.NameStr);}
+      doc.OpenPrev = doc.Open;
+    }
   }
 }
 
@@ -7225,12 +9176,13 @@ function ShowExampleAppDocuments (p_open: ImGui.Access<boolean>): void {
   const app = STATIC<ExampleAppDocuments>(UNIQUE('app#78f890d0'), new ExampleAppDocuments());
 
   // Options
+  const opt_target = STATIC<int>(UNIQUE('opt_target#docs'), DocTarget.Tab);
   const opt_reorderable = STATIC<boolean>(UNIQUE('opt_reorderable#08e32fe0'), true);
   const opt_fitting_flags = STATIC<ImGui.TabBarFlags>(UNIQUE('opt_fitting_flags#c9447dc7'), ImGui.TabBarFlags.FittingPolicyDefault_);
 
   const window_contents_visible: boolean = ImGui.Begin('Example: Documents', p_open, ImGui.WindowFlags.MenuBar);
 
-  if (!window_contents_visible) {
+  if (!window_contents_visible && opt_target.value !== DocTarget.DockSpaceAndWindow) {
     ImGui.End();
 
     return;
@@ -7241,22 +9193,23 @@ function ShowExampleAppDocuments (p_open: ImGui.Access<boolean>): void {
     if (ImGui.BeginMenu('File')) {
       let open_count: int = 0;
 
-      for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {open_count += app.value.Documents[doc_n].Open ? 1 : 0;}
+      for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++)
+      {open_count += app.value.Documents[doc_n].Open ? 1 : 0;}
 
       if (ImGui.BeginMenu('Open', open_count < app.value.Documents.Size)) {
         for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {
-          const doc: MyDocument = app.value.Documents[doc_n];
+          const doc = app.value.Documents[doc_n];
 
-          if (!doc.Open) {
-            if (ImGui.MenuItem(doc.Name)) {doc.DoOpen();}
-          }
+          if (!doc.Open && ImGui.MenuItem(doc.NameStr))
+          {doc.DoOpen();}
         }
         ImGui.EndMenu();
       }
-      if (ImGui.MenuItem('Close All Documents', null, false, open_count > 0)) {
-        for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {app.value.Documents[doc_n].DoQueueClose();}
-      }
-      if (ImGui.MenuItem('Exit', 'Alt+F4')) {}
+      if (ImGui.MenuItem('Close All Documents', null, false, open_count > 0))
+      {for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++)
+      {app.value.CloseQueue.push_back(app.value.Documents[doc_n]);}}
+      if (ImGui.MenuItem('Exit') && p_open)
+      {p_open(false);}
       ImGui.EndMenu();
     }
     ImGui.EndMenuBar();
@@ -7264,111 +9217,165 @@ function ShowExampleAppDocuments (p_open: ImGui.Access<boolean>): void {
 
   // [Debug] List documents with one checkbox for each
   for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {
-    const doc: MyDocument = app.value.Documents[doc_n];
+    const doc = app.value.Documents[doc_n];
 
     if (doc_n > 0) {ImGui.SameLine();}
-    ImGui.PushID(doc.ID);
-    if (ImGui.Checkbox(doc.Name, (_ = doc.Open) => doc.Open = _)) {
+    ImGui.PushID(doc.UID);
+    if (ImGui.Checkbox(doc.NameStr, (_ = doc.Open) => doc.Open = _)) {
       if (!doc.Open) {doc.DoForceClose();}
     }
     ImGui.PopID();
   }
+  ImGui.PushItemWidth(ImGui.GetFontSize() * 12);
+  ImGui.Combo('Output', opt_target.access, 'None\0TabBar+Tabs\0DockSpace+Window\0');
+  ImGui.PopItemWidth();
+  let redock_all = false;
+
+  if (opt_target.value === DocTarget.Tab) { ImGui.SameLine(); ImGui.Checkbox('Reorderable Tabs', opt_reorderable.access); }
+  if (opt_target.value === DocTarget.DockSpaceAndWindow) { ImGui.SameLine(); redock_all = ImGui.Button('Redock all'); }
 
   ImGui.Separator();
 
-  // Submit Tab Bar and Tabs
-  {
-    const tab_bar_flags: ImGui.TabBarFlags = (opt_fitting_flags.value) | (opt_reorderable.value ? ImGui.TabBarFlags.Reorderable : 0);
+  // Tabs
+  if (opt_target.value === DocTarget.Tab) {
+    let tab_bar_flags: ImGui.TabBarFlags = (opt_fitting_flags.value) | (opt_reorderable.value ? ImGui.TabBarFlags.Reorderable : 0);
+
+    tab_bar_flags |= ImGui.TabBarFlags.DrawSelectedOverline;
 
     if (ImGui.BeginTabBar('##tabs', tab_bar_flags)) {
-      if (opt_reorderable.value) {NotifyOfDocumentsClosedElsewhere(app.value);}
-
-      // [DEBUG] Stress tests
-      //if ((ImGui.GetFrameCount() % 30) === 0) docs[1].Open ^= 1;            // [DEBUG] Automatically show/hide a tab. Test various interactions e.g. dragging with this on.
-      //if (ImGui.GetIO().KeyCtrl) ImGui.SetTabItemSelected(docs[1].Name);  // [DEBUG] Test SetTabItemSelected(), probably not very useful as-is anyway..
+      if (opt_reorderable.value)
+      {app.value.NotifyOfDocumentsClosedElsewhere();}
 
       // Submit Tabs
       for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {
-        const doc: MyDocument = app.value.Documents[doc_n];
+        const doc = app.value.Documents[doc_n];
 
         if (!doc.Open) {continue;}
 
+        const doc_name_buf = app.value.GetTabName(doc);
         const tab_flags: ImGui.TabItemFlags = (doc.Dirty ? ImGui.TabItemFlags.UnsavedDocument : 0);
-        const visible: boolean = ImGui.BeginTabItem(doc.Name, (_ = doc.Open) => doc.Open = _, tab_flags);
+        const visible: boolean = ImGui.BeginTabItem(doc_name_buf, (_ = doc.Open) => doc.Open = _, tab_flags);
 
         // Cancel attempt to close when unsaved add to save queue so we can display a popup.
         if (!doc.Open && doc.Dirty) {
           doc.Open = true;
-          doc.DoQueueClose();
+          app.value.CloseQueue.push_back(doc);
         }
 
-        MyDocument.DisplayContextMenu(doc);
+        app.value.DisplayDocContextMenu(doc);
         if (visible) {
-          MyDocument.DisplayContents(doc);
+          app.value.DisplayDocContents(doc);
           ImGui.EndTabItem();
         }
       }
 
       ImGui.EndTabBar();
     }
+  } else if (opt_target.value === DocTarget.DockSpaceAndWindow) {
+    if (ImGui.GetIO().ConfigFlags & ImGui.ConfigFlags.DockingEnable) {
+      app.value.NotifyOfDocumentsClosedElsewhere();
+
+      // Create a DockSpace node where any window can be docked
+      const dockspace_id = ImGui.GetID('MyDockSpace');
+
+      ImGui.DockSpace(dockspace_id);
+
+      // Create Windows
+      for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {
+        const doc = app.value.Documents[doc_n];
+
+        if (!doc.Open) {continue;}
+
+        ImGui.SetNextWindowDockID(dockspace_id, redock_all ? ImGui.Cond.Always : ImGui.Cond.FirstUseEver);
+        const window_flags: ImGui.WindowFlags = (doc.Dirty ? ImGui.WindowFlags.UnsavedDocument : 0);
+        const visible = ImGui.Begin(doc.NameStr, (_ = doc.Open) => doc.Open = _, window_flags);
+
+        // Cancel attempt to close when unsaved
+        if (!doc.Open && doc.Dirty) {
+          doc.Open = true;
+          app.value.CloseQueue.push_back(doc);
+        }
+
+        app.value.DisplayDocContextMenu(doc);
+        if (visible)
+        {app.value.DisplayDocContents(doc);}
+
+        ImGui.End();
+      }
+    } else {
+      ImGui.Text('Docking is not enabled. Enable with io.ConfigFlags |= ImGuiConfigFlags_DockingEnable.');
+    }
   }
 
-  // Update closing queue
-  const close_queue = STATIC<ImGui.Vector<MyDocument>>(UNIQUE('close_queue#0bbccedf'), new ImGui.Vector());
+  // Early out other contents
+  if (!window_contents_visible) {
+    ImGui.End();
 
-  if (close_queue.value.empty()) {
-    // Close queue is locked once we started a popup
-    for (let doc_n = 0; doc_n < app.value.Documents.Size; doc_n++) {
-      const doc: MyDocument = app.value.Documents[doc_n];
+    return;
+  }
 
-      if (doc.WantClose) {
-        doc.WantClose = false;
-        close_queue.value.push_back(doc);
+  // Display renaming UI
+  if (app.value.RenamingDoc !== null) {
+    if (app.value.RenamingStarted)
+    {ImGui.OpenPopup('Rename');}
+    if (ImGui.BeginPopup('Rename')) {
+      ImGui.SetNextItemWidth(ImGui.GetFontSize() * 30);
+      if (ImGui.InputText('###Name', app.value.RenamingDoc.Name, ImGui.ARRAYSIZE(app.value.RenamingDoc.Name), ImGui.InputTextFlags.EnterReturnsTrue)) {
+        ImGui.CloseCurrentPopup();
+        app.value.RenamingDoc = null;
       }
+      if (app.value.RenamingStarted)
+      {ImGui.SetKeyboardFocusHere(-1);}
+      ImGui.EndPopup();
+    } else {
+      app.value.RenamingDoc = null;
     }
+    app.value.RenamingStarted = false;
   }
 
   // Display closing confirmation UI
-  if (!close_queue.value.empty()) {
+  if (!app.value.CloseQueue.empty()) {
     let close_queue_unsaved_documents: int = 0;
 
-    for (let n = 0; n < close_queue.value.Size; n++) {
-      if (close_queue.value[n].Dirty) {close_queue_unsaved_documents++;}
-    }
+    for (let n = 0; n < app.value.CloseQueue.Size; n++)
+    {if (app.value.CloseQueue[n].Dirty) {close_queue_unsaved_documents++;}}
 
     if (close_queue_unsaved_documents === 0) {
-      // Close documents when all are unsaved
-      for (let n = 0; n < close_queue.value.Size; n++) {close_queue.value[n].DoForceClose();}
-      close_queue.value.clear();
+      for (let n = 0; n < app.value.CloseQueue.Size; n++)
+      {app.value.CloseQueue[n].DoForceClose();}
+      app.value.CloseQueue.clear();
     } else {
       if (!ImGui.IsPopupOpen('Save?')) {ImGui.OpenPopup('Save?');}
-      if (ImGui.BeginPopupModal('Save?')) {
+      if (ImGui.BeginPopupModal('Save?', null, ImGui.WindowFlags.AlwaysAutoResize)) {
         ImGui.Text('Save change to the following items?');
-        ImGui.SetNextItemWidth(-1.0);
-        if (ImGui.ListBoxHeader('##', close_queue_unsaved_documents, 6)) {
-          for (let n = 0; n < close_queue.value.Size; n++) {
-            if (close_queue.value[n].Dirty) {ImGui.Text(`${close_queue.value[n].Name}`);}
-          }
-          ImGui.ListBoxFooter();
-        }
+        const item_height = ImGui.GetTextLineHeightWithSpacing();
 
-        if (ImGui.Button('Yes', new ImGui.Vec2(80, 0))) {
-          for (let n = 0; n < close_queue.value.Size; n++) {
-            if (close_queue.value[n].Dirty) {close_queue.value[n].DoSave();}
-            close_queue.value[n].DoForceClose();
+        if (ImGui.BeginChild(ImGui.GetID('frame'), new ImGui.Vec2(-FLT_MIN, 6.25 * item_height), ImGui.ChildFlags.FrameStyle))
+        {for (let n = 0; n < app.value.CloseQueue.Size; n++)
+        {if (app.value.CloseQueue[n].Dirty)
+        {ImGui.Text(app.value.CloseQueue[n].NameStr);}}}
+        ImGui.EndChild();
+
+        const button_size = new ImGui.Vec2(ImGui.GetFontSize() * 7.0, 0.0);
+
+        if (ImGui.Button('Yes', button_size)) {
+          for (let n = 0; n < app.value.CloseQueue.Size; n++) {
+            if (app.value.CloseQueue[n].Dirty) {app.value.CloseQueue[n].DoSave();}
+            app.value.CloseQueue[n].DoForceClose();
           }
-          close_queue.value.clear();
+          app.value.CloseQueue.clear();
           ImGui.CloseCurrentPopup();
         }
         ImGui.SameLine();
-        if (ImGui.Button('No', new ImGui.Vec2(80, 0))) {
-          for (let n = 0; n < close_queue.value.Size; n++) {close_queue.value[n].DoForceClose();}
-          close_queue.value.clear();
+        if (ImGui.Button('No', button_size)) {
+          for (let n = 0; n < app.value.CloseQueue.Size; n++)
+          {app.value.CloseQueue[n].DoForceClose();}
+          app.value.CloseQueue.clear();
           ImGui.CloseCurrentPopup();
         }
         ImGui.SameLine();
-        if (ImGui.Button('Cancel', new ImGui.Vec2(80, 0))) {
-          close_queue.value.clear();
+        if (ImGui.Button('Cancel', button_size)) {
+          app.value.CloseQueue.clear();
           ImGui.CloseCurrentPopup();
         }
         ImGui.EndPopup();

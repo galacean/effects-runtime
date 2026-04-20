@@ -462,7 +462,7 @@ export class GraphView {
       this.m_requestFocus = false;
     }
 
-    const childVisible = ImGui.BeginChild('GraphCanvas', new ImVec2(0, childHeightOverride), true, ImGui.ImGuiWindowFlags.NoScrollbar | ImGui.ImGuiWindowFlags.NoMove | ImGui.ImGuiWindowFlags.NoScrollWithMouse);
+    const childVisible = ImGui.BeginChild('GraphCanvas', new ImVec2(0, childHeightOverride), ImGui.ChildFlags.Borders, ImGui.ImGuiWindowFlags.NoScrollbar | ImGui.ImGuiWindowFlags.NoMove | ImGui.ImGuiWindowFlags.NoScrollWithMouse);
 
     if (childVisible) {
     //   const pWindow = ImGui.GetCurrentWindow();
@@ -2532,27 +2532,21 @@ export class GraphView {
     // Keyboard
     // These operations require the graph view to be focused!
     if (this.m_hasFocus) {
-      const F2KeyCode = 113;
-      const CKeyCode = 67;
-      const XKeyCode = 88;
-      const VKeyCode = 86;
-      const DeleteKeyCode = 46;
-
       // General operations
-      if (IO.KeyCtrl && ImGui.IsKeyPressed(CKeyCode)) {
+      if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.C)) {
         this.CopySelectedNodes();
       }
 
       // Operations that modify the graph
       if (!this.m_isReadOnly) {
-        if (ImGui.IsKeyPressed(F2KeyCode)) {
+        if (ImGui.IsKeyPressed(ImGui.Key.F2)) {
           if (this.m_selectedNodes.length === 1 && this.m_selectedNodes[0].m_pNode!.IsRenameable()) {
             this.BeginRenameNode(this.m_selectedNodes[0].m_pNode!);
           }
-        } else if (IO.KeyCtrl && ImGui.IsKeyPressed(XKeyCode)) {
+        } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.X)) {
           this.CopySelectedNodes();
           this.DestroySelectedNodes();
-        } else if (IO.KeyCtrl && ImGui.IsKeyPressed(VKeyCode)) {
+        } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.V)) {
           let pasteLocation = new ImVec2(0.0, 0.0);
 
           if (this.m_isViewHovered) {
@@ -2565,11 +2559,11 @@ export class GraphView {
         }
 
         if (this.m_selectedNodes.length > 0) {
-          if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(DeleteKeyCode)) {
+          if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(ImGui.Key.Delete)) {
             this.DestroySelectedNodes();
           }
 
-          if (IO.KeyShift && ImGui.IsKeyPressed(CKeyCode)) {
+          if (IO.KeyShift && ImGui.IsKeyPressed(ImGui.Key.C)) {
             this.CreateCommentAroundSelectedNodes();
           }
         }
@@ -2832,14 +2826,13 @@ export class GraphView {
     const buttonSectionWidth = (buttonWidth * 2) + style.ItemSpacing.x;
 
     const isCommentNode = this.m_pNodeBeingOperatedOn instanceof CommentNode;
-    const EscapeKeyCode = 27;
 
     if (isCommentNode) {
       ImGui.OpenPopup(GraphView.s_dialogID_Comment);
       ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 6));
       ImGui.SetNextWindowSize(new ImVec2(600, -1));
       if (ImGui.BeginPopupModal(GraphView.s_dialogID_Comment, null, ImGui.WindowFlags.NoSavedSettings)) {
-        if (ImGui.IsKeyPressed(EscapeKeyCode) || this.m_selectedNodes.length !== 1) {
+        if (ImGui.IsKeyPressed(ImGui.Key.Escape) || this.m_selectedNodes.length !== 1) {
           this.EndRenameNode(false);
           ImGui.CloseCurrentPopup();
         } else {
@@ -2895,7 +2888,7 @@ export class GraphView {
       ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 6));
       ImGui.SetNextWindowSize(new ImVec2(400, -1));
       if (ImGui.BeginPopupModal(GraphView.s_dialogID_Rename, null, ImGui.WindowFlags.NoSavedSettings)) {
-        if (ImGui.IsKeyPressed(EscapeKeyCode) || this.m_selectedNodes.length !== 1) {
+        if (ImGui.IsKeyPressed(ImGui.Key.Escape) || this.m_selectedNodes.length !== 1) {
           this.EndRenameNode(false);
           ImGui.CloseCurrentPopup();
         } else {

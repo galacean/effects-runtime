@@ -126,7 +126,7 @@ export class ContentBrowser extends EditorWindow {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(0, 4));
     ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, col4(THEME.headerBg));
     ImGui.PushStyleColor(ImGui.ImGuiCol.Border, col4(THEME.separator));
-    ImGui.BeginChild('##Sidebar', new ImGui.Vec2(sidebarW, availH), true);
+    ImGui.BeginChild('##Sidebar', new ImGui.Vec2(sidebarW, availH), ImGui.ChildFlags.Borders);
     this.drawCategoryTree();
     ImGui.EndChild();
     ImGui.PopStyleColor(2);
@@ -138,7 +138,7 @@ export class ContentBrowser extends EditorWindow {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(6, 6));
     ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, col4(THEME.panelBg));
     ImGui.PushStyleColor(ImGui.ImGuiCol.Border, col4(THEME.separator));
-    ImGui.BeginChild('##Content', new ImGui.Vec2(0, availH), true);
+    ImGui.BeginChild('##Content', new ImGui.Vec2(0, availH), ImGui.ChildFlags.Borders);
     this.filteredCount = this.drawContentArea();
     ImGui.EndChild();
     ImGui.PopStyleColor(2);
@@ -198,7 +198,7 @@ export class ContentBrowser extends EditorWindow {
   private drawSearchBar (): void {
     ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, col4(THEME.headerBg));
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(8, 6));
-    ImGui.BeginChild('##SearchBar', new ImGui.Vec2(0, 34), false);
+    ImGui.BeginChild('##SearchBar', new ImGui.Vec2(0, 34), ImGui.ChildFlags.None);
 
     const dl = ImGui.GetWindowDrawList();
     const cur = ImGui.GetCursorScreenPos();
@@ -228,7 +228,6 @@ export class ContentBrowser extends EditorWindow {
 
     // 清除按钮
     if (this.searchFilter.length > 0) {
-      ImGui.SetItemAllowOverlap();
       const rMax = ImGui.GetItemRectMax();
       const rMin = ImGui.GetItemRectMin();
       const bs = 14;
@@ -774,7 +773,7 @@ export class ContentBrowser extends EditorWindow {
   private drawBottomBar (): void {
     ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, col4(THEME.headerBg));
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImGui.Vec2(10, 0));
-    ImGui.BeginChild('##BottomBar', new ImGui.Vec2(0, 28), false);
+    ImGui.BeginChild('##BottomBar', new ImGui.Vec2(0, 28), ImGui.ChildFlags.None);
 
     const barH = 28;
     const dl = ImGui.GetWindowDrawList();

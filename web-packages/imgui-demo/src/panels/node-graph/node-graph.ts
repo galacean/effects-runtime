@@ -212,7 +212,7 @@ export class AnimationGraph extends EditorWindow {
 
     // 左侧：参数面板
     if (this.showParametersPanel) {
-      if (ImGui.BeginChild('ParametersPanel', new ImVec2(parametersWidth, contentRegion.y), false)) {
+      if (ImGui.BeginChild('ParametersPanel', new ImVec2(parametersWidth, contentRegion.y), ImGui.ChildFlags.None)) {
         this.parametersPanel.drawPanel(parametersWidth, contentRegion.y);
       }
       ImGui.EndChild();
@@ -223,7 +223,7 @@ export class AnimationGraph extends EditorWindow {
 
     // 中间：图形视图
     ImGui.SameLine();
-    if (ImGui.BeginChild('CenterPanel', new ImVec2(graphViewWidth, contentRegion.y), false)) {
+    if (ImGui.BeginChild('CenterPanel', new ImVec2(graphViewWidth, contentRegion.y), ImGui.ChildFlags.None)) {
       if (this.graph) {
         this.DrawGraphView();
       }
@@ -236,7 +236,7 @@ export class AnimationGraph extends EditorWindow {
       this.detailsPanelWidth = splitter('##RightSplitter', this.detailsPanelWidth, { thickness: splitterWidth, min: 180, max: 600, invert: true });
 
       ImGui.SameLine();
-      if (ImGui.BeginChild('DetailsPanel', new ImVec2(detailsWidth, contentRegion.y), true)) {
+      if (ImGui.BeginChild('DetailsPanel', new ImVec2(detailsWidth, contentRegion.y), ImGui.ChildFlags.Borders)) {
         this.drawDetailsPanel();
       }
       ImGui.EndChild();
@@ -435,7 +435,7 @@ export class AnimationGraph extends EditorWindow {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 3));
     ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImVec2(4, 2));
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(4, 1));
-    if (ImGui.BeginChild('NavBar', new ImVec2(ImGui.GetContentRegionAvail().x, 28), true, ImGui.WindowFlags.AlwaysUseWindowPadding)) {
+    if (ImGui.BeginChild('NavBar', new ImVec2(ImGui.GetContentRegionAvail().x, 28), ImGui.ChildFlags.Borders, ImGui.WindowFlags.AlwaysUseWindowPadding)) {
       this.DrawGraphViewNavigationBar();
     }
     ImGui.EndChild();

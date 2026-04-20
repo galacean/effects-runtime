@@ -58,9 +58,8 @@ export function searchBar (
   ImGui.SetCursorPosX(inputStartX);
   ImGui.PushItemWidth(availWidth - iconSize - iconPadding);
 
+  ImGui.SetNextItemAllowOverlap();
   const changed = ImGui.InputText(id, buffer, bufferSize);
-
-  ImGui.SetItemAllowOverlap();
 
   const inputRectMin = ImGui.GetItemRectMin();
   const inputRectMax = ImGui.GetItemRectMax();

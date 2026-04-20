@@ -197,7 +197,7 @@ export class Project extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    ImGui.BeginChild('FileTree', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.2, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y), true);
+    ImGui.BeginChild('FileTree', new ImGui.Vec2(ImGui.GetContentRegionAvail().x * 0.2, ImGui.GetContentRegionAvail().y), ImGui.ChildFlags.Borders);
     if (ImGui.Button('选择文件夹')) {
       void this.readFolder();
     }
@@ -221,7 +221,7 @@ export class Project extends EditorWindow {
     ImGui.EndChild();
 
     ImGui.SameLine();
-    ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.8, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y - 40), true);
+    ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetContentRegionAvail().x, ImGui.GetContentRegionAvail().y - 40), ImGui.ChildFlags.Borders);
     this.fileViewHovered = ImGui.IsWindowHovered();
     const style: ImGui.Style = ImGui.GetStyle();
     const window_visible_x2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
@@ -254,7 +254,7 @@ export class Project extends EditorWindow {
           ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(70 / 255, 70 / 255, 70 / 255, 1.0));
         }
         ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
-        if (ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col)) {
+        if (ImGui.ImageButton('project_item', icon, button_sz, uv0, uv1, bg_col)) {
           Selection.select(child);
         }
         if (this.clickingFileNode === child) {
@@ -269,7 +269,7 @@ export class Project extends EditorWindow {
           if (child.assetObject) {
             ImGui.SetDragDropPayload(child.assetObject.constructor.name, child);
           }
-          ImGui.ImageButton(icon, button_sz, uv0, uv1);
+          ImGui.ImageButton('project_drag', icon, button_sz, uv0, uv1);
           ImGui.EndDragDropSource();
         }
         this.drawFileName(child.handle.name);

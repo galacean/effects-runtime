@@ -53,8 +53,12 @@ export class ClipRenderer {
     // 绘制clips
     this.drawClips(trackAsset, trackName);
 
-    // 移动光标到下一行
+    // 移动光标到下一行（submit a zero-height Dummy with no ItemSpacing to satisfy
+    // SetCursorScreenPos boundary extension without affecting layout)
     ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, lineStartPos.y + frameHeight + state.trackRowSpacing));
+    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
+    ImGui.Dummy(new ImGui.Vec2(0, 0));
+    ImGui.PopStyleVar();
 
     // 递归绘制子轨道clips
     if (hasChildren && isTrackExpanded(state, trackAsset)) {

@@ -68,8 +68,6 @@ export class Hierarchy extends EditorWindow {
     const composition = GalaceanEffects.player.getCompositions()[0];
 
     if (!composition) {
-      ImGui.End();
-
       return;
     }
 
@@ -254,7 +252,7 @@ export class Hierarchy extends EditorWindow {
       ImGui.PopStyleColor(1);
     }
 
-    ImGui.SetItemAllowOverlap();
+    ImGui.SetNextItemAllowOverlap();
     const postTreeCursor = ImGui.GetCursorPos();
     const rowHovered = ImGui.IsItemHovered();
     const rowRectMin = ImGui.GetItemRectMin();
@@ -297,11 +295,8 @@ export class Hierarchy extends EditorWindow {
     }
     drawList.ChannelsSetCurrent(1);
 
-    // 绘制可见性切换按钮
-    ImGui.SetCursorPos(new ImGui.Vec2(this.visibilityColumnLocalX, rowStartLocal.y));
+    // 绘制可见性切换按钮（drawVisibilityToggle 内部使用 SetCursorScreenPos 定位，不需要 SetCursorPos）
     const toggleTriggered = this.drawVisibilityToggle(item, buttonBounds, isSelected);
-
-    ImGui.SetCursorPos(postTreeCursor);
 
     if (toggleTriggered) {
       this.toggleVisibility(item);
@@ -363,6 +358,7 @@ export class Hierarchy extends EditorWindow {
       ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
 
       // 只显示元素自身的名字
+      ImGui.SetNextItemAllowOverlap();
       ImGui.TreeNodeEx(itemId, nodeFlags, LAYOUT.iconPadding + item.name);
 
       // 恢复文字颜色
@@ -370,7 +366,6 @@ export class Hierarchy extends EditorWindow {
         ImGui.PopStyleColor(1);
       }
 
-      ImGui.SetItemAllowOverlap();
       const postTreeCursor = ImGui.GetCursorPos();
       const rowHovered = ImGui.IsItemHovered();
       const rowRectMin = ImGui.GetItemRectMin();
@@ -413,11 +408,8 @@ export class Hierarchy extends EditorWindow {
       }
       drawList.ChannelsSetCurrent(1);
 
-      // 绘制可见性切换按钮
-      ImGui.SetCursorPos(new ImGui.Vec2(this.visibilityColumnLocalX, rowStartLocal.y));
+      // 绘制可见性切换按钮（drawVisibilityToggle 内部使用 SetCursorScreenPos 定位，不需要 SetCursorPos）
       const toggleTriggered = this.drawVisibilityToggle(item, buttonBounds, isSelected);
-
-      ImGui.SetCursorPos(postTreeCursor);
 
       if (toggleTriggered) {
         this.toggleVisibility(item);

@@ -573,7 +573,9 @@ export class AnimationClipPanel extends EditorWindow {
     );
 
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + barH));
+    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
     ImGui.Dummy(new ImGui.Vec2(0, 0));
+    ImGui.PopStyleVar();
   }
 
   private controlButton (
@@ -607,7 +609,7 @@ export class AnimationClipPanel extends EditorWindow {
 
     // ── 标题行 ──
     // 左：Curves
-    if (ImGui.BeginChild('LabelHeader', new ImGui.Vec2(leftW, timelineH), false, ImGui.WindowFlags.NoScrollbar)) {
+    if (ImGui.BeginChild('LabelHeader', new ImGui.Vec2(leftW, timelineH), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
       const p = ImGui.GetCursorScreenPos();
 
       dl.AddRectFilled(p, new ImGui.Vec2(p.x + leftW, p.y + timelineH), ImGui.GetColorU32(COLORS.trackLabelBg));
@@ -623,7 +625,7 @@ export class AnimationClipPanel extends EditorWindow {
     const rightAreaX = ImGui.GetCursorScreenPos().x;
 
     // 右：时间轴标尺
-    if (ImGui.BeginChild('RulerArea', new ImGui.Vec2(rightW, timelineH), false, ImGui.WindowFlags.NoScrollbar)) {
+    if (ImGui.BeginChild('RulerArea', new ImGui.Vec2(rightW, timelineH), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
       this.drawRuler(rightW, timelineH);
     }
     ImGui.EndChild();
@@ -632,7 +634,7 @@ export class AnimationClipPanel extends EditorWindow {
     const bodyH = ImGui.GetContentRegionAvail().y;
 
     // 左侧标签（保留垂直滚动条）
-    if (ImGui.BeginChild('Labels', new ImGui.Vec2(leftW, bodyH), false)) {
+    if (ImGui.BeginChild('Labels', new ImGui.Vec2(leftW, bodyH), ImGui.ChildFlags.None)) {
       this.drawLabels(clip);
       st.syncScrollY = ImGui.GetScrollY();
     }
@@ -643,7 +645,7 @@ export class AnimationClipPanel extends EditorWindow {
     ImGui.SameLine();
 
     // 右侧画布（隐藏滚动条 + 禁用鼠标滚轮滚动，由左侧驱动同步）
-    if (ImGui.BeginChild('Canvas', new ImGui.Vec2(rightW, bodyH), false, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse)) {
+    if (ImGui.BeginChild('Canvas', new ImGui.Vec2(rightW, bodyH), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse)) {
       ImGui.SetScrollY(st.syncScrollY);
       this.drawCanvas(clip, rightW);
     }

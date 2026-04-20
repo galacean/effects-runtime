@@ -23,7 +23,7 @@ export function beginCollapsiblePanel (label: string, initiallyOpen = true): boo
   const visible = ImGui.BeginChild(
     label,
     new ImGui.Vec2(0, 0),
-    true,
+    ImGui.ChildFlags.Borders,
     ImGui.WindowFlags.AlwaysAutoResize | ImGui.WindowFlags.AlwaysUseWindowPadding,
   );
 

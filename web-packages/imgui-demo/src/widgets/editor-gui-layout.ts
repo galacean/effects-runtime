@@ -173,6 +173,7 @@ export class EditorGUILayout {
       return;
     }
 
+    ImGui.PushID(`ObjectField_${label}_${property}`);
     if (targetObject instanceof GLTexture) {
       let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
 
@@ -180,7 +181,7 @@ export class EditorGUILayout {
         __inspectorTexture = createImguiTextureFromImage(targetObject.definition.image);
         (targetObject as any).__imguiInspectorTexture = __inspectorTexture;
       }
-      ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
+      ImGui.ImageButton('inspector_texture', __inspectorTexture, new ImGui.Vec2(100, 100));
     } else {
       ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(-1, 0));
     }
@@ -198,6 +199,7 @@ export class EditorGUILayout {
 
       ImGui.EndDragDropTarget();
     }
+    ImGui.PopID();
   }
 }
 

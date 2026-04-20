@@ -44,8 +44,6 @@ export class Scene extends EditorWindow {
 
   protected override onGUI (): void {
     if (!GalaceanEffects.player.getCompositions()[0]) {
-      ImGui.End();
-
       return;
     }
     const player = GalaceanEffects.player;
@@ -82,7 +80,7 @@ export class Scene extends EditorWindow {
 
       if (this.is2DMode) {
         // 2D 模式：渲染 ImageButton 但将事件转发到 player.canvas
-        ImGui.ImageButton(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
+        ImGui.ImageButton('scene_2d', GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, bg_col);
 
         const imguiCanvas = ImGui_Impl.getCanvas();
 
@@ -132,7 +130,7 @@ export class Scene extends EditorWindow {
         }
       } else {
         // 3D 模式：正常的 ImageButton 交互
-        ImGui.ImageButton(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
+        ImGui.ImageButton('scene_3d', GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, bg_col);
 
         if (ImGui.IsItemHovered()) {
           // 检查鼠标释放时的拖动距离，只有拖动距离很小时才认为是单击

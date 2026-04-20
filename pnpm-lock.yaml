@@ -331,8 +331,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0
       maoan-imgui-js:
-        specifier: ^1.0.6
-        version: 1.0.6
+        specifier: ^1.1.1
+        version: 1.1.1
     devDependencies:
       vite:
         specifier: '5'
@@ -5146,8 +5146,8 @@ packages:
     resolution: {integrity: sha1-LrLjfqm2fEiR9oShOUeZr0hM96I=, tarball: https://registry.npmmirror.com/make-error/download/make-error-1.3.6.tgz}
     dev: true
 
-  /maoan-imgui-js@1.0.6:
-    resolution: {integrity: sha512-ob/+pZsvP1ZDKSGMF1F3tzxTFyMB60s/KqNq59OKyG4dHEjAec2iLDcIKUsTJbflrtKgdTdAGYQX6rk4HIkRWQ==}
+  /maoan-imgui-js@1.1.1:
+    resolution: {integrity: sha512-14BNQN/P3LOwbGzyZKF0T87qDOzXpRVnv+t5M7u1baJgtBw/vS984obd9jPfD+aATtXN2vtPp98sfRmdzchBWg==}
     dependencies:
       '@types/emscripten': 1.39.13
       '@types/node': 14.18.63

@@ -97,7 +97,7 @@ export class Sequencer extends EditorWindow {
     const mainAreaWidth = state.windowContentWidth - state.propertiesPanelWidth - splitterWidth;
 
     // 开始左侧主区域
-    if (ImGui.BeginChild('MainArea', new ImGui.Vec2(mainAreaWidth, 0), false)) {
+    if (ImGui.BeginChild('MainArea', new ImGui.Vec2(mainAreaWidth, 0), ImGui.ChildFlags.None)) {
       // 控制按钮区域
       this.drawControlButtons(currentComposition);
 
@@ -111,7 +111,7 @@ export class Sequencer extends EditorWindow {
       const rightPanelWidth = mainAreaWidth - leftPanelWidth - innerSplitterWidth;
 
       // 左侧 "Tracks" 标题区域
-      if (ImGui.BeginChild('TracksHeader', new ImGui.Vec2(leftPanelWidth, state.timelineHeight), false, ImGui.WindowFlags.NoScrollbar)) {
+      if (ImGui.BeginChild('TracksHeader', new ImGui.Vec2(leftPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
         const windowPos = ImGui.GetCursorScreenPos();
         const drawList = ImGui.GetWindowDrawList();
 
@@ -143,7 +143,7 @@ export class Sequencer extends EditorWindow {
 
       // 右侧时间轴标尺区域
       ImGui.SameLine();
-      if (ImGui.BeginChild('TimelineRuler', new ImGui.Vec2(rightPanelWidth, state.timelineHeight), false, ImGui.WindowFlags.NoScrollbar)) {
+      if (ImGui.BeginChild('TimelineRuler', new ImGui.Vec2(rightPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
         const windowPos = ImGui.GetCursorScreenPos();
         const timelineStart = windowPos;
         const timelineEndX = windowPos.x + rightPanelWidth;
@@ -240,7 +240,7 @@ export class Sequencer extends EditorWindow {
       const availHeight = ImGui.GetContentRegionAvail().y;
 
       // 左侧轨道名称子窗口
-      if (ImGui.BeginChild('TrackLabelsArea', new ImGui.Vec2(leftPanelWidth, availHeight), false)) {
+      if (ImGui.BeginChild('TrackLabelsArea', new ImGui.Vec2(leftPanelWidth, availHeight), ImGui.ChildFlags.None)) {
         // 滚动同步：检测本面板是否被用户滚动（滚轮/滚动条拖拽）
         const leftNativeScroll = ImGui.GetScrollY();
 
@@ -293,7 +293,7 @@ export class Sequencer extends EditorWindow {
 
       // 右侧clips区域子窗口
       ImGui.SameLine();
-      if (ImGui.BeginChild('ClipsArea', new ImGui.Vec2(rightPanelWidth, availHeight), false)) {
+      if (ImGui.BeginChild('ClipsArea', new ImGui.Vec2(rightPanelWidth, availHeight), ImGui.ChildFlags.None)) {
         // 滚动同步：检测本面板是否被用户滚动
         const rightNativeScroll = ImGui.GetScrollY();
 
@@ -430,7 +430,7 @@ export class Sequencer extends EditorWindow {
 
     // 右侧属性面板
     ImGui.SameLine();
-    if (ImGui.BeginChild('PropertiesPanel', new ImGui.Vec2(state.propertiesPanelWidth, 0), false)) {
+    if (ImGui.BeginChild('PropertiesPanel', new ImGui.Vec2(state.propertiesPanelWidth, 0), ImGui.ChildFlags.None)) {
       this.propertiesPanelRenderer.drawTrackPropertiesPanel();
     }
     ImGui.EndChild();
