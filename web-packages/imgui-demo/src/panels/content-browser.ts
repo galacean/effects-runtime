@@ -314,7 +314,7 @@ export class ContentBrowser extends EditorWindow {
       // 右侧计数标签
       const countStr = `${count}`;
       const countW = ImGui.CalcTextSize(countStr).x;
-      const rowEndX = ImGui.GetWindowContentRegionMax().x;
+      const rowEndX = ImGui.GetContentRegionAvail().x + ImGui.GetCursorStartPos().x;
 
       ImGui.SameLine(0, 0);
       ImGui.SetCursorPosX(rowEndX - countW - 10);
@@ -413,7 +413,7 @@ export class ContentBrowser extends EditorWindow {
     const cardW = ts + pad * 2;
     const stripH = Math.max(3, ts * 0.035);
     const cardH = ts + pad + stripH + nameAreaH;
-    const winX2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
+    const winX2 = ImGui.GetCursorScreenPos().x + ImGui.GetContentRegionAvail().x;
 
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(gap, gap));
 

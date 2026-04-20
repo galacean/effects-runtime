@@ -198,17 +198,31 @@ export class AnimationGraph extends EditorWindow {
     // 三栏布局：左侧参数面板 | 中间图形视图 | 右侧属性面板
     const contentRegion = ImGui.GetContentRegionAvail();
     const splitterWidth = 4;
+    const edgeGap = 24;
+    const style = ImGui.GetStyle();
+    const panelMinWidth = Math.max(edgeGap, style.WindowMinSize.x + style.WindowPadding.x * 2);
 
     let parametersWidth = this.showParametersPanel ? this.parametersPanelWidth : 0;
     let detailsWidth = this.showDetailsPanel ? this.detailsPanelWidth : 0;
-    const minPanelWidth = 180;
-    const maxPanelWidth = contentRegion.x * 0.3;
-
-    parametersWidth = Math.max(minPanelWidth, Math.min(maxPanelWidth, parametersWidth));
-    detailsWidth = Math.max(minPanelWidth, Math.min(maxPanelWidth, detailsWidth));
 
     const splitterCount = (this.showParametersPanel ? 1 : 0) + (this.showDetailsPanel ? 1 : 0);
-    const graphViewWidth = contentRegion.x - parametersWidth - detailsWidth - splitterCount * splitterWidth;
+    const maxParametersWidth = this.showParametersPanel
+      ? Math.max(panelMinWidth, contentRegion.x - detailsWidth - splitterCount * splitterWidth - edgeGap)
+      : 0;
+
+    parametersWidth = this.showParametersPanel
+      ? Math.max(panelMinWidth, Math.min(maxParametersWidth, parametersWidth))
+      : 0;
+
+    const maxDetailsWidth = this.showDetailsPanel
+      ? Math.max(panelMinWidth, contentRegion.x - parametersWidth - splitterCount * splitterWidth - edgeGap)
+      : 0;
+
+    detailsWidth = this.showDetailsPanel
+      ? Math.max(panelMinWidth, Math.min(maxDetailsWidth, detailsWidth))
+      : 0;
+
+    const graphViewWidth = Math.max(edgeGap, contentRegion.x - parametersWidth - detailsWidth - splitterCount * splitterWidth);
 
     // 左侧：参数面板
     if (this.showParametersPanel) {
@@ -218,7 +232,11 @@ export class AnimationGraph extends EditorWindow {
       ImGui.EndChild();
 
       ImGui.SameLine();
-      this.parametersPanelWidth = splitter('##LeftSplitter', this.parametersPanelWidth, { thickness: splitterWidth, min: 180, max: 600 });
+      this.parametersPanelWidth = splitter('##LeftSplitter', this.parametersPanelWidth, {
+        thickness: splitterWidth,
+        min: panelMinWidth,
+        max: maxParametersWidth,
+      });
     }
 
     // 中间：图形视图
@@ -233,7 +251,12 @@ export class AnimationGraph extends EditorWindow {
     // 右侧：属性面板
     if (this.showDetailsPanel) {
       ImGui.SameLine();
-      this.detailsPanelWidth = splitter('##RightSplitter', this.detailsPanelWidth, { thickness: splitterWidth, min: 180, max: 600, invert: true });
+      this.detailsPanelWidth = splitter('##RightSplitter', this.detailsPanelWidth, {
+        thickness: splitterWidth,
+        min: panelMinWidth,
+        max: maxDetailsWidth,
+        invert: true,
+      });
 
       ImGui.SameLine();
       if (ImGui.BeginChild('DetailsPanel', new ImVec2(detailsWidth, contentRegion.y), ImGui.ChildFlags.Borders)) {
@@ -435,7 +458,7 @@ export class AnimationGraph extends EditorWindow {
     ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(6, 3));
     ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImVec2(4, 2));
     ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(4, 1));
-    if (ImGui.BeginChild('NavBar', new ImVec2(ImGui.GetContentRegionAvail().x, 28), ImGui.ChildFlags.Borders, ImGui.WindowFlags.AlwaysUseWindowPadding)) {
+    if (ImGui.BeginChild('NavBar', new ImVec2(ImGui.GetContentRegionAvail().x, 28), ImGui.ChildFlags.Borders | ImGui.ChildFlags.AlwaysUseWindowPadding)) {
       this.DrawGraphViewNavigationBar();
     }
     ImGui.EndChild();

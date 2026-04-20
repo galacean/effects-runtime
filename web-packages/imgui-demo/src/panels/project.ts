@@ -224,7 +224,7 @@ export class Project extends EditorWindow {
     ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetContentRegionAvail().x, ImGui.GetContentRegionAvail().y - 40), ImGui.ChildFlags.Borders);
     this.fileViewHovered = ImGui.IsWindowHovered();
     const style: ImGui.Style = ImGui.GetStyle();
-    const window_visible_x2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
+    const window_visible_x2 = ImGui.GetCursorScreenPos().x + ImGui.GetContentRegionAvail().x;
     const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize);
 
     if (this.selectedFolder) {

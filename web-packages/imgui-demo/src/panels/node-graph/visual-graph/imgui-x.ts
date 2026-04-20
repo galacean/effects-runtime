@@ -165,7 +165,7 @@ export function BeginCollapsibleChildWindow (labelAndID: string, initiallyOpen: 
   ImGui.PushStyleColor(ImGui.ImGuiCol.ChildBg, backgroundColor.toImVec4());
   ImGui.PushStyleVar(ImGui.ImGuiStyleVar.ChildRounding, 8);
   //   const drawChildWindow = ImGui.BeginChild(labelAndID, new ImGui.ImVec2(0, 0), ImGui.ImGuiChildFlags.AutoResizeY | ImGui.ImGuiChildFlags.AlwaysAutoResize | ImGui.ImGuiChildFlags.AlwaysUseWindowPadding, 0);
-  const drawChildWindow = ImGui.BeginChild(labelAndID, new ImGui.ImVec2(0, 0), ImGui.ChildFlags.Borders, ImGui.ImGuiWindowFlags.AlwaysAutoResize | ImGui.ImGuiWindowFlags.AlwaysUseWindowPadding);
+  const drawChildWindow = ImGui.BeginChild(labelAndID, new ImGui.ImVec2(0, 0), ImGui.ChildFlags.Borders | ImGui.ChildFlags.AlwaysUseWindowPadding, ImGui.ImGuiWindowFlags.AlwaysAutoResize);
 
   ImGui.PopStyleVar();
   ImGui.PopStyleColor();

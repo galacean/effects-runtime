@@ -72,16 +72,18 @@ export class Scene extends EditorWindow {
     }
 
     if (GalaceanEffects.sceneRendederTexture) {
-      const frame_padding = 0;                             // -1 === uses default padding (style.FramePadding)
-      const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
-      const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
-      const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
-      const tint_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0);       // No tint
+      const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);
+      const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);
+      const viewportId = this.is2DMode ? 'scene_2d_interact' : 'scene_3d_interact';
+      const drawList = ImGui.GetWindowDrawList();
+      const viewportMax = new ImGui.Vec2(screenPos.x + sceneImageSize.x, screenPos.y + sceneImageSize.y);
+
+      drawList.AddRectFilled(screenPos, viewportMax, ImGui.COL32(0, 0, 0, 255));
+      ImGui.Image(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1);
+      ImGui.SetCursorScreenPos(screenPos);
+      ImGui.InvisibleButton(viewportId, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y));
 
       if (this.is2DMode) {
-        // 2D 模式：渲染 ImageButton 但将事件转发到 player.canvas
-        ImGui.ImageButton('scene_2d', GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, bg_col);
-
         const imguiCanvas = ImGui_Impl.getCanvas();
 
         // 转发鼠标事件到 player.canvas
@@ -123,15 +125,12 @@ export class Scene extends EditorWindow {
             imguiCanvas.style.cursor = canvas.style.cursor || 'default';
           }
         } else {
-          // 鼠标不在 ImageButton 上时，恢复 ImGui 默认 cursor
+          // 鼠标不在 Scene 视口上时，恢复 ImGui 默认 cursor
           if (imguiCanvas) {
             imguiCanvas.style.cursor = '';
           }
         }
       } else {
-        // 3D 模式：正常的 ImageButton 交互
-        ImGui.ImageButton('scene_3d', GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, bg_col);
-
         if (ImGui.IsItemHovered()) {
           // 检查鼠标释放时的拖动距离，只有拖动距离很小时才认为是单击
           if (ImGui.IsMouseReleased(ImGui.ImGuiMouseButton.Left)) {

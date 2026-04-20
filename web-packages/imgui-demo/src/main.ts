@@ -227,7 +227,7 @@ function _loop (time: number): void {
     if (show_movie_window) { ShowMovieWindow('Movie Window', (value = show_movie_window) => show_movie_window = value); }
 
     if (font) {
-      ImGui.PushFont(font);
+      ImGui.PushFont(font, font.FontSize);
       ImGui.Text(`${font.GetDebugName()}`);
       if (font.FindGlyphNoFallback(0x5929)) {
         ImGui.Text('U+5929: \u5929');

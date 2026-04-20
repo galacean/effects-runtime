@@ -90,7 +90,7 @@ export class EditorGUILayout {
     ImGui.PushStyleColor(ImGui.Col.Button, xColor);
     ImGui.PushStyleColor(ImGui.Col.ButtonHovered, xColorHover);
     ImGui.PushStyleColor(ImGui.Col.ButtonActive, xColor);
-    ImGui.Button('', new ImGui.Vec2(buttonWidth, buttonSize));
+    ImGui.Button('##AxisChip_X', new ImGui.Vec2(buttonWidth, buttonSize));
     ImGui.PopStyleColor(3);
 
     ImGui.SameLine(0, spacing);
@@ -106,7 +106,7 @@ export class EditorGUILayout {
     ImGui.PushStyleColor(ImGui.Col.Button, yColor);
     ImGui.PushStyleColor(ImGui.Col.ButtonHovered, yColorHover);
     ImGui.PushStyleColor(ImGui.Col.ButtonActive, yColor);
-    ImGui.Button('', new ImGui.Vec2(buttonWidth, buttonSize));
+    ImGui.Button('##AxisChip_Y', new ImGui.Vec2(buttonWidth, buttonSize));
     ImGui.PopStyleColor(3);
 
     ImGui.SameLine(0, spacing);
@@ -122,7 +122,7 @@ export class EditorGUILayout {
     ImGui.PushStyleColor(ImGui.Col.Button, zColor);
     ImGui.PushStyleColor(ImGui.Col.ButtonHovered, zColorHover);
     ImGui.PushStyleColor(ImGui.Col.ButtonActive, zColor);
-    ImGui.Button('', new ImGui.Vec2(buttonWidth, buttonSize));
+    ImGui.Button('##AxisChip_Z', new ImGui.Vec2(buttonWidth, buttonSize));
     ImGui.PopStyleColor(3);
 
     ImGui.SameLine(0, spacing);

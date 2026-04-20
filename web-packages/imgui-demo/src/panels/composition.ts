@@ -108,8 +108,7 @@ export class Composition extends EditorWindow {
       const focused = ImGui.IsWindowFocused();
       const drawList = ImGui.GetWindowDrawList();
       const windowPos = ImGui.GetWindowPos();
-      const contentMax = ImGui.GetWindowContentRegionMax();
-      const rowFullRight = windowPos.x + contentMax.x;
+      const rowFullRight = ImGui.GetCursorScreenPos().x + ImGui.GetContentRegionAvail().x;
 
       for (const idx of indices) {
         const isSelected = idx === this.currentItem;

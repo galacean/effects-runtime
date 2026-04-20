@@ -1,12 +1,20 @@
 import { ImGui } from '../imgui';
 import { EditorColors } from '../panels/theme';
-import { ScopedColor, ScopedVar } from './scoped-style';
+
+type SplitterDragState = {
+  startMouseAxis: number,
+  startValue: number,
+};
+
+const splitterDragStates = new Map<number, SplitterDragState>();
 
 export type SplitterOptions = {
   /** 分割方向 */
   direction?: 'horizontal' | 'vertical',
   /** 分割条宽度（像素） */
   thickness?: number,
+  /** 分割条可视长度；不传时使用当前内容区剩余长度 */
+  length?: number,
   /** 最小值 */
   min?: number,
   /** 最大值 */
@@ -42,6 +50,7 @@ export function splitter (id: string, value: number, opts: SplitterOptions = {})
   const {
     direction = 'horizontal',
     thickness = 2,
+    length,
     min = 50,
     max = 600,
     invert = false,
@@ -49,43 +58,104 @@ export function splitter (id: string, value: number, opts: SplitterOptions = {})
   } = opts;
 
   const isHorizontal = direction === 'horizontal';
+  const dragKey = ImGui.GetID(id);
+  const clampedMax = Math.max(min, max);
+  const splitterLength = length ?? (isHorizontal
+    ? ImGui.GetContentRegionAvail().y
+    : ImGui.GetContentRegionAvail().x);
   const size = isHorizontal
-    ? new ImGui.Vec2(thickness, ImGui.GetContentRegionAvail().y)
-    : new ImGui.Vec2(ImGui.GetContentRegionAvail().x, thickness);
+    ? new ImGui.Vec2(thickness, splitterLength)
+    : new ImGui.Vec2(splitterLength, thickness);
 
-  const normalColor = colors?.normal ?? EditorColors.splitterNormal;
-  const hoveredColor = colors?.hovered ?? EditorColors.splitterHovered;
-  const activeColor = colors?.active ?? EditorColors.splitterActive;
+  const normalColor = colors?.normal ?? EditorColors.separator;
+  const hoveredColor = colors?.hovered ?? EditorColors.buttonHovered;
+  const activeColor = colors?.active ?? EditorColors.accentPrimary;
+  const drawList = ImGui.GetWindowDrawList();
+  const foregroundDrawList = ImGui.GetForegroundDrawList();
+  const mousePos = ImGui.GetMousePos();
+  const currentMouseAxis = isHorizontal ? mousePos.x : mousePos.y;
 
-  const sc = new ScopedColor(
-    [ImGui.ImGuiCol.Button, normalColor],
-    [ImGui.ImGuiCol.ButtonHovered, hoveredColor],
-    [ImGui.ImGuiCol.ButtonActive, activeColor],
-  );
-  const sv = new ScopedVar(
-    [ImGui.StyleVar.FrameRounding, 0.0],
-  );
+  ImGui.InvisibleButton(id, size);
 
-  ImGui.Button(id, size);
+  const itemMin = ImGui.GetItemRectMin();
+  const itemMax = ImGui.GetItemRectMax();
+  const isHovered = ImGui.IsItemHovered();
+  const isActive = ImGui.IsItemActive();
 
-  sv.pop();
-  sc.pop();
+  if (ImGui.IsItemActivated()) {
+    splitterDragStates.set(dragKey, {
+      startMouseAxis: currentMouseAxis,
+      startValue: value,
+    });
+  }
 
-  if (ImGui.IsItemHovered()) {
+  if (isHovered || isActive) {
     ImGui.SetMouseCursor(
       isHorizontal ? ImGui.MouseCursor.ResizeEW : ImGui.MouseCursor.ResizeNS,
     );
   }
 
   let result = value;
+  const dragState = splitterDragStates.get(dragKey);
 
-  if (ImGui.IsItemActive()) {
-    const delta = isHorizontal
-      ? ImGui.GetIO().MouseDelta.x
-      : ImGui.GetIO().MouseDelta.y;
+  if (isActive && dragState) {
+    const delta = currentMouseAxis - dragState.startMouseAxis;
+    const proposedValue = dragState.startValue + (invert ? -delta : delta);
 
-    result += invert ? -delta : delta;
-    result = Math.max(min, Math.min(max, result));
+    result = Math.max(min, Math.min(clampedMax, proposedValue));
+  }
+
+  if (ImGui.IsItemDeactivated()) {
+    splitterDragStates.delete(dragKey);
+  }
+
+  const visibleColor = isActive
+    ? activeColor
+    : isHovered
+      ? hoveredColor
+      : normalColor;
+  const visibleColorU32 = ImGui.GetColorU32(visibleColor);
+
+  if (isActive) {
+    const baseAxis = isHorizontal
+      ? Math.floor((itemMin.x + itemMax.x) * 0.5) + 0.5
+      : Math.floor((itemMin.y + itemMax.y) * 0.5) + 0.5;
+    const directionSign = invert ? -1 : 1;
+    const actualAxis = Math.floor(baseAxis + (result - value) * directionSign) + 0.5;
+
+    if (isHorizontal) {
+      foregroundDrawList.AddLine(
+        new ImGui.Vec2(actualAxis, itemMin.y),
+        new ImGui.Vec2(actualAxis, itemMax.y),
+        visibleColorU32,
+        1,
+      );
+    } else {
+      foregroundDrawList.AddLine(
+        new ImGui.Vec2(itemMin.x, actualAxis),
+        new ImGui.Vec2(itemMax.x, actualAxis),
+        visibleColorU32,
+        1,
+      );
+    }
+  } else if (isHorizontal) {
+    const lineX = Math.floor((itemMin.x + itemMax.x) * 0.5) + 0.5;
+
+    drawList.AddLine(
+      new ImGui.Vec2(lineX, itemMin.y),
+      new ImGui.Vec2(lineX, itemMax.y),
+      visibleColorU32,
+      1,
+    );
+  } else {
+    const lineY = Math.floor((itemMin.y + itemMax.y) * 0.5) + 0.5;
+
+    drawList.AddLine(
+      new ImGui.Vec2(itemMin.x, lineY),
+      new ImGui.Vec2(itemMax.x, lineY),
+      visibleColorU32,
+      1,
+    );
   }
 
   return result;
