@@ -17,6 +17,13 @@ export class TextLayout implements BaseLayout {
    * 自动宽高模式
    */
   autoResize = spec.TextSizeMode.fixed;
+  /**
+   * 是否启用单词完整换行（不从单词中间断开）
+   * - true: 优先在空格处换行，保持单词完整性
+   * - false: 允许在任意字符处换行（逐字符换行）
+   * @default true
+   */
+  keepWordIntact = true;
 
   constructor (options: spec.TextContentOptions) {
     this.update(options);
@@ -33,7 +40,8 @@ export class TextLayout implements BaseLayout {
       fontSize,
       lineHeight = fontSize,
       autoResize = spec.TextSizeMode.fixed,
-    } = options;
+      keepWordIntact = true,
+    } = options as spec.TextContentOptions & { keepWordIntact?: boolean };
 
     this.letterSpace = letterSpace;
     this.overflow = textOverflow;
@@ -42,6 +50,7 @@ export class TextLayout implements BaseLayout {
     this.width = textWidth;
     this.height = textHeight;
     this.autoResize = autoResize;
+    this.keepWordIntact = keepWordIntact;
 
     this.lineHeight = lineHeight;
   }
