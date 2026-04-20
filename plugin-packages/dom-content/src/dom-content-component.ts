@@ -3,7 +3,7 @@ import type { Engine } from '@galacean/effects';
 import {
   MaskableGraphic, effectsClass, math, logger, applyMixins, TextComponentBase,
 } from '@galacean/effects';
-import { renderDOMToImage } from './dom-to-texture';
+import { renderDOMToImage, inlineImageSources } from './dom-to-texture';
 
 const DATA_TYPE = 'DomContentComponent';
 const MAX_TEXTURE_SIZE = 2048;
@@ -76,7 +76,11 @@ export class DomContentComponent extends MaskableGraphic {
 
     this.rendering = true;
     try {
-      const image = await renderDOMToImage(htmlContent, contentWidth, contentHeight, contentScale);
+      const processedHtml = await inlineImageSources(htmlContent);
+
+      if (this._disposed) { return; }
+
+      const image = await renderDOMToImage(processedHtml, contentWidth, contentHeight, contentScale);
 
       if (this._disposed) { return; }
 

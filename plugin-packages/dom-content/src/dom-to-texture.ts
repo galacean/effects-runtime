@@ -40,21 +40,17 @@ function buildSVG (html: string, width: number, height: number, scale: number): 
   );
 }
 
-/**
- * 转义危险标签并移除事件处理器，防止破坏 SVG 结构或 XSS 攻击。
- * 转义：foreignObject, script, iframe, object, embed, link
- * 移除：on* 事件处理器属性
- * 保留：内嵌 <svg> 标签（在 foreignObject 中是合法的）
- */
+/** 清理 HTML 内容，防止 XSS 攻击和 SVG 结构破坏 */
 export function sanitizeSVGContent (html: string): string {
-  // 转义危险标签
+  // 转义危险标签：foreignObject, script, iframe, object, embed, link, base, meta, style
   let result = html.replace(
-    /<\/?(foreignObject|script|iframe|object|embed|link)(?=[\s>/]|$)/gi,
-    match => match.replace(/</g, '&lt;'),
+    /<\/?(foreignObject|script|iframe|object|embed|link|base|meta|style)(?:\s[^>]*)?>/gi,
+    match => match.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
   );
 
-  // 移除事件处理器属性
-  result = result.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  // 移除 on* 事件处理器和 javascript: 协议
+  result = result.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
+  result = result.replace(/(href|src|action|formaction)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, '');
 
   return result;
 }
@@ -146,16 +142,11 @@ function loadImage (url: string): Promise<HTMLImageElement> {
     const img = new Image();
     let settled = false;
 
-    const cleanup = () => {
-      img.onload = null;
-      img.onerror = null;
-      img.src = '';
-    };
-
     const timer = setTimeout(() => {
       if (settled) { return; }
       settled = true;
-      cleanup();
+      img.onload = null;
+      img.onerror = null;
       reject(new Error(`DOM to image failed: loading timed out after ${LOAD_IMAGE_TIMEOUT}ms.`));
     }, LOAD_IMAGE_TIMEOUT);
 
@@ -163,16 +154,12 @@ function loadImage (url: string): Promise<HTMLImageElement> {
       if (settled) { return; }
       settled = true;
       clearTimeout(timer);
-      img.onload = null;
-      img.onerror = null;
       resolve(img);
     };
     img.onerror = () => {
       if (settled) { return; }
       settled = true;
       clearTimeout(timer);
-      img.onload = null;
-      img.onerror = null;
       reject(new Error('DOM to image failed: SVG data URL could not be loaded as image.'));
     };
     img.src = url;
