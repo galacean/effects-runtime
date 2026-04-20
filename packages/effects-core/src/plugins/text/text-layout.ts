@@ -17,6 +17,13 @@ export class TextLayout implements BaseLayout {
    * 自动宽高模式
    */
   autoResize = spec.TextSizeMode.fixed;
+  /**
+   * 是否启用单词完整换行（不从单词中间断开）
+   * - true: 优先在空格处换行，保持单词完整性
+   * - false: 允许在任意字符处换行（逐字符换行）
+   * @default true
+   */
+  wordBreak = true;
 
   constructor (options: spec.TextContentOptions) {
     this.update(options);

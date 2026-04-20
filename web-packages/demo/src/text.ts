@@ -171,6 +171,29 @@ const testCases = [
     letterSpace: 2,
     description: '检查长文本压力测试',
   },
+
+  // ========== wordBreak 测试 ==========
+  {
+    name: '测试26: wordBreak=true（保持单词完整）',
+    text: 'This is a long English sentence that demonstrates word-based line breaking behavior',
+    letterSpace: 0,
+    wordBreak: true,
+    description: '单词不会从中间断开，在空格处换行',
+  },
+  {
+    name: '测试27: wordBreak=false（允许字母中间断开）',
+    text: 'This is a long English sentence that demonstrates character-based line breaking behavior',
+    letterSpace: 0,
+    wordBreak: false,
+    description: '允许在任意字符处断开，和原来的 LTR 行为一致',
+  },
+  {
+    name: '测试28: wordBreak=false + 超长单词',
+    text: 'Supercalifragilisticexpialidocious is a very long word that breaks differently',
+    letterSpace: 0,
+    wordBreak: false,
+    description: '超长单词在 wordBreak=false 时逐字符断开',
+  },
 ];
 
 let currentTestIndex = 0;
@@ -294,11 +317,14 @@ function updateInfo (index: number) {
   const tc = testCases[index];
 
   if (infoDiv && tc) {
+    const wordBreakValue = tc.wordBreak !== false;
+
     infoDiv.innerHTML = `
       <div style="color: #4fc3f7; font-weight: bold;">${tc.name}</div>
       <div style="margin-top: 5px; color: #aaa;">${tc.description}</div>
       <div style="margin-top: 5px;">
         <span style="color: #888;">letterSpace:</span> ${tc.letterSpace}
+        <span style="color: #888; margin-left: 10px;">wordBreak:</span> ${wordBreakValue}
       </div>
       <div style="margin-top: 5px; word-break: break-all;">
         <span style="color: #888;">文本:</span> "${tc.text.substring(0, 50)}${tc.text.length > 50 ? '...' : ''}"
@@ -327,6 +353,8 @@ function runTest (index: number) {
     textComponent.setText(tc.text);
     // 通过 textLayout 直接设置 letterSpace
     textComponent.textLayout.letterSpace = tc.letterSpace;
+    // 设置 wordBreak（默认 true）
+    textComponent.textLayout.wordBreak = tc.wordBreak !== false;
     textComponent.isDirty = true;
   }
 
