@@ -204,7 +204,7 @@ export class TextComponent extends MaskableGraphic {
       return lineCount;
     }
 
-    if (this.textLayout.wordBreak) {
+    if (this.textLayout.keepWordIntact) {
       // 单词完整换行：优先在空格处断行，避免从单词中间断开
       let lastBreakX = 0;
       let countAtBreak = 0;
@@ -378,7 +378,7 @@ export class TextComponent extends MaskableGraphic {
       let charsArray: string[] = [];
       let charOffsetX: number[] = [];
 
-      if (layout.wordBreak) {
+      if (layout.keepWordIntact) {
         // 单词完整换行：优先在空格处断行，避免从单词中间断开
         let lastBreakIdx = -1;
 

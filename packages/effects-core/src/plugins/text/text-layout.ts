@@ -23,7 +23,7 @@ export class TextLayout implements BaseLayout {
    * - false: 允许在任意字符处换行（逐字符换行）
    * @default true
    */
-  wordBreak = true;
+  keepWordIntact = true;
 
   constructor (options: spec.TextContentOptions) {
     this.update(options);
@@ -40,7 +40,8 @@ export class TextLayout implements BaseLayout {
       fontSize,
       lineHeight = fontSize,
       autoResize = spec.TextSizeMode.fixed,
-    } = options;
+      keepWordIntact = true,
+    } = options as spec.TextContentOptions & { keepWordIntact?: boolean };
 
     this.letterSpace = letterSpace;
     this.overflow = textOverflow;
@@ -49,6 +50,7 @@ export class TextLayout implements BaseLayout {
     this.width = textWidth;
     this.height = textHeight;
     this.autoResize = autoResize;
+    this.keepWordIntact = keepWordIntact;
 
     this.lineHeight = lineHeight;
   }
