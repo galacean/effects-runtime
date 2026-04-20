@@ -1,36 +1,36 @@
-import { glContext } from '@galacean/effects-core';
-import type { GLEngine } from './gl-engine';
+import { glContext } from '../gl';
+import type { Engine } from '../engine';
 
-export class GLMaterialState {
+export class MaterialState {
   // Blend相关设置
   blending: boolean;
-  blendFunctionParameters: [blendSrc: GLenum, blendDst: GLenum, blendSrcAlpha: GLenum, blendDstAlpha: GLenum];
-  blendEquationParameters: [blendEquationRGB: GLenum, blendEquationAlpha: GLenum];
+  blendFunctionParameters: [blendSrc: number, blendDst: number, blendSrcAlpha: number, blendDstAlpha: number];
+  blendEquationParameters: [blendEquationRGB: number, blendEquationAlpha: number];
   blendColor: [r: number, g: number, b: number, a: number];
 
   // depth相关设置
   depthTest: boolean;
   depthMask: boolean;
-  depthRange: [zNear: GLenum, zFar: GLenum];
-  depthFunc: GLenum;
-  polygonOffset: [factor: GLenum, units: GLenum];
+  depthRange: [zNear: number, zFar: number];
+  depthFunc: number;
+  polygonOffset: [factor: number, units: number];
   polygonOffsetFill: boolean;
   sampleAlphaToCoverage: boolean;
   colorMask: [r: boolean, g: boolean, b: boolean, a: boolean];
 
   // stencil相关
   stencilTest: boolean;
-  stencilMask: [front: GLenum, back: GLenum];
-  stencilRef: [front: GLenum, back: GLenum];
-  stencilFunc: [front: GLenum, back: GLenum];
-  stencilOpFail: [front: GLenum, back: GLenum];
-  stencilOpZFail: [front: GLenum, back: GLenum];
-  stencilOpZPass: [front: GLenum, back: GLenum];
+  stencilMask: [front: number, back: number];
+  stencilRef: [front: number, back: number];
+  stencilFunc: [front: number, back: number];
+  stencilOpFail: [front: number, back: number];
+  stencilOpZFail: [front: number, back: number];
+  stencilOpZPass: [front: number, back: number];
 
   // culling相关
   culling: boolean;
-  frontFace: GLenum;
-  cullFace: GLenum;
+  frontFace: number;
+  cullFace: number;
 
   constructor () {
     this.reset();
@@ -54,7 +54,7 @@ export class GLMaterialState {
     }
   }
 
-  setBlendFunctionParameters (value: [blendSrc: GLenum, blendDst: GLenum, blendSrcAlpha: GLenum, blendDstAlpha: GLenum]): void {
+  setBlendFunctionParameters (value: [blendSrc: number, blendDst: number, blendSrcAlpha: number, blendDstAlpha: number]): void {
     const [blendSrc, blendDst, blendSrcAlpha, blendDstAlpha] = value;
 
     if (
@@ -73,7 +73,7 @@ export class GLMaterialState {
 
   }
 
-  setBlendEquationParameters (value: [rgb: GLenum, alpha: GLenum]): void {
+  setBlendEquationParameters (value: [rgb: number, alpha: number]): void {
     const [rgb, alpha] = value;
 
     if (this.blendEquationParameters[0] === rgb && this.blendEquationParameters[1] === alpha) {
@@ -100,7 +100,7 @@ export class GLMaterialState {
     this.depthMask = value;
   }
 
-  setDepthRange (value: [zNear: GLenum, zFar: GLenum]) {
+  setDepthRange (value: [zNear: number, zFar: number]) {
     if (this.depthRange[0] === value[0] && this.depthRange[1] === value[1]) {
       return;
     }
@@ -109,7 +109,7 @@ export class GLMaterialState {
     this.depthRange[1] = value[1];
   }
 
-  setDepthFunc (value: GLenum) {
+  setDepthFunc (value: number) {
     if (this.depthFunc === value) {
       return;
     }
@@ -125,7 +125,7 @@ export class GLMaterialState {
     this.polygonOffsetFill = value;
   }
 
-  setPolygonOffset (value: [factor: GLenum, units: GLenum]) {
+  setPolygonOffset (value: [factor: number, units: number]) {
     if (this.polygonOffset[0] === value[0] && this.polygonOffset[1] === value[1]) {
       return;
     }
@@ -157,7 +157,7 @@ export class GLMaterialState {
     this.stencilTest = value;
   }
 
-  setStencilMask (value: [front: GLenum, back: GLenum]) {
+  setStencilMask (value: [front: number, back: number]) {
     if (this.stencilMask[0] === value[0] && this.stencilMask[1] === value[1]) {
       return;
     }
@@ -166,7 +166,7 @@ export class GLMaterialState {
     this.stencilMask[1] = value[1];
   }
 
-  setStencilRef (value: [front: GLenum, back: GLenum]) {
+  setStencilRef (value: [front: number, back: number]) {
     if (this.stencilRef[0] === value[0] && this.stencilRef[1] === value[1]) {
       return;
     }
@@ -175,7 +175,7 @@ export class GLMaterialState {
     this.stencilRef[1] = value[1];
   }
 
-  setStencilFunc (value: [front: GLenum, back: GLenum]) {
+  setStencilFunc (value: [front: number, back: number]) {
     if (this.stencilFunc[0] === value[0] && this.stencilFunc[1] === value[1]) {
       return;
     }
@@ -184,7 +184,7 @@ export class GLMaterialState {
     this.stencilFunc[1] = value[1];
   }
 
-  setStencilOpFail (value: [front: GLenum, back: GLenum]) {
+  setStencilOpFail (value: [front: number, back: number]) {
     if (this.stencilOpFail[0] === value[0] && this.stencilOpFail[1] === value[1]) {
       return;
     }
@@ -193,7 +193,7 @@ export class GLMaterialState {
     this.stencilOpFail[1] = value[1];
   }
 
-  setStencilOpZFail (value: [front: GLenum, back: GLenum]) {
+  setStencilOpZFail (value: [front: number, back: number]) {
     if (this.stencilOpZFail[0] === value[0] && this.stencilOpZFail[1] === value[1]) {
       return;
     }
@@ -202,7 +202,7 @@ export class GLMaterialState {
     this.stencilOpZFail[1] = value[1];
   }
 
-  setStencilOpZPass (value: [front: GLenum, back: GLenum]) {
+  setStencilOpZPass (value: [front: number, back: number]) {
     if (this.stencilOpZPass[0] === value[0] && this.stencilOpZPass[1] === value[1]) {
       return;
     }
@@ -218,14 +218,14 @@ export class GLMaterialState {
     this.culling = value;
   }
 
-  setFrontFace (value: GLenum) {
+  setFrontFace (value: number) {
     if (this.frontFace === value) {
       return;
     }
     this.frontFace = value;
   }
 
-  setCullFace (value: GLenum) {
+  setCullFace (value: number) {
     if (this.cullFace === value) {
       return;
     }
@@ -257,16 +257,15 @@ export class GLMaterialState {
     this.cullFace = glContext.FRONT;
   }
 
-  apply (engine: GLEngine) {
-    engine.toggle(glContext.SAMPLE_ALPHA_TO_COVERAGE, this.sampleAlphaToCoverage);
-    engine.toggle(glContext.BLEND, this.blending);
-    engine.toggle(glContext.DEPTH_TEST, this.depthTest);
-    engine.toggle(glContext.STENCIL_TEST, this.stencilTest);
-    engine.toggle(glContext.CULL_FACE, this.culling);
-    engine.toggle(glContext.POLYGON_OFFSET_FILL, this.polygonOffsetFill);
+  apply (engine: Engine) {
+    engine.setSampleAlphaToCoverage(this.sampleAlphaToCoverage);
+    engine.setBlending(this.blending);
+    engine.setDepthTest(this.depthTest);
+    engine.setStencilTest(this.stencilTest);
+    engine.setCulling(this.culling);
+    engine.setPolygonOffsetFill(this.polygonOffsetFill);
 
     if (this.stencilTest) {
-      //stencil
       engine.stencilMaskSeparate(glContext.BACK, this.stencilMask[1]);
       engine.stencilMaskSeparate(glContext.FRONT, this.stencilMask[0]);
       engine.stencilFuncSeparate(glContext.BACK, this.stencilFunc[0], this.stencilRef[0], this.stencilMask[0]);
@@ -287,7 +286,6 @@ export class GLMaterialState {
       engine.blendFuncSeparate(blendFunctionParameters[0], blendFunctionParameters[1], blendFunctionParameters[2], blendFunctionParameters[3]);
     }
 
-    //color depth
     engine.colorMask(this.colorMask[0], this.colorMask[1], this.colorMask[2], this.colorMask[3]);
 
     if (this.depthTest) {
@@ -297,7 +295,6 @@ export class GLMaterialState {
     }
 
     if (this.culling) {
-      //face
       engine.cullFace(this.cullFace);
       engine.frontFace(this.frontFace);
     }
