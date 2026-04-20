@@ -61,7 +61,7 @@ export class DomContentComponent extends MaskableGraphic {
     this.htmlContent = html;
     if (width !== undefined) { this.contentWidth = width; }
     if (height !== undefined) { this.contentHeight = height; }
-    if (scale !== undefined) { this.contentScale = scale; }
+    if (scale !== undefined) { this.contentScale = Math.max(0, scale); }
     this.isDirty = true;
   }
 
@@ -108,7 +108,6 @@ export class DomContentComponent extends MaskableGraphic {
       if (this._disposed) { return; }
 
       this.renderToTexture(texWidth, texHeight, true, ctx => {
-        ctx.fillRect(0, 0, texWidth, texHeight);
         ctx.drawImage(image, 0, 0, texWidth, texHeight);
       });
     } catch (e) {

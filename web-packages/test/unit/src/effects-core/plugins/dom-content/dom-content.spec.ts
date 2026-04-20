@@ -1,6 +1,6 @@
-import { Player } from '@galacean/effects';
+import { Player, SpriteComponent } from '@galacean/effects';
 import '@galacean/effects-plugin-dom-content';
-import { DomContentComponent, renderDOMToImage, sanitizeSVGContent } from '@galacean/effects-plugin-dom-content';
+import { DomContentComponent, renderDOMToImage, replaceSpriteTexture, inlineImageSources, sanitizeSVGContent } from '@galacean/effects-plugin-dom-content';
 
 const { expect } = chai;
 
@@ -38,25 +38,18 @@ describe('plugin/dom-content', () => {
   });
 
   describe('sanitizeSVGContent', () => {
-    it('should escape <svg> open tag', () => {
-      const result = sanitizeSVGContent('<svg>content</svg>');
+    it('should not escape <svg> tags (inline SVG is allowed)', () => {
+      const html = '<svg width="100" height="100"><circle cx="50" cy="50" r="40" fill="red"/></svg>';
+      const result = sanitizeSVGContent(html);
 
-      expect(result).to.not.include('<svg>');
-      expect(result).to.include('&lt;svg>');
+      expect(result).to.equal(html);
     });
 
-    it('should escape </svg> close tag', () => {
-      const result = sanitizeSVGContent('before</svg>after');
+    it('should not escape <svg> with attributes or namespace', () => {
+      const html = '<svg xmlns="http://www.w3.org/2000/svg" width="100">';
+      const result = sanitizeSVGContent(html);
 
-      expect(result).to.not.include('</svg>');
-      expect(result).to.include('&lt;/svg>');
-    });
-
-    it('should escape <svg/> self-closing tag', () => {
-      const result = sanitizeSVGContent('<svg/>');
-
-      expect(result).to.not.include('<svg/>');
-      expect(result).to.include('&lt;svg/>');
+      expect(result).to.equal(html);
     });
 
     it('should escape <foreignObject> open tag', () => {
@@ -80,18 +73,11 @@ describe('plugin/dom-content', () => {
       expect(result).to.include('&lt;foreignObject/>');
     });
 
-    it('should be case-insensitive', () => {
-      const result = sanitizeSVGContent('<SVG><FOREIGNOBJECT></FOREIGNOBJECT></SVG>');
+    it('should be case-insensitive for foreignObject and script', () => {
+      const result = sanitizeSVGContent('<FOREIGNOBJECT></FOREIGNOBJECT><SCRIPT></SCRIPT>');
 
-      expect(result).to.not.include('<SVG>');
       expect(result).to.not.include('<FOREIGNOBJECT>');
-    });
-
-    it('should escape svg tag with attributes', () => {
-      const result = sanitizeSVGContent('<svg xmlns="http://www.w3.org/2000/svg" width="100">');
-
-      expect(result).to.not.include('<svg ');
-      expect(result).to.include('&lt;svg ');
+      expect(result).to.not.include('<SCRIPT>');
     });
 
     it('should not affect normal HTML tags', () => {
@@ -99,6 +85,27 @@ describe('plugin/dom-content', () => {
       const result = sanitizeSVGContent(html);
 
       expect(result).to.equal(html);
+    });
+
+    it('should escape <script> open tag', () => {
+      const result = sanitizeSVGContent('<script>alert(1)</script>');
+
+      expect(result).to.not.include('<script>');
+      expect(result).to.include('&lt;script>');
+    });
+
+    it('should escape </script> close tag', () => {
+      const result = sanitizeSVGContent('before</script>after');
+
+      expect(result).to.not.include('</script>');
+      expect(result).to.include('&lt;/script>');
+    });
+
+    it('should escape <script> with attributes', () => {
+      const result = sanitizeSVGContent('<script type="text/javascript">');
+
+      expect(result).to.not.include('<script ');
+      expect(result).to.include('&lt;script ');
     });
   });
 
@@ -142,8 +149,23 @@ describe('plugin/dom-content', () => {
       expect(image.height).to.equal(200);
     });
 
-    it('should safely render HTML containing svg tags', async () => {
-      const html = '<div>text with <svg>inside</svg> tag</div>';
+    it('should render HTML containing inline SVG', async () => {
+      const html = '<div><svg width="100" height="100"><circle cx="50" cy="50" r="40" fill="red"/></svg></div>';
+      const image = await renderDOMToImage(html, 200, 100);
+
+      expect(image).to.be.an.instanceOf(HTMLImageElement);
+    });
+
+    it('should render inline SVG without xmlns (auto-injected)', async () => {
+      // 用户不写 xmlns，buildSVG 内部的 injectSVGNamespace 会自动补全
+      const html = '<div><svg width="80" height="80" viewBox="0 0 80 80"><rect x="10" y="10" width="60" height="60" fill="blue"/></svg></div>';
+      const image = await renderDOMToImage(html, 200, 100);
+
+      expect(image).to.be.an.instanceOf(HTMLImageElement);
+    });
+
+    it('should render inline SVG with existing xmlns unchanged', async () => {
+      const html = '<div><svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="30" fill="green"/></svg></div>';
       const image = await renderDOMToImage(html, 200, 100);
 
       expect(image).to.be.an.instanceOf(HTMLImageElement);
@@ -252,6 +274,16 @@ describe('plugin/dom-content', () => {
       domContent.setContent('<div>Test</div>', 300, 200);
 
       expect(domContent.contentScale).to.equal(1);
+    });
+
+    it('should clamp negative contentScale to 0', async () => {
+      const composition = await player.loadScene(json);
+      const item = composition.getItemByName('place_holder')!;
+      const domContent = item.addComponent(DomContentComponent);
+
+      domContent.setContent('<div>Test</div>', 100, 100, -2);
+
+      expect(domContent.contentScale).to.equal(0);
     });
 
     it('should not trigger render with empty content', async () => {
@@ -402,6 +434,116 @@ describe('plugin/dom-content', () => {
       composition.dispose();
 
       await new Promise(resolve => { setTimeout(resolve, 200); });
+    });
+  });
+
+  describe('replaceSpriteTexture', () => {
+    it('should replace sprite texture with HTML content', async () => {
+      const composition = await player.loadScene(json);
+      const item = composition.getItemByName('place_holder')!;
+      const sprite = item.getComponent(SpriteComponent);
+
+      expect(sprite).to.not.be.undefined;
+
+      const html = '<div style="width:100px;height:100px;background:red;">Replace Test</div>';
+
+      await replaceSpriteTexture(sprite, html, 100, 100);
+
+      const texture = sprite.material.getTexture('_MainTex');
+
+      expect(texture).to.not.be.undefined;
+      expect(texture).to.not.be.null;
+    });
+
+    it('should replace sprite texture with scale parameter', async () => {
+      const composition = await player.loadScene(json);
+      const item = composition.getItemByName('place_holder')!;
+      const sprite = item.getComponent(SpriteComponent);
+      const html = '<div style="width:100px;height:100px;background:blue;">Scale Test</div>';
+
+      await replaceSpriteTexture(sprite, html, 100, 100, 2);
+
+      const texture = sprite.material.getTexture('_MainTex');
+
+      expect(texture).to.not.be.undefined;
+      expect(texture).to.not.be.null;
+    });
+  });
+
+  describe('inlineImageSources', () => {
+    it('should return HTML unchanged when no img tags present', async () => {
+      const html = '<div style="background:red;">Hello</div>';
+      const result = await inlineImageSources(html);
+
+      expect(result).to.equal(html);
+    });
+
+    it('should skip data: URLs', async () => {
+      const html = '<img src="data:image/png;base64,abc123" />';
+      const result = await inlineImageSources(html);
+
+      expect(result).to.equal(html);
+    });
+
+    it('should skip blob: URLs', async () => {
+      const html = '<img src="blob:http://localhost/some-id" />';
+      const result = await inlineImageSources(html);
+
+      expect(result).to.equal(html);
+    });
+
+    it('should handle mixed data: and external URLs', async () => {
+      const html = '<img src="data:image/png;base64,abc" /><img src="https://invalid.test/404.png" />';
+      const result = await inlineImageSources(html);
+
+      // data: URL 保持不变
+      expect(result).to.include('data:image/png;base64,abc');
+      // 无效 URL fetch 失败，保留原始 URL
+      expect(result).to.include('https://invalid.test/404.png');
+    });
+
+    it('should handle single-quoted src attributes', async () => {
+      const html = '<img src=\'data:image/png;base64,abc\' />';
+      const result = await inlineImageSources(html);
+
+      expect(result).to.equal(html);
+    });
+
+    it('should handle img tag with other attributes before src', async () => {
+      const html = '<img width="100" src="data:image/png;base64,abc" height="100" />';
+      const result = await inlineImageSources(html);
+
+      expect(result).to.equal(html);
+    });
+
+    it('should keep original URL when fetch fails', async () => {
+      const html = '<img src="https://invalid.test/nonexistent.png" />';
+      const result = await inlineImageSources(html);
+
+      // fetch 失败，保留原始 URL
+      expect(result).to.include('https://invalid.test/nonexistent.png');
+    });
+
+    it('should handle empty HTML string', async () => {
+      const result = await inlineImageSources('');
+
+      expect(result).to.equal('');
+    });
+
+    it('should handle HTML with no src attribute on img', async () => {
+      const html = '<img alt="no src" />';
+      const result = await inlineImageSources(html);
+
+      expect(result).to.equal(html);
+    });
+
+    it('should replace duplicate URLs only once in result', async () => {
+      const dataUrl = 'data:image/png;base64,abc';
+      const html = `<img src="${dataUrl}" /><img src="${dataUrl}" />`;
+      const result = await inlineImageSources(html);
+
+      // data: URL 被跳过，两处都保持不变
+      expect(result).to.equal(html);
     });
   });
 });
