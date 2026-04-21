@@ -38,4 +38,7 @@ export function beginToolbar (id: string, height?: number): boolean {
 export function endToolbar (): void {
   ImGui.PopID();
   ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 2);
+  ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
+  ImGui.Dummy(new ImGui.Vec2(0, 0));
+  ImGui.PopStyleVar();
 }

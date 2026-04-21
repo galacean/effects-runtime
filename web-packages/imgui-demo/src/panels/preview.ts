@@ -34,8 +34,6 @@ export class Preview extends EditorWindow {
     const selectedObject = Selection.getSelectedObjects()[0];
 
     if (!(selectedObject instanceof FileNode) || selectedObject.handle.kind === 'directory') {
-      ImGui.End();
-
       return;
     }
 
@@ -86,7 +84,7 @@ export class Preview extends EditorWindow {
       const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
       const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
 
-      ImGui.ImageButton(this.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
+      ImGui.ImageButton('preview_scene', this.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, bg_col);
       if (ImGui.IsItemHovered()) {
         this.cameraController.update(this.previewPlayer.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
       }

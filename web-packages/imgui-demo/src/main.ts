@@ -111,7 +111,7 @@ async function _init (): Promise<void> {
   font = await AddFontFromFileTTF('./Alibaba-PuHuiTi-Regular.ttf', 44, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
-  font.Scale = 0.45;
+  ImGui.GetStyle().FontScaleMain = 0.45;  // 新 API
 
   // Setup Platform/Renderer backends
   // ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
@@ -205,7 +205,7 @@ function _loop (time: number): void {
     ImGui.Text(`Total allocated space (uordblks):      ${mi.uordblks}`);
     ImGui.Text(`Total free space (fordblks):           ${mi.fordblks}`);
     // ImGui.Text(`Topmost releasable block (keepcost):   ${mi.keepcost}`);
-    if (ImGui.ImageButton(image_gl_texture, new ImGui.Vec2(48, 48))) {
+    if (ImGui.ImageButton('image_button', image_gl_texture, new ImGui.Vec2(48, 48))) {
       // show_demo_window = !show_demo_window;
       image_url = image_urls[(image_urls.indexOf(image_url) + 1) % image_urls.length];
       if (image_element) {
@@ -227,7 +227,7 @@ function _loop (time: number): void {
     if (show_movie_window) { ShowMovieWindow('Movie Window', (value = show_movie_window) => show_movie_window = value); }
 
     if (font) {
-      ImGui.PushFont(font);
+      ImGui.PushFont(font, font.FontSize);
       ImGui.Text(`${font.GetDebugName()}`);
       if (font.FindGlyphNoFallback(0x5929)) {
         ImGui.Text('U+5929: \u5929');
@@ -548,7 +548,7 @@ function ShowMovieWindow (title: string, p_open: ImGui.Access<boolean> | null = 
     ImGui.PopItemWidth();
     ImGui.EndGroup();
 
-    if (ImGui.ImageButton(video_gl_texture, new ImGui.Vec2(video_w, video_h))) {
+    if (ImGui.ImageButton('video_button', video_gl_texture, new ImGui.Vec2(video_w, video_h))) {
       if (video_element.readyState >= video_element.HAVE_CURRENT_DATA) {
         void (video_element.paused ? video_element.play() : video_element.pause());
       }

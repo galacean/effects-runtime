@@ -34,8 +34,6 @@ export class Inspector extends EditorWindow {
     const selectedObject = Selection.getSelectedObjects()[0];
 
     if (!selectedObject) {
-      ImGui.End();
-
       return;
     }
     let activeObject = selectedObject;
@@ -274,7 +272,7 @@ export class Inspector extends EditorWindow {
             __inspectorTexture = createImguiTextureFromImage(texture.definition.image);
             (texture as any).__imguiInspectorTexture = __inspectorTexture;
           }
-          ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
+          ImGui.ImageButton('inspector_texture', __inspectorTexture, new ImGui.Vec2(100, 100));
         } else {
           ImGui.Button(inspectorName + '##' + uniformName, new ImGui.Vec2(100, 100));
         }

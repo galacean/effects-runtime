@@ -93,11 +93,12 @@ export class Sequencer extends EditorWindow {
     this.updateWindowDimensions();
 
     // 使用可拖拽的分割器来分离主区域和属性面板
+    const splitterEdgeGap = 24;
     const splitterWidth = 2; // thinner splitter
-    const mainAreaWidth = state.windowContentWidth - state.propertiesPanelWidth - splitterWidth;
+    const mainAreaWidth = Math.max(splitterEdgeGap, state.windowContentWidth - state.propertiesPanelWidth - splitterWidth);
 
     // 开始左侧主区域
-    if (ImGui.BeginChild('MainArea', new ImGui.Vec2(mainAreaWidth, 0), false)) {
+    if (ImGui.BeginChild('MainArea', new ImGui.Vec2(mainAreaWidth, 0), ImGui.ChildFlags.None)) {
       // 控制按钮区域
       this.drawControlButtons(currentComposition);
 
@@ -108,10 +109,10 @@ export class Sequencer extends EditorWindow {
       const desiredLabelWidth = Math.min(Math.max(state.trackUIOffset, state.trackLabelMinWidth), state.trackLabelMaxWidth);
       const leftPanelWidth = desiredLabelWidth;
       const innerSplitterWidth = 2; // thinner splitter
-      const rightPanelWidth = mainAreaWidth - leftPanelWidth - innerSplitterWidth;
+      const rightPanelWidth = Math.max(splitterEdgeGap, mainAreaWidth - leftPanelWidth - innerSplitterWidth);
 
       // 左侧 "Tracks" 标题区域
-      if (ImGui.BeginChild('TracksHeader', new ImGui.Vec2(leftPanelWidth, state.timelineHeight), false, ImGui.WindowFlags.NoScrollbar)) {
+      if (ImGui.BeginChild('TracksHeader', new ImGui.Vec2(leftPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
         const windowPos = ImGui.GetCursorScreenPos();
         const drawList = ImGui.GetWindowDrawList();
 
@@ -143,7 +144,7 @@ export class Sequencer extends EditorWindow {
 
       // 右侧时间轴标尺区域
       ImGui.SameLine();
-      if (ImGui.BeginChild('TimelineRuler', new ImGui.Vec2(rightPanelWidth, state.timelineHeight), false, ImGui.WindowFlags.NoScrollbar)) {
+      if (ImGui.BeginChild('TimelineRuler', new ImGui.Vec2(rightPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
         const windowPos = ImGui.GetCursorScreenPos();
         const timelineStart = windowPos;
         const timelineEndX = windowPos.x + rightPanelWidth;
@@ -240,7 +241,7 @@ export class Sequencer extends EditorWindow {
       const availHeight = ImGui.GetContentRegionAvail().y;
 
       // 左侧轨道名称子窗口
-      if (ImGui.BeginChild('TrackLabelsArea', new ImGui.Vec2(leftPanelWidth, availHeight), false)) {
+      if (ImGui.BeginChild('TrackLabelsArea', new ImGui.Vec2(leftPanelWidth, availHeight), ImGui.ChildFlags.None)) {
         // 滚动同步：检测本面板是否被用户滚动（滚轮/滚动条拖拽）
         const leftNativeScroll = ImGui.GetScrollY();
 
@@ -293,7 +294,7 @@ export class Sequencer extends EditorWindow {
 
       // 右侧clips区域子窗口
       ImGui.SameLine();
-      if (ImGui.BeginChild('ClipsArea', new ImGui.Vec2(rightPanelWidth, availHeight), false)) {
+      if (ImGui.BeginChild('ClipsArea', new ImGui.Vec2(rightPanelWidth, availHeight), ImGui.ChildFlags.None)) {
         // 滚动同步：检测本面板是否被用户滚动
         const rightNativeScroll = ImGui.GetScrollY();
 
@@ -367,46 +368,17 @@ export class Sequencer extends EditorWindow {
       ImGui.EndChild();
 
       // === 贯通分割线和拖拽按钮 ===
-      drawList.AddRectFilled(
-        dividerStartPos,
-        new ImGui.Vec2(dividerStartPos.x + innerSplitterWidth, dividerStartPos.y + mainAreaContentHeight),
-        ImGui.GetColorU32(COLORS.trackSeparator)
-      );
-
-      drawList.AddLine(
-        new ImGui.Vec2(dividerStartPos.x, dividerStartPos.y),
-        new ImGui.Vec2(dividerStartPos.x, dividerStartPos.y + mainAreaContentHeight),
-        dividerColor,
-        1
-      );
-
       const handleHalfWidth = state.trackLabelResizeHandleWidth / 2;
       const handleStartX = dividerStartPos.x - handleHalfWidth;
 
       ImGui.SetCursorScreenPos(new ImGui.Vec2(handleStartX, dividerStartPos.y));
       ImGui.PushID('TrackLabelSplitter');
-
-      ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
-      ImGui.PushStyleColor(ImGui.Col.Button, ImGui.GetColorU32(COLORS.trackSeparator));
-      ImGui.PushStyleColor(ImGui.Col.ButtonHovered, ImGui.GetColorU32(COLORS.selectionAlpha));
-      ImGui.PushStyleColor(ImGui.Col.ButtonActive, ImGui.GetColorU32(COLORS.selection));
-      ImGui.InvisibleButton('##track_label_splitter', new ImGui.Vec2(state.trackLabelResizeHandleWidth, mainAreaContentHeight));
-      ImGui.PopStyleColor(3);
-      ImGui.PopStyleVar();
-
-      if (ImGui.IsItemHovered()) {
-        ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
-      }
-
-      if (ImGui.IsItemActive()) {
-        const deltaX = ImGui.GetIO().MouseDelta.x;
-
-        state.trackUIOffset += deltaX;
-        state.trackUIOffset = Math.min(
-          state.trackLabelMaxWidth,
-          Math.max(state.trackLabelMinWidth, state.trackUIOffset)
-        );
-      }
+      state.trackUIOffset = splitter('##track_label_splitter', state.trackUIOffset, {
+        thickness: state.trackLabelResizeHandleWidth,
+        length: mainAreaContentHeight,
+        min: state.trackLabelMinWidth,
+        max: Math.max(state.trackLabelMinWidth, mainAreaWidth - splitterEdgeGap - innerSplitterWidth),
+      });
 
       ImGui.PopID();
 
@@ -418,19 +390,14 @@ export class Sequencer extends EditorWindow {
     // 绘制可拖拽的分割器
     ImGui.SameLine();
     this.state.propertiesPanelWidth = splitter('##PropertiesSplitter', this.state.propertiesPanelWidth, {
-      min: 150,
-      max: this.state.windowContentWidth * 0.6,
+      min: splitterEdgeGap,
+      max: Math.max(splitterEdgeGap, this.state.windowContentWidth - splitterEdgeGap - splitterWidth),
       invert: true,
-      colors: {
-        normal: COLORS.trackSeparator,
-        hovered: COLORS.selectionAlpha,
-        active: COLORS.selection,
-      },
     });
 
     // 右侧属性面板
     ImGui.SameLine();
-    if (ImGui.BeginChild('PropertiesPanel', new ImGui.Vec2(state.propertiesPanelWidth, 0), false)) {
+    if (ImGui.BeginChild('PropertiesPanel', new ImGui.Vec2(state.propertiesPanelWidth, 0), ImGui.ChildFlags.None)) {
       this.propertiesPanelRenderer.drawTrackPropertiesPanel();
     }
     ImGui.EndChild();
@@ -441,15 +408,26 @@ export class Sequencer extends EditorWindow {
    */
   private updateWindowDimensions (): void {
     const state = this.state;
+    const splitterWidth = 2;
+    const splitterEdgeGap = 24;
 
     state.windowContentWidth = ImGui.GetContentRegionAvail().x;
-    const mainAreaWidth = state.windowContentWidth - state.propertiesPanelWidth - 10;
-    const maxLabelWidth = Math.max(0, mainAreaWidth - state.timelineRightPadding);
+    state.propertiesPanelWidth = Math.min(
+      Math.max(splitterEdgeGap, state.propertiesPanelWidth),
+      Math.max(splitterEdgeGap, state.windowContentWidth - splitterEdgeGap - splitterWidth),
+    );
+
+    const mainAreaWidth = Math.max(splitterEdgeGap, state.windowContentWidth - state.propertiesPanelWidth - splitterWidth);
+    const maxLabelWidth = Math.max(splitterEdgeGap, mainAreaWidth - splitterEdgeGap - splitterWidth);
+
+    state.trackLabelMinWidth = splitterEdgeGap;
+    state.trackLabelMaxWidth = maxLabelWidth;
+
     const desiredLabelWidth = Math.min(Math.max(state.trackUIOffset, state.trackLabelMinWidth), state.trackLabelMaxWidth);
     const labelWidth = Math.min(desiredLabelWidth, maxLabelWidth);
 
     state.currentLabelWidth = labelWidth;
-    state.timelineAreaWidth = Math.max(0, mainAreaWidth - labelWidth - state.timelineRightPadding);
+    state.timelineAreaWidth = Math.max(0, mainAreaWidth - labelWidth - splitterWidth);
 
     const duration = Math.max(0, state.timelineEndTime - state.timelineStartTime);
 

@@ -6,6 +6,7 @@ import { AnimationClip } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { ImGui } from '../imgui';
+import { splitter } from '../widgets';
 import { EditorWindow } from './editor-window';
 import { COLORS, LAYOUT } from './sequencer/theme';
 
@@ -573,7 +574,9 @@ export class AnimationClipPanel extends EditorWindow {
     );
 
     ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x, origin.y + barH));
+    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
     ImGui.Dummy(new ImGui.Vec2(0, 0));
+    ImGui.PopStyleVar();
   }
 
   private controlButton (
@@ -597,17 +600,23 @@ export class AnimationClipPanel extends EditorWindow {
 
   private drawBody (clip: AnimationClip): void {
     const st = this.state;
-    const leftW = st.labelWidth;
-    const splitter = 2;
+    const splitterWidth = 2;
     const totalW = ImGui.GetContentRegionAvail().x;
-    const rightW = totalW - leftW - splitter;
-    const dl = ImGui.GetWindowDrawList();
+    const edgeGap = 24;
+    const minLabelWidth = edgeGap;
+    const maxLabelWidth = Math.max(minLabelWidth, totalW - edgeGap - splitterWidth);
     const timelineH = LAYOUT.sectionHeight;
     const bodyStartY = ImGui.GetCursorScreenPos().y;
 
+    st.labelWidth = Math.min(maxLabelWidth, Math.max(minLabelWidth, st.labelWidth));
+
+    const leftW = st.labelWidth;
+    const rightW = totalW - leftW - splitterWidth;
+    const dl = ImGui.GetWindowDrawList();
+
     // ── 标题行 ──
     // 左：Curves
-    if (ImGui.BeginChild('LabelHeader', new ImGui.Vec2(leftW, timelineH), false, ImGui.WindowFlags.NoScrollbar)) {
+    if (ImGui.BeginChild('LabelHeader', new ImGui.Vec2(leftW, timelineH), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
       const p = ImGui.GetCursorScreenPos();
 
       dl.AddRectFilled(p, new ImGui.Vec2(p.x + leftW, p.y + timelineH), ImGui.GetColorU32(COLORS.trackLabelBg));
@@ -616,14 +625,16 @@ export class AnimationClipPanel extends EditorWindow {
     ImGui.EndChild();
 
     ImGui.SameLine();
-    this.drawSplitter(dl, splitter, timelineH);
+    const dividerStartPos = ImGui.GetCursorScreenPos();
+
+    ImGui.Dummy(new ImGui.Vec2(splitterWidth, timelineH));
     ImGui.SameLine();
 
     // 记录右侧区域起始 X
     const rightAreaX = ImGui.GetCursorScreenPos().x;
 
     // 右：时间轴标尺
-    if (ImGui.BeginChild('RulerArea', new ImGui.Vec2(rightW, timelineH), false, ImGui.WindowFlags.NoScrollbar)) {
+    if (ImGui.BeginChild('RulerArea', new ImGui.Vec2(rightW, timelineH), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
       this.drawRuler(rightW, timelineH);
     }
     ImGui.EndChild();
@@ -632,18 +643,18 @@ export class AnimationClipPanel extends EditorWindow {
     const bodyH = ImGui.GetContentRegionAvail().y;
 
     // 左侧标签（保留垂直滚动条）
-    if (ImGui.BeginChild('Labels', new ImGui.Vec2(leftW, bodyH), false)) {
+    if (ImGui.BeginChild('Labels', new ImGui.Vec2(leftW, bodyH), ImGui.ChildFlags.None)) {
       this.drawLabels(clip);
       st.syncScrollY = ImGui.GetScrollY();
     }
     ImGui.EndChild();
 
     ImGui.SameLine();
-    this.drawSplitter(dl, splitter, bodyH);
+    ImGui.Dummy(new ImGui.Vec2(splitterWidth, bodyH));
     ImGui.SameLine();
 
     // 右侧画布（隐藏滚动条 + 禁用鼠标滚轮滚动，由左侧驱动同步）
-    if (ImGui.BeginChild('Canvas', new ImGui.Vec2(rightW, bodyH), false, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse)) {
+    if (ImGui.BeginChild('Canvas', new ImGui.Vec2(rightW, bodyH), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar | ImGui.WindowFlags.NoScrollWithMouse)) {
       ImGui.SetScrollY(st.syncScrollY);
       this.drawCanvas(clip, rightW);
     }
@@ -662,13 +673,17 @@ export class AnimationClipPanel extends EditorWindow {
         ImGui.GetColorU32(COLORS.cursor), 1,
       );
     }
-  }
 
-  private drawSplitter (dl: any, width: number, height: number): void {
-    const p = ImGui.GetCursorScreenPos();
+    const cursorLocalPos = ImGui.GetCursorPos();
 
-    dl.AddRectFilled(p, new ImGui.Vec2(p.x + width, p.y + height), ImGui.GetColorU32(COLORS.trackRowDivider));
-    ImGui.Dummy(new ImGui.Vec2(width, height));
+    ImGui.SetCursorScreenPos(dividerStartPos);
+    st.labelWidth = splitter('##AnimationClipSplitter', st.labelWidth, {
+      thickness: splitterWidth,
+      length: totalH,
+      min: minLabelWidth,
+      max: maxLabelWidth,
+    });
+    ImGui.SetCursorPos(cursorLocalPos);
   }
 
   // ══════════════════════════════════════════════════════════════════

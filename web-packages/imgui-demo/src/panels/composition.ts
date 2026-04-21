@@ -103,13 +103,12 @@ export class Composition extends EditorWindow {
     ImGui.PushStyleVar(ImGui.ImGuiStyleVar.WindowPadding, new ImGui.Vec2(0, 2));
     ImGui.PushStyleVar(ImGui.ImGuiStyleVar.ItemSpacing, new ImGui.Vec2(0, 1));
 
-    if (ImGui.BeginChild('##CompositionList', new ImGui.Vec2(0, listHeight), true)) {
+    if (ImGui.BeginChild('##CompositionList', new ImGui.Vec2(0, listHeight), ImGui.ChildFlags.Borders)) {
       const indices = this.filteredIndices;
       const focused = ImGui.IsWindowFocused();
       const drawList = ImGui.GetWindowDrawList();
       const windowPos = ImGui.GetWindowPos();
-      const contentMax = ImGui.GetWindowContentRegionMax();
-      const rowFullRight = windowPos.x + contentMax.x;
+      const rowFullRight = ImGui.GetCursorScreenPos().x + ImGui.GetContentRegionAvail().x;
 
       for (const idx of indices) {
         const isSelected = idx === this.currentItem;
