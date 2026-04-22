@@ -1,19 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import type { Engine } from '@galacean/effects';
+import type { Engine, Renderer } from '@galacean/effects';
 import {
-  MaskableGraphic, effectsClass, math, logger, applyMixins, TextComponentBase,
+  MaskableGraphic, effectsClass, math, logger, applyMixins, TextComponentBase, Texture, glContext,
 } from '@galacean/effects';
-import { renderDOMToImage, inlineImageSources } from './dom-to-texture';
+import { renderDOMToImage } from './dom-to-texture';
 
 const DATA_TYPE = 'DomContentComponent';
 const MAX_TEXTURE_SIZE = 2048;
 
-let seed = 0;
-
-/** 接口声明合并，混入 TextComponentBase */
 export interface DomContentComponent extends TextComponentBase { }
 
-/** DOM 内容组件：将 HTML/CSS 渲染为纹理 */
+/** DOM 内容组件：将 HTML/CSS 渲染为纹理，自动检测并覆盖同 item 上其他 MaskableGraphic 组件纹理 */
 @effectsClass(DATA_TYPE)
 export class DomContentComponent extends MaskableGraphic {
   htmlContent = '';
@@ -21,23 +18,20 @@ export class DomContentComponent extends MaskableGraphic {
   contentHeight = 200;
   contentScale = 1;
 
-  // TextComponentBase 混入属性
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
   isDirty: boolean;
 
   private rendering = false;
   private _disposed = false;
-  protected readonly ALPHA_FIX_VALUE = 1 / 255;
+  private targetComponent: MaskableGraphic | null = null;
 
   constructor (engine: Engine) {
     super(engine);
-    this.name = 'MDomContent' + seed++;
     this.isDirty = false;
     this.initTextBase(engine);
   }
 
-  /** 设置 HTML 内容并触发重新渲染 */
   setContent (html: string, width?: number, height?: number, scale?: number): void {
     this.htmlContent = html;
     if (width !== undefined) { this.contentWidth = width; }
@@ -48,6 +42,16 @@ export class DomContentComponent extends MaskableGraphic {
 
   override onAwake (): void {
     this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
+    if (this.item) {
+      for (const comp of this.item.getComponents(MaskableGraphic)) {
+        if (comp !== this) {
+          this.targetComponent = comp;
+          logger.info(`DomContentComponent: Bound to ${comp.constructor.name}, overriding texture.`);
+
+          break;
+        }
+      }
+    }
   }
 
   override onUpdate (dt: number): void {
@@ -58,10 +62,16 @@ export class DomContentComponent extends MaskableGraphic {
     }
   }
 
+  override render (renderer: Renderer): void {
+    if (this.targetComponent) { return; }
+    super.render(renderer);
+  }
+
   override onDestroy (): void {
     super.onDestroy();
     this._disposed = true;
     this.disposeTextTexture();
+    this.targetComponent = null;
   }
 
   private async updateTexture (): Promise<void> {
@@ -76,17 +86,17 @@ export class DomContentComponent extends MaskableGraphic {
 
     this.rendering = true;
     try {
-      const processedHtml = await inlineImageSources(htmlContent);
+      const image = await renderDOMToImage(htmlContent, contentWidth, contentHeight, contentScale);
 
       if (this._disposed) { return; }
 
-      const image = await renderDOMToImage(processedHtml, contentWidth, contentHeight, contentScale);
-
-      if (this._disposed) { return; }
-
-      this.renderToTexture(texWidth, texHeight, true, ctx => {
-        ctx.drawImage(image, 0, 0, texWidth, texHeight);
-      });
+      if (this.targetComponent) {
+        this.updateTargetTexture(image, texWidth, texHeight);
+      } else {
+        this.renderToTexture(texWidth, texHeight, true, ctx => {
+          ctx.drawImage(image, 0, 0, texWidth, texHeight);
+        });
+      }
     } catch (e) {
       logger.error('DomContentComponent: Failed to render texture.', e);
     } finally {
@@ -95,6 +105,39 @@ export class DomContentComponent extends MaskableGraphic {
         void this.updateTexture();
       }
     }
+  }
+
+  private updateTargetTexture (image: HTMLImageElement, width: number, height: number): void {
+    if (!this.canvas || !this.context) { return; }
+
+    const ctx = this.context;
+
+    ctx.save();
+    this.canvas.width = width;
+    this.canvas.height = height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+    ctx.restore();
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const texture = Texture.createWithData(
+      this.engine,
+      {
+        data: new Uint8Array(imageData.data),
+        width: imageData.width,
+        height: imageData.height,
+      },
+      {
+        flipY: true,
+        magFilter: glContext.LINEAR,
+        minFilter: glContext.LINEAR,
+        wrapS: glContext.CLAMP_TO_EDGE,
+        wrapT: glContext.CLAMP_TO_EDGE,
+      },
+    );
+
+    void this.targetComponent!.setTexture(texture);
   }
 }
 

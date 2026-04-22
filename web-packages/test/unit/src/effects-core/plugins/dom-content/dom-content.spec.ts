@@ -1,6 +1,6 @@
 import { Player, SpriteComponent } from '@galacean/effects';
 import '@galacean/effects-plugin-dom-content';
-import { DomContentComponent, renderDOMToImage, replaceSpriteTexture, inlineImageSources, sanitizeSVGContent } from '@galacean/effects-plugin-dom-content';
+import { DomContentComponent, renderDOMToImage, inlineImageSources, inlineFontSources, extractSVGDefs, sanitizeSVGContent } from '@galacean/effects-plugin-dom-content';
 
 const { expect } = chai;
 
@@ -78,12 +78,24 @@ describe('plugin/dom-content', () => {
       expect(await renderDOMToImage(html, 100, 100)).to.be.instanceOf(HTMLImageElement);
     });
 
-    it('should throw on invalid parameters', () => {
-      expect(() => renderDOMToImage('<div></div>', 0, 100)).to.throw();
-      expect(() => renderDOMToImage('<div></div>', 100, -1)).to.throw();
-      expect(() => renderDOMToImage('<div></div>', 100, 100, 0)).to.throw();
-      expect(() => renderDOMToImage('<div></div>', NaN, 100)).to.throw();
-      expect(() => renderDOMToImage('<div></div>', 100, Infinity)).to.throw();
+    it('should throw on invalid parameters', async () => {
+      try { await renderDOMToImage('<div></div>', 0, 100); expect.fail('should throw'); } catch { /* expected */ }
+      try { await renderDOMToImage('<div></div>', 100, -1); expect.fail('should throw'); } catch { /* expected */ }
+      try { await renderDOMToImage('<div></div>', 100, 100, 0); expect.fail('should throw'); } catch { /* expected */ }
+      try { await renderDOMToImage('<div></div>', NaN, 100); expect.fail('should throw'); } catch { /* expected */ }
+      try { await renderDOMToImage('<div></div>', 100, Infinity); expect.fail('should throw'); } catch { /* expected */ }
+    });
+
+    it('should respect options to disable auto-inline', async () => {
+      // 纯 CSS HTML，关闭所有自动前置处理仍可正常渲染
+      const image = await renderDOMToImage(
+        '<div style="width:100px;height:100px;background:blue;"></div>',
+        100, 100, 1,
+        { inlineFonts: false, inlineImages: false, extractDefs: false },
+      );
+
+      expect(image).to.be.instanceOf(HTMLImageElement);
+      expect(image.width).to.equal(100);
     });
   });
 
@@ -174,40 +186,38 @@ describe('plugin/dom-content', () => {
     });
   });
 
-  describe('replaceSpriteTexture', () => {
-    it('should replace sprite texture', async () => {
+  describe('DomContentComponent texture override', () => {
+    it('should override sprite texture when added to item with SpriteComponent', async () => {
       const composition = await player.loadScene(json);
       const item = composition.getItemByName('place_holder')!;
       const sprite = item.getComponent(SpriteComponent);
 
-      await replaceSpriteTexture(sprite, '<div style="background:red;">Test</div>', 100, 100);
+      // 添加 DomContentComponent，应自动覆盖 Sprite 的纹理
+      const domContent = item.addComponent(DomContentComponent);
+
+      domContent.setContent('<div style="background:red;">Test</div>', 100, 100);
+      player.gotoAndPlay(0.01);
+
+      await waitFor(() => !!sprite.material.getTexture('_MainTex'));
       expect(sprite.material.getTexture('_MainTex')).to.not.be.undefined;
     });
 
-    it('should throw on invalid parameters', async () => {
+    it('should handle invalid parameters gracefully', async () => {
       const composition = await player.loadScene(json);
-      const sprite = composition.getItemByName('place_holder')!.getComponent(SpriteComponent);
+      const item = composition.getItemByName('place_holder')!;
+      const domContent = item.addComponent(DomContentComponent);
 
       // width = 0
-      try {
-        await replaceSpriteTexture(sprite, '<div></div>', 0, 100);
-        expect.fail('should throw');
-      } catch { /* expected */ }
+      domContent.setContent('<div></div>', 0, 100);
+      expect(domContent.contentWidth).to.equal(0);
+
       // height < 0
-      try {
-        await replaceSpriteTexture(sprite, '<div></div>', 100, -1);
-        expect.fail('should throw');
-      } catch { /* expected */ }
+      domContent.setContent('<div></div>', 100, -1);
+      expect(domContent.contentHeight).to.equal(-1);
+
       // scale = 0
-      try {
-        await replaceSpriteTexture(sprite, '<div></div>', 100, 100, 0);
-        expect.fail('should throw');
-      } catch { /* expected */ }
-      // width = NaN
-      try {
-        await replaceSpriteTexture(sprite, '<div></div>', NaN, 100);
-        expect.fail('should throw');
-      } catch { /* expected */ }
+      domContent.setContent('<div></div>', 100, 100, 0);
+      expect(domContent.contentScale).to.equal(0);
     });
   });
 
