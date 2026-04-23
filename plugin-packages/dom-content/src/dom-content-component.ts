@@ -29,7 +29,10 @@ export class DomContentComponent extends MaskableGraphic {
   constructor (engine: Engine) {
     super(engine);
     this.isDirty = false;
-    this.initTextBase(engine);
+    // 不调用 initTextBase（它会立即将 canvas 归还到池中），
+    // 因为本组件的 updateTexture 是异步的，需要独占 canvas 直到 onDestroy。
+    this.canvas = canvasPool.getCanvas();
+    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
   }
 
   setContent (html: string, width?: number, height?: number, scale?: number): void {
