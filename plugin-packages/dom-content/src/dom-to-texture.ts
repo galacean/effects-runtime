@@ -101,7 +101,7 @@ export async function renderDOMToImage (
 const DANGEROUS_TAGS = /<\/?(foreignObject|script|iframe|object|embed|link|base|meta|template|noscript)(?:\s[^>]*)?>/gi;
 
 /** 事件处理器属性：匹配 on* 属性并移除。支持跨行属性值 */
-const EVENT_HANDLER_ATTR = /\s+on\w+\s*=\s*(?:"[\s\S]*?"|'[\s\S]*?'|[^"'\s>]+)/gi;
+const EVENT_HANDLER_ATTR = /(?:^|[\s"'])on\w+\s*=\s*(?:"[\s\S]*?"|'[\s\S]*?'|[^"'\s>]+)/gi;
 
 /** javascript:/vbscript: 协议：在 href/src/action 等属性中移除 */
 const DANGEROUS_PROTOCOLS = /(href|src|action|formaction)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi;
