@@ -4,7 +4,8 @@ import { DomContentComponent, renderDOMToImage, inlineImageSources, inlineFontSo
 
 const { expect } = chai;
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*1T3xS4Vkrm8AAAAAQDAAAAgAelB4AQ';
+// 本地内联的最小场景 JSON，包含 place_holder sprite item，避免依赖远程 URL
+const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"dom_content_test","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"place_holder","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1}}}],"meta":{"previewSize":[750,1334]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
 /** 轮询等待条件满足 */
 async function waitFor (predicate: () => boolean, timeout = 2000, interval = 50): Promise<void> {
@@ -28,7 +29,7 @@ describe('plugin/dom-content', () => {
 
   describe('sanitizeSVGContent', () => {
     it('should preserve safe tags (div, span, svg, img)', () => {
-      const html = '<div><span>hi</span><svg><circle/></svg><img src="data:png,abc"/></div>';
+      const html = '<div><span>hi</span><svg><circle/></svg><img src="data:image/png;base64,abc"/></div>';
 
       expect(sanitizeSVGContent(html)).to.equal(html);
     });
@@ -281,10 +282,18 @@ describe('plugin/dom-content', () => {
     });
 
     it('should keep original URL when fetch fails', async () => {
-      const html = '<img src="https://invalid.test/404.png" />';
-      const result = await inlineImageSources(html);
+      // 使用 fetch stub 模拟网络失败，避免依赖 DNS 解析
+      const originalFetch = globalThis.fetch;
 
-      expect(result).to.include('https://invalid.test/404.png');
+      globalThis.fetch = () => Promise.reject(new Error('Network error'));
+      try {
+        const html = '<img src="https://example.com/404.png" />';
+        const result = await inlineImageSources(html);
+
+        expect(result).to.include('https://example.com/404.png');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
 
     it('should handle empty HTML', async () => {
@@ -310,11 +319,19 @@ describe('plugin/dom-content', () => {
     });
 
     it('should preserve @font-face structure when fetch fails', async () => {
-      const html = '@font-face { font-family: "Test"; src: url("https://invalid.test/font.woff2"); }';
-      const result = await inlineFontSources(html);
+      // 使用 fetch stub 模拟网络失败，避免依赖 DNS 解析
+      const originalFetch = globalThis.fetch;
 
-      expect(result).to.include('@font-face');
-      expect(result).to.include('https://invalid.test/font.woff2');
+      globalThis.fetch = () => Promise.reject(new Error('Network error'));
+      try {
+        const html = '@font-face { font-family: "Test"; src: url("https://example.com/font.woff2"); }';
+        const result = await inlineFontSources(html);
+
+        expect(result).to.include('@font-face');
+        expect(result).to.include('https://example.com/font.woff2');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
   });
 });

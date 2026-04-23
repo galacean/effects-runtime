@@ -26,6 +26,10 @@ export class DomContentComponent extends MaskableGraphic {
   private _disposed = false;
   private targetComponent: MaskableGraphic | null = null;
   private renderVersion = 0;
+  /** 由本组件创建的纹理集合，仅这些纹理可被 dispose */
+  private ownedTextures = new Set<Texture>();
+  /** 保存 target 组件的原始纹理，用于组件销毁时恢复 */
+  private originalTargetTexture: Texture | null = null;
   constructor (engine: Engine) {
     super(engine);
     this.isDirty = false;
@@ -77,6 +81,19 @@ export class DomContentComponent extends MaskableGraphic {
     super.onDestroy();
     this._disposed = true;
     this.disposeTextTexture();
+
+    // 恢复 target 组件的原始纹理
+    if (this.targetComponent?.renderer && this.originalTargetTexture) {
+      void this.targetComponent.setTexture(this.originalTargetTexture);
+    }
+
+    // 仅 dispose 由本组件创建的纹理
+    for (const tex of this.ownedTextures) {
+      tex.dispose();
+    }
+    this.ownedTextures.clear();
+    this.originalTargetTexture = null;
+
     if (this.canvas) {
       canvasPool.saveCanvas(this.canvas);
     }
@@ -98,9 +115,14 @@ export class DomContentComponent extends MaskableGraphic {
     const texWidth = Math.min(Math.round(contentWidth * contentScale), MAX_TEXTURE_SIZE);
     const texHeight = Math.min(Math.round(contentHeight * contentScale), MAX_TEXTURE_SIZE);
 
+    // 计算调整后的 scale，确保 renderDOMToImage 生成的图片不超过 MAX_TEXTURE_SIZE
+    const cappedScaleX = texWidth / contentWidth;
+    const cappedScaleY = texHeight / contentHeight;
+    const cappedScale = Math.min(cappedScaleX, cappedScaleY);
+
     this.rendering = true;
     try {
-      const image = await renderDOMToImage(htmlContent, contentWidth, contentHeight, contentScale);
+      const image = await renderDOMToImage(htmlContent, contentWidth, contentHeight, cappedScale);
 
       // 检查是否被 dispose 或版本号已变化
       if (this._disposed || startVersion !== this.renderVersion) { return; }
@@ -116,11 +138,16 @@ export class DomContentComponent extends MaskableGraphic {
       logger.error('DomContentComponent: Failed to render texture.', e);
     } finally {
       this.rendering = false;
-      // 只在版本号未变化且需要重新渲染时才继续
-      if (this.isDirty && !this._disposed && startVersion === this.renderVersion) {
-        this.updateTexture().catch(e => {
-          logger.error('DomContentComponent: Unhandled error in updateTexture.', e);
-        });
+      // 排空脏标记：无论 renderVersion 是否变化，只要有待处理的更新就触发
+      if (this.isDirty && !this._disposed) {
+        const pending = this.isDirty;
+
+        this.isDirty = false;
+        if (pending) {
+          this.updateTexture().catch(e => {
+            logger.error('DomContentComponent: Unhandled error in updateTexture.', e);
+          });
+        }
       }
     }
   }
@@ -138,11 +165,17 @@ export class DomContentComponent extends MaskableGraphic {
       return;
     }
 
-    // 释放旧纹理以避免内存泄漏
-    const oldTexture = target.renderer.texture;
+    // 保存 target 的原始纹理（仅首次）
+    const currentTexture = target.renderer.texture;
 
-    if (oldTexture && oldTexture !== this.engine.whiteTexture) {
-      oldTexture.dispose();
+    if (this.originalTargetTexture === null) {
+      this.originalTargetTexture = currentTexture ?? null;
+    }
+
+    // 仅 dispose 由本组件创建的纹理，不触碰原始/共享纹理
+    if (currentTexture && this.ownedTextures.has(currentTexture)) {
+      currentTexture.dispose();
+      this.ownedTextures.delete(currentTexture);
     }
 
     ctx.save();
@@ -171,6 +204,8 @@ export class DomContentComponent extends MaskableGraphic {
       },
     );
 
+    // 将新创建的纹理标记为本组件所有
+    this.ownedTextures.add(texture);
     void target.setTexture(texture);
   }
 }

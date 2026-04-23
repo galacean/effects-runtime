@@ -8,6 +8,10 @@ const iconUrl = 'https://mdn.alipayobjects.com/huamei_islskw/afts/img/A*dz8cSJCo
 const cardBgUrl = 'https://mdn.alipayobjects.com/huamei_islskw/afts/img/A*4oq-QrC1c1wAAAAAQTAAAAgAevb0AQ/original';
 const container = document.getElementById('J-container');
 
+if (!container) {
+  throw new Error('Demo container element #J-container not found.');
+}
+
 interface CardConfig {
   name: string,
   width: number,
