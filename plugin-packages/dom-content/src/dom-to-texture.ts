@@ -21,7 +21,32 @@ const SVG_DEF_TAGS = new Set(['filter', 'clippath', 'mask', 'lineargradient', 'r
 const IMG_SRC_REGEX = /<img\s[^>]*?\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
 const EXTRA_SRC_REGEX = /<(?:video|source|input|audio)\s[^>]*?\b(?:src|poster)\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
 const CSS_URL_REGEX = /url\(\s*(?:"([^"]+)"|'([^']+)'|([^\s)"']+))\s*\)/gi;
-const FONT_FACE_REGEX = /@font-face\s*\{[^}]*\}/gi;
+
+/** 安全提取 @font-face 块，避免 ReDoS 正则回溯问题 */
+function extractFontFaces (html: string): string[] {
+  const faces: string[] = [];
+  const regex = /@font-face\s*\{/gi;
+  let match;
+
+  while ((match = regex.exec(html)) !== null) {
+    const start = match.index + match[0].length;
+    // 从匹配位置往后找匹配的 }，最多检查 8000 字符
+    let braceCount = 1;
+    let end = start;
+
+    for (; end < html.length && end < start + 8000; end++) {
+      if (html[end] === '{') { braceCount++; } else if (html[end] === '}') {
+        braceCount--;
+        if (braceCount === 0) { break; }
+      }
+    }
+    faces.push(html.slice(match.index, end + 1));
+    // 继续搜索时需要将 lastIndex 设置到 end 之后
+    regex.lastIndex = end + 1;
+  }
+
+  return faces;
+}
 const FONT_URL_REGEX = /url\(\s*(?:"([^"]+)"|'([^']+)'|([^\s)"']+))\s*\)/gi;
 const CSS_SVG_REF_REGEX = /url\(\s*(?:"|')?#([a-zA-Z][\w.-]*)(?:"|')?\s*\)/g;
 const INLINE_SVG_REGEX = /<svg[\s>][\s\S]*?<\/svg\s*>/gi;
@@ -36,8 +61,15 @@ export async function renderDOMToImage (
   options?: RenderOptions,
 ): Promise<HTMLImageElement> {
   if (!Number.isFinite(width) || !Number.isFinite(height) || !Number.isFinite(scale)
-    || width <= 0 || height <= 0 || scale <= 0) {
-    throw new Error('renderDOMToImage: width, height and scale must be positive finite numbers.');
+    || width <= 0 || height <= 0 || scale < 0) {
+    throw new Error('renderDOMToImage: width and height must be positive, scale must be non-negative.');
+  }
+
+  // scale 为 0 时返回空结果，与 width/height=0 行为保持一致
+  if (scale === 0) {
+    logger.warn('renderDOMToImage: scale is 0, skipping render.');
+
+    return loadImage('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
   }
 
   const opts = { ...DEFAULT_RENDER_OPTIONS, ...options };
@@ -49,7 +81,9 @@ export async function renderDOMToImage (
   const svgDefs = opts.extractDefs ? extractSVGDefs(processedHtml) : '';
   const svgWidth = width * scale;
   const svgHeight = height * scale;
-  const safeHtml = injectSVGNamespace(sanitizeSVGContent(processedHtml));
+  const sanitized = sanitizeSVGContent(processedHtml);
+
+  const safeHtml = injectSVGNamespace(sanitized);
   const defsBlock = svgDefs ? `<defs>${svgDefs}</defs>` : '';
   const svg = (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">` +
@@ -62,15 +96,24 @@ export async function renderDOMToImage (
   return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
 }
 
+/** 危险标签：转义而非移除，保留内容以防布局错位。支持跨行标签 */
+const DANGEROUS_TAGS = /<\/?(foreignObject|script|iframe|object|embed|link|base|meta|template|noscript)(?:\s[^>]*)?>/gi;
+
+/** 事件处理器属性：匹配 on* 属性并移除。支持跨行属性值 */
+const EVENT_HANDLER_ATTR = /\s+on\w+\s*=\s*(?:"[\s\S]*?"|'[\s\S]*?'|[^"'\s>]+)/gi;
+
+/** javascript:/vbscript: 协议：在 href/src/action 等属性中移除 */
+const DANGEROUS_PROTOCOLS = /(href|src|action|formaction)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi;
+
 /** 清理 HTML：转义危险标签，移除事件处理器和 javascript: 协议 */
 export function sanitizeSVGContent (html: string): string {
   let result = html.replace(
-    /<\/?(foreignObject|script|iframe|object|embed|link|base|meta)(?:\s[^>]*)?>/gi,
+    DANGEROUS_TAGS,
     match => match.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
   );
 
-  result = result.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi, '');
-  result = result.replace(/(href|src|action|formaction)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi, '');
+  result = result.replace(EVENT_HANDLER_ATTR, '');
+  result = result.replace(DANGEROUS_PROTOCOLS, '');
 
   return result;
 }
@@ -128,14 +171,14 @@ export async function inlineImageSources (html: string): Promise<string> {
 export async function inlineFontSources (html: string): Promise<string> {
   const urlSet = new Set<string>();
 
-  FONT_FACE_REGEX.lastIndex = 0;
-  let faceMatch: RegExpExecArray | null;
+  // 使用安全的逐字符解析代替正则
+  const fontFaces = extractFontFaces(html);
 
-  while ((faceMatch = FONT_FACE_REGEX.exec(html)) !== null) {
+  for (const face of fontFaces) {
     FONT_URL_REGEX.lastIndex = 0;
     let urlMatch: RegExpExecArray | null;
 
-    while ((urlMatch = FONT_URL_REGEX.exec(faceMatch[0])) !== null) {
+    while ((urlMatch = FONT_URL_REGEX.exec(face)) !== null) {
       const url = urlMatch[1] ?? urlMatch[2] ?? urlMatch[3];
 
       if (url && !isInlineUrl(url)) { urlSet.add(url); }
@@ -213,20 +256,35 @@ export function extractSVGDefs (html: string): string {
   return parts.join('');
 }
 
+const FETCH_TIMEOUT_MS = 10000; // 10秒超时
+
 async function fetchAsBase64 (url: string): Promise<string> {
   // eslint-disable-next-line compat/compat -- Web 平台专用
-  const res = await fetch(url);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => { controller.abort(); }, FETCH_TIMEOUT_MS);
 
-  if (!res.ok) { throw new Error(`HTTP ${res.status} ${res.statusText}`); }
-  const blob = await res.blob();
+  try {
+    // eslint-disable-next-line compat/compat -- Web 平台专用
+    const res = await fetch(url, { signal: controller.signal });
 
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
+    if (!res.ok) { throw new Error(`HTTP ${res.status} ${res.statusText}`); }
+    const blob = await res.blob();
 
-    reader.onloadend = () => { resolve(reader.result as string); };
-    reader.onerror = () => { reject(new Error('FileReader failed.')); };
-    reader.readAsDataURL(blob);
-  });
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onloadend = () => { resolve(reader.result as string); };
+      reader.onerror = () => { reject(new Error('FileReader failed.')); };
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error(`fetchAsBase64: Request to "${url}" timed out after ${FETCH_TIMEOUT_MS}ms.`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function loadImage (url: string): Promise<HTMLImageElement> {

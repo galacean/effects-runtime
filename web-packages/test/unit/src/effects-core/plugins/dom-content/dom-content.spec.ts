@@ -54,6 +54,26 @@ describe('plugin/dom-content', () => {
       expect(result).to.not.include('<SCRIPT');
       expect(result).to.not.include('<foreignObject');
     });
+
+    it('should escape additional dangerous tags (meta, template, noscript)', () => {
+      const result = sanitizeSVGContent('<meta http-equiv="refresh"><template><div>hi</div></template><noscript>no</noscript>');
+
+      expect(result).to.include('&lt;meta');
+      expect(result).to.include('&lt;template');
+      expect(result).to.include('&lt;noscript');
+    });
+
+    it('should remove javascript: protocol from attributes', () => {
+      expect(sanitizeSVGContent('<a href="javascript:alert(1)">link</a>')).to.not.include('javascript:');
+      expect(sanitizeSVGContent('<form action="javascript:submit()">')).to.not.include('javascript:');
+      expect(sanitizeSVGContent('<input formaction="javascript:check()">')).to.not.include('javascript:');
+    });
+
+    it('should handle multiline attributes', () => {
+      const result = sanitizeSVGContent('<img src="x"\n onerror="alert(1)">');
+
+      expect(result).to.not.include('onerror');
+    });
   });
 
   describe('renderDOMToImage', () => {
@@ -81,7 +101,7 @@ describe('plugin/dom-content', () => {
     it('should throw on invalid parameters', async () => {
       try { await renderDOMToImage('<div></div>', 0, 100); expect.fail('should throw'); } catch { /* expected */ }
       try { await renderDOMToImage('<div></div>', 100, -1); expect.fail('should throw'); } catch { /* expected */ }
-      try { await renderDOMToImage('<div></div>', 100, 100, 0); expect.fail('should throw'); } catch { /* expected */ }
+      try { await renderDOMToImage('<div></div>', 100, 100, -1); expect.fail('should throw'); } catch { /* expected */ }
       try { await renderDOMToImage('<div></div>', NaN, 100); expect.fail('should throw'); } catch { /* expected */ }
       try { await renderDOMToImage('<div></div>', 100, Infinity); expect.fail('should throw'); } catch { /* expected */ }
     });
@@ -96,6 +116,12 @@ describe('plugin/dom-content', () => {
 
       expect(image).to.be.instanceOf(HTMLImageElement);
       expect(image.width).to.equal(100);
+    });
+
+    it('should return empty image when scale is 0', async () => {
+      const image = await renderDOMToImage('<div>Test</div>', 100, 100, 0);
+
+      expect(image).to.be.instanceOf(HTMLImageElement);
     });
   });
 
@@ -173,6 +199,24 @@ describe('plugin/dom-content', () => {
       expect(domContent.contentWidth).to.equal(300);
     });
 
+    it('should clamp negative width to 0', async () => {
+      const composition = await player.loadScene(json);
+      const item = composition.getItemByName('place_holder')!;
+      const domContent = item.addComponent(DomContentComponent);
+
+      domContent.setContent('<div>Test</div>', -50, 100);
+      expect(domContent.contentWidth).to.equal(0);
+    });
+
+    it('should clamp negative height to 0', async () => {
+      const composition = await player.loadScene(json);
+      const item = composition.getItemByName('place_holder')!;
+      const domContent = item.addComponent(DomContentComponent);
+
+      domContent.setContent('<div>Test</div>', 100, -50);
+      expect(domContent.contentHeight).to.equal(0);
+    });
+
     it('should dispose safely during async rendering', async () => {
       const composition = await player.loadScene(json);
       const item = composition.getItemByName('place_holder')!;
@@ -211,9 +255,9 @@ describe('plugin/dom-content', () => {
       domContent.setContent('<div></div>', 0, 100);
       expect(domContent.contentWidth).to.equal(0);
 
-      // height < 0
+      // height < 0 (should clamp to 0)
       domContent.setContent('<div></div>', 100, -1);
-      expect(domContent.contentHeight).to.equal(-1);
+      expect(domContent.contentHeight).to.equal(0);
 
       // scale = 0
       domContent.setContent('<div></div>', 100, 100, 0);
@@ -245,6 +289,32 @@ describe('plugin/dom-content', () => {
 
     it('should handle empty HTML', async () => {
       expect(await inlineImageSources('')).to.equal('');
+    });
+  });
+
+  describe('inlineFontSources', () => {
+    it('should return unchanged HTML without @font-face', async () => {
+      const html = '<div>Hello</div>';
+
+      expect(await inlineFontSources(html)).to.equal(html);
+    });
+
+    it('should skip data: and blob: URLs', async () => {
+      const html = '@font-face { src: url("data:font/woff2;base64,abc") format("woff2"); }';
+
+      expect(await inlineFontSources(html)).to.equal(html);
+    });
+
+    it('should handle empty HTML', async () => {
+      expect(await inlineFontSources('')).to.equal('');
+    });
+
+    it('should preserve @font-face structure when fetch fails', async () => {
+      const html = '@font-face { font-family: "Test"; src: url("https://invalid.test/font.woff2"); }';
+      const result = await inlineFontSources(html);
+
+      expect(result).to.include('@font-face');
+      expect(result).to.include('https://invalid.test/font.woff2');
     });
   });
 });

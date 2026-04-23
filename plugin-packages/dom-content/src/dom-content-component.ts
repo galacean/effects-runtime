@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import type { Engine, Renderer } from '@galacean/effects';
 import {
-  MaskableGraphic, effectsClass, math, logger, applyMixins, TextComponentBase, Texture, glContext,
+  MaskableGraphic, effectsClass, math, logger, applyMixins, TextComponentBase, Texture, glContext, canvasPool,
 } from '@galacean/effects';
 import { renderDOMToImage } from './dom-to-texture';
 
@@ -25,7 +25,7 @@ export class DomContentComponent extends MaskableGraphic {
   private rendering = false;
   private _disposed = false;
   private targetComponent: MaskableGraphic | null = null;
-
+  private renderVersion = 0;
   constructor (engine: Engine) {
     super(engine);
     this.isDirty = false;
@@ -34,10 +34,11 @@ export class DomContentComponent extends MaskableGraphic {
 
   setContent (html: string, width?: number, height?: number, scale?: number): void {
     this.htmlContent = html;
-    if (width !== undefined) { this.contentWidth = width; }
-    if (height !== undefined) { this.contentHeight = height; }
+    if (width !== undefined) { this.contentWidth = Math.max(0, width); }
+    if (height !== undefined) { this.contentHeight = Math.max(0, height); }
     if (scale !== undefined) { this.contentScale = Math.max(0, scale); }
     this.isDirty = true;
+    this.renderVersion++;
   }
 
   override onAwake (): void {
@@ -58,7 +59,9 @@ export class DomContentComponent extends MaskableGraphic {
     super.onUpdate(dt);
     if (this.isDirty && !this.rendering) {
       this.isDirty = false;
-      void this.updateTexture();
+      this.updateTexture().catch(e => {
+        logger.error('DomContentComponent: Unhandled error in updateTexture.', e);
+      });
     }
   }
 
@@ -71,24 +74,33 @@ export class DomContentComponent extends MaskableGraphic {
     super.onDestroy();
     this._disposed = true;
     this.disposeTextTexture();
+    if (this.canvas) {
+      canvasPool.saveCanvas(this.canvas);
+    }
     this.targetComponent = null;
   }
 
   private async updateTexture (): Promise<void> {
+    const startVersion = this.renderVersion;
     const { htmlContent, contentWidth, contentHeight, contentScale } = this;
 
     if (!htmlContent || contentWidth <= 0 || contentHeight <= 0) { return; }
 
+    if (contentScale <= 0) {
+      logger.warn('DomContentComponent: contentScale must be positive, skipping render.');
+
+      return;
+    }
+
     const texWidth = Math.min(Math.round(contentWidth * contentScale), MAX_TEXTURE_SIZE);
     const texHeight = Math.min(Math.round(contentHeight * contentScale), MAX_TEXTURE_SIZE);
-
-    if (texWidth <= 0 || texHeight <= 0) { return; }
 
     this.rendering = true;
     try {
       const image = await renderDOMToImage(htmlContent, contentWidth, contentHeight, contentScale);
 
-      if (this._disposed) { return; }
+      // 检查是否被 dispose 或版本号已变化
+      if (this._disposed || startVersion !== this.renderVersion) { return; }
 
       if (this.targetComponent) {
         this.updateTargetTexture(image, texWidth, texHeight);
@@ -101,16 +113,34 @@ export class DomContentComponent extends MaskableGraphic {
       logger.error('DomContentComponent: Failed to render texture.', e);
     } finally {
       this.rendering = false;
-      if (this.isDirty && !this._disposed) {
-        void this.updateTexture();
+      // 只在版本号未变化且需要重新渲染时才继续
+      if (this.isDirty && !this._disposed && startVersion === this.renderVersion) {
+        this.updateTexture().catch(e => {
+          logger.error('DomContentComponent: Unhandled error in updateTexture.', e);
+        });
       }
     }
   }
 
   private updateTargetTexture (image: HTMLImageElement, width: number, height: number): void {
-    if (!this.canvas || !this.context) { return; }
+    if (!this.canvas || !this.context || !this.targetComponent) { return; }
 
     const ctx = this.context;
+    const target = this.targetComponent;
+
+    // 检查 target 的 renderer 是否存在
+    if (!target.renderer) {
+      logger.warn('DomContentComponent: targetComponent.renderer is null, skipping texture update.');
+
+      return;
+    }
+
+    // 释放旧纹理以避免内存泄漏
+    const oldTexture = target.renderer.texture;
+
+    if (oldTexture && oldTexture !== this.engine.whiteTexture) {
+      oldTexture.dispose();
+    }
 
     ctx.save();
     this.canvas.width = width;
@@ -121,6 +151,7 @@ export class DomContentComponent extends MaskableGraphic {
     ctx.restore();
 
     const imageData = ctx.getImageData(0, 0, width, height);
+
     const texture = Texture.createWithData(
       this.engine,
       {
@@ -137,7 +168,7 @@ export class DomContentComponent extends MaskableGraphic {
       },
     );
 
-    void this.targetComponent!.setTexture(texture);
+    void target.setTexture(texture);
   }
 }
 
