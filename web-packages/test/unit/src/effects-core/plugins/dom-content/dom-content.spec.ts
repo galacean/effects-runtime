@@ -162,29 +162,34 @@ describe('plugin/dom-content', () => {
     it('should render texture after setContent', async () => {
       const composition = await player.loadScene(json);
       const item = composition.getItemByName('place_holder')!;
+      // place_holder 自带 SpriteComponent，DomContentComponent 会绑定到 sprite 并写入其纹理
+      const sprite = item.getComponent(SpriteComponent);
       const domContent = item.addComponent(DomContentComponent);
 
       domContent.setContent('<div style="background:red;">Test</div>', 100, 100);
       player.gotoAndPlay(0.01);
 
-      await waitFor(() => !!domContent.material.getTexture('_MainTex'));
-      expect(domContent.material.getTexture('_MainTex')).to.not.be.undefined;
+      await waitFor(() => !!sprite.material.getTexture('_MainTex'));
+      expect(sprite.material.getTexture('_MainTex')).to.not.be.undefined;
     });
 
     it('should not render with empty content or invalid dimensions', async () => {
       const composition = await player.loadScene(json);
       const item = composition.getItemByName('place_holder')!;
+      const sprite = item.getComponent(SpriteComponent);
+      const initialTexture = sprite.material.getTexture('_MainTex');
       const domContent = item.addComponent(DomContentComponent);
 
       domContent.setContent('', 100, 100);
       player.gotoAndPlay(0.01);
       await new Promise(_resolve => { setTimeout(_resolve, 100); });
-      expect(domContent.material.getTexture('_MainTex')).to.be.undefined;
+      // 空内容不应触发纹理替换，sprite 纹理应保持不变
+      expect(sprite.material.getTexture('_MainTex')).to.equal(initialTexture);
 
       domContent.setContent('<div>Test</div>', 0, 0);
       player.gotoAndPlay(0.01);
       await new Promise(_resolve => { setTimeout(_resolve, 100); });
-      expect(domContent.material.getTexture('_MainTex')).to.be.undefined;
+      expect(sprite.material.getTexture('_MainTex')).to.equal(initialTexture);
     });
 
     it('should handle rapid consecutive setContent calls', async () => {

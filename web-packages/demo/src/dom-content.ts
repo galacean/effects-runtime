@@ -773,8 +773,11 @@ interface CardConfig {
     // 渲染 HTML 为图片并替换纹理
     const dpr = window.devicePixelRatio || 1;
 
+    // 构建 item 名称到 item 的查找表，避免对每个 cfg 重复 O(n) 的 find
+    const itemMap = new Map(composition.items.map(i => [i.name, i]));
+
     for (const cfg of cardConfigs) {
-      const item = composition.items.find(i => i.name === cfg.name);
+      const item = itemMap.get(cfg.name);
 
       if (!item) {
         console.warn(`"${cfg.name}" 未找到`);

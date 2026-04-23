@@ -84,13 +84,14 @@ export async function renderDOMToImage (
   const svgWidth = width * scale;
   const svgHeight = height * scale;
 
-  const safeHtml = injectSVGNamespace(processedHtml);
+  // 将 HTML 转为合规 XHTML，避免未闭合的 void 标签和未转义实体导致 SVG/XML 解析失败
+  const xhtmlSafeHtml = convertToXHTML(injectSVGNamespace(processedHtml));
   const defsBlock = svgDefs ? `<defs>${svgDefs}</defs>` : '';
   const svg = (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">` +
     defsBlock +
     `<foreignObject width="${width}" height="${height}" transform="scale(${scale})">` +
-    `<div xmlns="http://www.w3.org/1999/xhtml">${safeHtml}</div>` +
+    xhtmlSafeHtml +
     '</foreignObject></svg>'
   );
 
@@ -102,9 +103,6 @@ const DANGEROUS_TAGS = /<\/?(foreignObject|script|iframe|object|embed|link|base|
 
 /** 事件处理器属性：匹配 on* 属性并移除。支持跨行属性值 */
 const EVENT_HANDLER_ATTR = /(?:^|[\s"'])on\w+\s*=\s*(?:"[\s\S]*?"|'[\s\S]*?'|[^"'\s>]+)/gi;
-
-/** javascript:/vbscript: 协议：在 href/src/action 等属性中移除 */
-const DANGEROUS_PROTOCOLS = /(href|src|action|formaction)\s*=\s*["']?\s*javascript:[^"'\s>]*/gi;
 
 /** URL 属性匹配：捕获属性名和属性值 */
 const URL_ATTR_REGEX = /\b(href|src|action|formaction)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]*))/gi;
@@ -176,11 +174,9 @@ export function sanitizeSVGContent (html: string): string {
   do {
     previous = result;
     result = result.replace(EVENT_HANDLER_ATTR, '');
-    // 保留原有的字面量 javascript: 移除
-    result = result.replace(DANGEROUS_PROTOCOLS, '');
   } while (result !== previous);
 
-  // 规范化检查：处理编码/混淆后的危险协议
+  // 统一处理危险协议：原子化移除整个属性（包括编码/混淆的变体）
   result = result.replace(URL_ATTR_REGEX, (match, _attr, dq, sq, uq) => {
     const value = dq ?? sq ?? uq ?? '';
 
@@ -204,6 +200,78 @@ function injectSVGNamespace (html: string): string {
   });
 }
 
+/**
+ * 将 HTML 字符串转为合规 XHTML，确保 void 标签被正确闭合、实体被转义，
+ * 使其可安全嵌入 SVG foreignObject（image/svg+xml 要求严格 XML 格式）
+ */
+function convertToXHTML (html: string): string {
+  if (typeof document === 'undefined') {
+    // 非浏览器环境回退：手动闭合常见 void 标签
+    return `<div xmlns="http://www.w3.org/1999/xhtml">${html}</div>`;
+  }
+
+  const doc = document.implementation.createHTMLDocument('');
+  const container = doc.createElement('div');
+
+  container.innerHTML = html;
+  container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+
+  return new XMLSerializer().serializeToString(container);
+}
+
+/**
+ * 从 HTML 中提取 CSS 上下文的 URL：仅扫描 <style> 元素的 textContent 和元素的 style 属性，
+ * 避免从普通文本/注释中误提取 URL。在无 DOMParser 环境下回退到正则但限制扫描范围。
+ */
+function collectCssUrls (html: string, urlSet: Set<string>): void {
+  const cssTexts: string[] = [];
+
+  if (typeof DOMParser !== 'undefined') {
+    try {
+      // 使用 inert document 解析，避免触发资源加载
+      const doc = new DOMParser().parseFromString(`<!DOCTYPE html><html><head></head><body>${html}</body></html>`, 'text/html');
+
+      doc.querySelectorAll('style').forEach(styleEl => {
+        if (styleEl.textContent) { cssTexts.push(styleEl.textContent); }
+      });
+      doc.querySelectorAll('[style]').forEach(el => {
+        const styleAttr = el.getAttribute('style');
+
+        if (styleAttr) { cssTexts.push(styleAttr); }
+      });
+    } catch {
+      /* 解析失败则回退到下方正则扫描 */
+    }
+  }
+
+  // 回退路径：仅匹配 <style>...</style> 块和 style="..." 属性，缩小扫描范围
+  if (cssTexts.length === 0) {
+    const styleBlockRegex = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
+    const styleAttrRegex = /\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+    let m: RegExpExecArray | null;
+
+    while ((m = styleBlockRegex.exec(html)) !== null) {
+      if (m[1]) { cssTexts.push(m[1]); }
+    }
+    while ((m = styleAttrRegex.exec(html)) !== null) {
+      const text = m[1] ?? m[2];
+
+      if (text) { cssTexts.push(text); }
+    }
+  }
+
+  for (const text of cssTexts) {
+    CSS_URL_REGEX.lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = CSS_URL_REGEX.exec(text)) !== null) {
+      const url = match[1] ?? match[2] ?? match[3];
+
+      if (url && !isInlineUrl(url) && !url.startsWith('#')) { urlSet.add(url); }
+    }
+  }
+}
+
 /** 将 HTML 中外部资源 URL 转为 base64 内联，失败时保留原 URL */
 export async function inlineImageSources (html: string): Promise<string> {
   const urlSet = new Set<string>();
@@ -223,17 +291,17 @@ export async function inlineImageSources (html: string): Promise<string> {
     if (url && !isInlineUrl(url)) { urlSet.add(url); }
   }
 
-  CSS_URL_REGEX.lastIndex = 0;
-  while ((match = CSS_URL_REGEX.exec(html)) !== null) {
-    const url = match[1] ?? match[2] ?? match[3];
-
-    if (url && !isInlineUrl(url) && !url.startsWith('#')) { urlSet.add(url); }
-  }
+  // 仅扫描真正的 CSS 上下文（<style> 内容和 style 属性），避免从文本/注释中误提取 URL
+  collectCssUrls(html, urlSet);
 
   if (urlSet.size === 0) { return html; }
 
   const urlToBase64 = new Map<string, string>();
-  const urls = [...urlSet];
+  const urls = [...urlSet].slice(0, MAX_URLS);
+
+  if (urlSet.size > MAX_URLS) {
+    logger.warn(`inlineImageSources: URL count (${urlSet.size}) exceeds limit (${MAX_URLS}), only processing first ${MAX_URLS}.`);
+  }
 
   await promisePool(urls.map(url => async () => {
     try { urlToBase64.set(url, await fetchAsBase64(url)); } catch (e) { logger.warn(`inlineImageSources: Failed to fetch "${url}".`, e); }
@@ -263,7 +331,11 @@ export async function inlineFontSources (html: string): Promise<string> {
   if (urlSet.size === 0) { return html; }
 
   const urlToBase64 = new Map<string, string>();
-  const urls = [...urlSet];
+  const urls = [...urlSet].slice(0, MAX_URLS);
+
+  if (urlSet.size > MAX_URLS) {
+    logger.warn(`inlineFontSources: URL count (${urlSet.size}) exceeds limit (${MAX_URLS}), only processing first ${MAX_URLS}.`);
+  }
 
   await promisePool(urls.map(url => async () => {
     try { urlToBase64.set(url, await fetchAsBase64(url)); } catch (e) { logger.warn(`inlineFontSources: Failed to fetch font "${url}".`, e); }
@@ -348,6 +420,7 @@ export function extractSVGDefs (html: string): string {
 const FETCH_TIMEOUT_MS = 10000; // 10秒超时
 const MAX_FETCH_CONCURRENCY = 6; // 最大并发获取数
 const MAX_RESOURCE_BYTES = 10 * 1024 * 1024; // 单个资源最大 10MB
+const MAX_URLS = 100; // 单次内联处理的最大 URL 数量
 
 /** 有界并发执行异步任务 */
 async function promisePool<T> (tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
@@ -380,19 +453,15 @@ async function fetchAsBase64 (url: string): Promise<string> {
 
     if (!res.ok) { throw new Error(`HTTP ${res.status} ${res.statusText}`); }
 
-    // 检查 Content-Length 头，如果声明的大小超过限制则跳过
+    // 检查 Content-Length 头，如果声明的大小超过限制则提前拒绝
     const contentLength = res.headers.get('Content-Length');
 
     if (contentLength && parseInt(contentLength, 10) > MAX_RESOURCE_BYTES) {
       throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${MAX_RESOURCE_BYTES} bytes), Content-Length: ${contentLength}.`);
     }
 
-    const blob = await res.blob();
-
-    // 实际大小检查（Content-Length 可能不准确或缺失）
-    if (blob.size > MAX_RESOURCE_BYTES) {
-      throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${MAX_RESOURCE_BYTES} bytes), actual: ${blob.size}.`);
-    }
+    // 流式读取响应体，边读边累积字节大小，超限则中止
+    const blob = await readBlobWithLimit(res, url, MAX_RESOURCE_BYTES, controller);
 
     return await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -403,12 +472,65 @@ async function fetchAsBase64 (url: string): Promise<string> {
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
-      throw new Error(`fetchAsBase64: Request to "${url}" timed out after ${FETCH_TIMEOUT_MS}ms.`);
+      throw new Error(`fetchAsBase64: Request to "${url}" timed out or aborted after ${FETCH_TIMEOUT_MS}ms.`);
     }
     throw e;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/**
+ * 流式读取 Response body，累积字节超过 maxBytes 时立即中止读取并抛出错误，
+ * 避免缓冲未知长度的完整响应。如果环境不支持 ReadableStream 则回退到 blob()。
+ */
+async function readBlobWithLimit (
+  res: Response,
+  url: string,
+  maxBytes: number,
+  controller: AbortController,
+): Promise<Blob> {
+  const contentType = res.headers.get('Content-Type') ?? '';
+
+  // 不支持流式读取时回退到 blob()，仍做一次大小校验
+  if (!res.body || typeof res.body.getReader !== 'function') {
+    const blob = await res.blob();
+
+    if (blob.size > maxBytes) {
+      throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${maxBytes} bytes), actual: ${blob.size}.`);
+    }
+
+    return blob;
+  }
+
+  const reader = res.body.getReader();
+  const chunks: BlobPart[] = [];
+  let total = 0;
+
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) { break; }
+      if (value) {
+        total += value.byteLength;
+        if (total > maxBytes) {
+          controller.abort();
+          throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${maxBytes} bytes) while streaming.`);
+        }
+        // 复制到独立的 ArrayBuffer，规避 ReadableStream 返回的 Uint8Array<ArrayBufferLike> 与 BlobPart 的类型不兼容
+        const copy = new Uint8Array(value.byteLength);
+
+        copy.set(value);
+        chunks.push(copy.buffer);
+      }
+    }
+  } finally {
+    try { reader.releaseLock(); } catch { /* 忽略已释放的情况 */ }
+  }
+
+  return new Blob(chunks, contentType ? { type: contentType } : undefined);
 }
 
 function loadImage (url: string): Promise<HTMLImageElement> {
