@@ -112,8 +112,12 @@ export function sanitizeSVGContent (html: string): string {
     match => match.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
   );
 
-  result = result.replace(EVENT_HANDLER_ATTR, '');
-  result = result.replace(DANGEROUS_PROTOCOLS, '');
+  let previous: string;
+  do {
+    previous = result;
+    result = result.replace(EVENT_HANDLER_ATTR, '');
+    result = result.replace(DANGEROUS_PROTOCOLS, '');
+  } while (result !== previous);
 
   return result;
 }
