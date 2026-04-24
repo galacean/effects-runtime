@@ -7,6 +7,8 @@ import { renderDOMToImage } from './dom-to-texture';
 
 const DATA_TYPE = 'DomContentComponent';
 const MAX_TEXTURE_SIZE = 2048;
+/** 单次 setContent 接受的 HTML 最大字符数，避免攻击者传入超大字符串造成 OOM/CPU 耗尽 */
+const MAX_HTML_LENGTH = 1024 * 1024; // 1M 字符
 
 export interface DomContentComponent extends TextComponentBase { }
 
@@ -40,7 +42,17 @@ export class DomContentComponent extends MaskableGraphic {
   }
 
   setContent (html: string, width?: number, height?: number, scale?: number): void {
-    this.htmlContent = html;
+    if (typeof html !== 'string') {
+      logger.warn('DomContentComponent.setContent: html must be a string, ignored.');
+
+      return;
+    }
+    if (html.length > MAX_HTML_LENGTH) {
+      logger.warn(`DomContentComponent.setContent: html length (${html.length}) exceeds limit (${MAX_HTML_LENGTH}), truncated.`);
+      this.htmlContent = html.slice(0, MAX_HTML_LENGTH);
+    } else {
+      this.htmlContent = html;
+    }
     if (width !== undefined) { this.contentWidth = Math.max(0, width); }
     if (height !== undefined) { this.contentHeight = Math.max(0, height); }
     if (scale !== undefined) { this.contentScale = Math.max(0, scale); }

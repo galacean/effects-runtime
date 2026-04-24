@@ -18,9 +18,148 @@ const DEFAULT_RENDER_OPTIONS: Required<RenderOptions> = {
 };
 
 const SVG_DEF_TAGS = new Set(['filter', 'clippath', 'mask', 'lineargradient', 'radialgradient', 'pattern', 'marker']);
-const IMG_SRC_REGEX = /<img\s[^>]*?\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
-const EXTRA_SRC_REGEX = /<(?:video|source|input|audio)\s[^>]*?\b(?:src|poster)\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
+const IMG_TAG_NAMES = new Set(['img']);
+const MEDIA_TAG_NAMES = new Set(['video', 'source', 'input', 'audio']);
 const CSS_URL_REGEX = /url\(\s*(?:"([^"]+)"|'([^']+)'|([^\s)"']+))\s*\)/gi;
+
+/**
+ * 安全提取 HTML 中指定标签名的指定属性值，使用字符级扫描避免 ReDoS。
+ * 仅扫描 `<tagName` 后的属性区域，不依赖回溯正则。
+ * tagNames 为 null 时匹配任意标签。
+ */
+function extractTagAttributes (
+  html: string,
+  tagNames: Set<string> | null,
+  attrNames: string[],
+  out: Set<string>,
+): void {
+  let i = 0;
+  const len = html.length;
+
+  while (i < len) {
+    const lt = html.indexOf('<', i);
+
+    if (lt === -1) { break; }
+    const next = html.charCodeAt(lt + 1);
+    const isLetter = (next >= 65 && next <= 90) || (next >= 97 && next <= 122);
+
+    if (!isLetter) { i = lt + 1; continue; }
+
+    let nameEnd = lt + 1;
+
+    while (nameEnd < len) {
+      const c = html.charCodeAt(nameEnd);
+
+      if (c === 32 || c === 9 || c === 10 || c === 13 || c === 47 || c === 62) { break; }
+      nameEnd++;
+    }
+    const tagName = html.slice(lt + 1, nameEnd).toLowerCase();
+
+    if (tagNames !== null && !tagNames.has(tagName)) { i = nameEnd; continue; }
+
+    // 找到本标签的结束 '>'，在引号内的 '>' 不算，避免 style="background:url(>)" 这类干扰
+    const tagLimit = Math.min(len, nameEnd + 16000);
+    let tagEnd = -1;
+    let inDq = false;
+    let inSq = false;
+
+    for (let p = nameEnd; p < tagLimit; p++) {
+      const c = html.charCodeAt(p);
+
+      if (c === 34 && !inSq) { inDq = !inDq; } else if (c === 39 && !inDq) { inSq = !inSq; } else if (c === 62 && !inDq && !inSq) {
+        tagEnd = p;
+
+        break;
+      }
+    }
+    if (tagEnd === -1) { i = nameEnd; continue; }
+
+    const attrSection = html.slice(nameEnd, tagEnd);
+
+    for (const attrName of attrNames) {
+      extractAttrValueFromSection(attrSection, attrName, out);
+    }
+
+    i = tagEnd + 1;
+  }
+}
+
+/**
+ * 字符级扫描提取所有 <style>...</style> 块的 textContent。
+ * 完全不使用回溯正则，最坏线性时间。
+ */
+function extractStyleBlocks (html: string, out: string[]): void {
+  const lower = html.toLowerCase();
+  let i = 0;
+  const len = html.length;
+
+  while (i < len) {
+    const start = lower.indexOf('<style', i);
+
+    if (start === -1) { break; }
+    const after = lower.charCodeAt(start + 6);
+    const isStyleTag = after === 32 || after === 9 || after === 10 || after === 13 || after === 62 || after === 47;
+
+    if (!isStyleTag) { i = start + 6; continue; }
+
+    // 跳过开标签到 '>' 结束
+    const openEnd = lower.indexOf('>', start + 6);
+
+    if (openEnd === -1) { break; }
+    const contentStart = openEnd + 1;
+    const closeStart = lower.indexOf('</style', contentStart);
+
+    if (closeStart === -1) { break; }
+    out.push(html.slice(contentStart, closeStart));
+    const closeEnd = lower.indexOf('>', closeStart);
+
+    if (closeEnd === -1) { break; }
+    i = closeEnd + 1;
+  }
+}
+
+/** 从单个标签的属性区域提取指定属性值 */
+function extractAttrValueFromSection (section: string, attrName: string, out: Set<string>): void {
+  const lower = section.toLowerCase();
+  const target = attrName.toLowerCase();
+  let pos = 0;
+
+  while (pos < lower.length) {
+    const idx = lower.indexOf(target, pos);
+
+    if (idx === -1) { return; }
+    const prevChar = idx === 0 ? 32 : lower.charCodeAt(idx - 1);
+    const isBoundary = prevChar === 32 || prevChar === 9 || prevChar === 10 || prevChar === 13;
+
+    if (!isBoundary) { pos = idx + target.length; continue; }
+
+    let p = idx + target.length;
+
+    while (p < section.length && /\s/.test(section[p])) { p++; }
+    if (section[p] !== '=') { pos = idx + target.length; continue; }
+    p++;
+    while (p < section.length && /\s/.test(section[p])) { p++; }
+
+    let value = '';
+    const quote = section[p];
+
+    if (quote === '"' || quote === '\'') {
+      const end = section.indexOf(quote, p + 1);
+
+      if (end === -1) { return; }
+      value = section.slice(p + 1, end);
+    } else {
+      let end = p;
+
+      while (end < section.length && !/[\s>]/.test(section[end])) { end++; }
+      value = section.slice(p, end);
+    }
+
+    if (value) { out.add(value); }
+
+    return;
+  }
+}
 
 /** 安全提取 @font-face 块，避免 ReDoS 正则回溯问题 */
 function extractFontFaces (html: string): string[] {
@@ -49,8 +188,44 @@ function extractFontFaces (html: string): string[] {
 }
 const FONT_URL_REGEX = /url\(\s*(?:"([^"]+)"|'([^']+)'|([^\s)"']+))\s*\)/gi;
 const CSS_SVG_REF_REGEX = /url\(\s*(?:"|')?#([a-zA-Z][\w.-]*)(?:"|')?\s*\)/g;
-const INLINE_SVG_REGEX = /<svg[\s>][\s\S]*?<\/svg\s*>/gi;
 const isInlineUrl = (url: string) => url.startsWith('data:') || url.startsWith('blob:');
+
+/** 安全移除 HTML 中所有内联 <svg>...</svg> 块，使用字符级扫描避免 ReDoS */
+function stripInlineSVG (html: string): string {
+  let result = '';
+  let i = 0;
+  const len = html.length;
+  const lowerHtml = html.toLowerCase();
+
+  while (i < len) {
+    const start = lowerHtml.indexOf('<svg', i);
+
+    if (start === -1) {
+      result += html.slice(i);
+
+      break;
+    }
+    const after = lowerHtml.charCodeAt(start + 4);
+    const isSvgTag = after === 32 || after === 9 || after === 10 || after === 13 || after === 62 || after === 47;
+
+    if (!isSvgTag) {
+      result += html.slice(i, start + 4);
+      i = start + 4;
+      continue;
+    }
+
+    result += html.slice(i, start);
+    const closeIdx = lowerHtml.indexOf('</svg', start + 4);
+
+    if (closeIdx === -1) { break; }
+    const gt = lowerHtml.indexOf('>', closeIdx);
+
+    if (gt === -1) { break; }
+    i = gt + 1;
+  }
+
+  return result;
+}
 
 /** 将 HTML 渲染为 Image 对象，默认自动执行内联字体/图片/提取 SVG 定义 */
 export async function renderDOMToImage (
@@ -98,14 +273,14 @@ export async function renderDOMToImage (
   return loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
 }
 
-/** 危险标签：转义而非移除，保留内容以防布局错位。支持跨行标签 */
-const DANGEROUS_TAGS = /<\/?(foreignObject|script|iframe|object|embed|link|base|meta|template|noscript)(?:\s[^>]*)?>/gi;
+/** 危险标签名集合（小写）：将这些标签的 < > 转义为 &lt; &gt;，保留内容防止布局错位 */
+const DANGEROUS_TAG_NAMES = new Set([
+  'foreignobject', 'script', 'iframe', 'object', 'embed',
+  'link', 'base', 'meta', 'template', 'noscript',
+]);
 
-/** 事件处理器属性：匹配 on* 属性并移除。支持跨行属性值 */
-const EVENT_HANDLER_ATTR = /(?:^|[\s"'])on\w+\s*=\s*(?:"[\s\S]*?"|'[\s\S]*?'|[^"'\s>]+)/gi;
-
-/** URL 属性匹配：捕获属性名和属性值 */
-const URL_ATTR_REGEX = /\b(href|src|action|formaction)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]*))/gi;
+/** 需要进行 URL 协议安全检查的属性名（小写） */
+const URL_ATTR_NAMES = new Set(['href', 'src', 'action', 'formaction']);
 
 /** 不允许的协议列表 */
 const DISALLOWED_PROTOCOLS = ['javascript', 'vbscript'];
@@ -162,42 +337,216 @@ function isDangerousUrl (value: string): boolean {
   return false;
 }
 
-/** 清理 HTML：转义危险标签，移除事件处理器和危险协议 URL 属性 */
+/** 清理 HTML：转义危险标签，移除事件处理器和危险协议 URL 属性。
+ *  使用字符级扫描代替回溯正则，避免 ReDoS 漏洞。 */
 export function sanitizeSVGContent (html: string): string {
-  let result = html.replace(
-    DANGEROUS_TAGS,
-    match => match.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
-  );
-
-  let previous: string;
-
-  do {
-    previous = result;
-    result = result.replace(EVENT_HANDLER_ATTR, '');
-  } while (result !== previous);
-
-  // 统一处理危险协议：原子化移除整个属性（包括编码/混淆的变体）
-  result = result.replace(URL_ATTR_REGEX, (match, _attr, dq, sq, uq) => {
-    const value = dq ?? sq ?? uq ?? '';
-
-    if (isDangerousUrl(value)) { return ''; }
-
-    return match;
-  });
-
-  return result;
+  return scanAndSanitize(html);
 }
 
-/** 为缺少 xmlns 的内嵌 <svg> 自动注入命名空间 */
+/**
+ * 单遍字符级扫描：
+ * - 识别危险标签（DANGEROUS_TAG_NAMES），将其 < > 转义为 &lt; &gt;
+ * - 在普通标签的属性区域内：移除 on* 事件处理器属性，移除值为危险 URL 的 href/src/action/formaction 属性
+ */
+function scanAndSanitize (html: string): string {
+  let out = '';
+  let i = 0;
+  const len = html.length;
+
+  while (i < len) {
+    const ch = html.charCodeAt(i);
+
+    if (ch !== 60 /* < */) {
+      out += html[i++];
+      continue;
+    }
+
+    const next = html.charCodeAt(i + 1);
+    const isLetter = (next >= 65 && next <= 90) || (next >= 97 && next <= 122);
+    const nextNext = html.charCodeAt(i + 2);
+    const isSlashLetter = next === 47 /* / */
+      && ((nextNext >= 65 && nextNext <= 90) || (nextNext >= 97 && nextNext <= 122));
+
+    if (!isLetter && !isSlashLetter) {
+      out += html[i++];
+      continue;
+    }
+
+    const isClose = isSlashLetter;
+    const nameStart = isClose ? i + 2 : i + 1;
+    let nameEnd = nameStart;
+
+    while (nameEnd < len) {
+      const c = html.charCodeAt(nameEnd);
+
+      if (c === 32 || c === 9 || c === 10 || c === 13 || c === 47 || c === 62) { break; }
+      nameEnd++;
+    }
+    const tagName = html.slice(nameStart, nameEnd).toLowerCase();
+
+    // 找到标签的结束 '>'，识别引号区域避免误判 '>'
+    const tagLimit = Math.min(len, nameEnd + 16000);
+    let tagEnd = -1;
+    let inDoubleQuote = false;
+    let inSingleQuote = false;
+
+    for (let p = nameEnd; p < tagLimit; p++) {
+      const c = html.charCodeAt(p);
+
+      if (c === 34 /* " */ && !inSingleQuote) { inDoubleQuote = !inDoubleQuote; } else if (c === 39 /* ' */ && !inDoubleQuote) { inSingleQuote = !inSingleQuote; } else if (c === 62 /* > */ && !inDoubleQuote && !inSingleQuote) {
+        tagEnd = p;
+
+        break;
+      }
+    }
+    if (tagEnd === -1) {
+      out += html[i++];
+      continue;
+    }
+
+    if (DANGEROUS_TAG_NAMES.has(tagName)) {
+      out += '&lt;' + html.slice(i + 1, tagEnd) + '&gt;';
+      i = tagEnd + 1;
+      continue;
+    }
+
+    const tagOpen = html.slice(i, nameEnd);
+    const attrSection = html.slice(nameEnd, tagEnd);
+    const cleanedAttrs = sanitizeAttrSection(attrSection);
+
+    out += tagOpen + cleanedAttrs + '>';
+    i = tagEnd + 1;
+  }
+
+  return out;
+}
+
+/**
+ * 清理标签的属性区域：
+ * - 移除 on* 事件处理器属性
+ * - 移除值为危险 URL 的 href/src/action/formaction 属性
+ */
+function sanitizeAttrSection (section: string): string {
+  let out = '';
+  let i = 0;
+  const len = section.length;
+
+  while (i < len) {
+    const c = section.charCodeAt(i);
+
+    if (c === 32 || c === 9 || c === 10 || c === 13 || c === 47) {
+      out += section[i++];
+      continue;
+    }
+
+    const nameStart = i;
+
+    while (i < len) {
+      const cc = section.charCodeAt(i);
+
+      if (cc === 61 /* = */ || cc === 32 || cc === 9 || cc === 10 || cc === 13 || cc === 47 || cc === 62) { break; }
+      i++;
+    }
+    if (i === nameStart) {
+      out += section[i++];
+      continue;
+    }
+    const attrName = section.slice(nameStart, i);
+    const lowerName = attrName.toLowerCase();
+
+    let p = i;
+
+    while (p < len && /\s/.test(section[p])) { p++; }
+
+    let attrEnd = p;
+    let value: string | null = null;
+    let hasValue = false;
+
+    if (section[p] === '=') {
+      hasValue = true;
+      p++;
+      while (p < len && /\s/.test(section[p])) { p++; }
+      const q = section[p];
+
+      if (q === '"' || q === '\'') {
+        const end = section.indexOf(q, p + 1);
+
+        if (end === -1) {
+          out += section.slice(nameStart);
+
+          return out;
+        }
+        value = section.slice(p + 1, end);
+        attrEnd = end + 1;
+      } else {
+        let end = p;
+
+        while (end < len && !/[\s>]/.test(section[end])) { end++; }
+        value = section.slice(p, end);
+        attrEnd = end;
+      }
+    }
+
+    const isEventHandler = lowerName.length > 2
+      && lowerName.charCodeAt(0) === 111 /* o */
+      && lowerName.charCodeAt(1) === 110 /* n */;
+    const isDangerousUrlAttr = hasValue && value !== null
+      && URL_ATTR_NAMES.has(lowerName) && isDangerousUrl(value);
+
+    if (isEventHandler || isDangerousUrlAttr) {
+      i = attrEnd;
+      continue;
+    }
+
+    out += section.slice(nameStart, attrEnd);
+    i = attrEnd;
+  }
+
+  return out;
+}
+
+/** 为缺少 xmlns 的内嵌 <svg> 自动注入命名空间，使用字符级扫描，线性时间且无回溯 */
 function injectSVGNamespace (html: string): string {
-  return html.replace(/<svg(?=[\s>])/gi, (match, offset) => {
-    const rest = html.slice(offset);
-    const tagEnd = rest.indexOf('>');
+  let out = '';
+  let i = 0;
+  const len = html.length;
+  const lower = html.toLowerCase();
 
-    if (tagEnd === -1 || /\bxmlns\s*=/i.test(rest.slice(0, tagEnd))) { return match; }
+  while (i < len) {
+    const start = lower.indexOf('<svg', i);
 
-    return `${match} xmlns="http://www.w3.org/2000/svg"`;
-  });
+    if (start === -1) {
+      out += html.slice(i);
+
+      break;
+    }
+    const after = lower.charCodeAt(start + 4);
+    const isSvgTag = after === 32 || after === 9 || after === 10 || after === 13 || after === 62 || after === 47;
+
+    if (!isSvgTag) {
+      out += html.slice(i, start + 4);
+      i = start + 4;
+      continue;
+    }
+
+    const tagEnd = lower.indexOf('>', start + 4);
+
+    if (tagEnd === -1) {
+      out += html.slice(i);
+
+      break;
+    }
+    const tagSlice = lower.slice(start, tagEnd);
+    // 严格判断是否已有 xmlns 属性（前面有空白边界，后接 = 或空白）
+    const hasXmlns = /[\s][\s]*xmlns\s*=/i.test(' ' + tagSlice);
+
+    out += html.slice(i, start + 4);
+    if (!hasXmlns) { out += ' xmlns="http://www.w3.org/2000/svg"'; }
+    out += html.slice(start + 4, tagEnd + 1);
+    i = tagEnd + 1;
+  }
+
+  return out;
 }
 
 /**
@@ -244,20 +593,13 @@ function collectCssUrls (html: string, urlSet: Set<string>): void {
     }
   }
 
-  // 回退路径：仅匹配 <style>...</style> 块和 style="..." 属性，缩小扫描范围
+  // 回退路径：使用字符级扫描提取 <style>...</style> 块和 style="..." 属性，避免 ReDoS
   if (cssTexts.length === 0) {
-    const styleBlockRegex = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
-    const styleAttrRegex = /\bstyle\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
-    let m: RegExpExecArray | null;
+    extractStyleBlocks(html, cssTexts);
+    const styleAttrSet = new Set<string>();
 
-    while ((m = styleBlockRegex.exec(html)) !== null) {
-      if (m[1]) { cssTexts.push(m[1]); }
-    }
-    while ((m = styleAttrRegex.exec(html)) !== null) {
-      const text = m[1] ?? m[2];
-
-      if (text) { cssTexts.push(text); }
-    }
+    extractTagAttributes(html, null, ['style'], styleAttrSet);
+    for (const v of styleAttrSet) { cssTexts.push(v); }
   }
 
   for (const text of cssTexts) {
@@ -274,20 +616,15 @@ function collectCssUrls (html: string, urlSet: Set<string>): void {
 
 /** 将 HTML 中外部资源 URL 转为 base64 内联，失败时保留原 URL */
 export async function inlineImageSources (html: string): Promise<string> {
+  const rawUrlSet = new Set<string>();
+
+  // 使用安全的字符级解析提取 src/poster 属性，避免 ReDoS
+  extractTagAttributes(html, IMG_TAG_NAMES, ['src'], rawUrlSet);
+  extractTagAttributes(html, MEDIA_TAG_NAMES, ['src', 'poster'], rawUrlSet);
+
   const urlSet = new Set<string>();
-  let match: RegExpExecArray | null;
 
-  IMG_SRC_REGEX.lastIndex = 0;
-  while ((match = IMG_SRC_REGEX.exec(html)) !== null) {
-    const url = match[1] ?? match[2];
-
-    if (url && !isInlineUrl(url)) { urlSet.add(url); }
-  }
-
-  EXTRA_SRC_REGEX.lastIndex = 0;
-  while ((match = EXTRA_SRC_REGEX.exec(html)) !== null) {
-    const url = match[1] ?? match[2];
-
+  for (const url of rawUrlSet) {
     if (url && !isInlineUrl(url)) { urlSet.add(url); }
   }
 
@@ -344,48 +681,219 @@ export async function inlineFontSources (html: string): Promise<string> {
   return replaceUrls(html, urlToBase64);
 }
 
-/** 替换 URL 为 base64：使用通用捕获组精确匹配 URL，通过 Map 查找进行大小写敏感替换 */
+/** 替换 URL 为 base64：
+ *  - 标签属性（src/poster）使用字符级扫描定位后做精确字符串替换，避免回溯正则 ReDoS
+ *  - CSS url() 替换使用线性时间的简单正则（无嵌套量词、无回溯陷阱）
+ *  - 全程区分大小写匹配 URL，确保通过 Map 精准查找 */
 function replaceUrls (html: string, urlToBase64: Map<string, string>): string {
-  let result = html;
+  // 1) 替换 <img>/<video>/<source>/<input>/<audio> 的 src/poster 属性
+  const html1 = replaceTagAttrUrls(
+    html,
+    new Set(['img', 'video', 'source', 'input', 'audio']),
+    ['src', 'poster'],
+    urlToBase64,
+  );
 
-  // 替换 <img>/<video>/<source>/<input>/<audio> 的 src/poster 属性
-  result = result.replace(
-    /(<(?:img|video|source|input|audio)\s[^>]*?\b(?:src|poster)\s*=\s*(?:"|'))([^"']*)((?:"|'))/gi,
-    (match, prefix, url, suffix) => {
+  // 2) 替换 CSS url("...") / url('...')，正则不含嵌套量词，线性时间
+  let result = html1.replace(
+    /url\(\s*(["'])([^"'\n\r)]*)\1\s*\)/g,
+    (match, quote, url) => {
       const base64 = urlToBase64.get(url);
 
-      return base64 ? `${prefix}${base64}${suffix}` : match;
+      return base64 ? `url(${quote}${base64}${quote})` : match;
     },
   );
 
-  // 替换 CSS url() 中带引号的 URL
+  // 3) 替换 CSS url(...) 不带引号的 URL，线性时间
   result = result.replace(
-    /(url\(\s*(?:"|'))([^"']*)((?:"|')\s*\))/g,
-    (match, prefix, url, suffix) => {
+    /url\(\s*([^\s)"'\n\r]+)\s*\)/g,
+    (match, url) => {
       const base64 = urlToBase64.get(url);
 
-      return base64 ? `${prefix}${base64}${suffix}` : match;
-    },
-  );
-
-  // 替换 CSS url() 中不带引号的 URL
-  result = result.replace(
-    /(url\(\s*)([^\s)"']+)(\s*\))/g,
-    (match, prefix, url, suffix) => {
-      const base64 = urlToBase64.get(url);
-
-      return base64 ? `${prefix}${base64}${suffix}` : match;
+      return base64 ? `url(${base64})` : match;
     },
   );
 
   return result;
 }
 
+/**
+ * 字符级扫描定位指定标签的指定属性，并将属性值替换为 Map 中的 base64。
+ * 完全不使用回溯正则，最坏情况是线性时间。
+ */
+function replaceTagAttrUrls (
+  html: string,
+  tagNames: Set<string>,
+  attrNames: string[],
+  urlToBase64: Map<string, string>,
+): string {
+  if (urlToBase64.size === 0) { return html; }
+  const targetAttrs = attrNames.map(a => a.toLowerCase());
+  let out = '';
+  let i = 0;
+  const len = html.length;
+
+  while (i < len) {
+    const lt = html.indexOf('<', i);
+
+    if (lt === -1) {
+      out += html.slice(i);
+
+      break;
+    }
+    const next = html.charCodeAt(lt + 1);
+    const isLetter = (next >= 65 && next <= 90) || (next >= 97 && next <= 122);
+
+    if (!isLetter) {
+      out += html.slice(i, lt + 1);
+      i = lt + 1;
+      continue;
+    }
+
+    let nameEnd = lt + 1;
+
+    while (nameEnd < len) {
+      const c = html.charCodeAt(nameEnd);
+
+      if (c === 32 || c === 9 || c === 10 || c === 13 || c === 47 || c === 62) { break; }
+      nameEnd++;
+    }
+    const tagName = html.slice(lt + 1, nameEnd).toLowerCase();
+
+    if (!tagNames.has(tagName)) {
+      out += html.slice(i, nameEnd);
+      i = nameEnd;
+      continue;
+    }
+
+    // 找到本标签的结束 '>'，在引号内的 '>' 不算
+    const tagLimit = Math.min(len, nameEnd + 16000);
+    let tagEnd = -1;
+    let inDq = false;
+    let inSq = false;
+
+    for (let p = nameEnd; p < tagLimit; p++) {
+      const c = html.charCodeAt(p);
+
+      if (c === 34 && !inSq) { inDq = !inDq; } else if (c === 39 && !inDq) { inSq = !inSq; } else if (c === 62 && !inDq && !inSq) {
+        tagEnd = p;
+
+        break;
+      }
+    }
+    if (tagEnd === -1) {
+      out += html.slice(i, lt + 1);
+      i = lt + 1;
+      continue;
+    }
+
+    // 在 [nameEnd, tagEnd) 区间内，逐属性替换目标 src/poster
+    out += html.slice(i, nameEnd);
+    out += replaceAttrsInSection(html.slice(nameEnd, tagEnd), targetAttrs, urlToBase64);
+    out += '>';
+    i = tagEnd + 1;
+  }
+
+  return out;
+}
+
+/** 在单个标签的属性区域内，将匹配 targetAttrs 的属性值替换为 Map 中的 base64 */
+function replaceAttrsInSection (
+  section: string,
+  targetAttrs: string[],
+  urlToBase64: Map<string, string>,
+): string {
+  let out = '';
+  let i = 0;
+  const len = section.length;
+
+  while (i < len) {
+    const c = section.charCodeAt(i);
+
+    if (c === 32 || c === 9 || c === 10 || c === 13 || c === 47) {
+      out += section[i++];
+      continue;
+    }
+
+    const nameStart = i;
+
+    while (i < len) {
+      const cc = section.charCodeAt(i);
+
+      if (cc === 61 /* = */ || cc === 32 || cc === 9 || cc === 10 || cc === 13 || cc === 47 || cc === 62) { break; }
+      i++;
+    }
+    if (i === nameStart) {
+      out += section[i++];
+      continue;
+    }
+    const lowerName = section.slice(nameStart, i).toLowerCase();
+    let p = i;
+
+    while (p < len && /\s/.test(section[p])) { p++; }
+
+    if (section[p] !== '=') {
+      out += section.slice(nameStart, p);
+      i = p;
+      continue;
+    }
+    p++;
+    while (p < len && /\s/.test(section[p])) { p++; }
+
+    let valueStart = p;
+    let valueEnd = p;
+    let attrEnd = p;
+    let quote: string | null = null;
+
+    if (section[p] === '"' || section[p] === '\'') {
+      quote = section[p];
+      const end = section.indexOf(quote, p + 1);
+
+      if (end === -1) {
+        out += section.slice(nameStart);
+
+        return out;
+      }
+      valueStart = p + 1;
+      valueEnd = end;
+      attrEnd = end + 1;
+    } else {
+      let end = p;
+
+      while (end < len && !/[\s>]/.test(section[end])) { end++; }
+      valueStart = p;
+      valueEnd = end;
+      attrEnd = end;
+    }
+
+    const value = section.slice(valueStart, valueEnd);
+
+    if (targetAttrs.includes(lowerName)) {
+      const base64 = urlToBase64.get(value);
+
+      if (base64) {
+        out += section.slice(nameStart, valueStart) + base64 + (quote ?? '') + section.slice(attrEnd, attrEnd);
+        // 上一行末尾追加的 '' 是为了清晰；attrEnd 之后的内容由外层循环继续处理
+        // 注意：当 quote 不为 null 时，前缀 section.slice(nameStart, valueStart) 已经包含开引号；
+        // 我们追加 base64 + 闭合引号 即可。
+        i = attrEnd;
+        continue;
+      }
+    }
+
+    out += section.slice(nameStart, attrEnd);
+    i = attrEnd;
+  }
+
+  return out;
+}
+
 /** 从宿主文档提取 CSS url(#id) 引用的 SVG 定义，支持 filter/clipPath/mask/gradient/pattern/marker */
 export function extractSVGDefs (html: string): string {
   if (typeof document === 'undefined') { return ''; }
 
-  const htmlWithoutInlineSVG = html.replace(INLINE_SVG_REGEX, '');
+  // 使用安全的字符级扫描移除内联 <svg> 块，避免 ReDoS
+  const htmlWithoutInlineSVG = stripInlineSVG(html);
   const ids = new Set<string>();
 
   CSS_SVG_REF_REGEX.lastIndex = 0;
