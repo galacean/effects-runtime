@@ -11,6 +11,7 @@
     "@galacean/effects-threejs": "workspace:*",
     "@galacean/effects-plugin-stats": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
+    "@galacean/effects-plugin-dom-content": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "three": "^0.149.0"
   },
