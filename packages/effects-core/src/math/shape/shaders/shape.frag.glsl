@@ -21,11 +21,6 @@ uniform float _ImageOpacity;           // 图片不透明度 0..1
 
 varying vec2 uv0;
 
-// 辅助函数：在两点之间进行平滑插值
-vec4 smoothMix(vec4 a, vec4 b, float t) {
-    return mix(a, b, smoothstep(0.0, 1.0, t));
-}
-
 // 计算向量的角度 (返回0到1之间的值)
 float calculateAngleRatio(vec2 v1, vec2 v2) {
     float angle = atan(v2.y, v2.x) - atan(v1.y, v1.x);
@@ -76,25 +71,18 @@ void main() {
             }
         }
 
-        // 渐变区间插值
+        // 渐变区间插值：逐段 smoothstep 累积 mix
+        // - t 落在 [_Stops[i-1], _Stops[i]] 内时，该段 smoothstep 给出平滑过渡
+        // - t 小于 _Stops[0] 时，所有段 smoothstep 返回 0，保持 _Colors[0]
+        // - t 大于最后一个 stop 时，已命中的段 smoothstep 返回 1，累积到最后一个颜色
+        // 这样天然覆盖两端，无需额外分支，也规避了 uniform 作为数组下标的限制
         if(_StopsCount > 0) {
-            if(t <= _Stops[0]) {
-                finalColor = _Colors[0];
-            } else if(t >= _Stops[_StopsCount - 1]) {
-                finalColor = _Colors[_StopsCount - 1];
-            } else {
-                finalColor = _Colors[0];
-                for(int i = 1; i < _MAX_STOPS; i++) {
-                    if(i >= _StopsCount)
-                        break;
-                    float prevStop = _Stops[i - 1];
-                    float currStop = _Stops[i];
-                    if(t >= prevStop && t <= currStop) {
-                        float localT = (t - prevStop) / max(currStop - prevStop, 1e-6);
-                        finalColor = smoothMix(_Colors[i - 1], _Colors[i], localT);
-                        break;
-                    }
-                }
+            finalColor = _Colors[0];
+            for(int i = 1; i < _MAX_STOPS; i++) {
+                if(i >= _StopsCount)
+                    break;
+                float localT = smoothstep(_Stops[i - 1], _Stops[i], t);
+                finalColor = mix(finalColor, _Colors[i], localT);
             }
         }
     } else if(_FillType == 4.0) {
