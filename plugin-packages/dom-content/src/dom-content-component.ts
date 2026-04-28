@@ -1,6 +1,6 @@
 import type { Engine, Renderer } from '@galacean/effects';
 import {
-  MaskableGraphic, effectsClass, math, logger, Texture, glContext, canvasPool,
+  MaskableGraphic, effectsClass, math, logger, Texture, glContext,
 } from '@galacean/effects';
 import { renderDOMToImage } from './dom-to-texture';
 
@@ -19,14 +19,16 @@ export class DomContentComponent extends MaskableGraphic {
   contentHeight = 200;
   contentScale = 1;
 
-  /** 用于将 HTML 渲染结果转为纹理数据的离屏 canvas，独占持有，直到 onDestroy 才归还 */
+  /** 本组件独占持有的离屏 canvas，用于将 HTML 渲染结果转为纹理数据，onDestroy 时一并释放。 */
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
   isDirty: boolean;
 
   private rendering = false;
-  private _disposed = false;
+  /** 异步任务取消标记：onDestroy 后置为 true，用于让 await 中的 updateTexture 回到同步段时立刻退出，避免泄漏纹理或写已释放的 material。 */
+  private asyncCancelled = false;
   private targetComponent: MaskableGraphic | null = null;
+  /** 内容版本号：每次 setContent 自增，用于丢弃过期的异步渲染结果，防止慢请求覆盖快请求。 */
   private renderVersion = 0;
   /** 由本组件创建的纹理集合，仅这些纹理可被 dispose */
   private ownedTextures = new Set<Texture>();
@@ -36,8 +38,9 @@ export class DomContentComponent extends MaskableGraphic {
   constructor (engine: Engine) {
     super(engine);
     this.isDirty = false;
-    // 本组件的 updateTexture 是异步的，需要独占 canvas 直到 onDestroy。
-    this.canvas = canvasPool.getCanvas();
+    // 自建独占 canvas：本组件的 updateTexture 是异步的，且无短期归还需求，
+    // 不走 canvasPool 以免占用其全局复用槽位影响其他组件（如 TextComponent）。
+    this.canvas = document.createElement('canvas');
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
   }
 
@@ -91,7 +94,8 @@ export class DomContentComponent extends MaskableGraphic {
 
   override onDestroy (): void {
     super.onDestroy();
-    this._disposed = true;
+    // 先取消异步任务，再做资源清理，避免 in-flight Promise resolve 后仍写入已释放的资源。
+    this.asyncCancelled = true;
     this.disposeOwnTexture();
 
     // 恢复 target 组件的原始纹理
@@ -107,7 +111,9 @@ export class DomContentComponent extends MaskableGraphic {
     this.originalTargetTexture = null;
 
     if (this.canvas) {
-      canvasPool.saveCanvas(this.canvas);
+      // 缩到 1x1 立即释放后端 ImageBuffer 显存，无需等待 GC。
+      this.canvas.width = 1;
+      this.canvas.height = 1;
     }
     this.targetComponent = null;
   }
@@ -208,8 +214,8 @@ export class DomContentComponent extends MaskableGraphic {
     try {
       const image = await renderDOMToImage(htmlContent, contentWidth, contentHeight, cappedScale);
 
-      // 检查是否被 dispose 或版本号已变化
-      if (this._disposed || startVersion !== this.renderVersion) { return; }
+      // 竞态防护：组件已销毁、或已有更新的 setContent 调用，则丢弃本次过期结果。
+      if (this.asyncCancelled || startVersion !== this.renderVersion) { return; }
 
       if (this.targetComponent) {
         this.updateTargetTexture(image, texWidth, texHeight);
@@ -222,8 +228,8 @@ export class DomContentComponent extends MaskableGraphic {
       logger.error('DomContentComponent: Failed to render texture.', e);
     } finally {
       this.rendering = false;
-      // 排空脏标记：无论 renderVersion 是否变化，只要有待处理的更新就触发
-      if (this.isDirty && !this._disposed) {
+      // 排空脏标记：渲染期间若有新的 setContent，触发再次更新；销毁后则不再启动。
+      if (this.isDirty && !this.asyncCancelled) {
         const pending = this.isDirty;
 
         this.isDirty = false;
