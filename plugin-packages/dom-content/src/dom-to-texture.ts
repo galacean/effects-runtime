@@ -577,8 +577,8 @@ function collectCssUrls (html: string, urlSet: Set<string>): void {
 
   if (typeof DOMParser !== 'undefined') {
     try {
-      // 使用 inert document 解析，避免触发资源加载
-      const doc = new DOMParser().parseFromString(`<!DOCTYPE html><html><head></head><body>${html}</body></html>`, 'text/html');
+      // 直接解析输入 HTML（inert document），避免通过模板拼接构造新 HTML 文档字符串
+      const doc = new DOMParser().parseFromString(html, 'text/html');
 
       doc.querySelectorAll('style').forEach(styleEl => {
         if (styleEl.textContent) { cssTexts.push(styleEl.textContent); }
