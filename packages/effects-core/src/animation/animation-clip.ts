@@ -196,7 +196,6 @@ export class AnimationClip extends EffectsObject {
           startTime: eventData.startTime,
           duration: eventData.duration ?? 0,
           event: new NotifyEvent(),
-          clip: this,
         };
 
         this.events.push(event);

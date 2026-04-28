@@ -1,8 +1,7 @@
-import type { AnimationClip } from './animation-clip';
 import type { VFXItem } from '../vfx-item';
 
 export interface AnimationEventReference {
-  event: AnimationEventInfo,
+  data: AnimationEventInfo,
   currentTime: number,
   deltaTime: number,
 }
@@ -12,7 +11,6 @@ export interface AnimationEventInfo {
   startTime: number,
   duration: number,
   event: AnimationEvent,
-  clip: AnimationClip,
 }
 
 export interface AnimationEventData {
@@ -27,13 +25,13 @@ export interface AnimationEventInfoData {
 }
 
 export class AnimationEvent {
-  onEvent (item: VFXItem, animation: AnimationClip, eventReference: AnimationEventReference): void {
+  onEvent (item: VFXItem, eventReference: AnimationEventReference): void {
     // Override
   }
 }
 
 export class NotifyEvent extends AnimationEvent {
-  override onEvent (item: VFXItem, animation: AnimationClip, eventReference: AnimationEventReference): void {
+  override onEvent (item: VFXItem, eventReference: AnimationEventReference): void {
     item.emit('animationevent', eventReference);
   }
 }
