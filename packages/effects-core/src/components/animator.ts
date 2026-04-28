@@ -141,10 +141,10 @@ export class Animator extends Component {
     // Trigger animation events
     //-------------------------------------------------------------------------
     for (const eventReference of this.graphInstance.activeEvents) {
-      const eventInfo = eventReference.event;
+      const eventInfo = eventReference.data;
       const event = eventInfo.event;
 
-      event.onEvent(this.item, eventInfo.clip, eventReference);
+      event.onEvent(this.item, eventReference);
     }
   }
 
