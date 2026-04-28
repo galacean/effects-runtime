@@ -560,16 +560,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private forwardTime (time: number) {
     const deltaTime = time * 1000 - this.time * 1000;
-    const reverse = deltaTime < 0;
-    const step = 15;
-    let t = Math.abs(deltaTime);
-    const ss = reverse ? -step : step;
 
-    // FIXME Update 中可能会修改合成时间，这边需要优化更新逻辑
-    for (t; t > step; t -= step) {
-      this.update(ss);
-    }
-    this.update(reverse ? -t : t);
+    this.update(deltaTime);
   }
 
   /**
