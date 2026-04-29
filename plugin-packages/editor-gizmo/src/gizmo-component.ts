@@ -883,10 +883,6 @@ class DrawGizmoBehindPass extends RenderPass {
     renderer.clear({ depthAction: TextureLoadAction.clear });
     renderer.renderMeshes(this.meshes);
   }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
-  }
 }
 
 class DrawGizmoFrontPass extends RenderPass {
@@ -899,10 +895,6 @@ class DrawGizmoFrontPass extends RenderPass {
   override execute (renderer: Renderer): void {
     renderer.renderMeshes(this.meshes);
   }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
-  }
 }
 
 class DrawGizmoEditorPass extends RenderPass {
@@ -914,9 +906,5 @@ class DrawGizmoEditorPass extends RenderPass {
 
   override execute (renderer: Renderer): void {
     renderer.renderMeshes(this.meshes);
-  }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
   }
 }
