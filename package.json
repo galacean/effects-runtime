@@ -72,5 +72,9 @@
     "vite": "^4.5.5",
     "vite-plugin-externals": "^0.6.2",
     "vite-tsconfig-paths": "^4.2.2"
+  },
+   "engines": {
+    "node": "18",
+    "pnpm": "8"
   }
 }
