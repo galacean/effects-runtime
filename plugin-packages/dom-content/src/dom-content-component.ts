@@ -1,7 +1,5 @@
 import type { Engine, Renderer } from '@galacean/effects';
-import {
-  MaskableGraphic, effectsClass, math, logger, Texture, glContext,
-} from '@galacean/effects';
+import { MaskableGraphic, effectsClass, math, logger, Texture, glContext } from '@galacean/effects';
 import { renderDOMToImage } from './dom-to-texture';
 
 const DATA_TYPE = 'DomContentComponent';

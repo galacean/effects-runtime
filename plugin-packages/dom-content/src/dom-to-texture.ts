@@ -1,5 +1,4 @@
 /** DOM → Texture 转换工具，通过 SVG foreignObject 将 HTML/CSS 渲染为 Image */
-
 import { logger } from '@galacean/effects';
 
 export interface RenderOptions {
@@ -337,8 +336,10 @@ function isDangerousUrl (value: string): boolean {
   return false;
 }
 
-/** 清理 HTML：转义危险标签，移除事件处理器和危险协议 URL 属性。
- *  使用字符级扫描代替回溯正则，避免 ReDoS 漏洞。 */
+/**
+ * 清理 HTML：转义危险标签，移除事件处理器和危险协议 URL 属性。
+ * 使用字符级扫描代替回溯正则，避免 ReDoS 漏洞。
+ */
 export function sanitizeSVGContent (html: string): string {
   return scanAndSanitize(html);
 }
@@ -572,7 +573,7 @@ function convertToXHTML (html: string): string {
  * 从 HTML 中提取 CSS 上下文的 URL：仅扫描 <style> 元素的 textContent 和元素的 style 属性，
  * 避免从普通文本/注释中误提取 URL。在无 DOMParser 环境下回退到正则但限制扫描范围。
  */
-function collectCssUrls (html: string, urlSet: Set<string>): void {
+function collectCSSUrls (html: string, urlSet: Set<string>): void {
   const cssTexts: string[] = [];
 
   if (typeof DOMParser !== 'undefined') {
@@ -614,7 +615,9 @@ function collectCssUrls (html: string, urlSet: Set<string>): void {
   }
 }
 
-/** 将 HTML 中外部资源 URL 转为 base64 内联，失败时保留原 URL */
+/**
+ * 将 HTML 中外部资源 URL 转为 base64 内联，失败时保留原 URL
+ */
 export async function inlineImageSources (html: string): Promise<string> {
   const rawUrlSet = new Set<string>();
 
@@ -629,7 +632,7 @@ export async function inlineImageSources (html: string): Promise<string> {
   }
 
   // 仅扫描真正的 CSS 上下文（<style> 内容和 style 属性），避免从文本/注释中误提取 URL
-  collectCssUrls(html, urlSet);
+  collectCSSUrls(html, urlSet);
 
   if (urlSet.size === 0) { return html; }
 
@@ -647,7 +650,9 @@ export async function inlineImageSources (html: string): Promise<string> {
   return replaceUrls(html, urlToBase64);
 }
 
-/** 将 @font-face 中的外部字体 URL 转为 base64 内联 */
+/**
+ * 将 @font-face 中的外部字体 URL 转为 base64 内联
+ */
 export async function inlineFontSources (html: string): Promise<string> {
   const urlSet = new Set<string>();
 
@@ -681,10 +686,12 @@ export async function inlineFontSources (html: string): Promise<string> {
   return replaceUrls(html, urlToBase64);
 }
 
-/** 替换 URL 为 base64：
+/**
+ * 替换 URL 为 base64：
  *  - 标签属性（src/poster）使用字符级扫描定位后做精确字符串替换，避免回溯正则 ReDoS
  *  - CSS url() 替换使用线性时间的简单正则（无嵌套量词、无回溯陷阱）
- *  - 全程区分大小写匹配 URL，确保通过 Map 精准查找 */
+ *  - 全程区分大小写匹配 URL，确保通过 Map 精准查找
+ */
 function replaceUrls (html: string, urlToBase64: Map<string, string>): string {
   // 1) 替换 <img>/<video>/<source>/<input>/<audio> 的 src/poster 属性
   const html1 = replaceTagAttrUrls(
@@ -888,7 +895,9 @@ function replaceAttrsInSection (
   return out;
 }
 
-/** 从宿主文档提取 CSS url(#id) 引用的 SVG 定义，支持 filter/clipPath/mask/gradient/pattern/marker */
+/**
+ * 从宿主文档提取 CSS url(#id) 引用的 SVG 定义，支持 filter/clipPath/mask/gradient/pattern/marker
+ */
 export function extractSVGDefs (html: string): string {
   if (typeof document === 'undefined') { return ''; }
 
