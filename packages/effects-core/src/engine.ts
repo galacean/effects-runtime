@@ -7,7 +7,7 @@ import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, 
 import { RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
-import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
+import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
@@ -92,7 +92,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   pixelRatio: number;
 
   /**
-   * @internal
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
    */
   renderTargetPool: RenderTargetPool;
   /**
@@ -133,7 +135,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.whiteTexture = generateWhiteTexture(this);
-    this.transparentTexture = generateTransparentTexture(this);
+    this.transparentTexture = generateEmptyTexture(this);
 
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);

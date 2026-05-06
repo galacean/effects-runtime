@@ -947,7 +947,6 @@ export class ParticleSystem extends Component implements Maskable {
       startSpeed: createValueGetter(positionOverLifetime.startSpeed || 0),
       startColor: createValueGetter(options.startColor),
       // duration:vfxItem.duration || 1,
-      // @ts-expect-error TODO: Update spec
       looping: options.looping ?? false,
       maxCount: options.maxCount ?? 0,
       gravityModifier: createValueGetter(gravityModifier || 0),

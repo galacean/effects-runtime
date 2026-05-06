@@ -186,10 +186,7 @@ export class AnimationClip extends EffectsObject {
       this.duration = keyFramesDuration;
     }
 
-    // TODO: Update spec.
-    //@ts-expect-error
     if (data.events) {
-      //@ts-expect-error
       for (const eventData of data.events) {
         const event: AnimationEventInfo = {
           name: eventData.name,
