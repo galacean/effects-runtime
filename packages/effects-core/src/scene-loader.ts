@@ -8,6 +8,8 @@ import { PluginSystem } from './plugin-system';
 
 /**
  * @hidden
+ * Internal utility.
+ * Not part of the public API — do not rely on this in your code.
  */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
