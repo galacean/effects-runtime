@@ -21,6 +21,7 @@ describe('webgl/gl-texture', () => {
     engine = new GLEngine(canvas, { glType: 'webgl' });
     renderer = engine.renderer;
     gl = engine.context.gl as WebGLRenderingContext;
+    registerKTX2Loader();
   });
 
   after(() => {
