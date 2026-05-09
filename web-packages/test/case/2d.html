@@ -6,25 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Case - 2D Test</title>
   <link rel="stylesheet" href="https://unpkg.com/mocha@10.2.0/mocha.css">
-  <style>
-    li.idx {
-      height: 120px;
-      width: 100%;
-      overflow-x: auto;
-    }
-    li.idx .image-cell {
-      max-height: 120px;
-      display: flex;
-      flex-wrap: nowrap;
-    }
-    li.idx .image-cell img {
-      width: 120px;
-    }
-    li.idx .image-cell span {
-      border-left: 1px dashed yellowgreen;
-      margin: 0 2px;
-    }
-  </style>
+  <link rel="stylesheet" href="https://unpkg.com/viewerjs@1.11.7/dist/viewer.min.css">
+  <link rel="stylesheet" href="./case-diff-view.css">
 </head>
 <body>
   <div id="mocha"></div>
@@ -32,6 +15,7 @@
   <script src="https://unpkg.com/chai@4.3.7/chai.js"></script>
   <script src="https://unpkg.com/chai-spies@1.0.0/chai-spies.js"></script>
   <script src="https://unpkg.com/mocha@10.2.0/mocha.js"></script>
+  <script src="https://unpkg.com/viewerjs@1.11.7/dist/viewer.min.js"></script>
   <script class="mocha-init">
     mocha.setup({
       ui: 'bdd',

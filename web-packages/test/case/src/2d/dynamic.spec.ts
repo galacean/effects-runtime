@@ -117,7 +117,7 @@ async function checkScene (
 
       expect(oldImage.length).to.eql(newImage.length);
       //
-      const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage);
+      const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage, canvasWidth, canvasHeight);
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
@@ -128,14 +128,19 @@ async function checkScene (
         console.error('[Test] FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
         const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
         const newFileName = `${namePrefix}_${name}_${time}_new.png`;
+        const diffFileName = `${namePrefix}_${name}_${time}_diff.png`;
+        const diffHeatmapDataURL = imageCmp.getLastDiffHeatmapDataURL();
 
         await oldPlayer.saveCanvasToImage(oldFileName, idx);
         await newPlayer.saveCanvasToImage(newFileName, idx, true);
+        if (diffHeatmapDataURL) {
+          await newPlayer.saveCanvasToImage(diffFileName, idx, true, diffHeatmapDataURL, 'diff-heatmap', imageCmp.getLastDiffSummary());
+        }
         diffRatioList.push(diffCountRatio);
       }
     }
 
-    expect(diffRatioList).to.be.eqls([], `diffs: ${JSON.stringify(diffRatioList)}`);
+    expect(diffRatioList).to.be.eqls([]);
     console.info(`[Test] Compare end: ${name}, ${url}`);
   });
 }
