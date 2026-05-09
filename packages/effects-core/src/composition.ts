@@ -3,6 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
+import { CanvasLayer } from './components';
 import { CompositionComponent, UpdateModes } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
@@ -181,7 +182,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly url: Scene.LoadType;
   /**
-   * 合成根元素
+   * 合成场景根元素
    */
   readonly rootItem: VFXItem;
   /**
@@ -192,6 +193,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成开始渲染的时间
    */
   readonly startTime: number = 0;
+  /**
+   * 插件元素根元素
+   */
+  readonly pluginRoot: VFXItem;
   /**
    * 场景中视频列表
    */
@@ -209,6 +214,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   onItemMessage?: (message: MessageItem) => void;
   /**
+   * @internal
+   */
+  canvasLayer: CanvasLayer;
+  /**
    * 销毁状态位
    */
   protected destroyed = false;
@@ -219,6 +228,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private paused = true;
   private isEndCalled = false;
   private _textures: Texture[] = [];
+  /**
+   * 合成根元素
+   */
+  private readonly root: VFXItem;
 
   /**
    * Composition 构造函数
@@ -274,6 +287,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       assertExist(sourceContent);
     }
 
+    this.root = new VFXItem(this.engine);
+    this.root.name = 'root';
+    this.root.composition = this;
+
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.engine);
 
@@ -284,7 +301,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // 在 instantiatePreComposition 后设置 rootItem 的 name，避免 name 被覆盖
     this.rootItem.name = 'rootItem';
-    this.rootItem.composition = this;
 
     this.rootComposition = this.rootItem.getComponent(CompositionComponent) ?? this.rootItem.addComponent(CompositionComponent);
     this.rootComposition.updateMode = UpdateModes.Manual;
@@ -294,6 +310,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.on('animationevent', eventData => {
       this.emit('animationevent', eventData);
     });
+
+    this.pluginRoot = new VFXItem(this.engine);
+    this.canvasLayer = this.pluginRoot.addComponent(CanvasLayer);
+
+    this.pluginRoot.setParent(this.root);
+    this.rootItem.setParent(this.root);
 
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
@@ -585,9 +607,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     // Scene VFXItem components lifetime function
-    if (!this.rootItem.isDuringPlay) {
-      this.rootItem.awake();
-      this.rootItem.beginPlay();
+    if (!this.root.isDuringPlay) {
+      this.root.awake();
+      this.root.beginPlay();
     }
     const previousCompositionTime = this.time;
 
@@ -843,6 +865,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.videos = [];
 
     this.rootItem.dispose();
+    this.pluginRoot.dispose();
+    this.root.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
     PluginSystem.destroyComposition(this);
