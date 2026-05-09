@@ -1,5 +1,5 @@
 /** DOM → Texture 转换工具，通过 SVG foreignObject 将 HTML/CSS 渲染为 Image */
-import { logger } from '@galacean/effects';
+import { logger, loadImage, loadBlob } from '@galacean/effects';
 
 export interface RenderOptions {
   /** 自动内联 @font-face 外部字体，默认 true */
@@ -934,7 +934,6 @@ export function extractSVGDefs (html: string): string {
   return parts.join('');
 }
 
-const FETCH_TIMEOUT_MS = 10000; // 10秒超时
 const MAX_FETCH_CONCURRENCY = 6; // 最大并发获取数
 const MAX_RESOURCE_BYTES = 10 * 1024 * 1024; // 单个资源最大 10MB
 const MAX_URLS = 100; // 单次内联处理的最大 URL 数量
@@ -960,119 +959,17 @@ async function promisePool<T> (tasks: (() => Promise<T>)[], concurrency: number)
 }
 
 async function fetchAsBase64 (url: string): Promise<string> {
-  // eslint-disable-next-line compat/compat -- Web 平台专用
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => { controller.abort(); }, FETCH_TIMEOUT_MS);
+  const blob = await loadBlob(url);
 
-  try {
-    // eslint-disable-next-line compat/compat -- Web 平台专用
-    const res = await fetch(url, { signal: controller.signal });
-
-    if (!res.ok) { throw new Error(`HTTP ${res.status} ${res.statusText}`); }
-
-    // 检查 Content-Length 头，如果声明的大小超过限制则提前拒绝
-    const contentLength = res.headers.get('Content-Length');
-
-    if (contentLength && parseInt(contentLength, 10) > MAX_RESOURCE_BYTES) {
-      throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${MAX_RESOURCE_BYTES} bytes), Content-Length: ${contentLength}.`);
-    }
-
-    // 流式读取响应体，边读边累积字节大小，超限则中止
-    const blob = await readBlobWithLimit(res, url, MAX_RESOURCE_BYTES, controller);
-
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onloadend = () => { resolve(reader.result as string); };
-      reader.onerror = () => { reject(new Error('FileReader failed.')); };
-      reader.readAsDataURL(blob);
-    });
-  } catch (e) {
-    if (e instanceof Error && e.name === 'AbortError') {
-      throw new Error(`fetchAsBase64: Request to "${url}" timed out or aborted after ${FETCH_TIMEOUT_MS}ms.`);
-    }
-    throw e;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
- * 流式读取 Response body，累积字节超过 maxBytes 时立即中止读取并抛出错误，
- * 避免缓冲未知长度的完整响应。如果环境不支持 ReadableStream 则回退到 blob()。
- */
-async function readBlobWithLimit (
-  res: Response,
-  url: string,
-  maxBytes: number,
-  controller: AbortController,
-): Promise<Blob> {
-  const contentType = res.headers.get('Content-Type') ?? '';
-
-  // 不支持流式读取时回退到 blob()，仍做一次大小校验
-  if (!res.body || typeof res.body.getReader !== 'function') {
-    const blob = await res.blob();
-
-    if (blob.size > maxBytes) {
-      throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${maxBytes} bytes), actual: ${blob.size}.`);
-    }
-
-    return blob;
+  if (blob.size > MAX_RESOURCE_BYTES) {
+    throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${MAX_RESOURCE_BYTES} bytes), actual: ${blob.size}.`);
   }
 
-  const reader = res.body.getReader();
-  const chunks: BlobPart[] = [];
-  let total = 0;
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
 
-  try {
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) { break; }
-      if (value) {
-        total += value.byteLength;
-        if (total > maxBytes) {
-          controller.abort();
-          throw new Error(`fetchAsBase64: Resource "${url}" exceeds max size (${maxBytes} bytes) while streaming.`);
-        }
-        // 复制到独立的 ArrayBuffer，规避 ReadableStream 返回的 Uint8Array<ArrayBufferLike> 与 BlobPart 的类型不兼容
-        const copy = new Uint8Array(value.byteLength);
-
-        copy.set(value);
-        chunks.push(copy.buffer);
-      }
-    }
-  } finally {
-    try { reader.releaseLock(); } catch { /* 忽略已释放的情况 */ }
-  }
-
-  return new Blob(chunks, contentType ? { type: contentType } : undefined);
-}
-
-function loadImage (url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) { return; }
-      settled = true;
-      img.onload = img.onerror = null;
-      reject(new Error('DOM to image failed: loading timed out after 10s.'));
-    }, 10000);
-
-    img.onload = () => {
-      if (settled) { return; }
-      settled = true;
-      clearTimeout(timer);
-      resolve(img);
-    };
-    img.onerror = () => {
-      if (settled) { return; }
-      settled = true;
-      clearTimeout(timer);
-      reject(new Error('DOM to image failed: SVG data URL could not be loaded.'));
-    };
-    img.src = url;
+    reader.onloadend = () => { resolve(reader.result as string); };
+    reader.onerror = () => { reject(new Error('FileReader failed.')); };
+    reader.readAsDataURL(blob);
   });
 }
