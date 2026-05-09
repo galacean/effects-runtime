@@ -674,7 +674,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     // 3. composition 元素：子元素命中时，将自身也加入结果（根元素除外）
-    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.rootItem) {
+    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.sceneRoot) {
       regions.push({
         id: this.getInstanceId(),
         name: this.name,
@@ -741,7 +741,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.refreshGUIDRecursive(previousObjectIDMap);
 
     if (this.composition) {
-      newItem.setParent(this.composition.rootItem);
+      newItem.setParent(this.composition.sceneRoot);
     }
 
     return newItem;

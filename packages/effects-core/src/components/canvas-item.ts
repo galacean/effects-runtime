@@ -49,7 +49,7 @@ export class CanvasItem extends Component {
     this.removeFromParent();
     this.removeFromCanvasLayer();
     // 自身失效后，子 CanvasItem 需要重新查找新的父 CanvasItem（向上跳过自己）
-    this.notifyChildrenParentChanged();
+    this.updateChildrenParentItems();
   }
 
   override onParentChanged (): void {
@@ -61,7 +61,7 @@ export class CanvasItem extends Component {
   override onDestroy (): void {
     this.removeFromParent();
     this.removeFromCanvasLayer();
-    this.notifyChildrenParentChanged();
+    this.updateChildrenParentItems();
   }
 
   /**
@@ -305,19 +305,17 @@ export class CanvasItem extends Component {
   }
 
   /**
-   * 通知所有子 CanvasItem 重新查找父 CanvasItem。
+   * 更新所有子 CanvasItem 的层级归属。
    * 自身失效时调用，子节点会跳过自己向上找到新的父 CanvasItem（可能为 null）。
    */
-  private notifyChildrenParentChanged (): void {
+  private updateChildrenParentItems (): void {
     if (this.children.length === 0) {
       return;
     }
     // 拷贝避免迭代过程中数组被 removeFromParent 修改
     const snapshot = this.children.slice();
 
-    this.children.length = 0;
     for (const child of snapshot) {
-      child.parent = null;
       child.updateParentItem();
     }
   }

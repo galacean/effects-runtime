@@ -72,7 +72,7 @@ export class Sequencer extends EditorWindow {
       state.lastCompositionId = compositionId;
     }
 
-    let compositionComponent = currentComposition.rootItem.getComponent(CompositionComponent);
+    let compositionComponent = currentComposition.sceneRoot.getComponent(CompositionComponent);
 
     const selectedObject = Selection.getSelectedObjects()[0];
 

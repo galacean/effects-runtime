@@ -184,7 +184,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成场景根元素
    */
-  readonly rootItem: VFXItem;
+  readonly sceneRoot: VFXItem;
   /**
    * 合成的相机对象
    */
@@ -292,22 +292,22 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.composition = this;
 
     // Instantiate composition rootItem
-    this.rootItem = new VFXItem(this.engine);
+    this.sceneRoot = new VFXItem(this.engine);
 
     if (sourceContent) {
-      this.rootItem.setInstanceId(sourceContent.id);
-      this.rootItem.instantiatePreComposition(sourceContent, false);
+      this.sceneRoot.setInstanceId(sourceContent.id);
+      this.sceneRoot.instantiatePreComposition(sourceContent, false);
     }
 
     // 在 instantiatePreComposition 后设置 rootItem 的 name，避免 name 被覆盖
-    this.rootItem.name = 'rootItem';
+    this.sceneRoot.name = 'rootItem';
 
-    this.rootComposition = this.rootItem.getComponent(CompositionComponent) ?? this.rootItem.addComponent(CompositionComponent);
+    this.rootComposition = this.sceneRoot.getComponent(CompositionComponent) ?? this.sceneRoot.addComponent(CompositionComponent);
     this.rootComposition.updateMode = UpdateModes.Manual;
     this.rootComposition.play();
 
     // Bind animation event
-    this.rootItem.on('animationevent', eventData => {
+    this.sceneRoot.on('animationevent', eventData => {
       this.emit('animationevent', eventData);
     });
 
@@ -315,7 +315,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.canvasLayer = this.pluginRoot.addComponent(CanvasLayer);
 
     this.pluginRoot.setParent(this.root);
-    this.rootItem.setParent(this.root);
+    this.sceneRoot.setParent(this.root);
 
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
@@ -368,10 +368,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
+   * @deprecated Please use `sceneRoot` instead
+   */
+  get rootItem () {
+    return this.sceneRoot;
+  }
+
+  /**
    * 所有合成 Item 的根变换
    */
   get transform () {
-    return this.rootItem.transform;
+    return this.sceneRoot.transform;
   }
 
   /**
@@ -385,7 +392,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成中所有元素
    */
   get items (): VFXItem[] {
-    return this.rootItem.getDescendants();
+    return this.sceneRoot.getDescendants();
   }
 
   /**
@@ -414,7 +421,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成的时长
    */
   getDuration () {
-    return this.rootItem.duration;
+    return this.sceneRoot.duration;
   }
 
   /**
@@ -455,7 +462,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param visible - 是否可见
    */
   setVisible (visible: boolean) {
-    this.rootItem.setVisible(visible);
+    this.sceneRoot.setVisible(visible);
   }
 
   /**
@@ -563,7 +570,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   addItem (item: VFXItem) {
-    item.setParent(this.rootItem);
+    item.setParent(this.sceneRoot);
   }
 
   /**
@@ -573,7 +580,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @returns 查询结果中符合类型的第一个组件
    */
   getComponent<T extends Component>(classConstructor: Constructor<T>): T {
-    return this.rootItem.getComponent(classConstructor);
+    return this.sceneRoot.getComponent(classConstructor);
   }
 
   /**
@@ -634,7 +641,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   private shouldDispose () {
-    return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
+    return this.isEnded && this.sceneRoot.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
   /**
@@ -660,8 +667,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       localTime = 0;
     }
 
-    const duration = this.rootItem.duration;
-    const endBehavior = this.rootItem.endBehavior;
+    const duration = this.sceneRoot.duration;
+    const endBehavior = this.sceneRoot.endBehavior;
 
     let isEnded = false;
 
@@ -723,7 +730,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @returns 元素对象
    */
   getItemByName (name: string) {
-    return this.rootItem.find(name);
+    return this.sceneRoot.find(name);
   }
 
   /**
@@ -763,7 +770,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // 所有命中的元素共享同一个 hitPositions 数组，保持与原有行为一致
     const hitPositions: Region['hitPositions'] = [];
 
-    this.rootItem.hitTest(ray, x, y, regions, hitPositions, force, options);
+    this.sceneRoot.hitTest(ray, x, y, regions, hitPositions, force, options);
 
     return regions;
   }
@@ -864,7 +871,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.videos = [];
 
-    this.rootItem.dispose();
+    this.sceneRoot.dispose();
     this.pluginRoot.dispose();
     this.root.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
@@ -914,7 +921,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
       return;
     }
-    this.rootItem.translateByPixel(x, y);
+    this.sceneRoot.translateByPixel(x, y);
   }
 
   /**
@@ -931,48 +938,48 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
       return;
     }
-    this.rootItem.setPositionByPixel(x, y);
+    this.sceneRoot.setPositionByPixel(x, y);
   }
 
   /**
    * 设置合成在 3D 坐标轴上相对当前的位移
    */
   translate (x: number, y: number, z: number) {
-    this.rootItem.translate(x, y, z);
+    this.sceneRoot.translate(x, y, z);
   }
 
   /**
    * 设置合成在 3D 坐标轴上相对原点的位移
    */
   setPosition (x: number, y: number, z: number) {
-    this.rootItem.setPosition(x, y, z);
+    this.sceneRoot.setPosition(x, y, z);
   }
 
   /**
    * 设置合成在 3D 坐标轴上相对当前的旋转（角度）
    */
   rotate (x: number, y: number, z: number) {
-    this.rootItem.rotate(x, y, z);
+    this.sceneRoot.rotate(x, y, z);
   }
 
   /**
    * 设置合成在 3D 坐标轴上的相对原点的旋转（角度）
    */
   setRotation (x: number, y: number, z: number) {
-    this.rootItem.setRotation(x, y, z);
+    this.sceneRoot.setRotation(x, y, z);
   }
   /**
    * 设置合成在 3D 坐标轴上相对当前的缩放
    */
   scale (x: number, y: number, z: number) {
-    this.rootItem.scale(x, y, z);
+    this.sceneRoot.scale(x, y, z);
   }
 
   /**
    * 设置合成在 3D 坐标轴上的缩放
    */
   setScale (x: number, y: number, z: number) {
-    this.rootItem.setScale(x, y, z);
+    this.sceneRoot.setScale(x, y, z);
   }
 
   /**
