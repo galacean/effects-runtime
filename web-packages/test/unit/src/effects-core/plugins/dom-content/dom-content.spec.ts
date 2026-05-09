@@ -5,7 +5,7 @@ import { DomContentComponent, renderDOMToImage, inlineImageSources, inlineFontSo
 const { expect } = chai;
 
 // 本地内联的最小场景 JSON，包含 place_holder sprite item，避免依赖远程 URL
-const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"dom_content_test","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"place_holder","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1}}}],"meta":{"previewSize":[750,1334]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
+const json = JSON.parse('{"compositionId":1,"requires":[],"compositions":[{"name":"dom_content_test","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"place_holder","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1}}}],"meta":{"previewSize":[750,1334]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}');
 
 /** 轮询等待条件满足 */
 async function waitFor (predicate: () => boolean, timeout = 2000, interval = 50): Promise<void> {
