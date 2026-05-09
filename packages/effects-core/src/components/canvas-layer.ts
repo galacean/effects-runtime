@@ -13,6 +13,10 @@ export class CanvasLayer extends Component {
    * 仅包含 parent 为 null 的 CanvasItem；嵌套的子 CanvasItem 不会出现在此列表
    */
   readonly canvasItems: CanvasItem[] = [];
+  /**
+   * CanvasLayer 的绘制层级，数值越小越先绘制。
+   */
+  layer = 0;
 
   /**
    * 注册一个顶层 CanvasItem 到当前层
@@ -33,18 +37,30 @@ export class CanvasLayer extends Component {
     removeItem(this.canvasItems, canvasItem);
   }
 
-  override onDisable (): void {
-    // CanvasLayer 失效时，让其下挂的 CanvasItem 重新查找归属层
-    // 拷贝一份避免迭代过程中数组被修改
-    const items = this.canvasItems.slice();
+  override onEnable (): void {
+    const canvasLayers = this.item.composition?.canvasLayers;
 
-    this.canvasItems.length = 0;
-    for (const canvasItem of items) {
-      canvasItem.updateCanvasLayer();
+    if (canvasLayers && !canvasLayers.includes(this)) {
+      canvasLayers.push(this);
     }
   }
 
-  override onDestroy (): void {
+  override onDisable (): void {
+    this.removeFromComposition();
+    this.refreshCanvasItemsLayer();
+  }
+
+  private removeFromComposition (): void {
+    const canvasLayers = this.item.composition?.canvasLayers;
+
+    if (canvasLayers) {
+      removeItem(canvasLayers, this);
+    }
+  }
+
+  private refreshCanvasItemsLayer (): void {
+    // CanvasLayer 失效时，让其下挂的 CanvasItem 重新查找归属层
+    // 拷贝一份避免迭代过程中数组被修改
     const items = this.canvasItems.slice();
 
     this.canvasItems.length = 0;

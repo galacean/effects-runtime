@@ -216,7 +216,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * @internal
    */
-  canvasLayer: CanvasLayer;
+  readonly canvasLayers: CanvasLayer[] = [];
   /**
    * 销毁状态位
    */
@@ -312,7 +312,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     });
 
     this.pluginRoot = new VFXItem(this.engine);
-    this.canvasLayer = this.pluginRoot.addComponent(CanvasLayer);
+    this.pluginRoot.addComponent(CanvasLayer);
 
     this.pluginRoot.setParent(this.root);
     this.sceneRoot.setParent(this.root);
@@ -602,7 +602,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.setTime(0);
   }
 
-  prepareRender () { }
+  render () {
+    this.renderer.renderRenderFrame(this.renderFrame);
+
+    this.renderCanvasLayers();
+  }
 
   /**
    * 合成更新，针对所有 item 的更新
@@ -629,7 +633,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.sceneTicking.lateUpdate.tick(deltaTimeInMs);
 
     this.updateCamera();
-    this.prepareRender();
 
     if (this.isEnded && !this.isEndCalled) {
       this.isEndCalled = true;
@@ -710,6 +713,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.isEndCalled = false;
       }
     }
+  }
+
+  private renderCanvasLayers () {
+    this.engine.graphics.begin();
+
+    this.canvasLayers.sort((leftLayer, rightLayer) => leftLayer.layer - rightLayer.layer);
+
+    for (const canvasLayer of this.canvasLayers) {
+      canvasLayer.draw();
+    }
+
+    this.engine.graphics.end();
   }
 
   /**

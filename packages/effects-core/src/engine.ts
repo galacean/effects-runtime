@@ -323,13 +323,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderer.clear(this.clearAction);
 
     for (const composition of compositions) {
-      this.renderer.renderRenderFrame(composition.renderFrame);
-
-      this.graphics.begin();
-
-      composition.canvasLayer.draw();
-
-      this.graphics.end();
+      composition.render();
     }
 
     this.renderTargetPool.flush();
