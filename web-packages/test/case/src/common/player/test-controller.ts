@@ -1,7 +1,7 @@
 import type { GLType, PlayerConfig } from '@galacean/effects';
 import { AssetManager, Player } from '@galacean/effects';
 import { TestPlayer } from './test-player';
-import { loadScript } from './utilities';
+import { loadScript } from '../utilities';
 
 const params = new URLSearchParams(location.search);
 const oldVersion = params.get('version') || '2.9.0-alpha.0';  // 旧版 Player 版本
@@ -36,9 +36,11 @@ export class TestController {
     await this.loadOldPlugin('orientation-transformer', oldVersion);
 
     this.renderFramework = renderFramework;
-    if (window.ge.Player) {
+    const legacyGe = window.ge;
+
+    if (legacyGe?.Player && legacyGe?.AssetManager) {
       this.oldPlayer = new TestPlayer(
-        width, height, window.ge.Player, playerOptions, renderFramework, window.ge.AssetManager, true, this.is3DCase
+        width, height, legacyGe.Player, playerOptions, renderFramework, legacyGe.AssetManager, true, this.is3DCase
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework, AssetManager, false, this.is3DCase

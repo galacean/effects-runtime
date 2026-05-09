@@ -1,4 +1,4 @@
-import { SceneInfo } from './scene-info';
+import { SceneInfo } from '../scene-info';
 
 export class PlayerCost {
   sceneList: SceneInfo[] = [];
