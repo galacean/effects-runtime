@@ -62,8 +62,15 @@ export class ImageComparator {
           canvas.width = width;
           canvas.height = height;
           const imageData = ctx.createImageData(width, height);
+          const rowBytes = width * 4;
 
-          imageData.data.set(heatmapData);
+          // WebGL readPixels 的原点在左下角，这里翻转到常规 2D 画布坐标系。
+          for (let y = 0; y < height; y++) {
+            const srcStart = (height - 1 - y) * rowBytes;
+            const dstStart = y * rowBytes;
+
+            imageData.data.set(heatmapData.subarray(srcStart, srcStart + rowBytes), dstStart);
+          }
           ctx.putImageData(imageData, 0, 0);
           this.lastDiffHeatmapDataURL = canvas.toDataURL('image/png');
         }
