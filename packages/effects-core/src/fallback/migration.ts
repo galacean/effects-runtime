@@ -569,7 +569,6 @@ export function version34Migration (json: JSONScene): JSONScene {
       if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
         const geometryData = createGeometryDataByShape(shapeData);
 
-        //@ts-expect-error
         spriteComponentData.geometry = { id: geometryData.id };
         json.geometries.push(geometryData);
       }

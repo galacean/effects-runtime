@@ -82,7 +82,7 @@ export class AnimationClipNode extends PoseNode {
     const currentTimeInSeconds = this.currentTime * this.duration;
 
     for (const eventReference of this.animatable.events) {
-      const eventTime = eventReference.event.startTime;
+      const eventTime = eventReference.data.startTime;
 
       // Check if event falls within the current time interval
       let shouldTrigger = false;
@@ -173,7 +173,7 @@ export class Animatable {
 
     for (const eventInfo of this.animationClip.events) {
       this.events.push({
-        event: eventInfo,
+        data: eventInfo,
         currentTime: 0,
         deltaTime: 0,
       });

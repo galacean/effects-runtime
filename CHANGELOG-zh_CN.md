@@ -8,6 +8,12 @@
 
 ---
 
+## 2.8.12
+
+`2026-04-28`
+
+- Fix: webgl 1 compatibility issues with shape shaders. [#1448](https://github.com/galacean/effects-runtime/pull/1448) @wumaolinmaoan
+
 ## 2.8.11
 
 `2026-04-17`
