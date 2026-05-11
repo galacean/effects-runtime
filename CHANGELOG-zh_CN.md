@@ -55,7 +55,7 @@
 - Refactor: 更新组件数据接口类型定义。 [#1436](https://github.com/galacean/effects-runtime/pull/1436) @wumaolinmaoan
 
 ### Perf
-- Perf: 使用 `gl.finifsh` 替代 `sleep` 提升帧测性能。 [#1420](https://github.com/galacean/effects-runtime/pull/1420) @wumaolinmaoan
+- Perf: 使用 `gl.finish` 替代 `sleep` 提升帧测性能。 [#1420](https://github.com/galacean/effects-runtime/pull/1420) @wumaolinmaoan
 
 ### Fix
 - Fix: 使用 `window.devicePixelRatio` 计算默认 pixel ratio。 [#1382](https://github.com/galacean/effects-runtime/pull/1382) @wumaolinmaoan

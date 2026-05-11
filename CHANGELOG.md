@@ -20,9 +20,9 @@
   - Refactor: remove the dependency on `fontscale` in text layout calculations. [#1431](https://github.com/galacean/effects-runtime/pull/1431) @wumaolinmaoan
   - Refactor: improve RTL text rendering and line-breaking logic. [#1439](https://github.com/galacean/effects-runtime/pull/1439) @ChengYi996
   - Fix: text font family unit test. [#1366](https://github.com/galacean/effects-runtime/pull/1366) @wumaolinmaoan
-  - Fix: rich text warp enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
+  - Fix: rich text wrap enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
   - Fix: text item shadow rendering and rich text display overflow. [#1399](https://github.com/galacean/effects-runtime/pull/1399) @wumaolinmaoan
-  - Fix: rich text visible and display over flow mode text clipping issue. [#1405](https://github.com/galacean/effects-runtime/pull/1405) @wumaolinmaoan
+  - Fix: rich text visible and display overflow mode text clipping issue. [#1405](https://github.com/galacean/effects-runtime/pull/1405) @wumaolinmaoan
   - Fix: text component auto height is invalid. [#1421](https://github.com/galacean/effects-runtime/pull/1421) @wumaolinmaoan
   - Fix: text outline width issue. [#1460](https://github.com/galacean/effects-runtime/pull/1460) @wumaolinmaoan
 - Feat: add animation event. [#1349](https://github.com/galacean/effects-runtime/pull/1349) @wumaolinmaoan
@@ -47,18 +47,18 @@
 ### Refactor
 - Refactor: `composition` component set children render order using `track` order. [#1338](https://github.com/galacean/effects-runtime/pull/1338) @wumaolinmaoan
 - Refactor: particle track time synchronization logic. [#1381](https://github.com/galacean/effects-runtime/pull/1381) @wumaolinmaoan
-  - Refactor: particle system renderer create in particle systerm `onStart`. [#1425](https://github.com/galacean/effects-runtime/pull/1425) @wumaolinmaoan
+  - Refactor: particle system renderer create in particle system `onStart`. [#1425](https://github.com/galacean/effects-runtime/pull/1425) @wumaolinmaoan
 - Refactor: overhaul `ktx2` plugin with robustness fixes and perf improvements. [#1434](https://github.com/galacean/effects-runtime/pull/1434) @ChengYi996
   - Fix: register `KTX2 loader` before loading compressed texture in test. [#1456](https://github.com/galacean/effects-runtime/pull/1456) @ChengYi996
 - Refactor: merge `GLRenderer` and `GLMaterial` into `effects-core`. [#1437](https://github.com/galacean/effects-runtime/pull/1437) @wumaolinmaoan
 - Refactor: update type definitions for component data interfaces. [#1436](https://github.com/galacean/effects-runtime/pull/1436) @wumaolinmaoan
 
 ### Perf
-- Perf: use `gl.finifsh` instead of `sleep` to improve frame test performance. [#1420](https://github.com/galacean/effects-runtime/pull/1420) @wumaolinmaoan
+- Perf: use `gl.finish` instead of `sleep` to improve frame test performance. [#1420](https://github.com/galacean/effects-runtime/pull/1420) @wumaolinmaoan
 
 ### Fix
 - Fix: use `window.devicePixelRatio` to calculate default pixel ratio. [#1382](https://github.com/galacean/effects-runtime/pull/1382) @wumaolinmaoan
-  - Fix: remove auto fps downgrade for Android/HarmonyOS and unify defaul…. [#1423](https://github.com/galacean/effects-runtime/pull/1423) @chenmo0204
+  - Fix: remove auto fps downgrade for Android/HarmonyOS and unify default behavior. [#1423](https://github.com/galacean/effects-runtime/pull/1423) @chenmo0204
 - Fix: performance issues caused by forward time intervals. [#1449](https://github.com/galacean/effects-runtime/pull/1449) @wumaolinmaoan
 - Fix: editor gizmo null frame buffer setting issue. [#1454](https://github.com/galacean/effects-runtime/pull/1454) @wumaolinmaoan
 - Fix: item transform animation did not continue playing when the end behavior is forward. [#1458](https://github.com/galacean/effects-runtime/pull/1458) @wumaolinmaoan
