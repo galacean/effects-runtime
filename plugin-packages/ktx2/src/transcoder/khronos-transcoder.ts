@@ -68,15 +68,14 @@ export class KhronosTranscoder extends TextureTranscoder {
 
     // Worker 模式
     const transcoderWasm = await uastcAstcWasm();
-    const funcCode = TranscodeWorkerCode.toString();
-    const funcBody = funcCode.substring(funcCode.indexOf('{') + 1, funcCode.lastIndexOf('}'));
 
-    // 移除主线程的 return 语句，添加 Worker 消息处理
-    const returnIndex = funcBody.lastIndexOf('return {');
-    const workerCode = funcBody.substring(0, returnIndex);
+    // 将 TranscodeWorkerCode 整体序列化
+    const workerEntryCode = `
+      (${TranscodeWorkerCode.toString()})();
+      `;
 
     const workerURL = URL.createObjectURL(
-      new Blob([workerCode], {
+      new Blob([workerEntryCode], {
         type: 'application/javascript',
       })
     );
@@ -86,12 +85,16 @@ export class KhronosTranscoder extends TextureTranscoder {
     return this.createTranscodePool(workerURL, transcoderWasm);
   }
 
-  async transcode (ktx2Container: KTX2Container): Promise<TranscodeResult> {
+  async transcode (ktx2Container: KTX2Container, neededLevelCount?: number): Promise<TranscodeResult> {
     const needZstd = ktx2Container.supercompressionScheme === SupercompressionScheme.Zstd;
-    const levelCount = ktx2Container.levels.length;
-    const faceCount = ktx2Container.faceCount;
+    const availableLevelCount = ktx2Container.levels.length;
+    const levelCount = neededLevelCount ?? availableLevelCount;
 
-    // 准备编码数据
+    if (levelCount < 1 || levelCount > availableLevelCount) {
+      throw new Error(`neededLevelCount ${levelCount} is out of range [1, ${availableLevelCount}].`);
+    }
+    const faceCount = ktx2Container.faceCount;
+    // 准备编码数据，只处理需要的 level，避免转码后丢弃多余结果
     const encodedData: EncodedData[][] = new Array<EncodedData[]>(faceCount);
 
     for (let faceIndex = 0; faceIndex < faceCount; faceIndex++) {
@@ -124,6 +127,10 @@ export class KhronosTranscoder extends TextureTranscoder {
       faces = await this.mainThreadTranscoder.transcode(encodedData, needZstd, zstddecWasmModule);
     } else {
       // WebWorker 模式
+      if (!this.transcodeWorkerPool) {
+        throw new Error('KhronosTranscoder: transcodeWorkerPool is not initialized.');
+      }
+
       const postMessageData: KhronosTranscoderMessage = {
         type: 'transcode',
         format: 0,

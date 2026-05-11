@@ -380,7 +380,7 @@ export class ParameterReferenceToolsNode extends FlowToolsNode {
   //     return null;
   //   }
 
-  protected override PreCopy (): void {
+  override PreCopy (): void {
     this.UpdateCachedParameterData();
   }
 }

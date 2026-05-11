@@ -1,5 +1,4 @@
 import { TextureSourceType, RenderPass } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
 import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -19,7 +18,7 @@ describe('webgl/renderer', () => {
 
   it('safe to call destroy', async () => {
     const engine = new GLEngine(glCanvas, { glType: 'webgl' });
-    const renderer = engine.renderer as GLRenderer;
+    const renderer = engine.renderer;
     const gl = (renderer.engine as GLEngine).gl;
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
@@ -32,7 +31,8 @@ describe('webgl/renderer', () => {
     gl.getExtension('WEBGL_lose_context')?.loseContext();
 
     window.setTimeout(() => {
-      expect(renderer.isDisposed).to.be.true;
+      //@ts-expect-error
+      expect(renderer.disposed).to.be.true;
       texture.dispose();
       // @ts-expect-error protected
       expect(texture.destroyed).to.be.true;

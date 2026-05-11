@@ -18,6 +18,12 @@ import { moveToPointWidthFixDistance } from './util';
 import { WireframeGeometryType, createModeWireframe, destroyWireframeMesh, updateWireframeMesh } from './wireframe';
 import { GeometryType } from './geometry';
 
+// TODO: Move to spec
+interface GizmoComponentData extends spec.ComponentData {
+  options: GizmoVFXItemOptions,
+  transform?: Record<string, unknown>,
+}
+
 const editorRenderPassName = 'editor-gizmo';
 const frontRenderPassName = 'front-gizmo';
 const behindRenderPassName = 'behind-gizmo';
@@ -564,7 +570,7 @@ export class GizmoComponent extends RendererComponent {
     this.targetItem = item;
   }
 
-  override fromData (data: any): void {
+  override fromData (data: GizmoComponentData): void {
     super.fromData(data);
     const item = this.item;
 
@@ -572,7 +578,7 @@ export class GizmoComponent extends RendererComponent {
     const {
       target, subType, renderMode, size, depthTest,
       color = [255, 255, 255],
-    } = data.options as GizmoVFXItemOptions;
+    } = data.options;
 
     this.target = target;
     this.subType = subType;
@@ -649,6 +655,7 @@ export class GizmoComponent extends RendererComponent {
 
       return {
         type: HitTestType.custom,
+        clipMasks:this.frameClipMasks,
         /**
          * 自定义射线检测算法
          * @param ray 射线参数
@@ -876,10 +883,6 @@ class DrawGizmoBehindPass extends RenderPass {
     renderer.clear({ depthAction: TextureLoadAction.clear });
     renderer.renderMeshes(this.meshes);
   }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
-  }
 }
 
 class DrawGizmoFrontPass extends RenderPass {
@@ -892,10 +895,6 @@ class DrawGizmoFrontPass extends RenderPass {
   override execute (renderer: Renderer): void {
     renderer.renderMeshes(this.meshes);
   }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
-  }
 }
 
 class DrawGizmoEditorPass extends RenderPass {
@@ -907,9 +906,5 @@ class DrawGizmoEditorPass extends RenderPass {
 
   override execute (renderer: Renderer): void {
     renderer.renderMeshes(this.meshes);
-  }
-
-  override configure (renderer: Renderer): void {
-    renderer.setFramebuffer(this.framebuffer);
   }
 }

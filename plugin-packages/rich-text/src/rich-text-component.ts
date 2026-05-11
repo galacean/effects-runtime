@@ -10,8 +10,7 @@ import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
-  RichVerticalAlignStrategy, OverflowResult,
-  HorizontalAlignResult, VerticalAlignResult,
+  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 
@@ -376,6 +375,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
+
+    this.updateStrategies();
 
     // 解析富文本
     this.generateTextProgram(this.text);

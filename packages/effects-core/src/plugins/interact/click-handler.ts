@@ -3,6 +3,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type * as spec from '@galacean/effects-specification';
 import type { VFXItem } from '../../vfx-item';
 import type { Composition } from '../../composition';
+import type { Maskable } from '../../material';
 
 export enum HitTestType {
   triangle = 1,
@@ -33,6 +34,7 @@ export interface HitTestTriangleParams {
   type: HitTestType.triangle,
   triangles: TriangleLike[],
   backfaceCulling?: boolean,
+  clipMasks: Maskable[],
   behavior?: spec.InteractBehavior,
 }
 
@@ -40,6 +42,7 @@ export interface HitTestBoxParams {
   type: HitTestType.box,
   center: Vector3,
   size: Vector3,
+  clipMasks: Maskable[],
   behavior?: spec.InteractBehavior,
 }
 
@@ -47,12 +50,14 @@ export interface HitTestSphereParams {
   type: HitTestType.sphere,
   center: Vector3,
   radius: number,
+  clipMasks: Maskable[],
   behavior?: spec.InteractBehavior,
 }
 
 export interface HitTestCustomParams {
   type: HitTestType.custom,
   collect (ray: Ray, pointInCanvas: Vector2): Vector3[] | void,
+  clipMasks: Maskable[],
   behavior?: spec.InteractBehavior,
 }
 

@@ -1,9 +1,9 @@
 import type {
+  Renderer,
   Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData, Texture2DSourceOptionsImage,
   Texture2DSourceOptionsImageMipmaps, TextureCubeSourceOptionsImage, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
 import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 import { registerKTX2Loader } from '@galacean/effects-plugin-ktx2';
@@ -11,7 +11,7 @@ const COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93b0;
 const { assert, expect } = chai;
 
 describe('webgl/gl-texture', () => {
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let canvas: HTMLCanvasElement;
   let engine: GLEngine;
@@ -19,8 +19,9 @@ describe('webgl/gl-texture', () => {
   before(() => {
     canvas = document.createElement('canvas');
     engine = new GLEngine(canvas, { glType: 'webgl' });
-    renderer = engine.renderer as GLRenderer;
-    gl = renderer.context.gl as WebGLRenderingContext;
+    renderer = engine.renderer;
+    gl = engine.context.gl as WebGLRenderingContext;
+    registerKTX2Loader();
   });
 
   after(() => {
@@ -690,16 +691,16 @@ function byteLengthForASTC (
 describe('webgl2/gl-texture', () => {
   let canvas: HTMLCanvasElement;
   let gl: WebGLRenderingContext;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let imageHTMLElement: HTMLImageElement;
   let engine: GLEngine;
 
   before(() => {
     canvas = document.createElement('canvas');
     engine = new GLEngine(canvas, { glType: 'webgl2' });
-    renderer = engine.renderer as GLRenderer;
+    renderer = engine.renderer;
 
-    gl = renderer.gl;
+    gl = engine.gl;
     imageHTMLElement = document.createElement('img');
     imageHTMLElement.src = '../../../assets/colors.png';
   });

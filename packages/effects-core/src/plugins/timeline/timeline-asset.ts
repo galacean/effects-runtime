@@ -58,9 +58,12 @@ export class TimelineAsset extends EffectsObject {
 }
 
 export class TimelineInstance {
-  private time = 0;
+  /**
+   * @internal
+   */
+  masterTrackInstances: TrackInstance[] = [];
+
   private clips: RuntimeClip[] = [];
-  private masterTrackInstances: TrackInstance[] = [];
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
     const sceneBindingMap: Record<string, VFXItem> = {};
@@ -79,17 +82,7 @@ export class TimelineInstance {
     this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
   }
 
-  setTime (time: number) {
-    this.time = time;
-  }
-
-  getTime () {
-    return this.time;
-  }
-
-  evaluate (deltaTime: number) {
-    const time = this.getTime();
-
+  evaluate (time: number, deltaTime: number) {
     // TODO search active clips
 
     for (const clip of this.clips) {

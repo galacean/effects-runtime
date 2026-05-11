@@ -1,3 +1,4 @@
+import type * as spec from '@galacean/effects-specification';
 import { serialize } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
@@ -100,6 +101,13 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * 生命周期函数，每帧调用一次，在合成渲染之前调用
+   */
+  onPreRender (): void {
+    // OVERRIDE
+  }
+
+  /**
    * 生命周期函数，在组件销毁时调用
    */
   onDestroy () {
@@ -110,6 +118,13 @@ export abstract class Component extends EffectsObject {
    * 当属性被动画修改时调用
    */
   onApplyAnimationProperties () {
+    // OVERRIDE
+  }
+
+  /**
+   * 当父级或间接父级发生改变时调用
+   */
+  onParentChanged () {
     // OVERRIDE
   }
 
@@ -149,7 +164,7 @@ export abstract class Component extends EffectsObject {
     }
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.ComponentData): void {
     super.fromData(data);
   }
 

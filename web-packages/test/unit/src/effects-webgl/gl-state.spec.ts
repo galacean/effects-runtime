@@ -1,11 +1,11 @@
-import type { GLRenderer } from '@galacean/effects-webgl';
+import type { Renderer } from '@galacean/effects-core';
 import { GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
 describe('webgl/gl-state', () => {
   let canvas: HTMLCanvasElement;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let engine: GLEngine;
 
@@ -13,7 +13,7 @@ describe('webgl/gl-state', () => {
     canvas = document.createElement('canvas');
     gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
     engine = new GLEngine(canvas, { glType: 'webgl2' });
-    renderer = engine.renderer as GLRenderer;
+    renderer = engine.renderer;
   });
 
   after(() => {
@@ -46,7 +46,7 @@ describe('webgl/gl-state', () => {
     //end framebuffer
     //clear
     gl.clearColor(1, 1, 1, 1);
-    state.clear(gl.COLOR_BUFFER_BIT);
+    state.gl.clear(gl.COLOR_BUFFER_BIT);
     expect(gl.getParameter(gl.COLOR_CLEAR_VALUE)).deep.equals(new Float32Array([1, 1, 1, 1]));
     //clear depth
     state.clearDepth(1);

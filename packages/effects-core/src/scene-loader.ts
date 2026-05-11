@@ -1,4 +1,3 @@
-import * as spec from '@galacean/effects-specification';
 import { AssetManager } from './asset-manager';
 import { Composition } from './composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
@@ -7,6 +6,11 @@ import type { Scene, SceneLoadOptions } from './scene';
 import { logger } from './utils';
 import { PluginSystem } from './plugin-system';
 
+/**
+ * @hidden
+ * Internal utility.
+ * Not part of the public API — do not rely on this in your code.
+ */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
     const last = performance.now();
@@ -27,7 +31,6 @@ export class SceneLoader {
 
     engine.assetService.prepareAssets(loadedScene, loadedScene.assets);
     engine.assetService.updateTextVariables(loadedScene, options.variables);
-    engine.assetService.initializeTexture(loadedScene);
 
     const composition = this.createComposition(loadedScene, engine, options);
 
@@ -35,7 +38,7 @@ export class SceneLoader {
     const compileStart = performance.now();
 
     await new Promise(resolve => {
-      engine.renderer.getShaderLibrary()?.compileAllShaders(() => resolve(null));
+      engine.getShaderLibrary()?.compileAllShaders(() => resolve(null));
     });
 
     const compileTime = performance.now() - compileStart;
@@ -54,19 +57,10 @@ export class SceneLoader {
   }
 
   private static createComposition (scene: Scene, engine: Engine, options: SceneLoadOptions = {}): Composition {
-    const renderer = engine.renderer;
-    const composition = new Composition({
+    const composition = new Composition(engine, {
       ...options,
-      renderer,
-      width: renderer.getWidth(),
-      height: renderer.getHeight(),
       event: engine.eventSystem,
     }, scene);
-
-    // 中低端设备降帧到 30fps·
-    if (engine.ticker && options.renderLevel === spec.RenderLevel.B) {
-      engine.ticker.setFPS(Math.min(engine.ticker.getFPS(), 30));
-    }
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
     if (engine.env !== PLAYER_OPTIONS_ENV_EDITOR) {

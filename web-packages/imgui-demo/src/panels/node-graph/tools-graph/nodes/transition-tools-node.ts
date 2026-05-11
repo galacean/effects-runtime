@@ -145,6 +145,10 @@ export class TransitionConduitToolsNode extends NodeGraph.TransitionConduitNode 
     this.CreateSecondaryGraph<FlowGraph>(FlowGraph, GraphType.TransitionConduit);
   }
 
+  override GetNavigationTarget (): NodeGraph.BaseGraph | null {
+    return this.GetSecondaryGraph();
+  }
+
   override HasTransitions (): boolean {
     return !(this.GetSecondaryGraph()!.FindAllNodesOfType<TransitionToolsNode>(TransitionToolsNode).length === 0);
   }

@@ -1,6 +1,6 @@
 //@ts-nocheck
-import { glContext, Camera, RenderFrame, RenderPass, Mesh } from '@galacean/effects-core';
-import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
+import { glContext, Camera, RenderFrame, RenderPass, Mesh, Material } from '@galacean/effects-core';
+import { GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
@@ -30,7 +30,7 @@ describe('webgl/gl-geometry', () => {
     canvas = document.createElement('canvas');
     engine = new GLEngine(canvas, { glType: 'webgl2' });
     renderer = engine.renderer;
-    glRenderer = renderer;
+    glRenderer = engine;
     gl = glRenderer.gl;
     geometry = new GLGeometry(engine, option);
   });
@@ -537,14 +537,14 @@ describe('webgl/gl-geometry', () => {
 
   // drawCount小于0时不会触发drawCall
   it('geometry with drawCount < 0 would not trigger draw call', function () {
-    const ret = createMesh(glRenderer, -2);
-    const pass = new RenderPass(glRenderer);
+    const ret = createMesh(renderer, -2);
+    const pass = new RenderPass(renderer);
 
     pass.addMesh(ret.mesh);
     ret.geom.drawCount = -1;
     const frame = new RenderFrame({
       renderer,
-      camera: new Camera(),
+      camera: new Camera(renderer.engine),
       renderPasses: [pass],
     });
     const d = gl.drawElements;
@@ -559,12 +559,12 @@ describe('webgl/gl-geometry', () => {
   // drawCount等于0时不会触发drawCall
   it('geometry with drawCount == 0 would not invoke draw call', function () {
     const ret = createMesh(renderer, 0);
-    const pass = new RenderPass(glRenderer);
+    const pass = new RenderPass(renderer);
 
     pass.addMesh(ret.mesh);
     const frame = new RenderFrame({
       renderer,
-      camera: new Camera(),
+      camera: new Camera(renderer.engine),
       renderPasses: [pass],
     });
     const d = gl.drawElements;
@@ -593,7 +593,7 @@ void main() {
   outColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 `;
-  const mtl = new GLMaterial(
+  const mtl = new Material(
     engine,
     {
       shader: {

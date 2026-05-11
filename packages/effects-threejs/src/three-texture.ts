@@ -1,7 +1,7 @@
 import type {
   Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsFramebuffer, Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions,
+  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions, spec,
 } from '@galacean/effects-core';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -126,10 +126,10 @@ export class ThreeTexture extends Texture {
    * 通过图层设置创建贴图
    * @param data - 图层设置
    */
-  override fromData (data: any): void {
+  override fromData (data: spec.EffectsObjectData): void {
     super.fromData(data);
 
-    this.texture = this.createTextureByType(data);
+    this.texture = this.createTextureByType(data as unknown as TextureSourceOptions);
     this.texture.needsUpdate = true;
   }
 

@@ -1,13 +1,12 @@
-import type { Engine, ShaderWithSource } from '@galacean/effects-core';
+import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
 import { GLEngine } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
 describe('webgl/gl-shader-library', () => {
-  let rendererGL1: GLRenderer;
-  let rendererGL2: GLRenderer;
+  let rendererGL1: Renderer;
+  let rendererGL2: Renderer;
   let webglCanvas: HTMLCanvasElement;
   let webgl2Canvas: HTMLCanvasElement;
   let engine1: Engine;
@@ -34,8 +33,8 @@ describe('webgl/gl-shader-library', () => {
     const glEngine1 = new GLEngine(webglCanvas, { glType: 'webgl' });
     const glEngine2 = new GLEngine(webgl2Canvas, { glType: 'webgl2' });
 
-    rendererGL1 = glEngine1.renderer as GLRenderer;
-    rendererGL2 = glEngine2.renderer as GLRenderer;
+    rendererGL1 = glEngine1.renderer;
+    rendererGL2 = glEngine2.renderer;
     engine1 = glEngine1;
     engine2 = glEngine2;
   });
@@ -171,7 +170,7 @@ describe('webgl/gl-shader-library', () => {
   it('compile all shader async', function (done) {
     const canvas = document.createElement('canvas');
     const engine = new GLEngine(canvas, { glType: 'webgl2' });
-    const renderer = engine.renderer as GLRenderer;
+    const renderer = engine.renderer;
     const shaderLib = engine.shaderLibrary;
 
     shaderLib.addShader({
@@ -195,7 +194,7 @@ describe('webgl/gl-shader-library', () => {
   it('compile all shader async work with no extension', function (done) {
     const canvas = document.createElement('canvas');
     const engine = new GLEngine(canvas, { glType: 'webgl2' });
-    const renderer = engine.renderer as GLRenderer;
+    const renderer = engine.renderer;
     const shaderLib = engine.shaderLibrary;
 
     shaderLib.addShader({

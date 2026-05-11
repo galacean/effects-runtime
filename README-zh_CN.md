@@ -69,4 +69,13 @@ player.loadScene('./demo.json');
 - 其他链接:
   - [本地开发](docs/developing.md)
 
+## 第三方声明
+
+本项目集成了 [Spine Runtimes](https://esotericsoftware.com/) 以支持 2D 骨骼动画。根据 Spine 官方许可协议，使用本项目中的 `@galacean/effects-plugin-spine` 插件需满足以下条件：
+
+- **强制要求**：每位使用者必须持有有效的 Spine Editor 许可证。
+- **责任声明**：Galacean Effects 不涵盖用户的 Spine 授权费用，请确保您已遵守 Esoteric Software 的许可条款。
+
+详情请查阅：[Spine 运行时许可协议](https://esotericsoftware.com/spine-editor-license)
+
 

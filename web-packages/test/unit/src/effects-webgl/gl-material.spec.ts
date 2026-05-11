@@ -1,17 +1,17 @@
-import type { Engine, ShaderWithSource } from '@galacean/effects-core';
+﻿import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
 import {
   RenderFrame, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
-  GLSLVersion,
+  GLSLVersion, Material,
 } from '@galacean/effects-core';
-import type { GLTexture, GLShaderVariant, GLRenderer } from '@galacean/effects-webgl';
-import { GLEngine, GLMaterial, GLGeometry } from '@galacean/effects-webgl';
+import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
 const { expect, assert } = chai;
 
 describe('webgl/gl-material', () => {
   let canvas: HTMLCanvasElement;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;
   let engine: Engine;
   const vs = `attribute vec2 aPosition;
@@ -31,8 +31,8 @@ describe('webgl/gl-material', () => {
     canvas = document.createElement('canvas');
     const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
 
-    renderer = glEngine.renderer as GLRenderer;
-    gl = renderer.gl;
+    renderer = glEngine.renderer;
+    gl = glEngine.gl;
     engine = glEngine;
   });
 
@@ -55,7 +55,7 @@ describe('webgl/gl-material', () => {
 
   // 使用自定义的material states
   it('material states', () => {
-    const material = generateGLMaterial(
+    const material = generateMaterial(
       engine,
       shader,
       {
@@ -108,14 +108,14 @@ describe('webgl/gl-material', () => {
 
   // blending关闭 m
   it('blending disabled', () => {
-    const material = generateGLMaterial(engine, shader, { blending: false }, renderer);
+    const material = generateMaterial(engine, shader, { blending: false }, renderer);
 
     expect(gl.isEnabled(glContext.BLEND)).to.eql(false);
   });
 
   // blending开启的默认值
   it('blending enabled with default parameters', () => {
-    const material = generateGLMaterial(engine, shader, { blending: true }, renderer);
+    const material = generateMaterial(engine, shader, { blending: true }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
 
@@ -131,7 +131,7 @@ describe('webgl/gl-material', () => {
 
   // blending使用自定义参数
   it('blending enabled with custom parameters', () => {
-    generateGLMaterial(
+    generateMaterial(
       engine,
       shader,
       {
@@ -155,7 +155,7 @@ describe('webgl/gl-material', () => {
 
   // 关闭cullface
   it('cullFace disabled', () => {
-    const material = generateGLMaterial(engine, shader, { cullFaceEnabled: false }, renderer);
+    const material = generateMaterial(engine, shader, { cullFaceEnabled: false }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(false);
@@ -163,7 +163,7 @@ describe('webgl/gl-material', () => {
 
   // 开启cullface 使用默认参数
   it('cullFace enable with default parameters', () => {
-    const material = generateGLMaterial(engine, shader, { cullFaceEnabled: true }, renderer);
+    const material = generateMaterial(engine, shader, { cullFaceEnabled: true }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(true);
@@ -173,7 +173,7 @@ describe('webgl/gl-material', () => {
 
   // 开启cullface 使用自定义参数
   it('cullFace enable disabled with custom parameters', () => {
-    const material = generateGLMaterial(engine, shader, { cullFaceEnabled: true, cullFace: glContext.FRONT_AND_BACK, frontFace: glContext.CW }, renderer);
+    const material = generateMaterial(engine, shader, { cullFaceEnabled: true, cullFace: glContext.FRONT_AND_BACK, frontFace: glContext.CW }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(true);
@@ -183,14 +183,14 @@ describe('webgl/gl-material', () => {
 
   // 关闭depthTest
   it('depthTest disable', () => {
-    generateGLMaterial(engine, shader, { depthTest: false }, renderer);
+    generateMaterial(engine, shader, { depthTest: false }, renderer);
 
     expect(gl.isEnabled(gl.DEPTH_TEST)).to.eql(false);
   });
 
   // 开启depthTest 使用默认参数
   it('depthTest enable with default parameters', () => {
-    const material = generateGLMaterial(engine, shader, { depthTest: true }, renderer);
+    const material = generateMaterial(engine, shader, { depthTest: true }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.DEPTH_TEST)).to.eql(true);
@@ -201,7 +201,7 @@ describe('webgl/gl-material', () => {
 
   // 开启depthTest 使用自定义参数
   it('depthTest enable with custom parameters', () => {
-    const material = generateGLMaterial(
+    const material = generateMaterial(
       engine,
       shader,
       {
@@ -220,7 +220,7 @@ describe('webgl/gl-material', () => {
 
   // 关闭stencilTest
   it('stencilTest enable', () => {
-    const material = generateGLMaterial(engine, shader, { stencilTest: false }, renderer);
+    const material = generateMaterial(engine, shader, { stencilTest: false }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.STENCIL_TEST)).to.eql(false);
@@ -228,7 +228,7 @@ describe('webgl/gl-material', () => {
 
   // 开启stencilTest 使用默认参数
   it('stencilTest enable with default parameters', () => {
-    const material = generateGLMaterial(engine, shader, { stencilTest: true }, renderer);
+    const material = generateMaterial(engine, shader, { stencilTest: true }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.STENCIL_TEST)).to.eql(true);
@@ -253,7 +253,7 @@ describe('webgl/gl-material', () => {
 
   // 开启stencilTest 使用自定义的mack,func,op参数
   it('stencilTest enable with custom parameters(mack,func,op)', () => {
-    const material = generateGLMaterial(
+    const material = generateMaterial(
       engine,
       shader,
       {
@@ -289,7 +289,7 @@ describe('webgl/gl-material', () => {
 
   // 开启stencilTest 分别设置mack,func,op参数
   it('stencilTest disabled with custom parameters(mack,func,op hava back/front)', () => {
-    const material = generateGLMaterial(
+    const material = generateMaterial(
       engine,
       shader,
       {
@@ -328,7 +328,7 @@ describe('webgl/gl-material', () => {
 
   // 关闭sampleAlphaToCoverage
   it('sampleAlphaToCoverage disable', () => {
-    const material = generateGLMaterial(engine, shader, { sampleAlphaToCoverage: false }, renderer);
+    const material = generateMaterial(engine, shader, { sampleAlphaToCoverage: false }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.SAMPLE_ALPHA_TO_COVERAGE)).to.eql(false);
@@ -336,7 +336,7 @@ describe('webgl/gl-material', () => {
 
   // 开启sampleAlphaToCoverage
   it('sampleAlphaToCoverage enable', () => {
-    const material = generateGLMaterial(engine, shader, { sampleAlphaToCoverage: true }, renderer);
+    const material = generateMaterial(engine, shader, { sampleAlphaToCoverage: true }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.isEnabled(gl.SAMPLE_ALPHA_TO_COVERAGE)).to.eql(true);
@@ -344,7 +344,7 @@ describe('webgl/gl-material', () => {
 
   // 使用默认的colorMask相关参数
   it('colorMask with default parameters', () => {
-    const material = generateGLMaterial(engine, shader, {}, renderer);
+    const material = generateMaterial(engine, shader, {}, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equals([true, true, true, true]);
@@ -352,7 +352,7 @@ describe('webgl/gl-material', () => {
 
   // 使用自定义的colorMask相关参数
   it('colorMask with custom parameters', () => {
-    const material = generateGLMaterial(engine, shader, { colorMask: false }, renderer);
+    const material = generateMaterial(engine, shader, { colorMask: false }, renderer);
 
     material.setupStates(renderer.engine as GLEngine);
     expect(gl.getParameter(gl.COLOR_WRITEMASK)).to.deep.equals([false, false, false, false]);
@@ -361,7 +361,7 @@ describe('webgl/gl-material', () => {
   // 销毁GLMaterial以及对应的texture
   it('test destroy GLMaterial with texture', () => {
     const texture = generateTexture(engine);
-    const material = generateGLMaterial(engine, shader, {}, renderer);
+    const material = generateMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
     expect(material.getTexture('u_Tex')).to.deep.equal(texture);
@@ -375,7 +375,7 @@ describe('webgl/gl-material', () => {
   // 销毁GLMaterial,使用默认的销毁参数
   it('test destroy GLMaterial with default destroy params', () => {
     const texture = generateTexture(engine);
-    const material = generateGLMaterial(engine, shader, {}, renderer);
+    const material = generateMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
     material.initialize();
@@ -390,7 +390,7 @@ describe('webgl/gl-material', () => {
   // 销毁GLMaterial和对应的dataBlock, 保留texture
   it('test destroy GLMaterial with texture keep and dataBlock destroy', () => {
     const texture = generateTexture(engine);
-    const material = generateGLMaterial(engine, shader, {}, renderer);
+    const material = generateMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
     material.initialize();
@@ -405,7 +405,7 @@ describe('webgl/gl-material', () => {
   // 销毁GLMaterial,保留texture和dataBlock
   it('test destroy GLMaterial with texture and dataBlock keep', () => {
     const texture = generateTexture(engine);
-    const material = generateGLMaterial(engine, shader, {}, renderer);
+    const material = generateMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
     material.initialize();
@@ -418,7 +418,7 @@ describe('webgl/gl-material', () => {
 
   // material创建后使用gl进行初始化
   it('material initialize with glRenderer', async () => {
-    const material = new GLMaterial(engine, {
+    const material = new Material(engine, {
       shader: {
         vertex: vs,
         fragment: fs,
@@ -536,7 +536,7 @@ describe('webgl/gl-material', () => {
       engine,
       {
         name: 'mesh1',
-        material: new GLMaterial(
+        material: new Material(
           engine,
           {
             shader: { vertex: vs, fragment: fs, glslVersion: GLSLVersion.GLSL3 },
@@ -592,7 +592,7 @@ describe('webgl/gl-material', () => {
     mesh.geometry.initialize();
     mesh.render(renderer);
 
-    const material = mesh.material as GLMaterial;
+    const material = mesh.material;
     const program = (material.shaderVariant as GLShaderVariant).program.program;
     const loc = gl.getUniformLocation(program, 'u_pos')!;
     const valData = gl.getUniform(program, loc);
@@ -1537,7 +1537,7 @@ function generateMesh (
     engine,
     {
       name: meshName,
-      material: new GLMaterial(
+      material: new Material(
         engine,
         {
           shader: {
@@ -1669,13 +1669,13 @@ function generateTexture (engine: Engine) {
     type: glContext.UNSIGNED_BYTE,
   });
 }
-function generateGLMaterial (
+function generateMaterial (
   engine: Engine,
   shader: ShaderWithSource,
   states: Record<string, any>,
-  renderer: GLRenderer,
+  renderer: Renderer,
 ) {
-  const material = new GLMaterial(engine, { shader });
+  const material = new Material(engine, { shader });
 
   material.sampleAlphaToCoverage = !!states.sampleAlphaToCoverage;
   material.depthTest = states.depthTest;

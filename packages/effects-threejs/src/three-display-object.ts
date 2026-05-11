@@ -108,7 +108,6 @@ export class ThreeDisplayObject extends THREE.Group {
         PluginSystem.onAssetsLoadFinish(scene, assetManager.options, engine);
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
-        this.assetService.initializeTexture(scene);
 
         const composition = this.createComposition(scene, opts);
 
@@ -141,11 +140,8 @@ export class ThreeDisplayObject extends THREE.Group {
     scene: Scene,
     options: SceneLoadOptions = {},
   ): Composition {
-    const composition = new ThreeComposition({
+    const composition = new ThreeComposition(this.engine, {
       ...options,
-      width: this.width,
-      height: this.height,
-      renderer: this.renderer,
       onItemMessage: (message: MessageItem) => {
         this.dispatchEvent({ type: 'message', message });
       },

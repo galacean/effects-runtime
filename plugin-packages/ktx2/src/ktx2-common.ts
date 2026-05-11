@@ -1,6 +1,5 @@
 /**
  * KTX2 transcode target format.
- * if you modify this file, please also modify KTX2TargetFormat in binomial-workercode.ts
  */
 export enum KTX2TargetFormat {
   /** RGB(A) compressed format, 128 bits per 4x4 pixel block. */

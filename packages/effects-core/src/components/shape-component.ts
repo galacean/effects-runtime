@@ -1,26 +1,23 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { Maskable, MaterialProps } from '../material';
-import { MaskMode, MaskProcessor, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
-import { Material, setMaskMode } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams, Polygon, ShapePath, StrokeAttributes } from '../plugins';
-import { MeshCollider } from '../plugins';
-import { GraphicsPath, StarType, buildLine } from '../plugins';
+import { Material, MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
-import type { GradientValue } from '../math';
-import { createValueGetter } from '../math';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
+import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture/texture';
 import { glContext } from '../gl';
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import vert from '../plugins/shape/shaders/shape.vert.glsl';
-import frag from '../plugins/shape/shaders/shape.frag.glsl';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import vert from '../math/shape/shaders/shape.vert.glsl';
+import frag from '../math/shape/shaders/shape.frag.glsl';
 import type { ItemRenderer } from './base-render-component';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
@@ -174,6 +171,8 @@ export interface PolygonAttribute extends ShapeAttributes {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent implements Maskable {
+  private static readonly tempMVP = Matrix4.fromIdentity();
+
   private shapeDirty = true;
   private materialDirty = true;
   private graphicsPath = new GraphicsPath();
@@ -193,15 +192,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
 
-  /**
-   * 用于点击测试的碰撞器
-   */
-  private meshCollider = new MeshCollider();
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
   private fillMaterials: Material[] = [];
   private strokeMaterials: Material[] = [];
-  private readonly maskManager: MaskProcessor;
 
   get shape () {
     return this.shapeAttributes;
@@ -223,8 +217,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       side: spec.SideMode.DOUBLE,
       mask: 0,
     };
-
-    this.maskManager = new MaskProcessor(this.engine);
 
     // Create Shape Attrributes
     //-------------------------------------------------------------------------
@@ -296,8 +288,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   override onUpdate (dt: number): void {
     if (this.shapeDirty) {
-      this.buildPath(this.shapeAttributes);
-      this.buildGeometryFromPath(this.graphicsPath.shapePath);
+      const screenScale = this.computeScreenScale();
+
+      this.buildPath(this.shapeAttributes, screenScale);
+      this.buildGeometryFromPath(this.graphicsPath.shapePath, screenScale);
       this.shapeDirty = false;
     }
 
@@ -308,7 +302,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override render (renderer: Renderer) {
-    this.maskManager.drawStencilMask(renderer);
+    this.maskManager.drawStencilMask(renderer, this);
 
     this.draw(renderer);
   }
@@ -316,25 +310,17 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   /**
    * @internal
    */
-  drawStencilMask (renderer: Renderer) {
+  drawStencilMask (maskRef: number) {
     if (!this.isActiveAndEnabled) {
       return;
     }
 
-    let previousColorMask = false;
-
     for (let i = 0; i < this.fillMaterials.length; i++) {
-      previousColorMask = this.fillMaterials[i].colorMask;
-      this.fillMaterials[i].colorMask = false;
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], 0);
-      this.fillMaterials[i].colorMask = previousColorMask;
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.fillMaterials[i], maskRef, 0);
     }
 
     for (let i = 0; i < this.strokeMaterials.length; i++) {
-      previousColorMask = this.strokeMaterials[i].colorMask;
-      this.strokeMaterials[i].colorMask = false;
-      renderer.drawGeometry(this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], 1);
-      this.strokeMaterials[i].colorMask = previousColorMask;
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.strokeMaterials[i], maskRef, 1);
     }
   }
 
@@ -353,8 +339,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const worldMatrix = sizeMatrix.premultiply(this.transform.getWorldMatrix());
 
     if (force) {
-      this.meshCollider.setGeometry(this.geometry, worldMatrix);
-      const area = this.meshCollider.getBoundingBoxData();
+      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
 
       if (area) {
         return {
@@ -362,6 +348,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           type: area.type,
           triangles: area.area,
           backfaceCulling: this.rendererOptions.side === spec.SideMode.FRONT,
+          clipMasks: this.frameClipMasks,
         };
       }
     }
@@ -370,13 +357,29 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   getBoundingBox (): BoundingBoxTriangle {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.meshCollider.getBoundingBox();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle();
 
     return boundingBox;
   }
 
-  private buildGeometryFromPath (shapePath: ShapePath) {
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+
+    if (positionArray) {
+      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
+
+      minMaxResult.minimum.x *= this.transform.size.x;
+      minMaxResult.minimum.y *= this.transform.size.y;
+      minMaxResult.maximum.x *= this.transform.size.x;
+      minMaxResult.maximum.y *= this.transform.size.y;
+      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+    }
+
+    return this.boundingBoxInfo;
+  }
+
+  private buildGeometryFromPath (shapePath: ShapePath, screenScale: number) {
     const shapePrimitives = shapePath.shapePrimitives;
     const vertices: number[] = [];
     const indices: number[] = [];
@@ -389,7 +392,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
 
-        shape.build(points);
+        shape.build(points, screenScale);
         shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
       }
     }
@@ -414,7 +417,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
           close = (shape as Polygon).closePath;
         }
 
-        shape.build(points);
+        shape.build(points, screenScale);
         buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
       }
     }
@@ -492,8 +495,51 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     strokeSubMesh.indexCount = strokeIndexCount;
   }
 
-  private buildPath (shapeAttribute: ShapeAttributes) {
+  private computeScreenScale (): number {
+    const defaultPpu = 1;
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return defaultPpu;
+    }
+
+    const camera = composition.camera;
+
+    if (!camera) {
+      return defaultPpu;
+    }
+
+    const mvp = camera.getModelViewProjection(
+      ShapeComponent.tempMVP, this.transform.getWorldMatrix()
+    );
+    const e = mvp.elements;
+
+    // 列优先：col0=[e[0],e[1]], col1=[e[4],e[5]]
+    // 透视投影下 MVP 不含 w-divide，cols 0-1 的长度是 clip-space 缩放
+    // 需要除以物体中心的 w 值才能得到 NDC 缩放
+    // 物体局部原点 [0,0,0,1] 经 MVP 后 w = e[15]（≈ 物体到相机距离）
+    const w = Math.abs(e[15]) || 1;
+    const sx = Math.sqrt(e[0] * e[0] + e[1] * e[1]) / w;
+    const sy = Math.sqrt(e[4] * e[4] + e[5] * e[5]) / w;
+    const maxNdcScale = Math.max(sx, sy);
+
+    // NDC -> 像素: canvasSize / 2
+    const canvasRect = this.engine.canvas.getBoundingClientRect();
+    const ndcToPixels = Math.max(canvasRect.width, canvasRect.height) / 2;
+
+    // pixelsPerUnit: 1个局部空间单位在屏幕上对应多少像素
+    // 椭圆/圆/矩形中使用 n = ceil(√(ppu × (rx+ry))) 确保圆弧误差 ≈ 1.2px
+    const pixelsPerUnit = maxNdcScale * ndcToPixels * this.engine.pixelRatio;
+
+    const minPpu = 1;
+    const maxPpu = 2000;
+
+    return Math.max(minPpu, Math.min(maxPpu, pixelsPerUnit));
+  }
+
+  private buildPath (shapeAttribute: ShapeAttributes, screenScale = 1) {
     this.graphicsPath.clear();
+    const ppu = screenScale;
 
     switch (shapeAttribute.type) {
       case spec.ShapePrimitiveType.Custom: {
@@ -516,7 +562,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             const control1 = easingOuts[lastPointIndex.easingOut];
             const control2 = easingIns[pointIndex.easingIn];
 
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
           }
 
           if (shape.close) {
@@ -527,7 +573,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             const control1 = easingOuts[lastPointIndex.easingOut];
             const control2 = easingIns[pointIndex.easingIn];
 
-            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, 1);
+            this.graphicsPath.bezierCurveTo(control1.x + lastPoint.x, control1.y + lastPoint.y, control2.x + point.x, control2.y + point.y, point.x, point.y, undefined, ppu);
             this.graphicsPath.closePath();
           }
         }
@@ -635,17 +681,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const material = Material.create(this.engine, materialProps);
 
     const renderer = rendererOptions;
-    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const { side, occlusion, blending: blendMode, texture } = renderer;
     const maskMode = this.maskManager.maskMode;
 
     material.blending = true;
     material.depthTest = true;
     material.depthMask = occlusion;
-    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
 
     setBlendMode(material, blendMode);
-    // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, maskMode);
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_ImageTex("_ImageTex",2D) = "white" {}';
@@ -675,7 +718,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.shapeDirty = true;
 
     if (data.mask) {
-      this.maskManager.setMaskOptions(data.mask);
+      this.maskManager.setMaskOptions(this.engine, data.mask);
     }
 
     const renderer = data.renderer ?? {};
