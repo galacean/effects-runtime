@@ -12,7 +12,7 @@ import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { MaterialProps } from '../../material';
 import {
-  getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
+  getPreMultiAlpha, Material, setBlendMode, setSideMode,
 } from '../../material';
 import {
   createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
@@ -49,7 +49,6 @@ export interface ParticleMeshData {
     y?: ValueGetter<number>,
     separateAxes?: boolean,
   },
-  meshSlots?: number[],
   forceTarget?: {
     curve: ValueGetter<number>,
     target: spec.vec3,
@@ -151,7 +150,7 @@ export class ParticleMesh implements ParticleMeshData {
       speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
       sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
       gravity, forceTarget, side, occlusion, anchor, blending,
-      maskMode, mask, transparentOcclusion, meshSlots,
+      transparentOcclusion,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),
     } = props;
@@ -272,17 +271,6 @@ export class ParticleMesh implements ParticleMeshData {
     }
     const vertexCurveTexture = vertexKeyFrameMeta.max + vertexKeyFrameMeta.curves.length - 32 > maxVertexUniforms;
 
-    // if (getConfig(RENDER_PREFER_LOOKUP_TEXTURE)) {
-    //   vertexCurveTexture = true;
-    // }
-    if (level === 2) {
-      vertexKeyFrameMeta.max = -1;
-      vertexKeyFrameMeta.index = meshSlots ? meshSlots[0] : getSlot(vertexKeyFrameMeta.index);
-      if (fragmentKeyFrameMeta.index > 0) {
-        fragmentKeyFrameMeta.max = -1;
-        fragmentKeyFrameMeta.index = meshSlots ? meshSlots[1] : getSlot(fragmentKeyFrameMeta.index);
-      }
-    }
     if (vertexCurveTexture && halfFloatTexture && enableVertexTexture) {
       const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
 
@@ -331,8 +319,6 @@ export class ParticleMesh implements ParticleMeshData {
     material.blending = true;
     material.depthTest = true;
     material.depthMask = !!occlusion;
-    material.stencilRef = mask ? [mask, mask] : undefined;
-    setMaskMode(material, maskMode);
     setBlendMode(material, blending);
     setSideMode(material, side);
 
@@ -882,20 +868,6 @@ export class ParticleMesh implements ParticleMeshData {
   }
 }
 
-const gl2UniformSlots = [10, 32, 64, 160];
-
-function getSlot (count: number): number {
-  for (let w = 0; w < gl2UniformSlots.length; w++) {
-    const slot = gl2UniformSlots[w];
-
-    if (slot > count) {
-      return slot;
-    }
-  }
-
-  return count || gl2UniformSlots[0];
-}
-
 function generateGeometryProps (
   maxVertex: number,
   useSprite?: boolean,
@@ -939,7 +911,7 @@ export function getParticleMeshShader (
     ['RENDER_MODE', renderMode],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
-  const { level, detail } = gpuCapability;
+  const { detail } = gpuCapability;
   const vertexKeyFrameMeta = createKeyFrameMeta();
   const fragmentKeyFrameMeta = createKeyFrameMeta();
   const enableVertexTexture = detail.maxVertexUniforms > 0;
@@ -1069,14 +1041,7 @@ export function getParticleMeshShader (
   if (getConfig(RENDER_PREFER_LOOKUP_TEXTURE)) {
     vertexCurveTexture = true;
   }
-  if (level === 2) {
-    vertexKeyFrameMeta.max = -1;
-    // vertexKeyFrameMeta.index = getSlot(vertexKeyFrameMeta.index);
-    if (fragmentKeyFrameMeta.index > 0) {
-      fragmentKeyFrameMeta.max = -1;
-      // fragmentKeyFrameMeta.index = getSlot(fragmentKeyFrameMeta.index);
-    }
-  }
+
   if (vertexCurveTexture && HALF_FLOAT && enableVertexTexture) {
     vertex_lookup_texture = 1;
   }

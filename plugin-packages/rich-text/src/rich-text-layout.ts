@@ -45,7 +45,6 @@ export class RichTextLayout implements BaseLayout {
 
   constructor (options: spec.RichTextContentOptions) {
     const {
-      size,
       textOverflow = spec.TextOverflow.clip,
       textVerticalAlign = spec.TextVerticalAlign.middle,
       textAlign = spec.TextAlignment.left,
@@ -65,8 +64,8 @@ export class RichTextLayout implements BaseLayout {
     this.overflow = textOverflow;
     this.textVerticalAlign = textVerticalAlign;
     this.textAlign = textAlign;
-    this.width = size ? size[0] : 100;
-    this.height = size ? size[1] : 100;
+    this.width = 100;
+    this.height = 100;
 
     this.wrapEnabled = wrapEnabled;
 

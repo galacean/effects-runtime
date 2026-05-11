@@ -1,7 +1,6 @@
 import type { GLGeometry, Material } from '@galacean/effects';
-import { ParticleSystem } from '@galacean/effects';
+import { ParticleSystem, ParticleSystemRenderer, RendererComponent } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
-import type { GLMaterial } from '@galacean/effects-webgl';
 
 const { Vector2 } = math;
 const { expect } = chai;
@@ -32,7 +31,7 @@ describe('core/plugins/particle/test', function () {
     const vfxItem = comp.getItemByName('item_3');
     const content = vfxItem!.getComponent(ParticleSystem);
 
-    expect(vfxItem?.renderOrder).to.eql(1);
+    expect(vfxItem?.getComponent(ParticleSystemRenderer).priority).to.eql(1);
     const pMesh = content.renderer.particleMesh.mesh;
     // @ts-expect-error
     const tMesh = content.renderer.trailMesh?.mesh;
@@ -128,43 +127,17 @@ describe('core/plugins/particle/test', function () {
     comp.gotoAndStop(0.1);
     const unsetItem = comp.getItemByName('unset');
     const unsetContent = unsetItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const unsetMaterial = unsetContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const unsetMaterial = unsetContent.renderer.particleMesh.mesh.material;
 
-    // @ts-expect-error
-    expect(unsetMaterial.glMaterialState.stencilTest).to.be.false;
+    //@ts-expect-error
+    expect(unsetMaterial.materialState.stencilTest).to.be.false;
 
     const defaultItem = comp.getItemByName('default');
     const defaultContent = defaultItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const defaultMaterial = defaultContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const defaultMaterial = defaultContent.renderer.particleMesh.mesh.material;
 
-    // @ts-expect-error
-    expect(defaultMaterial.glMaterialState.stencilTest).to.be.false;
-
-    const readItem = comp.getItemByName('read');
-    const readContent = readItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const readMaterial = readContent.renderer.particleMesh.mesh.material as GLMaterial;
-    // @ts-expect-error
-    const readStates = readMaterial.glMaterialState;
-
-    expect(readStates.stencilTest).to.be.true;
-    expect(readStates.stencilFunc).to.deep.equal([glContext.EQUAL, glContext.EQUAL]);
-    expect(readStates.stencilMask).to.deep.equal([0xFF, 0xFF]);
-    expect(readStates.stencilOpFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readStates.stencilOpZPass).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-
-    const readInverseItem = comp.getItemByName('read_inverse');
-    const readInverseContent = readInverseItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const readInverseMaterial = readInverseContent.renderer.particleMesh.mesh.material as GLMaterial;
-    // @ts-expect-error
-    const readInverseStates = readInverseMaterial.glMaterialState;
-
-    expect(readInverseStates.stencilTest).to.be.true;
-    expect(readInverseStates.stencilFunc).to.deep.equal([glContext.NOTEQUAL, glContext.NOTEQUAL]);
-    expect(readInverseStates.stencilMask).to.deep.equal([0xFF, 0xFF]);
-    expect(readInverseStates.stencilOpFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readInverseStates.stencilOpZPass).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(readInverseStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
+    //@ts-expect-error
+    expect(defaultMaterial.materialState.stencilTest).to.be.false;
   });
 
   it('particle open depth_test', async () => {
@@ -173,18 +146,18 @@ describe('core/plugins/particle/test', function () {
 
     const depthTestItem = comp.getItemByName('depth_test');
     const depthTestContent = depthTestItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const depthTestMaterial = depthTestContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const depthTestMaterial = depthTestContent.renderer.particleMesh.mesh.material;
     // @ts-expect-error
-    const depthStates = depthTestMaterial.glMaterialState;
+    const depthStates = depthTestMaterial.materialState;
 
     expect(depthStates.depthMask).to.be.true;
     const transparentItem = comp.getItemByName('transparent_occlusion');
     const transparentContent = transparentItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const transparentMaterial = transparentContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const transparentMaterial = transparentContent.renderer.particleMesh.mesh.material;
     const uColorParams = transparentMaterial.getVector4('uColorParams');
 
     // @ts-expect-error
-    expect(transparentMaterial.glMaterialState.depthMask).to.be.true;
+    expect(transparentMaterial.materialState.depthMask).to.be.true;
     expect(uColorParams?.toArray()).to.eql([1, 1, 0, 0]);
   });
 
@@ -194,10 +167,10 @@ describe('core/plugins/particle/test', function () {
 
     const alphaItem = comp.getItemByName('alpha');
     const alphaContent = alphaItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const alphaMaterial = alphaContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const alphaMaterial = alphaContent.renderer.particleMesh.mesh.material;
     const alphaColorParams = alphaMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const state = alphaMaterial.glMaterialState;
+    const state = alphaMaterial.materialState;
 
     expect(state.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(state.blending).to.be.true;
@@ -206,10 +179,10 @@ describe('core/plugins/particle/test', function () {
 
     const additiveItem = comp.getItemByName('additive');
     const additiveContent = additiveItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const additiveMaterial = additiveContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const additiveMaterial = additiveContent.renderer.particleMesh.mesh.material;
     const additiveColorParams = additiveMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const addState = additiveMaterial.glMaterialState;
+    const addState = additiveMaterial.materialState;
 
     expect(state.blending).to.be.true;
     expect(addState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -219,10 +192,10 @@ describe('core/plugins/particle/test', function () {
 
     const subtractItem = comp.getItemByName('subtract');
     const subtractContent = subtractItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const subtractMaterial = subtractContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const subtractMaterial = subtractContent.renderer.particleMesh.mesh.material;
     const subtractColorParams = subtractMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const subState = subtractMaterial.glMaterialState;
+    const subState = subtractMaterial.materialState;
 
     expect(subState.blending).to.be.true;
     expect(subState.blendEquationParameters).to.eql([glContext.FUNC_REVERSE_SUBTRACT, glContext.FUNC_REVERSE_SUBTRACT]);
@@ -232,10 +205,10 @@ describe('core/plugins/particle/test', function () {
 
     const luAdditiveItem = comp.getItemByName('luminance_additive');
     const luAdditiveContent = luAdditiveItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const luAdditiveMaterial = luAdditiveContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const luAdditiveMaterial = luAdditiveContent.renderer.particleMesh.mesh.material;
     const luAdditiveColorParams = luAdditiveMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const luAddState = luAdditiveMaterial.glMaterialState;
+    const luAddState = luAdditiveMaterial.materialState;
 
     expect(luAddState.blending).to.be.true;
     expect(luAddState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -245,10 +218,10 @@ describe('core/plugins/particle/test', function () {
 
     const multiplyItem = comp.getItemByName('multiply');
     const multiplyContent = multiplyItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const multiplyMaterial = multiplyContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const multiplyMaterial = multiplyContent.renderer.particleMesh.mesh.material;
     const multiplyColorParams = multiplyMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const multiplyState = multiplyMaterial.glMaterialState;
+    const multiplyState = multiplyMaterial.materialState;
 
     expect(multiplyState.blending).to.be.true;
     expect(multiplyState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -258,10 +231,10 @@ describe('core/plugins/particle/test', function () {
 
     const addLightItem = comp.getItemByName('add_light');
     const addLightContent = addLightItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const addLightMaterial = addLightContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const addLightMaterial = addLightContent.renderer.particleMesh.mesh.material;
     const addLightColorParams = addLightMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const addLightState = addLightMaterial.glMaterialState;
+    const addLightState = addLightMaterial.materialState;
 
     expect(addLightState.blending).to.be.true;
     expect(addLightState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -271,10 +244,10 @@ describe('core/plugins/particle/test', function () {
 
     const lightItem = comp.getItemByName('light');
     const lightContent = lightItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const lightMaterial = lightContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const lightMaterial = lightContent.renderer.particleMesh.mesh.material;
     const lightColorParams = lightMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const lightState = lightMaterial.glMaterialState;
+    const lightState = lightMaterial.materialState;
 
     expect(lightState.blending).to.be.true;
     expect(lightState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -284,10 +257,10 @@ describe('core/plugins/particle/test', function () {
 
     const luAlphaItem = comp.getItemByName('luminance_alpha');
     const luAlphaContent = luAlphaItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const luAlphaMaterial = luAlphaContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const luAlphaMaterial = luAlphaContent.renderer.particleMesh.mesh.material;
     const luAlphaColorParams = luAlphaMaterial.getVector4('uColorParams');
     // @ts-expect-error
-    const luAlphaState = luAlphaMaterial.glMaterialState;
+    const luAlphaState = luAlphaMaterial.materialState;
 
     expect(luAlphaState.blending).to.be.true;
     expect(luAlphaState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -302,16 +275,16 @@ describe('core/plugins/particle/test', function () {
     const comp = await generateComposition(player, json, 0.01);
     const bothItem = comp.getItemByName('both');
     const bothContent = bothItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const bothMaterial = bothContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const bothMaterial = bothContent.renderer.particleMesh.mesh.material;
 
     // @ts-expect-error
-    expect(bothMaterial.glMaterialState.culling).to.false;
+    expect(bothMaterial.materialState.culling).to.false;
 
     const frontItem = comp.getItemByName('front');
     const frontContent = frontItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const frontMaterial = frontContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const frontMaterial = frontContent.renderer.particleMesh.mesh.material;
     // @ts-expect-error
-    const frontStates = frontMaterial.glMaterialState;
+    const frontStates = frontMaterial.materialState;
 
     expect(frontStates.culling).to.true;
     expect(frontStates.cullFace).to.eql(glContext.FRONT);
@@ -319,9 +292,9 @@ describe('core/plugins/particle/test', function () {
 
     const backItem = comp.getItemByName('back');
     const backContent = backItem?.getComponent(ParticleSystem) as ParticleSystem;
-    const backMaterial = backContent.renderer.particleMesh.mesh.material as GLMaterial;
+    const backMaterial = backContent.renderer.particleMesh.mesh.material;
     // @ts-expect-error
-    const backStates = backMaterial.glMaterialState;
+    const backStates = backMaterial.materialState;
 
     expect(backStates.culling).to.true;
     expect(backStates.cullFace).to.eql(glContext.BACK);

@@ -1,6 +1,6 @@
 import * as EFFECTS from '@galacean/effects';
-import { logger } from '@galacean/effects';
-import { registerKTX2Loader } from './ktx2-loader';
+import { logger, registerPlugin } from '@galacean/effects';
+import { KTX2Loader } from './ktx2-loader';
 
 export * from './ktx2-loader';
 
@@ -9,7 +9,7 @@ export * from './ktx2-loader';
  */
 export const version = __VERSION__;
 
-registerKTX2Loader();
+registerPlugin('ktx2', KTX2Loader);
 
 logger.info(`Plugin ktx2 version: ${version}.`);
 

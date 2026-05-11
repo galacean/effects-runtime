@@ -1,5 +1,5 @@
-import type { Asset, Engine, GeometryFromShape, Renderer, Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { MaskableGraphic, Texture, assertExist, effectsClass, math, spec } from '@galacean/effects';
+import type { Asset, Engine, GeometryFromShape, Texture2DSourceOptionsVideo } from '@galacean/effects';
+import { MaskableGraphic, Texture, effectsClass, math, spec } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -17,27 +17,13 @@ let seed = 0;
 
 /**
  * Video component class
+ * 视频播放状态由以下两个维度的结束行为组合决定：
+ * - 合成结束行为（rootEndBehavior）：destroy / freeze / restart / forward
+ * - 视频结束行为（videoEndBehavior）：destroy / freeze / restart
  */
 @effectsClass(spec.DataType.VideoComponent)
 export class VideoComponent extends MaskableGraphic {
   video?: HTMLVideoElement;
-
-  /**
-   * 播放标志位
-   */
-  private played = false;
-  private pendingPause = false;
-  private threshold = 0.03;
-  /**
-   * 解决 video 暂停报错问题
-   *
-   * video.play(); // <-- This is asynchronous!
-   *
-   * video.pause();
-   *
-   * @see https://developer.chrome.com/blog/play-request-was-interrupted
-   */
-  private isPlayLoading = false;
 
   /**
    * 视频元素是否激活
@@ -49,10 +35,70 @@ export class VideoComponent extends MaskableGraphic {
    */
   protected transparent = false;
 
-  // 事件处理器引用，用于正确移除事件监听
-  private handleGoto?: (option: { time: number }) => void;
-  private handlePause?: () => void;
-  private handlePlay?: (option: { time: number }) => void;
+  /**
+   * 是否由用户手动控制播放速率（覆盖合成的播放速率）
+   */
+  private manualPlaybackRate = false;
+
+  /**
+   * 是否由用户手动控制循环播放（覆盖合成的结束行为）
+   */
+  private manualLoop = false;
+
+  /**
+   * 是否由用户手动暂停视频
+   */
+  private manualPause = false;
+
+  /**
+   * 视频是否已开始播放
+   */
+  private playTriggered = false;
+
+  /**
+   * 上一次的视频时间，用于检测重播
+   */
+  private lastVideoTime = -1;
+
+  /**
+   * 视频是否已经销毁（用于 destroy 结束行为，确保只重置一次）
+   */
+  private videoDestroyed = false;
+
+  /**
+   * 视频是否处于 seek 中
+   * seek 期间禁止上传帧，避免 destroy 后 seek 回 0 期间渲染旧帧
+   */
+  private videoSeeking = false;
+
+  /**
+   * 待执行的 seek 目标时间，延迟到 onUpdate 中处理以避免竞态。
+   * 值为 null 表示没有待执行的 seek。
+   */
+  private pendingSeekTime: number | null = null;
+
+  /**
+   * 是否正在处理 gotoAndStop 的 seek
+   * 用于跳过 pause 事件触发的 pauseVideoElement，等 seek 完成后再暂停
+   */
+  private isGotoAndStopSeeking = false;
+
+  /**
+   * 是否刚收到 goto 事件，等待后续 play/pause 事件来区分场景
+   */
+  private isWaitingForGotoResult = false;
+
+  /**
+   * 当前正在执行的 play() Promise，用于串行化 play 调用，避免上的竞态
+   */
+  private playPromise: Promise<void> | null = null;
+
+  /**
+   * 存储事件监听器的移除函数，用于销毁时清理
+   */
+  private eventDisposers: (() => void)[] = [];
+
+  private static readonly threshold = 0.01;
 
   constructor (engine: Engine) {
     super(engine);
@@ -65,6 +111,9 @@ export class VideoComponent extends MaskableGraphic {
   override async setTexture (input: Texture | string): Promise<void> {
     const oldTexture = this.renderer.texture;
     const composition = this.item.composition;
+
+    if (!composition) { return; }
+
     let texture: Texture;
 
     if (typeof input === 'string') {
@@ -72,8 +121,6 @@ export class VideoComponent extends MaskableGraphic {
     } else {
       texture = input;
     }
-
-    if (!composition) { return; }
 
     composition.textures.forEach((cachedTexture, index) => {
       if (cachedTexture === oldTexture) {
@@ -92,24 +139,14 @@ export class VideoComponent extends MaskableGraphic {
 
     const composition = this.item.composition;
 
-    if (!composition) {
-      return;
-    }
+    if (!composition) { return; }
 
-    this.handleGoto = (option: { time: number }) => {
-      this.setCurrentTime(this.item.time);
-    };
-    this.handlePause = () => {
-      this.pauseVideo();
-    };
-    this.handlePlay = (option: { time: number }) => {
-      if (this.item.time < 0) {return;}
-      this.playVideo();
-    };
-
-    composition.on('goto', this.handleGoto);
-    composition.on('pause', this.handlePause);
-    composition.on('play', this.handlePlay);
+    this.eventDisposers.push(
+      composition.on('goto', () => this.handleGoto()),
+      composition.on('play', () => this.handleCompositionPlay()),
+      composition.on('pause', () => this.handleCompositionPause()),
+      composition.on('end', () => this.handleCompositionEnd()),
+    );
   }
 
   override fromData (data: VideoItemProps): void {
@@ -132,22 +169,21 @@ export class VideoComponent extends MaskableGraphic {
 
       if (videoAsset) {
         this.video = videoAsset.data;
-        this.setPlaybackRate(playbackRate);
+        this.video.playbackRate = playbackRate;
         this.setVolume(volume);
         this.setMuted(muted);
-        const endBehavior = this.item.defination.endBehavior;
+        const endBehavior = this.item.definition.endBehavior;
 
-        // 如果元素设置为 destroy
         if (endBehavior === spec.EndBehavior.destroy || endBehavior === spec.EndBehavior.freeze) {
-          this.setLoop(false);
+          this.video.loop = false;
         } else if (endBehavior === spec.EndBehavior.restart) {
-          this.setLoop(true);
+          this.video.loop = true;
         }
+
       }
     }
 
     this.interaction = interaction;
-    this.pauseVideo();
 
     if (this.transparent) {
       this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
@@ -156,52 +192,447 @@ export class VideoComponent extends MaskableGraphic {
     this.material.setColor('_Color', new math.Color().setFromArray(startColor));
   }
 
-  override render (renderer: Renderer): void {
-    super.render(renderer);
-    this.renderer.texture.uploadCurrentVideoFrame();
-  }
-
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time: videoTime, duration: videoDuration, endBehavior: videoEndBehavior, composition } = this.item;
 
-    assertExist(composition);
-    const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
-
-    // 判断是否处于"结束状态"：
-    // - 视频时间为 0（未开始）
-    // - 合成时间已达最大时长（播放完毕）
-    // - 视频时间接近或等于其总时长（考虑容差阈值）
-    const isEnd = (videoTime === 0 || Math.abs(composition.time - rootDuration) <= this.threshold || Math.abs(videoTime - videoDuration) <= this.threshold);
-
-    // 如果视频时间大于等于 0，且未到结束状态，并且尚未触发播放，则开始播放视频
-    if (videoTime >= 0 && !isEnd && !this.played && this.isVideoActive) {
-      this.playVideo();
+    if (!this.video || this.video.readyState < 2) {
+      return;
     }
 
-    // 当视频播放时间接近或超过其总时长时，根据其结束行为进行处理
-    if (videoTime + this.threshold >= videoDuration) {
-      if (videoEndBehavior === spec.EndBehavior.freeze) {
-        if (!this.video?.paused) {
-          this.pauseVideo();
-        }
-      }
+    // 处理延迟 seek（避免与 forwardTime 同步调用产生竞态）
+    if (this.processPendingSeek()) {
+      return;
     }
-    // 判断整个合成是否接近播放完成
-    // composition.time + threshold >= rootDuration 表示即将结束
-    if (composition.time + this.threshold >= rootDuration) {
-      if (rootEndBehavior === spec.EndBehavior.freeze) {
-        if (!this.video?.paused) {
-          this.pauseVideo();
-        }
-      } else if (rootEndBehavior === spec.EndBehavior.restart) {
-        this.setCurrentTime(0);
-      }
+
+    // 检测当前是否为重播状态
+    this.detectCompositionRestart();
+
+    // 根据结束行为决定视频状态
+    if (this.shouldFreezeVideo()) {
+      this.freezeVideo();
+
+      return;
+    }
+
+    if (this.shouldStartVideo()) {
+      this.startVideo();
+    }
+
+    this.updatePlaybackRate();
+    this.ensureLoopFlag();
+    this.handleDestroyBehavior();
+
+    // 上传当前视频帧
+    if (!this.videoSeeking) {
+      this.renderer.texture.uploadCurrentVideoFrame();
     }
   }
+
+  override onDestroy (): void {
+    this.eventDisposers.forEach(dispose => dispose());
+    this.eventDisposers = [];
+    super.onDestroy();
+    this.playTriggered = false;
+    this.playPromise = null;
+    if (this.video) {
+      this.video.pause();
+      this.video.src = '';
+      this.video.load();
+    }
+  }
+
+  override onDisable (): void {
+    super.onDisable();
+    this.isVideoActive = false;
+  }
+
+  override onEnable (): void {
+    super.onEnable();
+    this.isVideoActive = true;
+  }
+
+  /**
+   * 处理 goto 事件：重置播放状态，记录待 seek 时间
+   */
+  private handleGoto (): void {
+    // 通过后续事件区分 gotoAndPlay 和 gotoAndStop
+    this.isWaitingForGotoResult = true;
+    this.playTriggered = false;
+    this.manualPause = false;
+    this.pendingSeekTime = this.item.time;
+  }
+
+  /**
+   * 处理合成 pause 事件
+   * 如果刚收到 goto 事件且等待结果，说明是 gotoAndStop 场景
+   */
+  private handleCompositionPause (): void {
+    // gotoAndStop 场景
+    if (this.isWaitingForGotoResult) {
+      this.isWaitingForGotoResult = false;
+      if (this.video && this.video.readyState >= 2) {
+        this.isGotoAndStopSeeking = true;
+        this.performSeek(this.item.time, false, true);
+      }
+
+      return;
+    }
+    // 普通 pause 事件：暂停视频
+    this.pauseVideoElement();
+  }
+
+  /**
+   * 处理合成 play 事件（合成开始/重播/恢复时触发）
+   */
+  private handleCompositionPlay (): void {
+    // 如果正在等待 goto 结果，说明是 gotoAndPlay 场景
+    if (this.isWaitingForGotoResult) {
+      this.isWaitingForGotoResult = false;
+    }
+    // 合成未结束时（暂停后恢复），恢复视频播放
+    if (!this.checkCompositionEnded()) {
+      // 如果正在 seeking，不恢复播放，等 seek 完成后再恢复
+      if (!this.manualPause && !this.videoSeeking && this.video?.paused) {
+        this.safePlay();
+      }
+
+      return;
+    }
+
+    this.playTriggered = false;
+    this.manualPause = false;
+    const videoEndBehavior = this.item.endBehavior;
+
+    if (videoEndBehavior === spec.EndBehavior.freeze && this.video) {
+      this.pendingSeekTime = 0;
+    } else if (videoEndBehavior === spec.EndBehavior.destroy) {
+      this.videoDestroyed = false;
+    }
+  }
+
+  /**
+   * 根据合成结束行为决定视频的后续处理
+   */
+  private handleCompositionEnd (): void {
+    const rootEndBehavior = this.item.composition?.rootItem.endBehavior;
+
+    if (rootEndBehavior === spec.EndBehavior.restart) {
+      // 合成 restart：所有视频都需要 seek 回 0，和合成时间对齐
+      if (!this.videoSeeking) {
+        this.pendingSeekTime = 0;
+      }
+      this.playTriggered = false;
+      this.videoDestroyed = false;
+
+      return;
+    }
+
+    if (rootEndBehavior === spec.EndBehavior.forward) {
+      // forward：合成时间继续往前走，视频也继续播
+      return;
+    }
+
+    // freeze / destroy：合成真正结束，暂停视频
+    this.playTriggered = false;
+    this.pauseVideoElement();
+  }
+
+  /**
+   * 视频是否已播放到末尾
+   */
+  private checkVideoEnded (): boolean {
+    const videoEndBehavior = this.item.endBehavior;
+
+    // restart 行为的视频永远不会"结束"（由浏览器原生 loop 处理）
+    if (videoEndBehavior === spec.EndBehavior.restart) {
+      return false;
+    }
+
+    return this.video!.currentTime + VideoComponent.threshold >= this.video!.duration;
+  }
+
+  /**
+   * 合成是否已到达结束时间
+   */
+  private checkCompositionEnded (): boolean {
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return false;
+    }
+
+    return composition.time + VideoComponent.threshold >= composition.rootItem.duration;
+  }
+
+  /**
+   * 是否应该冻结视频（暂停在当前帧）
+   */
+  private shouldFreezeVideo (): boolean {
+    const isVideoEnded = this.checkVideoEnded();
+    const isCompositionEnded = this.checkCompositionEnded();
+
+    const videoEndBehavior = this.item.endBehavior;
+    const rootEndBehavior = this.item.composition?.rootItem.endBehavior;
+
+    // 合成结束且合成行为是 freeze 时冻结视频
+    const isCompositionFrozen = isCompositionEnded && rootEndBehavior === spec.EndBehavior.freeze;
+
+    // 合成结束且视频行为是 freeze，除合成 restart 外均冻结视频
+    const isCompositionEndedForVideo = rootEndBehavior !== spec.EndBehavior.restart && isCompositionEnded;
+    const isVideoFrozen = (isVideoEnded || isCompositionEndedForVideo) && videoEndBehavior === spec.EndBehavior.freeze;
+
+    return isVideoFrozen || isCompositionFrozen;
+  }
+
+  /**
+   * 是否应该启动视频播放
+   */
+  private shouldStartVideo (): boolean {
+    if (this.playTriggered || this.manualPause || this.videoDestroyed || this.checkVideoEnded()) {
+      return false;
+    }
+
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return false;
+    }
+
+    return this.video!.currentTime > 0 || composition.time > 0;
+  }
+
+  /**
+   * 处理延迟 seek，返回 true 表示本帧已处理 seek，应跳过后续逻辑
+   */
+  private processPendingSeek (): boolean {
+    if (this.pendingSeekTime === null) {
+      return false;
+    }
+    const seekTime = this.pendingSeekTime;
+
+    this.pendingSeekTime = null;
+    this.performSeek(seekTime);
+
+    return true;
+  }
+
+  /**
+   * 检测合成是否发生了 restart，并重置相关状态
+   */
+  private detectCompositionRestart (): void {
+    const videoTime = this.item.time;
+
+    if (this.lastVideoTime > 0 && videoTime < this.lastVideoTime) {
+      this.playTriggered = false;
+      this.videoDestroyed = false;
+      this.manualPause = false;
+      this.lastVideoTime = -1;
+
+      const rootEndBehavior = this.item.composition?.rootItem.endBehavior;
+      const videoEndBehavior = this.item.endBehavior;
+
+      // 视频 restart 时，浏览器 loop 处理；合成 restart 时，前面函数已经 seek 回 0
+      if (rootEndBehavior !== spec.EndBehavior.restart && videoEndBehavior !== spec.EndBehavior.restart) {
+        this.pendingSeekTime = 0;
+      }
+    }
+
+    this.lastVideoTime = videoTime;
+  }
+
+  /**
+   * 冻结视频：停止播放，保持当前帧
+   */
+  private freezeVideo (): void {
+    this.playTriggered = false;
+    if (!this.video!.paused) {
+      this.pauseVideoElement();
+    }
+  }
+
+  /**
+   * 确保 restart 行为的视频设置了 loop 标志
+   * 手动模式下不自动设置，保持用户设置的值
+   */
+  private ensureLoopFlag (): void {
+    if (this.manualLoop) {
+      return;
+    }
+
+    if (this.item.endBehavior === spec.EndBehavior.restart && !this.video!.loop) {
+      this.video!.loop = true;
+    }
+  }
+
+  /**
+   * 处理 destroy 结束行为：视频播放到末尾后，seek 回 0 并清空纹理
+   * 确保合成 restart 时视频已在第 0 帧，不会闪最后一帧
+   */
+  private handleDestroyBehavior (): void {
+    if (this.videoDestroyed || this.videoSeeking) {
+      return;
+    }
+
+    const isVideoEnded = this.checkVideoEnded();
+
+    if (isVideoEnded && this.item.endBehavior === spec.EndBehavior.destroy) {
+      this.videoDestroyed = true;
+      this.playTriggered = false;
+      this.performSeek(0, true);
+    }
+  }
+
+  /**
+   * 开始播放视频
+   */
+  private startVideo (): void {
+    if (!this.video || (this.playTriggered && !this.video.paused)) {
+      return;
+    }
+    this.playTriggered = true;
+    this.safePlay();
+  }
+
+  /**
+   * 安全地调用 video.play()，串行化调用
+   */
+  private safePlay (): void {
+    if (!this.video) {
+      return;
+    }
+
+    // 已有 play() 在执行中，不重复调用，避免 AbortError
+    if (this.playPromise) {
+      return;
+    }
+
+    const promise = this.video.play();
+
+    this.playPromise = promise;
+
+    void promise
+      .then(() => {
+        if (this.playPromise === promise) {
+          this.playPromise = null;
+        }
+        this.updatePlaybackRate();
+      })
+      .catch(error => {
+        if (this.playPromise === promise) {
+          this.playPromise = null;
+        }
+        if (error.name === 'AbortError') {
+          this.playTriggered = false;
+        }
+        this.engine.renderErrors.add(error);
+      });
+  }
+
+  /**
+   * 暂停底层视频元素
+   */
+  private pauseVideoElement (): void {
+    // gotoAndStop 场景：跳过暂停，等 seek 完成后再暂停
+    if (this.isGotoAndStopSeeking) {
+      return;
+    }
+    if (!this.video || this.video.paused) {
+      return;
+    }
+    this.video.pause();
+    if (this.playPromise) {
+      void this.playPromise.then(() => {
+        if (this.video && !this.video.paused) {
+          this.video.pause();
+        }
+      });
+    }
+  }
+
+  /**
+   * seek 期间设置 videoSeeking=true，阻止 uploadCurrentVideoFrame 上传旧帧
+   * @param time 目标时间
+   * @param clearTexture 是否在 seek 期间清空纹理
+   * @param isGotoAndStop 是否为 gotoAndStop 场景
+   */
+  private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
+    const wasPlaying = !this.video!.paused;
+
+    const doSeek = () => {
+      this.videoSeeking = true;
+      if (clearTexture) {
+        this.material.setTexture('_MainTex', this.engine.transparentTexture);
+      }
+      this.video!.addEventListener('seeked', () => {
+        this.videoSeeking = false;
+        this.isGotoAndStopSeeking = false;
+        if (clearTexture) {
+          this.material.setTexture('_MainTex', this.renderer.texture);
+        }
+        if (this.video) {
+          this.renderer.texture.uploadCurrentVideoFrame();
+          // gotoAndStop 场景：seek 完成后暂停
+          if (isGotoAndStop) {
+            this.video.pause();
+          } else if (wasPlaying && !this.manualPause) {
+            // 如果视频之前在播放（包括 goto 前在播放），seek 完成后恢复播放
+            this.safePlay();
+          }
+        }
+      }, { once: true });
+      this.video!.currentTime = time;
+    };
+
+    if (isGotoAndStop) {
+      if (wasPlaying) {
+        // 视频正在播放，直接 seek
+        doSeek();
+      } else {
+        // 视频暂停，先 play() 再 seek
+        this.video!.play().then(() => {
+          doSeek();
+        }).catch(() => {
+          // play 失败时也尝试 seek
+          doSeek();
+        });
+      }
+    } else {
+      if (wasPlaying) {
+        this.video!.pause();
+      }
+      doSeek();
+    }
+  }
+
+  /**
+   * 更新视频播放速率
+   * 手动模式下保持用户设置的速率不变，自动模式下根据 engine.speed * composition.speed 计算
+   */
+  private updatePlaybackRate (): void {
+    // 手动模式下不自动更新速率
+    if (this.manualPlaybackRate) {
+      return;
+    }
+
+    if (!this.video) {
+      return;
+    }
+
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return;
+    }
+
+    const playbackRate = this.engine.speed * composition.speed;
+
+    if (this.video.playbackRate !== playbackRate) {
+      this.video.playbackRate = playbackRate;
+    }
+  }
+
   /**
    * 获取当前视频时长
-   * @returns 视频时长
    */
   getDuration (): number {
     return this.video ? this.video.duration : 0;
@@ -209,7 +640,6 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 获取当前视频播放时刻
-   * @returns 当前视频播放时刻
    */
   getCurrentTime (): number {
     return this.video ? this.video.currentTime : 0;
@@ -217,21 +647,45 @@ export class VideoComponent extends MaskableGraphic {
 
   /**
    * 设置当前视频播放时刻
-   * @param time 视频播放时刻
+   * @param time 目标时间，会被限制在 [0, duration] 范围内
    */
   setCurrentTime (time: number) {
+    if (!this.video) {
+      return;
+    }
+
+    const duration = this.video.duration;
+
+    // 如果 duration 无效（如视频未加载），直接使用原值
+    if (!duration || !isFinite(duration)) {
+      this.pendingSeekTime = Math.max(0, time);
+
+      return;
+    }
+
+    this.pendingSeekTime = Math.max(0, Math.min(time, duration));
+  }
+
+  /**
+   * 设置视频是否循环播放，调用后会覆盖合成的结束行为，改为由用户手动控制循环。
+   * 调用 {@link resetLoop} 可恢复为由合成结束行为自动控制。
+   * @param loop 是否循环播放
+   */
+  setLoop (loop: boolean) {
+    this.manualLoop = true;
     if (this.video) {
-      this.video.currentTime = time;
+      this.video.loop = loop;
     }
   }
 
   /**
-   * 设置视频是否循环播放
-   * @param loop 是否循环播放
+   * 重置循环播放为合成自动控制模式
    */
-  setLoop (loop: boolean) {
+  resetLoop () {
+    this.manualLoop = false;
+    // 将 video.loop 同步回合成应有的值，避免残留用户手动设置的状态
     if (this.video) {
-      this.video.loop = loop;
+      this.video.loop = this.item.endBehavior === spec.EndBehavior.restart;
     }
   }
 
@@ -256,123 +710,55 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
-   * 设置视频播放速率
+   * 设置当前视频是否为透明视频
+   * @param transparent 是否为透明视频
+   */
+  setTransparent (transparent: boolean): void {
+    if (this.transparent === transparent) {
+      return;
+    }
+    if (transparent) {
+      this.material.enableMacro('TRANSPARENT_VIDEO', true);
+    } else {
+      this.material.disableMacro('TRANSPARENT_VIDEO');
+    }
+    this.transparent = transparent;
+  }
+
+  /**
+   * 设置视频播放速率，调用后会覆盖合成的速率，改为由用户手动控制速率。
+   * 调用 {@link resetPlaybackRate} 可恢复为由合成速率自动控制。
    * @param rate 视频播放速率
    */
   setPlaybackRate (rate: number) {
-    if (!this.video || this.video.playbackRate === rate) {
-      return;
+    this.manualPlaybackRate = true;
+    if (this.video) {
+      this.video.playbackRate = rate;
     }
-    this.video.playbackRate = rate;
   }
 
   /**
-   * 播放视频
+   * 重置播放速率为合成自动控制模式
+   */
+  resetPlaybackRate () {
+    this.manualPlaybackRate = false;
+  }
+
+  /**
+   * 播放视频，同时取消手动暂停状态
    * @since 2.3.0
    */
   playVideo (): void {
-    if (this.played) {
-      return;
-    }
-    if (this.video) {
-      this.played = true;
-      this.isPlayLoading = true;
-      this.pendingPause = false;
-      this.video.play().
-        then(() => {
-          this.isPlayLoading = false;
-          // 如果在 play pending 期间被请求了 pause，则立即暂停并复位 played
-          if (!this.played || this.pendingPause) {
-            this.pendingPause = false;
-            this.played = false;
-            this.video?.pause();
-          }
-        })
-        .catch(error => {
-          // 复位状态
-          this.isPlayLoading = false;
-          this.played = false;
-          this.pendingPause = false;
-          if (error.name !== 'AbortError') { this.engine.renderErrors.add(error); }
-        });
-    }
+    this.manualPause = false;
+    this.startVideo();
   }
 
   /**
-   * 暂停视频
+   * 手动暂停视频
    * @since 2.3.0
    */
   pauseVideo (): void {
-    if (this.played) {
-      this.played = false;
-    }
-    if (!this.video) { return; }
-
-    if (this.isPlayLoading) {
-      this.pendingPause = true;
-
-      return;
-    }
-    this.video.pause();
-  }
-
-  override onDestroy (): void {
-    super.onDestroy();
-
-    // 清理播放状态
-    this.played = false;
-    this.isPlayLoading = false;
-    this.pendingPause = false;
-    this.isVideoActive = false;
-
-    // 清理video资源
-    if (this.video) {
-      // 暂停视频
-      this.video.pause();
-
-      // 移除video源，帮助垃圾回收
-      this.video.removeAttribute('src');
-      this.video.load();
-
-      // 清理video引用
-      this.video = undefined;
-    }
-
-    // 清理事件监听
-    const composition = this.item?.composition;
-
-    if (composition) {
-      if (this.handleGoto) {
-        composition.off('goto', this.handleGoto);
-      }
-      if (this.handlePause) {
-        composition.off('pause', this.handlePause);
-      }
-      if (this.handlePlay) {
-        composition.off('play', this.handlePlay);
-      }
-    }
-    // 清理处理器引用
-    this.handleGoto = undefined;
-    this.handlePause = undefined;
-    this.handlePlay = undefined;
-  }
-
-  override onDisable (): void {
-    super.onDisable();
-
-    this.isVideoActive = false;
-    this.pauseVideo();
-  }
-
-  override onEnable (): void {
-    super.onEnable();
-    this.isVideoActive = true;
-    this.played = false;
-    // 重播时确保视频同步到当前时间
-    if (this.video && this.item.composition) {
-      this.setCurrentTime(Math.max(0, this.item.time));
-    }
-    this.playVideo();
+    this.manualPause = true;
+    this.pauseVideoElement();
   }
 }

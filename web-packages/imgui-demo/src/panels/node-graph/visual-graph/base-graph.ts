@@ -29,6 +29,9 @@ export abstract class BaseNode {
   protected m_childGraph: BaseGraph | null;
   protected m_secondaryGraph: BaseGraph | null;
   m_pParentGraph: BaseGraph | null;
+  private m_lastCalculatedSize: ImVec2;
+  private m_hasCalculatedSize: boolean;
+  private m_hasCachedCalculatedSize: boolean;
   private m_internalRegionStartY: number;
   private m_internalRegionColor: Color;
   private m_internalRegionMargins: [number, number];
@@ -44,6 +47,9 @@ export abstract class BaseNode {
     this.m_childGraph = null;
     this.m_secondaryGraph = null;
     this.m_pParentGraph = null;
+    this.m_lastCalculatedSize = new ImVec2(0, 0);
+    this.m_hasCalculatedSize = false;
+    this.m_hasCachedCalculatedSize = false;
     this.m_internalRegionStartY = -1.0;
     this.m_internalRegionColor = new Color();
     this.m_internalRegionMargins = [0, 0];
@@ -169,6 +175,29 @@ export abstract class BaseNode {
   ResetCalculatedNodeSizes (): void {
     this.m_size = new ImVec2(0, 0);
     this.m_titleRectSize = new ImVec2(0, 0);
+    this.m_hasCalculatedSize = false;
+  }
+
+  HasCachedCalculatedSize (): boolean {
+    return this.m_hasCachedCalculatedSize;
+  }
+
+  GetCachedSize (): ImVec2 {
+    return this.m_hasCachedCalculatedSize ? this.m_lastCalculatedSize : this.m_size;
+  }
+
+  GetCachedWidth (): number {
+    return this.GetCachedSize().x;
+  }
+
+  SetCalculatedNodeSize (size: ImVec2, updateCachedSize: boolean = true): void {
+    this.m_size = new ImVec2(size.x, size.y);
+    this.m_hasCalculatedSize = true;
+
+    if (updateCachedSize || !this.m_hasCachedCalculatedSize) {
+      this.m_lastCalculatedSize = new ImVec2(size.x, size.y);
+      this.m_hasCachedCalculatedSize = true;
+    }
   }
 
   GetNodeMargin (): ImVec2 {
@@ -180,21 +209,25 @@ export abstract class BaseNode {
   }
 
   GetSize (): ImVec2 {
-    return this.m_size;
+    if (this.m_hasCalculatedSize) {
+      return this.m_size;
+    }
+
+    return this.m_hasCachedCalculatedSize ? this.m_lastCalculatedSize : this.m_size;
   }
 
   GetWidth (): number {
-    return this.m_size.x;
+    return this.GetSize().x;
   }
 
   GetHeight (): number {
-    return this.m_size.y;
+    return this.GetSize().y;
   }
 
   GetRect (): ImRect {
     const nodeMargin = this.GetNodeMargin();
     const rectMin = subtract(this.m_canvasPosition, nodeMargin);
-    const rectMax = add(add(this.m_canvasPosition, nodeMargin), this.m_size);
+    const rectMax = add(add(this.m_canvasPosition, nodeMargin), this.GetSize());
 
     return new ImRect(rectMin, rectMax);
   }
@@ -383,7 +416,7 @@ export abstract class BaseNode {
     return this.GetChildGraph();
   }
 
-  protected PreCopy (): void {}
+  PreCopy (): void {}
 
   TraverseHierarchy (nodePath: BaseNode[]): void {
     nodePath.unshift(this);
@@ -761,7 +794,7 @@ export class BaseGraph {
     return this.m_pParentNode ? this.m_pParentNode.GetParentGraph() : null;
   }
 
-  protected OnNodeAdded (pAddedNode: BaseNode): void {}
+  OnNodeAdded (pAddedNode: BaseNode): void {}
 
   OnNodeModified (pModifiedNode: BaseNode): void {}
 
@@ -775,7 +808,11 @@ export class BaseGraph {
     return true;
   }
 
-  protected PostPasteNodes (pastedNodes: BaseNode[]): void {}
+  CreateNodeFromTypeName (typeName: string): BaseNode | null {
+    return null;
+  }
+
+  PostPasteNodes (pastedNodes: BaseNode[]): void {}
 
   protected PreDestroyNode (pNodeAboutToBeDestroyed: BaseNode): void {}
 

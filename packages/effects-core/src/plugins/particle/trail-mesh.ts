@@ -1,13 +1,13 @@
 import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import type { GradientStop, vec3, vec4 } from '@galacean/effects-specification';
+import type { GradientStop, vec3 } from '@galacean/effects-specification';
 import { RENDER_PREFER_LOOKUP_TEXTURE, getConfig } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
-import { Material, getPreMultiAlpha, setBlendMode, setMaskMode } from '../../material';
+import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
 import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue, ValueGetter } from '../../math';
 import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
@@ -33,7 +33,6 @@ export type TrailMeshProps = {
   mask: number,
   shaderCachePrefix: string,
   maskMode: number,
-  textureMap: vec4,
   name: string,
 };
 
@@ -73,10 +72,6 @@ export class TrailMesh {
       name,
       occlusion,
       blending,
-      maskMode,
-      mask,
-      // order,
-      textureMap = [0, 0, 1, 1],
       texture,
       transparentOcclusion,
       minimumVertexDistance,
@@ -189,8 +184,6 @@ export class TrailMesh {
     material.blending = true;
     material.depthMask = occlusion;
     material.depthTest = true;
-    material.stencilRef = mask ? [mask, mask] : undefined;
-    setMaskMode(material, maskMode);
     setBlendMode(material, blending);
 
     const mesh = this.mesh = Mesh.create(
@@ -229,7 +222,7 @@ export class TrailMesh {
     // TODO: 修改下长度
     material.setVector4('uWidthOverTrail', Vector4.fromArray(uWidthOverTrail));
     material.setVector2('uTexOffset', new Vector2(0, 0));
-    material.setVector4('uTextureMap', Vector4.fromArray(textureMap));
+    material.setVector4('uTextureMap', new Vector4(0, 0, 1, 1));
     material.setVector4('uParams', new Vector4(0, pointCountPerTrail - 1, 0, 0));
     material.setTexture('uMaskTex', uMaskTex);
     material.setVector4('uColorParams', new Vector4(texture ? 1 : 0, +preMulAlpha, 0, +(occlusion && !transparentOcclusion)));

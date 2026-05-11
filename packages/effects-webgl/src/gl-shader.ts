@@ -25,7 +25,7 @@ export class GLShaderVariant extends ShaderVariant {
   }
 
   // shader 的 GPU 资源初始化方法，在绘制前调用
-  initialize () {
+  override initialize () {
     if (this.initialized) {
       return;
     }
@@ -104,7 +104,7 @@ export class GLShaderVariant extends ShaderVariant {
   }
 
   override toData (): void {
-    const shaderData = this.defination as spec.ShaderData;
+    const shaderData = this.definition as spec.ShaderData;
 
     shaderData.dataType = spec.DataType.Shader;
     shaderData.id = this.guid;
@@ -119,5 +119,13 @@ export class GLShaderVariant extends ShaderVariant {
     this.program?.dispose();
 
     super.dispose();
+  }
+
+  bind () {
+    this.program.bind();
+  }
+
+  isReady () {
+    return !!this.program;
   }
 }

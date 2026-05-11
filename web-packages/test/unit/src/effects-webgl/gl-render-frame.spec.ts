@@ -1,20 +1,19 @@
-import type { ShaderWithSource, Engine } from '@galacean/effects-core';
-import { Camera, TextureLoadAction, RenderFrame, Mesh } from '@galacean/effects-core';
-import type { GLRenderer } from '@galacean/effects-webgl';
-import { GLEngine, GLGeometry, GLMaterial } from '@galacean/effects-webgl';
+import type { ShaderWithSource, Engine, Renderer } from '@galacean/effects-core';
+import { Camera, RenderFrame, Mesh, Material } from '@galacean/effects-core';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
 describe('webgl/gl-render-frame', () => {
   let canvas: HTMLCanvasElement;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let engine: Engine;
 
   before(() => {
     canvas = document.createElement('canvas');
     engine = new GLEngine(canvas, { glType: 'webgl' });
 
-    renderer = engine.renderer as GLRenderer;
+    renderer = engine.renderer;
   });
 
   after(() => {
@@ -50,7 +49,7 @@ describe('webgl/gl-render-frame', () => {
   });
 });
 
-function generateMeshes (renderer: GLRenderer, num: number, priority = 0) {
+function generateMeshes (renderer: Renderer, num: number, priority = 0) {
   const meshs = [];
   const engine = renderer.engine;
 
@@ -58,7 +57,7 @@ function generateMeshes (renderer: GLRenderer, num: number, priority = 0) {
     meshs.push(new Mesh(engine, {
       name: 'm' + i,
       priority: i + 1 + priority,
-      material: new GLMaterial(engine, { shader: { cacheId: 'xxx' } as ShaderWithSource }),
+      material: new Material(engine, { shader: { cacheId: 'xxx' } as ShaderWithSource }),
       geometry: new GLGeometry(engine, { attributes: {} }),
     }));
   }

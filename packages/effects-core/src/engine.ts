@@ -3,10 +3,11 @@ import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
-import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
+import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary } from './render';
+import { RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
-import { TextureLoadAction, generateTransparentTexture, generateWhiteTexture } from './texture';
+import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, getPixelRatio, isPlainObject, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
@@ -20,6 +21,7 @@ import type { GLType } from './gl/create-gl-context';
 import { HELP_LINK } from './constants';
 import type { PointerEventData, Region } from './plugins/interact/click-handler';
 import { EventEmitter } from './events';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -89,6 +91,17 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   pixelRatio: number;
 
+  /**
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
+   */
+  renderTargetPool: RenderTargetPool;
+  /**
+   * 存放渲染需要用到的数据
+   */
+  renderingData: RenderingData;
+
   protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
@@ -97,6 +110,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderPasses: RenderPass[] = [];
 
   private assetLoader: AssetLoader;
+  private clearAction: RenderPassClearAction = {
+    stencilAction: TextureLoadAction.clear,
+    clearStencil: 0,
+    depthAction: TextureLoadAction.clear,
+    clearDepth: 1,
+    colorAction: TextureLoadAction.clear,
+    clearColor: [0, 0, 0, 0],
+  };
 
   get disposed (): boolean {
     return this._disposed;
@@ -114,11 +135,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.whiteTexture = generateWhiteTexture(this);
-    this.transparentTexture = generateTransparentTexture(this);
+    this.transparentTexture = generateEmptyTexture(this);
 
     if (!options?.manualRender) {
       this.ticker = new Ticker(options?.fps);
-      this.runRenderLoop(this.render.bind(this));
+      this.runRenderLoop(this.mainLoop.bind(this));
     }
 
     this.eventSystem = new EventSystem(this, options?.notifyTouch ?? false);
@@ -127,6 +148,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
+    this.renderTargetPool = new RenderTargetPool(this);
+
+    this.renderingData = {
+      // @ts-expect-error
+      currentFrame: {},
+    };
   }
 
   /**
@@ -236,50 +263,66 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.add(renderFunction);
   }
 
-  render (dt: number): void {
+  mainLoop (dt: number): void {
     const { renderErrors } = this;
 
     if (renderErrors.size > 0) {
       this.emit('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
+
+      return;
     }
+
     dt = Math.min(dt, 33) * this.speed;
-    const comps = this.compositions;
+
+    // Sort compositions by index
+    //-------------------------------------------------------------------------
+
+    const compositions = this.compositions;
+
+    compositions.sort((a, b) => a.getIndex() - b.getIndex());
+
     let skipRender = false;
 
-    comps.sort((a, b) => a.getIndex() - b.getIndex());
+    // Update Compositions
+    //-------------------------------------------------------------------------
 
-    for (let i = 0; i < comps.length; i++) {
-      const composition = comps[i];
-
+    for (const composition of compositions) {
       if (composition.textureOffloaded) {
         skipRender = true;
         logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
         continue;
       }
+
       composition.update(dt);
     }
 
     if (skipRender) {
       this.emit('rendererror', new Error('Play when texture offloaded.'));
+      this.ticker?.pause();
 
-      return this.ticker?.pause();
+      return;
     }
+
+    // Tick compositions onPreRender
+    //-------------------------------------------------------------------------
+
+    for (const composition of compositions) {
+      composition.sceneTicking.preRender.tick(0);
+    }
+
+    // Render Compositions
+    //-------------------------------------------------------------------------
+
     this.renderer.setFramebuffer(null);
-    this.renderer.clear({
-      stencilAction: TextureLoadAction.clear,
-      clearStencil: 0,
-      depthAction: TextureLoadAction.clear,
-      clearDepth: 1,
-      colorAction: TextureLoadAction.clear,
-      clearColor: [0, 0, 0, 0],
-    });
-    for (let i = 0; i < comps.length; i++) {
-      !comps[i].renderFrame.isDisposed && this.renderer.renderRenderFrame(comps[i].renderFrame);
+    this.renderer.clear(this.clearAction);
+
+    for (const composition of compositions) {
+      this.renderer.renderRenderFrame(composition.renderFrame);
     }
 
-    this.renderer.renderTargetPool.flush();
+    this.renderTargetPool.flush();
   }
 
   /**
@@ -333,13 +376,16 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   setSize (width: number, height: number) {
-    // ios 14.1 -ios 14.3 resize canvas will cause memory leak
-    this.renderer.resize(width, height);
+    if (this.getWidth() !== width || this.getHeight() !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+      this.viewport(0, 0, width, height);
+    }
+
     this.compositions?.forEach(comp => {
       comp.camera.aspect = width / height;
-      comp.camera.pixelHeight = this.renderer.getHeight();
-      comp.camera.pixelWidth = this.renderer.getWidth();
     });
+
     this.emit('resize', this);
   }
 
@@ -478,8 +524,123 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.compositions, composition);
   }
 
-  getShaderLibrary (): ShaderLibrary {
-    return this.renderer.getShaderLibrary() as ShaderLibrary;
+  getWidth (): number {
+    // OVERRIDE
+    return 0;
+  }
+
+  getHeight (): number {
+    // OVERRIDE
+    return 0;
+  }
+
+  getShaderLibrary (): ShaderLibrary | null {
+    //OVERRIDE
+
+    return null;
+  }
+
+  bindSystemFramebuffer () {
+    // OVERRIDE
+  }
+
+  /**
+   * 用来设置视口，即指定从标准设备到窗口坐标的x、y仿射变换。
+   * @param x
+   * @param y
+   * @param width
+   * @param height
+   * example:
+   * gl.viewport(0, 0, width, height);
+   */
+  viewport (x: number, y: number, width: number, height: number) {
+    // OVERRIDE
+  }
+
+  clear (action: RenderPassClearAction) {
+    // OVERRIDE
+  }
+
+  drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0) {
+    // OVERRIDE
+  }
+
+  /*** 渲染状态控制 ***/
+
+  setSampleAlphaToCoverage (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setBlending (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setDepthTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setStencilTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setCulling (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setPolygonOffsetFill (enable: boolean) {
+    // OVERRIDE
+  }
+
+  blendColor (r: number, g: number, b: number, a: number) {
+    // OVERRIDE
+  }
+
+  blendFuncSeparate (srcRGB: number, dstRGB: number, srcAlpha: number, dstAlpha: number) {
+    // OVERRIDE
+  }
+
+  blendEquationSeparate (modeRGB: number, modeAlpha: number) {
+    // OVERRIDE
+  }
+
+  colorMask (r: boolean, g: boolean, b: boolean, a: boolean) {
+    // OVERRIDE
+  }
+
+  depthMask (flag: boolean) {
+    // OVERRIDE
+  }
+
+  depthFunc (func: number) {
+    // OVERRIDE
+  }
+
+  depthRange (near: number, far: number) {
+    // OVERRIDE
+  }
+
+  polygonOffset (factor: number, units: number) {
+    // OVERRIDE
+  }
+
+  cullFace (mode: number) {
+    // OVERRIDE
+  }
+
+  frontFace (mode: number) {
+    // OVERRIDE
+  }
+
+  stencilMaskSeparate (face: number, mask: number) {
+    // OVERRIDE
+  }
+
+  stencilFuncSeparate (face: number, func: number, ref: number, mask: number) {
+    // OVERRIDE
+  }
+
+  stencilOpSeparate (face: number, fail: number, zfail: number, zpass: number) {
+    // OVERRIDE
   }
 
   /**

@@ -69,4 +69,13 @@ player.loadScene('./demo.json');
 - Useful Links:
   - [Developing](docs/developing.md)
 
+## Third-Party Notices
+
+This project integrates [Spine Runtimes](https://esotericsoftware.com/) for 2D skeletal animation support. Use of `@galacean/effects-plugin-spine` is subject to the Spine Runtime License Agreement:
+
+- **License required**: Each user must hold a valid Spine Editor license.
+- **Disclaimer**: Galacean Effects does not cover Spine license fees. Users are responsible for complying with Esoteric Software's license terms.
+
+For details, see the [Spine Runtime License Agreement](https://esotericsoftware.com/spine-editor-license).
+
 

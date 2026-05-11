@@ -10,8 +10,7 @@ import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
-  RichVerticalAlignStrategy, OverflowResult,
-  HorizontalAlignResult, VerticalAlignResult,
+  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 

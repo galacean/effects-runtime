@@ -7,42 +7,42 @@ import { ParticleSystem } from './particle-system';
  * @since 2.0.0
  */
 export class ParticleBehaviourPlayable extends Playable {
-  lastTime = 0;
-  particleSystem: ParticleSystem;
+  private particleSystem: ParticleSystem | null = null;
 
-  start (context: FrameContext): void {
+  getParticleSystem (context: FrameContext): ParticleSystem | null {
+    if (this.particleSystem) {
+      return this.particleSystem;
+    }
+
     const boundObject = context.output.getUserData();
 
-    if (this.particleSystem || !(boundObject instanceof VFXItem)) {
-      return;
+    if (!(boundObject instanceof VFXItem)) {
+      return null;
     }
+
     this.particleSystem = boundObject.getComponent(ParticleSystem);
 
-    if (this.particleSystem) {
-      this.particleSystem.name = boundObject.name;
-    }
+    return this.particleSystem;
   }
 
   override processFrame (context: FrameContext): void {
-    if (this.time >= 0) {
-      this.start(context);
-    }
-    const particleSystem = this.particleSystem;
+    const particleSystem = this.getParticleSystem(context);
 
-    if (particleSystem) {
-      if (
-        this.time >= 0 &&
-        this.time < particleSystem.item.duration &&
-        particleSystem.isEnded()
-      ) {
-        particleSystem.reset();
-      }
-
-      // TODO: There is one less conversion from second to millisecond here,
-      // which is retained for frame test.
-      particleSystem.update(this.time - particleSystem.time);
+    if (!particleSystem) {
+      return;
     }
-    this.lastTime = this.time;
+
+    if (this.time >= 0 && this.time < particleSystem.time) {
+      particleSystem.reset();
+    }
+
+    const maxSimulateTime = 0.016; // simulate at most 16ms one frame to avoid long time step
+
+    while (particleSystem.time + maxSimulateTime < this.time) {
+      particleSystem.simulate(maxSimulateTime);
+    }
+
+    particleSystem.simulate(this.time - particleSystem.time);
   }
 }
 

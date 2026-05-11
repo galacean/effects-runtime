@@ -1,4 +1,4 @@
-import type { Material } from '@galacean/effects';
+import type { Material, Texture } from '@galacean/effects';
 import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
@@ -7,7 +7,6 @@ import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
 import { Editor } from '../custom-editors/editor';
-import type { GLMaterial } from '@galacean/effects-webgl';
 import { GLTexture } from '@galacean/effects-webgl';
 import type { FileNode } from '../core/file-node';
 import { GalaceanEffects } from '../ge';
@@ -32,12 +31,12 @@ export class Inspector extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (!Selection.activeObject) {
-      ImGui.End();
+    const selectedObject = Selection.getSelectedObjects()[0];
 
+    if (!selectedObject) {
       return;
     }
-    let activeObject = Selection.activeObject;
+    let activeObject = selectedObject;
 
     if (this.locked) {
       activeObject = this.lockedObject;
@@ -47,27 +46,38 @@ export class Inspector extends EditorWindow {
       this.drawObjectTitle('VFXItem');
       this.drawVFXItemInspector(activeObject);
     } else {
-      this.drawDefaultInspector(activeObject);
+      this.drawObject(activeObject);
     }
   }
 
-  private drawDefaultInspector (activeObject: object) {
-    for (const propertyName of Object.keys(activeObject)) {
+  private drawObject (object: object) {
+    for (const propertyName of Object.keys(object)) {
       const key = propertyName as keyof object;
-      const property: any = activeObject[key];
+      const property = object[key] as any;
+
+      if (property === undefined || property === null) {
+        continue;
+      }
 
       if (typeof property === 'number') {
-        EditorGUILayout.FloatField(propertyName, activeObject, key);
-      } else if (typeof property === 'string') {
-        EditorGUILayout.TextField(propertyName, activeObject, key);
+        EditorGUILayout.FloatField(propertyName, object, key);
       } else if (typeof property === 'boolean') {
-        EditorGUILayout.Checkbox(propertyName, activeObject, key);
+        EditorGUILayout.Checkbox(propertyName, object, key);
+      } else if (typeof property === 'string') {
+        EditorGUILayout.TextField(propertyName, object, key);
       } else if (property instanceof math.Vector3) {
         EditorGUILayout.Vector3Field(propertyName, property);
+      } else if (property instanceof math.Vector2) {
+        EditorGUILayout.Vector2Field(propertyName, property);
       } else if (property instanceof math.Color) {
         EditorGUILayout.ColorField(propertyName, property);
       } else if (property instanceof EffectsObject) {
-        EditorGUILayout.ObjectField(propertyName, activeObject, key);
+        EditorGUILayout.ObjectField(propertyName, object, key);
+      } else if (property instanceof Object) {
+        if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
+          this.drawObject(property);
+          ImGui.TreePop();
+        }
       }
     }
   }
@@ -81,8 +91,10 @@ export class Inspector extends EditorWindow {
     ImGui.Text('Lock');
     ImGui.SameLine();
     if (ImGui.Checkbox('##Lock', (value = this.locked)=>this.locked = value)) {
-      if (Selection.activeObject) {
-        this.lockedObject = Selection.activeObject;
+      const selectedObject = Selection.getSelectedObjects()[0];
+
+      if (selectedObject) {
+        this.lockedObject = selectedObject;
       }
     }
     ImGui.Separator();
@@ -152,7 +164,7 @@ export class Inspector extends EditorWindow {
     if (!material) {
       return;
     }
-    const glMaterial = material as GLMaterial;
+    const glMaterial = material;
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
     let dirtyFlag = false;
@@ -256,25 +268,27 @@ export class Inspector extends EditorWindow {
         if (texture instanceof GLTexture) {
           let __inspectorTexture = (texture as any).__imguiInspectorTexture as WebGLTexture;
 
-          if (!__inspectorTexture && texture.defination.image) {
-            __inspectorTexture = createImguiTextureFromImage(texture.defination.image);
+          if (!__inspectorTexture && texture.definition.image) {
+            __inspectorTexture = createImguiTextureFromImage(texture.definition.image);
             (texture as any).__imguiInspectorTexture = __inspectorTexture;
           }
-          ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
+          ImGui.ImageButton('inspector_texture', __inspectorTexture, new ImGui.Vec2(100, 100));
         } else {
           ImGui.Button(inspectorName + '##' + uniformName, new ImGui.Vec2(100, 100));
         }
         if (ImGui.BeginDragDropTarget()) {
           const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
 
-          if (payload) {
+          if (payload && payload.Data) {
+
+            const droppedTexture = payload.Data as Texture;
+
             if (!serializedData.textures[uniformName]) {
-              serializedData.textures[uniformName] = {
-                texture:{ id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' },
-              };
+              serializedData.textures[uniformName] = { texture: droppedTexture };
             } else {
-              serializedData.textures[uniformName].texture = { id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' };
+              serializedData.textures[uniformName].texture = droppedTexture;
             }
+
             dirtyFlag = true;
           }
 

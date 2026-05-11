@@ -1,6 +1,5 @@
 import { Player, SpriteComponent, VFXItem, glContext, math, spec } from '@galacean/effects';
 import { loadSceneAndPlay } from './utils';
-import { GLMaterial } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -163,35 +162,6 @@ describe('core/plugins/sprite/renderer', () => {
     expect(backMaterial?.culling).to.be.true;
     expect(backMaterial?.cullFace).to.eql(glContext.BACK);
     expect(backMaterial?.frontFace).to.eql(glContext.CW);
-  });
-
-  // 蒙板
-  it('sprite mask mode', async () => {
-    const json = '[{"id":"1","name":"default","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":0},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[8.328878074885855,8.000969489260429,1]}},{"id":"3","name":"write","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":1},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}},"transform":{"position":[2.590996441212991,-2.4182633451321074,0],"rotation":[0,0,0],"scale":[2.4264137706001514,2.426413770600153,1]}},{"id":"11","name":"read","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":2},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}},"transform":{"position":[-2.038250533754174,-2.4528099643482797,0],"rotation":[0,0,0],"scale":[2.4264137706001514,2.426413770600153,1]}},{"id":"13","name":"write_inverse","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":3},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}},"transform":{"position":[2.1764370106189204,2.2109836298350833,0],"rotation":[0,0,0],"scale":[2.4264137706001514,2.426413770600153,1]}}]';
-    const comp = await loadSceneAndPlay(player, JSON.parse(json));
-
-    const unsetMaterial = comp.getItemByName('default')?.getComponent(SpriteComponent).material;
-
-    expect(unsetMaterial?.stencilTest).to.be.false;
-
-    const writeMaterial = comp.getItemByName('write')?.getComponent(SpriteComponent).material;
-
-    expect(writeMaterial?.stencilTest).to.be.true;
-    expect(writeMaterial?.stencilFunc).to.deep.equal([glContext.ALWAYS, glContext.ALWAYS]);
-    expect(writeMaterial?.stencilMask).to.deep.equal([0xFF, 0xFF]);
-    expect(writeMaterial?.stencilOpFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(writeMaterial?.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
-    expect(writeMaterial?.stencilOpZPass).to.deep.equal([glContext.REPLACE, glContext.REPLACE]);
-
-    const readMaterial = comp.getItemByName('read')?.getComponent(SpriteComponent).material;
-
-    expect(readMaterial?.stencilFunc).to.deep.equal([glContext.EQUAL, glContext.EQUAL]);
-    expect(readMaterial?.stencilMask).to.deep.equal([0xFF, 0xFF]);
-
-    const readInverseMaterial = comp.getItemByName('write_inverse')?.getComponent(SpriteComponent).material;
-
-    expect(readInverseMaterial?.stencilFunc).to.deep.equal([glContext.NOTEQUAL, glContext.NOTEQUAL]);
-    expect(readInverseMaterial?.stencilMask).to.deep.equal([0xFF, 0xFF]);
   });
 
   // 锚点

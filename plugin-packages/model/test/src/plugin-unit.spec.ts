@@ -7,7 +7,6 @@ import {
   PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit, RayBoxTesting,
   RayTriangleTesting, JSONConverter, AnimationComponent, ModelMeshComponent,
 } from '@galacean/effects-plugin-model';
-import type { GLMaterial } from '@galacean/effects-webgl';
 import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
@@ -475,6 +474,8 @@ describe('渲染插件单测', function () {
       name: 'mat1',
       dataType: spec.DataType.Material,
       shader: { id: spec.BuiltinObjectGUID.PBRShader },
+      macros: [],
+      ints: {},
       stringTags: {
         RenderFace: spec.RenderFace.Front,
         RenderType: spec.RenderType.Opaque,
@@ -651,6 +652,9 @@ describe('渲染插件单测', function () {
       name: 'mat2',
       dataType: spec.DataType.Material,
       shader: { id: 'unlit000000000000000000000000000' },
+      macros: [],
+      ints: {},
+      vector4s: {},
       stringTags: {
         RenderFace: spec.RenderFace.Both,
         RenderType: spec.RenderType.Opaque,
@@ -1081,7 +1085,7 @@ describe('渲染插件单测', function () {
         type: 5126,
       });
     }
-    const meshMaterial = meshComp.materials[0] as GLMaterial;
+    const meshMaterial = meshComp.materials[0];
     expect(meshMaterial.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
     expect(meshMaterial.getColor('_EmissiveFactor')).to.eql({ r: 0, g: 0, b: 0, a: 1 });
     expect(meshMaterial.getFloat('AlphaClip')).to.eql(0);
@@ -1173,7 +1177,7 @@ describe('渲染插件单测', function () {
           type: 5126,
         });
       }
-      const meshMaterial2 = meshComp.materials[0] as GLMaterial;
+      const meshMaterial2 = meshComp.materials[0];
       expect(meshMaterial2.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
       expect(meshMaterial2.getColor('_EmissiveFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
       expect(meshMaterial2.getFloat('AlphaClip')).to.eql(0);
@@ -1594,7 +1598,7 @@ describe('渲染插件单测', function () {
     ].forEach((v, i) => {
       expect(weightBuffer?.[i]).closeTo(v, 1e-5);
     });
-    const meshMaterial = modelComp.materials[0] as GLMaterial;
+    const meshMaterial = modelComp.materials[0];
     expect(meshMaterial.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
     expect(meshMaterial.getColor('_EmissiveFactor')).to.eql({ r: 0, g: 0, b: 0, a: 1 });
     expect(meshMaterial.getFloat('AlphaClip')).to.eql(0);

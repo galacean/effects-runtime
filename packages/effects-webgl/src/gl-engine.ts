@@ -1,9 +1,15 @@
-import type { Composition, EngineOptions, Nullable, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, SceneLoader, assertExist, glContext, isIOS } from '@galacean/effects-core';
-import { GLRenderer } from './gl-renderer';
+import type { Composition, EngineOptions, Geometry, Material, Nullable, RenderPassClearAction, ShaderLibrary, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
+import { Engine, GPUCapability, Renderer, SceneLoader, TextureLoadAction, assertExist, glContext, isIOS, logger } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
 import { GLContextManager } from './gl-context-manager';
+import { assignInspectorName } from './gl-renderer-internal';
+import type { GLFramebuffer } from './gl-framebuffer';
+import type { GLGPUBuffer } from './gl-gpu-buffer';
+import type { GLRenderbuffer } from './gl-renderbuffer';
+import { GLVertexArrayObject } from './gl-vertex-array-object';
+import type { GLGeometry } from './gl-geometry';
+import type { GLShaderVariant } from './gl-shader';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -47,14 +53,25 @@ export class GLEngine extends Engine {
         this.ticker?.pause();
         this.restoreCompositionsCache = this.compositions.slice();
         this.compositions.forEach(comp => comp.lost(e));
-        this.renderer.lost(e);
+        e.preventDefault();
+        logger.error(`WebGL context lost. Event target: ${e.target}.`);
         this.emit('contextlost', { engine: this, e });
       },
     });
 
     this.context.addRestoreHandler({
       restore: async () => {
-        this.renderer.restore();
+        // FIXME: 需要测试下lost和restore流程
+        const { gl } = this.context;
+
+        if (!gl) {
+          throw new Error('Can not restore automatically because losing gl context.');
+        }
+
+        this.reset();
+        this.shaderLibrary = new GLShaderLibrary(this);
+        this.gpuCapability = new GPUCapability(gl);
+
         await Promise.all(this.restoreCompositionsCache.map(async composition => {
           const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
           const newComposition = await SceneLoader.load(url, this);
@@ -102,11 +119,162 @@ export class GLEngine extends Engine {
     this.reset();
     this.gpuCapability = new GPUCapability(gl);
     this.shaderLibrary = new GLShaderLibrary(this);
-    this.renderer = new GLRenderer(this);
+    this.renderer = new Renderer(this);
     this.maxTextureCount = this.gl.TEXTURE0 + this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
 
     // resize need gl renderer initialized
     this.resize();
+  }
+
+  override getWidth (): number {
+    return this.gl.drawingBufferWidth;
+  }
+
+  override getHeight (): number {
+    return this.gl.drawingBufferHeight;
+  }
+
+  override getShaderLibrary (): ShaderLibrary | null {
+    return this.shaderLibrary;
+  }
+
+  createGLFramebuffer (name?: string): WebGLFramebuffer | null {
+    const fbo = this.gl.createFramebuffer();
+
+    if (fbo) {
+      assignInspectorName(fbo, name, name);
+    } else {
+      throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+
+    return fbo;
+  }
+
+  createVAO (name?: string): GLVertexArrayObject | undefined {
+    const ret = new GLVertexArrayObject(this, name);
+
+    return ret;
+  }
+
+  deleteGLTexture (texture: GLTexture) {
+    if (texture.textureBuffer && !this.disposed) {
+      this.gl.deleteTexture(texture.textureBuffer);
+      texture.textureBuffer = null;
+    }
+  }
+
+  deleteGPUBuffer (buffer: GLGPUBuffer | null) {
+    if (buffer && !this.disposed) {
+      this.gl.deleteBuffer(buffer.glBuffer);
+      // @ts-expect-error
+      delete buffer.glBuffer;
+    }
+  }
+
+  deleteGLFramebuffer (framebuffer: GLFramebuffer) {
+    if (framebuffer && !this.disposed) {
+      this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
+      delete framebuffer.fbo;
+    }
+  }
+
+  deleteGLRenderbuffer (renderbuffer: GLRenderbuffer) {
+    if (renderbuffer && !this.disposed) {
+      this.gl.deleteRenderbuffer(renderbuffer.buffer);
+      renderbuffer.buffer = null;
+    }
+  }
+
+  override drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0): void {
+    if (!geometry || !material) {
+      return;
+    }
+
+    material.initialize();
+    geometry.initialize();
+    geometry.flush();
+    const renderingData = this.renderingData;
+
+    material.setMatrix('effects_ObjectToWorld', matrix);
+
+    try {
+      material.use(this.renderer, renderingData.currentFrame.globalUniforms);
+    } catch (e) {
+      console.error(e);
+
+      this.renderErrors.add(e as Error);
+
+      return;
+    }
+
+    const gl = this.gl;
+
+    if (!gl) {
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
+
+      return;
+    }
+
+    const glGeometry = geometry as GLGeometry;
+
+    const program = (material.shaderVariant as GLShaderVariant).program;
+
+    const vao = program.setupAttributes(glGeometry);
+    const indicesBuffer = glGeometry.indicesBuffer;
+    let offset = glGeometry.drawStart;
+    let count = glGeometry.drawCount;
+    const mode = glGeometry.mode;
+    const subMeshes = glGeometry.subMeshes;
+
+    if (subMeshes && subMeshes.length) {
+      const subMesh = subMeshes[subMeshIndex];
+
+      // FIXME: 临时处理3D线框状态下隐藏模型
+      if (count < 0) {
+        return;
+      }
+      offset = subMesh.offset;
+      if (indicesBuffer) {
+        count = subMesh.indexCount ?? 0;
+      } else {
+        count = subMesh.vertexCount;
+      }
+    }
+    if (indicesBuffer) {
+      gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+    } else {
+      gl.drawArrays(mode, offset, count);
+    }
+    vao?.unbind();
+  }
+
+  override clear (action: RenderPassClearAction): void {
+    let bit = 0;
+
+    if (action.colorAction === TextureLoadAction.clear) {
+      const clearColor = action.clearColor;
+
+      if (clearColor) {
+        this.clearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+      }
+      this.colorMask(true, true, true, true);
+      bit = glContext.COLOR_BUFFER_BIT;
+    }
+    if (action.stencilAction === TextureLoadAction.clear) {
+      this.stencilMask(0xff);
+      this.clearStencil(action.clearStencil || 0);
+      bit = bit | glContext.STENCIL_BUFFER_BIT;
+    }
+    if (action.depthAction === TextureLoadAction.clear) {
+      const depth = action.clearDepth as number;
+
+      this.depthMask(true);
+      this.clearDepth(Number.isFinite(depth) ? depth : 1);
+      bit = bit | glContext.DEPTH_BUFFER_BIT;
+    }
+    if (bit) {
+      this.gl.clear(bit);
+    }
   }
 
   override dispose () {
@@ -116,6 +284,7 @@ export class GLEngine extends Engine {
     super.dispose();
 
     this.renderer.dispose();
+    this.renderTargetPool.dispose();
     this.shaderLibrary?.dispose();
     this.context.dispose();
     this.reset();
@@ -130,11 +299,51 @@ export class GLEngine extends Engine {
     this.currentRenderbuffer = {};
   }
 
-  toggle (capability: GLenum, enable?: boolean) {
+  override setSampleAlphaToCoverage (enable: boolean) {
     if (enable) {
-      this.enable(capability);
+      this.enable(glContext.SAMPLE_ALPHA_TO_COVERAGE);
     } else {
-      this.disable(capability);
+      this.disable(glContext.SAMPLE_ALPHA_TO_COVERAGE);
+    }
+  }
+
+  override setBlending (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.BLEND);
+    } else {
+      this.disable(glContext.BLEND);
+    }
+  }
+
+  override setDepthTest (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.DEPTH_TEST);
+    } else {
+      this.disable(glContext.DEPTH_TEST);
+    }
+  }
+
+  override setStencilTest (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.STENCIL_TEST);
+    } else {
+      this.disable(glContext.STENCIL_TEST);
+    }
+  }
+
+  override setCulling (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.CULL_FACE);
+    } else {
+      this.disable(glContext.CULL_FACE);
+    }
+  }
+
+  override setPolygonOffsetFill (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.POLYGON_OFFSET_FILL);
+    } else {
+      this.disable(glContext.POLYGON_OFFSET_FILL);
     }
   }
 
@@ -193,7 +402,7 @@ export class GLEngine extends Engine {
   /**
    * 绑定系统 framebuffer
    */
-  bindSystemFramebuffer () {
+  override bindSystemFramebuffer () {
     this.bindFramebuffer(this.gl.FRAMEBUFFER, null);
   }
 
@@ -206,17 +415,6 @@ export class GLEngine extends Engine {
    */
   useProgram (program: WebGLProgram | null) {
     this.set1('useProgram', program);
-  }
-
-  /**
-   * 使用预设值来清空缓冲
-   * @param mask
-   * example:
-   * gl.clear(gl.DEPTH_BUFFER_BIT);
-   * gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
-   */
-  clear (mask: number) {
-    this.gl.clear(mask);
   }
 
   /*** depth start ***/
@@ -238,7 +436,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.DEPTH_TEST);
    * gl.depthFunc(gl.NEVER);
    */
-  depthFunc (func: GLenum) {
+  override depthFunc (func: GLenum) {
     this.set1('depthFunc', func);
   }
 
@@ -248,11 +446,11 @@ export class GLEngine extends Engine {
    * example:
    * gl.depthMask(false);
    */
-  depthMask (flag: boolean) {
+  override depthMask (flag: boolean) {
     this.set1('depthMask', flag);
   }
 
-  polygonOffset (factor: number, unit: number) {
+  override polygonOffset (factor: number, unit: number) {
     this.set2('polygonOffset', factor, unit);
   }
 
@@ -263,7 +461,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.depthRange(0.2, 0.6);
    */
-  depthRange (zNear: number, zFar: number) {
+  override depthRange (zNear: number, zFar: number) {
     this.set2('depthRange', zNear, zFar);
   }
 
@@ -319,7 +517,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.STENCIL_TEST);
    * gl.stencilFuncSeparate(gl.FRONT, gl.LESS, 0.2, 1110011);
    */
-  stencilFuncSeparate (face: GLenum, func: GLenum, ref: GLint, mask: GLuint) {
+  override stencilFuncSeparate (face: GLenum, func: GLenum, ref: GLint, mask: GLuint) {
     this.set4('stencilFuncSeparate', face, func, ref, mask);
   }
 
@@ -330,7 +528,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.stencilMaskSeparate(gl.FRONT, 110101);
    */
-  stencilMaskSeparate (face: GLenum, mask: GLuint) {
+  override stencilMaskSeparate (face: GLenum, mask: GLuint) {
     this.set2('stencilMaskSeparate', face, mask);
   }
 
@@ -358,7 +556,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.STENCIL_TEST);
    * gl.stencilOpSeparate(gl.FRONT, gl.INCR, gl.DECR, gl.INVERT);
    */
-  stencilOpSeparate (face: GLenum, fail: GLenum, zfail: GLenum, zpass: GLenum) {
+  override stencilOpSeparate (face: GLenum, fail: GLenum, zfail: GLenum, zpass: GLenum) {
     this.set4('stencilOpSeparate', face, fail, zfail, zpass);
   }
 
@@ -372,7 +570,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.CULL_FACE);
    * gl.cullFace(gl.FRONT_AND_BACK);
    */
-  cullFace (mode: GLenum) {
+  override cullFace (mode: GLenum) {
     this.set1('cullFace', mode);
   }
 
@@ -382,7 +580,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.frontFace(gl.CW);
    */
-  frontFace (mode: GLenum) {
+  override frontFace (mode: GLenum) {
     this.set1('frontFace', mode);
   }
 
@@ -411,7 +609,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.colorMask(true, true, true, false);
    */
-  colorMask (red: boolean, green: boolean, blue: boolean, alpha: boolean) {
+  override colorMask (red: boolean, green: boolean, blue: boolean, alpha: boolean) {
     this.set4('colorMask', red, green, blue, alpha);
   }
 
@@ -424,7 +622,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.blendColor(0, 0.5, 1, 1);
    */
-  blendColor (red: GLclampf, green: GLclampf, blue: GLclampf, alpha: GLclampf) {
+  override blendColor (red: GLclampf, green: GLclampf, blue: GLclampf, alpha: GLclampf) {
     this.set4('blendColor', red, green, blue, alpha);
   }
 
@@ -450,7 +648,7 @@ export class GLEngine extends Engine {
    * gl.enable(gl.BLEND);
    * gl.blendFuncSeparate(gl.SRC_COLOR, gl.DST_COLOR, gl.ONE, gl.ZERO);
    */
-  blendFuncSeparate (srcRGB: GLenum, dstRGB: GLenum, srcAlpha: GLenum, dstAlpha: GLenum) {
+  override blendFuncSeparate (srcRGB: GLenum, dstRGB: GLenum, srcAlpha: GLenum, dstAlpha: GLenum) {
     this.set4('blendFuncSeparate', srcRGB, dstRGB, srcAlpha, dstAlpha);
   }
 
@@ -473,7 +671,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.blendEquationSeparate(gl.FUNC_ADD, gl.FUNC_SUBTRACT);
    */
-  blendEquationSeparate (modeRGB: GLenum, modeAlpha: GLenum) {
+  override blendEquationSeparate (modeRGB: GLenum, modeAlpha: GLenum) {
     this.set2('blendEquationSeparate', modeRGB, modeAlpha);
   }
 
@@ -506,7 +704,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  viewport (x: number, y: number, width: number, height: number) {
+  override viewport (x: number, y: number, width: number, height: number) {
     this.set4('viewport', x, y, width, height);
   }
 

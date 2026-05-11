@@ -5,16 +5,14 @@ import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
-import {
-  MaskMode, MaskProcessor, Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode,
-} from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { MeshCollider } from '../plugins';
+import { MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { Renderer } from '../render';
 import { Geometry } from '../render';
 import { itemFrag, itemVert } from '../shader';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
+import { extractMinAndMax } from '../math';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -39,12 +37,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   geometry: Geometry;
 
   protected visible = true;
-  protected readonly maskManager: MaskProcessor;
 
-  /**
-   * 用于点击测试的碰撞器
-   */
-  protected meshCollider = new MeshCollider();
   protected defaultGeometry: Geometry;
 
   private _color = new Color(1, 1, 1, 1);
@@ -102,7 +95,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
     this.material = material;
     this.material.setColor('_Color', new Color(1, 1, 1, 1));
-    this.maskManager = new MaskProcessor(engine);
 
     this.configureMaterial(this.renderer);
   }
@@ -206,24 +198,23 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     if (!this.getVisible()) {
       return;
     }
-
-    this.maskManager.drawStencilMask(renderer);
+    this.maskManager.drawStencilMask(renderer, this);
 
     this.draw(renderer);
+
   }
 
   /**
    * @internal
    */
-  drawStencilMask (renderer: Renderer) {
+  drawStencilMask (maskRef: number) {
     if (!this.isActiveAndEnabled) {
       return;
     }
-    const previousColorMask = this.material.colorMask;
 
-    this.material.colorMask = false;
-    this.draw(renderer);
-    this.material.colorMask = previousColorMask;
+    for (let i = 0; i < this.materials.length; i++) {
+      this.maskManager.drawGeometryMask(this.engine.renderer, this.geometry, this.transform.getWorldMatrix(), this.materials[i], maskRef, i);
+    }
   }
 
   override onStart (): void {
@@ -237,8 +228,8 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     const ui = this.interaction;
 
     if (force || ui) {
-      this.meshCollider.setGeometry(this.geometry, worldMatrix);
-      const area = this.meshCollider.getBoundingBoxData();
+      this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+      const area = this.boundingBoxInfo.getRawBoundingBoxTriangle();
 
       if (area) {
         return {
@@ -246,33 +237,50 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
           type: area.type,
           triangles: area.area,
           backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+          clipMasks:this.frameClipMasks,
         };
       }
     }
   };
 
+  /**
+   * @deprecated 2.9.0 Please use getBoundingBoxInfo
+   */
   getBoundingBox (): BoundingBoxTriangle {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBox = this.meshCollider.getBoundingBox();
+    this.boundingBoxInfo.setGeometry(this.geometry, worldMatrix);
+    const boundingBox = this.boundingBoxInfo.getBoundingBoxTriangle(this.transform.size);
 
     return boundingBox;
   }
 
+  override getBoundingBoxInfo (): BoundingBoxInfo {
+    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+
+    if (positionArray) {
+      const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
+
+      minMaxResult.minimum.x *= this.transform.size.x;
+      minMaxResult.minimum.y *= this.transform.size.y;
+      minMaxResult.maximum.x *= this.transform.size.x;
+      minMaxResult.maximum.y *= this.transform.size.y;
+      this.boundingBoxInfo.reConstruct(minMaxResult.minimum, minMaxResult.maximum, this.transform.getWorldMatrix());
+    }
+
+    return this.boundingBoxInfo;
+  }
+
   private configureMaterial (renderer: ItemRenderer): Material {
-    const { side, occlusion, blending: blendMode, mask, texture } = renderer;
+    const { side, occlusion, blending: blendMode, texture } = renderer;
     const maskMode = this.maskManager.maskMode;
     const material = this.material;
 
     material.blending = true;
     material.depthTest = true;
     material.depthMask = occlusion;
-    material.stencilRef = mask !== undefined ? [mask, mask] : undefined;
 
     setBlendMode(material, blendMode);
-    // 兼容旧数据中模板需要渲染的情况
-    setMaskMode(material, maskMode);
     setSideMode(material, side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
@@ -303,16 +311,15 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     }
   }
 
-  override fromData (data: unknown): void {
+  override fromData (data: MaskableGraphicData): void {
     super.fromData(data);
 
-    const maskableGraphicData = (data as MaskableGraphicData);
-    const renderer = maskableGraphicData.renderer ?? {};
+    const renderer = data.renderer ?? {};
 
-    const maskOptions = maskableGraphicData.mask;
+    const maskOptions = data.mask;
 
     if (maskOptions) {
-      this.maskManager.setMaskOptions(maskOptions);
+      this.maskManager.setMaskOptions(this.engine, maskOptions);
     }
 
     this.renderer = {

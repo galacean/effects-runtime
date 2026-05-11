@@ -9,17 +9,21 @@ export class TextLayout implements BaseLayout {
   overflow: spec.TextOverflow;
   width = 0;
   height = 0;
-
-  /**
-   * 自适应宽高开关
-   */
-  autoWidth: boolean;
-
-  maxTextWidth: number;
   /**
    * 行高
    */
   lineHeight: number;
+  /**
+   * 自动宽高模式
+   */
+  autoResize = spec.TextSizeMode.fixed;
+  /**
+   * 是否启用单词完整换行（不从单词中间断开）
+   * - true: 优先在空格处换行，保持单词完整性
+   * - false: 允许在任意字符处换行（逐字符换行）
+   * @default true
+   */
+  keepWordIntact = true;
 
   constructor (options: spec.TextContentOptions) {
     this.update(options);
@@ -33,10 +37,11 @@ export class TextLayout implements BaseLayout {
       textVerticalAlign = spec.TextVerticalAlign.top,
       textAlign = spec.TextAlignment.left,
       letterSpace = 0,
-      autoWidth = false,
       fontSize,
       lineHeight = fontSize,
-    } = options;
+      autoResize = spec.TextSizeMode.fixed,
+      keepWordIntact = true,
+    } = options as spec.TextContentOptions & { keepWordIntact?: boolean };
 
     this.letterSpace = letterSpace;
     this.overflow = textOverflow;
@@ -44,9 +49,10 @@ export class TextLayout implements BaseLayout {
     this.textAlign = textAlign;
     this.width = textWidth;
     this.height = textHeight;
+    this.autoResize = autoResize;
+    this.keepWordIntact = keepWordIntact;
 
     this.lineHeight = lineHeight;
-    this.autoWidth = autoWidth;
   }
 
   /**
@@ -59,7 +65,6 @@ export class TextLayout implements BaseLayout {
    * @returns - 行高偏移值
    */
   getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number, totalLineHeight?: number) {
-    const { fontScale } = style;
     // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
     // 计算基础偏移量
@@ -73,11 +78,11 @@ export class TextLayout implements BaseLayout {
 
         break;
       case spec.TextVerticalAlign.middle:
-        offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
+        offsetResult = (this.height - commonCalculation + baseOffset) / 2;
 
         break;
       case spec.TextVerticalAlign.bottom:
-        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
+        offsetResult = (this.height - commonCalculation) - offsetY;
 
         break;
       default:
@@ -102,11 +107,11 @@ export class TextLayout implements BaseLayout {
 
         break;
       case spec.TextAlignment.middle:
-        offsetX = (this.width * style.fontScale - maxWidth) / 2;
+        offsetX = (this.width - maxWidth) / 2;
 
         break;
       case spec.TextAlignment.right:
-        offsetX = (this.width * style.fontScale - maxWidth);
+        offsetX = (this.width - maxWidth);
 
         break;
       default:

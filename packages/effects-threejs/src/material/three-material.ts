@@ -25,7 +25,7 @@ export class ThreeMaterial extends Material {
   /**
    * 储存纹理类型的 uniform 值
    */
-  textures: Record<string, Texture> = {};
+  override textures: Record<string, Texture> = {};
   /**
    * THREE 原始着色器材质对象
    */
@@ -33,8 +33,8 @@ export class ThreeMaterial extends Material {
   /**
    * 储存 uniform 变量名及对应的 THREE uniform 对象
    */
-  uniforms: Record<string, THREE.Uniform> = {};
-  macrosDirty: boolean = true;
+  threeUniforms: Record<string, THREE.Uniform> = {};
+  override macrosDirty: boolean = true;
 
   /**
    * 构造函数
@@ -56,11 +56,11 @@ export class ThreeMaterial extends Material {
       fragment: shader?.fragment ?? '',
     };
 
-    this.uniforms['_MainTex'] = new THREE.Uniform(null);
-    this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
-    this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
-    this.uniforms['effects_MatrixVP'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -8, 1]);
-    this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
+    this.threeUniforms['_MainTex'] = new THREE.Uniform(null);
+    this.threeUniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
+    this.threeUniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
+    this.threeUniforms['effects_MatrixVP'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -8, 1]);
+    this.threeUniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
       vertexShader: ShaderFactory.genFinalShaderCode({
@@ -83,7 +83,7 @@ export class ThreeMaterial extends Material {
       polygonOffsetUnits: THREE.ZeroFactor,
       polygonOffset: false,
       // 创建时定义，后续更新才生效
-      uniforms: this.uniforms,
+      uniforms: this.threeUniforms,
     });
 
     if (level === 1) {
@@ -376,18 +376,18 @@ export class ThreeMaterial extends Material {
     return this.material.colorWrite;
   }
 
-  getTexture (name: string): Texture | null {
+  override getTexture (name: string): Texture | null {
     return this.textures[name];
   }
-  setTexture (name: string, texture: Texture): void {
+  override setTexture (name: string, texture: Texture): void {
     this.setUniform(name, (texture as ThreeTexture).texture);
     this.textures[name] = texture;
   }
 
-  getVector4Array (name: string): number[] {
-    return this.uniforms[name].value as number[];
+  override getVector4Array (name: string): number[] {
+    return this.threeUniforms[name].value as number[];
   }
-  setVector4Array (name: string, array: Vector4[]): void {
+  override setVector4Array (name: string, array: Vector4[]): void {
     let value: number[] = [];
 
     for (const v of array) {
@@ -397,10 +397,10 @@ export class ThreeMaterial extends Material {
     this.setUniform(name, value);
   }
 
-  getMatrixArray (name: string): number[] | null {
-    return this.uniforms[name].value;
+  override getMatrixArray (name: string): number[] | null {
+    return this.threeUniforms[name].value;
   }
-  setMatrixArray (name: string, array: Matrix4[]): void {
+  override setMatrixArray (name: string, array: Matrix4[]): void {
     let value: number[] = [];
 
     for (const v of array) {
@@ -408,86 +408,86 @@ export class ThreeMaterial extends Material {
     }
     this.setUniform(name, value);
   }
-  setMatrixNumberArray (name: string, array: number[]): void {
+  override setMatrixNumberArray (name: string, array: number[]): void {
     this.setUniform(name, array);
   }
 
-  getMatrix (name: string): Matrix4 | null {
-    return this.uniforms[name].value;
+  override getMatrix (name: string): Matrix4 | null {
+    return this.threeUniforms[name].value;
   }
-  setMatrix (name: string, value: Matrix4): void {
+  override setMatrix (name: string, value: Matrix4): void {
     this.setUniform(name, value);
   }
-  setMatrix3 (name: string, value: Matrix3): void {
-    this.setUniform(name, value);
-  }
-
-  getVector2 (name: string): Vector2 | null {
-    return this.uniforms[name].value;
-  }
-  setVector2 (name: string, value: Vector2): void {
+  override setMatrix3 (name: string, value: Matrix3): void {
     this.setUniform(name, value);
   }
 
-  getVector3 (name: string): Vector3 {
-    return this.uniforms[name].value as Vector3;
+  override getVector2 (name: string): Vector2 | null {
+    return this.threeUniforms[name].value;
   }
-  setVector3 (name: string, value: Vector3): void {
+  override setVector2 (name: string, value: Vector2): void {
     this.setUniform(name, value);
   }
 
-  getVector4 (name: string): Vector4 | null {
-    return this.uniforms[name].value;
+  override getVector3 (name: string): Vector3 {
+    return this.threeUniforms[name].value as Vector3;
   }
-  setVector4 (name: string, value: Vector4): void {
+  override setVector3 (name: string, value: Vector3): void {
     this.setUniform(name, value);
   }
 
-  getColor (name: string): Color | null {
-    const value = this.uniforms[name].value;
+  override getVector4 (name: string): Vector4 | null {
+    return this.threeUniforms[name].value;
+  }
+  override setVector4 (name: string, value: Vector4): void {
+    this.setUniform(name, value);
+  }
+
+  override getColor (name: string): Color | null {
+    const value = this.threeUniforms[name].value;
 
     return new math.Color(value.x, value.y, value.z, value.w);
   }
-  setColor (name: string, value: Color): void {
+  override setColor (name: string, value: Color): void {
     this.setUniform(name, new THREE.Vector4(value.r, value.g, value.b, value.a));
   }
 
-  getQuaternion (name: string): Quaternion | null {
-    return this.uniforms[name].value;
+  override getQuaternion (name: string): Quaternion | null {
+    return this.threeUniforms[name].value;
   }
-  setQuaternion (name: string, value: Quaternion): void {
+  override setQuaternion (name: string, value: Quaternion): void {
     this.setUniform(name, value);
   }
 
-  getFloat (name: string): number | null {
-    return this.uniforms[name].value as number | null;
+  override getFloat (name: string): number | null {
+    return this.threeUniforms[name].value as number | null;
   }
-  setFloat (name: string, value: number): void {
+  override setFloat (name: string, value: number): void {
     this.setUniform(name, value);
   }
 
-  getFloats (name: string): number[] | null {
-    return this.uniforms[name].value as number[] | null;
+  override getFloats (name: string): number[] | null {
+    return this.threeUniforms[name].value as number[] | null;
   }
-  setFloats (name: string, value: number[]): void {
+  override setFloats (name: string, value: number[]): void {
     this.setUniform(name, value);
   }
 
-  getInt (name: string): number | null {
-    return this.uniforms[name].value as number | null;
+  override getInt (name: string): number | null {
+    return this.threeUniforms[name].value as number | null;
   }
-  setInt (name: string, value: number): void {
+  override setInt (name: string, value: number): void {
     this.setUniform(name, value);
   }
 
-  hasUniform (name: string): boolean {
-    return !!this.uniforms[name];
+  override hasUniform (name: string): boolean {
+    return !!this.threeUniforms[name];
   }
 
   private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[] | THREE.Vector4): void {
     const uniform = new THREE.Uniform(value);
 
-    this.uniforms[name] = this.material.uniforms[name] = uniform;
+    this.threeUniforms[name] = this.material.uniforms[name] = uniform;
   }
 
   override enableMacro (keyword: string, value?: boolean | number): void {
@@ -508,7 +508,7 @@ export class ThreeMaterial extends Material {
     return this.enabledMacros[keyword] !== undefined;
   }
 
-  clone (props?: MaterialProps): Material {
+  override clone (props?: MaterialProps): Material {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }
@@ -518,7 +518,7 @@ export class ThreeMaterial extends Material {
     throw new Error('Method not implemented.');
   }
 
-  override fromData (data: unknown): void {
+  override fromData (data: spec.MaterialData): void {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }

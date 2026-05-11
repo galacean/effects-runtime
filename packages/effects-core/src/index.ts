@@ -48,6 +48,7 @@ export * from './effects-object';
 export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
+export * from './precompositions';
 
 registerPlugin('camera', CameraVFXItemLoader);
 registerPlugin('text', TextLoader);

@@ -1,4 +1,4 @@
-import { isIOS, isWechatMiniApp } from '@galacean/effects';
+import { isWechatMiniApp } from '@galacean/effects';
 import { spec, getActivePlayers, logger, isAlipayMiniApp } from '@galacean/effects';
 import type { AlipaySystemInfo, DowngradeOptions, DowngradeResult } from './types';
 import { UADecoder } from './ua-decoder';
@@ -97,7 +97,7 @@ function getDeviceInfo (options: DowngradeOptions) {
  * @returns 渲染等级
  */
 export function getDefaultRenderLevel () {
-  return isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
+  return spec.RenderLevel.S;
 }
 
 function pauseAllActivePlayers (e: Event) {

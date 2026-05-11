@@ -1,19 +1,38 @@
 import { serialize } from '../decorators';
-import type { Material } from '../material';
-import type { Renderer } from '../render';
+import type { Material, Maskable } from '../material';
+import { MaskProcessor } from '../material';
+import { BoundingBoxInfo } from '../plugins/interact/mesh-collider';
 import { Component } from './component';
+import type { Renderer } from '../render/renderer';
 
 /**
  * 所有渲染组件的基类
  * @since 2.0.0
  */
 export class RendererComponent extends Component {
-
   @serialize()
   materials: Material[] = [];
 
+  /**
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
+   */
+  frameClipMasks: Maskable[] = [];
+
+  /**
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
+   */
+  maskManager: MaskProcessor = new MaskProcessor();
+
   @serialize()
   protected _priority = 0;
+  /**
+   * 用于点击测试的碰撞器
+   */
+  protected boundingBoxInfo = new BoundingBoxInfo();
 
   get priority (): number {
     return this._priority;
@@ -33,13 +52,26 @@ export class RendererComponent extends Component {
     }
   }
 
-  render (renderer: Renderer): void { }
-
   override onEnable (): void {
     this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
   }
 
   override onDisable (): void {
     this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
+  }
+
+  override onParentChanged (): void {
+    this.frameClipMasks = [];
+  }
+
+  /**
+   * 获取包围盒信息
+   */
+  getBoundingBoxInfo (): BoundingBoxInfo {
+    return this.boundingBoxInfo;
+  }
+
+  render (renderer: Renderer): void {
+    // OVERRIDE
   }
 }
