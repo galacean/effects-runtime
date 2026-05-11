@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-dom-content",
-  "version": "2.8.10",
+  "version": "2.9.0",
   "description": "Galacean Effects plugin for rendering HTML/CSS DOM content as texture",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",

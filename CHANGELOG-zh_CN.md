@@ -8,6 +8,72 @@
 
 ---
 
+## 2.9.0
+
+`2026-05-11`
+
+### Feat
+- Feat: 新增 `getTextWidth` 方法。 [#1336](https://github.com/galacean/effects-runtime/pull/1336) @Fryt1
+  - Feat: 文本组件支持自动宽度。 [#1390](https://github.com/galacean/effects-runtime/pull/1390) @wumaolinmaoan
+- Feat: 支持阿拉伯语文本元素。 [#1432](https://github.com/galacean/effects-runtime/pull/1432) @chenzhaozheng
+- Refactor: 文本元素自行计算其变换尺寸。 [#1377](https://github.com/galacean/effects-runtime/pull/1377) @wumaolinmaoan
+  - Refactor: 抽取文本组件通用逻辑并改进文档。 [#1415](https://github.com/galacean/effects-runtime/pull/1415) @yiiqii
+  - Refactor: 文本布局计算移除对 `fontscale` 的依赖。 [#1431](https://github.com/galacean/effects-runtime/pull/1431) @wumaolinmaoan
+  - Refactor: 优化 RTL 文本渲染与换行逻辑。 [#1439](https://github.com/galacean/effects-runtime/pull/1439) @ChengYi996
+  - Fix: 文本字体家族单测修复。 [#1366](https://github.com/galacean/effects-runtime/pull/1366) @wumaolinmaoan
+  - Fix: rich text 自动换行逻辑修复。 [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
+  - Fix: 文本阴影渲染与 rich text 显示溢出问题修复。 [#1399](https://github.com/galacean/effects-runtime/pull/1399) @wumaolinmaoan
+  - Fix: rich text 可见与 display overflow 模式下文本裁剪问题修复。 [#1405](https://github.com/galacean/effects-runtime/pull/1405) @wumaolinmaoan
+  - Fix: 文本组件自动高度失效问题修复。 [#1421](https://github.com/galacean/effects-runtime/pull/1421) @wumaolinmaoan
+  - Fix: 文本描边宽度问题修复。 [#1460](https://github.com/galacean/effects-runtime/pull/1460) @wumaolinmaoan
+- Feat: 新增动画事件。 [#1349](https://github.com/galacean/effects-runtime/pull/1349) @wumaolinmaoan
+  - Refactor: 将 `AnimationEventReference.event` 重命名为 `data`。 [#1452](https://github.com/galacean/effects-runtime/pull/1452) @wumaolinmaoan
+- Feat: 新增透明视频渲染开关方法。 [#1374](https://github.com/galacean/effects-runtime/pull/1374) @ChengYi996
+  - Refactor: 重构视频组件播放控制。 [#1429](https://github.com/galacean/effects-runtime/pull/1429) @ChengYi996
+  - Fix: 修复视频播放逻辑与销毁时资源清理。 [#1404](https://github.com/galacean/effects-runtime/pull/1404) @ChengYi996
+- Feat: 新增 frame 组件用于裁剪内容和绘制背景。 [#1398](https://github.com/galacean/effects-runtime/pull/1398) @wumaolinmaoan
+  - Feat: frame 裁剪区域外的元素不可点击。 [#1419](https://github.com/galacean/effects-runtime/pull/1419) @wumaolinmaoan
+  - Fix: 绘制几何遮罩前预存 stencil 状态。 [#1412](https://github.com/galacean/effects-runtime/pull/1412) @wumaolinmaoan
+  - Fix: mask 模式单测修复。 [#1411](https://github.com/galacean/effects-runtime/pull/1411) @wumaolinmaoan
+- Feat: 新增 `Graphics` 用于 2D 渲染。 [#1364](https://github.com/galacean/effects-runtime/pull/1364) @wumaolinmaoan
+  - Feat: 新增 `BoundingBox` 用于存储与操作对象边界信息。 [#1410](https://github.com/galacean/effects-runtime/pull/1410) @wumaolinmaoan
+  - Feat: shape 组件新增自适应构建密度支持。 [#1426](https://github.com/galacean/effects-runtime/pull/1426) @wumaolinmaoan
+  - Fix: shape 渐变插值问题修复。 [#1440](https://github.com/galacean/effects-runtime/pull/1440) @wumaolinmaoan
+- Feat: 新增预合成加载方法。 [#1416](https://github.com/galacean/effects-runtime/pull/1416) @wumaolinmaoan
+- Refactor: 统一 vfx item 与预合成管理器实例化逻辑。 [#1418](https://github.com/galacean/effects-runtime/pull/1418) @wumaolinmaoan
+- Feat: 移除无用的贝塞尔报错信息并导出贝塞尔工具。 [#1435](https://github.com/galacean/effects-runtime/pull/1435) @liyincheng
+- Feat: 新增 DOM-content 插件。 [#1447](https://github.com/galacean/effects-runtime/pull/1447) @chenmo0204
+  - Fix(test): dom-content spec 中解析 `JSON` 字符串。 [#1459](https://github.com/galacean/effects-runtime/pull/1459) @yiiqii
+
+### Refactor
+- Refactor: `composition` 组件使用 `track` 顺序设置子节点渲染顺序。 [#1338](https://github.com/galacean/effects-runtime/pull/1338) @wumaolinmaoan
+- Refactor: 粒子轨道时间同步逻辑重构。 [#1381](https://github.com/galacean/effects-runtime/pull/1381) @wumaolinmaoan
+  - Refactor: 在 particle system 的 `onStart` 中创建 particle system renderer。 [#1425](https://github.com/galacean/effects-runtime/pull/1425) @wumaolinmaoan
+- Refactor: `ktx2` 插件整体重构，增强健壮性并优化性能。 [#1434](https://github.com/galacean/effects-runtime/pull/1434) @ChengYi996
+  - Fix: 测试中加载压缩纹理前先注册 `KTX2 loader`。 [#1456](https://github.com/galacean/effects-runtime/pull/1456) @ChengYi996
+- Refactor: 将 `GLRenderer` 与 `GLMaterial` 合并进 `effects-core`。 [#1437](https://github.com/galacean/effects-runtime/pull/1437) @wumaolinmaoan
+- Refactor: 更新组件数据接口类型定义。 [#1436](https://github.com/galacean/effects-runtime/pull/1436) @wumaolinmaoan
+
+### Perf
+- Perf: 使用 `gl.finifsh` 替代 `sleep` 提升帧测性能。 [#1420](https://github.com/galacean/effects-runtime/pull/1420) @wumaolinmaoan
+
+### Fix
+- Fix: 使用 `window.devicePixelRatio` 计算默认 pixel ratio。 [#1382](https://github.com/galacean/effects-runtime/pull/1382) @wumaolinmaoan
+  - Fix: 移除 Android/HarmonyOS 自动降帧并统一默认配置。 [#1423](https://github.com/galacean/effects-runtime/pull/1423) @chenmo0204
+- Fix: 前进时间间隔导致的性能问题修复。 [#1449](https://github.com/galacean/effects-runtime/pull/1449) @wumaolinmaoan
+- Fix: editor gizmo 空 framebuffer 设置问题修复。 [#1454](https://github.com/galacean/effects-runtime/pull/1454) @wumaolinmaoan
+- Fix: end behavior 为 forward 时 item transform 动画未继续播放问题修复。 [#1458](https://github.com/galacean/effects-runtime/pull/1458) @wumaolinmaoan
+
+### Chore
+- Chore: 新增 Claude Code 配置文件。 [#1417](https://github.com/galacean/effects-runtime/pull/1417) @yiiqii
+  - Chore: 移除未使用函数。 [#1383](https://github.com/galacean/effects-runtime/pull/1383) @yiiqii
+- Chore: 升级 `effects-specification` 到 `2.8.0 stable` 并增加引擎约束。 [#1455](https://github.com/galacean/effects-runtime/pull/1455) @yiiqii
+  - Chore: `imgui` 升级至 `1.92`。 [#1446](https://github.com/galacean/effects-runtime/pull/1446) @wumaolinmaoan
+
+### Test
+- Refactor(test): 将 case tests 重构为 profile 驱动框架架构。 [#1462](https://github.com/galacean/effects-runtime/pull/1462) @yiiqii
+  - Feat(test): 为 case tests 新增 diff 热力图可视化与 `viewer.js` 缩放。 [#1461](https://github.com/galacean/effects-runtime/pull/1461) @yiiqii
+
 ## 2.8.12
 
 `2026-04-28`
