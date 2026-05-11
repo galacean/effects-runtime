@@ -6,13 +6,25 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
 import { Material } from '../material';
-import { GraphicsPath, buildLine } from '../math';
-import type { StrokeAttributes, ShapePath } from '../math';
+import { buildLine } from '../math';
+import type { StrokeAttributes } from '../math';
+import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
+import { Circle } from '../math/shape/circle';
+import { Polygon } from '../math/shape/polygon';
+import { Rectangle } from '../math/shape/rectangle';
+import type { ShapePrimitive } from '../math/shape/shape-primitive';
+import { Triangle } from '../math/shape/triangle';
 
 export class Graphics {
   private geometry: Geometry;
   private material: Material;
-  private graphicsPath = new GraphicsPath();
+
+  private readonly lineShape = new Polygon();
+  private readonly bezierShape = new Polygon();
+  private readonly triangleShape = new Triangle();
+  private readonly rectangleShape = new Rectangle();
+  private readonly circleShape = new Circle();
+  private readonly buildPoints: number[] = [];
 
   private vertices: number[] = [];
   private colors: number[] = [];
@@ -186,14 +198,14 @@ export class Graphics {
     const closed = points[0] === points[points.length - 2] && points[1] === points[points.length - 1];
     const actualPoints = closed ? numPoints - 1 : numPoints;
 
-    this.graphicsPath.clear();
-    this.graphicsPath.moveTo(points[0], points[1]);
+    const linePoints = this.lineShape.points;
 
-    for (let i = 1; i < actualPoints; i++) {
-      this.graphicsPath.lineTo(points[i * 2], points[i * 2 + 1]);
+    linePoints.length = 0;
+    for (let i = 0; i < actualPoints; i++) {
+      linePoints.push(points[i * 2], points[i * 2 + 1]);
     }
 
-    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, closed);
+    this.buildShapeLine(this.lineShape, color, thickness, closed);
   }
 
   /**
@@ -206,11 +218,12 @@ export class Graphics {
    * @param thickness - 线宽
    */
   drawLine (x1: number, y1: number, x2: number, y2: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.moveTo(x1, y1);
-    this.graphicsPath.lineTo(x2, y2);
+    const linePoints = this.lineShape.points;
 
-    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, closed);
+    linePoints.length = 0;
+    linePoints.push(x1, y1, x2, y2);
+
+    this.buildShapeLine(this.lineShape, color, thickness, false);
   }
 
   /**
@@ -227,11 +240,13 @@ export class Graphics {
    * @param thickness - 线宽
    */
   drawBezier (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.moveTo(x1, y1);
-    this.graphicsPath.bezierCurveTo(x2, y2, x3, y3, x4, y4);
+    const bezierPoints = this.bezierShape.points;
 
-    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, false);
+    bezierPoints.length = 0;
+    bezierPoints.push(x1, y1);
+    buildAdaptiveBezier(bezierPoints, x1, y1, x2, y2, x3, y3, x4, y4);
+
+    this.buildShapeLine(this.bezierShape, color, thickness, false);
   }
 
   /**
@@ -246,10 +261,8 @@ export class Graphics {
    * @param thickness - 线宽
    */
   drawTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.triangle(x1, y1, x2, y2, x3, y3);
-
-    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
+    this.setTriangleShape(x1, y1, x2, y2, x3, y3);
+    this.buildShapeLine(this.triangleShape, color, thickness, true);
   }
 
   /**
@@ -261,10 +274,8 @@ export class Graphics {
    * @param color - 矩形颜色
    */
   drawRectangle (x: number, y: number, width: number, height: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.rect(x, y, width, height, 0);
-
-    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
+    this.setRectangleShape(x, y, width, height, 0);
+    this.buildShapeLine(this.rectangleShape, color, thickness, true);
   }
 
   /**
@@ -276,9 +287,8 @@ export class Graphics {
    * @param thickness - 线宽
    */
   drawCircle (cx: number, cy: number, radius: number, color: Color = Color.WHITE, thickness: number = 1.0): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.circle(cx, cy, radius);
-    this.buildShapeLine(this.graphicsPath.shapePath, color, thickness, true);
+    this.setCircleShape(cx, cy, radius);
+    this.buildShapeLine(this.circleShape, color, thickness, true);
   }
 
   /**
@@ -292,10 +302,8 @@ export class Graphics {
    * @param color - 填充颜色
    */
   fillTriangle (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, color: Color = Color.WHITE): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.triangle(x1, y1, x2, y2, x3, y3);
-
-    this.buildShape(this.graphicsPath.shapePath, color);
+    this.setTriangleShape(x1, y1, x2, y2, x3, y3);
+    this.buildShape(this.triangleShape, color);
   }
 
   /**
@@ -307,10 +315,8 @@ export class Graphics {
    * @param color - 矩形颜色
    */
   fillRectangle (x: number, y: number, width: number, height: number, color: Color = Color.WHITE): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.rect(x, y, width, height, 0);
-
-    this.buildShape(this.graphicsPath.shapePath, color);
+    this.setRectangleShape(x, y, width, height, 0);
+    this.buildShape(this.rectangleShape, color);
   }
 
   /**
@@ -321,9 +327,8 @@ export class Graphics {
    * @param color - 填充颜色
    */
   fillCircle (cx: number, cy: number, radius: number, color: Color = Color.WHITE): void {
-    this.graphicsPath.clear();
-    this.graphicsPath.circle(cx, cy, radius);
-    this.buildShape(this.graphicsPath.shapePath, color);
+    this.setCircleShape(cx, cy, radius);
+    this.buildShape(this.circleShape, color);
   }
 
   dispose (): void {
@@ -331,33 +336,52 @@ export class Graphics {
     this.material.dispose();
   }
 
-  private buildShape (shape: ShapePath, color: Color) {
-    for (const shapePrimitive of shape.shapePrimitives) {
-      const shape = shapePrimitive.shape;
-      const buildPoints: number[] = [];
-      const indexOffset = this.indices.length;
-      const vertexOffset = this.vertices.length / 2;
+  private buildShape (shape: ShapePrimitive, color: Color): void {
+    const buildPoints = this.buildPoints;
+    const indexOffset = this.indices.length;
+    const vertexOffset = this.vertices.length / 2;
 
-      shape.build(buildPoints);
-      shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
+    buildPoints.length = 0;
+    shape.build(buildPoints);
+    shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
 
-      this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
-    }
+    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
   }
 
-  private buildShapeLine (shape: ShapePath, color: Color, thickness: number, closed = false): void {
-    for (const shapePrimitive of shape.shapePrimitives) {
-      const shape = shapePrimitive.shape;
-      const buildPoints: number[] = [];
-      const indexOffset = this.indices.length;
-      const vertexOffset = this.vertices.length / 2;
+  private buildShapeLine (shape: ShapePrimitive, color: Color, thickness: number, closed = false): void {
+    const buildPoints = this.buildPoints;
+    const indexOffset = this.indices.length;
+    const vertexOffset = this.vertices.length / 2;
 
-      shape.build(buildPoints);
-      this.lineStyle.width = thickness;
-      buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
+    buildPoints.length = 0;
+    shape.build(buildPoints);
+    this.lineStyle.width = thickness;
+    buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
 
-      this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
-    }
+    this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+  }
+
+  private setTriangleShape (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
+    this.triangleShape.x = x1;
+    this.triangleShape.y = y1;
+    this.triangleShape.x2 = x2;
+    this.triangleShape.y2 = y2;
+    this.triangleShape.x3 = x3;
+    this.triangleShape.y3 = y3;
+  }
+
+  private setRectangleShape (x: number, y: number, width: number, height: number, roundness: number): void {
+    this.rectangleShape.x = x;
+    this.rectangleShape.y = y;
+    this.rectangleShape.width = width;
+    this.rectangleShape.height = height;
+    this.rectangleShape.roundness = roundness;
+  }
+
+  private setCircleShape (x: number, y: number, radius: number): void {
+    this.circleShape.x = x;
+    this.circleShape.y = y;
+    this.circleShape.radius = radius;
   }
 
   private applyTransformAndColor (vertexOffset: number, count: number, color: Color): void {
