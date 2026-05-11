@@ -80,7 +80,7 @@ export class CanvasLayer extends Component {
       if (!canvasItem.isActiveAndEnabled) {
         continue;
       }
-      canvasItem.draw();
+      canvasItem.drawInternal();
     }
   }
 }

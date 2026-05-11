@@ -143,7 +143,7 @@ export class CanvasItem extends Component {
    * 子类重写此方法以输出实际的绘制内容；调用时 graphics 的变换栈顶已经累积了从根到当前节点的所有父变换，
    * 子类直接使用 this.drawXxx / this.fillXxx 系列封装方法绘制即可，绘制坐标视为本地坐标。
    */
-  onDraw () {
+  draw () {
     // OVERRIDE
   }
 
@@ -243,24 +243,21 @@ export class CanvasItem extends Component {
 
   /**
    * 绘制自身并按 children 数组顺序递归绘制所有子 CanvasItem。
-   * 流程：pushTransform(item.transform 的 2D 矩阵) → drawSelf(自身) → 递归子节点 draw → popTransform。
-   * graphics 的变换栈在调用前后保持平衡，子节点的本地变换通过栈累积得到世界变换。
-   * Graphics 直接从 engine 获取，调用方无需传入。
    * @internal
    */
-  draw () {
+  drawInternal () {
     const graphics = this.engine.graphics;
     const localMatrix2D = this.getLocalMatrix2D();
 
     graphics.pushTransform(localMatrix2D);
 
-    this.onDraw();
+    this.draw();
 
     for (const child of this.children) {
       if (!child.isActiveAndEnabled) {
         continue;
       }
-      child.draw();
+      child.drawInternal();
     }
 
     graphics.popTransform();

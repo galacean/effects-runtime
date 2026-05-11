@@ -683,7 +683,7 @@ export class CanvasGizmo extends CanvasItem {
     this.canvas.removeEventListener('wheel', this.onWheel);
   }
 
-  override onDraw (): void {
+  override draw (): void {
     const lineColor = new math.Color(0.2, 0.4, 1, 1);
     const lineWidth = 3;
 
