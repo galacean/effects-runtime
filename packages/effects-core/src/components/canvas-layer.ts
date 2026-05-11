@@ -73,6 +73,7 @@ export class CanvasLayer extends Component {
    * 绘制当前层中的所有 CanvasItem
    * 仅遍历顶层 CanvasItem，由 CanvasItem.draw 内部递归绘制 children
    * Graphics 直接从 engine 获取，调用方无需传入
+   * @internal
    */
   draw () {
     for (const canvasItem of this.canvasItems) {
