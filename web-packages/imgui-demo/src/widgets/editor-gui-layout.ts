@@ -185,22 +185,23 @@ export class EditorGUILayout {
 
     ImGui.Indent();
 
-    // 在 TreeNode 之前绘制一条背景条，起点与 TreeNode 同处缩进位置，
-    // 颜色与 CollapsingHeader 默认态一致；hover / active 状态由 TreeNode 自身
-    // 使用 HeaderHovered / HeaderActive 叠加，视觉反馈与 CollapsingHeader 对齐。
+    // 用 channel split 让背景条画在 TreeNode 之下：
+    // 先在前景通道绘制 TreeNode，再读取它实际的 ItemRect 作为底色范围，
+    // 这样背景高度与 hover/active 时的高亮区域完全一致。
     const drawList = ImGui.GetWindowDrawList();
-    const startPos = ImGui.GetCursorScreenPos();
-    const lineHeight = ImGui.GetFrameHeight();
-    const availWidth = ImGui.GetContentRegionAvail().x;
-    const bgColor = ImGui.GetColorU32(ImGui.Col.Header);
 
-    drawList.AddRectFilled(
-      new ImGui.Vec2(startPos.x, startPos.y),
-      new ImGui.Vec2(startPos.x + availWidth, startPos.y + lineHeight),
-      bgColor,
-    );
+    drawList.ChannelsSplit(2);
+    drawList.ChannelsSetCurrent(1);
 
     const opened = ImGui.TreeNodeEx(label, flags);
+
+    drawList.ChannelsSetCurrent(0);
+    drawList.AddRectFilled(
+      ImGui.GetItemRectMin(),
+      ImGui.GetItemRectMax(),
+      ImGui.GetColorU32(ImGui.Col.Header),
+    );
+    drawList.ChannelsMerge();
 
     return opened;
   }
