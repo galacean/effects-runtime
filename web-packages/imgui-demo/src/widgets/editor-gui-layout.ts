@@ -1,6 +1,4 @@
 import { GLTexture } from '@galacean/effects-webgl';
-import type { FileNode } from '../core/file-node';
-import { GalaceanEffects } from '../ge';
 import { ImGui, ImGui_Impl } from '../imgui';
 
 function access (object: any, property: string) {
@@ -162,6 +160,56 @@ export class EditorGUILayout {
     EditorGUILayout.Label(label);
 
     return ImGui.ColorEdit4('##' + label + guiID, color, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.HDR);
+  }
+
+  /**
+   * 折叠分组头：渲染一个带背景条的可折叠标题栏，并对内部内容进行轻微缩进，
+   * 用于在父级标题（如组件标题）下表达次级分组关系。
+   *
+   * @param label       标题文本（同时用作 ID）
+   * @param defaultOpen 初始是否展开（默认 true）
+   * @returns           当前是否展开（用于条件绘制内部控件）
+   *
+   * @example
+   * if (EditorGUILayout.BeginFoldoutHeaderGroup('Properties')) {
+   *   // 绘制内部控件
+   * }
+   * EditorGUILayout.EndFoldoutHeaderGroup();
+   */
+  static BeginFoldoutHeaderGroup (label: string, defaultOpen = true): boolean {
+    let flags = ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.NoTreePushOnOpen;
+
+    if (defaultOpen) {
+      flags |= ImGui.TreeNodeFlags.DefaultOpen;
+    }
+
+    ImGui.Indent();
+
+    // 在 TreeNode 之前绘制一条背景条，起点与 TreeNode 同处缩进位置，
+    // 颜色与 CollapsingHeader 默认态一致；hover / active 状态由 TreeNode 自身
+    // 使用 HeaderHovered / HeaderActive 叠加，视觉反馈与 CollapsingHeader 对齐。
+    const drawList = ImGui.GetWindowDrawList();
+    const startPos = ImGui.GetCursorScreenPos();
+    const lineHeight = ImGui.GetFrameHeight();
+    const availWidth = ImGui.GetContentRegionAvail().x;
+    const bgColor = ImGui.GetColorU32(ImGui.Col.Header);
+
+    drawList.AddRectFilled(
+      new ImGui.Vec2(startPos.x, startPos.y),
+      new ImGui.Vec2(startPos.x + availWidth, startPos.y + lineHeight),
+      bgColor,
+    );
+
+    const opened = ImGui.TreeNodeEx(label, flags);
+
+    return opened;
+  }
+
+  /**
+   * 结束开启的分组。
+   */
+  static EndFoldoutHeaderGroup (): void {
+    ImGui.Unindent();
   }
 
   static ObjectField (label: string, object: object, property: string) {

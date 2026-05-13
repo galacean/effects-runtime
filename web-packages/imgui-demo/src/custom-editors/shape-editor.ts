@@ -22,15 +22,6 @@ export class ShapeComponentEditor extends Editor {
     this.drawTrimPathSection('Fill Trim Path', shapeComponent.fillTrimPath, 'Fill', shapeComponent);
     this.drawTrimPathSection('Stroke Trim Path', shapeComponent.strokeTrimPath, 'Stroke', shapeComponent);
 
-    ImGui.Spacing();
-    ImGui.Separator();
-    ImGui.Spacing();
-
-    ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
-    ImGui.Text('       Component Properties');
-    ImGui.PopStyleColor();
-    ImGui.Spacing();
-
     super.onInspectorGUI();
   }
 
@@ -40,23 +31,21 @@ export class ShapeComponentEditor extends Editor {
     idSuffix: string,
     shapeComponent: ShapeComponent,
   ): void {
-    ImGui.Spacing();
-    ImGui.Separator();
-    ImGui.Spacing();
-
-    ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
-    ImGui.Text(`       ${sectionTitle}`);
-    ImGui.PopStyleColor();
-    ImGui.Spacing();
-
-    if (!trimPath) {
-      ImGui.TextDisabled('  (not enabled)');
-
-      return;
+    if (EditorGUILayout.BeginFoldoutHeaderGroup(`${sectionTitle}##${idSuffix}TrimPathHeader`)) {
+      if (!trimPath) {
+        ImGui.TextDisabled('(not enabled)');
+      } else {
+        this.drawTrimPathBody(trimPath, idSuffix, shapeComponent);
+      }
     }
+    EditorGUILayout.EndFoldoutHeaderGroup();
+  }
 
-    ImGui.Spacing();
-
+  private drawTrimPathBody (
+    trimPath: TrimPath,
+    idSuffix: string,
+    shapeComponent: ShapeComponent,
+  ): void {
     EditorGUILayout.Label('Mode');
     const buttonWidth = 110;
     const buttonHeight = 24;
