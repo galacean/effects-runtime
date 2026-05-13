@@ -3,7 +3,7 @@
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { ShapePath } from './shape-path';
-import type { StarType } from './poly-star';
+import type { StarType } from '../../math/shape/poly-star';
 
 export class GraphicsPath {
   instructions: PathInstruction[] = [];

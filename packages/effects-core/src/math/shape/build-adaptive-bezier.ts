@@ -19,7 +19,8 @@ export function buildAdaptiveBezier (
   eX: number, eY: number,
   smoothness?: number,
   scale?: number,
-) {
+  tValues?: number[],
+): number[] {
   const s = scale ?? 1;
   const smoothing = Math.min(
     0.99, // a value of 1.0 actually inverts smoothing, so we cap it at 0.99
@@ -28,7 +29,7 @@ export function buildAdaptiveBezier (
   let distanceTolerance = (PATH_DISTANCE_EPSILON - smoothing) / s;
 
   distanceTolerance *= distanceTolerance;
-  begin(sX, sY, cp1x, cp1y, cp2x, cp2y, eX, eY, points, distanceTolerance);
+  begin(sX, sY, cp1x, cp1y, cp2x, cp2y, eX, eY, points, distanceTolerance, tValues);
 
   return points;
 }
@@ -43,11 +44,13 @@ function begin (
   eX: number, eY: number,
   points: number[],
   distanceTolerance: number,
-) {
+  tValues?: number[],
+): void {
   // dont need to actually ad this!
   // points.push(sX, sY);
-  recursive(sX, sY, cp1x, cp1y, cp2x, cp2y, eX, eY, points, distanceTolerance, 0);
+  recursive(sX, sY, cp1x, cp1y, cp2x, cp2y, eX, eY, points, distanceTolerance, 0, tValues);
   points.push(eX, eY);
+  tValues?.push(1);
 }
 
 // eslint-disable-next-line max-params
@@ -59,7 +62,10 @@ function recursive (
   points: number[],
   distanceTolerance: number,
   level: number,
-) {
+  tValues?: number[],
+  startT = 0,
+  endT = 1,
+): void {
   if (level > RECURSION_LIMIT) { return; }
 
   const pi = Math.PI;
@@ -78,6 +84,7 @@ function recursive (
   const y234 = (y23 + y34) / 2;
   const x1234 = (x123 + x234) / 2;
   const y1234 = (y123 + y234) / 2;
+  const midT = (startT + endT) / 2;
 
   if (level > 0) { // Enforce subdivision first time
     // Try to approximate the full cubic curve by a single straight line
@@ -99,6 +106,7 @@ function recursive (
         // ----------------------
         if (mAngleTolerance < curveAngleToleranceEpsilon) {
           points.push(x1234, y1234);
+          tValues?.push(midT);
 
           return;
         }
@@ -117,6 +125,7 @@ function recursive (
           // Finally we can stop the recursion
           // ----------------------
           points.push(x1234, y1234);
+          tValues?.push(midT);
 
           return;
         }
@@ -124,12 +133,14 @@ function recursive (
         if (mCuspLimit !== 0.0) {
           if (da1 > mCuspLimit) {
             points.push(x2, y2);
+            tValues?.push(midT);
 
             return;
           }
 
           if (da2 > mCuspLimit) {
             points.push(x3, y3);
+            tValues?.push(midT);
 
             return;
           }
@@ -141,6 +152,7 @@ function recursive (
       if (d2 * d2 <= distanceTolerance * ((dx * dx) + (dy * dy))) {
         if (mAngleTolerance < curveAngleToleranceEpsilon) {
           points.push(x1234, y1234);
+          tValues?.push(midT);
 
           return;
         }
@@ -152,7 +164,9 @@ function recursive (
 
         if (da1 < mAngleTolerance) {
           points.push(x2, y2);
+          tValues?.push(midT);
           points.push(x3, y3);
+          tValues?.push(midT);
 
           return;
         }
@@ -160,6 +174,7 @@ function recursive (
         if (mCuspLimit !== 0.0) {
           if (da1 > mCuspLimit) {
             points.push(x2, y2);
+            tValues?.push(midT);
 
             return;
           }
@@ -171,6 +186,7 @@ function recursive (
       if (d3 * d3 <= distanceTolerance * ((dx * dx) + (dy * dy))) {
         if (mAngleTolerance < curveAngleToleranceEpsilon) {
           points.push(x1234, y1234);
+          tValues?.push(midT);
 
           return;
         }
@@ -182,7 +198,9 @@ function recursive (
 
         if (da1 < mAngleTolerance) {
           points.push(x2, y2);
+          tValues?.push(midT);
           points.push(x3, y3);
+          tValues?.push(midT);
 
           return;
         }
@@ -190,6 +208,7 @@ function recursive (
         if (mCuspLimit !== 0.0) {
           if (da1 > mCuspLimit) {
             points.push(x3, y3);
+            tValues?.push(midT);
 
             return;
           }
@@ -202,6 +221,7 @@ function recursive (
       dy = y1234 - ((y1 + y4) / 2);
       if ((dx * dx) + (dy * dy) <= distanceTolerance) {
         points.push(x1234, y1234);
+        tValues?.push(midT);
 
         return;
       }
@@ -210,7 +230,7 @@ function recursive (
 
   // Continue subdivision
   // ----------------------
-  recursive(x1, y1, x12, y12, x123, y123, x1234, y1234, points, distanceTolerance, level + 1);
-  recursive(x1234, y1234, x234, y234, x34, y34, x4, y4, points, distanceTolerance, level + 1);
+  recursive(x1, y1, x12, y12, x123, y123, x1234, y1234, points, distanceTolerance, level + 1, tValues, startT, midT);
+  recursive(x1234, y1234, x234, y234, x34, y34, x4, y4, points, distanceTolerance, level + 1, tValues, midT, endT);
 }
 

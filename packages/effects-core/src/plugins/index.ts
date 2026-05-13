@@ -17,4 +17,5 @@ export * from './particle/particle-system';
 export * from './particle/particle-system-renderer';
 export * from './timeline';
 export * from './text';
+export * from './shape';
 export * from './animation-graph';

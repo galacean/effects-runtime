@@ -4,21 +4,25 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
-import { effectsClass } from '../decorators';
-import type { Engine } from '../engine';
-import type { Maskable, MaterialProps } from '../material';
-import { Material, MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
-import type { Renderer } from '../render';
-import { GLSLVersion, Geometry } from '../render';
-import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
-import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
-import { RendererComponent } from './renderer-component';
-import type { Texture } from '../texture/texture';
-import { glContext } from '../gl';
-import vert from '../math/shape/shaders/shape.vert.glsl';
-import frag from '../math/shape/shaders/shape.frag.glsl';
-import type { ItemRenderer } from './base-render-component';
+import { effectsClass } from '../../decorators';
+import type { Engine } from '../../engine';
+import type { Maskable, MaterialProps } from '../../material';
+import { Material, MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
+import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '..';
+import type { Renderer } from '../../render';
+import { GLSLVersion, Geometry } from '../../render';
+import type { GradientValue, StrokeAttributes } from '../../math';
+import { Polygon } from '../../math';
+import { buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
+import { RendererComponent } from '../../components/renderer-component';
+import type { Texture } from '../../texture/texture';
+import { glContext } from '../../gl';
+import vert from './shaders/shape.vert.glsl';
+import frag from './shaders/shape.frag.glsl';
+import type { ItemRenderer } from '../../components/base-render-component';
+import { TrimPath } from './trim-path';
+import { GraphicsPath } from './graphics-path';
+import type { ShapePath } from './shape-path';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
@@ -171,6 +175,7 @@ export interface PolygonAttribute extends ShapeAttributes {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent implements Maskable {
+
   private static readonly tempMVP = Matrix4.fromIdentity();
 
   private shapeDirty = true;
@@ -191,6 +196,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private strokeJoin = spec.LineJoin.Miter;
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
+  private _strokeTrimPath: TrimPath | null = null;
 
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
@@ -199,6 +205,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get shape () {
     return this.shapeAttributes;
+  }
+
+  get strokeTrimPath (): TrimPath | null {
+    return this._strokeTrimPath;
   }
 
   /**
@@ -291,7 +301,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       const screenScale = this.computeScreenScale();
 
       this.buildPath(this.shapeAttributes, screenScale);
-      this.buildGeometryFromPath(this.graphicsPath.shapePath, screenScale);
+
+      const trimmedPath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+
+      this.buildGeometryFromPath(trimmedPath.shapePath, screenScale);
       this.shapeDirty = false;
     }
 
@@ -413,8 +426,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         let close = true;
 
-        if (this.shapeAttributes.type === spec.ShapePrimitiveType.Custom) {
-          close = (shape as Polygon).closePath;
+        if (this.strokeTrimPath && !this.strokeTrimPath.isIdentity()) {
+          close = false;
+        } else if (shape instanceof Polygon) {
+          close = shape.closePath;
         }
 
         shape.build(points, screenScale);
@@ -736,6 +751,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
+
+    //@ts-expect-error TODO: Update spec.
+    if (data.strokeTrimPath) {
+      this._strokeTrimPath = new TrimPath();
+      //@ts-expect-error TODO: Update spec.
+      this._strokeTrimPath.fromData(data.strokeTrimPath);
+    }
 
     this.fills.length = 0;
     this.fillMaterials.length = 0;
