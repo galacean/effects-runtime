@@ -197,6 +197,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
   private _strokeTrimPath: TrimPath | null = null;
+  private _fillTrimPath: TrimPath | null = null;
 
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
@@ -209,6 +210,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get strokeTrimPath (): TrimPath | null {
     return this._strokeTrimPath;
+  }
+
+  get fillTrimPath (): TrimPath | null {
+    return this._fillTrimPath;
   }
 
   /**
@@ -302,9 +307,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
       this.buildPath(this.shapeAttributes, screenScale);
 
-      const trimmedPath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+      const fillPath = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+      const strokePath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
 
-      this.buildGeometryFromPath(trimmedPath.shapePath, screenScale);
+      this.buildGeometryFromPath(fillPath.shapePath, strokePath.shapePath, screenScale);
       this.shapeDirty = false;
     }
 
@@ -392,14 +398,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.boundingBoxInfo;
   }
 
-  private buildGeometryFromPath (shapePath: ShapePath, screenScale: number) {
-    const shapePrimitives = shapePath.shapePrimitives;
+  private buildGeometryFromPath (fillShapePath: ShapePath, strokeShapePath: ShapePath, screenScale: number) {
     const vertices: number[] = [];
     const indices: number[] = [];
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (this.fills.length > 0) {
-      for (const shapePrimitive of shapePrimitives) {
+      for (const shapePrimitive of fillShapePath.shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
@@ -413,7 +418,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const fillIndexCount = indices.length;
 
     if (this.strokes.length > 0) {
-      for (const shapePrimitive of shapePrimitives) {
+      for (const shapePrimitive of strokeShapePath.shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
@@ -426,7 +431,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         let close = true;
 
-        if (this.strokeTrimPath && !this.strokeTrimPath.isIdentity()) {
+        if (this._strokeTrimPath && !this._strokeTrimPath.isIdentity()) {
           close = false;
         } else if (shape instanceof Polygon) {
           close = shape.closePath;
@@ -752,11 +757,21 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
 
+    this._strokeTrimPath = null;
+    this._fillTrimPath = null;
+
     //@ts-expect-error TODO: Update spec.
     if (data.strokeTrimPath) {
       this._strokeTrimPath = new TrimPath();
       //@ts-expect-error TODO: Update spec.
       this._strokeTrimPath.fromData(data.strokeTrimPath);
+    }
+
+    //@ts-expect-error TODO: Update spec.
+    if (data.fillTrimPath) {
+      this._fillTrimPath = new TrimPath();
+      //@ts-expect-error TODO: Update spec.
+      this._fillTrimPath.fromData(data.fillTrimPath);
     }
 
     this.fills.length = 0;
