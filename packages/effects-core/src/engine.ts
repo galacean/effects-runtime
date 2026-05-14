@@ -4,6 +4,7 @@ import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary } from './render';
+import { Graphics } from './render';
 import { RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
@@ -102,6 +103,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    */
   renderingData: RenderingData;
 
+  graphics: Graphics;
+
   protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
@@ -149,6 +152,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
     this.renderTargetPool = new RenderTargetPool(this);
+    this.graphics = new Graphics(this);
 
     this.renderingData = {
       // @ts-expect-error
@@ -319,7 +323,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderer.clear(this.clearAction);
 
     for (const composition of compositions) {
-      this.renderer.renderRenderFrame(composition.renderFrame);
+      composition.render();
     }
 
     this.renderTargetPool.flush();
@@ -674,6 +678,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.stop();
     this.eventSystem?.dispose();
     this.assetService?.dispose();
+    this.graphics.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());

@@ -147,7 +147,7 @@ export class Hierarchy extends EditorWindow {
       }
 
       if (compositionNodeOpen) {
-        this.drawVFXItemTreeNode(composition.rootItem, baseFlags);
+        this.drawVFXItemTreeNode(composition.sceneRoot, baseFlags);
         ImGui.TreePop();
       }
     }
@@ -218,7 +218,7 @@ export class Hierarchy extends EditorWindow {
     const filterLower = this.searchFilter.toLowerCase();
 
     // 递归收集所有匹配项（平铺列表）
-    this.collectMatchedItems(composition.rootItem, filterLower);
+    this.collectMatchedItems(composition.sceneRoot, filterLower);
   }
 
   private collectMatchedItems (item: VFXItem, filterLower: string): void {
@@ -476,7 +476,7 @@ export class Hierarchy extends EditorWindow {
     // composition 自身作为第一个 item
     this.flatItemList.push(composition);
     // 递归收集所有 VFXItem
-    this.collectItemsFlat(composition.rootItem);
+    this.collectItemsFlat(composition.sceneRoot);
   }
 
   private collectItemsFlat (item: VFXItem): void {

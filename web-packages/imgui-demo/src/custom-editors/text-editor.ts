@@ -31,6 +31,66 @@ export class TextComponentEditor extends Editor {
   private verticalAlignIndex = 1; // 默认 middle
   private letterSpacingPercent = 0;
 
+  private hasTextBounds (layout: any): layout is { maxTextWidth: number, maxTextHeight: number } {
+    return typeof layout?.maxTextWidth === 'number' && typeof layout?.maxTextHeight === 'number';
+  }
+
+  private getEditableWidth (layout: any): number {
+    return this.hasTextBounds(layout) ? layout.maxTextWidth : layout.width;
+  }
+
+  private getEditableHeight (layout: any): number {
+    return this.hasTextBounds(layout) ? layout.maxTextHeight : layout.height;
+  }
+
+  private setEditableWidth (textComponent: TextComponentBase, layout: any, value: number): void {
+    const nextWidth = Math.max(0.01, Number(value) || 0.01);
+
+    if (this.hasTextBounds(layout)) {
+      if (layout.maxTextWidth !== nextWidth) {
+        layout.maxTextWidth = nextWidth;
+        textComponent.isDirty = true;
+      }
+
+      return;
+    }
+
+    if ('setTextWidth' in textComponent && typeof textComponent.setTextWidth === 'function') {
+      textComponent.setTextWidth(nextWidth);
+
+      return;
+    }
+
+    if (layout.width !== nextWidth) {
+      layout.width = nextWidth;
+      textComponent.isDirty = true;
+    }
+  }
+
+  private setEditableHeight (textComponent: TextComponentBase, layout: any, value: number): void {
+    const nextHeight = Math.max(0.01, Number(value) || 0.01);
+
+    if (this.hasTextBounds(layout)) {
+      if (layout.maxTextHeight !== nextHeight) {
+        layout.maxTextHeight = nextHeight;
+        textComponent.isDirty = true;
+      }
+
+      return;
+    }
+
+    if ('setTextHeight' in textComponent && typeof textComponent.setTextHeight === 'function') {
+      textComponent.setTextHeight(nextHeight);
+
+      return;
+    }
+
+    if (layout.height !== nextHeight) {
+      layout.height = nextHeight;
+      textComponent.isDirty = true;
+    }
+  }
+
   override onInspectorGUI (): void {
     const textComponent = this.target as TextComponent;
 
@@ -129,8 +189,12 @@ export class TextComponentEditor extends Editor {
     EditorGUILayout.Label('Font Size');
     const fontSizeAccess = (value?: number): number => {
       if (value !== undefined) {
-        style.fontSize = Math.round(value);
-        textComponent.isDirty = true;
+        const nextFontSize = Math.round(value);
+
+        if (style.fontSize !== nextFontSize) {
+          style.fontSize = nextFontSize;
+          textComponent.isDirty = true;
+        }
       }
 
       return style.fontSize;
@@ -206,10 +270,45 @@ export class TextComponentEditor extends Editor {
 
     ImGui.Spacing();
 
+    const widthLabel = this.hasTextBounds(layout) ? 'Max Width' : 'Width';
+    const heightLabel = this.hasTextBounds(layout) ? 'Max Height' : 'Height';
+
+    EditorGUILayout.Label(widthLabel);
+    const widthAccess = (value?: number): number => {
+      if (value !== undefined) {
+        this.setEditableWidth(textComponent, layout, value);
+      }
+
+      return this.getEditableWidth(layout);
+    };
+
+    ImGui.SetNextItemWidth(-1);
+    if (ImGui.DragFloat('##TextWidthValue', widthAccess, 0.1, 0.01, 10000, '%.2f')) {
+      // 宽度已在 access 函数中更新
+    }
+
+    ImGui.Spacing();
+
+    EditorGUILayout.Label(heightLabel);
+    const heightAccess = (value?: number): number => {
+      if (value !== undefined) {
+        this.setEditableHeight(textComponent, layout, value);
+      }
+
+      return this.getEditableHeight(layout);
+    };
+
+    ImGui.SetNextItemWidth(-1);
+    if (ImGui.DragFloat('##TextHeightValue', heightAccess, 0.1, 0.01, 10000, '%.2f')) {
+      // 高度已在 access 函数中更新
+    }
+
+    ImGui.Spacing();
+
     // Line height - 直接数值输入
     EditorGUILayout.Label('Line Height');
     const lineHeightAccess = (value?: number): number => {
-      if (value !== undefined) {
+      if (value !== undefined && layout.lineHeight !== value) {
         layout.lineHeight = value;
         textComponent.isDirty = true;
       }
@@ -346,6 +445,15 @@ export class TextComponentEditor extends Editor {
       textComponent.isDirty = true;
     }
     ImGui.PopStyleColor(3);
+
+    ImGui.Spacing();
+    ImGui.Separator();
+    ImGui.Spacing();
+
+    ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.Vec4(0.7, 0.7, 0.7, 1.0));
+    ImGui.Text('       COMPONENT PROPERTIES');
+    ImGui.PopStyleColor();
+    ImGui.Spacing();
 
     super.onInspectorGUI();
   }

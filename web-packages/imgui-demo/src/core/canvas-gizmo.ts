@@ -1,6 +1,5 @@
 import type { Camera, Renderer } from '@galacean/effects-core';
-import { Graphics } from '@galacean/effects-core';
-import { math, RendererComponent, VFXItem } from '@galacean/effects-core';
+import { CanvasItem, math, RendererComponent, VFXItem } from '@galacean/effects-core';
 import { Selection } from './selection';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;
@@ -37,8 +36,7 @@ interface TransformStartData {
   mousePos: Vector2,
 }
 
-export class CanvasGizmo extends RendererComponent {
-  private render2D: Graphics;
+export class CanvasGizmo extends CanvasItem {
   private canvas: HTMLCanvasElement;
   private hoveredObject: VFXItem | null = null;
 
@@ -58,9 +56,7 @@ export class CanvasGizmo extends RendererComponent {
   private mouseDownSelected = false; // 鼠标按下时是否通过拾取选中对象
 
   override onAwake (): void {
-    this.priority = 5000;
     this.canvas = this.engine.canvas;
-    this.render2D = new Graphics(this.engine);
 
     // Setup mouse event listeners for 2D camera control
     this.setupMouseListeners();
@@ -687,10 +683,7 @@ export class CanvasGizmo extends RendererComponent {
     this.canvas.removeEventListener('wheel', this.onWheel);
   }
 
-  override render (renderer: Renderer): void {
-    const render2D = this.render2D;
-
-    this.render2D.begin();
+  override draw (): void {
     const lineColor = new math.Color(0.2, 0.4, 1, 1);
     const lineWidth = 3;
 
@@ -715,7 +708,7 @@ export class CanvasGizmo extends RendererComponent {
           const p3 = screenPoints[3].toVector2();
 
           linePoints.push(p0.x, p0.y, p2.x, p2.y, p1.x, p1.y, p3.x, p3.y, p0.x, p0.y);
-          this.render2D.drawLines(linePoints, lineColor, lineWidth + 2);
+          this.drawPolyline(linePoints, lineColor, lineWidth + 2);
         }
       }
 
@@ -741,7 +734,7 @@ export class CanvasGizmo extends RendererComponent {
           const p3 = screenPoints[3].toVector2();
 
           linePoints.push(p0.x, p0.y, p2.x, p2.y, p1.x, p1.y, p3.x, p3.y, p0.x, p0.y);
-          this.render2D.drawLines(linePoints, lineColor, lineWidth);
+          this.drawPolyline(linePoints, lineColor, lineWidth);
 
           const resizeHandleSize = 20;
           const fillSize = resizeHandleSize - lineWidth;
@@ -749,8 +742,8 @@ export class CanvasGizmo extends RendererComponent {
 
           // 绘制四个角的缩放手柄
           for (const screenPoint of screenPoints) {
-            this.render2D.drawRectangle(screenPoint.x - resizeHandleSize / 2, screenPoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
-            this.render2D.fillRectangle(screenPoint.x - fillSize / 2, screenPoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
+            this.drawRect(screenPoint.x - resizeHandleSize / 2, screenPoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
+            this.fillRect(screenPoint.x - fillSize / 2, screenPoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
           }
 
           // 绘制边缘中点的缩放手柄
@@ -762,8 +755,8 @@ export class CanvasGizmo extends RendererComponent {
           ];
 
           for (const edgePoint of edges) {
-            this.render2D.drawRectangle(edgePoint.x - resizeHandleSize / 2, edgePoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
-            this.render2D.fillRectangle(edgePoint.x - fillSize / 2, edgePoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
+            this.drawRect(edgePoint.x - resizeHandleSize / 2, edgePoint.y - resizeHandleSize / 2, resizeHandleSize, resizeHandleSize, lineColor, lineWidth);
+            this.fillRect(edgePoint.x - fillSize / 2, edgePoint.y - fillSize / 2, fillSize, fillSize, new Color(1, 1, 1, 1));
           }
 
           // 绘制旋转手柄（顶部中点上方）
@@ -771,19 +764,19 @@ export class CanvasGizmo extends RendererComponent {
           const rotationHandleY = topMid.y + rotationHandleDistance; // 在左下角坐标系中，+y 是向上
 
           // 绘制连接线
-          this.render2D.drawLine(topMid.x, topMid.y, topMid.x, rotationHandleY, lineColor, 2);
+          this.drawLine(topMid.x, topMid.y, topMid.x, rotationHandleY, lineColor, 2);
 
           // 绘制旋转手柄（圆形）
           const rotationHandleRadius = 8;
 
-          this.render2D.drawCircle(
+          this.drawCircle(
             topMid.x,
             rotationHandleY,
             rotationHandleRadius,
             new Color(0.2, 1, 0.4, 1),
             lineWidth
           );
-          this.render2D.fillCircle(
+          this.fillCircle(
             topMid.x,
             rotationHandleY,
             rotationHandleRadius - lineWidth,
@@ -801,17 +794,17 @@ export class CanvasGizmo extends RendererComponent {
     //-------------------------------------------------------------------------
 
     // 绘制两条交叉的线
-    this.render2D.drawLine(10, 10, 85, 60, new Color(0.8, 0.2, 0.2, 1), 2);
-    this.render2D.drawLine(10, 60, 85, 10, new Color(0.2, 0.2, 0.8, 1), 2);
+    this.drawLine(10, 10, 85, 60, new Color(0.8, 0.2, 0.2, 1), 2);
+    this.drawLine(10, 60, 85, 10, new Color(0.2, 0.2, 0.8, 1), 2);
 
     // 绘制填充矩形
-    this.render2D.fillRectangle(10, 75, 75, 50, new Color(0.2, 0.8, 0.2, 1));
+    this.fillRect(10, 75, 75, 50, new Color(0.2, 0.8, 0.2, 1));
 
     // 绘制描边矩形
-    this.render2D.drawRectangle(10, 140, 75, 50, new Color(0.8, 0.6, 0.2, 1), 3);
+    this.drawRect(10, 140, 75, 50, new Color(0.8, 0.6, 0.2, 1), 3);
 
     // 绘制贝塞尔曲线 - 明显的弯曲效果
-    this.render2D.drawBezier(
+    this.drawBezier(
       10, 205,      // 起点（左下）
       47.5, 205,    // 控制点1（中间偏上）
       47.5, 255,    // 控制点2（中间偏下）
@@ -820,14 +813,14 @@ export class CanvasGizmo extends RendererComponent {
       2
     );
 
-    this.render2D.fillTriangle(
+    this.fillTriangle(
       10, 275,
       85, 275,
       47.5, 325,
       new Color(0.2, 0.8, 0.8, 1),
     );
 
-    this.render2D.drawTriangle(
+    this.drawTriangle(
       10, 350,
       85, 350,
       47.5, 400,
@@ -835,20 +828,18 @@ export class CanvasGizmo extends RendererComponent {
       2
     );
 
-    this.render2D.fillCircle(
+    this.fillCircle(
       47.5, 450,
       25,
       new Color(0.1, 0.6, 0.3, 1),
     );
 
-    this.render2D.drawCircle(
+    this.drawCircle(
       47.5, 525,
       25,
       new Color(0.6, 0.1, 0.9, 1),
       2
     );
-
-    this.render2D.end();
   }
 }
 
