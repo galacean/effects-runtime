@@ -61,6 +61,9 @@ export class CanvasItem extends Component {
   override onDestroy (): void {
     this.removeFromParent();
     this.removeFromCanvasLayer();
+
+    // 防止子 canvasItem updateParentItem 的时候继续找到当前已销毁的 canvasItem
+    this.enabled = false;
     this.updateChildrenParentItems();
   }
 

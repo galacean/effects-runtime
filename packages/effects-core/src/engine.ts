@@ -678,6 +678,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.stop();
     this.eventSystem?.dispose();
     this.assetService?.dispose();
+    this.graphics.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());

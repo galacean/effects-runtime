@@ -291,8 +291,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.name = 'root';
     this.root.composition = this;
 
+    this.pluginRoot = new VFXItem(this.engine);
+    this.pluginRoot.setParent(this.root);
+    this.pluginRoot.addComponent(CanvasLayer);
+
     // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
+    this.sceneRoot.setParent(this.root);
 
     if (sourceContent) {
       this.sceneRoot.setInstanceId(sourceContent.id);
@@ -310,12 +315,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.sceneRoot.on('animationevent', eventData => {
       this.emit('animationevent', eventData);
     });
-
-    this.pluginRoot = new VFXItem(this.engine);
-    this.pluginRoot.addComponent(CanvasLayer);
-
-    this.pluginRoot.setParent(this.root);
-    this.sceneRoot.setParent(this.root);
 
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
