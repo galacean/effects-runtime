@@ -1,4 +1,4 @@
-import { Component } from '..';
+import { Component } from './component';
 import { removeItem } from '../utils';
 import type { CanvasItem } from './canvas-item';
 
