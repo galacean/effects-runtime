@@ -1,0 +1,89 @@
+li.idx {
+  min-height: 120px;
+  height: auto;
+  width: 100%;
+  overflow-x: auto;
+}
+
+li.idx .image-cell {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+li.idx .image-cell .comparison-group {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(127, 127, 127, 0.35);
+}
+
+li.idx .image-cell .image-group-wrap {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+li.idx .image-cell .image-group {
+  width: 120px;
+}
+
+li.idx .image-cell .image-group-title {
+  font-size: 10px;
+  color: #9ea3aa;
+  line-height: 1;
+}
+
+li.idx .image-cell .image-slot {
+  width: 120px;
+  min-height: 120px;
+  background: #101010;
+}
+
+li.idx .image-cell .image-slot img {
+  width: 120px;
+  display: block;
+}
+
+li.idx .image-cell .image-slot img.previewable-image {
+  cursor: zoom-in;
+}
+
+li.idx .image-cell img.diff-heatmap {
+  outline: 1px solid #ff6b57;
+  outline-offset: -1px;
+  background: #101010;
+}
+
+li.idx .image-cell .image-group-wrap .image-note {
+  display: block;
+  color: #ff6b57;
+  font-size: 10px;
+  width: 120px;
+  min-height: 12px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-all;
+}
+
+li.idx .image-cell .image-group-wrap .full-preview-link {
+  display: none;
+  color: #8fb8ff;
+  font-size: 11px;
+  line-height: 1;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+li.idx .image-cell .image-group-wrap .full-preview-target {
+  display: none;
+}
+
+/* Viewer 预览时为图片可视范围提供不透明底色，避免透明像素透底 */
+.viewer-canvas img {
+  background-color: #111 !important;
+}
