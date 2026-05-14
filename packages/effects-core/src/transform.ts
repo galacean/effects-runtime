@@ -1,4 +1,5 @@
 import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import type * as spec from '@galacean/effects-specification';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
@@ -87,6 +88,10 @@ export class Transform implements Disposable {
    */
   private localMatrix = Matrix4.fromIdentity();
   /**
+   * 自身变换在 2D 平面（XY）上的仿射部分缓存，按需从 localMatrix 提取
+   */
+  private localMatrix2D = Matrix3.fromIdentity();
+  /**
    * 变换是否需要生效，不生效返回的模型矩阵为单位矩阵，需要随元素生命周期改变
    */
   private valid = true;
@@ -94,14 +99,14 @@ export class Transform implements Disposable {
    * 数据变化标志位
    */
   private dirtyFlags = {
-    /* 自身变换是否有修改，若修改，localMatrix 需要更新 */
+    /* 自身分量是否变化，若变化 localMatrix 需要重组 */
     localData: false,
-    /* localMatrix 是否有修改，若修改，WorldMatrix 需要更新 */
-    localMatrix: false,
-    /* worldMatrix 是否有修改，若修改，worldTRS 需要更新 */
+    /* localMatrix 是否变化，若变化 localMatrix2D 缓存需要刷新（独立于 worldMatrix 标记，避免被 getWorldMatrix 提前消费）*/
+    localMatrix2D: false,
+    /* worldMatrix 是否过期（自身或父变换变化），下次访问需要重算 */
     worldMatrix: false,
-    /* parentMatrix 是否有修改，若修改，WorldMatrix需要更新 */
-    parentMatrix: false,
+    /* worldMatrix 是否变化，若变化 worldTRSCache 需要刷新 */
+    worldTRS: false,
   };
   /**
    * 最终模型矩阵对应变换的缓存，当自身矩阵或父矩阵有修改时需要更新
@@ -135,22 +140,22 @@ export class Transform implements Disposable {
     }
     transform.addChild(this);
     this.parent = transform;
-    this.parentMatrixDirty = true;
+    this.worldMatrixDirty = true;
   }
 
   get parentTransform () {
     return this.parent;
   }
 
-  set parentMatrixDirty (val: boolean) {
-    if (this.dirtyFlags.parentMatrix !== val) {
-      this.dirtyFlags.parentMatrix = val;
+  private set worldMatrixDirty (val: boolean) {
+    if (this.dirtyFlags.worldMatrix !== val) {
+      this.dirtyFlags.worldMatrix = val;
       this.dispatchValueChange();
     }
   }
 
-  get parentMatrixDirty () {
-    return this.dirtyFlags.parentMatrix;
+  private get worldMatrixDirty () {
+    return this.dirtyFlags.worldMatrix;
   }
 
   // /**
@@ -389,13 +394,15 @@ export class Transform implements Disposable {
     if (this.valid) {
       if (this.dirtyFlags.localData) {
         this.localMatrix.compose(this.position, this.quat, this.scale, this.anchor);
-        this.dirtyFlags.localMatrix = true;
+        this.dirtyFlags.worldMatrix = true;
+        this.dirtyFlags.localMatrix2D = true;
       }
       this.dirtyFlags.localData = false;
     } else {
       if (!this.localMatrix.isIdentity()) {
         this.localMatrix.identity();
-        this.dirtyFlags.localMatrix = true;
+        this.dirtyFlags.worldMatrix = true;
+        this.dirtyFlags.localMatrix2D = true;
       }
     }
   }
@@ -411,6 +418,22 @@ export class Transform implements Disposable {
 
     return this.localMatrix;
   }
+
+  /**
+   * 获取自身变换对应模型矩阵在 XY 平面上的 3x3 仿射矩阵
+   * 仅当 localMatrix 变化时才重新提取，否则返回缓存。返回的 Matrix3 在调用之间复用，调用方不应缓存其引用。
+   * @returns
+   */
+  getMatrix2D (): Matrix3 {
+    this.updateLocalMatrix();
+
+    if (this.dirtyFlags.localMatrix2D) {
+      assignMatrix3From2DOfMatrix4(this.localMatrix2D, this.localMatrix);
+      this.dirtyFlags.localMatrix2D = false;
+    }
+
+    return this.localMatrix2D;
+  }
   /**
    * 获取父矩阵，如果有多级父节点，返回整体变换
    * @returns
@@ -418,7 +441,6 @@ export class Transform implements Disposable {
   getParentMatrix (): Matrix4 | undefined {
     if (this.parent) {
       this.parentMatrix = this.parent.getWorldMatrix();
-      this.dirtyFlags.parentMatrix = this.dirtyFlags.parentMatrix || this.parent.dirtyFlags.localMatrix || this.parent.dirtyFlags.worldMatrix;
     }
 
     return this.parentMatrix;
@@ -432,15 +454,14 @@ export class Transform implements Disposable {
     const localMatrix = this.getMatrix();
     const parentMatrix = this.getParentMatrix();
 
-    if (this.dirtyFlags.localMatrix || this.dirtyFlags.parentMatrix) {
+    if (this.dirtyFlags.worldMatrix) {
       if (parentMatrix) {
         this.worldMatrix.multiplyMatrices(parentMatrix, localMatrix);
       } else {
         this.worldMatrix.copyFrom(localMatrix);
       }
-      this.dirtyFlags.worldMatrix = true;
-      this.dirtyFlags.localMatrix = false;
-      this.dirtyFlags.parentMatrix = false;
+      this.dirtyFlags.worldTRS = true;
+      this.dirtyFlags.worldMatrix = false;
     }
 
     return this.worldMatrix;
@@ -451,14 +472,7 @@ export class Transform implements Disposable {
    * @returns
    */
   getWorldScale (): Vector3 {
-    const cache = this.worldTRSCache;
-
-    if (this.dirtyFlags.worldMatrix) {
-      const mat = this.getWorldMatrix();
-
-      mat.decompose(cache.position, cache.quat, cache.scale);
-      this.dirtyFlags.worldMatrix = false;
-    }
+    this.updateTRSCache();
 
     return this.worldTRSCache.scale.clone();
   }
@@ -564,7 +578,8 @@ export class Transform implements Disposable {
       this.valid = val;
       if (!val) {
         this.localMatrix.identity();
-        this.dirtyFlags.localMatrix = true;
+        this.dirtyFlags.worldMatrix = true;
+        this.dirtyFlags.localMatrix2D = true;
       } else {
         this.dirtyFlags.localData = true;
       }
@@ -615,17 +630,43 @@ export class Transform implements Disposable {
   private updateTRSCache () {
     const worldMatrix = this.getWorldMatrix();
 
-    if (this.dirtyFlags.worldMatrix) {
+    if (this.dirtyFlags.worldTRS) {
       const cache = this.worldTRSCache;
 
       worldMatrix.decompose(cache.position, cache.quat, cache.scale);
-      this.dirtyFlags.worldMatrix = false;
+      this.dirtyFlags.worldTRS = false;
     }
   }
 
   private dispatchValueChange () {
     this.children.forEach(c => {
-      c.parentMatrixDirty = true;
+      c.worldMatrixDirty = true;
     });
   }
+}
+
+/**
+ * 将 4x4 列主序矩阵的 XY 仿射部分写入 3x3 列主序矩阵
+ *
+ * 对应映射（Matrix4 elements 索引 → Matrix3 elements 索引）：
+ *   - 第 0 列：m4[0]/m4[1] → m3[0]/m3[1]
+ *   - 第 1 列：m4[4]/m4[5] → m3[3]/m3[4]
+ *   - 第 3 列（平移）：m4[12]/m4[13] → m3[6]/m3[7]
+ *   - 其它位置补齐齐次坐标的 0/1
+ */
+function assignMatrix3From2DOfMatrix4 (out: Matrix3, m4: Matrix4): Matrix3 {
+  const src = m4.elements;
+  const dst = out.elements;
+
+  dst[0] = src[0];
+  dst[1] = src[1];
+  dst[2] = 0;
+  dst[3] = src[4];
+  dst[4] = src[5];
+  dst[5] = 0;
+  dst[6] = src[12];
+  dst[7] = src[13];
+  dst[8] = 1;
+
+  return out;
 }

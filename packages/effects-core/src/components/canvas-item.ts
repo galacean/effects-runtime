@@ -1,5 +1,4 @@
-import type { Color, Matrix4 } from '@galacean/effects-math/es/core';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import type { Color } from '@galacean/effects-math/es/core';
 import type { VFXItem } from '..';
 import { removeItem } from '../utils';
 import { CanvasLayer } from './canvas-layer';
@@ -26,10 +25,6 @@ export class CanvasItem extends Component {
    * 当前所属的 CanvasLayer，未注册到任何 CanvasLayer 时为 null
    */
   protected canvasLayerNode: CanvasLayer | null = null;
-  /**
-   * 缓存从 item.transform 提取的 2D 本地矩阵，避免每次 drawSelf 重新分配
-   */
-  private readonly localMatrix2D: Matrix3 = Matrix3.fromIdentity();
 
   /**
    * 获取当前所属的 CanvasLayer
@@ -250,7 +245,7 @@ export class CanvasItem extends Component {
    */
   drawInternal () {
     const graphics = this.engine.graphics;
-    const localMatrix2D = this.getLocalMatrix2D();
+    const localMatrix2D = this.transform.getMatrix2D();
 
     graphics.pushTransform(localMatrix2D);
 
@@ -264,20 +259,6 @@ export class CanvasItem extends Component {
     }
 
     graphics.popTransform();
-  }
-
-  /**
-   * 从 item.transform 的 4x4 本地矩阵中提取出 2D 仿射部分（绕 Z 轴旋转 + XY 平移/缩放）。
-   * 返回的 Matrix3 在调用之间复用，调用方不应缓存其引用。
-   */
-  private getLocalMatrix2D (): Matrix3 {
-    if (!this.item) {
-      return this.localMatrix2D.identity();
-    }
-
-    const matrix4 = this.item.transform.getMatrix();
-
-    return assign2DFromMatrix4(this.localMatrix2D, matrix4);
   }
 
   /**
@@ -385,28 +366,3 @@ function getCanvasItemFromItem (item: VFXItem): CanvasItem | null {
   return null;
 }
 
-/**
- * 将 4x4 列主序矩阵的 XY 仿射部分写入 3x3 列主序矩阵
- *
- * 对应映射（Matrix4 elements 索引 → Matrix3 elements 索引）：
- *   - 第 0 列：m4[0]/m4[1] → m3[0]/m3[1]
- *   - 第 1 列：m4[4]/m4[5] → m3[3]/m3[4]
- *   - 第 3 列（平移）：m4[12]/m4[13] → m3[6]/m3[7]
- *   - 其它位置补齐齐次坐标的 0/1
- */
-function assign2DFromMatrix4 (out: Matrix3, m4: Matrix4): Matrix3 {
-  const src = m4.elements;
-  const dst = out.elements;
-
-  dst[0] = src[0];
-  dst[1] = src[1];
-  dst[2] = 0;
-  dst[3] = src[4];
-  dst[4] = src[5];
-  dst[5] = 0;
-  dst[6] = src[12];
-  dst[7] = src[13];
-  dst[8] = 1;
-
-  return out;
-}
