@@ -11,6 +11,20 @@ import type { Geometry } from '../render/geometry';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { RendererComponent } from '../components';
 
+// spec 更新后删除
+type MaskOptionReference = {
+  mask?: spec.DataPath,
+  reference?: spec.DataPath,
+  inverted?: boolean,
+};
+
+// spec 更新后删除
+type MaskOptions = Omit<spec.MaskOptions, 'inverted' | 'reference' | 'references'> & {
+  inverted?: boolean,
+  reference?: spec.DataPath,
+  references?: MaskOptionReference[],
+};
+
 /**
  * @internal
  */
@@ -72,25 +86,39 @@ export class MaskProcessor {
   /**
    * 设置蒙版选项（兼容旧版单蒙版 API）
    */
-  setMaskOptions (engine: Engine, data: spec.MaskOptions): void {
-    const { isMask = false, inverted = false, reference, alphaMaskEnabled = false } = data;
+  setMaskOptions (engine: Engine, data: MaskOptions): void {
+    const { isMask = false, inverted = false, reference, references, alphaMaskEnabled = false } = data;
+    const maskReferences = references ?? (reference ? [{ mask: reference, inverted }] : []);
 
     this.alphaMaskEnabled = alphaMaskEnabled;
     this.isMask = isMask;
-    this.inverted = inverted;
+    this.inverted = maskReferences[0]?.inverted ?? inverted;
     this.maskReferences = [];
 
     if (isMask) {
       this.maskMode = MaskMode.MASK;
     } else {
-      this.maskMode = inverted ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
-      const maskable = engine.findObject<Maskable>(reference);
+      this.maskMode = this.inverted ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
 
-      if (maskable) {
-        this.maskReferences.push({
-          maskable,
-          inverted,
-        });
+      if (maskReferences.length === 0) {
+        this.maskMode = MaskMode.NONE;
+      }
+
+      for (const ref of maskReferences) {
+        const maskPath = ref.mask ?? ref.reference;
+
+        if (!maskPath) {
+          continue;
+        }
+
+        const maskable = engine.findObject<Maskable>(maskPath);
+
+        if (maskable) {
+          this.maskReferences.push({
+            maskable,
+            inverted: ref.inverted ?? false,
+          });
+        }
       }
     }
   }
@@ -130,6 +158,13 @@ export class MaskProcessor {
    */
   clearMaskReferences (): void {
     this.maskReferences = [];
+  }
+
+  /**
+   * 获取当前蒙版引用列表。
+   */
+  getMaskReferences (): ReadonlyArray<MaskReference> {
+    return [...this.maskReferences];
   }
 
   /**

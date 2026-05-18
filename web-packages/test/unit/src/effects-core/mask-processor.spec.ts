@@ -311,32 +311,54 @@ describe('core/material//mask-ref-manager', () => {
     it('should set maskMode to MASK when isMask is true', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { isMask: true, reference: dummyRef });
+      mp.setMaskOptions(engine, { isMask: true });
 
       expect(mp.isMask).to.eql(true);
       expect(mp.maskMode).to.eql(MaskMode.MASK);
     });
 
-    it('should set maskMode to OBSCURED when isMask is false and inverted is false', () => {
+    it('should handle references array with single forward mask', () => {
       const mp = new MaskProcessor();
+      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
 
-      mp.setMaskOptions(engine, { isMask: false, inverted: false, reference: dummyRef });
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references: [{ mask: dummyRef, inverted: false }],
+      });
 
-      expect(mp.maskMode).to.eql(MaskMode.OBSCURED);
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].inverted).to.eql(false);
     });
 
-    it('should set maskMode to REVERSE_OBSCURED when inverted is true', () => {
+    it('should handle references array with single reverse mask', () => {
+      const mp = new MaskProcessor();
+      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
+
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references: [{ mask: dummyRef, inverted: true }],
+      });
+
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].inverted).to.eql(true);
+    });
+
+    it('should keep compatibility with legacy reference field', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { isMask: false, inverted: true, reference: dummyRef });
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references: [{ reference: dummyRef, inverted: false }],
+      });
 
-      expect(mp.maskMode).to.eql(MaskMode.REVERSE_OBSCURED);
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].inverted).to.eql(false);
     });
 
     it('should set alphaMaskEnabled', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { alphaMaskEnabled: true, reference: dummyRef });
+      mp.setMaskOptions(engine, { alphaMaskEnabled: true });
 
       expect(mp.alphaMaskEnabled).to.eql(true);
     });
@@ -351,7 +373,7 @@ describe('core/material//mask-ref-manager', () => {
       mp.addMaskReference(sprite1);
       mp.addMaskReference(sprite2);
 
-      mp.setMaskOptions(engine, { isMask: true, reference: dummyRef });
+      mp.setMaskOptions(engine, { isMask: true });
       mp.drawStencilMask(renderer, component);
       expect(material.stencilTest).to.eql(false);
     });
