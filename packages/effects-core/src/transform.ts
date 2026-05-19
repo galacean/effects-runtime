@@ -70,7 +70,7 @@ export class Transform implements Disposable {
   /**
    * 子变换，可以有多个
    */
-  private children: Transform[] = [];
+  protected children: Transform[] = [];
   /**
    * 父变换，只能有一个
    */
@@ -135,16 +135,29 @@ export class Transform implements Disposable {
     if (!transform || this.parent === transform || this === transform) {
       return;
     }
+    const oldParent = this.parent;
+
     if (this.parent) {
       this.parent.removeChild(this);
     }
     transform.addChild(this);
     this.parent = transform;
     this.worldMatrixDirty = true;
+    this.onParentTransformChanged(oldParent, transform);
   }
 
   get parentTransform () {
     return this.parent;
+  }
+
+  /**
+   * 父 transform 切换时的 hook。子类可重写以接管订阅 / 解算等逻辑
+   * @param oldParent - 切换前的父 transform(若没有则为 null)
+   * @param newParent - 切换后的新父 transform
+   * @internal
+   */
+  protected onParentTransformChanged (oldParent: Transform | null, newParent: Transform | null): void {
+    // OVERRIDE
   }
 
   private set worldMatrixDirty (val: boolean) {

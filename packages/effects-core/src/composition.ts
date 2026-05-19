@@ -229,9 +229,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private isEndCalled = false;
   private _textures: Texture[] = [];
   /**
+   * @internal
    * 合成根元素
    */
-  private readonly root: VFXItem;
+  readonly root: VFXItem;
 
   /**
    * Composition 构造函数
@@ -292,6 +293,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.composition = this;
 
     this.pluginRoot = new VFXItem(this.engine);
+    this.pluginRoot.name = 'pluginRoot';
     this.pluginRoot.setParent(this.root);
     this.pluginRoot.addComponent(CanvasLayer);
 
@@ -305,7 +307,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     // 在 instantiatePreComposition 后设置 rootItem 的 name，避免 name 被覆盖
-    this.sceneRoot.name = 'rootItem';
+    this.sceneRoot.name = 'sceneRoot';
 
     this.rootComposition = this.sceneRoot.getComponent(CompositionComponent) ?? this.sceneRoot.addComponent(CompositionComponent);
     this.rootComposition.updateMode = UpdateModes.Manual;

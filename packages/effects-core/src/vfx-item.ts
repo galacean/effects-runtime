@@ -906,7 +906,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.definition.id = this.guid;
     this.definition.transform = this.transform.toData();
     this.definition.dataType = spec.DataType.VFXItemData;
-    if (this.parent?.name !== 'rootItem') {
+    if (this.parent?.name !== 'sceneRoot') {
       this.definition.parentId = this.parent?.guid;
     }
 
