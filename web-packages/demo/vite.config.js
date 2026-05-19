@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
           'local-file': resolve(__dirname, 'html/local-file.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'render-level': resolve(__dirname, 'html/render-level.html'),
+          'scene-ops': resolve(__dirname, 'html/scene-ops.html'),
           'shader-compile': resolve(__dirname, 'html/shader-compile.html'),
           'multi-load-type': resolve(__dirname, 'html/multi-load-type.html'),
           'single': resolve(__dirname, 'html/single.html'),

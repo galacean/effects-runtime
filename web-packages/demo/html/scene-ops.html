@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scene Ops 调试页</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --error: #b91c1c;
+      --ok: #166534;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at 10% 10%, #d1fae5 0%, #f4f6f8 45%, #e5e7eb 100%);
+      color: var(--text);
+      font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 14px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .group {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+
+    .group:first-of-type {
+      border-top: none;
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .label {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 260px;
+      resize: vertical;
+      font-family: "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-strong);
+    }
+
+    .btn-muted {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .status {
+      margin: 8px 0 0;
+      font-size: 13px;
+      min-height: 20px;
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .status.error {
+      color: var(--error);
+    }
+
+    .outputs {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .preview-shell {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0b1220;
+      min-height: 340px;
+      position: relative;
+    }
+
+    .preview-canvas {
+      width: 100%;
+      height: 340px;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="layout">
+    <section class="panel">
+      <h2>操作面板</h2>
+
+      <div class="group">
+        <div class="row">
+          <button class="btn btn-primary" id="load-url">从 URL 加载</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Find Element</h2>
+        <label class="label" for="find-id">Element ID / Name</label>
+        <input id="find-id" />
+        <div class="row">
+          <button class="btn btn-primary" id="run-find">执行</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Patch Transform</h2>
+        <label class="label" for="transform-id">Element ID</label>
+        <input id="transform-id" />
+        <label class="label">Position (x,y,z)</label>
+        <div class="row">
+          <input id="pos-x" type="number" step="0.1" />
+          <input id="pos-y" type="number" step="0.1" />
+          <input id="pos-z" type="number" step="0.1" />
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" id="run-transform">执行</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Replace Texture</h2>
+        <label class="label" for="texture-id">Element ID</label>
+        <input id="texture-id" />
+        <label class="label" for="texture-url">Texture URL</label>
+        <input id="texture-url" placeholder="https://.../image.png" />
+        <label class="label" for="texture-reuse">Reuse By</label>
+        <select id="texture-reuse">
+          <option value="textureId">textureId</option>
+          <option value="url">url</option>
+          <option value="none">none</option>
+        </select>
+        <div class="row">
+          <label><input type="checkbox" id="cleanup-unused" /> cleanupUnused</label>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" id="run-texture">执行</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Patch Transform Animation</h2>
+        <label class="label" for="animation-id">Element ID</label>
+        <input id="animation-id" placeholder="item_xxx" />
+        <label class="label" for="anim-x">positionOverLifetime 终点 X</label>
+        <input id="anim-x" type="number" step="0.1" value="10" />
+        <div class="row">
+          <button class="btn btn-primary" id="run-animation">执行</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel outputs">
+      <div>
+        <div class="preview-shell">
+          <div class="preview-canvas" id="preview-container"></div>
+        </div>
+        <div class="row">
+          <button class="btn btn-muted" id="render-scene">渲染当前 JSON</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script type="module" src="../src/scene-ops.ts"></script>
+</body>
+</html>

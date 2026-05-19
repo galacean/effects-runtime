@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",
+    "@galacean/effects-helper": "workspace:*",
     "@galacean/effects-threejs": "workspace:*",
     "@galacean/effects-plugin-stats": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
