@@ -61,7 +61,7 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  * - `size`     ← rect 尺寸
  * - `anchor`(Vector3 像素 pivot 偏移)由用户独立设置,仅作旋转/缩放中心
  *
- * **解算入口** 是 `sizeChanged()` 方法(对应 Godot Control._size_changed):
+ * **解算入口** 是 `sizeChanged()` 方法:
  * - 父是 RectTransform → 用 `parent.size` 作 parentSize 解算自身,写回 `position` / `size`
  * - 否则(顶层 / 没父):自身 size 视为权威值(由外部 — 通常是 CanvasLayer — 直接写),不再自解算
  * - 末尾遍历 `children` 中的 RectTransform,直接调它们的 `sizeChanged()`,链式向下传播
@@ -319,10 +319,10 @@ export class RectTransform extends Transform {
     this.setSize(rect.width, rect.height);
   }
 
-  // ── layout solver(对齐 Godot Control._size_changed)──────────────
+  // ── layout solver──────────────
 
   /**
-   * 解算入口(对应 Godot `Control::_size_changed`):
+   * 解算入口:
    *
    * 1. 父是 RectTransform → 从 `parent.size` 求自身 rect,通过 `super.setPosition / super.setSize` 写回
    *    (避免触发本类 setPosition / setSize 重写)
