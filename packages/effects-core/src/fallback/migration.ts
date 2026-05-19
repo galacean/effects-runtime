@@ -12,7 +12,11 @@ import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
 
-let currentMaskComponent: string | undefined;
+interface MaskMigrationContext {
+  currentMaskComponent?: string,
+}
+
+const maskMigrationCtx: MaskMigrationContext = {};
 const componentMap: Map<string, spec.ComponentData> = new Map();
 const itemMap: Map<string, spec.VFXItemData> = new Map();
 
@@ -712,7 +716,7 @@ export function version36Migration (json: JSONScene): JSONScene {
 
   for (const composition of json.compositions) {
     composition.children = [];
-    currentMaskComponent = undefined;
+    maskMigrationCtx.currentMaskComponent = undefined;
 
     for (const componentDataPath of composition.components) {
       const componentData = componentMap.get(componentDataPath.id) as spec.ComponentData;
@@ -881,7 +885,7 @@ export function processContent (composition: spec.CompositionData) {
     return;
   }
 
-  currentMaskComponent = undefined;
+  maskMigrationCtx.currentMaskComponent = undefined;
   processMaskItems(items, itemMap, componentMap);
 }
 
@@ -926,12 +930,12 @@ export function processMask (renderContent: any) {
       renderContent.mask = {
         isMask: true,
       };
-      currentMaskComponent = renderContent.id;
+      maskMigrationCtx.currentMaskComponent = renderContent.id;
     } else if (
       maskMode === spec.ObscuredMode.OBSCURED ||
       maskMode === spec.ObscuredMode.REVERSE_OBSCURED
     ) {
-      if (!currentMaskComponent) {
+      if (!maskMigrationCtx.currentMaskComponent) {
         console.warn(`Mask migration: obscured component "${renderContent.id}" has no preceding mask component, skipping.`);
 
         return;
@@ -942,7 +946,7 @@ export function processMask (renderContent: any) {
         references: [
           {
             mask: {
-              'id': currentMaskComponent,
+              'id': maskMigrationCtx.currentMaskComponent,
             },
             inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED,
           },

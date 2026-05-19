@@ -11,17 +11,16 @@ import type { Geometry } from '../render/geometry';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { RendererComponent } from '../components';
 
-// spec 更新后删除
+// spec 更新后直接使用 spec.MaskReferenceData
 type MaskOptionReference = {
   mask?: spec.DataPath,
-  reference?: spec.DataPath,
   inverted?: boolean,
 };
 
-// spec 更新后删除
-type MaskOptions = Omit<spec.MaskOptions, 'inverted' | 'reference' | 'references'> & {
-  inverted?: boolean,
-  reference?: spec.DataPath,
+// spec 更新后直接使用 spec.MaskOptions
+type MaskOptions = {
+  isMask?: boolean,
+  alphaMaskEnabled?: boolean,
   references?: MaskOptionReference[],
 };
 
@@ -86,15 +85,18 @@ export class MaskProcessor {
   }
 
   /**
-   * 设置蒙版选项（兼容旧版单蒙版 API）
+   * 设置蒙版选项（兼容旧版单蒙版 API）。
+   *
+   * @param data.references - 蒙版引用列表。
+   *   传入空数组等价于无蒙版（maskMode = NONE）。
+   *   超过 255 个引用时，多余部分将被忽略并打印警告。
    */
   setMaskOptions (engine: Engine, data: MaskOptions): void {
-    const { isMask = false, inverted = false, reference, references, alphaMaskEnabled = false } = data;
-    const maskReferences = references ?? (reference ? [{ mask: reference, inverted }] : []);
+    const { isMask = false, references = [], alphaMaskEnabled = false } = data;
 
     this.alphaMaskEnabled = alphaMaskEnabled;
     this.isMask = isMask;
-    this.inverted = maskReferences[0]?.inverted ?? inverted;
+    this.inverted = references[0]?.inverted ?? false;
     this.maskReferences = [];
 
     if (isMask) {
@@ -102,12 +104,12 @@ export class MaskProcessor {
     } else {
       this.maskMode = this.inverted ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
 
-      if (maskReferences.length === 0) {
+      if (references.length === 0) {
         this.maskMode = MaskMode.NONE;
       }
 
-      for (const ref of maskReferences) {
-        const maskPath = ref.mask ?? ref.reference;
+      for (const ref of references) {
+        const maskPath = ref.mask;
 
         if (!maskPath) {
           continue;
@@ -117,7 +119,9 @@ export class MaskProcessor {
 
         if (maskable) {
           if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
-            throw new Error(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded.`);
+            console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+
+            break;
           }
 
           this.maskReferences.push({
@@ -167,10 +171,10 @@ export class MaskProcessor {
   }
 
   /**
-   * 获取当前蒙版引用列表。
+   * 获取当前蒙版引用列表（只读）。
    */
   getMaskReferences (): ReadonlyArray<MaskReference> {
-    return [...this.maskReferences];
+    return this.maskReferences;
   }
 
   /**

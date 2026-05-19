@@ -343,28 +343,27 @@ describe('core/material//mask-ref-manager', () => {
       expect(mp.getMaskReferences()[0].inverted).to.eql(true);
     });
 
-    it('should keep compatibility with legacy reference field', () => {
+    it('should skip references without mask path', () => {
       const mp = new MaskProcessor();
 
       mp.setMaskOptions(engine, {
         isMask: false,
-        references: [{ reference: dummyRef, inverted: false }],
+        references: [{ inverted: false }],
       });
 
-      expect(mp.getMaskReferences().length).to.eql(1);
-      expect(mp.getMaskReferences()[0].inverted).to.eql(false);
+      expect(mp.getMaskReferences().length).to.eql(0);
     });
 
-    it('should throw when mask references exceed the stencil limit', () => {
+    it('should warn and cap when mask references exceed the stencil limit', () => {
       const mp = new MaskProcessor();
       const references = Array.from({ length: 256 }, () => ({ mask: dummyRef, inverted: false }));
 
-      expect(() => {
-        mp.setMaskOptions(engine, {
-          isMask: false,
-          references,
-        });
-      }).to.throw('Maximum of 255 mask references exceeded.');
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references,
+      });
+
+      expect(mp.getMaskReferences().length).to.eql(255);
     });
 
     it('should set alphaMaskEnabled', () => {
