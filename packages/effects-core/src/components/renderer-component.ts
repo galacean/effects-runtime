@@ -66,6 +66,8 @@ export class RendererComponent extends Component {
 
   /**
    * 添加蒙版引用，支持多蒙版
+   * 如果重复添加同一个蒙版对象，后续调用会被忽略，不会更新 inverted。
+   * 如需切换正向/反向蒙版，请先 removeMask，再重新 addMask。
    * @param maskable - 蒙版对象（实现了 Maskable 接口的组件）
    * @param inverted - 是否反向蒙版（true: 反向遮挡，false: 正向遮挡），默认 false
    */

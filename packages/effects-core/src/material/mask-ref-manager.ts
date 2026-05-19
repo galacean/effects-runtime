@@ -25,6 +25,8 @@ type MaskOptions = Omit<spec.MaskOptions, 'inverted' | 'reference' | 'references
   references?: MaskOptionReference[],
 };
 
+const MAX_MASK_REFERENCE_COUNT = 255;
+
 /**
  * @internal
  */
@@ -114,6 +116,10 @@ export class MaskProcessor {
         const maskable = engine.findObject<Maskable>(maskPath);
 
         if (maskable) {
+          if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
+            throw new Error(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded.`);
+          }
+
           this.maskReferences.push({
             maskable,
             inverted: ref.inverted ?? false,
@@ -132,8 +138,8 @@ export class MaskProcessor {
     const exists = this.maskReferences.some(ref => ref.maskable === maskable);
 
     if (!exists) {
-      if (this.maskReferences.length >= 255) {
-        console.warn('Maximum of 255 mask references exceeded. Additional masks will be ignored.');
+      if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
+        console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
 
         return;
       }

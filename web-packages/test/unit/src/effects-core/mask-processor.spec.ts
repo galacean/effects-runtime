@@ -355,6 +355,18 @@ describe('core/material//mask-ref-manager', () => {
       expect(mp.getMaskReferences()[0].inverted).to.eql(false);
     });
 
+    it('should throw when mask references exceed the stencil limit', () => {
+      const mp = new MaskProcessor();
+      const references = Array.from({ length: 256 }, () => ({ mask: dummyRef, inverted: false }));
+
+      expect(() => {
+        mp.setMaskOptions(engine, {
+          isMask: false,
+          references,
+        });
+      }).to.throw('Maximum of 255 mask references exceeded.');
+    });
+
     it('should set alphaMaskEnabled', () => {
       const mp = new MaskProcessor();
 

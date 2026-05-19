@@ -1,3 +1,4 @@
+import type { Composition } from '@galacean/effects';
 import { Player, SpriteComponent, ShapeComponent } from '@galacean/effects';
 
 const container = document.getElementById('J-container');
@@ -552,6 +553,25 @@ const json = `{
 
 let currentPlayer: Player | null = null;
 
+const legacyJsonUrl = 'https://mdn.alipayobjects.com/mars/afts/file/A*JtRGQoWcN8UAAAAAQGAAAAgAelB4AQ';
+const rectangleMaskId = 'b8d9e6dbd27f4e049a32ae78825d438c';
+const ellipseMaskId = '64b76dba8928479ba09e586397ed0171';
+const wufuComponentId = 'd0e9461a95a24ff4a3e2c3100814f5c4';
+const buttonStyle = 'background:#4a90d9;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
+const activeButtonStyle = 'background:#f5a623;color:#111;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
+
+type MaskRefOptions = {
+  id: string,
+  inverted?: boolean,
+  useLegacyReferenceKey?: boolean,
+};
+
+type MaskDemoComponents = {
+  rectangle: ShapeComponent,
+  ellipse: ShapeComponent,
+  wufu: SpriteComponent,
+};
+
 function resetPlayer () {
   if (currentPlayer) {
     currentPlayer.dispose();
@@ -567,131 +587,247 @@ function resetPlayer () {
   });
 }
 
-async function loadWithDynamicMask () {
-  resetPlayer();
-  try {
-    const jsonUrl = 'https://mdn.alipayobjects.com/mars/afts/file/A*JtRGQoWcN8UAAAAAQGAAAAgAelB4AQ';
-    const composition = await currentPlayer?.loadScene(jsonUrl);
-
-    const rectangle5 = composition?.getItemByName('rectangle_5');
-    const ellipse3 = composition?.getItemByName('ellipse_3');
-    const wufu = composition?.getItemByName('经典五福');
-
-    if (!rectangle5 || !ellipse3 || !wufu) {
-      console.error('❌ 未找到必要的元素');
-
-      return;
-    }
-
-    const rectangle5Comp = rectangle5.getComponent(ShapeComponent);
-    const ellipse3Comp = ellipse3.getComponent(ShapeComponent);
-    const wufuComp = wufu.getComponent(SpriteComponent);
-
-    if (!rectangle5Comp || !ellipse3Comp || !wufuComp) {
-      console.error('❌ 未找到组件');
-
-      return;
-    }
-
-    rectangle5Comp.maskManager.isMask = true;
-    ellipse3Comp.maskManager.isMask = true;
-
-    wufuComp.maskManager.clearMaskReferences();
-    wufuComp.maskManager.addMaskReference(rectangle5Comp, false);
-    wufuComp.maskManager.addMaskReference(ellipse3Comp, false);
-  } catch (error) {
-    console.error('❌ 方式一加载失败:', error);
-  }
+function cloneSceneJSON (): any {
+  return JSON.parse(json);
 }
 
-async function loadWithJsonMask () {
-  resetPlayer();
-  try {
-    const composition = await currentPlayer?.loadScene(JSON.parse(json));
-
-    const rectangle5 = composition?.getItemByName('rectangle_5');
-    const ellipse3 = composition?.getItemByName('ellipse_3');
-    const wufu = composition?.getItemByName('经典五福');
-
-    if (!rectangle5 || !ellipse3 || !wufu) {
-      console.error('❌ 未找到必要的元素');
-
-      return;
-    }
-
-  } catch (error) {
-    console.error('❌ 方式二加载失败:', error);
-  }
+function getWufuComponentData (sceneData: any): any {
+  return sceneData.components.find((component: any) => component.id === wufuComponentId);
 }
 
-async function loadWithOldJson () {
+function createMaskReference (options: MaskRefOptions): any {
+  const key = options.useLegacyReferenceKey ? 'reference' : 'mask';
+
+  return {
+    [key]: {
+      id: options.id,
+    },
+    inverted: !!options.inverted,
+  };
+}
+
+function createSceneWithReferences (references: MaskRefOptions[]): any {
+  const sceneData = cloneSceneJSON();
+  const wufuComponent = getWufuComponentData(sceneData);
+
+  wufuComponent.mask = {
+    isMask: false,
+    references: references.map(createMaskReference),
+  };
+
+  return sceneData;
+}
+
+function createSceneWithLegacyReference (id: string, inverted = false): any {
+  const sceneData = cloneSceneJSON();
+  const wufuComponent = getWufuComponentData(sceneData);
+
+  wufuComponent.mask = {
+    isMask: false,
+    reference: {
+      id,
+    },
+    inverted,
+  };
+
+  return sceneData;
+}
+
+async function loadSceneData (sceneData: any): Promise<Composition> {
   resetPlayer();
+
+  const composition = await currentPlayer?.loadScene(sceneData);
+
+  if (!composition) {
+    throw new Error('Load scene failed.');
+  }
+
+  return composition;
+}
+
+function getMaskDemoComponents (composition: Composition): MaskDemoComponents {
+  const rectangleItem = composition.getItemByName('rectangle_5');
+  const ellipseItem = composition.getItemByName('ellipse_3');
+  const wufuItem = composition.getItemByName('经典五福');
+
+  if (!rectangleItem || !ellipseItem || !wufuItem) {
+    throw new Error('Missing demo items.');
+  }
+
+  const rectangle = rectangleItem.getComponent(ShapeComponent);
+  const ellipse = ellipseItem.getComponent(ShapeComponent);
+  const wufu = wufuItem.getComponent(SpriteComponent);
+
+  if (!rectangle || !ellipse || !wufu) {
+    throw new Error('Missing demo components.');
+  }
+
+  rectangle.maskManager.isMask = true;
+  ellipse.maskManager.isMask = true;
+
+  return {
+    rectangle,
+    ellipse,
+    wufu,
+  };
+}
+
+async function loadWithDynamicMask (configure: (components: MaskDemoComponents) => void): Promise<void> {
+  const composition = await loadSceneData(cloneSceneJSON());
+  const components = getMaskDemoComponents(composition);
+
+  components.wufu.clearMasks();
+  configure(components);
+}
+
+async function loadWithOldJson (): Promise<void> {
+  resetPlayer();
+  await currentPlayer?.loadScene(legacyJsonUrl);
+}
+
+async function runMaskCase (run: () => Promise<unknown>, expectedText: string, button: HTMLButtonElement): Promise<void> {
+  expectedEl.textContent = expectedText;
+  statusEl.textContent = '加载中...';
+  setActiveButton(button);
+
   try {
-    const jsonUrl = 'https://mdn.alipayobjects.com/mars/afts/file/A*JtRGQoWcN8UAAAAAQGAAAAgAelB4AQ';
-
-    await currentPlayer?.loadScene(jsonUrl);
-
+    await run();
+    statusEl.textContent = '已加载';
   } catch (error) {
-    console.error('❌ 方法三加载失败:', error);
+    statusEl.textContent = '加载失败，请查看控制台';
+    console.error('multi-mask demo failed:', error);
   }
 }
 
 const controlPanel = document.createElement('div');
 
-controlPanel.style.cssText = 'position:fixed;top:10px;left:10px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;z-index:9999;';
+controlPanel.style.cssText = 'position:fixed;top:10px;left:10px;max-width:350px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;border-radius:4px;font-size:14px;z-index:9999;';
 
 const modeRow = document.createElement('div');
 
-modeRow.style.cssText = 'display:flex;align-items:center;gap:10px;';
-
-const button1 = document.createElement('button');
-
-button1.textContent = '动态设置';
-button1.style.cssText = 'background:#4a90d9;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-
-const button2 = document.createElement('button');
-
-button2.textContent = 'JSON 多蒙版';
-button2.style.cssText = 'background:#4a90d9;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-
-const button3 = document.createElement('button');
-
-button3.textContent = '旧 JSON 兼容';
-button3.style.cssText = 'background:#27ae60;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:14px;';
-
-modeRow.appendChild(button3);
-modeRow.appendChild(button1);
-modeRow.appendChild(button2);
+modeRow.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;';
 
 const legacyRow = document.createElement('div');
 
-legacyRow.style.cssText = 'display:flex;align-items:center;gap:10px;';
+legacyRow.style.cssText = 'display:flex;flex-direction:column;gap:4px;line-height:1.5;';
 
 const expectedEl = document.createElement('span');
+const statusEl = document.createElement('span');
 
-expectedEl.textContent = '预期：图片只显示矩形区域内';
+expectedEl.textContent = '';
+statusEl.textContent = '';
 
 legacyRow.appendChild(expectedEl);
+legacyRow.appendChild(statusEl);
 
 controlPanel.appendChild(modeRow);
 controlPanel.appendChild(legacyRow);
 
 document.body.appendChild(controlPanel);
-button1.onclick = async () => {
-  expectedEl.textContent = '预期：图片只在矩形和椭圆的交集区域显示';
-  await loadWithDynamicMask();
-};
 
-button2.onclick = async () => {
-  expectedEl.textContent = '预期：图片只在矩形和椭圆的交集区域显示';
-  await loadWithJsonMask();
-};
+const buttons: HTMLButtonElement[] = [];
 
-button3.onclick = async () => {
-  expectedEl.textContent = '预期：图片只显示矩形区域内';
-  await loadWithOldJson();
-};
+function setActiveButton (activeButton: HTMLButtonElement): void {
+  for (const button of buttons) {
+    button.style.cssText = button === activeButton ? activeButtonStyle : buttonStyle;
+  }
+}
+
+const maskCases = [
+  {
+    label: '旧 JSON 兼容',
+    expected: '预期：图片只显示旧数据里的矩形遮罩区域',
+    run: loadWithOldJson,
+  },
+  {
+    label: 'JSON 单矩形',
+    expected: '预期：图片只显示矩形区域',
+    run: () => loadSceneData(createSceneWithReferences([{ id: rectangleMaskId }])),
+  },
+  {
+    label: 'JSON 交集',
+    expected: '预期：图片只显示矩形和椭圆的交集区域',
+    run: () => loadSceneData(createSceneWithReferences([{ id: rectangleMaskId }, { id: ellipseMaskId }])),
+  },
+  {
+    label: 'JSON 反向',
+    expected: '预期：图片显示矩形区域，但挖掉椭圆区域',
+    run: () => loadSceneData(createSceneWithReferences([{ id: rectangleMaskId }, { id: ellipseMaskId, inverted: true }])),
+  },
+  {
+    label: 'JSON 仅反向',
+    expected: '预期：图片显示在椭圆外侧，椭圆区域被排除',
+    run: () => loadSceneData(createSceneWithReferences([{ id: ellipseMaskId, inverted: true }])),
+  },
+  {
+    label: '旧 reference',
+    expected: '预期：使用旧 mask.reference 字段，图片只显示矩形区域',
+    run: () => loadSceneData(createSceneWithLegacyReference(rectangleMaskId)),
+  },
+  {
+    label: 'ref 别名',
+    expected: '预期：references 内使用 reference 别名，图片只显示矩形和椭圆交集',
+    run: () => loadSceneData(createSceneWithReferences([
+      { id: rectangleMaskId, useLegacyReferenceKey: true },
+      { id: ellipseMaskId, useLegacyReferenceKey: true },
+    ])),
+  },
+  {
+    label: '动态交集',
+    expected: '预期：通过 addMask 动态添加，图片只显示矩形和椭圆交集',
+    run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
+      wufu.addMask(rectangle);
+      wufu.addMask(ellipse);
+    }),
+  },
+  {
+    label: '动态移除',
+    expected: '预期：先添加两个蒙版再移除椭圆，图片只显示矩形区域',
+    run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
+      wufu.addMask(rectangle);
+      wufu.addMask(ellipse);
+      wufu.removeMask(ellipse);
+    }),
+  },
+  {
+    label: '动态清空',
+    expected: '预期：添加后 clearMasks，图片完整显示',
+    run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
+      wufu.addMask(rectangle);
+      wufu.addMask(ellipse);
+      wufu.clearMasks();
+    }),
+  },
+  {
+    label: '动态反向',
+    expected: '预期：先移除再反向添加椭圆，图片显示矩形区域但挖掉椭圆',
+    run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
+      wufu.addMask(rectangle);
+      wufu.addMask(ellipse);
+      wufu.removeMask(ellipse);
+      wufu.addMask(ellipse, true);
+    }),
+  },
+  {
+    label: '重复 add',
+    expected: '预期：重复添加同一矩形不会更新 inverted，图片仍只显示矩形区域',
+    run: () => loadWithDynamicMask(({ rectangle, wufu }) => {
+      wufu.addMask(rectangle);
+      wufu.addMask(rectangle, true);
+    }),
+  },
+];
+
+for (const maskCase of maskCases) {
+  const button = document.createElement('button');
+
+  button.textContent = maskCase.label;
+  button.style.cssText = buttonStyle;
+  button.onclick = () => runMaskCase(maskCase.run, maskCase.expected, button);
+  buttons.push(button);
+  modeRow.appendChild(button);
+}
 
 (async () => {
-  await loadWithOldJson();
+  buttons[0].click();
 })();
