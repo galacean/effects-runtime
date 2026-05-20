@@ -1,5 +1,8 @@
 import type { Color } from '@galacean/effects-math/es/core';
 import type { VFXItem } from '..';
+import type { TextureRegion } from '../render/graphics';
+import type { FontStyle, FontWeight } from '../render/text-cache';
+import type { Texture } from '../texture';
 import { removeItem } from '../utils';
 import { CanvasLayer } from './canvas-layer';
 import { Component } from './component';
@@ -236,6 +239,38 @@ export class CanvasItem extends Component {
    */
   fillCircle (cx: number, cy: number, radius: number, color?: Color): void {
     this.engine.graphics.fillCircle(cx, cy, radius, color);
+  }
+
+  /**
+   * 绘制纹理矩形(本地坐标,Y 向上,(x, y) 为左下角)
+   * @param region - 纹理 UV 子矩形,默认全图。Y 向上,(u0, v0) 为左下角 UV
+   * @param color - 乘色,默认白色
+   */
+  drawTexture (
+    x: number, y: number, width: number, height: number,
+    texture: Texture,
+    region?: TextureRegion,
+    color?: Color,
+  ): void {
+    this.engine.graphics.drawTexture(x, y, width, height, texture, region, color);
+  }
+
+  /**
+   * 绘制文本(本地坐标,Y 向上,(x, y) 为文本左下角)。
+   *
+   * 同一段文本不同颜色不会重复 upload — 颜色由 `color` 参数透传作为乘色,纹理只缓存白色字形。
+   * 字体参数全部展开,避免调用方每帧创建临时 style 对象触发 GC
+   */
+  drawText (
+    x: number, y: number,
+    text: string,
+    fontSize: number,
+    color?: Color,
+    fontFamily?: string,
+    fontWeight?: FontWeight,
+    fontStyle?: FontStyle,
+  ): void {
+    this.engine.graphics.drawText(x, y, text, fontSize, color, fontFamily, fontWeight, fontStyle);
   }
 
   /**
