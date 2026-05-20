@@ -401,7 +401,13 @@ export class Inspector extends EditorWindow {
   }
 
   /**
-   * 4×4 锚点预设网格。普通点击 = `setAnchorsPreset`(只切 anchor);Shift+点击 = `setAnchorsAndOffsetsPreset`(同时按当前 size 贴边)
+   * 4×4 锚点预设网格。
+   *
+   * - 普通点击 = `setAnchorsAndOffsetsPreset(preset)`:rect 视觉上落到 preset 对应位置(跟编辑器惯例一致)
+   * - Shift+点击 = `setAnchorsPreset(preset, false)`:rect 视觉位置不变,反推 offset 让新 anchor 描述同一个 rect
+   *
+   * 不暴露 `setAnchorsPreset(preset, true)`(=改 anchor 但 offset 原样保留 → rect 会跟着跳),通常不是用户想要的
+   *
    * 列:Left / Center / Right / Wide(横向拉伸)
    * 行:Top  / Middle / Bottom / Tall(纵向拉伸)
    */
@@ -429,14 +435,16 @@ export class Inspector extends EditorWindow {
 
         if (ImGui.Button(label, new ImGui.Vec2(28, 22))) {
           if (ImGui.GetIO().KeyShift) {
-            rt.setAnchorsAndOffsetsPreset(preset);
+            // 保持 rect 视觉位置:反推 offset 抵消 anchor 变化
+            rt.setAnchorsPreset(preset, false);
           } else {
-            rt.setAnchorsPreset(preset);
+            // 让 rect 落到预设位置(贴边 / 居中 / fullRect)
+            rt.setAnchorsAndOffsetsPreset(preset);
           }
         }
       }
     }
-    ImGui.TextDisabled('  Shift+click = anchor + offset preset');
+    ImGui.TextDisabled('  Shift+click = keep current rect');
   }
 
   private endBehaviorToString (endBehavior: spec.EndBehavior) {

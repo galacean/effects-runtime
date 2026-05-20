@@ -487,10 +487,14 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 同时设置 anchor 和 offset,达到"按 preset 摆放并贴边带 margin"的效果
+   * 同时设置 anchor 和 offset,达到"按 preset 摆放并贴边带 margin"的效果。
+   *
+   * 注意第一步用 `keepOffsets=false`(反推 offset 维持 rect 视觉位置),不能用默认 `true`:
+   * 后者会让 rect 的 size 在中间步先跳到错值(因为 anchor 改了 offset 没改),
+   * 第二步 `setOffsetsPreset` 又用这个错 size 算 offset,最终 rect size 不对
    */
   setAnchorsAndOffsetsPreset (preset: LayoutPreset, margin = 0): void {
-    this.setAnchorsPreset(preset);
+    this.setAnchorsPreset(preset, false);
     this.setOffsetsPreset(preset, margin);
   }
 }
