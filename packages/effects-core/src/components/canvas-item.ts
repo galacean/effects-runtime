@@ -1,5 +1,8 @@
 import type { Color } from '@galacean/effects-math/es/core';
 import type { VFXItem } from '..';
+import type { NinePatchMargins, TextureRegion } from '../render/graphics';
+import type { FontStyle, FontWeight } from '../render/text-cache';
+import type { Texture } from '../texture';
 import { removeItem } from '../utils';
 import { CanvasLayer } from './canvas-layer';
 import { Component } from './component';
@@ -34,17 +37,16 @@ export class CanvasItem extends Component {
   }
 
   override onEnable (): void {
-    // 组件启用时（进入场景树），加入最近的 CanvasLayer 祖先并更新父 CanvasItem
+    // 首次接入 / 重新接入场景树时把自己挂上(若拓扑还没建立)。
+    // 注意 enable/disable 不再改变 CanvasItem 父子拓扑 — 拓扑由 VFXItem 父链(setParent / onParentChanged)维护,
+    // enable 在这里只是兜底首次入树
     this.updateCanvasLayer();
     this.updateParentItem();
   }
 
   override onDisable (): void {
-    // 组件禁用时（离开场景树），从当前 CanvasLayer 与父 CanvasItem 注销
-    this.removeFromParent();
-    this.removeFromCanvasLayer();
-    // 自身失效后，子 CanvasItem 需要重新查找新的父 CanvasItem（向上跳过自己）
-    this.updateChildrenParentItems();
+    // 组件禁用 = 仅 self.draw 跳过,不应改父子拓扑(否则 enable 回来位置就乱了)。
+    // 整棵子树的隐藏由 `vfxItem.setActive(false)` 配合 drawInternal 中的 `item.isActive` 检查处理
   }
 
   override onParentChanged (): void {
@@ -71,8 +73,8 @@ export class CanvasItem extends Component {
    * @internal
    */
   updateCanvasLayer (): void {
-    // 仅当组件激活时才需要归属到 CanvasLayer，否则视为游离状态
-    if (!this.item || !this.isActiveAndEnabled) {
+    // 拓扑跟 enabled/active 解耦,只看 item 是否还在
+    if (!this.item) {
       this.removeFromCanvasLayer();
 
       return;
@@ -106,8 +108,8 @@ export class CanvasItem extends Component {
    * @internal
    */
   updateParentItem (): void {
-    // 游离状态下不维护父子关系
-    if (!this.item || !this.isActiveAndEnabled) {
+    // 拓扑跟 enabled/active 解耦,只看 item 是否还在
+    if (!this.item) {
       this.removeFromParent();
 
       return;
@@ -240,6 +242,50 @@ export class CanvasItem extends Component {
   }
 
   /**
+   * 绘制纹理矩形(本地坐标,Y 向上,(x, y) 为左下角)
+   * @param region - 纹理 UV 子矩形,默认全图。Y 向上,(u0, v0) 为左下角 UV
+   * @param color - 乘色,默认白色
+   */
+  drawTexture (
+    x: number, y: number, width: number, height: number,
+    texture: Texture,
+    region?: TextureRegion,
+    color?: Color,
+  ): void {
+    this.engine.graphics.drawTexture(x, y, width, height, texture, region, color);
+  }
+
+  /**
+   * 绘制 9-patch:把矩形按 margins 切成 9 块,4 角不缩放、4 边单方向缩放、中心双向缩放
+   */
+  drawNinePatch (
+    x: number, y: number, width: number, height: number,
+    texture: Texture,
+    margins: NinePatchMargins,
+    color?: Color,
+  ): void {
+    this.engine.graphics.drawNinePatch(x, y, width, height, texture, margins, color);
+  }
+
+  /**
+   * 绘制文本(本地坐标,Y 向上,(x, y) 为文本左下角)。
+   *
+   * 同一段文本不同颜色不会重复 upload — 颜色由 `color` 参数透传作为乘色,纹理只缓存白色字形。
+   * 字体参数全部展开,避免调用方每帧创建临时 style 对象触发 GC
+   */
+  drawText (
+    x: number, y: number,
+    text: string,
+    fontSize: number,
+    color?: Color,
+    fontFamily?: string,
+    fontWeight?: FontWeight,
+    fontStyle?: FontStyle,
+  ): void {
+    this.engine.graphics.drawText(x, y, text, fontSize, color, fontFamily, fontWeight, fontStyle);
+  }
+
+  /**
    * 绘制自身并按 children 数组顺序递归绘制所有子 CanvasItem。
    * @internal
    */
@@ -249,10 +295,17 @@ export class CanvasItem extends Component {
 
     graphics.pushTransform(localMatrix2D);
 
-    this.draw();
+    // self 是否绘制只看 component.enabled — 其它都不影响。
+    // transform 始终被 push,children 始终被遍历,这样 component.enabled=false 时 self 隐藏
+    // 但 children 的位置不受影响
+    if (this.enabled) {
+      this.draw();
+    }
 
+    // 子是否参与绘制看 VFXItem.isActive(整棵跳过的语义)。
+    // 子自身的 component.enabled 在它自己的 drawInternal 里再判断
     for (const child of this.children) {
-      if (!child.isActiveAndEnabled) {
+      if (!child.item.isActive) {
         continue;
       }
       child.drawInternal();
@@ -354,11 +407,11 @@ function getCanvasLayerFromItem (item: VFXItem): CanvasLayer | null {
 }
 
 /**
- * 在指定 VFXItem 上查找一个激活的 CanvasItem 组件
+ * 在指定 VFXItem 上查找 CanvasItem 组件(只看类型,不看 active/enabled — 拓扑跟激活状态解耦)
  */
 function getCanvasItemFromItem (item: VFXItem): CanvasItem | null {
   for (const component of item.components) {
-    if (component instanceof CanvasItem && component.isActiveAndEnabled) {
+    if (component instanceof CanvasItem) {
       return component;
     }
   }

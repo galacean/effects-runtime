@@ -91,7 +91,8 @@ export class CanvasLayer extends Component {
     // }
 
     for (const canvasItem of this.canvasItems) {
-      if (!canvasItem.isActiveAndEnabled) {
+      // 整棵跳过看 vfxItem.active(item 级开关);self 自身是否画在 drawInternal 内由 component.enabled 决定
+      if (!canvasItem.item.isActive) {
         continue;
       }
       canvasItem.drawInternal();
