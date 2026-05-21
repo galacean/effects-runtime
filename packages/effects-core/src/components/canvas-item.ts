@@ -9,13 +9,18 @@ import { Component } from './component';
 
 /**
  * 画布元素组件
+ *
  * 进入场景树时沿父链向上查找最近的 CanvasLayer 祖先并注册自己；
- * 离开场景树、父级改变或自身禁用时，从所在 CanvasLayer 注销。
+ * 父级改变或自身销毁时,刷新 / 注销在所属 CanvasLayer 的登记。
+ *
+ * 注:拓扑(parent / children / 所属 layer)与 enabled/active 解耦 —
+ * `component.enabled=false` 仅让自身 draw 被跳过,**不**改父子关系,也**不**从 layer 注销;
+ * 整棵子树的隐藏由 `vfxItem.setActive(false)` 配合 drawInternal 中的 `isActive` 检查处理
  */
 export class CanvasItem extends Component {
   /**
    * 父 CanvasItem
-   * 沿 VFXItem 父链向上查找到的最近的激活 CanvasItem。
+   * 沿 VFXItem 父链向上查找到的最近的 CanvasItem(只看类型,不看 active/enabled — 拓扑跟激活状态解耦)。
    * 若不存在 CanvasItem 祖先（即直属于 CanvasLayer 或处于游离状态），该值为 null。
    */
   parent: CanvasItem | null = null;
@@ -363,7 +368,7 @@ export class CanvasItem extends Component {
   }
 
   /**
-   * 沿 VFXItem 父链向上查找最近的激活 CanvasItem 祖先（不包含自身）
+   * 沿 VFXItem 父链向上查找最近的 CanvasItem 祖先(不包含自身,只看类型不看 active/enabled)
    */
   private getParentItem (): CanvasItem | null {
     let current: VFXItem | null = this.item?.parent ?? null;

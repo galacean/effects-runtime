@@ -73,25 +73,16 @@ export class CanvasLayer extends Component {
   /**
    * 绘制当前层
    *
-   * 1. 从 engine.canvas 取当前尺寸,直接写到自身 RectTransform.size 并触发 sizeChanged()
-   *    传播给所有子 RectTransform(顶层 Control)
-   * 2. 遍历顶层 CanvasItem 进行绘制,由 CanvasItem.drawInternal 内部递归子节点
+   * 遍历顶层 CanvasItem 进行绘制,由 CanvasItem.drawInternal 内部递归子节点。
+   * 整棵跳过看 `vfxItem.isActive`(item 级开关);self 自身是否画由 drawInternal 内的 `component.enabled` 决定。
+   *
+   * 注:画布尺寸到 RectTransform.size 的同步目前未在此处处理(由 RectTransform 自身按需 resolve);
+   * 后续若需要在每帧强制刷新顶层 size,可在此处补回写入与 sizeChanged 传播
    *
    * @internal
    */
   draw (): void {
-    // const canvas = this.item?.engine?.canvas;
-
-    // if (canvas) {
-    //   const rect = canvas.getBoundingClientRect();
-
-    //   // RectTransform.setSize 顶层分支:直接 super.setSize 写,然后 sizeChanged 传播给子节点;
-    //   // size 没变时早返回,不触发链式
-    //   (this.item.transform as RectTransform).setSize(rect.width, rect.height);
-    // }
-
     for (const canvasItem of this.canvasItems) {
-      // 整棵跳过看 vfxItem.active(item 级开关);self 自身是否画在 drawInternal 内由 component.enabled 决定
       if (!canvasItem.item.isActive) {
         continue;
       }
