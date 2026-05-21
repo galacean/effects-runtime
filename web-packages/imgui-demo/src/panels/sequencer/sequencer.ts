@@ -11,7 +11,6 @@ import { splitter } from '../../widgets';
 import { TrackLabelRenderer } from './track-label-renderer';
 import { ClipRenderer } from './clip-renderer';
 import { KeyframeRenderer } from './keyframe-renderer';
-import { PropertiesPanelRenderer } from './properties-panel-renderer';
 import { CurveRenderer } from './curve-renderer';
 import { timeToPixel, pixelToTime, drawTimeMarkers, beginScrub, endScrub } from './timeline-utils';
 import { collectCurveChannelsForSelection, computeSharedValueRange } from './data-extraction';
@@ -23,7 +22,6 @@ export class Sequencer extends EditorWindow {
   private clipRenderer: ClipRenderer;
   private keyframeRenderer: KeyframeRenderer;
   private curveRenderer: CurveRenderer;
-  private propertiesPanelRenderer: PropertiesPanelRenderer;
 
   @menuItem('Window/Sequencer')
   static showWindow () {
@@ -39,7 +37,6 @@ export class Sequencer extends EditorWindow {
     this.clipRenderer = new ClipRenderer(this.state);
     this.keyframeRenderer = new KeyframeRenderer(this.state);
     this.curveRenderer = new CurveRenderer(this.state);
-    this.propertiesPanelRenderer = new PropertiesPanelRenderer(this.state);
 
     // 注入渲染器到 ClipRenderer 避免循环依赖
     this.clipRenderer.setKeyframeRenderer(this.keyframeRenderer);
@@ -92,10 +89,9 @@ export class Sequencer extends EditorWindow {
     // 更新窗口尺寸信息
     this.updateWindowDimensions();
 
-    // 使用可拖拽的分割器来分离主区域和属性面板
     const splitterEdgeGap = 24;
-    const splitterWidth = 2; // thinner splitter
-    const mainAreaWidth = Math.max(splitterEdgeGap, state.windowContentWidth - state.propertiesPanelWidth - splitterWidth);
+    const splitterWidth = 2;
+    const mainAreaWidth = state.windowContentWidth;
 
     // 开始左侧主区域
     if (ImGui.BeginChild('MainArea', new ImGui.Vec2(mainAreaWidth, 0), ImGui.ChildFlags.None)) {
@@ -384,21 +380,6 @@ export class Sequencer extends EditorWindow {
 
       // === 绘制完整贯通游标线 ===
       // （由于没有 ForegroundDrawList 支持，我们在各自 Child Window 内绘制，避免被遮挡）
-    }
-    ImGui.EndChild();
-
-    // 绘制可拖拽的分割器
-    ImGui.SameLine();
-    this.state.propertiesPanelWidth = splitter('##PropertiesSplitter', this.state.propertiesPanelWidth, {
-      min: splitterEdgeGap,
-      max: Math.max(splitterEdgeGap, this.state.windowContentWidth - splitterEdgeGap - splitterWidth),
-      invert: true,
-    });
-
-    // 右侧属性面板
-    ImGui.SameLine();
-    if (ImGui.BeginChild('PropertiesPanel', new ImGui.Vec2(state.propertiesPanelWidth, 0), ImGui.ChildFlags.None)) {
-      this.propertiesPanelRenderer.drawTrackPropertiesPanel();
     }
     ImGui.EndChild();
   }
