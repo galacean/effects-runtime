@@ -16,7 +16,7 @@ import type { ShapePrimitive } from '../math/shape/shape-primitive';
 import { Triangle } from '../math/shape/triangle';
 import type { Texture } from '../texture';
 import type { FontStyle, FontWeight } from './text-cache';
-import { TextCache } from './text-cache';
+import { ATLAS_SIZE, TextCache } from './text-cache';
 
 /**
  * 纹理 UV 子矩形(Y 向上,Y=0 在底部)。 全图为 `{u0:0, v0:0, u1:1, v1:1}`
@@ -249,6 +249,10 @@ export class Graphics {
       return;
     }
 
+    // 把所有 dirty 的字符 atlas 内容上传到 GPU,确保即将采样的 textured 批次拿到最新像素;
+    // 一帧多次 drawText 共写同一 atlas 只在 flush 边界 upload 一次,避免每次 drawText 都重传整张 canvas
+    this.textCache.uploadDirty();
+
     const verticesArray = new Float32Array(this.vertices);
     const colorsArray = new Float32Array(this.colors);
     const uvsArray = new Float32Array(this.uvs);
@@ -465,8 +469,8 @@ export class Graphics {
   /**
    * 绘制文本(本地坐标,Y 向上,(x, y) 为文本左下角)。
    *
-   * 文本纹理由 LRU `TextCache` 自动渲染并缓存(同一段文本不同颜色不会重复 upload)。
-   * `color` 作为乘色与白色字形纹理相乘,任意颜色都不会污染缓存。
+   * 文本走字符级 bitmap atlas(同一字体下每个字只渲染一次,任意文本组合复用 atlas);
+   * `color` 作为乘色与白色字形 alpha 相乘,任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开,避免调用方每帧创建临时 style 对象触发 GC
    * @param x - 文本左下角 X 坐标
@@ -490,12 +494,30 @@ export class Graphics {
     if (!text) {
       return;
     }
-    const entry = this.textCache.get(text, fontSize, fontFamily, fontWeight, fontStyle);
+    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
 
-    if (!entry) {
-      return;
+    this.ensureBatch('textured', atlas.texture);
+
+    const lineHeight = atlas.lineHeight;
+    let cursorX = x;
+
+    // ensureChar 可能往 atlas canvas 写新字并打 dirty 标;实际 upload 推迟到
+    // flushBatch 统一处理,这样一帧多次 drawText 共写同一 atlas 只 upload 一次
+    for (let i = 0; i < text.length; i++) {
+      const info = atlas.ensureChar(text[i]);
+
+      if (!info) {
+        continue;
+      }
+      // atlas 像素坐标 → UV(纹理 flipY 后,canvas 顶 → v=1,canvas 底 → v=0)
+      const u0 = info.px / ATLAS_SIZE;
+      const u1 = (info.px + info.pw) / ATLAS_SIZE;
+      const v0 = 1 - (info.py + info.ph) / ATLAS_SIZE;
+      const v1 = 1 - info.py / ATLAS_SIZE;
+
+      this.pushQuad(cursorX, y, info.width, lineHeight, color, { u0, v0, u1, v1 });
+      cursorX += info.width;
     }
-    this.drawTexture(x, y, entry.width, entry.height, entry.texture, FULL_REGION, color);
   }
 
   dispose (): void {
