@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOM Content 插件 - demo</title>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    .container {
+      width: 375px;
+      height: 812px;
+      background-color: #000;
+    }
+  </style>
+</head>
+<body>
+<!-- 宿主文档中的 SVG 定义，供 extractSVGDefs 提取 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <!-- 发光滤镜：用于标题文字光晕 -->
+    <filter id="ph3-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <!-- 文字阴影滤镜：用于金额文字 -->
+    <filter id="ph3-text-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#FFD700" flood-opacity="0.6" />
+    </filter>
+    <!-- 裁剪路径：福利卡片底部圆角裁切 -->
+    <clipPath id="ph3-clip" clipPathUnits="objectBoundingBox">
+      <rect x="0" y="0" width="1" height="0.85" rx="0.06" ry="0.06" />
+    </clipPath>
+    <!-- 渐变：分割线渐变 -->
+    <linearGradient id="ph3-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="transparent" />
+      <stop offset="50%" stop-color="#FFD700" />
+      <stop offset="100%" stop-color="transparent" />
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="container" id="J-container"></div>
+
+<script type="module" src="../src/dom-content.ts"></script>
+</body>
+</html>

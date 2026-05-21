@@ -18,3 +18,11 @@ Ask Claude to use a subagent:
 "Use the code-simplifier agent to clean up the code I just wrote"
 "Use code-architect to review this design"
 ```
+
+### Using Skills
+
+For changelog cleanup and synchronization, use:
+
+```
+/changelog-curation
+```

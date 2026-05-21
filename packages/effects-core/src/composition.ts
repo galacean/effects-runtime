@@ -3,8 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
-import { CanvasLayer } from './components';
-import { CompositionComponent, UpdateModes } from './components';
+import { CanvasLayer, CompositionComponent, UpdateModes } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
@@ -229,9 +228,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private isEndCalled = false;
   private _textures: Texture[] = [];
   /**
+   * @internal
    * 合成根元素
    */
-  private readonly root: VFXItem;
+  readonly root: VFXItem;
 
   /**
    * Composition 构造函数
@@ -291,8 +291,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.name = 'root';
     this.root.composition = this;
 
+    this.pluginRoot = new VFXItem(this.engine);
+    this.pluginRoot.name = 'pluginRoot';
+    this.pluginRoot.setParent(this.root);
+    this.pluginRoot.addComponent(CanvasLayer);
+
     // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
+    this.sceneRoot.setParent(this.root);
 
     if (sourceContent) {
       this.sceneRoot.setInstanceId(sourceContent.id);
@@ -300,7 +306,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     // 在 instantiatePreComposition 后设置 rootItem 的 name，避免 name 被覆盖
-    this.sceneRoot.name = 'rootItem';
+    this.sceneRoot.name = 'sceneRoot';
 
     this.rootComposition = this.sceneRoot.getComponent(CompositionComponent) ?? this.sceneRoot.addComponent(CompositionComponent);
     this.rootComposition.updateMode = UpdateModes.Manual;
@@ -368,7 +374,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * @deprecated Please use `sceneRoot` instead
+   * @deprecated 2.10.0 Please use `sceneRoot` instead
    */
   get rootItem () {
     return this.sceneRoot;
@@ -579,7 +585,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component>(classConstructor: Constructor<T>): T {
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
     return this.sceneRoot.getComponent(classConstructor);
   }
 

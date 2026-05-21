@@ -504,7 +504,7 @@ export class TextComponent extends MaskableGraphic {
         if (style.hasShadow) {
           this.setupShadow();
         }
-        this.setupOutline();
+        this.setupOutline(fontScale);
 
         charsInfo.forEach(charInfo => {
           const drawY = shiftY + charInfo.y;

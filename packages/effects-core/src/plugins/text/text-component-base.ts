@@ -207,14 +207,14 @@ export class TextComponentBase {
     return fontDesc;
   }
 
-  protected setupOutline (): void {
+  protected setupOutline (fontScale = 1): void {
     const context = this.context;
     const { outlineColor, outlineWidth } = this.textStyle;
     const [r, g, b, a] = outlineColor;
 
     if (context) {
       context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.lineWidth = outlineWidth * 2;
+      context.lineWidth = outlineWidth * 2 / fontScale;
     }
   }
 

@@ -1,11 +1,13 @@
 import * as spec from '@galacean/effects-specification';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
-import type { GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary } from './render';
-import { Graphics } from './render';
-import { RenderTargetPool } from './render';
+import type {
+  GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary,
+} from './render';
+import { Graphics, RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, generateEmptyTexture, generateWhiteTexture } from './texture';
@@ -17,12 +19,11 @@ import type { Composition } from './composition';
 import type { AssetManager } from './asset-manager';
 import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
-import { EventSystem } from './plugins/interact/event-system';
-import type { GLType } from './gl/create-gl-context';
+import type { PointerEventData, Region } from './plugins';
+import { EventSystem } from './plugins';
+import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
-import type { PointerEventData, Region } from './plugins/interact/click-handler';
 import { EventEmitter } from './events';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -185,7 +186,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   /**
    * @ignore
    */
-  findObject<T>(guid: spec.DataPath): T {
+  findObject<T> (guid: spec.DataPath): T {
     // 编辑器可能传 Class 对象，这边判断处理一下直接返回原对象。
     if (!(isPlainObject(guid))) {
       return guid as T;
@@ -678,6 +679,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.stop();
     this.eventSystem?.dispose();
     this.assetService?.dispose();
+    this.graphics.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());

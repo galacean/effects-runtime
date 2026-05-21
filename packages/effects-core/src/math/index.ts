@@ -5,5 +5,6 @@ export * from './value-getters';
 export * from './shape/build-line';
 export * from './shape/ellipse';
 export * from './shape/poly-star';
+export * from './shape/circle';
 export * from './shape/polygon';
 export * from './bezier';
