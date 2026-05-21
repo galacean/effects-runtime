@@ -853,8 +853,8 @@ export class GLEngine extends Engine {
 
   setTexture (uniform: Nullable<WebGLUniformLocation>, channel: number, texture: Texture) {
     if (!uniform) { return; }
-    // 必须走 this.activeTexture / this.bindTexture 包装,以保持 activeTextureIndex / currentTextureBinding 缓存一致。
-    // 否则后续 engine.bindTexture(sameTex) 会因缓存判定相同而跳过实际绑定,导致 texImage2D 写到错误纹理
+    // 必须走 this.activeTexture / this.bindTexture 包装，以保持 activeTextureIndex / currentTextureBinding 缓存一致。
+    // 否则后续 engine.bindTexture(sameTex) 会因缓存判定相同而跳过实际绑定，导致 texImage2D 写到错误纹理
     const glTex = texture as GLTexture;
 
     this.activeTexture(this.gl.TEXTURE0 + channel);
@@ -863,9 +863,9 @@ export class GLEngine extends Engine {
   }
 
   /**
-   * 查询所有uniform的location。
-   * @param program 查询的shader program
-   * @param uniformsNames 查询的uniform名称列表
+   * 查询所有 uniform 的 location。
+   * @param program - 查询的 shader program
+   * @param uniformsNames - 查询的 uniform 名称列表
    * @returns
    */
   getUniforms (program: WebGLProgram, uniformsNames: string[]): Nullable<WebGLUniformLocation>[] {

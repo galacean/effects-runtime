@@ -3,8 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
-import { CanvasLayer } from './components';
-import { CompositionComponent, UpdateModes } from './components';
+import { CanvasLayer, CompositionComponent, UpdateModes } from './components';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
@@ -369,7 +368,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * @deprecated Please use `sceneRoot` instead
+   * @deprecated 2.10.0 Please use `sceneRoot` instead
    */
   get rootItem () {
     return this.sceneRoot;
@@ -580,7 +579,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component>(classConstructor: Constructor<T>): T {
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
     return this.sceneRoot.getComponent(classConstructor);
   }
 

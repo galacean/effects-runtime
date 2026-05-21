@@ -1,7 +1,6 @@
 import type { Color } from '@galacean/effects-math/es/core';
-import type { VFXItem } from '..';
-import type { TextureRegion } from '../render/graphics';
-import type { FontStyle, FontWeight } from '../render/text-cache';
+import type { VFXItem } from '../vfx-item';
+import type { FontStyle, FontWeight, TextureRegion } from '../render';
 import type { Texture } from '../texture';
 import { removeItem } from '../utils';
 import { CanvasLayer } from './canvas-layer';

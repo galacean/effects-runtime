@@ -3,7 +3,7 @@ import type * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
 
 /**
- * 2D 矩形,`position` 为左下角(Y 向上),`size` 为宽高
+ * 2D 矩形，`position` 为左下角（Y 向上），`size` 为宽高
  */
 export type Rect = {
   position: Vector2,
@@ -11,7 +11,7 @@ export type Rect = {
 };
 
 /**
- * 16 个内建锚点预设,字面意义对应屏幕视觉位置(Y 向上)
+ * 16 个内建锚点预设，字面意义对应屏幕视觉位置（Y 向上）
  */
 export type LayoutPreset =
   | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
@@ -22,33 +22,33 @@ export type LayoutPreset =
   | 'fullRect';
 
 /**
- * 16 个 preset 对应的 anchorMin / anchorMax(Y 向上)
+ * 16 个 preset 对应的 anchorMin / anchorMax（Y 向上）
  */
 const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]> = {
   // [anchorMin.x, anchorMin.y, anchorMax.x, anchorMax.y]
-  topLeft:      [0, 1, 0, 1],
-  topRight:     [1, 1, 1, 1],
-  bottomLeft:   [0, 0, 0, 0],
-  bottomRight:  [1, 0, 1, 0],
-  centerLeft:   [0, 0.5, 0, 0.5],
-  centerTop:    [0.5, 1, 0.5, 1],
-  centerRight:  [1, 0.5, 1, 0.5],
+  topLeft: [0, 1, 0, 1],
+  topRight: [1, 1, 1, 1],
+  bottomLeft: [0, 0, 0, 0],
+  bottomRight: [1, 0, 1, 0],
+  centerLeft: [0, 0.5, 0, 0.5],
+  centerTop: [0.5, 1, 0.5, 1],
+  centerRight: [1, 0.5, 1, 0.5],
   centerBottom: [0.5, 0, 0.5, 0],
-  center:       [0.5, 0.5, 0.5, 0.5],
-  leftWide:     [0, 0, 0, 1],
-  topWide:      [0, 1, 1, 1],
-  rightWide:    [1, 0, 1, 1],
-  bottomWide:   [0, 0, 1, 0],
-  vcenterWide:  [0.5, 0, 0.5, 1],
-  hcenterWide:  [0, 0.5, 1, 0.5],
-  fullRect:     [0, 0, 1, 1],
+  center: [0.5, 0.5, 0.5, 0.5],
+  leftWide: [0, 0, 0, 1],
+  topWide: [0, 1, 1, 1],
+  rightWide: [1, 0, 1, 1],
+  bottomWide: [0, 0, 1, 0],
+  vcenterWide: [0.5, 0, 0.5, 1],
+  hcenterWide: [0, 0.5, 1, 0.5],
+  fullRect: [0, 0, 1, 1],
 };
 
 /**
- * 锚点布局变换。`RectTransform extends Transform`,在 Transform 的 position/rotation/scale/size/anchor(=pivot 偏移)
- * 之上额外维护 4 边锚点 + 4 边像素偏移,提供 rect 解算与编辑 API。
+ * 锚点布局变换。`RectTransform extends Transform`，在 Transform 的 position/rotation/scale/size/anchor（=pivot 偏移）
+ * 之上额外维护 4 边锚点 + 4 边像素偏移，提供 rect 解算与编辑 API。
  *
- * 解算公式(Y 向上,父 vertex 坐标原点 = 父 rect 左下角):
+ * 解算公式（Y 向上，父 vertex 坐标原点 = 父 rect 左下角）：
  * ```
  * left   = offsetMin.x + anchorMin.x * parentSize.x
  * bottom = offsetMin.y + anchorMin.y * parentSize.y
@@ -56,19 +56,19 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  * top    = offsetMax.y + anchorMax.y * parentSize.y
  * ```
  *
- * 写回 Transform:
- * - `position` ← `(left, bottom)`(rect 左下角,父 vertex 坐标)
+ * 写回 Transform：
+ * - `position` ← `(left, bottom)`（rect 左下角，父 vertex 坐标）
  * - `size`     ← rect 尺寸
- * - `anchor`(Vector3 像素 pivot 偏移)由用户独立设置,仅作旋转/缩放中心
+ * - `anchor`（Vector3 像素 pivot 偏移）由用户独立设置，仅作旋转/缩放中心
  *
- * **解算入口** 是 `sizeChanged()` 方法:
- * - 父是 RectTransform → 用 `parent.size` 作 parentSize 解算自身,写回 `position` / `size`
- * - 否则(顶层 / 没父):自身 size 视为权威值(由外部 — 通常是 CanvasLayer — 直接写),不再自解算
- * - 末尾遍历 `children` 中的 RectTransform,直接调它们的 `sizeChanged()`,链式向下传播
+ * **解算入口** 是 `sizeChanged()` 方法：
+ * - 父是 RectTransform → 用 `parent.size` 作 parentSize 解算自身，写回 `position` / `size`
+ * - 否则（顶层 / 没父）：自身 size 视为权威值（由外部 — 通常是 CanvasLayer — 直接写），不再自解算
+ * - 末尾遍历 `children` 中的 RectTransform，直接调它们的 `sizeChanged()`，链式向下传播
  *
- * **重写 `setPosition` / `setSize`** 让其语义变为"用户输入 rect 位置 / 尺寸":
- * - 顶层(无 RectTransform 父):直接写 `super.setPosition / super.setSize`,然后 `sizeChanged` 传播给子节点
- * - 否则:反推 offset 维持当前 anchor,然后 `sizeChanged` 重算并向下传
+ * **重写 `setPosition` / `setSize`** 让其语义变为"用户输入 rect 位置 / 尺寸"：
+ * - 顶层（无 RectTransform 父）：直接写 `super.setPosition / super.setSize`，然后 `sizeChanged` 传播给子节点
+ * - 否则：反推 offset 维持当前 anchor，然后 `sizeChanged` 重算并向下传
  */
 export class RectTransform extends Transform {
   /**
@@ -88,16 +88,16 @@ export class RectTransform extends Transform {
    */
   readonly offsetMax = new Vector2(0, 0);
   /**
-   * 自身 rect 上的归一化轴心 `(0..1)`,默认 `(0.5, 0.5)`(中心)。两层效果:
-   * 1. **Layout**:`setSize` 时 rect 围绕此点对称缩放(pivot=(0.5, 0.5) → 居中扩展;pivot=(0, 0) → 从左下扩展;pivot=(1, 1) → 向左下缩)
-   * 2. **矩阵**:`pivot` 自动同步到 `transform.anchor = pivot * size`(像素值,矩阵旋转/缩放中心),
-   *    所以旋转/缩放也围绕同一点。`setPivot` 和每次 `sizeChanged`(size 重算后)都会刷新 `transform.anchor`
+   * 自身 rect 上的归一化轴心 `(0..1)`，默认 `(0.5, 0.5)`(中心)。两层效果：
+   * 1. **Layout**：`setSize` 时 rect 围绕此点对称缩放（pivot=(0.5, 0.5) → 居中扩展；pivot=(0, 0) → 从左下扩展；pivot=(1, 1) → 向左下缩）
+   * 2. **矩阵**：`pivot` 自动同步到 `transform.anchor = pivot * size`（像素值，矩阵旋转/缩放中心），
+   *    所以旋转/缩放也围绕同一点。`setPivot` 和每次 `sizeChanged`（size 重算后）都会刷新 `transform.anchor`
    */
   readonly pivot = new Vector2(0.5, 0.5);
 
   /**
    * 用既有 Transform 的状态创建 RectTransform。
-   * 用于 Control / CanvasLayer 接管 VFXItem 时,把 VFXItem 自带的 Transform 升级为 RectTransform 而不丢失 position/rotation/scale 等已设置好的状态。
+   * 用于 Control / CanvasLayer 接管 VFXItem 时，把 VFXItem 自带的 Transform 升级为 RectTransform 而不丢失 position/rotation/scale 等已设置好的状态。
    */
   static fromTransform (t: Transform): RectTransform {
     if (t instanceof RectTransform) {
@@ -113,8 +113,8 @@ export class RectTransform extends Transform {
     rt.rotation.copyFrom(t.rotation);
     rt.scale.copyFrom(t.scale);
     rt.size.copyFrom(t.size);
-    // 不拷贝源 anchor — 升级为 RectTransform 时使用默认 pivot=(0.5, 0.5),
-    // 把 anchor 同步成 pivot * size,获得"中心轴心"默认行为
+    // 不拷贝源 anchor — 升级为 RectTransform 时使用默认 pivot=(0.5, 0.5)，
+    // 把 anchor 同步成 pivot * size，获得“中心轴心”默认行为
     rt.anchor.set(rt.pivot.x * rt.size.x, rt.pivot.y * rt.size.y, t.anchor.z);
 
     if (t.parentTransform) {
@@ -125,13 +125,13 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 反序列化:在 `Transform.fromData` 基础上还原 RectTransform 特有的 `pivot` /
+   * 反序列化：在 `Transform.fromData` 基础上还原 RectTransform 特有的 `pivot` /
    * `anchorMin` / `anchorMax` / `offsetMin` / `offsetMax`。
    *
-   * 顺序:
+   * 顺序：
    * 1. `super.fromData` 还原 `position` / `rotation` / `scale` / `size` / `anchor`
-   * 2. 若数据有 size,从 `anchor / size` 反推 `pivot`,保持 `anchor = pivot * size` 一致
-   * 3. 应用 `anchorMin/Max` / `offsetMin/Max`,每个 setter 末尾会触发 `sizeChanged`
+   * 2. 若数据有 size，从 `anchor / size` 反推 `pivot`，保持 `anchor = pivot * size` 一致
+   * 3. 应用 `anchorMin/Max` / `offsetMin/Max`，每个 setter 末尾会触发 `sizeChanged`
    *    重新解算 rect 与同步 `transform.anchor`
    */
   override fromData (data: spec.TransformData): void {
@@ -198,28 +198,28 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 设置 rect 内的归一化轴心 `(0..1)`,同时把 `transform.anchor`(矩阵旋转/缩放中心)同步到 `pivot * size`。
-   * 不重算 rect(pivot 只决定 setSize 行为,不直接影响当前 rect 位置 / 尺寸)
+   * 设置 rect 内的归一化轴心 `(0..1)`，同时把 `transform.anchor`（矩阵旋转/缩放中心）同步到 `pivot * size`。
+   * 不重算 rect（pivot 只决定 setSize 行为，不直接影响当前 rect 位置 / 尺寸）
    */
   setPivot (x: number, y: number): void {
     if (this.pivot.x !== x || this.pivot.y !== y) {
       this.pivot.x = x;
       this.pivot.y = y;
-      // 同步 transform.anchor(像素 pivot)= pivot * size,让旋转/缩放绕同一点
+      // 同步 transform.anchor（像素 pivot）= pivot * size，让旋转/缩放绕同一点
       this.anchor.set(this.pivot.x * this.size.x, this.pivot.y * this.size.y, this.anchor.z);
     }
   }
 
   /**
-   * 重写父类 `setPosition`:
-   * - 顶层(无 RectTransform 父):直接 `super.setPosition` 写位置,触发 `sizeChanged` 传播
-   * - 非顶层:语义为"设置 rect 左下角到 (x, y)",反推 offset 维持当前 anchor,然后 `sizeChanged` 重算
+   * 重写父类 `setPosition`：
+   * - 顶层（无 RectTransform 父）：直接 `super.setPosition` 写位置，触发 `sizeChanged` 传播
+   * - 非顶层：语义为"设置 rect 左下角到 (x, y)"，反推 offset 维持当前 anchor，然后 `sizeChanged` 重算
    *
-   * @param keepOffsets 默认 false。true 时反推 anchor 而非 offset(rect 在屏幕上不动,但 anchor 比例改变)
+   * @param keepOffsets - 默认 false。true 时反推 anchor 而非 offset（rect 在屏幕上不动，但 anchor 比例改变）
    */
   override setPosition (x: number, y: number, z: number, keepOffsets = false): void {
     if (!(this.parentTransform instanceof RectTransform)) {
-      // 顶层:直接写,然后传播给子节点
+      // 顶层：直接写，然后传播给子节点
       super.setPosition(x, y, z);
       this.sizeChanged();
 
@@ -246,11 +246,9 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 重写父类 `setSize`:
-   * - 顶层:直接 `super.setSize`,触发 `sizeChanged` 传播
-   * - 非顶层:反推 offset 维持当前 anchor,然后 `sizeChanged` 重算
-   *
-   * @param keepOffsets 默认 false。true 时反推 anchor 而非 offset
+   * 重写父类 `setSize`：
+   * - 顶层：直接 `super.setSize`，触发 `sizeChanged` 传播
+   * - 非顶层：反推 offset 维持当前 anchor，然后 `sizeChanged` 重算
    */
   override setSize (x: number, y: number): void {
     if (this.size.x === x && this.size.y === y) {
@@ -263,8 +261,8 @@ export class RectTransform extends Transform {
       return;
     }
 
-    // 围绕 pivot 对称缩放:Δsize 在 offsetMin / offsetMax 上按 pivot / (1-pivot) 比例分配。
-    // 例如 pivot=(0.5, 0.5) → 两边各 ±Δ/2,rect 居中扩展;pivot=(0, 0) → offsetMin 不动、offsetMax 全吃,rect 从左下扩展
+    // 围绕 pivot 对称缩放：Δsize 在 offsetMin / offsetMax 上按 pivot / (1-pivot) 比例分配。
+    // 例如 pivot=(0.5, 0.5) → 两边各 ±Δ/2,rect 居中扩展；pivot=(0, 0) → offsetMin 不动、offsetMax 全吃，rect 从左下扩展
     const dw = x - this.size.x;
     const dh = y - this.size.y;
 
@@ -282,7 +280,7 @@ export class RectTransform extends Transform {
   // ── rect query ───────────────────────────────────────
 
   /**
-   * 当前自身 rect(在父 vertex 坐标下,Y 向上)。`sizeChanged` 之后才有意义
+   * 当前自身 rect（在父 vertex 坐标下，Y 向上）。`sizeChanged` 之后才有意义
    */
   getRect (): Rect {
     return {
@@ -294,7 +292,7 @@ export class RectTransform extends Transform {
   // ── parent linkage ───────────────────────────────────
 
   /**
-   * 父 transform 切换时重算自身布局。子节点链路通过 `Transform.children` 直接访问,无需事件订阅
+   * 父 transform 切换时重算自身布局。子节点链路通过 `Transform.children` 直接访问，无需事件订阅
    * @internal
    */
   protected override onParentTransformChanged (
@@ -322,12 +320,12 @@ export class RectTransform extends Transform {
   // ── layout solver──────────────
 
   /**
-   * 解算入口:
+   * 解算入口：
    *
-   * 1. 父是 RectTransform → 从 `parent.size` 求自身 rect,通过 `super.setPosition / super.setSize` 写回
-   *    (避免触发本类 setPosition / setSize 重写)
-   * 2. 顶层(无 RectTransform 父):自身 size 视为权威值(由 CanvasLayer 等外部直接写),不自解算
-   * 3. 遍历 `children` 中所有 RectTransform 子节点,直接调它们的 `sizeChanged()` 链式传播
+   * 1. 父是 RectTransform → 从 `parent.size` 求自身 rect，通过 `super.setPosition / super.setSize` 写回
+   *    （避免触发本类 setPosition / setSize 重写）
+   * 2. 顶层（无 RectTransform 父）：自身 size 视为权威值（由 CanvasLayer 等外部直接写），不自解算
+   * 3. 遍历 `children` 中所有 RectTransform 子节点，直接调它们的 `sizeChanged()` 链式传播
    */
   sizeChanged (): void {
     if (this.parentTransform instanceof RectTransform) {
@@ -340,7 +338,7 @@ export class RectTransform extends Transform {
       super.setPosition(left, bottom, this.position.z);
       super.setSize(right - left, top - bottom);
     }
-    // size 更新后同步 transform.anchor(矩阵旋转/缩放中心)= pivot * size,跟 setPivot 保持统一
+    // size 更新后同步 transform.anchor（矩阵旋转/缩放中心）= pivot * size，跟 setPivot 保持统一
     this.anchor.set(this.pivot.x * this.size.x, this.pivot.y * this.size.y, this.anchor.z);
 
     for (const child of this.children) {
@@ -351,7 +349,7 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 给定目标 rect 反推 offsetMin/Max,保持当前 anchor 不变
+   * 给定目标 rect 反推 offsetMin/Max，保持当前 anchor 不变
    */
   private computeOffsets (rect: Rect, parentRect: Rect): void {
     this.offsetMin.set(
@@ -365,7 +363,7 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 给定目标 rect 反推 anchorMin/Max,保持当前 offset 不变。父 size 为 0 的方向不修改
+   * 给定目标 rect 反推 anchorMin/Max，保持当前 offset 不变。父 size 为 0 的方向不修改
    */
   private computeAnchors (rect: Rect, parentRect: Rect): void {
     if (parentRect.size.x !== 0) {
@@ -388,7 +386,7 @@ export class RectTransform extends Transform {
 
   /**
    * 把 anchorMin/Max 设为内建预设。
-   * @param keepOffsets 默认 true:offset 不动,rect 实际位置会跳到新 anchor 计算的位置(要求保留视觉位置请用 setAnchorsAndOffsetsPreset)
+   * @param keepOffsets - 默认 true：offset 不动，rect 实际位置会跳到新 anchor 计算的位置（要求保留视觉位置请用 setAnchorsAndOffsetsPreset）
    */
   setAnchorsPreset (preset: LayoutPreset, keepOffsets = true): void {
     const [aMinX, aMinY, aMaxX, aMaxY] = ANCHOR_PRESET_TABLE[preset];
@@ -415,8 +413,8 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 把 offsetMin/Max 设为预设值,使 rect 在父 rect 内落在视觉上对应的位置(留 margin 像素边距)。
-   * 当 anchor 已经按相同 preset 设定时,等价于"贴边放置带 margin 的 rect"。
+   * 把 offsetMin/Max 设为预设值，使 rect 在父 rect 内落在视觉上对应的位置（留 margin 像素边距）。
+   * 当 anchor 已经按相同 preset 设定时，等价于“贴边放置带 margin 的 rect”。
    * 使用当前 size 作为 rect 尺寸。
    */
   setOffsetsPreset (preset: LayoutPreset, margin = 0): void {
@@ -458,7 +456,7 @@ export class RectTransform extends Transform {
         break;
     }
 
-    // Y 方向(bottom / top)— Y 向上
+    // Y 方向（bottom / top）— Y 向上
     switch (preset) {
       case 'bottomLeft': case 'bottomRight': case 'centerBottom':
       case 'leftWide': case 'rightWide': case 'bottomWide':
@@ -487,11 +485,11 @@ export class RectTransform extends Transform {
   }
 
   /**
-   * 同时设置 anchor 和 offset,达到"按 preset 摆放并贴边带 margin"的效果。
+   * 同时设置 anchor 和 offset，达到“按 preset 摆放并贴边带 margin”的效果。
    *
-   * 注意第一步用 `keepOffsets=false`(反推 offset 维持 rect 视觉位置),不能用默认 `true`:
-   * 后者会让 rect 的 size 在中间步先跳到错值(因为 anchor 改了 offset 没改),
-   * 第二步 `setOffsetsPreset` 又用这个错 size 算 offset,最终 rect size 不对
+   * 注意第一步用 `keepOffsets=false`（反推 offset 维持 rect 视觉位置），不能用默认 `true`：
+   * 后者会让 rect 的 size 在中间步先跳到错值（因为 anchor 改了 offset 没改），
+   * 第二步 `setOffsetsPreset` 又用这个错 size 算 offset，最终 rect size 不对
    */
   setAnchorsAndOffsetsPreset (preset: LayoutPreset, margin = 0): void {
     this.setAnchorsPreset(preset, false);
