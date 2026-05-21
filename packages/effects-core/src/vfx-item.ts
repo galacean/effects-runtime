@@ -783,9 +783,15 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @internal
    */
   onActiveChanged () {
-    if (!this.isEnabled) {
-      this.onEnable();
-    } else {
+    if (!this.isDuringPlay || !this.composition) {
+      return;
+    }
+
+    if (this.active) {
+      if (!this.isEnabled) {
+        this.onEnable();
+      }
+    } else if (this.isEnabled) {
       this.onDisable();
     }
   }
