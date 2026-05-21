@@ -62,13 +62,13 @@ export class ThreeComposition extends Composition {
     super(engine, props, scene);
   }
 
-  override prepareRender (): void {
+  override render (): void {
     const render = this.renderer;
     const frame = this.renderFrame;
 
     frame.renderPasses[0].meshes.length = 0;
 
-    const items = this.rootItem.getDescendants();
+    const items = this.sceneRoot.getDescendants();
 
     // 主合成元素
     for (const vfxItem of items) {

@@ -41,7 +41,7 @@ async function handleLoadScene (url: string) {
 
   const composition = await player.loadScene(json);
 
-  composition.rootItem.addComponent(PostProcessVolume);
+  composition.sceneRoot.addComponent(PostProcessVolume);
 
   setDatGUI(composition);
 }

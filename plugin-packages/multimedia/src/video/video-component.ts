@@ -314,7 +314,7 @@ export class VideoComponent extends MaskableGraphic {
    * 根据合成结束行为决定视频的后续处理
    */
   private handleCompositionEnd (): void {
-    const rootEndBehavior = this.item.composition?.rootItem.endBehavior;
+    const rootEndBehavior = this.item.composition?.sceneRoot.endBehavior;
 
     if (rootEndBehavior === spec.EndBehavior.restart) {
       // 合成 restart：所有视频都需要 seek 回 0，和合成时间对齐
@@ -361,7 +361,7 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
-    return composition.time + VideoComponent.threshold >= composition.rootItem.duration;
+    return composition.time + VideoComponent.threshold >= composition.sceneRoot.duration;
   }
 
   /**
@@ -372,7 +372,7 @@ export class VideoComponent extends MaskableGraphic {
     const isCompositionEnded = this.checkCompositionEnded();
 
     const videoEndBehavior = this.item.endBehavior;
-    const rootEndBehavior = this.item.composition?.rootItem.endBehavior;
+    const rootEndBehavior = this.item.composition?.sceneRoot.endBehavior;
 
     // 合成结束且合成行为是 freeze 时冻结视频
     const isCompositionFrozen = isCompositionEnded && rootEndBehavior === spec.EndBehavior.freeze;
@@ -428,7 +428,7 @@ export class VideoComponent extends MaskableGraphic {
       this.manualPause = false;
       this.lastVideoTime = -1;
 
-      const rootEndBehavior = this.item.composition?.rootItem.endBehavior;
+      const rootEndBehavior = this.item.composition?.sceneRoot.endBehavior;
       const videoEndBehavior = this.item.endBehavior;
 
       // 视频 restart 时，浏览器 loop 处理；合成 restart 时，前面函数已经 seek 回 0
