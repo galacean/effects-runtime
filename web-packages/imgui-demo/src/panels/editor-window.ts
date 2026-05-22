@@ -1,5 +1,10 @@
-import { UIManager } from '../core/ui-manager';
 import { ImGui } from '../imgui';
+
+let getWindowFn: (<T extends EditorWindow>(type: new () => T) => T) | null = null;
+
+export function setGetWindowProvider (fn: <T extends EditorWindow>(type: new () => T) => T) {
+  getWindowFn = fn;
+}
 
 export class EditorWindow {
   title = 'New Window';
@@ -10,7 +15,14 @@ export class EditorWindow {
   private windowFlags = ImGui.WindowFlags.None;
 
   static getWindow<T extends EditorWindow> (type: new () => T): T {
-    return UIManager.getWindow(type);
+    if (!getWindowFn) {
+      throw new Error('EditorApplication not initialized');
+    }
+
+    return getWindowFn(type);
+  }
+
+  update (dt: number) {
   }
 
   draw () {
@@ -32,11 +44,19 @@ export class EditorWindow {
   }
 
   open () {
+    if (this.opened) {
+      return;
+    }
     this.opened = true;
+    this.onEnable();
   }
 
   close () {
+    if (!this.opened) {
+      return;
+    }
     this.opened = false;
+    this.onDisable();
   }
 
   isOpened () {
@@ -51,7 +71,15 @@ export class EditorWindow {
     this.windowFlags = flags;
   }
 
-  protected onGUI () {
+  protected onEnable () {
+  }
 
+  protected onDisable () {
+  }
+
+  protected onGUI () {
+  }
+
+  onSelectionChange () {
   }
 }
