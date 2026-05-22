@@ -45,7 +45,7 @@ export class ThreeMaterial extends Material {
     super(engine, props);
 
     const shader = props?.shader;
-    const { level } = engine.gpuCapability;
+    const level = engine.gpuCapability?.level ?? 1;
 
     this.shader = new Shader(engine);
     this.shader.shaderData = {
@@ -64,14 +64,14 @@ export class ThreeMaterial extends Material {
 
     this.material = new THREE.RawShaderMaterial({
       vertexShader: ShaderFactory.genFinalShaderCode({
-        level: this.engine.gpuCapability.level,
+        level,
         shaderType: ShaderType.vertex,
         shader: shader?.vertex ?? '',
         macros: shader?.macros,
         removeVersion: true,
       }),
       fragmentShader: ShaderFactory.genFinalShaderCode({
-        level: this.engine.gpuCapability.level,
+        level,
         shaderType: ShaderType.fragment,
         shader: shader?.fragment ?? '',
         macros: shader?.macros,

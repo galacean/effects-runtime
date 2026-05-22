@@ -182,6 +182,8 @@ export class ThreeDisplayObject extends THREE.Group {
   update (delta: number) {
     this.compositions.forEach(composition => {
       composition.update(delta);
+
+      composition.render();
     });
   }
 }
