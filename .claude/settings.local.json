@@ -1,24 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "mcp__ide__getDiagnostics",
-      "Read(//d/Developments/git/UnrealEngine/Engine/Plugins/FX/Niagara/Source/**)",
-      "Read(//d/Developments/git/UnrealEngine/Engine/Source/Runtime/**)",
-      "Bash(echo \"EXIT_CODE=$?\")",
-      "Bash(echo \"EXIT=$?\")",
-      "Bash(echo \"EXIT_CORE=$?\")",
-      "Bash(echo \"EXIT_IMGUI=$?\")",
-      "Bash(echo \"EXIT_LINT=$?\")",
-      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5183/ --max-time 5)",
-      "Bash(curl -s -w \"\\\\n--HTTP %{http_code}--\" \"http://localhost:5183/src/pro-particle-demo.ts\" --max-time 10)",
-      "Bash(echo \"TSC_EXIT=$?\")",
-      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5184/ --max-time 5)",
-      "Bash(curl -s -o /dev/null -w \"HTTP_panel %{http_code}\\\\n\" \"http://localhost:5184/src/panels/pro-particle-editor.ts\" --max-time 5)",
-      "Bash(curl -s -o /dev/null -w \"HTTP_editor %{http_code}\\\\n\" \"http://localhost:5184/src/custom-editors/pro-particle-system-editor.ts\" --max-time 5)",
-      "Read(//d/Developments/git/UnrealEngine/Engine/Plugins/FX/Niagara/**)",
-      "Read(//d/Developments/git/UnrealEngine/**)",
-      "Bash(git worktree *)",
-      "WebFetch(domain:dev.epicgames.com)"
     ]
   }
 }

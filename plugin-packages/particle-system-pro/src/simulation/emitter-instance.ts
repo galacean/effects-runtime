@@ -1,4 +1,4 @@
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { math } from '@galacean/effects';
 import type { ProDataBuffer } from '../data/data-buffer';
 import type { ProDataSetLayout } from '../data/data-set-layout';
 import { ProDataSet } from '../data/data-set';
@@ -64,7 +64,7 @@ export class ProEmitterInstance {
   simulationSpace: ProSimulationSpace = 'local';
 
   // 由 ProParticleSystemComponent 在 tick 前推入；world 模式 spawn 烘焙用
-  worldMatrix: Matrix4 = new Matrix4().identity();
+  worldMatrix: math.Matrix4 = new math.Matrix4().identity();
 
   // Warmup — 首次 tick 时按 warmupTickDelta 拆成多 sub-tick 跑完 warmupTime
   warmupTime = 0;

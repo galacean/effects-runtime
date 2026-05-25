@@ -1,5 +1,5 @@
-import * as spec from '@galacean/effects-specification';
-import type { Texture } from '../../../texture';
+import { spec } from '@galacean/effects';
+import type { Texture } from '@galacean/effects';
 import { ProRendererProperties } from './renderer-properties';
 
 export enum ProRibbonTextureMode {

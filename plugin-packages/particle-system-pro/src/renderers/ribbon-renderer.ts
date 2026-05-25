@@ -1,11 +1,5 @@
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type { Engine } from '../../../engine';
-import { glContext } from '../../../gl';
-import { Material, setBlendMode } from '../../../material';
-import type { Renderer } from '../../../render';
-import { Geometry } from '../../../render';
-import { Texture } from '../../../texture';
+import type { Engine, Renderer } from '@galacean/effects';
+import { Geometry, Material, Texture, glContext, math, setBlendMode } from '@galacean/effects';
 import { ProStandardAccessors } from '../builtin/standard-accessors';
 import type { ProDataBuffer } from '../data/data-buffer';
 import type { ProEmitterInstance } from '../simulation/emitter-instance';
@@ -129,13 +123,13 @@ export class ProRibbonRenderer extends ProRenderer {
     this.material.depthMask = false;
     setBlendMode(this.material, this.properties.blending);
     this.material.setTexture('_MainTex', this.properties.texture ?? Texture.createWithData(engine));
-    this.material.setVector4('_TexParams', new Vector4(this.properties.texture ? 1 : 0, 0, 0, 0));
+    this.material.setVector4('_TexParams', new math.Vector4(this.properties.texture ? 1 : 0, 0, 0, 0));
   }
 
   setTexture (texture: Texture | null): void {
     this.properties.texture = texture;
     this.material.setTexture('_MainTex', texture ?? Texture.createWithData(this.engine));
-    this.material.setVector4('_TexParams', new Vector4(texture ? 1 : 0, 0, 0, 0));
+    this.material.setVector4('_TexParams', new math.Vector4(texture ? 1 : 0, 0, 0, 0));
   }
 
   syncProperties (): void {
@@ -192,7 +186,7 @@ export class ProRibbonRenderer extends ProRenderer {
     this.material.dispose();
   }
 
-  draw (renderer: Renderer, worldMatrix: Matrix4): void {
+  draw (renderer: Renderer, worldMatrix: math.Matrix4): void {
     if (this.geometry.getDrawCount() === 0) {
       return;
     }

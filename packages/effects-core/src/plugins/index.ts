@@ -19,4 +19,3 @@ export * from './timeline';
 export * from './text';
 export * from './shape';
 export * from './animation-graph';
-export * from './particle-system-pro';

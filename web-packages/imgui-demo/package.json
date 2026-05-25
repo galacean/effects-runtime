@@ -11,6 +11,7 @@
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",
     "@galacean/effects-plugin-ffd": "workspace:*",
+    "@galacean/effects-plugin-particle-system-pro": "workspace:*",
     "@vvfx/resource-detection": "^0.10.0",
     "maoan-imgui-js": "^1.1.1"
   },

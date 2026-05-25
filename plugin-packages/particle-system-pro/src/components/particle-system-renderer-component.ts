@@ -1,12 +1,11 @@
-import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { RendererComponent } from '../../../components';
-import type { Renderer } from '../../../render';
+import { RendererComponent, math } from '@galacean/effects';
+import type { Renderer } from '@galacean/effects';
 import type { ProRenderer } from '../renderers/renderer';
 import { ProRibbonRenderer } from '../renderers/ribbon-renderer';
 import { ProSpriteRenderer } from '../renderers/sprite-renderer';
 import { ProParticleSystemComponent } from './particle-system-component';
 
-const IDENTITY_MATRIX = new Matrix4().identity();
+const IDENTITY_MATRIX = new math.Matrix4().identity();
 
 /**
  * 把 ProSystemInstance 的粒子渲染出来的组件。

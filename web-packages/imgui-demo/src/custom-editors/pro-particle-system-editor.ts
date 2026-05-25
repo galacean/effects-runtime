@@ -1,4 +1,4 @@
-import { ProParticleSystemComponent, ProParticleSystemRendererComponent } from '@galacean/effects';
+import { ProParticleSystemComponent, ProParticleSystemRendererComponent } from '@galacean/effects-plugin-particle-system-pro';
 import { editor } from '../core/decorators';
 import { drawProParticleStack } from '../panels/pro-particle-editor';
 import { Editor } from './editor';

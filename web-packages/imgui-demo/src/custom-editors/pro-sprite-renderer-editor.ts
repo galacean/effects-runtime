@@ -1,4 +1,4 @@
-import { ProParticleSystemRendererComponent, ProRibbonRenderer, ProSpriteRenderer } from '@galacean/effects';
+import { ProParticleSystemRendererComponent, ProRibbonRenderer, ProSpriteRenderer } from '@galacean/effects-plugin-particle-system-pro';
 import { editor } from '../core/decorators';
 import { ImGui } from '../imgui';
 import { drawRibbonRendererProperties, drawSpriteRendererProperties } from '../panels/pro-particle-editor';

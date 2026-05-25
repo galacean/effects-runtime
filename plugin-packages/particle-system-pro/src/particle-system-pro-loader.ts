@@ -1,5 +1,5 @@
-import type { Engine } from '../../engine';
-import { Plugin } from '../plugin';
+import type { Engine } from '@galacean/effects';
+import { Plugin } from '@galacean/effects';
 
 /**
  * particle-system-pro 插件入口。

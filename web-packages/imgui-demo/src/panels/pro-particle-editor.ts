@@ -1,12 +1,13 @@
-import type { ProEmitterInstance, ProKeyframe, ProModule, ProRibbonFacingMode } from '@galacean/effects';
+import { VFXItem, spec } from '@galacean/effects';
+import type { ProEmitterInstance, ProKeyframe, ProModule, ProRibbonFacingMode } from '@galacean/effects-plugin-particle-system-pro';
 import {
   ProCurveColor, ProCurveFloat,
   ProDistributionColor, ProDistributionFloat, ProDistributionVector3,
   ProModuleStage, ProParticleSystemComponent, ProParticleSystemRendererComponent,
   ProRenderer, ProRibbonRenderer, ProRibbonRendererProperties, ProRibbonTextureMode,
   ProSpriteRenderer, ProSpriteRendererProperties,
-  VFXItem, proModuleRegistry, spec,
-} from '@galacean/effects';
+  proModuleRegistry,
+} from '@galacean/effects-plugin-particle-system-pro';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import {

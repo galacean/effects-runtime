@@ -1,5 +1,6 @@
+import { math, VFXItem } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
 import {
-  math,
   ProAddVelocityInConeModule,
   ProColorOverLifeModule,
   ProCurveColor,
@@ -19,9 +20,7 @@ import {
   ProSpriteRenderer,
   ProSpriteRendererProperties,
   ProUpdateAgeModule,
-  VFXItem,
-} from '@galacean/effects';
-import type { Composition } from '@galacean/effects';
+} from '@galacean/effects-plugin-particle-system-pro';
 import { Selection } from './core/selection';
 
 /**

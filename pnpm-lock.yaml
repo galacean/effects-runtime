@@ -266,6 +266,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects
 
+  plugin-packages/particle-system-pro:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
   plugin-packages/rich-text:
     devDependencies:
       '@galacean/effects':
@@ -333,6 +339,9 @@ importers:
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
+      '@galacean/effects-plugin-particle-system-pro':
+        specifier: workspace:*
+        version: link:../../plugin-packages/particle-system-pro
       '@galacean/effects-plugin-spine':
         specifier: workspace:*
         version: link:../../plugin-packages/spine

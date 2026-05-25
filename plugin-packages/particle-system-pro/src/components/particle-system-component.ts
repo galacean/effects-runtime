@@ -1,4 +1,4 @@
-import { Component } from '../../../components';
+import { Component } from '@galacean/effects';
 import { createStandardParticleLayout } from '../builtin/standard-variables';
 import type { ProModule } from '../modules/module';
 import { ProEmitterInstance } from '../simulation/emitter-instance';

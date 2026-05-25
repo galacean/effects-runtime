@@ -1,8 +1,9 @@
+import { VFXItem } from '@galacean/effects';
 import {
   ProModuleStage, ProParticleSystemComponent, ProParticleSystemRendererComponent,
-  ProRibbonRenderer, ProSpriteRenderer, VFXItem, proModuleRegistry,
-} from '@galacean/effects';
-import type { ProEmitterInstance, ProModule } from '@galacean/effects';
+  ProRibbonRenderer, ProSpriteRenderer, proModuleRegistry,
+} from '@galacean/effects-plugin-particle-system-pro';
+import type { ProEmitterInstance, ProModule } from '@galacean/effects-plugin-particle-system-pro';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { createAddItemCommand, globalUndoStack } from '../core/undo-stack';
