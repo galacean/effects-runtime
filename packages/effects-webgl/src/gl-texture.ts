@@ -516,12 +516,11 @@ function resizeImageByCanvas (
   const nh = Math.min(maxSize, targetHeight || nearestPowerOfTwo(height));
 
   if (nh !== height || nw !== width) {
-    const canvas = canvasPool.getCanvas();
-    const ctx = canvas.getContext('2d');
+    const { canvas, context } = canvasPool.getCanvasAndContext(nw, nh);
 
     canvas.width = nw;
     canvas.height = nh;
-    ctx?.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
+    context.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
     logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}.`);
 
     return canvas;

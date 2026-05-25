@@ -240,6 +240,20 @@ export class TextComponentBase {
     }
   }
 
+  protected releaseTextCanvas (): void {
+    if (!this.canvas || !this.context) {
+      return;
+    }
+
+    canvasPool.releaseCanvasAndContext({
+      canvas: this.canvas,
+      context: this.context,
+    });
+
+    this.canvas = undefined as unknown as HTMLCanvasElement;
+    this.context = null;
+  }
+
   /**
    * 通用纹理渲染辅助方法
    */
@@ -313,8 +327,9 @@ export class TextComponentBase {
   // 初始化方法，由子类调用
   protected initTextBase (engine: Engine): void {
     this.engine = engine;
-    this.canvas = canvasPool.getCanvas();
-    canvasPool.saveCanvas(this.canvas);
-    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    const canvasAndContext = canvasPool.getCanvasAndContext(1, 1);
+
+    this.canvas = canvasAndContext.canvas;
+    this.context = canvasAndContext.context;
   }
 }

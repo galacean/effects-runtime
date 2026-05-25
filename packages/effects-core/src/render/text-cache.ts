@@ -229,19 +229,20 @@ export class TextCache {
     const scaledFontString = `${fontStyle} ${fontWeight} ${fontSize * FONT_SCALE}px ${fontFamily}`;
 
     // 用 'M' 探一次得到字体级 ascent/descent（整张 atlas 共享行高，各字 baseline 对齐）
-    const probeCanvas = canvasPool.getCanvas();
-    const probeCtx = probeCanvas.getContext('2d');
+    const probeCanvasAndContext = canvasPool.getCanvasAndContext(1, 1);
+    const probeCtx = probeCanvasAndContext.context;
     let ascent = fontSize * 0.8;
     let descent = fontSize * 0.2;
 
-    if (probeCtx) {
+    try {
       probeCtx.font = fontString;
       const m = probeCtx.measureText('M');
 
       ascent = m.actualBoundingBoxAscent || ascent;
       descent = m.actualBoundingBoxDescent || descent;
+    } finally {
+      canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
     }
-    canvasPool.saveCanvas(probeCanvas);
 
     const atlas = new GlyphAtlas(this.engine, scaledFontString, ascent, descent);
 
