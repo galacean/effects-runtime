@@ -676,7 +676,7 @@ async function loadWithDynamicMask (configure: (components: MaskDemoComponents) 
   const composition = await loadSceneData(cloneSceneJSON());
   const components = getMaskDemoComponents(composition);
 
-  components.wufu.clearMasks();
+  components.wufu.maskManager.clearMaskReferences();
   configure(components);
 }
 
@@ -774,46 +774,46 @@ const maskCases = [
   },
   {
     label: '动态交集',
-    expected: '预期：通过 addMask 动态添加，图片只显示矩形和椭圆交集',
+    expected: '预期：通过 addMaskReference 动态添加，图片只显示矩形和椭圆交集',
     run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
-      wufu.addMask(rectangle);
-      wufu.addMask(ellipse);
+      wufu.maskManager.addMaskReference(rectangle);
+      wufu.maskManager.addMaskReference(ellipse);
     }),
   },
   {
     label: '动态移除',
     expected: '预期：先添加两个蒙版再移除椭圆，图片只显示矩形区域',
     run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
-      wufu.addMask(rectangle);
-      wufu.addMask(ellipse);
-      wufu.removeMask(ellipse);
+      wufu.maskManager.addMaskReference(rectangle);
+      wufu.maskManager.addMaskReference(ellipse);
+      wufu.maskManager.removeMaskReference(ellipse);
     }),
   },
   {
     label: '动态清空',
-    expected: '预期：添加后 clearMasks，图片完整显示',
+    expected: '预期：添加后 clearMaskReferences，图片完整显示',
     run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
-      wufu.addMask(rectangle);
-      wufu.addMask(ellipse);
-      wufu.clearMasks();
+      wufu.maskManager.addMaskReference(rectangle);
+      wufu.maskManager.addMaskReference(ellipse);
+      wufu.maskManager.clearMaskReferences();
     }),
   },
   {
     label: '动态反向',
     expected: '预期：先移除再反向添加椭圆，图片显示矩形区域但挖掉椭圆',
     run: () => loadWithDynamicMask(({ rectangle, ellipse, wufu }) => {
-      wufu.addMask(rectangle);
-      wufu.addMask(ellipse);
-      wufu.removeMask(ellipse);
-      wufu.addMask(ellipse, true);
+      wufu.maskManager.addMaskReference(rectangle);
+      wufu.maskManager.addMaskReference(ellipse);
+      wufu.maskManager.removeMaskReference(ellipse);
+      wufu.maskManager.addMaskReference(ellipse, true);
     }),
   },
   {
     label: '重复 add',
     expected: '预期：重复添加同一矩形不会更新 inverted，图片仍只显示矩形区域',
     run: () => loadWithDynamicMask(({ rectangle, wufu }) => {
-      wufu.addMask(rectangle);
-      wufu.addMask(rectangle, true);
+      wufu.maskManager.addMaskReference(rectangle);
+      wufu.maskManager.addMaskReference(rectangle, true);
     }),
   },
 ];
