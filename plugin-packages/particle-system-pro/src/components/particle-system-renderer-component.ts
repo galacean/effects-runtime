@@ -48,6 +48,23 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
     const emitters = systemComponent.systemInstance.emitters;
     const worldMatrix = this.transform.getWorldMatrix();
 
+    // 提取相机位置 + 视方向，给排序 / ribbon facing 用
+    let camX = 0, camY = 0, camZ = 8;
+    let viewX = 0, viewY = 0, viewZ = -1;
+    const composition = this.item.composition;
+
+    if (composition && composition.camera) {
+      const camPos = composition.camera.worldPosition;
+
+      if (camPos) {
+        camX = camPos.x; camY = camPos.y; camZ = camPos.z;
+      }
+      // view direction：相机看向的方向，从 view matrix 第三行的负方向（OpenGL 约定）
+      const v = composition.camera.getViewMatrix().elements;
+
+      viewX = -v[2]; viewY = -v[6]; viewZ = -v[10];
+    }
+
     for (let i = 0; i < this.renderers.length; i++) {
       const emitter = emitters[i];
 
@@ -58,6 +75,11 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
       // World space：粒子位置已是世界坐标，不能再乘 world matrix；用 identity
       const drawMatrix = emitter.simulationSpace === 'world' ? IDENTITY_MATRIX : worldMatrix;
 
+      if (r instanceof ProSpriteRenderer) {
+        r.setSortContext(camX, camY, camZ, viewX, viewY, viewZ, worldMatrix);
+      } else if (r instanceof ProRibbonRenderer) {
+        r.setViewDirection(viewX, viewY, viewZ);
+      }
       r.generateDynamicData(emitter);
       if (r instanceof ProSpriteRenderer || r instanceof ProRibbonRenderer) {
         r.draw(renderer, drawMatrix);

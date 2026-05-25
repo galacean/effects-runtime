@@ -6,7 +6,7 @@ import {
 import type { ProEmitterInstance, ProModule } from '@galacean/effects-plugin-particle-system-pro';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
-import { createAddItemCommand, globalUndoStack } from '../core/undo-stack';
+import { createAddItemCommand, createReorderCommand, globalUndoStack } from '../core/undo-stack';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
 import { GraphView } from './node-graph/visual-graph/node-graph-view';
@@ -14,6 +14,7 @@ import { FlowGraph, FlowNode } from './node-graph/visual-graph/flow-graph';
 import type { SelectedNode } from './node-graph/visual-graph/user-context';
 import { UserContext } from './node-graph/visual-graph/user-context';
 import type { DrawContext } from './node-graph/visual-graph/drawing-context';
+import { EditorColors, EditorLayout } from './theme/editor-style';
 
 type Color = ImGui.Color;
 const Color = ImGui.Color;
@@ -56,6 +57,9 @@ let g_selectedEmitterIndex = 0;
 let g_selectedModule: ProModule | null = null;
 let g_overviewTarget: ProParticleSystemComponent | null = null;
 
+// Stage open/close state for node overview (custom toggle, avoids ImGui tree width issues)
+const nodeStageOpenState: Record<string, boolean> = {};
+
 export function getOverviewSelectedEmitterIndex (): number {
   return g_selectedEmitterIndex;
 }
@@ -78,7 +82,73 @@ export function setOverviewSelectedModule (module: ProModule | null): void {
 
 // ─── Overview Node: Emitter (对齐 SNiagaraOverviewStackNode) ───────────────
 
-const NODE_WIDTH = 200;
+const NODE_WIDTH = 260;
+const OVERVIEW_STAGE_TEXT_OFFSET = 24;
+const OVERVIEW_STAGE_BUTTON_GAP = 4;
+const MODULE_DND_TYPE = 'PRO_MODULE';
+
+function drawOverviewStageHeader (
+  drawList: ImGui.ImDrawList,
+  stageKey: string,
+  label: string,
+  open: boolean,
+  stageColor: ImGui.interface_ImVec4,
+  fullWidth: number,
+  toggleWidth: number,
+): { opened: boolean, headerPos: ImGui.interface_ImVec2, headerHeight: number } {
+  const headerPos = ImGui.GetCursorScreenPos();
+  const headerHeight = ImGui.GetFrameHeight();
+  const headerBg = ImGui.ColorConvertFloat4ToU32(EditorColors.header);
+  const headerHoveredBg = ImGui.ColorConvertFloat4ToU32(EditorColors.headerHovered);
+  const headerActiveBg = ImGui.ColorConvertFloat4ToU32(EditorColors.headerActive);
+  const stageColorU32 = ImGui.ColorConvertFloat4ToU32(stageColor);
+  const toggleSize = new ImVec2(Math.max(toggleWidth, 1), headerHeight);
+
+  ImGui.InvisibleButton(`##${stageKey}`, toggleSize);
+
+  const hovered = ImGui.IsItemHovered();
+  const held = ImGui.IsItemActive();
+  const opened = ImGui.IsItemClicked() ? !open : open;
+  const bgColor = held ? headerActiveBg : hovered ? headerHoveredBg : headerBg;
+
+  drawList.AddRectFilled(
+    new ImGui.Vec2(headerPos.x, headerPos.y),
+    new ImGui.Vec2(headerPos.x + fullWidth, headerPos.y + headerHeight),
+    bgColor,
+    EditorLayout.frameRounding,
+  );
+
+  const triSize = Math.max(4, Math.floor(headerHeight * 0.22));
+  const triCenterX = headerPos.x + EditorLayout.framePadding.x + 8;
+  const triCenterY = headerPos.y + headerHeight * 0.5;
+
+  if (opened) {
+    drawList.AddTriangleFilled(
+      new ImGui.Vec2(triCenterX - triSize, triCenterY - triSize * 0.5),
+      new ImGui.Vec2(triCenterX + triSize, triCenterY - triSize * 0.5),
+      new ImGui.Vec2(triCenterX, triCenterY + triSize),
+      stageColorU32,
+    );
+  } else {
+    drawList.AddTriangleFilled(
+      new ImGui.Vec2(triCenterX - triSize * 0.5, triCenterY - triSize),
+      new ImGui.Vec2(triCenterX + triSize, triCenterY),
+      new ImGui.Vec2(triCenterX - triSize * 0.5, triCenterY + triSize),
+      stageColorU32,
+    );
+  }
+
+  const labelSize = ImGui.CalcTextSize(label);
+  const textY = headerPos.y + Math.max(0, (headerHeight - labelSize.y) * 0.5);
+
+  drawList.AddText(
+    new ImGui.Vec2(headerPos.x + OVERVIEW_STAGE_TEXT_OFFSET, textY),
+    stageColorU32,
+    label,
+  );
+
+  return { opened, headerPos, headerHeight };
+}
 
 export class ProEmitterOverviewNode extends FlowNode {
   emitterIndex = 0;
@@ -108,53 +178,70 @@ export class ProEmitterOverviewNode extends FlowNode {
 
     // Scale-aware width: convert canvas NODE_WIDTH to current window pixels
     const scaledWidth = ctx.CanvasToWindow(NODE_WIDTH);
-    const checkboxOffset = scaledWidth - ctx.CanvasToWindow(30);
-    const selectableWidth = scaledWidth - ctx.CanvasToWindow(45);
+    const checkboxOffset = scaledWidth - ctx.CanvasToWindow(24);
+    const selectableWidth = scaledWidth - ctx.CanvasToWindow(28);
 
     this.BeginDrawInternalRegion(ctx);
 
-    // ── Renderer row (top content bar like UE) ──
+    const drawList = ImGui.GetWindowDrawList();
+
+    // ── Renderer row (golden text) ──
     if (this.rendererTypes.length > 0) {
       for (let ri = 0; ri < this.rendererTypes.length; ri++) {
-        if (ri > 0) { ImGui.SameLine(); }
         const rt = this.rendererTypes[ri];
+        const color = rt === 'Sprite' ? new ImGui.ImVec4(0.95, 0.85, 0.3, 1.0) : new ImGui.ImVec4(0.4, 0.75, 1.0, 1.0);
 
-        ImGui.TextColored(
-          rt === 'Sprite' ? new ImGui.ImVec4(0.9, 0.8, 0.3, 1.0) : new ImGui.ImVec4(0.4, 0.7, 1.0, 1.0),
-          rt === 'Sprite' ? '* Sprite Renderer' : '~ Ribbon Renderer',
-        );
+        ImGui.TextColored(color, rt === 'Sprite' ? 'Sprite Renderer' : 'Ribbon Renderer');
       }
     }
 
-    ImGui.Spacing();
-    ImGui.Separator();
-
-    // ── Module stack (flat list matching UE SNiagaraOverviewStack) ──
+    // ── Module stack (UE5 style: colored bar + stage name, indented modules) ──
     for (const stageInfo of OVERVIEW_STAGES) {
       const stageModules = emitter.modules.filter(m => m.stage === stageInfo.stage);
       const descriptors = proModuleRegistry.filter(d => d.stage === stageInfo.stage);
 
-      // Hide stages with no modules and no available descriptors
       if (stageModules.length === 0 && descriptors.length === 0) {
         continue;
       }
 
       const stageColor = getStageColor(stageInfo.stage);
+      const stageColorU32 = ImGui.ColorConvertFloat4ToU32(stageColor);
 
-      // Stage group header row: ● StageName  + (larger/bolder than modules)
-      ImGui.Spacing();
-      ImGui.PushStyleColor(ImGui.Col.Text, stageColor);
-      ImGui.Bullet();
-      ImGui.SameLine();
-      ImGui.Text(stageInfo.label);
-      ImGui.PopStyleColor();
+      // ── Stage header: custom collapse with the same visuals as the stack panel ──
+      const stageKey = `stg_${stageInfo.stage}_${this.emitterIndex}`;
 
-      // + add button right-aligned (scaled)
+      if (nodeStageOpenState[stageKey] === undefined) {
+        nodeStageOpenState[stageKey] = true;
+      }
+      const stageOpen = nodeStageOpenState[stageKey];
+
+      const headerH = ImGui.GetFrameHeight();
+      const btnSize = headerH;
+      const fullWidth = selectableWidth + btnSize + OVERVIEW_STAGE_BUTTON_GAP;
+      const toggleWidth = descriptors.length > 0
+        ? checkboxOffset - OVERVIEW_STAGE_BUTTON_GAP
+        : fullWidth;
+      const headerInfo = drawOverviewStageHeader(
+        drawList,
+        stageKey,
+        stageInfo.label,
+        stageOpen,
+        stageColor,
+        fullWidth,
+        toggleWidth,
+      );
+
+      const opened = headerInfo.opened;
+
+      nodeStageOpenState[stageKey] = opened;
+
+      ImGui.SetCursorScreenPos(new ImGui.Vec2(headerInfo.headerPos.x + checkboxOffset, headerInfo.headerPos.y));
+
+      // + button at same X as checkboxes
       if (descriptors.length > 0) {
-        ImGui.SameLine(checkboxOffset);
         const addPopupId = `addmod_${stageInfo.stage}_${this.emitterIndex}`;
 
-        if (ImGui.SmallButton(`+##add_${stageInfo.stage}`)) {
+        if (ImGui.Button(`+##add_${stageInfo.stage}`, new ImVec2(btnSize, btnSize))) {
           ImGui.OpenPopup(addPopupId);
         }
         if (ImGui.BeginPopup(addPopupId)) {
@@ -169,43 +256,91 @@ export class ProEmitterOverviewNode extends FlowNode {
         }
       }
 
-      // Module rows (smaller/compact)
-      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(ImGui.GetStyle().ItemSpacing.x, 1));
-      ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(2, 0));
-      for (const mod of stageModules) {
-        const uid = getModuleUid(mod);
-        const name = truncateText(prettifyModuleName(mod.constructor.name), 22);
-        const isSelected = g_selectedModule === mod;
+      ImGui.SetCursorScreenPos(new ImGui.Vec2(
+        headerInfo.headerPos.x,
+        headerInfo.headerPos.y + headerInfo.headerHeight + ImGui.GetStyle().ItemSpacing.y,
+      ));
 
-        ImGui.PushID(uid);
+      // ── Module rows (with colored vertical bar on left) ──
+      if (opened) {
+        ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(4, 1));
+        ImGui.Indent(12);
 
-        if (isSelected) {
-          ImGui.PushStyleColor(ImGui.Col.Header, new ImGui.ImVec4(0.2, 0.4, 0.7, 0.6));
+        const moduleStartY = ImGui.GetCursorScreenPos().y;
+        const barX = headerInfo.headerPos.x;
+
+        for (const mod of stageModules) {
+          const uid = getModuleUid(mod);
+          const name = prettifyModuleName(mod.constructor.name);
+          const isSelected = g_selectedModule === mod;
+
+          ImGui.PushID(uid);
+
+          if (isSelected) {
+            ImGui.PushStyleColor(ImGui.Col.Header, new ImGui.ImVec4(0.2, 0.4, 0.7, 0.6));
+          }
+          if (!mod.enabled) {
+            ImGui.PushStyleColor(ImGui.Col.Text, new ImGui.ImVec4(0.5, 0.5, 0.5, 0.7));
+          }
+
+          // Offset text past the vertical bar
+          if (ImGui.Selectable(`    ${name}##${uid}`, isSelected, ImGui.SelectableFlags.None, new ImVec2(selectableWidth, 0))) {
+            g_selectedModule = mod;
+            g_selectedEmitterIndex = this.emitterIndex;
+          }
+
+          if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
+            ImGui.SetDragDropPayload(MODULE_DND_TYPE, mod);
+            ImGui.Text(name);
+            ImGui.EndDragDropSource();
+          }
+          if (ImGui.BeginDragDropTarget()) {
+            const payload = ImGui.AcceptDragDropPayload(MODULE_DND_TYPE);
+
+            if (payload && payload.Data) {
+              const draggedModule = payload.Data as ProModule;
+
+              if (draggedModule !== mod && draggedModule.stage === mod.stage) {
+                const targetIdx = emitter.modules.indexOf(mod);
+
+                globalUndoStack.execute(createReorderCommand(emitter.modules, draggedModule, targetIdx, 'Reorder Module'));
+              }
+            }
+            ImGui.EndDragDropTarget();
+          }
+
+          if (!mod.enabled) {
+            ImGui.PopStyleColor();
+          }
+          if (isSelected) {
+            ImGui.PopStyleColor();
+          }
+
+          // Enabled checkbox
+          ImGui.SameLine(checkboxOffset);
+          const enRef = { value: mod.enabled };
+
+          if (ImGui.Checkbox(`##en${uid}`, (v = enRef.value) => enRef.value = v)) {
+            mod.enabled = enRef.value;
+          }
+
+          ImGui.PopID();
         }
 
-        // Module row: "▸ Name" selectable + checkbox on right
-        ImGui.Indent(8);
-        if (ImGui.Selectable(`${name}`, isSelected, ImGui.SelectableFlags.None, new ImVec2(selectableWidth - 8, 0))) {
-          g_selectedModule = mod;
-          g_selectedEmitterIndex = this.emitterIndex;
-        }
-        ImGui.Unindent(8);
+        // Draw colored vertical bar spanning all module rows
+        const moduleEndY = ImGui.GetCursorScreenPos().y;
 
-        if (isSelected) {
-          ImGui.PopStyleColor();
-        }
-
-        // Enabled checkbox right-aligned (scaled)
-        ImGui.SameLine(checkboxOffset);
-        const enRef = { value: mod.enabled };
-
-        if (ImGui.Checkbox(`##en${uid}`, (v = enRef.value) => enRef.value = v)) {
-          mod.enabled = enRef.value;
+        if (moduleEndY > moduleStartY && stageModules.length > 0) {
+          drawList.AddRectFilled(
+            new ImGui.Vec2(barX, moduleStartY + 1),
+            new ImGui.Vec2(barX + 2, moduleEndY - 1),
+            stageColorU32,
+          );
         }
 
-        ImGui.PopID();
+        ImGui.Unindent(12);
+        ImGui.PopStyleVar(); // ItemSpacing
       }
-      ImGui.PopStyleVar(2); // FramePadding, ItemSpacing
     }
 
     this.EndDrawInternalRegion(ctx);

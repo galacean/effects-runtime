@@ -1,11 +1,13 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionColor } from '../../distribution/pro-distribution-color';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import { ProDistributionVector2 } from '../../distribution/pro-distribution-vector2';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
 
 const tmpColor: [number, number, number, number] = [0, 0, 0, 0];
+const tmpSize: [number, number] = [0, 0];
 
 /**
  * 给新生粒子写入初值：lifetime、起始 position、起始 color、起始 size、age=0。
@@ -19,7 +21,9 @@ export class ProInitializeParticleModule extends ProModule {
 
   lifetime: ProDistributionFloat = ProDistributionFloat.fromRange(1, 2);
   startColor: ProDistributionColor = ProDistributionColor.fromConstant(1, 1, 1, 1);
-  startSize: ProDistributionFloat = ProDistributionFloat.fromConstant(0.1);
+  /** X/Y 独立的初始尺寸；uniform 模式（默认）下 X=Y 等比 */
+  startSize: ProDistributionVector2 = ProDistributionVector2.fromUniformConstant(0.1);
+  mass: ProDistributionFloat = ProDistributionFloat.fromConstant(1);
   positionOrigin: [number, number, number] = [0, 0, 0];
 
   private accessors: ProStandardAccessors | null = null;
@@ -47,16 +51,23 @@ export class ProInitializeParticleModule extends ProModule {
       a.age.set(dataBuffer, i, 0);
       a.lifetime.set(dataBuffer, i, this.lifetime.sampleAtTime(randomStream.nextFloat(), 0));
       a.position.set(dataBuffer, i, px, py, pz);
+      a.previousPosition.set(dataBuffer, i, px, py, pz);
       a.velocity.set(dataBuffer, i, 0, 0, 0);
+      a.mass.set(dataBuffer, i, Math.max(1e-6, this.mass.sampleAtTime(randomStream.nextFloat(), 0)));
 
       this.startColor.sampleAtTime(randomStream.nextFloat(), 0, tmpColor);
       a.color.set(dataBuffer, i, tmpColor[0], tmpColor[1], tmpColor[2], tmpColor[3]);
       a.initialColor.set(dataBuffer, i, tmpColor[0], tmpColor[1], tmpColor[2], tmpColor[3]);
 
-      const s = this.startSize.sampleAtTime(randomStream.nextFloat(), 0);
-
-      a.size.set(dataBuffer, i, s, s);
-      a.initialSize.set(dataBuffer, i, s, s);
+      // uniform 时 X/Y 共用同一个 random；否则两轴独立
+      if (this.startSize.uniform) {
+        this.startSize.sampleAtTime(randomStream.nextFloat(), 0, tmpSize);
+      } else {
+        tmpSize[0] = this.startSize.x.sampleAtTime(randomStream.nextFloat(), 0);
+        tmpSize[1] = this.startSize.y.sampleAtTime(randomStream.nextFloat(), 0);
+      }
+      a.size.set(dataBuffer, i, tmpSize[0], tmpSize[1]);
+      a.initialSize.set(dataBuffer, i, tmpSize[0], tmpSize[1]);
     }
   }
 }

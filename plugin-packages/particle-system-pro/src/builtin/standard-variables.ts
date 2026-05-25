@@ -17,6 +17,9 @@ export const ProStandardVariableNames = {
   InitialColor: 'Particle.InitialColor',
   InitialSize: 'Particle.InitialSize',
   RibbonID: 'Particle.RibbonID',
+  CameraOffset: 'Particle.CameraOffset',
+  Mass: 'Particle.Mass',
+  PreviousPosition: 'Particle.PreviousPosition',
 } as const;
 
 /**
@@ -40,6 +43,9 @@ export function createStandardParticleVariables (): ProVariable[] {
     createProVariable(ProStandardVariableNames.InitialColor, ProVariableTypes.Color),
     createProVariable(ProStandardVariableNames.InitialSize, ProVariableTypes.Vec2),
     createProVariable(ProStandardVariableNames.RibbonID, ProVariableTypes.Int32),
+    createProVariable(ProStandardVariableNames.CameraOffset, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.Mass, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.PreviousPosition, ProVariableTypes.Vec3),
   ];
 }
 

@@ -29,32 +29,32 @@
 
 ### 渲染器
 
-- [ ] **Sprite 速度朝向拉伸 (SpriteFacingAndAlignment)** — 粒子沿速度方向拉长（火花/雨滴必备），需改 vertex shader + 传入 velocity attribute
-- [ ] **CameraOffset** — 粒子沿视线方向偏移，解决相交闪烁。需 buffer 字段 + 渲染器支持
-- [ ] **粒子深度排序** — 半透明粒子 back-to-front 排序。支持 ViewDepth / Age / Distance 模式
+- [x] **Sprite 速度朝向拉伸 (SpriteFacingAndAlignment)** — Sprite Renderer 增加 aVelocity attribute + facingMode 切换 billboard/velocity；velocity 模式下 Y 沿世界速度方向，X = cross(viewDir, Y) (2026-05-25)
+- [x] **CameraOffset** — Particle.CameraOffset 字段 + ProCameraOffsetModule (ParticleSpawn)；Sprite shader 沿"远离相机"方向偏移；正值远离、负值靠近（UE 约定） (2026-05-25)
+- [x] **粒子深度排序** — ProSpriteRendererProperties.sortMode：none / viewDepth / distance / age；renderer 根据 camera/view 算 key 后按下标重排 vertex (2026-05-25)
 - [ ] **Soft Particle** — 深度 buffer 软粒子淡入（需 depth texture 采样）
 
 ### Spawn
 
-- [ ] **SpawnRate 支持 Distribution** — 发射速率可随时间变化（曲线/Range），目前是固定 number
-- [ ] **SpawnBurst 多次触发** — 支持在多个时间点触发 burst（数组配置），目前只能触发一次
+- [x] **SpawnRate 支持 Distribution** — rate: number → ProDistributionFloat；按 normalized emitter age (loop/once 时) 或 randomStream (Range 时) 采样 (2026-05-25)
+- [x] **SpawnBurst 多次触发** — bursts: Array&lt;{time,count}&gt;；每个 entry 单独 fired 标记，loop 重置时一并重置 (2026-05-25)
 
 ### Module 补全
 
-- [ ] **SpriteRotationRate** — 纯速率驱动旋转 `rotation += rate * dt`（补充现有 RotationOverLife 的曲线模式）
-- [ ] **ScaleColor (Distribution 版 ColorOverLife)** — 用 `DistributionColor(normalizedAge)` 驱动 per-particle random 颜色缩放
-- [ ] **ScaleSpriteSize (Distribution 版 SizeOverLife)** — 用 `DistributionVector2(normalizedAge)` 驱动 per-particle random 尺寸缩放
-- [ ] **CalculateAccurateVelocity** — 从位移反算速度（辅助速度依赖模块）
+- [x] **SpriteRotationRate** — ProSpriteRotationRateModule (ParticleUpdate)；rate 用 ProDistributionFloat per-particle 采样 (golden-ratio hash) (2026-05-25)
+- [x] **ScaleColor** — ProScaleColorModule (ParticleUpdate)；scale = ProDistributionColor；color = initialColor * scale.sampleAtTime(perParticleRand, normalizedAge) (2026-05-25)
+- [x] **ScaleSpriteSize** — ProScaleSpriteSizeModule (ParticleUpdate)；scale 用 ProDistributionFloat (uniform XY 简化版，UE 是 Vec2)；size = initialSize * scale (2026-05-25)
+- [ ] **CalculateAccurateVelocity** — 从位移反算速度。**Deferred**：依赖 P2 PreviousPosition buffer 字段
 
 ---
 
 ## P2 — 物理正确性
 
-- [ ] **Mass 属性** — buffer 增加 Particle.Mass 字段；InitializeParticle 中 mass 用 Distribution 初始化
-- [ ] **Drag 物理修正** — `velocity *= pow(1 - drag, dt / mass)` 而非当前的 `velocity *= (1 - drag * dt)`
-- [ ] **Force 模块 mass 加权** — AccelerationForce/GravityForce 应除以 mass（F=ma → a=F/m）
-- [ ] **PreviousPosition / PreviousVelocity** — 每帧开始时保存上一帧位置，用于速度朝向拉伸和运动模糊
-- [ ] **InitializeParticle.SpriteSize 改为 Vector2 Distribution** — 支持非等比初始尺寸（X/Y 独立）
+- [x] **Mass 属性** — Particle.Mass buffer 字段 + accessor；InitializeParticle.mass: ProDistributionFloat 默认 1 (2026-05-25)
+- [x] **Drag 物理修正** — Stokes 衰减：`velocity *= exp(-drag * dt / mass)`，大 dt 下稳定不爆炸 (2026-05-25)
+- [ ] **Force 模块 mass 加权** — 不需要：现有 Gravity/AccelerationForce 语义已经是加速度（不带质量）；如需"力"模块可后续补 AddForce
+- [x] **PreviousPosition** — Particle.PreviousPosition 字段；emitter tick 在 ParticleUpdate 前自动备份 position；CalculateAccurateVelocity 用它反算速度 (2026-05-25)
+- [x] **InitializeParticle.SpriteSize 改为 Vector2 Distribution** — 新建 ProDistributionVector2 + fromUniformConstant；startSize 支持 X/Y 独立或 uniform (2026-05-25)
 
 ---
 
@@ -91,6 +91,10 @@
 
 ## 已完成
 
+- [x] **P2 物理：Mass + PreviousPosition buffer 字段 + InitializeParticle 初始化；Drag 改 Stokes 衰减；CalculateAccurateVelocity 模块；ProDistributionVector2 + InitializeParticle.startSize X/Y 独立** (2026-05-25)
+- [x] **P1 渲染 + Spawn 增强：CameraOffset + Sprite 深度排序 + SpawnRate Distribution + SpawnBurst 多次触发** (2026-05-25)
+- [x] **P1 模块补全：ScaleColor + ScaleSpriteSize（CalculateAccurateVelocity 因依赖 PreviousPosition 延后）** (2026-05-25)
+- [x] **P1 起步：SpriteRotationRate 模块 + Sprite 速度朝向拉伸 (SpriteFacingAndAlignment)** (2026-05-25)
 - [x] **P0 完成：Simulation Space (Local/World) + Warmup + Deterministic Seed + SystemSpawn/SystemUpdate 基建** (2026-05-25)
 - [x] **EmitterSpawn 阶段执行 + EmitterPropertiesModule + Loop/Duration 状态机 + System 自动 Complete** (2026-05-25)
 - [x] **InitializeParticle startColor → ProDistributionColor** (2026-05-22)

@@ -15,24 +15,68 @@ attribute vec2 aSize;
 attribute vec4 aColor;
 attribute float aRotation;
 attribute float aFrame;
+attribute vec3 aVelocity;
+attribute float aCameraOffset;
 
 varying vec2 vUV;
 varying vec4 vColor;
 
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_MatrixV;
+uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
-uniform vec4 _SubUVParams; // x: rows, y: cols, z: total, w: enable
+uniform vec4 _SubUVParams;   // x: rows, y: cols, z: total, w: enable
+uniform vec4 _FacingParams;  // x: mode (0=billboard, 1=velocity)
 
 void main () {
+  vec3 worldCenter = (effects_ObjectToWorld * vec4(aOffset, 1.0)).xyz;
+
+  // Camera offset：沿"远离相机"方向偏移 aCameraOffset 米（对齐 UE 约定）。
+  // 正值=远离相机；负值=靠近相机（常用于消除粒子与几何相交闪烁）。
+  if (abs(aCameraOffset) > 1e-5) {
+    vec3 camPosCO = effects_MatrixInvV[3].xyz;
+    vec3 toCam = camPosCO - worldCenter;
+    float lenCO = length(toCam);
+
+    if (lenCO > 1e-4) {
+      worldCenter -= (toCam / lenCO) * aCameraOffset;
+    }
+  }
+
+  vec3 axisX;
+  vec3 axisY;
+
+  if (_FacingParams.x > 0.5) {
+    // Velocity-aligned billboard：Y 沿速度，X = cross(viewDir, Y)
+    // 速度也要变换到世界空间（Local space 模拟时 aVelocity 是局部速度）
+    vec3 worldVel = (effects_ObjectToWorld * vec4(aVelocity, 0.0)).xyz;
+    float vLen = length(worldVel);
+
+    if (vLen > 1e-4) {
+      axisY = worldVel / vLen;
+      vec3 camPos = effects_MatrixInvV[3].xyz;
+      vec3 viewDir = normalize(camPos - worldCenter);
+      vec3 sideRaw = cross(viewDir, axisY);
+      float sLen = length(sideRaw);
+
+      axisX = sLen > 1e-4 ? sideRaw / sLen : vec3(1.0, 0.0, 0.0);
+    } else {
+      // 静止粒子退化为 billboard
+      axisX = vec3(effects_MatrixV[0][0], effects_MatrixV[1][0], effects_MatrixV[2][0]);
+      axisY = vec3(effects_MatrixV[0][1], effects_MatrixV[1][1], effects_MatrixV[2][1]);
+    }
+  } else {
+    // Billboard
+    axisX = vec3(effects_MatrixV[0][0], effects_MatrixV[1][0], effects_MatrixV[2][0]);
+    axisY = vec3(effects_MatrixV[0][1], effects_MatrixV[1][1], effects_MatrixV[2][1]);
+  }
+
+  // 2D 旋转角点（绕粒子中心）
   float s = sin(aRotation);
   float c = cos(aRotation);
   vec2 rotated = vec2(aCorner.x * c - aCorner.y * s, aCorner.x * s + aCorner.y * c);
-  vec3 worldCenter = (effects_ObjectToWorld * vec4(aOffset, 1.0)).xyz;
-  mat4 v = effects_MatrixV;
-  vec3 camRight = vec3(v[0][0], v[1][0], v[2][0]);
-  vec3 camUp = vec3(v[0][1], v[1][1], v[2][1]);
-  vec3 worldPos = worldCenter + camRight * rotated.x * aSize.x + camUp * rotated.y * aSize.y;
+
+  vec3 worldPos = worldCenter + axisX * rotated.x * aSize.x + axisY * rotated.y * aSize.y;
   gl_Position = effects_MatrixVP * vec4(worldPos, 1.0);
 
   if (_SubUVParams.w > 0.5) {
@@ -76,7 +120,7 @@ void main () {
 }
 `;
 
-const FLOATS_PER_VERTEX = 2 + 3 + 2 + 4 + 1 + 1; // aCorner + aOffset + aSize + aColor + aRotation + aFrame
+const FLOATS_PER_VERTEX = 2 + 3 + 2 + 4 + 1 + 1 + 3 + 1; // aCorner + aOffset + aSize + aColor + aRotation + aFrame + aVelocity + aCameraOffset
 const STRIDE_BYTES = FLOATS_PER_VERTEX * 4;
 const VERTS_PER_PARTICLE = 4;
 const INDICES_PER_PARTICLE = 6;
@@ -111,6 +155,16 @@ export class ProSpriteRenderer extends ProRenderer {
   private tmpPos: [number, number, number] = [0, 0, 0];
   private tmpSize: [number, number] = [0, 0];
   private tmpColor: [number, number, number, number] = [0, 0, 0, 0];
+  private tmpVel: [number, number, number] = [0, 0, 0];
+
+  // 排序上下文 — 由 renderer-component 每帧推入
+  private camX = 0; private camY = 0; private camZ = 8;
+  private viewX = 0; private viewY = 0; private viewZ = -1;
+  private worldMatrixForSort: math.Matrix4 | null = null;
+
+  // 排序用的 indices buffer，按 sortMode 写入排序后的粒子下标顺序
+  private sortIndices: Int32Array = new Int32Array(0);
+  private sortKeys: Float32Array = new Float32Array(0);
 
   constructor (engine: Engine, properties: ProSpriteRendererProperties) {
     super(properties);
@@ -127,6 +181,8 @@ export class ProSpriteRenderer extends ProRenderer {
         aColor: { size: 4, offset: 7 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
         aRotation: { size: 1, offset: 11 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
         aFrame: { size: 1, offset: 12 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
+        aVelocity: { size: 3, offset: 13 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
+        aCameraOffset: { size: 1, offset: 16 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
       },
       indices: { data: new Uint16Array(0), releasable: false },
       mode: glContext.TRIANGLES,
@@ -149,6 +205,7 @@ export class ProSpriteRenderer extends ProRenderer {
     this.material.setTexture('_MainTex', this.properties.texture ?? Texture.createWithData(engine));
     this.material.setVector4('_TexParams', new math.Vector4(this.properties.texture ? 1 : 0, 0, 0, 0));
     this.material.setVector4('_SubUVParams', this.computeSubUVParams());
+    this.material.setVector4('_FacingParams', this.computeFacingParams());
   }
 
   /**
@@ -166,6 +223,21 @@ export class ProSpriteRenderer extends ProRenderer {
   syncProperties (): void {
     setBlendMode(this.material, this.properties.blending);
     this.material.setVector4('_SubUVParams', this.computeSubUVParams());
+    this.material.setVector4('_FacingParams', this.computeFacingParams());
+  }
+
+  /**
+   * 由 renderer-component 在 render 前调用，把 camera/view/worldMatrix
+   * 传进来供深度排序使用。world space 模式下传 identity 也行（粒子已是世界坐标）。
+   */
+  setSortContext (
+    cx: number, cy: number, cz: number,
+    vx: number, vy: number, vz: number,
+    worldMatrix: math.Matrix4,
+  ): void {
+    this.camX = cx; this.camY = cy; this.camZ = cz;
+    this.viewX = vx; this.viewY = vy; this.viewZ = vz;
+    this.worldMatrixForSort = worldMatrix;
   }
 
   override initialize (_emitterInstance: ProEmitterInstance): void {
@@ -186,9 +258,85 @@ export class ProSpriteRenderer extends ProRenderer {
       this.cachedLayout = dataSet.layout;
     }
     this.ensureCapacity(dataBuffer.numInstances);
+    this.buildSortOrder(dataBuffer);
     this.writeVertices(dataBuffer);
     this.geometry.setAttributeData('aCorner', this.vertexArray);
     this.geometry.setDrawCount(dataBuffer.numInstances * INDICES_PER_PARTICLE);
+  }
+
+  /**
+   * 按 sortMode 生成排序后的粒子下标顺序，写入 sortIndices。
+   * none 模式直接返回原顺序（避免分配）。
+   *
+   * 关键：写 vertex buffer 时按粒子下标遍历，但用 sortIndices[i] 取真实粒子；
+   * 排序后越靠后的越先画（粒子按 vertex order 画 → 后面的覆盖前面的 → 排序
+   * 需让"远的"在前、"近的"在后，alpha 混合就正确）。
+   */
+  private buildSortOrder (dataBuffer: ProDataBuffer): void {
+    const num = dataBuffer.numInstances;
+    const a = this.accessors!;
+
+    if (this.sortIndices.length < num) {
+      this.sortIndices = new Int32Array(num);
+      this.sortKeys = new Float32Array(num);
+    }
+
+    const mode = this.properties.sortMode;
+
+    if (mode === 'none') {
+      for (let i = 0; i < num; i++) {
+        this.sortIndices[i] = i;
+      }
+
+      return;
+    }
+
+    // 计算每个粒子的排序 key
+    const tmp: [number, number, number] = [0, 0, 0];
+
+    // 在 world space 模式下 position 已经是世界坐标，无需变换；local space 下要乘 worldMatrix
+    const wm = this.worldMatrixForSort?.elements;
+    const useWorld = !!wm;
+
+    for (let i = 0; i < num; i++) {
+      a.position.get(dataBuffer, i, tmp);
+      let wx = tmp[0], wy = tmp[1], wz = tmp[2];
+
+      if (useWorld) {
+        const m = wm;
+        const x = wx, y = wy, z = wz;
+
+        wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+        wy = m[1] * x + m[5] * y + m[9] * z + m[13];
+        wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+      }
+
+      let key = 0;
+
+      if (mode === 'viewDepth') {
+        // dot(particlePos - camPos, viewDir) — 越大越远（沿视线方向越远）
+        key = (wx - this.camX) * this.viewX + (wy - this.camY) * this.viewY + (wz - this.camZ) * this.viewZ;
+      } else if (mode === 'distance') {
+        const dx = wx - this.camX, dy = wy - this.camY, dz = wz - this.camZ;
+
+        key = dx * dx + dy * dy + dz * dz;
+      } else {
+        // age：越大越老 → 越老越先画（先 spawn 的在下层）
+        key = a.age.get(dataBuffer, i);
+      }
+      this.sortIndices[i] = i;
+      this.sortKeys[i] = key;
+    }
+
+    // 按 key 降序排序（key 大的在前 → 先写入 vertex → 先画 → 被后画的覆盖）
+    // 用 plain Array 排序方便带 key，量大时再优化
+    const idxArr: number[] = [];
+
+    for (let i = 0; i < num; i++) { idxArr.push(i); }
+    idxArr.sort((x, y) => this.sortKeys[y] - this.sortKeys[x]);
+    for (let i = 0; i < num; i++) {
+      this.sortIndices[i] = idxArr[i];
+    }
   }
 
   override release (): void {
@@ -208,6 +356,12 @@ export class ProSpriteRenderer extends ProRenderer {
     const enabled = p.subUVTotal > 1 && p.subUVRows > 0 && p.subUVCols > 0 ? 1 : 0;
 
     return new math.Vector4(p.subUVRows, p.subUVCols, p.subUVTotal, enabled);
+  }
+
+  private computeFacingParams (): math.Vector4 {
+    const mode = this.properties.facingMode === 'velocity' ? 1 : 0;
+
+    return new math.Vector4(mode, 0, 0, 0);
   }
 
   private ensureCapacity (numParticles: number): void {
@@ -241,11 +395,15 @@ export class ProSpriteRenderer extends ProRenderer {
     const a = this.accessors!;
     const verts = this.vertexArray;
     const num = dataBuffer.numInstances;
+    const indices = this.sortIndices;
 
-    for (let p = 0; p < num; p++) {
+    for (let pIdx = 0; pIdx < num; pIdx++) {
+      const p = indices[pIdx];
+
       a.position.get(dataBuffer, p, this.tmpPos);
       a.size.get(dataBuffer, p, this.tmpSize);
       a.color.get(dataBuffer, p, this.tmpColor);
+      a.velocity.get(dataBuffer, p, this.tmpVel);
       const px = this.tmpPos[0];
       const py = this.tmpPos[1];
       const pz = this.tmpPos[2];
@@ -255,10 +413,14 @@ export class ProSpriteRenderer extends ProRenderer {
       const cg = this.tmpColor[1];
       const cb = this.tmpColor[2];
       const ca = this.tmpColor[3];
+      const vx = this.tmpVel[0];
+      const vy = this.tmpVel[1];
+      const vz = this.tmpVel[2];
       const rot = a.rotation.get(dataBuffer, p);
       const frame = a.subUVFrame.get(dataBuffer, p);
+      const co = a.cameraOffset.get(dataBuffer, p);
 
-      let base = p * VERTS_PER_PARTICLE * FLOATS_PER_VERTEX;
+      let base = pIdx * VERTS_PER_PARTICLE * FLOATS_PER_VERTEX;
 
       for (let v = 0; v < VERTS_PER_PARTICLE; v++) {
         const corner = CORNER_OFFSETS[v];
@@ -276,6 +438,10 @@ export class ProSpriteRenderer extends ProRenderer {
         verts[base + 10] = ca;
         verts[base + 11] = rot;
         verts[base + 12] = frame;
+        verts[base + 13] = vx;
+        verts[base + 14] = vy;
+        verts[base + 15] = vz;
+        verts[base + 16] = co;
         base += FLOATS_PER_VERTEX;
       }
     }

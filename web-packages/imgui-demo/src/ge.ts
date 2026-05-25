@@ -8,7 +8,7 @@ import '@galacean/effects-plugin-spine';
 import { AssetDatabase } from './core/asset-data-base';
 import { CanvasGizmo } from './core/canvas-gizmo';
 import { ImGui_Impl } from './imgui';
-import { spawnProParticleDemo, spawnProRibbonDemo } from './pro-particle-demo';
+import { spawnProDemoGallery } from './pro-particle-demo';
 
 export class GalaceanEffects {
   static player: Player;
@@ -42,8 +42,7 @@ export class GalaceanEffects {
 
         canvasGizmo.setParent(composition.pluginRoot);
 
-        spawnProParticleDemo(composition);
-        spawnProRibbonDemo(composition);
+        spawnProDemoGallery(composition);
       });
     }
 

@@ -22,6 +22,9 @@ export class ProStandardAccessors {
   initialColor: ProVec4Accessor;
   initialSize: ProVec2Accessor;
   ribbonId: ProInt32Accessor;
+  cameraOffset: ProFloatAccessor;
+  mass: ProFloatAccessor;
+  previousPosition: ProVec3Accessor;
 
   constructor (layout: ProDataSetLayout) {
     this.age = new ProFloatAccessor(layout, ProStandardVariableNames.Age);
@@ -35,5 +38,8 @@ export class ProStandardAccessors {
     this.initialColor = new ProVec4Accessor(layout, ProStandardVariableNames.InitialColor);
     this.initialSize = new ProVec2Accessor(layout, ProStandardVariableNames.InitialSize);
     this.ribbonId = new ProInt32Accessor(layout, ProStandardVariableNames.RibbonID);
+    this.cameraOffset = new ProFloatAccessor(layout, ProStandardVariableNames.CameraOffset);
+    this.mass = new ProFloatAccessor(layout, ProStandardVariableNames.Mass);
+    this.previousPosition = new ProVec3Accessor(layout, ProStandardVariableNames.PreviousPosition);
   }
 }

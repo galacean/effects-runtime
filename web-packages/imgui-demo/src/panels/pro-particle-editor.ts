@@ -2,7 +2,7 @@ import { VFXItem, spec } from '@galacean/effects';
 import type { ProEmitterInstance, ProKeyframe, ProModule, ProRibbonFacingMode } from '@galacean/effects-plugin-particle-system-pro';
 import {
   ProCurveColor, ProCurveFloat,
-  ProDistributionColor, ProDistributionFloat, ProDistributionVector3,
+  ProDistributionColor, ProDistributionFloat, ProDistributionVector2, ProDistributionVector3,
   ProModuleStage, ProParticleSystemComponent, ProParticleSystemRendererComponent,
   ProRenderer, ProRibbonRenderer, ProRibbonRendererProperties, ProRibbonTextureMode,
   ProSpriteRenderer, ProSpriteRendererProperties,
@@ -49,7 +49,9 @@ const BLEND_MODES: Array<{ label: string, value: spec.BlendingMode }> = [
 const SKIP_PROPS = new Set([
   'stage', 'enabled', 'accessors', 'cachedLayout', 'engine',
   'texture', 'blending', 'billboard', 'subUVRows', 'subUVCols', 'subUVTotal',
-  'widthScale', 'textureMode', 'tileLength', 'facingMode',
+  'widthScale', 'textureMode', 'tileLength', 'facingMode', 'sortMode',
+  // SpawnBurst.bursts — array of objects；用兼容 getter count/spawnTime 编辑 first burst
+  'bursts',
 ]);
 
 const CONDITIONAL_PROPS: Record<string, { dependsOn: string, showWhen: string[] }> = {
@@ -289,9 +291,30 @@ const BAR_WIDTH = 4;
 const BAR_GAP = 6;
 const STAGE_INDENT = BAR_WIDTH + BAR_GAP;
 
+function reorderModuleBeforeTarget (emitter: ProEmitterInstance, draggedModule: ProModule, targetModule: ProModule): void {
+  const oldIndex = emitter.modules.indexOf(draggedModule);
+  const targetIndex = emitter.modules.indexOf(targetModule);
+
+  if (oldIndex < 0 || targetIndex < 0 || oldIndex === targetIndex) {
+    return;
+  }
+
+  const insertIndex = oldIndex < targetIndex ? targetIndex - 1 : targetIndex;
+
+  if (insertIndex === oldIndex) {
+    return;
+  }
+
+  globalUndoStack.execute(createReorderCommand(emitter.modules, draggedModule, insertIndex, 'Reorder Module'));
+}
+
 function drawStageSection (emitter: ProEmitterInstance, stage: StageInfo, stageModules: ProModule[]): void {
   const stageColor = getStageColor(stage.stage);
   const drawList = ImGui.GetWindowDrawList();
+
+  // Compute checkbox X position BEFORE any indent (absolute reference)
+  const lineHeight = ImGui.GetFrameHeight();
+  const absCheckboxX = ImGui.GetContentRegionMax().x - lineHeight;
 
   // Save start position for continuous color bar
   const startPos = ImGui.GetCursorScreenPos();
@@ -304,29 +327,25 @@ function drawStageSection (emitter: ProEmitterInstance, stage: StageInfo, stageM
   // Tighter vertical spacing for compact look
   ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(ImGui.GetStyle().ItemSpacing.x, 2));
 
-  // ── Stage header row: ▼ Stage Name        ⊕ ──
+  // ── Stage header: CollapsingHeader ──
   const stageDescriptors = proModuleRegistry.filter(d => d.stage === stage.stage);
 
   ImGui.PushStyleColor(ImGui.Col.Text, stageColor);
-  const opened = ImGui.TreeNodeEx(
+
+  const opened = ImGui.CollapsingHeader(
     stage.label + '##' + stage.stage,
-    ImGui.TreeNodeFlags.DefaultOpen |
-    ImGui.TreeNodeFlags.NoTreePushOnOpen |
-    ImGui.TreeNodeFlags.SpanAvailWidth |
-    ImGui.TreeNodeFlags.AllowOverlap,
+    ImGui.TreeNodeFlags.DefaultOpen | ImGui.TreeNodeFlags.AllowOverlap,
   );
 
   ImGui.PopStyleColor();
 
-  // ⊕ button aligned to the right (UE style)
+  // + button aligned with module checkbox (use pre-indent absolute position)
   if (stageDescriptors.length > 0) {
-    const rightEdge = ImGui.GetContentRegionMax().x;
-
-    ImGui.SameLine(rightEdge - ImGui.GetFrameHeight());
+    ImGui.SameLine(absCheckboxX - STAGE_INDENT);
 
     const addPopupId = 'AddModule_' + stage.stage;
 
-    if (ImGui.SmallButton('+##add_' + stage.stage)) {
+    if (ImGui.Button('+##add_' + stage.stage, new ImGui.Vec2(lineHeight, lineHeight))) {
       ImGui.OpenPopup(addPopupId);
     }
     if (ImGui.BeginPopup(addPopupId)) {
@@ -341,15 +360,17 @@ function drawStageSection (emitter: ProEmitterInstance, stage: StageInfo, stageM
     }
   }
 
-  // ── Module rows (if stage is open) ──
+  // ── Module rows (if stage is open, indented under the stage header) ──
   if (opened) {
     const filteredModules = g_searchFilter
       ? stageModules.filter(m => prettifyModuleName(m.constructor.name).toLowerCase().includes(g_searchFilter.toLowerCase()))
       : stageModules;
 
+    ImGui.Indent(12);
     for (let idx = 0; idx < filteredModules.length; idx++) {
       drawModuleEntry(emitter, filteredModules[idx], stageColor);
     }
+    ImGui.Unindent(12);
   }
 
   ImGui.PopStyleVar(); // ItemSpacing
@@ -398,6 +419,24 @@ function drawModuleEntry (emitter: ProEmitterInstance, module: ProModule, _stage
 
   if (ImGui.IsItemClicked(0)) {
     setOverviewSelectedModule(module);
+  }
+
+  if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
+    ImGui.SetDragDropPayload(MODULE_DND_TYPE, module);
+    ImGui.Text(name);
+    ImGui.EndDragDropSource();
+  }
+  if (ImGui.BeginDragDropTarget()) {
+    const payload = ImGui.AcceptDragDropPayload(MODULE_DND_TYPE);
+
+    if (payload && payload.Data) {
+      const draggedModule = payload.Data as ProModule;
+
+      if (draggedModule !== module && draggedModule.stage === module.stage) {
+        reorderModuleBeforeTarget(emitter, draggedModule, module);
+      }
+    }
+    ImGui.EndDragDropTarget();
   }
 
   // Right-click context menu (inline per-item popup, safe outside node graph)
@@ -460,27 +499,6 @@ function drawModuleEntry (emitter: ProEmitterInstance, module: ProModule, _stage
     if (ImGui.Checkbox('##en_' + uid, (v = enabledRef.value) => enabledRef.value = v)) {
       module.enabled = enabledRef.value;
     }
-  }
-
-  // Drag & drop
-  if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
-    ImGui.SetDragDropPayload(MODULE_DND_TYPE, module);
-    ImGui.Text(name);
-    ImGui.EndDragDropSource();
-  }
-  if (ImGui.BeginDragDropTarget()) {
-    const payload = ImGui.AcceptDragDropPayload(MODULE_DND_TYPE);
-
-    if (payload && payload.Data) {
-      const draggedModule = payload.Data as ProModule;
-
-      if (draggedModule !== module && draggedModule.stage === module.stage) {
-        const targetIdx = emitter.modules.indexOf(module);
-
-        globalUndoStack.execute(createReorderCommand(emitter.modules, draggedModule, targetIdx, 'Reorder Module'));
-      }
-    }
-    ImGui.EndDragDropTarget();
   }
 
   // Parameters table (when expanded)
@@ -554,6 +572,8 @@ function drawProObjectTable (obj: object, prefix = ''): void {
       drawTableDistributionColorRow(key, obj as Record<string, ProDistributionColor>, key, fullId);
     } else if (value instanceof ProDistributionFloat) {
       drawTableDistributionFloatRow(key, obj as Record<string, ProDistributionFloat>, key, fullId);
+    } else if (value instanceof ProDistributionVector2) {
+      drawTableDistributionVector2Row(key, obj as Record<string, ProDistributionVector2>, key, fullId);
     } else if (value instanceof ProDistributionVector3) {
       drawTableDistributionVector3Row(key, obj as Record<string, ProDistributionVector3>, key, fullId);
     } else if (value instanceof ProCurveFloat) {
@@ -1212,6 +1232,61 @@ function drawTableDistributionFloatRow (label: string, obj: Record<string, ProDi
   }
 }
 
+function drawTableDistributionVector2Row (label: string, obj: Record<string, ProDistributionVector2>, key: string, id: string): void {
+  ImGui.TableNextRow();
+  ImGui.TableNextColumn();
+  ImGui.AlignTextToFramePadding();
+  ImGui.Text(prettifyLabel(label));
+  ImGui.TableNextColumn();
+
+  const dist = obj[key];
+  const allSameMode = dist.x.mode === dist.y.mode;
+  const sharedMode = dist.x.mode;
+
+  if (allSameMode && sharedMode === 'constant') {
+    const vals: [number, number] = [dist.x.constant, dist.y.constant];
+
+    ImGui.SetNextItemWidth(-1);
+    if (ImGui.DragFloat2('##dv2_' + id, vals, 0.01)) {
+      const next = new ProDistributionVector2(
+        ProDistributionFloat.fromConstant(vals[0]),
+        ProDistributionFloat.fromConstant(vals[1]),
+        dist.uniform,
+      );
+
+      obj[key] = next;
+    }
+  } else if (allSameMode && sharedMode === 'range') {
+    const minV: [number, number] = [dist.x.min, dist.y.min];
+    const maxV: [number, number] = [dist.x.max, dist.y.max];
+    const w = (ImGui.GetContentRegionAvail().x - 4) * 0.5;
+
+    ImGui.SetNextItemWidth(w);
+    const a = ImGui.DragFloat2('##dv2min_' + id, minV, 0.01);
+
+    ImGui.SameLine();
+    ImGui.SetNextItemWidth(w);
+    const b = ImGui.DragFloat2('##dv2max_' + id, maxV, 0.01);
+
+    if (a || b) {
+      obj[key] = ProDistributionVector2.fromRange(minV, maxV, dist.uniform);
+    }
+  } else {
+    ImGui.Text('Per-axis');
+  }
+
+  // Uniform 切换
+  ImGui.TableNextRow();
+  ImGui.TableNextColumn();
+  ImGui.Text('  Uniform');
+  ImGui.TableNextColumn();
+  const uniRef = { value: dist.uniform };
+
+  if (ImGui.Checkbox('##dv2uni_' + id, (v = uniRef.value) => uniRef.value = v)) {
+    dist.uniform = uniRef.value;
+  }
+}
+
 function drawTableDistributionVector3Row (label: string, obj: Record<string, ProDistributionVector3>, key: string, id: string): void {
   ImGui.TableNextRow();
   ImGui.TableNextColumn();
@@ -1352,31 +1427,21 @@ function drawTableEnumRow (label: string, obj: object, key: string, currentValue
 // ─── Renderer Section ───────────────────────────────────────────────────────
 
 function drawRendererSection (rc: ProParticleSystemRendererComponent): void {
-  // ── Renderers header with count ──
-  const drawList = ImGui.GetWindowDrawList();
-  const headerPos = ImGui.GetCursorScreenPos();
-  const headerColor = new ImGui.ImVec4(0.7, 0.7, 0.7, 1.0);
-
-  ImGui.PushStyleColor(ImGui.Col.Text, headerColor);
-  const headerFlags = ImGui.TreeNodeFlags.DefaultOpen |
-    ImGui.TreeNodeFlags.SpanAvailWidth |
-    ImGui.TreeNodeFlags.AllowOverlap |
-    ImGui.TreeNodeFlags.NoTreePushOnOpen;
-  const sectionOpen = ImGui.TreeNodeEx(
+  // ── Renderers: CollapsingHeader (same style as stage categories) ──
+  const sectionOpen = ImGui.CollapsingHeader(
     'Renderers (' + rc.renderers.length + ')##renderers_section',
-    headerFlags,
+    ImGui.TreeNodeFlags.DefaultOpen | ImGui.TreeNodeFlags.AllowOverlap,
   );
 
-  ImGui.PopStyleColor();
-
-  // + Add Renderer button aligned right
+  // + Add Renderer button aligned with module checkboxes
   {
+    const lineHeight = ImGui.GetFrameHeight();
     const rightEdge = ImGui.GetContentRegionMax().x;
 
-    ImGui.SameLine(rightEdge - ImGui.GetFrameHeight());
+    ImGui.SameLine(rightEdge - lineHeight);
     const addPopupId = 'AddRenderer_popup';
 
-    if (ImGui.SmallButton('+##add_renderer')) {
+    if (ImGui.Button('+##add_renderer', new ImGui.Vec2(lineHeight, lineHeight))) {
       ImGui.OpenPopup(addPopupId);
     }
     if (ImGui.BeginPopup(addPopupId)) {
@@ -1400,34 +1465,22 @@ function drawRendererSection (rc: ProParticleSystemRendererComponent): void {
     return;
   }
 
-  // Draw separator line below header
-  const sepPos = ImGui.GetCursorScreenPos();
-
-  drawList.AddLine(
-    new ImGui.Vec2(headerPos.x, sepPos.y),
-    new ImGui.Vec2(headerPos.x + ImGui.GetContentRegionAvail().x, sepPos.y),
-    ImGui.IM_COL32(60, 60, 60, 255),
-  );
-
   let removeIdx = -1;
 
+  ImGui.Indent(12);
   for (let i = 0; i < rc.renderers.length; i++) {
     const r = rc.renderers[i];
 
     ImGui.PushID('renderer_' + i);
-
-    // Compact frame padding for renderer entries
-    ImGui.PushStyleVar(ImGui.StyleVar.FramePadding, new ImGui.Vec2(2, 2));
 
     const rName = r instanceof ProSpriteRenderer ? 'Sprite Renderer' : r instanceof ProRibbonRenderer ? 'Ribbon Renderer' : 'Renderer';
     const rOpened = ImGui.TreeNodeEx(
       rName + '##r' + i,
       ImGui.TreeNodeFlags.DefaultOpen |
       ImGui.TreeNodeFlags.SpanAvailWidth |
-      ImGui.TreeNodeFlags.Framed,
+      ImGui.TreeNodeFlags.OpenOnArrow |
+      ImGui.TreeNodeFlags.OpenOnDoubleClick,
     );
-
-    ImGui.PopStyleVar(); // FramePadding
 
     // Right-click to remove
     if (ImGui.BeginPopupContextItem('##rctx_' + i)) {
@@ -1447,6 +1500,7 @@ function drawRendererSection (rc: ProParticleSystemRendererComponent): void {
     }
     ImGui.PopID();
   }
+  ImGui.Unindent(12);
 
   if (removeIdx >= 0) {
     rc.removeRenderer(removeIdx);
@@ -1496,6 +1550,37 @@ function drawSpriteRendererTable (renderer: ProSpriteRenderer): void {
   if (ImGui.Combo('##Blending', (v = currentBlendIndex) => currentBlendIndex = v, BLEND_MODES.map(b => b.label))) {
     p.blending = BLEND_MODES[currentBlendIndex].value;
     renderer.syncProperties();
+  }
+
+  // Facing Mode
+  ImGui.TableNextRow();
+  ImGui.TableNextColumn();
+  ImGui.AlignTextToFramePadding();
+  ImGui.Text('Facing Mode');
+  ImGui.TableNextColumn();
+  ImGui.SetNextItemWidth(-1);
+  const spriteFacingModes: Array<typeof p.facingMode> = ['billboard', 'velocity'];
+  let spriteFacingIdx = spriteFacingModes.indexOf(p.facingMode);
+
+  if (spriteFacingIdx < 0) { spriteFacingIdx = 0; }
+  if (ImGui.Combo('##SpriteFacing', (v = spriteFacingIdx) => spriteFacingIdx = v, spriteFacingModes)) {
+    p.facingMode = spriteFacingModes[spriteFacingIdx];
+    renderer.syncProperties();
+  }
+
+  // Sort Mode
+  ImGui.TableNextRow();
+  ImGui.TableNextColumn();
+  ImGui.AlignTextToFramePadding();
+  ImGui.Text('Sort Mode');
+  ImGui.TableNextColumn();
+  ImGui.SetNextItemWidth(-1);
+  const spriteSortModes: Array<typeof p.sortMode> = ['none', 'viewDepth', 'distance', 'age'];
+  let spriteSortIdx = spriteSortModes.indexOf(p.sortMode);
+
+  if (spriteSortIdx < 0) { spriteSortIdx = 0; }
+  if (ImGui.Combo('##SpriteSort', (v = spriteSortIdx) => spriteSortIdx = v, spriteSortModes)) {
+    p.sortMode = spriteSortModes[spriteSortIdx];
   }
 
   // SubUV

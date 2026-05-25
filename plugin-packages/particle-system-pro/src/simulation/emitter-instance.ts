@@ -220,6 +220,10 @@ export class ProEmitterInstance {
     if (current && origNum > 0) {
       this.copyExistingParticles(current, dest, origNum);
       dest.setNumInstances(origNum);
+      // 在 ParticleUpdate 跑之前把当前 position 备份到 previousPosition；
+      // 之后 SolveForces / RotateAroundPoint 等会改 position，previousPosition
+      // 留住"本帧开始时的位置"供 CalculateAccurateVelocity 等模块反算
+      this.savePreviousPositions(dest, origNum);
       this.runStage(ProModuleStage.ParticleUpdate, deltaTime, dest, 0, dest.numInstances);
     }
 
@@ -244,6 +248,21 @@ export class ProEmitterInstance {
 
     this.particleDataSet.endSimulate(true);
     this.postTick();
+  }
+
+  private savePreviousPositions (dest: ProDataBuffer, count: number): void {
+    const layout = this.particleDataSet?.layout;
+
+    if (!layout) {
+      return;
+    }
+    const a = new ProStandardAccessors(layout);
+    const tmp: [number, number, number] = [0, 0, 0];
+
+    for (let i = 0; i < count; i++) {
+      a.position.get(dest, i, tmp);
+      a.previousPosition.set(dest, i, tmp[0], tmp[1], tmp[2]);
+    }
   }
 
   private bakeNewParticlesToWorld (dest: ProDataBuffer, first: number, last: number): void {
