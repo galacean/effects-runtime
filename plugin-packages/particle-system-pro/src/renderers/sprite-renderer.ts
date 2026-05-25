@@ -200,7 +200,7 @@ export class ProSpriteRenderer extends ProRenderer {
     });
     this.material.blending = true;
     this.material.depthTest = true;
-    this.material.depthMask = false;
+    this.material.depthMask = false; // Translucent particles must not write depth
     setBlendMode(this.material, this.properties.blending);
     this.material.setTexture('_MainTex', this.properties.texture ?? Texture.createWithData(engine));
     this.material.setVector4('_TexParams', new math.Vector4(this.properties.texture ? 1 : 0, 0, 0, 0));

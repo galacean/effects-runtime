@@ -37,6 +37,31 @@ export class ProDistributionFloat {
     return new ProDistributionFloat('curve', 0, 0, 1, curve);
   }
 
+  toJSON () {
+    const base: { mode: ProDistributionMode, constant?: number, min?: number, max?: number, curve?: ReturnType<ProCurveFloat['toJSON']> } = { mode: this.mode };
+
+    if (this.mode === 'constant') {
+      base.constant = this.constant;
+    } else if (this.mode === 'range') {
+      base.min = this.min;
+      base.max = this.max;
+    } else {
+      base.curve = this.curve.toJSON();
+    }
+
+    return base;
+  }
+
+  static fromJSON (data: ReturnType<ProDistributionFloat['toJSON']>): ProDistributionFloat {
+    switch (data.mode) {
+      case 'constant': return ProDistributionFloat.fromConstant(data.constant ?? 0);
+      case 'range': return ProDistributionFloat.fromRange(data.min ?? 0, data.max ?? 0);
+      case 'curve': return ProDistributionFloat.fromCurve(
+        data.curve ? ProCurveFloat.fromJSON(data.curve) : ProCurveFloat.constant(0),
+      );
+    }
+  }
+
   /**
    * 统一采样入口。
    * - constant: 返回 constant

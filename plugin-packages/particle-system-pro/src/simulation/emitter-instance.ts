@@ -210,20 +210,21 @@ export class ProEmitterInstance {
 
     const current = this.particleDataSet.getCurrentData();
     const origNum = current ? current.numInstances : 0;
-    const required = Math.min(origNum + spawnTotal, this.maxInstanceCount);
+    const keptExisting = Math.min(origNum, this.maxInstanceCount);
+    const required = Math.min(keptExisting + spawnTotal, this.maxInstanceCount);
 
     const dest = this.particleDataSet.beginSimulate(true);
 
     this.particleDataSet.allocate(required, false);
 
     // 2. 把现有粒子从 current 拷贝到 destination，再跑 particleUpdate
-    if (current && origNum > 0) {
-      this.copyExistingParticles(current, dest, origNum);
-      dest.setNumInstances(origNum);
+    if (current && keptExisting > 0) {
+      this.copyExistingParticles(current, dest, keptExisting);
+      dest.setNumInstances(keptExisting);
       // 在 ParticleUpdate 跑之前把当前 position 备份到 previousPosition；
       // 之后 SolveForces / RotateAroundPoint 等会改 position，previousPosition
       // 留住"本帧开始时的位置"供 CalculateAccurateVelocity 等模块反算
-      this.savePreviousPositions(dest, origNum);
+      this.savePreviousPositions(dest, keptExisting);
       this.runStage(ProModuleStage.ParticleUpdate, deltaTime, dest, 0, dest.numInstances);
     }
 

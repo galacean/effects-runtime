@@ -47,6 +47,24 @@ export class ProCurveColor {
     );
   }
 
+  toJSON () {
+    return {
+      r: this.r.toJSON(),
+      g: this.g.toJSON(),
+      b: this.b.toJSON(),
+      a: this.a.toJSON(),
+    };
+  }
+
+  static fromJSON (data: { r: { keyframes: ProKeyframe[] }, g: { keyframes: ProKeyframe[] }, b: { keyframes: ProKeyframe[] }, a: { keyframes: ProKeyframe[] } }): ProCurveColor {
+    return new ProCurveColor(
+      ProCurveFloat.fromJSON(data.r),
+      ProCurveFloat.fromJSON(data.g),
+      ProCurveFloat.fromJSON(data.b),
+      ProCurveFloat.fromJSON(data.a),
+    );
+  }
+
   evaluate (t: number, out?: [number, number, number, number]): [number, number, number, number] {
     const result = out ?? [0, 0, 0, 0];
 

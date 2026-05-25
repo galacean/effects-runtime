@@ -35,6 +35,14 @@ export class ProCurveFloat {
     return new ProCurveFloat([...keyframes].sort((a, b) => a.time - b.time));
   }
 
+  toJSON (): { keyframes: ProKeyframe[] } {
+    return { keyframes: this.keyframes.map(k => ({ ...k })) };
+  }
+
+  static fromJSON (data: { keyframes: ProKeyframe[] }): ProCurveFloat {
+    return ProCurveFloat.fromKeyframes(data.keyframes ?? []);
+  }
+
   evaluate (t: number): number {
     const keys = this.keyframes;
     const len = keys.length;

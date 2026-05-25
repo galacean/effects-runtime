@@ -3,6 +3,7 @@ import type { ProEmitterInstance, ProKeyframe, ProModule, ProRibbonFacingMode } 
 import {
   ProCurveColor, ProCurveFloat,
   ProDistributionColor, ProDistributionFloat, ProDistributionVector2, ProDistributionVector3,
+  ProEmitterPropertiesModule,
   ProModuleStage, ProParticleSystemComponent, ProParticleSystemRendererComponent,
   ProRenderer, ProRibbonRenderer, ProRibbonRendererProperties, ProRibbonTextureMode,
   ProSpriteRenderer, ProSpriteRendererProperties,
@@ -174,7 +175,7 @@ export function drawProParticleStack (
       continue;
     }
 
-    drawStageSection(emitter, stage, stageModules);
+    drawStageSection(system, emitter, stage, stageModules);
   }
 
   // ── Renderer section ──
@@ -205,6 +206,35 @@ function drawToolbar (system: ProParticleSystemComponent): void {
 
   ImGui.SameLine();
   if (ImGui.Button('Reset')) { system.systemInstance.reset(true); }
+}
+
+function resetSystemForEmitterPropertiesEdit (system: ProParticleSystemComponent, module: ProModule): void {
+  if (module instanceof ProEmitterPropertiesModule) {
+    system.systemInstance.reset(true);
+  }
+}
+
+function executeModuleValueChange<T extends object, K extends keyof T> (
+  system: ProParticleSystemComponent,
+  module: ProModule,
+  target: T,
+  key: K,
+  newValue: T[K],
+  label: string,
+): void {
+  const oldValue = target[key];
+
+  globalUndoStack.execute({
+    label,
+    execute () {
+      target[key] = newValue;
+      resetSystemForEmitterPropertiesEdit(system, module);
+    },
+    undo () {
+      target[key] = oldValue;
+      resetSystemForEmitterPropertiesEdit(system, module);
+    },
+  });
 }
 
 // ─── Emitter Header ─────────────────────────────────────────────────────────
@@ -308,7 +338,7 @@ function reorderModuleBeforeTarget (emitter: ProEmitterInstance, draggedModule: 
   globalUndoStack.execute(createReorderCommand(emitter.modules, draggedModule, insertIndex, 'Reorder Module'));
 }
 
-function drawStageSection (emitter: ProEmitterInstance, stage: StageInfo, stageModules: ProModule[]): void {
+function drawStageSection (system: ProParticleSystemComponent, emitter: ProEmitterInstance, stage: StageInfo, stageModules: ProModule[]): void {
   const stageColor = getStageColor(stage.stage);
   const drawList = ImGui.GetWindowDrawList();
 
@@ -368,7 +398,7 @@ function drawStageSection (emitter: ProEmitterInstance, stage: StageInfo, stageM
 
     ImGui.Indent(12);
     for (let idx = 0; idx < filteredModules.length; idx++) {
-      drawModuleEntry(emitter, filteredModules[idx], stageColor);
+      drawModuleEntry(system, emitter, filteredModules[idx], stageColor);
     }
     ImGui.Unindent(12);
   }
@@ -392,7 +422,7 @@ function drawStageSection (emitter: ProEmitterInstance, stage: StageInfo, stageM
 // ─── Module Entry (UE flat row: ▶ Name  R ☑) ───────────────────────────────
 // The continuous color bar is drawn by the parent drawStageSection.
 
-function drawModuleEntry (emitter: ProEmitterInstance, module: ProModule, _stageColor: ImGui.interface_ImVec4): void {
+function drawModuleEntry (system: ProParticleSystemComponent, emitter: ProEmitterInstance, module: ProModule, _stageColor: ImGui.interface_ImVec4): void {
   const uid = getModuleUid(module);
   const name = prettifyModuleName(module.constructor.name);
   const isSelected = getOverviewSelectedModule() === module;
@@ -486,6 +516,7 @@ function drawModuleEntry (emitter: ProEmitterInstance, module: ProModule, _stage
           if (key === 'stage' || key === 'enabled' || key.startsWith('_')) { continue; }
           (module as unknown as Record<string, unknown>)[key] = (fresh as unknown as Record<string, unknown>)[key];
         }
+        resetSystemForEmitterPropertiesEdit(system, module);
       }
     }
     if (ImGui.IsItemHovered()) { ImGui.SetTooltip('Reset to defaults'); }
@@ -498,12 +529,13 @@ function drawModuleEntry (emitter: ProEmitterInstance, module: ProModule, _stage
 
     if (ImGui.Checkbox('##en_' + uid, (v = enabledRef.value) => enabledRef.value = v)) {
       module.enabled = enabledRef.value;
+      resetSystemForEmitterPropertiesEdit(system, module);
     }
   }
 
   // Parameters table (when expanded)
   if (opened) {
-    drawModuleParametersTable(module);
+    drawModuleParametersTable(system, module);
     ImGui.TreePop();
   }
 
@@ -512,7 +544,7 @@ function drawModuleEntry (emitter: ProEmitterInstance, module: ProModule, _stage
 
 // ─── Module Parameters (UE SNiagaraStack two-column: Name | Value) ──────────
 
-function drawModuleParametersTable (module: ProModule): void {
+function drawModuleParametersTable (system: ProParticleSystemComponent, module: ProModule): void {
   const tableFlags = ImGui.TableFlags.Resizable |
     ImGui.TableFlags.BordersInnerV |
     ImGui.TableFlags.NoSavedSettings |
@@ -525,14 +557,14 @@ function drawModuleParametersTable (module: ProModule): void {
   ImGui.TableSetupColumn('Property', ImGui.TableColumnFlags.WidthStretch, 0.35);
   ImGui.TableSetupColumn('Value', ImGui.TableColumnFlags.WidthStretch, 0.65);
 
-  drawProObjectTable(module);
+  drawProObjectTable(system, module, module);
 
   ImGui.EndTable();
 }
 
 // ─── Reflection-based parameter editor (table rows) ─────────────────────────
 
-function drawProObjectTable (obj: object, prefix = ''): void {
+function drawProObjectTable (system: ProParticleSystemComponent, rootModule: ProModule, obj: object, prefix = ''): void {
   for (const key of Object.keys(obj)) {
     if (key.startsWith('_') || SKIP_PROPS.has(key)) {
       continue;
@@ -555,11 +587,11 @@ function drawProObjectTable (obj: object, prefix = ''): void {
     const fullId = prefix + key;
 
     if (typeof value === 'number') {
-      drawTableFloatRow(key, obj, key, fullId);
+      drawTableFloatRow(system, rootModule, key, obj, key, fullId);
     } else if (typeof value === 'boolean') {
-      drawTableCheckboxRow(key, obj, key, fullId);
+      drawTableCheckboxRow(system, rootModule, key, obj, key, fullId);
     } else if (typeof value === 'string') {
-      drawTableEnumRow(key, obj, key, value, fullId);
+      drawTableEnumRow(system, rootModule, key, obj, key, value, fullId);
     } else if (Array.isArray(value) && value.length >= 2 && value.length <= 4 && value.every(v => typeof v === 'number')) {
       const isColorProp = /color/i.test(key);
 
@@ -592,7 +624,7 @@ function drawProObjectTable (obj: object, prefix = ''): void {
       const subOpen = ImGui.TreeNodeEx(prettifyLabel(key) + '##sub_' + fullId, ImGui.TreeNodeFlags.SpanAllColumns);
 
       if (subOpen) {
-        drawProObjectTable(value, fullId + '.');
+        drawProObjectTable(system, rootModule, value, fullId + '.');
         ImGui.TreePop();
       }
     }
@@ -601,7 +633,7 @@ function drawProObjectTable (obj: object, prefix = ''): void {
 
 // ─── Table row helpers (Label | Widget) ─────────────────────────────────────
 
-function drawTableFloatRow (label: string, obj: object, key: string, id: string): void {
+function drawTableFloatRow (system: ProParticleSystemComponent, module: ProModule, label: string, obj: object, key: string, id: string): void {
   ImGui.TableNextRow();
   ImGui.TableNextColumn();
   ImGui.AlignTextToFramePadding();
@@ -614,12 +646,12 @@ function drawTableFloatRow (label: string, obj: object, key: string, id: string)
 
   if (ImGui.DragFloat('##' + id, (v = ref.value) => ref.value = v, 0.01, 0, 0, '%.3f')) {
     if (ref.value !== oldValue) {
-      globalUndoStack.execute(createSetValueCommand(obj as Record<string, number>, key, ref.value, `Set ${label}`));
+      executeModuleValueChange(system, module, obj as Record<string, number>, key, ref.value, `Set ${label}`);
     }
   }
 }
 
-function drawTableCheckboxRow (label: string, obj: object, key: string, id: string): void {
+function drawTableCheckboxRow (system: ProParticleSystemComponent, module: ProModule, label: string, obj: object, key: string, id: string): void {
   ImGui.TableNextRow();
   ImGui.TableNextColumn();
   ImGui.AlignTextToFramePadding();
@@ -631,7 +663,7 @@ function drawTableCheckboxRow (label: string, obj: object, key: string, id: stri
 
   if (ImGui.Checkbox('##' + id, (v = ref.value) => ref.value = v)) {
     if (ref.value !== oldValue) {
-      globalUndoStack.execute(createSetValueCommand(obj as Record<string, boolean>, key, ref.value, `Set ${label}`));
+      executeModuleValueChange(system, module, obj as Record<string, boolean>, key, ref.value, `Set ${label}`);
     }
   }
 }
@@ -1394,7 +1426,7 @@ const KNOWN_ENUM_OPTIONS: Record<string, string[]> = {
   simulationSpace: ['local', 'world'],
 };
 
-function drawTableEnumRow (label: string, obj: object, key: string, currentValue: string, id: string): void {
+function drawTableEnumRow (system: ProParticleSystemComponent, module: ProModule, label: string, obj: object, key: string, currentValue: string, id: string): void {
   ImGui.TableNextRow();
   ImGui.TableNextColumn();
   ImGui.AlignTextToFramePadding();
@@ -1410,7 +1442,7 @@ function drawTableEnumRow (label: string, obj: object, key: string, currentValue
     if (idx < 0) { idx = 0; }
     if (ImGui.Combo('##' + id, (v = idx) => idx = v, options)) {
       if (options[idx] !== currentValue) {
-        (obj as Record<string, unknown>)[key] = options[idx];
+        executeModuleValueChange(system, module, obj as Record<string, string>, key, options[idx], `Set ${label}`);
       }
     }
   } else {
@@ -1418,7 +1450,7 @@ function drawTableEnumRow (label: string, obj: object, key: string, currentValue
 
     if (ImGui.InputText('##' + id, (v = ref.value) => ref.value = v, undefined, ImGui.InputTextFlags.EnterReturnsTrue)) {
       if (ref.value !== currentValue) {
-        (obj as Record<string, unknown>)[key] = ref.value;
+        executeModuleValueChange(system, module, obj as Record<string, string>, key, ref.value, `Set ${label}`);
       }
     }
   }

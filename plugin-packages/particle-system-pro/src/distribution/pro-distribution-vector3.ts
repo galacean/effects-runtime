@@ -35,6 +35,24 @@ export class ProDistributionVector3 {
     );
   }
 
+  toJSON () {
+    return {
+      x: this.x.toJSON(),
+      y: this.y.toJSON(),
+      z: this.z.toJSON(),
+      uniform: this.uniform,
+    };
+  }
+
+  static fromJSON (data: ReturnType<ProDistributionVector3['toJSON']>): ProDistributionVector3 {
+    return new ProDistributionVector3(
+      ProDistributionFloat.fromJSON(data.x),
+      ProDistributionFloat.fromJSON(data.y),
+      ProDistributionFloat.fromJSON(data.z),
+      !!data.uniform,
+    );
+  }
+
   sampleAtTime (random: number, t: number, out?: [number, number, number]): [number, number, number] {
     const result = out ?? [0, 0, 0];
 

@@ -37,6 +37,24 @@ export class ProDistributionColor {
     );
   }
 
+  toJSON () {
+    return {
+      r: this.r.toJSON(),
+      g: this.g.toJSON(),
+      b: this.b.toJSON(),
+      a: this.a.toJSON(),
+    };
+  }
+
+  static fromJSON (data: ReturnType<ProDistributionColor['toJSON']>): ProDistributionColor {
+    return new ProDistributionColor(
+      ProDistributionFloat.fromJSON(data.r),
+      ProDistributionFloat.fromJSON(data.g),
+      ProDistributionFloat.fromJSON(data.b),
+      ProDistributionFloat.fromJSON(data.a),
+    );
+  }
+
   sampleAtTime (random: number, t: number, out?: [number, number, number, number]): [number, number, number, number] {
     const result = out ?? [0, 0, 0, 0];
 
