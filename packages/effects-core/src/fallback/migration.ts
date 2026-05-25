@@ -926,9 +926,12 @@ export function processMask (renderContent: any) {
 
   // 处理旧版 maskMode（通过 renderer.maskMode 字段）
   if (maskMode && maskMode !== MaskMode.NONE) {
+    const alphaMaskEnabled = mask?.alphaMaskEnabled ?? false;
+
     if (maskMode === MaskMode.MASK) {
       renderContent.mask = {
         isMask: true,
+        alphaMaskEnabled,
       };
       maskMigrationCtx.currentMaskComponent = renderContent.id;
     } else if (
@@ -943,6 +946,7 @@ export function processMask (renderContent: any) {
       // 将旧版单蒙版转换为 references 数组格式
       renderContent.mask = {
         isMask: false,
+        alphaMaskEnabled,
         references: [
           {
             mask: {

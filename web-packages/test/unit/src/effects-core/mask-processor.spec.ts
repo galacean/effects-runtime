@@ -363,7 +363,7 @@ describe('core/material//mask-ref-manager', () => {
         references,
       });
 
-      expect(mp.getMaskReferences().length).to.eql(255);
+      expect(mp.getMaskReferences().length).to.eql(254);
     });
 
     it('should set alphaMaskEnabled', () => {

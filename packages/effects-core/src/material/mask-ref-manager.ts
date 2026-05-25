@@ -24,7 +24,9 @@ type MaskOptions = {
   references?: MaskOptionReference[],
 };
 
-const MAX_MASK_REFERENCE_COUNT = 255;
+// 8 位 stencil buffer 上限为 255；为反向蒙版的 INCR 预留 1 的递增余量，
+// 否则当正向蒙版填满到 255 时，反向 INCR 会饱和、无法排除任何像素。
+const MAX_MASK_REFERENCE_COUNT = 254;
 
 /**
  * @internal
@@ -89,7 +91,7 @@ export class MaskProcessor {
    *
    * @param data.references - 蒙版引用列表。
    *   传入空数组等价于无蒙版（maskMode = NONE）。
-   *   超过 255 个引用时，多余部分将被忽略并打印警告。
+   *   超过 254 个引用时，多余部分将被忽略并打印警告。
    */
   setMaskOptions (engine: Engine, data: MaskOptions): void {
     const { isMask = false, references = [], alphaMaskEnabled = false } = data;
@@ -185,7 +187,7 @@ export class MaskProcessor {
    * 2. 反向蒙版渲染，将已通过所有正向蒙版的像素标记为无效
    * 3. 最终只有 stencil == 正向蒙版数量 的像素才通过测试
    *
-   * 最多支持 255 个蒙版引用（受 8 位 stencil buffer 限制）
+   * 最多支持 254 个蒙版引用（8 位 stencil buffer 上限 255，需为反向 INCR 预留 1）
    */
   drawStencilMask (renderer: Renderer, maskedComponent: RendererComponent): void {
     const frameClipMasks = maskedComponent.frameClipMasks;
