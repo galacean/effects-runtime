@@ -8,3 +8,5 @@ export * from './content-browser';
 export * from './animation-clip';
 export * from './node-graph';
 export * from './sequencer';
+export * from './pro-particle-editor';
+export * from './pro-system-overview';

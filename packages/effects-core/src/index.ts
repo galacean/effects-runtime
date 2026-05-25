@@ -1,6 +1,6 @@
 import { registerPlugin } from './plugin-system';
 import {
-  CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
+  CameraVFXItemLoader, InteractLoader, ParticleLoader, ProParticleSystemLoader, SpriteLoader, TextLoader,
 } from './plugins';
 import { logger } from './utils';
 
@@ -55,6 +55,7 @@ registerPlugin('camera', CameraVFXItemLoader);
 registerPlugin('text', TextLoader);
 registerPlugin('sprite', SpriteLoader);
 registerPlugin('particle', ParticleLoader);
+registerPlugin('particleSystemPro', ProParticleSystemLoader);
 registerPlugin('interact', InteractLoader);
 
 export const version = __VERSION__;
