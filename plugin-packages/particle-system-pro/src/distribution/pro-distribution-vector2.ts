@@ -1,4 +1,11 @@
 import { ProDistributionFloat } from './pro-distribution-float';
+import type { ProDistributionFloatData } from './pro-distribution-float';
+
+export interface ProDistributionVector2Data {
+  x: ProDistributionFloatData,
+  y: ProDistributionFloatData,
+  uniform: boolean,
+}
 
 /**
  * 二维向量 Distribution。每个轴独立采样。用于 Sprite size (X/Y) 等场景。
@@ -39,7 +46,7 @@ export class ProDistributionVector2 {
     );
   }
 
-  toJSON () {
+  toJSON (): ProDistributionVector2Data {
     return {
       x: this.x.toJSON(),
       y: this.y.toJSON(),
@@ -47,7 +54,7 @@ export class ProDistributionVector2 {
     };
   }
 
-  static fromJSON (data: ReturnType<ProDistributionVector2['toJSON']>): ProDistributionVector2 {
+  static fromJSON (data: ProDistributionVector2Data): ProDistributionVector2 {
     return new ProDistributionVector2(
       ProDistributionFloat.fromJSON(data.x),
       ProDistributionFloat.fromJSON(data.y),

@@ -3,6 +3,11 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProBoxLocationModuleProps extends ProModuleProps {
+  extents: [number, number, number],
+}
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 
@@ -18,6 +23,16 @@ export class ProBoxLocationModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProBoxLocationModuleProps {
+    return { extents: [...this.extents] };
+  }
+
+  override fromJSON (data: ProBoxLocationModuleProps): void {
+    if (data.extents && data.extents.length === 3) {
+      this.extents = [data.extents[0], data.extents[1], data.extents[2]];
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;

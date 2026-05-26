@@ -1,12 +1,17 @@
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
 
 export interface ProSpawnBurstEntry {
   /** 触发时间（秒，相对于 emitter loop 起点） */
   time: number,
   /** 触发时一次性 spawn 的数量 */
   count: number,
+}
+
+export interface ProSpawnBurstModuleProps extends ProModuleProps {
+  bursts: ProSpawnBurstEntry[],
 }
 
 /**
@@ -84,5 +89,17 @@ export class ProSpawnBurstModule extends ProModule {
   reset (): void {
     this.fired.length = 0;
     this.lastLoopAge = 0;
+  }
+
+  override toJSON (): ProSpawnBurstModuleProps {
+    return {
+      bursts: this.bursts.map(b => ({ time: b.time, count: b.count })),
+    };
+  }
+
+  override fromJSON (data: ProSpawnBurstModuleProps): void {
+    if (data.bursts) {
+      this.bursts = data.bursts.map(b => ({ time: b.time ?? 0, count: b.count ?? 0 }));
+    }
   }
 }

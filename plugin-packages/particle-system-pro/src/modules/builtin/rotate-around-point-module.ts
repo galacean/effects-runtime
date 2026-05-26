@@ -1,9 +1,17 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProRotateAroundPointModuleProps extends ProModuleProps {
+  rate: ProDistributionFloatData,
+  radius: ProDistributionFloatData,
+  phase: ProDistributionFloatData,
+}
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 
@@ -28,6 +36,20 @@ export class ProRotateAroundPointModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProRotateAroundPointModuleProps {
+    return {
+      rate: this.rate.toJSON(),
+      radius: this.radius.toJSON(),
+      phase: this.phase.toJSON(),
+    };
+  }
+
+  override fromJSON (data: ProRotateAroundPointModuleProps): void {
+    if (data.rate) { this.rate = ProDistributionFloat.fromJSON(data.rate); }
+    if (data.radius) { this.radius = ProDistributionFloat.fromJSON(data.radius); }
+    if (data.phase) { this.phase = ProDistributionFloat.fromJSON(data.phase); }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

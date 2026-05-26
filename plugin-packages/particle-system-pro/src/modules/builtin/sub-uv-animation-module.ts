@@ -3,6 +3,7 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
 
 /**
  * SubUV 模式。
@@ -13,6 +14,12 @@ import { ProModule } from '../module';
 export enum ProSubUVMode {
   SyncToAge = 'syncToAge',
   FixedRate = 'fixedRate',
+}
+
+export interface ProSubUVAnimationModuleProps extends ProModuleProps {
+  mode: ProSubUVMode,
+  totalFrames: number,
+  framesPerSecond: number,
 }
 
 /**
@@ -29,6 +36,22 @@ export class ProSubUVAnimationModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProSubUVAnimationModuleProps {
+    return {
+      mode: this.mode,
+      totalFrames: this.totalFrames,
+      framesPerSecond: this.framesPerSecond,
+    };
+  }
+
+  override fromJSON (data: ProSubUVAnimationModuleProps): void {
+    if (data.mode === ProSubUVMode.SyncToAge || data.mode === ProSubUVMode.FixedRate) {
+      this.mode = data.mode;
+    }
+    if (typeof data.totalFrames === 'number') { this.totalFrames = data.totalFrames; }
+    if (typeof data.framesPerSecond === 'number') { this.framesPerSecond = data.framesPerSecond; }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

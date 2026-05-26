@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProCurveFloat } from '../../curves/pro-curve-float';
+import type { ProCurveFloatData } from '../../curves/pro-curve-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProDragModuleProps extends ProModuleProps {
+  dragCurve: ProCurveFloatData,
+}
 
 const tmpVel: [number, number, number] = [0, 0, 0];
 
@@ -23,6 +29,16 @@ export class ProDragModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProDragModuleProps {
+    return { dragCurve: this.dragCurve.toJSON() };
+  }
+
+  override fromJSON (data: ProDragModuleProps): void {
+    if (data.dragCurve) {
+      this.dragCurve = ProCurveFloat.fromJSON(data.dragCurve);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;

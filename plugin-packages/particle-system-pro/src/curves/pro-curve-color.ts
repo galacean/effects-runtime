@@ -1,5 +1,13 @@
 import { ProCurveFloat } from './pro-curve-float';
+import type { ProCurveFloatData } from './pro-curve-float';
 import type { ProKeyframe } from './pro-keyframe';
+
+export interface ProCurveColorData {
+  r: ProCurveFloatData,
+  g: ProCurveFloatData,
+  b: ProCurveFloatData,
+  a: ProCurveFloatData,
+}
 
 /**
  * 四通道颜色曲线（RGBA 各一条 ProCurveFloat）。
@@ -47,7 +55,7 @@ export class ProCurveColor {
     );
   }
 
-  toJSON () {
+  toJSON (): ProCurveColorData {
     return {
       r: this.r.toJSON(),
       g: this.g.toJSON(),
@@ -56,7 +64,7 @@ export class ProCurveColor {
     };
   }
 
-  static fromJSON (data: { r: { keyframes: ProKeyframe[] }, g: { keyframes: ProKeyframe[] }, b: { keyframes: ProKeyframe[] }, a: { keyframes: ProKeyframe[] } }): ProCurveColor {
+  static fromJSON (data: ProCurveColorData): ProCurveColor {
     return new ProCurveColor(
       ProCurveFloat.fromJSON(data.r),
       ProCurveFloat.fromJSON(data.g),

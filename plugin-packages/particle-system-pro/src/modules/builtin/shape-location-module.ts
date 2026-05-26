@@ -3,10 +3,25 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 
 export type ProShapePrimitive = 'box' | 'sphere' | 'cylinder' | 'ring' | 'plane';
+
+export interface ProShapeLocationModuleProps extends ProModuleProps {
+  shape: ProShapePrimitive,
+  center: [number, number, number],
+  sphereMin: number,
+  sphereMax: number,
+  boxSize: [number, number, number],
+  boxSurfaceOnly: boolean,
+  cylinderHeight: number,
+  cylinderRadius: number,
+  ringRadius: number,
+  ringThickness: number,
+  planeSize: [number, number],
+}
 
 /**
  * 统一形状发射模块：支持 Box / Sphere / Cylinder / Ring / Plane 五种基础形状。
@@ -41,6 +56,44 @@ export class ProShapeLocationModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProShapeLocationModuleProps {
+    return {
+      shape: this.shape,
+      center: [...this.center],
+      sphereMin: this.sphereMin,
+      sphereMax: this.sphereMax,
+      boxSize: [...this.boxSize],
+      boxSurfaceOnly: this.boxSurfaceOnly,
+      cylinderHeight: this.cylinderHeight,
+      cylinderRadius: this.cylinderRadius,
+      ringRadius: this.ringRadius,
+      ringThickness: this.ringThickness,
+      planeSize: [...this.planeSize],
+    };
+  }
+
+  override fromJSON (data: ProShapeLocationModuleProps): void {
+    if (data.shape === 'box' || data.shape === 'sphere' || data.shape === 'cylinder' || data.shape === 'ring' || data.shape === 'plane') {
+      this.shape = data.shape;
+    }
+    if (data.center && data.center.length === 3) {
+      this.center = [data.center[0], data.center[1], data.center[2]];
+    }
+    if (typeof data.sphereMin === 'number') { this.sphereMin = data.sphereMin; }
+    if (typeof data.sphereMax === 'number') { this.sphereMax = data.sphereMax; }
+    if (data.boxSize && data.boxSize.length === 3) {
+      this.boxSize = [data.boxSize[0], data.boxSize[1], data.boxSize[2]];
+    }
+    if (typeof data.boxSurfaceOnly === 'boolean') { this.boxSurfaceOnly = data.boxSurfaceOnly; }
+    if (typeof data.cylinderHeight === 'number') { this.cylinderHeight = data.cylinderHeight; }
+    if (typeof data.cylinderRadius === 'number') { this.cylinderRadius = data.cylinderRadius; }
+    if (typeof data.ringRadius === 'number') { this.ringRadius = data.ringRadius; }
+    if (typeof data.ringThickness === 'number') { this.ringThickness = data.ringThickness; }
+    if (data.planeSize && data.planeSize.length === 2) {
+      this.planeSize = [data.planeSize[0], data.planeSize[1]];
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;

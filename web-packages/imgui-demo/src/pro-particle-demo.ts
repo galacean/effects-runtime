@@ -198,8 +198,30 @@ function spawnConfiguredDemo (composition: Composition, config: DemoConfig): VFX
   const systemComponent = item.addComponent(ProParticleSystemComponent);
   const rendererComponent = item.addComponent(ProParticleSystemRendererComponent);
 
+  // 1) 用 imperative configure 在组件上构建出一份 "source of truth"
   config.configureModules(systemComponent);
   config.configureRenderer(rendererComponent, engine);
+
+  // 2) 走一次 toData→fromData，让运行态从 JSON 重建，验证序列化正确性
+  //    这样每次启动 demo 都经过序列化往返路径，任何 toJSON/fromJSON 的 bug
+  //    都会立刻表现为视觉差异。
+  const systemJson = systemComponent.toData();
+  const rendererJson = rendererComponent.toData();
+
+  systemComponent.fromData(systemJson);
+  rendererComponent.fromData(rendererJson);
+
+  // 3) 再做一次 toData 比对，确保 fromData 之后的状态可以再次稳定序列化
+  //    （roundtrip idempotent 检查；不一致就 console.warn）
+  const systemJson2 = systemComponent.toData();
+  const rendererJson2 = rendererComponent.toData();
+
+  if (JSON.stringify(systemJson) !== JSON.stringify(systemJson2)) {
+    console.warn(`[${config.name}] system roundtrip mismatch`, { a: systemJson, b: systemJson2 });
+  }
+  if (JSON.stringify(rendererJson) !== JSON.stringify(rendererJson2)) {
+    console.warn(`[${config.name}] renderer roundtrip mismatch`, { a: rendererJson, b: rendererJson2 });
+  }
 
   item.setParent(composition.pluginRoot);
 
@@ -713,7 +735,7 @@ function configureFountainRenderer (component: ProParticleSystemRendererComponen
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'fountain-flame', createProceduralFountainFlameCanvas, 'fountain flame');
+  applyGeneratedTexture(renderer, 'fountain-flame', createProceduralFountainFlameCanvas, 'fountain flame');
 }
 
 function configureSparkRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -725,7 +747,7 @@ function configureSparkRenderer (component: ProParticleSystemRendererComponent, 
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'spark-shards', createProceduralSparkShardCanvas, 'spark shards');
+  applyGeneratedTexture(renderer, 'spark-shards', createProceduralSparkShardCanvas, 'spark shards');
 }
 
 function configureOrbitSmokeRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -736,7 +758,7 @@ function configureOrbitSmokeRenderer (component: ProParticleSystemRendererCompon
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'orbit-smoke-body', createProceduralSmokeBodyCanvas, 'orbit smoke body');
+  applyGeneratedTexture(renderer, 'orbit-smoke-body', createProceduralSmokeBodyCanvas, 'orbit smoke body');
 }
 
 function configureShockRingRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -747,7 +769,7 @@ function configureShockRingRenderer (component: ProParticleSystemRendererCompone
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'shockwave-band', createProceduralShockBandCanvas, 'shockwave band');
+  applyGeneratedTexture(renderer, 'shockwave-band', createProceduralShockBandCanvas, 'shockwave band');
 }
 
 function configureNoiseFieldRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -758,7 +780,7 @@ function configureNoiseFieldRenderer (component: ProParticleSystemRendererCompon
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'noise-plasma-core', createProceduralPlasmaCoreCanvas, 'plasma core');
+  applyGeneratedTexture(renderer, 'noise-plasma-core', createProceduralPlasmaCoreCanvas, 'plasma core');
 }
 
 function configureAccelerationColumnRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -770,7 +792,7 @@ function configureAccelerationColumnRenderer (component: ProParticleSystemRender
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'acceleration-streak', createProceduralEnergyStreakCanvas, 'energy streak');
+  applyGeneratedTexture(renderer, 'acceleration-streak', createProceduralEnergyStreakCanvas, 'energy streak');
 }
 
 function configureFlipbookBurstRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -784,7 +806,7 @@ function configureFlipbookBurstRenderer (component: ProParticleSystemRendererCom
   const renderer = new ProSpriteRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'flipbook-fireball', createProceduralFireballFlipbookCanvas, 'fireball flipbook');
+  applyGeneratedTexture(renderer, 'flipbook-fireball', createProceduralFireballFlipbookCanvas, 'fireball flipbook');
 }
 
 function configureRibbonRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -794,28 +816,30 @@ function configureRibbonRenderer (component: ProParticleSystemRendererComponent,
   const renderer = new ProRibbonRenderer(engine, props);
 
   component.addRenderer(renderer);
-  void applyGeneratedTexture(renderer, 'energy-ribbon', createProceduralEnergyTrailCanvas, 'energy trail');
+  applyGeneratedTexture(renderer, 'energy-ribbon', createProceduralEnergyTrailCanvas, 'energy trail');
 }
 
 type ProceduralTextureTarget = ProSpriteRenderer | ProRibbonRenderer;
 
 const proceduralTextureDataUrls = new Map<string, string>();
 
-async function applyGeneratedTexture (
+/**
+ * 同步登记一张程序生成的 texture URL 到 properties.__debugUrl。
+ *
+ * 之前的版本会同步生成 URL + 异步加载 texture 调 setTexture，但 demo 现在走
+ * toData → fromData roundtrip：原始 renderer 被立刻 dispose，pending 的
+ * setTexture 会作用到已释放的 material 上。改为 URL-only 之后，由
+ * fromData → addSnapshot 统一触发异步加载（作用在新 renderer 上）。
+ */
+function applyGeneratedTexture (
   renderer: ProceduralTextureTarget,
   cacheKey: string,
   canvasFactory: () => HTMLCanvasElement,
-  label: string,
-): Promise<void> {
-  const { Texture } = await import('@galacean/effects');
+  _label: string,
+): void {
+  const url = getProceduralTextureUrl(cacheKey, canvasFactory);
 
-  try {
-    const texture = await Texture.fromImage(getProceduralTextureUrl(cacheKey, canvasFactory), renderer.material.engine);
-
-    renderer.setTexture(texture);
-  } catch (err) {
-    console.warn('[pro-particle-demo] failed to build procedural texture:', label, err);
-  }
+  (renderer.properties as unknown as Record<string, string>).__debugUrl = url;
 }
 
 function getProceduralTextureUrl (cacheKey: string, canvasFactory: () => HTMLCanvasElement): string {

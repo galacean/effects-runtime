@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProInitializeRotationModuleProps extends ProModuleProps {
+  rotation: ProDistributionFloatData,
+}
 
 /**
  * 给新生粒子写入随机初始旋转角度（弧度）。
@@ -17,6 +23,16 @@ export class ProInitializeRotationModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProInitializeRotationModuleProps {
+    return { rotation: this.rotation.toJSON() };
+  }
+
+  override fromJSON (data: ProInitializeRotationModuleProps): void {
+    if (data.rotation) {
+      this.rotation = ProDistributionFloat.fromJSON(data.rotation);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;

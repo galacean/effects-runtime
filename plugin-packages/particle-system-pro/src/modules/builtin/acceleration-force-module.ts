@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionVector3 } from '../../distribution/pro-distribution-vector3';
+import type { ProDistributionVector3Data } from '../../distribution/pro-distribution-vector3';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProAccelerationForceModuleProps extends ProModuleProps {
+  acceleration: ProDistributionVector3Data,
+}
 
 const tmpVel: [number, number, number] = [0, 0, 0];
 const tmpAccel: [number, number, number] = [0, 0, 0];
@@ -21,6 +27,16 @@ export class ProAccelerationForceModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProAccelerationForceModuleProps {
+    return { acceleration: this.acceleration.toJSON() };
+  }
+
+  override fromJSON (data: ProAccelerationForceModuleProps): void {
+    if (data.acceleration) {
+      this.acceleration = ProDistributionVector3.fromJSON(data.acceleration);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance, randomStream } = ctx;

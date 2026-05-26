@@ -1,4 +1,12 @@
 import { ProDistributionFloat } from './pro-distribution-float';
+import type { ProDistributionFloatData } from './pro-distribution-float';
+
+export interface ProDistributionVector3Data {
+  x: ProDistributionFloatData,
+  y: ProDistributionFloatData,
+  z: ProDistributionFloatData,
+  uniform: boolean,
+}
 
 /**
  * 三维向量 Distribution。每个轴独立或统一（uniform）采样。
@@ -35,7 +43,7 @@ export class ProDistributionVector3 {
     );
   }
 
-  toJSON () {
+  toJSON (): ProDistributionVector3Data {
     return {
       x: this.x.toJSON(),
       y: this.y.toJSON(),
@@ -44,7 +52,7 @@ export class ProDistributionVector3 {
     };
   }
 
-  static fromJSON (data: ReturnType<ProDistributionVector3['toJSON']>): ProDistributionVector3 {
+  static fromJSON (data: ProDistributionVector3Data): ProDistributionVector3 {
     return new ProDistributionVector3(
       ProDistributionFloat.fromJSON(data.x),
       ProDistributionFloat.fromJSON(data.y),

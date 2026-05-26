@@ -3,6 +3,13 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProSphereLocationModuleProps extends ProModuleProps {
+  radius: number,
+  onSurface: boolean,
+  center: [number, number, number],
+}
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 
@@ -24,6 +31,22 @@ export class ProSphereLocationModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProSphereLocationModuleProps {
+    return {
+      radius: this.radius,
+      onSurface: this.onSurface,
+      center: [...this.center],
+    };
+  }
+
+  override fromJSON (data: ProSphereLocationModuleProps): void {
+    if (typeof data.radius === 'number') { this.radius = data.radius; }
+    if (typeof data.onSurface === 'boolean') { this.onSurface = data.onSurface; }
+    if (data.center && data.center.length === 3) {
+      this.center = [data.center[0], data.center[1], data.center[2]];
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;

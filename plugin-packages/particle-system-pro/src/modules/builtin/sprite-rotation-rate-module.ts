@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProSpriteRotationRateModuleProps extends ProModuleProps {
+  rate: ProDistributionFloatData,
+}
 
 const GOLDEN_RATIO_FRAC = 0.6180339887498949;
 
@@ -23,6 +29,16 @@ export class ProSpriteRotationRateModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProSpriteRotationRateModuleProps {
+    return { rate: this.rate.toJSON() };
+  }
+
+  override fromJSON (data: ProSpriteRotationRateModuleProps): void {
+    if (data.rate) {
+      this.rate = ProDistributionFloat.fromJSON(data.rate);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;

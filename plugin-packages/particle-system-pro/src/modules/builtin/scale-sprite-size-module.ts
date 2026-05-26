@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProScaleSpriteSizeModuleProps extends ProModuleProps {
+  scale: ProDistributionFloatData,
+}
 
 const tmpInit: [number, number] = [0, 0];
 
@@ -27,6 +33,16 @@ export class ProScaleSpriteSizeModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProScaleSpriteSizeModuleProps {
+    return { scale: this.scale.toJSON() };
+  }
+
+  override fromJSON (data: ProScaleSpriteSizeModuleProps): void {
+    if (data.scale) {
+      this.scale = ProDistributionFloat.fromJSON(data.scale);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

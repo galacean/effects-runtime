@@ -3,6 +3,13 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProScaleSizeBySpeedModuleProps extends ProModuleProps {
+  referenceSpeed: number,
+  intensity: number,
+  maxFactor: number,
+}
 
 const tmpVel: [number, number, number] = [0, 0, 0];
 const tmpSize: [number, number] = [0, 0];
@@ -25,6 +32,20 @@ export class ProScaleSizeBySpeedModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProScaleSizeBySpeedModuleProps {
+    return {
+      referenceSpeed: this.referenceSpeed,
+      intensity: this.intensity,
+      maxFactor: this.maxFactor,
+    };
+  }
+
+  override fromJSON (data: ProScaleSizeBySpeedModuleProps): void {
+    if (typeof data.referenceSpeed === 'number') { this.referenceSpeed = data.referenceSpeed; }
+    if (typeof data.intensity === 'number') { this.intensity = data.intensity; }
+    if (typeof data.maxFactor === 'number') { this.maxFactor = data.maxFactor; }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

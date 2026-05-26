@@ -1,7 +1,13 @@
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProSpawnRateModuleProps extends ProModuleProps {
+  rate: ProDistributionFloatData,
+}
 
 /**
  * 按速率每秒生成粒子。
@@ -21,6 +27,16 @@ export class ProSpawnRateModule extends ProModule {
   rate: ProDistributionFloat = ProDistributionFloat.fromConstant(10);
 
   private accumulator = 0;
+
+  override toJSON (): ProSpawnRateModuleProps {
+    return { rate: this.rate.toJSON() };
+  }
+
+  override fromJSON (data: ProSpawnRateModuleProps): void {
+    if (data.rate) {
+      this.rate = ProDistributionFloat.fromJSON(data.rate);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const emitter = ctx.emitterInstance;

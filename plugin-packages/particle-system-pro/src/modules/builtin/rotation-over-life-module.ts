@@ -3,6 +3,11 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProRotationOverLifeModuleProps extends ProModuleProps {
+  angularVelocity: number,
+}
 
 /**
  * 每帧给粒子旋转推进 angularVelocity * dt 弧度。
@@ -14,6 +19,14 @@ export class ProRotationOverLifeModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProRotationOverLifeModuleProps {
+    return { angularVelocity: this.angularVelocity };
+  }
+
+  override fromJSON (data: ProRotationOverLifeModuleProps): void {
+    if (typeof data.angularVelocity === 'number') { this.angularVelocity = data.angularVelocity; }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;

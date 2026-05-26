@@ -20,6 +20,7 @@ export * from './modules/builtin';
 export * from './simulation/tick-context';
 export * from './simulation/emitter-instance';
 export * from './simulation/system-instance';
+export * from './simulation/module-serialization';
 export * from './curves';
 export * from './distribution';
 export * from './builtin';

@@ -2,7 +2,11 @@ import { Component } from '@galacean/effects';
 import { createStandardParticleLayout } from '../builtin/standard-variables';
 import type { ProModule } from '../modules/module';
 import { ProEmitterInstance } from '../simulation/emitter-instance';
+import {
+  deserializeProModule, serializeProModule,
+} from '../simulation/module-serialization';
 import { ProSystemInstance } from '../simulation/system-instance';
+import type { ProParticleSystemComponentData } from '../types/component-data';
 
 /**
  * 挂在 VFXItem 上的粒子系统逻辑组件。
@@ -70,5 +74,60 @@ export class ProParticleSystemComponent extends Component {
   override onDestroy (): void {
     this.systemInstance.dispose();
     this.defaultEmitter = null;
+  }
+
+  /**
+   * 把当前系统状态序列化为 JSON。仅写出可恢复的配置（modules + 关键属性），
+   * 不包含运行时缓冲（粒子实例、IdTable、参数 store 等）。
+   */
+  override toData (): ProParticleSystemComponentData {
+    const data: ProParticleSystemComponentData = { emitters: [] };
+
+    for (const emitter of this.systemInstance.emitters) {
+      const modules: NonNullable<ProParticleSystemComponentData['emitters']>[number]['modules'] = [];
+
+      for (const module of emitter.modules) {
+        const moduleData = serializeProModule(module);
+
+        if (moduleData) {
+          modules.push(moduleData);
+        }
+      }
+      data.emitters!.push({ modules });
+    }
+
+    return data;
+  }
+
+  /**
+   * 从 JSON 恢复系统状态：清空现有 emitters，按 data 重建并填入 modules。
+   * 反序列化失败的 module（typeId 未注册）被跳过并 warn。
+   */
+  override fromData (data: ProParticleSystemComponentData): void {
+    super.fromData(data as Parameters<Component['fromData']>[0]);
+    if (!data.emitters) {
+      return;
+    }
+
+    // 清空现有 emitters；保持引用稳定性的代价：粒子状态会丢失
+    const existing = [...this.systemInstance.emitters];
+
+    for (const e of existing) {
+      this.systemInstance.removeEmitter(e);
+    }
+    this.defaultEmitter = null;
+
+    for (const emitterData of data.emitters) {
+      const emitter = this.addEmitter();
+
+      for (const moduleData of emitterData.modules) {
+        const module = deserializeProModule(moduleData);
+
+        if (module) {
+          emitter.addModule(module);
+        }
+      }
+    }
+    this.defaultEmitter = this.systemInstance.emitters[0] ?? null;
   }
 }

@@ -1,4 +1,12 @@
 import { ProDistributionFloat } from './pro-distribution-float';
+import type { ProDistributionFloatData } from './pro-distribution-float';
+
+export interface ProDistributionColorData {
+  r: ProDistributionFloatData,
+  g: ProDistributionFloatData,
+  b: ProDistributionFloatData,
+  a: ProDistributionFloatData,
+}
 
 /**
  * 四通道颜色 Distribution (RGBA)。每通道独立采样。
@@ -37,7 +45,7 @@ export class ProDistributionColor {
     );
   }
 
-  toJSON () {
+  toJSON (): ProDistributionColorData {
     return {
       r: this.r.toJSON(),
       g: this.g.toJSON(),
@@ -46,7 +54,7 @@ export class ProDistributionColor {
     };
   }
 
-  static fromJSON (data: ReturnType<ProDistributionColor['toJSON']>): ProDistributionColor {
+  static fromJSON (data: ProDistributionColorData): ProDistributionColor {
     return new ProDistributionColor(
       ProDistributionFloat.fromJSON(data.r),
       ProDistributionFloat.fromJSON(data.g),

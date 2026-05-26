@@ -3,6 +3,12 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProCurlNoiseForceModuleProps extends ProModuleProps {
+  amplitude: number,
+  frequency: number,
+}
 
 const tmpVel: [number, number, number] = [0, 0, 0];
 const tmpPos: [number, number, number] = [0, 0, 0];
@@ -22,6 +28,18 @@ export class ProCurlNoiseForceModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProCurlNoiseForceModuleProps {
+    return {
+      amplitude: this.amplitude,
+      frequency: this.frequency,
+    };
+  }
+
+  override fromJSON (data: ProCurlNoiseForceModuleProps): void {
+    if (typeof data.amplitude === 'number') { this.amplitude = data.amplitude; }
+    if (typeof data.frequency === 'number') { this.frequency = data.frequency; }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;

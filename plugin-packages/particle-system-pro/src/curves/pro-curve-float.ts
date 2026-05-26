@@ -1,5 +1,9 @@
 import type { ProKeyframe, ProInterpMode } from './pro-keyframe';
 
+export interface ProCurveFloatData {
+  keyframes: ProKeyframe[],
+}
+
 /**
  * 轻量浮点曲线，支持三种模式：
  * - 常量（1 关键帧）
@@ -35,11 +39,11 @@ export class ProCurveFloat {
     return new ProCurveFloat([...keyframes].sort((a, b) => a.time - b.time));
   }
 
-  toJSON (): { keyframes: ProKeyframe[] } {
+  toJSON (): ProCurveFloatData {
     return { keyframes: this.keyframes.map(k => ({ ...k })) };
   }
 
-  static fromJSON (data: { keyframes: ProKeyframe[] }): ProCurveFloat {
+  static fromJSON (data: ProCurveFloatData): ProCurveFloat {
     return ProCurveFloat.fromKeyframes(data.keyframes ?? []);
   }
 

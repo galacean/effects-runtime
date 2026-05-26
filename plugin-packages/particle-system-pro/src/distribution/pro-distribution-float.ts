@@ -1,6 +1,15 @@
 import { ProCurveFloat } from '../curves/pro-curve-float';
+import type { ProCurveFloatData } from '../curves/pro-curve-float';
 
 export type ProDistributionMode = 'constant' | 'range' | 'curve';
+
+export interface ProDistributionFloatData {
+  mode: ProDistributionMode,
+  constant?: number,
+  min?: number,
+  max?: number,
+  curve?: ProCurveFloatData,
+}
 
 /**
  * 统一参数输入：支持 Constant / Range(min,max) / Curve 三种模式。
@@ -37,22 +46,18 @@ export class ProDistributionFloat {
     return new ProDistributionFloat('curve', 0, 0, 1, curve);
   }
 
-  toJSON () {
-    const base: { mode: ProDistributionMode, constant?: number, min?: number, max?: number, curve?: ReturnType<ProCurveFloat['toJSON']> } = { mode: this.mode };
-
+  toJSON (): ProDistributionFloatData {
     if (this.mode === 'constant') {
-      base.constant = this.constant;
-    } else if (this.mode === 'range') {
-      base.min = this.min;
-      base.max = this.max;
-    } else {
-      base.curve = this.curve.toJSON();
+      return { mode: 'constant', constant: this.constant };
+    }
+    if (this.mode === 'range') {
+      return { mode: 'range', min: this.min, max: this.max };
     }
 
-    return base;
+    return { mode: 'curve', curve: this.curve.toJSON() };
   }
 
-  static fromJSON (data: ReturnType<ProDistributionFloat['toJSON']>): ProDistributionFloat {
+  static fromJSON (data: ProDistributionFloatData): ProDistributionFloat {
     switch (data.mode) {
       case 'constant': return ProDistributionFloat.fromConstant(data.constant ?? 0);
       case 'range': return ProDistributionFloat.fromRange(data.min ?? 0, data.max ?? 0);

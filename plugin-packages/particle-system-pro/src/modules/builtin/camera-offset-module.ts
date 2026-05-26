@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProCameraOffsetModuleProps extends ProModuleProps {
+  offset: ProDistributionFloatData,
+}
 
 /**
  * 写入 Particle.CameraOffset，渲染时让 Sprite 沿视线方向偏移。
@@ -23,6 +29,16 @@ export class ProCameraOffsetModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProCameraOffsetModuleProps {
+    return { offset: this.offset.toJSON() };
+  }
+
+  override fromJSON (data: ProCameraOffsetModuleProps): void {
+    if (data.offset) {
+      this.offset = ProDistributionFloat.fromJSON(data.offset);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;

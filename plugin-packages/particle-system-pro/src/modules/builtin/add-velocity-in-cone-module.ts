@@ -1,15 +1,28 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import { ProDistributionVector3 } from '../../distribution/pro-distribution-vector3';
+import type { ProDistributionVector3Data } from '../../distribution/pro-distribution-vector3';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 const tmpVel: [number, number, number] = [0, 0, 0];
 
 export type ProVelocityType = 'linear' | 'inCone' | 'fromPoint';
+
+export interface ProAddVelocityInConeModuleProps extends ProModuleProps {
+  velocityType: ProVelocityType,
+  linearVelocity: ProDistributionVector3Data,
+  speed: ProDistributionFloatData,
+  coneAxis: [number, number, number],
+  coneAngle: number,
+  pointSpeed: ProDistributionFloatData,
+  pointOrigin: [number, number, number],
+}
 
 /**
  * 统一速度初始化模块，支持三种模式（对齐 Niagara AddVelocity）：
@@ -36,6 +49,40 @@ export class ProAddVelocityInConeModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProAddVelocityInConeModuleProps {
+    return {
+      velocityType: this.velocityType,
+      linearVelocity: this.linearVelocity.toJSON(),
+      speed: this.speed.toJSON(),
+      coneAxis: [...this.coneAxis],
+      coneAngle: this.coneAngle,
+      pointSpeed: this.pointSpeed.toJSON(),
+      pointOrigin: [...this.pointOrigin],
+    };
+  }
+
+  override fromJSON (data: ProAddVelocityInConeModuleProps): void {
+    if (data.velocityType === 'linear' || data.velocityType === 'inCone' || data.velocityType === 'fromPoint') {
+      this.velocityType = data.velocityType;
+    }
+    if (data.linearVelocity) {
+      this.linearVelocity = ProDistributionVector3.fromJSON(data.linearVelocity);
+    }
+    if (data.speed) {
+      this.speed = ProDistributionFloat.fromJSON(data.speed);
+    }
+    if (data.coneAxis && data.coneAxis.length === 3) {
+      this.coneAxis = [data.coneAxis[0], data.coneAxis[1], data.coneAxis[2]];
+    }
+    if (typeof data.coneAngle === 'number') { this.coneAngle = data.coneAngle; }
+    if (data.pointSpeed) {
+      this.pointSpeed = ProDistributionFloat.fromJSON(data.pointSpeed);
+    }
+    if (data.pointOrigin && data.pointOrigin.length === 3) {
+      this.pointOrigin = [data.pointOrigin[0], data.pointOrigin[1], data.pointOrigin[2]];
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer } = ctx;

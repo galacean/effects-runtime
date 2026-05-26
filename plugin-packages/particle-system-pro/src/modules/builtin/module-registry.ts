@@ -74,3 +74,31 @@ export const proModuleRegistry: ProModuleDescriptor[] = [
 export function getProModuleDescriptorsByStage (stage: ProModuleStage): ProModuleDescriptor[] {
   return proModuleRegistry.filter(d => d.stage === stage);
 }
+
+let constructorToIdCache: Map<Function, string> | null = null;
+
+/**
+ * 根据 module 实例反查它的 registry id（typeId）。序列化时用。
+ *
+ * 通过一次性构造一个临时实例拿到 constructor 引用建立映射；
+ * 用户自定义的 module（未注册）返回 null。
+ */
+export function getProModuleTypeId (module: ProModule): string | null {
+  if (!constructorToIdCache) {
+    constructorToIdCache = new Map();
+    for (const desc of proModuleRegistry) {
+      const sample = desc.create();
+
+      constructorToIdCache.set(sample.constructor, desc.id);
+    }
+  }
+
+  return constructorToIdCache.get(module.constructor) ?? null;
+}
+
+/**
+ * 根据 typeId 查找 descriptor。反序列化时用。
+ */
+export function findProModuleDescriptor (typeId: string): ProModuleDescriptor | undefined {
+  return proModuleRegistry.find(d => d.id === typeId);
+}

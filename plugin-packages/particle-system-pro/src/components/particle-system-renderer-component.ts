@@ -1,8 +1,16 @@
-import { RendererComponent, math } from '@galacean/effects';
+import { RendererComponent, Texture, math } from '@galacean/effects';
 import type { Renderer } from '@galacean/effects';
 import type { ProRenderer } from '../renderers/renderer';
 import { ProRibbonRenderer } from '../renderers/ribbon-renderer';
+import { ProRibbonRendererProperties } from '../renderers/ribbon-renderer-properties';
 import { ProSpriteRenderer } from '../renderers/sprite-renderer';
+import { ProSpriteRendererProperties } from '../renderers/sprite-renderer-properties';
+import type {
+  ProParticleSystemRendererComponentData,
+  ProRendererSnapshot,
+  ProRibbonRendererPropertiesData,
+  ProSpriteRendererPropertiesData,
+} from '../types/component-data';
 import { ProParticleSystemComponent } from './particle-system-component';
 
 const IDENTITY_MATRIX = new math.Matrix4().identity();
@@ -86,4 +94,127 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
       }
     }
   }
+
+  /**
+   * 序列化所有 renderer 的可配置项；texture 仅记录 URL（GPU 资源不可 JSON）。
+   */
+  override toData (): ProParticleSystemRendererComponentData {
+    const data: ProParticleSystemRendererComponentData = { renderers: [] };
+
+    for (const r of this.renderers) {
+      if (r instanceof ProSpriteRenderer) {
+        const p = r.properties;
+        const snap: ProSpriteRendererPropertiesData = {
+          blending: p.blending,
+          facingMode: p.facingMode,
+          sortMode: p.sortMode,
+          subUVRows: p.subUVRows,
+          subUVCols: p.subUVCols,
+          subUVTotal: p.subUVTotal,
+        };
+        const url = getDebugTextureUrl(p);
+
+        if (url) {
+          snap.textureUrl = url;
+        }
+        data.renderers!.push({ type: 'sprite', properties: snap });
+      } else if (r instanceof ProRibbonRenderer) {
+        const p = r.properties;
+        const snap: ProRibbonRendererPropertiesData = {
+          blending: p.blending,
+          widthScale: p.widthScale,
+          textureMode: p.textureMode,
+          tileLength: p.tileLength,
+          facingMode: p.facingMode,
+        };
+        const url = getDebugTextureUrl(p);
+
+        if (url) {
+          snap.textureUrl = url;
+        }
+        data.renderers!.push({ type: 'ribbon', properties: snap });
+      }
+    }
+
+    return data;
+  }
+
+  /**
+   * 清空现有 renderers，按 data 重建。texture URL 异步加载，不阻塞 fromData 返回。
+   */
+  override fromData (data: ProParticleSystemRendererComponentData): void {
+    super.fromData(data as Parameters<RendererComponent['fromData']>[0]);
+    if (!data.renderers) {
+      return;
+    }
+
+    while (this.renderers.length > 0) {
+      const r = this.renderers[0];
+
+      this.removeRenderer(0);
+      r.release();
+    }
+
+    for (const snap of data.renderers) {
+      this.addSnapshot(snap);
+    }
+  }
+
+  private addSnapshot (snap: ProRendererSnapshot): void {
+    const engine = this.item.engine;
+
+    if (snap.type === 'sprite') {
+      const sp = snap.properties as ProSpriteRendererPropertiesData;
+      const props = new ProSpriteRendererProperties();
+
+      if (sp.blending !== undefined) { props.blending = sp.blending; }
+      if (sp.facingMode !== undefined) { props.facingMode = sp.facingMode; }
+      if (sp.sortMode !== undefined) { props.sortMode = sp.sortMode; }
+      if (sp.subUVRows !== undefined) { props.subUVRows = sp.subUVRows; }
+      if (sp.subUVCols !== undefined) { props.subUVCols = sp.subUVCols; }
+      if (sp.subUVTotal !== undefined) { props.subUVTotal = sp.subUVTotal; }
+      if (sp.textureUrl) {
+        setDebugTextureUrl(props, sp.textureUrl);
+      }
+      const renderer = new ProSpriteRenderer(engine, props);
+
+      this.addRenderer(renderer);
+      if (sp.textureUrl) {
+        void Texture.fromImage(sp.textureUrl, engine).then(t => renderer.setTexture(t)).catch(err => {
+          console.warn('[ProParticleSystemRendererComponent] failed to load sprite texture', sp.textureUrl, err);
+        });
+      }
+    } else if (snap.type === 'ribbon') {
+      const rp = snap.properties as ProRibbonRendererPropertiesData;
+      const props = new ProRibbonRendererProperties();
+
+      if (rp.blending !== undefined) { props.blending = rp.blending; }
+      if (rp.widthScale !== undefined) { props.widthScale = rp.widthScale; }
+      // ribbon textureMode / facingMode 是 enum，值与字符串字面量一致，cast 安全
+      if (rp.textureMode !== undefined) { props.textureMode = rp.textureMode as typeof props.textureMode; }
+      if (rp.tileLength !== undefined) { props.tileLength = rp.tileLength; }
+      if (rp.facingMode !== undefined) { props.facingMode = rp.facingMode as typeof props.facingMode; }
+      if (rp.textureUrl) {
+        setDebugTextureUrl(props, rp.textureUrl);
+      }
+      const renderer = new ProRibbonRenderer(engine, props);
+
+      this.addRenderer(renderer);
+      if (rp.textureUrl) {
+        void Texture.fromImage(rp.textureUrl, engine).then(t => renderer.setTexture(t)).catch(err => {
+          console.warn('[ProParticleSystemRendererComponent] failed to load ribbon texture', rp.textureUrl, err);
+        });
+      }
+    }
+  }
+}
+
+// 与 imgui-demo 中 getDebugTextureUrl / setDebugTextureUrl 保持同样的 __debugUrl 约定：
+// renderer properties 上挂一个 __debugUrl 字段记录加载用的 URL，纯调试/序列化用。
+function getDebugTextureUrl (p: object): string | undefined {
+  return (p as Record<string, string | undefined>).__debugUrl;
+}
+
+function setDebugTextureUrl (p: object, url: string): void {
+  (p as Record<string, string>).__debugUrl = url;
 }

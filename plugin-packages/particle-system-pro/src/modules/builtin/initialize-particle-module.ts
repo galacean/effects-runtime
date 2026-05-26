@@ -1,10 +1,22 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionColor } from '../../distribution/pro-distribution-color';
+import type { ProDistributionColorData } from '../../distribution/pro-distribution-color';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import { ProDistributionVector2 } from '../../distribution/pro-distribution-vector2';
+import type { ProDistributionVector2Data } from '../../distribution/pro-distribution-vector2';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProInitializeParticleModuleProps extends ProModuleProps {
+  lifetime: ProDistributionFloatData,
+  startColor: ProDistributionColorData,
+  startSize: ProDistributionVector2Data,
+  mass: ProDistributionFloatData,
+  positionOrigin: [number, number, number],
+}
 
 const tmpColor: [number, number, number, number] = [0, 0, 0, 0];
 const tmpSize: [number, number] = [0, 0];
@@ -25,6 +37,34 @@ export class ProInitializeParticleModule extends ProModule {
   startSize: ProDistributionVector2 = ProDistributionVector2.fromUniformConstant(0.1);
   mass: ProDistributionFloat = ProDistributionFloat.fromConstant(1);
   positionOrigin: [number, number, number] = [0, 0, 0];
+
+  override toJSON (): ProInitializeParticleModuleProps {
+    return {
+      lifetime: this.lifetime.toJSON(),
+      startColor: this.startColor.toJSON(),
+      startSize: this.startSize.toJSON(),
+      mass: this.mass.toJSON(),
+      positionOrigin: [...this.positionOrigin],
+    };
+  }
+
+  override fromJSON (data: ProInitializeParticleModuleProps): void {
+    if (data.lifetime) {
+      this.lifetime = ProDistributionFloat.fromJSON(data.lifetime);
+    }
+    if (data.startColor) {
+      this.startColor = ProDistributionColor.fromJSON(data.startColor);
+    }
+    if (data.startSize) {
+      this.startSize = ProDistributionVector2.fromJSON(data.startSize);
+    }
+    if (data.mass) {
+      this.mass = ProDistributionFloat.fromJSON(data.mass);
+    }
+    if (data.positionOrigin && data.positionOrigin.length === 3) {
+      this.positionOrigin = [data.positionOrigin[0], data.positionOrigin[1], data.positionOrigin[2]];
+    }
+  }
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: unknown = null;

@@ -62,7 +62,7 @@
 
 ### 系统功能
 
-- [ ] **序列化 / 反序列化** — 把粒子系统配置保存为 JSON 并从 JSON 恢复（ProParticleSystemLoader 目前是空壳）
+- [x] **序列化 / 反序列化** — 通过组件 toData/fromData：Distribution/Curve 加 toJSON/fromJSON；新建 module-serialization helpers + ProModuleData typeId 反查；ProParticleSystem(Renderer)Component.toData/fromData；texture 用 URL 序列化反序列化时异步重载；verifyRoundtripModules() smoke 测试 (2026-05-26)
 - [ ] **事件系统** — 粒子死亡/碰撞等事件触发回调或 spawn 新粒子
 - [ ] **World Transform 接入** — Transform 移动时粒子 inherit velocity；Local Space 粒子跟随物体
 - [ ] **Bounds 计算** — 包围盒估算，用于视锥裁剪
@@ -91,6 +91,7 @@
 
 ## 已完成
 
+- [x] **P3 序列化：toData/fromData + Distribution/Curve toJSON/fromJSON + module-serialization helpers + Texture URL 序列化** (2026-05-26)
 - [x] **P2 物理：Mass + PreviousPosition buffer 字段 + InitializeParticle 初始化；Drag 改 Stokes 衰减；CalculateAccurateVelocity 模块；ProDistributionVector2 + InitializeParticle.startSize X/Y 独立** (2026-05-25)
 - [x] **P1 渲染 + Spawn 增强：CameraOffset + Sprite 深度排序 + SpawnRate Distribution + SpawnBurst 多次触发** (2026-05-25)
 - [x] **P1 模块补全：ScaleColor + ScaleSpriteSize（CalculateAccurateVelocity 因依赖 PreviousPosition 延后）** (2026-05-25)

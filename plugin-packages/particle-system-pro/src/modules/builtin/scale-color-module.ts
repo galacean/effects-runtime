@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionColor } from '../../distribution/pro-distribution-color';
+import type { ProDistributionColorData } from '../../distribution/pro-distribution-color';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProScaleColorModuleProps extends ProModuleProps {
+  scale: ProDistributionColorData,
+}
 
 const tmpInit: [number, number, number, number] = [0, 0, 0, 0];
 const tmpScale: [number, number, number, number] = [0, 0, 0, 0];
@@ -27,6 +33,16 @@ export class ProScaleColorModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProScaleColorModuleProps {
+    return { scale: this.scale.toJSON() };
+  }
+
+  override fromJSON (data: ProScaleColorModuleProps): void {
+    if (data.scale) {
+      this.scale = ProDistributionColor.fromJSON(data.scale);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

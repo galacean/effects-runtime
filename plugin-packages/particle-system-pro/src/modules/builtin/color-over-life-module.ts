@@ -1,9 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProCurveColor } from '../../curves/pro-curve-color';
+import type { ProCurveColorData } from '../../curves/pro-curve-color';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProColorOverLifeModuleProps extends ProModuleProps {
+  colorCurve: ProCurveColorData,
+}
 
 const tmpColor: [number, number, number, number] = [0, 0, 0, 0];
 const tmpCurveOut: [number, number, number, number] = [0, 0, 0, 0];
@@ -21,6 +27,16 @@ export class ProColorOverLifeModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProColorOverLifeModuleProps {
+    return { colorCurve: this.colorCurve.toJSON() };
+  }
+
+  override fromJSON (data: ProColorOverLifeModuleProps): void {
+    if (data.colorCurve) {
+      this.colorCurve = ProCurveColor.fromJSON(data.colorCurve);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

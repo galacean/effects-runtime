@@ -2,8 +2,21 @@ import type { ProSimulationSpace } from '../../simulation/emitter-instance';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
 
 export type ProEmitterLoopBehavior = 'infinite' | 'once' | 'multiple';
+
+export interface ProEmitterPropertiesModuleProps extends ProModuleProps {
+  duration: number,
+  loopBehavior: ProEmitterLoopBehavior,
+  loopCount: number,
+  loopDelay: number,
+  maxParticleCount: number,
+  simulationSpace: ProSimulationSpace,
+  warmupTime: number,
+  warmupTickDelta: number,
+  randomSeed: number,
+}
 
 /**
  * Emitter 属性模块。EmitterSpawn 阶段执行一次，把 duration / loop /
@@ -46,5 +59,35 @@ export class ProEmitterPropertiesModule extends ProModule {
     emitter.warmupTime = Math.max(0, this.warmupTime);
     emitter.warmupTickDelta = Math.max(1 / 240, this.warmupTickDelta);
     emitter.applyRandomSeed(this.randomSeed | 0);
+  }
+
+  override toJSON (): ProEmitterPropertiesModuleProps {
+    return {
+      duration: this.duration,
+      loopBehavior: this.loopBehavior,
+      loopCount: this.loopCount,
+      loopDelay: this.loopDelay,
+      maxParticleCount: this.maxParticleCount,
+      simulationSpace: this.simulationSpace,
+      warmupTime: this.warmupTime,
+      warmupTickDelta: this.warmupTickDelta,
+      randomSeed: this.randomSeed,
+    };
+  }
+
+  override fromJSON (data: ProEmitterPropertiesModuleProps): void {
+    if (typeof data.duration === 'number') { this.duration = data.duration; }
+    if (data.loopBehavior === 'infinite' || data.loopBehavior === 'once' || data.loopBehavior === 'multiple') {
+      this.loopBehavior = data.loopBehavior;
+    }
+    if (typeof data.loopCount === 'number') { this.loopCount = data.loopCount; }
+    if (typeof data.loopDelay === 'number') { this.loopDelay = data.loopDelay; }
+    if (typeof data.maxParticleCount === 'number') { this.maxParticleCount = data.maxParticleCount; }
+    if (data.simulationSpace === 'local' || data.simulationSpace === 'world') {
+      this.simulationSpace = data.simulationSpace;
+    }
+    if (typeof data.warmupTime === 'number') { this.warmupTime = data.warmupTime; }
+    if (typeof data.warmupTickDelta === 'number') { this.warmupTickDelta = data.warmupTickDelta; }
+    if (typeof data.randomSeed === 'number') { this.randomSeed = data.randomSeed; }
   }
 }

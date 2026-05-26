@@ -1,9 +1,16 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProCurveFloat } from '../../curves/pro-curve-float';
+import type { ProCurveFloatData } from '../../curves/pro-curve-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProSizeOverLifeModuleProps extends ProModuleProps {
+  sizeCurveX: ProCurveFloatData,
+  sizeCurveY: ProCurveFloatData,
+}
 
 const tmpSize: [number, number] = [0, 0];
 
@@ -21,6 +28,22 @@ export class ProSizeOverLifeModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProSizeOverLifeModuleProps {
+    return {
+      sizeCurveX: this.sizeCurveX.toJSON(),
+      sizeCurveY: this.sizeCurveY.toJSON(),
+    };
+  }
+
+  override fromJSON (data: ProSizeOverLifeModuleProps): void {
+    if (data.sizeCurveX) {
+      this.sizeCurveX = ProCurveFloat.fromJSON(data.sizeCurveX);
+    }
+    if (data.sizeCurveY) {
+      this.sizeCurveY = ProCurveFloat.fromJSON(data.sizeCurveY);
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance } = ctx;

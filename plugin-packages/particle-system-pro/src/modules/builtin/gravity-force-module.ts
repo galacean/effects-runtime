@@ -3,6 +3,11 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProModuleProps } from '../module';
+
+export interface ProGravityForceModuleProps extends ProModuleProps {
+  gravity: [number, number, number],
+}
 
 const tmpVel: [number, number, number] = [0, 0, 0];
 
@@ -19,6 +24,16 @@ export class ProGravityForceModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override toJSON (): ProGravityForceModuleProps {
+    return { gravity: [...this.gravity] };
+  }
+
+  override fromJSON (data: ProGravityForceModuleProps): void {
+    if (data.gravity && data.gravity.length === 3) {
+      this.gravity = [data.gravity[0], data.gravity[1], data.gravity[2]];
+    }
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;
