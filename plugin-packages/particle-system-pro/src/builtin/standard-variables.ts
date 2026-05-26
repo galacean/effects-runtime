@@ -17,9 +17,48 @@ export const ProStandardVariableNames = {
   InitialColor: 'Particle.InitialColor',
   InitialSize: 'Particle.InitialSize',
   RibbonID: 'Particle.RibbonID',
+  // 全局唯一持久 ID。InitializeParticle 通过 emitter.idTable.acquire() 写入
+  // acquireTag（单调递增、永不复用）。trail emitter 的 SampleParticles 模块
+  // 把 source 粒子的 UniqueID 直接当作 trail 粒子的 RibbonID，从而让"每条
+  // source 轨迹"自动成为一条独立 ribbon
+  UniqueID: 'Particle.UniqueID',
   CameraOffset: 'Particle.CameraOffset',
   Mass: 'Particle.Mass',
   PreviousPosition: 'Particle.PreviousPosition',
+  // 全局单调递增的 spawn 顺序标识；Ribbon Renderer 用它做主排序键，
+  // 比 Age 更稳定：burst 同帧粒子也能拿到 distinct 值，
+  // 可变 lifetime 下也不会因为老粒子已死而错位
+  RibbonLinkOrder: 'Particle.RibbonLinkOrder',
+  // 每粒子 ribbon 宽度（世界单位）。Ribbon Renderer 优先用这个值；
+  // 等于 0 时回退到 Size.x * widthScale 走老路径（向后兼容）。
+  // 由 ProRibbonWidthModule (spawn) 写初值、ProRibbonWidthScaleModule
+  // (update) 做 over-life 缩放
+  RibbonWidth: 'Particle.RibbonWidth',
+  // RibbonWidth 的 spawn 时初值快照，用于 ProRibbonWidthScaleModule
+  // 每帧 `RibbonWidth = InitialRibbonWidth * scale_at_age`，避免在
+  // 当前值上反复乘 scale 引起的指数复合
+  InitialRibbonWidth: 'Particle.InitialRibbonWidth',
+  // 沿 ribbon 走过的累计距离（世界单位）。Spawn 模块写入，渲染时
+  // TiledFromStart 模式直接用 `v = RibbonUVDistance / tileLength`，
+  // 避免每帧在 renderer 里再扫一遍 sorted 序列算弧长。
+  // 对应 UE Niagara `RibbonUVDistance`
+  RibbonUVDistance: 'Particle.RibbonUVDistance',
+  // 粒子位置在所有 ParticleSpawn 模块跑完之后的快照。RotateAroundPoint 用它
+  // 当"轨道基准位置"避免每帧增量累加造成螺旋外飞；未来 Mesh / Trail 等模块
+  // 也可以读它做"相对 spawn 时的偏移"。emitter-instance.tickInner 在 spawn
+  // 阶段末尾自动 capture（粒子用户无需写专门 module）
+  InitialPosition: 'Particle.InitialPosition',
+  // per-particle 随机种子 [0,1)。InitializeParticle 在 spawn 时一次性写入，
+  // 之后所有"需要 per-particle 稳定随机"的 update 模块（ScaleColor /
+  // ScaleSpriteSize / SpriteRotationRate / RotateAroundPoint）改用这个值
+  // 而非 slot index hash，避免 slot 复用导致同 slot 不同粒子拿相同 rand、
+  // 第一个粒子永远 pRand=0、reseed 失效、多属性相关性等问题。
+  // 对应 UE Stateless 的 Particle.RandomSeed（每属性用 salt 再 hash 一次）
+  RandomSeed: 'Particle.RandomSeed',
+  // CurlNoise 等需要 per-particle 空间噪声偏移的模块用。spawn 时由
+  // hash(uniqueId) 写入，让同一帧的不同粒子在噪声场不同采样点上。
+  // 对应 UE `Particle.NoiseOffset`
+  NoiseOffset: 'Particle.NoiseOffset',
 } as const;
 
 /**
@@ -43,9 +82,17 @@ export function createStandardParticleVariables (): ProVariable[] {
     createProVariable(ProStandardVariableNames.InitialColor, ProVariableTypes.Color),
     createProVariable(ProStandardVariableNames.InitialSize, ProVariableTypes.Vec2),
     createProVariable(ProStandardVariableNames.RibbonID, ProVariableTypes.Int32),
+    createProVariable(ProStandardVariableNames.UniqueID, ProVariableTypes.Int32),
     createProVariable(ProStandardVariableNames.CameraOffset, ProVariableTypes.Float),
     createProVariable(ProStandardVariableNames.Mass, ProVariableTypes.Float),
     createProVariable(ProStandardVariableNames.PreviousPosition, ProVariableTypes.Vec3),
+    createProVariable(ProStandardVariableNames.RibbonLinkOrder, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.RibbonWidth, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.InitialRibbonWidth, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.RibbonUVDistance, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.InitialPosition, ProVariableTypes.Vec3),
+    createProVariable(ProStandardVariableNames.RandomSeed, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.NoiseOffset, ProVariableTypes.Vec3),
   ];
 }
 

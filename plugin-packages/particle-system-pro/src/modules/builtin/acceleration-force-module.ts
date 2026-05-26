@@ -39,7 +39,7 @@ export class ProAccelerationForceModule extends ProModule {
   }
 
   override execute (ctx: ProModuleContext): void {
-    const { dataBuffer, deltaTime, firstInstance, lastInstance, randomStream } = ctx;
+    const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;
 
     if (!dataBuffer) {
       return;
@@ -58,7 +58,9 @@ export class ProAccelerationForceModule extends ProModule {
     for (let i = firstInstance; i < lastInstance; i++) {
       const lifetime = a.lifetime.get(dataBuffer, i);
       const t = lifetime > 0 ? Math.min(a.age.get(dataBuffer, i) / lifetime, 1) : 1;
-      const rand = randomStream.nextFloat();
+      // 用 Particle.RandomSeed 做 per-particle stable random — 旧实现每帧 nextFloat
+      // 会让 Range 模式下 acceleration 每帧抖动；UE 对力场固定到 spawn 时一次性采样
+      const rand = a.randomSeed.get(dataBuffer, i);
 
       this.acceleration.sampleAtTime(rand, t, tmpAccel);
       a.velocity.get(dataBuffer, i, tmpVel);

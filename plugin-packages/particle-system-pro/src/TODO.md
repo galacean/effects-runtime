@@ -75,13 +75,48 @@
 - [ ] **DynamicMaterialParameters** — 自定义 float4 传入 shader
 - [ ] **SubUV Frame Blending** — 帧间插值过渡（当前是 floor 跳帧）
 - [ ] **Sprite SizeBySpeed 非等比拉伸** — 沿速度方向拉伸 X，垂直方向压缩 Y
-- [ ] **RibbonLinkOrder / 稳定连接顺序** — 增加独立的 `Particle.RibbonLinkOrder`，避免当前按 Age 排序在 burst / 可变 lifetime 下产生不稳定连接
-- [ ] **RibbonDistanceFromStart / RibbonProgress** — 为每个 ribbon 点生成沿带距离或 0..1 进度，供 UV、颜色、宽度等效果复用，而不是复用粒子 `normalizedAge`
-- [ ] **Ribbon Over Trail Controls** — 支持按 `RibbonProgress` 驱动 Color / Width / Twist，使拖尾渐变与粒子 lifetime 解耦
+
+#### Ribbon Renderer — 与 UE Niagara 差距
+
+参考：`Engine/Plugins/FX/Niagara/Source/Niagara/Public/NiagaraRibbonRendererProperties.h`、`NiagaraRendererRibbons.cpp`、`Content/Modules/Ribbons/*`
+
+**P1 — 每粒子独立 Trail（multi-ribbon，跨 emitter sample）**
+
+当前所有粒子共享一个 RibbonID 拼成一条 ribbon；目标：每个"源"粒子各自生成一条独立 trail，完全对齐 UE Niagara 实现。
+
+- [x] **Cross-Emitter Particle Read Data Interface** — `ProEmitterInstance.name` + `ProSystemInstance.getEmitterByName`；module 在 execute 时按名字解析 source emitter，直接拿 `source.particleDataSet.getCurrentData()` + 用 `ProStandardAccessors` 读任意 standard attribute（对应 UE `NiagaraDataInterfaceParticleRead` 的 by-index 读路径） (2026-05-26)
+- [x] **Source emitter UniqueID 字段** — `Particle.UniqueID` (Int32) standard variable；InitializeParticleModule 通过 `emitter.idTable.acquire().acquireTag` 写入单调递增、永不复用的全局 ID (2026-05-26)
+- [x] **Sample Particles From Other Emitter 模块（ParticleSpawn）** — `ProSampleParticlesFromOtherEmitterModule`；配 sourceEmitterName，spawn 时按 `(i-first) % numSrc` 轮询，把 source.Position → trail.Position(+previousPosition)，source.UniqueID → trail.RibbonID；trail 粒子之后照常跑 ParticleUpdate 衰减，Ribbon Renderer 自动按 RibbonID 分出独立 ribbon (2026-05-26)
+- [x] **Spawn Per Source Particle 触发** — `ProSpawnPerSourceParticleModule` (EmitterUpdate)；按 `spawnRatePerSource × numSrc × dt + 累积残量` 决定本帧 trail spawn 数；source 无活粒子时清零累积避免突喷 (2026-05-26)
+- [x] **System 内 emitter 顺序保证** — 仍依赖 `addEmitter` 调用顺序（cheap，O(n) emitter 数 < 10）；Sample/SpawnPerSource 在首次解析 source 时检测 `emitters.indexOf(src) > indexOf(self)` 并 console.warn 提示用户调换顺序 (2026-05-26)
+
+**P1 — 连接稳定性与基础形态**
+
+- [x] **RibbonLinkOrder 字段** — 独立 `Particle.RibbonLinkOrder` (float)，InitializeParticleModule 写入 `totalSpawnedParticles + (i - first)`；Ribbon Renderer 排序键改 `(RibbonID asc, LinkOrder desc)`，彻底替换 Age 排序，解决 burst 同帧 / 可变 lifetime 下连接抖动 (2026-05-26)
+- [x] **RibbonWidth 字段（per-particle）** — `Particle.RibbonWidth` + `Particle.InitialRibbonWidth` standard 字段；ribbon-renderer 优先用 per-particle width，为 0 时回退 `Size.x * widthScale`；新增 `ProRibbonWidthModule` (ParticleSpawn, ProDistributionFloat) 写初值并 snapshot 到 InitialRibbonWidth；新增 `ProRibbonWidthScaleModule` (ParticleUpdate) `width = initialWidth * scale(age)` 避免每帧复合 (2026-05-26)
+- [x] **RibbonUVDistance 字段（per-particle） + TiledFromStart 模式** — `Particle.RibbonUVDistance` standard 字段；SpawnPerSource 加 per-UID 距离累积器，每帧无条件按 `|currPos - prevPos|` 推进；assignment 携带 `(distAtFrameStart, frameSegLen)`；Sample 写 `uvDist = distAtFrameStart + frameSegLen * (k+0.5)/N`；ribbon-renderer 新增 `TiledFromStart` 模式，`v = abs(uvDist - ribbonStartUVDist) / tileLength`，跳过 renderer 端弧长扫描。剩余 3 种 `ENiagaraRibbonUVDistributionMode` 见后续 P2 (2026-05-26)
+- [x] **CurveTension + Tessellation** — `ProRibbonTessellationMode` enum (Disabled / Custom / Automatic)；renderer 引入 `OriginalPointCache` + `InflatedPoint` 双层池：cacheOriginalAttributes 一次性读 position/size/color/velocity/ribbonWidth/uvDistance 避免 accessor 重读；buildInflatedPoints 按 ribbon 边界做带 tension 的 Catmull-Rom 细分（端点复制扮 P0/P3 防越界 / 跨 ribbon 拉伸），属性沿 t 线性插值；writeGeometry 改从 inflatedPoints 取数；customSubdivisions 防御性 clamp 0..64；Disabled 模式 subdivisions=0 退化为原始连线行为 (2026-05-26)
+- [ ] **DrawDirection / MaxNumRibbons** — Front→Back 切换 + 限制最大 ribbon 数
+
+**P2 — 形态扩展与朝向**
+
+- [ ] **Shape: MultiPlane / Tube** — 当前只有 Plane（双面 quad）；MultiPlane 多片旋转、Tube 圆柱体生成
+- [ ] **WidthSegmentation / TubeSubdivisions** — Plane 宽度方向分段、Tube 圆周分段
+- [ ] **3 种 FacingMode** — 当前只有 `Camera`（Screen）+ `Velocity`；补 `Custom`（per-particle `RibbonFacing` 法线）和 `CustomSideVector`（per-particle 切线右向量）
+- [ ] **RibbonTwist 字段** — `Particle.RibbonTwist` 沿切线旋转截面，配合 Tube / MultiPlane 才有意义
+- [ ] **UV DistributionMode 完整 4 模式** — 当前只有 Stretch (≈ScaledUniformly) 与 Tile；补 `ScaledUsingRibbonSegmentLength` / `TiledFromStartOverRibbonLength` / 完整 `TiledOverRibbonLength`
+- [ ] **UV0 + UV1 双通道** — 两套独立 distribution mode / tiling / offset，材质可分别采样
+
+**P3 — 高级特性**
+
+- [ ] **Shape: Custom（spline 自定义截面）** — 任意 2D 截面沿切线扫掠
+- [ ] **DynamicMaterial0~3 + MaterialRandom** — per-particle 写入 4 个 float4 + 1 random 传到 shader
+- [ ] **Motion-blur prev 绑定** — `PrevPosition / PrevRibbonWidth / PrevRibbonFacing / PrevRibbonTwist` 用于 TAA / MotionBlur
+- [ ] **LeadingEdge / TrailingEdge 模式** — UV 在 ribbon 头尾的特殊渐变处理
 
 ### 编辑器
 
-- [ ] **Emitter Properties 面板** — 配置 lifetime/loop/capacity/space 等 emitter 级设置
+- [x] **Emitter Properties 面板** — 提到 emitter header 下方做固定面板；缺失时显示 + Add；从 stage stack 隐藏避免重复 (2026-05-26)
 - [ ] **播放控制栏** — Pause / Step / Speed / Restart 统一控制
 - [ ] **曲线编辑器可视化拖拽** — 拖拽控制点编辑 keyframe（当前只能输数字）
 - [ ] **Copy / Paste Module** — 复制粘贴模块配置
@@ -91,6 +126,9 @@
 
 ## 已完成
 
+- [x] **Ribbon P1 后段：CurveTension + Tessellation (Catmull-Rom 平滑曲线 / 模式 Disabled-Custom-Automatic)** (2026-05-26)
+- [x] **Ribbon P1 中段：RibbonWidth (per-particle, ProRibbonWidth + ProRibbonWidthScale) + RibbonUVDistance / TiledFromStart UV 模式** (2026-05-26)
+- [x] **Ribbon P1 前段：Cross-Emitter Read + UniqueID + SampleParticlesFromOtherEmitter + SpawnPerSourceParticle + RibbonLinkOrder** (2026-05-26)
 - [x] **P3 序列化：toData/fromData + Distribution/Curve toJSON/fromJSON + module-serialization helpers + Texture URL 序列化** (2026-05-26)
 - [x] **P2 物理：Mass + PreviousPosition buffer 字段 + InitializeParticle 初始化；Drag 改 Stokes 衰减；CalculateAccurateVelocity 模块；ProDistributionVector2 + InitializeParticle.startSize X/Y 独立** (2026-05-25)
 - [x] **P1 渲染 + Spawn 增强：CameraOffset + Sprite 深度排序 + SpawnRate Distribution + SpawnBurst 多次触发** (2026-05-25)

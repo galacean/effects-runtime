@@ -17,7 +17,6 @@ export * from './modules/stage';
 export * from './modules/module-context';
 export * from './modules/module';
 export * from './modules/builtin';
-export * from './simulation/tick-context';
 export * from './simulation/emitter-instance';
 export * from './simulation/system-instance';
 export * from './simulation/module-serialization';

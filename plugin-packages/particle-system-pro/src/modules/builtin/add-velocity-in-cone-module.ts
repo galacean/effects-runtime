@@ -41,7 +41,9 @@ export class ProAddVelocityInConeModule extends ProModule {
   // InCone
   speed: ProDistributionFloat = ProDistributionFloat.fromRange(1, 2);
   coneAxis: [number, number, number] = [0, 1, 0];
-  coneAngle = Math.PI / 6;
+  /** **全角**（弧度），实际半角在 execute 内 /2 — 对齐 UE Niagara
+   *  `ConeAngle` 字段语义。`Math.PI/3` 对应 60° 全角 → 30° 半角锥 */
+  coneAngle = Math.PI / 3;
 
   // FromPoint
   pointSpeed: ProDistributionFloat = ProDistributionFloat.fromRange(1, 2);
@@ -129,7 +131,8 @@ export class ProAddVelocityInConeModule extends ProModule {
   private executeInCone (a: ProStandardAccessors, ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;
     const [ax, ay, az] = this.coneAxis;
-    const cosHalfAngle = Math.cos(this.coneAngle);
+    // coneAngle 是**全角**（对齐 UE）；半角才是均匀采样所需的 θ_max
+    const cosHalfAngle = Math.cos(this.coneAngle * 0.5);
 
     const helper = Math.abs(ay) < 0.9 ? [0, 1, 0] : [1, 0, 0];
     let t1x = ay * helper[2] - az * helper[1];

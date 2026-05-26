@@ -19,6 +19,12 @@ const tmpSize: [number, number] = [0, 0];
  *
  * 默认曲线 linear(1, 0)，等价于原来从初始大小缩放到 0。
  * 与 ScaleSizeBySpeed 互不冲突——可以同时挂。
+ *
+ * **非 UE Stateless 模块** — UE 用 `ScaleSpriteSize` 的 Vec2 Curve 模式完成等价
+ * 效果。保留本模块作为"曲线快捷方式"：X / Y 是两条独立 ProCurveFloat，比
+ * UE 的"单条 Vec2 keyframe"更灵活（X 与 Y 可以走完全不同的曲线形状），
+ * 也不需要 per-particle 随机维度。需要 per-particle randomness 改用
+ * `ProScaleSpriteSizeModule`。
  */
 export class ProSizeOverLifeModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;

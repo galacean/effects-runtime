@@ -24,6 +24,7 @@ import {
   ProRibbonRendererProperties,
   ProRotateAroundPointModule,
   ProRotationOverLifeModule,
+  ProSampleParticlesFromOtherEmitterModule,
   ProScaleColorModule,
   ProScaleSizeBySpeedModule,
   ProScaleSpriteSizeModule,
@@ -31,6 +32,7 @@ import {
   ProSizeOverLifeModule,
   ProSolveForcesAndVelocityModule,
   ProSpawnBurstModule,
+  ProSpawnPerSourceParticleModule,
   ProSpawnRateModule,
   ProSpriteRenderer,
   ProSpriteRendererProperties,
@@ -129,6 +131,25 @@ export function spawnProFlipbookBurstDemo (composition: Composition): VFXItem {
   });
 }
 
+/**
+ * 每个 source 粒子拖一条独立 ribbon trail 的 demo。
+ *
+ * 两个 emitter：
+ * - source（sprite）：少量长寿命粒子，curl noise 飘动，每条轨迹就是一条 ribbon
+ * - trail（ribbon）：用 Spawn Per Source Particle 触发 spawn，用
+ *   Sample Particles From Other Emitter 把每个新 trail 粒子绑到一个 source 粒子
+ *
+ * Ribbon Renderer 自动按 RibbonID（= source UniqueID）分组成多条独立 ribbon。
+ */
+export function spawnProTrailPerSourceDemo (composition: Composition): VFXItem {
+  return spawnConfiguredDemo(composition, {
+    name: 'pro-trail-per-source-demo',
+    position: [-4, 1.0, 0],
+    configureModules: configureTrailPerSourceModules,
+    configureRenderer: configureTrailPerSourceRenderer,
+  });
+}
+
 export function spawnProDemoGallery (composition: Composition): VFXItem[] {
   const items = [
     spawnConfiguredDemo(composition, {
@@ -179,6 +200,12 @@ export function spawnProDemoGallery (composition: Composition): VFXItem[] {
       configureModules: configureFlipbookBurstModules,
       configureRenderer: configureFlipbookBurstRenderer,
     }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-trail-per-source-demo',
+      position: [-6.6, -6.0, 0],
+      configureModules: configureTrailPerSourceModules,
+      configureRenderer: configureTrailPerSourceRenderer,
+    }),
   ];
 
   Selection.select(items[0]);
@@ -201,6 +228,14 @@ function spawnConfiguredDemo (composition: Composition, config: DemoConfig): VFX
   // 1) 用 imperative configure 在组件上构建出一份 "source of truth"
   config.configureModules(systemComponent);
   config.configureRenderer(rendererComponent, engine);
+
+  // 如果 configure 没自己加 Emitter Properties，补一个默认的，让编辑器
+  // EmitterSpawn 段总能直接编辑生命周期/容量/space/seed 等
+  const defaultEmitter = systemComponent.defaultEmitter;
+
+  if (defaultEmitter && !defaultEmitter.modules.some(m => m instanceof ProEmitterPropertiesModule)) {
+    defaultEmitter.addModule(new ProEmitterPropertiesModule());
+  }
 
   // 2) 走一次 toData→fromData，让运行态从 JSON 重建，验证序列化正确性
   //    这样每次启动 demo 都经过序列化往返路径，任何 toJSON/fromJSON 的 bug
@@ -247,7 +282,7 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
   initParticle.lifetime = ProDistributionFloat.fromRange(1.0, 1.6);
   initParticle.startColor = ProDistributionColor.fromConstant(1.0, 0.84, 0.42, 1.0);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.18);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const initRotation = new ProInitializeRotationModule();
 
@@ -261,7 +296,7 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
 
   const gravity = new ProGravityForceModule();
 
-  gravity.gravity = [0, -2.1, 0];
+  gravity.gravity = ProDistributionVector3.fromConstant(0, -2.1, 0);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
@@ -271,9 +306,13 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
 
   const scaleSize = new ProScaleSizeBySpeedModule();
 
-  scaleSize.referenceSpeed = 1.4;
-  scaleSize.intensity = 0.3;
-  scaleSize.maxFactor = 2.2;
+  // 速度上限 ~1.4 → velocityNorm = 1 / (1.4²) ≈ 0.51；曲线从 1×(静止) 升到 2.2×(尾端)
+  scaleSize.scaleDistribution = new ProDistributionVector2(
+    ProDistributionFloat.fromCurve(ProCurveFloat.linear(1.0, 2.2)),
+    ProDistributionFloat.fromCurve(ProCurveFloat.linear(1.0, 2.2)),
+    true,
+  );
+  scaleSize.velocityNorm = 1 / (1.4 * 1.4);
 
   const rotationRate = new ProSpriteRotationRateModule();
 
@@ -309,7 +348,7 @@ function configureSparkModules (system: ProParticleSystemComponent): void {
   initParticle.lifetime = ProDistributionFloat.fromRange(0.55, 0.9);
   initParticle.startColor = ProDistributionColor.fromRange([1.0, 0.65, 0.2, 1.0], [1.0, 0.95, 0.45, 1.0]);
   initParticle.startSize = ProDistributionVector2.fromRange([0.09, 0.09], [0.15, 0.15], true);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const initRotation = new ProInitializeRotationModule();
 
@@ -323,7 +362,7 @@ function configureSparkModules (system: ProParticleSystemComponent): void {
 
   const gravity = new ProGravityForceModule();
 
-  gravity.gravity = [0, -1.8, 0];
+  gravity.gravity = ProDistributionVector3.fromConstant(0, -1.8, 0);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
@@ -360,7 +399,7 @@ function configureRibbonModules (system: ProParticleSystemComponent): void {
   initParticle.lifetime = ProDistributionFloat.fromConstant(1.05);
   initParticle.startColor = ProDistributionColor.fromConstant(0.35, 0.92, 1.0, 1.0);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.42);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const ribbonId = new ProInitializeRibbonIDModule();
 
@@ -374,7 +413,7 @@ function configureRibbonModules (system: ProParticleSystemComponent): void {
 
   const gravity = new ProGravityForceModule();
 
-  gravity.gravity = [0, -0.15, 0];
+  gravity.gravity = ProDistributionVector3.fromConstant(0, -0.15, 0);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
@@ -404,7 +443,12 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
   initParticle.lifetime = ProDistributionFloat.fromRange(1.2, 1.8);
   initParticle.startColor = ProDistributionColor.fromRange([0.82, 0.86, 0.96, 0.82], [1.0, 1.0, 1.0, 0.96]);
   initParticle.startSize = ProDistributionVector2.fromRange([0.12, 0.12], [0.22, 0.22], true);
-  initParticle.positionOrigin = [0, 0, 0];
+  // 在 XZ 平面给出初始 orbit 半径（0.02~0.08）— RotateAroundPoint 的 baseRadius
+  // 来自 initialPosition.xz 与 origin 的距离，所以 positionOrigin 必须给出非零散布
+  initParticle.positionOrigin = ProDistributionVector3.fromRange(
+    [-0.08, 0, -0.08],
+    [0.08, 0, 0.08],
+  );
 
   const initRotation = new ProInitializeRotationModule();
 
@@ -418,14 +462,14 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
 
   const gravity = new ProGravityForceModule();
 
-  gravity.gravity = [0, 0.001, 0];
+  gravity.gravity = ProDistributionVector3.fromConstant(0, 0.001, 0);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
   const rotateAroundPoint = new ProRotateAroundPointModule();
 
   rotateAroundPoint.rate = ProDistributionFloat.fromRange(60, 120);
-  rotateAroundPoint.radius = ProDistributionFloat.fromRange(0.02, 0.08);
+  rotateAroundPoint.radiusScale = ProDistributionFloat.fromConstant(1);
   rotateAroundPoint.phase = ProDistributionFloat.fromRange(0, 360);
 
   const rotationRate = new ProSpriteRotationRateModule();
@@ -480,7 +524,7 @@ function configureShockRingModules (system: ProParticleSystemComponent): void {
   initParticle.lifetime = ProDistributionFloat.fromConstant(1.15);
   initParticle.startColor = ProDistributionColor.fromConstant(0.25, 0.6, 0.7, 0.75);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.24);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const initRotation = new ProInitializeRotationModule();
 
@@ -549,7 +593,7 @@ function configureNoiseFieldModules (system: ProParticleSystemComponent): void {
   initParticle.lifetime = ProDistributionFloat.fromRange(2.4, 3.1);
   initParticle.startColor = ProDistributionColor.fromRange([0.72, 0.9, 1.0, 0.78], [1.0, 1.0, 1.0, 1.0]);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.28);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const initRotation = new ProInitializeRotationModule();
 
@@ -623,7 +667,7 @@ function configureAccelerationColumnModules (system: ProParticleSystemComponent)
   initParticle.lifetime = ProDistributionFloat.fromRange(1.6, 2.4);
   initParticle.startColor = ProDistributionColor.fromRange([0.4, 0.96, 0.86, 0.94], [0.82, 1.0, 0.94, 1.0]);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.22);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const shapeLocation = new ProShapeLocationModule();
 
@@ -692,7 +736,7 @@ function configureFlipbookBurstModules (system: ProParticleSystemComponent): voi
   initParticle.lifetime = ProDistributionFloat.fromRange(1.8, 2.5);
   initParticle.startColor = ProDistributionColor.fromConstant(1.0, 0.85, 0.55, 0.95);
   initParticle.startSize = ProDistributionVector2.fromRange([1.2, 1.2], [1.8, 1.8], true);
-  initParticle.positionOrigin = [0, 0, 0];
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const initRotation = new ProInitializeRotationModule();
 
@@ -726,6 +770,97 @@ function configureFlipbookBurstModules (system: ProParticleSystemComponent): voi
   system.addModule(colorOverLife);
   system.addModule(forces);
   system.addModule(updateAge);
+}
+
+function configureTrailPerSourceModules (system: ProParticleSystemComponent): void {
+  // —— source emitter：少量长寿命粒子，curl noise 飘 ——
+  const source = system.ensureDefaultEmitter();
+
+  source.name = 'source';
+
+  const srcProps = new ProEmitterPropertiesModule();
+
+  srcProps.loopBehavior = 'infinite';
+  srcProps.maxParticleCount = 12;
+  srcProps.warmupTime = 0.6;
+  source.addModule(srcProps);
+
+  const srcSpawn = new ProSpawnRateModule();
+
+  srcSpawn.rate = ProDistributionFloat.fromConstant(4);
+  source.addModule(srcSpawn);
+
+  const srcInit = new ProInitializeParticleModule();
+
+  srcInit.lifetime = ProDistributionFloat.fromRange(2.4, 3.2);
+  srcInit.startColor = ProDistributionColor.fromConstant(1.0, 0.95, 0.55, 1.0);
+  srcInit.startSize = ProDistributionVector2.fromUniformConstant(0.14);
+  srcInit.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
+  source.addModule(srcInit);
+
+  const srcShape = new ProShapeLocationModule();
+
+  srcShape.shape = 'sphere';
+  srcShape.sphereMin = 0.02;
+  srcShape.sphereMax = 0.08;
+  source.addModule(srcShape);
+
+  const srcVel = new ProAddVelocityInConeModule();
+
+  srcVel.coneAxis = [0, 1, 0];
+  srcVel.coneAngle = Math.PI / 3;
+  srcVel.speed = ProDistributionFloat.fromRange(0.35, 0.7);
+  source.addModule(srcVel);
+
+  const srcCurl = new ProCurlNoiseForceModule();
+
+  srcCurl.amplitude = 1.6;
+  srcCurl.frequency = 0.85;
+  source.addModule(srcCurl);
+
+  const srcForces = new ProSolveForcesAndVelocityModule();
+
+  source.addModule(srcForces);
+  source.addModule(new ProUpdateAgeModule());
+
+  // —— trail emitter：每个 source 粒子拖一条独立 ribbon ——
+  const trail = system.addEmitter();
+
+  trail.name = 'trail';
+
+  const trailProps = new ProEmitterPropertiesModule();
+
+  trailProps.loopBehavior = 'infinite';
+  trailProps.maxParticleCount = 1024;
+  trail.addModule(trailProps);
+
+  // 每个 source 每秒触发 ~36 trail 粒子；source 数量越多，总 spawn 数越大
+  const trailSpawn = new ProSpawnPerSourceParticleModule();
+
+  trailSpawn.sourceEmitterName = 'source';
+  trailSpawn.spawnRatePerSource = ProDistributionFloat.fromConstant(36);
+  trail.addModule(trailSpawn);
+
+  const trailInit = new ProInitializeParticleModule();
+
+  trailInit.lifetime = ProDistributionFloat.fromConstant(0.9);
+  trailInit.startColor = ProDistributionColor.fromConstant(0.6, 0.95, 1.0, 1.0);
+  trailInit.startSize = ProDistributionVector2.fromUniformConstant(0.18);
+  trail.addModule(trailInit);
+
+  // 把每个新 trail 粒子的 Position 改写到对应 source 粒子的位置；
+  // RibbonID 同时改写为 source 的 UniqueID。注意必须在 InitializeParticle 之后加。
+  const sample = new ProSampleParticlesFromOtherEmitterModule();
+
+  sample.sourceEmitterName = 'source';
+  trail.addModule(sample);
+
+  const trailColor = new ProColorOverLifeModule();
+
+  trailColor.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [0.2, 0.5, 1.0, 0]);
+  trail.addModule(trailColor);
+
+  trail.addModule(new ProUpdateAgeModule());
 }
 
 function configureFountainRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
@@ -817,6 +952,27 @@ function configureRibbonRenderer (component: ProParticleSystemRendererComponent,
 
   component.addRenderer(renderer);
   applyGeneratedTexture(renderer, 'energy-ribbon', createProceduralEnergyTrailCanvas, 'energy trail');
+}
+
+function configureTrailPerSourceRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  // 顺序必须与 emitter 顺序一致：renderers[i] ↔ emitters[i]
+  // —— source emitter sprite ——
+  const srcProps = new ProSpriteRendererProperties();
+
+  srcProps.blending = spec.BlendingMode.ALPHA;
+  const srcRenderer = new ProSpriteRenderer(engine, srcProps);
+
+  component.addRenderer(srcRenderer);
+  applyGeneratedTexture(srcRenderer, 'noise-plasma-core', createProceduralPlasmaCoreCanvas, 'plasma core');
+
+  // —— trail emitter ribbon ——
+  const trailProps = new ProRibbonRendererProperties();
+
+  trailProps.blending = spec.BlendingMode.ALPHA;
+  const trailRenderer = new ProRibbonRenderer(engine, trailProps);
+
+  component.addRenderer(trailRenderer);
+  applyGeneratedTexture(trailRenderer, 'energy-ribbon', createProceduralEnergyTrailCanvas, 'energy trail');
 }
 
 type ProceduralTextureTarget = ProSpriteRenderer | ProRibbonRenderer;

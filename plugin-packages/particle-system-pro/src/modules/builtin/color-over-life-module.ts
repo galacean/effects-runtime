@@ -18,7 +18,12 @@ const tmpCurveOut: [number, number, number, number] = [0, 0, 0, 0];
  * 颜色随生命周期变化：color = initialColor * colorCurve.evaluate(normalizedAge)。
  *
  * 默认曲线 linear [1,1,1,1]→[1,1,1,0]，等价于原来 alpha 从 1 fade 到 0。
- * 与 Niagara 的 ColorScaleOverLife 行为接近。
+ *
+ * **非 UE Stateless 模块** — UE 用 `ScaleColor` 的 Curve 模式完成等价效果
+ * (`scale.sampleAtTime(perParticleRand, normalizedAge)`)。保留本模块作为
+ * "曲线快捷方式"：不需要 per-particle 随机维度、只想沿生命曲线 fade 时直接用，
+ * 比配 ScaleColor 的 Curve distribution 更直观。需要 per-particle randomness
+ * (e.g. 闪烁) 改用 `ProScaleColorModule`。
  */
 export class ProColorOverLifeModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;

@@ -12,6 +12,7 @@ import { ProIdTable } from '../utils/id-table';
 import { ProRandomStream } from '../utils/random-stream';
 import { ProStandardAccessors } from '../builtin/standard-accessors';
 import type { ProSystemInstance } from './system-instance';
+import type { ProSpawnBatchContext } from '../modules/module-context';
 
 export type ProSimulationSpace = 'local' | 'world';
 
@@ -28,13 +29,19 @@ export type ProSimulationSpace = 'local' | 'world';
  *   4. runStage('particleUpdate') 推进现有粒子
  *   5. runStage('particleSpawn')   初始化新粒子
  *   6. endSimulate
- *   7. postTick (compaction 已在 module 内通过 killInstance 完成)
+ *   7. postTick（延迟 compact / 完成态收尾）
  */
 export class ProEmitterInstance {
   readonly parentSystemInstance: ProSystemInstance;
   readonly parameterStore = new ProParameterStore();
   readonly idTable = new ProIdTable();
   readonly randomStream: ProRandomStream;
+
+  /**
+   * Emitter 名字。System 内必须唯一才能被 cross-emitter 模块（如
+   * SampleParticlesFromOtherEmitter）按名字解析。空字符串视为匿名，无法被引用。
+   */
+  name = '';
 
   particleDataSet: ProDataSet | null = null;
 
@@ -58,6 +65,8 @@ export class ProEmitterInstance {
   currentLoop = 0;
   loopAge = 0;
   delayRemaining = 0;
+  /** 进入 delay 时缓存的上轮 overrun（loopAge - duration）；delay 结束后转入新 loopAge */
+  private pendingLoopOverrun = 0;
 
   // Simulation Space — local：粒子位置在 emitter 局部空间，渲染时乘 worldMatrix；
   // world：粒子位置在世界空间，spawn 时烘焙 transform，渲染时用 identity
@@ -125,6 +134,7 @@ export class ProEmitterInstance {
     this.currentLoop = 0;
     this.loopAge = 0;
     this.delayRemaining = 0;
+    this.pendingLoopOverrun = 0;
     this.warmupConsumed = false;
     this.appliedRandomSeed = null;
   }
@@ -226,6 +236,7 @@ export class ProEmitterInstance {
       // 留住"本帧开始时的位置"供 CalculateAccurateVelocity 等模块反算
       this.savePreviousPositions(dest, keptExisting);
       this.runStage(ProModuleStage.ParticleUpdate, deltaTime, dest, 0, dest.numInstances);
+      dest.compactKilledInstances(0);
     }
 
     // 3. 在 destination 末尾追加新粒子
@@ -237,18 +248,133 @@ export class ProEmitterInstance {
       if (actualSpawn > 0) {
         dest.setNumInstances(spawnEnd);
         dest.setNumSpawnedInstances(actualSpawn);
-        this.runStage(ProModuleStage.ParticleSpawn, deltaTime, dest, spawnStart, spawnEnd);
+
+        // 按 spawn-info 分段跑 ParticleSpawn — 每段 firstInstance/lastInstance 精确对齐
+        // 该 info 的粒子范围。模块 (InitializeParticle / ShapeLocation 等) 在循环里能
+        // 看到正确的 [first, last) 区间，不会混批
+        let cursor = spawnStart;
+
+        for (const info of this.spawnInfos) {
+          if (info.count <= 0 || cursor >= spawnEnd) {
+            continue;
+          }
+          const batchEnd = Math.min(cursor + info.count, spawnEnd);
+          const batchCount = batchEnd - cursor;
+          const sourceAssignment = info.sourceAssignment
+            ? (info.sourceAssignment.count === batchCount
+              ? info.sourceAssignment
+              : { ...info.sourceAssignment, count: batchCount })
+            : null;
+
+          this.runStage(ProModuleStage.ParticleSpawn, deltaTime, dest, cursor, batchEnd, {
+            execCountInBatch: batchCount,
+            spawnIntervalDt: info.intervalDt,
+            interpSpawnStartDt: info.interpStartDt,
+            sourceAssignment,
+          });
+          cursor = batchEnd;
+        }
+        // 若 spawnInfos 没覆盖完（极少见 — info.count 与 spawnTotal 不一致），剩余部分
+        // 用一次性 spawn 兜底，避免漏初始化导致 NaN
+        if (cursor < spawnEnd) {
+          this.runStage(ProModuleStage.ParticleSpawn, deltaTime, dest, cursor, spawnEnd, {
+            execCountInBatch: spawnEnd - cursor,
+            spawnIntervalDt: 0,
+            interpSpawnStartDt: 0,
+            sourceAssignment: null,
+          });
+        }
         this.totalSpawnedParticles += actualSpawn;
 
         // World space：把新粒子的 position/velocity 从局部空间烘焙到世界空间
         if (this.simulationSpace === 'world') {
           this.bakeNewParticlesToWorld(dest, spawnStart, spawnEnd);
         }
+
+        // 所有 ParticleSpawn 模块跑完之后 capture InitialPosition — 这时 position 已
+        // 被 ShapeLocation / Sample 等模块改成最终值。后续 RotateAroundPoint 等用它
+        // 当"轨道基准位置"
+        this.captureInitialPositions(dest, spawnStart, spawnEnd);
+
+        // 子帧插值 spawn：把新粒子按 spawnInfo 顺序"复活"到本帧不同子时刻，每个粒子
+        // 用自己的 subFrameDt 跑一次 ParticleUpdate。subFrameDt = 0 时仍跑（让 over-life
+        // 曲线在 age=0 评估、UpdateAge / SolveForces 内部有 dt<=0 防护）。
+        // 对应 UE Niagara interpolated spawn —— SpawnRate 高频下粒子才不会全卡在原点
+        this.runInterpolatedSpawnUpdate(dest, spawnStart, spawnEnd);
+        dest.compactKilledInstances(spawnStart);
+        dest.setNumSpawnedInstances(dest.numInstances - spawnStart);
       }
     }
 
     this.particleDataSet.endSimulate(true);
-    this.postTick();
+    // postTick 由 SystemInstance 在所有 emitter tick 完成之后统一调用 —
+    // 保证 cross-emitter sample 模块（在下一帧 ParticleUpdate 跑）看到一致的快照
+  }
+
+  /**
+   * 所有 ParticleSpawn 模块跑完之后调用，把当前 position 快照到 InitialPosition。
+   * 给 RotateAroundPoint 等需要"绝对位置 = 基准 + 偏移"语义的模块用。
+   */
+  private captureInitialPositions (dest: ProDataBuffer, first: number, last: number): void {
+    const layout = this.particleDataSet?.layout;
+
+    if (!layout) {
+      return;
+    }
+    const a = new ProStandardAccessors(layout);
+    const tmp: [number, number, number] = [0, 0, 0];
+
+    for (let i = first; i < last; i++) {
+      a.position.get(dest, i, tmp);
+      a.initialPosition.set(dest, i, tmp[0], tmp[1], tmp[2]);
+    }
+  }
+
+  /**
+   * 子帧插值 spawn 的 update 调度。
+   *
+   * SpawnRate 高 rate 时同一帧会 spawn 多个粒子；理想情况下它们应该分布在 [t-dt, t]
+   * 子帧上，而不是全部在帧末 t 时刻同位置。
+   *
+   * 我们按 spawnInfo 顺序：每个 info 的粒子按 intervalDt 等距分布在帧内，每个粒子
+   * 的 subFrameDt = (batchEnd - 1 - i) * intervalDt（i=batchStart 是最先 spawn 的
+   * 最老粒子，subFrameDt 最大）。对它跑一次 ParticleUpdate(subFrameDt)，让
+   * SolveForces 推进 position、UpdateAge 写入 age，curve 在正确 normalizedAge 上评估。
+   *
+   * 单粒子粒度的 runStage 调用代价：modules 数 × spawn 数 — 对典型 batch (10-100) 可接受。
+   * SpawnBurst 的 intervalDt=0 → 所有粒子 subFrameDt=0，退化为一次 batch 调用
+   */
+  private runInterpolatedSpawnUpdate (
+    dest: ProDataBuffer,
+    spawnStart: number,
+    spawnEnd: number,
+  ): void {
+    let cursor = spawnStart;
+
+    for (const info of this.spawnInfos) {
+      if (info.count <= 0 || cursor >= spawnEnd) {
+        continue;
+      }
+      const batchEnd = Math.min(cursor + info.count, spawnEnd);
+      const interval = info.intervalDt;
+      const interpStart = info.interpStartDt;
+
+      if (interval <= 0 && interpStart <= 0) {
+        // Burst：所有粒子 subFrameDt=0，一次 batch 跑完
+        this.runStage(ProModuleStage.ParticleUpdate, 0, dest, cursor, batchEnd);
+      } else {
+        // Interpolated spawn：按 SpawnInfo 的 interpStartDt / intervalDt 统一分配子帧时间
+        for (let i = cursor; i < batchEnd; i++) {
+          const subDt = interpStart + (batchEnd - 1 - i) * interval;
+
+          this.runStage(ProModuleStage.ParticleUpdate, subDt, dest, i, i + 1);
+        }
+      }
+      cursor = batchEnd;
+    }
+    if (cursor < spawnEnd) {
+      this.runStage(ProModuleStage.ParticleUpdate, 0, dest, cursor, spawnEnd);
+    }
   }
 
   private savePreviousPositions (dest: ProDataBuffer, count: number): void {
@@ -333,6 +459,14 @@ export class ProEmitterInstance {
    * once 跑一次后转 Inactive；multiple 跑 loopCount 次。
    *
    * loopDelay 期间也算 Inactive（不 spawn）。
+   *
+   * **大 dt 处理**：用 do-while 而不是单次 if — tab 切换后单帧 dt > 2*duration
+   * 时也能正确推进 currentLoop（旧实现只 +1，loopAge 仍 > duration 形成 latent
+   * 状态，下一帧 spawn 窗口持续漂移）。
+   *
+   * **loopDelay overrun**：进入 delay 之前把 (loopAge - duration) 缓存到
+   * pendingLoopOverrun，delay 结束后 loopAge = pendingLoopOverrun - delayRemaining，
+   * 让上轮过头部分平移到新 loop 起点，避免节奏漂移
    */
   private advanceLoopState (deltaTime: number): void {
     if (this.executionState !== ProExecutionState.Active &&
@@ -348,35 +482,35 @@ export class ProEmitterInstance {
       if (this.delayRemaining > 0) {
         return;
       }
-      // 延迟结束 → 启动下一轮
-      this.loopAge = -this.delayRemaining;
+      // 延迟结束 → 把上轮 overrun 平移过来，再叠加 delay 用尽后的剩余 dt
+      // (-delayRemaining 此时 ≥ 0：是 dt 用完 delay 之后多出来的时间)
+      this.loopAge = this.pendingLoopOverrun + (-this.delayRemaining);
+      this.pendingLoopOverrun = 0;
       this.delayRemaining = 0;
       this.executionState = ProExecutionState.Active;
-
-      return;
+      // 不 return — 让 fall-through 处理"delay 后还有 deltaTime 又跨过 duration"
+    } else {
+      this.loopAge += deltaTime;
     }
 
-    this.loopAge += deltaTime;
-    if (this.loopAge < this.duration) {
-      return;
-    }
-
-    // 本轮结束
-    this.currentLoop++;
     const maxLoops = this.loopBehavior === 'once' ? 1 : Math.max(1, Math.floor(this.loopCount));
 
-    if (this.currentLoop >= maxLoops) {
-      // 所有循环跑完 → Inactive，等粒子耗尽后 postTick 转 Complete
-      this.executionState = ProExecutionState.Inactive;
+    // 大 dt 下可能跨多个 loop：do-while 每次扣一个 duration / 进入 delay，直到 loopAge < duration
+    while (this.loopAge >= this.duration) {
+      this.currentLoop++;
+      if (this.currentLoop >= maxLoops) {
+        this.executionState = ProExecutionState.Inactive;
 
-      return;
-    }
+        return;
+      }
+      if (this.loopDelay > 0) {
+        // 进入 delay：保留 overrun，状态切到 Inactive；剩余循环推进留到下次 tick
+        this.pendingLoopOverrun = this.loopAge - this.duration;
+        this.delayRemaining = this.loopDelay;
+        this.executionState = ProExecutionState.Inactive;
 
-    // 还有循环，进入 delay 期
-    if (this.loopDelay > 0) {
-      this.delayRemaining = this.loopDelay;
-      this.executionState = ProExecutionState.Inactive;
-    } else {
+        return;
+      }
       this.loopAge -= this.duration;
     }
   }
@@ -387,6 +521,7 @@ export class ProEmitterInstance {
     dataBuffer: ProDataBuffer | null,
     firstInstance: number,
     lastInstance: number,
+    spawnBatch: ProSpawnBatchContext | null = null,
   ): void {
     const ctx: ProModuleContext = {
       deltaTime,
@@ -395,6 +530,7 @@ export class ProEmitterInstance {
       dataBuffer,
       firstInstance,
       lastInstance,
+      spawnBatch,
       randomStream: this.randomStream,
     };
 

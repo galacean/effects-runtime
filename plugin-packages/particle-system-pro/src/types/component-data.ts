@@ -21,9 +21,12 @@ export interface ProRibbonRendererPropertiesData {
   textureUrl?: string,
   blending?: spec.BlendingMode,
   widthScale?: number,
-  textureMode?: 'stretch' | 'tile',
+  textureMode?: 'stretch' | 'tile' | 'tiledFromStart',
   tileLength?: number,
   facingMode?: 'camera' | 'velocity',
+  tessellationMode?: 'disabled' | 'custom' | 'automatic',
+  customSubdivisions?: number,
+  curveTension?: number,
 }
 
 export interface ProRendererSnapshot {
@@ -32,6 +35,7 @@ export interface ProRendererSnapshot {
 }
 
 export interface ProEmitterData {
+  name?: string,
   modules: ProModuleData[],
 }
 

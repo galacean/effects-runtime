@@ -18,7 +18,15 @@ export interface ProSpawnBurstModuleProps extends ProModuleProps {
  * 在指定时刻一次性 spawn 一批粒子。
  *
  * bursts 支持多个时间点；每个 entry 在 emitter 当前 loop 内只触发一次。
- * Loop 模式下 emitter 进入新一轮（loopAge 重置）时，所有 burst 重新可触发。
+ * Loop 模式下 emitter 进入新一轮时所有 burst 重新可触发。
+ *
+ * **infinite + duration > 0 也会循环触发** —— 用 `emitterAge % duration` 计算
+ * loop 内偏移；emitter-instance 在 infinite 模式下根本不推进 loopAge，所以这里
+ * 不能依赖 loopAge，必须自己取 modulus。
+ *
+ * **duration <= 0**（无界 emitter）每条 burst 只触发一次 — 没有 loop 概念，
+ * t=0 burst 在启动瞬间 fire，t=5 burst 5 秒后 fire，之后不再重复（与 UE 一致：
+ * 无 LoopDuration 时整段 emitter 视为单条永久 loop）。
  *
  * 对应 Niagara Spawn Burst Instantaneous，但允许配置多个 burst 时刻。
  *
@@ -54,8 +62,12 @@ export class ProSpawnBurstModule extends ProModule {
 
   override execute (ctx: ProModuleContext): void {
     const emitter = ctx.emitterInstance;
-    // loop 用 loopAge 当时间基准（infinite duration 时 loopAge 永远 0，退化为只在 emitter 启动时触发）
-    const age = emitter.duration > 0 ? emitter.loopAge : emitter.emitterAge;
+    // duration > 0：用 (emitterAge % duration) 计算 loop 内偏移 —— infinite 模式
+    // 下 loopAge 永远 0，不能依赖它；duration <= 0：无 loop 概念，age 单调递增，
+    // 每条 burst 只触发一次（emitterAge 与 lastLoopAge 永不倒退 → fired 不会重置）
+    const age = emitter.duration > 0
+      ? emitter.emitterAge % emitter.duration
+      : emitter.emitterAge;
 
     // 新一轮 loop 开始 → 重置已触发标记
     if (age < this.lastLoopAge) {
@@ -81,7 +93,6 @@ export class ProSpawnBurstModule extends ProModule {
         count: burst.count,
         interpStartDt: 0,
         intervalDt: 0,
-        spawnGroup: 1 + i,
       });
     }
   }

@@ -14,6 +14,7 @@ import type { ProDataSetLayout } from './data-set-layout';
 export class ProDataBuffer {
   private floatData: Float32Array = new Float32Array(0);
   private int32Data: Int32Array = new Int32Array(0);
+  private killMask: Uint8Array = new Uint8Array(0);
 
   private numInstancesValue = 0;
   private numAllocatedValue = 0;
@@ -21,6 +22,7 @@ export class ProDataBuffer {
   private int32StrideValue = 0;
 
   private numSpawnedInstancesValue = 0;
+  private numMarkedKilledValue = 0;
 
   constructor (private layout: ProDataSetLayout) {}
 
@@ -84,10 +86,16 @@ export class ProDataBuffer {
     } else {
       this.int32Data.fill(0);
     }
+    if (newAllocated !== this.killMask.length) {
+      this.killMask = new Uint8Array(newAllocated);
+    } else {
+      this.killMask.fill(0);
+    }
 
     this.numAllocatedValue = newAllocated;
     this.floatStrideValue = newAllocated;
     this.int32StrideValue = newAllocated;
+    this.numMarkedKilledValue = 0;
 
     if (maintainExisting && oldNum > 0) {
       this.copyExisting(oldFloat, oldInt32, oldFloatStride, oldInt32Stride, oldNum);
@@ -107,51 +115,65 @@ export class ProDataBuffer {
     this.floatStrideValue = 0;
     this.int32StrideValue = 0;
     this.numSpawnedInstancesValue = 0;
+    this.killMask = new Uint8Array(0);
+    this.numMarkedKilledValue = 0;
   }
 
   /**
-   * 把 newIndex 处的粒子覆盖到 oldIndex，并把 numInstances 减一（swap-back compaction）。
-   *
-   * 调用方需保证 oldIndex < numInstances。
+   * 延迟死亡标记。真正的 compact 由调用方在稳定边界统一执行。
    */
-  killInstance (oldIndex: number): void {
-    const last = this.numInstancesValue - 1;
-
-    if (last < 0 || oldIndex > last) {
+  markInstanceKilled (instanceIdx: number): void {
+    if (instanceIdx < 0 || instanceIdx >= this.numInstancesValue) {
       return;
     }
-    if (oldIndex !== last) {
-      this.swapInstances(oldIndex, last);
+    if (this.killMask[instanceIdx] === 0) {
+      this.killMask[instanceIdx] = 1;
+      this.numMarkedKilledValue++;
     }
-    this.numInstancesValue = last;
   }
 
   /**
-   * 在所有 component 上交换两个粒子的数据。
+   * 压缩 [startIndex, numInstances) 范围内的已标记实例；startIndex 之前的布局保持不变。
    */
-  swapInstances (a: number, b: number): void {
-    if (a === b) {
+  compactKilledInstances (startIndex = 0): void {
+    if (this.numMarkedKilledValue <= 0) {
       return;
     }
+    const begin = Math.max(0, Math.min(startIndex, this.numInstancesValue));
+    const oldCount = this.numInstancesValue;
+    let write = begin;
+
+    for (let read = begin; read < oldCount; read++) {
+      if (this.killMask[read] !== 0) {
+        continue;
+      }
+      if (write !== read) {
+        this.copyInstance(read, write);
+      }
+      write++;
+    }
+
+    this.killMask.fill(0, begin, oldCount);
+    this.numInstancesValue = write;
+    this.numMarkedKilledValue = 0;
+  }
+
+  private copyInstance (src: number, dst: number): void {
     const floatStride = this.floatStrideValue;
     const totalFloat = this.layout.totalFloatComponents;
 
     for (let c = 0; c < totalFloat; c++) {
       const base = c * floatStride;
-      const tmp = this.floatData[base + a];
 
-      this.floatData[base + a] = this.floatData[base + b];
-      this.floatData[base + b] = tmp;
+      this.floatData[base + dst] = this.floatData[base + src];
     }
     const int32Stride = this.int32StrideValue;
     const totalInt32 = this.layout.totalInt32Components;
 
     for (let c = 0; c < totalInt32; c++) {
       const base = c * int32Stride;
-      const tmp = this.int32Data[base + a];
 
-      this.int32Data[base + a] = this.int32Data[base + b];
-      this.int32Data[base + b] = tmp;
+      this.int32Data[base + dst] = this.int32Data[base + src];
     }
   }
 

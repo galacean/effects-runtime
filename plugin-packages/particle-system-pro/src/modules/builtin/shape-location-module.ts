@@ -11,7 +11,6 @@ export type ProShapePrimitive = 'box' | 'sphere' | 'cylinder' | 'ring' | 'plane'
 
 export interface ProShapeLocationModuleProps extends ProModuleProps {
   shape: ProShapePrimitive,
-  center: [number, number, number],
   sphereMin: number,
   sphereMax: number,
   boxSize: [number, number, number],
@@ -33,7 +32,6 @@ export class ProShapeLocationModule extends ProModule {
   readonly stage = ProModuleStage.ParticleSpawn;
 
   shape: ProShapePrimitive = 'sphere';
-  center: [number, number, number] = [0, 0, 0];
 
   // Sphere
   sphereMin = 0;
@@ -60,7 +58,6 @@ export class ProShapeLocationModule extends ProModule {
   override toJSON (): ProShapeLocationModuleProps {
     return {
       shape: this.shape,
-      center: [...this.center],
       sphereMin: this.sphereMin,
       sphereMax: this.sphereMax,
       boxSize: [...this.boxSize],
@@ -76,9 +73,6 @@ export class ProShapeLocationModule extends ProModule {
   override fromJSON (data: ProShapeLocationModuleProps): void {
     if (data.shape === 'box' || data.shape === 'sphere' || data.shape === 'cylinder' || data.shape === 'ring' || data.shape === 'plane') {
       this.shape = data.shape;
-    }
-    if (data.center && data.center.length === 3) {
-      this.center = [data.center[0], data.center[1], data.center[2]];
     }
     if (typeof data.sphereMin === 'number') { this.sphereMin = data.sphereMin; }
     if (typeof data.sphereMax === 'number') { this.sphereMax = data.sphereMax; }
@@ -111,7 +105,6 @@ export class ProShapeLocationModule extends ProModule {
       this.cachedLayout = layout;
     }
     const a = this.accessors!;
-    const [cx, cy, cz] = this.center;
 
     for (let i = firstInstance; i < lastInstance; i++) {
       let ox = 0, oy = 0, oz = 0;
@@ -140,7 +133,7 @@ export class ProShapeLocationModule extends ProModule {
       }
 
       a.position.get(dataBuffer, i, tmpPos);
-      a.position.set(dataBuffer, i, tmpPos[0] + cx + ox, tmpPos[1] + cy + oy, tmpPos[2] + cz + oz);
+      a.position.set(dataBuffer, i, tmpPos[0] + ox, tmpPos[1] + oy, tmpPos[2] + oz);
     }
   }
 
@@ -196,7 +189,11 @@ export class ProShapeLocationModule extends ProModule {
 
   private sampleRing (rs: { nextFloat(): number }): [number, number, number] {
     const angle = rs.nextFloat() * Math.PI * 2;
-    const r = this.ringRadius + (rs.nextFloat() - 0.5) * this.ringThickness;
+    // 面积均匀（对齐 UE `lerp(R*(1-SDC), R*SDC, sqrt(rs))`）：r² 在 [innerR², outerR²]
+    // 上均匀分布，再开方得 r。旧实现直接 r 上均匀 → 内圈面积小但拿到同样多粒子 → 内密外疏
+    const innerR = Math.max(0, this.ringRadius - this.ringThickness * 0.5);
+    const outerR = this.ringRadius + this.ringThickness * 0.5;
+    const r = Math.sqrt(innerR * innerR + (outerR * outerR - innerR * innerR) * rs.nextFloat());
 
     return [r * Math.cos(angle), 0, r * Math.sin(angle)];
   }

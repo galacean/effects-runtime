@@ -22,9 +22,17 @@ export class ProStandardAccessors {
   initialColor: ProVec4Accessor;
   initialSize: ProVec2Accessor;
   ribbonId: ProInt32Accessor;
+  uniqueId: ProInt32Accessor;
   cameraOffset: ProFloatAccessor;
   mass: ProFloatAccessor;
   previousPosition: ProVec3Accessor;
+  ribbonLinkOrder: ProFloatAccessor;
+  ribbonWidth: ProFloatAccessor;
+  initialRibbonWidth: ProFloatAccessor;
+  ribbonUVDistance: ProFloatAccessor;
+  initialPosition: ProVec3Accessor;
+  randomSeed: ProFloatAccessor;
+  noiseOffset: ProVec3Accessor;
 
   constructor (layout: ProDataSetLayout) {
     this.age = new ProFloatAccessor(layout, ProStandardVariableNames.Age);
@@ -38,8 +46,16 @@ export class ProStandardAccessors {
     this.initialColor = new ProVec4Accessor(layout, ProStandardVariableNames.InitialColor);
     this.initialSize = new ProVec2Accessor(layout, ProStandardVariableNames.InitialSize);
     this.ribbonId = new ProInt32Accessor(layout, ProStandardVariableNames.RibbonID);
+    this.uniqueId = new ProInt32Accessor(layout, ProStandardVariableNames.UniqueID);
     this.cameraOffset = new ProFloatAccessor(layout, ProStandardVariableNames.CameraOffset);
     this.mass = new ProFloatAccessor(layout, ProStandardVariableNames.Mass);
     this.previousPosition = new ProVec3Accessor(layout, ProStandardVariableNames.PreviousPosition);
+    this.ribbonLinkOrder = new ProFloatAccessor(layout, ProStandardVariableNames.RibbonLinkOrder);
+    this.ribbonWidth = new ProFloatAccessor(layout, ProStandardVariableNames.RibbonWidth);
+    this.initialRibbonWidth = new ProFloatAccessor(layout, ProStandardVariableNames.InitialRibbonWidth);
+    this.ribbonUVDistance = new ProFloatAccessor(layout, ProStandardVariableNames.RibbonUVDistance);
+    this.initialPosition = new ProVec3Accessor(layout, ProStandardVariableNames.InitialPosition);
+    this.randomSeed = new ProFloatAccessor(layout, ProStandardVariableNames.RandomSeed);
+    this.noiseOffset = new ProVec3Accessor(layout, ProStandardVariableNames.NoiseOffset);
   }
 }

@@ -51,6 +51,25 @@ export class ProSystemInstance {
     }
   }
 
+  /**
+   * 按名字查找 emitter。Cross-emitter 模块（如 SampleParticlesFromOtherEmitter）
+   * 在 execute 时调用；O(n) 线性扫描足够，emitter 数量通常 < 10。
+   *
+   * 空名字始终返回 null（匿名 emitter 不可被引用）。
+   */
+  getEmitterByName (name: string): ProEmitterInstance | null {
+    if (!name) {
+      return null;
+    }
+    for (const e of this.emitters) {
+      if (e.name === name) {
+        return e;
+      }
+    }
+
+    return null;
+  }
+
   reset (killExisting = true): void {
     this.age = 0;
     this.tickCount = 0;
@@ -83,11 +102,18 @@ export class ProSystemInstance {
     // 每帧执行 SystemUpdate
     this.runSystemStage(ProModuleStage.SystemUpdate, deltaTime);
 
+    // 三段调度（对齐 UE Niagara）：所有 emitter 先 preTick / tick 完，再统一 postTick；
+    // 这样 cross-emitter sample 类模块在 postTick 阶段看到的是一致快照，避免读到
+    // dirty data。旧实现 postTick 内嵌在 tickInner 末尾 → emitter[1] postTick 时
+    // emitter[0] 已经把"上一帧最终态"覆写成本帧新态了，跨 emitter sample 失真
     for (const emitter of this.emitters) {
       emitter.preTick();
     }
     for (const emitter of this.emitters) {
       emitter.tick(deltaTime);
+    }
+    for (const emitter of this.emitters) {
+      emitter.postTick();
     }
 
     // 所有 emitter 都 Complete → System 整体 Complete
@@ -119,6 +145,7 @@ export class ProSystemInstance {
       dataBuffer: null,
       firstInstance: 0,
       lastInstance: 0,
+      spawnBatch: null,
       randomStream: this.randomStream,
     };
 

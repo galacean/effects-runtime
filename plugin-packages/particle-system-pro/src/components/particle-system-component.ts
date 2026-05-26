@@ -93,7 +93,7 @@ export class ProParticleSystemComponent extends Component {
           modules.push(moduleData);
         }
       }
-      data.emitters!.push({ modules });
+      data.emitters!.push({ name: emitter.name, modules });
     }
 
     return data;
@@ -120,6 +120,9 @@ export class ProParticleSystemComponent extends Component {
     for (const emitterData of data.emitters) {
       const emitter = this.addEmitter();
 
+      if (emitterData.name) {
+        emitter.name = emitterData.name;
+      }
       for (const moduleData of emitterData.modules) {
         const module = deserializeProModule(moduleData);
 

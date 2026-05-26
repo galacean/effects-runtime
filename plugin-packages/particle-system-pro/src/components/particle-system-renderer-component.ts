@@ -126,6 +126,9 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
           textureMode: p.textureMode,
           tileLength: p.tileLength,
           facingMode: p.facingMode,
+          tessellationMode: p.tessellationMode,
+          customSubdivisions: p.customSubdivisions,
+          curveTension: p.curveTension,
         };
         const url = getDebugTextureUrl(p);
 
@@ -194,6 +197,9 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
       if (rp.textureMode !== undefined) { props.textureMode = rp.textureMode as typeof props.textureMode; }
       if (rp.tileLength !== undefined) { props.tileLength = rp.tileLength; }
       if (rp.facingMode !== undefined) { props.facingMode = rp.facingMode as typeof props.facingMode; }
+      if (rp.tessellationMode !== undefined) { props.tessellationMode = rp.tessellationMode as typeof props.tessellationMode; }
+      if (rp.customSubdivisions !== undefined) { props.customSubdivisions = rp.customSubdivisions; }
+      if (rp.curveTension !== undefined) { props.curveTension = rp.curveTension; }
       if (rp.textureUrl) {
         setDebugTextureUrl(props, rp.textureUrl);
       }

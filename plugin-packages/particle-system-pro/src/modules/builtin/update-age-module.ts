@@ -5,10 +5,10 @@ import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
 
 /**
- * 推进 age，超过 lifetime 的粒子 swap-back kill。
+ * 推进 age，超过 lifetime 的粒子先标记为死亡，真正 compact 推迟到阶段边界。
  *
- * 必须放在 particleUpdate 阶段所有访问 age 的 module 之后（这里在最后），
- * 否则被 kill 粒子的位置会被新粒子覆盖。
+ * 这样 interpolated spawn 的窄区间 ParticleUpdate 不会在执行中改写实例布局，
+ * 语义更接近 UE Niagara 的执行模型。
  *
  * 与 Niagara 的 Update Age + Kill Particles 合并实现。
  */
@@ -19,7 +19,7 @@ export class ProUpdateAgeModule extends ProModule {
   private cachedLayout: ProDataSetLayout | null = null;
 
   override execute (ctx: ProModuleContext): void {
-    const { dataBuffer, deltaTime } = ctx;
+    const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;
 
     if (!dataBuffer) {
       return;
@@ -34,13 +34,15 @@ export class ProUpdateAgeModule extends ProModule {
       this.cachedLayout = layout;
     }
     const a = this.accessors!;
+    const begin = Math.max(0, firstInstance);
+    const end = Math.min(lastInstance, dataBuffer.numInstances);
 
-    // 倒着遍历避免 swap-back 把还没处理的尾部粒子换到前面后被跳过
-    for (let i = dataBuffer.numInstances - 1; i >= 0; i--) {
+    // 倒着遍历保留与旧实现一致的 kill 顺序；真正的 compact 推迟到阶段边界执行。
+    for (let i = end - 1; i >= begin; i--) {
       const newAge = a.age.get(dataBuffer, i) + deltaTime;
 
       if (newAge >= a.lifetime.get(dataBuffer, i)) {
-        dataBuffer.killInstance(i);
+        dataBuffer.markInstanceKilled(i);
       } else {
         a.age.set(dataBuffer, i, newAge);
       }

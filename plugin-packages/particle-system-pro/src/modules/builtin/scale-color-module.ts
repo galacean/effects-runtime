@@ -2,6 +2,7 @@ import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionColor } from '../../distribution/pro-distribution-color';
 import type { ProDistributionColorData } from '../../distribution/pro-distribution-color';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
@@ -13,8 +14,6 @@ export interface ProScaleColorModuleProps extends ProModuleProps {
 
 const tmpInit: [number, number, number, number] = [0, 0, 0, 0];
 const tmpScale: [number, number, number, number] = [0, 0, 0, 0];
-
-const GOLDEN_RATIO_FRAC = 0.6180339887498949;
 
 /**
  * 颜色缩放：color = initialColor * scale.sampleAtTime(perParticleRand, normalizedAge)。
@@ -62,7 +61,8 @@ export class ProScaleColorModule extends ProModule {
     const a = this.accessors!;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      const pRand = (i * GOLDEN_RATIO_FRAC) % 1;
+      const seed = a.randomSeed.get(dataBuffer, i);
+      const pRand = hashSeed(seed, ParticleRandSalts.Color);
       const lifetime = a.lifetime.get(dataBuffer, i);
       const t = lifetime > 0 ? Math.min(a.age.get(dataBuffer, i) / lifetime, 1) : 1;
 

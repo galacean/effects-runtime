@@ -165,6 +165,8 @@ export class ProSpriteRenderer extends ProRenderer {
   // 排序用的 indices buffer，按 sortMode 写入排序后的粒子下标顺序
   private sortIndices: Int32Array = new Int32Array(0);
   private sortKeys: Float32Array = new Float32Array(0);
+  /** sort 时的 number[] scratch — 复用避免每帧 GC；length 跟 num 一致 */
+  private sortScratch: number[] = [];
 
   constructor (engine: Engine, properties: ProSpriteRendererProperties) {
     super(properties);
@@ -328,12 +330,19 @@ export class ProSpriteRenderer extends ProRenderer {
       this.sortKeys[i] = key;
     }
 
-    // 按 key 降序排序（key 大的在前 → 先写入 vertex → 先画 → 被后画的覆盖）
-    // 用 plain Array 排序方便带 key，量大时再优化
-    const idxArr: number[] = [];
+    // 按 key 降序排序（key 大的在前 → 先写入 vertex → 先画 → 被后画的覆盖）。
+    // 复用 sortScratch — 旧实现每帧 new Array + push 会引起 GC 抖动；TypedArray 不能
+    // 带 key 自定义比较，所以用 number[]
+    const idxArr = this.sortScratch;
 
-    for (let i = 0; i < num; i++) { idxArr.push(i); }
-    idxArr.sort((x, y) => this.sortKeys[y] - this.sortKeys[x]);
+    while (idxArr.length < num) {
+      idxArr.push(0);
+    }
+    idxArr.length = num;
+    for (let i = 0; i < num; i++) { idxArr[i] = i; }
+    const keys = this.sortKeys;
+
+    idxArr.sort((x, y) => keys[y] - keys[x]);
     for (let i = 0; i < num; i++) {
       this.sortIndices[i] = idxArr[i];
     }

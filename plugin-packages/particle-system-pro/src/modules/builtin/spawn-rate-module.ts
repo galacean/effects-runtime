@@ -14,12 +14,14 @@ export interface ProSpawnRateModuleProps extends ProModuleProps {
  *
  * rate 是 ProDistributionFloat，支持 Constant / Range / Curve：
  * - Constant：固定速率
- * - Range：每帧 randomStream 采样一个速率（用于"忽快忽慢"效果）
- * - Curve：按 emitter normalized age 评估速率（曲线模式只在 loop/once 有限 duration 下有意义）
+ * - Range：**每个 loop 采样一次**，loop 内保持稳定（不再每帧抖动）
+ * - Curve：在 loop 起点评估一次（曲线模式时间锁定到 t=0）
  *
  * 在 emitterUpdate 阶段写入 SpawnInfo。残量累计到下一帧，保证低帧率也不丢粒子。
  *
- * 与 Niagara 的 SpawnRate Module 行为一致（小数粒子拖到下一帧）。
+ * 对齐 UE Niagara Stateless `FActiveSpawnRate.Rate` —— `InitSpawnInfosForLoop` 在
+ * 每个 loop 起点一次性 `SampleRandRange` 写入 cached rate，整个 loop 内消费缓存值。
+ * 旧实现每帧重采样，Range 模式 spawn 节奏忽快忽慢。
  */
 export class ProSpawnRateModule extends ProModule {
   readonly stage = ProModuleStage.EmitterUpdate;
@@ -27,6 +29,12 @@ export class ProSpawnRateModule extends ProModule {
   rate: ProDistributionFloat = ProDistributionFloat.fromConstant(10);
 
   private accumulator = 0;
+  /** 缓存的 per-loop rate；-1 表示尚未采样 */
+  private cachedRate = -1;
+  /** 上次采样所在 loop；与 currentLoop 不同时重新采样 */
+  private cachedLoopIdx = -1;
+  /** 用于探测 emitter reset（emitterAge 单调递增；变小说明被 reset 了） */
+  private lastSeenAge = 0;
 
   override toJSON (): ProSpawnRateModuleProps {
     return { rate: this.rate.toJSON() };
@@ -40,10 +48,22 @@ export class ProSpawnRateModule extends ProModule {
 
   override execute (ctx: ProModuleContext): void {
     const emitter = ctx.emitterInstance;
-    const t = emitter.duration > 0
-      ? (emitter.emitterAge % emitter.duration) / emitter.duration
-      : 0;
-    const currentRate = Math.max(0, this.rate.sampleAtTime(ctx.randomStream.nextFloat(), t));
+    // emitter.reset() 会把 emitterAge 拉回 0；用倒退判定让缓存失效
+    const wasReset = emitter.emitterAge < this.lastSeenAge;
+
+    if (wasReset || this.cachedRate < 0 || this.cachedLoopIdx !== emitter.currentLoop) {
+      const t = emitter.duration > 0
+        ? Math.min(emitter.loopAge / emitter.duration, 1)
+        : 0;
+
+      this.cachedRate = Math.max(0, this.rate.sampleAtTime(ctx.randomStream.nextFloat(), t));
+      this.cachedLoopIdx = emitter.currentLoop;
+      if (wasReset) {
+        this.accumulator = 0;
+      }
+    }
+    this.lastSeenAge = emitter.emitterAge;
+    const currentRate = this.cachedRate;
 
     this.accumulator += currentRate * ctx.deltaTime;
     const count = Math.floor(this.accumulator);
@@ -56,7 +76,6 @@ export class ProSpawnRateModule extends ProModule {
       count,
       interpStartDt: 0,
       intervalDt: currentRate > 0 ? 1 / currentRate : 0,
-      spawnGroup: 0,
     });
   }
 }

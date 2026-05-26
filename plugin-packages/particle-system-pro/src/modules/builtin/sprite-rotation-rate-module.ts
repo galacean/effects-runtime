@@ -2,6 +2,7 @@ import { ProStandardAccessors } from '../../builtin/standard-accessors';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
 import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
@@ -10,8 +11,6 @@ import type { ProModuleProps } from '../module';
 export interface ProSpriteRotationRateModuleProps extends ProModuleProps {
   rate: ProDistributionFloatData,
 }
-
-const GOLDEN_RATIO_FRAC = 0.6180339887498949;
 
 /**
  * Sprite 旋转速率：rotation += rate * dt，rate 用 ProDistributionFloat
@@ -58,8 +57,13 @@ export class ProSpriteRotationRateModule extends ProModule {
     const a = this.accessors!;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      const pRand = (i * GOLDEN_RATIO_FRAC) % 1;
-      const r = this.rate.sampleAtTime(pRand, 0);
+      const seed = a.randomSeed.get(dataBuffer, i);
+      const pRand = hashSeed(seed, ParticleRandSalts.Rate);
+      // Curve 模式按 normalizedAge 评估（旧实现传 0 → Curve 永远采到曲线起点）；
+      // Constant / Range 不依赖时间，传什么都等价
+      const lifetime = a.lifetime.get(dataBuffer, i);
+      const t = lifetime > 0 ? Math.min(a.age.get(dataBuffer, i) / lifetime, 1) : 0;
+      const r = this.rate.sampleAtTime(pRand, t);
 
       a.rotation.set(dataBuffer, i, a.rotation.get(dataBuffer, i) + r * deltaTime);
     }

@@ -11,14 +11,36 @@ export interface ProCurlNoiseForceModuleProps extends ProModuleProps {
 }
 
 const tmpVel: [number, number, number] = [0, 0, 0];
-const tmpPos: [number, number, number] = [0, 0, 0];
+const tmpOffset: [number, number, number] = [0, 0, 0];
+
+const PSI2_OFFSET = 31.416;
+const PSI3_OFFSET = 62.832;
+const EPS = 0.01;
+const INV_2EPS = 1 / (2 * EPS);
 
 /**
- * Curl Noise 力场：使用 3D simplex noise 的旋度作为力场方向。
+ * Curl Noise 力场（对齐 UE Niagara Stateless CurlNoiseForce）。
  *
- * velocity += curlNoise(position * frequency) * amplitude * dt
+ * **per-particle 时间噪声**（不是空间噪声）：
+ * ```
+ * samplePos = (Age, NormalizedAge, UniqueIndex) * Frequency + NoiseOffset
+ * Velocity += Curl(samplePos) * Amplitude * dt
+ * ```
  *
- * 对齐 Niagara Stateless 的 CurlNoiseForce 模块（JacobNoise 模式简化版）。
+ * `NoiseOffset` 是 spawn 时 InitializeParticle 写入的 per-particle 常量随机偏移，
+ * 让相同 (age, normalizedAge, uniqueIndex) 的粒子也走不同噪声路径 — 否则
+ * 同时 spawn 的粒子轨迹会完全粘在一起。
+ *
+ * **正确 Jacobian curl**：3 个 scalar 势函数 ψ₁,ψ₂,ψ₃（同一 simplex noise 加不同
+ * 常数偏移），对各自偏导做中心差分后取 ∇×ψ：
+ * ```
+ * curl.x = ∂ψ₃/∂y − ∂ψ₂/∂z
+ * curl.y = ∂ψ₁/∂z − ∂ψ₃/∂x
+ * curl.z = ∂ψ₂/∂x − ∂ψ₁/∂y
+ * ```
+ *
+ * 旧实现把噪声当 `position*frequency` 空间噪声、Z 分量被注释掉、curl 公式只是
+ * 三组 noise 偏移做差 — 输出无散度性质不满足，粒子被压扁到 XY 平面。
  */
 export class ProCurlNoiseForceModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
@@ -58,40 +80,55 @@ export class ProCurlNoiseForceModule extends ProModule {
     }
     const a = this.accessors!;
     const freq = this.frequency;
-    const amp = this.amplitude * deltaTime;
+    const ampDt = this.amplitude * deltaTime;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      a.position.get(dataBuffer, i, tmpPos);
-      const px = tmpPos[0] * freq;
-      const py = tmpPos[1] * freq;
-      const pz = tmpPos[2] * freq;
+      const age = a.age.get(dataBuffer, i);
+      const lifetime = a.lifetime.get(dataBuffer, i);
+      const nAge = lifetime > 0 ? Math.min(age / lifetime, 1) : 0;
+      const uniqueIdx = a.uniqueId.get(dataBuffer, i);
 
-      // Curl via finite differences of 3D noise
-      const eps = 0.01;
-      const nx = noise3D(px + eps, py, pz) - noise3D(px - eps, py, pz);
-      const ny = noise3D(px, py + eps, pz) - noise3D(px, py - eps, pz);
-      const nz = noise3D(px, py, pz + eps) - noise3D(px, py, pz - eps);
+      a.noiseOffset.get(dataBuffer, i, tmpOffset);
+      const px = age * freq + tmpOffset[0];
+      const py = nAge * freq + tmpOffset[1];
+      const pz = uniqueIdx * freq + tmpOffset[2];
 
-      // curl = (dNz/dy - dNy/dz, dNx/dz - dNz/dx, dNy/dx - dNx/dy)
-      // Approximated with offset noise samples for each component
-      const n2x = noise3D(px + 31.416, py + eps, pz) - noise3D(px + 31.416, py - eps, pz);
-      const n2z = noise3D(px + 31.416, py, pz + eps) - noise3D(px + 31.416, py, pz - eps);
-      const n3x = noise3D(px + 62.832, py + eps, pz) - noise3D(px + 62.832, py - eps, pz);
-      // const n3y = noise3D(px + 62.832, py, pz + eps) - noise3D(px + 62.832, py, pz - eps);
+      // ∂ψ₃/∂y, ∂ψ₂/∂z
+      const dPsi3_dy = (psi3(px, py + EPS, pz) - psi3(px, py - EPS, pz)) * INV_2EPS;
+      const dPsi2_dz = (psi2(px, py, pz + EPS) - psi2(px, py, pz - EPS)) * INV_2EPS;
+      // ∂ψ₁/∂z, ∂ψ₃/∂x
+      const dPsi1_dz = (psi1(px, py, pz + EPS) - psi1(px, py, pz - EPS)) * INV_2EPS;
+      const dPsi3_dx = (psi3(px + EPS, py, pz) - psi3(px - EPS, py, pz)) * INV_2EPS;
+      // ∂ψ₂/∂x, ∂ψ₁/∂y
+      const dPsi2_dx = (psi2(px + EPS, py, pz) - psi2(px - EPS, py, pz)) * INV_2EPS;
+      const dPsi1_dy = (psi1(px, py + EPS, pz) - psi1(px, py - EPS, pz)) * INV_2EPS;
 
-      const curlX = (n2z - ny) / (2 * eps);
-      const curlY = (nz - n2x) / (2 * eps);
-      const curlZ = (nx - n3x) / (2 * eps);
+      const curlX = dPsi3_dy - dPsi2_dz;
+      const curlY = dPsi1_dz - dPsi3_dx;
+      const curlZ = dPsi2_dx - dPsi1_dy;
 
       a.velocity.get(dataBuffer, i, tmpVel);
       a.velocity.set(
         dataBuffer, i,
-        tmpVel[0] + curlX * amp,
-        tmpVel[1] + curlY * amp,
-        tmpVel[2] + curlZ * amp,
+        tmpVel[0] + curlX * ampDt,
+        tmpVel[1] + curlY * ampDt,
+        tmpVel[2] + curlZ * ampDt,
       );
     }
   }
+}
+
+// ─── Three decorrelated scalar potentials ──────────────────────────────────
+// 共享底层 simplex noise，常数偏移让 ψ₁/ψ₂/ψ₃ 互相不相关 — Bridson 经典做法
+
+function psi1 (x: number, y: number, z: number): number {
+  return noise3D(x, y, z);
+}
+function psi2 (x: number, y: number, z: number): number {
+  return noise3D(x + PSI2_OFFSET, y + PSI2_OFFSET, z + PSI2_OFFSET);
+}
+function psi3 (x: number, y: number, z: number): number {
+  return noise3D(x + PSI3_OFFSET, y + PSI3_OFFSET, z + PSI3_OFFSET);
 }
 
 // ─── Simplex 3D Noise (compact implementation) ──────────────────────────────
