@@ -27,6 +27,7 @@ export interface ProRibbonRendererPropertiesData {
   tessellationMode?: 'disabled' | 'custom' | 'automatic',
   customSubdivisions?: number,
   curveTension?: number,
+  useRibbonId?: boolean,
 }
 
 export interface ProRendererSnapshot {

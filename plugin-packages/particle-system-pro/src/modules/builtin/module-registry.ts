@@ -4,24 +4,18 @@ import { ProAccelerationForceModule } from './acceleration-force-module';
 import { ProAddVelocityInConeModule } from './add-velocity-in-cone-module';
 import { ProCalculateAccurateVelocityModule } from './calculate-accurate-velocity-module';
 import { ProCameraOffsetModule } from './camera-offset-module';
-import { ProColorOverLifeModule } from './color-over-life-module';
 import { ProCurlNoiseForceModule } from './curl-noise-force-module';
 import { ProDragModule } from './drag-module';
 import { ProEmitterPropertiesModule } from './emitter-properties-module';
 import { ProGravityForceModule } from './gravity-force-module';
 import { ProInitializeParticleModule } from './initialize-particle-module';
-import { ProInitializeRibbonIDModule } from './initialize-ribbon-id-module';
-import { ProInitializeRotationModule } from './initialize-rotation-module';
-import { ProRibbonWidthModule } from './ribbon-width-module';
 import { ProRibbonWidthScaleModule } from './ribbon-width-scale-module';
 import { ProRotateAroundPointModule } from './rotate-around-point-module';
-import { ProRotationOverLifeModule } from './rotation-over-life-module';
 import { ProSampleParticlesFromOtherEmitterModule } from './sample-particles-from-other-emitter-module';
 import { ProScaleColorModule } from './scale-color-module';
 import { ProScaleSizeBySpeedModule } from './scale-size-by-speed-module';
 import { ProScaleSpriteSizeModule } from './scale-sprite-size-module';
 import { ProShapeLocationModule } from './shape-location-module';
-import { ProSizeOverLifeModule } from './size-over-life-module';
 import { ProSolveForcesAndVelocityModule } from './solve-forces-and-velocity-module';
 import { ProSpawnBurstModule } from './spawn-burst-module';
 import { ProSpawnPerSourceParticleModule } from './spawn-per-source-particle-module';
@@ -52,11 +46,8 @@ export const proModuleRegistry: ProModuleDescriptor[] = [
   { id: 'pro.spawnPerSourceParticle', label: 'Spawn Per Source Particle', stage: ProModuleStage.EmitterUpdate, create: () => new ProSpawnPerSourceParticleModule() },
   // Particle Spawn
   { id: 'pro.initializeParticle', label: 'Initialize Particle', stage: ProModuleStage.ParticleSpawn, create: () => new ProInitializeParticleModule() },
-  { id: 'pro.initializeRotation', label: 'Initialize Rotation', stage: ProModuleStage.ParticleSpawn, create: () => new ProInitializeRotationModule() },
   { id: 'pro.addVelocityInCone', label: 'Add Velocity in Cone', stage: ProModuleStage.ParticleSpawn, create: () => new ProAddVelocityInConeModule() },
   { id: 'pro.shapeLocation', label: 'Shape Location', stage: ProModuleStage.ParticleSpawn, create: () => new ProShapeLocationModule() },
-  { id: 'pro.initializeRibbonId', label: 'Initialize Ribbon ID', stage: ProModuleStage.ParticleSpawn, create: () => new ProInitializeRibbonIDModule() },
-  { id: 'pro.ribbonWidth', label: 'Ribbon Width', stage: ProModuleStage.ParticleSpawn, create: () => new ProRibbonWidthModule() },
   { id: 'pro.sampleParticlesFromOtherEmitter', label: 'Sample Particles From Other Emitter', stage: ProModuleStage.ParticleSpawn, create: () => new ProSampleParticlesFromOtherEmitterModule() },
   { id: 'pro.cameraOffset', label: 'Camera Offset', stage: ProModuleStage.ParticleSpawn, create: () => new ProCameraOffsetModule() },
   // Particle Update
@@ -67,11 +58,8 @@ export const proModuleRegistry: ProModuleDescriptor[] = [
   { id: 'pro.solveForcesAndVelocity', label: 'Solve Forces & Velocity', stage: ProModuleStage.ParticleUpdate, create: () => new ProSolveForcesAndVelocityModule() },
   { id: 'pro.calculateAccurateVelocity', label: 'Calculate Accurate Velocity', stage: ProModuleStage.ParticleUpdate, create: () => new ProCalculateAccurateVelocityModule() },
   { id: 'pro.drag', label: 'Drag', stage: ProModuleStage.ParticleUpdate, create: () => new ProDragModule() },
-  { id: 'pro.rotationOverLife', label: 'Rotation Over Life', stage: ProModuleStage.ParticleUpdate, create: () => new ProRotationOverLifeModule() },
   { id: 'pro.spriteRotationRate', label: 'Sprite Rotation Rate', stage: ProModuleStage.ParticleUpdate, create: () => new ProSpriteRotationRateModule() },
-  { id: 'pro.colorOverLife', label: 'Color Over Life', stage: ProModuleStage.ParticleUpdate, create: () => new ProColorOverLifeModule() },
   { id: 'pro.scaleColor', label: 'Scale Color', stage: ProModuleStage.ParticleUpdate, create: () => new ProScaleColorModule() },
-  { id: 'pro.sizeOverLife', label: 'Size Over Life', stage: ProModuleStage.ParticleUpdate, create: () => new ProSizeOverLifeModule() },
   { id: 'pro.scaleSpriteSize', label: 'Scale Sprite Size', stage: ProModuleStage.ParticleUpdate, create: () => new ProScaleSpriteSizeModule() },
   { id: 'pro.scaleSizeBySpeed', label: 'Scale Size by Speed', stage: ProModuleStage.ParticleUpdate, create: () => new ProScaleSizeBySpeedModule() },
   { id: 'pro.ribbonWidthScale', label: 'Ribbon Width Scale', stage: ProModuleStage.ParticleUpdate, create: () => new ProRibbonWidthScaleModule() },

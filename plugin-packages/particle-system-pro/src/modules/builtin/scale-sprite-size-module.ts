@@ -1,6 +1,6 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
-import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
-import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
+import { ProDistributionVector2 } from '../../distribution/pro-distribution-vector2';
+import type { ProDistributionVector2Data } from '../../distribution/pro-distribution-vector2';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
@@ -9,26 +9,20 @@ import { ProModule } from '../module';
 import type { ProModuleProps } from '../module';
 
 export interface ProScaleSpriteSizeModuleProps extends ProModuleProps {
-  scale: ProDistributionFloatData,
+  scale: ProDistributionVector2Data,
 }
 
 const tmpInit: [number, number] = [0, 0];
+const tmpScale: [number, number] = [0, 0];
 
 /**
- * 尺寸缩放：size = initialSize * scale.sampleAtTime(perParticleRand, normalizedAge)。
- *
- * 与 SizeOverLife（Curve 驱动 X/Y 双曲线，所有粒子相同）的关系：
- * - ScaleSpriteSize 用 ProDistributionFloat，uniform 缩放 X/Y
- * - Range 模式：每个粒子拿到独立 random scale，做出大小不一的爆破/烟花
- * - Curve 模式：随 normalizedAge 缩放，所有粒子同曲线
- *
- * 简化于 UE Niagara Stateless ScaleSpriteSize（UE 用 DistributionVector2 可 X/Y 独立）。
- * 这里用 Float 覆盖 90% 用例；后续需要 X/Y 独立时可扩展为 DistributionVector2。
+ * 对齐 UE Niagara Stateless ScaleSpriteSize：size = initialSize * scale(normalizedAge)。
+ * scale 为 ProDistributionVector2，X/Y 独立缩放。
  */
 export class ProScaleSpriteSizeModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
 
-  scale: ProDistributionFloat = ProDistributionFloat.fromConstant(1);
+  scale: ProDistributionVector2 = ProDistributionVector2.fromUniformConstant(1);
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
@@ -39,7 +33,7 @@ export class ProScaleSpriteSizeModule extends ProModule {
 
   override fromJSON (data: ProScaleSpriteSizeModuleProps): void {
     if (data.scale) {
-      this.scale = ProDistributionFloat.fromJSON(data.scale);
+      this.scale = ProDistributionVector2.fromJSON(data.scale);
     }
   }
 
@@ -65,10 +59,11 @@ export class ProScaleSpriteSizeModule extends ProModule {
       const pRand = hashSeed(seed, ParticleRandSalts.ScaleX);
       const lifetime = a.lifetime.get(dataBuffer, i);
       const t = lifetime > 0 ? Math.min(a.age.get(dataBuffer, i) / lifetime, 1) : 1;
-      const s = this.scale.sampleAtTime(pRand, t);
+
+      this.scale.sampleAtTime(pRand, t, tmpScale);
 
       a.initialSize.get(dataBuffer, i, tmpInit);
-      a.size.set(dataBuffer, i, tmpInit[0] * s, tmpInit[1] * s);
+      a.size.set(dataBuffer, i, tmpInit[0] * tmpScale[0], tmpInit[1] * tmpScale[1]);
     }
   }
 }

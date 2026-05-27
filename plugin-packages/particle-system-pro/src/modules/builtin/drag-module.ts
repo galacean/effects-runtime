@@ -1,14 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
-import { ProCurveFloat } from '../../curves/pro-curve-float';
-import type { ProCurveFloatData } from '../../curves/pro-curve-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
 import type { ProModuleProps } from '../module';
+import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 
 export interface ProDragModuleProps extends ProModuleProps {
-  dragCurve: ProCurveFloatData,
+  drag: ProDistributionFloatData,
 }
 
 const tmpVel: [number, number, number] = [0, 0, 0];
@@ -19,24 +20,27 @@ const tmpVel: [number, number, number] = [0, 0, 0];
  * 物理意义：阻力与速度成正比、与质量反比；积分得指数衰减。比旧的
  * 线性衰减 `(1 - drag*dt)` 在大 dt 下稳定（不会变负或爆炸）。
  *
- * dragCurve 按 normalizedAge 采样，支持随生命周期变化的阻力。
+ * 对齐 UE `FNiagaraDistributionRangeFloat`：drag 是 range-only 分布，
+ * range 模式下每粒子在 spawn 时通过 `Particle.RandomSeed` 稳定随机一次，
+ * 整个生命周期保持同一阻力值。不再支持随年龄渐变的 curve（UE 不允许）。
+ *
  * mass <= 0 退化为 1，避免除零。
  */
 export class ProDragModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
 
-  dragCurve: ProCurveFloat = ProCurveFloat.constant(1);
+  drag: ProDistributionFloat = ProDistributionFloat.fromConstant(1);
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
 
   override toJSON (): ProDragModuleProps {
-    return { dragCurve: this.dragCurve.toJSON() };
+    return { drag: this.drag.toJSON() };
   }
 
   override fromJSON (data: ProDragModuleProps): void {
-    if (data.dragCurve) {
-      this.dragCurve = ProCurveFloat.fromJSON(data.dragCurve);
+    if (data.drag) {
+      this.drag = ProDistributionFloat.fromJSON(data.drag);
     }
   }
 
@@ -58,9 +62,9 @@ export class ProDragModule extends ProModule {
     const a = this.accessors!;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      const lifetime = a.lifetime.get(dataBuffer, i);
-      const t = lifetime > 0 ? Math.min(a.age.get(dataBuffer, i) / lifetime, 1) : 1;
-      const drag = Math.max(0, this.dragCurve.evaluate(t));
+      const seed = a.randomSeed.get(dataBuffer, i);
+      const r = hashSeed(seed, ParticleRandSalts.Drag);
+      const drag = Math.max(0, this.drag.sampleAtTime(r, 0));
       const mass = a.mass.get(dataBuffer, i);
       const m = mass > 0 ? mass : 1;
       const factor = Math.exp(-drag * deltaTime / m);

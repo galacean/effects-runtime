@@ -4,7 +4,6 @@ import {
   ProAccelerationForceModule,
   ProAddVelocityInConeModule,
   ProCameraOffsetModule,
-  ProColorOverLifeModule,
   ProCurveColor,
   ProCurveFloat,
   ProCurlNoiseForceModule,
@@ -16,20 +15,16 @@ import {
   ProEmitterPropertiesModule,
   ProGravityForceModule,
   ProInitializeParticleModule,
-  ProInitializeRotationModule,
-  ProInitializeRibbonIDModule,
   ProParticleSystemComponent,
   ProParticleSystemRendererComponent,
   ProRibbonRenderer,
   ProRibbonRendererProperties,
   ProRotateAroundPointModule,
-  ProRotationOverLifeModule,
   ProSampleParticlesFromOtherEmitterModule,
   ProScaleColorModule,
   ProScaleSizeBySpeedModule,
   ProScaleSpriteSizeModule,
   ProShapeLocationModule,
-  ProSizeOverLifeModule,
   ProSolveForcesAndVelocityModule,
   ProSpawnBurstModule,
   ProSpawnPerSourceParticleModule,
@@ -283,10 +278,7 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
   initParticle.startColor = ProDistributionColor.fromConstant(1.0, 0.84, 0.42, 1.0);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.18);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
-
-  const initRotation = new ProInitializeRotationModule();
-
-  initRotation.rotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const velocity = new ProAddVelocityInConeModule();
 
@@ -300,9 +292,9 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
 
   const forces = new ProSolveForcesAndVelocityModule();
 
-  const colorOverLife = new ProColorOverLifeModule();
+  const scaleColor = new ProScaleColorModule();
 
-  colorOverLife.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [1, 0, 0, 0]);
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [1, 0, 0, 0]));
 
   const scaleSize = new ProScaleSizeBySpeedModule();
 
@@ -323,11 +315,10 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
   system.addModule(spawnRate);
   system.addModule(spawnBurst);
   system.addModule(initParticle);
-  system.addModule(initRotation);
   system.addModule(velocity);
   system.addModule(gravity);
   system.addModule(forces);
-  system.addModule(colorOverLife);
+  system.addModule(scaleColor);
   system.addModule(scaleSize);
   system.addModule(rotationRate);
   system.addModule(updateAge);
@@ -349,10 +340,7 @@ function configureSparkModules (system: ProParticleSystemComponent): void {
   initParticle.startColor = ProDistributionColor.fromRange([1.0, 0.65, 0.2, 1.0], [1.0, 0.95, 0.45, 1.0]);
   initParticle.startSize = ProDistributionVector2.fromRange([0.09, 0.09], [0.15, 0.15], true);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
-
-  const initRotation = new ProInitializeRotationModule();
-
-  initRotation.rotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const velocity = new ProAddVelocityInConeModule();
 
@@ -366,24 +354,23 @@ function configureSparkModules (system: ProParticleSystemComponent): void {
 
   const forces = new ProSolveForcesAndVelocityModule();
 
-  const colorOverLife = new ProColorOverLifeModule();
+  const scaleColor = new ProScaleColorModule();
 
-  colorOverLife.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [1, 0.35, 0.0, 0]);
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [1, 0.35, 0.0, 0]));
 
   const scaleSize = new ProScaleSpriteSizeModule();
 
-  scaleSize.scale = ProDistributionFloat.fromCurve(ProCurveFloat.linear(1.7, 0.15));
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(1.7, 0.15), ProCurveFloat.linear(1.7, 0.15));
 
   const updateAge = new ProUpdateAgeModule();
 
   system.addModule(spawnRate);
   system.addModule(spawnBurst);
   system.addModule(initParticle);
-  system.addModule(initRotation);
   system.addModule(velocity);
   system.addModule(gravity);
   system.addModule(forces);
-  system.addModule(colorOverLife);
+  system.addModule(scaleColor);
   system.addModule(scaleSize);
   system.addModule(updateAge);
 }
@@ -401,10 +388,6 @@ function configureRibbonModules (system: ProParticleSystemComponent): void {
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.42);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
-  const ribbonId = new ProInitializeRibbonIDModule();
-
-  ribbonId.ribbonId = 0;
-
   const velocity = new ProAddVelocityInConeModule();
 
   velocity.coneAxis = [0, 1, 0];
@@ -417,19 +400,18 @@ function configureRibbonModules (system: ProParticleSystemComponent): void {
 
   const forces = new ProSolveForcesAndVelocityModule();
 
-  const colorOverLife = new ProColorOverLifeModule();
+  const scaleColor = new ProScaleColorModule();
 
-  colorOverLife.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [0, 0.2, 1, 0]);
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [0, 0.2, 1, 0]));
 
   const updateAge = new ProUpdateAgeModule();
 
   system.addModule(spawnRate);
   system.addModule(initParticle);
-  system.addModule(ribbonId);
   system.addModule(velocity);
   system.addModule(gravity);
   system.addModule(forces);
-  system.addModule(colorOverLife);
+  system.addModule(scaleColor);
   system.addModule(updateAge);
 }
 
@@ -449,10 +431,7 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
     [-0.08, 0, -0.08],
     [0.08, 0, 0.08],
   );
-
-  const initRotation = new ProInitializeRotationModule();
-
-  initRotation.rotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const velocity = new ProAddVelocityInConeModule();
 
@@ -487,13 +466,12 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
 
   const scaleSize = new ProScaleSpriteSizeModule();
 
-  scaleSize.scale = ProDistributionFloat.fromCurve(ProCurveFloat.linear(0.6, 1.0));
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(0.6, 1.0), ProCurveFloat.linear(0.6, 1.0));
 
   const updateAge = new ProUpdateAgeModule();
 
   system.addModule(spawnRate);
   system.addModule(initParticle);
-  system.addModule(initRotation);
   system.addModule(velocity);
   system.addModule(gravity);
   system.addModule(forces);
@@ -525,10 +503,7 @@ function configureShockRingModules (system: ProParticleSystemComponent): void {
   initParticle.startColor = ProDistributionColor.fromConstant(0.25, 0.6, 0.7, 0.75);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.24);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
-
-  const initRotation = new ProInitializeRotationModule();
-
-  initRotation.rotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const shapeLocation = new ProShapeLocationModule();
 
@@ -548,32 +523,30 @@ function configureShockRingModules (system: ProParticleSystemComponent): void {
 
   const forces = new ProSolveForcesAndVelocityModule();
 
-  const rotationOverLife = new ProRotationOverLifeModule();
+  const rotationRate = new ProSpriteRotationRateModule();
 
-  rotationOverLife.angularVelocity = 0.45;
+  rotationRate.rate = ProDistributionFloat.fromConstant(0.45);
 
-  const sizeOverLife = new ProSizeOverLifeModule();
+  const scaleSize = new ProScaleSpriteSizeModule();
 
-  sizeOverLife.sizeCurveX = ProCurveFloat.linear(1.4, 3.8);
-  sizeOverLife.sizeCurveY = ProCurveFloat.linear(1.1, 2.8);
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(1.4, 3.8), ProCurveFloat.linear(1.1, 2.8));
 
-  const colorOverLife = new ProColorOverLifeModule();
+  const scaleColor = new ProScaleColorModule();
 
-  colorOverLife.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [1, 0.45, 0.0, 0]);
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [1, 0.45, 0.0, 0]));
 
   const updateAge = new ProUpdateAgeModule();
 
   system.addModule(emitterProps);
   system.addModule(spawnBurst);
   system.addModule(initParticle);
-  system.addModule(initRotation);
   system.addModule(shapeLocation);
   system.addModule(cameraOffset);
   system.addModule(velocity);
   system.addModule(forces);
-  system.addModule(rotationOverLife);
-  system.addModule(sizeOverLife);
-  system.addModule(colorOverLife);
+  system.addModule(rotationRate);
+  system.addModule(scaleSize);
+  system.addModule(scaleColor);
   system.addModule(updateAge);
 }
 
@@ -594,10 +567,7 @@ function configureNoiseFieldModules (system: ProParticleSystemComponent): void {
   initParticle.startColor = ProDistributionColor.fromRange([0.72, 0.9, 1.0, 0.78], [1.0, 1.0, 1.0, 1.0]);
   initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.28);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
-
-  const initRotation = new ProInitializeRotationModule();
-
-  initRotation.rotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const shapeLocation = new ProShapeLocationModule();
 
@@ -618,7 +588,7 @@ function configureNoiseFieldModules (system: ProParticleSystemComponent): void {
 
   const drag = new ProDragModule();
 
-  drag.dragCurve = ProCurveFloat.linear(0.28, 1.0);
+  drag.drag = ProDistributionFloat.fromRange(0.28, 1.0);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
@@ -633,14 +603,13 @@ function configureNoiseFieldModules (system: ProParticleSystemComponent): void {
 
   const scaleSize = new ProScaleSpriteSizeModule();
 
-  scaleSize.scale = ProDistributionFloat.fromCurve(ProCurveFloat.linear(1.3, 2.7));
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(1.3, 2.7), ProCurveFloat.linear(1.3, 2.7));
 
   const updateAge = new ProUpdateAgeModule();
 
   system.addModule(emitterProps);
   system.addModule(spawnRate);
   system.addModule(initParticle);
-  system.addModule(initRotation);
   system.addModule(shapeLocation);
   system.addModule(velocity);
   system.addModule(curlNoise);
@@ -690,18 +659,17 @@ function configureAccelerationColumnModules (system: ProParticleSystemComponent)
 
   const drag = new ProDragModule();
 
-  drag.dragCurve = ProCurveFloat.linear(0.22, 0.75);
+  drag.drag = ProDistributionFloat.fromRange(0.22, 0.75);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
-  const sizeOverLife = new ProSizeOverLifeModule();
+  const scaleSize = new ProScaleSpriteSizeModule();
 
-  sizeOverLife.sizeCurveX = ProCurveFloat.linear(1.1, 0.55);
-  sizeOverLife.sizeCurveY = ProCurveFloat.linear(1.8, 3.2);
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(1.1, 0.55), ProCurveFloat.linear(1.8, 3.2));
 
-  const colorOverLife = new ProColorOverLifeModule();
+  const scaleColor = new ProScaleColorModule();
 
-  colorOverLife.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [0.15, 0.85, 1.0, 0]);
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [0.15, 0.85, 1.0, 0]));
 
   const updateAge = new ProUpdateAgeModule();
 
@@ -714,8 +682,8 @@ function configureAccelerationColumnModules (system: ProParticleSystemComponent)
   system.addModule(acceleration);
   system.addModule(drag);
   system.addModule(forces);
-  system.addModule(sizeOverLife);
-  system.addModule(colorOverLife);
+  system.addModule(scaleSize);
+  system.addModule(scaleColor);
   system.addModule(updateAge);
 }
 
@@ -737,10 +705,7 @@ function configureFlipbookBurstModules (system: ProParticleSystemComponent): voi
   initParticle.startColor = ProDistributionColor.fromConstant(1.0, 0.85, 0.55, 0.95);
   initParticle.startSize = ProDistributionVector2.fromRange([1.2, 1.2], [1.8, 1.8], true);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
-
-  const initRotation = new ProInitializeRotationModule();
-
-  initRotation.rotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const subUV = new ProSubUVAnimationModule();
 
@@ -748,15 +713,14 @@ function configureFlipbookBurstModules (system: ProParticleSystemComponent): voi
   subUV.totalFrames = 16;
 
   // Expand rapidly then settle
-  const sizeOverLife = new ProSizeOverLifeModule();
+  const scaleSize = new ProScaleSpriteSizeModule();
 
-  sizeOverLife.sizeCurveX = ProCurveFloat.linear(0.8, 1.8);
-  sizeOverLife.sizeCurveY = ProCurveFloat.linear(0.8, 1.8);
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(0.8, 1.8), ProCurveFloat.linear(0.8, 1.8));
 
   // Bright flash → warm fade → transparent
-  const colorOverLife = new ProColorOverLifeModule();
+  const scaleColor = new ProScaleColorModule();
 
-  colorOverLife.colorCurve = ProCurveColor.linear([1, 1, 0.85, 1], [1, 0.4, 0.1, 0.15]);
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 0.85, 1], [1, 0.4, 0.1, 0.15]));
 
   const forces = new ProSolveForcesAndVelocityModule();
   const updateAge = new ProUpdateAgeModule();
@@ -764,10 +728,9 @@ function configureFlipbookBurstModules (system: ProParticleSystemComponent): voi
   system.addModule(emitterProps);
   system.addModule(spawnRate);
   system.addModule(initParticle);
-  system.addModule(initRotation);
   system.addModule(subUV);
-  system.addModule(sizeOverLife);
-  system.addModule(colorOverLife);
+  system.addModule(scaleSize);
+  system.addModule(scaleColor);
   system.addModule(forces);
   system.addModule(updateAge);
 }
@@ -855,9 +818,9 @@ function configureTrailPerSourceModules (system: ProParticleSystemComponent): vo
   sample.sourceEmitterName = 'source';
   trail.addModule(sample);
 
-  const trailColor = new ProColorOverLifeModule();
+  const trailColor = new ProScaleColorModule();
 
-  trailColor.colorCurve = ProCurveColor.linear([1, 1, 1, 1], [0.2, 0.5, 1.0, 0]);
+  trailColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [0.2, 0.5, 1.0, 0]));
   trail.addModule(trailColor);
 
   trail.addModule(new ProUpdateAgeModule());
@@ -969,6 +932,7 @@ function configureTrailPerSourceRenderer (component: ProParticleSystemRendererCo
   const trailProps = new ProRibbonRendererProperties();
 
   trailProps.blending = spec.BlendingMode.ALPHA;
+  trailProps.useRibbonId = true;
   const trailRenderer = new ProRibbonRenderer(engine, trailProps);
 
   component.addRenderer(trailRenderer);

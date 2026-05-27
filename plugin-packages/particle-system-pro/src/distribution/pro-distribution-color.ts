@@ -1,5 +1,6 @@
 import { ProDistributionFloat } from './pro-distribution-float';
 import type { ProDistributionFloatData } from './pro-distribution-float';
+import type { ProCurveColor } from '../curves/pro-curve-color';
 
 export interface ProDistributionColorData {
   r: ProDistributionFloatData,
@@ -42,6 +43,19 @@ export class ProDistributionColor {
       ProDistributionFloat.fromRange(min[1], max[1]),
       ProDistributionFloat.fromRange(min[2], max[2]),
       ProDistributionFloat.fromRange(min[3], max[3]),
+    );
+  }
+
+  /**
+   * 从 ProCurveColor（4 条独立曲线）构造 — 每通道走 Curve distribution，t = normalizedAge。
+   * 用于"按生命周期沿曲线 fade"场景：ScaleColor 配合本工厂可代替已删除的 ColorOverLife
+   */
+  static fromCurve (curve: ProCurveColor): ProDistributionColor {
+    return new ProDistributionColor(
+      ProDistributionFloat.fromCurve(curve.r),
+      ProDistributionFloat.fromCurve(curve.g),
+      ProDistributionFloat.fromCurve(curve.b),
+      ProDistributionFloat.fromCurve(curve.a),
     );
   }
 

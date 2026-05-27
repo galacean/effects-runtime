@@ -6,6 +6,7 @@ import { ProModule } from '../module';
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 const tmpPrev: [number, number, number] = [0, 0, 0];
+const tmpVel: [number, number, number] = [0, 0, 0];
 
 /**
  * 从位移反算真实速度：velocity = (position - previousPosition) / dt。
@@ -16,6 +17,12 @@ const tmpPrev: [number, number, number] = [0, 0, 0];
  *
  * 典型使用：Sprite 的 velocity-aligned billboard 需要"看起来正确的"速度，
  * 而不是 Force 模块累计但还未积分的中间值。
+ *
+ * **PreviousVelocity 写入**：在更新 velocity 前先把当前值快照到
+ * `Particle.PreviousVelocity`，对齐 UE
+ * `SolveVelocitiesAndForces.ush:166-167`（`PreviousVelocity = OldVelocity;
+ * Velocity = NewVelocity`）。motion blur / TAA / VelocityAligned rendering
+ * 需要这两个值同时存在
  *
  * 对应 UE Niagara Stateless CalculateAccurateVelocity 模块。
  */
@@ -46,6 +53,11 @@ export class ProCalculateAccurateVelocityModule extends ProModule {
     for (let i = firstInstance; i < lastInstance; i++) {
       a.position.get(dataBuffer, i, tmpPos);
       a.previousPosition.get(dataBuffer, i, tmpPrev);
+      // 先把当前 velocity snapshot 到 previousVelocity，再写新值。
+      // 注意顺序：必须先 get 旧 velocity 再 set 新 velocity，否则
+      // previousVelocity 拿到的就是 (pos - prevPos)/dt 而不是上一帧的值
+      a.velocity.get(dataBuffer, i, tmpVel);
+      a.previousVelocity.set(dataBuffer, i, tmpVel[0], tmpVel[1], tmpVel[2]);
       a.velocity.set(
         dataBuffer, i,
         (tmpPos[0] - tmpPrev[0]) * inv,

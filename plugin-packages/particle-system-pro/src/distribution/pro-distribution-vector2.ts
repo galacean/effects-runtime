@@ -1,5 +1,6 @@
 import { ProDistributionFloat } from './pro-distribution-float';
 import type { ProDistributionFloatData } from './pro-distribution-float';
+import type { ProCurveFloat } from '../curves/pro-curve-float';
 
 export interface ProDistributionVector2Data {
   x: ProDistributionFloatData,
@@ -43,6 +44,17 @@ export class ProDistributionVector2 {
       ProDistributionFloat.fromRange(min[0], max[0]),
       ProDistributionFloat.fromRange(min[1], max[1]),
       uniform,
+    );
+  }
+
+  /**
+   * X / Y 各从一条独立 ProCurveFloat 构造 — 用于"按生命周期沿曲线缩放"场景。
+   * 配合 ScaleSpriteSize 代替已删除的 SizeOverLife
+   */
+  static fromCurves (curveX: ProCurveFloat, curveY: ProCurveFloat): ProDistributionVector2 {
+    return new ProDistributionVector2(
+      ProDistributionFloat.fromCurve(curveX),
+      ProDistributionFloat.fromCurve(curveY),
     );
   }
 

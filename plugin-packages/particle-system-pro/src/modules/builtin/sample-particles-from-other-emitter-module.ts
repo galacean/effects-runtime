@@ -24,9 +24,8 @@ const tmpPrevPos: [number, number, number] = [0, 0, 0];
  * - RibbonID = source.UniqueID。Ribbon Renderer 自动按 RibbonID 分组成
  *   独立 ribbon。
  *
- * 当前 batch 没带 `sourceAssignment` 时退回 round-robin 模式：每个新粒子去
- * `(i - firstInstance) % numSrc` 的 source 当前位置。round-robin 在低 rate
- * 下会把粒子全压到 source 0；想正确分配请配合 SpawnPerSourceParticle。
+ * 当前 batch 没带 `sourceAssignment`，或 assignment.count 与本批大小不一致时，
+ * 视为配置/调度错误：显式报错并跳过本批，不再退回 round-robin 生成错误 ribbon。
  *
  * 调度前提：source emitter 必须先于 trail emitter 在 system 内 addEmitter。
  */
@@ -41,6 +40,8 @@ export class ProSampleParticlesFromOtherEmitterModule extends ProModule {
   private sourceLayout: unknown = null;
   private resolvedSource: ProEmitterInstance | null = null;
   private resolvedSourceName = '';
+  private missingSourceAssignmentLogged = false;
+  private mismatchedSourceAssignmentLogged = false;
 
   override toJSON (): ProSampleParticlesFromOtherEmitterModuleProps {
     return { sourceEmitterName: this.sourceEmitterName };
@@ -110,6 +111,8 @@ export class ProSampleParticlesFromOtherEmitterModule extends ProModule {
 
     // —— 路径 A：当前 spawn batch 直接携带了 per-source assignment ——
     if (currentSrc && currentSrc.count === totalToFill) {
+      this.missingSourceAssignmentLogged = false;
+      this.mismatchedSourceAssignmentLogged = false;
       sA.position.get(sourceBuffer, currentSrc.srcIdx, tmpCurrPos);
       sA.previousPosition.get(sourceBuffer, currentSrc.srcIdx, tmpPrevPos);
 
@@ -143,16 +146,23 @@ export class ProSampleParticlesFromOtherEmitterModule extends ProModule {
       return;
     }
 
-    // —— 路径 B：无配对 spawn module / count 不匹配 —— 退化 round-robin ——
-    // 注意低 rate 下 round-robin 会把粒子全压到 source 0；想正确分配请加
-    // SpawnPerSourceParticle 模块到本 emitter。
-    for (let i = firstInstance; i < lastInstance; i++) {
-      const srcIdx = (i - firstInstance) % numSrc;
+    // —— 路径 B：缺失 assignment / count 不匹配 —— 显式报错并跳过本批 ——
+    if (!currentSrc) {
+      if (!this.missingSourceAssignmentLogged) {
+        console.error(`[ProSampleParticlesFromOtherEmitter] missing sourceAssignment for emitter "${emitterInstance.name || '<anonymous>'}" sampling source emitter "${this.sourceEmitterName}". Add and pair ProSpawnPerSourceParticleModule, otherwise this module cannot assign source particles correctly.`);
+        this.missingSourceAssignmentLogged = true;
+      }
+      this.mismatchedSourceAssignmentLogged = false;
 
-      sA.position.get(sourceBuffer, srcIdx, tmpCurrPos);
-      tA.position.set(dataBuffer, i, tmpCurrPos[0], tmpCurrPos[1], tmpCurrPos[2]);
-      tA.previousPosition.set(dataBuffer, i, tmpCurrPos[0], tmpCurrPos[1], tmpCurrPos[2]);
-      tA.ribbonId.set(dataBuffer, i, sA.uniqueId.get(sourceBuffer, srcIdx));
+      return;
     }
+
+    if (!this.mismatchedSourceAssignmentLogged) {
+      console.error(`[ProSampleParticlesFromOtherEmitter] sourceAssignment.count (${currentSrc.count}) does not match spawn batch size (${totalToFill}) for emitter "${emitterInstance.name || '<anonymous>'}" sampling source emitter "${this.sourceEmitterName}". Skipping this spawn batch to avoid generating invalid ribbons.`);
+      this.mismatchedSourceAssignmentLogged = true;
+    }
+    this.missingSourceAssignmentLogged = false;
+
+    return;
   }
 }

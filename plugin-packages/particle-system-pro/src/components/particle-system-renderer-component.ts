@@ -129,6 +129,7 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
           tessellationMode: p.tessellationMode,
           customSubdivisions: p.customSubdivisions,
           curveTension: p.curveTension,
+          useRibbonId: p.useRibbonId,
         };
         const url = getDebugTextureUrl(p);
 
@@ -200,6 +201,7 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
       if (rp.tessellationMode !== undefined) { props.tessellationMode = rp.tessellationMode as typeof props.tessellationMode; }
       if (rp.customSubdivisions !== undefined) { props.customSubdivisions = rp.customSubdivisions; }
       if (rp.curveTension !== undefined) { props.curveTension = rp.curveTension; }
+      if (rp.useRibbonId !== undefined) { props.useRibbonId = rp.useRibbonId; }
       if (rp.textureUrl) {
         setDebugTextureUrl(props, rp.textureUrl);
       }

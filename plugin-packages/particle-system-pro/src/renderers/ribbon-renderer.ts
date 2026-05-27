@@ -258,6 +258,7 @@ export class ProRibbonRenderer extends ProRenderer {
 
   private buildSortBuffer (dataBuffer: ProDataBuffer, num: number): void {
     const a = this.accessors!;
+    const useRibbonId = this.properties.useRibbonId;
 
     if (this.sortBuffer.length < num) {
       this.sortBuffer = new Array(num);
@@ -269,7 +270,10 @@ export class ProRibbonRenderer extends ProRenderer {
       const entry = this.sortBuffer[i];
 
       entry.index = i;
-      entry.ribbonId = a.ribbonId.get(dataBuffer, i);
+      // useRibbonId=false 时所有粒子归一到 ribbonId=0，sortParticles 退化为只
+      // 按 LinkOrder 排序，countSegments 直接连成一条 — 对齐 UE
+      // `HasRibbonIDs() == false` 路径 (NiagaraRendererRibbons.cpp:1755)
+      entry.ribbonId = useRibbonId ? a.ribbonId.get(dataBuffer, i) : 0;
       entry.linkOrder = a.ribbonLinkOrder.get(dataBuffer, i);
     }
     this.sortBuffer.length = num;

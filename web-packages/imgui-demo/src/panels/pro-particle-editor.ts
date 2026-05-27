@@ -436,6 +436,7 @@ function drawModuleEntry (system: ProParticleSystemComponent, emitter: ProEmitte
 
   const opened = ImGui.TreeNodeEx(
     name + '##' + uid,
+    ImGui.TreeNodeFlags.DefaultOpen |
     ImGui.TreeNodeFlags.SpanAvailWidth |
     ImGui.TreeNodeFlags.OpenOnArrow |
     ImGui.TreeNodeFlags.OpenOnDoubleClick |
@@ -918,11 +919,17 @@ function drawKeyframeEditor (obj: Record<string, ProCurveFloat>, key: string, id
   }
 
   if (dirty) {
+    // Keyframe editor is only shown in Curve mode — ensure all keys use cubic interpolation
+    // so that tangent edits actually affect the curve shape.
+    for (const k of keys) {
+      k.interpMode = 'cubic';
+    }
     obj[key] = ProCurveFloat.fromKeyframes([...keys]);
   }
 }
 
 const COLOR_CURVE_MODE_LABELS = ['Constant', 'Linear', 'Per-Channel'];
+const DISTRIBUTION_COLOR_CURVE_MODE_LABELS = ['Linear', 'Per-Channel'];
 
 function getColorCurveMode (curve: ProCurveColor): number {
   const modes = [getCurveMode(curve.r), getCurveMode(curve.g), getCurveMode(curve.b), getCurveMode(curve.a)];
@@ -933,41 +940,60 @@ function getColorCurveMode (curve: ProCurveColor): number {
   return 2;
 }
 
-function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColor>, key: string, id: string): void {
-  ImGui.TableNextRow();
-  ImGui.TableNextColumn();
-  ImGui.AlignTextToFramePadding();
-  ImGui.Text(prettifyLabel(label));
-  ImGui.TableNextColumn();
+function createCurveColorFromDistribution (dist: ProDistributionColor): ProCurveColor {
+  return new ProCurveColor(dist.r.curve, dist.g.curve, dist.b.curve, dist.a.curve);
+}
 
-  const curve = obj[key];
-  let mode = getColorCurveMode(curve);
+function createPerChannelColorCurve (start: [number, number, number, number], end: [number, number, number, number]): ProCurveColor {
+  return new ProCurveColor(
+    ProCurveFloat.fromKeyframes([
+      { time: 0, value: start[0], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+      { time: 1, value: end[0], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+    ]),
+    ProCurveFloat.fromKeyframes([
+      { time: 0, value: start[1], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+      { time: 1, value: end[1], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+    ]),
+    ProCurveFloat.fromKeyframes([
+      { time: 0, value: start[2], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+      { time: 1, value: end[2], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+    ]),
+    ProCurveFloat.fromKeyframes([
+      { time: 0, value: start[3], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+      { time: 1, value: end[3], inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+    ]),
+  );
+}
 
-  // Mode combo
+function getDistributionColorCurveMode (curve: ProCurveColor): number {
+  return getColorCurveMode(curve) <= 1 ? 0 : 1;
+}
+
+function drawDistributionColorCurveEditor (curve: ProCurveColor, id: string): ProCurveColor | null {
+  let nextCurve: ProCurveColor | null = null;
+  let mode = getDistributionColorCurveMode(curve);
+  const startColor: [number, number, number, number] = [
+    curve.r.keyframes[0]?.value ?? 1,
+    curve.g.keyframes[0]?.value ?? 1,
+    curve.b.keyframes[0]?.value ?? 1,
+    curve.a.keyframes[0]?.value ?? 1,
+  ];
+  const endColor: [number, number, number, number] = [
+    curve.r.keyframes[1]?.value ?? curve.r.keyframes[0]?.value ?? 1,
+    curve.g.keyframes[1]?.value ?? curve.g.keyframes[0]?.value ?? 1,
+    curve.b.keyframes[1]?.value ?? curve.b.keyframes[0]?.value ?? 1,
+    curve.a.keyframes[1]?.value ?? curve.a.keyframes[0]?.value ?? 1,
+  ];
+
   ImGui.SetNextItemWidth(100);
-  if (ImGui.BeginCombo('##cmode_' + id, COLOR_CURVE_MODE_LABELS[mode])) {
-    for (let m = 0; m < 3; m++) {
-      if (ImGui.Selectable(COLOR_CURVE_MODE_LABELS[m], m === mode)) {
+  if (ImGui.BeginCombo('##dcsubmode_' + id, DISTRIBUTION_COLOR_CURVE_MODE_LABELS[mode])) {
+    for (let m = 0; m < 2; m++) {
+      if (ImGui.Selectable(DISTRIBUTION_COLOR_CURVE_MODE_LABELS[m], m === mode)) {
         mode = m;
-        if (m === 0) { obj[key] = ProCurveColor.constant(1, 1, 1, 1); } else if (m === 1) { obj[key] = ProCurveColor.linear([1, 1, 1, 1], [1, 1, 1, 0]); } else if (m === 2) {
-          obj[key] = new ProCurveColor(
-            ProCurveFloat.fromKeyframes([
-              { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-              { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-            ]),
-            ProCurveFloat.fromKeyframes([
-              { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-              { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-            ]),
-            ProCurveFloat.fromKeyframes([
-              { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-              { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-            ]),
-            ProCurveFloat.fromKeyframes([
-              { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-              { time: 1, value: 0, inTangent: -1, outTangent: 0, interpMode: 'cubic' },
-            ]),
-          );
+        if (m === 0) {
+          nextCurve = ProCurveColor.linear(startColor, endColor);
+        } else {
+          nextCurve = createPerChannelColorCurve(startColor, endColor);
         }
       }
     }
@@ -975,31 +1001,94 @@ function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColo
   }
 
   if (mode === 0) {
-    // Constant color
+    ImGui.SameLine();
+    const a = ImGui.ColorEdit4('##dcs_' + id, startColor, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.NoInputs);
+
+    ImGui.SameLine();
+    ImGui.Text('>>');
+    ImGui.SameLine();
+    const b = ImGui.ColorEdit4('##dce_' + id, endColor, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.NoInputs);
+
+    if (a || b) {
+      nextCurve = ProCurveColor.linear(startColor, endColor);
+    }
+  } else {
+    const nextPerChannel = drawCurveColorEditor(curve, id + '_pc', false, 2);
+
+    if (nextPerChannel) {
+      nextCurve = nextPerChannel;
+    }
+  }
+
+  return nextCurve;
+}
+
+function drawCurveColorEditor (curve: ProCurveColor, id: string, showModeSelector = true, forcedMode?: number): ProCurveColor | null {
+  let nextCurve: ProCurveColor | null = null;
+  let currentCurve = curve;
+  let mode = forcedMode ?? getColorCurveMode(currentCurve);
+
+  if (showModeSelector) {
+    ImGui.SetNextItemWidth(100);
+    if (ImGui.BeginCombo('##cmode_' + id, COLOR_CURVE_MODE_LABELS[mode])) {
+      for (let m = 0; m < 3; m++) {
+        if (ImGui.Selectable(COLOR_CURVE_MODE_LABELS[m], m === mode)) {
+          mode = m;
+          if (m === 0) {
+            nextCurve = ProCurveColor.constant(1, 1, 1, 1);
+          } else if (m === 1) {
+            nextCurve = ProCurveColor.linear([1, 1, 1, 1], [1, 1, 1, 1]);
+          } else {
+            nextCurve = new ProCurveColor(
+              ProCurveFloat.fromKeyframes([
+                { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+                { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+              ]),
+              ProCurveFloat.fromKeyframes([
+                { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+                { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+              ]),
+              ProCurveFloat.fromKeyframes([
+                { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+                { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+              ]),
+              ProCurveFloat.fromKeyframes([
+                { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+                { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+              ]),
+            );
+          }
+          currentCurve = nextCurve;
+        }
+      }
+      ImGui.EndCombo();
+    }
+  }
+
+  if (mode === 0) {
     const color: [number, number, number, number] = [
-      curve.r.keyframes[0]?.value ?? 1,
-      curve.g.keyframes[0]?.value ?? 1,
-      curve.b.keyframes[0]?.value ?? 1,
-      curve.a.keyframes[0]?.value ?? 1,
+      currentCurve.r.keyframes[0]?.value ?? 1,
+      currentCurve.g.keyframes[0]?.value ?? 1,
+      currentCurve.b.keyframes[0]?.value ?? 1,
+      currentCurve.a.keyframes[0]?.value ?? 1,
     ];
 
     ImGui.SameLine();
     if (ImGui.ColorEdit4('##cc_' + id, color, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.NoInputs)) {
-      obj[key] = ProCurveColor.constant(color[0], color[1], color[2], color[3]);
+      nextCurve = ProCurveColor.constant(color[0], color[1], color[2], color[3]);
     }
   } else if (mode === 1) {
-    // Linear start → end
     const startColor: [number, number, number, number] = [
-      curve.r.keyframes[0]?.value ?? 1,
-      curve.g.keyframes[0]?.value ?? 1,
-      curve.b.keyframes[0]?.value ?? 1,
-      curve.a.keyframes[0]?.value ?? 1,
+      currentCurve.r.keyframes[0]?.value ?? 1,
+      currentCurve.g.keyframes[0]?.value ?? 1,
+      currentCurve.b.keyframes[0]?.value ?? 1,
+      currentCurve.a.keyframes[0]?.value ?? 1,
     ];
     const endColor: [number, number, number, number] = [
-      curve.r.keyframes[1]?.value ?? curve.r.keyframes[0]?.value ?? 1,
-      curve.g.keyframes[1]?.value ?? curve.g.keyframes[0]?.value ?? 1,
-      curve.b.keyframes[1]?.value ?? curve.b.keyframes[0]?.value ?? 1,
-      curve.a.keyframes[1]?.value ?? curve.a.keyframes[0]?.value ?? 1,
+      currentCurve.r.keyframes[1]?.value ?? currentCurve.r.keyframes[0]?.value ?? 1,
+      currentCurve.g.keyframes[1]?.value ?? currentCurve.g.keyframes[0]?.value ?? 1,
+      currentCurve.b.keyframes[1]?.value ?? currentCurve.b.keyframes[0]?.value ?? 1,
+      currentCurve.a.keyframes[1]?.value ?? currentCurve.a.keyframes[0]?.value ?? 1,
     ];
 
     ImGui.SameLine();
@@ -1011,11 +1100,13 @@ function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColo
     const b = ImGui.ColorEdit4('##ce_' + id, endColor, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.NoInputs);
 
     if (a || b) {
-      obj[key] = ProCurveColor.linear(startColor, endColor);
+      nextCurve = ProCurveColor.linear(startColor, endColor);
     }
   } else {
-    // Per-channel curve editing
-    const channels: [string, ProCurveFloat][] = [['R', curve.r], ['G', curve.g], ['B', curve.b], ['A', curve.a]];
+    if (!showModeSelector) {
+      ImGui.TextDisabled('Per-channel curves');
+    }
+    const channels: [string, ProCurveFloat][] = [['R', currentCurve.r], ['G', currentCurve.g], ['B', currentCurve.b], ['A', currentCurve.a]];
     const channelColors = [
       ImGui.IM_COL32(220, 80, 80, 255),
       ImGui.IM_COL32(80, 200, 80, 255),
@@ -1023,7 +1114,6 @@ function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColo
       ImGui.IM_COL32(200, 200, 200, 255),
     ];
 
-    // Mini preview for all channels
     const avail = ImGui.GetContentRegionAvail().x;
     const drawList = ImGui.GetWindowDrawList();
     const pos = ImGui.GetCursorScreenPos();
@@ -1061,33 +1151,41 @@ function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColo
     );
     ImGui.Dummy(new ImGui.Vec2(pw, ph));
 
-    // Per-channel keyframe editors
-    const curveObj: Record<string, ProCurveFloat> = { r: curve.r, g: curve.g, b: curve.b, a: curve.a };
+    const curveObj: Record<string, ProCurveFloat> = {
+      r: currentCurve.r,
+      g: currentCurve.g,
+      b: currentCurve.b,
+      a: currentCurve.a,
+    };
 
     for (let ch = 0; ch < 4; ch++) {
       const [chName] = channels[ch];
       const chKey = chName.toLowerCase();
+      let channelCurve = curveObj[chKey];
+      let chMode = getCurveMode(channelCurve);
 
       ImGui.TableNextRow();
       ImGui.TableNextColumn();
       ImGui.Text('    ' + chName);
       ImGui.TableNextColumn();
 
-      // Inline mode for this channel
-      const chCurve = curveObj[chKey];
-      const chMode = getCurveMode(chCurve);
-
       ImGui.SetNextItemWidth(70);
       if (ImGui.BeginCombo('##chm_' + id + '_' + chKey, CURVE_MODE_LABELS[chMode])) {
         for (let m = 0; m < 3; m++) {
           if (ImGui.Selectable(CURVE_MODE_LABELS[m] + '##' + chKey, m === chMode)) {
-            if (m === 0) { curveObj[chKey] = ProCurveFloat.constant(chKey === 'a' ? 1 : 1); } else if (m === 1) { curveObj[chKey] = ProCurveFloat.linear(1, chKey === 'a' ? 0 : 1); } else {
+            chMode = m;
+            if (m === 0) {
+              curveObj[chKey] = ProCurveFloat.constant(1);
+            } else if (m === 1) {
+              curveObj[chKey] = ProCurveFloat.linear(1, 1);
+            } else {
               curveObj[chKey] = ProCurveFloat.fromKeyframes([
                 { time: 0, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
-                { time: 1, value: chKey === 'a' ? 0 : 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
+                { time: 1, value: 1, inTangent: 0, outTangent: 0, interpMode: 'cubic' },
               ]);
             }
-            obj[key] = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
+            channelCurve = curveObj[chKey];
+            nextCurve = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
           }
         }
         ImGui.EndCombo();
@@ -1095,22 +1193,22 @@ function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColo
 
       if (chMode === 2) {
         drawKeyframeEditor(curveObj, chKey, id + '_' + chKey);
-        if (curveObj[chKey] !== channels[ch][1]) {
-          obj[key] = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
+        if (curveObj[chKey] !== channelCurve) {
+          nextCurve = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
         }
       } else if (chMode === 0) {
         ImGui.SameLine();
-        const ref = { value: chCurve.keyframes[0]?.value ?? 1 };
+        const ref = { value: channelCurve.keyframes[0]?.value ?? 1 };
 
         ImGui.SetNextItemWidth(60);
         if (ImGui.DragFloat('##chv_' + id + '_' + chKey, (v = ref.value) => ref.value = v, 0.01, 0, 1)) {
           curveObj[chKey] = ProCurveFloat.constant(ref.value);
-          obj[key] = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
+          nextCurve = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
         }
       } else {
         ImGui.SameLine();
-        const s = { value: chCurve.keyframes[0]?.value ?? 1 };
-        const e = { value: chCurve.keyframes[1]?.value ?? 0 };
+        const s = { value: channelCurve.keyframes[0]?.value ?? 1 };
+        const e = { value: channelCurve.keyframes[1]?.value ?? 0 };
 
         ImGui.SetNextItemWidth(50);
         const ca = ImGui.DragFloat('##chs_' + id + '_' + chKey, (v = s.value) => s.value = v, 0.01, 0, 0, '%.2f');
@@ -1121,10 +1219,26 @@ function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColo
 
         if (ca || cb) {
           curveObj[chKey] = ProCurveFloat.linear(s.value, e.value);
-          obj[key] = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
+          nextCurve = new ProCurveColor(curveObj['r'], curveObj['g'], curveObj['b'], curveObj['a']);
         }
       }
     }
+  }
+
+  return nextCurve;
+}
+
+function drawTableCurveColorRow (label: string, obj: Record<string, ProCurveColor>, key: string, id: string): void {
+  ImGui.TableNextRow();
+  ImGui.TableNextColumn();
+  ImGui.AlignTextToFramePadding();
+  ImGui.Text(prettifyLabel(label));
+  ImGui.TableNextColumn();
+
+  const nextCurve = drawCurveColorEditor(obj[key], id);
+
+  if (nextCurve) {
+    obj[key] = nextCurve;
   }
 }
 
@@ -1146,7 +1260,20 @@ function drawTableDistributionColorRow (label: string, obj: Record<string, ProDi
   ImGui.Text(prettifyLabel(label));
   ImGui.TableNextColumn();
 
-  const dist = obj[key];
+  let dist = obj[key];
+  const curveColor = createCurveColorFromDistribution(dist);
+  const curveStartColor: [number, number, number, number] = [
+    curveColor.r.keyframes[0]?.value ?? dist.r.constant,
+    curveColor.g.keyframes[0]?.value ?? dist.g.constant,
+    curveColor.b.keyframes[0]?.value ?? dist.b.constant,
+    curveColor.a.keyframes[0]?.value ?? dist.a.constant,
+  ];
+  const curveEndColor: [number, number, number, number] = [
+    curveColor.r.keyframes[1]?.value ?? curveColor.r.keyframes[0]?.value ?? dist.r.max,
+    curveColor.g.keyframes[1]?.value ?? curveColor.g.keyframes[0]?.value ?? dist.g.max,
+    curveColor.b.keyframes[1]?.value ?? curveColor.b.keyframes[0]?.value ?? dist.b.max,
+    curveColor.a.keyframes[1]?.value ?? curveColor.a.keyframes[0]?.value ?? dist.a.max,
+  ];
   const allConstant = dist.r.mode === 'constant' && dist.g.mode === 'constant' &&
     dist.b.mode === 'constant' && dist.a.mode === 'constant';
   const allRange = dist.r.mode === 'range' && dist.g.mode === 'range' &&
@@ -1156,19 +1283,22 @@ function drawTableDistributionColorRow (label: string, obj: Record<string, ProDi
 
   ImGui.SetNextItemWidth(80);
   if (ImGui.BeginCombo('##dcmode_' + id, DIST_MODE_LABELS[modeIdx])) {
-    for (let m = 0; m < 2; m++) {
+    for (let m = 0; m < 3; m++) {
       if (ImGui.Selectable(DIST_MODE_LABELS[m], m === modeIdx)) {
         modeIdx = m;
         if (m === 0) {
           obj[key] = ProDistributionColor.fromConstant(
-            dist.r.constant, dist.g.constant, dist.b.constant, dist.a.constant,
+            curveStartColor[0], curveStartColor[1], curveStartColor[2], curveStartColor[3],
+          );
+        } else if (m === 1) {
+          obj[key] = ProDistributionColor.fromRange(
+            curveStartColor,
+            curveEndColor,
           );
         } else {
-          obj[key] = ProDistributionColor.fromRange(
-            [dist.r.min, dist.g.min, dist.b.min, dist.a.min],
-            [dist.r.max, dist.g.max, dist.b.max, dist.a.max],
-          );
+          obj[key] = ProDistributionColor.fromCurve(curveColor);
         }
+        dist = obj[key];
       }
     }
     ImGui.EndCombo();
@@ -1199,7 +1329,11 @@ function drawTableDistributionColorRow (label: string, obj: Record<string, ProDi
       obj[key] = ProDistributionColor.fromRange(minColor, maxColor);
     }
   } else {
-    ImGui.Text('Per-channel (edit sub-fields)');
+    const nextCurve = drawDistributionColorCurveEditor(createCurveColorFromDistribution(dist), id + '_dist');
+
+    if (nextCurve) {
+      obj[key] = ProDistributionColor.fromCurve(nextCurve);
+    }
   }
 }
 
@@ -1271,40 +1405,139 @@ function drawTableDistributionVector2Row (label: string, obj: Record<string, Pro
   ImGui.Text(prettifyLabel(label));
   ImGui.TableNextColumn();
 
-  const dist = obj[key];
+  let dist = obj[key];
   const allSameMode = dist.x.mode === dist.y.mode;
   const sharedMode = dist.x.mode;
 
-  if (allSameMode && sharedMode === 'constant') {
-    const vals: [number, number] = [dist.x.constant, dist.y.constant];
+  if (allSameMode) {
+    let modeIdx = getDistModeIndex(sharedMode);
 
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat2('##dv2_' + id, vals, 0.01)) {
-      const next = new ProDistributionVector2(
-        ProDistributionFloat.fromConstant(vals[0]),
-        ProDistributionFloat.fromConstant(vals[1]),
-        dist.uniform,
-      );
-
-      obj[key] = next;
+    ImGui.SetNextItemWidth(80);
+    if (ImGui.BeginCombo('##dv2mode_' + id, DIST_MODE_LABELS[modeIdx])) {
+      for (let m = 0; m < 3; m++) {
+        if (ImGui.Selectable(DIST_MODE_LABELS[m], m === modeIdx)) {
+          modeIdx = m;
+          if (m === 0) {
+            obj[key] = new ProDistributionVector2(
+              ProDistributionFloat.fromConstant(dist.x.constant),
+              ProDistributionFloat.fromConstant(dist.y.constant),
+              dist.uniform,
+            );
+          } else if (m === 1) {
+            obj[key] = ProDistributionVector2.fromRange(
+              [dist.x.min, dist.y.min],
+              [dist.x.max, dist.y.max],
+              dist.uniform,
+            );
+          } else {
+            obj[key] = ProDistributionVector2.fromCurves(dist.x.curve, dist.y.curve);
+            obj[key].uniform = dist.uniform;
+          }
+          dist = obj[key];
+        }
+      }
+      ImGui.EndCombo();
     }
-  } else if (allSameMode && sharedMode === 'range') {
-    const minV: [number, number] = [dist.x.min, dist.y.min];
-    const maxV: [number, number] = [dist.x.max, dist.y.max];
-    const w = (ImGui.GetContentRegionAvail().x - 4) * 0.5;
-
-    ImGui.SetNextItemWidth(w);
-    const a = ImGui.DragFloat2('##dv2min_' + id, minV, 0.01);
 
     ImGui.SameLine();
-    ImGui.SetNextItemWidth(w);
-    const b = ImGui.DragFloat2('##dv2max_' + id, maxV, 0.01);
 
-    if (a || b) {
-      obj[key] = ProDistributionVector2.fromRange(minV, maxV, dist.uniform);
+    if (modeIdx === 0) {
+      const vals: [number, number] = [dist.x.constant, dist.y.constant];
+
+      ImGui.SetNextItemWidth(-1);
+      if (ImGui.DragFloat2('##dv2_' + id, vals, 0.01)) {
+        obj[key] = new ProDistributionVector2(
+          ProDistributionFloat.fromConstant(vals[0]),
+          ProDistributionFloat.fromConstant(vals[1]),
+          dist.uniform,
+        );
+        dist = obj[key];
+      }
+    } else if (modeIdx === 1) {
+      const minV: [number, number] = [dist.x.min, dist.y.min];
+      const maxV: [number, number] = [dist.x.max, dist.y.max];
+      const w = (ImGui.GetContentRegionAvail().x - 4) * 0.5;
+
+      ImGui.SetNextItemWidth(w);
+      const a = ImGui.DragFloat2('##dv2min_' + id, minV, 0.01);
+
+      ImGui.SameLine();
+      ImGui.SetNextItemWidth(w);
+      const b = ImGui.DragFloat2('##dv2max_' + id, maxV, 0.01);
+
+      if (a || b) {
+        obj[key] = ProDistributionVector2.fromRange(minV, maxV, dist.uniform);
+        dist = obj[key];
+      }
+    } else {
+      ImGui.TextDisabled('Edit X/Y curves below');
     }
   } else {
-    ImGui.Text('Per-axis');
+    ImGui.TextDisabled('Per-axis');
+  }
+
+  for (const axis of ['x', 'y'] as const) {
+    let axisDist = dist[axis];
+    const axisId = id + '_' + axis;
+    let modeIdx = getDistModeIndex(axisDist.mode);
+
+    ImGui.TableNextRow();
+    ImGui.TableNextColumn();
+    ImGui.AlignTextToFramePadding();
+    ImGui.Text('  ' + axis.toUpperCase());
+    ImGui.TableNextColumn();
+
+    ImGui.SetNextItemWidth(70);
+    if (ImGui.BeginCombo('##dv2m_' + axisId, DIST_MODE_LABELS[modeIdx])) {
+      for (let m = 0; m < 3; m++) {
+        if (ImGui.Selectable(DIST_MODE_LABELS[m] + '##' + axisId, m === modeIdx)) {
+          modeIdx = m;
+          if (m === 0) {
+            axisDist = ProDistributionFloat.fromConstant(axisDist.constant);
+          } else if (m === 1) {
+            axisDist = ProDistributionFloat.fromRange(axisDist.min, axisDist.max);
+          } else {
+            axisDist = ProDistributionFloat.fromCurve(axisDist.curve);
+          }
+          dist[axis] = axisDist;
+        }
+      }
+      ImGui.EndCombo();
+    }
+
+    ImGui.SameLine();
+
+    if (modeIdx === 0) {
+      const ref = { value: axisDist.constant };
+
+      ImGui.SetNextItemWidth(-1);
+      if (ImGui.DragFloat('##dv2v_' + axisId, (v = ref.value) => ref.value = v, 0.01)) {
+        dist[axis] = ProDistributionFloat.fromConstant(ref.value);
+      }
+    } else if (modeIdx === 1) {
+      const minRef = { value: axisDist.min };
+      const maxRef = { value: axisDist.max };
+      const w = (ImGui.GetContentRegionAvail().x - 4) * 0.5;
+
+      ImGui.SetNextItemWidth(w);
+      const a = ImGui.DragFloat('##dv2minv_' + axisId, (v = minRef.value) => minRef.value = v, 0.01, 0, 0, '%.3f');
+
+      ImGui.SameLine();
+      ImGui.SetNextItemWidth(w);
+      const b = ImGui.DragFloat('##dv2maxv_' + axisId, (v = maxRef.value) => maxRef.value = v, 0.01, 0, 0, '%.3f');
+
+      if (a || b) {
+        dist[axis] = ProDistributionFloat.fromRange(minRef.value, maxRef.value);
+      }
+    } else {
+      drawCurvePreview(axisDist.curve, axisId);
+      const curveObj: Record<string, ProCurveFloat> = { __c: axisDist.curve };
+
+      drawKeyframeEditor(curveObj, '__c', axisId + '_curve');
+      if (curveObj['__c'] !== axisDist.curve) {
+        dist[axis] = ProDistributionFloat.fromCurve(curveObj['__c']);
+      }
+    }
   }
 
   // Uniform 切换
@@ -1326,42 +1559,79 @@ function drawTableDistributionVector3Row (label: string, obj: Record<string, Pro
   ImGui.Text(prettifyLabel(label));
   ImGui.TableNextColumn();
 
-  const dist = obj[key];
+  let dist = obj[key];
   const axes: ['x', 'y', 'z'] = ['x', 'y', 'z'];
 
-  // Show compact if all axes share same mode
   const allSameMode = dist.x.mode === dist.y.mode && dist.y.mode === dist.z.mode;
   const sharedMode = dist.x.mode;
 
-  if (allSameMode && sharedMode === 'constant') {
-    const vals: [number, number, number] = [dist.x.constant, dist.y.constant, dist.z.constant];
+  if (allSameMode) {
+    let modeIdx = getDistModeIndex(sharedMode);
 
-    ImGui.SetNextItemWidth(-1);
-    if (ImGui.DragFloat3('##dv3_' + id, vals, 0.01)) {
-      obj[key] = ProDistributionVector3.fromConstant(vals[0], vals[1], vals[2]);
+    ImGui.SetNextItemWidth(80);
+    if (ImGui.BeginCombo('##dv3mode_' + id, DIST_MODE_LABELS[modeIdx])) {
+      for (let m = 0; m < 3; m++) {
+        if (ImGui.Selectable(DIST_MODE_LABELS[m], m === modeIdx)) {
+          modeIdx = m;
+          if (m === 0) {
+            obj[key] = ProDistributionVector3.fromConstant(dist.x.constant, dist.y.constant, dist.z.constant);
+            obj[key].uniform = dist.uniform;
+          } else if (m === 1) {
+            obj[key] = ProDistributionVector3.fromRange(
+              [dist.x.min, dist.y.min, dist.z.min],
+              [dist.x.max, dist.y.max, dist.z.max],
+              dist.uniform,
+            );
+          } else {
+            obj[key] = new ProDistributionVector3(
+              ProDistributionFloat.fromCurve(dist.x.curve),
+              ProDistributionFloat.fromCurve(dist.y.curve),
+              ProDistributionFloat.fromCurve(dist.z.curve),
+              dist.uniform,
+            );
+          }
+          dist = obj[key];
+        }
+      }
+      ImGui.EndCombo();
     }
-  } else if (allSameMode && sharedMode === 'range') {
-    const minV: [number, number, number] = [dist.x.min, dist.y.min, dist.z.min];
-    const maxV: [number, number, number] = [dist.x.max, dist.y.max, dist.z.max];
-    const w = (ImGui.GetContentRegionAvail().x - 4) * 0.5;
-
-    ImGui.SetNextItemWidth(w);
-    const a = ImGui.DragFloat3('##dv3min_' + id, minV, 0.01);
 
     ImGui.SameLine();
-    ImGui.SetNextItemWidth(w);
-    const b = ImGui.DragFloat3('##dv3max_' + id, maxV, 0.01);
 
-    if (a || b) {
-      obj[key] = ProDistributionVector3.fromRange(minV, maxV, dist.uniform);
+    if (modeIdx === 0) {
+      const vals: [number, number, number] = [dist.x.constant, dist.y.constant, dist.z.constant];
+
+      ImGui.SetNextItemWidth(-1);
+      if (ImGui.DragFloat3('##dv3_' + id, vals, 0.01)) {
+        obj[key] = ProDistributionVector3.fromConstant(vals[0], vals[1], vals[2]);
+        obj[key].uniform = dist.uniform;
+        dist = obj[key];
+      }
+    } else if (modeIdx === 1) {
+      const minV: [number, number, number] = [dist.x.min, dist.y.min, dist.z.min];
+      const maxV: [number, number, number] = [dist.x.max, dist.y.max, dist.z.max];
+      const w = (ImGui.GetContentRegionAvail().x - 4) * 0.5;
+
+      ImGui.SetNextItemWidth(w);
+      const a = ImGui.DragFloat3('##dv3min_' + id, minV, 0.01);
+
+      ImGui.SameLine();
+      ImGui.SetNextItemWidth(w);
+      const b = ImGui.DragFloat3('##dv3max_' + id, maxV, 0.01);
+
+      if (a || b) {
+        obj[key] = ProDistributionVector3.fromRange(minV, maxV, dist.uniform);
+        dist = obj[key];
+      }
+    } else {
+      ImGui.TextDisabled('Edit X/Y/Z curves below');
     }
   } else {
-    ImGui.Text('Per-axis');
+    ImGui.TextDisabled('Per-axis');
   }
 
-  // Per-axis rows
   for (const axis of axes) {
-    const axisDist = dist[axis];
+    let axisDist = dist[axis];
     const axisId = id + '_' + axis;
 
     ImGui.TableNextRow();
@@ -1377,7 +1647,14 @@ function drawTableDistributionVector3Row (label: string, obj: Record<string, Pro
       for (let m = 0; m < 3; m++) {
         if (ImGui.Selectable(DIST_MODE_LABELS[m] + '##' + axisId, m === modeIdx)) {
           modeIdx = m;
-          if (m === 0) { dist[axis] = ProDistributionFloat.fromConstant(axisDist.constant); } else if (m === 1) { dist[axis] = ProDistributionFloat.fromRange(axisDist.min, axisDist.max); } else { dist[axis] = ProDistributionFloat.fromCurve(axisDist.curve); }
+          if (m === 0) {
+            axisDist = ProDistributionFloat.fromConstant(axisDist.constant);
+          } else if (m === 1) {
+            axisDist = ProDistributionFloat.fromRange(axisDist.min, axisDist.max);
+          } else {
+            axisDist = ProDistributionFloat.fromCurve(axisDist.curve);
+          }
+          dist[axis] = axisDist;
         }
       }
       ImGui.EndCombo();
@@ -1416,6 +1693,16 @@ function drawTableDistributionVector3Row (label: string, obj: Record<string, Pro
         dist[axis] = ProDistributionFloat.fromCurve(curveObj['__c']);
       }
     }
+  }
+
+  ImGui.TableNextRow();
+  ImGui.TableNextColumn();
+  ImGui.Text('  Uniform');
+  ImGui.TableNextColumn();
+  const uniRef = { value: dist.uniform };
+
+  if (ImGui.Checkbox('##dv3uni_' + id, (v = uniRef.value) => uniRef.value = v)) {
+    dist.uniform = uniRef.value;
   }
 }
 

@@ -30,5 +30,6 @@ export const ParticleRandSalts = {
   ScaleY: 0x165667b1,
   Color: 0xd3a2646c,
   Speed: 0xfd7046c5,
+  Drag: 0x6c8e9cf5,
   Generic: 0xb55a4f09,
 } as const;

@@ -18,9 +18,9 @@ export const ProStandardVariableNames = {
   InitialSize: 'Particle.InitialSize',
   RibbonID: 'Particle.RibbonID',
   // 全局唯一持久 ID。InitializeParticle 通过 emitter.idTable.acquire() 写入
-  // acquireTag（单调递增、永不复用）。trail emitter 的 SampleParticles 模块
-  // 把 source 粒子的 UniqueID 直接当作 trail 粒子的 RibbonID，从而让"每条
-  // source 轨迹"自动成为一条独立 ribbon
+  // 单调递增的 UniqueIndex（永不复用，对齐 UE FNiagaraStatelessEmitterInstance::UniqueIndexOffset）。
+  // trail emitter 的 SampleParticles 模块把 source 粒子的 UniqueID 直接当作 trail 粒子
+  // 的 RibbonID，从而让"每条 source 轨迹"自动成为一条独立 ribbon
   UniqueID: 'Particle.UniqueID',
   CameraOffset: 'Particle.CameraOffset',
   Mass: 'Particle.Mass',
@@ -59,6 +59,17 @@ export const ProStandardVariableNames = {
   // hash(uniqueId) 写入，让同一帧的不同粒子在噪声场不同采样点上。
   // 对应 UE `Particle.NoiseOffset`
   NoiseOffset: 'Particle.NoiseOffset',
+  // Mesh 渲染的 per-particle 缩放（Vec3）。Sprite 用 Size(Vec2) 即可，但 Mesh
+  // 需要三轴独立 — 对齐 UE `Particle.Scale` (FNiagaraDistributionRangeVector3)
+  Scale: 'Particle.Scale',
+  // 以下 Previous* 系列用于 motion blur / 速度反算 / interpolated rendering
+  // 对齐 UE GetOutputVariables —— InitializeParticle 在 spawn 时把 PreviousXxx
+  // 同步写成与 Xxx 相同的初值；之后由各自模块在 Update 阶段维护
+  PreviousSpriteSize: 'Particle.PreviousSpriteSize',
+  PreviousSpriteRotation: 'Particle.PreviousSpriteRotation',
+  PreviousScale: 'Particle.PreviousScale',
+  PreviousRibbonWidth: 'Particle.PreviousRibbonWidth',
+  PreviousVelocity: 'Particle.PreviousVelocity',
 } as const;
 
 /**
@@ -93,6 +104,12 @@ export function createStandardParticleVariables (): ProVariable[] {
     createProVariable(ProStandardVariableNames.InitialPosition, ProVariableTypes.Vec3),
     createProVariable(ProStandardVariableNames.RandomSeed, ProVariableTypes.Float),
     createProVariable(ProStandardVariableNames.NoiseOffset, ProVariableTypes.Vec3),
+    createProVariable(ProStandardVariableNames.Scale, ProVariableTypes.Vec3),
+    createProVariable(ProStandardVariableNames.PreviousSpriteSize, ProVariableTypes.Vec2),
+    createProVariable(ProStandardVariableNames.PreviousSpriteRotation, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.PreviousScale, ProVariableTypes.Vec3),
+    createProVariable(ProStandardVariableNames.PreviousRibbonWidth, ProVariableTypes.Float),
+    createProVariable(ProStandardVariableNames.PreviousVelocity, ProVariableTypes.Vec3),
   ];
 }
 

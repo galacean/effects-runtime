@@ -126,13 +126,6 @@ export class ProSpawnPerSourceParticleModule extends ProModule {
     }
     const sA = this.sourceAccessors!;
 
-    const emitter = ctx.emitterInstance;
-    const t = emitter.duration > 0
-      ? (emitter.emitterAge % emitter.duration) / emitter.duration
-      : 0;
-    const ratePerSrc = Math.max(0, this.spawnRatePerSource.sampleAtTime(ctx.randomStream.nextFloat(), t));
-    const dRate = ratePerSrc * ctx.deltaTime;
-
     this.aliveUIDs.clear();
 
     const tmpCurr: [number, number, number] = [0, 0, 0];
@@ -155,10 +148,19 @@ export class ProSpawnPerSourceParticleModule extends ProModule {
 
       this.distAccumulators.set(uid, distAtFrameStart + frameSegLen);
 
+      const lifetime = sA.lifetime.get(sourceBuffer, i);
+      const normalizedAge = lifetime > 1e-6
+        ? Math.min(Math.max(sA.age.get(sourceBuffer, i) / lifetime, 0), 1)
+        : 0;
+      const ratePerSrc = Math.max(0, this.spawnRatePerSource.sampleAtTime(
+        sA.randomSeed.get(sourceBuffer, i),
+        normalizedAge,
+      ));
+
       // spawn 残量累积
       let acc = this.accumulators.get(uid) ?? 0;
 
-      acc += dRate;
+      acc += ratePerSrc * ctx.deltaTime;
       const count = Math.floor(acc);
 
       acc -= count;

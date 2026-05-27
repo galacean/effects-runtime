@@ -33,6 +33,12 @@ export class ProStandardAccessors {
   initialPosition: ProVec3Accessor;
   randomSeed: ProFloatAccessor;
   noiseOffset: ProVec3Accessor;
+  scale: ProVec3Accessor;
+  previousSpriteSize: ProVec2Accessor;
+  previousSpriteRotation: ProFloatAccessor;
+  previousScale: ProVec3Accessor;
+  previousRibbonWidth: ProFloatAccessor;
+  previousVelocity: ProVec3Accessor;
 
   constructor (layout: ProDataSetLayout) {
     this.age = new ProFloatAccessor(layout, ProStandardVariableNames.Age);
@@ -57,5 +63,11 @@ export class ProStandardAccessors {
     this.initialPosition = new ProVec3Accessor(layout, ProStandardVariableNames.InitialPosition);
     this.randomSeed = new ProFloatAccessor(layout, ProStandardVariableNames.RandomSeed);
     this.noiseOffset = new ProVec3Accessor(layout, ProStandardVariableNames.NoiseOffset);
+    this.scale = new ProVec3Accessor(layout, ProStandardVariableNames.Scale);
+    this.previousSpriteSize = new ProVec2Accessor(layout, ProStandardVariableNames.PreviousSpriteSize);
+    this.previousSpriteRotation = new ProFloatAccessor(layout, ProStandardVariableNames.PreviousSpriteRotation);
+    this.previousScale = new ProVec3Accessor(layout, ProStandardVariableNames.PreviousScale);
+    this.previousRibbonWidth = new ProFloatAccessor(layout, ProStandardVariableNames.PreviousRibbonWidth);
+    this.previousVelocity = new ProVec3Accessor(layout, ProStandardVariableNames.PreviousVelocity);
   }
 }

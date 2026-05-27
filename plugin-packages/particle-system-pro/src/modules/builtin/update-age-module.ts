@@ -37,8 +37,9 @@ export class ProUpdateAgeModule extends ProModule {
     const begin = Math.max(0, firstInstance);
     const end = Math.min(lastInstance, dataBuffer.numInstances);
 
-    // 倒着遍历保留与旧实现一致的 kill 顺序；真正的 compact 推迟到阶段边界执行。
-    for (let i = end - 1; i >= begin; i--) {
+    // 正向遍历；mark 仅设位，真正 compact 在阶段边界由 emitter-instance 统一执行
+    // (对齐 UE bMarkedDead 模式 — 与遍历顺序无关，正向更符合 UE 习惯)
+    for (let i = begin; i < end; i++) {
       const newAge = a.age.get(dataBuffer, i) + deltaTime;
 
       if (newAge >= a.lifetime.get(dataBuffer, i)) {

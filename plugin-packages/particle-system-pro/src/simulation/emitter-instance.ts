@@ -82,6 +82,7 @@ export class ProEmitterInstance {
 
   // 由 EmitterPropertiesModule 写入；变化时重置 randomStream
   private appliedRandomSeed: number | null = null;
+  private lastSpawnClipWarningKey = '';
 
   constructor (parentSystemInstance: ProSystemInstance, randomSeed: number) {
     this.parentSystemInstance = parentSystemInstance;
@@ -137,6 +138,7 @@ export class ProEmitterInstance {
     this.pendingLoopOverrun = 0;
     this.warmupConsumed = false;
     this.appliedRandomSeed = null;
+    this.lastSpawnClipWarningKey = '';
   }
 
   /**
@@ -221,6 +223,40 @@ export class ProEmitterInstance {
     const current = this.particleDataSet.getCurrentData();
     const origNum = current ? current.numInstances : 0;
     const keptExisting = Math.min(origNum, this.maxInstanceCount);
+    const availableSpawnSlots = Math.max(0, this.maxInstanceCount - keptExisting);
+
+    if (allowSpawn && spawnTotal > availableSpawnSlots) {
+      const dropped = spawnTotal - availableSpawnSlots;
+      const warningKey = `${spawnTotal}|${availableSpawnSlots}|${dropped}`;
+
+      if (warningKey !== this.lastSpawnClipWarningKey) {
+        console.warn(`[ProEmitterInstance] emitter "${this.name || '<anonymous>'}" clipped spawn requests by maxInstanceCount. planned=${spawnTotal}, allowed=${availableSpawnSlots}, dropped=${dropped}.`);
+        this.lastSpawnClipWarningKey = warningKey;
+      }
+
+      let remainingSpawnSlots = availableSpawnSlots;
+
+      for (const info of this.spawnInfos) {
+        if (info.count <= 0) {
+          continue;
+        }
+        const allowedCount = Math.min(info.count, remainingSpawnSlots);
+
+        info.count = allowedCount;
+        if (info.sourceAssignment) {
+          info.sourceAssignment = {
+            ...info.sourceAssignment,
+            count: allowedCount,
+          };
+        }
+        remainingSpawnSlots -= allowedCount;
+      }
+
+      spawnTotal = availableSpawnSlots;
+    } else {
+      this.lastSpawnClipWarningKey = '';
+    }
+
     const required = Math.min(keptExisting + spawnTotal, this.maxInstanceCount);
 
     const dest = this.particleDataSet.beginSimulate(true);
