@@ -3,7 +3,9 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 /**
  * SubUV 模式。
@@ -36,6 +38,14 @@ export class ProSubUVAnimationModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.SubUVFrame, T.Float), access: 'write' },
+    ];
+  }
 
   override toJSON (): ProSubUVAnimationModuleProps {
     return {

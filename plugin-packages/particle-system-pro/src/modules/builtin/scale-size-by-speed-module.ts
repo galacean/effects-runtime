@@ -5,7 +5,9 @@ import type { ProDistributionVector2Data } from '../../distribution/pro-distribu
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProScaleSizeBySpeedModuleProps extends ProModuleProps {
   scaleDistribution: ProDistributionVector2Data,
@@ -48,6 +50,14 @@ export class ProScaleSizeBySpeedModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'read' },
+      { variable: createProVariable(V.InitialSize, T.Vec2), access: 'read' },
+      { variable: createProVariable(V.Size, T.Vec2), access: 'write' },
+    ];
+  }
 
   override toJSON (): ProScaleSizeBySpeedModuleProps {
     return {

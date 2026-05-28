@@ -5,7 +5,9 @@ import type { ProDistributionVector3Data } from '../../distribution/pro-distribu
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProGravityForceModuleProps extends ProModuleProps {
   gravity: ProDistributionVector3Data,
@@ -41,6 +43,13 @@ export class ProGravityForceModule extends ProModule {
     if (data.gravity) {
       this.gravity = ProDistributionVector3.fromJSON(data.gravity);
     }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

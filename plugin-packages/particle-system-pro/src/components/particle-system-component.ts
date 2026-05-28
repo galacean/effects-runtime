@@ -1,5 +1,4 @@
 import { Component } from '@galacean/effects';
-import { createStandardParticleLayout } from '../builtin/standard-variables';
 import type { ProModule } from '../modules/module';
 import { ProEmitterInstance } from '../simulation/emitter-instance';
 import {
@@ -32,7 +31,6 @@ export class ProParticleSystemComponent extends Component {
     }
     const emitter = new ProEmitterInstance(this.systemInstance, this.randomSeed);
 
-    emitter.initParticleDataSet(createStandardParticleLayout());
     this.systemInstance.addEmitter(emitter);
     this.defaultEmitter = emitter;
 
@@ -42,7 +40,6 @@ export class ProParticleSystemComponent extends Component {
   addEmitter (): ProEmitterInstance {
     const emitter = new ProEmitterInstance(this.systemInstance, this.randomSeed + this.systemInstance.emitters.length);
 
-    emitter.initParticleDataSet(createStandardParticleLayout());
     this.systemInstance.addEmitter(emitter);
 
     return emitter;
@@ -130,6 +127,8 @@ export class ProParticleSystemComponent extends Component {
           emitter.addModule(module);
         }
       }
+      // 所有模块添加完后统一构建一次 layout，避免逐个 addModule 时多次 rebuild
+      emitter.rebuildLayout();
     }
     this.defaultEmitter = this.systemInstance.emitters[0] ?? null;
   }

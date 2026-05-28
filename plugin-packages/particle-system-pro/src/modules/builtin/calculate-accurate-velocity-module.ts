@@ -3,6 +3,9 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 const tmpPrev: [number, number, number] = [0, 0, 0];
@@ -31,6 +34,15 @@ export class ProCalculateAccurateVelocityModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Position, T.Vec3), access: 'read' },
+      { variable: createProVariable(V.PreviousPosition, T.Vec3), access: 'read' },
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+      { variable: createProVariable(V.PreviousVelocity, T.Vec3), access: 'write' },
+    ];
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;

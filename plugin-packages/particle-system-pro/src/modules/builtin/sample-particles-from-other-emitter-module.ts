@@ -3,7 +3,9 @@ import type { ProEmitterInstance } from '../../simulation/emitter-instance';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProSampleParticlesFromOtherEmitterModuleProps extends ProModuleProps {
   sourceEmitterName: string,
@@ -51,6 +53,15 @@ export class ProSampleParticlesFromOtherEmitterModule extends ProModule {
     if (typeof data.sourceEmitterName === 'string') {
       this.sourceEmitterName = data.sourceEmitterName;
     }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Position, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.PreviousPosition, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.RibbonID, T.Int32), access: 'write' },
+      { variable: createProVariable(V.RibbonUVDistance, T.Float), access: 'write' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

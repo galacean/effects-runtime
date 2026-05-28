@@ -96,31 +96,22 @@
 
 ## 🟠 P1 — 架构性偷懒
 
-### A. 缺少 `FPhysicsBuildData` 聚合管线（最大架构差距）
+### A. [N/A] ~~缺少 `FPhysicsBuildData` 聚合管线~~
 
-UE 所有力模块**只写 range 到 PhysicsBuildData**，由 `SolveVelocitiesAndForces` 一次性闭式解析积分：
+原审计误判——`FPhysicsBuildData` 与闭式积分是 **UE Stateless 专有设计**（Stateless 不存
+velocity，每帧从 age 重新算位置）。我们对标的是 **UE Stateful**（NiagaraScript 模块），
+Stateful 的力模块就是逐帧 Euler 积分：
 
-```
-LambdaAge = (1 - exp(-Drag/Mass * Age)) / (Drag/Mass)
-Position = InitialPos
-         + (V₀ - W) * LambdaAge
-         + W * Age
-         + Acceleration * (Age - LambdaAge) / (Drag/Mass)
-```
-参考 `Shaders/Private/Stateless/Modules/NiagaraStatelessModule_SolveVelocitiesAndForces.ush:49-56`
+- GravityForce：`velocity += gravity * dt`
+- AccelerationForce：`velocity += acceleration * dt`
+- Drag：`velocity *= (1 - drag * dt)` 或指数衰减
+- SolveForcesAndVelocity：`position += velocity * dt`
 
-**我们的现状（全部偏离）：**
-- `gravity-force-module.ts:58` 直接 `velocity += g*dt`
-- `acceleration-force-module.ts:58-70` 直接 `velocity += a*dt`
-- `drag-module.ts:66-69` 直接 `velocity *= exp(-drag*dt/mass)`
-- `solve-forces-and-velocity-module.ts:39-48` 只剩 `position += v*dt`
+模块执行顺序由用户在编辑器中排列（与 UE Stateful 行为一致，by design）。
+Wind / ConeVelocity / PointVelocity 在 Stateful 架构下是独立的普通模块，
+不需要聚合管线。
 
-**后果：**
-- drag + acceleration 共存时一阶 Euler 与 UE 闭式解发散
-- 模块顺序成为隐式合约（`emitter-instance.ts:416` runStage 不做依赖校验）
-- Wind / ConeVelocity / PointVelocity 三个 PhysicsBuildData 字段完全没法接入
-
-**P0 修复后建议优先做这一项**，后续物理模块对齐成本会暴跌。
+**本项不需要修复。**
 
 ### B. [FIXED] Distribution 类型与 UE 反向
 
@@ -242,8 +233,8 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 5. ✅ #4 SpawnBurst 有 duration 的 infinite 死路径 → `emitterAge % duration`
 6. ✅ #12 ShapeLocation Ring 面积非均匀 → sqrt(rs) 公式
 
-### ✅ 架构对齐（部分完成）
-7. ⏸ **A 项：PhysicsBuildData 聚合管线** — 未做。规模大，留到后续 release
+### ✅ 架构对齐
+7. ✅ **A 项：N/A** — PhysicsBuildData 是 Stateless 专有，我们对标 Stateful 逐帧 Euler 即正确
 8. ✅ **C 项：`Particle.RandomSeed` 字段** + 多模块 stable-rand 迁移完成
 9. ✅ #6 子帧插值 spawn（per-particle partialDt 替换 dt=0 hack）
 10. ✅ D 项：`ProIdTable` 删除 freeList/index 死代码 + `runSystemStage` 改用
@@ -267,16 +258,16 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 
 ---
 
-## 当前 HEAD 状态总结（2026-05-27 补修）
+## 当前 HEAD 状态总结（2026-05-28 更新）
 
-- **P0：13 项全部修复**（#10 之前误判 deferred，本次验证 + 正向遍历 cosmetic 对齐 UE）
-- **P1：A 未修；B / C / D / E / F 已修**（D 项 system-stage 占位 + E 项 PivotOffset/Unaligned 本次修复）
-- **死代码：7 项全部清理（含本次新增 `types/particle-id.ts`）**
+- **P0：13 项全部修复**
+- **P1：全部完成**（A 项确认 N/A；B / C / D / E / F 已修）
+- **死代码：7 项全部清理**
 - 补修 (2026-05-27)：drag distribution range-only / idTable monotonic counter / UpdateAge 正向遍历
 - 补修 (2026-05-27)：P1-D runSystemStage → ProSystemModuleContext / P1-E PivotOffset + Unaligned mode
+- 补修 (2026-05-28)：spawn clip 逻辑重排（先 compact 再算 availableSpawnSlots）+ 移除无意义 warning
 
-剩余未做：P1-A（PhysicsBuildData 聚合管线），
-以及上文 P2 列出的缺失模块 / 参数 / 模式
+剩余未做：上文 P2 列出的缺失模块 / 参数 / 模式
 
 ---
 

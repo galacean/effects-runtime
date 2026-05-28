@@ -5,7 +5,9 @@ import type { ProDistributionFloatData } from '../../distribution/pro-distributi
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 
 export interface ProDragModuleProps extends ProModuleProps {
@@ -42,6 +44,14 @@ export class ProDragModule extends ProModule {
     if (data.drag) {
       this.drag = ProDistributionFloat.fromJSON(data.drag);
     }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.Mass, T.Float), access: 'read' },
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

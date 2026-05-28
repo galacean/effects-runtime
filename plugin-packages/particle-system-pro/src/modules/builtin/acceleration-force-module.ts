@@ -5,7 +5,9 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProAccelerationForceModuleProps extends ProModuleProps {
   acceleration: ProDistributionVector3Data,
@@ -36,6 +38,15 @@ export class ProAccelerationForceModule extends ProModule {
     if (data.acceleration) {
       this.acceleration = ProDistributionVector3.fromJSON(data.acceleration);
     }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

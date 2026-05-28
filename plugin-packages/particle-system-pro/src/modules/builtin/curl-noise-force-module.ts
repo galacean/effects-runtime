@@ -3,7 +3,9 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProCurlNoiseForceModuleProps extends ProModuleProps {
   amplitude: number,
@@ -61,6 +63,16 @@ export class ProCurlNoiseForceModule extends ProModule {
   override fromJSON (data: ProCurlNoiseForceModuleProps): void {
     if (typeof data.amplitude === 'number') { this.amplitude = data.amplitude; }
     if (typeof data.frequency === 'number') { this.frequency = data.frequency; }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.UniqueID, T.Int32), access: 'read' },
+      { variable: createProVariable(V.NoiseOffset, T.Vec3), access: 'read' },
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

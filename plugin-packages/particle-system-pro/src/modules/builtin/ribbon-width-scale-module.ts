@@ -5,7 +5,9 @@ import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProRibbonWidthScaleModuleProps extends ProModuleProps {
   scale: ProDistributionFloatData,
@@ -35,6 +37,16 @@ export class ProRibbonWidthScaleModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: unknown = null;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.InitialRibbonWidth, T.Float), access: 'read' },
+      { variable: createProVariable(V.RibbonWidth, T.Float), access: 'write' },
+    ];
+  }
 
   override toJSON (): ProRibbonWidthScaleModuleProps {
     return { scale: this.scale.toJSON() };

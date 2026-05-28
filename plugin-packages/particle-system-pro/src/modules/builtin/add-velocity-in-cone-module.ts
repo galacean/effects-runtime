@@ -1,13 +1,15 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
 import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import { ProDistributionVector3 } from '../../distribution/pro-distribution-vector3';
 import type { ProDistributionVector3Data } from '../../distribution/pro-distribution-vector3';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 const tmpVel: [number, number, number] = [0, 0, 0];
@@ -48,6 +50,13 @@ export class ProAddVelocityInConeModule extends ProModule {
   // FromPoint
   pointSpeed: ProDistributionFloat = ProDistributionFloat.fromRange(1, 2);
   pointOrigin: [number, number, number] = [0, 0, 0];
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.Position, T.Vec3), access: 'read' },
+    ];
+  }
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;

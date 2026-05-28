@@ -1,6 +1,6 @@
 import { math } from '@galacean/effects';
 import type { ProDataBuffer } from '../data/data-buffer';
-import type { ProDataSetLayout } from '../data/data-set-layout';
+import { ProDataSetLayout } from '../data/data-set-layout';
 import { ProDataSet } from '../data/data-set';
 import type { ProModule } from '../modules/module';
 import type { ProModuleContext } from '../modules/module-context';
@@ -44,6 +44,13 @@ export class ProEmitterInstance {
   name = '';
 
   particleDataSet: ProDataSet | null = null;
+
+  /**
+   * 缓存的 ProStandardAccessors 实例，在 rebuildLayout() 时刷新。
+   * 避免 captureInitialPositions / savePreviousPositions / bakeNewParticlesToWorld
+   * 等每帧调用的方法每次都 new ProStandardAccessors。
+   */
+  private cachedAccessors: ProStandardAccessors | null = null;
 
   modules: ProModule[] = [];
   spawnInfos: ProSpawnInfo[] = [];
@@ -91,6 +98,31 @@ export class ProEmitterInstance {
   initParticleDataSet (layout: ProDataSetLayout): void {
     this.particleDataSet = new ProDataSet(layout);
     this.particleDataSet.init();
+  }
+
+  /**
+   * 汇总所有模块的变量声明，构建新的 DataSetLayout 并重新初始化 DataSet。
+   *
+   * 对齐 UE Niagara stateful 编译器的 GatherCompiledParticleAttributes：
+   * DataSet Variables = InstanceRead ∪ InstanceWrite（读和写取并集）。
+   *
+   * 注意：
+   * - 会创建全新的 DataSet，清空所有存活粒子（对齐 UE Recompile 行为）
+   * - 所有模块无论 enabled 与否都参与变量声明（disable 只影响 execute）
+   * - 需要在所有 addModule 调用完成后手动调用
+   */
+  rebuildLayout (): void {
+    const variableMap = new Map<string, import('../types/variable').ProVariable>();
+
+    for (const module of this.modules) {
+      for (const decl of module.declareVariables()) {
+        variableMap.set(decl.variable.name, decl.variable);
+      }
+    }
+    const layout = new ProDataSetLayout([...variableMap.values()]);
+
+    this.initParticleDataSet(layout);
+    this.cachedAccessors = new ProStandardAccessors(layout);
   }
 
   addModule (module: ProModule): void {
@@ -342,12 +374,11 @@ export class ProEmitterInstance {
    * 给 RotateAroundPoint 等需要"绝对位置 = 基准 + 偏移"语义的模块用。
    */
   private captureInitialPositions (dest: ProDataBuffer, first: number, last: number): void {
-    const layout = this.particleDataSet?.layout;
+    const a = this.cachedAccessors;
 
-    if (!layout) {
+    if (!a) {
       return;
     }
-    const a = new ProStandardAccessors(layout);
     const tmp: [number, number, number] = [0, 0, 0];
 
     for (let i = first; i < last; i++) {
@@ -404,12 +435,11 @@ export class ProEmitterInstance {
   }
 
   private savePreviousPositions (dest: ProDataBuffer, count: number): void {
-    const layout = this.particleDataSet?.layout;
+    const a = this.cachedAccessors;
 
-    if (!layout) {
+    if (!a) {
       return;
     }
-    const a = new ProStandardAccessors(layout);
     const tmp: [number, number, number] = [0, 0, 0];
 
     for (let i = 0; i < count; i++) {
@@ -419,12 +449,11 @@ export class ProEmitterInstance {
   }
 
   private bakeNewParticlesToWorld (dest: ProDataBuffer, first: number, last: number): void {
-    const layout = this.particleDataSet?.layout;
+    const a = this.cachedAccessors;
 
-    if (!layout) {
+    if (!a) {
       return;
     }
-    const a = new ProStandardAccessors(layout);
     const m = this.worldMatrix.elements;
     const tmp: [number, number, number] = [0, 0, 0];
 

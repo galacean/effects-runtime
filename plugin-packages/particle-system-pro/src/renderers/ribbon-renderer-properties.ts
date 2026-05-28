@@ -51,14 +51,7 @@ export class ProRibbonRendererProperties extends ProRendererProperties {
    * 对应 UE Niagara `CurveTension`
    */
   curveTension = 0.5;
-  /**
-   * 是否按 `Particle.RibbonID` 分组多 ribbon 渲染。
-   *
-   * - `false`（默认，单 ribbon）：忽略 RibbonID，所有粒子按 RibbonLinkOrder 直接
-   *   排序连成一条 ribbon。对齐 UE NiagaraRibbonRendererProperties.RibbonIdBinding
-   *   未绑定时的 `HasRibbonIDs() == false` 路径（`NiagaraRendererRibbons.cpp:1755`）
-   * - `true`（多 ribbon / trail）：按 RibbonID 分桶，每桶内按 LinkOrder 排序，
-   *   生成多条独立 ribbon。配合 ProSampleParticlesFromOtherEmitterModule 使用
-   */
-  useRibbonId = false;
+  // useRibbonId 已移除：多 ribbon 检测改为通过 accessor.ribbonId.isValid 自动判断
+  // （对齐 UE stateful HasRibbonIDs() = accessor.IsValid()）。
+  // 当模块声明了 RibbonID 变量时自动启用多 ribbon 分组，无需手动配置。
 }

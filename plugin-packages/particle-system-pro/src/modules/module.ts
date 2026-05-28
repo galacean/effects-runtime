@@ -1,5 +1,20 @@
 import type { ProModuleContext } from './module-context';
 import type { ProModuleStage } from './stage';
+import type { ProVariable } from '../types/variable';
+
+/**
+ * 模块对粒子变量的读写声明。
+ *
+ * 对齐 UE Niagara stateful 编译器的 InstanceRead / InstanceWrite 收集：
+ * - UE 通过遍历 Node Graph 的 MapGet/MapSet 自动推断
+ * - 我们没有 Graph，改为模块显式声明
+ *
+ * access 字段当前用于文档化，layout 构建时取 Read ∪ Write 并集（不区分 access）。
+ */
+export interface ProVariableDeclaration {
+  variable: ProVariable,
+  access: 'read' | 'write' | 'readwrite',
+}
 
 /**
  * Module 序列化数据的 base interface。
@@ -31,6 +46,22 @@ export abstract class ProModule {
   enabled = true;
 
   abstract execute (ctx: ProModuleContext): void;
+
+  /**
+   * 声明本模块在 execute 中读写的粒子变量。
+   *
+   * 对齐 UE Niagara stateful 编译器的 InstanceRead/InstanceWrite 收集。
+   * EmitterInstance.rebuildLayout() 汇总所有模块的声明，取 Read ∪ Write
+   * 并集构建 DataSetLayout。
+   *
+   * 注意：无论 module.enabled 是否为 true，都参与 layout 构建。
+   * disable 只影响 execute 调用，不影响变量声明。
+   *
+   * EmitterUpdate / EmitterSpawn 阶段的模块不操作粒子 buffer，返回空数组。
+   */
+  declareVariables (): ProVariableDeclaration[] {
+    return [];
+  }
 
   /**
    * 把 module 的可序列化字段返回为 JSON-safe 对象。

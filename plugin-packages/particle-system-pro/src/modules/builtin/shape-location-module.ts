@@ -1,9 +1,11 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
 
 const tmpPos: [number, number, number] = [0, 0, 0];
 
@@ -51,6 +53,12 @@ export class ProShapeLocationModule extends ProModule {
 
   // Plane
   planeSize: [number, number] = [1, 1];
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Position, T.Vec3), access: 'readwrite' },
+    ];
+  }
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;

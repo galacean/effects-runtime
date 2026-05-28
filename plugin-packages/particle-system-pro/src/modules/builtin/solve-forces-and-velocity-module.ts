@@ -3,6 +3,9 @@ import type { ProDataSetLayout } from '../../data/data-set-layout';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 const tmpVel: [number, number, number] = [0, 0, 0];
 const tmpPos: [number, number, number] = [0, 0, 0];
@@ -18,6 +21,13 @@ export class ProSolveForcesAndVelocityModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'read' },
+      { variable: createProVariable(V.Position, T.Vec3), access: 'readwrite' },
+    ];
+  }
 
   override execute (ctx: ProModuleContext): void {
     const { dataBuffer, deltaTime, firstInstance, lastInstance } = ctx;

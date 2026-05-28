@@ -1,4 +1,5 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
 import { ProDistributionColor } from '../../distribution/pro-distribution-color';
 import type { ProDistributionColorData } from '../../distribution/pro-distribution-color';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
@@ -10,7 +11,8 @@ import type { ProDistributionVector3Data } from '../../distribution/pro-distribu
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProInitializeParticleModuleProps extends ProModuleProps {
   lifetime: ProDistributionFloatData,
@@ -103,6 +105,38 @@ export class ProInitializeParticleModule extends ProModule {
     if (data.positionOrigin) { this.positionOrigin = ProDistributionVector3.fromJSON(data.positionOrigin); }
     if (typeof data.writeRibbonWidth === 'boolean') { this.writeRibbonWidth = data.writeRibbonWidth; }
     if (data.ribbonWidth) { this.ribbonWidth = ProDistributionFloat.fromJSON(data.ribbonWidth); }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    const declarations: ProVariableDeclaration[] = [
+      { variable: createProVariable(V.Age, T.Float), access: 'write' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'write' },
+      { variable: createProVariable(V.Position, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.PreviousPosition, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.InitialPosition, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.Velocity, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.PreviousVelocity, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.Mass, T.Float), access: 'write' },
+      { variable: createProVariable(V.RibbonLinkOrder, T.Float), access: 'write' },
+      { variable: createProVariable(V.RibbonWidth, T.Float), access: 'write' },
+      { variable: createProVariable(V.InitialRibbonWidth, T.Float), access: 'write' },
+      { variable: createProVariable(V.PreviousRibbonWidth, T.Float), access: 'write' },
+      { variable: createProVariable(V.RibbonUVDistance, T.Float), access: 'write' },
+      { variable: createProVariable(V.UniqueID, T.Int32), access: 'write' },
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'write' },
+      { variable: createProVariable(V.NoiseOffset, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.Color, T.Color), access: 'write' },
+      { variable: createProVariable(V.InitialColor, T.Color), access: 'write' },
+      { variable: createProVariable(V.Size, T.Vec2), access: 'write' },
+      { variable: createProVariable(V.InitialSize, T.Vec2), access: 'write' },
+      { variable: createProVariable(V.PreviousSpriteSize, T.Vec2), access: 'write' },
+      { variable: createProVariable(V.Rotation, T.Float), access: 'write' },
+      { variable: createProVariable(V.PreviousSpriteRotation, T.Float), access: 'write' },
+      { variable: createProVariable(V.Scale, T.Vec3), access: 'write' },
+      { variable: createProVariable(V.PreviousScale, T.Vec3), access: 'write' },
+    ];
+
+    return declarations;
   }
 
   private accessors: ProStandardAccessors | null = null;

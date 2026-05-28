@@ -6,7 +6,9 @@ import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProScaleSpriteSizeModuleProps extends ProModuleProps {
   scale: ProDistributionVector2Data,
@@ -35,6 +37,16 @@ export class ProScaleSpriteSizeModule extends ProModule {
     if (data.scale) {
       this.scale = ProDistributionVector2.fromJSON(data.scale);
     }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.InitialSize, T.Vec2), access: 'read' },
+      { variable: createProVariable(V.Size, T.Vec2), access: 'write' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

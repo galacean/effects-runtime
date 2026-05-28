@@ -6,7 +6,9 @@ import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProRotateAroundPointModuleProps extends ProModuleProps {
   rate: ProDistributionFloatData,
@@ -68,6 +70,15 @@ export class ProRotateAroundPointModule extends ProModule {
     if (data.origin && data.origin.length === 3) {
       this.origin = [data.origin[0], data.origin[1], data.origin[2]];
     }
+  }
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.InitialPosition, T.Vec3), access: 'read' },
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.Position, T.Vec3), access: 'write' },
+    ];
   }
 
   override execute (ctx: ProModuleContext): void {

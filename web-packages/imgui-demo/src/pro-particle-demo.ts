@@ -932,7 +932,7 @@ function configureTrailPerSourceRenderer (component: ProParticleSystemRendererCo
   const trailProps = new ProRibbonRendererProperties();
 
   trailProps.blending = spec.BlendingMode.ALPHA;
-  trailProps.useRibbonId = true;
+  // useRibbonId 已移除：多 ribbon 检测改为通过 accessor.ribbonId.isValid 自动判断
   const trailRenderer = new ProRibbonRenderer(engine, trailProps);
 
   component.addRenderer(trailRenderer);

@@ -1,8 +1,11 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
+import type { ProVariableDeclaration } from '../module';
 
 /**
  * 推进 age，超过 lifetime 的粒子先标记为死亡，真正 compact 推迟到阶段边界。
@@ -14,6 +17,13 @@ import { ProModule } from '../module';
  */
 export class ProUpdateAgeModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.Age, T.Float), access: 'readwrite' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+    ];
+  }
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;

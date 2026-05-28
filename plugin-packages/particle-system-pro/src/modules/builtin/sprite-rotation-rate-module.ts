@@ -6,7 +6,9 @@ import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProSpriteRotationRateModuleProps extends ProModuleProps {
   rate: ProDistributionFloatData,
@@ -28,6 +30,15 @@ export class ProSpriteRotationRateModule extends ProModule {
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.Rotation, T.Float), access: 'readwrite' },
+    ];
+  }
 
   override toJSON (): ProSpriteRotationRateModuleProps {
     return { rate: this.rate.toJSON() };

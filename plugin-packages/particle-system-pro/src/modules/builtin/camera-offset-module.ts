@@ -1,11 +1,13 @@
 import { ProStandardAccessors } from '../../builtin/standard-accessors';
+import { ProStandardVariableNames as V } from '../../builtin/standard-variables';
 import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
 import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
+import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
-import type { ProModuleProps } from '../module';
+import type { ProModuleProps, ProVariableDeclaration } from '../module';
 
 export interface ProCameraOffsetModuleProps extends ProModuleProps {
   offset: ProDistributionFloatData,
@@ -26,6 +28,12 @@ export class ProCameraOffsetModule extends ProModule {
   readonly stage = ProModuleStage.ParticleSpawn;
 
   offset: ProDistributionFloat = ProDistributionFloat.fromConstant(0);
+
+  override declareVariables (): ProVariableDeclaration[] {
+    return [
+      { variable: createProVariable(V.CameraOffset, T.Float), access: 'write' },
+    ];
+  }
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
