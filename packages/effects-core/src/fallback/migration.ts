@@ -1173,8 +1173,6 @@ function migrateTextScaleCurves (
 
   for (const item of json.items) {
     idToItem.set(item.id, item);
-  }
-  for (const item of json.items) {
     if (item.parentId) {
       let children = childrenMap.get(item.parentId);
 
@@ -1328,43 +1326,14 @@ function resolveTargetFromTopItems (
   path: string,
   childrenMap: Map<string, spec.VFXItemData[]>,
 ): spec.VFXItemData | undefined {
-  if (path === '') {
+  if (!path) {
     return undefined;
   }
   const segments = path.split('/');
-  let current: spec.VFXItemData | undefined;
+  let current = topItems.find(item => item.name === segments[0]);
 
-  for (const topItem of topItems) {
-    if (topItem.name === segments[0]) {
-      current = topItem;
-
-      break;
-    }
-  }
-
-  if (!current) {
-    return undefined;
-  }
-
-  for (let i = 1; i < segments.length; i++) {
-    const children = childrenMap.get(current.id);
-
-    if (!children) {
-      return undefined;
-    }
-    let found: spec.VFXItemData | undefined;
-
-    for (const child of children) {
-      if (child.name === segments[i]) {
-        found = child;
-
-        break;
-      }
-    }
-    if (!found) {
-      return undefined;
-    }
-    current = found;
+  for (let i = 1; i < segments.length && current; i++) {
+    current = childrenMap.get(current.id)?.find(c => c.name === segments[i]);
   }
 
   return current;
