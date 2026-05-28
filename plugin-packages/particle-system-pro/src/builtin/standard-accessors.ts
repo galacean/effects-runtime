@@ -39,6 +39,7 @@ export class ProStandardAccessors {
   previousScale: ProVec3Accessor;
   previousRibbonWidth: ProFloatAccessor;
   previousVelocity: ProVec3Accessor;
+  pivotOffset: ProVec2Accessor;
 
   constructor (layout: ProDataSetLayout) {
     this.age = new ProFloatAccessor(layout, ProStandardVariableNames.Age);
@@ -69,5 +70,6 @@ export class ProStandardAccessors {
     this.previousScale = new ProVec3Accessor(layout, ProStandardVariableNames.PreviousScale);
     this.previousRibbonWidth = new ProFloatAccessor(layout, ProStandardVariableNames.PreviousRibbonWidth);
     this.previousVelocity = new ProVec3Accessor(layout, ProStandardVariableNames.PreviousVelocity);
+    this.pivotOffset = new ProVec2Accessor(layout, ProStandardVariableNames.PivotOffset);
   }
 }

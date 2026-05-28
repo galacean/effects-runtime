@@ -20,7 +20,7 @@ export interface ProCameraOffsetModuleProps extends ProModuleProps {
  * - offset: ProDistributionFloat（单位：世界空间长度；负数=朝相机靠近）
  * - 用 randomStream 在 spawn 时一次性采样，per-particle 独立
  *
- * 对应 UE Niagara Stateless CameraOffset 模块。
+ * 对应 UE Niagara Stateful CameraOffset 模块。
  */
 export class ProCameraOffsetModule extends ProModule {
   readonly stage = ProModuleStage.ParticleSpawn;

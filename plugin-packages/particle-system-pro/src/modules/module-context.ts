@@ -12,7 +12,20 @@ export type ProSpawnBatchContext = {
 };
 
 /**
- * 单次 Module.execute 的输入上下文。
+ * System 级 Module 的上下文。
+ *
+ * System stage（SystemSpawn / SystemUpdate）无 emitter / particle 数据，
+ * 只能访问 System Parameters。对齐 UE Stateful：System Script 操作独立的
+ * System DataSet，不能读写 Emitter / Particle 数据。
+ */
+export interface ProSystemModuleContext {
+  deltaTime: number,
+  systemInstance: ProSystemInstance,
+  randomStream: ProRandomStream,
+}
+
+/**
+ * Emitter / Particle 级 Module 的上下文。
  *
  * - dataBuffer：仅 particle 阶段有效；其它阶段为 null
  * - firstInstance / lastInstance：粒子阶段处理 [first, last) 这段实例

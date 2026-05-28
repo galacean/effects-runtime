@@ -82,7 +82,6 @@ export class ProEmitterInstance {
 
   // 由 EmitterPropertiesModule 写入；变化时重置 randomStream
   private appliedRandomSeed: number | null = null;
-  private lastSpawnClipWarningKey = '';
 
   constructor (parentSystemInstance: ProSystemInstance, randomSeed: number) {
     this.parentSystemInstance = parentSystemInstance;
@@ -138,7 +137,6 @@ export class ProEmitterInstance {
     this.pendingLoopOverrun = 0;
     this.warmupConsumed = false;
     this.appliedRandomSeed = null;
-    this.lastSpawnClipWarningKey = '';
   }
 
   /**
@@ -223,17 +221,29 @@ export class ProEmitterInstance {
     const current = this.particleDataSet.getCurrentData();
     const origNum = current ? current.numInstances : 0;
     const keptExisting = Math.min(origNum, this.maxInstanceCount);
-    const availableSpawnSlots = Math.max(0, this.maxInstanceCount - keptExisting);
+
+    // 2. 先跑 ParticleUpdate + compact，让本帧死亡的粒子释放槽位，
+    //    再计算 availableSpawnSlots——否则稳态下 rate×lifetime ≈ maxCount 时
+    //    死粒子占着槽位导致新粒子被错误 clip
+    const dest = this.particleDataSet.beginSimulate(true);
+
+    this.particleDataSet.allocate(keptExisting + spawnTotal, false);
+
+    let survivedCount = 0;
+
+    if (current && keptExisting > 0) {
+      this.copyExistingParticles(current, dest, keptExisting);
+      dest.setNumInstances(keptExisting);
+      this.savePreviousPositions(dest, keptExisting);
+      this.runStage(ProModuleStage.ParticleUpdate, deltaTime, dest, 0, dest.numInstances);
+      dest.compactKilledInstances(0);
+      survivedCount = dest.numInstances;
+    }
+
+    // 根据 compact 后实际存活数计算可用 spawn 槽位
+    const availableSpawnSlots = Math.max(0, this.maxInstanceCount - survivedCount);
 
     if (allowSpawn && spawnTotal > availableSpawnSlots) {
-      const dropped = spawnTotal - availableSpawnSlots;
-      const warningKey = `${spawnTotal}|${availableSpawnSlots}|${dropped}`;
-
-      if (warningKey !== this.lastSpawnClipWarningKey) {
-        console.warn(`[ProEmitterInstance] emitter "${this.name || '<anonymous>'}" clipped spawn requests by maxInstanceCount. planned=${spawnTotal}, allowed=${availableSpawnSlots}, dropped=${dropped}.`);
-        this.lastSpawnClipWarningKey = warningKey;
-      }
-
       let remainingSpawnSlots = availableSpawnSlots;
 
       for (const info of this.spawnInfos) {
@@ -253,26 +263,6 @@ export class ProEmitterInstance {
       }
 
       spawnTotal = availableSpawnSlots;
-    } else {
-      this.lastSpawnClipWarningKey = '';
-    }
-
-    const required = Math.min(keptExisting + spawnTotal, this.maxInstanceCount);
-
-    const dest = this.particleDataSet.beginSimulate(true);
-
-    this.particleDataSet.allocate(required, false);
-
-    // 2. 把现有粒子从 current 拷贝到 destination，再跑 particleUpdate
-    if (current && keptExisting > 0) {
-      this.copyExistingParticles(current, dest, keptExisting);
-      dest.setNumInstances(keptExisting);
-      // 在 ParticleUpdate 跑之前把当前 position 备份到 previousPosition；
-      // 之后 SolveForces / RotateAroundPoint 等会改 position，previousPosition
-      // 留住"本帧开始时的位置"供 CalculateAccurateVelocity 等模块反算
-      this.savePreviousPositions(dest, keptExisting);
-      this.runStage(ProModuleStage.ParticleUpdate, deltaTime, dest, 0, dest.numInstances);
-      dest.compactKilledInstances(0);
     }
 
     // 3. 在 destination 末尾追加新粒子

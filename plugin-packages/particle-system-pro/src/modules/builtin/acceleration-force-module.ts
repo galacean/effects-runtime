@@ -18,7 +18,7 @@ const tmpAccel: [number, number, number] = [0, 0, 0];
  * 自定义加速度力：velocity += acceleration.sample(random, t) * dt。
  *
  * acceleration 支持 Distribution（Constant/Range/Curve），per-particle 随机。
- * 对齐 Niagara Stateless 的 AccelerationForce 模块。
+ * 对齐 Niagara Stateful 的 AccelerationForce 模块。
  */
 export class ProAccelerationForceModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;

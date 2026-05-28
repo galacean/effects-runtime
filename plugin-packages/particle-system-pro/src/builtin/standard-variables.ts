@@ -70,6 +70,10 @@ export const ProStandardVariableNames = {
   PreviousScale: 'Particle.PreviousScale',
   PreviousRibbonWidth: 'Particle.PreviousRibbonWidth',
   PreviousVelocity: 'Particle.PreviousVelocity',
+  // 每粒子 quad 锚点偏移（Vec2）。(0,0)=中心；(-0.5,-0.5)=右下角。
+  // Sprite Renderer 在旋转前把 corner 加上此偏移，改变粒子的旋转/展开锚点。
+  // 对齐 UE NiagaraSpriteRendererProperties::PivotOffsetBinding
+  PivotOffset: 'Particle.PivotOffset',
 } as const;
 
 /**
@@ -110,6 +114,7 @@ export function createStandardParticleVariables (): ProVariable[] {
     createProVariable(ProStandardVariableNames.PreviousScale, ProVariableTypes.Vec3),
     createProVariable(ProStandardVariableNames.PreviousRibbonWidth, ProVariableTypes.Float),
     createProVariable(ProStandardVariableNames.PreviousVelocity, ProVariableTypes.Vec3),
+    createProVariable(ProStandardVariableNames.PivotOffset, ProVariableTypes.Vec2),
   ];
 }
 

@@ -20,7 +20,7 @@ const tmpSize: [number, number] = [0, 0];
 const tmpScale: [number, number] = [0, 0];
 
 /**
- * 按粒子速度对 initialSize 做缩放（与 UE Stateless ScaleSpriteSizeBySpeed 对齐）。
+ * 按粒子速度对 initialSize 做缩放（与 UE Stateful ScaleSpriteSizeBySpeed 对齐）。
  *
  * UE 算法：
  * ```

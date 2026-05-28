@@ -16,7 +16,7 @@ export interface ProSpriteRotationRateModuleProps extends ProModuleProps {
  * Sprite 旋转速率：rotation += rate * dt，rate 用 ProDistributionFloat
  * per-particle 采样（golden-ratio hash 保持每个粒子的速率稳定，避免每帧抖动）。
  *
- * 对应 UE Niagara Stateless SpriteRotationRate 模块。和现有
+ * 对应 UE Niagara Stateful SpriteRotationRate 模块。和现有
  * RotationOverLife (常量 angularVelocity) 不同的是：
  * - 这里支持 Distribution（Range / Curve），每个粒子可以有不同速率
  * - 速率单位是 弧度/秒

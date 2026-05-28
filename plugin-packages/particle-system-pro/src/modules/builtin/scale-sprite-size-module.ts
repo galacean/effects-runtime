@@ -16,7 +16,7 @@ const tmpInit: [number, number] = [0, 0];
 const tmpScale: [number, number] = [0, 0];
 
 /**
- * 对齐 UE Niagara Stateless ScaleSpriteSize：size = initialSize * scale(normalizedAge)。
+ * 对齐 UE Niagara Stateful ScaleSpriteSize：size = initialSize * scale(normalizedAge)。
  * scale 为 ProDistributionVector2，X/Y 独立缩放。
  */
 export class ProScaleSpriteSizeModule extends ProModule {

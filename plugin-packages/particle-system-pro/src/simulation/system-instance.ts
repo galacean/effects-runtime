@@ -1,6 +1,5 @@
-import type { ProModule } from '../modules/module';
-import type { ProModuleContext } from '../modules/module-context';
-import { ProModuleStage } from '../modules/stage';
+import type { ProSystemModuleContext } from '../modules/module-context';
+import type { ProSystemModule, ProSystemModuleStage } from '../modules/system-module';
 import { ProParameterStore } from '../parameters/parameter-store';
 import { ProExecutionState } from '../types/execution-state';
 import { ProRandomStream } from '../utils/random-stream';
@@ -20,21 +19,21 @@ export class ProSystemInstance {
   readonly randomStream = new ProRandomStream(0x9E3779B9);
 
   emitters: ProEmitterInstance[] = [];
-  modules: ProModule[] = [];
+  systemModules: ProSystemModule[] = [];
 
   age = 0;
   tickCount = 0;
   executionState: ProExecutionState = ProExecutionState.Active;
 
-  addModule (module: ProModule): void {
-    this.modules.push(module);
+  addSystemModule (module: ProSystemModule): void {
+    this.systemModules.push(module);
   }
 
-  removeModule (module: ProModule): void {
-    const idx = this.modules.indexOf(module);
+  removeSystemModule (module: ProSystemModule): void {
+    const idx = this.systemModules.indexOf(module);
 
     if (idx >= 0) {
-      this.modules.splice(idx, 1);
+      this.systemModules.splice(idx, 1);
     }
   }
 
@@ -93,14 +92,14 @@ export class ProSystemInstance {
 
     // 首帧执行 SystemSpawn
     if (this.tickCount === 0) {
-      this.runSystemStage(ProModuleStage.SystemSpawn, deltaTime);
+      this.runSystemStage('systemSpawn', deltaTime);
     }
 
     this.age += deltaTime;
     this.tickCount++;
 
     // 每帧执行 SystemUpdate
-    this.runSystemStage(ProModuleStage.SystemUpdate, deltaTime);
+    this.runSystemStage('systemUpdate', deltaTime);
 
     // 三段调度（对齐 UE Niagara）：所有 emitter 先 preTick / tick 完，再统一 postTick；
     // 这样 cross-emitter sample 类模块在 postTick 阶段看到的是一致快照，避免读到
@@ -127,29 +126,25 @@ export class ProSystemInstance {
       emitter.reset(true);
     }
     this.emitters.length = 0;
-    this.modules.length = 0;
+    this.systemModules.length = 0;
   }
 
   /**
-   * 跑 system 级 module。System stage 没有 emitter / dataBuffer 上下文，
-   * 我们传入第一个 emitter 占位（system module 不应读 particle 数据）。
+   * 跑 system 级 module。上下文只含 systemInstance / randomStream / deltaTime——
+   * 对齐 UE Stateful：System Script 操作独立的 System DataSet，
+   * 不能读写 Emitter / Particle 数据。
    */
-  private runSystemStage (stage: ProModuleStage, deltaTime: number): void {
-    if (this.modules.length === 0 || this.emitters.length === 0) {
+  private runSystemStage (stage: ProSystemModuleStage, deltaTime: number): void {
+    if (this.systemModules.length === 0) {
       return;
     }
-    const ctx: ProModuleContext = {
+    const ctx: ProSystemModuleContext = {
       deltaTime,
       systemInstance: this,
-      emitterInstance: this.emitters[0],
-      dataBuffer: null,
-      firstInstance: 0,
-      lastInstance: 0,
-      spawnBatch: null,
       randomStream: this.randomStream,
     };
 
-    for (const module of this.modules) {
+    for (const module of this.systemModules) {
       if (module.enabled && module.stage === stage) {
         module.execute(ctx);
       }

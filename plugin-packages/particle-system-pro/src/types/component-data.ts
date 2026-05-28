@@ -10,7 +10,7 @@ import type { ProModuleData } from '../simulation/module-serialization';
 export interface ProSpriteRendererPropertiesData {
   textureUrl?: string,
   blending?: spec.BlendingMode,
-  facingMode?: 'billboard' | 'velocity',
+  facingMode?: 'billboard' | 'velocity' | 'unaligned',
   sortMode?: 'none' | 'viewDepth' | 'distance' | 'age',
   subUVRows?: number,
   subUVCols?: number,

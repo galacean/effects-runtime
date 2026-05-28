@@ -16,6 +16,7 @@ export * from './data/data-accessor';
 export * from './modules/stage';
 export * from './modules/module-context';
 export * from './modules/module';
+export * from './modules/system-module';
 export * from './modules/builtin';
 export * from './simulation/emitter-instance';
 export * from './simulation/system-instance';

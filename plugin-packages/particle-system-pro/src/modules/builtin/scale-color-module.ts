@@ -23,7 +23,7 @@ const tmpScale: [number, number, number, number] = [0, 0, 0, 0];
  * - Range 模式下每个粒子拿到独立的 random scale，per-particle 随机彩色粒子
  * - Curve 模式行为和 ColorOverLife 接近（所有粒子同曲线）
  *
- * 对齐 UE Niagara Stateless ScaleColor 模块。
+ * 对齐 UE Niagara Stateful ScaleColor 模块。
  */
 export class ProScaleColorModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;

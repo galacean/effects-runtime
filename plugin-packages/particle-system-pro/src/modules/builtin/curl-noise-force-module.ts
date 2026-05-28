@@ -19,7 +19,7 @@ const EPS = 0.01;
 const INV_2EPS = 1 / (2 * EPS);
 
 /**
- * Curl Noise 力场（对齐 UE Niagara Stateless CurlNoiseForce）。
+ * Curl Noise 力场（对齐 UE Niagara Stateful CurlNoiseForce）。
  *
  * **per-particle 时间噪声**（不是空间噪声）：
  * ```

@@ -150,7 +150,7 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
   做 per-particle stable sampling，不再依赖 slot index 或每帧随机流
 - 每个属性使用不同 salt → 解相关，且 slot 复用不再共享 rand
 
-### D. [PARTIAL FIXED] ID / 状态泄露
+### D. [FIXED] ID / 状态泄露
 
 - ✅ `utils/id-table.ts` 删除 `freeList` / `nextIndex` / `release()` / `capacity` 死代码 ——
   这些字段从未被读过；`ProIdTable` 简化为单一 `nextUniqueIndex` monotonic counter，
@@ -158,14 +158,28 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
   返回 `number`（旧返回的 `{index, acquireTag}` 中的 index 半也从未被使用），
   `reset()` 重置为 0（对应 UE `ResetSimulation(bKillExisting=true)`）。
   `types/particle-id.ts` 同步删除（无任何外部引用）
-- ⏸ `simulation/system-instance.ts` 的 `runSystemStage` 仍用 `emitters[0]` 作占位 emitter context；
-  system 级模块如果误读 emitter / particle 数据，仍会拿到任意 emitter 的上下文
+- ✅ System 级模块完全独立类型体系（方案 A，对齐 UE Stateful 架构）：
+  新增 `ProSystemModule` 基类 + `ProSystemModuleStage` 类型（`system-module.ts`），
+  与 `ProModule`（Emitter/Particle 级）完全隔离。`ProModuleStage` 枚举移除
+  `SystemSpawn` / `SystemUpdate`（仅保留 Emitter/Particle 四阶段）。
+  `ProSystemInstance.systemModules: ProSystemModule[]` 独立于 `emitter.modules`。
+  `runSystemStage` 调用 `ProSystemModule.execute(ctx: ProSystemModuleContext)`，
+  上下文不含 emitterInstance / dataBuffer。TypeScript 编译期保证 system 模块
+  无法访问 emitter / particle 数据——对齐 UE：System Script 与 Emitter Script
+  是完全不同的脚本资产类型，操作不同的 DataSet
 
 ### E. [PARTIAL FIXED] 渲染器偷懒
 
 - ✅ `renderers/sprite-renderer.ts` 新增 `sortScratch: number[]` 字段，
   每帧复用而非 `const idxArr: number[] = []` 重新分配 → GC 抖动消失
-- ⏸ Sprite renderer 仍缺 PivotOffset / Alignment / CutoutTexture / 自定义 Material —— P2 范围
+- ✅ Sprite renderer 新增 PivotOffset（per-particle Vec2 偏移 + shader 支持）——
+  `Particle.PivotOffset` 变量 + accessor + vertex attribute `aPivotOffset`，
+  shader 在旋转前用 `aCorner + aPivotOffset` 偏移角点，改变粒子的旋转/展开锚点。
+  对齐 UE `NiagaraSpriteRendererProperties::PivotOffsetBinding`
+- ✅ Sprite renderer 新增 `unaligned` 朝向模式——不做 billboard，quad 在物体
+  局部 XY 平面展开。对齐 UE `ENiagaraSpriteAlignment::Unaligned`
+- ⏸ Sprite renderer 仍缺 CustomAlignment / CutoutTexture / 自定义 Material —— P2 范围，
+  CustomAlignment 需配合 SpriteFacingAndAlignment 模块（P2 缺失模块）
 - ⏸ Ribbon renderer 只读 `tmpSize[0]` —— 与现有 RibbonWidth 模块设计一致，
   改 size.y 会破坏 Sprite/Ribbon 共用 size 字段的语义
 
@@ -232,8 +246,8 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 7. ⏸ **A 项：PhysicsBuildData 聚合管线** — 未做。规模大，留到后续 release
 8. ✅ **C 项：`Particle.RandomSeed` 字段** + 多模块 stable-rand 迁移完成
 9. ✅ #6 子帧插值 spawn（per-particle partialDt 替换 dt=0 hack）
-10. ✅ D 项 ID 半：`ProIdTable` 删除 freeList/index 死代码，单 monotonic counter 对齐 UE
-    `UniqueIndexOffset`；⏸ system-stage 占位 emitter context 仍未修
+10. ✅ D 项：`ProIdTable` 删除 freeList/index 死代码 + `runSystemStage` 改用
+    `ProSystemModuleContext`（无 emitterInstance）+ `executeSystem()` 分离执行
 11. ✅ 死代码清理（box-location、sphere-location、tick-context、center、color-over-life、size-over-life、particle-id）
 
 ### ✅ 已重写错误算法
@@ -244,7 +258,7 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 16. ✅ #11 AddVelocity coneAngle → 全角语义
 
 ### ⏸ 缺失功能补完（P2，本次未修）
-17. SpriteFacingAndAlignment 模块 + renderer Alignment/PivotOffset
+17. SpriteFacingAndAlignment 模块 + renderer CustomAlignment（PivotOffset / Unaligned 已实现）
 18. SubUVAnimation Random mode
 19. ShapeLocation 缺失参数
 20. EmitterProperties 完整化（LoopDuration range / RecalculateEachLoop / InactiveResponse）
@@ -256,11 +270,12 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 ## 当前 HEAD 状态总结（2026-05-27 补修）
 
 - **P0：13 项全部修复**（#10 之前误判 deferred，本次验证 + 正向遍历 cosmetic 对齐 UE）
-- **P1：A 未修；B / C / E / F 已修；D 仅余 system-stage 占位 emitter context**
+- **P1：A 未修；B / C / D / E / F 已修**（D 项 system-stage 占位 + E 项 PivotOffset/Unaligned 本次修复）
 - **死代码：7 项全部清理（含本次新增 `types/particle-id.ts`）**
-- 本次补修 (2026-05-27)：drag distribution range-only / idTable monotonic counter / UpdateAge 正向遍历
+- 补修 (2026-05-27)：drag distribution range-only / idTable monotonic counter / UpdateAge 正向遍历
+- 补修 (2026-05-27)：P1-D runSystemStage → ProSystemModuleContext / P1-E PivotOffset + Unaligned mode
 
-剩余未做：P1-A（PhysicsBuildData 聚合管线）、P1-D 中的 system-stage 占位 emitter context，
+剩余未做：P1-A（PhysicsBuildData 聚合管线），
 以及上文 P2 列出的缺失模块 / 参数 / 模式
 
 ---

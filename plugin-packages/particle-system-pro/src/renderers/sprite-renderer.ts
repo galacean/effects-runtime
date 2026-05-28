@@ -17,6 +17,7 @@ attribute float aRotation;
 attribute float aFrame;
 attribute vec3 aVelocity;
 attribute float aCameraOffset;
+attribute vec2 aPivotOffset;
 
 varying vec2 vUV;
 varying vec4 vColor;
@@ -26,7 +27,7 @@ uniform mat4 effects_MatrixV;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 uniform vec4 _SubUVParams;   // x: rows, y: cols, z: total, w: enable
-uniform vec4 _FacingParams;  // x: mode (0=billboard, 1=velocity)
+uniform vec4 _FacingParams;  // x: mode (0=billboard, 1=velocity, 2=unaligned)
 
 void main () {
   vec3 worldCenter = (effects_ObjectToWorld * vec4(aOffset, 1.0)).xyz;
@@ -46,7 +47,12 @@ void main () {
   vec3 axisX;
   vec3 axisY;
 
-  if (_FacingParams.x > 0.5) {
+  if (_FacingParams.x > 1.5) {
+    // Unaligned：quad 在物体局部 XY 平面展开，不做 billboard
+    // 对齐 UE ENiagaraSpriteAlignment::Unaligned
+    axisX = normalize((effects_ObjectToWorld * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
+    axisY = normalize((effects_ObjectToWorld * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+  } else if (_FacingParams.x > 0.5) {
     // Velocity-aligned billboard：Y 沿速度，X = cross(viewDir, Y)
     // 速度也要变换到世界空间（Local space 模拟时 aVelocity 是局部速度）
     vec3 worldVel = (effects_ObjectToWorld * vec4(aVelocity, 0.0)).xyz;
@@ -71,10 +77,11 @@ void main () {
     axisY = vec3(effects_MatrixV[0][1], effects_MatrixV[1][1], effects_MatrixV[2][1]);
   }
 
-  // 2D 旋转角点（绕粒子中心）
+  // PivotOffset 偏移角点后再旋转（对齐 UE PivotOffsetBinding）
+  vec2 shifted = aCorner + aPivotOffset;
   float s = sin(aRotation);
   float c = cos(aRotation);
-  vec2 rotated = vec2(aCorner.x * c - aCorner.y * s, aCorner.x * s + aCorner.y * c);
+  vec2 rotated = vec2(shifted.x * c - shifted.y * s, shifted.x * s + shifted.y * c);
 
   vec3 worldPos = worldCenter + axisX * rotated.x * aSize.x + axisY * rotated.y * aSize.y;
   gl_Position = effects_MatrixVP * vec4(worldPos, 1.0);
@@ -120,7 +127,7 @@ void main () {
 }
 `;
 
-const FLOATS_PER_VERTEX = 2 + 3 + 2 + 4 + 1 + 1 + 3 + 1; // aCorner + aOffset + aSize + aColor + aRotation + aFrame + aVelocity + aCameraOffset
+const FLOATS_PER_VERTEX = 2 + 3 + 2 + 4 + 1 + 1 + 3 + 1 + 2; // aCorner + aOffset + aSize + aColor + aRotation + aFrame + aVelocity + aCameraOffset + aPivotOffset
 const STRIDE_BYTES = FLOATS_PER_VERTEX * 4;
 const VERTS_PER_PARTICLE = 4;
 const INDICES_PER_PARTICLE = 6;
@@ -156,6 +163,7 @@ export class ProSpriteRenderer extends ProRenderer {
   private tmpSize: [number, number] = [0, 0];
   private tmpColor: [number, number, number, number] = [0, 0, 0, 0];
   private tmpVel: [number, number, number] = [0, 0, 0];
+  private tmpPivot: [number, number] = [0, 0];
 
   // 排序上下文 — 由 renderer-component 每帧推入
   private camX = 0; private camY = 0; private camZ = 8;
@@ -185,6 +193,7 @@ export class ProSpriteRenderer extends ProRenderer {
         aFrame: { size: 1, offset: 12 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
         aVelocity: { size: 3, offset: 13 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
         aCameraOffset: { size: 1, offset: 16 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
+        aPivotOffset: { size: 2, offset: 17 * 4, stride: STRIDE_BYTES, dataSource: 'aCorner', type: glContext.FLOAT },
       },
       indices: { data: new Uint16Array(0), releasable: false },
       mode: glContext.TRIANGLES,
@@ -368,7 +377,8 @@ export class ProSpriteRenderer extends ProRenderer {
   }
 
   private computeFacingParams (): math.Vector4 {
-    const mode = this.properties.facingMode === 'velocity' ? 1 : 0;
+    const fm = this.properties.facingMode;
+    const mode = fm === 'velocity' ? 1 : fm === 'unaligned' ? 2 : 0;
 
     return new math.Vector4(mode, 0, 0, 0);
   }
@@ -413,6 +423,7 @@ export class ProSpriteRenderer extends ProRenderer {
       a.size.get(dataBuffer, p, this.tmpSize);
       a.color.get(dataBuffer, p, this.tmpColor);
       a.velocity.get(dataBuffer, p, this.tmpVel);
+      a.pivotOffset.get(dataBuffer, p, this.tmpPivot);
       const px = this.tmpPos[0];
       const py = this.tmpPos[1];
       const pz = this.tmpPos[2];
@@ -428,6 +439,8 @@ export class ProSpriteRenderer extends ProRenderer {
       const rot = a.rotation.get(dataBuffer, p);
       const frame = a.subUVFrame.get(dataBuffer, p);
       const co = a.cameraOffset.get(dataBuffer, p);
+      const pox = this.tmpPivot[0];
+      const poy = this.tmpPivot[1];
 
       let base = pIdx * VERTS_PER_PARTICLE * FLOATS_PER_VERTEX;
 
@@ -451,6 +464,8 @@ export class ProSpriteRenderer extends ProRenderer {
         verts[base + 14] = vy;
         verts[base + 15] = vz;
         verts[base + 16] = co;
+        verts[base + 17] = pox;
+        verts[base + 18] = poy;
         base += FLOATS_PER_VERTEX;
       }
     }

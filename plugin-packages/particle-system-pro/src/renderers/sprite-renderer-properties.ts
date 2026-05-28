@@ -8,8 +8,10 @@ import { ProRendererProperties } from './renderer-properties';
  * - billboard：始终面向摄像机（默认；普通 Sprite 粒子）
  * - velocity：宽度方向永远垂直速度（火花/雨滴/激光等沿运动方向拉长）
  *   Y 轴是 velocity，X 轴是 cross(viewDir, velocity)
+ * - unaligned：不做 billboard，quad 在物体局部 XY 平面展开（地面粒子、弹孔等）
+ *   对齐 UE ENiagaraSpriteAlignment::Unaligned
  */
-export type ProSpriteFacingMode = 'billboard' | 'velocity';
+export type ProSpriteFacingMode = 'billboard' | 'velocity' | 'unaligned';
 
 /**
  * Sprite 排序模式。

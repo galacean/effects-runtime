@@ -31,8 +31,6 @@ interface StageInfo {
 }
 
 const STAGES: StageInfo[] = [
-  { stage: ProModuleStage.SystemSpawn, label: 'System Spawn' },
-  { stage: ProModuleStage.SystemUpdate, label: 'System Update' },
   { stage: ProModuleStage.EmitterSpawn, label: 'Emitter Spawn' },
   { stage: ProModuleStage.EmitterUpdate, label: 'Emitter Update' },
   { stage: ProModuleStage.ParticleSpawn, label: 'Particle Spawn' },

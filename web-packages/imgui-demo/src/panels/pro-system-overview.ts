@@ -25,8 +25,8 @@ const ImVec2 = ImGui.ImVec2;
 // ─── Stage colors (UE Niagara execution category colors) ───────────────────
 
 export const STAGE_COLORS: Record<string, ImGui.interface_ImVec4> = {
-  [ProModuleStage.SystemSpawn]: new ImGui.ImVec4(0.25, 0.45, 0.85, 1.0),
-  [ProModuleStage.SystemUpdate]: new ImGui.ImVec4(0.25, 0.45, 0.85, 1.0),
+  systemSpawn: new ImGui.ImVec4(0.25, 0.45, 0.85, 1.0),
+  systemUpdate: new ImGui.ImVec4(0.25, 0.45, 0.85, 1.0),
   [ProModuleStage.EmitterSpawn]: new ImGui.ImVec4(0.2, 0.7, 0.35, 1.0),
   [ProModuleStage.EmitterUpdate]: new ImGui.ImVec4(0.2, 0.7, 0.35, 1.0),
   [ProModuleStage.ParticleSpawn]: new ImGui.ImVec4(0.9, 0.55, 0.1, 1.0),

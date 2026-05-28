@@ -24,7 +24,7 @@ const tmpVel: [number, number, number] = [0, 0, 0];
  * Velocity = NewVelocity`）。motion blur / TAA / VelocityAligned rendering
  * 需要这两个值同时存在
  *
- * 对应 UE Niagara Stateless CalculateAccurateVelocity 模块。
+ * 对应 UE Niagara Stateful CalculateAccurateVelocity 模块。
  */
 export class ProCalculateAccurateVelocityModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;

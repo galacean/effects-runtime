@@ -38,8 +38,8 @@ function hashFloat (x: number): number {
 }
 
 /**
- * 给新生粒子写入所有 spawn 阶段字段（与 UE Niagara Stateless
- * `NiagaraStatelessModule_InitializeParticle` 对齐）：
+ * 给新生粒子写入所有 spawn 阶段字段（与 UE Niagara Stateful
+ * `UNiagaraModule_InitializeParticle` 对齐）：
  *
  * - Lifetime / Color / SpriteSize(Vec2) / SpriteRotation / MeshScale(Vec3) / Mass：
  *   每项独立 distribution，per-particle 采样一次
@@ -55,7 +55,7 @@ function hashFloat (x: number): number {
  *   默认 false → RibbonWidth/PreviousRibbonWidth 保持 0（renderer 走 Size.x 回退）
  *   true → 用 ribbonWidth distribution 写每粒子值 + InitialRibbonWidth 备份
  *
- * UE 还有 bWriteRibbonID toggle 但 Stateless 模块没单独 RibbonID distribution；
+ * UE 还有 bWriteRibbonID toggle；
  * 单 ribbon 场景由 Ribbon Renderer 的 bUseRibbonId=false 路径处理，多 ribbon
  * 由 SampleParticlesFromOtherEmitter 写。这里不暴露 RibbonID 字段
  */

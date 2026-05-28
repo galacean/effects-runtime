@@ -22,7 +22,7 @@ const DEG2RAD = Math.PI / 180;
 /**
  * 轨道运动：粒子绕 `origin` 在 XZ 平面做圆周运动。
  *
- * 与 UE Niagara Stateless RotateAroundPoint 对齐 —— 位置由 **绝对公式**
+ * 与 UE Niagara Stateful RotateAroundPoint 对齐 —— 位置由 **绝对公式**
  * 给出，不是每帧增量累加：
  *
  * ```

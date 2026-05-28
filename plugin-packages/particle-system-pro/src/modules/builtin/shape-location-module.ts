@@ -25,7 +25,7 @@ export interface ProShapeLocationModuleProps extends ProModuleProps {
 /**
  * 统一形状发射模块：支持 Box / Sphere / Cylinder / Ring / Plane 五种基础形状。
  *
- * 对齐 Niagara Stateless 的 ShapeLocation（ENSM_ShapePrimitive 枚举切换）。
+ * 对齐 Niagara Stateful 的 ShapeLocation（ENSM_ShapePrimitive 枚举切换）。
  * 执行顺序在 InitializeParticle 之后，累加到已写入的 position 上。
  */
 export class ProShapeLocationModule extends ProModule {
