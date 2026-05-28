@@ -7,6 +7,7 @@ import type { ProModuleProps } from '../module';
 
 export interface ProSpawnRateModuleProps extends ProModuleProps {
   rate: ProDistributionFloatData,
+  spawnProbability: number,
 }
 
 /**
@@ -21,17 +22,19 @@ export class ProSpawnRateModule extends ProModule {
   readonly stage = ProModuleStage.EmitterUpdate;
 
   rate: ProDistributionFloat = ProDistributionFloat.fromConstant(10);
+  spawnProbability = 1;
 
   private accumulator = 0;
 
   override toJSON (): ProSpawnRateModuleProps {
-    return { rate: this.rate.toJSON() };
+    return { rate: this.rate.toJSON(), spawnProbability: this.spawnProbability };
   }
 
   override fromJSON (data: ProSpawnRateModuleProps): void {
     if (data.rate) {
       this.rate = ProDistributionFloat.fromJSON(data.rate);
     }
+    if (typeof data.spawnProbability === 'number') { this.spawnProbability = data.spawnProbability; }
   }
 
   override execute (ctx: ProModuleContext): void {
@@ -42,12 +45,25 @@ export class ProSpawnRateModule extends ProModule {
     const currentRate = Math.max(0, this.rate.sampleAtTime(ctx.randomStream.nextFloat(), t));
 
     this.accumulator += currentRate * ctx.deltaTime;
-    const count = Math.floor(this.accumulator);
+    let count = Math.floor(this.accumulator);
 
     if (count <= 0) {
       return;
     }
     this.accumulator -= count;
+
+    if (this.spawnProbability < 1) {
+      let accepted = 0;
+
+      for (let j = 0; j < count; j++) {
+        if (ctx.randomStream.nextFloat() < this.spawnProbability) { accepted++; }
+      }
+      count = accepted;
+      if (count <= 0) {
+        return;
+      }
+    }
+
     ctx.emitterInstance.spawnInfos.push({
       count,
       interpStartDt: 0,

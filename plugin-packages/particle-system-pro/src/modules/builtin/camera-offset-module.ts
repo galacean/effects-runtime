@@ -4,6 +4,7 @@ import { ProDistributionFloat } from '../../distribution/pro-distribution-float'
 import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProDataSetLayout } from '../../data/data-set-layout';
 import { ProVariableTypes as T, createProVariable } from '../../types/variable';
+import { ParticleRandSalts, hashSeed } from '../../utils/per-particle-rand';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
@@ -14,23 +15,23 @@ export interface ProCameraOffsetModuleProps extends ProModuleProps {
 }
 
 /**
- * 写入 Particle.CameraOffset，渲染时让 Sprite 沿视线方向偏移。
+ * 每帧按 normalizedAge 采样 CameraOffset，让 Sprite 沿视线方向偏移。
  *
- * 典型用法：粒子穿透墙体或其它几何时表现为深度撕裂；给一个负的 offset
- * 把粒子拉近相机一点能消除穿插闪烁。烟雾/光效中也常用做"凸出/凹陷"效果。
+ * - Constant 模式：效果等价旧版 spawn-only 行为（每帧值不变）
+ * - Curve/Range 模式：粒子随生命周期前后摆动（push-pull 效果）
  *
- * - offset: ProDistributionFloat（单位：世界空间长度；负数=朝相机靠近）
- * - 用 randomStream 在 spawn 时一次性采样，per-particle 独立
- *
- * 对应 UE Niagara Stateful CameraOffset 模块。
+ * 对应 UE Niagara CameraOffset 模块。
  */
 export class ProCameraOffsetModule extends ProModule {
-  readonly stage = ProModuleStage.ParticleSpawn;
+  readonly stage = ProModuleStage.ParticleUpdate;
 
   offset: ProDistributionFloat = ProDistributionFloat.fromConstant(0);
 
   override declareVariables (): ProVariableDeclaration[] {
     return [
+      { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
+      { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
       { variable: createProVariable(V.CameraOffset, T.Float), access: 'write' },
     ];
   }
@@ -49,7 +50,7 @@ export class ProCameraOffsetModule extends ProModule {
   }
 
   override execute (ctx: ProModuleContext): void {
-    const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;
+    const { dataBuffer, firstInstance, lastInstance } = ctx;
 
     if (!dataBuffer) {
       return;
@@ -66,7 +67,11 @@ export class ProCameraOffsetModule extends ProModule {
     const a = this.accessors!;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      const v = this.offset.sampleAtTime(randomStream.nextFloat(), 0);
+      const seed = a.randomSeed.get(dataBuffer, i);
+      const pRand = hashSeed(seed, ParticleRandSalts.CameraOffset);
+      const lifetime = a.lifetime.get(dataBuffer, i);
+      const t = lifetime > 0 ? Math.min(a.age.get(dataBuffer, i) / lifetime, 1) : 0;
+      const v = this.offset.sampleAtTime(pRand, t);
 
       a.cameraOffset.set(dataBuffer, i, v);
     }

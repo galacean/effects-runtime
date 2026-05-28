@@ -50,7 +50,7 @@ export const proModuleRegistry: ProModuleDescriptor[] = [
   { id: 'pro.addVelocityInCone', label: 'Add Velocity in Cone', stage: ProModuleStage.ParticleSpawn, create: () => new ProAddVelocityInConeModule() },
   { id: 'pro.shapeLocation', label: 'Shape Location', stage: ProModuleStage.ParticleSpawn, create: () => new ProShapeLocationModule() },
   { id: 'pro.sampleParticlesFromOtherEmitter', label: 'Sample Particles From Other Emitter', stage: ProModuleStage.ParticleSpawn, create: () => new ProSampleParticlesFromOtherEmitterModule() },
-  { id: 'pro.cameraOffset', label: 'Camera Offset', stage: ProModuleStage.ParticleSpawn, create: () => new ProCameraOffsetModule() },
+  { id: 'pro.cameraOffset', label: 'Camera Offset', stage: ProModuleStage.ParticleUpdate, create: () => new ProCameraOffsetModule() },
   // Particle Update
   { id: 'pro.gravityForce', label: 'Gravity Force', stage: ProModuleStage.ParticleUpdate, create: () => new ProGravityForceModule() },
   { id: 'pro.accelerationForce', label: 'Acceleration Force', stage: ProModuleStage.ParticleUpdate, create: () => new ProAccelerationForceModule() },

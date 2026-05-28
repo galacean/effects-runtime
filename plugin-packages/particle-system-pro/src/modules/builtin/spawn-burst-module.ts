@@ -12,6 +12,7 @@ export interface ProSpawnBurstEntry {
 
 export interface ProSpawnBurstModuleProps extends ProModuleProps {
   bursts: ProSpawnBurstEntry[],
+  spawnProbability: number,
 }
 
 /**
@@ -36,6 +37,7 @@ export class ProSpawnBurstModule extends ProModule {
   readonly stage = ProModuleStage.EmitterUpdate;
 
   bursts: ProSpawnBurstEntry[] = [{ time: 0, count: 32 }];
+  spawnProbability = 1;
 
   // 已触发标记数组，长度跟 bursts 一致；每个 loop 起点重置
   private fired: boolean[] = [];
@@ -88,9 +90,20 @@ export class ProSpawnBurstModule extends ProModule {
 
       if (age < burst.time) { continue; }
       this.fired[i] = true;
-      if (burst.count <= 0) { continue; }
+      let count = burst.count;
+
+      if (count <= 0) { continue; }
+      if (this.spawnProbability < 1) {
+        let accepted = 0;
+
+        for (let j = 0; j < count; j++) {
+          if (ctx.randomStream.nextFloat() < this.spawnProbability) { accepted++; }
+        }
+        count = accepted;
+        if (count <= 0) { continue; }
+      }
       emitter.spawnInfos.push({
-        count: burst.count,
+        count,
         interpStartDt: 0,
         intervalDt: 0,
       });
@@ -105,6 +118,7 @@ export class ProSpawnBurstModule extends ProModule {
   override toJSON (): ProSpawnBurstModuleProps {
     return {
       bursts: this.bursts.map(b => ({ time: b.time, count: b.count })),
+      spawnProbability: this.spawnProbability,
     };
   }
 
@@ -112,5 +126,6 @@ export class ProSpawnBurstModule extends ProModule {
     if (data.bursts) {
       this.bursts = data.bursts.map(b => ({ time: b.time ?? 0, count: b.count ?? 0 }));
     }
+    if (typeof data.spawnProbability === 'number') { this.spawnProbability = data.spawnProbability; }
   }
 }

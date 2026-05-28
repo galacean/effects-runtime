@@ -18,7 +18,7 @@
 
 ### Emitter 属性
 
-- [x] **Emitter Properties Module** (EmitterSpawn stage) — 配置 maxParticleCount / duration / loopBehavior / loopCount / loopDelay / simulationSpace / warmupTime / randomSeed (2026-05-25)
+- [x] **Emitter Properties Module** (EmitterSpawn stage) — 配置 maxParticleCount / duration(Distribution) / loopBehavior / loopCount / loopDelay(Distribution) / simulationSpace / warmupTime / randomSeed / recalculateDurationEachLoop / recalculateDelayEachLoop / delayFirstLoopOnly / inactiveResponse / fixedBounds / randomSeedOffset (2026-05-25, 补完 2026-05-28)
 - [x] **Simulation Space (Local/World)** — emitter.simulationSpace + worldMatrix；World 模式 spawn 后烘焙 position/velocity；renderer 用 identity (2026-05-25)
 - [x] **Warmup / Pre-simulate** — 首次 tick 按 warmupTickDelta 拆分预跑 warmupTime 秒 (2026-05-25)
 - [x] **Deterministic Seed 外部配置** — EmitterProperties.randomSeed → emitter.applyRandomSeed → randomStream.reseed (2026-05-25)
@@ -30,7 +30,7 @@
 ### 渲染器
 
 - [x] **Sprite 速度朝向拉伸 (SpriteFacingAndAlignment)** — Sprite Renderer 增加 aVelocity attribute + facingMode 切换 billboard/velocity；velocity 模式下 Y 沿世界速度方向，X = cross(viewDir, Y) (2026-05-25)
-- [x] **CameraOffset** — Particle.CameraOffset 字段 + ProCameraOffsetModule (ParticleSpawn)；Sprite shader 沿"远离相机"方向偏移；正值远离、负值靠近（UE 约定） (2026-05-25)
+- [x] **CameraOffset** — Particle.CameraOffset 字段 + ProCameraOffsetModule (ParticleUpdate, curve-over-life)；按 normalizedAge + per-particle hashSeed 采样；Sprite shader 沿"远离相机"方向偏移；正值远离、负值靠近（UE 约定） (2026-05-25, curve-over-life 2026-05-28)
 - [x] **粒子深度排序** — ProSpriteRendererProperties.sortMode：none / viewDepth / distance / age；renderer 根据 camera/view 算 key 后按下标重排 vertex (2026-05-25)
 - [ ] **Soft Particle** — 深度 buffer 软粒子淡入（需 depth texture 采样）
 
@@ -43,8 +43,8 @@
 
 - [x] **SpriteRotationRate** — ProSpriteRotationRateModule (ParticleUpdate)；rate 用 ProDistributionFloat per-particle 采样 (golden-ratio hash) (2026-05-25)
 - [x] **ScaleColor** — ProScaleColorModule (ParticleUpdate)；scale = ProDistributionColor；color = initialColor * scale.sampleAtTime(perParticleRand, normalizedAge) (2026-05-25)
-- [x] **ScaleSpriteSize** — ProScaleSpriteSizeModule (ParticleUpdate)；scale 用 ProDistributionFloat (uniform XY 简化版，UE 是 Vec2)；size = initialSize * scale (2026-05-25)
-- [ ] **CalculateAccurateVelocity** — 从位移反算速度。**Deferred**：依赖 P2 PreviousPosition buffer 字段
+- [x] **ScaleSpriteSize** — ProScaleSpriteSizeModule (ParticleUpdate)；scale 用 ProDistributionVector2（X/Y 独立缩放）；size = initialSize * scale (2026-05-25, Vec2 改造 2026-05-27)
+- [x] **CalculateAccurateVelocity** — 从 PreviousPosition 反算速度写入 Velocity；ParticleUpdate 阶段 (2026-05-25)
 
 ---
 
@@ -71,8 +71,9 @@
 
 ### 渲染器扩展
 
-- [ ] **Mesh Renderer** — 3D Mesh 粒子渲染管线
-- [ ] **DynamicMaterialParameters** — 自定义 float4 传入 shader
+- [ ] **Mesh Renderer** — 3D Mesh 粒子渲染管线（InitialMeshOrientation / MeshIndex / MeshRotationRate / ScaleMeshSize）
+- [ ] **DynamicMaterialParameters** — per-particle float4 传入 shader；需新增 vertex attribute + shader varying（改 renderer attribute layout）
+- [ ] **SpriteFacingAndAlignment CustomAlignment** — per-particle 自定义轴向量（`Particle.SpriteAlignment` Vec3 + `Particle.SpriteFacing` Vec3）+ FacingCameraDistanceBlend；需新增 vertex attributes + shader 分支（改 renderer attribute layout）
 - [ ] **SubUV Frame Blending** — 帧间插值过渡（当前是 floor 跳帧）
 - [ ] **Sprite SizeBySpeed 非等比拉伸** — 沿速度方向拉伸 X，垂直方向压缩 Y
 
@@ -126,6 +127,9 @@
 
 ## 已完成
 
+- [x] **P2 补完批量：AddVelocityInCone(innerCone/speedFalloff/linearVelocityScale) + CameraOffset curve-over-life + SpawnProbability + RandomSeedOffset + SubUV Random mode + FixedBounds 预留** (2026-05-28)
+- [x] **P2 补完：EmitterProperties 完整化(Distribution duration/delay + recalculate + inactiveResponse) + ShapeLocation 参数(heightMidpoint/discCoverage/uDistribution/surfaceThickness) + Wind 模块** (2026-05-28)
+- [x] **AUDIT P0/P1 全修：13 项 bug fix + 架构对齐(per-particle RandomSeed / IdTable 简化 / System Module 隔离 / PivotOffset / Unaligned facing / spawn clip 重排)** (2026-05-27~28)
 - [x] **Ribbon P1 后段：CurveTension + Tessellation (Catmull-Rom 平滑曲线 / 模式 Disabled-Custom-Automatic)** (2026-05-26)
 - [x] **Ribbon P1 中段：RibbonWidth (per-particle, ProRibbonWidth + ProRibbonWidthScale) + RibbonUVDistance / TiledFromStart UV 模式** (2026-05-26)
 - [x] **Ribbon P1 前段：Cross-Emitter Read + UniqueID + SampleParticlesFromOtherEmitter + SpawnPerSourceParticle + RibbonLinkOrder** (2026-05-26)

@@ -21,6 +21,7 @@ export class ProSystemInstance {
   emitters: ProEmitterInstance[] = [];
   systemModules: ProSystemModule[] = [];
 
+  randomSeedOffset = 0;
   age = 0;
   tickCount = 0;
   executionState: ProExecutionState = ProExecutionState.Active;

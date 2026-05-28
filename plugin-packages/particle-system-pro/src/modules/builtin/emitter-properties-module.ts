@@ -23,6 +23,7 @@ export interface ProEmitterPropertiesModuleProps extends ProModuleProps {
   recalculateDelayEachLoop: boolean,
   delayFirstLoopOnly: boolean,
   inactiveResponse: ProEmitterInactiveResponse,
+  fixedBounds: [[number, number, number], [number, number, number]] | null,
 }
 
 /**
@@ -57,6 +58,7 @@ export class ProEmitterPropertiesModule extends ProModule {
   recalculateDelayEachLoop = false;
   delayFirstLoopOnly = false;
   inactiveResponse: ProEmitterInactiveResponse = 'complete';
+  fixedBounds: [[number, number, number], [number, number, number]] | null = null;
 
   override execute (ctx: ProModuleContext): void {
     const emitter = ctx.emitterInstance;
@@ -70,7 +72,7 @@ export class ProEmitterPropertiesModule extends ProModule {
     emitter.simulationSpace = this.simulationSpace;
     emitter.warmupTime = Math.max(0, this.warmupTime);
     emitter.warmupTickDelta = Math.max(1 / 240, this.warmupTickDelta);
-    emitter.applyRandomSeed(this.randomSeed | 0);
+    emitter.applyRandomSeed((this.randomSeed + ctx.systemInstance.randomSeedOffset) | 0);
     emitter.recalculateDurationEachLoop = this.recalculateDurationEachLoop;
     emitter.recalculateDelayEachLoop = this.recalculateDelayEachLoop;
     emitter.delayFirstLoopOnly = this.delayFirstLoopOnly;
@@ -98,6 +100,7 @@ export class ProEmitterPropertiesModule extends ProModule {
       recalculateDelayEachLoop: this.recalculateDelayEachLoop,
       delayFirstLoopOnly: this.delayFirstLoopOnly,
       inactiveResponse: this.inactiveResponse,
+      fixedBounds: this.fixedBounds,
     };
   }
 
@@ -128,6 +131,12 @@ export class ProEmitterPropertiesModule extends ProModule {
     if (typeof data.delayFirstLoopOnly === 'boolean') { this.delayFirstLoopOnly = data.delayFirstLoopOnly; }
     if (data.inactiveResponse === 'complete' || data.inactiveResponse === 'kill') {
       this.inactiveResponse = data.inactiveResponse;
+    }
+    if (data.fixedBounds && Array.isArray(data.fixedBounds) && data.fixedBounds.length === 2) {
+      this.fixedBounds = [
+        [data.fixedBounds[0][0], data.fixedBounds[0][1], data.fixedBounds[0][2]],
+        [data.fixedBounds[1][0], data.fixedBounds[1][1], data.fixedBounds[1][2]],
+      ];
     }
   }
 }

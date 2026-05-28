@@ -201,13 +201,13 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 |---|---|---|
 | `emitter-properties-module.ts` | ✅ `LoopDuration / LoopDelay` 改为 `ProDistributionFloat`；`recalculateDurationEachLoop`、`recalculateDelayEachLoop`、`delayFirstLoopOnly` | `Internal/Stateless/NiagaraSystemEmitterState.h:87-101` |
 | `emitter-properties-module.ts` | ✅ `inactiveResponse: 'complete' \| 'kill'`（kill → InactiveClear 立即清场） | `NiagaraStatelessEmitterInstance.cpp:538` |
-| `emitter-properties-module.ts` | `FixedBounds` | `NiagaraStatelessEmitter.h:119` |
-| `sub-uv-animation-module.ts` | `Random` mode + `RandomChangeInterval`；`StartFrameRangeOverride/EndFrameRangeOverride` | `Internal/Stateless/Modules/NiagaraStatelessModule_SubUVAnimation.h:14-17` |
-| `camera-offset-module.ts:26` | 支持 curve-over-life（当前只 ParticleSpawn 阶段算，丢失 push-pull 效果） | UE `BuildContext.AddDistribution` |
-| `add-velocity-in-cone-module.ts` | `LinearVelocityScale` / `InnerCone` / `SpeedFalloffFromConeAxis` | `Internal/Stateless/Modules/NiagaraStatelessModule_AddVelocity.h:32,41` |
+| `emitter-properties-module.ts` | ✅ `FixedBounds`（预留字段，等视锥剔除实现后生效） | `NiagaraStatelessEmitter.h:119` |
+| `sub-uv-animation-module.ts` | ✅ `Random` mode + `RandomChangeInterval` + `StartFrameRangeOverride/EndFrameRangeOverride` | `Internal/Stateless/Modules/NiagaraStatelessModule_SubUVAnimation.h:14-17` |
+| `camera-offset-module.ts` | ✅ 改为 ParticleUpdate + curve-over-life（按 normalizedAge 采样） | UE `BuildContext.AddDistribution` |
+| `add-velocity-in-cone-module.ts` | ✅ `LinearVelocityScale` / `InnerCone` / `SpeedFalloffFromConeAxis` | `Internal/Stateless/Modules/NiagaraStatelessModule_AddVelocity.h:32,41` |
 | `shape-location-module.ts` | ✅ Box `surfaceThickness`；Cylinder `heightMidpoint`；Ring `discCoverage / uDistribution` | `Internal/Stateless/Modules/NiagaraStatelessModule_ShapeLocation.h:36-55` |
-| `spawn-rate-module.ts` / `spawn-burst-module.ts` | `SpawnProbability`；burst `Amount = DistributionRangeInt` | `Internal/Stateless/NiagaraStatelessSpawnInfo.h:39-43` |
-| `system-instance.ts` | `RandomSeedOffset`（两个同 seed emitter 解相关） | `NiagaraStatelessEmitterInstance.cpp:66` |
+| `spawn-rate-module.ts` / `spawn-burst-module.ts` | ✅ `SpawnProbability`（per-particle 概率过滤） | `Internal/Stateless/NiagaraStatelessSpawnInfo.h:39-43` |
+| `system-instance.ts` | ✅ `RandomSeedOffset`（叠加到 emitter randomSeed，解相关） | `NiagaraStatelessEmitterInstance.cpp:66` |
 
 ---
 
@@ -248,13 +248,20 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 15. ✅ #10 UpdateAge kill 边界 — 实际已 fixed（`markInstanceKilled` 延迟 + 阶段边界 compact），本次正向遍历对齐 UE convention
 16. ✅ #11 AddVelocity coneAngle → 全角语义
 
-### ⏸ 缺失功能补完（P2，本次未修）
-17. SpriteFacingAndAlignment 模块 + renderer CustomAlignment（PivotOffset / Unaligned 已实现）
-18. SubUVAnimation Random mode
-19. ShapeLocation 缺失参数
-20. EmitterProperties 完整化（LoopDuration range / RecalculateEachLoop / InactiveResponse）
-21. Mesh 整套（InitialMeshOrientation / MeshIndex / MeshRotationRate / ScaleMeshSize）
-22. DynamicMaterialParameters
+### ✅ P2 缺失功能补完
+17. ✅ EmitterProperties 完整化（LoopDuration range / RecalculateEachLoop / InactiveResponse / FixedBounds）
+18. ✅ ShapeLocation 缺失参数（Box surfaceThickness / Cylinder heightMidpoint / Ring discCoverage+uDistribution）
+19. ✅ Wind 模块
+20. ✅ AddVelocityInCone 补齐（InnerCone / SpeedFalloffFromConeAxis / LinearVelocityScale）
+21. ✅ CameraOffset curve-over-life（ParticleUpdate + normalizedAge）
+22. ✅ SpawnProbability（spawn-rate / spawn-burst）
+23. ✅ RandomSeedOffset（system-instance → emitter seed 叠加）
+24. ✅ SubUVAnimation Random mode（hashSeed 确定性切帧）
+
+### ⏸ 延期（已移至 TODO.md P3 渲染器扩展）
+25. SpriteFacingAndAlignment CustomAlignment + FacingCameraDistanceBlend
+26. Mesh 整套（InitialMeshOrientation / MeshIndex / MeshRotationRate / ScaleMeshSize）
+27. DynamicMaterialParameters
 
 ---
 
@@ -263,14 +270,14 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 - **P0：13 项全部修复**
 - **P1：全部完成**（A 项确认 N/A；B / C / D / E / F 已修）
 - **死代码：7 项全部清理**
+- **P2：绝大部分完成**（8 项 ✅；3 项延期）
 - 补修 (2026-05-27)：drag distribution range-only / idTable monotonic counter / UpdateAge 正向遍历
 - 补修 (2026-05-27)：P1-D runSystemStage → ProSystemModuleContext / P1-E PivotOffset + Unaligned mode
 - 补修 (2026-05-28)：spawn clip 逻辑重排（先 compact 再算 availableSpawnSlots）+ 移除无意义 warning
-- 补修 (2026-05-28)：P2 部分完成 — EmitterProperties 完整化 + ShapeLocation 参数补齐 + Wind 模块
+- 补修 (2026-05-28)：P2 批量完成 — EmitterProperties / ShapeLocation / Wind / AddVelocityInCone /
+  CameraOffset / SpawnProbability / RandomSeedOffset / SubUVAnimation Random
 
-剩余未做：FixedBounds、SubUVAnimation Random mode、CameraOffset curve-over-life、
-AddVelocityInCone 缺失字段、SpawnProbability、RandomSeedOffset、
-SpriteFacingAndAlignment、Mesh 整套、DynamicMaterialParameters
+剩余延期项已移至 TODO.md P3 渲染器扩展（需改 renderer attribute layout，独立 PR）
 
 ---
 

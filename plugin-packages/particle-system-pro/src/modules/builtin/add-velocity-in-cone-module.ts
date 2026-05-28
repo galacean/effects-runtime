@@ -19,9 +19,12 @@ export type ProVelocityType = 'linear' | 'inCone' | 'fromPoint';
 export interface ProAddVelocityInConeModuleProps extends ProModuleProps {
   velocityType: ProVelocityType,
   linearVelocity: ProDistributionVector3Data,
+  linearVelocityScale: ProDistributionVector3Data,
   speed: ProDistributionFloatData,
   coneAxis: [number, number, number],
   coneAngle: number,
+  innerConeAngle: number,
+  speedFalloffFromConeAxis: number,
   pointSpeed: ProDistributionFloatData,
   pointOrigin: [number, number, number],
 }
@@ -39,6 +42,7 @@ export class ProAddVelocityInConeModule extends ProModule {
 
   // Linear
   linearVelocity: ProDistributionVector3 = ProDistributionVector3.fromConstant(0, 1, 0);
+  linearVelocityScale: ProDistributionVector3 = ProDistributionVector3.fromConstant(1, 1, 1);
 
   // InCone
   speed: ProDistributionFloat = ProDistributionFloat.fromRange(1, 2);
@@ -46,6 +50,8 @@ export class ProAddVelocityInConeModule extends ProModule {
   /** **全角**（弧度），实际半角在 execute 内 /2 — 对齐 UE Niagara
    *  `ConeAngle` 字段语义。`Math.PI/3` 对应 60° 全角 → 30° 半角锥 */
   coneAngle = Math.PI / 3;
+  innerConeAngle = 0;
+  speedFalloffFromConeAxis = 0;
 
   // FromPoint
   pointSpeed: ProDistributionFloat = ProDistributionFloat.fromRange(1, 2);
@@ -65,9 +71,12 @@ export class ProAddVelocityInConeModule extends ProModule {
     return {
       velocityType: this.velocityType,
       linearVelocity: this.linearVelocity.toJSON(),
+      linearVelocityScale: this.linearVelocityScale.toJSON(),
       speed: this.speed.toJSON(),
       coneAxis: [...this.coneAxis],
       coneAngle: this.coneAngle,
+      innerConeAngle: this.innerConeAngle,
+      speedFalloffFromConeAxis: this.speedFalloffFromConeAxis,
       pointSpeed: this.pointSpeed.toJSON(),
       pointOrigin: [...this.pointOrigin],
     };
@@ -80,6 +89,9 @@ export class ProAddVelocityInConeModule extends ProModule {
     if (data.linearVelocity) {
       this.linearVelocity = ProDistributionVector3.fromJSON(data.linearVelocity);
     }
+    if (data.linearVelocityScale) {
+      this.linearVelocityScale = ProDistributionVector3.fromJSON(data.linearVelocityScale);
+    }
     if (data.speed) {
       this.speed = ProDistributionFloat.fromJSON(data.speed);
     }
@@ -87,6 +99,8 @@ export class ProAddVelocityInConeModule extends ProModule {
       this.coneAxis = [data.coneAxis[0], data.coneAxis[1], data.coneAxis[2]];
     }
     if (typeof data.coneAngle === 'number') { this.coneAngle = data.coneAngle; }
+    if (typeof data.innerConeAngle === 'number') { this.innerConeAngle = data.innerConeAngle; }
+    if (typeof data.speedFalloffFromConeAxis === 'number') { this.speedFalloffFromConeAxis = data.speedFalloffFromConeAxis; }
     if (data.pointSpeed) {
       this.pointSpeed = ProDistributionFloat.fromJSON(data.pointSpeed);
     }
@@ -130,18 +144,25 @@ export class ProAddVelocityInConeModule extends ProModule {
 
   private executeLinear (a: ProStandardAccessors, ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;
+    const tmpScale: [number, number, number] = [0, 0, 0];
 
     for (let i = firstInstance; i < lastInstance; i++) {
       this.linearVelocity.sampleAtTime(randomStream.nextFloat(), 0, tmpVel);
-      a.velocity.set(dataBuffer!, i, tmpVel[0], tmpVel[1], tmpVel[2]);
+      this.linearVelocityScale.sampleAtTime(randomStream.nextFloat(), 0, tmpScale);
+      a.velocity.set(dataBuffer!, i,
+        tmpVel[0] * tmpScale[0],
+        tmpVel[1] * tmpScale[1],
+        tmpVel[2] * tmpScale[2],
+      );
     }
   }
 
   private executeInCone (a: ProStandardAccessors, ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;
     const [ax, ay, az] = this.coneAxis;
-    // coneAngle 是**全角**（对齐 UE）；半角才是均匀采样所需的 θ_max
-    const cosHalfAngle = Math.cos(this.coneAngle * 0.5);
+    const cosOuterHalf = Math.cos(this.coneAngle * 0.5);
+    const cosInnerHalf = Math.cos(Math.min(this.innerConeAngle, this.coneAngle) * 0.5);
+    const falloff = this.speedFalloffFromConeAxis;
 
     const helper = Math.abs(ay) < 0.9 ? [0, 1, 0] : [1, 0, 0];
     let t1x = ay * helper[2] - az * helper[1];
@@ -155,7 +176,7 @@ export class ProAddVelocityInConeModule extends ProModule {
     const t2z = ax * t1y - ay * t1x;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      const cosTheta = cosHalfAngle + (1 - cosHalfAngle) * randomStream.nextFloat();
+      const cosTheta = cosOuterHalf + (cosInnerHalf - cosOuterHalf) * randomStream.nextFloat();
       const sinTheta = Math.sqrt(1 - cosTheta * cosTheta);
       const phi = randomStream.nextFloat() * Math.PI * 2;
       const cosPhi = Math.cos(phi);
@@ -163,8 +184,13 @@ export class ProAddVelocityInConeModule extends ProModule {
       const dx = ax * cosTheta + t1x * sinTheta * cosPhi + t2x * sinTheta * sinPhi;
       const dy = ay * cosTheta + t1y * sinTheta * cosPhi + t2y * sinTheta * sinPhi;
       const dz = az * cosTheta + t1z * sinTheta * cosPhi + t2z * sinTheta * sinPhi;
-      const spd = this.speed.sampleAtTime(randomStream.nextFloat(), 0);
+      let spd = this.speed.sampleAtTime(randomStream.nextFloat(), 0);
 
+      if (falloff > 0 && cosInnerHalf > cosOuterHalf) {
+        const t = (cosInnerHalf - cosTheta) / (cosInnerHalf - cosOuterHalf);
+
+        spd *= 1 - falloff * t;
+      }
       a.velocity.set(dataBuffer!, i, dx * spd, dy * spd, dz * spd);
     }
   }
