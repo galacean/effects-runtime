@@ -23,6 +23,7 @@ import { ProSpawnRateModule } from './spawn-rate-module';
 import { ProSpriteRotationRateModule } from './sprite-rotation-rate-module';
 import { ProSubUVAnimationModule } from './sub-uv-animation-module';
 import { ProUpdateAgeModule } from './update-age-module';
+import { ProWindForceModule } from './wind-force-module';
 
 /**
  * 描述一个可在编辑器里被「+ Add Module」选中的内置模块。
@@ -54,6 +55,7 @@ export const proModuleRegistry: ProModuleDescriptor[] = [
   { id: 'pro.gravityForce', label: 'Gravity Force', stage: ProModuleStage.ParticleUpdate, create: () => new ProGravityForceModule() },
   { id: 'pro.accelerationForce', label: 'Acceleration Force', stage: ProModuleStage.ParticleUpdate, create: () => new ProAccelerationForceModule() },
   { id: 'pro.curlNoiseForce', label: 'Curl Noise Force', stage: ProModuleStage.ParticleUpdate, create: () => new ProCurlNoiseForceModule() },
+  { id: 'pro.windForce', label: 'Wind Force', stage: ProModuleStage.ParticleUpdate, create: () => new ProWindForceModule() },
   { id: 'pro.rotateAroundPoint', label: 'Rotate Around Point', stage: ProModuleStage.ParticleUpdate, create: () => new ProRotateAroundPointModule() },
   { id: 'pro.solveForcesAndVelocity', label: 'Solve Forces & Velocity', stage: ProModuleStage.ParticleUpdate, create: () => new ProSolveForcesAndVelocityModule() },
   { id: 'pro.calculateAccurateVelocity', label: 'Calculate Accurate Velocity', stage: ProModuleStage.ParticleUpdate, create: () => new ProCalculateAccurateVelocityModule() },

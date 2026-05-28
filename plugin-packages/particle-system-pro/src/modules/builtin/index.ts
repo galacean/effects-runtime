@@ -21,4 +21,5 @@ export * from './ribbon-width-scale-module';
 export * from './sample-particles-from-other-emitter-module';
 export * from './spawn-per-source-particle-module';
 export * from './rotate-around-point-module';
+export * from './wind-force-module';
 export * from './module-registry';

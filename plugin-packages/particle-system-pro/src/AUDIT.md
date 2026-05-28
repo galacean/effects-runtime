@@ -193,19 +193,19 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 | `InitialMeshOrientation` | 缺 |
 | `MeshIndex` / `MeshRotationRate` / `ScaleMeshSize*` | 缺（mesh 整套） |
 | `DynamicMaterialParameters` | 缺 |
-| 内置 Wind module | 缺（依赖 A 项 PhysicsBuildData） |
+| 内置 Wind module | ✅ `ProWindForceModule`（对标 Stateful，独立力模块） |
 
 ### 缺失的字段 / 模式
 
 | 位置 | 缺失内容 | UE 来源 |
 |---|---|---|
-| `emitter-properties-module.ts` | `LoopDuration / LoopDelay` 应为 range；`bRecalculateDurationEachLoop`、`bRecalculateDelayEachLoop`、`bDelayFirstLoopOnly` | `Internal/Stateless/NiagaraSystemEmitterState.h:87-101` |
-| `emitter-properties-module.ts` | `InactiveResponse = Kill`（立即清场，不必 drain） | `NiagaraStatelessEmitterInstance.cpp:538` |
+| `emitter-properties-module.ts` | ✅ `LoopDuration / LoopDelay` 改为 `ProDistributionFloat`；`recalculateDurationEachLoop`、`recalculateDelayEachLoop`、`delayFirstLoopOnly` | `Internal/Stateless/NiagaraSystemEmitterState.h:87-101` |
+| `emitter-properties-module.ts` | ✅ `inactiveResponse: 'complete' \| 'kill'`（kill → InactiveClear 立即清场） | `NiagaraStatelessEmitterInstance.cpp:538` |
 | `emitter-properties-module.ts` | `FixedBounds` | `NiagaraStatelessEmitter.h:119` |
 | `sub-uv-animation-module.ts` | `Random` mode + `RandomChangeInterval`；`StartFrameRangeOverride/EndFrameRangeOverride` | `Internal/Stateless/Modules/NiagaraStatelessModule_SubUVAnimation.h:14-17` |
 | `camera-offset-module.ts:26` | 支持 curve-over-life（当前只 ParticleSpawn 阶段算，丢失 push-pull 效果） | UE `BuildContext.AddDistribution` |
 | `add-velocity-in-cone-module.ts` | `LinearVelocityScale` / `InnerCone` / `SpeedFalloffFromConeAxis` | `Internal/Stateless/Modules/NiagaraStatelessModule_AddVelocity.h:32,41` |
-| `shape-location-module.ts` | Box `SurfaceThicknessMin/Max`；Cylinder `HeightMidpoint`；Ring `DiscCoverage / UDistribution` | `Internal/Stateless/Modules/NiagaraStatelessModule_ShapeLocation.h:36-55` |
+| `shape-location-module.ts` | ✅ Box `surfaceThickness`；Cylinder `heightMidpoint`；Ring `discCoverage / uDistribution` | `Internal/Stateless/Modules/NiagaraStatelessModule_ShapeLocation.h:36-55` |
 | `spawn-rate-module.ts` / `spawn-burst-module.ts` | `SpawnProbability`；burst `Amount = DistributionRangeInt` | `Internal/Stateless/NiagaraStatelessSpawnInfo.h:39-43` |
 | `system-instance.ts` | `RandomSeedOffset`（两个同 seed emitter 解相关） | `NiagaraStatelessEmitterInstance.cpp:66` |
 
@@ -266,8 +266,11 @@ UE Stateless 多数 distribution 是 **range-only**（`AccelerationForce.h:18 Di
 - 补修 (2026-05-27)：drag distribution range-only / idTable monotonic counter / UpdateAge 正向遍历
 - 补修 (2026-05-27)：P1-D runSystemStage → ProSystemModuleContext / P1-E PivotOffset + Unaligned mode
 - 补修 (2026-05-28)：spawn clip 逻辑重排（先 compact 再算 availableSpawnSlots）+ 移除无意义 warning
+- 补修 (2026-05-28)：P2 部分完成 — EmitterProperties 完整化 + ShapeLocation 参数补齐 + Wind 模块
 
-剩余未做：上文 P2 列出的缺失模块 / 参数 / 模式
+剩余未做：FixedBounds、SubUVAnimation Random mode、CameraOffset curve-over-life、
+AddVelocityInCone 缺失字段、SpawnProbability、RandomSeedOffset、
+SpriteFacingAndAlignment、Mesh 整套、DynamicMaterialParameters
 
 ---
 

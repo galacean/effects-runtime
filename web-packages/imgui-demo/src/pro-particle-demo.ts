@@ -485,10 +485,10 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
 function configureShockRingModules (system: ProParticleSystemComponent): void {
   const emitterProps = new ProEmitterPropertiesModule();
 
-  emitterProps.duration = 0.6;
+  emitterProps.duration = ProDistributionFloat.fromConstant(0.6);
   emitterProps.loopBehavior = 'multiple';
   emitterProps.loopCount = 999;
-  emitterProps.loopDelay = 1.8;
+  emitterProps.loopDelay = ProDistributionFloat.fromConstant(1.8);
   emitterProps.maxParticleCount = 320;
   emitterProps.warmupTime = 0.1;
 

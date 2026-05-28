@@ -17,10 +17,14 @@ export interface ProShapeLocationModuleProps extends ProModuleProps {
   sphereMax: number,
   boxSize: [number, number, number],
   boxSurfaceOnly: boolean,
+  boxSurfaceThickness: number,
   cylinderHeight: number,
   cylinderRadius: number,
+  cylinderHeightMidpoint: number,
   ringRadius: number,
   ringThickness: number,
+  ringDiscCoverage: number,
+  ringUDistribution: number,
   planeSize: [number, number],
 }
 
@@ -42,14 +46,18 @@ export class ProShapeLocationModule extends ProModule {
   // Box
   boxSize: [number, number, number] = [1, 1, 1];
   boxSurfaceOnly = false;
+  boxSurfaceThickness = 0;
 
   // Cylinder
   cylinderHeight = 1;
   cylinderRadius = 1;
+  cylinderHeightMidpoint = 0.5;
 
   // Ring
   ringRadius = 1;
   ringThickness = 0;
+  ringDiscCoverage = 0;
+  ringUDistribution = 0;
 
   // Plane
   planeSize: [number, number] = [1, 1];
@@ -70,10 +78,14 @@ export class ProShapeLocationModule extends ProModule {
       sphereMax: this.sphereMax,
       boxSize: [...this.boxSize],
       boxSurfaceOnly: this.boxSurfaceOnly,
+      boxSurfaceThickness: this.boxSurfaceThickness,
       cylinderHeight: this.cylinderHeight,
       cylinderRadius: this.cylinderRadius,
+      cylinderHeightMidpoint: this.cylinderHeightMidpoint,
       ringRadius: this.ringRadius,
       ringThickness: this.ringThickness,
+      ringDiscCoverage: this.ringDiscCoverage,
+      ringUDistribution: this.ringUDistribution,
       planeSize: [...this.planeSize],
     };
   }
@@ -88,10 +100,14 @@ export class ProShapeLocationModule extends ProModule {
       this.boxSize = [data.boxSize[0], data.boxSize[1], data.boxSize[2]];
     }
     if (typeof data.boxSurfaceOnly === 'boolean') { this.boxSurfaceOnly = data.boxSurfaceOnly; }
+    if (typeof data.boxSurfaceThickness === 'number') { this.boxSurfaceThickness = data.boxSurfaceThickness; }
     if (typeof data.cylinderHeight === 'number') { this.cylinderHeight = data.cylinderHeight; }
     if (typeof data.cylinderRadius === 'number') { this.cylinderRadius = data.cylinderRadius; }
+    if (typeof data.cylinderHeightMidpoint === 'number') { this.cylinderHeightMidpoint = data.cylinderHeightMidpoint; }
     if (typeof data.ringRadius === 'number') { this.ringRadius = data.ringRadius; }
     if (typeof data.ringThickness === 'number') { this.ringThickness = data.ringThickness; }
+    if (typeof data.ringDiscCoverage === 'number') { this.ringDiscCoverage = data.ringDiscCoverage; }
+    if (typeof data.ringUDistribution === 'number') { this.ringUDistribution = data.ringUDistribution; }
     if (data.planeSize && data.planeSize.length === 2) {
       this.planeSize = [data.planeSize[0], data.planeSize[1]];
     }
@@ -173,34 +189,44 @@ export class ProShapeLocationModule extends ProModule {
       ];
     }
     // Surface only: pick a random face then random point on that face
+    // SurfaceThickness offsets points inward from the surface
     const face = Math.floor(rs.nextFloat() * 6);
     const u = rs.nextFloat() - 0.5;
     const v = rs.nextFloat() - 0.5;
+    const t = this.boxSurfaceThickness > 0 ? rs.nextFloat() * this.boxSurfaceThickness : 0;
 
     switch (face) {
-      case 0: return [0.5 * sx, u * sy, v * sz];
-      case 1: return [-0.5 * sx, u * sy, v * sz];
-      case 2: return [u * sx, 0.5 * sy, v * sz];
-      case 3: return [u * sx, -0.5 * sy, v * sz];
-      case 4: return [u * sx, v * sy, 0.5 * sz];
-      default: return [u * sx, v * sy, -0.5 * sz];
+      case 0: return [(0.5 * sx) - t, u * sy, v * sz];
+      case 1: return [(-0.5 * sx) + t, u * sy, v * sz];
+      case 2: return [u * sx, (0.5 * sy) - t, v * sz];
+      case 3: return [u * sx, (-0.5 * sy) + t, v * sz];
+      case 4: return [u * sx, v * sy, (0.5 * sz) - t];
+      default: return [u * sx, v * sy, (-0.5 * sz) + t];
     }
   }
 
   private sampleCylinder (rs: { nextFloat(): number }): [number, number, number] {
     const angle = rs.nextFloat() * Math.PI * 2;
     const r = this.cylinderRadius * Math.sqrt(rs.nextFloat());
-    const h = (rs.nextFloat() - 0.5) * this.cylinderHeight;
+    // HeightMidpoint 控制高度中心：0.5=上下居中；0=全在上方；1=全在下方
+    const h = rs.nextFloat() * this.cylinderHeight + this.cylinderHeight * (-this.cylinderHeightMidpoint);
 
     return [r * Math.cos(angle), h, r * Math.sin(angle)];
   }
 
   private sampleRing (rs: { nextFloat(): number }): [number, number, number] {
-    const angle = rs.nextFloat() * Math.PI * 2;
-    // 面积均匀（对齐 UE `lerp(R*(1-SDC), R*SDC, sqrt(rs))`）：r² 在 [innerR², outerR²]
-    // 上均匀分布，再开方得 r。旧实现直接 r 上均匀 → 内圈面积小但拿到同样多粒子 → 内密外疏
-    const innerR = Math.max(0, this.ringRadius - this.ringThickness * 0.5);
-    const outerR = this.ringRadius + this.ringThickness * 0.5;
+    // UDistribution: 0=整圈(2π)，1=单点(0 弧度范围)
+    const angle = rs.nextFloat() * Math.PI * 2 * (1 - this.ringUDistribution);
+    // DiscCoverage: 0=纯环(用 ringThickness)，1=实心盘(innerR=0)
+    // DC = 1 - coverage, SDC = sqrt(DC), innerR = radius * SDC, outerR = radius
+    const dc = Math.max(0, 1 - this.ringDiscCoverage);
+    const sdc = dc > 0 ? Math.sqrt(dc) : 0;
+    const innerR = this.ringDiscCoverage > 0
+      ? this.ringRadius * sdc
+      : Math.max(0, this.ringRadius - this.ringThickness * 0.5);
+    const outerR = this.ringDiscCoverage > 0
+      ? this.ringRadius
+      : this.ringRadius + this.ringThickness * 0.5;
     const r = Math.sqrt(innerR * innerR + (outerR * outerR - innerR * innerR) * rs.nextFloat());
 
     return [r * Math.cos(angle), 0, r * Math.sin(angle)];

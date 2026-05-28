@@ -68,6 +68,13 @@ export class ProEmitterInstance {
   loopBehavior: 'infinite' | 'once' | 'multiple' = 'infinite';
   loopCount = 1;
   loopDelay = 0;
+  recalculateDurationEachLoop = false;
+  recalculateDelayEachLoop = false;
+  delayFirstLoopOnly = false;
+  inactiveResponse: 'complete' | 'kill' = 'complete';
+
+  durationSampler: (() => number) | null = null;
+  delaySampler: (() => number) | null = null;
 
   currentLoop = 0;
   loopAge = 0;
@@ -554,19 +561,34 @@ export class ProEmitterInstance {
     while (this.loopAge >= this.duration) {
       this.currentLoop++;
       if (this.currentLoop >= maxLoops) {
-        this.executionState = ProExecutionState.Inactive;
+        this.executionState = this.inactiveResponse === 'kill'
+          ? ProExecutionState.InactiveClear
+          : ProExecutionState.Inactive;
 
         return;
       }
-      if (this.loopDelay > 0) {
-        // 进入 delay：保留 overrun，状态切到 Inactive；剩余循环推进留到下次 tick
-        this.pendingLoopOverrun = this.loopAge - this.duration;
+
+      // 每次进入新 loop 时可重新采样 duration/delay
+      if (this.recalculateDurationEachLoop && this.durationSampler) {
+        this.loopAge -= this.duration;
+        this.duration = this.durationSampler();
+      } else {
+        this.loopAge -= this.duration;
+      }
+      if (this.recalculateDelayEachLoop && this.delaySampler) {
+        this.loopDelay = this.delaySampler();
+      }
+
+      const shouldDelay = this.loopDelay > 0 &&
+        !(this.delayFirstLoopOnly && this.currentLoop > 1);
+
+      if (shouldDelay) {
+        this.pendingLoopOverrun = this.loopAge;
         this.delayRemaining = this.loopDelay;
         this.executionState = ProExecutionState.Inactive;
 
         return;
       }
-      this.loopAge -= this.duration;
     }
   }
 

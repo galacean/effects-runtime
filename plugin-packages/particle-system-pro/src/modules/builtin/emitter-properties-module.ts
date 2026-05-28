@@ -1,21 +1,28 @@
 import type { ProSimulationSpace } from '../../simulation/emitter-instance';
+import { ProDistributionFloat } from '../../distribution/pro-distribution-float';
+import type { ProDistributionFloatData } from '../../distribution/pro-distribution-float';
 import type { ProModuleContext } from '../module-context';
 import { ProModuleStage } from '../stage';
 import { ProModule } from '../module';
 import type { ProModuleProps } from '../module';
 
 export type ProEmitterLoopBehavior = 'infinite' | 'once' | 'multiple';
+export type ProEmitterInactiveResponse = 'complete' | 'kill';
 
 export interface ProEmitterPropertiesModuleProps extends ProModuleProps {
-  duration: number,
+  duration: ProDistributionFloatData,
   loopBehavior: ProEmitterLoopBehavior,
   loopCount: number,
-  loopDelay: number,
+  loopDelay: ProDistributionFloatData,
   maxParticleCount: number,
   simulationSpace: ProSimulationSpace,
   warmupTime: number,
   warmupTickDelta: number,
   randomSeed: number,
+  recalculateDurationEachLoop: boolean,
+  recalculateDelayEachLoop: boolean,
+  delayFirstLoopOnly: boolean,
+  inactiveResponse: ProEmitterInactiveResponse,
 }
 
 /**
@@ -37,51 +44,78 @@ export interface ProEmitterPropertiesModuleProps extends ProModuleProps {
 export class ProEmitterPropertiesModule extends ProModule {
   readonly stage = ProModuleStage.EmitterSpawn;
 
-  duration = 5;
+  duration: ProDistributionFloat = ProDistributionFloat.fromConstant(5);
   loopBehavior: ProEmitterLoopBehavior = 'infinite';
   loopCount = 1;
-  loopDelay = 0;
+  loopDelay: ProDistributionFloat = ProDistributionFloat.fromConstant(0);
   maxParticleCount = 1024;
   simulationSpace: ProSimulationSpace = 'local';
   warmupTime = 0;
   warmupTickDelta = 1 / 30;
   randomSeed = 0x12345678;
+  recalculateDurationEachLoop = false;
+  recalculateDelayEachLoop = false;
+  delayFirstLoopOnly = false;
+  inactiveResponse: ProEmitterInactiveResponse = 'complete';
 
   override execute (ctx: ProModuleContext): void {
     const emitter = ctx.emitterInstance;
+    const rs = ctx.randomStream;
 
-    emitter.duration = this.duration;
+    emitter.duration = this.duration.sampleAtTime(rs.nextFloat(), 0);
     emitter.loopBehavior = this.loopBehavior;
     emitter.loopCount = this.loopCount;
-    emitter.loopDelay = this.loopDelay;
+    emitter.loopDelay = this.loopDelay.sampleAtTime(rs.nextFloat(), 0);
     emitter.maxInstanceCount = Math.max(1, Math.floor(this.maxParticleCount));
     emitter.simulationSpace = this.simulationSpace;
     emitter.warmupTime = Math.max(0, this.warmupTime);
     emitter.warmupTickDelta = Math.max(1 / 240, this.warmupTickDelta);
     emitter.applyRandomSeed(this.randomSeed | 0);
+    emitter.recalculateDurationEachLoop = this.recalculateDurationEachLoop;
+    emitter.recalculateDelayEachLoop = this.recalculateDelayEachLoop;
+    emitter.delayFirstLoopOnly = this.delayFirstLoopOnly;
+    emitter.inactiveResponse = this.inactiveResponse;
+
+    const durationDist = this.duration;
+    const delayDist = this.loopDelay;
+
+    emitter.durationSampler = () => durationDist.sampleAtTime(rs.nextFloat(), 0);
+    emitter.delaySampler = () => delayDist.sampleAtTime(rs.nextFloat(), 0);
   }
 
   override toJSON (): ProEmitterPropertiesModuleProps {
     return {
-      duration: this.duration,
+      duration: this.duration.toJSON(),
       loopBehavior: this.loopBehavior,
       loopCount: this.loopCount,
-      loopDelay: this.loopDelay,
+      loopDelay: this.loopDelay.toJSON(),
       maxParticleCount: this.maxParticleCount,
       simulationSpace: this.simulationSpace,
       warmupTime: this.warmupTime,
       warmupTickDelta: this.warmupTickDelta,
       randomSeed: this.randomSeed,
+      recalculateDurationEachLoop: this.recalculateDurationEachLoop,
+      recalculateDelayEachLoop: this.recalculateDelayEachLoop,
+      delayFirstLoopOnly: this.delayFirstLoopOnly,
+      inactiveResponse: this.inactiveResponse,
     };
   }
 
   override fromJSON (data: ProEmitterPropertiesModuleProps): void {
-    if (typeof data.duration === 'number') { this.duration = data.duration; }
+    if (data.duration) {
+      this.duration = typeof data.duration === 'number'
+        ? ProDistributionFloat.fromConstant(data.duration)
+        : ProDistributionFloat.fromJSON(data.duration);
+    }
     if (data.loopBehavior === 'infinite' || data.loopBehavior === 'once' || data.loopBehavior === 'multiple') {
       this.loopBehavior = data.loopBehavior;
     }
     if (typeof data.loopCount === 'number') { this.loopCount = data.loopCount; }
-    if (typeof data.loopDelay === 'number') { this.loopDelay = data.loopDelay; }
+    if (data.loopDelay) {
+      this.loopDelay = typeof data.loopDelay === 'number'
+        ? ProDistributionFloat.fromConstant(data.loopDelay)
+        : ProDistributionFloat.fromJSON(data.loopDelay);
+    }
     if (typeof data.maxParticleCount === 'number') { this.maxParticleCount = data.maxParticleCount; }
     if (data.simulationSpace === 'local' || data.simulationSpace === 'world') {
       this.simulationSpace = data.simulationSpace;
@@ -89,5 +123,11 @@ export class ProEmitterPropertiesModule extends ProModule {
     if (typeof data.warmupTime === 'number') { this.warmupTime = data.warmupTime; }
     if (typeof data.warmupTickDelta === 'number') { this.warmupTickDelta = data.warmupTickDelta; }
     if (typeof data.randomSeed === 'number') { this.randomSeed = data.randomSeed; }
+    if (typeof data.recalculateDurationEachLoop === 'boolean') { this.recalculateDurationEachLoop = data.recalculateDurationEachLoop; }
+    if (typeof data.recalculateDelayEachLoop === 'boolean') { this.recalculateDelayEachLoop = data.recalculateDelayEachLoop; }
+    if (typeof data.delayFirstLoopOnly === 'boolean') { this.delayFirstLoopOnly = data.delayFirstLoopOnly; }
+    if (data.inactiveResponse === 'complete' || data.inactiveResponse === 'kill') {
+      this.inactiveResponse = data.inactiveResponse;
+    }
   }
 }
