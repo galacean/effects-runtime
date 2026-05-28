@@ -1371,39 +1371,18 @@ function resolveTargetFromTopItems (
 }
 
 function scaleVector3CurveKeyFrames (keyFrames: any, factorX: number, factorY: number, factorZ: number) {
-  if (!Array.isArray(keyFrames) || keyFrames.length < 2) {
+  // Vector3CurveValue: [27, [xBezier, yBezier, zBezier]]
+  if (!Array.isArray(keyFrames) || keyFrames[0] !== 27) {
     return;
   }
-
-  const type = keyFrames[0];
   const value = keyFrames[1];
 
-  // Vector3CurveValue: [27, [xBezier, yBezier, zBezier]]
-  if (type === 27 && Array.isArray(value) && value.length === 3) {
-    scaleBezierValue(value[0], factorX);
-    scaleBezierValue(value[1], factorY);
-    scaleBezierValue(value[2], factorZ);
-
+  if (!Array.isArray(value) || value.length !== 3) {
     return;
   }
-
-  // BezierCurvePath: [22, [easing, points, controlPoints]]
-  if (type === 22 && Array.isArray(value) && value.length === 3) {
-    const points = value[1] as number[][];
-    const controlPoints = value[2] as number[][];
-    const factors = [factorX, factorY, factorZ];
-
-    for (const point of points) {
-      for (let i = 0; i < 3 && i < point.length; i++) {
-        point[i] *= factors[i];
-      }
-    }
-    for (const cp of controlPoints) {
-      for (let i = 0; i < 3 && i < cp.length; i++) {
-        cp[i] *= factors[i];
-      }
-    }
-  }
+  scaleBezierValue(value[0], factorX);
+  scaleBezierValue(value[1], factorY);
+  scaleBezierValue(value[2], factorZ);
 }
 
 function scaleBezierValue (bezier: any, factor: number) {
