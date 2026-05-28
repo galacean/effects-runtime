@@ -1191,18 +1191,12 @@ function migrateTextScaleCurves (
   for (const info of textItemScaleInfos) {
     textItemIdToInfo.set(info.item.id, info);
 
-    const stack = [info.item.id];
+    // 只收集直接子节点，深层后代已通过直接子节点的静态 scale 调整继承了正确的变换
+    const children = childrenMap.get(info.item.id);
 
-    while (stack.length > 0) {
-      const parentId = stack.pop()!;
-      const children = childrenMap.get(parentId);
-
-      if (!children) {
-        continue;
-      }
+    if (children) {
       for (const child of children) {
         textChildIdToInfo.set(child.id, info);
-        stack.push(child.id);
       }
     }
   }
@@ -1215,7 +1209,7 @@ function migrateTextScaleCurves (
   }
 
   // 建立 animation id → data 映射
-  const animationMap = new Map<string, any>();
+  const animationMap = new Map<string, spec.EffectsObjectData>();
 
   for (const anim of json.animations) {
     animationMap.set(anim.id, anim);
@@ -1247,7 +1241,7 @@ function migrateTextScaleCurves (
     let topItems: spec.VFXItemData[] | undefined;
 
     if (compositionComp) {
-      const ccData = compositionComp as unknown as { items?: { id: string }[] };
+      const ccData = compositionComp as spec.CompositionComponentData;
       const items = ccData.items;
 
       if (items) {
@@ -1278,10 +1272,8 @@ function migrateTextScaleCurves (
     }
 
     // 获取 Animator 关联的 AnimationClip
-    const animatorData = animatorComp as unknown as { graphAsset: { id: string } };
-    const graphAsset = animationMap.get(animatorData.graphAsset?.id) as {
-      graphDataSet?: { resources: { id: string }[] },
-    } | undefined;
+    const animatorData = animatorComp as spec.AnimatorData;
+    const graphAsset = animationMap.get(animatorData.graphAsset?.id) as spec.AnimationGraphAssetData | undefined;
 
     if (!graphAsset?.graphDataSet?.resources) {
       continue;
@@ -1339,9 +1331,8 @@ function resolveTargetFromTopItems (
   return current;
 }
 
-function scaleVector3CurveKeyFrames (keyFrames: any, factorX: number, factorY: number, factorZ: number) {
-  // Vector3CurveValue: [27, [xBezier, yBezier, zBezier]]
-  if (!Array.isArray(keyFrames) || keyFrames[0] !== 27) {
+function scaleVector3CurveKeyFrames (keyFrames: spec.Vector3CurveValue, factorX: number, factorY: number, factorZ: number) {
+  if (!Array.isArray(keyFrames) || keyFrames[0] !== spec.ValueType.VECTOR3_CURVE) {
     return;
   }
   const value = keyFrames[1];
@@ -1354,8 +1345,8 @@ function scaleVector3CurveKeyFrames (keyFrames: any, factorX: number, factorY: n
   scaleBezierValue(value[2], factorZ);
 }
 
-function scaleBezierValue (bezier: any, factor: number) {
-  if (!Array.isArray(bezier) || bezier[0] !== 21 || !Array.isArray(bezier[1])) {
+function scaleBezierValue (bezier: spec.BezierValue, factor: number) {
+  if (!Array.isArray(bezier) || bezier[0] !== spec.ValueType.BEZIER_CURVE || !Array.isArray(bezier[1])) {
     return;
   }
 
@@ -1367,7 +1358,6 @@ function scaleBezierValue (bezier: any, factor: number) {
     }
     const values = kf[1] as number[];
 
-    // 所有关键帧类型中奇数索引都是 value（偶数索引是 time）
     for (let i = 1; i < values.length; i += 2) {
       values[i] *= factor;
     }
