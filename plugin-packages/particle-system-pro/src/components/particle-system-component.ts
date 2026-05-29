@@ -20,6 +20,12 @@ export class ProParticleSystemComponent extends Component {
 
   randomSeed = 0x12345678;
 
+  // 上一帧 transform 世界平移，用于算发射器世界速度供 InheritVelocity 模块继承
+  private prevWorldX = 0;
+  private prevWorldY = 0;
+  private prevWorldZ = 0;
+  private hasPrevWorldPos = false;
+
   /**
    * 创建一个挂上标准 Particle 变量布局的默认 emitter，添加到 systemInstance。
    *
@@ -57,12 +63,28 @@ export class ProParticleSystemComponent extends Component {
   }
 
   override onUpdate (dt: number): void {
-    // 在 tick 之前把当前世界矩阵推给每个 emitter，World space 模式 spawn 烘焙用
+    // 在 tick 之前把当前世界矩阵推给每个 emitter，World space 模式 spawn 烘焙用；
+    // 同时按平移增量算出发射器世界速度，供 InheritVelocity 模块继承
     const wm = this.transform?.getWorldMatrix();
 
     if (wm) {
+      const e = wm.elements;
+      const wx = e[12], wy = e[13], wz = e[14];
+      const dtSec = dt / 1000;
+      let vx = 0, vy = 0, vz = 0;
+
+      if (this.hasPrevWorldPos && dtSec > 1e-6) {
+        vx = (wx - this.prevWorldX) / dtSec;
+        vy = (wy - this.prevWorldY) / dtSec;
+        vz = (wz - this.prevWorldZ) / dtSec;
+      }
+      this.prevWorldX = wx; this.prevWorldY = wy; this.prevWorldZ = wz;
+      this.hasPrevWorldPos = true;
       for (const emitter of this.systemInstance.emitters) {
         emitter.worldMatrix.copyFrom(wm);
+        emitter.emitterVelocity[0] = vx;
+        emitter.emitterVelocity[1] = vy;
+        emitter.emitterVelocity[2] = vz;
       }
     }
     this.systemInstance.tick(dt / 1000);

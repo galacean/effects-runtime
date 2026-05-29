@@ -129,6 +129,8 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
           tessellationMode: p.tessellationMode,
           customSubdivisions: p.customSubdivisions,
           curveTension: p.curveTension,
+          drawDirection: p.drawDirection,
+          maxNumRibbons: p.maxNumRibbons,
         };
         const url = getDebugTextureUrl(p);
 
@@ -200,7 +202,8 @@ export class ProParticleSystemRendererComponent extends RendererComponent {
       if (rp.tessellationMode !== undefined) { props.tessellationMode = rp.tessellationMode as typeof props.tessellationMode; }
       if (rp.customSubdivisions !== undefined) { props.customSubdivisions = rp.customSubdivisions; }
       if (rp.curveTension !== undefined) { props.curveTension = rp.curveTension; }
-      // useRibbonId 已移除：多 ribbon 检测改为通过 accessor.ribbonId.isValid 自动判断
+      if (rp.drawDirection !== undefined) { props.drawDirection = rp.drawDirection; }
+      if (rp.maxNumRibbons !== undefined) { props.maxNumRibbons = rp.maxNumRibbons; }
       if (rp.textureUrl) {
         setDebugTextureUrl(props, rp.textureUrl);
       }

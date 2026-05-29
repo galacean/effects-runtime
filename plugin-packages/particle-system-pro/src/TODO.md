@@ -64,8 +64,8 @@
 
 - [x] **序列化 / 反序列化** — 通过组件 toData/fromData：Distribution/Curve 加 toJSON/fromJSON；新建 module-serialization helpers + ProModuleData typeId 反查；ProParticleSystem(Renderer)Component.toData/fromData；texture 用 URL 序列化反序列化时异步重载；verifyRoundtripModules() smoke 测试 (2026-05-26)
 - [ ] **事件系统** — 粒子死亡/碰撞等事件触发回调或 spawn 新粒子
-- [ ] **World Transform 接入** — Transform 移动时粒子 inherit velocity；Local Space 粒子跟随物体
-- [ ] **Bounds 计算** — 包围盒估算，用于视锥裁剪
+- [x] **World Transform 接入** — Local Space 粒子已由 renderer 每帧乘 worldMatrix 刚性跟随；component 按 worldMatrix 平移增量算 emitterVelocity，新增 ProInheritVelocityModule (ParticleSpawn) 让 world-space 新粒子继承发射器世界速度×velocityScale（先世界缩放→逆旋回局部，bake 后落回世界；local 模式 no-op 避免重复计运动） (2026-05-29)
+- [x] **Bounds 计算** — emitter.computeBounds() 逐帧从活跃粒子 position+size 估算 AABB；fixedBounds 配置时跳过动态计算；视锥裁剪留后续实现 (2026-05-28)
 - [ ] **Scalability / LOD** — 距离 / 性能自适应降级（减少粒子数、降低发射率等）
 - [ ] **Multi-Emitter 参数共享** — 通过 SystemParameterStore 在 emitter 间共享参数
 
@@ -97,7 +97,7 @@
 - [x] **RibbonWidth 字段（per-particle）** — `Particle.RibbonWidth` + `Particle.InitialRibbonWidth` standard 字段；ribbon-renderer 优先用 per-particle width，为 0 时回退 `Size.x * widthScale`；新增 `ProRibbonWidthModule` (ParticleSpawn, ProDistributionFloat) 写初值并 snapshot 到 InitialRibbonWidth；新增 `ProRibbonWidthScaleModule` (ParticleUpdate) `width = initialWidth * scale(age)` 避免每帧复合 (2026-05-26)
 - [x] **RibbonUVDistance 字段（per-particle） + TiledFromStart 模式** — `Particle.RibbonUVDistance` standard 字段；SpawnPerSource 加 per-UID 距离累积器，每帧无条件按 `|currPos - prevPos|` 推进；assignment 携带 `(distAtFrameStart, frameSegLen)`；Sample 写 `uvDist = distAtFrameStart + frameSegLen * (k+0.5)/N`；ribbon-renderer 新增 `TiledFromStart` 模式，`v = abs(uvDist - ribbonStartUVDist) / tileLength`，跳过 renderer 端弧长扫描。剩余 3 种 `ENiagaraRibbonUVDistributionMode` 见后续 P2 (2026-05-26)
 - [x] **CurveTension + Tessellation** — `ProRibbonTessellationMode` enum (Disabled / Custom / Automatic)；renderer 引入 `OriginalPointCache` + `InflatedPoint` 双层池：cacheOriginalAttributes 一次性读 position/size/color/velocity/ribbonWidth/uvDistance 避免 accessor 重读；buildInflatedPoints 按 ribbon 边界做带 tension 的 Catmull-Rom 细分（端点复制扮 P0/P3 防越界 / 跨 ribbon 拉伸），属性沿 t 线性插值；writeGeometry 改从 inflatedPoints 取数；customSubdivisions 防御性 clamp 0..64；Disabled 模式 subdivisions=0 退化为原始连线行为 (2026-05-26)
-- [ ] **DrawDirection / MaxNumRibbons** — Front→Back 切换 + 限制最大 ribbon 数
+- [x] **DrawDirection / MaxNumRibbons** — `ProRibbonRendererProperties.drawDirection` (frontToBack/backToFront) 控制 index buffer 写入顺序；`maxNumRibbons` (0=unlimited) 在 sort 后截断多余 ribbon (2026-05-28)
 
 **P2 — 形态扩展与朝向**
 
@@ -127,6 +127,8 @@
 
 ## 已完成
 
+- [x] **World Transform 接入** — emitterVelocity 追踪(component 算 worldMatrix 平移增量) + ProInheritVelocityModule 让 world-space 新粒子继承发射器运动；Local 模式刚性跟随已有 (2026-05-29)
+- [x] **Ribbon DrawDirection/MaxNumRibbons + Bounds 计算** — drawDirection 控制 index buffer 写入顺序(frontToBack/backToFront)；maxNumRibbons sort 后截断多余 ribbon；emitter.computeBounds() 逐帧 AABB + fixedBounds 覆盖 (2026-05-28)
 - [x] **P2 补完批量：AddVelocityInCone(innerCone/speedFalloff/linearVelocityScale) + CameraOffset curve-over-life + SpawnProbability + RandomSeedOffset + SubUV Random mode + FixedBounds 预留** (2026-05-28)
 - [x] **P2 补完：EmitterProperties 完整化(Distribution duration/delay + recalculate + inactiveResponse) + ShapeLocation 参数(heightMidpoint/discCoverage/uDistribution/surfaceThickness) + Wind 模块** (2026-05-28)
 - [x] **AUDIT P0/P1 全修：13 项 bug fix + 架构对齐(per-particle RandomSeed / IdTable 简化 / System Module 隔离 / PivotOffset / Unaligned facing / spawn clip 重排)** (2026-05-27~28)

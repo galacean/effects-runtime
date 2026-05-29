@@ -19,6 +19,8 @@ export enum ProRibbonFacingMode {
   Velocity = 'velocity',
 }
 
+export type ProRibbonDrawDirection = 'frontToBack' | 'backToFront';
+
 export enum ProRibbonTessellationMode {
   /** 不细分，相邻粒子直接连直线段（最便宜，原始行为） */
   Disabled = 'disabled',
@@ -51,7 +53,6 @@ export class ProRibbonRendererProperties extends ProRendererProperties {
    * 对应 UE Niagara `CurveTension`
    */
   curveTension = 0.5;
-  // useRibbonId 已移除：多 ribbon 检测改为通过 accessor.ribbonId.isValid 自动判断
-  // （对齐 UE stateful HasRibbonIDs() = accessor.IsValid()）。
-  // 当模块声明了 RibbonID 变量时自动启用多 ribbon 分组，无需手动配置。
+  drawDirection: ProRibbonDrawDirection = 'frontToBack';
+  maxNumRibbons = 0;
 }

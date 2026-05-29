@@ -77,6 +77,7 @@ export class ProEmitterPropertiesModule extends ProModule {
     emitter.recalculateDelayEachLoop = this.recalculateDelayEachLoop;
     emitter.delayFirstLoopOnly = this.delayFirstLoopOnly;
     emitter.inactiveResponse = this.inactiveResponse;
+    emitter.fixedBounds = this.fixedBounds;
 
     const durationDist = this.duration;
     const delayDist = this.loopDelay;

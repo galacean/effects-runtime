@@ -89,10 +89,20 @@ export class ProEmitterInstance {
   // 由 ProParticleSystemComponent 在 tick 前推入；world 模式 spawn 烘焙用
   worldMatrix: math.Matrix4 = new math.Matrix4().identity();
 
+  // 发射器自身在世界空间的平移速度（component 每帧从 worldMatrix 平移增量算出）。
+  // InheritVelocity 模块据此让 world-space 新粒子继承发射器运动。首帧 / 静止时为 0。
+  emitterVelocity: [number, number, number] = [0, 0, 0];
+
   // Warmup — 首次 tick 时按 warmupTickDelta 拆成多 sub-tick 跑完 warmupTime
   warmupTime = 0;
   warmupTickDelta = 1 / 30;
   private warmupConsumed = false;
+
+  // Bounds — 逐帧从活跃粒子计算的局部空间 AABB
+  boundsMin: [number, number, number] = [0, 0, 0];
+  boundsMax: [number, number, number] = [0, 0, 0];
+  boundsValid = false;
+  fixedBounds: [[number, number, number], [number, number, number]] | null = null;
 
   // 由 EmitterPropertiesModule 写入；变化时重置 randomStream
   private appliedRandomSeed: number | null = null;
@@ -176,6 +186,10 @@ export class ProEmitterInstance {
     this.pendingLoopOverrun = 0;
     this.warmupConsumed = false;
     this.appliedRandomSeed = null;
+    this.boundsValid = false;
+    this.emitterVelocity[0] = 0;
+    this.emitterVelocity[1] = 0;
+    this.emitterVelocity[2] = 0;
   }
 
   /**
@@ -491,6 +505,56 @@ export class ProEmitterInstance {
     if (this.executionState === ProExecutionState.Inactive && this.isParticleDrained()) {
       this.executionState = ProExecutionState.Complete;
     }
+    this.computeBounds();
+  }
+
+  computeBounds (): void {
+    if (this.fixedBounds) {
+      this.boundsMin[0] = this.fixedBounds[0][0];
+      this.boundsMin[1] = this.fixedBounds[0][1];
+      this.boundsMin[2] = this.fixedBounds[0][2];
+      this.boundsMax[0] = this.fixedBounds[1][0];
+      this.boundsMax[1] = this.fixedBounds[1][1];
+      this.boundsMax[2] = this.fixedBounds[1][2];
+      this.boundsValid = true;
+
+      return;
+    }
+    const dataBuffer = this.particleDataSet?.getCurrentData();
+
+    if (!dataBuffer || dataBuffer.numInstances === 0) {
+      this.boundsValid = false;
+
+      return;
+    }
+    const a = this.cachedAccessors;
+
+    if (!a) {
+      this.boundsValid = false;
+
+      return;
+    }
+
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    const tmp: [number, number, number] = [0, 0, 0];
+    const tmpSize: [number, number] = [0, 0];
+
+    for (let i = 0; i < dataBuffer.numInstances; i++) {
+      a.position.get(dataBuffer, i, tmp);
+      a.size.get(dataBuffer, i, tmpSize);
+      const halfSize = Math.max(tmpSize[0], tmpSize[1]) * 0.5;
+
+      minX = Math.min(minX, tmp[0] - halfSize);
+      minY = Math.min(minY, tmp[1] - halfSize);
+      minZ = Math.min(minZ, tmp[2] - halfSize);
+      maxX = Math.max(maxX, tmp[0] + halfSize);
+      maxY = Math.max(maxY, tmp[1] + halfSize);
+      maxZ = Math.max(maxZ, tmp[2] + halfSize);
+    }
+    this.boundsMin[0] = minX; this.boundsMin[1] = minY; this.boundsMin[2] = minZ;
+    this.boundsMax[0] = maxX; this.boundsMax[1] = maxY; this.boundsMax[2] = maxZ;
+    this.boundsValid = true;
   }
 
   setExecutionState (state: ProExecutionState): void {

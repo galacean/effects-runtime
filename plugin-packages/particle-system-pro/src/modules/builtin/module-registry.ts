@@ -8,6 +8,7 @@ import { ProCurlNoiseForceModule } from './curl-noise-force-module';
 import { ProDragModule } from './drag-module';
 import { ProEmitterPropertiesModule } from './emitter-properties-module';
 import { ProGravityForceModule } from './gravity-force-module';
+import { ProInheritVelocityModule } from './inherit-velocity-module';
 import { ProInitializeParticleModule } from './initialize-particle-module';
 import { ProRibbonWidthScaleModule } from './ribbon-width-scale-module';
 import { ProRotateAroundPointModule } from './rotate-around-point-module';
@@ -48,6 +49,7 @@ export const proModuleRegistry: ProModuleDescriptor[] = [
   // Particle Spawn
   { id: 'pro.initializeParticle', label: 'Initialize Particle', stage: ProModuleStage.ParticleSpawn, create: () => new ProInitializeParticleModule() },
   { id: 'pro.addVelocityInCone', label: 'Add Velocity in Cone', stage: ProModuleStage.ParticleSpawn, create: () => new ProAddVelocityInConeModule() },
+  { id: 'pro.inheritVelocity', label: 'Inherit Velocity', stage: ProModuleStage.ParticleSpawn, create: () => new ProInheritVelocityModule() },
   { id: 'pro.shapeLocation', label: 'Shape Location', stage: ProModuleStage.ParticleSpawn, create: () => new ProShapeLocationModule() },
   { id: 'pro.sampleParticlesFromOtherEmitter', label: 'Sample Particles From Other Emitter', stage: ProModuleStage.ParticleSpawn, create: () => new ProSampleParticlesFromOtherEmitterModule() },
   { id: 'pro.cameraOffset', label: 'Camera Offset', stage: ProModuleStage.ParticleUpdate, create: () => new ProCameraOffsetModule() },

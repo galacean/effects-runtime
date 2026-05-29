@@ -217,6 +217,7 @@ export class ProRibbonRenderer extends ProRenderer {
 
     this.buildSortBuffer(dataBuffer, num);
     this.sortParticles();
+    this.applyMaxRibbonLimit();
 
     if (this.countSegments() === 0) {
       this.geometry.setDrawCount(0);
@@ -303,6 +304,28 @@ export class ProRibbonRenderer extends ProRenderer {
     }
 
     return segments;
+  }
+
+  private applyMaxRibbonLimit (): void {
+    const max = this.properties.maxNumRibbons;
+
+    if (max <= 0) {
+      return;
+    }
+    let ribbonCount = 0;
+    let lastRibbonId = -Infinity;
+
+    for (let i = 0; i < this.sortBuffer.length; i++) {
+      if (this.sortBuffer[i].ribbonId !== lastRibbonId) {
+        ribbonCount++;
+        lastRibbonId = this.sortBuffer[i].ribbonId;
+        if (ribbonCount > max) {
+          this.sortBuffer.length = i;
+
+          return;
+        }
+      }
+    }
   }
 
   /**
@@ -674,19 +697,37 @@ export class ProRibbonRenderer extends ProRenderer {
     // Pass 2: build index buffer (only connect adjacent inflated points in same ribbon)
     let segIdx = 0;
 
-    for (let i = 0; i < len - 1; i++) {
-      if (points[i].ribbonId === points[i + 1].ribbonId) {
-        const v0 = i * 2;
-        const v1 = (i + 1) * 2;
-        const idx = segIdx * 6;
+    if (props.drawDirection === 'backToFront') {
+      for (let i = len - 2; i >= 0; i--) {
+        if (points[i].ribbonId === points[i + 1].ribbonId) {
+          const v0 = i * 2;
+          const v1 = (i + 1) * 2;
+          const idx = segIdx * 6;
 
-        indices[idx] = v0;
-        indices[idx + 1] = v0 + 1;
-        indices[idx + 2] = v1;
-        indices[idx + 3] = v1;
-        indices[idx + 4] = v0 + 1;
-        indices[idx + 5] = v1 + 1;
-        segIdx++;
+          indices[idx] = v0;
+          indices[idx + 1] = v0 + 1;
+          indices[idx + 2] = v1;
+          indices[idx + 3] = v1;
+          indices[idx + 4] = v0 + 1;
+          indices[idx + 5] = v1 + 1;
+          segIdx++;
+        }
+      }
+    } else {
+      for (let i = 0; i < len - 1; i++) {
+        if (points[i].ribbonId === points[i + 1].ribbonId) {
+          const v0 = i * 2;
+          const v1 = (i + 1) * 2;
+          const idx = segIdx * 6;
+
+          indices[idx] = v0;
+          indices[idx + 1] = v0 + 1;
+          indices[idx + 2] = v1;
+          indices[idx + 3] = v1;
+          indices[idx + 4] = v0 + 1;
+          indices[idx + 5] = v1 + 1;
+          segIdx++;
+        }
       }
     }
 

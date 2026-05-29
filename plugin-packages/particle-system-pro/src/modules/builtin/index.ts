@@ -4,6 +4,7 @@ export * from './spawn-rate-module';
 export * from './spawn-burst-module';
 export * from './initialize-particle-module';
 export * from './add-velocity-in-cone-module';
+export * from './inherit-velocity-module';
 export * from './shape-location-module';
 export * from './gravity-force-module';
 export * from './acceleration-force-module';

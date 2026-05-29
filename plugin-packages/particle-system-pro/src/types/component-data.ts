@@ -27,7 +27,8 @@ export interface ProRibbonRendererPropertiesData {
   tessellationMode?: 'disabled' | 'custom' | 'automatic',
   customSubdivisions?: number,
   curveTension?: number,
-  // useRibbonId 已移除：多 ribbon 检测改为通过 accessor.ribbonId.isValid 自动判断
+  drawDirection?: 'frontToBack' | 'backToFront',
+  maxNumRibbons?: number,
 }
 
 export interface ProRendererSnapshot {
