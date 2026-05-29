@@ -17,16 +17,18 @@ export interface ProDragModuleProps extends ProModuleProps {
 const tmpVel: [number, number, number] = [0, 0, 0];
 
 /**
- * Stokes drag：velocity *= exp(-drag * dt / mass)。
+ * Stokes drag：velocity *= exp(-drag * dt)。
  *
- * 物理意义：阻力与速度成正比、与质量反比；积分得指数衰减。比旧的
- * 线性衰减 `(1 - drag*dt)` 在大 dt 下稳定（不会变负或爆炸）。
+ * 物理意义：阻力与速度成正比；积分得指数衰减。比线性衰减 `(1 - drag*dt)`
+ * 在大 dt 下稳定（不会变负或爆炸）。
  *
- * 对齐 UE `FNiagaraDistributionRangeFloat`：drag 是 range-only 分布，
- * range 模式下每粒子在 spawn 时通过 `Particle.RandomSeed` 稳定随机一次，
- * 整个生命周期保持同一阻力值。不再支持随年龄渐变的 curve（UE 不允许）。
+ * **与质量无关**——对齐 UE Stateless：drag 直接作用于速度，SolveVelocitiesAndForces
+ * 的 drag 项里没有 mass（只有 AccelerationForce 才除质量）。终端速度由 drag 与
+ * acceleration 的逐帧相互作用自然涌现（≈ accel/drag）。
  *
- * mass <= 0 退化为 1，避免除零。
+ * 对齐 UE `FNiagaraDistributionRangeFloat`：drag 是 range-only 分布，range 模式下
+ * 每粒子在 spawn 时通过 `Particle.RandomSeed` 稳定随机一次，整个生命周期保持同一
+ * 阻力值。不支持随年龄渐变的 curve（UE 不允许）。
  */
 export class ProDragModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
@@ -49,7 +51,6 @@ export class ProDragModule extends ProModule {
   override declareVariables (): ProVariableDeclaration[] {
     return [
       { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
-      { variable: createProVariable(V.Mass, T.Float), access: 'read' },
       { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
     ];
   }
@@ -75,9 +76,7 @@ export class ProDragModule extends ProModule {
       const seed = a.randomSeed.get(dataBuffer, i);
       const r = hashSeed(seed, ParticleRandSalts.Drag);
       const drag = Math.max(0, this.drag.sampleAtTime(r, 0));
-      const mass = a.mass.get(dataBuffer, i);
-      const m = mass > 0 ? mass : 1;
-      const factor = Math.exp(-drag * deltaTime / m);
+      const factor = Math.exp(-drag * deltaTime);
 
       a.velocity.get(dataBuffer, i, tmpVel);
       a.velocity.set(dataBuffer, i, tmpVel[0] * factor, tmpVel[1] * factor, tmpVel[2] * factor);

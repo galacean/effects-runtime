@@ -9,18 +9,20 @@ import { ProStandardVariableNames as V } from '../../builtin/standard-variables'
 import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 /**
- * SubUV 模式。
+ * SubUV 模式。对齐 UE ENSMSubUVAnimation_Mode。
  *
- * - SyncToAge：帧 = normalizedAge * totalFrames（粒子生命周期内播完一遍）
- * - FixedRate：帧 = floor(age * framesPerSecond) % totalFrames（独立速率，可循环）
- * - Random：每隔 randomChangeInterval 秒随机切帧（确定性，用 hashSeed 可重播）
+ * - syncToAge (= UE Linear)：normalizedAge 线性映射到 [startFrame, endFrame]，播一遍
+ * - fixedRate (= UE InfiniteLoop)：按 framesPerSecond 速率在 [startFrame, endFrame] 范围内循环
+ * - random (= UE Random)：每隔 randomChangeInterval 秒在 [startFrame, endFrame] 内随机切帧
+ * - directSet (= UE DirectSet)：spawn 时按 RandomSeed 随机选一帧，生命周期内不变
  */
-export type ProSubUVModeType = 'syncToAge' | 'fixedRate' | 'random';
+export type ProSubUVModeType = 'syncToAge' | 'fixedRate' | 'random' | 'directSet';
 
 export const ProSubUVMode = {
   SyncToAge: 'syncToAge' as const,
   FixedRate: 'fixedRate' as const,
   Random: 'random' as const,
+  DirectSet: 'directSet' as const,
 };
 
 export interface ProSubUVAnimationModuleProps extends ProModuleProps {
@@ -33,9 +35,12 @@ export interface ProSubUVAnimationModuleProps extends ProModuleProps {
 }
 
 /**
- * 写 Particle.SubUVFrame，让 SpriteRenderer 着色器按帧采样 SubUV 网格。
+ * 写 Particle.SubUVFrame（连续 float），让 SpriteRenderer 按帧采样 SubUV 网格。
+ * 渲染器端 floor 取整帧索引；帧间混合（frame blending）是渲染器特性，不在此实现。
  *
- * totalFrames 应跟 SpriteRendererProperties.subUVTotal 对齐，否则会越界。
+ * 所有模式均尊重 startFrameOverride / endFrameOverride 帧范围；
+ * override < 0 表示不启用，回退到 0 和 totalFrames-1。
+ * 对齐 UE `bStartFrameRangeOverride_Enabled` / `bEndFrameRangeOverride_Enabled`。
  */
 export class ProSubUVAnimationModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
@@ -71,7 +76,7 @@ export class ProSubUVAnimationModule extends ProModule {
   }
 
   override fromJSON (data: ProSubUVAnimationModuleProps): void {
-    if (data.mode === 'syncToAge' || data.mode === 'fixedRate' || data.mode === 'random') {
+    if (data.mode === 'syncToAge' || data.mode === 'fixedRate' || data.mode === 'random' || data.mode === 'directSet') {
       this.mode = data.mode;
     }
     if (typeof data.totalFrames === 'number') { this.totalFrames = data.totalFrames; }
@@ -99,34 +104,52 @@ export class ProSubUVAnimationModule extends ProModule {
     const a = this.accessors!;
     const total = Math.max(1, this.totalFrames);
 
+    // 解析帧范围——对齐 UE bStartFrameRangeOverride_Enabled / bEndFrameRangeOverride_Enabled
+    const startFrame = this.startFrameOverride >= 0 ? Math.min(this.startFrameOverride, total - 1) : 0;
+    const endFrame = this.endFrameOverride >= 0 ? Math.min(this.endFrameOverride, total - 1) : total - 1;
+    const frameRange = Math.max(0, endFrame - startFrame);
+
     for (let i = firstInstance; i < lastInstance; i++) {
       const age = a.age.get(dataBuffer, i);
 
       switch (this.mode) {
         case 'syncToAge': {
+          // UE Linear (mode=2): normalizedAge 线性映射到 [startFrame, endFrame]
           const lifetime = a.lifetime.get(dataBuffer, i);
-          const t = lifetime > 0 ? Math.min(age / lifetime, 0.99999) : 0;
+          const t = lifetime > 0 ? Math.min(age / lifetime, 1) : 1;
 
-          a.subUVFrame.set(dataBuffer, i, t * total);
+          a.subUVFrame.set(dataBuffer, i, startFrame + t * frameRange);
 
           break;
         }
         case 'fixedRate': {
-          a.subUVFrame.set(dataBuffer, i, (age * this.framesPerSecond) % total);
+          // UE InfiniteLoop (mode=1): 在 [startFrame, endFrame] 范围内按帧率循环
+          const frameCount = frameRange + 1;
+          const progress = (age * this.framesPerSecond) % frameCount;
+
+          a.subUVFrame.set(dataBuffer, i, startFrame + progress);
 
           break;
         }
         case 'random': {
+          // UE Random (mode=3): 每 randomChangeInterval 秒随机切帧
           const interval = Math.max(0.001, this.randomChangeInterval);
           const stage = Math.floor(age / interval);
           const seed = a.randomSeed.get(dataBuffer, i);
           const rand = hashSeed(seed, (stage * 7919 + ParticleRandSalts.SubUV) | 0);
-          const startFrame = this.startFrameOverride >= 0 ? this.startFrameOverride : 0;
-          const endFrame = this.endFrameOverride >= 0 ? Math.min(this.endFrameOverride, total - 1) : total - 1;
-          const range = endFrame - startFrame + 1;
-          const frame = startFrame + Math.floor(rand * range);
+          const range = frameRange + 1;
 
-          a.subUVFrame.set(dataBuffer, i, frame);
+          a.subUVFrame.set(dataBuffer, i, startFrame + rand * range);
+
+          break;
+        }
+        case 'directSet': {
+          // UE DirectSet (mode=0): spawn 时随机选帧，生命周期内不变
+          const seed = a.randomSeed.get(dataBuffer, i);
+          const rand = hashSeed(seed, ParticleRandSalts.SubUV);
+          const range = frameRange + 1;
+
+          a.subUVFrame.set(dataBuffer, i, startFrame + rand * range);
 
           break;
         }

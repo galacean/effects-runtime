@@ -160,8 +160,11 @@ export class ProAddVelocityInConeModule extends ProModule {
   private executeInCone (a: ProStandardAccessors, ctx: ProModuleContext): void {
     const { dataBuffer, firstInstance, lastInstance, randomStream } = ctx;
     const [ax, ay, az] = this.coneAxis;
-    const cosOuterHalf = Math.cos(this.coneAngle * 0.5);
-    const cosInnerHalf = Math.cos(Math.min(this.innerConeAngle, this.coneAngle) * 0.5);
+    // 极角（绕锥轴的半角）在 [innerHalf, outerHalf] 内 **按角度均匀采样** —— 对齐 UE
+    // SolveVelocitiesAndForces.cpp:267-268（ConeAngle = rand*scale+bias，uniform-in-angle）。
+    // 旧实现按 cos 均匀（uniform-on-cap），分布偏离 UE。coneAngle 为全角，半角 = /2。
+    const outerHalf = this.coneAngle * 0.5;
+    const innerHalf = Math.min(this.innerConeAngle, this.coneAngle) * 0.5;
     const falloff = this.speedFalloffFromConeAxis;
 
     const helper = Math.abs(ay) < 0.9 ? [0, 1, 0] : [1, 0, 0];
@@ -176,8 +179,9 @@ export class ProAddVelocityInConeModule extends ProModule {
     const t2z = ax * t1y - ay * t1x;
 
     for (let i = firstInstance; i < lastInstance; i++) {
-      const cosTheta = cosOuterHalf + (cosInnerHalf - cosOuterHalf) * randomStream.nextFloat();
-      const sinTheta = Math.sqrt(1 - cosTheta * cosTheta);
+      const theta = innerHalf + (outerHalf - innerHalf) * randomStream.nextFloat();
+      const cosTheta = Math.cos(theta);
+      const sinTheta = Math.sin(theta);
       const phi = randomStream.nextFloat() * Math.PI * 2;
       const cosPhi = Math.cos(phi);
       const sinPhi = Math.sin(phi);
@@ -186,10 +190,11 @@ export class ProAddVelocityInConeModule extends ProModule {
       const dz = az * cosTheta + t1z * sinTheta * cosPhi + t2z * sinTheta * sinPhi;
       let spd = this.speed.sampleAtTime(randomStream.nextFloat(), 0);
 
-      if (falloff > 0 && cosInnerHalf > cosOuterHalf) {
-        const t = (cosInnerHalf - cosTheta) / (cosInnerHalf - cosOuterHalf);
+      // 速度沿锥轴衰减 —— 对齐 UE：pf = pow(saturate(cosθ), falloff*10); spd *= lerp(1, pf, falloff)
+      if (falloff > 0) {
+        const pf = Math.pow(Math.max(0, cosTheta), falloff * 10);
 
-        spd *= 1 - falloff * t;
+        spd *= 1 + falloff * (pf - 1);
       }
       a.velocity.set(dataBuffer!, i, dx * spd, dy * spd, dz * spd);
     }

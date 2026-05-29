@@ -65,6 +65,7 @@ export class ProShapeLocationModule extends ProModule {
   override declareVariables (): ProVariableDeclaration[] {
     return [
       { variable: createProVariable(V.Position, T.Vec3), access: 'readwrite' },
+      { variable: createProVariable(V.PreviousPosition, T.Vec3), access: 'write' },
     ];
   }
 
@@ -157,7 +158,11 @@ export class ProShapeLocationModule extends ProModule {
       }
 
       a.position.get(dataBuffer, i, tmpPos);
-      a.position.set(dataBuffer, i, tmpPos[0] + ox, tmpPos[1] + oy, tmpPos[2] + oz);
+      const px = tmpPos[0] + ox, py = tmpPos[1] + oy, pz = tmpPos[2] + oz;
+
+      a.position.set(dataBuffer, i, px, py, pz);
+      // PreviousPosition = Position 避免首帧 CalculateAccurateVelocity 算出伪速度
+      a.previousPosition.set(dataBuffer, i, px, py, pz);
     }
   }
 

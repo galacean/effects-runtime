@@ -5,6 +5,35 @@
 
 ---
 
+## AUDIT 2026-05-29 — 对照 UE Niagara Stateless 源码
+
+> 架构差异（理解这个才不会误判 bug）：UE Stateless 是「构建期把所有力累加进
+> `FPhysicsBuildData`，再由 **单个** SolveVelocitiesAndForces 从 Age **解析积分**」
+> （`Pos += Age·(V+Wind) + ½·Accel·Age²`，带 drag 用指数项，速度反推 `(Pos−PrevPos)/dt`）。
+> 我们是「有状态逐帧欧拉」（每个力 `v += f·dt`，再 `pos += v·dt`）。
+> 因此 appearance 模块读 `Initial*` 快照（防复合）是**有状态模型下的正确做法，不是 bug**。
+> 证据见 `Shaders/Private/Stateless/Modules/NiagaraStatelessModule_SolveVelocitiesAndForces.ush`。
+
+### 确认的 Bug（全部已修，2026-05-29）
+
+- [x] **#1 Wind 当成加速度** — 改为 `position += wind·dt`（恒定速度偏移、不被 drag 衰减），对齐 UE `Age·Wind`
+- [x] **#2 AccelerationForce 未除质量** — 改为 `velocity += (accel/mass)·dt`，mass<=0 退化 1，对齐 ush:100-101
+- [x] **#3 Drag 错误地除以质量** — 去掉 mass，改为 `velocity *= exp(-drag·dt)`，终端速度由 drag/accel 相互作用涌现
+- [x] **#4 SubUVAnimation 帧范围失效** — 所有模式应用 startFrame/endFrame 范围；新增 directSet 模式；syncToAge=Linear/fixedRate=InfiniteLoop/random/directSet 对齐 UE 4 模式。（帧间 blend 仍需 shader，列 P2）
+- [x] **#5 ShapeLocation 不写 PreviousPosition** — spawn 时写 PreviousPosition=Position 消除首帧伪速度。（半径密度核对：UE cylinder 用 `r=Radius*rand` 线性、sphere 体积均匀；我们保持体积均匀，差异可接受）
+- [x] **#6 RotateAroundPoint 语义偏差** — 重写为 `Pos = InitialPos + Center + EulerRot·(cos,sin,0)·Radius`，新增 RotationAxis 控制轨道平面、Radius 独立分布、用 NormalizedAge 驱动（对齐 UE）
+- [x] **#7 CurlNoise 作用目标偏差** — 改为位移作用于 position（`pos += curl·strength·dt`，UE 同语义，避免速度无界累加）；strength 默认对齐 UE=10；保留 per-particle 时间噪声 + simplex 生成器（不移植 LUT）
+- [x] **#8 AddVelocity cone 采样偏差** — θ 改为角度均匀采样 [innerHalf, outerHalf]；falloff 改为 `pf=pow(cosθ, falloff*10); spd*=lerp(1,pf,falloff)`，对齐 ush:104-121 + cpp:267-268
+
+### 模块完整度：27 个 Stateless 模块已实现 17
+
+- **缺失 (9)**：Mesh 组 4 个(InitialMeshOrientation/MeshIndex/MeshRotationRate/ScaleMeshSize)、DynamicMaterialParameters、ApplyOwnerScaleToAttributes、LightAttributes、DecalAttributes
+- **部分 (1)**：SpriteFacingAndAlignment（缺 module 写 per-particle facing/alignment 向量 + CustomAlignment/DistanceBlend）
+- **缺失渲染器**：Mesh / Light / Decal / Component Renderer
+- **整个 stateful Niagara**（GPU 模拟 / 节点图编译器 / Data Interfaces / Simulation Stages / 事件系统）—— 明确不在移植范围
+
+---
+
 ## P0 — 基础架构完善
 
 这些不做，后续功能都有坑。

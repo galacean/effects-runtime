@@ -13,14 +13,19 @@ export interface ProWindForceModuleProps extends ProModuleProps {
   wind: ProDistributionVector3Data,
 }
 
-const tmpVel: [number, number, number] = [0, 0, 0];
+const tmpPos: [number, number, number] = [0, 0, 0];
 const tmpWind: [number, number, number] = [0, 0, 0];
 
 /**
- * 风力模块：velocity += wind * dt。
+ * 风力模块：position += wind * dt。
  *
- * 对标 UE Stateful 的 WindForce 模块。`wind` 支持 Distribution（Constant/Range/Curve），
- * per-particle 随机。默认方向 (1, 0, 0)。
+ * 对齐 UE Stateless SolveVelocitiesAndForces——wind 是**恒定速度偏移**
+ * （解析积分里的 `Age·Wind` 项），不被 drag 衰减、也不随时间累积成加速度。
+ * 在我们的逐帧模型里等价于每帧给 position 加 `wind·dt`（而不是给 velocity 加
+ * `wind·dt`，那会让粒子持续加速）。若用户挂了 CalculateAccurateVelocity，
+ * 风的位移会被反推进 Velocity，与 UE 行为一致。
+ *
+ * `wind` 支持 Distribution（Constant/Range/Curve），per-particle 随机。默认 (1,0,0)。
  */
 export class ProWindForceModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
@@ -43,7 +48,7 @@ export class ProWindForceModule extends ProModule {
   override declareVariables (): ProVariableDeclaration[] {
     return [
       { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
-      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+      { variable: createProVariable(V.Position, T.Vec3), access: 'readwrite' },
     ];
   }
 
@@ -68,11 +73,11 @@ export class ProWindForceModule extends ProModule {
       const seed = a.randomSeed.get(dataBuffer, i);
 
       this.wind.sampleAtTime(seed, 0, tmpWind);
-      a.velocity.get(dataBuffer, i, tmpVel);
-      a.velocity.set(dataBuffer, i,
-        tmpVel[0] + tmpWind[0] * deltaTime,
-        tmpVel[1] + tmpWind[1] * deltaTime,
-        tmpVel[2] + tmpWind[2] * deltaTime,
+      a.position.get(dataBuffer, i, tmpPos);
+      a.position.set(dataBuffer, i,
+        tmpPos[0] + tmpWind[0] * deltaTime,
+        tmpPos[1] + tmpWind[1] * deltaTime,
+        tmpPos[2] + tmpWind[2] * deltaTime,
       );
     }
   }

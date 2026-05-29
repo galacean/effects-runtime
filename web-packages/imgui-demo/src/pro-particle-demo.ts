@@ -448,7 +448,7 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
   const rotateAroundPoint = new ProRotateAroundPointModule();
 
   rotateAroundPoint.rate = ProDistributionFloat.fromRange(60, 120);
-  rotateAroundPoint.radiusScale = ProDistributionFloat.fromConstant(1);
+  rotateAroundPoint.radius = ProDistributionFloat.fromConstant(1);
   rotateAroundPoint.phase = ProDistributionFloat.fromRange(0, 360);
 
   const rotationRate = new ProSpriteRotationRateModule();

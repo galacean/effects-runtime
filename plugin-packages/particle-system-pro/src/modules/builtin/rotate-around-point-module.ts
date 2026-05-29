@@ -12,9 +12,10 @@ import { ProVariableTypes as T, createProVariable } from '../../types/variable';
 
 export interface ProRotateAroundPointModuleProps extends ProModuleProps {
   rate: ProDistributionFloatData,
-  radiusScale: ProDistributionFloatData,
+  radius: ProDistributionFloatData,
   phase: ProDistributionFloatData,
-  origin: [number, number, number],
+  center: [number, number, number],
+  rotationAxis: [number, number, number],
 }
 
 const tmpInitPos: [number, number, number] = [0, 0, 0];
@@ -22,34 +23,29 @@ const tmpInitPos: [number, number, number] = [0, 0, 0];
 const DEG2RAD = Math.PI / 180;
 
 /**
- * 轨道运动：粒子绕 `origin` 在 XZ 平面做圆周运动。
+ * 轨道运动模块。对齐 UE Niagara Stateless RotateAroundPoint。
  *
- * 与 UE Niagara Stateful RotateAroundPoint 对齐 —— 位置由 **绝对公式**
- * 给出，不是每帧增量累加：
+ * Position = InitialPosition + Center + RotateByEuler(cos(time), 0, sin(time)) * Radius
+ * 其中 time = (Phase + NormalizedAge * Rate) * DEG2RAD
  *
- * ```
- * offset = initialPosition - origin          // spawn 时的相对位置
- * baseRadius = length(offset.xz)
- * baseAngle = atan2(offset.z, offset.x)
- * angle = baseAngle + (rate * age + phase) * DEG2RAD
- * position = origin + RotMatrix(angle) * baseRadius_scaled
- * ```
+ * - Rate：度/生命周期（默认 360 → 一圈/生命周期）。对齐 UE 用 NormalizedAge 驱动
+ * - Radius：轨道半径（世界单位，Distribution）
+ * - Phase：初始相位（度，Distribution）
+ * - Center：轨道中心偏移（世界单位）
+ * - RotationAxis：欧拉角（度），旋转轨道平面。默认 (0,0,0) → XZ 平面轨道（Y-up）
  *
- * radiusScale 默认 1（沿用 spawn 时半径）；调成其它值时按 baseRadius * scale。
- * 这样每帧都是 deterministic 的 absolute position，避免旧实现 `position += sin/cos*r`
- * 形式的线性外推螺旋。
- *
- * **Y 轴不变** —— 与 UE 一致只绕单轴。如需任意轴需另写模块。
+ * 在我们的有状态模型中，轨道位置是**绝对公式**（每帧从 InitialPosition+offset 重算），
+ * 不是增量累加。这与 UE 的解析积分 + 加法偏移等价：UE 的 Position 也是每帧从 Age
+ * 重新算出的，RotateAroundPoint 只是再加一个偏移。
  */
 export class ProRotateAroundPointModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
 
-  rate: ProDistributionFloat = ProDistributionFloat.fromConstant(180);
-  /** 半径缩放系数。1 = 沿用 spawn 时位置；>1 外扩；<1 内收。基础半径由粒子 InitialPosition 决定 */
-  radiusScale: ProDistributionFloat = ProDistributionFloat.fromConstant(1);
+  rate: ProDistributionFloat = ProDistributionFloat.fromConstant(360);
+  radius: ProDistributionFloat = ProDistributionFloat.fromConstant(1);
   phase: ProDistributionFloat = ProDistributionFloat.fromRange(0, 360);
-  /** 轨道中心（世界单位）。粒子绕这个点旋转 */
-  origin: [number, number, number] = [0, 0, 0];
+  center: [number, number, number] = [0, 0, 0];
+  rotationAxis: [number, number, number] = [0, 0, 0];
 
   private accessors: ProStandardAccessors | null = null;
   private cachedLayout: ProDataSetLayout | null = null;
@@ -57,18 +53,22 @@ export class ProRotateAroundPointModule extends ProModule {
   override toJSON (): ProRotateAroundPointModuleProps {
     return {
       rate: this.rate.toJSON(),
-      radiusScale: this.radiusScale.toJSON(),
+      radius: this.radius.toJSON(),
       phase: this.phase.toJSON(),
-      origin: [...this.origin],
+      center: [...this.center],
+      rotationAxis: [...this.rotationAxis],
     };
   }
 
   override fromJSON (data: ProRotateAroundPointModuleProps): void {
     if (data.rate) { this.rate = ProDistributionFloat.fromJSON(data.rate); }
-    if (data.radiusScale) { this.radiusScale = ProDistributionFloat.fromJSON(data.radiusScale); }
+    if (data.radius) { this.radius = ProDistributionFloat.fromJSON(data.radius); }
     if (data.phase) { this.phase = ProDistributionFloat.fromJSON(data.phase); }
-    if (data.origin && data.origin.length === 3) {
-      this.origin = [data.origin[0], data.origin[1], data.origin[2]];
+    if (data.center && data.center.length === 3) {
+      this.center = [data.center[0], data.center[1], data.center[2]];
+    }
+    if (data.rotationAxis && data.rotationAxis.length === 3) {
+      this.rotationAxis = [data.rotationAxis[0], data.rotationAxis[1], data.rotationAxis[2]];
     }
   }
 
@@ -77,6 +77,7 @@ export class ProRotateAroundPointModule extends ProModule {
       { variable: createProVariable(V.RandomSeed, T.Float), access: 'read' },
       { variable: createProVariable(V.InitialPosition, T.Vec3), access: 'read' },
       { variable: createProVariable(V.Age, T.Float), access: 'read' },
+      { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
       { variable: createProVariable(V.Position, T.Vec3), access: 'write' },
     ];
   }
@@ -97,41 +98,54 @@ export class ProRotateAroundPointModule extends ProModule {
       this.cachedLayout = layout;
     }
     const a = this.accessors!;
-    // Y 不参与（与 UE 一致只绕 Y 轴），用 _ 前缀让 lint 知道是故意丢弃
-    const [ox, _oy, oz] = this.origin;
+    const [cx, cy, cz] = this.center;
+
+    // 预算欧拉旋转矩阵（Y-up 系的 ZYX 顺序），帧间不变所以提到循环外
+    const rx = this.rotationAxis[0] * DEG2RAD;
+    const ry = this.rotationAxis[1] * DEG2RAD;
+    const rz = this.rotationAxis[2] * DEG2RAD;
+    const cosRx = Math.cos(rx), sinRx = Math.sin(rx);
+    const cosRy = Math.cos(ry), sinRy = Math.sin(ry);
+    const cosRz = Math.cos(rz), sinRz = Math.sin(rz);
+    // R = Rz * Ry * Rx — 旋转轨道平面的 (ox, 0, oz) 偏移量
+    const r00 = cosRy * cosRz, r01 = sinRx * sinRy * cosRz - cosRx * sinRz, r02 = cosRx * sinRy * cosRz + sinRx * sinRz;
+    const r10 = cosRy * sinRz, r11 = sinRx * sinRy * sinRz + cosRx * cosRz, r12 = cosRx * sinRy * sinRz - sinRx * cosRz;
+    const r20 = -sinRy, r21 = sinRx * cosRy, r22 = cosRx * cosRy;
 
     for (let i = firstInstance; i < lastInstance; i++) {
       const seed = a.randomSeed.get(dataBuffer, i);
-      // 每属性独立 salt — 避免 rate/radius/phase 完全相关；hashSeed 拆出 3 个子随机
       const pRate = hashSeed(seed, ParticleRandSalts.Rate);
       const pRadius = hashSeed(seed, ParticleRandSalts.Radius);
       const pPhase = hashSeed(seed, ParticleRandSalts.Phase);
 
       const rateVal = this.rate.sampleAtTime(pRate, 0);
-      const scaleVal = this.radiusScale.sampleAtTime(pRadius, 0);
+      const radiusVal = this.radius.sampleAtTime(pRadius, 0);
       const phaseVal = this.phase.sampleAtTime(pPhase, 0);
 
-      a.initialPosition.get(dataBuffer, i, tmpInitPos);
-      const dx = tmpInitPos[0] - ox;
-      const dz = tmpInitPos[2] - oz;
-      const baseR = Math.hypot(dx, dz);
-
-      // 退化情形：粒子 spawn 在 origin 上时 baseR=0，旋转无意义，跳过保留原 position
-      if (baseR < 1e-6) {
-        continue;
-      }
-      const baseAngle = Math.atan2(dz, dx);
       const age = a.age.get(dataBuffer, i);
-      const angle = baseAngle + (rateVal * age + phaseVal) * DEG2RAD;
-      const r = baseR * scaleVal;
+      const lifetime = a.lifetime.get(dataBuffer, i);
+      const normalizedAge = lifetime > 0 ? Math.min(age / lifetime, 1) : 0;
 
+      // time = (phase + normalizedAge * rate) → 弧度
+      const time = (phaseVal + normalizedAge * rateVal) * DEG2RAD;
+
+      // 轨道偏移（Y-up 坐标系下 XZ 平面：cos→X, sin→Z）
+      const ox = Math.cos(time) * radiusVal;
+      const oy = 0;
+      const oz = Math.sin(time) * radiusVal;
+
+      // 用欧拉旋转矩阵旋转轨道偏移
+      const rotX = r00 * ox + r01 * oy + r02 * oz;
+      const rotY = r10 * ox + r11 * oy + r12 * oz;
+      const rotZ = r20 * ox + r21 * oy + r22 * oz;
+
+      a.initialPosition.get(dataBuffer, i, tmpInitPos);
       a.position.set(
         dataBuffer, i,
-        ox + Math.cos(angle) * r,
-        tmpInitPos[1], // Y 不变 — 与 UE 一致只绕 Y 轴
-        oz + Math.sin(angle) * r,
+        tmpInitPos[0] + cx + rotX,
+        tmpInitPos[1] + cy + rotY,
+        tmpInitPos[2] + cz + rotZ,
       );
     }
   }
 }
-

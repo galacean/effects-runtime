@@ -12,7 +12,7 @@ export interface ProCurlNoiseForceModuleProps extends ProModuleProps {
   frequency: number,
 }
 
-const tmpVel: [number, number, number] = [0, 0, 0];
+const tmpPos: [number, number, number] = [0, 0, 0];
 const tmpOffset: [number, number, number] = [0, 0, 0];
 
 const PSI2_OFFSET = 31.416;
@@ -21,12 +21,16 @@ const EPS = 0.01;
 const INV_2EPS = 1 / (2 * EPS);
 
 /**
- * Curl Noise 力场（对齐 UE Niagara Stateful CurlNoiseForce）。
+ * Curl Noise 位移（对齐 UE Niagara Stateless CurlNoiseForce）。
+ *
+ * UE 的 CurlNoise 是**直接位移**而非速度力场（SolveVelocitiesAndForces.ush
+ * 的 EvaluateNoise 直接修改 Position）。我们用同样语义 `Position += curl * amp * dt`
+ * 让噪声产生稳定漂移，不经过 velocity/drag 管线——与 UE 行为一致。
  *
  * **per-particle 时间噪声**（不是空间噪声）：
  * ```
  * samplePos = (Age, NormalizedAge, UniqueIndex) * Frequency + NoiseOffset
- * Velocity += Curl(samplePos) * Amplitude * dt
+ * Position += Curl(samplePos) * Amplitude * dt
  * ```
  *
  * `NoiseOffset` 是 spawn 时 InitializeParticle 写入的 per-particle 常量随机偏移，
@@ -40,14 +44,11 @@ const INV_2EPS = 1 / (2 * EPS);
  * curl.y = ∂ψ₁/∂z − ∂ψ₃/∂x
  * curl.z = ∂ψ₂/∂x − ∂ψ₁/∂y
  * ```
- *
- * 旧实现把噪声当 `position*frequency` 空间噪声、Z 分量被注释掉、curl 公式只是
- * 三组 noise 偏移做差 — 输出无散度性质不满足，粒子被压扁到 XY 平面。
  */
 export class ProCurlNoiseForceModule extends ProModule {
   readonly stage = ProModuleStage.ParticleUpdate;
 
-  amplitude = 2.0;
+  amplitude = 10.0;
   frequency = 1.0;
 
   private accessors: ProStandardAccessors | null = null;
@@ -71,7 +72,7 @@ export class ProCurlNoiseForceModule extends ProModule {
       { variable: createProVariable(V.Lifetime, T.Float), access: 'read' },
       { variable: createProVariable(V.UniqueID, T.Int32), access: 'read' },
       { variable: createProVariable(V.NoiseOffset, T.Vec3), access: 'read' },
-      { variable: createProVariable(V.Velocity, T.Vec3), access: 'readwrite' },
+      { variable: createProVariable(V.Position, T.Vec3), access: 'readwrite' },
     ];
   }
 
@@ -119,12 +120,12 @@ export class ProCurlNoiseForceModule extends ProModule {
       const curlY = dPsi1_dz - dPsi3_dx;
       const curlZ = dPsi2_dx - dPsi1_dy;
 
-      a.velocity.get(dataBuffer, i, tmpVel);
-      a.velocity.set(
+      a.position.get(dataBuffer, i, tmpPos);
+      a.position.set(
         dataBuffer, i,
-        tmpVel[0] + curlX * ampDt,
-        tmpVel[1] + curlY * ampDt,
-        tmpVel[2] + curlZ * ampDt,
+        tmpPos[0] + curlX * ampDt,
+        tmpPos[1] + curlY * ampDt,
+        tmpPos[2] + curlZ * ampDt,
       );
     }
   }
