@@ -244,11 +244,15 @@ export class VideoComponent extends MaskableGraphic {
   override onDisable (): void {
     super.onDisable();
     this.isVideoActive = false;
+    this.playTriggered = false;
+    this.pauseVideoElement();
   }
 
   override onEnable (): void {
     super.onEnable();
     this.isVideoActive = true;
+    this.playTriggered = false;
+    this.syncVideoToItemTime();
   }
 
   /**
@@ -259,7 +263,7 @@ export class VideoComponent extends MaskableGraphic {
     this.isWaitingForGotoResult = true;
     this.playTriggered = false;
     this.manualPause = false;
-    this.pendingSeekTime = this.item.time;
+    this.pendingSeekTime = this.getItemSeekTime();
   }
 
   /**
@@ -272,7 +276,7 @@ export class VideoComponent extends MaskableGraphic {
       this.isWaitingForGotoResult = false;
       if (this.video && this.video.readyState >= 2) {
         this.isGotoAndStopSeeking = true;
-        this.performSeek(this.item.time, false, true);
+        this.performSeek(this.getItemSeekTime(), false, true);
       }
 
       return;
@@ -292,7 +296,7 @@ export class VideoComponent extends MaskableGraphic {
     // 合成未结束时（暂停后恢复），恢复视频播放
     if (!this.checkCompositionEnded()) {
       // 如果正在 seeking，不恢复播放，等 seek 完成后再恢复
-      if (!this.manualPause && !this.videoSeeking && this.video?.paused) {
+      if (this.canPlayCurrentItem() && this.video?.paused) {
         this.safePlay();
       }
 
@@ -388,17 +392,11 @@ export class VideoComponent extends MaskableGraphic {
    * 是否应该启动视频播放
    */
   private shouldStartVideo (): boolean {
-    if (this.playTriggered || this.manualPause || this.videoDestroyed || this.checkVideoEnded()) {
+    if (this.playTriggered || !this.canPlayCurrentItem()) {
       return false;
     }
 
-    const composition = this.item.composition;
-
-    if (!composition) {
-      return false;
-    }
-
-    return this.video!.currentTime > 0 || composition.time > 0;
+    return true;
   }
 
   /**
@@ -556,9 +554,26 @@ export class VideoComponent extends MaskableGraphic {
    * @param isGotoAndStop 是否为 gotoAndStop 场景
    */
   private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
+    time = this.getClampedSeekTime(time);
     const wasPlaying = !this.video!.paused;
+    const isNoopSeek = () => !clearTexture && Math.abs(this.video!.currentTime - time) <= VideoComponent.threshold;
+    const finishNoopSeek = () => {
+      this.videoSeeking = false;
+      this.isGotoAndStopSeeking = false;
+      if (isGotoAndStop) {
+        this.video!.pause();
+      } else if (wasPlaying && !this.manualPause) {
+        this.safePlay();
+      }
+    };
 
     const doSeek = () => {
+      if (isNoopSeek()) {
+        finishNoopSeek();
+
+        return;
+      }
+
       this.videoSeeking = true;
       if (clearTexture) {
         this.material.setTexture('_MainTex', this.engine.transparentTexture);
@@ -587,6 +602,8 @@ export class VideoComponent extends MaskableGraphic {
       if (wasPlaying) {
         // 视频正在播放，直接 seek
         doSeek();
+      } else if (isNoopSeek()) {
+        finishNoopSeek();
       } else {
         // 视频暂停，先 play() 再 seek
         this.video!.play().then(() => {
@@ -629,6 +646,77 @@ export class VideoComponent extends MaskableGraphic {
     if (this.video.playbackRate !== playbackRate) {
       this.video.playbackRate = playbackRate;
     }
+  }
+
+  /**
+   * 当前 item 可播放的本地视频时间。
+   * item.time 在 delay 前为负数，视频时间需要从 0 开始。
+   */
+  private getItemSeekTime (): number {
+    return Math.max(0, this.getItemLocalTime());
+  }
+
+  /**
+   * 获取 item 的本地时间。优先使用 timeline 写入的 item.time，
+   * 未写入时使用合成时间和 item delay 做兜底。
+   */
+  private getItemLocalTime (): number {
+    if (this.item.time >= 0) {
+      return this.item.time;
+    }
+
+    const composition = this.item.composition;
+
+    if (!composition) {
+      return this.item.time;
+    }
+
+    return composition.time - (this.item.definition.delay ?? 0);
+  }
+
+  /**
+   * 将 seek 目标限制到视频有效时间范围内。
+   */
+  private getClampedSeekTime (time: number): number {
+    const seekTime = Math.max(0, time);
+    const duration = this.video?.duration;
+
+    if (!duration || !isFinite(duration)) {
+      return seekTime;
+    }
+
+    return Math.min(seekTime, duration);
+  }
+
+  /**
+   * 组件重新启用时将视频时间对齐到 item 本地时间，但不直接触发播放。
+   */
+  private syncVideoToItemTime (): void {
+    if (!this.video) {
+      return;
+    }
+
+    const seekTime = this.getItemSeekTime();
+    const clampedSeekTime = this.getClampedSeekTime(seekTime);
+
+    if (Math.abs(this.video.currentTime - clampedSeekTime) > VideoComponent.threshold) {
+      this.pendingSeekTime = clampedSeekTime;
+    }
+  }
+
+  /**
+   * 当前 item 已经进入自己的时间区间，且视频允许自动播放。
+   */
+  private canPlayCurrentItem (): boolean {
+    if (!this.video || !this.isVideoActive || this.getItemLocalTime() < 0) {
+      return false;
+    }
+
+    if (this.manualPause || this.videoDestroyed || this.videoSeeking || this.pendingSeekTime !== null) {
+      return false;
+    }
+
+    return !this.checkVideoEnded();
   }
 
   /**
