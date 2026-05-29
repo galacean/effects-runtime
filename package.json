@@ -11,6 +11,7 @@
     "lint": "eslint --ext .ts .",
     "lint:fix": "eslint --fix --ext .ts .",
     "test": "pnpm --filter @galacean/effects-test test",
+    "test:frame": "pnpm --filter @galacean/effects-test test:frame",
     "version": "node ./scripts/update-version",
     "changelog": "git fetch origin && node ./scripts/print-changelog",
     "check:ts": "tsc -b ./tsconfig.check.json",

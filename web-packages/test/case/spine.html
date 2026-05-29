@@ -35,7 +35,15 @@
 </script>
 <script type="module" src="./src/suites/spine.spec.ts"></script>
 <script type="module" class="mocha-exec">
-  mocha.run();
+  const runner = mocha.run();
+  const fails = [];
+  runner.on('fail', (t, e) => fails.push({ title: t && t.fullTitle ? t.fullTitle() : 'unknown', error: String((e && e.stack) || e) }));
+  runner.on('end', () => {
+    const body = JSON.stringify({ passes: runner.stats.passes, failures: runner.stats.failures, duration: runner.stats.duration, fails });
+    if (!navigator.sendBeacon || !navigator.sendBeacon('/__test-result', new Blob([body], { type: 'application/json' }))) {
+      fetch('/__test-result', { method: 'POST', headers: { 'content-type': 'application/json' }, body }).catch(() => {});
+    }
+  });
 </script>
 </body>
 </html>

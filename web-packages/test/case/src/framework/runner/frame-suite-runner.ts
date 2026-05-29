@@ -1,5 +1,5 @@
 import type { GLType } from '@galacean/effects';
-import { ComparatorStats, TestController } from '../../common';
+import { ComparatorStats, TestController, reportProgress } from '../../common';
 import type { FrameSuiteProfile } from '../types/profile';
 import { runFrameCompareLoop } from './frame-compare-loop';
 
@@ -69,7 +69,7 @@ export function runFrameSuite (profile: FrameSuiteProfile) {
           if (!controller) {
             throw new Error('[Test] Controller is not ready.');
           }
-          console.info(`[Test] Compare begin: ${scene.name}, ${scene.url ?? scene.id}`);
+          reportProgress(`[Test] ▶ ${profile.title}@${renderFramework} (${sceneIndex + 1}/${profile.scenes.length}) ${scene.name}`);
 
           const result = await runFrameCompareLoop({
             controller,
@@ -78,6 +78,12 @@ export function runFrameSuite (profile: FrameSuiteProfile) {
             renderFramework,
             idx: [frameworkIndexOffset + frameworkIndex, sceneIndex],
           });
+
+          if (result.diffRatioList.length > 0) {
+            reportProgress(`[Test] ✗ ${scene.name} — ${result.diffRatioList.length} 帧超阈值`);
+          } else {
+            reportProgress(`[Test] ✓ ${scene.name}`);
+          }
 
           expect(result.diffRatioList).to.be.eqls([]);
 
@@ -90,8 +96,6 @@ export function runFrameSuite (profile: FrameSuiteProfile) {
               result.newCreateCost,
             );
           }
-
-          console.info(`[Test] Compare end: ${scene.name}, ${scene.url ?? scene.id}`);
         });
       });
     });

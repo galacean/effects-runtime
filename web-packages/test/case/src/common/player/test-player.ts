@@ -11,6 +11,7 @@ export class TestPlayer {
   canvas: HTMLCanvasElement;
   composition!: Composition;
   lastTime = 0;
+  private loadedSceneJSON?: spec.JSONScene | string;
   private readonly imagePreview = new CaseImagePreview();
 
   constructor (
@@ -61,6 +62,8 @@ export class TestPlayer {
       json = await converter.processScene(url as string);
     }
 
+    this.loadedSceneJSON = json;
+
     const scene = await assetManager.loadScene(json, this.player.renderer);
 
     this.composition = await this.player.loadScene(scene, {
@@ -96,6 +99,19 @@ export class TestPlayer {
     ctx.readPixels(0, 0, originalWidth, originalHeight, ctx.RGBA, ctx.UNSIGNED_BYTE, pixels);
 
     return pixels;
+  }
+
+  getLoadedSceneJSON () {
+    return this.loadedSceneJSON;
+  }
+
+  captureDataURL () {
+    const ctx = this.canvas.getContext(this.renderFramework) as WebGL2RenderingContext;
+
+    // 强制等待 GPU 完成所有渲染命令
+    ctx.finish();
+
+    return this.canvas.toDataURL('image/png');
   }
 
   loadSceneTime () {

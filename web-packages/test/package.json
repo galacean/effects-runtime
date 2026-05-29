@@ -2,7 +2,8 @@
   "private": true,
   "name": "@galacean/effects-test",
   "scripts": {
-    "test": "vite"
+    "test": "vite",
+    "test:frame": "node scripts/run-frame-compare.mjs"
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",

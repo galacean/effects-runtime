@@ -1,5 +1,6 @@
 import type { GLType } from '@galacean/effects';
-import { ImageComparator, getCurrnetTimeStr } from '../../common';
+import { ArtifactSink, ImageComparator, getCurrnetTimeStr, isDumpArtifactsEnabled } from '../../common';
+import { composeComparisonDataURL } from '../../common/preview/merged-preview';
 import type { TestController } from '../../common/player/test-controller';
 import type { FrameCompareScene, FrameSuiteProfile } from '../types/profile';
 
@@ -54,6 +55,21 @@ export async function runFrameCompareLoop (options: FrameCompareLoopOptions): Pr
     const timeList = scene.timePoints ?? profile.timePoints;
     const diffRatioList: number[] = [];
 
+    const dumpEnabled = isDumpArtifactsEnabled();
+    let sink: ArtifactSink | undefined;
+
+    if (dumpEnabled) {
+      sink = new ArtifactSink({
+        suite: profile.id,
+        framework: renderFramework,
+        scene,
+        threshold,
+        pixelDiffThreshold: profile.pixelDiffThreshold,
+        canvas: profile.canvas,
+        player: newPlayer,
+      });
+    }
+
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
       const duration = oldPlayer.duration();
@@ -102,9 +118,11 @@ export async function runFrameCompareLoop (options: FrameCompareLoopOptions): Pr
         const newFileName = `${namePrefix}_${scene.name}_${time}_new.png`;
         const diffFileName = `${namePrefix}_${scene.name}_${time}_diff.png`;
         const diffHeatmapDataURL = imageCmp.getLastDiffHeatmapDataURL();
+        const oldDataURL = oldPlayer.captureDataURL();
+        const newDataURL = newPlayer.captureDataURL();
 
-        await oldPlayer.saveCanvasToImage(oldFileName, idx);
-        await newPlayer.saveCanvasToImage(newFileName, idx, true);
+        await oldPlayer.saveCanvasToImage(oldFileName, idx, false, oldDataURL);
+        await newPlayer.saveCanvasToImage(newFileName, idx, true, newDataURL);
         if (diffHeatmapDataURL) {
           await newPlayer.saveCanvasToImage(
             diffFileName,
@@ -115,8 +133,20 @@ export async function runFrameCompareLoop (options: FrameCompareLoopOptions): Pr
             imageCmp.getLastDiffSummary(),
           );
         }
+        if (sink && diffHeatmapDataURL) {
+          const compareURL = await composeComparisonDataURL([oldDataURL, newDataURL, diffHeatmapDataURL]);
+
+          await sink.saveCompareFrame(time, compareURL, {
+            diffRatio: diffCountRatio,
+            summary: imageCmp.getLastDiffSummary(),
+          });
+        }
         diffRatioList.push(diffCountRatio);
       }
+    }
+
+    if (sink) {
+      await sink.flushMeta();
     }
 
     const oldLoadCost = oldPlayer.loadSceneTime();
