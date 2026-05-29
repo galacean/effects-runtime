@@ -501,8 +501,13 @@ export class ProEmitterInstance {
   }
 
   postTick (): void {
-    // Inactive 且粒子已耗尽 → Complete
-    if (this.executionState === ProExecutionState.Inactive && this.isParticleDrained()) {
+    // Inactive 且粒子已耗尽 → Complete。
+    // 但 loop delay 期间（delayRemaining > 0）emitter 也是 Inactive，只是在等下一轮，
+    // 此时即使粒子耗尽也不能 Complete——否则 duration < lifetime + loopDelay 的循环
+    // emitter（如脉冲冲击波）粒子在 delay 内死光就被误判结束，"闪一下就没了"。
+    if (this.executionState === ProExecutionState.Inactive &&
+        this.delayRemaining <= 0 &&
+        this.isParticleDrained()) {
       this.executionState = ProExecutionState.Complete;
     }
     this.computeBounds();

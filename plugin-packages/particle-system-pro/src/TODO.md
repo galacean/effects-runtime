@@ -156,6 +156,7 @@
 
 ## 已完成
 
+- [x] **Loop delay 误结束修复** — postTick 在 `delayRemaining > 0`（loop delay 中）时不再因粒子耗尽误判 Complete；修复 duration < lifetime+loopDelay 的脉冲 emitter（冲击波）"闪一下就没了" (2026-05-29)
 - [x] **World Transform 接入** — emitterVelocity 追踪(component 算 worldMatrix 平移增量) + ProInheritVelocityModule 让 world-space 新粒子继承发射器运动；Local 模式刚性跟随已有 (2026-05-29)
 - [x] **Ribbon DrawDirection/MaxNumRibbons + Bounds 计算** — drawDirection 控制 index buffer 写入顺序(frontToBack/backToFront)；maxNumRibbons sort 后截断多余 ribbon；emitter.computeBounds() 逐帧 AABB + fixedBounds 覆盖 (2026-05-28)
 - [x] **P2 补完批量：AddVelocityInCone(innerCone/speedFalloff/linearVelocityScale) + CameraOffset curve-over-life + SpawnProbability + RandomSeedOffset + SubUV Random mode + FixedBounds 预留** (2026-05-28)
