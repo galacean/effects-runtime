@@ -7,6 +7,13 @@
 
 ---
 
+## 2.9.1
+
+`2026-05-29`
+
+- Fix: text item animation scale issue. [#1472](https://github.com/galacean/effects-runtime/pull/1472) @wumaolinmaoan
+- Fix: prevent delayed videos from playing before activation. [#1466](https://github.com/galacean/effects-runtime/pull/1466) @ChengYi996
+
 ## 2.9.0
 
 `2026-05-11`
@@ -15,16 +22,6 @@
 - Feat: add `getTextWidth` function. [#1336](https://github.com/galacean/effects-runtime/pull/1336) @Fryt1
   - Feat: text component support auto width. [#1390](https://github.com/galacean/effects-runtime/pull/1390) @wumaolinmaoan
 - Feat: support Arabic text elements. [#1432](https://github.com/galacean/effects-runtime/pull/1432) @chenzhaozheng
-- Refactor: text item calculates its own transform size. [#1377](https://github.com/galacean/effects-runtime/pull/1377) @wumaolinmaoan
-  - Refactor: extract common text component logic and improve documentation. [#1415](https://github.com/galacean/effects-runtime/pull/1415) @yiiqii
-  - Refactor: remove the dependency on `fontscale` in text layout calculations. [#1431](https://github.com/galacean/effects-runtime/pull/1431) @wumaolinmaoan
-  - Refactor: improve RTL text rendering and line-breaking logic. [#1439](https://github.com/galacean/effects-runtime/pull/1439) @ChengYi996
-  - Fix: text font family unit test. [#1366](https://github.com/galacean/effects-runtime/pull/1366) @wumaolinmaoan
-  - Fix: rich text wrap enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
-  - Fix: text item shadow rendering and rich text display overflow. [#1399](https://github.com/galacean/effects-runtime/pull/1399) @wumaolinmaoan
-  - Fix: rich text visible and display overflow mode text clipping issue. [#1405](https://github.com/galacean/effects-runtime/pull/1405) @wumaolinmaoan
-  - Fix: text component auto height is invalid. [#1421](https://github.com/galacean/effects-runtime/pull/1421) @wumaolinmaoan
-  - Fix: text outline width issue. [#1460](https://github.com/galacean/effects-runtime/pull/1460) @wumaolinmaoan
 - Feat: add animation event. [#1349](https://github.com/galacean/effects-runtime/pull/1349) @wumaolinmaoan
   - Refactor: rename `AnimationEventReference.event` to `data`. [#1452](https://github.com/galacean/effects-runtime/pull/1452) @wumaolinmaoan
 - Feat: add a method to toggle transparent video rendering. [#1374](https://github.com/galacean/effects-runtime/pull/1374) @ChengYi996
@@ -39,7 +36,6 @@
   - Feat: add adaptive build density support for shape component. [#1426](https://github.com/galacean/effects-runtime/pull/1426) @wumaolinmaoan
   - Fix: shape gradient interpolation issue. [#1440](https://github.com/galacean/effects-runtime/pull/1440) @wumaolinmaoan
 - Feat: add precomposition loading function. [#1416](https://github.com/galacean/effects-runtime/pull/1416) @wumaolinmaoan
-- Refactor: unify vfx item and precomposition manager instantiate logic. [#1418](https://github.com/galacean/effects-runtime/pull/1418) @wumaolinmaoan
 - Feat: remove useless bezier error message and export bezier utils. [#1435](https://github.com/galacean/effects-runtime/pull/1435) @liyincheng
 - Feat: add DOM-content plugin. [#1447](https://github.com/galacean/effects-runtime/pull/1447) @chenmo0204
   - Fix(test): parse JSON string in dom-content spec. [#1459](https://github.com/galacean/effects-runtime/pull/1459) @yiiqii
@@ -48,6 +44,17 @@
 - Refactor: `composition` component set children render order using `track` order. [#1338](https://github.com/galacean/effects-runtime/pull/1338) @wumaolinmaoan
 - Refactor: particle track time synchronization logic. [#1381](https://github.com/galacean/effects-runtime/pull/1381) @wumaolinmaoan
   - Refactor: particle system renderer create in particle system `onStart`. [#1425](https://github.com/galacean/effects-runtime/pull/1425) @wumaolinmaoan
+- Refactor: text item calculates its own transform size. [#1377](https://github.com/galacean/effects-runtime/pull/1377) @wumaolinmaoan
+  - Refactor: extract common text component logic and improve documentation. [#1415](https://github.com/galacean/effects-runtime/pull/1415) @yiiqii
+  - Refactor: remove the dependency on `fontscale` in text layout calculations. [#1431](https://github.com/galacean/effects-runtime/pull/1431) @wumaolinmaoan
+  - Refactor: improve RTL text rendering and line-breaking logic. [#1439](https://github.com/galacean/effects-runtime/pull/1439) @ChengYi996
+  - Fix: text font family unit test. [#1366](https://github.com/galacean/effects-runtime/pull/1366) @wumaolinmaoan
+  - Fix: rich text wrap enabled logic. [#1376](https://github.com/galacean/effects-runtime/pull/1376) @wumaolinmaoan
+  - Fix: text item shadow rendering and rich text display overflow. [#1399](https://github.com/galacean/effects-runtime/pull/1399) @wumaolinmaoan
+  - Fix: rich text visible and display overflow mode text clipping issue. [#1405](https://github.com/galacean/effects-runtime/pull/1405) @wumaolinmaoan
+  - Fix: text component auto height is invalid. [#1421](https://github.com/galacean/effects-runtime/pull/1421) @wumaolinmaoan
+  - Fix: text outline width issue. [#1460](https://github.com/galacean/effects-runtime/pull/1460) @wumaolinmaoan
+- Refactor: unify vfx item and precomposition manager instantiate logic. [#1418](https://github.com/galacean/effects-runtime/pull/1418) @wumaolinmaoan
 - Refactor: overhaul `ktx2` plugin with robustness fixes and perf improvements. [#1434](https://github.com/galacean/effects-runtime/pull/1434) @ChengYi996
   - Fix: register `KTX2 loader` before loading compressed texture in test. [#1456](https://github.com/galacean/effects-runtime/pull/1456) @ChengYi996
 - Refactor: merge `GLRenderer` and `GLMaterial` into `effects-core`. [#1437](https://github.com/galacean/effects-runtime/pull/1437) @wumaolinmaoan

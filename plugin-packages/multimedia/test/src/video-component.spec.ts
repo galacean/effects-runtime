@@ -112,6 +112,41 @@ describe('videoComponent ', function () {
     composition.dispose();
   });
 
+  it('videoComponent:delayed video starts from local zero', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 4.0417,
+      endBehavior: spec.EndBehavior.destroy,
+      compositionDuration: 8,
+      id,
+      videos: [
+        {
+          id,
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+        },
+      ],
+      start: 2.3,
+      options: { video: { id }, muted: true },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    if (!video) { throw new Error('video is null'); }
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.false;
+    expect(videoComponent.video?.paused).to.be.true;
+    expect(videoComponent.getCurrentTime()).to.equal(0);
+
+    player.gotoAndPlay(options.start);
+
+    expect(videoComponent.isVideoActive).to.be.true;
+    expect(videoComponent.getCurrentTime()).to.be.within(0, 0.1);
+    composition.dispose();
+  });
+
   it('videoComponent:setCurrentTime', async function () {
     const id = generateGUID();
     const options: VideoCompositionOptions = {
