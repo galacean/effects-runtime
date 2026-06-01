@@ -2,10 +2,12 @@ import { ImGui } from '../imgui';
 
 export class MenuNode {
   name: string = '';
+  priority = 0;
   private children: MenuNode[] = [];
 
-  constructor (name: string) {
+  constructor (name: string, priority = 0) {
     this.name = name;
+    this.priority = priority;
   }
 
   draw () {
@@ -31,19 +33,26 @@ export class MenuNode {
     }
     this.children.push(menuNode);
   }
+
+  sortChildren () {
+    this.children.sort((a, b) => a.priority - b.priority);
+    for (const child of this.children) {
+      child.sortChildren();
+    }
+  }
 }
 
 export class MenuItemNode extends MenuNode {
   onClick: () => void;
+  shortcut = '';
 
   override draw (): void {
-    if (ImGui.MenuItem(this.name)) {this.onClick();}
-    // if (ImGui.MenuItem('Undo', 'CTRL+Z')) {}
-    // if (ImGui.MenuItem('Redo', 'CTRL+Y', false, false)) {}  // Disabled item
-    // ImGui.Separator();
-    // if (ImGui.MenuItem('Cut', 'CTRL+X')) {}
-    // if (ImGui.MenuItem('Copy', 'CTRL+C')) {}
-    // if (ImGui.MenuItem('Paste', 'CTRL+V')) {}
-    // ImGui.EndMenu();
+    if (ImGui.MenuItem(this.name, this.shortcut)) {
+      this.onClick();
+    }
+  }
+
+  override sortChildren () {
+    // leaf node, no children
   }
 }
