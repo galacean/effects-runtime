@@ -89,10 +89,7 @@ export class TrimPath {
     let endLength = totalLength * (this.end + renderOffset);
 
     if (endLength < startLength) {
-      const swap = startLength;
-
-      startLength = endLength;
-      endLength = swap;
+      endLength += totalLength;
     }
 
     if (startLength > totalLength) {
@@ -120,13 +117,10 @@ export class TrimPath {
       index++;
     }
 
-    let startingIndex = 0;
-    let pieceCount = 0;
     let previousContourIndex = -1;
 
-    while (pieceCount < pieces.length) {
-      const currentIndex = (startingIndex < 0 ? startingIndex + pieces.length : startingIndex) % pieces.length;
-      const piece = pieces[currentIndex];
+    for (let i = 0; i < pieces.length; i++) {
+      const piece = pieces[i];
       const contour = contours[piece.contourIndex];
       const contourLength = contour.length();
 
@@ -142,8 +136,6 @@ export class TrimPath {
       }
 
       previousContourIndex = piece.contourIndex;
-      pieceCount++;
-      startingIndex--;
     }
   }
 
@@ -159,10 +151,7 @@ export class TrimPath {
       let endLength = contourLength * (this.end + renderOffset);
 
       if (endLength < startLength) {
-        const swap = startLength;
-
-        startLength = endLength;
-        endLength = swap;
+        endLength += contourLength;
       }
 
       if (startLength >= contourLength) {

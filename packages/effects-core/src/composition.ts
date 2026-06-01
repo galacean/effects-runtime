@@ -317,10 +317,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.emit('animationevent', eventData);
     });
 
-    this.pluginRoot = new VFXItem(this.engine);
-    this.pluginRoot.addComponent(CanvasLayer);
-
-    this.pluginRoot.setParent(this.root);
     this.sceneRoot.setParent(this.root);
 
     this.renderOrder = baseRenderOrder;
