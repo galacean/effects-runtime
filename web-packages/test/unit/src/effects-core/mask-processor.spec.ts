@@ -372,7 +372,14 @@ describe('core/material//mask-ref-manager', () => {
 
     it('should warn and cap when mask references exceed the stencil limit', () => {
       const mp = new MaskProcessor();
-      const references = Array.from({ length: 256 }, () => ({ mask: dummyRef, inverted: false }));
+      const references = Array.from({ length: 256 }, (_, i) => {
+        const id = `cap-mask-${i}`;
+        const sprite = createMaskableSprite(engine, id);
+
+        sprite.setInstanceId(id);
+
+        return { mask: { id }, inverted: false };
+      });
 
       mp.setMaskOptions(engine, {
         isMask: false,
@@ -380,6 +387,18 @@ describe('core/material//mask-ref-manager', () => {
       });
 
       expect(mp.getMaskReferences().length).to.eql(254);
+    });
+
+    it('should deduplicate references pointing to the same maskable', () => {
+      const mp = new MaskProcessor();
+      const references = Array.from({ length: 5 }, () => ({ mask: dummyRef, inverted: false }));
+
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references,
+      });
+
+      expect(mp.getMaskReferences().length).to.eql(1);
     });
 
     it('should set alphaMaskEnabled', () => {
