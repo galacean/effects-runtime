@@ -84,9 +84,7 @@ export class SpineComponent extends RendererComponent implements Maskable {
   /**
    * renderer 和 mask 数据
    */
-  rendererOptions: Pick<spec.SpineComponent, 'renderer'> & {
-    mask: number,
-  };
+  rendererOptions: NonNullable<spec.SpineComponent['renderer']>;
   options: spec.PluginSpineOption;
 
   @serialize()
@@ -119,15 +117,12 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.rendererOptions = {
       renderMode: spec.RenderMode.MESH,
       ...data.renderer || {},
-      mask: 0,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
     if (data.mask) {
       this.maskManager.setMaskOptions(this.engine, data.mask);
     }
-
-    this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;

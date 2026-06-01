@@ -19,7 +19,6 @@ import { extractMinAndMax } from '../math';
  */
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   texture: Texture,
-  mask: number,
 }
 
 // TODO: Add to spec
@@ -56,7 +55,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
-      mask: 0,
     };
 
     this.defaultGeometry = Geometry.create(this.engine, {
@@ -327,7 +325,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskManager.getRefValue(),
     };
 
     this.configureMaterial(this.renderer);

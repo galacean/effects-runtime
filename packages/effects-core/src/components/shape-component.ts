@@ -215,7 +215,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
-      mask: 0,
     };
 
     // Create Shape Attrributes
@@ -728,7 +727,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskManager.getRefValue(),
     };
 
     this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;

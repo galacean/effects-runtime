@@ -79,13 +79,6 @@ export class MaskProcessor {
   }
 
   /**
-   * @deprecated
-   */
-  getRefValue (): number {
-    return 1;
-  }
-
-  /**
    * 设置蒙版选项。
    *
    * @param data.references - 蒙版引用列表。
@@ -100,6 +93,8 @@ export class MaskProcessor {
     this.maskReferences = [];
 
     if (!isMask) {
+      const seen = new Map<Maskable, boolean>();
+
       for (const ref of references) {
         const maskPath = ref.mask;
 
@@ -109,18 +104,29 @@ export class MaskProcessor {
 
         const maskable = engine.findObject<Maskable>(maskPath);
 
-        if (maskable) {
-          if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
-            console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
-
-            break;
-          }
-
-          this.maskReferences.push({
-            maskable,
-            inverted: ref.inverted ?? false,
-          });
+        if (!maskable) {
+          console.warn(`Mask reference not found: ${JSON.stringify(maskPath)}. Skipping.`);
+          continue;
         }
+
+        const inverted = ref.inverted ?? false;
+        const existingInverted = seen.get(maskable);
+
+        if (existingInverted !== undefined) {
+          if (existingInverted !== inverted) {
+            console.warn('Same maskable referenced with conflicting inverted flags; keeping the first occurrence.');
+          }
+          continue;
+        }
+
+        if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
+          console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+
+          break;
+        }
+
+        seen.set(maskable, inverted);
+        this.maskReferences.push({ maskable, inverted });
       }
     }
   }
@@ -163,10 +169,10 @@ export class MaskProcessor {
   }
 
   /**
-   * 获取当前蒙版引用列表（只读）。
+   * 获取当前蒙版引用列表的浅拷贝。
    */
   getMaskReferences (): ReadonlyArray<MaskReference> {
-    return this.maskReferences;
+    return this.maskReferences.slice();
   }
 
   /**
