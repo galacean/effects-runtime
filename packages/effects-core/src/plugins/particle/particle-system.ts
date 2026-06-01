@@ -6,21 +6,27 @@ import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
-import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
+import { calculateTranslation, createValueGetter } from '../../math';
 import type { Mesh } from '../../render';
 import type { Maskable } from '../../material';
 import { MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
-import { createShape } from '../../shape';
-import { Texture } from '../../texture';
+import type { Texture } from '../../texture';
 import { Transform } from '../../transform';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
-import { Burst } from './burst';
+import type { Burst } from './burst';
 import type { LinkNode } from './link';
 import { Link } from './link';
+import { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleMeshProps, Point } from './particle-mesh';
+import type { ParticleModuleContext } from './particle-module';
+import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
+import { SolveLinearMoveModule } from './solve-linear-move-module';
+import { SolveRotationModule } from './solve-rotation-module';
+import { SolveVelocityModule } from './solve-velocity-module';
+import { SpawnRateModule } from './spawn-rate-module';
 import type { TrailMeshProps } from './trail-mesh';
 
 type ParticleSystemRayCastOptions = {
@@ -144,13 +150,17 @@ export class ParticleSystem extends Component implements Maskable {
   private particleLink: Link<ParticleContent>;
   private started: boolean;
   private ended: boolean;
-  private lastEmitTime: number;
+  private spawnRateModule: SpawnRateModule;
   private frozen: boolean;
   private upDirectionWorld: Vector3 | null;
   private uvs: number[][];
   private basicTransform: ParticleTransform;
   private clickedPoint: LinkNode<ParticleContent>;
 
+  private dataBuffer: ParticleDataBuffer | null = null;
+  private solveVelocityModule: SolveVelocityModule | null = null;
+  private solveRotationModule: SolveRotationModule | null = null;
+  private solveLinearMoveModule: SolveLinearMoveModule | null = null;
   private particleMeshProps: ParticleMeshProps | null = null;
   private trailMeshProps: TrailMeshProps | null = null;
 
@@ -271,6 +281,7 @@ export class ParticleSystem extends Component implements Maskable {
     }
     link.pushNode(linkContent);
     this.renderer.setParticlePoint(pointIndex, point);
+    this.writePointToDataBuffer(pointIndex, point);
     this.clearPointTrail(pointIndex);
     if (this.transform.parentTransform) {
       this.renderer.setTrailStartPosition(pointIndex, this.transform.parentTransform.position.clone());
@@ -302,12 +313,13 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.reset();
     this.time = 0;
     this.loopStartTime = 0;
-    this.lastEmitTime = -1 / this.emission.rateOverTime.getValue(0);
+    this.spawnRateModule = new SpawnRateModule(this.emission.rateOverTime);
     this.generatedCount = 0;
     this.particleLink = new Link((a, b) => a[0] - b[0]);
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
     this.ended = false;
+    this.dataBuffer?.clear();
   }
 
   override onStart (): void {
@@ -315,6 +327,20 @@ export class ParticleSystem extends Component implements Maskable {
       return;
     }
 
+    this.dataBuffer = new ParticleDataBuffer(this.particleMeshProps.maxCount);
+    const lv = this.options.linearVelOverLifetime;
+
+    this.solveVelocityModule = new SolveVelocityModule({
+      gravity: this.options.gravity,
+      gravityModifier: this.options.gravityModifier,
+      speedOverLifetime: this.options.speedOverLifetime,
+    });
+    this.solveRotationModule = new SolveRotationModule({
+      rotationOverLifetime: this.particleMeshProps.rotationOverLifetime,
+    });
+    this.solveLinearMoveModule = new SolveLinearMoveModule({
+      linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined,
+    });
     this.renderer = this.item.addComponent(ParticleSystemRenderer);
 
     this.renderer.setup(this.particleMeshProps, this.trailMeshProps);
@@ -357,6 +383,8 @@ export class ParticleSystem extends Component implements Maskable {
       this.upDirectionWorld = null;
       this.renderer.updateTime(now, delta);
 
+      this.executeModules(delta, now);
+
       const link = this.particleLink;
       const emitterLifetime = (now - loopStartTime) / this.item.duration;
       const timePassed = this.timePassed;
@@ -379,10 +407,9 @@ export class ParticleSystem extends Component implements Maskable {
         const lifetime = this.lifetime;
 
         if (timePassed < duration) {
-          const interval = 1 / emission.rateOverTime.getValue(lifetime);
-          const pointCount = Math.floor((timePassed - this.lastEmitTime) / interval);
-          const maxEmissionCount = pointCount;
-          const timeDelta = interval / pointCount;
+          const spawnResult = this.spawnRateModule.compute(timePassed, lifetime);
+          const maxEmissionCount = spawnResult.pointCount;
+          const timeDelta = spawnResult.timeDelta;
           const meshTime = now;
           const maxCount = options.maxCount;
 
@@ -401,7 +428,7 @@ export class ParticleSystem extends Component implements Maskable {
 
             p.delay += meshTime + i * timeDelta;
             this.addParticle(p, maxCount);
-            this.lastEmitTime = timePassed;
+            this.spawnRateModule.commitEmit(timePassed);
           }
           const bursts = emission.bursts;
 
@@ -443,7 +470,7 @@ export class ParticleSystem extends Component implements Maskable {
         } else if (this.options.looping) {
           updateTrail();
           this.loopStartTime = now - duration;
-          this.lastEmitTime -= duration;
+          this.spawnRateModule.adjustForLoop(duration);
           this.time -= duration;
           emission.bursts.forEach(b => b.reset());
           this.particleLink.forEach(content => {
@@ -457,6 +484,11 @@ export class ParticleSystem extends Component implements Maskable {
           });
 
           this.renderer.minusTimeForLoop(duration);
+          if (this.dataBuffer) {
+            for (let i = 0; i < this.dataBuffer.activeCount; i++) {
+              this.dataBuffer.delay[i] -= duration;
+            }
+          }
         } else {
           this.ended = true;
           const endBehavior = this.item.endBehavior;
@@ -850,275 +882,214 @@ export class ParticleSystem extends Component implements Maskable {
     }
   };
 
+  private executeModules (delta: number, now: number): void {
+    const db = this.dataBuffer;
+
+    if (!db || db.activeCount === 0) {
+      return;
+    }
+
+    const ctx: ParticleModuleContext = {
+      deltaTime: delta,
+      currentTime: now,
+      emitterLifetime: this.lifetime,
+      duration: this.item.duration,
+      dataBuffer: db,
+      firstIndex: 0,
+      lastIndex: db.activeCount,
+    };
+
+    this.solveVelocityModule?.execute(ctx);
+    this.solveRotationModule?.execute(ctx);
+    this.solveLinearMoveModule?.execute(ctx);
+
+    this.syncToGeometry();
+  }
+
+  private syncToGeometry (): void {
+    const db = this.dataBuffer;
+
+    if (!db || db.activeCount === 0) {
+      return;
+    }
+    const geometry = this.renderer.particleMesh.geometry;
+    const aTranslation = geometry.getAttributeData('aTranslation') as Float32Array;
+    const count = Math.min(db.activeCount, Math.floor(aTranslation.length / 12));
+
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      const gOff = i * 12;
+      const tx = db.translation[i3];
+      const ty = db.translation[i3 + 1];
+      const tz = db.translation[i3 + 2];
+
+      for (let v = 0; v < 4; v++) {
+        const vOff = gOff + v * 3;
+
+        aTranslation[vOff] = tx;
+        aTranslation[vOff + 1] = ty;
+        aTranslation[vOff + 2] = tz;
+      }
+    }
+    geometry.setAttributeData('aTranslation', aTranslation);
+
+    // Sync rotation matrix (9 floats per particle → 36 per quad)
+    const aRotation0 = geometry.getAttributeData('aRotation0') as Float32Array;
+    const rotCount = Math.min(db.activeCount, Math.floor(aRotation0.length / 36));
+
+    for (let i = 0; i < rotCount; i++) {
+      const i9 = i * 9;
+      const gOff = i * 36;
+
+      for (let v = 0; v < 4; v++) {
+        const vOff = gOff + v * 9;
+
+        for (let c = 0; c < 9; c++) {
+          aRotation0[vOff + c] = db.rotMatrix[i9 + c];
+        }
+      }
+    }
+    geometry.setAttributeData('aRotation0', aRotation0);
+
+    // Sync linear move (3 floats per particle → 12 per quad)
+    const aLinearMove = geometry.getAttributeData('aLinearMove') as Float32Array;
+    const lmCount = Math.min(db.activeCount, Math.floor(aLinearMove.length / 12));
+
+    for (let i = 0; i < lmCount; i++) {
+      const i3 = i * 3;
+      const gOff = i * 12;
+      const mx = db.linearMove[i3];
+      const my = db.linearMove[i3 + 1];
+      const mz = db.linearMove[i3 + 2];
+
+      for (let v = 0; v < 4; v++) {
+        const vOff = gOff + v * 3;
+
+        aLinearMove[vOff] = mx;
+        aLinearMove[vOff + 1] = my;
+        aLinearMove[vOff + 2] = mz;
+      }
+    }
+    geometry.setAttributeData('aLinearMove', aLinearMove);
+  }
+
+  private writePointToDataBuffer (index: number, point: Point): void {
+    const db = this.dataBuffer;
+
+    if (!db) {
+      return;
+    }
+    const i3 = index * 3;
+    const i4 = index * 4;
+    const i2 = index * 2;
+    const pos = point.transform.position;
+
+    db.delay[index] = point.delay;
+    db.lifetime[index] = point.lifetime;
+
+    // seed 和 rotation 从几何体回读，确保与 setPoint 的 quat round-trip 结果一致
+    const aRotData = this.renderer.particleMesh.geometry.getAttributeData('aRot') as Float32Array;
+    const gRotOff = index * 32;
+
+    db.seed[index] = aRotData[gRotOff + 3];
+    db.rotation[i3] = aRotData[gRotOff];
+    db.rotation[i3 + 1] = aRotData[gRotOff + 1];
+    db.rotation[i3 + 2] = aRotData[gRotOff + 2];
+
+    db.position[i3] = pos.x;
+    db.position[i3 + 1] = pos.y;
+    db.position[i3 + 2] = pos.z;
+
+    db.velocity[i3] = point.vel.x;
+    db.velocity[i3 + 1] = point.vel.y;
+    db.velocity[i3 + 2] = point.vel.z;
+
+    db.color[i4] = point.color[0];
+    db.color[i4 + 1] = point.color[1];
+    db.color[i4 + 2] = point.color[2];
+    db.color[i4 + 3] = point.color[3];
+
+    db.size[i2] = point.size.x;
+    db.size[i2 + 1] = point.size.y;
+
+    db.dirX[i3] = point.dirX.x;
+    db.dirX[i3 + 1] = point.dirX.y;
+    db.dirX[i3 + 2] = point.dirX.z;
+    db.dirY[i3] = point.dirY.x;
+    db.dirY[i3 + 1] = point.dirY.y;
+    db.dirY[i3 + 2] = point.dirY.z;
+
+    if (point.uv) {
+      db.uv[i4] = point.uv[0];
+      db.uv[i4 + 1] = point.uv[1];
+      db.uv[i4 + 2] = point.uv[2];
+      db.uv[i4 + 3] = point.uv[3];
+    }
+    if (point.sprite) {
+      db.sprite[i3] = point.sprite[0];
+      db.sprite[i3 + 1] = point.sprite[1];
+      db.sprite[i3 + 2] = point.sprite[2];
+    }
+    if (point.gravity) {
+      db.gravity[i3] = point.gravity[0];
+      db.gravity[i3 + 1] = point.gravity[1];
+      db.gravity[i3 + 2] = point.gravity[2];
+    }
+
+    // 重置累积通道——槽位复用时必须清零，与 setPoint 写全零 aTranslation 对齐
+    db.translation[i3] = 0;
+    db.translation[i3 + 1] = 0;
+    db.translation[i3 + 2] = 0;
+    db.linearMove[i3] = 0;
+    db.linearMove[i3 + 1] = 0;
+    db.linearMove[i3 + 2] = 0;
+
+    const i9 = index * 9;
+
+    db.rotMatrix[i9] = 1;
+    db.rotMatrix[i9 + 1] = 0;
+    db.rotMatrix[i9 + 2] = 0;
+    db.rotMatrix[i9 + 3] = 0;
+    db.rotMatrix[i9 + 4] = 1;
+    db.rotMatrix[i9 + 5] = 0;
+    db.rotMatrix[i9 + 6] = 0;
+    db.rotMatrix[i9 + 7] = 0;
+    db.rotMatrix[i9 + 8] = 1;
+
+    db.activeCount = Math.max(db.activeCount, index + 1);
+  }
+
   override fromData (data: spec.ParticleSystemData): void {
     super.fromData(data);
-    const props = data;
-
-    this.props = props;
-    const cachePrefix = '';
-    const { options, positionOverLifetime = {}, shape } = props;
-    const gravityModifier = positionOverLifetime?.gravityOverLifetime;
-    const gravity = ensureVec3(positionOverLifetime?.gravity);
-    const _textureSheetAnimation = props.textureSheetAnimation;
-    const textureSheetAnimation = _textureSheetAnimation ? {
-      animationDelay: createValueGetter(_textureSheetAnimation.animationDelay || 0),
-      animationDuration: createValueGetter(_textureSheetAnimation.animationDuration || 1),
-      cycles: createValueGetter(_textureSheetAnimation.cycles || 1),
-      animate: _textureSheetAnimation.animate,
-      col: _textureSheetAnimation.col,
-      row: _textureSheetAnimation.row,
-      total: _textureSheetAnimation.total || _textureSheetAnimation.col * _textureSheetAnimation.row,
-    } : undefined;
-    const startTurbulence = !!(shape && shape.turbulenceX || shape?.turbulenceY || shape?.turbulenceZ);
-    let turbulence: ParticleOptions['turbulence'];
-
-    if (startTurbulence) {
-      turbulence = [
-        createValueGetter(shape.turbulenceX ?? 0),
-        createValueGetter(shape.turbulenceY ?? 0),
-        createValueGetter(shape.turbulenceZ ?? 0),
-      ];
-    }
-
+    this.props = data;
     this.name = 'ParticleSystem';
-    this.shape = createShape(shape);
-    this.emission = {
-      rateOverTime: createValueGetter(props.emission.rateOverTime),
-      burstOffsets: getBurstOffsets(props.emission.burstOffsets ?? []),
-      bursts: (props.emission.bursts || []).map((c: any) => new Burst(c)),
-    };
-    this.textureSheetAnimation = textureSheetAnimation;
-    const renderer = props.renderer || {};
-    let rotationOverLifetime: ParticleMeshProps['rotationOverLifetime'];
-    const rotOverLt = props.rotationOverLifetime;
 
-    if (rotOverLt) {
-      rotationOverLifetime = {};
-      rotationOverLifetime.asRotation = !!rotOverLt.asRotation;
-      rotationOverLifetime.z = rotOverLt.z ? createValueGetter(rotOverLt.z) : createValueGetter(0);
-      if (rotOverLt.separateAxes) {
-        rotationOverLifetime.x = rotOverLt.x && createValueGetter(rotOverLt.x);
-        rotationOverLifetime.y = rotOverLt.y && createValueGetter(rotOverLt.y);
-      }
+    if (data.mask) {
+      this.maskManager.setMaskOptions(this.engine, data.mask);
     }
 
-    let forceTarget;
+    const result = parseParticleSpec(data, this.engine);
 
-    if (positionOverLifetime?.forceTarget) {
-      forceTarget = {
-        target: positionOverLifetime.target || [0, 0, 0],
-        curve: createValueGetter(positionOverLifetime.forceCurve || [spec.ValueType.LINE, [[0, 0], [1, 1]]]),
-      };
+    this.options = result.options;
+    this.emission = result.emission;
+    this.shape = result.shape;
+    this.textureSheetAnimation = result.textureSheetAnimation;
+    this.uvs = result.uvs;
+    this.interaction = result.interaction;
+
+    result.particleMeshProps.mask = this.maskManager.getRefValue();
+    result.particleMeshProps.maskMode = this.maskManager.maskMode;
+    this.particleMeshProps = result.particleMeshProps;
+
+    if (result.trails) {
+      this.trails = result.trails;
     }
-    const linearVelOverLifetime = {
-      x: positionOverLifetime.linearX && createValueGetter(positionOverLifetime.linearX || 0),
-      y: positionOverLifetime.linearY && createValueGetter(positionOverLifetime.linearY || 0),
-      z: positionOverLifetime.linearZ && createValueGetter(positionOverLifetime.linearZ || 0),
-      asMovement: positionOverLifetime.asMovement,
-    };
-    const orbitalVelOverLifetime = {
-      x: positionOverLifetime.orbitalX && createValueGetter(positionOverLifetime.orbitalX),
-      y: positionOverLifetime.orbitalY && createValueGetter(positionOverLifetime.orbitalY),
-      z: positionOverLifetime.orbitalZ && createValueGetter(positionOverLifetime.orbitalZ),
-      center: positionOverLifetime.orbCenter,
-      asRotation: positionOverLifetime.asRotation,
-    };
-    const sizeOverLifetime = props.sizeOverLifetime || {};
-    const colorOverLifetime = props.colorOverLifetime;
-    const shaderCachePrefix = cachePrefix;
-    const sizeOverLifetimeGetter = sizeOverLifetime?.separateAxes ?
-      {
-        separateAxes: true,
-        x: createValueGetter(sizeOverLifetime.x),
-        y: createValueGetter(sizeOverLifetime.y),
-      } :
-      {
-        separateAxes: false,
-        x: createValueGetter(('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1),
-      };
-
-    renderer.anchor = renderer.anchor || [0, 0];
-    const anchor = Vector2.fromArray(renderer.anchor);
-
-    this.options = {
-      particleFollowParent: !!options.particleFollowParent,
-      startLifetime: createValueGetter(options.startLifetime),
-      startDelay: createValueGetter(options.startDelay || 0),
-      startSpeed: createValueGetter(positionOverLifetime.startSpeed || 0),
-      startColor: createValueGetter(options.startColor),
-      // duration:vfxItem.duration || 1,
-      looping: options.looping ?? false,
-      maxCount: options.maxCount ?? 0,
-      gravityModifier: createValueGetter(gravityModifier || 0),
-      gravity,
-      start3DSize: !!options.start3DSize,
-      startTurbulence,
-      turbulence,
-      speedOverLifetime: positionOverLifetime.speedOverLifetime && createValueGetter(positionOverLifetime.speedOverLifetime),
-      linearVelOverLifetime,
-      orbitalVelOverLifetime,
-      forceTarget,
-    };
-    if (options.startRotationZ) {
-      this.options.startRotation = createValueGetter(options.startRotationZ || 0);
-    }
-    if (options.startRotationX || options.startRotationY) {
-      this.options.start3DRotation = true;
-      this.options.startRotationX = createValueGetter(options.startRotationX || 0);
-      this.options.startRotationY = createValueGetter(options.startRotationY || 0);
-      this.options.startRotationZ = createValueGetter(options.startRotationZ || 0);
+    if (result.trailMeshProps) {
+      result.trailMeshProps.mask = this.maskManager.getRefValue();
+      result.trailMeshProps.maskMode = this.maskManager.maskMode;
+      this.trailMeshProps = result.trailMeshProps;
     }
 
-    if (options.start3DSize) {
-      this.options.startSizeX = createValueGetter(options.startSizeX);
-      this.options.startSizeY = createValueGetter(options.startSizeY);
-    } else {
-      this.options.startSize = createValueGetter(options.startSize);
-      this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
-    }
-
-    if (props.mask) {
-      this.maskManager.setMaskOptions(this.engine, props.mask);
-    }
-
-    const particleMeshProps: ParticleMeshProps = {
-      // listIndex: vfxItem.listIndex,
-      name: this.name,
-      matrix: Matrix4.IDENTITY,
-      shaderCachePrefix,
-      renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
-      side: renderer.side || spec.SideMode.DOUBLE,
-      gravity,
-      // duration: vfxItem.duration,
-      blending: renderer.blending || spec.BlendingMode.ALPHA,
-      rotationOverLifetime,
-      gravityModifier: this.options.gravityModifier,
-      linearVelOverLifetime: this.options.linearVelOverLifetime,
-      orbitalVelOverLifetime: this.options.orbitalVelOverLifetime,
-      speedOverLifetime: this.options.speedOverLifetime,
-      sprite: textureSheetAnimation,
-      occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion,
-      maxCount: options.maxCount,
-      mask: this.maskManager.getRefValue(),
-      maskMode: this.maskManager.maskMode,
-      forceTarget,
-      diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
-      sizeOverLifetime: sizeOverLifetimeGetter,
-      anchor,
-    };
-
-    if (colorOverLifetime) {
-      const { color, opacity } = colorOverLifetime;
-
-      particleMeshProps.colorOverLifetime = {};
-      if (opacity) {
-        particleMeshProps.colorOverLifetime.opacity = createValueGetter(colorOverLifetime.opacity);
-      }
-      if (color) {
-        if (color[0] === spec.ValueType.GRADIENT_COLOR) {
-          particleMeshProps.colorOverLifetime.color = (colorOverLifetime.color as spec.GradientColor)[1];
-        } else if (color[0] === spec.ValueType.RGBA_COLOR) {
-          particleMeshProps.colorOverLifetime.color = Texture.createWithData(
-            this.engine,
-            {
-              data: new Uint8Array(color[1] as unknown as number[]),
-              width: 1,
-              height: 1,
-            });
-        } else if (color instanceof Texture) {
-          particleMeshProps.colorOverLifetime.color = color;
-        }
-      }
-    }
-
-    const uvs = [];
-    let textureMap = [0, 0, 1, 1];
-    let flip;
-
-    if (props.splits) {
-      const s = props.splits[0];
-
-      flip = s[4];
-      textureMap = flip ? [s[0], s[1], s[3], s[2]] : [s[0], s[1], s[2], s[3]];
-    }
-    if (textureSheetAnimation && !textureSheetAnimation.animate) {
-      const col = flip ? textureSheetAnimation.row : textureSheetAnimation.col;
-      const row = flip ? textureSheetAnimation.col : textureSheetAnimation.row;
-      const total = textureSheetAnimation.total || col * row;
-      let index = 0;
-
-      for (let x = 0; x < col; x++) {
-        for (let y = 0; y < row && index < total; y++, index++) {
-          uvs.push([
-            x * textureMap[2] / col + textureMap[0],
-            y * textureMap[3] / row + textureMap[1],
-            textureMap[2] / col,
-            textureMap[3] / row]);
-        }
-      }
-    } else {
-      uvs.push(textureMap);
-    }
-    this.uvs = uvs;
-    // @ts-expect-error
-    particleMeshProps.textureFlip = flip;
-
-    const trails = props.trails;
-    let trailMeshProps: TrailMeshProps | undefined;
-
-    if (trails) {
-      this.trails = {
-        lifetime: createValueGetter(trails.lifetime),
-        dieWithParticles: trails.dieWithParticles !== false,
-        sizeAffectsWidth: !!trails.sizeAffectsWidth,
-        sizeAffectsLifetime: !!trails.sizeAffectsLifetime,
-        inheritParticleColor: !!trails.inheritParticleColor,
-        parentAffectsPosition: !!trails.parentAffectsPosition,
-      };
-
-      trailMeshProps = {
-        name: 'Trail',
-        matrix: Matrix4.IDENTITY,
-        minimumVertexDistance: trails.minimumVertexDistance || 0.02,
-        maxTrailCount: options.maxCount,
-        pointCountPerTrail: Math.round(trails.maxPointPerTrail) || 32,
-        blending: trails.blending,
-        texture: trails.texture ? this.engine.findObject(trails.texture) : undefined,
-        opacityOverLifetime: createValueGetter(trails.opacityOverLifetime || 1),
-        widthOverTrail: createValueGetter(trails.widthOverTrail || 1),
-        // order: vfxItem.listIndex + (trails.orderOffset || 0),
-        shaderCachePrefix,
-        lifetime: this.trails.lifetime,
-        occlusion: !!trails.occlusion,
-        transparentOcclusion: !!trails.transparentOcclusion,
-        mask: this.maskManager.getRefValue(),
-        maskMode: this.maskManager.maskMode,
-      };
-
-      if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
-        trailMeshProps.colorOverLifetime = trails.colorOverLifetime[1];
-      }
-      if (trails.colorOverTrail && trails.colorOverTrail[0] === spec.ValueType.GRADIENT_COLOR) {
-        trailMeshProps.colorOverTrail = trails.colorOverTrail[1];
-      }
-    }
-
-    this.particleMeshProps = particleMeshProps;
-
-    if (trailMeshProps) {
-      this.trailMeshProps = trailMeshProps;
-    }
-
-    const interaction = props.interaction;
-
-    if (interaction) {
-      this.interaction = {
-        multiple: interaction.multiple,
-        radius: interaction.radius ?? 0.4,
-        behavior: interaction.behavior,
-      };
-    }
     this.item.getHitTestParams = this.getHitTestParams;
   }
 }
@@ -1133,29 +1104,6 @@ const tempVec3 = new Vector3();
 const tempEuler = new Euler();
 const tempSprite: vec3 = [0, 0, 0];
 const tempMat4 = new Matrix4();
-
-function getBurstOffsets (burstOffsets: Record<string, number>[]): Record<string, vec3[]> {
-  const ret: Record<string, vec3[]> = {};
-
-  if (Array.isArray(burstOffsets)) {
-    burstOffsets.forEach(arr => {
-      const isArr = arr instanceof Array;
-      const index = isArr ? arr[0] : arr.index;
-      let offsets = ret[index];
-
-      if (!offsets) {
-        offsets = ret[index] = [];
-      }
-      if (isArr) {
-        offsets.push(arr.slice(1, 4) as vec3);
-      } else {
-        offsets.push([+arr.x, +arr.y, +arr.z]);
-      }
-    });
-  }
-
-  return ret;
-}
 
 function randomArrItem<T> (arr: T[], keepArr?: boolean): T {
   const index = Math.floor(Math.random() * arr.length);

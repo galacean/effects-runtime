@@ -73,7 +73,6 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   updateTime (now: number, delta: number) {
     this.particleMesh.time = now;
-    this.particleMesh.onUpdate(delta);
     if (this.trailMesh) {
       this.trailMesh.time = now;
       this.trailMesh.onUpdate(delta);
