@@ -89,7 +89,10 @@ export class TrimPath {
     let endLength = totalLength * (this.end + renderOffset);
 
     if (endLength < startLength) {
-      endLength += totalLength;
+      const swap = startLength;
+
+      startLength = endLength;
+      endLength = swap;
     }
 
     if (startLength > totalLength) {
@@ -151,7 +154,10 @@ export class TrimPath {
       let endLength = contourLength * (this.end + renderOffset);
 
       if (endLength < startLength) {
-        endLength += contourLength;
+        const swap = startLength;
+
+        startLength = endLength;
+        endLength = swap;
       }
 
       if (startLength >= contourLength) {
