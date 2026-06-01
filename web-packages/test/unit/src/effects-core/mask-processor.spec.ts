@@ -80,7 +80,6 @@ describe('core/material//mask-ref-manager', () => {
 
       expect(mp.alphaMaskEnabled).to.eql(false);
       expect(mp.isMask).to.eql(false);
-      expect(mp.inverted).to.eql(false);
       expect(mp.maskMode).to.eql(MaskMode.NONE);
     });
 
@@ -227,6 +226,21 @@ describe('core/material//mask-ref-manager', () => {
       expect(material.stencilTest).to.eql(false);
     });
 
+    it('should not remove existing references that are also frame clip masks', () => {
+      const mp = new MaskProcessor();
+      const sprite = createMaskableSprite(engine);
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
+      const component = createSpriteRendererComponent(engine, [material]);
+
+      mp.addMaskReference(sprite);
+      component.frameClipMasks = [sprite];
+
+      mp.drawStencilMask(renderer, component);
+
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].maskable).to.equal(sprite);
+    });
+
     it('should setup multiple materials', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
@@ -286,6 +300,8 @@ describe('core/material//mask-ref-manager', () => {
       material.colorMask = true;
       material.stencilTest = false;
       material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
+      material.stencilOpFail = [glContext.REPLACE, glContext.REPLACE];
+      material.stencilOpZFail = [glContext.DECR, glContext.DECR];
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
       material.stencilRef = [0, 0];
       material.stencilMask = [0xFF, 0xFF];
@@ -297,6 +313,8 @@ describe('core/material//mask-ref-manager', () => {
       expect(material.colorMask).to.eql(true);
       expect(material.stencilTest).to.eql(false);
       expect(material.stencilFunc).to.deep.equals([glContext.ALWAYS, glContext.ALWAYS]);
+      expect(material.stencilOpFail).to.deep.equals([glContext.REPLACE, glContext.REPLACE]);
+      expect(material.stencilOpZFail).to.deep.equals([glContext.DECR, glContext.DECR]);
       expect(material.stencilOpZPass).to.deep.equals([glContext.KEEP, glContext.KEEP]);
       expect(material.stencilRef).to.deep.equals([0, 0]);
       expect(material.stencilMask).to.deep.equals([0xFF, 0xFF]);

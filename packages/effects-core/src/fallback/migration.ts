@@ -725,6 +725,7 @@ export function version36Migration (json: JSONScene): JSONScene {
         const compositionComponent = componentData as spec.CompositionComponentData;
         const compositionItems = compositionComponent.items ?? [];
 
+        maskMigrationCtx.currentMaskComponent = undefined;
         processMaskItems(compositionItems, itemMap, componentMap);
 
         for (const itemPath of compositionItems) {
@@ -908,7 +909,8 @@ function processMaskItems (
       itemProps.type === spec.ItemType.text ||
       itemProps.type === spec.ItemType.richtext ||
       itemProps.type === spec.ItemType.video ||
-      itemProps.type === spec.ItemType.shape
+      itemProps.type === spec.ItemType.shape ||
+      itemProps.type === spec.ItemType.mesh
     ) {
       const component = componentMap.get(itemProps.components[0].id);
 

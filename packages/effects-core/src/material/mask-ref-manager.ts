@@ -35,7 +35,6 @@ export class MaskProcessor {
   alphaMaskEnabled = false;
 
   isMask = false;
-  inverted = false;
   maskMode: MaskMode = MaskMode.NONE;
 
   /**
@@ -51,6 +50,8 @@ export class MaskProcessor {
   private stencilClearAction: RenderPassClearAction;
 
   private prevStencilFunc: [number, number] = [0, 0];
+  private prevStencilOpFail: [number, number] = [0, 0];
+  private prevStencilOpZFail: [number, number] = [0, 0];
   private prevStencilOpZPass: [number, number] = [0, 0];
   private prevStencilRef: [number, number] = [0, 0];
   private prevStencilMask: [number, number] = [0, 0];
@@ -98,13 +99,13 @@ export class MaskProcessor {
 
     this.alphaMaskEnabled = alphaMaskEnabled;
     this.isMask = isMask;
-    this.inverted = references[0]?.inverted ?? false;
     this.maskReferences = [];
 
     if (isMask) {
       this.maskMode = MaskMode.MASK;
     } else {
-      this.maskMode = this.inverted ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
+      // 正/反向由首个引用决定 maskMode 的兼容取值；逐引用的正反向语义仍以 MaskReference.inverted 为准
+      this.maskMode = (references[0]?.inverted ?? false) ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
 
       if (references.length === 0) {
         this.maskMode = MaskMode.NONE;
@@ -191,9 +192,16 @@ export class MaskProcessor {
    */
   drawStencilMask (renderer: Renderer, maskedComponent: RendererComponent): void {
     const frameClipMasks = maskedComponent.frameClipMasks;
+    const addedFrameClipMasks: Maskable[] = [];
 
     for (const frameClipMask of frameClipMasks) {
+      const referenceCount = this.maskReferences.length;
+
       this.addMaskReference(frameClipMask, false);
+
+      if (this.maskReferences.length > referenceCount) {
+        addedFrameClipMasks.push(frameClipMask);
+      }
     }
 
     if (this.maskReferences.length > 0) {
@@ -235,7 +243,7 @@ export class MaskProcessor {
       this.setupMaskedMaterial(material);
     }
 
-    for (const frameClipMask of frameClipMasks) {
+    for (const frameClipMask of addedFrameClipMasks) {
       this.removeMaskReference(frameClipMask);
     }
   }
@@ -248,11 +256,11 @@ export class MaskProcessor {
     const prevStencilTest = material.stencilTest;
 
     this.copyStencilArrayValue(this.prevStencilFunc, material.stencilFunc);
+    this.copyStencilArrayValue(this.prevStencilOpFail, material.stencilOpFail);
+    this.copyStencilArrayValue(this.prevStencilOpZFail, material.stencilOpZFail);
     this.copyStencilArrayValue(this.prevStencilOpZPass, material.stencilOpZPass);
     this.copyStencilArrayValue(this.prevStencilRef, material.stencilRef);
     this.copyStencilArrayValue(this.prevStencilMask, material.stencilMask);
-    // const prevStencilOpFail = material.stencilOpFail;
-    // const prevStencilOpZFail = material.stencilOpZFail;
 
     this.setupMaskMaterial(material, maskRef);
     renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
@@ -260,9 +268,9 @@ export class MaskProcessor {
     material.colorMask = previousColorMask;
     material.stencilTest = prevStencilTest;
     material.stencilFunc = this.prevStencilFunc;
+    material.stencilOpFail = this.prevStencilOpFail;
+    material.stencilOpZFail = this.prevStencilOpZFail;
     material.stencilOpZPass = this.prevStencilOpZPass;
-    // material.stencilOpFail = prevStencilOpFail;
-    // material.stencilOpZFail = prevStencilOpZFail;
     material.stencilRef = this.prevStencilRef;
     material.stencilMask = this.prevStencilMask;
   }
@@ -286,9 +294,9 @@ export class MaskProcessor {
     material.stencilMask = [0xFF, 0xFF];
 
     // 通过时递增 stencil 值，不通过时保持不变
+    material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
+    material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
     material.stencilOpZPass = [glContext.INCR, glContext.INCR];
-    // material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
-    // material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
 
     material.colorMask = false; // 不写入颜色
   }

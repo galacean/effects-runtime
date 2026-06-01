@@ -7,7 +7,7 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import type { Maskable, MaterialProps } from '../material';
-import { Material, MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
 import type { Renderer } from '../render';
 import { GLSLVersion, Geometry } from '../render';
@@ -682,7 +682,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     const renderer = rendererOptions;
     const { side, occlusion, blending: blendMode, texture } = renderer;
-    const maskMode = this.maskManager.maskMode;
 
     material.blending = true;
     material.depthTest = true;
@@ -701,7 +700,6 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
     texParams.y = preMultiAlpha;
     texParams.z = renderer.renderMode;
-    texParams.w = maskMode;
     material.setVector4('_TexParams', texParams);
 
     if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
@@ -728,7 +726,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskManager.getRefValue(),
     };
