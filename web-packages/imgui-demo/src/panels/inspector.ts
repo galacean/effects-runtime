@@ -74,10 +74,10 @@ export class Inspector extends EditorWindow {
       } else if (property instanceof EffectsObject) {
         EditorGUILayout.ObjectField(propertyName, object, key);
       } else if (property instanceof Object) {
-        if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
+        if (EditorGUILayout.BeginFoldoutHeaderGroup(propertyName + '##' + propertyName, false)) {
           this.drawObject(property);
-          ImGui.TreePop();
         }
+        EditorGUILayout.EndFoldoutHeaderGroup();
       }
     }
   }

@@ -42,16 +42,18 @@ export abstract class Component extends EffectsObject {
   set enabled (value: boolean) {
     if (this.enabled !== value) {
       this._enabled = value;
-      if (value) {
-        if (this.isActiveAndEnabled) {
-          this.enable();
-          if (!this.isStartCalled) {
-            this.onStart();
-            this.isStartCalled = true;
+
+      if (this.item?.isDuringPlay && this.item.isActive) {
+        if (value) {
+          if (!this.isEnableCalled) {
+            this.enable();
+
+            if (!this.isStartCalled) {
+              this.onStart();
+              this.isStartCalled = true;
+            }
           }
-        }
-      } else {
-        if (this.isEnableCalled) {
+        } else if (this.isEnableCalled) {
           this.disable();
         }
       }
