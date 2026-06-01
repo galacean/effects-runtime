@@ -2,7 +2,7 @@ import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { GraphicsPath } from './graphics-path';
-import { Polygon } from '../../math/shape/polygon';
+import { Polygon } from '../../math';
 import type { ShapePath } from './shape-path';
 
 export type ContourPathCommand =

@@ -4,6 +4,8 @@ export * from './utils';
 export * from './value-getters';
 export * from './shape/build-line';
 export * from './shape/ellipse';
+export * from './shape/rectangle';
+export * from './shape/triangle';
 export * from './shape/poly-star';
 export * from './shape/circle';
 export * from './shape/polygon';

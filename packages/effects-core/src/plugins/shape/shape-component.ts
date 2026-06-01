@@ -8,21 +8,21 @@ import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { Maskable, MaterialProps } from '../../material';
 import { Material, MaskMode, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '..';
 import type { Renderer } from '../../render';
 import { GLSLVersion, Geometry } from '../../render';
 import type { GradientValue, StrokeAttributes } from '../../math';
-import { Polygon } from '../../math';
-import { buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
-import { RendererComponent } from '../../components/renderer-component';
+import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
+import type { ItemRenderer } from '../../components';
+import { RendererComponent } from '../../components';
 import type { Texture } from '../../texture/texture';
 import { glContext } from '../../gl';
 import vert from './shaders/shape.vert.glsl';
 import frag from './shaders/shape.frag.glsl';
-import type { ItemRenderer } from '../../components/base-render-component';
 import { TrimPath } from './trim-path';
 import { GraphicsPath } from './graphics-path';
 import type { ShapePath } from './shape-path';
+import type { BoundingBoxInfo } from '../interact/mesh-collider';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
