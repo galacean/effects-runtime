@@ -92,42 +92,44 @@ export class MaskProcessor {
     this.isMask = isMask;
     this.maskReferences = [];
 
-    if (!isMask) {
-      const seen = new Map<Maskable, boolean>();
+    if (isMask || references.length === 0) {
+      return;
+    }
 
-      for (const ref of references) {
-        const maskPath = ref.mask;
+    const seen = new Map<Maskable, boolean>();
 
-        if (!maskPath) {
-          continue;
-        }
+    for (const ref of references) {
+      const maskPath = ref.mask;
 
-        const maskable = engine.findObject<Maskable>(maskPath);
-
-        if (!maskable) {
-          console.warn(`Mask reference not found: ${JSON.stringify(maskPath)}. Skipping.`);
-          continue;
-        }
-
-        const inverted = ref.inverted ?? false;
-        const existingInverted = seen.get(maskable);
-
-        if (existingInverted !== undefined) {
-          if (existingInverted !== inverted) {
-            console.warn('Same maskable referenced with conflicting inverted flags; keeping the first occurrence.');
-          }
-          continue;
-        }
-
-        if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
-          console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
-
-          break;
-        }
-
-        seen.set(maskable, inverted);
-        this.maskReferences.push({ maskable, inverted });
+      if (!maskPath) {
+        continue;
       }
+
+      const maskable = engine.findObject<Maskable>(maskPath);
+
+      if (!maskable) {
+        console.warn(`Mask reference not found: ${JSON.stringify(maskPath)}. Skipping.`);
+        continue;
+      }
+
+      const inverted = ref.inverted ?? false;
+      const existingInverted = seen.get(maskable);
+
+      if (existingInverted !== undefined) {
+        if (existingInverted !== inverted) {
+          console.warn('Same maskable referenced with conflicting inverted flags; keeping the first occurrence.');
+        }
+        continue;
+      }
+
+      if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
+        console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+
+        break;
+      }
+
+      seen.set(maskable, inverted);
+      this.maskReferences.push({ maskable, inverted });
     }
   }
 
