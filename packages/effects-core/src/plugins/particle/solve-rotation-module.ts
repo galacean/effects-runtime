@@ -1,3 +1,4 @@
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import type { ValueGetter } from '../../math';
 import { RandomValue } from '../../math';
 import type { ParticleDataBuffer } from './particle-data-buffer';
@@ -36,6 +37,8 @@ export class SolveRotationModule extends ParticleModule {
     const currentTime = ctx.currentTime;
     const d2r = Math.PI / 180;
     const rol = this.rotationOverLifetime;
+    const rotMat = tempRotMat;
+    const tempMat = tempRotMat2;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
@@ -78,20 +81,22 @@ export class SolveRotationModule extends ParticleModule {
       const sz = Math.sin(rzr);
       const cz = Math.cos(rzr);
 
-      // 老代码用转置约定: set(cz,-sz,0, sz,cz,0, 0,0,1).multiply(Ry^T).multiply(Rx^T)
-      // 结果 = Rz^T * Ry^T * Rx^T，列主序存储
-      db.rotMatrix[i9] = cz * cy;
-      db.rotMatrix[i9 + 1] = -sz * cy;
-      db.rotMatrix[i9 + 2] = sy;
-      db.rotMatrix[i9 + 3] = sz * cx + cz * sy * sx;
-      db.rotMatrix[i9 + 4] = cz * cx - sz * sy * sx;
-      db.rotMatrix[i9 + 5] = -cy * sx;
-      db.rotMatrix[i9 + 6] = sz * sx - cz * sy * cx;
-      db.rotMatrix[i9 + 7] = cz * sx + sz * sy * cx;
-      db.rotMatrix[i9 + 8] = cy * cx;
+      // 复刻老代码的 Matrix3 运算链，保持完全相同的浮点中间值
+      rotMat.set(cz, -sz, 0, sz, cz, 0, 0, 0, 1);
+      rotMat.multiply(tempMat.set(cy, 0, sy, 0, 1, 0, -sy, 0, cy));
+      rotMat.multiply(tempMat.set(1, 0, 0, 0, cx, -sx, 0, sx, cx));
+
+      const e = rotMat.elements;
+
+      for (let c = 0; c < 9; c++) {
+        db.rotMatrix[i9 + c] = e[c];
+      }
     }
   }
 }
+
+const tempRotMat = new Matrix3();
+const tempRotMat2 = new Matrix3();
 
 function writeIdentity (db: ParticleDataBuffer, offset: number): void {
   db.rotMatrix[offset] = 1;

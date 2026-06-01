@@ -16,8 +16,6 @@ import { Transform } from '../../transform';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import type { Burst } from './burst';
-import type { LinkNode } from './link';
-import { Link } from './link';
 import { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import type { ParticleModuleContext } from './particle-module';
@@ -126,9 +124,6 @@ type ParticleInteraction = {
 export interface ParticleSystemProps extends spec.ParticleContent {
 }
 
-// 粒子节点包含的数据
-export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
-
 @effectsClass(spec.DataType.ParticleSystem)
 export class ParticleSystem extends Component implements Maskable {
   renderer: ParticleSystemRenderer;
@@ -147,7 +142,8 @@ export class ParticleSystem extends Component implements Maskable {
 
   private generatedCount: number;
   private loopStartTime: number;
-  private particleLink: Link<ParticleContent>;
+  private aliveCount = 0;
+  private nextSlotIndex = 0;
   private started: boolean;
   private ended: boolean;
   private spawnRateModule: SpawnRateModule;
@@ -155,9 +151,10 @@ export class ParticleSystem extends Component implements Maskable {
   private upDirectionWorld: Vector3 | null;
   private uvs: number[][];
   private basicTransform: ParticleTransform;
-  private clickedPoint: LinkNode<ParticleContent>;
+  private clickedPointIndex = -1;
 
   private dataBuffer: ParticleDataBuffer | null = null;
+  private pointRefs: (Point | null)[] = [];
   private solveVelocityModule: SolveVelocityModule | null = null;
   private solveRotationModule: SolveRotationModule | null = null;
   private solveLinearMoveModule: SolveLinearMoveModule | null = null;
@@ -186,7 +183,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   get particleCount () {
-    return this.particleLink.length;
+    return this.aliveCount;
   }
 
   /**
@@ -267,25 +264,44 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   private addParticle (point: Point, maxCount: number) {
-    const link = this.particleLink;
-    const linkContent: ParticleContent = [point.delay + point.lifetime, 0, point.delay, point];
-    let pointIndex;
+    const db = this.dataBuffer;
 
-    if (link.length < maxCount) {
-      pointIndex = linkContent[1] = link.length;
-    } else {
-      const first = link.first;
-
-      link.removeNode(first);
-      pointIndex = linkContent[1] = first.content[1];
+    if (!db) {
+      return;
     }
-    link.pushNode(linkContent);
+    let pointIndex: number;
+
+    if (this.nextSlotIndex < maxCount) {
+      pointIndex = this.nextSlotIndex++;
+    } else {
+      pointIndex = this.findOldestSlot(db);
+    }
+
+    db.alive[pointIndex] = 1;
+    db.expiry[pointIndex] = point.delay + point.lifetime;
+    this.aliveCount = Math.min(this.aliveCount + 1, maxCount);
+
+    this.pointRefs[pointIndex] = point;
     this.renderer.setParticlePoint(pointIndex, point);
     this.writePointToDataBuffer(pointIndex, point);
     this.clearPointTrail(pointIndex);
     if (this.transform.parentTransform) {
       this.renderer.setTrailStartPosition(pointIndex, this.transform.parentTransform.position.clone());
     }
+  }
+
+  private findOldestSlot (db: ParticleDataBuffer): number {
+    let minIdx = 0;
+    let minExpiry = Infinity;
+
+    for (let i = 0; i < db.maxCount; i++) {
+      if (db.alive[i] && db.expiry[i] <= minExpiry) {
+        minExpiry = db.expiry[i];
+        minIdx = i;
+      }
+    }
+
+    return minIdx;
   }
 
   setVisible (visible: boolean) {
@@ -315,11 +331,13 @@ export class ParticleSystem extends Component implements Maskable {
     this.loopStartTime = 0;
     this.spawnRateModule = new SpawnRateModule(this.emission.rateOverTime);
     this.generatedCount = 0;
-    this.particleLink = new Link((a, b) => a[0] - b[0]);
+    this.aliveCount = 0;
+    this.nextSlotIndex = 0;
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
     this.ended = false;
     this.dataBuffer?.clear();
+    this.pointRefs.length = 0;
   }
 
   override onStart (): void {
@@ -351,12 +369,13 @@ export class ParticleSystem extends Component implements Maskable {
     this.initEmitterTransform();
 
     this.item.on('click', ()=>{
-      if (this.interaction?.behavior === spec.ParticleInteractionBehavior.removeParticle) {
-        const pointIndex = this.clickedPoint.content[1];
-
-        this.renderer.removeParticlePoint(pointIndex);
-        this.clearPointTrail(pointIndex);
-        this.clickedPoint.content = [0] as unknown as ParticleContent;
+      if (this.interaction?.behavior === spec.ParticleInteractionBehavior.removeParticle && this.clickedPointIndex >= 0) {
+        this.renderer.removeParticlePoint(this.clickedPointIndex);
+        this.clearPointTrail(this.clickedPointIndex);
+        if (this.dataBuffer) {
+          this.dataBuffer.expiry[this.clickedPointIndex] = 0;
+        }
+        this.clickedPointIndex = -1;
       }
     });
   }
@@ -385,20 +404,26 @@ export class ParticleSystem extends Component implements Maskable {
 
       this.executeModules(delta, now);
 
-      const link = this.particleLink;
       const emitterLifetime = (now - loopStartTime) / this.item.duration;
       const timePassed = this.timePassed;
       let trailUpdated = false;
       const updateTrail = () => {
         if (this.trails && !trailUpdated) {
           trailUpdated = true;
-          link.forEach(([time, pointIndex, delay, point]) => {
-            if (time < timePassed) {
-              this.clearPointTrail(pointIndex);
-            } else if (timePassed > delay) {
-              this.updatePointTrail(pointIndex, emitterLifetime, point, delay);
+          const trailDb = this.dataBuffer!;
+
+          for (let ti = 0; ti < trailDb.activeCount; ti++) {
+            if (!trailDb.alive[ti]) {
+              continue;
             }
-          });
+            const pt = this.pointRefs[ti];
+
+            if (trailDb.expiry[ti] < timePassed) {
+              this.clearPointTrail(ti);
+            } else if (pt && timePassed > pt.delay) {
+              this.updatePointTrail(ti, emitterLifetime, pt, pt.delay);
+            }
+          }
         }
       };
 
@@ -415,9 +440,22 @@ export class ParticleSystem extends Component implements Maskable {
 
           this.updateEmitterTransform(timePassed);
           const shouldSkipGenerate = () => {
-            const first = link.first;
+            if (this.emissionStopped) {
+              return true;
+            }
+            if (this.aliveCount < maxCount) {
+              return false;
+            }
+            const db = this.dataBuffer!;
+            let minExp = Infinity;
 
-            return this.emissionStopped || (link.length === maxCount && first && (first.content[0] - loopStartTime) > timePassed);
+            for (let s = 0; s < db.maxCount; s++) {
+              if (db.alive[s] && db.expiry[s] < minExp) {
+                minExp = db.expiry[s];
+              }
+            }
+
+            return (minExp - loopStartTime) > timePassed;
           };
 
           for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
@@ -473,15 +511,17 @@ export class ParticleSystem extends Component implements Maskable {
           this.spawnRateModule.adjustForLoop(duration);
           this.time -= duration;
           emission.bursts.forEach(b => b.reset());
-          this.particleLink.forEach(content => {
-            content[0] -= duration;
-            content[2] -= duration;
-
-            // TODO 优化粒子销毁逻辑
-            if (content[3]) {
-              content[3].delay -= duration;
+          if (this.dataBuffer) {
+            for (let li = 0; li < this.dataBuffer.activeCount; li++) {
+              if (this.dataBuffer.alive[li]) {
+                this.dataBuffer.expiry[li] -= duration;
+                this.dataBuffer.delay[li] -= duration;
+                if (this.pointRefs[li]) {
+                  this.pointRefs[li]!.delay -= duration;
+                }
+              }
             }
-          });
+          }
 
           this.renderer.minusTimeForLoop(duration);
           if (this.dataBuffer) {
@@ -519,38 +559,25 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   getParticleBoxes (): { center: Vector3, size: Vector3 }[] {
-    const link = this.particleLink;
-    const renderer = this.renderer;
+    const db = this.dataBuffer;
     const res: { center: Vector3, size: Vector3 }[] = [];
-    const maxCount = this.particleCount;
-    let counter = 0;
 
-    if (!(link && renderer)) {
+    if (!db || !this.renderer) {
       return res;
     }
-    let node = link.last;
-    let finish = false;
+    for (let i = 0; i < db.activeCount; i++) {
+      if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
+        continue;
+      }
+      const pt = this.pointRefs[i];
 
-    while (!finish) {
-      const currentTime = node.content[0];
-      const point = node.content[3];
-
-      if (currentTime > this.timePassed) {
-        const pos = this.getPointPosition(point);
+      if (pt) {
+        const pos = this.getPointPosition(pt);
 
         res.push({
           center: pos,
-          size: point.transform.scale,
+          size: pt.transform.scale,
         });
-        if (node.pre) {
-          node = node.pre;
-        } else {
-          finish = true;
-        }
-      }
-      counter++;
-      if (counter > maxCount) {
-        finish = true;
       }
     }
 
@@ -558,42 +585,33 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   raycast (options: ParticleSystemRayCastOptions): Vector3[] | undefined {
-    const link = this.particleLink;
-    const renderer = this.renderer;
+    const db = this.dataBuffer;
 
-    if (!(link && renderer)) {
+    if (!db || !this.renderer) {
       return;
     }
-    let node = link.last;
-    const hitPositions = [];
+    const hitPositions: Vector3[] = [];
     const temp = new Vector3();
-    let finish = false;
 
-    if (node && node.content) {
-      do {
-        const [currentTime,, _, point] = node.content;
+    for (let i = db.activeCount - 1; i >= 0; i--) {
+      if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
+        continue;
+      }
+      const pt = this.pointRefs[i];
 
-        if (currentTime > this.timePassed) {
-          const pos = this.getPointPosition(point);
-          const ray = options.ray;
-          let pass = false;
+      if (!pt) {
+        continue;
+      }
+      const pos = this.getPointPosition(pt);
+      const ray = options.ray;
 
-          if (ray) {
-            pass = !!ray.intersectSphere({
-              center: pos,
-              radius: options.radius,
-            }, temp);
-          }
-          if (pass) {
-            this.clickedPoint = node;
-            hitPositions.push(pos);
-            if (!options.multiple) {
-              finish = true;
-            }
-          }
+      if (ray && ray.intersectSphere({ center: pos, radius: options.radius }, temp)) {
+        this.clickedPointIndex = i;
+        hitPositions.push(pos);
+        if (!options.multiple) {
+          break;
         }
-        // @ts-expect-error
-      } while ((node = node.pre) && !finish);
+      }
     }
 
     return hitPositions;
@@ -646,15 +664,15 @@ export class ParticleSystem extends Component implements Maskable {
    * @params index - 粒子索引
    */
   getPointPositionByIndex (index: number): Vector3 | null {
-    const point = this.particleLink.getNodeByIndex(index);
+    const pt = this.pointRefs[index];
 
-    if (!point) {
+    if (!pt) {
       console.error('Get point error.');
 
       return null;
-    } else {
-      return this.getPointPosition(point.content[3]);
     }
+
+    return this.getPointPosition(pt);
   }
 
   /**

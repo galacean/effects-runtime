@@ -50,6 +50,13 @@ export class ParticleDataBuffer {
   /** 线性位移累计值 xyz，3 分量 */
   readonly linearMove: Float32Array;
 
+  // --- 生命周期管理 ---
+
+  /** 粒子存活标记，0=空闲 1=存活 */
+  readonly alive: Uint8Array;
+  /** 粒子过期时间 (delay + lifetime)，用于回收最老粒子。Float64 与老代码 Link 精度一致 */
+  readonly expiry: Float64Array;
+
   private _activeCount = 0;
 
   constructor (maxCount: number) {
@@ -75,6 +82,9 @@ export class ParticleDataBuffer {
     this.translation = new Float32Array(maxCount * 3);
     this.rotMatrix = new Float32Array(maxCount * 9);
     this.linearMove = new Float32Array(maxCount * 3);
+
+    this.alive = new Uint8Array(maxCount);
+    this.expiry = new Float64Array(maxCount);
   }
 
   get activeCount (): number {
@@ -90,5 +100,6 @@ export class ParticleDataBuffer {
     this.translation.fill(0);
     this.rotMatrix.fill(0);
     this.linearMove.fill(0);
+    this.alive.fill(0);
   }
 }
