@@ -1,8 +1,9 @@
-import { spec, VFXItem } from '@galacean/effects';
+import { Component, spec, TextComponent, VFXItem } from '@galacean/effects';
 import type { Composition } from '@galacean/effects';
 import {
   ProAccelerationForceModule,
   ProAddVelocityInConeModule,
+  ProCalculateAccurateVelocityModule,
   ProCameraOffsetModule,
   ProCurveColor,
   ProCurveFloat,
@@ -14,12 +15,16 @@ import {
   ProDragModule,
   ProEmitterPropertiesModule,
   ProGravityForceModule,
+  ProInheritVelocityModule,
   ProInitializeParticleModule,
   ProParticleSystemComponent,
   ProParticleSystemRendererComponent,
+  ProRibbonFacingMode,
   ProRibbonRenderer,
   ProRibbonRendererProperties,
   ProRibbonTessellationMode,
+  ProRibbonTextureMode,
+  ProRibbonWidthScaleModule,
   ProRotateAroundPointModule,
   ProSampleParticlesFromOtherEmitterModule,
   ProScaleColorModule,
@@ -36,6 +41,7 @@ import {
   ProSubUVAnimationModule,
   ProSubUVMode,
   ProUpdateAgeModule,
+  ProWindForceModule,
 } from '@galacean/effects-plugin-particle-system-pro';
 import { Selection } from './core/selection';
 
@@ -45,6 +51,12 @@ type DemoConfig = {
   configureModules: (system: ProParticleSystemComponent) => void,
   configureRenderer: (component: ProParticleSystemRendererComponent, engine: Composition['engine']) => void,
   selectOnSpawn?: boolean,
+  /**
+   * 在 item 构建完成并挂到 pluginRoot 之后调用，用来挂额外组件（如让发射器
+   * 自身运动以驱动 InheritVelocity 的轨道组件）。在 toData/fromData 往返之后执行，
+   * 所以挂的组件不会被序列化。
+   */
+  postConfigure?: (item: VFXItem, composition: Composition) => void,
 };
 
 /**
@@ -147,66 +159,133 @@ export function spawnProTrailPerSourceDemo (composition: Composition): VFXItem {
 }
 
 export function spawnProDemoGallery (composition: Composition): VFXItem[] {
+  // 每行 6 个，间距 5.4 水平 × 5.5 垂直，给每个 demo 足够活动空间
+  const colX = [-13.5, -8.1, -2.7, 2.7, 8.1, 13.5];
+  const rowY = [2.75, -2.75, -8.25];
+
   const items = [
+    // ── row 0 ──
     spawnConfiguredDemo(composition, {
       name: 'pro-particle-demo',
-      position: [-6.6, 1.5, 0],
+      position: [colX[0], rowY[0], 0],
       configureModules: configureFountainModules,
       configureRenderer: configureFountainRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-spark-demo',
-      position: [-2.2, 1.5, 0],
+      position: [colX[1], rowY[0], 0],
       configureModules: configureSparkModules,
       configureRenderer: configureSparkRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-ribbon-demo',
-      position: [2.4, 1.35, 0],
+      position: [colX[2], rowY[0], 0],
       configureModules: configureRibbonModules,
       configureRenderer: configureRibbonRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-orbit-smoke-demo',
-      position: [6.1, 1.45, 0],
+      position: [colX[3], rowY[0], 0],
       configureModules: configureOrbitSmokeModules,
       configureRenderer: configureOrbitSmokeRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-shock-ring-demo',
-      position: [-6.6, -2.5, 0],
+      position: [colX[4], rowY[0], 0],
       configureModules: configureShockRingModules,
       configureRenderer: configureShockRingRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-noise-field-demo',
-      position: [-2.2, -2.5, 0],
+      position: [colX[5], rowY[0], 0],
       configureModules: configureNoiseFieldModules,
       configureRenderer: configureNoiseFieldRenderer,
     }),
+    // ── row 1 ──
     spawnConfiguredDemo(composition, {
       name: 'pro-acceleration-column-demo',
-      position: [2.2, -2.5, 0],
+      position: [colX[0], rowY[1], 0],
       configureModules: configureAccelerationColumnModules,
       configureRenderer: configureAccelerationColumnRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-flipbook-burst-demo',
-      position: [5.8, -2.1, 0],
+      position: [colX[1], rowY[1], 0],
       configureModules: configureFlipbookBurstModules,
       configureRenderer: configureFlipbookBurstRenderer,
     }),
     spawnConfiguredDemo(composition, {
       name: 'pro-trail-per-source-demo',
-      position: [-6.6, -6.0, 0],
+      position: [colX[2], rowY[1], 0],
       configureModules: configureTrailPerSourceModules,
       configureRenderer: configureTrailPerSourceRenderer,
+    }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-autumn-gale-demo',
+      position: [colX[3], rowY[1], 0],
+      configureModules: configureAutumnGaleModules,
+      configureRenderer: configureAutumnGaleRenderer,
+    }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-plasma-conduit-demo',
+      position: [colX[4], rowY[1], 0],
+      configureModules: configurePlasmaConduitModules,
+      configureRenderer: configurePlasmaConduitRenderer,
+    }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-fireworks-finale-demo',
+      position: [colX[5], rowY[1], 0],
+      configureModules: configureFireworksFinaleModules,
+      configureRenderer: configureFireworksFinaleRenderer,
+    }),
+    // ── row 2 ──
+    spawnConfiguredDemo(composition, {
+      name: 'pro-comet-swarm-demo',
+      position: [colX[0], rowY[2], 0],
+      configureModules: configureCometSwarmModules,
+      configureRenderer: configureCometSwarmRenderer,
+      postConfigure: attachCometOrbit,
+    }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-arcane-rune-demo',
+      position: [colX[1], rowY[2], 0],
+      configureModules: configureArcaneRuneModules,
+      configureRenderer: configureArcaneRuneRenderer,
+      postConfigure: tiltToGroundPlane,
+    }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-spiral-galaxy-demo',
+      position: [colX[2], rowY[2], 0],
+      configureModules: configureSpiralGalaxyModules,
+      configureRenderer: configureSpiralGalaxyRenderer,
+    }),
+    spawnConfiguredDemo(composition, {
+      name: 'pro-dragon-breath-demo',
+      position: [colX[3], rowY[2], 0],
+      configureModules: configureDragonBreathModules,
+      configureRenderer: configureDragonBreathRenderer,
     }),
   ];
 
   Selection.select(items[0]);
 
   return items;
+}
+
+/** comet-swarm 专用：给彗核 item 挂轨道运动组件 + 世界空间发射。 */
+function attachCometOrbit (item: VFXItem): void {
+  const mover = item.addComponent(ProDemoOrbitMover);
+
+  mover.baseX = item.transform.position.x;
+  mover.baseY = item.transform.position.y;
+  mover.baseZ = item.transform.position.z;
+  mover.radius = 1.4;
+  mover.angularSpeed = Math.PI * 0.7; // ~0.35 圈/秒，切向速度 ≈ 3.1 单位/秒
+}
+
+/** arcane-rune 专用：把符文盘绕 X 轴后仰，做出地面透视铺开的魔法阵观感。 */
+function tiltToGroundPlane (item: VFXItem): void {
+  item.transform.setRotation(-58, 0, 0);
 }
 
 function spawnConfiguredDemo (composition: Composition, config: DemoConfig): VFXItem {
@@ -256,28 +335,86 @@ function spawnConfiguredDemo (composition: Composition, config: DemoConfig): VFX
 
   item.setParent(composition.pluginRoot);
 
+  // 在格子固定上方添加名称标签（独立 item，不跟随粒子移动）
+  const labelItem = new VFXItem(engine);
+
+  labelItem.name = config.name + '-label';
+  labelItem.duration = 99999;
+  labelItem.endBehavior = spec.EndBehavior.forward;
+  // 标签固定在格子顶部，不做粒子的子物体
+  labelItem.transform.setPosition(config.position[0], config.position[1] + 2.4, config.position[2]);
+
+  const textComp = labelItem.addComponent(TextComponent);
+  const labelOptions: spec.TextContentOptions = {
+    text: config.name.replace('pro-', '').replace('-demo', ''),
+    fontFamily: 'sans-serif',
+    fontSize: 36,
+    textColor: [0.75, 0.8, 0.85, 1],
+    fontWeight: spec.TextWeight.normal,
+    letterSpace: 0,
+    textAlign: spec.TextAlignment.middle,
+    fontStyle: spec.FontStyle.normal,
+    textWidth: 400,
+    textHeight: 42,
+    lineHeight: 38,
+  };
+
+  textComp.updateWithOptions(labelOptions);
+  textComp.renderText(labelOptions);
+  labelItem.setParent(composition.pluginRoot);
+
   if (config.selectOnSpawn) {
     Selection.select(item);
   }
 
+  config.postConfigure?.(item, composition);
+
   return item;
+}
+
+/**
+ * 让宿主 VFXItem 沿圆周轨道平移的小组件。
+ *
+ * 配合 world simulation space，使发射器自身产生非零 emitterVelocity——
+ * ProParticleSystemComponent.onUpdate 每帧从 worldMatrix 平移增量算出该速度，
+ * 进而驱动 ProInheritVelocityModule：移动的"彗核"把新生火花沿切线方向甩出，
+ * 形成绕轨道飘散的彗尾。
+ */
+class ProDemoOrbitMover extends Component {
+  baseX = 0;
+  baseY = 0;
+  baseZ = 0;
+  radius = 0.7;
+  /** 角速度（弧度/秒） */
+  angularSpeed = Math.PI;
+
+  private angle = 0;
+
+  override onUpdate (dt: number): void {
+    this.angle += this.angularSpeed * (dt / 1000);
+    this.transform.setPosition(
+      this.baseX + Math.cos(this.angle) * this.radius,
+      this.baseY + Math.sin(this.angle) * this.radius,
+      this.baseZ,
+    );
+  }
 }
 
 function configureFountainModules (system: ProParticleSystemComponent): void {
   const spawnRate = new ProSpawnRateModule();
 
-  spawnRate.rate = ProDistributionFloat.fromConstant(72);
+  spawnRate.rate = ProDistributionFloat.fromConstant(100);
 
   const spawnBurst = new ProSpawnBurstModule();
 
-  spawnBurst.count = 72;
+  spawnBurst.count = 100;
   spawnBurst.spawnTime = 0;
 
   const initParticle = new ProInitializeParticleModule();
 
   initParticle.lifetime = ProDistributionFloat.fromRange(1.0, 1.6);
   initParticle.startColor = ProDistributionColor.fromConstant(1.0, 0.84, 0.42, 1.0);
-  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.18);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.24);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
   initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
@@ -328,18 +465,18 @@ function configureFountainModules (system: ProParticleSystemComponent): void {
 function configureSparkModules (system: ProParticleSystemComponent): void {
   const spawnRate = new ProSpawnRateModule();
 
-  spawnRate.rate = ProDistributionFloat.fromConstant(32);
+  spawnRate.rate = ProDistributionFloat.fromConstant(55);
 
   const spawnBurst = new ProSpawnBurstModule();
 
-  spawnBurst.count = 40;
+  spawnBurst.count = 60;
   spawnBurst.spawnTime = 0;
 
   const initParticle = new ProInitializeParticleModule();
 
-  initParticle.lifetime = ProDistributionFloat.fromRange(0.55, 0.9);
+  initParticle.lifetime = ProDistributionFloat.fromRange(0.6, 1.0);
   initParticle.startColor = ProDistributionColor.fromRange([1.0, 0.65, 0.2, 1.0], [1.0, 0.95, 0.45, 1.0]);
-  initParticle.startSize = ProDistributionVector2.fromRange([0.09, 0.09], [0.15, 0.15], true);
+  initParticle.startSize = ProDistributionVector2.fromRange([0.12, 0.12], [0.2, 0.2], true);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
   initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
@@ -379,21 +516,20 @@ function configureSparkModules (system: ProParticleSystemComponent): void {
 function configureRibbonModules (system: ProParticleSystemComponent): void {
   const spawnRate = new ProSpawnRateModule();
 
-  spawnRate.rate = ProDistributionFloat.fromConstant(32);
+  spawnRate.rate = ProDistributionFloat.fromConstant(48);
 
   const initParticle = new ProInitializeParticleModule();
 
-  // This demo keeps ribbon particle lifetime constant so Color Over Life stays visually continuous along the trail.
-  initParticle.lifetime = ProDistributionFloat.fromConstant(1.05);
+  initParticle.lifetime = ProDistributionFloat.fromConstant(1.3);
   initParticle.startColor = ProDistributionColor.fromConstant(0.35, 0.92, 1.0, 1.0);
-  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.42);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.55);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
 
   const velocity = new ProAddVelocityInConeModule();
 
   velocity.coneAxis = [0, 1, 0];
-  velocity.coneAngle = Math.PI / 8;
-  velocity.speed = ProDistributionFloat.fromRange(0.9, 1.25);
+  velocity.coneAngle = Math.PI / 7;
+  velocity.speed = ProDistributionFloat.fromRange(1.1, 1.6);
 
   const gravity = new ProGravityForceModule();
 
@@ -419,18 +555,16 @@ function configureRibbonModules (system: ProParticleSystemComponent): void {
 function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
   const spawnRate = new ProSpawnRateModule();
 
-  spawnRate.rate = ProDistributionFloat.fromConstant(22);
+  spawnRate.rate = ProDistributionFloat.fromConstant(36);
 
   const initParticle = new ProInitializeParticleModule();
 
-  initParticle.lifetime = ProDistributionFloat.fromRange(1.2, 1.8);
+  initParticle.lifetime = ProDistributionFloat.fromRange(1.4, 2.0);
   initParticle.startColor = ProDistributionColor.fromRange([0.82, 0.86, 0.96, 0.82], [1.0, 1.0, 1.0, 0.96]);
-  initParticle.startSize = ProDistributionVector2.fromRange([0.12, 0.12], [0.22, 0.22], true);
-  // 小范围散布让每个粒子绕各自的 initialPosition 转，叠成一圈有厚度的烟雾环；
-  // RotateAroundPoint 现在用绝对 radius，不再依赖 initialPosition 距离
+  initParticle.startSize = ProDistributionVector2.fromRange([0.3, 0.3], [0.55, 0.55], true);
   initParticle.positionOrigin = ProDistributionVector3.fromRange(
-    [-0.08, 0, -0.08],
-    [0.08, 0, 0.08],
+    [-0.12, 0, -0.12],
+    [0.12, 0, 0.12],
   );
   initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
@@ -449,7 +583,7 @@ function configureOrbitSmokeModules (system: ProParticleSystemComponent): void {
   const rotateAroundPoint = new ProRotateAroundPointModule();
 
   rotateAroundPoint.rate = ProDistributionFloat.fromRange(60, 120);
-  rotateAroundPoint.radius = ProDistributionFloat.fromRange(0.25, 0.4);
+  rotateAroundPoint.radius = ProDistributionFloat.fromRange(0.7, 1.2);
   rotateAroundPoint.phase = ProDistributionFloat.fromRange(0, 360);
 
   const rotationRate = new ProSpriteRotationRateModule();
@@ -495,22 +629,22 @@ function configureShockRingModules (system: ProParticleSystemComponent): void {
 
   const spawnBurst = new ProSpawnBurstModule();
 
-  spawnBurst.count = 96;
+  spawnBurst.count = 140;
   spawnBurst.spawnTime = 0;
 
   const initParticle = new ProInitializeParticleModule();
 
   initParticle.lifetime = ProDistributionFloat.fromConstant(1.15);
   initParticle.startColor = ProDistributionColor.fromConstant(0.25, 0.6, 0.7, 0.75);
-  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.24);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.4);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
   initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const shapeLocation = new ProShapeLocationModule();
 
   shapeLocation.shape = 'ring';
-  shapeLocation.ringRadius = 0.2;
-  shapeLocation.ringThickness = 0.02;
+  shapeLocation.ringRadius = 0.5;
+  shapeLocation.ringThickness = 0.06;
 
   const cameraOffset = new ProCameraOffsetModule();
 
@@ -520,7 +654,7 @@ function configureShockRingModules (system: ProParticleSystemComponent): void {
 
   velocity.coneAxis = [0, 1, 0];
   velocity.coneAngle = Math.PI / 2.2;
-  velocity.speed = ProDistributionFloat.fromRange(0.18, 0.38);
+  velocity.speed = ProDistributionFloat.fromRange(0.3, 0.6);
 
   const forces = new ProSolveForcesAndVelocityModule();
 
@@ -566,14 +700,14 @@ function configureNoiseFieldModules (system: ProParticleSystemComponent): void {
 
   initParticle.lifetime = ProDistributionFloat.fromRange(2.4, 3.1);
   initParticle.startColor = ProDistributionColor.fromRange([0.72, 0.9, 1.0, 0.78], [1.0, 1.0, 1.0, 1.0]);
-  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.28);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.38);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
   initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
   const shapeLocation = new ProShapeLocationModule();
 
   shapeLocation.shape = 'sphere';
-  shapeLocation.sphereMin = 0.02;
+  shapeLocation.sphereMin = 0.04;
   shapeLocation.sphereMax = 0.11;
 
   const velocity = new ProAddVelocityInConeModule();
@@ -637,23 +771,23 @@ function configureAccelerationColumnModules (system: ProParticleSystemComponent)
 
   initParticle.lifetime = ProDistributionFloat.fromRange(1.3, 1.9);
   initParticle.startColor = ProDistributionColor.fromRange([0.4, 0.96, 0.86, 0.94], [0.82, 1.0, 0.94, 1.0]);
-  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.22);
-  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.36);
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, -0.5, 0);
 
   const shapeLocation = new ProShapeLocationModule();
 
   shapeLocation.shape = 'plane';
-  shapeLocation.planeSize = [0.08, 0.08];
+  shapeLocation.planeSize = [0.2, 0.2];
 
   const cameraOffset = new ProCameraOffsetModule();
 
-  cameraOffset.offset = ProDistributionFloat.fromRange(-0.16, -0.02);
+  cameraOffset.offset = ProDistributionFloat.fromRange(-0.22, -0.05);
 
   const velocity = new ProAddVelocityInConeModule();
 
   velocity.coneAxis = [0, 1, 0];
-  velocity.coneAngle = Math.PI / 16;
-  velocity.speed = ProDistributionFloat.fromRange(0.3, 0.5);
+  velocity.coneAngle = Math.PI / 12;
+  velocity.speed = ProDistributionFloat.fromRange(0.5, 0.9);
 
   const acceleration = new ProAccelerationForceModule();
 
@@ -706,7 +840,7 @@ function configureFlipbookBurstModules (system: ProParticleSystemComponent): voi
 
   initParticle.lifetime = ProDistributionFloat.fromRange(1.8, 2.5);
   initParticle.startColor = ProDistributionColor.fromConstant(1.0, 0.85, 0.55, 0.95);
-  initParticle.startSize = ProDistributionVector2.fromRange([0.7, 0.7], [1.0, 1.0], true);
+  initParticle.startSize = ProDistributionVector2.fromRange([1.0, 1.0], [1.6, 1.6], true);
   initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
   initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
 
@@ -760,29 +894,27 @@ function configureTrailPerSourceModules (system: ProParticleSystemComponent): vo
 
   srcInit.lifetime = ProDistributionFloat.fromRange(1.8, 2.4);
   srcInit.startColor = ProDistributionColor.fromConstant(1.0, 0.95, 0.55, 1.0);
-  srcInit.startSize = ProDistributionVector2.fromUniformConstant(0.14);
+  srcInit.startSize = ProDistributionVector2.fromUniformConstant(0.22);
   srcInit.positionOrigin = ProDistributionVector3.fromConstant(0, 0, 0);
   source.addModule(srcInit);
 
   const srcShape = new ProShapeLocationModule();
 
   srcShape.shape = 'sphere';
-  srcShape.sphereMin = 0.02;
-  srcShape.sphereMax = 0.08;
+  srcShape.sphereMin = 0.03;
+  srcShape.sphereMax = 0.12;
   source.addModule(srcShape);
 
   const srcVel = new ProAddVelocityInConeModule();
 
   srcVel.coneAxis = [0, 1, 0];
   srcVel.coneAngle = Math.PI / 3;
-  srcVel.speed = ProDistributionFloat.fromRange(0.3, 0.45);
+  srcVel.speed = ProDistributionFloat.fromRange(0.45, 0.7);
   source.addModule(srcVel);
 
   const srcCurl = new ProCurlNoiseForceModule();
 
-  // amplitude 现在是位移速度（pos += curl·amp·dt）；0.3 让 source 蜿蜒飘动，
-  // 拖出有形状的 trail，又不至于飘出包围盒
-  srcCurl.amplitude = 0.3;
+  srcCurl.amplitude = 0.5;
   srcCurl.frequency = 0.85;
   source.addModule(srcCurl);
 
@@ -944,7 +1076,7 @@ function configureTrailPerSourceRenderer (component: ProParticleSystemRendererCo
 
   trailProps.blending = spec.BlendingMode.ALPHA;
   // 细带：width = Size.x(0.12) * widthScale(0.35) ≈ 0.04，避免 ribbon 过粗糊成一片
-  trailProps.widthScale = 0.35;
+  trailProps.widthScale = 0.6;
   // Catmull-Rom 细分让低 spawn 率下的 trail 平滑不折线
   trailProps.tessellationMode = ProRibbonTessellationMode.Automatic;
   // useRibbonId 已移除：多 ribbon 检测改为通过 accessor.ribbonId.isValid 自动判断
@@ -952,6 +1084,690 @@ function configureTrailPerSourceRenderer (component: ProParticleSystemRendererCo
 
   component.addRenderer(trailRenderer);
   applyGeneratedTexture(trailRenderer, 'energy-ribbon', createProceduralEnergyTrailCanvas, 'energy trail');
+}
+
+type ProDemoKeyframe = { time: number, value: number, inTangent: number, outTangent: number, interpMode: 'linear' };
+
+/** 线性关键帧速记，给 ProCurveFloat.fromKeyframes 构造多段渐变。 */
+function kf (time: number, value: number): ProDemoKeyframe {
+  return { time, value, inTangent: 0, outTangent: 0, interpMode: 'linear' };
+}
+
+function normalize3 (x: number, y: number, z: number): [number, number, number] {
+  const len = Math.hypot(x, y, z) || 1;
+
+  return [x / len, y / len, z / len];
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Autumn Gale —— WindForce + Box 形状 + directSet SubUV + viewDepth 排序
+//  落叶从顶部宽板飘落，逐叶不同的横向阵风把它们吹斜，curl 湍流让其翻飞，
+//  每片锁定 4 种剪影之一。唯一使用 ALPHA（不发光）的新 demo。
+// ─────────────────────────────────────────────────────────────────────────
+function configureAutumnGaleModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  emitterProps.maxParticleCount = 200;
+  emitterProps.warmupTime = 0.8;
+
+  const spawnRate = new ProSpawnRateModule();
+
+  spawnRate.rate = ProDistributionFloat.fromConstant(28);
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromRange(2.0, 2.8);
+  initParticle.startColor = ProDistributionColor.fromRange([0.55, 0.16, 0.03, 1.0], [0.95, 0.72, 0.12, 1.0]);
+  initParticle.startSize = ProDistributionVector2.fromRange([0.18, 0.18], [0.32, 0.32], true);
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(0, 1.2, 0);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+
+  const shapeLocation = new ProShapeLocationModule();
+
+  shapeLocation.shape = 'box';
+  shapeLocation.boxSize = [1.6, 0.2, 0.4];
+
+  const velocity = new ProAddVelocityInConeModule();
+
+  velocity.velocityType = 'linear';
+  velocity.linearVelocity = ProDistributionVector3.fromConstant(0, -0.5, 0);
+  velocity.linearVelocityScale = ProDistributionVector3.fromRange([0.7, 0.7, 0.3], [1.3, 1.2, 0.3]);
+
+  const gravity = new ProGravityForceModule();
+
+  gravity.gravity = ProDistributionVector3.fromConstant(0, -0.5, 0);
+
+  const wind = new ProWindForceModule();
+
+  // wind 直接位移不被 drag 衰减: 0.2 * 2.8s ≈ 0.56 单位最大横漂
+  wind.wind = ProDistributionVector3.fromRange([0.1, 0, -0.06], [0.2, 0, 0.06]);
+
+  const drag = new ProDragModule();
+
+  drag.drag = ProDistributionFloat.fromRange(0.3, 0.7);
+
+  const curlNoise = new ProCurlNoiseForceModule();
+
+  curlNoise.amplitude = 0.2;
+  curlNoise.frequency = 0.55;
+
+  const forces = new ProSolveForcesAndVelocityModule();
+
+  const rotationRate = new ProSpriteRotationRateModule();
+
+  rotationRate.rate = ProDistributionFloat.fromRange(-2.2, 2.2);
+
+  // 每片叶子在 spawn 时锁定 4 个剪影里的一个
+  const subUV = new ProSubUVAnimationModule();
+
+  subUV.mode = ProSubUVMode.DirectSet;
+  subUV.totalFrames = 4;
+
+  const scaleColor = new ProScaleColorModule();
+
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.fromKeyframes(
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 0), kf(0.15, 1), kf(0.8, 1), kf(1, 0)],
+  ));
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnRate);
+  system.addModule(initParticle);
+  system.addModule(shapeLocation);
+  system.addModule(velocity);
+  system.addModule(gravity);
+  system.addModule(wind);
+  system.addModule(drag);
+  system.addModule(curlNoise);
+  system.addModule(forces);
+  system.addModule(rotationRate);
+  system.addModule(subUV);
+  system.addModule(scaleColor);
+  system.addModule(updateAge);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Plasma Conduit —— RibbonWidthScale + ribbon velocity 朝向 + custom 细分 + tile 贴图
+//  一条横向流动的等离子能量束：用 writeRibbonWidth 写初始宽度，再用
+//  RibbonWidthScale 做中粗两端尖的纺锤形；CalculateAccurateVelocity 喂给
+//  ribbon 的速度朝向，Catmull-Rom 细分让束体平滑弯曲。
+// ─────────────────────────────────────────────────────────────────────────
+function configurePlasmaConduitModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  emitterProps.maxParticleCount = 400;
+
+  const spawnRate = new ProSpawnRateModule();
+
+  spawnRate.rate = ProDistributionFloat.fromConstant(130);
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromConstant(0.85);
+  initParticle.startColor = ProDistributionColor.fromConstant(0.2, 0.32, 0.45, 0.8);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.2);
+  initParticle.positionOrigin = ProDistributionVector3.fromConstant(-0.8, 0, 0);
+  // RibbonWidthScale 的硬依赖：必须开 writeRibbonWidth 写 InitialRibbonWidth，
+  // 否则 InitialRibbonWidth 为 0 → 输出宽度 0 → ribbon 不可见
+  initParticle.writeRibbonWidth = true;
+  initParticle.ribbonWidth = ProDistributionFloat.fromConstant(0.28);
+
+  const velocity = new ProAddVelocityInConeModule();
+
+  velocity.velocityType = 'linear';
+  // 行程 = v/drag * (1 - e^(-drag*t)) = 2.5/1.8 * (1-e^(-1.53)) ≈ 1.08; 加起始偏移总跨度 ~1.88 < 2.0
+  velocity.linearVelocity = ProDistributionVector3.fromConstant(2.5, 0, 0);
+  velocity.linearVelocityScale = ProDistributionVector3.fromRange([1, 0, 0], [1, 0, 0]);
+
+  const drag = new ProDragModule();
+
+  drag.drag = ProDistributionFloat.fromConstant(1.8);
+
+  const curlNoise = new ProCurlNoiseForceModule();
+
+  curlNoise.amplitude = 0.03;
+  curlNoise.frequency = 0.6;
+
+  const forces = new ProSolveForcesAndVelocityModule();
+
+  // ribbon velocity facing 需要真实速度 → 末端反算
+  const accurateVel = new ProCalculateAccurateVelocityModule();
+
+  // 纺锤形：沿生命周期 width 0.15 → 1.0 → 0.1
+  const widthScale = new ProRibbonWidthScaleModule();
+
+  widthScale.scale = ProDistributionFloat.fromCurve(ProCurveFloat.fromKeyframes([kf(0, 0.15), kf(0.5, 1.0), kf(1, 0.1)]));
+
+  const scaleColor = new ProScaleColorModule();
+
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.fromKeyframes(
+    [kf(0, 1), kf(1, 0.4)],
+    [kf(0, 1), kf(1, 0.7)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 0.2), kf(0.5, 1), kf(1, 0.2)],
+  ));
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnRate);
+  system.addModule(initParticle);
+  system.addModule(velocity);
+  system.addModule(drag);
+  system.addModule(curlNoise);
+  system.addModule(forces);
+  system.addModule(accurateVel);
+  system.addModule(widthScale);
+  system.addModule(scaleColor);
+  system.addModule(updateAge);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Fireworks Finale —— 多段 SpawnBurst + fromPoint 径向 + random SubUV + age 排序
+//  四批错峰绽放的球状烟花：极小球面散布给 fromPoint 一个方向基准，火花从
+//  中心径向爆开，受重力下坠、阻力悬停，random 切帧闪烁。
+// ─────────────────────────────────────────────────────────────────────────
+function configureFireworksFinaleModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  // duration > 0 + infinite → 每 3 秒重新触发整组 burst
+  emitterProps.duration = ProDistributionFloat.fromConstant(3.0);
+  emitterProps.maxParticleCount = 900;
+
+  const spawnBurst = new ProSpawnBurstModule();
+
+  // 多段错峰（单 demo 唯一用到多 burst 数组）
+  spawnBurst.bursts = [
+    { time: 0.0, count: 90 },
+    { time: 0.7, count: 110 },
+    { time: 1.4, count: 130 },
+    { time: 2.1, count: 150 },
+  ];
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromRange(1.1, 1.8);
+  // ADD 叠加 + bloom，颜色压暗避免过曝
+  initParticle.startColor = ProDistributionColor.fromRange([0.35, 0.06, 0.06, 0.8], [0.45, 0.4, 0.18, 0.8]);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.16);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+
+  // 极小球面散布，给 fromPoint 提供非退化的方向基准
+  const shapeLocation = new ProShapeLocationModule();
+
+  shapeLocation.shape = 'sphere';
+  shapeLocation.sphereMin = 0.04;
+  shapeLocation.sphereMax = 0.08;
+
+  // 从中心径向爆开
+  const velocity = new ProAddVelocityInConeModule();
+
+  velocity.velocityType = 'fromPoint';
+  velocity.pointOrigin = [0, 0, 0];
+  velocity.pointSpeed = ProDistributionFloat.fromRange(1.4, 2.2);
+
+  const gravity = new ProGravityForceModule();
+
+  gravity.gravity = ProDistributionVector3.fromConstant(0, -1.6, 0);
+
+  const drag = new ProDragModule();
+
+  drag.drag = ProDistributionFloat.fromConstant(0.7);
+
+  const forces = new ProSolveForcesAndVelocityModule();
+
+  // 快速随机切帧 → 闪烁
+  const subUV = new ProSubUVAnimationModule();
+
+  subUV.mode = ProSubUVMode.Random;
+  subUV.totalFrames = 4;
+  subUV.randomChangeInterval = 0.06;
+
+  const scaleColor = new ProScaleColorModule();
+
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.fromKeyframes(
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 0), kf(0.06, 1), kf(1, 0)],
+  ));
+
+  const scaleSize = new ProScaleSpriteSizeModule();
+
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(1.3, 0.4), ProCurveFloat.linear(1.3, 0.4));
+
+  const rotationRate = new ProSpriteRotationRateModule();
+
+  rotationRate.rate = ProDistributionFloat.fromRange(-2.5, 2.5);
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnBurst);
+  system.addModule(initParticle);
+  system.addModule(shapeLocation);
+  system.addModule(velocity);
+  system.addModule(gravity);
+  system.addModule(drag);
+  system.addModule(forces);
+  system.addModule(subUV);
+  system.addModule(scaleColor);
+  system.addModule(scaleSize);
+  system.addModule(rotationRate);
+  system.addModule(updateAge);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Comet Swarm —— InheritVelocity + CalculateAccurateVelocity（运动发射器 / 世界空间）
+//  彗核 item 绕小圈平移（ProDemoOrbitMover），world space 下发射器产生非零
+//  emitterVelocity，新生火花继承它沿切线甩出；CalculateAccurateVelocity 从净
+//  位移反算真实速度，让 velocity-facing 拖尾朝向真实运动方向。
+// ─────────────────────────────────────────────────────────────────────────
+function configureCometSwarmModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  emitterProps.simulationSpace = 'world';
+  emitterProps.maxParticleCount = 700;
+
+  const spawnRate = new ProSpawnRateModule();
+
+  spawnRate.rate = ProDistributionFloat.fromConstant(260);
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromRange(0.45, 0.85);
+  initParticle.startColor = ProDistributionColor.fromRange([0.25, 0.4, 0.55, 1.0], [0.4, 0.5, 0.58, 1.0]);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.18);
+
+  // 小范围球面散布，避免火花全挤在一个点
+  const shapeLocation = new ProShapeLocationModule();
+
+  shapeLocation.shape = 'sphere';
+  shapeLocation.sphereMin = 0.0;
+  shapeLocation.sphereMax = 0.06;
+
+  // 各向轻微随机喷射
+  const velocity = new ProAddVelocityInConeModule();
+
+  velocity.velocityType = 'inCone';
+  velocity.coneAxis = [0, 1, 0];
+  velocity.coneAngle = Math.PI; // 半球喷
+  velocity.speed = ProDistributionFloat.fromRange(0.25, 0.8);
+
+  // 继承彗核的世界运动速度（ParticleSpawn 阶段累加，必须在 AddVelocity 之后）
+  const inherit = new ProInheritVelocityModule();
+
+  inherit.velocityScale = [1.05, 1.05, 1.05];
+
+  const drag = new ProDragModule();
+
+  drag.drag = ProDistributionFloat.fromConstant(2.4);
+
+  const forces = new ProSolveForcesAndVelocityModule();
+
+  // 末端从净位移反算真实速度
+  const accurateVel = new ProCalculateAccurateVelocityModule();
+
+  const scaleColor = new ProScaleColorModule();
+
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.linear([1, 1, 1, 1], [0.2, 0.45, 1.0, 0]));
+
+  // 越快的火花拉得越长（读 accurateVel 后的真实速度）
+  const scaleSize = new ProScaleSizeBySpeedModule();
+
+  scaleSize.scaleDistribution = new ProDistributionVector2(
+    ProDistributionFloat.fromCurve(ProCurveFloat.linear(0.6, 1.8)),
+    ProDistributionFloat.fromCurve(ProCurveFloat.linear(0.6, 1.8)),
+    true,
+  );
+  scaleSize.velocityNorm = 1 / (3.3 * 3.3);
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnRate);
+  system.addModule(initParticle);
+  system.addModule(shapeLocation);
+  system.addModule(velocity);
+  system.addModule(inherit);
+  system.addModule(drag);
+  system.addModule(forces);
+  system.addModule(accurateVel);
+  system.addModule(scaleColor);
+  system.addModule(scaleSize);
+  system.addModule(updateAge);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Arcane Rune —— unaligned 朝向 + fixedRate SubUV + warmup + 透视地面符文环
+//  用 RotateAroundPoint（rotationAxis=[90,0,0] → 本地 XY 面）排出一圈缓慢自转
+//  的符文；item 后仰 58° 让整盘在地面透视铺开，unaligned 让符文与该平面共面、
+//  像地面贴花；fixedRate 序列帧让每个符文不停闪动。
+// ─────────────────────────────────────────────────────────────────────────
+function configureArcaneRuneModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  emitterProps.maxParticleCount = 220;
+  emitterProps.warmupTime = 2.0; // 启动即满阵
+  emitterProps.warmupTickDelta = 1 / 60;
+
+  const spawnRate = new ProSpawnRateModule();
+
+  spawnRate.rate = ProDistributionFloat.fromConstant(26);
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromRange(2.6, 3.4);
+  // ADD 叠加 + bloom，颜色压暗避免过曝
+  initParticle.startColor = ProDistributionColor.fromConstant(0.22, 0.42, 0.55, 1.0);
+  initParticle.startSize = ProDistributionVector2.fromUniformConstant(0.55);
+
+  // 用 RotateAroundPoint 在本地 XY 平面排出旋转符文环
+  const orbit = new ProRotateAroundPointModule();
+
+  orbit.rate = ProDistributionFloat.fromConstant(60); // 缓慢公转
+  orbit.radius = ProDistributionFloat.fromRange(1.5, 1.65);
+  orbit.phase = ProDistributionFloat.fromRange(0, 360);
+  orbit.rotationAxis = [90, 0, 0];
+
+  const rotationRate = new ProSpriteRotationRateModule();
+
+  rotationRate.rate = ProDistributionFloat.fromConstant(0.4);
+
+  // 循环序列帧：符文不停闪动（与生命周期无关）
+  const subUV = new ProSubUVAnimationModule();
+
+  subUV.mode = ProSubUVMode.FixedRate;
+  subUV.totalFrames = 9;
+  subUV.framesPerSecond = 6;
+
+  const scaleColor = new ProScaleColorModule();
+
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.fromKeyframes(
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 1), kf(1, 1)],
+    [kf(0, 0), kf(0.2, 1), kf(0.8, 1), kf(1, 0)],
+  ));
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnRate);
+  system.addModule(initParticle);
+  system.addModule(orbit);
+  system.addModule(rotationRate);
+  system.addModule(subUV);
+  system.addModule(scaleColor);
+  system.addModule(updateAge);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Spiral Galaxy —— Cylinder 形状 + 差速轨道 + 关键帧颜色 + distance 排序
+//  极薄圆柱盘做星点种子，RotateAroundPoint（face-on）用不同的角速度与半径把
+//  星点铺成旋转盘面，差速旋转把盘绞成旋臂；关键帧颜色给出白核→蓝臂→暗红尘。
+// ─────────────────────────────────────────────────────────────────────────
+function configureSpiralGalaxyModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  emitterProps.maxParticleCount = 1400;
+  emitterProps.warmupTime = 4.0; // 开场即转好的星系
+  emitterProps.warmupTickDelta = 1 / 60;
+
+  const spawnRate = new ProSpawnRateModule();
+
+  spawnRate.rate = ProDistributionFloat.fromConstant(300);
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromRange(3.5, 5.5);
+  // ADD 叠加 + bloom，星点压暗避免过曝（叠加后核心自然变亮）
+  initParticle.startColor = ProDistributionColor.fromConstant(0.42, 0.44, 0.5, 1.0);
+  initParticle.startSize = ProDistributionVector2.fromRange([0.06, 0.06], [0.15, 0.15], true);
+
+  // 极薄圆柱盘做星点种子（唯一 cylinder demo）；真正的盘面由轨道半径铺开
+  const shapeLocation = new ProShapeLocationModule();
+
+  shapeLocation.shape = 'cylinder';
+  shapeLocation.cylinderRadius = 0.12;
+  shapeLocation.cylinderHeight = 0.05;
+  shapeLocation.cylinderHeightMidpoint = 0.5;
+
+  // 差速旋转：每星各自的角速度/半径，phase 铺满整圈；face-on（XY 平面）
+  const orbit = new ProRotateAroundPointModule();
+
+  orbit.rate = ProDistributionFloat.fromRange(120, 320);
+  orbit.radius = ProDistributionFloat.fromRange(0.2, 1.95);
+  orbit.phase = ProDistributionFloat.fromRange(0, 360);
+  orbit.rotationAxis = [90, 0, 0];
+
+  const scaleColor = new ProScaleColorModule();
+
+  // 白核 → 蓝臂 → 暗红尘
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.fromKeyframes(
+    [kf(0, 1), kf(0.5, 0.85), kf(1, 0.9)],
+    [kf(0, 1), kf(0.5, 0.7), kf(1, 0.35)],
+    [kf(0, 1), kf(0.4, 1), kf(1, 0.45)],
+    [kf(0, 0), kf(0.12, 1), kf(0.85, 1), kf(1, 0)],
+  ));
+
+  const scaleSize = new ProScaleSpriteSizeModule();
+
+  scaleSize.scale = ProDistributionVector2.fromCurves(
+    ProCurveFloat.fromKeyframes([kf(0, 0.5), kf(0.2, 1.2), kf(1, 0.8)]),
+    ProCurveFloat.fromKeyframes([kf(0, 0.5), kf(0.2, 1.2), kf(1, 0.8)]),
+  );
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnRate);
+  system.addModule(initParticle);
+  system.addModule(shapeLocation);
+  system.addModule(orbit);
+  system.addModule(scaleColor);
+  system.addModule(scaleSize);
+  system.addModule(updateAge);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Dragon Breath —— innerConeAngle 空心锥 + speedFalloff + 浮力重力 + 火焰序列帧
+//  斜向上的空心锥喷射，锥边粒子更快 → 火舌；正 Y 重力做热气上浮，curl 抖动，
+//  16 帧火焰序列帧随生命周期烧完一遍。
+// ─────────────────────────────────────────────────────────────────────────
+function configureDragonBreathModules (system: ProParticleSystemComponent): void {
+  const emitterProps = new ProEmitterPropertiesModule();
+
+  emitterProps.loopBehavior = 'infinite';
+  emitterProps.maxParticleCount = 700;
+
+  const spawnRate = new ProSpawnRateModule();
+
+  spawnRate.rate = ProDistributionFloat.fromConstant(180);
+
+  const initParticle = new ProInitializeParticleModule();
+
+  initParticle.lifetime = ProDistributionFloat.fromRange(0.6, 1.0);
+  // ADD 叠加 + bloom，颜色压暗避免过曝
+  initParticle.startColor = ProDistributionColor.fromConstant(0.5, 0.42, 0.2, 1.0);
+  initParticle.startSize = ProDistributionVector2.fromRange([0.28, 0.28], [0.5, 0.5], true);
+  initParticle.spriteRotation = ProDistributionFloat.fromRange(0, Math.PI * 2);
+
+  // 斜向上的空心锥喷射，锥边更快
+  const velocity = new ProAddVelocityInConeModule();
+
+  velocity.velocityType = 'inCone';
+  velocity.coneAxis = normalize3(0.34, 1, 0);
+  velocity.coneAngle = Math.PI / 3;       // 60° 全角
+  velocity.innerConeAngle = Math.PI / 5;  // 36° 空心 → 环形火口
+  velocity.speed = ProDistributionFloat.fromRange(1.9, 2.8);
+  velocity.speedFalloffFromConeAxis = 0.7;
+
+  // 热气上浮（正 Y 重力）
+  const gravity = new ProGravityForceModule();
+
+  gravity.gravity = ProDistributionVector3.fromConstant(0, 1.0, 0);
+
+  const drag = new ProDragModule();
+
+  drag.drag = ProDistributionFloat.fromConstant(1.8);
+
+  // 火焰抖动
+  const curlNoise = new ProCurlNoiseForceModule();
+
+  curlNoise.amplitude = 0.7;
+  curlNoise.frequency = 1.3;
+
+  const forces = new ProSolveForcesAndVelocityModule();
+
+  const subUV = new ProSubUVAnimationModule();
+
+  subUV.mode = ProSubUVMode.SyncToAge;
+  subUV.totalFrames = 16;
+
+  const scaleColor = new ProScaleColorModule();
+
+  scaleColor.scale = ProDistributionColor.fromCurve(ProCurveColor.fromKeyframes(
+    [kf(0, 1), kf(0.5, 1), kf(1, 0.4)],
+    [kf(0, 1), kf(0.5, 0.45), kf(1, 0.08)],
+    [kf(0, 0.7), kf(0.5, 0.12), kf(1, 0.06)],
+    [kf(0, 0), kf(0.12, 1), kf(1, 0)],
+  ));
+
+  const scaleSize = new ProScaleSpriteSizeModule();
+
+  scaleSize.scale = ProDistributionVector2.fromCurves(ProCurveFloat.linear(0.8, 2.4), ProCurveFloat.linear(0.8, 2.4));
+
+  const rotationRate = new ProSpriteRotationRateModule();
+
+  rotationRate.rate = ProDistributionFloat.fromRange(-1.4, 1.4);
+
+  const updateAge = new ProUpdateAgeModule();
+
+  system.addModule(emitterProps);
+  system.addModule(spawnRate);
+  system.addModule(initParticle);
+  system.addModule(velocity);
+  system.addModule(gravity);
+  system.addModule(drag);
+  system.addModule(curlNoise);
+  system.addModule(forces);
+  system.addModule(subUV);
+  system.addModule(scaleColor);
+  system.addModule(scaleSize);
+  system.addModule(updateAge);
+}
+
+function configureAutumnGaleRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProSpriteRendererProperties();
+
+  props.blending = spec.BlendingMode.ALPHA;
+  props.sortMode = 'viewDepth';
+  props.subUVRows = 2;
+  props.subUVCols = 2;
+  props.subUVTotal = 4;
+
+  const renderer = new ProSpriteRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  applyGeneratedTexture(renderer, 'autumn-leaves', createProceduralLeafAtlasCanvas, 'autumn leaves');
+}
+
+function configurePlasmaConduitRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProRibbonRendererProperties();
+
+  props.blending = spec.BlendingMode.ADD;
+  props.facingMode = ProRibbonFacingMode.Velocity;
+  props.tessellationMode = ProRibbonTessellationMode.Custom;
+  props.customSubdivisions = 2;
+  props.curveTension = 0.8;
+  props.textureMode = ProRibbonTextureMode.Tile;
+  props.tileLength = 0.3;
+
+  const renderer = new ProRibbonRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  applyGeneratedTexture(renderer, 'plasma-conduit', createProceduralPlasmaConduitCanvas, 'plasma conduit');
+}
+
+function configureFireworksFinaleRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProSpriteRendererProperties();
+
+  props.blending = spec.BlendingMode.ADD;
+  props.facingMode = 'velocity';
+  props.sortMode = 'age';
+  props.subUVRows = 2;
+  props.subUVCols = 2;
+  props.subUVTotal = 4;
+
+  const renderer = new ProSpriteRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  applyGeneratedTexture(renderer, 'firework-sparkles', createProceduralSparkleAtlasCanvas, 'firework sparkles');
+}
+
+function configureCometSwarmRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProSpriteRendererProperties();
+
+  props.blending = spec.BlendingMode.ADD;
+  props.facingMode = 'velocity';
+
+  const renderer = new ProSpriteRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  applyGeneratedTexture(renderer, 'comet-spark', createProceduralCometSparkCanvas, 'comet spark');
+}
+
+function configureArcaneRuneRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProSpriteRendererProperties();
+
+  props.blending = spec.BlendingMode.ADD;
+  props.facingMode = 'unaligned';
+  props.subUVRows = 3;
+  props.subUVCols = 3;
+  props.subUVTotal = 9;
+
+  const renderer = new ProSpriteRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  applyGeneratedTexture(renderer, 'arcane-runes', createProceduralRuneAtlasCanvas, 'arcane runes');
+}
+
+function configureSpiralGalaxyRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProSpriteRendererProperties();
+
+  props.blending = spec.BlendingMode.ADD;
+  props.sortMode = 'distance';
+
+  const renderer = new ProSpriteRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  applyGeneratedTexture(renderer, 'galaxy-star', createProceduralStarCanvas, 'galaxy star');
+}
+
+function configureDragonBreathRenderer (component: ProParticleSystemRendererComponent, engine: Composition['engine']): void {
+  const props = new ProSpriteRendererProperties();
+
+  props.blending = spec.BlendingMode.ADD;
+  props.subUVRows = 4;
+  props.subUVCols = 4;
+  props.subUVTotal = 16;
+
+  const renderer = new ProSpriteRenderer(engine, props);
+
+  component.addRenderer(renderer);
+  // 复用已有的 4x4 火球序列帧（与 flipbook-burst 共享缓存）
+  applyGeneratedTexture(renderer, 'flipbook-fireball', createProceduralFireballFlipbookCanvas, 'fireball flipbook');
 }
 
 type ProceduralTextureTarget = ProSpriteRenderer | ProRibbonRenderer;
@@ -1796,6 +2612,336 @@ function createProceduralFireballFlipbookCanvas (): HTMLCanvasElement {
       ctx.arc(cx, cy, radius * lerp(0.78, 1.18, progress), 0, Math.PI * 2);
       ctx.stroke();
     }
+  }
+
+  return canvas;
+}
+
+/** comet-swarm：竖向拉长的蓝白光斑，velocity-facing 下读作一道拖尾。 */
+function createProceduralCometSparkCanvas (): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+
+  canvas.width = 64;
+  canvas.height = 128;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return canvas;
+  }
+
+  const cx = 32;
+  const body = ctx.createLinearGradient(cx, 0, cx, 128);
+
+  body.addColorStop(0, rgba(120, 200, 255, 0));
+  body.addColorStop(0.45, rgba(180, 230, 255, 0.6));
+  body.addColorStop(0.62, rgba(255, 255, 255, 1));
+  body.addColorStop(0.8, rgba(150, 210, 255, 0.4));
+  body.addColorStop(1, rgba(90, 160, 255, 0));
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(cx, 70, 13, 56, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const head = ctx.createRadialGradient(cx, 86, 0, cx, 86, 18);
+
+  head.addColorStop(0, rgba(255, 255, 255, 1));
+  head.addColorStop(0.5, rgba(200, 235, 255, 0.7));
+  head.addColorStop(1, rgba(140, 200, 255, 0));
+  ctx.fillStyle = head;
+  ctx.beginPath();
+  ctx.arc(cx, 86, 18, 0, Math.PI * 2);
+  ctx.fill();
+
+  return canvas;
+}
+
+/** autumn-gale：2x2 暖色落叶剪影图集（4 种形状），ALPHA 用，非发光。 */
+function createProceduralLeafAtlasCanvas (): HTMLCanvasElement {
+  const cell = 64;
+  const canvas = document.createElement('canvas');
+
+  canvas.width = cell * 2;
+  canvas.height = cell * 2;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return canvas;
+  }
+
+  const leaves: Array<[number, number, number]> = [
+    [242, 140, 30],   // gold
+    [216, 82, 20],    // orange
+    [178, 38, 16],    // red
+    [153, 115, 26],   // olive-gold
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cx = col * cell + cell * 0.5;
+    const cy = row * cell + cell * 0.5;
+    const [r, g, b] = leaves[i];
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate((i * Math.PI) / 5);
+
+    const body = ctx.createRadialGradient(0, 0, 2, 0, 0, cell * 0.42);
+
+    body.addColorStop(0, rgba(255, 235, 190, 1));
+    body.addColorStop(0.55, rgba(r, g, b, 0.95));
+    body.addColorStop(1, rgba(r * 0.5, g * 0.5, b * 0.5, 0));
+    ctx.fillStyle = body;
+
+    const w = cell * (0.2 + (i % 2) * 0.06);
+    const h = cell * 0.4;
+
+    ctx.beginPath();
+    ctx.moveTo(0, -h);
+    ctx.bezierCurveTo(w, -h * 0.3, w, h * 0.3, 0, h);
+    ctx.bezierCurveTo(-w, h * 0.3, -w, -h * 0.3, 0, -h);
+    ctx.fill();
+
+    ctx.strokeStyle = rgba(r * 0.4, g * 0.4, b * 0.4, 0.7);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -h * 0.85);
+    ctx.lineTo(0, h * 0.85);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  return canvas;
+}
+
+/**
+ * plasma-conduit：可沿长度无缝平铺的能量带。横向（U）蓝边→白芯→蓝边，
+ * 纵向（V）用整数周期正弦明暗，保证 Tile 模式首尾衔接无缝。
+ */
+function createProceduralPlasmaConduitCanvas (): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+
+  canvas.width = 128;
+  canvas.height = 128;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return canvas;
+  }
+
+  const cross = ctx.createLinearGradient(0, 0, canvas.width, 0);
+
+  cross.addColorStop(0, rgba(0, 0, 0, 0));
+  cross.addColorStop(0.16, rgba(80, 170, 255, 0.25));
+  cross.addColorStop(0.5, rgba(255, 255, 255, 1));
+  cross.addColorStop(0.84, rgba(80, 170, 255, 0.25));
+  cross.addColorStop(1, rgba(0, 0, 0, 0));
+  ctx.fillStyle = cross;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // 纵向正弦明暗（k=3 整数周期 → 平铺无缝），用 destination-out 挖暗
+  ctx.globalCompositeOperation = 'destination-out';
+  for (let y = 0; y < canvas.height; y++) {
+    const t = y / canvas.height;
+    const dark = 0.35 * (0.5 - 0.5 * Math.sin(t * Math.PI * 2 * 3));
+
+    ctx.fillStyle = rgba(0, 0, 0, dark);
+    ctx.fillRect(0, y, canvas.width, 1);
+  }
+  ctx.globalCompositeOperation = 'source-over';
+
+  return canvas;
+}
+
+/** fireworks-finale：2x2 闪光图集——四角星 / 圆点 / 十字 / 菱形，白芯彩晕。 */
+function createProceduralSparkleAtlasCanvas (): HTMLCanvasElement {
+  const cell = 64;
+  const canvas = document.createElement('canvas');
+
+  canvas.width = cell * 2;
+  canvas.height = cell * 2;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return canvas;
+  }
+
+  const tints: Array<[number, number, number]> = [
+    [255, 220, 150],
+    [180, 230, 255],
+    [255, 170, 200],
+    [200, 255, 190],
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cx = col * cell + cell * 0.5;
+    const cy = row * cell + cell * 0.5;
+    const [tr, tg, tb] = tints[i];
+
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, cell * 0.46);
+
+    glow.addColorStop(0, rgba(255, 255, 255, 0.95));
+    glow.addColorStop(0.3, rgba(tr, tg, tb, 0.6));
+    glow.addColorStop(1, rgba(tr, tg, tb, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cell * 0.46, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = rgba(255, 255, 255, 0.95);
+    ctx.fillStyle = rgba(255, 255, 255, 0.95);
+    ctx.lineWidth = 2.4;
+    const a = cell * 0.34;
+
+    if (i === 0) {
+      for (let k = 0; k < 4; k++) {
+        const ang = k * (Math.PI / 2);
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * a, cy + Math.sin(ang) * a);
+        ctx.stroke();
+      }
+    } else if (i === 1) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, cell * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (i === 2) {
+      ctx.beginPath();
+      ctx.moveTo(cx - a, cy);
+      ctx.lineTo(cx + a, cy);
+      ctx.moveTo(cx, cy - a);
+      ctx.lineTo(cx, cy + a);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - a);
+      ctx.lineTo(cx + a * 0.6, cy);
+      ctx.lineTo(cx, cy + a);
+      ctx.lineTo(cx - a * 0.6, cy);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  return canvas;
+}
+
+/** arcane-rune：3x3 青色奥术符文图集（9 个不同 glyph），柔光底 + 几何笔画。 */
+function createProceduralRuneAtlasCanvas (): HTMLCanvasElement {
+  const cell = 64;
+  const canvas = document.createElement('canvas');
+
+  canvas.width = cell * 3;
+  canvas.height = cell * 3;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return canvas;
+  }
+
+  for (let i = 0; i < 9; i++) {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cx = col * cell + cell * 0.5;
+    const cy = row * cell + cell * 0.5;
+    const r = cell * 0.34;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.2);
+
+    glow.addColorStop(0, rgba(140, 230, 255, 0.4));
+    glow.addColorStop(1, rgba(80, 180, 255, 0));
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = rgba(190, 240, 255, 0.95);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 放射状笔画
+    ctx.beginPath();
+    const spokes = 3 + (i % 5);
+
+    for (let k = 0; k < spokes; k++) {
+      const ang = (k / spokes) * Math.PI * 2 + i * 0.4;
+
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(ang) * r * 0.85, Math.sin(ang) * r * 0.85);
+    }
+    ctx.stroke();
+
+    // 内嵌多边形
+    ctx.beginPath();
+    const sides = 3 + (i % 4);
+
+    for (let k = 0; k <= sides; k++) {
+      const ang = (k / sides) * Math.PI * 2 + i;
+      const px = Math.cos(ang) * r * 0.5;
+      const py = Math.sin(ang) * r * 0.5;
+
+      if (k === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  return canvas;
+}
+
+/** spiral-galaxy：单颗柔光星点，白核 + 蓝晕 + 四点衍射星芒。 */
+function createProceduralStarCanvas (): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+
+  canvas.width = 64;
+  canvas.height = 64;
+
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    return canvas;
+  }
+
+  const c = 32;
+  const bloom = ctx.createRadialGradient(c, c, 0, c, c, 30);
+
+  bloom.addColorStop(0, rgba(255, 255, 255, 1));
+  bloom.addColorStop(0.18, rgba(220, 240, 255, 0.85));
+  bloom.addColorStop(0.5, rgba(150, 200, 255, 0.3));
+  bloom.addColorStop(1, rgba(120, 160, 255, 0));
+  ctx.fillStyle = bloom;
+  ctx.beginPath();
+  ctx.arc(c, c, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = rgba(255, 255, 255, 0.5);
+  ctx.lineWidth = 1.2;
+  for (let k = 0; k < 4; k++) {
+    const ang = k * (Math.PI / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(c, c);
+    ctx.lineTo(c + Math.cos(ang) * 28, c + Math.sin(ang) * 28);
+    ctx.stroke();
   }
 
   return canvas;

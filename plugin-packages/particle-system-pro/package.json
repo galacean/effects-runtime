@@ -40,6 +40,11 @@
     "prepublishOnly": "pnpm build"
   },
   "author": "Ant Group CO., Ltd.",
+  "contributors": [
+    {
+      "name": "茂安"
+    }
+  ],
   "license": "MIT",
   "publishConfig": {
     "access": "public",
