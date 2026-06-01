@@ -28,7 +28,7 @@ export class GLEngine extends Engine {
   private readonly maxTextureCount: number;
   private glCapabilityCache: Record<string, any>;
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
-  private currentTextureBinding: WebGLTexture | null;
+  private currentTextureBinding: Record<number, Record<number, WebGLTexture | null>>;
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
@@ -295,6 +295,7 @@ export class GLEngine extends Engine {
     this.activeTextureIndex = glContext.TEXTURE0;
     this.textureUnitDict = {};
     this.currentFramebuffer = {};
+    this.currentTextureBinding = {};
     this.pixelStorei = {};
     this.currentRenderbuffer = {};
   }
@@ -733,11 +734,18 @@ export class GLEngine extends Engine {
    */
   // TODO: texture.bind 替换时对于这段逻辑的处理
   bindTexture (target: GLenum, texture: WebGLTexture | null, force?: boolean) {
-    if (this.currentTextureBinding !== texture || force) {
-      this.gl.bindTexture(target, texture);
-      this.currentTextureBinding = texture;
+    const unit = this.activeTextureIndex;
+    let targetBindings = this.currentTextureBinding[unit];
+
+    if (!targetBindings) {
+      targetBindings = this.currentTextureBinding[unit] = {};
     }
-    this.textureUnitDict[this.activeTextureIndex] = texture;
+
+    if (targetBindings[target] !== texture || force) {
+      this.gl.bindTexture(target, texture);
+      targetBindings[target] = texture;
+    }
+    this.textureUnitDict[unit] = texture;
   }
 
   private set1 (name: string, param: any) {
