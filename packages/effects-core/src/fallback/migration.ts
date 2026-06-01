@@ -7,7 +7,6 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
-import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
@@ -927,10 +926,14 @@ export function processMask (renderContent: any) {
   const mask = renderContent.mask;
 
   // 处理旧版 maskMode（通过 renderer.maskMode 字段）
-  if (maskMode && maskMode !== MaskMode.NONE) {
+  // 旧 JSON 取值：0=NONE, 1=MASK；OBSCURED/REVERSE_OBSCURED 来自 spec.ObscuredMode
+  const LEGACY_MASK_MODE_NONE = 0;
+  const LEGACY_MASK_MODE_MASK = 1;
+
+  if (maskMode && maskMode !== LEGACY_MASK_MODE_NONE) {
     const alphaMaskEnabled = mask?.alphaMaskEnabled ?? false;
 
-    if (maskMode === MaskMode.MASK) {
+    if (maskMode === LEGACY_MASK_MODE_MASK) {
       renderContent.mask = {
         isMask: true,
         alphaMaskEnabled,

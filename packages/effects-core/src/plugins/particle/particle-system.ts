@@ -1001,7 +1001,6 @@ export class ParticleSystem extends Component implements Maskable {
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
       mask: this.maskManager.getRefValue(),
-      maskMode: this.maskManager.maskMode,
       forceTarget,
       diffuse: renderer.texture ? this.engine.findObject(renderer.texture) : undefined,
       sizeOverLifetime: sizeOverLifetimeGetter,
@@ -1093,7 +1092,6 @@ export class ParticleSystem extends Component implements Maskable {
         occlusion: !!trails.occlusion,
         transparentOcclusion: !!trails.transparentOcclusion,
         mask: this.maskManager.getRefValue(),
-        maskMode: this.maskManager.maskMode,
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {

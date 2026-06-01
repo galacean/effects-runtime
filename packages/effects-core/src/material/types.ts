@@ -106,21 +106,3 @@ export interface MaskReference {
   inverted: boolean,
 }
 
-export enum MaskMode {
-  /**
-   * 无
-   */
-  NONE = 0,
-  /**
-   * 蒙版
-   */
-  MASK = 1,
-  /**
-   * 被遮挡
-   */
-  OBSCURED = 2,
-  /**
-   * 被反向遮挡
-   */
-  REVERSE_OBSCURED = 3,
-}

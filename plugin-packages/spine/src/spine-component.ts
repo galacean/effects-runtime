@@ -5,7 +5,7 @@ import type {
   Renderer, Texture,
 } from '@galacean/effects';
 import {
-  effectsClass, HitTestType, MaskMode, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
+  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
   serialize, spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
@@ -85,7 +85,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
    * renderer 和 mask 数据
    */
   rendererOptions: Pick<spec.SpineComponent, 'renderer'> & {
-    maskMode: MaskMode,
     mask: number,
   };
   options: spec.PluginSpineOption;
@@ -121,7 +120,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
       renderMode: spec.RenderMode.MESH,
       ...data.renderer || {},
       mask: 0,
-      maskMode: MaskMode.NONE,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
@@ -129,7 +127,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
       this.maskManager.setMaskOptions(this.engine, data.mask);
     }
 
-    this.rendererOptions.maskMode = this.maskManager.maskMode;
     this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {

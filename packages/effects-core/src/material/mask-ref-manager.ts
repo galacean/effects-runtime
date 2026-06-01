@@ -1,7 +1,6 @@
 import type { Engine } from '../engine';
 import type * as spec from '@galacean/effects-specification';
 import type { Maskable, MaskReference } from './types';
-import { MaskMode } from './types';
 import type { Renderer } from '../render/renderer';
 import { TextureLoadAction } from '../texture/types';
 import type { RenderPassClearAction } from '../render/render-pass';
@@ -35,7 +34,6 @@ export class MaskProcessor {
   alphaMaskEnabled = false;
 
   isMask = false;
-  maskMode: MaskMode = MaskMode.NONE;
 
   /**
    * 多个蒙版引用列表，支持正面和反面蒙版
@@ -71,7 +69,7 @@ export class MaskProcessor {
     if (value) {
       this.maskReferences.push({
         maskable: value,
-        inverted: this.maskMode === MaskMode.REVERSE_OBSCURED,
+        inverted: false,
       });
     }
   }
@@ -88,10 +86,10 @@ export class MaskProcessor {
   }
 
   /**
-   * 设置蒙版选项（兼容旧版单蒙版 API）。
+   * 设置蒙版选项。
    *
    * @param data.references - 蒙版引用列表。
-   *   传入空数组等价于无蒙版（maskMode = NONE）。
+   *   传入空数组等价于无蒙版。
    *   超过 254 个引用时，多余部分将被忽略并打印警告。
    */
   setMaskOptions (engine: Engine, data: MaskOptions): void {
@@ -101,16 +99,7 @@ export class MaskProcessor {
     this.isMask = isMask;
     this.maskReferences = [];
 
-    if (isMask) {
-      this.maskMode = MaskMode.MASK;
-    } else {
-      // 正/反向由首个引用决定 maskMode 的兼容取值；逐引用的正反向语义仍以 MaskReference.inverted 为准
-      this.maskMode = (references[0]?.inverted ?? false) ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
-
-      if (references.length === 0) {
-        this.maskMode = MaskMode.NONE;
-      }
-
+    if (!isMask) {
       for (const ref of references) {
         const maskPath = ref.mask;
 

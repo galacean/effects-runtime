@@ -1,5 +1,5 @@
 import type { Engine, Renderer } from '@galacean/effects-core';
-import { MaskProcessor, MaskMode, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
+import { MaskProcessor, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
 import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -80,7 +80,6 @@ describe('core/material//mask-ref-manager', () => {
 
       expect(mp.alphaMaskEnabled).to.eql(false);
       expect(mp.isMask).to.eql(false);
-      expect(mp.maskMode).to.eql(MaskMode.NONE);
     });
 
   });
@@ -326,13 +325,12 @@ describe('core/material//mask-ref-manager', () => {
   // ==================== setMaskOptions ====================
 
   describe('setMaskOptions', () => {
-    it('should set maskMode to MASK when isMask is true', () => {
+    it('should set isMask to true when isMask is passed', () => {
       const mp = new MaskProcessor();
 
       mp.setMaskOptions(engine, { isMask: true });
 
       expect(mp.isMask).to.eql(true);
-      expect(mp.maskMode).to.eql(MaskMode.MASK);
     });
 
     it('should handle references array with single forward mask', () => {

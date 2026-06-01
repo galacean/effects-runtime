@@ -1,6 +1,5 @@
 import * as spec from '@galacean/effects-specification';
 import { glContext } from '../gl';
-import { MaskMode } from './types';
 import type { Material } from './material';
 
 export function valIfUndefined<T> (val: any, def: T): T {
@@ -89,33 +88,3 @@ export function setSideMode (material: Material, side: spec.SideMode) {
   }
 }
 
-export function setMaskMode (material: Material, maskMode: MaskMode) {
-  switch (maskMode) {
-    case undefined:
-      material.stencilTest = false;
-
-      break;
-    case MaskMode.MASK:
-      material.stencilTest = true;
-      material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
-      material.stencilOpZPass = [glContext.REPLACE, glContext.REPLACE];
-
-      break;
-    case MaskMode.OBSCURED:
-      material.stencilTest = true;
-      material.stencilFunc = [glContext.EQUAL, glContext.EQUAL];
-
-      break;
-    case MaskMode.REVERSE_OBSCURED:
-      material.stencilTest = true;
-      material.stencilFunc = [glContext.NOTEQUAL, glContext.NOTEQUAL];
-
-      break;
-    case MaskMode.NONE:
-      material.stencilTest = false;
-
-      break;
-    default:
-      console.warn(`MaskMode ${maskMode} not in specification, please set stencil params seperately.`);
-  }
-}

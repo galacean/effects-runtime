@@ -32,7 +32,6 @@ export type TrailMeshProps = {
   lifetime: ValueGetter<number>,
   mask: number,
   shaderCachePrefix: string,
-  maskMode: number,
   name: string,
 };
 
