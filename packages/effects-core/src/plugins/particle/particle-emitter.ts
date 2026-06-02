@@ -1,5 +1,4 @@
-import { Vector3 } from '@galacean/effects-math/es/core/index';
-import { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import type { Burst } from './burst';
@@ -19,19 +18,6 @@ type TrailConfig = {
   sizeAffectsLifetime: boolean,
   inheritParticleColor: boolean,
   parentAffectsPosition: boolean,
-};
-
-export type TickContext = {
-  deltaTime: number,
-  currentTime: number,
-  emitterLifetime: number,
-  timePassed: number,
-  duration: number,
-  loopStartTime: number,
-  worldMatrix: Matrix4,
-  emitterTransform: Transform,
-  emissionStopped: boolean,
-  parentTransformPosition: Vector3 | null,
 };
 
 export class ParticleEmitter {
@@ -57,6 +43,7 @@ export class ParticleEmitter {
   // --- Modules ---
   initParticleModule: InitializeParticleModule;
   private modules: ParticleModule[] = [];
+  private spawnRateRef: SpawnRateModule | null = null;
 
   // --- Shared refs (set during setup) ---
   private dataBuffer: ParticleDataBuffer;
@@ -83,11 +70,12 @@ export class ParticleEmitter {
     this.emission = opts.emission;
     this.shape = opts.shape;
     this.modules = opts.modules;
+    this.spawnRateRef = opts.modules.find(m => m instanceof SpawnRateModule) as SpawnRateModule ?? null;
     this.trails = opts.trails;
     this.getPointPositionF64 = opts.getPointPositionF64;
   }
 
-  fullReset (rateOverTime?: ValueGetter<number>): void {
+  fullReset (): void {
     this.time = 0;
     this.loopStartTime = 0;
     this.ended = false;
@@ -96,30 +84,17 @@ export class ParticleEmitter {
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
     this.upDirectionWorld = null;
+    this.trailUpdated = false;
     this.spawnInfos.length = 0;
-    if (rateOverTime) {
-      for (const m of this.modules) {
-        if (m instanceof SpawnRateModule) {
-          m.reset(rateOverTime);
-        }
-      }
-    }
+    this.spawnRateRef?.reset(this.emission.rateOverTime);
   }
 
   commitSpawnRate (timePassed: number): void {
-    for (const m of this.modules) {
-      if (m instanceof SpawnRateModule) {
-        m.commitEmit(timePassed);
-      }
-    }
+    this.spawnRateRef?.commitEmit(timePassed);
   }
 
   adjustForLoop (duration: number): void {
-    for (const m of this.modules) {
-      if (m instanceof SpawnRateModule) {
-        m.adjustForLoop(duration);
-      }
-    }
+    this.spawnRateRef?.adjustForLoop(duration);
   }
 
   runStage (stage: ParticleModuleStage, ctx: ParticleModuleContext): void {
@@ -134,40 +109,35 @@ export class ParticleEmitter {
   // Stage 1: Emitter Update
   // ========================
 
+  get timePassed (): number {
+    return this.time - this.loopStartTime;
+  }
+
+  get emitterLifetime (): number {
+    return this.itemDuration > 0 ? this.timePassed / this.itemDuration : 0;
+  }
+
+  get parentTransformPosition (): Vector3 | null {
+    return this.componentTransform?.parentTransform?.position.clone() ?? null;
+  }
+
   tick (delta: number): void {
     if (!this.started) {
       return;
     }
-    const now = this.time + delta / 1000;
-
-    this.time = now;
+    this.time += delta / 1000;
     this.upDirectionWorld = null;
-    this.renderer.updateTime(now, delta);
+    this.trailUpdated = false;
+    this.renderer.updateTime(this.time, delta);
 
-    const timePassed = now - this.loopStartTime;
-    const emitterLifetime = timePassed / this.itemDuration;
-    const ctx: TickContext = {
-      deltaTime: delta,
-      currentTime: now,
-      emitterLifetime,
-      timePassed,
-      duration: this.itemDuration,
-      loopStartTime: this.loopStartTime,
-      worldMatrix: this.getWorldMatrix(),
-      emitterTransform: this.componentTransform,
-      emissionStopped: this.emissionStopped,
-      parentTransformPosition: this.componentTransform?.parentTransform?.position.clone() ?? null,
-    };
-
-    this.particleUpdateAndSync(ctx);
+    this.particleUpdateAndSync(delta);
 
     if (!this.ended) {
-      if (timePassed < this.itemDuration) {
-        this.updateEmitterTransform(timePassed);
-        ctx.worldMatrix = this.getWorldMatrix();
-        this.emitterUpdateAndSpawn(ctx);
+      if (this.timePassed < this.itemDuration) {
+        this.updateEmitterTransform(this.timePassed);
+        this.emitterUpdateAndSpawn(delta);
       } else if (this.options.looping) {
-        this.trailUpdate(ctx);
+        this.updateTrails();
         this.handleLoop(this.itemDuration);
       } else {
         this.ended = true;
@@ -176,62 +146,30 @@ export class ParticleEmitter {
         }
       }
     }
-    this.trailUpdate(ctx);
+    this.updateTrails();
   }
 
-  particleUpdateAndSync (ctx: TickContext): void {
+  private particleUpdateAndSync (delta: number): void {
     const db = this.dataBuffer;
 
-    this.particleUpdate(ctx, db);
+    if (db.activeCount === 0) {
+      return;
+    }
+    this.runStage('particleUpdate', this.buildModuleContext(delta));
     this.syncToGeometry(db);
   }
 
-  emitterUpdateAndSpawn (ctx: TickContext): void {
+  private emitterUpdateAndSpawn (delta: number): void {
     const db = this.dataBuffer;
     const maxCount = this.options.maxCount;
 
     this.spawnInfos.length = 0;
-    this.loopStartTime = ctx.loopStartTime;
-    const moduleCtx: ParticleModuleContext = {
-      deltaTime: ctx.deltaTime / 1000,
-      currentTime: ctx.currentTime,
-      emitterLifetime: ctx.emitterLifetime,
-      duration: ctx.duration,
-      dataBuffer: db,
-      emitter: this,
-      firstIndex: 0,
-      lastIndex: db.activeCount,
-    };
-
-    this.runStage('emitterUpdate', moduleCtx);
+    this.runStage('emitterUpdate', this.buildModuleContext(delta / 1000));
 
     for (const info of this.spawnInfos) {
-      this.particleSpawn(ctx, db, maxCount, info);
+      this.particleSpawn(db, maxCount, info);
     }
-    this.burstSpawn(ctx, db, maxCount);
-  }
-
-  // ========================
-  // Stage 2: Particle Update
-  // ========================
-
-  private particleUpdate (ctx: TickContext, db: ParticleDataBuffer): void {
-    if (db.activeCount === 0) {
-      return;
-    }
-
-    const moduleCtx: ParticleModuleContext = {
-      deltaTime: ctx.deltaTime,
-      currentTime: ctx.currentTime,
-      emitterLifetime: ctx.emitterLifetime,
-      duration: ctx.duration,
-      dataBuffer: db,
-      emitter: this,
-      firstIndex: 0,
-      lastIndex: db.activeCount,
-    };
-
-    this.runStage('particleUpdate', moduleCtx);
+    this.burstSpawn(db, maxCount);
   }
 
   // ========================
@@ -242,64 +180,30 @@ export class ParticleEmitter {
     if (db.activeCount === 0) {
       return;
     }
-    const geometry = this.renderer.particleMesh.geometry;
+    const geo = this.renderer.particleMesh.geometry;
 
-    const aTranslation = geometry.getAttributeData('aTranslation') as Float32Array;
-    const count = Math.min(db.activeCount, Math.floor(aTranslation.length / 12));
+    this.expandToQuad(geo, 'aTranslation', db.translation, db.activeCount, 3);
+    this.expandToQuad(geo, 'aLinearMove', db.linearMove, db.activeCount, 3);
+    this.expandToQuad(geo, 'aRotation0', db.rotMatrix, db.activeCount, 9);
+  }
 
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      const gOff = i * 12;
-      const tx = db.translation[i3];
-      const ty = db.translation[i3 + 1];
-      const tz = db.translation[i3 + 2];
+  private expandToQuad (geo: any, attr: string, src: Float32Array, count: number, stride: number): void {
+    const dst = geo.getAttributeData(attr) as Float32Array;
+    const n = Math.min(count, Math.floor(dst.length / (stride * 4)));
 
-      for (let v = 0; v < 4; v++) {
-        const vOff = gOff + v * 3;
-
-        aTranslation[vOff] = tx;
-        aTranslation[vOff + 1] = ty;
-        aTranslation[vOff + 2] = tz;
-      }
-    }
-    geometry.setAttributeData('aTranslation', aTranslation);
-
-    const aRotation0 = geometry.getAttributeData('aRotation0') as Float32Array;
-    const rotCount = Math.min(db.activeCount, Math.floor(aRotation0.length / 36));
-
-    for (let i = 0; i < rotCount; i++) {
-      const i9 = i * 9;
-      const gOff = i * 36;
+    for (let i = 0; i < n; i++) {
+      const si = i * stride;
+      const di = i * stride * 4;
 
       for (let v = 0; v < 4; v++) {
-        const vOff = gOff + v * 9;
+        const vo = di + v * stride;
 
-        for (let c = 0; c < 9; c++) {
-          aRotation0[vOff + c] = db.rotMatrix[i9 + c];
+        for (let c = 0; c < stride; c++) {
+          dst[vo + c] = src[si + c];
         }
       }
     }
-    geometry.setAttributeData('aRotation0', aRotation0);
-
-    const aLinearMove = geometry.getAttributeData('aLinearMove') as Float32Array;
-    const lmCount = Math.min(db.activeCount, Math.floor(aLinearMove.length / 12));
-
-    for (let i = 0; i < lmCount; i++) {
-      const i3 = i * 3;
-      const gOff = i * 12;
-      const mx = db.linearMove[i3];
-      const my = db.linearMove[i3 + 1];
-      const mz = db.linearMove[i3 + 2];
-
-      for (let v = 0; v < 4; v++) {
-        const vOff = gOff + v * 3;
-
-        aLinearMove[vOff] = mx;
-        aLinearMove[vOff + 1] = my;
-        aLinearMove[vOff + 2] = mz;
-      }
-    }
-    geometry.setAttributeData('aLinearMove', aLinearMove);
+    geo.setAttributeData(attr, dst);
   }
 
   // ========================
@@ -307,25 +211,22 @@ export class ParticleEmitter {
   // ========================
 
   private particleSpawn (
-    ctx: TickContext,
     db: ParticleDataBuffer,
     maxCount: number,
     spawnInfo: SpawnInfo,
   ): void {
-    const emission = this.emission;
-    const worldMatrix = ctx.worldMatrix;
+    const worldMatrix = this.getWorldMatrix();
     const maxEmissionCount = spawnInfo.count;
     const timeDelta = spawnInfo.timeDelta;
-    const meshTime = ctx.currentTime;
+    const meshTime = this.time;
 
-    // Rate-based spawning
     for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
-      if (this.shouldSkipGenerate(ctx, db, maxCount)) {
+      if (this.shouldSkipGenerate(db, maxCount)) {
         break;
       }
       const slotIdx = this.allocateSlot(maxCount);
       const generator = {
-        total: emission.rateOverTime.getValue(ctx.emitterLifetime),
+        total: this.emission.rateOverTime.getValue(this.emitterLifetime),
         index: this.generatedCount,
         burstIndex: 0,
         burstCount: 0,
@@ -333,36 +234,35 @@ export class ParticleEmitter {
 
       this.generatedCount++;
       const result = this.initParticleModule.initializeToBuffer(
-        this.shape.generate(generator), ctx.emitterLifetime, worldMatrix, ctx.emitterTransform, this.upDirectionWorld, slotIdx, db,
+        this.shape.generate(generator), this.emitterLifetime, worldMatrix, this.componentTransform, this.upDirectionWorld, slotIdx, db,
       );
 
       this.upDirectionWorld = result.upDirectionWorld;
 
       db.delay[slotIdx] += meshTime + i * timeDelta;
       db.delayF64[slotIdx] += meshTime + i * timeDelta;
-      this.commitParticle(slotIdx, maxCount, db, ctx.parentTransformPosition);
-      this.commitSpawnRate(ctx.timePassed);
+      this.commitParticle(slotIdx, maxCount, db);
+      this.commitSpawnRate(this.timePassed);
     }
 
   }
 
-  private burstSpawn (ctx: TickContext, db: ParticleDataBuffer, maxCount: number): void {
+  private burstSpawn (db: ParticleDataBuffer, maxCount: number): void {
     const emission = this.emission;
-    const worldMatrix = ctx.worldMatrix;
-    const meshTime = ctx.currentTime;
+    const worldMatrix = this.getWorldMatrix();
+    const meshTime = this.time;
     const bursts = emission.bursts;
 
     for (let j = bursts?.length - 1, cursor = 0; j >= 0 && cursor < maxCount; j--) {
-      if (this.shouldSkipGenerate(ctx, db, maxCount)) {
+      if (this.shouldSkipGenerate(db, maxCount)) {
         break;
       }
       const burst = bursts[j];
-      const opts = !burst.disabled && burst.getGeneratorOptions(ctx.timePassed, ctx.emitterLifetime);
+      const opts = !burst.disabled && burst.getGeneratorOptions(this.timePassed, this.emitterLifetime);
 
       if (opts) {
-        const originVec = [0, 0, 0] as vec3;
         const offsets = emission.burstOffsets[j];
-        const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
+        const burstOffset = (offsets && offsets[opts.cycleIndex]) || ORIGIN_VEC;
 
         if (burst.once) {
           emission.burstOffsets[j] = null;
@@ -370,7 +270,7 @@ export class ParticleEmitter {
         }
 
         for (let i = 0; i < opts.count && cursor < maxCount; i++) {
-          if (this.shouldSkipGenerate(ctx, db, maxCount)) {
+          if (this.shouldSkipGenerate(db, maxCount)) {
             break;
           }
           const slotIdx = this.allocateSlot(maxCount);
@@ -380,7 +280,7 @@ export class ParticleEmitter {
               index: opts.index,
               burstIndex: i,
               burstCount: opts.count,
-            }), ctx.emitterLifetime, worldMatrix, ctx.emitterTransform, this.upDirectionWorld, slotIdx, db,
+            }), this.emitterLifetime, worldMatrix, this.componentTransform, this.upDirectionWorld, slotIdx, db,
           );
 
           this.upDirectionWorld = result.upDirectionWorld;
@@ -395,7 +295,7 @@ export class ParticleEmitter {
           db.positionF64[si3 + 1] += burstOffset[1];
           db.positionF64[si3 + 2] += burstOffset[2];
           cursor++;
-          this.commitParticle(slotIdx, maxCount, db, ctx.parentTransformPosition);
+          this.commitParticle(slotIdx, maxCount, db);
         }
       }
     }
@@ -405,28 +305,31 @@ export class ParticleEmitter {
   // Stage 5: Trail Update
   // ========================
 
-  trailUpdate (ctx: TickContext, db?: ParticleDataBuffer): void {
-    db = db ?? this.dataBuffer;
-    if (!this.trails || !db) {
+  private trailUpdated = false;
+
+  private updateTrails (): void {
+    if (this.trailUpdated || !this.trails) {
       return;
     }
+    this.trailUpdated = true;
+    const db = this.dataBuffer;
 
     for (let ti = 0; ti < db.activeCount; ti++) {
       if (!db.alive[ti]) {
         continue;
       }
-      if (db.expiry[ti] < ctx.timePassed) {
+      if (db.expiry[ti] < this.timePassed) {
         if (this.trails.dieWithParticles) {
           this.renderer.clearTrail(ti);
         }
-      } else if (ctx.timePassed > db.delayF64[ti]) {
+      } else if (this.timePassed > db.delayF64[ti]) {
         const position = this.getPointPositionF64(ti);
         const color = this.trails.inheritParticleColor ? this.renderer.getParticlePointColor(ti) : [1, 1, 1, 1];
         const si2 = ti * 2;
         const size: vec3 = [db.sizeF64[si2], db.sizeF64[si2 + 1], 1];
 
         let width = 1;
-        let lifetime = this.trails.lifetime.getValue(ctx.emitterLifetime);
+        let lifetime = this.trails.lifetime.getValue(this.emitterLifetime);
 
         if (this.trails.sizeAffectsWidth) {
           width *= size[0];
@@ -434,8 +337,8 @@ export class ParticleEmitter {
         if (this.trails.sizeAffectsLifetime) {
           lifetime *= size[0];
         }
-        if (this.trails.parentAffectsPosition && ctx.parentTransformPosition) {
-          position.add(ctx.parentTransformPosition);
+        if (this.trails.parentAffectsPosition && this.parentTransformPosition) {
+          position.add(this.parentTransformPosition);
           const pos = this.renderer.getTrailStartPosition(ti);
 
           if (pos) {
@@ -491,8 +394,21 @@ export class ParticleEmitter {
   // Helpers
   // ========================
 
-  private shouldSkipGenerate (ctx: TickContext, db: ParticleDataBuffer, maxCount: number): boolean {
-    if (ctx.emissionStopped) {
+  private buildModuleContext (deltaTime: number): ParticleModuleContext {
+    return {
+      deltaTime,
+      currentTime: this.time,
+      emitterLifetime: this.emitterLifetime,
+      duration: this.itemDuration,
+      dataBuffer: this.dataBuffer,
+      emitter: this,
+      firstIndex: 0,
+      lastIndex: this.dataBuffer.activeCount,
+    };
+  }
+
+  private shouldSkipGenerate (db: ParticleDataBuffer, maxCount: number): boolean {
+    if (this.emissionStopped) {
       return true;
     }
     if (this.aliveCount < maxCount) {
@@ -506,7 +422,7 @@ export class ParticleEmitter {
       }
     }
 
-    return (minExp - ctx.loopStartTime) > ctx.timePassed;
+    return (minExp - this.loopStartTime) > this.timePassed;
   }
 
   private allocateSlot (maxCount: number): number {
@@ -532,7 +448,7 @@ export class ParticleEmitter {
     return minIdx;
   }
 
-  private commitParticle (slotIndex: number, maxCount: number, db: ParticleDataBuffer, parentTransformPosition: Vector3 | null): void {
+  private commitParticle (slotIndex: number, maxCount: number, db: ParticleDataBuffer): void {
     db.alive[slotIndex] = 1;
     db.expiry[slotIndex] = db.delayF64[slotIndex] + db.lifetimeF64[slotIndex];
     this.aliveCount = Math.min(this.aliveCount + 1, maxCount);
@@ -542,8 +458,10 @@ export class ParticleEmitter {
     if (this.trails?.dieWithParticles) {
       this.renderer.clearTrail(slotIndex);
     }
-    if (parentTransformPosition) {
-      this.renderer.setTrailStartPosition(slotIndex, parentTransformPosition.clone());
+    if (this.parentTransformPosition) {
+      this.renderer.setTrailStartPosition(slotIndex, this.parentTransformPosition.clone());
     }
   }
 }
+
+const ORIGIN_VEC: vec3 = [0, 0, 0];

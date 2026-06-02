@@ -252,7 +252,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   reset () {
     this.renderer.reset();
-    this.emitter?.fullReset(this.emission.rateOverTime);
+    this.emitter?.fullReset();
     this.emission.bursts.forEach(b => b.reset());
     this.dataBuffer?.clear();
   }
