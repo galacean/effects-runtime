@@ -1,7 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Euler } from '@galacean/effects-math/es/core/euler';
-import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
@@ -21,23 +19,9 @@ import type {
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
-import { Transform } from '../../transform';
 import { assertExist, enlargeBuffer, imageDataFromGradient } from '../../utils';
+import type { ParticleDataBuffer } from './particle-data-buffer';
 import { particleUniformTypeMap } from './particle-vfx-item';
-
-export type Point = {
-  vel: Vector3,
-  lifetime: number,
-  color: spec.vec4,
-  uv: number[],
-  dirX: Vector3,
-  dirY: Vector3,
-  delay: number,
-  sprite?: [start: number, duration: number, cycles: number],
-  transform: Transform,
-  gravity: spec.vec3,
-  size: Vector2,
-};
 
 export interface ParticleMeshData {
   gravityModifier: ValueGetter<number>,
@@ -440,7 +424,7 @@ export class ParticleMesh implements ParticleMeshData {
     }
   }
 
-  setPoint (index: number, point: Point) {
+  setPointFromBuffer (index: number, db: ParticleDataBuffer) {
     const maxCount = this.maxCount;
 
     if (index < maxCount) {
@@ -462,7 +446,7 @@ export class ParticleMesh implements ParticleMeshData {
         aRot: new Float32Array(32),
         aOffset: new Float32Array(16),
         aTranslation: new Float32Array(12),
-        aLinearMove:new Float32Array(12),
+        aLinearMove: new Float32Array(12),
         aRotation0: new Float32Array(36),
       };
       const useSprite = this.useSprite;
@@ -471,28 +455,19 @@ export class ParticleMesh implements ParticleMeshData {
         pointData.aSprite = new Float32Array(12);
       }
 
-      const tempPos = new Vector3();
-      const tempQuat = new Quaternion();
-      const scale = new Vector3(1, 1, 1);
-
-      point.transform.assignWorldTRS(tempPos, tempQuat, scale);
-      const tempEuler = Transform.getRotation(tempQuat, new Euler());
-
-      const position = tempPos.toArray();
-      const rotation = tempEuler.toArray();
+      const i3 = index * 3;
+      const i4 = index * 4;
+      const i2 = index * 2;
+      const position = [db.position[i3], db.position[i3 + 1], db.position[i3 + 2]];
+      const rotation = [db.rotation[i3], db.rotation[i3 + 1], db.rotation[i3 + 2]];
+      const scaleX = db.size[i2];
+      const scaleY = db.size[i2 + 1];
 
       const offsets = this.textureOffsets;
-      const off = [0, 0, point.delay, point.lifetime];
+      const off = [0, 0, db.delay[index], db.lifetime[index]];
       const wholeUV = [0, 0, 1, 1];
-      const vel = point.vel;
-      const color: number[] = point.color;
+      const seed = db.seed[index];
       const sizeOffsets = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
-      const seed = Math.random();
-      let sprite;
-
-      if (useSprite) {
-        sprite = point.sprite;
-      }
 
       for (let j = 0; j < 4; j++) {
         const offset = j * 2;
@@ -502,16 +477,24 @@ export class ParticleMesh implements ParticleMeshData {
         const j8 = j * 8;
 
         pointData.aPos.set(position, j12);
-        vel.fill(pointData.aPos, j12 + 3);
+        pointData.aPos[j12 + 3] = db.velocity[i3];
+        pointData.aPos[j12 + 4] = db.velocity[i3 + 1];
+        pointData.aPos[j12 + 5] = db.velocity[i3 + 2];
         pointData.aRot.set(rotation, j8);
         pointData.aRot[j8 + 3] = seed;
-        pointData.aRot.set(color, j8 + 4);
+        pointData.aRot[j8 + 4] = db.color[i4];
+        pointData.aRot[j8 + 5] = db.color[i4 + 1];
+        pointData.aRot[j8 + 6] = db.color[i4 + 2];
+        pointData.aRot[j8 + 7] = db.color[i4 + 3];
 
         if (useSprite) {
-          // @ts-expect-error
-          pointData.aSprite.set(sprite, j3);
+          pointData.aSprite[j3] = db.sprite[i3];
+          pointData.aSprite[j3 + 1] = db.sprite[i3 + 1];
+          pointData.aSprite[j3 + 2] = db.sprite[i3 + 2];
         }
-        const uv = point.uv || wholeUV;
+        const uv = db.uv[i4] !== 0 || db.uv[i4 + 1] !== 0 || db.uv[i4 + 2] !== 0 || db.uv[i4 + 3] !== 0
+          ? [db.uv[i4], db.uv[i4 + 1], db.uv[i4 + 2], db.uv[i4 + 3]]
+          : wholeUV;
 
         if (uv) {
           const uvy = useSprite ? (1 - offsets[offset + 1]) : offsets[offset + 1];
@@ -521,12 +504,12 @@ export class ParticleMesh implements ParticleMeshData {
         }
         pointData.aOffset.set(off, j4);
         const ji = (j + j);
-        const sx = (sizeOffsets[ji] - this.anchor.x) * scale.x;
-        const sy = (sizeOffsets[ji + 1] - this.anchor.y) * scale.y;
+        const sx = (sizeOffsets[ji] - this.anchor.x) * scaleX;
+        const sy = (sizeOffsets[ji + 1] - this.anchor.y) * scaleY;
 
         for (let k = 0; k < 3; k++) {
-          pointData.aPos[j12 + 6 + k] = point.dirX.getElement(k) * sx;
-          pointData.aPos[j12 + 9 + k] = point.dirY.getElement(k) * sy;
+          pointData.aPos[j12 + 6 + k] = db.dirX[i3 + k] * sx;
+          pointData.aPos[j12 + 9 + k] = db.dirY[i3 + k] * sy;
         }
       }
       const indexData = new Uint16Array([0, 1, 2, 2, 1, 3].map(x => x + index * 4));

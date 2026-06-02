@@ -4,7 +4,7 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Texture } from '../../texture';
 import type { TrailMeshProps, TrailPointOptions } from './trail-mesh';
 import { TrailMesh } from './trail-mesh';
-import type { ParticleMeshProps, Point } from './particle-mesh';
+import type { ParticleMeshProps } from './particle-mesh';
 import { ParticleMesh } from './particle-mesh';
 import type { Mesh, Renderer } from '../../render';
 import type { Engine } from '../../engine';
@@ -114,10 +114,6 @@ export class ParticleSystemRenderer extends RendererComponent {
     }
 
     return textures;
-  }
-
-  setParticlePoint (index: number, point: Point) {
-    this.particleMesh.setPoint(index, point);
   }
 
   removeParticlePoint (index: number) {

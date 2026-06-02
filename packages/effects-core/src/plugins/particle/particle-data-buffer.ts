@@ -50,6 +50,15 @@ export class ParticleDataBuffer {
   /** 线性位移累计值 xyz，3 分量 */
   readonly linearMove: Float32Array;
 
+  // --- Float64 通道（trail/raycast 位置计算需要 float64 精度） ---
+
+  readonly delayF64: Float64Array;
+  readonly lifetimeF64: Float64Array;
+  readonly positionF64: Float64Array;
+  readonly velocityF64: Float64Array;
+  readonly gravityF64: Float64Array;
+  readonly sizeF64: Float64Array;
+
   // --- 生命周期管理 ---
 
   /** 粒子存活标记，0=空闲 1=存活 */
@@ -82,6 +91,13 @@ export class ParticleDataBuffer {
     this.translation = new Float32Array(maxCount * 3);
     this.rotMatrix = new Float32Array(maxCount * 9);
     this.linearMove = new Float32Array(maxCount * 3);
+
+    this.delayF64 = new Float64Array(maxCount);
+    this.lifetimeF64 = new Float64Array(maxCount);
+    this.positionF64 = new Float64Array(maxCount * 3);
+    this.velocityF64 = new Float64Array(maxCount * 3);
+    this.gravityF64 = new Float64Array(maxCount * 3);
+    this.sizeF64 = new Float64Array(maxCount * 2);
 
     this.alive = new Uint8Array(maxCount);
     this.expiry = new Float64Array(maxCount);

@@ -10,14 +10,14 @@ import { calculateTranslation, createValueGetter } from '../../math';
 import type { Mesh } from '../../render';
 import type { Maskable } from '../../material';
 import { MaskProcessor } from '../../material';
-import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
+import type { ShapeGenerator } from '../../shape';
 import type { Texture } from '../../texture';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import type { Burst } from './burst';
 import { InitializeParticleModule } from './initialize-particle-module';
 import { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleMeshProps, Point } from './particle-mesh';
+import type { ParticleMeshProps } from './particle-mesh';
 import type { ParticleModuleContext } from './particle-module';
 import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
@@ -154,7 +154,6 @@ export class ParticleSystem extends Component implements Maskable {
   private clickedPointIndex = -1;
 
   private dataBuffer: ParticleDataBuffer | null = null;
-  private pointRefs: (Point | null)[] = [];
   private solveVelocityModule: SolveVelocityModule | null = null;
   private solveRotationModule: SolveRotationModule | null = null;
   private solveLinearMoveModule: SolveLinearMoveModule | null = null;
@@ -264,30 +263,28 @@ export class ParticleSystem extends Component implements Maskable {
     }
   }
 
-  private addParticle (point: Point, maxCount: number) {
-    const db = this.dataBuffer;
-
-    if (!db) {
-      return;
-    }
-    let pointIndex: number;
+  private allocateSlot (maxCount: number): number {
+    const db = this.dataBuffer!;
 
     if (this.nextSlotIndex < maxCount) {
-      pointIndex = this.nextSlotIndex++;
-    } else {
-      pointIndex = this.findOldestSlot(db);
+      return this.nextSlotIndex++;
     }
 
-    db.alive[pointIndex] = 1;
-    db.expiry[pointIndex] = point.delay + point.lifetime;
+    return this.findOldestSlot(db);
+  }
+
+  private commitParticle (slotIndex: number, maxCount: number) {
+    const db = this.dataBuffer!;
+
+    db.alive[slotIndex] = 1;
+    db.expiry[slotIndex] = db.delayF64[slotIndex] + db.lifetimeF64[slotIndex];
     this.aliveCount = Math.min(this.aliveCount + 1, maxCount);
 
-    this.pointRefs[pointIndex] = point;
-    this.renderer.setParticlePoint(pointIndex, point);
-    this.initParticleModule.writeToBuffer(pointIndex, point, this.dataBuffer!, this.renderer.particleMesh.geometry);
-    this.clearPointTrail(pointIndex);
+    db.seed[slotIndex] = Math.random();
+    this.renderer.particleMesh.setPointFromBuffer(slotIndex, db);
+    this.clearPointTrail(slotIndex);
     if (this.transform.parentTransform) {
-      this.renderer.setTrailStartPosition(pointIndex, this.transform.parentTransform.position.clone());
+      this.renderer.setTrailStartPosition(slotIndex, this.transform.parentTransform.position.clone());
     }
   }
 
@@ -338,7 +335,6 @@ export class ParticleSystem extends Component implements Maskable {
     this.frozen = false;
     this.ended = false;
     this.dataBuffer?.clear();
-    this.pointRefs.length = 0;
   }
 
   override onStart (): void {
@@ -423,12 +419,10 @@ export class ParticleSystem extends Component implements Maskable {
             if (!trailDb.alive[ti]) {
               continue;
             }
-            const pt = this.pointRefs[ti];
-
             if (trailDb.expiry[ti] < timePassed) {
               this.clearPointTrail(ti);
-            } else if (pt && timePassed > pt.delay) {
-              this.updatePointTrail(ti, emitterLifetime, pt, pt.delay);
+            } else if (timePassed > trailDb.delayF64[ti]) {
+              this.updatePointTrail(ti, emitterLifetime, trailDb.delayF64[ti]);
             }
           }
         }
@@ -446,6 +440,7 @@ export class ParticleSystem extends Component implements Maskable {
           const maxCount = options.maxCount;
 
           this.updateEmitterTransform(timePassed);
+          const worldMatrix = this.options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
           const shouldSkipGenerate = () => {
             if (this.emissionStopped) {
               return true;
@@ -469,10 +464,25 @@ export class ParticleSystem extends Component implements Maskable {
             if (shouldSkipGenerate()) {
               break;
             }
-            const p = this.createPoint(lifetime);
+            const slotIdx = this.allocateSlot(maxCount);
+            const generator = {
+              total: emission.rateOverTime.getValue(lifetime),
+              index: this.generatedCount,
+              burstIndex: 0,
+              burstCount: 0,
+            };
 
-            p.delay += meshTime + i * timeDelta;
-            this.addParticle(p, maxCount);
+            this.generatedCount++;
+            const result = this.initParticleModule.initializeToBuffer(
+              this.shape.generate(generator), lifetime, worldMatrix, this.transform, this.upDirectionWorld, slotIdx, this.dataBuffer!,
+            );
+
+            this.upDirectionWorld = result.upDirectionWorld;
+            const db = this.dataBuffer!;
+
+            db.delay[slotIdx] += meshTime + i * timeDelta;
+            db.delayF64[slotIdx] += meshTime + i * timeDelta;
+            this.commitParticle(slotIdx, maxCount);
             this.spawnRateModule.commitEmit(timePassed);
           }
           const bursts = emission.bursts;
@@ -497,18 +507,30 @@ export class ParticleSystem extends Component implements Maskable {
                 if (shouldSkipGenerate()) {
                   break;
                 }
-                const p = this.initPoint(this.shape.generate({
-                  total: opts.total,
-                  index: opts.index,
-                  burstIndex: i,
-                  burstCount: opts.count,
-                }));
+                const slotIdx = this.allocateSlot(maxCount);
+                const result = this.initParticleModule.initializeToBuffer(
+                  this.shape.generate({
+                    total: opts.total,
+                    index: opts.index,
+                    burstIndex: i,
+                    burstCount: opts.count,
+                  }), lifetime, worldMatrix, this.transform, this.upDirectionWorld, slotIdx, this.dataBuffer!,
+                );
 
-                p.delay += meshTime;
+                this.upDirectionWorld = result.upDirectionWorld;
+                const db = this.dataBuffer!;
+                const si3 = slotIdx * 3;
+
+                db.delay[slotIdx] += meshTime;
+                db.delayF64[slotIdx] += meshTime;
+                db.position[si3] += burstOffset[0];
+                db.position[si3 + 1] += burstOffset[1];
+                db.position[si3 + 2] += burstOffset[2];
+                db.positionF64[si3] += burstOffset[0];
+                db.positionF64[si3 + 1] += burstOffset[1];
+                db.positionF64[si3 + 2] += burstOffset[2];
                 cursor++;
-                p.transform.translate(...burstOffset);
-
-                this.addParticle(p, maxCount);
+                this.commitParticle(slotIdx, maxCount);
               }
             }
           }
@@ -523,9 +545,7 @@ export class ParticleSystem extends Component implements Maskable {
               if (this.dataBuffer.alive[li]) {
                 this.dataBuffer.expiry[li] -= duration;
                 this.dataBuffer.delay[li] -= duration;
-                if (this.pointRefs[li]) {
-                  this.pointRefs[li]!.delay -= duration;
-                }
+                this.dataBuffer.delayF64[li] -= duration;
               }
             }
           }
@@ -576,16 +596,13 @@ export class ParticleSystem extends Component implements Maskable {
       if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
         continue;
       }
-      const pt = this.pointRefs[i];
+      const pos = this.getPointPositionF64(i);
+      const bi2 = i * 2;
 
-      if (pt) {
-        const pos = this.getPointPosition(pt);
-
-        res.push({
-          center: pos,
-          size: pt.transform.scale,
-        });
-      }
+      res.push({
+        center: pos,
+        size: new Vector3(db.sizeF64[bi2], db.sizeF64[bi2 + 1], 1),
+      });
     }
 
     return res;
@@ -604,12 +621,7 @@ export class ParticleSystem extends Component implements Maskable {
       if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
         continue;
       }
-      const pt = this.pointRefs[i];
-
-      if (!pt) {
-        continue;
-      }
-      const pos = this.getPointPosition(pt);
+      const pos = this.getPointPositionF64(i);
       const ray = options.ray;
 
       if (ray && ray.intersectSphere({ center: pos, radius: options.radius }, temp)) {
@@ -630,16 +642,18 @@ export class ParticleSystem extends Component implements Maskable {
     }
   }
 
-  updatePointTrail (pointIndex: number, emitterLifetime: number, point: Point, startTime: number) {
+  updatePointTrail (pointIndex: number, emitterLifetime: number, startTime: number) {
     const renderer = this.renderer;
 
     if (!renderer.hasTrail()) {
       return;
     }
     const trails = this.trails;
-    const position = this.getPointPosition(point);
+    const position = this.getPointPositionF64(pointIndex);
     const color = trails.inheritParticleColor ? renderer.getParticlePointColor(pointIndex) : [1, 1, 1, 1];
-    const size: vec3 = point.transform.getWorldScale().toArray();
+    const db = this.dataBuffer!;
+    const si2 = pointIndex * 2;
+    const size: vec3 = [db.sizeF64[si2], db.sizeF64[si2 + 1], 1];
 
     let width = 1;
     let lifetime = trails.lifetime.getValue(emitterLifetime);
@@ -671,37 +685,33 @@ export class ParticleSystem extends Component implements Maskable {
    * @params index - 粒子索引
    */
   getPointPositionByIndex (index: number): Vector3 | null {
-    const pt = this.pointRefs[index];
+    const db = this.dataBuffer;
 
-    if (!pt) {
+    if (!db || index < 0 || index >= db.activeCount || !db.alive[index]) {
       console.error('Get point error.');
 
       return null;
     }
 
-    return this.getPointPosition(pt);
+    return this.getPointPositionF64(index);
   }
 
   /**
    * 通过粒子参数获取当前时刻粒子的位置
    */
-  getPointPosition (point: Point): Vector3 {
-    const {
-      transform,
-      vel,
-      lifetime,
-      delay,
-      gravity = [],
-    } = point;
+  getPointPositionF64 (index: number): Vector3 {
+    const db = this.dataBuffer!;
+    const i3 = index * 3;
+    const time = this.time - db.delayF64[index];
+    const lifetime = db.lifetimeF64[index];
+
+    const tempPos = new Vector3(db.positionF64[i3], db.positionF64[i3 + 1], db.positionF64[i3 + 2]);
+    const vel = new Vector3(db.velocityF64[i3], db.velocityF64[i3 + 1], db.velocityF64[i3 + 2]);
+    const acc = new Vector3(db.gravityF64[i3], db.gravityF64[i3 + 1], db.gravityF64[i3 + 2]);
+
+    const ret = calculateTranslation(new Vector3(), this.options, acc, time, lifetime, tempPos, vel);
 
     const forceTarget = this.options.forceTarget;
-    const time = this.time - delay;
-
-    const tempPos = new Vector3();
-    const acc = Vector3.fromArray(gravity);
-
-    transform.assignWorldTRS(tempPos);
-    const ret = calculateTranslation(new Vector3(), this.options, acc, time, lifetime, tempPos, vel);
 
     if (forceTarget) {
       const target = forceTarget.target || [0, 0, 0];
@@ -714,21 +724,6 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     return ret;
-  }
-
-  initPoint (data: ShapeParticle): Point {
-    const worldMatrix = this.options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
-    const result = this.initParticleModule.createPoint(
-      data,
-      this.lifetime,
-      worldMatrix,
-      this.transform,
-      this.upDirectionWorld,
-    );
-
-    this.upDirectionWorld = result.upDirectionWorld;
-
-    return result.point;
   }
 
   addBurst (burst: Burst, offsets: vec3[]) {
@@ -754,19 +749,6 @@ export class ParticleSystem extends Component implements Maskable {
       this.emission.burstOffsets[index] = null;
       this.emission.bursts.splice(index, 1);
     }
-  }
-
-  createPoint (lifetime: number): Point {
-    const generator: ShapeGeneratorOptions = {
-      total: this.emission.rateOverTime.getValue(lifetime),
-      index: this.generatedCount,
-      burstIndex: 0,
-      burstCount: 0,
-    };
-
-    this.generatedCount++;
-
-    return this.initPoint(this.shape.generate(generator));
   }
 
   stopParticleEmission () {

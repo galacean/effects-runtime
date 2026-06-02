@@ -1,11 +1,9 @@
 import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { vec3, vec4 } from '@galacean/effects-specification';
+import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
-import type { Geometry } from '../../render';
 import type { ShapeGenerator, ShapeParticle } from '../../shape';
-import { Transform } from '../../transform';
+import type { Transform } from '../../transform';
 import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { Point } from './particle-mesh';
 
 type InitParticleOptions = {
   startSpeed: ValueGetter<number>,
@@ -53,24 +51,21 @@ export class InitializeParticleModule {
     this.uvs = opts.uvs;
   }
 
-  createPoint (
+  initializeToBuffer (
     data: ShapeParticle,
     emitterLifetime: number,
     worldMatrix: Matrix4,
     emitterTransform: Transform,
     upDirectionWorld: Vector3 | null,
-  ): { point: Point, upDirectionWorld: Vector3 | null } {
+    slotIndex: number,
+    db: ParticleDataBuffer,
+  ): { upDirectionWorld: Vector3 | null } {
     const options = this.options;
     const shape = this.shape;
     const speed = options.startSpeed.getValue(emitterLifetime);
     const matrix4 = options.particleFollowParent ? Matrix4.IDENTITY : worldMatrix;
-    const pointPosition: Vector3 = data.position;
 
-    const position = matrix4.transformPoint(pointPosition, new Vector3());
-    const transform = new Transform({
-      position,
-      valid: true,
-    });
+    const position = matrix4.transformPoint(data.position, new Vector3());
 
     let direction = data.direction;
 
@@ -105,15 +100,7 @@ export class InitializeParticleModule {
       dirX.set(1, 0, 0);
       dirY.set(0, 1, 0);
     }
-    let sprite;
-    const tsa = this.textureSheetAnimation;
 
-    if (tsa && tsa.animate) {
-      sprite = tempSprite;
-      sprite[0] = tsa.animationDelay.getValue(emitterLifetime);
-      sprite[1] = tsa.animationDuration.getValue(emitterLifetime);
-      sprite[2] = tsa.cycles.getValue(emitterLifetime);
-    }
     const rot = tempRot;
 
     if (options.start3DRotation) {
@@ -127,7 +114,7 @@ export class InitializeParticleModule {
     } else {
       rot.set(0, 0, 0);
     }
-    transform.setRotation(rot.x, rot.y, rot.z);
+
     const color = options.startColor.getValue(emitterLifetime) as number[];
 
     if (color.length === 3) {
@@ -157,86 +144,86 @@ export class InitializeParticleModule {
       size.x *= tempScale.x;
       size.y *= tempScale.y;
     }
-    transform.setScale(size.x, size.y, 1);
 
-    const point: Point = {
-      size,
-      vel,
-      color: color as vec4,
-      delay: options.startDelay.getValue(emitterLifetime),
-      lifetime: options.startLifetime.getValue(emitterLifetime),
-      uv: randomArrItem(this.uvs, true),
-      gravity: options.gravity,
-      sprite,
-      dirY,
-      dirX,
-      transform,
-    };
+    const delay = options.startDelay.getValue(emitterLifetime);
+    const lifetime = options.startLifetime.getValue(emitterLifetime);
+    const uv = randomArrItem(this.uvs, true);
+    const gravity = options.gravity;
 
-    return { point, upDirectionWorld };
-  }
+    let sprite: vec3 | undefined;
+    const tsa = this.textureSheetAnimation;
 
-  writeToBuffer (
-    index: number,
-    point: Point,
-    db: ParticleDataBuffer,
-    geometry: Geometry,
-  ): void {
-    const i3 = index * 3;
-    const i4 = index * 4;
-    const i2 = index * 2;
-    const i9 = index * 9;
-    const pos = point.transform.position;
-
-    db.delay[index] = point.delay;
-    db.lifetime[index] = point.lifetime;
-
-    const aRotData = geometry.getAttributeData('aRot') as Float32Array;
-    const gRotOff = index * 32;
-
-    db.seed[index] = aRotData[gRotOff + 3];
-    db.rotation[i3] = aRotData[gRotOff];
-    db.rotation[i3 + 1] = aRotData[gRotOff + 1];
-    db.rotation[i3 + 2] = aRotData[gRotOff + 2];
-
-    db.position[i3] = pos.x;
-    db.position[i3 + 1] = pos.y;
-    db.position[i3 + 2] = pos.z;
-
-    db.velocity[i3] = point.vel.x;
-    db.velocity[i3 + 1] = point.vel.y;
-    db.velocity[i3 + 2] = point.vel.z;
-
-    db.color[i4] = point.color[0];
-    db.color[i4 + 1] = point.color[1];
-    db.color[i4 + 2] = point.color[2];
-    db.color[i4 + 3] = point.color[3];
-
-    db.size[i2] = point.size.x;
-    db.size[i2 + 1] = point.size.y;
-
-    db.dirX[i3] = point.dirX.x;
-    db.dirX[i3 + 1] = point.dirX.y;
-    db.dirX[i3 + 2] = point.dirX.z;
-    db.dirY[i3] = point.dirY.x;
-    db.dirY[i3 + 1] = point.dirY.y;
-    db.dirY[i3 + 2] = point.dirY.z;
-
-    if (point.uv) {
-      db.uv[i4] = point.uv[0];
-      db.uv[i4 + 1] = point.uv[1];
-      db.uv[i4 + 2] = point.uv[2];
-      db.uv[i4 + 3] = point.uv[3];
+    if (tsa && tsa.animate) {
+      sprite = tempSprite;
+      sprite[0] = tsa.animationDelay.getValue(emitterLifetime);
+      sprite[1] = tsa.animationDuration.getValue(emitterLifetime);
+      sprite[2] = tsa.cycles.getValue(emitterLifetime);
     }
-    if (point.sprite) {
-      db.sprite[i3] = point.sprite[0];
-      db.sprite[i3 + 1] = point.sprite[1];
-      db.sprite[i3 + 2] = point.sprite[2];
+
+    // --- Write to DataBuffer ---
+    const i3 = slotIndex * 3;
+    const i4 = slotIndex * 4;
+    const i2 = slotIndex * 2;
+    const i9 = slotIndex * 9;
+
+    db.delay[slotIndex] = delay;
+    db.lifetime[slotIndex] = lifetime;
+    db.delayF64[slotIndex] = delay;
+    db.lifetimeF64[slotIndex] = lifetime;
+
+    db.rotation[i3] = rot.x;
+    db.rotation[i3 + 1] = rot.y;
+    db.rotation[i3 + 2] = rot.z;
+
+    db.position[i3] = position.x;
+    db.position[i3 + 1] = position.y;
+    db.position[i3 + 2] = position.z;
+    db.positionF64[i3] = position.x;
+    db.positionF64[i3 + 1] = position.y;
+    db.positionF64[i3 + 2] = position.z;
+
+    db.velocity[i3] = vel.x;
+    db.velocity[i3 + 1] = vel.y;
+    db.velocity[i3 + 2] = vel.z;
+    db.velocityF64[i3] = vel.x;
+    db.velocityF64[i3 + 1] = vel.y;
+    db.velocityF64[i3 + 2] = vel.z;
+
+    db.color[i4] = color[0];
+    db.color[i4 + 1] = color[1];
+    db.color[i4 + 2] = color[2];
+    db.color[i4 + 3] = color[3];
+
+    db.size[i2] = size.x;
+    db.size[i2 + 1] = size.y;
+    db.sizeF64[i2] = size.x;
+    db.sizeF64[i2 + 1] = size.y;
+
+    db.dirX[i3] = dirX.x;
+    db.dirX[i3 + 1] = dirX.y;
+    db.dirX[i3 + 2] = dirX.z;
+    db.dirY[i3] = dirY.x;
+    db.dirY[i3 + 1] = dirY.y;
+    db.dirY[i3 + 2] = dirY.z;
+
+    if (uv) {
+      db.uv[i4] = uv[0];
+      db.uv[i4 + 1] = uv[1];
+      db.uv[i4 + 2] = uv[2];
+      db.uv[i4 + 3] = uv[3];
     }
-    if (point.gravity) {
-      db.gravity[i3] = point.gravity[0];
-      db.gravity[i3 + 1] = point.gravity[1];
-      db.gravity[i3 + 2] = point.gravity[2];
+    if (sprite) {
+      db.sprite[i3] = sprite[0];
+      db.sprite[i3 + 1] = sprite[1];
+      db.sprite[i3 + 2] = sprite[2];
+    }
+    if (gravity) {
+      db.gravity[i3] = gravity[0];
+      db.gravity[i3 + 1] = gravity[1];
+      db.gravity[i3 + 2] = gravity[2];
+      db.gravityF64[i3] = gravity[0];
+      db.gravityF64[i3 + 1] = gravity[1];
+      db.gravityF64[i3 + 2] = gravity[2];
     }
 
     db.translation[i3] = 0;
@@ -256,7 +243,9 @@ export class InitializeParticleModule {
     db.rotMatrix[i9 + 7] = 0;
     db.rotMatrix[i9 + 8] = 1;
 
-    db.activeCount = Math.max(db.activeCount, index + 1);
+    db.activeCount = Math.max(db.activeCount, slotIndex + 1);
+
+    return { upDirectionWorld };
   }
 }
 
