@@ -432,14 +432,12 @@ export class ParticleMesh implements ParticleMeshData {
       const vertexCount = particleCount * 4;
       const geometry = this.geometry;
       const increaseBuffer = particleCount > this.maxParticleBufferCount;
-      let inc = 1;
+      let inc = 2;
 
       if (this.particleCount > 300) {
         inc = (this.particleCount + 100) / this.particleCount;
       } else if (this.particleCount > 100) {
         inc = 1.4;
-      } else if (this.particleCount > 0) {
-        inc = 2;
       }
       const pointData: Record<string, Float32Array> = {
         aPos: new Float32Array(48),
@@ -545,14 +543,6 @@ export class ParticleMesh implements ParticleMeshData {
       this.particleCount = Math.max(particleCount, this.particleCount);
       geometry.setDrawCount(this.particleCount * 6);
     }
-  }
-
-  private expandArray (array: Float32Array, newSize: number): Float32Array {
-    const newArr = new Float32Array(newSize);
-
-    newArr.set(array);
-
-    return newArr;
   }
 }
 
