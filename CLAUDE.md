@@ -12,15 +12,15 @@ Give Claude verification loops for 2-3x quality improvement:
 
 1. Make changes
 2. Run typecheck
-3. Run tests
-4. Lint before committing
-5. Before creating PR: run full lint and test suite
+3. Run `npx eslint --fix` on all modified `.ts` files
+4. Run tests
+5. Lint before committing
+6. Before creating PR: run full lint and test suite
 
 ## Code Style & Conventions
 
 <!-- Customize these for your project's conventions -->
 
-- Prefer `type` over `interface`; As much as possible avoid use `enum` (use string literal unions instead)
 - Use descriptive variable names
 - Keep functions small and focused
 - Write tests for new functionality

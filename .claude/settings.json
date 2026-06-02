@@ -34,18 +34,5 @@
       "Bash(npx:*)"
     ],
     "deny": []
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx eslint \"$CLAUDE_FILE_PATH\" 2>/dev/null || pnpm format --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true"
-          }
-        ]
-      }
-    ]
   }
 }
