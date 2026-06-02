@@ -168,7 +168,8 @@ export class TestPlayer {
 
   async saveCanvasToImage (
     filename: string,
-    idx: [number, number],
+    sceneIndex: number,
+    suiteTitle: string,
     isNew?: boolean,
     dataUrl?: string,
     imageClassName?: string,
@@ -183,8 +184,9 @@ export class TestPlayer {
 
     await this.imagePreview.saveImage({
       filename,
-      idx,
+      sceneIndex,
       url,
+      suiteTitle,
       isNew,
       imageClassName,
       note,
