@@ -1,5 +1,5 @@
-import type { Ray, Euler } from '@galacean/effects-math/es/core/index';
-import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { Ray } from '@galacean/effects-math/es/core/index';
+import { Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
@@ -17,7 +17,6 @@ import { HitTestType } from '../interact/click-handler';
 import type { Burst } from './burst';
 import { InitializeParticleModule } from './initialize-particle-module';
 import { ParticleEmitter } from './particle-emitter';
-import type { TickContext } from './particle-emitter';
 import { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleMeshProps } from './particle-mesh';
 import { parseParticleSpec } from './parse-spec';
@@ -78,12 +77,6 @@ type ParticleEmissionOptions = {
   burstOffsets: Record<string, vec3[] | null>,
 };
 
-interface ParticleTransform {
-  position: Vector3,
-  rotation?: Euler,
-  path?: ValueGetter<vec3>,
-}
-
 type TrailOptions = {
   lifetime: ValueGetter<number>,
   minimumVertexDistance: number,
@@ -135,22 +128,15 @@ export class ParticleSystem extends Component implements Maskable {
   meshes: Mesh[];
   textureSheetAnimation?: ParticleTextureSheetAnimation;
   interaction?: ParticleInteraction;
-  emissionStopped: boolean;
   props: ParticleSystemProps;
-  time: number;
 
   readonly maskManager: MaskProcessor;
 
-  private loopStartTime: number;
-  private started: boolean;
-  private ended: boolean;
-  private frozen: boolean;
   private uvs: number[][];
-  private basicTransform: ParticleTransform;
   private clickedPointIndex = -1;
 
   private dataBuffer: ParticleDataBuffer | null = null;
-  private pipeline: ParticleEmitter | null = null;
+  private emitter: ParticleEmitter | null = null;
   private particleMeshProps: ParticleMeshProps | null = null;
   private trailMeshProps: TrailMeshProps | null = null;
 
@@ -167,16 +153,20 @@ export class ParticleSystem extends Component implements Maskable {
     }
   }
 
+  get time (): number {
+    return this.emitter?.time ?? 0;
+  }
+
   get timePassed () {
-    return this.time - this.loopStartTime;
+    return this.emitter ? this.emitter.time - this.emitter.loopStartTime : 0;
   }
 
   get lifetime () {
-    return this.timePassed / this.item.duration;
+    return this.emitter ? this.timePassed / this.item.duration : 0;
   }
 
   get particleCount () {
-    return this.pipeline?.aliveCount ?? 0;
+    return this.emitter?.aliveCount ?? 0;
   }
 
   /**
@@ -200,16 +190,15 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   isFrozen () {
-    return this.frozen;
+    return this.emitter?.frozen ?? false;
   }
 
   isEnded () {
-    return this.ended;
+    return this.emitter?.ended ?? false;
   }
 
   initEmitterTransform () {
     const position = this.item.transform.position.clone();
-    const rotation = this.item.transform.rotation.clone();
     const transformPath = this.props.emitterTransform && this.props.emitterTransform.path;
     let path;
 
@@ -220,32 +209,12 @@ export class ParticleSystem extends Component implements Maskable {
         path = createValueGetter(transformPath);
       }
     }
-    this.basicTransform = {
-      position, rotation, path,
-    };
+    this.emitter!.basicTransform = { position, path };
 
     const selfPos = position.clone();
 
     if (path) {
       selfPos.add(path.getValue(0));
-    }
-    this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
-
-    if (this.options.particleFollowParent) {
-      const worldMatrix = this.transform.getWorldMatrix();
-
-      this.renderer.updateWorldMatrix(worldMatrix);
-    }
-  }
-
-  private updateEmitterTransform (time: number) {
-    const { path, position } = this.basicTransform;
-    const selfPos = position.clone();
-
-    if (path) {
-      const duration = this.item.duration;
-
-      selfPos.add(path.getValue(time / duration));
     }
     this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
@@ -265,27 +234,26 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   startEmit () {
-    if (!this.started || this.ended) {
+    if (!this.emitter?.started || this.emitter?.ended) {
       this.reset();
-      this.started = true;
-      this.ended = false;
+      if (this.emitter) {
+        this.emitter.started = true;
+        this.emitter.ended = false;
+      }
     }
   }
 
   stop () {
-    this.ended = true;
-    this.started = false;
+    if (this.emitter) {
+      this.emitter.ended = true;
+      this.emitter.started = false;
+    }
   }
 
   reset () {
     this.renderer.reset();
-    this.time = 0;
-    this.loopStartTime = 0;
-    this.pipeline?.spawnRateModule.reset(this.emission.rateOverTime);
-    this.pipeline?.reset();
+    this.emitter?.fullReset(this.emission.rateOverTime);
     this.emission.bursts.forEach(b => b.reset());
-    this.frozen = false;
-    this.ended = false;
     this.dataBuffer?.clear();
   }
 
@@ -305,20 +273,21 @@ export class ParticleSystem extends Component implements Maskable {
       uvs: this.uvs,
     });
 
-    this.pipeline = new ParticleEmitter();
-    this.pipeline.spawnRateModule = new SpawnRateModule(this.emission.rateOverTime);
-    this.pipeline.initParticleModule = initModule;
-    this.pipeline.solveVelocityModule = new SolveVelocityModule({
+    const spawnRateModule = new SpawnRateModule(this.emission.rateOverTime);
+    const solveVelocity = new SolveVelocityModule({
       gravity: this.options.gravity,
       gravityModifier: this.options.gravityModifier,
       speedOverLifetime: this.options.speedOverLifetime,
     });
-    this.pipeline.solveRotationModule = new SolveRotationModule({
+    const solveRotation = new SolveRotationModule({
       rotationOverLifetime: this.particleMeshProps.rotationOverLifetime,
     });
-    this.pipeline.solveLinearMoveModule = new SolveLinearMoveModule({
+    const solveLinearMove = new SolveLinearMoveModule({
       linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined,
     });
+
+    this.emitter = new ParticleEmitter();
+    this.emitter.initParticleModule = initModule;
 
     this.renderer = this.item.addComponent(ParticleSystemRenderer);
 
@@ -326,18 +295,23 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.maskManager = this.maskManager;
     this.meshes = this.renderer.meshes;
 
-    this.pipeline.setup({
+    this.emitter.setup({
       dataBuffer: this.dataBuffer,
       renderer: this.renderer,
       options: this.options,
       emission: this.emission,
       shape: this.shape,
+      modules: [spawnRateModule, solveVelocity, solveRotation, solveLinearMove].filter(Boolean),
       trails: this.trails,
       getPointPositionF64: index => this.getPointPositionF64(index),
     });
 
-    this.startEmit();
+    this.emitter.componentTransform = this.transform;
     this.initEmitterTransform();
+    this.emitter.itemDuration = this.item.duration;
+    this.emitter.endBehaviorValue = this.item.endBehavior;
+
+    this.startEmit();
 
     this.item.on('click', ()=>{
       if (this.interaction?.behavior === spec.ParticleInteractionBehavior.removeParticle && this.clickedPointIndex >= 0) {
@@ -354,77 +328,16 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override onUpdate (dt: number): void {
-    if (!this.frozen) {
-      this.update(dt);
+    if (!this.emitter?.frozen) {
+      this.emitter?.tick(dt);
     }
   }
 
   simulate (time: number) {
-    this.update(time * 1000);
-    this.frozen = true;
-  }
-
-  private update (delta: number) {
-    if (this.started && this.pipeline && this.dataBuffer) {
-      const now = this.time + delta / 1000;
-
-      this.time = now;
-      if (this.pipeline) {
-        this.pipeline.upDirectionWorld = null;
-      }
-      this.renderer.updateTime(now, delta);
-
-      const emitterLifetime = (now - this.loopStartTime) / this.item.duration;
-      const timePassed = this.timePassed;
-      const ctx: TickContext = {
-        deltaTime: delta,
-        currentTime: now,
-        emitterLifetime,
-        timePassed,
-        duration: this.item.duration,
-        loopStartTime: this.loopStartTime,
-        worldMatrix: this.options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix(),
-        emitterTransform: this.transform,
-        emissionStopped: this.emissionStopped,
-        parentTransformPosition: this.transform.parentTransform?.position.clone() ?? null,
-      };
-
-      this.pipeline.particleUpdateAndSync(ctx);
-
-      if (!this.ended) {
-        if (timePassed < this.item.duration) {
-          this.updateEmitterTransform(timePassed);
-          ctx.worldMatrix = this.options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
-          this.pipeline.emitterUpdateAndSpawn(ctx);
-        } else if (this.options.looping) {
-          this.pipeline.trailUpdate(ctx);
-          this.handleLoop(this.item.duration, now);
-        } else {
-          this.ended = true;
-          if (this.item.endBehavior === spec.EndBehavior.freeze) {
-            this.frozen = true;
-          }
-        }
-      }
-      this.pipeline.trailUpdate(ctx);
+    this.emitter?.tick(time * 1000);
+    if (this.emitter) {
+      this.emitter.frozen = true;
     }
-  }
-
-  private handleLoop (duration: number, now: number) {
-    this.loopStartTime = now - duration;
-    this.pipeline!.spawnRateModule.adjustForLoop(duration);
-    this.time -= duration;
-    this.emission.bursts.forEach(b => b.reset());
-    if (this.dataBuffer) {
-      for (let li = 0; li < this.dataBuffer.activeCount; li++) {
-        if (this.dataBuffer.alive[li]) {
-          this.dataBuffer.expiry[li] -= duration;
-          this.dataBuffer.delay[li] -= duration;
-          this.dataBuffer.delayF64[li] -= duration;
-        }
-      }
-    }
-    this.renderer.minusTimeForLoop(duration);
   }
 
   drawStencilMask (maskRef: number): void {
@@ -516,7 +429,7 @@ export class ParticleSystem extends Component implements Maskable {
   getPointPositionF64 (index: number): Vector3 {
     const db = this.dataBuffer!;
     const i3 = index * 3;
-    const time = this.time - db.delayF64[index];
+    const time = this.emitter!.time - db.delayF64[index];
     const lifetime = db.lifetimeF64[index];
 
     const tempPos = new Vector3(db.positionF64[i3], db.positionF64[i3 + 1], db.positionF64[i3 + 2]);
@@ -566,11 +479,15 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   stopParticleEmission () {
-    this.emissionStopped = true;
+    if (this.emitter) {
+      this.emitter.emissionStopped = true;
+    }
   }
 
   resumeParticleEmission () {
-    this.emissionStopped = false;
+    if (this.emitter) {
+      this.emitter.emissionStopped = false;
+    }
   }
 
   getBoundingBox (): void | BoundingBoxSphere {

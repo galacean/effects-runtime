@@ -1,16 +1,15 @@
-import type { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
+import { Vector3 } from '@galacean/effects-math/es/core/index';
+import { Matrix4 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import type { Burst } from './burst';
 import type { InitializeParticleModule } from './initialize-particle-module';
+import { SpawnRateModule } from './spawn-rate-module';
 import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleModuleContext } from './particle-module';
+import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo } from './particle-module';
+import type { ParticleModule } from './particle-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
 import type { ShapeGenerator } from '../../shape';
-import type { SolveLinearMoveModule } from './solve-linear-move-module';
-import type { SolveRotationModule } from './solve-rotation-module';
-import type { SolveVelocityModule } from './solve-velocity-module';
-import type { SpawnRateModule } from './spawn-rate-module';
 import type { Transform } from '../../transform';
 
 type TrailConfig = {
@@ -37,22 +36,32 @@ export type TickContext = {
 
 export class ParticleEmitter {
   // --- Mutable state ---
+  time = 0;
+  loopStartTime = 0;
+  started = false;
+  ended = false;
+  frozen = false;
+  emissionStopped = false;
   aliveCount = 0;
   nextSlotIndex = 0;
   generatedCount = 0;
   upDirectionWorld: Vector3 | null = null;
+  spawnInfos: SpawnInfo[] = [];
+
+  // --- Config (set after setup) ---
+  basicTransform: { position: Vector3, path?: any } = { position: new Vector3() };
+  componentTransform: Transform;
+  itemDuration = 1;
+  endBehaviorValue = 0;
 
   // --- Modules ---
-  spawnRateModule: SpawnRateModule;
   initParticleModule: InitializeParticleModule;
-  solveVelocityModule: SolveVelocityModule | null = null;
-  solveRotationModule: SolveRotationModule | null = null;
-  solveLinearMoveModule: SolveLinearMoveModule | null = null;
+  private modules: ParticleModule[] = [];
 
   // --- Shared refs (set during setup) ---
   private dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer;
-  private options: { maxCount: number, gravity: vec3, gravityModifier: ValueGetter<number>, speedOverLifetime?: ValueGetter<number>, forceTarget?: any, particleFollowParent?: boolean, linearVelOverLifetime?: any, orbitalVelOverLifetime?: any };
+  private options: { maxCount: number, looping?: boolean, gravity: vec3, gravityModifier: ValueGetter<number>, speedOverLifetime?: ValueGetter<number>, forceTarget?: any, particleFollowParent?: boolean, linearVelOverLifetime?: any, orbitalVelOverLifetime?: any };
   private emission: { rateOverTime: ValueGetter<number>, bursts: Burst[], burstOffsets: Record<string, vec3[] | null> };
   private shape: ShapeGenerator;
   private trails?: TrailConfig;
@@ -64,6 +73,7 @@ export class ParticleEmitter {
     options: ParticleEmitter['options'],
     emission: ParticleEmitter['emission'],
     shape: ShapeGenerator,
+    modules: ParticleModule[],
     trails?: TrailConfig,
     getPointPositionF64: (index: number) => Vector3,
   }): void {
@@ -72,20 +82,102 @@ export class ParticleEmitter {
     this.options = opts.options;
     this.emission = opts.emission;
     this.shape = opts.shape;
+    this.modules = opts.modules;
     this.trails = opts.trails;
     this.getPointPositionF64 = opts.getPointPositionF64;
   }
 
-  reset (): void {
+  fullReset (rateOverTime?: ValueGetter<number>): void {
+    this.time = 0;
+    this.loopStartTime = 0;
+    this.ended = false;
+    this.frozen = false;
     this.aliveCount = 0;
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
     this.upDirectionWorld = null;
+    this.spawnInfos.length = 0;
+    if (rateOverTime) {
+      for (const m of this.modules) {
+        if (m instanceof SpawnRateModule) {
+          m.reset(rateOverTime);
+        }
+      }
+    }
+  }
+
+  commitSpawnRate (timePassed: number): void {
+    for (const m of this.modules) {
+      if (m instanceof SpawnRateModule) {
+        m.commitEmit(timePassed);
+      }
+    }
+  }
+
+  adjustForLoop (duration: number): void {
+    for (const m of this.modules) {
+      if (m instanceof SpawnRateModule) {
+        m.adjustForLoop(duration);
+      }
+    }
+  }
+
+  runStage (stage: ParticleModuleStage, ctx: ParticleModuleContext): void {
+    for (const module of this.modules) {
+      if (module.enabled && module.stage === stage) {
+        module.execute(ctx);
+      }
+    }
   }
 
   // ========================
   // Stage 1: Emitter Update
   // ========================
+
+  tick (delta: number): void {
+    if (!this.started) {
+      return;
+    }
+    const now = this.time + delta / 1000;
+
+    this.time = now;
+    this.upDirectionWorld = null;
+    this.renderer.updateTime(now, delta);
+
+    const timePassed = now - this.loopStartTime;
+    const emitterLifetime = timePassed / this.itemDuration;
+    const ctx: TickContext = {
+      deltaTime: delta,
+      currentTime: now,
+      emitterLifetime,
+      timePassed,
+      duration: this.itemDuration,
+      loopStartTime: this.loopStartTime,
+      worldMatrix: this.getWorldMatrix(),
+      emitterTransform: this.componentTransform,
+      emissionStopped: this.emissionStopped,
+      parentTransformPosition: this.componentTransform?.parentTransform?.position.clone() ?? null,
+    };
+
+    this.particleUpdateAndSync(ctx);
+
+    if (!this.ended) {
+      if (timePassed < this.itemDuration) {
+        this.updateEmitterTransform(timePassed);
+        ctx.worldMatrix = this.getWorldMatrix();
+        this.emitterUpdateAndSpawn(ctx);
+      } else if (this.options.looping) {
+        this.trailUpdate(ctx);
+        this.handleLoop(this.itemDuration);
+      } else {
+        this.ended = true;
+        if (this.endBehaviorValue === 5) {
+          this.frozen = true;
+        }
+      }
+    }
+    this.trailUpdate(ctx);
+  }
 
   particleUpdateAndSync (ctx: TickContext): void {
     const db = this.dataBuffer;
@@ -97,9 +189,26 @@ export class ParticleEmitter {
   emitterUpdateAndSpawn (ctx: TickContext): void {
     const db = this.dataBuffer;
     const maxCount = this.options.maxCount;
-    const spawnResult = this.spawnRateModule.compute(ctx.timePassed, ctx.emitterLifetime);
 
-    this.particleSpawn(ctx, db, maxCount, spawnResult);
+    this.spawnInfos.length = 0;
+    this.loopStartTime = ctx.loopStartTime;
+    const moduleCtx: ParticleModuleContext = {
+      deltaTime: ctx.deltaTime / 1000,
+      currentTime: ctx.currentTime,
+      emitterLifetime: ctx.emitterLifetime,
+      duration: ctx.duration,
+      dataBuffer: db,
+      emitter: this,
+      firstIndex: 0,
+      lastIndex: db.activeCount,
+    };
+
+    this.runStage('emitterUpdate', moduleCtx);
+
+    for (const info of this.spawnInfos) {
+      this.particleSpawn(ctx, db, maxCount, info);
+    }
+    this.burstSpawn(ctx, db, maxCount);
   }
 
   // ========================
@@ -117,13 +226,12 @@ export class ParticleEmitter {
       emitterLifetime: ctx.emitterLifetime,
       duration: ctx.duration,
       dataBuffer: db,
+      emitter: this,
       firstIndex: 0,
       lastIndex: db.activeCount,
     };
 
-    this.solveVelocityModule?.execute(moduleCtx);
-    this.solveRotationModule?.execute(moduleCtx);
-    this.solveLinearMoveModule?.execute(moduleCtx);
+    this.runStage('particleUpdate', moduleCtx);
   }
 
   // ========================
@@ -202,35 +310,17 @@ export class ParticleEmitter {
     ctx: TickContext,
     db: ParticleDataBuffer,
     maxCount: number,
-    spawnResult: { pointCount: number, timeDelta: number },
+    spawnInfo: SpawnInfo,
   ): void {
     const emission = this.emission;
     const worldMatrix = ctx.worldMatrix;
-    const maxEmissionCount = spawnResult.pointCount;
-    const timeDelta = spawnResult.timeDelta;
+    const maxEmissionCount = spawnInfo.count;
+    const timeDelta = spawnInfo.timeDelta;
     const meshTime = ctx.currentTime;
-
-    const shouldSkipGenerate = () => {
-      if (ctx.emissionStopped) {
-        return true;
-      }
-      if (this.aliveCount < maxCount) {
-        return false;
-      }
-      let minExp = Infinity;
-
-      for (let s = 0; s < db.maxCount; s++) {
-        if (db.alive[s] && db.expiry[s] < minExp) {
-          minExp = db.expiry[s];
-        }
-      }
-
-      return (minExp - ctx.loopStartTime) > ctx.timePassed;
-    };
 
     // Rate-based spawning
     for (let i = 0; i < maxEmissionCount && i < maxCount; i++) {
-      if (shouldSkipGenerate()) {
+      if (this.shouldSkipGenerate(ctx, db, maxCount)) {
         break;
       }
       const slotIdx = this.allocateSlot(maxCount);
@@ -251,14 +341,19 @@ export class ParticleEmitter {
       db.delay[slotIdx] += meshTime + i * timeDelta;
       db.delayF64[slotIdx] += meshTime + i * timeDelta;
       this.commitParticle(slotIdx, maxCount, db, ctx.parentTransformPosition);
-      this.spawnRateModule.commitEmit(ctx.timePassed);
+      this.commitSpawnRate(ctx.timePassed);
     }
 
-    // Burst spawning
+  }
+
+  private burstSpawn (ctx: TickContext, db: ParticleDataBuffer, maxCount: number): void {
+    const emission = this.emission;
+    const worldMatrix = ctx.worldMatrix;
+    const meshTime = ctx.currentTime;
     const bursts = emission.bursts;
 
     for (let j = bursts?.length - 1, cursor = 0; j >= 0 && cursor < maxCount; j--) {
-      if (shouldSkipGenerate()) {
+      if (this.shouldSkipGenerate(ctx, db, maxCount)) {
         break;
       }
       const burst = bursts[j];
@@ -275,7 +370,7 @@ export class ParticleEmitter {
         }
 
         for (let i = 0; i < opts.count && cursor < maxCount; i++) {
-          if (shouldSkipGenerate()) {
+          if (this.shouldSkipGenerate(ctx, db, maxCount)) {
             break;
           }
           const slotIdx = this.allocateSlot(maxCount);
@@ -357,9 +452,62 @@ export class ParticleEmitter {
     }
   }
 
+  private getWorldMatrix (): Matrix4 {
+    return this.options.particleFollowParent ? Matrix4.IDENTITY : this.componentTransform.getWorldMatrix();
+  }
+
+  private updateEmitterTransform (time: number): void {
+    const { path, position } = this.basicTransform;
+    const selfPos = position.clone();
+
+    if (path) {
+      selfPos.add(path.getValue(time / this.itemDuration));
+    }
+    this.componentTransform.setPosition(selfPos.x, selfPos.y, selfPos.z);
+
+    if (this.options.particleFollowParent) {
+      this.renderer.updateWorldMatrix(this.componentTransform.getWorldMatrix());
+    }
+  }
+
+  private handleLoop (duration: number): void {
+    this.loopStartTime = this.time - duration;
+    this.adjustForLoop(duration);
+    this.time -= duration;
+    this.emission.bursts.forEach(b => b.reset());
+    const db = this.dataBuffer;
+
+    for (let li = 0; li < db.activeCount; li++) {
+      if (db.alive[li]) {
+        db.expiry[li] -= duration;
+        db.delay[li] -= duration;
+        db.delayF64[li] -= duration;
+      }
+    }
+    this.renderer.minusTimeForLoop(duration);
+  }
+
   // ========================
   // Helpers
   // ========================
+
+  private shouldSkipGenerate (ctx: TickContext, db: ParticleDataBuffer, maxCount: number): boolean {
+    if (ctx.emissionStopped) {
+      return true;
+    }
+    if (this.aliveCount < maxCount) {
+      return false;
+    }
+    let minExp = Infinity;
+
+    for (let s = 0; s < db.maxCount; s++) {
+      if (db.alive[s] && db.expiry[s] < minExp) {
+        minExp = db.expiry[s];
+      }
+    }
+
+    return (minExp - ctx.loopStartTime) > ctx.timePassed;
+  }
 
   private allocateSlot (maxCount: number): number {
     if (this.nextSlotIndex < maxCount) {

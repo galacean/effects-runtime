@@ -1,12 +1,8 @@
 import type { ParticleDataBuffer } from './particle-data-buffer';
+import type { ParticleEmitter } from './particle-emitter';
 
 /**
- * 粒子模块执行阶段。对齐 particle-system-pro 的 4-stage 管线。
- *
- * - emitterSpawn:   发射器首次启动时执行一次
- * - emitterUpdate:  每帧执行，计算本帧发射数量
- * - particleSpawn:  新粒子出生时执行，写入初始属性
- * - particleUpdate: 每帧对所有存活粒子执行，积分推进状态
+ * 粒子模块执行阶段。对齐 particle-system-pro 的 ProModuleStage。
  */
 type ParticleModuleStage =
   | 'emitterSpawn'
@@ -15,23 +11,23 @@ type ParticleModuleStage =
   | 'particleUpdate';
 
 /**
- * 模块执行上下文。各阶段共用同一类型，部分字段仅在特定阶段有意义。
+ * 模块执行上下文。对齐 particle-system-pro 的 ProModuleContext。
+ * 模块通过 emitter 引用访问共享状态（如 spawnInfos）。
  */
 type ParticleModuleContext = {
-  /** 本帧时间步长（秒） */
   deltaTime: number,
-  /** 发射器当前本地时间（秒） */
   currentTime: number,
-  /** 发射器归一化生命周期 [0, 1] */
   emitterLifetime: number,
-  /** 发射器总时长（秒） */
   duration: number,
-  /** SoA 数据缓冲区 */
   dataBuffer: ParticleDataBuffer,
-  /** 处理范围起始索引（含）。particleSpawn: 新粒子范围；particleUpdate: 所有存活粒子 */
+  emitter: ParticleEmitter,
   firstIndex: number,
-  /** 处理范围结束索引（不含） */
   lastIndex: number,
+};
+
+type SpawnInfo = {
+  count: number,
+  timeDelta: number,
 };
 
 /**
@@ -50,5 +46,5 @@ abstract class ParticleModule {
   abstract execute (ctx: ParticleModuleContext): void;
 }
 
-export type { ParticleModuleStage, ParticleModuleContext };
+export type { ParticleModuleStage, ParticleModuleContext, SpawnInfo };
 export { ParticleModule };
