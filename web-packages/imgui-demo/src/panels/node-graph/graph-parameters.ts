@@ -83,7 +83,7 @@ export class AnimationParametersPanel {
     // 使用 BeginChild 创建一个子面板区域
     const childFlags = ImGui.WindowFlags.None;
 
-    if (ImGui.BeginChild('Parameters', new ImGui.ImVec2(availableWidth, availableHeight), true, childFlags)) {
+    if (ImGui.BeginChild('Parameters', new ImGui.ImVec2(availableWidth, availableHeight), ImGui.ChildFlags.Borders, childFlags)) {
       this.drawTabHeader();
 
       ImGui.Separator();

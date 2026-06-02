@@ -3,13 +3,15 @@ import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 
+interface CameraControllerData extends spec.ComponentData, spec.CameraContent {}
+
 @effectsClass(spec.DataType.CameraController)
 export class CameraController extends Component {
   private options: CameraControllerOptions;
 
   constructor (
     engine: Engine,
-    props?: spec.CameraContent,
+    props?: CameraControllerData,
   ) {
     super(engine);
 
@@ -34,7 +36,7 @@ export class CameraController extends Component {
     }
   }
 
-  override fromData (data: spec.CameraContent): void {
+  override fromData (data: CameraControllerData): void {
     super.fromData(data);
 
     this.options = data.options;

@@ -69,14 +69,6 @@ export interface InitMessage extends BaseMessage {
   transcoderWasm: WebAssembly.Module,
 }
 
-export interface BinomialTranscodeMessage extends BaseMessage {
-  type: 'transcode',
-  format: number,
-  buffer: Uint8Array,
-}
-
-export type IBinomialMessage = InitMessage | BinomialTranscodeMessage;
-
 export type TranscodeResult = {
   width: number,
   height: number,

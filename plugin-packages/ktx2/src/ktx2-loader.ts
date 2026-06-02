@@ -1,8 +1,8 @@
 import type {
-  Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader,
+  Texture2DSourceOptionsCompressed, TextureDataType, TextureLoader, Scene, SceneLoadOptions,
 } from '@galacean/effects';
 import {
-  TextureSourceType, loadBinary, glContext, textureLoaderRegistry,
+  TextureSourceType, loadBinary, glContext, textureLoaderRegistry, Plugin,
 } from '@galacean/effects';
 import { KTX2TargetFormat } from './ktx2-common';
 import { KTX2Container } from './ktx2-container';
@@ -10,9 +10,9 @@ import type { TranscodeResult } from './transcoder/texture-transcoder';
 import { KhronosTranscoder } from './transcoder/khronos-transcoder';
 
 /**
- * KTX2 加载器 - 专用于 UASTC 转 ASTC
+ * KTX2 加载器插件
  */
-export class KTX2Loader implements TextureLoader {
+export class KTX2Loader extends Plugin implements TextureLoader {
   private khronosTranscoder: KhronosTranscoder | null = null;
   private khronosInitPromise?: Promise<void>;
 
@@ -23,7 +23,16 @@ export class KTX2Loader implements TextureLoader {
    */
   constructor (
     private readonly workerCount = 0,
-  ) { }
+  ) {
+    super();
+  }
+
+  override async onAssetsLoadStart (_scene: Scene, _options?: SceneLoadOptions): Promise<void> {
+    // 仅在未手动注册时才自动注册，避免覆盖用户通过 registerKTX2Loader(workerCount) 的自定义配置
+    if (!textureLoaderRegistry.has('ktx2')) {
+      registerKTX2Loader(this.workerCount);
+    }
+  }
 
   /**
    * 初始化 Khronos Transcoder
@@ -72,25 +81,32 @@ export class KTX2Loader implements TextureLoader {
    */
   async loadFromBuffer (arrBuffer: ArrayBuffer) {
     const buffer = new Uint8Array(arrBuffer);
-    const { ktx2Container, result } = await this.parseBuffer(buffer);
+    const { ktx2Container, result, hasFullMipmapChain } = await this.parseBuffer(buffer);
+    const textureOptions = this.createTextureByBuffer(ktx2Container, result, hasFullMipmapChain);
 
-    return this.createTextureByBuffer(ktx2Container, result);
+    // 转码完成后释放原始 KTX2 数据
+    ktx2Container.clear();
+
+    return textureOptions;
   }
 
   /**
    * 从 URL 加载 KTX2 纹理并返回压缩纹理源选项
    */
   async loadFromURL (url: string) {
-
     const buffer = new Uint8Array(await loadBinary(url));
-    const { ktx2Container, result } = await this.parseBuffer(buffer);
+    const { ktx2Container, result, hasFullMipmapChain } = await this.parseBuffer(buffer);
+    const textureOptions = this.createTextureByBuffer(ktx2Container, result, hasFullMipmapChain);
 
-    return this.createTextureByBuffer(ktx2Container, result);
+    // 转码完成后释放原始 KTX2 数据
+    ktx2Container.clear();
+
+    return textureOptions;
   }
 
   /**
    * @internal
-   * 解析并转码 KTX2 文件
+   * 解析并转码 KTX2 文件 - 专用于 UASTC 转 ASTC
    */
   private async parseBuffer (buffer: Uint8Array) {
     const ktx2Container = new KTX2Container(buffer);
@@ -100,41 +116,45 @@ export class KTX2Loader implements TextureLoader {
       throw new Error('Unsupported KTX2: only UASTC format is supported');
     }
 
-    // 前置在gpucapability已经检测过可用 直接转码
+    // 提前判断需要转码的 level 数量，避免转码后丢弃多余结果
+    const { pixelWidth, pixelHeight } = ktx2Container;
+    const maxDimension = Math.max(pixelWidth, pixelHeight);
+    const availableLevelCount = ktx2Container.levels.length;
+    const fullChainCount = maxDimension > 0 ? Math.floor(Math.log2(maxDimension)) + 1 : 1;
+    const hasFullMipmapChain = availableLevelCount > 1 && availableLevelCount >= fullChainCount;
+    const neededLevelCount = hasFullMipmapChain ? availableLevelCount : 1;
+    // 前置在gpucapability已经检测过可用
     const transcoder = await this.ensureKhronosTranscoder();
-    const result = await transcoder.transcode(ktx2Container);
+    const result = await transcoder.transcode(ktx2Container, neededLevelCount);
 
     return {
       ktx2Container,
       result,
+      hasFullMipmapChain,
     };
   }
 
   /**
    * @internal
    * 根据转码结果创建引擎所需的压缩纹理源选项
+   * @param hasFullMipmapChain - 是否包含完整 mipmap 链（由 parseBuffer 提前判断）
    */
   private createTextureByBuffer (
     ktx2Container: KTX2Container,
-    transcodeResult: TranscodeResult
+    transcodeResult: TranscodeResult,
+    hasFullMipmapChain: boolean,
   ): Texture2DSourceOptionsCompressed {
     const { pixelWidth, pixelHeight, faceCount } = ktx2Container;
     const { internalFormat, format, type } = this.getASTC4x4TextureDetail();
 
-    const target = faceCount === 6 ? glContext.TEXTURE_CUBE_MAP : glContext.TEXTURE_2D;
-
-    const faces = transcodeResult.faces;
-    const transLevels = faces[0]?.length ?? 0;
-    const maxDimension = Math.max(pixelWidth, pixelHeight);
-
-    if (maxDimension === 0) {
+    if (Math.max(pixelWidth, pixelHeight) === 0) {
       throw new Error('Invalid KTX2 texture: both width and height are zero');
     }
 
-    const fullChainCount = Math.floor(Math.log2(maxDimension)) + 1;
-    const useMipmaps = transLevels > 1 && transLevels >= fullChainCount;
-    const levelCount = useMipmaps ? transLevels : 1;
-
+    const target = faceCount === 6 ? glContext.TEXTURE_CUBE_MAP : glContext.TEXTURE_2D;
+    const faces = transcodeResult.faces;
+    // 转码时已按 neededLevelCount 截断，直接使用全部转码结果
+    const levelCount = hasFullMipmapChain ? (faces[0]?.length ?? 0) : 1;
     const mipmaps: TextureDataType[] = [];
 
     for (let level = 0; level < levelCount; level++) {

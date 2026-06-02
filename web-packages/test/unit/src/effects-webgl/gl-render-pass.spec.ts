@@ -1,9 +1,10 @@
-// @ts-nocheck
 import {
-  TextureSourceType, RenderPass, RenderPassDestroyAttachmentType,
-  RenderPassAttachmentStorageType, OrderType, Mesh, DrawObjectPass,
+  DrawObjectPass,
+  Material,
+  Mesh,
+  RenderPass,
 } from '@galacean/effects-core';
-import { GLTexture, GLGeometry, GLMaterial, GLEngine } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { MathUtils } from './math-utils';
 
@@ -11,15 +12,19 @@ const { expect } = chai;
 
 describe('webgl/gl-render-pass', () => {
   let gl = getGL2()!;
-  let engine = new GLEngine(gl.canvas, { glType: 'webgl2' });
+  let engine = new GLEngine(gl.canvas as HTMLCanvasElement, { glType: 'webgl2' });
   let renderer = engine.renderer;
 
   after(() => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     engine.dispose();
+    //@ts-expect-error
     renderer = null;
+    //@ts-expect-error
     gl.canvas.remove();
+    //@ts-expect-error
     gl = null;
+    //@ts-expect-error
     engine = null;
   });
 
@@ -30,11 +35,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
     const mesh00 = new Mesh(engine, { geometry: geom, material, priority: 0 });
     const mesh0 = new Mesh(engine, { geometry: geom, material, priority: 1 });
@@ -53,13 +57,13 @@ describe('webgl/gl-render-pass', () => {
     let rp1 = new RenderPass(renderer);
 
     rp1.configure(renderer);
-    expect(rp1.viewport).to.deep.equal([0, 0, renderer.width, renderer.height]);
+    expect(rp1.viewport).to.deep.equal([0, 0, renderer.getWidth(), renderer.getHeight()]);
 
     rp1.dispose();
     rp1 = new RenderPass(renderer);
 
     rp1.configure(renderer);
-    expect(rp1.viewport).to.deep.equal([0, 0, renderer.width, renderer.height]);
+    expect(rp1.viewport).to.deep.equal([0, 0, renderer.getWidth(), renderer.getHeight()]);
   });
 
   it('render pass resort meshes mesh order is ascending && lenght <= 30', () => {
@@ -71,11 +75,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
 
     for (let index = 0; index < length; index++) {
@@ -128,11 +131,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
     const mesh = new Mesh(
       engine,
@@ -164,11 +166,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
     const mesh = new Mesh(
       engine,
@@ -210,11 +211,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
 
     for (let index = 0; index < length; index++) {
@@ -297,11 +297,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
     const testMesh = new Mesh(
       engine,
@@ -337,11 +336,10 @@ describe('webgl/gl-render-pass', () => {
         attributes: {},
       });
 
-    const material = new GLMaterial(
+    const material = new Material(
       engine,
       {
         shader: { vertex: '', fragment: '' },
-        states: {},
       });
     const mesh = new Mesh(
       engine,
@@ -376,91 +374,6 @@ describe('webgl/gl-render-pass', () => {
     rp1.removeMesh(testMesh);
     //加入测试mesh并移除后length应该为1
     expect(rp1.meshes.length).to.eql(1);
-    rp1.dispose();
-  });
-
-  //render test with multiple pass
-  //向render传入不同的width和height来进行resize,此时没有设置viewport的renderpass需要reset
-  it('render pass resize with different height and width', () => {
-    //重置renderer的size
-    const oldWidth = 300;
-    const oldHeight = 150;
-    const newWidth = 100;
-    const newHeight = 50;
-    const rp2Width = 110;
-    const rp2Heigth = 440;
-
-    //engine.setSize(oldWidth,oldHeight);
-    renderer.engine.bindSystemFramebuffer();
-    const rp1 = new DrawObjectPass(renderer, {});
-
-    const rp2 = new RenderPass(renderer);
-
-    rp1.configure(renderer);
-    rp2.configure(renderer);
-    const spy = chai.spy(() => { });
-    const call = renderer.resize;
-
-    renderer.resize = spy;
-    //传入不同的宽高，renderer要做resize处理，同时renderpass的viewport和所属的color/depth-setencil都要做同步处理 但是用户传入viewport的pass不会发生改变
-    engine.setSize(newWidth, newHeight);
-    expect(spy).has.been.called.once;
-    renderer.resize = call;
-    engine.setSize(newWidth, newHeight);
-    expect(rp1.viewport).to.eql([0, 0, newWidth, newHeight]);
-    engine.setSize(300, 150);
-    rp1.dispose();
-    rp2.dispose();
-  });
-
-  //向render传入相同的width和height来进行resize,此时判断不需要resize，相应的renderpass也就不需要reset
-  it('render pass resize with identical height and width', () => {
-    //重置renderer的size
-    const oldWidth = 300;
-    const oldHeight = 150;
-
-    engine.setSize(300, 150);
-    const spy = chai.spy(() => {
-    });
-    const call = renderer.resize;
-    const rp1 = new RenderPass(renderer);
-
-    renderer.engine.bindSystemFramebuffer();
-    expect(rp1.viewport).to.deep.equal([0, 0, oldWidth, oldHeight]);
-
-    renderer.resize = spy;
-    engine.setSize(300, 150);
-    expect(spy).has.been.called.once;
-    renderer.resize = call;
-    engine.setSize(300, 150);
-    //传入相同的宽高的时候renderpass不做resset处理
-    expect(rp1.viewport).to.deep.equals([0, 0, 300, 150]);
-    rp1.dispose();
-  });
-
-  //同时进行build reset resize操作
-  it('render pass with build->reset->resize', () => {
-    //重置renderer的size
-    const buildWidth = 128, buildHeight = 64;
-    const resetWidth = 300;
-    const resetHeight = 150;
-    const resizeWidth = 1024, resizeHeight = 2048;
-    const spy = chai.spy(() => {
-    });
-    const call = renderer.resize;
-    //创建的时候传入viewport
-    const rp1 = new DrawObjectPass(renderer, {});
-
-    renderer.engine.bindSystemFramebuffer();
-
-    //resize后framebuffer的宽高也要跟着变
-    renderer.resize = spy;
-    engine.setSize(resizeWidth, resizeHeight);
-    expect(spy).has.been.called.once;
-    renderer.resize = call;
-    engine.setSize(resizeWidth, resizeHeight);
-    //置回默认值，方便其他同学测试
-    engine.setSize(300, 150);
     rp1.dispose();
   });
 });

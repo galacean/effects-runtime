@@ -206,14 +206,14 @@ export class TextComponentBase {
     return fontDesc;
   }
 
-  protected setupOutline (): void {
+  protected setupOutline (fontScale = 1): void {
     const context = this.context;
     const { outlineColor, outlineWidth } = this.textStyle;
     const [r, g, b, a] = outlineColor;
 
     if (context) {
       context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
-      context.lineWidth = outlineWidth * 2;
+      context.lineWidth = outlineWidth * 2 / fontScale;
     }
   }
 
@@ -237,6 +237,20 @@ export class TextComponentBase {
     if (texture && texture !== this.engine.whiteTexture) {
       texture.dispose();
     }
+  }
+
+  protected releaseTextCanvas (): void {
+    if (!this.canvas || !this.context) {
+      return;
+    }
+
+    canvasPool.releaseCanvasAndContext({
+      canvas: this.canvas,
+      context: this.context,
+    });
+
+    this.canvas = undefined as unknown as HTMLCanvasElement;
+    this.context = null;
   }
 
   /**
@@ -312,8 +326,9 @@ export class TextComponentBase {
   // 初始化方法，由子类调用
   protected initTextBase (engine: Engine): void {
     this.engine = engine;
-    this.canvas = canvasPool.getCanvas();
-    canvasPool.saveCanvas(this.canvas);
-    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    const canvasAndContext = canvasPool.getCanvasAndContext(1, 1);
+
+    this.canvas = canvasAndContext.canvas;
+    this.context = canvasAndContext.context;
   }
 }

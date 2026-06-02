@@ -4,10 +4,13 @@ import { Renderer } from '@galacean/effects-core';
 export class ThreeRenderer extends Renderer {
   constructor (engine: Engine) {
     super(engine);
-    this.renderingData = {
-      //@ts-expect-error
-      currentFrame: {
-      },
-    };
+  }
+
+  override getWidth (): number {
+    return this.engine.canvas.width;
+  }
+
+  override getHeight (): number {
+    return this.engine.canvas.height;
   }
 }

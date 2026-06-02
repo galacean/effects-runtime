@@ -6,6 +6,7 @@ import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { CanvasGizmo } from '../core/canvas-gizmo';
 import { VFXItem } from '@galacean/effects-core';
+import { beginToolbar, endToolbar, toggleButton } from '../widgets';
 
 @editorWindow()
 export class Scene extends EditorWindow {
@@ -19,6 +20,9 @@ export class Scene extends EditorWindow {
   }
 
   set is2DMode (value: boolean) {
+    if (this._is2DMode === value) {
+      return;
+    }
     this._is2DMode = value;
     if (value) {
       GalaceanEffects.player.getCompositions()[0]?.getComponent(CanvasGizmo)?.reset2DCamera();
@@ -40,47 +44,13 @@ export class Scene extends EditorWindow {
 
   protected override onGUI (): void {
     if (!GalaceanEffects.player.getCompositions()[0]) {
-      ImGui.End();
-
       return;
     }
     const player = GalaceanEffects.player;
 
-    const toolbarBgColor = new ImGui.Vec4(0.22, 0.22, 0.22, 1.0);
-    const toolbarHeight = 22;
-
-    // 绘制工具栏背景
-    const drawList = ImGui.GetWindowDrawList();
-    const cursorPos = ImGui.GetCursorScreenPos();
-    const toolbarMin = new ImGui.Vec2(cursorPos.x, cursorPos.y);
-    const toolbarMax = new ImGui.Vec2(cursorPos.x + ImGui.GetContentRegionAvail().x, cursorPos.y + toolbarHeight);
-
-    drawList.AddRectFilled(toolbarMin, toolbarMax, ImGui.GetColorU32(toolbarBgColor));
-
-    // 工具栏按钮样式
-    const buttonActiveColor = new ImGui.Vec4(0.26, 0.37, 0.48, 1.0);
-    const buttonNormalColor = new ImGui.Vec4(0.30, 0.30, 0.30, 1.0); // 透明（未选中状态）
-    const buttonHoverColor = new ImGui.Vec4(0.40, 0.40, 0.40, 1.0); // 浅灰色（悬停状态）
-
-    // 设置按钮位置在工具栏内
-    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 1);
-    ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 4);
-
-    // 2D 切换按钮
-    ImGui.PushStyleColor(ImGui.ImGuiCol.Button, this.is2DMode ? buttonActiveColor : buttonNormalColor);
-    ImGui.PushStyleColor(ImGui.ImGuiCol.ButtonHovered, this.is2DMode ? new ImGui.Vec4(0.30, 0.63, 1.0, 1.0) : buttonHoverColor);
-    ImGui.PushStyleColor(ImGui.ImGuiCol.ButtonActive, buttonActiveColor);
-    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.FrameRounding, 2.0);
-    ImGui.PushStyleVar(ImGui.ImGuiStyleVar.FramePadding, new ImGui.Vec2(8, 2));
-
-    if (ImGui.Button('2D', new ImGui.Vec2(32, 20))) {
-      this.is2DMode = !this.is2DMode;
-    }
-    ImGui.PopStyleVar(2);
-    ImGui.PopStyleColor(3);
-
-    // 移动光标到工具栏后面
-    ImGui.SetCursorPosY(ImGui.GetCursorPosY() - 2);
+    beginToolbar('##SceneToolbar');
+    this.is2DMode = toggleButton('2D', this.is2DMode, { size: new ImGui.Vec2(32, 20) });
+    endToolbar();
 
     const screenPos = ImGui.GetCursorScreenPos();
 
@@ -102,16 +72,18 @@ export class Scene extends EditorWindow {
     }
 
     if (GalaceanEffects.sceneRendederTexture) {
-      const frame_padding = 0;                             // -1 === uses default padding (style.FramePadding)
-      const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
-      const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
-      const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
-      const tint_col: ImGui.Vec4 = new ImGui.Vec4(1.0, 1.0, 1.0, 1.0);       // No tint
+      const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);
+      const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);
+      const viewportId = this.is2DMode ? 'scene_2d_interact' : 'scene_3d_interact';
+      const drawList = ImGui.GetWindowDrawList();
+      const viewportMax = new ImGui.Vec2(screenPos.x + sceneImageSize.x, screenPos.y + sceneImageSize.y);
+
+      drawList.AddRectFilled(screenPos, viewportMax, ImGui.COL32(0, 0, 0, 255));
+      ImGui.Image(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1);
+      ImGui.SetCursorScreenPos(screenPos);
+      ImGui.InvisibleButton(viewportId, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y));
 
       if (this.is2DMode) {
-        // 2D 模式：渲染 ImageButton 但将事件转发到 player.canvas
-        ImGui.ImageButton(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
-
         const imguiCanvas = ImGui_Impl.getCanvas();
 
         // 转发鼠标事件到 player.canvas
@@ -153,15 +125,12 @@ export class Scene extends EditorWindow {
             imguiCanvas.style.cursor = canvas.style.cursor || 'default';
           }
         } else {
-          // 鼠标不在 ImageButton 上时，恢复 ImGui 默认 cursor
+          // 鼠标不在 Scene 视口上时，恢复 ImGui 默认 cursor
           if (imguiCanvas) {
             imguiCanvas.style.cursor = '';
           }
         }
       } else {
-        // 3D 模式：正常的 ImageButton 交互
-        ImGui.ImageButton(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
-
         if (ImGui.IsItemHovered()) {
           // 检查鼠标释放时的拖动距离，只有拖动距离很小时才认为是单击
           if (ImGui.IsMouseReleased(ImGui.ImGuiMouseButton.Left)) {

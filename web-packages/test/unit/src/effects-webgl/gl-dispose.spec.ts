@@ -1,11 +1,11 @@
 import type { Renderer, Engine, TextureFactorySourceFrom } from '@galacean/effects-core';
+import { Material } from '@galacean/effects-core';
 import {
   TextureLoadAction, glContext, getDefaultTextureFactory, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, TextureSourceType, Camera, DestroyOptions, RenderPass,
   RenderFrame, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
-import type { GLShaderVariant, GLFramebuffer, GLRenderer } from '@galacean/effects-webgl';
-import { GLEngine, GLMaterial, GLGeometry, GLTexture } from '@galacean/effects-webgl';
+import { GLEngine, GLGeometry, GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -17,7 +17,7 @@ const { expect } = chai;
  */
 describe('webgl/dispose', function () {
   let canvas: HTMLCanvasElement;
-  let renderer: GLRenderer;
+  let renderer: Renderer;
   let gl: WebGLRenderingContext;
   let result: Record<string, any>;
   let engine: Engine;
@@ -26,7 +26,7 @@ describe('webgl/dispose', function () {
     canvas = document.createElement('canvas');
     const glEngine = new GLEngine(canvas, { glType: 'webgl2' });
 
-    renderer = glEngine.renderer as GLRenderer;
+    renderer = glEngine.renderer;
     engine = glEngine;
     gl = glEngine.gl;
   });
@@ -60,7 +60,7 @@ describe('webgl/dispose', function () {
   // 销毁mesh时不传参，默认删除所有引用资源geometry、texture
   it('mesh dispose with default params', async () => {
     const mesh = result.mesh;
-    const material: GLMaterial = result.material;
+    const material: Material = result.material;
     const geom = result.geom;
     const texture = result.texture;
 
@@ -581,7 +581,7 @@ async function createMesh (engine: Engine) {
       },
     });
 
-  const material = new GLMaterial(
+  const material = new Material(
     engine,
     {
       shader: { vertex: vs, fragment: fs, glslVersion: GLSLVersion.GLSL3 },

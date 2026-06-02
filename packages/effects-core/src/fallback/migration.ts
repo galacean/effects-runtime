@@ -569,7 +569,6 @@ export function version34Migration (json: JSONScene): JSONScene {
       if (shapeData !== undefined && shapeData !== null && !('aPoint' in shapeData && 'index' in shapeData)) {
         const geometryData = createGeometryDataByShape(shapeData);
 
-        //@ts-expect-error
         spriteComponentData.geometry = { id: geometryData.id };
         json.geometries.push(geometryData);
       }
@@ -675,6 +674,8 @@ export function version35Migration (json: JSONScene): JSONScene {
 
 export function version36Migration (json: JSONScene): JSONScene {
   // 兼容老数据 text item 的 transform scale 问题，老版本 text item 的 scale 实际上是 size，新的版本中 scale 和 size 分离
+  const textItemScaleInfos: { item: spec.VFXItemData, scaleFactor: number, oldScaleX: number, oldScaleY: number, oldScaleZ: number }[] = [];
+
   for (const textItem of json.items) {
     if (textItem.type === spec.ItemType.text && textItem.transform) {
       const textComponent = json.components.find(comp => textItem.components[0].id === comp.id) as spec.TextComponentData;
@@ -683,18 +684,29 @@ export function version36Migration (json: JSONScene): JSONScene {
       const defaultWorldPerPixel = 0.0123;
       const scaleFactor = itemWorldPerPixel / defaultWorldPerPixel;
 
+      const oldScaleX = textItem.transform.scale.x;
+      const oldScaleY = textItem.transform.scale.y;
+      const oldScaleZ = textItem.transform.scale.z;
+
       for (const item of json.items) {
         if (item.parentId === textItem.id && item.transform) {
-          item.transform.scale.x *= textItem.transform.scale.x / scaleFactor;
-          item.transform.scale.y *= textItem.transform.scale.y / scaleFactor;
-          item.transform.scale.z *= textItem.transform.scale.z / scaleFactor;
+          item.transform.scale.x *= oldScaleX / scaleFactor;
+          item.transform.scale.y *= oldScaleY / scaleFactor;
+          item.transform.scale.z *= oldScaleZ / scaleFactor;
         }
       }
 
       textItem.transform.scale.x = scaleFactor;
       textItem.transform.scale.y = scaleFactor;
       textItem.transform.scale.z = scaleFactor;
+
+      textItemScaleInfos.push({ item: textItem, scaleFactor, oldScaleX, oldScaleY, oldScaleZ });
     }
+  }
+
+  // 迁移 AnimationClip 中指向 text item 的 scaleCurves 关键帧
+  if (textItemScaleInfos.length > 0 && json.animations?.length) {
+    migrateTextScaleCurves(json, textItemScaleInfos);
   }
 
   // 生成 item 的 children 字段，CompositionComponent 的 children 字段
@@ -1144,4 +1156,210 @@ export function convertSpineData (resource: SpineResource, content: SpineContent
     })),
   };
 
+}
+
+/**
+ * 批量迁移所有指向 textItem（或其子元素）的 scaleCurves 关键帧。
+ * Animator 组件挂在 composition 上，path 从 composition 的顶层 item 开始解析。
+ * 所有 Map 只构建一次，避免每个 text item 重复分配。
+ */
+function migrateTextScaleCurves (
+  json: JSONScene,
+  textItemScaleInfos: { item: spec.VFXItemData, scaleFactor: number, oldScaleX: number, oldScaleY: number, oldScaleZ: number }[],
+) {
+  // 建立 id → item 和 id → children 映射
+  const idToItem = new Map<string, spec.VFXItemData>();
+  const childrenMap = new Map<string, spec.VFXItemData[]>();
+
+  for (const item of json.items) {
+    idToItem.set(item.id, item);
+    if (item.parentId) {
+      let children = childrenMap.get(item.parentId);
+
+      if (!children) {
+        children = [];
+        childrenMap.set(item.parentId, children);
+      }
+      children.push(item);
+    }
+  }
+
+  // 为每个 textItem 收集子孙 id 集合，并建立 targetId → scaleInfo 的快速查找
+  const textItemIdToInfo = new Map<string, typeof textItemScaleInfos[0]>();
+  const textChildIdToInfo = new Map<string, typeof textItemScaleInfos[0]>();
+
+  for (const info of textItemScaleInfos) {
+    textItemIdToInfo.set(info.item.id, info);
+
+    // 只收集直接子节点，深层后代已通过直接子节点的静态 scale 调整继承了正确的变换
+    const children = childrenMap.get(info.item.id);
+
+    if (children) {
+      for (const child of children) {
+        textChildIdToInfo.set(child.id, info);
+      }
+    }
+  }
+
+  // 建立 component id → component 映射
+  const componentMap = new Map<string, spec.ComponentData>();
+
+  for (const comp of json.components) {
+    componentMap.set(comp.id, comp);
+  }
+
+  // 建立 animation id → data 映射
+  const animationMap = new Map<string, spec.EffectsObjectData>();
+
+  for (const anim of json.animations) {
+    animationMap.set(anim.id, anim);
+  }
+
+  // 遍历所有 composition，找 Animator 组件并处理其 scaleCurves
+  for (const composition of json.compositions) {
+    let animatorComp: spec.ComponentData | undefined;
+    let compositionComp: spec.ComponentData | undefined;
+
+    for (const compRef of composition.components) {
+      const comp = componentMap.get(compRef.id);
+
+      if (comp?.dataType === spec.DataType.Animator) {
+        animatorComp = comp;
+      } else if (comp?.dataType === spec.DataType.CompositionComponent) {
+        compositionComp = comp;
+      }
+      if (animatorComp && compositionComp) {
+        break;
+      }
+    }
+
+    if (!animatorComp) {
+      continue;
+    }
+
+    // 获取 composition 的顶层 items
+    let topItems: spec.VFXItemData[] | undefined;
+
+    if (compositionComp) {
+      const ccData = compositionComp as spec.CompositionComponentData;
+      const items = ccData.items;
+
+      if (items) {
+        topItems = [];
+        for (const ref of items) {
+          const item = idToItem.get(ref.id);
+
+          if (item && !item.parentId) {
+            topItems.push(item);
+          }
+        }
+      }
+    }
+
+    if ((!topItems || topItems.length === 0) && composition.children) {
+      topItems = [];
+      for (const ref of composition.children) {
+        const item = idToItem.get(ref.id);
+
+        if (item) {
+          topItems.push(item);
+        }
+      }
+    }
+
+    if (!topItems || topItems.length === 0) {
+      continue;
+    }
+
+    // 获取 Animator 关联的 AnimationClip
+    const animatorData = animatorComp as spec.AnimatorData;
+    const graphAsset = animationMap.get(animatorData.graphAsset?.id) as spec.AnimationGraphAssetData | undefined;
+
+    if (!graphAsset?.graphDataSet?.resources) {
+      continue;
+    }
+
+    for (const clipRef of graphAsset.graphDataSet.resources) {
+      const clip = animationMap.get(clipRef.id) as spec.AnimationClipData | undefined;
+
+      if (!clip?.scaleCurves) {
+        continue;
+      }
+
+      for (const scaleCurve of clip.scaleCurves) {
+        const target = resolveTargetFromTopItems(topItems, scaleCurve.path, childrenMap);
+
+        if (!target) {
+          continue;
+        }
+
+        const selfInfo = textItemIdToInfo.get(target.id);
+
+        if (selfInfo) {
+          // 曲线指向 textItem 自身：从旧 scale 空间转换到新 scale 空间
+          scaleVector3CurveKeyFrames(scaleCurve.keyFrames, selfInfo.scaleFactor / selfInfo.oldScaleX, selfInfo.scaleFactor / selfInfo.oldScaleY, selfInfo.scaleFactor / selfInfo.oldScaleZ);
+
+          continue;
+        }
+
+        const childInfo = textChildIdToInfo.get(target.id);
+
+        if (childInfo) {
+          // 曲线指向 textItem 的子元素：补偿父元素 scale 变化
+          scaleVector3CurveKeyFrames(scaleCurve.keyFrames, childInfo.oldScaleX / childInfo.scaleFactor, childInfo.oldScaleY / childInfo.scaleFactor, childInfo.oldScaleZ / childInfo.scaleFactor);
+        }
+      }
+    }
+  }
+}
+
+function resolveTargetFromTopItems (
+  topItems: spec.VFXItemData[],
+  path: string,
+  childrenMap: Map<string, spec.VFXItemData[]>,
+): spec.VFXItemData | undefined {
+  if (!path) {
+    return undefined;
+  }
+  const segments = path.split('/');
+  let current = topItems.find(item => item.name === segments[0]);
+
+  for (let i = 1; i < segments.length && current; i++) {
+    current = childrenMap.get(current.id)?.find(c => c.name === segments[i]);
+  }
+
+  return current;
+}
+
+function scaleVector3CurveKeyFrames (keyFrames: spec.Vector3CurveValue, factorX: number, factorY: number, factorZ: number) {
+  if (!Array.isArray(keyFrames) || keyFrames[0] !== spec.ValueType.VECTOR3_CURVE) {
+    return;
+  }
+  const value = keyFrames[1];
+
+  if (!Array.isArray(value) || value.length !== 3) {
+    return;
+  }
+  scaleBezierValue(value[0], factorX);
+  scaleBezierValue(value[1], factorY);
+  scaleBezierValue(value[2], factorZ);
+}
+
+function scaleBezierValue (bezier: spec.BezierValue, factor: number) {
+  if (!Array.isArray(bezier) || bezier[0] !== spec.ValueType.BEZIER_CURVE || !Array.isArray(bezier[1])) {
+    return;
+  }
+
+  const keyframes = bezier[1];
+
+  for (const kf of keyframes) {
+    if (!Array.isArray(kf) || kf.length < 2 || !Array.isArray(kf[1])) {
+      continue;
+    }
+    const values = kf[1] as number[];
+
+    for (let i = 1; i < values.length; i += 2) {
+      values[i] *= factor;
+    }
+  }
 }

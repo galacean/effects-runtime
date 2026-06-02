@@ -1,4 +1,4 @@
-import type { GLRenderer } from '@galacean/effects';
+import type { GLEngine } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 
 const { expect } = chai;
@@ -41,7 +41,7 @@ describe('player/event', () => {
     });
     const lost = chai.spy();
     const restored = chai.spy();
-    const { gl } = (player.renderer as GLRenderer).context;
+    const { gl } = (player.renderer.engine as GLEngine).context;
     const ext = gl?.getExtension('WEBGL_lose_context');
 
     player.on('webglcontextlost', event => {

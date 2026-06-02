@@ -1,3 +1,4 @@
+import type * as spec from '@galacean/effects-specification';
 import { serialize } from '../decorators';
 import type { Engine } from '../engine';
 import type { Maskable } from '../material';
@@ -5,6 +6,10 @@ import { extractMinAndMax } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
 import type { Geometry, Renderer } from '../render';
 import { RendererComponent } from './renderer-component';
+
+interface MeshComponentData extends spec.ComponentData {
+  mask?: spec.MaskOptions,
+}
 
 /**
  * Mesh 组件
@@ -83,12 +88,10 @@ export class MeshComponent extends RendererComponent implements Maskable {
     return this.boundingBoxInfo;
   }
 
-  // TODO: Update data spec
-  override fromData (data: any): void {
+  override fromData (data: MeshComponentData): void {
     super.fromData(data);
 
-    const maskableRendererData = data;
-    const maskOptions = maskableRendererData.mask;
+    const maskOptions = data.mask;
 
     if (maskOptions) {
       this.maskManager.setMaskOptions(this.engine, maskOptions);

@@ -1,6 +1,4 @@
 import { GLTexture } from '@galacean/effects-webgl';
-import type { FileNode } from '../core/file-node';
-import { GalaceanEffects } from '../ge';
 import { ImGui, ImGui_Impl } from '../imgui';
 
 function access (object: any, property: string) {
@@ -90,7 +88,7 @@ export class EditorGUILayout {
     ImGui.PushStyleColor(ImGui.Col.Button, xColor);
     ImGui.PushStyleColor(ImGui.Col.ButtonHovered, xColorHover);
     ImGui.PushStyleColor(ImGui.Col.ButtonActive, xColor);
-    ImGui.Button('', new ImGui.Vec2(buttonWidth, buttonSize));
+    ImGui.Button('##AxisChip_X', new ImGui.Vec2(buttonWidth, buttonSize));
     ImGui.PopStyleColor(3);
 
     ImGui.SameLine(0, spacing);
@@ -106,7 +104,7 @@ export class EditorGUILayout {
     ImGui.PushStyleColor(ImGui.Col.Button, yColor);
     ImGui.PushStyleColor(ImGui.Col.ButtonHovered, yColorHover);
     ImGui.PushStyleColor(ImGui.Col.ButtonActive, yColor);
-    ImGui.Button('', new ImGui.Vec2(buttonWidth, buttonSize));
+    ImGui.Button('##AxisChip_Y', new ImGui.Vec2(buttonWidth, buttonSize));
     ImGui.PopStyleColor(3);
 
     ImGui.SameLine(0, spacing);
@@ -122,7 +120,7 @@ export class EditorGUILayout {
     ImGui.PushStyleColor(ImGui.Col.Button, zColor);
     ImGui.PushStyleColor(ImGui.Col.ButtonHovered, zColorHover);
     ImGui.PushStyleColor(ImGui.Col.ButtonActive, zColor);
-    ImGui.Button('', new ImGui.Vec2(buttonWidth, buttonSize));
+    ImGui.Button('##AxisChip_Z', new ImGui.Vec2(buttonWidth, buttonSize));
     ImGui.PopStyleColor(3);
 
     ImGui.SameLine(0, spacing);
@@ -164,6 +162,57 @@ export class EditorGUILayout {
     return ImGui.ColorEdit4('##' + label + guiID, color, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.HDR);
   }
 
+  /**
+   * 折叠分组头：渲染一个带背景条的可折叠标题栏，并对内部内容进行轻微缩进，
+   * 用于在父级标题（如组件标题）下表达次级分组关系。
+   *
+   * @param label       标题文本（同时用作 ID）
+   * @param defaultOpen 初始是否展开（默认 true）
+   * @returns           当前是否展开（用于条件绘制内部控件）
+   *
+   * @example
+   * if (EditorGUILayout.BeginFoldoutHeaderGroup('Properties')) {
+   *   // 绘制内部控件
+   * }
+   * EditorGUILayout.EndFoldoutHeaderGroup();
+   */
+  static BeginFoldoutHeaderGroup (label: string, defaultOpen = true): boolean {
+    let flags = ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.NoTreePushOnOpen;
+
+    if (defaultOpen) {
+      flags |= ImGui.TreeNodeFlags.DefaultOpen;
+    }
+
+    ImGui.Indent();
+
+    // 用 channel split 让背景条画在 TreeNode 之下：
+    // 先在前景通道绘制 TreeNode，再读取它实际的 ItemRect 作为底色范围，
+    // 这样背景高度与 hover/active 时的高亮区域完全一致。
+    const drawList = ImGui.GetWindowDrawList();
+
+    drawList.ChannelsSplit(2);
+    drawList.ChannelsSetCurrent(1);
+
+    const opened = ImGui.TreeNodeEx(label, flags);
+
+    drawList.ChannelsSetCurrent(0);
+    drawList.AddRectFilled(
+      ImGui.GetItemRectMin(),
+      ImGui.GetItemRectMax(),
+      ImGui.GetColorU32(ImGui.Col.Header),
+    );
+    drawList.ChannelsMerge();
+
+    return opened;
+  }
+
+  /**
+   * 结束开启的分组。
+   */
+  static EndFoldoutHeaderGroup (): void {
+    ImGui.Unindent();
+  }
+
   static ObjectField (label: string, object: object, property: string) {
     EditorGUILayout.Label(label);
 
@@ -173,6 +222,7 @@ export class EditorGUILayout {
       return;
     }
 
+    ImGui.PushID(`ObjectField_${label}_${property}`);
     if (targetObject instanceof GLTexture) {
       let __inspectorTexture = (targetObject as any).__imguiInspectorTexture as WebGLTexture;
 
@@ -180,7 +230,7 @@ export class EditorGUILayout {
         __inspectorTexture = createImguiTextureFromImage(targetObject.definition.image);
         (targetObject as any).__imguiInspectorTexture = __inspectorTexture;
       }
-      ImGui.ImageButton(__inspectorTexture, new ImGui.Vec2(100, 100));
+      ImGui.ImageButton('inspector_texture', __inspectorTexture, new ImGui.Vec2(100, 100));
     } else {
       ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(-1, 0));
     }
@@ -188,22 +238,17 @@ export class EditorGUILayout {
     if (ImGui.BeginDragDropTarget()) {
       const payload = ImGui.AcceptDragDropPayload(targetObject.constructor.name);
 
-      if (payload) {
-        void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
-          if (!file) {
-            return;
-          }
-          const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
-
-          if (!effectsPackage) {
-            return;
-          }
-          (object as Record<string, any>)[property] = effectsPackage.exportObjects[0];
-        });
+      if (payload && payload.Data) {
+        try {
+          (object as Record<string, any>)[property] = payload.Data;
+        } catch (error) {
+          console.warn('[ObjectField] Failed to assign dropped object:', error);
+        }
       }
 
       ImGui.EndDragDropTarget();
     }
+    ImGui.PopID();
   }
 }
 

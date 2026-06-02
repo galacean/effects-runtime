@@ -1,34 +1,36 @@
-import { VFXItem } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
+import { spec, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './editor-window';
+import { EditorColors } from './theme';
+import { searchBar } from '../widgets';
 
 // 颜色常量
 const COLORS = {
-  lightBlue: new ImGui.ImVec4(0.25, 0.34, 0.43, 1.0),
-  highlightBlue: new ImGui.ImVec4(0.0, 0.43, 0.87, 1.0),
-  eyeActive: new ImGui.Vec4(0.72, 0.72, 0.72, 1.0),
+  selectionFocused: EditorColors.selectionFocused,
+  selectionUnfocused: EditorColors.selectionUnfocused,
+  eyeActive: EditorColors.iconActive,
   eyeInactive: new ImGui.Vec4(0.46, 0.46, 0.46, 1.0),
   eyeOutline: new ImGui.Vec4(0.6, 0.6, 0.6, 1.0),
   eyeSlash: new ImGui.Vec4(0.35, 0.35, 0.35, 1.0),
-  inactiveText: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
-  searchIcon: new ImGui.Vec4(0.5, 0.5, 0.5, 1.0),
+  inactiveText: EditorColors.textSecondary,
+  searchIcon: EditorColors.iconDefault,
 } as const;
 
 // 布局常量
 const LAYOUT = {
   visibilityColumnWidth: 16,
   visibilitySpacing: 6,
+  iconPadding: '   ',
 } as const;
 
 @editorWindow()
 export class Hierarchy extends EditorWindow {
-  // 绘制顺序缓存（用于范围选择）
-  private hierarchyDrawOrder: VFXItem[] = [];
-  // 选择锚点（用于 Shift 范围选择）
-  private hierarchySelectionAnchor: VFXItem | null = null;
+  // 扁平 item 列表（用于原生多选的 index ↔ 对象映射）
+  private flatItemList: (VFXItem | Composition)[] = [];
   // 可见性列位置缓存
   private visibilityColumnLocalX = 0;
   private visibilityColumnScreenX = 0;
@@ -65,29 +67,49 @@ export class Hierarchy extends EditorWindow {
     const composition = GalaceanEffects.player.getCompositions()[0];
 
     if (!composition) {
-      ImGui.End();
-
       return;
     }
 
     // 绘制搜索框
     this.drawSearchBar();
 
+    // 构建扁平 item 列表（用于原生多选的 index ↔ 对象映射）
+    this.buildFlatItemList(composition);
+
     // 检测选中项变化，自动展开到选中元素
     this.checkSelectionChanged();
-
-    // 重置绘制顺序缓存
-    this.hierarchyDrawOrder.length = 0;
-    if (Selection.getSelectedObjects().length === 0) {
-      this.hierarchySelectionAnchor = null;
-    }
 
     // 缓存可见性列位置
     this.visibilityColumnLocalX = ImGui.GetCursorPosX();
     this.visibilityColumnScreenX = ImGui.GetCursorScreenPos().x;
 
-    // 设置选中样式
-    this.pushSelectionColors();
+    // 选中样式（与 sequencer 轨道选中色一致：#408CE6）
+    // 聚焦时用亮蓝色，非聚焦时用暗淡灰蓝色
+    if (ImGui.IsWindowFocused()) {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, new ImGui.Vec4(0.25, 0.55, 0.90, 0.45));
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, new ImGui.Vec4(0.25, 0.55, 0.90, 0.65));
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, new ImGui.Vec4(0.25, 0.55, 0.90, 0.80));
+    } else {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, new ImGui.Vec4(0.25, 0.55, 0.90, 0.20));
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, new ImGui.Vec4(0.25, 0.55, 0.90, 0.20));
+      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, new ImGui.Vec4(0.25, 0.55, 0.90, 0.20));
+    }
+    // 开始原生多选
+    const selectionSize = Selection.getSelectedObjects().length;
+
+    // 有选中项时显示蓝色导航边框，无选中项时隐藏避免残留
+    if (selectionSize > 0) {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.NavCursor, new ImGui.Vec4(0.25, 0.55, 0.90, 0.80));
+    } else {
+      ImGui.PushStyleColor(ImGui.ImGuiCol.NavCursor, new ImGui.Vec4(0, 0, 0, 0));
+    }
+    const msFlags = ImGui.MultiSelectFlags.ClearOnEscape
+      | ImGui.MultiSelectFlags.ClearOnClickVoid;
+    const msIo = ImGui.BeginMultiSelect(msFlags, selectionSize, this.flatItemList.length);
+
+    if (msIo) {
+      this.applyMultiSelectRequests(msIo);
+    }
 
     // 如果有搜索条件，显示平铺的搜索结果
     if (this.searchFilter.length > 0) {
@@ -98,126 +120,53 @@ export class Hierarchy extends EditorWindow {
         ImGui.TreeNodeFlags.OpenOnDoubleClick |
         ImGui.TreeNodeFlags.SpanAvailWidth;
 
-      ImGui.SetCursorPosX(this.visibilityColumnLocalX + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing);
       const compositionId = `composition_${composition.id}`;
 
-      if (ImGui.TreeNodeEx(compositionId, baseFlags | ImGui.TreeNodeFlags.DefaultOpen, 'Composition')) {
-        this.drawVFXItemTreeNode(composition.rootItem, baseFlags);
+      // Composition 选中状态
+      const isCompositionSelected = Selection.isSelected(composition);
+      let compositionFlags = baseFlags | ImGui.TreeNodeFlags.DefaultOpen;
+
+      if (isCompositionSelected) {
+        compositionFlags |= ImGui.TreeNodeFlags.Selected;
+      }
+
+      // Composition 箭头与小眼睛右侧对齐
+      ImGui.SetCursorPosX(this.visibilityColumnLocalX + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing);
+
+      // 设置 Composition 的多选用户数据（index 0）
+      ImGui.SetNextItemSelectionUserData(0);
+      const compositionNodeOpen = ImGui.TreeNodeEx(compositionId, compositionFlags, 'Composition');
+
+      // 处理 Composition 的多选切换
+      if (ImGui.IsItemToggledSelection()) {
+        if (Selection.isSelected(composition)) {
+          Selection.removeObject(composition);
+        } else {
+          Selection.addObject(composition);
+        }
+      }
+
+      if (compositionNodeOpen) {
+        this.drawVFXItemTreeNode(composition.root, baseFlags);
         ImGui.TreePop();
       }
     }
 
-    ImGui.PopStyleColor(3);
+    // 结束原生多选
+    const msIoEnd = ImGui.EndMultiSelect();
+
+    if (msIoEnd) {
+      this.applyMultiSelectRequests(msIoEnd);
+    }
+
+    ImGui.PopStyleColor(4);
   }
 
   private drawSearchBar (): void {
-    const availWidth = ImGui.GetContentRegionAvail().x;
-    const iconSize = 16;
-    const iconPadding = 4;
-    const clearButtonSize = 18;
-    const hasClearButton = this.searchFilter.length > 0;
-
-    // 绘制搜索图标
-    const cursorPos = ImGui.GetCursorScreenPos();
-    const frameHeight = ImGui.GetFrameHeight();
-    const drawList = ImGui.GetWindowDrawList();
-    const iconColor = ImGui.GetColorU32(COLORS.searchIcon);
-
-    // 绘制放大镜圆圈 - 与输入框垂直居中对齐
-    const circleCenter = new ImGui.Vec2(cursorPos.x + iconSize * 0.4, cursorPos.y + frameHeight * 0.4);
-    const circleRadius = iconSize * 0.28;
-
-    drawList.AddCircle(circleCenter, circleRadius, iconColor, 12, 1.5);
-
-    // 绘制放大镜手柄
-    const handleStart = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 0.7,
-      circleCenter.y + circleRadius * 0.7
-    );
-    const handleEnd = new ImGui.Vec2(
-      circleCenter.x + circleRadius * 1.8,
-      circleCenter.y + circleRadius * 1.8
-    );
-
-    drawList.AddLine(handleStart, handleEnd, iconColor, 1.5);
-
-    // 输入框左侧留出图标空间，输入框占满剩余宽度
-    const inputStartX = ImGui.GetCursorPosX() + iconSize + iconPadding;
-
-    ImGui.SetCursorPosX(inputStartX);
-    ImGui.PushItemWidth(availWidth - iconSize - iconPadding);
-
-    const prevFilter = this.searchFilter;
-
-    if (ImGui.InputText('##HierarchySearch', this.searchFilterBuffer, 256)) {
-      // 搜索内容变化时更新匹配项
-      if (this.searchFilter !== prevFilter) {
-        this.updateSearchMatches();
-      }
+    if (searchBar('##HierarchySearch', this.searchFilterBuffer)) {
+      this.updateSearchMatches();
     }
-
-    // 允许后面的控件覆盖输入框接收事件
-    ImGui.SetItemAllowOverlap();
-
-    const inputRectMin = ImGui.GetItemRectMin();
-    const inputRectMax = ImGui.GetItemRectMax();
-    const postInputCursor = ImGui.GetCursorPos();
-
-    ImGui.PopItemWidth();
-
-    // 清除按钮覆盖在输入框内部右侧
-    if (hasClearButton) {
-      const clearBtnX = inputRectMax.x - clearButtonSize - 2;
-      const clearBtnY = inputRectMin.y + (frameHeight - clearButtonSize) / 2;
-
-      // 使用 InvisibleButton 作为点击区域，覆盖在输入框上
-      ImGui.SetCursorScreenPos(new ImGui.Vec2(clearBtnX, clearBtnY));
-
-      // ButtonFlags 用于确保按钮优先接收事件
-      if (ImGui.InvisibleButton('##ClearSearchBtn', new ImGui.Vec2(clearButtonSize, clearButtonSize))) {
-        this.searchFilter = '';
-        this.updateSearchMatches();
-      }
-
-      const isHovered = ImGui.IsItemHovered();
-
-      // 悬停时设置鼠标光标为箭头
-      if (isHovered) {
-        ImGui.SetMouseCursor(ImGui.ImGuiMouseCursor.Arrow);
-      }
-
-      // 绘制悬停背景
-      if (isHovered) {
-        drawList.AddRectFilled(
-          new ImGui.Vec2(clearBtnX, clearBtnY),
-          new ImGui.Vec2(clearBtnX + clearButtonSize, clearBtnY + clearButtonSize),
-          ImGui.GetColorU32(new ImGui.ImVec4(0.5, 0.5, 0.5, 0.3)),
-          3
-        );
-      }
-
-      // 绘制叉号
-      const crossPadding = 5;
-      const crossColor = ImGui.GetColorU32(isHovered ? COLORS.eyeActive : COLORS.searchIcon);
-
-      drawList.AddLine(
-        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + crossPadding),
-        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + clearButtonSize - crossPadding),
-        crossColor,
-        1.5
-      );
-      drawList.AddLine(
-        new ImGui.Vec2(clearBtnX + clearButtonSize - crossPadding, clearBtnY + crossPadding),
-        new ImGui.Vec2(clearBtnX + crossPadding, clearBtnY + clearButtonSize - crossPadding),
-        crossColor,
-        1.5
-      );
-
-      // 恢复光标位置
-      ImGui.SetCursorPos(postInputCursor);
-    }
-
-    ImGui.Separator();
+    ImGui.Dummy(new ImGui.Vec2(0, 6));
   }
 
   private checkSelectionChanged (): void {
@@ -269,7 +218,7 @@ export class Hierarchy extends EditorWindow {
     const filterLower = this.searchFilter.toLowerCase();
 
     // 递归收集所有匹配项（平铺列表）
-    this.collectMatchedItems(composition.rootItem, filterLower);
+    this.collectMatchedItems(composition.root, filterLower);
   }
 
   private collectMatchedItems (item: VFXItem, filterLower: string): void {
@@ -284,21 +233,7 @@ export class Hierarchy extends EditorWindow {
     }
   }
 
-  private pushSelectionColors (): void {
-    if (ImGui.IsWindowFocused()) {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.highlightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.highlightBlue);
-    } else {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.Header, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.lightBlue);
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderActive, COLORS.lightBlue);
-    }
-  }
-
   private drawVFXItemTreeNode (item: VFXItem, baseFlags: ImGui.TreeNodeFlags): void {
-    this.hierarchyDrawOrder.push(item);
-
     const isSelected = Selection.isSelected(item);
     const shouldForceOpen = this.itemsToExpand.has(item);
 
@@ -311,7 +246,7 @@ export class Hierarchy extends EditorWindow {
     if (item.children.length === 0) {
       nodeFlags |= ImGui.TreeNodeFlags.Leaf;
     }
-    if (item.name === 'rootItem') {
+    if (item.name === 'sceneRoot' || item.name === 'root' || item.name === 'pluginRoot') {
       nodeFlags |= ImGui.TreeNodeFlags.DefaultOpen;
     }
 
@@ -319,12 +254,6 @@ export class Hierarchy extends EditorWindow {
     if (shouldForceOpen) {
       ImGui.SetNextItemOpen(true);
       this.itemsToExpand.delete(item);
-    }
-
-    const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
-
-    if (isHoverSelectedNode) {
-      ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
     }
 
     // 设置非激活项的置灰文字颜色
@@ -338,73 +267,51 @@ export class Hierarchy extends EditorWindow {
 
     ImGui.PushID(itemId);
 
-    const drawList = ImGui.GetWindowDrawList();
-
-    drawList.ChannelsSplit(2);
-    drawList.ChannelsSetCurrent(1);
-
     const rowStartLocal = ImGui.GetCursorPos();
     const treeStartX = rowStartLocal.x + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing;
 
     ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
-    const nodeOpen = ImGui.TreeNodeEx(itemId, nodeFlags, item.name);
+
+    // 设置原生多选用户数据
+    const itemIndex = this.flatItemList.indexOf(item);
+
+    ImGui.SetNextItemSelectionUserData(itemIndex);
+    const nodeOpen = ImGui.TreeNodeEx(itemId, nodeFlags, LAYOUT.iconPadding + item.name);
+
+    // 处理原生多选切换
+    if (ImGui.IsItemToggledSelection()) {
+      if (Selection.isSelected(item)) {
+        Selection.removeObject(item);
+      } else {
+        Selection.addObject(item);
+      }
+    }
 
     // 恢复文字颜色
     if (needTextColorPop) {
       ImGui.PopStyleColor(1);
     }
 
-    ImGui.SetItemAllowOverlap();
-    const postTreeCursor = ImGui.GetCursorPos();
-    const rowHovered = ImGui.IsItemHovered();
+    ImGui.SetNextItemAllowOverlap();
     const rowRectMin = ImGui.GetItemRectMin();
     const rowRectMax = ImGui.GetItemRectMax();
     const rowHeight = rowRectMax.y - rowRectMin.y;
 
+    // 绘制类型图标
+    const drawList = ImGui.GetWindowDrawList();
+
+    this.drawItemTypeIcon(drawList, item.type, rowRectMin, rowHeight);
+
+    // 绘制可见性切换按钮
     const buttonBounds = {
       min: new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y),
       max: new ImGui.Vec2(this.visibilityColumnScreenX + LAYOUT.visibilityColumnWidth, rowRectMin.y + rowHeight),
     };
-    const buttonHovered = ImGui.IsMouseHoveringRect(buttonBounds.min, buttonBounds.max, false);
-    const eyeClicking = buttonHovered && ImGui.IsMouseClicked(0);
-
-    this.handleHierarchySelection(item, eyeClicking);
-
-    if (isHoverSelectedNode) {
-      ImGui.PopStyleColor(1);
-    }
-
-    // 绘制行背景
-    const rowActive = ImGui.IsItemActive();
-    const shouldHighlight = isSelected || rowHovered || rowActive || buttonHovered;
-
-    drawList.ChannelsSetCurrent(0);
-    if (shouldHighlight) {
-      const windowPos = ImGui.GetWindowPos();
-      const contentRegionMax = ImGui.GetWindowContentRegionMax();
-      const rowBgMin = new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y);
-      const rowBgMax = new ImGui.Vec2(windowPos.x + contentRegionMax.x, rowRectMin.y + rowHeight);
-      const bgColor = isSelected
-        ? ImGui.GetColorU32(ImGui.ImGuiCol.Header)
-        : rowActive
-          ? ImGui.GetColorU32(ImGui.ImGuiCol.HeaderActive)
-          : ImGui.GetColorU32(ImGui.ImGuiCol.HeaderHovered);
-
-      drawList.AddRectFilled(rowBgMin, rowBgMax, bgColor);
-    }
-    drawList.ChannelsSetCurrent(1);
-
-    // 绘制可见性切换按钮
-    ImGui.SetCursorPos(new ImGui.Vec2(this.visibilityColumnLocalX, rowStartLocal.y));
     const toggleTriggered = this.drawVisibilityToggle(item, buttonBounds, isSelected);
-
-    ImGui.SetCursorPos(postTreeCursor);
 
     if (toggleTriggered) {
       this.toggleVisibility(item);
     }
-
-    drawList.ChannelsMerge();
 
     // 递归绘制子节点
     if (nodeOpen) {
@@ -423,19 +330,11 @@ export class Hierarchy extends EditorWindow {
       ImGui.TreeNodeFlags.SpanAvailWidth;
 
     for (const item of this.searchMatchedItems) {
-      this.hierarchyDrawOrder.push(item);
-
       const isSelected = Selection.isSelected(item);
       let nodeFlags = baseFlags;
 
       if (isSelected) {
         nodeFlags |= ImGui.TreeNodeFlags.Selected;
-      }
-
-      const isHoverSelectedNode = isSelected && ImGui.IsWindowFocused();
-
-      if (isHoverSelectedNode) {
-        ImGui.PushStyleColor(ImGui.ImGuiCol.HeaderHovered, COLORS.highlightBlue);
       }
 
       // 设置非激活项的置灰文字颜色
@@ -449,136 +348,53 @@ export class Hierarchy extends EditorWindow {
 
       ImGui.PushID(itemId);
 
-      const drawList = ImGui.GetWindowDrawList();
-
-      drawList.ChannelsSplit(2);
-      drawList.ChannelsSetCurrent(1);
-
       const rowStartLocal = ImGui.GetCursorPos();
       const treeStartX = rowStartLocal.x + LAYOUT.visibilityColumnWidth + LAYOUT.visibilitySpacing;
 
       ImGui.SetCursorPos(new ImGui.Vec2(treeStartX, rowStartLocal.y));
 
-      // 只显示元素自身的名字
-      ImGui.TreeNodeEx(itemId, nodeFlags, item.name);
+      // 设置原生多选用户数据
+      const itemIndex = this.flatItemList.indexOf(item);
+
+      ImGui.SetNextItemSelectionUserData(itemIndex);
+      ImGui.SetNextItemAllowOverlap();
+      ImGui.TreeNodeEx(itemId, nodeFlags, LAYOUT.iconPadding + item.name);
+
+      // 处理原生多选切换
+      if (ImGui.IsItemToggledSelection()) {
+        if (Selection.isSelected(item)) {
+          Selection.removeObject(item);
+        } else {
+          Selection.addObject(item);
+        }
+      }
 
       // 恢复文字颜色
       if (needTextColorPop) {
         ImGui.PopStyleColor(1);
       }
 
-      ImGui.SetItemAllowOverlap();
-      const postTreeCursor = ImGui.GetCursorPos();
-      const rowHovered = ImGui.IsItemHovered();
       const rowRectMin = ImGui.GetItemRectMin();
       const rowRectMax = ImGui.GetItemRectMax();
       const rowHeight = rowRectMax.y - rowRectMin.y;
 
+      // 绘制类型图标
+      const drawList = ImGui.GetWindowDrawList();
+
+      this.drawItemTypeIcon(drawList, item.type, rowRectMin, rowHeight);
+
+      // 绘制可见性切换按钮
       const buttonBounds = {
         min: new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y),
         max: new ImGui.Vec2(this.visibilityColumnScreenX + LAYOUT.visibilityColumnWidth, rowRectMin.y + rowHeight),
       };
-      const buttonHovered = ImGui.IsMouseHoveringRect(buttonBounds.min, buttonBounds.max, false);
-      const eyeClicking = buttonHovered && ImGui.IsMouseClicked(0);
-
-      this.handleHierarchySelection(item, eyeClicking);
-
-      if (isHoverSelectedNode) {
-        ImGui.PopStyleColor(1);
-      }
-
-      // 绘制行背景
-      const rowActive = ImGui.IsItemActive();
-      const shouldHighlight = isSelected || rowHovered || rowActive || buttonHovered;
-
-      drawList.ChannelsSetCurrent(0);
-      if (shouldHighlight) {
-        const windowPos = ImGui.GetWindowPos();
-        const contentRegionMax = ImGui.GetWindowContentRegionMax();
-        const rowBgMin = new ImGui.Vec2(this.visibilityColumnScreenX, rowRectMin.y);
-        const rowBgMax = new ImGui.Vec2(windowPos.x + contentRegionMax.x, rowRectMin.y + rowHeight);
-        const bgColor = isSelected
-          ? ImGui.GetColorU32(ImGui.ImGuiCol.Header)
-          : rowActive
-            ? ImGui.GetColorU32(ImGui.ImGuiCol.HeaderActive)
-            : ImGui.GetColorU32(ImGui.ImGuiCol.HeaderHovered);
-
-        drawList.AddRectFilled(rowBgMin, rowBgMax, bgColor);
-      }
-      drawList.ChannelsSetCurrent(1);
-
-      // 绘制可见性切换按钮
-      ImGui.SetCursorPos(new ImGui.Vec2(this.visibilityColumnLocalX, rowStartLocal.y));
       const toggleTriggered = this.drawVisibilityToggle(item, buttonBounds, isSelected);
-
-      ImGui.SetCursorPos(postTreeCursor);
 
       if (toggleTriggered) {
         this.toggleVisibility(item);
       }
 
-      drawList.ChannelsMerge();
-
       ImGui.PopID();
-    }
-  }
-
-  private handleHierarchySelection (item: VFXItem, suppressSelection: boolean): void {
-    if (suppressSelection) {
-      return;
-    }
-
-    const itemClicked = ImGui.IsItemClicked();
-
-    if (itemClicked && !ImGui.IsItemToggledOpen()) {
-      const io = ImGui.GetIO();
-      const additive = io.KeyCtrl || io.KeySuper;
-      const range = io.KeyShift;
-
-      if (range && this.hierarchySelectionAnchor && this.hierarchySelectionAnchor !== item) {
-        this.applyRangeSelection(this.hierarchySelectionAnchor, item);
-      } else if (additive) {
-        this.toggleItemSelection(item);
-      } else {
-        Selection.select(item);
-        this.hierarchySelectionAnchor = item;
-      }
-    }
-  }
-
-  private toggleItemSelection (item: VFXItem): void {
-    if (Selection.isSelected(item)) {
-      Selection.removeObject(item);
-      if (this.hierarchySelectionAnchor === item) {
-        const active = Selection.getSelectedObjects<VFXItem>()[0] ?? null;
-
-        this.hierarchySelectionAnchor = active && Selection.isSelected(active) ? active : null;
-      }
-    } else {
-      Selection.addObject(item);
-      this.hierarchySelectionAnchor = item;
-    }
-  }
-
-  private applyRangeSelection (anchor: VFXItem, target: VFXItem): void {
-    const order = this.hierarchyDrawOrder;
-    const anchorIndex = order.indexOf(anchor);
-    const targetIndex = order.indexOf(target);
-
-    if (anchorIndex === -1 || targetIndex === -1) {
-      Selection.select(target);
-      this.hierarchySelectionAnchor = target;
-
-      return;
-    }
-
-    const start = Math.min(anchorIndex, targetIndex);
-    const end = Math.max(anchorIndex, targetIndex);
-    const rangeItems = order.slice(start, end + 1);
-
-    Selection.clear();
-    for (const rangeItem of rangeItems) {
-      Selection.addObject(rangeItem);
     }
   }
 
@@ -617,6 +433,286 @@ export class Hierarchy extends EditorWindow {
     for (const child of item.children) {
       collection.add(child);
       this.collectDescendants(child, collection);
+    }
+  }
+
+  /**
+   * 手动处理 ImGuiMultiSelectIO 的请求（Clear/SelectAll/SetRange）
+   */
+  private applyMultiSelectRequests (msIo: ImGui.ImGuiMultiSelectIO): void {
+    for (const request of msIo.Requests) {
+      if (request.Type === ImGui.SelectionRequestType.SetAll) {
+        if (request.Selected) {
+          for (const item of this.flatItemList) {
+            Selection.addObject(item);
+          }
+        } else {
+          Selection.clear();
+        }
+      } else if (request.Type === ImGui.SelectionRequestType.SetRange) {
+        const rangeStart = Math.min(request.RangeFirstItem, request.RangeLastItem);
+        const rangeEnd = Math.max(request.RangeFirstItem, request.RangeLastItem);
+
+        for (let idx = rangeStart; idx <= rangeEnd; idx++) {
+          const item = this.flatItemList[idx];
+
+          if (item) {
+            if (request.Selected) {
+              Selection.addObject(item);
+            } else {
+              Selection.removeObject(item);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 构建扁平 item 列表（composition + 所有 VFXItem），用于原生多选的 index ↔ 对象映射
+   */
+  private buildFlatItemList (composition: Composition): void {
+    this.flatItemList.length = 0;
+    // composition 自身作为第一个 item
+    this.flatItemList.push(composition);
+    // 递归收集所有 VFXItem
+    this.collectItemsFlat(composition.root);
+  }
+
+  private collectItemsFlat (item: VFXItem): void {
+    this.flatItemList.push(item);
+    for (const child of item.children) {
+      this.collectItemsFlat(child);
+    }
+  }
+
+  private drawItemTypeIcon (drawList: ImGui.ImDrawList, itemType: spec.ItemType, rowRectMin: ImGui.Vec2, rowHeight: number): void {
+    // 图标中心：树节点箭头之后，文本之前
+    const fontSize = ImGui.GetFontSize();
+    const cx = rowRectMin.x + fontSize + 8;
+    const cy = rowRectMin.y + rowHeight / 2;
+    const lw = 1.5; // 稍粗的描边增加现代感
+
+    switch (itemType) {
+      case spec.ItemType.sprite: {
+        // 图片/图层 — 扁平化圆角矩形背景 + 实心山峰 + 太阳
+        const cBg = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.6, 1.0, 0.2));
+        const cFg = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.6, 1.0, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5.5, cy - 4.5), new ImGui.Vec2(cx + 5.5, cy + 4.5), cBg, 2);
+        drawList.AddRect(new ImGui.Vec2(cx - 5.5, cy - 4.5), new ImGui.Vec2(cx + 5.5, cy + 4.5), cFg, 2, 0, 1.2);
+        drawList.AddTriangleFilled(new ImGui.Vec2(cx - 5, cy + 3.5), new ImGui.Vec2(cx - 1, cy - 1), new ImGui.Vec2(cx + 2, cy + 3.5), cFg);
+        drawList.AddTriangleFilled(new ImGui.Vec2(cx - 1, cy + 3.5), new ImGui.Vec2(cx + 2, cy + 0.5), new ImGui.Vec2(cx + 5, cy + 3.5), cFg);
+        drawList.AddCircleFilled(new ImGui.Vec2(cx + 2.5, cy - 1.5), 1.2, cFg, 6);
+
+        break;
+      }
+      case spec.ItemType.particle: {
+        // 粒子/火花 — 更复杂、对称的八角星芒与散落粒子
+        const cCore = ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.9, 0.4, 1.0));
+        const cGlow = ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.6, 0.1, 1.0));
+
+        // 主四角星
+        const r1 = 5;
+        const w1 = 1.0;
+
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx, cy - r1), new ImGui.Vec2(cx + w1, cy),
+          new ImGui.Vec2(cx, cy + r1), new ImGui.Vec2(cx - w1, cy), cGlow
+        );
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx - r1, cy), new ImGui.Vec2(cx, cy - w1),
+          new ImGui.Vec2(cx + r1, cy), new ImGui.Vec2(cx, cy + w1), cGlow
+        );
+
+        // 次小四角星（对角旋转45度）
+        const rDi = 3.5;
+        const wDi = 0.7;
+        const sin45 = 0.7071;
+        const offR = rDi * sin45;
+        const offW = wDi * sin45;
+
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx + offR, cy - offR), new ImGui.Vec2(cx + offW, cy + offW),
+          new ImGui.Vec2(cx - offR, cy + offR), new ImGui.Vec2(cx - offW, cy - offW), cGlow
+        );
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx - offR, cy - offR), new ImGui.Vec2(cx + offW, cy - offW),
+          new ImGui.Vec2(cx + offR, cy + offR), new ImGui.Vec2(cx - offW, cy + offW), cGlow
+        );
+
+        // 内层高亮十字
+        const r2 = 2.5;
+        const w2 = 0.7;
+
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx, cy - r2), new ImGui.Vec2(cx + w2, cy),
+          new ImGui.Vec2(cx, cy + r2), new ImGui.Vec2(cx - w2, cy), cCore
+        );
+        drawList.AddQuadFilled(
+          new ImGui.Vec2(cx - r2, cy), new ImGui.Vec2(cx, cy - w2),
+          new ImGui.Vec2(cx + r2, cy), new ImGui.Vec2(cx, cy + w2), cCore
+        );
+
+        // 散落粒子
+        drawList.AddCircleFilled(new ImGui.Vec2(cx - 3.5, cy - 3), 0.8, cCore, 4);
+        drawList.AddCircleFilled(new ImGui.Vec2(cx + 3.5, cy + 3.5), 0.8, cCore, 4);
+
+        // 中心高亮圆点
+        drawList.AddCircleFilled(new ImGui.Vec2(cx, cy), 1.2, ImGui.GetColorU32(new ImGui.Vec4(1, 1, 1, 1)), 6);
+
+        break;
+      }
+      case spec.ItemType.null: {
+        // 空节点 — 深黄色文件夹图标（颜色加深，参考图片）
+        const cBack = ImGui.GetColorU32(new ImGui.Vec4(0.7, 0.5, 0.05, 1.0));
+        const cFront = ImGui.GetColorU32(new ImGui.Vec4(0.85, 0.65, 0.1, 1.0));
+
+        // 文件夹背板和切角标签
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 3.5), new ImGui.Vec2(cx - 0.5, cy - 2), cBack, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 2.5), new ImGui.Vec2(cx + 5, cy + 3.5), cBack, 1.0);
+
+        // 文件夹前层盖板
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 1), new ImGui.Vec2(cx + 5, cy + 3.5), cFront, 1.0);
+
+        break;
+      }
+      case spec.ItemType.camera: {
+        // 摄像机 — 扁平化实心机身 + 镜头
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.75, 0.4, 0.85, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 3), new ImGui.Vec2(cx + 1, cy + 3), c, 1.5);
+        drawList.AddTriangleFilled(
+          new ImGui.Vec2(cx + 1, cy - 1.5),
+          new ImGui.Vec2(cx + 5, cy - 3.5),
+          new ImGui.Vec2(cx + 5, cy + 3.5),
+          c
+        );
+
+        break;
+      }
+      case spec.ItemType.composition: {
+        // 预合成 — 等距透视的堆叠层，代表图层组合
+        const c1 = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.8, 0.6, 0.4));
+        const c2 = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.8, 0.6, 1.0));
+
+        drawList.AddQuadFilled(new ImGui.Vec2(cx, cy - 4), new ImGui.Vec2(cx + 5, cy - 1.5), new ImGui.Vec2(cx, cy + 1), new ImGui.Vec2(cx - 5, cy - 1.5), c2);
+        drawList.AddQuad(new ImGui.Vec2(cx, cy - 1), new ImGui.Vec2(cx + 5, cy + 1.5), new ImGui.Vec2(cx, cy + 4), new ImGui.Vec2(cx - 5, cy + 1.5), c2, lw);
+
+        break;
+      }
+      case spec.ItemType.mesh: {
+        // 3D 网格 — 等距透视实心正方体（三面不同明度）
+        const cTop = ImGui.GetColorU32(new ImGui.Vec4(0.5, 0.85, 0.5, 1.0));
+        const cLeft = ImGui.GetColorU32(new ImGui.Vec4(0.35, 0.7, 0.35, 1.0));
+        const cRight = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.55, 0.2, 1.0));
+
+        const topY = cy - 4, botY = cy + 4;
+        const leftX = cx - 4, rightX = cx + 4;
+        const midY = cy - 0.5;
+
+        // 顶面
+        drawList.AddQuadFilled(new ImGui.Vec2(cx, topY), new ImGui.Vec2(rightX, midY - 1.5), new ImGui.Vec2(cx, cy - 0.5), new ImGui.Vec2(leftX, midY - 1.5), cTop);
+        // 左面
+        drawList.AddQuadFilled(new ImGui.Vec2(leftX, midY - 1.5), new ImGui.Vec2(cx, cy - 0.5), new ImGui.Vec2(cx, botY), new ImGui.Vec2(leftX, botY - 1.5), cLeft);
+        // 右面
+        drawList.AddQuadFilled(new ImGui.Vec2(cx, cy - 0.5), new ImGui.Vec2(rightX, midY - 1.5), new ImGui.Vec2(rightX, botY - 1.5), new ImGui.Vec2(cx, botY), cRight);
+
+        break;
+      }
+      case spec.ItemType.text:
+      case spec.ItemType.richtext as spec.ItemType: {
+        // 文本 — 粗体无衬线 T，现代清晰
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.3, 0.65, 1.0, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 4.5, cy - 4.5), new ImGui.Vec2(cx + 4.5, cy - 1.5), c, 0.5);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 1.5, cy - 1.5), new ImGui.Vec2(cx + 1.5, cy + 4.5), c, 0.5);
+
+        break;
+      }
+      case spec.ItemType.light: {
+        // 灯光 — 清新太阳形发光体
+        const c = ImGui.GetColorU32(new ImGui.Vec4(1.0, 0.75, 0.1, 1.0));
+
+        drawList.AddCircleFilled(new ImGui.Vec2(cx, cy), 2.2, c, 12);
+        // 发散光线
+        for (let i = 0; i < 8; i++) {
+          const angle = i * Math.PI / 4;
+
+          drawList.AddLine(new ImGui.Vec2(cx + Math.cos(angle) * 3.5, cy + Math.sin(angle) * 3.5), new ImGui.Vec2(cx + Math.cos(angle) * 5, cy + Math.sin(angle) * 5), c, 1.5);
+        }
+
+        break;
+      }
+      case spec.ItemType.tree: {
+        // 节点树 — 块状横向树状拓扑图
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.2, 0.8, 0.6, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 4.5, cy - 1), new ImGui.Vec2(cx - 1.5, cy + 1), c, 0.5);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 1.5, cy - 4), new ImGui.Vec2(cx + 4.5, cy - 2), c, 0.5);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 1.5, cy + 2), new ImGui.Vec2(cx + 4.5, cy + 4), c, 0.5);
+        drawList.AddLine(new ImGui.Vec2(cx - 1.5, cy), new ImGui.Vec2(cx + 0.5, cy), c, 1.2);
+        drawList.AddLine(new ImGui.Vec2(cx + 0.5, cy - 3), new ImGui.Vec2(cx + 0.5, cy + 3), c, 1.2);
+        drawList.AddLine(new ImGui.Vec2(cx + 0.5, cy - 3), new ImGui.Vec2(cx + 1.5, cy - 3), c, 1.2);
+        drawList.AddLine(new ImGui.Vec2(cx + 0.5, cy + 3), new ImGui.Vec2(cx + 1.5, cy + 3), c, 1.2);
+
+        break;
+      }
+      case spec.ItemType.interact: {
+        // 交互 — 现代同心波纹（类似触控反馈）
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.9, 0.45, 0.45, 1.0));
+
+        drawList.AddCircleFilled(new ImGui.Vec2(cx, cy), 1.5, c, 8);
+        drawList.AddCircle(new ImGui.Vec2(cx, cy), 3.5, c, 12, 1.5);
+        drawList.AddCircle(new ImGui.Vec2(cx, cy), 5.5, ImGui.GetColorU32(new ImGui.Vec4(0.9, 0.45, 0.45, 0.3)), 12, 1.2);
+
+        break;
+      }
+      case spec.ItemType.video: {
+        // 视频 — 扁平圆角媒体块，中间镂空播放键
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.9, 0.35, 0.45, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5, cy - 3.5), new ImGui.Vec2(cx + 5, cy + 3.5), c, 1.5);
+        drawList.AddTriangleFilled(
+          new ImGui.Vec2(cx - 1.5, cy - 1.5),
+          new ImGui.Vec2(cx + 2, cy),
+          new ImGui.Vec2(cx - 1.5, cy + 1.5),
+          ImGui.GetColorU32(new ImGui.Vec4(0.1, 0.1, 0.1, 1.0)) // 黑色镂空视觉
+        );
+
+        break;
+      }
+      case spec.ItemType.audio: {
+        // 音频 — 清晰等距的柱状律动条
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.5, 0.8, 0.4, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 4, cy - 1), new ImGui.Vec2(cx - 2, cy + 3), c, 1);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 1, cy - 4), new ImGui.Vec2(cx + 1, cy + 3), c, 1);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 2, cy - 2), new ImGui.Vec2(cx + 4, cy + 3), c, 1);
+
+        break;
+      }
+      case spec.ItemType.spine as spec.ItemType: {
+        // 骨骼动画 — 圆润相连的关节点
+        const c = ImGui.GetColorU32(new ImGui.Vec4(0.85, 0.7, 0.5, 1.0));
+
+        drawList.AddCircleFilled(new ImGui.Vec2(cx - 2.5, cy + 1.5), 2.0, c, 8);
+        drawList.AddCircleFilled(new ImGui.Vec2(cx + 2.5, cy - 1.5), 2.5, c, 8);
+        drawList.AddLine(new ImGui.Vec2(cx - 2.5, cy + 1.5), new ImGui.Vec2(cx + 2.5, cy - 1.5), c, 3.0);
+
+        break;
+      }
+      default: {
+        // 默认 — 高度对称的四个方块网格
+        const c1 = ImGui.GetColorU32(new ImGui.Vec4(0.65, 0.65, 0.7, 1.0));
+
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5.0, cy - 5.0), new ImGui.Vec2(cx - 0.5, cy - 0.5), c1, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 0.5, cy - 5.0), new ImGui.Vec2(cx + 5.0, cy - 0.5), c1, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx - 5.0, cy + 0.5), new ImGui.Vec2(cx - 0.5, cy + 5.0), c1, 1.0);
+        drawList.AddRectFilled(new ImGui.Vec2(cx + 0.5, cy + 0.5), new ImGui.Vec2(cx + 5.0, cy + 5.0), c1, 1.0);
+
+        break;
+      }
     }
   }
 

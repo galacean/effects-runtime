@@ -2,7 +2,10 @@ import type { TextEnv, TextLayerDrawer } from './fancy-types';
 
 const ANTIALIAS_PADDING = 1;
 
-/** 逐字符填充 + 抗锯齿补偿 */
+/** 检测字符串是否包含需要 RTL 和连写排版的字符（阿拉伯语等） */
+const HAS_RTL_OR_JOINING = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+/** 逐字符填充 + 抗锯齿补偿；RTL/连写行整行绘制以保证字形连接 */
 function fillTextWithPadding (ctx: CanvasRenderingContext2D, env: TextEnv): void {
   ctx.save();
   ctx.lineWidth = ANTIALIAS_PADDING;
@@ -10,6 +13,22 @@ function fillTextWithPadding (ctx: CanvasRenderingContext2D, env: TextEnv): void
   ctx.strokeStyle = ctx.fillStyle;
 
   env.lines.forEach(line => {
+    const lineStr = line.chars.join('');
+    const isRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
+
+    if (isRtl) {
+      const rtlWidth = ctx.measureText(lineStr).width;
+      const ox = env.layout.getOffsetX(env.style, rtlWidth);
+
+      ctx.save();
+      ctx.direction = 'rtl';
+      ctx.fillText(lineStr, ox + rtlWidth, line.y);
+      ctx.strokeText(lineStr, ox + rtlWidth, line.y);
+      ctx.restore();
+
+      return;
+    }
+
     const baseX = env.layout.getOffsetX(env.style, line.width);
 
     line.chars.forEach((ch: string, i: number) => {
@@ -63,6 +82,21 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
     offCtx.strokeStyle = `rgba(${R}, ${G}, ${B}, ${a})`;
 
     env.lines.forEach(line => {
+      const lineStr = line.chars.join('');
+      const isRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
+
+      if (isRtl) {
+        const rtlWidth = offCtx.measureText(lineStr).width;
+        const ox = env.layout.getOffsetX(env.style, rtlWidth);
+
+        offCtx.save();
+        offCtx.direction = 'rtl';
+        offCtx.strokeText(lineStr, ox + rtlWidth, line.y);
+        offCtx.restore();
+
+        return;
+      }
+
       const baseX = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((ch: string, i: number) => {
@@ -77,6 +111,21 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
     offCtx.fillStyle = 'white';
 
     env.lines.forEach(line => {
+      const lineStr = line.chars.join('');
+      const isRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
+
+      if (isRtl) {
+        const rtlWidth = offCtx.measureText(lineStr).width;
+        const ox = env.layout.getOffsetX(env.style, rtlWidth);
+
+        offCtx.save();
+        offCtx.direction = 'rtl';
+        offCtx.fillText(lineStr, ox + rtlWidth, line.y);
+        offCtx.restore();
+
+        return;
+      }
+
       const baseX = env.layout.getOffsetX(env.style, line.width);
 
       line.chars.forEach((ch: string, i: number) => {

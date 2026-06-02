@@ -42,6 +42,7 @@ export * from './template-image';
 export * from './texture';
 export * from './ticker';
 export * from './transform';
+export * from './rect-transform';
 export * from './utils';
 export * from './vfx-item';
 export * from './effects-object';

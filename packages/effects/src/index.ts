@@ -1,16 +1,16 @@
 import type {
-  GeometryMeshProps, GeometryProps, FramebufferProps, MaterialProps, RenderbufferProps,
+  GeometryMeshProps, GeometryProps, FramebufferProps, RenderbufferProps,
   TextureDataType, TextureSourceOptions, EngineOptions,
+
+  Renderer } from '@galacean/effects-core';
+import {
+  Framebuffer, Geometry, glContext, imageDataFromColor, Mesh, Renderbuffer, Texture, TextureSourceType, Engine, logger,
 } from '@galacean/effects-core';
 import {
-  Framebuffer, Geometry, glContext, imageDataFromColor, Material, Mesh, Renderbuffer,
-  Renderer, Texture, TextureSourceType, Engine, logger,
-} from '@galacean/effects-core';
-import {
-  GLFramebuffer, GLGeometry, GLMaterial, GLRenderbuffer, GLRenderer, GLTexture, GLEngine,
+  GLFramebuffer, GLGeometry, GLRenderbuffer, GLTexture, GLEngine,
 } from '@galacean/effects-webgl';
 
-export { GLGeometry, GLEngine, GLRenderer } from '@galacean/effects-webgl';
+export { GLGeometry, GLEngine } from '@galacean/effects-webgl';
 export * from '@galacean/effects-core';
 export * from './types';
 export * from './player';
@@ -55,10 +55,6 @@ Texture.createWithData = (
   return tex;
 };
 
-Material.create = (engine: Engine, props?: MaterialProps) => {
-  return new GLMaterial(engine, props);
-};
-
 Geometry.create = (engine: Engine, props?: GeometryProps) => {
   return new GLGeometry(engine, props);
 };
@@ -73,10 +69,6 @@ Renderbuffer.create = (props: RenderbufferProps) => {
 
 Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
   return new GLFramebuffer(props, renderer);
-};
-
-Renderer.create = (engine: Engine) => {
-  return new GLRenderer(engine);
 };
 
 Engine.create = (canvas: HTMLCanvasElement, options?: EngineOptions) => {

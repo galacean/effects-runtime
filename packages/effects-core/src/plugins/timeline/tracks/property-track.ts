@@ -1,4 +1,4 @@
-import type { EffectsObjectData } from '@galacean/effects-specification';
+import type { TrackAssetData } from '@galacean/effects-specification';
 import { serialize } from '../../../decorators';
 import { TrackAsset } from '../track';
 
@@ -9,7 +9,7 @@ export abstract class PropertyTrack extends TrackAsset {
   @serialize()
   protected path = '';
 
-  override fromData (data: EffectsObjectData): void {
+  override fromData (data: TrackAssetData): void {
     super.fromData(data);
     const propertyNames = this.path.split('.');
 

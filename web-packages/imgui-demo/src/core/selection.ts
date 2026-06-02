@@ -1,8 +1,8 @@
-/**
- * 选择管理器
- */
+type SelectionListener = () => void;
+
 export class Selection {
   private static readonly _selectedObjects: Set<object> = new Set();
+  private static readonly _listeners: Set<SelectionListener> = new Set();
 
   static select (object: object | null): void {
     if (object === null) {
@@ -20,10 +20,6 @@ export class Selection {
     Selection.emitSelectionChanged();
   }
 
-  /**
-   * 添加对象到选择
-   * @param object 要添加的对象
-   */
   static addObject (object: object): void {
     if (Selection._selectedObjects.has(object)) {
       return;
@@ -33,10 +29,6 @@ export class Selection {
     Selection.emitSelectionChanged();
   }
 
-  /**
-   * 从选择中移除对象
-   * @param object 要移除的对象
-   */
   static removeObject (object: object): void {
     if (!Selection._selectedObjects.has(object)) {
       return;
@@ -50,16 +42,10 @@ export class Selection {
     return Selection._selectedObjects.has(object);
   }
 
-  /**
-   * 获取所有已选择对象的数组
-   */
   static getSelectedObjects<T extends object> (): T[] {
     return Array.from(Selection._selectedObjects) as T[];
   }
 
-  /**
-   * 清空所有选择
-   */
   static clear (): void {
     if (Selection._selectedObjects.size === 0) {
       return;
@@ -69,10 +55,17 @@ export class Selection {
     Selection.emitSelectionChanged();
   }
 
-  /**
-   * 发送选择变更事件
-   */
+  static addSelectionListener (listener: SelectionListener): void {
+    Selection._listeners.add(listener);
+  }
+
+  static removeSelectionListener (listener: SelectionListener): void {
+    Selection._listeners.delete(listener);
+  }
+
   private static emitSelectionChanged (): void {
-    // TODO: 实现事件分发机制
+    for (const listener of Selection._listeners) {
+      listener();
+    }
   }
 }

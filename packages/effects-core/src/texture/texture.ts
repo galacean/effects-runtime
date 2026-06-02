@@ -248,11 +248,11 @@ export function generateWhiteTexture (engine: Engine) {
   );
 }
 
-export function generateTransparentTexture (engine: Engine) {
+export function generateEmptyTexture (engine: Engine) {
   return Texture.create(
     engine,
     {
-      id: spec.BuiltinObjectGUID.TransparentTexture,
+      id: spec.BuiltinObjectGUID.EmptyTexture,
       data: {
         width: 1,
         height: 1,

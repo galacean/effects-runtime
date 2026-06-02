@@ -59,6 +59,17 @@ export class KTX2Container {
     return this.vkFormat != 0;
   }
 
+  /**
+   * 释放内部持有的原始二进制数据引用
+   */
+  clear (): void {
+    for (const level of this.levels) {
+      (level as { levelData: Uint8Array | null }).levelData = null;
+    }
+    this.levels.length = 0;
+    this.globalData = null;
+  }
+
   private parse (data: Uint8Array) {
     const KTX2_IDENTIFIER = new Uint8Array([
       0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A,

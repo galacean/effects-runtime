@@ -1,5 +1,5 @@
 import type {
-  Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  CanvasAndContext, Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
   TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec, Engine,
@@ -37,7 +37,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   constructor (engine: Engine, source?: TextureSourceOptions) {
     super(engine);
     if (source) {
-      this.fromData(source);
+      this.fromData(source as unknown as spec.EffectsObjectData);
     }
   }
 
@@ -322,9 +322,9 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.EffectsObjectData): void {
     super.fromData(data);
-    const source = data as TextureSourceOptions;
+    const source = data as unknown as TextureSourceOptions;
     const options = this.assembleOptions(source);
     const { sourceType, sourceFrom, name = '' } = options;
 
@@ -346,19 +346,25 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
+    let pooledCanvasAndContext: CanvasAndContext | undefined;
 
     if (sourceType !== TextureSourceType.video) {
       let shouldResize = minFilter !== gl.NEAREST || magFilter !== gl.NEAREST || wrapS !== gl.CLAMP_TO_EDGE || wrapT !== gl.CLAMP_TO_EDGE;
 
       shouldResize = shouldResize || image.width > maxSize || image.height > maxSize;
       if (shouldResize) {
-        // fix android webgl1 img lost error
-        setTimeout(() => {
-          img = this.resizeImage(image);
-        });
+        pooledCanvasAndContext = resizeImageByCanvas(image, maxSize);
+        if (pooledCanvasAndContext) {
+          img = pooledCanvasAndContext.canvas;
+        }
       }
     }
     gl.texImage2D(target, level, internalformat, format, type, img);
+
+    if (pooledCanvasAndContext) {
+      canvasPool.releaseCanvasAndContext(pooledCanvasAndContext);
+    }
+
     const size: spec.vec2 = [img.width, img.height];
 
     if (sourceType === TextureSourceType.video) {
@@ -393,23 +399,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texImage2D(target, level, internalformat, width, height, 0, format, type, neoBuffer);
 
     return [width, height];
-  }
-
-  private resizeImage (image: spec.HTMLImageLike, targetWidth?: number, targetHeight?: number): HTMLCanvasElement | HTMLImageElement {
-    const { detail } = this.engine.gpuCapability;
-    const maxSize = detail.maxTextureSize ?? 2048;
-
-    const gl = (this.engine as GLEngine).gl;
-
-    if (isWebGL2(gl) && (image.width < maxSize && image.height < maxSize)) {
-      return image as HTMLImageElement;
-    }
-
-    const canvas = resizeImageByCanvas(image, maxSize, targetWidth, targetHeight);
-
-    if (canvas) { return canvas; }
-
-    return image as HTMLImageElement;
   }
 
   override async reloadData (): Promise<void> {
@@ -510,20 +499,20 @@ function resizeImageByCanvas (
   maxSize: number,
   targetWidth?: number,
   targetHeight?: number,
-): HTMLCanvasElement | undefined {
+): CanvasAndContext | undefined {
   const { width, height } = image;
   const nw = Math.min(maxSize, targetWidth || nearestPowerOfTwo(width));
   const nh = Math.min(maxSize, targetHeight || nearestPowerOfTwo(height));
 
   if (nh !== height || nw !== width) {
-    const canvas = canvasPool.getCanvas();
-    const ctx = canvas.getContext('2d');
+    const canvasAndContext = canvasPool.getCanvasAndContext(nw, nh);
+    const { canvas, context } = canvasAndContext;
 
     canvas.width = nw;
     canvas.height = nh;
-    ctx?.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
+    context.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
     logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}.`);
 
-    return canvas;
+    return canvasAndContext;
   }
 }

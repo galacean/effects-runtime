@@ -2,6 +2,9 @@ import type { Engine } from '@galacean/effects';
 import { Behaviour, effectsClass, spec } from '@galacean/effects';
 import type { ModelTreeContent } from '../index';
 
+// TODO: Move to spec
+interface ModelTreeComponentData extends spec.ComponentData, ModelTreeContent {}
+
 /**
  * 插件场景树组件类，实现 3D 场景树功能
  *
@@ -20,7 +23,7 @@ export class ModelTreeComponent extends Behaviour {
    * @param engine
    * @param options
    */
-  constructor (engine: Engine, options?: ModelTreeContent) {
+  constructor (engine: Engine, options?: ModelTreeComponentData) {
     super(engine);
     if (options) {
       this.fromData(options);
@@ -31,7 +34,7 @@ export class ModelTreeComponent extends Behaviour {
    * 反序列化，保存入参和创建节点树元素
    * @param options
    */
-  override fromData (options: ModelTreeContent): void {
+  override fromData (options: ModelTreeComponentData): void {
     super.fromData(options);
     this.options = options;
   }

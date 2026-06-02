@@ -263,7 +263,20 @@ export class GradientValue extends ValueGetter<number[]> {
 
   override getValue (time: number) {
     const stops = this.stops;
+
+    if (stops.length === 0) {
+      return [0, 0, 0, 0];
+    }
+
+    if (time <= stops[0].time) {
+      return stops[0].color.toArray();
+    }
+
     const last = stops.length - 1;
+
+    if (time >= stops[last].time) {
+      return stops[last].color.toArray();
+    }
 
     for (let i = 0; i < last; i++) {
       const a = stops[i];

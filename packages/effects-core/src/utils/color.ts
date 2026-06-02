@@ -37,9 +37,18 @@ export function colorToArr (hex: string | number[], normalized?: boolean): numbe
 }
 
 export function getColorFromGradientStops (stops: ColorStop[], key: number, normalize?: boolean): number[] {
-  if (stops.length) {
-    let color: number[] | undefined;
+  if (stops.length === 0) {
+    return [0, 0, 0, 0];
+  }
 
+  let color: number[];
+
+  if (key <= stops[0].time) {
+    color = stops[0].color.toArray();
+  } else if (key >= stops[stops.length - 1].time) {
+    color = stops[stops.length - 1].color.toArray();
+  } else {
+    color = stops[stops.length - 1].color.toArray();
     for (let j = 1; j <= stops.length - 1; j++) {
       const s0 = stops[j - 1];
       const s1 = stops[j];
@@ -50,14 +59,9 @@ export function getColorFromGradientStops (stops: ColorStop[], key: number, norm
         break;
       }
     }
-    if (!color) {
-      color = stops[stops.length - 1].color.toArray();
-    }
-
-    return normalize ? color.map(n => n / 255) : color;
   }
 
-  return [0, 0, 0, 0];
+  return normalize ? color.map(n => n / 255) : color;
 }
 
 export function colorStopsFromGradient (gradient: number[][] | Record<string, string | number[]>): ColorStop[] {
@@ -86,16 +90,6 @@ export function colorStopsFromGradient (gradient: number[][] | Record<string, st
     });
   }
   stops = stops.sort((a, b) => a.time - b.time);
-  if (stops.length) {
-    if (stops[0].time !== 0) {
-      stops.unshift({ time: 0, color: stops[0].color.clone() });
-    }
-    const lastStop = stops[stops.length - 1];
-
-    if (lastStop.time !== 1) {
-      stops.push({ time: 1, color: lastStop.color.clone() });
-    }
-  }
 
   return stops;
 }

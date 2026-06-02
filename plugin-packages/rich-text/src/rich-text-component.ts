@@ -354,7 +354,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           context.fillText(text, strOffsetX, charsLineHeight);
         });
       });
-    }, { disposeOld: false });
+    });
 
     // 与 toDataURL() 两种方式都需要像素读取操作
     this.isDirty = false;
@@ -375,6 +375,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
+
+    this.updateStrategies();
 
     // 解析富文本
     this.generateTextProgram(this.text);
@@ -485,7 +487,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         overflowResult,
         this.textStyle,
       );
-    }, { disposeOld: false });
+    });
 
     this.isDirty = false;
   }

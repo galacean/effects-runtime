@@ -22,6 +22,9 @@ export const DEFAULT_FONTS = [
   'courier',
 ];
 
+/** 可换行断点：空格、制表符等 */
+const IS_BREAK_CHAR = (ch: string) => ch === ' ' || ch === '\t' || ch === '\u00A0';
+
 export interface TextComponent extends TextComponentBase { }
 
 let seed = 0;
@@ -60,9 +63,10 @@ export class TextComponent extends MaskableGraphic {
     this.name = 'MText' + seed++;
 
     // 初始化canvas资源
-    this.canvas = canvasPool.getCanvas();
-    canvasPool.saveCanvas(this.canvas);
-    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    const canvasAndContext = canvasPool.getCanvasAndContext(1, 1);
+
+    this.canvas = canvasAndContext.canvas;
+    this.context = canvasAndContext.context;
 
     // 使用默认值初始化
     const defaultData = this.getDefaultProps();
@@ -98,6 +102,7 @@ export class TextComponent extends MaskableGraphic {
   override onDestroy (): void {
     super.onDestroy();
     this.disposeTextTexture();
+    this.releaseTextCanvas();
   }
 
   override fromData (data: spec.TextComponentData): void {
@@ -163,45 +168,106 @@ export class TextComponent extends MaskableGraphic {
     const width = (this.textLayout.width + this.textStyle.fontOffset);
     let lineCount = 1;
     let x = 0;
-    let charCountInLine = 0; // 跟踪当前行的字符数
+    let charCountInLine = 0;
 
-    // 设置 context.font 的字号，确保 measureText 能正确计算字宽
     if (context) {
       context.font = this.getFontDesc(this.textStyle.fontSize);
     }
-    for (let i = 0; i < text.length; i++) {
-      const str = text[i];
-      const textMetrics = context?.measureText(str)?.width ?? 0;
 
-      // 和浏览器行为保持一致
-      // 字符间距只应用在字符之间，每行第一个字符不加间距
-      if (charCountInLine > 0) {
-        x += letterSpace;
-      }
-      // 处理文本结束行为
-      if (overflow === spec.TextOverflow.display) {
+    if (overflow === spec.TextOverflow.display) {
+      for (let i = 0; i < text.length; i++) {
+        const str = text[i];
+        const textMetrics = context?.measureText(str)?.width ?? 0;
+
         if (str === '\n') {
           lineCount++;
           x = 0;
-          charCountInLine = 0; // 重置行字符计数
+          charCountInLine = 0;
         } else {
+          if (charCountInLine > 0) {
+            x += letterSpace;
+          }
           x += textMetrics;
           charCountInLine++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
         }
-      } else {
+      }
+
+      return lineCount;
+    }
+
+    if (this.textLayout.keepWordIntact) {
+      // 单词完整换行：优先在空格处断行，避免从单词中间断开
+      let lastBreakX = 0;
+      let countAtBreak = 0;
+
+      for (let i = 0; i < text.length; i++) {
+        const str = text[i];
+        const textMetrics = context?.measureText(str)?.width ?? 0;
+
+        if (str === '\n') {
+          lineCount++;
+          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+          x = 0;
+          charCountInLine = 0;
+          lastBreakX = 0;
+          countAtBreak = 0;
+          continue;
+        }
+
+        const spacing = charCountInLine > 0 ? letterSpace : 0;
+        const willWidth = x + spacing + textMetrics;
+
+        if (willWidth > width && charCountInLine > 0) {
+          lineCount++;
+          if (countAtBreak > 1) {
+            this.maxLineWidth = Math.max(this.maxLineWidth, lastBreakX);
+            x = x - lastBreakX;
+            charCountInLine = charCountInLine - countAtBreak;
+          } else {
+            this.maxLineWidth = Math.max(this.maxLineWidth, x);
+            x = 0;
+            charCountInLine = 0;
+          }
+          lastBreakX = 0;
+          countAtBreak = 0;
+        }
+
+        if (charCountInLine > 0) {
+          x += letterSpace;
+        }
+        x += textMetrics;
+        charCountInLine++;
+
+        if (IS_BREAK_CHAR(str)) {
+          lastBreakX = x;
+          countAtBreak = charCountInLine;
+        }
+      }
+    } else {
+      // 逐字符换行：允许在任意字符处断开
+      for (let i = 0; i < text.length; i++) {
+        const str = text[i];
+        const textMetrics = context?.measureText(str)?.width ?? 0;
+
+        if (charCountInLine > 0) {
+          x += letterSpace;
+        }
+
         if (((x + textMetrics) > width && i > 0) || str === '\n') {
           lineCount++;
           this.maxLineWidth = Math.max(this.maxLineWidth, x);
           x = 0;
-          charCountInLine = 0; // 重置行字符计数
+          charCountInLine = 0;
         }
+
         if (str !== '\n') {
           x += textMetrics;
           charCountInLine++;
         }
       }
     }
+    this.maxLineWidth = Math.max(this.maxLineWidth, x);
 
     return lineCount;
   }
@@ -373,42 +439,124 @@ export class TextComponent extends MaskableGraphic {
       let charsArray: string[] = [];
       let charOffsetX: number[] = [];
 
-      for (let i = 0; i < char.length; i++) {
-        const str = char[i];
-        const textMetrics = context.measureText(str);
+      if (layout.keepWordIntact) {
+        // 单词完整换行：优先在空格处断行，避免从单词中间断开
+        let lastBreakIdx = -1;
 
-        // 和浏览器行为保持一致
-        // 字符间距只应用在字符之间，每行第一个字符不加间距
-        if (charsArray.length > 0) {
-          x += layout.letterSpace;
-        }
+        for (let i = 0; i < char.length; i++) {
+          const str = char[i];
+          const textMetrics = context.measureText(str);
 
-        if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
-          charsInfo.push({
-            y,
-            width: x,
-            chars: charsArray,
-            charOffsetX,
-          });
-          x = 0;
-          y += lineHeight;
-          charsArray = [];
-          charOffsetX = [];
-        }
+          if (str === '\n') {
+            charsInfo.push({
+              y,
+              width: x,
+              chars: charsArray,
+              charOffsetX,
+            });
+            x = 0;
+            y += lineHeight;
+            charsArray = [];
+            charOffsetX = [];
+            lastBreakIdx = -1;
+            continue;
+          }
 
-        if (str !== '\n') {
-          charsArray.push(str);
+          const spacing = charsArray.length > 0 ? layout.letterSpace : 0;
+          const willWidth = x + spacing + textMetrics.width;
+
+          if (willWidth > baseWidth && charsArray.length > 0) {
+            if (lastBreakIdx > 0) {
+              // 在空格处换行
+              const lineChars = charsArray.slice(0, lastBreakIdx);
+              const lineOffsets = charOffsetX.slice(0, lastBreakIdx);
+              const lineWidth = lineChars.length > 0
+                ? lineOffsets[lineOffsets.length - 1] + context.measureText(lineChars[lineChars.length - 1]).width
+                : 0;
+
+              charsInfo.push({
+                y,
+                width: lineWidth,
+                chars: lineChars,
+                charOffsetX: lineOffsets,
+              });
+              y += lineHeight;
+
+              charsArray = charsArray.slice(lastBreakIdx + 1);
+              // 重新计算剩余字符的宽度
+              x = 0;
+              charOffsetX = [];
+              for (let j = 0; j < charsArray.length; j++) {
+                if (j > 0) { x += layout.letterSpace; }
+                charOffsetX.push(x);
+                x += context.measureText(charsArray[j]).width;
+              }
+              lastBreakIdx = -1;
+            } else {
+              charsInfo.push({
+                y,
+                width: x,
+                chars: charsArray,
+                charOffsetX,
+              });
+              x = 0;
+              y += lineHeight;
+              charsArray = [];
+              charOffsetX = [];
+              lastBreakIdx = -1;
+            }
+          }
+
+          if (charsArray.length > 0) {
+            x += layout.letterSpace;
+          }
           charOffsetX.push(x);
+          charsArray.push(str);
           x += textMetrics.width;
+
+          if (IS_BREAK_CHAR(str)) {
+            lastBreakIdx = charsArray.length - 1;
+          }
+        }
+      } else {
+        // 逐字符换行：允许在任意字符处断开
+        for (let i = 0; i < char.length; i++) {
+          const str = char[i];
+          const textMetrics = context.measureText(str);
+
+          if (charsArray.length > 0) {
+            x += layout.letterSpace;
+          }
+
+          if (((x + textMetrics.width) > baseWidth && i > 0) || str === '\n') {
+            charsInfo.push({
+              y,
+              width: x,
+              chars: charsArray,
+              charOffsetX,
+            });
+            x = 0;
+            y += lineHeight;
+            charsArray = [];
+            charOffsetX = [];
+          }
+
+          if (str !== '\n') {
+            charsArray.push(str);
+            charOffsetX.push(x);
+            x += textMetrics.width;
+          }
         }
       }
 
-      charsInfo.push({
-        y,
-        width: x,
-        chars: charsArray,
-        charOffsetX,
-      });
+      if (charsArray.length > 0) {
+        charsInfo.push({
+          y,
+          width: x,
+          chars: charsArray,
+          charOffsetX,
+        });
+      }
 
       // 使用花字系统渲染文本
       renderWithTextLayers(

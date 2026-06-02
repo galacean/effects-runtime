@@ -7,7 +7,6 @@ import {
   RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction,
 } from '@galacean/effects-core';
 import { GLRenderbuffer } from './gl-renderbuffer';
-import type { GLRenderer } from './gl-renderer';
 import { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
 
@@ -22,7 +21,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
   fbo?: WebGLFramebuffer;
   engine: GLEngine;
 
-  readonly renderer: GLRenderer;
+  readonly renderer: Renderer;
 
   private readonly attachmentTextures: WebGLTexture[] = [];
 
@@ -36,7 +35,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       name = `GLFramebuffer${seed++}`,
     } = props;
 
-    this.renderer = renderer as GLRenderer;
+    this.renderer = renderer;
     this.engine = renderer.engine as GLEngine;
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
     this.viewport = viewport;
@@ -117,7 +116,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       throw new Error('Use depth stencil attachment without color attachments.');
     }
     if (willUseFbo) {
-      this.fbo = renderer.createGLFramebuffer(this.name) as WebGLFramebuffer;
+      this.fbo = this.engine.createGLFramebuffer(this.name) as WebGLFramebuffer;
     }
 
     switch (storageType) {
@@ -212,7 +211,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     storeAction: RenderPassStoreAction,
     separateDepthStencil: boolean,
   ): GLenum[] | undefined {
-    const gl = this.renderer.gl as WebGL2RenderingContext;
+    const gl = this.engine.gl as WebGL2RenderingContext;
     const colorLen = this.colorTextures.length;
 
     if (storeAction && isWebGL2(gl) && colorLen > 0) {
@@ -238,13 +237,13 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     const attachments = this.storeInvalidAttachments;
 
     if (attachments?.length) {
-      const gl = this.renderer.gl;
+      const gl = this.engine.gl;
 
       if (isWebGL2(gl)) {
         gl.invalidateFramebuffer(gl.FRAMEBUFFER, attachments);
       }
     }
-    (this.renderer.engine as GLEngine).bindSystemFramebuffer();
+    this.engine.bindSystemFramebuffer();
   }
 
   override bind () {
@@ -252,8 +251,8 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       return;
     }
 
-    const gl = this.renderer.gl;
-    const state = this.renderer.engine as GLEngine;
+    const gl = this.engine.gl;
+    const state = this.engine;
     const [x, y, width, height] = this.viewport;
 
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
@@ -313,7 +312,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
 
   override resetColorTextures (colorTextures?: Texture[]) {
     const colors = colorTextures as GLTexture[];
-    const gl = this.renderer.gl;
+    const gl = this.engine.gl;
     const gpuCapability = this.engine.gpuCapability;
     const viewport = this.viewport;
     const buffers: boolean[] = [];
@@ -324,7 +323,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
       }
       this.colorTextures = colors.slice();
     }
-    (this.renderer.engine as GLEngine).activeTexture(gl.TEXTURE0);
+    this.engine.activeTexture(gl.TEXTURE0);
 
     this.colorTextures.forEach((tex, index) => {
       const width = viewport[2];
@@ -351,7 +350,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
 
   override dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
     if (this.renderer) {
-      this.renderer.deleteGLFramebuffer(this);
+      this.engine.deleteGLFramebuffer(this);
       delete this.fbo;
       const clearAttachment = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
 

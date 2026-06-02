@@ -8,6 +8,8 @@ import { PluginSystem } from './plugin-system';
 
 /**
  * @hidden
+ * Internal utility.
+ * Not part of the public API — do not rely on this in your code.
  */
 export class SceneLoader {
   static async load (scene: Scene.LoadType, engine: Engine, options: SceneLoadOptions = {}): Promise<Composition> {
@@ -36,7 +38,7 @@ export class SceneLoader {
     const compileStart = performance.now();
 
     await new Promise(resolve => {
-      engine.renderer.getShaderLibrary()?.compileAllShaders(() => resolve(null));
+      engine.getShaderLibrary()?.compileAllShaders(() => resolve(null));
     });
 
     const compileTime = performance.now() - compileStart;
@@ -55,12 +57,8 @@ export class SceneLoader {
   }
 
   private static createComposition (scene: Scene, engine: Engine, options: SceneLoadOptions = {}): Composition {
-    const renderer = engine.renderer;
-    const composition = new Composition({
+    const composition = new Composition(engine, {
       ...options,
-      renderer,
-      width: renderer.getWidth(),
-      height: renderer.getHeight(),
       event: engine.eventSystem,
     }, scene);
 

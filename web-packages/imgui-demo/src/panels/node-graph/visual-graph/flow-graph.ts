@@ -1,7 +1,7 @@
 import { generateGUID } from '@galacean/effects';
 import type { UUID } from './state-machine-graph';
 import { ImGui } from '../../../imgui/index';
-import { BaseGraph, BaseNode } from './base-graph';
+import { BaseGraph, BaseNode, ScopedGraphModification } from './base-graph';
 import { CommentNode } from './comment-node';
 import type { DrawContext } from './drawing-context';
 import type { UserContext } from './user-context';
@@ -30,22 +30,50 @@ export class Pin {
   m_userData: number = 0;
   m_position: ImVec2 = new ImVec2(0, 0);
   m_size: ImVec2 = new ImVec2(-1, -1);
+  private m_lastCalculatedSize: ImVec2 = new ImVec2(-1, -1);
+  private m_lastCanvasWidth: number = -1;
+  private m_hasCalculatedSize: boolean = false;
+  private m_hasCachedSize: boolean = false;
 
   IsDynamicPin (): boolean {
     return this.m_isDynamic;
   }
 
   GetWidth (): number {
-    return this.m_size.x;
+    return this.m_hasCalculatedSize ? this.m_size.x : (this.m_hasCachedSize ? this.m_lastCalculatedSize.x : this.m_size.x);
   }
 
   GetHeight (): number {
-    return this.m_size.y;
+    return this.m_hasCalculatedSize ? this.m_size.y : (this.m_hasCachedSize ? this.m_lastCalculatedSize.y : this.m_size.y);
+  }
+
+  GetCachedWidth (ctx: DrawContext): number {
+    return this.m_hasCachedSize ? ctx.CanvasToWindow(this.m_lastCanvasWidth) : this.m_size.x;
+  }
+
+  GetWidthForLayout (ctx: DrawContext): number {
+    return this.m_hasCalculatedSize ? this.m_size.x : this.GetCachedWidth(ctx);
+  }
+
+  HasCachedSize (): boolean {
+    return this.m_hasCachedSize;
+  }
+
+  SetCalculatedSize (size: ImVec2, ctx: DrawContext, updateCachedSize: boolean = true): void {
+    this.m_size = new ImVec2(size.x, size.y);
+    this.m_hasCalculatedSize = true;
+
+    if (updateCachedSize || !this.m_hasCachedSize) {
+      this.m_lastCalculatedSize = new ImVec2(size.x, size.y);
+      this.m_lastCanvasWidth = ctx.WindowToCanvas(size.x);
+      this.m_hasCachedSize = true;
+    }
   }
 
   ResetCalculatedSizes (): void {
     this.m_position = ImVec2.ZERO;
     this.m_size = new ImVec2(-1, -1);
+    this.m_hasCalculatedSize = false;
   }
 }
 
@@ -429,6 +457,8 @@ export class FlowGraph extends BaseGraph {
       return false;
     }
 
+    const sgm = new ScopedGraphModification(this);
+
     if (!outputPin.m_allowMultipleOutConnections) {
       this.BreakAnyConnectionsForPin(outputPin.m_ID);
     }
@@ -443,6 +473,8 @@ export class FlowGraph extends BaseGraph {
     newConnection.m_inputPinID = inputPin.m_ID;
     this.m_connections.push(newConnection);
 
+    sgm.End();
+
     return true;
   }
 
@@ -450,26 +482,34 @@ export class FlowGraph extends BaseGraph {
     const index = this.m_connections.findIndex(conn => conn.m_ID === connectionID);
 
     if (index !== -1) {
+      const sgm = new ScopedGraphModification(this);
+
       this.m_connections.splice(index, 1);
+      sgm.End();
     } else {
       throw new Error('Attempted to break non-existent connection');
     }
   }
 
   BreakAnyConnectionsForPin (pinID: UUID): void {
+    const sgm = new ScopedGraphModification(this);
+
     this.m_connections = this.m_connections.filter(conn =>
       conn.m_outputPinID !== pinID && conn.m_inputPinID !== pinID
     );
+    sgm.End();
   }
 
   BreakAllConnectionsForNode (node: FlowNode): void;
   BreakAllConnectionsForNode (nodeID: UUID): void;
   BreakAllConnectionsForNode (nodeOrID: FlowNode | UUID): void {
     const nodeID = nodeOrID instanceof FlowNode ? nodeOrID.GetID() : nodeOrID;
+    const sgm = new ScopedGraphModification(this);
 
     this.m_connections = this.m_connections.filter(conn =>
       conn.m_fromNodeID !== nodeID && conn.m_toNodeID !== nodeID
     );
+    sgm.End();
   }
 
   GetConnectedNodeForInputPin (inputPinID: UUID): FlowNode | null {

@@ -84,7 +84,7 @@ export class ModelPlugin extends Plugin {
    * @param composition - 合成
    * @param scene - 场景
    */
-  override onCompositionCreated (composition: Composition, scene: Scene): void {
+  override onCompositionCreated (composition: Composition, scene?: Scene): void {
     const props = {
       id: 'ModelPluginItem',
       name: 'ModelPluginItem',
@@ -96,7 +96,7 @@ export class ModelPlugin extends Plugin {
     composition.addItem(item);
     const modelPluginComponent = item.addComponent(ModelPluginComponent);
 
-    modelPluginComponent.sceneParams = scene.storage;
+    modelPluginComponent.sceneParams = scene?.storage ?? {};
   }
 }
 

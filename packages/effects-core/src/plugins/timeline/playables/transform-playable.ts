@@ -160,7 +160,7 @@ export class TransformPlayable extends Playable {
     const duration = this.getDuration();
     let life = this.time / duration;
 
-    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+    life = life < 0 ? 0 : life;
 
     if (this.sizeXOverLifetime) {
       tempSize.x = this.sizeXOverLifetime.getValue(life);

@@ -1,7 +1,9 @@
 import * as spec from '@galacean/effects-specification';
+import type { Color, Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
+import type { Texture } from '../texture';
 
 export type ShaderMacros = [key: string, value: string | number | boolean][];
 
@@ -63,12 +65,39 @@ export type ShaderWithSource = SharedShaderWithSource;
 
 export abstract class ShaderVariant extends EffectsObject {
   shader: Shader;
+
   constructor (
     engine: Engine,
     public readonly source: ShaderWithSource,
   ) {
     super(engine);
   }
+
+  initialize (): void {
+    // OVERRIDE
+  }
+
+  // uniform 设置接口
+  abstract setFloat (name: string, value: number): void;
+  abstract setInt (name: string, value: number): void;
+  abstract setFloats (name: string, value: number[]): void;
+  abstract setTexture (name: string, texture: Texture): void;
+  abstract setVector2 (name: string, value: Vector2): void;
+  abstract setVector3 (name: string, value: Vector3): void;
+  abstract setVector4 (name: string, value: Vector4): void;
+  abstract setColor (name: string, value: Color): void;
+  abstract setQuaternion (name: string, value: Quaternion): void;
+  abstract setMatrix (name: string, value: Matrix4): void;
+  abstract setMatrix3 (name: string, value: Matrix3): void;
+  abstract setVector4Array (name: string, array: number[]): void;
+  abstract setMatrixArray (name: string, array: number[]): void;
+
+  // shader 信息填充（uniform location 查找）
+  abstract fillShaderInformation (uniformNames: string[], samplers: string[]): void;
+
+  // program 绑定与就绪检查
+  abstract bind (): void;
+  abstract isReady (): boolean;
 }
 
 @effectsClass(spec.DataType.Shader)
@@ -83,7 +112,7 @@ export class Shader extends EffectsObject {
         shaderMacros.push([key, macros[key]]);
       }
     }
-    const shaderVariant = this.engine.getShaderLibrary().createShader(this.shaderData, shaderMacros);
+    const shaderVariant = this.engine.getShaderLibrary()!.createShader(this.shaderData, shaderMacros);
 
     shaderVariant.shader = this;
 

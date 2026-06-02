@@ -311,7 +311,6 @@ export class SpriteComponent extends MaskableGraphic {
     this.splits = splits;
     this.textureSheetAnimation = textureSheetAnimation;
 
-    // @ts-expect-error
     const geometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : this.defaultGeometry;
 
     if (splits.length === 1) {

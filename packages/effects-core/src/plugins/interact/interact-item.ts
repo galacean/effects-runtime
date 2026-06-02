@@ -346,7 +346,7 @@ export class InteractComponent extends RendererComponent {
     };
   }
 
-  override fromData (data: spec.InteractContent): void {
+  override fromData (data: spec.InteractComponentData): void {
     super.fromData(data);
     this.interactData = data;
     if (data.options.type === spec.InteractType.DRAG) {

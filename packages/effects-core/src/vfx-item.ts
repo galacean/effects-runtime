@@ -18,7 +18,7 @@ import type {
   BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, Region,
 } from './plugins';
-import { HitTestType, ParticleSystem } from './plugins';
+import { HitTestType } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { generateGUID, removeItem } from './utils';
@@ -674,7 +674,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     // 3. composition 元素：子元素命中时，将自身也加入结果（根元素除外）
-    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.rootItem) {
+    if (VFXItem.isComposition(this) && hitTestSuccess && this !== this.composition?.sceneRoot) {
       regions.push({
         id: this.getInstanceId(),
         name: this.name,
@@ -741,7 +741,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.refreshGUIDRecursive(previousObjectIDMap);
 
     if (this.composition) {
-      newItem.setParent(this.composition.rootItem);
+      newItem.setParent(this.composition.sceneRoot);
     }
 
     return newItem;
@@ -783,9 +783,15 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @internal
    */
   onActiveChanged () {
-    if (!this.isEnabled) {
-      this.onEnable();
-    } else {
+    if (!this.isDuringPlay || !this.composition) {
+      return;
+    }
+
+    if (this.active) {
+      if (!this.isEnabled) {
+        this.onEnable();
+      }
+    } else if (this.isEnabled) {
       this.onDisable();
     }
   }
@@ -890,12 +896,6 @@ export class VFXItem extends EffectsObject implements Disposable {
         const component = this.engine.findObject<Component>(componentPath);
 
         this.components.push(component);
-        // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
-        if (component instanceof ParticleSystem) {
-          if (!this.components.includes(component.renderer)) {
-            this.components.push(component.renderer);
-          }
-        }
       }
     }
 
@@ -912,7 +912,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.definition.id = this.guid;
     this.definition.transform = this.transform.toData();
     this.definition.dataType = spec.DataType.VFXItemData;
-    if (this.parent?.name !== 'rootItem') {
+    if (this.parent?.name !== 'sceneRoot') {
       this.definition.parentId = this.parent?.guid;
     }
 
