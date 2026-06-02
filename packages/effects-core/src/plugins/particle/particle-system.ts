@@ -1,6 +1,6 @@
-import type { Ray } from '@galacean/effects-math/es/core/index';
-import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { vec3, vec4 } from '@galacean/effects-specification';
+import type { Ray, Euler } from '@galacean/effects-math/es/core/index';
+import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { vec3 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
@@ -12,10 +12,10 @@ import type { Maskable } from '../../material';
 import { MaskProcessor } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import type { Texture } from '../../texture';
-import { Transform } from '../../transform';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import type { Burst } from './burst';
+import { InitializeParticleModule } from './initialize-particle-module';
 import { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import type { ParticleModuleContext } from './particle-module';
@@ -158,6 +158,7 @@ export class ParticleSystem extends Component implements Maskable {
   private solveVelocityModule: SolveVelocityModule | null = null;
   private solveRotationModule: SolveRotationModule | null = null;
   private solveLinearMoveModule: SolveLinearMoveModule | null = null;
+  private initParticleModule = new InitializeParticleModule();
   private particleMeshProps: ParticleMeshProps | null = null;
   private trailMeshProps: TrailMeshProps | null = null;
 
@@ -283,7 +284,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.pointRefs[pointIndex] = point;
     this.renderer.setParticlePoint(pointIndex, point);
-    this.writePointToDataBuffer(pointIndex, point);
+    this.initParticleModule.writeToBuffer(pointIndex, point, this.dataBuffer!, this.renderer.particleMesh.geometry);
     this.clearPointTrail(pointIndex);
     if (this.transform.parentTransform) {
       this.renderer.setTrailStartPosition(pointIndex, this.transform.parentTransform.position.clone());
@@ -346,6 +347,12 @@ export class ParticleSystem extends Component implements Maskable {
     }
 
     this.dataBuffer = new ParticleDataBuffer(this.particleMeshProps.maxCount);
+    this.initParticleModule.setup({
+      options: this.options,
+      shape: this.shape,
+      textureSheetAnimation: this.textureSheetAnimation,
+      uvs: this.uvs,
+    });
     const lv = this.options.linearVelOverLifetime;
 
     this.solveVelocityModule = new SolveVelocityModule({
@@ -710,121 +717,18 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   initPoint (data: ShapeParticle): Point {
-    const options = this.options;
-    const lifetime = this.lifetime;
-    const shape = this.shape;
-    const speed = options.startSpeed.getValue(lifetime);
-    const matrix4 = options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
-    const pointPosition: Vector3 = data.position;
+    const worldMatrix = this.options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
+    const result = this.initParticleModule.createPoint(
+      data,
+      this.lifetime,
+      worldMatrix,
+      this.transform,
+      this.upDirectionWorld,
+    );
 
-    // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响
-    const position = matrix4.transformPoint(pointPosition, new Vector3());
-    const transform = new Transform({
-      position,
-      valid: true,
-    });
+    this.upDirectionWorld = result.upDirectionWorld;
 
-    let direction = data.direction;
-
-    direction = matrix4.transformNormal(direction, tempDir).normalize();
-    if (options.startTurbulence && options.turbulence) {
-      for (let i = 0; i < 3; i++) {
-        tempVec3.setElement(i, options.turbulence[i].getValue(lifetime));
-      }
-      tempEuler.setFromVector3(tempVec3.negate());
-      const mat4 = tempMat4.setFromEuler(tempEuler);
-
-      mat4.transformNormal(direction).normalize();
-    }
-    const dirX = tmpDirX;
-    const dirY = tmpDirY;
-
-    if (shape.alignSpeedDirection) {
-      dirY.copyFrom(direction);
-      if (!this.upDirectionWorld) {
-        if (shape.upDirection) {
-          this.upDirectionWorld = shape.upDirection.clone();
-        } else {
-          this.upDirectionWorld = Vector3.Z.clone();
-        }
-        matrix4.transformNormal(this.upDirectionWorld);
-      }
-      dirX.crossVectors(dirY, this.upDirectionWorld).normalize();
-      // FIXME: 原先因为有精度问题，这里dirX不是0向量
-      if (dirX.isZero()) {
-        dirX.set(1, 0, 0);
-      }
-    } else {
-      dirX.set(1, 0, 0);
-      dirY.set(0, 1, 0);
-    }
-    let sprite;
-    const tsa = this.textureSheetAnimation;
-
-    if (tsa && tsa.animate) {
-      sprite = tempSprite;
-      sprite[0] = tsa.animationDelay.getValue(lifetime);
-      sprite[1] = tsa.animationDuration.getValue(lifetime);
-      sprite[2] = tsa.cycles.getValue(lifetime);
-    }
-    const rot = tempRot;
-
-    if (options.start3DRotation) {
-      // @ts-expect-error
-      rot.set(options.startRotationX.getValue(lifetime), options.startRotationY.getValue(lifetime), options.startRotationZ.getValue(lifetime));
-    } else if (options.startRotation) {
-      rot.set(0, 0, options.startRotation.getValue(lifetime));
-    } else {
-      rot.set(0, 0, 0);
-    }
-    transform.setRotation(rot.x, rot.y, rot.z);
-    const color = options.startColor.getValue(lifetime) as number[];
-
-    if (color.length === 3) {
-      color[3] = 1;
-    }
-    const size = tempSize;
-
-    if (options.start3DSize) {
-      size.x = options.startSizeX!.getValue(lifetime);
-      size.y = options.startSizeY!.getValue(lifetime);
-    } else {
-      const n = options.startSize!.getValue(lifetime);
-      const aspect = options.sizeAspect!.getValue(lifetime);
-
-      size.x = n;
-      // 兼容aspect为0的情况
-      size.y = aspect === 0 ? 0 : n / aspect;
-      // size[1] = n / aspect;
-    }
-
-    const vel = direction.clone();
-
-    vel.multiply(speed);
-
-    // 粒子的大小受发射器父节点的影响
-    if (!options.particleFollowParent) {
-      const tempScale = new Vector3();
-
-      this.transform.assignWorldTRS(undefined, undefined, tempScale);
-      size.x *= tempScale.x;
-      size.y *= tempScale.y;
-    }
-    transform.setScale(size.x, size.y, 1);
-
-    return {
-      size,
-      vel,
-      color: color as vec4,
-      delay: options.startDelay.getValue(lifetime),
-      lifetime: options.startLifetime.getValue(lifetime),
-      uv: randomArrItem(this.uvs, true),
-      gravity: options.gravity,
-      sprite,
-      dirY,
-      dirX,
-      transform,
-    };
+    return result.point;
   }
 
   addBurst (burst: Burst, offsets: vec3[]) {
@@ -991,92 +895,6 @@ export class ParticleSystem extends Component implements Maskable {
     geometry.setAttributeData('aLinearMove', aLinearMove);
   }
 
-  private writePointToDataBuffer (index: number, point: Point): void {
-    const db = this.dataBuffer;
-
-    if (!db) {
-      return;
-    }
-    const i3 = index * 3;
-    const i4 = index * 4;
-    const i2 = index * 2;
-    const pos = point.transform.position;
-
-    db.delay[index] = point.delay;
-    db.lifetime[index] = point.lifetime;
-
-    // seed 和 rotation 从几何体回读，确保与 setPoint 的 quat round-trip 结果一致
-    const aRotData = this.renderer.particleMesh.geometry.getAttributeData('aRot') as Float32Array;
-    const gRotOff = index * 32;
-
-    db.seed[index] = aRotData[gRotOff + 3];
-    db.rotation[i3] = aRotData[gRotOff];
-    db.rotation[i3 + 1] = aRotData[gRotOff + 1];
-    db.rotation[i3 + 2] = aRotData[gRotOff + 2];
-
-    db.position[i3] = pos.x;
-    db.position[i3 + 1] = pos.y;
-    db.position[i3 + 2] = pos.z;
-
-    db.velocity[i3] = point.vel.x;
-    db.velocity[i3 + 1] = point.vel.y;
-    db.velocity[i3 + 2] = point.vel.z;
-
-    db.color[i4] = point.color[0];
-    db.color[i4 + 1] = point.color[1];
-    db.color[i4 + 2] = point.color[2];
-    db.color[i4 + 3] = point.color[3];
-
-    db.size[i2] = point.size.x;
-    db.size[i2 + 1] = point.size.y;
-
-    db.dirX[i3] = point.dirX.x;
-    db.dirX[i3 + 1] = point.dirX.y;
-    db.dirX[i3 + 2] = point.dirX.z;
-    db.dirY[i3] = point.dirY.x;
-    db.dirY[i3 + 1] = point.dirY.y;
-    db.dirY[i3 + 2] = point.dirY.z;
-
-    if (point.uv) {
-      db.uv[i4] = point.uv[0];
-      db.uv[i4 + 1] = point.uv[1];
-      db.uv[i4 + 2] = point.uv[2];
-      db.uv[i4 + 3] = point.uv[3];
-    }
-    if (point.sprite) {
-      db.sprite[i3] = point.sprite[0];
-      db.sprite[i3 + 1] = point.sprite[1];
-      db.sprite[i3 + 2] = point.sprite[2];
-    }
-    if (point.gravity) {
-      db.gravity[i3] = point.gravity[0];
-      db.gravity[i3 + 1] = point.gravity[1];
-      db.gravity[i3 + 2] = point.gravity[2];
-    }
-
-    // 重置累积通道——槽位复用时必须清零，与 setPoint 写全零 aTranslation 对齐
-    db.translation[i3] = 0;
-    db.translation[i3 + 1] = 0;
-    db.translation[i3 + 2] = 0;
-    db.linearMove[i3] = 0;
-    db.linearMove[i3 + 1] = 0;
-    db.linearMove[i3 + 2] = 0;
-
-    const i9 = index * 9;
-
-    db.rotMatrix[i9] = 1;
-    db.rotMatrix[i9 + 1] = 0;
-    db.rotMatrix[i9 + 2] = 0;
-    db.rotMatrix[i9 + 3] = 0;
-    db.rotMatrix[i9 + 4] = 1;
-    db.rotMatrix[i9 + 5] = 0;
-    db.rotMatrix[i9 + 6] = 0;
-    db.rotMatrix[i9 + 7] = 0;
-    db.rotMatrix[i9 + 8] = 1;
-
-    db.activeCount = Math.max(db.activeCount, index + 1);
-  }
-
   override fromData (data: spec.ParticleSystemData): void {
     super.fromData(data);
     this.props = data;
@@ -1112,24 +930,3 @@ export class ParticleSystem extends Component implements Maskable {
   }
 }
 
-// array performance better for small memory than Float32Array
-const tempDir = new Vector3();
-const tempSize = new Vector2();
-const tempRot = new Euler();
-const tmpDirX = new Vector3();
-const tmpDirY = new Vector3();
-const tempVec3 = new Vector3();
-const tempEuler = new Euler();
-const tempSprite: vec3 = [0, 0, 0];
-const tempMat4 = new Matrix4();
-
-function randomArrItem<T> (arr: T[], keepArr?: boolean): T {
-  const index = Math.floor(Math.random() * arr.length);
-  const item = arr[index];
-
-  if (!keepArr) {
-    arr.splice(index, 1);
-  }
-
-  return item;
-}
