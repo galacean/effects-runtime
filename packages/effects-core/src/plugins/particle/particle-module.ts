@@ -1,3 +1,4 @@
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleEmitter } from './particle-emitter';
 
@@ -25,9 +26,20 @@ type ParticleModuleContext = {
   lastIndex: number,
 };
 
+/**
+ * particleSpawn 阶段的扩展上下文。
+ * 提供 spawn 专用的状态：世界矩阵、待初始化的 slot 列表。
+ */
+type ParticleSpawnContext = ParticleModuleContext & {
+  worldMatrix: Matrix4,
+  slotIndices: number[],
+};
+
 type SpawnInfo = {
   count: number,
   timeDelta: number,
+  isBurst?: boolean,
+  burstIndex?: number,
 };
 
 /**
@@ -46,5 +58,5 @@ abstract class ParticleModule {
   abstract execute (ctx: ParticleModuleContext): void;
 }
 
-export type { ParticleModuleStage, ParticleModuleContext, SpawnInfo };
+export type { ParticleModuleStage, ParticleModuleContext, ParticleSpawnContext, SpawnInfo };
 export { ParticleModule };

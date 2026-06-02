@@ -15,6 +15,7 @@ import type { Texture } from '../../texture';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import type { Burst } from './burst';
+import { BurstSpawnModule } from './burst-spawn-module';
 import { InitializeParticleModule } from './initialize-particle-module';
 import { ParticleEmitter } from './particle-emitter';
 import { ParticleDataBuffer } from './particle-data-buffer';
@@ -264,6 +265,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.dataBuffer = new ParticleDataBuffer(this.particleMeshProps.maxCount);
     const lv = this.options.linearVelOverLifetime;
+
     const initModule = new InitializeParticleModule();
 
     initModule.setup({
@@ -274,6 +276,7 @@ export class ParticleSystem extends Component implements Maskable {
     });
 
     const spawnRateModule = new SpawnRateModule(this.emission.rateOverTime);
+    const burstSpawnModule = new BurstSpawnModule(this.emission);
     const solveVelocity = new SolveVelocityModule({
       gravity: this.options.gravity,
       gravityModifier: this.options.gravityModifier,
@@ -287,7 +290,6 @@ export class ParticleSystem extends Component implements Maskable {
     });
 
     this.emitter = new ParticleEmitter();
-    this.emitter.initParticleModule = initModule;
 
     this.renderer = this.item.addComponent(ParticleSystemRenderer);
 
@@ -300,8 +302,7 @@ export class ParticleSystem extends Component implements Maskable {
       renderer: this.renderer,
       options: this.options,
       emission: this.emission,
-      shape: this.shape,
-      modules: [spawnRateModule, solveVelocity, solveRotation, solveLinearMove].filter(Boolean),
+      modules: [spawnRateModule, burstSpawnModule, initModule, solveVelocity, solveRotation, solveLinearMove].filter(Boolean),
       trails: this.trails,
       getPointPositionF64: index => this.getPointPositionF64(index),
     });

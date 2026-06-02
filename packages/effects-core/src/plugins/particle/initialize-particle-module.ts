@@ -4,6 +4,8 @@ import type { ValueGetter } from '../../math';
 import type { ShapeGenerator, ShapeParticle } from '../../shape';
 import type { Transform } from '../../transform';
 import type { ParticleDataBuffer } from './particle-data-buffer';
+import { ParticleModule } from './particle-module';
+import type { ParticleModuleContext, ParticleSpawnContext } from './particle-module';
 
 type InitParticleOptions = {
   startSpeed: ValueGetter<number>,
@@ -33,7 +35,9 @@ type InitParticleTextureSheet = {
   cycles: ValueGetter<number>,
 };
 
-export class InitializeParticleModule {
+export class InitializeParticleModule extends ParticleModule {
+  override readonly stage = 'particleSpawn' as const;
+
   private options: InitParticleOptions;
   private shape: ShapeGenerator;
   private textureSheetAnimation?: InitParticleTextureSheet;
@@ -49,6 +53,27 @@ export class InitializeParticleModule {
     this.shape = opts.shape;
     this.textureSheetAnimation = opts.textureSheetAnimation;
     this.uvs = opts.uvs;
+  }
+
+  override execute (ctx: ParticleModuleContext): void {
+    const spawnCtx = ctx as ParticleSpawnContext;
+    const db = ctx.dataBuffer;
+    const emitter = ctx.emitter;
+    const worldMatrix = spawnCtx.worldMatrix;
+    const slotIndices = spawnCtx.slotIndices;
+
+    for (let idx = 0; idx < slotIndices.length; idx++) {
+      const slotIndex = slotIndices[idx];
+      const generator = emitter.getSpawnGenerator(idx);
+      const data = this.shape.generate(generator);
+      const result = this.initializeToBuffer(
+        data, ctx.emitterLifetime, worldMatrix,
+        emitter.componentTransform, emitter.upDirectionWorld,
+        slotIndex, db,
+      );
+
+      emitter.upDirectionWorld = result.upDirectionWorld;
+    }
   }
 
   initializeToBuffer (

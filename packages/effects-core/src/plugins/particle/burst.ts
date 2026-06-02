@@ -33,6 +33,15 @@ export class Burst {
     this.reset();
   }
 
+  canFire (timePassed: number): boolean {
+    if (this.disabled) {
+      return false;
+    }
+    const dt = timePassed - this.time - this.now;
+
+    return dt > this.interval * this.index && this.internalCycles > 0;
+  }
+
   getGeneratorOptions (timePassed: number, lifetime: number) {
     const dt = timePassed - this.time - this.now;
 
