@@ -343,16 +343,19 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     type: GLenum,
     image: spec.HTMLImageLike,
   ): spec.vec2 {
-    const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
+    const { sourceType } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
     let pooledCanvasAndContext: CanvasAndContext | undefined;
 
     if (sourceType !== TextureSourceType.video) {
-      let shouldResize = minFilter !== gl.NEAREST || magFilter !== gl.NEAREST || wrapS !== gl.CLAMP_TO_EDGE || wrapT !== gl.CLAMP_TO_EDGE;
+      // 仅在图片超过 maxTextureSize 时才需要缩放上传；
+      // 对于 NPOT + LINEAR / 非 CLAMP_TO_EDGE 这种 WebGL1 受限场景，
+      // 这里保持与历史版本一致不做强制 POT 化（如需 POT 由上层显式处理），
+      // 否则会与旧版渲染结果出现整张纹理级别的差异。
+      const isOversize = image.width > maxSize || image.height > maxSize;
 
-      shouldResize = shouldResize || image.width > maxSize || image.height > maxSize;
-      if (shouldResize) {
+      if (isOversize) {
         pooledCanvasAndContext = resizeImageByCanvas(image, maxSize);
         if (pooledCanvasAndContext) {
           img = pooledCanvasAndContext.canvas;
