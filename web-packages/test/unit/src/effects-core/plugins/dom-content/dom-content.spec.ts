@@ -18,6 +18,46 @@ async function waitFor (predicate: () => boolean, timeout = 2000, interval = 50)
   throw new Error(`waitFor timed out after ${timeout}ms`);
 }
 
+/**
+ * 拦截 XMLHttpRequest，捕获 open 时传入的 URL；mode 决定 send 后触发的事件。
+ * - 'error' 模式：模拟网络失败，inlineImageSources 走 catch，HTML 原文保留
+ * - 'success' 模式：返回一段最小 PNG Blob，让 base64 替换路径完整跑一遍
+ */
+function stubXHRCapture (mode: 'error' | 'success'): { urls: string[], restore: () => void } {
+  const urls: string[] = [];
+  const OriginalXHR = globalThis.XMLHttpRequest;
+  // 最小 PNG 头字节，让 FileReader 能产出 data:image/png;base64,...
+  const tinyPng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+
+  class MockXHR {
+    onloadHandler: ((e: any) => void) | null = null;
+    onerrorHandler: ((e: any) => void) | null = null;
+    status = 0;
+    response: Blob | null = null;
+    responseType: XMLHttpRequestResponseType = '';
+    addEventListener (event: string, handler: (e: any) => void) {
+      if (event === 'load') { this.onloadHandler = handler; }
+      if (event === 'error') { this.onerrorHandler = handler; }
+    }
+    open (_method: string, url: string) { urls.push(url); }
+    send () {
+      setTimeout(() => {
+        if (mode === 'success') {
+          this.status = 200;
+          this.response = new Blob([tinyPng], { type: 'image/png' });
+          this.onloadHandler?.(new Event('load'));
+        } else {
+          this.onerrorHandler?.(new Event('error'));
+        }
+      }, 0);
+    }
+  }
+
+  globalThis.XMLHttpRequest = MockXHR as unknown as typeof XMLHttpRequest;
+
+  return { urls, restore: () => { globalThis.XMLHttpRequest = OriginalXHR; } };
+}
+
 describe('plugin/dom-content', () => {
   let player: Player;
 
@@ -303,6 +343,40 @@ describe('plugin/dom-content', () => {
 
     it('should handle empty HTML', async () => {
       expect(await inlineImageSources('')).to.equal('');
+    });
+
+    it('should HTML-decode entity-encoded URLs before fetching', async () => {
+      // Bug fix: <img src="...?a=1&amp;b=2"> 的 src 提取出字面 "&amp;"，
+      // 若直接拿去 fetch，CDN 收到 "amp;b=2" 视为非法参数名，普遍返回 404。
+      const captured = stubXHRCapture('error');
+
+      try {
+        const html = '<img src="https://example.com/img.png?a=1&amp;b=2" />';
+        const result = await inlineImageSources(html);
+
+        expect(captured.urls).to.have.lengthOf(1);
+        expect(captured.urls[0]).to.equal('https://example.com/img.png?a=1&b=2');
+        // 替换路径以原始字符串为 key，fetch 失败时 HTML 原文保留
+        expect(result).to.include('&amp;');
+      } finally {
+        captured.restore();
+      }
+    });
+
+    it('should keep src wrapped in quotes after base64 replacement for unquoted attributes', async () => {
+      // Bug fix: <img src=https://...> 无引号时，base64 含 ;,/= 等字符
+      // 若不补引号会被 HTML parser 在首个分号处截断，导致 src 失效。
+      const captured = stubXHRCapture('success');
+
+      try {
+        const html = '<img src=https://example.com/x.png />';
+        const result = await inlineImageSources(html);
+
+        expect(result).to.match(/src="data:image\/png;base64,[^"]+"/);
+        expect(result).to.not.match(/src=data:/);
+      } finally {
+        captured.restore();
+      }
     });
   });
 
