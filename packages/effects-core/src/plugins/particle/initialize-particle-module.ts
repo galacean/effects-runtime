@@ -17,47 +17,36 @@ export class InitializeParticleModule extends ParticleModule {
   }
 
   override execute (ctx: ParticleModuleContext): void {
-    const { worldMatrix, slotIndices, spawnGenerators } = ctx;
+    const { slotIndices, spawnGenerators } = ctx;
 
-    if (!worldMatrix || !slotIndices || !spawnGenerators) {
+    if (!slotIndices || !spawnGenerators) {
       return;
     }
     const db = ctx.dataBuffer;
-    const emitter = ctx.emitter;
-    // burst 发射偏移：在 shape 位置之上叠加（rate 来源为 null）
-    const positionOffset = ctx.positionOffset ?? null;
 
     for (let idx = 0; idx < slotIndices.length; idx++) {
       const slotIndex = slotIndices[idx];
       const generator = spawnGenerators[idx];
-      const data = this.data.shape.generate(generator);
-      const result = this.initializeToBuffer(
-        data, ctx.emitterLifetime, worldMatrix,
-        emitter.upDirectionWorld, slotIndex, db, positionOffset,
-      );
+      const shapeData = this.data.shape.generate(generator);
 
-      emitter.upDirectionWorld = result.upDirectionWorld;
+      this.initializeToBuffer(shapeData, ctx.emitterLifetime, slotIndex, db);
     }
   }
 
   initializeToBuffer (
     data: ShapeParticle,
     emitterLifetime: number,
-    worldMatrix: Matrix4,
-    upDirectionWorld: Vector3 | null,
     slotIndex: number,
     db: ParticleDataBuffer,
-    positionOffset: readonly [number, number, number] | null = null,
-  ): { upDirectionWorld: Vector3 | null } {
+  ): void {
     const options = this.data.options;
     const shape = this.data.shape;
     const speed = options.startSpeed.getValue(emitterLifetime);
 
-    const position = worldMatrix.transformPoint(data.position, new Vector3());
+    const position = data.position.clone();
 
-    let direction = data.direction;
+    const direction = data.direction.clone();
 
-    direction = worldMatrix.transformNormal(direction, tempDir).normalize();
     if (options.startTurbulence && options.turbulence) {
       for (let i = 0; i < 3; i++) {
         tempVec3.setElement(i, options.turbulence[i].getValue(emitterLifetime));
@@ -67,20 +56,18 @@ export class InitializeParticleModule extends ParticleModule {
 
       mat4.transformNormal(direction).normalize();
     }
+
     const dirX = tmpDirX;
     const dirY = tmpDirY;
 
     if (shape.alignSpeedDirection) {
       dirY.copyFrom(direction);
-      if (!upDirectionWorld) {
-        if (shape.upDirection) {
-          upDirectionWorld = shape.upDirection.clone();
-        } else {
-          upDirectionWorld = Vector3.Z.clone();
-        }
-        worldMatrix.transformNormal(upDirectionWorld);
+      if (shape.upDirection) {
+        tmpUpDir.copyFrom(shape.upDirection);
+      } else {
+        tmpUpDir.set(0, 0, 1);
       }
-      dirX.crossVectors(dirY, upDirectionWorld).normalize();
+      dirX.crossVectors(dirY, tmpUpDir).normalize();
       if (dirX.isZero()) {
         dirX.set(1, 0, 0);
       }
@@ -121,17 +108,6 @@ export class InitializeParticleModule extends ParticleModule {
       size.y = aspect === 0 ? 0 : n / aspect;
     }
 
-    const vel = direction.clone();
-
-    vel.multiply(speed);
-
-    const e = worldMatrix.elements;
-    const sx = Math.sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
-    const sy = Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]);
-
-    size.x *= sx;
-    size.y *= sy;
-
     const delay = options.startDelay.getValue(emitterLifetime);
     const lifetime = options.startLifetime.getValue(emitterLifetime);
     const uv = randomArrItem(this.data.uvs, true);
@@ -146,7 +122,7 @@ export class InitializeParticleModule extends ParticleModule {
       sprite[2] = tsa.cycles.getValue(emitterLifetime);
     }
 
-    // --- Write to DataBuffer ---
+    // --- Write to DataBuffer (local space) ---
     const i3 = slotIndex * 3;
     const i4 = slotIndex * 4;
     const i2 = slotIndex * 2;
@@ -159,17 +135,14 @@ export class InitializeParticleModule extends ParticleModule {
     db.rotation[i3 + 1] = rot.y;
     db.rotation[i3 + 2] = rot.z;
 
-    const offsetX = positionOffset ? positionOffset[0] : 0;
-    const offsetY = positionOffset ? positionOffset[1] : 0;
-    const offsetZ = positionOffset ? positionOffset[2] : 0;
+    db.position[i3] = position.x;
+    db.position[i3 + 1] = position.y;
+    db.position[i3 + 2] = position.z;
 
-    db.position[i3] = position.x + offsetX;
-    db.position[i3 + 1] = position.y + offsetY;
-    db.position[i3 + 2] = position.z + offsetZ;
-
-    db.velocity[i3] = vel.x;
-    db.velocity[i3 + 1] = vel.y;
-    db.velocity[i3 + 2] = vel.z;
+    db.velocity[i3] = direction.x;
+    db.velocity[i3 + 1] = direction.y;
+    db.velocity[i3 + 2] = direction.z;
+    db.birthSpeed[slotIndex] = speed;
 
     db.color[i4] = color[0];
     db.color[i4 + 1] = color[1];
@@ -215,20 +188,18 @@ export class InitializeParticleModule extends ParticleModule {
     db.rotMatrix[i9 + 8] = 1;
 
     db.activeCount = Math.max(db.activeCount, slotIndex + 1);
-
-    return { upDirectionWorld };
   }
 }
 
-const tempDir = new Vector3();
+const tmpUpDir = new Vector3();
 const tempSize = new Vector2();
 const tempRot = new Euler();
 const tmpDirX = new Vector3();
 const tmpDirY = new Vector3();
 const tempVec3 = new Vector3();
 const tempEuler = new Euler();
-const tempSprite: vec3 = [0, 0, 0];
 const tempMat4 = new Matrix4();
+const tempSprite: vec3 = [0, 0, 0];
 
 function randomArrItem<T> (arr: T[], keepArr?: boolean): T {
   const index = Math.floor(Math.random() * arr.length);

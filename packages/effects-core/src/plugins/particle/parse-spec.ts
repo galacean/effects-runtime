@@ -162,10 +162,17 @@ export type ParsedModuleData = {
  * Emitter 构建所需的全部数据（不含运行时引用）。
  * 对齐 Pro 的 emitter data 模式：数据与运行时引用分离。
  */
+export type TurbulenceConfig = {
+  enabled: boolean,
+  values?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>],
+};
+
 export type EmitterData = {
   maxCount: number,
   looping: boolean,
   particleFollowParent: boolean,
+  turbulence: TurbulenceConfig,
+  alignSpeedDirection: boolean,
   trails: ParsedTrailConfig | undefined,
   modules: ParsedModuleData,
 };
@@ -423,6 +430,11 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       maxCount: parsedOptions.maxCount,
       looping: parsedOptions.looping,
       particleFollowParent: !!parsedOptions.particleFollowParent,
+      turbulence: {
+        enabled: parsedOptions.startTurbulence,
+        values: parsedOptions.turbulence,
+      },
+      alignSpeedDirection: !!(shape as any)?.alignSpeedDirection,
       trails,
       modules: {
         initialize: {

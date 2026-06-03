@@ -61,6 +61,9 @@ export class ParticleDataBuffer {
   /** color/opacity over lifetime 缩放因子 (r, g, b, a)，4 分量 */
   readonly colorScale: number[];
 
+  /** 出生时速度标量（bake 用于 normalize(M*dir)*speed） */
+  readonly birthSpeed: number[];
+
   // --- 生命周期管理 ---
 
   /** 粒子存活标记，0=空闲 1=存活 */
@@ -96,6 +99,7 @@ export class ParticleDataBuffer {
     this.sizeScale = createArray(maxCount * 2, 1);
     this.colorScale = createArray(maxCount * 4, 1);
 
+    this.birthSpeed = createArray(maxCount);
     this.alive = createArray(maxCount);
     this.expiry = createArray(maxCount);
   }

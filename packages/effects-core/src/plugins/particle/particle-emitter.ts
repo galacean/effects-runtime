@@ -61,6 +61,8 @@ export class ParticleEmitter {
   private looping = false;
   private particleFollowParent = false;
   private initialLastEmitTime = 0;
+  private alignSpeedDirection = false;
+  private shapeUpDirection: Vector3 | undefined;
   private trails?: TrailConfig;
 
   get dataBuffer (): ParticleDataBuffer {
@@ -71,6 +73,8 @@ export class ParticleEmitter {
     this.maxCount = data.maxCount;
     this.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
+    this.alignSpeedDirection = data.alignSpeedDirection;
+    this.shapeUpDirection = data.modules.initialize.shape.upDirection;
     this.renderer = renderer;
     this.trails = data.trails;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
@@ -343,15 +347,79 @@ export class ParticleEmitter {
 
     this.runStage('particleSpawn', spawnCtx);
 
+    this.bakeNewParticlesToWorld(slotIndices, worldMatrix, db);
+
     for (let i = 0; i < slotIndices.length; i++) {
       const slotIdx = slotIndices[i];
 
+      if (positionOffset) {
+        const si3 = slotIdx * 3;
+
+        db.position[si3] += positionOffset[0];
+        db.position[si3 + 1] += positionOffset[1];
+        db.position[si3 + 2] += positionOffset[2];
+      }
       db.delay[slotIdx] += meshTime + i * timeDelta;
       this.commitParticle(slotIdx, maxCount, db);
       spawnedSlots.push(slotIdx);
     }
     if (isRateSource) {
       this.lastEmitTime = this.timePassed;
+    }
+  }
+
+  private bakeNewParticlesToWorld (slotIndices: number[], worldMatrix: Matrix4, db: ParticleDataBuffer): void {
+    const e = worldMatrix.elements;
+    const sx = Math.sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
+    const sy = Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]);
+
+    for (const i of slotIndices) {
+      const i3 = i * 3;
+      const i2 = i * 2;
+
+      // position: point transform
+      worldMatrix.transformPoint(tempPos.set(db.position[i3], db.position[i3 + 1], db.position[i3 + 2]));
+      db.position[i3] = tempPos.x;
+      db.position[i3 + 1] = tempPos.y;
+      db.position[i3 + 2] = tempPos.z;
+
+      // velocity: direction already has turbulence applied (in module).
+      // transformNormal (includes normalize) + .normalize() + * speed
+      worldMatrix.transformNormal(
+        tempDir.set(db.velocity[i3], db.velocity[i3 + 1], db.velocity[i3 + 2]),
+      ).normalize();
+      const speed = db.birthSpeed[i];
+
+      db.velocity[i3] = tempDir.x * speed;
+      db.velocity[i3 + 1] = tempDir.y * speed;
+      db.velocity[i3 + 2] = tempDir.z * speed;
+
+      // dirX/dirY: from world-space direction (tempDir holds the normalized world direction)
+      if (this.alignSpeedDirection) {
+        tmpDirY.copyFrom(tempDir);
+        if (!this.upDirectionWorld) {
+          if (this.shapeUpDirection) {
+            this.upDirectionWorld = this.shapeUpDirection.clone();
+          } else {
+            this.upDirectionWorld = Vector3.Z.clone();
+          }
+          worldMatrix.transformNormal(this.upDirectionWorld);
+        }
+        tmpDirX.crossVectors(tmpDirY, this.upDirectionWorld).normalize();
+        if (tmpDirX.isZero()) {
+          tmpDirX.set(1, 0, 0);
+        }
+        db.dirX[i3] = tmpDirX.x;
+        db.dirX[i3 + 1] = tmpDirX.y;
+        db.dirX[i3 + 2] = tmpDirX.z;
+        db.dirY[i3] = tmpDirY.x;
+        db.dirY[i3 + 1] = tmpDirY.y;
+        db.dirY[i3 + 2] = tmpDirY.z;
+      }
+
+      // size: scale by world matrix column lengths
+      db.size[i2] *= sx;
+      db.size[i2 + 1] *= sy;
     }
   }
 
@@ -550,3 +618,8 @@ export class ParticleEmitter {
     }
   }
 }
+
+const tempPos = new Vector3();
+const tempDir = new Vector3();
+const tmpDirX = new Vector3();
+const tmpDirY = new Vector3();
