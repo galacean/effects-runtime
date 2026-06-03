@@ -11,6 +11,8 @@ import type { EmitterData, ParsedModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
 import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
+import { ScaleColorModule } from './scale-color-module';
+import { ScaleSizeModule } from './scale-size-module';
 import { SolveLinearMoveModule } from './solve-linear-move-module';
 import { SolveOrbitalVelocityModule } from './solve-orbital-velocity-module';
 import { SolveRotationModule } from './solve-rotation-module';
@@ -96,6 +98,10 @@ export class ParticleEmitter {
     if (data.forceTarget) {
       modules.push(new ForceTargetModule(data.forceTarget));
     }
+    modules.push(
+      new ScaleSizeModule(data.scaleSize),
+      new ScaleColorModule(data.scaleColor),
+    );
 
     return modules;
   }
@@ -185,12 +191,23 @@ export class ParticleEmitter {
     this.trailUpdated = false;
     this.renderer.updateTime(this.time, delta);
 
-    this.particleUpdateAndSync(delta);
+    const dtSec = delta / 1000;
+    const ctx = this.buildModuleContext(dtSec);
+
+    if (this._dataBuffer.activeCount > 0) {
+      this.runStage('particleUpdate', ctx);
+    }
 
     if (!this.ended) {
       if (this.timePassed < this.itemDuration) {
         this.updateEmitterTransform(this.timePassed);
-        this.emitterUpdateAndSpawn(delta);
+        const spawnedSlots = this.emitterUpdateAndSpawn(ctx);
+
+        for (const slot of spawnedSlots) {
+          ctx.firstIndex = slot;
+          ctx.lastIndex = slot + 1;
+          this.runStage('particleUpdate', ctx);
+        }
       } else if (this.looping) {
         this.updateTrails();
         this.handleLoop(this.itemDuration);
@@ -201,28 +218,24 @@ export class ParticleEmitter {
         }
       }
     }
+    if (this._dataBuffer.activeCount > 0) {
+      this.renderer.syncParticleData(this._dataBuffer);
+    }
     this.updateTrails();
   }
 
-  private particleUpdateAndSync (delta: number): void {
-    const db = this._dataBuffer;
-
-    if (db.activeCount === 0) {
-      return;
-    }
-    this.runStage('particleUpdate', this.buildModuleContext(delta));
-    this.renderer.syncParticleData(db);
-  }
-
-  private emitterUpdateAndSpawn (delta: number): void {
+  private emitterUpdateAndSpawn (ctx: ParticleModuleContext): number[] {
     const maxCount = this.maxCount;
+    const spawnedSlots: number[] = [];
 
     this.spawnInfos.length = 0;
-    this.runStage('emitterUpdate', this.buildModuleContext(delta / 1000));
+    this.runStage('emitterUpdate', ctx);
 
     for (const info of this.spawnInfos) {
-      this.particleSpawn(this._dataBuffer, maxCount, info);
+      this.particleSpawn(this._dataBuffer, maxCount, info, spawnedSlots);
     }
+
+    return spawnedSlots;
   }
 
   // ========================
@@ -268,6 +281,7 @@ export class ParticleEmitter {
     db: ParticleDataBuffer,
     maxCount: number,
     spawnInfo: SpawnInfo,
+    spawnedSlots: number[],
   ): void {
     let count: number;
     let timeDelta: number;
@@ -335,6 +349,7 @@ export class ParticleEmitter {
       db.delay[slotIdx] += meshTime + i * timeDelta;
       db.delayF64[slotIdx] += meshTime + i * timeDelta;
       this.commitParticle(slotIdx, maxCount, db);
+      spawnedSlots.push(slotIdx);
     }
     if (isRateSource) {
       this.lastEmitTime = this.timePassed;

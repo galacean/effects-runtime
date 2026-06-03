@@ -97,6 +97,8 @@ export class ParticleSystemRenderer extends RendererComponent {
 
     this.expandToQuad(geo, 'aTranslation', db.finalOffset, db.activeCount, 3);
     this.expandToQuad(geo, 'aRotation0', db.rotMatrix, db.activeCount, 9);
+    this.expandToQuad(geo, 'aSize', db.sizeScale, db.activeCount, 2);
+    this.expandToQuad(geo, 'aColorScale', db.colorScale, db.activeCount, 4);
   }
 
   private expandToQuad (geo: any, attr: string, src: Float32Array, count: number, stride: number): void {

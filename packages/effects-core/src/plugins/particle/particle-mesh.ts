@@ -11,30 +11,19 @@ import {
   getPreMultiAlpha, Material, setBlendMode, setSideMode,
 } from '../../material';
 import {
-  createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
+  createKeyFrameMeta, getKeyFrameMetaByRawValue,
 } from '../../math';
 import type {
   Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
 } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
-import { Texture, generateHalfFloatTexture } from '../../texture';
-import { assertExist, enlargeBuffer, imageDataFromGradient } from '../../utils';
+import { Texture } from '../../texture';
+import { assertExist, enlargeBuffer } from '../../utils';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { particleUniformTypeMap } from './particle-vfx-item';
 
 export interface ParticleMeshData {
-  gravityModifier: ValueGetter<number>,
-  sizeOverLifetime?: {
-    x: ValueGetter<number>,
-    y?: ValueGetter<number>,
-    separateAxes?: boolean,
-  },
-  colorOverLifetime?: {
-    color?: number[][] | Texture,
-    opacity?: ValueGetter<number>,
-    separateAxes?: boolean,
-  },
 }
 
 export interface ParticleMeshProps extends ParticleMeshData {
@@ -70,8 +59,6 @@ export class ParticleMesh implements ParticleMeshData {
   mesh: Mesh;
   particleCount = 0;
   maxParticleBufferCount: number;
-  gravityModifier: ValueGetter<number>;
-  sizeOverLifetime?: { x: ValueGetter<number>, y?: ValueGetter<number>, separateAxes?: boolean };
   time: number;
   maxCount: number;
 
@@ -87,85 +74,32 @@ export class ParticleMesh implements ParticleMeshData {
   ) {
     const { env } = engine ?? {};
     const {
-      colorOverLifetime, sizeOverLifetime,
-      sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
-      gravity, side, occlusion, anchor, blending,
+      sprite, maxCount, textureFlip, useSprite, name,
+      side, occlusion, anchor, blending,
       transparentOcclusion,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),
     } = props;
-    const { detail } = engine.gpuCapability;
-    const { halfFloatTexture, maxVertexUniforms } = detail;
     const macros: ShaderMacros = [
-      // spec.RenderMode
       ['RENDER_MODE', +renderMode],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const { level } = engine.gpuCapability;
-    const vertexKeyFrameMeta = createKeyFrameMeta();
-    const fragmentKeyFrameMeta = createKeyFrameMeta();
-    const enableVertexTexture = maxVertexUniforms > 0;
     const uniformValues: Record<string, any> = {};
-    let vertex_lookup_texture = 0;
     let shaderCacheId = 0;
 
     this.useSprite = useSprite;
-    if (enableVertexTexture) {
-      macros.push(['ENABLE_VERTEX_TEXTURE', true]);
-    }
     if (sprite?.animate) {
       macros.push(['USE_SPRITE', true]);
       shaderCacheId |= 1 << 2;
       uniformValues.uFSprite = uniformValues.uSprite = new Float32Array([sprite.col, sprite.row, sprite.total, sprite.blend ? 1 : 0]);
       this.useSprite = true;
     }
-    if (colorOverLifetime?.color) {
-      macros.push(['COLOR_OVER_LIFETIME', true]);
-      shaderCacheId |= 1 << 4;
-      uniformValues.uColorOverLifetime = colorOverLifetime.color instanceof Texture ? colorOverLifetime.color : Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime.color));
-    }
-    if (colorOverLifetime?.opacity) {
-      uniformValues.uOpacityOverLifetimeValue = colorOverLifetime.opacity.toUniform(vertexKeyFrameMeta);
-    } else {
-      uniformValues.uOpacityOverLifetimeValue = createValueGetter(1).toUniform(vertexKeyFrameMeta);
-    }
 
-    uniformValues.uSizeByLifetimeValue = sizeOverLifetime?.x.toUniform(vertexKeyFrameMeta);
-    if (sizeOverLifetime?.separateAxes) {
-      macros.push(['SIZE_Y_BY_LIFE', 1]);
-      shaderCacheId |= 1 << 14;
-      uniformValues.uSizeYByLifetimeValue = sizeOverLifetime?.y?.toUniform(vertexKeyFrameMeta);
-    }
-
-    if (halfFloatTexture && fragmentKeyFrameMeta.max) {
-      shaderCacheId |= 1 << 20;
-      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, ValueGetter.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
-    } else {
-      uniformValues.uFCurveValues = ValueGetter.getAllData(fragmentKeyFrameMeta);
-    }
-    const vertexCurveTexture = vertexKeyFrameMeta.max + vertexKeyFrameMeta.curves.length - 32 > maxVertexUniforms;
-
-    if (vertexCurveTexture && halfFloatTexture && enableVertexTexture) {
-      const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
-
-      uniformValues.uVCurveValueTexture = tex;
-      vertex_lookup_texture = 1;
-    } else {
-      uniformValues.uVCurveValues = ValueGetter.getAllData(vertexKeyFrameMeta);
-    }
-    const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
-
-    macros.push(
-      ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
-      ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
-      ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
-      ['FRAG_MAX_KEY_FRAME_COUNT', fragmentKeyFrameMeta.max],
-    );
-    this.VERT_MAX_KEY_FRAME_COUNT = vertexKeyFrameMeta.max;
+    const shaderCache = ['-p:', renderMode, shaderCacheId].join('+');
 
     const fragment = particleFrag;
-    const originalVertex = `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`;
-    const vertex = originalVertex;
+    const vertex = particleVert;
 
     const shader = {
       fragment,
@@ -185,7 +119,6 @@ export class ParticleMesh implements ParticleMeshData {
     uniformValues.uMaskTex = diffuse;
     uniformValues.uColorParams = new Float32Array([diffuse ? 1 : 0, +preMulAlpha, 0, +(!!occlusion && !transparentOcclusion)]);
     uniformValues.uParams = [0, 0, 0, 0];
-    uniformValues.uAcceleration = [gravity?.[0] || 0, gravity?.[1] || 0, gravity?.[2] || 0, 0];
     // mtlOptions.uniformValues = uniformValues;
 
     const material = Material.create(engine, mtlOptions);
@@ -249,8 +182,6 @@ export class ParticleMesh implements ParticleMeshData {
     this.anchor = anchor;
     this.mesh = mesh;
     this.geometry = mesh.firstGeometry();
-    this.sizeOverLifetime = sizeOverLifetime;
-    this.gravityModifier = gravityModifier;
     this.maxCount = maxCount;
     // this.duration = duration;
     this.textureOffsets = textureFlip ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
@@ -337,6 +268,8 @@ export class ParticleMesh implements ParticleMeshData {
         aOffset: new Float32Array(16),
         aTranslation: new Float32Array(12),
         aRotation0: new Float32Array(36),
+        aSize: new Float32Array(8),
+        aColorScale: new Float32Array(16),
       };
       const useSprite = this.useSprite;
 
@@ -400,6 +333,14 @@ export class ParticleMesh implements ParticleMeshData {
           pointData.aPos[j12 + 6 + k] = db.dirX[i3 + k] * sx;
           pointData.aPos[j12 + 9 + k] = db.dirY[i3 + k] * sy;
         }
+        const j2 = j * 2;
+
+        pointData.aSize[j2] = db.sizeScale[i2];
+        pointData.aSize[j2 + 1] = db.sizeScale[i2 + 1];
+        pointData.aColorScale[j4] = db.colorScale[i4];
+        pointData.aColorScale[j4 + 1] = db.colorScale[i4 + 1];
+        pointData.aColorScale[j4 + 2] = db.colorScale[i4 + 2];
+        pointData.aColorScale[j4 + 3] = db.colorScale[i4 + 3];
       }
       const indexData = new Uint16Array([0, 1, 2, 2, 1, 3].map(x => x + index * 4));
 
@@ -459,6 +400,8 @@ function generateGeometryProps (
     aRotation0: { size: 3, offset: 0, stride: 9 * bpe, data: new Float32Array(0) },
     aRotation1: { size: 3, offset: 3 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
     aRotation2: { size: 3, offset: 6 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
+    aSize: { size: 2, data: new Float32Array(0) },
+    aColorScale: { size: 4, data: new Float32Array(0) },
   };
 
   if (useSprite) {

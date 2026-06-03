@@ -3,8 +3,8 @@ precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-#include "./value.glsl"
-#include "./integrate.glsl"
+attribute float aSeed;
+varying float vSeed;
 
 attribute vec3 aPos;
 attribute vec4 aOffset;//texcoord.xy time:start duration
@@ -16,6 +16,8 @@ attribute vec3 aTranslation;
 attribute vec3 aRotation0;
 attribute vec3 aRotation1;
 attribute vec3 aRotation2;
+attribute vec2 aSize;
+attribute vec4 aColorScale;
 
 #ifdef USE_SPRITE
 attribute vec3 aSprite;//start duration cycles
@@ -33,17 +35,7 @@ uniform mat4 effects_MatrixV;
 uniform mat4 effects_MatrixVP;
 
 uniform vec4 uParams;//time duration endBehavior
-uniform vec4 uOpacityOverLifetimeValue;
 
-#ifdef COLOR_OVER_LIFETIME
-uniform sampler2D uColorOverLifetime;
-#endif
-
-uniform vec4 uSizeByLifetimeValue;
-
-#ifdef SIZE_Y_BY_LIFE
-uniform vec4 uSizeYByLifetimeValue;
-#endif
 varying float vLife;
 varying vec4 vColor;
 varying vec2 vTexCoord;
@@ -89,23 +81,10 @@ void main() {
     vTexCoord = aOffset.xy;
         #endif
 
-    vColor = aColor;
+    vColor = aColor * aColorScale;
 
-        #ifdef COLOR_OVER_LIFETIME
-        #ifdef ENABLE_VERTEX_TEXTURE
-    vColor *= texture2D(uColorOverLifetime, vec2(life, 0.));
-        #endif
-        #endif
-
-    vColor.a *= clamp(getValueFromTime(life, uOpacityOverLifetimeValue), 0., 1.);
-
-    vec3 size = vec3(vec2(getValueFromTime(life, uSizeByLifetimeValue)), 1.0);
-
-        #ifdef SIZE_Y_BY_LIFE
-    size.y = getValueFromTime(life, uSizeYByLifetimeValue);
-        #endif
     mat3 aRotation = mat3(aRotation0, aRotation1, aRotation2);
-    vec3 point = aRotation * (aDirX * size.x + aDirY * size.y);
+    vec3 point = aRotation * (aDirX * aSize.x + aDirY * aSize.y);
     vec4 pos = vec4(aPos + aTranslation, 1.0);
 
         #if RENDER_MODE == 1

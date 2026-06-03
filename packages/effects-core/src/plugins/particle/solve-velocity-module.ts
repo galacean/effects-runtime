@@ -21,7 +21,7 @@ export class SolveVelocityModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const dtSec = ctx.deltaTime / 1000;
+    const dtSec = ctx.deltaTime;
     const currentTime = ctx.currentTime;
     const gx = this.data.gravity[0];
     const gy = this.data.gravity[1];

@@ -6,7 +6,6 @@ import { createValueGetter, ensureVec3 } from '../../math';
 import type { ValueGetter } from '../../math';
 import { createShape } from '../../shape';
 import type { ShapeGenerator } from '../../shape';
-import { Texture } from '../../texture';
 import { Burst } from './burst';
 import type { ParticleMeshProps } from './particle-mesh';
 import type { TrailMeshProps } from './trail-mesh';
@@ -113,6 +112,17 @@ export type ForceTargetModuleData = {
   target: vec3,
 };
 
+export type ScaleSizeModuleData = {
+  x: ValueGetter<number>,
+  y?: ValueGetter<number>,
+  separateAxes?: boolean,
+};
+
+export type ScaleColorModuleData = {
+  color?: number[][],
+  opacity?: ValueGetter<number>,
+};
+
 /**
  * 模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
  */
@@ -125,6 +135,8 @@ export type ParsedModuleData = {
   solveLinearMove: SolveLinearMoveModuleData,
   solveOrbital: SolveOrbitalModuleData,
   forceTarget?: ForceTargetModuleData,
+  scaleSize: ScaleSizeModuleData,
+  scaleColor: ScaleColorModuleData,
 };
 
 /**
@@ -282,9 +294,7 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
     shaderCachePrefix,
     renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
     side: renderer.side || spec.SideMode.DOUBLE,
-    gravity,
     blending: renderer.blending || spec.BlendingMode.ALPHA,
-    gravityModifier: parsedOptions.gravityModifier,
     sprite: textureSheetAnimation,
     occlusion: !!renderer.occlusion,
     transparentOcclusion: !!renderer.transparentOcclusion,
@@ -292,33 +302,8 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
     mask: 0,
     maskMode: 0,
     diffuse: renderer.texture ? engine.findObject(renderer.texture) : undefined,
-    sizeOverLifetime: sizeOverLifetimeGetter,
     anchor,
   };
-
-  if (colorOverLifetime) {
-    const { color, opacity } = colorOverLifetime;
-
-    particleMeshProps.colorOverLifetime = {};
-    if (opacity) {
-      particleMeshProps.colorOverLifetime.opacity = createValueGetter(colorOverLifetime.opacity);
-    }
-    if (color) {
-      if (color[0] === spec.ValueType.GRADIENT_COLOR) {
-        particleMeshProps.colorOverLifetime.color = (colorOverLifetime.color as spec.GradientColor)[1];
-      } else if (color[0] === spec.ValueType.RGBA_COLOR) {
-        particleMeshProps.colorOverLifetime.color = Texture.createWithData(
-          engine,
-          {
-            data: new Uint8Array(color[1] as unknown as number[]),
-            width: 1,
-            height: 1,
-          });
-      } else if (color instanceof Texture) {
-        particleMeshProps.colorOverLifetime.color = color;
-      }
-    }
-  }
 
   // UVs
   const uvs: number[][] = [];
@@ -431,6 +416,13 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
         solveLinearMove: { linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined },
         solveOrbital: parsedOptions.orbitalVelOverLifetime ?? {},
         forceTarget: parsedOptions.forceTarget,
+        scaleSize: sizeOverLifetimeGetter,
+        scaleColor: {
+          color: colorOverLifetime && Array.isArray(colorOverLifetime.color) && colorOverLifetime.color[0] === spec.ValueType.GRADIENT_COLOR
+            ? (colorOverLifetime.color)[1]
+            : undefined,
+          opacity: colorOverLifetime?.opacity ? createValueGetter(colorOverLifetime.opacity) : undefined,
+        },
       },
     },
     particleMeshProps,
