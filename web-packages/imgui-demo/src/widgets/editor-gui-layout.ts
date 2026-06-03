@@ -1,6 +1,4 @@
 import { GLTexture } from '@galacean/effects-webgl';
-import type { FileNode } from '../core/file-node';
-import { GalaceanEffects } from '../ge';
 import { ImGui, ImGui_Impl } from '../imgui';
 
 function access (object: any, property: string) {
@@ -162,6 +160,57 @@ export class EditorGUILayout {
     EditorGUILayout.Label(label);
 
     return ImGui.ColorEdit4('##' + label + guiID, color, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.HDR);
+  }
+
+  /**
+   * 折叠分组头：渲染一个带背景条的可折叠标题栏，并对内部内容进行轻微缩进，
+   * 用于在父级标题（如组件标题）下表达次级分组关系。
+   *
+   * @param label       标题文本（同时用作 ID）
+   * @param defaultOpen 初始是否展开（默认 true）
+   * @returns           当前是否展开（用于条件绘制内部控件）
+   *
+   * @example
+   * if (EditorGUILayout.BeginFoldoutHeaderGroup('Properties')) {
+   *   // 绘制内部控件
+   * }
+   * EditorGUILayout.EndFoldoutHeaderGroup();
+   */
+  static BeginFoldoutHeaderGroup (label: string, defaultOpen = true): boolean {
+    let flags = ImGui.TreeNodeFlags.SpanAvailWidth | ImGui.TreeNodeFlags.NoTreePushOnOpen;
+
+    if (defaultOpen) {
+      flags |= ImGui.TreeNodeFlags.DefaultOpen;
+    }
+
+    ImGui.Indent();
+
+    // 用 channel split 让背景条画在 TreeNode 之下：
+    // 先在前景通道绘制 TreeNode，再读取它实际的 ItemRect 作为底色范围，
+    // 这样背景高度与 hover/active 时的高亮区域完全一致。
+    const drawList = ImGui.GetWindowDrawList();
+
+    drawList.ChannelsSplit(2);
+    drawList.ChannelsSetCurrent(1);
+
+    const opened = ImGui.TreeNodeEx(label, flags);
+
+    drawList.ChannelsSetCurrent(0);
+    drawList.AddRectFilled(
+      ImGui.GetItemRectMin(),
+      ImGui.GetItemRectMax(),
+      ImGui.GetColorU32(ImGui.Col.Header),
+    );
+    drawList.ChannelsMerge();
+
+    return opened;
+  }
+
+  /**
+   * 结束开启的分组。
+   */
+  static EndFoldoutHeaderGroup (): void {
+    ImGui.Unindent();
   }
 
   static ObjectField (label: string, object: object, property: string) {

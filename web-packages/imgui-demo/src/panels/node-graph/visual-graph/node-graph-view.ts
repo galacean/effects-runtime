@@ -59,7 +59,7 @@ const g_graphTitleColor = new Color(1, 1, 1, 1);
 const g_graphTitleReadOnlyColor = new Color(0.769, 0.769, 0.769, 1);
 const g_selectionBoxOutlineColor = new Color(0.239, 0.878, 0.522, 0.588);
 const g_selectionBoxFillColor = new Color(0.239, 0.878, 0.522, 0.118);
-const g_readOnlyCanvasBorderColor = new Color(0.502, 0.502, 0.941, 1);
+const g_readOnlyCanvasBorderColor = new Color(0.941, 0.502, 0.502, 1);
 
 function GetConnectionPointsBetweenStateMachineNodes (startNodeRect: ImRect, endNodeRect: ImRect): [ImVec2, ImVec2] {
   let startPoint = startNodeRect.GetCenter();
@@ -105,7 +105,7 @@ function GetNodeBackgroundAndBorderColors (titleBarColor: Color, baseColor: Colo
   } else if (visualState.get(NodeVisualState.Selected)) {
     outTitleBarColor = colorMultiplyScalar(titleBarColor, 1.45);
     outBackgroundColor = colorMultiplyScalar(baseColor, 1.45);
-    outBorderColor = new Color(0, 0, 0, 0);
+    outBorderColor = Style.s_nodeSelectedBorderColor;
   } else if (visualState.get(NodeVisualState.Hovered)) {
     outTitleBarColor = colorMultiplyScalar(titleBarColor, 1.15);
     outBackgroundColor = colorMultiplyScalar(baseColor, 1.15);
@@ -468,8 +468,7 @@ export class GraphView {
     //   const pWindow = ImGui.GetCurrentWindow();
       const pDrawList = ImGui.GetWindowDrawList();
 
-      //   this.m_hasFocus = ImGui.IsWindowFocused(ImGui.ImGuiFocusedFlags.ChildWindows | ImGui.ImGuiFocusedFlags.NoPopupHierarchy);
-      this.m_hasFocus = ImGui.IsWindowFocused(ImGui.ImGuiFocusedFlags.ChildWindows);
+      this.m_hasFocus = ImGui.IsWindowFocused(ImGui.ImGuiFocusedFlags.ChildWindows | ImGui.ImGuiFocusedFlags.NoPopupHierarchy);
       this.m_isViewHovered = ImGui.IsWindowHovered();
       this.m_canvasSize = multiplyScalar(ImGui.GetContentRegionAvail(), 1.0 / this.GetViewScaleFactor());
 
@@ -514,14 +513,13 @@ export class GraphView {
         const s_colorTextDisabled = new Color(textDisabledColor.x, textDisabledColor.y, textDisabledColor.z, textDisabledColor.w);
 
         if (pViewedGraph !== null) {
-        //   const pTitleFont = ImGuiX.GetFont(ImGuiX.Font.LargeBold);
           const pTitleFont = ImGui.GetFont();
+          const largeFontSize = pTitleFont.FontSize * 1.35;
           const title = `${pViewedGraph.GetName()}${this.IsReadOnly() ? ' (Read-Only)' : ''}`;
 
-          ctx.m_pDrawList.AddText(pTitleFont, pTitleFont.FontSize, textPosition, this.IsReadOnly() ? s_colorTextDisabled.toImU32() : g_graphTitleColor.toImU32(), title);
-          textPosition = add(textPosition, new ImVec2(0, pTitleFont.FontSize));
+          ctx.m_pDrawList.AddText(pTitleFont, largeFontSize, textPosition, this.IsReadOnly() ? s_colorTextDisabled.toImU32() : g_graphTitleColor.toImU32(), title);
+          textPosition = add(textPosition, new ImVec2(0, largeFontSize));
 
-          //   const pMediumFont = ImGuiX.GetFont(ImGuiX.Font.Medium);
           const pMediumFont = ImGui.GetFont();
 
           if (this.m_pUserContext.GetExtraGraphTitleInfoText() !== '') {
@@ -584,7 +582,9 @@ export class GraphView {
     ImGui.SetCursorPos(windowPosition);
     ImGui.BeginGroup();
     {
-    //   ImGuiX.ScopedFont(ImGuiX.Font.Medium, Colors.White);
+      const titleFont = ImGui.GetFont();
+
+      ImGui.PushFont(titleFont, titleFont.FontSize * 1.1);
       const titleClipMin = ctx.WindowToScreenPosition(ImGui.GetCursorPos());
       const titleClipMax = add(titleClipMin, new ImVec2(Math.max(frozenNodeWindowWidth, 0), ctx.CanvasToWindow(32)));
 
@@ -611,6 +611,7 @@ export class GraphView {
         newNodeWindowSize.x = frozenNodeWindowWidth;
       }
       pNode.m_titleRectSize = ctx.WindowToCanvas(newNodeWindowSize);
+      ImGui.PopFont();
 
       const scaledSpacing = ctx.CanvasToWindow(g_spacingBetweenTitleAndNodeContents);
 
@@ -618,7 +619,9 @@ export class GraphView {
       newNodeWindowSize.y += scaledSpacing;
 
       {
-        // ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
+        const tinyFont = ImGui.GetFont();
+
+        ImGui.PushFont(tinyFont, tinyFont.FontSize * 0.82);
         const cursorStartPos = ImGui.GetCursorPos();
 
         ImGui.BeginGroup();
@@ -628,6 +631,7 @@ export class GraphView {
         ImGui.SetCursorPos(cursorStartPos);
         ImGui.Dummy(subtract(cursorEndPos, cursorStartPos));
         ImGui.EndGroup();
+        ImGui.PopFont();
       }
 
       const extraControlsRectSize = ImGui.GetItemRectSize();
@@ -787,7 +791,9 @@ export class GraphView {
     ImGui.BeginGroup();
     {
       {
-        // ImGuiX.ScopedFont(ImGuiX.Font.MediumBold, Colors.White);
+        const titleFont = ImGui.GetFont();
+
+        ImGui.PushFont(titleFont, titleFont.FontSize * 1.1);
         const titleClipMin = ctx.WindowToScreenPosition(ImGui.GetCursorPos());
         const titleClipMax = add(titleClipMin, new ImVec2(Math.max(frozenNodeWindowWidth, 0), ctx.CanvasToWindow(32)));
 
@@ -798,10 +804,10 @@ export class GraphView {
         ImGui.BeginGroup();
         ImGui.Dummy(scaledColorItemSpacing);
         ImGui.SameLine();
-        // if (pNode.GetIcon() !== null) {
-        //   ImGui.Text(pNode.GetIcon());
-        //   ImGui.SameLine();
-        // }
+        if (pNode.GetIcon() !== null) {
+          ImGui.Text(pNode.GetIcon()!);
+          ImGui.SameLine();
+        }
         ImGui.Text(pNode.GetName());
         ImGui.EndGroup();
 
@@ -814,6 +820,7 @@ export class GraphView {
           newNodeWindowSize.x = frozenNodeWindowWidth;
         }
         pNode.m_titleRectSize = ctx.WindowToCanvas(newNodeWindowSize);
+        ImGui.PopFont();
 
         const scaledSpacing = ctx.CanvasToWindow(g_spacingBetweenTitleAndNodeContents);
 
@@ -824,7 +831,9 @@ export class GraphView {
       let hasPinControlsOnLastRow = false;
 
       {
-        // ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
+        const pinFont = ImGui.GetFont();
+
+        ImGui.PushFont(pinFont, pinFont.FontSize * 0.82);
         ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(0, 2 * ctx.m_viewScaleFactor));
 
         pNode.m_pHoveredPin = null;
@@ -959,10 +968,13 @@ export class GraphView {
         newNodeWindowSize.y += pinRectSize.y;
 
         ImGui.PopStyleVar();
+        ImGui.PopFont();
       }
 
       {
-        // ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
+        const extraFont = ImGui.GetFont();
+
+        ImGui.PushFont(extraFont, extraFont.FontSize * 0.82);
 
         const offsetY = (hasPinControlsOnLastRow ? ImGui.GetStyle().ItemSpacing.y : 0);
 
@@ -978,6 +990,7 @@ export class GraphView {
         ImGui.SetCursorPos(cursorStartPos);
         ImGui.Dummy(subtract(cursorEndPos, cursorStartPos));
         ImGui.EndGroup();
+        ImGui.PopFont();
       }
 
       const extraControlsRectSize = ImGui.GetItemRectSize();
@@ -1055,14 +1068,21 @@ export class GraphView {
     ImGui.SetCursorPos(textCursorStartPos);
     ImGui.BeginGroup();
     {
+      const commentFont = ImGui.GetFont();
+
+      ImGui.PushFont(commentFont, commentFont.FontSize * 1.1);
       const nodeWindowWidth = ctx.CanvasToWindow(pNode.m_commentBoxSize.x);
 
       ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + nodeWindowWidth);
-      ImGui.Text(pNode.GetName());
+      ImGui.Text(`# ${pNode.GetName()}`);
+      if (ImGui.IsItemHovered()) {
+        ImGui.SetTooltip(pNode.GetName());
+      }
       ImGui.PopTextWrapPos();
 
       pNode.m_titleRectSize = ctx.WindowToCanvas(ImGui.GetItemRectSize());
       pNode.SetCalculatedNodeSize(pNode.getCommentBoxSize());
+      ImGui.PopFont();
     }
     ImGui.EndGroup();
 

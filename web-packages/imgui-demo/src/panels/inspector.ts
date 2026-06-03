@@ -2,7 +2,7 @@ import type { LayoutPreset, Material, RectTransform, Texture } from '@galacean/e
 import { Control, EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
-import { UIManager } from '../core/ui-manager';
+import { editorApp } from '../core/editor-application';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorGUILayout, createImguiTextureFromImage } from '../widgets/editor-gui-layout';
 import { EditorWindow } from './editor-window';
@@ -74,10 +74,10 @@ export class Inspector extends EditorWindow {
       } else if (property instanceof EffectsObject) {
         EditorGUILayout.ObjectField(propertyName, object, key);
       } else if (property instanceof Object) {
-        if (ImGui.TreeNode(propertyName + '##' + propertyName)) {
+        if (EditorGUILayout.BeginFoldoutHeaderGroup(propertyName + '##' + propertyName, false)) {
           this.drawObject(property);
-          ImGui.TreePop();
         }
+        EditorGUILayout.EndFoldoutHeaderGroup();
       }
     }
   }
@@ -139,7 +139,7 @@ export class Inspector extends EditorWindow {
     }
 
     for (const componet of activeObject.components) {
-      const customEditor = UIManager.customEditors.get(componet.constructor);
+      const customEditor = editorApp.getEditor(componet.constructor);
 
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
         ImGui.PushID(componet.getInstanceId());

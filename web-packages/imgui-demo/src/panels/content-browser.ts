@@ -2,11 +2,14 @@ import type { Engine, EffectsObject } from '@galacean/effects';
 import {
   Texture, Material, Shader, ShaderVariant, Geometry, AnimationClip,
 } from '@galacean/effects';
+import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './editor-window';
+
+type TexturePreview = { tex: WebGLTexture, uv0: ImGui.Vec2, uv1: ImGui.Vec2 };
 
 // ── 分类定义 ──────────────────────────────────────────────────────────
 
@@ -446,20 +449,21 @@ export class ContentBrowser extends EditorWindow {
         colU32([0.08, 0.08, 0.08, 1]), 4);
 
       // ── 缩略图内容（居中显示）──
-      let drewThumb = false;
+      let drewPreview = false;
 
-      if (obj instanceof Texture && obj.definition?.image) {
-        const thumb = this.getOrCreateThumbnail(obj);
+      if (obj instanceof Texture) {
+        const preview = this.getOrCreatePreviewTexture(obj);
 
-        if (thumb) {
+        if (preview) {
           const thumbSize = ts - pad * 2;
+          const fit = this.getAspectFitRect(obj, thumbSize);
 
-          ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + pad, origin.y + pad));
-          ImGui.Image(thumb, new ImGui.Vec2(thumbSize, thumbSize));
-          drewThumb = true;
+          ImGui.SetCursorScreenPos(new ImGui.Vec2(origin.x + pad + fit.ox, origin.y + pad + fit.oy));
+          ImGui.Image(preview.tex, new ImGui.Vec2(fit.w, fit.h), preview.uv0, preview.uv1);
+          drewPreview = true;
         }
       }
-      if (!drewThumb && cat) {
+      if (!drewPreview && cat) {
         const [ar, ag, ab] = col.accent;
 
         this.drawAssetIcon(dl, cat,
@@ -632,22 +636,23 @@ export class ContentBrowser extends EditorWindow {
         colU32([0.08, 0.08, 0.08, 1]), 2,
       );
 
-      let drewThumb = false;
+      let drewPreview = false;
 
-      if (obj instanceof Texture && obj.definition?.image) {
-        const thumb = this.getOrCreateThumbnail(obj);
+      if (obj instanceof Texture) {
+        const preview = this.getOrCreatePreviewTexture(obj);
 
-        if (thumb) {
+        if (preview) {
           const thumbSize = iconBgSize - 2;
-          const thumbX = iconBgX + 1;
-          const thumbY = iconBgY + 1;
+          const fit = this.getAspectFitRect(obj, thumbSize);
+          const thumbX = iconBgX + 1 + fit.ox;
+          const thumbY = iconBgY + 1 + fit.oy;
 
           ImGui.SetCursorScreenPos(new ImGui.Vec2(thumbX, thumbY));
-          ImGui.Image(thumb, new ImGui.Vec2(thumbSize, thumbSize));
-          drewThumb = true;
+          ImGui.Image(preview.tex, new ImGui.Vec2(fit.w, fit.h), preview.uv0, preview.uv1);
+          drewPreview = true;
         }
       }
-      if (!drewThumb) {
+      if (!drewPreview) {
         const iconCx = iconBgX + iconBgSize / 2;
         const iconCy = iconBgY + iconBgSize / 2;
 
@@ -908,22 +913,24 @@ export class ContentBrowser extends EditorWindow {
     dl.AddRectFilled(origin, thumbMax, colU32([0.08, 0.08, 0.08, 1]), 4);
 
     // 缩略图内容（用 DrawList.AddImage 避免影响布局高度）
-    let drewThumb = false;
+    let drewPreview = false;
 
-    if (obj instanceof Texture && obj.definition?.image) {
-      const thumb = this.getOrCreateThumbnail(obj);
+    if (obj instanceof Texture) {
+      const preview = this.getOrCreatePreviewTexture(obj);
 
-      if (thumb) {
+      if (preview) {
         const thumbSize = ts - pad * 2;
+        const fit = this.getAspectFitRect(obj, thumbSize);
 
-        dl.AddImage(thumb,
-          new ImGui.Vec2(origin.x + pad, origin.y + pad),
-          new ImGui.Vec2(origin.x + pad + thumbSize, origin.y + pad + thumbSize),
+        dl.AddImage(preview.tex,
+          new ImGui.Vec2(origin.x + pad + fit.ox, origin.y + pad + fit.oy),
+          new ImGui.Vec2(origin.x + pad + fit.ox + fit.w, origin.y + pad + fit.oy + fit.h),
+          preview.uv0, preview.uv1,
         );
-        drewThumb = true;
+        drewPreview = true;
       }
     }
-    if (!drewThumb && cat) {
+    if (!drewPreview && cat) {
       const [ar, ag, ab] = col.accent;
 
       this.drawAssetIcon(dl, cat,
@@ -1002,22 +1009,24 @@ export class ContentBrowser extends EditorWindow {
     );
 
     // 图标内容（用 DrawList.AddImage 避免影响布局高度）
-    let drewThumb = false;
+    let drewPreview = false;
 
-    if (obj instanceof Texture && obj.definition?.image) {
-      const thumb = this.getOrCreateThumbnail(obj);
+    if (obj instanceof Texture) {
+      const preview = this.getOrCreatePreviewTexture(obj);
 
-      if (thumb) {
+      if (preview) {
         const thumbSize = iconBgSize - 2;
+        const fit = this.getAspectFitRect(obj, thumbSize);
 
-        dl.AddImage(thumb,
-          new ImGui.Vec2(iconBgX + 1, iconBgY + 1),
-          new ImGui.Vec2(iconBgX + 1 + thumbSize, iconBgY + 1 + thumbSize),
+        dl.AddImage(preview.tex,
+          new ImGui.Vec2(iconBgX + 1 + fit.ox, iconBgY + 1 + fit.oy),
+          new ImGui.Vec2(iconBgX + 1 + fit.ox + fit.w, iconBgY + 1 + fit.oy + fit.h),
+          preview.uv0, preview.uv1,
         );
-        drewThumb = true;
+        drewPreview = true;
       }
     }
-    if (!drewThumb) {
+    if (!drewPreview) {
       const iconCx = iconBgX + iconBgSize / 2;
       const iconCy = iconBgY + iconBgSize / 2;
 
@@ -1184,26 +1193,143 @@ export class ContentBrowser extends EditorWindow {
     return obj.constructor.name;
   }
 
-  private getOrCreateThumbnail (obj: Texture): WebGLTexture | null {
+  /** 把贴图按原始宽高比内接(object-fit: contain)到 boxSize × boxSize 方框内并居中,返回相对方框左上角的 (w, h, ox, oy) */
+  private getAspectFitRect (obj: Texture, boxSize: number): { w: number, h: number, ox: number, oy: number } {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cached = (obj as any).__imguiAssetThumb as WebGLTexture | undefined;
+    const src = obj.source as any;
+    const sw = obj.width || src?.image?.width || src?.data?.width || 1;
+    const sh = obj.height || src?.image?.height || src?.data?.height || 1;
+    const aspect = sw / sh;
+    let w: number;
+    let h: number;
 
-    if (cached) { return cached; }
-    if (!obj.definition?.image || !ImGui_Impl.gl) { return null; }
+    if (aspect >= 1) {
+      w = boxSize;
+      h = boxSize / aspect;
+    } else {
+      h = boxSize;
+      w = boxSize * aspect;
+    }
 
-    const gl = ImGui_Impl.gl;
-    const tex = gl.createTexture();
+    return { w, h, ox: (boxSize - w) / 2, oy: (boxSize - h) / 2 };
+  }
+
+  private getOrCreatePreviewTexture (obj: Texture): TexturePreview | null {
+    const imguiGl = ImGui_Impl.gl;
+
+    if (!imguiGl || !(obj instanceof GLTexture)) { return null; }
+
+    // 命中缓存(缓存了 ImGui context 的 WebGLTexture 和该纹理来源对应的翻转标记)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cachedTex = (obj as any).__imguiAssetThumb as WebGLTexture | undefined;
+
+    if (cachedTex) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cachedFlipped = !!(obj as any).__imguiAssetThumbFlipped;
+
+      return {
+        tex: cachedTex,
+        uv0: cachedFlipped ? new ImGui.Vec2(0, 1) : new ImGui.Vec2(0, 0),
+        uv1: cachedFlipped ? new ImGui.Vec2(1, 0) : new ImGui.Vec2(1, 1),
+      };
+    }
+
+    const tex = imguiGl.createTexture();
 
     if (!tex) { return null; }
-    gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, obj.definition.image);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    imguiGl.bindTexture(imguiGl.TEXTURE_2D, tex);
+
+    let uploaded = false;
+    // 标记结果纹理是否处于"引擎 flipY 后"的布局,据此决定 UV 是否翻转
+    let needsFlip = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const src = obj.source as any;
+    const srcImage = src?.image;
+    const srcData = src?.data;
+
+    // Path 1: 未初始化纹理的原始 HTMLImage / Canvas / ImageBitmap,直接上传(无需翻转 UV)
+    if (
+      srcImage && (
+        (typeof HTMLImageElement !== 'undefined' && srcImage instanceof HTMLImageElement) ||
+        (typeof HTMLCanvasElement !== 'undefined' && srcImage instanceof HTMLCanvasElement) ||
+        (typeof ImageBitmap !== 'undefined' && srcImage instanceof ImageBitmap)
+      )
+    ) {
+      imguiGl.texImage2D(imguiGl.TEXTURE_2D, 0, imguiGl.RGBA, imguiGl.RGBA, imguiGl.UNSIGNED_BYTE, srcImage);
+      uploaded = true;
+    } else if (srcData && srcData.data && srcData.width > 0 && srcData.height > 0) {
+      // Path 2: 未初始化的 raw data 纹理(emptyTexture / whiteTexture 等内置 1x1 贴图)
+      const td = srcData.data;
+      const data = td instanceof Uint8ClampedArray
+        ? new Uint8Array(td.buffer, td.byteOffset, td.byteLength)
+        : td;
+
+      if (data instanceof Uint8Array) {
+        imguiGl.texImage2D(
+          imguiGl.TEXTURE_2D, 0, imguiGl.RGBA, srcData.width, srcData.height, 0,
+          imguiGl.RGBA, imguiGl.UNSIGNED_BYTE, data,
+        );
+        uploaded = true;
+      }
+    }
+
+    // Path 3: 已初始化且 source 已被 release,只能跨 context readPixels
+    if (
+      !uploaded && obj.textureBuffer && obj.width > 0 && obj.height > 0 &&
+      obj.engine instanceof GLEngine
+    ) {
+      const engineGl = obj.engine.gl;
+
+      if (obj.target === engineGl.TEXTURE_2D) {
+        const w = obj.width;
+        const h = obj.height;
+        const pixels = new Uint8Array(w * h * 4);
+        const prevFbo = engineGl.getParameter(engineGl.FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+        const fbo = engineGl.createFramebuffer();
+
+        if (fbo) {
+          engineGl.bindFramebuffer(engineGl.FRAMEBUFFER, fbo);
+          engineGl.framebufferTexture2D(
+            engineGl.FRAMEBUFFER, engineGl.COLOR_ATTACHMENT0,
+            engineGl.TEXTURE_2D, obj.textureBuffer, 0,
+          );
+          if (engineGl.checkFramebufferStatus(engineGl.FRAMEBUFFER) === engineGl.FRAMEBUFFER_COMPLETE) {
+            engineGl.readPixels(0, 0, w, h, engineGl.RGBA, engineGl.UNSIGNED_BYTE, pixels);
+            imguiGl.bindTexture(imguiGl.TEXTURE_2D, tex);
+            imguiGl.texImage2D(
+              imguiGl.TEXTURE_2D, 0, imguiGl.RGBA, w, h, 0,
+              imguiGl.RGBA, imguiGl.UNSIGNED_BYTE, pixels,
+            );
+            uploaded = true;
+            // 引擎上传时若 flipY=true,GPU 布局相对原图是翻转的,ImGui 默认 UV 会上下颠倒
+            needsFlip = !!src?.flipY;
+          }
+          engineGl.bindFramebuffer(engineGl.FRAMEBUFFER, prevFbo);
+          engineGl.deleteFramebuffer(fbo);
+        }
+      }
+    }
+
+    if (!uploaded) {
+      imguiGl.deleteTexture(tex);
+
+      return null;
+    }
+
+    imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_MIN_FILTER, imguiGl.LINEAR);
+    imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_MAG_FILTER, imguiGl.LINEAR);
+    imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_WRAP_S, imguiGl.CLAMP_TO_EDGE);
+    imguiGl.texParameteri(imguiGl.TEXTURE_2D, imguiGl.TEXTURE_WRAP_T, imguiGl.CLAMP_TO_EDGE);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (obj as any).__imguiAssetThumb = tex;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (obj as any).__imguiAssetThumbFlipped = needsFlip;
 
-    return tex;
+    return {
+      tex,
+      uv0: needsFlip ? new ImGui.Vec2(0, 1) : new ImGui.Vec2(0, 0),
+      uv1: needsFlip ? new ImGui.Vec2(1, 0) : new ImGui.Vec2(1, 1),
+    };
   }
 }
