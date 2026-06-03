@@ -30,12 +30,12 @@ function stubXHRCapture (mode: 'error' | 'success'): { urls: string[], restore: 
   const tinyPng = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
   class MockXHR {
-    onloadHandler: ((e: any) => void) | null = null;
-    onerrorHandler: ((e: any) => void) | null = null;
+    onloadHandler: ((e: Event) => void) | null = null;
+    onerrorHandler: ((e: Event) => void) | null = null;
     status = 0;
     response: Blob | null = null;
     responseType: XMLHttpRequestResponseType = '';
-    addEventListener (event: string, handler: (e: any) => void) {
+    addEventListener (event: string, handler: (e: Event) => void) {
       if (event === 'load') { this.onloadHandler = handler; }
       if (event === 'error') { this.onerrorHandler = handler; }
     }

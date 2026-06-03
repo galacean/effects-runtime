@@ -298,8 +298,14 @@ function decodeHtmlEntities (value: string): string {
   return value
     .replace(/&#x([0-9a-fA-F]+);?/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
     .replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
-    .replace(/&(amp|lt|gt|quot|apos);/gi, (match, name) => {
-      const map: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'' };
+    .replace(/&([a-zA-Z]+);/gi, (match, name) => {
+      const map: Record<string, string> = {
+        amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'',
+        // 安全相关：协议分隔符和空白字符，防止绕过 isDangerousUrl 检查
+        colon: ':', semi: ';',
+        tab: '\t', newline: '\n',
+        nbsp: '\u00A0',
+      };
 
       return map[name.toLowerCase()] ?? match;
     });
