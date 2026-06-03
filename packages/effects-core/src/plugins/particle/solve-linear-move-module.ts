@@ -1,15 +1,7 @@
-import type { ValueGetter } from '../../math';
 import { RandomValue } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-
-type LinearVelOverLifetimeConfig = {
-  asMovement?: boolean,
-  enabled?: boolean,
-  x?: ValueGetter<number>,
-  y?: ValueGetter<number>,
-  z?: ValueGetter<number>,
-};
+import type { SolveLinearMoveModuleData } from './parse-spec';
 
 /**
  * 线性位移模块。对应老代码 ParticleMesh.applyLinearMove。
@@ -23,17 +15,15 @@ type LinearVelOverLifetimeConfig = {
 export class SolveLinearMoveModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private linearVelOverLifetime?: LinearVelOverLifetimeConfig;
+  private data: SolveLinearMoveModuleData;
 
-  constructor (opts: {
-    linearVelOverLifetime?: LinearVelOverLifetimeConfig,
-  }) {
+  constructor (data: SolveLinearMoveModuleData) {
     super();
-    this.linearVelOverLifetime = opts.linearVelOverLifetime;
+    this.data = data;
   }
 
   override execute (ctx: ParticleModuleContext): void {
-    const lv = this.linearVelOverLifetime;
+    const lv = this.data.linearVelOverLifetime;
 
     if (!lv?.enabled) {
       return;

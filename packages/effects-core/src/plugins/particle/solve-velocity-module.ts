@@ -1,7 +1,6 @@
-import type { vec3 } from '@galacean/effects-specification';
-import type { ValueGetter } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
+import type { SolveVelocityModuleData } from './parse-spec';
 
 /**
  * 速度积分模块。对应老代码 ParticleMesh.applyTranslation。
@@ -13,29 +12,21 @@ import type { ParticleModuleContext } from './particle-module';
 export class SolveVelocityModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private gravity: vec3;
-  private gravityModifier: ValueGetter<number>;
-  private speedOverLifetime?: ValueGetter<number>;
+  private data: SolveVelocityModuleData;
 
-  constructor (opts: {
-    gravity: vec3,
-    gravityModifier: ValueGetter<number>,
-    speedOverLifetime?: ValueGetter<number>,
-  }) {
+  constructor (data: SolveVelocityModuleData) {
     super();
-    this.gravity = opts.gravity;
-    this.gravityModifier = opts.gravityModifier;
-    this.speedOverLifetime = opts.speedOverLifetime;
+    this.data = data;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
     const dtSec = ctx.deltaTime / 1000;
     const currentTime = ctx.currentTime;
-    const gx = this.gravity[0];
-    const gy = this.gravity[1];
-    const gz = this.gravity[2];
-    const sol = this.speedOverLifetime;
+    const gx = this.data.gravity[0];
+    const gy = this.data.gravity[1];
+    const gz = this.data.gravity[2];
+    const sol = this.data.speedOverLifetime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const delay = db.delay[i];
@@ -54,7 +45,7 @@ export class SolveVelocityModule extends ParticleModule {
 
       // 与老代码对齐：始终计算重力+速度修正，即使 gravity=[0,0,0]
       // 老代码 uAcceleration uniform 始终存在，所以此块始终执行
-      const d = this.gravityModifier.getIntegrateValue(0, time, duration);
+      const d = this.data.gravityModifier.getIntegrateValue(0, time, duration);
       const ax = gx * d;
       const ay = gy * d;
       const az = gz * d;

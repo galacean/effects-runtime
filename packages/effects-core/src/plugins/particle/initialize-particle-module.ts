@@ -1,58 +1,20 @@
 import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
-import type { ValueGetter } from '../../math';
-import type { ShapeGenerator, ShapeParticle } from '../../shape';
+import type { ShapeParticle } from '../../shape';
 import type { Transform } from '../../transform';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-
-type InitParticleOptions = {
-  startSpeed: ValueGetter<number>,
-  startLifetime: ValueGetter<number>,
-  startDelay: ValueGetter<number>,
-  startColor: ValueGetter<any>,
-  start3DRotation?: boolean,
-  startRotationX?: ValueGetter<number>,
-  startRotationY?: ValueGetter<number>,
-  startRotationZ?: ValueGetter<number>,
-  startRotation?: ValueGetter<number>,
-  start3DSize: boolean,
-  startSizeX?: ValueGetter<number>,
-  startSizeY?: ValueGetter<number>,
-  startSize?: ValueGetter<number>,
-  sizeAspect?: ValueGetter<number>,
-  startTurbulence: boolean,
-  turbulence?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>],
-  gravity: vec3,
-  particleFollowParent?: boolean,
-};
-
-type InitParticleTextureSheet = {
-  animate: boolean,
-  animationDelay: ValueGetter<number>,
-  animationDuration: ValueGetter<number>,
-  cycles: ValueGetter<number>,
-};
+import type { InitializeModuleData } from './parse-spec';
 
 export class InitializeParticleModule extends ParticleModule {
   override readonly stage = 'particleSpawn' as const;
 
-  private options: InitParticleOptions;
-  private shape: ShapeGenerator;
-  private textureSheetAnimation?: InitParticleTextureSheet;
-  private uvs: number[][];
+  private data: InitializeModuleData;
 
-  setup (opts: {
-    options: InitParticleOptions,
-    shape: ShapeGenerator,
-    textureSheetAnimation?: InitParticleTextureSheet,
-    uvs: number[][],
-  }): void {
-    this.options = opts.options;
-    this.shape = opts.shape;
-    this.textureSheetAnimation = opts.textureSheetAnimation;
-    this.uvs = opts.uvs;
+  constructor (data: InitializeModuleData) {
+    super();
+    this.data = data;
   }
 
   override execute (ctx: ParticleModuleContext): void {
@@ -69,7 +31,7 @@ export class InitializeParticleModule extends ParticleModule {
     for (let idx = 0; idx < slotIndices.length; idx++) {
       const slotIndex = slotIndices[idx];
       const generator = spawnGenerators[idx];
-      const data = this.shape.generate(generator);
+      const data = this.data.shape.generate(generator);
       const result = this.initializeToBuffer(
         data, ctx.emitterLifetime, worldMatrix,
         emitter.componentTransform, emitter.upDirectionWorld,
@@ -90,8 +52,8 @@ export class InitializeParticleModule extends ParticleModule {
     db: ParticleDataBuffer,
     positionOffset: readonly [number, number, number] | null = null,
   ): { upDirectionWorld: Vector3 | null } {
-    const options = this.options;
-    const shape = this.shape;
+    const options = this.data.options;
+    const shape = this.data.shape;
     const speed = options.startSpeed.getValue(emitterLifetime);
     const matrix4 = options.particleFollowParent ? Matrix4.IDENTITY : worldMatrix;
 
@@ -177,11 +139,11 @@ export class InitializeParticleModule extends ParticleModule {
 
     const delay = options.startDelay.getValue(emitterLifetime);
     const lifetime = options.startLifetime.getValue(emitterLifetime);
-    const uv = randomArrItem(this.uvs, true);
+    const uv = randomArrItem(this.data.uvs, true);
     const gravity = options.gravity;
 
     let sprite: vec3 | undefined;
-    const tsa = this.textureSheetAnimation;
+    const tsa = this.data.textureSheetAnimation;
 
     if (tsa && tsa.animate) {
       sprite = tempSprite;

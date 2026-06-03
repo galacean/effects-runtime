@@ -10,16 +10,10 @@ import { MaskProcessor } from '../../material';
 import type { Texture } from '../../texture';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
-import { BurstSpawnModule } from './burst-spawn-module';
-import { InitializeParticleModule } from './initialize-particle-module';
 import { ParticleEmitter } from './particle-emitter';
 import type { ParsedSpecResult } from './parse-spec';
 import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
-import { SolveLinearMoveModule } from './solve-linear-move-module';
-import { SolveRotationModule } from './solve-rotation-module';
-import { SolveVelocityModule } from './solve-velocity-module';
-import { SpawnRateModule } from './spawn-rate-module';
 
 type ParticleInteraction = {
   behavior?: spec.ParticleInteractionBehavior,
@@ -214,31 +208,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.specResult = null;
 
-    const { options, emission, particleMeshProps, trailMeshProps } = result;
-    const lv = options.linearVelOverLifetime;
-
-    const initModule = new InitializeParticleModule();
-
-    initModule.setup({
-      options,
-      shape: result.shape,
-      textureSheetAnimation: result.textureSheetAnimation,
-      uvs: result.uvs,
-    });
-
-    const spawnRateModule = new SpawnRateModule(emission.rateOverTime);
-    const burstSpawnModule = new BurstSpawnModule(emission);
-    const solveVelocity = new SolveVelocityModule({
-      gravity: options.gravity,
-      gravityModifier: options.gravityModifier,
-      speedOverLifetime: options.speedOverLifetime,
-    });
-    const solveRotation = new SolveRotationModule({
-      rotationOverLifetime: particleMeshProps.rotationOverLifetime,
-    });
-    const solveLinearMove = new SolveLinearMoveModule({
-      linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined,
-    });
+    const { particleMeshProps, trailMeshProps } = result;
 
     this.emitter = new ParticleEmitter();
 
@@ -247,22 +217,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.maskManager = this.maskManager;
     this.meshes = this.renderer.meshes;
 
-    this.emitter.setup({
-      maxCount: options.maxCount,
-      looping: options.looping,
-      particleFollowParent: !!options.particleFollowParent,
-      rateOverTime: emission.rateOverTime,
-      positionCalcOptions: {
-        speedOverLifetime: options.speedOverLifetime,
-        gravityModifier: options.gravityModifier,
-        linearVelOverLifetime: options.linearVelOverLifetime,
-        orbitalVelOverLifetime: options.orbitalVelOverLifetime,
-        forceTarget: options.forceTarget,
-      },
-      renderer: this.renderer,
-      modules: [spawnRateModule, burstSpawnModule, initModule, solveVelocity, solveRotation, solveLinearMove].filter(Boolean),
-      trails: result.trails,
-    });
+    this.emitter.setup(result.emitterData, this.renderer);
 
     this.emitter.componentTransform = this.transform;
     const transformPath = this.props.emitterTransform && this.props.emitterTransform.path;

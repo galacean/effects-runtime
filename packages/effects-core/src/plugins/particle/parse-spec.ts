@@ -43,8 +43,7 @@ export type ParsedParticleOptions = {
   orbitalVelOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean, center?: spec.vec3 },
 };
 
-export type ParsedEmission = {
-  rateOverTime: ValueGetter<number>,
+export type BurstSpawnModuleData = {
   bursts: Burst[],
   burstOffsets: Record<string, vec3[] | null>,
 };
@@ -70,17 +69,62 @@ export type ParsedTrailConfig = {
   parentAffectsPosition: boolean,
 };
 
-export type ParsedSpecResult = {
+export type InitializeModuleData = {
   options: ParsedParticleOptions,
-  emission: ParsedEmission,
   shape: ShapeGenerator,
   textureSheetAnimation: ParsedTextureSheetAnimation | undefined,
+  uvs: number[][],
+};
+
+export type SpawnRateModuleData = {
+  rateOverTime: ValueGetter<number>,
+};
+
+export type SolveVelocityModuleData = {
+  gravity: vec3,
+  gravityModifier: ValueGetter<number>,
+  speedOverLifetime?: ValueGetter<number>,
+};
+
+export type SolveRotationModuleData = {
+  rotationOverLifetime?: ParticleMeshProps['rotationOverLifetime'],
+};
+
+export type SolveLinearMoveModuleData = {
+  linearVelOverLifetime?: { asMovement?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean },
+};
+
+/**
+ * 模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
+ * 对齐 Pro 的 fromData → module descriptor 模式。
+ */
+export type ParsedModuleData = {
+  initialize: InitializeModuleData,
+  spawnRate?: SpawnRateModuleData,
+  burst: BurstSpawnModuleData,
+  solveVelocity: SolveVelocityModuleData,
+  solveRotation: SolveRotationModuleData,
+  solveLinearMove: SolveLinearMoveModuleData,
+};
+
+/**
+ * Emitter 构建所需的全部数据（不含运行时引用）。
+ * 对齐 Pro 的 emitter data 模式：数据与运行时引用分离。
+ */
+export type EmitterData = {
+  maxCount: number,
+  looping: boolean,
+  particleFollowParent: boolean,
   trails: ParsedTrailConfig | undefined,
+  modules: ParsedModuleData,
+};
+
+export type ParsedSpecResult = {
+  options: ParsedParticleOptions,
+  emitterData: EmitterData,
   particleMeshProps: ParticleMeshProps,
   trailMeshProps: TrailMeshProps | undefined,
-  uvs: number[][],
   interaction: { behavior?: spec.ParticleInteractionBehavior, multiple?: boolean, radius: number } | undefined,
-  rotationOverLifetime: ParticleMeshProps['rotationOverLifetime'],
 };
 
 /**
@@ -115,8 +159,8 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
   }
 
   const shapeGenerator = createShape(shape);
-  const emission: ParsedEmission = {
-    rateOverTime: createValueGetter(props.emission.rateOverTime),
+  const rateOverTime = createValueGetter(props.emission.rateOverTime);
+  const burstData: BurstSpawnModuleData = {
     burstOffsets: getBurstOffsets(props.emission.burstOffsets ?? []),
     bursts: (props.emission.bursts || []).map((c: any) => new Burst(c)),
   };
@@ -346,17 +390,27 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
     };
   }
 
+  const lv = parsedOptions.linearVelOverLifetime;
+
   return {
     options: parsedOptions,
-    emission,
-    shape: shapeGenerator,
-    textureSheetAnimation,
-    trails,
+    emitterData: {
+      maxCount: parsedOptions.maxCount,
+      looping: parsedOptions.looping,
+      particleFollowParent: !!parsedOptions.particleFollowParent,
+      trails,
+      modules: {
+        initialize: { options: parsedOptions, shape: shapeGenerator, textureSheetAnimation, uvs },
+        spawnRate: { rateOverTime },
+        burst: burstData,
+        solveVelocity: { gravity: parsedOptions.gravity, gravityModifier: parsedOptions.gravityModifier, speedOverLifetime: parsedOptions.speedOverLifetime },
+        solveRotation: { rotationOverLifetime },
+        solveLinearMove: { linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined },
+      },
+    },
     particleMeshProps,
     trailMeshProps,
-    uvs,
     interaction,
-    rotationOverLifetime,
   };
 }
 
@@ -382,3 +436,4 @@ function getBurstOffsets (burstOffsets: Record<string, number>[]): Record<string
 
   return ret;
 }
+

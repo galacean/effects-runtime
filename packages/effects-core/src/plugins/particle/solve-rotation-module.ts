@@ -1,16 +1,9 @@
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import type { ValueGetter } from '../../math';
 import { RandomValue } from '../../math';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-
-type RotationOverLifetimeConfig = {
-  asRotation?: boolean,
-  x?: ValueGetter<number>,
-  y?: ValueGetter<number>,
-  z?: ValueGetter<number>,
-};
+import type { SolveRotationModuleData } from './parse-spec';
 
 /**
  * 旋转矩阵计算模块。对应老代码 ParticleMesh.applyRotation。
@@ -23,20 +16,18 @@ type RotationOverLifetimeConfig = {
 export class SolveRotationModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private rotationOverLifetime?: RotationOverLifetimeConfig;
+  private data: SolveRotationModuleData;
 
-  constructor (opts: {
-    rotationOverLifetime?: RotationOverLifetimeConfig,
-  }) {
+  constructor (data: SolveRotationModuleData) {
     super();
-    this.rotationOverLifetime = opts.rotationOverLifetime;
+    this.data = data;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
     const currentTime = ctx.currentTime;
     const d2r = Math.PI / 180;
-    const rol = this.rotationOverLifetime;
+    const rol = this.data.rotationOverLifetime;
     const rotMat = tempRotMat;
     const tempMat = tempRotMat2;
 

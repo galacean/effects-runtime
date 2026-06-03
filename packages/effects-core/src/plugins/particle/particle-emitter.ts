@@ -1,6 +1,5 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter } from '../../math';
 import type { ShapeGeneratorOptions } from '../../shape';
@@ -8,6 +7,13 @@ import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
 import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
+import type { EmitterData, ParsedModuleData, ParsedParticleOptions } from './parse-spec';
+import { BurstSpawnModule } from './burst-spawn-module';
+import { InitializeParticleModule } from './initialize-particle-module';
+import { SolveLinearMoveModule } from './solve-linear-move-module';
+import { SolveRotationModule } from './solve-rotation-module';
+import { SolveVelocityModule } from './solve-velocity-module';
+import { SpawnRateModule } from './spawn-rate-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
 import type { Transform } from '../../transform';
 
@@ -18,14 +24,6 @@ type TrailConfig = {
   sizeAffectsLifetime: boolean,
   inheritParticleColor: boolean,
   parentAffectsPosition: boolean,
-};
-
-type PositionCalcOptions = {
-  speedOverLifetime?: ValueGetter<number>,
-  gravityModifier: ValueGetter<number>,
-  linearVelOverLifetime?: any,
-  orbitalVelOverLifetime?: any,
-  forceTarget?: { curve: ValueGetter<number>, target: vec3 },
 };
 
 export class ParticleEmitter {
@@ -58,34 +56,44 @@ export class ParticleEmitter {
   private maxCount = 0;
   private looping = false;
   private particleFollowParent = false;
-  private rateOverTime: ValueGetter<number>;
-  private positionCalcOptions: PositionCalcOptions;
+  private initialLastEmitTime = 0;
+  private particleOptions: ParsedParticleOptions;
   private trails?: TrailConfig;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
   }
 
-  setup (opts: {
-    maxCount: number,
-    looping: boolean,
-    particleFollowParent: boolean,
-    rateOverTime: ValueGetter<number>,
-    positionCalcOptions: PositionCalcOptions,
-    renderer: ParticleSystemRenderer,
-    modules: ParticleModule[],
-    trails?: TrailConfig,
-  }): void {
-    this.maxCount = opts.maxCount;
-    this.looping = opts.looping;
-    this.particleFollowParent = opts.particleFollowParent;
-    this.rateOverTime = opts.rateOverTime;
-    this.positionCalcOptions = opts.positionCalcOptions;
-    this.renderer = opts.renderer;
-    this.modules = opts.modules;
-    this.trails = opts.trails;
-    this._dataBuffer = new ParticleDataBufferImpl(opts.maxCount);
-    this.lastEmitTime = -1 / opts.rateOverTime.getValue(0);
+  setup (data: EmitterData, renderer: ParticleSystemRenderer): void {
+    this.maxCount = data.maxCount;
+    this.looping = data.looping;
+    this.particleFollowParent = data.particleFollowParent;
+    this.particleOptions = data.modules.initialize.options;
+    this.renderer = renderer;
+    this.trails = data.trails;
+    this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
+    const rate = data.modules.spawnRate?.rateOverTime;
+
+    this.initialLastEmitTime = rate ? -1 / rate.getValue(0) : 0;
+    this.lastEmitTime = this.initialLastEmitTime;
+    this.modules = this.buildModules(data.modules);
+  }
+
+  private buildModules (data: ParsedModuleData): ParticleModule[] {
+    const modules: ParticleModule[] = [];
+
+    if (data.spawnRate) {
+      modules.push(new SpawnRateModule(data.spawnRate));
+    }
+    modules.push(
+      new BurstSpawnModule(data.burst),
+      new InitializeParticleModule(data.initialize),
+      new SolveVelocityModule(data.solveVelocity),
+      new SolveRotationModule(data.solveRotation),
+      new SolveLinearMoveModule(data.solveLinearMove),
+    );
+
+    return modules;
   }
 
   setMaxCount (count: number): void {
@@ -107,7 +115,7 @@ export class ParticleEmitter {
     this.aliveCount = 0;
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
-    this.lastEmitTime = -1 / this.rateOverTime.getValue(0);
+    this.lastEmitTime = this.initialLastEmitTime;
     this.upDirectionWorld = null;
     this.trailUpdated = false;
     this.spawnInfos.length = 0;
@@ -359,9 +367,9 @@ export class ParticleEmitter {
     const vel = new Vector3(db.velocityF64[i3], db.velocityF64[i3 + 1], db.velocityF64[i3 + 2]);
     const acc = new Vector3(db.gravityF64[i3], db.gravityF64[i3 + 1], db.gravityF64[i3 + 2]);
 
-    const ret = calculateTranslation(new Vector3(), this.positionCalcOptions, acc, time, lifetime, tempPos, vel);
+    const ret = calculateTranslation(new Vector3(), this.particleOptions, acc, time, lifetime, tempPos, vel);
 
-    const forceTarget = this.positionCalcOptions.forceTarget;
+    const forceTarget = this.particleOptions.forceTarget;
 
     if (forceTarget) {
       const target = forceTarget.target || [0, 0, 0];
