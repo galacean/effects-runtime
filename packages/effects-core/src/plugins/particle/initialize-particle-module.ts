@@ -5,7 +5,7 @@ import type { ShapeGenerator, ShapeParticle } from '../../shape';
 import type { Transform } from '../../transform';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleModule } from './particle-module';
-import type { ParticleModuleContext, ParticleSpawnContext } from './particle-module';
+import type { ParticleModuleContext } from './particle-module';
 
 type InitParticleOptions = {
   startSpeed: ValueGetter<number>,
@@ -56,20 +56,24 @@ export class InitializeParticleModule extends ParticleModule {
   }
 
   override execute (ctx: ParticleModuleContext): void {
-    const spawnCtx = ctx as ParticleSpawnContext;
+    const { worldMatrix, slotIndices, spawnGenerators } = ctx;
+
+    if (!worldMatrix || !slotIndices || !spawnGenerators) {
+      return;
+    }
     const db = ctx.dataBuffer;
     const emitter = ctx.emitter;
-    const worldMatrix = spawnCtx.worldMatrix;
-    const slotIndices = spawnCtx.slotIndices;
+    // burst 发射偏移：在 shape 位置之上叠加（rate 来源为 null）
+    const positionOffset = ctx.positionOffset ?? null;
 
     for (let idx = 0; idx < slotIndices.length; idx++) {
       const slotIndex = slotIndices[idx];
-      const generator = emitter.getSpawnGenerator(idx);
+      const generator = spawnGenerators[idx];
       const data = this.shape.generate(generator);
       const result = this.initializeToBuffer(
         data, ctx.emitterLifetime, worldMatrix,
         emitter.componentTransform, emitter.upDirectionWorld,
-        slotIndex, db,
+        slotIndex, db, positionOffset,
       );
 
       emitter.upDirectionWorld = result.upDirectionWorld;
@@ -84,6 +88,7 @@ export class InitializeParticleModule extends ParticleModule {
     upDirectionWorld: Vector3 | null,
     slotIndex: number,
     db: ParticleDataBuffer,
+    positionOffset: readonly [number, number, number] | null = null,
   ): { upDirectionWorld: Vector3 | null } {
     const options = this.options;
     const shape = this.shape;
@@ -200,12 +205,16 @@ export class InitializeParticleModule extends ParticleModule {
     db.rotation[i3 + 1] = rot.y;
     db.rotation[i3 + 2] = rot.z;
 
-    db.position[i3] = position.x;
-    db.position[i3 + 1] = position.y;
-    db.position[i3 + 2] = position.z;
-    db.positionF64[i3] = position.x;
-    db.positionF64[i3 + 1] = position.y;
-    db.positionF64[i3 + 2] = position.z;
+    const offsetX = positionOffset ? positionOffset[0] : 0;
+    const offsetY = positionOffset ? positionOffset[1] : 0;
+    const offsetZ = positionOffset ? positionOffset[2] : 0;
+
+    db.position[i3] = position.x + offsetX;
+    db.position[i3 + 1] = position.y + offsetY;
+    db.position[i3 + 2] = position.z + offsetZ;
+    db.positionF64[i3] = position.x + offsetX;
+    db.positionF64[i3 + 1] = position.y + offsetY;
+    db.positionF64[i3 + 2] = position.z + offsetZ;
 
     db.velocity[i3] = vel.x;
     db.velocity[i3 + 1] = vel.y;

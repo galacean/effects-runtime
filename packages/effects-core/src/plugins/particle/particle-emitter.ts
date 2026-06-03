@@ -1,10 +1,12 @@
+import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
-import type { Burst } from './burst';
-import { SpawnRateModule } from './spawn-rate-module';
+import { calculateTranslation, createValueGetter } from '../../math';
+import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleModuleContext, ParticleModuleStage, ParticleSpawnContext, SpawnInfo } from './particle-module';
+import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
+import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
 import type { Transform } from '../../transform';
@@ -18,11 +20,12 @@ type TrailConfig = {
   parentAffectsPosition: boolean,
 };
 
-type SpawnGeneratorOptions = {
-  total: number,
-  index: number,
-  burstIndex: number,
-  burstCount: number,
+type PositionCalcOptions = {
+  speedOverLifetime?: ValueGetter<number>,
+  gravityModifier: ValueGetter<number>,
+  linearVelOverLifetime?: any,
+  orbitalVelOverLifetime?: any,
+  forceTarget?: { curve: ValueGetter<number>, target: vec3 },
 };
 
 export class ParticleEmitter {
@@ -36,6 +39,7 @@ export class ParticleEmitter {
   aliveCount = 0;
   nextSlotIndex = 0;
   generatedCount = 0;
+  lastEmitTime = 0;
   upDirectionWorld: Vector3 | null = null;
   spawnInfos: SpawnInfo[] = [];
 
@@ -47,36 +51,52 @@ export class ParticleEmitter {
 
   // --- Modules ---
   private modules: ParticleModule[] = [];
-  private spawnRateRef: SpawnRateModule | null = null;
-
-  // --- Spawn transient state (set per-batch before particleSpawn stage) ---
-  private spawnGenerators: SpawnGeneratorOptions[] = [];
 
   // --- Shared refs (set during setup) ---
-  private dataBuffer: ParticleDataBuffer;
+  private _dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer;
-  private options: { maxCount: number, looping?: boolean, gravity: vec3, gravityModifier: ValueGetter<number>, speedOverLifetime?: ValueGetter<number>, forceTarget?: any, particleFollowParent?: boolean, linearVelOverLifetime?: any, orbitalVelOverLifetime?: any };
-  private emission: { rateOverTime: ValueGetter<number>, bursts: Burst[], burstOffsets: Record<string, vec3[] | null> };
+  private maxCount = 0;
+  private looping = false;
+  private particleFollowParent = false;
+  private rateOverTime: ValueGetter<number>;
+  private positionCalcOptions: PositionCalcOptions;
   private trails?: TrailConfig;
-  private getPointPositionF64: (index: number) => Vector3;
+
+  get dataBuffer (): ParticleDataBuffer {
+    return this._dataBuffer;
+  }
 
   setup (opts: {
-    dataBuffer: ParticleDataBuffer,
+    maxCount: number,
+    looping: boolean,
+    particleFollowParent: boolean,
+    rateOverTime: ValueGetter<number>,
+    positionCalcOptions: PositionCalcOptions,
     renderer: ParticleSystemRenderer,
-    options: ParticleEmitter['options'],
-    emission: ParticleEmitter['emission'],
     modules: ParticleModule[],
     trails?: TrailConfig,
-    getPointPositionF64: (index: number) => Vector3,
   }): void {
-    this.dataBuffer = opts.dataBuffer;
+    this.maxCount = opts.maxCount;
+    this.looping = opts.looping;
+    this.particleFollowParent = opts.particleFollowParent;
+    this.rateOverTime = opts.rateOverTime;
+    this.positionCalcOptions = opts.positionCalcOptions;
     this.renderer = opts.renderer;
-    this.options = opts.options;
-    this.emission = opts.emission;
     this.modules = opts.modules;
-    this.spawnRateRef = opts.modules.find(m => m instanceof SpawnRateModule) as SpawnRateModule ?? null;
     this.trails = opts.trails;
-    this.getPointPositionF64 = opts.getPointPositionF64;
+    this._dataBuffer = new ParticleDataBufferImpl(opts.maxCount);
+    this.lastEmitTime = -1 / opts.rateOverTime.getValue(0);
+  }
+
+  setMaxCount (count: number): void {
+    this.maxCount = count;
+    if (this.renderer?.particleMesh) {
+      this.renderer.particleMesh.maxCount = count;
+    }
+  }
+
+  getMaxCount (): number {
+    return this.maxCount;
   }
 
   fullReset (): void {
@@ -87,18 +107,37 @@ export class ParticleEmitter {
     this.aliveCount = 0;
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
+    this.lastEmitTime = -1 / this.rateOverTime.getValue(0);
     this.upDirectionWorld = null;
     this.trailUpdated = false;
     this.spawnInfos.length = 0;
-    this.spawnRateRef?.reset(this.emission.rateOverTime);
+    this._dataBuffer?.clear();
+    this.renderer?.reset();
   }
 
-  commitSpawnRate (timePassed: number): void {
-    this.spawnRateRef?.commitEmit(timePassed);
-  }
+  initTransform (itemTransformPosition: Vector3, emitterTransformPath: any): void {
+    const position = itemTransformPosition.clone();
+    let path;
 
-  adjustForLoop (duration: number): void {
-    this.spawnRateRef?.adjustForLoop(duration);
+    if (emitterTransformPath) {
+      if (emitterTransformPath[0] === 3) { // spec.ValueType.CONSTANT_VEC3
+        position.add(emitterTransformPath[1]);
+      } else {
+        path = createValueGetter(emitterTransformPath);
+      }
+    }
+    this.basicTransform = { position, path };
+
+    const selfPos = position.clone();
+
+    if (path) {
+      selfPos.add(path.getValue(0));
+    }
+    this.componentTransform.setPosition(selfPos.x, selfPos.y, selfPos.z);
+
+    if (this.particleFollowParent) {
+      this.renderer.updateWorldMatrix(this.componentTransform.getWorldMatrix());
+    }
   }
 
   runStage (stage: ParticleModuleStage, ctx: ParticleModuleContext): void {
@@ -109,12 +148,8 @@ export class ParticleEmitter {
     }
   }
 
-  getSpawnGenerator (idx: number): SpawnGeneratorOptions {
-    return this.spawnGenerators[idx];
-  }
-
   // ========================
-  // Stage 1: Emitter Update
+  // Tick
   // ========================
 
   get timePassed (): number {
@@ -144,7 +179,7 @@ export class ParticleEmitter {
       if (this.timePassed < this.itemDuration) {
         this.updateEmitterTransform(this.timePassed);
         this.emitterUpdateAndSpawn(delta);
-      } else if (this.options.looping) {
+      } else if (this.looping) {
         this.updateTrails();
         this.handleLoop(this.itemDuration);
       } else {
@@ -158,7 +193,7 @@ export class ParticleEmitter {
   }
 
   private particleUpdateAndSync (delta: number): void {
-    const db = this.dataBuffer;
+    const db = this._dataBuffer;
 
     if (db.activeCount === 0) {
       return;
@@ -168,37 +203,26 @@ export class ParticleEmitter {
   }
 
   private emitterUpdateAndSpawn (delta: number): void {
-    const db = this.dataBuffer;
-    const maxCount = this.options.maxCount;
+    const maxCount = this.maxCount;
 
     this.spawnInfos.length = 0;
     this.runStage('emitterUpdate', this.buildModuleContext(delta / 1000));
 
     for (const info of this.spawnInfos) {
-      if (info.isBurst) {
-        this.executeBurstSpawn(db, maxCount, info);
-      } else {
-        this.particleSpawn(db, maxCount, info);
-      }
+      this.particleSpawn(this._dataBuffer, maxCount, info);
     }
   }
 
   // ========================
-  // Stage 3: Particle Spawn
+  // Particle Spawn
   // ========================
 
-  /**
-   * 预分配 slot 列表。对齐 Pro 的 availableSpawnSlots 预计算：
-   * 1. 优先使用 free slots (nextSlotIndex++)
-   * 2. 超出后收集 expired slots（按 expiry 升序，匹配 findOldestSlot 行为）
-   */
   private preAllocateSlots (db: ParticleDataBuffer, maxCount: number, requestedCount: number): number[] {
     if (this.emissionStopped || requestedCount <= 0) {
       return [];
     }
     const slots: number[] = [];
 
-    // free slots
     while (slots.length < requestedCount && this.nextSlotIndex < maxCount) {
       slots.push(this.nextSlotIndex++);
     }
@@ -206,7 +230,6 @@ export class ParticleEmitter {
       return slots;
     }
 
-    // recyclable expired slots (sorted by expiry asc, index desc for tie-break)
     const expired: number[] = [];
 
     for (let s = 0; s < db.maxCount; s++) {
@@ -234,10 +257,35 @@ export class ParticleEmitter {
     maxCount: number,
     spawnInfo: SpawnInfo,
   ): void {
+    let count: number;
+    let timeDelta: number;
+    let generator: SpawnGenerator;
+    let positionOffset: readonly [number, number, number] | null;
+
+    if (spawnInfo.kind === 'burst') {
+      if (!this.hasAvailableSlots(db, maxCount)) {
+        return;
+      }
+      const resolved = spawnInfo.prepare();
+
+      if (!resolved) {
+        return;
+      }
+      count = resolved.count;
+      timeDelta = 0;
+      generator = resolved.generator;
+      positionOffset = resolved.positionOffset;
+    } else {
+      count = spawnInfo.count;
+      timeDelta = spawnInfo.timeDelta;
+      generator = spawnInfo.generator;
+      positionOffset = null;
+    }
+
     const worldMatrix = this.getWorldMatrix();
-    const requestedCount = Math.min(spawnInfo.count, maxCount);
-    const timeDelta = spawnInfo.timeDelta;
+    const requestedCount = Math.min(count, maxCount);
     const meshTime = this.time;
+    const isRateSource = generator.useGeneratedCountIndex;
 
     const slotIndices = this.preAllocateSlots(db, maxCount, requestedCount);
 
@@ -245,21 +293,26 @@ export class ParticleEmitter {
       return;
     }
 
-    this.spawnGenerators = [];
+    const spawnGenerators: ShapeGeneratorOptions[] = [];
+
     for (let i = 0; i < slotIndices.length; i++) {
-      this.spawnGenerators.push({
-        total: this.emission.rateOverTime.getValue(this.emitterLifetime),
-        index: this.generatedCount + i,
-        burstIndex: 0,
-        burstCount: 0,
+      spawnGenerators.push({
+        total: generator.total,
+        index: isRateSource ? this.generatedCount + i : generator.index,
+        burstIndex: isRateSource ? 0 : i,
+        burstCount: generator.burstCount,
       });
     }
-    this.generatedCount += slotIndices.length;
+    if (isRateSource) {
+      this.generatedCount += slotIndices.length;
+    }
 
-    const spawnCtx: ParticleSpawnContext = {
+    const spawnCtx: ParticleModuleContext = {
       ...this.buildModuleContext(0),
       worldMatrix,
       slotIndices,
+      spawnGenerators,
+      positionOffset,
     };
 
     this.runStage('particleSpawn', spawnCtx);
@@ -271,10 +324,12 @@ export class ParticleEmitter {
       db.delayF64[slotIdx] += meshTime + i * timeDelta;
       this.commitParticle(slotIdx, maxCount, db);
     }
-    this.commitSpawnRate(this.timePassed);
+    if (isRateSource) {
+      this.lastEmitTime = this.timePassed;
+    }
   }
 
-  private hasAvailableSlots (db: ParticleDataBuffer, maxCount: number): boolean {
+  hasAvailableSlots (db: ParticleDataBuffer, maxCount: number): boolean {
     if (this.emissionStopped) {
       return false;
     }
@@ -290,78 +345,113 @@ export class ParticleEmitter {
     return false;
   }
 
-  /**
-   * 处理单个 burst SpawnInfo。
-   * 先确认有可用 slot，再调 getGeneratorOptions 消耗 burst 状态。
-   * 无可用 slot 时不消耗状态，保留给下一帧。
-   */
-  private executeBurstSpawn (db: ParticleDataBuffer, maxCount: number, info: SpawnInfo): void {
-    if (!this.hasAvailableSlots(db, maxCount)) {
-      return;
-    }
-    const emission = this.emission;
-    const j = info.burstIndex ?? 0;
-    const burst = emission.bursts[j];
+  // ========================
+  // Particle Query (position / box / raycast)
+  // ========================
 
-    if (!burst) {
-      return;
-    }
+  getPointPositionF64 (index: number): Vector3 {
+    const db = this._dataBuffer;
+    const i3 = index * 3;
+    const time = this.time - db.delayF64[index];
+    const lifetime = db.lifetimeF64[index];
 
-    const opts = burst.getGeneratorOptions(this.timePassed, this.emitterLifetime);
+    const tempPos = new Vector3(db.positionF64[i3], db.positionF64[i3 + 1], db.positionF64[i3 + 2]);
+    const vel = new Vector3(db.velocityF64[i3], db.velocityF64[i3 + 1], db.velocityF64[i3 + 2]);
+    const acc = new Vector3(db.gravityF64[i3], db.gravityF64[i3 + 1], db.gravityF64[i3 + 2]);
 
-    if (!opts) {
-      return;
-    }
+    const ret = calculateTranslation(new Vector3(), this.positionCalcOptions, acc, time, lifetime, tempPos, vel);
 
-    const offsets = emission.burstOffsets[j];
-    const burstOffset = (offsets && offsets[opts.cycleIndex]) || ORIGIN_VEC;
+    const forceTarget = this.positionCalcOptions.forceTarget;
 
-    if (burst.once) {
-      emission.burstOffsets[j] = null;
-      emission.bursts.splice(j, 1);
+    if (forceTarget) {
+      const target = forceTarget.target || [0, 0, 0];
+      const life = forceTarget.curve.getValue(time / lifetime);
+      const dl = 1 - life;
+
+      ret.x = ret.x * dl + target[0] * life;
+      ret.y = ret.y * dl + target[1] * life;
+      ret.z = ret.z * dl + target[2] * life;
     }
 
-    const worldMatrix = this.getWorldMatrix();
-    const meshTime = this.time;
-    const burstCount = opts.count;
-    const slotIndices = this.preAllocateSlots(db, maxCount, burstCount);
+    return ret;
+  }
 
-    if (slotIndices.length === 0) {
-      return;
+  getPointPositionByIndex (index: number): Vector3 | null {
+    const db = this._dataBuffer;
+
+    if (!db || index < 0 || index >= db.activeCount || !db.alive[index]) {
+      console.error('Get point error.');
+
+      return null;
     }
 
-    this.spawnGenerators = [];
-    for (let i = 0; i < slotIndices.length; i++) {
-      this.spawnGenerators.push({
-        total: opts.total,
-        index: opts.index,
-        burstIndex: i,
-        burstCount,
+    return this.getPointPositionF64(index);
+  }
+
+  getParticleBoxes (): { center: Vector3, size: Vector3 }[] {
+    const db = this._dataBuffer;
+    const res: { center: Vector3, size: Vector3 }[] = [];
+
+    if (!db) {
+      return res;
+    }
+    for (let i = 0; i < db.activeCount; i++) {
+      if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
+        continue;
+      }
+      const pos = this.getPointPositionF64(i);
+      const bi2 = i * 2;
+
+      res.push({
+        center: pos,
+        size: new Vector3(db.sizeF64[bi2], db.sizeF64[bi2 + 1], 1),
       });
     }
 
-    const spawnCtx: ParticleSpawnContext = {
-      ...this.buildModuleContext(0),
-      worldMatrix,
-      slotIndices,
-    };
+    return res;
+  }
 
-    this.runStage('particleSpawn', spawnCtx);
+  raycast (options: { ray: Ray, radius: number, multiple: boolean }): Vector3[] | undefined {
+    const db = this._dataBuffer;
 
-    for (let i = 0; i < slotIndices.length; i++) {
-      const slotIdx = slotIndices[i];
-      const si3 = slotIdx * 3;
-
-      db.delay[slotIdx] += meshTime;
-      db.delayF64[slotIdx] += meshTime;
-      db.position[si3] += burstOffset[0];
-      db.position[si3 + 1] += burstOffset[1];
-      db.position[si3 + 2] += burstOffset[2];
-      db.positionF64[si3] += burstOffset[0];
-      db.positionF64[si3 + 1] += burstOffset[1];
-      db.positionF64[si3 + 2] += burstOffset[2];
-      this.commitParticle(slotIdx, maxCount, db);
+    if (!db) {
+      return;
     }
+    const hitPositions: Vector3[] = [];
+    const temp = new Vector3();
+
+    for (let i = db.activeCount - 1; i >= 0; i--) {
+      if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
+        continue;
+      }
+      const pos = this.getPointPositionF64(i);
+      const ray = options.ray;
+
+      if (ray && ray.intersectSphere({ center: pos, radius: options.radius }, temp)) {
+        this.lastRaycastHitIndex = i;
+        hitPositions.push(pos);
+        if (!options.multiple) {
+          break;
+        }
+      }
+    }
+
+    return hitPositions;
+  }
+
+  lastRaycastHitIndex = -1;
+
+  killParticle (index: number): void {
+    const db = this._dataBuffer;
+
+    if (!db || index < 0 || index >= db.maxCount) {
+      return;
+    }
+    this.renderer.removeParticlePoint(index);
+    if (this.trails?.dieWithParticles) {
+      this.renderer.clearTrail(index);
+    }
+    db.expiry[index] = 0;
   }
 
   // ========================
@@ -376,17 +466,17 @@ export class ParticleEmitter {
     }
     this.trailUpdated = true;
     this.renderer.updateTrailData({
-      db: this.dataBuffer,
+      db: this._dataBuffer,
       timePassed: this.timePassed,
       emitterLifetime: this.emitterLifetime,
       trails: this.trails,
-      getPointPositionF64: this.getPointPositionF64,
+      getPointPositionF64: i => this.getPointPositionF64(i),
       parentTransformPosition: this.parentTransformPosition,
     });
   }
 
   private getWorldMatrix (): Matrix4 {
-    return this.options.particleFollowParent ? Matrix4.IDENTITY : this.componentTransform.getWorldMatrix();
+    return this.particleFollowParent ? Matrix4.IDENTITY : this.componentTransform.getWorldMatrix();
   }
 
   private updateEmitterTransform (time: number): void {
@@ -398,17 +488,16 @@ export class ParticleEmitter {
     }
     this.componentTransform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
-    if (this.options.particleFollowParent) {
+    if (this.particleFollowParent) {
       this.renderer.updateWorldMatrix(this.componentTransform.getWorldMatrix());
     }
   }
 
   private handleLoop (duration: number): void {
     this.loopStartTime = this.time - duration;
-    this.adjustForLoop(duration);
+    this.lastEmitTime -= duration;
     this.time -= duration;
-    this.emission.bursts.forEach(b => b.reset());
-    const db = this.dataBuffer;
+    const db = this._dataBuffer;
 
     for (let li = 0; li < db.activeCount; li++) {
       if (db.alive[li]) {
@@ -430,10 +519,10 @@ export class ParticleEmitter {
       currentTime: this.time,
       emitterLifetime: this.emitterLifetime,
       duration: this.itemDuration,
-      dataBuffer: this.dataBuffer,
+      dataBuffer: this._dataBuffer,
       emitter: this,
       firstIndex: 0,
-      lastIndex: this.dataBuffer.activeCount,
+      lastIndex: this._dataBuffer.activeCount,
     };
   }
 
@@ -452,5 +541,3 @@ export class ParticleEmitter {
     }
   }
 }
-
-const ORIGIN_VEC: vec3 = [0, 0, 0];
