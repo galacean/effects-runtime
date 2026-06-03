@@ -4,7 +4,10 @@ import { TestPlayer } from './test-player';
 import { loadScript } from '../utilities';
 
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '2.9.0';  // 旧版 Player 版本
+const oldVersion = params.get('version') || '2.9.0';
+
+// true: 从本地 public/old-dist 加载对照版本；false: 从 CDN 加载
+const useLocalBuild = true;
 
 const playerOptions: PlayerConfig = {
   env: 'editor',
@@ -52,13 +55,17 @@ export class TestController {
   }
 
   async loadOldPlayer (version: string) {
-    const url = `https://unpkg.com/@galacean/effects@${version}/dist/index.min.js`;
+    const url = useLocalBuild
+      ? '/old-dist/effects/dist/index.min.js'
+      : `https://unpkg.com/@galacean/effects@${version}/dist/index.min.js`;
 
     return loadScript(url);
   }
 
   async loadOldPlugin (name: string, version: string) {
-    const url = `https://unpkg.com/@galacean/effects-plugin-${name}@${version}/dist/index.min.js`;
+    const url = useLocalBuild
+      ? `/old-dist/effects-plugin-${name}/dist/index.min.js`
+      : `https://unpkg.com/@galacean/effects-plugin-${name}@${version}/dist/index.min.js`;
 
     return loadScript(url);
   }

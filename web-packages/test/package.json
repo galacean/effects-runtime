@@ -2,7 +2,8 @@
   "private": true,
   "name": "@galacean/effects-test",
   "scripts": {
-    "test": "vite"
+    "test": "vite",
+    "build:old-dist": "pnpm -w build && node scripts/copy-old-dist.js"
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",

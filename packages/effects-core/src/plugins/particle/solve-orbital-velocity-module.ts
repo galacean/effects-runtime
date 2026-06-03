@@ -120,36 +120,36 @@ export class SolveOrbitalVelocityModule extends ParticleModule {
       const i3 = i * 3;
       const delay = db.delay[i];
 
+      // F32 for GPU sync
       if (!orb.enabled || delay >= currentTime) {
         db.finalOffset[i3] = db.translation[i3] + db.linearMove[i3];
         db.finalOffset[i3 + 1] = db.translation[i3 + 1] + db.linearMove[i3 + 1];
         db.finalOffset[i3 + 2] = db.translation[i3 + 2] + db.linearMove[i3 + 2];
+      } else {
+        const time = currentTime - delay;
+        const duration = db.lifetime[i];
+        const life = Math.min(Math.max(time / duration, 0), 1);
 
-        continue;
+        const cx = orb.center?.[0] ?? 0;
+        const cy = orb.center?.[1] ?? 0;
+        const cz = orb.center?.[2] ?? 0;
+
+        const ox = orb.x ? gpuMatchingIntegrate(orb.x, life, time, duration, orb.asRotation) : 0;
+        const oy = orb.y ? gpuMatchingIntegrate(orb.y, life, time, duration, orb.asRotation) : 0;
+        const oz = orb.z ? gpuMatchingIntegrate(orb.z, life, time, duration, orb.asRotation) : 0;
+
+        tempEuler.set(-ox, -oy, -oz);
+        tempMat4.setFromEuler(tempEuler);
+        const e = tempMat4.elements;
+        const px = db.position[i3] + db.translation[i3] - cx;
+        const py = db.position[i3 + 1] + db.translation[i3 + 1] - cy;
+        const pz = db.position[i3 + 2] + db.translation[i3 + 2] - cz;
+
+        db.finalOffset[i3] = e[0] * px + e[4] * py + e[8] * pz + e[12] + cx - db.position[i3] + db.linearMove[i3];
+        db.finalOffset[i3 + 1] = e[1] * px + e[5] * py + e[9] * pz + e[13] + cy - db.position[i3 + 1] + db.linearMove[i3 + 1];
+        db.finalOffset[i3 + 2] = e[2] * px + e[6] * py + e[10] * pz + e[14] + cz - db.position[i3 + 2] + db.linearMove[i3 + 2];
       }
 
-      const time = currentTime - delay;
-      const duration = db.lifetime[i];
-      const life = Math.min(Math.max(time / duration, 0), 1);
-
-      const cx = orb.center?.[0] ?? 0;
-      const cy = orb.center?.[1] ?? 0;
-      const cz = orb.center?.[2] ?? 0;
-
-      const ox = orb.x ? gpuMatchingIntegrate(orb.x, life, time, duration, orb.asRotation) : 0;
-      const oy = orb.y ? gpuMatchingIntegrate(orb.y, life, time, duration, orb.asRotation) : 0;
-      const oz = orb.z ? gpuMatchingIntegrate(orb.z, life, time, duration, orb.asRotation) : 0;
-
-      tempEuler.set(-ox, -oy, -oz);
-      tempMat4.setFromEuler(tempEuler);
-      const e = tempMat4.elements;
-      const px = db.position[i3] + db.translation[i3] - cx;
-      const py = db.position[i3 + 1] + db.translation[i3 + 1] - cy;
-      const pz = db.position[i3 + 2] + db.translation[i3 + 2] - cz;
-
-      db.finalOffset[i3] = e[0] * px + e[4] * py + e[8] * pz + e[12] + cx - db.position[i3] + db.linearMove[i3];
-      db.finalOffset[i3 + 1] = e[1] * px + e[5] * py + e[9] * pz + e[13] + cy - db.position[i3 + 1] + db.linearMove[i3 + 1];
-      db.finalOffset[i3 + 2] = e[2] * px + e[6] * py + e[10] * pz + e[14] + cz - db.position[i3 + 2] + db.linearMove[i3 + 2];
     }
   }
 }

@@ -43,8 +43,6 @@ export class SolveVelocityModule extends ParticleModule {
       let vy = db.velocity[i3 + 1];
       let vz = db.velocity[i3 + 2];
 
-      // 与老代码对齐：始终计算重力+速度修正，即使 gravity=[0,0,0]
-      // 老代码 uAcceleration uniform 始终存在，所以此块始终执行
       const d = this.data.gravityModifier.getIntegrateValue(0, time, duration);
       const ax = gx * d;
       const ay = gy * d;

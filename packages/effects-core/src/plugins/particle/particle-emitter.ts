@@ -1,8 +1,7 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../../math';
-import { calculateTranslation, createValueGetter } from '../../math';
-import type { ParsedParticleOptions } from './parse-spec';
+import { createValueGetter } from '../../math';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
@@ -60,7 +59,6 @@ export class ParticleEmitter {
   private looping = false;
   private particleFollowParent = false;
   private initialLastEmitTime = 0;
-  private particleOptions: ParsedParticleOptions;
   private trails?: TrailConfig;
 
   get dataBuffer (): ParticleDataBuffer {
@@ -71,7 +69,6 @@ export class ParticleEmitter {
     this.maxCount = data.maxCount;
     this.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
-    this.particleOptions = data.modules.initialize.options;
     this.renderer = renderer;
     this.trails = data.trails;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
@@ -367,28 +364,12 @@ export class ParticleEmitter {
   getPointPositionF64 (index: number): Vector3 {
     const db = this._dataBuffer;
     const i3 = index * 3;
-    const time = this.time - db.delayF64[index];
-    const lifetime = db.lifetimeF64[index];
 
-    const tempPos = new Vector3(db.positionF64[i3], db.positionF64[i3 + 1], db.positionF64[i3 + 2]);
-    const vel = new Vector3(db.velocityF64[i3], db.velocityF64[i3 + 1], db.velocityF64[i3 + 2]);
-    const acc = new Vector3(db.gravityF64[i3], db.gravityF64[i3 + 1], db.gravityF64[i3 + 2]);
-
-    const ret = calculateTranslation(new Vector3(), this.particleOptions, acc, time, lifetime, tempPos, vel);
-
-    const forceTarget = this.particleOptions.forceTarget;
-
-    if (forceTarget) {
-      const target = forceTarget.target || [0, 0, 0];
-      const life = forceTarget.curve.getValue(time / lifetime);
-      const dl = 1 - life;
-
-      ret.x = ret.x * dl + target[0] * life;
-      ret.y = ret.y * dl + target[1] * life;
-      ret.z = ret.z * dl + target[2] * life;
-    }
-
-    return ret;
+    return new Vector3(
+      db.positionF64[i3] + db.finalOffset[i3],
+      db.positionF64[i3 + 1] + db.finalOffset[i3 + 1],
+      db.positionF64[i3 + 2] + db.finalOffset[i3 + 2],
+    );
   }
 
   getPointPositionByIndex (index: number): Vector3 | null {

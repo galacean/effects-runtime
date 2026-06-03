@@ -30,37 +30,11 @@ export interface ParticleMeshData {
     y?: ValueGetter<number>,
     separateAxes?: boolean,
   },
-  forceTarget?: {
-    curve: ValueGetter<number>,
-    target: spec.vec3,
-  },
   colorOverLifetime?: {
     color?: number[][] | Texture,
     opacity?: ValueGetter<number>,
     separateAxes?: boolean,
   },
-  linearVelOverLifetime?: {
-    asMovement?: boolean,
-    x?: ValueGetter<number>,
-    y?: ValueGetter<number>,
-    z?: ValueGetter<number>,
-    enabled?: boolean,
-  } & Record<string, any>,
-  orbitalVelOverLifetime?: {
-    asRotation?: boolean,
-    x?: ValueGetter<number>,
-    y?: ValueGetter<number>,
-    z?: ValueGetter<number>,
-    enabled?: boolean,
-    center?: spec.vec3,
-  } & Record<string, any>,
-  rotationOverLifetime?: {
-    asRotation?: boolean,
-    x?: ValueGetter<number>,
-    y?: ValueGetter<number>,
-    z?: ValueGetter<number>,
-  },
-  speedOverLifetime?: ValueGetter<number>,
 }
 
 export interface ParticleMeshProps extends ParticleMeshData {
@@ -83,10 +57,6 @@ export interface ParticleMeshProps extends ParticleMeshData {
   textureFlip?: boolean,
   occlusion?: boolean,
   diffuse?: Texture,
-  forceTarget?: {
-    curve: ValueGetter<number>,
-    target: spec.vec3,
-  },
   // listIndex: number,
   // duration: number,
   maxCount: number,
@@ -102,12 +72,6 @@ export class ParticleMesh implements ParticleMeshData {
   maxParticleBufferCount: number;
   gravityModifier: ValueGetter<number>;
   sizeOverLifetime?: { x: ValueGetter<number>, y?: ValueGetter<number>, separateAxes?: boolean };
-  forceTarget?: { curve: ValueGetter<number>, target: spec.vec3 };
-  colorOverLifetime?: { color?: number[][], opacity?: ValueGetter<number>, separateAxes?: boolean };
-  linearVelOverLifetime?: { asMovement?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean };
-  orbitalVelOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean, center?: spec.vec3 };
-  rotationOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number> };
-  speedOverLifetime?: ValueGetter<number>;
   time: number;
   maxCount: number;
 
@@ -123,9 +87,9 @@ export class ParticleMesh implements ParticleMeshData {
   ) {
     const { env } = engine ?? {};
     const {
-      speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
+      colorOverLifetime, sizeOverLifetime,
       sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
-      gravity, forceTarget, side, occlusion, anchor, blending,
+      gravity, side, occlusion, anchor, blending,
       transparentOcclusion,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),
@@ -148,11 +112,6 @@ export class ParticleMesh implements ParticleMeshData {
     this.useSprite = useSprite;
     if (enableVertexTexture) {
       macros.push(['ENABLE_VERTEX_TEXTURE', true]);
-    }
-    if (speedOverLifetime) {
-      macros.push(['SPEED_OVER_LIFETIME', true]);
-      shaderCacheId |= 1 << 1;
-      uniformValues.uSpeedLifetimeValue = speedOverLifetime.toUniform(vertexKeyFrameMeta);
     }
     if (sprite?.animate) {
       macros.push(['USE_SPRITE', true]);
@@ -177,26 +136,6 @@ export class ParticleMesh implements ParticleMeshData {
       shaderCacheId |= 1 << 14;
       uniformValues.uSizeYByLifetimeValue = sizeOverLifetime?.y?.toUniform(vertexKeyFrameMeta);
     }
-    if (rotationOverLifetime?.z) {
-      uniformValues.uRZByLifeTimeValue = rotationOverLifetime.z.toUniform(vertexKeyFrameMeta);
-      shaderCacheId |= 1 << 15;
-      macros.push(['ROT_Z_LIFETIME', 1]);
-    }
-    if (rotationOverLifetime?.x) {
-      uniformValues.uRXByLifeTimeValue = rotationOverLifetime.x.toUniform(vertexKeyFrameMeta);
-      shaderCacheId |= 1 << 16;
-      macros.push(['ROT_X_LIFETIME', 1]);
-    }
-    if (rotationOverLifetime?.y) {
-      uniformValues.uRYByLifeTimeValue = rotationOverLifetime.y.toUniform(vertexKeyFrameMeta);
-      shaderCacheId |= 1 << 17;
-      macros.push(['ROT_Y_LIFETIME', 1]);
-    }
-    if (rotationOverLifetime?.asRotation) {
-      macros.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
-      shaderCacheId |= 1 << 18;
-    }
-    uniformValues.uGravityModifierValue = gravityModifier.toUniform(vertexKeyFrameMeta);
 
     if (halfFloatTexture && fragmentKeyFrameMeta.max) {
       shaderCacheId |= 1 << 20;
@@ -310,14 +249,8 @@ export class ParticleMesh implements ParticleMeshData {
     this.anchor = anchor;
     this.mesh = mesh;
     this.geometry = mesh.firstGeometry();
-    this.forceTarget = forceTarget;
     this.sizeOverLifetime = sizeOverLifetime;
-    this.speedOverLifetime = speedOverLifetime;
-    this.linearVelOverLifetime = linearVelOverLifetime;
-    this.orbitalVelOverLifetime = orbitalVelOverLifetime;
-    this.orbitalVelOverLifetime = orbitalVelOverLifetime;
     this.gravityModifier = gravityModifier;
-    this.rotationOverLifetime = rotationOverLifetime;
     this.maxCount = maxCount;
     // this.duration = duration;
     this.textureOffsets = textureFlip ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];

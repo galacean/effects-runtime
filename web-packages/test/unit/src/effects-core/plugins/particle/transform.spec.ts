@@ -1,4 +1,4 @@
-import { Player, ParticleSystem, VFXItem, BezierCurvePath, ParticleSystemRenderer } from '@galacean/effects';
+import { Player, ParticleSystem, VFXItem, BezierCurvePath } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -201,13 +201,11 @@ describe('core/plugins/particle/transform', () => {
     expect(itemContent).to.be.an.instanceof(ParticleSystem);
 
     // @ts-expect-error
-    const { position, rotation, path } = itemContent.basicTransform;
+    const { position, rotation, path } = itemContent.emitter.basicTransform;
 
     expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
     expect(position.toArray()).to.eql([0, 0, 0]);
     expect(path).to.be.an.instanceof(BezierCurvePath);
-    expect(item.getComponent(ParticleSystemRenderer).particleMesh.linearVelOverLifetime?.asMovement).to.be.true;
-    expect(item.getComponent(ParticleSystemRenderer).particleMesh.speedOverLifetime).to.not.exist;
   });
 });
 

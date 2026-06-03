@@ -87,7 +87,12 @@ export type SolveVelocityModuleData = {
 };
 
 export type SolveRotationModuleData = {
-  rotationOverLifetime?: ParticleMeshProps['rotationOverLifetime'],
+  rotationOverLifetime?: {
+    asRotation?: boolean,
+    x?: ValueGetter<number>,
+    y?: ValueGetter<number>,
+    z?: ValueGetter<number>,
+  },
 };
 
 export type SolveLinearMoveModuleData = {
@@ -180,7 +185,7 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
     bursts: (props.emission.bursts || []).map((c: any) => new Burst(c)),
   };
 
-  let rotationOverLifetime: ParticleMeshProps['rotationOverLifetime'];
+  let rotationOverLifetime: SolveRotationModuleData['rotationOverLifetime'];
   const rotOverLt = props.rotationOverLifetime;
 
   if (rotOverLt) {
@@ -279,18 +284,13 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
     side: renderer.side || spec.SideMode.DOUBLE,
     gravity,
     blending: renderer.blending || spec.BlendingMode.ALPHA,
-    rotationOverLifetime,
     gravityModifier: parsedOptions.gravityModifier,
-    linearVelOverLifetime: parsedOptions.linearVelOverLifetime,
-    orbitalVelOverLifetime: parsedOptions.orbitalVelOverLifetime,
-    speedOverLifetime: parsedOptions.speedOverLifetime,
     sprite: textureSheetAnimation,
     occlusion: !!renderer.occlusion,
     transparentOcclusion: !!renderer.transparentOcclusion,
     maxCount: options.maxCount,
     mask: 0,
     maskMode: 0,
-    forceTarget,
     diffuse: renderer.texture ? engine.findObject(renderer.texture) : undefined,
     sizeOverLifetime: sizeOverLifetimeGetter,
     anchor,
