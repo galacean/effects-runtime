@@ -6,12 +6,8 @@ precision mediump float;
 #include "./value.glsl"
 #include "./integrate.glsl"
 
-const float d2r = 3.141592653589793 / 180.;
-
 attribute vec3 aPos;
 attribute vec4 aOffset;//texcoord.xy time:start duration
-// attribute vec3 aVel;
-// attribute vec3 aRot;
 attribute vec4 aColor;
 attribute vec3 aDirX;
 attribute vec3 aDirY;
@@ -20,7 +16,6 @@ attribute vec3 aTranslation;
 attribute vec3 aRotation0;
 attribute vec3 aRotation1;
 attribute vec3 aRotation2;
-attribute vec3 aLinearMove;
 
 #ifdef USE_SPRITE
 attribute vec3 aSprite;//start duration cycles
@@ -33,47 +28,16 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime);
 varying vec4 vTexCoordBlend;
 #endif
 
-#ifdef FINAL_TARGET
-uniform vec3 uFinalTarget;
-uniform vec4 uForceCurve;
-#endif
-
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixV;
 uniform mat4 effects_MatrixVP;
 
 uniform vec4 uParams;//time duration endBehavior
-// uniform vec4 uAcceleration;
-// uniform vec4 uGravityModifierValue;
 uniform vec4 uOpacityOverLifetimeValue;
-// #ifdef ROT_X_LIFETIME
-// uniform vec4 uRXByLifeTimeValue;
-// #endif
-
-// #ifdef ROT_Y_LIFETIME
-// uniform vec4 uRYByLifeTimeValue;
-// #endif
-
-// #ifdef ROT_Z_LIFETIME
-// uniform vec4 uRZByLifeTimeValue;
-// #endif
 
 #ifdef COLOR_OVER_LIFETIME
 uniform sampler2D uColorOverLifetime;
 #endif
-
-// uniform vec4 uLinearXByLifetimeValue;
-// uniform vec4 uLinearYByLifetimeValue;
-// uniform vec4 uLinearZByLifetimeValue;
-
-// #ifdef SPEED_OVER_LIFETIME
-// uniform vec4 uSpeedLifetimeValue;
-// #endif
-
-uniform vec4 uOrbXByLifetimeValue;
-uniform vec4 uOrbYByLifetimeValue;
-uniform vec4 uOrbZByLifetimeValue;
-uniform vec3 uOrbCenter;
 
 uniform vec4 uSizeByLifetimeValue;
 
@@ -83,60 +47,6 @@ uniform vec4 uSizeYByLifetimeValue;
 varying float vLife;
 varying vec4 vColor;
 varying vec2 vTexCoord;
-
-vec3 calOrbitalMov(float _life, float _dur) {
-  vec3 orb = vec3(0.0);
-    #ifdef AS_ORBITAL_MOVEMENT
-    #define FUNC(a) getValueFromTime(_life,a)
-    #else
-    #define FUNC(a) getIntegrateFromTime0(_life,a) * _dur
-    #endif
-
-    #if ORB_VEL_X
-  orb.x = FUNC(uOrbXByLifetimeValue);
-    #endif
-
-    #if ORB_VEL_Y
-  orb.y = FUNC(uOrbYByLifetimeValue);
-    #endif
-
-    #if ORB_VEL_Z
-  orb.z = FUNC(uOrbZByLifetimeValue);
-    #endif
-    #undef FUNC
-  return orb;
-}
-
-// vec3 calLinearMov(float _life, float _dur) {
-//   vec3 mov = vec3(0.0);
-//     #ifdef AS_LINEAR_MOVEMENT
-//     #define FUNC(a) getValueFromTime(_life,a)
-//     #else
-//     #define FUNC(a) getIntegrateFromTime0(_life,a) * _dur
-//     #endif
-
-//     #if LINEAR_VEL_X
-//   mov.x = FUNC(uLinearXByLifetimeValue);
-//     #endif
-
-//     #if LINEAR_VEL_Y
-//   mov.y = FUNC(uLinearYByLifetimeValue);
-//     #endif
-
-//     #if LINEAR_VEL_Z
-//   mov.z = FUNC(uLinearZByLifetimeValue);
-//     #endif
-//     #undef FUNC
-//   return mov;
-// }
-
-mat3 mat3FromRotation(vec3 rotation) {
-  vec3 sinR = sin(rotation * d2r);
-  vec3 cosR = cos(rotation * d2r);
-  return mat3(cosR.z, -sinR.z, 0., sinR.z, cosR.z, 0., 0., 0., 1.) *
-    mat3(cosR.y, 0., sinR.y, 0., 1., 0., -sinR.y, 0, cosR.y) *
-    mat3(1., 0., 0., 0, cosR.x, -sinR.x, 0., sinR.x, cosR.x);
-}
 
     #ifdef USE_SPRITE
 
@@ -162,47 +72,9 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
 }
     #endif
 
-// vec3 calculateTranslation(vec3 vel, float t0, float t1, float dur) {
-//   float dt = t1 - t0; // 相对delay的时间
-//   float d = getIntegrateByTimeFromTime(0., dt, uGravityModifierValue);
-//   vec3 acc = uAcceleration.xyz * d;
-//     #ifdef SPEED_OVER_LIFETIME
-//   // dt / dur 归一化
-//   return vel * getIntegrateFromTime0(dt / dur, uSpeedLifetimeValue) * dur + acc;
-//     #endif
-//   return vel * dt + acc;
-// }
-
-// mat3 transformFromRotation(vec3 rot, float _life, float _dur) {
-//   vec3 rotation = rot;
-//     #ifdef ROT_LIFETIME_AS_MOVEMENT
-//     #define FUNC1(a) getValueFromTime(_life,a)
-//     #else
-//     #define FUNC1(a) getIntegrateFromTime0(_life,a) * _dur
-//     #endif
-
-//     #ifdef ROT_X_LIFETIME
-//   rotation.x += FUNC1(uRXByLifeTimeValue);
-//     #endif
-
-//     #ifdef ROT_Y_LIFETIME
-//   rotation.y += FUNC1(uRYByLifeTimeValue);
-//     #endif
-
-//     #ifdef ROT_Z_LIFETIME
-//   rotation.z += FUNC1(uRZByLifeTimeValue);
-//     #endif
-
-//   if(dot(rotation, rotation) == 0.0) {
-//     return mat3(1.0);
-//   }
-//         #undef FUNC1
-//   return mat3FromRotation(rotation);
-// }
-
 void main() {
   float time = uParams.x - aOffset.z;
-  float dur = aOffset.w; // 粒子生命周期
+  float dur = aOffset.w;
   if(time < 0. || time > dur) {
     gl_Position = vec4(-3., -3., -3., 1.);
   } else {
@@ -234,23 +106,7 @@ void main() {
         #endif
     mat3 aRotation = mat3(aRotation0, aRotation1, aRotation2);
     vec3 point = aRotation * (aDirX * size.x + aDirY * size.y);
-    // vec3 point = aRotation * (aDirX * size.x + aDirY * size.y);
-    // vec3 pt = calculateTranslation(aVel, aOffset.z, uParams.x, dur);
-    vec3 _pos = aPos + aTranslation;
-
-        #if ORB_VEL_X + ORB_VEL_Y + ORB_VEL_Z
-    _pos = mat3FromRotation(calOrbitalMov(life, dur)) * (_pos - uOrbCenter);
-    _pos += uOrbCenter;
-        #endif
-
-    _pos.xyz += aLinearMove;
-
-        #ifdef FINAL_TARGET
-    float force = getValueFromTime(life, uForceCurve);
-    vec4 pos = vec4(mix(_pos, uFinalTarget, force), 1.);
-        #else
-    vec4 pos = vec4(_pos, 1.0);
-        #endif
+    vec4 pos = vec4(aPos + aTranslation, 1.0);
 
         #if RENDER_MODE == 1
     pos.xyz += point;

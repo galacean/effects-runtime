@@ -94,9 +94,22 @@ export type SolveLinearMoveModuleData = {
   linearVelOverLifetime?: { asMovement?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean },
 };
 
+export type SolveOrbitalModuleData = {
+  enabled?: boolean,
+  asRotation?: boolean,
+  x?: ValueGetter<number>,
+  y?: ValueGetter<number>,
+  z?: ValueGetter<number>,
+  center?: vec3,
+};
+
+export type ForceTargetModuleData = {
+  curve: ValueGetter<number>,
+  target: vec3,
+};
+
 /**
  * 模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
- * 对齐 Pro 的 fromData → module descriptor 模式。
  */
 export type ParsedModuleData = {
   initialize: InitializeModuleData,
@@ -105,6 +118,8 @@ export type ParsedModuleData = {
   solveVelocity: SolveVelocityModuleData,
   solveRotation: SolveRotationModuleData,
   solveLinearMove: SolveLinearMoveModuleData,
+  solveOrbital: SolveOrbitalModuleData,
+  forceTarget?: ForceTargetModuleData,
 };
 
 /**
@@ -391,6 +406,14 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
   }
 
   const lv = parsedOptions.linearVelOverLifetime;
+  const ov = parsedOptions.orbitalVelOverLifetime;
+
+  if (lv && (lv.x || lv.y || lv.z)) {
+    lv.enabled = true;
+  }
+  if (ov && (ov.x || ov.y || ov.z)) {
+    ov.enabled = true;
+  }
 
   return {
     options: parsedOptions,
@@ -406,6 +429,8 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
         solveVelocity: { gravity: parsedOptions.gravity, gravityModifier: parsedOptions.gravityModifier, speedOverLifetime: parsedOptions.speedOverLifetime },
         solveRotation: { rotationOverLifetime },
         solveLinearMove: { linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined },
+        solveOrbital: parsedOptions.orbitalVelOverLifetime ?? {},
+        forceTarget: parsedOptions.forceTarget,
       },
     },
     particleMeshProps,

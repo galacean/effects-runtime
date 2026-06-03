@@ -95,8 +95,7 @@ export class ParticleSystemRenderer extends RendererComponent {
     }
     const geo = this.particleMesh.geometry;
 
-    this.expandToQuad(geo, 'aTranslation', db.translation, db.activeCount, 3);
-    this.expandToQuad(geo, 'aLinearMove', db.linearMove, db.activeCount, 3);
+    this.expandToQuad(geo, 'aTranslation', db.finalOffset, db.activeCount, 3);
     this.expandToQuad(geo, 'aRotation0', db.rotMatrix, db.activeCount, 9);
   }
 

@@ -2,15 +2,18 @@ import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter } from '../../math';
+import type { ParsedParticleOptions } from './parse-spec';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
 import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
-import type { EmitterData, ParsedModuleData, ParsedParticleOptions } from './parse-spec';
+import type { EmitterData, ParsedModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
+import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
 import { SolveLinearMoveModule } from './solve-linear-move-module';
+import { SolveOrbitalVelocityModule } from './solve-orbital-velocity-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
@@ -91,7 +94,11 @@ export class ParticleEmitter {
       new SolveVelocityModule(data.solveVelocity),
       new SolveRotationModule(data.solveRotation),
       new SolveLinearMoveModule(data.solveLinearMove),
+      new SolveOrbitalVelocityModule(data.solveOrbital),
     );
+    if (data.forceTarget) {
+      modules.push(new ForceTargetModule(data.forceTarget));
+    }
 
     return modules;
   }

@@ -144,7 +144,6 @@ export class ParticleMesh implements ParticleMeshData {
     const uniformValues: Record<string, any> = {};
     let vertex_lookup_texture = 0;
     let shaderCacheId = 0;
-    let useOrbitalVel;
 
     this.useSprite = useSprite;
     if (enableVertexTexture) {
@@ -170,39 +169,6 @@ export class ParticleMesh implements ParticleMeshData {
       uniformValues.uOpacityOverLifetimeValue = colorOverLifetime.opacity.toUniform(vertexKeyFrameMeta);
     } else {
       uniformValues.uOpacityOverLifetimeValue = createValueGetter(1).toUniform(vertexKeyFrameMeta);
-    }
-
-    ['x', 'y', 'z'].forEach((pro, i) => {
-      let defL = 0;
-      let defO = 0;
-
-      if (linearVelOverLifetime?.[pro]) {
-        uniformValues[`uLinear${pro.toUpperCase()}ByLifetimeValue`] = linearVelOverLifetime[pro].toUniform(vertexKeyFrameMeta);
-        defL = 1;
-        shaderCacheId |= 1 << (7 + i);
-        linearVelOverLifetime.enabled = true;
-      }
-      macros.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
-      if (orbitalVelOverLifetime?.[pro]) {
-        uniformValues[`uOrb${pro.toUpperCase()}ByLifetimeValue`] = orbitalVelOverLifetime[pro].toUniform(vertexKeyFrameMeta);
-        defO = 1;
-        shaderCacheId |= 1 << (10 + i);
-        useOrbitalVel = true;
-        orbitalVelOverLifetime.enabled = true;
-      }
-      macros.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
-    });
-    if (linearVelOverLifetime?.asMovement) {
-      macros.push(['AS_LINEAR_MOVEMENT', true]);
-      shaderCacheId |= 1 << 5;
-    }
-
-    if (useOrbitalVel) {
-      if (orbitalVelOverLifetime?.asRotation) {
-        macros.push(['AS_ORBITAL_MOVEMENT', true]);
-        shaderCacheId |= 1 << 6;
-      }
-      uniformValues.uOrbCenter = new Float32Array(orbitalVelOverLifetime?.center || [0, 0, 0]);
     }
 
     uniformValues.uSizeByLifetimeValue = sizeOverLifetime?.x.toUniform(vertexKeyFrameMeta);
@@ -231,13 +197,6 @@ export class ParticleMesh implements ParticleMeshData {
       shaderCacheId |= 1 << 18;
     }
     uniformValues.uGravityModifierValue = gravityModifier.toUniform(vertexKeyFrameMeta);
-
-    if (forceTarget) {
-      macros.push(['FINAL_TARGET', true]);
-      shaderCacheId |= 1 << 19;
-      uniformValues.uFinalTarget = new Float32Array(forceTarget.target || [0, 0, 0]);
-      uniformValues.uForceCurve = forceTarget.curve.toUniform(vertexKeyFrameMeta);
-    }
 
     if (halfFloatTexture && fragmentKeyFrameMeta.max) {
       shaderCacheId |= 1 << 20;
@@ -444,7 +403,6 @@ export class ParticleMesh implements ParticleMeshData {
         aRot: new Float32Array(32),
         aOffset: new Float32Array(16),
         aTranslation: new Float32Array(12),
-        aLinearMove: new Float32Array(12),
         aRotation0: new Float32Array(36),
       };
       const useSprite = this.useSprite;
@@ -565,7 +523,6 @@ function generateGeometryProps (
     //
     aOffset: { size: 4, stride: 4 * bpe, data: new Float32Array(0) },
     aTranslation: { size: 3, data: new Float32Array(0) },
-    aLinearMove: { size: 3, data: new Float32Array(0) },
     aRotation0: { size: 3, offset: 0, stride: 9 * bpe, data: new Float32Array(0) },
     aRotation1: { size: 3, offset: 3 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
     aRotation2: { size: 3, offset: 6 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },

@@ -49,6 +49,8 @@ export class ParticleDataBuffer {
   readonly rotMatrix: Float32Array;
   /** 线性位移累计值 xyz，3 分量 */
   readonly linearMove: Float32Array;
+  /** 最终位置偏移 xyz（translation + orbital + linearMove + forceTarget 合成结果），3 分量 */
+  readonly finalOffset: Float32Array;
 
   // --- Float64 通道（trail/raycast 位置计算需要 float64 精度） ---
 
@@ -91,7 +93,7 @@ export class ParticleDataBuffer {
     this.translation = new Float32Array(maxCount * 3);
     this.rotMatrix = new Float32Array(maxCount * 9);
     this.linearMove = new Float32Array(maxCount * 3);
-
+    this.finalOffset = new Float32Array(maxCount * 3);
     this.delayF64 = new Float64Array(maxCount);
     this.lifetimeF64 = new Float64Array(maxCount);
     this.positionF64 = new Float64Array(maxCount * 3);
@@ -116,6 +118,7 @@ export class ParticleDataBuffer {
     this.translation.fill(0);
     this.rotMatrix.fill(0);
     this.linearMove.fill(0);
+    this.finalOffset.fill(0);
     this.alive.fill(0);
   }
 }
