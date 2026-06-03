@@ -68,8 +68,27 @@ export type ParsedTrailConfig = {
   parentAffectsPosition: boolean,
 };
 
+export type InitializeParticleOptions = {
+  startSpeed: ValueGetter<number>,
+  startLifetime: ValueGetter<number>,
+  startDelay: ValueGetter<number>,
+  startColor: ValueGetter<spec.RGBAColorValue>,
+  start3DRotation?: boolean,
+  startRotationX?: ValueGetter<number>,
+  startRotationY?: ValueGetter<number>,
+  startRotationZ?: ValueGetter<number>,
+  startRotation?: ValueGetter<number>,
+  start3DSize: boolean,
+  startSizeX?: ValueGetter<number>,
+  startSizeY?: ValueGetter<number>,
+  startSize?: ValueGetter<number>,
+  sizeAspect?: ValueGetter<number>,
+  startTurbulence: boolean,
+  turbulence?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>],
+};
+
 export type InitializeModuleData = {
-  options: ParsedParticleOptions,
+  options: InitializeParticleOptions,
   shape: ShapeGenerator,
   textureSheetAnimation: ParsedTextureSheetAnimation | undefined,
   uvs: number[][],
@@ -290,8 +309,6 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
 
   const particleMeshProps: ParticleMeshProps = {
     name: 'ParticleSystem',
-    matrix: Matrix4.IDENTITY,
-    shaderCachePrefix,
     renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
     side: renderer.side || spec.SideMode.DOUBLE,
     blending: renderer.blending || spec.BlendingMode.ALPHA,
@@ -408,7 +425,27 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       particleFollowParent: !!parsedOptions.particleFollowParent,
       trails,
       modules: {
-        initialize: { options: parsedOptions, shape: shapeGenerator, textureSheetAnimation, uvs },
+        initialize: {
+          options: {
+            startSpeed: parsedOptions.startSpeed,
+            startLifetime: parsedOptions.startLifetime,
+            startDelay: parsedOptions.startDelay,
+            startColor: parsedOptions.startColor,
+            start3DRotation: parsedOptions.start3DRotation,
+            startRotationX: parsedOptions.startRotationX,
+            startRotationY: parsedOptions.startRotationY,
+            startRotationZ: parsedOptions.startRotationZ,
+            startRotation: parsedOptions.startRotation,
+            start3DSize: parsedOptions.start3DSize,
+            startSizeX: parsedOptions.startSizeX,
+            startSizeY: parsedOptions.startSizeY,
+            startSize: parsedOptions.startSize,
+            sizeAspect: parsedOptions.sizeAspect,
+            startTurbulence: parsedOptions.startTurbulence,
+            turbulence: parsedOptions.turbulence,
+          },
+          shape: shapeGenerator, textureSheetAnimation, uvs,
+        },
         spawnRate: { rateOverTime },
         burst: burstData,
         solveVelocity: { gravity: parsedOptions.gravity, gravityModifier: parsedOptions.gravityModifier, speedOverLifetime: parsedOptions.speedOverLifetime },

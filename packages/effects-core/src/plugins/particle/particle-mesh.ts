@@ -1,20 +1,14 @@
-import type * as spec from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Engine } from '../../engine';
-import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { MaterialProps } from '../../material';
 import {
   getPreMultiAlpha, Material, setBlendMode, setSideMode,
 } from '../../material';
-import {
-  createKeyFrameMeta, getKeyFrameMetaByRawValue,
-} from '../../math';
 import type {
-  Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
+  Attribute, GeometryProps, ShaderMacros,
 } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
@@ -33,7 +27,6 @@ export interface ParticleMeshProps extends ParticleMeshData {
   maskMode: number,
   side: number,
   transparentOcclusion?: boolean,
-  matrix?: Matrix4,
   sprite?: {
     animate?: boolean,
     blend?: boolean,
@@ -41,7 +34,6 @@ export interface ParticleMeshProps extends ParticleMeshData {
     row: number,
     total: number,
   },
-  gravity?: spec.vec3,
   useSprite?: boolean,
   textureFlip?: boolean,
   occlusion?: boolean,
@@ -49,7 +41,6 @@ export interface ParticleMeshProps extends ParticleMeshData {
   // listIndex: number,
   // duration: number,
   maxCount: number,
-  shaderCachePrefix: string,
   name: string,
   anchor: Vector2,
 }
@@ -411,191 +402,3 @@ function generateGeometryProps (
   return { attributes, indices: { data: new Uint16Array(0) }, name, maxVertex };
 }
 
-export function getParticleMeshShader (
-  item: spec.ParticleItem,
-  gpuCapability: GPUCapability,
-  env = '',
-) {
-  const props = item.content;
-  const renderMode = +(props.renderer?.renderMode || 0);
-  const macros: ShaderMacros = [
-    ['RENDER_MODE', renderMode],
-    ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
-  ];
-  const { detail } = gpuCapability;
-  const vertexKeyFrameMeta = createKeyFrameMeta();
-  const fragmentKeyFrameMeta = createKeyFrameMeta();
-  const enableVertexTexture = detail.maxVertexUniforms > 0;
-  const { speedOverLifetime } = props.positionOverLifetime ?? {};
-  let vertex_lookup_texture = 0;
-  let shaderCacheId = 0;
-
-  if (enableVertexTexture) {
-    macros.push(['ENABLE_VERTEX_TEXTURE', true]);
-  }
-
-  if (speedOverLifetime) {
-    macros.push(['SPEED_OVER_LIFETIME', true]);
-    shaderCacheId |= 1 << 1;
-    getKeyFrameMetaByRawValue(vertexKeyFrameMeta, speedOverLifetime);
-  }
-  const sprite = props.textureSheetAnimation;
-
-  if (sprite && sprite.animate) {
-    macros.push(['USE_SPRITE', true]);
-    shaderCacheId |= 1 << 2;
-  }
-
-  const colorOverLifetime = props.colorOverLifetime;
-
-  if (colorOverLifetime && colorOverLifetime.color) {
-    macros.push(['COLOR_OVER_LIFETIME', true]);
-    shaderCacheId |= 1 << 4;
-  }
-
-  const opacity = colorOverLifetime && colorOverLifetime.opacity;
-
-  if (opacity) {
-    getKeyFrameMetaByRawValue(vertexKeyFrameMeta, opacity);
-  }
-  const positionOverLifetime = props.positionOverLifetime;
-  let useOrbitalVel;
-
-  ['x', 'y', 'z'].forEach((pro, i) => {
-    let defL = 0;
-    const linearPro = 'linear' + pro.toUpperCase();
-    const orbitalPro = 'orbital' + pro.toUpperCase();
-
-    if (positionOverLifetime?.[linearPro as keyof spec.ParticlePositionOverLifetime]) {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime[linearPro as keyof spec.ParticlePositionOverLifetime] as spec.NumberExpression);
-      defL = 1;
-      shaderCacheId |= 1 << (7 + i);
-    }
-    macros.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
-    let defO = 0;
-
-    if (positionOverLifetime?.[orbitalPro as keyof spec.ParticlePositionOverLifetime]) {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime[orbitalPro as keyof spec.ParticlePositionOverLifetime] as spec.NumberExpression);
-      defO = 1;
-      shaderCacheId |= 1 << (10 + i);
-      useOrbitalVel = true;
-    }
-    macros.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
-  });
-  if (positionOverLifetime?.asMovement) {
-    macros.push(['AS_LINEAR_MOVEMENT', true]);
-    shaderCacheId |= 1 << 5;
-  }
-  if (useOrbitalVel) {
-    if (positionOverLifetime?.asRotation) {
-      macros.push(['AS_ORBITAL_MOVEMENT', true]);
-      shaderCacheId |= 1 << 6;
-    }
-  }
-
-  if (props.sizeOverLifetime) {
-    const sizeOverLifetime = props.sizeOverLifetime;
-    const separateAxes = sizeOverLifetime.separateAxes;
-
-    if (separateAxes) {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.x);
-      macros.push(['SIZE_Y_BY_LIFE', 1]);
-      shaderCacheId |= 1 << 14;
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.y);
-    } else {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.size);
-    }
-  }
-
-  if (props.rotationOverLifetime) {
-    const rot = props.rotationOverLifetime;
-
-    if (rot.z) {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot?.z);
-      shaderCacheId |= 1 << 15;
-      macros.push(['ROT_Z_LIFETIME', 1]);
-    }
-    if (rot.separateAxes) {
-      if (rot.x) {
-        getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.x);
-        shaderCacheId |= 1 << 16;
-        macros.push(['ROT_X_LIFETIME', 1]);
-      }
-      if (rot.y) {
-        getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.y);
-        shaderCacheId |= 1 << 17;
-        macros.push(['ROT_Y_LIFETIME', 1]);
-      }
-    }
-    if (rot?.asRotation) {
-      macros.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
-      shaderCacheId |= 1 << 18;
-    }
-  }
-
-  getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime?.gravityOverLifetime);
-  const forceOpt = positionOverLifetime?.forceTarget;
-
-  if (forceOpt) {
-    macros.push(['FINAL_TARGET', true]);
-    shaderCacheId |= 1 << 19;
-    getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime.forceCurve);
-  }
-  const HALF_FLOAT = detail.halfFloatTexture;
-
-  if (HALF_FLOAT && fragmentKeyFrameMeta.max) {
-    shaderCacheId |= 1 << 20;
-  }
-  const maxVertexUniforms = detail.maxVertexUniforms;
-  let vertexCurveTexture = vertexKeyFrameMeta.max + vertexKeyFrameMeta.curves.length - 32 > maxVertexUniforms;
-
-  if (getConfig(RENDER_PREFER_LOOKUP_TEXTURE)) {
-    vertexCurveTexture = true;
-  }
-
-  if (vertexCurveTexture && HALF_FLOAT && enableVertexTexture) {
-    vertex_lookup_texture = 1;
-  }
-  const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
-  const shader: SharedShaderWithSource = {
-    fragment: particleFrag,
-    vertex: `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`,
-    shared: true,
-    cacheId: shaderCache,
-    macros,
-    name: `particle#${item.name}`,
-  };
-
-  macros.push(
-    ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
-    ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
-    ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
-    ['FRAG_MAX_KEY_FRAME_COUNT', fragmentKeyFrameMeta.max],
-  );
-
-  return { shader, vertex: vertexKeyFrameMeta.index, fragment: fragmentKeyFrameMeta.index };
-}
-
-export function modifyMaxKeyframeShader (shader: SharedShaderWithSource, maxVertex: number, maxFrag: number) {
-  const shaderIds = shader.cacheId?.split('+') as Array<string | number>;
-
-  shaderIds[3] = maxVertex;
-  shaderIds[5] = maxFrag;
-  shader.cacheId = shaderIds.join('+');
-
-  if (!shader.macros) {
-    return;
-  }
-
-  for (let i = 0; i < shader.macros.length; i++) {
-    const marco = shader.macros[i];
-
-    if (marco[0] === 'VERT_CURVE_VALUE_COUNT') {
-      marco[1] = maxVertex;
-    } else if (marco[0] === 'FRAG_CURVE_VALUE_COUNT') {
-      marco[1] = maxFrag;
-
-      break;
-    }
-  }
-}

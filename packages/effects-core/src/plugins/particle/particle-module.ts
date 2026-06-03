@@ -20,6 +20,7 @@ type ParticleModuleStage =
  * particleSpawn 的 module 在入口处守卫这些字段即可，无需类型强转。
  */
 type ParticleModuleContext = {
+  /** 帧间隔（秒） */
   deltaTime: number,
   currentTime: number,
   emitterLifetime: number,

@@ -1,7 +1,6 @@
 import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import type { ShapeParticle } from '../../shape';
-import type { Transform } from '../../transform';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
@@ -34,8 +33,7 @@ export class InitializeParticleModule extends ParticleModule {
       const data = this.data.shape.generate(generator);
       const result = this.initializeToBuffer(
         data, ctx.emitterLifetime, worldMatrix,
-        emitter.componentTransform, emitter.upDirectionWorld,
-        slotIndex, db, positionOffset,
+        emitter.upDirectionWorld, slotIndex, db, positionOffset,
       );
 
       emitter.upDirectionWorld = result.upDirectionWorld;
@@ -46,7 +44,6 @@ export class InitializeParticleModule extends ParticleModule {
     data: ShapeParticle,
     emitterLifetime: number,
     worldMatrix: Matrix4,
-    emitterTransform: Transform,
     upDirectionWorld: Vector3 | null,
     slotIndex: number,
     db: ParticleDataBuffer,
@@ -55,13 +52,12 @@ export class InitializeParticleModule extends ParticleModule {
     const options = this.data.options;
     const shape = this.data.shape;
     const speed = options.startSpeed.getValue(emitterLifetime);
-    const matrix4 = options.particleFollowParent ? Matrix4.IDENTITY : worldMatrix;
 
-    const position = matrix4.transformPoint(data.position, new Vector3());
+    const position = worldMatrix.transformPoint(data.position, new Vector3());
 
     let direction = data.direction;
 
-    direction = matrix4.transformNormal(direction, tempDir).normalize();
+    direction = worldMatrix.transformNormal(direction, tempDir).normalize();
     if (options.startTurbulence && options.turbulence) {
       for (let i = 0; i < 3; i++) {
         tempVec3.setElement(i, options.turbulence[i].getValue(emitterLifetime));
@@ -82,7 +78,7 @@ export class InitializeParticleModule extends ParticleModule {
         } else {
           upDirectionWorld = Vector3.Z.clone();
         }
-        matrix4.transformNormal(upDirectionWorld);
+        worldMatrix.transformNormal(upDirectionWorld);
       }
       dirX.crossVectors(dirY, upDirectionWorld).normalize();
       if (dirX.isZero()) {
@@ -129,18 +125,16 @@ export class InitializeParticleModule extends ParticleModule {
 
     vel.multiply(speed);
 
-    if (!options.particleFollowParent) {
-      const tempScale = new Vector3();
+    const e = worldMatrix.elements;
+    const sx = Math.sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]);
+    const sy = Math.sqrt(e[4] * e[4] + e[5] * e[5] + e[6] * e[6]);
 
-      emitterTransform.assignWorldTRS(undefined, undefined, tempScale);
-      size.x *= tempScale.x;
-      size.y *= tempScale.y;
-    }
+    size.x *= sx;
+    size.y *= sy;
 
     const delay = options.startDelay.getValue(emitterLifetime);
     const lifetime = options.startLifetime.getValue(emitterLifetime);
     const uv = randomArrItem(this.data.uvs, true);
-    const gravity = options.gravity;
 
     let sprite: vec3 | undefined;
     const tsa = this.data.textureSheetAnimation;
@@ -213,15 +207,6 @@ export class InitializeParticleModule extends ParticleModule {
       db.sprite[i3 + 1] = sprite[1];
       db.sprite[i3 + 2] = sprite[2];
     }
-    if (gravity) {
-      db.gravity[i3] = gravity[0];
-      db.gravity[i3 + 1] = gravity[1];
-      db.gravity[i3 + 2] = gravity[2];
-      db.gravityF64[i3] = gravity[0];
-      db.gravityF64[i3 + 1] = gravity[1];
-      db.gravityF64[i3 + 2] = gravity[2];
-    }
-
     db.translation[i3] = 0;
     db.translation[i3 + 1] = 0;
     db.translation[i3 + 2] = 0;

@@ -30,8 +30,6 @@ export class ParticleDataBuffer {
   readonly dirX: Float32Array;
   /** Quad Y 方向，3 分量 */
   readonly dirY: Float32Array;
-  /** 重力加速度 xyz，3 分量 */
-  readonly gravity: Float32Array;
   /** 精灵动画参数 (animDelay, animDuration, cycles)，3 分量 */
   readonly sprite: Float32Array;
   /** 粒子尺寸 (width, height)，2 分量 */
@@ -62,7 +60,6 @@ export class ParticleDataBuffer {
   readonly lifetimeF64: Float64Array;
   readonly positionF64: Float64Array;
   readonly velocityF64: Float64Array;
-  readonly gravityF64: Float64Array;
   readonly sizeF64: Float64Array;
 
   // --- 生命周期管理 ---
@@ -86,7 +83,6 @@ export class ParticleDataBuffer {
     this.rotation = new Float32Array(maxCount * 3);
     this.dirX = new Float32Array(maxCount * 3);
     this.dirY = new Float32Array(maxCount * 3);
-    this.gravity = new Float32Array(maxCount * 3);
     this.sprite = new Float32Array(maxCount * 3);
 
     this.size = new Float32Array(maxCount * 2);
@@ -104,7 +100,6 @@ export class ParticleDataBuffer {
     this.lifetimeF64 = new Float64Array(maxCount);
     this.positionF64 = new Float64Array(maxCount * 3);
     this.velocityF64 = new Float64Array(maxCount * 3);
-    this.gravityF64 = new Float64Array(maxCount * 3);
     this.sizeF64 = new Float64Array(maxCount * 2);
 
     this.alive = new Uint8Array(maxCount);
