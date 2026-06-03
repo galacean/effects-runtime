@@ -1,9 +1,16 @@
+function createArray (length: number, fillValue = 0): number[] {
+  const arr = new Array<number>(length);
+
+  arr.fill(fillValue);
+
+  return arr;
+}
+
 /**
  * 粒子系统 SoA 数据缓冲区。
  *
- * 每个属性是独立的 Float32Array，按粒子索引访问。
- * 参考 particle-system-pro 的 ProDataBuffer 设计，但简化为
- * 固定容量 + 命名通道，适配标准粒子系统的渐进式迁移。
+ * 每个属性是独立的 number[]，按粒子索引访问。统一使用 JS 原生 number（Float64）精度，
+ * 避免 Float32/Float64 混用导致的精度问题。
  *
  * 通道分两类：
  * - Spawn 通道：粒子出生时一次性写入（position, velocity, color 等）
@@ -15,95 +22,82 @@ export class ParticleDataBuffer {
   // --- Spawn-time state (written once at particle birth) ---
 
   /** 粒子出生延迟（秒） */
-  readonly delay: Float32Array;
+  readonly delay: number[];
   /** 粒子生命周期（秒） */
-  readonly lifetime: Float32Array;
+  readonly lifetime: number[];
   /** 随机种子 [0,1)，出生时写入 */
-  readonly seed: Float32Array;
+  readonly seed: number[];
   /** 出生位置 xyz，3 分量 (index * 3 + component) */
-  readonly position: Float32Array;
+  readonly position: number[];
   /** 初始速度 xyz，3 分量 */
-  readonly velocity: Float32Array;
+  readonly velocity: number[];
   /** 初始旋转（欧拉角 xyz 弧度），3 分量 */
-  readonly rotation: Float32Array;
+  readonly rotation: number[];
   /** Quad X 方向，3 分量 */
-  readonly dirX: Float32Array;
+  readonly dirX: number[];
   /** Quad Y 方向，3 分量 */
-  readonly dirY: Float32Array;
+  readonly dirY: number[];
   /** 精灵动画参数 (animDelay, animDuration, cycles)，3 分量 */
-  readonly sprite: Float32Array;
+  readonly sprite: number[];
   /** 粒子尺寸 (width, height)，2 分量 */
-  readonly size: Float32Array;
+  readonly size: number[];
   /** 粒子颜色 (r, g, b, a)，4 分量 */
-  readonly color: Float32Array;
+  readonly color: number[];
   /** 纹理坐标 (u, v, w, h)，4 分量 */
-  readonly uv: Float32Array;
+  readonly uv: number[];
 
   // --- Per-frame accumulated state (updated each substep by modules) ---
 
   /** 位移积分累计值 xyz，3 分量 */
-  readonly translation: Float32Array;
+  readonly translation: number[];
   /** 旋转矩阵 3x3 列主序，9 分量 */
-  readonly rotMatrix: Float32Array;
+  readonly rotMatrix: number[];
   /** 线性位移累计值 xyz，3 分量 */
-  readonly linearMove: Float32Array;
+  readonly linearMove: number[];
   /** 最终位置偏移 xyz（translation + orbital + linearMove + forceTarget 合成结果），3 分量 */
-  readonly finalOffset: Float32Array;
+  readonly finalOffset: number[];
   /** size over lifetime 缩放因子 (scaleX, scaleY)，2 分量 */
-  readonly sizeScale: Float32Array;
+  readonly sizeScale: number[];
   /** color/opacity over lifetime 缩放因子 (r, g, b, a)，4 分量 */
-  readonly colorScale: Float32Array;
-
-  // --- Float64 通道（trail/raycast 位置计算需要 float64 精度） ---
-
-  readonly delayF64: Float64Array;
-  readonly lifetimeF64: Float64Array;
-  readonly positionF64: Float64Array;
-  readonly velocityF64: Float64Array;
-  readonly sizeF64: Float64Array;
+  readonly colorScale: number[];
 
   // --- 生命周期管理 ---
 
   /** 粒子存活标记，0=空闲 1=存活 */
-  readonly alive: Uint8Array;
-  /** 粒子过期时间 (delay + lifetime)，用于回收最老粒子。Float64 与老代码 Link 精度一致 */
-  readonly expiry: Float64Array;
+  readonly alive: number[];
+  /** 粒子过期时间 (delay + lifetime)，用于回收最老粒子 */
+  readonly expiry: number[];
 
   private _activeCount = 0;
 
   constructor (maxCount: number) {
     this.maxCount = maxCount;
 
-    this.delay = new Float32Array(maxCount);
-    this.lifetime = new Float32Array(maxCount);
-    this.seed = new Float32Array(maxCount);
+    this.delay = createArray(maxCount);
+    this.lifetime = createArray(maxCount);
+    this.seed = createArray(maxCount);
 
-    this.position = new Float32Array(maxCount * 3);
-    this.velocity = new Float32Array(maxCount * 3);
-    this.rotation = new Float32Array(maxCount * 3);
-    this.dirX = new Float32Array(maxCount * 3);
-    this.dirY = new Float32Array(maxCount * 3);
-    this.sprite = new Float32Array(maxCount * 3);
+    this.position = createArray(maxCount * 3);
+    this.velocity = createArray(maxCount * 3);
+    this.rotation = createArray(maxCount * 3);
+    this.dirX = createArray(maxCount * 3);
+    this.dirY = createArray(maxCount * 3);
+    this.sprite = createArray(maxCount * 3);
 
-    this.size = new Float32Array(maxCount * 2);
+    this.size = createArray(maxCount * 2);
 
-    this.color = new Float32Array(maxCount * 4);
-    this.uv = new Float32Array(maxCount * 4);
+    this.color = createArray(maxCount * 4);
+    this.uv = createArray(maxCount * 4);
 
-    this.translation = new Float32Array(maxCount * 3);
-    this.rotMatrix = new Float32Array(maxCount * 9);
-    this.linearMove = new Float32Array(maxCount * 3);
-    this.finalOffset = new Float32Array(maxCount * 3);
-    this.sizeScale = new Float32Array(maxCount * 2);
-    this.colorScale = new Float32Array(maxCount * 4);
-    this.delayF64 = new Float64Array(maxCount);
-    this.lifetimeF64 = new Float64Array(maxCount);
-    this.positionF64 = new Float64Array(maxCount * 3);
-    this.velocityF64 = new Float64Array(maxCount * 3);
-    this.sizeF64 = new Float64Array(maxCount * 2);
+    this.translation = createArray(maxCount * 3);
+    this.rotMatrix = createArray(maxCount * 9);
+    this.linearMove = createArray(maxCount * 3);
+    this.finalOffset = createArray(maxCount * 3);
+    this.sizeScale = createArray(maxCount * 2, 1);
+    this.colorScale = createArray(maxCount * 4, 1);
 
-    this.alive = new Uint8Array(maxCount);
-    this.expiry = new Float64Array(maxCount);
+    this.alive = createArray(maxCount);
+    this.expiry = createArray(maxCount);
   }
 
   get activeCount (): number {

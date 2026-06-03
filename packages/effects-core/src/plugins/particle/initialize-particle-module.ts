@@ -154,8 +154,6 @@ export class InitializeParticleModule extends ParticleModule {
 
     db.delay[slotIndex] = delay;
     db.lifetime[slotIndex] = lifetime;
-    db.delayF64[slotIndex] = delay;
-    db.lifetimeF64[slotIndex] = lifetime;
 
     db.rotation[i3] = rot.x;
     db.rotation[i3 + 1] = rot.y;
@@ -168,16 +166,10 @@ export class InitializeParticleModule extends ParticleModule {
     db.position[i3] = position.x + offsetX;
     db.position[i3 + 1] = position.y + offsetY;
     db.position[i3 + 2] = position.z + offsetZ;
-    db.positionF64[i3] = position.x + offsetX;
-    db.positionF64[i3 + 1] = position.y + offsetY;
-    db.positionF64[i3 + 2] = position.z + offsetZ;
 
     db.velocity[i3] = vel.x;
     db.velocity[i3 + 1] = vel.y;
     db.velocity[i3 + 2] = vel.z;
-    db.velocityF64[i3] = vel.x;
-    db.velocityF64[i3 + 1] = vel.y;
-    db.velocityF64[i3 + 2] = vel.z;
 
     db.color[i4] = color[0];
     db.color[i4 + 1] = color[1];
@@ -186,8 +178,6 @@ export class InitializeParticleModule extends ParticleModule {
 
     db.size[i2] = size.x;
     db.size[i2 + 1] = size.y;
-    db.sizeF64[i2] = size.x;
-    db.sizeF64[i2 + 1] = size.y;
 
     db.dirX[i3] = dirX.x;
     db.dirX[i3 + 1] = dirX.y;

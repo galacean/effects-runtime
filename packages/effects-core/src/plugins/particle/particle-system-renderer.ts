@@ -101,7 +101,7 @@ export class ParticleSystemRenderer extends RendererComponent {
     this.expandToQuad(geo, 'aColorScale', db.colorScale, db.activeCount, 4);
   }
 
-  private expandToQuad (geo: any, attr: string, src: Float32Array, count: number, stride: number): void {
+  private expandToQuad (geo: any, attr: string, src: number[], count: number, stride: number): void {
     const dst = geo.getAttributeData(attr) as Float32Array;
     const n = Math.min(count, Math.floor(dst.length / (stride * 4)));
 
@@ -134,11 +134,11 @@ export class ParticleSystemRenderer extends RendererComponent {
         if (trails.dieWithParticles) {
           this.clearTrail(ti);
         }
-      } else if (timePassed > db.delayF64[ti]) {
+      } else if (timePassed > db.delay[ti]) {
         const position = getPointPositionF64(ti);
         const color = trails.inheritParticleColor ? this.getParticlePointColor(ti) : [1, 1, 1, 1];
         const si2 = ti * 2;
-        const size: vec3 = [db.sizeF64[si2], db.sizeF64[si2 + 1], 1];
+        const size: vec3 = [db.size[si2], db.size[si2 + 1], 1];
 
         let width = 1;
         let lifetime = trails.lifetime.getValue(emitterLifetime);
@@ -161,7 +161,7 @@ export class ParticleSystemRenderer extends RendererComponent {
           color,
           lifetime,
           size: width,
-          time: db.delayF64[ti],
+          time: db.delay[ti],
         });
       }
     }

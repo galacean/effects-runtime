@@ -347,7 +347,6 @@ export class ParticleEmitter {
       const slotIdx = slotIndices[i];
 
       db.delay[slotIdx] += meshTime + i * timeDelta;
-      db.delayF64[slotIdx] += meshTime + i * timeDelta;
       this.commitParticle(slotIdx, maxCount, db);
       spawnedSlots.push(slotIdx);
     }
@@ -381,9 +380,9 @@ export class ParticleEmitter {
     const i3 = index * 3;
 
     return new Vector3(
-      db.positionF64[i3] + db.finalOffset[i3],
-      db.positionF64[i3 + 1] + db.finalOffset[i3 + 1],
-      db.positionF64[i3 + 2] + db.finalOffset[i3 + 2],
+      db.position[i3] + db.finalOffset[i3],
+      db.position[i3 + 1] + db.finalOffset[i3 + 1],
+      db.position[i3 + 2] + db.finalOffset[i3 + 2],
     );
   }
 
@@ -415,7 +414,7 @@ export class ParticleEmitter {
 
       res.push({
         center: pos,
-        size: new Vector3(db.sizeF64[bi2], db.sizeF64[bi2 + 1], 1),
+        size: new Vector3(db.size[bi2], db.size[bi2 + 1], 1),
       });
     }
 
@@ -514,7 +513,6 @@ export class ParticleEmitter {
       if (db.alive[li]) {
         db.expiry[li] -= duration;
         db.delay[li] -= duration;
-        db.delayF64[li] -= duration;
       }
     }
     this.renderer.minusTimeForLoop(duration);
@@ -539,7 +537,7 @@ export class ParticleEmitter {
 
   private commitParticle (slotIndex: number, maxCount: number, db: ParticleDataBuffer): void {
     db.alive[slotIndex] = 1;
-    db.expiry[slotIndex] = db.delayF64[slotIndex] + db.lifetimeF64[slotIndex];
+    db.expiry[slotIndex] = db.delay[slotIndex] + db.lifetime[slotIndex];
     this.aliveCount = Math.min(this.aliveCount + 1, maxCount);
 
     db.seed[slotIndex] = Math.random();
