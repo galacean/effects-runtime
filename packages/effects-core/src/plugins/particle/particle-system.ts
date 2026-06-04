@@ -1,6 +1,8 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import type { Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -37,6 +39,9 @@ export class ParticleSystem extends Component implements Maskable {
   private emitter: ParticleEmitter | null = null;
   private specResult: ParsedSpecResult | null = null;
   private clickedPointIndex = -1;
+  private pathTime = 0;
+  private pathBasePosition = { x: 0, y: 0, z: 0 };
+  private pathCurve: ValueGetter<any> | undefined;
 
   constructor (
     engine: Engine,
@@ -122,6 +127,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   reset () {
     this.emitter?.fullReset();
+    this.pathTime = 0;
   }
 
   stopParticleEmission () {
@@ -137,7 +143,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   simulate (time: number) {
-    this.emitter?.tick(time * 1000);
+    this.tickEmitter(time * 1000);
     if (this.emitter) {
       this.emitter.frozen = true;
     }
@@ -225,13 +231,11 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.emitter.setup(result.emitterData, this.renderer);
 
-    this.emitter.componentTransform = this.transform;
-    const transformPath = this.props.emitterTransform && this.props.emitterTransform.path;
-
-    this.emitter.initTransform(this.item.transform.position, transformPath);
     this.emitter.itemDuration = this.item.duration;
     this.emitter.endBehaviorValue = this.item.endBehavior;
 
+    this.initEmitterTransform();
+    this.pushTransformToEmitter();
     this.startEmit();
 
     this.item.on('click', () => {
@@ -244,8 +248,62 @@ export class ParticleSystem extends Component implements Maskable {
 
   override onUpdate (dt: number): void {
     if (!this.emitter?.frozen) {
-      this.emitter?.tick(dt);
+      this.tickEmitter(dt);
     }
+  }
+
+  private tickEmitter (dt: number): void {
+    if (!this.emitter) {
+      return;
+    }
+    this.updateItemPosition(dt / 1000);
+    this.pushTransformToEmitter();
+    this.emitter.tick(dt);
+  }
+
+  private pushTransformToEmitter (): void {
+    if (!this.emitter) {
+      return;
+    }
+    this.emitter.worldMatrix = this.transform.getWorldMatrix();
+    this.emitter.parentPosition = this.transform.parentTransform?.position ?? null;
+
+    if (this.emitter.particleFollowParent) {
+      this.renderer.updateWorldMatrix(this.emitter.worldMatrix);
+    }
+  }
+
+  private initEmitterTransform (): void {
+    const position = this.item.transform.position.clone();
+    const transformPath = this.props.emitterTransform?.path;
+
+    if (transformPath) {
+      if (transformPath[0] === spec.ValueType.CONSTANT_VEC3) {
+        position.add(transformPath[1]);
+      } else {
+        this.pathCurve = createValueGetter(transformPath);
+      }
+    }
+    this.pathBasePosition = { x: position.x, y: position.y, z: position.z };
+    this.updateItemPosition(0);
+  }
+
+  private updateItemPosition (dt: number): void {
+    if (!this.emitter) {
+      return;
+    }
+    this.pathTime += dt;
+    const { x, y, z } = this.pathBasePosition;
+    let px = x, py = y, pz = z;
+
+    if (this.pathCurve) {
+      const pathVal = this.pathCurve.getValue(this.pathTime / this.emitter.itemDuration);
+
+      px += pathVal.x ?? pathVal[0] ?? 0;
+      py += pathVal.y ?? pathVal[1] ?? 0;
+      pz += pathVal.z ?? pathVal[2] ?? 0;
+    }
+    this.transform.setPosition(px, py, pz);
   }
 
   override onDestroy (): void {

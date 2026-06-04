@@ -1,7 +1,6 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
@@ -19,7 +18,6 @@ import { SolveRotationModule } from './solve-rotation-module';
 import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
-import type { Transform } from '../../transform';
 
 type TrailConfig = {
   lifetime: ValueGetter<number>,
@@ -46,8 +44,8 @@ export class ParticleEmitter {
   spawnInfos: SpawnInfo[] = [];
 
   // --- Config (set after setup) ---
-  basicTransform: { position: Vector3, path?: any } = { position: new Vector3() };
-  componentTransform: Transform;
+  worldMatrix: Matrix4 = Matrix4.IDENTITY;
+  parentPosition: Vector3 | null = null;
   itemDuration = 1;
   endBehaviorValue = 0;
 
@@ -135,31 +133,6 @@ export class ParticleEmitter {
     this.renderer?.reset();
   }
 
-  initTransform (itemTransformPosition: Vector3, emitterTransformPath: any): void {
-    const position = itemTransformPosition.clone();
-    let path;
-
-    if (emitterTransformPath) {
-      if (emitterTransformPath[0] === 3) { // spec.ValueType.CONSTANT_VEC3
-        position.add(emitterTransformPath[1]);
-      } else {
-        path = createValueGetter(emitterTransformPath);
-      }
-    }
-    this.basicTransform = { position, path };
-
-    const selfPos = position.clone();
-
-    if (path) {
-      selfPos.add(path.getValue(0));
-    }
-    this.componentTransform.setPosition(selfPos.x, selfPos.y, selfPos.z);
-
-    if (this.particleFollowParent) {
-      this.renderer.updateWorldMatrix(this.componentTransform.getWorldMatrix());
-    }
-  }
-
   runStage (stage: ParticleModuleStage, ctx: ParticleModuleContext): void {
     for (const module of this.modules) {
       if (module.enabled && module.stage === stage) {
@@ -181,21 +154,18 @@ export class ParticleEmitter {
   }
 
   get parentTransformPosition (): Vector3 | null {
-    return this.componentTransform?.parentTransform?.position.clone() ?? null;
+    return this.parentPosition?.clone() ?? null;
   }
 
   tick (delta: number): void {
     if (!this.started) {
       return;
     }
-    const dtSec = delta / 1000;
-
-    this.time += dtSec;
-
+    this.time += delta / 1000;
     this.trailUpdated = false;
     this.renderer.updateTime(this.time, delta);
 
-    const ctx = this.buildModuleContext(dtSec);
+    const ctx = this.buildModuleContext(delta / 1000);
 
     // 1. update existing particles
     if (this._dataBuffer.activeCount > 0) {
@@ -216,8 +186,6 @@ export class ParticleEmitter {
 
   private advanceEmitter (ctx: ParticleModuleContext): void {
     if (this.timePassed < this.itemDuration) {
-      this.updateEmitterTransform(this.timePassed);
-
       this.spawnInfos.length = 0;
       this.runStage('emitterUpdate', ctx);
 
@@ -525,21 +493,7 @@ export class ParticleEmitter {
   }
 
   private getWorldMatrix (): Matrix4 {
-    return this.particleFollowParent ? Matrix4.IDENTITY : this.componentTransform.getWorldMatrix();
-  }
-
-  private updateEmitterTransform (time: number): void {
-    const { path, position } = this.basicTransform;
-    const selfPos = position.clone();
-
-    if (path) {
-      selfPos.add(path.getValue(time / this.itemDuration));
-    }
-    this.componentTransform.setPosition(selfPos.x, selfPos.y, selfPos.z);
-
-    if (this.particleFollowParent) {
-      this.renderer.updateWorldMatrix(this.componentTransform.getWorldMatrix());
-    }
+    return this.particleFollowParent ? Matrix4.IDENTITY : this.worldMatrix;
   }
 
   private handleLoop (duration: number): void {
