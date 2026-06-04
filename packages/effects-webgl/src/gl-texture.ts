@@ -1,5 +1,5 @@
 import type {
-  Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  CanvasAndContext, Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
   TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec, Engine,
@@ -343,22 +343,31 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     type: GLenum,
     image: spec.HTMLImageLike,
   ): spec.vec2 {
-    const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
+    const { sourceType } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
+    let pooledCanvasAndContext: CanvasAndContext | undefined;
 
     if (sourceType !== TextureSourceType.video) {
-      let shouldResize = minFilter !== gl.NEAREST || magFilter !== gl.NEAREST || wrapS !== gl.CLAMP_TO_EDGE || wrapT !== gl.CLAMP_TO_EDGE;
+      // 仅在图片超过 maxTextureSize 时才需要缩放上传；
+      // 对于非 2 的幂（non-power-of-two） + LINEAR / 非 CLAMP_TO_EDGE 这种 WebGL1 受限场景，
+      // 这里保持与历史版本一致不做强制 2 的幂（power-of-two）化（如需对齐由上层显式处理），
+      // 否则会与旧版渲染结果出现整张纹理级别的差异。
+      const isOversize = image.width > maxSize || image.height > maxSize;
 
-      shouldResize = shouldResize || image.width > maxSize || image.height > maxSize;
-      if (shouldResize) {
-        // fix android webgl1 img lost error
-        setTimeout(() => {
-          img = this.resizeImage(image);
-        });
+      if (isOversize) {
+        pooledCanvasAndContext = resizeImageByCanvas(image, maxSize);
+        if (pooledCanvasAndContext) {
+          img = pooledCanvasAndContext.canvas;
+        }
       }
     }
     gl.texImage2D(target, level, internalformat, format, type, img);
+
+    if (pooledCanvasAndContext) {
+      canvasPool.releaseCanvasAndContext(pooledCanvasAndContext);
+    }
+
     const size: spec.vec2 = [img.width, img.height];
 
     if (sourceType === TextureSourceType.video) {
@@ -393,23 +402,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texImage2D(target, level, internalformat, width, height, 0, format, type, neoBuffer);
 
     return [width, height];
-  }
-
-  private resizeImage (image: spec.HTMLImageLike, targetWidth?: number, targetHeight?: number): HTMLCanvasElement | HTMLImageElement {
-    const { detail } = this.engine.gpuCapability;
-    const maxSize = detail.maxTextureSize ?? 2048;
-
-    const gl = (this.engine as GLEngine).gl;
-
-    if (isWebGL2(gl) && (image.width < maxSize && image.height < maxSize)) {
-      return image as HTMLImageElement;
-    }
-
-    const canvas = resizeImageByCanvas(image, maxSize, targetWidth, targetHeight);
-
-    if (canvas) { return canvas; }
-
-    return image as HTMLImageElement;
   }
 
   override async reloadData (): Promise<void> {
@@ -510,20 +502,20 @@ function resizeImageByCanvas (
   maxSize: number,
   targetWidth?: number,
   targetHeight?: number,
-): HTMLCanvasElement | undefined {
+): CanvasAndContext | undefined {
   const { width, height } = image;
   const nw = Math.min(maxSize, targetWidth || nearestPowerOfTwo(width));
   const nh = Math.min(maxSize, targetHeight || nearestPowerOfTwo(height));
 
   if (nh !== height || nw !== width) {
-    const canvas = canvasPool.getCanvas();
-    const ctx = canvas.getContext('2d');
+    const canvasAndContext = canvasPool.getCanvasAndContext(nw, nh);
+    const { canvas, context } = canvasAndContext;
 
     canvas.width = nw;
     canvas.height = nh;
-    ctx?.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
+    context.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
     logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}.`);
 
-    return canvas;
+    return canvasAndContext;
   }
 }

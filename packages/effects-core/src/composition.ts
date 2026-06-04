@@ -317,6 +317,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.emit('animationevent', eventData);
     });
 
+    this.sceneRoot.setParent(this.root);
+
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
     this.startTime = sourceContent?.startTime ?? 0;

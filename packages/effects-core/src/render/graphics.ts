@@ -6,11 +6,13 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
 import { Material } from '../material';
-import type { StrokeAttributes, ShapePrimitive } from '../math';
-import { buildLine, buildAdaptiveBezier, Circle, Polygon, Rectangle, Triangle } from '../math';
+import type { StrokeAttributes } from '../math';
+import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
 import type { Texture } from '../texture';
 import type { FontStyle, FontWeight } from './text-cache';
 import { ATLAS_SIZE, TextCache } from './text-cache';
+import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
+import type { ShapePrimitive } from '../math/shape/shape-primitive';
 
 /**
  * 纹理 UV 子矩形(Y 向上,Y=0 在底部)。 全图为 `{u0:0, v0:0, u1:1, v1:1}`

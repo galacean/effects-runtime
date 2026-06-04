@@ -8,7 +8,8 @@ export type FrameCompareLoopOptions = {
   profile: FrameSuiteProfile,
   scene: FrameCompareScene,
   renderFramework: GLType,
-  idx: [number, number],
+  sceneIndex: number,
+  suiteTitle: string,
 };
 
 export type FrameCompareLoopResult = {
@@ -20,7 +21,7 @@ export type FrameCompareLoopResult = {
 };
 
 export async function runFrameCompareLoop (options: FrameCompareLoopOptions): Promise<FrameCompareLoopResult> {
-  const { controller, profile, scene, renderFramework, idx } = options;
+  const { controller, profile, scene, renderFramework, sceneIndex, suiteTitle } = options;
   const { oldPlayer, newPlayer } = controller;
   const breakWhenTimeGteDuration = scene.breakWhenTimeGteDuration ?? profile.breakWhenTimeGteDuration ?? false;
 
@@ -103,12 +104,13 @@ export async function runFrameCompareLoop (options: FrameCompareLoopOptions): Pr
         const diffFileName = `${namePrefix}_${scene.name}_${time}_diff.png`;
         const diffHeatmapDataURL = imageCmp.getLastDiffHeatmapDataURL();
 
-        await oldPlayer.saveCanvasToImage(oldFileName, idx);
-        await newPlayer.saveCanvasToImage(newFileName, idx, true);
+        await oldPlayer.saveCanvasToImage(oldFileName, sceneIndex, suiteTitle);
+        await newPlayer.saveCanvasToImage(newFileName, sceneIndex, suiteTitle, true);
         if (diffHeatmapDataURL) {
           await newPlayer.saveCanvasToImage(
             diffFileName,
-            idx,
+            sceneIndex,
+            suiteTitle,
             true,
             diffHeatmapDataURL,
             'diff-heatmap',

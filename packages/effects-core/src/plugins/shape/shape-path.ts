@@ -2,16 +2,11 @@
 // https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Polygon } from './polygon';
-import { buildAdaptiveBezier } from './build-adaptive-bezier';
+import { buildAdaptiveBezier } from '../../math/shape/build-adaptive-bezier';
 import type { GraphicsPath } from './graphics-path';
-import type { ShapePrimitive } from './shape-primitive';
-import { Ellipse } from './ellipse';
-import type { StarType } from './poly-star';
-import { PolyStar } from './poly-star';
-import { Rectangle } from './rectangle';
-import { Triangle } from './triangle';
-import { Circle } from './circle';
+import type { ShapePrimitive } from '../../math/shape/shape-primitive';
+import type { StarType } from '../../math';
+import { Polygon, PolyStar, Triangle, Rectangle, Circle, Ellipse } from '../../math';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
@@ -67,12 +62,12 @@ export class ShapePath {
 
           break;
         }
-        case 'triangle':{
+        case 'triangle': {
           this.triangle(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
 
           break;
         }
-        case 'closePath':{
+        case 'closePath': {
           this.closePath();
 
           break;

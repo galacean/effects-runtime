@@ -4,21 +4,25 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import * as spec from '@galacean/effects-specification';
-import { effectsClass } from '../decorators';
-import type { Engine } from '../engine';
-import type { Maskable, MaterialProps } from '../material';
-import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
-import type { BoundingBoxTriangle, HitTestTriangleParams, BoundingBoxInfo } from '../plugins';
-import type { Renderer } from '../render';
-import { GLSLVersion, Geometry } from '../render';
-import type { GradientValue, Polygon, ShapePath, StrokeAttributes } from '../math';
-import { buildLine, createValueGetter, extractMinAndMax, GraphicsPath, StarType } from '../math';
-import { RendererComponent } from './renderer-component';
-import type { Texture } from '../texture/texture';
-import { glContext } from '../gl';
-import vert from '../math/shape/shaders/shape.vert.glsl';
-import frag from '../math/shape/shaders/shape.frag.glsl';
-import type { ItemRenderer } from './base-render-component';
+import { effectsClass } from '../../decorators';
+import type { Engine } from '../../engine';
+import type { Maskable, MaterialProps } from '../../material';
+import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
+import type { Renderer } from '../../render';
+import { GLSLVersion, Geometry } from '../../render';
+import type { GradientValue, StrokeAttributes } from '../../math';
+import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
+import type { ItemRenderer } from '../../components';
+import { RendererComponent } from '../../components';
+import type { Texture } from '../../texture/texture';
+import { glContext } from '../../gl';
+import vert from './shaders/shape.vert.glsl';
+import frag from './shaders/shape.frag.glsl';
+import { TrimPath } from './trim-path';
+import { GraphicsPath } from './graphics-path';
+import type { ShapePath } from './shape-path';
+import type { BoundingBoxInfo } from '../interact/mesh-collider';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 
 type Paint = SolidPaint | GradientPaint | TexturePaint;
 
@@ -171,6 +175,7 @@ export interface PolygonAttribute extends ShapeAttributes {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent implements Maskable {
+
   private static readonly tempMVP = Matrix4.fromIdentity();
 
   private shapeDirty = true;
@@ -191,6 +196,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   private strokeJoin = spec.LineJoin.Miter;
   private strokes: Paint[] = [];
   private shapeAttributes: ShapeAttributes;
+  private _strokeTrimPath: TrimPath | null = null;
+  private _fillTrimPath: TrimPath | null = null;
 
   private rendererOptions: ItemRenderer;
   private geometry: Geometry;
@@ -199,6 +206,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
   get shape () {
     return this.shapeAttributes;
+  }
+
+  get strokeTrimPath (): TrimPath | null {
+    return this._strokeTrimPath;
+  }
+
+  get fillTrimPath (): TrimPath | null {
+    return this._fillTrimPath;
   }
 
   /**
@@ -290,7 +305,11 @@ export class ShapeComponent extends RendererComponent implements Maskable {
       const screenScale = this.computeScreenScale();
 
       this.buildPath(this.shapeAttributes, screenScale);
-      this.buildGeometryFromPath(this.graphicsPath.shapePath, screenScale);
+
+      const fillPath = this._fillTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+      const strokePath = this._strokeTrimPath?.createTrimmedPath(this.graphicsPath, screenScale) ?? this.graphicsPath;
+
+      this.buildGeometryFromPath(fillPath.shapePath, strokePath.shapePath, screenScale);
       this.shapeDirty = false;
     }
 
@@ -378,14 +397,13 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     return this.boundingBoxInfo;
   }
 
-  private buildGeometryFromPath (shapePath: ShapePath, screenScale: number) {
-    const shapePrimitives = shapePath.shapePrimitives;
+  private buildGeometryFromPath (fillShapePath: ShapePath, strokeShapePath: ShapePath, screenScale: number) {
     const vertices: number[] = [];
     const indices: number[] = [];
 
     // Triangulate shapePrimitives, build fill and stroke shape geometry
     if (this.fills.length > 0) {
-      for (const shapePrimitive of shapePrimitives) {
+      for (const shapePrimitive of fillShapePath.shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
@@ -399,7 +417,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const fillIndexCount = indices.length;
 
     if (this.strokes.length > 0) {
-      for (const shapePrimitive of shapePrimitives) {
+      for (const shapePrimitive of strokeShapePath.shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
@@ -412,8 +430,10 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
         let close = true;
 
-        if (this.shapeAttributes.type === spec.ShapePrimitiveType.Custom) {
-          close = (shape as Polygon).closePath;
+        if (this._strokeTrimPath && !this._strokeTrimPath.isIdentity()) {
+          close = false;
+        } else if (shape instanceof Polygon) {
+          close = shape.closePath;
         }
 
         shape.build(points, screenScale);
@@ -732,6 +752,23 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     this.strokeCap = data.strokeCap ?? spec.LineCap.Butt;
     this.strokeWidth = data.strokeWidth ?? 1;
     this.strokeJoin = data.strokeJoin ?? spec.LineJoin.Miter;
+
+    this._strokeTrimPath = null;
+    this._fillTrimPath = null;
+
+    //@ts-expect-error TODO: Update spec.
+    if (data.strokeTrimPath) {
+      this._strokeTrimPath = new TrimPath();
+      //@ts-expect-error TODO: Update spec.
+      this._strokeTrimPath.fromData(data.strokeTrimPath);
+    }
+
+    //@ts-expect-error TODO: Update spec.
+    if (data.fillTrimPath) {
+      this._fillTrimPath = new TrimPath();
+      //@ts-expect-error TODO: Update spec.
+      this._fillTrimPath.fromData(data.fillTrimPath);
+    }
 
     this.fills.length = 0;
     this.fillMaterials.length = 0;

@@ -77,9 +77,10 @@ export class TextComponent extends MaskableGraphic {
     this.name = 'MText' + seed++;
 
     // 初始化canvas资源
-    this.canvas = canvasPool.getCanvas();
-    canvasPool.saveCanvas(this.canvas);
-    this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    const canvasAndContext = canvasPool.getCanvasAndContext(1, 1);
+
+    this.canvas = canvasAndContext.canvas;
+    this.context = canvasAndContext.context;
 
     // 使用默认值初始化
     const defaultData = this.getDefaultProps();
@@ -115,6 +116,7 @@ export class TextComponent extends MaskableGraphic {
   override onDestroy (): void {
     super.onDestroy();
     this.disposeTextTexture();
+    this.releaseTextCanvas();
   }
 
   override fromData (data: spec.TextComponentData): void {

@@ -7,7 +7,7 @@ import { MemoryEditor } from './imgui/imgui_memory_editor';
 import './panels';
 import './custom-editors';
 import { imGuiIni } from './imgui/imgui-config';
-import { uiManager } from './core/ui-manager';
+import { editorApp } from './core/editor-application';
 import { Project } from './panels';
 import { EditorThemeManager } from './panels/theme';
 
@@ -140,7 +140,7 @@ async function _init (): Promise<void> {
   }
 
   await GalaceanEffects.initialize();
-  uiManager.createWindows();
+  editorApp.initialize();
 
   StartUpImage();
   StartUpVideo();
@@ -246,7 +246,7 @@ function _loop (time: number): void {
     ImGui.End();
   }
 
-  uiManager.draw();
+  editorApp.tick(time);
 
   ImGui.EndFrame();
 
