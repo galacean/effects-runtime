@@ -460,7 +460,6 @@ export class ParticleEmitter {
     if (this.trails?.dieWithParticles) {
       this.renderer.clearTrail(index);
     }
-    db.alive[index] = 0;
     db.lifetime[index] = 0;
   }
 
