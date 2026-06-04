@@ -26,7 +26,6 @@ export class ParticleEmitter {
   ended = false;
   frozen = false;
   emissionStopped = false;
-  aliveCount = 0;
   nextSlotIndex = 0;
   generatedCount = 0;
   lastEmitTime = 0;
@@ -114,7 +113,6 @@ export class ParticleEmitter {
     this.loopStartTime = 0;
     this.ended = false;
     this.frozen = false;
-    this.aliveCount = 0;
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
     this.lastEmitTime = this.initialLastEmitTime;
@@ -231,7 +229,12 @@ export class ParticleEmitter {
     const remaining = requestedCount - slots.length;
 
     for (let i = 0; i < Math.min(remaining, expired.length); i++) {
-      slots.push(expired[i]);
+      const recycled = expired[i];
+
+      if (this.trails?.dieWithParticles) {
+        this.renderer.clearTrail(recycled);
+      }
+      slots.push(recycled);
     }
 
     return slots;
@@ -313,7 +316,8 @@ export class ParticleEmitter {
         db.position[si3 + 2] += positionOffset[2];
       }
       db.delay[slotIdx] += meshTime + i * timeDelta;
-      this.commitParticle(slotIdx, maxCount, db);
+      db.alive[slotIdx] = 1;
+      db.expiry[slotIdx] = db.delay[slotIdx] + db.lifetime[slotIdx];
       spawnedSlots.push(slotIdx);
     }
     if (isRateSource) {
@@ -510,21 +514,6 @@ export class ParticleEmitter {
     };
   }
 
-  private commitParticle (slotIndex: number, maxCount: number, db: ParticleDataBuffer): void {
-    db.alive[slotIndex] = 1;
-    db.expiry[slotIndex] = db.delay[slotIndex] + db.lifetime[slotIndex];
-    this.aliveCount = Math.min(this.aliveCount + 1, maxCount);
-
-    db.seed[slotIndex] = Math.random();
-    if (this.trails?.dieWithParticles) {
-      this.renderer.clearTrail(slotIndex);
-    }
-    if (this.trails?.parentAffectsPosition) {
-      const e = this.worldMatrix.elements;
-
-      this.renderer.setTrailStartPosition(slotIndex, new Vector3(e[12], e[13], e[14]));
-    }
-  }
 }
 
 const tempPos = new Vector3();

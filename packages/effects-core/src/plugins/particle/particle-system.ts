@@ -73,7 +73,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   get particleCount () {
-    return this.emitter?.aliveCount ?? 0;
+    return this.emitter?.dataBuffer?.activeCount ?? 0;
   }
   /**
    * 获取当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。

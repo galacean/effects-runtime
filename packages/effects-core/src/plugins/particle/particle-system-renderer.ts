@@ -252,12 +252,15 @@ export class ParticleSystemRenderer extends RendererComponent {
         if (trails.parentAffectsPosition) {
           const e = worldMatrix.elements;
 
-          position.add(tempParentPos.set(e[12], e[13], e[14]));
-          const startPos = this.getTrailStartPosition(ti);
+          tempParentPos.set(e[12], e[13], e[14]);
+          let startPos = this.getTrailStartPosition(ti);
 
-          if (startPos) {
-            position.subtract(startPos);
+          if (!startPos) {
+            this.setTrailStartPosition(ti, tempParentPos.clone());
+            startPos = tempParentPos;
           }
+          position.add(tempParentPos);
+          position.subtract(startPos);
         }
         const color = trails.inheritParticleColor ? this.getParticlePointColor(ti) : [1, 1, 1, 1];
         const si2 = ti * 2;
