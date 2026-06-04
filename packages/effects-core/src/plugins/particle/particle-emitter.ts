@@ -428,7 +428,7 @@ export class ParticleEmitter {
   // Particle Query (position / box / raycast)
   // ========================
 
-  getPointPositionF64 (index: number): Vector3 {
+  getPointPosition (index: number): Vector3 {
     const db = this._dataBuffer;
     const i3 = index * 3;
 
@@ -439,35 +439,19 @@ export class ParticleEmitter {
     );
   }
 
-  getPointPositionByIndex (index: number): Vector3 | null {
-    const db = this._dataBuffer;
-
-    if (!db || index < 0 || index >= db.activeCount || !db.alive[index]) {
-      console.error('Get point error.');
-
-      return null;
-    }
-
-    return this.getPointPositionF64(index);
-  }
-
   getParticleBoxes (): { center: Vector3, size: Vector3 }[] {
     const db = this._dataBuffer;
     const res: { center: Vector3, size: Vector3 }[] = [];
 
-    if (!db) {
-      return res;
-    }
     for (let i = 0; i < db.activeCount; i++) {
       if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
         continue;
       }
-      const pos = this.getPointPositionF64(i);
-      const bi2 = i * 2;
+      const i2 = i * 2;
 
       res.push({
-        center: pos,
-        size: new Vector3(db.size[bi2], db.size[bi2 + 1], 1),
+        center: this.getPointPosition(i),
+        size: new Vector3(db.size[i2], db.size[i2 + 1], 1),
       });
     }
 
@@ -487,7 +471,7 @@ export class ParticleEmitter {
       if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
         continue;
       }
-      const pos = this.getPointPositionF64(i);
+      const pos = this.getPointPosition(i);
       const ray = options.ray;
 
       if (ray && ray.intersectSphere({ center: pos, radius: options.radius }, temp)) {
@@ -533,7 +517,7 @@ export class ParticleEmitter {
       timePassed: this.timePassed,
       emitterLifetime: this.emitterLifetime,
       trails: this.trails,
-      getPointPositionF64: i => this.getPointPositionF64(i),
+      getPointPosition: i => this.getPointPosition(i),
       parentTransformPosition: this.parentTransformPosition,
     });
   }

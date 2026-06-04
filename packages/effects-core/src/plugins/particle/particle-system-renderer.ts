@@ -25,7 +25,7 @@ export type TrailUpdateContext = {
     inheritParticleColor: boolean,
     parentAffectsPosition: boolean,
   },
-  getPointPositionF64: (index: number) => Vector3,
+  getPointPosition: (index: number) => Vector3,
   parentTransformPosition: Vector3 | null,
 };
 
@@ -124,7 +124,7 @@ export class ParticleSystemRenderer extends RendererComponent {
    * 更新拖尾数据。对齐 Pro 的 renderer 负责读取粒子状态 → 生成 trail geometry。
    */
   updateTrailData (ctx: TrailUpdateContext): void {
-    const { db, timePassed, emitterLifetime, trails, getPointPositionF64, parentTransformPosition } = ctx;
+    const { db, timePassed, emitterLifetime, trails, getPointPosition, parentTransformPosition } = ctx;
 
     for (let ti = 0; ti < db.activeCount; ti++) {
       if (!db.alive[ti]) {
@@ -135,7 +135,7 @@ export class ParticleSystemRenderer extends RendererComponent {
           this.clearTrail(ti);
         }
       } else if (timePassed > db.delay[ti]) {
-        const position = getPointPositionF64(ti);
+        const position = getPointPosition(ti);
         const color = trails.inheritParticleColor ? this.getParticlePointColor(ti) : [1, 1, 1, 1];
         const si2 = ti * 2;
         const size: vec3 = [db.size[si2], db.size[si2 + 1], 1];

@@ -148,7 +148,13 @@ export class ParticleSystem extends Component implements Maskable {
   // ========================
 
   getPointPositionByIndex (index: number): Vector3 | null {
-    return this.emitter?.getPointPositionByIndex(index) ?? null;
+    const db = this.emitter?.dataBuffer;
+
+    if (!db || index < 0 || index >= db.activeCount || !db.alive[index]) {
+      return null;
+    }
+
+    return this.emitter!.getPointPosition(index);
   }
 
   getParticleBoxes (): { center: Vector3, size: Vector3 }[] {
