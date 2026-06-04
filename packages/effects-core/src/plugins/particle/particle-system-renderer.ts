@@ -237,7 +237,7 @@ export class ParticleSystemRenderer extends RendererComponent {
       if (!db.alive[ti]) {
         continue;
       }
-      if (db.expiry[ti] < timePassed) {
+      if ((db.delay[ti] + db.lifetime[ti]) < timePassed) {
         if (trails.dieWithParticles) {
           this.clearTrail(ti);
         }

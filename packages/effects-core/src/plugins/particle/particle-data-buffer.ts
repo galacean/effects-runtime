@@ -21,7 +21,7 @@ export class ParticleDataBuffer {
 
   // --- Spawn-time state (written once at particle birth) ---
 
-  /** 粒子出生延迟（秒） */
+  /** 粒子出生时的 emitter 时间戳 */
   readonly delay: number[];
   /** 粒子年龄（秒），= currentTime - delay。对齐 Pro 的 Particle.Age */
   readonly age: number[];
@@ -65,8 +65,6 @@ export class ParticleDataBuffer {
 
   /** 粒子存活标记，0=空闲 1=存活 */
   readonly alive: number[];
-  /** 粒子过期时间 (delay + lifetime)，用于回收最老粒子 */
-  readonly expiry: number[];
 
   private _activeCount = 0;
 
@@ -97,7 +95,6 @@ export class ParticleDataBuffer {
     this.colorScale = createArray(maxCount * 4, 1);
 
     this.alive = createArray(maxCount);
-    this.expiry = createArray(maxCount);
   }
 
   get activeCount (): number {

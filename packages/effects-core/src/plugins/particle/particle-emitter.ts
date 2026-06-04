@@ -218,12 +218,12 @@ export class ParticleEmitter {
     const expired: number[] = [];
 
     for (let s = 0; s < db.maxCount; s++) {
-      if (db.alive[s] && (db.expiry[s] - this.loopStartTime) <= this.timePassed) {
+      if (db.alive[s] && db.age[s] >= db.lifetime[s]) {
         expired.push(s);
       }
     }
     expired.sort((a, b) => {
-      const diff = db.expiry[a] - db.expiry[b];
+      const diff = (db.delay[a] + db.lifetime[a]) - (db.delay[b] + db.lifetime[b]);
 
       return diff !== 0 ? diff : b - a;
     });
@@ -318,8 +318,7 @@ export class ParticleEmitter {
         db.position[si3 + 2] += positionOffset[2];
       }
       db.delay[slotIdx] += meshTime + i * timeDelta;
-      db.alive[slotIdx] = 1;
-      db.expiry[slotIdx] = db.delay[slotIdx] + db.lifetime[slotIdx];
+      db.age[slotIdx] = this.time - db.delay[slotIdx];
       spawnedSlots.push(slotIdx);
     }
     if (isRateSource) {
@@ -369,7 +368,6 @@ export class ParticleEmitter {
       // size: scale by world matrix column lengths
       db.size[i2] *= sx;
       db.size[i2 + 1] *= sy;
-
     }
   }
 
@@ -381,7 +379,7 @@ export class ParticleEmitter {
       return true;
     }
     for (let s = 0; s < db.maxCount; s++) {
-      if (db.alive[s] && (db.expiry[s] - this.loopStartTime) <= this.timePassed) {
+      if (db.alive[s] && db.age[s] >= db.lifetime[s]) {
         return true;
       }
     }
@@ -462,7 +460,7 @@ export class ParticleEmitter {
     if (this.trails?.dieWithParticles) {
       this.renderer.clearTrail(index);
     }
-    db.expiry[index] = 0;
+    db.alive[index] = 0;
     db.lifetime[index] = 0;
   }
 
@@ -492,7 +490,6 @@ export class ParticleEmitter {
 
     for (let li = 0; li < db.activeCount; li++) {
       if (db.alive[li]) {
-        db.expiry[li] -= duration;
         db.delay[li] -= duration;
       }
     }

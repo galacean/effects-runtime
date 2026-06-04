@@ -130,6 +130,7 @@ export class InitializeParticleModule extends ParticleModule {
     db.delay[slotIndex] = delay;
     db.lifetime[slotIndex] = lifetime;
     db.seed[slotIndex] = Math.random();
+    db.alive[slotIndex] = 1;
 
     db.rotation[i3] = rot.x;
     db.rotation[i3 + 1] = rot.y;
