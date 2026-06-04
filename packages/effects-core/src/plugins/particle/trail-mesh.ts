@@ -30,9 +30,7 @@ export type TrailMeshProps = {
   occlusion: boolean,
   transparentOcclusion: boolean,
   lifetime: ValueGetter<number>,
-  mask: number,
   shaderCachePrefix: string,
-  maskMode: number,
   name: string,
 };
 

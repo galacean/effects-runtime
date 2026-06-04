@@ -106,6 +106,10 @@ export interface MaskReference {
   inverted: boolean,
 }
 
+/**
+ * @deprecated 2.10 起蒙版模式不再通过单一枚举表达，runtime 内部已不再使用此枚举。
+ * 仅为兼容旧版本对外导出的接口而保留，请改用 `MaskProcessor` 的多蒙版 API。
+ */
 export enum MaskMode {
   /**
    * 无
@@ -124,3 +128,4 @@ export enum MaskMode {
    */
   REVERSE_OBSCURED = 3,
 }
+
