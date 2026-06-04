@@ -21,9 +21,7 @@ export class ParticleDataBuffer {
 
   // --- Spawn-time state (written once at particle birth) ---
 
-  /** 粒子出生时的 emitter 时间戳 */
-  readonly delay: number[];
-  /** 粒子年龄（秒），= currentTime - delay。对齐 Pro 的 Particle.Age */
+  /** 粒子年龄（秒），每帧 += dt。对齐 Pro 的 Particle.Age */
   readonly age: number[];
   /** 粒子生命周期（秒） */
   readonly lifetime: number[];
@@ -71,7 +69,6 @@ export class ParticleDataBuffer {
   constructor (maxCount: number) {
     this.maxCount = maxCount;
 
-    this.delay = createArray(maxCount);
     this.age = createArray(maxCount);
     this.lifetime = createArray(maxCount);
     this.seed = createArray(maxCount);

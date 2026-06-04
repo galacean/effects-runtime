@@ -6,10 +6,10 @@ export class UpdateAgeModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
+    const dt = ctx.deltaTime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
-      db.age[i] = currentTime - db.delay[i];
+      db.age[i] += dt;
     }
   }
 }

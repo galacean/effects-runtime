@@ -65,7 +65,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
     #endif
 
 void main() {
-  float time = uParams.x - aOffset.z;
+  float time = aOffset.z;
   float dur = aOffset.w;
   if(time < 0. || time > dur) {
     gl_Position = vec4(-3., -3., -3., 1.);

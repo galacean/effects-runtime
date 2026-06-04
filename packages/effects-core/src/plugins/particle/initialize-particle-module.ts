@@ -127,7 +127,7 @@ export class InitializeParticleModule extends ParticleModule {
     const i2 = slotIndex * 2;
     const i9 = slotIndex * 9;
 
-    db.delay[slotIndex] = delay;
+    db.age[slotIndex] = -delay;
     db.lifetime[slotIndex] = lifetime;
     db.seed[slotIndex] = Math.random();
     db.alive[slotIndex] = 1;

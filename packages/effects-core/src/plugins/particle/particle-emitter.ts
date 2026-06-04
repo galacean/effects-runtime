@@ -182,10 +182,12 @@ export class ParticleEmitter {
       for (const info of this.spawnInfos) {
         this.particleSpawn(this._dataBuffer, this.maxCount, info, spawnedSlots);
       }
+      const firstFrameCtx = { ...ctx, deltaTime: 0 };
+
       for (const slot of spawnedSlots) {
-        ctx.firstIndex = slot;
-        ctx.lastIndex = slot + 1;
-        this.runStage('particleUpdate', ctx);
+        firstFrameCtx.firstIndex = slot;
+        firstFrameCtx.lastIndex = slot + 1;
+        this.runStage('particleUpdate', firstFrameCtx);
       }
     } else if (this.looping) {
       this.flushTrails();
@@ -223,7 +225,7 @@ export class ParticleEmitter {
       }
     }
     expired.sort((a, b) => {
-      const diff = (db.delay[a] + db.lifetime[a]) - (db.delay[b] + db.lifetime[b]);
+      const diff = (db.lifetime[a] - db.age[a]) - (db.lifetime[b] - db.age[b]);
 
       return diff !== 0 ? diff : b - a;
     });
@@ -249,7 +251,6 @@ export class ParticleEmitter {
     spawnedSlots: number[],
   ): void {
     let count: number;
-    let timeDelta: number;
     let generator: SpawnGenerator;
     let positionOffset: readonly [number, number, number] | null;
 
@@ -263,19 +264,16 @@ export class ParticleEmitter {
         return;
       }
       count = resolved.count;
-      timeDelta = 0;
       generator = resolved.generator;
       positionOffset = resolved.positionOffset;
     } else {
       count = spawnInfo.count;
-      timeDelta = spawnInfo.timeDelta;
       generator = spawnInfo.generator;
       positionOffset = null;
     }
 
     const worldMatrix = this.getWorldMatrix();
     const requestedCount = Math.min(count, maxCount);
-    const meshTime = this.time;
     const isRateSource = generator.useGeneratedCountIndex;
 
     const slotIndices = this.preAllocateSlots(db, maxCount, requestedCount);
@@ -307,20 +305,16 @@ export class ParticleEmitter {
 
     this.bakeNewParticlesToWorld(slotIndices, worldMatrix, db);
 
-    for (let i = 0; i < slotIndices.length; i++) {
-      const slotIdx = slotIndices[i];
-
-      if (positionOffset) {
+    if (positionOffset) {
+      for (const slotIdx of slotIndices) {
         const si3 = slotIdx * 3;
 
         db.position[si3] += positionOffset[0];
         db.position[si3 + 1] += positionOffset[1];
         db.position[si3 + 2] += positionOffset[2];
       }
-      db.delay[slotIdx] += meshTime + i * timeDelta;
-      db.age[slotIdx] = this.time - db.delay[slotIdx];
-      spawnedSlots.push(slotIdx);
     }
+    spawnedSlots.push(...slotIndices);
     if (isRateSource) {
       this.lastEmitTime = this.timePassed;
     }
@@ -485,13 +479,6 @@ export class ParticleEmitter {
     this.loopStartTime = this.time - duration;
     this.lastEmitTime -= duration;
     this.time -= duration;
-    const db = this._dataBuffer;
-
-    for (let li = 0; li < db.activeCount; li++) {
-      if (db.alive[li]) {
-        db.delay[li] -= duration;
-      }
-    }
     this.renderer.minusTimeForLoop(duration);
   }
 

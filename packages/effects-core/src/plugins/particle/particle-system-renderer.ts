@@ -144,7 +144,7 @@ export class ParticleSystemRenderer extends RendererComponent {
 
         aOffset[o4] = uvBase[0] + texOffsets[offset] * uvBase[2];
         aOffset[o4 + 1] = uvBase[1] + uvy * uvBase[3];
-        aOffset[o4 + 2] = db.delay[i];
+        aOffset[o4 + 2] = db.age[i];
         aOffset[o4 + 3] = db.lifetime[i];
 
         aTranslation[t3] = db.finalOffset[i3];
@@ -237,11 +237,13 @@ export class ParticleSystemRenderer extends RendererComponent {
       if (!db.alive[ti]) {
         continue;
       }
-      if ((db.delay[ti] + db.lifetime[ti]) < timePassed) {
+      const trailDelay = this.particleMesh.time - db.age[ti];
+
+      if ((trailDelay + db.lifetime[ti]) < timePassed) {
         if (trails.dieWithParticles) {
           this.clearTrail(ti);
         }
-      } else if (timePassed > db.delay[ti]) {
+      } else if (timePassed > trailDelay) {
         const i3 = ti * 3;
         const position = tempTrailPos.set(
           db.finalOffset[i3],
@@ -279,7 +281,7 @@ export class ParticleSystemRenderer extends RendererComponent {
           color,
           lifetime,
           size: width,
-          time: db.delay[ti],
+          time: trailDelay,
         });
       }
     }
