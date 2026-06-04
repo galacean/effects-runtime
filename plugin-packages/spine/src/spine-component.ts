@@ -2,10 +2,10 @@ import type { AnimationStateListener, SkeletonData, TextureAtlas, TrackEntry } f
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
   BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Maskable,
-  Renderer, Texture,
+  MaskMode, Renderer, Texture,
 } from '@galacean/effects';
 import {
-  effectsClass, HitTestType, MaskMode, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
+  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent,
   serialize, spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
@@ -84,9 +84,15 @@ export class SpineComponent extends RendererComponent implements Maskable {
   /**
    * renderer 和 mask 数据
    */
-  rendererOptions: Pick<spec.SpineComponent, 'renderer'> & {
-    maskMode: MaskMode,
-    mask: number,
+  rendererOptions: NonNullable<spec.SpineComponent['renderer']> & {
+    /**
+     * @deprecated 2.10 起此字段无实际意义，runtime 不再赋值，仅为兼容旧版本读取保留。
+     */
+    mask?: number,
+    /**
+     * @deprecated 2.10 起此字段无实际意义，runtime 不再赋值，仅为兼容旧版本读取保留。
+     */
+    maskMode?: MaskMode,
   };
   options: spec.PluginSpineOption;
 
@@ -120,17 +126,12 @@ export class SpineComponent extends RendererComponent implements Maskable {
     this.rendererOptions = {
       renderMode: spec.RenderMode.MESH,
       ...data.renderer || {},
-      mask: 0,
-      maskMode: MaskMode.NONE,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
 
     if (data.mask) {
       this.maskManager.setMaskOptions(this.engine, data.mask);
     }
-
-    this.rendererOptions.maskMode = this.maskManager.maskMode;
-    this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
@@ -269,7 +270,6 @@ export class SpineComponent extends RendererComponent implements Maskable {
       meshName: this.name,
       transform: this.transform,
       pma: this.pma,
-      renderOptions: this.rendererOptions,
       engine: this.engine,
     });
   }
