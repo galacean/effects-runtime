@@ -14,7 +14,12 @@ export interface ShadowLayerConfig {
   params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number },
 }
 
-export type DecorativeLayerConfig = ShadowLayerConfig;
+export interface GlowLayerConfig {
+  kind: 'glow',
+  params: { color: spec.vec4, blur: number, intensity?: number },
+}
+
+export type DecorativeLayerConfig = ShadowLayerConfig | GlowLayerConfig;
 
 // ========== 基础绘制层配置 ==========
 
@@ -56,12 +61,13 @@ export interface FancyConfig {
 }
 
 export type BaseLayerKind = 'single-stroke' | 'solid-fill' | 'gradient' | 'texture';
-export type DecorativeLayerKind = 'shadow';
+export type DecorativeLayerKind = 'shadow' | 'glow';
 
 // ========== 运行时渲染层 ==========
 
 export type FancyRenderLayer =
   | { kind: 'shadow', params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number } }
+  | { kind: 'glow', params: { color: spec.vec4, blur: number, intensity: number } }
   | { kind: 'single-stroke', params: { color: spec.vec4, width: number, unit: 'px' } }
   | { kind: 'solid-fill', params: { color: spec.vec4 } }
   | { kind: 'gradient', params: { angle: number, colors: spec.vec4[] } }

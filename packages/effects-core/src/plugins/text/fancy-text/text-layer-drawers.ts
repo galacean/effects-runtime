@@ -209,6 +209,32 @@ export class ShadowDrawer implements TextLayerDrawer {
   }
 }
 
+/** 发光绘制器 */
+export class GlowDrawer implements TextLayerDrawer {
+  name = 'glow';
+
+  constructor (
+    private color: [number, number, number, number],
+    private blur: number,
+    private intensity: number = 1,
+  ) {}
+
+  /** 获取发光参数 */
+  getGlowParams (): { color: string, blur: number, intensity: number } {
+    const [r, g, b, a] = this.color;
+
+    return {
+      color: `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`,
+      blur: this.blur,
+      intensity: Math.min(10, Math.max(1, Math.round(this.intensity))),
+    };
+  }
+
+  render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
+    // 发光渲染在 renderWithTextLayers 中统一处理
+  }
+}
+
 /** 纹理填充绘制器 */
 export class TextureDrawer implements TextLayerDrawer {
   name = 'texture';

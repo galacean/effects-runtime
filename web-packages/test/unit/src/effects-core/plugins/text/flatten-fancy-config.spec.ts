@@ -102,7 +102,7 @@ describe('core/plugins/text/flatten-fancy-config', () => {
       expect(result[1].kind).to.eql('solid-fill');
     });
 
-    it('should handle multiple decorations', () => {
+    it('should handle multiple decorations (shadow + glow)', () => {
       const config: FancyConfig = {
         layers: [
           {
@@ -110,7 +110,7 @@ describe('core/plugins/text/flatten-fancy-config', () => {
             params: { angle: 0, colors: [[1, 0, 0, 1]] },
             decorations: [
               { kind: 'shadow', params: { color: [0, 0, 0, 1], blur: 5, offsetX: 1, offsetY: 1 } },
-              { kind: 'shadow', params: { color: [1, 0, 0, 1], blur: 3, offsetX: 0, offsetY: 0 } },
+              { kind: 'glow', params: { color: [1, 0, 0, 1], blur: 3, intensity: 2 } },
             ],
           },
         ],
@@ -120,7 +120,7 @@ describe('core/plugins/text/flatten-fancy-config', () => {
 
       expect(result).to.have.lengthOf(3);
       expect(result[0].kind).to.eql('shadow');
-      expect(result[1].kind).to.eql('shadow');
+      expect(result[1].kind).to.eql('glow');
       expect(result[2].kind).to.eql('gradient');
     });
   });

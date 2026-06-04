@@ -147,12 +147,21 @@ export class TextStyle {
       layers.push({ kind: 'solid-fill', params: { color: fallback } });
     } else {
       for (const src of srcLayers) {
-        // 展开 decorations
+        // 展开 decorations（带归属约束校验）
         const decorations = src.decorations;
 
         if (decorations?.length) {
+          let hasShadow = false;
+          let hasGlow = false;
+
           for (const d of decorations) {
             if (d.kind === 'shadow') {
+              if (hasShadow) {
+                console.warn('[FancyText] 每个 Fill/Stroke 只能对应一个 Shadow，多余的 Shadow 将被忽略');
+
+                continue;
+              }
+              hasShadow = true;
               layers.push({
                 kind: 'shadow',
                 params: {
@@ -160,6 +169,21 @@ export class TextStyle {
                   blur: d.params.blur ?? 5,
                   offsetX: d.params.offsetX ?? 0,
                   offsetY: d.params.offsetY ?? 0,
+                },
+              });
+            } else if (d.kind === 'glow') {
+              if (hasGlow) {
+                console.warn('[FancyText] 每个 Fill/Stroke 只能对应一个 Glow，多余的 Glow 将被忽略');
+
+                continue;
+              }
+              hasGlow = true;
+              layers.push({
+                kind: 'glow',
+                params: {
+                  color: d.params.color,
+                  blur: d.params.blur ?? 5,
+                  intensity: d.params.intensity ?? 1,
                 },
               });
             }

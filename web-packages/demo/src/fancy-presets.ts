@@ -87,6 +87,26 @@ export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
       },
     ],
   },
+  glow: {
+    layers: [
+      {
+        kind: 'solid-fill',
+        params: {
+          color: [1, 1, 1, 1],
+        },
+        decorations: [
+          {
+            kind: 'glow',
+            params: {
+              color: [0, 0.8, 1, 1],
+              blur: 12,
+              intensity: 3,
+            },
+          },
+        ],
+      },
+    ],
+  },
 };
 
 /**

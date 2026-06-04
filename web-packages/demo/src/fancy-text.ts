@@ -41,12 +41,13 @@ interface StrokeLayerState {
 
 interface EffectLayerState {
   id: string,
-  type: 'shadow',
+  type: 'shadow' | 'glow',
   visible: boolean,
   color: number[],
   blur: number,
   distance: number,
   angle: number,
+  intensity?: number,
 }
 
 // 编辑器状态
@@ -293,6 +294,7 @@ function createControls () {
     { key: 'multi-stroke', name: '多描边' },
     { key: 'gradient', name: '渐变' },
     { key: 'shadow', name: '投影' },
+    { key: 'glow', name: '发光' },
     { key: 'texture', name: '纹理' },
   ];
 
@@ -1448,13 +1450,24 @@ function createEffectsSection (): HTMLElement {
 
   addBtn.className = 'figma-icon-btn';
   addBtn.textContent = '+';
-  addBtn.title = '添加效果';
+  addBtn.title = '添加阴影效果';
   addBtn.addEventListener('click', () => {
-    addEffectLayer();
+    addEffectLayer('shadow');
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
+
+  const addGlowBtn = document.createElement('button');
+
+  addGlowBtn.className = 'figma-icon-btn';
+  addGlowBtn.textContent = '✦';
+  addGlowBtn.title = '添加发光效果';
+  addGlowBtn.addEventListener('click', () => {
+    addEffectLayer('glow');
     renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
   });
 
   actions.appendChild(addBtn);
+  actions.appendChild(addGlowBtn);
   header.appendChild(title);
   header.appendChild(actions);
   section.appendChild(header);
@@ -1530,12 +1543,14 @@ function createEffectLayerItem (effect: EffectLayerState, index: number): HTMLEl
   const typeSpan = document.createElement('span');
 
   typeSpan.className = 'figma-layer-type';
-  typeSpan.textContent = effect.type === 'shadow' ? '阴影' : effect.type;
+  typeSpan.textContent = effect.type === 'shadow' ? '阴影' : '发光';
 
   const valueSpan = document.createElement('span');
 
   valueSpan.className = 'figma-layer-value';
-  valueSpan.textContent = `${effect.blur}px`;
+  valueSpan.textContent = effect.type === 'glow'
+    ? `${effect.blur}px × ${effect.intensity || 1}`
+    : `${effect.blur}px`;
 
   info.appendChild(typeSpan);
   info.appendChild(valueSpan);
@@ -1603,12 +1618,30 @@ function createEffectParamsEditor (effect: EffectLayerState, index: number): HTM
 
   typeSelect.className = 'figma-param-select';
 
-  const option = document.createElement('option');
+  const shadowOption = document.createElement('option');
 
-  option.value = 'shadow';
-  option.textContent = '阴影';
-  option.selected = true;
-  typeSelect.appendChild(option);
+  shadowOption.value = 'shadow';
+  shadowOption.textContent = '阴影';
+  shadowOption.selected = effect.type === 'shadow';
+  typeSelect.appendChild(shadowOption);
+
+  const glowOption = document.createElement('option');
+
+  glowOption.value = 'glow';
+  glowOption.textContent = '发光';
+  glowOption.selected = effect.type === 'glow';
+  typeSelect.appendChild(glowOption);
+
+  typeSelect.addEventListener('change', () => {
+    effect.type = typeSelect.value as 'shadow' | 'glow';
+    if (effect.type === 'glow') {
+      effect.distance = 0;
+      effect.angle = 0;
+      effect.intensity = effect.intensity || 3;
+    }
+    applyEditorStateToRuntime();
+    renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
+  });
 
   typeRow.appendChild(typeLabel);
   typeRow.appendChild(typeSelect);
@@ -1637,23 +1670,34 @@ function createEffectParamsEditor (effect: EffectLayerState, index: number): HTM
 
   params.appendChild(blurRow);
 
-  // 距离
-  const distanceRow = createSliderParamRow('距离', effect.distance, 0, 50, 1, value => {
-    effect.distance = value;
-    applyEditorStateToRuntime();
-    // 距离变化不需要更新显示
-  });
+  if (effect.type === 'shadow') {
+    // 距离（仅阴影）
+    const distanceRow = createSliderParamRow('距离', effect.distance, 0, 50, 1, value => {
+      effect.distance = value;
+      applyEditorStateToRuntime();
+    });
 
-  params.appendChild(distanceRow);
+    params.appendChild(distanceRow);
 
-  // 角度
-  const angleRow = createSliderParamRow('角度', effect.angle, 0, 360, 1, value => {
-    effect.angle = value;
-    applyEditorStateToRuntime();
-    // 角度变化不需要更新显示
-  });
+    // 角度（仅阴影）
+    const angleRow = createSliderParamRow('角度', effect.angle, 0, 360, 1, value => {
+      effect.angle = value;
+      applyEditorStateToRuntime();
+    });
 
-  params.appendChild(angleRow);
+    params.appendChild(angleRow);
+  } else {
+    // 强度（仅发光）
+    const intensityRow = createSliderParamRow('强度', effect.intensity || 1, 1, 10, 1, value => {
+      effect.intensity = value;
+      applyEditorStateToRuntime();
+      const layerItem = params.previousElementSibling as HTMLElement;
+
+      updateEffectLayerDisplay(layerItem, effect);
+    });
+
+    params.appendChild(intensityRow);
+  }
 
   return params;
 }
@@ -1842,18 +1886,33 @@ function addStrokeLayer () {
 /**
  * 添加 Effect 层
  */
-function addEffectLayer () {
-  const newEffect: EffectLayerState = {
-    id: generateId(),
-    type: 'shadow',
-    visible: true,
-    color: [0, 0, 0, 0.8],
-    blur: 10,
-    distance: 5,
-    angle: 45,
-  };
+function addEffectLayer (type: 'shadow' | 'glow' = 'shadow') {
+  if (type === 'glow') {
+    const newEffect: EffectLayerState = {
+      id: generateId(),
+      type: 'glow',
+      visible: true,
+      color: [0, 0.8, 1, 1],
+      blur: 10,
+      distance: 0,
+      angle: 0,
+      intensity: 3,
+    };
 
-  editorState.effects.push(newEffect);
+    editorState.effects.push(newEffect);
+  } else {
+    const newEffect: EffectLayerState = {
+      id: generateId(),
+      type: 'shadow',
+      visible: true,
+      color: [0, 0, 0, 0.8],
+      blur: 10,
+      distance: 5,
+      angle: 45,
+    };
+
+    editorState.effects.push(newEffect);
+  }
   applyEditorStateToRuntime();
 }
 
@@ -1878,8 +1937,44 @@ function parsePresetToEditorState (presetName: string) {
 
   if (!config.layers) {return;}
 
-  // 标记是否已经提取过阴影（只提取一次）
+  // 标记是否已经提取过阴影和发光（只提取一次）
   let shadowExtracted = false;
+  let glowExtracted = false;
+
+  // 提取装饰层的辅助函数
+  const extractDecorations = (decorations: any[] | undefined) => {
+    if (!decorations) {return;}
+    decorations.forEach(dec => {
+      if (dec.kind === 'shadow' && !shadowExtracted) {
+        const effect: EffectLayerState = {
+          id: generateId(),
+          type: 'shadow',
+          visible: true,
+          color: dec.params.color,
+          blur: dec.params.blur,
+          distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
+          angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
+        };
+
+        editorState.effects.push(effect);
+        shadowExtracted = true;
+      } else if (dec.kind === 'glow' && !glowExtracted) {
+        const effect: EffectLayerState = {
+          id: generateId(),
+          type: 'glow',
+          visible: true,
+          color: dec.params.color,
+          blur: dec.params.blur,
+          distance: 0,
+          angle: 0,
+          intensity: dec.params.intensity ?? 1,
+        };
+
+        editorState.effects.push(effect);
+        glowExtracted = true;
+      }
+    });
+  };
 
   config.layers.forEach(layer => {
     if (layer.kind === 'solid-fill') {
@@ -1892,26 +1987,7 @@ function parsePresetToEditorState (presetName: string) {
       };
 
       editorState.fills.push(fill);
-
-      // 检查装饰层（阴影）- 只提取一次
-      if (!shadowExtracted && layer.decorations) {
-        layer.decorations.forEach(dec => {
-          if (dec.kind === 'shadow') {
-            const effect: EffectLayerState = {
-              id: generateId(),
-              type: 'shadow',
-              visible: true,
-              color: dec.params.color,
-              blur: dec.params.blur,
-              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
-              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
-            };
-
-            editorState.effects.push(effect);
-            shadowExtracted = true;
-          }
-        });
-      }
+      extractDecorations(layer.decorations);
     } else if (layer.kind === 'gradient') {
       const fill: FillLayerState = {
         id: generateId(),
@@ -1923,26 +1999,7 @@ function parsePresetToEditorState (presetName: string) {
       };
 
       editorState.fills.push(fill);
-
-      // 检查装饰层（阴影）- 只提取一次
-      if (!shadowExtracted && layer.decorations) {
-        layer.decorations.forEach(dec => {
-          if (dec.kind === 'shadow') {
-            const effect: EffectLayerState = {
-              id: generateId(),
-              type: 'shadow',
-              visible: true,
-              color: dec.params.color,
-              blur: dec.params.blur,
-              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
-              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
-            };
-
-            editorState.effects.push(effect);
-            shadowExtracted = true;
-          }
-        });
-      }
+      extractDecorations(layer.decorations);
     } else if (layer.kind === 'texture') {
       const fill: FillLayerState = {
         id: generateId(),
@@ -1953,26 +2010,7 @@ function parsePresetToEditorState (presetName: string) {
       };
 
       editorState.fills.push(fill);
-
-      // 检查装饰层（阴影）- 只提取一次
-      if (!shadowExtracted && layer.decorations) {
-        layer.decorations.forEach(dec => {
-          if (dec.kind === 'shadow') {
-            const effect: EffectLayerState = {
-              id: generateId(),
-              type: 'shadow',
-              visible: true,
-              color: dec.params.color,
-              blur: dec.params.blur,
-              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
-              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
-            };
-
-            editorState.effects.push(effect);
-            shadowExtracted = true;
-          }
-        });
-      }
+      extractDecorations(layer.decorations);
     } else if (layer.kind === 'single-stroke') {
       const stroke: StrokeLayerState = {
         id: generateId(),
@@ -1983,26 +2021,7 @@ function parsePresetToEditorState (presetName: string) {
       };
 
       editorState.strokes.push(stroke);
-
-      // 检查装饰层（阴影）- 只提取一次
-      if (!shadowExtracted && layer.decorations) {
-        layer.decorations.forEach(dec => {
-          if (dec.kind === 'shadow') {
-            const effect: EffectLayerState = {
-              id: generateId(),
-              type: 'shadow',
-              visible: true,
-              color: dec.params.color,
-              blur: dec.params.blur,
-              distance: Math.sqrt(dec.params.offsetX ** 2 + dec.params.offsetY ** 2),
-              angle: Math.atan2(dec.params.offsetY, dec.params.offsetX) * 180 / Math.PI,
-            };
-
-            editorState.effects.push(effect);
-            shadowExtracted = true;
-          }
-        });
-      }
+      extractDecorations(layer.decorations);
     }
   });
 }
@@ -2023,6 +2042,7 @@ function applyEditorStateToRuntime () {
   const visibleStrokes = editorState.strokes.filter(s => s.visible);
   const visibleFills = editorState.fills.filter(f => f.visible);
   const visibleShadows = editorState.effects.filter(e => e.visible && e.type === 'shadow');
+  const visibleGlows = editorState.effects.filter(e => e.visible && e.type === 'glow');
 
   // 构建阴影层
   const buildShadowLayer = (effect: EffectLayerState) => {
@@ -2041,15 +2061,31 @@ function applyEditorStateToRuntime () {
     };
   };
 
-  // 如果有阴影，先渲染所有层带阴影的效果（阴影在最底层）
-  if (visibleShadows.length > 0) {
-    // 1. 渲染所有 Stroke 层带阴影的效果
+  // 构建发光层
+  const buildGlowLayer = (effect: EffectLayerState) => {
+    return {
+      kind: 'glow' as const,
+      params: {
+        color: [effect.color[0], effect.color[1], effect.color[2], effect.color[3] || 1] as [number, number, number, number],
+        blur: effect.blur,
+        intensity: effect.intensity || 1,
+      },
+    };
+  };
+
+  // 如果有阴影或发光，先渲染所有层带效果
+  if (visibleShadows.length > 0 || visibleGlows.length > 0) {
+    // 1. 渲染所有 Stroke 层带效果
     visibleStrokes.forEach(stroke => {
       // 先设置阴影
       visibleShadows.forEach(effect => {
         layers.push(buildShadowLayer(effect));
       });
-      // 再绘制 Stroke（带出阴影）
+      // 再设置发光
+      visibleGlows.forEach(effect => {
+        layers.push(buildGlowLayer(effect));
+      });
+      // 再绘制 Stroke
       layers.push({
         kind: 'single-stroke',
         params: {
@@ -2060,13 +2096,17 @@ function applyEditorStateToRuntime () {
       });
     });
 
-    // 2. 渲染所有 Fill 层带阴影的效果
+    // 2. 渲染所有 Fill 层带效果
     visibleFills.forEach(fill => {
       // 先设置阴影
       visibleShadows.forEach(effect => {
         layers.push(buildShadowLayer(effect));
       });
-      // 再绘制 Fill（带出阴影）
+      // 再设置发光
+      visibleGlows.forEach(effect => {
+        layers.push(buildGlowLayer(effect));
+      });
+      // 再绘制 Fill
       if (fill.type === 'solid') {
         layers.push({
           kind: 'solid-fill',
@@ -2243,7 +2283,9 @@ function updateEffectLayerDisplay (item: HTMLElement, effect: EffectLayerState) 
   }
 
   if (valueSpan) {
-    valueSpan.textContent = `${effect.blur}px`;
+    valueSpan.textContent = effect.type === 'glow'
+      ? `${effect.blur}px × ${effect.intensity || 1}`
+      : `${effect.blur}px`;
   }
 }
 

@@ -1,5 +1,6 @@
 import type { FancyRenderLayer, TextLayerDrawer } from './fancy-types';
 import {
+  GlowDrawer,
   GradientDrawer,
   ShadowDrawer,
   SingleStrokeDrawer,
@@ -17,6 +18,8 @@ export class FancyLayerFactory {
         return new GradientDrawer(layer.params.colors, layer.params.angle ?? 0);
       case 'shadow':
         return new ShadowDrawer(layer.params.color, layer.params.blur, layer.params.offsetX, layer.params.offsetY);
+      case 'glow':
+        return new GlowDrawer(layer.params.color, layer.params.blur, layer.params.intensity ?? 1);
       case 'texture':
         return new TextureDrawer(layer.runtimePattern ?? null, layer.params.opacity ?? 1);
       case 'solid-fill':

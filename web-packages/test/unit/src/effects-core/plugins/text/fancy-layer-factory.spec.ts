@@ -1,6 +1,7 @@
 import type { FancyRenderLayer } from '@galacean/effects-core';
 import {
   FancyLayerFactory,
+  GlowDrawer,
   GradientDrawer,
   ShadowDrawer,
   SingleStrokeDrawer,
@@ -108,6 +109,40 @@ describe('core/plugins/text/fancy-layer-factory', () => {
       const drawer = FancyLayerFactory.createDrawerFromLayer(layer);
 
       expect(drawer).to.be.instanceOf(TextureDrawer);
+    });
+
+    it('should create GlowDrawer from glow layer', () => {
+      const layer: FancyRenderLayer = {
+        kind: 'glow',
+        params: {
+          color: [1, 0.5, 0, 1],
+          blur: 8,
+          intensity: 3,
+        },
+      };
+
+      const drawer = FancyLayerFactory.createDrawerFromLayer(layer);
+
+      expect(drawer).to.be.instanceOf(GlowDrawer);
+      expect(drawer?.name).to.eql('glow');
+    });
+
+    it('should create GlowDrawer with default intensity when not provided', () => {
+      const layer: FancyRenderLayer = {
+        kind: 'glow',
+        params: {
+          color: [1, 1, 0, 1],
+          blur: 5,
+          intensity: 1,
+        },
+      };
+
+      const drawer = FancyLayerFactory.createDrawerFromLayer(layer) as GlowDrawer;
+
+      expect(drawer).to.be.instanceOf(GlowDrawer);
+      const params = drawer.getGlowParams();
+
+      expect(params.intensity).to.eql(1);
     });
   });
 
@@ -253,6 +288,43 @@ describe('core/plugins/text/fancy-layer-factory', () => {
       const drawer = FancyLayerFactory.createDrawerFromLayer(layer) as ShadowDrawer;
 
       expect(drawer).to.exist;
+    });
+
+    it('should pass glow params to GlowDrawer', () => {
+      const layer: FancyRenderLayer = {
+        kind: 'glow',
+        params: {
+          color: [0.5, 1, 0, 0.8],
+          blur: 12,
+          intensity: 5,
+        },
+      };
+
+      const drawer = FancyLayerFactory.createDrawerFromLayer(layer) as GlowDrawer;
+
+      expect(drawer).to.exist;
+      const params = drawer.getGlowParams();
+
+      expect(params.color).to.eql('rgba(128, 255, 0, 0.8)');
+      expect(params.blur).to.eql(12);
+      expect(params.intensity).to.eql(5);
+    });
+
+    it('should clamp glow intensity to [1, 10]', () => {
+      const layerHigh: FancyRenderLayer = {
+        kind: 'glow',
+        params: { color: [1, 1, 1, 1], blur: 5, intensity: 20 },
+      };
+      const layerLow: FancyRenderLayer = {
+        kind: 'glow',
+        params: { color: [1, 1, 1, 1], blur: 5, intensity: 0 },
+      };
+
+      const drawerHigh = FancyLayerFactory.createDrawerFromLayer(layerHigh) as GlowDrawer;
+      const drawerLow = FancyLayerFactory.createDrawerFromLayer(layerLow) as GlowDrawer;
+
+      expect(drawerHigh.getGlowParams().intensity).to.eql(10);
+      expect(drawerLow.getGlowParams().intensity).to.eql(1);
     });
   });
 });
