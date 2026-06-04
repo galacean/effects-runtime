@@ -1,7 +1,6 @@
 import type { Engine } from '../engine';
 import type * as spec from '@galacean/effects-specification';
 import type { Maskable, MaskReference } from './types';
-import { MaskMode } from './types';
 import type { Renderer } from '../render/renderer';
 import { TextureLoadAction } from '../texture/types';
 import type { RenderPassClearAction } from '../render/render-pass';
@@ -11,6 +10,23 @@ import type { Geometry } from '../render/geometry';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { RendererComponent } from '../components';
 
+// spec 更新后直接使用 spec.MaskReferenceData
+type MaskOptionReference = {
+  mask?: spec.DataPath,
+  inverted?: boolean,
+};
+
+// spec 更新后直接使用 spec.MaskOptions
+type MaskOptions = {
+  isMask?: boolean,
+  alphaMaskEnabled?: boolean,
+  references?: MaskOptionReference[],
+};
+
+// 8 位 stencil buffer 上限为 255；为反向蒙版的 INCR 预留 1 的递增余量，
+// 否则当正向蒙版填满到 255 时，反向 INCR 会饱和、无法排除任何像素。
+const MAX_MASK_REFERENCE_COUNT = 254;
+
 /**
  * @internal
  */
@@ -18,8 +34,6 @@ export class MaskProcessor {
   alphaMaskEnabled = false;
 
   isMask = false;
-  inverted = false;
-  maskMode: MaskMode = MaskMode.NONE;
 
   /**
    * 多个蒙版引用列表，支持正面和反面蒙版
@@ -34,6 +48,8 @@ export class MaskProcessor {
   private stencilClearAction: RenderPassClearAction;
 
   private prevStencilFunc: [number, number] = [0, 0];
+  private prevStencilOpFail: [number, number] = [0, 0];
+  private prevStencilOpZFail: [number, number] = [0, 0];
   private prevStencilOpZPass: [number, number] = [0, 0];
   private prevStencilRef: [number, number] = [0, 0];
   private prevStencilMask: [number, number] = [0, 0];
@@ -53,7 +69,7 @@ export class MaskProcessor {
     if (value) {
       this.maskReferences.push({
         maskable: value,
-        inverted: this.maskMode === MaskMode.REVERSE_OBSCURED,
+        inverted: false,
       });
     }
   }
@@ -63,35 +79,57 @@ export class MaskProcessor {
   }
 
   /**
-   * @deprecated
+   * 设置蒙版选项。
+   *
+   * @param data.references - 蒙版引用列表。
+   *   传入空数组等价于无蒙版。
+   *   超过 254 个引用时，多余部分将被忽略并打印警告。
    */
-  getRefValue (): number {
-    return 1;
-  }
-
-  /**
-   * 设置蒙版选项（兼容旧版单蒙版 API）
-   */
-  setMaskOptions (engine: Engine, data: spec.MaskOptions): void {
-    const { isMask = false, inverted = false, reference, alphaMaskEnabled = false } = data;
+  setMaskOptions (engine: Engine, data: MaskOptions): void {
+    const { isMask = false, references = [], alphaMaskEnabled = false } = data;
 
     this.alphaMaskEnabled = alphaMaskEnabled;
     this.isMask = isMask;
-    this.inverted = inverted;
     this.maskReferences = [];
 
-    if (isMask) {
-      this.maskMode = MaskMode.MASK;
-    } else {
-      this.maskMode = inverted ? MaskMode.REVERSE_OBSCURED : MaskMode.OBSCURED;
-      const maskable = engine.findObject<Maskable>(reference);
+    if (isMask || references.length === 0) {
+      return;
+    }
 
-      if (maskable) {
-        this.maskReferences.push({
-          maskable,
-          inverted,
-        });
+    const seen = new Map<Maskable, boolean>();
+
+    for (const ref of references) {
+      const maskPath = ref.mask;
+
+      if (!maskPath) {
+        continue;
       }
+
+      const maskable = engine.findObject<Maskable>(maskPath);
+
+      if (!maskable) {
+        console.warn(`Mask reference not found: ${JSON.stringify(maskPath)}. Skipping.`);
+        continue;
+      }
+
+      const inverted = ref.inverted ?? false;
+      const existingInverted = seen.get(maskable);
+
+      if (existingInverted !== undefined) {
+        if (existingInverted !== inverted) {
+          console.warn('Same maskable referenced with conflicting inverted flags; keeping the first occurrence.');
+        }
+        continue;
+      }
+
+      if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
+        console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
+
+        break;
+      }
+
+      seen.set(maskable, inverted);
+      this.maskReferences.push({ maskable, inverted });
     }
   }
 
@@ -104,8 +142,8 @@ export class MaskProcessor {
     const exists = this.maskReferences.some(ref => ref.maskable === maskable);
 
     if (!exists) {
-      if (this.maskReferences.length >= 255) {
-        console.warn('Maximum of 255 mask references exceeded. Additional masks will be ignored.');
+      if (this.maskReferences.length >= MAX_MASK_REFERENCE_COUNT) {
+        console.warn(`Maximum of ${MAX_MASK_REFERENCE_COUNT} mask references exceeded. Additional masks will be ignored.`);
 
         return;
       }
@@ -133,6 +171,13 @@ export class MaskProcessor {
   }
 
   /**
+   * 获取当前蒙版引用列表的浅拷贝。
+   */
+  getMaskReferences (): ReadonlyArray<MaskReference> {
+    return this.maskReferences.slice();
+  }
+
+  /**
    * 绘制所有蒙版，被蒙版的元素调用。
    *
    * 使用递增 stencil 计数法实现任意数量蒙版的交集：
@@ -140,13 +185,20 @@ export class MaskProcessor {
    * 2. 反向蒙版渲染，将已通过所有正向蒙版的像素标记为无效
    * 3. 最终只有 stencil == 正向蒙版数量 的像素才通过测试
    *
-   * 最多支持 255 个蒙版引用（受 8 位 stencil buffer 限制）
+   * 最多支持 254 个蒙版引用（8 位 stencil buffer 上限 255，需为反向 INCR 预留 1）
    */
   drawStencilMask (renderer: Renderer, maskedComponent: RendererComponent): void {
     const frameClipMasks = maskedComponent.frameClipMasks;
+    const addedFrameClipMasks: Maskable[] = [];
 
     for (const frameClipMask of frameClipMasks) {
+      const referenceCount = this.maskReferences.length;
+
       this.addMaskReference(frameClipMask, false);
+
+      if (this.maskReferences.length > referenceCount) {
+        addedFrameClipMasks.push(frameClipMask);
+      }
     }
 
     if (this.maskReferences.length > 0) {
@@ -188,7 +240,7 @@ export class MaskProcessor {
       this.setupMaskedMaterial(material);
     }
 
-    for (const frameClipMask of frameClipMasks) {
+    for (const frameClipMask of addedFrameClipMasks) {
       this.removeMaskReference(frameClipMask);
     }
   }
@@ -201,11 +253,11 @@ export class MaskProcessor {
     const prevStencilTest = material.stencilTest;
 
     this.copyStencilArrayValue(this.prevStencilFunc, material.stencilFunc);
+    this.copyStencilArrayValue(this.prevStencilOpFail, material.stencilOpFail);
+    this.copyStencilArrayValue(this.prevStencilOpZFail, material.stencilOpZFail);
     this.copyStencilArrayValue(this.prevStencilOpZPass, material.stencilOpZPass);
     this.copyStencilArrayValue(this.prevStencilRef, material.stencilRef);
     this.copyStencilArrayValue(this.prevStencilMask, material.stencilMask);
-    // const prevStencilOpFail = material.stencilOpFail;
-    // const prevStencilOpZFail = material.stencilOpZFail;
 
     this.setupMaskMaterial(material, maskRef);
     renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
@@ -213,9 +265,9 @@ export class MaskProcessor {
     material.colorMask = previousColorMask;
     material.stencilTest = prevStencilTest;
     material.stencilFunc = this.prevStencilFunc;
+    material.stencilOpFail = this.prevStencilOpFail;
+    material.stencilOpZFail = this.prevStencilOpZFail;
     material.stencilOpZPass = this.prevStencilOpZPass;
-    // material.stencilOpFail = prevStencilOpFail;
-    // material.stencilOpZFail = prevStencilOpZFail;
     material.stencilRef = this.prevStencilRef;
     material.stencilMask = this.prevStencilMask;
   }
@@ -239,9 +291,9 @@ export class MaskProcessor {
     material.stencilMask = [0xFF, 0xFF];
 
     // 通过时递增 stencil 值，不通过时保持不变
+    material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
+    material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
     material.stencilOpZPass = [glContext.INCR, glContext.INCR];
-    // material.stencilOpFail = [glContext.KEEP, glContext.KEEP];
-    // material.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
 
     material.colorMask = false; // 不写入颜色
   }
