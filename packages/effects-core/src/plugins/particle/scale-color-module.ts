@@ -27,15 +27,14 @@ export class ScaleColorModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
     const { opacity } = this.data;
     const stops = this.gradientStops;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i4 = i * 4;
-      const delay = db.delay[i];
+      const time = db.age[i];
 
-      if (delay > currentTime) {
+      if (time < 0) {
         db.colorScale[i4] = 0;
         db.colorScale[i4 + 1] = 0;
         db.colorScale[i4 + 2] = 0;
@@ -44,7 +43,6 @@ export class ScaleColorModule extends ParticleModule {
         continue;
       }
 
-      const time = currentTime - delay;
       const duration = db.lifetime[i];
       const life = Math.min(Math.max(time / duration, 0), 1);
 

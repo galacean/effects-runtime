@@ -20,21 +20,19 @@ export class ScaleSizeModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
     const { x, y, separateAxes } = this.data;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i2 = i * 2;
-      const delay = db.delay[i];
+      const time = db.age[i];
 
-      if (delay > currentTime) {
+      if (time < 0) {
         db.sizeScale[i2] = 0;
         db.sizeScale[i2 + 1] = 0;
 
         continue;
       }
 
-      const time = currentTime - delay;
       const duration = db.lifetime[i];
       const life = Math.min(Math.max(time / duration, 0), 1);
 

@@ -20,7 +20,6 @@ export class ForceTargetModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
     const { curve, target } = this.data;
     const tx = target[0] ?? 0;
     const ty = target[1] ?? 0;
@@ -28,13 +27,12 @@ export class ForceTargetModule extends ParticleModule {
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
-      const delay = db.delay[i];
+      const time = db.age[i];
 
-      if (delay >= currentTime) {
+      if (time <= 0) {
         continue;
       }
 
-      const time = currentTime - delay;
       const duration = db.lifetime[i];
       const life = Math.min(Math.max(time / duration, 0), 1);
       const force = curve.getValue(life);

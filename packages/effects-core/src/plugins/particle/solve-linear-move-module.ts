@@ -30,11 +30,10 @@ export class SolveLinearMoveModule extends ParticleModule {
     }
 
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
-      const time = currentTime - db.delay[i];
+      const time = db.age[i];
       const duration = db.lifetime[i];
       const lifetime = time / duration;
       const seed = db.seed[i];

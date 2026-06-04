@@ -113,20 +113,18 @@ export class SolveOrbitalVelocityModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
     const orb = this.data;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
-      const delay = db.delay[i];
+      const age = db.age[i];
 
-      // F32 for GPU sync
-      if (!orb.enabled || delay >= currentTime) {
+      if (!orb.enabled || age <= 0) {
         db.finalOffset[i3] = db.position[i3] + db.linearMove[i3];
         db.finalOffset[i3 + 1] = db.position[i3 + 1] + db.linearMove[i3 + 1];
         db.finalOffset[i3 + 2] = db.position[i3 + 2] + db.linearMove[i3 + 2];
       } else {
-        const time = currentTime - delay;
+        const time = age;
         const duration = db.lifetime[i];
         const life = Math.min(Math.max(time / duration, 0), 1);
 

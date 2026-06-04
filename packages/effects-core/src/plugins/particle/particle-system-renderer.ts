@@ -335,10 +335,6 @@ export class ParticleSystemRenderer extends RendererComponent {
     return textures;
   }
 
-  removeParticlePoint (index: number) {
-    this.particleMesh.removePoint(index);
-  }
-
   getParticlePointColor (index: number) {
     return this.particleMesh.getPointColor(index);
   }

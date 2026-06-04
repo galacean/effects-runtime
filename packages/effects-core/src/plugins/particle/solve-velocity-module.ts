@@ -22,21 +22,20 @@ export class SolveVelocityModule extends ParticleModule {
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
     const dtSec = ctx.deltaTime;
-    const currentTime = ctx.currentTime;
     const gx = this.data.gravity[0];
     const gy = this.data.gravity[1];
     const gz = this.data.gravity[2];
     const sol = this.data.speedOverLifetime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
-      const delay = db.delay[i];
+      const age = db.age[i];
 
-      if (delay >= currentTime) {
+      if (age <= 0) {
         continue;
       }
 
       const i3 = i * 3;
-      const time = currentTime - delay;
+      const time = age;
       const duration = db.lifetime[i];
 
       let vx = db.velocity[i3];

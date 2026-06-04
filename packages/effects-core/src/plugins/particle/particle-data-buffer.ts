@@ -23,6 +23,8 @@ export class ParticleDataBuffer {
 
   /** 粒子出生延迟（秒） */
   readonly delay: number[];
+  /** 粒子年龄（秒），= currentTime - delay。对齐 Pro 的 Particle.Age */
+  readonly age: number[];
   /** 粒子生命周期（秒） */
   readonly lifetime: number[];
   /** 随机种子 [0,1)，出生时写入 */
@@ -72,6 +74,7 @@ export class ParticleDataBuffer {
     this.maxCount = maxCount;
 
     this.delay = createArray(maxCount);
+    this.age = createArray(maxCount);
     this.lifetime = createArray(maxCount);
     this.seed = createArray(maxCount);
 

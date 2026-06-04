@@ -76,9 +76,9 @@ describe('core/plugins/particle/test', function () {
     const p0Content = p0?.getComponent(ParticleSystem) as ParticleSystem;
     const p1Content = p1?.getComponent(ParticleSystem) as ParticleSystem;
 
-    expect(p0Content.renderer.particleMesh.particleCount).to.eql(5);
+    expect(p0Content.particleCount).to.eql(5);
 
-    expect(p1Content.renderer.particleMesh.particleCount).to.eql(10);
+    expect(p1Content.particleCount).to.eql(10);
     const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry() as GLGeometry;
     const size = (geometry.attributes['aPos'].stride ?? 0) / Float32Array.BYTES_PER_ELEMENT * 4; //4 vertex per particle
 

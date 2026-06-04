@@ -25,7 +25,6 @@ export class SolveRotationModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const currentTime = ctx.currentTime;
     const d2r = Math.PI / 180;
     const rol = this.data.rotationOverLifetime;
     const rotMat = tempRotMat;
@@ -34,7 +33,7 @@ export class SolveRotationModule extends ParticleModule {
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
       const i9 = i * 9;
-      const time = currentTime - db.delay[i];
+      const time = db.age[i];
       const duration = db.lifetime[i];
       const life = Math.min(Math.max(time / duration, 0), 1);
       const seed = db.seed[i];

@@ -16,6 +16,7 @@ import { SolveOrbitalVelocityModule } from './solve-orbital-velocity-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
+import { UpdateAgeModule } from './update-age-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
 
 export class ParticleEmitter {
@@ -81,6 +82,7 @@ export class ParticleEmitter {
     modules.push(
       new BurstSpawnModule(data.burst),
       new InitializeParticleModule(data.initialize),
+      new UpdateAgeModule(),
       new SolveVelocityModule(data.solveVelocity),
       new SolveRotationModule(data.solveRotation),
       new SolveLinearMoveModule(data.solveLinearMove),
@@ -407,7 +409,7 @@ export class ParticleEmitter {
     const res: { center: Vector3, size: Vector3 }[] = [];
 
     for (let i = 0; i < db.activeCount; i++) {
-      if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
+      if (!db.alive[i] || db.age[i] >= db.lifetime[i]) {
         continue;
       }
       const i2 = i * 2;
@@ -431,7 +433,7 @@ export class ParticleEmitter {
     const temp = new Vector3();
 
     for (let i = db.activeCount - 1; i >= 0; i--) {
-      if (!db.alive[i] || db.expiry[i] <= this.timePassed) {
+      if (!db.alive[i] || db.age[i] >= db.lifetime[i]) {
         continue;
       }
       const pos = this.getPointPosition(i);

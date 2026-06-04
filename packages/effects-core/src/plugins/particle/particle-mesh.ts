@@ -13,8 +13,7 @@ import type {
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
 import { Texture } from '../../texture';
-import { assertExist, enlargeBuffer } from '../../utils';
-import type { ParticleDataBuffer } from './particle-data-buffer';
+import { assertExist } from '../../utils';
 import { particleUniformTypeMap } from './particle-vfx-item';
 
 export interface ParticleMeshData {
@@ -48,7 +47,6 @@ export class ParticleMesh implements ParticleMeshData {
   duration: number;
   geometry: Geometry;
   mesh: Mesh;
-  particleCount = 0;
   maxParticleBufferCount: number;
   time: number;
   maxCount: number;
@@ -200,7 +198,6 @@ export class ParticleMesh implements ParticleMeshData {
 
   clearPoints () {
     this.resetGeometryData(this.geometry);
-    this.particleCount = 0;
     this.geometry.setDrawCount(0);
     this.maxParticleBufferCount = 0;
   }
@@ -232,141 +229,6 @@ export class ParticleMesh implements ParticleMeshData {
     this.time -= time;
   }
 
-  removePoint (index: number) {
-    if (index < this.particleCount) {
-      this.geometry.setAttributeSubData('aOffset', index * 16, new Float32Array(16));
-    }
-  }
-
-  setPointFromBuffer (index: number, db: ParticleDataBuffer) {
-    const maxCount = this.maxCount;
-
-    if (index < maxCount) {
-      const particleCount = index + 1;
-      const vertexCount = particleCount * 4;
-      const geometry = this.geometry;
-      const increaseBuffer = particleCount > this.maxParticleBufferCount;
-      let inc = 2;
-
-      if (this.particleCount > 300) {
-        inc = (this.particleCount + 100) / this.particleCount;
-      } else if (this.particleCount > 100) {
-        inc = 1.4;
-      }
-      const pointData: Record<string, Float32Array> = {
-        aPos: new Float32Array(48),
-        aRot: new Float32Array(32),
-        aOffset: new Float32Array(16),
-        aTranslation: new Float32Array(12),
-        aRotation0: new Float32Array(36),
-        aSize: new Float32Array(8),
-        aColorScale: new Float32Array(16),
-      };
-      const useSprite = this.useSprite;
-
-      if (useSprite) {
-        pointData.aSprite = new Float32Array(12);
-      }
-
-      const i3 = index * 3;
-      const i4 = index * 4;
-      const i2 = index * 2;
-      const position = [0, 0, 0];
-      const rotation = [db.rotation[i3], db.rotation[i3 + 1], db.rotation[i3 + 2]];
-      const scaleX = db.size[i2];
-      const scaleY = db.size[i2 + 1];
-
-      const offsets = this.textureOffsets;
-      const off = [0, 0, db.delay[index], db.lifetime[index]];
-      const wholeUV = [0, 0, 1, 1];
-      const seed = db.seed[index];
-      const sizeOffsets = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
-
-      for (let j = 0; j < 4; j++) {
-        const offset = j * 2;
-        const j3 = j * 3;
-        const j4 = j * 4;
-        const j12 = j * 12;
-        const j8 = j * 8;
-
-        pointData.aPos.set(position, j12);
-        pointData.aPos[j12 + 3] = db.velocity[i3];
-        pointData.aPos[j12 + 4] = db.velocity[i3 + 1];
-        pointData.aPos[j12 + 5] = db.velocity[i3 + 2];
-        pointData.aRot.set(rotation, j8);
-        pointData.aRot[j8 + 3] = seed;
-        pointData.aRot[j8 + 4] = db.color[i4];
-        pointData.aRot[j8 + 5] = db.color[i4 + 1];
-        pointData.aRot[j8 + 6] = db.color[i4 + 2];
-        pointData.aRot[j8 + 7] = db.color[i4 + 3];
-
-        if (useSprite) {
-          pointData.aSprite[j3] = db.sprite[i3];
-          pointData.aSprite[j3 + 1] = db.sprite[i3 + 1];
-          pointData.aSprite[j3 + 2] = db.sprite[i3 + 2];
-        }
-        const uv = db.uv[i4] !== 0 || db.uv[i4 + 1] !== 0 || db.uv[i4 + 2] !== 0 || db.uv[i4 + 3] !== 0
-          ? [db.uv[i4], db.uv[i4 + 1], db.uv[i4 + 2], db.uv[i4 + 3]]
-          : wholeUV;
-
-        if (uv) {
-          const uvy = useSprite ? (1 - offsets[offset + 1]) : offsets[offset + 1];
-
-          off[0] = uv[0] + offsets[offset] * uv[2];
-          off[1] = uv[1] + uvy * uv[3];
-        }
-        pointData.aOffset.set(off, j4);
-        const ji = (j + j);
-        const sx = (sizeOffsets[ji] - this.anchor.x) * scaleX;
-        const sy = (sizeOffsets[ji + 1] - this.anchor.y) * scaleY;
-
-        for (let k = 0; k < 3; k++) {
-          pointData.aPos[j12 + 6 + k] = db.dirX[i3 + k] * sx;
-          pointData.aPos[j12 + 9 + k] = db.dirY[i3 + k] * sy;
-        }
-        const j2 = j * 2;
-
-        pointData.aSize[j2] = db.sizeScale[i2];
-        pointData.aSize[j2 + 1] = db.sizeScale[i2 + 1];
-        pointData.aColorScale[j4] = db.colorScale[i4];
-        pointData.aColorScale[j4 + 1] = db.colorScale[i4 + 1];
-        pointData.aColorScale[j4 + 2] = db.colorScale[i4 + 2];
-        pointData.aColorScale[j4 + 3] = db.colorScale[i4 + 3];
-      }
-      const indexData = new Uint16Array([0, 1, 2, 2, 1, 3].map(x => x + index * 4));
-
-      if (increaseBuffer) {
-        const baseIndexData = geometry.getIndexData() as Uint16Array;
-        const idx = enlargeBuffer(baseIndexData, particleCount * 6, maxCount * 6, inc);
-
-        idx.set(indexData, index * 6);
-        geometry.setIndexData(idx);
-        this.maxParticleBufferCount = idx.length / 6;
-      } else {
-        geometry.setIndexSubData(index * 6, indexData);
-      }
-
-      Object.keys(pointData).forEach(name => {
-        const data = pointData[name];
-        const attrSize = geometry.getAttributeStride(name) / Float32Array.BYTES_PER_ELEMENT;
-
-        if (increaseBuffer) {
-          const baseData = geometry.getAttributeData(name);
-
-          assertExist(baseData);
-
-          const geoData = enlargeBuffer(baseData, vertexCount * attrSize, maxCount * 4 * attrSize, inc);
-
-          geoData.set(data, data.length * index);
-          geometry.setAttributeData(name, geoData);
-        } else {
-          geometry.setAttributeSubData(name, data.length * index, data);
-        }
-      });
-      this.particleCount = Math.max(particleCount, this.particleCount);
-      geometry.setDrawCount(this.particleCount * 6);
-    }
-  }
 }
 
 function generateGeometryProps (
