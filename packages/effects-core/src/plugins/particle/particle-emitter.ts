@@ -62,7 +62,6 @@ export class ParticleEmitter {
   private particleFollowParent = false;
   private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
-  private shapeUpDirection: Vector3 | undefined;
   private trails?: TrailConfig;
 
   get dataBuffer (): ParticleDataBuffer {
@@ -74,7 +73,6 @@ export class ParticleEmitter {
     this.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
-    this.shapeUpDirection = data.modules.initialize.shape.upDirection;
     this.renderer = renderer;
     this.trails = data.trails;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
@@ -391,31 +389,14 @@ export class ParticleEmitter {
       db.velocity[i3 + 1] = tempVel.y;
       db.velocity[i3 + 2] = tempVel.z;
 
-      // dirX/dirY: transform dirY to world, then compute dirX via cross product in world space.
-      // This ensures the (1,0,0) fallback stays in world space, matching old code.
+      // dirX/dirY: transform local values to world space (module already computed them)
       if (this.alignSpeedDirection) {
-        const dyx = db.dirY[i3], dyy = db.dirY[i3 + 1], dyz = db.dirY[i3 + 2];
-
-        tmpDirY.set(
-          e[0] * dyx + e[4] * dyy + e[8] * dyz,
-          e[1] * dyx + e[5] * dyy + e[9] * dyz,
-          e[2] * dyx + e[6] * dyy + e[10] * dyz,
-        ).normalize();
-        if (!this.upDirectionWorld) {
-          if (this.shapeUpDirection) {
-            this.upDirectionWorld = this.shapeUpDirection.clone();
-          } else {
-            this.upDirectionWorld = Vector3.Z.clone();
-          }
-          worldMatrix.transformNormal(this.upDirectionWorld);
-        }
-        tmpDirX.crossVectors(tmpDirY, this.upDirectionWorld).normalize();
-        if (tmpDirX.isZero()) {
-          tmpDirX.set(1, 0, 0);
-        }
+        worldMatrix.transformNormal(tmpDirX.set(db.dirX[i3], db.dirX[i3 + 1], db.dirX[i3 + 2]));
         db.dirX[i3] = tmpDirX.x;
         db.dirX[i3 + 1] = tmpDirX.y;
         db.dirX[i3 + 2] = tmpDirX.z;
+
+        worldMatrix.transformNormal(tmpDirY.set(db.dirY[i3], db.dirY[i3 + 1], db.dirY[i3 + 2]));
         db.dirY[i3] = tmpDirY.x;
         db.dirY[i3 + 1] = tmpDirY.y;
         db.dirY[i3 + 2] = tmpDirY.z;
