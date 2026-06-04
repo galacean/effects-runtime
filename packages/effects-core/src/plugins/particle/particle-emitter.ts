@@ -42,7 +42,7 @@ export class ParticleEmitter {
   nextSlotIndex = 0;
   generatedCount = 0;
   lastEmitTime = 0;
-  upDirectionWorld: Vector3 | null = null;
+
   spawnInfos: SpawnInfo[] = [];
 
   // --- Config (set after setup) ---
@@ -59,7 +59,7 @@ export class ParticleEmitter {
   private renderer: ParticleSystemRenderer;
   private maxCount = 0;
   private looping = false;
-  private particleFollowParent = false;
+  particleFollowParent = false;
   private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
   private trails?: TrailConfig;
@@ -128,7 +128,7 @@ export class ParticleEmitter {
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
     this.lastEmitTime = this.initialLastEmitTime;
-    this.upDirectionWorld = null;
+
     this.trailUpdated = false;
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
@@ -188,56 +188,58 @@ export class ParticleEmitter {
     if (!this.started) {
       return;
     }
-    this.time += delta / 1000;
-    this.upDirectionWorld = null;
+    const dtSec = delta / 1000;
+
+    this.time += dtSec;
+
     this.trailUpdated = false;
     this.renderer.updateTime(this.time, delta);
 
-    const dtSec = delta / 1000;
     const ctx = this.buildModuleContext(dtSec);
 
+    // 1. update existing particles
     if (this._dataBuffer.activeCount > 0) {
       this.runStage('particleUpdate', ctx);
     }
 
+    // 2. spawn + first-frame update for new particles
     if (!this.ended) {
-      if (this.timePassed < this.itemDuration) {
-        this.updateEmitterTransform(this.timePassed);
-        const spawnedSlots = this.emitterUpdateAndSpawn(ctx);
-
-        for (const slot of spawnedSlots) {
-          ctx.firstIndex = slot;
-          ctx.lastIndex = slot + 1;
-          this.runStage('particleUpdate', ctx);
-        }
-      } else if (this.looping) {
-        this.updateTrails();
-        this.handleLoop(this.itemDuration);
-      } else {
-        this.ended = true;
-        if (this.endBehaviorValue === 5) {
-          this.frozen = true;
-        }
-      }
+      this.advanceEmitter(ctx);
     }
+
+    // 3. sync to renderer
     if (this._dataBuffer.activeCount > 0) {
       this.renderer.syncParticleData(this._dataBuffer);
     }
     this.updateTrails();
   }
 
-  private emitterUpdateAndSpawn (ctx: ParticleModuleContext): number[] {
-    const maxCount = this.maxCount;
-    const spawnedSlots: number[] = [];
+  private advanceEmitter (ctx: ParticleModuleContext): void {
+    if (this.timePassed < this.itemDuration) {
+      this.updateEmitterTransform(this.timePassed);
 
-    this.spawnInfos.length = 0;
-    this.runStage('emitterUpdate', ctx);
+      this.spawnInfos.length = 0;
+      this.runStage('emitterUpdate', ctx);
 
-    for (const info of this.spawnInfos) {
-      this.particleSpawn(this._dataBuffer, maxCount, info, spawnedSlots);
+      const spawnedSlots: number[] = [];
+
+      for (const info of this.spawnInfos) {
+        this.particleSpawn(this._dataBuffer, this.maxCount, info, spawnedSlots);
+      }
+      for (const slot of spawnedSlots) {
+        ctx.firstIndex = slot;
+        ctx.lastIndex = slot + 1;
+        this.runStage('particleUpdate', ctx);
+      }
+    } else if (this.looping) {
+      this.updateTrails();
+      this.handleLoop(this.itemDuration);
+    } else {
+      this.ended = true;
+      if (this.endBehaviorValue === 5) {
+        this.frozen = true;
+      }
     }
-
-    return spawnedSlots;
   }
 
   // ========================
