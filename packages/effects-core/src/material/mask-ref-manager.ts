@@ -47,13 +47,6 @@ export class MaskProcessor {
 
   private stencilClearAction: RenderPassClearAction;
 
-  private prevStencilFunc: [number, number] = [0, 0];
-  private prevStencilOpFail: [number, number] = [0, 0];
-  private prevStencilOpZFail: [number, number] = [0, 0];
-  private prevStencilOpZPass: [number, number] = [0, 0];
-  private prevStencilRef: [number, number] = [0, 0];
-  private prevStencilMask: [number, number] = [0, 0];
-
   /**
    * @deprecated 使用 maskReferences 替代
    */
@@ -249,27 +242,26 @@ export class MaskProcessor {
    *  绘制几何体蒙版，蒙版元素绘制时调用
    */
   drawGeometryMask (renderer: Renderer, geometry: Geometry, worldMatrix: Matrix4, material: Material, maskRef: number, subMeshIndex = 0): void {
-    const previousColorMask = material.colorMask;
+    const prevColorMask = material.colorMask;
     const prevStencilTest = material.stencilTest;
-
-    this.copyStencilArrayValue(this.prevStencilFunc, material.stencilFunc);
-    this.copyStencilArrayValue(this.prevStencilOpFail, material.stencilOpFail);
-    this.copyStencilArrayValue(this.prevStencilOpZFail, material.stencilOpZFail);
-    this.copyStencilArrayValue(this.prevStencilOpZPass, material.stencilOpZPass);
-    this.copyStencilArrayValue(this.prevStencilRef, material.stencilRef);
-    this.copyStencilArrayValue(this.prevStencilMask, material.stencilMask);
+    const prevStencilFunc = material.stencilFunc;
+    const prevStencilOpFail = material.stencilOpFail;
+    const prevStencilOpZFail = material.stencilOpZFail;
+    const prevStencilOpZPass = material.stencilOpZPass;
+    const prevStencilRef = material.stencilRef;
+    const prevStencilMask = material.stencilMask;
 
     this.setupMaskMaterial(material, maskRef);
     renderer.drawGeometry(geometry, worldMatrix, material, subMeshIndex);
 
-    material.colorMask = previousColorMask;
+    material.colorMask = prevColorMask;
     material.stencilTest = prevStencilTest;
-    material.stencilFunc = this.prevStencilFunc;
-    material.stencilOpFail = this.prevStencilOpFail;
-    material.stencilOpZFail = this.prevStencilOpZFail;
-    material.stencilOpZPass = this.prevStencilOpZPass;
-    material.stencilRef = this.prevStencilRef;
-    material.stencilMask = this.prevStencilMask;
+    material.stencilFunc = prevStencilFunc;
+    material.stencilOpFail = prevStencilOpFail;
+    material.stencilOpZFail = prevStencilOpZFail;
+    material.stencilOpZPass = prevStencilOpZPass;
+    material.stencilRef = prevStencilRef;
+    material.stencilMask = prevStencilMask;
   }
 
   /**
@@ -320,12 +312,4 @@ export class MaskProcessor {
     }
   }
 
-  private copyStencilArrayValue (target: [number, number], source: [number, number] | undefined): void {
-    if (!source) {
-      return;
-    }
-
-    target[0] = source[0];
-    target[1] = source[1];
-  }
 }
