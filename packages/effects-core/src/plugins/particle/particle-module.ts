@@ -1,4 +1,3 @@
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleEmitter } from './particle-emitter';
@@ -13,11 +12,19 @@ type ParticleModuleStage =
   | 'particleUpdate';
 
 /**
+ * particleSpawn 阶段的 batch 元信息。
+ * 对齐 particle-system-pro 的 ProSpawnBatchContext。
+ */
+type SpawnBatchContext = {
+  /** 本批次待初始化的 slot 列表 */
+  slotIndices: number[],
+  /** 与 slotIndices 一一对应的逐粒子分布参数，供 InitializeParticleModule 算 shape 分布 */
+  spawnGenerators: ShapeGeneratorOptions[],
+};
+
+/**
  * 模块执行上下文。对齐 particle-system-pro 的 ProModuleContext：
  * 单一 context，按 stage 约定哪些字段有效。
- *
- * 末尾的 spawn 专属字段仅在 particleSpawn 阶段被填充，其它 stage 为 undefined。
- * particleSpawn 的 module 在入口处守卫这些字段即可，无需类型强转。
  */
 type ParticleModuleContext = {
   /** 帧间隔（秒） */
@@ -29,15 +36,8 @@ type ParticleModuleContext = {
   emitter: ParticleEmitter,
   firstIndex: number,
   lastIndex: number,
-  // --- particleSpawn 阶段专属 batch 元信息（其它 stage 为 undefined）---
-  /** 世界矩阵 */
-  worldMatrix?: Matrix4,
-  /** 本批次待初始化的 slot 列表 */
-  slotIndices?: number[],
-  /** 与 slotIndices 一一对应的逐粒子分布参数，供 InitializeParticleModule 算 shape 分布 */
-  spawnGenerators?: ShapeGeneratorOptions[],
-  /** burst 发射偏移；rate 来源为 null */
-  positionOffset?: readonly [number, number, number] | null,
+  /** 仅 particleSpawn 阶段有值，其它 stage 为 undefined */
+  spawnBatch?: SpawnBatchContext,
 };
 
 /**
@@ -101,5 +101,5 @@ abstract class ParticleModule {
   abstract execute (ctx: ParticleModuleContext): void;
 }
 
-export type { ParticleModuleStage, ParticleModuleContext, SpawnInfo, RateSpawnInfo, BurstSpawnInfo, SpawnGenerator, ResolvedBurstSpawn };
+export type { ParticleModuleStage, ParticleModuleContext, SpawnBatchContext, SpawnInfo, RateSpawnInfo, BurstSpawnInfo, SpawnGenerator, ResolvedBurstSpawn };
 export { ParticleModule };

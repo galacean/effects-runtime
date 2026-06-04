@@ -17,11 +17,10 @@ export class InitializeParticleModule extends ParticleModule {
   }
 
   override execute (ctx: ParticleModuleContext): void {
-    const { slotIndices, spawnGenerators } = ctx;
-
-    if (!slotIndices || !spawnGenerators) {
+    if (!ctx.spawnBatch) {
       return;
     }
+    const { slotIndices, spawnGenerators } = ctx.spawnBatch;
     const db = ctx.dataBuffer;
 
     for (let idx = 0; idx < slotIndices.length; idx++) {
@@ -139,10 +138,9 @@ export class InitializeParticleModule extends ParticleModule {
     db.position[i3 + 1] = position.y;
     db.position[i3 + 2] = position.z;
 
-    db.velocity[i3] = direction.x;
-    db.velocity[i3 + 1] = direction.y;
-    db.velocity[i3 + 2] = direction.z;
-    db.birthSpeed[slotIndex] = speed;
+    db.velocity[i3] = direction.x * speed;
+    db.velocity[i3 + 1] = direction.y * speed;
+    db.velocity[i3 + 2] = direction.z * speed;
 
     db.color[i4] = color[0];
     db.color[i4 + 1] = color[1];

@@ -339,10 +339,7 @@ export class ParticleEmitter {
 
     const spawnCtx: ParticleModuleContext = {
       ...this.buildModuleContext(0),
-      worldMatrix,
-      slotIndices,
-      spawnGenerators,
-      positionOffset,
+      spawnBatch: { slotIndices, spawnGenerators },
     };
 
     this.runStage('particleSpawn', spawnCtx);
@@ -383,20 +380,27 @@ export class ParticleEmitter {
       db.position[i3 + 1] = tempPos.y;
       db.position[i3 + 2] = tempPos.z;
 
-      // velocity: direction already has turbulence applied (in module).
-      // transformNormal (includes normalize) + .normalize() + * speed
-      worldMatrix.transformNormal(
-        tempDir.set(db.velocity[i3], db.velocity[i3 + 1], db.velocity[i3 + 2]),
-      ).normalize();
-      const speed = db.birthSpeed[i];
+      // velocity: transform direction to world, preserve original speed (remove scale influence)
+      const localSpeed = tempVel.set(db.velocity[i3], db.velocity[i3 + 1], db.velocity[i3 + 2]).length();
 
-      db.velocity[i3] = tempDir.x * speed;
-      db.velocity[i3 + 1] = tempDir.y * speed;
-      db.velocity[i3 + 2] = tempDir.z * speed;
+      worldMatrix.transformNormal(tempVel);
+      if (localSpeed > 0) {
+        tempVel.multiply(localSpeed);
+      }
+      db.velocity[i3] = tempVel.x;
+      db.velocity[i3 + 1] = tempVel.y;
+      db.velocity[i3 + 2] = tempVel.z;
 
-      // dirX/dirY: from world-space direction (tempDir holds the normalized world direction)
+      // dirX/dirY: transform dirY to world, then compute dirX via cross product in world space.
+      // This ensures the (1,0,0) fallback stays in world space, matching old code.
       if (this.alignSpeedDirection) {
-        tmpDirY.copyFrom(tempDir);
+        const dyx = db.dirY[i3], dyy = db.dirY[i3 + 1], dyz = db.dirY[i3 + 2];
+
+        tmpDirY.set(
+          e[0] * dyx + e[4] * dyy + e[8] * dyz,
+          e[1] * dyx + e[5] * dyy + e[9] * dyz,
+          e[2] * dyx + e[6] * dyy + e[10] * dyz,
+        ).normalize();
         if (!this.upDirectionWorld) {
           if (this.shapeUpDirection) {
             this.upDirectionWorld = this.shapeUpDirection.clone();
@@ -620,6 +624,6 @@ export class ParticleEmitter {
 }
 
 const tempPos = new Vector3();
-const tempDir = new Vector3();
+const tempVel = new Vector3();
 const tmpDirX = new Vector3();
 const tmpDirY = new Vector3();
