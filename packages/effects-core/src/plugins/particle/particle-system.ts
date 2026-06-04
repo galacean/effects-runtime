@@ -266,7 +266,6 @@ export class ParticleSystem extends Component implements Maskable {
       return;
     }
     this.emitter.worldMatrix = this.transform.getWorldMatrix();
-    this.emitter.parentPosition = this.transform.parentTransform?.position ?? null;
 
     if (this.emitter.particleFollowParent) {
       this.renderer.updateWorldMatrix(this.emitter.worldMatrix);

@@ -45,7 +45,6 @@ export class ParticleEmitter {
 
   // --- Config (set after setup) ---
   worldMatrix: Matrix4 = Matrix4.IDENTITY;
-  parentPosition: Vector3 | null = null;
   itemDuration = 1;
   endBehaviorValue = 0;
 
@@ -151,10 +150,6 @@ export class ParticleEmitter {
 
   get emitterLifetime (): number {
     return this.itemDuration > 0 ? this.timePassed / this.itemDuration : 0;
-  }
-
-  get parentTransformPosition (): Vector3 | null {
-    return this.parentPosition?.clone() ?? null;
   }
 
   tick (delta: number): void {
@@ -482,13 +477,28 @@ export class ParticleEmitter {
       return;
     }
     this.trailUpdated = true;
+    const e = this.worldMatrix.elements;
+    const parentPos = this.trails.parentAffectsPosition ? tempPos.set(e[12], e[13], e[14]) : null;
+
     this.renderer.updateTrailData({
       db: this._dataBuffer,
       timePassed: this.timePassed,
       emitterLifetime: this.emitterLifetime,
       trails: this.trails,
-      getPointPosition: i => this.getPointPosition(i),
-      parentTransformPosition: this.parentTransformPosition,
+      getPointPosition: i => {
+        const pos = this.getPointPosition(i);
+
+        if (parentPos) {
+          pos.add(parentPos);
+          const startPos = this.renderer.getTrailStartPosition(i);
+
+          if (startPos) {
+            pos.subtract(startPos);
+          }
+        }
+
+        return pos;
+      },
     });
   }
 
@@ -538,8 +548,10 @@ export class ParticleEmitter {
     if (this.trails?.dieWithParticles) {
       this.renderer.clearTrail(slotIndex);
     }
-    if (this.parentTransformPosition) {
-      this.renderer.setTrailStartPosition(slotIndex, this.parentTransformPosition.clone());
+    if (this.trails?.parentAffectsPosition) {
+      const e = this.worldMatrix.elements;
+
+      this.renderer.setTrailStartPosition(slotIndex, new Vector3(e[12], e[13], e[14]));
     }
   }
 }
