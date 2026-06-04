@@ -1,12 +1,11 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { ValueGetter } from '../../math';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
 import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
-import type { EmitterData, ParsedModuleData } from './parse-spec';
+import type { EmitterData, ParsedModuleData, ParsedTrailConfig } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
 import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
@@ -18,15 +17,6 @@ import { SolveRotationModule } from './solve-rotation-module';
 import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
-
-type TrailConfig = {
-  lifetime: ValueGetter<number>,
-  dieWithParticles: boolean,
-  sizeAffectsWidth: boolean,
-  sizeAffectsLifetime: boolean,
-  inheritParticleColor: boolean,
-  parentAffectsPosition: boolean,
-};
 
 export class ParticleEmitter {
   // --- Mutable state ---
@@ -59,7 +49,7 @@ export class ParticleEmitter {
   particleFollowParent = false;
   private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
-  private trails?: TrailConfig;
+  private trails?: ParsedTrailConfig;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
@@ -72,6 +62,9 @@ export class ParticleEmitter {
     this.alignSpeedDirection = data.alignSpeedDirection;
     this.renderer = renderer;
     this.trails = data.trails;
+    if (data.trails) {
+      renderer.setTrailConfig(data.trails);
+    }
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     const rate = data.modules.spawnRate?.rateOverTime;
 
@@ -126,7 +119,7 @@ export class ParticleEmitter {
     this.generatedCount = 0;
     this.lastEmitTime = this.initialLastEmitTime;
 
-    this.trailUpdated = false;
+    this.trailFlushed = false;
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
     this.renderer?.reset();
@@ -157,7 +150,7 @@ export class ParticleEmitter {
       return;
     }
     this.time += delta / 1000;
-    this.trailUpdated = false;
+    this.trailFlushed = false;
     this.renderer.updateTime(this.time, delta);
 
     const ctx = this.buildModuleContext(delta / 1000);
@@ -174,9 +167,9 @@ export class ParticleEmitter {
 
     // 3. sync to renderer
     if (this._dataBuffer.activeCount > 0) {
-      this.renderer.syncParticleData(this._dataBuffer);
+      this.renderer.generateDynamicData(this._dataBuffer);
     }
-    this.updateTrails();
+    this.flushTrails();
   }
 
   private advanceEmitter (ctx: ParticleModuleContext): void {
@@ -195,7 +188,7 @@ export class ParticleEmitter {
         this.runStage('particleUpdate', ctx);
       }
     } else if (this.looping) {
-      this.updateTrails();
+      this.flushTrails();
       this.handleLoop(this.itemDuration);
     } else {
       this.ended = true;
@@ -370,6 +363,7 @@ export class ParticleEmitter {
       // size: scale by world matrix column lengths
       db.size[i2] *= sx;
       db.size[i2 + 1] *= sy;
+
     }
   }
 
@@ -398,9 +392,9 @@ export class ParticleEmitter {
     const i3 = index * 3;
 
     return new Vector3(
-      db.position[i3] + db.finalOffset[i3],
-      db.position[i3 + 1] + db.finalOffset[i3 + 1],
-      db.position[i3 + 2] + db.finalOffset[i3 + 2],
+      db.finalOffset[i3],
+      db.finalOffset[i3 + 1],
+      db.finalOffset[i3 + 2],
     );
   }
 
@@ -459,47 +453,25 @@ export class ParticleEmitter {
     if (!db || index < 0 || index >= db.maxCount) {
       return;
     }
-    this.renderer.removeParticlePoint(index);
     if (this.trails?.dieWithParticles) {
       this.renderer.clearTrail(index);
     }
     db.expiry[index] = 0;
+    db.lifetime[index] = 0;
   }
 
   // ========================
   // Trail Update
   // ========================
 
-  private trailUpdated = false;
+  private trailFlushed = false;
 
-  private updateTrails (): void {
-    if (this.trailUpdated || !this.trails) {
+  private flushTrails (): void {
+    if (this.trailFlushed || !this.trails) {
       return;
     }
-    this.trailUpdated = true;
-    const e = this.worldMatrix.elements;
-    const parentPos = this.trails.parentAffectsPosition ? tempPos.set(e[12], e[13], e[14]) : null;
-
-    this.renderer.updateTrailData({
-      db: this._dataBuffer,
-      timePassed: this.timePassed,
-      emitterLifetime: this.emitterLifetime,
-      trails: this.trails,
-      getPointPosition: i => {
-        const pos = this.getPointPosition(i);
-
-        if (parentPos) {
-          pos.add(parentPos);
-          const startPos = this.renderer.getTrailStartPosition(i);
-
-          if (startPos) {
-            pos.subtract(startPos);
-          }
-        }
-
-        return pos;
-      },
-    });
+    this.trailFlushed = true;
+    this.renderer.updateTrails(this._dataBuffer, this.timePassed, this.emitterLifetime, this.worldMatrix);
   }
 
   private getWorldMatrix (): Matrix4 {
@@ -544,7 +516,6 @@ export class ParticleEmitter {
     this.aliveCount = Math.min(this.aliveCount + 1, maxCount);
 
     db.seed[slotIndex] = Math.random();
-    this.renderer.particleMesh.setPointFromBuffer(slotIndex, db);
     if (this.trails?.dieWithParticles) {
       this.renderer.clearTrail(slotIndex);
     }

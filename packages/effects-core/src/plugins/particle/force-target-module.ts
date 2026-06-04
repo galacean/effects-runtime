@@ -40,13 +40,13 @@ export class ForceTargetModule extends ParticleModule {
       const force = curve.getValue(life);
       const dl = 1 - force;
 
-      const px = db.position[i3] + db.finalOffset[i3];
-      const py = db.position[i3 + 1] + db.finalOffset[i3 + 1];
-      const pz = db.position[i3 + 2] + db.finalOffset[i3 + 2];
+      const px = db.finalOffset[i3];
+      const py = db.finalOffset[i3 + 1];
+      const pz = db.finalOffset[i3 + 2];
 
-      db.finalOffset[i3] = px * dl + tx * force - db.position[i3];
-      db.finalOffset[i3 + 1] = py * dl + ty * force - db.position[i3 + 1];
-      db.finalOffset[i3 + 2] = pz * dl + tz * force - db.position[i3 + 2];
+      db.finalOffset[i3] = px * dl + tx * force;
+      db.finalOffset[i3 + 1] = py * dl + ty * force;
+      db.finalOffset[i3 + 2] = pz * dl + tz * force;
     }
   }
 }

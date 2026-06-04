@@ -60,9 +60,9 @@ export class SolveVelocityModule extends ParticleModule {
         vz += az;
       }
 
-      db.translation[i3] += vx * dtSec;
-      db.translation[i3 + 1] += vy * dtSec;
-      db.translation[i3 + 2] += vz * dtSec;
+      db.position[i3] += vx * dtSec;
+      db.position[i3 + 1] += vy * dtSec;
+      db.position[i3 + 2] += vz * dtSec;
     }
   }
 }

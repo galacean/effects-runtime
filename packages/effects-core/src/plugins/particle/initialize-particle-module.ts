@@ -168,9 +168,6 @@ export class InitializeParticleModule extends ParticleModule {
       db.sprite[i3 + 1] = sprite[1];
       db.sprite[i3 + 2] = sprite[2];
     }
-    db.translation[i3] = 0;
-    db.translation[i3 + 1] = 0;
-    db.translation[i3 + 2] = 0;
     db.linearMove[i3] = 0;
     db.linearMove[i3 + 1] = 0;
     db.linearMove[i3 + 2] = 0;

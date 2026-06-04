@@ -271,7 +271,7 @@ export class ParticleMesh implements ParticleMeshData {
       const i3 = index * 3;
       const i4 = index * 4;
       const i2 = index * 2;
-      const position = [db.position[i3], db.position[i3 + 1], db.position[i3 + 2]];
+      const position = [0, 0, 0];
       const rotation = [db.rotation[i3], db.rotation[i3 + 1], db.rotation[i3 + 2]];
       const scaleX = db.size[i2];
       const scaleY = db.size[i2 + 1];

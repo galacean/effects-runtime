@@ -27,7 +27,7 @@ export class ParticleDataBuffer {
   readonly lifetime: number[];
   /** 随机种子 [0,1)，出生时写入 */
   readonly seed: number[];
-  /** 出生位置 xyz，3 分量 (index * 3 + component) */
+  /** 当前位置 xyz，模块可直接修改（对齐 Pro 的 Particle.Position） */
   readonly position: number[];
   /** 初始速度 xyz，3 分量 */
   readonly velocity: number[];
@@ -48,13 +48,11 @@ export class ParticleDataBuffer {
 
   // --- Per-frame accumulated state (updated each substep by modules) ---
 
-  /** 位移积分累计值 xyz，3 分量 */
-  readonly translation: number[];
   /** 旋转矩阵 3x3 列主序，9 分量 */
   readonly rotMatrix: number[];
   /** 线性位移累计值 xyz，3 分量 */
   readonly linearMove: number[];
-  /** 最终位置偏移 xyz（translation + orbital + linearMove + forceTarget 合成结果），3 分量 */
+  /** 显示位置 xyz（position + orbital + linearMove + forceTarget 合成结果），3 分量 */
   readonly finalOffset: number[];
   /** size over lifetime 缩放因子 (scaleX, scaleY)，2 分量 */
   readonly sizeScale: number[];
@@ -89,7 +87,6 @@ export class ParticleDataBuffer {
     this.color = createArray(maxCount * 4);
     this.uv = createArray(maxCount * 4);
 
-    this.translation = createArray(maxCount * 3);
     this.rotMatrix = createArray(maxCount * 9);
     this.linearMove = createArray(maxCount * 3);
     this.finalOffset = createArray(maxCount * 3);
@@ -110,7 +107,6 @@ export class ParticleDataBuffer {
 
   clear (): void {
     this._activeCount = 0;
-    this.translation.fill(0);
     this.rotMatrix.fill(0);
     this.linearMove.fill(0);
     this.finalOffset.fill(0);
