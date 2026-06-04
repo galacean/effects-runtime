@@ -1,5 +1,5 @@
 import type { Engine, Renderer } from '@galacean/effects-core';
-import { MaskProcessor, MaskMode, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
+import { MaskProcessor, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
 import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -80,8 +80,6 @@ describe('core/material//mask-ref-manager', () => {
 
       expect(mp.alphaMaskEnabled).to.eql(false);
       expect(mp.isMask).to.eql(false);
-      expect(mp.inverted).to.eql(false);
-      expect(mp.maskMode).to.eql(MaskMode.NONE);
     });
 
   });
@@ -227,6 +225,21 @@ describe('core/material//mask-ref-manager', () => {
       expect(material.stencilTest).to.eql(false);
     });
 
+    it('should not remove existing references that are also frame clip masks', () => {
+      const mp = new MaskProcessor();
+      const sprite = createMaskableSprite(engine);
+      const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
+      const component = createSpriteRendererComponent(engine, [material]);
+
+      mp.addMaskReference(sprite);
+      component.frameClipMasks = [sprite];
+
+      mp.drawStencilMask(renderer, component);
+
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].maskable).to.equal(sprite);
+    });
+
     it('should setup multiple materials', () => {
       const mp = new MaskProcessor();
       const sprite = createMaskableSprite(engine);
@@ -286,6 +299,8 @@ describe('core/material//mask-ref-manager', () => {
       material.colorMask = true;
       material.stencilTest = false;
       material.stencilFunc = [glContext.ALWAYS, glContext.ALWAYS];
+      material.stencilOpFail = [glContext.REPLACE, glContext.REPLACE];
+      material.stencilOpZFail = [glContext.DECR, glContext.DECR];
       material.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
       material.stencilRef = [0, 0];
       material.stencilMask = [0xFF, 0xFF];
@@ -297,6 +312,8 @@ describe('core/material//mask-ref-manager', () => {
       expect(material.colorMask).to.eql(true);
       expect(material.stencilTest).to.eql(false);
       expect(material.stencilFunc).to.deep.equals([glContext.ALWAYS, glContext.ALWAYS]);
+      expect(material.stencilOpFail).to.deep.equals([glContext.REPLACE, glContext.REPLACE]);
+      expect(material.stencilOpZFail).to.deep.equals([glContext.DECR, glContext.DECR]);
       expect(material.stencilOpZPass).to.deep.equals([glContext.KEEP, glContext.KEEP]);
       expect(material.stencilRef).to.deep.equals([0, 0]);
       expect(material.stencilMask).to.deep.equals([0xFF, 0xFF]);
@@ -308,35 +325,86 @@ describe('core/material//mask-ref-manager', () => {
   // ==================== setMaskOptions ====================
 
   describe('setMaskOptions', () => {
-    it('should set maskMode to MASK when isMask is true', () => {
+    it('should set isMask to true when isMask is passed', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { isMask: true, reference: dummyRef });
+      mp.setMaskOptions(engine, { isMask: true });
 
       expect(mp.isMask).to.eql(true);
-      expect(mp.maskMode).to.eql(MaskMode.MASK);
     });
 
-    it('should set maskMode to OBSCURED when isMask is false and inverted is false', () => {
+    it('should handle references array with single forward mask', () => {
       const mp = new MaskProcessor();
+      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
 
-      mp.setMaskOptions(engine, { isMask: false, inverted: false, reference: dummyRef });
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references: [{ mask: dummyRef, inverted: false }],
+      });
 
-      expect(mp.maskMode).to.eql(MaskMode.OBSCURED);
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].inverted).to.eql(false);
     });
 
-    it('should set maskMode to REVERSE_OBSCURED when inverted is true', () => {
+    it('should handle references array with single reverse mask', () => {
+      const mp = new MaskProcessor();
+      const existingMask = engine.findObject<SpriteComponent>(dummyRef);
+
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references: [{ mask: dummyRef, inverted: true }],
+      });
+
+      expect(mp.getMaskReferences().length).to.eql(1);
+      expect(mp.getMaskReferences()[0].inverted).to.eql(true);
+    });
+
+    it('should skip references without mask path', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { isMask: false, inverted: true, reference: dummyRef });
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references: [{ inverted: false }],
+      });
 
-      expect(mp.maskMode).to.eql(MaskMode.REVERSE_OBSCURED);
+      expect(mp.getMaskReferences().length).to.eql(0);
+    });
+
+    it('should warn and cap when mask references exceed the stencil limit', () => {
+      const mp = new MaskProcessor();
+      const references = Array.from({ length: 256 }, (_, i) => {
+        const id = `cap-mask-${i}`;
+        const sprite = createMaskableSprite(engine, id);
+
+        sprite.setInstanceId(id);
+
+        return { mask: { id }, inverted: false };
+      });
+
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references,
+      });
+
+      expect(mp.getMaskReferences().length).to.eql(254);
+    });
+
+    it('should deduplicate references pointing to the same maskable', () => {
+      const mp = new MaskProcessor();
+      const references = Array.from({ length: 5 }, () => ({ mask: dummyRef, inverted: false }));
+
+      mp.setMaskOptions(engine, {
+        isMask: false,
+        references,
+      });
+
+      expect(mp.getMaskReferences().length).to.eql(1);
     });
 
     it('should set alphaMaskEnabled', () => {
       const mp = new MaskProcessor();
 
-      mp.setMaskOptions(engine, { alphaMaskEnabled: true, reference: dummyRef });
+      mp.setMaskOptions(engine, { alphaMaskEnabled: true });
 
       expect(mp.alphaMaskEnabled).to.eql(true);
     });
@@ -351,7 +419,7 @@ describe('core/material//mask-ref-manager', () => {
       mp.addMaskReference(sprite1);
       mp.addMaskReference(sprite2);
 
-      mp.setMaskOptions(engine, { isMask: true, reference: dummyRef });
+      mp.setMaskOptions(engine, { isMask: true });
       mp.drawStencilMask(renderer, component);
       expect(material.stencilTest).to.eql(false);
     });
