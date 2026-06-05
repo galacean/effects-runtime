@@ -2,8 +2,9 @@ import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Texture } from '../../texture';
-import type { TrailMeshProps, TrailPointOptions } from './trail-mesh';
+import type { TrailMeshProps } from './trail-mesh';
 import { TrailMesh } from './trail-mesh';
+import { TrailHistory } from './trail-history';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleMeshProps } from './particle-mesh';
 import { ParticleMesh } from './particle-mesh';
@@ -21,6 +22,7 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   private trailMesh?: TrailMesh;
   private trailConfig?: ParsedTrailConfig;
+  private trailHistory?: TrailHistory;
 
   constructor (engine: Engine) {
     super(engine);
@@ -225,14 +227,24 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   setTrailConfig (config: ParsedTrailConfig): void {
     this.trailConfig = config;
+    if (this.trailMesh) {
+      this.trailHistory = new TrailHistory(
+        this.trailMesh.maxTrailCount,
+        this.trailMesh.pointCountPerTrail,
+        this.trailMesh.checkVertexDistance,
+        this.trailMesh.minimumVertexDistance,
+      );
+    }
   }
 
   updateTrails (db: ParticleDataBuffer, timePassed: number, emitterLifetime: number, worldMatrix: Matrix4): void {
     const trails = this.trailConfig;
+    const history = this.trailHistory;
 
-    if (!trails) {
+    if (!trails || !history || !this.trailMesh) {
       return;
     }
+
     for (let ti = 0; ti < db.activeCount; ti++) {
       if (!db.alive[ti]) {
         continue;
@@ -241,7 +253,7 @@ export class ParticleSystemRenderer extends RendererComponent {
 
       if ((trailDelay + db.lifetime[ti]) < timePassed) {
         if (trails.dieWithParticles) {
-          this.clearTrail(ti);
+          history.clear(ti);
         }
       } else if (timePassed > trailDelay) {
         const i3 = ti * 3;
@@ -255,10 +267,10 @@ export class ParticleSystemRenderer extends RendererComponent {
           const e = worldMatrix.elements;
 
           tempParentPos.set(e[12], e[13], e[14]);
-          let startPos = this.getTrailStartPosition(ti);
+          let startPos = history.getStartPosition(ti);
 
           if (!startPos) {
-            this.setTrailStartPosition(ti, tempParentPos.clone());
+            history.setStartPosition(ti, tempParentPos.x, tempParentPos.y, tempParentPos.z);
             startPos = tempParentPos;
           }
           position.add(tempParentPos);
@@ -269,27 +281,25 @@ export class ParticleSystemRenderer extends RendererComponent {
         const sizeX = db.size[si2];
 
         let width = 1;
-        let lifetime = trails.lifetime.getValue(emitterLifetime);
+        let trailLifetime = trails.lifetime.getValue(emitterLifetime);
 
         if (trails.sizeAffectsWidth) {
           width *= sizeX;
         }
         if (trails.sizeAffectsLifetime) {
-          lifetime *= sizeX;
+          trailLifetime *= sizeX;
         }
-        this.addTrailPoint(ti, position, {
-          color,
-          lifetime,
-          size: width,
-          time: trailDelay,
-        });
+        history.addPoint(ti, position, trailDelay, color, width, trailLifetime);
       }
     }
+
+    this.trailMesh.generateTrailGeometry(history);
   }
 
   reset () {
     this.particleMesh.clearPoints();
     this.trailMesh?.clearAllTrails();
+    this.trailHistory?.clearAll();
   }
 
   updateTime (now: number, delta: number) {
@@ -303,6 +313,7 @@ export class ParticleSystemRenderer extends RendererComponent {
   minusTimeForLoop (duration: number) {
     this.particleMesh.minusTime(duration);
     this.trailMesh?.minusTime(duration);
+    this.trailHistory?.minusTime(duration);
   }
 
   updateWorldMatrix (worldMatrix: Matrix4) {
@@ -346,19 +357,7 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   clearTrail (pointIndex: number) {
-    this.trailMesh?.clearTrail(pointIndex);
-  }
-
-  addTrailPoint (index: number, position: Vector3, options: TrailPointOptions) {
-    this.trailMesh?.addPoint(index, position, options);
-  }
-
-  setTrailStartPosition (index: number, position: Vector3) {
-    this.trailMesh?.setPointStartPos(index, position);
-  }
-
-  getTrailStartPosition (index: number) {
-    return (this.trailMesh as TrailMesh).getPointStartPos(index);
+    this.trailHistory?.clear(pointIndex);
   }
 }
 

@@ -1,7 +1,8 @@
 import type { Matrix4 } from '@galacean/effects-math/es/core/index';
-import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import type { GradientStop, vec3 } from '@galacean/effects-specification';
+import type { GradientStop } from '@galacean/effects-specification';
+import type { TrailHistory } from './trail-history';
 import { RENDER_PREFER_LOOKUP_TEXTURE, getConfig } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
@@ -13,7 +14,7 @@ import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } fro
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
-import { assertExist, imageDataFromGradient } from '../../utils';
+import { imageDataFromGradient } from '../../utils';
 
 export type TrailMeshProps = {
   maxTrailCount: number,
@@ -43,9 +44,6 @@ export type TrailPointOptions = {
   time: number,
 };
 
-const tmp0 = new Vector3();
-const tmp1 = new Vector3();
-
 export class TrailMesh {
   mesh: Mesh;
   maxTrailCount;
@@ -55,9 +53,6 @@ export class TrailMesh {
   minimumVertexDistance: number;
   useAttributeTrailStart: boolean;
   checkVertexDistance: boolean;
-
-  private pointStart: Vector3[] = [];
-  private trailCursors: Uint16Array;
 
   constructor (
     engine: Engine,
@@ -237,7 +232,6 @@ export class TrailMesh {
       this.mesh.worldMatrix = matrix;
     }
     this.geometry = mesh.firstGeometry();
-    this.trailCursors = new Uint16Array(maxTrailCount);
   }
 
   get time () {
@@ -247,193 +241,173 @@ export class TrailMesh {
     this.mesh.material.setFloat('uTime', t ?? 0);
   }
 
-  addPoint (trailIndex: number, position: Vector3, opt: TrailPointOptions) {
-    opt = opt || ({} as TrailPointOptions);
-    let cursor = this.trailCursors[trailIndex];
-    const pointCountPerTrail = this.pointCountPerTrail;
-    const geometry = this.geometry;
-    const segmentPerTrail = pointCountPerTrail - 1;
-    const pointIndex = cursor % pointCountPerTrail;
-    const previousIndex = (cursor - 1) % pointCountPerTrail;
-    const bpreviousIndex = (cursor - 2) % pointCountPerTrail;
-    const previousPoint = this.getTrailPosition(trailIndex, previousIndex, tmp0);
-    // point too close
-
-    if (previousPoint && this.checkVertexDistance && previousPoint?.distanceSquared(position) < this.minimumVertexDistance) {
-      return;
-    }
-
-    const pointStartIndex = trailIndex * pointCountPerTrail + pointIndex;
-    const dir = calculateDirection(previousPoint, position);
-    const time = opt.time || this.time;
-    const info = [Math.random(), opt.lifetime || this.lifetime, cursor] as vec3;
-    const size = opt.size || 1;
-
-    const dirStartIndex = pointStartIndex * 6;
-    const dirData = new Float32Array(6);
-
-    dirData.set(dir, 0);
-    dirData.set(dir, 3);
-
-    geometry.setAttributeSubData('aDir', dirStartIndex, dirData);
-    geometry.setAttributeSubData('aTime', pointStartIndex * 2, new Float32Array([time, time]));
-
-    const color = opt.color || [1, 1, 1, 1];
-    const colorData = new Float32Array(24);
-    const positionData = position.toArray();
-
-    colorData.set(color, 0);
-    colorData.set(info, 4);
-    colorData[7] = 0;
-    colorData.set(positionData, 8);
-    colorData[11] = 0.5 * size;
-
-    colorData.set(color, 12);
-    colorData.set(info, 16);
-    colorData[19] = 1;
-    colorData.set(positionData, 20);
-    colorData[23] = -0.5 * size;
-
-    geometry.setAttributeSubData('aColor', pointStartIndex * 24, colorData);
-
-    if (previousIndex >= 0) {
-      const bPreviousPoint = this.getTrailPosition(trailIndex, bpreviousIndex, tmp1) as Vector3;
-      const previousDir = new Float32Array(calculateDirection(bPreviousPoint, previousPoint as Vector3, position));
-      const previousDirStartIndex = (trailIndex * pointCountPerTrail + previousIndex) * 6;
-
-      geometry.setAttributeSubData('aDir', previousDirStartIndex, previousDir);
-      geometry.setAttributeSubData('aDir', previousDirStartIndex + 3, previousDir);
-      const indicesStart = trailIndex * pointCountPerTrail * 2;
-      const indicesData = new Uint16Array([
-        previousIndex * 2 + indicesStart,
-        previousIndex * 2 + 1 + indicesStart,
-        pointIndex * 2 + indicesStart,
-        pointIndex * 2 + indicesStart,
-        previousIndex * 2 + 1 + indicesStart,
-        pointIndex * 2 + 1 + indicesStart,
-      ]);
-      const start = (trailIndex * segmentPerTrail + (cursor - 1) % segmentPerTrail) * 6;
-
-      geometry.setIndexSubData(start, indicesData);
-    }
-
-    cursor = ++this.trailCursors[trailIndex];
+  generateTrailGeometry (history: TrailHistory): void {
+    const geo = this.geometry;
+    const maxPoints = this.pointCountPerTrail;
+    const aColor = geo.getAttributeData('aColor') as Float32Array;
+    const aDir = geo.getAttributeData('aDir') as Float32Array;
+    const aTime = geo.getAttributeData('aTime') as Float32Array;
+    const indices = geo.getIndexData() as Uint16Array;
+    const useAttrStart = this.useAttributeTrailStart;
+    const aTrailStart = useAttrStart ? geo.getAttributeData('aTrailStart') as Float32Array : null;
     const mtl = this.mesh.material;
-    const params = mtl.getVector4('uParams');
-    const trailStart = info[2];
 
-    if (this.useAttributeTrailStart) {
-      const len = pointCountPerTrail * 2;
-      const startData: Float32Array = new Float32Array(len);
+    let totalSegments = 0;
 
-      for (let i = 0; i < len; i++) {
-        startData[i] = trailStart;
+    for (let ti = 0; ti < this.maxTrailCount; ti++) {
+      const count = history.pointCounts[ti];
+
+      if (count < 1) {
+        continue;
       }
-      geometry.setAttributeSubData('aTrailStart', trailIndex * startData.length, startData);
-    } else {
-      const value = mtl.getFloats('uTrailStart');
+      const cursor = history.cursors[ti];
+      const hBase = ti * maxPoints;
+      const vBase = ti * maxPoints;
 
-      if (value != undefined) {
-        value[trailIndex] = trailStart;
-        mtl.setFloats('uTrailStart', value);
+      for (let p = 0; p < count; p++) {
+        const ringIdx = (cursor - count + p + maxPoints * 2) % maxPoints;
+        const hIdx = hBase + ringIdx;
+        const vi = vBase + p;
+        const c24 = vi * 24;
+
+        const px = history.posX[hIdx];
+        const py = history.posY[hIdx];
+        const pz = history.posZ[hIdx];
+        const w = history.widths[hIdx];
+        const time = history.times[hIdx];
+        const seed = history.seeds[hIdx];
+
+        const r = history.colorR[hIdx];
+        const g = history.colorG[hIdx];
+        const b = history.colorB[hIdx];
+        const a = history.colorA[hIdx];
+
+        // aColor: [color(4), seed(1), info(3), pos(3), width(1)] * 2 vertices
+        // info = [seed, lifetime, trailSection]
+        const ptLifetime = history.lifetimes[hIdx];
+
+        aColor[c24] = r; aColor[c24 + 1] = g; aColor[c24 + 2] = b; aColor[c24 + 3] = a;
+        aColor[c24 + 4] = seed;
+        aColor[c24 + 5] = ptLifetime;
+        aColor[c24 + 6] = p;
+        aColor[c24 + 7] = 0;
+        aColor[c24 + 8] = px; aColor[c24 + 9] = py; aColor[c24 + 10] = pz;
+        aColor[c24 + 11] = 0.5 * w;
+
+        aColor[c24 + 12] = r; aColor[c24 + 13] = g; aColor[c24 + 14] = b; aColor[c24 + 15] = a;
+        aColor[c24 + 16] = seed;
+        aColor[c24 + 17] = ptLifetime;
+        aColor[c24 + 18] = p;
+        aColor[c24 + 19] = 1;
+        aColor[c24 + 20] = px; aColor[c24 + 21] = py; aColor[c24 + 22] = pz;
+        aColor[c24 + 23] = -0.5 * w;
+
+        // aTime
+        aTime[vi * 2] = time;
+        aTime[vi * 2 + 1] = time;
+
+        // aDir: replicate old calculateDirection (3-point case uses only forward)
+        let dx = 0, dy = 0, dz = 0;
+        const hasNext = p < count - 1;
+        const hasPrev = p > 0;
+
+        if (hasNext) {
+          const nextRing = (cursor - count + p + 1 + maxPoints * 2) % maxPoints;
+          const ni = hBase + nextRing;
+
+          dx = history.posX[ni] - px;
+          dy = history.posY[ni] - py;
+          dz = history.posZ[ni] - pz;
+        }
+        if (hasPrev) {
+          const prevRing = (cursor - count + p - 1 + maxPoints * 2) % maxPoints;
+          const pi = hBase + prevRing;
+          const pdx = px - history.posX[pi];
+          const pdy = py - history.posY[pi];
+          const pdz = pz - history.posZ[pi];
+
+          if (dx === 0 && dy === 0 && dz === 0) {
+            dx = pdx; dy = pdy; dz = pdz;
+          } else {
+            dx = (dx + pdx) * 0.5;
+            dy = (dy + pdy) * 0.5;
+            dz = (dz + pdz) * 0.5;
+          }
+        }
+        const dLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (dLen > 1e-6) {
+          dx /= dLen; dy /= dLen; dz /= dLen;
+        }
+        const d6 = vi * 6;
+
+        aDir[d6] = dx; aDir[d6 + 1] = dy; aDir[d6 + 2] = dz;
+        aDir[d6 + 3] = dx; aDir[d6 + 4] = dy; aDir[d6 + 5] = dz;
+
+        // aTrailStart
+        if (aTrailStart) {
+          aTrailStart[vi * 2] = count - 1;
+          aTrailStart[vi * 2 + 1] = count - 1;
+        }
+
+        // indices: connect with previous point
+        if (p > 0) {
+          const prevVi = vBase + p - 1;
+          const ii = totalSegments * 6;
+
+          indices[ii] = prevVi * 2;
+          indices[ii + 1] = prevVi * 2 + 1;
+          indices[ii + 2] = vi * 2;
+          indices[ii + 3] = vi * 2;
+          indices[ii + 4] = prevVi * 2 + 1;
+          indices[ii + 5] = vi * 2 + 1;
+          totalSegments++;
+        }
+      }
+
+      if (!useAttrStart) {
+        const uTrailStart = mtl.getFloats('uTrailStart');
+
+        if (uTrailStart) {
+          uTrailStart[ti] = count - 1;
+          mtl.setFloats('uTrailStart', uTrailStart);
+        }
       }
     }
+
+    geo.setAttributeData('aColor', aColor);
+    geo.setAttributeData('aDir', aDir);
+    geo.setAttributeData('aTime', aTime);
+    if (aTrailStart) {
+      geo.setAttributeData('aTrailStart', aTrailStart);
+    }
+    geo.setIndexData(indices);
+    geo.setDrawCount(totalSegments * 6);
+
+    const params = mtl.getVector4('uParams');
 
     if (params) {
-      params.y = Math.max(params.y, cursor - 1) - Math.max(0, cursor - pointCountPerTrail);
+      let maxSection = 0;
+
+      for (let ti = 0; ti < this.maxTrailCount; ti++) {
+        maxSection = Math.max(maxSection, history.pointCounts[ti] - 1);
+      }
+      params.y = maxSection;
       mtl.setVector4('uParams', params);
     }
   }
 
-  getTrailPosition (trail: number, index: number, out: Vector3): Vector3 | undefined {
-    const pointCountPerTrail = this.pointCountPerTrail;
-
-    if (index >= 0 && index < pointCountPerTrail) {
-      const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
-      const data = this.geometry.getAttributeData('aColor');
-
-      assertExist(data);
-
-      out.x = data[startIndex];
-      out.y = data[1 + startIndex];
-      out.z = data[2 + startIndex];
-
-      return out;
-    }
+  clearAllTrails (): void {
+    this.geometry.setDrawCount(0);
   }
 
-  clearAllTrails () {
-    const indexData = this.geometry.getIndexData();
-
-    assertExist(indexData);
-
-    this.trailCursors = new Uint16Array(this.trailCursors.length);
-    this.geometry.setIndexData(new Uint16Array(indexData.length));
-  }
-
-  minusTime (time: number) {
-    const data = this.geometry.getAttributeData('aTime');
-
-    assertExist(data);
-
-    for (let i = 0; i < data.length; i++) {
-      data[i] -= time;
-    }
-    this.geometry.setAttributeData('aTime', data);
+  minusTime (time: number): void {
     this.time -= time;
-  }
-
-  clearTrail (index: number) {
-    if (this.trailCursors[index] !== 0) {
-      const pointCountPerTrail = this.pointCountPerTrail;
-      const indicesPerTrail = (pointCountPerTrail - 1) * 6;
-      const indices = this.geometry.getIndexData();
-
-      assertExist(indices);
-
-      indices.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
-      this.geometry.setIndexData(indices);
-
-      this.trailCursors[index] = 0;
-    }
-  }
-
-  getPointStartPos (index: number) {
-    return this.pointStart[index];
-  }
-
-  setPointStartPos (index: number, pos: Vector3) {
-    this.pointStart[index] = pos;
   }
 
   onUpdate (escapeTime: number): any {
   }
 
-}
-
-const tempDir = new Vector3();
-const tempDa = new Vector3();
-const tempDb = new Vector3();
-
-// TODO: prePoint 可选，point 必选，顺序有问题
-function calculateDirection (prePoint: Vector3 | undefined, point: Vector3, nextPoint?: Vector3): vec3 {
-  const dir = tempDir;
-
-  if (!prePoint && !nextPoint) {
-    return [0, 0, 0];
-  } else if (!prePoint) {
-    dir.subtractVectors(nextPoint!, point);
-  } else if (!nextPoint) {
-    dir.subtractVectors(point, prePoint);
-  } else {
-    tempDa.subtractVectors(point, prePoint).normalize();
-    // FIXME: 这里有bug。。。
-    tempDa.subtractVectors(nextPoint, point);
-    tempDb.copyFrom(tempDa).normalize();
-    dir.addVectors(tempDa, tempDb);
-  }
-
-  return dir.normalize().toArray();
 }
 
 export function getTrailMeshShader (
