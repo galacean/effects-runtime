@@ -2,6 +2,7 @@ import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core
 import type { vec3 } from '@galacean/effects-specification';
 import type { ShapeParticle } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
+import type { ParticleEmitter } from './particle-emitter';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 import type { InitializeModuleData } from './parse-spec';
@@ -28,7 +29,7 @@ export class InitializeParticleModule extends ParticleModule {
       const generator = spawnGenerators[idx];
       const shapeData = this.data.shape.generate(generator);
 
-      this.initializeToBuffer(shapeData, ctx.emitterLifetime, slotIndex, db);
+      this.initializeToBuffer(shapeData, ctx.emitterLifetime, slotIndex, db, ctx.emitter);
     }
   }
 
@@ -37,6 +38,7 @@ export class InitializeParticleModule extends ParticleModule {
     emitterLifetime: number,
     slotIndex: number,
     db: ParticleDataBuffer,
+    emitter: ParticleEmitter,
   ): void {
     const options = this.data.options;
     const shape = this.data.shape;
@@ -131,6 +133,7 @@ export class InitializeParticleModule extends ParticleModule {
     db.lifetime[slotIndex] = lifetime;
     db.seed[slotIndex] = Math.random();
     db.alive[slotIndex] = 1;
+    db.uniqueId[slotIndex] = emitter.uniqueIdCounter++;
 
     db.rotation[i3] = rot.x;
     db.rotation[i3 + 1] = rot.y;

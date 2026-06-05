@@ -5,7 +5,7 @@ import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
 import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
-import type { EmitterData, ParsedModuleData, ParsedTrailConfig } from './parse-spec';
+import type { EmitterData, ParsedModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
 import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
@@ -30,6 +30,7 @@ export class ParticleEmitter {
   nextSlotIndex = 0;
   generatedCount = 0;
   lastEmitTime = 0;
+  uniqueIdCounter = 0;
 
   spawnInfos: SpawnInfo[] = [];
 
@@ -43,13 +44,14 @@ export class ParticleEmitter {
 
   // --- Shared refs (set during setup) ---
   private _dataBuffer: ParticleDataBuffer;
-  private renderer: ParticleSystemRenderer;
+  private renderer: ParticleSystemRenderer | null = null;
   private maxCount = 0;
   private looping = false;
   particleFollowParent = false;
   private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
-  private trails?: ParsedTrailConfig;
+  /** 单调递增时间，不受 loop 回退影响（对齐 Pro 的 emitterAge） */
+  emitterAge = 0;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
@@ -61,16 +63,20 @@ export class ParticleEmitter {
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
     this.renderer = renderer;
-    this.trails = data.trails;
-    if (data.trails) {
-      renderer.setTrailConfig(data.trails);
-    }
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     const rate = data.modules.spawnRate?.rateOverTime;
 
     this.initialLastEmitTime = rate ? -1 / rate.getValue(0) : 0;
     this.lastEmitTime = this.initialLastEmitTime;
     this.modules = this.buildModules(data.modules);
+  }
+
+  setupTrailEmitter (maxCount: number, modules: ParticleModule[]): void {
+    this.maxCount = maxCount;
+    this.looping = true;
+    this.particleFollowParent = true;
+    this._dataBuffer = new ParticleDataBufferImpl(maxCount);
+    this.modules = modules;
   }
 
   private buildModules (data: ParsedModuleData): ParticleModule[] {
@@ -119,7 +125,8 @@ export class ParticleEmitter {
     this.generatedCount = 0;
     this.lastEmitTime = this.initialLastEmitTime;
 
-    this.trailFlushed = false;
+    this.emitterAge = 0;
+    this.uniqueIdCounter = 0;
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
     this.renderer?.reset();
@@ -150,8 +157,8 @@ export class ParticleEmitter {
       return;
     }
     this.time += delta / 1000;
-    this.trailFlushed = false;
-    this.renderer.updateTime(this.time, delta);
+    this.emitterAge += delta / 1000;
+    this.renderer?.updateTime(this.time);
 
     const ctx = this.buildModuleContext(delta / 1000);
 
@@ -166,10 +173,9 @@ export class ParticleEmitter {
     }
 
     // 3. sync to renderer
-    if (this._dataBuffer.activeCount > 0) {
+    if (this._dataBuffer.activeCount > 0 && this.renderer) {
       this.renderer.generateDynamicData(this._dataBuffer);
     }
-    this.flushTrails();
   }
 
   private advanceEmitter (ctx: ParticleModuleContext): void {
@@ -190,7 +196,6 @@ export class ParticleEmitter {
         this.runStage('particleUpdate', firstFrameCtx);
       }
     } else if (this.looping) {
-      this.flushTrails();
       this.handleLoop(this.itemDuration);
     } else {
       this.ended = true;
@@ -224,21 +229,12 @@ export class ParticleEmitter {
         expired.push(s);
       }
     }
-    expired.sort((a, b) => {
-      const diff = (db.lifetime[a] - db.age[a]) - (db.lifetime[b] - db.age[b]);
-
-      return diff !== 0 ? diff : b - a;
-    });
+    expired.sort((a, b) => db.age[b] - db.age[a]);
 
     const remaining = requestedCount - slots.length;
 
     for (let i = 0; i < Math.min(remaining, expired.length); i++) {
-      const recycled = expired[i];
-
-      if (this.trails?.dieWithParticles) {
-        this.renderer.clearTrail(recycled);
-      }
-      slots.push(recycled);
+      slots.push(expired[i]);
     }
 
     return slots;
@@ -451,24 +447,7 @@ export class ParticleEmitter {
     if (!db || index < 0 || index >= db.maxCount) {
       return;
     }
-    if (this.trails?.dieWithParticles) {
-      this.renderer.clearTrail(index);
-    }
     db.lifetime[index] = 0;
-  }
-
-  // ========================
-  // Trail Update
-  // ========================
-
-  private trailFlushed = false;
-
-  private flushTrails (): void {
-    if (this.trailFlushed || !this.trails) {
-      return;
-    }
-    this.trailFlushed = true;
-    this.renderer.updateTrails(this._dataBuffer, this.timePassed, this.emitterLifetime, this.worldMatrix);
   }
 
   private getWorldMatrix (): Matrix4 {
@@ -479,7 +458,7 @@ export class ParticleEmitter {
     this.loopStartTime = this.time - duration;
     this.lastEmitTime -= duration;
     this.time -= duration;
-    this.renderer.minusTimeForLoop(duration);
+    this.renderer?.minusTimeForLoop(duration);
   }
 
   // ========================

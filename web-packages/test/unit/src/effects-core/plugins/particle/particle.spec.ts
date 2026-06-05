@@ -32,9 +32,6 @@ describe('core/plugins/particle/test', function () {
     const content = vfxItem!.getComponent(ParticleSystem);
 
     expect(vfxItem?.getComponent(ParticleSystemRenderer).priority).to.eql(1);
-    const pMesh = content.renderer.particleMesh.mesh;
-    // @ts-expect-error
-    const tMesh = content.renderer.trailMesh?.mesh;
 
     // expect(pMesh.priority).to.eql(1, 'particle');
     // expect(tMesh.priority).to.eql(1, 'trail');

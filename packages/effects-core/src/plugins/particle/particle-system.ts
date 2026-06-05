@@ -13,9 +13,13 @@ import type { Texture } from '../../texture';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { ParticleEmitter } from './particle-emitter';
-import type { ParsedSpecResult } from './parse-spec';
+import type { EmitterData, ParsedSpecResult } from './parse-spec';
 import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
+import { SpawnPerSourceParticleModule } from './spawn-per-source-module';
+import { SampleFromSourceModule } from './sample-from-source-module';
+import { KillBySourceModule } from './kill-by-source-module';
+import { UpdateAgeModule } from './update-age-module';
 
 type ParticleInteraction = {
   behavior?: spec.ParticleInteractionBehavior,
@@ -37,6 +41,7 @@ export class ParticleSystem extends Component implements Maskable {
   readonly maskManager: MaskProcessor;
 
   private emitter: ParticleEmitter | null = null;
+  private trailEmitter: ParticleEmitter | null = null;
   private specResult: ParsedSpecResult | null = null;
   private clickedPointIndex = -1;
   private pathTime = 0;
@@ -234,6 +239,10 @@ export class ParticleSystem extends Component implements Maskable {
     this.emitter.itemDuration = this.item.duration;
     this.emitter.endBehaviorValue = this.item.endBehavior;
 
+    if (result.emitterData.trails) {
+      this.setupTrailEmitter(result.emitterData);
+    }
+
     this.initEmitterTransform();
     this.pushTransformToEmitter();
     this.startEmit();
@@ -259,6 +268,10 @@ export class ParticleSystem extends Component implements Maskable {
     this.updateItemPosition(dt / 1000);
     this.pushTransformToEmitter();
     this.emitter.tick(dt);
+    if (this.trailEmitter) {
+      this.trailEmitter.tick(dt);
+      this.renderer.generateRibbonData(this.trailEmitter.dataBuffer, this.emitter.emitterAge);
+    }
   }
 
   private pushTransformToEmitter (): void {
@@ -270,6 +283,34 @@ export class ParticleSystem extends Component implements Maskable {
     if (this.emitter.particleFollowParent) {
       this.renderer.updateWorldMatrix(this.emitter.worldMatrix);
     }
+  }
+
+  private setupTrailEmitter (emitterData: EmitterData): void {
+    const trails = emitterData.trails!;
+    const sourceEmitter = this.emitter!;
+    const pointCountPerTrail = this.renderer.trailMesh?.pointCountPerTrail ?? 24;
+    const minimumDistSq = this.renderer.trailMesh?.minimumVertexDistance ?? 0;
+
+    const spawnModule = new SpawnPerSourceParticleModule(sourceEmitter.dataBuffer, minimumDistSq);
+
+    spawnModule.dieWithParticles = trails.dieWithParticles;
+
+    const sampleModule = new SampleFromSourceModule(sourceEmitter, spawnModule, trails.lifetime, {
+      inheritParticleColor: trails.inheritParticleColor,
+      sizeAffectsWidth: trails.sizeAffectsWidth,
+    });
+
+    const modules = [
+      spawnModule,
+      sampleModule,
+      new UpdateAgeModule(),
+      new KillBySourceModule(spawnModule),
+    ];
+
+    this.trailEmitter = new ParticleEmitter();
+    this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules);
+    this.trailEmitter.itemDuration = this.item.duration;
+    this.trailEmitter.started = true;
   }
 
   private initEmitterTransform (): void {

@@ -2,19 +2,19 @@ import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
 import type { GradientStop } from '@galacean/effects-specification';
-import type { TrailHistory } from './trail-history';
-import { RENDER_PREFER_LOOKUP_TEXTURE, getConfig } from '../../config';
+import type { ParticleDataBuffer } from './particle-data-buffer';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
-import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue, ValueGetter } from '../../math';
-import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
+import type { GeometryProps, ShaderMacros, ShaderWithSource, GPUCapability } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
-import { Texture, generateHalfFloatTexture } from '../../texture';
-import { imageDataFromGradient } from '../../utils';
+import { Texture } from '../../texture';
+import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
 
 export type TrailMeshProps = {
   maxTrailCount: number,
@@ -25,7 +25,6 @@ export type TrailMeshProps = {
   blending: number,
   widthOverTrail: ValueGetter<number>,
   colorOverTrail?: Array<GradientStop>,
-  // order: number,
   matrix?: Matrix4,
   opacityOverLifetime: ValueGetter<number>,
   occlusion: boolean,
@@ -44,15 +43,60 @@ export type TrailPointOptions = {
   time: number,
 };
 
+export const MAX_UNIFORM_TRAIL_COUNT = 64;
+
+const FLOATS_PER_VERTEX = 3 + 2 + 4; // aPos(3) + aUV(2) + aColor(4)
+const STRIDE_BYTES = FLOATS_PER_VERTEX * 4;
+
+type ColorStop = { stop: number, color: number[] };
+
+function buildColorStops (gradient: GradientStop[]): ColorStop[] {
+  const raw = colorStopsFromGradient(gradient);
+
+  return raw.map(s => ({ stop: s.time, color: s.color.toArray() }));
+}
+
+function sampleGradient (stops: ColorStop[], t: number): [number, number, number, number] {
+  if (stops.length === 0) {
+    return [255, 255, 255, 255];
+  }
+  if (t <= stops[0].stop) {
+    const c = stops[0].color;
+
+    return [c[0], c[1], c[2], c[3]];
+  }
+  if (t >= stops[stops.length - 1].stop) {
+    const c = stops[stops.length - 1].color;
+
+    return [c[0], c[1], c[2], c[3]];
+  }
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (t >= stops[i].stop && t < stops[i + 1].stop) {
+      const frac = (t - stops[i].stop) / (stops[i + 1].stop - stops[i].stop);
+      const c = interpolateColor(stops[i].color, stops[i + 1].color, frac);
+
+      return [c[0], c[1], c[2], c[3]];
+    }
+  }
+  const c = stops[stops.length - 1].color;
+
+  return [c[0], c[1], c[2], c[3]];
+}
+
 export class TrailMesh {
   mesh: Mesh;
-  maxTrailCount;
+  maxTrailCount: number;
   geometry: Geometry;
   lifetime: ValueGetter<number>;
   pointCountPerTrail: number;
   minimumVertexDistance: number;
-  useAttributeTrailStart: boolean;
   checkVertexDistance: boolean;
+
+  private widthOverTrail: ValueGetter<number>;
+  private opacityOverLifetime: ValueGetter<number>;
+  private colorOverLifetimeStops: ColorStop[] | null;
+  private colorOverTrailStops: ColorStop[] | null;
+  private textureMap: [number, number, number, number] = [0, 0, 1, 1];
 
   constructor (
     engine: Engine,
@@ -74,104 +118,39 @@ export class TrailMesh {
       matrix,
     } = props;
 
-    const { detail, level } = engine.gpuCapability;
-    const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
-    const keyFrameMeta = createKeyFrameMeta();
-    const enableVertexTexture = detail.maxVertexTextures > 0;
     const { env } = engine ?? {};
-    const uniformValues: any = {};
-    // const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
-    const lookUpTexture = 0;
+    const { level } = engine.gpuCapability;
+    const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
+
     const macros: ShaderMacros = [
-      ['ENABLE_VERTEX_TEXTURE', enableVertexTexture],
-      ['LOOKUP_TEXTURE_CURVE', lookUpTexture],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
-    const useAttributeTrailStart = maxTrailCount > 64;
-    let shaderCacheId = 0;
 
-    if (colorOverLifetime) {
-      macros.push(['COLOR_OVER_LIFETIME', true]);
-      shaderCacheId |= 1;
-      uniformValues.uColorOverLifetime = Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime));
-    }
-    if (colorOverTrail) {
-      macros.push(['COLOR_OVER_TRAIL', true]);
-      shaderCacheId |= 1 << 2;
-      uniformValues.uColorOverTrail = Texture.createWithData(engine, imageDataFromGradient(colorOverTrail));
-    }
-    if (useAttributeTrailStart) {
-      macros.push(['ATTR_TRAIL_START', 1]);
-      shaderCacheId |= 1 << 3;
-    } else {
-      uniformValues.uTrailStart = new Float32Array(maxTrailCount);
-    }
-
-    uniformValues.uOpacityOverLifetimeValue = opacityOverLifetime.toUniform(keyFrameMeta);
-    const uWidthOverTrail = widthOverTrail.toUniform(keyFrameMeta);
-
-    macros.push(
-      ['VERT_CURVE_VALUE_COUNT', keyFrameMeta.index],
-      ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
-
-    if (enableVertexTexture && lookUpTexture) {
-      const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
-
-      uniformValues.uVCurveValueTexture = tex;
-    } else {
-      uniformValues.uVCurveValues = ValueGetter.getAllData(keyFrameMeta);
-    }
-
-    const vertex = trailVert;
-    const fragment = particleFrag;
     const mtl: MaterialProps = ({
       shader: {
-        vertex,
-        fragment,
+        vertex: trailVert,
+        fragment: particleFrag,
         macros,
         glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
         shared: true,
         name: `trail#${name}`,
-        cacheId: `-t:+${shaderCacheId}+${keyFrameMeta.index}+${keyFrameMeta.max}`,
+        cacheId: '-t:ribbon',
       },
     });
 
     const maxVertexCount = pointCountPerTrail * maxTrailCount * 2;
     const maxTriangleCount = (pointCountPerTrail - 1) * maxTrailCount;
-    const bpe = Float32Array.BYTES_PER_ELEMENT;
-    const v12 = 12 * bpe;
     const geometryOptions: GeometryProps = {
       attributes: {
-        aColor: { size: 4, stride: v12, data: new Float32Array(maxVertexCount * 12) },
-        aSeed: { size: 1, stride: v12, offset: 4 * bpe, dataSource: 'aColor' },
-        aInfo: { size: 3, stride: v12, offset: 5 * bpe, dataSource: 'aColor' },
-        aPos: { size: 4, stride: v12, offset: 8 * bpe, dataSource: 'aColor' },
-        //
-        aTime: { size: 1, data: new Float32Array(maxVertexCount) },
-        //
-        aDir: { size: 3, data: new Float32Array(maxVertexCount * 3) },
+        aPos: { size: 3, offset: 0, stride: STRIDE_BYTES, data: new Float32Array(maxVertexCount * FLOATS_PER_VERTEX) },
+        aUV: { size: 2, offset: 3 * 4, stride: STRIDE_BYTES, dataSource: 'aPos' },
+        aColor: { size: 4, offset: 5 * 4, stride: STRIDE_BYTES, dataSource: 'aPos' },
       },
-      indices: { data: new Uint16Array(maxVertexCount * 6) },
-      drawCount: maxTriangleCount * 6,
+      indices: { data: new Uint16Array(maxTriangleCount * 6) },
+      drawCount: 0,
       name: `trail#${name}`,
       bufferUsage: glContext.DYNAMIC_DRAW,
     };
-
-    if (useAttributeTrailStart) {
-      geometryOptions.attributes.aTrailStart = { size: 1, data: new Float32Array(maxVertexCount) };
-    } else {
-      const indexData = new Float32Array(maxVertexCount);
-
-      geometryOptions.attributes.aTrailStartIndex = { size: 1, data: indexData };
-      for (let i = 0; i < maxTrailCount; i++) {
-        const c = pointCountPerTrail * 2;
-        const s = i * c;
-
-        for (let j = 0; j < c; j++) {
-          indexData[s + j] = i;
-        }
-      }
-    }
 
     const preMulAlpha = getPreMultiAlpha(blending);
     const material = Material.create(engine, mtl);
@@ -181,272 +160,233 @@ export class TrailMesh {
     material.depthTest = true;
     setBlendMode(material, blending);
 
-    const mesh = this.mesh = Mesh.create(
-      engine,
-      {
-        name: `MTrail_${name}`,
-        material,
-        geometry: Geometry.create(engine, geometryOptions),
-        // priority: order,
-      }
-    );
+    const mesh = this.mesh = Mesh.create(engine, {
+      name: `MTrail_${name}`,
+      material,
+      geometry: Geometry.create(engine, geometryOptions),
+    });
     const uMaskTex = texture ?? Texture.createWithData(engine);
 
-    Object.keys(uniformValues).map(name => {
-      const value = uniformValues[name];
-
-      if (value instanceof Texture) {
-        material.setTexture(name, value);
-      } else if (name === 'uTrailStart') {
-        material.setFloats('uTrailStart', value);
-      } else if (name === 'uVCurveValues') {
-        const array: Vector4[] = [];
-
-        for (let i = 0; i < value.length; i = i + 4) {
-          const v = new Vector4(value[i], value[i + 1], value[i + 2], value[i + 3]);
-
-          array.push(v);
-        }
-        material.setVector4Array(name, array);
-      } else {
-        material.setVector4(name, Vector4.fromArray(value));
-      }
-    });
-
-    material.setFloat('uTime', 0);
-    // TODO: 修改下长度
-    material.setVector4('uWidthOverTrail', Vector4.fromArray(uWidthOverTrail));
+    material.setTexture('uMaskTex', uMaskTex);
     material.setVector2('uTexOffset', new Vector2(0, 0));
     material.setVector4('uTextureMap', new Vector4(0, 0, 1, 1));
-    material.setVector4('uParams', new Vector4(0, pointCountPerTrail - 1, 0, 0));
-    material.setTexture('uMaskTex', uMaskTex);
     material.setVector4('uColorParams', new Vector4(texture ? 1 : 0, +preMulAlpha, 0, +(occlusion && !transparentOcclusion)));
 
     this.maxTrailCount = maxTrailCount;
     this.pointCountPerTrail = pointCountPerTrail;
     this.checkVertexDistance = minimumVertexDistance > 0;
     this.minimumVertexDistance = Math.pow(minimumVertexDistance || 0.001, 2);
-    this.useAttributeTrailStart = useAttributeTrailStart;
     this.lifetime = lifetime;
+    this.widthOverTrail = widthOverTrail;
+    this.opacityOverLifetime = opacityOverLifetime;
+    this.colorOverLifetimeStops = colorOverLifetime ? buildColorStops(colorOverLifetime) : null;
+    this.colorOverTrailStops = colorOverTrail ? buildColorStops(colorOverTrail) : null;
+
     if (matrix) {
       this.mesh.worldMatrix = matrix;
     }
     this.geometry = mesh.firstGeometry();
   }
 
-  get time () {
-    return this.mesh.material.getFloat('uTime') || 0;
-  }
-  set time (t: number) {
-    this.mesh.material.setFloat('uTime', t ?? 0);
-  }
-
-  generateTrailGeometry (history: TrailHistory): void {
-    const geo = this.geometry;
-    const maxPoints = this.pointCountPerTrail;
-    const aColor = geo.getAttributeData('aColor') as Float32Array;
-    const aDir = geo.getAttributeData('aDir') as Float32Array;
-    const aTime = geo.getAttributeData('aTime') as Float32Array;
-    const indices = geo.getIndexData() as Uint16Array;
-    const useAttrStart = this.useAttributeTrailStart;
-    const aTrailStart = useAttrStart ? geo.getAttributeData('aTrailStart') as Float32Array : null;
-    const mtl = this.mesh.material;
-
-    let totalSegments = 0;
-
-    for (let ti = 0; ti < this.maxTrailCount; ti++) {
-      const count = history.pointCounts[ti];
-
-      if (count < 1) {
-        continue;
-      }
-      const cursor = history.cursors[ti];
-      const hBase = ti * maxPoints;
-      const vBase = ti * maxPoints;
-
-      for (let p = 0; p < count; p++) {
-        const ringIdx = (cursor - count + p + maxPoints * 2) % maxPoints;
-        const hIdx = hBase + ringIdx;
-        const vi = vBase + p;
-        const c24 = vi * 24;
-
-        const px = history.posX[hIdx];
-        const py = history.posY[hIdx];
-        const pz = history.posZ[hIdx];
-        const w = history.widths[hIdx];
-        const time = history.times[hIdx];
-        const seed = history.seeds[hIdx];
-
-        const r = history.colorR[hIdx];
-        const g = history.colorG[hIdx];
-        const b = history.colorB[hIdx];
-        const a = history.colorA[hIdx];
-
-        // aColor: [color(4), seed(1), info(3), pos(3), width(1)] * 2 vertices
-        // info = [seed, lifetime, trailSection]
-        const ptLifetime = history.lifetimes[hIdx];
-
-        aColor[c24] = r; aColor[c24 + 1] = g; aColor[c24 + 2] = b; aColor[c24 + 3] = a;
-        aColor[c24 + 4] = seed;
-        aColor[c24 + 5] = ptLifetime;
-        aColor[c24 + 6] = p;
-        aColor[c24 + 7] = 0;
-        aColor[c24 + 8] = px; aColor[c24 + 9] = py; aColor[c24 + 10] = pz;
-        aColor[c24 + 11] = 0.5 * w;
-
-        aColor[c24 + 12] = r; aColor[c24 + 13] = g; aColor[c24 + 14] = b; aColor[c24 + 15] = a;
-        aColor[c24 + 16] = seed;
-        aColor[c24 + 17] = ptLifetime;
-        aColor[c24 + 18] = p;
-        aColor[c24 + 19] = 1;
-        aColor[c24 + 20] = px; aColor[c24 + 21] = py; aColor[c24 + 22] = pz;
-        aColor[c24 + 23] = -0.5 * w;
-
-        // aTime
-        aTime[vi * 2] = time;
-        aTime[vi * 2 + 1] = time;
-
-        // aDir: replicate old calculateDirection (3-point case uses only forward)
-        let dx = 0, dy = 0, dz = 0;
-        const hasNext = p < count - 1;
-        const hasPrev = p > 0;
-
-        if (hasNext) {
-          const nextRing = (cursor - count + p + 1 + maxPoints * 2) % maxPoints;
-          const ni = hBase + nextRing;
-
-          dx = history.posX[ni] - px;
-          dy = history.posY[ni] - py;
-          dz = history.posZ[ni] - pz;
-        }
-        if (hasPrev) {
-          const prevRing = (cursor - count + p - 1 + maxPoints * 2) % maxPoints;
-          const pi = hBase + prevRing;
-          const pdx = px - history.posX[pi];
-          const pdy = py - history.posY[pi];
-          const pdz = pz - history.posZ[pi];
-
-          if (dx === 0 && dy === 0 && dz === 0) {
-            dx = pdx; dy = pdy; dz = pdz;
-          } else {
-            dx = (dx + pdx) * 0.5;
-            dy = (dy + pdy) * 0.5;
-            dz = (dz + pdz) * 0.5;
-          }
-        }
-        const dLen = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (dLen > 1e-6) {
-          dx /= dLen; dy /= dLen; dz /= dLen;
-        }
-        const d6 = vi * 6;
-
-        aDir[d6] = dx; aDir[d6 + 1] = dy; aDir[d6 + 2] = dz;
-        aDir[d6 + 3] = dx; aDir[d6 + 4] = dy; aDir[d6 + 5] = dz;
-
-        // aTrailStart
-        if (aTrailStart) {
-          aTrailStart[vi * 2] = count - 1;
-          aTrailStart[vi * 2 + 1] = count - 1;
-        }
-
-        // indices: connect with previous point
-        if (p > 0) {
-          const prevVi = vBase + p - 1;
-          const ii = totalSegments * 6;
-
-          indices[ii] = prevVi * 2;
-          indices[ii + 1] = prevVi * 2 + 1;
-          indices[ii + 2] = vi * 2;
-          indices[ii + 3] = vi * 2;
-          indices[ii + 4] = prevVi * 2 + 1;
-          indices[ii + 5] = vi * 2 + 1;
-          totalSegments++;
-        }
-      }
-
-      if (!useAttrStart) {
-        const uTrailStart = mtl.getFloats('uTrailStart');
-
-        if (uTrailStart) {
-          uTrailStart[ti] = count - 1;
-          mtl.setFloats('uTrailStart', uTrailStart);
-        }
-      }
-    }
-
-    geo.setAttributeData('aColor', aColor);
-    geo.setAttributeData('aDir', aDir);
-    geo.setAttributeData('aTime', aTime);
-    if (aTrailStart) {
-      geo.setAttributeData('aTrailStart', aTrailStart);
-    }
-    geo.setIndexData(indices);
-    geo.setDrawCount(totalSegments * 6);
-
-    const params = mtl.getVector4('uParams');
-
-    if (params) {
-      let maxSection = 0;
-
-      for (let ti = 0; ti < this.maxTrailCount; ti++) {
-        maxSection = Math.max(maxSection, history.pointCounts[ti] - 1);
-      }
-      params.y = maxSection;
-      mtl.setVector4('uParams', params);
-    }
-  }
-
   clearAllTrails (): void {
     this.geometry.setDrawCount(0);
   }
 
-  minusTime (time: number): void {
-    this.time -= time;
-  }
+  generateRibbonFromSorted (
+    sortedInput: number[],
+    db: ParticleDataBuffer,
+    currentTime: number,
+    viewDirX: number, viewDirY: number, viewDirZ: number,
+  ): void {
+    const geo = this.geometry;
+    const maxPoints = this.pointCountPerTrail * this.maxTrailCount;
+    const sorted = sortedInput.length > maxPoints ? sortedInput.slice(0, maxPoints) : sortedInput;
+    const verts = geo.getAttributeData('aPos') as Float32Array;
+    const indices = geo.getIndexData() as Uint16Array;
 
-  onUpdate (escapeTime: number): any {
+    let totalSegments = 0;
+
+    indices.fill(0);
+
+    const ribbonSizes: number[] = [];
+    let curRibbonSize = 0;
+
+    for (let i = 0; i < sorted.length; i++) {
+      curRibbonSize++;
+      if (i === sorted.length - 1 || db.ribbonId[sorted[i + 1]] !== db.ribbonId[sorted[i]]) {
+        ribbonSizes.push(curRibbonSize);
+        curRibbonSize = 0;
+      }
+    }
+
+    let ribbonStart = 0;
+    let curRibbonIdx = 0;
+
+    for (let i = 0; i < sorted.length; i++) {
+      const idx = sorted[i];
+      const isRibbonEnd = i === sorted.length - 1 || db.ribbonId[sorted[i + 1]] !== db.ribbonId[idx];
+      const isRibbonStart = i === 0 || db.ribbonId[sorted[i - 1]] !== db.ribbonId[idx];
+
+      if (isRibbonStart) {
+        ribbonStart = i;
+      }
+
+      const p = i - ribbonStart;
+      const ribbonSize = ribbonSizes[curRibbonIdx];
+      const trail = ribbonSize > 1 ? 1 - p / (ribbonSize - 1) : 0;
+
+      const i3 = idx * 3;
+      const i4 = idx * 4;
+      const px = db.position[i3];
+      const py = db.position[i3 + 1];
+      const pz = db.position[i3 + 2];
+      const baseWidth = db.size[idx * 2];
+      const ptLifetime = db.lifetime[idx];
+
+      // time = normalized age for opacity/color over lifetime
+      const sourceBirthTime = db.linearMove[idx * 3];
+      const time = ptLifetime > 0 ? Math.min((currentTime - sourceBirthTime) / ptLifetime, 1) : 0;
+
+      // width = baseWidth * widthOverTrail(trail)
+      const widthScale = this.widthOverTrail.getValue(trail);
+      const halfW = baseWidth * widthScale * 0.5;
+
+      // color = baseColor * colorOverLifetime(time) * colorOverTrail(trail)
+      let cr = db.color[i4];
+      let cg = db.color[i4 + 1];
+      let cb = db.color[i4 + 2];
+      let ca = db.color[i4 + 3];
+
+      ca *= Math.max(0, Math.min(1, this.opacityOverLifetime.getValue(time)));
+
+      if (this.colorOverLifetimeStops) {
+        const c = sampleGradient(this.colorOverLifetimeStops, time);
+
+        cr *= c[0] / 255;
+        cg *= c[1] / 255;
+        cb *= c[2] / 255;
+        ca *= c[3] / 255;
+      }
+      if (this.colorOverTrailStops) {
+        const c = sampleGradient(this.colorOverTrailStops, trail);
+
+        cr *= c[0] / 255;
+        cg *= c[1] / 255;
+        cb *= c[2] / 255;
+        ca *= c[3] / 255;
+      }
+
+      // tangent direction (average of forward and backward)
+      let tx = 0, ty = 0, tz = 0;
+
+      if (!isRibbonEnd) {
+        const ni3 = sorted[i + 1] * 3;
+
+        tx = db.position[ni3] - px;
+        ty = db.position[ni3 + 1] - py;
+        tz = db.position[ni3 + 2] - pz;
+      }
+      if (!isRibbonStart) {
+        const pi3 = sorted[i - 1] * 3;
+        const pdx = px - db.position[pi3];
+        const pdy = py - db.position[pi3 + 1];
+        const pdz = pz - db.position[pi3 + 2];
+
+        if (tx === 0 && ty === 0 && tz === 0) {
+          tx = pdx; ty = pdy; tz = pdz;
+        } else {
+          tx = (tx + pdx) * 0.5;
+          ty = (ty + pdy) * 0.5;
+          tz = (tz + pdz) * 0.5;
+        }
+      }
+      const tLen = Math.sqrt(tx * tx + ty * ty + tz * tz);
+
+      if (tLen > 1e-6) {
+        tx /= tLen; ty /= tLen; tz /= tLen;
+      }
+
+      // normal = cross(tangent, viewDir) — camera facing
+      let nx = ty * viewDirZ - tz * viewDirY;
+      let ny = tz * viewDirX - tx * viewDirZ;
+      let nz = tx * viewDirY - ty * viewDirX;
+      const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+
+      if (nLen > 1e-6) {
+        nx /= nLen; ny /= nLen; nz /= nLen;
+      } else {
+        nx = 0; ny = 1; nz = 0;
+      }
+
+      // UV
+      const u = trail;
+      const tm = this.textureMap;
+      const uvLeft0 = tm[0] + u * tm[2];
+      const uvLeft1 = tm[1];
+      const uvRight0 = tm[0] + u * tm[2];
+      const uvRight1 = tm[1] + tm[3];
+
+      // write left + right vertices
+      let off = i * 2 * FLOATS_PER_VERTEX;
+
+      verts[off] = px - nx * halfW;
+      verts[off + 1] = py - ny * halfW;
+      verts[off + 2] = pz - nz * halfW;
+      verts[off + 3] = uvLeft0;
+      verts[off + 4] = uvLeft1;
+      verts[off + 5] = cr;
+      verts[off + 6] = cg;
+      verts[off + 7] = cb;
+      verts[off + 8] = ca;
+
+      off += FLOATS_PER_VERTEX;
+      verts[off] = px + nx * halfW;
+      verts[off + 1] = py + ny * halfW;
+      verts[off + 2] = pz + nz * halfW;
+      verts[off + 3] = uvRight0;
+      verts[off + 4] = uvRight1;
+      verts[off + 5] = cr;
+      verts[off + 6] = cg;
+      verts[off + 7] = cb;
+      verts[off + 8] = ca;
+
+      // indices: connect with previous point in same ribbon
+      if (!isRibbonStart) {
+        const v0 = (i - 1) * 2;
+        const v1 = i * 2;
+        const ii = totalSegments * 6;
+
+        indices[ii] = v0;
+        indices[ii + 1] = v0 + 1;
+        indices[ii + 2] = v1;
+        indices[ii + 3] = v1;
+        indices[ii + 4] = v0 + 1;
+        indices[ii + 5] = v1 + 1;
+        totalSegments++;
+      }
+
+      if (isRibbonEnd) {
+        curRibbonIdx++;
+      }
+    }
+
+    geo.setAttributeData('aPos', verts);
+    geo.setIndexData(indices);
+    geo.setDrawCount(totalSegments * 6);
   }
 
 }
 
 export function getTrailMeshShader (
-  trails: spec.ParticleTrail,
-  particleMaxCount: number,
+  _trails: spec.ParticleTrail,
+  _particleMaxCount: number,
   name: string,
-  gpuCapability: GPUCapability,
+  _gpuCapability: GPUCapability,
   env = '',
 ): ShaderWithSource {
-  let shaderCacheId = 0;
-  const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
-  const enableVertexTexture = gpuCapability.detail.maxVertexTextures > 0;
   const macros: ShaderMacros = [
-    ['ENABLE_VERTEX_TEXTURE', enableVertexTexture],
-    ['LOOKUP_TEXTURE_CURVE', lookUpTexture],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
-  const keyFrameMeta = createKeyFrameMeta();
-
-  if (trails.colorOverLifetime) {
-    macros.push(['COLOR_OVER_LIFETIME', true]);
-    shaderCacheId |= 1;
-  }
-  if (trails.colorOverTrail) {
-    macros.push(['COLOR_OVER_TRAIL', true]);
-    shaderCacheId |= 1 << 2;
-  }
-
-  const useAttributeTrailStart = particleMaxCount > 64;
-
-  if (useAttributeTrailStart) {
-    macros.push(['ATTR_TRAIL_START', 1]);
-    shaderCacheId |= 1 << 3;
-  }
-  getKeyFrameMetaByRawValue(keyFrameMeta, trails.opacityOverLifetime);
-  getKeyFrameMetaByRawValue(keyFrameMeta, trails.widthOverTrail);
-  macros.push(
-    ['VERT_CURVE_VALUE_COUNT', keyFrameMeta.index],
-    ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
   return {
     vertex: trailVert,
@@ -454,6 +394,6 @@ export function getTrailMeshShader (
     macros,
     shared: true,
     name: 'trail#' + name,
-    cacheId: `-t:+${shaderCacheId}+${keyFrameMeta.index}+${keyFrameMeta.max}`,
+    cacheId: '-t:ribbon',
   };
 }

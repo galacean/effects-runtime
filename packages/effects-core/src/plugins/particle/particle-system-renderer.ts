@@ -1,17 +1,14 @@
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Texture } from '../../texture';
 import type { TrailMeshProps } from './trail-mesh';
-import { TrailMesh } from './trail-mesh';
-import { TrailHistory } from './trail-history';
+import { TrailMesh, MAX_UNIFORM_TRAIL_COUNT } from './trail-mesh';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleMeshProps } from './particle-mesh';
 import { ParticleMesh } from './particle-mesh';
 import type { Mesh, Renderer } from '../../render';
 import type { Engine } from '../../engine';
 import { RendererComponent } from '../../components';
-import type { ParsedTrailConfig } from './parse-spec';
 
 /**
  * @since 2.0.0
@@ -20,9 +17,11 @@ export class ParticleSystemRenderer extends RendererComponent {
   meshes: Mesh[];
   particleMesh: ParticleMesh;
 
-  private trailMesh?: TrailMesh;
-  private trailConfig?: ParsedTrailConfig;
-  private trailHistory?: TrailHistory;
+  trailMesh?: TrailMesh;
+
+  private viewDirX = 0;
+  private viewDirY = 0;
+  private viewDirZ = -1;
 
   constructor (engine: Engine) {
     super(engine);
@@ -42,6 +41,15 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   override render (renderer: Renderer): void {
+    const camera = renderer.renderingData.currentFrame?.camera;
+
+    if (camera) {
+      const e = camera.getInverseViewMatrix().elements;
+
+      this.viewDirX = -e[8];
+      this.viewDirY = -e[9];
+      this.viewDirZ = -e[10];
+    }
     this.maskManager.drawStencilMask(renderer, this);
 
     for (const mesh of this.meshes) {
@@ -225,95 +233,103 @@ export class ParticleSystemRenderer extends RendererComponent {
     mesh.maxParticleBufferCount = particleCount;
   }
 
-  setTrailConfig (config: ParsedTrailConfig): void {
-    this.trailConfig = config;
-    if (this.trailMesh) {
-      this.trailHistory = new TrailHistory(
-        this.trailMesh.maxTrailCount,
-        this.trailMesh.pointCountPerTrail,
-        this.trailMesh.checkVertexDistance,
-        this.trailMesh.minimumVertexDistance,
-      );
-    }
-  }
+  generateRibbonData (trailDb: ParticleDataBuffer, emitterAge: number): void {
+    if (!this.trailMesh || trailDb.activeCount < 2) {
+      this.trailMesh?.clearAllTrails();
 
-  updateTrails (db: ParticleDataBuffer, timePassed: number, emitterLifetime: number, worldMatrix: Matrix4): void {
-    const trails = this.trailConfig;
-    const history = this.trailHistory;
-
-    if (!trails || !history || !this.trailMesh) {
       return;
     }
 
-    for (let ti = 0; ti < db.activeCount; ti++) {
-      if (!db.alive[ti]) {
-        continue;
-      }
-      const trailDelay = this.particleMesh.time - db.age[ti];
+    const maxPointsPerRibbon = this.trailMesh.pointCountPerTrail;
+    const sorted = this.buildRibbonSortOrder(trailDb, trailDb.activeCount, maxPointsPerRibbon);
 
-      if ((trailDelay + db.lifetime[ti]) < timePassed) {
-        if (trails.dieWithParticles) {
-          history.clear(ti);
-        }
-      } else if (timePassed > trailDelay) {
-        const i3 = ti * 3;
-        const position = tempTrailPos.set(
-          db.finalOffset[i3],
-          db.finalOffset[i3 + 1],
-          db.finalOffset[i3 + 2],
-        );
+    if (sorted.length < 2) {
+      this.trailMesh.clearAllTrails();
 
-        if (trails.parentAffectsPosition) {
-          const e = worldMatrix.elements;
-
-          tempParentPos.set(e[12], e[13], e[14]);
-          let startPos = history.getStartPosition(ti);
-
-          if (!startPos) {
-            history.setStartPosition(ti, tempParentPos.x, tempParentPos.y, tempParentPos.z);
-            startPos = tempParentPos;
-          }
-          position.add(tempParentPos);
-          position.subtract(startPos);
-        }
-        const color = trails.inheritParticleColor ? this.getParticlePointColor(ti) : [1, 1, 1, 1];
-        const si2 = ti * 2;
-        const sizeX = db.size[si2];
-
-        let width = 1;
-        let trailLifetime = trails.lifetime.getValue(emitterLifetime);
-
-        if (trails.sizeAffectsWidth) {
-          width *= sizeX;
-        }
-        if (trails.sizeAffectsLifetime) {
-          trailLifetime *= sizeX;
-        }
-        history.addPoint(ti, position, trailDelay, color, width, trailLifetime);
-      }
+      return;
     }
 
-    this.trailMesh.generateTrailGeometry(history);
+    this.trailMesh.generateRibbonFromSorted(
+      sorted, trailDb, emitterAge,
+      this.viewDirX, this.viewDirY, this.viewDirZ,
+    );
+  }
+
+  private buildRibbonSortOrder (db: ParticleDataBuffer, count: number, maxPointsPerRibbon: number): number[] {
+    const indices: number[] = [];
+
+    for (let i = 0; i < count; i++) {
+      if (db.alive[i] && db.age[i] < db.lifetime[i] && db.age[i] > 0) {
+        indices.push(i);
+      }
+    }
+    indices.sort((a, b) => {
+      const ridA = db.ribbonId[a];
+      const ridB = db.ribbonId[b];
+
+      if (ridA !== ridB) {
+        return ridA - ridB;
+      }
+
+      return db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b];
+    });
+
+    const maxTrailCount = this.trailMesh?.maxTrailCount ?? MAX_UNIFORM_TRAIL_COUNT;
+    const ribbonCounts = new Map<number, number>();
+    const allowedRibbons = new Set<number>();
+    let ribbonCount = 0;
+
+    for (const idx of indices) {
+      const rid = db.ribbonId[idx];
+
+      if (!ribbonCounts.has(rid)) {
+        ribbonCount++;
+        if (ribbonCount > maxTrailCount) {
+          continue;
+        }
+        allowedRibbons.add(rid);
+      }
+      if (!allowedRibbons.has(rid)) {
+        continue;
+      }
+      ribbonCounts.set(rid, (ribbonCounts.get(rid) ?? 0) + 1);
+    }
+
+    const capped: number[] = [];
+    const ribbonSkipped = new Map<number, number>();
+
+    for (const idx of indices) {
+      const rid = db.ribbonId[idx];
+
+      if (!allowedRibbons.has(rid)) {
+        continue;
+      }
+      const total = ribbonCounts.get(rid)!;
+      const skip = Math.max(0, total - maxPointsPerRibbon);
+      const skipped = ribbonSkipped.get(rid) ?? 0;
+
+      if (skipped < skip) {
+        ribbonSkipped.set(rid, skipped + 1);
+
+        continue;
+      }
+      capped.push(idx);
+    }
+
+    return capped;
   }
 
   reset () {
     this.particleMesh.clearPoints();
     this.trailMesh?.clearAllTrails();
-    this.trailHistory?.clearAll();
   }
 
-  updateTime (now: number, delta: number) {
+  updateTime (now: number) {
     this.particleMesh.time = now;
-    if (this.trailMesh) {
-      this.trailMesh.time = now;
-      this.trailMesh.onUpdate(delta);
-    }
   }
 
   minusTimeForLoop (duration: number) {
     this.particleMesh.minusTime(duration);
-    this.trailMesh?.minusTime(duration);
-    this.trailHistory?.minusTime(duration);
   }
 
   updateWorldMatrix (worldMatrix: Matrix4) {
@@ -347,20 +363,6 @@ export class ParticleSystemRenderer extends RendererComponent {
 
     return textures;
   }
-
-  getParticlePointColor (index: number) {
-    return this.particleMesh.getPointColor(index);
-  }
-
-  hasTrail () {
-    return this.trailMesh !== undefined;
-  }
-
-  clearTrail (pointIndex: number) {
-    this.trailHistory?.clear(pointIndex);
-  }
 }
 
-const tempTrailPos = new Vector3();
-const tempParentPos = new Vector3();
 const sizeOffsets = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];

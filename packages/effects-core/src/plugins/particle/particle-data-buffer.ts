@@ -64,6 +64,15 @@ export class ParticleDataBuffer {
   /** 粒子存活标记，0=空闲 1=存活 */
   readonly alive: number[];
 
+  // --- Trail/Ribbon 专用（仅 trail emitter 使用） ---
+
+  /** 全局唯一 ID，spawn 时递增写入，永不复用 */
+  readonly uniqueId: number[];
+  /** 所属 ribbon 的 ID（= source 粒子的 uniqueId） */
+  readonly ribbonId: number[];
+  /** 排序连线用的全局单调递增序号 */
+  readonly ribbonLinkOrder: number[];
+
   private _activeCount = 0;
 
   constructor (maxCount: number) {
@@ -92,6 +101,10 @@ export class ParticleDataBuffer {
     this.colorScale = createArray(maxCount * 4, 1);
 
     this.alive = createArray(maxCount);
+
+    this.uniqueId = createArray(maxCount);
+    this.ribbonId = createArray(maxCount);
+    this.ribbonLinkOrder = createArray(maxCount);
   }
 
   get activeCount (): number {
