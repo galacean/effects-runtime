@@ -270,7 +270,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.emitter.tick(dt);
     if (this.trailEmitter) {
       this.trailEmitter.tick(dt);
-      this.renderer.generateRibbonData(this.trailEmitter.dataBuffer, this.emitter.emitterAge);
+      this.renderer.generateRibbonData(this.trailEmitter);
     }
   }
 
@@ -288,8 +288,8 @@ export class ParticleSystem extends Component implements Maskable {
   private setupTrailEmitter (emitterData: EmitterData): void {
     const trails = emitterData.trails!;
     const sourceEmitter = this.emitter!;
-    const pointCountPerTrail = this.renderer.trailMesh?.pointCountPerTrail ?? 24;
-    const minimumDistSq = this.renderer.trailMesh?.minimumVertexDistance ?? 0;
+    const pointCountPerTrail = this.renderer.ribbonRenderer?.pointCountPerTrail ?? 24;
+    const minimumDistSq = this.renderer.ribbonRenderer?.minimumVertexDistance ?? 0;
 
     const spawnModule = new SpawnPerSourceParticleModule(sourceEmitter.dataBuffer, minimumDistSq);
 

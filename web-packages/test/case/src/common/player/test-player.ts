@@ -131,10 +131,10 @@ export class TestPlayer {
     this.composition.items.forEach(item => {
       const { interaction } = item.getComponent(ParticleSystem) ?? {};
       const content = item.getComponent(ParticleSystemRenderer);
-      const { particleMesh } = content ?? {};
+      const { spriteRenderer } = content ?? {};
 
       if (interaction) {
-        if (particleMesh) {
+        if (spriteRenderer) {
           // @ts-expect-error
           itemList.push(content);
         }

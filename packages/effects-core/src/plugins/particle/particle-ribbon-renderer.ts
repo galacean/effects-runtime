@@ -3,6 +3,8 @@ import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
 import type { GradientStop } from '@galacean/effects-specification';
 import type { ParticleDataBuffer } from './particle-data-buffer';
+import type { ParticleEmitter } from './particle-emitter';
+import { ParticleRenderer } from './particle-renderer';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
@@ -16,7 +18,7 @@ import { particleFrag, trailVert } from '../../shader';
 import { Texture } from '../../texture';
 import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
 
-export type TrailMeshProps = {
+export type ParticleRibbonRendererProps = {
   maxTrailCount: number,
   pointCountPerTrail: number,
   colorOverLifetime?: Array<GradientStop>,
@@ -83,7 +85,7 @@ function sampleGradient (stops: ColorStop[], t: number): [number, number, number
   return [c[0], c[1], c[2], c[3]];
 }
 
-export class TrailMesh {
+export class ParticleRibbonRenderer extends ParticleRenderer {
   mesh: Mesh;
   maxTrailCount: number;
   geometry: Geometry;
@@ -100,8 +102,9 @@ export class TrailMesh {
 
   constructor (
     engine: Engine,
-    props: TrailMeshProps,
+    props: ParticleRibbonRendererProps,
   ) {
+    super();
     const {
       colorOverLifetime,
       colorOverTrail,
@@ -188,14 +191,106 @@ export class TrailMesh {
     this.geometry = mesh.firstGeometry();
   }
 
-  clearAllTrails (): void {
+  private viewDirX = 0;
+  private viewDirY = 0;
+  private viewDirZ = -1;
+
+  clear (): void {
     this.geometry.setDrawCount(0);
   }
 
-  generateRibbonFromSorted (
+  setViewDirection (x: number, y: number, z: number): void {
+    this.viewDirX = x;
+    this.viewDirY = y;
+    this.viewDirZ = z;
+  }
+
+  generateDynamicData (emitter: ParticleEmitter): void {
+    const db = emitter.dataBuffer;
+
+    if (db.activeCount < 2) {
+      this.clear();
+
+      return;
+    }
+    const sorted = this.buildSortOrder(db, db.activeCount);
+
+    if (sorted.length < 2) {
+      this.clear();
+
+      return;
+    }
+    this.writeGeometry(sorted, db, this.viewDirX, this.viewDirY, this.viewDirZ);
+  }
+
+  private buildSortOrder (db: ParticleDataBuffer, count: number): number[] {
+    const indices: number[] = [];
+
+    for (let i = 0; i < count; i++) {
+      if (db.alive[i] && db.age[i] < db.lifetime[i] && db.age[i] > 0) {
+        indices.push(i);
+      }
+    }
+    indices.sort((a, b) => {
+      const ridA = db.ribbonId[a];
+      const ridB = db.ribbonId[b];
+
+      if (ridA !== ridB) {
+        return ridA - ridB;
+      }
+
+      return db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b];
+    });
+
+    const maxTrailCount = this.maxTrailCount;
+    const maxPointsPerRibbon = this.pointCountPerTrail;
+    const ribbonCounts = new Map<number, number>();
+    const allowedRibbons = new Set<number>();
+    let ribbonCount = 0;
+
+    for (const idx of indices) {
+      const rid = db.ribbonId[idx];
+
+      if (!ribbonCounts.has(rid)) {
+        ribbonCount++;
+        if (ribbonCount > maxTrailCount) {
+          continue;
+        }
+        allowedRibbons.add(rid);
+      }
+      if (!allowedRibbons.has(rid)) {
+        continue;
+      }
+      ribbonCounts.set(rid, (ribbonCounts.get(rid) ?? 0) + 1);
+    }
+
+    const capped: number[] = [];
+    const ribbonSkipped = new Map<number, number>();
+
+    for (const idx of indices) {
+      const rid = db.ribbonId[idx];
+
+      if (!allowedRibbons.has(rid)) {
+        continue;
+      }
+      const total = ribbonCounts.get(rid)!;
+      const skip = Math.max(0, total - maxPointsPerRibbon);
+      const skipped = ribbonSkipped.get(rid) ?? 0;
+
+      if (skipped < skip) {
+        ribbonSkipped.set(rid, skipped + 1);
+
+        continue;
+      }
+      capped.push(idx);
+    }
+
+    return capped;
+  }
+
+  private writeGeometry (
     sortedInput: number[],
     db: ParticleDataBuffer,
-    currentTime: number,
     viewDirX: number, viewDirY: number, viewDirZ: number,
   ): void {
     const geo = this.geometry;
@@ -243,9 +338,10 @@ export class TrailMesh {
       const baseWidth = db.size[idx * 2];
       const ptLifetime = db.lifetime[idx];
 
-      // time = normalized age for opacity/color over lifetime
-      const sourceBirthTime = db.linearMove[idx * 3];
-      const time = ptLifetime > 0 ? Math.min((currentTime - sourceBirthTime) / ptLifetime, 1) : 0;
+      // time = elapsed since source 出生 / trailLifetime（按 trail lifetime 归一化）
+      // spawnSourceAge 存的是 source 在 spawn 时的 age；trail.age 与 source.emitterAge 同步推进，
+      // 所以 spawnSourceAge + trail.age = source 从出生到当前流逝的总时间
+      const time = ptLifetime > 0 ? Math.min((db.spawnSourceAge[idx] + db.age[idx]) / ptLifetime, 1) : 0;
 
       // width = baseWidth * widthOverTrail(trail)
       const widthScale = this.widthOverTrail.getValue(trail);
@@ -377,7 +473,7 @@ export class TrailMesh {
 
 }
 
-export function getTrailMeshShader (
+export function getParticleRibbonRendererShader (
   _trails: spec.ParticleTrail,
   _particleMaxCount: number,
   name: string,

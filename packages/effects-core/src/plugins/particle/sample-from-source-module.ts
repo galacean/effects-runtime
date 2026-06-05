@@ -71,7 +71,8 @@ export class SampleFromSourceModule extends ParticleModule {
     db.alive[slot] = 1;
     db.seed[slot] = Math.random();
     db.uniqueId[slot] = ctx.emitter.uniqueIdCounter++;
-    db.linearMove[d3] = this.sourceEmitter.emitterAge - sourceDb.age[src];
+    // 存 source 粒子在 spawn 时刻的 age；ribbon renderer 用 (sourceAgeAtSpawn + trail.age) 推算 elapsed
+    db.spawnSourceAge[slot] = sourceDb.age[src];
 
     const s4 = src * 4;
     const d4 = slot * 4;

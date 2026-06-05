@@ -8,7 +8,7 @@ import { createShape } from '../../shape';
 import type { ShapeGenerator } from '../../shape';
 import { Burst } from './burst';
 import type { ParticleMeshProps } from './particle-mesh';
-import type { TrailMeshProps } from './trail-mesh';
+import type { ParticleRibbonRendererProps } from './particle-ribbon-renderer';
 
 export type ParsedParticleOptions = {
   startSpeed: ValueGetter<number>,
@@ -181,7 +181,7 @@ export type ParsedSpecResult = {
   options: ParsedParticleOptions,
   emitterData: EmitterData,
   particleMeshProps: ParticleMeshProps,
-  trailMeshProps: TrailMeshProps | undefined,
+  trailMeshProps: ParticleRibbonRendererProps | undefined,
   interaction: { behavior?: spec.ParticleInteractionBehavior, multiple?: boolean, radius: number } | undefined,
 };
 
@@ -363,7 +363,7 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
 
   // Trails
   let trails: ParsedTrailConfig | undefined;
-  let trailMeshProps: TrailMeshProps | undefined;
+  let trailMeshProps: ParticleRibbonRendererProps | undefined;
   const trailsData = props.trails;
 
   if (trailsData) {

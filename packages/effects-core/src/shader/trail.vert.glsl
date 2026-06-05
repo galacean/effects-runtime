@@ -7,7 +7,6 @@ attribute vec4 aColor;
 varying vec2 vTexCoord;
 varying vec4 vColor;
 varying float vLife;
-varying float vSeed;
 
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
@@ -17,5 +16,4 @@ void main () {
   vTexCoord = aUV;
   vColor = aColor;
   vLife = 0.0;
-  vSeed = 0.0;
 }

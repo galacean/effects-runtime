@@ -3,9 +3,6 @@ precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-attribute float aSeed;
-varying float vSeed;
-
 attribute vec3 aPos;
 attribute vec4 aOffset;//texcoord.xy time:start duration
 attribute vec4 aColor;
@@ -34,7 +31,6 @@ uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixV;
 uniform mat4 effects_MatrixVP;
 
-uniform vec4 uParams;//time duration endBehavior
 
 varying float vLife;
 varying vec4 vColor;
@@ -101,8 +97,5 @@ void main() {
     pos.xyz += effects_MatrixV[0].xyz * point.x + effects_MatrixV[1].xyz * point.y;
         #endif
     gl_Position = effects_MatrixVP * pos;
-    vSeed = aSeed;
-
-    gl_PointSize = 6.0;
   }
 }

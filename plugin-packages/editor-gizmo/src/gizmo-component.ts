@@ -261,8 +261,8 @@ export class GizmoComponent extends RendererComponent {
         const particle = this.targetItem.getComponent(ParticleSystemRenderer);
 
         if (particle) {
-          updateWireframeMesh(particle.particleMesh.mesh.geometry, particle.particleMesh.mesh.material, this.wireframeMesh, WireframeGeometryType.quad);
-          this.wireframeMesh.worldMatrix = particle.particleMesh.mesh.worldMatrix;
+          updateWireframeMesh(particle.spriteRenderer.mesh.geometry, particle.spriteRenderer.mesh.material, this.wireframeMesh, WireframeGeometryType.quad);
+          this.wireframeMesh.worldMatrix = particle.spriteRenderer.mesh.worldMatrix;
         }
       }
     } else { // 几何体模型

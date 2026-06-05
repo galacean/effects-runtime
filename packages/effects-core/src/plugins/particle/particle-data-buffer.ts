@@ -72,6 +72,8 @@ export class ParticleDataBuffer {
   readonly ribbonId: number[];
   /** 排序连线用的全局单调递增序号 */
   readonly ribbonLinkOrder: number[];
+  /** trail 粒子 spawn 时刻 source 粒子的 age（用于 ribbon renderer 反推 source normalized age） */
+  readonly spawnSourceAge: number[];
 
   private _activeCount = 0;
 
@@ -105,6 +107,7 @@ export class ParticleDataBuffer {
     this.uniqueId = createArray(maxCount);
     this.ribbonId = createArray(maxCount);
     this.ribbonLinkOrder = createArray(maxCount);
+    this.spawnSourceAge = createArray(maxCount);
   }
 
   get activeCount (): number {

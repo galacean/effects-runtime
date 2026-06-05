@@ -107,9 +107,6 @@ export class ParticleEmitter {
 
   setMaxCount (count: number): void {
     this.maxCount = count;
-    if (this.renderer?.particleMesh) {
-      this.renderer.particleMesh.maxCount = count;
-    }
   }
 
   getMaxCount (): number {
@@ -174,7 +171,7 @@ export class ParticleEmitter {
 
     // 3. sync to renderer
     if (this._dataBuffer.activeCount > 0 && this.renderer) {
-      this.renderer.generateDynamicData(this._dataBuffer);
+      this.renderer.generateSpriteData(this);
     }
   }
 
