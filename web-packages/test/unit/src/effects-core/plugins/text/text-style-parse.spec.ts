@@ -339,8 +339,8 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
     });
   });
 
-  describe('decoration constraints', () => {
-    it('should warn and ignore duplicate shadow decorations', () => {
+  describe('multiple decorations per layer', () => {
+    it('should keep all shadow decorations on a single layer', () => {
       const config: FancyConfig = {
         layers: [{
           kind: 'solid-fill',
@@ -352,19 +352,17 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
         }],
       };
 
-      const warnSpy = chai.spy.on(console, 'warn');
       const result = TextStyle.parseFancyConfig(config);
 
-      expect(result.layers).to.have.lengthOf(2);
+      expect(result.layers).to.have.lengthOf(3);
       expect(result.layers[0].kind).to.eql('shadow');
       expect((result.layers[0].params as any).blur).to.eql(5);
-      expect(result.layers[1].kind).to.eql('solid-fill');
-      expect(warnSpy).to.have.been.called.once;
-
-      chai.spy.restore(console, 'warn');
+      expect(result.layers[1].kind).to.eql('shadow');
+      expect((result.layers[1].params as any).blur).to.eql(3);
+      expect(result.layers[2].kind).to.eql('solid-fill');
     });
 
-    it('should warn and ignore duplicate glow decorations', () => {
+    it('should keep all glow decorations on a single layer', () => {
       const config: FancyConfig = {
         layers: [{
           kind: 'solid-fill',
@@ -376,20 +374,19 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
         }],
       };
 
-      const warnSpy = chai.spy.on(console, 'warn');
       const result = TextStyle.parseFancyConfig(config);
 
-      expect(result.layers).to.have.lengthOf(2);
+      expect(result.layers).to.have.lengthOf(3);
       expect(result.layers[0].kind).to.eql('glow');
       expect((result.layers[0].params as any).blur).to.eql(8);
       expect((result.layers[0].params as any).intensity).to.eql(2);
-      expect(result.layers[1].kind).to.eql('solid-fill');
-      expect(warnSpy).to.have.been.called.once;
-
-      chai.spy.restore(console, 'warn');
+      expect(result.layers[1].kind).to.eql('glow');
+      expect((result.layers[1].params as any).blur).to.eql(4);
+      expect((result.layers[1].params as any).intensity).to.eql(5);
+      expect(result.layers[2].kind).to.eql('solid-fill');
     });
 
-    it('should allow one shadow and one glow on same layer', () => {
+    it('should allow mixed shadow and glow on same layer', () => {
       const config: FancyConfig = {
         layers: [{
           kind: 'single-stroke',
@@ -401,19 +398,15 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
         }],
       };
 
-      const warnSpy = chai.spy.on(console, 'warn');
       const result = TextStyle.parseFancyConfig(config);
 
       expect(result.layers).to.have.lengthOf(3);
       expect(result.layers[0].kind).to.eql('shadow');
       expect(result.layers[1].kind).to.eql('glow');
       expect(result.layers[2].kind).to.eql('single-stroke');
-      expect(warnSpy).to.not.have.been.called();
-
-      chai.spy.restore(console, 'warn');
     });
 
-    it('should only keep first shadow when multiple provided', () => {
+    it('should support multiple shadows and glows for layered effects', () => {
       const config: FancyConfig = {
         layers: [{
           kind: 'gradient',
@@ -421,45 +414,24 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
           decorations: [
             { kind: 'shadow', params: { color: [0, 0, 0, 1], blur: 10, offsetX: 3, offsetY: 3 } },
             { kind: 'shadow', params: { color: [1, 0, 0, 1], blur: 20, offsetX: 5, offsetY: 5 } },
-          ],
-        }],
-      };
-
-      const warnSpy = chai.spy.on(console, 'warn');
-      const result = TextStyle.parseFancyConfig(config);
-
-      // 只保留第一个 shadow
-      const shadows = result.layers.filter(l => l.kind === 'shadow');
-
-      expect(shadows).to.have.lengthOf(1);
-      expect((shadows[0].params as any).blur).to.eql(10);
-      expect((shadows[0].params as any).offsetX).to.eql(3);
-
-      chai.spy.restore(console, 'warn');
-    });
-
-    it('should only keep first glow when multiple provided', () => {
-      const config: FancyConfig = {
-        layers: [{
-          kind: 'solid-fill',
-          params: { color: [1, 1, 1, 1] },
-          decorations: [
             { kind: 'glow', params: { color: [1, 0, 0, 1], blur: 6, intensity: 3 } },
             { kind: 'glow', params: { color: [0, 1, 0, 1], blur: 12, intensity: 7 } },
           ],
         }],
       };
 
-      const warnSpy = chai.spy.on(console, 'warn');
       const result = TextStyle.parseFancyConfig(config);
 
+      const shadows = result.layers.filter(l => l.kind === 'shadow');
       const glows = result.layers.filter(l => l.kind === 'glow');
 
-      expect(glows).to.have.lengthOf(1);
+      expect(shadows).to.have.lengthOf(2);
+      expect((shadows[0].params as any).blur).to.eql(10);
+      expect((shadows[1].params as any).blur).to.eql(20);
+      expect(glows).to.have.lengthOf(2);
       expect((glows[0].params as any).blur).to.eql(6);
-      expect((glows[0].params as any).intensity).to.eql(3);
-
-      chai.spy.restore(console, 'warn');
+      expect((glows[1].params as any).blur).to.eql(12);
+      expect(result.layers[result.layers.length - 1].kind).to.eql('gradient');
     });
   });
 });

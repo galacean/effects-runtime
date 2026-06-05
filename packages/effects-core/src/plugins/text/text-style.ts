@@ -151,17 +151,8 @@ export class TextStyle {
         const decorations = src.decorations;
 
         if (decorations?.length) {
-          let hasShadow = false;
-          let hasGlow = false;
-
           for (const d of decorations) {
             if (d.kind === 'shadow') {
-              if (hasShadow) {
-                console.warn('[FancyText] 每个 Fill/Stroke 只能对应一个 Shadow，多余的 Shadow 将被忽略');
-
-                continue;
-              }
-              hasShadow = true;
               layers.push({
                 kind: 'shadow',
                 params: {
@@ -172,12 +163,6 @@ export class TextStyle {
                 },
               });
             } else if (d.kind === 'glow') {
-              if (hasGlow) {
-                console.warn('[FancyText] 每个 Fill/Stroke 只能对应一个 Glow，多余的 Glow 将被忽略');
-
-                continue;
-              }
-              hasGlow = true;
               layers.push({
                 kind: 'glow',
                 params: {
