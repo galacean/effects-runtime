@@ -1688,7 +1688,7 @@ function createEffectParamsEditor (effect: EffectLayerState, index: number): HTM
     params.appendChild(angleRow);
   } else {
     // 强度（仅发光）
-    const intensityRow = createSliderParamRow('强度', effect.intensity || 1, 1, 10, 1, value => {
+    const intensityRow = createSliderParamRow('强度', effect.intensity || 1, 1, 5, 1, value => {
       effect.intensity = value;
       applyEditorStateToRuntime();
       const layerItem = params.previousElementSibling as HTMLElement;

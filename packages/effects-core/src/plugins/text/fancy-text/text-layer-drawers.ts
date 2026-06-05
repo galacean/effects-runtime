@@ -226,7 +226,7 @@ export class GlowDrawer implements TextLayerDrawer {
     return {
       color: `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`,
       blur: this.blur,
-      intensity: Math.min(10, Math.max(1, Math.round(this.intensity))),
+      intensity: Math.min(5, Math.max(1, Math.round(this.intensity))),
     };
   }
 
