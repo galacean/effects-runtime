@@ -11,7 +11,7 @@ import type { ParticleMeshProps } from './particle-mesh';
 import type { ParticleRibbonRendererProps } from './particle-ribbon-renderer';
 import type { ScaleColorModuleData } from './scale-color-module';
 import type { ScaleSizeModuleData } from './scale-size-module';
-import type { SolvePositionModuleData } from './solve-position-module';
+import type { OrbitalAndLinearMoveModuleData } from './orbital-and-linear-move-module';
 import type { SolveRotationModuleData } from './solve-rotation-module';
 import type { GravityForceModuleData } from './gravity-force-module';
 import type { SolveForcesAndVelocityModuleData } from './solve-forces-and-velocity-module';
@@ -27,7 +27,7 @@ export type ParsedModuleData = {
   gravityForce: GravityForceModuleData,
   solveForcesAndVelocity: SolveForcesAndVelocityModuleData,
   solveRotation: SolveRotationModuleData,
-  solvePosition: SolvePositionModuleData,
+  orbitalAndLinearMove: OrbitalAndLinearMoveModuleData,
   forceTarget?: ForceTargetModuleData,
   scaleSize: ScaleSizeModuleData,
   scaleColor: ScaleColorModuleData,
@@ -249,7 +249,7 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
           speedOverLifetime: positionOverLifetime.speedOverLifetime || undefined,
         },
         solveRotation: { rotationOverLifetime },
-        solvePosition: {
+        orbitalAndLinearMove: {
           orbital: orbitalVel.enabled ? orbitalVel : undefined,
           linearVelOverLifetime: linearVel.enabled ? linearVel : undefined,
         },

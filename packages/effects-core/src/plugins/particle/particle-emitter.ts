@@ -15,7 +15,7 @@ import { ScaleColorModule } from './scale-color-module';
 import { ScaleSizeModule } from './scale-size-module';
 import { GravityForceModule } from './gravity-force-module';
 import { SolveForcesAndVelocityModule } from './solve-forces-and-velocity-module';
-import { SolvePositionModule } from './solve-position-module';
+import { OrbitalAndLinearMoveModule } from './orbital-and-linear-move-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import { UpdateAgeModule } from './update-age-module';
@@ -129,11 +129,11 @@ export class ParticleEmitter {
 
     solveRotation.fromJSON(data.solveRotation);
 
-    const solvePosition = new SolvePositionModule();
+    const orbitalAndLinearMove = new OrbitalAndLinearMoveModule();
 
-    solvePosition.fromJSON(data.solvePosition);
+    orbitalAndLinearMove.fromJSON(data.orbitalAndLinearMove);
 
-    modules.push(burst, init, new UpdateAgeModule(), gravityForce, solveForcesAndVelocity, solveRotation, solvePosition);
+    modules.push(burst, init, new UpdateAgeModule(), gravityForce, solveForcesAndVelocity, solveRotation, orbitalAndLinearMove);
 
     if (data.forceTarget) {
       const forceTarget = new ForceTargetModule();

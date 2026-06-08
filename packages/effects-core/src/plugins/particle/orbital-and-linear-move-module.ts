@@ -6,7 +6,7 @@ import { BezierCurve, createValueGetter, RandomValue } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
-export type SolvePositionModuleData = {
+export type OrbitalAndLinearMoveModuleData = {
   orbital?: {
     enabled?: boolean,
     asRotation?: boolean,
@@ -114,12 +114,15 @@ function gpuMatchingIntegrate (curve: ValueGetter<number>, life: number, time: n
 }
 
 /**
- * 位置求解模块。合成 finalOffset = position + orbital + linearMove。
+ * 轨道旋转 + 线性位移模块。
+ *
+ * 从 simulatedPosition（velocity 积分结果）出发，叠加 orbital 旋转和 linearMove，
+ * 写入最终显示位置 position。
  *
  * 对 BezierCurve 类型的曲线，复刻 GPU shader 的 binarySearchT + cubicBezier
  * + Simpson 20 段积分算法，确保与原 shader 计算结果一致。
  */
-export class SolvePositionModule extends ParticleModule {
+export class OrbitalAndLinearMoveModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
   private orbital?: {
@@ -139,7 +142,7 @@ export class SolvePositionModule extends ParticleModule {
     z?: ValueGetter<number>,
   };
 
-  override fromJSON (data: SolvePositionModuleData): void {
+  override fromJSON (data: OrbitalAndLinearMoveModuleData): void {
     if (data.orbital) {
       this.orbital = {
         enabled: data.orbital.enabled,
