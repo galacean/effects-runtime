@@ -247,9 +247,6 @@ function generateGeometryProps (
     //
     aOffset: { size: 4, stride: 4 * bpe, data: new Float32Array(0) },
     aTranslation: { size: 3, data: new Float32Array(0) },
-    aRotation0: { size: 3, offset: 0, stride: 9 * bpe, data: new Float32Array(0) },
-    aRotation1: { size: 3, offset: 3 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
-    aRotation2: { size: 3, offset: 6 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
   };
 
   if (useSprite) {

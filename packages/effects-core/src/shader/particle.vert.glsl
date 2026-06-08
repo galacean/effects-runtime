@@ -8,11 +8,9 @@ attribute vec4 aOffset;//texcoord.xy time:start duration
 attribute vec4 aColor;
 attribute vec3 aDirX;
 attribute vec3 aDirY;
+attribute vec3 aRot;// euler xyz (degrees)
 
 attribute vec3 aTranslation;
-attribute vec3 aRotation0;
-attribute vec3 aRotation1;
-attribute vec3 aRotation2;
 
 #ifdef USE_SPRITE
 attribute vec3 aSprite;//start duration cycles
@@ -58,6 +56,19 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
 }
     #endif
 
+mat3 eulerToMat3(vec3 eulerDeg) {
+  vec3 r = radians(eulerDeg);
+  float sx = sin(r.x), cx = cos(r.x);
+  float sy = sin(r.y), cy = cos(r.y);
+  float sz = sin(r.z), cz = cos(r.z);
+  // Matches CPU: Rz(-z) * Ry(-y) * Rx(-x) convention (column-major)
+  return mat3(
+    cz*cy, -sz*cy, sy,
+    cz*sy*sx + sz*cx, -sz*sy*sx + cz*cx, -cy*sx,
+    -cz*sy*cx + sz*sx, sz*sy*cx + cz*sx, cy*cx
+  );
+}
+
 void main() {
   float time = aOffset.z;
   float dur = aOffset.w;
@@ -77,8 +88,8 @@ void main() {
 
     vColor = aColor;
 
-    mat3 aRotation = mat3(aRotation0, aRotation1, aRotation2);
-    vec3 point = aRotation * (aDirX + aDirY);
+    mat3 rotMat = eulerToMat3(aRot);
+    vec3 point = rotMat * (aDirX + aDirY);
     vec4 pos = vec4(aPos + aTranslation, 1.0);
 
         #if RENDER_MODE == 1

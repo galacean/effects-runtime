@@ -1,8 +1,6 @@
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter, RandomValue } from '../../math';
-import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
@@ -16,12 +14,9 @@ export type SolveRotationModuleData = {
 };
 
 /**
- * 旋转矩阵计算模块。对应老代码 ParticleMesh.applyRotation。
+ * 旋转模块。每帧覆写 db.rotation = initialRotation + rotationOverLifetime。
  *
- * 每帧对所有存活粒子：
- * 1. 读取初始欧拉角 + rotationOverLifetime 修正
- * 2. 构建 3x3 旋转矩阵 (Rz·Ry·Rx) 列主序
- * 3. 写入 rotMatrix 通道
+ * shader 内从 euler 角构建旋转矩阵。
  */
 export class SolveRotationModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
@@ -46,77 +41,36 @@ export class SolveRotationModule extends ParticleModule {
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const d2r = Math.PI / 180;
     const rol = this.rotationOverLifetime;
-    const rotMat = tempRotMat;
-    const tempMat = tempRotMat2;
+
+    if (!rol) {
+      return;
+    }
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
-      const i9 = i * 9;
       const time = db.age[i];
       const duration = db.lifetime[i];
       const life = Math.min(Math.max(time / duration, 0), 1);
       const seed = db.seed[i];
 
-      let rx = db.rotation[i3];
-      let ry = db.rotation[i3 + 1];
-      let rz = db.rotation[i3 + 2];
+      let rx = db.initialRotation[i3];
+      let ry = db.initialRotation[i3 + 1];
+      let rz = db.initialRotation[i3 + 2];
 
-      if (rol) {
-        if (rol.x) {
-          rx += rol.x instanceof RandomValue ? rol.x.getValue(life, seed) : rol.x.getValue(life);
-        }
-        if (rol.y) {
-          ry += rol.y instanceof RandomValue ? rol.y.getValue(life, seed) : rol.y.getValue(life);
-        }
-        if (rol.z) {
-          rz += rol.z instanceof RandomValue ? rol.z.getValue(life, seed) : rol.z.getValue(life);
-        }
+      if (rol.x) {
+        rx += rol.x instanceof RandomValue ? rol.x.getValue(life, seed) : rol.x.getValue(life);
+      }
+      if (rol.y) {
+        ry += rol.y instanceof RandomValue ? rol.y.getValue(life, seed) : rol.y.getValue(life);
+      }
+      if (rol.z) {
+        rz += rol.z instanceof RandomValue ? rol.z.getValue(life, seed) : rol.z.getValue(life);
       }
 
-      if (rx === 0 && ry === 0 && rz === 0) {
-        writeIdentity(db, i9);
-
-        continue;
-      }
-
-      const rxr = rx * d2r;
-      const ryr = ry * d2r;
-      const rzr = rz * d2r;
-
-      const sx = Math.sin(rxr);
-      const cx = Math.cos(rxr);
-      const sy = Math.sin(ryr);
-      const cy = Math.cos(ryr);
-      const sz = Math.sin(rzr);
-      const cz = Math.cos(rzr);
-
-      // 复刻老代码的 Matrix3 运算链，保持完全相同的浮点中间值
-      rotMat.set(cz, -sz, 0, sz, cz, 0, 0, 0, 1);
-      rotMat.multiply(tempMat.set(cy, 0, sy, 0, 1, 0, -sy, 0, cy));
-      rotMat.multiply(tempMat.set(1, 0, 0, 0, cx, -sx, 0, sx, cx));
-
-      const e = rotMat.elements;
-
-      for (let c = 0; c < 9; c++) {
-        db.rotMatrix[i9 + c] = e[c];
-      }
+      db.rotation[i3] = rx;
+      db.rotation[i3 + 1] = ry;
+      db.rotation[i3 + 2] = rz;
     }
   }
-}
-
-const tempRotMat = new Matrix3();
-const tempRotMat2 = new Matrix3();
-
-function writeIdentity (db: ParticleDataBuffer, offset: number): void {
-  db.rotMatrix[offset] = 1;
-  db.rotMatrix[offset + 1] = 0;
-  db.rotMatrix[offset + 2] = 0;
-  db.rotMatrix[offset + 3] = 0;
-  db.rotMatrix[offset + 4] = 1;
-  db.rotMatrix[offset + 5] = 0;
-  db.rotMatrix[offset + 6] = 0;
-  db.rotMatrix[offset + 7] = 0;
-  db.rotMatrix[offset + 8] = 1;
 }

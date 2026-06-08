@@ -270,7 +270,6 @@ export class InitializeParticleModule extends ParticleModule {
     const i3 = slotIndex * 3;
     const i4 = slotIndex * 4;
     const i2 = slotIndex * 2;
-    const i9 = slotIndex * 9;
 
     db.age[slotIndex] = -delay;
     db.lifetime[slotIndex] = lifetime;
@@ -278,6 +277,9 @@ export class InitializeParticleModule extends ParticleModule {
     db.alive[slotIndex] = 1;
     db.uniqueId[slotIndex] = emitter.uniqueIdCounter++;
 
+    db.initialRotation[i3] = rot.x;
+    db.initialRotation[i3 + 1] = rot.y;
+    db.initialRotation[i3 + 2] = rot.z;
     db.rotation[i3] = rot.x;
     db.rotation[i3 + 1] = rot.y;
     db.rotation[i3 + 2] = rot.z;
@@ -325,16 +327,6 @@ export class InitializeParticleModule extends ParticleModule {
       db.sprite[i3 + 1] = sprite[1];
       db.sprite[i3 + 2] = sprite[2];
     }
-    db.rotMatrix[i9] = 1;
-    db.rotMatrix[i9 + 1] = 0;
-    db.rotMatrix[i9 + 2] = 0;
-    db.rotMatrix[i9 + 3] = 0;
-    db.rotMatrix[i9 + 4] = 1;
-    db.rotMatrix[i9 + 5] = 0;
-    db.rotMatrix[i9 + 6] = 0;
-    db.rotMatrix[i9 + 7] = 0;
-    db.rotMatrix[i9 + 8] = 1;
-
     db.activeCount = Math.max(db.activeCount, slotIndex + 1);
   }
 }

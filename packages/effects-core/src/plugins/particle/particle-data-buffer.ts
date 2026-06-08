@@ -33,8 +33,8 @@ export class ParticleDataBuffer {
   readonly initialSize: number[];
   /** 出生时颜色快照 (r, g, b, a)，4 分量，不可变 */
   readonly initialColor: number[];
-  /** 出生时旋转（欧拉角 xyz 弧度），3 分量 */
-  readonly rotation: number[];
+  /** 出生时旋转快照（欧拉角 xyz 度），3 分量，不可变 */
+  readonly initialRotation: number[];
   /** 精灵动画参数 (animDelay, animDuration, cycles)，3 分量 */
   readonly sprite: number[];
   /** 纹理坐标 (u, v, w, h)，4 分量 */
@@ -54,12 +54,12 @@ export class ParticleDataBuffer {
   readonly size: number[];
   /** 粒子颜色 (r, g, b, a)，4 分量。ScaleColorModule 每帧覆写为 initialColor × scale */
   readonly color: number[];
-  /** Quad X 方向，3 分量。每帧由渲染阶段计算 */
+  /** Quad X 方向，3 分量 */
   readonly dirX: number[];
-  /** Quad Y 方向，3 分量。每帧由渲染阶段计算 */
+  /** Quad Y 方向，3 分量 */
   readonly dirY: number[];
-  /** 旋转矩阵 3×3 列主序，9 分量。每帧由 SolveRotationModule 计算 */
-  readonly rotMatrix: number[];
+  /** 当前旋转（欧拉角 xyz 度），3 分量。SolveRotationModule 每帧覆写为 initialRotation + ROL */
+  readonly rotation: number[];
 
   // ── Lifecycle（粒子生死管理） ──
 
@@ -87,7 +87,7 @@ export class ParticleDataBuffer {
     this.seed = createArray(maxCount);
     // Spawn-time immutable (multi-component)
     this.initialVelocity = createArray(maxCount * 3);
-    this.rotation = createArray(maxCount * 3);
+    this.initialRotation = createArray(maxCount * 3);
     this.sprite = createArray(maxCount * 3);
     this.initialSize = createArray(maxCount * 2);
     this.initialColor = createArray(maxCount * 4);
@@ -101,9 +101,9 @@ export class ParticleDataBuffer {
     this.velocity = createArray(maxCount * 3);
     this.dirX = createArray(maxCount * 3);
     this.dirY = createArray(maxCount * 3);
+    this.rotation = createArray(maxCount * 3);
     this.size = createArray(maxCount * 2);
     this.color = createArray(maxCount * 4);
-    this.rotMatrix = createArray(maxCount * 9);
 
     // Lifecycle
     this.alive = createArray(maxCount);
@@ -125,7 +125,6 @@ export class ParticleDataBuffer {
 
   clear (): void {
     this._activeCount = 0;
-    this.rotMatrix.fill(0);
     this.position.fill(0);
     this.alive.fill(0);
   }

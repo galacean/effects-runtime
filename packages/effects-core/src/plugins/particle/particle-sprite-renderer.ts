@@ -51,7 +51,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     const aRot = geo.getAttributeData('aRot') as Float32Array;
     const aOffset = geo.getAttributeData('aOffset') as Float32Array;
     const aTranslation = geo.getAttributeData('aTranslation') as Float32Array;
-    const aRotation0 = geo.getAttributeData('aRotation0') as Float32Array;
     const aSprite = useSprite ? geo.getAttributeData('aSprite') as Float32Array : null;
     const wholeUV = [0, 0, 1, 1];
 
@@ -59,7 +58,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
       const i3 = i * 3;
       const i4 = i * 4;
       const i2 = i * 2;
-      const i9 = i * 9;
       const uv = (db.uv[i4] !== 0 || db.uv[i4 + 1] !== 0 || db.uv[i4 + 2] !== 0 || db.uv[i4 + 3] !== 0)
         ? db.uv : null;
 
@@ -69,7 +67,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
         const r8 = vi * 8;
         const o4 = vi * 4;
         const t3 = vi * 3;
-        const rot9 = vi * 9;
 
         aPos[p12] = 0;
         aPos[p12 + 1] = 0;
@@ -111,10 +108,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
         aTranslation[t3 + 1] = db.position[i3 + 1];
         aTranslation[t3 + 2] = db.position[i3 + 2];
 
-        for (let k = 0; k < 9; k++) {
-          aRotation0[rot9 + k] = db.rotMatrix[i9 + k];
-        }
-
         if (aSprite) {
           const sp3 = vi * 3;
 
@@ -129,7 +122,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     geo.setAttributeData('aRot', aRot);
     geo.setAttributeData('aOffset', aOffset);
     geo.setAttributeData('aTranslation', aTranslation);
-    geo.setAttributeData('aRotation0', aRotation0);
     if (aSprite) {
       geo.setAttributeData('aSprite', aSprite);
     }
@@ -157,7 +149,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     geo.setAttributeData('aRot', new Float32Array(vertexCount * 8));
     geo.setAttributeData('aOffset', new Float32Array(vertexCount * 4));
     geo.setAttributeData('aTranslation', new Float32Array(vertexCount * 3));
-    geo.setAttributeData('aRotation0', new Float32Array(vertexCount * 9));
     if (mesh.useSprite) {
       geo.setAttributeData('aSprite', new Float32Array(vertexCount * 3));
     }
