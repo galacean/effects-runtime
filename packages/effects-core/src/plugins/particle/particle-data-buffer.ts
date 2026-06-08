@@ -13,8 +13,8 @@ function createArray (length: number, fillValue = 0): number[] {
  * 避免 Float32/Float64 混用导致的精度问题。
  *
  * 通道分两类：
- * - Spawn 通道：粒子出生时一次性写入（position, velocity, color 等）
- * - Accumulate 通道：每帧由模块计算更新（rotMatrix, finalOffset）
+ * - Spawn 通道：粒子出生时一次性写入（simulatedPosition, velocity, color 等）
+ * - Accumulate 通道：每帧由模块计算更新（rotMatrix, position）
  */
 export class ParticleDataBuffer {
   readonly maxCount: number;
@@ -27,7 +27,9 @@ export class ParticleDataBuffer {
   readonly lifetime: number[];
   /** 随机种子 [0,1)，出生时写入 */
   readonly seed: number[];
-  /** 当前位置 xyz，模块可直接修改（对齐 Pro 的 Particle.Position） */
+  /** velocity 积分的累加位置 xyz，仅 SolveVelocityModule 和 SolvePositionModule 内部使用 */
+  readonly simulatedPosition: number[];
+  /** 最终显示位置 xyz（simulatedPosition + orbital + linearMove + forceTarget 合成结果），3 分量 */
   readonly position: number[];
   /** 初始速度 xyz，3 分量 */
   readonly velocity: number[];
@@ -54,8 +56,6 @@ export class ParticleDataBuffer {
 
   /** 旋转矩阵 3x3 列主序，9 分量 */
   readonly rotMatrix: number[];
-  /** 显示位置 xyz（position + orbital + linearMove + forceTarget 合成结果），3 分量 */
-  readonly finalOffset: number[];
 
   // --- 生命周期管理 ---
 
@@ -82,6 +82,7 @@ export class ParticleDataBuffer {
     this.lifetime = createArray(maxCount);
     this.seed = createArray(maxCount);
 
+    this.simulatedPosition = createArray(maxCount * 3);
     this.position = createArray(maxCount * 3);
     this.velocity = createArray(maxCount * 3);
     this.rotation = createArray(maxCount * 3);
@@ -97,7 +98,6 @@ export class ParticleDataBuffer {
     this.uv = createArray(maxCount * 4);
 
     this.rotMatrix = createArray(maxCount * 9);
-    this.finalOffset = createArray(maxCount * 3);
 
     this.alive = createArray(maxCount);
 
@@ -118,7 +118,7 @@ export class ParticleDataBuffer {
   clear (): void {
     this._activeCount = 0;
     this.rotMatrix.fill(0);
-    this.finalOffset.fill(0);
+    this.position.fill(0);
     this.alive.fill(0);
   }
 }

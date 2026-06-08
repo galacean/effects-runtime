@@ -107,9 +107,9 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
         aOffset[o4 + 2] = db.age[i];
         aOffset[o4 + 3] = db.lifetime[i];
 
-        aTranslation[t3] = db.finalOffset[i3];
-        aTranslation[t3 + 1] = db.finalOffset[i3 + 1];
-        aTranslation[t3 + 2] = db.finalOffset[i3 + 2];
+        aTranslation[t3] = db.position[i3];
+        aTranslation[t3 + 1] = db.position[i3 + 1];
+        aTranslation[t3 + 2] = db.position[i3 + 2];
 
         for (let k = 0; k < 9; k++) {
           aRotation0[rot9 + k] = db.rotMatrix[i9 + k];

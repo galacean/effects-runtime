@@ -282,9 +282,9 @@ export class InitializeParticleModule extends ParticleModule {
     db.rotation[i3 + 1] = rot.y;
     db.rotation[i3 + 2] = rot.z;
 
-    db.position[i3] = position.x;
-    db.position[i3 + 1] = position.y;
-    db.position[i3 + 2] = position.z;
+    db.simulatedPosition[i3] = position.x;
+    db.simulatedPosition[i3 + 1] = position.y;
+    db.simulatedPosition[i3 + 2] = position.z;
 
     db.velocity[i3] = direction.x * speed;
     db.velocity[i3 + 1] = direction.y * speed;

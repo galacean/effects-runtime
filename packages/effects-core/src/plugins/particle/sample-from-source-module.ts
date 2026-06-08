@@ -60,9 +60,12 @@ export class SampleFromSourceModule extends ParticleModule {
     const s3 = src * 3;
     const d3 = slot * 3;
 
-    db.position[d3] = sourceDb.finalOffset[s3];
-    db.position[d3 + 1] = sourceDb.finalOffset[s3 + 1];
-    db.position[d3 + 2] = sourceDb.finalOffset[s3 + 2];
+    db.simulatedPosition[d3] = sourceDb.position[s3];
+    db.simulatedPosition[d3 + 1] = sourceDb.position[s3 + 1];
+    db.simulatedPosition[d3 + 2] = sourceDb.position[s3 + 2];
+    db.position[d3] = sourceDb.position[s3];
+    db.position[d3 + 1] = sourceDb.position[s3 + 1];
+    db.position[d3 + 2] = sourceDb.position[s3 + 2];
 
     db.ribbonId[slot] = ribbonId;
     db.ribbonLinkOrder[slot] = ctx.emitter.generatedCount + slot;

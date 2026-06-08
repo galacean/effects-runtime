@@ -207,9 +207,9 @@ export class SolvePositionModule extends ParticleModule {
       }
 
       if (!orb?.enabled || age <= 0) {
-        db.finalOffset[i3] = db.position[i3] + mx;
-        db.finalOffset[i3 + 1] = db.position[i3 + 1] + my;
-        db.finalOffset[i3 + 2] = db.position[i3 + 2] + mz;
+        db.position[i3] = db.simulatedPosition[i3] + mx;
+        db.position[i3 + 1] = db.simulatedPosition[i3 + 1] + my;
+        db.position[i3 + 2] = db.simulatedPosition[i3 + 2] + mz;
       } else {
         const time = age;
         const life = Math.min(Math.max(time / duration, 0), 1);
@@ -225,13 +225,13 @@ export class SolvePositionModule extends ParticleModule {
         tempEuler.set(-ox, -oy, -oz);
         tempMat4.setFromEuler(tempEuler);
         const e = tempMat4.elements;
-        const px = db.position[i3] - cx;
-        const py = db.position[i3 + 1] - cy;
-        const pz = db.position[i3 + 2] - cz;
+        const px = db.simulatedPosition[i3] - cx;
+        const py = db.simulatedPosition[i3 + 1] - cy;
+        const pz = db.simulatedPosition[i3 + 2] - cz;
 
-        db.finalOffset[i3] = e[0] * px + e[4] * py + e[8] * pz + e[12] + cx + mx;
-        db.finalOffset[i3 + 1] = e[1] * px + e[5] * py + e[9] * pz + e[13] + cy + my;
-        db.finalOffset[i3 + 2] = e[2] * px + e[6] * py + e[10] * pz + e[14] + cz + mz;
+        db.position[i3] = e[0] * px + e[4] * py + e[8] * pz + e[12] + cx + mx;
+        db.position[i3 + 1] = e[1] * px + e[5] * py + e[9] * pz + e[13] + cy + my;
+        db.position[i3 + 2] = e[2] * px + e[6] * py + e[10] * pz + e[14] + cz + mz;
       }
     }
   }

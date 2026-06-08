@@ -50,9 +50,9 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
       this.aliveSourceIds.add(uid);
 
       const i3 = i * 3;
-      const x = sourceDb.finalOffset[i3];
-      const y = sourceDb.finalOffset[i3 + 1];
-      const z = sourceDb.finalOffset[i3 + 2];
+      const x = sourceDb.position[i3];
+      const y = sourceDb.position[i3 + 1];
+      const z = sourceDb.position[i3 + 2];
 
       if (this.checkDistance) {
         const last = this.lastPositions.get(uid);

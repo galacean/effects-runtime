@@ -346,9 +346,9 @@ export class ParticleEmitter {
       for (const slotIdx of slotIndices) {
         const si3 = slotIdx * 3;
 
-        db.position[si3] += positionOffset[0];
-        db.position[si3 + 1] += positionOffset[1];
-        db.position[si3 + 2] += positionOffset[2];
+        db.simulatedPosition[si3] += positionOffset[0];
+        db.simulatedPosition[si3 + 1] += positionOffset[1];
+        db.simulatedPosition[si3 + 2] += positionOffset[2];
       }
     }
     spawnedSlots.push(...slotIndices);
@@ -366,11 +366,11 @@ export class ParticleEmitter {
       const i3 = i * 3;
       const i2 = i * 2;
 
-      // position: point transform
-      worldMatrix.transformPoint(tempPos.set(db.position[i3], db.position[i3 + 1], db.position[i3 + 2]));
-      db.position[i3] = tempPos.x;
-      db.position[i3 + 1] = tempPos.y;
-      db.position[i3 + 2] = tempPos.z;
+      // simulatedPosition: point transform
+      worldMatrix.transformPoint(tempPos.set(db.simulatedPosition[i3], db.simulatedPosition[i3 + 1], db.simulatedPosition[i3 + 2]));
+      db.simulatedPosition[i3] = tempPos.x;
+      db.simulatedPosition[i3 + 1] = tempPos.y;
+      db.simulatedPosition[i3 + 2] = tempPos.z;
 
       // velocity: transform direction to world, preserve original speed (remove scale influence)
       const localSpeed = tempVel.set(db.velocity[i3], db.velocity[i3 + 1], db.velocity[i3 + 2]).length();
@@ -429,9 +429,9 @@ export class ParticleEmitter {
     const i3 = index * 3;
 
     return new Vector3(
-      db.finalOffset[i3],
-      db.finalOffset[i3 + 1],
-      db.finalOffset[i3 + 2],
+      db.position[i3],
+      db.position[i3 + 1],
+      db.position[i3 + 2],
     );
   }
 
