@@ -1,12 +1,14 @@
-import { createValueGetter, ValueGetter } from '../../math';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
+import type * as spec from '@galacean/effects-specification';
 
-interface BurstOptions {
+export type BurstData = {
   time: number,
   interval: number,
-  count: number | ValueGetter<number>,
+  count: spec.NumberExpression | number,
   cycles: number,
   probability: number,
-}
+};
 
 export class Burst {
   once: boolean;
@@ -22,12 +24,12 @@ export class Burst {
   private readonly cycles: number;
   private readonly probability: number;
 
-  constructor (options: BurstOptions) {
+  constructor (options: BurstData) {
     const { time, interval, count, cycles, probability } = options;
 
     this.time = +time || 0;
     this.interval = +interval || 1;
-    this.count = count instanceof ValueGetter ? count : createValueGetter(count);
+    this.count = createValueGetter(count);
     this.cycles = +cycles || Infinity;
     this.probability = isNaN(probability) ? 1 : +probability;
     this.reset();
@@ -65,10 +67,10 @@ export class Burst {
   }
 
   clone (): Burst {
-    const options = {
+    const options: BurstData = {
       time: this.time,
       interval: this.interval,
-      count: this.count,
+      count: this.count as any,
       cycles: this.cycles,
       probability: this.probability,
     };

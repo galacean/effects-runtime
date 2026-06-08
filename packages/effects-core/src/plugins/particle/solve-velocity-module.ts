@@ -1,6 +1,15 @@
+import type * as spec from '@galacean/effects-specification';
+import type { vec3 } from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { SolveVelocityModuleData } from './parse-spec';
+
+export type SolveVelocityModuleData = {
+  gravity: vec3,
+  gravityModifier: spec.NumberExpression | number,
+  speedOverLifetime?: spec.NumberExpression | number,
+};
 
 /**
  * 速度积分模块。对应老代码 ParticleMesh.applyTranslation。
@@ -12,20 +21,23 @@ import type { SolveVelocityModuleData } from './parse-spec';
 export class SolveVelocityModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: SolveVelocityModuleData;
+  private gravity!: vec3;
+  private gravityModifier!: ValueGetter<number>;
+  private speedOverLifetime?: ValueGetter<number>;
 
-  constructor (data: SolveVelocityModuleData) {
-    super();
-    this.data = data;
+  override fromJSON (data: SolveVelocityModuleData): void {
+    this.gravity = data.gravity;
+    this.gravityModifier = createValueGetter(data.gravityModifier);
+    this.speedOverLifetime = data.speedOverLifetime ? createValueGetter(data.speedOverLifetime) : undefined;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
     const dtSec = ctx.deltaTime;
-    const gx = this.data.gravity[0];
-    const gy = this.data.gravity[1];
-    const gz = this.data.gravity[2];
-    const sol = this.data.speedOverLifetime;
+    const gx = this.gravity[0];
+    const gy = this.gravity[1];
+    const gz = this.gravity[2];
+    const sol = this.speedOverLifetime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const age = db.age[i];
@@ -42,7 +54,7 @@ export class SolveVelocityModule extends ParticleModule {
       let vy = db.velocity[i3 + 1];
       let vz = db.velocity[i3 + 2];
 
-      const d = this.data.gravityModifier.getIntegrateValue(0, time, duration);
+      const d = this.gravityModifier.getIntegrateValue(0, time, duration);
       const ax = gx * d;
       const ay = gy * d;
       const az = gz * d;

@@ -1,8 +1,14 @@
-import type { Burst } from './burst';
+import type { vec3 } from '@galacean/effects-specification';
+import type { BurstData } from './burst';
+import { Burst } from './burst';
 import type { ParticleEmitter } from './particle-emitter';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext, ResolvedBurstSpawn } from './particle-module';
-import type { BurstSpawnModuleData } from './parse-spec';
+
+export type BurstSpawnModuleData = {
+  bursts: BurstData[],
+  burstOffsets: Record<string, vec3[] | null>,
+};
 
 const ORIGIN_OFFSET: readonly [number, number, number] = [0, 0, 0];
 
@@ -17,20 +23,17 @@ const ORIGIN_OFFSET: readonly [number, number, number] = [0, 0, 0];
 export class BurstSpawnModule extends ParticleModule {
   override readonly stage = 'emitterUpdate' as const;
 
-  private data: BurstSpawnModuleData;
+  private bursts: Burst[] = [];
+  private burstOffsets: Record<string, vec3[] | null> = {};
   private lastTimePassed = 0;
 
-  constructor (data: BurstSpawnModuleData) {
-    super();
-    this.data = data;
-  }
-
-  get bursts (): Burst[] {
-    return this.data.bursts;
+  override fromJSON (data: BurstSpawnModuleData): void {
+    this.bursts = data.bursts.map(opts => new Burst(opts));
+    this.burstOffsets = data.burstOffsets;
   }
 
   override execute (ctx: ParticleModuleContext): void {
-    const bursts = this.data.bursts;
+    const bursts = this.bursts;
     const emitter = ctx.emitter;
     const timePassed = emitter.timePassed;
 
@@ -62,12 +65,12 @@ export class BurstSpawnModule extends ParticleModule {
       return null;
     }
 
-    const offsets = this.data.burstOffsets[burstIndex];
+    const offsets = this.burstOffsets[burstIndex];
     const burstOffset = (offsets && offsets[opts.cycleIndex]) || ORIGIN_OFFSET;
 
     if (burst.once) {
-      this.data.burstOffsets[burstIndex] = null;
-      this.data.bursts.splice(burstIndex, 1);
+      this.burstOffsets[burstIndex] = null;
+      this.bursts.splice(burstIndex, 1);
     }
 
     return {

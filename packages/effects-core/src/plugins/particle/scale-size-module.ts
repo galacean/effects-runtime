@@ -1,6 +1,14 @@
+import type * as spec from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { ScaleSizeModuleData } from './parse-spec';
+
+export type ScaleSizeModuleData = {
+  x: spec.NumberExpression | number,
+  y?: spec.NumberExpression | number,
+  separateAxes?: boolean,
+};
 
 /**
  * Size over lifetime 模块。对齐 Pro 的 ScaleSpriteSizeModule。
@@ -10,16 +18,19 @@ import type { ScaleSizeModuleData } from './parse-spec';
 export class ScaleSizeModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: ScaleSizeModuleData;
+  private x!: ValueGetter<number>;
+  private y?: ValueGetter<number>;
+  private separateAxes = false;
 
-  constructor (data: ScaleSizeModuleData) {
-    super();
-    this.data = data;
+  override fromJSON (data: ScaleSizeModuleData): void {
+    this.x = createValueGetter(data.x);
+    this.y = data.y ? createValueGetter(data.y) : undefined;
+    this.separateAxes = !!data.separateAxes;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const { x, y, separateAxes } = this.data;
+    const { x, y, separateAxes } = this;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i2 = i * 2;

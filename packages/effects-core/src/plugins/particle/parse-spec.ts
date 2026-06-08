@@ -3,143 +3,18 @@ import type { vec3 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import { createValueGetter, ensureVec3 } from '../../math';
-import type { ValueGetter } from '../../math';
-import { createShape } from '../../shape';
-import type { ShapeGenerator } from '../../shape';
-import { Burst } from './burst';
+import type { BurstSpawnModuleData } from './burst-spawn-module';
+import type { ForceTargetModuleData } from './force-target-module';
+import type { InitializeModuleData } from './initialize-particle-module';
+import type { EmitterData, ParsedTrailConfig } from './particle-emitter';
 import type { ParticleMeshProps } from './particle-mesh';
 import type { ParticleRibbonRendererProps } from './particle-ribbon-renderer';
-
-export type ParsedParticleOptions = {
-  startSpeed: ValueGetter<number>,
-  startLifetime: ValueGetter<number>,
-  startDelay: ValueGetter<number>,
-  startColor: ValueGetter<spec.RGBAColorValue>,
-  start3DRotation?: boolean,
-  startRotationX?: ValueGetter<number>,
-  startRotationY?: ValueGetter<number>,
-  startRotationZ?: ValueGetter<number>,
-  startRotation?: ValueGetter<number>,
-  start3DSize: boolean,
-  startSizeX?: ValueGetter<number>,
-  startSizeY?: ValueGetter<number>,
-  startSize?: ValueGetter<number>,
-  sizeAspect?: ValueGetter<number>,
-  startTurbulence: boolean,
-  turbulenceX?: ValueGetter<number>,
-  turbulenceY?: ValueGetter<number>,
-  turbulenceZ?: ValueGetter<number>,
-  turbulence?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>],
-  looping: boolean,
-  maxCount: number,
-  gravity: vec3,
-  gravityModifier: ValueGetter<number>,
-  renderLevel?: spec.RenderLevel,
-  particleFollowParent?: boolean,
-  forceTarget?: { curve: ValueGetter<number>, target: spec.vec3 },
-  speedOverLifetime?: ValueGetter<number>,
-  linearVelOverLifetime?: { asMovement?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean },
-  orbitalVelOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean, center?: spec.vec3 },
-};
-
-export type BurstSpawnModuleData = {
-  bursts: Burst[],
-  burstOffsets: Record<string, vec3[] | null>,
-};
-
-export type ParsedTextureSheetAnimation = {
-  col: number,
-  row: number,
-  total: number,
-  animate: boolean,
-  animationDelay: ValueGetter<number>,
-  animationDuration: ValueGetter<number>,
-  cycles: ValueGetter<number>,
-  endAtLifetime?: ValueGetter<number>,
-  blend?: boolean,
-};
-
-export type ParsedTrailConfig = {
-  lifetime: ValueGetter<number>,
-  dieWithParticles: boolean,
-  sizeAffectsWidth: boolean,
-  sizeAffectsLifetime: boolean,
-  inheritParticleColor: boolean,
-  parentAffectsPosition: boolean,
-};
-
-export type InitializeParticleOptions = {
-  startSpeed: ValueGetter<number>,
-  startLifetime: ValueGetter<number>,
-  startDelay: ValueGetter<number>,
-  startColor: ValueGetter<spec.RGBAColorValue>,
-  start3DRotation?: boolean,
-  startRotationX?: ValueGetter<number>,
-  startRotationY?: ValueGetter<number>,
-  startRotationZ?: ValueGetter<number>,
-  startRotation?: ValueGetter<number>,
-  start3DSize: boolean,
-  startSizeX?: ValueGetter<number>,
-  startSizeY?: ValueGetter<number>,
-  startSize?: ValueGetter<number>,
-  sizeAspect?: ValueGetter<number>,
-  startTurbulence: boolean,
-  turbulence?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>],
-};
-
-export type InitializeModuleData = {
-  options: InitializeParticleOptions,
-  shape: ShapeGenerator,
-  textureSheetAnimation: ParsedTextureSheetAnimation | undefined,
-  uvs: number[][],
-};
-
-export type SpawnRateModuleData = {
-  rateOverTime: ValueGetter<number>,
-};
-
-export type SolveVelocityModuleData = {
-  gravity: vec3,
-  gravityModifier: ValueGetter<number>,
-  speedOverLifetime?: ValueGetter<number>,
-};
-
-export type SolveRotationModuleData = {
-  rotationOverLifetime?: {
-    asRotation?: boolean,
-    x?: ValueGetter<number>,
-    y?: ValueGetter<number>,
-    z?: ValueGetter<number>,
-  },
-};
-
-export type SolvePositionModuleData = {
-  orbital?: {
-    enabled?: boolean,
-    asRotation?: boolean,
-    x?: ValueGetter<number>,
-    y?: ValueGetter<number>,
-    z?: ValueGetter<number>,
-    center?: vec3,
-  },
-  linearVelOverLifetime?: { asMovement?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean },
-};
-
-export type ForceTargetModuleData = {
-  curve: ValueGetter<number>,
-  target: vec3,
-};
-
-export type ScaleSizeModuleData = {
-  x: ValueGetter<number>,
-  y?: ValueGetter<number>,
-  separateAxes?: boolean,
-};
-
-export type ScaleColorModuleData = {
-  color?: number[][],
-  opacity?: ValueGetter<number>,
-};
+import type { ScaleColorModuleData } from './scale-color-module';
+import type { ScaleSizeModuleData } from './scale-size-module';
+import type { SolvePositionModuleData } from './solve-position-module';
+import type { SolveRotationModuleData } from './solve-rotation-module';
+import type { SolveVelocityModuleData } from './solve-velocity-module';
+import type { SpawnRateModuleData } from './spawn-rate-module';
 
 /**
  * 模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
@@ -156,27 +31,7 @@ export type ParsedModuleData = {
   scaleColor: ScaleColorModuleData,
 };
 
-/**
- * Emitter 构建所需的全部数据（不含运行时引用）。
- * 对齐 Pro 的 emitter data 模式：数据与运行时引用分离。
- */
-export type TurbulenceConfig = {
-  enabled: boolean,
-  values?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>],
-};
-
-export type EmitterData = {
-  maxCount: number,
-  looping: boolean,
-  particleFollowParent: boolean,
-  turbulence: TurbulenceConfig,
-  alignSpeedDirection: boolean,
-  trails: ParsedTrailConfig | undefined,
-  modules: ParsedModuleData,
-};
-
 export type ParsedSpecResult = {
-  options: ParsedParticleOptions,
   emitterData: EmitterData,
   particleMeshProps: ParticleMeshProps,
   trailMeshProps: ParticleRibbonRendererProps | undefined,
@@ -185,188 +40,150 @@ export type ParsedSpecResult = {
 
 /**
  * 从 spec 数据解析粒子系统配置。纯函数，不依赖 ParticleSystem 实例。
- * 与原 fromData 逻辑逐行对应，不改变任何行为。
  */
 export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine): ParsedSpecResult {
-  const props = data;
-  const cachePrefix = '';
-  const { options, positionOverLifetime = {}, shape } = props;
-  const gravityModifier = positionOverLifetime?.gravityOverLifetime;
-  const gravity = ensureVec3(positionOverLifetime?.gravity);
-  const _textureSheetAnimation = props.textureSheetAnimation;
-  const textureSheetAnimation: ParsedTextureSheetAnimation | undefined = _textureSheetAnimation ? {
-    animationDelay: createValueGetter(_textureSheetAnimation.animationDelay || 0),
-    animationDuration: createValueGetter(_textureSheetAnimation.animationDuration || 1),
-    cycles: createValueGetter(_textureSheetAnimation.cycles || 1),
-    animate: _textureSheetAnimation.animate,
-    col: _textureSheetAnimation.col,
-    row: _textureSheetAnimation.row,
-    total: _textureSheetAnimation.total || _textureSheetAnimation.col * _textureSheetAnimation.row,
-  } : undefined;
-  const startTurbulence = !!(shape && shape.turbulenceX || shape?.turbulenceY || shape?.turbulenceZ);
-  let turbulence: ParsedParticleOptions['turbulence'];
+  const { options, positionOverLifetime = {}, shape } = data;
+  const textureSheetAnimation = data.textureSheetAnimation;
 
+  // --- Initialize module ---
+  const startTurbulence = !!(shape && shape.turbulenceX || shape?.turbulenceY || shape?.turbulenceZ);
+  const initData: InitializeModuleData = {
+    startSpeed: positionOverLifetime.startSpeed || 0,
+    startLifetime: options.startLifetime,
+    startDelay: options.startDelay || 0,
+    startColor: (options.startColor || [spec.ValueType.RGBA_COLOR, [255, 255, 255, 255]]) as spec.ColorExpression | spec.RGBAColorValue,
+    start3DSize: !!options.start3DSize,
+    startTurbulence,
+    shape,
+    textureSheetAnimation,
+    splits: data.splits,
+  };
+
+  if (options.startRotationZ) {
+    initData.startRotation = options.startRotationZ;
+  }
+  if (options.startRotationX || options.startRotationY) {
+    initData.start3DRotation = true;
+    initData.startRotationX = options.startRotationX || 0;
+    initData.startRotationY = options.startRotationY || 0;
+    initData.startRotationZ = options.startRotationZ || 0;
+  }
+  if (options.start3DSize) {
+    initData.startSizeX = options.startSizeX;
+    initData.startSizeY = options.startSizeY;
+  } else {
+    initData.startSize = options.startSize;
+    initData.sizeAspect = options.sizeAspect || 1;
+  }
   if (startTurbulence) {
-    turbulence = [
-      createValueGetter(shape.turbulenceX ?? 0),
-      createValueGetter(shape.turbulenceY ?? 0),
-      createValueGetter(shape.turbulenceZ ?? 0),
+    initData.turbulence = [
+      shape.turbulenceX ?? 0,
+      shape.turbulenceY ?? 0,
+      shape.turbulenceZ ?? 0,
     ];
   }
 
-  const shapeGenerator = createShape(shape);
-  const rateOverTime = createValueGetter(props.emission.rateOverTime);
-  const burstData: BurstSpawnModuleData = {
-    burstOffsets: getBurstOffsets(props.emission.burstOffsets ?? []),
-    bursts: (props.emission.bursts || []).map((c: any) => new Burst(c)),
+  // --- SolvePosition module ---
+  const linearVel = {
+    x: positionOverLifetime.linearX || undefined,
+    y: positionOverLifetime.linearY || undefined,
+    z: positionOverLifetime.linearZ || undefined,
+    asMovement: positionOverLifetime.asMovement,
+    enabled: false,
   };
 
-  let rotationOverLifetime: SolveRotationModuleData['rotationOverLifetime'];
-  const rotOverLt = props.rotationOverLifetime;
-
-  if (rotOverLt) {
-    rotationOverLifetime = {};
-    rotationOverLifetime.asRotation = !!rotOverLt.asRotation;
-    rotationOverLifetime.z = rotOverLt.z ? createValueGetter(rotOverLt.z) : createValueGetter(0);
-    if (rotOverLt.separateAxes) {
-      rotationOverLifetime.x = rotOverLt.x && createValueGetter(rotOverLt.x);
-      rotationOverLifetime.y = rotOverLt.y && createValueGetter(rotOverLt.y);
-    }
+  if (linearVel.x || linearVel.y || linearVel.z) {
+    linearVel.enabled = true;
   }
 
-  let forceTarget: ParsedParticleOptions['forceTarget'];
+  const orbitalVel = {
+    x: positionOverLifetime.orbitalX || undefined,
+    y: positionOverLifetime.orbitalY || undefined,
+    z: positionOverLifetime.orbitalZ || undefined,
+    center: positionOverLifetime.orbCenter,
+    asRotation: positionOverLifetime.asRotation,
+    enabled: false,
+  };
+
+  if (orbitalVel.x || orbitalVel.y || orbitalVel.z) {
+    orbitalVel.enabled = true;
+  }
+
+  // --- SolveRotation module ---
+  let rotationOverLifetime: SolveRotationModuleData['rotationOverLifetime'];
+  const rotOverLt = data.rotationOverLifetime;
+
+  if (rotOverLt) {
+    rotationOverLifetime = {
+      asRotation: !!rotOverLt.asRotation,
+      z: rotOverLt.z || 0,
+      x: rotOverLt.separateAxes ? rotOverLt.x : undefined,
+      y: rotOverLt.separateAxes ? rotOverLt.y : undefined,
+    };
+  }
+
+  // --- ForceTarget module ---
+  let forceTarget: ForceTargetModuleData | undefined;
 
   if (positionOverLifetime?.forceTarget) {
     forceTarget = {
       target: positionOverLifetime.target || [0, 0, 0],
-      curve: createValueGetter(positionOverLifetime.forceCurve || [spec.ValueType.LINE, [[0, 0], [1, 1]]]),
+      curve: positionOverLifetime.forceCurve || [spec.ValueType.LINE, [[0, 0], [1, 1]]],
     };
   }
-  const linearVelOverLifetime = {
-    x: positionOverLifetime.linearX && createValueGetter(positionOverLifetime.linearX || 0),
-    y: positionOverLifetime.linearY && createValueGetter(positionOverLifetime.linearY || 0),
-    z: positionOverLifetime.linearZ && createValueGetter(positionOverLifetime.linearZ || 0),
-    asMovement: positionOverLifetime.asMovement,
-  };
-  const orbitalVelOverLifetime = {
-    x: positionOverLifetime.orbitalX && createValueGetter(positionOverLifetime.orbitalX),
-    y: positionOverLifetime.orbitalY && createValueGetter(positionOverLifetime.orbitalY),
-    z: positionOverLifetime.orbitalZ && createValueGetter(positionOverLifetime.orbitalZ),
-    center: positionOverLifetime.orbCenter,
-    asRotation: positionOverLifetime.asRotation,
-  };
-  const sizeOverLifetime = props.sizeOverLifetime || {};
-  const colorOverLifetime = props.colorOverLifetime;
-  const shaderCachePrefix = cachePrefix;
-  const sizeOverLifetimeGetter = sizeOverLifetime?.separateAxes ?
-    {
-      separateAxes: true,
-      x: createValueGetter(sizeOverLifetime.x),
-      y: createValueGetter(sizeOverLifetime.y),
-    } :
-    {
-      separateAxes: false,
-      x: createValueGetter(('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1),
-    };
 
-  const parsedOptions: ParsedParticleOptions = {
-    particleFollowParent: !!options.particleFollowParent,
-    startLifetime: createValueGetter(options.startLifetime),
-    startDelay: createValueGetter(options.startDelay || 0),
-    startSpeed: createValueGetter(positionOverLifetime.startSpeed || 0),
-    startColor: createValueGetter(options.startColor),
-    looping: options.looping ?? false,
-    maxCount: options.maxCount ?? 0,
-    gravityModifier: createValueGetter(gravityModifier || 0),
-    gravity,
-    start3DSize: !!options.start3DSize,
-    startTurbulence,
-    turbulence,
-    speedOverLifetime: positionOverLifetime.speedOverLifetime && createValueGetter(positionOverLifetime.speedOverLifetime),
-    linearVelOverLifetime,
-    orbitalVelOverLifetime,
-    forceTarget,
+  // --- ScaleSize module ---
+  const sizeOverLifetime = data.sizeOverLifetime || {};
+  const scaleSize: ScaleSizeModuleData = sizeOverLifetime?.separateAxes
+    ? { separateAxes: true, x: sizeOverLifetime.x || 1, y: sizeOverLifetime.y || 1 }
+    : { separateAxes: false, x: ('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1 };
+
+  // --- ScaleColor module ---
+  const colorOverLifetime = data.colorOverLifetime;
+  const scaleColor: ScaleColorModuleData = {
+    color: colorOverLifetime && Array.isArray(colorOverLifetime.color) && colorOverLifetime.color[0] === spec.ValueType.GRADIENT_COLOR
+      ? (colorOverLifetime.color)[1]
+      : undefined,
+    opacity: colorOverLifetime?.opacity || undefined,
   };
 
-  if (options.startRotationZ) {
-    parsedOptions.startRotation = createValueGetter(options.startRotationZ || 0);
-  }
-  if (options.startRotationX || options.startRotationY) {
-    parsedOptions.start3DRotation = true;
-    parsedOptions.startRotationX = createValueGetter(options.startRotationX || 0);
-    parsedOptions.startRotationY = createValueGetter(options.startRotationY || 0);
-    parsedOptions.startRotationZ = createValueGetter(options.startRotationZ || 0);
-  }
-
-  if (options.start3DSize) {
-    parsedOptions.startSizeX = createValueGetter(options.startSizeX);
-    parsedOptions.startSizeY = createValueGetter(options.startSizeY);
-  } else {
-    parsedOptions.startSize = createValueGetter(options.startSize);
-    parsedOptions.sizeAspect = createValueGetter(options.sizeAspect || 1);
-  }
-
-  // renderer / mesh props
-  const renderer = props.renderer || {};
+  // --- Renderer / mesh props ---
+  const renderer = data.renderer || {};
 
   renderer.anchor = renderer.anchor || [0, 0];
-  const anchor = Vector2.fromArray(renderer.anchor);
 
   const particleMeshProps: ParticleMeshProps = {
     name: 'ParticleSystem',
     renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
     side: renderer.side || spec.SideMode.DOUBLE,
     blending: renderer.blending || spec.BlendingMode.ALPHA,
-    sprite: textureSheetAnimation,
+    sprite: textureSheetAnimation ? {
+      animate: textureSheetAnimation.animate,
+      blend: (textureSheetAnimation as any).blend,
+      col: textureSheetAnimation.col,
+      row: textureSheetAnimation.row,
+      total: textureSheetAnimation.total || textureSheetAnimation.col * textureSheetAnimation.row,
+    } : undefined,
     occlusion: !!renderer.occlusion,
     transparentOcclusion: !!renderer.transparentOcclusion,
     maxCount: options.maxCount,
     mask: 0,
     maskMode: 0,
     diffuse: renderer.texture ? engine.findObject(renderer.texture) : undefined,
-    anchor,
+    anchor: Vector2.fromArray(renderer.anchor),
   };
 
-  // UVs
-  const uvs: number[][] = [];
-  let textureMap = [0, 0, 1, 1];
-  let flip;
-
-  if (props.splits) {
-    const s = props.splits[0];
-
-    flip = s[4];
-    textureMap = flip ? [s[0], s[1], s[3], s[2]] : [s[0], s[1], s[2], s[3]];
-  }
-  if (textureSheetAnimation && !textureSheetAnimation.animate) {
-    const col = flip ? textureSheetAnimation.row : textureSheetAnimation.col;
-    const row = flip ? textureSheetAnimation.col : textureSheetAnimation.row;
-    const total = textureSheetAnimation.total || col * row;
-    let index = 0;
-
-    for (let x = 0; x < col; x++) {
-      for (let y = 0; y < row && index < total; y++, index++) {
-        uvs.push([
-          x * textureMap[2] / col + textureMap[0],
-          y * textureMap[3] / row + textureMap[1],
-          textureMap[2] / col,
-          textureMap[3] / row]);
-      }
-    }
-  } else {
-    uvs.push(textureMap);
-  }
   // @ts-expect-error
-  particleMeshProps.textureFlip = flip;
+  particleMeshProps.textureFlip = data.splits?.[0]?.[4];
 
-  // Trails
+  // --- Trails ---
   let trails: ParsedTrailConfig | undefined;
   let trailMeshProps: ParticleRibbonRendererProps | undefined;
-  const trailsData = props.trails;
+  const trailsData = data.trails;
 
   if (trailsData) {
     trails = {
-      lifetime: createValueGetter(trailsData.lifetime),
+      lifetime: trailsData.lifetime,
       dieWithParticles: trailsData.dieWithParticles !== false,
       sizeAffectsWidth: !!trailsData.sizeAffectsWidth,
       sizeAffectsLifetime: !!trailsData.sizeAffectsLifetime,
@@ -384,8 +201,8 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       texture: trailsData.texture ? engine.findObject(trailsData.texture) : undefined,
       opacityOverLifetime: createValueGetter(trailsData.opacityOverLifetime || 1),
       widthOverTrail: createValueGetter(trailsData.widthOverTrail || 1),
-      shaderCachePrefix,
-      lifetime: trails.lifetime,
+      shaderCachePrefix: '',
+      lifetime: createValueGetter(trails.lifetime),
       occlusion: !!trailsData.occlusion,
       transparentOcclusion: !!trailsData.transparentOcclusion,
       mask: 0,
@@ -400,78 +217,41 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
     }
   }
 
-  // Interaction
-  let interaction: ParsedSpecResult['interaction'];
-  const interactionData = props.interaction;
-
-  if (interactionData) {
-    interaction = {
-      multiple: interactionData.multiple,
-      radius: interactionData.radius ?? 0.4,
-      behavior: interactionData.behavior,
-    };
-  }
-
-  const lv = parsedOptions.linearVelOverLifetime;
-  const ov = parsedOptions.orbitalVelOverLifetime;
-
-  if (lv && (lv.x || lv.y || lv.z)) {
-    lv.enabled = true;
-  }
-  if (ov && (ov.x || ov.y || ov.z)) {
-    ov.enabled = true;
-  }
+  // --- Interaction ---
+  const interactionData = data.interaction;
+  const interaction = interactionData ? {
+    multiple: interactionData.multiple,
+    radius: interactionData.radius ?? 0.4,
+    behavior: interactionData.behavior,
+  } : undefined;
 
   return {
-    options: parsedOptions,
     emitterData: {
-      maxCount: parsedOptions.maxCount,
-      looping: parsedOptions.looping,
-      particleFollowParent: !!parsedOptions.particleFollowParent,
-      turbulence: {
-        enabled: parsedOptions.startTurbulence,
-        values: parsedOptions.turbulence,
-      },
+      maxCount: options.maxCount ?? 0,
+      looping: options.looping ?? false,
+      particleFollowParent: !!options.particleFollowParent,
       alignSpeedDirection: !!(shape as any)?.alignSpeedDirection,
       trails,
       modules: {
-        initialize: {
-          options: {
-            startSpeed: parsedOptions.startSpeed,
-            startLifetime: parsedOptions.startLifetime,
-            startDelay: parsedOptions.startDelay,
-            startColor: parsedOptions.startColor,
-            start3DRotation: parsedOptions.start3DRotation,
-            startRotationX: parsedOptions.startRotationX,
-            startRotationY: parsedOptions.startRotationY,
-            startRotationZ: parsedOptions.startRotationZ,
-            startRotation: parsedOptions.startRotation,
-            start3DSize: parsedOptions.start3DSize,
-            startSizeX: parsedOptions.startSizeX,
-            startSizeY: parsedOptions.startSizeY,
-            startSize: parsedOptions.startSize,
-            sizeAspect: parsedOptions.sizeAspect,
-            startTurbulence: parsedOptions.startTurbulence,
-            turbulence: parsedOptions.turbulence,
-          },
-          shape: shapeGenerator, textureSheetAnimation, uvs,
+        initialize: initData,
+        spawnRate: { rateOverTime: data.emission.rateOverTime },
+        burst: {
+          burstOffsets: getBurstOffsets(data.emission.burstOffsets ?? []),
+          bursts: (data.emission.bursts || []) as BurstSpawnModuleData['bursts'],
         },
-        spawnRate: { rateOverTime },
-        burst: burstData,
-        solveVelocity: { gravity: parsedOptions.gravity, gravityModifier: parsedOptions.gravityModifier, speedOverLifetime: parsedOptions.speedOverLifetime },
+        solveVelocity: {
+          gravity: ensureVec3(positionOverLifetime?.gravity),
+          gravityModifier: positionOverLifetime?.gravityOverLifetime || 0,
+          speedOverLifetime: positionOverLifetime.speedOverLifetime || undefined,
+        },
         solveRotation: { rotationOverLifetime },
         solvePosition: {
-          orbital: parsedOptions.orbitalVelOverLifetime,
-          linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined,
+          orbital: orbitalVel.enabled ? orbitalVel : undefined,
+          linearVelOverLifetime: linearVel.enabled ? linearVel : undefined,
         },
-        forceTarget: parsedOptions.forceTarget,
-        scaleSize: sizeOverLifetimeGetter,
-        scaleColor: {
-          color: colorOverLifetime && Array.isArray(colorOverLifetime.color) && colorOverLifetime.color[0] === spec.ValueType.GRADIENT_COLOR
-            ? (colorOverLifetime.color)[1]
-            : undefined,
-          opacity: colorOverLifetime?.opacity ? createValueGetter(colorOverLifetime.opacity) : undefined,
-        },
+        forceTarget,
+        scaleSize,
+        scaleColor,
       },
     },
     particleMeshProps,

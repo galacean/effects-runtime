@@ -1,20 +1,164 @@
 import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
-import type { ShapeParticle } from '../../shape';
+import type * as spec from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
+import { createShape } from '../../shape';
+import type { ShapeGenerator, ShapeParticle } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleEmitter } from './particle-emitter';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { InitializeModuleData } from './parse-spec';
+
+export type InitializeModuleData = {
+  startSpeed: spec.NumberExpression | number,
+  startLifetime: spec.NumberExpression | number,
+  startDelay: spec.NumberExpression | number,
+  startColor: spec.ColorExpression | spec.RGBAColorValue,
+  start3DRotation?: boolean,
+  startRotationX?: spec.NumberExpression | number,
+  startRotationY?: spec.NumberExpression | number,
+  startRotationZ?: spec.NumberExpression | number,
+  startRotation?: spec.NumberExpression | number,
+  start3DSize: boolean,
+  startSizeX?: spec.NumberExpression | number,
+  startSizeY?: spec.NumberExpression | number,
+  startSize?: spec.NumberExpression | number,
+  sizeAspect?: spec.NumberExpression | number,
+  startTurbulence: boolean,
+  turbulence?: [spec.NumberExpression | number, spec.NumberExpression | number, spec.NumberExpression | number],
+  shape: spec.ParticleShape | undefined,
+  textureSheetAnimation: spec.ParticleTextureSheetAnimation | undefined,
+  splits: number[][] | undefined,
+};
+
+type RuntimeTextureSheetAnimation = {
+  animate: boolean,
+  animationDelay: ValueGetter<number>,
+  animationDuration: ValueGetter<number>,
+  cycles: ValueGetter<number>,
+};
 
 export class InitializeParticleModule extends ParticleModule {
   override readonly stage = 'particleSpawn' as const;
 
-  private data: InitializeModuleData;
+  private shape: ShapeGenerator;
+  private startSpeed: ValueGetter<number>;
+  private startLifetime: ValueGetter<number>;
+  private startDelay: ValueGetter<number>;
+  private startColor: ValueGetter<any>;
+  private start3DRotation = false;
+  private startRotationX?: ValueGetter<number>;
+  private startRotationY?: ValueGetter<number>;
+  private startRotationZ?: ValueGetter<number>;
+  private startRotation?: ValueGetter<number>;
+  private start3DSize = false;
+  private startSizeX?: ValueGetter<number>;
+  private startSizeY?: ValueGetter<number>;
+  private startSize?: ValueGetter<number>;
+  private sizeAspect?: ValueGetter<number>;
+  private startTurbulence = false;
+  private turbulence?: [ValueGetter<number>, ValueGetter<number>, ValueGetter<number>];
+  private textureSheetAnimation?: RuntimeTextureSheetAnimation;
+  private uvs: number[][] = [];
 
-  constructor (data: InitializeModuleData) {
-    super();
-    this.data = data;
+  override fromJSON (data: InitializeModuleData): void {
+    this.shape = createShape(data.shape);
+    this.uvs = this.buildUVs(data.textureSheetAnimation, data.splits);
+    this.startSpeed = createValueGetter(data.startSpeed);
+    this.startLifetime = createValueGetter(data.startLifetime);
+    this.startDelay = createValueGetter(data.startDelay);
+    this.startColor = createValueGetter(data.startColor);
+    this.start3DRotation = !!data.start3DRotation;
+    this.start3DSize = data.start3DSize;
+    this.startTurbulence = data.startTurbulence;
+
+    if (data.startRotation !== undefined) {
+      this.startRotation = createValueGetter(data.startRotation);
+    }
+
+    if (data.startRotationX !== undefined) {
+      this.startRotationX = createValueGetter(data.startRotationX);
+    }
+
+    if (data.startRotationY !== undefined) {
+      this.startRotationY = createValueGetter(data.startRotationY);
+    }
+
+    if (data.startRotationZ !== undefined) {
+      this.startRotationZ = createValueGetter(data.startRotationZ);
+    }
+
+    if (data.startSizeX !== undefined) {
+      this.startSizeX = createValueGetter(data.startSizeX);
+    }
+
+    if (data.startSizeY !== undefined) {
+      this.startSizeY = createValueGetter(data.startSizeY);
+    }
+
+    if (data.startSize !== undefined) {
+      this.startSize = createValueGetter(data.startSize);
+    }
+
+    if (data.sizeAspect !== undefined) {
+      this.sizeAspect = createValueGetter(data.sizeAspect);
+    }
+
+    if (data.turbulence) {
+      this.turbulence = [
+        createValueGetter(data.turbulence[0]),
+        createValueGetter(data.turbulence[1]),
+        createValueGetter(data.turbulence[2]),
+      ];
+    }
+
+    if (data.textureSheetAnimation) {
+      this.textureSheetAnimation = {
+        animate: data.textureSheetAnimation.animate,
+        animationDelay: createValueGetter(data.textureSheetAnimation.animationDelay || 0),
+        animationDuration: createValueGetter(data.textureSheetAnimation.animationDuration || 1),
+        cycles: createValueGetter(data.textureSheetAnimation.cycles || 1),
+      };
+    }
+  }
+
+  private buildUVs (
+    textureSheetAnimation: spec.ParticleTextureSheetAnimation | undefined,
+    splits: number[][] | undefined,
+  ): number[][] {
+    const uvs: number[][] = [];
+    let textureMap = [0, 0, 1, 1];
+    let flip: number | undefined;
+
+    if (splits) {
+      const s = splits[0];
+
+      flip = s[4];
+      textureMap = flip ? [s[0], s[1], s[3], s[2]] : [s[0], s[1], s[2], s[3]];
+    }
+
+    if (textureSheetAnimation && !textureSheetAnimation.animate) {
+      const col = flip ? textureSheetAnimation.row : textureSheetAnimation.col;
+      const row = flip ? textureSheetAnimation.col : textureSheetAnimation.row;
+      const total = textureSheetAnimation.total || col * row;
+      let index = 0;
+
+      for (let x = 0; x < col; x++) {
+        for (let y = 0; y < row && index < total; y++, index++) {
+          uvs.push([
+            x * textureMap[2] / col + textureMap[0],
+            y * textureMap[3] / row + textureMap[1],
+            textureMap[2] / col,
+            textureMap[3] / row,
+          ]);
+        }
+      }
+    } else {
+      uvs.push(textureMap);
+    }
+
+    return uvs;
   }
 
   override execute (ctx: ParticleModuleContext): void {
@@ -27,7 +171,7 @@ export class InitializeParticleModule extends ParticleModule {
     for (let idx = 0; idx < slotIndices.length; idx++) {
       const slotIndex = slotIndices[idx];
       const generator = spawnGenerators[idx];
-      const shapeData = this.data.shape.generate(generator);
+      const shapeData = this.shape.generate(generator);
 
       this.initializeToBuffer(shapeData, ctx.emitterLifetime, slotIndex, db, ctx.emitter);
     }
@@ -40,17 +184,16 @@ export class InitializeParticleModule extends ParticleModule {
     db: ParticleDataBuffer,
     emitter: ParticleEmitter,
   ): void {
-    const options = this.data.options;
-    const shape = this.data.shape;
-    const speed = options.startSpeed.getValue(emitterLifetime);
+    const shape = this.shape;
+    const speed = this.startSpeed.getValue(emitterLifetime);
 
     const position = data.position.clone();
 
     const direction = data.direction.clone();
 
-    if (options.startTurbulence && options.turbulence) {
+    if (this.startTurbulence && this.turbulence) {
       for (let i = 0; i < 3; i++) {
-        tempVec3.setElement(i, options.turbulence[i].getValue(emitterLifetime));
+        tempVec3.setElement(i, this.turbulence[i].getValue(emitterLifetime));
       }
       tempEuler.setFromVector3(tempVec3.negate());
       const mat4 = tempMat4.setFromEuler(tempEuler);
@@ -79,42 +222,42 @@ export class InitializeParticleModule extends ParticleModule {
 
     const rot = tempRot;
 
-    if (options.start3DRotation) {
+    if (this.start3DRotation) {
       rot.set(
-        options.startRotationX!.getValue(emitterLifetime),
-        options.startRotationY!.getValue(emitterLifetime),
-        options.startRotationZ!.getValue(emitterLifetime),
+        this.startRotationX!.getValue(emitterLifetime),
+        this.startRotationY!.getValue(emitterLifetime),
+        this.startRotationZ!.getValue(emitterLifetime),
       );
-    } else if (options.startRotation) {
-      rot.set(0, 0, options.startRotation.getValue(emitterLifetime));
+    } else if (this.startRotation) {
+      rot.set(0, 0, this.startRotation.getValue(emitterLifetime));
     } else {
       rot.set(0, 0, 0);
     }
 
-    const color = options.startColor.getValue(emitterLifetime) as number[];
+    const color = this.startColor.getValue(emitterLifetime) as number[];
 
     if (color.length === 3) {
       color[3] = 1;
     }
     const size = tempSize;
 
-    if (options.start3DSize) {
-      size.x = options.startSizeX!.getValue(emitterLifetime);
-      size.y = options.startSizeY!.getValue(emitterLifetime);
+    if (this.start3DSize) {
+      size.x = this.startSizeX!.getValue(emitterLifetime);
+      size.y = this.startSizeY!.getValue(emitterLifetime);
     } else {
-      const n = options.startSize!.getValue(emitterLifetime);
-      const aspect = options.sizeAspect!.getValue(emitterLifetime);
+      const n = this.startSize!.getValue(emitterLifetime);
+      const aspect = this.sizeAspect!.getValue(emitterLifetime);
 
       size.x = n;
       size.y = aspect === 0 ? 0 : n / aspect;
     }
 
-    const delay = options.startDelay.getValue(emitterLifetime);
-    const lifetime = options.startLifetime.getValue(emitterLifetime);
-    const uv = randomArrItem(this.data.uvs, true);
+    const delay = this.startDelay.getValue(emitterLifetime);
+    const lifetime = this.startLifetime.getValue(emitterLifetime);
+    const uv = randomArrItem(this.uvs, true);
 
     let sprite: vec3 | undefined;
-    const tsa = this.data.textureSheetAnimation;
+    const tsa = this.textureSheetAnimation;
 
     if (tsa && tsa.animate) {
       sprite = tempSprite;

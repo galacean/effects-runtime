@@ -1,11 +1,13 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
+import type * as spec from '@galacean/effects-specification';
+import { createValueGetter } from '../../math';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
 import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
-import type { EmitterData, ParsedModuleData } from './parse-spec';
+import type { ParsedModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
 import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
@@ -17,6 +19,24 @@ import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import { UpdateAgeModule } from './update-age-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
+
+export type ParsedTrailConfig = {
+  lifetime: spec.NumberExpression | number,
+  dieWithParticles: boolean,
+  sizeAffectsWidth: boolean,
+  sizeAffectsLifetime: boolean,
+  inheritParticleColor: boolean,
+  parentAffectsPosition: boolean,
+};
+
+export type EmitterData = {
+  maxCount: number,
+  looping: boolean,
+  particleFollowParent: boolean,
+  alignSpeedDirection: boolean,
+  trails: ParsedTrailConfig | undefined,
+  modules: ParsedModuleData,
+};
 
 export class ParticleEmitter {
   // --- Mutable state ---
@@ -56,7 +76,7 @@ export class ParticleEmitter {
     return this._dataBuffer;
   }
 
-  setup (data: EmitterData, renderer: ParticleSystemRenderer): void {
+  fromJSON (data: EmitterData, renderer: ParticleSystemRenderer): void {
     this.maxCount = data.maxCount;
     this.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
@@ -65,7 +85,7 @@ export class ParticleEmitter {
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     const rate = data.modules.spawnRate?.rateOverTime;
 
-    this.initialLastEmitTime = rate ? -1 / rate.getValue(0) : 0;
+    this.initialLastEmitTime = rate ? -1 / createValueGetter(rate).getValue(0) : 0;
     this.lastEmitTime = this.initialLastEmitTime;
     this.modules = this.buildModules(data.modules);
   }
@@ -82,23 +102,49 @@ export class ParticleEmitter {
     const modules: ParticleModule[] = [];
 
     if (data.spawnRate) {
-      modules.push(new SpawnRateModule(data.spawnRate));
+      const spawnRate = new SpawnRateModule();
+
+      spawnRate.fromJSON(data.spawnRate);
+      modules.push(spawnRate);
     }
-    modules.push(
-      new BurstSpawnModule(data.burst),
-      new InitializeParticleModule(data.initialize),
-      new UpdateAgeModule(),
-      new SolveVelocityModule(data.solveVelocity),
-      new SolveRotationModule(data.solveRotation),
-      new SolvePositionModule(data.solvePosition),
-    );
+
+    const burst = new BurstSpawnModule();
+
+    burst.fromJSON(data.burst);
+
+    const init = new InitializeParticleModule();
+
+    init.fromJSON(data.initialize);
+
+    const solveVelocity = new SolveVelocityModule();
+
+    solveVelocity.fromJSON(data.solveVelocity);
+
+    const solveRotation = new SolveRotationModule();
+
+    solveRotation.fromJSON(data.solveRotation);
+
+    const solvePosition = new SolvePositionModule();
+
+    solvePosition.fromJSON(data.solvePosition);
+
+    modules.push(burst, init, new UpdateAgeModule(), solveVelocity, solveRotation, solvePosition);
+
     if (data.forceTarget) {
-      modules.push(new ForceTargetModule(data.forceTarget));
+      const forceTarget = new ForceTargetModule();
+
+      forceTarget.fromJSON(data.forceTarget);
+      modules.push(forceTarget);
     }
-    modules.push(
-      new ScaleSizeModule(data.scaleSize),
-      new ScaleColorModule(data.scaleColor),
-    );
+
+    const scaleSize = new ScaleSizeModule();
+
+    scaleSize.fromJSON(data.scaleSize);
+
+    const scaleColor = new ScaleColorModule();
+
+    scaleColor.fromJSON(data.scaleColor);
+    modules.push(scaleSize, scaleColor);
 
     return modules;
   }

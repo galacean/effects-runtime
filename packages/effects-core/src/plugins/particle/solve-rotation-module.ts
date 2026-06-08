@@ -1,9 +1,19 @@
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import { RandomValue } from '../../math';
+import type * as spec from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter, RandomValue } from '../../math';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { SolveRotationModuleData } from './parse-spec';
+
+export type SolveRotationModuleData = {
+  rotationOverLifetime?: {
+    asRotation?: boolean,
+    x?: spec.NumberExpression | number,
+    y?: spec.NumberExpression | number,
+    z?: spec.NumberExpression | number,
+  },
+};
 
 /**
  * 旋转矩阵计算模块。对应老代码 ParticleMesh.applyRotation。
@@ -16,17 +26,28 @@ import type { SolveRotationModuleData } from './parse-spec';
 export class SolveRotationModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: SolveRotationModuleData;
+  private rotationOverLifetime?: {
+    asRotation?: boolean,
+    x?: ValueGetter<number>,
+    y?: ValueGetter<number>,
+    z?: ValueGetter<number>,
+  };
 
-  constructor (data: SolveRotationModuleData) {
-    super();
-    this.data = data;
+  override fromJSON (data: SolveRotationModuleData): void {
+    if (data.rotationOverLifetime) {
+      this.rotationOverLifetime = {
+        asRotation: data.rotationOverLifetime.asRotation,
+        x: data.rotationOverLifetime.x ? createValueGetter(data.rotationOverLifetime.x) : undefined,
+        y: data.rotationOverLifetime.y ? createValueGetter(data.rotationOverLifetime.y) : undefined,
+        z: data.rotationOverLifetime.z ? createValueGetter(data.rotationOverLifetime.z) : undefined,
+      };
+    }
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
     const d2r = Math.PI / 180;
-    const rol = this.data.rotationOverLifetime;
+    const rol = this.rotationOverLifetime;
     const rotMat = tempRotMat;
     const tempMat = tempRotMat2;
 

@@ -99,6 +99,14 @@ abstract class ParticleModule {
   enabled = true;
 
   abstract execute (ctx: ParticleModuleContext): void;
+
+  /**
+   * 从 JSON 可序列化数据恢复模块状态。子类 override 实现。
+   * 对齐 particle-system-pro 的 ProModule.fromJSON。
+   */
+  fromJSON (_data: unknown): void {
+    // no-op by default
+  }
 }
 
 export type { ParticleModuleStage, ParticleModuleContext, SpawnBatchContext, SpawnInfo, RateSpawnInfo, BurstSpawnInfo, SpawnGenerator, ResolvedBurstSpawn };

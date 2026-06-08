@@ -1,6 +1,14 @@
+import type * as spec from '@galacean/effects-specification';
+import type { vec3 } from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { ForceTargetModuleData } from './parse-spec';
+
+export type ForceTargetModuleData = {
+  curve: spec.NumberExpression | number,
+  target: vec3,
+};
 
 /**
  * 力目标模块。将 shader 中的 FINAL_TARGET mix 搬到 CPU。
@@ -11,16 +19,17 @@ import type { ForceTargetModuleData } from './parse-spec';
 export class ForceTargetModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: ForceTargetModuleData;
+  private curve!: ValueGetter<number>;
+  private target!: vec3;
 
-  constructor (data: ForceTargetModuleData) {
-    super();
-    this.data = data;
+  override fromJSON (data: ForceTargetModuleData): void {
+    this.curve = createValueGetter(data.curve);
+    this.target = data.target;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const { curve, target } = this.data;
+    const { curve, target } = this;
     const tx = target[0] ?? 0;
     const ty = target[1] ?? 0;
     const tz = target[2] ?? 0;

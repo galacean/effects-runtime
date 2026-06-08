@@ -1,7 +1,14 @@
+import type * as spec from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { ScaleColorModuleData } from './parse-spec';
 import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
+
+export type ScaleColorModuleData = {
+  color?: number[][],
+  opacity?: spec.NumberExpression | number,
+};
 
 type ColorStop = { time: number, color: { toArray: () => number[] } };
 
@@ -13,20 +20,17 @@ type ColorStop = { time: number, color: { toArray: () => number[] } };
 export class ScaleColorModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: ScaleColorModuleData;
+  private opacity?: ValueGetter<number>;
   private gradientStops: ColorStop[] | null = null;
 
-  constructor (data: ScaleColorModuleData) {
-    super();
-    this.data = data;
-    if (data.color) {
-      this.gradientStops = colorStopsFromGradient(data.color);
-    }
+  override fromJSON (data: ScaleColorModuleData): void {
+    this.opacity = data.opacity ? createValueGetter(data.opacity) : undefined;
+    this.gradientStops = data.color ? colorStopsFromGradient(data.color) : null;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const { opacity } = this.data;
+    const { opacity } = this;
     const stops = this.gradientStops;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {

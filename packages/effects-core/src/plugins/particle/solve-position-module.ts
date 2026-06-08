@@ -1,9 +1,28 @@
 import { Euler, Matrix4 } from '@galacean/effects-math/es/core/index';
+import type * as spec from '@galacean/effects-specification';
+import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
-import { BezierCurve, RandomValue } from '../../math';
+import { BezierCurve, createValueGetter, RandomValue } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { SolvePositionModuleData } from './parse-spec';
+
+export type SolvePositionModuleData = {
+  orbital?: {
+    enabled?: boolean,
+    asRotation?: boolean,
+    x?: spec.NumberExpression | number,
+    y?: spec.NumberExpression | number,
+    z?: spec.NumberExpression | number,
+    center?: vec3,
+  },
+  linearVelOverLifetime?: {
+    asMovement?: boolean,
+    x?: spec.NumberExpression | number,
+    y?: spec.NumberExpression | number,
+    z?: spec.NumberExpression | number,
+    enabled?: boolean,
+  },
+};
 
 const tempEuler = new Euler();
 const tempMat4 = new Matrix4();
@@ -103,17 +122,49 @@ function gpuMatchingIntegrate (curve: ValueGetter<number>, life: number, time: n
 export class SolvePositionModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: SolvePositionModuleData;
+  private orbital?: {
+    enabled?: boolean,
+    asRotation?: boolean,
+    x?: ValueGetter<number>,
+    y?: ValueGetter<number>,
+    z?: ValueGetter<number>,
+    center?: vec3,
+  };
 
-  constructor (data: SolvePositionModuleData) {
-    super();
-    this.data = data;
+  private linearVelOverLifetime?: {
+    enabled?: boolean,
+    asMovement?: boolean,
+    x?: ValueGetter<number>,
+    y?: ValueGetter<number>,
+    z?: ValueGetter<number>,
+  };
+
+  override fromJSON (data: SolvePositionModuleData): void {
+    if (data.orbital) {
+      this.orbital = {
+        enabled: data.orbital.enabled,
+        asRotation: data.orbital.asRotation,
+        x: data.orbital.x ? createValueGetter(data.orbital.x) : undefined,
+        y: data.orbital.y ? createValueGetter(data.orbital.y) : undefined,
+        z: data.orbital.z ? createValueGetter(data.orbital.z) : undefined,
+        center: data.orbital.center,
+      };
+    }
+    if (data.linearVelOverLifetime) {
+      this.linearVelOverLifetime = {
+        enabled: data.linearVelOverLifetime.enabled,
+        asMovement: data.linearVelOverLifetime.asMovement,
+        x: data.linearVelOverLifetime.x ? createValueGetter(data.linearVelOverLifetime.x) : undefined,
+        y: data.linearVelOverLifetime.y ? createValueGetter(data.linearVelOverLifetime.y) : undefined,
+        z: data.linearVelOverLifetime.z ? createValueGetter(data.linearVelOverLifetime.z) : undefined,
+      };
+    }
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const orb = this.data.orbital;
-    const lv = this.data.linearVelOverLifetime;
+    const orb = this.orbital;
+    const lv = this.linearVelOverLifetime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;

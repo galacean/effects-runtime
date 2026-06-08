@@ -1,6 +1,12 @@
+import type * as spec from '@galacean/effects-specification';
+import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { SpawnRateModuleData } from './parse-spec';
+
+export type SpawnRateModuleData = {
+  rateOverTime: spec.NumberExpression | number,
+};
 
 /**
  * 发射速率模块。对齐 particle-system-pro 的 ProSpawnRateModule。
@@ -11,17 +17,16 @@ import type { SpawnRateModuleData } from './parse-spec';
 export class SpawnRateModule extends ParticleModule {
   override readonly stage = 'emitterUpdate' as const;
 
-  private data: SpawnRateModuleData;
+  private rateOverTime!: ValueGetter<number>;
 
-  constructor (data: SpawnRateModuleData) {
-    super();
-    this.data = data;
+  override fromJSON (data: SpawnRateModuleData): void {
+    this.rateOverTime = createValueGetter(data.rateOverTime);
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const timePassed = ctx.currentTime - ctx.emitter.loopStartTime;
     const lifetime = ctx.emitterLifetime;
-    const rate = this.data.rateOverTime;
+    const rate = this.rateOverTime;
     const interval = 1 / rate.getValue(lifetime);
     const pointCount = Math.floor((timePassed - ctx.emitter.lastEmitTime) / interval);
 

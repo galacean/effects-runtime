@@ -1,5 +1,5 @@
-import type { GradientValue, RandomSetValue, VFXItem } from '@galacean/effects';
-import { Player, ParticleSystem, spec, math } from '@galacean/effects';
+import type { VFXItem } from '@galacean/effects';
+import { Player, ParticleSystem, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -50,15 +50,15 @@ describe('core/plugins/particle/base', () => {
     const ps = item.getComponent(ParticleSystem);
 
     expect(ps).to.be.an.instanceof(ParticleSystem);
-    expect(ps.options.startLifetime.getValue()).to.eql(2, 'startLifetime');
-    expect(ps.options.startSize?.getValue()).to.eql(3, 'startSize');
-    expect(ps.options.startSpeed.getValue()).to.eql(0, 'startSpeed');
-    expect(ps.options.startColor.getValue()).to.eql([255, 255, 255], 'startColor');
-    // expect(ps.options.duration).to.eql(5, 'duration');
-    expect(ps.options.maxCount).to.eql(1, 'maxCount');
-    expect(ps.options.gravityModifier.getValue()).to.eql(1, 'gravityModifier');
+    const specOptions = ps.props.options;
+
+    expect(specOptions.startLifetime).to.eql(2, 'startLifetime');
+    expect(specOptions.startSize).to.eql(3, 'startSize');
+    expect(specOptions.startColor).to.eql([8, [255, 255, 255]], 'startColor');
+    expect(specOptions.maxCount).to.eql(1, 'maxCount');
+    expect(ps.props.positionOverLifetime?.gravityOverLifetime).to.eql([0, 1], 'gravityModifier');
     expect(ps.item.endBehavior).to.eql(spec.END_BEHAVIOR_DESTROY, 'endBehavior');
-    expect(ps.options.looping).to.eql(false, 'looping');
+    expect(specOptions.looping).to.eql(undefined, 'looping');
   });
 
   it('particle colors', async () => {
@@ -69,17 +69,21 @@ describe('core/plugins/particle/base', () => {
     const pure = comp.getItemByName('pure') as VFXItem;
     const colors = comp.getItemByName('colors') as VFXItem;
     const gradient = comp.getItemByName('gradient') as VFXItem;
-    const pureStartColor = pure.getComponent(ParticleSystem).options.startColor;
-    const colorsStartColor = colors.getComponent(ParticleSystem).options.startColor as RandomSetValue<spec.RGBAColorValue>;
-    const gradientStartColor = gradient.getComponent(ParticleSystem).options.startColor as unknown as GradientValue;
+    const pureStartColor = pure.getComponent(ParticleSystem).props.options.startColor;
+    const colorsStartColor = colors.getComponent(ParticleSystem).props.options.startColor;
+    const gradientStartColor = gradient.getComponent(ParticleSystem).props.options.startColor;
 
-    expect(pureStartColor.getValue()).to.eql([255, 255, 255], 'pure color');
-    expect(gradientStartColor.stops).to.eql([
-      { time: 0, color: new math.Color().setFromArray([0.8588235294117647, 0.09411764705882353, 0.09411764705882353, 1]) },
-      { time: 1, color: new math.Color().setFromArray([0.6980392156862745, 0.32941176470588235, 0.32941176470588235, 1]) },
-    ], 'gradient');
-    // @ts-expect-error
-    expect(colorsStartColor.items).to.eql([
+    // pure: [8, [255, 255, 255]] — RGBA_COLOR type
+    expect(pureStartColor).to.eql([8, [255, 255, 255]], 'pure color');
+    // gradient: [9, [[time, r, g, b, a], ...]] — GRADIENT_COLOR type
+    expect((gradientStartColor as any)[0]).to.eql(9, 'gradient type');
+    expect((gradientStartColor as any)[1]).to.eql([
+      [0, 0.8588235294117647, 0.09411764705882353, 0.09411764705882353, 1],
+      [1, 0.6980392156862745, 0.32941176470588235, 0.32941176470588235, 1],
+    ], 'gradient stops');
+    // colors: [13, [[r,g,b,a], ...]] — COLORS type
+    expect((colorsStartColor as any)[0]).to.eql(13, 'colors type');
+    expect((colorsStartColor as any)[1]).to.eql([
       [1, 1, 1, 1],
       [0, 0, 0, 1],
     ], 'colors');

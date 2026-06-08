@@ -13,7 +13,8 @@ import type { Texture } from '../../texture';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { ParticleEmitter } from './particle-emitter';
-import type { EmitterData, ParsedSpecResult } from './parse-spec';
+import type { EmitterData } from './particle-emitter';
+import type { ParsedSpecResult } from './parse-spec';
 import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
 import { SpawnPerSourceParticleModule } from './spawn-per-source-module';
@@ -34,7 +35,6 @@ export interface ParticleSystemProps extends spec.ParticleContent {
 export class ParticleSystem extends Component implements Maskable {
   renderer: ParticleSystemRenderer;
   meshes: Mesh[];
-  options: ParsedSpecResult['options'];
   interaction?: ParticleInteraction;
   props: ParticleSystemProps;
 
@@ -234,7 +234,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.maskManager = this.maskManager;
     this.meshes = this.renderer.meshes;
 
-    this.emitter.setup(result.emitterData, this.renderer);
+    this.emitter.fromJSON(result.emitterData, this.renderer);
 
     this.emitter.itemDuration = this.item.duration;
     this.emitter.endBehaviorValue = this.item.endBehavior;
@@ -295,7 +295,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     spawnModule.dieWithParticles = trails.dieWithParticles;
 
-    const sampleModule = new SampleFromSourceModule(sourceEmitter, spawnModule, trails.lifetime, {
+    const sampleModule = new SampleFromSourceModule(sourceEmitter, spawnModule, createValueGetter(trails.lifetime) as ValueGetter<number>, {
       inheritParticleColor: trails.inheritParticleColor,
       sizeAffectsWidth: trails.sizeAffectsWidth,
     });
@@ -377,7 +377,6 @@ export class ParticleSystem extends Component implements Maskable {
 
     const result = parseParticleSpec(data, this.engine);
 
-    this.options = result.options;
     this.interaction = result.interaction;
 
     result.particleMeshProps.mask = this.maskManager.getRefValue();
