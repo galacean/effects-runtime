@@ -1,14 +1,13 @@
 import { Euler, Matrix4 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../../math';
-import { BezierCurve } from '../../math';
+import { BezierCurve, RandomValue } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
-import type { SolveOrbitalModuleData } from './parse-spec';
+import type { SolvePositionModuleData } from './parse-spec';
 
 const tempEuler = new Euler();
 const tempMat4 = new Matrix4();
 
-// GPU-matching bezier evaluation (replicates shader's binarySearchT + cubicBezier)
 function gpuCubicBezier (t: number, y1: number, y2: number, y3: number, y4: number): number {
   const t2 = t * t;
   const t3 = t2 * t;
@@ -96,36 +95,72 @@ function gpuMatchingIntegrate (curve: ValueGetter<number>, life: number, time: n
 }
 
 /**
- * 轨道速度模块。将 shader 中的 calOrbitalMov 搬到 CPU。
+ * 位置求解模块。合成 finalOffset = position + orbital + linearMove。
  *
  * 对 BezierCurve 类型的曲线，复刻 GPU shader 的 binarySearchT + cubicBezier
  * + Simpson 20 段积分算法，确保与原 shader 计算结果一致。
  */
-export class SolveOrbitalVelocityModule extends ParticleModule {
+export class SolvePositionModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
 
-  private data: SolveOrbitalModuleData;
+  private data: SolvePositionModuleData;
 
-  constructor (data: SolveOrbitalModuleData) {
+  constructor (data: SolvePositionModuleData) {
     super();
     this.data = data;
   }
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;
-    const orb = this.data;
+    const orb = this.data.orbital;
+    const lv = this.data.linearVelOverLifetime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
       const i3 = i * 3;
       const age = db.age[i];
+      const duration = db.lifetime[i];
 
-      if (!orb.enabled || age <= 0) {
-        db.finalOffset[i3] = db.position[i3] + db.linearMove[i3];
-        db.finalOffset[i3 + 1] = db.position[i3 + 1] + db.linearMove[i3 + 1];
-        db.finalOffset[i3 + 2] = db.position[i3 + 2] + db.linearMove[i3 + 2];
+      let mx = 0, my = 0, mz = 0;
+
+      if (lv?.enabled) {
+        const lifetime = age / duration;
+        const seed = db.seed[i];
+
+        if (lv.asMovement) {
+          if (lv.x) {
+            mx = lv.x instanceof RandomValue ? lv.x.getValue(lifetime, seed) : lv.x.getValue(lifetime);
+          }
+          if (lv.y) {
+            my = lv.y instanceof RandomValue ? lv.y.getValue(lifetime, seed) : lv.y.getValue(lifetime);
+          }
+          if (lv.z) {
+            mz = lv.z instanceof RandomValue ? lv.z.getValue(lifetime, seed) : lv.z.getValue(lifetime);
+          }
+        } else {
+          if (lv.x) {
+            mx = lv.x instanceof RandomValue
+              ? lv.x.getIntegrateValue(0, age, seed)
+              : lv.x.getIntegrateValue(0, age, duration);
+          }
+          if (lv.y) {
+            my = lv.y instanceof RandomValue
+              ? lv.y.getIntegrateValue(0, age, seed)
+              : lv.y.getIntegrateValue(0, age, duration);
+          }
+          if (lv.z) {
+            mz = lv.z instanceof RandomValue
+              ? lv.z.getIntegrateValue(0, age, seed)
+              : lv.z.getIntegrateValue(0, age, duration);
+          }
+        }
+      }
+
+      if (!orb?.enabled || age <= 0) {
+        db.finalOffset[i3] = db.position[i3] + mx;
+        db.finalOffset[i3 + 1] = db.position[i3 + 1] + my;
+        db.finalOffset[i3 + 2] = db.position[i3 + 2] + mz;
       } else {
         const time = age;
-        const duration = db.lifetime[i];
         const life = Math.min(Math.max(time / duration, 0), 1);
 
         const cx = orb.center?.[0] ?? 0;
@@ -143,11 +178,10 @@ export class SolveOrbitalVelocityModule extends ParticleModule {
         const py = db.position[i3 + 1] - cy;
         const pz = db.position[i3 + 2] - cz;
 
-        db.finalOffset[i3] = e[0] * px + e[4] * py + e[8] * pz + e[12] + cx + db.linearMove[i3];
-        db.finalOffset[i3 + 1] = e[1] * px + e[5] * py + e[9] * pz + e[13] + cy + db.linearMove[i3 + 1];
-        db.finalOffset[i3 + 2] = e[2] * px + e[6] * py + e[10] * pz + e[14] + cz + db.linearMove[i3 + 2];
+        db.finalOffset[i3] = e[0] * px + e[4] * py + e[8] * pz + e[12] + cx + mx;
+        db.finalOffset[i3 + 1] = e[1] * px + e[5] * py + e[9] * pz + e[13] + cy + my;
+        db.finalOffset[i3 + 2] = e[2] * px + e[6] * py + e[10] * pz + e[14] + cz + mz;
       }
-
     }
   }
 }

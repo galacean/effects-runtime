@@ -78,22 +78,28 @@ export class SampleFromSourceModule extends ParticleModule {
     const d4 = slot * 4;
 
     if (this.config.inheritParticleColor) {
-      db.color[d4] = sourceDb.color[s4];
-      db.color[d4 + 1] = sourceDb.color[s4 + 1];
-      db.color[d4 + 2] = sourceDb.color[s4 + 2];
-      db.color[d4 + 3] = sourceDb.color[s4 + 3];
+      db.color[d4] = sourceDb.initialColor[s4];
+      db.color[d4 + 1] = sourceDb.initialColor[s4 + 1];
+      db.color[d4 + 2] = sourceDb.initialColor[s4 + 2];
+      db.color[d4 + 3] = sourceDb.initialColor[s4 + 3];
     } else {
       db.color[d4] = 1; db.color[d4 + 1] = 1;
       db.color[d4 + 2] = 1; db.color[d4 + 3] = 1;
     }
+    db.initialColor[d4] = db.color[d4];
+    db.initialColor[d4 + 1] = db.color[d4 + 1];
+    db.initialColor[d4 + 2] = db.color[d4 + 2];
+    db.initialColor[d4 + 3] = db.color[d4 + 3];
 
     const d2 = slot * 2;
 
     if (this.config.sizeAffectsWidth) {
-      db.size[d2] = sourceDb.size[src * 2];
+      db.size[d2] = sourceDb.initialSize[src * 2];
       db.size[d2 + 1] = db.size[d2];
     } else {
       db.size[d2] = 1; db.size[d2 + 1] = 1;
     }
+    db.initialSize[d2] = db.size[d2];
+    db.initialSize[d2 + 1] = db.size[d2 + 1];
   }
 }

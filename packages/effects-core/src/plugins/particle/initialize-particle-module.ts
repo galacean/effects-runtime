@@ -151,9 +151,15 @@ export class InitializeParticleModule extends ParticleModule {
     db.color[i4 + 1] = color[1];
     db.color[i4 + 2] = color[2];
     db.color[i4 + 3] = color[3];
+    db.initialColor[i4] = color[0];
+    db.initialColor[i4 + 1] = color[1];
+    db.initialColor[i4 + 2] = color[2];
+    db.initialColor[i4 + 3] = color[3];
 
     db.size[i2] = size.x;
     db.size[i2 + 1] = size.y;
+    db.initialSize[i2] = size.x;
+    db.initialSize[i2 + 1] = size.y;
 
     db.dirX[i3] = dirX.x;
     db.dirX[i3 + 1] = dirX.y;
@@ -173,10 +179,6 @@ export class InitializeParticleModule extends ParticleModule {
       db.sprite[i3 + 1] = sprite[1];
       db.sprite[i3 + 2] = sprite[2];
     }
-    db.linearMove[i3] = 0;
-    db.linearMove[i3 + 1] = 0;
-    db.linearMove[i3 + 2] = 0;
-
     db.rotMatrix[i9] = 1;
     db.rotMatrix[i9 + 1] = 0;
     db.rotMatrix[i9 + 2] = 0;

@@ -11,8 +11,7 @@ import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
 import { ScaleColorModule } from './scale-color-module';
 import { ScaleSizeModule } from './scale-size-module';
-import { SolveLinearMoveModule } from './solve-linear-move-module';
-import { SolveOrbitalVelocityModule } from './solve-orbital-velocity-module';
+import { SolvePositionModule } from './solve-position-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
@@ -91,8 +90,7 @@ export class ParticleEmitter {
       new UpdateAgeModule(),
       new SolveVelocityModule(data.solveVelocity),
       new SolveRotationModule(data.solveRotation),
-      new SolveLinearMoveModule(data.solveLinearMove),
-      new SolveOrbitalVelocityModule(data.solveOrbital),
+      new SolvePositionModule(data.solvePosition),
     );
     if (data.forceTarget) {
       modules.push(new ForceTargetModule(data.forceTarget));
@@ -355,6 +353,8 @@ export class ParticleEmitter {
       // size: scale by world matrix column lengths
       db.size[i2] *= sx;
       db.size[i2 + 1] *= sy;
+      db.initialSize[i2] *= sx;
+      db.initialSize[i2 + 1] *= sy;
     }
   }
 

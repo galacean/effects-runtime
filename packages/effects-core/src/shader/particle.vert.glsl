@@ -13,8 +13,6 @@ attribute vec3 aTranslation;
 attribute vec3 aRotation0;
 attribute vec3 aRotation1;
 attribute vec3 aRotation2;
-attribute vec2 aSize;
-attribute vec4 aColorScale;
 
 #ifdef USE_SPRITE
 attribute vec3 aSprite;//start duration cycles
@@ -77,10 +75,10 @@ void main() {
     vTexCoord = aOffset.xy;
         #endif
 
-    vColor = aColor * aColorScale;
+    vColor = aColor;
 
     mat3 aRotation = mat3(aRotation0, aRotation1, aRotation2);
-    vec3 point = aRotation * (aDirX * aSize.x + aDirY * aSize.y);
+    vec3 point = aRotation * (aDirX + aDirY);
     vec4 pos = vec4(aPos + aTranslation, 1.0);
 
         #if RENDER_MODE == 1

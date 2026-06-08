@@ -8,8 +8,7 @@ type ColorStop = { time: number, color: { toArray: () => number[] } };
 /**
  * Color / Opacity over lifetime 模块。对齐 Pro 的 ScaleColorModule。
  *
- * 每帧计算 colorScale = gradientColor(life) * opacity(life)，
- * 写入 db.colorScale。shader 读 aColorScale 替代 GPU texture 采样 + 曲线求值。
+ * 每帧读 initialColor，乘以 gradient/opacity 曲线值，覆写 db.color。
  */
 export class ScaleColorModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
@@ -35,10 +34,10 @@ export class ScaleColorModule extends ParticleModule {
       const time = db.age[i];
 
       if (time < 0) {
-        db.colorScale[i4] = 0;
-        db.colorScale[i4 + 1] = 0;
-        db.colorScale[i4 + 2] = 0;
-        db.colorScale[i4 + 3] = 0;
+        db.color[i4] = 0;
+        db.color[i4 + 1] = 0;
+        db.color[i4 + 2] = 0;
+        db.color[i4 + 3] = 0;
 
         continue;
       }
@@ -61,10 +60,10 @@ export class ScaleColorModule extends ParticleModule {
         a *= Math.min(Math.max(opacity.getValue(life), 0), 1);
       }
 
-      db.colorScale[i4] = r;
-      db.colorScale[i4 + 1] = g;
-      db.colorScale[i4 + 2] = b;
-      db.colorScale[i4 + 3] = a;
+      db.color[i4] = db.initialColor[i4] * r;
+      db.color[i4 + 1] = db.initialColor[i4 + 1] * g;
+      db.color[i4 + 2] = db.initialColor[i4 + 2] * b;
+      db.color[i4 + 3] = db.initialColor[i4 + 3] * a;
     }
   }
 

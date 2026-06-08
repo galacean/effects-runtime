@@ -113,17 +113,16 @@ export type SolveRotationModuleData = {
   },
 };
 
-export type SolveLinearMoveModuleData = {
+export type SolvePositionModuleData = {
+  orbital?: {
+    enabled?: boolean,
+    asRotation?: boolean,
+    x?: ValueGetter<number>,
+    y?: ValueGetter<number>,
+    z?: ValueGetter<number>,
+    center?: vec3,
+  },
   linearVelOverLifetime?: { asMovement?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean },
-};
-
-export type SolveOrbitalModuleData = {
-  enabled?: boolean,
-  asRotation?: boolean,
-  x?: ValueGetter<number>,
-  y?: ValueGetter<number>,
-  z?: ValueGetter<number>,
-  center?: vec3,
 };
 
 export type ForceTargetModuleData = {
@@ -151,8 +150,7 @@ export type ParsedModuleData = {
   burst: BurstSpawnModuleData,
   solveVelocity: SolveVelocityModuleData,
   solveRotation: SolveRotationModuleData,
-  solveLinearMove: SolveLinearMoveModuleData,
-  solveOrbital: SolveOrbitalModuleData,
+  solvePosition: SolvePositionModuleData,
   forceTarget?: ForceTargetModuleData,
   scaleSize: ScaleSizeModuleData,
   scaleColor: ScaleColorModuleData,
@@ -462,8 +460,10 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
         burst: burstData,
         solveVelocity: { gravity: parsedOptions.gravity, gravityModifier: parsedOptions.gravityModifier, speedOverLifetime: parsedOptions.speedOverLifetime },
         solveRotation: { rotationOverLifetime },
-        solveLinearMove: { linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined },
-        solveOrbital: parsedOptions.orbitalVelOverLifetime ?? {},
+        solvePosition: {
+          orbital: parsedOptions.orbitalVelOverLifetime,
+          linearVelOverLifetime: (lv?.x || lv?.y || lv?.z) ? { ...lv, enabled: true } : undefined,
+        },
         forceTarget: parsedOptions.forceTarget,
         scaleSize: sizeOverLifetimeGetter,
         scaleColor: {

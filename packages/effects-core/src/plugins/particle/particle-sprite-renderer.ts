@@ -52,8 +52,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     const aOffset = geo.getAttributeData('aOffset') as Float32Array;
     const aTranslation = geo.getAttributeData('aTranslation') as Float32Array;
     const aRotation0 = geo.getAttributeData('aRotation0') as Float32Array;
-    const aSize = geo.getAttributeData('aSize') as Float32Array;
-    const aColorScale = geo.getAttributeData('aColorScale') as Float32Array;
     const aSprite = useSprite ? geo.getAttributeData('aSprite') as Float32Array : null;
     const wholeUV = [0, 0, 1, 1];
 
@@ -72,8 +70,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
         const o4 = vi * 4;
         const t3 = vi * 3;
         const rot9 = vi * 9;
-        const s2 = vi * 2;
-        const c4 = vi * 4;
 
         aPos[p12] = 0;
         aPos[p12 + 1] = 0;
@@ -119,14 +115,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
           aRotation0[rot9 + k] = db.rotMatrix[i9 + k];
         }
 
-        aSize[s2] = db.sizeScale[i2];
-        aSize[s2 + 1] = db.sizeScale[i2 + 1];
-
-        aColorScale[c4] = db.colorScale[i4];
-        aColorScale[c4 + 1] = db.colorScale[i4 + 1];
-        aColorScale[c4 + 2] = db.colorScale[i4 + 2];
-        aColorScale[c4 + 3] = db.colorScale[i4 + 3];
-
         if (aSprite) {
           const sp3 = vi * 3;
 
@@ -142,8 +130,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     geo.setAttributeData('aOffset', aOffset);
     geo.setAttributeData('aTranslation', aTranslation);
     geo.setAttributeData('aRotation0', aRotation0);
-    geo.setAttributeData('aSize', aSize);
-    geo.setAttributeData('aColorScale', aColorScale);
     if (aSprite) {
       geo.setAttributeData('aSprite', aSprite);
     }
@@ -172,8 +158,6 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     geo.setAttributeData('aOffset', new Float32Array(vertexCount * 4));
     geo.setAttributeData('aTranslation', new Float32Array(vertexCount * 3));
     geo.setAttributeData('aRotation0', new Float32Array(vertexCount * 9));
-    geo.setAttributeData('aSize', new Float32Array(vertexCount * 2));
-    geo.setAttributeData('aColorScale', new Float32Array(vertexCount * 4));
     if (mesh.useSprite) {
       geo.setAttributeData('aSprite', new Float32Array(vertexCount * 3));
     }

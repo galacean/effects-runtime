@@ -14,7 +14,7 @@ function createArray (length: number, fillValue = 0): number[] {
  *
  * 通道分两类：
  * - Spawn 通道：粒子出生时一次性写入（position, velocity, color 等）
- * - Accumulate 通道：每帧由模块累加更新（translation, rotMatrix, linearMove）
+ * - Accumulate 通道：每帧由模块计算更新（rotMatrix, finalOffset）
  */
 export class ParticleDataBuffer {
   readonly maxCount: number;
@@ -39,10 +39,14 @@ export class ParticleDataBuffer {
   readonly dirY: number[];
   /** 精灵动画参数 (animDelay, animDuration, cycles)，3 分量 */
   readonly sprite: number[];
-  /** 粒子尺寸 (width, height)，2 分量 */
+  /** 粒子尺寸 (width, height)，2 分量。ScaleSizeModule 每帧覆写为 initialSize * scale */
   readonly size: number[];
-  /** 粒子颜色 (r, g, b, a)，4 分量 */
+  /** 出生时尺寸快照 (width, height)，2 分量，不可变 */
+  readonly initialSize: number[];
+  /** 粒子颜色 (r, g, b, a)，4 分量。ScaleColorModule 每帧覆写为 initialColor * scale */
   readonly color: number[];
+  /** 出生时颜色快照 (r, g, b, a)，4 分量，不可变 */
+  readonly initialColor: number[];
   /** 纹理坐标 (u, v, w, h)，4 分量 */
   readonly uv: number[];
 
@@ -50,14 +54,8 @@ export class ParticleDataBuffer {
 
   /** 旋转矩阵 3x3 列主序，9 分量 */
   readonly rotMatrix: number[];
-  /** 线性位移累计值 xyz，3 分量 */
-  readonly linearMove: number[];
   /** 显示位置 xyz（position + orbital + linearMove + forceTarget 合成结果），3 分量 */
   readonly finalOffset: number[];
-  /** size over lifetime 缩放因子 (scaleX, scaleY)，2 分量 */
-  readonly sizeScale: number[];
-  /** color/opacity over lifetime 缩放因子 (r, g, b, a)，4 分量 */
-  readonly colorScale: number[];
 
   // --- 生命周期管理 ---
 
@@ -92,15 +90,14 @@ export class ParticleDataBuffer {
     this.sprite = createArray(maxCount * 3);
 
     this.size = createArray(maxCount * 2);
+    this.initialSize = createArray(maxCount * 2);
 
     this.color = createArray(maxCount * 4);
+    this.initialColor = createArray(maxCount * 4);
     this.uv = createArray(maxCount * 4);
 
     this.rotMatrix = createArray(maxCount * 9);
-    this.linearMove = createArray(maxCount * 3);
     this.finalOffset = createArray(maxCount * 3);
-    this.sizeScale = createArray(maxCount * 2, 1);
-    this.colorScale = createArray(maxCount * 4, 1);
 
     this.alive = createArray(maxCount);
 
@@ -121,10 +118,7 @@ export class ParticleDataBuffer {
   clear (): void {
     this._activeCount = 0;
     this.rotMatrix.fill(0);
-    this.linearMove.fill(0);
     this.finalOffset.fill(0);
-    this.sizeScale.fill(1);
-    this.colorScale.fill(1);
     this.alive.fill(0);
   }
 }

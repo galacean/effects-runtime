@@ -5,8 +5,7 @@ import type { ScaleSizeModuleData } from './parse-spec';
 /**
  * Size over lifetime 模块。对齐 Pro 的 ScaleSpriteSizeModule。
  *
- * 每帧计算 sizeScale = sizeOverLifetime.getValue(life)，
- * 写入 db.sizeScale。shader 读 aSize 替代 GPU 曲线求值。
+ * 每帧读 initialSize，乘以 sizeOverLifetime 曲线值，覆写 db.size。
  */
 export class ScaleSizeModule extends ParticleModule {
   override readonly stage = 'particleUpdate' as const;
@@ -27,8 +26,8 @@ export class ScaleSizeModule extends ParticleModule {
       const time = db.age[i];
 
       if (time < 0) {
-        db.sizeScale[i2] = 0;
-        db.sizeScale[i2 + 1] = 0;
+        db.size[i2] = 0;
+        db.size[i2 + 1] = 0;
 
         continue;
       }
@@ -37,9 +36,10 @@ export class ScaleSizeModule extends ParticleModule {
       const life = Math.min(Math.max(time / duration, 0), 1);
 
       const sx = x.getValue(life);
+      const sy = separateAxes && y ? y.getValue(life) : sx;
 
-      db.sizeScale[i2] = sx;
-      db.sizeScale[i2 + 1] = separateAxes && y ? y.getValue(life) : sx;
+      db.size[i2] = db.initialSize[i2] * sx;
+      db.size[i2 + 1] = db.initialSize[i2 + 1] * sy;
     }
   }
 }
