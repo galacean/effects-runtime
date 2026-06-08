@@ -16,10 +16,7 @@ import { Texture } from '../../texture';
 import { assertExist } from '../../utils';
 import { particleUniformTypeMap } from './particle-vfx-item';
 
-export interface ParticleMeshData {
-}
-
-export interface ParticleMeshProps extends ParticleMeshData {
+export interface ParticleMeshProps {
   renderMode?: number,
   blending?: number,
   mask: number,
@@ -43,7 +40,7 @@ export interface ParticleMeshProps extends ParticleMeshData {
   name: string,
   anchor: Vector2,
 }
-export class ParticleMesh implements ParticleMeshData {
+export class ParticleMesh {
   duration: number;
   geometry: Geometry;
   mesh: Mesh;
