@@ -289,6 +289,9 @@ export class InitializeParticleModule extends ParticleModule {
     db.velocity[i3] = direction.x * speed;
     db.velocity[i3 + 1] = direction.y * speed;
     db.velocity[i3 + 2] = direction.z * speed;
+    db.initialVelocity[i3] = db.velocity[i3];
+    db.initialVelocity[i3 + 1] = db.velocity[i3 + 1];
+    db.initialVelocity[i3 + 2] = db.velocity[i3 + 2];
 
     db.color[i4] = color[0];
     db.color[i4 + 1] = color[1];

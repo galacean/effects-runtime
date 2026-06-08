@@ -13,7 +13,8 @@ import type { ScaleColorModuleData } from './scale-color-module';
 import type { ScaleSizeModuleData } from './scale-size-module';
 import type { SolvePositionModuleData } from './solve-position-module';
 import type { SolveRotationModuleData } from './solve-rotation-module';
-import type { SolveVelocityModuleData } from './solve-velocity-module';
+import type { GravityForceModuleData } from './gravity-force-module';
+import type { SolveForcesAndVelocityModuleData } from './solve-forces-and-velocity-module';
 import type { SpawnRateModuleData } from './spawn-rate-module';
 
 /**
@@ -23,7 +24,8 @@ export type ParsedModuleData = {
   initialize: InitializeModuleData,
   spawnRate?: SpawnRateModuleData,
   burst: BurstSpawnModuleData,
-  solveVelocity: SolveVelocityModuleData,
+  gravityForce: GravityForceModuleData,
+  solveForcesAndVelocity: SolveForcesAndVelocityModuleData,
   solveRotation: SolveRotationModuleData,
   solvePosition: SolvePositionModuleData,
   forceTarget?: ForceTargetModuleData,
@@ -239,9 +241,11 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
           burstOffsets: getBurstOffsets(data.emission.burstOffsets ?? []),
           bursts: (data.emission.bursts || []) as BurstSpawnModuleData['bursts'],
         },
-        solveVelocity: {
+        gravityForce: {
           gravity: ensureVec3(positionOverLifetime?.gravity),
           gravityModifier: positionOverLifetime?.gravityOverLifetime || 0,
+        },
+        solveForcesAndVelocity: {
           speedOverLifetime: positionOverLifetime.speedOverLifetime || undefined,
         },
         solveRotation: { rotationOverLifetime },

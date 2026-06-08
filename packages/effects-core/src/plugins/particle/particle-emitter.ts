@@ -13,9 +13,10 @@ import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
 import { ScaleColorModule } from './scale-color-module';
 import { ScaleSizeModule } from './scale-size-module';
+import { GravityForceModule } from './gravity-force-module';
+import { SolveForcesAndVelocityModule } from './solve-forces-and-velocity-module';
 import { SolvePositionModule } from './solve-position-module';
 import { SolveRotationModule } from './solve-rotation-module';
-import { SolveVelocityModule } from './solve-velocity-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import { UpdateAgeModule } from './update-age-module';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
@@ -116,9 +117,13 @@ export class ParticleEmitter {
 
     init.fromJSON(data.initialize);
 
-    const solveVelocity = new SolveVelocityModule();
+    const gravityForce = new GravityForceModule();
 
-    solveVelocity.fromJSON(data.solveVelocity);
+    gravityForce.fromJSON(data.gravityForce);
+
+    const solveForcesAndVelocity = new SolveForcesAndVelocityModule();
+
+    solveForcesAndVelocity.fromJSON(data.solveForcesAndVelocity);
 
     const solveRotation = new SolveRotationModule();
 
@@ -128,7 +133,7 @@ export class ParticleEmitter {
 
     solvePosition.fromJSON(data.solvePosition);
 
-    modules.push(burst, init, new UpdateAgeModule(), solveVelocity, solveRotation, solvePosition);
+    modules.push(burst, init, new UpdateAgeModule(), gravityForce, solveForcesAndVelocity, solveRotation, solvePosition);
 
     if (data.forceTarget) {
       const forceTarget = new ForceTargetModule();
@@ -382,6 +387,9 @@ export class ParticleEmitter {
       db.velocity[i3] = tempVel.x;
       db.velocity[i3 + 1] = tempVel.y;
       db.velocity[i3 + 2] = tempVel.z;
+      db.initialVelocity[i3] = tempVel.x;
+      db.initialVelocity[i3 + 1] = tempVel.y;
+      db.initialVelocity[i3 + 2] = tempVel.z;
 
       // dirX/dirY: transform local values to world space (module already computed them)
       if (this.alignSpeedDirection) {

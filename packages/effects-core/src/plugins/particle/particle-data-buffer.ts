@@ -27,12 +27,14 @@ export class ParticleDataBuffer {
   readonly lifetime: number[];
   /** 随机种子 [0,1)，出生时写入 */
   readonly seed: number[];
-  /** velocity 积分的累加位置 xyz，仅 SolveVelocityModule 和 SolvePositionModule 内部使用 */
+  /** velocity 积分的累加位置 xyz，仅 SolveForcesAndVelocityModule 和 SolvePositionModule 内部使用 */
   readonly simulatedPosition: number[];
   /** 最终显示位置 xyz（simulatedPosition + orbital + linearMove + forceTarget 合成结果），3 分量 */
   readonly position: number[];
-  /** 初始速度 xyz，3 分量 */
+  /** 当前速度 xyz，3 分量。GravityForceModule 每帧累加 gravity */
   readonly velocity: number[];
+  /** 出生时速度快照 xyz，3 分量，不可变。speedOverLifetime 的基准 */
+  readonly initialVelocity: number[];
   /** 初始旋转（欧拉角 xyz 弧度），3 分量 */
   readonly rotation: number[];
   /** Quad X 方向，3 分量 */
@@ -85,6 +87,7 @@ export class ParticleDataBuffer {
     this.simulatedPosition = createArray(maxCount * 3);
     this.position = createArray(maxCount * 3);
     this.velocity = createArray(maxCount * 3);
+    this.initialVelocity = createArray(maxCount * 3);
     this.rotation = createArray(maxCount * 3);
     this.dirX = createArray(maxCount * 3);
     this.dirY = createArray(maxCount * 3);
