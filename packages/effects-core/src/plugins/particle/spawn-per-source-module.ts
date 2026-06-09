@@ -54,6 +54,8 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
       const y = sourceDb.position[i3 + 1];
       const z = sourceDb.position[i3 + 2];
 
+      this.updateRibbonHead(ctx.dataBuffer, uid, x, y, z);
+
       if (this.checkDistance) {
         const last = this.lastPositions.get(uid);
 
@@ -85,6 +87,25 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
           burstCount: 0,
         },
       });
+    }
+  }
+
+  private updateRibbonHead (db: ParticleDataBuffer, ribbonId: number, x: number, y: number, z: number): void {
+    let bestSlot = -1;
+    let bestOrder = -1;
+
+    for (let i = 0; i < db.activeCount; i++) {
+      if (db.alive[i] && db.ribbonId[i] === ribbonId && db.age[i] > 0 && db.ribbonLinkOrder[i] > bestOrder) {
+        bestOrder = db.ribbonLinkOrder[i];
+        bestSlot = i;
+      }
+    }
+    if (bestSlot >= 0) {
+      const h3 = bestSlot * 3;
+
+      db.position[h3] = x;
+      db.position[h3 + 1] = y;
+      db.position[h3 + 2] = z;
     }
   }
 

@@ -284,7 +284,7 @@ export class ParticleEmitter {
     const toTake = Math.min(remaining, freeSlots.length);
 
     for (let i = 0; i < toTake; i++) {
-      slots.push(freeSlots.pop()!);
+      slots.push(freeSlots.pop() as number);
     }
 
     return slots;
