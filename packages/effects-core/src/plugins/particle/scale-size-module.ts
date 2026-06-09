@@ -1,6 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
+import { createValueGetter, RandomValue } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
@@ -45,9 +45,12 @@ export class ScaleSizeModule extends ParticleModule {
 
       const duration = db.lifetime[i];
       const life = Math.min(Math.max(time / duration, 0), 1);
+      const seed = db.seed[i];
 
-      const sx = x.getValue(life);
-      const sy = separateAxes && y ? y.getValue(life) : sx;
+      const sx = x instanceof RandomValue ? x.getValue(life, seed) : x.getValue(life);
+      const sy = separateAxes && y
+        ? (y instanceof RandomValue ? y.getValue(life, seed) : y.getValue(life))
+        : sx;
 
       db.size[i2] = db.initialSize[i2] * sx;
       db.size[i2 + 1] = db.initialSize[i2 + 1] * sy;

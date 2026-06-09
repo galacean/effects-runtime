@@ -1,6 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
+import { createValueGetter, RandomValue } from '../../math';
 import { ParticleModule } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
@@ -61,7 +61,9 @@ export class ScaleColorModule extends ParticleModule {
       }
 
       if (opacity) {
-        a *= Math.min(Math.max(opacity.getValue(life), 0), 1);
+        const ov = opacity instanceof RandomValue ? opacity.getValue(life, db.seed[i]) : opacity.getValue(life);
+
+        a *= Math.min(Math.max(ov, 0), 1);
       }
 
       db.color[i4] = db.initialColor[i4] * r;

@@ -208,12 +208,12 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
   generateDynamicData (emitter: ParticleEmitter): void {
     const db = emitter.dataBuffer;
 
-    if (db.activeCount < 2) {
+    if (db.liveCount < 2) {
       this.clear();
 
       return;
     }
-    const sorted = this.buildSortOrder(db, db.activeCount);
+    const sorted = this.buildSortOrder(db);
 
     if (sorted.length < 2) {
       this.clear();
@@ -223,11 +223,11 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     this.writeGeometry(sorted, db, this.viewDirX, this.viewDirY, this.viewDirZ);
   }
 
-  private buildSortOrder (db: ParticleDataBuffer, count: number): number[] {
+  private buildSortOrder (db: ParticleDataBuffer): number[] {
     const indices: number[] = [];
 
-    for (let i = 0; i < count; i++) {
-      if (db.alive[i] && db.age[i] > 0) {
+    for (const i of db.liveIndices) {
+      if (db.age[i] > 0) {
         indices.push(i);
       }
     }

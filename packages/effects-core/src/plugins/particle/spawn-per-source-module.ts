@@ -41,7 +41,7 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
     let totalCount = 0;
 
     for (let i = 0; i < sourceDb.activeCount; i++) {
-      if (!sourceDb.alive[i] || sourceDb.age[i] >= sourceDb.lifetime[i] || sourceDb.age[i] <= 0) {
+      if (!sourceDb.alive[i] || sourceDb.age[i] <= 0) {
         continue;
       }
 
