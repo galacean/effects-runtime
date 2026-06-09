@@ -227,7 +227,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     const indices: number[] = [];
 
     for (let i = 0; i < count; i++) {
-      if (db.alive[i] && db.age[i] < db.lifetime[i] && db.age[i] > 0) {
+      if (db.alive[i] && db.age[i] > 0) {
         indices.push(i);
       }
     }
@@ -242,50 +242,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
       return db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b];
     });
 
-    const maxTrailCount = this.maxTrailCount;
-    const maxPointsPerRibbon = this.pointCountPerTrail;
-    const ribbonCounts = new Map<number, number>();
-    const allowedRibbons = new Set<number>();
-    let ribbonCount = 0;
-
-    for (const idx of indices) {
-      const rid = db.ribbonId[idx];
-
-      if (!ribbonCounts.has(rid)) {
-        ribbonCount++;
-        if (ribbonCount > maxTrailCount) {
-          continue;
-        }
-        allowedRibbons.add(rid);
-      }
-      if (!allowedRibbons.has(rid)) {
-        continue;
-      }
-      ribbonCounts.set(rid, (ribbonCounts.get(rid) ?? 0) + 1);
-    }
-
-    const capped: number[] = [];
-    const ribbonSkipped = new Map<number, number>();
-
-    for (const idx of indices) {
-      const rid = db.ribbonId[idx];
-
-      if (!allowedRibbons.has(rid)) {
-        continue;
-      }
-      const total = ribbonCounts.get(rid)!;
-      const skip = Math.max(0, total - maxPointsPerRibbon);
-      const skipped = ribbonSkipped.get(rid) ?? 0;
-
-      if (skipped < skip) {
-        ribbonSkipped.set(rid, skipped + 1);
-
-        continue;
-      }
-      capped.push(idx);
-    }
-
-    return capped;
+    return indices;
   }
 
   private writeGeometry (

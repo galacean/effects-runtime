@@ -34,9 +34,12 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
 
   generateDynamicData (emitter: ParticleEmitter): void {
     const db = emitter.dataBuffer;
-    const count = db.activeCount;
+    const liveIndices = db.liveIndices;
+    const liveCount = liveIndices.length;
 
-    if (count === 0) {
+    if (liveCount === 0) {
+      this.geometry.setDrawCount(0);
+
       return;
     }
     const mesh = this.particleMesh;
@@ -45,7 +48,7 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     const texOffsets = mesh.textureOffsets;
     const useSprite = mesh.useSprite;
 
-    this.ensureCapacity(count);
+    this.ensureCapacity(liveCount);
 
     const aPos = geo.getAttributeData('aPos') as Float32Array;
     const aRot = geo.getAttributeData('aRot') as Float32Array;
@@ -54,7 +57,8 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     const aSprite = useSprite ? geo.getAttributeData('aSprite') as Float32Array : null;
     const wholeUV = [0, 0, 1, 1];
 
-    for (let i = 0; i < count; i++) {
+    for (let outIdx = 0; outIdx < liveCount; outIdx++) {
+      const i = liveIndices[outIdx];
       const i3 = i * 3;
       const i4 = i * 4;
       const i2 = i * 2;
@@ -62,7 +66,7 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
         ? db.uv : null;
 
       for (let j = 0; j < 4; j++) {
-        const vi = i * 4 + j;
+        const vi = outIdx * 4 + j;
         const p12 = vi * 12;
         const r8 = vi * 8;
         const o4 = vi * 4;
@@ -125,7 +129,7 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     if (aSprite) {
       geo.setAttributeData('aSprite', aSprite);
     }
-    geo.setDrawCount(count * 6);
+    geo.setDrawCount(liveCount * 6);
   }
 
   clear (): void {

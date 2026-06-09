@@ -70,6 +70,8 @@ export class ParticleEmitter {
   particleFollowParent = false;
   private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
+  private pointCountPerTrail = 0;
+
   /** 单调递增时间，不受 loop 回退影响（对齐 Pro 的 emitterAge） */
   emitterAge = 0;
 
@@ -91,10 +93,11 @@ export class ParticleEmitter {
     this.modules = this.buildModules(data.modules);
   }
 
-  setupTrailEmitter (maxCount: number, modules: ParticleModule[]): void {
+  setupTrailEmitter (maxCount: number, modules: ParticleModule[], pointCountPerTrail: number): void {
     this.maxCount = maxCount;
     this.looping = true;
     this.particleFollowParent = true;
+    this.pointCountPerTrail = pointCountPerTrail;
     this._dataBuffer = new ParticleDataBufferImpl(maxCount);
     this.modules = modules;
   }
@@ -174,7 +177,7 @@ export class ParticleEmitter {
     this.emitterAge = 0;
     this.uniqueIdCounter = 0;
     this.spawnInfos.length = 0;
-    this._dataBuffer?.clear();
+    this._dataBuffer?.clear(); // clears alive, freeSlots, liveIndices
     this.renderer?.reset();
   }
 
@@ -208,18 +211,24 @@ export class ParticleEmitter {
 
     const ctx = this.buildModuleContext(delta / 1000);
 
-    // 1. update existing particles
+    // 1. update existing particles (includes KillBySourceModule setting lifetime=0)
     if (this._dataBuffer.activeCount > 0) {
       this.runStage('particleUpdate', ctx);
     }
 
-    // 2. spawn + first-frame update for new particles
+    // 2. recycle dead particles into free-list (before spawn, so slots are available)
+    this.recycleDead();
+
+    // 3. spawn + first-frame update for new particles
     if (!this.ended) {
       this.advanceEmitter(ctx);
     }
 
-    // 3. sync to renderer
-    if (this._dataBuffer.activeCount > 0 && this.renderer) {
+    // 4. build live indices + shrink activeCount (after spawn, for renderer)
+    this.rebuildLiveIndices();
+
+    // 5. sync to renderer
+    if (this._dataBuffer.liveCount > 0 && this.renderer) {
       this.renderer.generateSpriteData(this);
     }
   }
@@ -261,6 +270,7 @@ export class ParticleEmitter {
     }
     const slots: number[] = [];
 
+    // Phase 1: fresh sequential allocation
     while (slots.length < requestedCount && this.nextSlotIndex < maxCount) {
       slots.push(this.nextSlotIndex++);
     }
@@ -268,19 +278,13 @@ export class ParticleEmitter {
       return slots;
     }
 
-    const expired: number[] = [];
-
-    for (let s = 0; s < db.maxCount; s++) {
-      if (db.alive[s] && db.age[s] >= db.lifetime[s]) {
-        expired.push(s);
-      }
-    }
-    expired.sort((a, b) => db.age[b] - db.age[a]);
-
+    // Phase 2: pop from free-list
+    const freeSlots = db.freeSlots;
     const remaining = requestedCount - slots.length;
+    const toTake = Math.min(remaining, freeSlots.length);
 
-    for (let i = 0; i < Math.min(remaining, expired.length); i++) {
-      slots.push(expired[i]);
+    for (let i = 0; i < toTake; i++) {
+      slots.push(freeSlots.pop()!);
     }
 
     return slots;
@@ -416,16 +420,8 @@ export class ParticleEmitter {
     if (this.emissionStopped) {
       return false;
     }
-    if (this.nextSlotIndex < maxCount) {
-      return true;
-    }
-    for (let s = 0; s < db.maxCount; s++) {
-      if (db.alive[s] && db.age[s] >= db.lifetime[s]) {
-        return true;
-      }
-    }
 
-    return false;
+    return this.nextSlotIndex < maxCount || db.freeSlots.length > 0;
   }
 
   // ========================
@@ -448,7 +444,7 @@ export class ParticleEmitter {
     const res: { center: Vector3, size: Vector3 }[] = [];
 
     for (let i = 0; i < db.activeCount; i++) {
-      if (!db.alive[i] || db.age[i] >= db.lifetime[i]) {
+      if (!db.alive[i]) {
         continue;
       }
       const i2 = i * 2;
@@ -472,7 +468,7 @@ export class ParticleEmitter {
     const temp = new Vector3();
 
     for (let i = db.activeCount - 1; i >= 0; i--) {
-      if (!db.alive[i] || db.age[i] >= db.lifetime[i]) {
+      if (!db.alive[i]) {
         continue;
       }
       const pos = this.getPointPosition(i);
@@ -498,7 +494,12 @@ export class ParticleEmitter {
     if (!db || index < 0 || index >= db.maxCount) {
       return;
     }
+    if (!db.alive[index]) {
+      return;
+    }
+    db.alive[index] = 0;
     db.lifetime[index] = 0;
+    db.freeSlots.push(index);
   }
 
   private getWorldMatrix (): Matrix4 {
@@ -527,6 +528,67 @@ export class ParticleEmitter {
       firstIndex: 0,
       lastIndex: this._dataBuffer.activeCount,
     };
+  }
+
+  private recycleDead (): void {
+    const db = this._dataBuffer;
+
+    for (let i = 0; i < db.activeCount; i++) {
+      if (db.alive[i] && db.age[i] >= db.lifetime[i]) {
+        db.alive[i] = 0;
+        db.freeSlots.push(i);
+      }
+    }
+
+    if (this.pointCountPerTrail > 0) {
+      this.trimRibbons(db);
+    }
+  }
+
+  private trimRibbons (db: ParticleDataBuffer): void {
+    const cap = this.pointCountPerTrail;
+    const ribbonSlots = new Map<number, number[]>();
+
+    for (let i = 0; i < db.activeCount; i++) {
+      if (!db.alive[i]) { continue; }
+      const rid = db.ribbonId[i];
+      let arr = ribbonSlots.get(rid);
+
+      if (!arr) {
+        arr = [];
+        ribbonSlots.set(rid, arr);
+      }
+      arr.push(i);
+    }
+
+    for (const slots of ribbonSlots.values()) {
+      if (slots.length <= cap) { continue; }
+      slots.sort((a, b) => db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b]);
+      const excess = slots.length - cap;
+
+      for (let i = 0; i < excess; i++) {
+        const slot = slots[i];
+
+        db.alive[slot] = 0;
+        db.freeSlots.push(slot);
+      }
+    }
+  }
+
+  private rebuildLiveIndices (): void {
+    const db = this._dataBuffer;
+    const liveIndices = db.liveIndices;
+
+    liveIndices.length = 0;
+    let maxAliveSlot = -1;
+
+    for (let i = 0; i < db.activeCount; i++) {
+      if (db.alive[i]) {
+        liveIndices.push(i);
+        maxAliveSlot = i;
+      }
+    }
+    db.activeCount = maxAliveSlot + 1;
   }
 
 }

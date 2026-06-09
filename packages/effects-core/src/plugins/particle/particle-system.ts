@@ -132,6 +132,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   reset () {
     this.emitter?.fullReset();
+    this.trailEmitter?.fullReset();
     this.pathTime = 0;
   }
 
@@ -308,7 +309,7 @@ export class ParticleSystem extends Component implements Maskable {
     ];
 
     this.trailEmitter = new ParticleEmitter();
-    this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules);
+    this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules, pointCountPerTrail);
     this.trailEmitter.itemDuration = this.item.duration;
     this.trailEmitter.started = true;
   }

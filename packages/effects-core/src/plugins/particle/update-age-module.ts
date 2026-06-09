@@ -9,6 +9,7 @@ export class UpdateAgeModule extends ParticleModule {
     const dt = ctx.deltaTime;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
+      if (!db.alive[i]) { continue; }
       db.age[i] += dt;
     }
   }

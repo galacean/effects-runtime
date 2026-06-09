@@ -77,6 +77,15 @@ export class ParticleDataBuffer {
   /** trail 粒子 spawn 时刻 source 粒子的 age，用于 ribbon renderer 反推 source normalized age */
   readonly spawnSourceAge: number[];
 
+  // ── Recycling infrastructure ──
+
+  /** Free-list 栈：pop 获取可用 slot，push 回收死亡 slot */
+  readonly freeSlots: number[] = [];
+  /** 每帧重建的紧凑活跃粒子索引列表，供 renderer 使用 */
+  liveIndices: number[] = [];
+
+  get liveCount (): number { return this.liveIndices.length; }
+
   private _activeCount = 0;
 
   constructor (maxCount: number) {
@@ -127,5 +136,7 @@ export class ParticleDataBuffer {
     this._activeCount = 0;
     this.position.fill(0);
     this.alive.fill(0);
+    this.freeSlots.length = 0;
+    this.liveIndices.length = 0;
   }
 }

@@ -49,7 +49,12 @@ export class SampleFromSourceModule extends ParticleModule {
       }
     }
 
-    db.activeCount = Math.max(db.activeCount, slotIndices[slotIndices.length - 1] + 1);
+    let maxSlot = 0;
+
+    for (const s of slotIndices) {
+      if (s > maxSlot) { maxSlot = s; }
+    }
+    db.activeCount = Math.max(db.activeCount, maxSlot + 1);
   }
 
   private initTrailParticle (
@@ -68,12 +73,14 @@ export class SampleFromSourceModule extends ParticleModule {
     db.position[d3 + 2] = sourceDb.position[s3 + 2];
 
     db.ribbonId[slot] = ribbonId;
-    db.ribbonLinkOrder[slot] = ctx.emitter.generatedCount + slot;
     db.lifetime[slot] = this.trailLifetime.getValue(ctx.emitterLifetime);
     db.age[slot] = 0;
     db.alive[slot] = 1;
     db.seed[slot] = Math.random();
-    db.uniqueId[slot] = ctx.emitter.uniqueIdCounter++;
+    const uid = ctx.emitter.uniqueIdCounter++;
+
+    db.uniqueId[slot] = uid;
+    db.ribbonLinkOrder[slot] = uid;
     // 存 source 粒子在 spawn 时刻的 age；ribbon renderer 用 (sourceAgeAtSpawn + trail.age) 推算 elapsed
     db.spawnSourceAge[slot] = sourceDb.age[src];
 
