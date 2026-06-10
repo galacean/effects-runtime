@@ -150,7 +150,7 @@ export class TrackAsset extends PlayableAsset {
     this.clips.push(clip);
   }
 
-  private createClipPlayable (clip: TimelineClip) {
+  protected createClipPlayable (clip: TimelineClip): Playable {
     return clip.asset.createPlayable();
   }
 
