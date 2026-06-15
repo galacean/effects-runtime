@@ -72,39 +72,35 @@ mat3 eulerToMat3(vec3 eulerDeg) {
 void main() {
   float time = aOffset.z;
   float dur = aOffset.w;
-  if(time < 0. || time > dur) {
-    gl_Position = vec4(-3., -3., -3., 1.);
-  } else {
-    float life = clamp(time / dur, 0.0, 1.0);
-    vLife = life;
+  float life = clamp(time / dur, 0.0, 1.0);
+  vLife = life;
 
-        #ifdef USE_SPRITE
-    UVDetail uvD = getSpriteUV(aOffset.xy, time);
-    vTexCoord = uvD.uv0;
-    vTexCoordBlend = vec4(uvD.uv1, uSprite.w);
-        #else
-    vTexCoord = aOffset.xy;
-        #endif
+      #ifdef USE_SPRITE
+  UVDetail uvD = getSpriteUV(aOffset.xy, time);
+  vTexCoord = uvD.uv0;
+  vTexCoordBlend = vec4(uvD.uv1, uSprite.w);
+      #else
+  vTexCoord = aOffset.xy;
+      #endif
 
-    vColor = aColor;
+  vColor = aColor;
 
-    mat3 rotMat = eulerToMat3(aRot);
-    vec3 point = rotMat * (aDirX + aDirY);
-    vec4 pos = vec4(aPos + aTranslation, 1.0);
+  mat3 rotMat = eulerToMat3(aRot);
+  vec3 point = rotMat * (aDirX + aDirY);
+  vec4 pos = vec4(aPos + aTranslation, 1.0);
 
-        #if RENDER_MODE == 1
-    pos.xyz += point;
-    pos = effects_ObjectToWorld * pos;
-        #elif RENDER_MODE == 3
-    pos = effects_ObjectToWorld * pos;
-    pos.xyz += effects_MatrixV[0].xyz * point.x + effects_MatrixV[2].xyz * point.y;
-        #elif RENDER_MODE == 2
-    pos = effects_ObjectToWorld * pos;
-    pos.xy += point.xy;
-        #elif RENDER_MODE == 0
-    pos = effects_ObjectToWorld * pos;
-    pos.xyz += effects_MatrixV[0].xyz * point.x + effects_MatrixV[1].xyz * point.y;
-        #endif
-    gl_Position = effects_MatrixVP * pos;
-  }
+      #if RENDER_MODE == 1
+  pos.xyz += point;
+  pos = effects_ObjectToWorld * pos;
+      #elif RENDER_MODE == 3
+  pos = effects_ObjectToWorld * pos;
+  pos.xyz += effects_MatrixV[0].xyz * point.x + effects_MatrixV[2].xyz * point.y;
+      #elif RENDER_MODE == 2
+  pos = effects_ObjectToWorld * pos;
+  pos.xy += point.xy;
+      #elif RENDER_MODE == 0
+  pos = effects_ObjectToWorld * pos;
+  pos.xyz += effects_MatrixV[0].xyz * point.x + effects_MatrixV[1].xyz * point.y;
+      #endif
+  gl_Position = effects_MatrixVP * pos;
 }

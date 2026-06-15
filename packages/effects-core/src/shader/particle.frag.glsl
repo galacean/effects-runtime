@@ -65,9 +65,6 @@ void main() {
   vec4 color = vec4(1.0);
   vec4 tempColor = vColor;
   vec2 texOffset = uTexOffset;
-  if(vLife < 0.) {
-    discard;
-  }
   if(uColorParams.x > 0.0) {
     color = getTextureColor(uMaskTex, vTexCoord);
   }

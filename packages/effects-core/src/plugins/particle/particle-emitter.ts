@@ -201,9 +201,7 @@ export class ParticleEmitter {
 
     if (looped) {
       this.lastEmitTime = this.initialLastEmitTime;
-      this.renderer?.minusTimeForLoop(this.state.duration);
     }
-    this.renderer?.updateTime(this.state.emitterAge);
 
     // 2. particleUpdate (existing particles)
     if (this._dataBuffer.activeCount > 0) {
