@@ -107,10 +107,10 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   startEmit () {
-    if (!this.emitter?.started || this.emitter.state.executionState !== 'active') {
+    if (this.emitter?.state.executionState !== 'active') {
       this.reset();
       if (this.emitter) {
-        this.emitter.started = true;
+        this.emitter.state.executionState = 'active';
       }
     }
   }
@@ -118,7 +118,6 @@ export class ParticleSystem extends Component implements Maskable {
   stop () {
     if (this.emitter) {
       this.emitter.state.executionState = 'inactive';
-      this.emitter.started = false;
     }
   }
 
@@ -131,13 +130,13 @@ export class ParticleSystem extends Component implements Maskable {
 
   stopParticleEmission () {
     if (this.emitter) {
-      this.emitter.emissionStopped = true;
+      this.emitter.state.emissionStopped = true;
     }
   }
 
   resumeParticleEmission () {
     if (this.emitter) {
-      this.emitter.emissionStopped = false;
+      this.emitter.state.emissionStopped = false;
     }
   }
 
@@ -302,7 +301,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.trailEmitter = new ParticleEmitter();
     this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules, pointCountPerTrail);
     this.trailEmitter.state.duration = this.item.duration;
-    this.trailEmitter.started = true;
+    this.trailEmitter.state.executionState = 'active';
   }
 
   private initEmitterTransform (): void {

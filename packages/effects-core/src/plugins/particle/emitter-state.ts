@@ -15,7 +15,8 @@ export class EmitterState {
   endBehavior = 0;
 
   // ── Runtime State ──
-  executionState: EmitterExecutionState = 'active';
+  executionState: EmitterExecutionState = 'inactive';
+  emissionStopped = false;
   emitterAge = 0;
   loopAge = 0;
 
@@ -60,6 +61,7 @@ export class EmitterState {
 
   reset (): void {
     this.executionState = 'active';
+    this.emissionStopped = false;
     this.emitterAge = 0;
     this.loopAge = 0;
   }

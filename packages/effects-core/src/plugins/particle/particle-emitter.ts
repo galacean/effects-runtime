@@ -1,7 +1,6 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import { createValueGetter } from '../../math';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
@@ -42,12 +41,9 @@ export type EmitterData = {
 
 export class ParticleEmitter {
   // --- Mutable state ---
-  started = false;
-  emissionStopped = false;
-  nextSlotIndex = 0;
-  generatedCount = 0;
-  lastEmitTime = 0;
-  uniqueIdCounter = 0;
+  totalSpawnedParticles = 0;
+  uniqueIndexOffset = 0;
+  particleFollowParent = false;
 
   spawnInfos: SpawnInfo[] = [];
 
@@ -64,10 +60,9 @@ export class ParticleEmitter {
   private _dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer | null = null;
   private maxCount = 0;
-  particleFollowParent = false;
-  private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
   private pointCountPerTrail = 0;
+  private spawnRateModule: SpawnRateModule | null = null;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
@@ -80,10 +75,6 @@ export class ParticleEmitter {
     this.alignSpeedDirection = data.alignSpeedDirection;
     this.renderer = renderer;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
-    const rate = data.modules.spawnRate?.rateOverTime;
-
-    this.initialLastEmitTime = rate ? -1 / createValueGetter(rate).getValue(0) : 0;
-    this.lastEmitTime = this.initialLastEmitTime;
     this.modules = this.buildModules(data.modules);
   }
 
@@ -104,6 +95,7 @@ export class ParticleEmitter {
 
       spawnRate.fromJSON(data.spawnRate);
       modules.push(spawnRate);
+      this.spawnRateModule = spawnRate;
     }
 
     const burst = new BurstSpawnModule();
@@ -161,10 +153,9 @@ export class ParticleEmitter {
 
   fullReset (): void {
     this.state.reset();
-    this.nextSlotIndex = 0;
-    this.generatedCount = 0;
-    this.lastEmitTime = this.initialLastEmitTime;
-    this.uniqueIdCounter = 0;
+    this.totalSpawnedParticles = 0;
+    this.uniqueIndexOffset = 0;
+    this.spawnRateModule?.resetEmitTime();
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
     this.renderer?.reset();
@@ -191,7 +182,7 @@ export class ParticleEmitter {
   }
 
   tick (delta: number): void {
-    if (!this.started) {
+    if (this.state.executionState === 'inactive') {
       return;
     }
     const dt = delta / 1000;
@@ -200,7 +191,7 @@ export class ParticleEmitter {
     const looped = this.state.advance(dt);
 
     if (looped) {
-      this.lastEmitTime = this.initialLastEmitTime;
+      this.spawnRateModule?.resetEmitTime();
     }
 
     // 2. particleUpdate (existing particles)
@@ -258,14 +249,14 @@ export class ParticleEmitter {
   // ========================
 
   private preAllocateSlots (db: ParticleDataBuffer, maxCount: number, requestedCount: number): number[] {
-    if (this.emissionStopped || requestedCount <= 0) {
+    if (this.state.emissionStopped || requestedCount <= 0) {
       return [];
     }
     const slots: number[] = [];
 
     // Phase 1: fresh sequential allocation
-    while (slots.length < requestedCount && this.nextSlotIndex < maxCount) {
-      slots.push(this.nextSlotIndex++);
+    while (slots.length < requestedCount && this._dataBuffer.nextSlotIndex < maxCount) {
+      slots.push(this._dataBuffer.nextSlotIndex++);
     }
     if (slots.length >= requestedCount) {
       return slots;
@@ -326,13 +317,13 @@ export class ParticleEmitter {
     for (let i = 0; i < slotIndices.length; i++) {
       spawnGenerators.push({
         total: generator.total,
-        index: isRateSource ? this.generatedCount + i : generator.index,
+        index: isRateSource ? this.totalSpawnedParticles + i : generator.index,
         burstIndex: isRateSource ? 0 : i,
         burstCount: generator.burstCount,
       });
     }
     if (isRateSource) {
-      this.generatedCount += slotIndices.length;
+      this.totalSpawnedParticles += slotIndices.length;
     }
 
     const spawnCtx: ParticleModuleContext = {
@@ -355,7 +346,7 @@ export class ParticleEmitter {
     }
     spawnedSlots.push(...slotIndices);
     if (isRateSource) {
-      this.lastEmitTime = this.timePassed;
+      this.spawnRateModule?.commitEmitTime(this.timePassed);
     }
   }
 
@@ -410,11 +401,11 @@ export class ParticleEmitter {
   }
 
   hasAvailableSlots (db: ParticleDataBuffer, maxCount: number): boolean {
-    if (this.emissionStopped) {
+    if (this.state.emissionStopped) {
       return false;
     }
 
-    return this.nextSlotIndex < maxCount || db.freeSlots.length > 0;
+    return this._dataBuffer.nextSlotIndex < maxCount || db.freeSlots.length > 0;
   }
 
   // ========================

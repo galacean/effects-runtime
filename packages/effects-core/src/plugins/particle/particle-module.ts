@@ -47,7 +47,7 @@ type ParticleModuleContext = {
 type SpawnGenerator = {
   total: number,
   index: number,
-  /** rate 来源：index 按 emitter.generatedCount 逐粒子递增；burst 来源：index 固定 */
+  /** rate 来源：index 按 emitter.totalSpawnedParticles 逐粒子递增；burst 来源：index 固定 */
   useGeneratedCountIndex: boolean,
   /** burst 一次发射的粒子总数（弧形等确定性分布用），rate 为 0 */
   burstCount: number,

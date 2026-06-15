@@ -79,6 +79,8 @@ export class ParticleDataBuffer {
 
   // ── Recycling infrastructure ──
 
+  /** 下一个顺序分配的 slot 索引 */
+  nextSlotIndex = 0;
   /** Free-list 栈：pop 获取可用 slot，push 回收死亡 slot */
   readonly freeSlots: number[] = [];
   /** 每帧重建的紧凑活跃粒子索引列表，供 renderer 使用 */
@@ -134,6 +136,7 @@ export class ParticleDataBuffer {
 
   clear (): void {
     this._activeCount = 0;
+    this.nextSlotIndex = 0;
     this.position.fill(0);
     this.alive.fill(0);
     this.freeSlots.length = 0;

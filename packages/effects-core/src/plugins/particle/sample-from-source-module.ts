@@ -77,7 +77,7 @@ export class SampleFromSourceModule extends ParticleModule {
     db.age[slot] = 0;
     db.alive[slot] = 1;
     db.seed[slot] = Math.random();
-    const uid = ctx.emitter.uniqueIdCounter++;
+    const uid = ctx.emitter.uniqueIndexOffset++;
 
     db.uniqueId[slot] = uid;
     db.ribbonLinkOrder[slot] = uid;

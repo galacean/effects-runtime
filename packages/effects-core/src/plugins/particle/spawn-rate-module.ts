@@ -18,9 +18,23 @@ export class SpawnRateModule extends ParticleModule {
   override readonly stage = 'emitterUpdate' as const;
 
   private rateOverTime!: ValueGetter<number>;
+  private lastEmitTime = 0;
+  private initialLastEmitTime = 0;
 
   override fromJSON (data: SpawnRateModuleData): void {
     this.rateOverTime = createValueGetter(data.rateOverTime);
+    const rate = this.rateOverTime.getValue(0);
+
+    this.initialLastEmitTime = rate > 0 ? -1 / rate : 0;
+    this.lastEmitTime = this.initialLastEmitTime;
+  }
+
+  resetEmitTime (): void {
+    this.lastEmitTime = this.initialLastEmitTime;
+  }
+
+  commitEmitTime (timePassed: number): void {
+    this.lastEmitTime = timePassed;
   }
 
   override execute (ctx: ParticleModuleContext): void {
@@ -28,7 +42,7 @@ export class SpawnRateModule extends ParticleModule {
     const lifetime = ctx.emitterLifetime;
     const rate = this.rateOverTime;
     const interval = 1 / rate.getValue(lifetime);
-    const pointCount = Math.floor((timePassed - ctx.emitter.lastEmitTime) / interval);
+    const pointCount = Math.floor((timePassed - this.lastEmitTime) / interval);
 
     if (pointCount > 0) {
       const timeDelta = interval / pointCount;

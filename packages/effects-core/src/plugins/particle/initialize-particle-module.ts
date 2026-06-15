@@ -275,7 +275,7 @@ export class InitializeParticleModule extends ParticleModule {
     db.lifetime[slotIndex] = lifetime;
     db.seed[slotIndex] = Math.random();
     db.alive[slotIndex] = 1;
-    db.uniqueId[slotIndex] = emitter.uniqueIdCounter++;
+    db.uniqueId[slotIndex] = emitter.uniqueIndexOffset++;
 
     db.initialRotation[i3] = rot.x;
     db.initialRotation[i3 + 1] = rot.y;
