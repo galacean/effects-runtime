@@ -3,10 +3,10 @@ import { Player } from '@galacean/effects';
 /**
  * 多 TransformTrack 叠加 demo：移动 + 缩放 + 旋转 三条轨道同时作用于一个 sprite。
  *
- * 组合方式：
- * - Track 1 (override)：X 轴路径位移 0 → 4.3064
- * - Track 2 (additive)：均匀缩放 1 → 1.73
- * - Track 3 (additive)：Z 轴旋转 0 → 360°
+ * 所有 track 统一为 additive 语义，在 base pose 上叠加：
+ * - Track 1：X 轴路径位移 0 → 4.3064
+ * - Track 2：均匀缩放 1 → 1.73
+ * - Track 3：Z 轴旋转 0 → 360°
  *
  * 预期：sprite 边向右移动，边放大，边旋转。
  */
@@ -151,27 +151,24 @@ const scene = {
       children: [],
       clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'activation_asset_1' } }],
     },
-    // TransformTrack 1：移动（override）
+    // TransformTrack 1：移动
     {
       id: 'transform_track_move',
       dataType: 'TransformTrack',
-      blendMode: 'override',
       children: [],
       clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_move' } }],
     },
-    // TransformTrack 2：缩放（additive）
+    // TransformTrack 2：缩放
     {
       id: 'transform_track_scale',
       dataType: 'TransformTrack',
-      blendMode: 'additive',
       children: [],
       clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_scale' } }],
     },
-    // TransformTrack 3：旋转（additive）
+    // TransformTrack 3：旋转
     {
       id: 'transform_track_rotate',
       dataType: 'TransformTrack',
-      blendMode: 'additive',
       children: [],
       clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_rotate' } }],
     },
