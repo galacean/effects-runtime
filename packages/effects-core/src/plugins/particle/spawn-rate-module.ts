@@ -24,7 +24,7 @@ export class SpawnRateModule extends ParticleModule {
   }
 
   override execute (ctx: ParticleModuleContext): void {
-    const timePassed = ctx.currentTime - ctx.emitter.loopStartTime;
+    const timePassed = ctx.emitter.timePassed;
     const lifetime = ctx.emitterLifetime;
     const rate = this.rateOverTime;
     const interval = 1 / rate.getValue(lifetime);

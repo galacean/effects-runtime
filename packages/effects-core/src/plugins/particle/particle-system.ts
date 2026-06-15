@@ -47,6 +47,7 @@ export class ParticleSystem extends Component implements Maskable {
   private pathTime = 0;
   private pathBasePosition = { x: 0, y: 0, z: 0 };
   private pathCurve: ValueGetter<any> | undefined;
+  private simulated = false;
 
   constructor (
     engine: Engine,
@@ -66,7 +67,7 @@ export class ParticleSystem extends Component implements Maskable {
   // ========================
 
   get time (): number {
-    return this.emitter?.time ?? 0;
+    return this.emitter?.state.emitterAge ?? 0;
   }
 
   get timePassed () {
@@ -97,14 +98,6 @@ export class ParticleSystem extends Component implements Maskable {
     this.emitter?.setMaxCount(count);
   }
 
-  isFrozen () {
-    return this.emitter?.frozen ?? false;
-  }
-
-  isEnded () {
-    return this.emitter?.ended ?? false;
-  }
-
   setVisible (visible: boolean) {
     this.renderer.setVisible(visible);
   }
@@ -114,18 +107,17 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   startEmit () {
-    if (!this.emitter?.started || this.emitter?.ended) {
+    if (!this.emitter?.started || this.emitter.state.executionState !== 'active') {
       this.reset();
       if (this.emitter) {
         this.emitter.started = true;
-        this.emitter.ended = false;
       }
     }
   }
 
   stop () {
     if (this.emitter) {
-      this.emitter.ended = true;
+      this.emitter.state.executionState = 'inactive';
       this.emitter.started = false;
     }
   }
@@ -134,6 +126,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.emitter?.fullReset();
     this.trailEmitter?.fullReset();
     this.pathTime = 0;
+    this.simulated = false;
   }
 
   stopParticleEmission () {
@@ -150,9 +143,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   simulate (time: number) {
     this.tickEmitter(time * 1000);
-    if (this.emitter) {
-      this.emitter.frozen = true;
-    }
+    this.simulated = true;
   }
 
   // ========================
@@ -237,8 +228,8 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.emitter.fromJSON(result.emitterData, this.renderer);
 
-    this.emitter.itemDuration = this.item.duration;
-    this.emitter.endBehaviorValue = this.item.endBehavior;
+    this.emitter.state.duration = this.item.duration;
+    this.emitter.state.endBehavior = this.item.endBehavior;
 
     if (result.emitterData.trails) {
       this.setupTrailEmitter(result.emitterData);
@@ -257,7 +248,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override onUpdate (dt: number): void {
-    if (!this.emitter?.frozen) {
+    if (!this.simulated) {
       this.tickEmitter(dt);
     }
   }
@@ -310,7 +301,7 @@ export class ParticleSystem extends Component implements Maskable {
 
     this.trailEmitter = new ParticleEmitter();
     this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules, pointCountPerTrail);
-    this.trailEmitter.itemDuration = this.item.duration;
+    this.trailEmitter.state.duration = this.item.duration;
     this.trailEmitter.started = true;
   }
 
@@ -338,7 +329,7 @@ export class ParticleSystem extends Component implements Maskable {
     let px = x, py = y, pz = z;
 
     if (this.pathCurve) {
-      const pathVal = this.pathCurve.getValue(this.pathTime / this.emitter.itemDuration);
+      const pathVal = this.pathCurve.getValue(this.pathTime / this.emitter.state.duration);
 
       px += pathVal.x ?? pathVal[0] ?? 0;
       py += pathVal.y ?? pathVal[1] ?? 0;

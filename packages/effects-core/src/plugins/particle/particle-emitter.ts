@@ -19,6 +19,7 @@ import { OrbitalAndLinearMoveModule } from './orbital-and-linear-move-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import { UpdateAgeModule } from './update-age-module';
+import { EmitterState } from './emitter-state';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
 
 export type ParsedTrailConfig = {
@@ -41,11 +42,7 @@ export type EmitterData = {
 
 export class ParticleEmitter {
   // --- Mutable state ---
-  time = 0;
-  loopStartTime = 0;
   started = false;
-  ended = false;
-  frozen = false;
   emissionStopped = false;
   nextSlotIndex = 0;
   generatedCount = 0;
@@ -54,10 +51,11 @@ export class ParticleEmitter {
 
   spawnInfos: SpawnInfo[] = [];
 
+  // --- Lifecycle state machine ---
+  readonly state = new EmitterState();
+
   // --- Config (set after setup) ---
   worldMatrix: Matrix4 = Matrix4.IDENTITY;
-  itemDuration = 1;
-  endBehaviorValue = 0;
 
   // --- Modules ---
   private modules: ParticleModule[] = [];
@@ -66,14 +64,10 @@ export class ParticleEmitter {
   private _dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer | null = null;
   private maxCount = 0;
-  private looping = false;
   particleFollowParent = false;
   private initialLastEmitTime = 0;
   private alignSpeedDirection = false;
   private pointCountPerTrail = 0;
-
-  /** 单调递增时间，不受 loop 回退影响（对齐 Pro 的 emitterAge） */
-  emitterAge = 0;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
@@ -81,7 +75,7 @@ export class ParticleEmitter {
 
   fromJSON (data: EmitterData, renderer: ParticleSystemRenderer): void {
     this.maxCount = data.maxCount;
-    this.looping = data.looping;
+    this.state.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
     this.renderer = renderer;
@@ -95,7 +89,7 @@ export class ParticleEmitter {
 
   setupTrailEmitter (maxCount: number, modules: ParticleModule[], pointCountPerTrail: number): void {
     this.maxCount = maxCount;
-    this.looping = true;
+    this.state.looping = true;
     this.particleFollowParent = true;
     this.pointCountPerTrail = pointCountPerTrail;
     this._dataBuffer = new ParticleDataBufferImpl(maxCount);
@@ -166,18 +160,13 @@ export class ParticleEmitter {
   }
 
   fullReset (): void {
-    this.time = 0;
-    this.loopStartTime = 0;
-    this.ended = false;
-    this.frozen = false;
+    this.state.reset();
     this.nextSlotIndex = 0;
     this.generatedCount = 0;
     this.lastEmitTime = this.initialLastEmitTime;
-
-    this.emitterAge = 0;
     this.uniqueIdCounter = 0;
     this.spawnInfos.length = 0;
-    this._dataBuffer?.clear(); // clears alive, freeSlots, liveIndices
+    this._dataBuffer?.clear();
     this.renderer?.reset();
   }
 
@@ -194,68 +183,74 @@ export class ParticleEmitter {
   // ========================
 
   get timePassed (): number {
-    return this.time - this.loopStartTime;
+    return this.state.timePassed;
   }
 
   get emitterLifetime (): number {
-    return this.itemDuration > 0 ? this.timePassed / this.itemDuration : 0;
+    return this.state.loopLifetime;
   }
 
   tick (delta: number): void {
     if (!this.started) {
       return;
     }
-    this.time += delta / 1000;
-    this.emitterAge += delta / 1000;
-    this.renderer?.updateTime(this.time);
+    const dt = delta / 1000;
 
-    const ctx = this.buildModuleContext(delta / 1000);
+    // 1. advance loop state machine
+    const looped = this.state.advance(dt);
 
-    // 1. update existing particles (includes KillBySourceModule setting lifetime=0)
+    if (looped) {
+      this.lastEmitTime = this.initialLastEmitTime;
+      this.renderer?.minusTimeForLoop(this.state.duration);
+    }
+    this.renderer?.updateTime(this.state.emitterAge);
+
+    // 2. particleUpdate (existing particles)
     if (this._dataBuffer.activeCount > 0) {
+      const ctx = this.buildModuleContext(dt);
+
       this.runStage('particleUpdate', ctx);
     }
 
-    // 2. recycle dead particles into free-list (before spawn, so slots are available)
+    // 3. recycle dead particles
     this.recycleDead();
 
-    // 3. spawn + first-frame update for new particles
-    if (!this.ended) {
-      this.advanceEmitter(ctx);
+    // 4. spawn (only if state allows)
+    if (this.state.isSpawningAllowed()) {
+      this.doSpawn(dt);
     }
 
-    // 4. build live indices + shrink activeCount (after spawn, for renderer)
+    // 5. rebuild live indices
     this.rebuildLiveIndices();
 
-    // 5. sync to renderer
+    // 6. handle completion
+    this.state.handleCompletion(this._dataBuffer.liveCount);
+
+    // 7. render
     if (this._dataBuffer.liveCount > 0 && this.renderer) {
       this.renderer.generateSpriteData(this);
     }
   }
 
-  private advanceEmitter (ctx: ParticleModuleContext): void {
-    if (this.timePassed < this.itemDuration) {
-      this.spawnInfos.length = 0;
-      this.runStage('emitterUpdate', ctx);
+  private doSpawn (dt: number): void {
+    this.spawnInfos.length = 0;
+    const ctx = this.buildModuleContext(dt);
 
-      const spawnedSlots: number[] = [];
+    this.runStage('emitterUpdate', ctx);
 
-      for (const info of this.spawnInfos) {
-        this.particleSpawn(this._dataBuffer, this.maxCount, info, spawnedSlots);
-      }
+    const spawnedSlots: number[] = [];
+
+    for (const info of this.spawnInfos) {
+      this.particleSpawn(this._dataBuffer, this.maxCount, info, spawnedSlots);
+    }
+
+    if (spawnedSlots.length > 0) {
       const firstFrameCtx = { ...ctx, deltaTime: 0 };
 
       for (const slot of spawnedSlots) {
         firstFrameCtx.firstIndex = slot;
         firstFrameCtx.lastIndex = slot + 1;
         this.runStage('particleUpdate', firstFrameCtx);
-      }
-    } else if (this.looping) {
-      this.handleLoop(this.itemDuration);
-    } else {
-      this.ended = true;
-      if (this.endBehaviorValue === 5) {
-        this.frozen = true;
       }
     }
   }
@@ -506,13 +501,6 @@ export class ParticleEmitter {
     return this.particleFollowParent ? Matrix4.IDENTITY : this.worldMatrix;
   }
 
-  private handleLoop (duration: number): void {
-    this.loopStartTime = this.time - duration;
-    this.lastEmitTime -= duration;
-    this.time -= duration;
-    this.renderer?.minusTimeForLoop(duration);
-  }
-
   // ========================
   // Helpers
   // ========================
@@ -520,9 +508,9 @@ export class ParticleEmitter {
   private buildModuleContext (deltaTime: number): ParticleModuleContext {
     return {
       deltaTime,
-      currentTime: this.time,
-      emitterLifetime: this.emitterLifetime,
-      duration: this.itemDuration,
+      currentTime: this.state.emitterAge,
+      emitterLifetime: this.state.loopLifetime,
+      duration: this.state.duration,
       dataBuffer: this._dataBuffer,
       emitter: this,
       firstIndex: 0,
