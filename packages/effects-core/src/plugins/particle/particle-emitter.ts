@@ -45,6 +45,7 @@ export class ParticleEmitter {
   uniqueIndexOffset = 0;
 
   spawnInfos: SpawnInfo[] = [];
+  lastRaycastHitIndex = -1;
 
   // --- Lifecycle state machine ---
   readonly state = new EmitterState();
@@ -56,10 +57,10 @@ export class ParticleEmitter {
   private modules: ParticleModule[] = [];
 
   // --- Shared refs (set during setup) ---
+  maxCount = 0;
   particleFollowParent = false;
   private _dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer | null = null;
-  private maxCount = 0;
   private alignSpeedDirection = false;
   private pointCountPerTrail = 0;
   private spawnRateModule: SpawnRateModule | null = null;
@@ -143,14 +144,6 @@ export class ParticleEmitter {
     return modules;
   }
 
-  setMaxCount (count: number): void {
-    this.maxCount = count;
-  }
-
-  getMaxCount (): number {
-    return this.maxCount;
-  }
-
   fullReset (): void {
     this.state.reset();
     this.totalSpawnedParticles = 0;
@@ -175,10 +168,6 @@ export class ParticleEmitter {
 
   get timePassed (): number {
     return this.state.timePassed;
-  }
-
-  get emitterLifetime (): number {
-    return this.state.loopLifetime;
   }
 
   tick (delta: number): void {
@@ -469,8 +458,6 @@ export class ParticleEmitter {
 
     return hitPositions;
   }
-
-  lastRaycastHitIndex = -1;
 
   killParticle (index: number): void {
     const db = this._dataBuffer;

@@ -59,7 +59,7 @@ export class BurstSpawnModule extends ParticleModule {
   }
 
   private resolveBurst (emitter: ParticleEmitter, burst: Burst, burstIndex: number): ResolvedBurstSpawn | null {
-    const opts = burst.getGeneratorOptions(emitter.timePassed, emitter.emitterLifetime);
+    const opts = burst.getGeneratorOptions(emitter.timePassed, emitter.state.loopLifetime);
 
     if (!opts) {
       return null;

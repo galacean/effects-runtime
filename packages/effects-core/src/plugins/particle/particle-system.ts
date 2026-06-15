@@ -83,7 +83,7 @@ export class ParticleSystem extends Component implements Maskable {
    * @since 2.3.0
    */
   get maxParticles () {
-    return this.emitter?.getMaxCount() ?? 0;
+    return this.emitter?.maxCount ?? 0;
   }
 
   /**
@@ -92,7 +92,9 @@ export class ParticleSystem extends Component implements Maskable {
    * @since 2.3.0
    */
   set maxParticles (count: number) {
-    this.emitter?.setMaxCount(count);
+    if (this.emitter) {
+      this.emitter.maxCount = count;
+    }
   }
 
   setVisible (visible: boolean) {
