@@ -6,7 +6,6 @@ import { createValueGetter } from '../../math';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
-import type { Mesh } from '../../render';
 import type { Maskable } from '../../material';
 import { MaskProcessor } from '../../material';
 import type { Texture } from '../../texture';
@@ -34,9 +33,7 @@ export interface ParticleSystemProps extends spec.ParticleContent {
 @effectsClass(spec.DataType.ParticleSystem)
 export class ParticleSystem extends Component implements Maskable {
   renderer: ParticleSystemRenderer;
-  meshes: Mesh[];
   interaction?: ParticleInteraction;
-  props: ParticleSystemProps;
 
   readonly maskManager: MaskProcessor;
 
@@ -223,7 +220,6 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer = this.item.addComponent(ParticleSystemRenderer);
     this.renderer.setup(particleMeshProps, trailMeshProps);
     this.renderer.maskManager = this.maskManager;
-    this.meshes = this.renderer.meshes;
 
     this.emitter.fromJSON(result.emitterData, this.renderer);
 
@@ -306,7 +302,7 @@ export class ParticleSystem extends Component implements Maskable {
 
   private initEmitterTransform (): void {
     const position = this.item.transform.position.clone();
-    const transformPath = this.props.emitterTransform?.path;
+    const transformPath = (this.definition as spec.ParticleSystemData).emitterTransform?.path;
 
     if (transformPath) {
       if (transformPath[0] === spec.ValueType.CONSTANT_VEC3) {
@@ -338,9 +334,6 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   override onDestroy (): void {
-    if (this.item && this.item.composition) {
-      this.meshes.forEach(mesh => mesh.dispose());
-    }
   }
 
   drawStencilMask (maskRef: number): void {
@@ -359,7 +352,6 @@ export class ParticleSystem extends Component implements Maskable {
 
   override fromData (data: spec.ParticleSystemData): void {
     super.fromData(data);
-    this.props = data;
     this.name = 'ParticleSystem';
 
     if (data.mask) {

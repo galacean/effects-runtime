@@ -130,4 +130,10 @@ export class ParticleSystemRenderer extends RendererComponent {
 
     return textures;
   }
+
+  override onDestroy (): void {
+    for (const mesh of this.meshes) {
+      mesh.dispose();
+    }
+  }
 }

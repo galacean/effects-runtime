@@ -50,13 +50,13 @@ describe('core/plugins/particle/base', () => {
     const ps = item.getComponent(ParticleSystem);
 
     expect(ps).to.be.an.instanceof(ParticleSystem);
-    const specOptions = ps.props.options;
+    const specOptions = (ps.definition as spec.ParticleSystemData).options;
 
     expect(specOptions.startLifetime).to.eql(2, 'startLifetime');
     expect(specOptions.startSize).to.eql(3, 'startSize');
     expect(specOptions.startColor).to.eql([8, [255, 255, 255]], 'startColor');
     expect(specOptions.maxCount).to.eql(1, 'maxCount');
-    expect(ps.props.positionOverLifetime?.gravityOverLifetime).to.eql([0, 1], 'gravityModifier');
+    expect((ps.definition as spec.ParticleSystemData).positionOverLifetime?.gravityOverLifetime).to.eql([0, 1], 'gravityModifier');
     expect(ps.item.endBehavior).to.eql(spec.END_BEHAVIOR_DESTROY, 'endBehavior');
     expect(specOptions.looping).to.eql(undefined, 'looping');
   });
@@ -69,9 +69,9 @@ describe('core/plugins/particle/base', () => {
     const pure = comp.getItemByName('pure') as VFXItem;
     const colors = comp.getItemByName('colors') as VFXItem;
     const gradient = comp.getItemByName('gradient') as VFXItem;
-    const pureStartColor = pure.getComponent(ParticleSystem).props.options.startColor;
-    const colorsStartColor = colors.getComponent(ParticleSystem).props.options.startColor;
-    const gradientStartColor = gradient.getComponent(ParticleSystem).props.options.startColor;
+    const pureStartColor = (pure.getComponent(ParticleSystem).definition as spec.ParticleSystemData).options.startColor;
+    const colorsStartColor = (colors.getComponent(ParticleSystem).definition as spec.ParticleSystemData).options.startColor;
+    const gradientStartColor = (gradient.getComponent(ParticleSystem).definition as spec.ParticleSystemData).options.startColor;
 
     // pure: [8, [255, 255, 255]] — RGBA_COLOR type
     expect(pureStartColor).to.eql([8, [255, 255, 255]], 'pure color');

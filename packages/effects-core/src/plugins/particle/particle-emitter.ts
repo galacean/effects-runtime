@@ -43,7 +43,6 @@ export class ParticleEmitter {
   // --- Mutable state ---
   totalSpawnedParticles = 0;
   uniqueIndexOffset = 0;
-  particleFollowParent = false;
 
   spawnInfos: SpawnInfo[] = [];
 
@@ -57,6 +56,7 @@ export class ParticleEmitter {
   private modules: ParticleModule[] = [];
 
   // --- Shared refs (set during setup) ---
+  particleFollowParent = false;
   private _dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer | null = null;
   private maxCount = 0;
