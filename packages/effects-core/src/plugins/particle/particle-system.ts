@@ -141,6 +141,9 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   simulate (time: number) {
+    if (time <= 0) {
+      return;
+    }
     this.tickEmitter(time * 1000);
     this.simulated = true;
   }

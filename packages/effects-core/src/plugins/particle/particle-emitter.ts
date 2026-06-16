@@ -56,7 +56,7 @@ export class ParticleEmitter {
   // --- Spawn state (reset on fullReset / loop) ---
   totalSpawnedParticles = 0;
   uniqueIndexOffset = 0;
-  spawnFraction = 0;
+  spawnFraction = 1;
   spawnInfos: SpawnInfo[] = [];
 
   // --- Query state ---
@@ -150,7 +150,7 @@ export class ParticleEmitter {
   fullReset (): void {
     this.state.reset();
     this.totalSpawnedParticles = 0;
-    this.spawnFraction = 0;
+    this.spawnFraction = 1;
     this.uniqueIndexOffset = 0;
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
@@ -186,7 +186,7 @@ export class ParticleEmitter {
     const looped = this.state.advance(dt);
 
     if (looped) {
-      this.spawnFraction = 0;
+      this.spawnFraction = 1;
     }
 
     // 2. particleUpdate (existing particles)
