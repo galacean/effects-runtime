@@ -2,7 +2,7 @@ import type { vec3 } from '@galacean/effects-specification';
 import type { BurstData } from './burst';
 import { Burst } from './burst';
 import type { ParticleEmitter } from './particle-emitter';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage, SpawnInfoKind } from './particle-module';
 import type { ParticleModuleContext, ResolvedBurstSpawn } from './particle-module';
 
 export type BurstSpawnModuleData = {
@@ -21,7 +21,7 @@ const ORIGIN_OFFSET: readonly [number, number, number] = [0, 0, 0];
  * 自检测 loop 回绕（timePassed 下降时重置 burst 状态）。
  */
 export class BurstSpawnModule extends ParticleModule {
-  override readonly stage = 'emitterUpdate' as const;
+  override readonly stage = ParticleModuleStage.EmitterUpdate;
 
   private bursts: Burst[] = [];
   private burstOffsets: Record<string, vec3[] | null> = {};
@@ -52,7 +52,7 @@ export class BurstSpawnModule extends ParticleModule {
       const burstIndex = j;
 
       emitter.spawnInfos.push({
-        kind: 'burst',
+        kind: SpawnInfoKind.Burst,
         prepare: () => this.resolveBurst(emitter, burst, burstIndex),
       });
     }

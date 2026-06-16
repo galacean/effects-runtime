@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter, RandomValue } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type SolveRotationModuleData = {
@@ -19,7 +19,7 @@ export type SolveRotationModuleData = {
  * shader 内从 euler 角构建旋转矩阵。
  */
 export class SolveRotationModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private rotationOverLifetime?: {
     asRotation?: boolean,

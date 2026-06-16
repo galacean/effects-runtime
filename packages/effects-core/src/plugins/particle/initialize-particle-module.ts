@@ -7,7 +7,7 @@ import { createShape } from '../../shape';
 import type { ShapeGenerator, ShapeParticle } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleEmitter } from './particle-emitter';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type InitializeModuleData = {
@@ -40,7 +40,7 @@ type RuntimeTextureSheetAnimation = {
 };
 
 export class InitializeParticleModule extends ParticleModule {
-  override readonly stage = 'particleSpawn' as const;
+  override readonly stage = ParticleModuleStage.ParticleSpawn;
 
   private shape: ShapeGenerator;
   private startSpeed: ValueGetter<number>;

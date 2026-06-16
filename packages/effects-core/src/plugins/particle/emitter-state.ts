@@ -1,4 +1,8 @@
-export type EmitterExecutionState = 'active' | 'inactive' | 'complete';
+export enum EmitterExecutionState {
+  Active = 'active',
+  Inactive = 'inactive',
+  Complete = 'complete',
+}
 
 /**
  * Emitter 生命周期状态机。
@@ -15,7 +19,7 @@ export class EmitterState {
   endBehavior = 0;
 
   // ── Runtime State ──
-  executionState: EmitterExecutionState = 'active';
+  executionState: EmitterExecutionState = EmitterExecutionState.Active;
   emissionStopped = false;
   emitterAge = 0;
   loopAge = 0;
@@ -43,24 +47,24 @@ export class EmitterState {
 
         return true;
       }
-      this.executionState = 'inactive';
+      this.executionState = EmitterExecutionState.Inactive;
     }
 
     return false;
   }
 
   handleCompletion (activeCount: number): void {
-    if (this.executionState === 'inactive' && activeCount === 0) {
-      this.executionState = 'complete';
+    if (this.executionState === EmitterExecutionState.Inactive && activeCount === 0) {
+      this.executionState = EmitterExecutionState.Complete;
     }
   }
 
   isSpawningAllowed (): boolean {
-    return this.executionState === 'active';
+    return this.executionState === EmitterExecutionState.Active;
   }
 
   reset (): void {
-    this.executionState = 'active';
+    this.executionState = EmitterExecutionState.Active;
     this.emissionStopped = false;
     this.emitterAge = 0;
     this.loopAge = 0;

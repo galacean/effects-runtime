@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter, RandomValue } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type ScaleSizeModuleData = {
@@ -16,7 +16,7 @@ export type ScaleSizeModuleData = {
  * 每帧读 initialSize，乘以 sizeOverLifetime 曲线值，覆写 db.size。
  */
 export class ScaleSizeModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private x!: ValueGetter<number>;
   private y?: ValueGetter<number>;

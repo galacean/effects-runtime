@@ -2,7 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type GravityForceModuleData = {
@@ -16,7 +16,7 @@ export type GravityForceModuleData = {
  * 每帧：velocity += gravity * gravityModifier(life) * dt
  */
 export class GravityForceModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private gravity!: vec3;
   private gravityModifier!: ValueGetter<number>;

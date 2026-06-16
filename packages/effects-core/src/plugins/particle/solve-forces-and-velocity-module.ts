@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type SolveForcesAndVelocityModuleData = {
@@ -17,7 +17,7 @@ export type SolveForcesAndVelocityModuleData = {
  * effectiveVelocity = initialVelocity * speed + (velocity - initialVelocity)
  */
 export class SolveForcesAndVelocityModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private speedOverLifetime?: ValueGetter<number>;
 

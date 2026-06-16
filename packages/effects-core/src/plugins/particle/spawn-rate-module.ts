@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage, SpawnInfoKind } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type SpawnRateModuleData = {
@@ -15,7 +15,7 @@ export type SpawnRateModuleData = {
  * 余数（spawnFraction）由 emitter 管理。
  */
 export class SpawnRateModule extends ParticleModule {
-  override readonly stage = 'emitterUpdate' as const;
+  override readonly stage = ParticleModuleStage.EmitterUpdate;
 
   private rateOverTime!: ValueGetter<number>;
 
@@ -35,7 +35,7 @@ export class SpawnRateModule extends ParticleModule {
       const interval = rate > 0 ? 1 / rate : 0;
 
       ctx.emitter.spawnInfos.push({
-        kind: 'rate',
+        kind: SpawnInfoKind.Rate,
         count,
         timeDelta: interval,
         generator: {

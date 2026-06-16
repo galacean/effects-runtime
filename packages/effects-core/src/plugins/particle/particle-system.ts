@@ -13,6 +13,7 @@ import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-h
 import { HitTestType } from '../interact/click-handler';
 import { ParticleEmitter } from './particle-emitter';
 import type { EmitterData } from './particle-emitter';
+import { EmitterExecutionState } from './emitter-state';
 import type { ParsedSpecResult } from './parse-spec';
 import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
@@ -106,17 +107,17 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   startEmit () {
-    if (this.emitter?.state.executionState !== 'active') {
+    if (this.emitter?.state.executionState !== EmitterExecutionState.Active) {
       this.reset();
       if (this.emitter) {
-        this.emitter.state.executionState = 'active';
+        this.emitter.state.executionState = EmitterExecutionState.Active;
       }
     }
   }
 
   stop () {
     if (this.emitter) {
-      this.emitter.state.executionState = 'inactive';
+      this.emitter.state.executionState = EmitterExecutionState.Inactive;
     }
   }
 
@@ -299,7 +300,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.trailEmitter = new ParticleEmitter();
     this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules, pointCountPerTrail);
     this.trailEmitter.state.duration = this.item.duration;
-    this.trailEmitter.state.executionState = 'active';
+    this.trailEmitter.state.executionState = EmitterExecutionState.Active;
   }
 
   private initEmitterTransform (): void {

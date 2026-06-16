@@ -3,7 +3,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { vec3 } from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { BezierCurve, createValueGetter, RandomValue } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type OrbitalAndLinearMoveModuleData = {
@@ -123,7 +123,7 @@ function gpuMatchingIntegrate (curve: ValueGetter<number>, life: number, time: n
  * + Simpson 20 段积分算法，确保与原 shader 计算结果一致。
  */
 export class OrbitalAndLinearMoveModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private orbital?: {
     enabled?: boolean,

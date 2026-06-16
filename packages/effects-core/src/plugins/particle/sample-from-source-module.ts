@@ -1,4 +1,4 @@
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleEmitter } from './particle-emitter';
@@ -11,7 +11,7 @@ export interface SampleFromSourceConfig {
 }
 
 export class SampleFromSourceModule extends ParticleModule {
-  override readonly stage = 'particleSpawn' as const;
+  override readonly stage = ParticleModuleStage.ParticleSpawn;
 
   constructor (
     private readonly sourceEmitter: ParticleEmitter,

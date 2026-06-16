@@ -1,8 +1,8 @@
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export class UpdateAgeModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   override execute (ctx: ParticleModuleContext): void {
     const db = ctx.dataBuffer;

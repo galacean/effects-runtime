@@ -1,4 +1,4 @@
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage, SpawnInfoKind } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 
@@ -9,7 +9,7 @@ export interface SourceAssignment {
 }
 
 export class SpawnPerSourceParticleModule extends ParticleModule {
-  override readonly stage = 'emitterUpdate' as const;
+  override readonly stage = ParticleModuleStage.EmitterUpdate;
 
   readonly sourceAssignments: SourceAssignment[] = [];
   readonly aliveSourceIds = new Set<number>();
@@ -77,7 +77,7 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
 
     if (totalCount > 0) {
       ctx.emitter.spawnInfos.push({
-        kind: 'rate',
+        kind: SpawnInfoKind.Rate,
         count: totalCount,
         timeDelta: 0,
         generator: {

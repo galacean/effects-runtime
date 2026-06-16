@@ -4,7 +4,8 @@ import type * as spec from '@galacean/effects-specification';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
-import type { ParticleModuleContext, ParticleModuleStage, SpawnInfo, SpawnGenerator } from './particle-module';
+import { ParticleModuleStage, SpawnInfoKind } from './particle-module';
+import type { ParticleModuleContext, SpawnInfo, SpawnGenerator } from './particle-module';
 import type { ParticleModule } from './particle-module';
 import type { ParsedModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
@@ -18,7 +19,7 @@ import { OrbitalAndLinearMoveModule } from './orbital-and-linear-move-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import { UpdateAgeModule } from './update-age-module';
-import { EmitterState } from './emitter-state';
+import { EmitterState, EmitterExecutionState } from './emitter-state';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
 
 export type ParsedTrailConfig = {
@@ -173,7 +174,7 @@ export class ParticleEmitter {
   }
 
   tick (delta: number): void {
-    if (this.state.executionState === 'complete') {
+    if (this.state.executionState === EmitterExecutionState.Complete) {
       return;
     }
     const dt = delta / 1000;
@@ -189,7 +190,7 @@ export class ParticleEmitter {
     if (this._dataBuffer.activeCount > 0) {
       const ctx = this.buildModuleContext(dt);
 
-      this.runStage('particleUpdate', ctx);
+      this.runStage(ParticleModuleStage.ParticleUpdate, ctx);
     }
 
     // 3. recycle dead particles
@@ -216,7 +217,7 @@ export class ParticleEmitter {
     this.spawnInfos.length = 0;
     const ctx = this.buildModuleContext(dt);
 
-    this.runStage('emitterUpdate', ctx);
+    this.runStage(ParticleModuleStage.EmitterUpdate, ctx);
 
     const spawnedSlots: number[] = [];
 
@@ -230,7 +231,7 @@ export class ParticleEmitter {
       for (const slot of spawnedSlots) {
         firstFrameCtx.firstIndex = slot;
         firstFrameCtx.lastIndex = slot + 1;
-        this.runStage('particleUpdate', firstFrameCtx);
+        this.runStage(ParticleModuleStage.ParticleUpdate, firstFrameCtx);
       }
     }
   }
@@ -275,7 +276,7 @@ export class ParticleEmitter {
     let generator: SpawnGenerator;
     let positionOffset: readonly [number, number, number] | null;
 
-    if (spawnInfo.kind === 'burst') {
+    if (spawnInfo.kind === SpawnInfoKind.Burst) {
       if (!this.hasAvailableSlots(db, maxCount)) {
         return;
       }
@@ -322,7 +323,7 @@ export class ParticleEmitter {
       spawnBatch: { slotIndices, spawnGenerators },
     };
 
-    this.runStage('particleSpawn', spawnCtx);
+    this.runStage(ParticleModuleStage.ParticleSpawn, spawnCtx);
 
     this.bakeNewParticlesToWorld(slotIndices, worldMatrix, db);
 

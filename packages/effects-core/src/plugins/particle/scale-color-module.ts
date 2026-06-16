@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter, RandomValue } from '../../math';
-import { ParticleModule } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
 
@@ -18,7 +18,7 @@ type ColorStop = { time: number, color: { toArray: () => number[] } };
  * 每帧读 initialColor，乘以 gradient/opacity 曲线值，覆写 db.color。
  */
 export class ScaleColorModule extends ParticleModule {
-  override readonly stage = 'particleUpdate' as const;
+  override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private opacity?: ValueGetter<number>;
   private gradientStops: ColorStop[] | null = null;

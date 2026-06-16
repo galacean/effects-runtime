@@ -5,11 +5,12 @@ import type { ParticleEmitter } from './particle-emitter';
 /**
  * 粒子模块执行阶段。对齐 particle-system-pro 的 ProModuleStage。
  */
-type ParticleModuleStage =
-  | 'emitterSpawn'
-  | 'emitterUpdate'
-  | 'particleSpawn'
-  | 'particleUpdate';
+export enum ParticleModuleStage {
+  EmitterSpawn = 'emitterSpawn',
+  EmitterUpdate = 'emitterUpdate',
+  ParticleSpawn = 'particleSpawn',
+  ParticleUpdate = 'particleUpdate',
+}
 
 /**
  * particleSpawn 阶段的 batch 元信息。
@@ -63,11 +64,16 @@ type ResolvedBurstSpawn = {
   generator: SpawnGenerator,
 };
 
+export enum SpawnInfoKind {
+  Rate = 'rate',
+  Burst = 'burst',
+}
+
 /**
  * rate 来源：spawn 参数本帧已就绪，emitter 直接消费。
  */
 type RateSpawnInfo = {
-  kind: 'rate',
+  kind: SpawnInfoKind.Rate,
   count: number,
   timeDelta: number,
   generator: SpawnGenerator,
@@ -79,7 +85,7 @@ type RateSpawnInfo = {
  * （cycle 耗尽 / 概率未命中），保留「满容量则不消耗、下一帧补发」的时序。
  */
 type BurstSpawnInfo = {
-  kind: 'burst',
+  kind: SpawnInfoKind.Burst,
   prepare: () => ResolvedBurstSpawn | null,
 };
 
@@ -109,5 +115,5 @@ abstract class ParticleModule {
   }
 }
 
-export type { ParticleModuleStage, ParticleModuleContext, SpawnBatchContext, SpawnInfo, RateSpawnInfo, BurstSpawnInfo, SpawnGenerator, ResolvedBurstSpawn };
+export type { ParticleModuleContext, SpawnBatchContext, SpawnInfo, RateSpawnInfo, BurstSpawnInfo, SpawnGenerator, ResolvedBurstSpawn };
 export { ParticleModule };
