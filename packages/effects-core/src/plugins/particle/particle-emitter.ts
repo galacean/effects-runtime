@@ -174,10 +174,13 @@ export class ParticleEmitter {
   }
 
   tick (delta: number): void {
+    const dt = delta / 1000;
+
+    this.state.emitterAge += dt;
+
     if (this.state.executionState === EmitterExecutionState.Complete) {
       return;
     }
-    const dt = delta / 1000;
 
     // 1. advance loop state machine
     const looped = this.state.advance(dt);

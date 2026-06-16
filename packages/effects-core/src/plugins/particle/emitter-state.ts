@@ -36,14 +36,11 @@ export class EmitterState {
    * 每帧推进 loop 状态机。返回是否发生了 loop wrap。
    */
   advance (deltaTime: number): boolean {
-    this.emitterAge += deltaTime;
     this.loopAge += deltaTime;
 
     if (this.loopAge >= this.duration) {
       if (this.looping) {
-        while (this.loopAge >= this.duration) {
-          this.loopAge -= this.duration;
-        }
+        this.loopAge = this.loopAge % this.duration;
 
         return true;
       }
