@@ -1807,1142 +1807,843 @@ function getProceduralTextureUrl (cacheKey: string, canvasFactory: () => HTMLCan
   return url;
 }
 
-function fract (value: number): number {
-  return value - Math.floor(value);
+// ═══════════════════════════════════════════════════════════════════════════
+//  WebGL GLSL Procedural Texture Generation
+// ═══════════════════════════════════════════════════════════════════════════
+
+const FULLSCREEN_VERT = `#version 300 es
+out vec2 vUV;
+void main() {
+  vec2 pos = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  vUV = vec2(pos.x, 1.0 - pos.y);
+  gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+}
+`;
+
+const GLSL_COMMON = `#version 300 es
+precision highp float;
+in vec2 vUV;
+out vec4 fragColor;
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(233.34, 851.73));
+  p += dot(p, p + 23.45);
+  return fract(p.x * p.y);
 }
 
-function random01 (seed: number): number {
-  return fract(Math.sin(seed * 127.1 + 311.7) * 43758.5453123);
+float hash11(float p) {
+  return fract(sin(p * 127.1 + 311.7) * 43758.5453123);
 }
 
-function lerp (a: number, b: number, t: number): number {
-  return a + (b - a) * t;
+vec4 alphaBlend(vec4 base, vec4 top) {
+  float a = top.a + base.a * (1.0 - top.a);
+  if (a < 0.001) return vec4(0.0);
+  vec3 c = (top.rgb * top.a + base.rgb * base.a * (1.0 - top.a)) / a;
+  return vec4(c, a);
 }
 
-function rgba (r: number, g: number, b: number, a: number): string {
-  return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${Math.max(0, Math.min(1, a)).toFixed(3)})`;
+float radialGrad(vec2 uv, vec2 center, float innerR, float outerR) {
+  float d = length(uv - center);
+  return 1.0 - smoothstep(innerR, outerR, d);
 }
 
-function createProceduralWarmBodyCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+float linearGrad(float t, float start, float end) {
+  return clamp((t - start) / (end - start), 0.0, 1.0);
+}
 
-  canvas.width = 192;
-  canvas.height = 192;
+float sdEllipse(vec2 p, vec2 center, vec2 radii) {
+  vec2 q = (p - center) / radii;
+  return length(q) - 1.0;
+}
 
-  const ctx = canvas.getContext('2d');
+float sdBox(vec2 p, vec2 center, vec2 halfSize) {
+  vec2 d = abs(p - center) - halfSize;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
 
-  if (!ctx) {
+float sdRing(vec2 p, vec2 center, float radius, float thickness) {
+  float d = abs(length(p - center) - radius);
+  return 1.0 - smoothstep(0.0, thickness, d);
+}
+
+`;
+
+let sharedGLCanvas: HTMLCanvasElement | null = null;
+let sharedGL: WebGL2RenderingContext | null = null;
+let sharedVS: WebGLShader | null = null;
+let sharedVAO: WebGLVertexArrayObject | null = null;
+
+function ensureSharedGL (): WebGL2RenderingContext | null {
+  if (sharedGL && !sharedGL.isContextLost()) {
+    return sharedGL;
+  }
+  sharedGLCanvas = document.createElement('canvas');
+  const gl = sharedGLCanvas.getContext('webgl2', { preserveDrawingBuffer: true, premultipliedAlpha: false });
+
+  if (!gl) {
+    return null;
+  }
+  sharedGL = gl;
+  sharedVS = gl.createShader(gl.VERTEX_SHADER)!;
+  gl.shaderSource(sharedVS, FULLSCREEN_VERT);
+  gl.compileShader(sharedVS);
+  sharedVAO = gl.createVertexArray();
+
+  return gl;
+}
+
+function renderShaderToCanvas (width: number, height: number, fragSource: string): HTMLCanvasElement {
+  const gl = ensureSharedGL();
+  const canvas = sharedGLCanvas!;
+
+  if (!gl || !canvas) {
+    const fallback = document.createElement('canvas');
+
+    fallback.width = width;
+    fallback.height = height;
+
+    return fallback;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+
+  const fs = gl.createShader(gl.FRAGMENT_SHADER)!;
+
+  gl.shaderSource(fs, GLSL_COMMON + fragSource);
+  gl.compileShader(fs);
+
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+    console.error('[procedural-texture] Fragment shader error:', gl.getShaderInfoLog(fs));
+    gl.deleteShader(fs);
+
     return canvas;
   }
 
-  const base = ctx.createRadialGradient(96, 108, 0, 96, 108, 82);
+  const prog = gl.createProgram()!;
 
-  base.addColorStop(0, rgba(255, 228, 182, 0.44));
-  base.addColorStop(0.48, rgba(255, 172, 96, 0.18));
-  base.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = base;
-  ctx.beginPath();
-  ctx.arc(96, 108, 82, 0, Math.PI * 2);
-  ctx.fill();
+  gl.attachShader(prog, sharedVS!);
+  gl.attachShader(prog, fs);
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
 
-  const inner = ctx.createRadialGradient(96, 112, 0, 96, 112, 40);
+  gl.bindVertexArray(sharedVAO);
+  gl.viewport(0, 0, width, height);
+  gl.disable(gl.BLEND);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindVertexArray(null);
 
-  inner.addColorStop(0, rgba(255, 236, 198, 0.22));
-  inner.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = inner;
-  ctx.beginPath();
-  ctx.arc(96, 112, 40, 0, Math.PI * 2);
-  ctx.fill();
+  gl.deleteShader(fs);
+  gl.deleteProgram(prog);
 
-  return canvas;
+  // 将结果拷贝到独立 canvas，因为共享 canvas 下次渲染会被覆盖
+  const output = document.createElement('canvas');
+
+  output.width = width;
+  output.height = height;
+  const ctx2d = output.getContext('2d')!;
+
+  ctx2d.drawImage(canvas, 0, 0);
+
+  return output;
+}
+
+// ─── GLSL Procedural Texture Functions ───────────────────────────────────────
+
+function createProceduralWarmBodyCanvas (): HTMLCanvasElement {
+  return renderShaderToCanvas(192, 192, `
+void main() {
+  vec2 uv = vUV;
+  vec2 c = vec2(0.5, 0.5625);
+  float d = length(uv - c);
+  float g = exp(-d * d * 18.0);
+  vec3 col = mix(vec3(1.0, 0.675, 0.376), vec3(1.0, 0.894, 0.714), pow(g, 1.5));
+  float a = g * 0.35;
+  // inner highlight
+  vec2 c2 = vec2(0.5, 0.583);
+  float d2 = length(uv - c2);
+  float g2 = exp(-d2 * d2 * 40.0);
+  col = mix(col, vec3(1.0, 0.95, 0.82), g2);
+  a += g2 * 0.15;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralSmokeBodyCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 192;
-  canvas.height = 192;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
+  // orbit-smoke: 36/s, 1.4-2.0s, orbit radius 0.7-1.2, ~60 alive in tight ring
+  // startColor alpha 0.82-0.96, particles orbit and heavily overlap
+  return renderShaderToCanvas(192, 192, `
+void main() {
+  vec2 uv = vUV;
+  vec4 col = vec4(0.0);
+  vec2 puffs[4] = vec2[4](vec2(0.375,0.44), vec2(0.60,0.41), vec2(0.48,0.62), vec2(0.69,0.59));
+  float radii[4] = float[4](0.14, 0.12, 0.16, 0.10);
+  vec3 colors[4] = vec3[4](
+    vec3(0.86, 0.89, 0.93), vec3(0.69, 0.74, 0.82),
+    vec3(0.57, 0.60, 0.68), vec3(0.81, 0.84, 0.89));
+  float alphas[4] = float[4](0.06, 0.05, 0.045, 0.035);
+  for (int i = 0; i < 4; i++) {
+    float d = length(uv - puffs[i]);
+    float r = radii[i];
+    float g = exp(-d * d / (r * r * 0.15));
+    col = alphaBlend(col, vec4(colors[i], g * alphas[i]));
   }
-
-  const puffs: Array<[number, number, number, [number, number, number, number]]> = [
-    [72, 84, 44, [220, 226, 236, 0.34]],
-    [116, 78, 40, [176, 188, 208, 0.26]],
-    [92, 118, 52, [144, 154, 174, 0.22]],
-    [132, 114, 34, [206, 214, 228, 0.18]],
-  ];
-
-  for (const [x, y, radius, color] of puffs) {
-    const puff = ctx.createRadialGradient(x, y, 0, x, y, radius);
-
-    puff.addColorStop(0, rgba(color[0], color[1], color[2], color[3]));
-    puff.addColorStop(0.5, rgba(color[0], color[1], color[2], color[3] * 0.45));
-    puff.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = puff;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  return canvas;
+  fragColor = col;
+}
+`);
 }
 
 function createProceduralSmokeHighlightCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 128;
-  canvas.height = 128;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const glow = ctx.createRadialGradient(68, 62, 0, 68, 62, 42);
-
-  glow.addColorStop(0, rgba(255, 255, 255, 0.22));
-  glow.addColorStop(0.36, rgba(190, 232, 255, 0.12));
-  glow.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(68, 62, 42, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  return renderShaderToCanvas(128, 128, `
+void main() {
+  vec2 uv = vUV;
+  vec2 c = vec2(0.531, 0.484);
+  float d = length(uv - c);
+  float g = exp(-d * d * 20.0);
+  vec3 col = mix(vec3(0.745, 0.91, 1.0), vec3(1.0), pow(g, 2.0));
+  fragColor = vec4(col, g * 0.18);
+}
+`);
 }
 
 function createProceduralShockBandCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 256;
-  canvas.height = 256;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const band = ctx.createRadialGradient(128, 128, 54, 128, 128, 102);
-
-  band.addColorStop(0, rgba(0, 0, 0, 0));
-  band.addColorStop(0.28, rgba(0, 0, 0, 0));
-  band.addColorStop(0.48, rgba(214, 248, 255, 0.9));
-  band.addColorStop(0.62, rgba(116, 220, 255, 0.48));
-  band.addColorStop(0.78, rgba(0, 0, 0, 0));
-  band.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = band;
-  ctx.beginPath();
-  ctx.arc(128, 128, 102, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  // shock-ring: burst 140 from ring shape, ScaleSize 1.4→3.8, ALPHA
+  // At ring center ~50 particles overlap. startColor alpha=0.75
+  return renderShaderToCanvas(256, 256, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  float ringCenter = 0.3;
+  float ringWidth = 0.022;
+  float ring = exp(-pow((d - ringCenter) / ringWidth, 2.0));
+  float haze = exp(-pow((d - ringCenter) / 0.05, 2.0)) * 0.2;
+  vec3 col = mix(vec3(0.45, 0.86, 1.0), vec3(0.84, 0.97, 1.0), ring);
+  float a = ring * 0.012 + haze * 0.002;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralShockwaveHazeCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 256;
-  canvas.height = 256;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const haze = ctx.createRadialGradient(128, 128, 38, 128, 128, 126);
-
-  haze.addColorStop(0, rgba(0, 0, 0, 0));
-  haze.addColorStop(0.34, rgba(0, 0, 0, 0));
-  haze.addColorStop(0.62, rgba(160, 210, 255, 0.12));
-  haze.addColorStop(0.86, rgba(120, 150, 255, 0.06));
-  haze.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = haze;
-  ctx.beginPath();
-  ctx.arc(128, 128, 126, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  return renderShaderToCanvas(256, 256, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  float ring = exp(-pow((d - 0.35) / 0.1, 2.0));
+  vec3 c = mix(vec3(0.47, 0.59, 1.0), vec3(0.63, 0.82, 1.0), ring);
+  fragColor = vec4(c, ring * 0.08);
+}
+`);
 }
 
 function createProceduralPlasmaBodyCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 224;
-  canvas.height = 224;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
+  return renderShaderToCanvas(224, 224, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  float g = exp(-d * d * 12.0);
+  vec3 c = mix(vec3(0.43, 0.49, 1.0), vec3(0.72, 0.96, 1.0), pow(g, 1.5));
+  float a = g * 0.3;
+  // blobs for detail
+  for (int i = 0; i < 4; i++) {
+    float angle = float(i) * 1.57 + 0.4;
+    float dist = 0.15 + hash11(float(i) + 50.0) * 0.08;
+    vec2 bp = vec2(0.5) + vec2(cos(angle), sin(angle)) * dist;
+    float bd = length(uv - bp);
+    float bg = exp(-bd * bd * 60.0) * 0.12;
+    a += bg;
+    c = mix(c, vec3(0.74, 0.94, 1.0), bg);
   }
-
-  const cloud = ctx.createRadialGradient(112, 112, 0, 112, 112, 96);
-
-  cloud.addColorStop(0, rgba(184, 244, 255, 0.38));
-  cloud.addColorStop(0.42, rgba(118, 198, 255, 0.18));
-  cloud.addColorStop(0.72, rgba(110, 124, 255, 0.08));
-  cloud.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = cloud;
-  ctx.beginPath();
-  ctx.arc(112, 112, 96, 0, Math.PI * 2);
-  ctx.fill();
-
-  const blobs: Array<[number, number, number]> = [
-    [86, 96, 34],
-    [132, 90, 30],
-    [104, 134, 42],
-    [142, 126, 26],
-  ];
-
-  for (const [x, y, radius] of blobs) {
-    const puff = ctx.createRadialGradient(x, y, 0, x, y, radius);
-
-    puff.addColorStop(0, rgba(188, 240, 255, 0.16));
-    puff.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = puff;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  return canvas;
+  fragColor = vec4(c, a);
+}
+`);
 }
 
 function createProceduralPlasmaCoreCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 160;
-  canvas.height = 160;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const core = ctx.createRadialGradient(80, 80, 0, 80, 80, 56);
-
-  core.addColorStop(0, rgba(255, 255, 255, 0.92));
-  core.addColorStop(0.24, rgba(180, 248, 255, 0.68));
-  core.addColorStop(0.58, rgba(92, 210, 255, 0.28));
-  core.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = core;
-  ctx.beginPath();
-  ctx.arc(80, 80, 56, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  // Used by noise-field (60 alive, size up to 1.03 units, ALPHA)
+  // and trail-per-source source (12 alive).
+  // 60 particles × 1 unit each = MASSIVE overlap. Only a pinpoint should be visible.
+  return renderShaderToCanvas(160, 160, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  // pinpoint core: visible only in center ~5% of texture
+  float core = exp(-d * d * 800.0);
+  // subtle haze that's almost invisible
+  float haze = exp(-d * d * 80.0);
+  vec3 c = mix(vec3(0.36, 0.82, 1.0), vec3(1.0), core);
+  // alpha: tiny bright dot + barely-there haze
+  float a = core * 0.18 + haze * 0.015;
+  fragColor = vec4(c, a);
+}
+`);
 }
 
 function createProceduralEnergyStreakCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 128;
-  canvas.height = 320;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const core = ctx.createLinearGradient(64, 0, 64, 320);
-
-  core.addColorStop(0, rgba(0, 0, 0, 0));
-  core.addColorStop(0.16, rgba(152, 255, 232, 0.4));
-  core.addColorStop(0.5, rgba(255, 255, 255, 0.94));
-  core.addColorStop(0.84, rgba(112, 226, 255, 0.42));
-  core.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = core;
-  ctx.beginPath();
-  ctx.ellipse(64, 160, 20, 138, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  // acceleration-column: 35 stacking particles. Use dim RGB approach.
+  return renderShaderToCanvas(128, 320, `
+void main() {
+  vec2 uv = vUV;
+  float cx = abs(uv.x - 0.5);
+  float cy = abs(uv.y - 0.5);
+  float hG = exp(-cx * cx * 500.0);
+  float vG = exp(-cy * cy * 12.0);
+  float endFade = smoothstep(0.0, 0.18, 0.5 - cy);
+  float aura = exp(-cx * cx * 30.0) * vG;
+  // dim RGB: cap brightness at 0.3 for center, darker for edges
+  vec3 col = mix(vec3(0.06, 0.15, 0.18), vec3(0.15, 0.3, 0.25), vG);
+  col = mix(col, vec3(0.25, 0.45, 0.4), hG * vG * 0.5);
+  float a = (hG * vG * endFade * 0.08 + aura * 0.015);
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralColumnAuraCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 160;
-  canvas.height = 320;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const aura = ctx.createLinearGradient(80, 0, 80, 320);
-
-  aura.addColorStop(0, rgba(0, 0, 0, 0));
-  aura.addColorStop(0.2, rgba(90, 255, 214, 0.12));
-  aura.addColorStop(0.5, rgba(96, 188, 255, 0.22));
-  aura.addColorStop(0.8, rgba(90, 255, 214, 0.12));
-  aura.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = aura;
-  ctx.beginPath();
-  ctx.ellipse(80, 160, 54, 150, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  return renderShaderToCanvas(160, 320, `
+void main() {
+  vec2 uv = vUV;
+  float cx = (uv.x - 0.5) / 0.34;
+  float cy = (uv.y - 0.5) / 0.47;
+  float ellipse = cx * cx + cy * cy;
+  float g = exp(-ellipse * 2.0);
+  float yFade = smoothstep(0.0, 0.2, 0.5 - abs(uv.y - 0.5));
+  vec3 c = mix(vec3(0.35, 1.0, 0.84), vec3(0.38, 0.74, 1.0), g);
+  fragColor = vec4(c, g * yFade * 0.18);
+}
+`);
 }
 
 function createProceduralFountainFlameCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+  // fountain: 100/s, ~25 overlap at emitter. Use dim RGB + moderate alpha.
+  return renderShaderToCanvas(256, 320, `
+void main() {
+  vec2 uv = vUV;
+  vec2 center = vec2(0.5, 0.55);
+  vec2 p = uv - center;
 
-  canvas.width = 256;
-  canvas.height = 320;
+  float yNorm = (p.y + 0.35) / 0.6;
+  float yClamp = clamp(yNorm, 0.0, 1.0);
 
-  const ctx = canvas.getContext('2d');
+  float noiseX = (hash21(uv * 8.0 + 1.0) - 0.5) * 0.05 * (1.0 - yClamp);
+  vec2 dp = vec2(p.x + noiseX, p.y);
 
-  if (!ctx) {
-    return canvas;
-  }
+  // broader flame shape so individual particles have visible area
+  float taper = 0.15 * pow(1.0 - yClamp, 1.1) + 0.02;
+  float xNorm = abs(dp.x) / taper;
+  float shape = exp(-xNorm * xNorm * 3.5);
+  float vertMask = smoothstep(-0.35, -0.1, p.y) * smoothstep(0.25, 0.02, p.y);
+  float flame = shape * vertMask;
 
-  const cx = canvas.width * 0.5;
-  const cy = canvas.height * 0.62;
-  const body = ctx.createLinearGradient(cx, cy + 82, cx, cy - 112);
+  float coreTaper = taper * 0.3;
+  float coreX = abs(dp.x) / max(coreTaper, 0.001);
+  float core = exp(-coreX * coreX * 5.0) * vertMask * smoothstep(0.18, -0.05, p.y);
 
-  body.addColorStop(0, rgba(255, 156, 62, 0));
-  body.addColorStop(0.28, rgba(255, 176, 74, 0.42));
-  body.addColorStop(0.62, rgba(255, 224, 156, 0.86));
-  body.addColorStop(1, rgba(255, 255, 255, 0));
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - 112);
-  ctx.bezierCurveTo(cx - 54, cy - 34, cx - 42, cy + 46, cx, cy + 82);
-  ctx.bezierCurveTo(cx + 42, cy + 46, cx + 54, cy - 34, cx, cy - 112);
-  ctx.fill();
+  // DIM RGB: darken the output color instead of relying solely on alpha
+  vec3 col = mix(vec3(0.4, 0.12, 0.02), vec3(0.6, 0.35, 0.08), yClamp);
+  col = mix(col, vec3(0.7, 0.5, 0.2), pow(yClamp, 2.0) * shape);
+  col = mix(col, vec3(0.85, 0.75, 0.5), core * 0.7);
 
-  const core = ctx.createLinearGradient(cx, cy + 52, cx, cy - 88);
+  float a = flame * 0.06 + core * 0.04;
+  float ember = step(0.98, hash21(uv * 40.0)) * flame * 0.02;
+  a += ember;
 
-  core.addColorStop(0, rgba(255, 220, 110, 0));
-  core.addColorStop(0.35, rgba(255, 238, 168, 0.82));
-  core.addColorStop(0.72, rgba(255, 255, 255, 0.98));
-  core.addColorStop(1, rgba(255, 255, 255, 0));
-  ctx.fillStyle = core;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - 88);
-  ctx.bezierCurveTo(cx - 24, cy - 22, cx - 20, cy + 22, cx, cy + 52);
-  ctx.bezierCurveTo(cx + 20, cy + 22, cx + 24, cy - 22, cx, cy - 88);
-  ctx.fill();
-
-  const halo = ctx.createRadialGradient(cx, cy + 4, 0, cx, cy + 4, 82);
-
-  halo.addColorStop(0, rgba(255, 234, 176, 0.28));
-  halo.addColorStop(0.55, rgba(255, 178, 98, 0.1));
-  halo.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(cx, cy + 4, 82, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralSparkShardCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+  // Used by spark (55/s, velocity-facing, ALPHA blend, ~45 alive)
+  // Hot metal shard with bright head and streaking tail
+  return renderShaderToCanvas(256, 96, `
+void main() {
+  vec2 uv = vUV;
+  // asymmetric elongated shape: bright compact head, long fading tail
+  float cx = uv.x - 0.28;
+  float cy = uv.y - 0.5;
 
-  canvas.width = 256;
-  canvas.height = 96;
+  // tail: exponential decay to the right
+  float tailDecay = cx > 0.0 ? exp(-cx * 4.0) : exp(cx * 12.0);
+  // narrow vertical cross-section
+  float yProfile = exp(-cy * cy * 250.0);
+  // wider secondary glow around the body
+  float yGlow = exp(-cy * cy * 60.0);
 
-  const ctx = canvas.getContext('2d');
+  float body = tailDecay * yProfile;
+  float glow = tailDecay * yGlow * 0.3;
 
-  if (!ctx) {
-    return canvas;
+  // scorching white head hotspot
+  float hd = length((uv - vec2(0.25, 0.5)) * vec2(1.5, 1.0));
+  float head = exp(-hd * hd * 600.0);
+
+  // sparking fragments around head
+  float sparks = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float fi = float(i);
+    vec2 sp = vec2(0.22 + hash11(fi + 1.0) * 0.12, 0.5 + (hash11(fi + 5.0) - 0.5) * 0.15);
+    float sd = length((uv - sp) * vec2(3.0, 8.0));
+    sparks += exp(-sd * sd * 20.0) * 0.06;
   }
 
-  const tail = ctx.createLinearGradient(0, canvas.height * 0.5, canvas.width, canvas.height * 0.5);
+  // color: deep orange tail → yellow mid → white head
+  vec3 col = mix(vec3(1.0, 0.45, 0.08), vec3(1.0, 0.8, 0.3), tailDecay);
+  col = mix(col, vec3(1.0, 0.95, 0.8), body * 0.7);
+  col = mix(col, vec3(1.0), head * 0.95);
 
-  tail.addColorStop(0, rgba(255, 164, 62, 0));
-  tail.addColorStop(0.12, rgba(255, 176, 78, 0.2));
-  tail.addColorStop(0.42, rgba(255, 240, 214, 0.96));
-  tail.addColorStop(0.72, rgba(255, 162, 68, 0.3));
-  tail.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = tail;
-  ctx.beginPath();
-  ctx.ellipse(canvas.width * 0.48, canvas.height * 0.5, canvas.width * 0.34, canvas.height * 0.12, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const head = ctx.createRadialGradient(canvas.width * 0.28, canvas.height * 0.5, 0, canvas.width * 0.28, canvas.height * 0.5, 20);
-
-  head.addColorStop(0, rgba(255, 255, 255, 1));
-  head.addColorStop(0.48, rgba(255, 238, 184, 0.82));
-  head.addColorStop(1, rgba(255, 192, 94, 0));
-  ctx.fillStyle = head;
-  ctx.beginPath();
-  ctx.arc(canvas.width * 0.28, canvas.height * 0.5, 20, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  float a = body * 0.45 + glow + head * 0.5 + sparks;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralShockwaveCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 256;
-  canvas.height = 256;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
+  return renderShaderToCanvas(256, 256, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  float angle = atan(uv.y - 0.5, uv.x - 0.5);
+  vec4 col = vec4(0.0);
+  // concentric rings
+  for (int i = 0; i < 3; i++) {
+    float r = (60.0 + float(i) * 10.0) / 256.0;
+    float w = (22.0 - float(i) * 5.0) / 256.0 * 0.4;
+    float ring = exp(-pow((d - r) / w, 2.0));
+    col = alphaBlend(col, vec4(0.96, 0.99, 1.0, ring * (0.5 - float(i) * 0.1)));
   }
-
-  const cx = canvas.width * 0.5;
-  const cy = canvas.height * 0.5;
-
-  for (let i = 0; i < 3; i++) {
-    ctx.strokeStyle = rgba(244, 252, 255, 0.72 - i * 0.14);
-    ctx.lineWidth = 22 - i * 5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 60 + i * 10, 0, Math.PI * 2);
-    ctx.stroke();
+  // radial halo
+  float halo = exp(-pow((d - 0.33) / 0.08, 2.0)) * 0.3;
+  col = alphaBlend(col, vec4(0.4, 0.84, 1.0, halo));
+  // spokes
+  for (int i = 0; i < 16; i++) {
+    float tA = float(i) / 16.0 * 6.2832;
+    float aD = abs(mod(angle - tA + 3.14159, 6.2832) - 3.14159);
+    float spoke = exp(-aD * aD * 800.0);
+    float inner = (58.0 + float(i % 2) * 8.0) / 256.0;
+    float outer = (96.0 + float(i % 3) * 10.0) / 256.0;
+    float radial = smoothstep(inner, inner + 0.01, d) * smoothstep(outer, outer - 0.01, d);
+    col = alphaBlend(col, vec4(0.86, 0.97, 1.0, spoke * radial * 0.12));
   }
-
-  const halo = ctx.createRadialGradient(cx, cy, 44, cx, cy, 118);
-
-  halo.addColorStop(0, rgba(0, 0, 0, 0));
-  halo.addColorStop(0.45, rgba(118, 214, 255, 0));
-  halo.addColorStop(0.68, rgba(102, 220, 255, 0.62));
-  halo.addColorStop(0.88, rgba(96, 140, 255, 0.22));
-  halo.addColorStop(1, rgba(0, 0, 0, 0));
-
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 118, 0, Math.PI * 2);
-  ctx.fill();
-
-  for (let i = 0; i < 16; i++) {
-    const angle = (i / 16) * Math.PI * 2;
-    const inner = 58 + (i % 2) * 8;
-    const outer = 96 + (i % 3) * 10;
-
-    ctx.strokeStyle = rgba(220, 248, 255, 0.18);
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(angle) * inner, cy + Math.sin(angle) * inner);
-    ctx.lineTo(cx + Math.cos(angle) * outer, cy + Math.sin(angle) * outer);
-    ctx.stroke();
-  }
-
-  for (let i = 0; i < 9; i++) {
-    const angle = i * (Math.PI * 2 / 9) + 0.22;
-
-    ctx.strokeStyle = rgba(176, 244, 255, 0.16);
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 52 + i * 5, angle, angle + Math.PI * 0.34);
-    ctx.stroke();
-  }
-
-  return canvas;
+  fragColor = col;
+}
+`);
 }
 
 function createProceduralOrbitSmokeCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 192;
-  canvas.height = 192;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
+  // Used by orbit-smoke (36/s, 1.4-2.0s = ~60 alive, ALPHA blend)
+  return renderShaderToCanvas(192, 192, `
+void main() {
+  vec2 uv = vUV;
+  vec4 col = vec4(0.0);
+  vec2 puffs[5] = vec2[5](vec2(0.34,0.36), vec2(0.59,0.33), vec2(0.48,0.60), vec2(0.69,0.58), vec2(0.29,0.60));
+  float radii[5] = float[5](0.25, 0.23, 0.30, 0.20, 0.18);
+  vec3 colors[5] = vec3[5](
+    vec3(0.85,0.88,0.93), vec3(0.69,0.74,0.83),
+    vec3(0.57,0.61,0.71), vec3(0.80,0.83,0.90), vec3(0.53,0.57,0.67));
+  float alphas[5] = float[5](0.45, 0.35, 0.30, 0.25, 0.20);
+  for (int i = 0; i < 5; i++) {
+    float d = length(uv - puffs[i]);
+    float r = radii[i];
+    float g = exp(-d * d / (r * r * 0.3));
+    col = alphaBlend(col, vec4(colors[i], g * alphas[i]));
   }
-
-  const puffs: Array<[number, number, number, [number, number, number, number]]> = [
-    [66, 70, 48, [218, 224, 238, 0.62]],
-    [114, 64, 44, [176, 188, 212, 0.46]],
-    [92, 116, 58, [146, 156, 182, 0.38]],
-    [132, 112, 38, [204, 212, 230, 0.34]],
-    [56, 116, 34, [136, 146, 172, 0.28]],
-  ];
-
-  for (const [x, y, radius, color] of puffs) {
-    const puff = ctx.createRadialGradient(x, y, 0, x, y, radius);
-
-    puff.addColorStop(0, rgba(color[0], color[1], color[2], color[3]));
-    puff.addColorStop(0.45, rgba(color[0], color[1], color[2], color[3] * 0.5));
-    puff.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = puff;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
+  // wispy holes
+  for (int i = 0; i < 7; i++) {
+    vec2 hp = vec2(mix(0.2, 0.8, hash11(float(i) + 101.0)), mix(0.2, 0.8, hash11(float(i) + 111.0)));
+    float hr = mix(0.05, 0.1, hash11(float(i) + 121.0));
+    float hd = length(uv - hp);
+    col.a -= exp(-hd * hd / (hr * hr)) * 0.06;
   }
-
-  ctx.globalCompositeOperation = 'destination-out';
-  for (let i = 0; i < 9; i++) {
-    const x = lerp(42, 150, random01(i + 101));
-    const y = lerp(34, 150, random01(i + 111));
-    const radius = lerp(12, 24, random01(i + 121));
-    const hole = ctx.createRadialGradient(x, y, 0, x, y, radius);
-
-    hole.addColorStop(0, rgba(0, 0, 0, 0.08));
-    hole.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = hole;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalCompositeOperation = 'source-over';
-
-  ctx.strokeStyle = rgba(210, 220, 242, 0.08);
-  ctx.lineWidth = 10;
-  ctx.beginPath();
-  ctx.arc(94, 98, 44, Math.PI * 0.15, Math.PI * 1.35);
-  ctx.stroke();
-
-  ctx.strokeStyle = rgba(150, 164, 196, 0.06);
-  ctx.lineWidth = 16;
-  ctx.beginPath();
-  ctx.arc(96, 92, 58, Math.PI * 0.72, Math.PI * 1.84);
-  ctx.stroke();
-
-  return canvas;
+  col.a = max(col.a, 0.0);
+  fragColor = col;
+}
+`);
 }
 
 function createProceduralPlasmaCloudCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 224;
-  canvas.height = 224;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
+  return renderShaderToCanvas(224, 224, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  float g = exp(-d * d * 10.0);
+  vec3 c = mix(vec3(0.47, 0.36, 1.0), vec3(0.67, 0.97, 1.0), pow(g, 1.2));
+  c = mix(c, vec3(1.0), pow(g, 3.0));
+  float a = g * 0.4;
+  // detail cells
+  for (int i = 0; i < 10; i++) {
+    float angle = hash11(float(i) + 201.0) * 6.2832;
+    float dist = mix(0.08, 0.28, hash11(float(i) + 221.0));
+    vec2 cp = vec2(0.5) + vec2(cos(angle), sin(angle)) * dist;
+    float cr = mix(0.06, 0.12, hash11(float(i) + 241.0));
+    float cd = length(uv - cp);
+    float cg = exp(-cd * cd / (cr * cr * 0.3));
+    a += cg * 0.15;
+    c = mix(c, vec3(0.8, 1.0, 1.0), cg * 0.15);
   }
-
-  const cx = canvas.width * 0.5;
-  const cy = canvas.height * 0.5;
-  const cloud = ctx.createRadialGradient(cx, cy, 0, cx, cy, 98);
-
-  cloud.addColorStop(0, rgba(255, 255, 255, 0.96));
-  cloud.addColorStop(0.18, rgba(170, 248, 255, 1));
-  cloud.addColorStop(0.42, rgba(88, 212, 255, 0.8));
-  cloud.addColorStop(0.7, rgba(120, 92, 255, 0.42));
-  cloud.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = cloud;
-  ctx.beginPath();
-  ctx.arc(cx, cy, 98, 0, Math.PI * 2);
-  ctx.fill();
-
-  for (let i = 0; i < 14; i++) {
-    const angle = random01(i + 201) * Math.PI * 2;
-    const distance = lerp(18, 70, random01(i + 221));
-    const px = cx + Math.cos(angle) * distance;
-    const py = cy + Math.sin(angle) * distance;
-    const radius = lerp(24, 46, random01(i + 241));
-    const cell = ctx.createRadialGradient(px, py, 0, px, py, radius);
-
-    cell.addColorStop(0, rgba(204, 255, 255, 0.72));
-    cell.addColorStop(0.5, rgba(118, 224, 255, 0.32));
-    cell.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = cell;
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  for (let i = 0; i < 11; i++) {
-    const startAngle = random01(i + 261) * Math.PI * 2;
-    const radius = lerp(26, 86, random01(i + 281));
-    const span = lerp(0.35, 0.8, random01(i + 301));
-
-    ctx.strokeStyle = rgba(198, 252, 255, 0.2 - i * 0.01);
-    ctx.lineWidth = 4.2 - i * 0.16;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, startAngle, startAngle + span);
-    ctx.stroke();
-  }
-
-  return canvas;
+  a *= smoothstep(0.45, 0.35, d);
+  fragColor = vec4(c, a);
+}
+`);
 }
 
 function createProceduralPlasmaFilamentCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 160;
-  canvas.height = 320;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const core = ctx.createLinearGradient(0, 0, 0, canvas.height);
-
-  core.addColorStop(0, rgba(0, 0, 0, 0));
-  core.addColorStop(0.14, rgba(120, 255, 220, 0.58));
-  core.addColorStop(0.45, rgba(255, 255, 255, 0.98));
-  core.addColorStop(0.78, rgba(92, 220, 255, 0.6));
-  core.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = core;
-  ctx.beginPath();
-  ctx.ellipse(canvas.width * 0.5, canvas.height * 0.5, 32, 140, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const aura = ctx.createLinearGradient(0, 0, 0, canvas.height);
-
-  aura.addColorStop(0, rgba(0, 0, 0, 0));
-  aura.addColorStop(0.2, rgba(84, 255, 210, 0.22));
-  aura.addColorStop(0.5, rgba(96, 180, 255, 0.42));
-  aura.addColorStop(0.82, rgba(84, 255, 210, 0.22));
-  aura.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = aura;
-  ctx.beginPath();
-  ctx.ellipse(canvas.width * 0.5, canvas.height * 0.5, 70, 156, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  for (let i = 0; i < 12; i++) {
-    const y0 = lerp(18, 278, i / 11);
-    const phase = random01(i + 321) * 18;
-
-    ctx.strokeStyle = rgba(220, 255, 255, 0.16 - i * 0.007);
-    ctx.lineWidth = 4.6 - (i % 4) * 0.5;
-    ctx.beginPath();
-    ctx.moveTo(canvas.width * 0.34, y0);
-    ctx.bezierCurveTo(canvas.width * 0.36 + phase, y0 + 24, canvas.width * 0.64 - phase, y0 + 42, canvas.width * 0.66, y0 + 74);
-    ctx.stroke();
-  }
-
-  return canvas;
+  return renderShaderToCanvas(160, 320, `
+void main() {
+  vec2 uv = vUV;
+  float cx = (uv.x - 0.5) / 0.2;
+  float cy = (uv.y - 0.5) / 0.44;
+  float ellipse = cx * cx + cy * cy;
+  float core = exp(-ellipse * 2.5);
+  float yFade = smoothstep(0.0, 0.14, uv.y) * smoothstep(1.0, 0.86, uv.y);
+  vec3 col = mix(vec3(0.36, 0.86, 1.0), vec3(0.47, 1.0, 0.86), core);
+  col = mix(col, vec3(1.0), pow(core, 3.0) * yFade);
+  float a = core * yFade * 0.45;
+  // aura
+  float ax = (uv.x - 0.5) / 0.44;
+  float ay = (uv.y - 0.5) / 0.49;
+  float aura = exp(-(ax * ax + ay * ay) * 1.5) * yFade;
+  a += aura * 0.12;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralEnergyTrailCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 96;
-  canvas.height = 512;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const crossFade = ctx.createLinearGradient(0, 0, canvas.width, 0);
-
-  crossFade.addColorStop(0, rgba(0, 0, 0, 0));
-  crossFade.addColorStop(0.18, rgba(92, 214, 255, 0.16));
-  crossFade.addColorStop(0.5, rgba(255, 255, 255, 1));
-  crossFade.addColorStop(0.82, rgba(92, 214, 255, 0.16));
-  crossFade.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = crossFade;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const lengthFade = ctx.createLinearGradient(0, 0, 0, canvas.height);
-
-  lengthFade.addColorStop(0, rgba(160, 248, 255, 0.3));
-  lengthFade.addColorStop(0.25, rgba(255, 255, 255, 0.9));
-  lengthFade.addColorStop(0.58, rgba(90, 190, 255, 0.58));
-  lengthFade.addColorStop(1, rgba(0, 0, 0, 0.08));
-  ctx.fillStyle = lengthFade;
-  ctx.fillRect(canvas.width * 0.28, 0, canvas.width * 0.44, canvas.height);
-
-  for (let i = 0; i < 18; i++) {
-    const y = (i / 17) * canvas.height;
-    const offset = Math.sin(i * 1.73) * 8;
-
-    ctx.strokeStyle = rgba(255, 255, 255, 0.1 + (i % 3) * 0.03);
-    ctx.lineWidth = 2.2 - (i % 3) * 0.4;
-    ctx.beginPath();
-    ctx.moveTo(canvas.width * 0.24 + offset, y);
-    ctx.quadraticCurveTo(canvas.width * 0.5, y + 8, canvas.width * 0.76 - offset, y + 20);
-    ctx.stroke();
-  }
-
-  for (let i = 0; i < 14; i++) {
-    const y = lerp(20, canvas.height - 20, i / 13);
-    const width = lerp(10, 24, random01(i + 341));
-    const pulse = ctx.createRadialGradient(canvas.width * 0.5, y, 0, canvas.width * 0.5, y, width);
-
-    pulse.addColorStop(0, rgba(255, 255, 255, 0.28));
-    pulse.addColorStop(0.45, rgba(110, 235, 255, 0.12));
-    pulse.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = pulse;
-    ctx.beginPath();
-    ctx.arc(canvas.width * 0.5, y, width, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  return canvas;
+  // Ribbon: strategy — dim RGB so even if renderer ignores texture alpha,
+  // the color contribution per segment is low. Also thin cross-section.
+  return renderShaderToCanvas(96, 512, `
+void main() {
+  vec2 uv = vUV;
+  float cx = abs(uv.x - 0.5) * 2.0;
+  float core = exp(-cx * cx * 40.0);
+  float edge = exp(-cx * cx * 4.0);
+  float yVar = 0.9 + 0.1 * sin(uv.y * 25.13);
+  // DIM RGB: darken the color itself
+  vec3 col = mix(vec3(0.05, 0.12, 0.18), vec3(0.2, 0.4, 0.5), core);
+  float a = (edge * 0.08 + core * 0.2) * yVar;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
 function createProceduralFireballHaloFlipbookCanvas (): HTMLCanvasElement {
-  const rows = 4;
-  const cols = 4;
-  const cellSize = 96;
-  const canvas = document.createElement('canvas');
-
-  canvas.width = cols * cellSize;
-  canvas.height = rows * cellSize;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  for (let frame = 0; frame < rows * cols; frame++) {
-    const col = frame % cols;
-    const row = Math.floor(frame / cols);
-    const x = col * cellSize;
-    const y = row * cellSize;
-    const progress = frame / (rows * cols - 1);
-    const cx = x + cellSize * 0.5;
-    const cy = y + cellSize * 0.5;
-    const radius = lerp(cellSize * 0.28, cellSize * 0.58, progress);
-    const halo = ctx.createRadialGradient(cx, cy, radius * 0.28, cx, cy, radius);
-
-    ctx.clearRect(x, y, cellSize, cellSize);
-
-    halo.addColorStop(0, rgba(255, 236, 176, 0.12));
-    halo.addColorStop(0.42, rgba(255, 214, 132, 0.16 - progress * 0.05));
-    halo.addColorStop(0.72, rgba(255, 166, 82, 0.08 - progress * 0.02));
-    halo.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (progress > 0.2) {
-      ctx.strokeStyle = rgba(255, 224, 164, 0.1 - progress * 0.03);
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius * 0.88, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-  }
-
-  return canvas;
+  return renderShaderToCanvas(384, 384, `
+void main() {
+  vec2 uv = vUV;
+  vec2 cellUV = fract(uv * 4.0);
+  int col = int(floor(uv.x * 4.0));
+  int row = int(floor(uv.y * 4.0));
+  int frame = row * 4 + col;
+  float progress = float(frame) / 15.0;
+  float d = length(cellUV - vec2(0.5));
+  float radius = mix(0.2, 0.42, progress);
+  float ringD = abs(d - radius * 0.75);
+  float ring = exp(-ringD * ringD / (0.003 + progress * 0.002));
+  vec3 c = mix(vec3(1.0, 0.93, 0.69), vec3(1.0, 0.84, 0.52), progress);
+  float a = ring * max(0.12 - progress * 0.04, 0.02);
+  fragColor = vec4(c, a);
+}
+`);
 }
 
 function createProceduralFireballFlipbookCanvas (): HTMLCanvasElement {
-  const rows = 4;
-  const cols = 4;
-  const cellSize = 96;
-  const canvas = document.createElement('canvas');
+  // Used by flipbook-burst (0.6/s = ~1-2 alive, ALPHA) and dragon-breath (180/s, ADD)
+  // For flipbook-burst: single large particle, needs dramatic detail
+  // For dragon-breath: many particles but ScaleColor fades them + startColor is dim
+  return renderShaderToCanvas(384, 384, `
+void main() {
+  vec2 uv = vUV;
+  vec2 cellUV = fract(uv * 4.0);
+  int col = int(floor(uv.x * 4.0));
+  int row = int(floor(uv.y * 4.0));
+  int frame = row * 4 + col;
+  float progress = float(frame) / 15.0;
+  vec2 center = vec2(0.5);
+  float d = length(cellUV - center);
+  float radius = 0.1 + progress * 0.28;
+  float angle = atan(cellUV.y - 0.5, cellUV.x - 0.5);
+  vec4 color = vec4(0.0);
 
-  canvas.width = cols * cellSize;
-  canvas.height = rows * cellSize;
+  // outer dark smoke shell (appears mid-late)
+  float smokeR = radius * 1.3;
+  float smoke = smoothstep(smokeR, smokeR * 0.6, d) * progress;
+  vec3 smokeCol = mix(vec3(0.15, 0.12, 0.1), vec3(0.4, 0.25, 0.1), 1.0 - progress);
+  color = vec4(smokeCol, smoke * 0.35);
 
-  const ctx = canvas.getContext('2d');
+  // turbulent fire lobes — more at start, fewer later
+  int lobeCount = int(mix(8.0, 4.0, progress));
+  for (int i = 0; i < 8; i++) {
+    if (i >= lobeCount) break;
+    float fi = float(i);
+    float ff = float(frame);
+    float lobAngle = fi / float(lobeCount) * 6.2832 + progress * 2.5 + hash11(ff * 17.0 + fi * 7.0) * 0.8;
+    float lobDist = radius * mix(0.05, 0.5, hash11(ff * 23.0 + fi * 11.0));
+    vec2 lp = center + vec2(cos(lobAngle), sin(lobAngle)) * lobDist;
+    float lr = radius * mix(0.25, 0.55, hash11(ff * 31.0 + fi * 5.0));
+    float ld = length(cellUV - lp);
+    float lg = exp(-ld * ld / (lr * lr * 0.15));
 
-  if (!ctx) {
-    return canvas;
+    // color evolution: white-yellow early → orange → deep red late
+    float heat = lg * (1.0 - progress * 0.6);
+    vec3 lc = mix(vec3(1.0, 0.4, 0.05), vec3(1.0, 0.8, 0.3), heat);
+    lc = mix(lc, vec3(1.0, 0.98, 0.9), pow(heat, 3.0));
+    color = alphaBlend(color, vec4(lc, lg * mix(0.65, 0.2, progress)));
   }
 
-  for (let frame = 0; frame < rows * cols; frame++) {
-    const col = frame % cols;
-    const row = Math.floor(frame / cols);
-    const x = col * cellSize;
-    const y = row * cellSize;
-    const progress = frame / (rows * cols - 1);
-    const cx = x + cellSize * 0.5;
-    const cy = y + cellSize * 0.5;
-    const radius = cellSize * (0.16 + progress * 0.24);
+  // incandescent core (bright early, fades fast)
+  float coreR = radius * mix(0.4, 0.15, progress);
+  float coreG = exp(-d * d / (coreR * coreR * 0.12));
+  vec3 coreCol = mix(vec3(1.0, 0.95, 0.8), vec3(1.0), coreG);
+  color = alphaBlend(color, vec4(coreCol, coreG * mix(0.8, 0.1, progress)));
 
-    ctx.clearRect(x, y, cellSize, cellSize);
-
-    const smoke = ctx.createRadialGradient(cx, cy, radius * 0.15, cx, cy, radius * 1.12);
-
-    smoke.addColorStop(0, rgba(255, 214, 154, 0.14));
-    smoke.addColorStop(0.45, rgba(82, 94, 118, 0.18 + progress * 0.16));
-    smoke.addColorStop(1, rgba(0, 0, 0, 0));
-    ctx.fillStyle = smoke;
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius * 1.12, 0, Math.PI * 2);
-    ctx.fill();
-
-    for (let i = 0; i < 9; i++) {
-      const angle = ((i / 9) * Math.PI * 2) + progress * 1.4 + random01(frame * 17 + i * 9) * 0.35;
-      const distance = radius * lerp(0.08, 0.34, random01(frame * 23 + i * 13));
-      const px = cx + Math.cos(angle) * distance;
-      const py = cy + Math.sin(angle) * distance;
-      const lobeRadius = radius * lerp(0.36, 0.72, random01(frame * 31 + i * 7));
-      const lobe = ctx.createRadialGradient(px, py, 0, px, py, lobeRadius);
-
-      lobe.addColorStop(0, rgba(255, 255, 255, 0.92 - progress * 0.18));
-      lobe.addColorStop(0.22, rgba(255, lerp(238, 210, progress), lerp(172, 120, progress), 0.88 - progress * 0.12));
-      lobe.addColorStop(0.65, rgba(255, lerp(164, 112, progress), lerp(62, 18, progress), 0.38 - progress * 0.08));
-      lobe.addColorStop(1, rgba(0, 0, 0, 0));
-      ctx.fillStyle = lobe;
-      ctx.beginPath();
-      ctx.arc(px, py, lobeRadius, 0, Math.PI * 2);
-      ctx.fill();
+  // radiating shockwave filaments (early frames only)
+  if (progress < 0.5) {
+    float filaments = 0.0;
+    for (int i = 0; i < 8; i++) {
+      float fAngle = float(i) * 0.785 + float(frame) * 0.3;
+      float aDiff = abs(mod(angle - fAngle + 3.14159, 6.2832) - 3.14159);
+      float fil = exp(-aDiff * aDiff * 150.0) * smoothstep(0.0, radius * 0.3, d) * smoothstep(radius * 1.1, radius * 0.6, d);
+      filaments += fil;
     }
-
-    const core = ctx.createRadialGradient(cx - radius * 0.1, cy - radius * 0.08, 0, cx - radius * 0.1, cy - radius * 0.08, radius * 0.42);
-
-    core.addColorStop(0, rgba(255, 255, 255, 1));
-    core.addColorStop(0.35, rgba(255, 246, 214, 0.96));
-    core.addColorStop(1, rgba(255, 184, 66, 0));
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.arc(cx - radius * 0.1, cy - radius * 0.08, radius * 0.42, 0, Math.PI * 2);
-    ctx.fill();
-
-    for (let i = 0; i < 6; i++) {
-      const angle = progress * 1.8 + i * (Math.PI / 3);
-      const length = radius * lerp(0.55, 1.05, random01(frame * 41 + i * 5));
-
-      ctx.strokeStyle = rgba(255, 246, 220, 0.32 - progress * 0.1);
-      ctx.lineWidth = 2.2 - progress * 0.6;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(angle) * radius * 0.16, cy + Math.sin(angle) * radius * 0.16);
-      ctx.lineTo(cx + Math.cos(angle) * length, cy + Math.sin(angle) * length);
-      ctx.stroke();
-    }
-
-    if (progress > 0.28) {
-      ctx.strokeStyle = rgba(255, 222, 168, 0.22 - progress * 0.08);
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius * lerp(0.78, 1.18, progress), 0, Math.PI * 2);
-      ctx.stroke();
-    }
+    color = alphaBlend(color, vec4(vec3(1.0, 0.9, 0.6), filaments * (0.3 - progress * 0.6)));
   }
 
-  return canvas;
+  // circular mask
+  color.a *= smoothstep(smokeR * 1.05, smokeR * 0.7, d);
+
+  fragColor = color;
+}
+`);
 }
 
-/** comet-swarm：竖向拉长的蓝白光斑，velocity-facing 下读作一道拖尾。 */
 function createProceduralCometSparkCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 64;
-  canvas.height = 128;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const cx = 32;
-  const body = ctx.createLinearGradient(cx, 0, cx, 128);
-
-  body.addColorStop(0, rgba(120, 200, 255, 0));
-  body.addColorStop(0.45, rgba(180, 230, 255, 0.6));
-  body.addColorStop(0.62, rgba(255, 255, 255, 1));
-  body.addColorStop(0.8, rgba(150, 210, 255, 0.4));
-  body.addColorStop(1, rgba(90, 160, 255, 0));
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.ellipse(cx, 70, 13, 56, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  const head = ctx.createRadialGradient(cx, 86, 0, cx, 86, 18);
-
-  head.addColorStop(0, rgba(255, 255, 255, 1));
-  head.addColorStop(0.5, rgba(200, 235, 255, 0.7));
-  head.addColorStop(1, rgba(140, 200, 255, 0));
-  ctx.fillStyle = head;
-  ctx.beginPath();
-  ctx.arc(cx, 86, 18, 0, Math.PI * 2);
-  ctx.fill();
-
-  return canvas;
+  // Used by comet-swarm (260/s, velocity-facing, ADD blend, ~170 alive)
+  // Needs VERY LOW alpha since massive particle count + ADD blending
+  return renderShaderToCanvas(64, 128, `
+void main() {
+  vec2 uv = vUV;
+  // tight elongated vertical spark
+  float dx = (uv.x - 0.5) / 0.15;
+  float dy = (uv.y - 0.55) / 0.35;
+  float body = exp(-(dx * dx + dy * dy) * 1.5);
+  // head hotspot (bottom)
+  float hd = length(uv - vec2(0.5, 0.7));
+  float head = exp(-hd * hd * 300.0);
+  // tail fade (top)
+  float tailFade = smoothstep(0.0, 0.2, uv.y);
+  vec3 col = mix(vec3(0.35, 0.63, 1.0), vec3(0.71, 0.9, 1.0), body);
+  col = mix(col, vec3(1.0), head * 0.7);
+  // VERY LOW alpha for ADD + 260/s
+  float a = (body * 0.08 + head * 0.12) * tailFade;
+  fragColor = vec4(col, a);
+}
+`);
 }
 
-/** autumn-gale：2x2 暖色落叶剪影图集（4 种形状），ALPHA 用，非发光。 */
 function createProceduralLeafAtlasCanvas (): HTMLCanvasElement {
-  const cell = 64;
-  const canvas = document.createElement('canvas');
+  // Used by autumn-gale (28/s, 2-2.8s = ~65 alive, ALPHA blend, viewDepth sort)
+  // Individual leaves need to be clearly visible — HIGH alpha
+  return renderShaderToCanvas(128, 128, `
+void main() {
+  vec2 uv = vUV;
+  vec2 cellUV = fract(uv * 2.0) - 0.5;
+  int col = int(floor(uv.x * 2.0));
+  int row = int(floor(uv.y * 2.0));
+  int idx = row * 2 + col;
 
-  canvas.width = cell * 2;
-  canvas.height = cell * 2;
+  vec3 leafColors[4] = vec3[4](
+    vec3(0.95, 0.55, 0.12),
+    vec3(0.85, 0.32, 0.08),
+    vec3(0.70, 0.15, 0.06),
+    vec3(0.60, 0.45, 0.10)
+  );
+  vec3 lc = leafColors[idx];
 
-  const ctx = canvas.getContext('2d');
+  // per-leaf rotation
+  float angles[4] = float[4](0.0, 0.63, 1.26, 1.88);
+  float ca = cos(angles[idx]);
+  float sa = sin(angles[idx]);
+  vec2 rp = vec2(ca * cellUV.x + sa * cellUV.y, -sa * cellUV.x + ca * cellUV.y);
 
-  if (!ctx) {
-    return canvas;
-  }
+  // leaf shape: pointed oval
+  float w = 0.18 + float(idx % 2) * 0.05;
+  float h = 0.36;
+  float px = pow(abs(rp.x) / w, 2.2);
+  float py = pow(abs(rp.y) / h, 1.6);
+  float leafSDF = px + py;
+  float leafMask = smoothstep(1.0, 0.6, leafSDF);
 
-  const leaves: Array<[number, number, number]> = [
-    [242, 140, 30],   // gold
-    [216, 82, 20],    // orange
-    [178, 38, 16],    // red
-    [153, 115, 26],   // olive-gold
-  ];
+  // gradient: warm center → saturated edge
+  float grad = smoothstep(1.0, 0.0, leafSDF);
+  vec3 c = mix(lc * 0.7, lc, grad);
+  c = mix(c, vec3(1.0, 0.92, 0.74), pow(grad, 4.0) * 0.6);
 
-  for (let i = 0; i < 4; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const cx = col * cell + cell * 0.5;
-    const cy = row * cell + cell * 0.5;
-    const [r, g, b] = leaves[i];
+  // central vein
+  float vein = exp(-rp.x * rp.x * 3000.0) * leafMask;
+  c = mix(c, lc * 0.3, vein * 0.7);
 
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate((i * Math.PI) / 5);
-
-    const body = ctx.createRadialGradient(0, 0, 2, 0, 0, cell * 0.42);
-
-    body.addColorStop(0, rgba(255, 235, 190, 1));
-    body.addColorStop(0.55, rgba(r, g, b, 0.95));
-    body.addColorStop(1, rgba(r * 0.5, g * 0.5, b * 0.5, 0));
-    ctx.fillStyle = body;
-
-    const w = cell * (0.2 + (i % 2) * 0.06);
-    const h = cell * 0.4;
-
-    ctx.beginPath();
-    ctx.moveTo(0, -h);
-    ctx.bezierCurveTo(w, -h * 0.3, w, h * 0.3, 0, h);
-    ctx.bezierCurveTo(-w, h * 0.3, -w, -h * 0.3, 0, -h);
-    ctx.fill();
-
-    ctx.strokeStyle = rgba(r * 0.4, g * 0.4, b * 0.4, 0.7);
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(0, -h * 0.85);
-    ctx.lineTo(0, h * 0.85);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  return canvas;
+  // HIGH alpha so individual leaves are clearly visible
+  float a = leafMask * 0.92;
+  fragColor = vec4(c, a);
+}
+`);
 }
 
-/**
- * plasma-conduit：可沿长度无缝平铺的能量带。横向（U）蓝边→白芯→蓝边，
- * 纵向（V）用整数周期正弦明暗，保证 Tile 模式首尾衔接无缝。
- */
 function createProceduralPlasmaConduitCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 128;
-  canvas.height = 128;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
-  }
-
-  const cross = ctx.createLinearGradient(0, 0, canvas.width, 0);
-
-  cross.addColorStop(0, rgba(0, 0, 0, 0));
-  cross.addColorStop(0.16, rgba(80, 170, 255, 0.25));
-  cross.addColorStop(0.5, rgba(255, 255, 255, 1));
-  cross.addColorStop(0.84, rgba(80, 170, 255, 0.25));
-  cross.addColorStop(1, rgba(0, 0, 0, 0));
-  ctx.fillStyle = cross;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 纵向正弦明暗（k=3 整数周期 → 平铺无缝），用 destination-out 挖暗
-  ctx.globalCompositeOperation = 'destination-out';
-  for (let y = 0; y < canvas.height; y++) {
-    const t = y / canvas.height;
-    const dark = 0.35 * (0.5 - 0.5 * Math.sin(t * Math.PI * 2 * 3));
-
-    ctx.fillStyle = rgba(0, 0, 0, dark);
-    ctx.fillRect(0, y, canvas.width, 1);
-  }
-  ctx.globalCompositeOperation = 'source-over';
-
-  return canvas;
+  // plasma-conduit: 130/s, ADD blend, 110 alive. ADD sums linearly.
+  // Need alpha ~0.003: 110 × 0.003 = 0.33 total ADD contribution
+  return renderShaderToCanvas(128, 128, `
+void main() {
+  vec2 uv = vUV;
+  float cx = abs(uv.x - 0.5) * 2.0;
+  float center = exp(-cx * cx * 8.0);
+  float core = exp(-cx * cx * 30.0);
+  // DIM color for ADD: even if alpha is used as multiplier, keep brightness low
+  vec3 c = mix(vec3(0.08, 0.18, 0.3), vec3(0.2, 0.4, 0.55), core);
+  float wave = 0.7 + 0.3 * sin(uv.y * 6.2832 * 3.0);
+  float a = (center * 0.02 + core * 0.03) * wave;
+  float edgeFade = smoothstep(0.0, 0.1, uv.x) * smoothstep(1.0, 0.9, uv.x);
+  a *= edgeFade;
+  fragColor = vec4(c, a);
+}
+`);
 }
 
-/** fireworks-finale：2x2 闪光图集——四角星 / 圆点 / 十字 / 菱形，白芯彩晕。 */
 function createProceduralSparkleAtlasCanvas (): HTMLCanvasElement {
-  const cell = 64;
-  const canvas = document.createElement('canvas');
+  // Used by fireworks-finale (burst 90-150, ADD blend, velocity, 1.1-1.8s)
+  // LOW alpha for ADD stacking
+  return renderShaderToCanvas(128, 128, `
+void main() {
+  vec2 uv = vUV;
+  vec2 cellUV = fract(uv * 2.0);
+  int col = int(floor(uv.x * 2.0));
+  int row = int(floor(uv.y * 2.0));
+  int idx = row * 2 + col;
+  vec2 center = vec2(0.5);
+  float d = length(cellUV - center);
+  float angle = atan(cellUV.y - 0.5, cellUV.x - 0.5);
 
-  canvas.width = cell * 2;
-  canvas.height = cell * 2;
+  vec3 tints[4] = vec3[4](
+    vec3(1.0, 0.86, 0.59),
+    vec3(0.71, 0.90, 1.0),
+    vec3(1.0, 0.67, 0.78),
+    vec3(0.78, 1.0, 0.74)
+  );
+  vec3 tint = tints[idx];
 
-  const ctx = canvas.getContext('2d');
+  // base glow
+  float glow = exp(-d * d * 25.0);
+  vec3 c = mix(tint, vec3(1.0), pow(glow, 2.0));
+  float a = glow * 0.12; // LOW for ADD
 
-  if (!ctx) {
-    return canvas;
+  if (idx == 0) {
+    // 4-point star spikes
+    float star = pow(max(abs(cos(angle * 2.0)), 0.0), 12.0);
+    float spike = star * exp(-d * 8.0);
+    a += spike * 0.2;
+    c = mix(c, vec3(1.0), spike * 0.5);
+  } else if (idx == 1) {
+    // circle dot
+    float circ = exp(-d * d * 80.0);
+    a += circ * 0.2;
+    c = mix(c, vec3(1.0), circ * 0.6);
+  } else if (idx == 2) {
+    // cross
+    float armH = exp(-pow((cellUV.y - 0.5) * 16.0, 2.0)) * smoothstep(0.35, 0.0, d);
+    float armV = exp(-pow((cellUV.x - 0.5) * 16.0, 2.0)) * smoothstep(0.35, 0.0, d);
+    float cross = max(armH, armV);
+    a += cross * 0.18;
+    c = mix(c, vec3(1.0), cross * 0.6);
+  } else {
+    // diamond
+    float diamond = abs(cellUV.x - 0.5) / 0.6 + abs(cellUV.y - 0.5);
+    float dm = exp(-diamond * diamond * 15.0);
+    a += dm * 0.18;
+    c = mix(c, vec3(1.0), dm * 0.5);
   }
-
-  const tints: Array<[number, number, number]> = [
-    [255, 220, 150],
-    [180, 230, 255],
-    [255, 170, 200],
-    [200, 255, 190],
-  ];
-
-  for (let i = 0; i < 4; i++) {
-    const col = i % 2;
-    const row = Math.floor(i / 2);
-    const cx = col * cell + cell * 0.5;
-    const cy = row * cell + cell * 0.5;
-    const [tr, tg, tb] = tints[i];
-
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, cell * 0.46);
-
-    glow.addColorStop(0, rgba(255, 255, 255, 0.95));
-    glow.addColorStop(0.3, rgba(tr, tg, tb, 0.6));
-    glow.addColorStop(1, rgba(tr, tg, tb, 0));
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(cx, cy, cell * 0.46, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = rgba(255, 255, 255, 0.95);
-    ctx.fillStyle = rgba(255, 255, 255, 0.95);
-    ctx.lineWidth = 2.4;
-    const a = cell * 0.34;
-
-    if (i === 0) {
-      for (let k = 0; k < 4; k++) {
-        const ang = k * (Math.PI / 2);
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(cx + Math.cos(ang) * a, cy + Math.sin(ang) * a);
-        ctx.stroke();
-      }
-    } else if (i === 1) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, cell * 0.16, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (i === 2) {
-      ctx.beginPath();
-      ctx.moveTo(cx - a, cy);
-      ctx.lineTo(cx + a, cy);
-      ctx.moveTo(cx, cy - a);
-      ctx.lineTo(cx, cy + a);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - a);
-      ctx.lineTo(cx + a * 0.6, cy);
-      ctx.lineTo(cx, cy + a);
-      ctx.lineTo(cx - a * 0.6, cy);
-      ctx.closePath();
-      ctx.fill();
-    }
-  }
-
-  return canvas;
+  fragColor = vec4(c, a);
+}
+`);
 }
 
-/** arcane-rune：3x3 青色奥术符文图集（9 个不同 glyph），柔光底 + 几何笔画。 */
 function createProceduralRuneAtlasCanvas (): HTMLCanvasElement {
-  const cell = 64;
-  const canvas = document.createElement('canvas');
+  // Used by arcane-rune (26/s, 2.6-3.4s = ~80 alive, ADD blend)
+  // LOW-MODERATE alpha for ADD
+  return renderShaderToCanvas(192, 192, `
+void main() {
+  vec2 uv = vUV;
+  vec2 cellUV = fract(uv * 3.0) - 0.5;
+  int col = int(floor(uv.x * 3.0));
+  int row = int(floor(uv.y * 3.0));
+  int idx = row * 3 + col;
+  float d = length(cellUV);
+  float angle = atan(cellUV.y, cellUV.x);
+  float r = 0.34;
 
-  canvas.width = cell * 3;
-  canvas.height = cell * 3;
+  // soft glow background
+  float glow = exp(-d * d * 18.0);
+  vec4 color = vec4(vec3(0.55, 0.90, 1.0), glow * 0.12);
 
-  const ctx = canvas.getContext('2d');
+  // main circle (antialiased line)
+  float circleDist = abs(d - r);
+  float circle = exp(-circleDist * circleDist / (0.008 * 0.008));
+  color = alphaBlend(color, vec4(0.75, 0.94, 1.0, circle * 0.3));
 
-  if (!ctx) {
-    return canvas;
+  // radial spokes
+  int spokes = 3 + idx % 5;
+  for (int k = 0; k < 8; k++) {
+    if (k >= spokes) break;
+    float tAngle = float(k) / float(spokes) * 6.2832 + float(idx) * 0.4;
+    float aDiff = abs(mod(angle - tAngle + 3.14159, 6.2832) - 3.14159);
+    float spoke = exp(-aDiff * aDiff * 2000.0) * smoothstep(r * 0.85, 0.02, d);
+    color = alphaBlend(color, vec4(0.75, 0.94, 1.0, spoke * 0.25));
   }
 
-  for (let i = 0; i < 9; i++) {
-    const col = i % 3;
-    const row = Math.floor(i / 3);
-    const cx = col * cell + cell * 0.5;
-    const cy = row * cell + cell * 0.5;
-    const r = cell * 0.34;
+  // inner polygon
+  int sides = 3 + idx % 4;
+  float polyAngle = angle - float(idx);
+  float segAngle = 6.2832 / float(sides);
+  float sector = mod(polyAngle + segAngle * 0.5, segAngle) - segAngle * 0.5;
+  float polyR = r * 0.5;
+  float polyEdgeR = polyR * cos(segAngle * 0.5) / cos(sector);
+  float polyDist = abs(d - polyEdgeR);
+  float polyLine = exp(-polyDist * polyDist / (0.008 * 0.008)) * step(d, polyR * 1.1);
+  color = alphaBlend(color, vec4(0.75, 0.94, 1.0, polyLine * 0.22));
 
-    ctx.save();
-    ctx.translate(cx, cy);
+  // center dot
+  float centerDot = exp(-d * d * 800.0);
+  color = alphaBlend(color, vec4(1.0, 1.0, 1.0, centerDot * 0.2));
 
-    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.2);
-
-    glow.addColorStop(0, rgba(140, 230, 255, 0.4));
-    glow.addColorStop(1, rgba(80, 180, 255, 0));
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = rgba(190, 240, 255, 0.95);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 放射状笔画
-    ctx.beginPath();
-    const spokes = 3 + (i % 5);
-
-    for (let k = 0; k < spokes; k++) {
-      const ang = (k / spokes) * Math.PI * 2 + i * 0.4;
-
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(ang) * r * 0.85, Math.sin(ang) * r * 0.85);
-    }
-    ctx.stroke();
-
-    // 内嵌多边形
-    ctx.beginPath();
-    const sides = 3 + (i % 4);
-
-    for (let k = 0; k <= sides; k++) {
-      const ang = (k / sides) * Math.PI * 2 + i;
-      const px = Math.cos(ang) * r * 0.5;
-      const py = Math.sin(ang) * r * 0.5;
-
-      if (k === 0) {
-        ctx.moveTo(px, py);
-      } else {
-        ctx.lineTo(px, py);
-      }
-    }
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  return canvas;
+  fragColor = color;
+}
+`);
 }
 
-/** spiral-galaxy：单颗柔光星点，白核 + 蓝晕 + 四点衍射星芒。 */
 function createProceduralStarCanvas (): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
-
-  canvas.width = 64;
-  canvas.height = 64;
-
-  const ctx = canvas.getContext('2d');
-
-  if (!ctx) {
-    return canvas;
+  // Used by spiral-galaxy (300/s, 3.5-5.5s = ~1350 alive, ADD blend)
+  // Needs EXTREMELY LOW alpha since massive particle count + ADD
+  return renderShaderToCanvas(64, 64, `
+void main() {
+  vec2 uv = vUV;
+  float d = length(uv - vec2(0.5));
+  float angle = atan(uv.y - 0.5, uv.x - 0.5);
+  // tight star point
+  float bloom = exp(-d * d * 50.0);
+  vec3 c = mix(vec3(0.47, 0.63, 1.0), vec3(0.86, 0.94, 1.0), pow(bloom, 0.8));
+  c = mix(c, vec3(1.0), pow(bloom, 3.0));
+  // EXTREMELY LOW alpha for 1350 particles + ADD
+  float a = bloom * 0.04;
+  // 4 diffraction spikes (very subtle)
+  for (int i = 0; i < 4; i++) {
+    float sAngle = float(i) * 1.5708;
+    float aDiff = abs(mod(angle - sAngle + 3.14159, 6.2832) - 3.14159);
+    float spike = exp(-aDiff * aDiff * 600.0) * exp(-d * 5.0);
+    a += spike * 0.02;
   }
-
-  const c = 32;
-  const bloom = ctx.createRadialGradient(c, c, 0, c, c, 30);
-
-  bloom.addColorStop(0, rgba(255, 255, 255, 1));
-  bloom.addColorStop(0.18, rgba(220, 240, 255, 0.85));
-  bloom.addColorStop(0.5, rgba(150, 200, 255, 0.3));
-  bloom.addColorStop(1, rgba(120, 160, 255, 0));
-  ctx.fillStyle = bloom;
-  ctx.beginPath();
-  ctx.arc(c, c, 30, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = rgba(255, 255, 255, 0.5);
-  ctx.lineWidth = 1.2;
-  for (let k = 0; k < 4; k++) {
-    const ang = k * (Math.PI / 2);
-
-    ctx.beginPath();
-    ctx.moveTo(c, c);
-    ctx.lineTo(c + Math.cos(ang) * 28, c + Math.sin(ang) * 28);
-    ctx.stroke();
-  }
-
-  return canvas;
+  fragColor = vec4(c, a);
+}
+`);
 }
