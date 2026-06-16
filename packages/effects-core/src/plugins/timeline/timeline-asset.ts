@@ -1,14 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
-import { VFXItem } from '../../vfx-item';
+import type { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from './track';
-import { ObjectBindingTrack, TransformTrack } from './tracks';
+import { ObjectBindingTrack } from './tracks';
 import { PlayState } from './playable';
 import type { Constructor } from '../../utils';
 import { TrackInstance } from './track-instance';
 import type { SceneBinding } from '../../components';
 import { EffectsObject } from '../../effects-object';
-import { TransformLayerMixer } from './transform-layer-mixer';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends EffectsObject {
@@ -65,14 +64,6 @@ export class TimelineInstance {
   masterTrackInstances: TrackInstance[] = [];
 
   private clips: RuntimeClip[] = [];
-  /**
-   * 私有 layer mixer map：key = item instanceId，value = TransformLayerMixer。
-   * 仅当同一 VFXItem 被 ≥2 条 TransformTrack 绑定或含 additive 轨道时才创建 entry。
-   * layer mixer 归属 TimelineInstance 而非 VFXItem，避免跨实例残留。
-   */
-  private layerMixerMap = new Map<string, TransformLayerMixer>();
-  private layerMixerItemIds: string[] = [];
-  private layerMixerItems: VFXItem[] = [];
 
   constructor (timelineAsset: TimelineAsset, sceneBindings: SceneBinding[]) {
     const sceneBindingMap: Record<string, VFXItem> = {};
@@ -89,7 +80,6 @@ export class TimelineInstance {
     }
 
     this.compileTracks(timelineAsset.flattenedTracks, sceneBindings);
-    this.attachTransformLayerMixers(sceneBindings);
   }
 
   evaluate (time: number, deltaTime: number) {
@@ -99,16 +89,8 @@ export class TimelineInstance {
       clip.evaluateAt(time);
     }
 
-    for (const id of this.layerMixerItemIds) {
-      this.layerMixerMap.get(id)?.resetFrame();
-    }
-
     for (const track of this.masterTrackInstances) {
       this.tickTrack(track, deltaTime);
-    }
-
-    for (let i = 0; i < this.layerMixerItemIds.length; i++) {
-      this.layerMixerMap.get(this.layerMixerItemIds[i])?.flush(this.layerMixerItems[i]);
     }
   }
 
@@ -155,50 +137,11 @@ export class TimelineInstance {
     }
   }
 
-  private attachTransformLayerMixers (sceneBindings: SceneBinding[]) {
-    for (const sceneBinding of sceneBindings) {
-      const item = sceneBinding.value;
-
-      if (!(item instanceof VFXItem)) {
-        continue;
-      }
-      const transformTracks: TransformTrack[] = [];
-
-      this.collectTransformTracks(sceneBinding.key, transformTracks);
-
-      if (transformTracks.length === 0) {
-        continue;
-      }
-      const hasAdditive = transformTracks.some(t => t.blendMode === 'additive');
-
-      if (transformTracks.length < 2 && !hasAdditive) {
-        continue;
-      }
-      const itemId = item.getInstanceId();
-
-      if (!this.layerMixerMap.has(itemId)) {
-        this.layerMixerMap.set(itemId, new TransformLayerMixer());
-        this.layerMixerItemIds.push(itemId);
-        this.layerMixerItems.push(item);
-      }
-    }
-  }
-
-  private collectTransformTracks (track: TrackAsset, out: TransformTrack[]) {
-    for (const child of track.getChildTracks()) {
-      if (child instanceof TransformTrack) {
-        out.push(child);
-      }
-      this.collectTransformTracks(child, out);
-    }
-  }
-
   private tickTrack (track: TrackInstance, deltaTime: number) {
 
     const context = track.output.context;
 
     context.deltaTime = deltaTime;
-    context.layerMixerMap = this.layerMixerMap.size > 0 ? this.layerMixerMap : undefined;
 
     track.output.setUserData(track.boundObject);
 
