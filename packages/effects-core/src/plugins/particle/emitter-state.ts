@@ -15,7 +15,7 @@ export class EmitterState {
   endBehavior = 0;
 
   // ── Runtime State ──
-  executionState: EmitterExecutionState = 'inactive';
+  executionState: EmitterExecutionState = 'active';
   emissionStopped = false;
   emitterAge = 0;
   loopAge = 0;

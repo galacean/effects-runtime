@@ -40,30 +40,33 @@ export type EmitterData = {
 };
 
 export class ParticleEmitter {
-  // --- Mutable state ---
-  totalSpawnedParticles = 0;
-  uniqueIndexOffset = 0;
-
-  spawnInfos: SpawnInfo[] = [];
-  lastRaycastHitIndex = -1;
-
   // --- Lifecycle state machine ---
   readonly state = new EmitterState();
 
-  // --- Config (set after setup) ---
+  // --- Config (set during setup, immutable after) ---
+  maxCount = 0;
+  particleFollowParent = false;
+  private alignSpeedDirection = false;
+  private pointCountPerTrail = 0;
+
+  // --- Per-frame external input ---
   worldMatrix: Matrix4 = Matrix4.IDENTITY;
+
+  // --- Spawn state (reset on fullReset / loop) ---
+  totalSpawnedParticles = 0;
+  uniqueIndexOffset = 0;
+  spawnFraction = 0;
+  spawnInfos: SpawnInfo[] = [];
+
+  // --- Query state ---
+  lastRaycastHitIndex = -1;
 
   // --- Modules ---
   private modules: ParticleModule[] = [];
 
-  // --- Shared refs (set during setup) ---
-  maxCount = 0;
-  particleFollowParent = false;
+  // --- Internal refs (set during setup) ---
   private _dataBuffer: ParticleDataBuffer;
   private renderer: ParticleSystemRenderer | null = null;
-  private alignSpeedDirection = false;
-  private pointCountPerTrail = 0;
-  private spawnRateModule: SpawnRateModule | null = null;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
@@ -96,7 +99,6 @@ export class ParticleEmitter {
 
       spawnRate.fromJSON(data.spawnRate);
       modules.push(spawnRate);
-      this.spawnRateModule = spawnRate;
     }
 
     const burst = new BurstSpawnModule();
@@ -147,8 +149,8 @@ export class ParticleEmitter {
   fullReset (): void {
     this.state.reset();
     this.totalSpawnedParticles = 0;
+    this.spawnFraction = 0;
     this.uniqueIndexOffset = 0;
-    this.spawnRateModule?.resetEmitTime();
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
     this.renderer?.reset();
@@ -171,7 +173,7 @@ export class ParticleEmitter {
   }
 
   tick (delta: number): void {
-    if (this.state.executionState === 'inactive') {
+    if (this.state.executionState === 'complete') {
       return;
     }
     const dt = delta / 1000;
@@ -180,7 +182,7 @@ export class ParticleEmitter {
     const looped = this.state.advance(dt);
 
     if (looped) {
-      this.spawnRateModule?.resetEmitTime();
+      this.spawnFraction = 0;
     }
 
     // 2. particleUpdate (existing particles)
@@ -334,9 +336,6 @@ export class ParticleEmitter {
       }
     }
     spawnedSlots.push(...slotIndices);
-    if (isRateSource) {
-      this.spawnRateModule?.commitEmitTime(this.timePassed);
-    }
   }
 
   private bakeNewParticlesToWorld (slotIndices: number[], worldMatrix: Matrix4, db: ParticleDataBuffer): void {
