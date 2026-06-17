@@ -9,7 +9,6 @@ import type { FrameContext } from '../playable';
 import { Playable, PlayableAsset } from '../playable';
 
 const tempRot = new Euler();
-const tempSize = new Vector3(1, 1, 1);
 const tempPos = new Vector3();
 
 /**
@@ -22,10 +21,40 @@ export type ItemBasicTransform = {
   path?: ValueGetter<Vector3>,
 };
 
+export type TransformContribution = {
+  hasPosition: boolean,
+  position: Vector3,
+  hasRotation: boolean,
+  rotation: Euler,
+  hasScale: boolean,
+  scale: Vector3,
+};
+
+export type IContributesTransform = {
+  /** 多 track：返回相对 base 的 contribution（delta）。 */
+  getContribution: (basePosition?: Vector3) => TransformContribution,
+  /** 单 track：直接把采样结果写回 item.transform。 */
+  applyContribution: (item: VFXItem) => void,
+};
+
+export const isContributingTransform = (p: object): p is IContributesTransform => {
+  return typeof (p as IContributesTransform).getContribution === 'function'
+    && typeof (p as IContributesTransform).applyContribution === 'function';
+};
+
+const createEmptyContribution = (): TransformContribution => ({
+  hasPosition: false,
+  position: new Vector3(),
+  hasRotation: false,
+  rotation: new Euler(),
+  hasScale: false,
+  scale: new Vector3(1, 1, 1),
+});
+
 /**
  * @since 2.0.0
  */
-export class TransformPlayable extends Playable {
+export class TransformPlayable extends Playable implements IContributesTransform {
   originalTransform: ItemBasicTransform;
   protected sizeSeparateAxes: boolean;
   protected sizeXOverLifetime: ValueGetter<number>;
@@ -54,20 +83,14 @@ export class TransformPlayable extends Playable {
   gravity: Vector3;
   direction: Vector3;
   startSpeed: number;
+  pathGetter?: ValueGetter<Vector3>;
   data: TransformPlayableAssetData;
+
   private velocity: Vector3;
-  private boundObject: VFXItem;
+  private started = false;
+  private readonly contribution: TransformContribution = createEmptyContribution();
 
   start (): void {
-    const boundItem = this.boundObject;
-    const scale = boundItem.transform.scale;
-
-    this.originalTransform = {
-      position: boundItem.transform.position.clone(),
-      rotation: boundItem.transform.getRotation().clone(),
-      // TODO 编辑器 scale 没有z轴控制
-      scale: new Vector3(scale.x, scale.y, scale.x),
-    };
     const positionOverLifetime = this.data.positionOverLifetime;
     const rotationOverLifetime = this.data.rotationOverLifetime;
     const sizeOverLifetime = this.data.sizeOverLifetime;
@@ -76,7 +99,7 @@ export class TransformPlayable extends Playable {
     if (positionOverLifetime && Object.keys(positionOverLifetime).length !== 0) {
       this.positionOverLifetime = positionOverLifetime;
       if (positionOverLifetime.path) {
-        this.originalTransform.path = createValueGetter(positionOverLifetime.path);
+        this.pathGetter = createValueGetter(positionOverLifetime.path);
       }
       const linearVelEnable = positionOverLifetime.linearX || positionOverLifetime.linearY || positionOverLifetime.linearZ;
 
@@ -139,40 +162,38 @@ export class TransformPlayable extends Playable {
   }
 
   override processFrame (context: FrameContext): void {
-    if (!this.boundObject) {
-      const boundObject = context.output.getUserData();
-
-      if (boundObject instanceof VFXItem) {
-        this.boundObject = boundObject;
-        this.start();
-      }
+    if (!this.started) {
+      this.start();
+      this.started = true;
     }
-    if (this.boundObject && this.boundObject.composition) {
-      this.sampleAnimation();
+
+    const boundObject = context.output.getUserData();
+
+    if (!this.originalTransform && boundObject instanceof VFXItem) {
+      this.captureOriginalTransform(boundObject);
     }
   }
 
   /**
-   * 应用时间轴K帧数据到对象
+   * 单 track 直写：用 originalTransform 作为 base，采样后直接写回 item.transform。
    */
-  private sampleAnimation () {
-    const boundItem = this.boundObject;
+  applyContribution (item: VFXItem): void {
+    if (!this.originalTransform) {
+      return;
+    }
     const duration = this.getDuration();
     let life = this.time / duration;
 
     life = life < 0 ? 0 : life;
 
-    if (this.sizeXOverLifetime) {
-      tempSize.x = this.sizeXOverLifetime.getValue(life);
-      if (this.sizeSeparateAxes) {
-        tempSize.y = this.sizeYOverLifetime.getValue(life);
-        tempSize.z = this.sizeZOverLifetime.getValue(life);
-      } else {
-        tempSize.z = tempSize.y = tempSize.x;
-      }
-      const startSize = this.originalTransform.scale;
+    const original = this.originalTransform;
 
-      boundItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
+    if (this.sizeXOverLifetime) {
+      const sx = this.sizeXOverLifetime.getValue(life);
+      const sy = this.sizeSeparateAxes ? this.sizeYOverLifetime.getValue(life) : sx;
+      const sz = this.sizeSeparateAxes ? this.sizeZOverLifetime.getValue(life) : sx;
+
+      item.transform.setScale(sx * original.scale.x, sy * original.scale.y, sz * original.scale.z);
     }
 
     if (this.rotationOverLifetime) {
@@ -183,19 +204,100 @@ export class TransformPlayable extends Playable {
       tempRot.x = separateAxes ? func(this.rotationOverLifetime.x!) : 0;
       tempRot.y = separateAxes ? func(this.rotationOverLifetime.y!) : 0;
       tempRot.z = incZ;
-      const rot = tempRot.addEulers(this.originalTransform.rotation, tempRot);
+      const rot = tempRot.addEulers(original.rotation, tempRot);
 
-      boundItem.transform.setRotation(rot.x, rot.y, rot.z);
+      item.transform.setRotation(rot.x, rot.y, rot.z);
     }
 
     if (this.positionOverLifetime) {
-      const pos = tempPos;
-
-      calculateTranslation(pos, this, this.gravity, this.time, duration, this.originalTransform.position, this.velocity);
-      if (this.originalTransform.path) {
-        pos.add(this.originalTransform.path.getValue(life));
+      calculateTranslation(tempPos, this, this.gravity, this.time, duration, original.position, this.velocity);
+      if (this.pathGetter) {
+        tempPos.add(this.pathGetter.getValue(life));
       }
-      boundItem.transform.setPosition(pos.x, pos.y, pos.z);
+      item.transform.setPosition(tempPos.x, tempPos.y, tempPos.z);
+    }
+  }
+
+  /**
+   * 多 track：采样为相对 base 的 contribution（delta），供 LayerMixer 叠加。
+   * @param basePosition - orbital position 还原 delta 所需的 base，其余通道与 base 无关。
+   */
+  getContribution (basePosition?: Vector3): TransformContribution {
+    this.sampleAnimation(basePosition);
+
+    return this.contribution;
+  }
+
+  private sampleAnimation (basePosition?: Vector3) {
+    const duration = this.getDuration();
+    let life = this.time / duration;
+
+    life = life < 0 ? 0 : life;
+
+    const out = this.contribution;
+
+    if (this.sizeXOverLifetime) {
+      out.hasScale = true;
+      out.scale.x = this.sizeXOverLifetime.getValue(life);
+      if (this.sizeSeparateAxes) {
+        out.scale.y = this.sizeYOverLifetime.getValue(life);
+        out.scale.z = this.sizeZOverLifetime.getValue(life);
+      } else {
+        out.scale.z = out.scale.y = out.scale.x;
+      }
+    } else {
+      out.hasScale = false;
+    }
+
+    if (this.rotationOverLifetime) {
+      out.hasRotation = true;
+      const func = (v: ValueGetter<number>) => this.rotationOverLifetime.asRotation ? v.getValue(life) : v.getIntegrateValue(0, life, duration);
+      const incZ = func(this.rotationOverLifetime.z!);
+      const separateAxes = this.rotationOverLifetime.separateAxes;
+
+      tempRot.x = separateAxes ? func(this.rotationOverLifetime.x!) : 0;
+      tempRot.y = separateAxes ? func(this.rotationOverLifetime.y!) : 0;
+      tempRot.z = incZ;
+      out.rotation.copyFrom(tempRot);
+    } else {
+      out.hasRotation = false;
+    }
+
+    if (this.positionOverLifetime) {
+      out.hasPosition = true;
+      // orbital 启用：用真实 base 算绝对位置再减 base 还原 delta；
+      // 否则 posData=0 直接得 delta。
+      const orbitalEnabled = !!this.orbitalVelOverLifetime?.enabled;
+
+      if (orbitalEnabled && basePosition) {
+        calculateTranslation(out.position, this, this.gravity, this.time, duration, basePosition, this.velocity);
+        if (this.pathGetter) {
+          out.position.add(this.pathGetter.getValue(life));
+        }
+        out.position.subtract(basePosition);
+      } else {
+        tempPos.set(0, 0, 0);
+        calculateTranslation(out.position, this, this.gravity, this.time, duration, tempPos, this.velocity);
+        if (this.pathGetter) {
+          out.position.add(this.pathGetter.getValue(life));
+        }
+      }
+    } else {
+      out.hasPosition = false;
+    }
+  }
+
+  private captureOriginalTransform (boundItem: VFXItem): void {
+    const scale = boundItem.transform.scale;
+
+    this.originalTransform = {
+      position: boundItem.transform.position.clone(),
+      rotation: boundItem.transform.getRotation().clone(),
+      // TODO 编辑器 scale 没有z轴控制
+      scale: new Vector3(scale.x, scale.y, scale.x),
+    };
+    if (this.pathGetter) {
+      this.originalTransform.path = this.pathGetter;
     }
   }
 }
