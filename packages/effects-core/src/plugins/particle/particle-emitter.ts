@@ -189,29 +189,32 @@ export class ParticleEmitter {
       this.spawnFraction = 1;
     }
 
-    // 2. particleUpdate (existing particles)
-    if (this._dataBuffer.activeCount > 0) {
+    // 2. particleUpdate (existing particles)。模块在此将自然死亡 / 主动击杀的
+    //    粒子标记为 alive[i] = 0
+    if (this._dataBuffer.numInstances > 0) {
       const ctx = this.buildModuleContext(dt);
 
       this.runStage(ParticleModuleStage.ParticleUpdate, ctx);
     }
 
-    // 3. recycle dead particles
-    this.recycleDead();
+    // 3. trim ribbons（trail emitter 限制每条 ribbon 的点数，超额标记 alive = 0）
+    if (this.pointCountPerTrail > 0) {
+      this.trimRibbons(this._dataBuffer);
+    }
 
-    // 4. spawn (only if state allows)
+    // 4. compact dead particles（swap-copy 压缩，使 [0, numInstances) 保持紧凑）
+    this._dataBuffer.compactDead();
+
+    // 5. spawn (only if state allows)
     if (this.state.isSpawningAllowed()) {
       this.doSpawn(dt);
     }
 
-    // 5. rebuild live indices
-    this.rebuildLiveIndices();
-
     // 6. handle completion
-    this.state.handleCompletion(this._dataBuffer.liveCount);
+    this.state.handleCompletion(this._dataBuffer.numInstances);
 
     // 7. render
-    if (this._dataBuffer.liveCount > 0 && this.renderer) {
+    if (this._dataBuffer.numInstances > 0 && this.renderer) {
       this.renderer.generateSpriteData(this);
     }
   }
@@ -222,20 +225,22 @@ export class ParticleEmitter {
 
     this.runStage(ParticleModuleStage.EmitterUpdate, ctx);
 
-    const spawnedSlots: number[] = [];
+    const oldNumInstances = this._dataBuffer.numInstances;
 
     for (const info of this.spawnInfos) {
-      this.particleSpawn(this._dataBuffer, this.maxCount, info, spawnedSlots);
+      this.particleSpawn(this._dataBuffer, this.maxCount, info);
     }
 
-    if (spawnedSlots.length > 0) {
-      const firstFrameCtx = { ...ctx, deltaTime: 0 };
+    // 首帧更新：一次 runStage 批量处理本帧新生粒子 [oldNumInstances, numInstances)
+    if (this._dataBuffer.numInstances > oldNumInstances) {
+      const firstFrameCtx: ParticleModuleContext = {
+        ...ctx,
+        deltaTime: 0,
+        firstIndex: oldNumInstances,
+        lastIndex: this._dataBuffer.numInstances,
+      };
 
-      for (const slot of spawnedSlots) {
-        firstFrameCtx.firstIndex = slot;
-        firstFrameCtx.lastIndex = slot + 1;
-        this.runStage(ParticleModuleStage.ParticleUpdate, firstFrameCtx);
-      }
+      this.runStage(ParticleModuleStage.ParticleUpdate, firstFrameCtx);
     }
   }
 
@@ -247,24 +252,21 @@ export class ParticleEmitter {
     if (this.state.emissionStopped || requestedCount <= 0) {
       return [];
     }
+
+    // 紧凑布局：新粒子总是追加在 [numInstances, maxCount) 区间
+    const available = maxCount - db.numInstances;
+    const count = Math.min(requestedCount, available);
+
+    if (count <= 0) {
+      return [];
+    }
     const slots: number[] = [];
+    const base = db.numInstances;
 
-    // Phase 1: fresh sequential allocation
-    while (slots.length < requestedCount && this._dataBuffer.nextSlotIndex < maxCount) {
-      slots.push(this._dataBuffer.nextSlotIndex++);
+    for (let i = 0; i < count; i++) {
+      slots.push(base + i);
     }
-    if (slots.length >= requestedCount) {
-      return slots;
-    }
-
-    // Phase 2: pop from free-list
-    const freeSlots = db.freeSlots;
-    const remaining = requestedCount - slots.length;
-    const toTake = Math.min(remaining, freeSlots.length);
-
-    for (let i = 0; i < toTake; i++) {
-      slots.push(freeSlots.pop() as number);
-    }
+    db.numInstances = base + count;
 
     return slots;
   }
@@ -273,7 +275,6 @@ export class ParticleEmitter {
     db: ParticleDataBuffer,
     maxCount: number,
     spawnInfo: SpawnInfo,
-    spawnedSlots: number[],
   ): void {
     const { count, generator, positionOffset } = spawnInfo;
 
@@ -319,7 +320,6 @@ export class ParticleEmitter {
         db.simulatedPosition[si3 + 2] += positionOffset[2];
       }
     }
-    spawnedSlots.push(...slotIndices);
   }
 
   private bakeNewParticlesToWorld (slotIndices: number[], worldMatrix: Matrix4, db: ParticleDataBuffer): void {
@@ -391,10 +391,7 @@ export class ParticleEmitter {
     const db = this._dataBuffer;
     const res: { center: Vector3, size: Vector3 }[] = [];
 
-    for (let i = 0; i < db.activeCount; i++) {
-      if (!db.alive[i]) {
-        continue;
-      }
+    for (let i = 0; i < db.numInstances; i++) {
       const i2 = i * 2;
 
       res.push({
@@ -415,10 +412,7 @@ export class ParticleEmitter {
     const hitPositions: Vector3[] = [];
     const temp = new Vector3();
 
-    for (let i = db.activeCount - 1; i >= 0; i--) {
-      if (!db.alive[i]) {
-        continue;
-      }
+    for (let i = db.numInstances - 1; i >= 0; i--) {
       const pos = this.getPointPosition(i);
       const ray = options.ray;
 
@@ -437,15 +431,14 @@ export class ParticleEmitter {
   killParticle (index: number): void {
     const db = this._dataBuffer;
 
-    if (!db || index < 0 || index >= db.maxCount) {
+    if (!db || index < 0 || index >= db.numInstances) {
       return;
     }
     if (!db.alive[index]) {
       return;
     }
+    // 标记死亡，由下一帧 tick 的 compactDead 压缩移除
     db.alive[index] = 0;
-    db.lifetime[index] = 0;
-    db.freeSlots.push(index);
   }
 
   private getWorldMatrix (): Matrix4 {
@@ -465,30 +458,15 @@ export class ParticleEmitter {
       dataBuffer: this._dataBuffer,
       emitter: this,
       firstIndex: 0,
-      lastIndex: this._dataBuffer.activeCount,
+      lastIndex: this._dataBuffer.numInstances,
     };
-  }
-
-  private recycleDead (): void {
-    const db = this._dataBuffer;
-
-    for (let i = 0; i < db.activeCount; i++) {
-      if (db.alive[i] && db.age[i] >= db.lifetime[i]) {
-        db.alive[i] = 0;
-        db.freeSlots.push(i);
-      }
-    }
-
-    if (this.pointCountPerTrail > 0) {
-      this.trimRibbons(db);
-    }
   }
 
   private trimRibbons (db: ParticleDataBuffer): void {
     const cap = this.pointCountPerTrail;
     const ribbonSlots = new Map<number, number[]>();
 
-    for (let i = 0; i < db.activeCount; i++) {
+    for (let i = 0; i < db.numInstances; i++) {
       if (!db.alive[i]) { continue; }
       const rid = db.ribbonId[i];
       let arr = ribbonSlots.get(rid);
@@ -506,28 +484,10 @@ export class ParticleEmitter {
       const excess = slots.length - cap;
 
       for (let i = 0; i < excess; i++) {
-        const slot = slots[i];
-
-        db.alive[slot] = 0;
-        db.freeSlots.push(slot);
+        // 标记死亡，由 compactDead 压缩移除
+        db.alive[slots[i]] = 0;
       }
     }
-  }
-
-  private rebuildLiveIndices (): void {
-    const db = this._dataBuffer;
-    const liveIndices = db.liveIndices;
-
-    liveIndices.length = 0;
-    let maxAliveSlot = -1;
-
-    for (let i = 0; i < db.activeCount; i++) {
-      if (db.alive[i]) {
-        liveIndices.push(i);
-        maxAliveSlot = i;
-      }
-    }
-    db.activeCount = maxAliveSlot + 1;
   }
 
 }

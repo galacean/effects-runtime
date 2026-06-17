@@ -63,7 +63,12 @@ export class ParticleDataBuffer {
 
   // ── Lifecycle（粒子生死管理） ──
 
-  /** 粒子存活标记，0 = 空闲，1 = 存活 */
+  /**
+   * 粒子存活标记，0 = 死亡，1 = 存活。
+   *
+   * 对齐 Niagara：模块通过将 alive[i] = 0 标记死亡（自然死亡或主动击杀），
+   * 框架在 compactDead() 中用 swap-copy 将其移除，使 [0, numInstances) 始终紧凑。
+   */
   readonly alive: number[];
 
   // ── Trail/Ribbon（仅 trail emitter 使用） ──
@@ -77,18 +82,14 @@ export class ParticleDataBuffer {
   /** trail 粒子 spawn 时刻 source 粒子的 age，用于 ribbon renderer 反推 source normalized age */
   readonly spawnSourceAge: number[];
 
-  // ── Recycling infrastructure ──
+  // ── 紧凑布局（对齐 Niagara FNiagaraDataBuffer） ──
 
-  /** 下一个顺序分配的 slot 索引 */
-  nextSlotIndex = 0;
-  /** Free-list 栈：pop 获取可用 slot，push 回收死亡 slot */
-  readonly freeSlots: number[] = [];
-  /** 每帧重建的紧凑活跃粒子索引列表，供 renderer 使用 */
-  liveIndices: number[] = [];
+  private _numInstances = 0;
 
-  get liveCount (): number { return this.liveIndices.length; }
-
-  private _activeCount = 0;
+  /** compactDead swap-copy 用的多分量通道分组（构造时建立，避免每帧分配） */
+  private readonly channels2: number[][];
+  private readonly channels3: number[][];
+  private readonly channels4: number[][];
 
   constructor (maxCount: number) {
     this.maxCount = maxCount;
@@ -124,22 +125,92 @@ export class ParticleDataBuffer {
     this.ribbonId = createArray(maxCount);
     this.ribbonLinkOrder = createArray(maxCount);
     this.spawnSourceAge = createArray(maxCount);
+
+    this.channels2 = [this.initialSize, this.size];
+    this.channels3 = [
+      this.initialVelocity, this.initialRotation, this.sprite,
+      this.simulatedPosition, this.position, this.velocity,
+      this.dirX, this.dirY, this.rotation,
+    ];
+    this.channels4 = [this.initialColor, this.uv, this.color];
   }
 
-  get activeCount (): number {
-    return this._activeCount;
+  /**
+   * 当前活跃粒子数量。[0, numInstances) 区间内的 slot 均为存活粒子（紧凑布局）。
+   * 对齐 Niagara FNiagaraDataBuffer::NumInstances。
+   */
+  get numInstances (): number {
+    return this._numInstances;
   }
 
-  set activeCount (n: number) {
-    this._activeCount = Math.min(n, this.maxCount);
+  set numInstances (n: number) {
+    this._numInstances = Math.min(Math.max(n, 0), this.maxCount);
   }
 
   clear (): void {
-    this._activeCount = 0;
-    this.nextSlotIndex = 0;
+    this._numInstances = 0;
     this.position.fill(0);
     this.alive.fill(0);
-    this.freeSlots.length = 0;
-    this.liveIndices.length = 0;
+  }
+
+  /**
+   * swap-copy 压缩：反向遍历 [0, numInstances)，将 alive[i] === 0 的死亡粒子
+   * 用末尾存活粒子填空位后 numInstances--，使存活粒子紧凑排列在前段。
+   *
+   * 对齐 Niagara FParticleSimulationContext::CompactDeadParticles。
+   *
+   * 注意：swap-copy 会打乱存活粒子的相对顺序，依赖渲染层的 SortMode 在绘制前
+   * 重新排序。SortMode 尚未实现（TODO），在此之前帧对比基准需相应更新。
+   */
+  compactDead (): void {
+    for (let i = this._numInstances - 1; i >= 0; i--) {
+      if (this.alive[i] !== 0) {
+        continue;
+      }
+      this._numInstances--;
+      if (i < this._numInstances) {
+        this.copySlot(this._numInstances, i);
+      }
+    }
+  }
+
+  /** 将 src slot 的全部通道数据复制到 dst slot。 */
+  private copySlot (src: number, dst: number): void {
+    // 1-component channels
+    this.lifetime[dst] = this.lifetime[src];
+    this.seed[dst] = this.seed[src];
+    this.age[dst] = this.age[src];
+    this.alive[dst] = this.alive[src];
+    this.uniqueId[dst] = this.uniqueId[src];
+    this.ribbonId[dst] = this.ribbonId[src];
+    this.ribbonLinkOrder[dst] = this.ribbonLinkOrder[src];
+    this.spawnSourceAge[dst] = this.spawnSourceAge[src];
+
+    // 3-component channels
+    const s3 = src * 3, d3 = dst * 3;
+
+    for (const arr of this.channels3) {
+      arr[d3] = arr[s3];
+      arr[d3 + 1] = arr[s3 + 1];
+      arr[d3 + 2] = arr[s3 + 2];
+    }
+
+    // 2-component channels
+    const s2 = src * 2, d2 = dst * 2;
+
+    for (const arr of this.channels2) {
+      arr[d2] = arr[s2];
+      arr[d2 + 1] = arr[s2 + 1];
+    }
+
+    // 4-component channels
+    const s4 = src * 4, d4 = dst * 4;
+
+    for (const arr of this.channels4) {
+      arr[d4] = arr[s4];
+      arr[d4 + 1] = arr[s4 + 1];
+      arr[d4 + 2] = arr[s4 + 2];
+      arr[d4 + 3] = arr[s4 + 3];
+    }
   }
 }

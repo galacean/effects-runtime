@@ -77,7 +77,7 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   get particleCount () {
-    return this.emitter?.dataBuffer?.activeCount ?? 0;
+    return this.emitter?.dataBuffer?.numInstances ?? 0;
   }
   /**
    * 获取当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
@@ -155,7 +155,7 @@ export class ParticleSystem extends Component implements Maskable {
   getPointPositionByIndex (index: number): Vector3 | null {
     const db = this.emitter?.dataBuffer;
 
-    if (!db || index < 0 || index >= db.activeCount || !db.alive[index]) {
+    if (!db || index < 0 || index >= db.numInstances || !db.alive[index]) {
       return null;
     }
 

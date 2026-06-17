@@ -208,7 +208,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
   generateDynamicData (emitter: ParticleEmitter): void {
     const db = emitter.dataBuffer;
 
-    if (db.liveCount < 2) {
+    if (db.numInstances < 2) {
       this.clear();
 
       return;
@@ -226,7 +226,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
   private buildSortOrder (db: ParticleDataBuffer): number[] {
     const indices: number[] = [];
 
-    for (const i of db.liveIndices) {
+    for (let i = 0; i < db.numInstances; i++) {
       if (db.age[i] > 0) {
         indices.push(i);
       }

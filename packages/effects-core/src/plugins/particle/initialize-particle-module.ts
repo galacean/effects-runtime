@@ -327,7 +327,6 @@ export class InitializeParticleModule extends ParticleModule {
       db.sprite[i3 + 1] = sprite[1];
       db.sprite[i3 + 2] = sprite[2];
     }
-    db.activeCount = Math.max(db.activeCount, slotIndex + 1);
   }
 }
 

@@ -34,8 +34,7 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
 
   generateDynamicData (emitter: ParticleEmitter): void {
     const db = emitter.dataBuffer;
-    const liveIndices = db.liveIndices;
-    const liveCount = liveIndices.length;
+    const liveCount = db.numInstances;
 
     if (liveCount === 0) {
       this.geometry.setDrawCount(0);
@@ -57,8 +56,9 @@ export class ParticleSpriteRenderer extends ParticleRenderer {
     const aSprite = useSprite ? geo.getAttributeData('aSprite') as Float32Array : null;
     const wholeUV = [0, 0, 1, 1];
 
-    for (let outIdx = 0; outIdx < liveCount; outIdx++) {
-      const i = liveIndices[outIdx];
+    // 紧凑布局：[0, numInstances) 即全部存活粒子，slot index == 输出 index
+    for (let i = 0; i < liveCount; i++) {
+      const outIdx = i;
       const i3 = i * 3;
       const i4 = i * 4;
       const i2 = i * 2;

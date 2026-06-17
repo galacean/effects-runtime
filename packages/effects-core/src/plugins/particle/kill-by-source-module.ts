@@ -17,8 +17,9 @@ export class KillBySourceModule extends ParticleModule {
     const alive = this.spawnModule.aliveSourceIds;
 
     for (let i = ctx.firstIndex; i < ctx.lastIndex; i++) {
-      if (db.alive[i] && db.age[i] > 0 && !alive.has(db.ribbonId[i])) {
-        db.lifetime[i] = 0;
+      if (db.age[i] > 0 && !alive.has(db.ribbonId[i])) {
+        // 源粒子已死，标记 trail 粒子死亡，由 compactDead 压缩移除
+        db.alive[i] = 0;
       }
     }
   }

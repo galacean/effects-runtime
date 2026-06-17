@@ -34,14 +34,14 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
 
     const sourceDb = this.sourceDataBuffer;
 
-    if (sourceDb.activeCount === 0) {
+    if (sourceDb.numInstances === 0) {
       return;
     }
 
     let totalCount = 0;
 
-    for (let i = 0; i < sourceDb.activeCount; i++) {
-      if (!sourceDb.alive[i] || sourceDb.age[i] <= 0) {
+    for (let i = 0; i < sourceDb.numInstances; i++) {
+      if (sourceDb.age[i] <= 0) {
         continue;
       }
 
@@ -94,8 +94,8 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
     let bestSlot = -1;
     let bestOrder = -1;
 
-    for (let i = 0; i < db.activeCount; i++) {
-      if (db.alive[i] && db.ribbonId[i] === ribbonId && db.age[i] > 0 && db.ribbonLinkOrder[i] > bestOrder) {
+    for (let i = 0; i < db.numInstances; i++) {
+      if (db.ribbonId[i] === ribbonId && db.age[i] > 0 && db.ribbonLinkOrder[i] > bestOrder) {
         bestOrder = db.ribbonLinkOrder[i];
         bestSlot = i;
       }

@@ -48,13 +48,6 @@ export class SampleFromSourceModule extends ParticleModule {
         this.initTrailParticle(db, slot, src, assignment.uniqueID, ctx);
       }
     }
-
-    let maxSlot = 0;
-
-    for (const s of slotIndices) {
-      if (s > maxSlot) { maxSlot = s; }
-    }
-    db.activeCount = Math.max(db.activeCount, maxSlot + 1);
   }
 
   private initTrailParticle (
