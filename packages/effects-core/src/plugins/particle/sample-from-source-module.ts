@@ -1,25 +1,42 @@
 import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import type { ParticleModuleContext, SourceDependentModule } from './particle-module';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import type { ParticleEmitter } from './particle-emitter';
 import type { SpawnPerSourceParticleModule } from './spawn-per-source-module';
 import type { ValueGetter } from '../../math';
+import { createValueGetter } from '../../math';
+import type * as spec from '@galacean/effects-specification';
 
-export interface SampleFromSourceConfig {
+export type SampleFromSourceModuleData = {
+  lifetime: spec.NumberExpression | number,
   inheritParticleColor: boolean,
   sizeAffectsWidth: boolean,
-}
+};
 
-export class SampleFromSourceModule extends ParticleModule {
+export class SampleFromSourceModule extends ParticleModule implements SourceDependentModule {
   override readonly stage = ParticleModuleStage.ParticleSpawn;
 
+  private trailLifetime: ValueGetter<number>;
+  private inheritParticleColor = false;
+  private sizeAffectsWidth = false;
+
+  // source emitter 由 setSource 在构造后注入
+  private sourceEmitter!: ParticleEmitter;
+
   constructor (
-    private readonly sourceEmitter: ParticleEmitter,
     private readonly spawnModule: SpawnPerSourceParticleModule,
-    private readonly trailLifetime: ValueGetter<number>,
-    private readonly config: SampleFromSourceConfig,
   ) {
     super();
+  }
+
+  override fromJSON (data: SampleFromSourceModuleData): void {
+    this.trailLifetime = createValueGetter(data.lifetime) as ValueGetter<number>;
+    this.inheritParticleColor = data.inheritParticleColor;
+    this.sizeAffectsWidth = data.sizeAffectsWidth;
+  }
+
+  setSource (source: ParticleEmitter): void {
+    this.sourceEmitter = source;
   }
 
   private get sourceDb (): ParticleDataBuffer {
@@ -80,7 +97,7 @@ export class SampleFromSourceModule extends ParticleModule {
     const s4 = src * 4;
     const d4 = slot * 4;
 
-    if (this.config.inheritParticleColor) {
+    if (this.inheritParticleColor) {
       db.color[d4] = sourceDb.initialColor[s4];
       db.color[d4 + 1] = sourceDb.initialColor[s4 + 1];
       db.color[d4 + 2] = sourceDb.initialColor[s4 + 2];
@@ -96,7 +113,7 @@ export class SampleFromSourceModule extends ParticleModule {
 
     const d2 = slot * 2;
 
-    if (this.config.sizeAffectsWidth) {
+    if (this.sizeAffectsWidth) {
       db.size[d2] = sourceDb.initialSize[src * 2];
       db.size[d2 + 1] = db.size[d2];
     } else {

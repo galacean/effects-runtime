@@ -1,13 +1,12 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
-import type * as spec from '@galacean/effects-specification';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
-import { ParticleModuleStage } from './particle-module';
+import { ParticleModuleStage, isSourceDependent } from './particle-module';
 import type { ParticleModuleContext, SpawnInfo } from './particle-module';
 import type { ParticleModule } from './particle-module';
-import type { ParsedModuleData } from './parse-spec';
+import type { ParsedModuleData, SpriteModuleData, TrailModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
 import { ForceTargetModule } from './force-target-module';
 import { InitializeParticleModule } from './initialize-particle-module';
@@ -19,24 +18,19 @@ import { OrbitalAndLinearMoveModule } from './orbital-and-linear-move-module';
 import { SolveRotationModule } from './solve-rotation-module';
 import { SpawnRateModule } from './spawn-rate-module';
 import { UpdateAgeModule } from './update-age-module';
+import { SpawnPerSourceParticleModule } from './spawn-per-source-module';
+import { SampleFromSourceModule } from './sample-from-source-module';
+import { KillBySourceModule } from './kill-by-source-module';
 import { EmitterState, EmitterExecutionState } from './emitter-state';
 import type { ParticleSystemRenderer } from './particle-system-renderer';
-
-export type ParsedTrailConfig = {
-  lifetime: spec.NumberExpression | number,
-  dieWithParticles: boolean,
-  sizeAffectsWidth: boolean,
-  sizeAffectsLifetime: boolean,
-  inheritParticleColor: boolean,
-  parentAffectsPosition: boolean,
-};
 
 export type EmitterData = {
   maxCount: number,
   looping: boolean,
   particleFollowParent: boolean,
   alignSpeedDirection: boolean,
-  trails: ParsedTrailConfig | undefined,
+  /** 0 = sprite emitter；>0 = trail emitter，限制每条 ribbon 的点数 */
+  pointCountPerTrail: number,
   modules: ParsedModuleData,
 };
 
@@ -78,21 +72,43 @@ export class ParticleEmitter {
     this.state.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
+    this.pointCountPerTrail = data.pointCountPerTrail;
     this.renderer = renderer;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     this.modules = this.buildModules(data.modules);
   }
 
-  setupTrailEmitter (maxCount: number, modules: ParticleModule[], pointCountPerTrail: number): void {
-    this.maxCount = maxCount;
-    this.state.looping = true;
-    this.particleFollowParent = true;
-    this.pointCountPerTrail = pointCountPerTrail;
-    this._dataBuffer = new ParticleDataBufferImpl(maxCount);
-    this.modules = modules;
+  /**
+   * 绑定 source emitter，解析 trail 模块的跨 emitter 依赖。
+   *
+   * 对齐 Niagara：跨 emitter 引用在构造之后由独立的 binding resolve 步骤注入
+   * （InitPerInstanceData → EmitterBinding.Resolve）。
+   */
+  setSource (source: ParticleEmitter): void {
+    for (const module of this.modules) {
+      if (isSourceDependent(module)) {
+        module.setSource(source);
+      }
+    }
   }
 
   private buildModules (data: ParsedModuleData): ParticleModule[] {
+    return data.kind === 'trail' ? this.buildTrailModules(data) : this.buildSpriteModules(data);
+  }
+
+  private buildTrailModules (data: TrailModuleData): ParticleModule[] {
+    const spawnModule = new SpawnPerSourceParticleModule();
+
+    spawnModule.fromJSON(data.spawnPerSource);
+
+    const sampleModule = new SampleFromSourceModule(spawnModule);
+
+    sampleModule.fromJSON(data.sampleFromSource);
+
+    return [spawnModule, sampleModule, new UpdateAgeModule(), new KillBySourceModule(spawnModule)];
+  }
+
+  private buildSpriteModules (data: SpriteModuleData): ParticleModule[] {
     const modules: ParticleModule[] = [];
 
     if (data.spawnRate) {
@@ -213,8 +229,8 @@ export class ParticleEmitter {
     // 6. handle completion
     this.state.handleCompletion(this._dataBuffer.numInstances);
 
-    // 7. render
-    if (this._dataBuffer.numInstances > 0 && this.renderer) {
+    // 7. render（仅 sprite emitter 自渲染；trail 的 ribbon 由 particle-system 外部生成）
+    if (this.pointCountPerTrail === 0 && this._dataBuffer.numInstances > 0 && this.renderer) {
       this.renderer.generateSpriteData(this);
     }
   }

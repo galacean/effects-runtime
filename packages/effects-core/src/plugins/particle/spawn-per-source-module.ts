@@ -1,6 +1,7 @@
 import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import type { ParticleModuleContext, SourceDependentModule } from './particle-module';
 import type { ParticleDataBuffer } from './particle-data-buffer';
+import type { ParticleEmitter } from './particle-emitter';
 
 export interface SourceAssignment {
   srcIdx: number,
@@ -8,18 +9,29 @@ export interface SourceAssignment {
   uniqueID: number,
 }
 
-export class SpawnPerSourceParticleModule extends ParticleModule {
+export type SpawnPerSourceModuleData = {
+  minimumDistSq: number,
+  dieWithParticles: boolean,
+};
+
+export class SpawnPerSourceParticleModule extends ParticleModule implements SourceDependentModule {
   override readonly stage = ParticleModuleStage.EmitterUpdate;
 
   readonly sourceAssignments: SourceAssignment[] = [];
   readonly aliveSourceIds = new Set<number>();
   dieWithParticles = true;
 
-  constructor (
-    private readonly sourceDataBuffer: ParticleDataBuffer,
-    private readonly minimumDistSq: number,
-  ) {
-    super();
+  // source emitter 由 setSource 在构造后注入；dataBuffer 经 getter 实时读取
+  private sourceEmitter!: ParticleEmitter;
+  private minimumDistSq = 0;
+
+  override fromJSON (data: SpawnPerSourceModuleData): void {
+    this.minimumDistSq = data.minimumDistSq;
+    this.dieWithParticles = data.dieWithParticles;
+  }
+
+  setSource (source: ParticleEmitter): void {
+    this.sourceEmitter = source;
   }
 
   private get checkDistance (): boolean {
@@ -32,7 +44,7 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
     this.sourceAssignments.length = 0;
     this.aliveSourceIds.clear();
 
-    const sourceDb = this.sourceDataBuffer;
+    const sourceDb = this.sourceEmitter.dataBuffer;
 
     if (sourceDb.numInstances === 0) {
       return;

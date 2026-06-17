@@ -91,5 +91,19 @@ abstract class ParticleModule {
   }
 }
 
-export type { ParticleModuleContext, SpawnBatchContext, SpawnInfo, SpawnGenerator };
-export { ParticleModule };
+/**
+ * 依赖其它 emitter 运行时数据的模块（如 trail 的 SpawnPerSource / SampleFromSource）。
+ *
+ * 对齐 Niagara：跨 emitter 引用以数据描述、在构造之后由独立的 binding resolve 步骤
+ * 注入实际 instance（Niagara 的 InitPerInstanceData → EmitterBinding.Resolve）。
+ */
+interface SourceDependentModule {
+  setSource (source: ParticleEmitter): void,
+}
+
+function isSourceDependent (m: ParticleModule): m is ParticleModule & SourceDependentModule {
+  return 'setSource' in m;
+}
+
+export type { ParticleModuleContext, SpawnBatchContext, SpawnInfo, SpawnGenerator, SourceDependentModule };
+export { ParticleModule, isSourceDependent };

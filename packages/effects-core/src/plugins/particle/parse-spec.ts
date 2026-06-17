@@ -6,7 +6,7 @@ import { createValueGetter, ensureVec3 } from '../../math';
 import type { BurstSpawnModuleData } from './burst-spawn-module';
 import type { ForceTargetModuleData } from './force-target-module';
 import type { InitializeModuleData } from './initialize-particle-module';
-import type { EmitterData, ParsedTrailConfig } from './particle-emitter';
+import type { EmitterData } from './particle-emitter';
 import type { ParticleMeshProps } from './particle-mesh';
 import type { ParticleRibbonRendererProps } from './particle-ribbon-renderer';
 import type { ScaleColorModuleData } from './scale-color-module';
@@ -16,11 +16,14 @@ import type { SolveRotationModuleData } from './solve-rotation-module';
 import type { GravityForceModuleData } from './gravity-force-module';
 import type { SolveForcesAndVelocityModuleData } from './solve-forces-and-velocity-module';
 import type { SpawnRateModuleData } from './spawn-rate-module';
+import type { SpawnPerSourceModuleData } from './spawn-per-source-module';
+import type { SampleFromSourceModuleData } from './sample-from-source-module';
 
 /**
- * 模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
+ * 标准 sprite 粒子的模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
  */
-export type ParsedModuleData = {
+export type SpriteModuleData = {
+  kind: 'sprite',
   initialize: InitializeModuleData,
   spawnRate?: SpawnRateModuleData,
   burst: BurstSpawnModuleData,
@@ -33,8 +36,21 @@ export type ParsedModuleData = {
   scaleColor: ScaleColorModuleData,
 };
 
+/**
+ * trail（拖尾）粒子的模块级数据描述。trail 从 source emitter 的粒子采样生成 ribbon。
+ */
+export type TrailModuleData = {
+  kind: 'trail',
+  spawnPerSource: SpawnPerSourceModuleData,
+  sampleFromSource: SampleFromSourceModuleData,
+};
+
+export type ParsedModuleData = SpriteModuleData | TrailModuleData;
+
 export type ParsedSpecResult = {
   emitterData: EmitterData,
+  /** trail emitter 的数据，与 emitterData 并列；无 trail 时为 undefined */
+  trailEmitterData: EmitterData | undefined,
   particleMeshProps: ParticleMeshProps,
   trailMeshProps: ParticleRibbonRendererProps | undefined,
   interaction: { behavior?: spec.ParticleInteractionBehavior, multiple?: boolean, radius: number } | undefined,
@@ -179,32 +195,47 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
   particleMeshProps.textureFlip = data.splits?.[0]?.[4];
 
   // --- Trails ---
-  let trails: ParsedTrailConfig | undefined;
+  let trailEmitterData: EmitterData | undefined;
   let trailMeshProps: ParticleRibbonRendererProps | undefined;
   const trailsData = data.trails;
 
   if (trailsData) {
-    trails = {
-      lifetime: trailsData.lifetime,
-      dieWithParticles: trailsData.dieWithParticles !== false,
-      sizeAffectsWidth: !!trailsData.sizeAffectsWidth,
-      sizeAffectsLifetime: !!trailsData.sizeAffectsLifetime,
-      inheritParticleColor: !!trailsData.inheritParticleColor,
-      parentAffectsPosition: !!trailsData.parentAffectsPosition,
+    // pointCountPerTrail / minimumDistSq 与 renderer 同源同公式，保证逐帧一致
+    const pointCountPerTrail = Math.max(Math.round(trailsData.maxPointPerTrail) || 32, 2);
+    const minimumVertexDistance = trailsData.minimumVertexDistance || 0.02;
+
+    trailEmitterData = {
+      maxCount: (options.maxCount ?? 0) * pointCountPerTrail * 4,
+      looping: true,
+      particleFollowParent: true,
+      alignSpeedDirection: false,
+      pointCountPerTrail,
+      modules: {
+        kind: 'trail',
+        spawnPerSource: {
+          minimumDistSq: Math.pow(minimumVertexDistance, 2),
+          dieWithParticles: trailsData.dieWithParticles !== false,
+        },
+        sampleFromSource: {
+          lifetime: trailsData.lifetime,
+          inheritParticleColor: !!trailsData.inheritParticleColor,
+          sizeAffectsWidth: !!trailsData.sizeAffectsWidth,
+        },
+      },
     };
 
     trailMeshProps = {
       name: 'Trail',
       matrix: Matrix4.IDENTITY,
-      minimumVertexDistance: trailsData.minimumVertexDistance || 0.02,
+      minimumVertexDistance,
       maxTrailCount: options.maxCount,
-      pointCountPerTrail: Math.round(trailsData.maxPointPerTrail) || 32,
+      pointCountPerTrail,
       blending: trailsData.blending,
       texture: trailsData.texture ? engine.findObject(trailsData.texture) : undefined,
       opacityOverLifetime: createValueGetter(trailsData.opacityOverLifetime || 1),
       widthOverTrail: createValueGetter(trailsData.widthOverTrail || 1),
       shaderCachePrefix: '',
-      lifetime: createValueGetter(trails.lifetime),
+      lifetime: createValueGetter(trailsData.lifetime),
       occlusion: !!trailsData.occlusion,
       transparentOcclusion: !!trailsData.transparentOcclusion,
       mask: 0,
@@ -233,8 +264,9 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       looping: options.looping ?? false,
       particleFollowParent: !!options.particleFollowParent,
       alignSpeedDirection: !!(shape as any)?.alignSpeedDirection,
-      trails,
+      pointCountPerTrail: 0,
       modules: {
+        kind: 'sprite',
         initialize: initData,
         spawnRate: { rateOverTime: data.emission.rateOverTime },
         burst: {
@@ -258,6 +290,7 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
         scaleColor,
       },
     },
+    trailEmitterData,
     particleMeshProps,
     trailMeshProps,
     interaction,

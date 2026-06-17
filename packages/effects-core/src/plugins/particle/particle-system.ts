@@ -12,15 +12,10 @@ import type { Texture } from '../../texture';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { ParticleEmitter } from './particle-emitter';
-import type { EmitterData } from './particle-emitter';
 import { EmitterExecutionState } from './emitter-state';
 import type { ParsedSpecResult } from './parse-spec';
 import { parseParticleSpec } from './parse-spec';
 import { ParticleSystemRenderer } from './particle-system-renderer';
-import { SpawnPerSourceParticleModule } from './spawn-per-source-module';
-import { SampleFromSourceModule } from './sample-from-source-module';
-import { KillBySourceModule } from './kill-by-source-module';
-import { UpdateAgeModule } from './update-age-module';
 
 type ParticleInteraction = {
   behavior?: spec.ParticleInteractionBehavior,
@@ -232,8 +227,14 @@ export class ParticleSystem extends Component implements Maskable {
     this.emitter.state.duration = this.item.duration;
     this.emitter.state.endBehavior = this.item.endBehavior;
 
-    if (result.emitterData.trails) {
-      this.setupTrailEmitter(result.emitterData);
+    if (result.trailEmitterData) {
+      // trail emitter 与主 emitter 用同一创建方式，差异仅在传入的 EmitterData
+      this.trailEmitter = new ParticleEmitter();
+      this.trailEmitter.fromJSON(result.trailEmitterData, this.renderer);
+      // Niagara 式绑定解析：构造后注入 source emitter
+      this.trailEmitter.setSource(this.emitter);
+      this.trailEmitter.state.duration = this.item.duration;
+      this.trailEmitter.state.executionState = EmitterExecutionState.Active;
     }
 
     this.initEmitterTransform();
@@ -276,34 +277,6 @@ export class ParticleSystem extends Component implements Maskable {
     if (this.emitter.particleFollowParent) {
       this.renderer.updateWorldMatrix(this.emitter.worldMatrix);
     }
-  }
-
-  private setupTrailEmitter (emitterData: EmitterData): void {
-    const trails = emitterData.trails!;
-    const sourceEmitter = this.emitter!;
-    const pointCountPerTrail = this.renderer.ribbonRenderer?.pointCountPerTrail ?? 24;
-    const minimumDistSq = this.renderer.ribbonRenderer?.minimumVertexDistance ?? 0;
-
-    const spawnModule = new SpawnPerSourceParticleModule(sourceEmitter.dataBuffer, minimumDistSq);
-
-    spawnModule.dieWithParticles = trails.dieWithParticles;
-
-    const sampleModule = new SampleFromSourceModule(sourceEmitter, spawnModule, createValueGetter(trails.lifetime) as ValueGetter<number>, {
-      inheritParticleColor: trails.inheritParticleColor,
-      sizeAffectsWidth: trails.sizeAffectsWidth,
-    });
-
-    const modules = [
-      spawnModule,
-      sampleModule,
-      new UpdateAgeModule(),
-      new KillBySourceModule(spawnModule),
-    ];
-
-    this.trailEmitter = new ParticleEmitter();
-    this.trailEmitter.setupTrailEmitter(emitterData.maxCount * pointCountPerTrail * 4, modules, pointCountPerTrail);
-    this.trailEmitter.state.duration = this.item.duration;
-    this.trailEmitter.state.executionState = EmitterExecutionState.Active;
   }
 
   private initEmitterTransform (): void {
