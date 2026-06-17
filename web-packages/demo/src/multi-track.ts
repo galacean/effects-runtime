@@ -110,7 +110,7 @@ const scene = {
       dataType: 'SpriteColorPlayableAsset',
       startColor: [1, 1, 1, 1],
     },
-    // ---- Track 1：X 轴路径位移（override）----
+    // ---- Track 1：X 轴路径位移 ----
     {
       id: 'transform_asset_move',
       dataType: 'TransformPlayableAsset',
@@ -125,7 +125,7 @@ const scene = {
         ],
       },
     },
-    // ---- Track 2：均匀缩放 1 → 1.73（additive）----
+    // ---- Track 2：均匀缩放 1 → 1.73 ----
     {
       id: 'transform_asset_scale',
       dataType: 'TransformPlayableAsset',
@@ -134,7 +134,7 @@ const scene = {
         size: [21, [[4, [0, 1]], [4, [0.618, 1.73]]]],
       },
     },
-    // ---- Track 3：Z 轴旋转 0 → 360°（additive）----
+    // ---- Track 3：Z 轴旋转 0 → 360° ----
     {
       id: 'transform_asset_rotate',
       dataType: 'TransformPlayableAsset',
