@@ -66,8 +66,8 @@ export class ParticleDataBuffer {
   /**
    * 粒子存活标记，0 = 死亡，1 = 存活。
    *
-   * 对齐 Niagara：模块通过将 alive[i] = 0 标记死亡（自然死亡或主动击杀），
-   * 框架在 compactDead() 中用 swap-copy 将其移除，使 [0, numInstances) 始终紧凑。
+   * 模块通过将 alive[i] = 0 标记死亡（自然死亡或主动击杀），框架在 compactDead()
+   * 中用 swap-copy 将其移除，使 [0, numInstances) 始终紧凑。
    */
   readonly alive: number[];
 
@@ -82,7 +82,7 @@ export class ParticleDataBuffer {
   /** trail 粒子 spawn 时刻 source 粒子的 age，用于 ribbon renderer 反推 source normalized age */
   readonly spawnSourceAge: number[];
 
-  // ── 紧凑布局（对齐 Niagara FNiagaraDataBuffer） ──
+  // ── 紧凑布局 ──
 
   private _numInstances = 0;
 
@@ -137,7 +137,6 @@ export class ParticleDataBuffer {
 
   /**
    * 当前活跃粒子数量。[0, numInstances) 区间内的 slot 均为存活粒子（紧凑布局）。
-   * 对齐 Niagara FNiagaraDataBuffer::NumInstances。
    */
   get numInstances (): number {
     return this._numInstances;
@@ -156,8 +155,6 @@ export class ParticleDataBuffer {
   /**
    * swap-copy 压缩：反向遍历 [0, numInstances)，将 alive[i] === 0 的死亡粒子
    * 用末尾存活粒子填空位后 numInstances--，使存活粒子紧凑排列在前段。
-   *
-   * 对齐 Niagara FParticleSimulationContext::CompactDeadParticles。
    *
    * 注意：swap-copy 会打乱存活粒子的相对顺序，依赖渲染层的 SortMode 在绘制前
    * 重新排序。SortMode 尚未实现（TODO），在此之前帧对比基准需相应更新。

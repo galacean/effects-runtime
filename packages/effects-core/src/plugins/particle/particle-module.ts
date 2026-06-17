@@ -37,6 +37,11 @@ type ParticleModuleContext = {
   emitter: ParticleEmitter,
   firstIndex: number,
   lastIndex: number,
+  /**
+   * 是否为「首帧更新」批次：spawn 后针对本帧新生粒子 [firstIndex, lastIndex)
+   * 的一次性 particleUpdate。用于让模块区分主更新（全量旧粒子）与首帧更新。
+   */
+  isFirstFrameUpdate: boolean,
   /** 仅 particleSpawn 阶段有值，其它 stage 为 undefined */
   spawnBatch?: SpawnBatchContext,
 };
@@ -94,8 +99,8 @@ abstract class ParticleModule {
 /**
  * 依赖其它 emitter 运行时数据的模块（如 trail 的 SpawnPerSource / SampleFromSource）。
  *
- * 对齐 Niagara：跨 emitter 引用以数据描述、在构造之后由独立的 binding resolve 步骤
- * 注入实际 instance（Niagara 的 InitPerInstanceData → EmitterBinding.Resolve）。
+ * 跨 emitter 引用以数据描述、在构造之后由独立的 binding resolve 步骤（setSource）
+ * 注入实际 instance。
  */
 interface SourceDependentModule {
   setSource (source: ParticleEmitter): void,

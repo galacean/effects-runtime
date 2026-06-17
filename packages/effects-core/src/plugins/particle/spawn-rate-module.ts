@@ -9,7 +9,7 @@ export type SpawnRateModuleData = {
 };
 
 /**
- * 发射速率模块（无状态）。对齐 Cascade 的 UParticleModuleSpawn。
+ * 发射速率模块（无状态）。
  *
  * 只负责提供 rate 值和计算 spawn 数量。
  * 余数（spawnFraction）由 emitter 管理。

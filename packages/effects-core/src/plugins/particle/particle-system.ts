@@ -119,6 +119,7 @@ export class ParticleSystem extends Component implements Maskable {
   reset () {
     this.emitter?.fullReset();
     this.trailEmitter?.fullReset();
+    this.renderer?.reset();
     this.pathTime = 0;
     this.simulated = false;
   }
@@ -222,7 +223,7 @@ export class ParticleSystem extends Component implements Maskable {
     this.renderer.setup(particleMeshProps, trailMeshProps);
     this.renderer.maskManager = this.maskManager;
 
-    this.emitter.fromJSON(result.emitterData, this.renderer);
+    this.emitter.fromJSON(result.emitterData);
 
     this.emitter.state.duration = this.item.duration;
     this.emitter.state.endBehavior = this.item.endBehavior;
@@ -230,8 +231,8 @@ export class ParticleSystem extends Component implements Maskable {
     if (result.trailEmitterData) {
       // trail emitter 与主 emitter 用同一创建方式，差异仅在传入的 EmitterData
       this.trailEmitter = new ParticleEmitter();
-      this.trailEmitter.fromJSON(result.trailEmitterData, this.renderer);
-      // Niagara 式绑定解析：构造后注入 source emitter
+      this.trailEmitter.fromJSON(result.trailEmitterData);
+      // 绑定解析：构造后注入 source emitter
       this.trailEmitter.setSource(this.emitter);
       this.trailEmitter.state.duration = this.item.duration;
       this.trailEmitter.state.executionState = EmitterExecutionState.Active;
@@ -261,7 +262,14 @@ export class ParticleSystem extends Component implements Maskable {
     }
     this.updateItemPosition(dt / 1000);
     this.pushTransformToEmitter();
+
+    // 模拟与渲染分离：emitter.tick 只做模拟、产出通用粒子数据，
+    // renderer 各自解读 —— sprite renderer 读全部粒子，ribbon renderer 按 ribbonId 分组
     this.emitter.tick(dt);
+    if (this.emitter.dataBuffer.numInstances > 0) {
+      this.renderer.generateSpriteData(this.emitter);
+    }
+
     if (this.trailEmitter) {
       this.trailEmitter.tick(dt);
       this.renderer.generateRibbonData(this.trailEmitter);

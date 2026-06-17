@@ -18,6 +18,7 @@ import type { SolveForcesAndVelocityModuleData } from './solve-forces-and-veloci
 import type { SpawnRateModuleData } from './spawn-rate-module';
 import type { SpawnPerSourceModuleData } from './spawn-per-source-module';
 import type { SampleFromSourceModuleData } from './sample-from-source-module';
+import type { TrimRibbonsModuleData } from './trim-ribbons-module';
 
 /**
  * 标准 sprite 粒子的模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
@@ -43,6 +44,7 @@ export type TrailModuleData = {
   kind: 'trail',
   spawnPerSource: SpawnPerSourceModuleData,
   sampleFromSource: SampleFromSourceModuleData,
+  trimRibbons: TrimRibbonsModuleData,
 };
 
 export type ParsedModuleData = SpriteModuleData | TrailModuleData;
@@ -209,7 +211,6 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       looping: true,
       particleFollowParent: true,
       alignSpeedDirection: false,
-      pointCountPerTrail,
       modules: {
         kind: 'trail',
         spawnPerSource: {
@@ -221,6 +222,7 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
           inheritParticleColor: !!trailsData.inheritParticleColor,
           sizeAffectsWidth: !!trailsData.sizeAffectsWidth,
         },
+        trimRibbons: { pointCountPerTrail },
       },
     };
 
@@ -264,7 +266,6 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       looping: options.looping ?? false,
       particleFollowParent: !!options.particleFollowParent,
       alignSpeedDirection: !!(shape as any)?.alignSpeedDirection,
-      pointCountPerTrail: 0,
       modules: {
         kind: 'sprite',
         initialize: initData,

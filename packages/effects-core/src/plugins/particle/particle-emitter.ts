@@ -21,16 +21,14 @@ import { UpdateAgeModule } from './update-age-module';
 import { SpawnPerSourceParticleModule } from './spawn-per-source-module';
 import { SampleFromSourceModule } from './sample-from-source-module';
 import { KillBySourceModule } from './kill-by-source-module';
+import { TrimRibbonsModule } from './trim-ribbons-module';
 import { EmitterState, EmitterExecutionState } from './emitter-state';
-import type { ParticleSystemRenderer } from './particle-system-renderer';
 
 export type EmitterData = {
   maxCount: number,
   looping: boolean,
   particleFollowParent: boolean,
   alignSpeedDirection: boolean,
-  /** 0 = sprite emitter；>0 = trail emitter，限制每条 ribbon 的点数 */
-  pointCountPerTrail: number,
   modules: ParsedModuleData,
 };
 
@@ -42,7 +40,6 @@ export class ParticleEmitter {
   maxCount = 0;
   particleFollowParent = false;
   private alignSpeedDirection = false;
-  private pointCountPerTrail = 0;
 
   // --- Per-frame external input ---
   worldMatrix: Matrix4 = Matrix4.IDENTITY;
@@ -61,19 +58,16 @@ export class ParticleEmitter {
 
   // --- Internal refs (set during setup) ---
   private _dataBuffer: ParticleDataBuffer;
-  private renderer: ParticleSystemRenderer | null = null;
 
   get dataBuffer (): ParticleDataBuffer {
     return this._dataBuffer;
   }
 
-  fromJSON (data: EmitterData, renderer: ParticleSystemRenderer): void {
+  fromJSON (data: EmitterData): void {
     this.maxCount = data.maxCount;
     this.state.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
-    this.pointCountPerTrail = data.pointCountPerTrail;
-    this.renderer = renderer;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     this.modules = this.buildModules(data.modules);
   }
@@ -81,8 +75,7 @@ export class ParticleEmitter {
   /**
    * 绑定 source emitter，解析 trail 模块的跨 emitter 依赖。
    *
-   * 对齐 Niagara：跨 emitter 引用在构造之后由独立的 binding resolve 步骤注入
-   * （InitPerInstanceData → EmitterBinding.Resolve）。
+   * 跨 emitter 引用在构造之后由这一独立的 binding resolve 步骤注入。
    */
   setSource (source: ParticleEmitter): void {
     for (const module of this.modules) {
@@ -105,7 +98,13 @@ export class ParticleEmitter {
 
     sampleModule.fromJSON(data.sampleFromSource);
 
-    return [spawnModule, sampleModule, new UpdateAgeModule(), new KillBySourceModule(spawnModule)];
+    const trimModule = new TrimRibbonsModule();
+
+    trimModule.fromJSON(data.trimRibbons);
+
+    // 顺序：updateAge → killBySource → trimRibbons（均为 particleUpdate 阶段，
+    // 与重构前 tick 中「第2步 particleUpdate → 第3步 trimRibbons」的时序一致）
+    return [spawnModule, sampleModule, new UpdateAgeModule(), new KillBySourceModule(spawnModule), trimModule];
   }
 
   private buildSpriteModules (data: SpriteModuleData): ParticleModule[] {
@@ -170,7 +169,6 @@ export class ParticleEmitter {
     this.uniqueIndexOffset = 0;
     this.spawnInfos.length = 0;
     this._dataBuffer?.clear();
-    this.renderer?.reset();
   }
 
   runStage (stage: ParticleModuleStage, ctx: ParticleModuleContext): void {
@@ -206,33 +204,23 @@ export class ParticleEmitter {
     }
 
     // 2. particleUpdate (existing particles)。模块在此将自然死亡 / 主动击杀的
-    //    粒子标记为 alive[i] = 0
+    //    粒子标记为 alive[i] = 0；trail 的 ribbon 长度裁剪也作为 module 在此完成
     if (this._dataBuffer.numInstances > 0) {
       const ctx = this.buildModuleContext(dt);
 
       this.runStage(ParticleModuleStage.ParticleUpdate, ctx);
     }
 
-    // 3. trim ribbons（trail emitter 限制每条 ribbon 的点数，超额标记 alive = 0）
-    if (this.pointCountPerTrail > 0) {
-      this.trimRibbons(this._dataBuffer);
-    }
-
-    // 4. compact dead particles（swap-copy 压缩，使 [0, numInstances) 保持紧凑）
+    // 3. compact dead particles（swap-copy 压缩，使 [0, numInstances) 保持紧凑）
     this._dataBuffer.compactDead();
 
-    // 5. spawn (only if state allows)
+    // 4. spawn (only if state allows)
     if (this.state.isSpawningAllowed()) {
       this.doSpawn(dt);
     }
 
-    // 6. handle completion
+    // 5. handle completion
     this.state.handleCompletion(this._dataBuffer.numInstances);
-
-    // 7. render（仅 sprite emitter 自渲染；trail 的 ribbon 由 particle-system 外部生成）
-    if (this.pointCountPerTrail === 0 && this._dataBuffer.numInstances > 0 && this.renderer) {
-      this.renderer.generateSpriteData(this);
-    }
   }
 
   private doSpawn (dt: number): void {
@@ -254,6 +242,7 @@ export class ParticleEmitter {
         deltaTime: 0,
         firstIndex: oldNumInstances,
         lastIndex: this._dataBuffer.numInstances,
+        isFirstFrameUpdate: true,
       };
 
       this.runStage(ParticleModuleStage.ParticleUpdate, firstFrameCtx);
@@ -475,35 +464,8 @@ export class ParticleEmitter {
       emitter: this,
       firstIndex: 0,
       lastIndex: this._dataBuffer.numInstances,
+      isFirstFrameUpdate: false,
     };
-  }
-
-  private trimRibbons (db: ParticleDataBuffer): void {
-    const cap = this.pointCountPerTrail;
-    const ribbonSlots = new Map<number, number[]>();
-
-    for (let i = 0; i < db.numInstances; i++) {
-      if (!db.alive[i]) { continue; }
-      const rid = db.ribbonId[i];
-      let arr = ribbonSlots.get(rid);
-
-      if (!arr) {
-        arr = [];
-        ribbonSlots.set(rid, arr);
-      }
-      arr.push(i);
-    }
-
-    for (const slots of ribbonSlots.values()) {
-      if (slots.length <= cap) { continue; }
-      slots.sort((a, b) => db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b]);
-      const excess = slots.length - cap;
-
-      for (let i = 0; i < excess; i++) {
-        // 标记死亡，由 compactDead 压缩移除
-        db.alive[slots[i]] = 0;
-      }
-    }
   }
 
 }
