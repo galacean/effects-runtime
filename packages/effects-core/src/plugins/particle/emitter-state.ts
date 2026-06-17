@@ -7,7 +7,6 @@ export enum EmitterExecutionState {
 /**
  * Emitter 生命周期状态机。
  *
- * 对齐 Niagara Stateless 的 TickEmitterState：
  * - emitterAge 单调递增，不受 loop 影响
  * - loopAge 每次 loop 自然归零
  * - 不使用时间回退

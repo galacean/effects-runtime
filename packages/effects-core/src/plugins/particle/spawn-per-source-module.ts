@@ -1,4 +1,4 @@
-import { ParticleModule, ParticleModuleStage, SpawnInfoKind } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 
@@ -77,9 +77,9 @@ export class SpawnPerSourceParticleModule extends ParticleModule {
 
     if (totalCount > 0) {
       ctx.emitter.spawnInfos.push({
-        kind: SpawnInfoKind.Rate,
         count: totalCount,
         timeDelta: 0,
+        positionOffset: null,
         generator: {
           total: totalCount,
           index: 0,

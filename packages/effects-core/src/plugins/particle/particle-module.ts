@@ -55,41 +55,17 @@ type SpawnGenerator = {
 };
 
 /**
- * burst 延迟求值的结果。emitter 在 spawn 阶段确认有可用 slot 后，
- * 通过 BurstSpawnInfo.prepare() 拿到最终的 count / 偏移 / generator。
+ * Spawn 请求。emitterUpdate 阶段由 SpawnRate/Burst 模块写入 emitter.spawnInfos。
+ *
+ * spawn 阶段按 spawnInfos 顺序消费共享的 maxCount 预算，buffer 满则后续
+ * spawnInfo 被 clamp 丢弃
  */
-type ResolvedBurstSpawn = {
-  count: number,
-  positionOffset: readonly [number, number, number],
-  generator: SpawnGenerator,
-};
-
-export enum SpawnInfoKind {
-  Rate = 'rate',
-  Burst = 'burst',
-}
-
-/**
- * rate 来源：spawn 参数本帧已就绪，emitter 直接消费。
- */
-type RateSpawnInfo = {
-  kind: SpawnInfoKind.Rate,
+type SpawnInfo = {
   count: number,
   timeDelta: number,
+  positionOffset: readonly [number, number, number] | null,
   generator: SpawnGenerator,
 };
-
-/**
- * burst 来源：携带延迟准备逻辑。emitter 在 spawn 循环中确认有可用 slot 后
- * 调用 prepare()，此时才消耗 burst cycle 状态。返回 null 表示本次不发射
- * （cycle 耗尽 / 概率未命中），保留「满容量则不消耗、下一帧补发」的时序。
- */
-type BurstSpawnInfo = {
-  kind: SpawnInfoKind.Burst,
-  prepare: () => ResolvedBurstSpawn | null,
-};
-
-type SpawnInfo = RateSpawnInfo | BurstSpawnInfo;
 
 /**
  * 粒子模块基类。
@@ -115,5 +91,5 @@ abstract class ParticleModule {
   }
 }
 
-export type { ParticleModuleContext, SpawnBatchContext, SpawnInfo, RateSpawnInfo, BurstSpawnInfo, SpawnGenerator, ResolvedBurstSpawn };
+export type { ParticleModuleContext, SpawnBatchContext, SpawnInfo, SpawnGenerator };
 export { ParticleModule };

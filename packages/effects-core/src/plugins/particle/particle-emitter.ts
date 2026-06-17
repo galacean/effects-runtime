@@ -4,8 +4,8 @@ import type * as spec from '@galacean/effects-specification';
 import type { ShapeGeneratorOptions } from '../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
 import { ParticleDataBuffer as ParticleDataBufferImpl } from './particle-data-buffer';
-import { ParticleModuleStage, SpawnInfoKind } from './particle-module';
-import type { ParticleModuleContext, SpawnInfo, SpawnGenerator } from './particle-module';
+import { ParticleModuleStage } from './particle-module';
+import type { ParticleModuleContext, SpawnInfo } from './particle-module';
 import type { ParticleModule } from './particle-module';
 import type { ParsedModuleData } from './parse-spec';
 import { BurstSpawnModule } from './burst-spawn-module';
@@ -275,27 +275,7 @@ export class ParticleEmitter {
     spawnInfo: SpawnInfo,
     spawnedSlots: number[],
   ): void {
-    let count: number;
-    let generator: SpawnGenerator;
-    let positionOffset: readonly [number, number, number] | null;
-
-    if (spawnInfo.kind === SpawnInfoKind.Burst) {
-      if (!this.hasAvailableSlots(db, maxCount)) {
-        return;
-      }
-      const resolved = spawnInfo.prepare();
-
-      if (!resolved) {
-        return;
-      }
-      count = resolved.count;
-      generator = resolved.generator;
-      positionOffset = resolved.positionOffset;
-    } else {
-      count = spawnInfo.count;
-      generator = spawnInfo.generator;
-      positionOffset = null;
-    }
+    const { count, generator, positionOffset } = spawnInfo;
 
     const worldMatrix = this.getWorldMatrix();
     const requestedCount = Math.min(count, maxCount);
@@ -390,14 +370,6 @@ export class ParticleEmitter {
       db.initialSize[i2] *= sx;
       db.initialSize[i2 + 1] *= sy;
     }
-  }
-
-  hasAvailableSlots (db: ParticleDataBuffer, maxCount: number): boolean {
-    if (this.state.emissionStopped) {
-      return false;
-    }
-
-    return this._dataBuffer.nextSlotIndex < maxCount || db.freeSlots.length > 0;
   }
 
   // ========================

@@ -1,9 +1,8 @@
 import type { vec3 } from '@galacean/effects-specification';
 import type { BurstData } from './burst';
 import { Burst } from './burst';
-import type { ParticleEmitter } from './particle-emitter';
-import { ParticleModule, ParticleModuleStage, SpawnInfoKind } from './particle-module';
-import type { ParticleModuleContext, ResolvedBurstSpawn } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
+import type { ParticleModuleContext } from './particle-module';
 
 export type BurstSpawnModuleData = {
   bursts: BurstData[],
@@ -13,12 +12,10 @@ export type BurstSpawnModuleData = {
 const ORIGIN_OFFSET: readonly [number, number, number] = [0, 0, 0];
 
 /**
- * Burst 发射模块。对齐 particle-system-pro 的 ProSpawnBurstModule。
+ * Burst 发射模块。burst 触发时立即消耗 cycle 并写入 SpawnInfo，
+ * buffer 满由 emitter 的共享预算 clamp 丢弃，不补发。
  *
- * stage = emitterUpdate。每帧检查 burst 的 canFire 条件，
- * 向 emitter.spawnInfos 推入带 prepare 回调的 SpawnInfo。
- *
- * 自检测 loop 回绕（timePassed 下降时重置 burst 状态）。
+ * stage = emitterUpdate。自检测 loop 回绕（timePassed 下降时重置 burst 状态）。
  */
 export class BurstSpawnModule extends ParticleModule {
   override readonly stage = ParticleModuleStage.EmitterUpdate;
@@ -49,39 +46,31 @@ export class BurstSpawnModule extends ParticleModule {
         continue;
       }
 
-      const burstIndex = j;
+      const opts = burst.getGeneratorOptions(timePassed, emitter.state.loopLifetime);
+
+      if (!opts) {
+        continue;
+      }
+
+      const offsets = this.burstOffsets[j];
+      const burstOffset = (offsets && offsets[opts.cycleIndex]) || ORIGIN_OFFSET;
+
+      if (burst.once) {
+        this.burstOffsets[j] = null;
+        this.bursts.splice(j, 1);
+      }
 
       emitter.spawnInfos.push({
-        kind: SpawnInfoKind.Burst,
-        prepare: () => this.resolveBurst(emitter, burst, burstIndex),
+        count: opts.count,
+        timeDelta: 0,
+        positionOffset: burstOffset,
+        generator: {
+          total: opts.total,
+          index: opts.index,
+          useGeneratedCountIndex: false,
+          burstCount: opts.count,
+        },
       });
     }
-  }
-
-  private resolveBurst (emitter: ParticleEmitter, burst: Burst, burstIndex: number): ResolvedBurstSpawn | null {
-    const opts = burst.getGeneratorOptions(emitter.timePassed, emitter.state.loopLifetime);
-
-    if (!opts) {
-      return null;
-    }
-
-    const offsets = this.burstOffsets[burstIndex];
-    const burstOffset = (offsets && offsets[opts.cycleIndex]) || ORIGIN_OFFSET;
-
-    if (burst.once) {
-      this.burstOffsets[burstIndex] = null;
-      this.bursts.splice(burstIndex, 1);
-    }
-
-    return {
-      count: opts.count,
-      positionOffset: burstOffset,
-      generator: {
-        total: opts.total,
-        index: opts.index,
-        useGeneratedCountIndex: false,
-        burstCount: opts.count,
-      },
-    };
   }
 }

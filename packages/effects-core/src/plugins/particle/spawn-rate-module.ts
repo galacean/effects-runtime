@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
-import { ParticleModule, ParticleModuleStage, SpawnInfoKind } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from './particle-module';
 import type { ParticleModuleContext } from './particle-module';
 
 export type SpawnRateModuleData = {
@@ -35,9 +35,9 @@ export class SpawnRateModule extends ParticleModule {
       const interval = rate > 0 ? 1 / rate : 0;
 
       ctx.emitter.spawnInfos.push({
-        kind: SpawnInfoKind.Rate,
         count,
         timeDelta: interval,
+        positionOffset: null,
         generator: {
           total: rate,
           index: 0,
