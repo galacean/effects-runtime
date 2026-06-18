@@ -77,10 +77,11 @@ export class TransformLayerMixer {
     }
     if (contribution.hasScale) {
       this.hasScale = true;
-      // 乘子连乘 out *= c。crossfade（weight<1）时应改为 out *= pow(c, weight)。
-      this.outScale.x *= contribution.scale.x;
-      this.outScale.y *= contribution.scale.y;
-      this.outScale.z *= contribution.scale.z;
+      // 乘子连乘 out *= pow(c, weight)；weight 恒为 1 时 pow(c,1)===c，
+      // 与 position/rotation 的 *weight 语义统一，支持未来 crossfade。
+      this.outScale.x *= Math.pow(contribution.scale.x, weight);
+      this.outScale.y *= Math.pow(contribution.scale.y, weight);
+      this.outScale.z *= Math.pow(contribution.scale.z, weight);
     }
   }
 

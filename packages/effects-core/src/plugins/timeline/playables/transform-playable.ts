@@ -182,6 +182,10 @@ export class TransformPlayable extends Playable implements IContributesTransform
       return;
     }
     const duration = this.getDuration();
+
+    if (duration <= 0) {
+      return;
+    }
     let life = this.time / duration;
 
     life = life < 0 ? 0 : life;
@@ -230,6 +234,10 @@ export class TransformPlayable extends Playable implements IContributesTransform
 
   private sampleAnimation (basePosition?: Vector3) {
     const duration = this.getDuration();
+
+    if (duration <= 0) {
+      return;
+    }
     let life = this.time / duration;
 
     life = life < 0 ? 0 : life;
