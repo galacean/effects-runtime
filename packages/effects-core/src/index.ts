@@ -4,7 +4,7 @@ import {
 } from './plugins';
 import { logger } from './utils';
 
-export * as math from '@galacean/effects-math/es/core/index';
+export * as math from '@galacean/effects-math/es/index';
 export * as spec from '@galacean/effects-specification';
 export * from './asset';
 export * from './binary-asset';
