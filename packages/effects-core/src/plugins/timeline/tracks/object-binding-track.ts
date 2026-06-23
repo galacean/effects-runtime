@@ -1,8 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import { VFXItem } from '../../../vfx-item';
-import { ParticleSystem } from '../../particle/particle-system';
-import { ParticleBehaviourPlayableAsset } from '../../particle/particle-vfx-item';
+import { ParticleSystem } from '../../particle';
+import { ParticleBehaviourPlayableAsset } from '../../particle';
 import { SpriteComponent, ComponentTimePlayableAsset, EffectComponentTimeTrack, SpriteComponentTimeTrack } from '../../sprite/sprite-item';
 import { EffectComponent } from '../../../components';
 import { TrackAsset } from '../track';

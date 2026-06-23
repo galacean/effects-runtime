@@ -1,5 +1,5 @@
-import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
+import type { ValueGetter } from '../../../math';
+import { createValueGetter } from '../../../math';
 import type * as spec from '@galacean/effects-specification';
 
 export type BurstData = {

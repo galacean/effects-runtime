@@ -2,21 +2,21 @@ import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
 import type { GradientStop } from '@galacean/effects-specification';
-import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleEmitter } from './particle-emitter';
+import type { ParticleDataBuffer } from '../core/particle-data-buffer';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 import { ParticleRenderer } from './particle-renderer';
-import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import type { MaterialProps } from '../../material';
-import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
-import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
-import type { GeometryProps, ShaderMacros, ShaderWithSource, GPUCapability } from '../../render';
-import { GLSLVersion, Geometry, Mesh } from '../../render';
-import { particleFrag, trailVert } from '../../shader';
-import { Texture } from '../../texture';
-import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
+import { PLAYER_OPTIONS_ENV_EDITOR } from '../../../constants';
+import type { Engine } from '../../../engine';
+import { glContext } from '../../../gl';
+import type { MaterialProps } from '../../../material';
+import { Material, getPreMultiAlpha, setBlendMode } from '../../../material';
+import type { ValueGetter } from '../../../math';
+import { createValueGetter } from '../../../math';
+import type { GeometryProps, ShaderMacros, ShaderWithSource, GPUCapability } from '../../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../../render';
+import { particleFrag, trailVert } from '../../../shader';
+import { Texture } from '../../../texture';
+import { colorStopsFromGradient, interpolateColor } from '../../../utils/color';
 
 export type ParticleRibbonRendererProps = {
   maxTrailCount: number,

@@ -1,14 +1,14 @@
 import { Euler, Matrix4, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
-import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
-import { createShape } from '../../shape';
-import type { ShapeGenerator, ShapeParticle } from '../../shape';
-import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleEmitter } from './particle-emitter';
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import type { ValueGetter } from '../../../math';
+import { createValueGetter } from '../../../math';
+import { createShape } from '../../../shape';
+import type { ShapeGenerator, ShapeParticle } from '../../../shape';
+import type { ParticleDataBuffer } from '../core/particle-data-buffer';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
 
 export type InitializeModuleData = {
   startSpeed: spec.NumberExpression | number,

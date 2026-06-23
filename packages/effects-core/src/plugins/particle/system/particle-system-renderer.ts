@@ -1,13 +1,13 @@
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import type { Texture } from '../../texture';
-import type { ParticleRibbonRendererProps } from './particle-ribbon-renderer';
-import { ParticleRibbonRenderer } from './particle-ribbon-renderer';
-import type { ParticleMeshProps } from './particle-mesh';
-import { ParticleSpriteRenderer } from './particle-sprite-renderer';
-import type { Mesh, Renderer } from '../../render';
-import type { Engine } from '../../engine';
-import { RendererComponent } from '../../components';
-import type { ParticleEmitter } from './particle-emitter';
+import type { Texture } from '../../../texture';
+import type { ParticleRibbonRendererProps } from '../renderer/particle-ribbon-renderer';
+import { ParticleRibbonRenderer } from '../renderer/particle-ribbon-renderer';
+import type { ParticleMeshProps } from '../renderer/particle-mesh';
+import { ParticleSpriteRenderer } from '../renderer/particle-sprite-renderer';
+import type { Mesh, Renderer } from '../../../render';
+import type { Engine } from '../../../engine';
+import { RendererComponent } from '../../../components';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 
 /**
  * @since 2.0.0

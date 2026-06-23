@@ -1,9 +1,9 @@
-import type { ParticleEmitter } from './particle-emitter';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 import type { ParticleMeshProps } from './particle-mesh';
 import { ParticleMesh } from './particle-mesh';
 import { ParticleRenderer } from './particle-renderer';
-import type { Engine } from '../../engine';
-import type { Geometry, Mesh } from '../../render';
+import type { Engine } from '../../../engine';
+import type { Geometry, Mesh } from '../../../render';
 
 const sizeOffsets = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
 

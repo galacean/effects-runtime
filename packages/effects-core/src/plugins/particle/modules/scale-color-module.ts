@@ -1,9 +1,9 @@
 import type * as spec from '@galacean/effects-specification';
-import type { ValueGetter } from '../../math';
-import { createValueGetter, RandomValue } from '../../math';
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
-import { colorStopsFromGradient, interpolateColor } from '../../utils/color';
+import type { ValueGetter } from '../../../math';
+import { createValueGetter, RandomValue } from '../../../math';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
+import { colorStopsFromGradient, interpolateColor } from '../../../utils/color';
 
 export type ScaleColorModuleData = {
   color?: number[][],

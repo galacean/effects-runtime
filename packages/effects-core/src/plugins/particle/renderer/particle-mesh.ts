@@ -1,20 +1,20 @@
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type { Engine } from '../../engine';
-import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { MaterialProps } from '../../material';
+import type { Engine } from '../../../engine';
+import { PLAYER_OPTIONS_ENV_EDITOR } from '../../../constants';
+import type { MaterialProps } from '../../../material';
 import {
   getPreMultiAlpha, Material, setBlendMode, setSideMode,
-} from '../../material';
+} from '../../../material';
 import type {
   Attribute, GeometryProps, ShaderMacros,
-} from '../../render';
-import { GLSLVersion, Geometry, Mesh } from '../../render';
-import { particleFrag, particleVert } from '../../shader';
-import { Texture } from '../../texture';
-import { assertExist } from '../../utils';
-import { particleUniformTypeMap } from './particle-vfx-item';
+} from '../../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../../render';
+import { particleFrag, particleVert } from '../../../shader';
+import { Texture } from '../../../texture';
+import { assertExist } from '../../../utils';
+import { particleUniformTypeMap } from '../system/particle-vfx-item';
 
 export interface ParticleMeshProps {
   renderMode?: number,

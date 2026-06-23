@@ -1,24 +1,24 @@
 import { Matrix4, Vector2 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
-import type { Engine } from '../../engine';
-import { createValueGetter, ensureVec3 } from '../../math';
-import type { BurstSpawnModuleData } from './burst-spawn-module';
-import type { ForceTargetModuleData } from './force-target-module';
-import type { InitializeModuleData } from './initialize-particle-module';
-import type { EmitterData } from './particle-emitter';
-import type { ParticleMeshProps } from './particle-mesh';
-import type { ParticleRibbonRendererProps } from './particle-ribbon-renderer';
-import type { ScaleColorModuleData } from './scale-color-module';
-import type { ScaleSizeModuleData } from './scale-size-module';
-import type { OrbitalAndLinearMoveModuleData } from './orbital-and-linear-move-module';
-import type { SolveRotationModuleData } from './solve-rotation-module';
-import type { GravityForceModuleData } from './gravity-force-module';
-import type { SolveForcesAndVelocityModuleData } from './solve-forces-and-velocity-module';
-import type { SpawnRateModuleData } from './spawn-rate-module';
-import type { SpawnPerSourceModuleData } from './spawn-per-source-module';
-import type { SampleFromSourceModuleData } from './sample-from-source-module';
-import type { TrimRibbonsModuleData } from './trim-ribbons-module';
+import type { Engine } from '../../../engine';
+import { createValueGetter, ensureVec3 } from '../../../math';
+import type { BurstSpawnModuleData } from '../modules/burst-spawn-module';
+import type { ForceTargetModuleData } from '../modules/force-target-module';
+import type { InitializeModuleData } from '../modules/initialize-particle-module';
+import type { EmitterData } from '../emitter/particle-emitter';
+import type { ParticleMeshProps } from '../renderer/particle-mesh';
+import type { ParticleRibbonRendererProps } from '../renderer/particle-ribbon-renderer';
+import type { ScaleColorModuleData } from '../modules/scale-color-module';
+import type { ScaleSizeModuleData } from '../modules/scale-size-module';
+import type { OrbitalAndLinearMoveModuleData } from '../modules/orbital-and-linear-move-module';
+import type { SolveRotationModuleData } from '../modules/solve-rotation-module';
+import type { GravityForceModuleData } from '../modules/gravity-force-module';
+import type { SolveForcesAndVelocityModuleData } from '../modules/solve-forces-and-velocity-module';
+import type { SpawnRateModuleData } from '../modules/spawn-rate-module';
+import type { SpawnPerSourceModuleData } from '../modules/spawn-per-source-module';
+import type { SampleFromSourceModuleData } from '../modules/sample-from-source-module';
+import type { TrimRibbonsModuleData } from '../modules/trim-ribbons-module';
 
 /**
  * 标准 sprite 粒子的模块级数据描述。每个字段 1:1 对应一个模块的构建参数。

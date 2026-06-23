@@ -1,8 +1,8 @@
 import type { vec3 } from '@galacean/effects-specification';
-import type { BurstData } from './burst';
-import { Burst } from './burst';
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import type { BurstData } from '../core/burst';
+import { Burst } from '../core/burst';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
 
 export type BurstSpawnModuleData = {
   bursts: BurstData[],

@@ -1,6 +1,6 @@
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
-import type { ParticleDataBuffer } from './particle-data-buffer';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
+import type { ParticleDataBuffer } from '../core/particle-data-buffer';
 
 export type TrimRibbonsModuleData = {
   pointCountPerTrail: number,

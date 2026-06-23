@@ -1,5 +1,5 @@
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
 import type { SpawnPerSourceParticleModule } from './spawn-per-source-module';
 
 export class KillBySourceModule extends ParticleModule {

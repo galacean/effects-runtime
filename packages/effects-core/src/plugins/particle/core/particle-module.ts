@@ -1,6 +1,6 @@
-import type { ShapeGeneratorOptions } from '../../shape';
+import type { ShapeGeneratorOptions } from '../../../shape';
 import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleEmitter } from './particle-emitter';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 
 /**
  * 粒子模块执行阶段。对齐 particle-system-pro 的 ProModuleStage。

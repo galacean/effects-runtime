@@ -1,6 +1,6 @@
-import { VFXItem } from '../../vfx-item';
-import type { FrameContext } from '../timeline/playable';
-import { Playable, PlayableAsset } from '../timeline/playable';
+import { VFXItem } from '../../../vfx-item';
+import type { FrameContext } from '../../timeline/playable';
+import { Playable, PlayableAsset } from '../../timeline/playable';
 import { ParticleSystem } from './particle-system';
 
 /**

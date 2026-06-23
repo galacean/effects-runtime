@@ -1,10 +1,10 @@
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext, SourceDependentModule } from './particle-module';
-import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleEmitter } from './particle-emitter';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext, SourceDependentModule } from '../core/particle-module';
+import type { ParticleDataBuffer } from '../core/particle-data-buffer';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 import type { SpawnPerSourceParticleModule } from './spawn-per-source-module';
-import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
+import type { ValueGetter } from '../../../math';
+import { createValueGetter } from '../../../math';
 import type * as spec from '@galacean/effects-specification';
 
 export type SampleFromSourceModuleData = {

@@ -1,5 +1,5 @@
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
 
 /**
  * 年龄更新模块。每帧 age += dt，并在 age 达到 lifetime 时将粒子标记为死亡

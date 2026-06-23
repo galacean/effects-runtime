@@ -1,9 +1,9 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec3 } from '@galacean/effects-specification';
-import type { ValueGetter } from '../../math';
-import { createValueGetter } from '../../math';
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext } from './particle-module';
+import type { ValueGetter } from '../../../math';
+import { createValueGetter } from '../../../math';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext } from '../core/particle-module';
 
 export type ForceTargetModuleData = {
   curve: spec.NumberExpression | number,

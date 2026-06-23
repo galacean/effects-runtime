@@ -1,5 +1,5 @@
-import type { Geometry, Mesh } from '../../render';
-import type { ParticleEmitter } from './particle-emitter';
+import type { Geometry, Mesh } from '../../../render';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 
 /**
  * 一个粒子渲染器的运行时实例。对齐 particle-system-pro 的 ProRenderer：

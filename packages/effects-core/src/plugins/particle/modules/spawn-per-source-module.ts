@@ -1,7 +1,7 @@
-import { ParticleModule, ParticleModuleStage } from './particle-module';
-import type { ParticleModuleContext, SourceDependentModule } from './particle-module';
-import type { ParticleDataBuffer } from './particle-data-buffer';
-import type { ParticleEmitter } from './particle-emitter';
+import { ParticleModule, ParticleModuleStage } from '../core/particle-module';
+import type { ParticleModuleContext, SourceDependentModule } from '../core/particle-module';
+import type { ParticleDataBuffer } from '../core/particle-data-buffer';
+import type { ParticleEmitter } from '../emitter/particle-emitter';
 
 export interface SourceAssignment {
   srcIdx: number,
