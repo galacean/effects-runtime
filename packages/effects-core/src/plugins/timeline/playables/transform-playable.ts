@@ -30,18 +30,6 @@ export type TransformContribution = {
   scale: Vector3,
 };
 
-export type IContributesTransform = {
-  /** 多 track：返回相对 base 的 contribution（delta）。 */
-  getContribution: (basePosition?: Vector3) => TransformContribution,
-  /** 单 track：直接把采样结果写回 item.transform。 */
-  applyContribution: (item: VFXItem) => void,
-};
-
-export const isContributingTransform = (p: object): p is IContributesTransform => {
-  return typeof (p as IContributesTransform).getContribution === 'function'
-    && typeof (p as IContributesTransform).applyContribution === 'function';
-};
-
 const createEmptyContribution = (): TransformContribution => ({
   hasPosition: false,
   position: new Vector3(),
@@ -54,7 +42,7 @@ const createEmptyContribution = (): TransformContribution => ({
 /**
  * @since 2.0.0
  */
-export class TransformPlayable extends Playable implements IContributesTransform {
+export class TransformPlayable extends Playable {
   originalTransform: ItemBasicTransform;
   protected sizeSeparateAxes: boolean;
   protected sizeXOverLifetime: ValueGetter<number>;

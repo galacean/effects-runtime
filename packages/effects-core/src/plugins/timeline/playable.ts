@@ -1,6 +1,5 @@
 import { EffectsObject } from '../../effects-object';
 import type { Disposable } from '../../utils';
-import type { TransformLayerMixer } from './transform-layer-mixer';
 
 /**
  * 动画图可播放节点对象
@@ -147,8 +146,6 @@ export abstract class PlayableAsset extends EffectsObject {
 export interface FrameContext {
   deltaTime: number,
   output: PlayableOutput,
-  /** TransformTrack additive accumulation, key = item instanceId. */
-  transformLayerMixerMap?: Map<string, TransformLayerMixer>,
 }
 
 export enum PlayState {
