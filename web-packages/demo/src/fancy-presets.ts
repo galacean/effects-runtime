@@ -1,113 +1,11 @@
+import { BUILTIN_FANCY_PRESETS } from '@galacean/effects-core';
 import type { FancyConfig } from '@galacean/effects-core';
 
 /**
  * Demo 花字预设配置集合
- * 这些配置展示了各种花字层的组合方式
+ * 统一从 effects-core 的内置预设库导入，不再独立维护
  */
-export const demoFancyJsonConfigs: Record<string, FancyConfig> = {
-  none: { layers: [] },
-  'single-stroke': {
-    layers: [
-      { kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } },
-      { kind: 'solid-fill', params: { color: [1, 1, 1, 1] } },
-    ],
-  },
-  'multi-stroke': {
-    layers: [
-      { kind: 'single-stroke', params: { width: 15, color: [0.75, 0.28, 0.77, 1] } },
-      { kind: 'single-stroke', params: { width: 12, color: [0.44, 0.34, 0.81, 1] } },
-      { kind: 'single-stroke', params: { width: 9, color: [0.52, 0.89, 0.19, 1] } },
-      { kind: 'single-stroke', params: { width: 6, color: [1, 0.52, 0.36, 1] } },
-      { kind: 'single-stroke', params: { width: 3, color: [0.99, 0.19, 0.51, 1] } },
-      { kind: 'solid-fill', params: { color: [1, 1, 1, 1] } },
-    ],
-  },
-  gradient: {
-    layers: [
-      {
-        kind: 'single-stroke',
-        params: {
-          width: 3,
-          color: [0, 0, 0, 1],
-        },
-        decorations: [
-          {
-            kind: 'shadow',
-            params: {
-              color: [0, 0, 0, 0.6],
-              blur: 8,
-              offsetX: 4,
-              offsetY: 4,
-            },
-          },
-        ],
-      },
-      {
-        kind: 'gradient',
-        params: {
-          colors: [
-            [1, 0, 0, 1],
-            [0, 0, 1, 1],
-          ],
-          angle: 0,
-        },
-      },
-    ],
-  },
-  shadow: {
-    layers: [
-      {
-        kind: 'solid-fill',
-        params: {
-          color: [0, 0, 0, 1],
-        },
-        decorations: [
-          {
-            kind: 'shadow',
-            params: {
-              color: [0, 0, 0, 0.8],
-              blur: 10,
-              offsetX: 5,
-              offsetY: 5,
-            },
-          },
-        ],
-      },
-    ],
-  },
-  texture: {
-    layers: [
-      {
-        kind: 'texture',
-        params: {
-          pattern: {
-            imageUrl: 'https://gw.alipayobjects.com/mdn/rms_2e421e/afts/img/A*fRtNTKrsq3YAAAAAAAAAAAAAARQnAQ',
-          },
-        },
-      },
-    ],
-  },
-  glow: {
-    layers: [
-      {
-        kind: 'solid-fill',
-        params: {
-          color: [1, 1, 1, 1],
-        },
-        decorations: [
-          {
-            kind: 'glow',
-            params: {
-              color: [0, 0.8, 1, 1],
-              blur: 12,
-              intensity: 3,
-            },
-          },
-        ],
-      },
-    ],
-  },
-};
+export const demoFancyJsonConfigs: Record<string, FancyConfig> = BUILTIN_FANCY_PRESETS;
 
 /**
  * 获取指定名称的花字预设配置

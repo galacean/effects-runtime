@@ -5,6 +5,13 @@ import type {
   FancyRenderStyle,
 } from './fancy-text/fancy-types';
 
+// Re-export 预设常量（已迁移到 fancy-presets.ts，保持向后兼容）
+export {
+  GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE,
+  METALLIC_SAMPLE,
+  NEON_SAMPLE,
+} from './fancy-text/fancy-presets';
+
 function normalizeColor (rgba: number[]): [number, number, number, number] {
   if (!rgba || rgba.length < 3) { return [1, 1, 1, 1]; }
   const [r, g, b, a = 1] = rgba;
@@ -36,6 +43,8 @@ export class TextStyle {
   fontScale = 2;
   fontOffset = 0;
   fancyRenderStyle: FancyRenderStyle;
+  /** 保存最近一次应用的配置态数据，供编辑器回读和调参使用 */
+  fancyConfig?: FancyConfig;
 
   constructor (options: spec.TextContentOptions) {
     this.update(options);
@@ -93,12 +102,20 @@ export class TextStyle {
     }
 
     // 使用编辑器传入的 fancyRenderStyle，否则根据基础样式生成
-    const frs = (options as unknown as { fancyRenderStyle?: FancyRenderStyle }).fancyRenderStyle;
+    // 优先使用 fancyConfig（配置态），其次使用 fancyRenderStyle（运行态）
+    const fancyConfig = (options as unknown as { fancyConfig?: FancyConfig }).fancyConfig;
 
-    if (frs?.layers?.length) {
-      this.fancyRenderStyle = frs;
+    if (fancyConfig?.layers?.length) {
+      this.fancyConfig = fancyConfig;
+      this.fancyRenderStyle = TextStyle.parseFancyConfig(fancyConfig, this.textColor);
     } else {
-      this.fancyRenderStyle = this.getBaseRenderStyle();
+      const frs = (options as unknown as { fancyRenderStyle?: FancyRenderStyle }).fancyRenderStyle;
+
+      if (frs?.layers?.length) {
+        this.fancyRenderStyle = frs;
+      } else {
+        this.fancyRenderStyle = this.getBaseRenderStyle();
+      }
     }
   }
 
@@ -134,10 +151,7 @@ export class TextStyle {
     return this.fancyRenderStyle;
   }
 
-  /**
-   * 将花字配置解析为 FancyRenderStyle，扁平化 decorations 到渲染层数组
-   * @deprecated runtime 不再解析 FancyConfig，请在编辑器侧 flatten 后传 fancyRenderStyle
-   */
+  /** 将花字配置解析为 FancyRenderStyle，扁平化 decorations 到渲染层数组 */
   static parseFancyConfig (config: FancyConfig, fallbackFillColor?: spec.vec4): FancyRenderStyle {
     const layers: FancyRenderLayer[] = [];
     const srcLayers = config.layers || [];
@@ -201,11 +215,6 @@ export class TextStyle {
     }
 
     return { layers };
-  }
-
-  /** @deprecated runtime 不再解析 FancyConfig，请在编辑器侧 flatten 后传 fancyRenderStyle */
-  applyFancyConfig (config: FancyConfig): void {
-    this.fancyRenderStyle = TextStyle.parseFancyConfig(config, this.textColor);
   }
 
   setStrokeEnabled (enabled: boolean): void {
@@ -372,56 +381,3 @@ export class TextStyle {
     this.updateShadowParams({});
   }
 }
-
-/** 示例：外发光 + 多重描边 + 渐变填充 */
-export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
-  layers: [
-    {
-      kind: 'single-stroke',
-      params: { width: 8, color: [0.1, 0.1, 0.1, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [0.3, 0.6, 1, 0.8], blur: 15, offsetX: 0, offsetY: 0 } }],
-    },
-    { kind: 'single-stroke', params: { width: 5, color: [0.3, 0.3, 0.3, 1] } },
-    {
-      kind: 'single-stroke',
-      params: { width: 2, color: [0.6, 0.6, 0.6, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [1, 0.9, 0.5, 0.6], blur: 5, offsetX: 0, offsetY: 0 } }],
-    },
-    { kind: 'gradient', params: { colors: [[1, 0.2, 0.5, 1], [0.2, 0.5, 1, 1], [0.3, 1, 0.4, 1]], angle: 45 } },
-  ],
-};
-
-/** 将花字配置扁平化为渲染样式（供编辑器调用） */
-export function flattenFancyConfigToRenderStyle (fancyConfig: FancyConfig, fallbackFillColor?: spec.vec4): FancyRenderStyle {
-  return TextStyle.parseFancyConfig(fancyConfig, fallbackFillColor);
-}
-
-/** 将花字配置扁平化为渲染层数组（供编辑器调用） */
-export function flattenFancyConfigToLayers (fancyConfig: FancyConfig, fallbackFillColor?: spec.vec4): FancyRenderLayer[] {
-  return TextStyle.parseFancyConfig(fancyConfig, fallbackFillColor).layers;
-}
-
-/** 示例：金属质感效果 */
-export const METALLIC_SAMPLE: FancyConfig = {
-  layers: [
-    { kind: 'gradient', params: { colors: [[0.9, 0.9, 0.9, 1], [0.7, 0.7, 0.7, 1], [0.9, 0.9, 0.9, 1], [0.6, 0.6, 0.6, 1]], angle: 0 } },
-    {
-      kind: 'single-stroke',
-      params: { width: 3, color: [0.3, 0.3, 0.3, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [1, 1, 1, 0.4], blur: 2, offsetX: 0, offsetY: -2 } }],
-    },
-  ],
-};
-
-/** 示例：霓虹灯效果 */
-export const NEON_SAMPLE: FancyConfig = {
-  layers: [
-    {
-      kind: 'single-stroke',
-      params: { width: 4, color: [0, 0.8, 0.8, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [0, 1, 1, 0.8], blur: 20, offsetX: 0, offsetY: 0 } }],
-    },
-    { kind: 'single-stroke', params: { width: 2, color: [1, 1, 1, 1] } },
-    { kind: 'solid-fill', params: { color: [0, 0.6, 0.6, 1] } },
-  ],
-};

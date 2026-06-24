@@ -585,7 +585,7 @@ export class TextComponent extends MaskableGraphic {
   }
 
   /**
-   * 获取描边和阴影的 padding 值（单位：px）
+   * 获取描边、阴影和发光的 padding 值（单位：px）
    * @returns
    */
   protected getEffectPadding () {
@@ -599,7 +599,21 @@ export class TextComponent extends MaskableGraphic {
       ? Math.ceil(Math.abs(style.shadowOffsetX) + Math.abs(style.shadowOffsetY) + style.shadowBlur)
       : 0;
 
-    const pad = outlinePad + shadowPad;
+    // 计算 glow 层 padding：遍历 fancyRenderStyle.layers 中的 glow 层
+    let glowPad = 0;
+
+    if (style.fancyRenderStyle?.layers) {
+      for (const layer of style.fancyRenderStyle.layers) {
+        if (layer.kind === 'glow') {
+          const blur = layer.params.blur;
+          const intensity = layer.params.intensity ?? 1;
+
+          glowPad = Math.max(glowPad, Math.ceil(blur * intensity));
+        }
+      }
+    }
+
+    const pad = outlinePad + shadowPad + glowPad;
 
     return { padL: pad, padR: pad, padT: pad, padB: pad };
   }

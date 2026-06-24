@@ -58,6 +58,36 @@ export type BaseLayerConfig =
 export interface FancyConfig {
   layers: BaseLayerConfig[],
   presetName?: string,
+  /** 预设版本号，默认 1 */
+  version?: number,
+  /** 可调参数元信息列表 */
+  adjustableParams?: AdjustableParamMeta[],
+}
+
+// ========== 预设调参 ==========
+
+export interface AdjustableParamMeta {
+  /** 点号分隔的属性路径，如 'layers.0.params.color' */
+  path: string,
+  /** UI 显示名称，如 '外描边颜色' */
+  label: string,
+  /** 参数类型，指导 UI 控件选择 */
+  type: 'color' | 'number' | 'angle' | 'select',
+  /** number/angle 类型的最小值 */
+  min?: number,
+  /** number/angle 类型的最大值 */
+  max?: number,
+  /** number/angle 类型的步进 */
+  step?: number,
+  /** select 类型的候选值 */
+  options?: { label: string, value: unknown }[],
+  /** UI 分组，如 '描边'、'填充'、'效果' */
+  group?: string,
+}
+
+export interface AdjustableParam extends AdjustableParamMeta {
+  /** 当前值（从 config 中按 path 读取） */
+  value: unknown,
 }
 
 export type BaseLayerKind = 'single-stroke' | 'solid-fill' | 'gradient' | 'texture';

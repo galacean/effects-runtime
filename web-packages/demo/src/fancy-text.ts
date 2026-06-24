@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
 import type { FancyConfig, FancyRenderLayer } from '@galacean/effects-core';
-import { FancyLayerFactory, flattenFancyConfigToRenderStyle, TextComponent } from '@galacean/effects-core';
+import { FancyLayerFactory, TextStyle, TextComponent } from '@galacean/effects-core';
 import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据
@@ -159,7 +159,7 @@ function applyFancyPreset (presetName: string) {
     const config: FancyConfig = getDemoFancyJsonConfig(presetName);
 
     // 2) 平铺（demo 充当编辑器）
-    const flat = flattenFancyConfigToRenderStyle(config, style.textColor);
+    const flat = TextStyle.parseFancyConfig(config, style.textColor);
 
     // 4) 可选校验：如果原来有 decorations.shadow，则平铺后应该出现 shadow 且在对应 base 之前
     //    （这里只做一个轻校验：看到 shadow 且 shadow 不在最后）
@@ -296,6 +296,12 @@ function createControls () {
     { key: 'shadow', name: '投影' },
     { key: 'glow', name: '发光' },
     { key: 'texture', name: '纹理' },
+    { key: 'neon', name: '霓虹' },
+    { key: 'metallic', name: '金属' },
+    { key: 'rainbow', name: '彩虹' },
+    { key: 'frost', name: '冰霜' },
+    { key: 'flame', name: '火焰' },
+    { key: 'stereo', name: '立体' },
   ];
 
   presets.forEach(preset => {
@@ -853,11 +859,12 @@ function createFillSection (): HTMLElement {
 
   layersContainer.className = 'figma-fill-layers';
 
-  editorState.fills.forEach((fill, index) => {
-    const layerItem = createFillLayerItem(fill, index);
+  // 倒序遍历：列表顶部 = 数组末尾 = 画布最顶层
+  for (let i = editorState.fills.length - 1; i >= 0; i--) {
+    const layerItem = createFillLayerItem(editorState.fills[i], i);
 
     layersContainer.appendChild(layerItem);
-  });
+  }
 
   section.appendChild(layersContainer);
 
@@ -1154,12 +1161,13 @@ function createFillParamsEditor (fill: FillLayerState, index: number): HTMLEleme
     upBtn.textContent = '↑';
     upBtn.style.width = 'auto';
     upBtn.style.padding = '4px 12px';
-    upBtn.disabled = index === 0;
+    // 列表倒序后，↑ = 画布更顶层 = 数组索引 +1
+    upBtn.disabled = index === editorState.fills.length - 1;
     upBtn.addEventListener('click', () => {
-      if (index > 0) {
-        const temp = editorState.fills[index - 1];
+      if (index < editorState.fills.length - 1) {
+        const temp = editorState.fills[index + 1];
 
-        editorState.fills[index - 1] = editorState.fills[index];
+        editorState.fills[index + 1] = editorState.fills[index];
         editorState.fills[index] = temp;
         applyEditorStateToRuntime();
         renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
@@ -1172,12 +1180,13 @@ function createFillParamsEditor (fill: FillLayerState, index: number): HTMLEleme
     downBtn.textContent = '↓';
     downBtn.style.width = 'auto';
     downBtn.style.padding = '4px 12px';
-    downBtn.disabled = index === editorState.fills.length - 1;
+    // 列表倒序后，↓ = 画布更底层 = 数组索引 -1
+    downBtn.disabled = index === 0;
     downBtn.addEventListener('click', () => {
-      if (index < editorState.fills.length - 1) {
-        const temp = editorState.fills[index + 1];
+      if (index > 0) {
+        const temp = editorState.fills[index - 1];
 
-        editorState.fills[index + 1] = editorState.fills[index];
+        editorState.fills[index - 1] = editorState.fills[index];
         editorState.fills[index] = temp;
         applyEditorStateToRuntime();
         renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
@@ -1233,11 +1242,12 @@ function createStrokeSection (): HTMLElement {
 
   layersContainer.className = 'figma-stroke-layers';
 
-  editorState.strokes.forEach((stroke, index) => {
-    const layerItem = createStrokeLayerItem(stroke, index);
+  // 倒序遍历：列表顶部 = 数组末尾 = 画布最顶层
+  for (let i = editorState.strokes.length - 1; i >= 0; i--) {
+    const layerItem = createStrokeLayerItem(editorState.strokes[i], i);
 
     layersContainer.appendChild(layerItem);
-  });
+  }
 
   section.appendChild(layersContainer);
 
@@ -1387,12 +1397,13 @@ function createStrokeParamsEditor (stroke: StrokeLayerState, index: number): HTM
     upBtn.textContent = '↑';
     upBtn.style.width = 'auto';
     upBtn.style.padding = '4px 12px';
-    upBtn.disabled = index === 0;
+    // 列表倒序后，↑ = 画布更顶层 = 数组索引 +1
+    upBtn.disabled = index === editorState.strokes.length - 1;
     upBtn.addEventListener('click', () => {
-      if (index > 0) {
-        const temp = editorState.strokes[index - 1];
+      if (index < editorState.strokes.length - 1) {
+        const temp = editorState.strokes[index + 1];
 
-        editorState.strokes[index - 1] = editorState.strokes[index];
+        editorState.strokes[index + 1] = editorState.strokes[index];
         editorState.strokes[index] = temp;
         applyEditorStateToRuntime();
         renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
@@ -1405,12 +1416,13 @@ function createStrokeParamsEditor (stroke: StrokeLayerState, index: number): HTM
     downBtn.textContent = '↓';
     downBtn.style.width = 'auto';
     downBtn.style.padding = '4px 12px';
-    downBtn.disabled = index === editorState.strokes.length - 1;
+    // 列表倒序后，↓ = 画布更底层 = 数组索引 -1
+    downBtn.disabled = index === 0;
     downBtn.addEventListener('click', () => {
-      if (index < editorState.strokes.length - 1) {
-        const temp = editorState.strokes[index + 1];
+      if (index > 0) {
+        const temp = editorState.strokes[index - 1];
 
-        editorState.strokes[index + 1] = editorState.strokes[index];
+        editorState.strokes[index - 1] = editorState.strokes[index];
         editorState.strokes[index] = temp;
         applyEditorStateToRuntime();
         renderAllSections(document.querySelector('.figma-panel') as HTMLElement);
@@ -1477,11 +1489,12 @@ function createEffectsSection (): HTMLElement {
 
   layersContainer.className = 'figma-effects-layers';
 
-  editorState.effects.forEach((effect, index) => {
-    const layerItem = createEffectLayerItem(effect, index);
+  // 倒序遍历：列表顶部 = 数组末尾 = 画布最顶层
+  for (let i = editorState.effects.length - 1; i >= 0; i--) {
+    const layerItem = createEffectLayerItem(editorState.effects[i], i);
 
     layersContainer.appendChild(layerItem);
-  });
+  }
 
   section.appendChild(layersContainer);
 
@@ -2316,4 +2329,4 @@ function rgbToHex (r: number, g: number, b: number): string {
 // eslint-disable-next-line no-console
 console.log('花字样式系统初始化成功');
 // eslint-disable-next-line no-console
-console.log('可用花字预设配置:', ['none', 'single-stroke', 'multi-stroke', 'gradient', 'shadow', 'texture']);
+console.log('可用花字预设配置:', ['none', 'single-stroke', 'multi-stroke', 'gradient', 'shadow', 'glow', 'texture', 'neon', 'metallic', 'rainbow', 'frost', 'flame', 'stereo']);

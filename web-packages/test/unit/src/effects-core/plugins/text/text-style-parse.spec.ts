@@ -1,5 +1,14 @@
 import type { FancyConfig } from '@galacean/effects-core';
-import { TextStyle } from '@galacean/effects-core';
+import {
+  TextStyle,
+  NEON_SAMPLE,
+  METALLIC_SAMPLE,
+  GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE,
+  RAINBOW_PRESET,
+  FROST_PRESET,
+  FLAME_PRESET,
+  STEREO_PRESET,
+} from '@galacean/effects-core';
 
 const { expect } = chai;
 
@@ -432,6 +441,123 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
       expect((glows[0].params as any).blur).to.eql(6);
       expect((glows[1].params as any).blur).to.eql(12);
       expect(result.layers[result.layers.length - 1].kind).to.eql('gradient');
+    });
+  });
+
+  describe('new presets (phase 2)', () => {
+    it('should parse rainbow preset correctly', () => {
+      const result = TextStyle.parseFancyConfig(RAINBOW_PRESET);
+
+      // 彩虹预设：5层描边 + 1层渐变
+      expect(result.layers).to.have.lengthOf(6);
+      expect(result.layers[0].kind).to.eql('single-stroke');
+      expect(result.layers[5].kind).to.eql('gradient');
+    });
+
+    it('should parse frost preset correctly', () => {
+      const result = TextStyle.parseFancyConfig(FROST_PRESET);
+
+      // 冰霜预设：2层glow装饰 + 2层描边 + 1层渐变
+      const glows = result.layers.filter(l => l.kind === 'glow');
+
+      expect(glows.length).to.eql(2);
+      const gradientLayer = result.layers.find(l => l.kind === 'gradient');
+
+      expect(gradientLayer).to.not.be.undefined;
+    });
+
+    it('should parse flame preset correctly', () => {
+      const result = TextStyle.parseFancyConfig(FLAME_PRESET);
+
+      // 火焰预设：2层glow装饰 + 3层描边 + 1层渐变
+      const glows = result.layers.filter(l => l.kind === 'glow');
+
+      expect(glows.length).to.eql(2);
+      const gradientLayer = result.layers.find(l => l.kind === 'gradient');
+
+      expect(gradientLayer).to.not.be.undefined;
+    });
+
+    it('should parse stereo preset correctly', () => {
+      const result = TextStyle.parseFancyConfig(STEREO_PRESET);
+
+      // 立体预设：2层shadow装饰 + 2层描边 + 1层shadow装饰 + 1层填充
+      const shadows = result.layers.filter(l => l.kind === 'shadow');
+
+      expect(shadows.length).to.eql(3);
+      const fillLayer = result.layers.find(l => l.kind === 'solid-fill');
+
+      expect(fillLayer).to.not.be.undefined;
+    });
+  });
+
+  describe('updated presets (shadow→glow)', () => {
+    it('NEON_SAMPLE should use glow decoration (not shadow offset=0)', () => {
+      const result = TextStyle.parseFancyConfig(NEON_SAMPLE);
+
+      // 霓虹预设：第一层描边应有 glow 装饰层，不应出现 offset=0 的 shadow
+      const glows = result.layers.filter(l => l.kind === 'glow');
+
+      expect(glows.length).to.be.greaterThan(0);
+
+      const shadowWithZeroOffset = result.layers.filter(
+        l => l.kind === 'shadow' && l.params.offsetX === 0 && l.params.offsetY === 0
+      );
+
+      // 不应有 offset=0 的 shadow（那是旧版模拟 glow 的方式）
+      expect(shadowWithZeroOffset.length).to.eql(0);
+    });
+
+    it('GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE should use glow decorations', () => {
+      const result = TextStyle.parseFancyConfig(GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE);
+
+      const glows = result.layers.filter(l => l.kind === 'glow');
+
+      expect(glows.length).to.be.greaterThan(0);
+
+      const shadowWithZeroOffset = result.layers.filter(
+        l => l.kind === 'shadow' && l.params.offsetX === 0 && l.params.offsetY === 0
+      );
+
+      expect(shadowWithZeroOffset.length).to.eql(0);
+    });
+
+    it('METALLIC_SAMPLE should retain shadow (offsetY=-2 is genuine highlight)', () => {
+      const result = TextStyle.parseFancyConfig(METALLIC_SAMPLE);
+
+      // 金属预设保留 shadow（offsetY=-2 是高光线，非伪 glow）
+      const shadows = result.layers.filter(l => l.kind === 'shadow');
+
+      expect(shadows.length).to.eql(1);
+      expect((shadows[0].params as Record<string, unknown>).offsetY).to.eql(-2);
+    });
+  });
+
+  describe('version and adjustableParams fields', () => {
+    it('version field should not affect parseFancyConfig result', () => {
+      const config: FancyConfig = {
+        layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
+        version: 1,
+      };
+
+      const result = TextStyle.parseFancyConfig(config);
+
+      expect(result.layers).to.have.lengthOf(1);
+      expect(result.layers[0].kind).to.eql('solid-fill');
+    });
+
+    it('adjustableParams field should not affect parseFancyConfig result', () => {
+      const config: FancyConfig = {
+        layers: [{ kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } }],
+        adjustableParams: [
+          { path: 'layers.0.params.color', label: '颜色', type: 'color', group: '描边' },
+        ],
+      };
+
+      const result = TextStyle.parseFancyConfig(config);
+
+      expect(result.layers).to.have.lengthOf(1);
+      expect(result.layers[0].kind).to.eql('single-stroke');
     });
   });
 });

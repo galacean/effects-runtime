@@ -7,6 +7,11 @@ import {
   SingleStrokeDrawer,
   SolidFillDrawer,
   TextureDrawer,
+  TextStyle,
+  RAINBOW_PRESET,
+  FROST_PRESET,
+  FLAME_PRESET,
+  STEREO_PRESET,
 } from '@galacean/effects-core';
 
 const { expect } = chai;
@@ -325,6 +330,62 @@ describe('core/plugins/text/fancy-layer-factory', () => {
 
       expect(drawerHigh.getGlowParams().intensity).to.eql(10);
       expect(drawerLow.getGlowParams().intensity).to.eql(1);
+    });
+  });
+
+  describe('new presets (phase 2)', () => {
+    it('should create correct drawer types for rainbow preset', () => {
+      const parsed = TextStyle.parseFancyConfig(RAINBOW_PRESET);
+      const drawers = FancyLayerFactory.createDrawersFromLayers(parsed.layers);
+
+      // 彩虹：5个描边 + 1个渐变
+      const strokeDrawers = drawers.filter(d => d.name === 'single-stroke');
+      const gradientDrawers = drawers.filter(d => d.name === 'gradient');
+
+      expect(strokeDrawers.length).to.eql(5);
+      expect(gradientDrawers.length).to.eql(1);
+    });
+
+    it('should create correct drawer types for frost preset', () => {
+      const parsed = TextStyle.parseFancyConfig(FROST_PRESET);
+      const drawers = FancyLayerFactory.createDrawersFromLayers(parsed.layers);
+
+      // 冰霜：2个glow + 2个描边 + 1个渐变
+      const glowDrawers = drawers.filter(d => d.name === 'glow');
+      const strokeDrawers = drawers.filter(d => d.name === 'single-stroke');
+      const gradientDrawers = drawers.filter(d => d.name === 'gradient');
+
+      expect(glowDrawers.length).to.eql(2);
+      expect(strokeDrawers.length).to.eql(2);
+      expect(gradientDrawers.length).to.eql(1);
+    });
+
+    it('should create correct drawer types for flame preset', () => {
+      const parsed = TextStyle.parseFancyConfig(FLAME_PRESET);
+      const drawers = FancyLayerFactory.createDrawersFromLayers(parsed.layers);
+
+      // 火焰：2个glow + 3个描边 + 1个渐变
+      const glowDrawers = drawers.filter(d => d.name === 'glow');
+      const strokeDrawers = drawers.filter(d => d.name === 'single-stroke');
+      const gradientDrawers = drawers.filter(d => d.name === 'gradient');
+
+      expect(glowDrawers.length).to.eql(2);
+      expect(strokeDrawers.length).to.eql(3);
+      expect(gradientDrawers.length).to.eql(1);
+    });
+
+    it('should create correct drawer types for stereo preset', () => {
+      const parsed = TextStyle.parseFancyConfig(STEREO_PRESET);
+      const drawers = FancyLayerFactory.createDrawersFromLayers(parsed.layers);
+
+      // 立体：3个shadow + 2个描边 + 1个填充
+      const shadowDrawers = drawers.filter(d => d.name === 'shadow');
+      const strokeDrawers = drawers.filter(d => d.name === 'single-stroke');
+      const fillDrawers = drawers.filter(d => d.name === 'solid-fill');
+
+      expect(shadowDrawers.length).to.eql(3);
+      expect(strokeDrawers.length).to.eql(2);
+      expect(fillDrawers.length).to.eql(1);
     });
   });
 });
