@@ -25,6 +25,13 @@ export class SpawnPerSourceParticleModule extends ParticleModule implements Sour
   private sourceEmitter!: ParticleEmitter;
   private minimumDistSq = 0;
 
+  /**
+   * 每条 ribbon 当前头槽（该 ribbon 内 alive、age>0、ribbonLinkOrder 最大的 slot）。
+   * execute 开头一次 O(buffer) 分桶重建，updateRibbonHead 查表钉头，
+   * 取代原先每个 source 扫描整个 buffer 的 O(source × buffer)。
+   */
+  private readonly ribbonHeads = new Map<number, number>();
+
   override fromJSON (data: SpawnPerSourceModuleData): void {
     this.minimumDistSq = data.minimumDistSq;
     this.dieWithParticles = data.dieWithParticles;
@@ -50,6 +57,23 @@ export class SpawnPerSourceParticleModule extends ParticleModule implements Sour
       return;
     }
 
+    // O(buffer) 一次分桶：建立 ribbonId → 头槽（alive、age>0、最大 ribbonLinkOrder）。
+    // 与原 updateRibbonHead 内层扫描判据逐 bez 一致，钉的槽不变。
+    const db = ctx.dataBuffer;
+
+    this.ribbonHeads.clear();
+    for (let i = 0; i < db.numInstances; i++) {
+      if (!db.alive[i] || db.age[i] <= 0) {
+        continue;
+      }
+      const rid = db.ribbonId[i];
+      const cur = this.ribbonHeads.get(rid);
+
+      if (cur === undefined || db.ribbonLinkOrder[i] > db.ribbonLinkOrder[cur]) {
+        this.ribbonHeads.set(rid, i);
+      }
+    }
+
     let totalCount = 0;
 
     for (let i = 0; i < sourceDb.numInstances; i++) {
@@ -66,7 +90,7 @@ export class SpawnPerSourceParticleModule extends ParticleModule implements Sour
       const y = sourceDb.position[i3 + 1];
       const z = sourceDb.position[i3 + 2];
 
-      this.updateRibbonHead(ctx.dataBuffer, uid, x, y, z);
+      this.updateRibbonHead(db, uid, x, y, z);
 
       if (this.checkDistance) {
         const last = this.lastPositions.get(uid);
@@ -103,22 +127,17 @@ export class SpawnPerSourceParticleModule extends ParticleModule implements Sour
   }
 
   private updateRibbonHead (db: ParticleDataBuffer, ribbonId: number, x: number, y: number, z: number): void {
-    let bestSlot = -1;
-    let bestOrder = -1;
+    // 头槽由 execute 开头的分桶表给出（与原内层扫描判据一致）。无 age>0 头时表中无项，不钉头。
+    const bestSlot = this.ribbonHeads.get(ribbonId);
 
-    for (let i = 0; i < db.numInstances; i++) {
-      if (db.ribbonId[i] === ribbonId && db.age[i] > 0 && db.ribbonLinkOrder[i] > bestOrder) {
-        bestOrder = db.ribbonLinkOrder[i];
-        bestSlot = i;
-      }
+    if (bestSlot === undefined) {
+      return;
     }
-    if (bestSlot >= 0) {
-      const h3 = bestSlot * 3;
+    const h3 = bestSlot * 3;
 
-      db.position[h3] = x;
-      db.position[h3 + 1] = y;
-      db.position[h3 + 2] = z;
-    }
+    db.position[h3] = x;
+    db.position[h3 + 1] = y;
+    db.position[h3 + 2] = z;
   }
 
   private gcDeadEntries (): void {

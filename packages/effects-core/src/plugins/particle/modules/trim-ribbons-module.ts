@@ -26,6 +26,8 @@ export class TrimRibbonsModule extends ParticleModule {
   override readonly stage = ParticleModuleStage.ParticleUpdate;
 
   private pointCountPerTrail = 0;
+  /** per-ribbon 槽分组，每帧 clear 复用，避免每帧 new Map */
+  private readonly ribbonSlots = new Map<number, number[]>();
 
   override fromJSON (data: TrimRibbonsModuleData): void {
     this.pointCountPerTrail = data.pointCountPerTrail;
@@ -44,28 +46,43 @@ export class TrimRibbonsModule extends ParticleModule {
 
   private trimRibbons (db: ParticleDataBuffer): void {
     const cap = this.pointCountPerTrail;
-    const ribbonSlots = new Map<number, number[]>();
+    const groups = this.ribbonSlots;
+
+    groups.clear();
 
     for (let i = 0; i < db.numInstances; i++) {
       if (!db.alive[i]) { continue; }
       const rid = db.ribbonId[i];
-      let arr = ribbonSlots.get(rid);
+      let arr = groups.get(rid);
 
       if (!arr) {
         arr = [];
-        ribbonSlots.set(rid, arr);
+        groups.set(rid, arr);
       }
       arr.push(i);
     }
 
-    for (const slots of ribbonSlots.values()) {
+    for (const slots of groups.values()) {
       if (slots.length <= cap) { continue; }
-      slots.sort((a, b) => db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b]);
+      // 标死 ribbonLinkOrder 最小的 excess 个（最旧点）。免 sort：
+      // excess 轮线性取当前未死最小并标死，标死集合与升序 sort 取前 excess 个逐 bez 相同。
       const excess = slots.length - cap;
 
-      for (let i = 0; i < excess; i++) {
+      for (let e = 0; e < excess; e++) {
+        let minIdx = -1;
+        let minOrder = Infinity;
+
+        for (let k = 0; k < slots.length; k++) {
+          const s = slots[k];
+
+          if (db.alive[s] && db.ribbonLinkOrder[s] < minOrder) {
+            minOrder = db.ribbonLinkOrder[s];
+            minIdx = k;
+          }
+        }
+        if (minIdx < 0) { break; }
         // 标记死亡，由 compactDead 压缩移除
-        db.alive[slots[i]] = 0;
+        db.alive[slots[minIdx]] = 0;
       }
     }
   }
