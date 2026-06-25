@@ -10,6 +10,7 @@ import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
 import { canvasPool } from '../../canvas-pool';
 import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
+import { loadTexturePatterns } from './fancy-text/texture-pattern-loader';
 import type { TextLayerDrawer } from './fancy-text/fancy-types';
 
 /**
@@ -37,6 +38,11 @@ export class TextComponentBase {
   renderer: ItemRenderer;
 
   protected maxLineWidth = 0;
+
+  /** 纹理加载版本号，用于防重入 */
+  protected _textureLoadVersion = 0;
+  /** 组件是否已销毁 */
+  protected _destroyed = false;
   // 常量
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
@@ -251,6 +257,45 @@ export class TextComponentBase {
 
     this.canvas = undefined as unknown as HTMLCanvasElement;
     this.context = null;
+  }
+
+  /**
+   * 异步加载花字纹理层的图片并创建 CanvasPattern
+   *
+   * 检测 fancyRenderStyle.layers 中的 texture 层，
+   * 对 runtimePattern 为 null 且有 imageUrl 的层发起异步图片加载，
+   * 加载完成后创建 CanvasPattern 写回 runtimePattern，重建 layerDrawers 并触发重绘。
+   *
+   * 使用 _textureLoadVersion 版本号防止重入和过期回调。
+   */
+  protected async loadFancyTexturePatterns (): Promise<void> {
+    const layers = this.textStyle?.fancyRenderStyle?.layers;
+
+    if (!layers || !this.context) { return; }
+
+    // 检查是否有需要加载的纹理层
+    const hasPendingTexture = layers.some(
+      l => l.kind === 'texture' && l.runtimePattern == null && (l as any).params?.pattern?.imageUrl,
+    );
+
+    if (!hasPendingTexture) { return; }
+
+    const version = ++this._textureLoadVersion;
+
+    try {
+      await loadTexturePatterns(layers, this.context);
+
+      // 校验：组件是否已销毁、版本号是否匹配、context 是否仍可用
+      if (this._destroyed || this._textureLoadVersion !== version || !this.context) {
+        return;
+      }
+
+      // 重建 layerDrawers（此时 texture 层的 runtimePattern 已填充）
+      this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(layers);
+      this.isDirty = true;
+    } catch (err) {
+      console.warn('[FancyText] 纹理 pattern 加载异常:', err);
+    }
   }
 
   /**

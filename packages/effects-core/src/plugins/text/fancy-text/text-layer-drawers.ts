@@ -52,6 +52,22 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
     private unit: 'px' | 'em' = 'px',
   ) {}
 
+  /** 在指定上下文上应用描边样式属性 */
+  applyStyle (ctx: CanvasRenderingContext2D, env: TextEnv): void {
+    const fontScale = env.style.fontScale || 1;
+    const widthPx = this.unit === 'em'
+      ? this.width * env.style.fontSize * fontScale
+      : this.width * fontScale;
+
+    const [r, g, b, a] = this.color;
+
+    ctx.font = env.fontDesc;
+    ctx.textBaseline = 'alphabetic';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = widthPx;
+    ctx.strokeStyle = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+  }
+
   render (ctx: CanvasRenderingContext2D, env: TextEnv): void {
     const { canvas } = env;
     const offscreen = document.createElement('canvas');
@@ -65,21 +81,7 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
 
     offCtx.setTransform(ctx.getTransform());
 
-    const fontScale = env.style.fontScale || 1;
-    const widthPx = this.unit === 'em'
-      ? this.width * env.style.fontSize * fontScale
-      : this.width * fontScale;
-
-    const [r, g, b, a] = this.color;
-    const R = Math.round(r * 255);
-    const G = Math.round(g * 255);
-    const B = Math.round(b * 255);
-
-    offCtx.font = env.fontDesc;
-    offCtx.textBaseline = 'alphabetic';
-    offCtx.lineJoin = 'round';
-    offCtx.lineWidth = widthPx;
-    offCtx.strokeStyle = `rgba(${R}, ${G}, ${B}, ${a})`;
+    this.applyStyle(offCtx, env);
 
     env.lines.forEach(line => {
       const lineStr = line.chars.join('');

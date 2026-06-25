@@ -9,8 +9,8 @@ export const NONE_PRESET: FancyConfig = { layers: [], presetName: 'none' };
 export const SINGLE_STROKE_PRESET: FancyConfig = {
   presetName: 'single-stroke',
   layers: [
-    { kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } },
-    { kind: 'solid-fill', params: { color: [1, 1, 1, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 3, color: [1, 0, 0, 1] } },
+    { kind: 'solid-fill', category: 'base', params: { color: [1, 1, 1, 1] } },
   ],
   adjustableParams: [
     { path: 'layers.0.params.color', label: '描边颜色', type: 'color', group: '描边' },
@@ -23,12 +23,12 @@ export const SINGLE_STROKE_PRESET: FancyConfig = {
 export const MULTI_STROKE_PRESET: FancyConfig = {
   presetName: 'multi-stroke',
   layers: [
-    { kind: 'single-stroke', params: { width: 15, color: [0.75, 0.28, 0.77, 1] } },
-    { kind: 'single-stroke', params: { width: 12, color: [0.44, 0.34, 0.81, 1] } },
-    { kind: 'single-stroke', params: { width: 9, color: [0.52, 0.89, 0.19, 1] } },
-    { kind: 'single-stroke', params: { width: 6, color: [1, 0.52, 0.36, 1] } },
-    { kind: 'single-stroke', params: { width: 3, color: [0.99, 0.19, 0.51, 1] } },
-    { kind: 'solid-fill', params: { color: [1, 1, 1, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 15, color: [0.75, 0.28, 0.77, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 12, color: [0.44, 0.34, 0.81, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 9, color: [0.52, 0.89, 0.19, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 6, color: [1, 0.52, 0.36, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 3, color: [0.99, 0.19, 0.51, 1] } },
+    { kind: 'solid-fill', category: 'base', params: { color: [1, 1, 1, 1] } },
   ],
   adjustableParams: [
     { path: 'layers.0.params.color', label: '外描边颜色', type: 'color', group: '描边' },
@@ -43,10 +43,11 @@ export const GRADIENT_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 3, color: [0, 0, 0, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [0, 0, 0, 0.6], blur: 8, offsetX: 4, offsetY: 4 } }],
+      decorations: [{ kind: 'shadow', category: 'decorative', params: { color: [0, 0, 0, 0.6], blur: 8, offsetX: 4, offsetY: 4 } }],
     },
-    { kind: 'gradient', params: { colors: [[1, 0, 0, 1], [0, 0, 1, 1]], angle: 0 } },
+    { kind: 'gradient', category: 'base', params: { colors: [[1, 0, 0, 1], [0, 0, 1, 1]], angle: 0 } },
   ],
   adjustableParams: [
     { path: 'layers.0.params.color', label: '描边颜色', type: 'color', group: '描边' },
@@ -65,8 +66,9 @@ export const SHADOW_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'solid-fill',
+      category: 'base',
       params: { color: [0, 0, 0, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [0, 0, 0, 0.8], blur: 10, offsetX: 5, offsetY: 5 } }],
+      decorations: [{ kind: 'shadow', category: 'decorative', params: { color: [0, 0, 0, 0.8], blur: 10, offsetX: 5, offsetY: 5 } }],
     },
   ],
   adjustableParams: [
@@ -82,6 +84,7 @@ export const TEXTURE_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'texture',
+      category: 'base',
       params: {
         pattern: {
           imageUrl: 'https://gw.alipayobjects.com/mdn/rms_2e421e/afts/img/A*fRtNTKrsq3YAAAAAAAAAAAAAARQnAQ',
@@ -100,8 +103,9 @@ export const GLOW_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'solid-fill',
+      category: 'base',
       params: { color: [1, 1, 1, 1] },
-      decorations: [{ kind: 'glow', params: { color: [0, 0.8, 1, 1], blur: 12, intensity: 3 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [0, 0.8, 1, 1], blur: 12, intensity: 3 } }],
     },
   ],
   adjustableParams: [
@@ -120,16 +124,18 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
   layers: [
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 8, color: [0.1, 0.1, 0.1, 1] },
-      decorations: [{ kind: 'glow', params: { color: [0.3, 0.6, 1, 0.8], blur: 15, intensity: 2 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [0.3, 0.6, 1, 0.8], blur: 15, intensity: 2 } }],
     },
-    { kind: 'single-stroke', params: { width: 5, color: [0.3, 0.3, 0.3, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 5, color: [0.3, 0.3, 0.3, 1] } },
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 2, color: [0.6, 0.6, 0.6, 1] },
-      decorations: [{ kind: 'glow', params: { color: [1, 0.9, 0.5, 0.6], blur: 5, intensity: 1 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [1, 0.9, 0.5, 0.6], blur: 5, intensity: 1 } }],
     },
-    { kind: 'gradient', params: { colors: [[1, 0.2, 0.5, 1], [0.2, 0.5, 1, 1], [0.3, 1, 0.4, 1]], angle: 45 } },
+    { kind: 'gradient', category: 'base', params: { colors: [[1, 0.2, 0.5, 1], [0.2, 0.5, 1, 1], [0.3, 1, 0.4, 1]], angle: 45 } },
   ],
   adjustableParams: [
     { path: 'layers.0.decorations.0.params.color', label: '外发光颜色', type: 'color', group: '效果' },
@@ -145,11 +151,12 @@ export const GLOW_WITH_STROKE_AND_GRADIENT_SAMPLE: FancyConfig = {
 export const METALLIC_SAMPLE: FancyConfig = {
   presetName: 'metallic',
   layers: [
-    { kind: 'gradient', params: { colors: [[0.9, 0.9, 0.9, 1], [0.7, 0.7, 0.7, 1], [0.9, 0.9, 0.9, 1], [0.6, 0.6, 0.6, 1]], angle: 0 } },
+    { kind: 'gradient', category: 'base', params: { colors: [[0.9, 0.9, 0.9, 1], [0.7, 0.7, 0.7, 1], [0.9, 0.9, 0.9, 1], [0.6, 0.6, 0.6, 1]], angle: 0 } },
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 3, color: [0.3, 0.3, 0.3, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [1, 1, 1, 0.4], blur: 2, offsetX: 0, offsetY: -2 } }],
+      decorations: [{ kind: 'shadow', category: 'decorative', params: { color: [1, 1, 1, 0.4], blur: 2, offsetX: 0, offsetY: -2 } }],
     },
   ],
   adjustableParams: [
@@ -167,11 +174,12 @@ export const NEON_SAMPLE: FancyConfig = {
   layers: [
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 4, color: [0, 0.8, 0.8, 1] },
-      decorations: [{ kind: 'glow', params: { color: [0, 1, 1, 0.8], blur: 20, intensity: 2 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [0, 1, 1, 0.8], blur: 20, intensity: 2 } }],
     },
-    { kind: 'single-stroke', params: { width: 2, color: [1, 1, 1, 1] } },
-    { kind: 'solid-fill', params: { color: [0, 0.6, 0.6, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 2, color: [1, 1, 1, 1] } },
+    { kind: 'solid-fill', category: 'base', params: { color: [0, 0.6, 0.6, 1] } },
   ],
   adjustableParams: [
     { path: 'layers.0.params.color', label: '管壁颜色', type: 'color', group: '描边' },
@@ -188,13 +196,14 @@ export const NEON_SAMPLE: FancyConfig = {
 export const RAINBOW_PRESET: FancyConfig = {
   presetName: 'rainbow',
   layers: [
-    { kind: 'single-stroke', params: { width: 15, color: [1, 0, 0, 1] } },
-    { kind: 'single-stroke', params: { width: 12, color: [1, 1, 0, 1] } },
-    { kind: 'single-stroke', params: { width: 9, color: [0, 1, 0, 1] } },
-    { kind: 'single-stroke', params: { width: 6, color: [0, 1, 1, 1] } },
-    { kind: 'single-stroke', params: { width: 3, color: [0, 0.5, 1, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 15, color: [1, 0, 0, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 12, color: [1, 1, 0, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 9, color: [0, 1, 0, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 6, color: [0, 1, 1, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 3, color: [0, 0.5, 1, 1] } },
     {
       kind: 'gradient',
+      category: 'base',
       params: {
         colors: [
           [1, 0, 0, 1], [1, 0.5, 0, 1], [1, 1, 0, 1], [0, 1, 0, 1],
@@ -217,15 +226,17 @@ export const FROST_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 6, color: [0.4, 0.6, 0.9, 1] },
-      decorations: [{ kind: 'glow', params: { color: [0.6, 0.85, 1, 0.7], blur: 12, intensity: 2 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [0.6, 0.85, 1, 0.7], blur: 12, intensity: 2 } }],
     },
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 3, color: [0.85, 0.92, 1, 1] },
-      decorations: [{ kind: 'glow', params: { color: [0.7, 0.9, 1, 0.5], blur: 6, intensity: 1 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [0.7, 0.9, 1, 0.5], blur: 6, intensity: 1 } }],
     },
-    { kind: 'gradient', params: { colors: [[0.9, 0.95, 1, 1], [0.6, 0.8, 0.95, 1]], angle: 180 } },
+    { kind: 'gradient', category: 'base', params: { colors: [[0.9, 0.95, 1, 1], [0.6, 0.8, 0.95, 1]], angle: 180 } },
   ],
   adjustableParams: [
     { path: 'layers.0.params.color', label: '外描边颜色', type: 'color', group: '描边' },
@@ -244,16 +255,18 @@ export const FLAME_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 10, color: [0.6, 0.05, 0, 1] },
-      decorations: [{ kind: 'glow', params: { color: [1, 0.3, 0, 0.6], blur: 15, intensity: 2 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [1, 0.3, 0, 0.6], blur: 15, intensity: 2 } }],
     },
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 7, color: [1, 0.3, 0, 1] },
-      decorations: [{ kind: 'glow', params: { color: [1, 0.5, 0, 0.4], blur: 8, intensity: 1 } }],
+      decorations: [{ kind: 'glow', category: 'decorative', params: { color: [1, 0.5, 0, 0.4], blur: 8, intensity: 1 } }],
     },
-    { kind: 'single-stroke', params: { width: 3, color: [1, 0.7, 0, 1] } },
-    { kind: 'gradient', params: { colors: [[1, 0.9, 0.2, 1], [1, 0.4, 0, 1], [0.7, 0.1, 0, 1]], angle: 90 } },
+    { kind: 'single-stroke', category: 'base', params: { width: 3, color: [1, 0.7, 0, 1] } },
+    { kind: 'gradient', category: 'base', params: { colors: [[1, 0.9, 0.2, 1], [1, 0.4, 0, 1], [0.7, 0.1, 0, 1]], angle: 90 } },
   ],
   adjustableParams: [
     { path: 'layers.0.params.width', label: '外描边宽度', type: 'number', min: 5, max: 20, step: 1, group: '描边' },
@@ -271,17 +284,19 @@ export const STEREO_PRESET: FancyConfig = {
   layers: [
     {
       kind: 'single-stroke',
+      category: 'base',
       params: { width: 5, color: [0.2, 0.2, 0.2, 1] },
       decorations: [
-        { kind: 'shadow', params: { color: [0, 0, 0, 0.6], blur: 2, offsetX: 3, offsetY: 3 } },
-        { kind: 'shadow', params: { color: [0, 0, 0, 0.3], blur: 8, offsetX: 6, offsetY: 6 } },
+        { kind: 'shadow', category: 'decorative', params: { color: [0, 0, 0, 0.6], blur: 2, offsetX: 3, offsetY: 3 } },
+        { kind: 'shadow', category: 'decorative', params: { color: [0, 0, 0, 0.3], blur: 8, offsetX: 6, offsetY: 6 } },
       ],
     },
-    { kind: 'single-stroke', params: { width: 2, color: [0.4, 0.4, 0.4, 1] } },
+    { kind: 'single-stroke', category: 'base', params: { width: 2, color: [0.4, 0.4, 0.4, 1] } },
     {
       kind: 'solid-fill',
+      category: 'base',
       params: { color: [0.9, 0.9, 0.9, 1] },
-      decorations: [{ kind: 'shadow', params: { color: [1, 1, 1, 0.3], blur: 1, offsetX: 0, offsetY: -2 } }],
+      decorations: [{ kind: 'shadow', category: 'decorative', params: { color: [1, 1, 1, 0.3], blur: 1, offsetX: 0, offsetY: -2 } }],
     },
   ],
   adjustableParams: [

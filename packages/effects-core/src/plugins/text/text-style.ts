@@ -126,6 +126,7 @@ export class TextStyle {
     if (this.hasShadow) {
       layers.push({
         kind: 'shadow',
+        category: 'decorative',
         params: {
           color: this.shadowColor,
           blur: this.shadowBlur,
@@ -138,11 +139,12 @@ export class TextStyle {
     if (this.isOutlined && this.outlineWidth > 0) {
       layers.push({
         kind: 'single-stroke',
+        category: 'base',
         params: { width: this.outlineWidth, color: this.outlineColor, unit: 'px' },
       });
     }
 
-    layers.push({ kind: 'solid-fill', params: { color: this.textColor } });
+    layers.push({ kind: 'solid-fill', category: 'base', params: { color: this.textColor } });
 
     return { layers };
   }
@@ -158,7 +160,7 @@ export class TextStyle {
     const fallback = fallbackFillColor ?? ([0, 0, 0, 1] as spec.vec4);
 
     if (srcLayers.length === 0) {
-      layers.push({ kind: 'solid-fill', params: { color: fallback } });
+      layers.push({ kind: 'solid-fill', category: 'base', params: { color: fallback } });
     } else {
       for (const src of srcLayers) {
         // 展开 decorations（带归属约束校验）
@@ -169,6 +171,7 @@ export class TextStyle {
             if (d.kind === 'shadow') {
               layers.push({
                 kind: 'shadow',
+                category: d.category ?? 'decorative',
                 params: {
                   color: d.params.color,
                   blur: d.params.blur ?? 5,
@@ -179,6 +182,7 @@ export class TextStyle {
             } else if (d.kind === 'glow') {
               layers.push({
                 kind: 'glow',
+                category: d.category ?? 'decorative',
                 params: {
                   color: d.params.color,
                   blur: d.params.blur ?? 5,
@@ -194,20 +198,21 @@ export class TextStyle {
           case 'single-stroke':
             layers.push({
               kind: 'single-stroke',
+              category: src.category ?? 'base',
               params: { width: src.params.width, color: src.params.color, unit: src.params.unit ?? 'px' },
             });
 
             break;
           case 'solid-fill':
-            layers.push({ kind: 'solid-fill', params: { color: src.params.color } });
+            layers.push({ kind: 'solid-fill', category: src.category ?? 'base', params: { color: src.params.color } });
 
             break;
           case 'gradient':
-            layers.push({ kind: 'gradient', params: { colors: src.params.colors, angle: src.params.angle ?? 0 } });
+            layers.push({ kind: 'gradient', category: src.category ?? 'base', params: { colors: src.params.colors, angle: src.params.angle ?? 0 } });
 
             break;
           case 'texture':
-            layers.push({ kind: 'texture', params: { pattern: src.params.pattern, opacity: src.params.opacity }, runtimePattern: null });
+            layers.push({ kind: 'texture', category: src.category ?? 'base', params: { pattern: src.params.pattern, opacity: src.params.opacity }, runtimePattern: null });
 
             break;
         }
@@ -227,6 +232,7 @@ export class TextStyle {
         const fillIndex = this.fancyRenderStyle.layers.findIndex(l => l.kind === 'solid-fill');
         const strokeLayer: FancyRenderLayer = {
           kind: 'single-stroke',
+          category: 'base',
           params: { width: this.outlineWidth || 3, color: this.outlineColor || [1, 0, 0, 1], unit: 'px' },
         };
 
@@ -250,6 +256,7 @@ export class TextStyle {
       if (!hasShadow) {
         this.fancyRenderStyle.layers.unshift({
           kind: 'shadow',
+          category: 'decorative',
           params: {
             color: this.shadowColor || [0, 0, 0, 0.8],
             blur: this.shadowBlur || 5,

@@ -53,6 +53,7 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
       expect(result.layers).to.have.lengthOf(1);
       expect(result.layers[0]).to.eql({
         kind: 'single-stroke',
+        category: 'base',
         params: { color: [1, 0, 0, 1], width: 2, unit: 'px' },
       });
     });
@@ -70,6 +71,7 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
       expect(result.layers).to.have.lengthOf(1);
       expect(result.layers[0]).to.eql({
         kind: 'solid-fill',
+        category: 'base',
         params: { color: [0.5, 0.5, 0.5, 1] },
       });
     });
@@ -90,6 +92,7 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
       expect(result.layers).to.have.lengthOf(1);
       expect(result.layers[0]).to.eql({
         kind: 'gradient',
+        category: 'base',
         params: { angle: 45, colors: [[1, 0, 0, 1], [0, 0, 1, 1]] },
       });
     });

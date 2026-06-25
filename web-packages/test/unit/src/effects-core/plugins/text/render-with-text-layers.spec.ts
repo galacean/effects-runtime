@@ -314,7 +314,7 @@ describe('core/plugins/text/render-with-text-layers', () => {
 
       // 当有阴影时，fill drawer 应该在离屏 canvas 上渲染（不是主 canvas 的 ctx）
       expect(renderContext).to.exist;
-      expect(renderContext).to.not.eql(ctx);
+      expect(renderContext).to.not.equal(ctx);
     });
   });
 });

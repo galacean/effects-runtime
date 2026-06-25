@@ -102,7 +102,7 @@ describe('core/plugins/text/text-layer-drawers', () => {
     it('should set strokeStyle with converted color', () => {
       const drawer = new SingleStrokeDrawer(2, [1, 0.5, 0.25, 0.8], 'px');
 
-      drawer.render(ctx, mockEnv);
+      drawer.applyStyle(ctx, mockEnv);
 
       const color = parseColor(ctx.strokeStyle as string);
 
@@ -112,7 +112,7 @@ describe('core/plugins/text/text-layer-drawers', () => {
     it('should set lineWidth with px unit', () => {
       const drawer = new SingleStrokeDrawer(3, [0, 0, 0, 1], 'px');
 
-      drawer.render(ctx, mockEnv);
+      drawer.applyStyle(ctx, mockEnv);
 
       expect(ctx.lineWidth).to.eql(3);
     });
@@ -120,7 +120,7 @@ describe('core/plugins/text/text-layer-drawers', () => {
     it('should calculate lineWidth with em unit', () => {
       const drawer = new SingleStrokeDrawer(0.5, [0, 0, 0, 1], 'em');
 
-      drawer.render(ctx, mockEnv);
+      drawer.applyStyle(ctx, mockEnv);
 
       // 0.5 * 24 (fontSize) * 1 (fontScale) = 12
       expect(ctx.lineWidth).to.eql(12);
@@ -133,7 +133,7 @@ describe('core/plugins/text/text-layer-drawers', () => {
         style: { fontScale: 2, fontSize: 24 },
       };
 
-      drawer.render(ctx, envWithScale);
+      drawer.applyStyle(ctx, envWithScale);
 
       expect(ctx.lineWidth).to.eql(4);
     });
@@ -141,7 +141,7 @@ describe('core/plugins/text/text-layer-drawers', () => {
     it('should set lineJoin to round', () => {
       const drawer = new SingleStrokeDrawer(2, [0, 0, 0, 1], 'px');
 
-      drawer.render(ctx, mockEnv);
+      drawer.applyStyle(ctx, mockEnv);
 
       expect(ctx.lineJoin).to.eql('round');
     });
@@ -149,7 +149,7 @@ describe('core/plugins/text/text-layer-drawers', () => {
     it('should set font and textBaseline', () => {
       const drawer = new SingleStrokeDrawer(2, [0, 0, 0, 1], 'px');
 
-      drawer.render(ctx, mockEnv);
+      drawer.applyStyle(ctx, mockEnv);
 
       expect(ctx.font).to.eql('24px Arial');
       expect(ctx.textBaseline).to.eql('alphabetic');
@@ -159,6 +159,29 @@ describe('core/plugins/text/text-layer-drawers', () => {
       const drawer = new SingleStrokeDrawer(2, [0, 0, 0, 1], 'px');
 
       expect(drawer.name).to.eql('single-stroke');
+    });
+
+    it('should not modify passed ctx style properties during render', () => {
+      const drawer = new SingleStrokeDrawer(3, [1, 0, 0, 1], 'px');
+      const defaultLineWidth = ctx.lineWidth;
+      const defaultLineJoin = ctx.lineJoin;
+
+      drawer.render(ctx, mockEnv);
+
+      // render 使用离屏 canvas，不应污染传入的 ctx
+      expect(ctx.lineWidth).to.eql(defaultLineWidth);
+      expect(ctx.lineJoin).to.eql(defaultLineJoin);
+    });
+
+    it('should composite offscreen result onto main canvas via drawImage', () => {
+      const drawer = new SingleStrokeDrawer(2, [0, 0, 0, 1], 'px');
+      const drawImageSpy = chai.spy.on(ctx, 'drawImage');
+
+      drawer.render(ctx, mockEnv);
+
+      expect(drawImageSpy).to.have.been.called.once;
+
+      chai.spy.restore(ctx, 'drawImage');
     });
   });
 

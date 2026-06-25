@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
 import type { FancyConfig, FancyRenderLayer } from '@galacean/effects-core';
-import { FancyLayerFactory, TextStyle, TextComponent } from '@galacean/effects-core';
+import { FancyLayerFactory, TextStyle, TextComponent, loadTexturePatterns } from '@galacean/effects-core';
 import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据
@@ -57,42 +57,17 @@ let editorState: EditorState = {
   effects: [],
 };
 
-// 设置纹理pattern
+// 设置纹理pattern（使用 loadTexturePatterns 工具函数）
 async function setupTexturePattern (textComponent: TextComponent) {
-  const ctx = document.createElement('canvas').getContext('2d');
+  const ctx = textComponent.context;
 
-  if (!ctx) {return;}
+  if (!ctx) { return; }
 
-  // 找到当前花字配置中的 texture layer，获取 imageUrl 和 repeat
   const config = textComponent.textStyle.fancyRenderStyle;
-  const textureLayer = config.layers.find(
-    (l): l is Extract<FancyRenderLayer, { kind: 'texture' }> => l.kind === 'texture'
-  );
 
-  if (!textureLayer) {return;}
+  await loadTexturePatterns(config.layers, ctx);
 
-  const img = new Image();
-
-  img.crossOrigin = 'anonymous';
-  img.src = textureLayer.params.pattern.imageUrl; // 使用配置中的 imageUrl
-
-  await new Promise((resolve, reject) => {
-    img.onload = resolve;
-    img.onerror = reject;
-  });
-
-  const repeat = textureLayer.params.pattern.repeat ?? 'repeat';
-  const pattern = ctx.createPattern(img, repeat);
-
-  if (!pattern) {return;}
-
-  // 找到当前花字配置中的 texture layer，写入 pattern
-  for (const layer of config.layers) {
-    if (layer.kind === 'texture') {
-      layer.runtimePattern = pattern;
-    }
-  }
-
+  // 重建 layerDrawers（此时 texture 层的 runtimePattern 已填充）
   textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(config.layers);
   textComponent.isDirty = true;
 }

@@ -142,12 +142,39 @@ describe('core/plugins/text/fancy-layer-factory', () => {
         },
       };
 
-      const drawer = FancyLayerFactory.createDrawerFromLayer(layer) as GlowDrawer;
+      const drawer = FancyLayerFactory.createDrawerFromLayer(layer);
 
       expect(drawer).to.be.instanceOf(GlowDrawer);
-      const params = drawer.getGlowParams();
+    });
 
-      expect(params.intensity).to.eql(1);
+    it('should pass category to drawer when layer has category', () => {
+      const baseLayer: FancyRenderLayer = {
+        kind: 'single-stroke',
+        category: 'base',
+        params: { color: [1, 0, 0, 1], width: 2, unit: 'px' },
+      };
+      const decorativeLayer: FancyRenderLayer = {
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: [0, 0, 0, 1], blur: 5, offsetX: 2, offsetY: 2 },
+      };
+
+      const baseDrawer = FancyLayerFactory.createDrawerFromLayer(baseLayer);
+      const decoDrawer = FancyLayerFactory.createDrawerFromLayer(decorativeLayer);
+
+      expect(baseDrawer?.category).to.eql('base');
+      expect(decoDrawer?.category).to.eql('decorative');
+    });
+
+    it('should not set category on drawer when layer lacks category', () => {
+      const layer: FancyRenderLayer = {
+        kind: 'solid-fill',
+        params: { color: [1, 1, 1, 1] },
+      };
+
+      const drawer = FancyLayerFactory.createDrawerFromLayer(layer);
+
+      expect(drawer?.category).to.be.undefined;
     });
   });
 

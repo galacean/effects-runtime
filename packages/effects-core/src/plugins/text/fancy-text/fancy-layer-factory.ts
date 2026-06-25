@@ -11,19 +11,33 @@ import {
 /** 花字层工厂 */
 export class FancyLayerFactory {
   static createDrawerFromLayer (layer: FancyRenderLayer): TextLayerDrawer | null {
+    let drawer: TextLayerDrawer | null = null;
+
     switch (layer.kind) {
       case 'single-stroke':
-        return new SingleStrokeDrawer(layer.params.width, layer.params.color, layer.params.unit ?? 'px');
+        drawer = new SingleStrokeDrawer(layer.params.width, layer.params.color, layer.params.unit ?? 'px');
+
+        break;
       case 'gradient':
-        return new GradientDrawer(layer.params.colors, layer.params.angle ?? 0);
+        drawer = new GradientDrawer(layer.params.colors, layer.params.angle ?? 0);
+
+        break;
       case 'shadow':
-        return new ShadowDrawer(layer.params.color, layer.params.blur, layer.params.offsetX, layer.params.offsetY);
+        drawer = new ShadowDrawer(layer.params.color, layer.params.blur, layer.params.offsetX, layer.params.offsetY);
+
+        break;
       case 'glow':
-        return new GlowDrawer(layer.params.color, layer.params.blur, layer.params.intensity ?? 1);
+        drawer = new GlowDrawer(layer.params.color, layer.params.blur, layer.params.intensity ?? 1);
+
+        break;
       case 'texture':
-        return new TextureDrawer(layer.runtimePattern ?? null, layer.params.opacity ?? 1);
+        drawer = new TextureDrawer(layer.runtimePattern ?? null, layer.params.opacity ?? 1);
+
+        break;
       case 'solid-fill':
-        return new SolidFillDrawer(layer.params.color);
+        drawer = new SolidFillDrawer(layer.params.color);
+
+        break;
       default: {
         const _never: never = layer;
 
@@ -32,6 +46,12 @@ export class FancyLayerFactory {
         return null;
       }
     }
+
+    if (drawer && layer.category) {
+      drawer.category = layer.category;
+    }
+
+    return drawer;
   }
 
   static createDrawersFromLayers (layers: FancyRenderLayer[]): TextLayerDrawer[] {

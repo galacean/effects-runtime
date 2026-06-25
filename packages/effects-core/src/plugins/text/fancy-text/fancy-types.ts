@@ -1,6 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 
 export type PatternRepeat = 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
+export type LayerCategory = 'base' | 'decorative';
 
 export interface TexturePatternConfig {
   imageUrl: string,
@@ -11,11 +12,13 @@ export interface TexturePatternConfig {
 
 export interface ShadowLayerConfig {
   kind: 'shadow',
+  category?: LayerCategory,
   params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number },
 }
 
 export interface GlowLayerConfig {
   kind: 'glow',
+  category?: LayerCategory,
   params: { color: spec.vec4, blur: number, intensity?: number },
 }
 
@@ -25,24 +28,28 @@ export type DecorativeLayerConfig = ShadowLayerConfig | GlowLayerConfig;
 
 export interface SingleStrokeLayerConfig {
   kind: 'single-stroke',
+  category?: LayerCategory,
   params: { color: spec.vec4, width: number, unit?: 'px' },
   decorations?: DecorativeLayerConfig[],
 }
 
 export interface SolidFillLayerConfig {
   kind: 'solid-fill',
+  category?: LayerCategory,
   params: { color: spec.vec4 },
   decorations?: DecorativeLayerConfig[],
 }
 
 export interface GradientLayerConfig {
   kind: 'gradient',
+  category?: LayerCategory,
   params: { angle: number, colors: spec.vec4[] },
   decorations?: DecorativeLayerConfig[],
 }
 
 export interface TextureLayerConfig {
   kind: 'texture',
+  category?: LayerCategory,
   params: { pattern: TexturePatternConfig, opacity?: number },
   decorations?: DecorativeLayerConfig[],
 }
@@ -96,12 +103,12 @@ export type DecorativeLayerKind = 'shadow' | 'glow';
 // ========== 运行时渲染层 ==========
 
 export type FancyRenderLayer =
-  | { kind: 'shadow', params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number } }
-  | { kind: 'glow', params: { color: spec.vec4, blur: number, intensity: number } }
-  | { kind: 'single-stroke', params: { color: spec.vec4, width: number, unit: 'px' } }
-  | { kind: 'solid-fill', params: { color: spec.vec4 } }
-  | { kind: 'gradient', params: { angle: number, colors: spec.vec4[] } }
-  | { kind: 'texture', params: { pattern: TexturePatternConfig, opacity?: number }, runtimePattern?: CanvasPattern | null };
+  | { kind: 'shadow', category?: LayerCategory, params: { color: spec.vec4, blur: number, offsetX: number, offsetY: number } }
+  | { kind: 'glow', category?: LayerCategory, params: { color: spec.vec4, blur: number, intensity: number } }
+  | { kind: 'single-stroke', category?: LayerCategory, params: { color: spec.vec4, width: number, unit: 'px' } }
+  | { kind: 'solid-fill', category?: LayerCategory, params: { color: spec.vec4 } }
+  | { kind: 'gradient', category?: LayerCategory, params: { angle: number, colors: spec.vec4[] } }
+  | { kind: 'texture', category?: LayerCategory, params: { pattern: TexturePatternConfig, opacity?: number }, runtimePattern?: CanvasPattern | null };
 
 export interface FancyRenderStyle {
   layers: FancyRenderLayer[],
@@ -122,6 +129,7 @@ export interface TextEnv {
 /** 文本层绘制器接口 */
 export interface TextLayerDrawer {
   name?: string,
+  category?: LayerCategory,
   render?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,
   renderDecorations?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,
   renderFill?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,

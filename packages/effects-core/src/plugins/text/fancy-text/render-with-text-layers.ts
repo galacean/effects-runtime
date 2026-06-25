@@ -36,7 +36,7 @@ function renderNonDecorativeDrawers (
   drawers: TextLayerDrawer[],
 ): void {
   for (const drawer of drawers) {
-    if (drawer instanceof ShadowDrawer || drawer instanceof GlowDrawer) {
+    if (drawer.category === 'decorative' || drawer instanceof ShadowDrawer || drawer instanceof GlowDrawer) {
       continue;
     }
     if (typeof drawer.render === 'function') {

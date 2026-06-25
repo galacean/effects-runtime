@@ -9,4 +9,5 @@ export * from './fancy-text/fancy-presets';
 export * from './fancy-text/text-layer-drawers';
 export * from './fancy-text/fancy-layer-factory';
 export * from './fancy-text/render-with-text-layers';
+export * from './fancy-text/texture-pattern-loader';
 export * from './preset-manager';

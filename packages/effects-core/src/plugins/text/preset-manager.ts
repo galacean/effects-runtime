@@ -1,8 +1,8 @@
-import type { AdjustableParam, AdjustableParamMeta, FancyConfig } from './fancy-text/fancy-types';
+import type { AdjustableParam, AdjustableParamMeta, BaseLayerKind, DecorativeLayerKind, FancyConfig } from './fancy-text/fancy-types';
 import { BUILTIN_FANCY_PRESETS } from './fancy-text/fancy-presets';
 
 /** 当前预设数据格式的版本号 */
-const CURRENT_PRESET_VERSION = 1;
+const CURRENT_PRESET_VERSION = 2;
 
 /**
  * 花字预设管理器
@@ -102,15 +102,43 @@ export class PresetManager {
     const fromVersion = result.version ?? 1;
 
     if (fromVersion < CURRENT_PRESET_VERSION) {
-      // v1 → v_CURRENT 的迁移逻辑
-      // 当前 CURRENT_PRESET_VERSION = 1，无实际迁移步骤
+      // v1 → v2：为没有 category 字段的层补充 category（按 kind 推导）
+      if (fromVersion < 2) {
+        PresetManager.migrateV1ToV2(result);
+      }
       // 后续版本升级在此处添加迁移逻辑，例如：
-      // if (fromVersion < 2) { migrateV1ToV2(result); }
+      // if (fromVersion < 3) { migrateV2ToV3(result); }
     }
 
     result.version = CURRENT_PRESET_VERSION;
 
     return result;
+  }
+
+  /**
+   * v1 → v2 迁移：为缺少 category 字段的层按照 kind 补充默认值
+   * - 基础层（single-stroke / solid-fill / gradient / texture）→ category: 'base'
+   * - 装饰层（shadow / glow）→ category: 'decorative'
+   */
+  private static migrateV1ToV2 (config: FancyConfig): void {
+    const baseKinds: Set<BaseLayerKind> = new Set(['single-stroke', 'solid-fill', 'gradient', 'texture']);
+    const decorativeKinds: Set<DecorativeLayerKind> = new Set(['shadow', 'glow']);
+
+    for (const layer of config.layers) {
+      if (!('category' in layer) || (layer as any).category === undefined) {
+        if (baseKinds.has(layer.kind as BaseLayerKind)) {
+          (layer as any).category = 'base';
+        }
+      }
+      // decorations 内部的装饰层
+      if ('decorations' in layer && Array.isArray((layer as any).decorations)) {
+        for (const dec of (layer as any).decorations) {
+          if ((!('category' in dec) || dec.category === undefined) && decorativeKinds.has(dec.kind as DecorativeLayerKind)) {
+            dec.category = 'decorative';
+          }
+        }
+      }
+    }
   }
 
   // ========== 调参接口 ==========

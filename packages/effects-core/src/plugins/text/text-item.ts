@@ -100,6 +100,7 @@ export class TextComponent extends MaskableGraphic {
   }
 
   override onDestroy (): void {
+    this._destroyed = true;
     super.onDestroy();
     this.disposeTextTexture();
     this.releaseTextCanvas();
@@ -151,8 +152,11 @@ export class TextComponent extends MaskableGraphic {
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text);
 
-    // 初始化 layerDrawers
+    // 初始化 layerDrawers（texture 层此时 runtimePattern 为 null，待异步加载）
     this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
+
+    // 异步加载纹理层图片并创建 CanvasPattern
+    void this.loadFancyTexturePatterns();
   }
 
   /**
