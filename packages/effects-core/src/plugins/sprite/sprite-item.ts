@@ -101,10 +101,21 @@ export class SpriteComponent extends MaskableGraphic {
 
   /**
    * 引用的 Sprite 资产（纹理 + 归一化 UV 矩形 + flipUv），渲染唯一数据源。
-   * 为空时（未迁移数据/手动构造）按整图 [0,0,1,1] flip=0 处理，等价旧默认 splits。
-   * @internal
    */
-  protected sprite?: Sprite;
+  protected _sprite: Sprite;
+
+  /**
+   * 当前 Sprite 资产。设置时同步纹理、重绑 _MainTex 并重建几何体 UV。
+   * @since 2.10.0
+   */
+  get sprite (): Sprite {
+    return this._sprite;
+  }
+
+  set sprite (sprite: Sprite) {
+    this.applySpriteToRenderer(sprite);
+    this.updateGeometry(this.geometry);
+  }
 
   constructor (engine: Engine, props?: SpriteComponentDataEx) {
     super(engine);
@@ -287,10 +298,12 @@ export class SpriteComponent extends MaskableGraphic {
   }
 
   /**
-   * 应用 Sprite 资产到渲染器：同步纹理并重绑 _MainTex。fromData 与 setSprite 共用。
+   * 应用 Sprite 资产到渲染器：同步纹理并重绑 _MainTex。不重建几何体。
+   * fromData（后续自行 updateGeometry）与 sprite setter（随后 updateGeometry）共用。
+   * 直接写 _sprite，避免经 setter 触发 updateGeometry。
    */
   protected applySpriteToRenderer (sprite: Sprite): void {
-    this.sprite = sprite;
+    this._sprite = sprite;
     this.renderer.texture = sprite.texture;
     this.material.setTexture('_MainTex', sprite.texture);
   }
@@ -351,15 +364,5 @@ export class SpriteComponent extends MaskableGraphic {
     geometry.setIndexData(new Uint16Array(index));
     geometry.setAttributeData('aUV', new Float32Array(aUV));
     geometry.setDrawCount(index.length);
-  }
-
-  /**
-   * 运行时切换 Sprite 资产，重建几何体 UV。
-   * @param sprite - 新的 Sprite 资产
-   * @since 2.10.0
-   */
-  setSprite (sprite: Sprite): void {
-    this.applySpriteToRenderer(sprite);
-    this.updateGeometry(this.geometry);
   }
 }

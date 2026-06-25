@@ -166,7 +166,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     player.gotoAndPlay(0.01);
 
     const spriteComp = comp.getItemByName('sprite_1')!.getComponent(SpriteComponent);
-    const sprite = (spriteComp as unknown as { sprite: Sprite }).sprite;
+    const sprite = spriteComp.sprite;
 
     // P0#1：texture 被解析为 Texture 实例，而非裸 {id}
     expect(sprite, 'sprite').to.be.instanceOf(Sprite);
@@ -206,8 +206,8 @@ describe('core/plugins/sprite/sprite-asset', () => {
     expect(aUV[1]).to.be.closeTo(0.75, 1e-4);
   });
 
-  // 运行时 setSprite 切换资产：重建 _MainTex 与 UV
-  it('sprite setSprite at runtime', async () => {
+  // 运行时通过 sprite setter 切换资产：重建 _MainTex 与 UV
+  it('sprite setter switches sprite at runtime', async () => {
     const spriteID = generateGUID();
     const { json } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], flipUv: SpriteRotation.None });
     const comp = await player.loadScene(json);
@@ -222,9 +222,9 @@ describe('core/plugins/sprite/sprite-asset', () => {
     newSprite.texture = oldTex;
     newSprite.rect = [0, 0, 0.5, 0.5];
     newSprite.flipUv = SpriteRotation.None;
-    spriteComp.setSprite(newSprite);
+    spriteComp.sprite = newSprite;
 
-    expect((spriteComp as unknown as { sprite: Sprite }).sprite).to.equal(newSprite);
+    expect(spriteComp.sprite).to.equal(newSprite);
     expect(spriteComp.material.getTexture('_MainTex')).to.equal(newSprite.texture);
 
     // rect=[0,0,0.5,0.5], flip=0 → aUV[0]=0（原来 0.25）
@@ -268,7 +268,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     player.gotoAndPlay(0.01);
 
     const spriteComp = comp.getItemByName('sprite_1')!.getComponent(SpriteComponent);
-    const sprite = (spriteComp as unknown as { sprite: Sprite }).sprite;
+    const sprite = spriteComp.sprite;
 
     // 迁移产物：组件持有 sprite，rect/flipUv 由 splits[0] 还原，纹理指向原 texture
     expect(sprite, 'migrated sprite').to.be.instanceOf(Sprite);
@@ -297,7 +297,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     player.gotoAndPlay(0.01);
 
     const spriteComp = comp.getItemByName('sprite_1')!.getComponent(SpriteComponent);
-    const sprite = (spriteComp as unknown as { sprite: Sprite }).sprite;
+    const sprite = spriteComp.sprite;
 
     expect(sprite.flipUv, 'flipUv').to.eql(1);
 
