@@ -19,6 +19,7 @@ import type { SolveForcesAndVelocityModuleData } from '../modules/solve-forces-a
 import type { SpawnRateModuleData } from '../modules/spawn-rate-module';
 import type { SpawnPerSourceModuleData } from '../modules/spawn-per-source-module';
 import type { SampleFromSourceModuleData } from '../modules/sample-from-source-module';
+import type { KillBySourceModuleData } from '../modules/kill-by-source-module';
 
 /**
  * 标准 sprite 粒子的模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
@@ -44,6 +45,7 @@ export type TrailModuleData = {
   kind: 'trail',
   spawnPerSource: SpawnPerSourceModuleData,
   sampleFromSource: SampleFromSourceModuleData,
+  killBySource: KillBySourceModuleData,
 };
 
 export type ParsedModuleData = SpriteModuleData | TrailModuleData;
@@ -218,13 +220,14 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
       alignSpeedDirection: false,
       modules: {
         kind: 'trail',
-        spawnPerSource: {
-          dieWithParticles: trailsData.dieWithParticles !== false,
-        },
+        spawnPerSource: {},
         sampleFromSource: {
           lifetime: trailsData.lifetime,
           inheritParticleColor: !!trailsData.inheritParticleColor,
           sizeAffectsWidth: !!trailsData.sizeAffectsWidth,
+        },
+        killBySource: {
+          dieWithParticles: trailsData.dieWithParticles !== false,
         },
       },
     };

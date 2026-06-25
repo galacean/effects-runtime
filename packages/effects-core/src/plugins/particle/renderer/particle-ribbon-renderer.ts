@@ -243,7 +243,8 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
         return ridA - ridB;
       }
 
-      return db.ribbonLinkOrder[a] - db.ribbonLinkOrder[b];
+      // LinkOrder 回退 uniqueId(spawn 时不显式写 ribbonLinkOrder,按 uniqueId 单调递增排序)。
+      return db.uniqueId[a] - db.uniqueId[b];
     });
 
     return indices;
@@ -442,7 +443,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
   }
 
   /**
-   * 渲染侧近点抽取:遍历按 (ribbonId, ribbonLinkOrder) 排好序的 slot,
+   * 渲染侧近点抽取:遍历按 (ribbonId, uniqueId) 排好序的 slot,
    * 每条 ribbon 跳过与前一个已输出点世界距离平方 < minimumVertexDistance 的点。
    * 每条 ribbon 的起始点必输出。返回实际输出的 slot 序列(仍按 ribbon 顺序连续)。
    *

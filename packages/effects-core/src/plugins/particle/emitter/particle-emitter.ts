@@ -54,6 +54,13 @@ export class ParticleEmitter {
   spawnFraction = 1;
   spawnInfos: SpawnInfo[] = [];
 
+  /**
+   * 存活粒子的 uniqueId 集。spawn 时 add、compact 前删死亡 uid。
+   * 供消费方(如 trail KillBySource)by id 现场 O(1) 查本 emitter 粒子是否存活——
+   * 对齐成熟实现 source 持 ID 表、消费方 by ID 反查存活的范式。
+   */
+  readonly aliveUniqueIds = new Set<number>();
+
   // --- Query state ---
   lastRaycastHitIndex = -1;
 
@@ -105,16 +112,18 @@ export class ParticleEmitter {
 
   private buildTrailModules (data: TrailModuleData): ParticleModule[] {
     const spawnModule = new SpawnPerSourceParticleModule();
+    const sampleModule = new SampleFromSourceModule();
+    const killModule = new KillBySourceModule();
 
     spawnModule.fromJSON(data.spawnPerSource);
-
-    const sampleModule = new SampleFromSourceModule(spawnModule);
-
     sampleModule.fromJSON(data.sampleFromSource);
+    killModule.fromJSON(data.killBySource);
 
-    // 顺序：updateAge → killBySource（particleUpdate 阶段）。ribbon 长度由 trail 粒子
-    // lifetime 自然回收控制；点数密度由渲染侧 MinSegmentLength 抽取控制。
-    return [spawnModule, sampleModule, new UpdateAgeModule(), new KillBySourceModule(spawnModule)];
+    // 顺序：updateAge → killBySource（particleUpdate 阶段）。模块间无实例互引:
+    // SampleFromSource 现场 Sequential 采 source;KillBySource 现场读 source.aliveUniqueIds
+    // 判 source 存活。ribbon 长度由 trail 粒子 lifetime 自然回收控制;
+    // 点数密度由渲染侧 MinSegmentLength 抽取控制。
+    return [spawnModule, sampleModule, new UpdateAgeModule(), killModule];
   }
 
   private buildSpriteModules (data: SpriteModuleData): ParticleModule[] {
@@ -178,6 +187,7 @@ export class ParticleEmitter {
     this.spawnFraction = 1;
     this.uniqueIndexOffset = 0;
     this.spawnInfos.length = 0;
+    this.aliveUniqueIds.clear();
     this._dataBuffer?.clear();
   }
 
@@ -222,6 +232,18 @@ export class ParticleEmitter {
     }
 
     // 3. compact dead particles（swap-copy 压缩，使 [0, numInstances) 保持紧凑）
+    //    compact 前收集死亡粒子 uniqueId,compact 后从 aliveUniqueIds 删除——
+    //    维护存活 ID 集,供消费方(如 trail KillBySource)by id 现场 O(1) 查 source 存活。
+    {
+      const db = this._dataBuffer;
+      const n = db.numInstances;
+
+      for (let i = 0; i < n; i++) {
+        if (db.alive[i] === 0) {
+          this.aliveUniqueIds.delete(db.uniqueId[i]);
+        }
+      }
+    }
     this._dataBuffer.compactDead();
 
     // 4. spawn (only if state allows)
