@@ -11,6 +11,8 @@ import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
 import { rotateVec2 } from '../../shape';
 import { MaskableGraphic, EffectComponent } from '../../components';
+import type { Sprite } from './sprite';
+import { SpriteRotation } from './sprite';
 
 /**
  * 图层元素基础属性, 经过处理后的 spec.SpriteContent.options
@@ -20,9 +22,14 @@ export type SpriteItemOptions = {
   renderLevel?: spec.RenderLevel,
 };
 
-export type splitsDataType = [r: number, x: number, y: number, w: number, h: number | undefined][];
-
-const singleSplits: splitsDataType = [[0, 0, 1, 1, 0]];
+/**
+ * SpriteComponent 数据。扩展 spec.SpriteComponentData，新增可选 sprite 资产引用。
+ * spec 包不可改，故本地扩展。
+ */
+interface SpriteComponentDataEx extends spec.SpriteComponentData {
+  /** 引用的 Sprite 资产（新版数据流）；老数据经 version37Migration 迁移而来 */
+  sprite?: spec.DataPath,
+}
 
 let seed = 0;
 
@@ -89,14 +96,17 @@ export class ComponentTimePlayable extends Playable {
 export class SpriteComponent extends MaskableGraphic {
   time = 0;
   duration = 1;
-  /**
-   * @internal
-  */
-  splits: splitsDataType = singleSplits;
 
   protected textureSheetAnimation?: spec.TextureSheetAnimation;
 
-  constructor (engine: Engine, props?: spec.SpriteComponentData) {
+  /**
+   * 引用的 Sprite 资产（纹理 + 归一化 UV 矩形 + flipUv），渲染唯一数据源。
+   * 为空时（未迁移数据/手动构造）按整图 [0,0,1,1] flip=0 处理，等价旧默认 splits。
+   * @internal
+   */
+  protected sprite?: Sprite;
+
+  constructor (engine: Engine, props?: SpriteComponentDataEx) {
     super(engine);
 
     this.name = 'MSprite' + seed++;
@@ -129,35 +139,27 @@ export class SpriteComponent extends MaskableGraphic {
     }
     if (textureAnimation) {
       const total = textureAnimation.total || (textureAnimation.row * textureAnimation.col);
-      let texRectX = 0;
-      let texRectY = 0;
-      let texRectW = 1;
-      let texRectH = 1;
-      let flip;
+      // 帧动画不与多 split（splits.length>1）同时存在，故此处仅读 sprite 单 rect。
+      // sprite 缺省时按整图 [0,0,1,1] 不旋转处理。
+      const sprite = this.sprite;
+      const rect = sprite?.rect ?? [0, 0, 1, 1];
+      const flip = sprite?.flipUv ?? SpriteRotation.None;
+      const isRotate90 = flip === SpriteRotation.Rotate90;
 
-      if (this.splits) {
-        const sp = this.splits[0];
+      // rect 在纹理上的归一化矩形 [x, y, w, h]；旋转 90° 时宽高互换。
+      const rectX = rect[0];
+      const rectY = rect[1];
+      const rectW = isRotate90 ? rect[3] : rect[2];
+      const rectH = isRotate90 ? rect[2] : rect[3];
 
-        flip = sp[4];
-        texRectX = sp[0];
-        texRectY = sp[1];
-        if (flip) {
-          texRectW = sp[3];
-          texRectH = sp[2];
-        } else {
-          texRectW = sp[2];
-          texRectH = sp[3];
-        }
-      }
-      let dx, dy;
+      // 每帧在 rect 内的偏移步长；旋转 90° 时 row/col 对调。
+      const dx = isRotate90
+        ? 1 / textureAnimation.row * rectW
+        : 1 / textureAnimation.col * rectW;
+      const dy = isRotate90
+        ? 1 / textureAnimation.col * rectH
+        : 1 / textureAnimation.row * rectH;
 
-      if (flip) {
-        dx = 1 / textureAnimation.row * texRectW;
-        dy = 1 / textureAnimation.col * texRectH;
-      } else {
-        dx = 1 / textureAnimation.col * texRectW;
-        dy = 1 / textureAnimation.row * texRectH;
-      }
       let texOffset;
 
       if (textureAnimation.animate) {
@@ -165,13 +167,15 @@ export class SpriteComponent extends MaskableGraphic {
         const yIndex = Math.floor(frameIndex / textureAnimation.col);
         const xIndex = frameIndex - yIndex * textureAnimation.col;
 
-        texOffset = flip ? [dx * yIndex, dy * (textureAnimation.col - xIndex)] : [dx * xIndex, dy * (1 + yIndex)];
+        texOffset = isRotate90
+          ? [dx * yIndex, dy * (textureAnimation.col - xIndex)]
+          : [dx * xIndex, dy * (1 + yIndex)];
       } else {
         texOffset = [0, dy];
       }
       this.material.getVector4('_TexOffset')?.setFromArray([
-        texRectX + texOffset[0],
-        texRectH + texRectY - texOffset[1],
+        rectX + texOffset[0],
+        rectH + rectY - texOffset[1],
         dx, dy,
       ]);
     }
@@ -196,13 +200,16 @@ export class SpriteComponent extends MaskableGraphic {
   }
 
   protected updateGeometry (geometry: Geometry) {
-    const split: number[] = this.textureSheetAnimation ? [0, 0, 1, 1, this.splits[0][4] as number] : this.splits[0] as number[];
-    const uvTransform = split;
-    const x = uvTransform[0];
-    const y = uvTransform[1];
-    const isRotate90 = Boolean(uvTransform[4]);
-    const width = isRotate90 ? uvTransform[3] : uvTransform[2];
-    const height = isRotate90 ? uvTransform[2] : uvTransform[3];
+    const sprite = this.sprite;
+    // sprite 缺省时按整图 [0,0,1,1] 不旋转处理，等价旧默认 splits=[[0,0,1,1,0]]。
+    const flip = sprite?.flipUv ?? SpriteRotation.None;
+    const rect = sprite?.rect ?? [0, 0, 1, 1];
+    const [x, y, w, h] = this.textureSheetAnimation
+      ? [0, 0, 1, 1]
+      : [rect[0], rect[1], rect[2], rect[3]];
+    const isRotate90 = flip === SpriteRotation.Rotate90;
+    const width = isRotate90 ? h : w;
+    const height = isRotate90 ? w : h;
     const angle = isRotate90 ? -Math.PI / 2 : 0;
 
     const aUV = geometry.getAttributeData('aUV');
@@ -244,12 +251,56 @@ export class SpriteComponent extends MaskableGraphic {
     }
   }
 
+  override fromData (data: SpriteComponentDataEx): void {
+    super.fromData(data);  // MaskableGraphic: 设 renderer.texture（whiteTexture 或 data.renderer.texture）、_MainTex、_Color
+
+    // 单 split / 新数据流：引用 Sprite 资产，渲染读 this.sprite
+    if (data.sprite) {
+      const sprite = this.engine.findObject<Sprite>(data.sprite);
+
+      if (sprite) {
+        this.applySpriteToRenderer(sprite);
+      }
+    }
+
+    this.textureSheetAnimation = data.textureSheetAnimation;
+
+    const geometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : this.defaultGeometry;
+    const splits = data.splits;
+
+    if (splits && splits.length > 1) {
+      // 原有打包纹理拆分逻辑（多 split，2x2 纹理打包），保留向后兼容；
+      // 不依赖组件 splits 字段，直接用 data.splits。
+      this.updateGeometryFromMultiSplit(splits);
+    } else {
+      this.updateGeometry(geometry);
+    }
+
+    this.interaction = data.interaction;
+
+    const startColor = data.options.startColor || [1, 1, 1, 1];
+
+    this.material.setColor('_Color', new Color().setFromArray(startColor));
+
+    //@ts-expect-error
+    this.duration = data.duration ?? this.item.duration;
+  }
+
+  /**
+   * 应用 Sprite 资产到渲染器：同步纹理并重绑 _MainTex。fromData 与 setSprite 共用。
+   */
+  protected applySpriteToRenderer (sprite: Sprite): void {
+    this.sprite = sprite;
+    this.renderer.texture = sprite.texture;
+    this.material.setTexture('_MainTex', sprite.texture);
+  }
+
   /**
    * @deprecated
-   * 原有打包纹理拆分逻辑，待移除
+   * 原有打包纹理拆分逻辑，仅在老数据 splits.length>1（2x2 纹理打包）时使用，保留向后兼容。
+   * 不依赖组件状态，splits 由参数传入（同时存在帧动画与多 split 的数据不存在）。
    */
-  protected updateGeometryFromMultiSplit () {
-    const { splits, textureSheetAnimation } = this;
+  protected updateGeometryFromMultiSplit (splits: spec.SplitParameter[]) {
     const sx = 1, sy = 1;
     const geometry = this.defaultGeometry;
 
@@ -263,8 +314,8 @@ export class SpriteComponent extends MaskableGraphic {
     for (let x = 0; x < col; x++) {
       for (let y = 0; y < row; y++) {
         const base = (y * 2 + x) * 4;
-        // @ts-expect-error
-        const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
+        const split: number[] = splits[y * 2 + x] as number[];
+
         const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
         const dw = ((x + x + 1) / col - 1) / 2;
         const dh = ((y + y + 1) / row - 1) / 2;
@@ -302,32 +353,13 @@ export class SpriteComponent extends MaskableGraphic {
     geometry.setDrawCount(index.length);
   }
 
-  override fromData (data: spec.SpriteComponentData): void {
-    super.fromData(data);
-
-    const splits = data.splits ?? singleSplits;
-    const textureSheetAnimation = data.textureSheetAnimation;
-
-    this.splits = splits;
-    this.textureSheetAnimation = textureSheetAnimation;
-
-    const geometry = data.geometry ? this.engine.findObject<Geometry>(data.geometry) : this.defaultGeometry;
-
-    if (splits.length === 1) {
-      this.updateGeometry(geometry);
-    } else {
-      // TODO: 原有打包纹理拆分逻辑，待移除
-      //-------------------------------------------------------------------------
-      this.updateGeometryFromMultiSplit();
-    }
-
-    this.interaction = data.interaction;
-
-    const startColor = data.options.startColor || [1, 1, 1, 1];
-
-    this.material.setColor('_Color', new Color().setFromArray(startColor));
-
-    //@ts-expect-error
-    this.duration = data.duration ?? this.item.duration;
+  /**
+   * 运行时切换 Sprite 资产，重建几何体 UV。
+   * @param sprite - 新的 Sprite 资产
+   * @since 2.10.0
+   */
+  setSprite (sprite: Sprite): void {
+    this.applySpriteToRenderer(sprite);
+    this.updateGeometry(this.geometry);
   }
 }
