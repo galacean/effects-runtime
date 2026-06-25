@@ -93,6 +93,8 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
   pointCountPerTrail: number;
   minimumVertexDistance: number;
   checkVertexDistance: boolean;
+  /** 当前顶点 buffer 可容纳的粒子点数（每点 2 顶点）。超容则 grow。 */
+  vertexCapacity: number;
 
   private widthOverTrail: ValueGetter<number>;
   private opacityOverLifetime: ValueGetter<number>;
@@ -179,6 +181,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     this.pointCountPerTrail = pointCountPerTrail;
     this.checkVertexDistance = minimumVertexDistance > 0;
     this.minimumVertexDistance = Math.pow(minimumVertexDistance || 0.001, 2);
+    this.vertexCapacity = pointCountPerTrail * maxTrailCount;
     this.lifetime = lifetime;
     this.widthOverTrail = widthOverTrail;
     this.opacityOverLifetime = opacityOverLifetime;
@@ -226,10 +229,11 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
   private buildSortOrder (db: ParticleDataBuffer): number[] {
     const indices: number[] = [];
 
+    // 收集全部存活 trail 点（含当帧刚 spawn 的 age=0 头点）。
+    // [0, numInstances) 经 compactDead 压缩后均为存活点；不过滤 age=0 是为了让
+    // 新头点当帧即画，避免它滞后 source 一帧造成 ribbon 与 source 之间的空隙。
     for (let i = 0; i < db.numInstances; i++) {
-      if (db.age[i] > 0) {
-        indices.push(i);
-      }
+      indices.push(i);
     }
     indices.sort((a, b) => {
       const ridA = db.ribbonId[a];
@@ -251,8 +255,16 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     viewDirX: number, viewDirY: number, viewDirZ: number,
   ): void {
     const geo = this.geometry;
-    const maxPoints = this.pointCountPerTrail * this.maxTrailCount;
-    const sorted = sortedInput.length > maxPoints ? sortedInput.slice(0, maxPoints) : sortedInput;
+
+    // 渲染侧 MinSegmentLength 抽取:每条 ribbon 跳过与前一个【已输出】点世界距离
+    // 小于阈值的点(不为其生成顶点/段)。抽取后密度受控,模拟侧仍每帧产点保证头跟随。
+    const outSlots = this.decimateNearPoints(sortedInput, db);
+
+    // 顶点 buffer 容量检查:超容则 grow(每点 2 顶点)。
+    if (outSlots.length > this.vertexCapacity) {
+      this.growVertexBuffers(outSlots.length);
+    }
+
     const verts = geo.getAttributeData('aPos') as Float32Array;
     const indices = geo.getIndexData() as Uint16Array;
 
@@ -263,9 +275,9 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     const ribbonSizes: number[] = [];
     let curRibbonSize = 0;
 
-    for (let i = 0; i < sorted.length; i++) {
+    for (let i = 0; i < outSlots.length; i++) {
       curRibbonSize++;
-      if (i === sorted.length - 1 || db.ribbonId[sorted[i + 1]] !== db.ribbonId[sorted[i]]) {
+      if (i === outSlots.length - 1 || db.ribbonId[outSlots[i + 1]] !== db.ribbonId[outSlots[i]]) {
         ribbonSizes.push(curRibbonSize);
         curRibbonSize = 0;
       }
@@ -274,10 +286,10 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     let ribbonStart = 0;
     let curRibbonIdx = 0;
 
-    for (let i = 0; i < sorted.length; i++) {
-      const idx = sorted[i];
-      const isRibbonEnd = i === sorted.length - 1 || db.ribbonId[sorted[i + 1]] !== db.ribbonId[idx];
-      const isRibbonStart = i === 0 || db.ribbonId[sorted[i - 1]] !== db.ribbonId[idx];
+    for (let i = 0; i < outSlots.length; i++) {
+      const idx = outSlots[i];
+      const isRibbonEnd = i === outSlots.length - 1 || db.ribbonId[outSlots[i + 1]] !== db.ribbonId[idx];
+      const isRibbonStart = i === 0 || db.ribbonId[outSlots[i - 1]] !== db.ribbonId[idx];
 
       if (isRibbonStart) {
         ribbonStart = i;
@@ -285,6 +297,7 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
 
       const p = i - ribbonStart;
       const ribbonSize = ribbonSizes[curRibbonIdx];
+      // trail 按实际输出点序归一化(分母为输出点数),保证抽取后 UV/宽度/颜色梯度连续。
       const trail = ribbonSize > 1 ? 1 - p / (ribbonSize - 1) : 0;
 
       const i3 = idx * 3;
@@ -329,18 +342,18 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
         ca *= c[3] / 255;
       }
 
-      // tangent direction (average of forward and backward)
+      // tangent direction (average of forward and backward),基于输出点邻居
       let tx = 0, ty = 0, tz = 0;
 
       if (!isRibbonEnd) {
-        const ni3 = sorted[i + 1] * 3;
+        const ni3 = outSlots[i + 1] * 3;
 
         tx = db.position[ni3] - px;
         ty = db.position[ni3 + 1] - py;
         tz = db.position[ni3 + 2] - pz;
       }
       if (!isRibbonStart) {
-        const pi3 = sorted[i - 1] * 3;
+        const pi3 = outSlots[i - 1] * 3;
         const pdx = px - db.position[pi3];
         const pdy = py - db.position[pi3 + 1];
         const pdz = pz - db.position[pi3 + 2];
@@ -426,6 +439,66 @@ export class ParticleRibbonRenderer extends ParticleRenderer {
     geo.setAttributeData('aPos', verts);
     geo.setIndexData(indices);
     geo.setDrawCount(totalSegments * 6);
+  }
+
+  /**
+   * 渲染侧近点抽取:遍历按 (ribbonId, ribbonLinkOrder) 排好序的 slot,
+   * 每条 ribbon 跳过与前一个已输出点世界距离平方 < minimumVertexDistance 的点。
+   * 每条 ribbon 的起始点必输出。返回实际输出的 slot 序列(仍按 ribbon 顺序连续)。
+   *
+   * 抽取只影响渲染输出(密度),不修改模拟侧粒子数据。关闭抽取时(checkVertexDistance=false)
+   * 原样返回输入。
+   */
+  private decimateNearPoints (sorted: number[], db: ParticleDataBuffer): number[] {
+    if (!this.checkVertexDistance) {
+      return sorted;
+    }
+    const minDistSq = this.minimumVertexDistance;
+    const out: number[] = [];
+    let lastOutIdx = -1;  // 上一个输出点的 db slot 索引,-1 表示处于 ribbon 起始
+
+    for (let i = 0; i < sorted.length; i++) {
+      const idx = sorted[i];
+      const isRibbonStart = i === 0 || db.ribbonId[sorted[i - 1]] !== db.ribbonId[idx];
+
+      if (isRibbonStart) {
+        out.push(idx);
+        lastOutIdx = idx;
+
+        continue;
+      }
+      const a3 = lastOutIdx * 3;
+      const b3 = idx * 3;
+      const dx = db.position[b3] - db.position[a3];
+      const dy = db.position[b3 + 1] - db.position[a3 + 1];
+      const dz = db.position[b3 + 2] - db.position[a3 + 2];
+      const distSq = dx * dx + dy * dy + dz * dz;
+
+      if (distSq < minDistSq) {
+        continue;   // 距上一个输出点过近,跳过不输出
+      }
+      out.push(idx);
+      lastOutIdx = idx;
+    }
+
+    return out;
+  }
+
+  /**
+   * 扩容顶点 buffer 到能容纳 neededPoints 个粒子点(每点 2 顶点)。
+   * 新容量按 1.5× 增长避免频繁重建。setAttributeData/setIndexData 换更大 array 后,
+   * 底层 WebGL buffer 会在下次 flush 重建(discard 标记)。
+   */
+  private growVertexBuffers (neededPoints: number): void {
+    const newCap = Math.max(neededPoints, Math.ceil(this.vertexCapacity * 1.5));
+    const maxVertexCount = newCap * 2;
+    const maxTriangleCount = newCap - 1;
+    const verts = new Float32Array(maxVertexCount * FLOATS_PER_VERTEX);
+    const indices = new Uint16Array(maxTriangleCount * 6);
+
+    this.geometry.setAttributeData('aPos', verts);
+    this.geometry.setIndexData(indices);
+    this.vertexCapacity = newCap;
   }
 
 }

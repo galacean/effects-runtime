@@ -6,6 +6,53 @@ function createArray (length: number, fillValue = 0): number[] {
   return arr;
 }
 
+/** 扩容 1 分量通道:分配 newCap 长度新数组,copy [0, usedCount) 活跃数据 */
+function realloc (old: number[], usedCount: number, newCap: number): number[] {
+  const arr = createArray(newCap);
+
+  for (let i = 0; i < usedCount; i++) {
+    arr[i] = old[i];
+  }
+
+  return arr;
+}
+
+/** 扩容 2 分量通道(stride 2) */
+function realloc2 (old: number[], usedCount: number, newCap: number): number[] {
+  const arr = createArray(newCap * 2);
+  const bytes = usedCount * 2;
+
+  for (let i = 0; i < bytes; i++) {
+    arr[i] = old[i];
+  }
+
+  return arr;
+}
+
+/** 扩容 3 分量通道(stride 3) */
+function realloc3 (old: number[], usedCount: number, newCap: number): number[] {
+  const arr = createArray(newCap * 3);
+  const bytes = usedCount * 3;
+
+  for (let i = 0; i < bytes; i++) {
+    arr[i] = old[i];
+  }
+
+  return arr;
+}
+
+/** 扩容 4 分量通道(stride 4) */
+function realloc4 (old: number[], usedCount: number, newCap: number): number[] {
+  const arr = createArray(newCap * 4);
+  const bytes = usedCount * 4;
+
+  for (let i = 0; i < bytes; i++) {
+    arr[i] = old[i];
+  }
+
+  return arr;
+}
+
 /**
  * 粒子系统 SoA（Structure of Arrays）数据缓冲区。
  *
@@ -19,47 +66,47 @@ function createArray (length: number, fillValue = 0): number[] {
  * - **Trail/Ribbon**：仅 trail emitter 使用的连线数据
  */
 export class ParticleDataBuffer {
-  readonly maxCount: number;
+  maxCount: number;
 
   // ── Spawn-time immutable（出生时写入，生命周期内不再修改） ──
 
   /** 粒子生命周期（秒），出生时由 InitializeModule 写入 */
-  readonly lifetime: number[];
+  lifetime: number[];
   /** 随机种子 [0,1)，出生时写入，供模块采样使用 */
-  readonly seed: number[];
+  seed: number[];
   /** 出生时速度快照 xyz，3 分量，不可变。speedOverLifetime 以此为基准 */
-  readonly initialVelocity: number[];
+  initialVelocity: number[];
   /** 出生时尺寸快照 (width, height)，2 分量，不可变 */
-  readonly initialSize: number[];
+  initialSize: number[];
   /** 出生时颜色快照 (r, g, b, a)，4 分量，不可变 */
-  readonly initialColor: number[];
+  initialColor: number[];
   /** 出生时旋转快照（欧拉角 xyz 度），3 分量，不可变 */
-  readonly initialRotation: number[];
+  initialRotation: number[];
   /** 精灵动画参数 (animDelay, animDuration, cycles)，3 分量 */
-  readonly sprite: number[];
+  sprite: number[];
   /** 纹理坐标 (u, v, w, h)，4 分量 */
-  readonly uv: number[];
+  uv: number[];
 
   // ── Per-frame mutable（每帧由模块计算并覆写） ──
 
   /** 粒子年龄（秒），每帧 += dt */
-  readonly age: number[];
+  age: number[];
   /** velocity 积分累加位置 xyz，3 分量。专为 OrbitalAndLinearMoveModule 提供旋转基准，无该模块时可移除 */
-  readonly simulatedPosition: number[];
+  simulatedPosition: number[];
   /** 最终显示位置 xyz，3 分量（simulatedPosition + orbital + linearMove + forceTarget 合成结果） */
-  readonly position: number[];
+  position: number[];
   /** 当前速度 xyz，3 分量。SolveVelocityModule 每帧累加 gravity */
-  readonly velocity: number[];
+  velocity: number[];
   /** 粒子尺寸 (width, height)，2 分量。ScaleSizeModule 每帧覆写为 initialSize × scale */
-  readonly size: number[];
+  size: number[];
   /** 粒子颜色 (r, g, b, a)，4 分量。ScaleColorModule 每帧覆写为 initialColor × scale */
-  readonly color: number[];
+  color: number[];
   /** Quad X 方向，3 分量 */
-  readonly dirX: number[];
+  dirX: number[];
   /** Quad Y 方向，3 分量 */
-  readonly dirY: number[];
+  dirY: number[];
   /** 当前旋转（欧拉角 xyz 度），3 分量。SolveRotationModule 每帧覆写为 initialRotation + ROL */
-  readonly rotation: number[];
+  rotation: number[];
 
   // ── Lifecycle（粒子生死管理） ──
 
@@ -69,27 +116,27 @@ export class ParticleDataBuffer {
    * 模块通过将 alive[i] = 0 标记死亡（自然死亡或主动击杀），框架在 compactDead()
    * 中用 swap-copy 将其移除，使 [0, numInstances) 始终紧凑。
    */
-  readonly alive: number[];
+  alive: number[];
 
   // ── Trail/Ribbon（仅 trail emitter 使用） ──
 
   /** 全局唯一 ID，spawn 时递增写入，永不复用 */
-  readonly uniqueId: number[];
+  uniqueId: number[];
   /** 所属 ribbon 的 ID（= source 粒子的 uniqueId） */
-  readonly ribbonId: number[];
+  ribbonId: number[];
   /** 排序连线用的全局单调递增序号 */
-  readonly ribbonLinkOrder: number[];
+  ribbonLinkOrder: number[];
   /** trail 粒子 spawn 时刻 source 粒子的 age，用于 ribbon renderer 反推 source normalized age */
-  readonly spawnSourceAge: number[];
+  spawnSourceAge: number[];
 
   // ── 紧凑布局 ──
 
   private _numInstances = 0;
 
-  /** compactDead swap-copy 用的多分量通道分组（构造时建立，避免每帧分配） */
-  private readonly channels2: number[][];
-  private readonly channels3: number[][];
-  private readonly channels4: number[][];
+  /** compactDead swap-copy 用的多分量通道分组（构造时建立，避免每帧分配；grow 时重建引用） */
+  private channels2: number[][];
+  private channels3: number[][];
+  private channels4: number[][];
 
   constructor (maxCount: number) {
     this.maxCount = maxCount;
@@ -144,6 +191,54 @@ export class ParticleDataBuffer {
 
   set numInstances (n: number) {
     this._numInstances = Math.min(Math.max(n, 0), this.maxCount);
+  }
+
+  /**
+   * 扩容到 newCap。为每个通道分配更大数组并 copy 当前活跃段 [0, numInstances)，
+   * 死亡槽不 copy。更新 maxCount 并重建 channels2/3/4 分组引用。
+   * 不改变 _numInstances（活跃数不变，仅容量扩大）。
+   */
+  grow (newCap: number): void {
+    if (newCap <= this.maxCount) {
+      return;
+    }
+    const old = this.numInstances;
+
+    this.lifetime = realloc(this.lifetime, old, newCap);
+    this.seed = realloc(this.seed, old, newCap);
+    this.age = realloc(this.age, old, newCap);
+    this.alive = realloc(this.alive, old, newCap);
+    this.uniqueId = realloc(this.uniqueId, old, newCap);
+    this.ribbonId = realloc(this.ribbonId, old, newCap);
+    this.ribbonLinkOrder = realloc(this.ribbonLinkOrder, old, newCap);
+    this.spawnSourceAge = realloc(this.spawnSourceAge, old, newCap);
+
+    this.initialVelocity = realloc3(this.initialVelocity, old, newCap);
+    this.initialRotation = realloc3(this.initialRotation, old, newCap);
+    this.sprite = realloc3(this.sprite, old, newCap);
+    this.simulatedPosition = realloc3(this.simulatedPosition, old, newCap);
+    this.position = realloc3(this.position, old, newCap);
+    this.velocity = realloc3(this.velocity, old, newCap);
+    this.dirX = realloc3(this.dirX, old, newCap);
+    this.dirY = realloc3(this.dirY, old, newCap);
+    this.rotation = realloc3(this.rotation, old, newCap);
+
+    this.initialSize = realloc2(this.initialSize, old, newCap);
+    this.size = realloc2(this.size, old, newCap);
+
+    this.initialColor = realloc4(this.initialColor, old, newCap);
+    this.uv = realloc4(this.uv, old, newCap);
+    this.color = realloc4(this.color, old, newCap);
+
+    this.maxCount = newCap;
+
+    this.channels2 = [this.initialSize, this.size];
+    this.channels3 = [
+      this.initialVelocity, this.initialRotation, this.sprite,
+      this.simulatedPosition, this.position, this.velocity,
+      this.dirX, this.dirY, this.rotation,
+    ];
+    this.channels4 = [this.initialColor, this.uv, this.color];
   }
 
   clear (): void {

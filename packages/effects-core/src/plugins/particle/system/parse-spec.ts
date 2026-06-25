@@ -6,6 +6,7 @@ import { createValueGetter, ensureVec3 } from '../../../math';
 import type { BurstSpawnModuleData } from '../modules/burst-spawn-module';
 import type { ForceTargetModuleData } from '../modules/force-target-module';
 import type { InitializeModuleData } from '../modules/initialize-particle-module';
+import { AllocationMode } from '../core/allocation-mode';
 import type { EmitterData } from '../emitter/particle-emitter';
 import type { ParticleMeshProps } from '../renderer/particle-mesh';
 import type { ParticleRibbonRendererProps } from '../renderer/particle-ribbon-renderer';
@@ -18,7 +19,6 @@ import type { SolveForcesAndVelocityModuleData } from '../modules/solve-forces-a
 import type { SpawnRateModuleData } from '../modules/spawn-rate-module';
 import type { SpawnPerSourceModuleData } from '../modules/spawn-per-source-module';
 import type { SampleFromSourceModuleData } from '../modules/sample-from-source-module';
-import type { TrimRibbonsModuleData } from '../modules/trim-ribbons-module';
 
 /**
  * 标准 sprite 粒子的模块级数据描述。每个字段 1:1 对应一个模块的构建参数。
@@ -44,7 +44,6 @@ export type TrailModuleData = {
   kind: 'trail',
   spawnPerSource: SpawnPerSourceModuleData,
   sampleFromSource: SampleFromSourceModuleData,
-  trimRibbons: TrimRibbonsModuleData,
 };
 
 export type ParsedModuleData = SpriteModuleData | TrailModuleData;
@@ -202,19 +201,24 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
   const trailsData = data.trails;
 
   if (trailsData) {
-    // pointCountPerTrail / minimumDistSq 与 renderer 同源同公式，保证逐帧一致
+    // pointCountPerTrail: trail 初始预分配估算 + renderer 顶点 buffer 起始容量。
+    // minimumVertexDistance: 渲染侧 MinSegmentLength 抽取阈值（跳过太近 segment）。
     const pointCountPerTrail = Math.max(Math.round(trailsData.maxPointPerTrail) || 32, 2);
     const minimumVertexDistance = trailsData.minimumVertexDistance || 0.02;
+    const trailPreAlloc = (options.maxCount ?? 0) * pointCountPerTrail * 4;
 
     trailEmitterData = {
-      maxCount: (options.maxCount ?? 0) * pointCountPerTrail * 4,
+      maxCount: trailPreAlloc,
+      // trail 用动态扩容：无抑制 spawn 下点数随 source×lifetime×fps 增长，靠扩容
+      // 避免池满丢头；软上限 ×16 防 OOM。
+      allocationMode: AllocationMode.AutomaticEstimate,
+      preAllocationCount: trailPreAlloc,
       looping: true,
       particleFollowParent: true,
       alignSpeedDirection: false,
       modules: {
         kind: 'trail',
         spawnPerSource: {
-          minimumDistSq: Math.pow(minimumVertexDistance, 2),
           dieWithParticles: trailsData.dieWithParticles !== false,
         },
         sampleFromSource: {
@@ -222,7 +226,6 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
           inheritParticleColor: !!trailsData.inheritParticleColor,
           sizeAffectsWidth: !!trailsData.sizeAffectsWidth,
         },
-        trimRibbons: { pointCountPerTrail },
       },
     };
 
@@ -263,6 +266,9 @@ export function parseParticleSpec (data: spec.ParticleSystemData, engine: Engine
   return {
     emitterData: {
       maxCount: options.maxCount ?? 0,
+      // sprite 用固定上限：池满丢新，保持既有行为。
+      allocationMode: AllocationMode.FixedCount,
+      preAllocationCount: options.maxCount ?? 0,
       looping: options.looping ?? false,
       particleFollowParent: !!options.particleFollowParent,
       alignSpeedDirection: !!(shape as any)?.alignSpeedDirection,

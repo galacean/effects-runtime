@@ -6,6 +6,7 @@ import { ParticleDataBuffer as ParticleDataBufferImpl } from '../core/particle-d
 import { ParticleModuleStage, isSourceDependent } from '../core/particle-module';
 import type { ParticleModuleContext, SpawnInfo } from '../core/particle-module';
 import type { ParticleModule } from '../core/particle-module';
+import { AllocationMode, AllocationPolicy } from '../core/allocation-mode';
 import type { ParsedModuleData, SpriteModuleData, TrailModuleData } from '../system/parse-spec';
 import { BurstSpawnModule } from '../modules/burst-spawn-module';
 import { ForceTargetModule } from '../modules/force-target-module';
@@ -21,7 +22,6 @@ import { UpdateAgeModule } from '../modules/update-age-module';
 import { SpawnPerSourceParticleModule } from '../modules/spawn-per-source-module';
 import { SampleFromSourceModule } from '../modules/sample-from-source-module';
 import { KillBySourceModule } from '../modules/kill-by-source-module';
-import { TrimRibbonsModule } from '../modules/trim-ribbons-module';
 import { EmitterState, EmitterExecutionState } from './emitter-state';
 
 export type EmitterData = {
@@ -30,6 +30,10 @@ export type EmitterData = {
   particleFollowParent: boolean,
   alignSpeedDirection: boolean,
   modules: ParsedModuleData,
+  /** 分配策略；不传则默认 FixedCount，等价旧固定上限行为 */
+  allocationMode?: AllocationMode,
+  /** 预分配容量；不传则取 maxCount */
+  preAllocationCount?: number,
 };
 
 export class ParticleEmitter {
@@ -56,6 +60,12 @@ export class ParticleEmitter {
   // --- Modules ---
   private modules: ParticleModule[] = [];
 
+  // --- Allocation ---
+  private policy = new AllocationPolicy({
+    mode: AllocationMode.FixedCount,
+    preAllocationCount: 0,
+  });
+
   // --- Internal refs (set during setup) ---
   private _dataBuffer: ParticleDataBuffer;
 
@@ -68,6 +78,10 @@ export class ParticleEmitter {
     this.state.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
+    this.policy = new AllocationPolicy({
+      mode: data.allocationMode ?? AllocationMode.FixedCount,
+      preAllocationCount: data.preAllocationCount ?? data.maxCount,
+    });
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     this.modules = this.buildModules(data.modules);
   }
@@ -98,13 +112,9 @@ export class ParticleEmitter {
 
     sampleModule.fromJSON(data.sampleFromSource);
 
-    const trimModule = new TrimRibbonsModule();
-
-    trimModule.fromJSON(data.trimRibbons);
-
-    // 顺序：updateAge → killBySource → trimRibbons（均为 particleUpdate 阶段，
-    // 与重构前 tick 中「第2步 particleUpdate → 第3步 trimRibbons」的时序一致）
-    return [spawnModule, sampleModule, new UpdateAgeModule(), new KillBySourceModule(spawnModule), trimModule];
+    // 顺序：updateAge → killBySource（particleUpdate 阶段）。ribbon 长度由 trail 粒子
+    // lifetime 自然回收控制；点数密度由渲染侧 MinSegmentLength 抽取控制。
+    return [spawnModule, sampleModule, new UpdateAgeModule(), new KillBySourceModule(spawnModule)];
   }
 
   private buildSpriteModules (data: SpriteModuleData): ParticleModule[] {
@@ -232,7 +242,7 @@ export class ParticleEmitter {
     const oldNumInstances = this._dataBuffer.numInstances;
 
     for (const info of this.spawnInfos) {
-      this.particleSpawn(this._dataBuffer, this.maxCount, info);
+      this.particleSpawn(this._dataBuffer, info);
     }
 
     // 首帧更新：一次 runStage 批量处理本帧新生粒子 [oldNumInstances, numInstances)
@@ -253,14 +263,25 @@ export class ParticleEmitter {
   // Particle Spawn
   // ========================
 
-  private preAllocateSlots (db: ParticleDataBuffer, maxCount: number, requestedCount: number): number[] {
+  private preAllocateSlots (db: ParticleDataBuffer, requestedCount: number): number[] {
     if (this.state.emissionStopped || requestedCount <= 0) {
       return [];
     }
 
-    // 紧凑布局：新粒子总是追加在 [numInstances, maxCount) 区间
-    const available = maxCount - db.numInstances;
-    const count = Math.min(requestedCount, available);
+    // 紧凑布局：新粒子总是追加在 [numInstances, cap) 区间。容量不足时按分配策略
+    // 决定扩容或丢弃：FixedCount 池满丢新（旧固定上限行为）；AutomaticEstimate 扩容。
+    const required = db.numInstances + requestedCount;
+    const decision = this.policy.resolve(db.maxCount, required);
+
+    if (decision.newCap !== undefined && decision.newCap > db.maxCount) {
+      console.warn(`[particle] grow buffer ${db.maxCount} → ${decision.newCap} (mode=${this.policy.mode})`);
+      db.grow(decision.newCap);
+    }
+
+    const cap = db.maxCount;
+    const available = cap - db.numInstances;
+    const dropCount = decision.dropCount;
+    const count = Math.max(0, Math.min(requestedCount - dropCount, available));
 
     if (count <= 0) {
       return [];
@@ -278,16 +299,16 @@ export class ParticleEmitter {
 
   private particleSpawn (
     db: ParticleDataBuffer,
-    maxCount: number,
     spawnInfo: SpawnInfo,
   ): void {
     const { count, generator, positionOffset } = spawnInfo;
 
     const worldMatrix = this.getWorldMatrix();
-    const requestedCount = Math.min(count, maxCount);
+    // requestedCount 按 db 当前容量（可能已 grow）上限 clamp，而非 emitter 初始 maxCount。
+    const requestedCount = Math.min(count, db.maxCount);
     const isRateSource = generator.useGeneratedCountIndex;
 
-    const slotIndices = this.preAllocateSlots(db, maxCount, requestedCount);
+    const slotIndices = this.preAllocateSlots(db, requestedCount);
 
     if (slotIndices.length === 0) {
       return;
