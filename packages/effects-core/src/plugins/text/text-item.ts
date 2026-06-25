@@ -425,6 +425,10 @@ export class TextComponent extends MaskableGraphic {
 
     this.renderToTexture(texWidth, texHeight, flipY, context => {
       context.scale(fontScale, fontScale);
+      // 补偿特效 padding 的位移偏移，使文本在扩展后的 canvas 中居中
+      if (hasEffect) {
+        context.translate(padL, padT);
+      }
       // canvas size 变化后重新刷新 context
       if (this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display) {
         context.font = this.getFontDesc(fontSize * baseWidth / this.maxLineWidth);
@@ -613,7 +617,24 @@ export class TextComponent extends MaskableGraphic {
       }
     }
 
-    const pad = outlinePad + shadowPad + glowPad;
+    // 计算 single-stroke 层 padding：遍历 fancyRenderStyle.layers 中的描边层
+    let strokePad = 0;
+
+    if (style.fancyRenderStyle?.layers) {
+      for (const layer of style.fancyRenderStyle.layers) {
+        if (layer.kind === 'single-stroke') {
+          const width = layer.params.width;
+          const unit = (layer.params as { width: number, unit?: string }).unit ?? 'px';
+          const widthPx = unit === 'em'
+            ? width * style.fontSize
+            : width;
+
+          strokePad = Math.max(strokePad, Math.ceil(widthPx));
+        }
+      }
+    }
+
+    const pad = outlinePad + shadowPad + glowPad + strokePad;
 
     return { padL: pad, padR: pad, padT: pad, padB: pad };
   }

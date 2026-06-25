@@ -41,6 +41,25 @@ function parseColor (colorStr: string): [number, number, number, number] | null 
   return null;
 }
 
+/** 创建满足 TextMetrics 接口的 mock 对象 */
+function createMockTextMetrics (overrides: Partial<TextMetrics> = {}): TextMetrics {
+  return {
+    width: 40,
+    actualBoundingBoxLeft: 0,
+    actualBoundingBoxRight: 40,
+    actualBoundingBoxAscent: 20,
+    actualBoundingBoxDescent: 5,
+    fontBoundingBoxAscent: 20,
+    fontBoundingBoxDescent: 5,
+    alphabeticBaseline: 0,
+    emHeightAscent: 20,
+    emHeightDescent: 5,
+    hangingBaseline: 0,
+    ideographicBaseline: 0,
+    ...overrides,
+  };
+}
+
 describe('core/plugins/text/text-layer-drawers', () => {
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -51,6 +70,9 @@ describe('core/plugins/text/text-layer-drawers', () => {
     canvas.width = 200;
     canvas.height = 100;
     ctx = canvas.getContext('2d')!;
+
+    // mock measureText 以返回可预测的 bounding box 值
+    ctx.measureText = (_text: string) => createMockTextMetrics();
 
     mockEnv = {
       fontDesc: '24px Arial',
@@ -211,6 +233,183 @@ describe('core/plugins/text/text-layer-drawers', () => {
       const drawer = new GradientDrawer([[1, 1, 1, 1]], 0);
 
       expect(drawer.name).to.eql('gradient');
+    });
+
+    it('should use text bbox coordinates (fontScale does not affect bbox)', () => {
+      // bbox 不受 fontScale 影响（lines 数据不变）
+      // bbox: cx=30, cy=42.5, halfWidth=20, halfHeight=12.5
+      const envWithScale = {
+        ...mockEnv,
+        style: { fontScale: 2, fontSize: 24 },
+      };
+      const drawer = new GradientDrawer([[1, 0, 0, 1], [0, 0, 1, 1]], 0);
+      let capturedArgs: [number, number, number, number] = [0, 0, 0, 0];
+      const originalFn = ctx.createLinearGradient;
+
+      ctx.createLinearGradient = function (x0: number, y0: number, x1: number, y1: number) {
+        capturedArgs = [x0, y0, x1, y1];
+
+        return originalFn.call(ctx, x0, y0, x1, y1);
+      };
+
+      drawer.render(ctx, envWithScale);
+
+      // angle=0: halfLen = |20*1| + |12.5*0| = 20
+      // startX = 30 - 20 = 10, endX = 30 + 20 = 50
+      // startY = endY = cy = 42.5
+      expect(capturedArgs[0]).to.eql(10);    // startX
+      expect(capturedArgs[2]).to.eql(50);    // endX
+      expect(capturedArgs[1]).to.eql(42.5);  // startY
+      expect(capturedArgs[3]).to.eql(42.5);  // endY
+
+      ctx.createLinearGradient = originalFn;
+    });
+
+    it('should use projection length based on text bbox (angle=0)', () => {
+      // angle=0: halfLen = halfWidth = 20
+      const drawer = new GradientDrawer([[1, 0, 0, 1], [0, 0, 1, 1]], 0);
+      let capturedArgs: [number, number, number, number] = [0, 0, 0, 0];
+      const originalFn = ctx.createLinearGradient;
+
+      ctx.createLinearGradient = function (x0: number, y0: number, x1: number, y1: number) {
+        capturedArgs = [x0, y0, x1, y1];
+
+        return originalFn.call(ctx, x0, y0, x1, y1);
+      };
+
+      drawer.render(ctx, mockEnv);
+
+      // startX = 30 - 20 = 10, endX = 30 + 20 = 50 (恰好覆盖文字水平范围)
+      // startY = endY = 42.5
+      expect(capturedArgs[0]).to.eql(10);
+      expect(capturedArgs[2]).to.eql(50);
+      expect(capturedArgs[1]).to.eql(42.5);
+      expect(capturedArgs[3]).to.eql(42.5);
+
+      ctx.createLinearGradient = originalFn;
+    });
+
+    it('should use projection length based on text bbox (angle=90)', () => {
+      // angle=90: halfLen = halfHeight = 12.5
+      const drawer = new GradientDrawer([[1, 0, 0, 1], [0, 0, 1, 1]], 90);
+      let capturedArgs: [number, number, number, number] = [0, 0, 0, 0];
+      const originalFn = ctx.createLinearGradient;
+
+      ctx.createLinearGradient = function (x0: number, y0: number, x1: number, y1: number) {
+        capturedArgs = [x0, y0, x1, y1];
+
+        return originalFn.call(ctx, x0, y0, x1, y1);
+      };
+
+      drawer.render(ctx, mockEnv);
+
+      // startX = endX = cx = 30
+      // startY = 42.5 - 12.5 = 30, endY = 42.5 + 12.5 = 55 (恰好覆盖文字垂直范围)
+      expect(capturedArgs[0]).to.be.closeTo(30, 0.01);
+      expect(capturedArgs[2]).to.be.closeTo(30, 0.01);
+      expect(capturedArgs[1]).to.be.closeTo(30, 0.01);
+      expect(capturedArgs[3]).to.be.closeTo(55, 0.01);
+
+      ctx.createLinearGradient = originalFn;
+    });
+
+    it('should render all 7 colors in rainbow gradient at fontScale=2', () => {
+      const rainbowColors: [number, number, number, number][] = [
+        [1, 0, 0, 1], [1, 0.5, 0, 1], [1, 1, 0, 1], [0, 1, 0, 1],
+        [0, 1, 1, 1], [0, 0.5, 1, 1], [0.5, 0, 1, 1],
+      ];
+      const envWithScale = {
+        ...mockEnv,
+        style: { fontScale: 2, fontSize: 24 },
+      };
+      const drawer = new GradientDrawer(rainbowColors, 0);
+
+      drawer.render(ctx, envWithScale);
+
+      expect(ctx.fillStyle).to.be.instanceof(CanvasGradient);
+    });
+
+    it('should fall back to canvas dimensions when lines is empty', () => {
+      const envEmpty = { ...mockEnv, lines: [] };
+      const drawer = new GradientDrawer([[1, 0, 0, 1], [0, 0, 1, 1]], 0);
+      let capturedArgs: [number, number, number, number] = [0, 0, 0, 0];
+      const originalFn = ctx.createLinearGradient;
+
+      ctx.createLinearGradient = function (x0: number, y0: number, x1: number, y1: number) {
+        capturedArgs = [x0, y0, x1, y1];
+
+        return originalFn.call(ctx, x0, y0, x1, y1);
+      };
+
+      drawer.render(ctx, envEmpty);
+
+      // 回退到画布逻辑尺寸: cx=100, cy=50, halfWidth=100, halfHeight=50
+      // angle=0: halfLen=100, startX=0, endX=200
+      expect(capturedArgs[0]).to.eql(0);
+      expect(capturedArgs[2]).to.eql(200);
+      expect(capturedArgs[1]).to.eql(50);
+      expect(capturedArgs[3]).to.eql(50);
+
+      ctx.createLinearGradient = originalFn;
+    });
+
+    it('should use fontSize-based ascent/descent when measureText lacks bounding box', () => {
+      // 模拟不支持 actualBoundingBoxAscent/Descent 的浏览器
+      // 只保留 width 字段，移除 bbox 字段以模拟旧浏览器
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const partialMetrics: any = { width: 40 };
+
+      ctx.measureText = (_text: string) => partialMetrics;
+
+      const drawer = new GradientDrawer([[1, 0, 0, 1], [0, 0, 1, 1]], 90);
+      let capturedArgs: [number, number, number, number] = [0, 0, 0, 0];
+      const originalFn = ctx.createLinearGradient;
+
+      ctx.createLinearGradient = function (x0: number, y0: number, x1: number, y1: number) {
+        capturedArgs = [x0, y0, x1, y1];
+
+        return originalFn.call(ctx, x0, y0, x1, y1);
+      };
+
+      drawer.render(ctx, mockEnv);
+
+      // ascent = 24 * 0.8 = 19.2, descent = 24 * 0.25 = 6
+      // top = 50 - 19.2 = 30.8, bottom = 50 + 6 = 56
+      // cy = (30.8 + 56) / 2 = 43.4, halfHeight = (56 - 30.8) / 2 = 12.6
+      // angle=90: startY = 43.4 - 12.6 = 30.8, endY = 43.4 + 12.6 = 56
+      expect(capturedArgs[1]).to.be.closeTo(30.8, 0.01);
+      expect(capturedArgs[3]).to.be.closeTo(56, 0.01);
+
+      ctx.createLinearGradient = originalFn;
+    });
+
+    it('should compute bbox for multi-line text spanning first line top to last line bottom', () => {
+      const multiLineEnv = {
+        ...mockEnv,
+        lines: [
+          { chars: ['L', '1'], charOffsetX: [0, 20], y: 40, width: 40 },
+          { chars: ['L', '2'], charOffsetX: [0, 15], y: 70, width: 30 },
+        ],
+      };
+      const drawer = new GradientDrawer([[1, 0, 0, 1], [0, 0, 1, 1]], 90);
+      let capturedArgs: [number, number, number, number] = [0, 0, 0, 0];
+      const originalFn = ctx.createLinearGradient;
+
+      ctx.createLinearGradient = function (x0: number, y0: number, x1: number, y1: number) {
+        capturedArgs = [x0, y0, x1, y1];
+
+        return originalFn.call(ctx, x0, y0, x1, y1);
+      };
+
+      drawer.render(ctx, multiLineEnv);
+
+      // top = 40 - 20(ascent) = 20, bottom = 70 + 5(descent) = 75
+      // cy = (20 + 75) / 2 = 47.5, halfHeight = (75 - 20) / 2 = 27.5
+      // angle=90: startY = 47.5 - 27.5 = 20, endY = 47.5 + 27.5 = 75
+      expect(capturedArgs[1]).to.be.closeTo(20, 0.01);
+      expect(capturedArgs[3]).to.be.closeTo(75, 0.01);
+
+      ctx.createLinearGradient = originalFn;
     });
   });
 

@@ -143,6 +143,57 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
   }
 }
 
+/** 从 env.lines 计算文字内容精确边界框，返回中心和半尺寸；无有效行时返回 null */
+function computeTextBbox (
+  ctx: CanvasRenderingContext2D,
+  env: TextEnv,
+): { cx: number, cy: number, halfWidth: number, halfHeight: number } | null {
+  const lines = env.lines;
+
+  if (!lines || lines.length === 0) {
+    return null;
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+
+  for (const line of lines) {
+    const baseX = env.layout.getOffsetX(env.style, line.width);
+    const lineStartX = baseX + (line.charOffsetX?.[0] ?? 0);
+    const lineEndX = baseX + line.width;
+
+    minX = Math.min(minX, lineStartX);
+    maxX = Math.max(maxX, lineEndX);
+  }
+
+  const fontSize = env.style.fontSize || 0;
+  const firstLineText = lines[0].chars.join('');
+  const lastLineText = lines[lines.length - 1].chars.join('');
+  let descent: number;
+
+  const firstMetrics = ctx.measureText(firstLineText);
+
+  const ascent = firstMetrics.actualBoundingBoxAscent ?? fontSize * 0.8;
+
+  if (lines.length === 1) {
+    descent = firstMetrics.actualBoundingBoxDescent ?? fontSize * 0.25;
+  } else {
+    const lastMetrics = ctx.measureText(lastLineText);
+
+    descent = lastMetrics.actualBoundingBoxDescent ?? fontSize * 0.25;
+  }
+
+  const top = lines[0].y - ascent;
+  const bottom = lines[lines.length - 1].y + descent;
+
+  return {
+    cx: (minX + maxX) / 2,
+    cy: (top + bottom) / 2,
+    halfWidth: (maxX - minX) / 2,
+    halfHeight: (bottom - top) / 2,
+  };
+}
+
 /** 渐变填充绘制器 */
 export class GradientDrawer implements TextLayerDrawer {
   name = 'gradient';
@@ -156,17 +207,36 @@ export class GradientDrawer implements TextLayerDrawer {
     ctx.font = env.fontDesc;
     ctx.textBaseline = 'alphabetic';
 
-    const { canvas } = env;
     const angleRad = (this.angle * Math.PI) / 180;
-    const cx = canvas.width / 2;
-    const cy = canvas.height / 2;
-    const halfLen = Math.sqrt(cx * cx + cy * cy);
+    const cosA = Math.cos(angleRad);
+    const sinA = Math.sin(angleRad);
+
+    // 从文字内容 bbox 计算渐变坐标（渐变映射到文字区域而非画布）
+    const bbox = computeTextBbox(ctx, env);
+    let cx: number, cy: number, halfWidth: number, halfHeight: number;
+
+    if (bbox) {
+      cx = bbox.cx;
+      cy = bbox.cy;
+      halfWidth = bbox.halfWidth;
+      halfHeight = bbox.halfHeight;
+    } else {
+      // 回退：无 lines 数据时使用画布逻辑尺寸
+      const fontScale = env.style.fontScale || 1;
+
+      cx = env.canvas.width / fontScale / 2;
+      cy = env.canvas.height / fontScale / 2;
+      halfWidth = cx;
+      halfHeight = cy;
+    }
+
+    const halfLen = Math.abs(halfWidth * cosA) + Math.abs(halfHeight * sinA);
 
     const gradient = ctx.createLinearGradient(
-      cx - halfLen * Math.cos(angleRad),
-      cy - halfLen * Math.sin(angleRad),
-      cx + halfLen * Math.cos(angleRad),
-      cy + halfLen * Math.sin(angleRad),
+      cx - halfLen * cosA,
+      cy - halfLen * sinA,
+      cx + halfLen * cosA,
+      cy + halfLen * sinA,
     );
 
     this.colors.forEach((color, index) => {
@@ -226,7 +296,7 @@ export class GlowDrawer implements TextLayerDrawer {
     return {
       color: `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`,
       blur: this.blur,
-      intensity: Math.min(5, Math.max(1, Math.round(this.intensity))),
+      intensity: Math.min(10, Math.max(1, Math.round(this.intensity))),
     };
   }
 

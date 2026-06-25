@@ -110,7 +110,7 @@ async function setupTexturePattern (textComponent: TextComponent) {
 
     if (textItem) {
       // 修改文本内容（测试用）
-      textItem.text = 'GRADIENT TEST';
+      textItem.text = 'GRADIENT\nTEST';
 
       // 获取 TextComponent
       const textComponent = textItem.getComponent(TextComponent);
