@@ -74,7 +74,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
         aUV: {
           size: 2,
           offset: 0,
-          releasable: true,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
         },
