@@ -267,14 +267,19 @@ export class ParticleEmitter {
       this.particleSpawn(this._dataBuffer, info);
     }
 
-    // 首帧更新：一次 runStage 批量处理本帧新生粒子 [oldNumInstances, numInstances)
+    // 首帧 batch：对本帧新生粒子 [oldNumInstances, numInstances) 跑一次 ParticleUpdate(dt=0)。
+    // 必要：sprite 新粒子 spawn 时只写 simulatedPosition、position 未写，由此处 OrbitalAndLinearMove
+    //   在 age=0 时把 position 同步为 simulatedPosition(mx=0)。trail SampleFromSource 已显式写
+    //   position，此处幂等。
+    // 契约：各 ParticleUpdate 模块须对 age=0/dt=0 幂等——积分性模块(SolveForces/ForceTarget)跳过
+    //   age<=0；写入性模块(OrbitalAndLinearMove)在 age=0 写初值(position=simPos)；积分曲线
+    //   getIntegrateValue(0,0)=0。
     if (this._dataBuffer.numInstances > oldNumInstances) {
       const firstFrameCtx: ParticleModuleContext = {
         ...ctx,
         deltaTime: 0,
         firstIndex: oldNumInstances,
         lastIndex: this._dataBuffer.numInstances,
-        isFirstFrameUpdate: true,
       };
 
       this.runStage(ParticleModuleStage.ParticleUpdate, firstFrameCtx);
@@ -507,7 +512,6 @@ export class ParticleEmitter {
       emitter: this,
       firstIndex: 0,
       lastIndex: this._dataBuffer.numInstances,
-      isFirstFrameUpdate: false,
     };
   }
 
