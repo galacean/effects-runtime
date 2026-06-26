@@ -288,20 +288,35 @@ const DISALLOWED_PROTOCOLS = ['javascript', 'vbscript'];
 const SAFE_DATA_PREFIXES = ['data:image/', 'data:font/', 'data:application/font', 'data:application/x-font'];
 
 /**
+ * 解码 HTML 实体（数字和常用命名实体），不做其他变换。
+ * 用于把从 HTML 字面字符串提取出的 URL 还原为 fetch 时浏览器实际会发起的 URL。
+ *
+ * 必须做这一步，否则 `<img src="...?a=1&amp;b=2">` 提取到的字面 `&amp;` 会被直接
+ * 拼进 XHR 请求，CDN 收到 `?a=1&amp;b=2` 视作 query 参数名 `amp;b`，普遍返回 404。
+ */
+function decodeHtmlEntities (value: string): string {
+  return value
+    .replace(/&#x([0-9a-fA-F]+);?/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&([a-zA-Z]+);/gi, (match, name) => {
+      const map: Record<string, string> = {
+        amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'',
+        // 安全相关：协议分隔符和空白字符，防止绕过 isDangerousUrl 检查
+        colon: ':', semi: ';',
+        tab: '\t', newline: '\n',
+        nbsp: '\u00A0',
+      };
+
+      return map[name.toLowerCase()] ?? match;
+    });
+}
+
+/**
  * 规范化 URL 属性值：解码 HTML 实体和百分号编码，
  * 移除控制字符和空白，转小写后检查是否包含危险协议
  */
 function normalizeUrlAttr (value: string): string {
-  let normalized = value;
-
-  // 解码 HTML 实体（数字和命名）
-  normalized = normalized.replace(/&#x([0-9a-fA-F]+);?/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  normalized = normalized.replace(/&#(\d+);?/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
-  normalized = normalized.replace(/&(amp|lt|gt|quot|apos);/gi, (match, name) => {
-    const map: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: '\'' };
-
-    return map[name.toLowerCase()] ?? match;
-  });
+  let normalized = decodeHtmlEntities(value);
 
   // 解码百分号编码
   try { normalized = decodeURIComponent(normalized); } catch { /* 忽略无效编码 */ }
@@ -644,7 +659,11 @@ export async function inlineImageSources (html: string): Promise<string> {
   }
 
   await promisePool(urls.map(url => async () => {
-    try { urlToBase64.set(url, await fetchAsBase64(url)); } catch (e) { logger.warn(`inlineImageSources: Failed to fetch "${url}".`, e); }
+    // fetch 前必须解码 HTML 实体，否则 URL 含 &amp; 等会被字面拼进请求，
+    // 导致 CDN 返回 404；Map key 仍用原始字符串，replaceUrls 才能精准匹配 HTML 原文。
+    const fetchUrl = decodeHtmlEntities(url);
+
+    try { urlToBase64.set(url, await fetchAsBase64(fetchUrl)); } catch (e) { logger.warn(`inlineImageSources: Failed to fetch "${fetchUrl}". ${FETCH_FAIL_HINT}`, e); }
   }), MAX_FETCH_CONCURRENCY);
 
   return replaceUrls(html, urlToBase64);
@@ -680,7 +699,9 @@ export async function inlineFontSources (html: string): Promise<string> {
   }
 
   await promisePool(urls.map(url => async () => {
-    try { urlToBase64.set(url, await fetchAsBase64(url)); } catch (e) { logger.warn(`inlineFontSources: Failed to fetch font "${url}".`, e); }
+    const fetchUrl = decodeHtmlEntities(url);
+
+    try { urlToBase64.set(url, await fetchAsBase64(fetchUrl)); } catch (e) { logger.warn(`inlineFontSources: Failed to fetch font "${fetchUrl}". ${FETCH_FAIL_HINT}`, e); }
   }), MAX_FETCH_CONCURRENCY);
 
   return replaceUrls(html, urlToBase64);
@@ -879,10 +900,14 @@ function replaceAttrsInSection (
       const base64 = urlToBase64.get(value);
 
       if (base64) {
-        out += section.slice(nameStart, valueStart) + base64 + (quote ?? '') + section.slice(attrEnd, attrEnd);
-        // 上一行末尾追加的 '' 是为了清晰；attrEnd 之后的内容由外层循环继续处理
-        // 注意：当 quote 不为 null 时，前缀 section.slice(nameStart, valueStart) 已经包含开引号；
-        // 我们追加 base64 + 闭合引号 即可。
+        if (quote === null) {
+          // 原属性无引号时必须补引号：base64 含 ;,/=+ 等字符，无引号会被 HTML parser
+          // 在首个 ; 或空白处截断 src 值，导致图片加载失败。
+          out += section.slice(nameStart, valueStart) + '"' + base64 + '"';
+        } else {
+          // 有引号时 section.slice(nameStart, valueStart) 已包含开引号，只需追加闭合引号。
+          out += section.slice(nameStart, valueStart) + base64 + quote;
+        }
         i = attrEnd;
         continue;
       }
@@ -937,6 +962,11 @@ export function extractSVGDefs (html: string): string {
 const MAX_FETCH_CONCURRENCY = 6; // 最大并发获取数
 const MAX_RESOURCE_BYTES = 10 * 1024 * 1024; // 单个资源最大 10MB
 const MAX_URLS = 100; // 单次内联处理的最大 URL 数量
+
+/** 内联资源 fetch 失败时附加的排查 hint，覆盖业务最常踩的三种原因 */
+const FETCH_FAIL_HINT
+  = '可能原因: (1) 资源服务器未开启 CORS（需 Access-Control-Allow-Origin 响应头）; '
+  + '(2) URL 不可访问 (404 / 403); (3) 网络异常。';
 
 /** 有界并发执行异步任务 */
 async function promisePool<T> (tasks: (() => Promise<T>)[], concurrency: number): Promise<T[]> {
