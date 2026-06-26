@@ -12,6 +12,31 @@ describe('core/asset-manager', () => {
     assetManager?.dispose();
   });
 
+  it('default use compressed texture and hevc video', () => {
+    assetManager = new AssetManager();
+
+    expect(assetManager.options.useCompressedTexture).to.eql(true);
+    expect(assetManager.options.useHevcVideo).to.eql(true);
+
+    assetManager.updateOptions({
+      useCompressedTexture: undefined,
+      useHevcVideo: undefined,
+    });
+
+    expect(assetManager.options.useCompressedTexture).to.eql(true);
+    expect(assetManager.options.useHevcVideo).to.eql(true);
+  });
+
+  it('can disable compressed texture and hevc video', () => {
+    assetManager = new AssetManager({
+      useCompressedTexture: false,
+      useHevcVideo: false,
+    });
+
+    expect(assetManager.options.useCompressedTexture).to.eql(false);
+    expect(assetManager.options.useHevcVideo).to.eql(false);
+  });
+
   it('scene renderLevel is right when pass options', async () => {
     assetManager = new AssetManager({
       renderLevel: spec.RenderLevel.B,
