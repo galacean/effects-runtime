@@ -288,17 +288,17 @@ export class AssetManager implements Disposable {
     canUseKTX2 = false,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
-    const isKTX2LoaderRegistered = textureLoaderRegistry.has('ktx2');
-    const canUseCompressedTexture = useCompressedTexture && canUseKTX2 && isKTX2LoaderRegistered;
+    const isKTX2PluginRegistered = !!pluginLoaderMap.ktx2;
+    const canUseCompressedTexture = useCompressedTexture && canUseKTX2 && isKTX2PluginRegistered;
     const baseUrl = this.baseUrl;
 
     if (
       useCompressedTexture &&
       canUseKTX2 &&
-      !isKTX2LoaderRegistered &&
+      !isKTX2PluginRegistered &&
       images.some(img => 'ktx2' in img && img.ktx2)
     ) {
-      logger.error('KTX2 texture exists but KTX2 loader is not registered. Import "@galacean/effects-plugin-ktx2" to enable compressed textures.');
+      logger.error('The plugin \'ktx2\' not found.' + getPluginUsageInfo('ktx2'));
     }
 
     const jobs = images.map(async (img, idx: number) => {
