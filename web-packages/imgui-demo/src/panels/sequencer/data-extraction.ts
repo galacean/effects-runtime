@@ -7,7 +7,7 @@ import { getCurveChannelId } from './selection';
 
 /**
  * 从 SpritePropertyTrack 的 clip 中提取 sprite 对象引用关键帧。
- * asset.keyframes 形如 [time: number(归一化0-1), sprite: Sprite][]。
+ * asset.curveData[1] 形如 [time: number(归一化0-1), sprite: Sprite][]（反序列化后）。
  * 非 SpritePropertyPlayableAsset 返回 null。
  */
 export function getSpriteKeyframes (clip: { asset: unknown }): SpriteKeyframeData[] | null {
@@ -17,7 +17,8 @@ export function getSpriteKeyframes (clip: { asset: unknown }): SpriteKeyframeDat
     return null;
   }
   const result: SpriteKeyframeData[] = [];
-  const keyframes = asset.keyframes ?? [];
+  // curveData 类型声明为 DataPath 序列化形态，运行时 value 已被 fromData 解析为 Sprite
+  const keyframes = asset.curveData[1];
 
   for (let i = 0; i < keyframes.length; i++) {
     const [time, sprite] = keyframes[i];
@@ -121,10 +122,10 @@ export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: n
   const clipStart = clip.start;
   const clipDuration = clip.duration;
 
-  // Sprite 对象引用关键帧：直接从 asset.keyframes 取归一化时间
+  // Sprite 对象引用关键帧：从 asset.curveData[1] 取归一化时间
   if (asset instanceof SpritePropertyPlayableAsset) {
     const timeSet = new Set<number>();
-    const keyframes = asset.keyframes ?? [];
+    const keyframes = asset.curveData[1];
 
     for (let i = 0; i < keyframes.length; i++) {
       const absTime = clipStart + keyframes[i][0] * clipDuration;

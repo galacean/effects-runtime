@@ -1,4 +1,4 @@
-import type { TimelineClip, SpritePropertyTrack } from '@galacean/effects';
+import type { TimelineClip, SpritePropertyTrack, Sprite } from '@galacean/effects';
 import { SpritePropertyPlayableAsset } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
@@ -297,7 +297,8 @@ export class KeyframeRenderer {
       return;
     }
 
-    const keyframes = asset.keyframes ?? [];
+    // curveData[1] 反序列化后为 [time, Sprite][]（类型声明为 DataPath 序列化形态）
+    const keyframes = asset.curveData[1];
 
     if (keyframes.length === 0) {
       return;

@@ -3,45 +3,47 @@ import { effectsClass } from '../../../decorators';
 import type { Playable } from '../playable';
 import { PlayableAsset } from '../playable';
 import { PropertyClipPlayable } from '../playables';
-import { ReferenceCurve } from '../../../math';
+import { createValueGetter, REFERENCE_CURVE } from '../../../math';
+import type { ReferenceCurveData, ValueGetter } from '../../../math';
 import type { Sprite } from '../../sprite/sprite';
 
-/** Sprite 引用关键帧：[归一化时间 0-1, Sprite 引用] */
-export type SpriteKeyframe = [time: number, sprite: spec.DataPath];
+/**
+ * 对象引用曲线序列化值：[REFERENCE_CURVE, [time, DataPath][]]，value 为 {id} 引用。
+ * 序列化形态，无泛型。
+ * TODO: update to spec.
+ */
+export type ReferenceCurveValue = [number, [number, spec.DataPath][]];
 
 export interface SpritePropertyAssetData extends spec.EffectsObjectData {
-  /** 关键帧列表（按 time 升序，{id} 在 fromData 解析为 Sprite 实例） */
-  keyframes: SpriteKeyframe[],
+  curveData: ReferenceCurveValue,
 }
 
 /**
- * Sprite 属性 K 帧 PlayableAsset：持 Sprite 引用关键帧，createPlayable 复用
- * PropertyClipPlayable<Sprite> + SpriteReferenceCurve（阶梯采样，不插值）。
- *
- * 不使用 @serialize：keyframes 含 {id} 引用，反序列化集中在 fromData 用
- * engine.findObject 解析（避免序列化/反序列化双路径的引用覆盖陷阱）。
+ * Sprite 属性 K 帧 PlayableAsset：curveData 为对象引用阶梯曲线，
+ * createPlayable 复用 PropertyClipPlayable<Sprite> + ReferenceCurve（阶梯采样，不插值）。
  */
 @effectsClass('SpritePropertyPlayableAsset')
 export class SpritePropertyPlayableAsset extends PlayableAsset {
-  /** 解析后的关键帧（sprite 为 Sprite 实例） */
-  keyframes: [time: number, sprite: Sprite][] = [];
+  curveData: [number, ReferenceCurveData<Sprite>] = [REFERENCE_CURVE, []];
 
   override fromData (data: SpritePropertyAssetData): void {
     super.fromData(data);
-    const raw = data.keyframes ?? [];
+    const items = data.curveData[1];
+    // 把 DataPath 解析为 Sprite 实例
+    const referenceCurveData: [number, Sprite][] = [];
 
-    this.keyframes = [];
-    for (let i = 0; i < raw.length; i++) {
-      const [t, ref] = raw[i];
+    for (let i = 0; i < items.length; i++) {
+      const [t, ref] = items[i];
 
-      this.keyframes.push([t, this.engine.findObject<Sprite>(ref)]);
+      referenceCurveData.push([t, this.engine.findObject<Sprite>(ref)]);
     }
+    this.curveData[1] = referenceCurveData;
   }
 
   override createPlayable (): Playable {
     const clip = new PropertyClipPlayable<Sprite>();
 
-    clip.curve = new ReferenceCurve<Sprite>(this.keyframes);
+    clip.curve = createValueGetter(this.curveData) as ValueGetter<Sprite>;
     clip.value = clip.curve.getValue(0);
 
     return clip;

@@ -2,9 +2,9 @@ import type { EffectsObject } from '../../effects-object';
 import { ValueGetter } from './value-getter';
 
 /**
- * 对象引用关键帧：[归一化时间 0-1, 对象引用]。value 为 EffectsObject，通用对象引用。
+ * 对象引用曲线运行时数据：[time, value][]，value 为已解析的 EffectsObject 实例。
  */
-export type ReferenceKeyframe<T extends EffectsObject> = [time: number, value: T];
+export type ReferenceCurveData<T extends EffectsObject> = [time: number, value: T][];
 
 /**
  * 通用对象引用阶梯曲线（不插值）。对象引用不可插值，
@@ -15,9 +15,9 @@ export type ReferenceKeyframe<T extends EffectsObject> = [time: number, value: T
  * 不走 shader 通路。典型用例：T = Sprite（sprite 属性 K 帧切图）。
  */
 export class ReferenceCurve<T extends EffectsObject> extends ValueGetter<T> {
-  private keyframes: ReferenceKeyframe<T>[];
+  private keyframes: [time: number, value: T][];
 
-  override onCreate (props: ReferenceKeyframe<T>[]) {
+  override onCreate (props: ReferenceCurveData<T>) {
     this.keyframes = props;
   }
 

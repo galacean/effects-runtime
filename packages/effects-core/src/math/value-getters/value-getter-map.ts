@@ -8,12 +8,20 @@ import { Vector2Curve, Vector3Curve, Vector4Curve } from './vector-curves';
 import { ValueGetter } from './value-getter';
 import { HELP_LINK } from '../../constants';
 import { BezierCurve } from './bezier-curve';
+import { ReferenceCurve, type ReferenceCurveData } from './reference-curve';
+import type { EffectsObject } from '../../effects-object';
 
 /**
  * Vector2 曲线
  * TODO: add spec
  */
 const VECTOR3_CURVE = 27;
+
+/**
+ * 对象引用阶梯曲线（spec ValueType 枚举无对应值，本地常量）。
+ * props 为 [[time, value], ...]，value 为已解析的对象引用实例。
+ */
+export const REFERENCE_CURVE = 30;
 
 const map: Record<any, any> = {
   [spec.ValueType.RANDOM] (props: number[][]) {
@@ -87,6 +95,10 @@ const map: Record<any, any> = {
   // TODO: add spec
   [VECTOR3_CURVE] (props: spec.Vector3CurveData) {
     return new Vector3Curve(props);
+  },
+  // 对象引用阶梯曲线（不插值）：props.data 为 [time, value][]，value 已解析为 EffectsObject
+  [REFERENCE_CURVE] (props: ReferenceCurveData<EffectsObject>) {
+    return new ReferenceCurve(props);
   },
 };
 
