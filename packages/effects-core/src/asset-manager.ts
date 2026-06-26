@@ -109,11 +109,15 @@ export class AssetManager implements Disposable {
   }
 
   updateOptions (options: SceneLoadOptions = {}) {
-    this.options = options;
-    if (!options.pluginData) {
-      options.pluginData = {};
+    this.options = {
+      ...options,
+      useCompressedTexture: options.useCompressedTexture ?? true,
+      useHevcVideo: options.useHevcVideo ?? true,
+    };
+    if (!this.options.pluginData) {
+      this.options.pluginData = {};
     }
-    const { timeout = 10 } = options;
+    const { timeout = 10 } = this.options;
 
     this.timeout = timeout;
   }
@@ -284,7 +288,19 @@ export class AssetManager implements Disposable {
     canUseKTX2 = false,
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
+    const isKTX2LoaderRegistered = textureLoaderRegistry.has('ktx2');
+    const canUseCompressedTexture = useCompressedTexture && canUseKTX2 && isKTX2LoaderRegistered;
     const baseUrl = this.baseUrl;
+
+    if (
+      useCompressedTexture &&
+      canUseKTX2 &&
+      !isKTX2LoaderRegistered &&
+      images.some(img => 'ktx2' in img && img.ktx2)
+    ) {
+      logger.error('KTX2 texture exists but KTX2 loader is not registered. Import "@galacean/effects-plugin-ktx2" to enable compressed textures.');
+    }
+
     const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
       const { ktx2 } = img as spec.CompressedImage;
@@ -295,7 +311,7 @@ export class AssetManager implements Disposable {
       // eslint-disable-next-line compat/compat
       const avifURL = (!disableAVIF && avif) ? new URL(avif, baseUrl).href : undefined;
       // eslint-disable-next-line compat/compat
-      const ktx2URL = (ktx2 && useCompressedTexture && canUseKTX2) ? new URL(ktx2, baseUrl).href : undefined;
+      const ktx2URL = (ktx2 && canUseCompressedTexture) ? new URL(ktx2, baseUrl).href : undefined;
 
       const id = img.id;
 
