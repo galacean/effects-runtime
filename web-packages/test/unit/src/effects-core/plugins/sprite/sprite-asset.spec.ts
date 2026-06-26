@@ -9,15 +9,15 @@ const { expect } = chai;
  * 构造一张已切好区域的 Sprite 资产，验证 SpriteComponent 引用它的数据流（新数据路径）：
  * - texture 引用被正确解析为 Texture 实例（fromData 用 findObject 解析，不覆盖回裸 {id}）
  * - _MainTex 重绑到 sprite.texture（否则采白纹理黑屏）
- * - rect + flipUv 驱动 geometry UV
+ * - rect + rotation 驱动 geometry UV
  */
-const buildScene = (opt: { spriteID: string, rect: spec.vec4, flipUv: SpriteRotation }) => {
+const buildScene = (opt: { spriteID: string, rect: spec.vec4, rotation: SpriteRotation }) => {
   const itemID = generateGUID();
   const componentID = generateGUID();
   const compositionID = generateGUID();
   const imageID = generateGUID();
   const textureID = generateGUID();
-  const { spriteID, rect, flipUv } = opt;
+  const { spriteID, rect, rotation } = opt;
 
   return {
     json: {
@@ -59,7 +59,7 @@ const buildScene = (opt: { spriteID: string, rect: spec.vec4, flipUv: SpriteRota
           dataType: 'Sprite',
           texture: { id: textureID },
           rect,
-          flipUv,
+          rotation,
         },
       ],
       'items': [
@@ -160,7 +160,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
   // 新 Sprite 资产被组件引用：纹理引用解析、_MainTex 重绑、UV 切片
   it('sprite asset referenced by component', async () => {
     const spriteID = generateGUID();
-    const { json, textureID } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], flipUv: SpriteRotation.None });
+    const { json, textureID } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], rotation: SpriteRotation.None });
     const comp = await player.loadScene(json);
 
     player.gotoAndPlay(0.01);
@@ -190,10 +190,10 @@ describe('core/plugins/sprite/sprite-asset', () => {
     expect(aUV[5]).to.be.closeTo(0.75, 1e-4);
   });
 
-  // flipUv=1 时 UV 旋转 90°
-  it('sprite asset flipUv rotates UV', async () => {
+  // rotation=1 时 UV 旋转 90°
+  it('sprite asset rotation rotates UV', async () => {
     const spriteID = generateGUID();
-    const { json } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], flipUv: SpriteRotation.Rotate90 });
+    const { json } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], rotation: SpriteRotation.Rotate90 });
     const comp = await player.loadScene(json);
 
     player.gotoAndPlay(0.01);
@@ -209,7 +209,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
   // 运行时通过 sprite setter 切换资产：重建 _MainTex 与 UV
   it('sprite setter switches sprite at runtime', async () => {
     const spriteID = generateGUID();
-    const { json } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], flipUv: SpriteRotation.None });
+    const { json } = buildScene({ spriteID, rect: [0.25, 0.25, 0.5, 0.5], rotation: SpriteRotation.None });
     const comp = await player.loadScene(json);
 
     player.gotoAndPlay(0.01);
@@ -221,7 +221,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
 
     newSprite.texture = oldTex;
     newSprite.rect = [0, 0, 0.5, 0.5];
-    newSprite.flipUv = SpriteRotation.None;
+    newSprite.rotation = SpriteRotation.None;
     spriteComp.sprite = newSprite;
 
     expect(spriteComp.sprite).to.equal(newSprite);
@@ -243,7 +243,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
       dataType: 'Sprite' as unknown as spec.DataType,
       texture: { id: engine.whiteTexture.getInstanceId() },
       rect: [0.1, 0.2, 0.3, 0.4] as spec.vec4,
-      flipUv: SpriteRotation.Rotate90,
+      rotation: SpriteRotation.Rotate90,
     };
 
     engine.addEffectsObjectData(data as spec.EffectsObjectData);
@@ -255,7 +255,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     expect(sprite.texture, 'deserialized texture').to.be.instanceOf(Texture);
     expect(sprite.texture).to.equal(engine.whiteTexture);
     expect(sprite.rect).to.eql([0.1, 0.2, 0.3, 0.4]);
-    expect(sprite.flipUv).to.eql(1);
+    expect(sprite.rotation).to.eql(1);
   });
 
   // 老数据（renderer.texture + splits）经 version37Migration 迁移为 Sprite 资产
@@ -270,10 +270,10 @@ describe('core/plugins/sprite/sprite-asset', () => {
     const spriteComp = comp.getItemByName('sprite_1')!.getComponent(SpriteComponent);
     const sprite = spriteComp.sprite;
 
-    // 迁移产物：组件持有 sprite，rect/flipUv 由 splits[0] 还原，纹理指向原 texture
+    // 迁移产物：组件持有 sprite，rect/rotation 由 splits[0] 还原，纹理指向原 texture
     expect(sprite, 'migrated sprite').to.be.instanceOf(Sprite);
     expect(sprite.rect, 'rect').to.eql([0.25, 0.25, 0.5, 0.5]);
-    expect(sprite.flipUv, 'flipUv').to.eql(0);
+    expect(sprite.rotation, 'rotation').to.eql(0);
     expect(sprite.texture, 'texture').to.be.instanceOf(Texture);
     expect(sprite.texture.getInstanceId(), 'texture.guid').to.eql(textureID);
     expect(spriteComp.material.getTexture('_MainTex'), '_MainTex').to.equal(sprite.texture);
@@ -299,7 +299,7 @@ describe('core/plugins/sprite/sprite-asset', () => {
     const spriteComp = comp.getItemByName('sprite_1')!.getComponent(SpriteComponent);
     const sprite = spriteComp.sprite;
 
-    expect(sprite.flipUv, 'flipUv').to.eql(1);
+    expect(sprite.rotation, 'rotation').to.eql(1);
 
     const aUV = spriteComp.geometry.getAttributeData('aUV') as Float32Array;
 

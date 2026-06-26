@@ -802,8 +802,8 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
     const rect: spec.vec4 = first
       ? [first[0], first[1], first[2], first[3]]
       : [0, 0, 1, 1];
-    // flipUv: 0=None 不旋转, 1=Rotate90（值与 Sprite.SpriteRotation 枚举一致，序列化兼容）
-    const flipUv = first?.[4] ?? 0;
+    // rotation: 0=None 不旋转, 1=Rotate90（值与 Sprite.SpriteRotation 枚举一致，序列化兼容）
+    const rotation = first?.[4] ?? 0;
 
     const spriteData = {
       id: generateGUID(),
@@ -811,7 +811,7 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
       // 可能为 undefined（纯色元素）→ Sprite.fromData 兜底 whiteTexture
       texture: sc.renderer?.texture,
       rect,
-      flipUv,
+      rotation,
     } as unknown as spec.EffectsObjectData;
 
     json.miscs.push(spriteData);

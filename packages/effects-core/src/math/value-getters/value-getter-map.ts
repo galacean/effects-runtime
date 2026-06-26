@@ -18,10 +18,10 @@ import type { EffectsObject } from '../../effects-object';
 const VECTOR3_CURVE = 27;
 
 /**
- * 对象引用阶梯曲线（spec ValueType 枚举无对应值，本地常量）。
+ * 对象引用阶梯曲线（spec ValueType.REFERENCE_CURVE）。
  * props 为 [[time, value], ...]，value 为已解析的对象引用实例。
  */
-export const REFERENCE_CURVE = 30;
+export const REFERENCE_CURVE = 28;
 
 const map: Record<any, any> = {
   [spec.ValueType.RANDOM] (props: number[][]) {

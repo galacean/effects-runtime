@@ -24,7 +24,7 @@ export interface SpriteData extends spec.EffectsObjectData {
   /** 归一化 UV 矩形 [x, y, w, h]，默认整张纹理 */
   rect?: spec.vec4,
   /** UV 旋转方式（0=None, 1=Rotate90），对齐老 splits 的 flip 语义 */
-  flipUv?: SpriteRotation,
+  rotation?: SpriteRotation,
 }
 
 /**
@@ -41,7 +41,7 @@ export class Sprite extends EffectsObject {
   /** 归一化 UV 矩形 [x, y, w, h]，默认整张纹理 */
   rect: spec.vec4 = [0, 0, 1, 1];
   /** UV 旋转方式（对应老 splits 的 flip 0/1） */
-  flipUv: SpriteRotation = SpriteRotation.None;
+  rotation: SpriteRotation = SpriteRotation.None;
 
   constructor (engine: Engine, props?: SpriteData) {
     super(engine);
@@ -56,9 +56,7 @@ export class Sprite extends EffectsObject {
     // 兼容反序列化（data.texture 为 {id}）与手动构造（data.texture 为 Texture 实例）两条路径。
     this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : this.engine.whiteTexture;
     this.rect = data.rect ?? [0, 0, 1, 1];
-    this.flipUv = data.flipUv ?? SpriteRotation.None;
+    this.rotation = data.rotation ?? SpriteRotation.None;
   }
-
-  // 注意：不在此释放 texture —— Texture 由 scene 资产系统统一管理生命周期，Sprite 仅引用。
 }
 

@@ -100,7 +100,7 @@ export class SpriteComponent extends MaskableGraphic {
   protected textureSheetAnimation?: spec.TextureSheetAnimation;
 
   /**
-   * 引用的 Sprite 资产（纹理 + 归一化 UV 矩形 + flipUv），渲染唯一数据源。
+   * 引用的 Sprite 资产（纹理 + 归一化 UV 矩形 + rotation），渲染唯一数据源。
    */
   protected _sprite: Sprite;
 
@@ -154,7 +154,7 @@ export class SpriteComponent extends MaskableGraphic {
       // sprite 缺省时按整图 [0,0,1,1] 不旋转处理。
       const sprite = this.sprite;
       const rect = sprite?.rect ?? [0, 0, 1, 1];
-      const flip = sprite?.flipUv ?? SpriteRotation.None;
+      const flip = sprite?.rotation ?? SpriteRotation.None;
       const isRotate90 = flip === SpriteRotation.Rotate90;
 
       // rect 在纹理上的归一化矩形 [x, y, w, h]；旋转 90° 时宽高互换。
@@ -213,7 +213,7 @@ export class SpriteComponent extends MaskableGraphic {
   protected updateGeometry (geometry: Geometry) {
     const sprite = this.sprite;
     // sprite 缺省时按整图 [0,0,1,1] 不旋转处理，等价旧默认 splits=[[0,0,1,1,0]]。
-    const flip = sprite?.flipUv ?? SpriteRotation.None;
+    const flip = sprite?.rotation ?? SpriteRotation.None;
     const rect = sprite?.rect ?? [0, 0, 1, 1];
     const [x, y, w, h] = this.textureSheetAnimation
       ? [0, 0, 1, 1]
