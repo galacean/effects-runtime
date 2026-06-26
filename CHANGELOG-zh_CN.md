@@ -8,6 +8,17 @@
 
 ---
 
+## 2.9.2
+
+`2026-06-26`
+
+- Fix(dom-content): decode HTML entities before fetch. [#1481](https://github.com/galacean/effects-runtime/pull/1481) @chenmo0204
+  - Extract decodeHtmlEntities() and call it before fetchAsBase64 so that entity-encoded URLs like '?a=1&b=2' are decoded to '?a=1&b=2', preventing CDN 404 caused by literal '&' in the request.
+  - Wrap base64 value in quotes when the original attribute had no quotes; without quotes the HTML parser truncates at the first ';' inside the base64 string, breaking the image source.
+  - Add FETCH_FAIL_HINT to fetch error logs for easier debugging.
+  - Add unit tests for HTML entity decoding and unquoted attribute quoting.
+- Fix: particle system component access in gizmo component. [#1483](https://github.com/galacean/effects-runtime/pull/1483) @wumaolinmaoan
+
 ## 2.9.1
 
 `2026-05-29`
