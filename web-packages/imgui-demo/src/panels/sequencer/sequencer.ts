@@ -438,7 +438,7 @@ export class Sequencer extends EditorWindow {
     const state = this.state;
     const io = ImGui.GetIO();
 
-    if (!io.KeyCtrl || io.MouseWheel === 0 || ImGui.IsAnyItemActive()) {
+    if (!io.KeyCtrl || io.MouseWheel === 0 || ImGui.IsAnyItemActive() || maxDuration <= 0) {
       return;
     }
     const mousePos = ImGui.GetMousePos();

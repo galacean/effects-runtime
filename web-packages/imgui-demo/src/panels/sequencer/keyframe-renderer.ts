@@ -402,6 +402,8 @@ export class KeyframeRenderer {
     }
     if (ImGui.IsItemDeactivated()) {
       state.draggedSpriteKeyframe = null;
+      // 拖完按 time 升序排序，保证 ReferenceCurve.getValue 阶梯采样的升序前提
+      keyframes.sort((a, b) => a[0] - b[0]);
     }
 
     // 水平拖动改关键帧时间（IsItemActive 拖动期间稳定，用锁定 index）

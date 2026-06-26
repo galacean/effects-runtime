@@ -94,9 +94,12 @@ const buildKFrameScene = (clipStart = 0) => {
         {
           'id': playableAssetID,
           'dataType': 'SpritePropertyPlayableAsset',
-          'keyframes': [
-            [0.0, { 'id': spriteAID }],
-            [0.5, { 'id': spriteBID }],
+          'curveData': [
+            28,
+            [
+              [0.0, { 'id': spriteAID }],
+              [0.5, { 'id': spriteBID }],
+            ],
           ],
         },
         { 'id': spriteAID, 'dataType': 'Sprite', 'texture': { 'id': textureID }, 'rect': rectA, 'rotation': 0 },
