@@ -298,7 +298,7 @@ export class AssetManager implements Disposable {
       !isKTX2PluginRegistered &&
       images.some(img => 'ktx2' in img && img.ktx2)
     ) {
-      logger.error('The plugin \'ktx2\' not found.' + getPluginUsageInfo('ktx2'));
+      logger.warn('The plugin \'ktx2\' is not found, unable to use compressed textures.' + getPluginUsageInfo('ktx2'));
     }
 
     const jobs = images.map(async (img, idx: number) => {
