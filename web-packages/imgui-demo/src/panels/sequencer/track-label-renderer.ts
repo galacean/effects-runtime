@@ -1,5 +1,5 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ActivationTrack, Component, ParticleTrack, SpriteColorTrack, SubCompositionTrack, TransformTrack, VFXItem } from '@galacean/effects';
+import { ActivationTrack, Component, ParticleTrack, SpriteColorTrack, SpritePropertyTrack, SubCompositionTrack, TransformTrack, VFXItem } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
@@ -16,8 +16,9 @@ export class TrackLabelRenderer {
   drawTrackLabel (trackAsset: TrackAsset, trackName: string, sceneBindings: any[], depth: number): void {
     const state = this.state;
     const isTransformTrack = trackAsset instanceof TransformTrack;
+    const isSpriteTrack = trackAsset instanceof SpritePropertyTrack;
     const hasKeyframeData = isTransformTrack && getTransformPropertyGroups(trackAsset).length > 0;
-    const hasChildren = trackAsset.getChildTracks().length > 0 || hasKeyframeData;
+    const hasChildren = trackAsset.getChildTracks().length > 0 || hasKeyframeData || isSpriteTrack;
     const frameHeight = LAYOUT.sectionHeight;
     const lineStartPos = ImGui.GetCursorScreenPos();
     const drawList = ImGui.GetWindowDrawList();
@@ -240,6 +241,56 @@ export class TrackLabelRenderer {
         }
       }
     }
+
+    // SpritePropertyTrack 展开时，画一行 sprite 通道标签（与 clip 侧缩略图行对齐，高 40）
+    if (isTrackExpanded(state, trackAsset) && trackAsset instanceof SpritePropertyTrack) {
+      this.drawSpriteChannelLabel(depth + 1);
+    }
+  }
+
+  /**
+   * 绘制 sprite 通道标签行（与 clip 侧 drawSpriteKeyframes 的 40px 缩略图行对齐）
+   */
+  drawSpriteChannelLabel (depth: number): void {
+    const state = this.state;
+    const frameHeight = 40;
+    const lineStartPos = ImGui.GetCursorScreenPos();
+    const drawList = ImGui.GetWindowDrawList();
+    const rowIndex = state.trackRowCounter++;
+    const windowWidth = ImGui.GetContentRegionAvail().x;
+    const bgColor = (rowIndex % 2 === 0)
+      ? new ImGui.Vec4(0.10, 0.10, 0.10, 1.0)
+      : new ImGui.Vec4(0.11, 0.11, 0.11, 1.0);
+
+    drawList.AddRectFilled(
+      lineStartPos,
+      new ImGui.Vec2(lineStartPos.x + windowWidth, lineStartPos.y + frameHeight),
+      ImGui.GetColorU32(bgColor),
+      LAYOUT.sectionCornerRadius
+    );
+    drawList.AddLine(
+      new ImGui.Vec2(lineStartPos.x, lineStartPos.y + frameHeight),
+      new ImGui.Vec2(lineStartPos.x + windowWidth, lineStartPos.y + frameHeight),
+      ImGui.GetColorU32(COLORS.trackRowDivider),
+      1
+    );
+
+    const indentOffset = depth * LAYOUT.trackIndentWidth;
+    const textStartX = lineStartPos.x + LAYOUT.trackLabelPadding + indentOffset;
+
+    drawList.AddText(
+      new ImGui.Vec2(textStartX, lineStartPos.y + frameHeight / 2 - 7),
+      ImGui.GetColorU32(COLORS.trackText),
+      'sprite'
+    );
+
+    // 提交一个占据行矩形的 item，避免仅用 SetCursorScreenPos 扩展窗口边界（imgui 报错）
+    ImGui.SetCursorScreenPos(lineStartPos);
+    ImGui.Dummy(new ImGui.Vec2(windowWidth, frameHeight));
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, lineStartPos.y + frameHeight + state.trackRowSpacing));
+    ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImGui.Vec2(0, 0));
+    ImGui.Dummy(new ImGui.Vec2(0, 0));
+    ImGui.PopStyleVar();
   }
 
   /**
@@ -545,6 +596,15 @@ export class TrackLabelRenderer {
         new ImGui.Vec2(centerX + 1.5, centerY + 1),
         new ImGui.Vec2(centerX + hw - 1, centerY - hh + 2),
         colorU32, 1
+      );
+    } else if (trackAsset instanceof SpritePropertyTrack) {
+      // Sprite 资产图标 — 实心方块（代表 sprite 切片）
+      const s = 4;
+
+      drawList.AddRectFilled(
+        new ImGui.Vec2(centerX - s, centerY - s),
+        new ImGui.Vec2(centerX + s, centerY + s),
+        colorU32
       );
     } else if (trackAsset instanceof SubCompositionTrack) {
       // 嵌套方块图标 — 外框 + 内部小方块

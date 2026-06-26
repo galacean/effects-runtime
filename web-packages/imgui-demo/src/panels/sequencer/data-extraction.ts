@@ -1,9 +1,34 @@
 import type { TrackAsset, spec } from '@galacean/effects';
-import { TransformPlayableAsset } from '@galacean/effects';
+import { TransformPlayableAsset, SpritePropertyPlayableAsset } from '@galacean/effects';
 import { COLORS } from './theme';
-import type { KeyframeData, TransformPropertyChannel, TransformPropertyGroup, CurveSegmentData, CurveChannelData, CurvePropertyGroup, CurveCanvasChannel } from './types';
+import type { KeyframeData, TransformPropertyChannel, TransformPropertyGroup, CurveSegmentData, CurveChannelData, CurvePropertyGroup, CurveCanvasChannel, SpriteKeyframeData } from './types';
 import type { SequencerState } from './sequencer-state';
 import { getCurveChannelId } from './selection';
+
+/**
+ * 从 SpritePropertyTrack 的 clip 中提取 sprite 对象引用关键帧。
+ * asset.keyframes 形如 [time: number(归一化0-1), sprite: Sprite][]。
+ * 非 SpritePropertyPlayableAsset 返回 null。
+ */
+export function getSpriteKeyframes (clip: { asset: unknown }): SpriteKeyframeData[] | null {
+  const asset = clip.asset;
+
+  if (!(asset instanceof SpritePropertyPlayableAsset)) {
+    return null;
+  }
+  const result: SpriteKeyframeData[] = [];
+  const keyframes = asset.keyframes ?? [];
+
+  for (let i = 0; i < keyframes.length; i++) {
+    const [time, sprite] = keyframes[i];
+
+    if (sprite) {
+      result.push({ time, sprite });
+    }
+  }
+
+  return result;
+}
 
 /**
  * 从 TransformTrack 的 clips 中提取属性分组数据
@@ -93,6 +118,22 @@ export function getTransformPropertyGroups (trackAsset: TrackAsset): TransformPr
  */
 export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: number, duration: number }): number[] {
   const asset = clip.asset;
+  const clipStart = clip.start;
+  const clipDuration = clip.duration;
+
+  // Sprite 对象引用关键帧：直接从 asset.keyframes 取归一化时间
+  if (asset instanceof SpritePropertyPlayableAsset) {
+    const timeSet = new Set<number>();
+    const keyframes = asset.keyframes ?? [];
+
+    for (let i = 0; i < keyframes.length; i++) {
+      const absTime = clipStart + keyframes[i][0] * clipDuration;
+
+      timeSet.add(Math.round(absTime * 1000) / 1000);
+    }
+
+    return Array.from(timeSet);
+  }
 
   if (!(asset instanceof TransformPlayableAsset)) {
     return [];
@@ -105,8 +146,6 @@ export function getClipAggregatedKeyframeTimes (clip: { asset: unknown, start: n
   }
 
   const timeSet = new Set<number>();
-  const clipStart = clip.start;
-  const clipDuration = clip.duration;
 
   const collectFromExpression = (expr: spec.FixedNumberExpression | undefined) => {
     if (!expr || !Array.isArray(expr)) {

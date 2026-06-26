@@ -1,9 +1,12 @@
+import type { TimelineClip, SpritePropertyTrack } from '@galacean/effects';
+import { SpritePropertyPlayableAsset } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
-import type { KeyframeData, TransformPropertyChannel } from './types';
+import type { KeyframeData, TransformPropertyChannel, SpriteKeyframeData } from './types';
 import { getKeyframeId, toggleKeyframeSelection, clearKeyframeSelection } from './selection';
-import { timeToPixel } from './timeline-utils';
+import { timeToPixel, pixelToTime } from './timeline-utils';
+import { getSpriteThumbnail } from '../../widgets/sprite-thumbnail';
 
 export class KeyframeRenderer {
   constructor (private readonly state: SequencerState) {}
@@ -280,4 +283,157 @@ export class KeyframeRenderer {
       1
     );
   }
+
+  /**
+   * 绘制 SpritePropertyTrack 的 sprite 缩略图关键帧（右侧面板）。
+   * 每个关键帧显示为对应 Sprite 资产的纹理子区域缩略图，支持点击选中与水平拖动改时间。
+   * 每帧独立 InvisibleButton：按下后 ImGui 锁定该 item，拖动期间不依赖每帧 hit-test，避免失焦。
+   */
+  drawSpriteKeyframes (track: SpritePropertyTrack, clip: TimelineClip, trackId: string): void {
+    const state = this.state;
+    const asset = clip.asset;
+
+    if (!(asset instanceof SpritePropertyPlayableAsset)) {
+      return;
+    }
+
+    const keyframes = asset.keyframes ?? [];
+
+    if (keyframes.length === 0) {
+      return;
+    }
+
+    // sprite 缩略图行用更高行高，让缩略图清晰可见
+    const frameHeight = 40;
+    const lineStartPos = ImGui.GetCursorScreenPos();
+    const drawList = ImGui.GetWindowDrawList();
+    const rowIndex = state.trackRowCounter++;
+    const windowWidth = ImGui.GetContentRegionAvail().x;
+    const rowBgColor = (rowIndex % 2 === 0)
+      ? new ImGui.Vec4(0.08, 0.08, 0.09, 1.0)
+      : new ImGui.Vec4(0.09, 0.09, 0.10, 1.0);
+
+    drawList.AddRectFilled(
+      lineStartPos,
+      new ImGui.Vec2(lineStartPos.x + windowWidth, lineStartPos.y + frameHeight),
+      ImGui.GetColorU32(rowBgColor)
+    );
+    drawList.AddLine(
+      new ImGui.Vec2(lineStartPos.x, lineStartPos.y + frameHeight),
+      new ImGui.Vec2(lineStartPos.x + windowWidth, lineStartPos.y + frameHeight),
+      ImGui.GetColorU32(COLORS.trackRowDivider),
+      1
+    );
+
+    const centerY = lineStartPos.y + frameHeight / 2;
+    const thumbSize = 32;                // 缩略图边长
+    const halfThumb = thumbSize / 2;
+    const hitRadius = halfThumb + 3;     // 命中半径，略大于缩略图便于抓取
+    const clipStart = clip.start;
+    const clipDuration = clip.duration;
+    const channelLabel = 'sprite';
+    const mousePos = ImGui.GetMousePos();
+
+    // 预算每帧像素位置 + 当前悬浮帧
+    const positions: number[] = [];
+    let hoveredIndex = -1;
+
+    for (let i = 0; i < keyframes.length; i++) {
+      const absTime = clipStart + keyframes[i][0] * clipDuration;
+      const px = lineStartPos.x + LAYOUT.clipsAreaLeftPadding + timeToPixel(absTime, state);
+
+      positions.push(px);
+      if (
+        Math.abs(mousePos.x - px) <= hitRadius
+        && Math.abs(mousePos.y - centerY) <= hitRadius
+      ) {
+        hoveredIndex = i;
+      }
+    }
+
+    // 绘制缩略图
+    for (let i = 0; i < positions.length; i++) {
+      const px = positions[i];
+      const pMin = new ImGui.Vec2(px - halfThumb, centerY - halfThumb);
+      const pMax = new ImGui.Vec2(px + halfThumb, centerY + halfThumb);
+      const keyframeId = getKeyframeId(trackId, channelLabel, i);
+      const isSelected = state.selectedKeyframes.has(keyframeId);
+
+      drawList.AddRectFilled(pMin, pMax, ImGui.GetColorU32(new ImGui.Vec4(0.15, 0.15, 0.15, 1.0)));
+      const thumb = getSpriteThumbnail(keyframes[i][1]);
+
+      if (thumb) {
+        drawList.AddImage(thumb.tex, pMin, pMax, thumb.uv0, thumb.uv1);
+      }
+
+      if (isSelected) {
+        drawList.AddRect(pMin, pMax, ImGui.GetColorU32(COLORS.selection), 0, 0, 2);
+      } else if (i === hoveredIndex) {
+        drawList.AddRect(pMin, pMax, ImGui.GetColorU32(new ImGui.Vec4(1, 1, 1, 0.6)), 0, 0, 1);
+      }
+    }
+
+    // 整行单 InvisibleButton（保持在行矩形内，不扩展窗口边界）
+    ImGui.SetCursorScreenPos(lineStartPos);
+    ImGui.PushID(`sprite_kf_${trackId}`);
+
+    if (ImGui.InvisibleButton('sprite_kf', new ImGui.Vec2(windowWidth, frameHeight))) {
+      if (hoveredIndex >= 0) {
+        toggleKeyframeSelection(state, getKeyframeId(trackId, channelLabel, hoveredIndex), ImGui.GetIO().KeyCtrl);
+        state.selectedKeyframeInfo = {
+          trackId,
+          channel: channelLabel,
+          index: hoveredIndex,
+          data: { time: keyframes[hoveredIndex][0], value: 0 },
+          clipStart,
+          clipDuration,
+        };
+        state.selectedClip = null;
+      } else {
+        clearKeyframeSelection(state);
+        state.selectedKeyframeInfo = null;
+      }
+    }
+
+    // 按下瞬间锁定悬浮帧（IsItemActivated），拖动期间用锁定 index，避免 hoveredIndex 漂移失焦
+    if (ImGui.IsItemActivated() && hoveredIndex >= 0) {
+      state.draggedSpriteKeyframe = { trackId, index: hoveredIndex };
+    }
+    if (ImGui.IsItemDeactivated()) {
+      state.draggedSpriteKeyframe = null;
+    }
+
+    // 水平拖动改关键帧时间（IsItemActive 拖动期间稳定，用锁定 index）
+    const dragged = state.draggedSpriteKeyframe;
+
+    if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0) && dragged && dragged.trackId === trackId) {
+      const idx = dragged.index;
+      const delta = ImGui.GetMouseDragDelta(0);
+      const timeDelta = pixelToTime(delta.x, state) - pixelToTime(0, state);
+      const curAbsTime = clipStart + keyframes[idx][0] * clipDuration;
+      let newAbsTime = curAbsTime + timeDelta;
+
+      newAbsTime = Math.max(clipStart, Math.min(clipStart + clipDuration, newAbsTime));
+      keyframes[idx][0] = (newAbsTime - clipStart) / Math.max(0.0001, clipDuration);
+      ImGui.ResetMouseDragDelta(0);
+      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
+      // 拖动期间把该帧作为悬浮 tooltip
+      hoveredIndex = idx;
+    }
+
+    // tooltip
+    if (hoveredIndex >= 0) {
+      const t = clipStart + keyframes[hoveredIndex][0] * clipDuration;
+
+      ImGui.BeginTooltip();
+      ImGui.Text(`Sprite #${hoveredIndex}`);
+      ImGui.Text(`Time: ${t.toFixed(3)}s (normalized: ${keyframes[hoveredIndex][0].toFixed(3)})`);
+      ImGui.EndTooltip();
+    }
+
+    ImGui.PopID();
+
+    ImGui.SetCursorScreenPos(new ImGui.Vec2(lineStartPos.x, lineStartPos.y + frameHeight));
+  }
 }
+
