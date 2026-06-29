@@ -7,6 +7,12 @@
 
 ---
 
+## 2.9.3
+
+`2026-06-29`
+
+- Fix: wrong line break for CJK text with space. [#1492](https://github.com/galacean/effects-runtime/pull/1492) @wumaolinmaoan
+
 ## 2.9.2
 
 `2026-06-26`
