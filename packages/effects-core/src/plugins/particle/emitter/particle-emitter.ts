@@ -6,7 +6,7 @@ import { ParticleDataBuffer as ParticleDataBufferImpl } from '../core/particle-d
 import { ParticleModuleStage, isSourceDependent } from '../core/particle-module';
 import type { ParticleModuleContext, SpawnInfo } from '../core/particle-module';
 import type { ParticleModule } from '../core/particle-module';
-import { AllocationMode, AllocationPolicy } from '../core/allocation-mode';
+import { AllocationMode } from '../core/allocation-mode';
 import type { ParsedModuleData, SpriteModuleData, TrailModuleData } from '../system/parse-spec';
 import { BurstSpawnModule } from '../modules/burst-spawn-module';
 import { ForceTargetModule } from '../modules/force-target-module';
@@ -41,7 +41,6 @@ export class ParticleEmitter {
   readonly state = new EmitterState();
 
   // --- Config (set during setup, immutable after) ---
-  maxCount = 0;
   particleFollowParent = false;
   private alignSpeedDirection = false;
 
@@ -67,11 +66,17 @@ export class ParticleEmitter {
   // --- Modules ---
   private modules: ParticleModule[] = [];
 
-  // --- Allocation ---
-  private policy = new AllocationPolicy({
-    mode: AllocationMode.FixedCount,
-    preAllocationCount: 0,
-  });
+  // --- Allocation（对齐成熟实现散在 tick 的分配风格，不独立 Policy 类）
+  //   maxInstanceCount: 粒子数硬上限（两模式统一用它 clamp）。
+  //     fromJSON 时:FixedCount = preAllocationCount(用户值,小);Auto/Manual = preAlloc×倍率(极大,兼任防 OOM)。
+  //     也可由外部 API(maxParticles)显式调整(用户直接定上限,覆盖默认倍率)。
+  //   maxAllocationCount: buffer 实际分配容量（动态，随 grow 增长，封顶 maxInstanceCount）= db.maxCount。
+  private allocationMode = AllocationMode.FixedCount;
+  private preAllocationCount = 0;
+  /** 粒子数硬上限（固定，两模式统一用它 clamp）。可由外部 API 调整。 */
+  maxInstanceCount = 0;
+  private static readonly MAX_INSTANCE_MULTIPLIER = 16;
+  private static readonly GROW_MULTIPLIER = 1.5;
 
   // --- Internal refs (set during setup) ---
   private _dataBuffer: ParticleDataBuffer;
@@ -80,15 +85,22 @@ export class ParticleEmitter {
     return this._dataBuffer;
   }
 
+  /** buffer 实际分配容量（动态，随 grow 增长，封顶 maxInstanceCount）。 */
+  get maxAllocationCount (): number {
+    return this._dataBuffer.maxCount;
+  }
+
   fromJSON (data: EmitterData): void {
-    this.maxCount = data.maxCount;
     this.state.looping = data.looping;
     this.particleFollowParent = data.particleFollowParent;
     this.alignSpeedDirection = data.alignSpeedDirection;
-    this.policy = new AllocationPolicy({
-      mode: data.allocationMode ?? AllocationMode.FixedCount,
-      preAllocationCount: data.preAllocationCount ?? data.maxCount,
-    });
+    this.allocationMode = data.allocationMode ?? AllocationMode.FixedCount;
+    this.preAllocationCount = data.preAllocationCount ?? data.maxCount;
+    // FixedCount: 粒子数硬上限 = 预分配值（用户配的小值，池满丢新）。
+    // Auto/Manual: 粒子数硬上限 = 预分配值 × 倍率（极大，让扩容说话，兼任防 OOM）。
+    this.maxInstanceCount = this.allocationMode === AllocationMode.FixedCount
+      ? this.preAllocationCount
+      : this.preAllocationCount * ParticleEmitter.MAX_INSTANCE_MULTIPLIER;
     this._dataBuffer = new ParticleDataBufferImpl(data.maxCount);
     this.modules = this.buildModules(data.modules);
   }
@@ -295,19 +307,39 @@ export class ParticleEmitter {
       return [];
     }
 
-    // 紧凑布局：新粒子总是追加在 [numInstances, cap) 区间。容量不足时按分配策略
-    // 决定扩容或丢弃：FixedCount 池满丢新（旧固定上限行为）；AutomaticEstimate 扩容。
+    // 紧凑布局：新粒子追加在 [numInstances, cap)。容量不足时按分配模式决定扩容/丢弃——
+    // 两模式统一用 maxInstanceCount(粒子数硬上限)做 clamp：
+    //   FixedCount: maxInstanceCount=preAllocationCount(小),超则丢新不扩容(从未 grow,达到上限)。
+    //   Auto/Manual: maxInstanceCount=preAlloc×倍率(极大),先扩容到 max(required, cap×1.5),
+    //     扩容后仍超 maxInstanceCount 才 clamp 丢新(防 OOM)。
     const required = db.numInstances + requestedCount;
-    const decision = this.policy.resolve(db.maxCount, required);
+    let newCap: number | undefined;
+    let dropCount = 0;
 
-    if (decision.newCap !== undefined && decision.newCap > db.maxCount) {
-      console.warn(`[particle] grow buffer ${db.maxCount} → ${decision.newCap} (mode=${this.policy.mode})`);
-      db.grow(decision.newCap);
+    if (required > db.maxCount) {
+      if (this.allocationMode === AllocationMode.FixedCount) {
+        // FixedCount: cap 不变(=preAllocationCount),超 maxInstanceCount 部分丢弃。
+        dropCount = Math.max(0, required - this.maxInstanceCount);
+      } else {
+        const grown = Math.max(required, Math.ceil(db.maxCount * ParticleEmitter.GROW_MULTIPLIER));
+
+        if (grown <= this.maxInstanceCount) {
+          newCap = grown;
+        } else {
+          // 扩容后仍超硬上限:cap 到 maxInstanceCount,多余丢弃。
+          newCap = this.maxInstanceCount;
+          dropCount = Math.max(0, required - this.maxInstanceCount);
+        }
+      }
+    }
+
+    if (newCap !== undefined && newCap > db.maxCount) {
+      console.warn(`[particle] grow buffer ${db.maxCount} → ${newCap} (mode=${this.allocationMode})`);
+      db.grow(newCap);
     }
 
     const cap = db.maxCount;
     const available = cap - db.numInstances;
-    const dropCount = decision.dropCount;
     const count = Math.max(0, Math.min(requestedCount - dropCount, available));
 
     if (count <= 0) {

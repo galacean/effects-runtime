@@ -76,20 +76,23 @@ export class ParticleSystem extends Component implements Maskable {
   }
   /**
    * 获取当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
+   * 返回发射器的粒子数硬上限（maxInstanceCount，两模式统一）——Fixed 模式为用户配的容量，
+   * Auto 模式为预分配 × 倍率的动态上限。
    * @since 2.3.0
    */
   get maxParticles () {
-    return this.emitter?.maxCount ?? 0;
+    return this.emitter?.maxInstanceCount ?? 0;
   }
 
   /**
    * 设置当前粒子系统的最大粒子数。当系统的粒子数量达到最大值时，发射器会暂时停止发射粒子。
+   * 直接调整发射器粒子数硬上限（maxInstanceCount）；不影响已分配 buffer 容量（不改 buffer）。
    * 注意：暂时不支持增加拖尾数量
    * @since 2.3.0
    */
   set maxParticles (count: number) {
     if (this.emitter) {
-      this.emitter.maxCount = count;
+      this.emitter.maxInstanceCount = count;
     }
   }
 
