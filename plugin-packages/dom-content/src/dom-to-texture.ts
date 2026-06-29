@@ -652,7 +652,11 @@ export async function inlineImageSources (html: string): Promise<string> {
   if (urlSet.size === 0) { return html; }
 
   const urlToBase64 = new Map<string, string>();
-  const urls = [...urlSet].slice(0, MAX_URLS);
+  // 注意：不要写成 [...urlSet]。SWC 在 loose + ES5 下会把 `[...set]` 编译成
+  // `[].concat(urlSet)`，而 concat 不会展开 Set，会把整个 Set 当成单个元素塞进数组，
+  // 导致下方 urls.map 拿到的 url 是 Set 对象，decodeHtmlEntities(set) 报
+  // "value.replace is not a function"。Array.from 是运行时调用，SWC 不会改写它。
+  const urls = Array.from(urlSet).slice(0, MAX_URLS);
 
   if (urlSet.size > MAX_URLS) {
     logger.warn(`inlineImageSources: URL count (${urlSet.size}) exceeds limit (${MAX_URLS}), only processing first ${MAX_URLS}.`);
@@ -692,7 +696,7 @@ export async function inlineFontSources (html: string): Promise<string> {
   if (urlSet.size === 0) { return html; }
 
   const urlToBase64 = new Map<string, string>();
-  const urls = [...urlSet].slice(0, MAX_URLS);
+  const urls = Array.from(urlSet).slice(0, MAX_URLS);
 
   if (urlSet.size > MAX_URLS) {
     logger.warn(`inlineFontSources: URL count (${urlSet.size}) exceeds limit (${MAX_URLS}), only processing first ${MAX_URLS}.`);
