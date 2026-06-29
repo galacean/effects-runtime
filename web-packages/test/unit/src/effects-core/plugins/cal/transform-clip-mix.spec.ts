@@ -4,15 +4,15 @@ import { sanitizeNumbers } from '../../../utils';
 const { expect } = chai;
 
 /**
- * 多 TransformTrack 叠加（additive）单测。
+ * Transform clip 叠加（additive）单测。
  *
  * 覆盖：
- * - 单 track：行为与直写一致（base + delta）
- * - 多 track scale：乘子连乘 base × c1 × c2
- * - 多 track rotation：Euler 逐分量加权累加
- * - 多 track position：两条反向位移叠加后抵消回到 base
+ * - 单 clip：行为与直写一致（base + delta）
+ * - 多 clip scale：乘子连乘 base × c1 × c2
+ * - 多 clip rotation：Euler 逐分量加权累加
+ * - 多 clip position：两段反向位移叠加后抵消回到 base
  */
-describe('core/plugins/calculate/multi-transform-track', () => {
+describe('core/plugins/calculate/transform-clip-mix', () => {
   const canvas = document.createElement('canvas');
   let player: Player;
 
@@ -26,22 +26,27 @@ describe('core/plugins/calculate/multi-transform-track', () => {
     player = null;
   });
 
-  // 构造一个绑定到 sprite 的 timeline，children 为传入的 (transformTrack, transformAsset) 列表
+  // 构造一个绑定到 sprite 的 timeline，单条 TransformTrack 下挂载传入的 clip 列表
   const buildScene = (
-    tracks: { trackId: string, assetId: string, asset: Record<string, unknown> }[],
+    clips: { assetId: string, asset: Record<string, unknown>, start?: number, duration?: number }[],
     spritePosition = { x: 0, y: 0, z: 0 },
     spriteScale = { x: 1, y: 1, z: 1 },
   ) => {
-    const trackNodes = tracks.map(track => ({
-      id: track.trackId,
+    const transformTrack = {
+      id: 'transform_track_1',
       dataType: 'TransformTrack',
       children: [],
-      clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: track.assetId } }],
-    }));
-    const assetNodes = tracks.map(track => ({
-      id: track.assetId,
+      clips: clips.map(clip => ({
+        start: clip.start ?? 0,
+        duration: clip.duration ?? 5,
+        endBehavior: 4,
+        asset: { id: clip.assetId },
+      })),
+    };
+    const assetNodes = clips.map(clip => ({
+      id: clip.assetId,
       dataType: 'TransformPlayableAsset',
-      ...track.asset,
+      ...clip.asset,
     }));
 
     return {
@@ -53,7 +58,7 @@ describe('core/plugins/calculate/multi-transform-track', () => {
       compositions: [
         {
           id: 'comp_1',
-          name: 'multi-transform-track',
+          name: 'transform-clip-mix',
           duration: 5,
           startTime: 0,
           endBehavior: 4,
@@ -116,11 +121,11 @@ describe('core/plugins/calculate/multi-transform-track', () => {
           children: [],
           clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'activation_asset_1' } }],
         },
-        ...trackNodes,
+        transformTrack,
         {
           id: 'obt_1',
           dataType: 'ObjectBindingTrack',
-          children: [{ id: 'activation_track_1' }, ...tracks.map(track => ({ id: track.trackId }))],
+          children: [{ id: 'activation_track_1' }, { id: 'transform_track_1' }],
           clips: [],
         },
       ],
@@ -128,9 +133,9 @@ describe('core/plugins/calculate/multi-transform-track', () => {
     };
   };
 
-  it('单 track scale 与直写一致（base × 常量乘子）', async () => {
+  it('单 clip scale 与直写一致（base × 常量乘子）', async () => {
     const scene = buildScene(
-      [{ trackId: 'tt_scale', assetId: 'asset_scale', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } } }],
+      [{ assetId: 'asset_scale', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } } }],
       { x: 0, y: 0, z: 0 },
       { x: 3, y: 3, z: 3 },
     );
@@ -142,11 +147,11 @@ describe('core/plugins/calculate/multi-transform-track', () => {
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([6, 6, 6]);
   });
 
-  it('多 track scale 乘子连乘（base × c1 × c2）', async () => {
+  it('多 clip scale 乘子连乘（base × c1 × c2）', async () => {
     const scene = buildScene(
       [
-        { trackId: 'tt_s1', assetId: 'asset_s1', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } } },
-        { trackId: 'tt_s2', assetId: 'asset_s2', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 0.5 } } },
+        { assetId: 'asset_s1', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 2 } } },
+        { assetId: 'asset_s2', asset: { positionOverLifetime: {}, sizeOverLifetime: { size: 0.5 } } },
       ],
       { x: 0, y: 0, z: 0 },
       { x: 4, y: 4, z: 4 },
@@ -159,20 +164,20 @@ describe('core/plugins/calculate/multi-transform-track', () => {
     expect(sanitizeNumbers(sprite.transform.scale.toArray())).to.deep.equals([4, 4, 4]);
   });
 
-  it('多 track rotation 逐分量加权累加（base + r1 + r2）', async () => {
+  it('多 clip rotation 逐分量加权累加（base + r1 + r2）', async () => {
     const scene = buildScene([
-      { trackId: 'tt_r1', assetId: 'asset_r1', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 30 } } },
-      { trackId: 'tt_r2', assetId: 'asset_r2', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 60 } } },
+      { assetId: 'asset_r1', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 30 } } },
+      { assetId: 'asset_r2', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 60 } } },
     ]);
     const comp = await player.loadScene(scene as any);
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(0.5);
-    // base z=0，两条 track z 增量 30 + 60 = 90
+    // base z=0，两段 clip z 增量 30 + 60 = 90
     expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 90]);
   });
 
-  it('多 track position 反向位移叠加后抵消回到 base', async () => {
+  it('多 clip position 反向位移叠加后抵消回到 base', async () => {
     const path = (end: number) => ({
       path: [
         22,
@@ -185,8 +190,8 @@ describe('core/plugins/calculate/multi-transform-track', () => {
     });
     const scene = buildScene(
       [
-        { trackId: 'tt_p1', assetId: 'asset_p1', asset: { positionOverLifetime: path(4) } },
-        { trackId: 'tt_p2', assetId: 'asset_p2', asset: { positionOverLifetime: path(-4) } },
+        { assetId: 'asset_p1', asset: { positionOverLifetime: path(4) } },
+        { assetId: 'asset_p2', asset: { positionOverLifetime: path(-4) } },
       ],
       { x: 1, y: 2, z: 0 },
     );

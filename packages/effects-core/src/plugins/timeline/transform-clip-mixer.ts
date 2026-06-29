@@ -10,13 +10,13 @@ type BasePose = {
 };
 
 /**
- * 汇总单个 VFXItem 上多条 TransformTrack 的贡献，additive 合成：
+ * 汇总单条 TransformTrack 内多个 Transform clip 的 contribution，additive 合成：
  * - position / rotation：base + Σ(deltaᵢ · weightᵢ)
  * - scale：base · Π(cᵢ)
  *
- * weight 为 clip crossfade 权重，当前无 clip overlap，恒为 1。
+ * weight 为 clip blend 权重，当前无 clip overlap 曲线时恒为 1。
  */
-export class TransformLayerMixer {
+export class TransformClipMixer {
   private basePose?: BasePose;
   private boundInstanceId?: string;
 

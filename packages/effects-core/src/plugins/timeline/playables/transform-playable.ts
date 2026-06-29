@@ -163,7 +163,7 @@ export class TransformPlayable extends Playable {
   }
 
   /**
-   * 单 track 直写：用 originalTransform 作为 base，采样后直接写回 item.transform。
+   * 兼容旧直写路径：用 originalTransform 作为 base，采样后直接写回 item.transform。
    */
   applyContribution (item: VFXItem): void {
     if (!this.originalTransform) {
@@ -211,7 +211,7 @@ export class TransformPlayable extends Playable {
   }
 
   /**
-   * 多 track：采样为相对 base 的 contribution（delta），供 LayerMixer 叠加。
+   * 采样为相对 base 的 contribution（delta），供 TransformClipMixer 叠加。
    * @param basePosition - orbital position 还原 delta 所需的 base，其余通道与 base 无关。
    */
   getContribution (basePosition?: Vector3): TransformContribution {

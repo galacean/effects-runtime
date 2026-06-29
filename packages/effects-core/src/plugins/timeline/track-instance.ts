@@ -7,7 +7,6 @@ import type { TrackAsset } from './track';
  * It is used to query the corresponding playable object based on the track asset.
  */
 export class TrackInstance {
-  parent: TrackInstance | null = null;
   boundObject: object;
 
   trackAsset: TrackAsset;
@@ -26,6 +25,5 @@ export class TrackInstance {
 
   addChild (trackInstance: TrackInstance) {
     this.children.push(trackInstance);
-    trackInstance.parent = this;
   }
 }

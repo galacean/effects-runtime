@@ -1,14 +1,15 @@
 import { Player } from '@galacean/effects';
 
 /**
- * 多 TransformTrack 叠加 demo：移动 + 缩放 + 旋转 三条轨道同时作用于一个 sprite。
+ * Transform clip 叠加 demo：X/Y 位移 + 缩放 + 旋转 四个 clip 同时作用于一个 sprite。
  *
- * 所有 track 统一为 additive 语义，在 base pose 上叠加：
- * - Track 1：X 轴路径位移 0 → 4.3064
- * - Track 2：均匀缩放 1 → 1.73
- * - Track 3：Z 轴旋转 0 → 360°
+ * 所有 clip 统一为 additive 语义，在 base pose 上叠加：
+ * - Clip 1：X 轴路径位移 0 → 4.3064
+ * - Clip 2：Y 轴路径位移 0 → 2
+ * - Clip 3：均匀缩放 1 → 1.73
+ * - Clip 4：Z 轴旋转 0 → 360°
  *
- * 预期：sprite 边向右移动，边放大，边旋转。
+ * 预期：sprite 沿右上方向移动，同时放大并旋转。
  */
 const scene = {
   playerVersion: { web: '2.8.11', native: '0.0.1.202311221223' },
@@ -19,7 +20,7 @@ const scene = {
   compositions: [
     {
       id: 'comp_1',
-      name: 'multi-transform-track',
+      name: 'transform-clip-mix',
       duration: 5,
       startTime: 0,
       endBehavior: 4,
@@ -110,7 +111,7 @@ const scene = {
       dataType: 'SpriteColorPlayableAsset',
       startColor: [1, 1, 1, 1],
     },
-    // ---- Track 1：X 轴路径位移 ----
+    // ---- Clip 1：X 轴路径位移 ----
     {
       id: 'transform_asset_move',
       dataType: 'TransformPlayableAsset',
@@ -125,7 +126,22 @@ const scene = {
         ],
       },
     },
-    // ---- Track 2：均匀缩放 1 → 1.73 ----
+    // ---- Clip 2：Y 轴路径位移 ----
+    {
+      id: 'transform_asset_move_y',
+      dataType: 'TransformPlayableAsset',
+      positionOverLifetime: {
+        path: [
+          22,
+          [
+            [[4, [0, 0]], [4, [0.612, 1]]],
+            [[0, 0, 0], [0, 2, 0]],
+            [[0, 0.6667, 0], [0, 1.3333, 0]],
+          ],
+        ],
+      },
+    },
+    // ---- Clip 3：均匀缩放 1 → 1.73 ----
     {
       id: 'transform_asset_scale',
       dataType: 'TransformPlayableAsset',
@@ -134,7 +150,7 @@ const scene = {
         size: [21, [[4, [0, 1]], [4, [0.618, 1.73]]]],
       },
     },
-    // ---- Track 3：Z 轴旋转 0 → 360° ----
+    // ---- Clip 4：Z 轴旋转 0 → 360° ----
     {
       id: 'transform_asset_rotate',
       dataType: 'TransformPlayableAsset',
@@ -151,26 +167,17 @@ const scene = {
       children: [],
       clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'activation_asset_1' } }],
     },
-    // TransformTrack 1：移动
+    // TransformTrack：X/Y 位移 + 缩放 + 旋转四个 clip 叠加
     {
-      id: 'transform_track_move',
+      id: 'transform_track_1',
       dataType: 'TransformTrack',
       children: [],
-      clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_move' } }],
-    },
-    // TransformTrack 2：缩放
-    {
-      id: 'transform_track_scale',
-      dataType: 'TransformTrack',
-      children: [],
-      clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_scale' } }],
-    },
-    // TransformTrack 3：旋转
-    {
-      id: 'transform_track_rotate',
-      dataType: 'TransformTrack',
-      children: [],
-      clips: [{ start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_rotate' } }],
+      clips: [
+        { start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_move' } },
+        { start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_move_y' } },
+        { start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_scale' } },
+        { start: 0, duration: 5, endBehavior: 4, asset: { id: 'transform_asset_rotate' } },
+      ],
     },
     // SpriteColorTrack
     {
@@ -185,9 +192,7 @@ const scene = {
       dataType: 'ObjectBindingTrack',
       children: [
         { id: 'activation_track_1' },
-        { id: 'transform_track_move' },
-        { id: 'transform_track_scale' },
-        { id: 'transform_track_rotate' },
+        { id: 'transform_track_1' },
         { id: 'color_track_1' },
       ],
       clips: [],

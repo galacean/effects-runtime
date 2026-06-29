@@ -5,7 +5,7 @@ import './image-template/image-template.spec';
 import './interact/interact.spec';
 import './math';
 import './plugins/cal/transform.spec';
-import './plugins/cal/multi-transform-track.spec';
+import './plugins/cal/transform-clip-mix.spec';
 import './plugins/common/end-behevior.spec';
 import './plugins/shape';
 // plugin particle
