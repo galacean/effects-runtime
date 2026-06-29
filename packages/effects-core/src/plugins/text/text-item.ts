@@ -6,6 +6,7 @@ import { MaskableGraphic } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { applyMixins } from '../../utils';
+import { breakOpportunityAfter } from './line-break';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { TextComponentBase } from './text-component-base';
@@ -36,9 +37,6 @@ interface CharInfo {
 
 /** 检测字符串是否包含需要 RTL 和连写排版的字符（阿拉伯语等） */
 const HAS_RTL_OR_JOINING = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-
-/** 可换行断点：空格、制表符等 */
-const IS_BREAK_CHAR = (ch: string) => ch === ' ' || ch === '\t' || ch === '\u00A0';
 
 export interface TextComponent extends TextComponentBase { }
 
@@ -177,14 +175,15 @@ export class TextComponent extends MaskableGraphic {
     let lineCount = 1;
     let x = 0;
     let charCountInLine = 0;
+    // 使用码点遍历，正确处理 emoji 与 CJK 扩展 B 等代理对字符
+    const chars = Array.from(text);
 
     if (context) {
       context.font = this.getFontDesc(this.textStyle.fontSize);
     }
 
     if (overflow === spec.TextOverflow.display) {
-      for (let i = 0; i < text.length; i++) {
-        const str = text[i];
+      for (const str of chars) {
         const textMetrics = context?.measureText(str)?.width ?? 0;
 
         if (str === '\n') {
@@ -205,12 +204,11 @@ export class TextComponent extends MaskableGraphic {
     }
 
     if (this.textLayout.keepWordIntact) {
-      // 单词完整换行：优先在空格处断行，避免从单词中间断开
+      // 单词完整换行：优先在换行机会处断行（空格吞断 / CJK 字间可断），避免从西文词中间断开
       let lastBreakX = 0;
       let countAtBreak = 0;
 
-      for (let i = 0; i < text.length; i++) {
-        const str = text[i];
+      for (const str of chars) {
         const textMetrics = context?.measureText(str)?.width ?? 0;
 
         if (str === '\n') {
@@ -247,15 +245,16 @@ export class TextComponent extends MaskableGraphic {
         x += textMetrics;
         charCountInLine++;
 
-        if (IS_BREAK_CHAR(str)) {
+        // 记换行机会：str 之后可断（空格 swallow / CJK keep）。lastBreakX 含 str 宽度（str 留本行末）
+        if (breakOpportunityAfter(str) !== false) {
           lastBreakX = x;
           countAtBreak = charCountInLine;
         }
       }
     } else {
       // 逐字符换行：允许在任意字符处断开
-      for (let i = 0; i < text.length; i++) {
-        const str = text[i];
+      for (let i = 0; i < chars.length; i++) {
+        const str = chars[i];
         const textMetrics = context?.measureText(str)?.width ?? 0;
 
         if (charCountInLine > 0) {
@@ -379,8 +378,11 @@ export class TextComponent extends MaskableGraphic {
       let charOffsetX: number[] = [];
 
       if (layout.keepWordIntact) {
-        // 单词完整换行：优先在空格处断行，避免从单词中间断开
+        // 单词完整换行：优先在换行机会处断行（空格吞断 / CJK 字间可断），避免从西文词中间断开。
+        // lastBreakIdx 指向断点字符在 charsArray 中的索引；breakSwallow=true 时该字符被吞（空格），
+        // false 时该字符留本行末（CJK），下行均从 lastBreakIdx+1 起。
         let lastBreakIdx = -1;
+        let breakSwallow = false;
 
         for (let i = 0; i < char.length; i++) {
           const str = char[i];
@@ -398,6 +400,7 @@ export class TextComponent extends MaskableGraphic {
             charsArray = [];
             charOffsetX = [];
             lastBreakIdx = -1;
+            breakSwallow = false;
             continue;
           }
 
@@ -406,9 +409,11 @@ export class TextComponent extends MaskableGraphic {
 
           if (willWidth > baseWidth && charsArray.length > 0) {
             if (lastBreakIdx > 0) {
-              // 在空格处换行
-              const lineChars = charsArray.slice(0, lastBreakIdx);
-              const lineOffsets = charOffsetX.slice(0, lastBreakIdx);
+              // 在换行机会处断行：swallow 取 [0,lastBreakIdx)（吞掉断点字符），
+              // keep 取 [0,lastBreakIdx]（断点字符留本行末），下行均从 lastBreakIdx+1 起。
+              const endIdx = breakSwallow ? lastBreakIdx : lastBreakIdx + 1;
+              const lineChars = charsArray.slice(0, endIdx);
+              const lineOffsets = charOffsetX.slice(0, endIdx);
               const lineWidth = lineChars.length > 0
                 ? lineOffsets[lineOffsets.length - 1] + context.measureText(lineChars[lineChars.length - 1]).width
                 : 0;
@@ -431,6 +436,7 @@ export class TextComponent extends MaskableGraphic {
                 x += context.measureText(charsArray[j]).width;
               }
               lastBreakIdx = -1;
+              breakSwallow = false;
             } else {
               charsInfo.push({
                 y,
@@ -443,6 +449,7 @@ export class TextComponent extends MaskableGraphic {
               charsArray = [];
               charOffsetX = [];
               lastBreakIdx = -1;
+              breakSwallow = false;
             }
           }
 
@@ -453,8 +460,13 @@ export class TextComponent extends MaskableGraphic {
           charsArray.push(str);
           x += textMetrics.width;
 
-          if (IS_BREAK_CHAR(str)) {
+          // 记换行机会：str 之后可断。lastBreakIdx 指向 str（charsArray 末尾），
+          // swallow=吞 str（空格），keep=str 留本行末（CJK）。
+          const opp = breakOpportunityAfter(str);
+
+          if (opp !== false) {
             lastBreakIdx = charsArray.length - 1;
+            breakSwallow = opp === 'swallow';
           }
         }
       } else {
