@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import type { Engine, IRichTextComponent } from '@galacean/effects';
+import type { Engine, IRichTextComponent, GraphicsPath } from '@galacean/effects';
 import {
   assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
   TextComponentBase,
@@ -51,6 +51,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   isDirty = true;
   text: string = '';
   textStyle: TextStyle;
+  /**
+   * 调试回调：drawTextWithStrategies 画完字后调用，传 context + 偏移量。
+   * demo/editor 可设此回调画曲线参考线验证贴合。生产不设则不画。
+   */
+  onDebugDraw?: (ctx: CanvasRenderingContext2D, offX: number, offY: number) => void;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
   textLayout: RichTextLayout;
@@ -124,8 +129,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const layout = this.textLayout;
 
     if (layout) {
-      this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy(layout.wrapEnabled);
-      this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(layout.overflow);
+      this.richWrapStrategy = RichTextStrategyFactory.createWrapStrategy(layout);
+      // 路径文本强制 visible（expanding 扩 canvas 包住旋转字角），普通文本用用户配的 overflow
+      this.richOverflowStrategy = RichTextStrategyFactory.createOverflowStrategy(
+        layout.isPathText ? spec.TextOverflow.visible : layout.overflow,
+      );
     }
   }
 
@@ -528,15 +536,30 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         const charArr = chars[segIndex];
 
         charArr.forEach(charDetail => {
-          context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
+          if (charDetail.rotation !== undefined) {
+            // 曲线文本：逐字 translate+rotate，字底边贴路径切线
+            context.save();
+            context.translate(xOffset + segStartX + charDetail.x, yOffset + (charDetail.curvedOffsetY ?? 0));
+            context.rotate(charDetail.rotation);
+            context.fillText(charDetail.char, 0, 0);
+            context.restore();
+          } else {
+            context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
+          }
         });
       });
 
       // 推进到下一行
-      if (index < lines.length - 1) {
+      // 路径文本多 contour：每个 contour 字 y 用路径绝对坐标，不累加行高（共享同一 baselineY）
+      if (index < lines.length - 1 && !this.textLayout.isPathText) {
         currentBaselineY += lines[index + 1].lineHeight;
       }
     });
+
+    // 调试回调：画完字后让外部（demo/editor）画曲线参考线验证贴合
+    if (this.onDebugDraw) {
+      this.onDebugDraw(context, renderOffsetX, currentBaselineY);
+    }
   }
 
   private unsupported (name: string): never {
@@ -598,6 +621,43 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
    */
   setFontSize (value: number): void {
     this.unsupported('setFontSize');
+  }
+
+  /**
+   * 开启/关闭路径文本模式（对齐 Figma text on path）。
+   * 开启后强制走 RichWrapOnPath 策略，无 curvePath 时用默认闭合圆。
+   * 路径文本是独立形态：删除路径即不再是路径文本。
+   * @param on 是否开启路径文本模式
+   */
+  setPathMode (on: boolean): void {
+    if (this.textLayout.isPathText === on) { return; }
+    this.textLayout.isPathText = on;
+    this.updateStrategies();
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置路径文本的曲线（引擎 GraphicsPath，主入口）。
+   * 钢笔画的 CustomShapeData 转 GraphicsPath 后传入。路径文本模式下设 null 回默认圆。
+   * @param path GraphicsPath 实例，null 用默认闭合圆
+   */
+  setCurvedPath (path: GraphicsPath | null): void {
+    this.textLayout.curveGraphicsPath = path ?? undefined;
+    this.updateStrategies();
+    this.isDirty = true;
+  }
+
+  /**
+   * 设置曲线文本路径（引擎 GraphicsPath）。
+   * 钢笔 CustomShapeData 产出的 GraphicsPath 可直接传入；文字沿该路径排版，每字旋转贴切线。
+   * 传 null 禁用曲线文本。
+   * @param path GraphicsPath 实例
+   */
+  setCurvedGraphicsPath (path: GraphicsPath | null): void {
+    if (this.textLayout.curveGraphicsPath === path) { return; }
+    this.textLayout.curveGraphicsPath = path ?? undefined;
+    this.updateStrategies();
+    this.isDirty = true;
   }
 
   /**

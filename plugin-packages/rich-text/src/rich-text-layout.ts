@@ -1,4 +1,4 @@
-import type { TextStyle, BaseLayout } from '@galacean/effects';
+import type { TextStyle, BaseLayout, GraphicsPath } from '@galacean/effects';
 import { spec } from '@galacean/effects';
 
 export class RichTextLayout implements BaseLayout {
@@ -19,6 +19,18 @@ export class RichTextLayout implements BaseLayout {
    * 文本框是否开启自动换行
    */
   wrapEnabled: boolean;
+
+  /**
+   * 曲线文本：引擎 GraphicsPath 路径（钢笔 CustomShapeData 可直接产出）。
+   */
+  curveGraphicsPath?: GraphicsPath;
+
+  /**
+   * 路径文本模式（对齐 Figma text on path）。
+   * true 时强制走 RichWrapOnPath 策略，无 curveGraphicsPath 则用默认闭合圆。
+   * 路径文本是独立形态：删掉路径=不再是路径文本（不像曲线属性可关回直线）。
+   */
+  isPathText?: boolean;
 
   /**
    * 文本框最大宽度限制
@@ -56,6 +68,8 @@ export class RichTextLayout implements BaseLayout {
       autoResize = spec.TextSizeMode.autoWidth,
       // @ts-expect-error 兼容旧版
       useLegacyRichText = false,
+      // @ts-expect-error 路径文本，spec 待补
+      isPathText = false,
     } = options;
 
     this.letterSpace = letterSpace;
@@ -68,6 +82,7 @@ export class RichTextLayout implements BaseLayout {
     this.height = 100;
 
     this.wrapEnabled = wrapEnabled;
+    this.isPathText = isPathText;
 
     this.maxTextWidth = maxTextWidth;
     this.maxTextHeight = maxTextHeight;

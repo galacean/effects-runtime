@@ -1,10 +1,12 @@
 import { spec } from '@galacean/effects';
+import type { RichTextLayout } from '../rich-text-layout';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy,
   RichVerticalAlignStrategy,
 } from './rich-text-interfaces';
 import { RichWrapDisabledStrategy } from './wrap/rich-wrap-disabled';
 import { RichWrapEnabledStrategy } from './wrap/rich-wrap-enabled';
+import { RichWrapOnPathStrategy } from './wrap/rich-wrap-on-path';
 import { RichClippedOverflowStrategy } from './overflow/rich-clipped-overflow';
 import { RichExpandingOverflowStrategy } from './overflow/rich-expanding-overflow';
 import { RichHorizontalAlignStrategyImpl } from './align/rich-horizontal-align';
@@ -20,13 +22,20 @@ export class RichTextStrategyFactory {
 
   /**
    * 创建换行策略
+   *
+   * 路径文本模式（isPathText 或 curveGraphicsPath 启用）走 RichWrapOnPathStrategy，
+   * 沿路径排版；否则按 wrapEnabled 在普通换行/禁用间二选一。
+   * layout 缺省（构造期 textLayout 未建）时返回禁用换行兜底，fromData/updateWithOptions 后会重选。
    */
-  static createWrapStrategy (wrapEnabled?: boolean): RichWrapStrategy {
-    if (wrapEnabled) {
-      return new RichWrapEnabledStrategy();
-    } else {
-      return new RichWrapDisabledStrategy();
+  static createWrapStrategy (layout?: RichTextLayout): RichWrapStrategy {
+    // 路径文本模式最高优先：强制走 OnPath（无 curvePath 则用默认闭合圆兜底）
+    if (layout && (layout.isPathText || layout.curveGraphicsPath)) {
+      return new RichWrapOnPathStrategy();
     }
+
+    return layout?.wrapEnabled
+      ? new RichWrapEnabledStrategy()
+      : new RichWrapDisabledStrategy();
   }
 
   /**

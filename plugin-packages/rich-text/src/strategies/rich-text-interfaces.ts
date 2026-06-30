@@ -8,6 +8,14 @@ import type { RichTextOptions } from '../rich-text-component';
 export interface RichCharDetail {
   char: string,
   x: number,
+  /**
+   * 曲线文本：字符旋转角（弧度，字中点切线）。undefined 表示直线模式
+   */
+  rotation?: number,
+  /**
+   * 曲线文本：字符 Y 坐标（路径 y + 补偿）。直线模式用行的 y，不读此字段
+   */
+  curvedOffsetY?: number,
 }
 
 /**
@@ -22,6 +30,10 @@ export interface RichLine {
   chars: RichCharDetail[][],
   lineAscent?: number,    // 行上升高度
   lineDescent?: number,   // 行下降高度
+  /** 旋转字形真实左边界（相对行起点，可负，曲线文本用，供 overflow 检测左溢出） */
+  contentMinX?: number,
+  /** 旋转字形真实右边界（相对行起点，曲线文本用，供 overflow 检测右溢出） */
+  contentMaxX?: number,
 }
 
 /**

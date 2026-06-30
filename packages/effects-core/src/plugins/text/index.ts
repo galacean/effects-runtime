@@ -4,3 +4,5 @@ export * from './text-layout';
 export * from './text-style';
 export * from './text-loader';
 export * from './text-component-base';
+export * from './glyph-bounds';
+export * from './path-convert';

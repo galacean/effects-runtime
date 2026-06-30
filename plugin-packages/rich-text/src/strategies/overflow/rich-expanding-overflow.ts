@@ -66,10 +66,19 @@ export class RichExpandingOverflowStrategy implements RichOverflowStrategy {
 
     for (let i = 0; i < lines.length; i++) {
       const xOff = horizontalResult.lineOffsets[i] ?? 0;
-      const w = lines[i].width ?? 0;
+      const line = lines[i];
 
-      contentLeft = Math.min(contentLeft, xOff);
-      contentRight = Math.max(contentRight, xOff + w);
+      // 曲线文本：旋转后字角左右探出，line.width(advance 域)框不住。
+      // contentMinX/MaxX 是 glyph-bounds 算的路径绝对坐标（含 pt.pos.x），不再加 xOff（避免双重偏移导致抖动）。
+      if (line.contentMinX !== undefined && line.contentMaxX !== undefined) {
+        contentLeft = Math.min(contentLeft, line.contentMinX);
+        contentRight = Math.max(contentRight, line.contentMaxX);
+      } else {
+        const w = line.width ?? 0;
+
+        contentLeft = Math.min(contentLeft, xOff);
+        contentRight = Math.max(contentRight, xOff + w);
+      }
     }
 
     if (!isFinite(contentLeft)) { contentLeft = 0; }
