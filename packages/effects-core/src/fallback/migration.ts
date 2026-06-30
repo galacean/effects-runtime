@@ -765,6 +765,70 @@ export function version36Migration (json: JSONScene): JSONScene {
 }
 
 /**
+ * 3.8 数据适配：SpriteComponent 的 renderer.texture + splits 迁移为独立 Sprite 资产。
+ *
+ * - 遍历所有未引用 sprite 的 SpriteComponentData，按 splits[0]（无则整图 [0,0,1,1]）生成
+ *   Sprite 资产对象放入 miscs，并把组件的 sprite 指向它。
+ * - 删除组件的 splits 与 renderer.texture（纹理归属 sprite，renderer 仅保留渲染状态）。
+ * - 卫语句 `if (sc.sprite) continue` 处理混合数据（部分组件已用 sprite）。
+ * - 多 split（splits.length>1，2x2 纹理打包）保留原 splits 不迁移，仍走 updateGeometryFromMultiSplit 旧路径。
+ *
+ * 由 getStandardJSON 以 `minorVersion < 8` 守卫调用，数据生命周期内只跑一次。
+ * version 字段设为字符串 '3.8'（JSONSceneVersion 枚举无此值，运行时不依赖枚举）。
+ */
+export function version37Migration (json: spec.JSONScene): spec.JSONScene {
+  json.miscs ??= [];
+
+  for (const component of json.components) {
+    if (component.dataType !== DataType.SpriteComponent) {
+      continue;
+    }
+    // 本地扩展 sprite 字段（spec 包不可改）。ComponentData 是 SpriteComponentData 的超集，
+    // 故直接当 SpriteComponentData 用；sprite 需要写到对象上，用宽松类型承载。
+    const sc = component as spec.SpriteComponentData & { sprite?: spec.DataPath };
+
+    if (sc.sprite) {
+      continue;  // 已迁移/新数据
+    }
+
+    const splits = sc.splits;
+
+    if (splits && splits.length > 1) {
+      // 多 split（2x2 纹理打包）保留原数据，运行时走 updateGeometryFromMultiSplit 旧路径，不转 sprite。
+      continue;
+    }
+
+    const first = splits?.[0];
+    const rect: spec.vec4 = first
+      ? [first[0], first[1], first[2], first[3]]
+      : [0, 0, 1, 1];
+    // rotation: 0=None 不旋转, 1=Rotate90（值与 Sprite.SpriteRotation 枚举一致，序列化兼容）
+    const rotation = first?.[4] ?? 0;
+
+    const spriteData = {
+      id: generateGUID(),
+      dataType: 'Sprite' as unknown as spec.DataType,
+      // 可能为 undefined（纯色元素）→ Sprite.fromData 兜底 whiteTexture
+      texture: sc.renderer?.texture,
+      rect,
+      rotation,
+    } as unknown as spec.EffectsObjectData;
+
+    json.miscs.push(spriteData);
+
+    sc.sprite = { id: spriteData.id };
+    delete sc.splits;
+    if (sc.renderer) {
+      delete sc.renderer.texture;  // 纹理归属 sprite，renderer 仅保留渲染状态
+    }
+  }
+
+  json.version = '3.8' as unknown as spec.JSONSceneVersion;
+
+  return json;
+}
+
+/**
  * 确保文本组件有版本标识字段
  */
 function ensureTextVerticalAlign (options: any) {

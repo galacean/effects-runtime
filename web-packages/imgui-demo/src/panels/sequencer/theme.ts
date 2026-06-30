@@ -46,6 +46,7 @@ export const COLORS = {
     TransformTrack: new ImGui.Vec4(0.95, 0.45, 0.15, 1.0), // Vibrant Orange
     ActivationTrack: new ImGui.Vec4(0.20, 0.95, 0.40, 1.0), // Vibrant Green
     SpriteColorTrack: new ImGui.Vec4(0.95, 0.20, 0.85, 1.0), // Vibrant Magenta
+    SpritePropertyTrack: new ImGui.Vec4(0.30, 0.80, 0.95, 1.0), // Cyan（sprite 对象引用 K 帧轨道）
     SubCompositionTrack: new ImGui.Vec4(0.50, 0.50, 0.50, 1.0), // Gray for subcomposition
     ParticleTrack: new ImGui.Vec4(1.00, 0.85, 0.10, 1.0), // Vibrant Yellow
     default: new ImGui.Vec4(0.33, 0.38, 0.42, 1.0), // Dark Slate Gray/Blue (matched to screenshot)

@@ -67,6 +67,11 @@ export class Sequencer extends EditorWindow {
       state.expandedTracks.clear();
       state.expandedPropertyGroups.clear();
       state.lastCompositionId = compositionId;
+      // 合成切换时重置时间轴可见范围（不在每帧重置，否则会覆盖 ctrl+滚轮缩放）
+      state.timelineStartTime = 0;
+      if (typeof currentComposition.getDuration === 'function') {
+        state.timelineEndTime = currentComposition.getDuration();
+      }
     }
 
     let compositionComponent = currentComposition.sceneRoot.getComponent(CompositionComponent);
@@ -79,11 +84,6 @@ export class Sequencer extends EditorWindow {
 
     if (!compositionComponent) {
       return;
-    }
-
-    // 使用当前 Composition 的时长作为时间轴最大时长
-    if (typeof currentComposition.getDuration === 'function') {
-      state.timelineEndTime = currentComposition.getDuration();
     }
 
     // 更新窗口尺寸信息
@@ -106,6 +106,18 @@ export class Sequencer extends EditorWindow {
       const leftPanelWidth = desiredLabelWidth;
       const innerSplitterWidth = 2; // thinner splitter
       const rightPanelWidth = Math.max(splitterEdgeGap, mainAreaWidth - leftPanelWidth - innerSplitterWidth);
+      const maxDuration = typeof currentComposition.getDuration === 'function' ? currentComposition.getDuration() : 0;
+
+      // === 时间轴导航条 + 缩放 + 平移（整个面板可用） ===
+      {
+        const overviewRowPos = ImGui.GetCursorScreenPos();
+        const overviewX = overviewRowPos.x + leftPanelWidth + innerSplitterWidth;
+
+        this.drawTimelineOverview(leftPanelWidth, innerSplitterWidth, rightPanelWidth, maxDuration);
+        // Ctrl+滚轮缩放 / 中键平移（锚点用右侧时间轴区，整个面板均可触发）
+        this.handleTimelineZoom(overviewX, rightPanelWidth, maxDuration);
+        this.handleTimelinePan(maxDuration);
+      }
 
       // 左侧 "Tracks" 标题区域
       if (ImGui.BeginChild('TracksHeader', new ImGui.Vec2(leftPanelWidth, state.timelineHeight), ImGui.ChildFlags.None, ImGui.WindowFlags.NoScrollbar)) {
@@ -414,6 +426,137 @@ export class Sequencer extends EditorWindow {
 
     if (duration > 0 && state.timelineAreaWidth > 0) {
       state.pixelsPerSecond = state.timelineAreaWidth / duration;
+    }
+  }
+
+  /**
+   * Ctrl + 滚轮缩放时间轴：以鼠标 x 对应的时间为锚点，缩放 [timelineStartTime, timelineEndTime] 可见窗口。
+   * pixelsPerSecond 由 width/duration 每帧重算，故缩放只需改 duration（起止时间）。
+   * 整个时间轴面板均可触发（不限定 hover 在轨道区）。
+   */
+  private handleTimelineZoom (areaScreenX: number, areaWidth: number, maxDuration: number): void {
+    const state = this.state;
+    const io = ImGui.GetIO();
+
+    if (!io.KeyCtrl || io.MouseWheel === 0 || ImGui.IsAnyItemActive() || maxDuration <= 0) {
+      return;
+    }
+    const mousePos = ImGui.GetMousePos();
+    const relX = mousePos.x - areaScreenX - LAYOUT.clipsAreaLeftPadding;
+
+    if (relX < 0 || relX > areaWidth) {
+      return;
+    }
+    const anchorTime = pixelToTime(relX, state);
+    const duration = state.timelineEndTime - state.timelineStartTime;
+    // 上滚放大（可见区间变小），下滚缩小（可见区间变大）
+    const zoom = io.MouseWheel > 0 ? 0.8 : 1.25;
+    let newDuration = Math.max(0.05, duration * zoom);
+
+    newDuration = Math.min(newDuration, maxDuration);
+    const ratio = (anchorTime - state.timelineStartTime) / Math.max(1e-6, duration);
+    let newStart = anchorTime - ratio * newDuration;
+
+    newStart = Math.max(0, Math.min(newStart, maxDuration - newDuration));
+    state.timelineStartTime = newStart;
+    state.timelineEndTime = newStart + newDuration;
+  }
+
+  /**
+   * 鼠标中键按住左右移动平移时间轴可见窗口（duration 不变，整体左右移）。
+   */
+  private handleTimelinePan (maxDuration: number): void {
+    const state = this.state;
+    const io = ImGui.GetIO();
+
+    if (!ImGui.IsMouseDown(ImGui.MouseButton.Middle) || ImGui.IsAnyItemActive()) {
+      return;
+    }
+    const delta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Middle);
+
+    if (Math.abs(delta.x) < 1) {
+      return;
+    }
+    const duration = state.timelineEndTime - state.timelineStartTime;
+    // 像素 → 时间：用当前 pixelsPerSecond 换算（右移 delta>0 → 时间往左看更早，故减）
+    const timeDelta = -delta.x / Math.max(1e-6, state.pixelsPerSecond);
+    let newStart = state.timelineStartTime + timeDelta;
+
+    newStart = Math.max(0, Math.min(newStart, maxDuration - duration));
+    state.timelineStartTime = newStart;
+    state.timelineEndTime = newStart + duration;
+    ImGui.ResetMouseDragDelta(ImGui.MouseButton.Middle);
+  }
+
+  /**
+   * 绘制时间轴导航条（overview）：左侧留白与轨道区对齐，右侧画整段时长 + 可见窗口框，
+   * 点击/拖动平移可见窗口。用正常 Dummy+SameLine+InvisibleButton 布局，不破坏后续行。
+   */
+  private drawTimelineOverview (leftPanelWidth: number, splitterWidth: number, areaWidth: number, maxDuration: number): void {
+    const state = this.state;
+    const drawList = ImGui.GetWindowDrawList();
+    const overviewHeight = 16;
+
+    // 左侧留白（与 TracksHeader/TrackLabelsArea 对齐）
+    ImGui.Dummy(new ImGui.Vec2(leftPanelWidth + splitterWidth, overviewHeight));
+    ImGui.SameLine();
+    // 右侧 overview 命中区
+    ImGui.PushID('TimelineOverview');
+    ImGui.InvisibleButton('overview', new ImGui.Vec2(areaWidth, overviewHeight));
+    ImGui.PopID();
+
+    const overviewMin = ImGui.GetItemRectMin();
+    const overviewMax = ImGui.GetItemRectMax();
+    const overviewRadius = 6;
+    const frameRadius = 3;
+    const isOverviewHovered = ImGui.IsItemHovered();
+    const isOverviewActive = ImGui.IsItemActive();
+
+    // 背景（圆角，无边框；hover/active 时提亮）
+    const bgAlpha = isOverviewActive ? 0.16 : (isOverviewHovered ? 0.14 : 0.11);
+
+    drawList.AddRectFilled(overviewMin, overviewMax, ImGui.GetColorU32(new ImGui.Vec4(0.12, 0.12, 0.14, bgAlpha)), overviewRadius);
+
+    if (maxDuration <= 0) {
+      return;
+    }
+
+    // 交互：按住拖动平移可见窗口（增量平移，按下不瞬移）
+    if (isOverviewActive && ImGui.IsMouseDragging(ImGui.MouseButton.Left)) {
+      const delta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Left);
+
+      if (Math.abs(delta.x) >= 1) {
+        const duration = state.timelineEndTime - state.timelineStartTime;
+        // 像素 → 时间：overview 全宽对应 maxDuration
+        const timeDelta = (delta.x / areaWidth) * maxDuration;
+        let newStart = state.timelineStartTime + timeDelta;
+
+        newStart = Math.max(0, Math.min(newStart, maxDuration - duration));
+        state.timelineStartTime = newStart;
+        state.timelineEndTime = newStart + duration;
+        ImGui.ResetMouseDragDelta(ImGui.MouseButton.Left);
+      }
+    }
+
+    // 可见窗口框（圆角，无边框；hover/active 时增强）
+    const startRatio = Math.max(0, state.timelineStartTime / maxDuration);
+    const endRatio = Math.min(1, state.timelineEndTime / maxDuration);
+    const frameX0 = overviewMin.x + startRatio * areaWidth;
+    const frameX1 = overviewMin.x + endRatio * areaWidth;
+    const frameMin = new ImGui.Vec2(frameX0, overviewMin.y);
+    const frameMax = new ImGui.Vec2(Math.max(frameX1, frameX0 + 4), overviewMax.y);
+    const frameBase = COLORS.selection;
+    const frameAlpha = isOverviewActive ? 0.9 : (isOverviewHovered ? 0.7 : 0.5);
+
+    drawList.AddRectFilled(
+      frameMin, frameMax,
+      ImGui.GetColorU32(new ImGui.Vec4(frameBase.x, frameBase.y, frameBase.z, frameAlpha)),
+      frameRadius,
+    );
+
+    // 当前可见窗口 tooltip
+    if (isOverviewHovered) {
+      ImGui.SetTooltip(`${state.timelineStartTime.toFixed(2)}s - ${state.timelineEndTime.toFixed(2)}s`);
     }
   }
 
