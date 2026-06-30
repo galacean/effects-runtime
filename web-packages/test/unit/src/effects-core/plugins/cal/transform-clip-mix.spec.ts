@@ -1,4 +1,4 @@
-import { Player } from '@galacean/effects';
+import { Player, spec } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -28,7 +28,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
 
   // 构造一个绑定到 sprite 的 timeline，单条 TransformTrack 下挂载传入的 clip 列表
   const buildScene = (
-    clips: { assetId: string, asset: Record<string, unknown>, start?: number, duration?: number }[],
+    clips: { assetId: string, asset: Record<string, unknown>, start?: number, duration?: number, endBehavior?: number }[],
     spritePosition = { x: 0, y: 0, z: 0 },
     spriteScale = { x: 1, y: 1, z: 1 },
   ) => {
@@ -39,7 +39,7 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
       clips: clips.map(clip => ({
         start: clip.start ?? 0,
         duration: clip.duration ?? 5,
-        endBehavior: 4,
+        endBehavior: clip.endBehavior ?? 4,
         asset: { id: clip.assetId },
       })),
     };
@@ -132,6 +132,16 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
       compositionId: 'comp_1',
     };
   };
+  const path = (end: number) => ({
+    path: [
+      22,
+      [
+        [[4, [0, 0]], [4, [0.612, 1]]],
+        [[0, 0, 0], [end, 0, 0]],
+        [[end / 3, 0, 0], [(end / 3) * 2, 0, 0]],
+      ],
+    ],
+  });
 
   it('单 clip scale 与直写一致（base × 常量乘子）', async () => {
     const scene = buildScene(
@@ -178,16 +188,6 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
   });
 
   it('多 clip position 反向位移叠加后抵消回到 base', async () => {
-    const path = (end: number) => ({
-      path: [
-        22,
-        [
-          [[4, [0, 0]], [4, [0.612, 1]]],
-          [[0, 0, 0], [end, 0, 0]],
-          [[end / 3, 0, 0], [(end / 3) * 2, 0, 0]],
-        ],
-      ],
-    });
     const scene = buildScene(
       [
         { assetId: 'asset_p1', asset: { positionOverLifetime: path(4) } },
@@ -206,5 +206,47 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.x).to.be.closeTo(1, 1e-5);
     expect(pos.y).to.be.closeTo(2, 1e-5);
     expect(pos.z).to.be.closeTo(0, 1e-5);
+  });
+
+  it('clip 结束后恢复被 mixer 写过的 position', async () => {
+    const scene = buildScene(
+      [{ assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy }],
+      { x: 1, y: 2, z: 0 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+
+    comp.gotoAndStop(0.5);
+    expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+
+    comp.gotoAndStop(1.5);
+    const pos = sprite.transform.position;
+
+    expect(pos.x).to.be.closeTo(1, 1e-5);
+    expect(pos.y).to.be.closeTo(2, 1e-5);
+    expect(pos.z).to.be.closeTo(0, 1e-5);
+  });
+
+  it('position clip 结束但 rotation clip 仍生效时恢复 position', async () => {
+    const scene = buildScene(
+      [
+        { assetId: 'asset_p', asset: { positionOverLifetime: path(4) }, duration: 1, endBehavior: spec.EndBehavior.destroy },
+        { assetId: 'asset_r', asset: { positionOverLifetime: {}, rotationOverLifetime: { asRotation: true, z: 45 } }, duration: 5 },
+      ],
+      { x: 1, y: 2, z: 0 },
+    );
+    const comp = await player.loadScene(scene as any);
+    const sprite = comp.getItemByName('sprite_1')!;
+
+    comp.gotoAndStop(0.5);
+    expect(sprite.transform.position.x).to.not.closeTo(1, 1e-5);
+
+    comp.gotoAndStop(1.5);
+    const pos = sprite.transform.position;
+
+    expect(pos.x).to.be.closeTo(1, 1e-5);
+    expect(pos.y).to.be.closeTo(2, 1e-5);
+    expect(pos.z).to.be.closeTo(0, 1e-5);
+    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
   });
 });

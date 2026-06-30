@@ -21,6 +21,9 @@ export class TransformClipMixer {
   private hasPosition = false;
   private hasRotation = false;
   private hasScale = false;
+  private appliedPosition = false;
+  private appliedRotation = false;
+  private appliedScale = false;
 
   private readonly outPos = new Vector3();
   private readonly outRot = new Euler();
@@ -87,23 +90,40 @@ export class TransformClipMixer {
   }
 
   flush (item: VFXItem): void {
-    if (!this.hasContribution) {
+    const base = this.basePose;
+
+    if (!base || (!this.hasContribution && !this.appliedPosition && !this.appliedRotation && !this.appliedScale)) {
       return;
     }
     if (this.hasPosition) {
       item.transform.setPosition(this.outPos.x, this.outPos.y, this.outPos.z);
+      this.appliedPosition = true;
+    } else if (this.appliedPosition) {
+      item.transform.setPosition(base.position.x, base.position.y, base.position.z);
+      this.appliedPosition = false;
     }
     if (this.hasRotation) {
       item.transform.setRotation(this.outRot.x, this.outRot.y, this.outRot.z);
+      this.appliedRotation = true;
+    } else if (this.appliedRotation) {
+      item.transform.setRotation(base.rotation.x, base.rotation.y, base.rotation.z);
+      this.appliedRotation = false;
     }
     if (this.hasScale) {
       item.transform.setScale(this.outScale.x, this.outScale.y, this.outScale.z);
+      this.appliedScale = true;
+    } else if (this.appliedScale) {
+      item.transform.setScale(base.scale.x, base.scale.y, base.scale.z);
+      this.appliedScale = false;
     }
   }
 
   dispose (): void {
     this.basePose = undefined;
     this.boundInstanceId = undefined;
+    this.appliedPosition = false;
+    this.appliedRotation = false;
+    this.appliedScale = false;
     this.resetFrame();
   }
 
@@ -117,6 +137,9 @@ export class TransformClipMixer {
         scale: new Vector3(scale.x, scale.y, scale.x),
       };
       this.boundInstanceId = item.getInstanceId();
+      this.appliedPosition = false;
+      this.appliedRotation = false;
+      this.appliedScale = false;
     }
   }
 }

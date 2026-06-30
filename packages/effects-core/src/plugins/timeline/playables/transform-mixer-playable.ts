@@ -22,7 +22,8 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
     if (!(item instanceof VFXItem)) {
       return;
     }
-    let hasActiveClip = false;
+    this.clipMixer.captureBasePose(item);
+    this.clipMixer.resetFrame();
 
     for (let i = 0; i < this.clipPlayables.length; i++) {
       const weight = this.clipWeights[i];
@@ -37,12 +38,6 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
         continue;
       }
 
-      if (!hasActiveClip) {
-        this.clipMixer.captureBasePose(item);
-        this.clipMixer.resetFrame();
-        hasActiveClip = true;
-      }
-
       this.clipMixer.addContribution(
         item,
         playable.getContribution(this.clipMixer.getBasePosition()),
@@ -50,8 +45,6 @@ export class TransformMixerPlayable extends TrackMixerPlayable {
       );
     }
 
-    if (hasActiveClip) {
-      this.clipMixer.flush(item);
-    }
+    this.clipMixer.flush(item);
   }
 }

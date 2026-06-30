@@ -212,5 +212,9 @@ void (async () => {
     },
   });
 
-  await player.loadScene(scene);
+  try {
+    await player.loadScene(scene);
+  } catch (err) {
+    console.error('loadScene', err);
+  }
 })();

@@ -150,10 +150,7 @@ export class TransformPlayable extends Playable {
   }
 
   override processFrame (context: FrameContext): void {
-    if (!this.started) {
-      this.start();
-      this.started = true;
-    }
+    this.ensureStarted();
 
     const boundObject = context.output.getUserData();
 
@@ -168,9 +165,17 @@ export class TransformPlayable extends Playable {
    * @param basePosition - orbital position 计算 contribution 时使用的参考位置。
    */
   getContribution (basePosition?: Vector3): TransformContribution {
+    this.ensureStarted();
     this.sampleAnimation(basePosition);
 
     return this.contribution;
+  }
+
+  private ensureStarted (): void {
+    if (!this.started) {
+      this.start();
+      this.started = true;
+    }
   }
 
   private sampleAnimation (basePosition?: Vector3) {
