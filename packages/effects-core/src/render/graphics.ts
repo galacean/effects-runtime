@@ -10,7 +10,7 @@ import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
 import type { Texture } from '../texture';
 import type { FontStyle, FontWeight } from './text-cache';
-import { ATLAS_SIZE, TextCache } from './text-cache';
+import { ATLAS_SIZE, FONT_SCALE, TextCache } from './text-cache';
 import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
 import type { ShapePrimitive } from '../math/shape/shape-primitive';
 
@@ -469,8 +469,8 @@ export class Graphics {
    * `color` 作为乘色与白色字形 alpha 相乘，任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开，避免调用方每帧创建临时 style 对象触发 GC
-   * @param x - 文本左下角 X 坐标
-   * @param y - 文本左下角 Y 坐标（对齐 baseline 上方 ascent 处）
+   * @param x - 文本左下角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
+   * @param y - 文本左下角 Y 坐标（cell 底，含底部 padding；字形 ink 在其上方 padding+ascent 处）
    * @param text - 要绘制的文本内容，空串直接 return
    * @param fontSize - 字号（逻辑像素）
    * @param color - 乘色，默认白色，范围 0-1
@@ -511,8 +511,14 @@ export class Graphics {
       const v0 = 1 - (info.py + info.ph) / ATLAS_SIZE;
       const v1 = 1 - info.py / ATLAS_SIZE;
 
-      this.pushQuad(cursorX, y, info.width, lineHeight, color, { u0, v0, u1, v1 });
-      cursorX += info.width;
+      // quad 宽与采样区都含四周 padding（cell 留白透明）；但光标只按 advance 前进，
+      // quad 起点左偏 paddingLeft 使字形 ink 落在 cursorX — padding 区重叠无妨
+      this.pushQuad(
+        cursorX - info.paddingLeft, y,
+        info.pw / FONT_SCALE, lineHeight,
+        color, { u0, v0, u1, v1 },
+      );
+      cursorX += info.advance;
     }
   }
 
