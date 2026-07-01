@@ -26,23 +26,42 @@ export const FONT_SCALE = 2;
 export const ATLAS_SIZE = 512;
 
 /**
+ * 字体度量探针字符串。带重音符的 É/Å 把墨水顶推到接近字体真实 ascent，
+ * 单字 'M' 只有 cap height(~0.7em) 太矮，会让 CJK / 带重音字顶部越过 cell 上界被裁
+ */
+const METRICS_STRING = '|ÉqÅ';
+
+/** 字体度量基线符号 */
+const BASELINE_SYMBOL = 'M';
+
+/**
+ * 字形 cell 四周留白（逻辑像素）。ink 略超字体度量、或 italic 斜体越界时由它吸收，
+ * 保证 cell 采样矩形内不裁切字形
+ */
+const GLYPH_PADDING = 4;
+
+/**
  * 单个字形在 atlas 中的位置 / 度量。
  *
- * `px/py/pw/ph` 是 atlas canvas 像素（scale 后）。
- * `width` 是逻辑像素宽度（= pw / FONT_SCALE），用于 quad 宽 + cursor advance
+ * `px/py/pw/ph` 是 atlas canvas 像素（scale 后，含四周 padding）。
+ * `advance` 是逻辑像素光标前进量（1x，不含 padding）— quad 宽度含 padding，
+ * 但相邻字只按 advance 前进，padding 区透明因此重叠无妨。
+ * `paddingLeft` 是逻辑像素左侧留白（1x），quad 起点左偏此量使字形 ink 落在 cursorX
  */
 export type GlyphInfo = {
   px: number,
   py: number,
   pw: number,
   ph: number,
-  width: number,
+  advance: number,
+  paddingLeft: number,
 };
 
 /**
  * 一种字体（family + weight + style + size 唯一确定）对应一张 atlas。
  *
- * Skyline 风格 packer：行内堆字，行尾换行，行高 = (ascent+descent) * FONT_SCALE。
+ * Skyline 风格 packer：行内堆字，行尾换行，cell 高 = ceil((fontHeight + padding*2) * 1)，
+ * 所有字共用同一 cell 高与 baseline，实现同行 baseline 对齐。
  * atlas 满后 `ensureChar` 返回 null，调用方应跳过该字（不再扩页，v1 范围）。
  *
  * canvas 内容变更后需要 `uploadIfDirty` 重新上传到纹理 — 由调用方在使用纹理前主动触发，
@@ -54,19 +73,19 @@ export class GlyphAtlas {
   /** 与 canvas 绑定的纹理，内容变更后通过 updateSource 重传 */
   readonly texture: Texture;
 
-  /** 行高（逻辑像素，= ascent + descent），所有字共享 */
+  /** cell 高（逻辑像素，含 padding），用于 quad 高度 */
   readonly lineHeight: number;
-  /** 行 ascent（逻辑像素，baseline 距行顶距离） */
-  readonly ascent: number;
-  /** 行 descent（逻辑像素，baseline 距行底距离） */
-  readonly descent: number;
 
   private readonly ctx: CanvasRenderingContext2D;
   private readonly glyphs = new Map<string, GlyphInfo>();
-  /** 行高（像素，scale 后） */
-  private readonly lineHeightPx: number;
-  /** baseline 距行顶距离（像素，scale 后） */
-  private readonly ascentPx: number;
+  /** baseline 距 cell 顶距离（像素，scale 后，含顶部 padding） */
+  private readonly baselinePx: number;
+  /** cell 高（像素，scale 后，含 padding） */
+  private readonly cellHPx: number;
+  /** 四周留白（像素，scale 后） */
+  private readonly paddingPx: number;
+  /** italic 字形 cell 宽额外放大倍数（防斜体越界重叠） */
+  private readonly italicScale: number;
 
   /** packer 状态：下一字开始的左上角像素位置 */
   private currentX = 0;
@@ -79,8 +98,11 @@ export class GlyphAtlas {
   constructor (
     private engine: Engine,
     private readonly scaledFontString: string,
-    ascent: number,
-    descent: number,
+    /** baseline 距 cell 顶距离（像素，scale 后，仅 ascent 部分，不含 padding） */
+    ascentPx: number,
+    /** baseline 距 cell 底距离（像素，scale 后，仅 descent 部分） */
+    descentPx: number,
+    fontStyle: FontStyle,
   ) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = ATLAS_SIZE;
@@ -95,11 +117,16 @@ export class GlyphAtlas {
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#ffffff';
 
-    this.ascent = ascent;
-    this.descent = descent;
-    this.lineHeight = ascent + descent;
-    this.ascentPx = Math.ceil(ascent * FONT_SCALE);
-    this.lineHeightPx = Math.ceil((ascent + descent) * FONT_SCALE);
+    this.paddingPx = GLYPH_PADDING * FONT_SCALE;
+    this.italicScale = fontStyle === 'italic' ? 2 : 1;
+
+    // ascent/descent 由探针 '|ÉqÅM' 测得 actualBoundingBox（重音字已抬高 ink 顶），
+    // 两者内部保持浮点，仅 cell 高做一次外层 ceil — 与 padding 共同保证 cell 内不裁切
+    const fontHeightPx = ascentPx + descentPx;
+
+    this.baselinePx = this.paddingPx + ascentPx;
+    this.cellHPx = Math.ceil(fontHeightPx + this.paddingPx * 2);
+    this.lineHeight = this.cellHPx / FONT_SCALE;
 
     this.texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
@@ -133,11 +160,13 @@ export class GlyphAtlas {
     ctx.font = this.scaledFontString;
     // measureText 用的是 scaledFontString，advance 已经是 scale 后的像素，不能再乘 FONT_SCALE
     const advancePx = ctx.measureText(char).width;
-    const cellW = Math.max(1, Math.ceil(advancePx));
-    const cellH = this.lineHeightPx;
+    // italic 放大 cell 宽防斜体越界；ceil 对齐像素网格避免相邻字采样重叠
+    const widthPx = Math.max(1, Math.ceil(advancePx * this.italicScale));
+    const paddedWidthPx = widthPx + this.paddingPx * 2;
+    const cellH = this.cellHPx;
 
     // 行尾换行
-    if (this.currentX + cellW > ATLAS_SIZE) {
+    if (this.currentX + paddedWidthPx > ATLAS_SIZE) {
       this.currentX = 0;
       this.currentY += cellH;
     }
@@ -152,14 +181,18 @@ export class GlyphAtlas {
     const px = this.currentX;
     const py = this.currentY;
 
-    ctx.fillText(char, px, py + this.ascentPx);
+    // baseline 落在 cell 顶部下方 paddingPx + ascentPx 处，四周 padding 吸收越界 ink
+    ctx.fillText(char, px + this.paddingPx, py + this.baselinePx);
 
-    this.currentX += cellW;
+    this.currentX += paddedWidthPx;
     this.dirty = true;
 
     const info: GlyphInfo = {
-      px, py, pw: cellW, ph: cellH,
-      width: cellW / FONT_SCALE,
+      px, py,
+      pw: paddedWidthPx,
+      ph: cellH,
+      advance: advancePx / FONT_SCALE,
+      paddingLeft: this.paddingPx / FONT_SCALE,
     };
 
     this.glyphs.set(char, info);
@@ -225,26 +258,29 @@ export class TextCache {
       return cached;
     }
 
-    const fontString = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
     const scaledFontString = `${fontStyle} ${fontWeight} ${fontSize * FONT_SCALE}px ${fontFamily}`;
 
-    // 用 'M' 探一次得到字体级 ascent/descent（整张 atlas 共享行高，各字 baseline 对齐）
+    // 探一次得到字体级 ascent/descent（整张 atlas 共享 cell 高与 baseline，各字对齐）。
+    // 直接在 scaledFontString 下测，得到的就是 scale 后像素，无需再乘 FONT_SCALE。
+    // 探针用 '|ÉqÅ' + 'M'：带重音符的 ÉÅ 把 ink 顶推到接近字体真实 ascent，
+    // 单字 'M' 只有 cap height(~0.7em) 太矮，CJK / 带重音字顶部会越过 cell 上界被裁。
+    // 取 actualBoundingBoxAscent/Descent 度量 ink 边界，跨平台语义稳定
     const probeCanvasAndContext = canvasPool.getCanvasAndContext(1, 1);
     const probeCtx = probeCanvasAndContext.context;
-    let ascent = fontSize * 0.8;
-    let descent = fontSize * 0.2;
+    let ascentPx = fontSize * 0.8 * FONT_SCALE;
+    let descentPx = fontSize * 0.2 * FONT_SCALE;
 
     try {
-      probeCtx.font = fontString;
-      const m = probeCtx.measureText('M');
+      probeCtx.font = scaledFontString;
+      const m = probeCtx.measureText(METRICS_STRING + BASELINE_SYMBOL);
 
-      ascent = m.actualBoundingBoxAscent || ascent;
-      descent = m.actualBoundingBoxDescent || descent;
+      ascentPx = m.actualBoundingBoxAscent || ascentPx;
+      descentPx = m.actualBoundingBoxDescent || descentPx;
     } finally {
       canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
     }
 
-    const atlas = new GlyphAtlas(this.engine, scaledFontString, ascent, descent);
+    const atlas = new GlyphAtlas(this.engine, scaledFontString, ascentPx, descentPx, fontStyle);
 
     this.atlases.set(fontKey, atlas);
 
