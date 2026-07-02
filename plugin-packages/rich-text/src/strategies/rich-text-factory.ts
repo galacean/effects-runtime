@@ -23,12 +23,11 @@ export class RichTextStrategyFactory {
   /**
    * 创建换行策略
    *
-   * 路径文本模式（isPathText 或 curveGraphicsPath 启用）走 RichWrapOnPathStrategy，
-   * 沿路径排版；否则按 wrapEnabled 在普通换行/禁用间二选一。
+   * 路径文本模式走 RichWrapOnPathStrategy，沿路径排版；
+   * 否则按 wrapEnabled 在普通换行/禁用间二选一。
    * layout 缺省（构造期 textLayout 未建）时返回禁用换行兜底，fromData/updateWithOptions 后会重选。
    */
   static createWrapStrategy (layout?: RichTextLayout): RichWrapStrategy {
-    // 路径文本模式最高优先：强制走 OnPath（无 curvePath 则用默认闭合圆兜底）
     // isPathText 为唯一开关（setCurvedPath 设曲线时自动置 isPathText=true）
     if (layout && layout.isPathText) {
       return new RichWrapOnPathStrategy();
