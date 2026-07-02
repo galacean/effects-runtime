@@ -8,6 +8,7 @@ import { RichTextLayout } from './rich-text-layout';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
+import type { RichWrapOnPathStrategy } from './strategies/wrap/rich-wrap-on-path';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
   RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
@@ -437,7 +438,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }
 
     // ── 步骤 3: 内容缩放（display 模式缩小以适配帧，其他模式跳过）──
-    if (layout.overflow === spec.TextOverflow.display) {
+    if (layout.overflow === spec.TextOverflow.display && !layout.isPathText) {
       const contentW = Math.max(1, wrapResult.maxLineWidth || 0);
       const contentH = Math.max(1, wrapResult.totalHeight || 0);
 
@@ -625,39 +626,49 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   /**
    * 开启/关闭路径文本模式（对齐 Figma text on path）。
-   * 开启后强制走 RichWrapOnPath 策略，无 curvePath 时用默认闭合圆。
-   * 路径文本是独立形态：删除路径即不再是路径文本。
+   * 路径文本是独立形态：isPathText 为唯一开关。开启后走 RichWrapOnPath 策略，
+   * 无曲线时用默认闭合圆。关闭时同时清掉 curveGraphicsPath（模式与曲线绑定，
+   * 不存在"普通文本+残留曲线"的中间态，避免状态机不闭合）。
    * @param on 是否开启路径文本模式
    */
   setPathMode (on: boolean): void {
-    if (this.textLayout.isPathText === on) { return; }
-    this.textLayout.isPathText = on;
+    const layout = this.textLayout;
+
+    if (on) {
+      if (layout.isPathText) { return; }
+      layout.isPathText = true;
+    } else {
+      // 关闭：即便 isPathText 已 false，也要清可能残留的 curveGraphicsPath
+      if (!layout.isPathText && !layout.curveGraphicsPath) { return; }
+      layout.isPathText = false;
+      layout.curveGraphicsPath = undefined;
+    }
     this.updateStrategies();
     this.isDirty = true;
   }
 
   /**
    * 设置路径文本的曲线（引擎 GraphicsPath，主入口）。
-   * 钢笔画的 CustomShapeData 转 GraphicsPath 后传入。路径文本模式下设 null 回默认圆。
-   * @param path GraphicsPath 实例，null 用默认闭合圆
+   * 钢笔画的 CustomShapeData 转 GraphicsPath 后传入。设非 null 曲线即进入路径文本模式
+   * （isPathText 单开关：有曲线=路径文本）。设 null 只清曲线，不改模式——路径模式下
+   * 无曲线会回退默认闭合圆；要彻底退出路径文本用 setPathMode(false)。
+   * @param path GraphicsPath 实例，null 清自定义曲线（路径模式下回默认圆）
    */
   setCurvedPath (path: GraphicsPath | null): void {
-    this.textLayout.curveGraphicsPath = path ?? undefined;
+    const layout = this.textLayout;
+
+    layout.curveGraphicsPath = path ?? undefined;
+    if (path) { layout.isPathText = true; }   // 有曲线即路径文本（单开关）
     this.updateStrategies();
     this.isDirty = true;
   }
 
   /**
-   * 设置曲线文本路径（引擎 GraphicsPath）。
-   * 钢笔 CustomShapeData 产出的 GraphicsPath 可直接传入；文字沿该路径排版，每字旋转贴切线。
-   * 传 null 禁用曲线文本。
-   * @param path GraphicsPath 实例
+   * 最近一次排版实际用的 GraphicsPath（含默认圆兜底），调试用。
+   * 供 onDebugDraw 等画参考线取用；非路径文本模式下为 undefined。
    */
-  setCurvedGraphicsPath (path: GraphicsPath | null): void {
-    if (this.textLayout.curveGraphicsPath === path) { return; }
-    this.textLayout.curveGraphicsPath = path ?? undefined;
-    this.updateStrategies();
-    this.isDirty = true;
+  get currentPath (): GraphicsPath | undefined {
+    return (this.richWrapStrategy as RichWrapOnPathStrategy).lastResolvedPath;
   }
 
   /**

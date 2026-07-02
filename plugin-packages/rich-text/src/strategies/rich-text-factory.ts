@@ -29,7 +29,8 @@ export class RichTextStrategyFactory {
    */
   static createWrapStrategy (layout?: RichTextLayout): RichWrapStrategy {
     // 路径文本模式最高优先：强制走 OnPath（无 curvePath 则用默认闭合圆兜底）
-    if (layout && (layout.isPathText || layout.curveGraphicsPath)) {
+    // isPathText 为唯一开关（setCurvedPath 设曲线时自动置 isPathText=true）
+    if (layout && layout.isPathText) {
       return new RichWrapOnPathStrategy();
     }
 
