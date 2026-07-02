@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>曲线文本 - 引擎路径系统测试</title>
+  <style>
+    body { margin: 0; padding: 0; background: #1a1a1a; font-family: Arial, sans-serif; }
+    #J-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .loading { color: white; font-size: 24px; }
+    #panel {
+      position: fixed; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.85); color: white; padding: 12px;
+      border-radius: 8px; font-family: monospace; font-size: 13px; z-index: 1000;
+      user-select: none; max-width: 320px;
+    }
+    #panel h3 { margin: 0 0 8px; color: #4fc3f7; }
+    #panel .section { margin-top: 10px; color: #888; }
+    #panel button { margin: 4px 4px 0 0; padding: 4px 10px; cursor: pointer; }
+    #panel button.preset { display: block; width: 100%; text-align: left; margin-top: 4px; }
+    #panel button.preset-multiline { display: block; width: 100%; text-align: left; margin-top: 4px; }
+    #panel button.active { background: #4fc3f7; color: #000; }
+    #status { margin-top: 8px; color: #8f8; word-break: break-all; }
+    #text-input { width: 280px; }
+  </style>
+</head>
+<body>
+  <div id="J-container"><div class="loading">加载中...</div></div>
+  <div id="panel">
+    <h3>引擎路径系统曲线文本</h3>
+    <div class="section">路径文本模式 (Figma 同款,自带默认圆):</div>
+    <button id="path-mode-on">开启路径文本(默认圆)</button>
+    <button id="path-mode-off">关闭路径文本</button>
+    <div class="section">预设曲线 (GraphicsPath, 旧曲线属性模式):</div>
+    <button class="preset" data-preset="line">直线</button>
+    <button class="preset" data-preset="arc">下凹弧</button>
+    <button class="preset" data-preset="convex">上凸弧</button>
+    <button class="preset" data-preset="wave">波浪 (双段)</button>
+    <button class="preset" data-preset="s">S 形</button>
+    <div class="section">手动画路径:</div>
+    <button id="draw-mode">进入画路径模式</button>
+    <button id="clear-draw">清除</button>
+    <div class="section">文本:</div>
+    <input id="text-input" value="曲线文字">
+    <button id="apply-text">应用</button>
+    <button class="preset-multiline" data-multiline="bolditalic">多段(粗+斜)</button>
+    <button class="preset-multiline" data-multiline="color">彩色多段</button>
+    <div class="section">对齐 (验证 B2 漂移):</div>
+    <button class="align" data-align="left">左</button>
+    <button class="align" data-align="middle">中</button>
+    <button class="align" data-align="right">右</button>
+    <div class="section">字间距: <input id="letter-space" type="range" min="-10" max="50" step="1" value="0"> <span id="ls-val">0</span></div>
+    <div id="status">就绪</div>
+  </div>
+  <script type="module" src="../src/curved-path-demo.ts"></script>
+</body>
+</html>
