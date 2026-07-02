@@ -8,7 +8,6 @@ import { RichTextLayout } from './rich-text-layout';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
-import type { RichWrapOnPathStrategy } from './strategies/wrap/rich-wrap-on-path';
 import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
   RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
@@ -52,11 +51,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   isDirty = true;
   text: string = '';
   textStyle: TextStyle;
-  /**
-   * 调试回调：drawTextWithStrategies 画完字后调用，传 context + 偏移量。
-   * demo/editor 可设此回调画曲线参考线验证贴合。生产不设则不画。
-   */
-  onDebugDraw?: (ctx: CanvasRenderingContext2D, offX: number, offY: number) => void;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
   textLayout: RichTextLayout;
@@ -556,11 +550,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
         currentBaselineY += lines[index + 1].lineHeight;
       }
     });
-
-    // 调试回调：画完字后让外部（demo/editor）画曲线参考线验证贴合
-    if (this.onDebugDraw) {
-      this.onDebugDraw(context, renderOffsetX, currentBaselineY);
-    }
   }
 
   private unsupported (name: string): never {
@@ -661,14 +650,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     if (path) { layout.isPathText = true; }   // 有曲线即路径文本（单开关）
     this.updateStrategies();
     this.isDirty = true;
-  }
-
-  /**
-   * 最近一次排版实际用的 GraphicsPath（含默认圆兜底），调试用。
-   * 供 onDebugDraw 等画参考线取用；非路径文本模式下为 undefined。
-   */
-  get currentPath (): GraphicsPath | undefined {
-    return (this.richWrapStrategy as RichWrapOnPathStrategy).lastResolvedPath;
   }
 
   /**

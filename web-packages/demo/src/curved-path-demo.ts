@@ -204,50 +204,6 @@ lsInput.addEventListener('input', () => {
     // 强制 sensible 排版配置，消除 json 配置干扰（verticalAlign=top/fixed 会让 baseline 偏移）
     richText.setTextVerticalAlign(spec.TextVerticalAlign.middle);
     richText.textLayout.autoResize = spec.TextSizeMode.autoHeight;
-    // 调试回调：画曲线参考线（红虚线）验证字贴曲线
-    const rt = richText;
-
-    richText.onDebugDraw = (ctx, offX, offY) => {
-      const gp = rt.currentPath;
-
-      if (!gp || !gp.instructions) { return; }
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255,0,0,0.8)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      let started = false;
-
-      for (const ins of gp.instructions as Array<{ action: string, data: number[] }>) {
-        switch (ins.action) {
-          case 'moveTo':
-            ctx.moveTo(offX + ins.data[0], offY + ins.data[1]);
-            started = true;
-
-            break;
-          case 'lineTo':
-            if (started) { ctx.lineTo(offX + ins.data[0], offY + ins.data[1]); }
-
-            break;
-          case 'bezierCurveTo':
-            if (started) {
-              ctx.bezierCurveTo(
-                offX + ins.data[0], offY + ins.data[1],
-                offX + ins.data[2], offY + ins.data[3],
-                offX + ins.data[4], offY + ins.data[5],
-              );
-            }
-
-            break;
-          case 'closePath':
-            ctx.closePath();
-
-            break;
-        }
-      }
-      ctx.stroke();
-      ctx.restore();
-    };
     set('就绪：开启路径文本看默认圆,或预设路径/手动画,拖字间距');
   } catch (e) {
     // eslint-disable-next-line no-console

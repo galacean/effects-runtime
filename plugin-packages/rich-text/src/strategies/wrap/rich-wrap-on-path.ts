@@ -1,6 +1,8 @@
 import { type TextStyle, spec } from '@galacean/effects';
-import type { CurveGlyphInfo, ContourMeasure } from '@galacean/effects';
-import { computeGlyphsBounds, ContourMeasureIter, GraphicsPath } from '@galacean/effects';
+import type { ContourMeasure } from '@galacean/effects';
+import { ContourMeasureIter, GraphicsPath } from '@galacean/effects';
+import { computeGlyphsBounds } from './glyph-bounds';
+import type { CurveGlyphInfo } from './glyph-bounds';
 import type { RichTextLayout } from '../../rich-text-layout';
 import type { RichTextOptions } from '../../rich-text-component';
 import type { RichCharDetail, RichLine, RichWrapStrategy, WrapResult } from '../rich-text-interfaces';
@@ -26,12 +28,6 @@ interface SegMeasurement {
  * 若 isPathText 且无 curveGraphicsPath → 默认闭合圆；否则直线兜底。
  */
 export class RichWrapOnPathStrategy implements RichWrapStrategy {
-  /**
-   * 最近一次 computeLines 实际用的 GraphicsPath（含默认圆兜底）。
-   * 仅供调试取用（onDebugDraw 画参考线），不参与排版逻辑。
-   */
-  lastResolvedPath?: GraphicsPath;
-
   computeLines (
     processedOptions: RichTextOptions[],
     context: CanvasRenderingContext2D,
@@ -238,15 +234,12 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
   /**
    * 解析路径来源 + 取 contours。
    * 路径来源：curveGraphicsPath（引擎 GraphicsPath）；无路径 → 默认闭合圆（不回写 layout，避免污染状态机）。
-   * 实际用的路径记到 lastResolvedPath，供调试（onDebugDraw 画参考线）取用。
    */
   private resolvePath (
     layout: RichTextLayout,
     totalTextWidth: number,
   ): ContourMeasure[] {
     const graphicsPath = layout.curveGraphicsPath ?? this.generateDefaultCirclePath(80);
-
-    this.lastResolvedPath = graphicsPath;
 
     return new ContourMeasureIter(graphicsPath, 1).toArray();
   }

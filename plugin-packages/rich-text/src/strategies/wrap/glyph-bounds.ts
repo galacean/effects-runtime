@@ -32,7 +32,7 @@ function rotatePoint (px: number, py: number, cos: number, sin: number): [number
  * 每字局部盒 [0,advance]×[-descent,ascent] 经 rotate(θ)+translate(x,y) 后取 4 角点世界坐标，
  * 全局累加 min/max。
  * @param glyphs - 字形信息（位置/旋转/度量）
- * @param extraPad - 字形盒四向外扩量（如描边宽度），默认 0
+ * @param extraPad - 字形盒四向外扩量（如描边宽度）
  * @returns 世界坐标外接盒 { minX, maxX, minY, maxY }
  */
 export function computeGlyphsBounds (glyphs: CurveGlyphInfo[], extraPad = 0): {
@@ -56,7 +56,7 @@ export function computeGlyphsBounds (glyphs: CurveGlyphInfo[], extraPad = 0): {
     const sin = Math.sin(g.rotation);
 
     for (const [lx, ly] of corners) {
-      // 局部 → 平移 → 旋转
+      // 局部 → 平移 → 旋转（空间变换）
       const [wx, wy] = rotatePoint(lx, ly, cos, sin);
       const X = g.x + wx;
       const Y = g.y + wy;
