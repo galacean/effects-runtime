@@ -21,6 +21,14 @@ export class RichVerticalAlignStrategyImpl implements RichVerticalAlignStrategy 
       return { baselineY: 0, lineYOffsets: [] };
     }
 
+    // 路径文本:字画在 pt.pos.y(路径绝对 Y),baselineY 是 canvas 内 Y 基准。
+    // baselineY=0 让字 Y 完全由 pt.pos.y 决定,配合 expanding renderOffsetY
+    // (=(canvasH-frameH)/2)精确抵消 canvas Y 扩展,字屏幕 Y 只跟 pt.pos.y+frameH
+    // 有关,不随字间距抖动(与 horizontal-align 路径模式 lineOffsets=0 对称)。
+    if (layout.isPathText) {
+      return { baselineY: 0, lineYOffsets: lines.map(() => 0) };
+    }
+
     // 1. 重建各行基线（相对于第一行基线=0）
     const baselines: number[] = [0];
 
