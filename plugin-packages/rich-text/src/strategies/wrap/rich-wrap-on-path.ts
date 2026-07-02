@@ -26,6 +26,11 @@ interface SegMeasurement {
  * 若 isPathText 且无 curveGraphicsPath → 默认闭合圆；否则直线兜底。
  */
 export class RichWrapOnPathStrategy implements RichWrapStrategy {
+  /**
+   * 最近一次 computeLines 实际用的 GraphicsPath（含默认圆兜底）。
+   * 仅供调试取用（onDebugDraw 画参考线），不参与排版逻辑。
+   */
+  lastResolvedPath?: GraphicsPath;
 
   computeLines (
     processedOptions: RichTextOptions[],
@@ -42,7 +47,6 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
 
     // ── 2. 解析路径 + 取 contours ──
     const contours = this.resolvePath(layout, totalTextWidth);
-    const compensation = 0;   // GraphicsPath 来源不补偿
 
     if (contours.length === 0) {
       return { lines: [], maxLineWidth: 0, totalHeight: 0, bboxTop: 0, bboxBottom: 0, bboxHeight: 0 };
@@ -86,24 +90,41 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
       segMeasurements.forEach(({ options, charWidths, fontAsc, fontDesc }) => {
         currentLine.lineAscent = Math.max(currentLine.lineAscent || 0, fontAsc);
         currentLine.lineDescent = Math.max(currentLine.lineDescent || 0, fontDesc);
-        const segStartX = currentLine.width;
         const charArr: RichCharDetail[] = [];
 
-        // 逐字符处理
+        // 逐字符处理。
+        // 坐标语义：currentArc 是当前字起点（字 left bearing）在弧长轴上的位置，
+        // 字占据 [currentArc, currentArc + charWidth]。letterSpace 是字与字之间的间距，
+        // 推进顺序：先加间距（非首字）→ 判断越界 → 渲染 → 推进 charWidth。
+        // 越界字跳过但间距仍推进，否则排满丢边缘字后剩余字整体偏移。
         for (let i = 0; i < charWidths.length; i++) {
           const ch = options.text[i];
           const charWidth = charWidths[i];
 
-          // 非首字符：取点前先加与前字的 letterSpace
+          // 非首字：先加与前字的 letterSpace（首字不加，丢弃的越界字也算"前字"）
           if (!isFirstChar) { currentArc += letterSpace; }
+          const charEndArc = currentArc + charWidth;
 
-          if (currentArc > pathLength) { break; }
+          // getPosTan 内部 clamp 到 [0, L]：负弧长挤到起点产生重叠字、超长挤到终点产生重叠字。
+          // 靠区间相交显式挡掉越界字，不依赖 getPosTan。
+          // 字区间 [currentArc, charEndArc] 与 [0, pathLength]：
+          if (charEndArc <= 0) {
+            // 完全在路径左外（middle/right 排满时左端丢弃）→ 跳过，间距已推，继续
+            currentArc = charEndArc;
+            isFirstChar = false;
+
+            continue;
+          }
+          if (currentArc >= pathLength) {
+            // 完全在路径右外 → 本 contour 排不下更多字
+            break;
+          }
+          // 部分相交（字区间跨 [0,L] 端点）：取点在 clamp 后的端点，字形会伸出端点外，
+          // 不补出半个字（对齐 Figma「排不下即不整字渲染」也偏保守），保留渲染。
 
           const pt = contour.getPosTan(currentArc);
-
-          if (!pt) { break; }
-          const midPt = contour.getPosTan(currentArc + charWidth / 2) || pt;
-          const y = pt.pos.y + compensation;
+          const midPt = contour.getPosTan(currentArc + charWidth / 2);
+          const y = pt.pos.y;
           const rotation = Math.atan2(midPt.tan.y, midPt.tan.x);
           const charX = pt.pos.x;
 
@@ -119,7 +140,10 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
         }
 
         currentLine.chars.push(charArr);
-        currentLine.offsetX.push(segStartX);
+        // charDetail.x 已是路径绝对坐标(pt.pos.x),段起点偏移必须为 0,
+        // 否则 draw 会把"上一段末尾路径绝对 x"叠加到本字上导致多段双计(B1)。
+        // line.width 保留路径绝对,仅用于 maxLineWidth 统计(autoWidth frameW)。
+        currentLine.offsetX.push(0);
         currentLine.width = Math.max(currentLine.width, lastCharEndX);
         currentLine.richOptions.push(options);
       });
@@ -172,6 +196,7 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
     scaleFactor: number,
   ): { segMeasurements: SegMeasurement[], totalTextWidth: number } {
     let totalTextWidth = 0;
+    let nonEmptySegments = 0;
     const segMeasurements: SegMeasurement[] = [];
 
     processedOptions.forEach(options => {
@@ -198,57 +223,63 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
       // 字符间距：首字不加，每段内 (字数-1) 个间距
       segWidth += Math.max(0, charWidths.length - 1) * letterSpace;
       totalTextWidth += segWidth;
+      if (charWidths.length > 0) { nonEmptySegments++; }
 
       segMeasurements.push({ options, charWidths, fontAsc, fontDesc });
     });
+
+    // 段间 letterSpace：逐字循环跨段首字同样加 ls（isFirstChar 跨段不重置），
+    // 故 total 也须含 (非空段数-1) 个段间 ls，否则多段 right/middle 定位偏（单段不受影响）。
+    totalTextWidth += Math.max(0, nonEmptySegments - 1) * letterSpace;
 
     return { segMeasurements, totalTextWidth };
   }
 
   /**
    * 解析路径来源 + 取 contours。
-   * 路径来源：curveGraphicsPath（引擎 GraphicsPath）；若 isPathText 且无路径 → 默认闭合圆；否则直线兜底。
+   * 路径来源：curveGraphicsPath（引擎 GraphicsPath）；无路径 → 默认闭合圆（不回写 layout，避免污染状态机）。
+   * 实际用的路径记到 lastResolvedPath，供调试（onDebugDraw 画参考线）取用。
    */
   private resolvePath (
     layout: RichTextLayout,
     totalTextWidth: number,
   ): ContourMeasure[] {
-    let graphicsPath = layout.curveGraphicsPath;
+    const graphicsPath = layout.curveGraphicsPath ?? this.generateDefaultCirclePath(80);
 
-    if (!graphicsPath) {
-      graphicsPath = this.generateDefaultCirclePath(80);   // 默认圆半径 80px
-      // 回写到 layout，供 setter 记忆 + 后续帧复用
-      layout.curveGraphicsPath = graphicsPath;
-    }
+    this.lastResolvedPath = graphicsPath;
 
     return new ContourMeasureIter(graphicsPath, 1).toArray();
   }
 
   /**
-   * 起始弧长 offset（按 textAlign）。
+   * 起始弧长 offset（按 textAlign）。允许负值——排满后 middle 以路径中点对称、
+   * right 以路径末端右钉，左右两端各自丢弃越界字（B8 排不下不渲染，对齐 Figma）。
+   * 不再钳 0，否则 middle/right 排满会退化为 left（左钉起点）。越界字靠逐字区间相交判断挡。
    */
   private getStartOffset (layout: RichTextLayout, pathLength: number, totalTextWidth: number): number {
     if (layout.textAlign === spec.TextAlignment.middle) {
-      return Math.max(0, (pathLength - totalTextWidth) / 2);
+      return (pathLength - totalTextWidth) / 2;
     } else if (layout.textAlign === spec.TextAlignment.right) {
-      return Math.max(0, pathLength - totalTextWidth);
+      return pathLength - totalTextWidth;
     }
 
     return 0;
   }
 
   /**
-   * 防裁切：用旋转字形真实包围盒扩展 lineAscent/Descent + contentMinX/MaxX。
-   * 通用算法——逐字旋转后4角点取 min/max，对任意路径（圆/钢笔曲线/S形等）都成立。
+   * 防裁切：旋转字形真实包围盒并集（X + Y 都实时）。
+   * 抖动靠 expanding 层 offset=(canvas-frame)/2 精确抵消 canvas 扩展（坐标系守恒），
+   * 配合 vertical-align 路径模式 baselineY=0，字屏幕位置只跟 pt.pos 和 frame 尺寸有关，不抖。
+   * 此处仅如实报告字的真实外接范围，画布刚好包字（省留白）。
    */
   private applyAntiClipBounds (lines: RichLine[], allGlyphs: CurveGlyphInfo[]): void {
     const bounds = computeGlyphsBounds(allGlyphs);
 
     for (const line of lines) {
-      if (isFinite(bounds.minY)) { line.lineAscent = Math.max(line.lineAscent || 0, -bounds.minY); }
-      if (isFinite(bounds.maxY)) { line.lineDescent = Math.max(line.lineDescent || 0, bounds.maxY); }
       if (isFinite(bounds.minX)) { line.contentMinX = bounds.minX; }
       if (isFinite(bounds.maxX)) { line.contentMaxX = bounds.maxX; }
+      if (isFinite(bounds.minY)) { line.lineAscent = Math.max(line.lineAscent || 0, -bounds.minY); }
+      if (isFinite(bounds.maxY)) { line.lineDescent = Math.max(line.lineDescent || 0, bounds.maxY); }
     }
   }
 
@@ -267,18 +298,6 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
     path.bezierCurveTo(-r, -k, -k, -r, 0, -r);    // → 270°
     path.bezierCurveTo(k, -r, r, -k, r, 0);       // → 360°
     path.closePath();
-
-    return path;
-  }
-
-  /**
-   * 直线兜底路径（非 path mode 且无自定义路径时用）。
-   */
-  private generateLinePath (width: number): GraphicsPath {
-    const path = new GraphicsPath();
-
-    path.moveTo(0, 0);
-    path.lineTo(Math.max(1, width), 0);
 
     return path;
   }
