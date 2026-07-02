@@ -9,11 +9,12 @@ import type {
  */
 export class RichClippedOverflowStrategy implements RichOverflowStrategy {
   resolveCanvas (
-    lines: RichLine[],
+    _lines: RichLine[],
     frameWidth: number,
     frameHeight: number,
-    horizontalResult: HorizontalAlignResult,
-    verticalResult: VerticalAlignResult,
+    _horizontalResult: HorizontalAlignResult,
+    _verticalResult: VerticalAlignResult,
+    _isPathText: boolean,
   ): OverflowResult {
     return {
       canvasWidth: Math.max(1, Math.ceil(frameWidth)),

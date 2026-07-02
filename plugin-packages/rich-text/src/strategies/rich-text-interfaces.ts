@@ -102,6 +102,7 @@ export interface RichOverflowStrategy {
     frameHeight: number,
     horizontalResult: HorizontalAlignResult,
     verticalResult: VerticalAlignResult,
+    isPathText: boolean,
   ): OverflowResult,
 }
 

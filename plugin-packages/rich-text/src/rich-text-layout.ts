@@ -30,7 +30,7 @@ export class RichTextLayout implements BaseLayout {
    * true 时强制走 RichWrapOnPath 策略，无 curveGraphicsPath 则用默认闭合圆。
    * 路径文本是独立形态：删掉路径=不再是路径文本（不像曲线属性可关回直线）。
    */
-  isPathText?: boolean;
+  isPathText: boolean;
 
   /**
    * 文本框最大宽度限制

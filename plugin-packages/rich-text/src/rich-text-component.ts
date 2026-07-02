@@ -460,6 +460,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       frameH,
       horizontalAlignResult,
       verticalAlignResult,
+      layout.isPathText,
     );
 
     // 排版结果（逻辑单位）→ 物理像素画布
@@ -529,13 +530,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
         const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
         const charArr = chars[segIndex];
+        const isPathText = this.textLayout.isPathText;
 
         charArr.forEach(charDetail => {
-          if (charDetail.rotation !== undefined) {
-            // 曲线文本：逐字 translate+rotate，字底边贴路径切线
+          if (isPathText) {
+            // 路径文本：逐字 translate+rotate，字底边贴路径切线
             context.save();
             context.translate(xOffset + segStartX + charDetail.x, yOffset + (charDetail.curvedOffsetY ?? 0));
-            context.rotate(charDetail.rotation);
+            context.rotate(charDetail.rotation ?? 0);
             context.fillText(charDetail.char, 0, 0);
             context.restore();
           } else {
@@ -615,9 +617,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   /**
    * 开启/关闭路径文本模式（对齐 Figma text on path）。
-   * 路径文本是独立形态：isPathText 为唯一开关。开启后走 RichWrapOnPath 策略，
-   * 无曲线时用默认闭合圆。关闭时同时清掉 curveGraphicsPath（模式与曲线绑定，
-   * 不存在"普通文本+残留曲线"的中间态，避免状态机不闭合）。
+   * 路径文本是独立形态：isPathText 为开关。开启后走 RichWrapOnPath 策略，
+   * 无曲线时用默认闭合圆。
    * @param on 是否开启路径文本模式
    */
   setPathMode (on: boolean): void {

@@ -7,9 +7,6 @@ import type {
  *
  * 根据对齐后的内容位置检测溢出，对称扩展画布以容纳所有内容。
  *
- * 对称扩展的原因：元素定位以中心点为锚点，单侧扩展会导致视觉偏移。
- * 使用 max(溢出左, 溢出右) 作为双侧扩展量保持中心点稳定。
- *
  * 路径文本额外用 renderOffset=(canvas-frame)/2 精确抵消 canvas 扩展
  * （字屏幕位置 = 中心+(offset+pt.pos-canvas/2)·SCALE，代入后 canvas 消去），
  * 让字位置只跟路径与 frame 尺寸有关，不随字间距抖动。
@@ -21,6 +18,7 @@ export class RichExpandingOverflowStrategy implements RichOverflowStrategy {
     frameHeight: number,
     horizontalResult: HorizontalAlignResult,
     verticalResult: VerticalAlignResult,
+    isPathText: boolean,
   ): OverflowResult {
     if (lines.length === 0) {
       return {
@@ -69,11 +67,11 @@ export class RichExpandingOverflowStrategy implements RichOverflowStrategy {
       const xOff = horizontalResult.lineOffsets[i] ?? 0;
       const line = lines[i];
 
-      // 曲线文本：旋转后字角左右探出，line.width(advance 域)框不住。
-      // contentMinX/MaxX 是 glyph-bounds 算的路径绝对坐标（含 pt.pos.x），不再加 xOff（避免双重偏移导致抖动）。
-      if (line.contentMinX !== undefined && line.contentMaxX !== undefined) {
-        contentLeft = Math.min(contentLeft, line.contentMinX);
-        contentRight = Math.max(contentRight, line.contentMaxX);
+      // 路径文本：旋转字角左右探出，line.width(advance 域)框不住，
+      // 用 glyph-bounds 算的 contentMinX/MaxX（路径绝对坐标，含 pt.pos.x）。
+      if (isPathText) {
+        contentLeft = Math.min(contentLeft, line.contentMinX ?? 0);
+        contentRight = Math.max(contentRight, line.contentMaxX ?? 0);
       } else {
         const w = line.width ?? 0;
 
@@ -97,11 +95,10 @@ export class RichExpandingOverflowStrategy implements RichOverflowStrategy {
 
     // renderOffset：路径文本用 (canvas - frame)/2 精确抵消 canvas 扩展。
     // 字屏幕位置 = 中心 + (offset + pt.pos - canvas/2)·SCALE，代入 offset=(canvas-frame)/2：
-    //   = 中心 + (pt.pos - frame/2)·SCALE —— canvas（含 ceil）完全消去，只跟路径+frame 有关，不抖。
-    // 普通富文本（无 contentMinX）维持 offset=expand（现状，零回归）。
-    const isPathMode = lines.some(l => l.contentMinX !== undefined);
-    const renderOffsetX = isPathMode ? (canvasWidth - frameWidth) / 2 : expandH;
-    const renderOffsetY = isPathMode ? (canvasHeight - frameHeight) / 2 : expandV;
+    //   = 中心 + (pt.pos - frame/2)·SCALE —— canvas（含 ceil）完全消去，只跟路径+frame 有关。
+    // 普通富文本维持 offset=expand（现状，零回归）。
+    const renderOffsetX = isPathText ? (canvasWidth - frameWidth) / 2 : expandH;
+    const renderOffsetY = isPathText ? (canvasHeight - frameHeight) / 2 : expandV;
 
     return {
       canvasWidth,
