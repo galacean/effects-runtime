@@ -254,18 +254,18 @@ export class RichWrapOnPathStrategy implements RichWrapStrategy {
   }
 
   /**
-   * 默认闭合圆，4 段三次贝塞尔近似（kappa ≈ 0.5523），顺时针从 (r,0) 起。
+   * 默认闭合圆，4 段三次贝塞尔近似（kappa ≈ 0.5523），顺时针从顶部 (0,-r) 起。
    */
   private generateDefaultCirclePath (radius: number): GraphicsPath {
     const r = radius;
     const k = radius * 0.5523;   // kappa
     const path = new GraphicsPath();
 
-    path.moveTo(r, 0);
-    path.bezierCurveTo(r, k, k, r, 0, r);        // → 90°
-    path.bezierCurveTo(-k, r, -r, k, -r, 0);      // → 180°
-    path.bezierCurveTo(-r, -k, -k, -r, 0, -r);    // → 270°
-    path.bezierCurveTo(k, -r, r, -k, r, 0);       // → 360°
+    path.moveTo(0, -r);
+    path.bezierCurveTo(k, -r, r, -k, r, 0);        // 顶 → 右
+    path.bezierCurveTo(r, k, k, r, 0, r);          // 右 → 底
+    path.bezierCurveTo(-k, r, -r, k, -r, 0);       // 底 → 左
+    path.bezierCurveTo(-r, -k, -k, -r, 0, -r);     // 左 → 顶
     path.closePath();
 
     return path;
