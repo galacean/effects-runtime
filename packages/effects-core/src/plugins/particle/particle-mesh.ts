@@ -85,8 +85,6 @@ export interface ParticleMeshData {
 export interface ParticleMeshProps extends ParticleMeshData {
   renderMode?: number,
   blending?: number,
-  mask: number,
-  maskMode: number,
   side: number,
   transparentOcclusion?: boolean,
   matrix?: Matrix4,

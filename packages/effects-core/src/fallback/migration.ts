@@ -12,7 +12,7 @@ import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
 
-let currentMaskComponent: string;
+let currentMaskComponentId: string | undefined;
 const componentMap: Map<string, spec.ComponentData> = new Map();
 const itemMap: Map<string, spec.VFXItemData> = new Map();
 
@@ -725,14 +725,25 @@ export function version36Migration (json: JSONScene): JSONScene {
 
   for (const composition of json.compositions) {
     composition.children = [];
+    currentMaskComponentId = undefined;
+
+    //@ts-expect-error
+    const legacyCompositionItems = composition.items;
+
+    if (Array.isArray(legacyCompositionItems)) {
+      processMaskReferenceItems(legacyCompositionItems, itemMap, componentMap);
+    }
 
     for (const componentDataPath of composition.components) {
       const componentData = componentMap.get(componentDataPath.id) as spec.ComponentData;
 
       if (componentData.dataType === spec.DataType.CompositionComponent) {
         const compositionComponent = componentData as spec.CompositionComponentData;
+        const compositionItems = compositionComponent.items ?? [];
 
-        for (const itemPath of compositionComponent.items) {
+        processMaskReferenceItems(compositionItems, itemMap, componentMap);
+
+        for (const itemPath of compositionItems) {
           const item = itemMap.get(itemPath.id) as spec.VFXItemData;
 
           if (item.parentId === undefined) {
@@ -909,6 +920,37 @@ export function processContent (composition: spec.CompositionData) {
   }
 }
 
+function processMaskReferenceItems (
+  items: { id: string }[],
+  itemMap: Map<string, spec.VFXItemData>,
+  componentMap: Map<string, spec.ComponentData>
+) {
+  for (const item of items) {
+    const itemProps = itemMap.get(item.id);
+
+    if (!itemProps) {
+      continue;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape ||
+      itemProps.type === spec.ItemType.mesh
+    ) {
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMaskReference(component);
+      }
+    }
+  }
+}
+
 export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
   const maskMode = renderer?.maskMode;
@@ -922,7 +964,7 @@ export function processMask (renderContent: any) {
     renderContent.mask = {
       isMask: true,
     };
-    currentMaskComponent = renderContent.id;
+    currentMaskComponentId = renderContent.id;
   } else if (
     maskMode === spec.ObscuredMode.OBSCURED ||
     maskMode === spec.ObscuredMode.REVERSE_OBSCURED
@@ -930,8 +972,27 @@ export function processMask (renderContent: any) {
     renderContent.mask = {
       inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED ? true : false,
       reference: {
-        'id': currentMaskComponent,
+        'id': currentMaskComponentId,
       },
+    };
+  }
+}
+
+function processMaskReference (renderContent: any) {
+  const mask = renderContent.mask;
+
+  if (mask && !mask.references && mask.reference) {
+    // 处理旧版 mask 格式（mask.reference 和 mask.inverted 字段）
+    // 将旧版单蒙版格式转换为 references 数组
+    renderContent.mask = {
+      isMask: mask.isMask ?? false,
+      alphaMaskEnabled: mask.alphaMaskEnabled ?? false,
+      references: [
+        {
+          mask: mask.reference,
+          inverted: mask.inverted ?? false,
+        },
+      ],
     };
   }
 }
