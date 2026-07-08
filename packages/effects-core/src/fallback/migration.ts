@@ -7,6 +7,7 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
+import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
@@ -726,6 +727,13 @@ export function version36Migration (json: JSONScene): JSONScene {
     composition.children = [];
     currentMaskComponentId = undefined;
 
+    //@ts-expect-error
+    const legacyCompositionItems = composition.items;
+
+    if (Array.isArray(legacyCompositionItems)) {
+      processMaskReferenceItems(legacyCompositionItems, itemMap, componentMap);
+    }
+
     for (const componentDataPath of composition.components) {
       const componentData = componentMap.get(componentDataPath.id) as spec.ComponentData;
 
@@ -733,8 +741,7 @@ export function version36Migration (json: JSONScene): JSONScene {
         const compositionComponent = componentData as spec.CompositionComponentData;
         const compositionItems = compositionComponent.items ?? [];
 
-        currentMaskComponentId = undefined;
-        processMaskItems(compositionItems, itemMap, componentMap);
+        processMaskReferenceItems(compositionItems, itemMap, componentMap);
 
         for (const itemPath of compositionItems) {
           const item = itemMap.get(itemPath.id) as spec.VFXItemData;
@@ -888,17 +895,32 @@ function createGeometryDataByShape (shape: spec.ShapeGeometry, geometryDataName 
 
 export function processContent (composition: spec.CompositionData) {
   //@ts-expect-error
-  const items = composition.items;
+  for (const item of composition.items) {
+    const itemProps = itemMap.get(item.id);
 
-  if (!Array.isArray(items)) {
-    return;
+    if (!itemProps) {
+      return;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape
+    ) {
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMask(component);
+      }
+    }
   }
-
-  currentMaskComponentId = undefined;
-  processMaskItems(items, itemMap, componentMap);
 }
 
-function processMaskItems (
+function processMaskReferenceItems (
   items: { id: string }[],
   itemMap: Map<string, spec.VFXItemData>,
   componentMap: Map<string, spec.ComponentData>
@@ -923,7 +945,7 @@ function processMaskItems (
       const component = componentMap.get(itemProps.components[0].id);
 
       if (component) {
-        processMask(component);
+        processMaskReference(component);
       }
     }
   }
@@ -932,46 +954,34 @@ function processMaskItems (
 export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
   const maskMode = renderer?.maskMode;
+
+  if (!maskMode || maskMode === MaskMode.NONE) {
+
+    return;
+  }
+
+  if (maskMode === MaskMode.MASK) {
+    renderContent.mask = {
+      isMask: true,
+    };
+    currentMaskComponentId = renderContent.id;
+  } else if (
+    maskMode === spec.ObscuredMode.OBSCURED ||
+    maskMode === spec.ObscuredMode.REVERSE_OBSCURED
+  ) {
+    renderContent.mask = {
+      inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED ? true : false,
+      reference: {
+        'id': currentMaskComponentId,
+      },
+    };
+  }
+}
+
+function processMaskReference (renderContent: any) {
   const mask = renderContent.mask;
 
-  // 处理旧版 maskMode（通过 renderer.maskMode 字段）
-  // 旧 JSON 取值：0=NONE, 1=MASK；OBSCURED/REVERSE_OBSCURED 来自 spec.ObscuredMode
-  const LEGACY_MASK_MODE_NONE = 0;
-  const LEGACY_MASK_MODE_MASK = 1;
-
-  if (maskMode && maskMode !== LEGACY_MASK_MODE_NONE) {
-    const alphaMaskEnabled = mask?.alphaMaskEnabled ?? false;
-
-    if (maskMode === LEGACY_MASK_MODE_MASK) {
-      renderContent.mask = {
-        isMask: true,
-        alphaMaskEnabled,
-      };
-      currentMaskComponentId = renderContent.id;
-    } else if (
-      maskMode === spec.ObscuredMode.OBSCURED ||
-      maskMode === spec.ObscuredMode.REVERSE_OBSCURED
-    ) {
-      if (!currentMaskComponentId) {
-        console.warn(`Mask migration: obscured component "${renderContent.id}" has no preceding mask component, skipping.`);
-
-        return;
-      }
-      // 将旧版单蒙版转换为 references 数组格式
-      renderContent.mask = {
-        isMask: false,
-        alphaMaskEnabled,
-        references: [
-          {
-            mask: {
-              'id': currentMaskComponentId,
-            },
-            inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED,
-          },
-        ],
-      };
-    }
-  } else if (mask && !mask.references && mask.reference) {
+  if (mask && !mask.references && mask.reference) {
     // 处理旧版 mask 格式（mask.reference 和 mask.inverted 字段）
     // 将旧版单蒙版格式转换为 references 数组
     renderContent.mask = {
