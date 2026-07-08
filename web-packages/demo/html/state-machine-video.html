@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>状态机视频 - demo</title>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    .container {
+      width: 375px;
+      height: 812px;
+      background-color: rgba(0,0,0,255);
+    }
+    .toolbar {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 14px;
+      z-index: 10;
+    }
+    .toolbar button {
+      border: 0;
+      border-radius: 4px;
+      padding: 6px 10px;
+      color: #fff;
+      background: #2f7dd3;
+      cursor: pointer;
+    }
+    .toolbar button.active {
+      background: #20a162;
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="J-container"></div>
+<div class="toolbar">
+  <button id="J-two-videos" type="button">两个视频</button>
+  <button id="J-one-video" type="button">一个视频</button>
+  <span id="J-current-scene"></span>
+</div>
+
+<script type="module" src="../src/state-machine-video.ts"></script>
+</body>
+</html>
