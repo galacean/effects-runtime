@@ -11,6 +11,8 @@ import './plugins/shape';
 import './plugins/particle';
 // plugin sprite
 import './plugins/sprite';
+// plugin text
+import './plugins/text';
 import './asset-manager.spec';
 import './texture.spec';
 import './transform.spec';

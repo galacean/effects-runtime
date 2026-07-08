@@ -3,6 +3,7 @@ import {
   RenderPass, Mesh, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, HitTestType,
   TextureLoadAction, ParticleSystemRenderer, RendererComponent, Transform, assertExist,
   effectsClass, glContext, math, serialize, spec, PluginSystem,
+  ParticleSystem,
 } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
@@ -485,7 +486,7 @@ export class GizmoComponent extends RendererComponent {
   }
 
   createParticleContent (item: VFXItem) {
-    const shape = (item as any).props.content.shape;
+    const shape = item.getComponent(ParticleSystem).definition.shape;
     const engine = this.item.composition?.renderer.engine;
 
     assertExist(engine);
