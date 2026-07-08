@@ -4,6 +4,13 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import type { Skeleton } from './skeleton';
 import type { Transform } from '../../transform';
 
+export interface ItemTimeRecord {
+  animatedObjectIndex: number,
+  time: number,
+  duration: number,
+  activeValue: number,
+}
+
 export class NodeTransform {
   position = new Vector3();
   rotation = new Quaternion();
@@ -33,6 +40,7 @@ export class Pose {
   parentSpaceTransforms: NodeTransform[] = [];
   floatPropertyValues: number[] = [];
   colorPropertyValues: Color[] = [];
+  itemTimeRecords: ItemTimeRecord[] = [];
 
   constructor (
     public skeleton: Skeleton,
@@ -90,6 +98,19 @@ export class Pose {
     }
   }
 
+  setItemTimeRecord (animatedObjectIndex: number, time: number, duration: number, activeValue: number) {
+    this.itemTimeRecords[animatedObjectIndex] = {
+      animatedObjectIndex,
+      time,
+      duration,
+      activeValue,
+    };
+  }
+
+  clearItemTimeRecords () {
+    this.itemTimeRecords.length = 0;
+  }
+
   copyFrom (pose: Pose) {
     for (let i = 0;i < this.parentSpaceTransforms.length;i++) {
       this.parentSpaceTransforms[i].copyFrom(pose.parentSpaceTransforms[i]);
@@ -101,6 +122,15 @@ export class Pose {
 
     for (let i = 0;i < this.floatPropertyValues.length;i++) {
       this.floatPropertyValues[i] = pose.floatPropertyValues[i];
+    }
+
+    this.itemTimeRecords.length = 0;
+    for (let i = 0;i < pose.itemTimeRecords.length;i++) {
+      const record = pose.itemTimeRecords[i];
+
+      if (record) {
+        this.itemTimeRecords[i] = { ...record };
+      }
     }
   }
 }

@@ -1,8 +1,15 @@
 import type * as spec from '@galacean/effects-specification';
 import type { AnimationGraphAsset, StateMachineNode } from '../plugins/animation-graph';
 import { GraphInstance } from '../plugins/animation-graph';
+import type { PoseResult } from '../plugins/animation-graph/pose-result';
+import { VFXItem } from '../vfx-item';
 import { Component } from './component.js';
 import { effectsClass } from '../decorators';
+
+interface AnimationGraphRuntimeTimeComponent {
+  setAnimationGraphRuntimeTime: (duration: number, activeValue: number) => void,
+  clearAnimationGraphRuntimeTime: () => void,
+}
 
 /**
  * @since 2.6.0
@@ -14,6 +21,7 @@ export class Animator extends Component {
    */
   graphInstance: GraphInstance | null = null;
   private graphAsset: AnimationGraphAsset | null = null;
+  private animationGraphTimedItems = new Set<VFXItem>();
 
   /**
    * 设置布尔类型参数
@@ -88,7 +96,10 @@ export class Animator extends Component {
       return;
     }
 
-    const result = this.graphInstance.evaluateGraph(dt / 1000);
+    const deltaTime = dt / 1000;
+    const result = this.graphInstance.evaluateGraph(deltaTime);
+
+    this.applyItemTimeRecords(result);
 
     // Apply transform animation
     //-------------------------------------------------------------------------
@@ -148,7 +159,83 @@ export class Animator extends Component {
     }
   }
 
+  override onDisable (): void {
+    super.onDisable();
+    this.resetItemTimeRecords();
+  }
+
+  override onDestroy (): void {
+    super.onDestroy();
+    this.resetItemTimeRecords();
+  }
+
   override fromData (data: spec.AnimatorData): void {
     this.graphAsset = this.engine.findObject<AnimationGraphAsset>(data.graphAsset);
+  }
+
+  private applyItemTimeRecords (result: PoseResult): void {
+    if (!this.graphInstance) {
+      return;
+    }
+
+    const activeTimedItems = new Set<VFXItem>();
+    const records = result.pose.itemTimeRecords;
+    const animatedObjects = this.graphInstance.skeleton.floatAnimatedObjects;
+
+    for (const record of records) {
+      if (!record || record.activeValue <= 0) {
+        continue;
+      }
+
+      const animatedObject = animatedObjects[record.animatedObjectIndex];
+      const item = animatedObject?.target;
+
+      if (item instanceof VFXItem) {
+        item.time = record.time;
+        this.setRuntimeTime(item, record.duration, record.activeValue);
+        activeTimedItems.add(item);
+      }
+    }
+
+    for (const item of this.animationGraphTimedItems) {
+      if (!activeTimedItems.has(item)) {
+        this.clearRuntimeTime(item);
+      }
+    }
+
+    this.animationGraphTimedItems = activeTimedItems;
+  }
+
+  private resetItemTimeRecords (): void {
+    for (const item of this.animationGraphTimedItems) {
+      this.clearRuntimeTime(item);
+    }
+
+    this.animationGraphTimedItems.clear();
+  }
+
+  private setRuntimeTime (item: VFXItem, duration: number, activeValue: number): void {
+    for (const component of item.components) {
+      if (this.isRuntimeTimeComponent(component)) {
+        component.setAnimationGraphRuntimeTime(duration, activeValue);
+      }
+    }
+  }
+
+  private clearRuntimeTime (item: VFXItem): void {
+    for (const component of item.components) {
+      if (this.isRuntimeTimeComponent(component)) {
+        component.clearAnimationGraphRuntimeTime();
+      }
+    }
+  }
+
+  private isRuntimeTimeComponent (component: Component): component is Component & AnimationGraphRuntimeTimeComponent {
+    const candidate = component as Partial<AnimationGraphRuntimeTimeComponent>;
+
+    return (
+      typeof candidate.setAnimationGraphRuntimeTime === 'function' &&
+      typeof candidate.clearAnimationGraphRuntimeTime === 'function'
+    );
   }
 }

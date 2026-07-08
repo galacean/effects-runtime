@@ -56,7 +56,8 @@ describe('audioComponent ', function () {
     const audioComponent = audio.getComponent<AudioComponent>(AudioComponent);
 
     expect(audioComponent).to.be.instanceOf(AudioComponent);
-    expect(audioComponent.enabled).to.be.false;
+    // duration 3s + gotoAndPlay(4s) 后,item 已超出片段范围应失活
+    expect(audio.isActive).to.be.false;
     composition.dispose();
 
   });
@@ -190,6 +191,7 @@ function getVideoJson (options: AudioCompositionOptions) {
         item: { id: '147e873c89b34c6f96108ccc4d6e6f83' },
         dataType: 'AudioComponent',
         options: options.options,
+        renderer: {},
       },
     ],
     geometries: [],

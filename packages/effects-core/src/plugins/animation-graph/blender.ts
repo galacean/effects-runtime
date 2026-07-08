@@ -1,6 +1,6 @@
 import type { Color, Vector3 } from '@galacean/effects-math/es/core';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
-import type { Pose } from './pose';
+import type { ItemTimeRecord, Pose } from './pose';
 
 const tempQuaternion = new Quaternion();
 
@@ -163,5 +163,59 @@ export class Blender {
 
       blendFunction.blendColor(sourceColor, targetColor, blendWeight, resultColor);
     }
+
+    this.blendItemTimeRecords(sourcePose, targetPose, blendWeight, resultPose);
+  }
+
+  private static blendItemTimeRecords (
+    sourcePose: Pose,
+    targetPose: Pose,
+    blendWeight: number,
+    resultPose: Pose
+  ): void {
+    const sourceRecords = sourcePose.itemTimeRecords.slice();
+    const targetRecords = targetPose.itemTimeRecords.slice();
+    const sourceWeight = 1 - blendWeight;
+    const targetWeight = blendWeight;
+    const recordCount = Math.max(sourceRecords.length, targetRecords.length);
+
+    resultPose.itemTimeRecords.length = 0;
+
+    // itemTimeRecords are indexed by animatedObjectIndex, so sparse slots are expected.
+    for (let i = 0; i < recordCount; i++) {
+      const sourceRecord = sourceRecords[i];
+      const targetRecord = targetRecords[i];
+      const selectedRecord = this.selectItemTimeRecord(sourceRecord, sourceWeight, targetRecord, targetWeight);
+
+      if (selectedRecord) {
+        resultPose.itemTimeRecords[i] = selectedRecord;
+      }
+    }
+  }
+
+  private static selectItemTimeRecord (
+    sourceRecord: ItemTimeRecord | undefined,
+    sourceWeight: number,
+    targetRecord: ItemTimeRecord | undefined,
+    targetWeight: number
+  ): ItemTimeRecord | undefined {
+    const sourceScore = sourceRecord ? Math.max(0, sourceRecord.activeValue) * sourceWeight : 0;
+    const targetScore = targetRecord ? Math.max(0, targetRecord.activeValue) * targetWeight : 0;
+
+    if (sourceScore <= 0 && targetScore <= 0) {
+      return undefined;
+    }
+
+    const selectedRecord = targetScore >= sourceScore ? targetRecord : sourceRecord;
+    const selectedScore = Math.max(sourceScore, targetScore);
+
+    if (!selectedRecord) {
+      return undefined;
+    }
+
+    return {
+      ...selectedRecord,
+      activeValue: selectedScore,
+    };
   }
 }

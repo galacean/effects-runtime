@@ -4,7 +4,7 @@ import type { GraphContext, InstantiationContext } from '../graph-context';
 import { GraphNodeData, PoseNode } from '../graph-node';
 import { nodeDataClass } from '../node-asset-type';
 import type { PoseResult } from '../pose-result';
-import type { Skeleton } from '../skeleton';
+import { VFXItemType, type Skeleton } from '../skeleton';
 import type { Pose } from '../pose';
 import type {
   AnimationClip, AnimationCurve, FloatAnimationCurve, ColorAnimationCurve, AnimationEventReference,
@@ -131,6 +131,7 @@ export interface TransformCurveInfo {
 export interface FloatCurveInfo {
   curve: FloatAnimationCurve,
   animatedObjectIndex: number,
+  isItemActiveCurve: boolean,
 }
 
 export interface ColorCurveInfo {
@@ -183,6 +184,8 @@ export class Animatable {
   getPose (time: number, outPose: Pose) {
     const life = clamp(time, 0, this.animationClip.duration);
 
+    outPose.clearItemTimeRecords();
+
     for (const curveInfo of this.transformCurveInfos) {
       const curveValue = curveInfo.curve.keyFrames.getValue(life);
       const outTransform = outPose.parentSpaceTransforms[curveInfo.boneIndex];
@@ -211,6 +214,15 @@ export class Animatable {
       const floatValue = curveInfo.curve.keyFrames.getValue(life);
 
       outPose.floatPropertyValues[curveInfo.animatedObjectIndex] = floatValue;
+
+      if (curveInfo.isItemActiveCurve) {
+        outPose.setItemTimeRecord(
+          curveInfo.animatedObjectIndex,
+          life,
+          this.animationClip.duration,
+          floatValue
+        );
+      }
     }
 
     for (const curveInfo of this.colorCurveInfos) {
@@ -239,6 +251,7 @@ export class Animatable {
       this.floatCurveInfos.push({
         curve,
         animatedObjectIndex,
+        isItemActiveCurve: curve.className === VFXItemType && curve.property === 'isActive',
       });
     }
   }

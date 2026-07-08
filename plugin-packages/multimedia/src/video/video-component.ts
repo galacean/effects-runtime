@@ -13,6 +13,13 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
   mask?: spec.MaskOptions,
 }
 
+interface VideoSeekOptions {
+  clearTexture?: boolean,
+  isGotoAndStop?: boolean,
+  resumeAfterSeek?: boolean,
+  restoreTextureAfterSeek?: boolean,
+}
+
 let seed = 0;
 
 /**
@@ -78,6 +85,11 @@ export class VideoComponent extends MaskableGraphic {
   private pendingSeekTime: number | null = null;
 
   /**
+   * 待执行 seek 的行为选项。
+   */
+  private pendingSeekOptions: VideoSeekOptions | null = null;
+
+  /**
    * 是否正在处理 gotoAndStop 的 seek
    * 用于跳过 pause 事件触发的 pauseVideoElement，等 seek 完成后再暂停
    */
@@ -87,6 +99,16 @@ export class VideoComponent extends MaskableGraphic {
    * 是否刚收到 goto 事件，等待后续 play/pause 事件来区分场景
    */
   private isWaitingForGotoResult = false;
+
+  /**
+   * destroy 行为清空纹理后，等下一次真正播放再恢复视频纹理。
+   */
+  private textureCleared = false;
+
+  /**
+   * AnimationGraph 当前 runtime 片段时长。-1 表示当前视频不由状态机片段驱动。
+   */
+  private animationGraphClipDuration = -1;
 
   /**
    * 当前正在执行的 play() Promise，用于串行化 play 调用，避免上的竞态
@@ -132,6 +154,7 @@ export class VideoComponent extends MaskableGraphic {
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
+    this.textureCleared = false;
   }
 
   override onAwake (): void {
@@ -234,6 +257,7 @@ export class VideoComponent extends MaskableGraphic {
     super.onDestroy();
     this.playTriggered = false;
     this.playPromise = null;
+    this.clearAnimationGraphRuntimeTime();
     if (this.video) {
       this.video.pause();
       this.video.src = '';
@@ -245,6 +269,7 @@ export class VideoComponent extends MaskableGraphic {
     super.onDisable();
     this.isVideoActive = false;
     this.playTriggered = false;
+    this.clearAnimationGraphRuntimeTime();
     this.pauseVideoElement();
   }
 
@@ -252,6 +277,9 @@ export class VideoComponent extends MaskableGraphic {
     super.onEnable();
     this.isVideoActive = true;
     this.playTriggered = false;
+    if (this.isRuntimeItemTimeDriven()) {
+      this.videoDestroyed = false;
+    }
     this.syncVideoToItemTime();
   }
 
@@ -263,7 +291,7 @@ export class VideoComponent extends MaskableGraphic {
     this.isWaitingForGotoResult = true;
     this.playTriggered = false;
     this.manualPause = false;
-    this.pendingSeekTime = this.getItemSeekTime();
+    this.queueItemTimeSeek(this.getItemSeekTime());
   }
 
   /**
@@ -276,7 +304,7 @@ export class VideoComponent extends MaskableGraphic {
       this.isWaitingForGotoResult = false;
       if (this.video && this.video.readyState >= 2) {
         this.isGotoAndStopSeeking = true;
-        this.performSeek(this.getItemSeekTime(), false, true);
+        this.performSeek(this.getItemSeekTime(), { isGotoAndStop: true });
       }
 
       return;
@@ -308,7 +336,7 @@ export class VideoComponent extends MaskableGraphic {
     const videoEndBehavior = this.item.endBehavior;
 
     if (videoEndBehavior === spec.EndBehavior.freeze && this.video) {
-      this.pendingSeekTime = 0;
+      this.queueItemTimeSeek(0);
     } else if (videoEndBehavior === spec.EndBehavior.destroy) {
       this.videoDestroyed = false;
     }
@@ -323,7 +351,7 @@ export class VideoComponent extends MaskableGraphic {
     if (rootEndBehavior === spec.EndBehavior.restart) {
       // 合成 restart：所有视频都需要 seek 回 0，和合成时间对齐
       if (!this.videoSeeking) {
-        this.pendingSeekTime = 0;
+        this.queueItemTimeSeek(0);
       }
       this.playTriggered = false;
       this.videoDestroyed = false;
@@ -352,6 +380,10 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
+    if (this.isRuntimeItemTimeDriven()) {
+      return false;
+    }
+
     return this.video!.currentTime + VideoComponent.threshold >= this.video!.duration;
   }
 
@@ -373,6 +405,7 @@ export class VideoComponent extends MaskableGraphic {
    */
   private shouldFreezeVideo (): boolean {
     const isVideoEnded = this.checkVideoEnded();
+    const isRuntimeItemEnded = this.isRuntimeItemEnded();
     const isCompositionEnded = this.checkCompositionEnded();
 
     const videoEndBehavior = this.item.endBehavior;
@@ -383,7 +416,7 @@ export class VideoComponent extends MaskableGraphic {
 
     // 合成结束且视频行为是 freeze，除合成 restart 外均冻结视频
     const isCompositionEndedForVideo = rootEndBehavior !== spec.EndBehavior.restart && isCompositionEnded;
-    const isVideoFrozen = (isVideoEnded || isCompositionEndedForVideo) && videoEndBehavior === spec.EndBehavior.freeze;
+    const isVideoFrozen = (isVideoEnded || isRuntimeItemEnded || isCompositionEndedForVideo) && videoEndBehavior === spec.EndBehavior.freeze;
 
     return isVideoFrozen || isCompositionFrozen;
   }
@@ -407,9 +440,11 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
     const seekTime = this.pendingSeekTime;
+    const seekOptions = this.pendingSeekOptions ?? {};
 
     this.pendingSeekTime = null;
-    this.performSeek(seekTime);
+    this.pendingSeekOptions = null;
+    this.performSeek(seekTime, seekOptions);
 
     return true;
   }
@@ -420,7 +455,7 @@ export class VideoComponent extends MaskableGraphic {
   private detectCompositionRestart (): void {
     const videoTime = this.item.time;
 
-    if (this.lastVideoTime > 0 && videoTime < this.lastVideoTime) {
+    if (this.lastVideoTime > 0 && videoTime >= 0 && videoTime < this.lastVideoTime) {
       this.playTriggered = false;
       this.videoDestroyed = false;
       this.manualPause = false;
@@ -431,11 +466,35 @@ export class VideoComponent extends MaskableGraphic {
 
       // 视频 restart 时，浏览器 loop 处理；合成 restart 时，前面函数已经 seek 回 0
       if (rootEndBehavior !== spec.EndBehavior.restart && videoEndBehavior !== spec.EndBehavior.restart) {
-        this.pendingSeekTime = 0;
+        this.queueItemTimeSeek(0);
       }
     }
 
     this.lastVideoTime = videoTime;
+  }
+
+  private isRuntimeItemEnded (): boolean {
+    return this.isRuntimeItemTimeDriven() && this.hasRuntimeItemEndBehavior() && this.isAtRuntimeItemEnd();
+  }
+
+  private getAnimationGraphClipDuration (): number {
+    return this.animationGraphClipDuration;
+  }
+
+  private isRuntimeItemTimeDriven (): boolean {
+    return this.animationGraphClipDuration >= 0;
+  }
+
+  private hasRuntimeItemEndBehavior (): boolean {
+    const videoEndBehavior = this.item.endBehavior;
+
+    return videoEndBehavior === spec.EndBehavior.destroy || videoEndBehavior === spec.EndBehavior.freeze;
+  }
+
+  private isAtRuntimeItemEnd (extraTime = 0): boolean {
+    const duration = this.getAnimationGraphClipDuration();
+
+    return duration > 0 && this.item.time >= 0 && this.item.time + extraTime + VideoComponent.threshold >= duration;
   }
 
   /**
@@ -463,8 +522,8 @@ export class VideoComponent extends MaskableGraphic {
   }
 
   /**
-   * 处理 destroy 结束行为：视频播放到末尾后，seek 回 0 并清空纹理
-   * 确保合成 restart 时视频已在第 0 帧，不会闪最后一帧
+   * 处理 destroy 结束行为：视频文件或 item 片段结束后，seek 回 0 并清空纹理。
+   * 确保合成 restart 时视频已在第 0 帧，不会闪最后一帧。
    */
   private handleDestroyBehavior (): void {
     if (this.videoDestroyed || this.videoSeeking) {
@@ -472,11 +531,21 @@ export class VideoComponent extends MaskableGraphic {
     }
 
     const isVideoEnded = this.checkVideoEnded();
+    const isRuntimeItemEnded = this.isRuntimeItemEnded();
 
-    if (isVideoEnded && this.item.endBehavior === spec.EndBehavior.destroy) {
+    if ((isVideoEnded || isRuntimeItemEnded) && this.item.endBehavior === spec.EndBehavior.destroy) {
       this.videoDestroyed = true;
       this.playTriggered = false;
-      this.performSeek(0, true);
+      if (isRuntimeItemEnded) {
+        this.pauseVideoElement();
+        this.performSeek(0, {
+          clearTexture: true,
+          restoreTextureAfterSeek: false,
+          resumeAfterSeek: false,
+        });
+      } else {
+        this.performSeek(0, { clearTexture: true });
+      }
     }
   }
 
@@ -487,6 +556,7 @@ export class VideoComponent extends MaskableGraphic {
     if (!this.video || (this.playTriggered && !this.video.paused)) {
       return;
     }
+    this.restoreVideoTexture();
     this.playTriggered = true;
     this.safePlay();
   }
@@ -498,6 +568,8 @@ export class VideoComponent extends MaskableGraphic {
     if (!this.video) {
       return;
     }
+
+    this.restoreVideoTexture();
 
     // 已有 play() 在执行中，不重复调用，避免 AbortError
     if (this.playPromise) {
@@ -550,19 +622,33 @@ export class VideoComponent extends MaskableGraphic {
   /**
    * seek 期间设置 videoSeeking=true，阻止 uploadCurrentVideoFrame 上传旧帧
    * @param time 目标时间
-   * @param clearTexture 是否在 seek 期间清空纹理
-   * @param isGotoAndStop 是否为 gotoAndStop 场景
+   * @param options seek 行为选项
    */
-  private performSeek (time: number, clearTexture = false, isGotoAndStop = false): void {
+  private performSeek (
+    time: number,
+    options: VideoSeekOptions = {},
+  ): void {
+    const {
+      clearTexture = false,
+      isGotoAndStop = false,
+      resumeAfterSeek = true,
+      restoreTextureAfterSeek = true,
+    } = options;
+
     time = this.getClampedSeekTime(time);
     const wasPlaying = !this.video!.paused;
     const isNoopSeek = () => !clearTexture && Math.abs(this.video!.currentTime - time) <= VideoComponent.threshold;
     const finishNoopSeek = () => {
       this.videoSeeking = false;
       this.isGotoAndStopSeeking = false;
+      if (restoreTextureAfterSeek) {
+        if (this.restoreVideoTexture()) {
+          this.renderer.texture.uploadCurrentVideoFrame();
+        }
+      }
       if (isGotoAndStop) {
         this.video!.pause();
-      } else if (wasPlaying && !this.manualPause) {
+      } else if (resumeAfterSeek && wasPlaying && !this.manualPause) {
         this.safePlay();
       }
     };
@@ -574,22 +660,31 @@ export class VideoComponent extends MaskableGraphic {
         return;
       }
 
+      if (clearTexture && Math.abs(this.video!.currentTime - time) <= VideoComponent.threshold) {
+        this.clearVideoTexture();
+        finishNoopSeek();
+
+        return;
+      }
+
       this.videoSeeking = true;
       if (clearTexture) {
-        this.material.setTexture('_MainTex', this.engine.transparentTexture);
+        this.clearVideoTexture();
       }
       this.video!.addEventListener('seeked', () => {
         this.videoSeeking = false;
         this.isGotoAndStopSeeking = false;
-        if (clearTexture) {
-          this.material.setTexture('_MainTex', this.renderer.texture);
+        if (restoreTextureAfterSeek) {
+          this.restoreVideoTexture();
         }
         if (this.video) {
-          this.renderer.texture.uploadCurrentVideoFrame();
+          if (!this.textureCleared) {
+            this.renderer.texture.uploadCurrentVideoFrame();
+          }
           // gotoAndStop 场景：seek 完成后暂停
           if (isGotoAndStop) {
             this.video.pause();
-          } else if (wasPlaying && !this.manualPause) {
+          } else if (resumeAfterSeek && wasPlaying && !this.manualPause) {
             // 如果视频之前在播放（包括 goto 前在播放），seek 完成后恢复播放
             this.safePlay();
           }
@@ -674,6 +769,57 @@ export class VideoComponent extends MaskableGraphic {
     return composition.time - (this.item.definition.delay ?? 0);
   }
 
+  private clearVideoTexture (): void {
+    this.material.setTexture('_MainTex', this.engine.transparentTexture);
+    this.textureCleared = true;
+  }
+
+  private restoreVideoTexture (): boolean {
+    if (!this.textureCleared) {
+      return false;
+    }
+
+    this.material.setTexture('_MainTex', this.renderer.texture);
+    this.textureCleared = false;
+
+    return true;
+  }
+
+  private queueSeek (time: number, options: VideoSeekOptions | null = null): void {
+    this.pendingSeekTime = time;
+    this.pendingSeekOptions = options;
+    if (options?.clearTexture) {
+      this.clearVideoTexture();
+    }
+  }
+
+  private queueItemTimeSeek (time: number): void {
+    this.queueSeek(time, this.getItemTimeSeekOptions(time));
+  }
+
+  private getItemTimeSeekOptions (time: number): VideoSeekOptions | null {
+    if (!this.shouldClearTextureBeforeItemTimeSeek(time)) {
+      return null;
+    }
+
+    return {
+      clearTexture: true,
+      resumeAfterSeek: false,
+    };
+  }
+
+  private shouldClearTextureBeforeItemTimeSeek (time: number): boolean {
+    if (!this.video || this.textureCleared || this.item.endBehavior !== spec.EndBehavior.destroy) {
+      return false;
+    }
+
+    return time <= VideoComponent.threshold && (
+      this.video.currentTime > VideoComponent.threshold ||
+      this.lastVideoTime > VideoComponent.threshold ||
+      this.videoDestroyed
+    );
+  }
+
   /**
    * 将 seek 目标限制到视频有效时间范围内。
    */
@@ -700,7 +846,7 @@ export class VideoComponent extends MaskableGraphic {
     const clampedSeekTime = this.getClampedSeekTime(seekTime);
 
     if (Math.abs(this.video.currentTime - clampedSeekTime) > VideoComponent.threshold) {
-      this.pendingSeekTime = clampedSeekTime;
+      this.queueItemTimeSeek(clampedSeekTime);
     }
   }
 
@@ -712,11 +858,37 @@ export class VideoComponent extends MaskableGraphic {
       return false;
     }
 
+    if (this.isRuntimeItemEnded()) {
+      return false;
+    }
+
     if (this.manualPause || this.videoDestroyed || this.videoSeeking || this.pendingSeekTime !== null) {
       return false;
     }
 
     return !this.checkVideoEnded();
+  }
+
+  /**
+   * @internal
+   */
+  setAnimationGraphRuntimeTime (duration: number, activeValue: number): void {
+    if (activeValue <= 0) {
+      this.clearAnimationGraphRuntimeTime();
+
+      return;
+    }
+
+    this.animationGraphClipDuration = duration;
+  }
+
+  /**
+   * @internal
+   */
+  clearAnimationGraphRuntimeTime (): void {
+    // Multiple owners can clear runtime state: Animator cleanup, Timeline takeover, and component lifecycle.
+    // Keep this idempotent so those boundaries can stay defensive.
+    this.animationGraphClipDuration = -1;
   }
 
   /**
@@ -746,12 +918,12 @@ export class VideoComponent extends MaskableGraphic {
 
     // 如果 duration 无效（如视频未加载），直接使用原值
     if (!duration || !isFinite(duration)) {
-      this.pendingSeekTime = Math.max(0, time);
+      this.queueSeek(Math.max(0, time));
 
       return;
     }
 
-    this.pendingSeekTime = Math.max(0, Math.min(time, duration));
+    this.queueSeek(Math.max(0, Math.min(time, duration)));
   }
 
   /**
