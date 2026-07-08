@@ -206,12 +206,8 @@ export class Blender {
       return undefined;
     }
 
-    const selectedRecord = targetScore >= sourceScore ? targetRecord : sourceRecord;
+    const selectedRecord = (targetScore >= sourceScore ? targetRecord : sourceRecord)!;
     const selectedScore = Math.max(sourceScore, targetScore);
-
-    if (!selectedRecord) {
-      return undefined;
-    }
 
     return {
       ...selectedRecord,

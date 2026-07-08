@@ -58,8 +58,6 @@ async function waitForVideoSeek (video: HTMLVideoElement | undefined, maxWait = 
     return;
   }
 
-  const start = performance.now();
-
   // 至少等一次 seeked 事件,或超时
   await new Promise<void>(resolve => {
     const onSeeked = () => {
@@ -75,7 +73,7 @@ async function waitForVideoSeek (video: HTMLVideoElement | undefined, maxWait = 
   });
 
   // 额外让出一帧事件循环
-  await new Promise(resolve => setTimeout(resolve, Math.max(0, maxWait - (performance.now() - start))));
+  await new Promise(resolve => setTimeout(resolve, 0));
 }
 
 function mockSeekableVideo (video: HTMLVideoElement | undefined, duration = 10): void {

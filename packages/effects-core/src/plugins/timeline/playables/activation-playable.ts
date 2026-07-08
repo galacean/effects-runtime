@@ -1,10 +1,7 @@
 import { VFXItem } from '../../../vfx-item';
+import type { AnimationGraphRuntimeTimeCleaner } from '../../animation-graph/runtime-time-component';
 import type { FrameContext } from '../playable';
 import { Playable } from '../playable';
-
-interface AnimationGraphRuntimeTimeComponent {
-  clearAnimationGraphRuntimeTime: () => void,
-}
 
 /**
  * @since 2.0.0
@@ -25,7 +22,7 @@ export class ActivationPlayable extends Playable {
 
   private clearAnimationGraphRuntimeTime (vfxItem: VFXItem): void {
     for (const component of vfxItem.components) {
-      const runtimeTimeComponent = component as Partial<AnimationGraphRuntimeTimeComponent>;
+      const runtimeTimeComponent = component as Partial<AnimationGraphRuntimeTimeCleaner>;
 
       if (typeof runtimeTimeComponent.clearAnimationGraphRuntimeTime === 'function') {
         runtimeTimeComponent.clearAnimationGraphRuntimeTime();

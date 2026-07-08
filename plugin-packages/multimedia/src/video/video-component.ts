@@ -13,12 +13,12 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
   mask?: spec.MaskOptions,
 }
 
-interface VideoSeekOptions {
+type VideoSeekOptions = {
   clearTexture?: boolean,
   isGotoAndStop?: boolean,
   resumeAfterSeek?: boolean,
   restoreTextureAfterSeek?: boolean,
-}
+};
 
 let seed = 0;
 

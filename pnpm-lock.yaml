@@ -299,6 +299,12 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-ktx2':
+        specifier: workspace:*
+        version: link:../../plugin-packages/ktx2
+      '@galacean/effects-plugin-multimedia':
+        specifier: workspace:*
+        version: link:../../plugin-packages/multimedia
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer

@@ -2,14 +2,10 @@ import type * as spec from '@galacean/effects-specification';
 import type { AnimationGraphAsset, StateMachineNode } from '../plugins/animation-graph';
 import { GraphInstance } from '../plugins/animation-graph';
 import type { PoseResult } from '../plugins/animation-graph/pose-result';
+import type { AnimationGraphRuntimeTimeComponent } from '../plugins/animation-graph/runtime-time-component';
 import { VFXItem } from '../vfx-item';
 import { Component } from './component.js';
 import { effectsClass } from '../decorators';
-
-interface AnimationGraphRuntimeTimeComponent {
-  setAnimationGraphRuntimeTime: (duration: number, activeValue: number) => void,
-  clearAnimationGraphRuntimeTime: () => void,
-}
 
 /**
  * @since 2.6.0

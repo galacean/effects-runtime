@@ -4,12 +4,12 @@ import { Color } from '@galacean/effects-math/es/core/color';
 import type { Skeleton } from './skeleton';
 import type { Transform } from '../../transform';
 
-export interface ItemTimeRecord {
+export type ItemTimeRecord = {
   animatedObjectIndex: number,
   time: number,
   duration: number,
   activeValue: number,
-}
+};
 
 export class NodeTransform {
   position = new Vector3();
