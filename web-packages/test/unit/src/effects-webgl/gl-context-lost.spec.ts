@@ -72,7 +72,7 @@ describe('webgl/gl-context-lost', () => {
       (engine.transparentTexture as GLTexture).initialize();
     });
 
-    it('纹理 GPU 句柄在 restore 后被重建', async () => {
+    it('纹理 GPU 句柄在 restore 后被重建', async function () {
       if (!canEmulateContextLoss(engine)) {
         this.skip();
 
@@ -100,7 +100,7 @@ describe('webgl/gl-context-lost', () => {
       tex.dispose();
     }).timeout(8000);
 
-    it('shader program 在 restore 后被重建', async () => {
+    it('shader program 在 restore 后被重建', async function () {
       if (!canEmulateContextLoss(engine)) {
         this.skip();
 
@@ -130,7 +130,7 @@ describe('webgl/gl-context-lost', () => {
       expect(variant.initialized).to.equal(true);
     }).timeout(8000);
 
-    it('连续两次 context lost 均可恢复', async () => {
+    it('连续两次 context lost 均可恢复', async function () {
       if (!canEmulateContextLoss(engine)) {
         this.skip();
 

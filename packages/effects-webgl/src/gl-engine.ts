@@ -60,24 +60,19 @@ export class GLEngine extends Engine {
     });
 
     this.context.addRestoreHandler({
-      restore: () => {
-        // preventDefault 已在 GLContextManager 内同步调用。此处按模式分发并就地重建资源。
+      restore: async () => {
         if (this.doNotHandleContextLost) {
           this.emit('contextrestored', this);
 
           return;
         }
 
-        void (async () => {
-          const { gl } = this.context;
+        try {
+          const gl = this.context.gl;
 
           if (!gl) {
-            this.contextWasLost = false;
-            this.emit('contextrestored', this);
-
             return;
           }
-
           // 1. 清空与旧上下文绑定的状态缓存。
           this.reset();
           // 2. 重新探测 GPU 能力。
@@ -93,17 +88,19 @@ export class GLEngine extends Engine {
           // 7. 重建 framebuffer（最后：附件纹理已就绪，仅重挂 fbo）。
           this.framebuffers.forEach(fb => (fb as GLFramebuffer).restore());
 
-          this.contextWasLost = false;
-
           if (isIOS() && this.canvas) {
             this.canvas.style.display = 'none';
             window.setTimeout(() => {
               this.canvas.style.display = '';
             }, 0);
           }
-
+        } catch (e) {
+          this.renderErrors.add(e as Error);
+        } finally {
+          // 无论重建成功、部分失败还是 gl 不可用，都复位标志并通知宿主，避免 mainLoop 永久短路。
+          this.contextWasLost = false;
           this.emit('contextrestored', this);
-        })();
+        }
       },
     });
 
