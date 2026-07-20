@@ -1,5 +1,5 @@
-import type { Composition, EngineOptions, Geometry, Material, Nullable, RenderPassClearAction, ShaderLibrary, Texture, Texture2DSourceOptionsVideo, math } from '@galacean/effects-core';
-import { Engine, GPUCapability, Renderer, SceneLoader, TextureLoadAction, assertExist, glContext, isIOS, logger } from '@galacean/effects-core';
+import type { EngineOptions, Geometry, Material, Nullable, RenderPassClearAction, ShaderLibrary, Texture, math } from '@galacean/effects-core';
+import { Engine, GPUCapability, Renderer, TextureLoadAction, assertExist, glContext, isIOS, logger } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
 import { GLContextManager } from './gl-context-manager';
@@ -32,7 +32,6 @@ export class GLEngine extends Engine {
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
-  private restoreCompositionsCache: Composition[] = [];
 
   constructor (canvas: HTMLCanvasElement, options?: EngineOptions) {
     super(canvas, options);
@@ -50,65 +49,61 @@ export class GLEngine extends Engine {
     this.context = new GLContextManager(canvas, options.glType, options);
     this.context.addLostHandler({
       lost: e => {
-        this.ticker?.pause();
-        this.restoreCompositionsCache = this.compositions.slice();
+        // 仅恢复模式启用帧短路标志。
+        if (!this.doNotHandleContextLost) {
+          this.contextWasLost = true;
+        }
         this.compositions.forEach(comp => comp.lost(e));
-        e.preventDefault();
         logger.error(`WebGL context lost. Event target: ${e.target}.`);
         this.emit('contextlost', { engine: this, e });
       },
     });
 
     this.context.addRestoreHandler({
-      restore: async () => {
-        // FIXME: 需要测试下lost和restore流程
-        const { gl } = this.context;
+      restore: () => {
+        // preventDefault 已在 GLContextManager 内同步调用。此处按模式分发并就地重建资源。
+        if (this.doNotHandleContextLost) {
+          this.emit('contextrestored', this);
 
-        if (!gl) {
-          throw new Error('Can not restore automatically because losing gl context.');
+          return;
         }
 
-        this.reset();
-        this.shaderLibrary = new GLShaderLibrary(this);
-        this.gpuCapability = new GPUCapability(gl);
+        void (async () => {
+          const { gl } = this.context;
 
-        await Promise.all(this.restoreCompositionsCache.map(async composition => {
-          const { time: currentTime, url, speed, reusable, renderOrder, transform, videoState } = composition;
-          const newComposition = await SceneLoader.load(url, this);
+          if (!gl) {
+            this.contextWasLost = false;
+            this.emit('contextrestored', this);
 
-          newComposition.speed = speed;
-          newComposition.reusable = reusable;
-          newComposition.renderOrder = renderOrder;
-          newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
-          newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
-          newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
-          newComposition.onItemMessage = composition.onItemMessage;
-
-          for (let i = 0; i < videoState.length; i++) {
-            if (videoState[i]) {
-              const video = (newComposition.textures[i].source as Texture2DSourceOptionsVideo).video;
-
-              video.currentTime = videoState[i] ?? 0;
-              await video.play();
-            }
+            return;
           }
-          newComposition.isEnded = false;
-          newComposition.gotoAndPlay(currentTime);
 
-          return newComposition;
-        }));
+          // 1. 清空与旧上下文绑定的状态缓存。
+          this.reset();
+          // 2. 重新探测 GPU 能力。
+          this.gpuCapability = new GPUCapability(gl);
+          // 3. 重建 shader（先于其它资源：纹理/几何上传可能依赖 shader）。
+          await this.shaderLibrary.restore();
+          // 4. 重建几何顶点缓冲
+          this.geometries.forEach(geo => (geo as GLGeometry).restore());
+          // 5. 重建 renderbuffer
+          this.renderbuffers.forEach(rb => (rb as GLRenderbuffer).restore());
+          // 6. 重建纹理
+          this.textures.forEach(tex => (tex as GLTexture).restore());
+          // 7. 重建 framebuffer（最后：附件纹理已就绪，仅重挂 fbo）。
+          this.framebuffers.forEach(fb => (fb as GLFramebuffer).restore());
 
-        this.restoreCompositionsCache = [];
-        this.ticker?.resume();
+          this.contextWasLost = false;
 
-        if (isIOS() && this.canvas) {
-          this.canvas.style.display = 'none';
-          window.setTimeout(() => {
-            this.canvas.style.display = '';
-          }, 0);
-        }
+          if (isIOS() && this.canvas) {
+            this.canvas.style.display = 'none';
+            window.setTimeout(() => {
+              this.canvas.style.display = '';
+            }, 0);
+          }
 
-        this.emit('contextrestored', this);
+          this.emit('contextrestored', this);
+        })();
       },
     });
 

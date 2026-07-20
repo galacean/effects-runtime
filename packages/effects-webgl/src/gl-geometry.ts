@@ -309,12 +309,14 @@ export class GLGeometry extends Geometry {
       }
     });
 
-    // 需要释放的 attributes 数据
+    // 需要释放的 attributes 数据。
+    // 仅在不处理上下文恢复（默认 doNotHandleContextLost=true）时释放以节省内存；
+    // 启用恢复时永久保留 CPU 数据，供 restore 重新上传。
     Object.keys(this.attributesReleasable).forEach(name => {
       const releasable = this.attributesReleasable[name];
       const bufferName = attributes[name].dataSource;
 
-      if (bufferProps[bufferName] && releasable) {
+      if (bufferProps[bufferName] && releasable && this.engine && this.engine.doNotHandleContextLost) {
         bufferProps[bufferName].data = undefined;
       }
     });
@@ -509,6 +511,41 @@ export class GLGeometry extends Geometry {
       rootBoneName: data.rootBoneName,
       inverseBindMatrices: data.inverseBindMatrices,
     };
+  }
+
+  /**
+   * 上下文恢复后原地重建顶点缓冲区。
+   * 不新建 GLGPUBuffer 实例（避免与 CPU 副本机制产生两份数据），而是复用每个 buffer.restore()。
+   * VAO 旧句柄已失效，清空后由下次 setupAttributes 惰性重建。
+   */
+  restore (): void {
+    if (!this.initialized) {
+      return;
+    }
+    // 清空 VAO 缓存，下个 GLProgram.setupAttributes 会重建。
+    Object.keys(this.vaos).forEach(key => {
+      this.vaos[key] = undefined;
+    });
+    // 原地重建 attribute 缓冲区。
+    Object.keys(this.buffers).forEach(name => {
+      const buffer = this.buffers[name];
+
+      if (buffer) {
+        buffer.restore();
+      }
+    });
+    // 原地重建索引缓冲区。
+    this.indicesBuffer?.restore();
+    // 标记全部脏数据，强制全量重新上传。
+    Object.keys(this.dirtyFlags).forEach(name => {
+      this.dirtyFlags[name] = {
+        dirty: true,
+        discard: true,
+        start: Number.POSITIVE_INFINITY,
+        end: 0,
+      };
+    });
+    this.flush();
   }
 
   override dispose (): void {

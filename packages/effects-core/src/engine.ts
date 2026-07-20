@@ -7,6 +7,7 @@ import type { Material } from './material';
 import type {
   GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary,
 } from './render';
+import type { Framebuffer, Renderbuffer } from './render';
 import { Graphics, RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
@@ -34,6 +35,14 @@ export interface EngineOptions extends WebGLContextAttributes {
   pixelRatio?: number,
   notifyTouch?: boolean,
   interactive?: boolean,
+  /**
+   * 是否不处理 WebGL 上下文丢失恢复。
+   * - `true`（默认）：上传 GPU 后释放 CPU 端源数据以节省内存；上下文丢失后不自动恢复，
+   *   渲染暂停，等待宿主重建资源后手动恢复播放。
+   * - `false`：保留 CPU 端源数据，上下文丢失后引擎自动按资源类型就地重建 GPU 资源并恢复渲染。
+   *   该配置为构造期选项，运行时从 `true` 改为 `false` 无法找回已经丢弃的源数据。
+   */
+  doNotHandleContextLost?: boolean,
 }
 
 type EngineEvent = {
@@ -92,7 +101,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 引擎的像素比
    */
   pixelRatio: number;
-
   /**
    * @hidden
    * Internal utility.
@@ -105,13 +113,22 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   renderingData: RenderingData;
 
   graphics: Graphics;
-
+  /**
+   * 是否不处理上下文丢失恢复（构造期配置，默认 true）
+   */
+  doNotHandleContextLost = true;
+  /**
+   * WebGL 上下文是否处于丢失状态
+   */
+  protected contextWasLost = false;
   protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
+  protected framebuffers: Framebuffer[] = [];
+  protected renderbuffers: Renderbuffer[] = [];
 
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -134,6 +151,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     super();
     this.canvas = canvas;
     this.env = options?.env ?? '';
+    this.doNotHandleContextLost = options?.doNotHandleContextLost ?? true;
     this.name = options?.name ?? this.name;
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
@@ -269,6 +287,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   mainLoop (dt: number): void {
+    // 上下文丢失/恢复期间跳过渲染，避免打到失效的 GL 上下文。
+    if (this.contextWasLost) {
+      return;
+    }
+
     const { renderErrors } = this;
 
     if (renderErrors.size > 0) {
@@ -513,6 +536,34 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
     removeItem(this.renderPasses, pass);
+  }
+
+  addFramebuffer (framebuffer: Framebuffer) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.framebuffers, framebuffer);
+  }
+
+  removeFramebuffer (framebuffer: Framebuffer) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.framebuffers, framebuffer);
+  }
+
+  addRenderbuffer (renderbuffer: Renderbuffer) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.renderbuffers, renderbuffer);
+  }
+
+  removeRenderbuffer (renderbuffer: Renderbuffer) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.renderbuffers, renderbuffer);
   }
 
   addComposition (composition: Composition) {

@@ -67,6 +67,14 @@ export interface PlayerConfig {
    */
   notifyTouch?: boolean,
   /**
+   * 是否不处理 WebGL 上下文丢失恢复。
+   * - `true`（默认）：上传 GPU 后释放 CPU 端源数据以节省内存；上下文丢失后不自动恢复，
+   *   渲染暂停，等待宿主重建资源后手动恢复播放。
+   * - `false`：保留 CPU 端源数据，上下文丢失后引擎自动就地重建 GPU 资源并恢复渲染。
+   *   该配置为构造期选项，运行时从 `true` 改为 `false` 无法找回已丢弃的源数据。
+   */
+  doNotHandleContextLost?: boolean,
+  /**
    * 每帧渲染调用后的回调，WebGL2 上下文生效
    * @param time - GPU 渲染使用的时间，秒
    * @deprecated 2.8.0

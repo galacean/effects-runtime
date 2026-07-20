@@ -1,5 +1,6 @@
 import './gl-dispose.spec';
 import './gl-frame-buffer.spec';
+import './gl-context-lost.spec';
 import './gl-geometry.spec';
 import './gl-gpu-buffer.spec';
 import './gl-material.spec';

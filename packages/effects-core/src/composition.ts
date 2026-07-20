@@ -853,16 +853,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   lost (e: Event): void {
-    this.videoState = this.textures.map(tex => {
-      if ('video' in tex.source) {
-        tex.source.video.pause();
+    // GPU 资源由引擎统一 rebuild，合成仅保留纯 JS 运行时状态，此处无需处理。
+  }
 
-        return tex.source.video.currentTime;
-      }
-    });
-
-    this.textures.map(tex => tex.dispose());
-    this.dispose();
+  /**
+   * 上下文恢复后的空操作。
+   * GPU 资源已由引擎统一重建，视频纹理会在下次渲染时自然更新，不自动重新播放。
+   */
+  restore (): void {
   }
 
   /**
