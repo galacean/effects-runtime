@@ -37,14 +37,20 @@ export interface GLGPUBufferProps {
 }
 
 export class GLGPUBuffer implements Disposable {
+  glBuffer: WebGLBuffer | null;
+
   readonly bytesPerElement: number;
   readonly target: GPUBufferTarget;
   readonly type: GPUBufferType;
   readonly usage: WebGLRenderingContext['STATIC_DRAW'] | WebGLRenderingContext['DYNAMIC_DRAW'] | WebGLRenderingContext['STREAM_DRAW'];
-  readonly glBuffer: WebGLBuffer | null;
+  readonly name?: string;
 
   private byteLength = 0;
   private destroyed = false;
+  /**
+   * CPU 端数据副本，仅在上下文可恢复（doNotHandleContextLost=false）时保留，供上下文恢复时重新上传。
+   */
+  private cpuData?: spec.TypedArray;
 
   constructor (
     public readonly engine: GLEngine,
@@ -63,6 +69,7 @@ export class GLGPUBuffer implements Disposable {
     this.usage = usage;
     this.glBuffer = this.createGLBuffer(name) as WebGLBuffer;
     this.bytesPerElement = bytesPerElement;
+    this.name = name;
 
     if (data) {
       this.bufferData(data);
@@ -109,6 +116,10 @@ export class GLGPUBuffer implements Disposable {
           gl.bufferSubData(target, 0, data);
         }
       }
+      // 上下文可恢复时保留 CPU 副本，供 restore 重新上传。
+      if (!this.engine.doNotHandleContextLost && typeof data !== 'number') {
+        this.cpuData = data.slice();
+      }
     } else {
       this.byteLength = 0;
     }
@@ -127,15 +138,38 @@ export class GLGPUBuffer implements Disposable {
         gl.bufferData(target, byteLength, this.usage);
       }
       gl.bufferSubData(target, byteOffset, data);
+
+      // 维护 CPU 副本，使 restore 能还原最新内容。
+      // subData 来自原始 data 的子 view，elementOffset + data.length 必然 ≤ cpuData.length，无需扩容。
+      if (this.cpuData) {
+        this.cpuData.set(data, elementOffset);
+      }
     } else {
       this.byteLength = 0;
     }
   }
 
+  /**
+   * 上下文恢复后原地重建 GL 缓冲区。
+   * 有 CPU 副本时完整重新上传；否则按原容量建空缓冲区（软降级，等内容另行更新）。
+   */
+  restore (): void {
+    if (this.engine.disposed) {
+      return;
+    }
+    // 旧句柄已随上下文丢失失效，无需 delete。
+    this.glBuffer = this.createGLBuffer(this.name);
+    if (this.cpuData) {
+      this.bufferData(this.cpuData);
+    } else if (this.byteLength > 0) {
+      this.bufferData(this.byteLength);
+    }
+  }
+
   dispose (): void {
     this.engine.gl.deleteBuffer(this.glBuffer);
-    // @ts-expect-error safe to assign
     this.glBuffer = null;
+    this.cpuData = undefined;
     this.destroyed = true;
   }
 

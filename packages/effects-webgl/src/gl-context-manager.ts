@@ -17,16 +17,16 @@ export class GLContextManager {
     assertExist(canvas);
     this.gl = createGLContext(canvas, glType, options);
     this.contextLostListener = (e: Event) => {
+      // 必须在 lost 同步阶段最前调用 preventDefault，浏览器才会触发 restored 事件。
+      e.preventDefault();
       for (const lostHandler of this.lostHandlers) {
         lostHandler.lost(e);
       }
-      this.canvas?.removeEventListener('webglcontextlost', this.contextLostListener);
     };
-    this.contextRestoredListener = (e: Event) => {
-      for (const restorable of this.restoreHandlers) {
-        restorable.restore();
+    this.contextRestoredListener = () => {
+      for (const restoreHandler of this.restoreHandlers) {
+        restoreHandler.restore();
       }
-      this.canvas?.addEventListener('webglcontextlost', this.contextLostListener);
     };
     canvas.addEventListener('webglcontextlost', this.contextLostListener);
     canvas.addEventListener('webglcontextrestored', this.contextRestoredListener);
