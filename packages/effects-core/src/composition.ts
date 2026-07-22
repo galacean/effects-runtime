@@ -348,7 +348,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.createRenderFrame();
 
-    PluginSystem.initializeComposition(this, scene);
+    PluginSystem.notifyCompositionCreated(this, scene);
   }
 
   /**
@@ -893,7 +893,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    PluginSystem.destroyComposition(this);
+    PluginSystem.notifyCompositionDestroy(this);
 
     this.update = () => {
       if (!__DEBUG__) {

@@ -21,6 +21,7 @@ import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
+import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
@@ -159,6 +160,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       // @ts-expect-error
       currentFrame: {},
     };
+
+    PluginSystem.notifyEngineCreated(this);
   }
 
   /**
@@ -656,6 +659,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
     this._disposed = true;
+
+    PluginSystem.notifyEngineDestroy(this);
 
     const info: string[] = [];
 

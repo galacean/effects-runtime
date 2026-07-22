@@ -20,8 +20,8 @@ export class PrecompositionManager {
 
     engine.clearResources();
 
-    // 触发插件系统 pluginSystem 的回调 onAssetsLoadFinish
-    PluginSystem.onAssetsLoadFinish(scene, options, engine);
+    // 通过 PluginSystem.notifyAssetsLoadFinish 通知所有插件的 onAssetsLoadFinish 回调
+    PluginSystem.notifyAssetsLoadFinish(scene, options, engine);
 
     engine.assetService.prepareAssets(scene, scene.assets);
     engine.assetService.updateTextVariables(scene, options.variables);
