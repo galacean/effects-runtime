@@ -383,7 +383,7 @@ export class AssetManager implements Disposable {
   }
 
   private async onPluginSceneLoadStart (scene: Scene) {
-    await PluginSystem.onAssetsLoadStart(scene, this.options);
+    await PluginSystem.notifyAssetsLoadStart(scene, this.options);
   }
 
   private async processTextures (

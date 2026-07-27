@@ -45,4 +45,20 @@ export abstract class Plugin {
    * @param composition - 合成对象
    */
   onCompositionDestroy (composition: Composition): void { }
+
+  /**
+   * 引擎创建完成后触发。
+   * 适用于注册引擎级单例、建立以引擎为键的映射、绑定全局监听等场景。
+   * @param engine - 引擎实例
+   * @since 2.10.0
+   */
+  onEngineCreated (engine: Engine): void { }
+
+  /**
+   * 引擎销毁时触发。
+   * 适合解绑监听、释放引擎级资源或清理以引擎为键的映射。
+   * @param engine - 引擎实例
+   * @since 2.10.0
+   */
+  onEngineDestroy (engine: Engine): void { }
 }
