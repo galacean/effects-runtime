@@ -98,18 +98,14 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   /**
    *
+   */
+  speed?: number,
+  /**
+   *
    * @param message
    * @returns
    */
   onItemMessage?: (message: MessageItem) => void,
-  /**
-   *
-   */
-  event?: EventSystem,
-  /**
-   *
-   */
-  speed?: number,
 }
 
 /**
@@ -250,7 +246,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       reusable = false,
       speed = 1,
       baseRenderOrder = 0,
-      event,
       onItemMessage,
     } = props ?? {};
 
@@ -322,7 +317,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
     this.startTime = sourceContent?.startTime ?? 0;
-    this.event = event;
+    this.event = engine.eventSystem;
     this.statistic = {
       loadStart: scene?.startTime ?? 0,
       loadTime: scene?.totalTime ?? 0,

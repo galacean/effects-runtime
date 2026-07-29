@@ -59,7 +59,6 @@ export class SceneLoader {
   private static createComposition (scene: Scene, engine: Engine, options: SceneLoadOptions = {}): Composition {
     const composition = new Composition(engine, {
       ...options,
-      event: engine.eventSystem,
     }, scene);
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
