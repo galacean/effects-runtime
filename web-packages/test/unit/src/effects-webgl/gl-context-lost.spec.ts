@@ -168,6 +168,38 @@ describe('webgl/gl-context-lost', () => {
       geometry.dispose();
     }).timeout(8000);
 
+    it('粒子系统在 geometry restore 后重建动态缓冲内容', async function () {
+      if (!canEmulateContextLoss(engine)) {
+        this.skip();
+
+        return;
+      }
+      const data = new Float32Array([0, 0, 1, 0, 0, 1]);
+      const geometry = new Geometry(engine, {
+        attributes: {
+          aPosition: { data: data.slice(), size: 2 },
+        },
+        bufferUsage: BufferUsage.Dynamic,
+        drawCount: 3,
+      });
+
+      geometry.initialize();
+      data.set([2, 3], 2);
+      geometry.setAttributeSubData('aPosition', 2, new Float32Array([2, 3]));
+      const particleSystem = {
+        rebuild: () => geometry.setAttributeData('aPosition', data),
+      } as unknown as import('@galacean/effects-core').ParticleSystem;
+
+      engine.addParticleSystem(particleSystem);
+      await emulateContextLoss(engine);
+      const restored = new Float32Array(data.length);
+
+      readBufferContents(engine.gl, geometry.getVertexBuffer('aPosition')!.getBuffer()!, restored);
+      expect(restored).to.deep.equal(data);
+      engine.removeParticleSystem(particleSystem);
+      geometry.dispose();
+    }).timeout(8000);
+
     it('连续两次 context lost 均可恢复', async function () {
       if (!canEmulateContextLoss(engine)) {
         this.skip();

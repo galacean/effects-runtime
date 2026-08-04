@@ -90,11 +90,13 @@ export class GLEngine extends Engine {
           await this.shaderLibrary.restore();
           // 4. 重建几何顶点缓冲
           this.geometries.forEach(geo => geo.restore());
-          // 5. 重建 renderbuffer
+          // 5. 从粒子系统保留的数据重建动态缓冲内容
+          this.particleSystems.forEach(particleSystem => particleSystem.rebuild());
+          // 6. 重建 renderbuffer
           this.renderbuffers.forEach(rb => (rb as GLRenderbuffer).restore());
-          // 6. 重建纹理
+          // 7. 重建纹理
           this.textures.forEach(tex => (tex as GLTexture).restore());
-          // 7. 重建 framebuffer（最后：附件纹理已就绪，仅重挂 fbo）。
+          // 8. 重建 framebuffer（最后：附件纹理已就绪，仅重挂 fbo）。
           this.framebuffers.forEach(fb => (fb as GLFramebuffer).restore());
 
           if (isIOS() && this.canvas) {

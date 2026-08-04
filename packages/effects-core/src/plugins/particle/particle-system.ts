@@ -160,6 +160,7 @@ export class ParticleSystem extends Component implements Maskable {
   ) {
     super(engine);
 
+    engine.addParticleSystem(this);
     this.maskManager = new MaskProcessor();
 
     if (props) {
@@ -484,6 +485,18 @@ export class ParticleSystem extends Component implements Maskable {
     if (this.item && this.item.composition) {
       this.meshes.forEach(mesh => mesh.dispose());
     }
+  }
+
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    this.renderer?.rebuild();
+  }
+
+  override dispose (): void {
+    this.engine.removeParticleSystem(this);
+    super.dispose();
   }
 
   getParticleBoxes (): { center: Vector3, size: Vector3 }[] {

@@ -870,6 +870,16 @@ export class ParticleMesh implements ParticleMeshData {
     this.geometry.setAttributeSubData(name, offset, data);
   }
 
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
+      return;
+    }
+    this.attributeData.forEach((data, buffer) => buffer.update(data));
+  }
+
   private expandArray (array: Float32Array, newSize: number): Float32Array {
     const newArr = new Float32Array(newSize);
 

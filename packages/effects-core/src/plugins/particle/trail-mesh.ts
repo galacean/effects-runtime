@@ -436,6 +436,16 @@ export class TrailMesh {
     this.geometry.setAttributeSubData(name, offset, data);
   }
 
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
+      return;
+    }
+    this.attributeData.forEach((data, buffer) => buffer.update(data));
+  }
+
 }
 
 const tempDir = new Vector3();

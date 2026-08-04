@@ -23,6 +23,7 @@ import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
+import type { ParticleSystem } from './plugins/particle/particle-system';
 import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
@@ -131,6 +132,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderPasses: RenderPass[] = [];
   protected framebuffers: Framebuffer[] = [];
   protected renderbuffers: Renderbuffer[] = [];
+  protected particleSystems: ParticleSystem[] = [];
 
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -508,6 +510,22 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.geometries, geo);
   }
 
+  /** @internal */
+  addParticleSystem (particleSystem: ParticleSystem): void {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.particleSystems, particleSystem);
+  }
+
+  /** @internal */
+  removeParticleSystem (particleSystem: ParticleSystem): void {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.particleSystems, particleSystem);
+  }
+
   addMesh (mesh: Mesh) {
     if (this.disposed) {
       return;
@@ -746,6 +764,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.meshes = [];
     this.renderPasses = [];
     this.compositions = [];
+    this.particleSystems = [];
   }
 
   private getTargetSize (parentEle: HTMLElement) {

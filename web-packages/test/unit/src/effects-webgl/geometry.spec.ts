@@ -250,6 +250,29 @@ describe('webgl/geometry', () => {
     geometry.dispose();
   });
 
+  it('discards cached vertex array objects without releasing them during restore', () => {
+    const geometry = createGeometry(engine);
+    const resource = engine.gl.createVertexArray()!;
+    let released = false;
+    let recorded = 0;
+
+    geometry.initialize();
+    engine.releaseVertexArrayObject = () => {
+      released = true;
+    };
+    engine.recordVertexArrayObject = () => {
+      recorded++;
+
+      return resource;
+    };
+    geometry.bind({ key: 'test-program' } as ShaderVariant);
+    geometry.restore();
+    geometry.bind({ key: 'test-program' } as ShaderVariant);
+    expect(released).to.equal(false);
+    expect(recorded).to.equal(2);
+    geometry.dispose();
+  });
+
   it('keeps indexed drawStart in bytes', () => {
     const gl = engine.gl;
     const originalDrawElements = gl.drawElements;

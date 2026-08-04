@@ -310,7 +310,9 @@ export class Geometry extends EffectsObject {
     if (!this.initialized || this.disposed) {
       return;
     }
-    this.disposeVertexArrayObjects();
+    if (this.vertexArrayObjects) {
+      this.vertexArrayObjects = {};
+    }
     this.forEachVertexBuffer(buffer => buffer.rebuild());
     if (this.indices.length > 0) {
       this.indexBuffer = undefined;
