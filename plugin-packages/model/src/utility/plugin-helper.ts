@@ -1291,9 +1291,7 @@ export class GeometryBoxProxy {
   create (geometry: Geometry, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
-    // FIXME: 需要geometry中的attributes数组，GLGeometry有这个数组，其他的没有
-    // @ts-expect-error
-    const attributes = geometry.attributes as Record<string, Attribute>;
+    const attributes = geometry.getVertexBuffers() as Record<string, unknown> as Record<string, Attribute>;
 
     //
     this.index = geometry.getIndexData();
@@ -1447,9 +1445,7 @@ export class HitTestingProxy {
   create (geometry: Geometry, doubleSided: boolean, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
-    // FIXME: 需要geometry中的attributes数组，GLGeometry有这个数组，其他的没有
-    // @ts-expect-error
-    const attributes = geometry.attributes as Record<string, Attribute>;
+    const attributes = geometry.getVertexBuffers() as Record<string, unknown> as Record<string, Attribute>;
 
     //
     this.index = geometry.getIndexData();
@@ -1895,7 +1891,6 @@ export class CheckerHelper {
     if (!(v instanceof Geometry)) {
       console.error(`Invalid geometry type ${this.stringify(v)}.`);
     }
-    // @ts-expect-error
     if (v.isDestroyed === true) {
       console.error('Geometry object is destroyed.');
     }
@@ -1981,7 +1976,6 @@ export class CheckerHelper {
    * @returns
    */
   static createAttributeArray (v: Geometry, name: string): AttributeArray | undefined {
-    // @ts-expect-error
     const attributes = v.attributes;
 
     if (attributes === undefined) { return; }
@@ -2412,4 +2406,3 @@ const toHalf = (function () {
   };
 
 }());
-

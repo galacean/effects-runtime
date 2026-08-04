@@ -1,5 +1,5 @@
 /* eslint-disable padding-line-between-statements */
-import type { GLGeometry, Scene } from '@galacean/effects';
+import type { Geometry, Scene } from '@galacean/effects';
 import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
@@ -992,7 +992,7 @@ describe('渲染插件单测', function () {
     const meshComp = itemMesh.getComponent(ModelMeshComponent);
     const meshData = meshComp.data as spec.ModelMeshComponentData;
     expect(meshData.name).to.eql('Cesium_Man');
-    const geometry = meshData.geometry as unknown as GLGeometry;
+    const geometry = meshData.geometry as unknown as Geometry;
     expect(geometry.subMeshes.length).to.eql(1);
     expect(geometry.subMeshes[0].indexCount).to.eql(14016);
     expect(geometry.subMeshes[0].offset).to.eql(0);
@@ -1124,7 +1124,7 @@ describe('渲染插件单测', function () {
       const meshComp = itemMesh.getComponent(ModelMeshComponent);
       const meshData = meshComp.data as spec.ModelMeshComponentData;
       expect(meshData.name).to.eql('WaterBottle');
-      const geometry2 = meshData.geometry as unknown as GLGeometry;
+      const geometry2 = meshData.geometry as unknown as Geometry;
       expect(geometry2.subMeshes.length).to.eql(1);
       expect(geometry2.subMeshes[0].indexCount).to.eql(13530);
       expect(geometry2.subMeshes[0].offset).to.eql(0);
@@ -1507,7 +1507,7 @@ describe('渲染插件单测', function () {
     });
     //
     expect(meshObj.subMeshes.length).to.eql(1);
-    const geometry = meshObj.subMeshes[0].getEffectsGeometry() as GLGeometry;
+    const geometry = meshObj.subMeshes[0].getEffectsGeometry();
     expect(geometry.getAttributeNames().length).to.eql(5);
     geometry.getAttributeNames().forEach((val, idx) => {
       expect(val).to.eql(['aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights'][idx]);
@@ -1532,11 +1532,11 @@ describe('渲染插件单测', function () {
     expect(weight.size).to.eql(4);
     expect(weight.type).to.eql(5126);
     expect(weight.normalize).to.eql(false);
-    const positionBuffer = geometry.bufferProps.aPos.data;
-    const normalBuffer = geometry.bufferProps.aNormal.data;
-    const uvBuffer = geometry.bufferProps.aUV.data;
-    const jointBuffer = geometry.bufferProps.aJoints.data;
-    const weightBuffer = geometry.bufferProps.aWeights.data;
+    const positionBuffer = geometry.getAttributeData('aPos');
+    const normalBuffer = geometry.getAttributeData('aNormal');
+    const uvBuffer = geometry.getAttributeData('aUV');
+    const jointBuffer = geometry.getAttributeData('aJoints');
+    const weightBuffer = geometry.getAttributeData('aWeights');
     [
       0.09342920035123825, 0.048714570701122284, 0.9735749959945679, 0.07329291105270386, 0.08925402164459229, 0.9775350093841553,
       0.0848226472735405, 0.04660588130354881, 1.0469099283218384, 0.0763043686747551, 0.0814896821975708, 1.0501099824905396,
@@ -1679,4 +1679,3 @@ describe('渲染插件单测', function () {
     expect(t7).to.eql(undefined);
   });
 });
-

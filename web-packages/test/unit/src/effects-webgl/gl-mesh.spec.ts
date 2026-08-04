@@ -1,7 +1,7 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { Mesh, glContext, math, Material } from '@galacean/effects';
+import { Geometry, Mesh, glContext, math, Material } from '@galacean/effects';
 import type { GLShaderVariant } from '@galacean/effects-webgl';
-import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
 const { expect } = chai;
@@ -28,7 +28,7 @@ describe('webgl/gl-mesh', () => {
 
     mesh.material.initialize();
     mesh.geometry.initialize();
-    const resultGeom = mesh.geometry as GLGeometry;
+    const resultGeom = mesh.geometry;
     const gpubuffer = resultGeom.getAttributeBuffer('aPosition');
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
@@ -90,7 +90,7 @@ void main() {
     mode: glContext.TRIANGLES,
   };
 
-  const geometry = new GLGeometry(renderer.engine, geomOption);
+  const geometry = new Geometry(renderer.engine, geomOption);
   const meshOption = {
     geometry,
     material,

@@ -5,7 +5,8 @@ import {
   RenderPassDestroyAttachmentType, TextureSourceType, Camera, DestroyOptions, RenderPass,
   RenderFrame, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
-import { GLEngine, GLGeometry, GLTexture } from '@galacean/effects-webgl';
+import { Geometry } from '@galacean/effects-core';
+import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -82,9 +83,8 @@ describe('webgl/dispose', function () {
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
     expect(geom.isDestroyed).to.be.true;
-    expect(geom.buffers).to.eql({});
     expect(geom.attributes).to.eql({});
-    Object.keys(geom.vaos).map(name => expect(geom.vaos[name]).to.eql(undefined));
+    expect(geom.getAttributeNames()).to.eql([]);
     frame.dispose();
   });
 
@@ -117,9 +117,8 @@ describe('webgl/dispose', function () {
 
     expect(mesh.material).to.eql(material);
     expect(geom.isDestroyed).to.be.true;
-    expect(geom.buffers).to.eql({});
     expect(geom.attributes).to.eql({});
-    Object.keys(geom.vaos).map(name => expect(geom.vaos[name]).to.eql(undefined));
+    expect(geom.getAttributeNames()).to.eql([]);
     expect(texture).to.eql(texture);
 
     frame.dispose();
@@ -553,7 +552,7 @@ async function createTexture (engine: Engine, needCompressed = false) {
 
 async function createMesh (engine: Engine) {
   const texture = await createTexture(engine);
-  const geom = new GLGeometry(
+  const geom = new Geometry(
     engine,
     {
       drawStart: 0,

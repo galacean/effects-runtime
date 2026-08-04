@@ -1,7 +1,9 @@
-import type { Composition, EngineOptions } from '@galacean/effects-core';
+import type { Composition, DataBufferOptions, EngineOptions, Geometry } from '@galacean/effects-core';
 import { Engine, GPUCapability } from '@galacean/effects-core';
 import type * as THREE from 'three';
 import { ThreeRenderer } from './three-renderer';
+import { ThreeDataBuffer } from './three-data-buffer';
+import { disposeThreeGeometry } from './three-geometry';
 
 export interface ThreeEngineOptions {
   threeCamera?: THREE.Camera,
@@ -30,5 +32,14 @@ export class ThreeEngine extends Engine {
     this.threeCamera = threeCamera;
     this.threeGroup = threeGroup;
     this.composition = composition;
+  }
+
+  override createDataBuffer (options: DataBufferOptions): ThreeDataBuffer {
+    return new ThreeDataBuffer(options);
+  }
+
+  override removeGeometry (geometry: Geometry): void {
+    disposeThreeGeometry(geometry);
+    super.removeGeometry(geometry);
   }
 }

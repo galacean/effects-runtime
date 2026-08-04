@@ -1,4 +1,4 @@
-import type { GLGeometry, Material } from '@galacean/effects';
+import type { Material } from '@galacean/effects';
 import { ParticleSystem, ParticleSystemRenderer, RendererComponent } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
 
@@ -79,7 +79,7 @@ describe('core/plugins/particle/test', function () {
     expect(p0Content.renderer.particleMesh.particleCount).to.eql(5);
 
     expect(p1Content.renderer.particleMesh.particleCount).to.eql(10);
-    const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry() as GLGeometry;
+    const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry();
     const size = (geometry.attributes['aPos'].stride ?? 0) / Float32Array.BYTES_PER_ELEMENT * 4; //4 vertex per particle
 
     expect(geometry.getAttributeData('aPos')).to.be.an.instanceOf(Float32Array).with.lengthOf(size * 10);

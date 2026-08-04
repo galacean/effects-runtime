@@ -5,7 +5,8 @@ import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
-  GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary,
+  DataBuffer, DataBufferOptions, GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction,
+  Renderer, RenderingData, ShaderLibrary,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
 import { Graphics, RenderTargetPool } from './render';
@@ -511,6 +512,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
     removeItem(this.geometries, geo);
+  }
+
+  createDataBuffer (_options: DataBufferOptions): DataBuffer {
+    throw new Error('The active rendering backend does not provide data buffers.');
   }
 
   addMesh (mesh: Mesh) {

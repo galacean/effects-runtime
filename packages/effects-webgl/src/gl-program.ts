@@ -1,5 +1,5 @@
-import type { Disposable } from '@galacean/effects-core';
-import type { GLGeometry } from './gl-geometry';
+import type { Disposable, Geometry } from '@galacean/effects-core';
+import type { GLDataBuffer } from './gl-data-buffer';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
 
@@ -49,19 +49,17 @@ export class GLProgram implements Disposable {
    * @param geometry
    * @returns
    */
-  setupAttributes (geometry: GLGeometry) {
+  setupAttributes (geometry: Geometry) {
     const programId = this.id;
     const gl = this.engine.gl;
-    let vao: GLVertexArrayObject | undefined;
+    let vao = geometry.getVertexArrayObject<GLVertexArrayObject>(programId);
 
-    if (geometry.vaos[programId]) {
-      vao = geometry.vaos[programId];
-    } else {
+    if (!vao) {
       vao = new GLVertexArrayObject(this.engine, `${geometry.name}-${programId}`);
       if (!vao) {
         console.error('Failed to create VAO object.');
       }
-      geometry.vaos[programId] = vao;
+      geometry.setVertexArrayObject(programId, vao);
     }
 
     // 兼容小程序下不支持vao
@@ -73,20 +71,30 @@ export class GLProgram implements Disposable {
     }
     Object.keys(this.attribInfoMap).forEach(name => {
       const attrInfo = this.attribInfoMap[name];
-      const attribute = geometry.attributes[name];
+      const attribute = geometry.getVertexBuffer(name);
 
       if (attribute) {
-        const buffer = geometry.buffers[attribute.dataSource];
+        const buffer = attribute.buffer.getDataBuffer() as GLDataBuffer | undefined;
 
         if (!buffer) {
           throw new Error(`Failed to find a buffer named '${attribute.dataSource || name}'. Please ensure the buffer is correctly initialized and bound.`);
         }
         buffer.bind();
         gl.enableVertexAttribArray(attrInfo.loc);
-        gl.vertexAttribPointer(attrInfo.loc, attribute.size, attribute.type, attribute.normalize as boolean, attribute.stride || 0, attribute.offset || 0);
+        gl.vertexAttribPointer(
+          attrInfo.loc,
+          attribute.size,
+          attribute.type,
+          attribute.normalized,
+          attribute.byteStride,
+          attribute.byteOffset,
+        );
+        if (attribute.instanceDivisor > 0) {
+          gl.vertexAttribDivisor(attrInfo.loc, attribute.instanceDivisor);
+        }
       }
     });
-    geometry.indicesBuffer?.bind();
+    (geometry.getIndexBuffer()?.getDataBuffer() as GLDataBuffer | undefined)?.bind();
     if (vao) {
       vao.ready = true;
     }

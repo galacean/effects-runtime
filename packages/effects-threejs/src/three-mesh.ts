@@ -5,8 +5,8 @@ import type {
 import { glContext, Mesh } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeMaterial } from './material';
-import type { ThreeGeometry } from './three-geometry';
 import type { ThreeEngine } from './three-engine';
+import { getThreeGeometry } from './three-geometry';
 
 /**
  * mesh 抽象类的 THREE 实现
@@ -36,13 +36,15 @@ export class ThreeMesh extends Mesh implements Sortable {
     this.geometry = geometry;
     this.material = material;
 
-    if ((geometry as ThreeGeometry).mode === glContext.LINES) {
+    const nativeGeometry = getThreeGeometry(geometry);
+
+    if (geometry.mode === glContext.LINES) {
       this.mesh = new THREE.LineSegments(
-        (geometry as ThreeGeometry).geometry,
+        nativeGeometry,
         (material as ThreeMaterial).material);
     } else {
       this.mesh = new THREE.Mesh(
-        (geometry as ThreeGeometry).geometry,
+        nativeGeometry,
         (material as ThreeMaterial).material
       );
     }
@@ -125,6 +127,7 @@ export class ThreeMesh extends Mesh implements Sortable {
     if (!this.getVisible()) {
       return;
     }
+    this.mesh.geometry = getThreeGeometry(this.geometry);
     this.material.setMatrix('effects_ObjectToWorld', this.worldMatrix);
     this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
   }
