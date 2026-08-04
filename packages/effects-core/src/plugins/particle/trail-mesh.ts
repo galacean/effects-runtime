@@ -9,7 +9,7 @@ import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
 import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue, ValueGetter } from '../../math';
-import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
+import type { Buffer, GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
@@ -56,6 +56,7 @@ export class TrailMesh {
 
   private pointStart: Vector3[] = [];
   private trailCursors: Uint16Array;
+  private readonly attributeData = new Map<Buffer, Float32Array>();
 
   constructor (
     engine: Engine,
@@ -235,6 +236,14 @@ export class TrailMesh {
       this.mesh.worldMatrix = matrix;
     }
     this.geometry = mesh.firstGeometry();
+    this.geometry.getAttributeNames().forEach(name => {
+      const vertexBuffer = this.geometry.getVertexBuffer(name);
+      const data = this.geometry.getAttributeData(name);
+
+      if (vertexBuffer && data instanceof Float32Array) {
+        this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
+      }
+    });
     this.trailCursors = new Uint16Array(maxTrailCount);
   }
 
@@ -273,8 +282,8 @@ export class TrailMesh {
     dirData.set(dir, 0);
     dirData.set(dir, 3);
 
-    geometry.setAttributeSubData('aDir', dirStartIndex, dirData);
-    geometry.setAttributeSubData('aTime', pointStartIndex * 2, new Float32Array([time, time]));
+    this.setAttributeSubData('aDir', dirStartIndex, dirData);
+    this.setAttributeSubData('aTime', pointStartIndex * 2, new Float32Array([time, time]));
 
     const color = opt.color || [1, 1, 1, 1];
     const colorData = new Float32Array(24);
@@ -292,15 +301,15 @@ export class TrailMesh {
     colorData.set(positionData, 20);
     colorData[23] = -0.5 * size;
 
-    geometry.setAttributeSubData('aColor', pointStartIndex * 24, colorData);
+    this.setAttributeSubData('aColor', pointStartIndex * 24, colorData);
 
     if (previousIndex >= 0) {
       const bPreviousPoint = this.getTrailPosition(trailIndex, bpreviousIndex, tmp1) as Vector3;
       const previousDir = new Float32Array(calculateDirection(bPreviousPoint, previousPoint as Vector3, position));
       const previousDirStartIndex = (trailIndex * pointCountPerTrail + previousIndex) * 6;
 
-      geometry.setAttributeSubData('aDir', previousDirStartIndex, previousDir);
-      geometry.setAttributeSubData('aDir', previousDirStartIndex + 3, previousDir);
+      this.setAttributeSubData('aDir', previousDirStartIndex, previousDir);
+      this.setAttributeSubData('aDir', previousDirStartIndex + 3, previousDir);
       const indicesStart = trailIndex * pointCountPerTrail * 2;
       const indicesData = new Uint16Array([
         previousIndex * 2 + indicesStart,
@@ -327,7 +336,7 @@ export class TrailMesh {
       for (let i = 0; i < len; i++) {
         startData[i] = trailStart;
       }
-      geometry.setAttributeSubData('aTrailStart', trailIndex * startData.length, startData);
+      this.setAttributeSubData('aTrailStart', trailIndex * startData.length, startData);
     } else {
       const value = mtl.getFloats('uTrailStart');
 
@@ -348,9 +357,7 @@ export class TrailMesh {
 
     if (index >= 0 && index < pointCountPerTrail) {
       const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
-      const data = this.geometry.getAttributeData('aColor');
-
-      assertExist(data);
+      const data = this.getAttributeData('aColor');
 
       out.x = data[startIndex];
       out.y = data[1 + startIndex];
@@ -370,14 +377,12 @@ export class TrailMesh {
   }
 
   minusTime (time: number) {
-    const data = this.geometry.getAttributeData('aTime');
-
-    assertExist(data);
+    const data = this.getAttributeData('aTime');
 
     for (let i = 0; i < data.length; i++) {
       data[i] -= time;
     }
-    this.geometry.setAttributeData('aTime', data);
+    this.setAttributeData('aTime', data);
     this.time -= time;
   }
 
@@ -405,6 +410,30 @@ export class TrailMesh {
   }
 
   onUpdate (escapeTime: number): any {
+  }
+
+  private getAttributeData (name: string): Float32Array {
+    const vertexBuffer = this.geometry.getVertexBuffer(name);
+    const data = vertexBuffer && this.attributeData.get(vertexBuffer.getWrapperBuffer());
+
+    assertExist(data);
+
+    return data;
+  }
+
+  private setAttributeData (name: string, data: Float32Array) {
+    const vertexBuffer = this.geometry.getVertexBuffer(name);
+
+    assertExist(vertexBuffer);
+    this.attributeData.set(vertexBuffer.getWrapperBuffer(), data);
+    this.geometry.setAttributeData(name, data);
+  }
+
+  private setAttributeSubData (name: string, offset: number, data: Float32Array) {
+    const target = this.getAttributeData(name);
+
+    target.set(data, offset);
+    this.geometry.setAttributeSubData(name, offset, data);
   }
 
 }

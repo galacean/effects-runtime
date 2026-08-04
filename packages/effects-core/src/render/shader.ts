@@ -69,6 +69,7 @@ export abstract class ShaderVariant extends EffectsObject {
   constructor (
     engine: Engine,
     public readonly source: ShaderWithSource,
+    public readonly key: string,
   ) {
     super(engine);
   }

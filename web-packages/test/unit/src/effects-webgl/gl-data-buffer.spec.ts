@@ -1,6 +1,6 @@
 import { BufferDataType, BufferUsage, isWebGL2 } from '@galacean/effects-core';
 import { GLDataBuffer, GLEngine } from '@galacean/effects-webgl';
-import { getGL2 } from './gl-utils';
+import { getGL2, readBufferContents } from './gl-utils';
 
 const { assert, expect } = chai;
 
@@ -20,53 +20,55 @@ describe('webgl/gl-data-buffer', () => {
     canvas.remove();
   });
 
-  it('creates a vertex buffer from backend-neutral options', () => {
-    const buffer = new GLDataBuffer(engine, {
-      kind: 'vertex',
+  it('creates a vertex buffer through the engine', () => {
+    const buffer = engine.createVertexBuffer(new Float32Array([1, 2, 3, 4]), {
       usage: BufferUsage.Static,
       type: BufferDataType.Float,
       byteStride: 8,
       instanceDivisor: 0,
     });
 
-    buffer.setData(new Float32Array([1, 2, 3, 4]));
-    assert.equal(buffer.target, engine.gl.ARRAY_BUFFER);
+    expect(buffer).to.be.an.instanceOf(GLDataBuffer);
+    assert.isNotNull(buffer.underlyingResource);
     assert.equal(buffer.capacity, 4 * Float32Array.BYTES_PER_ELEMENT);
-    assert.equal(buffer.bytesPerElement, Float32Array.BYTES_PER_ELEMENT);
-    buffer.dispose();
+    engine.releaseBuffer(buffer);
   });
 
   it('rejects updates outside the allocated range', () => {
-    const buffer = new GLDataBuffer(engine, {
-      kind: 'vertex',
+    const buffer = engine.createDynamicVertexBuffer(new Float32Array(4), {
       usage: BufferUsage.Dynamic,
       type: BufferDataType.Float,
       byteStride: 4,
       instanceDivisor: 0,
     });
 
-    buffer.setData(new Float32Array(4));
-    expect(() => buffer.setSubData(12, new Float32Array([1, 2]))).to.throw(RangeError);
-    buffer.dispose();
+    expect(() => engine.updateDynamicVertexBuffer(
+      buffer,
+      new Float32Array([1, 2]),
+      12,
+    )).to.throw(RangeError);
+    engine.releaseBuffer(buffer);
   });
 
   it('updates and reads a byte range', () => {
-    const buffer = new GLDataBuffer(engine, {
-      kind: 'index',
+    const buffer = engine.createIndexBuffer(new Uint16Array([0, 1, 2, 3]), {
       usage: BufferUsage.Dynamic,
       type: BufferDataType.UnsignedShort,
       byteStride: 0,
       instanceDivisor: 0,
     });
 
-    buffer.setData(new Uint16Array([0, 1, 2, 3]));
-    buffer.setSubData(Uint16Array.BYTES_PER_ELEMENT, new Uint16Array([7, 8]));
+    engine.updateDynamicIndexBuffer(
+      buffer,
+      new Uint16Array([7, 8]),
+      Uint16Array.BYTES_PER_ELEMENT,
+    );
     if (isWebGL2(engine.gl)) {
       const result = new Uint16Array(4);
 
-      buffer.readSubData(0, result);
+      readBufferContents(engine.gl, buffer, result, 0, true);
       expect(result).to.deep.equal(new Uint16Array([0, 7, 8, 3]));
     }
-    buffer.dispose();
+    engine.releaseBuffer(buffer);
   });
 });

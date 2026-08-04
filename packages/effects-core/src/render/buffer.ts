@@ -1,223 +1,210 @@
-import type * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import type { Disposable } from '../utils';
-import type { DataBuffer, DataBufferKind } from './data-buffer';
-import { BufferDataType, BufferUsage, getDataType } from './data-buffer';
-
-export interface BufferProps {
-  data?: spec.TypedArray,
-  kind?: DataBufferKind,
-  usage?: number,
-  type?: number,
-  byteStride?: number,
-  instanceDivisor?: number,
-  releasable?: boolean,
-  name?: string,
-}
-
-type DirtyRange = {
-  discard: boolean,
-  start: number,
-  end: number,
-};
+import type { DataArray, DataBufferOptions } from './data-buffer';
+import {
+  BufferDataType, BufferUsage, DataBuffer, getDataByteLength, getDataType,
+} from './data-buffer';
+import { VertexBuffer } from './vertex-buffer';
 
 /**
- * 管理一份 CPU 数据及其对应的后端缓冲区。
+ * 管理顶点数据及其对应的后端缓冲区。
  */
 export class Buffer implements Disposable {
-  readonly kind: DataBufferKind;
-  readonly usage: number;
-  readonly type: number;
   readonly byteStride: number;
-  readonly instanceDivisor: number;
-  readonly releasable: boolean;
-  readonly name?: string;
 
-  private data?: spec.TypedArray;
-  private dataBuffer?: DataBuffer;
-  private references = 0;
-  private dirty?: DirtyRange;
-  private byteLength = 0;
-  private destroyed = false;
+  private data?: DataArray;
+  private buffer?: DataBuffer;
+  private readonly updatable: boolean;
+  private readonly instanced: boolean;
+  private readonly divisor: number;
+  private readonly label?: string;
+  private isAlreadyOwned = false;
+  private _isDisposed = false;
 
   constructor (
     public readonly engine: Engine,
-    props: BufferProps = {},
+    data: DataArray | DataBuffer,
+    updatable: boolean,
+    stride = 0,
+    postponeInternalCreation = false,
+    instanced = false,
+    useBytes = false,
+    divisor?: number,
+    label?: string,
   ) {
-    const data = props.data;
+    this.updatable = updatable;
+    this.instanced = instanced;
+    this.divisor = divisor || 1;
+    this.label = label;
+    this.byteStride = useBytes ? stride : stride * Float32Array.BYTES_PER_ELEMENT;
 
-    this.kind = props.kind ?? 'vertex';
-    this.usage = props.usage ?? BufferUsage.Static;
-    this.type = props.type ?? (data ? getDataType(data) : BufferDataType.Float);
-    this.byteStride = props.byteStride ?? 0;
-    this.instanceDivisor = props.instanceDivisor ?? 0;
-    this.releasable = props.releasable ?? false;
-    this.name = props.name;
-    this.data = data;
-    this.byteLength = data?.byteLength ?? 0;
-    if (data) {
-      this.markDiscard();
+    if (data instanceof DataBuffer) {
+      this.buffer = data;
+    } else {
+      this.data = data;
+    }
+    if (!postponeInternalCreation) {
+      this.create();
     }
   }
 
-  get isDestroyed (): boolean {
-    return this.destroyed;
+  get isDisposed (): boolean {
+    return this._isDisposed;
   }
 
   get capacity (): number {
-    return this.dataBuffer?.capacity ?? this.byteLength;
+    return this.buffer?.capacity ?? (this.data ? getDataByteLength(this.data) : 0);
   }
 
-  getData (): spec.TypedArray | undefined {
+  isUpdatable (): boolean {
+    return this.updatable;
+  }
+
+  getData (): DataArray | undefined {
     return this.data;
   }
 
-  getDataBuffer (): DataBuffer | undefined {
-    return this.dataBuffer;
+  getBuffer (): DataBuffer | undefined {
+    return this.buffer;
   }
 
-  retain (): this {
-    if (this.destroyed) {
-      throw new Error('Cannot retain a disposed buffer.');
-    }
-    this.references++;
-
-    return this;
+  getStrideSize (): number {
+    return this.byteStride / Float32Array.BYTES_PER_ELEMENT;
   }
 
-  release (): void {
-    if (this.references > 0) {
-      this.references--;
-    }
-    if (this.references === 0) {
-      this.dispose();
-    }
-  }
+  createVertexBuffer (
+    kind: string,
+    offset: number,
+    size: number,
+    stride?: number,
+    instanced?: boolean,
+    useBytes = false,
+    divisor?: number,
+  ): VertexBuffer {
+    const byteOffset = useBytes ? offset : offset * Float32Array.BYTES_PER_ELEMENT;
+    const byteStride = stride
+      ? (useBytes ? stride : stride * Float32Array.BYTES_PER_ELEMENT)
+      : this.byteStride;
 
-  setData (data: spec.TypedArray): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.data = data;
-    this.byteLength = data.byteLength;
-    this.markDiscard();
-  }
-
-  setSubData (elementOffset: number, data: spec.TypedArray): void {
-    const target = this.data;
-
-    if (!target) {
-      throw new Error(`Buffer '${this.name ?? ''}' has no writable CPU data.`);
-    }
-    if (elementOffset < 0 || elementOffset + data.length > target.length) {
-      throw new RangeError(`Buffer '${this.name ?? ''}' update is out of range.`);
-    }
-    target.set(data, elementOffset);
-    if (!this.dirty?.discard) {
-      const start = elementOffset;
-      const end = elementOffset + data.length;
-
-      if (this.dirty) {
-        this.dirty.start = Math.min(this.dirty.start, start);
-        this.dirty.end = Math.max(this.dirty.end, end);
-      } else {
-        this.dirty = { discard: false, start, end };
-      }
-    }
-  }
-
-  initialize (): void {
-    if (this.destroyed || this.dataBuffer) {
-      return;
-    }
-    this.dataBuffer = this.engine.createDataBuffer({
-      kind: this.kind,
-      usage: this.usage,
-      type: this.type,
-      byteStride: this.byteStride,
-      instanceDivisor: this.instanceDivisor,
-      name: this.name,
+    return new VertexBuffer(this.engine, this, kind, {
+      size,
+      stride: byteStride,
+      offset: byteOffset,
+      instanced: instanced === undefined ? this.instanced : instanced,
+      useBytes: true,
+      divisor: this.divisor || divisor,
+      takeBufferOwnership: true,
     });
-    this.dataBuffer.references++;
-    if (!this.dirty) {
-      this.markDiscard();
+  }
+
+  create (data?: DataArray): void {
+    if (!data && this.buffer) {
+      return;
+    }
+    data = data ?? this.data;
+    if (!data) {
+      return;
+    }
+    const options = this.getDataBufferOptions(data);
+
+    if (!this.buffer) {
+      this.buffer = this.updatable
+        ? this.engine.createDynamicVertexBuffer(data, options)
+        : this.engine.createVertexBuffer(data, options);
+      if (this.updatable) {
+        this.data = data;
+      }
+    } else if (this.updatable) {
+      this.engine.updateDynamicVertexBuffer(this.buffer, data);
+      this.data = data;
     }
   }
 
-  flush (): void {
-    if (this.destroyed) {
+  update (data: DataArray): void {
+    this.create(data);
+  }
+
+  updateDirectly (
+    data: DataArray,
+    offset: number,
+    vertexCount?: number,
+    useBytes = false,
+  ): void {
+    if (!this.buffer || !this.updatable) {
       return;
     }
-    this.initialize();
-    const dataBuffer = this.dataBuffer;
-    const dirty = this.dirty;
-
-    if (!dataBuffer || !dirty) {
-      return;
-    }
-    const data = this.data;
-
-    if (dirty.discard) {
-      dataBuffer.setData(data ?? this.byteLength);
-    } else if (data && dirty.end > dirty.start) {
-      const subData = createSubArray(data, dirty.start, dirty.end);
-
-      dataBuffer.setSubData(dirty.start * data.BYTES_PER_ELEMENT, subData);
-    }
-    this.dirty = undefined;
-    if (this.releasable && this.engine.doNotHandleContextLost) {
+    this.engine.updateDynamicVertexBuffer(
+      this.buffer,
+      data,
+      useBytes ? offset : offset * Float32Array.BYTES_PER_ELEMENT,
+      vertexCount ? vertexCount * this.byteStride : undefined,
+    );
+    if (offset === 0 && vertexCount === undefined) {
+      this.data = data;
+    } else {
       this.data = undefined;
     }
   }
 
-  restore (): void {
-    if (!this.dataBuffer || this.destroyed) {
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    if (!this.data) {
+      if (!this.buffer) {
+        return;
+      }
+      const capacity = this.buffer.capacity;
+
+      if (capacity > 0) {
+        const options = this.getDataBufferOptions();
+
+        this.buffer = this.updatable
+          ? this.engine.createDynamicVertexBuffer(capacity, options)
+          : this.engine.createVertexBuffer(capacity, options);
+      } else {
+        this.buffer = undefined;
+      }
+
       return;
     }
-    this.dataBuffer.restore(this.data, this.byteLength);
+    this.buffer = undefined;
+    this.create(this.data);
   }
 
-  readSubData (elementOffset: number, destination: spec.TypedArray): boolean {
-    const reader = this.dataBuffer as DataBuffer & {
-      readSubData?: (elementOffset: number, destination: spec.TypedArray) => boolean,
-    };
+  /**
+   * @internal
+   */
+  increaseReferences (): void {
+    if (!this.buffer) {
+      return;
+    }
+    if (!this.isAlreadyOwned) {
+      this.isAlreadyOwned = true;
 
-    return reader?.readSubData?.(elementOffset, destination) ?? false;
+      return;
+    }
+    this.buffer.references++;
   }
 
   dispose (): void {
-    if (this.destroyed) {
+    if (!this.buffer) {
       return;
     }
-    if (this.dataBuffer) {
-      this.dataBuffer.references--;
-      if (this.dataBuffer.references <= 0) {
-        this.dataBuffer.dispose();
-      }
+    if (this.engine.releaseBuffer(this.buffer)) {
+      this.data = undefined;
+      this.buffer = undefined;
+      this._isDisposed = true;
     }
-    this.data = undefined;
-    this.dataBuffer = undefined;
-    this.dirty = undefined;
-    this.destroyed = true;
   }
 
-  private markDiscard (): void {
-    this.dirty = {
-      discard: true,
-      start: 0,
-      end: this.data?.length ?? 0,
+  private getDataBufferOptions (data?: DataArray): DataBufferOptions {
+    return {
+      usage: this.updatable ? BufferUsage.Dynamic : BufferUsage.Static,
+      type: data ? getDataType(data) : BufferDataType.Float,
+      byteStride: this.byteStride,
+      instanceDivisor: this.instanced ? this.divisor : 0,
+      label: this.label,
     };
   }
-}
-
-function createSubArray (data: spec.TypedArray, start: number, end: number): spec.TypedArray {
-  const Constructor = data.constructor as {
-    new (buffer: ArrayBufferLike, byteOffset: number, length: number): spec.TypedArray,
-  };
-
-  return new Constructor(
-    data.buffer,
-    data.byteOffset + start * data.BYTES_PER_ELEMENT,
-    end - start,
-  );
 }

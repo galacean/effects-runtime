@@ -194,7 +194,7 @@ export interface SharedGeometryOptions {
   drawStart?: number,
   drawCount?: number,
   mode?: GeometryDrawMode,
-  index?: { data: Uint8Array | Uint16Array | Uint32Array, releasable?: boolean },
+  index?: { data: Uint16Array | Uint32Array },
   geometry: Geometry,
 }
 
@@ -202,12 +202,12 @@ export class SharedGeometry extends Geometry {
   constructor (engine: Engine, options: SharedGeometryOptions) {
     const source = options.geometry;
     const sourceIndex = options.index?.data ?? source.getIndexData();
-    const indexData = sourceIndex?.slice() as Uint8Array | Uint16Array | Uint32Array | undefined;
+    const indexData = sourceIndex?.slice() as Uint16Array | Uint32Array | undefined;
 
     super(engine, {
       name: options.name,
       attributes: {},
-      indices: indexData ? { data: indexData, releasable: options.index?.releasable } : undefined,
+      indices: indexData ? { data: indexData } : undefined,
       drawStart: options.drawStart ?? 0,
       drawCount: options.drawCount ?? 0,
       mode: options.mode ?? 0,
@@ -216,7 +216,7 @@ export class SharedGeometry extends Geometry {
       const vertexBuffer = source.getVertexBuffer(name);
 
       if (vertexBuffer) {
-        this.setVertexBuffer(name, vertexBuffer);
+        this.setVerticesBuffer(vertexBuffer);
       }
     });
   }

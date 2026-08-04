@@ -82,9 +82,10 @@ export class SpineMesh implements Disposable {
       this.engine,
       {
         attributes,
-        indices: { data: new Uint16Array(0), releasable: true },
+        indices: { data: new Uint16Array(0) },
         mode: glContext.TRIANGLES,
         maxVertex: SlotGroup.MAX_VERTICES,
+        bufferUsage: glContext.DYNAMIC_DRAW,
       });
   }
 

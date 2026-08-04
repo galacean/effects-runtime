@@ -1,7 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
-import type { Disposable } from '../utils';
 
-export type DataBufferKind = 'vertex' | 'index';
+export type DataArray = number[] | ArrayBuffer | ArrayBufferView;
+
+export type IndicesArray = number[] | Int32Array | Uint32Array | Uint16Array;
+
+export type IndexData = Int32Array | Uint32Array | Uint16Array;
 
 export enum BufferUsage {
   Stream = 0x88E0,
@@ -20,37 +23,24 @@ export enum BufferDataType {
 }
 
 export interface DataBufferOptions {
-  kind: DataBufferKind,
   usage: number,
   type: number,
   byteStride: number,
   instanceDivisor: number,
-  name?: string,
+  label?: string,
 }
 
-let dataBufferId = 0;
-
 /**
- * 后端缓冲区的最小抽象，只负责资源句柄和数据传输。
+ * 后端缓冲区的最小抽象，只保存资源状态。
  */
-export abstract class DataBuffer implements Disposable {
-  readonly uniqueId = dataBufferId++;
+export class DataBuffer {
   references = 0;
   capacity = 0;
   is32Bits = false;
 
-  constructor (
-    public readonly options: DataBufferOptions,
-  ) {
+  get underlyingResource (): unknown {
+    return null;
   }
-
-  abstract setData (data: spec.TypedArray | number): void;
-
-  abstract setSubData (byteOffset: number, data: spec.TypedArray): void;
-
-  abstract restore (data: spec.TypedArray | undefined, byteLength: number): void;
-
-  abstract dispose (): void;
 }
 
 export function getBytesPerElement (type: number): number {
@@ -70,7 +60,7 @@ export function getBytesPerElement (type: number): number {
   }
 }
 
-export function getDataType (data: spec.TypedArray): BufferDataType {
+export function getDataType (data: DataArray): BufferDataType {
   if (data instanceof Int8Array) {
     return BufferDataType.Byte;
   }
@@ -91,6 +81,25 @@ export function getDataType (data: spec.TypedArray): BufferDataType {
   }
 
   return BufferDataType.Float;
+}
+
+export function getDataByteLength (data: DataArray): number {
+  if (Array.isArray(data)) {
+    return data.length * Float32Array.BYTES_PER_ELEMENT;
+  }
+
+  return data.byteLength;
+}
+
+export function toBufferView (data: DataArray): ArrayBufferView {
+  if (Array.isArray(data)) {
+    return new Float32Array(data);
+  }
+  if (data instanceof ArrayBuffer) {
+    return new Uint8Array(data);
+  }
+
+  return data;
 }
 
 export function createTypedArray (type: number, length: number): spec.TypedArray {

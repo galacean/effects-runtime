@@ -1,12 +1,13 @@
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
-import type { Disposable } from '../utils';
 import { Buffer } from './buffer';
+import type { DataBuffer, IndexData, IndicesArray } from './data-buffer';
 import {
   BufferDataType, BufferUsage, createTypedArray, getBytesPerElement, getDataType,
 } from './data-buffer';
 import { VertexBuffer } from './vertex-buffer';
+import type { ShaderVariant } from './shader';
 
 export type GeometryDrawMode = number;
 
@@ -20,11 +21,14 @@ export type Attribute =
 export interface GeometryProps {
   name?: string,
   attributes: Record<string, Attribute>,
-  indices?: { data: spec.TypedArray, releasable?: boolean },
+  indices?: { data: IndexData },
   mode?: GeometryDrawMode,
   drawCount?: number,
   drawStart?: number,
   instanceCount?: number,
+  /**
+   * 顶点和索引缓冲区的使用方式，默认使用静态缓冲区。
+   */
   bufferUsage?: number,
   /**
    * 为初始空缓冲区预留的最大顶点数量。
@@ -40,6 +44,21 @@ export interface SkinProps {
 
 let geometryId = 1;
 
+type VertexArrayObject = object;
+
+interface VertexArrayObjectEngine {
+  recordVertexArrayObject: (
+    vertexBuffers: Record<string, VertexBuffer>,
+    indexBuffer: DataBuffer | undefined,
+    shader: ShaderVariant,
+  ) => VertexArrayObject | undefined,
+  bindVertexArrayObject: (
+    vertexArrayObject: VertexArrayObject,
+    indexBuffer: DataBuffer | undefined,
+  ) => void,
+  releaseVertexArrayObject: (vertexArrayObject: VertexArrayObject) => void,
+}
+
 /**
  * 几何数据、属性布局和绘制范围的后端无关实现。
  */
@@ -49,150 +68,157 @@ export class Geometry extends EffectsObject {
   name = '';
   subMeshes: spec.SubMesh[] = [];
   /** @hide */
-  attributes: Record<string, VertexBuffer> = {};
-  /** @hide */
-  drawCount = 0;
-  /** @hide */
-  drawStart = 0;
-  /** @hide */
   mode: GeometryDrawMode = 4;
   /** @hide */
   instanceCount = 0;
-  /** @hide */
-  skin: SkinProps = {};
 
-  private indexBuffer?: Buffer;
-  private attributesName: string[] = [];
+  private vertexBuffers: Record<string, VertexBuffer> = {};
+  private indices: IndexData = new Uint16Array(0);
+  private drawCount = 0;
+  private drawStart = 0;
+  private skin: SkinProps = {};
+  private indexBuffer?: DataBuffer;
+  private disposed = false;
   private initialized = false;
-  private destroyed = false;
   private options?: GeometryProps;
   private bufferUsage = BufferUsage.Static;
-  private layoutVersion = 0;
-  private readonly _vertexArrayObjects: Record<string, Disposable> = {};
+  private vertexArrayObjects?: Record<string, VertexArrayObject>;
 
   /** @hide */
   constructor (engine: Engine, props?: GeometryProps) {
     super(engine);
+    if (supportsVertexArrayObjects(engine)) {
+      this.vertexArrayObjects = {};
+    }
     if (props) {
       this.processProps(props);
     }
   }
 
   /** @hide */
-  get isDestroyed (): boolean {
-    return this.destroyed;
+  isDisposed (): boolean {
+    return this.disposed;
   }
 
-  /** @hide */
+  /**
+   * @internal
+   */
   get isInitialized (): boolean {
     return this.initialized;
   }
 
-  /** @hide */
-  get version (): number {
-    return this.layoutVersion;
-  }
-
-  /** @hide */
+  /**
+   * @internal
+   */
   getOptions (): GeometryProps | undefined {
     return this.options ? { ...this.options } : undefined;
   }
 
   /** @hide */
   getVertexBuffer (name: string): VertexBuffer | undefined {
-    return this.attributes[name];
+    return this.vertexBuffers[name];
   }
 
-  /** @hide */
+  /**
+   * @internal
+   */
   getVertexBuffers (): Readonly<Record<string, VertexBuffer>> {
-    return this.attributes;
+    return this.vertexBuffers;
   }
 
   /** @hide */
-  setVertexBuffer (name: string, vertexBuffer: VertexBuffer): void {
-    this.attributes[name]?.dispose();
-    this.attributes[name] = vertexBuffer.createReference(name);
-    if (!this.attributesName.includes(name)) {
-      this.attributesName.push(name);
+  setVerticesBuffer (vertexBuffer: VertexBuffer): void {
+    const kind = vertexBuffer.getKind();
+    const current = this.vertexBuffers[kind];
+
+    if (current === vertexBuffer) {
+      return;
     }
-    this.invalidateLayout();
+    current?.dispose();
+    if (vertexBuffer.ownsBuffer) {
+      vertexBuffer.buffer.increaseReferences();
+    }
+    this.vertexBuffers[kind] = vertexBuffer;
+    this.disposeVertexArrayObjects();
   }
 
   /** @hide */
   getAttributeBuffer (name: string): Buffer | undefined {
-    return this.attributes[name]?.buffer;
+    return this.vertexBuffers[name]?.getWrapperBuffer();
   }
 
   getAttributeData (name: string): spec.TypedArray | undefined {
-    return this.attributes[name]?.getData();
+    return this.vertexBuffers[name]?.getData() as spec.TypedArray | undefined;
   }
 
   setAttributeData (name: string, data: spec.TypedArray): void {
-    this.attributes[name]?.buffer.setData(data);
+    this.vertexBuffers[name]?.update(data);
   }
 
   setAttributeSubData (name: string, offset: number, data: spec.TypedArray): void {
-    const vertexBuffer = this.attributes[name];
+    const vertexBuffer = this.vertexBuffers[name];
 
     if (!vertexBuffer) {
       return;
     }
-    vertexBuffer.buffer.setSubData(offset, data);
+    vertexBuffer.updateDirectly(data, offset);
   }
 
   getAttributeStride (name: string): number {
-    return this.attributes[name]?.byteStride ?? 0;
+    return this.vertexBuffers[name]?.byteStride ?? 0;
   }
 
   getAttributeNames (): string[] {
-    return this.attributesName.slice();
+    return Object.keys(this.vertexBuffers);
   }
 
   /** @hide */
-  getIndexBuffer (): Buffer | undefined {
+  getIndexBuffer (): DataBuffer | undefined {
     return this.indexBuffer;
   }
 
-  getIndexData (): spec.TypedArray | undefined {
-    return this.indexBuffer?.getData();
+  getIndexData (): IndexData {
+    return this.indices;
   }
 
   /** @hide */
   getIndexType (): number {
-    const data = this.getIndexData();
-
-    return data ? getDataType(data) : this.indexBuffer?.type ?? BufferDataType.UnsignedShort;
+    return this.indexBuffer?.is32Bits || shouldUse32Bits(this.indices)
+      ? BufferDataType.UnsignedInt
+      : BufferDataType.UnsignedShort;
   }
 
-  setIndexData (data: spec.TypedArray): void {
+  setIndexData (data: IndicesArray): void {
     if (!isIndexData(data)) {
-      throw new TypeError('Index data must use an unsigned integer typed array.');
+      throw new TypeError('Index data must use a supported integer array.');
     }
-    const type: number = getDataType(data);
 
-    if (!this.indexBuffer || this.indexBuffer.type !== type) {
-      this.indexBuffer?.release();
-      this.indexBuffer = new Buffer(this.engine, {
-        data,
-        kind: 'index',
-        usage: this.bufferUsage,
-        type,
-        name: `${this.name}##index`,
-      }).retain();
-      this.invalidateLayout();
-      if (this.initialized) {
-        this.indexBuffer.initialize();
-      }
-    } else {
-      this.indexBuffer.setData(data);
+    this.indices = Array.isArray(data)
+      ? shouldUse32Bits(data) ? new Uint32Array(data) : new Uint16Array(data)
+      : data;
+    this.releaseIndexBuffer();
+    this.disposeVertexArrayObjects();
+    if (this.initialized) {
+      this.createIndexBuffer();
     }
   }
 
-  setIndexSubData (offset: number, data: spec.TypedArray): void {
-    if (!this.indexBuffer) {
-      return;
+  setIndexSubData (offset: number, data: IndicesArray): void {
+    const indices = this.indices;
+
+    if (offset < 0 || offset + data.length > indices.length) {
+      throw new RangeError(`Buffer '${this.name}##index' update is out of range.`);
     }
-    this.indexBuffer.setSubData(offset, data);
+    indices.set(data, offset);
+    if (this.indexBuffer) {
+      const updatedData = indices.slice(offset, offset + data.length) as IndicesArray;
+
+      this.engine.updateDynamicIndexBuffer(
+        this.indexBuffer,
+        updatedData,
+        offset * (this.indexBuffer.is32Bits ? Uint32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT),
+      );
+    }
   }
 
   setDrawStart (start: number): void {
@@ -216,52 +242,80 @@ export class Geometry extends EffectsObject {
   }
 
   /** @hide */
-  getVertexArrayObject<T extends Disposable> (key: string): T | undefined {
-    return this._vertexArrayObjects[key] as T | undefined;
+  bind (shader: ShaderVariant): void {
+    const vertexArrayObjects = this.vertexArrayObjects;
+    const engine = this.engine;
+
+    if (!vertexArrayObjects || !supportsVertexArrayObjects(engine)) {
+      engine.bindBuffers(this.vertexBuffers, this.indexBuffer, shader);
+
+      return;
+    }
+    let vertexArrayObject: VertexArrayObject | undefined = vertexArrayObjects[shader.key];
+
+    if (!vertexArrayObject) {
+      vertexArrayObject = engine.recordVertexArrayObject(
+        this.vertexBuffers,
+        this.indexBuffer,
+        shader,
+      );
+      if (vertexArrayObject) {
+        vertexArrayObjects[shader.key] = vertexArrayObject;
+      }
+    }
+    if (vertexArrayObject) {
+      engine.bindVertexArrayObject(vertexArrayObject, this.indexBuffer);
+    } else {
+      engine.bindBuffers(this.vertexBuffers, this.indexBuffer, shader);
+    }
   }
 
-  /** @hide */
-  setVertexArrayObject<T extends Disposable> (key: string, vertexArrayObject: T): T {
-    this.releaseVertexArrayObject(key);
-    this._vertexArrayObjects[key] = vertexArrayObject;
+  private releaseVertexArrayObject (key: string): void {
+    const vertexArrayObjects = this.vertexArrayObjects;
 
-    return vertexArrayObject;
-  }
+    if (!vertexArrayObjects) {
+      return;
+    }
+    const vertexArrayObject = vertexArrayObjects[key];
 
-  /** @hide */
-  releaseVertexArrayObject (key: string): void {
-    this._vertexArrayObjects[key]?.dispose();
-    delete this._vertexArrayObjects[key];
+    if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine)) {
+      this.engine.releaseVertexArrayObject(vertexArrayObject);
+    }
+    delete vertexArrayObjects[key];
   }
 
   initialize (): void {
-    if (this.initialized || this.destroyed) {
+    if (this.initialized || this.disposed) {
       return;
     }
-    this.forEachBuffer(buffer => {
-      buffer.initialize();
-      buffer.flush();
+    this.forEachVertexBuffer(buffer => {
+      buffer.create();
     });
+    this.createIndexBuffer();
     this.engine.addGeometry(this);
     this.initialized = true;
     this.options = undefined;
   }
 
   flush (): void {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     this.initialize();
-    this.forEachBuffer(buffer => buffer.flush());
+    this.forEachVertexBuffer(buffer => buffer.create());
   }
 
   /** @hide */
   restore (): void {
-    if (!this.initialized || this.destroyed) {
+    if (!this.initialized || this.disposed) {
       return;
     }
     this.disposeVertexArrayObjects();
-    this.forEachBuffer(buffer => buffer.restore());
+    this.forEachVertexBuffer(buffer => buffer.rebuild());
+    if (this.indices.length > 0) {
+      this.indexBuffer = undefined;
+      this.createIndexBuffer();
+    }
   }
 
   override fromData (data: spec.GeometryData): void {
@@ -323,15 +377,14 @@ export class Geometry extends EffectsObject {
   }
 
   override dispose (): void {
-    if (this.destroyed) {
+    if (this.disposed) {
       return;
     }
     this.disposeVertexArrayObjects();
-    Object.keys(this.attributes).forEach(name => this.attributes[name].dispose());
-    this.indexBuffer?.release();
-    this.attributes = {};
-    this.attributesName = [];
-    this.indexBuffer = undefined;
+    Object.keys(this.vertexBuffers).forEach(name => this.vertexBuffers[name].dispose());
+    this.releaseIndexBuffer();
+    this.vertexBuffers = {};
+    this.indices = new Uint16Array(0);
     this.options = undefined;
     this.drawStart = 0;
     this.drawCount = NaN;
@@ -339,7 +392,7 @@ export class Geometry extends EffectsObject {
       this.engine.removeGeometry(this);
     }
     this.initialized = false;
-    this.destroyed = true;
+    this.disposed = true;
     super.dispose();
   }
 
@@ -348,6 +401,7 @@ export class Geometry extends EffectsObject {
     const usage = props.bufferUsage ?? BufferUsage.Static;
     const sourceBuffers: Record<string, Buffer> = {};
     const sourceDivisors: Record<string, number> = {};
+    const sourceTypes: Record<string, number> = {};
 
     Object.keys(props.attributes).forEach(name => {
       const attribute = props.attributes[name];
@@ -372,16 +426,20 @@ export class Geometry extends EffectsObject {
 
         data = createTypedArray(type, Math.ceil(props.maxVertex * elementStride));
       }
-      sourceBuffers[name] = new Buffer(this.engine, {
+      const instanceDivisor = sourceDivisors[name] ?? 0;
+
+      sourceTypes[name] = type;
+      sourceBuffers[name] = new Buffer(
+        this.engine,
         data,
-        kind: 'vertex',
-        usage,
-        type,
+        usage !== (BufferUsage.Static as number),
         byteStride,
-        instanceDivisor: sourceDivisors[name] ?? 0,
-        releasable: attribute.releasable,
+        true,
+        instanceDivisor > 0,
+        true,
+        instanceDivisor,
         name,
-      });
+      );
     });
     Object.keys(props.attributes).forEach(name => {
       const attribute = props.attributes[name];
@@ -391,19 +449,25 @@ export class Geometry extends EffectsObject {
       if (!buffer) {
         throw new Error(`Attribute '${name}' references missing data source '${source}'.`);
       }
-      const type = attribute.type ?? buffer.type;
+      const type = attribute.type ?? sourceTypes[source] ?? BufferDataType.Float;
 
-      this.attributes[name] = new VertexBuffer(name, buffer, {
+      const byteStride = attribute.stride || buffer.byteStride;
+      const instanceDivisor = attribute.instanceDivisor ?? 0;
+
+      const vertexBuffer = new VertexBuffer(this.engine, buffer, name, {
         size: attribute.size,
         type,
-        dataSource: source,
-        byteStride: attribute.stride || buffer.byteStride,
-        byteOffset: attribute.offset ?? 0,
+        stride: byteStride,
+        offset: attribute.offset ?? 0,
         normalized: attribute.normalize ?? false,
-        instanceDivisor: attribute.instanceDivisor ?? 0,
+        instanced: instanceDivisor > 0,
+        divisor: instanceDivisor,
+        useBytes: true,
+        takeBufferOwnership: true,
       });
+
+      this.setVerticesBuffer(vertexBuffer);
     });
-    this.attributesName = Object.keys(props.attributes);
     this.name = props.name ?? `effectsGeometry:${geometryId++}`;
     this.drawStart = props.drawStart ?? 0;
     this.drawCount = props.drawCount ?? 0;
@@ -415,58 +479,70 @@ export class Geometry extends EffectsObject {
       const data = props.indices.data;
 
       if (!isIndexData(data)) {
-        throw new TypeError('Index data must use an unsigned integer typed array.');
+        throw new TypeError('Index data must use a supported integer array.');
       }
       // 索引还会参与 CPU 侧的命中检测和几何查询，因此始终保留源数据。
-      this.indexBuffer = new Buffer(this.engine, {
-        data,
-        kind: 'index',
-        usage,
-        type: getDataType(data),
-        name: `${this.name}##index`,
-      }).retain();
+      this.indices = Array.isArray(data)
+        ? shouldUse32Bits(data) ? new Uint32Array(data) : new Uint16Array(data)
+        : data;
     }
-    this.invalidateLayout();
+    this.disposeVertexArrayObjects();
   }
 
   private releaseCurrentBuffers (): void {
     const wasInitialized = this.initialized;
 
     this.disposeVertexArrayObjects();
-    Object.keys(this.attributes).forEach(name => this.attributes[name].dispose());
-    this.indexBuffer?.release();
-    this.attributes = {};
-    this.attributesName = [];
-    this.indexBuffer = undefined;
+    Object.keys(this.vertexBuffers).forEach(name => this.vertexBuffers[name].dispose());
+    this.releaseIndexBuffer();
+    this.vertexBuffers = {};
+    this.indices = new Uint16Array(0);
     if (wasInitialized) {
       this.engine.removeGeometry(this);
       this.initialized = false;
     }
   }
 
-  private invalidateLayout (): void {
-    this.layoutVersion++;
-    this.disposeVertexArrayObjects();
-  }
-
   private disposeVertexArrayObjects (): void {
-    Object.keys(this._vertexArrayObjects).forEach(key => this.releaseVertexArrayObject(key));
+    if (this.vertexArrayObjects) {
+      Object.keys(this.vertexArrayObjects).forEach(key => this.releaseVertexArrayObject(key));
+    }
   }
 
-  private forEachBuffer (callback: (buffer: Buffer) => void): void {
+  private createIndexBuffer (): void {
+    const indices = this.indices;
+
+    if (indices.length === 0 || this.indexBuffer) {
+      return;
+    }
+    this.indexBuffer = this.engine.createIndexBuffer(indices, {
+      usage: this.bufferUsage,
+      type: this.getIndexType(),
+      byteStride: 0,
+      instanceDivisor: 0,
+      label: `${this.name}##index`,
+    });
+  }
+
+  private releaseIndexBuffer (): void {
+    if (!this.indexBuffer) {
+      return;
+    }
+    this.engine.releaseBuffer(this.indexBuffer);
+    this.indexBuffer = undefined;
+  }
+
+  private forEachVertexBuffer (callback: (buffer: Buffer) => void): void {
     const visited = new Set<Buffer>();
 
-    Object.keys(this.attributes).forEach(name => {
-      const buffer = this.attributes[name].buffer;
+    Object.keys(this.vertexBuffers).forEach(name => {
+      const buffer = this.vertexBuffers[name].getWrapperBuffer();
 
       if (!visited.has(buffer)) {
         visited.add(buffer);
         callback(buffer);
       }
     });
-    if (this.indexBuffer && !visited.has(this.indexBuffer)) {
-      callback(this.indexBuffer);
-    }
   }
 }
 
@@ -474,8 +550,40 @@ function isTypedArray (value: unknown): value is spec.TypedArray {
   return ArrayBuffer.isView(value) && !(value instanceof DataView);
 }
 
-function isIndexData (data: spec.TypedArray): data is Uint8Array | Uint16Array | Uint32Array {
-  return data instanceof Uint8Array || data instanceof Uint16Array || data instanceof Uint32Array;
+function hasVertexArrayObjectMethods (engine: Engine): engine is Engine & VertexArrayObjectEngine {
+  const candidate = engine as Engine & Partial<VertexArrayObjectEngine>;
+
+  return typeof candidate.recordVertexArrayObject === 'function'
+    && typeof candidate.bindVertexArrayObject === 'function'
+    && typeof candidate.releaseVertexArrayObject === 'function';
+}
+
+function supportsVertexArrayObjects (engine: Engine): engine is Engine & VertexArrayObjectEngine {
+  return engine.gpuCapability?.detail.vertexArrayObject === true
+    && hasVertexArrayObjectMethods(engine);
+}
+
+function isIndexData (data: IndicesArray): boolean {
+  return Array.isArray(data)
+    || data instanceof Int32Array
+    || data instanceof Uint16Array
+    || data instanceof Uint32Array;
+}
+
+function shouldUse32Bits (data: IndicesArray): boolean {
+  if (data instanceof Uint32Array) {
+    return true;
+  }
+  if (data instanceof Uint16Array) {
+    return false;
+  }
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] >= 65535) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function createAttributeFromChannel (

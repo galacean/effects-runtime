@@ -1,5 +1,5 @@
 /* eslint-disable padding-line-between-statements */
-import type { Geometry, Scene } from '@galacean/effects';
+import type { Geometry, Scene, VertexBuffer } from '@galacean/effects';
 import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
 import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
@@ -12,6 +12,15 @@ import { generateComposition } from './utilities';
 
 const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
 const { expect } = chai;
+
+function getVertexBufferLayout (buffer: VertexBuffer) {
+  return {
+    kind: buffer.getKind(),
+    normalized: buffer.normalized,
+    size: buffer.getSize(),
+    type: buffer.type,
+  };
+}
 
 class CustomPObject extends PObject { }
 class CustomPEntity extends PEntity { }
@@ -997,7 +1006,7 @@ describe('渲染插件单测', function () {
     expect(geometry.subMeshes[0].indexCount).to.eql(14016);
     expect(geometry.subMeshes[0].offset).to.eql(0);
     expect(geometry.subMeshes[0].vertexCount).to.eql(3273);
-    const skin = geometry.skin;
+    const skin = geometry.getSkinProps();
     expect(skin.boneNames).to.eql([
       'Armature/Skeleton_torso_joint_1',
       'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2',
@@ -1034,54 +1043,46 @@ describe('渲染插件单测', function () {
     expect(geometry.getAttributeNames()).to.eql([
       'aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights',
     ]);
-    expect(geometry.drawStart).to.eql(0);
-    expect(geometry.drawCount).to.eql(14016);
+    expect(geometry.getDrawStart()).to.eql(0);
+    expect(geometry.getDrawCount()).to.eql(14016);
     expect(geometry.getIndexData()).not.to.eql(undefined);
     expect(geometry.getAttributeData('aPos')?.length).to.eql(9819);
     expect(geometry.getAttributeData('aNormal')?.length).to.eql(9819);
     expect(geometry.getAttributeData('aUV')?.length).to.eql(6546);
     expect(geometry.getAttributeData('aJoints')?.length).to.eql(13092);
     expect(geometry.getAttributeData('aWeights')?.length).to.eql(13092);
-    expect(geometry.attributes).not.to.eql(undefined);
-    if (geometry.attributes !== undefined) {
-      expect(geometry.attributes['aJoints']).to.eql({
-        dataSource: 'aJoints',
-        normalize: false,
-        offset: undefined,
+    const vertexBuffers = geometry.getVertexBuffers();
+
+    expect(vertexBuffers).not.to.eql(undefined);
+    if (vertexBuffers !== undefined) {
+      expect(getVertexBufferLayout(vertexBuffers['aJoints'])).to.eql({
+        kind: 'aJoints',
+        normalized: false,
         size: 4,
-        stride: undefined,
         type: 5123,
       });
-      expect(geometry.attributes['aNormal']).to.eql({
-        dataSource: 'aNormal',
-        normalize: false,
-        offset: undefined,
+      expect(getVertexBufferLayout(vertexBuffers['aNormal'])).to.eql({
+        kind: 'aNormal',
+        normalized: false,
         size: 3,
-        stride: undefined,
         type: 5126,
       });
-      expect(geometry.attributes['aPos']).to.eql({
-        dataSource: 'aPos',
-        normalize: false,
-        offset: undefined,
+      expect(getVertexBufferLayout(vertexBuffers['aPos'])).to.eql({
+        kind: 'aPos',
+        normalized: false,
         size: 3,
-        stride: undefined,
         type: 5126,
       });
-      expect(geometry.attributes['aUV']).to.eql({
-        dataSource: 'aUV',
-        normalize: false,
-        offset: undefined,
+      expect(getVertexBufferLayout(vertexBuffers['aUV'])).to.eql({
+        kind: 'aUV',
+        normalized: false,
         size: 2,
-        stride: undefined,
         type: 5126,
       });
-      expect(geometry.attributes['aWeights']).to.eql({
-        dataSource: 'aWeights',
-        normalize: false,
-        offset: undefined,
+      expect(getVertexBufferLayout(vertexBuffers['aWeights'])).to.eql({
+        kind: 'aWeights',
+        normalized: false,
         size: 4,
-        stride: undefined,
         type: 5126,
       });
     }
@@ -1129,51 +1130,45 @@ describe('渲染插件单测', function () {
       expect(geometry2.subMeshes[0].indexCount).to.eql(13530);
       expect(geometry2.subMeshes[0].offset).to.eql(0);
       expect(geometry2.subMeshes[0].vertexCount).to.eql(2549);
-      expect(geometry2.skin.boneNames).to.eql(undefined);
-      expect(geometry2.skin.inverseBindMatrices).to.eql(undefined);
-      expect(geometry2.skin.rootBoneName).to.eql(undefined);
+      expect(geometry2.getSkinProps().boneNames).to.eql(undefined);
+      expect(geometry2.getSkinProps().inverseBindMatrices).to.eql(undefined);
+      expect(geometry2.getSkinProps().rootBoneName).to.eql(undefined);
       expect(geometry2.getAttributeNames()).to.eql([
         'aUV', 'aNormal', 'aTangent', 'aPos',
       ]);
-      expect(geometry2.drawStart).to.eql(0);
-      expect(geometry2.drawCount).to.eql(13530);
+      expect(geometry2.getDrawStart()).to.eql(0);
+      expect(geometry2.getDrawCount()).to.eql(13530);
       expect(geometry2.getIndexData()).not.to.eql(undefined);
       expect(geometry2.getAttributeData('aPos')?.length).to.eql(7647);
       expect(geometry2.getAttributeData('aNormal')?.length).to.eql(7647);
       expect(geometry2.getAttributeData('aUV')?.length).to.eql(5098);
       expect(geometry2.getAttributeData('aTangent')?.length).to.eql(10196);
-      expect(geometry2.attributes).not.to.eql(undefined);
-      if (geometry2.attributes !== undefined) {
-        expect(geometry2.attributes['aNormal']).to.eql({
-          dataSource: 'aNormal',
-          normalize: false,
-          offset: undefined,
+      const vertexBuffers = geometry2.getVertexBuffers();
+
+      expect(vertexBuffers).not.to.eql(undefined);
+      if (vertexBuffers !== undefined) {
+        expect(getVertexBufferLayout(vertexBuffers['aNormal'])).to.eql({
+          kind: 'aNormal',
+          normalized: false,
           size: 3,
-          stride: undefined,
           type: 5126,
         });
-        expect(geometry2.attributes['aPos']).to.eql({
-          dataSource: 'aPos',
-          normalize: false,
-          offset: undefined,
+        expect(getVertexBufferLayout(vertexBuffers['aPos'])).to.eql({
+          kind: 'aPos',
+          normalized: false,
           size: 3,
-          stride: undefined,
           type: 5126,
         });
-        expect(geometry2.attributes['aTangent']).to.eql({
-          dataSource: 'aTangent',
-          normalize: false,
-          offset: undefined,
+        expect(getVertexBufferLayout(vertexBuffers['aTangent'])).to.eql({
+          kind: 'aTangent',
+          normalized: false,
           size: 4,
-          stride: undefined,
           type: 5126,
         });
-        expect(geometry2.attributes['aUV']).to.eql({
-          dataSource: 'aUV',
-          normalize: false,
-          offset: undefined,
+        expect(getVertexBufferLayout(vertexBuffers['aUV'])).to.eql({
+          kind: 'aUV',
+          normalized: false,
           size: 2,
-          stride: undefined,
           type: 5126,
         });
       }
@@ -1512,26 +1507,27 @@ describe('渲染插件单测', function () {
     geometry.getAttributeNames().forEach((val, idx) => {
       expect(val).to.eql(['aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights'][idx]);
     });
-    const position = geometry.attributes.aPos;
-    const normal = geometry.attributes.aNormal;
-    const uv1 = geometry.attributes.aUV;
-    const joint = geometry.attributes.aJoints;
-    const weight = geometry.attributes.aWeights;
-    expect(position.size).to.eql(3);
+    const vertexBuffers = geometry.getVertexBuffers();
+    const position = vertexBuffers.aPos;
+    const normal = vertexBuffers.aNormal;
+    const uv1 = vertexBuffers.aUV;
+    const joint = vertexBuffers.aJoints;
+    const weight = vertexBuffers.aWeights;
+    expect(position.getSize()).to.eql(3);
     expect(position.type).to.eql(5126);
-    expect(position.normalize).to.eql(false);
-    expect(normal.size).to.eql(3);
+    expect(position.normalized).to.eql(false);
+    expect(normal.getSize()).to.eql(3);
     expect(normal.type).to.eql(5126);
-    expect(normal.normalize).to.eql(false);
-    expect(uv1.size).to.eql(2);
+    expect(normal.normalized).to.eql(false);
+    expect(uv1.getSize()).to.eql(2);
     expect(uv1.type).to.eql(5126);
-    expect(uv1.normalize).to.eql(false);
-    expect(joint.size).to.eql(4);
+    expect(uv1.normalized).to.eql(false);
+    expect(joint.getSize()).to.eql(4);
     expect(joint.type).to.eql(5123);
-    expect(joint.normalize).to.eql(false);
-    expect(weight.size).to.eql(4);
+    expect(joint.normalized).to.eql(false);
+    expect(weight.getSize()).to.eql(4);
     expect(weight.type).to.eql(5126);
-    expect(weight.normalize).to.eql(false);
+    expect(weight.normalized).to.eql(false);
     const positionBuffer = geometry.getAttributeData('aPos');
     const normalBuffer = geometry.getAttributeData('aNormal');
     const uvBuffer = geometry.getAttributeData('aUV');

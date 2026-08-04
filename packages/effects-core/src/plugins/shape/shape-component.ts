@@ -9,7 +9,7 @@ import type { Engine } from '../../engine';
 import type { Maskable, MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../../material';
 import type { Renderer } from '../../render';
-import { GLSLVersion, Geometry } from '../../render';
+import { GLSLVersion, Geometry, VertexBuffer } from '../../render';
 import type { GradientValue, StrokeAttributes } from '../../math';
 import { Polygon, buildLine, createValueGetter, extractMinAndMax, StarType } from '../../math';
 import type { ItemRenderer } from '../../components';
@@ -276,14 +276,14 @@ export class ShapeComponent extends RendererComponent implements Maskable {
         aUV: {
           size: 2,
           offset: 0,
-          releasable: true,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
         },
       },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
       mode: glContext.TRIANGLES,
       drawCount: 6,
+      bufferUsage: glContext.DYNAMIC_DRAW,
     });
 
     this.geometry.subMeshes.push({
@@ -501,8 +501,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     indexArray.set(indices);
 
     // Rewrite to geometry
-    this.geometry.setAttributeData('aPos', positionArray);
-    this.geometry.setAttributeData('aUV', uvArray);
+    this.updateAttributeData('aPos', positionArray, 3);
+    this.updateAttributeData('aUV', uvArray, 2);
     this.geometry.setIndexData(indexArray);
     this.geometry.setDrawCount(indices.length);
 
@@ -513,6 +513,22 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     fillSubMesh.indexCount = fillIndexCount;
     strokeSubMesh.offset = fillIndexCount * u16Size;
     strokeSubMesh.indexCount = strokeIndexCount;
+  }
+
+  private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
+    const dataBuffer = this.geometry.getVertexBuffer(name)?.getBuffer();
+
+    if (dataBuffer && data.byteLength > dataBuffer.capacity) {
+      this.geometry.setVerticesBuffer(new VertexBuffer(
+        this.engine,
+        data,
+        name,
+        { updatable: true, size },
+      ));
+
+      return;
+    }
+    this.geometry.setAttributeData(name, data);
   }
 
   private computeScreenScale (): number {

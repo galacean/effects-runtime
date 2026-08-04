@@ -1,7 +1,9 @@
-import type { Material } from '@galacean/effects-core';
-import { BufferUsage, Geometry, glContext, math } from '@galacean/effects-core';
-import { GLEngine } from '@galacean/effects-webgl';
-import { getGL2 } from './gl-utils';
+import type { Material, ShaderVariant } from '@galacean/effects-core';
+import {
+  Buffer, BufferUsage, Geometry, VertexBuffer, glContext, math,
+} from '@galacean/effects-core';
+import { GLDataBuffer, GLEngine } from '@galacean/effects-webgl';
+import { getGL2, readBufferContents } from './gl-utils';
 
 const { assert, expect } = chai;
 
@@ -21,12 +23,92 @@ describe('webgl/geometry', () => {
     canvas.remove();
   });
 
+  it('creates buffers immediately unless creation is postponed', () => {
+    const immediate = new Buffer(engine, new Float32Array([0, 1]), false, 2);
+    const postponed = new Buffer(engine, new Float32Array([0, 1]), false, 2, true);
+
+    expect(immediate.getBuffer()).to.be.an.instanceOf(GLDataBuffer);
+    expect(postponed.getBuffer()).to.equal(undefined);
+    postponed.create();
+    expect(postponed.getBuffer()).to.be.an.instanceOf(GLDataBuffer);
+    immediate.dispose();
+    postponed.dispose();
+  });
+
+  it('updates only updatable buffers', () => {
+    const staticBuffer = new Buffer(engine, new Float32Array([0, 1]), false, 2);
+    const dynamicBuffer = new Buffer(engine, new Float32Array([0, 1]), true, 2);
+
+    staticBuffer.update(new Float32Array([2, 3]));
+    dynamicBuffer.update(new Float32Array([2, 3]));
+    const staticResult = new Float32Array(2);
+    const dynamicResult = new Float32Array(2);
+
+    readBufferContents(engine.gl, staticBuffer.getBuffer()!, staticResult);
+    readBufferContents(engine.gl, dynamicBuffer.getBuffer()!, dynamicResult);
+    expect(staticResult).to.deep.equal(new Float32Array([0, 1]));
+    expect(dynamicResult).to.deep.equal(new Float32Array([2, 3]));
+    staticBuffer.dispose();
+    dynamicBuffer.dispose();
+  });
+
+  it('uses float units for direct update offsets and releases partial CPU data', () => {
+    const buffer = new Buffer(engine, new Uint16Array([0, 1, 2, 3]), true, 2);
+
+    buffer.updateDirectly(new Uint16Array([9]), 1);
+    const result = new Uint16Array(4);
+
+    readBufferContents(engine.gl, buffer.getBuffer()!, result);
+    expect(result).to.deep.equal(new Uint16Array([0, 1, 9, 3]));
+    expect(buffer.getData()).to.equal(undefined);
+    buffer.dispose();
+  });
+
+  it('creates vertex buffers from raw and native buffer data', () => {
+    const raw = new VertexBuffer(
+      engine,
+      new Float32Array([0, 1, 2, 3]),
+      'aPosition',
+      { size: 2 },
+    );
+    const dataBuffer = engine.createVertexBuffer(new Float32Array([0, 1]), {
+      usage: glContext.STATIC_DRAW,
+      type: glContext.FLOAT,
+      byteStride: 2 * Float32Array.BYTES_PER_ELEMENT,
+      instanceDivisor: 0,
+    });
+    const native = new VertexBuffer(engine, dataBuffer, 'aUV', { size: 2 });
+
+    expect(raw.getBuffer()).to.be.an.instanceOf(GLDataBuffer);
+    expect(native.getBuffer()).to.equal(dataBuffer);
+    raw.dispose();
+    native.dispose();
+  });
+
+  it('normalizes index data to 16 or 32 bits', () => {
+    const options = {
+      usage: glContext.STATIC_DRAW,
+      type: glContext.INT,
+      byteStride: 0,
+      instanceDivisor: 0,
+    };
+    const small = engine.createIndexBuffer(new Int32Array([0, 1, 2]), options);
+    const large = engine.createIndexBuffer(new Int32Array([0, 1, 65535]), options);
+
+    expect(small.is32Bits).to.equal(false);
+    expect(small.capacity).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
+    expect(large.is32Bits).to.equal(true);
+    expect(large.capacity).to.equal(3 * Uint32Array.BYTES_PER_ELEMENT);
+    engine.releaseBuffer(small);
+    engine.releaseBuffer(large);
+  });
+
   it('shares one buffer between interleaved attribute views', () => {
     const geometry = createGeometry(engine);
     const position = geometry.getVertexBuffer('aPosition')!;
     const uv = geometry.getVertexBuffer('aUV')!;
 
-    assert.strictEqual(position.buffer, uv.buffer);
+    assert.strictEqual(position.getWrapperBuffer(), uv.getWrapperBuffer());
     expect(position.byteStride).to.equal(4 * Float32Array.BYTES_PER_ELEMENT);
     expect(uv.byteOffset).to.equal(2 * Float32Array.BYTES_PER_ELEMENT);
     geometry.dispose();
@@ -36,12 +118,17 @@ describe('webgl/geometry', () => {
     const geometry = createGeometry(engine);
 
     geometry.flush();
+    const dataBuffer = geometry.getVertexBuffer('aPosition')!.getBuffer()!;
+    const capacity = dataBuffer.capacity;
+
+    geometry.setAttributeSubData('aPosition', 0, new Float32Array([8, 9]));
     geometry.setAttributeSubData('aUV', 4, new Float32Array([9, 8]));
     geometry.flush();
     const result = new Float32Array(8);
 
-    geometry.getAttributeBuffer('aPosition')!.readSubData(0, result);
-    expect(result).to.deep.equal(new Float32Array([0, 1, 2, 3, 9, 8, 6, 7]));
+    readBufferContents(engine.gl, dataBuffer, result);
+    expect(dataBuffer.capacity).to.equal(capacity);
+    expect(result).to.deep.equal(new Float32Array([8, 9, 2, 3, 9, 8, 6, 7]));
     geometry.dispose();
   });
 
@@ -53,17 +140,49 @@ describe('webgl/geometry', () => {
     geometry.dispose();
   });
 
+  it('uploads only the changed index range', () => {
+    const geometry = createGeometry(engine);
+
+    geometry.initialize();
+    const updateDynamicIndexBuffer = engine.updateDynamicIndexBuffer.bind(engine);
+    const indexBuffer = geometry.getIndexBuffer()!;
+    const capacity = indexBuffer.capacity;
+    let uploadedByteLength = 0;
+    let uploadedByteOffset = 0;
+
+    engine.updateDynamicIndexBuffer = (indexBuffer, indices, byteOffset = 0) => {
+      uploadedByteLength = Array.isArray(indices)
+        ? indices.length * Float32Array.BYTES_PER_ELEMENT
+        : indices.byteLength;
+      uploadedByteOffset = byteOffset;
+      updateDynamicIndexBuffer(indexBuffer, indices, byteOffset);
+    };
+    geometry.setIndexSubData(0, new Uint16Array([2, 1, 0]));
+    geometry.setIndexSubData(3, new Uint16Array([0, 2, 1]));
+    const result = new Uint16Array(6);
+
+    readBufferContents(engine.gl, indexBuffer, result, 0, true);
+    expect(indexBuffer.capacity).to.equal(capacity);
+    expect(uploadedByteLength).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
+    expect(uploadedByteOffset).to.equal(3 * Uint16Array.BYTES_PER_ELEMENT);
+    expect(result).to.deep.equal(new Uint16Array([2, 1, 0, 0, 2, 1]));
+    geometry.dispose();
+  });
+
   it('replaces the index buffer when its element type changes', () => {
     const geometry = createGeometry(engine);
+
+    geometry.flush();
     const previous = geometry.getIndexBuffer();
 
+    expect(previous).to.be.an.instanceOf(GLDataBuffer);
+    assert.strictEqual(geometry.getIndexData(), geometry.getIndexData());
     geometry.setIndexData(new Uint32Array([0, 1, 2]));
     assert.notStrictEqual(geometry.getIndexBuffer(), previous);
     expect(geometry.getIndexType()).to.equal(glContext.UNSIGNED_INT);
-    geometry.flush();
     const result = new Uint32Array(3);
 
-    geometry.getIndexBuffer()!.readSubData(0, result);
+    readBufferContents(engine.gl, geometry.getIndexBuffer()!, result, 0, true);
     expect(result).to.deep.equal(new Uint32Array([0, 1, 2]));
     geometry.dispose();
   });
@@ -79,36 +198,55 @@ describe('webgl/geometry', () => {
 
   it('keeps shared buffers alive until the last geometry is disposed', () => {
     const source = createGeometry(engine);
-    const shared = new Geometry(engine, { attributes: {}, drawCount: source.drawCount });
+    const shared = new Geometry(engine, { attributes: {}, drawCount: source.getDrawCount() });
 
     source.getAttributeNames().forEach(name => {
-      shared.setVertexBuffer(name, source.getVertexBuffer(name)!);
+      shared.setVerticesBuffer(source.getVertexBuffer(name)!);
     });
     shared.flush();
     const buffer = shared.getAttributeBuffer('aPosition')!;
 
     source.dispose();
-    expect(buffer.isDestroyed).to.equal(false);
+    expect(buffer.isDisposed).to.equal(false);
     const result = new Float32Array(8);
 
-    buffer.readSubData(0, result);
+    readBufferContents(engine.gl, buffer.getBuffer()!, result);
     expect(result).to.deep.equal(new Float32Array([0, 1, 2, 3, 4, 5, 6, 7]));
     shared.dispose();
-    expect(buffer.isDestroyed).to.equal(true);
+    expect(buffer.isDisposed).to.equal(true);
+  });
+
+  it('restores buffer capacity when CPU data is unavailable', () => {
+    const geometry = createGeometry(engine);
+
+    geometry.initialize();
+    const buffer = geometry.getAttributeBuffer('aPosition')!;
+    const previousDataBuffer = buffer.getBuffer()!;
+    const capacity = previousDataBuffer.capacity;
+
+    buffer.updateDirectly(new Float32Array([0]), 0, 1);
+    geometry.restore();
+
+    assert.notStrictEqual(buffer.getBuffer(), previousDataBuffer);
+    expect(buffer.getBuffer()!.capacity).to.equal(capacity);
+    expect(buffer.getData()).to.equal(undefined);
+    geometry.dispose();
   });
 
   it('disposes cached vertex array objects when the layout changes', () => {
     const geometry = createGeometry(engine);
-    const resource = {
-      disposed: false,
-      dispose () {
-        this.disposed = true;
-      },
-    };
+    const resource = engine.gl.createVertexArray()!;
+    const releaseVertexArrayObject = engine.releaseVertexArrayObject.bind(engine);
+    let released = false;
 
-    geometry.setVertexArrayObject('test-program', resource);
+    engine.releaseVertexArrayObject = vertexArrayObject => {
+      released = vertexArrayObject === resource;
+      releaseVertexArrayObject(vertexArrayObject);
+    };
+    engine.recordVertexArrayObject = () => resource;
+    geometry.bind({ key: 'test-program' } as ShaderVariant);
     geometry.setIndexData(new Uint32Array([0, 1, 2]));
-    expect(resource.disposed).to.equal(true);
+    expect(released).to.equal(true);
     geometry.dispose();
   });
 
@@ -121,14 +259,16 @@ describe('webgl/geometry', () => {
       setMatrix () {},
       use () {},
       shaderVariant: {
+        key: 'draw-start-test',
         program: {
-          setupAttributes () {},
+          getAttributesNames: () => [],
+          getAttributeLocation: () => -1,
         },
       },
     } as unknown as Material;
 
-    gl.drawElements = ((_mode, _count, _type, offset) => {
-      offsets.push(offset);
+    gl.drawElements = ((...args) => {
+      offsets.push(args[3]);
     }) as typeof gl.drawElements;
     try {
       [
@@ -202,8 +342,10 @@ function createMaterialStub (): Material {
     setMatrix () {},
     use () {},
     shaderVariant: {
+      key: 'geometry-test',
       program: {
-        setupAttributes () {},
+        getAttributesNames: () => [],
+        getAttributeLocation: () => -1,
       },
     },
   } as unknown as Material;

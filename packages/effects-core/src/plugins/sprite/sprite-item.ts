@@ -9,6 +9,7 @@ import type { FrameContext } from '../timeline';
 import { Playable, PlayableAsset, TrackMixerPlayable, TrackAsset } from '../timeline';
 import type { VFXItem } from '../../vfx-item';
 import type { Geometry } from '../../render';
+import { VertexBuffer } from '../../render';
 import { rotateVec2 } from '../../shape';
 import { MaskableGraphic, EffectComponent } from '../../components';
 import type { Sprite } from './sprite';
@@ -246,8 +247,8 @@ export class SpriteComponent extends MaskableGraphic {
         aUV[uvOffset + 1] = (tempPosition[1] + 0.5) * height + y;
       }
 
-      this.geometry.setAttributeData('aPos', aPos.slice());
-      this.geometry.setAttributeData('aUV', aUV.slice());
+      this.updateAttributeData('aPos', aPos.slice(), 3);
+      this.updateAttributeData('aUV', aUV.slice(), 2);
       this.geometry.setIndexData(indices.slice());
       this.geometry.setDrawCount(indices.length);
     }
@@ -360,9 +361,26 @@ export class SpriteComponent extends MaskableGraphic {
         index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
       }
     }
-    geometry.setAttributeData('aPos', new Float32Array(position));
+    this.updateAttributeData('aPos', new Float32Array(position), 3);
     geometry.setIndexData(new Uint16Array(index));
-    geometry.setAttributeData('aUV', new Float32Array(aUV));
+    this.updateAttributeData('aUV', new Float32Array(aUV), 2);
     geometry.setDrawCount(index.length);
+  }
+
+  private updateAttributeData (name: string, data: spec.TypedArray, size: number): void {
+    const vertexBuffer = this.geometry.getVertexBuffer(name);
+    const dataBuffer = vertexBuffer?.getBuffer();
+
+    if (!vertexBuffer || (dataBuffer && data.byteLength > dataBuffer.capacity)) {
+      this.geometry.setVerticesBuffer(new VertexBuffer(
+        this.engine,
+        data,
+        name,
+        { updatable: true, size },
+      ));
+
+      return;
+    }
+    this.geometry.setAttributeData(name, data);
   }
 }

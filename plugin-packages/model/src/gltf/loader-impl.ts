@@ -1325,13 +1325,17 @@ class GeometryProxy {
     const indexArray = this.indexArray;
 
     if (indexArray !== undefined) {
+      const indices = indexArray instanceof Uint8Array
+        ? new Uint16Array(indexArray)
+        : indexArray;
+
       return Geometry.create(
         this.engine,
         {
           attributes: attributes,
-          indices: { data: indexArray },
+          indices: { data: indices },
           drawStart: 0,
-          drawCount: indexArray.length,
+          drawCount: indices.length,
           mode: glContext.TRIANGLES,
         }
       );

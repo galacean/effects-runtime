@@ -80,9 +80,18 @@ describe('core/plugins/particle/test', function () {
 
     expect(p1Content.renderer.particleMesh.particleCount).to.eql(10);
     const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry();
-    const size = (geometry.attributes['aPos'].stride ?? 0) / Float32Array.BYTES_PER_ELEMENT * 4; //4 vertex per particle
+    const indexData = geometry.getIndexData();
 
-    expect(geometry.getAttributeData('aPos')).to.be.an.instanceOf(Float32Array).with.lengthOf(size * 10);
+    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(indexData).to.be.an.instanceOf(Uint16Array).with.lengthOf(6 * 10);
+
+    p1Content.reset();
+    expect(geometry.getDrawCount()).to.equal(0);
+    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getIndexData()).to.equal(indexData);
+    p1Content.simulate(1);
+    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getIndexData()).to.equal(indexData);
   });
 
   it('particle render mode', async () => {

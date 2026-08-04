@@ -564,7 +564,7 @@ describe('webgl/gl-material', () => {
                 dataSource: 'aPoint',
               },
             },
-            indices: { data: new Uint8Array([0, 1, 2, 2, 1, 3]) },
+            indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
             drawCount: 6,
           }),
       });
@@ -1518,7 +1518,6 @@ describe('webgl/gl-material', () => {
 
   //       if (ubo.buffer !== undefined) {
   //         ubo.buffer.bind();
-  //         ubo.buffer.readSubData(0, data);
   //       }
   //     }
 
@@ -1563,7 +1562,7 @@ function generateMesh (
               stride: Float32Array.BYTES_PER_ELEMENT * 4,
             },
           },
-          indices: { data: new Uint8Array([0, 1, 2, 2, 1, 3]) },
+          indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
           drawCount: 6,
         }),
     });

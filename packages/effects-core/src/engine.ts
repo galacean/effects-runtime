@@ -5,8 +5,8 @@ import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
-  DataBuffer, DataBufferOptions, GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction,
-  Renderer, RenderingData, ShaderLibrary,
+  DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
+  RenderPassClearAction, Renderer, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
 import type { Framebuffer, Renderbuffer } from './render';
 import { Graphics, RenderTargetPool } from './render';
@@ -421,55 +421,49 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.emit('resize', this);
   }
 
-  private getTargetSize (parentEle: HTMLElement) {
-    if (parentEle === undefined || parentEle === null) {
-      throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}.`);
-    }
-    const displayAspect = this.displayAspect;
-    // 小程序环境没有 getComputedStyle
-    const computedStyle = window.getComputedStyle?.(parentEle);
-    let targetWidth;
-    let targetHeight;
-    let finalWidth = 0;
-    let finalHeight = 0;
+  createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
+    throw new Error('The active rendering backend does not provide vertex buffers.');
+  }
 
-    if (computedStyle) {
-      finalWidth = parseInt(computedStyle.width, 10);
-      finalHeight = parseInt(computedStyle.height, 10);
-    } else {
-      finalWidth = parentEle.clientWidth;
-      finalHeight = parentEle.clientHeight;
-    }
+  createDynamicVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
+    return this.createVertexBuffer(data, options);
+  }
 
-    if (displayAspect) {
-      const parentAspect = finalWidth / finalHeight;
+  createIndexBuffer (indices: IndicesArray, options: DataBufferOptions): DataBuffer {
+    throw new Error('The active rendering backend does not provide index buffers.');
+  }
 
-      if (parentAspect > displayAspect) {
-        targetHeight = finalHeight * this.displayScale;
-        targetWidth = targetHeight * displayAspect;
-      } else {
-        targetWidth = finalWidth * this.displayScale;
-        targetHeight = targetWidth / displayAspect;
-      }
-    } else {
-      targetWidth = finalWidth;
-      targetHeight = finalHeight;
-    }
-    const ratio = this.pixelRatio;
-    let containerWidth = targetWidth;
-    let containerHeight = targetHeight;
+  updateDynamicVertexBuffer (
+    vertexBuffer: DataBuffer,
+    data: DataArray,
+    byteOffset = 0,
+    byteLength?: number,
+  ): void {
+    throw new Error('The active rendering backend cannot update vertex buffers.');
+  }
 
-    targetWidth = Math.round(targetWidth * ratio);
-    targetHeight = Math.round(targetHeight * ratio);
-    if (targetWidth < 1 || targetHeight < 1) {
-      if (this.offscreenMode) {
-        targetWidth = targetHeight = containerWidth = containerHeight = 1;
-      } else {
-        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
-      }
-    }
+  updateDynamicIndexBuffer (
+    indexBuffer: DataBuffer,
+    indices: IndicesArray,
+    byteOffset = 0,
+  ): void {
+    throw new Error('The active rendering backend cannot update index buffers.');
+  }
 
-    return [containerWidth, containerHeight, targetWidth, targetHeight];
+  /** @hide */
+  releaseBuffer (buffer: DataBuffer): boolean {
+    buffer.references--;
+
+    return buffer.references === 0;
+  }
+
+  /** @hide */
+  bindBuffers (
+    vertexBuffers: Record<string, VertexBuffer>,
+    indexBuffer: DataBuffer | undefined,
+    effect: ShaderVariant,
+  ): void {
+    throw new Error('The active rendering backend cannot bind geometry buffers.');
   }
 
   addTexture (tex: Texture) {
@@ -512,10 +506,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
     removeItem(this.geometries, geo);
-  }
-
-  createDataBuffer (_options: DataBufferOptions): DataBuffer {
-    throw new Error('The active rendering backend does not provide data buffers.');
   }
 
   addMesh (mesh: Mesh) {
@@ -756,5 +746,56 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.meshes = [];
     this.renderPasses = [];
     this.compositions = [];
+  }
+
+  private getTargetSize (parentEle: HTMLElement) {
+    if (parentEle === undefined || parentEle === null) {
+      throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}.`);
+    }
+    const displayAspect = this.displayAspect;
+    // 小程序环境没有 getComputedStyle
+    const computedStyle = window.getComputedStyle?.(parentEle);
+    let targetWidth;
+    let targetHeight;
+    let finalWidth = 0;
+    let finalHeight = 0;
+
+    if (computedStyle) {
+      finalWidth = parseInt(computedStyle.width, 10);
+      finalHeight = parseInt(computedStyle.height, 10);
+    } else {
+      finalWidth = parentEle.clientWidth;
+      finalHeight = parentEle.clientHeight;
+    }
+
+    if (displayAspect) {
+      const parentAspect = finalWidth / finalHeight;
+
+      if (parentAspect > displayAspect) {
+        targetHeight = finalHeight * this.displayScale;
+        targetWidth = targetHeight * displayAspect;
+      } else {
+        targetWidth = finalWidth * this.displayScale;
+        targetHeight = targetWidth / displayAspect;
+      }
+    } else {
+      targetWidth = finalWidth;
+      targetHeight = finalHeight;
+    }
+    const ratio = this.pixelRatio;
+    let containerWidth = targetWidth;
+    let containerHeight = targetHeight;
+
+    targetWidth = Math.round(targetWidth * ratio);
+    targetHeight = Math.round(targetHeight * ratio);
+    if (targetWidth < 1 || targetHeight < 1) {
+      if (this.offscreenMode) {
+        targetWidth = targetHeight = containerWidth = containerHeight = 1;
+      } else {
+        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
+      }
+    }
+
+    return [containerWidth, containerHeight, targetWidth, targetHeight];
   }
 }

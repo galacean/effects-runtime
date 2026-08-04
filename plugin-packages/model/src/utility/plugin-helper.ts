@@ -2,7 +2,7 @@ import type {
   Scene, Attribute, GeometryProps, TextureSourceOptions, TextureSourceCubeData,
   TextureConfigOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
   Engine, math,
-  RenderPass } from '@galacean/effects';
+  RenderPass, VertexBuffer } from '@galacean/effects';
 import {
   Player, spec, Transform, glContext, Material, Mesh, Texture, Geometry, Renderer,
   TextureSourceType, getDefaultTextureFactory, RenderPassDestroyAttachmentType,
@@ -21,6 +21,14 @@ import { RayTriangleTesting } from './hit-test-helper';
 
 type Box3 = math.Box3;
 type VertexArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array;
+
+interface AttributeLayout {
+  type: number,
+  size: number,
+  offset?: number,
+  stride?: number,
+  normalize?: boolean,
+}
 
 /**
  * WebGL 辅助类，负责 WebGL 相关对象的创建
@@ -1176,7 +1184,7 @@ class AttributeArray {
   compressed = false;
   compressScale = 1.0;
 
-  create (inAttrib: Attribute, inArray: spec.TypedArray) {
+  create (inAttrib: AttributeLayout, inArray: spec.TypedArray) {
     switch (inAttrib.type) {
       case WebGLRenderingContext['INT']:
         this.typeSize = 4;
@@ -1291,18 +1299,16 @@ export class GeometryBoxProxy {
   create (geometry: Geometry, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
-    const attributes = geometry.getVertexBuffers() as Record<string, unknown> as Record<string, Attribute>;
-
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['aPos'];
+    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer('aPos'));
     const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
-    this.position.create(positionAttrib, positionArray);
+    this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = attributes['aJoints'];
-    const weightAttrib = attributes['aWeights'];
+    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer('aJoints'));
+    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer('aWeights'));
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
       const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
@@ -1445,18 +1451,16 @@ export class HitTestingProxy {
   create (geometry: Geometry, doubleSided: boolean, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
-    const attributes = geometry.getVertexBuffers() as Record<string, unknown> as Record<string, Attribute>;
-
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['aPos'];
+    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer('aPos'));
     const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
-    this.position.create(positionAttrib, positionArray);
+    this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = attributes['aJoints'];
-    const weightAttrib = attributes['aWeights'];
+    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer('aJoints'));
+    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer('aWeights'));
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
       const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
@@ -1891,7 +1895,7 @@ export class CheckerHelper {
     if (!(v instanceof Geometry)) {
       console.error(`Invalid geometry type ${this.stringify(v)}.`);
     }
-    if (v.isDestroyed === true) {
+    if (v.isDisposed()) {
       console.error('Geometry object is destroyed.');
     }
     if (!this.checkNonnegative(v.getDrawStart())) {
@@ -1976,10 +1980,7 @@ export class CheckerHelper {
    * @returns
    */
   static createAttributeArray (v: Geometry, name: string): AttributeArray | undefined {
-    const attributes = v.attributes;
-
-    if (attributes === undefined) { return; }
-    const dataAttrib = attributes[name];
+    const dataAttrib = getAttributeLayout(v.getVertexBuffer(name));
 
     if (dataAttrib === undefined) { return; }
     const dataArray = v.getAttributeData(name);
@@ -1988,7 +1989,7 @@ export class CheckerHelper {
     //
     const attribArray = new AttributeArray();
 
-    attribArray.create(dataAttrib as Attribute, dataArray);
+    attribArray.create(dataAttrib, dataArray);
 
     return attribArray;
   }
@@ -2315,6 +2316,20 @@ export class CheckerHelper {
 
     return res;
   }
+}
+
+function getAttributeLayout (vertexBuffer?: VertexBuffer): AttributeLayout | undefined {
+  if (!vertexBuffer) {
+    return;
+  }
+
+  return {
+    type: vertexBuffer.type,
+    size: vertexBuffer.getSize(),
+    offset: vertexBuffer.byteOffset,
+    stride: vertexBuffer.byteStride,
+    normalize: vertexBuffer.normalized,
+  };
 }
 
 /**

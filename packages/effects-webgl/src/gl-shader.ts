@@ -14,7 +14,6 @@ type Quaternion = math.Quaternion;
 export class GLShaderVariant extends ShaderVariant {
   program: GLProgram;
   compileResult: ShaderCompileResult;
-  id: string;
   initialized = false;
   uniformLocations: Record<string, WebGLUniformLocation | null> = {};
 
@@ -22,8 +21,8 @@ export class GLShaderVariant extends ShaderVariant {
   private uniformsNames: string[] = [];
   private samplerList: string[] = [];
 
-  constructor (engine: Engine, source: ShaderWithSource) {
-    super(engine, source);
+  constructor (engine: Engine, source: ShaderWithSource, key: string) {
+    super(engine, source, key);
   }
 
   // shader 的 GPU 资源初始化方法，在绘制前调用

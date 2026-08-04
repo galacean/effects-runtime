@@ -1,74 +1,185 @@
 import type * as spec from '@galacean/effects-specification';
+import type { Engine } from '../engine';
 import type { Disposable } from '../utils';
-import type { Buffer } from './buffer';
-import { getBytesPerElement } from './data-buffer';
+import { Buffer } from './buffer';
+import type { DataArray, DataBuffer } from './data-buffer';
+import { BufferDataType, getBytesPerElement, getDataType } from './data-buffer';
 
 export interface VertexBufferProps {
-  size: number,
-  type: number,
-  dataSource: string,
-  byteStride?: number,
-  byteOffset?: number,
+  updatable?: boolean,
+  postponeInternalCreation?: boolean,
+  stride?: number,
+  instanced?: boolean,
+  offset?: number,
+  size?: number,
+  type?: number,
   normalized?: boolean,
-  instanceDivisor?: number,
+  useBytes?: boolean,
+  divisor?: number,
+  takeBufferOwnership?: boolean,
+  label?: string,
 }
 
 /**
  * 描述一个顶点属性如何读取共享缓冲区。
  */
 export class VertexBuffer implements Disposable {
-  readonly size: number;
-  readonly type: spec.BufferType;
-  readonly dataSource: string;
+  static readonly BYTE = BufferDataType.Byte;
+  static readonly UNSIGNED_BYTE = BufferDataType.UnsignedByte;
+  static readonly SHORT = BufferDataType.Short;
+  static readonly UNSIGNED_SHORT = BufferDataType.UnsignedShort;
+  static readonly INT = BufferDataType.Int;
+  static readonly UNSIGNED_INT = BufferDataType.UnsignedInt;
+  static readonly FLOAT = BufferDataType.Float;
+
   readonly byteStride: number;
   readonly byteOffset: number;
   readonly normalized: boolean;
-  readonly instanceDivisor: number;
+  readonly type: spec.BufferType;
+  readonly engine: Engine;
+
+  /**
+   * @internal
+   */
+  readonly buffer: Buffer;
+  /**
+   * @internal
+   */
+  readonly ownsBuffer: boolean;
+
+  private readonly kind: string;
+  private readonly size: number;
+  private _isDisposed = false;
+  private instanced: boolean;
+  private _instanceDivisor: number;
 
   constructor (
-    public readonly name: string,
-    public readonly buffer: Buffer,
-    props: VertexBufferProps,
+    engine: Engine,
+    data: DataArray | Buffer | DataBuffer,
+    kind: string,
+    props: VertexBufferProps = {},
   ) {
-    this.size = props.size;
-    this.type = props.type as spec.BufferType;
-    this.dataSource = props.dataSource;
-    this.byteStride = props.byteStride ?? props.size * getBytesPerElement(props.type);
-    this.byteOffset = props.byteOffset ?? 0;
+    this.engine = engine;
+    this.kind = kind;
+
+    if (data instanceof Buffer) {
+      this.buffer = data;
+      this.ownsBuffer = props.takeBufferOwnership ?? false;
+    } else {
+      this.buffer = new Buffer(
+        engine,
+        data,
+        props.updatable ?? false,
+        props.stride ?? 0,
+        props.postponeInternalCreation ?? false,
+        props.instanced ?? false,
+        props.useBytes ?? false,
+        props.divisor,
+        props.label,
+      );
+      this.ownsBuffer = true;
+    }
+
+    const source = this.getData();
+
+    this.type = (props.type ?? (source ? getDataType(source) : VertexBuffer.FLOAT)) as spec.BufferType;
+    const typeByteLength = getBytesPerElement(this.type);
+    const useBytes = props.useBytes ?? false;
+    const stride = props.stride ?? 0;
+    const offset = props.offset ?? 0;
+
+    if (useBytes) {
+      this.size = props.size || (stride ? stride / typeByteLength : 0);
+      this.byteStride = stride || this.buffer.byteStride || this.size * typeByteLength;
+      this.byteOffset = offset;
+    } else {
+      this.size = props.size || stride;
+      this.byteStride = stride
+        ? stride * typeByteLength
+        : this.buffer.byteStride || this.size * typeByteLength;
+      this.byteOffset = offset * typeByteLength;
+    }
     this.normalized = props.normalized ?? false;
-    this.instanceDivisor = props.instanceDivisor ?? 0;
-    this.buffer.retain();
+    this.instanced = props.instanced ?? false;
+    this._instanceDivisor = this.instanced ? props.divisor ?? 1 : 0;
   }
 
-  get stride (): number {
-    return this.byteStride;
+  get isDisposed (): boolean {
+    return this._isDisposed;
   }
 
-  get offset (): number {
-    return this.byteOffset;
+  get instanceDivisor (): number {
+    return this._instanceDivisor;
   }
 
-  get normalize (): boolean {
-    return this.normalized;
+  set instanceDivisor (value: number) {
+    this._instanceDivisor = value;
+    this.instanced = value !== 0;
   }
 
-  getData (): spec.TypedArray | undefined {
+  getKind (): string {
+    return this.kind;
+  }
+
+  isUpdatable (): boolean {
+    return this.buffer.isUpdatable();
+  }
+
+  getData (): DataArray | undefined {
     return this.buffer.getData();
   }
 
-  createReference (name = this.name): VertexBuffer {
-    return new VertexBuffer(name, this.buffer, {
-      size: this.size,
-      type: this.type,
-      dataSource: this.dataSource,
-      byteStride: this.byteStride,
-      byteOffset: this.byteOffset,
-      normalized: this.normalized,
-      instanceDivisor: this.instanceDivisor,
-    });
+  getBuffer (): DataBuffer | undefined {
+    return this.buffer.getBuffer();
+  }
+
+  getWrapperBuffer (): Buffer {
+    return this.buffer;
+  }
+
+  getStrideSize (): number {
+    return this.byteStride / getBytesPerElement(this.type);
+  }
+
+  getOffset (): number {
+    return this.byteOffset / getBytesPerElement(this.type);
+  }
+
+  getSize (sizeInBytes = false): number {
+    return sizeInBytes ? this.size * getBytesPerElement(this.type) : this.size;
+  }
+
+  getIsInstanced (): boolean {
+    return this.instanced;
+  }
+
+  getInstanceDivisor (): number {
+    return this._instanceDivisor;
+  }
+
+  create (data?: DataArray): void {
+    this.buffer.create(data);
+  }
+
+  update (data: DataArray): void {
+    this.buffer.update(data);
+  }
+
+  updateDirectly (data: DataArray, offset: number, useBytes = false): void {
+    this.buffer.updateDirectly(data, offset, undefined, useBytes);
+  }
+
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    this.buffer.rebuild();
   }
 
   dispose (): void {
-    this.buffer.release();
+    if (this.ownsBuffer) {
+      this.buffer.dispose();
+    }
+    this._isDisposed = true;
   }
 }

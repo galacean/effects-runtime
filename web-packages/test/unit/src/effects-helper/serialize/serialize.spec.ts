@@ -39,7 +39,7 @@ const cube2: TextureFactorySourceFrom = {
 describe('helper/serialize', () => {
   it('serialize geometry props', () => {
     const aPoint = new Float32Array([1, 2, 3, 4]);
-    const aIndex = new Uint8Array([0, 1, 2, 2, 3, 0]);
+    const aIndex = new Uint16Array([0, 1, 2, 2, 3, 0]);
     const geometryProps = {
       attributes: {
         aPoint: {
@@ -55,11 +55,11 @@ describe('helper/serialize', () => {
       drawCount: 1,
       drawStart: 2,
       mode: 6,
-      indices: { data: aIndex, releasable: true },
+      indices: { data: aIndex },
     };
     const result = serializeGeometries([geometryProps as GeometryProps]);
 
-    expect(geometryProps.indices).to.deep.equals({ data: aIndex, releasable: true });
+    expect(geometryProps.indices).to.deep.equals({ data: aIndex });
     expect(geometryProps.attributes.aPoint).to.deep.equals({ data: aPoint, size: 4 });
     expect(result.version).to.eql('1.0');
     expect(result.data.byteLength).to.eql(aPoint.byteLength + padding4(aIndex.byteLength));
@@ -71,7 +71,7 @@ describe('helper/serialize', () => {
       drawStart: 2,
       mode: 6,
     });
-    expect(geometry.indices).to.deep.equals({ releasable: true, data: [20, [0, 0, aIndex.byteLength, 'u8']] });
+    expect(geometry.indices).to.deep.equals({ data: [20, [0, 0, aIndex.byteLength, 'u16']] });
     expect(geometry.attributes).to.deep.equals({
       aPoint: {
         data: [20, [0, padding4(aIndex.byteLength), aPoint.byteLength, 'f32']], // [20,[0,8,16,'f32']]
@@ -91,7 +91,7 @@ describe('helper/serialize', () => {
 
   it('geometry combine same data', function () {
     const aPoint = new Float32Array([1, 2, 3, 4]);
-    const aIndex = new Uint8Array([0, 1, 2, 2, 3, 0]);
+    const aIndex = new Uint16Array([0, 1, 2, 2, 3, 0]);
     const geometryOptions: GeometryProps = {
       attributes: {
         aPoint: {
@@ -102,12 +102,12 @@ describe('helper/serialize', () => {
       drawCount: 1,
       drawStart: 2,
       mode: 6,
-      indices: { data: aIndex, releasable: true },
+      indices: { data: aIndex },
     };
 
     const result = serializeGeometries([geometryOptions, geometryOptions]);
 
-    expect(geometryOptions.indices).to.deep.equals({ data: aIndex, releasable: true });
+    expect(geometryOptions.indices).to.deep.equals({ data: aIndex });
     expect(geometryOptions.attributes.aPoint).to.deep.equals({
       data: aPoint,
       size: 4,

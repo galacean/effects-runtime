@@ -119,7 +119,7 @@ export class InteractMesh {
   }
 
   private createGeometry () {
-    const indexData = new Uint8Array([0, 1, 1, 2, 2, 3, 3, 0]);
+    const indexData = new Uint16Array([0, 1, 1, 2, 2, 3, 3, 0]);
 
     return Geometry.create(
       this.engine,

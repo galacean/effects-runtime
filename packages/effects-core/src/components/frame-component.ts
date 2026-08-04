@@ -40,12 +40,11 @@ export class FrameComponent extends RendererComponent implements Maskable {
         aUV: {
           size: 2,
           offset: 0,
-          releasable: true,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
         },
       },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
       mode: glContext.TRIANGLES,
       drawCount: 6,
     });

@@ -1,7 +1,8 @@
 //@ts-nocheck
-import { glContext, TextureSourceType } from '@galacean/effects-core';
+import { BufferUsage, Geometry, glContext, TextureSourceType } from '@galacean/effects-core';
 import type { GLShaderVariant } from '@galacean/effects-webgl';
 import { GLTexture, GLEngine } from '@galacean/effects-webgl';
+import { readBufferContents } from './gl-utils';
 
 const { assert, expect } = chai;
 
@@ -128,6 +129,43 @@ describe('webgl/gl-context-lost', () => {
       expect(afterProgram).to.not.equal(beforeProgram);
       expect(afterProgram).to.be.instanceOf(WebGLProgram);
       expect(variant.initialized).to.equal(true);
+    }).timeout(8000);
+
+    it('几何缓冲区在 restore 后被重建', async function () {
+      if (!canEmulateContextLoss(engine)) {
+        this.skip();
+
+        return;
+      }
+      const geometry = new Geometry(engine, {
+        attributes: {
+          aPosition: {
+            data: new Float32Array([0, 0, 1, 0, 0, 1]),
+            size: 2,
+          },
+        },
+        indices: { data: new Uint16Array([0, 1, 2]) },
+        bufferUsage: BufferUsage.Dynamic,
+        drawCount: 3,
+      });
+
+      geometry.initialize();
+      const vertexBuffer = geometry.getVertexBuffer('aPosition')!;
+      const beforeVertex = vertexBuffer.getBuffer()!.underlyingResource;
+      const beforeIndex = geometry.getIndexBuffer()!.underlyingResource;
+
+      await emulateContextLoss(engine);
+
+      expect(vertexBuffer.getBuffer()!.underlyingResource).to.not.equal(beforeVertex);
+      expect(geometry.getIndexBuffer()!.underlyingResource).to.not.equal(beforeIndex);
+      const vertices = new Float32Array(6);
+      const indices = new Uint16Array(3);
+
+      readBufferContents(engine.gl, vertexBuffer.getBuffer()!, vertices);
+      readBufferContents(engine.gl, geometry.getIndexBuffer()!, indices, 0, true);
+      expect(vertices).to.deep.equal(new Float32Array([0, 0, 1, 0, 0, 1]));
+      expect(indices).to.deep.equal(new Uint16Array([0, 1, 2]));
+      geometry.dispose();
     }).timeout(8000);
 
     it('连续两次 context lost 均可恢复', async function () {

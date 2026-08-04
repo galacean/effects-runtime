@@ -103,8 +103,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       fragment: shaderWithMacros.fragment,
       name: shaderWithMacros.name || shaderCacheId,
       shared,
-    });
-    this.cachedShaders[shaderCacheId].id = shaderCacheId;
+    }, shaderCacheId);
 
     return shaderCacheId;
   }
@@ -135,10 +134,10 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       shader.program = glProgram;
       shader.initialized = true;
 
-      if (this.programMap[shader.id] !== undefined) {
-        console.warn(`Find duplicated shader id: ${shader.id}.`);
+      if (this.programMap[shader.key] !== undefined) {
+        console.warn(`Find duplicated shader key: ${shader.key}.`);
       }
-      this.programMap[shader.id] = glProgram;
+      this.programMap[shader.key] = glProgram;
       // console.log('compileShader ' + result.cacheId + ' ' + result.compileTime + ' ', shader.source);
     };
     const checkComplete = () => {
@@ -159,7 +158,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       if (program) {
         if (result.status !== ShaderCompileResultStatus.fail) {
           assignInspectorName(program, name);
-          const glProgram = new GLProgram(this.engine, program, shader.id);
+          const glProgram = new GLProgram(this.engine, program, shader.key);
 
           // FIXME: 这个检测不能在这里调用，安卓上会有兼容性问题。要么开发版使用，要么移到Shader首次使用时
           gl.validateProgram(program);
