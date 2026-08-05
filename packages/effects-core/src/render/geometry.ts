@@ -127,14 +127,13 @@ export class Geometry extends EffectsObject {
   }
 
   /** @hide */
-  setVerticesBuffer (vertexBuffer: VertexBuffer): void {
+  setVerticesBuffer (vertexBuffer: VertexBuffer, disposeExistingBuffer = true): void {
     const kind = vertexBuffer.getKind();
     const current = this.vertexBuffers[kind];
 
-    if (current === vertexBuffer) {
-      return;
+    if (current && disposeExistingBuffer) {
+      current.dispose();
     }
-    current?.dispose();
     if (vertexBuffer.ownsBuffer) {
       vertexBuffer.buffer.increaseReferences();
     }
@@ -152,7 +151,13 @@ export class Geometry extends EffectsObject {
   }
 
   setAttributeData (name: string, data: spec.TypedArray): void {
-    this.vertexBuffers[name]?.update(data);
+    const vertexBuffer = this.vertexBuffers[name];
+
+    if (!vertexBuffer) {
+      return;
+    }
+    vertexBuffer.update(data);
+    this.disposeVertexArrayObjects();
   }
 
   setAttributeSubData (name: string, offset: number, data: spec.TypedArray): void {
@@ -167,6 +172,7 @@ export class Geometry extends EffectsObject {
       : 0;
 
     buffer.updateDirectly(data, offset, vertexCount);
+    this.disposeVertexArrayObjects();
   }
 
   getAttributeStride (name: string): number {
@@ -223,6 +229,7 @@ export class Geometry extends EffectsObject {
         updatedData,
         offset * (this.indexBuffer.is32Bits ? Uint32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT),
       );
+      this.disposeVertexArrayObjects();
     }
   }
 
@@ -511,9 +518,19 @@ export class Geometry extends EffectsObject {
   }
 
   private disposeVertexArrayObjects (): void {
-    if (this.vertexArrayObjects) {
-      Object.keys(this.vertexArrayObjects).forEach(key => this.releaseVertexArrayObject(key));
+    const vertexArrayObjects = this.vertexArrayObjects;
+
+    if (!vertexArrayObjects) {
+      return;
     }
+    Object.keys(vertexArrayObjects).forEach(key => {
+      const vertexArrayObject = vertexArrayObjects[key];
+
+      if (vertexArrayObject && hasVertexArrayObjectMethods(this.engine)) {
+        this.engine.releaseVertexArrayObject(vertexArrayObject);
+      }
+    });
+    this.vertexArrayObjects = {};
   }
 
   private createIndexBuffer (): void {

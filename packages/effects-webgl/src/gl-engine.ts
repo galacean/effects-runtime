@@ -12,7 +12,6 @@ import { GLContextManager } from './gl-context-manager';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLRenderbuffer } from './gl-renderbuffer';
-import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLShaderVariant } from './gl-shader';
 import { GLDataBuffer } from './gl-data-buffer';
 
@@ -414,12 +413,6 @@ export class GLEngine extends Engine {
     }
 
     return fbo;
-  }
-
-  createVAO (name?: string): GLVertexArrayObject | undefined {
-    const ret = new GLVertexArrayObject(this, name);
-
-    return ret;
   }
 
   /** @hide */

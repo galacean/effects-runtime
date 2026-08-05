@@ -3,7 +3,6 @@ export * from './gl-renderbuffer';
 export * from './gl-texture';
 export * from './gl-framebuffer';
 export * from './gl-data-buffer';
-export * from './gl-vertex-array-object';
 export * from './gl-shader-library';
 export * from './gl-engine';
 export * from './gl-shader';

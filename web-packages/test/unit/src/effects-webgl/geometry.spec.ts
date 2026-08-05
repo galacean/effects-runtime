@@ -85,6 +85,16 @@ describe('webgl/geometry', () => {
     native.dispose();
   });
 
+  it('keeps ownership in buffers that create vertex buffer views', () => {
+    const buffer = new Buffer(engine, new Float32Array([0, 1]), false, 2);
+    const vertexBuffer = buffer.createVertexBuffer('aPosition', 0, 2);
+
+    vertexBuffer.dispose();
+    expect(buffer.isDisposed).to.equal(false);
+    buffer.dispose();
+    expect(buffer.isDisposed).to.equal(true);
+  });
+
   it('normalizes index data to 16 or 32 bits', () => {
     const options = {
       usage: glContext.STATIC_DRAW,
@@ -212,21 +222,24 @@ describe('webgl/geometry', () => {
   });
 
   it('keeps shared buffers alive until the last geometry is disposed', () => {
-    const source = createGeometry(engine);
-    const shared = new Geometry(engine, { attributes: {}, drawCount: source.getDrawCount() });
-
-    source.getAttributeNames().forEach(name => {
-      shared.setVerticesBuffer(source.getVertexBuffer(name)!);
+    const data = new Float32Array([0, 1, 2, 3, 4, 5, 6, 7]);
+    const buffer = new Buffer(engine, data, false, 2);
+    const vertexBuffer = new VertexBuffer(engine, buffer, 'aPosition', {
+      size: 2,
+      takeBufferOwnership: true,
     });
-    shared.flush();
-    const buffer = shared.getAttributeBuffer('aPosition')!;
+    const source = new Geometry(engine, { attributes: {}, drawCount: 4 });
+    const shared = new Geometry(engine, { attributes: {}, drawCount: 4 });
+
+    source.setVerticesBuffer(vertexBuffer);
+    shared.setVerticesBuffer(vertexBuffer);
 
     source.dispose();
     expect(buffer.isDisposed).to.equal(false);
     const result = new Float32Array(8);
 
     readBufferContents(engine.gl, buffer.getBuffer()!, result);
-    expect(result).to.deep.equal(new Float32Array([0, 1, 2, 3, 4, 5, 6, 7]));
+    expect(result).to.deep.equal(data);
     shared.dispose();
     expect(buffer.isDisposed).to.equal(true);
   });
@@ -261,6 +274,23 @@ describe('webgl/geometry', () => {
     engine.recordVertexArrayObject = () => resource;
     geometry.bind({ key: 'test-program' } as ShaderVariant);
     geometry.setIndexData(new Uint32Array([0, 1, 2]));
+    expect(released).to.equal(true);
+    geometry.dispose();
+  });
+
+  it('disposes cached vertex array objects when vertex data changes', () => {
+    const geometry = createGeometry(engine);
+    const resource = engine.gl.createVertexArray()!;
+    const releaseVertexArrayObject = engine.releaseVertexArrayObject.bind(engine);
+    let released = false;
+
+    engine.releaseVertexArrayObject = vertexArrayObject => {
+      released = vertexArrayObject === resource;
+      releaseVertexArrayObject(vertexArrayObject);
+    };
+    engine.recordVertexArrayObject = () => resource;
+    geometry.bind({ key: 'test-program' } as ShaderVariant);
+    geometry.setAttributeSubData('aPosition', 0, new Float32Array([1, 2]));
     expect(released).to.equal(true);
     geometry.dispose();
   });

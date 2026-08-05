@@ -33,40 +33,6 @@ describe('webgl/gl-vertex-array-object', () => {
     renderer = null;
   });
 
-  it('create vao use extension when webgl', () => {
-    renderer = createGLGPURenderer('webgl');
-    glRenderer = renderer;
-    const engine = glRenderer.engine as GLEngine;
-    const vao = engine.createVAO()!;
-    const ext = engine.gl.getExtension('OES_vertex_array_object');
-
-    expect(engine.gl.createVertexArray).to.be.a('function');
-    expect(engine.gl.bindVertexArray).to.be.a('function');
-    expect(engine.gl.deleteVertexArray).to.be.a('function');
-    expect(engine.gl.drawArraysInstanced).to.be.a('function');
-    expect(engine.gl.drawElementsInstanced).to.be.a('function');
-    expect(engine.gl.vertexAttribDivisor).to.be.a('function');
-
-    if (ext) {
-      vao.bind();
-      expect(ext.isVertexArrayOES(vao.vao)).is.true;
-      vao.dispose();
-      expect(ext.isVertexArrayOES(vao.vao)).is.false;
-    }
-  });
-
-  it('create vao when webgl2', () => {
-    renderer = createGLGPURenderer('webgl2');
-    glRenderer = renderer;
-    const gl = (glRenderer.engine as GLEngine).gl;
-    const vao = (glRenderer.engine as GLEngine).createVAO()!;
-
-    vao.bind();
-    expect(gl.isVertexArray(vao.vao)).is.true;
-    vao.dispose();
-    expect(gl.isVertexArray(vao.vao)).is.false;
-  });
-
   it('bind vertexPointer', () => {
     renderer = createGLGPURenderer('webgl');
     glRenderer = renderer;
