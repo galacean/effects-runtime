@@ -443,7 +443,11 @@ export class TrailMesh {
     if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
       return;
     }
-    this.attributeData.forEach((data, buffer) => buffer.update(data));
+    this.attributeData.forEach((data, buffer) => {
+      if (!buffer.getData()) {
+        buffer.update(data);
+      }
+    });
   }
 
 }

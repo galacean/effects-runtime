@@ -161,7 +161,12 @@ export class Geometry extends EffectsObject {
     if (!vertexBuffer) {
       return;
     }
-    vertexBuffer.updateDirectly(data, offset);
+    const buffer = vertexBuffer.getWrapperBuffer();
+    const vertexCount = buffer.byteStride > 0
+      ? Math.ceil(data.byteLength / buffer.byteStride)
+      : 0;
+
+    buffer.updateDirectly(data, offset, vertexCount);
   }
 
   getAttributeStride (name: string): number {

@@ -877,7 +877,11 @@ export class ParticleMesh implements ParticleMeshData {
     if (!this.geometry.isInitialized || this.geometry.isDisposed()) {
       return;
     }
-    this.attributeData.forEach((data, buffer) => buffer.update(data));
+    this.attributeData.forEach((data, buffer) => {
+      if (!buffer.getData()) {
+        buffer.update(data);
+      }
+    });
   }
 
   private expandArray (array: Float32Array, newSize: number): Float32Array {

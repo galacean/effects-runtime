@@ -132,9 +132,24 @@ describe('webgl/geometry', () => {
     geometry.dispose();
   });
 
+  it('keeps buffer capacity after attribute subdata updates at offset zero', () => {
+    const geometry = createGeometry(engine);
+
+    geometry.initialize();
+    const buffer = geometry.getAttributeBuffer('aPosition')!;
+    const capacity = buffer.capacity;
+
+    geometry.setAttributeSubData('aPosition', 0, new Float32Array([9, 8]));
+    expect(buffer.getData()).to.equal(undefined);
+    geometry.restore();
+    expect(buffer.capacity).to.equal(capacity);
+    geometry.dispose();
+  });
+
   it('rejects partial updates that would resize a buffer', () => {
     const geometry = createGeometry(engine);
 
+    geometry.initialize();
     expect(() => geometry.setAttributeSubData('aPosition', 7, new Float32Array([1, 2]))).to.throw(RangeError);
     expect(() => geometry.setIndexSubData(5, new Uint16Array([1, 2]))).to.throw(RangeError);
     geometry.dispose();

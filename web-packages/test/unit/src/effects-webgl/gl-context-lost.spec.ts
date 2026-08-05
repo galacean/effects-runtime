@@ -184,18 +184,28 @@ describe('webgl/gl-context-lost', () => {
       });
 
       geometry.initialize();
-      data.set([2, 3], 2);
-      geometry.setAttributeSubData('aPosition', 2, new Float32Array([2, 3]));
+      const buffer = geometry.getAttributeBuffer('aPosition')!;
+
+      data.set([2, 3], 0);
+      geometry.setAttributeSubData('aPosition', 0, new Float32Array([2, 3]));
+      let particleBufferUploads = 0;
       const particleSystem = {
-        rebuild: () => geometry.setAttributeData('aPosition', data),
+        rebuild: () => {
+          if (!buffer.getData()) {
+            particleBufferUploads++;
+            buffer.update(data);
+          }
+        },
       } as unknown as import('@galacean/effects-core').ParticleSystem;
 
       engine.addParticleSystem(particleSystem);
+      await emulateContextLoss(engine);
       await emulateContextLoss(engine);
       const restored = new Float32Array(data.length);
 
       readBufferContents(engine.gl, geometry.getVertexBuffer('aPosition')!.getBuffer()!, restored);
       expect(restored).to.deep.equal(data);
+      expect(particleBufferUploads).to.equal(1);
       engine.removeParticleSystem(particleSystem);
       geometry.dispose();
     }).timeout(8000);
