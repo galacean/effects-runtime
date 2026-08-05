@@ -49,6 +49,15 @@ describe('core/plugins/text/text-item', () => {
     expect(textComponent.textStyle.fontFamily).to.equal(options.fontFamily);
   });
 
+  it('文本宽度为 0 时使用最小纹理', () => {
+    textComponent.setFontStyle(spec.FontStyle.normal);
+    textComponent.setTextWidth(0);
+
+    expect(() => textComponent.renderText({} as spec.TextContentOptions)).not.to.throw();
+    expect(textComponent.textLayout.width).to.equal(0);
+    expect(textComponent.canvas.width).to.equal(1);
+  });
+
   // 换行集成测试：打桩 measureText 返回固定宽度（CJK=10 / 西文与标点=5 / 空格=3），
   // letterSpace 默认 0、keepWordIntact 默认 true。通过调整 textLayout.width 吸收 fontOffset，
   // 使 getLineCount 内部 width = textLayout.width + fontOffset 等于目标值，得到确定性行数。

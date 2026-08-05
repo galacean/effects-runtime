@@ -269,25 +269,27 @@ export class TextComponentBase {
     }
 
     const context = this.context;
+    const textureWidth = Math.max(1, width);
+    const textureHeight = Math.max(1, height);
 
     // 先保存状态
     context.save();
 
     // 设置canvas尺寸
-    this.canvas.width = width;
-    this.canvas.height = height;
+    this.canvas.width = textureWidth;
+    this.canvas.height = textureHeight;
 
     //重置变换
     context.setTransform(1, 0, 0, 1, 0, 0);
 
     // 处理翻转
     if (!flipY) {
-      context.translate(0, height);
+      context.translate(0, textureHeight);
       context.scale(1, -1);
     }
 
     // 在翻转后清空画布
-    context.clearRect(0, 0, width, height);
+    context.clearRect(0, 0, textureWidth, textureHeight);
 
     // 设置 alpha 修复用填充色（不实际输出像素）
     context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
@@ -299,7 +301,7 @@ export class TextComponentBase {
     context.restore();
 
     // 创建新纹理
-    const imageData = context.getImageData(0, 0, width, height);
+    const imageData = context.getImageData(0, 0, textureWidth, textureHeight);
     const texture = Texture.createWithData(
       this.engine,
       {
