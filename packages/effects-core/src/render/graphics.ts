@@ -71,7 +71,7 @@ export class Graphics {
   constructor (private engine: Engine) {
     this.geometry = Geometry.create(this.engine, {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array([
@@ -81,7 +81,7 @@ export class Graphics {
             0.5, -0.5, //右下
           ]),
         },
-        aColor: {
+        [VertexBuffer.ColorKind]: {
           type: glContext.FLOAT,
           size: 4,
           data: new Float32Array([
@@ -91,7 +91,7 @@ export class Graphics {
             1, 1, 1, 1,
           ]),
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           size: 2,
           offset: 0,
           type: glContext.FLOAT,
@@ -255,9 +255,9 @@ export class Graphics {
     const uvsArray = new Float32Array(this.uvs);
     const indicesArray = new Uint16Array(this.indices);
 
-    this.updateAttributeData('aPos', verticesArray, 2);
-    this.updateAttributeData('aColor', colorsArray, 4);
-    this.updateAttributeData('aUV', uvsArray, 2);
+    this.updateAttributeData(VertexBuffer.PositionKind, verticesArray, 2);
+    this.updateAttributeData(VertexBuffer.ColorKind, colorsArray, 4);
+    this.updateAttributeData(VertexBuffer.UVKind, uvsArray, 2);
     this.geometry.setIndexData(indicesArray);
     this.geometry.setDrawCount(this.currentIndexCount);
 

@@ -224,8 +224,8 @@ export class SpriteComponent extends MaskableGraphic {
     const height = isRotate90 ? w : h;
     const angle = isRotate90 ? -Math.PI / 2 : 0;
 
-    const aUV = geometry.getAttributeData('aUV');
-    const aPos = geometry.getAttributeData('aPos');
+    const aUV = geometry.getAttributeData(VertexBuffer.UVKind);
+    const aPos = geometry.getAttributeData(VertexBuffer.PositionKind);
     const indices = geometry.getIndexData();
 
     const tempPosition: spec.vec2 = [0, 0];
@@ -247,8 +247,8 @@ export class SpriteComponent extends MaskableGraphic {
         aUV[uvOffset + 1] = (tempPosition[1] + 0.5) * height + y;
       }
 
-      this.updateAttributeData('aPos', aPos.slice(), 3);
-      this.updateAttributeData('aUV', aUV.slice(), 2);
+      this.updateAttributeData(VertexBuffer.PositionKind, aPos.slice(), 3);
+      this.updateAttributeData(VertexBuffer.UVKind, aUV.slice(), 2);
       this.geometry.setIndexData(indices.slice());
       this.geometry.setDrawCount(indices.length);
     }
@@ -361,9 +361,9 @@ export class SpriteComponent extends MaskableGraphic {
         index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
       }
     }
-    this.updateAttributeData('aPos', new Float32Array(position), 3);
+    this.updateAttributeData(VertexBuffer.PositionKind, new Float32Array(position), 3);
     geometry.setIndexData(new Uint16Array(index));
-    this.updateAttributeData('aUV', new Float32Array(aUV), 2);
+    this.updateAttributeData(VertexBuffer.UVKind, new Float32Array(aUV), 2);
     geometry.setDrawCount(index.length);
   }
 

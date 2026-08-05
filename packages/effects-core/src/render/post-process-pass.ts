@@ -6,6 +6,7 @@ import { glContext } from '../gl';
 import { Material } from '../material';
 import { TextureLoadAction, type Texture } from '../texture';
 import { Geometry } from './geometry';
+import { VertexBuffer } from './vertex-buffer';
 import { Mesh } from './mesh';
 import { getTextureSize } from './render-frame';
 import type { RenderPassDestroyOptions } from './render-pass';
@@ -186,7 +187,7 @@ export class ToneMappingPass extends RenderPass {
       name,
       mode: glContext.TRIANGLE_STRIP,
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),

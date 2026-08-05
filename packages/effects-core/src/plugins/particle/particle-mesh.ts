@@ -22,7 +22,7 @@ import type {
   Attribute, Buffer, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
 } from '../../render';
 import {
-  BufferUsage, GLSLVersion, Geometry, Mesh,
+  BufferUsage, GLSLVersion, Geometry, Mesh, VertexBuffer,
 } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
@@ -422,7 +422,7 @@ export class ParticleMesh implements ParticleMeshData {
   }
 
   onUpdate (dt: number) {
-    const aPosArray = this.getAttributeData('aPos'); // vector3
+    const aPosArray = this.getAttributeData(VertexBuffer.PositionKind); // vector3
     const vertexCount = Math.ceil(aPosArray.length / 12);
 
     this.applyTranslation(vertexCount, dt);
@@ -901,14 +901,14 @@ function generateGeometryProps (
   const bpe = Float32Array.BYTES_PER_ELEMENT;
   const j12 = bpe * 12;
   const attributes: Record<string, Attribute> = {
-    aPos: { size: 3, offset: 0, stride: j12, data: new Float32Array(0) },
-    aVel: { size: 3, offset: 3 * bpe, stride: j12, dataSource: 'aPos' },
-    aDirX: { size: 3, offset: 6 * bpe, stride: j12, dataSource: 'aPos' },
-    aDirY: { size: 3, offset: 9 * bpe, stride: j12, dataSource: 'aPos' },
+    [VertexBuffer.PositionKind]: { size: 3, offset: 0, stride: j12, data: new Float32Array(0) },
+    aVel: { size: 3, offset: 3 * bpe, stride: j12, dataSource: VertexBuffer.PositionKind },
+    aDirX: { size: 3, offset: 6 * bpe, stride: j12, dataSource: VertexBuffer.PositionKind },
+    aDirY: { size: 3, offset: 9 * bpe, stride: j12, dataSource: VertexBuffer.PositionKind },
     //
     aRot: { size: 3, offset: 0, stride: 8 * bpe, data: new Float32Array(0) },
     aSeed: { size: 1, offset: 3 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
-    aColor: { size: 4, offset: 4 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
+    [VertexBuffer.ColorKind]: { size: 4, offset: 4 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
     //
     aOffset: { size: 4, stride: 4 * bpe, data: new Float32Array(0) },
     aTranslation: { size: 3, data: new Float32Array(0) },

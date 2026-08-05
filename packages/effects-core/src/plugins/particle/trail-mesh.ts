@@ -10,7 +10,7 @@ import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode } from '../../material';
 import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue, ValueGetter } from '../../math';
 import type { Buffer, GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
-import { GLSLVersion, Geometry, Mesh } from '../../render';
+import { GLSLVersion, Geometry, Mesh, VertexBuffer } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
 import { assertExist, imageDataFromGradient } from '../../utils';
@@ -146,10 +146,10 @@ export class TrailMesh {
     const v12 = 12 * bpe;
     const geometryOptions: GeometryProps = {
       attributes: {
-        aColor: { size: 4, stride: v12, data: new Float32Array(maxVertexCount * 12) },
-        aSeed: { size: 1, stride: v12, offset: 4 * bpe, dataSource: 'aColor' },
-        aInfo: { size: 3, stride: v12, offset: 5 * bpe, dataSource: 'aColor' },
-        aPos: { size: 4, stride: v12, offset: 8 * bpe, dataSource: 'aColor' },
+        [VertexBuffer.ColorKind]: { size: 4, stride: v12, data: new Float32Array(maxVertexCount * 12) },
+        aSeed: { size: 1, stride: v12, offset: 4 * bpe, dataSource: VertexBuffer.ColorKind },
+        aInfo: { size: 3, stride: v12, offset: 5 * bpe, dataSource: VertexBuffer.ColorKind },
+        [VertexBuffer.PositionKind]: { size: 4, stride: v12, offset: 8 * bpe, dataSource: VertexBuffer.ColorKind },
         //
         aTime: { size: 1, data: new Float32Array(maxVertexCount) },
         //
@@ -301,7 +301,7 @@ export class TrailMesh {
     colorData.set(positionData, 20);
     colorData[23] = -0.5 * size;
 
-    this.setAttributeSubData('aColor', pointStartIndex * 24, colorData);
+    this.setAttributeSubData(VertexBuffer.ColorKind, pointStartIndex * 24, colorData);
 
     if (previousIndex >= 0) {
       const bPreviousPoint = this.getTrailPosition(trailIndex, bpreviousIndex, tmp1) as Vector3;
@@ -357,7 +357,7 @@ export class TrailMesh {
 
     if (index >= 0 && index < pointCountPerTrail) {
       const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
-      const data = this.getAttributeData('aColor');
+      const data = this.getAttributeData(VertexBuffer.ColorKind);
 
       out.x = data[startIndex];
       out.y = data[1 + startIndex];

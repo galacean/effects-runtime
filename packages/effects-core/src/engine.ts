@@ -63,6 +63,11 @@ type EngineEvent = {
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine extends EventEmitter<EngineEvent> implements Disposable {
+  /**
+   * 创建 Engine 对象。
+   */
+  static create: (canvas: HTMLCanvasElement, options?: EngineOptions) => Engine;
+
   name = 'NewEngine';
   speed = 1;
   displayAspect: number;
@@ -114,8 +119,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 存放渲染需要用到的数据
    */
   renderingData: RenderingData;
-
-  graphics: Graphics;
   /**
    * 是否不处理上下文丢失恢复（构造期配置，默认 true）
    */
@@ -134,6 +137,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
+  private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
     stencilAction: TextureLoadAction.clear,
@@ -143,10 +147,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     colorAction: TextureLoadAction.clear,
     clearColor: [0, 0, 0, 0],
   };
-
-  get disposed (): boolean {
-    return this._disposed;
-  }
 
   /**
    *
@@ -175,7 +175,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
     this.renderTargetPool = new RenderTargetPool(this);
-    this.graphics = new Graphics(this);
 
     this.renderingData = {
       // @ts-expect-error
@@ -185,10 +184,19 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     PluginSystem.notifyEngineCreated(this);
   }
 
-  /**
-   * 创建 Engine 对象。
-   */
-  static create: (canvas: HTMLCanvasElement, options?: EngineOptions) => Engine;
+  get graphics (): Graphics {
+    if (this._graphics) {
+      return this._graphics;
+    }
+
+    this._graphics = new Graphics(this);
+
+    return this._graphics;
+  }
+
+  get disposed (): boolean {
+    return this._disposed;
+  }
 
   clearResources () {
     this.jsonSceneData = {};
@@ -748,7 +756,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.stop();
     this.eventSystem?.dispose();
     this.assetService?.dispose();
-    this.graphics.dispose();
+    this._graphics?.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());

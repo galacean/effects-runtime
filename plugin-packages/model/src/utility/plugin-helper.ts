@@ -2,11 +2,11 @@ import type {
   Scene, Attribute, GeometryProps, TextureSourceOptions, TextureSourceCubeData,
   TextureConfigOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
   Engine, math,
-  RenderPass, VertexBuffer } from '@galacean/effects';
+  RenderPass } from '@galacean/effects';
 import {
   Player, spec, Transform, glContext, Material, Mesh, Texture, Geometry, Renderer,
   TextureSourceType, getDefaultTextureFactory, RenderPassDestroyAttachmentType,
-  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion,
+  DestroyOptions, loadImage, PLAYER_OPTIONS_ENV_EDITOR, GLSLVersion, VertexBuffer,
 } from '@galacean/effects';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -441,26 +441,26 @@ export class MeshHelper {
 
     return {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: 'aPos',
+          dataSource: VertexBuffer.PositionKind,
         },
-        aNormal: {
+        [VertexBuffer.NormalKind]: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: 'aPos',
+          dataSource: VertexBuffer.PositionKind,
         },
       },
       drawStart: 0,
@@ -887,13 +887,13 @@ export class PluginHelper {
    */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return 'aPos';
-      case 'NORMAL': return 'aNormal';
-      case 'TANGENT': return 'aTangent';
-      case 'TEXCOORD_0': return 'aUV';
-      case 'TEXCOORD_1': return 'aUV2';
-      case 'JOINTS_0': return 'aJoints';
-      case 'WEIGHTS_0': return 'aWeights';
+      case 'POSITION': return VertexBuffer.PositionKind;
+      case 'NORMAL': return VertexBuffer.NormalKind;
+      case 'TANGENT': return VertexBuffer.TangentKind;
+      case 'TEXCOORD_0': return VertexBuffer.UVKind;
+      case 'TEXCOORD_1': return VertexBuffer.UV2Kind;
+      case 'JOINTS_0': return VertexBuffer.JointsKind;
+      case 'WEIGHTS_0': return VertexBuffer.WeightsKind;
     }
 
     if (!name.startsWith('a')) {
@@ -1301,18 +1301,18 @@ export class GeometryBoxProxy {
     this.drawCount = Math.abs(geometry.getDrawCount());
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer('aPos'));
-    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
+    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
+    const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer('aJoints'));
-    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer('aWeights'));
+    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
+    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
+      const weightArray = geometry.getAttributeData(VertexBuffer.WeightsKind) as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1453,18 +1453,18 @@ export class HitTestingProxy {
     this.drawCount = Math.abs(geometry.getDrawCount());
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer('aPos'));
-    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
+    const positionAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.PositionKind));
+    const positionArray = geometry.getAttributeData(VertexBuffer.PositionKind) as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib!, positionArray);
     //
-    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer('aJoints'));
-    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer('aWeights'));
+    const jointAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.JointsKind));
+    const weightAttrib = getAttributeLayout(geometry.getVertexBuffer(VertexBuffer.WeightsKind));
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData(VertexBuffer.JointsKind) as spec.TypedArray;
+      const weightArray = geometry.getAttributeData(VertexBuffer.WeightsKind) as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);

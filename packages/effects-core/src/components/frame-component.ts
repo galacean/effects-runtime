@@ -3,7 +3,7 @@ import { RendererComponent } from './renderer-component';
 import type { VFXItem } from '../vfx-item';
 import { Material, type Maskable } from '../material';
 import type { Renderer } from '../render';
-import { Geometry } from '../render';
+import { Geometry, VertexBuffer } from '../render';
 import { glContext } from '../gl';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Color } from '@galacean/effects-math/es/core/color';
@@ -27,7 +27,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
   override onAwake (): void {
     this.clipGeometry = Geometry.create(this.engine, {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 3,
           data: new Float32Array([
@@ -37,7 +37,7 @@ export class FrameComponent extends RendererComponent implements Maskable {
             0.5, -0.5, 0, //右下
           ]),
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           size: 2,
           offset: 0,
           type: glContext.FLOAT,

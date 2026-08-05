@@ -1,6 +1,6 @@
 import {
   spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glContext,
-  glType2VertexFormatType, isObject,
+  glType2VertexFormatType, isObject, VertexBuffer,
 } from '@galacean/effects';
 import type {
   Engine, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
@@ -1031,7 +1031,7 @@ export function getGeometryDataFromOptions (geomOptions: GeometryProps) {
       modelData.vertices = attribData.data;
       verticesNormalize = attribData.normalize ?? false;
       verticesType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    } else if (attrib === 'aNormal') {
+    } else if (attrib === VertexBuffer.NormalKind) {
       // @ts-expect-error
       modelData.normals = attribData.data;
       normalsNormalize = attribData.normalize ?? false;
@@ -1413,14 +1413,14 @@ function mergeTypedArray (array1: spec.TypedArray, array2: spec.TypedArray, offs
 }
 
 const vertexBufferSemanticMap: Record<string, string> = {
-  aPos: 'POSITION',
-  aUV: 'TEXCOORD0',
-  aUV2: 'TEXCOORD1',
-  aNormal: 'NORMAL',
-  aTangent: 'TANGENT',
-  aColor: 'COLOR',
-  aJoints: 'JOINTS',
-  aWeights: 'WEIGHTS',
+  [VertexBuffer.PositionKind]: 'POSITION',
+  [VertexBuffer.UVKind]: 'TEXCOORD0',
+  [VertexBuffer.UV2Kind]: 'TEXCOORD1',
+  [VertexBuffer.NormalKind]: 'NORMAL',
+  [VertexBuffer.TangentKind]: 'TANGENT',
+  [VertexBuffer.ColorKind]: 'COLOR',
+  [VertexBuffer.JointsKind]: 'JOINTS',
+  [VertexBuffer.WeightsKind]: 'WEIGHTS',
   //
   a_Position: 'POSITION',
   a_UV: 'TEXCOORD0',

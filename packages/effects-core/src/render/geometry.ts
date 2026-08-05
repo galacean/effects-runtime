@@ -369,9 +369,9 @@ export class Geometry extends EffectsObject {
       const normalChannel = data.vertexData.channels[2];
 
       props.attributes = {
-        aPos: createAttributeFromChannel(positionChannel, buffer, vertexCount, 3),
-        aUV: createAttributeFromChannel(uvChannel, buffer, vertexCount, 2),
-        aNormal: createAttributeFromChannel(normalChannel, buffer, vertexCount, 3),
+        [VertexBuffer.PositionKind]: createAttributeFromChannel(positionChannel, buffer, vertexCount, 3),
+        [VertexBuffer.UVKind]: createAttributeFromChannel(uvChannel, buffer, vertexCount, 2),
+        [VertexBuffer.NormalKind]: createAttributeFromChannel(normalChannel, buffer, vertexCount, 3),
       };
     }
     if (data.indexFormat !== spec.IndexFormatType.None) {
@@ -701,17 +701,17 @@ function decodeBase64ToArrayBuffer (value: string): ArrayBuffer {
 }
 
 const vertexBufferSemanticMap: Record<string, string> = {
-  POSITION: 'aPos',
-  TEXCOORD0: 'aUV',
-  TEXCOORD_0: 'aUV',
-  TEXCOORD1: 'aUV2',
-  NORMAL: 'aNormal',
-  TANGENT: 'aTangent',
-  COLOR: 'aColor',
-  JOINTS: 'aJoints',
-  JOINTS_0: 'aJoints',
-  WEIGHTS: 'aWeights',
-  WEIGHTS_0: 'aWeights',
+  POSITION: VertexBuffer.PositionKind,
+  TEXCOORD0: VertexBuffer.UVKind,
+  TEXCOORD_0: VertexBuffer.UVKind,
+  TEXCOORD1: VertexBuffer.UV2Kind,
+  NORMAL: VertexBuffer.NormalKind,
+  TANGENT: VertexBuffer.TangentKind,
+  COLOR: VertexBuffer.ColorKind,
+  JOINTS: VertexBuffer.JointsKind,
+  JOINTS_0: VertexBuffer.JointsKind,
+  WEIGHTS: VertexBuffer.WeightsKind,
+  WEIGHTS_0: VertexBuffer.WeightsKind,
   POSITION_BS0: 'aTargetPosition0',
   POSITION_BS1: 'aTargetPosition1',
   POSITION_BS2: 'aTargetPosition2',

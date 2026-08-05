@@ -263,7 +263,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
 
     this.geometry = Geometry.create(this.engine, {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 3,
           data: new Float32Array([
@@ -273,7 +273,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
             0.5, -0.5, 0, //右下
           ]),
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           size: 2,
           offset: 0,
           type: glContext.FLOAT,
@@ -383,7 +383,7 @@ export class ShapeComponent extends RendererComponent implements Maskable {
   }
 
   override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+    const positionArray = this.geometry.getAttributeData(VertexBuffer.PositionKind) as Float32Array;
 
     if (positionArray) {
       const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
@@ -446,8 +446,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     const vertexCount = vertices.length / 2;
 
     // Get the current attribute and index arrays from the geometry, avoiding re-creation
-    let positionArray = this.geometry.getAttributeData('aPos');
-    let uvArray = this.geometry.getAttributeData('aUV');
+    let positionArray = this.geometry.getAttributeData(VertexBuffer.PositionKind);
+    let uvArray = this.geometry.getAttributeData(VertexBuffer.UVKind);
     let indexArray = this.geometry.getIndexData();
 
     if (!positionArray || positionArray.length < vertexCount * 3) {
@@ -501,8 +501,8 @@ export class ShapeComponent extends RendererComponent implements Maskable {
     indexArray.set(indices);
 
     // Rewrite to geometry
-    this.updateAttributeData('aPos', positionArray, 3);
-    this.updateAttributeData('aUV', uvArray, 2);
+    this.updateAttributeData(VertexBuffer.PositionKind, positionArray, 3);
+    this.updateAttributeData(VertexBuffer.UVKind, uvArray, 2);
     this.geometry.setIndexData(indexArray);
     this.geometry.setDrawCount(indices.length);
 
