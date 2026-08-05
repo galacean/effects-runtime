@@ -124,6 +124,32 @@ describe('webgl/geometry', () => {
     geometry.dispose();
   });
 
+  it('keeps a shared source buffer alive until its last attribute view is replaced', () => {
+    const geometry = createGeometry(engine);
+
+    geometry.initialize();
+    const sharedBuffer = geometry.getAttributeBuffer('aPosition')!;
+    const dataBuffer = sharedBuffer.getBuffer();
+
+    geometry.setVerticesBuffer(new VertexBuffer(
+      engine,
+      new Float32Array([0, 1, 2, 3]),
+      'aUV',
+      { size: 2 },
+    ));
+    expect(sharedBuffer.isDisposed).to.equal(false);
+    expect(geometry.getVertexBuffer('aPosition')!.getBuffer()).to.equal(dataBuffer);
+
+    geometry.setVerticesBuffer(new VertexBuffer(
+      engine,
+      new Float32Array([0, 1, 2, 3]),
+      'aPosition',
+      { size: 2 },
+    ));
+    expect(sharedBuffer.isDisposed).to.equal(true);
+    geometry.dispose();
+  });
+
   it('uploads full and partial changes through the shared buffer', () => {
     const geometry = createGeometry(engine);
 

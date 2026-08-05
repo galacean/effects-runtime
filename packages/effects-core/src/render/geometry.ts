@@ -401,7 +401,7 @@ export class Geometry extends EffectsObject {
     this.indices = new Uint16Array(0);
     this.options = undefined;
     this.drawStart = 0;
-    this.drawCount = NaN;
+    this.drawCount = 0;
     if (this.initialized) {
       this.engine.removeGeometry(this);
     }
@@ -448,7 +448,7 @@ export class Geometry extends EffectsObject {
         data,
         usage !== (BufferUsage.Static as number),
         byteStride,
-        true,
+        false,
         instanceDivisor > 0,
         true,
         instanceDivisor,

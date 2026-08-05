@@ -92,7 +92,7 @@ export class Buffer implements Disposable {
       offset: byteOffset,
       instanced: instanced === undefined ? this.instanced : instanced,
       useBytes: true,
-      divisor: this.divisor || divisor,
+      divisor: divisor ?? this.divisor,
     });
   }
 
