@@ -1,6 +1,4 @@
 import type { Disposable } from '@galacean/effects-core';
-import type { GLGeometry } from './gl-geometry';
-import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
 
 export interface ProgramAttributeInfo {
@@ -22,15 +20,17 @@ export interface ProgramUniformInfo {
 }
 export class GLProgram implements Disposable {
   private attribInfoMap: Record<string, ProgramAttributeInfo>;
+  private attributeNames: string[];
 
   constructor (
     public engine: GLEngine,
     public readonly program: WebGLProgram,
-    private readonly id: string,
+    public readonly key: string,
   ) {
     this.engine.useProgram(program);
 
     this.attribInfoMap = this.createAttribMap();
+    this.attributeNames = Object.keys(this.attribInfoMap);
 
     this.engine.useProgram(null);
     //gl.activeTexture(gl.TEXTURE0);
@@ -44,54 +44,19 @@ export class GLProgram implements Disposable {
   }
 
   /**
-   * 绑定 vao 对象并设置顶点属性
-   * 如果当前环境不支持 vao，则使用 gl 函数依次设置属性。
-   * @param geometry
-   * @returns
+   * @internal
    */
-  setupAttributes (geometry: GLGeometry) {
-    const programId = this.id;
-    const gl = this.engine.gl;
-    let vao: GLVertexArrayObject | undefined;
+  getAttributesNames (): readonly string[] {
+    return this.attributeNames;
+  }
 
-    if (geometry.vaos[programId]) {
-      vao = geometry.vaos[programId];
-    } else {
-      vao = new GLVertexArrayObject(this.engine, `${geometry.name}-${programId}`);
-      if (!vao) {
-        console.error('Failed to create VAO object.');
-      }
-      geometry.vaos[programId] = vao;
-    }
+  /**
+   * @internal
+   */
+  getAttributeLocation (index: number): number {
+    const name = this.attributeNames[index];
 
-    // 兼容小程序下不支持vao
-    if (vao && vao.vao) {
-      vao.bind();
-      if (vao.ready) {
-        return vao;
-      }
-    }
-    Object.keys(this.attribInfoMap).forEach(name => {
-      const attrInfo = this.attribInfoMap[name];
-      const attribute = geometry.attributes[name];
-
-      if (attribute) {
-        const buffer = geometry.buffers[attribute.dataSource];
-
-        if (!buffer) {
-          throw new Error(`Failed to find a buffer named '${attribute.dataSource || name}'. Please ensure the buffer is correctly initialized and bound.`);
-        }
-        buffer.bind();
-        gl.enableVertexAttribArray(attrInfo.loc);
-        gl.vertexAttribPointer(attrInfo.loc, attribute.size, attribute.type, attribute.normalize as boolean, attribute.stride || 0, attribute.offset || 0);
-      }
-    });
-    geometry.indicesBuffer?.bind();
-    if (vao) {
-      vao.ready = true;
-    }
-
-    return vao;
+    return name === undefined ? -1 : this.attribInfoMap[name].loc;
   }
 
   createAttribMap () {

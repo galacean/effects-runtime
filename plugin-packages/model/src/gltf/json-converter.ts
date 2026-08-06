@@ -1,6 +1,6 @@
 import {
   spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glContext,
-  glType2VertexFormatType, isObject,
+  glType2VertexFormatType, isObject, VertexBuffer,
 } from '@galacean/effects';
 import type {
   Engine, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
@@ -285,15 +285,17 @@ export class JSONConverter {
       const geomProps = deserializeGeometry(prim.geometry, oldScene.bins as unknown as ArrayBuffer[]);
       const material = this.getMaterialData(prim.material, oldScene);
 
-      if (geomProps.indices?.data instanceof Uint8Array) {
-        const oldIndices = geomProps.indices.data;
+      const indexData: unknown = geomProps.indices?.data;
+
+      if (indexData instanceof Uint8Array) {
+        const oldIndices = indexData;
         const newIndices = new Uint16Array(oldIndices.length);
 
         for (let i = 0; i < oldIndices.length; i++) {
           newIndices[i] = oldIndices[i];
         }
 
-        geomProps.indices.data = newIndices;
+        geomProps.indices!.data = newIndices;
       }
 
       geometryPropsList.push(geomProps);
@@ -1029,7 +1031,7 @@ export function getGeometryDataFromOptions (geomOptions: GeometryProps) {
       modelData.vertices = attribData.data;
       verticesNormalize = attribData.normalize ?? false;
       verticesType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    } else if (attrib === 'aNormal') {
+    } else if (attrib === VertexBuffer.NormalKind) {
       // @ts-expect-error
       modelData.normals = attribData.data;
       normalsNormalize = attribData.normalize ?? false;
@@ -1143,13 +1145,20 @@ export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
 
       if (isSame) {
         if (geom0.indices && geom1.indices) {
-          geom0.indices.data = mergeTypedArray(geom0.indices.data, geom1.indices.data);
+          geom0.indices.data = mergeTypedArray(
+            geom0.indices.data,
+            geom1.indices.data,
+          ) as typeof geom0.indices.data;
         }
       } else {
         if (geom0.indices && geom1.indices) {
           const vertexCount = getVertexCount(geom0);
 
-          geom0.indices.data = mergeTypedArray(geom0.indices.data, geom1.indices.data, vertexCount);
+          geom0.indices.data = mergeTypedArray(
+            geom0.indices.data,
+            geom1.indices.data,
+            vertexCount,
+          ) as typeof geom0.indices.data;
         }
 
         Object.keys(geom0.attributes).forEach(name => {
@@ -1404,14 +1413,14 @@ function mergeTypedArray (array1: spec.TypedArray, array2: spec.TypedArray, offs
 }
 
 const vertexBufferSemanticMap: Record<string, string> = {
-  aPos: 'POSITION',
-  aUV: 'TEXCOORD0',
-  aUV2: 'TEXCOORD1',
-  aNormal: 'NORMAL',
-  aTangent: 'TANGENT',
-  aColor: 'COLOR',
-  aJoints: 'JOINTS',
-  aWeights: 'WEIGHTS',
+  [VertexBuffer.PositionKind]: 'POSITION',
+  [VertexBuffer.UVKind]: 'TEXCOORD0',
+  [VertexBuffer.UV2Kind]: 'TEXCOORD1',
+  [VertexBuffer.NormalKind]: 'NORMAL',
+  [VertexBuffer.TangentKind]: 'TANGENT',
+  [VertexBuffer.ColorKind]: 'COLOR',
+  [VertexBuffer.JointsKind]: 'JOINTS',
+  [VertexBuffer.WeightsKind]: 'WEIGHTS',
   //
   a_Position: 'POSITION',
   a_UV: 'TEXCOORD0',

@@ -1,6 +1,6 @@
 import type { Engine, Renderer } from '@galacean/effects-core';
-import { MaskProcessor, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
-import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
+import { Geometry, MaskProcessor, glContext, SpriteComponent, math, VFXItem, Material } from '@galacean/effects-core';
+import { GLEngine } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -282,7 +282,7 @@ describe('core/material//mask-ref-manager', () => {
     it('should restore material state after drawing', () => {
       const mp = new MaskProcessor();
       const material = new Material(engine, { shader: { vertex: vs, fragment: fs } });
-      const geometry = new GLGeometry(engine, {
+      const geometry = new Geometry(engine, {
         drawStart: 0,
         drawCount: 3,
         attributes: {

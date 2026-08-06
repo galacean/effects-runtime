@@ -66,6 +66,14 @@ export class ParticleSystemRenderer extends RendererComponent {
     }
   }
 
+  /**
+   * @internal
+   */
+  rebuild (): void {
+    this.particleMesh.rebuild();
+    this.trailMesh?.rebuild();
+  }
+
   reset () {
     this.particleMesh.clearPoints();
     this.trailMesh?.clearAllTrails();

@@ -5,6 +5,7 @@ import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { Geometry } from './geometry';
+import { VertexBuffer } from './vertex-buffer';
 import { Material } from '../material';
 import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
@@ -70,7 +71,7 @@ export class Graphics {
   constructor (private engine: Engine) {
     this.geometry = Geometry.create(this.engine, {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 2,
           data: new Float32Array([
@@ -80,7 +81,7 @@ export class Graphics {
             0.5, -0.5, //右下
           ]),
         },
-        aColor: {
+        [VertexBuffer.ColorKind]: {
           type: glContext.FLOAT,
           size: 4,
           data: new Float32Array([
@@ -90,17 +91,17 @@ export class Graphics {
             1, 1, 1, 1,
           ]),
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           size: 2,
           offset: 0,
-          releasable: true,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
         },
       },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
       mode: glContext.TRIANGLES,
       drawCount: 6,
+      bufferUsage: glContext.DYNAMIC_DRAW,
     });
 
     this.coloredMaterial = Material.create(this.engine, {
@@ -254,9 +255,9 @@ export class Graphics {
     const uvsArray = new Float32Array(this.uvs);
     const indicesArray = new Uint16Array(this.indices);
 
-    this.geometry.setAttributeData('aPos', verticesArray);
-    this.geometry.setAttributeData('aColor', colorsArray);
-    this.geometry.setAttributeData('aUV', uvsArray);
+    this.updateAttributeData(VertexBuffer.PositionKind, verticesArray, 2);
+    this.updateAttributeData(VertexBuffer.ColorKind, colorsArray, 4);
+    this.updateAttributeData(VertexBuffer.UVKind, uvsArray, 2);
     this.geometry.setIndexData(indicesArray);
     this.geometry.setDrawCount(this.currentIndexCount);
 
@@ -277,6 +278,22 @@ export class Graphics {
     this.vertices.length = 0;
     this.colors.length = 0;
     this.uvs.length = 0;
+  }
+
+  private updateAttributeData (name: string, data: Float32Array, size: number): void {
+    const dataBuffer = this.geometry.getVertexBuffer(name)?.getBuffer();
+
+    if (dataBuffer && data.byteLength > dataBuffer.capacity) {
+      this.geometry.setVerticesBuffer(new VertexBuffer(
+        this.engine,
+        data,
+        name,
+        { updatable: true, size },
+      ));
+
+      return;
+    }
+    this.geometry.setAttributeData(name, data);
   }
 
   /**

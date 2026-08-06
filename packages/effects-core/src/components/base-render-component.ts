@@ -8,7 +8,7 @@ import type { Maskable } from '../material';
 import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { Renderer } from '../render';
-import { Geometry } from '../render';
+import { Geometry, VertexBuffer } from '../render';
 import { itemFrag, itemVert } from '../shader';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
@@ -65,7 +65,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
     this.defaultGeometry = Geometry.create(this.engine, {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 3,
           data: new Float32Array([
@@ -75,16 +75,17 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
             0.5, -0.5, 0, //右下
           ]),
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           size: 2,
           offset: 0,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
         },
       },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
       mode: glContext.TRIANGLES,
       drawCount: 6,
+      bufferUsage: glContext.DYNAMIC_DRAW,
     });
     this.geometry = this.defaultGeometry;
 
@@ -259,7 +260,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   }
 
   override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+    const positionArray = this.geometry.getAttributeData(VertexBuffer.PositionKind) as Float32Array;
 
     if (positionArray) {
       const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);

@@ -1,3 +1,5 @@
+import type { DataBuffer } from '@galacean/effects-core';
+
 export function getGL () {
   const glCanvas = document.createElement('canvas');
 
@@ -20,4 +22,17 @@ export function getGL2 () {
     antialias: true,
     premultipliedAlpha: true,
   });
+}
+
+export function readBufferContents (
+  gl: WebGL2RenderingContext,
+  dataBuffer: DataBuffer,
+  destination: ArrayBufferView,
+  byteOffset = 0,
+  indexBuffer = false,
+): void {
+  const target = indexBuffer ? gl.ELEMENT_ARRAY_BUFFER : gl.ARRAY_BUFFER;
+
+  gl.bindBuffer(target, dataBuffer.underlyingResource as WebGLBuffer);
+  gl.getBufferSubData(target, byteOffset, destination);
 }

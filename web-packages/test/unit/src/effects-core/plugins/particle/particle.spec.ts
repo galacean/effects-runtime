@@ -1,4 +1,4 @@
-import type { GLGeometry, Material } from '@galacean/effects';
+import type { Material } from '@galacean/effects';
 import { ParticleSystem, ParticleSystemRenderer, RendererComponent } from '@galacean/effects';
 import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
 
@@ -79,10 +79,19 @@ describe('core/plugins/particle/test', function () {
     expect(p0Content.renderer.particleMesh.particleCount).to.eql(5);
 
     expect(p1Content.renderer.particleMesh.particleCount).to.eql(10);
-    const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry() as GLGeometry;
-    const size = (geometry.attributes['aPos'].stride ?? 0) / Float32Array.BYTES_PER_ELEMENT * 4; //4 vertex per particle
+    const geometry = p1Content.renderer.particleMesh.mesh.firstGeometry();
+    const indexData = geometry.getIndexData();
 
-    expect(geometry.getAttributeData('aPos')).to.be.an.instanceOf(Float32Array).with.lengthOf(size * 10);
+    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(indexData).to.be.an.instanceOf(Uint16Array).with.lengthOf(6 * 10);
+
+    p1Content.reset();
+    expect(geometry.getDrawCount()).to.equal(0);
+    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getIndexData()).to.equal(indexData);
+    p1Content.simulate(1);
+    expect(geometry.getAttributeData('aPos')).to.equal(undefined);
+    expect(geometry.getIndexData()).to.equal(indexData);
   });
 
   it('particle render mode', async () => {

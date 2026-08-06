@@ -1,5 +1,5 @@
-import type { ShaderMacros, Geometry, GeometryDrawMode, Engine, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, math } from '@galacean/effects';
+import type { ShaderMacros, GeometryDrawMode, Engine, spec } from '@galacean/effects';
+import { GLSLVersion, glContext, Geometry, DestroyOptions, Material, Mesh, math } from '@galacean/effects';
 
 const { Vector4 } = math;
 
@@ -194,66 +194,30 @@ export interface SharedGeometryOptions {
   drawStart?: number,
   drawCount?: number,
   mode?: GeometryDrawMode,
-  index?: { data: Uint8Array | Uint16Array | Uint32Array, releasable?: boolean },
+  index?: { data: Uint16Array | Uint32Array },
   geometry: Geometry,
 }
 
-export class SharedGeometry extends GLGeometry {
-  private readonly source: GLGeometry;
-
+export class SharedGeometry extends Geometry {
   constructor (engine: Engine, options: SharedGeometryOptions) {
-    super(engine, { attributes: {}, ...options });
-    let indexData = options.index ? options.index.data : options.geometry.getIndexData();
+    const source = options.geometry;
+    const sourceIndex = options.index?.data ?? source.getIndexData();
+    const indexData = sourceIndex?.slice() as Uint16Array | Uint32Array | undefined;
 
-    if (indexData) {
-      //@ts-expect-error safe to assign
-      indexData = new indexData.constructor(indexData) as Uint16Array;
-    }
-    this.indices = indexData;
-    this.source = options.geometry as GLGeometry;
-    this.drawCount = options.drawCount || 0;
-    this.drawStart = options.drawStart || 0;
-    this.mode = options.mode || 0;
-    for (const name in this.source.attributes) {
-      this.attributes[name] = { ...this.source.attributes[name] };
-    }
-  }
+    super(engine, {
+      name: options.name,
+      attributes: {},
+      indices: indexData ? { data: indexData } : undefined,
+      drawStart: options.drawStart ?? 0,
+      drawCount: options.drawCount ?? 0,
+      mode: options.mode ?? 0,
+    });
+    source.getAttributeNames().forEach(name => {
+      const vertexBuffer = source.getVertexBuffer(name);
 
-  override initialize () {
-    if (!this.isInitialized) {
-      const geometry = this.source;
-
-      geometry.initialize();
-      //this.indicesBuffer = this._source.indicesBuffer;
-      this.buffers = this.source.buffers;
-      this.bufferProps = this.source.bufferProps;
-      //this.dirtyFlags = this._source.dirtyFlags;
-      //this.vaos = this._source.vaos;
-      //创建ibo
-      if (this.indices) {
-        this.indicesBuffer = this.createIndicesBuffer(this.indices);
+      if (vertexBuffer) {
+        this.setVerticesBuffer(vertexBuffer);
       }
-      this.flush();
-      this.initialized = true;
-    }
-  }
-
-  override getAttributeNames (): string[] {
-    return this.source.getAttributeNames();
-  }
-
-  override flush () {
-    this.source.flush();
-
-    super.flush();
-  }
-
-  override dispose () {
-    // from source geometry
-    this.buffers = {};
-    this.bufferProps = {};
-    super.dispose();
-    // @ts-expect-error
-    this.source = null;
+    });
   }
 }
