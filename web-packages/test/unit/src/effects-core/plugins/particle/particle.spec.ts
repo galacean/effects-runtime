@@ -330,12 +330,17 @@ describe('core/plugins/particle/test', function () {
     function checkItem (name: string, anchor: math.Vector2) {
       const item = comp.getItemByName(name);
       const itemContent = item?.getComponent(ParticleSystem) as ParticleSystem;
-      const rightBottomPos = itemContent.renderer.particleMesh.mesh.firstGeometry().getAttributeData('aPos');
+      const particleMesh = itemContent.renderer.particleMesh;
+      // Static geometry releases its CPU-side data after uploading. ParticleMesh keeps
+      // the writable mirror used for simulation and buffer updates.
+      // @ts-expect-error access the internal CPU mirror for verification
+      const rightBottomPos = particleMesh.getAttributeData('aPos');
 
-      expect(rightBottomPos).to.be.an.instanceOf(Float32Array).with.lengthOf(48);
+      expect(rightBottomPos).to.be.an.instanceOf(Float32Array)
+        .with.lengthOf(particleMesh.maxCount * 48);
       const rightBottomOffsets = particleOriginTranslateMap[spec.ParticleOrigin.PARTICLE_ORIGIN_CENTER];
 
-      const meshAnchor = itemContent.renderer.particleMesh.anchor;
+      const meshAnchor = particleMesh.anchor;
 
       expect(meshAnchor).to.deep.equals(anchor, 'anchor:' + name);
       for (let j = 0; j < 4; j++) {
