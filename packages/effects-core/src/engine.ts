@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
@@ -470,10 +469,44 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   /** @hide */
   bindBuffers (
     vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | undefined,
+    indexBuffer: DataBuffer | null,
     effect: ShaderVariant,
   ): void {
     throw new Error('The active rendering backend cannot bind geometry buffers.');
+  }
+
+  /**
+   * 使用当前绑定的顶点和索引缓冲区绘制图元。
+   * @param mode - 图元类型
+   * @param indexOffset - 索引缓冲区中的字节偏移
+   * @param indexCount - 索引数量
+   * @param instanceCount - 实例数量
+   * @hide
+   */
+  drawElementsType (
+    mode: number,
+    indexOffset: number,
+    indexCount: number,
+    instanceCount?: number,
+  ): void {
+    throw new Error('The active rendering backend cannot draw indexed primitives.');
+  }
+
+  /**
+   * 使用当前绑定的顶点缓冲区绘制图元。
+   * @param mode - 图元类型
+   * @param vertexStart - 起始顶点
+   * @param vertexCount - 顶点数量
+   * @param instanceCount - 实例数量
+   * @hide
+   */
+  drawArraysType (
+    mode: number,
+    vertexStart: number,
+    vertexCount: number,
+    instanceCount?: number,
+  ): void {
+    throw new Error('The active rendering backend cannot draw primitives.');
   }
 
   addTexture (tex: Texture) {
@@ -638,10 +671,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   clear (action: RenderPassClearAction) {
-    // OVERRIDE
-  }
-
-  drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0) {
     // OVERRIDE
   }
 
