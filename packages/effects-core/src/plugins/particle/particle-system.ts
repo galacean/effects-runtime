@@ -488,7 +488,9 @@ export class ParticleSystem extends Component implements Maskable {
   }
 
   /**
-   * @internal
+   * @hidden
+   * Internal utility.
+   * Not part of the public API — do not rely on this in your code.
    */
   rebuild (): void {
     this.renderer?.rebuild();
