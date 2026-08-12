@@ -21,7 +21,6 @@ const scenes: FrameCompareScene[] = mapScenes(sceneList as SceneAssetRecord, sce
 export const inspire2DProfile: FrameSuiteProfile = buildProfile({
   id: '2d-inspire',
   title: '灵感中心',
-  frameworkIndexOffset: 4,
   frameworks: ['webgl', 'webgl2'],
   canvas: DEFAULT_CANVAS_SIZE,
   timeoutMs: 1800 * 1000,

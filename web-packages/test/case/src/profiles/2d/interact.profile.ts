@@ -18,7 +18,6 @@ const scenes: FrameCompareScene[] = mapScenes(sceneList as SceneAssetRecord, sce
 export const interact2DProfile: FrameSuiteProfile = buildProfile({
   id: '2d-interact',
   title: '交互测试',
-  frameworkIndexOffset: 0,
   frameworks: ['webgl', 'webgl2'],
   canvas: DEFAULT_CANVAS_SIZE,
   timeoutMs: 300 * 1000,

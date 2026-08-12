@@ -22,6 +22,7 @@ let allocateTimeout: any;
       gpuFrame++;
       max = Math.max(time, max);
     },
+    doNotHandleContextLost: false,
     onError: e => {
       switch (e.cause) {
         case 'webglcontextlost':

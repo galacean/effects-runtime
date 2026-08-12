@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItem, Renderer, Geometry } from '@galacean/effects';
-import { spec, Material, GLSLVersion } from '@galacean/effects';
+import { spec, Material, GLSLVersion, VertexBuffer } from '@galacean/effects';
 import type { ModelMeshComponentData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState } from './common';
 import { PEntity } from './object';
@@ -15,6 +15,14 @@ import { RayBoxTesting } from '../utility/hit-test-helper';
 import type { ModelMeshComponent } from '../plugin/model-item';
 
 type Box3 = math.Box3;
+const uvKinds = [
+  VertexBuffer.UVKind,
+  VertexBuffer.UV2Kind,
+  VertexBuffer.UV3Kind,
+  VertexBuffer.UV4Kind,
+  VertexBuffer.UV5Kind,
+  VertexBuffer.UV6Kind,
+] as const;
 
 /**
  * Mesh 类，负责 Mesh 相关的骨骼动画和 PBR 渲染
@@ -1072,7 +1080,7 @@ export class PGeometry {
    * @returns
    */
   isCompressed (): boolean {
-    const positionAttrib = this.geometry.getAttributeData('aPos');
+    const positionAttrib = this.geometry.getAttributeData(VertexBuffer.PositionKind);
 
     if (positionAttrib === undefined) {
       return false;
@@ -1088,7 +1096,7 @@ export class PGeometry {
    * @returns
    */
   hasPositions (): boolean {
-    return this.hasAttribute('aPos');
+    return this.hasAttribute(VertexBuffer.PositionKind);
   }
 
   /**
@@ -1096,7 +1104,7 @@ export class PGeometry {
    * @returns
    */
   hasNormals (): boolean {
-    return this.hasAttribute('aNormal');
+    return this.hasAttribute(VertexBuffer.NormalKind);
   }
 
   /**
@@ -1104,7 +1112,7 @@ export class PGeometry {
    * @returns
    */
   hasTangents (): boolean {
-    return this.hasAttribute('aTangent');
+    return this.hasAttribute(VertexBuffer.TangentKind);
   }
 
   /**
@@ -1113,11 +1121,9 @@ export class PGeometry {
    * @returns
    */
   hasUVCoords (index: number): boolean {
-    if (index === 1) {
-      return this.hasAttribute('aUV');
-    } else {
-      return this.hasAttribute(`aUV${index}`);
-    }
+    const kind = uvKinds[index - 1];
+
+    return kind !== undefined && this.hasAttribute(kind);
   }
 
   /**
@@ -1125,7 +1131,7 @@ export class PGeometry {
    * @returns
    */
   hasColors (): boolean {
-    return this.hasAttribute('aColor');
+    return this.hasAttribute(VertexBuffer.ColorKind);
   }
 
   /**
@@ -1133,7 +1139,7 @@ export class PGeometry {
    * @returns
    */
   hasJoints (): boolean {
-    return this.hasAttribute('aJoints');
+    return this.hasAttribute(VertexBuffer.JointsKind);
   }
 
   /**
@@ -1141,7 +1147,7 @@ export class PGeometry {
    * @returns
    */
   hasWeights (): boolean {
-    return this.hasAttribute('aWeights');
+    return this.hasAttribute(VertexBuffer.WeightsKind);
   }
 }
 

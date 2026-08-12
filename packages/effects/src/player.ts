@@ -135,6 +135,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       interactive = false,
       renderOptions = {},
       env = '',
+      doNotHandleContextLost,
     } = config;
     const { willCaptureImage: preserveDrawingBuffer, premultipliedAlpha } = renderOptions;
 
@@ -186,6 +187,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         notifyTouch: notifyTouch,
         interactive,
         pixelRatio: Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio(),
+        doNotHandleContextLost,
       });
       this.engine.offscreenMode = true;
 

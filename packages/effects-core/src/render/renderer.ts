@@ -5,6 +5,7 @@ import { Material } from '../material';
 import { sortByOrder } from '../utils';
 import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
 import { Geometry } from './geometry';
+import { VertexBuffer } from './vertex-buffer';
 import type { RenderFrame } from './render-frame';
 import type { RenderPass, RenderPassClearAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
@@ -201,7 +202,7 @@ export class Renderer {
       this.blitGeometry = Geometry.create(this.engine, {
         mode: glContext.TRIANGLE_STRIP,
         attributes: {
-          aPos: {
+          [VertexBuffer.PositionKind]: {
             type: glContext.FLOAT,
             size: 2,
             data: new Float32Array([-1, 1, -1, -1, 1, 1, 1, -1]),

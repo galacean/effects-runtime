@@ -5,7 +5,8 @@ import {
   RenderPassDestroyAttachmentType, TextureSourceType, Camera, DestroyOptions, RenderPass,
   RenderFrame, Mesh, GLSLVersion,
 } from '@galacean/effects-core';
-import { GLEngine, GLGeometry, GLTexture } from '@galacean/effects-webgl';
+import { Geometry } from '@galacean/effects-core';
+import { GLEngine, GLTexture } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
@@ -81,10 +82,9 @@ describe('webgl/dispose', function () {
     expect(spy1).has.been.called.once;
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    expect(geom.isDestroyed).to.be.true;
-    expect(geom.buffers).to.eql({});
-    expect(geom.attributes).to.eql({});
-    Object.keys(geom.vaos).map(name => expect(geom.vaos[name]).to.eql(undefined));
+    expect(geom.isDisposed()).to.be.true;
+    expect(geom.vertexBuffers).to.eql({});
+    expect(geom.getAttributeNames()).to.eql([]);
     frame.dispose();
   });
 
@@ -116,10 +116,9 @@ describe('webgl/dispose', function () {
     expect(spy2).has.been.called.once;
 
     expect(mesh.material).to.eql(material);
-    expect(geom.isDestroyed).to.be.true;
-    expect(geom.buffers).to.eql({});
-    expect(geom.attributes).to.eql({});
-    Object.keys(geom.vaos).map(name => expect(geom.vaos[name]).to.eql(undefined));
+    expect(geom.isDisposed()).to.be.true;
+    expect(geom.vertexBuffers).to.eql({});
+    expect(geom.getAttributeNames()).to.eql([]);
     expect(texture).to.eql(texture);
 
     frame.dispose();
@@ -146,7 +145,7 @@ describe('webgl/dispose', function () {
     expect(spy1).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
     expect(Object.keys(material.textures).length).to.eql(0);
-    expect(geom.isDestroyed).to.be.false;
+    expect(geom.isDisposed()).to.be.false;
 
   });
 
@@ -169,7 +168,7 @@ describe('webgl/dispose', function () {
       material: { textures: DestroyOptions.keep },
     });
 
-    expect(geom.isDestroyed).to.be.false;
+    expect(geom.isDisposed()).to.be.false;
     expect(material.isDestroyed).to.be.true;
     expect(texture.isDestroyed).to.be.false;
   });
@@ -190,7 +189,7 @@ describe('webgl/dispose', function () {
 
     mesh.dispose({ material: { textures: DestroyOptions.keep } });
 
-    expect(geom.isDestroyed).to.be.true;
+    expect(geom.isDisposed()).to.be.true;
     expect(material.isDestroyed).to.be.true;
     expect(texture.isDestroyed).to.be.false;
   });
@@ -221,7 +220,7 @@ describe('webgl/dispose', function () {
     expect(spy1).not.has.been.called;
     expect(spy2).not.has.been.called;
     expect(material.isDestroyed).to.be.false;
-    expect(geom.isDestroyed).to.be.false;
+    expect(geom.isDisposed()).to.be.false;
     expect(texture.isDestroyed).to.be.false;
     expect(material.getTexture('uTexColor')).to.eql(texture);
   });
@@ -272,7 +271,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.isDisposed).to.be.true;
     expect(mesh.isDestroyed).to.be.false;
     expect(material.isDestroyed).to.be.false;
-    expect(geometry.isDestroyed).to.be.false;
+    expect(geometry.isDisposed()).to.be.false;
     expect(renderPass.meshes).to.eql([]);
     expect(texture.isDestroyed).to.be.false;
   });
@@ -302,7 +301,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.isDisposed).to.be.true;
     expect(mesh.isDestroyed).to.be.true;
     expect(material.isDestroyed).to.be.false;
-    expect(geometry.isDestroyed).to.be.true;
+    expect(geometry.isDisposed()).to.be.true;
     expect(renderPass.meshes).to.eql([]);
     expect(texture.isDestroyed).to.be.false;
   });
@@ -332,7 +331,7 @@ describe('webgl/dispose', function () {
     expect(renderPass.isDisposed).to.be.true;
     expect(mesh.isDestroyed).to.be.true;
     expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.false;
+    expect(geometry.isDisposed()).to.be.false;
     expect(renderPass.meshes).to.eql([]);
     expect(texture.isDestroyed).to.be.false;
   });
@@ -361,7 +360,7 @@ describe('webgl/dispose', function () {
     });
 
     expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
+    expect(geometry.isDisposed()).to.be.true;
 
     expect(renderPass.meshes).to.eql([]);
   });
@@ -387,7 +386,7 @@ describe('webgl/dispose', function () {
     });
 
     expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
+    expect(geometry.isDisposed()).to.be.true;
     expect(renderPass.meshes).to.eql([]);
   });
 
@@ -413,7 +412,7 @@ describe('webgl/dispose', function () {
     });
 
     expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
+    expect(geometry.isDisposed()).to.be.true;
     expect(renderPass.meshes).to.eql([]);
   });
 
@@ -443,7 +442,7 @@ describe('webgl/dispose', function () {
     });
 
     expect(material.isDestroyed).to.be.true;
-    expect(geometry.isDestroyed).to.be.true;
+    expect(geometry.isDisposed()).to.be.true;
     expect(renderPass.meshes).to.eql([]);
   });
 
@@ -465,7 +464,7 @@ describe('webgl/dispose', function () {
     expect(frame.renderPasses.length).to.eql(0);
     expect(renderPass.isDisposed).to.be.true;
     expect(mesh.isDestroyed).to.be.true;
-    expect(geom.isDestroyed).to.be.true;
+    expect(geom.isDisposed()).to.be.true;
     expect(material.isDestroyed).to.be.true;
   });
 
@@ -553,7 +552,7 @@ async function createTexture (engine: Engine, needCompressed = false) {
 
 async function createMesh (engine: Engine) {
   const texture = await createTexture(engine);
-  const geom = new GLGeometry(
+  const geom = new Geometry(
     engine,
     {
       drawStart: 0,

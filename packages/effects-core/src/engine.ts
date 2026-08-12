@@ -5,8 +5,10 @@ import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type {
-  GPUCapability, Geometry, Mesh, RenderPass, RenderPassClearAction, Renderer, RenderingData, ShaderLibrary,
+  DataArray, DataBuffer, DataBufferOptions, GPUCapability, Geometry, IndicesArray, Mesh, RenderPass,
+  RenderPassClearAction, Renderer, RenderingData, ShaderLibrary, ShaderVariant, VertexBuffer,
 } from './render';
+import type { Framebuffer, Renderbuffer } from './render';
 import { Graphics, RenderTargetPool } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { Texture } from './texture';
@@ -21,6 +23,8 @@ import { AssetService } from './asset-service';
 import { Ticker } from './ticker';
 import type { PointerEventData, Region } from './plugins';
 import { EventSystem } from './plugins';
+import type { ParticleSystem } from './plugins/particle/particle-system';
+import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
@@ -34,6 +38,14 @@ export interface EngineOptions extends WebGLContextAttributes {
   pixelRatio?: number,
   notifyTouch?: boolean,
   interactive?: boolean,
+  /**
+   * 是否不处理 WebGL 上下文丢失恢复。
+   * - `true`（默认）：上传 GPU 后释放 CPU 端源数据以节省内存；上下文丢失后不自动恢复，
+   *   渲染暂停，等待宿主重建资源后手动恢复播放。
+   * - `false`：保留 CPU 端源数据，上下文丢失后引擎自动按资源类型就地重建 GPU 资源并恢复渲染。
+   *   该配置为构造期选项，运行时从 `true` 改为 `false` 无法找回已经丢弃的源数据。
+   */
+  doNotHandleContextLost?: boolean,
 }
 
 type EngineEvent = {
@@ -51,6 +63,11 @@ type EngineEvent = {
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine extends EventEmitter<EngineEvent> implements Disposable {
+  /**
+   * 创建 Engine 对象。
+   */
+  static create: (canvas: HTMLCanvasElement, options?: EngineOptions) => Engine;
+
   name = 'NewEngine';
   speed = 1;
   displayAspect: number;
@@ -92,7 +109,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 引擎的像素比
    */
   pixelRatio: number;
-
   /**
    * @hidden
    * Internal utility.
@@ -103,16 +119,25 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 存放渲染需要用到的数据
    */
   renderingData: RenderingData;
-
-  graphics: Graphics;
-
+  /**
+   * 是否不处理上下文丢失恢复（构造期配置，默认 true）
+   */
+  doNotHandleContextLost = true;
+  /**
+   * WebGL 上下文是否处于丢失状态
+   */
+  protected contextWasLost = false;
   protected _disposed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
+  protected framebuffers: Framebuffer[] = [];
+  protected renderbuffers: Renderbuffer[] = [];
+  protected particleSystems: ParticleSystem[] = [];
 
+  private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
     stencilAction: TextureLoadAction.clear,
@@ -123,10 +148,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     clearColor: [0, 0, 0, 0],
   };
 
-  get disposed (): boolean {
-    return this._disposed;
-  }
-
   /**
    *
    */
@@ -134,6 +155,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     super();
     this.canvas = canvas;
     this.env = options?.env ?? '';
+    this.doNotHandleContextLost = options?.doNotHandleContextLost ?? true;
     this.name = options?.name ?? this.name;
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
@@ -153,18 +175,28 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.assetLoader = new AssetLoader(this);
     this.assetService = new AssetService(this);
     this.renderTargetPool = new RenderTargetPool(this);
-    this.graphics = new Graphics(this);
 
     this.renderingData = {
       // @ts-expect-error
       currentFrame: {},
     };
+
+    PluginSystem.notifyEngineCreated(this);
   }
 
-  /**
-   * 创建 Engine 对象。
-   */
-  static create: (canvas: HTMLCanvasElement, options?: EngineOptions) => Engine;
+  get graphics (): Graphics {
+    if (this._graphics) {
+      return this._graphics;
+    }
+
+    this._graphics = new Graphics(this);
+
+    return this._graphics;
+  }
+
+  get disposed (): boolean {
+    return this._disposed;
+  }
 
   clearResources () {
     this.jsonSceneData = {};
@@ -269,6 +301,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   mainLoop (dt: number): void {
+    // 上下文丢失/恢复期间跳过渲染，避免打到失效的 GL 上下文。
+    if (this.contextWasLost) {
+      return;
+    }
+
     const { renderErrors } = this;
 
     if (renderErrors.size > 0) {
@@ -394,55 +431,49 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.emit('resize', this);
   }
 
-  private getTargetSize (parentEle: HTMLElement) {
-    if (parentEle === undefined || parentEle === null) {
-      throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}.`);
-    }
-    const displayAspect = this.displayAspect;
-    // 小程序环境没有 getComputedStyle
-    const computedStyle = window.getComputedStyle?.(parentEle);
-    let targetWidth;
-    let targetHeight;
-    let finalWidth = 0;
-    let finalHeight = 0;
+  createVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
+    throw new Error('The active rendering backend does not provide vertex buffers.');
+  }
 
-    if (computedStyle) {
-      finalWidth = parseInt(computedStyle.width, 10);
-      finalHeight = parseInt(computedStyle.height, 10);
-    } else {
-      finalWidth = parentEle.clientWidth;
-      finalHeight = parentEle.clientHeight;
-    }
+  createDynamicVertexBuffer (data: DataArray | number, options: DataBufferOptions): DataBuffer {
+    return this.createVertexBuffer(data, options);
+  }
 
-    if (displayAspect) {
-      const parentAspect = finalWidth / finalHeight;
+  createIndexBuffer (indices: IndicesArray, options: DataBufferOptions): DataBuffer {
+    throw new Error('The active rendering backend does not provide index buffers.');
+  }
 
-      if (parentAspect > displayAspect) {
-        targetHeight = finalHeight * this.displayScale;
-        targetWidth = targetHeight * displayAspect;
-      } else {
-        targetWidth = finalWidth * this.displayScale;
-        targetHeight = targetWidth / displayAspect;
-      }
-    } else {
-      targetWidth = finalWidth;
-      targetHeight = finalHeight;
-    }
-    const ratio = this.pixelRatio;
-    let containerWidth = targetWidth;
-    let containerHeight = targetHeight;
+  updateDynamicVertexBuffer (
+    vertexBuffer: DataBuffer,
+    data: DataArray,
+    byteOffset = 0,
+    byteLength?: number,
+  ): void {
+    throw new Error('The active rendering backend cannot update vertex buffers.');
+  }
 
-    targetWidth = Math.round(targetWidth * ratio);
-    targetHeight = Math.round(targetHeight * ratio);
-    if (targetWidth < 1 || targetHeight < 1) {
-      if (this.offscreenMode) {
-        targetWidth = targetHeight = containerWidth = containerHeight = 1;
-      } else {
-        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
-      }
-    }
+  updateDynamicIndexBuffer (
+    indexBuffer: DataBuffer,
+    indices: IndicesArray,
+    byteOffset = 0,
+  ): void {
+    throw new Error('The active rendering backend cannot update index buffers.');
+  }
 
-    return [containerWidth, containerHeight, targetWidth, targetHeight];
+  /** @hide */
+  releaseBuffer (buffer: DataBuffer): boolean {
+    buffer.references--;
+
+    return buffer.references === 0;
+  }
+
+  /** @hide */
+  bindBuffers (
+    vertexBuffers: Record<string, VertexBuffer>,
+    indexBuffer: DataBuffer | undefined,
+    effect: ShaderVariant,
+  ): void {
+    throw new Error('The active rendering backend cannot bind geometry buffers.');
   }
 
   addTexture (tex: Texture) {
@@ -487,6 +518,22 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.geometries, geo);
   }
 
+  /** @internal */
+  addParticleSystem (particleSystem: ParticleSystem): void {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.particleSystems, particleSystem);
+  }
+
+  /** @internal */
+  removeParticleSystem (particleSystem: ParticleSystem): void {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.particleSystems, particleSystem);
+  }
+
   addMesh (mesh: Mesh) {
     if (this.disposed) {
       return;
@@ -513,6 +560,34 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
     removeItem(this.renderPasses, pass);
+  }
+
+  addFramebuffer (framebuffer: Framebuffer) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.framebuffers, framebuffer);
+  }
+
+  removeFramebuffer (framebuffer: Framebuffer) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.framebuffers, framebuffer);
+  }
+
+  addRenderbuffer (renderbuffer: Renderbuffer) {
+    if (this.disposed) {
+      return;
+    }
+    addItem(this.renderbuffers, renderbuffer);
+  }
+
+  removeRenderbuffer (renderbuffer: Renderbuffer) {
+    if (this.disposed) {
+      return;
+    }
+    removeItem(this.renderbuffers, renderbuffer);
   }
 
   addComposition (composition: Composition) {
@@ -657,6 +732,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     }
     this._disposed = true;
 
+    PluginSystem.notifyEngineDestroy(this);
+
     const info: string[] = [];
 
     if (this.renderPasses.length > 0) {
@@ -679,7 +756,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.ticker?.stop();
     this.eventSystem?.dispose();
     this.assetService?.dispose();
-    this.graphics.dispose();
+    this._graphics?.dispose();
 
     this.renderPasses.forEach(pass => pass.dispose());
     this.meshes.forEach(mesh => mesh.dispose());
@@ -695,5 +772,57 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.meshes = [];
     this.renderPasses = [];
     this.compositions = [];
+    this.particleSystems = [];
+  }
+
+  private getTargetSize (parentEle: HTMLElement) {
+    if (parentEle === undefined || parentEle === null) {
+      throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}.`);
+    }
+    const displayAspect = this.displayAspect;
+    // 小程序环境没有 getComputedStyle
+    const computedStyle = window.getComputedStyle?.(parentEle);
+    let targetWidth;
+    let targetHeight;
+    let finalWidth = 0;
+    let finalHeight = 0;
+
+    if (computedStyle) {
+      finalWidth = parseInt(computedStyle.width, 10);
+      finalHeight = parseInt(computedStyle.height, 10);
+    } else {
+      finalWidth = parentEle.clientWidth;
+      finalHeight = parentEle.clientHeight;
+    }
+
+    if (displayAspect) {
+      const parentAspect = finalWidth / finalHeight;
+
+      if (parentAspect > displayAspect) {
+        targetHeight = finalHeight * this.displayScale;
+        targetWidth = targetHeight * displayAspect;
+      } else {
+        targetWidth = finalWidth * this.displayScale;
+        targetHeight = targetWidth / displayAspect;
+      }
+    } else {
+      targetWidth = finalWidth;
+      targetHeight = finalHeight;
+    }
+    const ratio = this.pixelRatio;
+    let containerWidth = targetWidth;
+    let containerHeight = targetHeight;
+
+    targetWidth = Math.round(targetWidth * ratio);
+    targetHeight = Math.round(targetHeight * ratio);
+    if (targetWidth < 1 || targetHeight < 1) {
+      if (this.offscreenMode) {
+        targetWidth = targetHeight = containerWidth = containerHeight = 1;
+      } else {
+        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
+      }
+    }
+
+    return [containerWidth, containerHeight, targetWidth, targetHeight];
   }
 }

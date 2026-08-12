@@ -3,6 +3,7 @@ import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Geometry } from '../../render/geometry';
+import { VertexBuffer } from '../../render/vertex-buffer';
 import type { BoundingBoxTriangle } from './click-handler';
 import { HitTestType } from './click-handler';
 import type { Vector2 } from '@galacean/effects-math/es/core';
@@ -97,7 +98,7 @@ export class BoundingBoxInfo {
 
   private geometryToTriangles (geometry: Geometry) {
     const indices = geometry.getIndexData();
-    const vertices = geometry.getAttributeData('aPos');
+    const vertices = geometry.getAttributeData(VertexBuffer.PositionKind);
     const res: TriangleLike[] = [];
 
     if (!indices || !vertices) {

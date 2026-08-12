@@ -89,6 +89,10 @@ export function setSideMode (material: Material, side: spec.SideMode) {
   }
 }
 
+/**
+ * @deprecated 2.10 起 runtime 内部已不再通过 `MaskMode` 设置模板测试参数。
+ * 仅为兼容旧版本对外导出的接口而保留，新代码请勿使用。
+ */
 export function setMaskMode (material: Material, maskMode: MaskMode) {
   switch (maskMode) {
     case undefined:
@@ -119,3 +123,4 @@ export function setMaskMode (material: Material, maskMode: MaskMode) {
       console.warn(`MaskMode ${maskMode} not in specification, please set stencil params seperately.`);
   }
 }
+

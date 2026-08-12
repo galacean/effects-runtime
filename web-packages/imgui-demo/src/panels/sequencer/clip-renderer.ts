@@ -1,11 +1,11 @@
 import type { TrackAsset } from '@galacean/effects';
-import { ActivationTrack, Component, spec, TransformTrack, VFXItem } from '@galacean/effects';
+import { ActivationTrack, Component, spec, SpritePropertyTrack, TransformTrack, VFXItem } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { COLORS, LAYOUT } from './theme';
 import type { SequencerState } from './sequencer-state';
 import { isTrackExpanded } from './selection';
 import { timeToPixel, pixelToTime, getTrackColor, getEndBehaviorDescription, processSectionColor } from './timeline-utils';
-import { getTransformPropertyGroups, getClipAggregatedKeyframeTimes } from './data-extraction';
+import { getSpriteKeyframes, getTransformPropertyGroups, getClipAggregatedKeyframeTimes } from './data-extraction';
 import type { KeyframeRenderer } from './keyframe-renderer';
 
 export class ClipRenderer {
@@ -23,8 +23,12 @@ export class ClipRenderer {
   drawTrackClips (trackAsset: TrackAsset, trackName: string, sceneBindings: any[], depth: number): void {
     const state = this.state;
     const isTransformTrack = trackAsset instanceof TransformTrack;
+    const isSpriteTrack = trackAsset instanceof SpritePropertyTrack;
+    const spriteKeyframes = isSpriteTrack
+      ? getSpriteKeyframes(trackAsset.getClips()[0] ?? { asset: null as unknown })
+      : null;
     const hasKeyframeData = isTransformTrack && getTransformPropertyGroups(trackAsset).length > 0;
-    const hasChildren = trackAsset.getChildTracks().length > 0 || hasKeyframeData;
+    const hasChildren = trackAsset.getChildTracks().length > 0 || hasKeyframeData || !!spriteKeyframes;
     const frameHeight = LAYOUT.sectionHeight;
     const lineStartPos = ImGui.GetCursorScreenPos();
     const clipRowDrawList = ImGui.GetWindowDrawList();
@@ -109,6 +113,16 @@ export class ClipRenderer {
             }
           }
         }
+      }
+    }
+
+    // SpritePropertyTrack 展开时，绘制 sprite 缩略图关键帧行
+    if (isTrackExpanded(state, trackAsset) && trackAsset instanceof SpritePropertyTrack) {
+      const trackId = trackAsset.getInstanceId().toString();
+      const clips = trackAsset.getClips();
+
+      for (const clip of clips) {
+        this.keyframeRenderer?.drawSpriteKeyframes(trackAsset, clip, trackId);
       }
     }
   }

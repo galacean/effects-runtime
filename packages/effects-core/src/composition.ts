@@ -98,18 +98,14 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   /**
    *
+   */
+  speed?: number,
+  /**
+   *
    * @param message
    * @returns
    */
   onItemMessage?: (message: MessageItem) => void,
-  /**
-   *
-   */
-  event?: EventSystem,
-  /**
-   *
-   */
-  speed?: number,
 }
 
 /**
@@ -250,7 +246,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       reusable = false,
       speed = 1,
       baseRenderOrder = 0,
-      event,
       onItemMessage,
     } = props ?? {};
 
@@ -322,7 +317,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent?.id ?? generateGUID();
     this.startTime = sourceContent?.startTime ?? 0;
-    this.event = event;
+    this.event = engine.eventSystem;
     this.statistic = {
       loadStart: scene?.startTime ?? 0,
       loadTime: scene?.totalTime ?? 0,
@@ -348,7 +343,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.createRenderFrame();
 
-    PluginSystem.initializeComposition(this, scene);
+    PluginSystem.notifyCompositionCreated(this, scene);
   }
 
   /**
@@ -853,16 +848,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   lost (e: Event): void {
-    this.videoState = this.textures.map(tex => {
-      if ('video' in tex.source) {
-        tex.source.video.pause();
+    // GPU 资源由引擎统一 rebuild，合成仅保留纯 JS 运行时状态，此处无需处理。
+  }
 
-        return tex.source.video.currentTime;
-      }
-    });
-
-    this.textures.map(tex => tex.dispose());
-    this.dispose();
+  /**
+   * 上下文恢复后的空操作。
+   * GPU 资源已由引擎统一重建，视频纹理会在下次渲染时自然更新，不自动重新播放。
+   */
+  restore (): void {
   }
 
   /**
@@ -893,7 +886,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root.dispose();
     // FIXME: 注意这里增加了renderFrame销毁
     this.renderFrame.dispose();
-    PluginSystem.destroyComposition(this);
+    PluginSystem.notifyCompositionDestroy(this);
 
     this.update = () => {
       if (!__DEBUG__) {

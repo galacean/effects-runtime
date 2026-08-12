@@ -1,10 +1,11 @@
-﻿import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
+import type { Engine, Renderer, ShaderWithSource } from '@galacean/effects-core';
 import {
   RenderFrame, glContext, TextureLoadAction, Texture, Camera, Mesh, math,
   GLSLVersion, Material,
 } from '@galacean/effects-core';
 import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
-import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
+import { Geometry } from '@galacean/effects-core';
+import { GLEngine } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
 const { expect, assert } = chai;
@@ -541,7 +542,7 @@ describe('webgl/gl-material', () => {
           {
             shader: { vertex: vs, fragment: fs, glslVersion: GLSLVersion.GLSL3 },
           }),
-        geometry: new GLGeometry(
+        geometry: new Geometry(
           engine,
           {
             attributes: {
@@ -563,7 +564,7 @@ describe('webgl/gl-material', () => {
                 dataSource: 'aPoint',
               },
             },
-            indices: { data: new Uint8Array([0, 1, 2, 2, 1, 3]) },
+            indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
             drawCount: 6,
           }),
       });
@@ -645,7 +646,7 @@ describe('webgl/gl-material', () => {
   //       shader: { vertex: vs, fragment: fs, shared: false },
   //       states: {},
   //     }),
-  //     geometry: new GLGeometry({
+  //     geometry: new Geometry({
   //       attributes: {
   //         aPoint: {
   //           size: 2,
@@ -785,7 +786,7 @@ describe('webgl/gl-material', () => {
   //       shader: { vertex: vs, fragment: fs },
   //       states: {},
   //     }),
-  //     geometry: new GLGeometry({
+  //     geometry: new Geometry({
   //       attributes: {
   //         aPoint: {
   //           size: 2,
@@ -943,7 +944,7 @@ describe('webgl/gl-material', () => {
   //       shader: { vertex: vs, fragment: fs },
   //       states: {},
   //     }),
-  //     geometry: new GLGeometry({
+  //     geometry: new Geometry({
   //       attributes: {
   //         aPoint: {
   //           size: 2,
@@ -1422,7 +1423,7 @@ describe('webgl/gl-material', () => {
   //     const mesh = new Mesh({
   //       name: 'mesh1',
   //       material: material,
-  //       geometry: new GLGeometry({
+  //       geometry: new Geometry({
   //         attributes: {
   //           aPosition: {
   //             size: 2,
@@ -1517,7 +1518,6 @@ describe('webgl/gl-material', () => {
 
   //       if (ubo.buffer !== undefined) {
   //         ubo.buffer.bind();
-  //         ubo.buffer.readSubData(0, data);
   //       }
   //     }
 
@@ -1547,7 +1547,7 @@ function generateMesh (
             shared,
           },
         }),
-      geometry: new GLGeometry(
+      geometry: new Geometry(
         engine,
         {
           attributes: {
@@ -1562,7 +1562,7 @@ function generateMesh (
               stride: Float32Array.BYTES_PER_ELEMENT * 4,
             },
           },
-          indices: { data: new Uint8Array([0, 1, 2, 2, 1, 3]) },
+          indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
           drawCount: 6,
         }),
     });
@@ -1606,7 +1606,7 @@ function generateMesh (
 //   });
 //   const mesh = new Mesh(engine, {
 //     material,
-//     geometry: new GLGeometry(engine, {
+//     geometry: new Geometry(engine, {
 //       attributes: {
 //         aPoint: {
 //           size: 2,

@@ -5,10 +5,10 @@ import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Maskable } from '../material';
-import { MaskMode, Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
+import { Material, getPreMultiAlpha, setBlendMode, setSideMode } from '../material';
 import type { BoundingBoxInfo, BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import type { Renderer } from '../render';
-import { Geometry } from '../render';
+import { Geometry, VertexBuffer } from '../render';
 import { itemFrag, itemVert } from '../shader';
 import { Texture } from '../texture';
 import { RendererComponent } from './renderer-component';
@@ -19,6 +19,10 @@ import { extractMinAndMax } from '../math';
  */
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   texture: Texture,
+  /**
+   * @deprecated 2.10 起此字段无实际意义，仅为兼容老版本读取保留；
+   * 请使用 `MaskProcessor.getMaskReferences()` 获取当前蒙版引用列表
+   */
   mask: number,
 }
 
@@ -61,7 +65,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
     this.defaultGeometry = Geometry.create(this.engine, {
       attributes: {
-        aPos: {
+        [VertexBuffer.PositionKind]: {
           type: glContext.FLOAT,
           size: 3,
           data: new Float32Array([
@@ -71,17 +75,17 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
             0.5, -0.5, 0, //右下
           ]),
         },
-        aUV: {
+        [VertexBuffer.UVKind]: {
           size: 2,
           offset: 0,
-          releasable: true,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
         },
       },
-      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]), releasable: true },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
       mode: glContext.TRIANGLES,
       drawCount: 6,
+      bufferUsage: glContext.DYNAMIC_DRAW,
     });
     this.geometry = this.defaultGeometry;
 
@@ -256,7 +260,7 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
   }
 
   override getBoundingBoxInfo (): BoundingBoxInfo {
-    const positionArray = this.geometry.getAttributeData('aPos') as Float32Array;
+    const positionArray = this.geometry.getAttributeData(VertexBuffer.PositionKind) as Float32Array;
 
     if (positionArray) {
       const minMaxResult = extractMinAndMax(positionArray, 0, positionArray.length / 3,);
@@ -273,7 +277,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
 
   private configureMaterial (renderer: ItemRenderer): Material {
     const { side, occlusion, blending: blendMode, texture } = renderer;
-    const maskMode = this.maskManager.maskMode;
     const material = this.material;
 
     material.blending = true;
@@ -293,7 +296,6 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
     texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
     texParams.y = preMultiAlpha;
     texParams.z = renderer.renderMode;
-    texParams.w = maskMode;
     material.setVector4('_TexParams', texParams);
 
     if (texParams.x === 0 || (this.maskManager.alphaMaskEnabled)) {
@@ -327,9 +329,9 @@ export class MaskableGraphic extends RendererComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ? this.engine.findObject<Texture>(renderer.texture) : this.engine.whiteTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (this.maskManager.maskMode === MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || this.maskManager.isMask,
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskManager.getRefValue(),
+      mask: 1,
     };
 
     this.configureMaterial(this.renderer);

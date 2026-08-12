@@ -38,7 +38,7 @@ export interface Disposable {
 }
 
 export interface RestoreHandler {
-  restore (): void,
+  restore (): void | Promise<void>,
 }
 
 export interface LostHandler {

@@ -3,3 +3,4 @@ export * from './color-curve';
 export * from './vector-curves';
 export * from './bezier-curve';
 export * from './value-getter-map';
+export * from './reference-curve';

@@ -1,6 +1,6 @@
-import type { Renderer } from '@galacean/effects-core';
-import { glContext, ShaderCompileResultStatus } from '@galacean/effects-core';
-import { GLEngine, GLGPUBuffer, GLGeometry, GLVertexArrayObject } from '@galacean/effects-webgl';
+import type { Renderer, ShaderVariant } from '@galacean/effects-core';
+import { Geometry, glContext, ShaderCompileResultStatus } from '@galacean/effects-core';
+import { GLEngine } from '@galacean/effects-webgl';
 import { getGL, getGL2 } from './gl-utils.js';
 
 const { expect } = chai;
@@ -33,37 +33,11 @@ describe('webgl/gl-vertex-array-object', () => {
     renderer = null;
   });
 
-  it('create vao use extension when webgl', () => {
-    renderer = createGLGPURenderer('webgl');
-    glRenderer = renderer;
-    const vao = (glRenderer.engine as GLEngine).createVAO()!;
-    const ext = (glRenderer.engine as GLEngine).gl.getExtension('OES_vertex_array_object');
-
-    if (ext) {
-      vao.bind();
-      expect(ext.isVertexArrayOES(vao.vao)).is.true;
-      vao.dispose();
-      expect(ext.isVertexArrayOES(vao.vao)).is.false;
-    }
-  });
-
-  it('create vao when webgl2', () => {
-    renderer = createGLGPURenderer('webgl2');
-    glRenderer = renderer;
-    const gl = (glRenderer.engine as GLEngine).gl as WebGL2RenderingContext;
-    const vao = (glRenderer.engine as GLEngine).createVAO()!;
-
-    vao.bind();
-    expect(gl.isVertexArray(vao.vao)).is.true;
-    vao.dispose();
-    expect(gl.isVertexArray(vao.vao)).is.false;
-  });
-
   it('bind vertexPointer', () => {
     renderer = createGLGPURenderer('webgl');
     glRenderer = renderer;
     const engine = renderer.engine;
-    const glGeometry = new GLGeometry(engine, {
+    const geometry = new Geometry(engine, {
       name: 'vao1',
       drawCount: 3,
       drawStart: 0,
@@ -85,7 +59,7 @@ describe('webgl/gl-vertex-array-object', () => {
       },
     });
 
-    glGeometry.initialize();
+    geometry.initialize();
 
     const shader = (glRenderer.engine as GLEngine).shaderLibrary.createShader({ vertex, fragment });
 
@@ -102,7 +76,16 @@ describe('webgl/gl-vertex-array-object', () => {
 
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 1, gl.UNSIGNED_INT, true, 0, 0);
-    glProgram.setupAttributes(glGeometry);
+    const extension = gl.getExtension('OES_vertex_array_object');
+
+    expect(extension).is.not.null;
+    geometry.bind(shader);
+    const vao = gl.getParameter(extension!.VERTEX_ARRAY_BINDING_OES) as WebGLVertexArrayObject;
+
+    geometry.bind(shader);
+    const cachedVao = gl.getParameter(extension!.VERTEX_ARRAY_BINDING_OES) as WebGLVertexArrayObject;
+
+    expect(cachedVao).to.equal(vao);
     expect(loc).is.not.NaN;
     expect(texLoc).is.not.NaN;
     const sizeAP = gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE);
@@ -113,25 +96,22 @@ describe('webgl/gl-vertex-array-object', () => {
 
     expect(gl.getVertexAttrib(texLoc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(2);
     expect(gl.getVertexAttrib(texLoc, gl.VERTEX_ATTRIB_ARRAY_STRIDE)).to.eql(4 * Float32Array.BYTES_PER_ELEMENT);
-    // @ts-expect-error private
-    const vao = glGeometry.vaos[glProgram.id]!;
-
-    vao.unbind();
+    gl.bindVertexArray(null);
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 4, gl.FLOAT, false, 0, 0);
     expect(gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(4);
-    vao.bind();
+    gl.bindVertexArray(vao);
     expect(gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(2);
-    expect(gl.getExtension('OES_vertex_array_object')?.isVertexArrayOES(vao.vao)).is.true;
-    vao.dispose();
-    expect(gl.getExtension('OES_vertex_array_object')?.isVertexArrayOES(vao.vao)).is.false;
+    expect(extension!.isVertexArrayOES(vao)).is.true;
+    gl.deleteVertexArray(vao);
+    expect(extension!.isVertexArrayOES(vao)).is.false;
   });
 
   it('use state to reduce binding call', () => {
     renderer = createGLGPURenderer('webgl2');
     glRenderer = renderer;
     const engine = renderer.engine;
-    const glGeometry = new GLGeometry(engine, {
+    const geometry = new Geometry(engine, {
       name: 'vao2',
       drawCount: 3,
       drawStart: 0,
@@ -141,7 +121,7 @@ describe('webgl/gl-vertex-array-object', () => {
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 4,
           type: glContext.FLOAT,
-          dataSource: 'aPoint',
+          data: new Float32Array(12),
         },
         aTexCoord: {
           size: 2,
@@ -153,8 +133,8 @@ describe('webgl/gl-vertex-array-object', () => {
       },
     });
 
-    glGeometry.initialize();
-    const gl = (glRenderer.engine as GLEngine).gl as WebGL2RenderingContext;
+    geometry.initialize();
+    const gl = (glRenderer.engine as GLEngine).gl;
     const bindFunc = chai.spy(gl.bindVertexArray);
 
     if ('bindVertexArray' in gl) {
@@ -170,6 +150,20 @@ describe('webgl/gl-vertex-array-object', () => {
     // expect(bindFunc).to.have.been.called.twice;
     // vao?.bind();
     // expect(bindFunc).to.have.been.called.exactly(3);
+  });
+
+  it('bind buffers directly when vertex array objects are unavailable', () => {
+    renderer = createGLGPURenderer('webgl');
+    const engine = renderer.engine as GLEngine;
+    const capability = engine.gpuCapability.detail as { vertexArrayObject?: boolean };
+    const bindBuffers = chai.spy(() => {});
+
+    capability.vertexArrayObject = false;
+    engine.bindBuffers = bindBuffers;
+    const geometry = new Geometry(engine, { attributes: {} });
+
+    geometry.bind({ key: 'direct-binding' } as unknown as ShaderVariant);
+    expect(bindBuffers).to.have.been.called.once;
   });
 });
 

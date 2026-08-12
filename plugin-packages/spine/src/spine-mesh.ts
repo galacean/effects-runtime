@@ -3,7 +3,7 @@ import type {
   Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture, math,
 } from '@galacean/effects';
 import {
-  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext,
+  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, VertexBuffer,
 } from '@galacean/effects';
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
@@ -15,10 +15,6 @@ export interface SpineMeshRenderInfo {
   priority: number,
   blendMode: BlendMode,
   name?: string,
-  renderOptions: {
-    maskMode?: number,
-    mask?: number,
-  },
   engine: Engine,
 }
 
@@ -39,15 +35,14 @@ export class SpineMesh implements Disposable {
   priority: number;
 
   constructor (renderInfo: SpineMeshRenderInfo) {
-    const { blendMode, texture, priority, renderOptions = {}, name = 'MSpine', engine } = renderInfo;
-    const { mask = 0, maskMode = 0 } = renderOptions;
+    const { blendMode, texture, priority, name = 'MSpine', engine } = renderInfo;
 
     this.blendMode = blendMode;
     this.lastTexture = texture;
     this.priority = priority;
     this.engine = engine;
     this.geometry = this.createGeometry();
-    this.material = this.createMaterial(maskMode, mask);
+    this.material = this.createMaterial();
     this.mesh = Mesh.create(
       engine,
       {
@@ -77,23 +72,24 @@ export class SpineMesh implements Disposable {
     const BYTES_PER_ELEMENT = Float32Array.BYTES_PER_ELEMENT;
     const stride = BYTES_PER_ELEMENT * SlotGroup.VERTEX_SIZE;
     const attributes: Record<string, Attribute> = {
-      'aPosition': { size: 2, offset: 0, stride, data: new Float32Array(0) },
-      'aColor': { size: 4, offset: 2 * BYTES_PER_ELEMENT, stride, dataSource: 'aPosition' },
-      'aTexCoords': { size: 2, offset: 6 * BYTES_PER_ELEMENT, stride, dataSource: 'aPosition' },
-      'aColor2': { size: 4, offset: 8 * BYTES_PER_ELEMENT, stride, dataSource: 'aPosition' },
+      [VertexBuffer.PositionKind]: { size: 2, offset: 0, stride, data: new Float32Array(0) },
+      [VertexBuffer.ColorKind]: { size: 4, offset: 2 * BYTES_PER_ELEMENT, stride, dataSource: VertexBuffer.PositionKind },
+      [VertexBuffer.UVKind]: { size: 2, offset: 6 * BYTES_PER_ELEMENT, stride, dataSource: VertexBuffer.PositionKind },
+      aColor2: { size: 4, offset: 8 * BYTES_PER_ELEMENT, stride, dataSource: VertexBuffer.PositionKind },
     };
 
     return Geometry.create(
       this.engine,
       {
         attributes,
-        indices: { data: new Uint16Array(0), releasable: true },
+        indices: { data: new Uint16Array(0) },
         mode: glContext.TRIANGLES,
         maxVertex: SlotGroup.MAX_VERTICES,
+        bufferUsage: glContext.DYNAMIC_DRAW,
       });
   }
 
-  createMaterial (maskMode: number, maskOrder: number): Material {
+  createMaterial (): Material {
     const material = Material.create(
       this.engine,
       {
@@ -138,7 +134,7 @@ export class SpineMesh implements Disposable {
     for (let i = this.indicesLength; i < this.indices.length; i++) {
       this.indices[i] = 0;
     }
-    this.geometry.setAttributeData('aPosition', this.vertices);
+    this.geometry.setAttributeData(VertexBuffer.PositionKind, this.vertices);
     this.geometry.setIndexData(this.indices);
     this.geometry.setDrawCount(this.indicesLength);
   }

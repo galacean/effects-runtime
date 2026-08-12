@@ -4,7 +4,8 @@ import {
   Mesh,
   RenderPass,
 } from '@galacean/effects-core';
-import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
+import { Geometry } from '@galacean/effects-core';
+import { GLEngine } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
 import { MathUtils } from './math-utils';
 
@@ -29,7 +30,7 @@ describe('webgl/gl-render-pass', () => {
   });
 
   it('if priority is the same,last added item will in behind', () => {
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},
@@ -69,7 +70,7 @@ describe('webgl/gl-render-pass', () => {
   it('render pass resort meshes mesh order is ascending && lenght <= 30', () => {
     const meshes = [];
     const length = 20;
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},
@@ -125,7 +126,7 @@ describe('webgl/gl-render-pass', () => {
   it('RPOrderTest08 render pass resort meshes with meshes.length===1', () => {
     const spy = chai.spy(() => { });
     const call = renderer.engine.viewport;
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},
@@ -160,7 +161,7 @@ describe('webgl/gl-render-pass', () => {
   });
 
   it('RPOrderTest09 render pass resort meshes with meshes.length===2', () => {
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},
@@ -205,7 +206,7 @@ describe('webgl/gl-render-pass', () => {
   it('render pass add/remove meshes with meshorder is ascending', () => {
     const meshes = [];
     const length = 20;
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},
@@ -291,7 +292,7 @@ describe('webgl/gl-render-pass', () => {
   });
 
   it('render pass add/remove meshes at meshes.length===0', () => {
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},
@@ -330,7 +331,7 @@ describe('webgl/gl-render-pass', () => {
   });
 
   it('render pass add/remove meshes at meshes.length===1', () => {
-    const geom = new GLGeometry(
+    const geom = new Geometry(
       engine,
       {
         attributes: {},

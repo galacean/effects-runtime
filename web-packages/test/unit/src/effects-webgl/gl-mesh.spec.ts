@@ -1,8 +1,9 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { Mesh, glContext, math, Material } from '@galacean/effects';
+import { Geometry, Mesh, glContext, math, Material } from '@galacean/effects';
 import type { GLShaderVariant } from '@galacean/effects-webgl';
-import { GLEngine, GLGeometry } from '@galacean/effects-webgl';
+import { GLEngine } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
+import { readBufferContents } from './gl-utils';
 
 const { expect } = chai;
 
@@ -28,7 +29,7 @@ describe('webgl/gl-mesh', () => {
 
     mesh.material.initialize();
     mesh.geometry.initialize();
-    const resultGeom = mesh.geometry as GLGeometry;
+    const resultGeom = mesh.geometry;
     const gpubuffer = resultGeom.getAttributeBuffer('aPosition');
     const buffer = new Float32Array(8);
     const position = material.getVector2('uPos');
@@ -39,7 +40,9 @@ describe('webgl/gl-mesh', () => {
     expect(position?.y).to.eql(2);
     expect(resultGeom).to.eql(geometry);
     expect(resultGeom.engine.renderer).not.eql(null);
-    gpubuffer?.readSubData(0, buffer);
+    if (gpubuffer?.getBuffer()) {
+      readBufferContents(engine.gl, gpubuffer.getBuffer()!, buffer);
+    }
     expect(buffer).to.eql(new Float32Array([0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5]));
 
     mesh.dispose();
@@ -78,7 +81,6 @@ void main() {
     stride: 0,
     offset: 0,
     normalize: false,
-    releasable: false,
   };
   const geomOption = {
     attributes: {
@@ -90,7 +92,7 @@ void main() {
     mode: glContext.TRIANGLES,
   };
 
-  const geometry = new GLGeometry(renderer.engine, geomOption);
+  const geometry = new Geometry(renderer.engine, geomOption);
   const meshOption = {
     geometry,
     material,

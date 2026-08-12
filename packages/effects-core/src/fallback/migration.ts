@@ -12,7 +12,7 @@ import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 import { getGeometryByShape } from '../shape/geometry';
 
-let currentMaskComponent: string;
+let currentMaskComponentId: string | undefined;
 const componentMap: Map<string, spec.ComponentData> = new Map();
 const itemMap: Map<string, spec.VFXItemData> = new Map();
 
@@ -725,14 +725,25 @@ export function version36Migration (json: JSONScene): JSONScene {
 
   for (const composition of json.compositions) {
     composition.children = [];
+    currentMaskComponentId = undefined;
+
+    //@ts-expect-error
+    const legacyCompositionItems = composition.items;
+
+    if (Array.isArray(legacyCompositionItems)) {
+      processMaskReferenceItems(legacyCompositionItems, itemMap, componentMap);
+    }
 
     for (const componentDataPath of composition.components) {
       const componentData = componentMap.get(componentDataPath.id) as spec.ComponentData;
 
       if (componentData.dataType === spec.DataType.CompositionComponent) {
         const compositionComponent = componentData as spec.CompositionComponentData;
+        const compositionItems = compositionComponent.items ?? [];
 
-        for (const itemPath of compositionComponent.items) {
+        processMaskReferenceItems(compositionItems, itemMap, componentMap);
+
+        for (const itemPath of compositionItems) {
           const item = itemMap.get(itemPath.id) as spec.VFXItemData;
 
           if (item.parentId === undefined) {
@@ -760,6 +771,70 @@ export function version36Migration (json: JSONScene): JSONScene {
   }
 
   json.version = JSONSceneVersion['3_7'];
+
+  return json;
+}
+
+/**
+ * 3.8 数据适配：SpriteComponent 的 renderer.texture + splits 迁移为独立 Sprite 资产。
+ *
+ * - 遍历所有未引用 sprite 的 SpriteComponentData，按 splits[0]（无则整图 [0,0,1,1]）生成
+ *   Sprite 资产对象放入 miscs，并把组件的 sprite 指向它。
+ * - 删除组件的 splits 与 renderer.texture（纹理归属 sprite，renderer 仅保留渲染状态）。
+ * - 卫语句 `if (sc.sprite) continue` 处理混合数据（部分组件已用 sprite）。
+ * - 多 split（splits.length>1，2x2 纹理打包）保留原 splits 不迁移，仍走 updateGeometryFromMultiSplit 旧路径。
+ *
+ * 由 getStandardJSON 以 `minorVersion < 8` 守卫调用，数据生命周期内只跑一次。
+ * version 字段设为字符串 '3.8'（JSONSceneVersion 枚举无此值，运行时不依赖枚举）。
+ */
+export function version37Migration (json: spec.JSONScene): spec.JSONScene {
+  json.miscs ??= [];
+
+  for (const component of json.components) {
+    if (component.dataType !== DataType.SpriteComponent) {
+      continue;
+    }
+    // 本地扩展 sprite 字段（spec 包不可改）。ComponentData 是 SpriteComponentData 的超集，
+    // 故直接当 SpriteComponentData 用；sprite 需要写到对象上，用宽松类型承载。
+    const sc = component as spec.SpriteComponentData & { sprite?: spec.DataPath };
+
+    if (sc.sprite) {
+      continue;  // 已迁移/新数据
+    }
+
+    const splits = sc.splits;
+
+    if (splits && splits.length > 1) {
+      // 多 split（2x2 纹理打包）保留原数据，运行时走 updateGeometryFromMultiSplit 旧路径，不转 sprite。
+      continue;
+    }
+
+    const first = splits?.[0];
+    const rect: spec.vec4 = first
+      ? [first[0], first[1], first[2], first[3]]
+      : [0, 0, 1, 1];
+    // rotation: 0=None 不旋转, 1=Rotate90（值与 Sprite.SpriteRotation 枚举一致，序列化兼容）
+    const rotation = first?.[4] ?? 0;
+
+    const spriteData = {
+      id: generateGUID(),
+      dataType: 'Sprite' as unknown as spec.DataType,
+      // 可能为 undefined（纯色元素）→ Sprite.fromData 兜底 whiteTexture
+      texture: sc.renderer?.texture,
+      rect,
+      rotation,
+    } as unknown as spec.EffectsObjectData;
+
+    json.miscs.push(spriteData);
+
+    sc.sprite = { id: spriteData.id };
+    delete sc.splits;
+    if (sc.renderer) {
+      delete sc.renderer.texture;  // 纹理归属 sprite，renderer 仅保留渲染状态
+    }
+  }
+
+  json.version = '3.8' as unknown as spec.JSONSceneVersion;
 
   return json;
 }
@@ -909,6 +984,37 @@ export function processContent (composition: spec.CompositionData) {
   }
 }
 
+function processMaskReferenceItems (
+  items: { id: string }[],
+  itemMap: Map<string, spec.VFXItemData>,
+  componentMap: Map<string, spec.ComponentData>
+) {
+  for (const item of items) {
+    const itemProps = itemMap.get(item.id);
+
+    if (!itemProps) {
+      continue;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.richtext ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape ||
+      itemProps.type === spec.ItemType.mesh
+    ) {
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMaskReference(component);
+      }
+    }
+  }
+}
+
 export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
   const maskMode = renderer?.maskMode;
@@ -922,7 +1028,7 @@ export function processMask (renderContent: any) {
     renderContent.mask = {
       isMask: true,
     };
-    currentMaskComponent = renderContent.id;
+    currentMaskComponentId = renderContent.id;
   } else if (
     maskMode === spec.ObscuredMode.OBSCURED ||
     maskMode === spec.ObscuredMode.REVERSE_OBSCURED
@@ -930,8 +1036,27 @@ export function processMask (renderContent: any) {
     renderContent.mask = {
       inverted: maskMode === spec.ObscuredMode.REVERSE_OBSCURED ? true : false,
       reference: {
-        'id': currentMaskComponent,
+        'id': currentMaskComponentId,
       },
+    };
+  }
+}
+
+function processMaskReference (renderContent: any) {
+  const mask = renderContent.mask;
+
+  if (mask && !mask.references && mask.reference) {
+    // 处理旧版 mask 格式（mask.reference 和 mask.inverted 字段）
+    // 将旧版单蒙版格式转换为 references 数组
+    renderContent.mask = {
+      isMask: mask.isMask ?? false,
+      alphaMaskEnabled: mask.alphaMaskEnabled ?? false,
+      references: [
+        {
+          mask: mask.reference,
+          inverted: mask.inverted ?? false,
+        },
+      ],
     };
   }
 }

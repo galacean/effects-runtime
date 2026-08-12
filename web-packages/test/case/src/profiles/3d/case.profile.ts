@@ -33,7 +33,6 @@ const scenes: FrameCompareScene[] = Object.keys(sceneList).map(key => {
 export const case3DProfile: FrameSuiteProfile = {
   id: '3d-case',
   title: '3D 帧对比',
-  frameworkIndexOffset: 2,
   frameworks: ['webgl', 'webgl2'],
   canvas: {
     width: 512,

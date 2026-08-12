@@ -82,6 +82,12 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   }
 
   release () {
+    // 仅在不处理上下文恢复（默认 doNotHandleContextLost=true）时释放 CPU 端像素源以节省内存。
+    // 启用恢复时保留源数据，供 GLTexture.restore 重新上传，实现离线可用的就地重建。
+    if (!this.engine.doNotHandleContextLost) {
+      return;
+    }
+
     const { sourceType } = this.source;
 
     switch (sourceType) {
@@ -343,16 +349,19 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     type: GLenum,
     image: spec.HTMLImageLike,
   ): spec.vec2 {
-    const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
+    const { sourceType } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
     let pooledCanvasAndContext: CanvasAndContext | undefined;
 
     if (sourceType !== TextureSourceType.video) {
-      let shouldResize = minFilter !== gl.NEAREST || magFilter !== gl.NEAREST || wrapS !== gl.CLAMP_TO_EDGE || wrapT !== gl.CLAMP_TO_EDGE;
+      // 仅在图片超过 maxTextureSize 时才需要缩放上传；
+      // 对于非 2 的幂（non-power-of-two） + LINEAR / 非 CLAMP_TO_EDGE 这种 WebGL1 受限场景，
+      // 这里保持与历史版本一致不做强制 2 的幂（power-of-two）化（如需对齐由上层显式处理），
+      // 否则会与旧版渲染结果出现整张纹理级别的差异。
+      const isOversize = image.width > maxSize || image.height > maxSize;
 
-      shouldResize = shouldResize || image.width > maxSize || image.height > maxSize;
-      if (shouldResize) {
+      if (isOversize) {
         pooledCanvasAndContext = resizeImageByCanvas(image, maxSize);
         if (pooledCanvasAndContext) {
           img = pooledCanvasAndContext.canvas;
@@ -465,8 +474,25 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.update(this.source);
   }
 
-  restore () {
-    // TODO
+  restore (): void {
+    const glEngine = this.engine as GLEngine;
+    const gl = glEngine.gl;
+
+    // target 仅在 initialize() 时从 source 取值赋给实例字段；若纹理在丢失前尚未 initialize
+    // （如内置纹理未被使用过），this.target 可能为空，需在此从 source 补全，避免 bind/update 时 INVALID target。
+    if (this.target === undefined) {
+      const { target = gl.TEXTURE_2D } = this.source;
+
+      this.target = target;
+    }
+
+    // 旧句柄已随上下文丢失失效，无需 delete，直接重建。
+    this.textureBuffer = gl.createTexture();
+    assignInspectorName(this.textureBuffer, this.source.name);
+    this.initialized = false;
+    // opt-in 模式下 release 不释放 CPU 源数据，image/cube/data/compressed/mipmaps 源恒在，直接重新上传即可。
+    this.update(this.source);
+    this.initialized = true;
   }
 
   override dispose (): void {
