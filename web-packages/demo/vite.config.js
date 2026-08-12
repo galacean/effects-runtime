@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
           'multi-load-type': resolve(__dirname, 'html/multi-load-type.html'),
           'single': resolve(__dirname, 'html/single.html'),
           'dom-content': resolve(__dirname, 'html/dom-content.html'),
+          'fancy-text': resolve(__dirname, 'html/fancy-text.html'),
           'text': resolve(__dirname, 'html/text.html'),
           'three-particle': resolve(__dirname, 'html/three-particle.html'),
           'three-sprite': resolve(__dirname, 'html/three-sprite.html'),
