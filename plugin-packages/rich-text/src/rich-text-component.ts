@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import type { Engine, IRichTextComponent } from '@galacean/effects';
+import type { Engine, IRichTextComponent, TextRenderPlan } from '@galacean/effects';
 import {
   assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
   TextComponentBase, FancyLayerFactory,
@@ -66,6 +66,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
   protected effectScaleX = 1;
   protected effectScaleY = 1;
+  private lastRenderPlan?: TextRenderPlan;
 
   constructor (engine: Engine) {
     super(engine);
@@ -92,8 +93,19 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }
   }
 
+  /**
+   * Returns the most recent plan produced by the strategy renderer.
+   *
+   * This is intentionally read-only at the component boundary and is mainly
+   * useful for diagnostics and demo tooling; the Canvas backend owns execution.
+   */
+  getRenderPlan (): TextRenderPlan | undefined {
+    return this.lastRenderPlan;
+  }
+
   override onDestroy (): void {
     this._destroyed = true;
+    this.lastRenderPlan = undefined;
     super.onDestroy();
     this.disposeTextTexture();
   }
@@ -130,7 +142,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   /**
    * 根据配置更新文本样式和布局
    */
-  protected updateWithOptions (options: spec.RichTextContentOptions): void {
+  updateWithOptions (options: spec.RichTextContentOptions): void {
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
     this.text = options.text ? options.text.toString() : ' ';
@@ -170,6 +182,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
    * 解析富文本
    */
   private updateTextureLegacy (flipY: boolean) {
+    this.lastRenderPlan = undefined;
+
     if (!this.isDirty || !this.context || !this.canvas || !this.textStyle) {
       return;
     }
@@ -461,6 +475,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       renderSize: { width: physicalW, height: physicalH },
       padding,
     });
+
+    this.lastRenderPlan = renderPlan;
     const backend = new CanvasRichTextFancyBackend({
       textStyle: this.textStyle,
       layers: this.textStyle.fancyRenderStyle.layers,

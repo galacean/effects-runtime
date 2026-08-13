@@ -156,24 +156,9 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
   ): void {
-    const shadowLayers = this.getRangeContentLayers(ranges);
-
-    for (const layerPlan of shadowLayers) {
-      switch (layerPlan.layer.kind) {
-        case 'single-stroke':
-          this.drawStroke(plan, layerPlan, context, ranges);
-
-          break;
-        case 'solid-fill':
-          this.drawSolidFill(plan, context, ranges);
-
-          break;
-        default:
-          // Gradient and texture are object-level content layers and are not
-          // part of a range shadow source in the v1 Canvas backend.
-          break;
-      }
-    }
+    // Shadow is range-owned, but its source is the complete visible content
+    // for those ranges, including object-level gradient/texture paint.
+    this.renderContent(plan, context, ranges);
   }
 
   private drawStroke (
@@ -305,7 +290,7 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
       }
     }
 
-    return result;
+    return result.sort((a, b) => a.order - b.order);
   }
 
   private getRangesForLayer (ranges: RangePlan[], layerPlan: TextRenderLayerPlan): RangePlan[] {

@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
         input: {
           'index': resolve(__dirname, 'demo/index.html'),
           'simple': resolve(__dirname, 'demo/simple.html'),
+          'escape': resolve(__dirname, 'demo/escape.html'),
+          'custom-interpolation': resolve(__dirname, 'demo/custom-interpolation.html'),
+          'fancy-render-plan': resolve(__dirname, 'demo/fancy-render-plan.html'),
         }
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
