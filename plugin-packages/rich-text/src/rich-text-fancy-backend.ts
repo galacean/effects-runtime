@@ -53,8 +53,9 @@ function colorToCss (color: spec.vec4): string {
  * Canvas backend for the first RichText fancy slice.
  *
  * Range parameters are shared in v1, but glyph ownership remains range-aware.
- * Shadow is currently generated from the whole content surface; the input
- * range/group seam is kept in the plan for the later per-range shadow pass.
+ * Each shadow layer is rendered from the ranges that own that layer. This keeps
+ * the range-level shadow seam explicit while still allowing shared parameters
+ * to be batched into one shadow surface.
  */
 export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRenderingContext2D> {
   private readonly rawLayersById: Map<string, FancyRenderLayer>;
@@ -68,6 +69,7 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
 
     contentCanvas.width = context.canvas.width;
     contentCanvas.height = context.canvas.height;
+    const contentTransform = context.getTransform();
     const contentContext = contentCanvas.getContext('2d');
 
     if (!contentContext) {
@@ -76,11 +78,11 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
       return;
     }
 
-    contentContext.setTransform(context.getTransform());
+    contentContext.setTransform(contentTransform);
     this.renderContent(plan, contentContext);
 
     const glows = plan.objectPlan.layers.filter(layer => layer.layer.kind === 'glow');
-    const shadows = this.getRangeLayers(plan, 'shadow');
+    const shadowGroups = this.getRangeLayerGroups(plan, 'shadow');
 
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
@@ -91,37 +93,55 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     for (const layerPlan of glows) {
       this.compositeGlow(context, contentCanvas, layerPlan);
     }
-    for (const layerPlan of shadows) {
-      this.compositeShadow(context, contentCanvas, layerPlan);
+    for (const group of shadowGroups) {
+      const shadowSurface = document.createElement('canvas');
+
+      shadowSurface.width = context.canvas.width;
+      shadowSurface.height = context.canvas.height;
+      const shadowContext = shadowSurface.getContext('2d');
+
+      if (!shadowContext) {
+        continue;
+      }
+
+      shadowContext.setTransform(contentTransform);
+      this.renderShadowSource(plan, shadowContext, group.ranges);
+      this.compositeShadow(context, shadowSurface, group.layerPlan);
     }
 
     context.restore();
   }
 
-  private renderContent (plan: TextRenderPlan, context: CanvasRenderingContext2D): void {
+  private renderContent (
+    plan: TextRenderPlan,
+    context: CanvasRenderingContext2D,
+    ranges = plan.rangePlans,
+  ): void {
     context.textBaseline = 'alphabetic';
-    const rangeLayers = plan.rangePlans[0]?.layers ?? [];
+    const rangeLayers = this.getRangeContentLayers(ranges);
     const contentLayers = [
       ...rangeLayers,
       ...plan.objectPlan.layers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
     ].sort((a, b) => a.order - b.order);
 
     for (const layerPlan of contentLayers) {
+      const layerRanges = this.getRangesForLayer(ranges, layerPlan);
+
       switch (layerPlan.layer.kind) {
         case 'single-stroke':
-          this.drawStroke(plan, layerPlan, context);
+          this.drawStroke(plan, layerPlan, context, layerRanges);
 
           break;
         case 'solid-fill':
-          this.drawSolidFill(plan, context);
+          this.drawSolidFill(plan, context, layerRanges);
 
           break;
         case 'gradient':
-          this.drawGradient(plan, layerPlan, context);
+          this.drawGradient(plan, layerPlan, context, ranges);
 
           break;
         case 'texture':
-          this.drawTexture(plan, layerPlan, context);
+          this.drawTexture(plan, layerPlan, context, ranges);
 
           break;
         default:
@@ -131,14 +151,44 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private drawStroke (plan: TextRenderPlan, layerPlan: TextRenderLayerPlan, context: CanvasRenderingContext2D): void {
+  private renderShadowSource (
+    plan: TextRenderPlan,
+    context: CanvasRenderingContext2D,
+    ranges: RangePlan[],
+  ): void {
+    const shadowLayers = this.getRangeContentLayers(ranges);
+
+    for (const layerPlan of shadowLayers) {
+      switch (layerPlan.layer.kind) {
+        case 'single-stroke':
+          this.drawStroke(plan, layerPlan, context, ranges);
+
+          break;
+        case 'solid-fill':
+          this.drawSolidFill(plan, context, ranges);
+
+          break;
+        default:
+          // Gradient and texture are object-level content layers and are not
+          // part of a range shadow source in the v1 Canvas backend.
+          break;
+      }
+    }
+  }
+
+  private drawStroke (
+    plan: TextRenderPlan,
+    layerPlan: TextRenderLayerPlan,
+    context: CanvasRenderingContext2D,
+    ranges: RangePlan[],
+  ): void {
     if (layerPlan.layer.kind !== 'single-stroke') {
       return;
     }
 
     const { color, width } = layerPlan.layer.params;
 
-    for (const range of plan.rangePlans) {
+    for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
         glyphContext.strokeStyle = colorToCss(color);
         glyphContext.lineJoin = 'round';
@@ -148,8 +198,8 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private drawSolidFill (plan: TextRenderPlan, context: CanvasRenderingContext2D): void {
-    for (const range of plan.rangePlans) {
+  private drawSolidFill (plan: TextRenderPlan, context: CanvasRenderingContext2D, ranges: RangePlan[]): void {
+    for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
         glyphContext.fillStyle = colorToCss(range.basicStyle.fillColor ?? this.options.textStyle.textColor);
         glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
@@ -157,7 +207,12 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private drawGradient (plan: TextRenderPlan, layerPlan: TextRenderLayerPlan, context: CanvasRenderingContext2D): void {
+  private drawGradient (
+    plan: TextRenderPlan,
+    layerPlan: TextRenderLayerPlan,
+    context: CanvasRenderingContext2D,
+    ranges: RangePlan[],
+  ): void {
     if (layerPlan.layer.kind !== 'gradient') {
       return;
     }
@@ -190,14 +245,19 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     });
     context.fillStyle = gradient;
 
-    for (const range of plan.rangePlans) {
+    for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
         glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
       });
     }
   }
 
-  private drawTexture (plan: TextRenderPlan, layerPlan: TextRenderLayerPlan, context: CanvasRenderingContext2D): void {
+  private drawTexture (
+    plan: TextRenderPlan,
+    layerPlan: TextRenderLayerPlan,
+    context: CanvasRenderingContext2D,
+    ranges: RangePlan[],
+  ): void {
     const rawLayer = this.rawLayersById.get(layerPlan.layerId);
 
     if (!rawLayer || rawLayer.kind !== 'texture' || !rawLayer.runtimePattern) {
@@ -208,7 +268,7 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
 
     context.fillStyle = rawLayer.runtimePattern;
     context.globalAlpha = previousAlpha * (rawLayer.params.opacity ?? 1);
-    for (const range of plan.rangePlans) {
+    for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
         glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
       });
@@ -232,20 +292,51 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private getRangeLayers (plan: TextRenderPlan, kind: 'shadow' | 'single-stroke'): TextRenderLayerPlan[] {
+  private getRangeContentLayers (ranges: RangePlan[]): TextRenderLayerPlan[] {
     const seen = new Set<string>();
     const result: TextRenderLayerPlan[] = [];
 
-    for (const range of plan.rangePlans) {
+    for (const range of ranges) {
       for (const layer of range.layers) {
-        if (layer.layer.kind === kind && !seen.has(layer.layerId)) {
+        if ((layer.layer.kind === 'single-stroke' || layer.layer.kind === 'solid-fill') && !seen.has(layer.layerId)) {
           seen.add(layer.layerId);
           result.push(layer);
         }
       }
     }
 
-    return result.sort((a, b) => a.order - b.order);
+    return result;
+  }
+
+  private getRangesForLayer (ranges: RangePlan[], layerPlan: TextRenderLayerPlan): RangePlan[] {
+    const matchingRanges = ranges.filter(range => range.layers.some(layer => layer.layerId === layerPlan.layerId));
+
+    return matchingRanges.length > 0 ? matchingRanges : ranges;
+  }
+
+  private getRangeLayerGroups (
+    plan: TextRenderPlan,
+    kind: 'shadow' | 'single-stroke',
+  ): Array<{ layerPlan: TextRenderLayerPlan, ranges: RangePlan[] }> {
+    const groups = new Map<string, { layerPlan: TextRenderLayerPlan, ranges: RangePlan[] }>();
+
+    for (const range of plan.rangePlans) {
+      for (const layer of range.layers) {
+        if (layer.layer.kind !== kind) {
+          continue;
+        }
+
+        const group = groups.get(layer.layerId);
+
+        if (group) {
+          group.ranges.push(range);
+        } else {
+          groups.set(layer.layerId, { layerPlan: layer, ranges: [range] });
+        }
+      }
+    }
+
+    return Array.from(groups.values()).sort((a, b) => a.layerPlan.order - b.layerPlan.order);
   }
 
   private compositeGlow (context: CanvasRenderingContext2D, surface: HTMLCanvasElement, layerPlan: TextRenderLayerPlan): void {
