@@ -12,8 +12,9 @@ import { TextStyle } from './text-style';
 import { TextComponentBase } from './text-component-base';
 import type { Renderer } from '../../render/renderer';
 import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
+import { CanvasTextBackend } from './fancy-text/canvas-text-backend';
 import type { CharInfo } from './fancy-text/render-with-text-layers';
-import { renderWithTextLayers } from './fancy-text/render-with-text-layers';
+import { buildTextRenderPlanFromCharInfo } from './fancy-text/text-render-plan';
 import type { TextLayerDrawer } from './fancy-text/fancy-types';
 
 export const DEFAULT_FONTS = [
@@ -578,15 +579,21 @@ export class TextComponent extends MaskableGraphic {
         });
       }
 
-      // 使用花字系统渲染文本
-      renderWithTextLayers(
-        this.canvas,
-        context,
-        this.textStyle,
-        this.textLayout,
-        charsInfo,
-        this.layerDrawers,
-      );
+      const baseXPerLine = charsInfo.map(line => this.textLayout.getOffsetX(this.textStyle, line.width));
+      const plan = buildTextRenderPlanFromCharInfo(charsInfo, this.textStyle.fancyRenderStyle.layers, {
+        fontRef: context.font,
+        baseXPerLine,
+        logicalSize: { width: baseWidth, height: baseHeight },
+        renderSize: { width: texWidth, height: texHeight },
+        padding: { left: padL, right: padR, top: padT, bottom: padB },
+      });
+      const backend = new CanvasTextBackend({
+        style: this.textStyle,
+        layout: this.textLayout,
+        legacyLayerDrawers: this.layerDrawers,
+      });
+
+      backend.render(plan, { canvas: this.canvas, context });
     });
 
     this.isDirty = false;

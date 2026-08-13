@@ -1,12 +1,9 @@
 import type { TextLayerDrawer } from './fancy-types';
 import { GlowDrawer, ShadowDrawer } from './text-layer-drawers';
 
-export interface CharInfo {
-  y: number,
-  width: number,
-  chars: string[],
-  charOffsetX: number[],
-}
+import type { TextLineInput } from './text-render-plan';
+
+export type CharInfo = TextLineInput;
 
 function createTextEnv (
   canvas: HTMLCanvasElement,

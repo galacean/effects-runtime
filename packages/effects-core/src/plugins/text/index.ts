@@ -12,3 +12,5 @@ export * from './fancy-text/fancy-layer-factory';
 export * from './fancy-text/render-with-text-layers';
 export * from './fancy-text/texture-pattern-loader';
 export * from './preset-manager';
+export * from './fancy-text/text-render-plan';
+export * from './fancy-text/canvas-text-backend';
