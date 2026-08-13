@@ -2,7 +2,7 @@
 import type { Engine, IRichTextComponent } from '@galacean/effects';
 import {
   assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
-  TextComponentBase,
+  TextComponentBase, FancyLayerFactory,
 } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
@@ -11,7 +11,8 @@ import type {
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
 import { parseRichTextOptions, type RichTextOptions } from './rich-text-options';
-import { buildRichTextRenderPlan, CanvasRichTextFillBackend } from './rich-text-render-plan';
+import { buildRichTextRenderPlan } from './rich-text-render-plan';
+import { CanvasRichTextFancyBackend, calculateTextEffectPadding } from './rich-text-fancy-backend';
 
 export type { RichTextOptions } from './rich-text-options';
 
@@ -63,6 +64,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
   protected readonly SCALE_FACTOR = 0.11092565;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
+  protected effectScaleX = 1;
+  protected effectScaleY = 1;
 
   constructor (engine: Engine) {
     super(engine);
@@ -80,9 +83,17 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
     this.updateTexture();
+
+    for (const material of this.materials) {
+      material.setVector2('_Size', new math.Vector2(
+        this.transform.size.x * this.effectScaleX,
+        this.transform.size.y * this.effectScaleY,
+      ));
+    }
   }
 
   override onDestroy (): void {
+    this._destroyed = true;
     super.onDestroy();
     this.disposeTextTexture();
   }
@@ -93,15 +104,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     this.interaction = interaction;
 
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new RichTextLayout(options);
-    this.text = options.text ? options.text.toString() : ' ';
-
-    if (this.textLayout.useLegacyRichText) {
-      this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
-    }
-
-    this.updateStrategies();
+    this.updateWithOptions(options);
     this.updateTexture();
 
     // 设置默认颜色（math.Color）
@@ -135,6 +138,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     if (this.textLayout.useLegacyRichText) {
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
+    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
+    void this.loadFancyTexturePatterns();
     this.updateStrategies();
     this.isDirty = true;
   }
@@ -418,11 +423,22 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       verticalAlignResult,
     );
 
-    // 排版结果（逻辑单位）→ 物理像素画布
-    const physicalW = Math.max(1, Math.ceil(overflowResult.canvasWidth * fontScale));
-    const physicalH = Math.max(1, Math.ceil(overflowResult.canvasHeight * fontScale));
+    const padding = calculateTextEffectPadding(this.textStyle);
+    const paddedLogicalWidth = overflowResult.canvasWidth + padding.left + padding.right;
+    const paddedLogicalHeight = overflowResult.canvasHeight + padding.top + padding.bottom;
 
-    // 渲染尺寸不随 fontScale 改变
+    // 排版结果（逻辑单位）→ 包含花字扩展后的物理像素画布
+    const physicalW = Math.max(1, Math.ceil(paddedLogicalWidth * fontScale));
+    const physicalH = Math.max(1, Math.ceil(paddedLogicalHeight * fontScale));
+
+    this.effectScaleX = overflowResult.canvasWidth > 0
+      ? paddedLogicalWidth / overflowResult.canvasWidth
+      : 1;
+    this.effectScaleY = overflowResult.canvasHeight > 0
+      ? paddedLogicalHeight / overflowResult.canvasHeight
+      : 1;
+
+    // 渲染尺寸不随 fontScale 改变；quad 通过 effectScale 扩展匹配纹理。
     this.item.transform.size.set(
       overflowResult.canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR,
       overflowResult.canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR
@@ -441,14 +457,19 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       verticalAlignResult,
       overflowResult,
       layers: this.textStyle.fancyRenderStyle.layers,
-      logicalSize: { width: overflowResult.canvasWidth, height: overflowResult.canvasHeight },
+      logicalSize: { width: paddedLogicalWidth, height: paddedLogicalHeight },
       renderSize: { width: physicalW, height: physicalH },
+      padding,
     });
-    const backend = new CanvasRichTextFillBackend();
+    const backend = new CanvasRichTextFancyBackend({
+      textStyle: this.textStyle,
+      layers: this.textStyle.fancyRenderStyle.layers,
+    });
 
     this.renderToTexture(physicalW, physicalH, flipY, context => {
       // fontScale 仅作为渲染分辨率倍率，排版坐标全部为逻辑单位
       context.scale(fontScale, fontScale);
+      context.translate(padding.left, padding.top);
       // ── 步骤 6: 绘制 ──
       backend.render(renderPlan, context);
     });

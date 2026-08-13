@@ -3,7 +3,9 @@ import { RichTextLayout } from '../../src/rich-text-layout';
 import { RichWrapEnabledStrategy } from '../../src/strategies/wrap/rich-wrap-enabled';
 import {
   buildRichTextRenderPlan,
+  CanvasRichTextFancyBackend,
   CanvasRichTextFillBackend,
+  calculateTextEffectPadding,
   parseRichTextOptions,
 } from '@galacean/effects-plugin-rich-text';
 import type {
@@ -138,6 +140,92 @@ describe('rich-text/render-plan', () => {
     expect(plan.rangePlans[1].basicStyle.fontRef).to.equal('normal bold 20px Arial');
     expect(plan.objectPlan.layers.map(layer => layer.layer.kind)).to.eql(['glow']);
     expect(plan.geometry.contentBounds).to.eql({ x: 7, y: 5, width: 35, height: 60 });
+  });
+
+  it('computes padding from range and object fancy layers', () => {
+    const style = new TextStyle({ text: '', fontSize: 20, fontFamily: 'Arial' });
+
+    style.fancyRenderStyle = {
+      layers: [
+        {
+          kind: 'single-stroke',
+          category: 'base',
+          params: { color: [1, 1, 1, 1], width: 3, unit: 'px' },
+        },
+        {
+          kind: 'shadow',
+          category: 'decorative',
+          params: { color: [0, 0, 0, 1], blur: 4, offsetX: 2, offsetY: 2 },
+        },
+        {
+          kind: 'glow',
+          category: 'decorative',
+          params: { color: [0, 1, 1, 1], blur: 6, intensity: 2 },
+        },
+      ],
+    };
+
+    expect(calculateTextEffectPadding(style)).to.eql({
+      left: 23,
+      right: 23,
+      top: 23,
+      bottom: 23,
+    });
+  });
+
+  it('renders range fill/stroke and object glow on the Canvas backend', () => {
+    const options = parseRichTextOptions('<color=#ff0000ff>A</color>', textStyle);
+    const layers: FancyRenderLayer[] = [
+      {
+        kind: 'single-stroke',
+        category: 'base',
+        params: { color: [0, 0, 0, 1], width: 2, unit: 'px' },
+      },
+      {
+        kind: 'solid-fill',
+        category: 'base',
+        params: { color: [1, 1, 1, 1] },
+      },
+      {
+        kind: 'glow',
+        category: 'decorative',
+        params: { color: [0, 1, 1, 1], blur: 4, intensity: 1 },
+      },
+    ];
+    const plan = buildRichTextRenderPlan({
+      textStyle,
+      wrapResult: {
+        lines: [{
+          richOptions: options,
+          offsetX: [0],
+          width: 20,
+          lineHeight: 20,
+          offsetY: 0,
+          chars: [[{ char: 'A', x: 0 }]],
+        }],
+        maxLineWidth: 20,
+        totalHeight: 20,
+        bboxTop: -15,
+        bboxBottom: 5,
+        bboxHeight: 20,
+      },
+      horizontalAlignResult: { lineOffsets: [0] },
+      verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
+      overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
+      layers,
+    });
+    const canvas = document.createElement('canvas');
+
+    canvas.width = 80;
+    canvas.height = 50;
+    const context = canvas.getContext('2d')!;
+
+    new CanvasRichTextFancyBackend({ textStyle, layers }).render(plan, context);
+
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const visiblePixels = Array.from(pixels).filter((value, index) => index % 4 === 3 && value > 0).length;
+
+    expect(visiblePixels).to.be.greaterThan(0);
   });
 
   it('renders the normalized glyph stream with the style resolved for each range', () => {
