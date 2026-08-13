@@ -94,7 +94,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 渲染过程中错误队列
    */
   renderErrors: Set<Error> = new Set();
-  compositions: Composition[] = [];
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
@@ -137,6 +136,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
+  private _compositions: Composition[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -182,6 +182,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     };
 
     PluginSystem.notifyEngineCreated(this);
+  }
+
+  get compositions (): Composition[] {
+    return this._compositions.sort((a, b) => a.getIndex() - b.getIndex());
   }
 
   get graphics (): Graphics {
@@ -322,8 +326,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     //-------------------------------------------------------------------------
 
     const compositions = this.compositions;
-
-    compositions.sort((a, b) => a.getIndex() - b.getIndex());
 
     let skipRender = false;
 
@@ -771,8 +773,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.geometries = [];
     this.meshes = [];
     this.renderPasses = [];
-    this.compositions = [];
     this.particleSystems = [];
+    this._compositions = [];
   }
 
   private getTargetSize (parentEle: HTMLElement) {
