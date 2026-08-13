@@ -5,24 +5,15 @@ import {
   TextComponentBase,
 } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
-import { generateProgram } from './rich-text-parser';
-import { toRGBA } from './color-utils';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
 import type {
-  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichLine,
-  RichVerticalAlignStrategy, OverflowResult, HorizontalAlignResult, VerticalAlignResult,
+  RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichVerticalAlignStrategy,
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
+import { parseRichTextOptions, type RichTextOptions } from './rich-text-options';
+import { buildRichTextRenderPlan, CanvasRichTextFillBackend } from './rich-text-render-plan';
 
-export interface RichTextOptions {
-  text: string,
-  fontSize: number,
-  fontFamily?: string,
-  fontWeight?: spec.TextWeight,
-  fontStyle?: spec.FontStyle,
-  fontColor?: spec.vec4,
-  isNewLine: boolean,
-}
+export type { RichTextOptions } from './rich-text-options';
 
 interface CharDetail {
   char: string,
@@ -129,42 +120,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     }
   }
 
-  private generateTextProgram (text: string) {
-    this.processedTextOptions = [];
-    const program = generateProgram((text, context) => {
-      if (/^\n+$/.test(text)) {
-        text = text.replace(/\n/g, '\n ');
-      }
-      const textArr = text.split('\n');
-
-      textArr.forEach((text, index) => {
-        const options: RichTextOptions = {
-          text,
-          fontSize: this.textStyle.fontSize,
-          isNewLine: false,
-        };
-
-        if (index > 0) {
-          options.isNewLine = true;
-        }
-        if ('b' in context) {
-          options.fontWeight = spec.TextWeight.bold;
-        }
-        if ('i' in context) {
-          options.fontStyle = spec.FontStyle.italic;
-        }
-        if ('size' in context && context.size) {
-          options.fontSize = parseInt(context.size, 10);
-        }
-        if ('color' in context && context.color) {
-          options.fontColor = toRGBA(context.color);
-        }
-        this.processedTextOptions.push(options);
-      });
-    });
-
-    program(text);
+  private generateTextProgram (text: string): void {
+    this.processedTextOptions = parseRichTextOptions(text, this.textStyle);
   }
+
   /**
    * 根据配置更新文本样式和布局
    */
@@ -475,68 +434,26 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     layout.width = overflowResult.canvasWidth;
     layout.height = overflowResult.canvasHeight;
 
+    const renderPlan = buildRichTextRenderPlan({
+      textStyle: this.textStyle,
+      wrapResult,
+      horizontalAlignResult,
+      verticalAlignResult,
+      overflowResult,
+      layers: this.textStyle.fancyRenderStyle.layers,
+      logicalSize: { width: overflowResult.canvasWidth, height: overflowResult.canvasHeight },
+      renderSize: { width: physicalW, height: physicalH },
+    });
+    const backend = new CanvasRichTextFillBackend();
+
     this.renderToTexture(physicalW, physicalH, flipY, context => {
       // fontScale 仅作为渲染分辨率倍率，排版坐标全部为逻辑单位
       context.scale(fontScale, fontScale);
       // ── 步骤 6: 绘制 ──
-      this.drawTextWithStrategies(
-        context,
-        wrapResult.lines,
-        horizontalAlignResult,
-        verticalAlignResult,
-        overflowResult,
-        this.textStyle,
-      );
+      backend.render(renderPlan, context);
     });
 
     this.isDirty = false;
-  }
-
-  /**
-   * 使用策略结果绘制文本
-   * 坐标 = 帧坐标（对齐结果） + 渲染偏移（溢出结果）
-   */
-  private drawTextWithStrategies (
-    context: CanvasRenderingContext2D,
-    lines: RichLine[],
-    horizontalAlignResult: HorizontalAlignResult,
-    verticalAlignResult: VerticalAlignResult,
-    overflowResult: OverflowResult,
-    textStyle: TextStyle
-  ): void {
-    const { renderOffsetX, renderOffsetY } = overflowResult;
-    let currentBaselineY = verticalAlignResult.baselineY + renderOffsetY;
-    const { lineOffsets } = horizontalAlignResult;
-
-    lines.forEach((line, index) => {
-      const { richOptions, chars } = line;
-      const xOffset = lineOffsets[index] + renderOffsetX;
-      const yOffset = currentBaselineY;
-
-      richOptions.forEach((options, segIndex) => {
-        const { textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
-        const { fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
-
-        const textSize = fontSize;
-
-        context.font = `${fontStyle} ${fontWeight} ${textSize}px ${fontFamily}`;
-        const [r, g, b, a] = fontColor;
-
-        context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-
-        const segStartX = (line.offsetX && line.offsetX[segIndex]) ? line.offsetX[segIndex] : 0;
-        const charArr = chars[segIndex];
-
-        charArr.forEach(charDetail => {
-          context.fillText(charDetail.char, xOffset + segStartX + charDetail.x, yOffset);
-        });
-      });
-
-      // 推进到下一行
-      if (index < lines.length - 1) {
-        currentBaselineY += lines[index + 1].lineHeight;
-      }
-    });
   }
 
   private unsupported (name: string): never {

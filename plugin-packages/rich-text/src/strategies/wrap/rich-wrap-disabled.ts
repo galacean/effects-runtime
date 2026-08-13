@@ -1,6 +1,6 @@
 import type { TextStyle } from '@galacean/effects';
 import type { RichTextLayout } from '../../rich-text-layout';
-import type { RichTextOptions } from '../../rich-text-component';
+import type { RichTextOptions } from '../../rich-text-options';
 import type { RichCharDetail, RichLine, RichWrapStrategy, WrapResult } from '../rich-text-interfaces';
 
 /**

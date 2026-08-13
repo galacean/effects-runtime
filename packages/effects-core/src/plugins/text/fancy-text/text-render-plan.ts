@@ -1,3 +1,4 @@
+import type * as spec from '@galacean/effects-specification';
 import type { FancyRenderLayer } from './fancy-types';
 
 export interface TextLineInput {
@@ -59,9 +60,15 @@ export interface TextRenderLayerPlan {
   layer: TextRenderLayer,
 }
 
+export interface RangeTextStyle {
+  fontRef: string,
+  fillColor?: spec.vec4,
+}
+
 export interface RangePlan {
   sourceRangeId: string,
   glyphIds: number[],
+  basicStyle: RangeTextStyle,
   layers: TextRenderLayerPlan[],
 }
 
@@ -114,6 +121,31 @@ function normalizeLayer (layer: FancyRenderLayer): TextRenderLayer {
   }
 
   return layer;
+}
+
+export function createTextRenderLayerPlans (
+  layers: FancyRenderLayer[],
+  layerIdPrefix = 'layer',
+): { rangeLayers: TextRenderLayerPlan[], objectLayers: TextRenderLayerPlan[] } {
+  const rangeLayers: TextRenderLayerPlan[] = [];
+  const objectLayers: TextRenderLayerPlan[] = [];
+
+  layers.forEach((layer, order) => {
+    const plan: TextRenderLayerPlan = {
+      layerId: `${layerIdPrefix}-${order}`,
+      order,
+      stage: isObjectLayer(layer) ? 'object' : 'range',
+      layer: normalizeLayer(layer),
+    };
+
+    if (plan.stage === 'object') {
+      objectLayers.push(plan);
+    } else {
+      rangeLayers.push(plan);
+    }
+  });
+
+  return { rangeLayers, objectLayers };
 }
 
 function normalizePadding (padding: TextRenderPlanBuildOptions['padding']): TextGeometry['padding'] {
@@ -171,23 +203,7 @@ export function buildTextRenderPlanFromCharInfo (
     });
   });
 
-  const rangeLayers: TextRenderLayerPlan[] = [];
-  const objectLayers: TextRenderLayerPlan[] = [];
-
-  layers.forEach((layer, order) => {
-    const plan: TextRenderLayerPlan = {
-      layerId: `${layerIdPrefix}-${order}`,
-      order,
-      stage: isObjectLayer(layer) ? 'object' : 'range',
-      layer: normalizeLayer(layer),
-    };
-
-    if (plan.stage === 'object') {
-      objectLayers.push(plan);
-    } else {
-      rangeLayers.push(plan);
-    }
-  });
+  const { rangeLayers, objectLayers } = createTextRenderLayerPlans(layers, layerIdPrefix);
 
   const logicalSize = options.logicalSize ?? { width: 0, height: 0 };
   const renderSize = options.renderSize ?? logicalSize;
@@ -205,7 +221,12 @@ export function buildTextRenderPlanFromCharInfo (
   return {
     glyphs,
     lines,
-    rangePlans: [{ sourceRangeId, glyphIds: glyphs.map(glyph => glyph.id), layers: rangeLayers }],
+    rangePlans: [{
+      sourceRangeId,
+      glyphIds: glyphs.map(glyph => glyph.id),
+      basicStyle: { fontRef: options.fontRef },
+      layers: rangeLayers,
+    }],
     objectPlan: { layers: objectLayers },
     geometry: { contentBounds, effectBounds, padding, logicalSize, renderSize },
   };
