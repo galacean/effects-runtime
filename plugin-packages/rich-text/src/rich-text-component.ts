@@ -10,9 +10,9 @@ import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichVerticalAlignStrategy,
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
-import { parseRichTextOptions, type RichTextOptions } from './rich-text-options';
+import { parseRichTextOptions, type RichTextOptions, type RichTextRangeFancyLayers } from './rich-text-options';
 import { buildRichTextRenderPlan } from './rich-text-render-plan';
-import { CanvasRichTextFancyBackend, calculateTextEffectPadding } from './rich-text-fancy-backend';
+import { CanvasRichTextFancyBackend, calculateTextEffectPadding, type TextEffectPadding } from './rich-text-fancy-backend';
 
 export type { RichTextOptions } from './rich-text-options';
 
@@ -67,6 +67,11 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   protected effectScaleX = 1;
   protected effectScaleY = 1;
   private lastRenderPlan?: TextRenderPlan;
+  private rangeFancyLayers: RichTextRangeFancyLayers = {};
+  /** Runtime-only padding budget for interactive/animated fancy parameters. */
+  private fancyRenderPadding: Partial<TextEffectPadding> = {};
+  /** Keeps the render surface stable while interactive fancy parameters change. */
+  private stableEffectPadding?: TextEffectPadding;
 
   constructor (engine: Engine) {
     super(engine);
@@ -106,6 +111,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   override onDestroy (): void {
     this._destroyed = true;
     this.lastRenderPlan = undefined;
+    this.stableEffectPadding = undefined;
     super.onDestroy();
     this.disposeTextTexture();
   }
@@ -136,16 +142,30 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   private generateTextProgram (text: string): void {
-    this.processedTextOptions = parseRichTextOptions(text, this.textStyle);
+    this.processedTextOptions = parseRichTextOptions(text, this.textStyle, this.rangeFancyLayers);
   }
 
   /**
    * 根据配置更新文本样式和布局
    */
   updateWithOptions (options: spec.RichTextContentOptions): void {
+    const richOptions = options as spec.RichTextContentOptions & {
+      rangeFancyLayers?: RichTextRangeFancyLayers,
+      /** Runtime-only render budget; not part of the persisted RichText schema. */
+      fancyRenderPadding?: Partial<TextEffectPadding>,
+    };
+
+    const nextText = options.text ? options.text.toString() : ' ';
+
+    if (nextText !== this.text) {
+      this.stableEffectPadding = undefined;
+    }
+
+    this.rangeFancyLayers = richOptions.rangeFancyLayers ?? {};
+    this.fancyRenderPadding = richOptions.fancyRenderPadding ?? {};
     this.textStyle = new TextStyle(options);
     this.textLayout = new RichTextLayout(options);
-    this.text = options.text ? options.text.toString() : ' ';
+    this.text = nextText;
     // TextLayout 构造函数已经正确处理了 textVerticalAlign，这里不需要再设置
     if (this.textLayout.useLegacyRichText) {
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
@@ -437,7 +457,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       verticalAlignResult,
     );
 
-    const padding = calculateTextEffectPadding(this.textStyle);
+    const requestedPadding = calculateTextEffectPadding(this.textStyle, this.rangeFancyLayers);
+    const padding = this.mergeEffectPadding(requestedPadding);
     const paddedLogicalWidth = overflowResult.canvasWidth + padding.left + padding.right;
     const paddedLogicalHeight = overflowResult.canvasHeight + padding.top + padding.bottom;
 
@@ -491,6 +512,38 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     });
 
     this.isDirty = false;
+  }
+
+  private mergeEffectPadding (requested: TextEffectPadding): TextEffectPadding {
+    const hasBudget = Object.keys(this.fancyRenderPadding).length > 0;
+
+    if (!hasBudget) {
+      // Keep the legacy/non-interactive path exact: without an explicit budget
+      // there is no reason to retain a previous larger surface forever.
+      this.stableEffectPadding = undefined;
+
+      return requested;
+    }
+
+    const budgeted: TextEffectPadding = {
+      left: Math.max(requested.left, this.fancyRenderPadding.left ?? 0),
+      right: Math.max(requested.right, this.fancyRenderPadding.right ?? 0),
+      top: Math.max(requested.top, this.fancyRenderPadding.top ?? 0),
+      bottom: Math.max(requested.bottom, this.fancyRenderPadding.bottom ?? 0),
+    };
+
+    if (!this.stableEffectPadding) {
+      this.stableEffectPadding = budgeted;
+    } else {
+      this.stableEffectPadding = {
+        left: Math.max(this.stableEffectPadding.left, budgeted.left),
+        right: Math.max(this.stableEffectPadding.right, budgeted.right),
+        top: Math.max(this.stableEffectPadding.top, budgeted.top),
+        bottom: Math.max(this.stableEffectPadding.bottom, budgeted.bottom),
+      };
+    }
+
+    return this.stableEffectPadding;
   }
 
   private unsupported (name: string): never {

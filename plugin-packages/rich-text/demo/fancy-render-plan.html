@@ -251,6 +251,12 @@
         background: #a99fff;
       }
       .control-group + .control-group { margin-top: 22px; }
+      .range-control-card {
+        padding: 12px;
+        border: 1px solid rgba(117,240,199,.14);
+        border-radius: 12px;
+        background: rgba(117,240,199,.035);
+      }
       .control-label {
         display: flex;
         justify-content: space-between;
@@ -259,6 +265,7 @@
         font-size: 12px;
       }
       .control-label strong { color: var(--ink); font-weight: 600; }
+      .control-label.compact { margin-top: 12px; margin-bottom: 6px; color: var(--muted); font-size: 11px; }
       input[type="range"] { width: 100%; accent-color: var(--accent); }
       textarea {
         width: 100%;
@@ -367,20 +374,33 @@
               <textarea id="text"><b><color=#75f0c7ff>Range A</color></b>  <color=#8a7dffff><i>Range B</i></color>
 <color=#ffbd69ff><size=32>跨行仍是同一个 source range</size></color></textarea>
             </div>
-            <div class="control-group">
-              <label class="control-label" for="stroke"><strong>Stroke width</strong><span id="stroke-value">4px</span></label>
-              <input id="stroke" type="range" min="0" max="12" step="1" value="4" />
+            <div class="control-group range-control-card">
+              <div class="control-label"><strong>Range A</strong><span>range-0 · override</span></div>
+              <label class="control-label compact" for="range-a-stroke"><span>Stroke width</span><span id="range-a-stroke-value">5px</span></label>
+              <input id="range-a-stroke" type="range" min="0" max="12" step="1" value="5" />
+              <label class="control-label compact" for="range-a-shadow"><span>Shadow blur</span><span id="range-a-shadow-value">12px</span></label>
+              <input id="range-a-shadow" type="range" min="0" max="24" step="1" value="12" />
             </div>
-            <div class="control-group">
-              <label class="control-label" for="shadow"><strong>Shadow blur</strong><span id="shadow-value">9px</span></label>
-              <input id="shadow" type="range" min="0" max="24" step="1" value="9" />
+            <div class="control-group range-control-card">
+              <div class="control-label"><strong>Range B</strong><span>range-2 · override</span></div>
+              <label class="control-label compact" for="range-b-stroke"><span>Stroke width</span><span id="range-b-stroke-value">2px</span></label>
+              <input id="range-b-stroke" type="range" min="0" max="12" step="1" value="2" />
+              <label class="control-label compact" for="range-b-shadow"><span>Shadow blur</span><span id="range-b-shadow-value">4px</span></label>
+              <input id="range-b-shadow" type="range" min="0" max="24" step="1" value="4" />
+            </div>
+            <div class="control-group range-control-card">
+              <div class="control-label"><strong>第二行 / Range C</strong><span>range-4 · override</span></div>
+              <label class="control-label compact" for="range-c-stroke"><span>Stroke width</span><span id="range-c-stroke-value">8px</span></label>
+              <input id="range-c-stroke" type="range" min="0" max="12" step="1" value="8" />
+              <label class="control-label compact" for="range-c-shadow"><span>Shadow blur</span><span id="range-c-shadow-value">15px</span></label>
+              <input id="range-c-shadow" type="range" min="0" max="24" step="1" value="15" />
             </div>
             <div class="control-group">
               <label class="control-label" for="glow"><strong>Object glow</strong><span id="glow-value">16px</span></label>
               <input id="glow" type="range" min="0" max="32" step="1" value="16" />
             </div>
             <div class="control-group">
-              <div class="control-label"><strong>Presets</strong><span>shared RangePlan</span></div>
+              <div class="control-label"><strong>Presets</strong><span>range + object</span></div>
               <div class="swatches">
                 <button data-preset="mint" data-active="true">Mint / Violet</button>
                 <button data-preset="sunset">Sunset / Cream</button>
@@ -400,11 +420,11 @@
                 <div class="scope-list" id="range-list"></div>
               </div>
               <div class="scope-section">
-                <div class="scope-section-label"><span class="scope-pill object">OBJECT</span><span>当前文本对象的 object plan</span></div>
+                <div class="scope-section-label"><span class="scope-pill object">OBJECT</span><span>当前文本对象的 object plan · glow 是共享光晕</span></div>
                 <div class="scope-list" id="object-list"></div>
               </div>
             </div>
-            <p class="note">这不是 mock。右侧读数和 scope map 都来自组件最近一次生成的 <code>getRenderPlan()</code>；修改文本会重新生成 glyph stream、range plan 和 object plan。</p>
+            <p class="note">这不是 mock。右侧读数和 scope map 都来自组件最近一次生成的 <code>getRenderPlan()</code>；修改文本会重新生成 glyph stream、range plan 和 object plan。Demo 预留固定 effect budget，因此调 blur 不会反复重建 surface；每个 range 的 shadow 则从自己的 glyph source 单独生成。</p>
           </div>
         </aside>
       </section>

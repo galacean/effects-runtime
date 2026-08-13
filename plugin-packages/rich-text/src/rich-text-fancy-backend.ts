@@ -9,7 +9,10 @@ export interface TextEffectPadding {
 }
 
 /** Computes conservative symmetric padding for the current GE fancy layers. */
-export function calculateTextEffectPadding (textStyle: TextStyle): TextEffectPadding {
+export function calculateTextEffectPadding (
+  textStyle: TextStyle,
+  rangeFancyLayers: Record<string, FancyRenderLayer[]> = {},
+): TextEffectPadding {
   const outlinePad = textStyle.isOutlined && textStyle.outlineWidth > 0
     ? Math.ceil(textStyle.outlineWidth * 2)
     : 0;
@@ -19,7 +22,16 @@ export function calculateTextEffectPadding (textStyle: TextStyle): TextEffectPad
   let glowPad = 0;
   let strokePad = 0;
 
-  for (const layer of textStyle.fancyRenderStyle?.layers ?? []) {
+  const rangeLayers = Object.keys(rangeFancyLayers).reduce<FancyRenderLayer[]>(
+    (allLayers, sourceRangeId) => allLayers.concat(rangeFancyLayers[sourceRangeId]),
+    [],
+  );
+  const layers = [
+    ...(textStyle.fancyRenderStyle?.layers ?? []),
+    ...rangeLayers,
+  ];
+
+  for (const layer of layers) {
     if (layer.kind === 'glow') {
       glowPad = Math.max(glowPad, Math.ceil(layer.params.blur * Math.max(1, layer.params.intensity)));
     } else if (layer.kind === 'shadow') {
@@ -52,10 +64,9 @@ function colorToCss (color: spec.vec4): string {
 /**
  * Canvas backend for the first RichText fancy slice.
  *
- * Range parameters are shared in v1, but glyph ownership remains range-aware.
- * Each shadow layer is rendered from the ranges that own that layer. This keeps
- * the range-level shadow seam explicit while still allowing shared parameters
- * to be batched into one shadow surface.
+ * Range effects are rendered from the glyphs that own each layer. Ranges with
+ * identical parameters can share a group; ranges with different parameters get
+ * different source surfaces and blur passes. Object effects remain separate.
  */
 export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRenderingContext2D> {
   private readonly rawLayersById: Map<string, FancyRenderLayer>;
@@ -89,24 +100,18 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     context.globalCompositeOperation = 'source-over';
     context.drawImage(contentCanvas, 0, 0);
 
-    // destination-over keeps effects behind the already drawn content.
+    // Paint range shadows before the object glow. Both effects stay behind the
+    // text, but this ordering prevents the shared glow halo from hiding the
+    // per-range shadow differences in the demo and in real compositions.
+    for (const group of shadowGroups) {
+      const shadowSurface = this.createShadowSurface(plan, group, context, contentTransform);
+
+      if (shadowSurface) {
+        this.compositeShadow(context, shadowSurface);
+      }
+    }
     for (const layerPlan of glows) {
       this.compositeGlow(context, contentCanvas, layerPlan);
-    }
-    for (const group of shadowGroups) {
-      const shadowSurface = document.createElement('canvas');
-
-      shadowSurface.width = context.canvas.width;
-      shadowSurface.height = context.canvas.height;
-      const shadowContext = shadowSurface.getContext('2d');
-
-      if (!shadowContext) {
-        continue;
-      }
-
-      shadowContext.setTransform(contentTransform);
-      this.renderShadowSource(plan, shadowContext, group.ranges);
-      this.compositeShadow(context, shadowSurface, group.layerPlan);
     }
 
     context.restore();
@@ -151,14 +156,67 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private renderShadowSource (
+  private createShadowSurface (
     plan: TextRenderPlan,
-    context: CanvasRenderingContext2D,
-    ranges: RangePlan[],
-  ): void {
-    // Shadow is range-owned, but its source is the complete visible content
-    // for those ranges, including object-level gradient/texture paint.
-    this.renderContent(plan, context, ranges);
+    group: { layerPlan: TextRenderLayerPlan, ranges: RangePlan[] },
+    target: CanvasRenderingContext2D,
+    contentTransform: DOMMatrix,
+  ): HTMLCanvasElement | undefined {
+    if (group.layerPlan.layer.kind !== 'shadow') {
+      return undefined;
+    }
+
+    // First render only the glyphs owned by this range/layer group. Keeping a
+    // dedicated source surface is important: the blur must never consume the
+    // complete text object, otherwise changing one range's shadow changes all
+    // ranges visually.
+    const sourceSurface = document.createElement('canvas');
+
+    sourceSurface.width = target.canvas.width;
+    sourceSurface.height = target.canvas.height;
+    const sourceContext = sourceSurface.getContext('2d');
+
+    if (!sourceContext) {
+      return undefined;
+    }
+
+    sourceContext.setTransform(contentTransform);
+    this.renderContent(plan, sourceContext, group.ranges);
+
+    const shadowSurface = document.createElement('canvas');
+
+    shadowSurface.width = target.canvas.width;
+    shadowSurface.height = target.canvas.height;
+    const shadowContext = shadowSurface.getContext('2d');
+
+    if (!shadowContext) {
+      return undefined;
+    }
+
+    const { color, blur, offsetX, offsetY } = group.layerPlan.layer.params;
+    const scaleX = Math.hypot(contentTransform.a, contentTransform.b) || 1;
+    const scaleY = Math.hypot(contentTransform.c, contentTransform.d) || 1;
+    const blurScale = Math.max(scaleX, scaleY);
+
+    // Draw the range source with Canvas's shadow state, then remove the
+    // original glyph pixels. The resulting surface contains shadow only, so
+    // each range is composited independently and cannot paint another range's
+    // source glyphs or inherit a previous group's context state.
+    shadowContext.save();
+    shadowContext.shadowColor = colorToCss(color);
+    shadowContext.shadowBlur = blur * blurScale;
+    shadowContext.shadowOffsetX = offsetX * scaleX;
+    shadowContext.shadowOffsetY = offsetY * scaleY;
+    shadowContext.drawImage(sourceSurface, 0, 0);
+    shadowContext.restore();
+
+    shadowContext.save();
+    shadowContext.globalCompositeOperation = 'destination-out';
+    shadowContext.setTransform(1, 0, 0, 1, 0, 0);
+    shadowContext.drawImage(sourceSurface, 0, 0);
+    shadowContext.restore();
+
+    return shadowSurface;
   }
 
   private drawStroke (
@@ -344,16 +402,8 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     context.restore();
   }
 
-  private compositeShadow (context: CanvasRenderingContext2D, surface: HTMLCanvasElement, layerPlan: TextRenderLayerPlan): void {
-    if (layerPlan.layer.kind !== 'shadow') {
-      return;
-    }
-
+  private compositeShadow (context: CanvasRenderingContext2D, surface: HTMLCanvasElement): void {
     context.save();
-    context.shadowColor = colorToCss(layerPlan.layer.params.color);
-    context.shadowBlur = layerPlan.layer.params.blur;
-    context.shadowOffsetX = layerPlan.layer.params.offsetX;
-    context.shadowOffsetY = layerPlan.layer.params.offsetY;
     context.globalCompositeOperation = 'destination-over';
     context.drawImage(surface, 0, 0);
     context.restore();

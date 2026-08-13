@@ -142,6 +142,104 @@ describe('rich-text/render-plan', () => {
     expect(plan.geometry.contentBounds).to.eql({ x: 7, y: 5, width: 35, height: 60 });
   });
 
+  it('assigns independent range layers and keeps unmapped ranges on the shared plan', () => {
+    const sharedLayers: FancyRenderLayer[] = [
+      {
+        kind: 'single-stroke',
+        category: 'base',
+        params: { color: [0, 0, 0, 1], width: 1, unit: 'px' },
+      },
+      {
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: [0, 0, 0, 1], blur: 2, offsetX: 1, offsetY: 1 },
+      },
+      {
+        kind: 'solid-fill',
+        category: 'base',
+        params: { color: [1, 1, 1, 1] },
+      },
+    ];
+    const rangeLayers = {
+      'range-0': [
+        {
+          kind: 'single-stroke' as const,
+          category: 'base' as const,
+          params: { color: [1, 0, 0, 1] as spec.vec4, width: 7, unit: 'px' as const },
+        },
+        {
+          kind: 'shadow' as const,
+          category: 'decorative' as const,
+          params: { color: [1, 0, 0, 1] as spec.vec4, blur: 13, offsetX: 3, offsetY: 5 },
+        },
+        {
+          kind: 'solid-fill' as const,
+          category: 'base' as const,
+          params: { color: [1, 1, 1, 1] as spec.vec4 },
+        },
+      ],
+      'range-2': [
+        {
+          kind: 'single-stroke' as const,
+          category: 'base' as const,
+          params: { color: [0, 0, 1, 1] as spec.vec4, width: 3, unit: 'px' as const },
+        },
+        {
+          kind: 'shadow' as const,
+          category: 'decorative' as const,
+          params: { color: [0, 0, 1, 1] as spec.vec4, blur: 4, offsetX: -2, offsetY: 2 },
+        },
+        {
+          kind: 'solid-fill' as const,
+          category: 'base' as const,
+          params: { color: [1, 1, 1, 1] as spec.vec4 },
+        },
+      ],
+    };
+    const options = parseRichTextOptions(
+      '<color=#ff0000ff>A</color>B<color=#0000ffff>C</color>',
+      textStyle,
+      rangeLayers,
+    );
+    const plan = buildRichTextRenderPlan({
+      textStyle,
+      wrapResult: {
+        lines: [{
+          richOptions: options,
+          offsetX: [0, 10, 20],
+          width: 30,
+          lineHeight: 20,
+          offsetY: 0,
+          chars: [[{ char: 'A', x: 0 }], [{ char: 'B', x: 0 }], [{ char: 'C', x: 0 }]],
+        }],
+        maxLineWidth: 30,
+        totalHeight: 20,
+        bboxTop: -15,
+        bboxBottom: 5,
+        bboxHeight: 20,
+      },
+      horizontalAlignResult: { lineOffsets: [0] },
+      verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
+      overflowResult: { canvasWidth: 30, canvasHeight: 20, renderOffsetX: 0, renderOffsetY: 0 },
+      layers: sharedLayers,
+    });
+
+    const getLayer = (sourceRangeId: string, kind: 'single-stroke' | 'shadow') => {
+      const range = plan.rangePlans.find(item => item.sourceRangeId === sourceRangeId);
+      const layer = range?.layers.find(item => item.layer.kind === kind);
+
+      return layer;
+    };
+
+    expect(getLayer('range-0', 'single-stroke')?.layer).to.have.property('params').that.deep.includes({ width: 7 });
+    expect(getLayer('range-0', 'shadow')?.layer).to.have.property('params').that.deep.includes({ blur: 13 });
+    expect(getLayer('range-2', 'single-stroke')?.layer).to.have.property('params').that.deep.includes({ width: 3 });
+    expect(getLayer('range-2', 'shadow')?.layer).to.have.property('params').that.deep.includes({ blur: 4 });
+    expect(getLayer('range-1', 'single-stroke')?.layer).to.have.property('params').that.deep.includes({ width: 1 });
+    expect(getLayer('range-1', 'shadow')?.layer).to.have.property('params').that.deep.includes({ blur: 2 });
+    expect(getLayer('range-0', 'single-stroke')?.layerId).to.not.equal(getLayer('range-2', 'single-stroke')?.layerId);
+  });
+
   it('computes padding from range and object fancy layers', () => {
     const style = new TextStyle({ text: '', fontSize: 20, fontFamily: 'Arial' });
 
@@ -171,6 +269,103 @@ describe('rich-text/render-plan', () => {
       top: 23,
       bottom: 23,
     });
+
+    expect(calculateTextEffectPadding(style, {
+      'range-0': [{
+        kind: 'single-stroke',
+        category: 'base',
+        params: { color: [1, 1, 1, 1], width: 9, unit: 'px' },
+      }, {
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: [0, 0, 0, 1], blur: 18, offsetX: 3, offsetY: 4 },
+      }],
+    })).to.eql({
+      left: 46,
+      right: 46,
+      top: 46,
+      bottom: 46,
+    });
+  });
+
+  it('composites a range shadow from only that range\'s glyph source', () => {
+    const makeRangeLayers = (blur: number, color: spec.vec4): FancyRenderLayer[] => [
+      {
+        kind: 'single-stroke',
+        category: 'base',
+        params: { color, width: 1, unit: 'px' },
+      },
+      {
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color, blur, offsetX: 2, offsetY: 2 },
+      },
+      {
+        kind: 'solid-fill',
+        category: 'base',
+        params: { color },
+      },
+    ];
+    const makePlan = (firstRangeBlur: number): ReturnType<typeof buildRichTextRenderPlan> => {
+      const rangeLayers = {
+        'range-0': makeRangeLayers(firstRangeBlur, [1, 0, 0, 1]),
+        'range-1': makeRangeLayers(3, [0, 0, 1, 1]),
+      };
+      const options = parseRichTextOptions(
+        '<color=#ff0000ff>A</color><color=#0000ffff>B</color>',
+        textStyle,
+        rangeLayers,
+      );
+
+      return buildRichTextRenderPlan({
+        textStyle,
+        wrapResult: {
+          lines: [{
+            richOptions: options,
+            offsetX: [0, 0],
+            width: 90,
+            lineHeight: 30,
+            offsetY: 0,
+            chars: [[{ char: 'A', x: 10 }], [{ char: 'B', x: 65 }]],
+          }],
+          maxLineWidth: 90,
+          totalHeight: 30,
+          bboxTop: -24,
+          bboxBottom: 6,
+          bboxHeight: 30,
+        },
+        horizontalAlignResult: { lineOffsets: [0] },
+        verticalAlignResult: { baselineY: 30, lineYOffsets: [0] },
+        overflowResult: { canvasWidth: 100, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
+        layers: [],
+      });
+    };
+    const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
+      const canvas = document.createElement('canvas');
+
+      canvas.width = 100;
+      canvas.height = 50;
+      const context = canvas.getContext('2d')!;
+
+      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+
+      return context.getImageData(0, 0, canvas.width, canvas.height).data;
+    };
+    const before = render(makePlan(1));
+    const after = render(makePlan(16));
+    let changedPixelsOutsideFirstRange = 0;
+
+    for (let y = 0; y < 50; y++) {
+      for (let x = 45; x < 100; x++) {
+        const offset = (y * 100 + x) * 4;
+
+        if (before[offset] !== after[offset] || before[offset + 1] !== after[offset + 1] || before[offset + 2] !== after[offset + 2] || before[offset + 3] !== after[offset + 3]) {
+          changedPixelsOutsideFirstRange++;
+        }
+      }
+    }
+
+    expect(changedPixelsOutsideFirstRange).to.equal(0);
   });
 
   it('renders range fill/stroke and object glow on the Canvas backend', () => {

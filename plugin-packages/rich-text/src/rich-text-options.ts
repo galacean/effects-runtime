@@ -1,6 +1,8 @@
-import { spec, type TextStyle } from '@galacean/effects';
+import { spec, type FancyRenderLayer, type TextStyle } from '@galacean/effects';
 import { toRGBA } from './color-utils';
 import { generateProgram } from './rich-text-parser';
+
+export type RichTextRangeFancyLayers = Record<string, FancyRenderLayer[]>;
 
 export interface RichTextOptions {
   text: string,
@@ -12,10 +14,16 @@ export interface RichTextOptions {
   isNewLine: boolean,
   /** Stable id of the parser range. It remains unchanged after wrapping. */
   sourceRangeId: string,
+  /** Optional range-level fancy layers, resolved before layout is split into lines. */
+  rangeFancyLayers?: FancyRenderLayer[],
 }
 
 /** Parses RichText markup into deterministic source ranges. */
-export function parseRichTextOptions (text: string, textStyle: TextStyle): RichTextOptions[] {
+export function parseRichTextOptions (
+  text: string,
+  textStyle: TextStyle,
+  rangeFancyLayersById?: RichTextRangeFancyLayers,
+): RichTextOptions[] {
   const optionsList: RichTextOptions[] = [];
   let sourceRangeIndex = 0;
   const program = generateProgram((rangeText, context) => {
@@ -32,6 +40,7 @@ export function parseRichTextOptions (text: string, textStyle: TextStyle): RichT
         fontSize: textStyle.fontSize,
         isNewLine: index > 0,
         sourceRangeId,
+        rangeFancyLayers: rangeFancyLayersById?.[sourceRangeId],
       };
 
       if ('b' in context) {

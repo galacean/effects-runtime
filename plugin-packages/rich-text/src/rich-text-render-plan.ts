@@ -124,12 +124,28 @@ export function buildRichTextRenderPlan (options: RichTextRenderPlanOptions): Te
     }
   });
 
-  const { rangeLayers, objectLayers } = createTextRenderLayerPlans(layers);
+  const { rangeLayers: sharedRangeLayers, objectLayers } = createTextRenderLayerPlans(layers);
+  const rangeLayerPlansBySourceId = new Map<string, ReturnType<typeof createTextRenderLayerPlans>['rangeLayers']>();
+
+  wrapResult.lines.forEach(line => {
+    line.richOptions.forEach(richOptions => {
+      if (rangeLayerPlansBySourceId.has(richOptions.sourceRangeId)) {
+        return;
+      }
+
+      const rangeLayers = richOptions.rangeFancyLayers
+        ? createTextRenderLayerPlans(richOptions.rangeFancyLayers, `range-${richOptions.sourceRangeId}`).rangeLayers
+        : sharedRangeLayers;
+
+      rangeLayerPlansBySourceId.set(richOptions.sourceRangeId, rangeLayers);
+    });
+  });
+
   const rangePlans: RangePlan[] = Array.from(glyphIdsByRange, ([sourceRangeId, glyphIds]) => ({
     sourceRangeId,
     glyphIds,
     basicStyle: styleByRange.get(sourceRangeId) ?? { fontRef: textStyle.fontDesc },
-    layers: rangeLayers,
+    layers: rangeLayerPlansBySourceId.get(sourceRangeId) ?? sharedRangeLayers,
   }));
   const padding = {
     left: options.padding?.left ?? 0,
