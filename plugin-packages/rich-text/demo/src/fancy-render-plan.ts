@@ -16,6 +16,8 @@ const glyphCount = document.getElementById('glyph-count');
 const rangeCount = document.getElementById('range-count');
 const paddingReadout = document.getElementById('padding-readout');
 const surfaceReadout = document.getElementById('surface-readout');
+const rangeList = document.getElementById('range-list');
+const objectList = document.getElementById('object-list');
 
 const palettes = {
   mint: {
@@ -79,28 +81,60 @@ function createFancyOptions (paletteName: PaletteName) {
       presetName: `rich-text-${paletteName}`,
       layers: [
         {
-          kind: 'shadow' as const,
-          category: 'decorative' as const,
-          params: { color: palette.shadow, blur: shadowBlur, offsetX: 4, offsetY: 7 },
-        },
-        {
           kind: 'single-stroke' as const,
           category: 'base' as const,
           params: { color: palette.stroke, width: strokeWidth, unit: 'px' as const },
+          decorations: [
+            {
+              kind: 'shadow' as const,
+              category: 'decorative' as const,
+              params: { color: palette.shadow, blur: shadowBlur, offsetX: 4, offsetY: 7 },
+            },
+            {
+              kind: 'glow' as const,
+              category: 'decorative' as const,
+              params: { color: palette.glow, blur: glowBlur, intensity: 1 },
+            },
+          ],
         },
         {
-          kind: 'gradient' as const,
+          kind: 'solid-fill' as const,
           category: 'base' as const,
-          params: { colors, angle: 0 },
-        },
-        {
-          kind: 'glow' as const,
-          category: 'decorative' as const,
-          params: { color: palette.glow, blur: glowBlur, intensity: 1 },
+          params: { color: colors[0] },
         },
       ],
     },
   };
+}
+
+function colorToHex (color: readonly number[] | undefined): string {
+  if (!color) {
+    return '#ffffff';
+  }
+
+  return `#${color.slice(0, 3).map(channel => Math.round(channel > 1 ? channel : channel * 255).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function updateScopeMap (plan: NonNullable<ReturnType<RichTextComponent['getRenderPlan']>>): void {
+  if (rangeList) {
+    rangeList.innerHTML = plan.rangePlans.map(range => `
+      <div class="scope-row">
+        <span class="scope-dot" style="background:${colorToHex(range.basicStyle.fillColor)}"></span>
+        <code>${range.sourceRangeId}</code>
+        <span>${range.glyphIds.length} glyphs · ${range.layers.map(layer => layer.layer.kind).join(' · ')}</span>
+      </div>
+    `).join('');
+  }
+
+  if (objectList) {
+    objectList.innerHTML = plan.objectPlan.layers.map(layer => `
+      <div class="scope-row object-row">
+        <span class="scope-tag">OBJECT</span>
+        <code>${layer.layer.kind}</code>
+        <span>one shared pass</span>
+      </div>
+    `).join('');
+  }
 }
 
 function updateReadout (): void {
@@ -111,6 +145,8 @@ function updateReadout (): void {
   }
 
   const { padding, renderSize } = plan.geometry;
+
+  updateScopeMap(plan);
 
   if (glyphCount) {
     glyphCount.textContent = String(plan.glyphs.length);

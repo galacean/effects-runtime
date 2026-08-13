@@ -148,6 +148,108 @@
       #J-container canvas { display: block; }
 
       .inspector-body { padding: 20px; }
+      .scope-banner {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 22px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255,255,255,.025);
+      }
+      .scope-lane {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px 10px;
+        align-items: center;
+      }
+      .scope-lane small {
+        grid-column: 2;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .scope-pill, .scope-tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 58px;
+        border-radius: 999px;
+        padding: 5px 7px;
+        font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .08em;
+      }
+      .scope-pill.range {
+        color: #07110e;
+        background: var(--accent);
+      }
+      .scope-pill.object {
+        color: #100d25;
+        background: #a99fff;
+      }
+      .scope-arrow {
+        padding-left: 4px;
+        color: rgba(255,255,255,.38);
+        font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+      .scope-title { margin: 0; font-size: 12px; }
+      .scope-map {
+        display: grid;
+        gap: 14px;
+        margin: 20px 0 4px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+      .scope-map-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .scope-map-head span {
+        color: var(--muted);
+        font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+      }
+      .scope-section { display: grid; gap: 8px; }
+      .scope-section-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #cbd4e2;
+        font-size: 11px;
+      }
+      .scope-section-label .scope-pill { min-width: 50px; padding: 4px 6px; }
+      .scope-list { display: grid; gap: 5px; }
+      .scope-row {
+        display: grid;
+        grid-template-columns: 8px auto minmax(0, 1fr);
+        gap: 7px;
+        align-items: center;
+        min-width: 0;
+        border: 1px solid rgba(255,255,255,.06);
+        border-radius: 8px;
+        padding: 7px 8px;
+        color: var(--muted);
+        background: rgba(255,255,255,.018);
+        font-size: 10px;
+      }
+      .scope-row code { font-size: 10px; }
+      .scope-row > span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .scope-dot { width: 8px; height: 8px; border-radius: 50%; }
+      .object-row { grid-template-columns: auto auto minmax(0, 1fr); }
+      .scope-tag {
+        min-width: 48px;
+        padding: 4px 5px;
+        color: #100d25;
+        background: #a99fff;
+      }
       .control-group + .control-group { margin-top: 22px; }
       .control-label {
         display: flex;
@@ -247,6 +349,19 @@
             <span class="status">Canvas</span>
           </header>
           <div class="inspector-body">
+            <div class="scope-banner">
+              <div class="scope-lane">
+                <span class="scope-pill range">RANGE</span>
+                <strong class="scope-title">每个 source range 独立拥有</strong>
+                <small>fill · stroke · shadow：可以按 range 分组或合批</small>
+              </div>
+              <div class="scope-arrow">↓ object composition</div>
+              <div class="scope-lane">
+                <span class="scope-pill object">OBJECT</span>
+                <strong class="scope-title">整段文本共享一次合成</strong>
+                <small>glow：消费文本 surface，不逐字重复配置</small>
+              </div>
+            </div>
             <div class="control-group">
               <label class="control-label" for="text"><strong>RichText input</strong><span>markup</span></label>
               <textarea id="text"><b><color=#75f0c7ff>Range A</color></b>  <color=#8a7dffff><i>Range B</i></color>
@@ -278,7 +393,18 @@
               <div class="metric"><span>Padding</span><strong id="padding-readout">—</strong></div>
               <div class="metric"><span>Surface</span><strong id="surface-readout">—</strong></div>
             </div>
-            <p class="note">这不是 mock。右侧读数来自组件最近一次生成的 <code>getRenderPlan()</code>；修改文本会重新生成 glyph stream 和 range plan。</p>
+            <div class="scope-map">
+              <div class="scope-map-head"><strong class="scope-title">Runtime scope map</strong><span>from TextRenderPlan</span></div>
+              <div class="scope-section">
+                <div class="scope-section-label"><span class="scope-pill range">RANGE</span><span>当前文本对象的 range table</span></div>
+                <div class="scope-list" id="range-list"></div>
+              </div>
+              <div class="scope-section">
+                <div class="scope-section-label"><span class="scope-pill object">OBJECT</span><span>当前文本对象的 object plan</span></div>
+                <div class="scope-list" id="object-list"></div>
+              </div>
+            </div>
+            <p class="note">这不是 mock。右侧读数和 scope map 都来自组件最近一次生成的 <code>getRenderPlan()</code>；修改文本会重新生成 glyph stream、range plan 和 object plan。</p>
           </div>
         </aside>
       </section>
