@@ -1,7 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import type { Material } from '../../material';
-import { Texture } from '../../texture';
+import { Texture, TextureSourceType } from '../../texture';
 import type { ItemRenderer } from '../../components';
 import type { VFXItem } from '../../vfx-item';
 import type { BaseLayout } from './base-layout';
@@ -306,7 +306,7 @@ export class TextComponentBase {
     height: number,
     flipY: boolean,
     drawCallback: (ctx: CanvasRenderingContext2D) => void,
-    options: { disposeOld?: boolean } = {}
+    options: { disposeOld?: boolean, reuseExisting?: boolean } = {}
   ): void {
     if (!this.context || !this.canvas) {
       return;
@@ -344,15 +344,33 @@ export class TextComponentBase {
     // 创建纹理前恢复状态
     context.restore();
 
-    // 创建新纹理
     const imageData = context.getImageData(0, 0, textureWidth, textureHeight);
+    const data = {
+      data: new Uint8Array(imageData.data),
+      width: imageData.width,
+      height: imageData.height,
+    };
+    const currentTexture = this.renderer.texture;
+    const canReuseTexture = options.reuseExisting === true &&
+      currentTexture &&
+      currentTexture !== this.engine.whiteTexture &&
+      !currentTexture.isDestroyed &&
+      currentTexture.sourceType === TextureSourceType.data &&
+      currentTexture.width === textureWidth &&
+      currentTexture.height === textureHeight;
+
+    if (canReuseTexture) {
+      // Updating the existing GPU texture avoids deleting/rebinding a texture
+      // on every interactive slider event. This keeps unaffected glyph ranges
+      // stable while the current text surface is being refreshed.
+      currentTexture.updateSource({ data });
+
+      return;
+    }
+
     const texture = Texture.createWithData(
       this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
+      data,
       {
         flipY,
         magFilter: glContext.LINEAR,

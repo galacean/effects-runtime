@@ -509,7 +509,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       context.translate(padding.left, padding.top);
       // ── 步骤 6: 绘制 ──
       backend.render(renderPlan, context);
-    });
+    }, { reuseExisting: true });
 
     this.isDirty = false;
   }
