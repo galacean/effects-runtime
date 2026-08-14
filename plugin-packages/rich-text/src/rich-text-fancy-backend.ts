@@ -231,6 +231,14 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
 
     const { color, width } = layerPlan.layer.params;
 
+    // Canvas 2D ignores lineWidth = 0 and keeps the previous valid width.
+    // Treat a non-positive fancy stroke as disabled explicitly; otherwise a
+    // zero-width range can accidentally reuse the preceding range's stroke
+    // width and make its shadow/glow source brighter.
+    if (!(width > 0)) {
+      return;
+    }
+
     for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
         glyphContext.strokeStyle = colorToCss(color);

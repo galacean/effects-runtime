@@ -368,6 +368,86 @@ describe('rich-text/render-plan', () => {
     expect(changedPixelsOutsideFirstRange).to.equal(0);
   });
 
+  it('treats a zero-width range stroke as disabled', () => {
+    const makeRangeLayers = (strokeWidth: number | undefined, color: spec.vec4): FancyRenderLayer[] => [
+      ...(strokeWidth === undefined ? [] : [{
+        kind: 'single-stroke' as const,
+        category: 'base' as const,
+        params: { color, width: strokeWidth, unit: 'px' as const },
+      }]),
+      {
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: [0, 0, 0, 0.8], blur: 4, offsetX: 1, offsetY: 2 },
+      },
+      {
+        kind: 'solid-fill',
+        category: 'base',
+        params: { color },
+      },
+    ];
+    const makePlan = (firstStrokeWidth: number | undefined): ReturnType<typeof buildRichTextRenderPlan> => {
+      const rangeLayers = {
+        'range-0': makeRangeLayers(firstStrokeWidth, [1, 0, 0, 1]),
+        'range-1': makeRangeLayers(4, [0, 0, 1, 1]),
+      };
+      const options = parseRichTextOptions(
+        '<color=#ff0000ff>A</color><color=#0000ffff>B</color>',
+        textStyle,
+        rangeLayers,
+      );
+
+      return buildRichTextRenderPlan({
+        textStyle,
+        wrapResult: {
+          lines: [{
+            richOptions: options,
+            offsetX: [0, 0],
+            width: 70,
+            lineHeight: 30,
+            offsetY: 0,
+            chars: [[{ char: 'A', x: 10 }], [{ char: 'B', x: 45 }]],
+          }],
+          maxLineWidth: 70,
+          totalHeight: 30,
+          bboxTop: -15,
+          bboxBottom: 15,
+          bboxHeight: 30,
+        },
+        horizontalAlignResult: { lineOffsets: [0] },
+        verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
+        overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
+        layers: [],
+      });
+    };
+    const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
+      const canvas = document.createElement('canvas');
+
+      canvas.width = 80;
+      canvas.height = 50;
+      const context = canvas.getContext('2d')!;
+
+      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+
+      return context.getImageData(0, 0, canvas.width, canvas.height).data;
+    };
+    const zeroWidth = render(makePlan(0));
+    const noStroke = render(makePlan(undefined));
+    let changedPixelsInFirstRange = 0;
+
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 35; x++) {
+        const offset = (y * 80 + x) * 4;
+
+        if (zeroWidth[offset] !== noStroke[offset] || zeroWidth[offset + 1] !== noStroke[offset + 1] || zeroWidth[offset + 2] !== noStroke[offset + 2] || zeroWidth[offset + 3] !== noStroke[offset + 3]) {
+          changedPixelsInFirstRange++;
+        }
+      }
+    }
+
+    expect(changedPixelsInFirstRange).to.equal(0);
+  });
+
   it('renders range fill/stroke and object glow on the Canvas backend', () => {
     const options = parseRichTextOptions('<color=#ff0000ff>A</color>', textStyle);
     const layers: FancyRenderLayer[] = [
