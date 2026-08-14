@@ -22,7 +22,6 @@ const rangeList = document.getElementById('range-list');
 const objectList = document.getElementById('object-list');
 
 type PaletteName = 'mint' | 'sunset' | 'mono';
-type ScopeId = string;
 type ColorHex = string;
 
 interface RangePreset {
@@ -138,7 +137,7 @@ let currentPalette: PaletteName = 'mint';
 let editorText = defaultText;
 let sharedStyle: SharedStyle;
 let segments: SegmentState[];
-let activeScope: ScopeId = 'object';
+let selectedSegmentIds: string[] = [];
 let richText: RichTextComponent | undefined;
 let renderComposition: (() => void) | undefined;
 let nextSegmentId = 1;
@@ -308,14 +307,40 @@ function styleForSegment (segment: SegmentState): StyleState {
   return segment.override ? segment.style : sharedStyle;
 }
 
-function activeSegment (): SegmentState | undefined {
-  return activeScope === 'object' ? undefined : segments.find(segment => segment.id === activeScope);
+function selectedSegmentEntries (): Array<{ segment: SegmentState, index: number, displayIndex: number }> {
+  const start = Math.min(lastSelection.start, lastSelection.end);
+  const end = Math.max(lastSelection.start, lastSelection.end);
+  const hasRange = end > start;
+  const hasFocusedCaret = document.activeElement === textInput;
+  let matches = segments
+    .map((segment, index) => ({ segment, index }))
+    .filter(({ segment }) => {
+      if (!segmentText(segment).trim()) {
+        return false;
+      }
+      if (hasRange) {
+        return segment.start < end && segment.end > start;
+      }
+      if (hasFocusedCaret) {
+        return segment.start <= start && start < segment.end;
+      }
+
+      return false;
+    });
+
+  if (selectedSegmentIds.length > 0 && !hasRange && !hasFocusedCaret) {
+    matches = segments
+      .map((segment, index) => ({ segment, index }))
+      .filter(({ segment }) => selectedSegmentIds.includes(segment.id) && segmentText(segment).trim());
+  }
+
+  const displayIndexById = new Map(meaningfulSegments().map(entry => [entry.segment.id, entry.displayIndex]));
+
+  return matches.map(({ segment, index }) => ({ segment, index, displayIndex: displayIndexById.get(segment.id) ?? 0 }));
 }
 
-function activeStyle (): StyleState {
-  const segment = activeSegment();
-
-  return segment ? styleForSegment(segment) : sharedStyle;
+function selectedSegments (): SegmentState[] {
+  return selectedSegmentEntries().map(entry => entry.segment);
 }
 
 function ensureSegmentOverride (segment: SegmentState): StyleState {
@@ -328,48 +353,53 @@ function ensureSegmentOverride (segment: SegmentState): StyleState {
 }
 
 function setStyleField (field: StyleField, value: string | number | boolean): void {
-  const target = activeSegment() ? ensureSegmentOverride(activeSegment()!) : sharedStyle;
+  const targets = selectedSegments();
+  const styles = targets.length > 0
+    ? targets.map(segment => ensureSegmentOverride(segment))
+    : [sharedStyle];
 
-  switch (field) {
-    case 'fillVisible': target.fillVisible = Boolean(value);
+  for (const target of styles) {
+    switch (field) {
+      case 'fillVisible': target.fillVisible = Boolean(value);
 
-      break;
-    case 'fillColor': target.fillColor = String(value);
+        break;
+      case 'fillColor': target.fillColor = String(value);
 
-      break;
-    case 'fillOpacity': target.fillOpacity = Number(value);
+        break;
+      case 'fillOpacity': target.fillOpacity = Number(value);
 
-      break;
-    case 'strokeVisible': target.strokeVisible = Boolean(value);
+        break;
+      case 'strokeVisible': target.strokeVisible = Boolean(value);
 
-      break;
-    case 'strokeColor': target.strokeColor = String(value);
+        break;
+      case 'strokeColor': target.strokeColor = String(value);
 
-      break;
-    case 'strokeOpacity': target.strokeOpacity = Number(value);
+        break;
+      case 'strokeOpacity': target.strokeOpacity = Number(value);
 
-      break;
-    case 'strokeWidth': target.strokeWidth = Number(value);
+        break;
+      case 'strokeWidth': target.strokeWidth = Number(value);
 
-      break;
-    case 'shadowVisible': target.shadowVisible = Boolean(value);
+        break;
+      case 'shadowVisible': target.shadowVisible = Boolean(value);
 
-      break;
-    case 'shadowColor': target.shadowColor = String(value);
+        break;
+      case 'shadowColor': target.shadowColor = String(value);
 
-      break;
-    case 'shadowOpacity': target.shadowOpacity = Number(value);
+        break;
+      case 'shadowOpacity': target.shadowOpacity = Number(value);
 
-      break;
-    case 'shadowBlur': target.shadowBlur = Number(value);
+        break;
+      case 'shadowBlur': target.shadowBlur = Number(value);
 
-      break;
-    case 'shadowDistance': target.shadowDistance = Number(value);
+        break;
+      case 'shadowDistance': target.shadowDistance = Number(value);
 
-      break;
-    case 'shadowAngle': target.shadowAngle = Number(value);
+        break;
+      case 'shadowAngle': target.shadowAngle = Number(value);
 
-      break;
+        break;
+    }
   }
 }
 
@@ -509,9 +539,15 @@ function updateScopeSummary (): void {
     return;
   }
 
-  const segment = activeSegment();
+  const selected = selectedSegmentEntries();
 
-  scopeSummary.textContent = segment ? `片段 · ${segmentLabel(segment)}` : '全文 · 默认样式';
+  if (selected.length === 0) {
+    scopeSummary.textContent = '全文 · 默认样式';
+  } else if (selected.length === 1) {
+    scopeSummary.textContent = `片段 · ${segmentLabel(selected[0].segment)}`;
+  } else {
+    scopeSummary.textContent = `已选 ${selected.length} 个片段 · 批量修改`;
+  }
 }
 
 function renderPresets (): void {
@@ -539,24 +575,12 @@ function renderScopes (): void {
     return;
   }
 
-  const buttons = [`<button class="scope-button object" type="button" data-scope="object" data-active="${activeScope === 'object'}"><span class="scope-dot"></span>全文</button>`];
+  const selected = selectedSegmentEntries();
+  const chips = selected.length === 0
+    ? '<span class="scope-button object" data-active="true"><span class="scope-dot"></span>全文</span>'
+    : selected.map(({ segment, displayIndex }) => `<span class="scope-button" data-active="true"><span class="scope-dot" style="background:${styleForSegment(segment).fillColor}"></span>片段 ${displayIndex + 1}</span>`).join('');
 
-  meaningfulSegments().forEach(({ segment, displayIndex }) => {
-    buttons.push(`<button class="scope-button" type="button" data-scope="${segment.id}" data-active="${activeScope === segment.id}"><span class="scope-dot" style="background:${styleForSegment(segment).fillColor}"></span>片段 ${displayIndex + 1}</button>`);
-  });
-  scopeSwitch.innerHTML = buttons.join('');
-  scopeSwitch.querySelectorAll<HTMLButtonElement>('[data-scope]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeScope = button.dataset.scope ?? 'object';
-      const segment = activeSegment();
-
-      if (segment && textInput) {
-        textInput.focus();
-        textInput.setSelectionRange(segment.start, segment.end);
-      }
-      renderEditor();
-    });
-  });
+  scopeSwitch.innerHTML = chips;
 }
 
 function renderSegments (): void {
@@ -564,37 +588,33 @@ function renderSegments (): void {
     return;
   }
 
+  const selectedIds = new Set(selectedSegmentEntries().map(entry => entry.segment.id));
+
   segmentList.innerHTML = meaningfulSegments().map(({ segment, displayIndex }) => {
     const style = styleForSegment(segment);
     const overrideLabel = segment.override ? '已自定义' : '继承全文';
+    const selectedLabel = selectedIds.has(segment.id) ? ' · 当前选择' : '';
 
-    return `<button class="segment-row" type="button" data-segment="${segment.id}" data-active="${activeScope === segment.id}">
+    return `<div class="segment-row" data-segment="${segment.id}" data-active="${selectedIds.has(segment.id)}">
       <span class="segment-dot" style="background:${style.fillColor}"></span>
-      <span class="segment-copy"><strong>片段 ${displayIndex + 1} · ${escapeHtml(segmentLabel(segment))}</strong><small>${overrideLabel} · ${segment.end - segment.start} 字</small></span>
-      <span class="segment-arrow">›</span>
-    </button>`;
+      <span class="segment-copy"><strong>片段 ${displayIndex + 1} · ${escapeHtml(segmentLabel(segment))}</strong><small>${overrideLabel}${selectedLabel} · ${segment.end - segment.start} 字</small></span>
+      <span class="segment-arrow">${selectedIds.has(segment.id) ? '●' : '·'}</span>
+    </div>`;
   }).join('');
-
-  segmentList.querySelectorAll<HTMLButtonElement>('[data-segment]').forEach(button => {
-    button.addEventListener('click', () => {
-      activeScope = button.dataset.segment ?? 'object';
-      const segment = activeSegment();
-
-      if (segment && textInput) {
-        textInput.focus();
-        textInput.setSelectionRange(segment.start, segment.end);
-      }
-      renderEditor();
-    });
-  });
 }
 
-function inheritanceMarkup (): string {
-  const segment = activeSegment();
-
-  if (!segment) {
+function inheritanceMarkup (selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+  if (selected.length === 0) {
     return '<div class="inherit-row"><span>全文默认样式</span><small>片段默认继承这套配置</small></div>';
   }
+
+  if (selected.length > 1) {
+    const overrideCount = selected.filter(entry => entry.segment.override).length;
+
+    return `<div class="inherit-row ${overrideCount > 0 ? 'override' : ''}"><span>已选 ${selected.length} 个片段 · ${overrideCount} 个已有自定义</span><button class="tool-button" type="button" data-action="toggle-inherit" ${overrideCount === 0 ? 'disabled' : ''}>${overrideCount > 0 ? '全部恢复继承' : '已全部继承'}</button></div>`;
+  }
+
+  const segment = selected[0].segment;
 
   return `<div class="inherit-row ${segment.override ? 'override' : ''}"><span>${segment.override ? '当前片段已覆盖全文默认' : '当前片段继承全文默认'}</span><button class="tool-button" type="button" data-action="toggle-inherit">${segment.override ? '恢复继承' : '编辑片段'}</button></div>`;
 }
@@ -609,10 +629,10 @@ function colorRow (label: string, field: StyleField | GlowField, value: ColorHex
   return `<div class="param-row wide"><label>${label}</label><input type="color" ${attribute}="${field}" value="${colorForInput(value)}" /></div>`;
 }
 
-function rangeRow (label: string, field: StyleField | GlowField, value: number, min: number, max: number, step: number): string {
+function rangeRow (label: string, field: StyleField | GlowField, value: number, min: number, max: number, step: number, outputValue: string | number = value): string {
   const attribute = controlAttribute(field);
 
-  return `<div class="param-row"><label>${label}</label><input type="range" ${attribute}="${field}" min="${min}" max="${max}" step="${step}" value="${value}" /><output data-output="${field}">${value}</output></div>`;
+  return `<div class="param-row"><label>${label}</label><input type="range" ${attribute}="${field}" min="${min}" max="${max}" step="${step}" value="${value}" /><output data-output="${field}">${outputValue}</output></div>`;
 }
 
 function toggleMarkup (field: StyleField | GlowField, checked: boolean): string {
@@ -621,43 +641,61 @@ function toggleMarkup (field: StyleField | GlowField, checked: boolean): string 
   return `<input class="layer-toggle" type="checkbox" ${attribute}="${field}" ${checked ? 'checked' : ''} />`;
 }
 
-function renderFillSection (style: StyleState): string {
-  return `<section class="section"><div class="section-label"><span>填充</span><small>当前作用范围</small></div>${inheritanceMarkup()}<div class="layer-card ${style.fillVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('fillVisible', style.fillVisible)}<span class="layer-preview" style="background:${colorToCss(style.fillColor, style.fillOpacity)}"></span><span class="layer-info"><strong>纯色填充</strong><small>${style.fillVisible ? 'Fill' : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'fillColor', style.fillColor)}${rangeRow('不透明度', 'fillOpacity', Math.round(style.fillOpacity * 100), 0, 100, 1)}</div></div></section>`;
+function selectionValues (selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>, kind: 'fill' | 'stroke' | 'shadow', summary: (style: StyleState) => string): string {
+  if (selected.length < 2) {
+    return '';
+  }
+
+  return `<div class="selection-values"><div class="selection-values-title">选中片段的当前值</div>${selected.map(({ segment, displayIndex }) => `<div class="selection-value-row" data-selection-segment="${segment.id}" data-selection-kind="${kind}"><span>片段 ${displayIndex + 1} · ${escapeHtml(segmentLabel(segment))}</span><strong>${summary(styleForSegment(segment))}</strong></div>`).join('')}</div>`;
 }
 
-function renderStrokeSection (style: StyleState): string {
-  return `<section class="section"><div class="section-label"><span>描边</span><small>片段级</small></div><div class="layer-card ${style.strokeVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('strokeVisible', style.strokeVisible)}<span class="layer-preview" style="background:${colorToCss(style.strokeColor, style.strokeOpacity)}"></span><span class="layer-info"><strong>单描边</strong><small>${style.strokeVisible ? `${style.strokeWidth}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'strokeColor', style.strokeColor)}${rangeRow('宽度', 'strokeWidth', style.strokeWidth, 0, 16, 1)}${rangeRow('不透明度', 'strokeOpacity', Math.round(style.strokeOpacity * 100), 0, 100, 1)}</div></div></section>`;
+function renderFillSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+  const multiple = selected.length > 1;
+
+  return `<section class="section"><div class="section-label"><span>填充</span><small>${multiple ? '多选批量修改' : '当前作用范围'}</small></div>${inheritanceMarkup(selected)}<div class="layer-card ${style.fillVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('fillVisible', style.fillVisible)}<span class="layer-preview" style="background:${colorToCss(style.fillColor, style.fillOpacity)}"></span><span class="layer-info"><strong>纯色填充</strong><small>${style.fillVisible ? 'Fill' : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'fillColor', style.fillColor)}${rangeRow('不透明度', 'fillOpacity', Math.round(style.fillOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.fillOpacity * 100))}</div>${selectionValues(selected, 'fill', current => `${colorToCss(current.fillColor, current.fillOpacity)} · ${Math.round(current.fillOpacity * 100)}%`)}</div></section>`;
 }
 
-function renderShadowLayer (style: StyleState): string {
-  return `<div class="layer-card ${style.shadowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('shadowVisible', style.shadowVisible)}<span class="layer-preview" style="background:${colorToCss(style.shadowColor, style.shadowOpacity)}"></span><span class="layer-info"><strong>阴影</strong><small>${style.shadowVisible ? `${style.shadowBlur}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'shadowColor', style.shadowColor)}${rangeRow('模糊', 'shadowBlur', style.shadowBlur, 0, 28, 1)}${rangeRow('距离', 'shadowDistance', style.shadowDistance, 0, 40, 1)}${rangeRow('角度', 'shadowAngle', style.shadowAngle, -180, 180, 1)}${rangeRow('不透明度', 'shadowOpacity', Math.round(style.shadowOpacity * 100), 0, 100, 1)}</div></div>`;
+function renderStrokeSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+  const multiple = selected.length > 1;
+
+  return `<section class="section"><div class="section-label"><span>描边</span><small>${multiple ? '多选批量修改' : '片段级'}</small></div><div class="layer-card ${style.strokeVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('strokeVisible', style.strokeVisible)}<span class="layer-preview" style="background:${colorToCss(style.strokeColor, style.strokeOpacity)}"></span><span class="layer-info"><strong>单描边</strong><small>${style.strokeVisible ? `${style.strokeWidth}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'strokeColor', style.strokeColor)}${rangeRow('宽度', 'strokeWidth', style.strokeWidth, 0, 16, 1, multiple ? '多值' : style.strokeWidth)}${rangeRow('不透明度', 'strokeOpacity', Math.round(style.strokeOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.strokeOpacity * 100))}</div>${selectionValues(selected, 'stroke', current => `${current.strokeWidth}px · ${colorToCss(current.strokeColor, current.strokeOpacity)}`)}</div></section>`;
 }
 
-function renderGlowLayer (): string {
-  if (activeScope !== 'object') {
-    return '<div class="layer-card disabled"><div class="layer-head"><span class="layer-preview" style="background:#9c8dff"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · 请切换到全文编辑</small></span></div><div class="locked-note">Glow 作用于整个文本对象，不随单个片段切换。</div></div>';
+function renderShadowLayer (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+  const multiple = selected.length > 1;
+
+  return `<div class="layer-card ${style.shadowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('shadowVisible', style.shadowVisible)}<span class="layer-preview" style="background:${colorToCss(style.shadowColor, style.shadowOpacity)}"></span><span class="layer-info"><strong>阴影</strong><small>${style.shadowVisible ? `${style.shadowBlur}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'shadowColor', style.shadowColor)}${rangeRow('模糊', 'shadowBlur', style.shadowBlur, 0, 28, 1, multiple ? '多值' : style.shadowBlur)}${rangeRow('距离', 'shadowDistance', style.shadowDistance, 0, 40, 1, multiple ? '多值' : style.shadowDistance)}${rangeRow('角度', 'shadowAngle', style.shadowAngle, -180, 180, 1, multiple ? '多值' : style.shadowAngle)}${rangeRow('不透明度', 'shadowOpacity', Math.round(style.shadowOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.shadowOpacity * 100))}</div>${selectionValues(selected, 'shadow', current => `${current.shadowBlur}px · ${current.shadowDistance}px · ${current.shadowAngle}°`)}</div>`;
+}
+
+function renderGlowLayer (selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+  if (selected.length > 0) {
+    return '<div class="layer-card disabled"><div class="layer-head"><span class="layer-preview" style="background:#9c8dff"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · 请切换到全文编辑</small></span></div><div class="locked-note">Glow 作用于整个文本对象，多选片段时不会重复显示。</div></div>';
   }
 
   return `<div class="layer-card ${sharedStyle.glowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('glowVisible', sharedStyle.glowVisible)}<span class="layer-preview" style="background:${colorToCss(sharedStyle.glowColor, sharedStyle.glowOpacity)}"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · OBJECT</small></span></div><div class="layer-params">${colorRow('颜色', 'glowColor', sharedStyle.glowColor)}${rangeRow('模糊', 'glowBlur', sharedStyle.glowBlur, 0, 32, 1)}${rangeRow('强度', 'glowIntensity', sharedStyle.glowIntensity, 1, 5, 1)}${rangeRow('不透明度', 'glowOpacity', Math.round(sharedStyle.glowOpacity * 100), 0, 100, 1)}</div></div>`;
 }
 
-function renderEffectsSection (style: StyleState): string {
-  return `<section class="section"><div class="section-label"><span>效果</span><small>Shadow · Range / Glow · Object</small></div>${inheritanceMarkup()}${renderShadowLayer(style)}${renderGlowLayer()}</section>`;
+function renderEffectsSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+  const multiple = selected.length > 1;
+
+  return `<section class="section"><div class="section-label"><span>效果</span><small>${multiple ? '多选批量修改 Shadow · Glow 全文级' : 'Shadow · Range / Glow · Object'}</small></div>${inheritanceMarkup(selected)}${renderShadowLayer(style, selected)}${renderGlowLayer(selected)}</section>`;
 }
 
 function renderEditor (): void {
+  updateSelectionState();
   renderPresets();
   renderScopes();
   renderSegments();
   updateScopeSummary();
 
   if (editorSections) {
-    const style = activeStyle();
+    const selected = selectedSegmentEntries();
+    const style = selected.length > 0 ? styleForSegment(selected[0].segment) : sharedStyle;
 
-    editorSections.innerHTML = `${renderFillSection(style)}${renderStrokeSection(style)}${renderEffectsSection(style)}`;
+    editorSections.innerHTML = `${renderFillSection(style, selected)}${renderStrokeSection(style, selected)}${renderEffectsSection(style, selected)}`;
     bindEditorControls();
+    updateControlReadouts();
   }
-  updateSelectionState();
 }
 
 function updateControlReadouts (): void {
@@ -675,15 +713,44 @@ function updateControlReadouts (): void {
       return;
     }
 
+    if (selectedSegmentEntries().length > 1 && !field.startsWith('glow')) {
+      output.value = '多值';
+
+      return;
+    }
+
     const suffix = field.toLowerCase().includes('opacity') ? '%' : field.toLowerCase().includes('angle') ? '°' : field.toLowerCase().includes('width') || field.toLowerCase().includes('blur') || field.toLowerCase().includes('distance') ? 'px' : '';
 
     output.value = `${input.value}${suffix}`;
   });
 }
 
+function updateSelectionValueRows (): void {
+  editorSections?.querySelectorAll<HTMLElement>('[data-selection-segment]').forEach(row => {
+    const segment = segments.find(item => item.id === row.dataset.selectionSegment);
+    const value = row.querySelector('strong');
+    const kind = row.dataset.selectionKind;
+
+    if (!segment || !value) {
+      return;
+    }
+
+    const style = styleForSegment(segment);
+
+    if (kind === 'fill') {
+      value.textContent = `${colorToCss(style.fillColor, style.fillOpacity)} · ${Math.round(style.fillOpacity * 100)}%`;
+    } else if (kind === 'stroke') {
+      value.textContent = `${style.strokeWidth}px · ${colorToCss(style.strokeColor, style.strokeOpacity)}`;
+    } else if (kind === 'shadow') {
+      value.textContent = `${style.shadowBlur}px · ${style.shadowDistance}px · ${style.shadowAngle}°`;
+    }
+  });
+}
+
 function refreshAfterEdit (): void {
   renderText();
   updateControlReadouts();
+  updateSelectionValueRows();
   updateScopesAndSegmentsOnly();
 }
 
@@ -726,16 +793,16 @@ function bindEditorControls (): void {
 
   editorSections?.querySelectorAll<HTMLButtonElement>('[data-action="toggle-inherit"]').forEach(button => {
     button.addEventListener('click', () => {
-      const segment = activeSegment();
+      const selected = selectedSegments();
 
-      if (!segment) {
+      if (selected.length === 0) {
         return;
       }
-      if (segment.override) {
-        segment.override = false;
+      if (selected.length > 1 || selected[0].override) {
+        selected.forEach(segment => { segment.override = false; });
       } else {
-        segment.override = true;
-        segment.style = cloneStyle(sharedStyle);
+        selected[0].override = true;
+        selected[0].style = cloneStyle(sharedStyle);
       }
       renderEditor();
       renderText();
@@ -819,9 +886,6 @@ function splitSelection (): void {
   normalizeSegments();
   splitAt(start);
   splitAt(end);
-  const selected = segments.find(segment => segment.start === start && segment.end === end);
-
-  activeScope = selected?.id ?? activeScope;
   textInput.setSelectionRange(start, end);
   renderEditor();
   renderText();
@@ -858,7 +922,6 @@ function mergeSelection (): void {
   };
 
   segments.splice(firstIndex, selected.length, merged);
-  activeScope = merged.id;
   textInput.setSelectionRange(start, end);
   renderEditor();
   renderText();
@@ -891,12 +954,30 @@ function updateSelectionState (): void {
 
   const start = Math.min(textInput.selectionStart, textInput.selectionEnd);
   const end = Math.max(textInput.selectionStart, textInput.selectionEnd);
-  const selectedSegments = segments.filter(segment => segment.start < end && segment.end > start);
+  const hasRange = end > start;
+  const matches = segments.filter(segment => {
+    if (!segmentText(segment).trim()) {
+      return false;
+    }
+    if (hasRange) {
+      return segment.start < end && segment.end > start;
+    }
+
+    return document.activeElement === textInput && segment.start <= start && start < segment.end;
+  });
 
   lastSelection = { start, end };
-  selectionStatus.textContent = start === end ? '未选择文字' : `已选择 ${end - start} 个字符 · ${selectedSegments.length > 1 ? '跨越多个片段' : '可拆分'}`;
-  splitSelectionButton.disabled = start === end;
-  mergeSelectionButton.disabled = selectedSegments.length < 2;
+  selectedSegmentIds = matches.map(segment => segment.id);
+
+  if (matches.length === 0) {
+    selectionStatus.textContent = hasRange ? '未选中可编辑片段' : '未选择文字';
+  } else if (matches.length === 1) {
+    selectionStatus.textContent = hasRange ? `已选择 1 个片段 · ${segmentLabel(matches[0])}` : `当前片段 · ${segmentLabel(matches[0])}`;
+  } else {
+    selectionStatus.textContent = `已选择 ${matches.length} 个片段 · 修改参数会同时应用`;
+  }
+  splitSelectionButton.disabled = !hasRange;
+  mergeSelectionButton.disabled = matches.length < 2;
 }
 
 function updateDiagnostics (): void {
@@ -926,13 +1007,18 @@ function updateSelectionListeners (): void {
 
   const captureSelection = (): void => {
     lastSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
-    updateSelectionState();
+    renderEditor();
   };
 
   textInput.addEventListener('beforeinput', () => {
     pendingEditSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
   });
   ['select', 'keyup', 'mouseup', 'focus'].forEach(eventName => textInput.addEventListener(eventName, captureSelection));
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === textInput) {
+      renderEditor();
+    }
+  });
   textInput.addEventListener('input', () => {
     const oldText = editorText;
     const editSelection = pendingEditSelection.start === pendingEditSelection.end && lastSelection.end > lastSelection.start ? lastSelection : pendingEditSelection;
