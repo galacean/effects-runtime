@@ -6,8 +6,14 @@ const sceneUrl = 'https://mdn.alipayobjects.com/mars/afts/file/A*trEcQ7My81EAAAA
 const container = document.getElementById('J-container');
 const status = document.getElementById('status');
 const textInput = document.getElementById('text') as HTMLTextAreaElement | null;
-const glowInput = document.getElementById('glow') as HTMLInputElement | null;
-const glowValue = document.getElementById('glow-value');
+const presetList = document.getElementById('preset-list');
+const scopeSwitch = document.getElementById('scope-switch');
+const scopeSummary = document.getElementById('scope-summary');
+const segmentList = document.getElementById('segment-list');
+const editorSections = document.getElementById('editor-sections');
+const selectionStatus = document.getElementById('selection-status');
+const splitSelectionButton = document.getElementById('split-selection') as HTMLButtonElement | null;
+const mergeSelectionButton = document.getElementById('merge-selection') as HTMLButtonElement | null;
 const glyphCount = document.getElementById('glyph-count');
 const rangeCount = document.getElementById('range-count');
 const paddingReadout = document.getElementById('padding-readout');
@@ -15,28 +21,66 @@ const surfaceReadout = document.getElementById('surface-readout');
 const rangeList = document.getElementById('range-list');
 const objectList = document.getElementById('object-list');
 
-type RangeSourceId = 'range-0' | 'range-2' | 'range-4';
-type RangePreset = {
-  stroke: string,
-  shadow: string,
+type PaletteName = 'mint' | 'sunset' | 'mono';
+type ScopeId = string;
+type ColorHex = string;
+
+interface RangePreset {
+  stroke: ColorHex,
+  shadow: ColorHex,
   strokeWidth: number,
   shadowBlur: number,
   offsetX: number,
   offsetY: number,
-};
+}
 
-type Palette = {
-  colors: readonly string[],
-  sharedStroke: string,
-  sharedShadow: string,
-  glow: string,
+interface Palette {
+  colors: readonly ColorHex[],
+  sharedStroke: ColorHex,
+  sharedShadow: ColorHex,
+  glow: ColorHex,
   sharedStrokeWidth: number,
   sharedShadowBlur: number,
   sharedOffsetX: number,
   sharedOffsetY: number,
   glowBlur: number,
-  ranges: Record<RangeSourceId, RangePreset>,
-};
+  ranges: RangePreset[],
+}
+
+interface StyleState {
+  fillVisible: boolean,
+  fillColor: ColorHex,
+  fillOpacity: number,
+  strokeVisible: boolean,
+  strokeColor: ColorHex,
+  strokeOpacity: number,
+  strokeWidth: number,
+  shadowVisible: boolean,
+  shadowColor: ColorHex,
+  shadowOpacity: number,
+  shadowBlur: number,
+  shadowDistance: number,
+  shadowAngle: number,
+}
+
+interface SharedStyle extends StyleState {
+  glowVisible: boolean,
+  glowColor: ColorHex,
+  glowOpacity: number,
+  glowBlur: number,
+  glowIntensity: number,
+}
+
+interface SegmentState {
+  id: string,
+  start: number,
+  end: number,
+  override: boolean,
+  style: StyleState,
+}
+
+type StyleField = keyof StyleState;
+type GlowField = 'glowVisible' | 'glowColor' | 'glowOpacity' | 'glowBlur' | 'glowIntensity';
 
 const palettes = {
   mint: {
@@ -49,11 +93,11 @@ const palettes = {
     sharedOffsetX: 2,
     sharedOffsetY: 5,
     glowBlur: 8,
-    ranges: {
-      'range-0': { stroke: '#142a31ff', shadow: '#061014e6', strokeWidth: 5, shadowBlur: 12, offsetX: 3, offsetY: 6 },
-      'range-2': { stroke: '#493d8fff', shadow: '#2d2366cc', strokeWidth: 2, shadowBlur: 4, offsetX: -3, offsetY: 4 },
-      'range-4': { stroke: '#714819ff', shadow: '#36d8b0cc', strokeWidth: 8, shadowBlur: 15, offsetX: 0, offsetY: 5 },
-    },
+    ranges: [
+      { stroke: '#142a31ff', shadow: '#061014e6', strokeWidth: 5, shadowBlur: 12, offsetX: 3, offsetY: 6 },
+      { stroke: '#493d8fff', shadow: '#2d2366cc', strokeWidth: 2, shadowBlur: 4, offsetX: -3, offsetY: 4 },
+      { stroke: '#714819ff', shadow: '#36d8b0cc', strokeWidth: 8, shadowBlur: 15, offsetX: 0, offsetY: 5 },
+    ],
   },
   sunset: {
     colors: ['#ff795fff', '#ffbd69ff', '#ffe6b8ff'],
@@ -65,11 +109,11 @@ const palettes = {
     sharedOffsetX: 2,
     sharedOffsetY: 6,
     glowBlur: 10,
-    ranges: {
-      'range-0': { stroke: '#4b160fff', shadow: '#220803ed', strokeWidth: 6, shadowBlur: 14, offsetX: 3, offsetY: 7 },
-      'range-2': { stroke: '#8b371cff', shadow: '#5d1b0dcc', strokeWidth: 3, shadowBlur: 5, offsetX: -3, offsetY: 4 },
-      'range-4': { stroke: '#7b3119ff', shadow: '#ff6a36cc', strokeWidth: 9, shadowBlur: 18, offsetX: 0, offsetY: 6 },
-    },
+    ranges: [
+      { stroke: '#4b160fff', shadow: '#220803ed', strokeWidth: 6, shadowBlur: 14, offsetX: 3, offsetY: 7 },
+      { stroke: '#8b371cff', shadow: '#5d1b0dcc', strokeWidth: 3, shadowBlur: 5, offsetX: -3, offsetY: 4 },
+      { stroke: '#7b3119ff', shadow: '#ff6a36cc', strokeWidth: 9, shadowBlur: 18, offsetX: 0, offsetY: 6 },
+    ],
   },
   mono: {
     colors: ['#f5f7fbff', '#b9c4d6ff', '#75f0c7ff'],
@@ -81,120 +125,361 @@ const palettes = {
     sharedOffsetX: 1,
     sharedOffsetY: 4,
     glowBlur: 7,
-    ranges: {
-      'range-0': { stroke: '#08111dff', shadow: '#000000f2', strokeWidth: 4, shadowBlur: 9, offsetX: 2, offsetY: 5 },
-      'range-2': { stroke: '#263b5fff', shadow: '#16253dcc', strokeWidth: 1, shadowBlur: 3, offsetX: -2, offsetY: 3 },
-      'range-4': { stroke: '#0e5c60ff', shadow: '#2ec9c4cc', strokeWidth: 6, shadowBlur: 12, offsetX: 0, offsetY: 5 },
-    },
+    ranges: [
+      { stroke: '#08111dff', shadow: '#000000f2', strokeWidth: 4, shadowBlur: 9, offsetX: 2, offsetY: 5 },
+      { stroke: '#263b5fff', shadow: '#16253dcc', strokeWidth: 1, shadowBlur: 3, offsetX: -2, offsetY: 3 },
+      { stroke: '#0e5c60ff', shadow: '#2ec9c4cc', strokeWidth: 6, shadowBlur: 12, offsetX: 0, offsetY: 5 },
+    ],
   },
-} satisfies Record<string, Palette>;
+} satisfies Record<PaletteName, Palette>;
 
-type PaletteName = keyof typeof palettes;
-const rangeDefinitions: Array<{ sourceRangeId: RangeSourceId, label: string, strokeInputId: string, shadowInputId: string, strokeValueId: string, shadowValueId: string }> = [
-  { sourceRangeId: 'range-0', label: 'Range A', strokeInputId: 'range-a-stroke', shadowInputId: 'range-a-shadow', strokeValueId: 'range-a-stroke-value', shadowValueId: 'range-a-shadow-value' },
-  { sourceRangeId: 'range-2', label: 'Range B', strokeInputId: 'range-b-stroke', shadowInputId: 'range-b-shadow', strokeValueId: 'range-b-stroke-value', shadowValueId: 'range-b-shadow-value' },
-  { sourceRangeId: 'range-4', label: '第二行 / Range C', strokeInputId: 'range-c-stroke', shadowInputId: 'range-c-shadow', strokeValueId: 'range-c-stroke-value', shadowValueId: 'range-c-shadow-value' },
-];
-
-const rangeControls = Object.fromEntries(rangeDefinitions.map(definition => [
-  definition.sourceRangeId,
-  {
-    stroke: document.getElementById(definition.strokeInputId) as HTMLInputElement | null,
-    shadow: document.getElementById(definition.shadowInputId) as HTMLInputElement | null,
-    strokeValue: document.getElementById(definition.strokeValueId),
-    shadowValue: document.getElementById(definition.shadowValueId),
-  },
-])) as Record<RangeSourceId, {
-  stroke: HTMLInputElement | null,
-  shadow: HTMLInputElement | null,
-  strokeValue: HTMLElement | null,
-  shadowValue: HTMLElement | null,
-}>;
-
+const defaultText = textInput?.value ?? 'Range A  Range B\n跨行仍是同一个 source range';
 let currentPalette: PaletteName = 'mint';
+let editorText = defaultText;
+let sharedStyle: SharedStyle;
+let segments: SegmentState[];
+let activeScope: ScopeId = 'object';
 let richText: RichTextComponent | undefined;
 let renderComposition: (() => void) | undefined;
+let nextSegmentId = 1;
+let lastSelection = { start: 0, end: 0 };
+let pendingEditSelection = { start: 0, end: 0 };
 
-function hexToRgba (hex: string): [number, number, number, number] {
-  const value = hex.replace('#', '');
-  const channels = value.match(/.{2}/g) ?? [];
+function normalizeHex (color: string): string {
+  const value = color.replace('#', '').toLowerCase();
 
-  return channels.map(channel => parseInt(channel, 16) / 255) as [number, number, number, number];
-}
-
-function getValue (input: HTMLInputElement | null, fallback: number): number {
-  return input ? Number(input.value) : fallback;
-}
-
-function setValue (input: HTMLInputElement | null, value: number): void {
-  if (input) {
-    input.value = String(value);
+  if (value.length === 3) {
+    return `#${value.split('').map(channel => channel + channel).join('')}`;
   }
+
+  return `#${value.slice(0, 6).padEnd(6, '0')}`;
 }
 
-function applyPresetValues (paletteName: PaletteName): void {
-  const palette = palettes[paletteName];
+function alphaFromHex (color: string): number {
+  const value = color.replace('#', '');
 
-  for (const definition of rangeDefinitions) {
-    const preset = palette.ranges[definition.sourceRangeId];
-    const controls = rangeControls[definition.sourceRangeId];
-
-    setValue(controls.stroke, preset.strokeWidth);
-    setValue(controls.shadow, preset.shadowBlur);
-  }
-  setValue(glowInput, palette.glowBlur);
+  return value.length >= 8 ? parseInt(value.slice(6, 8), 16) / 255 : 1;
 }
 
-function makeRangeLayers (palette: Palette, sourceRangeId: RangeSourceId): FancyRenderLayer[] {
-  const preset = palette.ranges[sourceRangeId];
-  const controls = rangeControls[sourceRangeId];
-
-  return [
-    {
-      kind: 'single-stroke',
-      category: 'base',
-      params: { color: hexToRgba(preset.stroke), width: getValue(controls.stroke, preset.strokeWidth), unit: 'px',
-      },
-    },
-    {
-      kind: 'shadow',
-      category: 'decorative',
-      params: {
-        color: hexToRgba(preset.shadow),
-        blur: getValue(controls.shadow, preset.shadowBlur),
-        offsetX: preset.offsetX,
-        offsetY: preset.offsetY,
-      },
-    },
-    // A custom range replaces the shared range layers, so it must carry its
-    // own fill layer as well. The Canvas backend still takes the actual fill
-    // color from the span's basicStyle.fillColor.
-    {
-      kind: 'solid-fill',
-      category: 'base',
-      params: { color: hexToRgba(palette.colors[0]) },
-    },
-  ];
+function colorWithOpacity (color: ColorHex, opacity: number): ColorHex {
+  return `${normalizeHex(color)}${Math.round(Math.max(0, Math.min(1, opacity)) * 255).toString(16).padStart(2, '0')}`;
 }
 
-function createFancyOptions (paletteName: PaletteName) {
-  const palette = palettes[paletteName];
-  const colors = palette.colors.map(hexToRgba);
-  const glowBlur = getValue(glowInput, palette.glowBlur);
-  const rangeFancyLayers: Record<string, FancyRenderLayer[]> = {};
+function colorToRgba (color: ColorHex, opacity = alphaFromHex(color)): [number, number, number, number] {
+  const value = normalizeHex(color).slice(1);
+  const red = parseInt(value.slice(0, 2), 16) / 255;
+  const green = parseInt(value.slice(2, 4), 16) / 255;
+  const blue = parseInt(value.slice(4, 6), 16) / 255;
 
-  for (const definition of rangeDefinitions) {
-    rangeFancyLayers[definition.sourceRangeId] = makeRangeLayers(palette, definition.sourceRangeId);
-  }
+  return [red, green, blue, Math.max(0, Math.min(1, opacity))];
+}
+
+function colorForInput (color: ColorHex): string {
+  return normalizeHex(color);
+}
+
+function colorToCss (color: ColorHex, opacity: number): string {
+  const [red, green, blue] = colorToRgba(color, opacity);
+
+  return `rgba(${Math.round(red * 255)}, ${Math.round(green * 255)}, ${Math.round(blue * 255)}, ${opacity})`;
+}
+
+function escapeHtml (value: string): string {
+  return value.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' })[character] ?? character);
+}
+
+function escapeRichText (value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/[=<>/]/g, character => `\\${character}`);
+}
+
+function cloneStyle (style: StyleState): StyleState {
+  return { ...style };
+}
+
+function offsetToDistance (offsetX: number, offsetY: number): number {
+  return Math.round(Math.hypot(offsetX, offsetY) * 10) / 10;
+}
+
+function offsetToAngle (offsetX: number, offsetY: number): number {
+  return Math.round(Math.atan2(offsetY, offsetX) * 180 / Math.PI);
+}
+
+function distanceToOffset (distance: number, angle: number): { offsetX: number, offsetY: number } {
+  const radians = angle * Math.PI / 180;
+
+  return { offsetX: distance * Math.cos(radians), offsetY: distance * Math.sin(radians) };
+}
+
+function createStyle (palette: Palette, range: RangePreset | undefined, fillColor: ColorHex): StyleState {
+  const preset = range ?? {
+    stroke: palette.sharedStroke,
+    shadow: palette.sharedShadow,
+    strokeWidth: palette.sharedStrokeWidth,
+    shadowBlur: palette.sharedShadowBlur,
+    offsetX: palette.sharedOffsetX,
+    offsetY: palette.sharedOffsetY,
+  };
 
   return {
-    text: textInput?.value ?? '',
+    fillVisible: true,
+    fillColor: normalizeHex(fillColor),
+    fillOpacity: alphaFromHex(fillColor),
+    strokeVisible: preset.strokeWidth > 0,
+    strokeColor: normalizeHex(preset.stroke),
+    strokeOpacity: alphaFromHex(preset.stroke),
+    strokeWidth: preset.strokeWidth,
+    shadowVisible: preset.shadowBlur > 0,
+    shadowColor: normalizeHex(preset.shadow),
+    shadowOpacity: alphaFromHex(preset.shadow),
+    shadowBlur: preset.shadowBlur,
+    shadowDistance: offsetToDistance(preset.offsetX, preset.offsetY),
+    shadowAngle: offsetToAngle(preset.offsetX, preset.offsetY),
+  };
+}
+
+function createSharedStyle (paletteName: PaletteName): SharedStyle {
+  const palette = palettes[paletteName];
+  const style = createStyle(palette, undefined, palette.colors[0]);
+
+  return {
+    ...style,
+    strokeOpacity: alphaFromHex(palette.sharedStroke),
+    shadowOpacity: alphaFromHex(palette.sharedShadow),
+    glowVisible: true,
+    glowColor: normalizeHex(palette.glow),
+    glowOpacity: alphaFromHex(palette.glow),
+    glowBlur: palette.glowBlur,
+    glowIntensity: 1,
+  };
+}
+
+function createInitialSegments (paletteName: PaletteName): SegmentState[] {
+  const palette = palettes[paletteName];
+  const firstGap = editorText.indexOf('  ');
+  const secondStart = firstGap >= 0 ? firstGap + 2 : editorText.indexOf('Range B');
+  const newline = editorText.indexOf('\n');
+  const thirdStart = newline >= 0 ? newline + 1 : editorText.length;
+  const firstEnd = firstGap >= 0 ? firstGap : Math.min(editorText.length, 7);
+  const secondEnd = newline >= 0 ? newline : editorText.length;
+  const ranges = [
+    { start: 0, end: firstEnd, override: true, preset: palette.ranges[0], fill: palette.colors[0] },
+    { start: firstEnd, end: secondStart, override: false, preset: undefined, fill: palette.colors[0] },
+    { start: secondStart, end: secondEnd, override: true, preset: palette.ranges[1], fill: palette.colors[1] },
+    { start: secondEnd, end: thirdStart, override: false, preset: undefined, fill: palette.colors[0] },
+    { start: thirdStart, end: editorText.length, override: true, preset: palette.ranges[2], fill: palette.colors[2] },
+  ];
+
+  return ranges
+    .filter(range => range.end > range.start)
+    .map(range => ({
+      id: `segment-${nextSegmentId++}`,
+      start: range.start,
+      end: range.end,
+      override: range.override,
+      style: createStyle(palette, range.preset, range.fill),
+    }));
+}
+
+function segmentText (segment: SegmentState): string {
+  return editorText.slice(segment.start, segment.end);
+}
+
+function segmentLabel (segment: SegmentState): string {
+  const text = segmentText(segment).replace(/\s+/g, ' ').trim();
+
+  return text ? text.slice(0, 24) : '空白';
+}
+
+function meaningfulSegments (): Array<{ segment: SegmentState, index: number, displayIndex: number }> {
+  let displayIndex = 0;
+
+  return segments.reduce<Array<{ segment: SegmentState, index: number, displayIndex: number }>>((result, segment, index) => {
+    if (!segmentText(segment).trim()) {
+      return result;
+    }
+
+    result.push({ segment, index, displayIndex: displayIndex++ });
+
+    return result;
+  }, []);
+}
+
+function styleForSegment (segment: SegmentState): StyleState {
+  return segment.override ? segment.style : sharedStyle;
+}
+
+function activeSegment (): SegmentState | undefined {
+  return activeScope === 'object' ? undefined : segments.find(segment => segment.id === activeScope);
+}
+
+function activeStyle (): StyleState {
+  const segment = activeSegment();
+
+  return segment ? styleForSegment(segment) : sharedStyle;
+}
+
+function ensureSegmentOverride (segment: SegmentState): StyleState {
+  if (!segment.override) {
+    segment.override = true;
+    segment.style = cloneStyle(sharedStyle);
+  }
+
+  return segment.style;
+}
+
+function setStyleField (field: StyleField, value: string | number | boolean): void {
+  const target = activeSegment() ? ensureSegmentOverride(activeSegment()!) : sharedStyle;
+
+  switch (field) {
+    case 'fillVisible': target.fillVisible = Boolean(value);
+
+      break;
+    case 'fillColor': target.fillColor = String(value);
+
+      break;
+    case 'fillOpacity': target.fillOpacity = Number(value);
+
+      break;
+    case 'strokeVisible': target.strokeVisible = Boolean(value);
+
+      break;
+    case 'strokeColor': target.strokeColor = String(value);
+
+      break;
+    case 'strokeOpacity': target.strokeOpacity = Number(value);
+
+      break;
+    case 'strokeWidth': target.strokeWidth = Number(value);
+
+      break;
+    case 'shadowVisible': target.shadowVisible = Boolean(value);
+
+      break;
+    case 'shadowColor': target.shadowColor = String(value);
+
+      break;
+    case 'shadowOpacity': target.shadowOpacity = Number(value);
+
+      break;
+    case 'shadowBlur': target.shadowBlur = Number(value);
+
+      break;
+    case 'shadowDistance': target.shadowDistance = Number(value);
+
+      break;
+    case 'shadowAngle': target.shadowAngle = Number(value);
+
+      break;
+  }
+}
+
+function setGlowField (field: GlowField, value: string | number | boolean): void {
+  switch (field) {
+    case 'glowVisible': sharedStyle.glowVisible = Boolean(value);
+
+      break;
+    case 'glowColor': sharedStyle.glowColor = String(value);
+
+      break;
+    case 'glowOpacity': sharedStyle.glowOpacity = Number(value);
+
+      break;
+    case 'glowBlur': sharedStyle.glowBlur = Number(value);
+
+      break;
+    case 'glowIntensity': sharedStyle.glowIntensity = Number(value);
+
+      break;
+  }
+}
+
+function rangeLayersFromStyle (style: StyleState): FancyRenderLayer[] {
+  const layers: FancyRenderLayer[] = [];
+  const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
+
+  if (style.strokeVisible) {
+    layers.push({
+      kind: 'single-stroke',
+      category: 'base',
+      params: { color: colorToRgba(style.strokeColor, style.strokeOpacity), width: style.strokeWidth, unit: 'px' },
+    });
+  }
+  if (style.shadowVisible) {
+    layers.push({
+      kind: 'shadow',
+      category: 'decorative',
+      params: { color: colorToRgba(style.shadowColor, style.shadowOpacity), blur: style.shadowBlur, offsetX: offset.offsetX, offsetY: offset.offsetY },
+    });
+  }
+  if (style.fillVisible) {
+    layers.push({
+      kind: 'solid-fill',
+      category: 'base',
+      params: { color: colorToRgba(style.fillColor, style.fillOpacity) },
+    });
+  }
+
+  return layers;
+}
+
+function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions']>[0] {
+  const sharedOffset = distanceToOffset(sharedStyle.shadowDistance, sharedStyle.shadowAngle);
+  const sharedLayers: Array<Record<string, unknown>> = [];
+
+  if (sharedStyle.strokeVisible) {
+    const decorations: Array<Record<string, unknown>> = [];
+
+    if (sharedStyle.shadowVisible) {
+      decorations.push({
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: colorToRgba(sharedStyle.shadowColor, sharedStyle.shadowOpacity), blur: sharedStyle.shadowBlur, offsetX: sharedOffset.offsetX, offsetY: sharedOffset.offsetY },
+      });
+    }
+    if (sharedStyle.glowVisible) {
+      decorations.push({
+        kind: 'glow',
+        category: 'decorative',
+        params: { color: colorToRgba(sharedStyle.glowColor, sharedStyle.glowOpacity), blur: sharedStyle.glowBlur, intensity: sharedStyle.glowIntensity },
+      });
+    }
+    sharedLayers.push({
+      kind: 'single-stroke',
+      category: 'base',
+      params: { color: colorToRgba(sharedStyle.strokeColor, sharedStyle.strokeOpacity), width: sharedStyle.strokeWidth, unit: 'px' },
+      decorations,
+    });
+  }
+  if (sharedStyle.fillVisible) {
+    sharedLayers.push({
+      kind: 'solid-fill',
+      category: 'base',
+      params: { color: colorToRgba(sharedStyle.fillColor, sharedStyle.fillOpacity) },
+    });
+  }
+
+  const rangeFancyLayers: Record<string, FancyRenderLayer[]> = {};
+
+  segments.forEach((segment, index) => {
+    if (segment.override) {
+      rangeFancyLayers[`range-${index}`] = rangeLayersFromStyle(segment.style);
+    }
+  });
+
+  const text = segments.map(segment => {
+    const style = styleForSegment(segment);
+    const color = colorWithOpacity(style.fillColor, style.fillOpacity);
+
+    return `<seg><color=${color}>${escapeRichText(segmentText(segment))}</color></seg>`;
+  }).join('');
+
+  return {
+    text: text || ' ',
     fontFamily: 'Arial',
     fontSize: 42,
-    textColor: [1, 1, 1, 1] as [number, number, number, number],
+    textColor: colorToRgba(sharedStyle.fillColor, sharedStyle.fillOpacity),
     textWeight: spec.TextWeight.normal,
     textAlign: spec.TextAlignment.middle,
-    textOverflow: spec.TextOverflow.display,
     textVerticalAlign: spec.TextVerticalAlign.middle,
     wrapEnabled: true,
     maxTextWidth: 680,
@@ -202,230 +487,497 @@ function createFancyOptions (paletteName: PaletteName) {
     autoResize: spec.TextSizeMode.fixed,
     lineHeight: 52,
     rangeFancyLayers,
-    // Reserve the largest interactive shadow/glow budget up front. Without a
-    // stable surface, every blur step reallocates the Canvas/WebGL texture and
-    // the preview visibly jumps. This is a runtime demo budget, not persisted
-    // RichText schema.
     fancyRenderPadding: { left: 80, right: 80, top: 80, bottom: 80 },
-    fancyConfig: {
-      presetName: `rich-text-${paletteName}`,
-      layers: [
-        {
-          kind: 'single-stroke' as const,
-          category: 'base' as const,
-          params: { color: hexToRgba(palette.sharedStroke), width: palette.sharedStrokeWidth, unit: 'px' as const },
-          decorations: [
-            {
-              kind: 'shadow' as const,
-              category: 'decorative' as const,
-              params: {
-                color: hexToRgba(palette.sharedShadow),
-                blur: palette.sharedShadowBlur,
-                offsetX: palette.sharedOffsetX,
-                offsetY: palette.sharedOffsetY,
-              },
-            },
-            {
-              // Glow is intentionally kept in the object plan. It is not
-              // repeated in rangeFancyLayers.
-              kind: 'glow' as const,
-              category: 'decorative' as const,
-              params: { color: hexToRgba(palette.glow), blur: glowBlur, intensity: 1 },
-            },
-          ],
-        },
-        {
-          kind: 'solid-fill' as const,
-          category: 'base' as const,
-          params: { color: colors[0] },
-        },
-      ],
-    },
-  };
+    fancyConfig: { layers: sharedLayers },
+  } as unknown as Parameters<RichTextComponent['updateWithOptions']>[0];
 }
 
-function colorToHex (color: readonly number[] | undefined): string {
-  if (!color) {
-    return '#ffffff';
+function renderText (): void {
+  if (!richText) {
+    return;
   }
 
-  return `#${color.slice(0, 3).map(channel => Math.round(channel > 1 ? channel : channel * 255).toString(16).padStart(2, '0')).join('')}`;
+  richText.updateWithOptions(createFancyOptions());
+  richText.setOverflow(spec.TextOverflow.display);
+  richText.onUpdate(0);
+  renderComposition?.();
+  updateDiagnostics();
 }
 
-function describeLayer (range: NonNullable<ReturnType<RichTextComponent['getRenderPlan']>>['rangePlans'][number], kind: 'single-stroke' | 'shadow'): string {
-  const layer = range.layers.find(item => item.layer.kind === kind);
-
-  if (!layer) {
-    return `no ${kind}`;
+function updateScopeSummary (): void {
+  if (!scopeSummary) {
+    return;
   }
 
-  if (kind === 'single-stroke' && layer.layer.kind === 'single-stroke') {
-    return `stroke ${layer.layer.params.width}px ${colorToHex(layer.layer.params.color)}`;
-  }
-  if (kind === 'shadow' && layer.layer.kind === 'shadow') {
-    return `shadow ${layer.layer.params.blur}px ${colorToHex(layer.layer.params.color)}`;
-  }
+  const segment = activeSegment();
 
-  return kind;
+  scopeSummary.textContent = segment ? `片段 · ${segmentLabel(segment)}` : '全文 · 默认样式';
 }
 
-function isRangeOverride (range: NonNullable<ReturnType<RichTextComponent['getRenderPlan']>>['rangePlans'][number]): boolean {
-  return range.layers.some(layer => layer.layerId.startsWith(`range-${range.sourceRangeId}-`));
-}
-
-function updateScopeMap (plan: NonNullable<ReturnType<RichTextComponent['getRenderPlan']>>): void {
-  if (rangeList) {
-    rangeList.innerHTML = plan.rangePlans.map(range => {
-      const scope = isRangeOverride(range) ? 'override' : 'inherit shared';
-      const layers = [
-        describeLayer(range, 'single-stroke'),
-        describeLayer(range, 'shadow'),
-        range.layers.some(layer => layer.layer.kind === 'solid-fill') ? 'fill' : 'no fill',
-      ];
-
-      return `
-        <div class="scope-row">
-          <span class="scope-dot" style="background:${colorToHex(range.basicStyle.fillColor)}"></span>
-          <code>${range.sourceRangeId}</code>
-          <span>${range.glyphIds.length} glyphs · ${scope} · ${layers.join(' · ')}</span>
-        </div>
-      `;
-    }).join('');
+function renderPresets (): void {
+  if (!presetList) {
+    return;
   }
 
-  if (objectList) {
-    objectList.innerHTML = plan.objectPlan.layers.map(layer => {
-      if (layer.layer.kind === 'glow') {
-        return `
-          <div class="scope-row object-row">
-            <span class="scope-tag">OBJECT</span>
-            <code>glow</code>
-            <span>blur ${layer.layer.params.blur}px · intensity ${layer.layer.params.intensity} · ${colorToHex(layer.layer.params.color)} · shared params · complete content source</span>
-          </div>
-        `;
+  presetList.innerHTML = [
+    ['mint', '薄荷 / 紫'],
+    ['sunset', '日落 / 奶油'],
+    ['mono', '黑白 / 青'],
+  ].map(([key, label]) => `<button class="preset-button" type="button" data-preset="${key}" data-active="${key === currentPalette}">${label}</button>`).join('');
+
+  presetList.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(button => {
+    button.addEventListener('click', () => {
+      const paletteName = button.dataset.preset as PaletteName;
+
+      applyPalette(paletteName);
+    });
+  });
+}
+
+function renderScopes (): void {
+  if (!scopeSwitch) {
+    return;
+  }
+
+  const buttons = [`<button class="scope-button object" type="button" data-scope="object" data-active="${activeScope === 'object'}"><span class="scope-dot"></span>全文</button>`];
+
+  meaningfulSegments().forEach(({ segment, displayIndex }) => {
+    buttons.push(`<button class="scope-button" type="button" data-scope="${segment.id}" data-active="${activeScope === segment.id}"><span class="scope-dot" style="background:${styleForSegment(segment).fillColor}"></span>片段 ${displayIndex + 1}</button>`);
+  });
+  scopeSwitch.innerHTML = buttons.join('');
+  scopeSwitch.querySelectorAll<HTMLButtonElement>('[data-scope]').forEach(button => {
+    button.addEventListener('click', () => {
+      activeScope = button.dataset.scope ?? 'object';
+      const segment = activeSegment();
+
+      if (segment && textInput) {
+        textInput.focus();
+        textInput.setSelectionRange(segment.start, segment.end);
       }
-
-      return `
-        <div class="scope-row object-row">
-          <span class="scope-tag">OBJECT</span>
-          <code>${layer.layer.kind}</code>
-          <span>one shared pass</span>
-        </div>
-      `;
-    }).join('');
-  }
+      renderEditor();
+    });
+  });
 }
 
-function updateReadout (): void {
+function renderSegments (): void {
+  if (!segmentList) {
+    return;
+  }
+
+  segmentList.innerHTML = meaningfulSegments().map(({ segment, displayIndex }) => {
+    const style = styleForSegment(segment);
+    const overrideLabel = segment.override ? '已自定义' : '继承全文';
+
+    return `<button class="segment-row" type="button" data-segment="${segment.id}" data-active="${activeScope === segment.id}">
+      <span class="segment-dot" style="background:${style.fillColor}"></span>
+      <span class="segment-copy"><strong>片段 ${displayIndex + 1} · ${escapeHtml(segmentLabel(segment))}</strong><small>${overrideLabel} · ${segment.end - segment.start} 字</small></span>
+      <span class="segment-arrow">›</span>
+    </button>`;
+  }).join('');
+
+  segmentList.querySelectorAll<HTMLButtonElement>('[data-segment]').forEach(button => {
+    button.addEventListener('click', () => {
+      activeScope = button.dataset.segment ?? 'object';
+      const segment = activeSegment();
+
+      if (segment && textInput) {
+        textInput.focus();
+        textInput.setSelectionRange(segment.start, segment.end);
+      }
+      renderEditor();
+    });
+  });
+}
+
+function inheritanceMarkup (): string {
+  const segment = activeSegment();
+
+  if (!segment) {
+    return '<div class="inherit-row"><span>全文默认样式</span><small>片段默认继承这套配置</small></div>';
+  }
+
+  return `<div class="inherit-row ${segment.override ? 'override' : ''}"><span>${segment.override ? '当前片段已覆盖全文默认' : '当前片段继承全文默认'}</span><button class="tool-button" type="button" data-action="toggle-inherit">${segment.override ? '恢复继承' : '编辑片段'}</button></div>`;
+}
+
+function controlAttribute (field: StyleField | GlowField): string {
+  return field.startsWith('glow') ? 'data-glow-field' : 'data-field';
+}
+
+function colorRow (label: string, field: StyleField | GlowField, value: ColorHex): string {
+  const attribute = controlAttribute(field);
+
+  return `<div class="param-row wide"><label>${label}</label><input type="color" ${attribute}="${field}" value="${colorForInput(value)}" /></div>`;
+}
+
+function rangeRow (label: string, field: StyleField | GlowField, value: number, min: number, max: number, step: number): string {
+  const attribute = controlAttribute(field);
+
+  return `<div class="param-row"><label>${label}</label><input type="range" ${attribute}="${field}" min="${min}" max="${max}" step="${step}" value="${value}" /><output data-output="${field}">${value}</output></div>`;
+}
+
+function toggleMarkup (field: StyleField | GlowField, checked: boolean): string {
+  const attribute = controlAttribute(field);
+
+  return `<input class="layer-toggle" type="checkbox" ${attribute}="${field}" ${checked ? 'checked' : ''} />`;
+}
+
+function renderFillSection (style: StyleState): string {
+  return `<section class="section"><div class="section-label"><span>填充</span><small>当前作用范围</small></div>${inheritanceMarkup()}<div class="layer-card ${style.fillVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('fillVisible', style.fillVisible)}<span class="layer-preview" style="background:${colorToCss(style.fillColor, style.fillOpacity)}"></span><span class="layer-info"><strong>纯色填充</strong><small>${style.fillVisible ? 'Fill' : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'fillColor', style.fillColor)}${rangeRow('不透明度', 'fillOpacity', Math.round(style.fillOpacity * 100), 0, 100, 1)}</div></div></section>`;
+}
+
+function renderStrokeSection (style: StyleState): string {
+  return `<section class="section"><div class="section-label"><span>描边</span><small>片段级</small></div><div class="layer-card ${style.strokeVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('strokeVisible', style.strokeVisible)}<span class="layer-preview" style="background:${colorToCss(style.strokeColor, style.strokeOpacity)}"></span><span class="layer-info"><strong>单描边</strong><small>${style.strokeVisible ? `${style.strokeWidth}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'strokeColor', style.strokeColor)}${rangeRow('宽度', 'strokeWidth', style.strokeWidth, 0, 16, 1)}${rangeRow('不透明度', 'strokeOpacity', Math.round(style.strokeOpacity * 100), 0, 100, 1)}</div></div></section>`;
+}
+
+function renderShadowLayer (style: StyleState): string {
+  return `<div class="layer-card ${style.shadowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('shadowVisible', style.shadowVisible)}<span class="layer-preview" style="background:${colorToCss(style.shadowColor, style.shadowOpacity)}"></span><span class="layer-info"><strong>阴影</strong><small>${style.shadowVisible ? `${style.shadowBlur}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'shadowColor', style.shadowColor)}${rangeRow('模糊', 'shadowBlur', style.shadowBlur, 0, 28, 1)}${rangeRow('距离', 'shadowDistance', style.shadowDistance, 0, 40, 1)}${rangeRow('角度', 'shadowAngle', style.shadowAngle, -180, 180, 1)}${rangeRow('不透明度', 'shadowOpacity', Math.round(style.shadowOpacity * 100), 0, 100, 1)}</div></div>`;
+}
+
+function renderGlowLayer (): string {
+  if (activeScope !== 'object') {
+    return '<div class="layer-card disabled"><div class="layer-head"><span class="layer-preview" style="background:#9c8dff"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · 请切换到全文编辑</small></span></div><div class="locked-note">Glow 作用于整个文本对象，不随单个片段切换。</div></div>';
+  }
+
+  return `<div class="layer-card ${sharedStyle.glowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('glowVisible', sharedStyle.glowVisible)}<span class="layer-preview" style="background:${colorToCss(sharedStyle.glowColor, sharedStyle.glowOpacity)}"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · OBJECT</small></span></div><div class="layer-params">${colorRow('颜色', 'glowColor', sharedStyle.glowColor)}${rangeRow('模糊', 'glowBlur', sharedStyle.glowBlur, 0, 32, 1)}${rangeRow('强度', 'glowIntensity', sharedStyle.glowIntensity, 1, 5, 1)}${rangeRow('不透明度', 'glowOpacity', Math.round(sharedStyle.glowOpacity * 100), 0, 100, 1)}</div></div>`;
+}
+
+function renderEffectsSection (style: StyleState): string {
+  return `<section class="section"><div class="section-label"><span>效果</span><small>Shadow · Range / Glow · Object</small></div>${inheritanceMarkup()}${renderShadowLayer(style)}${renderGlowLayer()}</section>`;
+}
+
+function renderEditor (): void {
+  renderPresets();
+  renderScopes();
+  renderSegments();
+  updateScopeSummary();
+
+  if (editorSections) {
+    const style = activeStyle();
+
+    editorSections.innerHTML = `${renderFillSection(style)}${renderStrokeSection(style)}${renderEffectsSection(style)}`;
+    bindEditorControls();
+  }
+  updateSelectionState();
+}
+
+function updateControlReadouts (): void {
+  editorSections?.querySelectorAll<HTMLOutputElement>('[data-output]').forEach(output => {
+    const field = output.dataset.output as StyleField | GlowField | undefined;
+
+    if (!field) {
+      return;
+    }
+
+    const attribute = controlAttribute(field);
+    const input = editorSections?.querySelector<HTMLInputElement>(`[${attribute}="${field}"]`);
+
+    if (!input) {
+      return;
+    }
+
+    const suffix = field.toLowerCase().includes('opacity') ? '%' : field.toLowerCase().includes('angle') ? '°' : field.toLowerCase().includes('width') || field.toLowerCase().includes('blur') || field.toLowerCase().includes('distance') ? 'px' : '';
+
+    output.value = `${input.value}${suffix}`;
+  });
+}
+
+function refreshAfterEdit (): void {
+  renderText();
+  updateControlReadouts();
+  updateScopesAndSegmentsOnly();
+}
+
+function updateScopesAndSegmentsOnly (): void {
+  renderScopes();
+  renderSegments();
+  updateScopeSummary();
+}
+
+function bindEditorControls (): void {
+  editorSections?.querySelectorAll<HTMLInputElement>('[data-field]').forEach(input => {
+    const field = input.dataset.field as StyleField | undefined;
+
+    if (!field) {
+      return;
+    }
+
+    input.addEventListener('input', () => {
+      const value = input.type === 'checkbox' ? input.checked : input.type === 'color' ? input.value : Number(input.value);
+
+      setStyleField(field, value);
+      refreshAfterEdit();
+    });
+  });
+
+  editorSections?.querySelectorAll<HTMLInputElement>('[data-glow-field]').forEach(input => {
+    const field = input.dataset.glowField as GlowField | undefined;
+
+    if (!field) {
+      return;
+    }
+
+    input.addEventListener('input', () => {
+      const value = input.type === 'checkbox' ? input.checked : input.type === 'color' ? input.value : Number(input.value);
+
+      setGlowField(field, value);
+      refreshAfterEdit();
+    });
+  });
+
+  editorSections?.querySelectorAll<HTMLButtonElement>('[data-action="toggle-inherit"]').forEach(button => {
+    button.addEventListener('click', () => {
+      const segment = activeSegment();
+
+      if (!segment) {
+        return;
+      }
+      if (segment.override) {
+        segment.override = false;
+      } else {
+        segment.override = true;
+        segment.style = cloneStyle(sharedStyle);
+      }
+      renderEditor();
+      renderText();
+    });
+  });
+}
+
+function applyPalette (paletteName: PaletteName): void {
+  currentPalette = paletteName;
+  sharedStyle = createSharedStyle(paletteName);
+  const palette = palettes[paletteName];
+  let visibleIndex = 0;
+
+  segments.forEach(segment => {
+    if (!segmentText(segment).trim()) {
+      segment.override = false;
+
+      return;
+    }
+
+    const rangePreset = palette.ranges[Math.min(visibleIndex, palette.ranges.length - 1)];
+
+    segment.override = true;
+    segment.style = createStyle(palette, rangePreset, palette.colors[Math.min(visibleIndex, palette.colors.length - 1)]);
+    visibleIndex++;
+  });
+
+  renderEditor();
+  renderText();
+}
+
+function splitAt (position: number): void {
+  const index = segments.findIndex(segment => segment.start < position && position < segment.end);
+
+  if (index < 0) {
+    return;
+  }
+
+  const source = segments[index];
+  const left: SegmentState = { ...source, id: `segment-${nextSegmentId++}`, end: position, style: cloneStyle(source.style) };
+  const right: SegmentState = { ...source, id: `segment-${nextSegmentId++}`, start: position, style: cloneStyle(source.style) };
+
+  segments.splice(index, 1, left, right);
+}
+
+function normalizeSegments (): void {
+  const sorted = [...segments].sort((left, right) => left.start - right.start);
+  const normalized: SegmentState[] = [];
+  let cursor = 0;
+
+  for (const source of sorted) {
+    const start = Math.max(cursor, Math.min(editorText.length, source.start));
+    const end = Math.max(start, Math.min(editorText.length, source.end));
+
+    if (start > cursor) {
+      normalized.push({ id: `segment-${nextSegmentId++}`, start: cursor, end: start, override: false, style: cloneStyle(sharedStyle) });
+    }
+    if (end > start) {
+      normalized.push({ ...source, start, end });
+      cursor = end;
+    }
+  }
+  if (cursor < editorText.length) {
+    normalized.push({ id: `segment-${nextSegmentId++}`, start: cursor, end: editorText.length, override: false, style: cloneStyle(sharedStyle) });
+  }
+  segments = normalized.length > 0 ? normalized : [{ id: `segment-${nextSegmentId++}`, start: 0, end: editorText.length, override: false, style: cloneStyle(sharedStyle) }];
+}
+
+function splitSelection (): void {
+  if (!textInput) {
+    return;
+  }
+
+  const start = Math.min(textInput.selectionStart, textInput.selectionEnd);
+  const end = Math.max(textInput.selectionStart, textInput.selectionEnd);
+
+  if (start === end) {
+    return;
+  }
+
+  normalizeSegments();
+  splitAt(start);
+  splitAt(end);
+  const selected = segments.find(segment => segment.start === start && segment.end === end);
+
+  activeScope = selected?.id ?? activeScope;
+  textInput.setSelectionRange(start, end);
+  renderEditor();
+  renderText();
+}
+
+function mergeSelection (): void {
+  if (!textInput) {
+    return;
+  }
+
+  const start = Math.min(textInput.selectionStart, textInput.selectionEnd);
+  const end = Math.max(textInput.selectionStart, textInput.selectionEnd);
+
+  if (start === end) {
+    return;
+  }
+
+  normalizeSegments();
+  splitAt(start);
+  splitAt(end);
+  const selected = segments.filter(segment => segment.start >= start && segment.end <= end);
+
+  if (selected.length < 2) {
+    return;
+  }
+
+  const firstIndex = segments.indexOf(selected[0]);
+  const merged: SegmentState = {
+    id: `segment-${nextSegmentId++}`,
+    start,
+    end,
+    override: selected[0].override,
+    style: cloneStyle(selected[0].style),
+  };
+
+  segments.splice(firstIndex, selected.length, merged);
+  activeScope = merged.id;
+  textInput.setSelectionRange(start, end);
+  renderEditor();
+  renderText();
+}
+
+function reconcileSegmentsAfterTextEdit (oldText: string, newText: string, oldStart: number, oldEnd: number): void {
+  const removedLength = oldEnd - oldStart;
+  const insertedLength = newText.length - (oldText.length - removedLength);
+  const delta = insertedLength - removedLength;
+  const mapBoundary = (position: number): number => {
+    if (position <= oldStart) {return position;}
+    if (position >= oldEnd) {return position + delta;}
+
+    return oldStart + insertedLength;
+  };
+
+  segments = segments.map(segment => ({
+    ...segment,
+    start: mapBoundary(segment.start),
+    end: mapBoundary(segment.end),
+  })).filter(segment => segment.end > segment.start);
+  editorText = newText;
+  normalizeSegments();
+}
+
+function updateSelectionState (): void {
+  if (!textInput || !selectionStatus || !splitSelectionButton || !mergeSelectionButton) {
+    return;
+  }
+
+  const start = Math.min(textInput.selectionStart, textInput.selectionEnd);
+  const end = Math.max(textInput.selectionStart, textInput.selectionEnd);
+  const selectedSegments = segments.filter(segment => segment.start < end && segment.end > start);
+
+  lastSelection = { start, end };
+  selectionStatus.textContent = start === end ? '未选择文字' : `已选择 ${end - start} 个字符 · ${selectedSegments.length > 1 ? '跨越多个片段' : '可拆分'}`;
+  splitSelectionButton.disabled = start === end;
+  mergeSelectionButton.disabled = selectedSegments.length < 2;
+}
+
+function updateDiagnostics (): void {
   const plan = richText?.getRenderPlan();
 
   if (!plan) {
     return;
   }
 
-  const { padding, renderSize } = plan.geometry;
+  if (glyphCount) {glyphCount.textContent = String(plan.glyphs.length);}
+  if (rangeCount) {rangeCount.textContent = String(plan.rangePlans.length);}
+  if (paddingReadout) {paddingReadout.textContent = `${plan.geometry.padding.left}px / ${plan.geometry.padding.top}px`;}
+  if (surfaceReadout) {surfaceReadout.textContent = `${plan.geometry.renderSize.width} × ${plan.geometry.renderSize.height}`;}
 
-  updateScopeMap(plan);
-
-  if (glyphCount) {
-    glyphCount.textContent = String(plan.glyphs.length);
+  if (rangeList) {
+    rangeList.innerHTML = plan.rangePlans.map((range, index) => `<div class="scope-map-row"><span>RANGE</span><code>range-${index}</code><span>${range.glyphIds.length} glyphs · ${segments[index]?.override ? 'override' : 'inherit'}</span></div>`).join('');
   }
-  if (rangeCount) {
-    rangeCount.textContent = String(plan.rangePlans.length);
-  }
-  if (paddingReadout) {
-    paddingReadout.textContent = `${padding.left}px / ${padding.top}px`;
-  }
-  if (surfaceReadout) {
-    surfaceReadout.textContent = `${renderSize.width} × ${renderSize.height}`;
+  if (objectList) {
+    objectList.innerHTML = plan.objectPlan.layers.map(layer => `<div class="scope-map-row"><span>OBJECT</span><code>${layer.layer.kind}</code><span>shared pass</span></div>`).join('');
   }
 }
 
-function updateLabels (): void {
-  for (const definition of rangeDefinitions) {
-    const controls = rangeControls[definition.sourceRangeId];
-
-    if (controls.strokeValue) {controls.strokeValue.textContent = `${getValue(controls.stroke, 0)}px`;}
-    if (controls.shadowValue) {controls.shadowValue.textContent = `${getValue(controls.shadow, 0)}px`;}
-  }
-  if (glowValue) {glowValue.textContent = `${getValue(glowInput, 0)}px`;}
-}
-
-function refresh (): void {
-  if (!richText) {
+function updateSelectionListeners (): void {
+  if (!textInput) {
     return;
   }
 
-  richText.updateWithOptions(createFancyOptions(currentPalette));
-  richText.setOverflow(spec.TextOverflow.display);
-  richText.onUpdate(0);
-  renderComposition?.();
-  updateLabels();
-  updateReadout();
+  const captureSelection = (): void => {
+    lastSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
+    updateSelectionState();
+  };
+
+  textInput.addEventListener('beforeinput', () => {
+    pendingEditSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
+  });
+  ['select', 'keyup', 'mouseup', 'focus'].forEach(eventName => textInput.addEventListener(eventName, captureSelection));
+  textInput.addEventListener('input', () => {
+    const oldText = editorText;
+    const editSelection = pendingEditSelection.start === pendingEditSelection.end && lastSelection.end > lastSelection.start ? lastSelection : pendingEditSelection;
+
+    reconcileSegmentsAfterTextEdit(oldText, textInput.value, editSelection.start, editSelection.end);
+    renderEditor();
+    renderText();
+    pendingEditSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
+  });
 }
 
 async function main (): Promise<void> {
-  if (!container) {
-    throw new Error('RichText demo container was not found.');
+  if (!container || !textInput) {
+    throw new Error('RichText editor container was not found.');
   }
 
-  applyPresetValues(currentPalette);
+  sharedStyle = createSharedStyle(currentPalette);
+  segments = createInitialSegments(currentPalette);
+  normalizeSegments();
+  textInput.value = editorText;
+  updateSelectionListeners();
+  splitSelectionButton?.addEventListener('click', splitSelection);
+  mergeSelectionButton?.addEventListener('click', mergeSelection);
+  renderEditor();
 
   const player = new Player({ container, manualRender: true });
   const composition = await player.loadScene(sceneUrl, {
     autoplay: false,
-    variables: { richText_1: textInput?.value ?? '' },
+    variables: { richText_1: editorText },
   });
 
   composition.gotoAndStop(0);
-
   renderComposition = () => composition.render();
   richText = composition.getItemByName('richText_1')?.getComponent(RichTextComponent);
-
-  if (richText) {
-    Reflect.set(window, '__richTextDemo', richText);
-  }
 
   if (!richText) {
     throw new Error('RichTextComponent was not found in the demo scene.');
   }
 
-  // The scene starts with a plain RichText component. Rebuild its options so
-  // the live object uses the same RenderPlan path exposed in the inspector.
-  richText.updateWithOptions(createFancyOptions(currentPalette));
-  richText.setOverflow(spec.TextOverflow.display);
-  richText.onUpdate(0);
-  renderComposition?.();
-  updateLabels();
-  updateReadout();
-  if (status) {
-    status.textContent = 'render plan online';
-  }
-
-  for (const definition of rangeDefinitions) {
-    const controls = rangeControls[definition.sourceRangeId];
-
-    controls.stroke?.addEventListener('input', refresh);
-    controls.shadow?.addEventListener('input', refresh);
-  }
-  glowInput?.addEventListener('input', refresh);
-  textInput?.addEventListener('input', refresh);
-  document.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(button => {
-    button.addEventListener('click', () => {
-      const paletteName = button.dataset.preset as PaletteName;
-
-      if (!palettes[paletteName]) {
-        return;
-      }
-      currentPalette = paletteName;
-      applyPresetValues(currentPalette);
-      document.querySelectorAll('[data-preset]').forEach(item => item.setAttribute('data-active', String(item === button)));
-      refresh();
-    });
-  });
+  Reflect.set(window, '__richTextDemo', richText);
+  renderText();
+  if (status) {status.textContent = 'editor online';}
 }
 
 main().catch(error => {
   if (status) {status.textContent = 'render failed';}
-  console.error('[RichText RenderPlan Demo]', error);
+  console.error('[RichText Fancy Editor]', error);
 });
