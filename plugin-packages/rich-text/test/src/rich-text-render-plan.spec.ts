@@ -448,6 +448,89 @@ describe('rich-text/render-plan', () => {
     expect(changedPixelsInFirstRange).to.equal(0);
   });
 
+  it('keeps object glow independent from range stroke width', () => {
+    const makeRangeLayers = (strokeWidth: number): FancyRenderLayer[] => [
+      {
+        kind: 'single-stroke',
+        category: 'base',
+        params: { color: [1, 0, 0, 1], width: strokeWidth, unit: 'px' },
+      },
+      {
+        kind: 'solid-fill',
+        category: 'base',
+        params: { color: [1, 1, 1, 1] },
+      },
+    ];
+    const makePlan = (strokeWidth: number, withGlow: boolean): ReturnType<typeof buildRichTextRenderPlan> => {
+      const options = parseRichTextOptions(
+        '<color=#ffffffff>A</color>',
+        textStyle,
+        { 'range-0': makeRangeLayers(strokeWidth) },
+      );
+      const layers: FancyRenderLayer[] = withGlow ? [{
+        kind: 'glow',
+        category: 'decorative',
+        params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
+      }] : [];
+
+      return buildRichTextRenderPlan({
+        textStyle,
+        wrapResult: {
+          lines: [{
+            richOptions: options,
+            offsetX: [0],
+            width: 50,
+            lineHeight: 30,
+            offsetY: 0,
+            chars: [[{ char: 'A', x: 10 }]],
+          }],
+          maxLineWidth: 50,
+          totalHeight: 30,
+          bboxTop: -15,
+          bboxBottom: 15,
+          bboxHeight: 30,
+        },
+        horizontalAlignResult: { lineOffsets: [0] },
+        verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
+        overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
+        layers,
+      });
+    };
+    const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
+      const canvas = document.createElement('canvas');
+
+      canvas.width = 80;
+      canvas.height = 50;
+      const context = canvas.getContext('2d')!;
+
+      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+
+      return context.getImageData(0, 0, canvas.width, canvas.height).data;
+    };
+    const noGlowNarrow = render(makePlan(1, false));
+    const noGlowWide = render(makePlan(12, false));
+    const glowNarrow = render(makePlan(1, true));
+    const glowWide = render(makePlan(12, true));
+    let changedHaloPixels = 0;
+
+    for (let y = 0; y < 50; y++) {
+      for (let x = 0; x < 80; x++) {
+        const offset = (y * 80 + x) * 4;
+        const outsideText = noGlowNarrow[offset + 3] === 0 && noGlowWide[offset + 3] === 0;
+
+        if (!outsideText) {
+          continue;
+        }
+
+        if (glowNarrow[offset] !== glowWide[offset] || glowNarrow[offset + 1] !== glowWide[offset + 1] || glowNarrow[offset + 2] !== glowWide[offset + 2] || glowNarrow[offset + 3] !== glowWide[offset + 3]) {
+          changedHaloPixels++;
+        }
+      }
+    }
+
+    expect(changedHaloPixels).to.equal(0);
+  });
+
   it('renders range fill/stroke and object glow on the Canvas backend', () => {
     const options = parseRichTextOptions('<color=#ff0000ff>A</color>', textStyle);
     const layers: FancyRenderLayer[] = [

@@ -94,6 +94,24 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
 
     const glows = plan.objectPlan.layers.filter(layer => layer.layer.kind === 'glow');
     const shadowGroups = this.getRangeLayerGroups(plan, 'shadow');
+    let glowSourceCanvas = contentCanvas;
+
+    if (glows.length > 0) {
+      const fillCanvas = document.createElement('canvas');
+
+      fillCanvas.width = context.canvas.width;
+      fillCanvas.height = context.canvas.height;
+      const fillContext = fillCanvas.getContext('2d');
+
+      if (fillContext) {
+        fillContext.setTransform(contentTransform);
+        // Object glow is based on the text fill/object content, not on the
+        // range stroke. Otherwise changing one range's stroke changes the
+        // shared glow source alpha and makes the glow of that range pulse.
+        this.renderContent(plan, fillContext, plan.rangePlans, false);
+        glowSourceCanvas = fillCanvas;
+      }
+    }
 
     context.save();
     context.setTransform(1, 0, 0, 1, 0, 0);
@@ -111,7 +129,7 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
       }
     }
     for (const layerPlan of glows) {
-      this.compositeGlow(context, contentCanvas, layerPlan);
+      this.compositeGlow(context, glowSourceCanvas, layerPlan);
     }
 
     context.restore();
@@ -121,9 +139,10 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     plan: TextRenderPlan,
     context: CanvasRenderingContext2D,
     ranges = plan.rangePlans,
+    includeStrokes = true,
   ): void {
     context.textBaseline = 'alphabetic';
-    const rangeLayers = this.getRangeContentLayers(ranges);
+    const rangeLayers = this.getRangeContentLayers(ranges, includeStrokes);
     const contentLayers = [
       ...rangeLayers,
       ...plan.objectPlan.layers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
@@ -343,13 +362,15 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private getRangeContentLayers (ranges: RangePlan[]): TextRenderLayerPlan[] {
+  private getRangeContentLayers (ranges: RangePlan[], includeStrokes = true): TextRenderLayerPlan[] {
     const seen = new Set<string>();
     const result: TextRenderLayerPlan[] = [];
 
     for (const range of ranges) {
       for (const layer of range.layers) {
-        if ((layer.layer.kind === 'single-stroke' || layer.layer.kind === 'solid-fill') && !seen.has(layer.layerId)) {
+        const isContentLayer = layer.layer.kind === 'solid-fill' || (includeStrokes && layer.layer.kind === 'single-stroke');
+
+        if (isContentLayer && !seen.has(layer.layerId)) {
           seen.add(layer.layerId);
           result.push(layer);
         }
