@@ -365,8 +365,8 @@
               <div class="scope-arrow">↓ object composition</div>
               <div class="scope-lane">
                 <span class="scope-pill object">OBJECT</span>
-                <strong class="scope-title">整段文本共享一次合成</strong>
-                <small>glow：消费 fill/object surface，不包含 range stroke</small>
+                <strong class="scope-title">整段文本共享参数，消费完整对象 source</strong>
+                <small>glow：消费完整 fill + stroke silhouette，跟随 outer stroke</small>
               </div>
             </div>
             <div class="control-group">
@@ -424,7 +424,7 @@
                 <div class="scope-list" id="object-list"></div>
               </div>
             </div>
-            <p class="note">这不是 mock。右侧读数和 scope map 都来自组件最近一次生成的 <code>getRenderPlan()</code>；修改文本会重新生成 glyph stream、range plan 和 object plan。Demo 预留固定 effect budget，因此调 blur 不会反复重建 surface；每个 range 的 shadow 则从自己的 glyph source 单独生成。</p>
+            <p class="note">这不是 mock。右侧读数和 scope map 都来自组件最近一次生成的 <code>getRenderPlan()</code>；修改文本会重新生成 glyph stream、range plan 和 object plan。Demo 预留固定 effect budget，因此调 blur 不会反复重建 surface；每个 range 的 shadow 从自己的 glyph source 单独生成；object glow 共享参数，并消费完整的 fill + stroke source。</p>
           </div>
         </aside>
       </section>

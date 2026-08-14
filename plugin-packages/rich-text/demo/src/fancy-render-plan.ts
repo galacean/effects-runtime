@@ -300,7 +300,7 @@ function updateScopeMap (plan: NonNullable<ReturnType<RichTextComponent['getRend
           <div class="scope-row object-row">
             <span class="scope-tag">OBJECT</span>
             <code>glow</code>
-            <span>blur ${layer.layer.params.blur}px · intensity ${layer.layer.params.intensity} · ${colorToHex(layer.layer.params.color)} · one shared pass</span>
+            <span>blur ${layer.layer.params.blur}px · intensity ${layer.layer.params.intensity} · ${colorToHex(layer.layer.params.color)} · shared params · complete content source</span>
           </div>
         `;
       }

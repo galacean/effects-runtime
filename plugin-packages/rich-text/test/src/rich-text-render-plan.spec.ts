@@ -417,7 +417,11 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: [],
+        layers: [{
+          kind: 'glow',
+          category: 'decorative',
+          params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
+        }],
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -448,7 +452,7 @@ describe('rich-text/render-plan', () => {
     expect(changedPixelsInFirstRange).to.equal(0);
   });
 
-  it('keeps object glow independent from range stroke width', () => {
+  it('moves object glow with the range outer stroke', () => {
     const makeRangeLayers = (strokeWidth: number): FancyRenderLayer[] => [
       {
         kind: 'single-stroke',
@@ -480,55 +484,65 @@ describe('rich-text/render-plan', () => {
             richOptions: options,
             offsetX: [0],
             width: 50,
-            lineHeight: 30,
+            lineHeight: 50,
             offsetY: 0,
-            chars: [[{ char: 'A', x: 10 }]],
+            chars: [[{ char: 'A', x: 50 }]],
           }],
           maxLineWidth: 50,
-          totalHeight: 30,
-          bboxTop: -15,
-          bboxBottom: 15,
-          bboxHeight: 30,
+          totalHeight: 50,
+          bboxTop: -25,
+          bboxBottom: 25,
+          bboxHeight: 50,
         },
         horizontalAlignResult: { lineOffsets: [0] },
-        verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
-        overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
+        verticalAlignResult: { baselineY: 55, lineYOffsets: [0] },
+        overflowResult: { canvasWidth: 140, canvasHeight: 90, renderOffsetX: 0, renderOffsetY: 0 },
         layers,
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
       const canvas = document.createElement('canvas');
 
-      canvas.width = 80;
-      canvas.height = 50;
+      canvas.width = 140;
+      canvas.height = 90;
       const context = canvas.getContext('2d')!;
 
       new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
-    const noGlowNarrow = render(makePlan(1, false));
-    const noGlowWide = render(makePlan(12, false));
-    const glowNarrow = render(makePlan(1, true));
-    const glowWide = render(makePlan(12, true));
-    let changedHaloPixels = 0;
+    const getHaloBounds = (
+      withGlow: Uint8ClampedArray,
+      withoutGlow: Uint8ClampedArray,
+    ): { minX: number, maxX: number, minY: number, maxY: number } => {
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
 
-    for (let y = 0; y < 50; y++) {
-      for (let x = 0; x < 80; x++) {
-        const offset = (y * 80 + x) * 4;
-        const outsideText = noGlowNarrow[offset + 3] === 0 && noGlowWide[offset + 3] === 0;
+      for (let y = 0; y < 90; y++) {
+        for (let x = 0; x < 140; x++) {
+          const offset = (y * 140 + x) * 4;
+          const isOuterHalo = withoutGlow[offset + 3] === 0 && withGlow[offset + 3] > 0;
 
-        if (!outsideText) {
-          continue;
-        }
-
-        if (glowNarrow[offset] !== glowWide[offset] || glowNarrow[offset + 1] !== glowWide[offset + 1] || glowNarrow[offset + 2] !== glowWide[offset + 2] || glowNarrow[offset + 3] !== glowWide[offset + 3]) {
-          changedHaloPixels++;
+          if (isOuterHalo) {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+          }
         }
       }
-    }
 
-    expect(changedHaloPixels).to.equal(0);
+      return { minX, maxX, minY, maxY };
+    };
+    const narrowHalo = getHaloBounds(render(makePlan(1, true)), render(makePlan(1, false)));
+    const wideHalo = getHaloBounds(render(makePlan(12, true)), render(makePlan(12, false)));
+
+    expect(wideHalo.minX).to.be.lessThan(narrowHalo.minX);
+    expect(wideHalo.maxX).to.be.greaterThan(narrowHalo.maxX);
+    expect(wideHalo.minY).to.be.lessThan(narrowHalo.minY);
+    expect(wideHalo.maxY).to.be.greaterThan(narrowHalo.maxY);
   });
 
   it('renders range fill/stroke and object glow on the Canvas backend', () => {
