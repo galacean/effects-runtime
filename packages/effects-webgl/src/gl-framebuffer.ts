@@ -212,7 +212,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     storeAction: RenderPassStoreAction,
     separateDepthStencil: boolean,
   ): GLenum[] | undefined {
-    const gl = this.engine.gl as WebGL2RenderingContext;
+    const gl = this.engine.gl;
     const colorLen = this.colorTextures.length;
 
     if (storeAction && isWebGL2(gl) && colorLen > 0) {
@@ -259,7 +259,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
     // TODO 不在bind中设置viewport
-    state.viewport(x, y, width, height);
+    state.setViewport(x, y, width, height);
     const whiteTexture = this.renderer.engine.whiteTexture as GLTexture;
     const whiteWebGLTexture = whiteTexture.textureBuffer;
 

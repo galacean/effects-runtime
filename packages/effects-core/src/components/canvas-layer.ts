@@ -17,7 +17,18 @@ export class CanvasLayer extends Component {
   /**
    * 绘制层级，数值越小越先绘制
    */
-  layer = 0;
+  private _layer = 0;
+
+  get layer (): number {
+    return this._layer;
+  }
+
+  set layer (value: number) {
+    if (this._layer !== value) {
+      this._layer = value;
+      this.engine.viewport.markRootsOrderDirty();
+    }
+  }
 
   /**
    * 注册一个顶层 CanvasItem 到当前层
@@ -28,6 +39,7 @@ export class CanvasLayer extends Component {
       return;
     }
     this.canvasItems.push(canvasItem);
+    this.engine.viewport.markRootsOrderDirty();
   }
 
   /**
@@ -36,6 +48,7 @@ export class CanvasLayer extends Component {
    */
   removeCanvasItem (canvasItem: CanvasItem): void {
     removeItem(this.canvasItems, canvasItem);
+    this.engine.viewport.markRootsOrderDirty();
   }
 
   override onEnable (): void {
@@ -44,11 +57,13 @@ export class CanvasLayer extends Component {
     if (canvasLayers && !canvasLayers.includes(this)) {
       canvasLayers.push(this);
     }
+    this.engine.viewport.markRootsOrderDirty();
   }
 
   override onDisable (): void {
     this.removeFromComposition();
     this.refreshCanvasItemsLayer();
+    this.engine.viewport.markRootsOrderDirty();
   }
 
   private removeFromComposition (): void {
@@ -83,7 +98,7 @@ export class CanvasLayer extends Component {
    */
   draw (): void {
     for (const canvasItem of this.canvasItems) {
-      if (!canvasItem.item.isActive) {
+      if (!canvasItem.isActiveInCanvasTree()) {
         continue;
       }
       canvasItem.drawInternal();

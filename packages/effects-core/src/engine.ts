@@ -28,6 +28,7 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
+import { Viewport } from './viewport';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -97,6 +98,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
+  viewport: Viewport;
   env = '';
   /**
    * 计时器
@@ -160,6 +162,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
+    this.viewport = new Viewport(this);
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -423,7 +426,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     if (this.getWidth() !== width || this.getHeight() !== height) {
       this.canvas.width = width;
       this.canvas.height = height;
-      this.viewport(0, 0, width, height);
+      this.setViewport(0, 0, width, height);
     }
 
     this.compositions?.forEach(comp => {
@@ -635,7 +638,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  viewport (x: number, y: number, width: number, height: number) {
+  setViewport (x: number, y: number, width: number, height: number) {
     // OVERRIDE
   }
 
@@ -757,6 +760,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.ticker?.stop();
     this.eventSystem?.dispose();
+    this.viewport.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
 

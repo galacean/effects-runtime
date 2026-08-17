@@ -22,6 +22,7 @@ export * from './decorators';
 export * from './downloader';
 export * from './effects-object';
 export * from './engine';
+export * from './input';
 export {
   ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,
   getStandardJSON, normalizeColor,
@@ -45,6 +46,7 @@ export * from './transform';
 export * from './rect-transform';
 export * from './utils';
 export * from './vfx-item';
+export * from './viewport';
 export * from './effects-object';
 export * from './effects-package';
 export * from './events';

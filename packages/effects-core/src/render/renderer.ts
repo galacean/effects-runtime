@@ -95,7 +95,7 @@ export class Renderer {
   }
 
   setViewport (x: number, y: number, width: number, height: number) {
-    this.engine.viewport(x, y, width, height);
+    this.engine.setViewport(x, y, width, height);
   }
 
   clear (action: RenderPassClearAction) {

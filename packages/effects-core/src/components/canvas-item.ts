@@ -1,4 +1,5 @@
 import type { Color } from '@galacean/effects-math/es/core';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import type { VFXItem } from '../vfx-item';
 import type { FontStyle, FontWeight, TextureRegion } from '../render';
 import type { Texture } from '../texture';
@@ -17,6 +18,9 @@ import { Component } from './component';
  * 整棵子树的隐藏由 `vfxItem.setActive(false)` 配合 drawInternal 中的 `isActive` 检查处理
  */
 export class CanvasItem extends Component {
+  private _topLevel = false;
+  private canvasItemDestroyed = false;
+  private canvasTopologyVersion = 0;
   /**
    * 父 CanvasItem
    * 沿 VFXItem 父链向上查找到的最近的 CanvasItem(只看类型,不看 active/enabled — 拓扑跟激活状态解耦)。
@@ -33,6 +37,23 @@ export class CanvasItem extends Component {
    */
   protected canvasLayerNode: CanvasLayer | null = null;
 
+  get topLevel (): boolean {
+    return this._topLevel;
+  }
+
+  set topLevel (value: boolean) {
+    if (this._topLevel === value) {
+      return;
+    }
+    this._topLevel = value;
+    this.canvasTopologyVersion++;
+    if (this.item) {
+      this.transform.parentTransform = value ? null : this.item.parent?.transform ?? null;
+      this.updateParentItem();
+      this.onCanvasTopologyChanged();
+    }
+  }
+
   /**
    * 获取当前所属的 CanvasLayer
    */
@@ -46,20 +67,26 @@ export class CanvasItem extends Component {
     // enable 在这里只是兜底首次入树
     this.updateCanvasLayer();
     this.updateParentItem();
+    this.onCanvasTopologyChanged();
   }
 
   override onDisable (): void {
     // 组件禁用 = 仅 self.draw 跳过,不应改父子拓扑(否则 enable 回来位置就乱了)。
     // 整棵子树的隐藏由 `vfxItem.setActive(false)` 配合 drawInternal 中的 `item.isActive` 检查处理
+    this.onCanvasTopologyChanged();
   }
 
   override onParentChanged (): void {
+    this.canvasTopologyVersion++;
     // VFXItem 的父级（或间接父级）发生变化时，CanvasLayer 与父 CanvasItem 都可能改变，需要联动刷新
     this.updateCanvasLayer();
     this.updateParentItem();
+    this.onCanvasTopologyChanged();
   }
 
   override onDestroy (): void {
+    this.canvasItemDestroyed = true;
+    this.canvasTopologyVersion++;
     this.removeFromParent();
     this.removeFromCanvasLayer();
 
@@ -96,6 +123,7 @@ export class CanvasItem extends Component {
     }
 
     this.canvasLayerNode = newLayer;
+    this.canvasTopologyVersion++;
 
     if (this.parent === null && newLayer) {
       newLayer.addCanvasItem(this);
@@ -119,7 +147,7 @@ export class CanvasItem extends Component {
       return;
     }
 
-    const newParent = this.getParentItem();
+    const newParent = this.topLevel ? null : this.getParentItem();
 
     if (newParent === this.parent) {
       return;
@@ -128,6 +156,7 @@ export class CanvasItem extends Component {
     const wasTopLevel = this.parent === null;
 
     this.removeFromParent();
+    this.canvasTopologyVersion++;
 
     if (newParent) {
       this.parent = newParent;
@@ -140,6 +169,7 @@ export class CanvasItem extends Component {
       // 由嵌套变成顶层：加入 layer 的顶层列表
       this.canvasLayerNode.addCanvasItem(this);
     }
+    this.onCanvasTopologyChanged();
   }
 
   /**
@@ -148,6 +178,51 @@ export class CanvasItem extends Component {
    * 子类直接使用 this.drawXxx / this.fillXxx 系列封装方法绘制即可，绘制坐标视为本地坐标。
    */
   draw () {
+    // OVERRIDE
+  }
+
+  /** @internal */
+  getGlobalTransform2D (): Matrix3 {
+    const local = this.transform.getMatrix2D();
+
+    if (!this.parent || this.topLevel) {
+      return local.clone();
+    }
+
+    return new Matrix3().multiplyMatrices(this.parent.getGlobalTransform2D(), local);
+  }
+
+  /** @internal */
+  isActiveInCanvasTree (): boolean {
+    if (this.canvasItemDestroyed) {
+      return false;
+    }
+    let current: VFXItem | null = this.item;
+
+    while (current) {
+      if (!current.isActive) {
+        return false;
+      }
+      current = current.parent ?? null;
+    }
+
+    return true;
+  }
+
+  /** @internal */
+  isCanvasItemDestroyed (): boolean {
+    return this.canvasItemDestroyed;
+  }
+
+  /** @internal */
+  getCanvasTopologyVersion (): number {
+    return this.canvasTopologyVersion;
+  }
+
+  /**
+   * 层级、激活或绘制归属发生变化时调用。
+   */
+  protected onCanvasTopologyChanged (): void {
     // OVERRIDE
   }
 
@@ -403,11 +478,10 @@ function getCanvasLayerFromItem (item: VFXItem): CanvasLayer | null {
  */
 function getCanvasItemFromItem (item: VFXItem): CanvasItem | null {
   for (const component of item.components) {
-    if (component instanceof CanvasItem) {
+    if (component instanceof CanvasItem && !component.isCanvasItemDestroyed()) {
       return component;
     }
   }
 
   return null;
 }
-

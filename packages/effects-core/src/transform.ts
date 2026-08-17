@@ -132,7 +132,7 @@ export class Transform implements Disposable {
   }
 
   set parentTransform (transform: Transform | null) {
-    if (!transform || this.parent === transform || this === transform) {
+    if (this.parent === transform || this === transform) {
       return;
     }
     const oldParent = this.parent;
@@ -140,7 +140,9 @@ export class Transform implements Disposable {
     if (this.parent) {
       this.parent.removeChild(this);
     }
-    transform.addChild(this);
+    if (transform) {
+      transform.addChild(this);
+    }
     this.parent = transform;
     this.worldMatrixDirty = true;
     this.onParentTransformChanged(oldParent, transform);
