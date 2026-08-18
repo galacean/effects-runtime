@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
-import type { Engine, IRichTextComponent, TextRenderPlan } from '@galacean/effects';
+import type { Engine, FancyScopeResolution, IRichTextComponent, TextRenderPlan } from '@galacean/effects';
 import {
   assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
   TextComponentBase, FancyLayerFactory,
@@ -10,11 +10,16 @@ import type {
   RichWrapStrategy, RichOverflowStrategy, RichHorizontalAlignStrategy, RichVerticalAlignStrategy,
 } from './strategies/rich-text-interfaces';
 import { scaleLinesToFit } from './strategies/rich-text-interfaces';
-import { parseRichTextOptions, type RichTextOptions, type RichTextRangeFancyLayers } from './rich-text-options';
+import {
+  parseRichTextOptions,
+  type RichTextContentOptions,
+  type RichTextOptions,
+  type RichTextRangeFancyLayers,
+} from './rich-text-options';
 import { buildRichTextRenderPlan } from './rich-text-render-plan';
 import { CanvasRichTextFancyBackend, calculateTextEffectPadding, type TextEffectPadding } from './rich-text-fancy-backend';
 
-export type { RichTextOptions } from './rich-text-options';
+export type { RichTextContentOptions, RichTextOptions } from './rich-text-options';
 
 interface CharDetail {
   char: string,
@@ -68,6 +73,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   protected effectScaleY = 1;
   private lastRenderPlan?: TextRenderPlan;
   private rangeFancyLayers: RichTextRangeFancyLayers = {};
+  private fancyResolution?: FancyScopeResolution;
   /** Runtime-only padding budget for interactive/animated fancy parameters. */
   private fancyRenderPadding: Partial<TextEffectPadding> = {};
   /** Keeps the render surface stable while interactive fancy parameters change. */
@@ -142,18 +148,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   private generateTextProgram (text: string): void {
-    this.processedTextOptions = parseRichTextOptions(text, this.textStyle, this.rangeFancyLayers);
+    this.processedTextOptions = parseRichTextOptions(text, this.textStyle, this.rangeFancyLayers, this.fancyResolution);
   }
 
   /**
    * 根据配置更新文本样式和布局
    */
-  updateWithOptions (options: spec.RichTextContentOptions): void {
-    const richOptions = options as spec.RichTextContentOptions & {
-      rangeFancyLayers?: RichTextRangeFancyLayers,
-      /** Runtime-only render budget; not part of the persisted RichText schema. */
-      fancyRenderPadding?: Partial<TextEffectPadding>,
-    };
+  updateWithOptions (options: RichTextContentOptions): void {
+    const richOptions = options;
 
     const nextText = options.text ? options.text.toString() : ' ';
 
@@ -164,6 +166,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.rangeFancyLayers = richOptions.rangeFancyLayers ?? {};
     this.fancyRenderPadding = richOptions.fancyRenderPadding ?? {};
     this.textStyle = new TextStyle(options);
+    this.fancyResolution = this.textStyle.fancyConfig
+      && (this.textStyle.fancyConfig.rangeStacks || this.textStyle.fancyConfig.rangeOverrides)
+      ? TextStyle.resolveFancyConfig(
+        this.textStyle.fancyConfig,
+        this.textStyle.textColor,
+        this.textStyle.fancyRenderStyle.layers,
+      )
+      : undefined;
     this.textLayout = new RichTextLayout(options);
     this.text = nextText;
     // TextLayout 构造函数已经正确处理了 textVerticalAlign，这里不需要再设置
@@ -457,7 +467,15 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       verticalAlignResult,
     );
 
-    const requestedPadding = calculateTextEffectPadding(this.textStyle, this.rangeFancyLayers);
+    const resolvedRangeLayers: RichTextRangeFancyLayers = { ...this.rangeFancyLayers };
+
+    for (const options of this.processedTextOptions) {
+      if (options.rangeFancyLayers && !resolvedRangeLayers[options.sourceRangeId]) {
+        resolvedRangeLayers[options.sourceRangeId] = options.rangeFancyLayers;
+      }
+    }
+
+    const requestedPadding = calculateTextEffectPadding(this.textStyle, resolvedRangeLayers);
     const padding = this.mergeEffectPadding(requestedPadding);
     const paddedLogicalWidth = overflowResult.canvasWidth + padding.left + padding.right;
     const paddedLogicalHeight = overflowResult.canvasHeight + padding.top + padding.bottom;

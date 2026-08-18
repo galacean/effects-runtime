@@ -1,8 +1,11 @@
 import * as spec from '@galacean/effects-specification';
+import { isObjectFancyLayer } from './fancy-text/fancy-types';
 import type {
   FancyConfig,
+  FancyRangeOverride,
   FancyRenderLayer,
   FancyRenderStyle,
+  FancyScopeResolution,
 } from './fancy-text/fancy-types';
 
 // Re-export 预设常量（已迁移到 fancy-presets.ts，保持向后兼容）
@@ -105,7 +108,7 @@ export class TextStyle {
     // 优先使用 fancyConfig（配置态），其次使用 fancyRenderStyle（运行态）
     const fancyConfig = (options as unknown as { fancyConfig?: FancyConfig }).fancyConfig;
 
-    if (fancyConfig?.layers?.length) {
+    if (fancyConfig) {
       this.fancyConfig = fancyConfig;
       this.fancyRenderStyle = TextStyle.parseFancyConfig(fancyConfig, this.textColor);
     } else {
@@ -151,6 +154,62 @@ export class TextStyle {
 
   getCurrentFancyTextConfig (): FancyRenderStyle {
     return this.fancyRenderStyle;
+  }
+
+  /**
+   * Compile the public FancyConfig into the range/object data needed by
+   * RichText. Stack references are deliberately positional and local to the
+   * config; no preset or range identity is required by the renderer.
+   */
+  static resolveFancyConfig (
+    config: FancyConfig | undefined,
+    fallbackFillColor?: spec.vec4,
+    fallbackLayers?: FancyRenderLayer[],
+  ): FancyScopeResolution {
+    const renderLayers = config
+      ? this.parseFancyConfig(config, fallbackFillColor).layers
+      : (fallbackLayers ?? this.parseFancyConfig({ layers: [] }, fallbackFillColor).layers);
+    const defaultRangeLayers = renderLayers.filter(layer => !isObjectFancyLayer(layer));
+    const objectLayers = renderLayers.filter(layer => isObjectFancyLayer(layer));
+    const rangeStackLayers = (config?.rangeStacks ?? []).map(stack => {
+      const stackLayers = this.parseFancyConfig({ layers: stack.layers }, fallbackFillColor).layers;
+
+      return stackLayers.filter(layer => !isObjectFancyLayer(layer));
+    });
+
+    return {
+      defaultRangeLayers,
+      rangeStackLayers,
+      objectLayers,
+      rangeOverrides: config?.rangeOverrides ?? [],
+    };
+  }
+
+  /** Resolve one positional range override into its compiled layer stack. */
+  static resolveRangeOverride (
+    resolution: FancyScopeResolution,
+    override: FancyRangeOverride | undefined,
+    fallbackFillColor?: spec.vec4,
+  ): FancyRenderLayer[] | undefined {
+    if (override == null) {
+      return resolution.defaultRangeLayers;
+    }
+
+    if (typeof override === 'number') {
+      if (!Number.isInteger(override) || override < 1 || override > resolution.rangeStackLayers.length) {
+        return resolution.defaultRangeLayers;
+      }
+
+      return resolution.rangeStackLayers[override - 1];
+    }
+
+    return override.mode === 'disable'
+      ? [{
+        kind: 'solid-fill',
+        category: 'base',
+        params: { color: fallbackFillColor ?? [0, 0, 0, 1] },
+      }]
+      : undefined;
   }
 
   /** 将花字配置解析为 FancyRenderStyle，扁平化 decorations 到渲染层数组 */

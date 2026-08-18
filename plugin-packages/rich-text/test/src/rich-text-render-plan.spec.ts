@@ -1,4 +1,4 @@
-import { TextStyle, type FancyRenderLayer, spec } from '@galacean/effects';
+import { TextStyle, type FancyConfig, type FancyRenderLayer, spec } from '@galacean/effects';
 import { RichTextLayout } from '../../src/rich-text-layout';
 import { RichWrapEnabledStrategy } from '../../src/strategies/wrap/rich-wrap-enabled';
 import {
@@ -25,6 +25,58 @@ describe('rich-text/render-plan', () => {
     fontWeight: spec.TextWeight.normal,
     fontStyle: spec.FontStyle.normal,
     textColor: [10, 20, 30, 1],
+  });
+
+  it('resolves ordered range stacks without external range or stack ids', () => {
+    const config: FancyConfig = {
+      layers: [
+        {
+          kind: 'single-stroke',
+          params: { color: [0, 0, 0, 1], width: 2 },
+          decorations: [
+            {
+              kind: 'glow',
+              params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
+            },
+          ],
+        },
+        {
+          kind: 'solid-fill',
+          params: { color: [1, 1, 1, 1] },
+        },
+      ],
+      rangeStacks: [
+        {
+          layers: [
+            {
+              kind: 'single-stroke',
+              params: { color: [1, 0, 0, 1], width: 5 },
+            },
+            {
+              kind: 'solid-fill',
+              params: { color: [1, 1, 0, 1] },
+            },
+          ],
+        },
+      ],
+      rangeOverrides: [null, 1, { mode: 'disable' }, 1],
+    };
+    const resolution = TextStyle.resolveFancyConfig(config, textStyle.textColor);
+    const options = parseRichTextOptions(
+      '普通<b>重点</b>说明<i>重点</i>',
+      textStyle,
+      undefined,
+      resolution,
+    );
+
+    expect(options).to.have.length(4);
+    expect(options[0].rangeFancyLayers?.map(layer => layer.kind)).to.eql(['single-stroke', 'solid-fill']);
+    expect(options[1].rangeFancyLayers?.map(layer => layer.kind)).to.eql(['single-stroke', 'solid-fill']);
+    expect(options[1].rangeFancyLayers?.[0]).to.include({ kind: 'single-stroke' });
+    expect(options[1].rangeFancyLayers?.[0].params).to.eql({ color: [1, 0, 0, 1], width: 5, unit: 'px' });
+    expect(options[2].rangeFancyLayers?.map(layer => layer.kind)).to.eql(['solid-fill']);
+    expect(options[3].rangeFancyLayers).to.equal(options[1].rangeFancyLayers);
+    expect(resolution.objectLayers.map(layer => layer.kind)).to.eql(['glow']);
   });
 
   it('keeps the parser range id stable when one source range is split by newlines', () => {

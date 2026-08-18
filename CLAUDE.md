@@ -76,6 +76,12 @@ Keep iterating until the mistake rate measurably drops.
 <!-- Add patterns as they emerge from your codebase -->
 
 - Respond in Simplified-Chinese by default; only switch to another language when explicitly requested in the prompt
+- In text architecture, keep RichText parser `SourceRange` separate from AE/Lottie Text Animator `Range Selector`: the parser defines static text segments, while the animator selector only computes per-unit animation weights. Never use `t.a[]` as the rich-text segmentation or fancy-stack binding model.
+- RichText Runtime input contains one complete markup string; Runtime performs segmentation internally. Never describe the caller as passing segmented text. Per-range fancy data, when needed, is style-only metadata associated after parsing, preferably nested under the extra fancy configuration.
+- When rich-text markup and per-range fancy metadata are serialized together, bind them positionally by the deterministic parser output order. Do not invent an explicit `rangeIndex`, `rangeId`, or offsets unless the product requires non-positional updates; the override entry itself contains style only.
+- For the final RichText fancy contract, preserve one public `FancyConfig` for ordinary/rich text compatibility. Use ordered inline range overrides in the V1 snapshot, but split the shared template into explicit Range/Object semantics only inside the scope-aware normalizer and `TextRenderPlan`; object effects remain unique and range overrides may only contain range-capable effects.
+- For the V1 Runtime JSON, reuse is allowed through an ordered `rangeStacks[]` table and positive 1-based ordinals in `rangeOverrides[]`; do not introduce global/named stack IDs. Null inherits the default range template and `{mode: "disable"}` preserves only the basic RichText fill.
+- Existing FancyConfig storage has `presetName`/registry-name keys but no stable preset identity. Keep any external preset asset identity in a wrapper, never use a display name as an ID; V1 Runtime JSON uses only local ordered stack ordinals, and `sourceRangeId` remains runtime-internal.
 
 ---
 

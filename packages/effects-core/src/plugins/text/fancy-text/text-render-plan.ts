@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import type { FancyRenderLayer } from './fancy-types';
+import { isObjectFancyLayer, type FancyRenderLayer } from './fancy-types';
 
 export interface TextLineInput {
   y: number,
@@ -108,10 +108,7 @@ export interface TextRenderBackend<TTarget, TResult = void> {
 }
 
 function isObjectLayer (layer: FancyRenderLayer): boolean {
-  // GE v1 keeps gradient and texture as object-level capabilities. Glow is
-  // already object-level by product semantics. Shadow remains range-level even
-  // though the legacy Canvas renderer currently composites it as one surface.
-  return layer.kind === 'glow' || layer.kind === 'gradient' || layer.kind === 'texture';
+  return isObjectFancyLayer(layer);
 }
 
 function normalizeLayer (layer: FancyRenderLayer): TextRenderLayer {

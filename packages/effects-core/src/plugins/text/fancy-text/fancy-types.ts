@@ -60,10 +60,29 @@ export type BaseLayerConfig =
   | GradientLayerConfig
   | TextureLayerConfig;
 
+/**
+ * A reusable range-scoped stack definition for rich text.
+ * The stack is addressed by its position in FancyConfig.rangeStacks.
+ */
+export interface FancyRangeStack {
+  layers: BaseLayerConfig[],
+  name?: string,
+}
+
+/**
+ * Rich-text range binding. Positive numbers are 1-based indexes into
+ * FancyConfig.rangeStacks; null inherits the default range stack.
+ */
+export type FancyRangeOverride = null | number | { mode: 'disable' };
+
 // ========== 花字整体配置 ==========
 
 export interface FancyConfig {
   layers: BaseLayerConfig[],
+  /** Reusable range-scoped stacks. The public JSON uses 1-based references. */
+  rangeStacks?: FancyRangeStack[],
+  /** One entry per parser source range, in parser output order. */
+  rangeOverrides?: FancyRangeOverride[],
   presetName?: string,
   /** 预设版本号，默认 1 */
   version?: number,
@@ -110,9 +129,22 @@ export type FancyRenderLayer =
   | { kind: 'gradient', category?: LayerCategory, params: { angle: number, colors: spec.vec4[] } }
   | { kind: 'texture', category?: LayerCategory, params: { pattern: TexturePatternConfig, opacity?: number }, runtimePattern?: CanvasPattern | null };
 
+/** V1 object-scope effect registry used by normalizers and render plans. */
+export function isObjectFancyLayer (layer: FancyRenderLayer): boolean {
+  return layer.kind === 'glow' || layer.kind === 'gradient' || layer.kind === 'texture';
+}
+
 export interface FancyRenderStyle {
   layers: FancyRenderLayer[],
   presetName?: string,
+}
+
+/** Runtime-only result of compiling the public FancyConfig for rich text. */
+export interface FancyScopeResolution {
+  defaultRangeLayers: FancyRenderLayer[],
+  rangeStackLayers: FancyRenderLayer[][],
+  objectLayers: FancyRenderLayer[],
+  rangeOverrides: FancyRangeOverride[],
 }
 
 // ========== 文字绘制环境 ==========
