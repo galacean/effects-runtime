@@ -1,4 +1,4 @@
-import { Player, spec, type FancyRenderLayer } from '@galacean/effects';
+import { Player, spec, type BaseLayerConfig, type DecorativeLayerConfig } from '@galacean/effects';
 import '@galacean/effects-plugin-rich-text';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 
@@ -423,22 +423,26 @@ function setGlowField (field: GlowField, value: string | number | boolean): void
   }
 }
 
-function rangeLayersFromStyle (style: StyleState): FancyRenderLayer[] {
-  const layers: FancyRenderLayer[] = [];
+function rangeLayersFromStyle (style: StyleState): BaseLayerConfig[] {
+  const layers: BaseLayerConfig[] = [];
   const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
 
   if (style.strokeVisible) {
+    const decorations: DecorativeLayerConfig[] = [];
+
+    if (style.shadowVisible) {
+      decorations.push({
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: colorToRgba(style.shadowColor, style.shadowOpacity), blur: style.shadowBlur, offsetX: offset.offsetX, offsetY: offset.offsetY },
+      });
+    }
+
     layers.push({
       kind: 'single-stroke',
       category: 'base',
       params: { color: colorToRgba(style.strokeColor, style.strokeOpacity), width: style.strokeWidth, unit: 'px' },
-    });
-  }
-  if (style.shadowVisible) {
-    layers.push({
-      kind: 'shadow',
-      category: 'decorative',
-      params: { color: colorToRgba(style.shadowColor, style.shadowOpacity), blur: style.shadowBlur, offsetX: offset.offsetX, offsetY: offset.offsetY },
+      decorations,
     });
   }
   if (style.fillVisible) {
@@ -488,11 +492,25 @@ function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions'
     });
   }
 
-  const rangeFancyLayers: Record<string, FancyRenderLayer[]> = {};
+  const rangeStacks: BaseLayerConfig[][] = [];
+  const rangeStackIndexByJson = new Map<string, number>();
+  const rangeOverrides: Array<null | number> = [];
 
-  segments.forEach((segment, index) => {
+  segments.forEach(segment => {
     if (segment.override) {
-      rangeFancyLayers[`range-${index}`] = rangeLayersFromStyle(segment.style);
+      const layers = rangeLayersFromStyle(segment.style);
+      const key = JSON.stringify(layers);
+      let stackNumber = rangeStackIndexByJson.get(key);
+
+      if (stackNumber === undefined) {
+        rangeStacks.push(layers);
+        stackNumber = rangeStacks.length;
+        rangeStackIndexByJson.set(key, stackNumber);
+      }
+
+      rangeOverrides.push(stackNumber);
+    } else {
+      rangeOverrides.push(null);
     }
   });
 
@@ -516,9 +534,12 @@ function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions'
     maxTextHeight: 330,
     autoResize: spec.TextSizeMode.fixed,
     lineHeight: 52,
-    rangeFancyLayers,
     fancyRenderPadding: { left: 80, right: 80, top: 80, bottom: 80 },
-    fancyConfig: { layers: sharedLayers },
+    fancyConfig: {
+      layers: sharedLayers,
+      rangeStacks: rangeStacks.map(layers => ({ layers })),
+      rangeOverrides,
+    },
   } as unknown as Parameters<RichTextComponent['updateWithOptions']>[0];
 }
 
