@@ -108,7 +108,10 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
         // Object glow is based on the text fill/object content, not on the
         // range stroke. Otherwise changing one range's stroke changes the
         // shared glow source alpha and makes the glow of that range pulse.
-        this.renderContent(plan, fillContext, plan.rangePlans, false);
+        // Build an alpha-only mask for the shared object glow. The source must
+        // not carry range RGB values, otherwise changing a segment's fill
+        // color can leak into the shared glow even when its opacity is stable.
+        this.renderContent(plan, fillContext, plan.rangePlans, false, true);
         glowSourceCanvas = fillCanvas;
       }
     }
@@ -140,13 +143,16 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     context: CanvasRenderingContext2D,
     ranges = plan.rangePlans,
     includeStrokes = true,
+    maskOnly = false,
   ): void {
     context.textBaseline = 'alphabetic';
     const rangeLayers = this.getRangeContentLayers(ranges, includeStrokes);
-    const contentLayers = [
-      ...rangeLayers,
-      ...plan.objectPlan.layers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
-    ].sort((a, b) => a.order - b.order);
+    const contentLayers = maskOnly
+      ? rangeLayers
+      : [
+        ...rangeLayers,
+        ...plan.objectPlan.layers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
+      ].sort((a, b) => a.order - b.order);
 
     for (const layerPlan of contentLayers) {
       const layerRanges = this.getRangesForLayer(ranges, layerPlan);
@@ -157,7 +163,7 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
 
           break;
         case 'solid-fill':
-          this.drawSolidFill(plan, context, layerRanges);
+          this.drawSolidFill(plan, context, layerRanges, maskOnly);
 
           break;
         case 'gradient':
@@ -268,10 +274,23 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
     }
   }
 
-  private drawSolidFill (plan: TextRenderPlan, context: CanvasRenderingContext2D, ranges: RangePlan[]): void {
+  private drawSolidFill (
+    plan: TextRenderPlan,
+    context: CanvasRenderingContext2D,
+    ranges: RangePlan[],
+    maskOnly = false,
+  ): void {
     for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
-        glyphContext.fillStyle = colorToCss(range.basicStyle.fillColor ?? this.options.textStyle.textColor);
+        const fillColor = range.basicStyle.fillColor ?? this.options.textStyle.textColor;
+
+        if (maskOnly) {
+          // Preserve source alpha for opacity control, but deliberately discard
+          // the range RGB so a color edit cannot recolor the object glow.
+          glyphContext.fillStyle = `rgba(255, 255, 255, ${fillColor[3]})`;
+        } else {
+          glyphContext.fillStyle = colorToCss(fillColor);
+        }
         glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
       });
     }

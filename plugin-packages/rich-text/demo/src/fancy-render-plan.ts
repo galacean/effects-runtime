@@ -366,7 +366,7 @@ function setStyleField (field: StyleField, value: string | number | boolean): vo
       case 'fillColor': target.fillColor = String(value);
 
         break;
-      case 'fillOpacity': target.fillOpacity = Number(value);
+      case 'fillOpacity': target.fillOpacity = Number(value) / 100;
 
         break;
       case 'strokeVisible': target.strokeVisible = Boolean(value);
@@ -375,7 +375,7 @@ function setStyleField (field: StyleField, value: string | number | boolean): vo
       case 'strokeColor': target.strokeColor = String(value);
 
         break;
-      case 'strokeOpacity': target.strokeOpacity = Number(value);
+      case 'strokeOpacity': target.strokeOpacity = Number(value) / 100;
 
         break;
       case 'strokeWidth': target.strokeWidth = Number(value);
@@ -387,7 +387,7 @@ function setStyleField (field: StyleField, value: string | number | boolean): vo
       case 'shadowColor': target.shadowColor = String(value);
 
         break;
-      case 'shadowOpacity': target.shadowOpacity = Number(value);
+      case 'shadowOpacity': target.shadowOpacity = Number(value) / 100;
 
         break;
       case 'shadowBlur': target.shadowBlur = Number(value);
@@ -411,7 +411,7 @@ function setGlowField (field: GlowField, value: string | number | boolean): void
     case 'glowColor': sharedStyle.glowColor = String(value);
 
       break;
-    case 'glowOpacity': sharedStyle.glowOpacity = Number(value);
+    case 'glowOpacity': sharedStyle.glowOpacity = Number(value) / 100;
 
       break;
     case 'glowBlur': sharedStyle.glowBlur = Number(value);
