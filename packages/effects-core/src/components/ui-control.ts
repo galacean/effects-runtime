@@ -1,6 +1,6 @@
-import { RectTransform } from '../rect-transform';
 import type { ContainerControl, Control } from '../gui';
 import type { Engine } from '../engine';
+import type { Transform } from '../transform';
 import { Component } from './component';
 import { UICanvas } from './ui-canvas';
 
@@ -12,6 +12,11 @@ export class UIControl extends Component {
   static fallbackParentGetDelegate?: (control: UIControl) => ContainerControl | null;
 
   private controlNode: Control | null = null;
+  private linkedItemTransform: Transform | null = null;
+  private linkedControl: Control | null = null;
+  private syncingLocation = false;
+  private readonly itemTransformChanged = () => this.syncItemLocationToControl();
+  private readonly controlLocationChanged = () => this.syncControlLocationToItem();
 
   constructor (engine: Engine) {
     super(engine);
@@ -41,7 +46,6 @@ export class UIControl extends Component {
   }
 
   override onAwake (): void {
-    this.ensureRectTransform();
     this.syncControl();
   }
 
@@ -79,6 +83,7 @@ export class UIControl extends Component {
   /** Unlinks the GUI object without disposing or modifying it. */
   unlinkControl (): void {
     if (this.controlNode) {
+      this.unbindLocationSync();
       this.controlNode = null;
     }
   }
@@ -87,6 +92,7 @@ export class UIControl extends Component {
     const control = this.controlNode;
 
     if (control) {
+      this.unbindLocationSync();
       this.controlNode = null;
       control.dispose();
     }
@@ -98,12 +104,17 @@ export class UIControl extends Component {
     if (!control || !this.item) {
       return;
     }
-    this.ensureRectTransform();
-    control.transform = this.item.transform as RectTransform;
-    control.visible = this.item.isActive;
-    control.enabled = this.enabled;
-    control.parent = this.resolveParent();
-    this.syncControlOrder();
+    this.syncingLocation = true;
+    try {
+      control.visible = this.item.isActive;
+      control.enabled = this.enabled;
+      control.parent = this.resolveParent();
+      this.syncControlOrder();
+      this.copyItemLocationToControl();
+    } finally {
+      this.syncingLocation = false;
+    }
+    this.bindLocationSync();
   }
 
   private syncControlOrder (): void {
@@ -128,12 +139,68 @@ export class UIControl extends Component {
     return canvas?.rootControl ?? UIControl.fallbackParentGetDelegate?.(this) ?? null;
   }
 
-  private ensureRectTransform (): void {
-    if (this.item && !(this.item.transform instanceof RectTransform)) {
-      this.item.transform = RectTransform.fromTransform(this.item.transform);
+  private bindLocationSync (): void {
+    const itemTransform = this.item.transform;
+    const control = this.controlNode;
+
+    if (this.linkedItemTransform === itemTransform && this.linkedControl === control) {
+      return;
     }
-    if (this.item?.transform instanceof RectTransform) {
-      this.item.transform.setPivot(0, 0);
+    this.unbindLocationSync();
+    if (control) {
+      this.linkedItemTransform = itemTransform;
+      this.linkedControl = control;
+      itemTransform.on('changed', this.itemTransformChanged);
+      control.on('locationChanged', this.controlLocationChanged);
+    }
+  }
+
+  private unbindLocationSync (): void {
+    this.linkedItemTransform?.off('changed', this.itemTransformChanged);
+    this.linkedControl?.off('locationChanged', this.controlLocationChanged);
+    this.linkedItemTransform = null;
+    this.linkedControl = null;
+  }
+
+  private syncItemLocationToControl (): void {
+    if (!this.syncingLocation && this.controlNode) {
+      this.syncingLocation = true;
+      try {
+        this.copyItemLocationToControl();
+      } finally {
+        this.syncingLocation = false;
+      }
+    }
+  }
+
+  private syncControlLocationToItem (): void {
+    const control = this.controlNode;
+
+    if (!this.syncingLocation && control) {
+      const source = control.location;
+      const target = this.item.transform.position;
+
+      if (source.x !== target.x || source.y !== target.y) {
+        this.syncingLocation = true;
+        try {
+          this.item.transform.setPosition(source.x, source.y, target.z);
+        } finally {
+          this.syncingLocation = false;
+        }
+      }
+    }
+  }
+
+  private copyItemLocationToControl (): void {
+    const control = this.controlNode;
+
+    if (control) {
+      const source = this.item.transform.position;
+      const target = control.location;
+
+      if (source.x !== target.x || source.y !== target.y) {
+        control.setPosition(source.x, source.y);
+      }
     }
   }
 }

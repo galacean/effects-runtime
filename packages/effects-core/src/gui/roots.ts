@@ -84,7 +84,7 @@ export class CanvasRootControl extends ContainerControl {
   constructor (engine: Engine, readonly canvas: UICanvas) {
     super(engine);
     this.mouseFilter = MouseFilter.Ignore;
-    this.transform.setSize(engine.canvas.width, engine.canvas.height);
+    this.setSize(engine.canvas.width, engine.canvas.height);
   }
 
   get inputDisabled (): boolean {
@@ -97,7 +97,7 @@ export class CanvasContainer extends ContainerControl {
   constructor (engine: Engine) {
     super(engine);
     this.mouseFilter = MouseFilter.Ignore;
-    this.transform.setSize(engine.canvas.width, engine.canvas.height);
+    this.setSize(engine.canvas.width, engine.canvas.height);
   }
 
   sortCanvases (): void {
@@ -150,7 +150,7 @@ export class WindowRootControl extends RootControl {
   constructor (engine: Engine) {
     super(engine);
     this.mouseFilter = MouseFilter.Ignore;
-    this.transform.setSize(engine.canvas.width, engine.canvas.height);
+    this.setSize(engine.canvas.width, engine.canvas.height);
     this.canvases = new CanvasContainer(engine);
     this.canvases.parent = this;
   }
@@ -263,10 +263,10 @@ export class WindowRootControl extends RootControl {
   }
 
   resize (width: number, height: number): void {
-    this.transform.setSize(width, height);
-    this.canvases.transform.setSize(width, height);
+    this.setSize(width, height);
+    this.canvases.setSize(width, height);
     for (const root of this.canvases.children as CanvasRootControl[]) {
-      root.transform.setSize(width, height);
+      root.setSize(width, height);
     }
   }
 

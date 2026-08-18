@@ -313,8 +313,8 @@ function addControl<T extends Control> (
 
   bridge.control = control;
   item.setParent(parent);
-  control.transform.setPosition(x, y, 0);
-  control.transform.setSize(width, height);
+  control.setPosition(x, y);
+  control.setSize(width, height);
 
   return control;
 }

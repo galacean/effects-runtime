@@ -313,25 +313,24 @@ export class Inspector extends EditorWindow {
   /**
    * 锚点布局编辑器。仅在 VFXItem 挂了 Control 组件时调用。
    *
-   * - `Rect Position` / `Rect Size` 直接编辑 rect,走 `RectTransform` 重写的 `setPosition` / `setSize`,
+   * - `Rect Position` / `Rect Size` 直接编辑 Control 的布局矩形,
    *   内部反推 offset(保持当前 anchor)并 applyLayout
    * - `Anchor Min/Max`、`Offset Min/Max`、`Pivot Offset`(= `Transform.anchor` 像素偏移)直接修改字段
    * - `Anchor Preset` 4×4 网格切换 anchor;`Anchors + Offsets Preset` 同时贴边放置
    */
   private drawLayoutInspector (control: Control): void {
-    const t = control.transform;
-    const rt = control.transform;
+    const rt = control;
 
-    // Rect Position(= rect 左下角)。RectTransform.setPosition 重写为反推 offset 的语义
+    // Rect Position(= rect 左下角)。Control.setPosition 会反推 offset
     {
       const buf: [number, number] = [rt.position.x, rt.position.y];
 
       EditorGUILayout.Label('Rect Position');
       if (ImGui.DragFloat2('##RectPosition', buf, 1, -10000, 10000, '%.0f')) {
-        rt.setPosition(buf[0], buf[1], rt.position.z);
+        rt.setPosition(buf[0], buf[1]);
       }
     }
-    // Rect Size。RectTransform.setSize 重写为反推 offset 的语义
+    // Rect Size。Control.setSize 会反推 offset
     {
       const buf: [number, number] = [rt.size.x, rt.size.y];
 
@@ -390,7 +389,7 @@ export class Inspector extends EditorWindow {
       }
     }
     // 派生只读显示:transform.anchor = pivot * size
-    ImGui.TextDisabled(`  transform.anchor (derived) = (${t.anchor.x.toFixed(0)}, ${t.anchor.y.toFixed(0)})`);
+    ImGui.TextDisabled(`  pivot offset = (${(rt.pivot.x * rt.size.x).toFixed(0)}, ${(rt.pivot.y * rt.size.y).toFixed(0)})`);
     ImGui.Spacing();
 
     // Preset 4×4 网格,Shift = 同时设 offset(贴边放置),否则只切 anchor
@@ -412,7 +411,7 @@ export class Inspector extends EditorWindow {
    * 行:Top  / Middle / Bottom / Tall(纵向拉伸)
    */
   private static drawAnchorPresetGrid (control: Control): void {
-    const rt = control.transform;
+    const rt = control;
 
     type CellPreset = LayoutPreset;
     // 矩阵索引 = [row][col],row 顺序:T/M/B/H,col 顺序:L/C/R/W

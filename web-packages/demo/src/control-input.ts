@@ -13,7 +13,6 @@ import {
   MouseButtonMask,
   MouseFilter,
   Player,
-  RectTransform,
   UIControl,
   VFXItem,
   math,
@@ -107,7 +106,7 @@ class DemoControl extends ContainerControl {
   private pressed = false;
 
   override drawSelf (): void {
-    const size = this.transform.size;
+    const size = this.size;
     const color = this.pressed ? this.pressedColor : this.hovered ? this.hoverColor : this.fillColor;
 
     this.fillRect(0, 0, size.x, size.y, color);
@@ -235,10 +234,6 @@ function addControl (
   height: number,
 ): DemoControl {
   const item = new VFXItem(engine);
-  const transform = new RectTransform();
-
-  transform.engine = engine;
-  item.transform = transform;
   const control = new DemoControl(engine);
   const bridge = item.addComponent(UIControl);
 
@@ -246,8 +241,8 @@ function addControl (
   bridge.control = control;
   control.label = label;
   item.setParent(parent);
-  control.transform.setSize(width, height);
-  control.transform.setPosition(x, y, 0);
+  control.setSize(width, height);
+  control.setPosition(x, y);
 
   return control;
 }
