@@ -116,6 +116,9 @@ export class EventSystem implements Disposable {
     }
 
     this.addNativeHandler(target, 'mousedown', this.onNativeMouseDown as EventListener);
+    // The Window listener runs after the event reaches the host container, so keep a
+    // target listener to preserve notifyTouch/allowPropagation for in-canvas releases.
+    this.addNativeHandler(target, 'mouseup', this.onNativeMouseUp as EventListener);
     this.addNativeHandler(window, 'mouseup', this.onNativeMouseUp as EventListener);
     this.addNativeHandler(window, 'pointermove', this.onNativeMouseMove as EventListener);
     this.addNativeHandler(target, 'touchstart', this.onNativeTouchStart as EventListener, { passive: false });

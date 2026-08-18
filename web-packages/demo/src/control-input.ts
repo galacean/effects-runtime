@@ -5,7 +5,6 @@ import type {
   InputEventMouseMotion,
 } from '@galacean/effects';
 import {
-  CanvasLayer,
   Composition,
   Control,
   CursorShape,
@@ -257,8 +256,6 @@ const player = new Player({
 });
 const composition = new Composition(player.engine);
 
-composition.sceneRoot.addComponent(CanvasLayer);
-
 const stage = addControl(player.engine, composition.sceneRoot, 'Stage (Pass)', 0, 0, 900, 600);
 
 stage.mouseFilter = MouseFilter.Pass;
@@ -345,7 +342,7 @@ function setFrontFilter (filter: MouseFilter): void {
   front.mouseFilter = filter;
   front.label = `Front (${MouseFilter[filter]})`;
   filterValueElement.textContent = MouseFilter[filter];
-  if (player.engine.viewport.guiGetFocusOwner() === front) {
+  if (composition.viewport.guiGetFocusOwner() === front) {
     focusValueElement.textContent = front.label;
   }
 

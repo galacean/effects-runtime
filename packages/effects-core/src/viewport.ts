@@ -1,8 +1,12 @@
 import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { CanvasItem } from './components/canvas-item';
+import { Canvas } from './canvas';
+import { CanvasLayer } from './components/canvas-layer';
+import { CanvasItem } from './components/canvas-item';
+import { Component } from './components/component';
 import { Control } from './components/control';
 import type { Engine } from './engine';
+import type { VFXItem } from './vfx-item';
 import {
   CursorShape,
   FocusMode,
@@ -40,6 +44,11 @@ type GUIState = {
   rootsOrderDirty: boolean,
   sendingMouseEnterExit: boolean,
   mouseOverUpdatePending: boolean,
+};
+
+type CanvasDrawSource = {
+  readonly canvasItems: readonly CanvasItem[],
+  draw: () => void,
 };
 
 const cursorNames: Record<CursorShape, string> = {
@@ -89,11 +98,24 @@ function getWheelDelta (event: InputEventMouseButton): number {
     : -event.factor;
 }
 
-export class Viewport {
+export class Viewport extends Component {
   dragThreshold = 10;
+  private _outputOrder = 0;
 
-  private localInputHandled = false;
-  private readonly gui: GUIState = {
+  /**
+   * Default layer-0 Canvas used by CanvasItems without an explicit CanvasLayer.
+   * @internal
+   */
+  readonly defaultCanvas = new Canvas();
+
+  /**
+   * Canvas layers attached to this viewport.
+   * @internal
+   */
+  readonly canvasLayers: CanvasLayer[] = [];
+
+  protected localInputHandled = false;
+  protected readonly gui: GUIState = {
     mouseFocus: null,
     mouseClickGrabber: null,
     mouseFocusMask: MouseButtonMask.None,
@@ -116,11 +138,201 @@ export class Viewport {
     sendingMouseEnterExit: false,
     mouseOverUpdatePending: false,
   };
-  private readonly rootControls = new Set<Control>();
 
-  constructor (readonly engine: Engine) { }
+  private disposed = false;
+  private _inputDisabled = false;
+  private readonly rootControls = new Set<Control>();
+  private readonly childViewports: Viewport[] = [];
+  private parentViewportNode: Viewport | null = null;
+
+  constructor (engine: Engine) {
+    super(engine);
+    this.defaultCanvas.orderChanged = () => this.markRootsOrderDirty();
+  }
+
+  get isDisposed (): boolean {
+    return this.disposed;
+  }
+
+  /**
+   * Whether this Viewport is the active boundary selected when its VFXItem
+   * entered the scene tree. A Viewport attached afterwards stays inert until
+   * the item exits and enters the tree again.
+   * @internal
+   */
+  get isActiveInTree (): boolean {
+    return !this.disposed && !!this.item?.isInsideTree && this.item.getViewport() === this;
+  }
+
+  /**
+   * Direct-framebuffer compositing order among sibling Viewports.
+   * @internal
+   */
+  get outputOrder (): number {
+    return this._outputOrder;
+  }
+
+  set outputOrder (value: number) {
+    this._outputOrder = value;
+  }
+
+  /** @internal */
+  get inputDisabled (): boolean {
+    return this._inputDisabled;
+  }
+
+  set inputDisabled (value: boolean) {
+    const disabled = !!value;
+
+    if (disabled === this._inputDisabled) {
+      return;
+    }
+    this._inputDisabled = disabled;
+    if (disabled) {
+      this.cancelPointerInputLocal();
+      this.releaseFocus();
+    }
+    this.markRootsOrderDirty();
+  }
+
+  /**
+   * Closest ancestor Viewport, falling back to the Engine output Viewport.
+   */
+  get parent (): Viewport | null {
+    return this.parentViewportNode;
+  }
+
+  /**
+   * Root Viewport that owns GUI state shared by an embedded viewport section.
+   */
+  protected getSectionRootViewport (): Viewport {
+    return this;
+  }
+
+  override onEnterTree (): void {
+    if (!this.isActiveInTree) {
+      return;
+    }
+    this.updateParentViewport();
+  }
+
+  override onExitTree (): void {
+    if (!this.isActiveInTree) {
+      return;
+    }
+    this.detachFromParentViewport();
+  }
+
+  override onParentChanged (): void {
+    if (this.isActiveInTree) {
+      this.updateParentViewport();
+    }
+  }
+
+  /**
+   * Returns every descendant Viewport in stable output order.
+   * @internal
+   */
+  getDescendantViewportsInRenderOrder (): Viewport[] {
+    const result: Viewport[] = [];
+    const visit = (viewport: Viewport): void => {
+      const children = viewport.getDirectViewportsInRenderOrder();
+
+      for (const child of children) {
+        result.push(child);
+        visit(child);
+      }
+    };
+
+    visit(this);
+
+    return result;
+  }
+
+  /** @internal */
+  addChildViewport (viewport: Viewport): void {
+    if (!this.childViewports.includes(viewport)) {
+      this.childViewports.push(viewport);
+    }
+  }
+
+  /** @internal */
+  removeChildViewport (viewport: Viewport): void {
+    const index = this.childViewports.indexOf(viewport);
+
+    if (index !== -1) {
+      this.childViewports.splice(index, 1);
+    }
+  }
+
+  /** @internal */
+  addCanvasLayer (canvasLayer: CanvasLayer): void {
+    if (!this.canvasLayers.includes(canvasLayer)) {
+      this.canvasLayers.push(canvasLayer);
+      this.markRootsOrderDirty();
+    }
+  }
+
+  /** @internal */
+  removeCanvasLayer (canvasLayer: CanvasLayer): void {
+    const index = this.canvasLayers.indexOf(canvasLayer);
+
+    if (index !== -1) {
+      this.canvasLayers.splice(index, 1);
+      this.markRootsOrderDirty();
+    }
+  }
+
+  /**
+   * Renders only this Viewport's canvases.
+   * @internal
+   */
+  render (): void {
+    this.renderCanvasLayers();
+  }
+
+  /**
+   * Draws all canvas layers owned by this Viewport.
+   * @internal
+   */
+  renderCanvasLayers (): void {
+    const canvases = this.getCanvasesInDrawOrder();
+
+    this.engine.graphics.begin();
+    for (const canvas of canvases) {
+      canvas.draw();
+    }
+    this.engine.graphics.end();
+  }
+
+  /**
+   * Re-resolves CanvasLayers and CanvasItems in a moved subtree.
+   * @internal
+   */
+  refreshCanvasItemsInSubtree (root: VFXItem): void {
+    const items: VFXItem[] = [root, ...(root.getDescendants?.() ?? [])];
+
+    for (const item of items) {
+      for (const component of item.components) {
+        if (component instanceof CanvasLayer) {
+          component.updateViewport();
+        }
+      }
+    }
+    for (const item of items) {
+      for (const component of item.components) {
+        if (component instanceof CanvasItem) {
+          component.updateCanvasLayer();
+        }
+      }
+    }
+  }
 
   pushInput (event: InputEvent): void {
+    this.pushInputLocal(event);
+  }
+
+  protected pushInputLocal (event: InputEvent): void {
     this.localInputHandled = false;
     this.gui.rootsOrderDirty = true;
     this.cleanupInternalState();
@@ -135,7 +347,7 @@ export class Viewport {
 
   /** @internal */
   acceptEvent (control: Control): void {
-    if (this.isControlValid(control) && control.item.composition) {
+    if (this.isControlValid(control) && control.viewport === this) {
       this.setInputAsHandled();
     }
   }
@@ -145,12 +357,15 @@ export class Viewport {
   }
 
   guiFindControl (position: Vector2): Control | null {
+    if (this.inputDisabled) {
+      return null;
+    }
     this.sortRoots();
 
     for (let index = this.gui.roots.length - 1; index >= 0; index--) {
       const root = this.gui.roots[index];
 
-      if (!this.isControlValid(root) || !root.item.composition?.interactive) {
+      if (!this.isControlValid(root)) {
         continue;
       }
       const found = this.findControlAtPosition(root, position);
@@ -164,7 +379,7 @@ export class Viewport {
   }
 
   guiGetFocusOwner (): Control | null {
-    return this.isControlValid(this.gui.keyFocus) ? this.gui.keyFocus : null;
+    return this.getLocalFocusOwner();
   }
 
   guiReleaseFocus (): void {
@@ -172,11 +387,11 @@ export class Viewport {
   }
 
   guiIsDragging (): boolean {
-    return this.gui.globalDragging;
+    return this.getSectionRootViewport().gui.globalDragging;
   }
 
   guiGetDragData (): unknown {
-    return this.gui.dragData;
+    return this.getSectionRootViewport().gui.dragData;
   }
 
   guiIsDragSuccessful (): boolean {
@@ -184,7 +399,7 @@ export class Viewport {
   }
 
   guiCancelDrag (): void {
-    if (this.gui.globalDragging) {
+    if (this.guiIsDragging()) {
       this.endDragging(false);
     }
   }
@@ -213,6 +428,13 @@ export class Viewport {
   /** @internal */
   markRootsOrderDirty (): void {
     this.gui.rootsOrderDirty = true;
+    this.requestMouseOverUpdate();
+  }
+
+  /** @internal */
+  canvasLayerVisibilityChanged (): void {
+    this.gui.rootsOrderDirty = true;
+    this.cleanupInternalState();
     this.requestMouseOverUpdate();
   }
 
@@ -295,26 +517,74 @@ export class Viewport {
   }
 
   /** @internal */
-  dispose (): void {
+  override dispose (): void {
+    if (this.disposed) {
+      return;
+    }
+    const item = this.item;
+    const reenterTree = item?.beginViewportChange(this) ?? false;
+
+    this.disposed = true;
+    this.detachFromParentViewport();
+
+    for (const child of this.childViewports.slice()) {
+      child.updateParentViewport();
+    }
+    this.childViewports.length = 0;
+
     this.dropMouseFocus();
     this.dropMouseOver();
     this.releaseFocus();
     this.gui.touchFocus.clear();
     this.gui.roots.length = 0;
     this.rootControls.clear();
-    if (this.gui.globalDragging) {
+    if (this.guiIsDragging()) {
       this.endDragging(false);
+    }
+    this.defaultCanvas.clear();
+    this.canvasLayers.length = 0;
+    super.dispose();
+    if (reenterTree) {
+      item.endViewportChange();
     }
   }
 
   /** @internal */
   cancelPointerInput (): void {
+    this.cancelPointerInputLocal();
+  }
+
+  protected cancelPointerInputLocal (): void {
     this.dropMouseFocus();
     this.dropMouseOver();
     this.gui.touchFocus.clear();
-    if (this.gui.globalDragging) {
+    if (this.guiIsDragging()) {
       this.endDragging(false);
     }
+  }
+
+  /** @internal */
+  hasInputCapture (event: InputEvent): boolean {
+    if (this.inputDisabled) {
+      return false;
+    }
+    if (event instanceof InputEventMouseMotion) {
+      return this.isControlUsable(this.gui.mouseFocus);
+    }
+    if (event instanceof InputEventMouseButton) {
+      return !isWheelButton(event.buttonIndex) && this.gui.mouseFocusMask !== 0 &&
+        this.isControlUsable(this.gui.mouseFocus);
+    }
+    if (event instanceof InputEventScreenDrag ||
+      (event instanceof InputEventScreenTouch && !event.isPressed())) {
+      return this.gui.touchFocus.has(event.index);
+    }
+
+    return false;
+  }
+
+  protected getLocalFocusOwner (): Control | null {
+    return this.isControlValid(this.gui.keyFocus) ? this.gui.keyFocus : null;
   }
 
   private processGUIInput (event: InputEvent): void {
@@ -552,7 +822,7 @@ export class Viewport {
   }
 
   private findControlAtPosition (item: CanvasItem, position: Vector2): Control | null {
-    if (!item.isActiveInCanvasTree() || !item.item.composition?.interactive) {
+    if (!this.isCanvasItemUsable(item)) {
       return null;
     }
     if (Math.abs(item.getGlobalTransform2D().determinant()) < 1e-12) {
@@ -629,7 +899,8 @@ export class Viewport {
     } while (this.gui.mouseOverUpdatePending);
   }
 
-  private dropMouseOver (): void {
+  /** @internal */
+  dropMouseOver (): void {
     if (this.gui.mouseOverHierarchy.length === 0) {
       this.gui.mouseOver = null;
 
@@ -763,27 +1034,28 @@ export class Viewport {
   }
 
   private beginDragging (source: Control, position: Vector2): void {
+    const sectionRoot = this.getSectionRootViewport();
     let current: CanvasItem | null = source;
 
     while (current && this.isCanvasItemUsable(current)) {
       if (current instanceof Control) {
-        this.gui.globalDragging = true;
+        sectionRoot.gui.globalDragging = true;
         const data = current.invokeGetDragData(this.toLocal(current, position));
 
         if (!this.isControlValid(current)) {
-          this.gui.globalDragging = false;
+          sectionRoot.gui.globalDragging = false;
 
           return;
         }
         if (data !== null && data !== undefined) {
           this.gui.dragging = true;
-          this.gui.dragData = data;
+          sectionRoot.gui.dragData = data;
           this.gui.mouseFocus = null;
           this.gui.mouseFocusMask = MouseButtonMask.None;
 
           return;
         }
-        this.gui.globalDragging = false;
+        sectionRoot.gui.globalDragging = false;
         if (current.getEffectiveMouseFilter() === MouseFilter.Stop) {
           return;
         }
@@ -797,21 +1069,23 @@ export class Viewport {
 
   private finishDrop (position: Vector2): void {
     const target = this.findDropTarget(this.guiFindControl(position), position);
+    const dragData = this.getSectionRootViewport().gui.dragData;
     let successful = false;
 
     if (target && this.isControlUsable(target)) {
-      target.invokeDropData(this.toLocal(target, position), this.gui.dragData);
+      target.invokeDropData(this.toLocal(target, position), dragData);
       successful = this.isControlValid(target);
     }
     this.endDragging(successful);
   }
 
   private findDropTarget (target: Control | null, position: Vector2): Control | null {
+    const dragData = this.getSectionRootViewport().gui.dragData;
     let current: CanvasItem | null = target;
 
     while (current && this.isCanvasItemUsable(current)) {
       if (current instanceof Control) {
-        const canDrop = current.invokeCanDropData(this.toLocal(current, position), this.gui.dragData);
+        const canDrop = current.invokeCanDropData(this.toLocal(current, position), dragData);
 
         if (!this.isControlValid(current)) {
           return null;
@@ -833,10 +1107,12 @@ export class Viewport {
   }
 
   private endDragging (successful: boolean): void {
+    const sectionRoot = this.getSectionRootViewport();
+
     this.gui.dragSuccessful = successful;
     this.gui.dragging = false;
-    this.gui.globalDragging = false;
-    this.gui.dragData = null;
+    sectionRoot.gui.globalDragging = false;
+    sectionRoot.gui.dragData = null;
     this.gui.dragMouseOver = null;
     this.gui.dragPreview = null;
   }
@@ -928,13 +1204,11 @@ export class Viewport {
     const registered = new Set(Array.from(this.rootControls).filter(control => this.isControlValid(control)));
     const sorted: Control[] = [];
 
-    for (const composition of this.engine.compositions) {
-      const layers = composition.canvasLayers.slice().sort((left, right) => left.layer - right.layer);
+    const canvases = this.getCanvasesInDrawOrder();
 
-      for (const layer of layers) {
-        for (const item of layer.canvasItems) {
-          this.collectRootsInDrawOrder(item, registered, sorted);
-        }
+    for (const canvas of canvases) {
+      for (const item of canvas.canvasItems) {
+        this.collectRootsInDrawOrder(item, registered, sorted);
       }
     }
     this.gui.roots = sorted;
@@ -953,6 +1227,77 @@ export class Viewport {
         this.collectRootsInDrawOrder(child, registered, output);
       }
     }
+  }
+
+  private getCanvasesInDrawOrder (): CanvasDrawSource[] {
+    const entries: Array<{ layer: number, order: number, canvas: CanvasDrawSource }> = [{
+      layer: 0,
+      order: 0,
+      canvas: this.defaultCanvas,
+    }];
+
+    for (let index = 0; index < this.canvasLayers.length; index++) {
+      entries.push({
+        layer: this.canvasLayers[index].layer,
+        order: index + 1,
+        canvas: this.canvasLayers[index],
+      });
+    }
+
+    entries.sort((left, right) => left.layer - right.layer || left.order - right.order);
+
+    return entries.map(entry => entry.canvas);
+  }
+
+  private getDirectViewportsInRenderOrder (): Viewport[] {
+    return this.childViewports
+      .map((viewport, attachmentOrder) => ({ viewport, attachmentOrder }))
+      .filter(entry => !entry.viewport.isDisposed && entry.viewport.parent === this)
+      .sort((left, right) => left.viewport.outputOrder - right.viewport.outputOrder ||
+        left.attachmentOrder - right.attachmentOrder)
+      .map(entry => entry.viewport);
+  }
+
+  private updateParentViewport (): void {
+    if (!this.isActiveInTree) {
+      this.detachFromParentViewport();
+
+      return;
+    }
+    const nextParent = this.resolveParentViewport();
+
+    if (nextParent === this.parentViewportNode) {
+      return;
+    }
+
+    this.detachFromParentViewport();
+    this.parentViewportNode = nextParent;
+    nextParent?.addChildViewport(this);
+  }
+
+  private detachFromParentViewport (): void {
+    if (this.parentViewportNode) {
+      this.parentViewportNode.removeChildViewport(this);
+      this.parentViewportNode = null;
+    }
+  }
+
+  protected resolveParentViewport (): Viewport | null {
+    let current = this.item?.parent ?? null;
+
+    while (current) {
+      const viewport = current.getComponent(Viewport);
+
+      if (viewport?.isActiveInTree && viewport !== this) {
+        return viewport;
+      }
+      current = current.parent ?? null;
+    }
+    const windowViewport: Viewport | undefined = this.engine.viewport;
+
+    return windowViewport?.isActiveInTree && windowViewport !== this
+      ? windowViewport
+      : null;
   }
 
   private getGlobalInverse (control: Control): Matrix3 {
@@ -984,13 +1329,13 @@ export class Viewport {
   }
 
   private isCanvasItemUsable (item: CanvasItem | null): item is CanvasItem {
-    return this.isCanvasItemValid(item) && item.isActiveInCanvasTree() &&
-      !!item.item.composition?.interactive;
+    return !this.inputDisabled && this.isCanvasItemValid(item) && item.viewport === this &&
+      item.isActiveInCanvasTree();
   }
 
   private isControlUsable (control: Control | null): control is Control {
-    return this.isControlValid(control) && control.isActiveInCanvasTree() &&
-      !!control.item.composition?.interactive;
+    return !this.inputDisabled && this.isControlValid(control) && control.viewport === this &&
+      control.isActiveInCanvasTree();
   }
 
   private isMouseTargetUsable (control: Control | null): control is Control {
@@ -1019,5 +1364,119 @@ export class Viewport {
     }
 
     return false;
+  }
+}
+
+export class Window extends Viewport {
+  override get parent (): null {
+    return null;
+  }
+
+  protected override getSectionRootViewport (): Viewport {
+    return this;
+  }
+
+  protected override resolveParentViewport (): null {
+    return null;
+  }
+
+  override render (): void {
+    for (const viewport of this.engine.getViewportsInRenderOrder()) {
+      viewport.render();
+    }
+    super.render();
+  }
+
+  override pushInput (event: InputEvent): void {
+    this.routeInput(event);
+  }
+
+  /** @internal */
+  override cancelPointerInput (): void {
+    for (const viewport of this.engine.getViewportsInRenderOrder()) {
+      viewport.cancelPointerInput();
+    }
+    this.cancelPointerInputLocal();
+  }
+
+  private routeInput (event: InputEvent): void {
+    const viewports = this.engine.getViewportsInRenderOrder();
+    const target = this.findInputViewport(event, viewports);
+
+    this.localInputHandled = false;
+    if (event instanceof InputEventMouse) {
+      for (const viewport of [this, ...viewports]) {
+        if (viewport !== target) {
+          viewport.dropMouseOver();
+        }
+      }
+    }
+    if (!target) {
+      if (event instanceof InputEventMouseMotion) {
+        this.engine.canvas.style.cursor = cursorNames[CursorShape.Arrow];
+      }
+
+      return;
+    }
+
+    if (target === this) {
+      this.pushInputLocal(event);
+    } else {
+      target.pushInput(event);
+    }
+    this.localInputHandled = target.isInputHandled();
+  }
+
+  private findInputViewport (event: InputEvent, viewports: Viewport[]): Viewport | null {
+    for (let index = viewports.length - 1; index >= 0; index--) {
+      if (viewports[index].hasInputCapture(event)) {
+        return viewports[index];
+      }
+    }
+    if (this.hasInputCapture(event)) {
+      return this;
+    }
+
+    if (event instanceof InputEventKey) {
+      for (let index = viewports.length - 1; index >= 0; index--) {
+        if (viewports[index].guiGetFocusOwner()) {
+          return viewports[index];
+        }
+      }
+
+      return this.guiGetFocusOwner() ? this : null;
+    }
+
+    const position = event instanceof InputEventMouse
+      ? event.globalPosition
+      : event instanceof InputEventScreenTouch || event instanceof InputEventScreenDrag
+        ? event.position
+        : null;
+
+    if (!position) {
+      return null;
+    }
+    for (let index = viewports.length - 1; index >= 0; index--) {
+      if (viewports[index].guiFindControl(position)) {
+        return viewports[index];
+      }
+    }
+
+    return this.guiFindControl(position) ? this : null;
+  }
+}
+
+export class SubViewport extends Viewport {
+  override render (): void {
+    const composition = this.item?.composition;
+
+    if (composition?.viewport === this && !composition.isDestroyed) {
+      composition.renderContent();
+    }
+    super.render();
+  }
+
+  protected override getSectionRootViewport (): Viewport {
+    return this;
   }
 }

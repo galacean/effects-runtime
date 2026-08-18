@@ -28,7 +28,9 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
-import { Viewport } from './viewport';
+import type { Viewport } from './viewport';
+import { Window } from './viewport';
+import { VFXItem } from './vfx-item';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -98,7 +100,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
-  viewport: Viewport;
+  /**
+   * Viewport associated with the Engine output canvas.
+   */
+  viewport: Window;
+  /**
+   * Root of the unified runtime scene tree.
+   */
+  root: VFXItem;
   env = '';
   /**
    * 计时器
@@ -162,7 +171,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.viewport = new Viewport(this);
+    this.root = new VFXItem(this);
+    this.root.name = 'root';
+    this.viewport = this.root.addComponent(Window);
+    this.root.enterTree();
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -365,9 +377,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderer.setFramebuffer(null);
     this.renderer.clear(this.clearAction);
 
-    for (const composition of compositions) {
-      composition.render();
-    }
+    this.viewport.render();
 
     this.renderTargetPool.flush();
   }
@@ -609,6 +619,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     removeItem(this.compositions, composition);
   }
 
+  /**
+   * Returns Composition-owned Viewports in their output compositing order.
+   * @internal
+   */
+  getViewportsInRenderOrder (): Viewport[] {
+    return this.viewport.getDescendantViewportsInRenderOrder();
+  }
+
   getWidth (): number {
     // OVERRIDE
     return 0;
@@ -760,7 +778,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.ticker?.stop();
     this.eventSystem?.dispose();
-    this.viewport.dispose();
+    for (const composition of this._compositions.slice()) {
+      composition.dispose();
+    }
+    this.root.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
 
@@ -770,7 +791,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.materials.forEach(mat => mat.dispose());
     this.textures.forEach(tex => tex.dispose());
     this.assetManagers.forEach(assetManager => assetManager.dispose());
-    this.compositions.forEach(comp => comp.dispose());
 
     this.textures = [];
     this.materials = [];

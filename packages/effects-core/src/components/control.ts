@@ -15,6 +15,7 @@ import {
   MouseFilter,
 } from '../input';
 import { RectTransform } from '../rect-transform';
+import type { Viewport } from '../viewport';
 import { CanvasItem } from './canvas-item';
 
 export class Control extends CanvasItem {
@@ -33,7 +34,7 @@ export class Control extends CanvasItem {
   set mouseFilter (value: MouseFilter) {
     if (this._mouseFilter !== value) {
       this._mouseFilter = value;
-      this.engine.viewport.controlStateChanged(this);
+      this.viewport.controlStateChanged(this);
     }
   }
 
@@ -44,7 +45,7 @@ export class Control extends CanvasItem {
   set mouseBehaviorRecursive (value: MouseBehaviorRecursive) {
     if (this._mouseBehaviorRecursive !== value) {
       this._mouseBehaviorRecursive = value;
-      this.engine.viewport.controlStateChanged(this);
+      this.viewport.controlStateChanged(this);
     }
   }
 
@@ -63,7 +64,7 @@ export class Control extends CanvasItem {
   set clipContents (value: boolean) {
     if (this._clipContents !== value) {
       this._clipContents = value;
-      this.engine.viewport.controlStateChanged(this);
+      this.viewport.controlStateChanged(this);
     }
   }
 
@@ -74,7 +75,7 @@ export class Control extends CanvasItem {
   set focusMode (value: FocusMode) {
     if (this._focusMode !== value) {
       this._focusMode = value;
-      this.engine.viewport.controlStateChanged(this);
+      this.viewport.controlStateChanged(this);
     }
   }
 
@@ -85,7 +86,7 @@ export class Control extends CanvasItem {
   set focusBehaviorRecursive (value: FocusBehaviorRecursive) {
     if (this._focusBehaviorRecursive !== value) {
       this._focusBehaviorRecursive = value;
-      this.engine.viewport.controlStateChanged(this);
+      this.viewport.controlStateChanged(this);
     }
   }
 
@@ -112,7 +113,7 @@ export class Control extends CanvasItem {
 
   override onDisable (): void {
     super.onDisable();
-    this.engine.viewport.controlStateChanged(this);
+    this.viewport.controlStateChanged(this);
   }
 
   override onParentChanged (): void {
@@ -124,12 +125,11 @@ export class Control extends CanvasItem {
   }
 
   override onDestroy (): void {
-    this.engine.viewport.controlRemoved(this);
     super.onDestroy();
   }
 
   acceptEvent (): void {
-    this.engine.viewport.acceptEvent(this);
+    this.viewport.acceptEvent(this);
   }
 
   hasPoint (point: Vector2): boolean {
@@ -153,22 +153,22 @@ export class Control extends CanvasItem {
   warpMouse (position: Vector2): void {
     const matrix = this.getGlobalTransform2D().elements;
 
-    this.engine.viewport.warpMouse(new Vector2(
+    this.viewport.warpMouse(new Vector2(
       matrix[0] * position.x + matrix[3] * position.y + matrix[6],
       matrix[1] * position.x + matrix[4] * position.y + matrix[7],
     ));
   }
 
   grabFocus (): void {
-    this.engine.viewport.grabFocus(this);
+    this.viewport.grabFocus(this);
   }
 
   grabClickFocus (): void {
-    this.engine.viewport.grabClickFocus(this);
+    this.viewport.grabClickFocus(this);
   }
 
   releaseFocus (): void {
-    this.engine.viewport.releaseFocus(this);
+    this.viewport.releaseFocus(this);
   }
 
   onMouseEnter (location: Vector2): void {
@@ -287,19 +287,23 @@ export class Control extends CanvasItem {
 
   protected override onCanvasTopologyChanged (): void {
     this.updateRootRegistration();
-    this.engine.viewport.markRootsOrderDirty();
+    this.viewport.markRootsOrderDirty();
+  }
+
+  protected override onCanvasTopologyChanging (previousViewport: Viewport | null): void {
+    previousViewport?.controlRemoved(this);
   }
 
   private updateRootRegistration (): void {
-    if (!this.item || this.isCanvasItemDestroyed()) {
-      this.engine.viewport.removeRootControl(this);
+    if (!this.item || this.isCanvasItemDestroyed() || !this.isInsideCanvas()) {
+      this.viewport.removeRootControl(this);
 
       return;
     }
     if (this.topLevel || !this.getParentControlInCanvas()) {
-      this.engine.viewport.addRootControl(this);
+      this.viewport.addRootControl(this);
     } else {
-      this.engine.viewport.removeRootControl(this);
+      this.viewport.removeRootControl(this);
     }
   }
 

@@ -131,6 +131,24 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * Called after the owning VFXItem enters the runtime scene tree and its
+   * Viewport association has been resolved.
+   * @internal
+   */
+  onEnterTree () {
+    // OVERRIDE
+  }
+
+  /**
+   * Called before the owning VFXItem leaves the runtime scene tree while its
+   * previous Viewport association is still available.
+   * @internal
+   */
+  onExitTree () {
+    // OVERRIDE
+  }
+
+  /**
    * @internal
    */
   enable () {

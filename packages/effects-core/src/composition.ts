@@ -3,16 +3,14 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
-import { CanvasLayer, CompositionComponent, UpdateModes } from './components';
-import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
+import { CompositionComponent, UpdateModes } from './components';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
 import { PlayState } from './plugins';
 import { RenderFrame } from './render';
 import type { Scene } from './scene';
-import type { Texture } from './texture';
-import { TextureLoadAction } from './texture';
+import { TextureLoadAction, type Texture } from './texture';
 import type { Constructor, Disposable, LostHandler } from './utils';
 import { assertExist, generateGUID, logger, noop } from './utils';
 import { VFXItem } from './vfx-item';
@@ -20,6 +18,8 @@ import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import { SceneTicking } from './composition/scene-ticking';
 import type { Engine } from './engine';
+import { SubViewport } from './viewport';
+import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 /**
  * 合成统计信息
@@ -137,7 +137,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成渲染顺序，默认按升序渲染
    */
-  renderOrder: number;
+  get renderOrder (): number {
+    return this._renderOrder;
+  }
+
+  set renderOrder (value: number) {
+    this._renderOrder = value;
+    if (this.viewport) {
+      this.viewport.outputOrder = value;
+    }
+  }
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
    * @deprecated
@@ -147,7 +156,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成内的元素否允许点击、拖拽交互
    * @since 1.6.0
    */
-  interactive: boolean;
+  get interactive (): boolean {
+    return this._interactive;
+  }
+
+  set interactive (value: boolean) {
+    this._interactive = !!value;
+    if (this.viewport) {
+      this.viewport.inputDisabled = !this._interactive;
+    }
+  }
   /**
    * 合成是否结束
    */
@@ -209,9 +227,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   onItemMessage?: (message: MessageItem) => void;
   /**
-   * @internal
+   * Isolated Viewport owned by this Composition.
    */
-  readonly canvasLayers: CanvasLayer[] = [];
+  readonly viewport: SubViewport;
   /**
    * 销毁状态位
    */
@@ -222,6 +240,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private paused = true;
   private isEndCalled = false;
+  private _renderOrder = 0;
+  private _interactive = true;
   private _textures: Texture[] = [];
   /**
    * @internal
@@ -285,11 +305,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root = new VFXItem(this.engine);
     this.root.name = 'root';
     this.root.composition = this;
+    this.viewport = this.root.addComponent(SubViewport);
+    this.root.setParent(this.engine.root);
 
     this.pluginRoot = new VFXItem(this.engine);
     this.pluginRoot.name = 'pluginRoot';
     this.pluginRoot.setParent(this.root);
-    this.pluginRoot.addComponent(CanvasLayer);
 
     // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
@@ -599,10 +620,19 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.setTime(0);
   }
 
+  /**
+   * Renders this Composition using the legacy direct rendering entry point.
+   * Engine rendering is scheduled by Viewport.render().
+   */
   render () {
-    this.renderer.renderRenderFrame(this.renderFrame);
+    this.viewport.render();
+  }
 
-    this.renderCanvasLayers();
+  /**
+   * Renders only the Composition content. Canvas layers are owned and rendered by Viewport.
+   */
+  renderContent () {
+    this.renderer.renderRenderFrame(this.renderFrame);
   }
 
   /**
@@ -710,18 +740,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.isEndCalled = false;
       }
     }
-  }
-
-  private renderCanvasLayers () {
-    this.engine.graphics.begin();
-
-    this.canvasLayers.sort((leftLayer, rightLayer) => leftLayer.layer - rightLayer.layer);
-
-    for (const canvasLayer of this.canvasLayers) {
-      canvasLayer.draw();
-    }
-
-    this.engine.graphics.end();
   }
 
   /**

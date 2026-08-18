@@ -3,6 +3,7 @@ import type {
   Composition,
   Engine,
   VFXItem,
+  Viewport,
 } from '@galacean/effects';
 import {
   CanvasItem,
@@ -23,7 +24,8 @@ import {
   MouseBehaviorRecursive,
   MouseFilter,
   RectTransform,
-  Viewport,
+  SubViewport,
+  Window,
   math,
 } from '@galacean/effects';
 
@@ -668,36 +670,85 @@ describe('core/components/control-input', () => {
     eventSystem.dispose();
   });
 
-  it('orders roots by composition and canvas layer draw order', () => {
+  it('orders roots globally by canvas layer inside a viewport', () => {
     const environment = createEnvironment();
     const base = createControl(environment, 'base', 100, 100);
     const upperLayer = { layer: 10, canvasItems: [] } as unknown as CanvasLayer;
     const upperLayerEnvironment = { ...environment, layer: upperLayer };
 
-    environment.composition.canvasLayers.push(upperLayer);
+    environment.viewport.canvasLayers.push(upperLayer);
 
     const upper = createControl(upperLayerEnvironment, 'upper', 100, 100);
 
     expect(environment.viewport.guiFindControl(new Vector2(10, 10))).equals(upper);
 
     const frontLayer = { layer: -10, canvasItems: [] } as unknown as CanvasLayer;
-    const frontComposition = {
-      interactive: true,
-      canvasLayers: [frontLayer],
-      getIndex: () => 1,
-    } as unknown as Composition;
     const frontEnvironment = {
       ...environment,
-      composition: frontComposition,
       layer: frontLayer,
     };
 
-    environment.engine.compositions.push(frontComposition);
+    environment.viewport.canvasLayers.push(frontLayer);
 
     const front = createControl(frontEnvironment, 'front', 100, 100);
 
-    expect(environment.viewport.guiFindControl(new Vector2(10, 10))).equals(front);
+    expect(environment.viewport.guiFindControl(new Vector2(10, 10))).equals(upper);
     expect(base).not.equals(upper);
+    expect(front).not.equals(upper);
+  });
+
+  it('routes engine viewport input to the frontmost isolated viewport', () => {
+    const environment = createEnvironment();
+    const base = createControl(environment, 'base', 100, 100);
+    const childViewport = new SubViewport(environment.engine);
+    const childLayer = { layer: 0, canvasItems: [] } as unknown as CanvasLayer;
+    const childComposition = {
+      engine: environment.engine,
+      interactive: true,
+      viewport: childViewport,
+      getIndex: () => 1,
+      hitTest: () => [],
+    } as unknown as Composition;
+    const childViewportItem = {
+      composition: childComposition,
+      isInsideTree: true,
+      parent: null,
+      components: [childViewport],
+      beginViewportChange: () => false,
+      endViewportChange: () => { },
+    } as unknown as VFXItem;
+    const childEnvironment = {
+      ...environment,
+      viewport: childViewport,
+      composition: childComposition,
+      layer: childLayer,
+    };
+
+    childViewport.item = childViewportItem;
+    environment.engine.compositions.push(childComposition);
+    childViewport.canvasLayers.push(childLayer);
+    const front = createControl(childEnvironment, 'front', 100, 100);
+
+    environment.engine.viewport.pushInput(mouseButton(10, 10, true));
+    expect(front.inputLog).deep.equals(['front:down:10,10']);
+    expect(base.inputLog).deep.equals([]);
+
+    front.dragValue = { source: 'child' };
+    front.allowDrop = true;
+    environment.engine.viewport.pushInput(mouseMotion(30, 10, 20, 0));
+    expect(childViewport.guiIsDragging()).equals(true);
+    expect(childViewport.guiGetDragData()).deep.equals({ source: 'child' });
+    expect(environment.engine.viewport.guiIsDragging()).equals(false);
+    expect(environment.engine.viewport.guiGetDragData()).equals(null);
+
+    environment.engine.viewport.pushInput(mouseButton(10, 10, false));
+    expect(childViewport.guiIsDragSuccessful()).equals(true);
+    expect(environment.engine.viewport.guiIsDragSuccessful()).equals(false);
+    front.enabled = false;
+    environment.engine.viewport.pushInput(mouseButton(10, 10, true));
+    expect(base.inputLog).deep.equals(['base:down:10,10']);
+
+    childViewport.dispose();
   });
 
   it('applies recursive mouse overrides and forced wheel passing', () => {
@@ -932,8 +983,8 @@ function createEnvironment (): TestEnvironment {
 
   const layer = { layer: 0, canvasItems: [] } as unknown as CanvasLayer;
   const composition = {
+    engine: null,
     interactive: true,
-    canvasLayers: [layer],
     getIndex: () => 0,
     hitTest: () => [],
   } as unknown as Composition;
@@ -941,6 +992,9 @@ function createEnvironment (): TestEnvironment {
     canvas,
     compositions: [composition],
     objectInstance: {},
+    getViewportsInRenderOrder (this: { compositions: Composition[] }) {
+      return this.compositions.map(composition => composition.viewport);
+    },
     addInstance (this: { objectInstance: Record<string, Control> }, object: Control) {
       this.objectInstance[object.getInstanceId()] = object;
     },
@@ -951,11 +1005,23 @@ function createEnvironment (): TestEnvironment {
       return () => { };
     },
     off () { },
-  } as unknown as Engine & { viewport: Viewport };
+  } as unknown as Engine & { viewport: Window };
 
-  data.viewport = new Viewport(data);
+  data.viewport = new Window(data);
+  const viewport = new SubViewport(data);
+  const viewportItem = {
+    composition,
+    isInsideTree: true,
+    parent: null,
+    components: [viewport],
+  } as unknown as VFXItem;
 
-  return { engine: data, viewport: data.viewport, composition, layer };
+  viewport.item = viewportItem;
+  (composition as unknown as { engine: Engine, viewport: Viewport }).engine = data;
+  (composition as unknown as { engine: Engine, viewport: Viewport }).viewport = viewport;
+  viewport.canvasLayers.push(layer);
+
+  return { engine: data, viewport, composition, layer };
 }
 
 function createControl (
@@ -972,9 +1038,12 @@ function createControl (
   const item = {
     transform,
     isActive: true,
+    isInsideTree: true,
     composition: environment.composition,
     parent: parent?.item ?? null,
     components: [control],
+    getComponent: () => undefined,
+    getViewport: () => environment.viewport,
   } as unknown as VFXItem;
 
   transform.engine = environment.engine;
@@ -1000,9 +1069,12 @@ function createCanvasItem (environment: TestEnvironment, parent: CanvasItem): Ca
   const item = {
     transform,
     isActive: true,
+    isInsideTree: true,
     composition: environment.composition,
     parent: parent.item,
     components: [canvasItem],
+    getComponent: () => undefined,
+    getViewport: () => environment.viewport,
   } as unknown as VFXItem;
 
   transform.engine = environment.engine;

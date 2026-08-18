@@ -4,14 +4,16 @@ import type { VFXItem } from '../vfx-item';
 import type { FontStyle, FontWeight, TextureRegion } from '../render';
 import type { Texture } from '../texture';
 import { removeItem } from '../utils';
+import { Viewport } from '../viewport';
 import { CanvasLayer } from './canvas-layer';
 import { Component } from './component';
 
 /**
  * 画布元素组件
  *
- * 进入场景树时沿父链向上查找最近的 CanvasLayer 祖先并注册自己；
- * 父级改变或自身销毁时,刷新 / 注销在所属 CanvasLayer 的登记。
+ * CanvasItem belongs to either the closest Viewport's default Canvas or an
+ * explicit CanvasLayer. Only a CanvasItem on the direct parent VFXItem forms
+ * a CanvasItem parent relationship.
  *
  * 注:拓扑(parent / children / 所属 layer)与 enabled/active 解耦 —
  * `component.enabled=false` 仅让自身 draw 被跳过,**不**改父子关系,也**不**从 layer 注销;
@@ -23,8 +25,8 @@ export class CanvasItem extends Component {
   private canvasTopologyVersion = 0;
   /**
    * 父 CanvasItem
-   * 沿 VFXItem 父链向上查找到的最近的 CanvasItem(只看类型,不看 active/enabled — 拓扑跟激活状态解耦)。
-   * 若不存在 CanvasItem 祖先（即直属于 CanvasLayer 或处于游离状态），该值为 null。
+   * CanvasItem on the direct parent VFXItem. Ordinary VFXItems break the
+   * CanvasItem parent chain.
    */
   parent: CanvasItem | null = null;
   /**
@@ -49,8 +51,7 @@ export class CanvasItem extends Component {
     this.canvasTopologyVersion++;
     if (this.item) {
       this.transform.parentTransform = value ? null : this.item.parent?.transform ?? null;
-      this.updateParentItem();
-      this.onCanvasTopologyChanged();
+      this.updateCanvasTopology();
     }
   }
 
@@ -61,13 +62,36 @@ export class CanvasItem extends Component {
     return this.canvasLayerNode;
   }
 
+  /**
+   * Closest Viewport resolved from the VFXItem ancestry.
+   */
+  get viewport (): Viewport {
+    return this.item?.getViewport() ?? this.engine.viewport;
+  }
+
+  override onEnterTree (): void {
+    this.updateCanvasTopology();
+
+    // A CanvasItem added after its VFX children becomes their direct Canvas
+    // parent immediately; topology does not depend on playback state.
+    for (const childItem of this.item.children) {
+      for (const component of childItem.components) {
+        if (component instanceof CanvasItem) {
+          component.updateCanvasLayer();
+        }
+      }
+    }
+  }
+
+  override onExitTree (): void {
+    this.detachCanvasTopology();
+  }
+
   override onEnable (): void {
     // 首次接入 / 重新接入场景树时把自己挂上(若拓扑还没建立)。
     // 注意 enable/disable 不再改变 CanvasItem 父子拓扑 — 拓扑由 VFXItem 父链(setParent / onParentChanged)维护,
     // enable 在这里只是兜底首次入树
-    this.updateCanvasLayer();
-    this.updateParentItem();
-    this.onCanvasTopologyChanged();
+    this.updateCanvasTopology();
   }
 
   override onDisable (): void {
@@ -78,17 +102,27 @@ export class CanvasItem extends Component {
 
   override onParentChanged (): void {
     this.canvasTopologyVersion++;
-    // VFXItem 的父级（或间接父级）发生变化时，CanvasLayer 与父 CanvasItem 都可能改变，需要联动刷新
-    this.updateCanvasLayer();
-    this.updateParentItem();
-    this.onCanvasTopologyChanged();
+    this.updateCanvasTopology();
   }
 
   override onDestroy (): void {
+    this.destroyCanvasItem();
+  }
+
+  override dispose (): void {
+    super.dispose();
+    // Canvas topology is bound before playback starts, while Component only
+    // calls onDestroy() for awakened components. Always detach the topology.
+    this.destroyCanvasItem();
+  }
+
+  private destroyCanvasItem (): void {
+    if (this.canvasItemDestroyed) {
+      return;
+    }
     this.canvasItemDestroyed = true;
     this.canvasTopologyVersion++;
-    this.removeFromParent();
-    this.removeFromCanvasLayer();
+    this.detachCanvasTopology();
 
     // 防止子 canvasItem updateParentItem 的时候继续找到当前已销毁的 canvasItem
     this.enabled = false;
@@ -96,38 +130,11 @@ export class CanvasItem extends Component {
   }
 
   /**
-   * 重新计算并更新当前 CanvasItem 应归属的 CanvasLayer
-   * 在父级变化、所在 CanvasLayer 失效等场景中调用
-   *
-   * 仅当自身是顶层 CanvasItem（parent 为 null）时才会登记到 CanvasLayer.canvasItems；
-   * 嵌套的子 CanvasItem 仅记录 canvasLayerNode 引用，不进入 layer 的顶层列表。
+   * Re-resolves the CanvasItem topology after a CanvasLayer state change.
    * @internal
    */
   updateCanvasLayer (): void {
-    // 拓扑跟 enabled/active 解耦,只看 item 是否还在
-    if (!this.item) {
-      this.removeFromCanvasLayer();
-
-      return;
-    }
-
-    const newLayer = this.getCanvasLayerNode();
-
-    if (newLayer === this.canvasLayerNode) {
-      return;
-    }
-
-    // 仅当自身是顶层 CanvasItem 时，才需要在 layer 的 canvasItems 中迁移
-    if (this.parent === null && this.canvasLayerNode) {
-      this.canvasLayerNode.removeCanvasItem(this);
-    }
-
-    this.canvasLayerNode = newLayer;
-    this.canvasTopologyVersion++;
-
-    if (this.parent === null && newLayer) {
-      newLayer.addCanvasItem(this);
-    }
+    this.updateCanvasTopology();
   }
 
   /**
@@ -140,36 +147,7 @@ export class CanvasItem extends Component {
    * @internal
    */
   updateParentItem (): void {
-    // 拓扑跟 enabled/active 解耦,只看 item 是否还在
-    if (!this.item) {
-      this.removeFromParent();
-
-      return;
-    }
-
-    const newParent = this.topLevel ? null : this.getParentItem();
-
-    if (newParent === this.parent) {
-      return;
-    }
-
-    const wasTopLevel = this.parent === null;
-
-    this.removeFromParent();
-    this.canvasTopologyVersion++;
-
-    if (newParent) {
-      this.parent = newParent;
-      newParent.children.push(this);
-      // 由顶层变成嵌套：从 layer 的顶层列表中移除
-      if (wasTopLevel && this.canvasLayerNode) {
-        this.canvasLayerNode.removeCanvasItem(this);
-      }
-    } else if (!wasTopLevel && this.canvasLayerNode) {
-      // 由嵌套变成顶层：加入 layer 的顶层列表
-      this.canvasLayerNode.addCanvasItem(this);
-    }
-    this.onCanvasTopologyChanged();
+    this.updateCanvasTopology();
   }
 
   /**
@@ -194,7 +172,10 @@ export class CanvasItem extends Component {
 
   /** @internal */
   isActiveInCanvasTree (): boolean {
-    if (this.canvasItemDestroyed) {
+    if (this.canvasItemDestroyed || !this.isInsideCanvas()) {
+      return false;
+    }
+    if (this.canvasLayerNode && !this.canvasLayerNode.enabled) {
       return false;
     }
     let current: VFXItem | null = this.item;
@@ -215,6 +196,23 @@ export class CanvasItem extends Component {
   }
 
   /** @internal */
+  isInsideCanvas (): boolean {
+    if (this.parent) {
+      return this.parent.children.includes(this);
+    }
+    if (!this.item) {
+      return false;
+    }
+    if (this.canvasLayerNode) {
+      return this.canvasLayerNode.canvasItems.includes(this);
+    }
+    const viewport = this.viewport;
+
+    return viewport.defaultCanvas.canvasItems.includes(this) ||
+      viewport.canvasLayers.some(layer => layer.canvasItems.includes(this));
+  }
+
+  /** @internal */
   getCanvasTopologyVersion (): number {
     return this.canvasTopologyVersion;
   }
@@ -223,6 +221,14 @@ export class CanvasItem extends Component {
    * 层级、激活或绘制归属发生变化时调用。
    */
   protected onCanvasTopologyChanged (): void {
+    // OVERRIDE
+  }
+
+  /**
+   * Called before this CanvasItem is removed from its previous Viewport.
+   * @internal
+   */
+  protected onCanvasTopologyChanging (previousViewport: Viewport | null, nextViewport: Viewport | null): void {
     // OVERRIDE
   }
 
@@ -381,18 +387,87 @@ export class CanvasItem extends Component {
     graphics.popTransform();
   }
 
-  /**
-   * 从当前所属的 CanvasLayer 注销自身（如果有）
-   * 仅当自身是顶层 CanvasItem 时，才会触发 layer 顶层列表的移除
-   */
-  private removeFromCanvasLayer (): void {
-    if (!this.canvasLayerNode) {
+  private updateCanvasTopology (): void {
+    if (!this.item || !this.item.isInsideTree || this.canvasItemDestroyed) {
+      this.detachCanvasTopology();
+
       return;
     }
-    if (this.parent === null) {
-      this.canvasLayerNode.removeCanvasItem(this);
+
+    const nextViewport = this.item.getViewport();
+    const ownLayer = getCanvasLayerFromItem(this.item);
+    const ownViewport = this.item.getComponent(Viewport);
+    const ownsViewportBoundary = ownViewport?.isActiveInTree === true;
+    let nextParent: CanvasItem | null = null;
+    let nextLayer: CanvasLayer | null = ownLayer;
+
+    if (!this.topLevel && !ownLayer && !ownsViewportBoundary) {
+      const directParent = this.item.parent ? getCanvasItemFromItem(this.item.parent) : null;
+
+      if (directParent) {
+        if (!directParent.isInsideCanvas()) {
+          directParent.updateCanvasTopology();
+        }
+        if (directParent.isInsideCanvas() && directParent.viewport === nextViewport) {
+          nextParent = directParent;
+          nextLayer = directParent.canvasLayerNode;
+        }
+      }
     }
+
+    if (!nextParent) {
+      nextLayer = nextLayer ?? this.getCanvasLayerNode();
+    }
+    const nextCanvas = nextLayer?.canvas ?? nextViewport.defaultCanvas;
+    const wasInsideCanvas = this.isInsideCanvas();
+
+    if (wasInsideCanvas && nextParent === this.parent && nextLayer === this.canvasLayerNode) {
+      return;
+    }
+
+    const previousViewport = wasInsideCanvas ? this.viewport : null;
+
+    this.onCanvasTopologyChanging(previousViewport, nextViewport);
+    this.removeFromCanvas(previousViewport);
+    this.removeFromParent();
+
+    this.canvasLayerNode = nextLayer;
+    this.parent = nextParent;
+
+    if (nextParent) {
+      if (!nextParent.children.includes(this)) {
+        nextParent.children.push(this);
+      }
+    } else {
+      nextCanvas.addCanvasItem(this);
+    }
+
+    this.canvasTopologyVersion++;
+    this.onCanvasTopologyChanged();
+    this.updateChildrenParentItems();
+  }
+
+  private detachCanvasTopology (): void {
+    if (!this.isInsideCanvas()) {
+      return;
+    }
+
+    const previousViewport = this.viewport;
+
+    this.onCanvasTopologyChanging(previousViewport, null);
+    this.removeFromCanvas(previousViewport);
+    this.removeFromParent();
     this.canvasLayerNode = null;
+    this.canvasTopologyVersion++;
+    this.onCanvasTopologyChanged();
+  }
+
+  private removeFromCanvas (viewport: Viewport | null): void {
+    if (this.parent === null && viewport) {
+      const canvas = this.canvasLayerNode?.canvas ?? viewport.defaultCanvas;
+
+      canvas.removeCanvasItem(this);
+    }
   }
 
   /**
@@ -423,8 +498,7 @@ export class CanvasItem extends Component {
   }
 
   /**
-   * 沿父链向上查找最近的 CanvasLayer 祖先
-   * 注意：自身所在 VFXItem 上的 CanvasLayer 也参与查找（同节点上可能并存 CanvasLayer 与 CanvasItem）
+   * Finds the closest active CanvasLayer without crossing a Viewport boundary.
    */
   private getCanvasLayerNode (): CanvasLayer | null {
     let current: VFXItem | null = this.item;
@@ -435,23 +509,10 @@ export class CanvasItem extends Component {
       if (layer) {
         return layer;
       }
-      current = current.parent ?? null;
-    }
+      const viewport = current.getComponent(Viewport);
 
-    return null;
-  }
-
-  /**
-   * 沿 VFXItem 父链向上查找最近的 CanvasItem 祖先(不包含自身,只看类型不看 active/enabled)
-   */
-  private getParentItem (): CanvasItem | null {
-    let current: VFXItem | null = this.item?.parent ?? null;
-
-    while (current) {
-      const canvasItem = getCanvasItemFromItem(current);
-
-      if (canvasItem) {
-        return canvasItem;
+      if (viewport?.isActiveInTree) {
+        return null;
       }
       current = current.parent ?? null;
     }
@@ -465,7 +526,7 @@ export class CanvasItem extends Component {
  */
 function getCanvasLayerFromItem (item: VFXItem): CanvasLayer | null {
   for (const component of item.components) {
-    if (component instanceof CanvasLayer && component.isActiveAndEnabled) {
+    if (component instanceof CanvasLayer && component.isActiveInCanvasTree()) {
       return component;
     }
   }

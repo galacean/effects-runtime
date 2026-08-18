@@ -1,4 +1,4 @@
-import { Player, VFXItem } from '@galacean/effects';
+import { CanvasLayer, Player, VFXItem } from '@galacean/effects';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
@@ -589,7 +589,9 @@ export class GalaceanEffects {
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
         const canvasGizmo = new VFXItem(composition.engine);
+        const canvasLayer = canvasGizmo.addComponent(CanvasLayer);
 
+        canvasLayer.layer = Number.MAX_SAFE_INTEGER;
         canvasGizmo.addComponent(CanvasGizmo);
 
         canvasGizmo.setParent(composition.pluginRoot);
