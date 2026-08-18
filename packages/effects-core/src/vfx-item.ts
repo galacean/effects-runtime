@@ -13,7 +13,6 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
-import { Viewport } from './viewport';
 import type { Maskable } from './material';
 import type {
   BoundingBoxData, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
@@ -99,8 +98,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
   private _composition: Composition | null;
-  private viewport: Viewport | null = null;
-  private insideTree = false;
 
   /**
    *
@@ -204,37 +201,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * Resolves the closest Viewport component in the item ancestry.
-   */
-  getViewport (): Viewport {
-    if (this.viewport && !this.viewport.isDisposed) {
-      return this.viewport;
-    }
-    const ownViewport = this.findOwnViewport();
-
-    return ownViewport ?? this.engine.viewport;
-  }
-
-  /**
-   * Whether this node belongs to the Engine runtime scene tree.
-   * @internal
-   */
-  get isInsideTree (): boolean {
-    return this.insideTree;
-  }
-
-  /**
-   * Enters this node and its descendants into the runtime scene tree.
-   * Used by Engine for its root node; ordinary nodes enter through setParent().
-   * @internal
-   */
-  enterTree (): void {
-    if (!this.insideTree) {
-      this.propagateEnterTree(this.parent?.viewport ?? null);
-    }
-  }
-
-  /**
    * 设置元素的合成
    */
   set composition (value: Composition) {
@@ -266,6 +232,30 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.listIndex = value;
     this.isManuallySetRenderOrder = true;
     this.setRendererComponentOrder(value);
+  }
+
+  /** Zero-based sibling order within the parent item. */
+  get orderInParent (): number {
+    return this.parent?.children.indexOf(this) ?? -1;
+  }
+
+  set orderInParent (value: number) {
+    const siblings = this.parent?.children;
+    const oldIndex = siblings?.indexOf(this) ?? -1;
+
+    if (!siblings || oldIndex === -1) {
+      return;
+    }
+    const newIndex = Math.max(0, Math.min(Math.trunc(value), siblings.length - 1));
+
+    if (oldIndex === newIndex) {
+      return;
+    }
+    siblings.splice(oldIndex, 1);
+    siblings.splice(newIndex, 0, this);
+    for (const sibling of siblings) {
+      sibling.onOrderInParentChanged();
+    }
   }
 
   /**
@@ -338,9 +328,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
     this.components.push(newComponent);
     newComponent.setVFXItem(this);
-    if (this.insideTree) {
-      newComponent.onEnterTree();
-    }
 
     return newComponent;
   }
@@ -394,10 +381,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       return;
     }
 
-    if (this.insideTree) {
-      this.propagateExitTree();
-    }
-
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
@@ -411,10 +394,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     this.onParentChanged();
-
-    if (vfxItem.insideTree) {
-      this.propagateEnterTree(vfxItem.viewport);
-    }
 
     if (!this.isDuringPlay && vfxItem.isDuringPlay) {
       this.awake();
@@ -881,58 +860,10 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
-  /**
-   * Temporarily exits the tree while an attached Viewport component is being
-   * removed. The caller must pair a true result with endViewportChange().
-   * @internal
-   */
-  beginViewportChange (viewport: Viewport): boolean {
-    if (!this.insideTree || this.viewport !== viewport) {
-      return false;
-    }
-    this.propagateExitTree();
-
-    return true;
-  }
-
-  /** @internal */
-  endViewportChange (): void {
-    if (!this.insideTree && (this === this.engine.root || this.parent?.insideTree)) {
-      this.propagateEnterTree(this.parent?.viewport ?? null);
-    }
-  }
-
-  private propagateEnterTree (inheritedViewport: Viewport | null): void {
-    this.viewport = this.findOwnViewport() ?? inheritedViewport;
-    this.insideTree = true;
-
+  private onOrderInParentChanged () {
     for (const component of this.components) {
-      component.onEnterTree();
+      component.onOrderInParentChanged();
     }
-    for (const child of this.children) {
-      child.propagateEnterTree(this.viewport);
-    }
-  }
-
-  private propagateExitTree (): void {
-    for (let index = this.children.length - 1; index >= 0; index--) {
-      this.children[index].propagateExitTree();
-    }
-    for (let index = this.components.length - 1; index >= 0; index--) {
-      this.components[index].onExitTree();
-    }
-    this.insideTree = false;
-    this.viewport = null;
-  }
-
-  private findOwnViewport (): Viewport | null {
-    for (const component of this.components) {
-      if (component instanceof Viewport && !component.isDisposed) {
-        return component;
-      }
-    }
-
-    return null;
   }
 
   /**
@@ -1031,9 +962,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 销毁元素
    */
   override dispose (): void {
-    if (this.insideTree) {
-      this.propagateExitTree();
-    }
     if (this.composition) {
       this.composition.destroyItem(this);
     }

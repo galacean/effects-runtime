@@ -1,4 +1,4 @@
-import { CanvasLayer, Composition, generateGUID, Player, SubViewport, Viewport, Window } from '@galacean/effects';
+import { Composition, generateGUID, Player, UICanvas } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -21,64 +21,51 @@ describe('core/composition', () => {
     player && player.dispose();
   });
 
-  it('creates and owns an isolated viewport for every composition', () => {
+  it('creates and owns an isolated UICanvas for every composition', () => {
     const engine = player.engine;
     const first = new Composition(engine);
     const second = new Composition(engine);
 
-    expect(first.viewport).not.equals(engine.viewport);
-    expect(second.viewport).not.equals(engine.viewport);
-    expect(first.viewport).not.equals(second.viewport);
-    expect(engine.viewport).instanceOf(Window);
-    expect(engine.viewport.item).equals(engine.root);
-    expect(engine.viewport.parent).equals(null);
-    expect(first.viewport).instanceOf(SubViewport);
-    expect(second.viewport).instanceOf(SubViewport);
+    first.root.awake();
+    first.root.beginPlay();
+    second.root.awake();
+    second.root.beginPlay();
+
+    expect(first.uiCanvas).not.equals(second.uiCanvas);
+    expect(first.uiCanvas).instanceOf(UICanvas);
+    expect(second.uiCanvas).instanceOf(UICanvas);
     expect(first.root.parent).equals(engine.root);
     expect(second.root.parent).equals(engine.root);
-    expect(first.viewport.parent).equals(engine.viewport);
-    expect(second.viewport.parent).equals(engine.viewport);
-    expect(first.viewport.item).equals(first.root);
-    expect(second.viewport.item).equals(second.root);
-    expect(first.root.getComponent(Viewport)).equals(first.viewport);
-    expect(second.root.getComponent(Viewport)).equals(second.viewport);
-    expect(first.sceneRoot.getViewport()).equals(first.viewport);
-    expect(second.sceneRoot.getViewport()).equals(second.viewport);
-    expect(engine.getViewportsInRenderOrder()).includes(first.viewport);
-    expect(engine.getViewportsInRenderOrder()).includes(second.viewport);
-    expect(first.pluginRoot.getComponent(CanvasLayer)).equals(undefined);
+    expect(first.sceneRoot.getComponent(UICanvas)).equals(first.uiCanvas);
+    expect(second.sceneRoot.getComponent(UICanvas)).equals(second.uiCanvas);
+    expect(engine.windowRoot.canvases.children).includes(first.uiCanvas.rootControl);
+    expect(engine.windowRoot.canvases.children).includes(second.uiCanvas.rootControl);
 
     first.setIndex(10);
     second.setIndex(-5);
-    expect(first.viewport.outputOrder).equals(10);
-    expect(second.viewport.outputOrder).equals(-5);
-    expect(engine.getViewportsInRenderOrder()).deep.equals([second.viewport, first.viewport]);
+    expect(engine.compositions).deep.equals([second, first]);
 
     const renderOutput: string[] = [];
 
     first.renderContent = () => renderOutput.push('first');
     second.renderContent = () => renderOutput.push('second');
-    engine.viewport.render();
-    expect(renderOutput).deep.equals(['second', 'first']);
-
-    renderOutput.length = 0;
     first.render();
     expect(renderOutput).deep.equals(['first']);
 
     first.interactive = false;
-    expect(first.viewport.inputDisabled).equals(true);
+    expect(first.uiCanvas.receivesEvents).equals(false);
     first.interactive = true;
-    expect(first.viewport.inputDisabled).equals(false);
+    expect(first.uiCanvas.receivesEvents).equals(true);
 
-    const firstViewport = first.viewport;
-    const secondViewport = second.viewport;
+    const firstRoot = first.uiCanvas.rootControl;
+    const secondRoot = second.uiCanvas.rootControl;
 
     first.dispose();
     second.dispose();
-    expect(firstViewport.isDisposed).equals(true);
-    expect(secondViewport.isDisposed).equals(true);
-    expect(engine.viewport.isDisposed).equals(false);
-    expect(engine.getViewportsInRenderOrder()).deep.equals([]);
+    expect(firstRoot.isDisposed).equals(true);
+    expect(secondRoot.isDisposed).equals(true);
+    expect(engine.windowRoot.canvases.children).not.includes(firstRoot);
+    expect(engine.windowRoot.canvases.children).not.includes(secondRoot);
     expect(engine.root.children).not.includes(first.root);
     expect(engine.root.children).not.includes(second.root);
   });

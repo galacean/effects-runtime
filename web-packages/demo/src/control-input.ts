@@ -6,7 +6,7 @@ import type {
 } from '@galacean/effects';
 import {
   Composition,
-  Control,
+  ContainerControl,
   CursorShape,
   FocusMode,
   MouseButton,
@@ -14,6 +14,7 @@ import {
   MouseFilter,
   Player,
   RectTransform,
+  UIControl,
   VFXItem,
   math,
 } from '@galacean/effects';
@@ -83,14 +84,14 @@ function appendLog (owner: string, event: string, position?: Vector2): void {
 
 function reportHandled (engine: Engine): void {
   queueMicrotask(() => {
-    const handled = engine.viewport.isInputHandled();
+    const handled = engine.windowRoot.isInputHandled();
 
     handledValueElement.textContent = handled ? 'true' : 'false';
     handledValueElement.dataset.state = handled ? 'handled' : 'open';
   });
 }
 
-class DemoControl extends Control {
+class DemoControl extends ContainerControl {
   label = 'Control';
   detail = '';
   fillColor = new Color(0.18, 0.22, 0.31, 1);
@@ -105,7 +106,7 @@ class DemoControl extends Control {
   private hovered = false;
   private pressed = false;
 
-  override draw (): void {
+  override drawSelf (): void {
     const size = this.transform.size;
     const color = this.pressed ? this.pressedColor : this.hovered ? this.hoverColor : this.fillColor;
 
@@ -238,9 +239,11 @@ function addControl (
 
   transform.engine = engine;
   item.transform = transform;
-  const control = item.addComponent(DemoControl);
+  const control = new DemoControl(engine);
+  const bridge = item.addComponent(UIControl);
 
   item.name = label;
+  bridge.control = control;
   control.label = label;
   item.setParent(parent);
   control.transform.setSize(width, height);
@@ -264,7 +267,7 @@ stage.hoverColor = stage.fillColor;
 stage.borderColor = new Color(0.12, 0.16, 0.24, 1);
 stage.detail = 'Empty space remains unhandled';
 
-const group = addControl(player.engine, stage.item, 'Parent (Pass)', 40, 45, 500, 460);
+const group = addControl(player.engine, stage.item!, 'Parent (Pass)', 40, 45, 500, 460);
 
 group.mouseFilter = MouseFilter.Pass;
 group.fillColor = new Color(0.09, 0.12, 0.18, 1);
@@ -272,7 +275,7 @@ group.hoverColor = new Color(0.11, 0.15, 0.22, 1);
 group.borderColor = new Color(0.3, 0.38, 0.54, 1);
 group.detail = 'Receives bubbled events from Pass children';
 
-const back = addControl(player.engine, group.item, 'Back (Pass)', 35, 140, 300, 200);
+const back = addControl(player.engine, group.item!, 'Back (Pass)', 35, 140, 300, 200);
 
 back.mouseFilter = MouseFilter.Pass;
 back.focusMode = FocusMode.Click;
@@ -283,7 +286,7 @@ back.pressedColor = new Color(0.08, 0.25, 0.4, 1);
 back.borderColor = new Color(0.38, 0.77, 1, 1);
 back.detail = 'Visible through Ignore; bubbles to Parent';
 
-const front = addControl(player.engine, group.item, 'Front (Stop)', 160, 50, 280, 180);
+const front = addControl(player.engine, group.item!, 'Front (Stop)', 160, 50, 280, 180);
 
 front.mouseFilter = MouseFilter.Stop;
 front.focusMode = FocusMode.Click;
@@ -294,7 +297,7 @@ front.pressedColor = new Color(0.45, 0.17, 0.08, 1);
 front.borderColor = new Color(1, 0.66, 0.32, 1);
 front.detail = 'Change MouseFilter with the buttons';
 
-const dropZone = addControl(player.engine, stage.item, 'Drop zone', 610, 45, 260, 245);
+const dropZone = addControl(player.engine, stage.item!, 'Drop zone', 610, 45, 260, 245);
 
 dropZone.mouseFilter = MouseFilter.Stop;
 dropZone.dropTarget = true;
@@ -307,7 +310,7 @@ dropZone.onDrop = payload => {
   payload.source.detail = 'Dropped — drag again';
 };
 
-const ignoreTarget = addControl(player.engine, stage.item, 'Target', 610, 325, 260, 95);
+const ignoreTarget = addControl(player.engine, stage.item!, 'Target', 610, 325, 260, 95);
 
 ignoreTarget.mouseFilter = MouseFilter.Stop;
 ignoreTarget.focusMode = FocusMode.Click;
@@ -318,7 +321,7 @@ ignoreTarget.pressedColor = new Color(0.27, 0.16, 0.03, 1);
 ignoreTarget.borderColor = new Color(0.95, 0.7, 0.22, 1);
 ignoreTarget.detail = 'Stops input';
 
-const ignoreOverlay = addControl(player.engine, stage.item, 'Ignore', 735, 335, 120, 75);
+const ignoreOverlay = addControl(player.engine, stage.item!, 'Ignore', 735, 335, 120, 75);
 
 ignoreOverlay.mouseFilter = MouseFilter.Ignore;
 ignoreOverlay.fillColor = new Color(0.07, 0.42, 0.52, 0.45);
@@ -327,7 +330,7 @@ ignoreOverlay.pressedColor = ignoreOverlay.fillColor;
 ignoreOverlay.borderColor = new Color(0.4, 0.86, 0.95, 1);
 ignoreOverlay.detail = 'Pass-through';
 
-const dragChip = addControl(player.engine, stage.item, 'Drag chip', 642, 455, 196, 82);
+const dragChip = addControl(player.engine, stage.item!, 'Drag chip', 642, 455, 196, 82);
 
 dragChip.mouseFilter = MouseFilter.Stop;
 dragChip.draggable = true;
@@ -342,7 +345,7 @@ function setFrontFilter (filter: MouseFilter): void {
   front.mouseFilter = filter;
   front.label = `Front (${MouseFilter[filter]})`;
   filterValueElement.textContent = MouseFilter[filter];
-  if (composition.viewport.guiGetFocusOwner() === front) {
+  if (player.engine.windowRoot.guiGetFocusOwner() === front) {
     focusValueElement.textContent = front.label;
   }
 

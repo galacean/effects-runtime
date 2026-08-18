@@ -3,7 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
-import { CompositionComponent, UpdateModes } from './components';
+import { CompositionComponent, UICanvas, UpdateModes } from './components';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
@@ -18,7 +18,6 @@ import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import { SceneTicking } from './composition/scene-ticking';
 import type { Engine } from './engine';
-import { SubViewport } from './viewport';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 /**
@@ -143,9 +142,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   set renderOrder (value: number) {
     this._renderOrder = value;
-    if (this.viewport) {
-      this.viewport.outputOrder = value;
-    }
   }
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
@@ -162,8 +158,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   set interactive (value: boolean) {
     this._interactive = !!value;
-    if (this.viewport) {
-      this.viewport.inputDisabled = !this._interactive;
+    if (this.uiCanvas) {
+      this.uiCanvas.receivesEvents = this._interactive;
     }
   }
   /**
@@ -226,10 +222,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成中消息元素创建/销毁时触发的回调
    */
   onItemMessage?: (message: MessageItem) => void;
-  /**
-   * Isolated Viewport owned by this Composition.
-   */
-  readonly viewport: SubViewport;
+  /** Screen-space GUI boundary owned by this Composition. */
+  readonly uiCanvas: UICanvas;
   /**
    * 销毁状态位
    */
@@ -305,7 +299,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.root = new VFXItem(this.engine);
     this.root.name = 'root';
     this.root.composition = this;
-    this.viewport = this.root.addComponent(SubViewport);
     this.root.setParent(this.engine.root);
 
     this.pluginRoot = new VFXItem(this.engine);
@@ -315,6 +308,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
     this.sceneRoot.setParent(this.root);
+    this.uiCanvas = this.sceneRoot.addComponent(UICanvas);
 
     if (sourceContent) {
       this.sceneRoot.setInstanceId(sourceContent.id);
@@ -620,16 +614,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.setTime(0);
   }
 
-  /**
-   * Renders this Composition using the legacy direct rendering entry point.
-   * Engine rendering is scheduled by Viewport.render().
-   */
+  /** Renders this Composition content. Screen-space UI is rendered by Engine. */
   render () {
-    this.viewport.render();
+    this.renderContent();
   }
 
   /**
-   * Renders only the Composition content. Canvas layers are owned and rendered by Viewport.
+   * Renders only the Composition scene content.
    */
   renderContent () {
     this.renderer.renderRenderFrame(this.renderFrame);

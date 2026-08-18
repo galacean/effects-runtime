@@ -1,5 +1,5 @@
-import type { LayoutPreset, Material, RectTransform, Texture } from '@galacean/effects';
-import { Control, EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
+import type { Control, LayoutPreset, Material, Texture } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, UIControl, VFXItem, math, spec } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { editorApp } from '../core/editor-application';
@@ -132,7 +132,7 @@ export class Inspector extends EditorWindow {
     }
 
     // 仅当 VFXItem 挂了 Control 组件才显示锚点布局编辑区
-    const controlComp = activeObject.getComponent(Control);
+    const controlComp = activeObject.getComponent(UIControl)?.control;
 
     if (controlComp && ImGui.CollapsingHeader('Layout', ImGui.TreeNodeFlags.DefaultOpen)) {
       this.drawLayoutInspector(controlComp);
@@ -320,7 +320,7 @@ export class Inspector extends EditorWindow {
    */
   private drawLayoutInspector (control: Control): void {
     const t = control.transform;
-    const rt = control.transform as RectTransform;
+    const rt = control.transform;
 
     // Rect Position(= rect 左下角)。RectTransform.setPosition 重写为反推 offset 的语义
     {
@@ -412,7 +412,7 @@ export class Inspector extends EditorWindow {
    * 行:Top  / Middle / Bottom / Tall(纵向拉伸)
    */
   private static drawAnchorPresetGrid (control: Control): void {
-    const rt = control.transform as RectTransform;
+    const rt = control.transform;
 
     type CellPreset = LayoutPreset;
     // 矩阵索引 = [row][col],row 顺序:T/M/B/H,col 顺序:L/C/R/W

@@ -63,7 +63,7 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  *
  * **解算入口** 是 `sizeChanged()` 方法：
  * - 父是 RectTransform → 用 `parent.size` 作 parentSize 解算自身，写回 `position` / `size`
- * - 否则（顶层 / 没父）：自身 size 视为权威值（由外部 — 通常是 CanvasLayer — 直接写），不再自解算
+ * - 否则（顶层 / 没父）：自身 size 视为权威值（由外部 — 通常是 Control — 直接写），不再自解算
  * - 末尾遍历 `children` 中的 RectTransform，直接调它们的 `sizeChanged()`，链式向下传播
  *
  * **重写 `setPosition` / `setSize`** 让其语义变为"用户输入 rect 位置 / 尺寸"：
@@ -97,7 +97,7 @@ export class RectTransform extends Transform {
 
   /**
    * 用既有 Transform 的状态创建 RectTransform。
-   * 用于 Control / CanvasLayer 接管 VFXItem 时，把 VFXItem 自带的 Transform 升级为 RectTransform 而不丢失 position/rotation/scale 等已设置好的状态。
+   * 用于 UIControl 接管 VFXItem 时，把 VFXItem 自带的 Transform 升级为 RectTransform 而不丢失 position/rotation/scale 等已设置好的状态。
    */
   static fromTransform (t: Transform): RectTransform {
     if (t instanceof RectTransform) {
@@ -324,7 +324,7 @@ export class RectTransform extends Transform {
    *
    * 1. 父是 RectTransform → 从 `parent.size` 求自身 rect，通过 `super.setPosition / super.setSize` 写回
    *    （避免触发本类 setPosition / setSize 重写）
-   * 2. 顶层（无 RectTransform 父）：自身 size 视为权威值（由 CanvasLayer 等外部直接写），不自解算
+   * 2. 顶层（无 RectTransform 父）：自身 size 视为权威值（由 Control 等外部直接写），不自解算
    * 3. 遍历 `children` 中所有 RectTransform 子节点，直接调它们的 `sizeChanged()` 链式传播
    */
   sizeChanged (): void {

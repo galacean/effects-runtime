@@ -1,366 +1,210 @@
 import {
-  CanvasItem,
-  CanvasLayer,
   Composition,
+  ContainerControl,
   Control,
-  FocusMode,
-  InputEventMouseButton,
-  MouseButton,
   Player,
-  SubViewport,
+  RootControl,
+  UICanvas,
+  UIControl,
   VFXItem,
 } from '@galacean/effects';
 
 const { expect } = chai;
 
-class RecordingCanvasItem extends CanvasItem {
-  label = '';
-  output: string[] = [];
+class LifecycleControl extends Control {
+  destroyCount = 0;
 
-  override draw (): void {
-    this.output.push(this.label);
+  override onDestroy (): void {
+    this.destroyCount++;
   }
 }
 
-class RecordingControl extends Control {
-  presses = 0;
-
-  override onMouseDown (): void {
-    this.presses++;
-    this.acceptEvent();
-  }
-}
-
-describe('core/components/canvas-topology', () => {
+describe('core/GUI topology', () => {
   let player: Player;
+  let composition: Composition;
 
-  before(() => {
+  beforeEach(() => {
     player = new Player({
       canvas: document.createElement('canvas'),
-      manualRender: true,
       pixelRatio: 1,
-      interactive: true,
+      manualRender: true,
     });
+    composition = new Composition(player.engine);
+    composition.root.awake();
+    composition.root.beginPlay();
   });
 
-  after(() => {
-    player.dispose();
+  afterEach(() => player.dispose());
+
+  it('keeps the window as the only RootControl and canvases as ordinary containers', () => {
+    expect(player.engine.windowRoot).instanceOf(RootControl);
+    expect(composition.uiCanvas.rootControl).instanceOf(ContainerControl);
+    expect(composition.uiCanvas.rootControl).not.instanceOf(RootControl);
+    expect(player.engine.windowRoot.canvases.parent).equals(player.engine.windowRoot);
+    expect(composition.sceneRoot.getComponent(UICanvas)).equals(composition.uiCanvas);
+    expect(composition.uiCanvas.rootControl.parent).equals(player.engine.windowRoot.canvases);
+    expect(composition.uiCanvas.rootControl.root).equals(player.engine.windowRoot);
   });
 
-  it('draws the default Canvas between negative and positive CanvasLayers', () => {
-    const composition = new Composition(player.engine);
-    const output: string[] = [];
-
-    const negativeItem = new VFXItem(player.engine);
-    const negativeLayer = negativeItem.addComponent(CanvasLayer);
-    const negativeCanvasItem = negativeItem.addComponent(RecordingCanvasItem);
-
-    negativeItem.setParent(composition.sceneRoot);
-    negativeLayer.layer = -1;
-    negativeCanvasItem.label = 'negative';
-    negativeCanvasItem.output = output;
-
-    const defaultItem = new VFXItem(player.engine);
-    const defaultCanvasItem = defaultItem.addComponent(RecordingCanvasItem);
-
-    defaultItem.setParent(composition.sceneRoot);
-    defaultCanvasItem.label = 'default';
-    defaultCanvasItem.output = output;
-
-    const positiveItem = new VFXItem(player.engine);
-    const positiveLayer = positiveItem.addComponent(CanvasLayer);
-    const positiveCanvasItem = positiveItem.addComponent(RecordingCanvasItem);
-
-    positiveItem.setParent(composition.sceneRoot);
-    positiveCanvasItem.label = 'positive';
-    positiveCanvasItem.output = output;
-
-    activate(composition);
-
-    expect(positiveLayer.layer).equals(1);
-    expect(defaultCanvasItem.canvasLayer).equals(null);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(defaultCanvasItem);
-
-    composition.viewport.renderCanvasLayers();
-    expect(output).deep.equals(['negative', 'default', 'positive']);
-
-    composition.dispose();
-  });
-
-  it('uses direct CanvasItem parents and respects CanvasLayer and Viewport boundaries', () => {
-    const composition = new Composition(player.engine);
+  it('builds a GUI tree through UIControl bridges', () => {
     const parentItem = new VFXItem(player.engine);
-    const parentCanvasItem = parentItem.addComponent(CanvasItem);
+    const parentBridge = parentItem.addComponent(UIControl);
+    const parentControl = new ContainerControl(player.engine);
 
+    parentBridge.control = parentControl;
     parentItem.setParent(composition.sceneRoot);
 
-    const directItem = new VFXItem(player.engine);
-    const directCanvasItem = directItem.addComponent(CanvasItem);
-
-    directItem.setParent(parentItem);
-
-    const bridgeItem = new VFXItem(player.engine);
-
-    bridgeItem.setParent(parentItem);
-    const brokenItem = new VFXItem(player.engine);
-    const brokenCanvasItem = brokenItem.addComponent(CanvasItem);
-
-    brokenItem.setParent(bridgeItem);
-
-    const layerItem = new VFXItem(player.engine);
-    const layer = layerItem.addComponent(CanvasLayer);
-    const layerCanvasItem = layerItem.addComponent(CanvasItem);
-
-    layerItem.setParent(parentItem);
-
-    const viewportItem = new VFXItem(player.engine);
-    const childViewport = viewportItem.addComponent(SubViewport);
-    const viewportCanvasItem = viewportItem.addComponent(CanvasItem);
-
-    viewportItem.setParent(parentItem);
-
-    activate(composition);
-
-    expect(directCanvasItem.parent).equals(parentCanvasItem);
-    expect(brokenCanvasItem.parent).equals(null);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(parentCanvasItem);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(brokenCanvasItem);
-    expect(composition.viewport.defaultCanvas.canvasItems).not.includes(directCanvasItem);
-
-    expect(layerCanvasItem.parent).equals(null);
-    expect(layerCanvasItem.canvasLayer).equals(layer);
-    expect(layer.canvasItems).includes(layerCanvasItem);
-
-    expect(viewportCanvasItem.parent).equals(null);
-    expect(viewportCanvasItem.viewport).equals(childViewport);
-    expect(childViewport.defaultCanvas.canvasItems).includes(viewportCanvasItem);
-
-    directCanvasItem.topLevel = true;
-    expect(directCanvasItem.parent).equals(null);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(directCanvasItem);
-
-    composition.dispose();
-  });
-
-  it('uses CanvasLayer enabled as visibility without changing Canvas ownership', () => {
-    const composition = new Composition(player.engine);
-    const output: string[] = [];
-    const layerItem = new VFXItem(player.engine);
-    const layer = layerItem.addComponent(CanvasLayer);
-    const canvasItemNode = new VFXItem(player.engine);
-    const canvasItem = canvasItemNode.addComponent(RecordingCanvasItem);
-
-    layer.enabled = false;
-    layerItem.setParent(composition.sceneRoot);
-    canvasItemNode.setParent(layerItem);
-    canvasItem.label = 'layer';
-    canvasItem.output = output;
-
-    expect(composition.viewport.canvasLayers).includes(layer);
-    expect(canvasItem.canvasLayer).equals(layer);
-    expect(layer.canvasItems).includes(canvasItem);
-    expect(composition.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-
-    activate(composition);
-    composition.viewport.renderCanvasLayers();
-    expect(output).deep.equals([]);
-
-    layer.enabled = true;
-    expect(canvasItem.canvasLayer).equals(layer);
-    expect(layer.canvasItems).includes(canvasItem);
-    expect(composition.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-    composition.viewport.renderCanvasLayers();
-    expect(output).deep.equals(['layer']);
-
-    output.length = 0;
-    layer.enabled = false;
-    expect(canvasItem.canvasLayer).equals(layer);
-    expect(layer.canvasItems).includes(canvasItem);
-    expect(composition.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-    expect(canvasItem.isActiveInCanvasTree()).equals(false);
-    composition.viewport.renderCanvasLayers();
-    expect(output).deep.equals([]);
-
-    layer.dispose();
-    expect(canvasItem.canvasLayer).equals(null);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(canvasItem);
-
-    composition.dispose();
-  });
-
-  it('drops GUI focus when its CanvasLayer is disabled without changing topology', () => {
-    const composition = new Composition(player.engine);
-    const layerItem = new VFXItem(player.engine);
-    const layer = layerItem.addComponent(CanvasLayer);
-    const controlItem = new VFXItem(player.engine);
-    const control = controlItem.addComponent(RecordingControl);
-
-    layerItem.setParent(composition.sceneRoot);
-    controlItem.setParent(layerItem);
-    activate(composition);
-
-    control.focusMode = FocusMode.All;
-    control.grabFocus();
-    expect(composition.viewport.guiGetFocusOwner()).equals(control);
-
-    layer.enabled = false;
-    expect(composition.viewport.guiGetFocusOwner()).equals(null);
-    expect(control.canvasLayer).equals(layer);
-    expect(layer.canvasItems).includes(control);
-
-    composition.dispose();
-  });
-
-  it('releases Canvas and Viewport registrations when disposed before playback', () => {
-    const canvasItemNode = new VFXItem(player.engine);
-
-    canvasItemNode.setParent(player.engine.root);
-    const canvasItem = canvasItemNode.addComponent(CanvasItem);
-
-    expect(player.engine.viewport.defaultCanvas.canvasItems).includes(canvasItem);
-    canvasItem.dispose();
-    expect(player.engine.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-
-    const viewportNode = new VFXItem(player.engine);
-    const viewport = viewportNode.addComponent(SubViewport);
-
-    viewportNode.setParent(player.engine.root);
-    expect(player.engine.getViewportsInRenderOrder()).includes(viewport);
-    viewportNode.dispose();
-    expect(viewport.isDisposed).equals(true);
-    expect(player.engine.getViewportsInRenderOrder()).not.includes(viewport);
-  });
-
-  it('registers CanvasItems only after their VFXItem enters the runtime tree', () => {
-    const item = new VFXItem(player.engine);
-    const canvasItem = item.addComponent(CanvasItem);
-
-    expect(item.isInsideTree).equals(false);
-    expect(player.engine.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-
-    item.setParent(player.engine.root);
-    expect(item.isInsideTree).equals(true);
-    expect(player.engine.viewport.defaultCanvas.canvasItems).includes(canvasItem);
-
-    item.dispose();
-    expect(player.engine.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-  });
-
-  it('activates a dynamically attached Viewport only after a real tree re-entry', () => {
-    const composition = new Composition(player.engine);
-    const reentryParent = new VFXItem(player.engine);
-    const boundaryItem = new VFXItem(player.engine);
     const childItem = new VFXItem(player.engine);
-    const canvasItem = childItem.addComponent(CanvasItem);
+    const childBridge = childItem.addComponent(UIControl);
+    const childControl = new Control(player.engine);
 
-    boundaryItem.setParent(composition.sceneRoot);
-    childItem.setParent(boundaryItem);
-    activate(composition);
+    childBridge.control = childControl;
+    childItem.setParent(parentItem);
 
-    expect(canvasItem.viewport).equals(composition.viewport);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(canvasItem);
-
-    const childViewport = boundaryItem.addComponent(SubViewport);
-
-    expect(childViewport.isActiveInTree).equals(false);
-    expect(canvasItem.viewport).equals(composition.viewport);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(canvasItem);
-    expect(childViewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-
-    reentryParent.setParent(composition.sceneRoot);
-    boundaryItem.setParent(reentryParent);
-
-    expect(childViewport.isActiveInTree).equals(true);
-    expect(canvasItem.viewport).equals(childViewport);
-    expect(composition.viewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-    expect(childViewport.defaultCanvas.canvasItems).includes(canvasItem);
-
-    childViewport.dispose();
-    expect(canvasItem.viewport).equals(composition.viewport);
-    expect(childViewport.defaultCanvas.canvasItems).not.includes(canvasItem);
-    expect(composition.viewport.defaultCanvas.canvasItems).includes(canvasItem);
-
-    composition.dispose();
+    expect(parentControl.parent).equals(composition.uiCanvas.rootControl);
+    expect(childControl.parent).equals(parentControl);
+    expect(parentControl.children).includes(childControl);
+    expect(parentControl.root).equals(player.engine.windowRoot);
+    expect(childControl.root).equals(player.engine.windowRoot);
   });
 
-  it('removes GUI state from the old Viewport when a Control crosses compositions', () => {
-    const first = new Composition(player.engine);
-    const second = new Composition(player.engine);
+  it('synchronizes GUI sibling order with VFXItem order', () => {
+    const firstItem = new VFXItem(player.engine);
+    const secondItem = new VFXItem(player.engine);
+
+    firstItem.setParent(composition.sceneRoot);
+    secondItem.setParent(composition.sceneRoot);
+
+    const secondBridge = secondItem.addComponent(UIControl);
+    const secondControl = new Control(player.engine);
+
+    secondBridge.control = secondControl;
+
+    const firstBridge = firstItem.addComponent(UIControl);
+    const firstControl = new Control(player.engine);
+
+    firstBridge.control = firstControl;
+
+    expect(composition.uiCanvas.rootControl.children).deep.equals([firstControl, secondControl]);
+    expect(firstControl.indexInParent).equals(0);
+    expect(secondControl.indexInParent).equals(1);
+
+    secondItem.orderInParent = 0;
+    expect(composition.sceneRoot.children.slice(0, 2)).deep.equals([secondItem, firstItem]);
+    expect(composition.uiCanvas.rootControl.children).deep.equals([secondControl, firstControl]);
+    expect(secondControl.indexInParent).equals(0);
+    expect(firstControl.indexInParent).equals(1);
+  });
+
+  it('synchronizes Control visibility when its VFXItem activation changes', () => {
     const item = new VFXItem(player.engine);
-    const control = item.addComponent(Control);
+    const bridge = item.addComponent(UIControl);
+    const control = new Control(player.engine);
 
-    item.setParent(first.sceneRoot);
-    activate(first);
-    activate(second);
+    bridge.control = control;
+    item.setParent(composition.sceneRoot);
+    expect(control.visible).equals(true);
+    expect(control.enabled).equals(true);
 
-    control.transform.setSize(100, 100);
-    control.focusMode = FocusMode.All;
-    control.grabFocus();
+    item.setActive(false);
+    expect(control.visible).equals(false);
+    expect(control.enabled).equals(false);
 
-    expect(control.viewport).equals(first.viewport);
-    expect(first.viewport.defaultCanvas.canvasItems).includes(control);
-    expect(first.viewport.guiGetFocusOwner()).equals(control);
-
-    item.setParent(second.sceneRoot);
-
-    expect(control.viewport).equals(second.viewport);
-    expect(first.viewport.defaultCanvas.canvasItems).not.includes(control);
-    expect(second.viewport.defaultCanvas.canvasItems).includes(control);
-    expect(first.viewport.guiGetFocusOwner()).equals(null);
-
-    control.grabFocus();
-    expect(second.viewport.guiGetFocusOwner()).equals(control);
-
-    second.dispose();
-    first.dispose();
+    item.setActive(true);
+    expect(control.visible).equals(true);
+    expect(control.enabled).equals(true);
   });
 
-  it('routes Window input through the real Viewport tree in front-to-back order', () => {
-    const back = new Composition(player.engine);
-    const front = new Composition(player.engine);
-    const backItem = new VFXItem(player.engine);
-    const frontItem = new VFXItem(player.engine);
-    const backControl = backItem.addComponent(RecordingControl);
-    const frontControl = frontItem.addComponent(RecordingControl);
+  it('does not scan through ordinary VFXItems for a GUI parent', () => {
+    const bridgeItem = new VFXItem(player.engine);
+    const bridge = bridgeItem.addComponent(UIControl);
+    const control = new Control(player.engine);
+    const ordinary = new VFXItem(player.engine);
 
-    backItem.setParent(back.sceneRoot);
-    frontItem.setParent(front.sceneRoot);
-    back.setIndex(0);
-    front.setIndex(1);
-    activate(back);
-    activate(front);
-    backControl.transform.setSize(100, 100);
-    frontControl.transform.setSize(100, 100);
+    bridge.control = control;
+    ordinary.setParent(composition.sceneRoot);
+    bridgeItem.setParent(ordinary);
+    expect(control.parent).equals(null);
+  });
 
-    player.engine.viewport.pushInput(mouseButton(true));
-    expect(frontControl.presses).equals(1);
-    expect(backControl.presses).equals(0);
-    expect(player.engine.viewport.isInputHandled()).equals(true);
-    player.engine.viewport.pushInput(mouseButton(false));
+  it('sorts independent canvases by UICanvas.order', () => {
+    const overlayItem = new VFXItem(player.engine);
+    const overlay = overlayItem.addComponent(UICanvas);
 
-    front.interactive = false;
-    player.engine.viewport.pushInput(mouseButton(true));
-    expect(frontControl.presses).equals(1);
-    expect(backControl.presses).equals(1);
-    player.engine.viewport.pushInput(mouseButton(false));
+    overlay.order = -10;
+    overlayItem.setParent(composition.root);
+    player.engine.windowRoot.canvases.sortCanvases();
+    expect(player.engine.windowRoot.canvases.children[0]).equals(overlay.rootControl);
+    expect(player.engine.windowRoot.canvases.children[1]).equals(composition.uiCanvas.rootControl);
+  });
 
-    front.dispose();
-    back.dispose();
+  it('attaches and detaches a canvas through enable state', () => {
+    composition.uiCanvas.enabled = false;
+    expect(composition.uiCanvas.rootControl.parent).equals(null);
+
+    composition.uiCanvas.enabled = true;
+    expect(composition.uiCanvas.rootControl.parent).equals(player.engine.windowRoot.canvases);
+  });
+
+  it('detaches and disposes GUI objects with their bridge', () => {
+    const item = new VFXItem(player.engine);
+    const bridge = item.addComponent(UIControl);
+    const control = new Control(player.engine);
+
+    bridge.control = control;
+    item.setParent(composition.sceneRoot);
+    bridge.dispose();
+    expect(control.isDisposed).equals(true);
+    expect(control.parent).equals(null);
+  });
+
+  it('unlinks a Control without modifying or disposing it', () => {
+    const item = new VFXItem(player.engine);
+    const bridge = item.addComponent(UIControl);
+    const control = new LifecycleControl(player.engine);
+
+    bridge.control = control;
+    item.setParent(composition.sceneRoot);
+    const parent = control.parent;
+    const owner = control.owner;
+    const transform = control.transform;
+
+    bridge.unlinkControl();
+    expect(bridge.control).equals(null);
+    expect(control.parent).equals(parent);
+    expect(control.owner).equals(owner);
+    expect(control.transform).equals(transform);
+    expect(control.isDisposed).equals(false);
+    expect(control.destroyCount).equals(0);
+
+    bridge.dispose();
+    expect(control.parent).equals(parent);
+    expect(control.isDisposed).equals(false);
+    control.dispose();
+    expect(control.destroyCount).equals(1);
+  });
+
+  it('uses only onDestroy for the Control lifecycle', () => {
+    const item = new VFXItem(player.engine);
+    const bridge = item.addComponent(UIControl);
+    const control = new LifecycleControl(player.engine);
+
+    bridge.control = control;
+    item.setParent(composition.sceneRoot);
+    expect('onAwake' in control).equals(false);
+    expect(control.destroyCount).equals(0);
+
+    bridge.dispose();
+    expect(control.destroyCount).equals(1);
+  });
+
+  it('notifies the old Root only once when a Control is disposed', () => {
+    const root = composition.uiCanvas.rootControl;
+    const control = new Control(player.engine);
+
+    root.addChild(control);
+    chai.spy.on(player.engine.windowRoot, 'controlRemoved');
+    control.dispose();
+    expect(player.engine.windowRoot.controlRemoved).to.have.been.called.once;
   });
 });
-
-function activate (composition: Composition): void {
-  composition.root.awake();
-  composition.root.beginPlay();
-}
-
-function mouseButton (pressed: boolean): InputEventMouseButton {
-  const event = new InputEventMouseButton();
-
-  event.buttonIndex = MouseButton.Left;
-  event.pressed = pressed;
-  event.position.set(10, 10);
-  event.globalPosition.set(10, 10);
-
-  return event;
-}

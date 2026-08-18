@@ -96,7 +96,7 @@ export class EventSystem implements Disposable {
       this.touchStates.clear();
       this.mouseFromTouchIndex = null;
       this.touchFromMousePressed = false;
-      this.engine.viewport.cancelPointerInput();
+      this.engine.windowRoot.cancelPointerInput();
     }
   }
 
@@ -168,7 +168,7 @@ export class EventSystem implements Disposable {
   }
 
   dispose (): void {
-    this.engine.viewport.cancelPointerInput();
+    this.engine.windowRoot.cancelPointerInput();
     this.mouseState = null;
     this.touchStates.clear();
     this.mouseFromTouchIndex = null;
@@ -321,7 +321,7 @@ export class EventSystem implements Disposable {
       this.touchStates.clear();
       this.mouseFromTouchIndex = null;
       this.touchFromMousePressed = false;
-      this.engine.viewport.cancelPointerInput();
+      this.engine.windowRoot.cancelPointerInput();
     }
   };
 
@@ -364,8 +364,8 @@ export class EventSystem implements Disposable {
     input.altPressed = event.altKey;
     input.metaPressed = event.metaKey;
     input.ctrlPressed = event.ctrlKey;
-    this.engine.viewport.pushInput(input);
-    this.consumeNativeEvent(event, this.engine.viewport.isInputHandled());
+    this.engine.windowRoot.pushInput(input);
+    this.consumeNativeEvent(event, this.engine.windowRoot.isInputHandled());
   }
 
   private handleNativeTouchEnd (event: TouchEvent, canceled: boolean): void {
@@ -494,9 +494,9 @@ export class EventSystem implements Disposable {
     input.pressed = pressed;
     input.canceled = canceled;
     input.doubleClick = doubleClick;
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private pushEmulatedMouseMotion (
@@ -515,9 +515,9 @@ export class EventSystem implements Disposable {
     input.screenRelative.copyFrom(relative);
     input.velocity.copyFrom(velocity);
     input.screenVelocity.copyFrom(velocity);
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private pushMouseButton (
@@ -538,9 +538,9 @@ export class EventSystem implements Disposable {
     }
     input.pressed = pressed;
     input.doubleClick = event.detail > 1;
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private pushWheelButton (
@@ -557,9 +557,9 @@ export class EventSystem implements Disposable {
     input.buttonMask = getMouseButtonMask(event.buttons);
     input.factor = factor;
     input.pressed = true;
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private pushMouseMotion (
@@ -582,9 +582,9 @@ export class EventSystem implements Disposable {
       input.pressure = event.pressure;
       input.tilt.set(event.tiltX, event.tiltY);
     }
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private pushScreenTouch (
@@ -603,9 +603,9 @@ export class EventSystem implements Disposable {
     input.pressed = pressed;
     input.canceled = canceled;
     input.doubleTap = doubleTap;
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private pushScreenDrag (
@@ -625,9 +625,9 @@ export class EventSystem implements Disposable {
     input.velocity.copyFrom(velocity);
     input.screenVelocity.copyFrom(velocity);
     input.pressed = true;
-    this.engine.viewport.pushInput(input);
+    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.viewport.isInputHandled();
+    return this.engine.windowRoot.isInputHandled();
   }
 
   private copyMouseFields (
