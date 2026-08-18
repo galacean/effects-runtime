@@ -587,8 +587,13 @@ describe('rich-text/render-plan', () => {
     expect(changedHaloPixels).to.equal(0);
   });
 
-  it('uses range fill alpha but not range fill RGB for object glow', () => {
-    const makePlan = (fillColor: string): ReturnType<typeof buildRichTextRenderPlan> => {
+  it('keeps object glow independent from range fill color', () => {
+    const cyanGlow: FancyRenderLayer = {
+      kind: 'glow',
+      category: 'decorative',
+      params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
+    };
+    const makePlan = (fillColor: string, glow: FancyRenderLayer[] = [cyanGlow]): ReturnType<typeof buildRichTextRenderPlan> => {
       const options = parseRichTextOptions(
         `<color=${fillColor}>A</color>`,
         textStyle,
@@ -626,11 +631,7 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: [{
-          kind: 'glow',
-          category: 'decorative',
-          params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
-        }],
+        layers: glow,
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -644,23 +645,128 @@ describe('rich-text/render-plan', () => {
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
-    const red = render(makePlan('#ff0000ff'));
-    const blue = render(makePlan('#0000ffff'));
-    let changedHaloPixels = 0;
+    // A no-glow render captures the text+stroke silhouette. The glow halo is the
+    // region OUTSIDE that silhouette where a glow render still has alpha. Only
+    // comparing pixels that are transparent in BOTH renders would just touch pure
+    // background and never exercise the halo, so the silhouette reference is what
+    // makes this assertion actually test the glow.
+    const silhouette = render(makePlan('#ff0000ff', []));
+    const countHaloChanges = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
+      let changed = 0, examined = 0;
 
-    for (let y = 0; y < 50; y++) {
-      for (let x = 0; x < 80; x++) {
-        const offset = (y * 80 + x) * 4;
+      for (let y = 0; y < 50; y++) {
+        for (let x = 0; x < 80; x++) {
+          const offset = (y * 80 + x) * 4;
 
-        if (red[offset + 3] === 0 && blue[offset + 3] === 0) {
-          if (red[offset] !== blue[offset] || red[offset + 1] !== blue[offset + 1] || red[offset + 2] !== blue[offset + 2] || red[offset + 3] !== blue[offset + 3]) {
-            changedHaloPixels++;
+          if (silhouette[offset + 3] === 0 && a[offset + 3] > 0) {
+            examined++;
+            if (a[offset] !== b[offset] || a[offset + 1] !== b[offset + 1] || a[offset + 2] !== b[offset + 2] || a[offset + 3] !== b[offset + 3]) {
+              changed++;
+            }
           }
         }
       }
-    }
 
-    expect(changedHaloPixels).to.equal(0);
+      return { changed, examined };
+    };
+    const red = render(makePlan('#ff0000ff'));
+    const blue = render(makePlan('#0000ffff'));
+    const result = countHaloChanges(red, blue);
+
+    // examined > 0 proves the halo was actually sampled, not just background.
+    expect(result.examined).to.be.greaterThan(0);
+    expect(result.changed).to.equal(0);
+  });
+
+  it('keeps object glow independent from range fill opacity', () => {
+    // Regression: the object-glow mask used to be drawn with
+    // `rgba(255,255,255, fillColor[3])`, i.e. it kept the range fill alpha. That
+    // made editing one segment's fill opacity pulse the halo alpha/extent of the
+    // whole shared object glow. The mask must be a constant full-alpha silhouette
+    // so only the glow layer's own color/blur/intensity controls the halo.
+    const cyanGlow: FancyRenderLayer = {
+      kind: 'glow',
+      category: 'decorative',
+      params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
+    };
+    const makePlan = (fillColor: string, glow: FancyRenderLayer[] = [cyanGlow]): ReturnType<typeof buildRichTextRenderPlan> => {
+      const options = parseRichTextOptions(
+        `<color=${fillColor}>A</color>`,
+        textStyle,
+        { 'range-0': [
+          {
+            kind: 'single-stroke',
+            category: 'base',
+            params: { color: [0, 0, 0, 1], width: 2, unit: 'px' },
+          },
+          {
+            kind: 'solid-fill',
+            category: 'base',
+            params: { color: [1, 1, 1, 1] },
+          },
+        ] },
+      );
+
+      return buildRichTextRenderPlan({
+        textStyle,
+        wrapResult: {
+          lines: [{
+            richOptions: options,
+            offsetX: [0],
+            width: 50,
+            lineHeight: 30,
+            offsetY: 0,
+            chars: [[{ char: 'A', x: 10 }]],
+          }],
+          maxLineWidth: 50,
+          totalHeight: 30,
+          bboxTop: -15,
+          bboxBottom: 15,
+          bboxHeight: 30,
+        },
+        horizontalAlignResult: { lineOffsets: [0] },
+        verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
+        overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
+        layers: glow,
+      });
+    };
+    const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
+      const canvas = document.createElement('canvas');
+
+      canvas.width = 80;
+      canvas.height = 50;
+      const context = canvas.getContext('2d')!;
+
+      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+
+      return context.getImageData(0, 0, canvas.width, canvas.height).data;
+    };
+    const silhouette = render(makePlan('#ff0000ff', []));
+    const countHaloChanges = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
+      let changed = 0, examined = 0;
+
+      for (let y = 0; y < 50; y++) {
+        for (let x = 0; x < 80; x++) {
+          const offset = (y * 80 + x) * 4;
+
+          if (silhouette[offset + 3] === 0 && a[offset + 3] > 0) {
+            examined++;
+            if (a[offset] !== b[offset] || a[offset + 1] !== b[offset + 1] || a[offset + 2] !== b[offset + 2] || a[offset + 3] !== b[offset + 3]) {
+              changed++;
+            }
+          }
+        }
+      }
+
+      return { changed, examined };
+    };
+    // Same RGB, very different alpha (0x20 ≈ 0.125 vs 0xff = 1).
+    const faint = render(makePlan('#ff000020'));
+    const opaque = render(makePlan('#ff0000ff'));
+    const result = countHaloChanges(faint, opaque);
+
+    expect(result.examined).to.be.greaterThan(0);
+    expect(result.changed).to.equal(0);
   });
 
   it('renders range fill/stroke and object glow on the Canvas backend', () => {

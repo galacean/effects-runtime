@@ -282,13 +282,17 @@ export class CanvasRichTextFancyBackend implements TextRenderBackend<CanvasRende
   ): void {
     for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
-        const fillColor = range.basicStyle.fillColor ?? this.options.textStyle.textColor;
-
         if (maskOnly) {
-          // Preserve source alpha for opacity control, but deliberately discard
-          // the range RGB so a color edit cannot recolor the object glow.
-          glyphContext.fillStyle = `rgba(255, 255, 255, ${fillColor[3]})`;
+          // The shared object-glow source is a pure, full-alpha white silhouette.
+          // Both the range fill RGB and its alpha are deliberately discarded so
+          // the object glow depends only on the glow layer's own color / blur /
+          // intensity. Letting the range fill alpha (fillOpacity) through makes
+          // editing one segment's fill opacity pulse the glow halo of the whole
+          // text object; letting the RGB through recolors it. Neither is allowed.
+          glyphContext.fillStyle = 'rgb(255, 255, 255)';
         } else {
+          const fillColor = range.basicStyle.fillColor ?? this.options.textStyle.textColor;
+
           glyphContext.fillStyle = colorToCss(fillColor);
         }
         glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
