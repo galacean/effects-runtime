@@ -14,13 +14,7 @@ export type FontWeight = 'normal' | 'bold' | number;
 export type FontStyle = 'normal' | 'italic';
 
 /**
- * 字形纹理超采样倍数。canvas 按 `fontSize * FONT_SCALE` 渲染，纹理像素也是 scale 倍，
- * 但 quad 仍按 1x 逻辑尺寸绘制 — 双线性 downsample 后比原 1x 渲染清晰得多
- */
-export const FONT_SCALE = 2;
-
-/**
- * 单张字符 atlas 的边长(像素,scale 后的实际像素,非逻辑尺寸)。
+ * 单张字符 atlas 的逻辑边长。实际 canvas 像素尺寸会乘以渲染 resolution。
  * 512×512 在 24px 字号下约可容纳 250+ 字形,常见 demo 文本足够
  */
 export const ATLAS_SIZE = 512;
@@ -43,7 +37,7 @@ const GLYPH_PADDING = 4;
 /**
  * 单个字形在 atlas 中的位置 / 度量。
  *
- * `px/py/pw/ph` 是 atlas canvas 像素（scale 后，含四周 padding）。
+ * `px/py/pw/ph` 是 atlas canvas 像素（resolution 后，含四周 padding）。
  * `advance` 是逻辑像素光标前进量（1x，不含 padding）— quad 宽度含 padding，
  * 但相邻字只按 advance 前进，padding 区透明因此重叠无妨。
  * `paddingLeft` 是逻辑像素左侧留白（1x），quad 起点左偏此量使字形 ink 落在 cursorX
@@ -68,13 +62,16 @@ export type GlyphInfo = {
  * 避免每加一字都 upload 一次造成的 GL 开销
  */
 export class GlyphAtlas {
-  /** atlas canvas（像素 = ATLAS_SIZE × ATLAS_SIZE，自有不进 canvasPool） */
+  /** atlas canvas（像素 = ATLAS_SIZE × resolution，自有不进 canvasPool） */
   readonly canvas: HTMLCanvasElement;
   /** 与 canvas 绑定的纹理，内容变更后通过 updateSource 重传 */
   readonly texture: Texture;
 
   /** cell 高（逻辑像素，含 padding），用于 quad 高度 */
   readonly lineHeight: number;
+
+  /** 字形 canvas 的像素密度，与 Pixi 的纹理 resolution 语义一致。 */
+  readonly resolution: number;
 
   private readonly ctx: CanvasRenderingContext2D;
   private readonly glyphs = new Map<string, GlyphInfo>();
@@ -103,10 +100,12 @@ export class GlyphAtlas {
     /** baseline 距 cell 底距离（像素，scale 后，仅 descent 部分） */
     descentPx: number,
     fontStyle: FontStyle,
+    resolution: number,
   ) {
+    this.resolution = resolution;
     this.canvas = document.createElement('canvas');
-    this.canvas.width = ATLAS_SIZE;
-    this.canvas.height = ATLAS_SIZE;
+    this.canvas.width = Math.ceil(ATLAS_SIZE * resolution);
+    this.canvas.height = Math.ceil(ATLAS_SIZE * resolution);
     const ctx = this.canvas.getContext('2d', { willReadFrequently: false });
 
     if (!ctx) {
@@ -117,7 +116,7 @@ export class GlyphAtlas {
     ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#ffffff';
 
-    this.paddingPx = GLYPH_PADDING * FONT_SCALE;
+    this.paddingPx = GLYPH_PADDING * resolution;
     this.italicScale = fontStyle === 'italic' ? 2 : 1;
 
     // ascent/descent 由探针 '|ÉqÅM' 测得 actualBoundingBox（重音字已抬高 ink 顶），
@@ -126,7 +125,7 @@ export class GlyphAtlas {
 
     this.baselinePx = this.paddingPx + ascentPx;
     this.cellHPx = Math.ceil(fontHeightPx + this.paddingPx * 2);
-    this.lineHeight = this.cellHPx / FONT_SCALE;
+    this.lineHeight = this.cellHPx / resolution;
 
     this.texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
@@ -137,6 +136,7 @@ export class GlyphAtlas {
       minFilter: glContext.LINEAR,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
+      premultiplyAlpha: true,
     });
     this.texture.initialize();
   }
@@ -158,7 +158,7 @@ export class GlyphAtlas {
 
     // 每次重设字体，防御外部潜在污染（虽然 ctx 私有）
     ctx.font = this.scaledFontString;
-    // measureText 用的是 scaledFontString，advance 已经是 scale 后的像素，不能再乘 FONT_SCALE
+    // measureText 用的是 scaledFontString，advance 已经是 resolution 后的像素
     const advancePx = ctx.measureText(char).width;
     // italic 放大 cell 宽防斜体越界；ceil 对齐像素网格避免相邻字采样重叠
     const widthPx = Math.max(1, Math.ceil(advancePx * this.italicScale));
@@ -166,12 +166,12 @@ export class GlyphAtlas {
     const cellH = this.cellHPx;
 
     // 行尾换行
-    if (this.currentX + paddedWidthPx > ATLAS_SIZE) {
+    if (this.currentX + paddedWidthPx > this.canvas.width) {
       this.currentX = 0;
       this.currentY += cellH;
     }
     // atlas 满，后续不再尝试
-    if (this.currentY + cellH > ATLAS_SIZE) {
+    if (this.currentY + cellH > this.canvas.height) {
       this.full = true;
       console.warn(`GlyphAtlas full, dropping char "${char}"`);
 
@@ -191,8 +191,8 @@ export class GlyphAtlas {
       px, py,
       pw: paddedWidthPx,
       ph: cellH,
-      advance: advancePx / FONT_SCALE,
-      paddingLeft: this.paddingPx / FONT_SCALE,
+      advance: advancePx / this.resolution,
+      paddingLeft: this.paddingPx / this.resolution,
     };
 
     this.glyphs.set(char, info);
@@ -216,6 +216,7 @@ export class GlyphAtlas {
       minFilter: glContext.LINEAR,
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
+      premultiplyAlpha: true,
     });
     this.dirty = false;
   }
@@ -239,8 +240,11 @@ export class GlyphAtlas {
 export class TextCache {
   /** fontKey -> 该字体的字符 atlas */
   private readonly atlases = new Map<string, GlyphAtlas>();
+  private resolution: number;
 
-  constructor (private engine: Engine) { }
+  constructor (private engine: Engine) {
+    this.resolution = engine.pixelRatio;
+  }
 
   /**
    * 取(必要时新建)对应字体的字符 atlas
@@ -251,24 +255,31 @@ export class TextCache {
     fontWeight: FontWeight,
     fontStyle: FontStyle,
   ): GlyphAtlas {
-    const fontKey = `${fontStyle}|${fontWeight}|${fontSize}|${fontFamily}`;
+    // Pixi CanvasText 默认跟随 renderer.resolution；这里对应 Engine.pixelRatio。
+    const resolution = this.engine.pixelRatio;
+
+    if (resolution !== this.resolution) {
+      this.clear();
+      this.resolution = resolution;
+    }
+    const fontKey = `${fontStyle}|${fontWeight}|${fontSize}|${fontFamily}|${resolution}`;
     const cached = this.atlases.get(fontKey);
 
     if (cached) {
       return cached;
     }
 
-    const scaledFontString = `${fontStyle} ${fontWeight} ${fontSize * FONT_SCALE}px ${fontFamily}`;
+    const scaledFontString = `${fontStyle} ${fontWeight} ${fontSize * resolution}px ${fontFamily}`;
 
     // 探一次得到字体级 ascent/descent（整张 atlas 共享 cell 高与 baseline，各字对齐）。
-    // 直接在 scaledFontString 下测，得到的就是 scale 后像素，无需再乘 FONT_SCALE。
+    // 直接在 scaledFontString 下测，得到的就是 resolution 后像素。
     // 探针用 '|ÉqÅ' + 'M'：带重音符的 ÉÅ 把 ink 顶推到接近字体真实 ascent，
     // 单字 'M' 只有 cap height(~0.7em) 太矮，CJK / 带重音字顶部会越过 cell 上界被裁。
     // 取 actualBoundingBoxAscent/Descent 度量 ink 边界，跨平台语义稳定
     const probeCanvasAndContext = canvasPool.getCanvasAndContext(1, 1);
     const probeCtx = probeCanvasAndContext.context;
-    let ascentPx = fontSize * 0.8 * FONT_SCALE;
-    let descentPx = fontSize * 0.2 * FONT_SCALE;
+    let ascentPx = fontSize * 0.8 * resolution;
+    let descentPx = fontSize * 0.2 * resolution;
 
     try {
       probeCtx.font = scaledFontString;
@@ -280,7 +291,7 @@ export class TextCache {
       canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
     }
 
-    const atlas = new GlyphAtlas(this.engine, scaledFontString, ascentPx, descentPx, fontStyle);
+    const atlas = new GlyphAtlas(this.engine, scaledFontString, ascentPx, descentPx, fontStyle, resolution);
 
     this.atlases.set(fontKey, atlas);
 
@@ -302,6 +313,10 @@ export class TextCache {
    * 清空所有 atlas 并 dispose 对应纹理。Engine dispose 时调用
    */
   dispose (): void {
+    this.clear();
+  }
+
+  private clear (): void {
     for (const atlas of this.atlases.values()) {
       atlas.dispose();
     }

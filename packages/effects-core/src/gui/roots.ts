@@ -279,6 +279,14 @@ export class WindowRootControl extends RootControl {
     this.engine.graphics.end();
   }
 
+  override update (deltaTime: number): void {
+    if (this.gui.mouseOverUpdatePending) {
+      this.gui.mouseOverUpdatePending = false;
+      this.updateMouseOver(this.gui.lastMousePosition);
+    }
+    super.update(deltaTime);
+  }
+
   override dispose (): void {
     this.cancelPointerInput();
     super.dispose();
@@ -506,29 +514,27 @@ export class WindowRootControl extends RootControl {
 
       return;
     }
-    do {
-      this.gui.mouseOverUpdatePending = false;
-      const target = this.findInputControl(position);
-      const next = this.buildHoverHierarchy(target);
-      const previous = this.gui.mouseOverHierarchy;
-      let common = 0;
+    this.gui.mouseOverUpdatePending = false;
+    const target = this.findInputControl(position);
+    const next = this.buildHoverHierarchy(target);
+    const previous = this.gui.mouseOverHierarchy;
+    let common = 0;
 
-      while (common < previous.length && common < next.length && previous[common] === next[common]) {
-        common++;
+    while (common < previous.length && common < next.length && previous[common] === next[common]) {
+      common++;
+    }
+    this.gui.sendingMouseEnterExit = true;
+    for (let index = previous.length - 1; index >= common; index--) {
+      if (!previous[index].isDisposed) {
+        previous[index].onMouseLeave();
       }
-      this.gui.sendingMouseEnterExit = true;
-      for (let index = previous.length - 1; index >= common; index--) {
-        if (!previous[index].isDisposed) {
-          previous[index].onMouseLeave();
-        }
-      }
-      for (let index = common; index < next.length; index++) {
-        next[index].onMouseEnter(this.toLocal(next[index], position));
-      }
-      this.gui.sendingMouseEnterExit = false;
-      this.gui.mouseOver = target;
-      this.gui.mouseOverHierarchy = next;
-    } while (this.gui.mouseOverUpdatePending);
+    }
+    for (let index = common; index < next.length; index++) {
+      next[index].onMouseEnter(this.toLocal(next[index], position));
+    }
+    this.gui.sendingMouseEnterExit = false;
+    this.gui.mouseOver = target;
+    this.gui.mouseOverHierarchy = next;
   }
 
   private buildHoverHierarchy (target: Control | null): Control[] {

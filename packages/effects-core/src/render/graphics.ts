@@ -11,7 +11,7 @@ import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
 import type { Texture } from '../texture';
 import type { FontStyle, FontWeight } from './text-cache';
-import { ATLAS_SIZE, FONT_SCALE, TextCache } from './text-cache';
+import { TextCache } from './text-cache';
 import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
 import type { ShapePrimitive } from '../math/shape/shape-primitive';
 
@@ -22,12 +22,13 @@ export type TextureRegion = { u0: number, v0: number, u1: number, v1: number };
 
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 
-type BatchType = 'colored' | 'textured';
+type BatchType = 'colored' | 'textured' | 'text';
 
 export class Graphics {
   private geometry: Geometry;
   private coloredMaterial: Material;
   private texturedMaterial: Material;
+  private textMaterial: Material;
 
   private readonly lineShape = new Polygon();
   private readonly bezierShape = new Polygon();
@@ -159,6 +160,37 @@ export class Graphics {
     this.texturedMaterial.depthMask = false;
     this.texturedMaterial.blending = true;
 
+    // 文本 atlas 按 Pixi 的方式在上传时预乘 alpha，因此采样后只需应用顶点色和顶点 alpha。
+    // 单独使用 material，避免改变 drawTexture 对普通非预乘纹理的处理。
+    this.textMaterial = Material.create(this.engine, {
+      shader: {
+        vertex: `precision highp float;
+        attribute vec2 aPos;
+        attribute vec4 aColor;
+        attribute vec2 aUV;
+        varying vec4 vColor;
+        varying vec2 vUV;
+
+        uniform mat4 effects_MatrixVP;
+        void main() {
+          vColor = aColor;
+          vUV = aUV;
+          gl_Position = effects_MatrixVP * vec4(aPos, 0.0, 1.0);
+        }`,
+        fragment: `precision highp float;
+        varying vec4 vColor;
+        varying vec2 vUV;
+        uniform sampler2D uMainTexture;
+        void main() {
+          float alpha = texture2D(uMainTexture, vUV).a * vColor.a;
+          gl_FragColor = vec4(vColor.rgb * alpha, alpha);
+        }`,
+      },
+    });
+    this.textMaterial.depthTest = false;
+    this.textMaterial.depthMask = false;
+    this.textMaterial.blending = true;
+
     this.textCache = new TextCache(engine);
   }
 
@@ -190,6 +222,7 @@ export class Graphics {
 
     this.coloredMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
     this.texturedMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
+    this.textMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
   }
 
   /**
@@ -228,7 +261,7 @@ export class Graphics {
    */
   private ensureBatch (type: BatchType, texture: Texture | null = null): void {
     const sameBatch = this.currentBatchType === type
-      && (type !== 'textured' || this.currentBatchTexture === texture);
+      && (type === 'colored' || this.currentBatchTexture === texture);
 
     if (!sameBatch && this.currentVertexCount > 0) {
       this.flushBatch();
@@ -263,8 +296,8 @@ export class Graphics {
 
     let material: Material;
 
-    if (this.currentBatchType === 'textured') {
-      material = this.texturedMaterial;
+    if (this.currentBatchType === 'textured' || this.currentBatchType === 'text') {
+      material = this.currentBatchType === 'text' ? this.textMaterial : this.texturedMaterial;
       const tex = this.currentBatchTexture ?? this.engine.whiteTexture;
 
       material.setTexture('uMainTexture', tex);
@@ -509,7 +542,7 @@ export class Graphics {
     }
     const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
 
-    this.ensureBatch('textured', atlas.texture);
+    this.ensureBatch('text', atlas.texture);
 
     const lineHeight = atlas.lineHeight;
     let cursorX = x;
@@ -523,16 +556,18 @@ export class Graphics {
         continue;
       }
       // atlas 像素坐标 → UV（纹理 flipY 后，canvas 顶 → v=1，canvas 底 → v=0）
-      const u0 = info.px / ATLAS_SIZE;
-      const u1 = (info.px + info.pw) / ATLAS_SIZE;
-      const v0 = 1 - (info.py + info.ph) / ATLAS_SIZE;
-      const v1 = 1 - info.py / ATLAS_SIZE;
+      const atlasWidth = atlas.canvas.width;
+      const atlasHeight = atlas.canvas.height;
+      const u0 = info.px / atlasWidth;
+      const u1 = (info.px + info.pw) / atlasWidth;
+      const v0 = 1 - (info.py + info.ph) / atlasHeight;
+      const v1 = 1 - info.py / atlasHeight;
 
       // quad 宽与采样区都含四周 padding（cell 留白透明）；但光标只按 advance 前进，
       // quad 起点左偏 paddingLeft 使字形 ink 落在 cursorX — padding 区重叠无妨
       this.pushQuad(
         cursorX - info.paddingLeft, y,
-        info.pw / FONT_SCALE, lineHeight,
+        info.pw / atlas.resolution, lineHeight,
         color, { u0, v0, u1, v1 },
       );
       cursorX += info.advance;
@@ -543,6 +578,7 @@ export class Graphics {
     this.geometry.dispose();
     this.coloredMaterial.dispose();
     this.texturedMaterial.dispose();
+    this.textMaterial.dispose();
     this.textCache.dispose();
   }
 

@@ -44,6 +44,10 @@ describe('core/composition', () => {
     first.setIndex(10);
     second.setIndex(-5);
     expect(engine.compositions).deep.equals([second, first]);
+    expect(first.uiCanvas.order).equals(10);
+    expect(second.uiCanvas.order).equals(-5);
+    expect(engine.windowRoot.canvases.children.indexOf(second.uiCanvas.rootControl))
+      .lessThan(engine.windowRoot.canvases.children.indexOf(first.uiCanvas.rootControl));
 
     const renderOutput: string[] = [];
 

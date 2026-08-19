@@ -250,7 +250,6 @@ function addControl (
 const player = new Player({
   container: canvasHost,
   interactive: true,
-  pixelRatio: 1,
 });
 const composition = new Composition(player.engine);
 

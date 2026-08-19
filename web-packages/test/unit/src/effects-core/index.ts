@@ -17,6 +17,7 @@ import './plugins/text';
 import './asset-manager.spec';
 import './engine-plugin.spec';
 import './texture.spec';
+import './text-cache.spec';
 import './transform.spec';
 import './utils.spec';
 import './event-emitter.spec';

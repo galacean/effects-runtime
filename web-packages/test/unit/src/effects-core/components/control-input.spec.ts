@@ -52,6 +52,19 @@ class RecordingControl extends ContainerControl {
   }
 }
 
+class HoverRecordingControl extends RecordingControl {
+  override onMouseEnter (): void {
+    this.log.push('enter');
+  }
+}
+
+class SelfHidingControl extends HoverRecordingControl {
+  override onMouseEnter (): void {
+    super.onMouseEnter();
+    this.visible = false;
+  }
+}
+
 describe('core/gui input', () => {
   let player: Player;
   let composition: Composition;
@@ -92,6 +105,22 @@ describe('core/gui input', () => {
     player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
     expect(front.log).deep.equals(['down:10,10']);
     expect(back.log).deep.equals([]);
+  });
+
+  it('defers mouse-over updates requested by enter callbacks until the next frame', () => {
+    const back = addControl(composition.sceneRoot, new HoverRecordingControl(player.engine), 0, 0, 50, 50);
+    const front = addControl(composition.sceneRoot, new SelfHidingControl(player.engine), 0, 0, 50, 50);
+    const motion = new InputEventMouseMotion();
+
+    motion.position.set(10, 10);
+    motion.globalPosition.copyFrom(motion.position);
+    player.engine.windowRoot.pushInput(motion);
+
+    expect(front.log).deep.equals(['enter']);
+    expect(back.log).not.includes('enter');
+
+    player.engine.windowRoot.update(0);
+    expect(back.log).includes('enter');
   });
 
   it('routes keyboard input to the focused control', () => {

@@ -142,6 +142,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   set renderOrder (value: number) {
     this._renderOrder = value;
+    if (this.uiCanvas) {
+      this.uiCanvas.order = value;
+    }
   }
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
