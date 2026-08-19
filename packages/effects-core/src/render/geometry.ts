@@ -49,12 +49,12 @@ type VertexArrayObject = object;
 interface VertexArrayObjectEngine {
   recordVertexArrayObject: (
     vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | undefined,
+    indexBuffer: DataBuffer | null,
     shader: ShaderVariant,
   ) => VertexArrayObject | undefined,
   bindVertexArrayObject: (
     vertexArrayObject: VertexArrayObject,
-    indexBuffer: DataBuffer | undefined,
+    indexBuffer: DataBuffer | null,
   ) => void,
   releaseVertexArrayObject: (vertexArrayObject: VertexArrayObject) => void,
 }
@@ -259,7 +259,7 @@ export class Geometry extends EffectsObject {
     const engine = this.engine;
 
     if (!vertexArrayObjects || !supportsVertexArrayObjects(engine)) {
-      engine.bindBuffers(this.vertexBuffers, this.indexBuffer, shader);
+      engine.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
 
       return;
     }
@@ -268,7 +268,7 @@ export class Geometry extends EffectsObject {
     if (!vertexArrayObject) {
       vertexArrayObject = engine.recordVertexArrayObject(
         this.vertexBuffers,
-        this.indexBuffer,
+        this.indexBuffer ?? null,
         shader,
       );
       if (vertexArrayObject) {
@@ -276,9 +276,9 @@ export class Geometry extends EffectsObject {
       }
     }
     if (vertexArrayObject) {
-      engine.bindVertexArrayObject(vertexArrayObject, this.indexBuffer);
+      engine.bindVertexArrayObject(vertexArrayObject, this.indexBuffer ?? null);
     } else {
-      engine.bindBuffers(this.vertexBuffers, this.indexBuffer, shader);
+      engine.bindBuffers(this.vertexBuffers, this.indexBuffer ?? null, shader);
     }
   }
 

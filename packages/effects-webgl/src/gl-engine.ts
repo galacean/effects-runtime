@@ -1,9 +1,9 @@
 import type {
-  DataBuffer, DataBufferOptions, EngineOptions, Geometry, IndicesArray, Material, Nullable,
+  DataBuffer, DataBufferOptions, EngineOptions, IndicesArray, Nullable,
   RenderPassClearAction, ShaderLibrary, ShaderVariant, Texture, VertexBuffer, math,
 } from '@galacean/effects-core';
 import {
-  BufferDataType, Engine, GPUCapability, Renderer, TextureLoadAction, assertExist,
+  Engine, GPUCapability, Renderer, TextureLoadAction, assertExist,
   glContext, isIOS, logger, toBufferView,
 } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
@@ -37,6 +37,9 @@ export class GLEngine extends Engine {
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
   private currentTextureBinding: Record<number, Record<number, WebGLTexture | null>>;
   private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
+  private currentIndexBuffer: DataBuffer | null = null;
+  private currentVertexArrayObject: WebGLVertexArrayObject | null = null;
+  private vaoRecordInProgress = false;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
 
@@ -189,14 +192,33 @@ export class GLEngine extends Engine {
     data: BufferData | number,
     options: DataBufferOptions,
   ): GLDataBuffer {
-    return this.createDataBuffer(this.gl.ARRAY_BUFFER, data, options);
+    const resource = this.gl.createBuffer();
+
+    if (!resource) {
+      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+    const buffer = new GLDataBuffer(resource);
+    const view = typeof data === 'number' ? undefined : toBufferView(data);
+    const byteLength = typeof data === 'number' ? data : view!.byteLength;
+
+    assignInspectorName(resource, options.label);
+    this.bindArrayBuffer(buffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, Math.max(byteLength, 1), options.usage);
+    if (view && byteLength > 0) {
+      this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, view);
+    }
+    this.bindArrayBuffer(null);
+    buffer.capacity = byteLength;
+    buffer.references = 1;
+
+    return buffer;
   }
 
   override createDynamicVertexBuffer (
     data: BufferData | number,
     options: DataBufferOptions,
   ): GLDataBuffer {
-    return this.createDataBuffer(this.gl.ARRAY_BUFFER, data, options);
+    return this.createVertexBuffer(data, options);
   }
 
   override createIndexBuffer (
@@ -204,11 +226,22 @@ export class GLEngine extends Engine {
     options: DataBufferOptions,
   ): GLDataBuffer {
     const data = this.normalizeIndexData(indices);
-    const buffer = this.createDataBuffer(this.gl.ELEMENT_ARRAY_BUFFER, data, {
-      ...options,
-      type: data instanceof Uint32Array ? BufferDataType.UnsignedInt : BufferDataType.UnsignedShort,
-    });
+    const resource = this.gl.createBuffer();
 
+    if (!resource) {
+      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
+    }
+    const buffer = new GLDataBuffer(resource);
+
+    assignInspectorName(resource, options.label);
+    this.bindIndexBuffer(buffer);
+    this.gl.bufferData(this.gl.ELEMENT_ARRAY_BUFFER, Math.max(data.byteLength, 1), options.usage);
+    if (data.byteLength > 0) {
+      this.gl.bufferSubData(this.gl.ELEMENT_ARRAY_BUFFER, 0, data);
+    }
+    this.bindIndexBuffer(null);
+    buffer.capacity = data.byteLength;
+    buffer.references = 1;
     buffer.is32Bits = data instanceof Uint32Array;
 
     return buffer;
@@ -250,6 +283,7 @@ export class GLEngine extends Engine {
     if (data.byteLength > 0) {
       this.gl.bufferSubData(this.gl.ELEMENT_ARRAY_BUFFER, byteOffset, data);
     }
+    this.bindIndexBuffer(null);
   }
 
   /** @hide */
@@ -274,7 +308,7 @@ export class GLEngine extends Engine {
   /** @hide */
   recordVertexArrayObject (
     vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | undefined,
+    indexBuffer: DataBuffer | null,
     effect: ShaderVariant,
   ): WebGLVertexArrayObject | undefined {
     const vertexArrayObject = this.gl.createVertexArray() ?? undefined;
@@ -282,10 +316,12 @@ export class GLEngine extends Engine {
     if (!vertexArrayObject) {
       return undefined;
     }
-    this.bindVertexArrayObject(vertexArrayObject);
+    this.vaoRecordInProgress = true;
+    this.bindVertexArrayObject(vertexArrayObject, null);
     this.bindVertexBuffersAttributes(vertexBuffers, effect);
     this.bindIndexBuffer(indexBuffer);
-    this.bindVertexArrayObject(null);
+    this.vaoRecordInProgress = false;
+    this.bindVertexArrayObject(null, null);
 
     return vertexArrayObject;
   }
@@ -293,10 +329,10 @@ export class GLEngine extends Engine {
   /** @hide */
   override bindBuffers (
     vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | undefined,
+    indexBuffer: DataBuffer | null,
     effect: ShaderVariant,
   ): void {
-    this.bindVertexArrayObject(null);
+    this.bindVertexArrayObject(null, null);
     this.bindVertexBuffersAttributes(vertexBuffers, effect);
     this.bindIndexBuffer(indexBuffer);
   }
@@ -342,44 +378,25 @@ export class GLEngine extends Engine {
     }
   }
 
-  bindArrayBuffer (buffer?: DataBuffer): void {
+  bindArrayBuffer (buffer: DataBuffer | null): void {
+    if (!this.vaoRecordInProgress) {
+      this.unbindVertexArrayObject();
+    }
     this.gl.bindBuffer(
       this.gl.ARRAY_BUFFER,
       buffer?.underlyingResource as WebGLBuffer | undefined ?? null,
     );
   }
 
-  protected bindIndexBuffer (buffer?: DataBuffer): void {
+  protected bindIndexBuffer (buffer: DataBuffer | null): void {
+    if (!this.vaoRecordInProgress) {
+      this.unbindVertexArrayObject();
+    }
+    this.currentIndexBuffer = buffer;
     this.gl.bindBuffer(
       this.gl.ELEMENT_ARRAY_BUFFER,
       buffer?.underlyingResource as WebGLBuffer | undefined ?? null,
     );
-  }
-
-  private createDataBuffer (
-    target: number,
-    data: BufferData | number,
-    options: DataBufferOptions,
-  ): GLDataBuffer {
-    const resource = this.gl.createBuffer();
-
-    if (!resource) {
-      throw new Error(`Failed to create buffer. gl isContextLost=${this.gl.isContextLost()}`);
-    }
-    const buffer = new GLDataBuffer(resource);
-    const view = typeof data === 'number' ? undefined : toBufferView(data);
-    const byteLength = typeof data === 'number' ? data : view!.byteLength;
-
-    assignInspectorName(resource, options.label);
-    this.gl.bindBuffer(target, resource);
-    this.gl.bufferData(target, Math.max(byteLength, 1), options.usage);
-    if (view && byteLength > 0) {
-      this.gl.bufferSubData(target, 0, view);
-    }
-    buffer.capacity = byteLength;
-    buffer.references = 1;
-
-    return buffer;
   }
 
   private normalizeIndexData (indices: IndicesArray): Uint16Array | Uint32Array {
@@ -416,8 +433,25 @@ export class GLEngine extends Engine {
   }
 
   /** @hide */
-  bindVertexArrayObject (vertexArrayObject: WebGLVertexArrayObject | null): void {
+  bindVertexArrayObject (
+    vertexArrayObject: WebGLVertexArrayObject | null,
+    indexBuffer: DataBuffer | null,
+  ): void {
+    this.currentIndexBuffer = indexBuffer;
+    if (this.currentVertexArrayObject === vertexArrayObject) {
+      return;
+    }
+    this.currentVertexArrayObject = vertexArrayObject;
     this.gl.bindVertexArray(vertexArrayObject);
+  }
+
+  private unbindVertexArrayObject (): void {
+    if (!this.currentVertexArrayObject) {
+      return;
+    }
+    this.currentVertexArrayObject = null;
+    this.currentIndexBuffer = null;
+    this.gl.bindVertexArray(null);
   }
 
   deleteGLTexture (texture: GLTexture) {
@@ -441,77 +475,40 @@ export class GLEngine extends Engine {
     }
   }
 
-  override drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0): void {
-    if (!geometry || !material) {
-      return;
-    }
-
-    material.initialize();
-    geometry.initialize();
-    geometry.flush();
-    const renderingData = this.renderingData;
-
-    material.setMatrix('effects_ObjectToWorld', matrix);
-
-    try {
-      material.use(this.renderer, renderingData.currentFrame.globalUniforms);
-    } catch (e) {
-      console.error(e);
-
-      this.renderErrors.add(e as Error);
-
-      return;
-    }
-
-    const gl = this.gl;
-
-    if (!gl) {
-      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
-
-      return;
-    }
-
-    geometry.bind(material.shaderVariant);
-    const indexDataBuffer = geometry.getIndexBuffer();
-    const indexType = geometry.getIndexType();
-    let offset = geometry.getDrawStart();
-    let count = geometry.getDrawCount();
-    const mode = geometry.mode;
-    const subMeshes = geometry.subMeshes;
-
-    if (subMeshes && subMeshes.length) {
-      const subMesh = subMeshes[subMeshIndex];
-
-      offset = subMesh.offset;
-      if (indexDataBuffer) {
-        count = subMesh.indexCount ?? 0;
-      } else {
-        count = subMesh.vertexCount;
-      }
-    }
-    if (count <= 0) {
-      this.bindVertexArrayObject(null);
-
-      return;
-    }
-    const instanceCount = geometry.instanceCount;
-
-    if (instanceCount > 0 && !this.gpuCapability.detail.instanceDraw) {
-      this.bindVertexArrayObject(null);
+  override drawElementsType (
+    mode: number,
+    indexOffset: number,
+    indexCount: number,
+    instanceCount?: number,
+  ): void {
+    if (instanceCount && !this.gpuCapability.detail.instanceDraw) {
       throw new Error(INSTANCE_DRAW_ERROR);
     }
-    if (indexDataBuffer) {
-      if (instanceCount > 0) {
-        gl.drawElementsInstanced(mode, count, indexType, offset ?? 0, instanceCount);
-      } else {
-        gl.drawElements(mode, count, indexType, offset ?? 0);
-      }
-    } else if (instanceCount > 0) {
-      gl.drawArraysInstanced(mode, offset, count, instanceCount);
+    const indexType = this.currentIndexBuffer?.is32Bits
+      ? this.gl.UNSIGNED_INT
+      : this.gl.UNSIGNED_SHORT;
+
+    if (instanceCount) {
+      this.gl.drawElementsInstanced(mode, indexCount, indexType, indexOffset, instanceCount);
     } else {
-      gl.drawArrays(mode, offset, count);
+      this.gl.drawElements(mode, indexCount, indexType, indexOffset);
     }
-    this.bindVertexArrayObject(null);
+  }
+
+  override drawArraysType (
+    mode: number,
+    vertexStart: number,
+    vertexCount: number,
+    instanceCount?: number,
+  ): void {
+    if (instanceCount && !this.gpuCapability.detail.instanceDraw) {
+      throw new Error(INSTANCE_DRAW_ERROR);
+    }
+    if (instanceCount) {
+      this.gl.drawArraysInstanced(mode, vertexStart, vertexCount, instanceCount);
+    } else {
+      this.gl.drawArrays(mode, vertexStart, vertexCount);
+    }
   }
 
   override clear (action: RenderPassClearAction): void {
@@ -564,6 +561,9 @@ export class GLEngine extends Engine {
     this.currentTextureBinding = {};
     this.pixelStorei = {};
     this.currentRenderbuffer = {};
+    this.currentIndexBuffer = null;
+    this.currentVertexArrayObject = null;
+    this.vaoRecordInProgress = false;
   }
 
   override setSampleAlphaToCoverage (enable: boolean) {
