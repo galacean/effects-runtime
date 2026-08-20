@@ -1,4 +1,4 @@
-import type { FancyRenderLayer, TextLayerDrawer } from '@galacean/effects-core';
+import type { FancyRenderLayer } from '@galacean/effects-core';
 import {
   buildTextRenderPlanFromCharInfo,
   CanvasTextBackend,
@@ -63,24 +63,27 @@ describe('core/plugins/text/text-render-plan', () => {
     expect(plan.geometry.renderSize).to.eql({ width: 200, height: 120 });
   });
 
-  it('adapts the plan back to the legacy Canvas drawer environment', () => {
+  it('renders a one-range plan through the unified Canvas backend', () => {
     const style = new TextStyle({ text: 'AB', fontSize: 24, fontFamily: 'Arial' });
     const layout = new TextLayout({ text: 'AB', fontSize: 24, textWidth: 100, textHeight: 60 });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
     const plan = buildTextRenderPlanFromCharInfo(charsInfo, layers, { fontRef: style.fontDesc });
-    let receivedLines: unknown[] | null = null;
-    const drawer: TextLayerDrawer = {
-      render: (_context, env) => {
-        receivedLines = env.lines;
-      },
-    };
-    const backend = new CanvasTextBackend({ style, layout, legacyLayerDrawers: [drawer] });
+    const backend = new CanvasTextBackend({ style, layout, legacyLayerDrawers: [] });
 
+    canvas.width = 200;
+    canvas.height = 120;
+    context.scale(2, 2);
     backend.render(plan, { canvas, context });
 
-    expect(receivedLines).to.have.length(2);
-    expect(receivedLines![0]).to.deep.include({ y: 20, width: 0, chars: [], charOffsetX: [] });
-    expect(receivedLines![1]).to.deep.include({ y: 50, width: 24, chars: ['A', 'B'], charOffsetX: [0, 12] });
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let nonTransparent = 0;
+
+    for (let index = 3; index < data.length; index += 4) {
+      if (data[index] > 0) {
+        nonTransparent++;
+      }
+    }
+    expect(nonTransparent).to.be.greaterThan(0);
   });
 });

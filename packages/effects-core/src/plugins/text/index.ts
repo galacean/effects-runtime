@@ -14,3 +14,4 @@ export * from './fancy-text/texture-pattern-loader';
 export * from './preset-manager';
 export * from './fancy-text/text-render-plan';
 export * from './fancy-text/canvas-text-backend';
+export * from './fancy-text/canvas-text-render-backend';
