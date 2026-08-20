@@ -32,17 +32,13 @@ let seed = 1;
  */
 export class Transform implements Disposable {
   /**
-   * 转换右手坐标系左手螺旋对应的四元数到对应的旋转角
+   * 将四元数转换为相同右手旋转约定下的欧拉角
    * @param quat - 四元数
    * @param out - 欧拉角
    * @returns
    */
   static getRotation (quat: Quaternion, out: Euler): Euler {
-    const newQuat = tempQuat.copyFrom(quat);
-
-    newQuat.conjugate();
-
-    return out.setFromQuaternion(newQuat);
+    return out.setFromQuaternion(quat);
   }
 
   engine: Engine;
@@ -53,7 +49,7 @@ export class Transform implements Disposable {
    */
   readonly position = new Vector3(0, 0, 0);
   /**
-   * 自身旋转对应的四元数，右手坐标系，旋转正方向左手螺旋（轴向的顺时针），旋转欧拉角的顺序为 ZYX
+   * 自身旋转对应的四元数，采用右手坐标系和右手旋转正方向，旋转欧拉角的顺序为 ZYX
    */
   readonly quat = new Quaternion(0, 0, 0, 1);
   /**
@@ -250,8 +246,6 @@ export class Transform implements Disposable {
       this.rotation.y = y;
       this.rotation.z = z;
       this.quat.setFromEuler(this.rotation);
-      // TODO 修正 GE 四元数旋转共轭问题
-      this.quat.conjugate();
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -599,7 +593,7 @@ export class Transform implements Disposable {
    */
   cloneFromMatrix (m4: Matrix4, scale?: Vector3) {
     m4.decompose(this.position, this.quat, this.scale);
-    this.rotation.setFromQuaternion(this.quat.clone().conjugate());
+    this.rotation.setFromQuaternion(this.quat);
     if (scale) {
       scale.copyFrom(this.scale);
     }

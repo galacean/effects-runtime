@@ -42,9 +42,37 @@ describe('core/transform', () => {
 
     r.setRotation(0, 30, 0);
     expect(new Float32Array(r.rotation.toArray())).to.deep.equal(new Float32Array([0, 30, 0]));
-    expect(new Float32Array(r.quat.toArray())).to.deep.equal(new Float32Array([-0, -0.25881904510252074, -0, 0.9659258262890683]));
+    expect(new Float32Array(r.quat.toArray())).to.deep.equal(new Float32Array([0, 0.25881904510252074, 0, 0.9659258262890683]));
     r.setQuaternion(0, 0, 0, 1);
     expect(new Float32Array(r.rotation.toArray())).to.deep.equal(new Float32Array([0, -0, 0]));
+  });
+
+  it('keeps Euler, quaternion and matrix rotations in the same convention', () => {
+    const rotation = new Euler(12, 34, 56);
+    const expectedQuat = Quaternion.fromEuler(rotation);
+    const transform = new Transform({ valid: true });
+    const quaternionRotated = Vector3.X.clone().applyQuaternion(expectedQuat);
+
+    transform.setRotation(rotation.x, rotation.y, rotation.z);
+
+    expect(transform.quat.angleTo(expectedQuat)).to.be.closeTo(0, 1e-7);
+    expectVectorClose(Vector3.X.clone().applyMatrix(transform.getMatrix()), quaternionRotated);
+    expectEulerClose(transform.getRotation(), rotation);
+  });
+
+  it('keeps rotation synchronized after quaternion and matrix updates', () => {
+    const rotation = new Euler(-21, 32, 17);
+    const quat = Quaternion.fromEuler(rotation);
+    const transform = new Transform({ valid: true });
+
+    transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
+    expectEulerClose(transform.rotation, rotation);
+
+    const clone = new Transform({ valid: true });
+
+    clone.cloneFromMatrix(transform.getMatrix());
+    expect(clone.quat.angleTo(quat)).to.be.closeTo(0, 1e-7);
+    expectEulerClose(clone.rotation, rotation);
   });
 
   it('decompose negative scale', () => {
@@ -120,3 +148,15 @@ describe('core/transform', () => {
     expect(t2.getWorldPosition().toArray()).to.deep.equals([2, 0, 1]);
   });
 });
+
+function expectEulerClose (actual: InstanceType<typeof Euler>, expected: InstanceType<typeof Euler>) {
+  expect(actual.x).to.be.closeTo(expected.x, 0.00001);
+  expect(actual.y).to.be.closeTo(expected.y, 0.00001);
+  expect(actual.z).to.be.closeTo(expected.z, 0.00001);
+}
+
+function expectVectorClose (actual: InstanceType<typeof Vector3>, expected: InstanceType<typeof Vector3>) {
+  expect(actual.x).to.be.closeTo(expected.x, 0.00001);
+  expect(actual.y).to.be.closeTo(expected.y, 0.00001);
+  expect(actual.z).to.be.closeTo(expected.z, 0.00001);
+}

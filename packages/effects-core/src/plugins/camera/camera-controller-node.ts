@@ -31,8 +31,7 @@ export class CameraController extends Component {
 
       camera.transform.parentTransform = this.transform.parentTransform;
       camera.position = this.transform.position;
-      // TODO 修正 GE 四元数旋转共轭问题
-      camera.setQuat(this.transform.getQuaternion().clone().conjugate());
+      camera.setQuat(this.transform.getQuaternion());
     }
   }
 

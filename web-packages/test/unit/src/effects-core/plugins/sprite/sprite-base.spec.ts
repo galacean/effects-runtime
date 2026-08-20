@@ -271,7 +271,7 @@ describe('core/plugins/sprite/item-base', () => {
     expect(position?.[0]).to.be.closeTo(2, 0.0001);
     expect(position?.[1]).to.be.closeTo(1, 0.0001);
     expect(position?.[2]).to.be.closeTo(1, 0.0001);
-    expect(rotation?.[2]).to.be.closeTo(30, 0.0001);
+    expect(rotation?.[2]).to.be.closeTo(-30, 0.0001);
   });
 
   // 大小受多级父节点同时影响

@@ -29,7 +29,7 @@ describe('core/plugins/sprite/transform', () => {
 
     expect(position).to.deep.equals([0, 1, 0], 'position');
     expect(rotation?.[0]).to.eql(0);
-    expect(rotation?.[1]).to.eql(90);
+    expect(rotation?.[1]).to.eql(-90);
     expect(rotation?.[2] === 0).to.be.true;
     expect(item?.transform.size.x).to.be.closeTo(0.15, 0.0001);
     expect(item?.transform.size.y).to.be.closeTo(0.15, 0.0001);
@@ -223,8 +223,8 @@ describe('core/plugins/sprite/transform', () => {
     const pt = comp.getItemByName('sp')!.transform;
     const sppt = comp.getItemByName('spp')!.transform;
 
-    expect(new Float32Array(sanitizeNumbers(pt.rotation.toArray()))).to.deep.equals(new Float32Array([0, 0, 60]));
-    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation().toArray()))).to.deep.equals(new Float32Array([0, 0, 90]));
+    expect(new Float32Array(sanitizeNumbers(pt.rotation.toArray()))).to.deep.equals(new Float32Array([0, 0, -60]));
+    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation().toArray()))).to.deep.equals(new Float32Array([0, 0, -90]));
     expect(sppt.position.toArray()).to.deep.equals([1, 0, 0]);
   });
 
@@ -239,8 +239,8 @@ describe('core/plugins/sprite/transform', () => {
     const pt = comp.getItemByName('sp')!.transform;
     const sppt = comp.getItemByName('spp')!.transform;
 
-    expect(new Float32Array(sanitizeNumbers(pt.rotation.toArray()))).to.deep.equals(new Float32Array([0, 0, 60]));
-    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation().toArray()))).to.deep.equals(new Float32Array([0, 0, 90]));
+    expect(new Float32Array(sanitizeNumbers(pt.rotation.toArray()))).to.deep.equals(new Float32Array([0, 0, -60]));
+    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation().toArray()))).to.deep.equals(new Float32Array([0, 0, -90]));
     expect(sppt.position.toArray()).to.deep.equals([1, 0, 0]);
   });
 });

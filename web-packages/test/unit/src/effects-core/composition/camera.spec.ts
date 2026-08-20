@@ -1,6 +1,6 @@
 import { Player, CameraController, spec, math } from '@galacean/effects';
 
-const { Vector3 } = math;
+const { Euler, Quaternion, Vector3 } = math;
 const { expect } = chai;
 
 describe('core/composition/camera/item', () => {
@@ -55,6 +55,8 @@ describe('core/composition/camera/item', () => {
     expect(far).to.eql(25);
     expect([+(worldPosition.x.toFixed(0)), +(worldPosition.y.toFixed(0)), +(worldPosition.z.toFixed(0))]).to.eql([10, 2, 12]);
     expect([+(rotation.x.toFixed(0)), +(rotation.y.toFixed(0)), +(rotation.z.toFixed(0))]).to.eql([10, 60, 30]);
+    expect(comp.camera.getQuat().angleTo(Quaternion.fromEuler(new Euler(10, 60, 30)))).to.be.closeTo(0, 1e-7);
+    expect(comp.camera.getQuat().angleTo(item!.transform.getQuaternion())).to.be.closeTo(0, 1e-7);
   });
 
   it('camera 2D item affected by parent', async () => {

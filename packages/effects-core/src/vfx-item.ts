@@ -498,7 +498,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     const euler = new Euler(x, y, z);
     const q = Quaternion.fromEuler(euler);
 
-    q.conjugate();
     this.transform.rotateByQuat(q);
   }
   /**

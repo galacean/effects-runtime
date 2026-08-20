@@ -30,7 +30,7 @@ describe('core/plugins/particle/transform', () => {
     expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.getWorldPosition())).to.deep.equals([0, 1, 0]);
     // @ts-expect-error
-    expect(sanitizeNumbers(t.getWorldRotation())).to.deep.equals([0, 90, 0]);
+    expect(sanitizeNumbers(t.getWorldRotation())).to.deep.equals([0, -90, 0]);
   });
 
   it('set null parent transform', async () => {
@@ -204,7 +204,7 @@ describe('core/plugins/particle/transform', () => {
     const { position, rotation, path } = itemContent.basicTransform;
 
     // @ts-expect-error
-    expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
+    expect(sanitizeNumbers(rotation)).to.eql([0, 0, 180]);
     expect(position.toArray()).to.eql([0, 0, 0]);
     expect(path).to.be.an.instanceof(BezierCurvePath);
     expect(item.getComponent(ParticleSystemRenderer).particleMesh.linearVelOverLifetime?.asMovement).to.be.true;

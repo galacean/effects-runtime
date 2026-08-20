@@ -1,7 +1,7 @@
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Euler } from '@galacean/effects-math/es/core/euler';
+import type { Euler } from '@galacean/effects-math/es/core/euler';
 import { DEG2RAD } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
@@ -106,13 +106,10 @@ export class Camera {
       rotation = [0, 0, 0],
     } = options;
 
-    const euler = new Euler(rotation[0], rotation[1], rotation[2]);
-    const quat = new Quaternion().setFromEuler(euler);
-
     this.options = { near, far, fov, aspect, clipMode };
 
     this.transform.setPosition(position[0], position[1], position[2]);
-    this.transform.setQuaternion(quat.x, quat.y, quat.z, quat.w);
+    this.transform.setRotation(rotation[0], rotation[1], rotation[2]);
     this.dirty = true;
     this.updateMatrix();
   }

@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import { Euler, Quaternion } from '@galacean/effects-math/es/core/index';
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
   SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData, CompositionContent,
@@ -776,7 +777,10 @@ export function version36Migration (json: JSONScene): JSONScene {
 }
 
 /**
- * 3.8 数据适配：SpriteComponent 的 renderer.texture + splits 迁移为独立 Sprite 资产。
+ * 3.8 数据适配：
+ *
+ * 1. SpriteComponent 的 renderer.texture + splits 迁移为独立 Sprite 资产；
+ * 2. 旧 GE 欧拉角约定转换为 effects-math 的标准右手旋转约定。
  *
  * - 遍历所有未引用 sprite 的 SpriteComponentData，按 splits[0]（无则整图 [0,0,1,1]）生成
  *   Sprite 资产对象放入 miscs，并把组件的 sprite 指向它。
@@ -834,9 +838,328 @@ export function version37Migration (json: spec.JSONScene): spec.JSONScene {
     }
   }
 
+  const transformAssetBindings = getTransformAssetBindings(json);
+
+  for (const misc of json.miscs ?? []) {
+    if (misc.dataType === DataType.TransformPlayableAsset) {
+      const transformAsset = misc as spec.TransformPlayableAssetData;
+      const boundItem = transformAssetBindings.get(misc.id);
+
+      // 旧版相机控制器抵消了 Transform 的反向，旧相机曲线已等价于新约定。
+      if (boundItem?.type !== ItemType.camera) {
+        migrateRotationOverLifetime(transformAsset.rotationOverLifetime, getLegacyBaseEuler(boundItem));
+      }
+    } else if (misc.dataType === DataType.AnimationClip) {
+      migrateAnimationEulerCurves(misc as spec.AnimationClipData);
+    }
+  }
+
+  for (const animation of json.animations ?? []) {
+    migrateAnimationEulerCurves(animation);
+  }
+
+  for (const item of json.items ?? []) {
+    const transform = item.transform as SerializedTransformData | undefined;
+
+    // 同上，保留旧相机最终呈现的方向；这里只转换普通元素的旧 Euler 数据。
+    if (item.type !== ItemType.camera && transform?.eulerHint && !transform.quat) {
+      migrateLegacyEuler(transform.eulerHint);
+    }
+  }
+
   json.version = '3.8' as unknown as spec.JSONSceneVersion;
 
   return json;
+}
+
+const migrationEuler = new Euler();
+const migrationQuaternion = new Quaternion();
+const migrationBaseEuler = new Euler();
+const migrationTotalEuler = new Euler();
+
+type SerializedTransformData = spec.TransformData & { quat?: spec.Vector4Data };
+
+function migrateLegacyEuler (eulerHint: spec.Vector3Data): void {
+  setLegacyEquivalentEuler(migrationTotalEuler, eulerHint.x, eulerHint.y, eulerHint.z);
+
+  eulerHint.x = cleanRotationValue(migrationTotalEuler.x);
+  eulerHint.y = cleanRotationValue(migrationTotalEuler.y);
+  eulerHint.z = cleanRotationValue(migrationTotalEuler.z);
+}
+
+function migrateRotationOverLifetime (rotation?: spec.RotationOverLifetime, baseEuler = { x: 0, y: 0, z: 0 }): void {
+  if (!rotation) {
+    return;
+  }
+
+  if (rotation.asRotation && migrateConstantRotation(rotation, baseEuler)) {
+    return;
+  }
+
+  for (const axis of ['x', 'y', 'z'] as const) {
+    if (rotation[axis] !== undefined) {
+      rotation[axis] = negateNumberExpression(rotation[axis]);
+    }
+  }
+}
+
+function migrateConstantRotation (rotation: spec.RotationOverLifetime, baseEuler: spec.Vector3Data): boolean {
+  const originalValues = {
+    x: getConstantNumberExpression(rotation.x) ?? (rotation.x === undefined ? 0 : undefined),
+    y: getConstantNumberExpression(rotation.y) ?? (rotation.y === undefined ? 0 : undefined),
+    z: getConstantNumberExpression(rotation.z) ?? (rotation.z === undefined ? 0 : undefined),
+  };
+
+  if (originalValues.x === undefined || originalValues.y === undefined || originalValues.z === undefined) {
+    return false;
+  }
+
+  setLegacyEquivalentEuler(migrationBaseEuler, baseEuler.x, baseEuler.y, baseEuler.z);
+  setLegacyEquivalentEuler(
+    migrationTotalEuler,
+    baseEuler.x + originalValues.x,
+    baseEuler.y + originalValues.y,
+    baseEuler.z + originalValues.z,
+  );
+
+  const migratedValues = {
+    x: cleanRotationValue(migrationTotalEuler.x - migrationBaseEuler.x),
+    y: cleanRotationValue(migrationTotalEuler.y - migrationBaseEuler.y),
+    z: cleanRotationValue(migrationTotalEuler.z - migrationBaseEuler.z),
+  };
+  const needsSeparateAxes = rotation.separateAxes || migratedValues.x !== 0 || migratedValues.y !== 0;
+
+  rotation.z = setNumberExpressionConstant(rotation.z, migratedValues.z);
+  if (needsSeparateAxes) {
+    rotation.separateAxes = true;
+    rotation.x = setNumberExpressionConstant(rotation.x, migratedValues.x);
+    rotation.y = setNumberExpressionConstant(rotation.y, migratedValues.y);
+  }
+
+  return true;
+}
+
+function getConstantNumberExpression (expression?: spec.FixedNumberExpression): number | undefined {
+  if (typeof expression === 'number') {
+    return expression;
+  }
+  if (!Array.isArray(expression) || expression.length < 2) {
+    return;
+  }
+
+  const type = expression[0];
+  const value = expression[1];
+
+  if (type === spec.ValueType.CONSTANT || type as unknown === 'static') {
+    return Number(value);
+  }
+
+  const values: number[] = [];
+  const curveData = value as unknown as any[];
+
+  if (type === spec.ValueType.LINE || type as unknown === 'lines') {
+    for (const point of curveData ?? []) {
+      values.push(point[1]);
+    }
+  } else if (type === spec.ValueType.CURVE || type as unknown === 'curve') {
+    for (const point of curveData ?? []) {
+      values.push(point[1]);
+      if (point.slice(2).some((tangent: number) => tangent !== 0)) {
+        return;
+      }
+    }
+  } else if (type === spec.ValueType.BEZIER_CURVE) {
+    for (const keyframe of curveData ?? []) {
+      const points = keyframe?.[1];
+
+      if (Array.isArray(points)) {
+        for (let i = 1; i < points.length; i += 2) {
+          values.push(points[i]);
+        }
+      }
+    }
+  } else {
+    return;
+  }
+
+  const first = values[0];
+
+  return values.length > 0 && values.every(value => Math.abs(value - first) < 1e-8) ? first : undefined;
+}
+
+function setNumberExpressionConstant (
+  expression: spec.FixedNumberExpression | undefined,
+  value: number,
+): spec.FixedNumberExpression {
+  if (!Array.isArray(expression) || expression.length < 2) {
+    return [spec.ValueType.CONSTANT, value];
+  }
+
+  const type = expression[0];
+  const data = expression[1];
+  const curveData = data as unknown as any[];
+
+  if (type === spec.ValueType.CONSTANT || type as unknown === 'static') {
+    expression[1] = value;
+  } else if (type === spec.ValueType.LINE || type as unknown === 'lines') {
+    for (const point of curveData ?? []) {
+      point[1] = value;
+    }
+  } else if (type === spec.ValueType.CURVE || type as unknown === 'curve') {
+    for (const point of curveData ?? []) {
+      point[1] = value;
+      for (let i = 2; i < point.length; i++) {
+        point[i] = 0;
+      }
+    }
+  } else if (type === spec.ValueType.BEZIER_CURVE) {
+    for (const keyframe of curveData ?? []) {
+      const points = keyframe?.[1];
+
+      if (Array.isArray(points)) {
+        for (let i = 1; i < points.length; i += 2) {
+          points[i] = value;
+        }
+      }
+    }
+  } else {
+    return [spec.ValueType.CONSTANT, value];
+  }
+
+  return expression;
+}
+
+function migrateAnimationEulerCurves (animation: spec.AnimationClipData): void {
+  for (const curve of animation.eulerCurves ?? []) {
+    const keyFrames = curve.keyFrames as unknown as any[];
+
+    if (keyFrames?.[0] === spec.ValueType.VECTOR3_CURVE && Array.isArray(keyFrames[1])) {
+      for (let i = 0; i < 3; i++) {
+        keyFrames[1][i] = negateNumberExpression(keyFrames[1][i]);
+      }
+    }
+  }
+}
+
+function negateNumberExpression<T> (expression: T): T {
+  if (typeof expression === 'number') {
+    return cleanRotationValue(-expression) as T;
+  }
+  if (!Array.isArray(expression) || expression.length < 2) {
+    return expression;
+  }
+
+  const type = expression[0];
+  const value = expression[1];
+
+  if (type === spec.ValueType.CONSTANT || type === 'static') {
+    expression[1] = cleanRotationValue(-value);
+  } else if (type === spec.ValueType.RANDOM || type === 'random') {
+    if (Array.isArray(value)) {
+      expression[1] = [cleanRotationValue(-value[1]), cleanRotationValue(-value[0])];
+    }
+  } else if (type === spec.ValueType.LINE || type === 'lines') {
+    for (const point of value ?? []) {
+      point[1] = cleanRotationValue(-point[1]);
+    }
+  } else if (type === spec.ValueType.CURVE || type === 'curve') {
+    for (const point of value ?? []) {
+      for (let i = 1; i < point.length; i++) {
+        point[i] = cleanRotationValue(-point[i]);
+      }
+    }
+  } else if (type === spec.ValueType.BEZIER_CURVE) {
+    for (const keyframe of value ?? []) {
+      const points = keyframe?.[1];
+
+      if (Array.isArray(points)) {
+        for (let i = 1; i < points.length; i += 2) {
+          points[i] = cleanRotationValue(-points[i]);
+        }
+      }
+    }
+  }
+
+  return expression;
+}
+
+function getTransformAssetBindings (json: spec.JSONScene): Map<string, spec.VFXItemData> {
+  const itemById = new Map((json.items ?? []).map(item => [item.id, item]));
+  const dataById = new Map<string, spec.EffectsObjectData>();
+
+  for (const data of [...(json.miscs ?? []), ...(json.components ?? [])]) {
+    dataById.set(data.id, data);
+  }
+
+  const assetBindings = new Map<string, spec.VFXItemData>();
+  const collectTrackAssets = (trackId: string | undefined, item: spec.VFXItemData, visitedTrackIds: Set<string>) => {
+    if (!trackId || visitedTrackIds.has(trackId)) {
+      return;
+    }
+    visitedTrackIds.add(trackId);
+
+    const track = dataById.get(trackId) as (spec.EffectsObjectData & {
+      children?: spec.DataPath[],
+      clips?: Array<{ asset?: spec.DataPath }>,
+    }) | undefined;
+
+    if (!track) {
+      return;
+    }
+    if (track.dataType === DataType.TransformTrack) {
+      for (const clip of track.clips ?? []) {
+        if (clip.asset?.id) {
+          assetBindings.set(clip.asset.id, item);
+        }
+      }
+    }
+    for (const child of track.children ?? []) {
+      collectTrackAssets(child.id, item, visitedTrackIds);
+    }
+  };
+
+  const bindingOwners = [
+    ...(json.components ?? []).filter(component => component.dataType === DataType.CompositionComponent),
+    ...(json.compositions ?? []),
+  ] as Array<{ sceneBindings?: spec.SceneBindingData[] }>;
+
+  for (const owner of bindingOwners) {
+    for (const binding of owner.sceneBindings ?? []) {
+      const item = itemById.get(binding.value.id);
+
+      if (item) {
+        collectTrackAssets(binding.key.id, item, new Set());
+      }
+    }
+  }
+
+  return assetBindings;
+}
+
+function getLegacyBaseEuler (item?: spec.VFXItemData): spec.Vector3Data {
+  const transform = item?.transform as SerializedTransformData | undefined;
+
+  if (transform?.quat) {
+    const quat = transform.quat;
+
+    migrationQuaternion.set(quat.x, quat.y, quat.z, quat.w).invert();
+    migrationEuler.setFromQuaternion(migrationQuaternion);
+
+    return { x: migrationEuler.x, y: migrationEuler.y, z: migrationEuler.z };
+  }
+
+  return transform?.eulerHint ?? { x: 0, y: 0, z: 0 };
+}
+
+function setLegacyEquivalentEuler (out: Euler, x: number, y: number, z: number): Euler {
+  migrationEuler.set(x, y, z);
+  migrationQuaternion.setFromEuler(migrationEuler).invert();
+
+  return out.setFromQuaternion(migrationQuaternion);
+}
+
+function cleanRotationValue (value: number): number {
+  return Math.abs(value) < 1e-12 ? 0 : value;
 }
 
 /**

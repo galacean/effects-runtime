@@ -183,8 +183,12 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     const sprite = comp.getItemByName('sprite_1')!;
 
     comp.gotoAndStop(0.5);
-    // base z=0，两段 clip z 增量 30 + 60 = 90
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 90]);
+    // 3.6 旧数据经迁移后采用标准右手旋转：两段旧 clip +30/+60 转为 -30/-60。
+    const rotation = sprite.transform.rotation;
+
+    expect(rotation.x).to.be.closeTo(0, 1e-8);
+    expect(rotation.y).to.be.closeTo(0, 1e-8);
+    expect(rotation.z).to.be.closeTo(-90, 1e-8);
   });
 
   it('多 clip position 反向位移叠加后抵消回到 base', async () => {
@@ -247,6 +251,6 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.x).to.be.closeTo(1, 1e-5);
     expect(pos.y).to.be.closeTo(2, 1e-5);
     expect(pos.z).to.be.closeTo(0, 1e-5);
-    expect(sanitizeNumbers(sprite.transform.rotation.toArray())).to.deep.equals([0, 0, 45]);
+    expect(sprite.transform.rotation.z).to.be.closeTo(-45, 1e-8);
   });
 });

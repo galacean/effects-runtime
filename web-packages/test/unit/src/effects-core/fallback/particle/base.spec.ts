@@ -415,7 +415,7 @@ describe('core/fallback/particle/base', () => {
     const pt = res.items.find(item => item.id === res.compositions[0].items[0].id);
     const r2 = pt!.transform!.eulerHint;
 
-    expect([+r2.x.toFixed(1), +r2.y.toFixed(1), +r2.z.toFixed(1)]).to.eql([-90.0, -20.0, 30.0], 'oldParticle rotation');
+    expect([+r2.x.toFixed(1), +r2.y.toFixed(1), +r2.z.toFixed(1)]).to.eql([90.0, 30.0, 20.0], 'oldParticle rotation');
   });
 
   it('particle emitter transform path linear, constant, bezier', () => {

@@ -117,18 +117,23 @@ export class Inspector extends EditorWindow {
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = activeObject.transform;
+      const position = transform.position.clone();
+      const rotation = transform.rotation.clone();
+      const scale = transform.scale.clone();
+      const size = transform.size.clone();
 
-      EditorGUILayout.Vector3Field('Position', transform.position);
-      EditorGUILayout.Vector3Field('Rotation', transform.rotation);
-      EditorGUILayout.Vector3Field('Scale', transform.scale);
-      EditorGUILayout.Vector2Field('Size', transform.size);
-
-      transform.quat.setFromEuler(transform.rotation);
-      transform.quat.conjugate();
-      //@ts-expect-error
-      transform.dirtyFlags.localData = true;
-      //@ts-expect-error
-      transform.dispatchValueChange();
+      if (EditorGUILayout.Vector3Field('Position', position)) {
+        transform.setPosition(position.x, position.y, position.z);
+      }
+      if (EditorGUILayout.Vector3Field('Rotation', rotation)) {
+        transform.setRotation(rotation.x, rotation.y, rotation.z);
+      }
+      if (EditorGUILayout.Vector3Field('Scale', scale)) {
+        transform.setScale(scale.x, scale.y, scale.z);
+      }
+      if (EditorGUILayout.Vector2Field('Size', size)) {
+        transform.setSize(size.x, size.y);
+      }
     }
 
     // 仅当 VFXItem 挂了 Control 组件才显示锚点布局编辑区
