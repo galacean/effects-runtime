@@ -86,6 +86,30 @@
         align-self: start;
         min-height: 620px;
       }
+      .plain-card { margin-top: 18px; }
+      .plain-body {
+        display: grid;
+        gap: 12px;
+        padding: 14px 16px 18px;
+      }
+      .plain-text-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .plain-text-row label { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+      #plain-text {
+        flex: 1;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #1c222d;
+        color: var(--ink);
+        font-size: 13px;
+      }
+      .plain-card .stage { min-height: 360px; }
+      #J-plain-container { width: min(680px, 100%); height: 330px; }
+      #J-plain-container canvas { display: block; }
       .card-head {
         display: flex;
         align-items: center;
@@ -330,6 +354,22 @@
           </div>
         </aside>
       </section>
+
+      <article class="card plain-card">
+        <header class="card-head">
+          <h2>普通文本 · TextComponent</h2>
+          <span class="status" id="plain-status">initializing</span>
+        </header>
+        <div class="plain-body">
+          <div class="section-label"><span>预设</span><small>BUILTIN_FANCY_PRESETS · 与富文本共用同一渲染执行</small></div>
+          <div class="preset-strip" id="plain-preset-list"></div>
+          <div class="plain-text-row">
+            <label for="plain-text">文本</label>
+            <input id="plain-text" spellcheck="false" value="Plain Text 普通文本 Galacean 123" />
+          </div>
+          <div class="stage"><div id="J-plain-container"></div></div>
+        </div>
+      </article>
     </main>
     <script type="module" src="./src/fancy-render-plan.ts"></script>
   </body>

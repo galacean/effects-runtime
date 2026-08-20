@@ -1,4 +1,12 @@
-import { Player, spec, type BaseLayerConfig, type DecorativeLayerConfig } from '@galacean/effects';
+import {
+  BUILTIN_FANCY_PRESETS,
+  Player,
+  TextComponent,
+  spec,
+  type BaseLayerConfig,
+  type Composition,
+  type DecorativeLayerConfig,
+} from '@galacean/effects';
 import '@galacean/effects-plugin-rich-text';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
 
@@ -20,6 +28,10 @@ const paddingReadout = document.getElementById('padding-readout');
 const surfaceReadout = document.getElementById('surface-readout');
 const rangeList = document.getElementById('range-list');
 const objectList = document.getElementById('object-list');
+const plainContainer = document.getElementById('J-plain-container');
+const plainStatus = document.getElementById('plain-status');
+const plainPresetList = document.getElementById('plain-preset-list');
+const plainTextInput = document.getElementById('plain-text') as HTMLInputElement | null;
 const captureEnabled = new URLSearchParams(window.location.search).get('capture') === '1';
 
 type PaletteName = 'mint' | 'sunset' | 'mono';
@@ -141,10 +153,31 @@ let segments: SegmentState[];
 let selectedSegmentIds: string[] = [];
 let richText: RichTextComponent | undefined;
 let renderComposition: (() => void) | undefined;
+let plainTextComponent: TextComponent | undefined;
+let plainComposition: Composition | undefined;
+let renderPlainComposition: (() => void) | undefined;
+let currentPlainPreset = 'neon';
 let renderScheduled = false;
 let nextSegmentId = 1;
 let lastSelection = { start: 0, end: 0 };
 let pendingEditSelection = { start: 0, end: 0 };
+
+const plainPresetLabels: Record<string, string> = {
+  'none': '无',
+  'single-stroke': '单描边',
+  'multi-stroke': '多描边',
+  'gradient': '渐变',
+  'shadow': '阴影',
+  'texture': '纹理',
+  'glow': '发光',
+  'neon': '霓虹',
+  'metallic': '金属',
+  'glow-stroke-gradient': '发光渐变',
+  'rainbow': '彩虹',
+  'frost': '霜冻',
+  'flame': '火焰',
+  'stereo': '立体',
+};
 
 function normalizeHex (color: string): string {
   const value = color.replace('#', '').toLowerCase();
@@ -591,6 +624,158 @@ function scheduleRenderText (): void {
     renderScheduled = false;
     renderText();
   });
+}
+
+function buildPlainTextOptions (presetKey: string): Record<string, unknown> {
+  return {
+    text: plainTextInput?.value || 'Plain Text 普通文本 Galacean 123',
+    fontFamily: 'Arial',
+    fontSize: 42,
+    textColor: [255, 255, 255, 1],
+    fontWeight: spec.TextWeight.normal,
+    fontStyle: spec.FontStyle.normal,
+    textAlign: spec.TextAlignment.middle,
+    textVerticalAlign: spec.TextVerticalAlign.middle,
+    textWidth: 680,
+    textHeight: 330,
+    lineHeight: 52,
+    letterSpace: 0,
+    overflow: spec.TextOverflow.display,
+    wrapEnabled: true,
+    autoResize: spec.TextSizeMode.fixed,
+    fancyConfig: BUILTIN_FANCY_PRESETS[presetKey] ?? BUILTIN_FANCY_PRESETS.none,
+  };
+}
+
+/** 最小内联场景：一个 TextComponent 元素，预览尺寸与富文本一致。 */
+function buildPlainTextScene (): Record<string, unknown> {
+  const componentId = 'plain-text-comp';
+  const itemId = 'plain-item';
+
+  return {
+    playerVersion: { web: '2.1.2', native: '0.0.1' },
+    images: [],
+    fonts: [],
+    version: '3.1',
+    shapes: [],
+    type: 'ge',
+    compositionId: 'plain-composition',
+    compositions: [{
+      id: 'plain-composition',
+      name: '普通文本合成',
+      duration: 5,
+      startTime: 0,
+      endBehavior: 4,
+      previewSize: [750, 750],
+      items: [{ id: itemId }],
+      camera: { fov: 60, far: 40, near: 0.1, clipMode: 1, position: [0, 0, 8], rotation: [0, 0, 0] },
+      sceneBindings: [],
+    }],
+    components: [{
+      id: componentId,
+      item: { id: itemId },
+      dataType: 'TextComponent',
+      options: buildPlainTextOptions(currentPlainPreset),
+      renderer: { renderMode: 1 },
+    }],
+    items: [{
+      id: itemId,
+      name: 'plainText_1',
+      duration: 5,
+      type: 'text',
+      visible: true,
+      endBehavior: 0,
+      delay: 0,
+      renderLevel: 'B+',
+      transform: {
+        position: { x: 0, y: 0, z: 0 },
+        eulerHint: { x: 0, y: 0, z: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+      },
+      components: [{ id: componentId }],
+      dataType: 'VFXItemData',
+    }],
+    geometries: [],
+    materials: [],
+    plugins: [],
+    shaders: [],
+    bins: [],
+    textures: [],
+    animations: [],
+    miscs: [],
+  };
+}
+
+function renderPlainPresets (): void {
+  if (!plainPresetList) {
+    return;
+  }
+
+  plainPresetList.innerHTML = Object.keys(BUILTIN_FANCY_PRESETS)
+    .map(key => `<button class="preset-button" type="button" data-plain-preset="${key}" data-active="${key === currentPlainPreset}">${plainPresetLabels[key] ?? key}</button>`)
+    .join('');
+
+  plainPresetList.querySelectorAll<HTMLButtonElement>('[data-plain-preset]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.plainPreset;
+
+      if (!key) {
+        return;
+      }
+      currentPlainPreset = key;
+      renderPlainPresets();
+      renderPlainText();
+    });
+  });
+}
+
+function renderPlainText (): void {
+  if (!plainTextComponent) {
+    return;
+  }
+
+  plainTextComponent.updateWithOptions(buildPlainTextOptions(currentPlainPreset) as unknown as Parameters<TextComponent['updateWithOptions']>[0]);
+  plainTextComponent.isDirty = true;
+  plainTextComponent.onUpdate(0);
+  renderPlainComposition?.();
+  if (plainStatus) {
+    plainStatus.textContent = `preset · ${plainPresetLabels[currentPlainPreset] ?? currentPlainPreset}`;
+  }
+  // 纹理预设的 pattern 是异步加载的，加载完成后补渲染一帧。
+  window.setTimeout(() => {
+    plainTextComponent?.onUpdate(0);
+    renderPlainComposition?.();
+  }, 500);
+}
+
+async function initPlainText (): Promise<void> {
+  if (!plainContainer || !plainTextInput) {
+    throw new Error('Plain text container was not found.');
+  }
+
+  const player = new Player({ container: plainContainer, manualRender: true });
+  const composition = await player.loadScene(buildPlainTextScene(), { autoplay: false });
+
+  composition.gotoAndStop(0);
+  renderPlainComposition = () => {
+    player.clearCanvas();
+    composition.render();
+  };
+  plainComposition = composition;
+  plainTextComponent = composition.getItemByName('plainText_1')?.getComponent(TextComponent);
+
+  if (!plainTextComponent) {
+    throw new Error('TextComponent was not found in the plain text scene.');
+  }
+
+  Reflect.set(window, '__plainTextDemo', plainTextComponent);
+
+  plainTextInput.addEventListener('input', renderPlainText);
+  renderPlainPresets();
+  renderPlainText();
+  if (plainStatus) {
+    plainStatus.textContent = 'editor online';
+  }
 }
 
 function updateScopeSummary (): void {
@@ -1191,6 +1376,7 @@ async function main (): Promise<void> {
 
   Reflect.set(window, '__richTextDemo', richText);
   renderText();
+  await initPlainText();
 
   // Continuous rendering is only for Spector capture. In the normal editor,
   // renderText() already renders after each edit; keeping a second RAF render
@@ -1198,6 +1384,7 @@ async function main (): Promise<void> {
   if (captureEnabled) {
     const renderFrame = (): void => {
       renderComposition?.();
+      renderPlainComposition?.();
       requestAnimationFrame(renderFrame);
     };
 
