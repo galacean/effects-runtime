@@ -62,7 +62,7 @@ export class ThreeComposition extends Composition {
     super(engine, props, scene);
   }
 
-  override render (): void {
+  override renderContent (): void {
     const render = this.renderer;
     const frame = this.renderFrame;
 

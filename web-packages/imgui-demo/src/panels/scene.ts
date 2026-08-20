@@ -5,7 +5,7 @@ import { EditorWindow } from './editor-window';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { CanvasGizmo } from '../core/canvas-gizmo';
-import { VFXItem } from '@galacean/effects-core';
+import { UIControl, VFXItem } from '@galacean/effects-core';
 import { beginToolbar, endToolbar, toggleButton } from '../widgets';
 
 @editorWindow()
@@ -25,7 +25,14 @@ export class Scene extends EditorWindow {
     }
     this._is2DMode = value;
     if (value) {
-      GalaceanEffects.player.getCompositions()[0]?.getComponent(CanvasGizmo)?.reset2DCamera();
+      const composition = GalaceanEffects.player.getCompositions()[0];
+      const control = composition?.pluginRoot.getDescendants()
+        .map(item => item.getComponent(UIControl)?.control)
+        .find(item => item instanceof CanvasGizmo);
+
+      if (control instanceof CanvasGizmo) {
+        control.reset2DCamera();
+      }
     }
   }
 

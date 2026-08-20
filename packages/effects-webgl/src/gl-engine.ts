@@ -971,7 +971,7 @@ export class GLEngine extends Engine {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  override viewport (x: number, y: number, width: number, height: number) {
+  override setViewport (x: number, y: number, width: number, height: number) {
     this.set4('viewport', x, y, width, height);
   }
 

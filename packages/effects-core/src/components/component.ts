@@ -131,6 +131,13 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
+   * Called when the owning item's sibling order changes.
+   */
+  onOrderInParentChanged () {
+    // OVERRIDE
+  }
+
+  /**
    * @internal
    */
   enable () {

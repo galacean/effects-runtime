@@ -1,5 +1,4 @@
-import { generateGUID } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import { Composition, generateGUID, Player, UICanvas } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -20,6 +19,59 @@ describe('core/composition', () => {
 
   after(() => {
     player && player.dispose();
+  });
+
+  it('creates and owns an isolated UICanvas for every composition', () => {
+    const engine = player.engine;
+    const first = new Composition(engine);
+    const second = new Composition(engine);
+
+    first.root.awake();
+    first.root.beginPlay();
+    second.root.awake();
+    second.root.beginPlay();
+
+    expect(first.uiCanvas).not.equals(second.uiCanvas);
+    expect(first.uiCanvas).instanceOf(UICanvas);
+    expect(second.uiCanvas).instanceOf(UICanvas);
+    expect(first.root.parent).equals(engine.root);
+    expect(second.root.parent).equals(engine.root);
+    expect(first.sceneRoot.getComponent(UICanvas)).equals(first.uiCanvas);
+    expect(second.sceneRoot.getComponent(UICanvas)).equals(second.uiCanvas);
+    expect(engine.windowRoot.canvases.children).includes(first.uiCanvas.rootControl);
+    expect(engine.windowRoot.canvases.children).includes(second.uiCanvas.rootControl);
+
+    first.setIndex(10);
+    second.setIndex(-5);
+    expect(engine.compositions).deep.equals([second, first]);
+    expect(first.uiCanvas.order).equals(10);
+    expect(second.uiCanvas.order).equals(-5);
+    expect(engine.windowRoot.canvases.children.indexOf(second.uiCanvas.rootControl))
+      .lessThan(engine.windowRoot.canvases.children.indexOf(first.uiCanvas.rootControl));
+
+    const renderOutput: string[] = [];
+
+    first.renderContent = () => renderOutput.push('first');
+    second.renderContent = () => renderOutput.push('second');
+    first.render();
+    expect(renderOutput).deep.equals(['first']);
+
+    first.interactive = false;
+    expect(first.uiCanvas.receivesEvents).equals(false);
+    first.interactive = true;
+    expect(first.uiCanvas.receivesEvents).equals(true);
+
+    const firstRoot = first.uiCanvas.rootControl;
+    const secondRoot = second.uiCanvas.rootControl;
+
+    first.dispose();
+    second.dispose();
+    expect(firstRoot.isDisposed).equals(true);
+    expect(secondRoot.isDisposed).equals(true);
+    expect(engine.windowRoot.canvases.children).not.includes(firstRoot);
+    expect(engine.windowRoot.canvases.children).not.includes(secondRoot);
+    expect(engine.root.children).not.includes(first.root);
+    expect(engine.root.children).not.includes(second.root);
   });
 
   // 颜色设置

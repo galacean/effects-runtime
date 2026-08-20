@@ -1,5 +1,5 @@
-import type { Camera, Renderer } from '@galacean/effects-core';
-import { CanvasItem, math, RendererComponent, VFXItem } from '@galacean/effects-core';
+import type { Camera, Engine, Renderer } from '@galacean/effects-core';
+import { Control, math, RendererComponent, VFXItem } from '@galacean/effects-core';
 import { Selection } from './selection';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;
@@ -36,7 +36,7 @@ interface TransformStartData {
   mousePos: Vector2,
 }
 
-export class CanvasGizmo extends CanvasItem {
+export class CanvasGizmo extends Control {
   private canvas: HTMLCanvasElement;
   private hoveredObject: VFXItem | null = null;
 
@@ -55,7 +55,8 @@ export class CanvasGizmo extends CanvasItem {
   private dragStarted = false; // 是否已经开始拖动
   private mouseDownSelected = false; // 鼠标按下时是否通过拾取选中对象
 
-  override onAwake (): void {
+  constructor (engine: Engine) {
+    super(engine);
     this.canvas = this.engine.canvas;
 
     // Setup mouse event listeners for 2D camera control
@@ -70,13 +71,13 @@ export class CanvasGizmo extends CanvasItem {
   }
 
   private setupMouseListeners (): void {
-    this.canvas.addEventListener('mousedown', this.onMouseDown);
-    this.canvas.addEventListener('mousemove', this.onMouseMove);
-    this.canvas.addEventListener('mouseup', this.onMouseUp);
+    this.canvas.addEventListener('mousedown', this.onCanvasMouseDown);
+    this.canvas.addEventListener('mousemove', this.onCanvasMouseMove);
+    this.canvas.addEventListener('mouseup', this.onCanvasMouseUp);
     this.canvas.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
-  private onMouseDown = (e: MouseEvent): void => {
+  private onCanvasMouseDown = (e: MouseEvent): void => {
     this.isDragging = false;
     this.dragStarted = false;
     this.lastMousePos.set(e.clientX, e.clientY);
@@ -112,7 +113,7 @@ export class CanvasGizmo extends CanvasItem {
     }
   };
 
-  private onMouseMove = (e: MouseEvent): void => {
+  private onCanvasMouseMove = (e: MouseEvent): void => {
     // 进行拖动检测
     if (e.buttons !== 0) {
       if (!this.dragStarted) {
@@ -158,7 +159,7 @@ export class CanvasGizmo extends CanvasItem {
     }
   };
 
-  private onMouseUp = (e: MouseEvent): void => {
+  private onCanvasMouseUp = (e: MouseEvent): void => {
     if (this.dragStarted) {
       this.onDragEnd(e);
     } else {
@@ -287,7 +288,7 @@ export class CanvasGizmo extends CanvasItem {
 
     const res = [];
 
-    if (this.item.composition) {
+    if (this.item?.composition) {
       const hitResults = this.item.composition.hitTest(normalizedX, normalizedY, true);
 
       for (const hitResult of hitResults) {
@@ -677,9 +678,9 @@ export class CanvasGizmo extends CanvasItem {
 
   override onDestroy (): void {
     // Clean up event listeners
-    this.canvas.removeEventListener('mousedown', this.onMouseDown);
-    this.canvas.removeEventListener('mousemove', this.onMouseMove);
-    this.canvas.removeEventListener('mouseup', this.onMouseUp);
+    this.canvas.removeEventListener('mousedown', this.onCanvasMouseDown);
+    this.canvas.removeEventListener('mousemove', this.onCanvasMouseMove);
+    this.canvas.removeEventListener('mouseup', this.onCanvasMouseUp);
     this.canvas.removeEventListener('wheel', this.onWheel);
   }
 

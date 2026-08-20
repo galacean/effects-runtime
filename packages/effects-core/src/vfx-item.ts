@@ -234,6 +234,30 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.setRendererComponentOrder(value);
   }
 
+  /** Zero-based sibling order within the parent item. */
+  get orderInParent (): number {
+    return this.parent?.children.indexOf(this) ?? -1;
+  }
+
+  set orderInParent (value: number) {
+    const siblings = this.parent?.children;
+    const oldIndex = siblings?.indexOf(this) ?? -1;
+
+    if (!siblings || oldIndex === -1) {
+      return;
+    }
+    const newIndex = Math.max(0, Math.min(Math.trunc(value), siblings.length - 1));
+
+    if (oldIndex === newIndex) {
+      return;
+    }
+    siblings.splice(oldIndex, 1);
+    siblings.splice(newIndex, 0, this);
+    for (const sibling of siblings) {
+      sibling.onOrderInParentChanged();
+    }
+  }
+
   /**
    * 元素监听事件
    * @param eventName - 事件名称
@@ -353,7 +377,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   setParent (vfxItem: VFXItem) {
-    if (vfxItem === this && !vfxItem) {
+    if (vfxItem === this || this.parent === vfxItem) {
       return;
     }
 
@@ -836,6 +860,12 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
+  private onOrderInParentChanged () {
+    for (const component of this.components) {
+      component.onOrderInParentChanged();
+    }
+  }
+
   /**
    * @internal
    */
@@ -932,17 +962,18 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 销毁元素
    */
   override dispose (): void {
-
     if (this.composition) {
       this.composition.destroyItem(this);
-      // component 调用 dispose() 会将自身从 this.components 数组删除，slice() 避免迭代错误
-      for (const component of this.components.slice()) {
-        component.dispose();
-      }
-      this.components = [];
-      this._composition = null;
-      this.transform.setValid(false);
     }
+
+    // component.dispose() removes itself from this.components. Use a snapshot
+    // so Engine.root components are also disposed even without a Composition.
+    for (const component of this.components.slice()) {
+      component.dispose();
+    }
+    this.components = [];
+    this._composition = null;
+    this.transform.setValid(false);
 
     this.resetChildrenParent();
 

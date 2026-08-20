@@ -27,6 +27,8 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
+import { VFXItem } from './vfx-item';
+import { WindowRootControl } from './gui';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -96,6 +98,12 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
+  /** Window-level GUI owner and input router. */
+  readonly windowRoot: WindowRootControl;
+  /**
+   * Root of the unified runtime scene tree.
+   */
+  root: VFXItem;
   env = '';
   /**
    * 计时器
@@ -159,6 +167,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
+    this.root = new VFXItem(this);
+    this.root.name = 'root';
+    this.windowRoot = new WindowRootControl(this);
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -348,6 +359,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
+    this.windowRoot.update(dt);
+
     // Tick compositions onPreRender
     //-------------------------------------------------------------------------
 
@@ -362,8 +375,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderer.clear(this.clearAction);
 
     for (const composition of compositions) {
-      composition.render();
+      composition.renderContent();
     }
+    this.windowRoot.render();
 
     this.renderTargetPool.flush();
   }
@@ -415,6 +429,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.info(`Resize engine ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
 
       this.setSize(canvasWidth, canvasHeight);
+      this.windowRoot.resize(canvasWidth, canvasHeight);
     }
   }
 
@@ -422,7 +437,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     if (this.getWidth() !== width || this.getHeight() !== height) {
       this.canvas.width = width;
       this.canvas.height = height;
-      this.viewport(0, 0, width, height);
+      this.setViewport(0, 0, width, height);
     }
 
     this.compositions?.forEach(comp => {
@@ -668,7 +683,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  viewport (x: number, y: number, width: number, height: number) {
+  setViewport (x: number, y: number, width: number, height: number) {
     // OVERRIDE
   }
 
@@ -786,6 +801,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.ticker?.stop();
     this.eventSystem?.dispose();
+    for (const composition of this._compositions.slice()) {
+      composition.dispose();
+    }
+    this.root.dispose();
+    this.windowRoot.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
 
@@ -795,7 +815,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.materials.forEach(mat => mat.dispose());
     this.textures.forEach(tex => tex.dispose());
     this.assetManagers.forEach(assetManager => assetManager.dispose());
-    this.compositions.forEach(comp => comp.dispose());
 
     this.textures = [];
     this.materials = [];
