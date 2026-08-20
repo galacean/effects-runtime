@@ -39,7 +39,7 @@
       .shell {
         width: min(1280px, calc(100% - 40px));
         margin: 0 auto;
-        padding: 36px 0 56px;
+        padding: 20px 0 24px;
       }
 
       .eyebrow {
@@ -58,16 +58,16 @@
         align-items: end;
         justify-content: space-between;
         gap: 24px;
-        margin-top: 14px;
+        margin-top: 8px;
       }
-      h1 { margin: 0; font-size: clamp(34px, 5vw, 58px); line-height: .98; letter-spacing: -.055em; }
+      h1 { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: .98; letter-spacing: -.055em; }
       .lede { max-width: 500px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
 
       .layout {
         display: grid;
         grid-template-columns: minmax(0, 1.5fr) minmax(340px, .8fr);
         gap: 18px;
-        margin-top: 30px;
+        margin-top: 18px;
         align-items: start;
       }
 
@@ -84,7 +84,6 @@
         position: sticky;
         top: 16px;
         align-self: start;
-        min-height: 620px;
       }
       .compare-card .stage { min-height: 0; }
       .compare-divider {
@@ -122,7 +121,7 @@
         color: var(--ink);
         font-size: 13px;
       }
-      #J-plain-container { width: min(680px, 100%); height: 330px; }
+      #J-plain-container { width: min(680px, 100%); height: 220px; }
       #J-plain-container canvas { display: block; }
       .card-head {
         display: flex;
@@ -140,9 +139,8 @@
       .stage {
         position: relative;
         display: grid;
-        min-height: 560px;
         place-items: center;
-        padding: 42px 24px;
+        padding: 14px 18px;
         background:
           linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
           linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
@@ -159,7 +157,7 @@
         font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
         letter-spacing: .13em;
       }
-      #J-container { width: min(680px, 100%); height: 330px; }
+      #J-container { width: min(680px, 100%); height: 220px; }
       #J-container canvas { display: block; }
 
       .editor-card { background: var(--panel); }
