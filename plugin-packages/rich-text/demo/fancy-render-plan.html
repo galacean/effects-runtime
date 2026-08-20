@@ -80,7 +80,12 @@
         backdrop-filter: blur(18px);
       }
 
-      .stage-card { min-height: 620px; }
+      .stage-card {
+        position: sticky;
+        top: 16px;
+        align-self: start;
+        min-height: 620px;
+      }
       .card-head {
         display: flex;
         align-items: center;
@@ -258,6 +263,7 @@
         .intro { display: block; }
         .lede { margin-top: 12px; }
         .layout { grid-template-columns: 1fr; }
+        .stage-card { position: static; }
         .stage-card { min-height: 0; }
         .stage { min-height: 420px; }
       }

@@ -20,6 +20,7 @@ const paddingReadout = document.getElementById('padding-readout');
 const surfaceReadout = document.getElementById('surface-readout');
 const rangeList = document.getElementById('range-list');
 const objectList = document.getElementById('object-list');
+const captureEnabled = new URLSearchParams(window.location.search).get('capture') === '1';
 
 type PaletteName = 'mint' | 'sunset' | 'mono';
 type ColorHex = string;
@@ -140,6 +141,7 @@ let segments: SegmentState[];
 let selectedSegmentIds: string[] = [];
 let richText: RichTextComponent | undefined;
 let renderComposition: (() => void) | undefined;
+let renderScheduled = false;
 let nextSegmentId = 1;
 let lastSelection = { start: 0, end: 0 };
 let pendingEditSelection = { start: 0, end: 0 };
@@ -334,6 +336,12 @@ function selectedSegmentEntries (): Array<{ segment: SegmentState, index: number
       .filter(({ segment }) => selectedSegmentIds.includes(segment.id) && segmentText(segment).trim());
   }
 
+  // 没有任何选中时默认全选所有可见片段：修改 Fill/Stroke/Shadow 会应用到
+  // 全部片段，而不是只改“全文默认样式”并让部分片段保持不变。
+  if (matches.length === 0 && !hasRange && !hasFocusedCaret && selectedSegmentIds.length === 0) {
+    matches = meaningfulSegments();
+  }
+
   const displayIndexById = new Map(meaningfulSegments().map(entry => [entry.segment.id, entry.displayIndex]));
 
   return matches.map(({ segment, index }) => ({ segment, index, displayIndex: displayIndexById.get(segment.id) ?? 0 }));
@@ -341,6 +349,14 @@ function selectedSegmentEntries (): Array<{ segment: SegmentState, index: number
 
 function selectedSegments (): SegmentState[] {
   return selectedSegmentEntries().map(entry => entry.segment);
+}
+
+/** 当前是否等效选中了全部可见片段（“全文”即全部片段）。 */
+function isAllSegmentsSelected (): boolean {
+  const selected = selectedSegmentEntries();
+  const meaningful = meaningfulSegments();
+
+  return meaningful.length > 0 && selected.length === meaningful.length;
 }
 
 function ensureSegmentOverride (segment: SegmentState): StyleState {
@@ -357,6 +373,12 @@ function setStyleField (field: StyleField, value: string | number | boolean): vo
   const styles = targets.length > 0
     ? targets.map(segment => ensureSegmentOverride(segment))
     : [sharedStyle];
+
+  // 全文（默认全选）修改时同步更新 sharedStyle，让“全文默认样式”与当前显示
+  // 一致，避免“全部恢复继承”后跳回旧的默认值。
+  if (isAllSegmentsSelected() && !styles.includes(sharedStyle)) {
+    styles.unshift(sharedStyle);
+  }
 
   for (const target of styles) {
     switch (field) {
@@ -555,14 +577,33 @@ function renderText (): void {
   updateDiagnostics();
 }
 
+/**
+ * 高频编辑（颜色选择器拖动）时把多次输入合并到一帧渲染，避免每个 input
+ * 事件都同步触发一次 ~100ms 的 Canvas 2D 重绘导致主线程卡死。
+ */
+function scheduleRenderText (): void {
+  if (renderScheduled) {
+    return;
+  }
+
+  renderScheduled = true;
+  requestAnimationFrame(() => {
+    renderScheduled = false;
+    renderText();
+  });
+}
+
 function updateScopeSummary (): void {
   if (!scopeSummary) {
     return;
   }
 
   const selected = selectedSegmentEntries();
+  const all = isAllSegmentsSelected();
 
-  if (selected.length === 0) {
+  if (all) {
+    scopeSummary.textContent = `全文 · 全部 ${selected.length} 个片段 · 批量修改`;
+  } else if (selected.length === 0) {
     scopeSummary.textContent = '全文 · 默认样式';
   } else if (selected.length === 1) {
     scopeSummary.textContent = `片段 · ${segmentLabel(selected[0].segment)}`;
@@ -592,20 +633,52 @@ function renderPresets (): void {
 }
 
 function renderScopes (): void {
-  if (!scopeSwitch) {
+  if (!scopeSwitch || !textInput) {
     return;
   }
 
   const selected = selectedSegmentEntries();
-  const chips = selected.length === 0
-    ? '<span class="scope-button object" data-active="true"><span class="scope-dot"></span>全文</span>'
-    : selected.map(({ segment, displayIndex }) => `<span class="scope-button" data-active="true"><span class="scope-dot" style="background:${styleForSegment(segment).fillColor}"></span>片段 ${displayIndex + 1}</span>`).join('');
+  const all = isAllSegmentsSelected();
+  const chips = [
+    `<span class="scope-button object" data-active="${all}"><span class="scope-dot" style="background:conic-gradient(#75f0c7 0 120deg, #8a7dff 120deg 240deg, #ffbd69 240deg 360deg)"></span>全文</span>`,
+    ...(all
+      ? []
+      : selected.map(({ segment, displayIndex }) => `<span class="scope-button" data-active="true"><span class="scope-dot" style="background:${styleForSegment(segment).fillColor}"></span>片段 ${displayIndex + 1}</span>`)),
+  ].join('');
 
   scopeSwitch.innerHTML = chips;
+
+  scopeSwitch.querySelectorAll<HTMLElement>('.scope-button').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const label = chip.textContent?.trim() ?? '';
+
+      if (label === '全文') {
+        textInput.setSelectionRange(0, 0);
+        lastSelection = { start: 0, end: 0 };
+        selectedSegmentIds = [];
+        renderEditor();
+
+        return;
+      }
+
+      const match = label.match(/片段 (\d+)/);
+      const displayIndex = match ? Number(match[1]) - 1 : -1;
+      const entry = displayIndex >= 0 ? meaningfulSegments()[displayIndex] : undefined;
+
+      if (!entry) {
+        return;
+      }
+
+      textInput.setSelectionRange(entry.segment.start, entry.segment.start);
+      lastSelection = { start: entry.segment.start, end: entry.segment.start };
+      selectedSegmentIds = [entry.segment.id];
+      renderEditor();
+    });
+  });
 }
 
 function renderSegments (): void {
-  if (!segmentList) {
+  if (!segmentList || !textInput) {
     return;
   }
 
@@ -622,6 +695,22 @@ function renderSegments (): void {
       <span class="segment-arrow">${selectedIds.has(segment.id) ? '●' : '·'}</span>
     </div>`;
   }).join('');
+
+  segmentList.querySelectorAll<HTMLElement>('.segment-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.segment;
+      const segment = id ? segments.find(item => item.id === id) : undefined;
+
+      if (!segment) {
+        return;
+      }
+
+      textInput.setSelectionRange(segment.start, segment.start);
+      lastSelection = { start: segment.start, end: segment.start };
+      selectedSegmentIds = [segment.id];
+      renderEditor();
+    });
+  });
 }
 
 function inheritanceMarkup (selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
@@ -689,7 +778,8 @@ function renderShadowLayer (style: StyleState, selected: Array<{ segment: Segmen
 }
 
 function renderGlowLayer (selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
-  if (selected.length > 0) {
+  // “全文”就是全部片段：此时可以编辑对象级 Glow；只有选中部分片段时才锁定。
+  if (!isAllSegmentsSelected()) {
     return '<div class="layer-card disabled"><div class="layer-head"><span class="layer-preview" style="background:#9c8dff"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · 请切换到全文编辑</small></span></div><div class="locked-note">Glow 作用于整个文本对象，多选片段时不会重复显示。</div></div>';
   }
 
@@ -769,7 +859,7 @@ function updateSelectionValueRows (): void {
 }
 
 function refreshAfterEdit (): void {
-  renderText();
+  scheduleRenderText();
   updateControlReadouts();
   updateSelectionValueRows();
   updateScopesAndSegmentsOnly();
@@ -976,7 +1066,7 @@ function updateSelectionState (): void {
   const start = Math.min(textInput.selectionStart, textInput.selectionEnd);
   const end = Math.max(textInput.selectionStart, textInput.selectionEnd);
   const hasRange = end > start;
-  const matches = segments.filter(segment => {
+  let matches = segments.filter(segment => {
     if (!segmentText(segment).trim()) {
       return false;
     }
@@ -987,10 +1077,23 @@ function updateSelectionState (): void {
     return document.activeElement === textInput && segment.start <= start && start < segment.end;
   });
 
-  lastSelection = { start, end };
-  selectedSegmentIds = matches.map(segment => segment.id);
+  // 显式选择的片段（点击片段行）在文本框失焦时保留，不被“默认全选”覆盖。
+  if (matches.length === 0 && selectedSegmentIds.length > 0 && !hasRange && document.activeElement !== textInput) {
+    matches = segments.filter(segment => selectedSegmentIds.includes(segment.id) && segmentText(segment).trim());
+  }
 
-  if (matches.length === 0) {
+  // 未选中任何片段时默认全选所有可见片段（与 selectedSegmentEntries 一致）。
+  const allSelected = matches.length === 0 && !hasRange && document.activeElement !== textInput;
+  const selectedSegments = allSelected
+    ? segments.filter(segment => segmentText(segment).trim())
+    : matches;
+
+  lastSelection = { start, end };
+  selectedSegmentIds = selectedSegments.map(segment => segment.id);
+
+  if (allSelected) {
+    selectionStatus.textContent = `全文 · 已选择全部 ${selectedSegments.length} 个片段 · 批量修改`;
+  } else if (matches.length === 0) {
     selectionStatus.textContent = hasRange ? '未选中可编辑片段' : '未选择文字';
   } else if (matches.length === 1) {
     selectionStatus.textContent = hasRange ? `已选择 1 个片段 · ${segmentLabel(matches[0])}` : `当前片段 · ${segmentLabel(matches[0])}`;
@@ -998,7 +1101,7 @@ function updateSelectionState (): void {
     selectionStatus.textContent = `已选择 ${matches.length} 个片段 · 修改参数会同时应用`;
   }
   splitSelectionButton.disabled = !hasRange;
-  mergeSelectionButton.disabled = matches.length < 2;
+  mergeSelectionButton.disabled = selectedSegments.length < 2;
 }
 
 function updateDiagnostics (): void {
@@ -1046,7 +1149,7 @@ function updateSelectionListeners (): void {
 
     reconcileSegmentsAfterTextEdit(oldText, textInput.value, editSelection.start, editSelection.end);
     renderEditor();
-    renderText();
+    scheduleRenderText();
     pendingEditSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
   });
 }
@@ -1072,7 +1175,14 @@ async function main (): Promise<void> {
   });
 
   composition.gotoAndStop(0);
-  renderComposition = () => composition.render();
+  // manualRender skips the engine main loop, which is what normally clears the
+  // default framebuffer before drawing. Without the clear, consecutive renders
+  // (e.g. rapid color-picker drags) composite the semi-transparent shadow halo
+  // on top of the previous frame and make it grow brighter frame by frame.
+  renderComposition = () => {
+    player.clearCanvas();
+    composition.render();
+  };
   richText = composition.getItemByName('richText_1')?.getComponent(RichTextComponent);
 
   if (!richText) {
@@ -1081,6 +1191,19 @@ async function main (): Promise<void> {
 
   Reflect.set(window, '__richTextDemo', richText);
   renderText();
+
+  // Continuous rendering is only for Spector capture. In the normal editor,
+  // renderText() already renders after each edit; keeping a second RAF render
+  // path active can make high-frequency color input harder to reason about.
+  if (captureEnabled) {
+    const renderFrame = (): void => {
+      renderComposition?.();
+      requestAnimationFrame(renderFrame);
+    };
+
+    requestAnimationFrame(renderFrame);
+  }
+
   if (status) {status.textContent = 'editor online';}
 }
 
