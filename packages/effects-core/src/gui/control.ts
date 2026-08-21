@@ -44,19 +44,19 @@ export type ControlEvent = {
 };
 
 const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]> = {
-  topLeft: [0, 1, 0, 1],
-  topRight: [1, 1, 1, 1],
-  bottomLeft: [0, 0, 0, 0],
-  bottomRight: [1, 0, 1, 0],
+  topLeft: [0, 0, 0, 0],
+  topRight: [1, 0, 1, 0],
+  bottomLeft: [0, 1, 0, 1],
+  bottomRight: [1, 1, 1, 1],
   centerLeft: [0, 0.5, 0, 0.5],
-  centerTop: [0.5, 1, 0.5, 1],
+  centerTop: [0.5, 0, 0.5, 0],
   centerRight: [1, 0.5, 1, 0.5],
-  centerBottom: [0.5, 0, 0.5, 0],
+  centerBottom: [0.5, 1, 0.5, 1],
   center: [0.5, 0.5, 0.5, 0.5],
   leftWide: [0, 0, 0, 1],
-  topWide: [0, 1, 1, 1],
+  topWide: [0, 0, 1, 0],
   rightWide: [1, 0, 1, 1],
-  bottomWide: [0, 0, 1, 0],
+  bottomWide: [0, 1, 1, 1],
   vcenterWide: [0.5, 0, 0.5, 1],
   hcenterWide: [0, 0.5, 1, 0.5],
   fullRect: [0, 0, 1, 1],
@@ -415,38 +415,63 @@ export class Control {
     const b = this.anchorMax;
     let minX = 0, maxX = 0, minY = 0, maxY = 0;
 
+    // Left edge.
     switch (preset) {
       case 'topLeft': case 'bottomLeft': case 'centerLeft':
       case 'topWide': case 'bottomWide': case 'leftWide': case 'hcenterWide': case 'fullRect':
         minX = margin - a.x * parentSize.x;
-        maxX = margin + width - b.x * parentSize.x;
 
         break;
       case 'centerTop': case 'centerBottom': case 'center': case 'vcenterWide':
         minX = 0.5 * parentSize.x - width / 2 - a.x * parentSize.x;
-        maxX = 0.5 * parentSize.x + width / 2 - b.x * parentSize.x;
 
         break;
       default:
         minX = parentSize.x - margin - width - a.x * parentSize.x;
-        maxX = parentSize.x - margin - b.x * parentSize.x;
 
         break;
     }
     switch (preset) {
-      case 'bottomLeft': case 'bottomRight': case 'centerBottom':
-      case 'leftWide': case 'rightWide': case 'bottomWide': case 'vcenterWide': case 'fullRect':
+      case 'topLeft': case 'bottomLeft': case 'centerLeft': case 'leftWide':
+        maxX = margin + width - b.x * parentSize.x;
+
+        break;
+      case 'centerTop': case 'centerBottom': case 'center': case 'vcenterWide':
+        maxX = 0.5 * parentSize.x + width / 2 - b.x * parentSize.x;
+
+        break;
+      default:
+        maxX = parentSize.x - margin - b.x * parentSize.x;
+
+        break;
+    }
+    // Top edge.
+    switch (preset) {
+      case 'topLeft': case 'topRight': case 'centerTop':
+      case 'leftWide': case 'rightWide': case 'topWide': case 'vcenterWide': case 'fullRect':
         minY = margin - a.y * parentSize.y;
-        maxY = margin + height - b.y * parentSize.y;
 
         break;
       case 'centerLeft': case 'centerRight': case 'center': case 'hcenterWide':
         minY = 0.5 * parentSize.y - height / 2 - a.y * parentSize.y;
-        maxY = 0.5 * parentSize.y + height / 2 - b.y * parentSize.y;
 
         break;
       default:
         minY = parentSize.y - margin - height - a.y * parentSize.y;
+
+        break;
+    }
+    // Bottom edge.
+    switch (preset) {
+      case 'topLeft': case 'topRight': case 'centerTop': case 'topWide':
+        maxY = margin + height - b.y * parentSize.y;
+
+        break;
+      case 'centerLeft': case 'centerRight': case 'center': case 'hcenterWide':
+        maxY = 0.5 * parentSize.y + height / 2 - b.y * parentSize.y;
+
+        break;
+      default:
         maxY = parentSize.y - margin - b.y * parentSize.y;
 
         break;
@@ -666,11 +691,11 @@ export class Control {
   updateLayout (): void {
     const parentSize = this.parent?.size ?? new Vector2();
     const left = this.offsetMin.x + this.anchorMin.x * parentSize.x;
-    const bottom = this.offsetMin.y + this.anchorMin.y * parentSize.y;
+    const top = this.offsetMin.y + this.anchorMin.y * parentSize.y;
     const right = this.offsetMax.x + this.anchorMax.x * parentSize.x;
-    const top = this.offsetMax.y + this.anchorMax.y * parentSize.y;
+    const bottom = this.offsetMax.y + this.anchorMax.y * parentSize.y;
 
-    this.applyBounds(left, bottom, right - left, top - bottom);
+    this.applyBounds(left, top, right - left, bottom - top);
   }
 
   private applyBounds (x: number, y: number, width: number, height: number): void {

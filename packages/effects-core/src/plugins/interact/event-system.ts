@@ -329,8 +329,9 @@ export class EventSystem implements Disposable {
     if (!this.enabled || !this.target) {
       return;
     }
-    this.focusTarget();
     const position = this.getCanvasPosition(event.clientX, event.clientY);
+
+    this.focusTarget();
     const state = this.createPointerState(position);
 
     this.mouseState = state;
@@ -762,12 +763,14 @@ export class EventSystem implements Disposable {
 
     return {
       x: position.x / cssWidth * 2 - 1,
-      y: position.y / cssHeight * 2 - 1,
+      // Legacy composition picking uses bottom-left, Y-up NDC even though GUI
+      // input follows the DOM convention of top-left, Y-down pixels.
+      y: 1 - position.y / cssHeight * 2,
       vx: velocity.x / cssWidth * 2,
-      vy: velocity.y / cssHeight * 2,
+      vy: -velocity.y / cssHeight * 2,
       ts: performance.now(),
       dx: (position.x - state.start.x) / cssWidth * 2,
-      dy: (position.y - state.start.y) / cssHeight * 2,
+      dy: -(position.y - state.start.y) / cssHeight * 2,
       width: target?.width ?? 0,
       height: target?.height ?? 0,
       origin,
@@ -781,7 +784,7 @@ export class EventSystem implements Disposable {
       return new Vector2();
     }
 
-    return new Vector2(clientX - rect.left, rect.bottom - clientY);
+    return new Vector2(clientX - rect.left, clientY - rect.top);
   }
 
   private consumeNativeEvent (event: Event, handled: boolean): void {
@@ -800,9 +803,7 @@ export class EventSystem implements Disposable {
   }
 
   private focusTarget (): void {
-    if (this.target && document.activeElement !== this.target) {
-      this.target.focus();
-    }
+    this.target?.focus();
   }
 
   private addNativeHandler (

@@ -129,6 +129,81 @@ describe('core/gui input', () => {
     expect(parent.log).deep.equals(['down:20,20']);
   });
 
+  it('maps native canvas input from the top-left with Y increasing downward', () => {
+    const order: string[] = [];
+
+    player.canvas.focus = () => {
+      order.push('focus');
+    };
+    player.canvas.getBoundingClientRect = () => {
+      order.push('rect');
+
+      return canvasRect();
+    };
+    const top = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 40);
+    const bottom = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 60, 100, 40);
+
+    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: 20,
+      clientY: 30,
+      button: 0,
+      buttons: 1,
+    }));
+
+    expect(top.log).deep.equals(['down:10,10']);
+    expect(bottom.log).deep.equals([]);
+    expect(order).deep.equals(['rect', 'focus']);
+  });
+
+  it('matches Godot by focusing before mapping native touch coordinates', () => {
+    const order: string[] = [];
+
+    player.canvas.focus = () => {
+      order.push('focus');
+    };
+    player.canvas.getBoundingClientRect = () => {
+      order.push('rect');
+
+      return canvasRect();
+    };
+    addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 40);
+    const event = new Event('touchstart', { cancelable: true });
+
+    Object.defineProperty(event, 'changedTouches', {
+      value: [{ identifier: 7, clientX: 20, clientY: 30 }],
+    });
+    player.canvas.dispatchEvent(event);
+
+    expect(order.slice(0, 2)).deep.equals(['focus', 'rect']);
+  });
+
+  it('keeps native legacy pointer events in bottom-left Y-up NDC', () => {
+    player.canvas.getBoundingClientRect = () => ({
+      x: 10,
+      y: 20,
+      left: 10,
+      top: 20,
+      right: 210,
+      bottom: 120,
+      width: 200,
+      height: 100,
+      toJSON: () => ({}),
+    });
+    let pointerY = 0;
+
+    player.engine.eventSystem.addEventListener('touchstart', event => {
+      pointerY = event.y;
+    });
+    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: 20,
+      clientY: 30,
+      button: 0,
+      buttons: 1,
+    }));
+
+    expect(pointerY).closeTo(0.8, 0.0001);
+  });
+
   it('uses InputEvent acceptance to stop bubbling and report handled input', () => {
     const parent = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 100);
     const child = addControl(parent.item!, new AcceptingControl(player.engine), 10, 10, 40, 40);
@@ -421,4 +496,18 @@ function mouseButton (x: number, y: number, pressed: boolean): InputEventMouseBu
   event.globalPosition.copyFrom(event.position);
 
   return event;
+}
+
+function canvasRect (): DOMRect {
+  return {
+    x: 10,
+    y: 20,
+    left: 10,
+    top: 20,
+    right: 210,
+    bottom: 120,
+    width: 200,
+    height: 100,
+    toJSON: () => ({}),
+  };
 }
