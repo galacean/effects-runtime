@@ -7,9 +7,11 @@ import {
   UICanvas,
   UIControl,
   VFXItem,
+  math,
 } from '@galacean/effects';
 
 const { expect } = chai;
+const { Vector2 } = math;
 
 class LifecycleControl extends Control {
   destroyCount = 0;
@@ -140,6 +142,60 @@ describe('core/GUI topology', () => {
     expect(matrix[4]).equals(2);
     expect(matrix[6]).equals(-80);
     expect(matrix[7]).equals(-40);
+  });
+
+  it('uses top-left coordinates for anchors and layout presets', () => {
+    const expectations = [
+      ['topLeft', 5, 5, 40, 20],
+      ['topRight', 155, 5, 40, 20],
+      ['bottomLeft', 5, 75, 40, 20],
+      ['bottomRight', 155, 75, 40, 20],
+      ['centerLeft', 5, 40, 40, 20],
+      ['centerTop', 80, 5, 40, 20],
+      ['centerRight', 155, 40, 40, 20],
+      ['centerBottom', 80, 75, 40, 20],
+      ['center', 80, 40, 40, 20],
+      ['leftWide', 5, 5, 40, 90],
+      ['topWide', 5, 5, 190, 20],
+      ['rightWide', 155, 5, 40, 90],
+      ['bottomWide', 5, 75, 190, 20],
+      ['vcenterWide', 80, 5, 40, 90],
+      ['hcenterWide', 5, 40, 190, 20],
+      ['fullRect', 5, 5, 190, 90],
+    ] as const;
+
+    for (const [preset, x, y, width, height] of expectations) {
+      const parent = new ContainerControl(player.engine);
+      const child = new Control(player.engine);
+
+      parent.setSize(200, 100);
+      child.parent = parent;
+      child.setSize(40, 20);
+      child.setAnchorsAndOffsetsPreset(preset, 5);
+      expect([child.x, child.y, child.width, child.height], preset).deep.equals([x, y, width, height]);
+    }
+
+    const top = new Control(player.engine);
+    const bottom = new Control(player.engine);
+
+    top.setAnchorsPreset('topLeft');
+    bottom.setAnchorsPreset('bottomRight');
+    expect(top.anchorMin).deep.equals(new Vector2(0, 0));
+    expect(bottom.anchorMax).deep.equals(new Vector2(1, 1));
+  });
+
+  it('rotates positive GUI angles clockwise in the Y-down coordinate system', () => {
+    const control = new Control(player.engine);
+
+    control.setPosition(10, 20);
+    control.setPivot(0, 0);
+    control.setRotation(90);
+    const matrix = control.getTransform2D().elements;
+    const rightX = matrix[0] + matrix[6];
+    const rightY = matrix[1] + matrix[7];
+
+    expect(rightX).closeTo(10, 1e-10);
+    expect(rightY).closeTo(21, 1e-10);
   });
 
   it('synchronizes GUI sibling order with VFXItem order', () => {

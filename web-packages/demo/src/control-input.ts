@@ -35,6 +35,8 @@ const dragValueElement = document.getElementById('drag-value') as HTMLSpanElemen
 const acceptInput = document.getElementById('accept-input') as HTMLInputElement;
 const clearButton = document.getElementById('clear-log') as HTMLButtonElement;
 const canvasHost = document.getElementById('canvas-host') as HTMLDivElement;
+const sceneScaleX = canvasHost.clientWidth / 900;
+const sceneScaleY = canvasHost.clientHeight / 600;
 
 const white = new Color(0.95, 0.97, 1, 1);
 const muted = new Color(0.65, 0.7, 0.8, 1);
@@ -111,9 +113,9 @@ class DemoControl extends ContainerControl {
 
     this.fillRect(0, 0, size.x, size.y, color);
     this.drawRect(1.5, 1.5, size.x - 3, size.y - 3, this.borderColor, 1.5);
-    this.drawText(16, size.y - 34, this.label, 21, white, 'Arial', 600);
+    this.drawText(16, 8, this.label, 21, white, 'Arial', 600);
     if (this.detail) {
-      this.drawText(16, size.y - 62, this.detail, 14, muted, 'Arial');
+      this.drawText(16, 40, this.detail, 14, muted, 'Arial');
     }
   }
 
@@ -235,8 +237,8 @@ function addControl (
   bridge.control = control;
   control.label = label;
   item.setParent(parent);
-  control.setSize(width, height);
-  control.setPosition(x, y);
+  control.setSize(width * sceneScaleX, height * sceneScaleY);
+  control.setPosition(x * sceneScaleX, y * sceneScaleY);
 
   return control;
 }
@@ -255,7 +257,7 @@ stage.hoverColor = stage.fillColor;
 stage.borderColor = new Color(0.12, 0.16, 0.24, 1);
 stage.detail = 'Empty space remains unhandled';
 
-const group = addControl(player.engine, stage.item!, 'Parent (Pass)', 40, 45, 500, 460);
+const group = addControl(player.engine, stage.item!, 'Parent (Pass)', 30, 75, 520, 470);
 
 group.mouseFilter = MouseFilter.Pass;
 group.fillColor = new Color(0.09, 0.12, 0.18, 1);
@@ -263,7 +265,7 @@ group.hoverColor = new Color(0.11, 0.15, 0.22, 1);
 group.borderColor = new Color(0.3, 0.38, 0.54, 1);
 group.detail = 'Receives bubbled events from Pass children';
 
-const back = addControl(player.engine, group.item!, 'Back (Pass)', 35, 140, 300, 200);
+const back = addControl(player.engine, group.item!, 'Back (Pass)', 30, 85, 315, 225);
 
 back.mouseFilter = MouseFilter.Pass;
 back.focusMode = FocusMode.Click;
@@ -274,7 +276,7 @@ back.pressedColor = new Color(0.08, 0.25, 0.4, 1);
 back.borderColor = new Color(0.38, 0.77, 1, 1);
 back.detail = 'Visible through Ignore; bubbles to Parent';
 
-const front = addControl(player.engine, group.item!, 'Front (Stop)', 160, 50, 280, 180);
+const front = addControl(player.engine, group.item!, 'Front (Stop)', 170, 190, 310, 190);
 
 front.mouseFilter = MouseFilter.Stop;
 front.focusMode = FocusMode.Click;
@@ -285,7 +287,7 @@ front.pressedColor = new Color(0.45, 0.17, 0.08, 1);
 front.borderColor = new Color(1, 0.66, 0.32, 1);
 front.detail = 'Change MouseFilter with the buttons';
 
-const dropZone = addControl(player.engine, stage.item!, 'Drop zone', 610, 45, 260, 245);
+const dropZone = addControl(player.engine, stage.item!, 'Drop zone', 590, 75, 280, 230);
 
 dropZone.mouseFilter = MouseFilter.Stop;
 dropZone.dropTarget = true;
@@ -298,7 +300,7 @@ dropZone.onDrop = payload => {
   payload.source.detail = 'Dropped — drag again';
 };
 
-const ignoreTarget = addControl(player.engine, stage.item!, 'Target', 610, 325, 260, 95);
+const ignoreTarget = addControl(player.engine, stage.item!, 'Target', 590, 335, 280, 100);
 
 ignoreTarget.mouseFilter = MouseFilter.Stop;
 ignoreTarget.focusMode = FocusMode.Click;
@@ -309,7 +311,7 @@ ignoreTarget.pressedColor = new Color(0.27, 0.16, 0.03, 1);
 ignoreTarget.borderColor = new Color(0.95, 0.7, 0.22, 1);
 ignoreTarget.detail = 'Stops input';
 
-const ignoreOverlay = addControl(player.engine, stage.item!, 'Ignore', 735, 335, 120, 75);
+const ignoreOverlay = addControl(player.engine, stage.item!, 'Ignore', 735, 345, 120, 80);
 
 ignoreOverlay.mouseFilter = MouseFilter.Ignore;
 ignoreOverlay.fillColor = new Color(0.07, 0.42, 0.52, 0.45);
@@ -318,7 +320,7 @@ ignoreOverlay.pressedColor = ignoreOverlay.fillColor;
 ignoreOverlay.borderColor = new Color(0.4, 0.86, 0.95, 1);
 ignoreOverlay.detail = 'Pass-through';
 
-const dragChip = addControl(player.engine, stage.item!, 'Drag chip', 642, 455, 196, 82);
+const dragChip = addControl(player.engine, stage.item!, 'Drag chip', 630, 475, 200, 90);
 
 dragChip.mouseFilter = MouseFilter.Stop;
 dragChip.draggable = true;

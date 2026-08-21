@@ -209,15 +209,15 @@ export class Graphics {
     this.currentBatchType = 'colored';
     this.currentBatchTexture = null;
 
-    // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标: (0, 0) 在左下角，(width, height) 在右上角
+    // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标：(0, 0) 在左上角，(width, height) 在右下角，+Y 向下。
     const { width, height } = this.engine.canvas.getBoundingClientRect();
 
     // 正交投影矩阵：将屏幕坐标 [0, width] x [0, height] 映射到 NDC [-1, 1] x [-1, 1]
     const projectionMatrix = new Matrix4(
       2 / width, 0, 0, 0,  // 第一列
-      0, 2 / height, 0, 0,  // 第二列
+      0, -2 / height, 0, 0,  // 第二列
       0, 0, -1, 0,  // 第三列
-      -1, -1, 0, 1   // 第四列
+      -1, 1, 0, 1   // 第四列
     );
 
     this.coloredMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
@@ -419,8 +419,8 @@ export class Graphics {
 
   /**
    * 绘制矩形边框
-   * @param x - 矩形左下角 X 坐标
-   * @param y - 矩形左下角 Y 坐标
+   * @param x - 矩形左上角 X 坐标
+   * @param y - 矩形左上角 Y 坐标
    * @param width - 矩形宽度
    * @param height - 矩形高度
    * @param color - 边框颜色，默认白色，范围 0-1
@@ -464,8 +464,8 @@ export class Graphics {
 
   /**
    * 绘制填充矩形
-   * @param x - 矩形左下角 X 坐标
-   * @param y - 矩形左下角 Y 坐标
+   * @param x - 矩形左上角 X 坐标
+   * @param y - 矩形左上角 Y 坐标
    * @param width - 矩形宽度
    * @param height - 矩形高度
    * @param color - 填充颜色，默认白色，范围 0-1
@@ -493,9 +493,9 @@ export class Graphics {
   }
 
   /**
-   * 绘制纹理矩形（本地坐标，Y 向上，(x, y) 为左下角）
-   * @param x - 矩形左下角 X 坐标
-   * @param y - 矩形左下角 Y 坐标
+   * 绘制纹理矩形（本地坐标，Y 向下，(x, y) 为左上角）
+   * @param x - 矩形左上角 X 坐标
+   * @param y - 矩形左上角 Y 坐标
    * @param width - 矩形宽度
    * @param height - 矩形高度
    * @param texture - 要采样的纹理。同纹理连续绘制会合批，纹理切换会自动 flush 当前批次
@@ -513,14 +513,14 @@ export class Graphics {
   }
 
   /**
-   * 绘制文本（本地坐标，Y 向上，(x, y) 为文本左下角）。
+   * 绘制文本（本地坐标，Y 向下，(x, y) 为文本 cell 左上角）。
    *
    * 文本走字符级 bitmap atlas（同一字体下每个字只渲染一次，任意文本组合复用 atlas）;
    * `color` 作为乘色与白色字形 alpha 相乘，任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开，避免调用方每帧创建临时 style 对象触发 GC
-   * @param x - 文本左下角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
-   * @param y - 文本左下角 Y 坐标（cell 底，含底部 padding；字形 ink 在其上方 padding+ascent 处）
+   * @param x - 文本左上角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
+   * @param y - 文本 cell 顶部 Y 坐标
    * @param text - 要绘制的文本内容，空串直接 return
    * @param fontSize - 字号（逻辑像素）
    * @param color - 乘色，默认白色，范围 0-1
@@ -664,7 +664,7 @@ export class Graphics {
   ): void {
     const vertexOffset = this.vertices.length / 2;
 
-    // 4 顶点（本地坐标，左下/右下/左上/右上），应用当前变换写入 vertices
+    // 4 顶点（本地坐标，左上/右上/左下/右下），应用当前变换写入 vertices
     const corners: [number, number][] = [
       [x, y],
       [x + width, y],
@@ -676,10 +676,10 @@ export class Graphics {
     const u1 = region ? region.u1 : 0;
     const v1 = region ? region.v1 : 0;
     const cornerUVs: [number, number][] = [
-      [u0, v0],
-      [u1, v0],
       [u0, v1],
       [u1, v1],
+      [u0, v0],
+      [u1, v0],
     ];
 
     for (let i = 0; i < 4; i++) {

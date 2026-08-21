@@ -416,6 +416,15 @@ export class CanvasGizmo extends Control {
     return new Vector2((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
   }
 
+  /** Converts the camera's bottom-left screen coordinates to GUI coordinates. */
+  private worldToGUIPoint (camera: Camera, position: Vector3): Vector3 {
+    const point = camera.worldToScreenPoint(position);
+
+    point.y = this.canvas.getBoundingClientRect().height - point.y;
+
+    return point;
+  }
+
   private startTransform (e: MouseEvent): void {
     const activeObject = Selection.getSelectedObjects()[0];
 
@@ -696,9 +705,10 @@ export class CanvasGizmo extends Control {
         if (rendererComponent) {
           const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
           const screenPoints: math.Vector3[] = [];
+          const camera = rendererComponent.item.composition!.camera;
 
           for (let i = 0; i < 4; i++) {
-            screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+            screenPoints.push(this.worldToGUIPoint(camera, boundingBox.vectorsWorld[i]));
           }
 
           const linePoints: number[] = [];
@@ -722,9 +732,10 @@ export class CanvasGizmo extends Control {
         if (rendererComponent) {
           const boundingBox = rendererComponent.getBoundingBoxInfo().boundingBox;
           const screenPoints: math.Vector3[] = [];
+          const camera = rendererComponent.item.composition!.camera;
 
           for (let i = 0; i < 4; i++) {
-            screenPoints.push(rendererComponent.item.composition!.camera.worldToScreenPoint(boundingBox.vectorsWorld[i]));
+            screenPoints.push(this.worldToGUIPoint(camera, boundingBox.vectorsWorld[i]));
           }
 
           const linePoints: number[] = [];
@@ -762,7 +773,7 @@ export class CanvasGizmo extends Control {
 
           // 绘制旋转手柄（顶部中点上方）
           const topMid = this.midPoint(screenPoints[3], screenPoints[1]);
-          const rotationHandleY = topMid.y + rotationHandleDistance; // 在左下角坐标系中，+y 是向上
+          const rotationHandleY = topMid.y - rotationHandleDistance;
 
           // 绘制连接线
           this.drawLine(topMid.x, topMid.y, topMid.x, rotationHandleY, lineColor, 2);
@@ -806,7 +817,7 @@ export class CanvasGizmo extends Control {
 
     // 绘制贝塞尔曲线 - 明显的弯曲效果
     this.drawBezier(
-      10, 205,      // 起点（左下）
+      10, 205,      // 起点（左上）
       47.5, 205,    // 控制点1（中间偏上）
       47.5, 255,    // 控制点2（中间偏下）
       85, 255,      // 终点（右下）
