@@ -251,6 +251,10 @@ describe('core/plugins/calculate/transform-clip-mix', () => {
     expect(pos.x).to.be.closeTo(1, 1e-5);
     expect(pos.y).to.be.closeTo(2, 1e-5);
     expect(pos.z).to.be.closeTo(0, 1e-5);
-    expect(sprite.transform.rotation.z).to.be.closeTo(-45, 1e-8);
+    const rotation = sprite.transform.rotation;
+
+    expect(rotation.x).to.be.closeTo(0, 1e-8);
+    expect(rotation.y).to.be.closeTo(0, 1e-8);
+    expect(rotation.z).to.be.closeTo(-45, 1e-8);
   });
 });
