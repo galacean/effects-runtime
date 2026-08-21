@@ -94,6 +94,10 @@ export interface TextRenderPlan {
 
 export interface TextRenderPlanBuildOptions {
   fontRef: string,
+  /** Plain-text fill color mirrored into the range basicStyle so the unified
+   *  backend honors it the same way it honors RichText's per-range fontColor.
+   *  Falls back to the text fill color when omitted. */
+  fillColor?: spec.vec4,
   sourceRangeId?: string,
   baseXPerLine?: number[],
   contentBounds?: TextBounds,
@@ -221,7 +225,7 @@ export function buildTextRenderPlanFromCharInfo (
     rangePlans: [{
       sourceRangeId,
       glyphIds: glyphs.map(glyph => glyph.id),
-      basicStyle: { fontRef: options.fontRef },
+      basicStyle: { fontRef: options.fontRef, fillColor: options.fillColor },
       layers: rangeLayers,
     }],
     objectPlan: { layers: objectLayers },

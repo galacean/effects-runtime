@@ -628,7 +628,7 @@ function scheduleRenderText (): void {
 
 function buildPlainTextOptions (presetKey: string): Record<string, unknown> {
   return {
-    text: plainTextInput?.value || 'Plain Text 普通文本 Galacean 123',
+    text: plainTextInput?.value || 'Galacean 普通文本',
     fontFamily: 'Arial',
     fontSize: 42,
     textColor: [255, 255, 255, 1],
@@ -647,7 +647,7 @@ function buildPlainTextOptions (presetKey: string): Record<string, unknown> {
   };
 }
 
-/** 最小内联场景：一个 TextComponent 元素，预览尺寸与富文本一致。 */
+/** 最小内联场景：一个 TextComponent（普通文本）元素，预览尺寸与富文本一致。 */
 function buildPlainTextScene (): Record<string, unknown> {
   const componentId = 'plain-text-comp';
   const itemId = 'plain-item';

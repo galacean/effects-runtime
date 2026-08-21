@@ -582,6 +582,7 @@ export class TextComponent extends MaskableGraphic {
       const baseXPerLine = charsInfo.map(line => this.textLayout.getOffsetX(this.textStyle, line.width));
       const plan = buildTextRenderPlanFromCharInfo(charsInfo, this.textStyle.fancyRenderStyle.layers, {
         fontRef: context.font,
+        fillColor: this.textStyle.textColor,
         baseXPerLine,
         logicalSize: { width: baseWidth, height: baseHeight },
         renderSize: { width: texWidth, height: texHeight },

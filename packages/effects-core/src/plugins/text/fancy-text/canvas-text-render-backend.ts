@@ -250,7 +250,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
           break;
         case 'solid-fill':
-          this.drawSolidFill(plan, context, layerRanges, maskOnly);
+          this.drawSolidFill(plan, layerPlan, context, layerRanges, maskOnly);
 
           break;
         case 'gradient':
@@ -452,10 +452,13 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
   private drawSolidFill (
     plan: TextRenderPlan,
+    layerPlan: TextRenderLayerPlan,
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
     maskOnly = false,
   ): void {
+    const layerColor = layerPlan.layer.kind === 'solid-fill' ? layerPlan.layer.params.color : undefined;
+
     for (const range of ranges) {
       this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
         if (maskOnly) {
@@ -467,7 +470,12 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
           // text object; letting the RGB through recolors it. Neither is allowed.
           glyphContext.fillStyle = 'rgb(255, 255, 255)';
         } else {
-          const fillColor = range.basicStyle.fillColor ?? this.options.textStyle.textColor;
+          // Honor colors in the same precedence RichText uses: the per-range
+          // fill color wins; then the solid-fill layer's own color (so plain
+          // text presets without a per-range fill still show their fill color);
+          // finally the text style fallback. RichText's `basicStyle.fillColor`
+          // is always set, so this stays byte-identical for rich text.
+          const fillColor = range.basicStyle.fillColor ?? layerColor ?? this.options.textStyle.textColor;
 
           glyphContext.fillStyle = colorToCss(fillColor);
         }
