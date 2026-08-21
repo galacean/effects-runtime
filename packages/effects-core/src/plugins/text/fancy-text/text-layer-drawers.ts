@@ -1,9 +1,7 @@
 import type { TextEnv, TextLayerDrawer } from './fancy-types';
+import { hasRtlOrJoiningText } from '../text-direction';
 
 const ANTIALIAS_PADDING = 1;
-
-/** 检测字符串是否包含需要 RTL 和连写排版的字符（阿拉伯语等） */
-const HAS_RTL_OR_JOINING = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 /** 逐字符填充 + 抗锯齿补偿；RTL/连写行整行绘制以保证字形连接 */
 function fillTextWithPadding (ctx: CanvasRenderingContext2D, env: TextEnv): void {
@@ -14,7 +12,7 @@ function fillTextWithPadding (ctx: CanvasRenderingContext2D, env: TextEnv): void
 
   env.lines.forEach(line => {
     const lineStr = line.chars.join('');
-    const isRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
+    const isRtl = hasRtlOrJoiningText(lineStr);
 
     if (isRtl) {
       const rtlWidth = ctx.measureText(lineStr).width;
@@ -85,7 +83,7 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
 
     env.lines.forEach(line => {
       const lineStr = line.chars.join('');
-      const isRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
+      const isRtl = hasRtlOrJoiningText(lineStr);
 
       if (isRtl) {
         const rtlWidth = offCtx.measureText(lineStr).width;
@@ -114,7 +112,7 @@ export class SingleStrokeDrawer implements TextLayerDrawer {
 
     env.lines.forEach(line => {
       const lineStr = line.chars.join('');
-      const isRtl = lineStr.length > 0 && HAS_RTL_OR_JOINING.test(lineStr);
+      const isRtl = hasRtlOrJoiningText(lineStr);
 
       if (isRtl) {
         const rtlWidth = offCtx.measureText(lineStr).width;

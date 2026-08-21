@@ -76,6 +76,58 @@ describe('core/plugins/text/text-render-plan', () => {
     expect(plan.rangePlans[0].basicStyle.fillColor).to.eql([1, 0, 1, 1]);
   });
 
+  it('keeps a whole RTL line as one Canvas paint segment without replacing glyph metadata', () => {
+    const plan = buildTextRenderPlanFromCharInfo([
+      { y: 30, width: 80, chars: ['م', 'ر', 'ح', 'ب', 'ا'], charOffsetX: [0, 16, 32, 48, 64] },
+    ], layers, {
+      fontRef: '24px Arial',
+      paintSegments: [{
+        text: 'مرحبا',
+        x: 80,
+        y: 30,
+        lineId: 0,
+        sourceRangeId: 'text',
+        fontRef: '24px Arial',
+        direction: 'rtl',
+      }],
+    });
+
+    expect(plan.glyphs).to.have.length(5);
+    expect(plan.textSegments).to.have.length(1);
+    expect(plan.textSegments?.[0]).to.include({ text: 'مرحبا', direction: 'rtl', x: 80, y: 30 });
+    expect(plan.rangePlans[0].paintUnits).to.eql([{ kind: 'segment', segmentId: 0 }]);
+  });
+
+  it('renders an RTL paint segment through the shared Canvas backend', () => {
+    const style = new TextStyle({ text: 'مرحبا', fontSize: 24, fontFamily: 'Arial' });
+    const plan = buildTextRenderPlanFromCharInfo([
+      { y: 30, width: 80, chars: ['م', 'ر', 'ح', 'ب', 'ا'], charOffsetX: [0, 16, 32, 48, 64] },
+    ], [{ kind: 'solid-fill', category: 'base', params: { color: [1, 1, 1, 1] } }], {
+      fontRef: style.fontDesc,
+      paintSegments: [{
+        text: 'مرحبا',
+        x: 80,
+        y: 30,
+        lineId: 0,
+        sourceRangeId: 'text',
+        fontRef: style.fontDesc,
+        direction: 'rtl',
+      }],
+    });
+    const canvas = document.createElement('canvas');
+
+    canvas.width = 120;
+    canvas.height = 60;
+    const context = canvas.getContext('2d')!;
+
+    new CanvasTextBackend({ style }).render(plan, { canvas, context });
+
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const visiblePixels = Array.from(pixels).filter((value, index) => index % 4 === 3 && value > 0).length;
+
+    expect(visiblePixels).to.be.greaterThan(0);
+  });
+
   it('falls back to a plain-text fill when the theme layers carry no per-range fill color', () => {
     const layersWithoutFill: FancyRenderLayer[] = [
       { kind: 'single-stroke', category: 'base', params: { color: [1, 0, 0, 1], width: 2, unit: 'px' } },
@@ -99,7 +151,7 @@ describe('core/plugins/text/text-render-plan', () => {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
     const plan = buildTextRenderPlanFromCharInfo(charsInfo, layers, { fontRef: style.fontDesc });
-    const backend = new CanvasTextBackend({ style, layout, legacyLayerDrawers: [] });
+    const backend = new CanvasTextBackend({ style });
 
     canvas.width = 200;
     canvas.height = 120;

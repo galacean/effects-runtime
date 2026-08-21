@@ -16,6 +16,7 @@ import { CanvasTextBackend } from './fancy-text/canvas-text-backend';
 import type { CharInfo } from './fancy-text/render-with-text-layers';
 import { buildTextRenderPlanFromCharInfo } from './fancy-text/text-render-plan';
 import type { TextLayerDrawer } from './fancy-text/fancy-types';
+import { hasRtlOrJoiningText } from './text-direction';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -580,6 +581,31 @@ export class TextComponent extends MaskableGraphic {
       }
 
       const baseXPerLine = charsInfo.map(line => this.textLayout.getOffsetX(this.textStyle, line.width));
+      const paintSegments = charsInfo.flatMap((line, lineId) => {
+        const text = line.chars.join('');
+
+        if (!hasRtlOrJoiningText(text)) {
+          return [];
+        }
+
+        const fontRef = this.textStyle.fontDesc;
+
+        context.save();
+        context.font = fontRef;
+        const width = context.measureText(text).width;
+
+        context.restore();
+
+        return [{
+          text,
+          x: this.textLayout.getOffsetX(this.textStyle, width) + width,
+          y: line.y,
+          lineId,
+          sourceRangeId: 'text',
+          fontRef,
+          direction: 'rtl' as const,
+        }];
+      });
       const plan = buildTextRenderPlanFromCharInfo(charsInfo, this.textStyle.fancyRenderStyle.layers, {
         fontRef: context.font,
         fillColor: this.textStyle.textColor,
@@ -587,11 +613,10 @@ export class TextComponent extends MaskableGraphic {
         logicalSize: { width: baseWidth, height: baseHeight },
         renderSize: { width: texWidth, height: texHeight },
         padding: { left: padL, right: padR, top: padT, bottom: padB },
+        paintSegments,
       });
       const backend = new CanvasTextBackend({
         style: this.textStyle,
-        layout: this.textLayout,
-        legacyLayerDrawers: this.layerDrawers,
       });
 
       backend.render(plan, { canvas: this.canvas, context });

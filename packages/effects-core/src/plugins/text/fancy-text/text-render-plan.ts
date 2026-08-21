@@ -45,6 +45,30 @@ export interface PositionedGlyph {
   sourceCluster?: number,
 }
 
+export type TextDirection = 'ltr' | 'rtl';
+
+/**
+ * A text segment that must be handed to Canvas as one string.
+ *
+ * This is a paint unit, not a shaping implementation: layout decides the
+ * segment text, anchor and direction, while the Canvas adapter performs the
+ * browser's normal text shaping when it paints the segment.
+ */
+export interface TextPaintSegment {
+  id: number,
+  text: string,
+  x: number,
+  y: number,
+  lineId: number,
+  sourceRangeId: string,
+  fontRef: string,
+  direction?: TextDirection,
+}
+
+export type TextPaintUnit =
+  | { kind: 'glyph', glyphId: number }
+  | { kind: 'segment', segmentId: number };
+
 export interface PositionedTextLine {
   lineId: number,
   baselineY: number,
@@ -70,6 +94,8 @@ export interface RangePlan {
   glyphIds: number[],
   basicStyle: RangeTextStyle,
   layers: TextRenderLayerPlan[],
+  /** Optional mixed glyph/segment stream used by the Canvas painter. */
+  paintUnits?: TextPaintUnit[],
 }
 
 export interface ObjectPlan {
@@ -86,6 +112,7 @@ export interface TextGeometry {
 
 export interface TextRenderPlan {
   glyphs: PositionedGlyph[],
+  textSegments?: TextPaintSegment[],
   lines: PositionedTextLine[],
   rangePlans: RangePlan[],
   objectPlan: ObjectPlan,
@@ -105,6 +132,8 @@ export interface TextRenderPlanBuildOptions {
   renderSize?: TextSize,
   padding?: Partial<TextGeometry['padding']>,
   layerIdPrefix?: string,
+  /** Layout-provided full-text paint segments (e.g. RTL lines). */
+  paintSegments?: Array<Omit<TextPaintSegment, 'id'>>,
 }
 
 export interface TextRenderBackend<TTarget, TResult = void> {
@@ -206,6 +235,31 @@ export function buildTextRenderPlanFromCharInfo (
 
   const { rangeLayers, objectLayers } = createTextRenderLayerPlans(layers, layerIdPrefix);
 
+  const textSegments: TextPaintSegment[] = (options.paintSegments ?? []).map((segment, id) => ({
+    ...segment,
+    id,
+  }));
+  const segmentsByLine = new Map<number, TextPaintSegment[]>();
+
+  for (const segment of textSegments) {
+    const lineSegments = segmentsByLine.get(segment.lineId) ?? [];
+
+    lineSegments.push(segment);
+    segmentsByLine.set(segment.lineId, lineSegments);
+  }
+
+  const paintUnits: TextPaintUnit[] = [];
+
+  for (const line of lines) {
+    const lineSegments = segmentsByLine.get(line.lineId);
+
+    if (lineSegments?.length) {
+      paintUnits.push(...lineSegments.map(segment => ({ kind: 'segment' as const, segmentId: segment.id })));
+    } else {
+      paintUnits.push(...line.glyphIds.map(glyphId => ({ kind: 'glyph' as const, glyphId })));
+    }
+  }
+
   const logicalSize = options.logicalSize ?? { width: 0, height: 0 };
   const renderSize = options.renderSize ?? logicalSize;
   const padding = normalizePadding(options.padding);
@@ -221,12 +275,14 @@ export function buildTextRenderPlanFromCharInfo (
 
   return {
     glyphs,
+    textSegments,
     lines,
     rangePlans: [{
       sourceRangeId,
       glyphIds: glyphs.map(glyph => glyph.id),
       basicStyle: { fontRef: options.fontRef, fillColor: options.fillColor },
       layers: rangeLayers,
+      paintUnits,
     }],
     objectPlan: { layers: objectLayers },
     geometry: { contentBounds, effectBounds, padding, logicalSize, renderSize },
@@ -234,8 +290,8 @@ export function buildTextRenderPlanFromCharInfo (
 }
 
 /**
- * Converts a plan back to the legacy CharInfo shape while the Canvas backend
- * is still backed by renderWithTextLayers().
+ * Converts a plan back to the legacy CharInfo shape for external compatibility
+ * callers. The ordinary-text main path no longer uses this bridge.
  */
 export function planToLegacyCharInfo (plan: TextRenderPlan): TextLineInput[] {
   return plan.lines.map(line => ({

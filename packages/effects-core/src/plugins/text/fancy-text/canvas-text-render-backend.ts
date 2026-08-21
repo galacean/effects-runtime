@@ -7,6 +7,7 @@ import type {
   TextRenderBackend,
   TextRenderLayerPlan,
   TextRenderPlan,
+  TextPaintSegment,
 } from './text-render-plan';
 
 export interface CanvasTextRenderBackendOptions {
@@ -172,13 +173,23 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
   private renderSimpleFill (plan: TextRenderPlan, context: CanvasRenderingContext2D): void {
     context.textBaseline = 'alphabetic';
 
-    for (const glyph of plan.glyphs) {
-      const range = plan.rangePlans.find(item => item.sourceRangeId === glyph.sourceRangeId);
-      const fillColor = range?.basicStyle.fillColor ?? this.options.textStyle.textColor;
+    for (const range of plan.rangePlans) {
+      const fillColor = range.basicStyle.fillColor ?? this.options.textStyle.textColor;
 
-      context.font = range?.basicStyle.fontRef ?? glyph.fontRef;
-      context.fillStyle = colorToCss(fillColor);
-      context.fillText(glyph.glyph, glyph.x, glyph.y);
+      this.drawRangePaintUnits(
+        plan,
+        range,
+        context,
+        (glyphContext, glyph) => {
+          glyphContext.font = range.basicStyle.fontRef ?? glyph.fontRef;
+          glyphContext.fillStyle = colorToCss(fillColor);
+          glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
+        },
+        (segmentContext, segment) => {
+          segmentContext.fillStyle = colorToCss(fillColor);
+          segmentContext.fillText(segment.text, segment.x, segment.y);
+        },
+      );
     }
   }
 
@@ -441,12 +452,25 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     }
 
     for (const range of ranges) {
-      this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
-        glyphContext.strokeStyle = maskOnly ? 'rgb(255, 255, 255)' : colorToCss(color);
-        glyphContext.lineJoin = 'round';
-        glyphContext.lineWidth = width;
-        glyphContext.strokeText(glyph.glyph, glyph.x, glyph.y);
-      });
+      this.drawRangePaintUnits(
+        plan,
+        range,
+        context,
+        (glyphContext, glyph) => {
+          glyphContext.strokeStyle = maskOnly ? 'rgb(255, 255, 255)' : colorToCss(color);
+          glyphContext.lineJoin = 'round';
+          glyphContext.lineWidth = width;
+          glyphContext.strokeText(glyph.glyph, glyph.x, glyph.y);
+        },
+        (segmentContext, segment) => {
+          this.drawSegmentStroke(
+            segmentContext,
+            segment,
+            width,
+            maskOnly ? 'rgb(255, 255, 255)' : colorToCss(color),
+          );
+        },
+      );
     }
   }
 
@@ -460,27 +484,17 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     const layerColor = layerPlan.layer.kind === 'solid-fill' ? layerPlan.layer.params.color : undefined;
 
     for (const range of ranges) {
-      this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
-        if (maskOnly) {
-          // The shared object-glow source is a pure, full-alpha white silhouette.
-          // Both the range fill RGB and its alpha are deliberately discarded so
-          // the object glow depends only on the glow layer's own color / blur /
-          // intensity. Letting the range fill alpha (fillOpacity) through makes
-          // editing one segment's fill opacity pulse the glow halo of the whole
-          // text object; letting the RGB through recolors it. Neither is allowed.
-          glyphContext.fillStyle = 'rgb(255, 255, 255)';
-        } else {
-          // Honor colors in the same precedence RichText uses: the per-range
-          // fill color wins; then the solid-fill layer's own color (so plain
-          // text presets without a per-range fill still show their fill color);
-          // finally the text style fallback. RichText's `basicStyle.fillColor`
-          // is always set, so this stays byte-identical for rich text.
-          const fillColor = range.basicStyle.fillColor ?? layerColor ?? this.options.textStyle.textColor;
-
-          glyphContext.fillStyle = colorToCss(fillColor);
-        }
-        glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
-      });
+      this.drawRangePaintUnits(
+        plan,
+        range,
+        context,
+        (glyphContext, glyph) => {
+          this.drawFillUnit(glyphContext, glyph.glyph, glyph.x, glyph.y, range, layerColor, maskOnly);
+        },
+        (segmentContext, segment) => {
+          this.drawFillUnit(segmentContext, segment.text, segment.x, segment.y, range, layerColor, maskOnly, segment);
+        },
+      );
     }
   }
 
@@ -523,9 +537,13 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     context.fillStyle = gradient;
 
     for (const range of ranges) {
-      this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
-        glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
-      });
+      this.drawRangePaintUnits(
+        plan,
+        range,
+        context,
+        (glyphContext, glyph) => glyphContext.fillText(glyph.glyph, glyph.x, glyph.y),
+        (segmentContext, segment) => this.drawSegmentWithPadding(segmentContext, segment),
+      );
     }
   }
 
@@ -546,25 +564,133 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     context.fillStyle = rawLayer.runtimePattern;
     context.globalAlpha = previousAlpha * (rawLayer.params.opacity ?? 1);
     for (const range of ranges) {
-      this.drawRangeGlyphs(plan, range, context, (glyphContext, glyph) => {
-        glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
-      });
+      this.drawRangePaintUnits(
+        plan,
+        range,
+        context,
+        (glyphContext, glyph) => glyphContext.fillText(glyph.glyph, glyph.x, glyph.y),
+        (segmentContext, segment) => this.drawSegmentWithPadding(segmentContext, segment),
+      );
     }
     context.globalAlpha = previousAlpha;
   }
 
-  private drawRangeGlyphs (
+  private drawFillUnit (
+    context: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    range: RangePlan,
+    layerColor: spec.vec4 | undefined,
+    maskOnly: boolean,
+    segment?: TextPaintSegment,
+  ): void {
+    if (maskOnly) {
+      // The shared object-glow source is a pure, full-alpha white silhouette.
+      // Both the range fill RGB and its alpha are deliberately discarded so
+      // the object glow depends only on the glow layer's own color / blur /
+      // intensity. Letting the range fill alpha (fillOpacity) through makes
+      // editing one segment's fill opacity pulse the glow halo of the whole
+      // text object; letting the RGB through recolors it. Neither is allowed.
+      context.fillStyle = 'rgb(255, 255, 255)';
+    } else {
+      // Honor colors in the same precedence RichText uses: the per-range
+      // fill color wins; then the solid-fill layer's own color (so plain
+      // text presets without a per-range fill still show their fill color);
+      // finally the text style fallback. RichText's `basicStyle.fillColor`
+      // is always set, so this stays byte-identical for rich text.
+      const fillColor = segment
+        ? layerColor ?? range.basicStyle.fillColor ?? this.options.textStyle.textColor
+        : range.basicStyle.fillColor ?? layerColor ?? this.options.textStyle.textColor;
+
+      context.fillStyle = colorToCss(fillColor);
+    }
+    if (segment) {
+      this.drawSegmentWithPadding(context, segment);
+    } else {
+      context.fillText(text, x, y);
+    }
+  }
+
+  /** Preserve the legacy whole-string fill/stroke anti-alias compensation. */
+  private drawSegmentWithPadding (context: CanvasRenderingContext2D, segment: TextPaintSegment): void {
+    context.save();
+    context.lineWidth = 1;
+    context.lineJoin = 'round';
+    context.strokeStyle = context.fillStyle;
+    context.fillText(segment.text, segment.x, segment.y);
+    context.strokeText(segment.text, segment.x, segment.y);
+    context.restore();
+  }
+
+  /** Match the legacy drawer's outer-stroke-only Canvas operation for segments. */
+  private drawSegmentStroke (
+    context: CanvasRenderingContext2D,
+    segment: TextPaintSegment,
+    width: number,
+    color: string,
+  ): void {
+    const offscreen = document.createElement('canvas');
+
+    offscreen.width = context.canvas.width;
+    offscreen.height = context.canvas.height;
+
+    const offscreenContext = offscreen.getContext('2d');
+
+    if (!offscreenContext) {
+      return;
+    }
+
+    offscreenContext.setTransform(context.getTransform());
+    offscreenContext.font = segment.fontRef;
+    offscreenContext.textBaseline = 'alphabetic';
+    offscreenContext.lineJoin = 'round';
+    offscreenContext.lineWidth = width * (this.options.textStyle.fontScale || 1);
+    offscreenContext.strokeStyle = color;
+    offscreenContext.direction = segment.direction ?? 'ltr';
+    offscreenContext.strokeText(segment.text, segment.x, segment.y);
+
+    offscreenContext.globalCompositeOperation = 'destination-out';
+    offscreenContext.fillStyle = 'white';
+    offscreenContext.fillText(segment.text, segment.x, segment.y);
+
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.drawImage(offscreen, 0, 0);
+    context.restore();
+  }
+
+  private drawRangePaintUnits (
     plan: TextRenderPlan,
     range: RangePlan,
     context: CanvasRenderingContext2D,
-    draw: (context: CanvasRenderingContext2D, glyph: PositionedGlyph) => void,
+    drawGlyph: (context: CanvasRenderingContext2D, glyph: PositionedGlyph) => void,
+    drawSegment: (context: CanvasRenderingContext2D, segment: TextPaintSegment) => void,
   ): void {
     context.font = range.basicStyle.fontRef;
-    for (const glyphId of range.glyphIds) {
-      const glyph = plan.glyphs[glyphId];
+    const paintUnits = range.paintUnits ?? range.glyphIds.map(glyphId => ({ kind: 'glyph' as const, glyphId }));
 
-      if (glyph) {
-        draw(context, glyph);
+    for (const unit of paintUnits) {
+      if (unit.kind === 'glyph') {
+        const glyph = plan.glyphs[unit.glyphId];
+
+        if (glyph) {
+          drawGlyph(context, glyph);
+        }
+
+        continue;
+      }
+
+      const segment = plan.textSegments?.[unit.segmentId];
+
+      if (segment) {
+        context.save();
+        context.font = segment.fontRef;
+        if (segment.direction) {
+          context.direction = segment.direction;
+        }
+        drawSegment(context, segment);
+        context.restore();
       }
     }
   }
