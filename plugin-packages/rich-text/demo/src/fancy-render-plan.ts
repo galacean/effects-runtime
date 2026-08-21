@@ -1,11 +1,14 @@
 import {
   BUILTIN_FANCY_PRESETS,
   Player,
+  PresetManager,
   TextComponent,
   spec,
+  type AdjustableParam,
   type BaseLayerConfig,
   type Composition,
   type DecorativeLayerConfig,
+  type FancyConfig,
 } from '@galacean/effects';
 import '@galacean/effects-plugin-rich-text';
 import { RichTextComponent } from '@galacean/effects-plugin-rich-text';
@@ -32,9 +35,14 @@ const plainContainer = document.getElementById('J-plain-container');
 const plainStatus = document.getElementById('plain-status');
 const plainPresetList = document.getElementById('plain-preset-list');
 const plainTextInput = document.getElementById('plain-text') as HTMLInputElement | null;
+const editorTargetSwitch = document.getElementById('editor-target-switch');
+const editorTitleMeta = document.getElementById('editor-title-meta');
+const presetScopeNote = document.getElementById('preset-scope-note');
+const richOnlyElements = Array.from(document.querySelectorAll<HTMLElement>('[data-rich-only]'));
 const captureEnabled = new URLSearchParams(window.location.search).get('capture') === '1';
 
 type PaletteName = 'mint' | 'sunset' | 'mono';
+type EditorTarget = 'rich' | 'plain';
 type ColorHex = string;
 
 interface RangePreset {
@@ -157,6 +165,10 @@ let plainTextComponent: TextComponent | undefined;
 let plainComposition: Composition | undefined;
 let renderPlainComposition: (() => void) | undefined;
 let currentPlainPreset = 'neon';
+let currentRichPreset: string | undefined;
+let editorTarget: EditorTarget = 'rich';
+let plainFancyConfig = PresetManager.getPreset(currentPlainPreset) ?? BUILTIN_FANCY_PRESETS.none;
+let richFancyConfig: FancyConfig;
 let renderScheduled = false;
 let nextSegmentId = 1;
 let lastSelection = { start: 0, end: 0 };
@@ -178,6 +190,22 @@ const plainPresetLabels: Record<string, string> = {
   'flame': '火焰',
   'stereo': '立体',
 };
+
+function activeFancyConfig (): FancyConfig {
+  return editorTarget === 'plain' ? plainFancyConfig : richFancyConfig;
+}
+
+function activePresetKey (): string | undefined {
+  return editorTarget === 'plain' ? currentPlainPreset : currentRichPreset;
+}
+
+function setActiveFancyConfig (config: FancyConfig): void {
+  if (editorTarget === 'plain') {
+    plainFancyConfig = config;
+  } else {
+    richFancyConfig = config;
+  }
+}
 
 function normalizeHex (color: string): string {
   const value = color.replace('#', '').toLowerCase();
@@ -206,6 +234,21 @@ function colorToRgba (color: ColorHex, opacity = alphaFromHex(color)): [number, 
   const blue = parseInt(value.slice(4, 6), 16) / 255;
 
   return [red, green, blue, Math.max(0, Math.min(1, opacity))];
+}
+
+function rgbaToHex (color: readonly number[], includeAlpha = false): string {
+  const scale = color.slice(0, 3).some(channel => channel > 1) ? 1 : 255;
+  const channels = color.slice(0, includeAlpha ? 4 : 3).map((channel, index) => {
+    const value = index === 3 ? channel * 255 : channel * scale;
+
+    return Math.round(Math.max(0, Math.min(255, value ?? 255))).toString(16).padStart(2, '0');
+  });
+
+  while (channels.length < (includeAlpha ? 4 : 3)) {
+    channels.push('ff');
+  }
+
+  return `#${channels.join('')}`;
 }
 
 function colorForInput (color: ColorHex): string {
@@ -478,6 +521,78 @@ function setGlowField (field: GlowField, value: string | number | boolean): void
   }
 }
 
+function sharedLayersFromStyle (style: SharedStyle): BaseLayerConfig[] {
+  const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
+  const layers: BaseLayerConfig[] = [];
+
+  if (style.strokeVisible) {
+    const decorations: DecorativeLayerConfig[] = [];
+
+    if (style.shadowVisible) {
+      decorations.push({
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: colorToRgba(style.shadowColor, style.shadowOpacity), blur: style.shadowBlur, offsetX: offset.offsetX, offsetY: offset.offsetY },
+      });
+    }
+    if (style.glowVisible) {
+      decorations.push({
+        kind: 'glow',
+        category: 'decorative',
+        params: { color: colorToRgba(style.glowColor, style.glowOpacity), blur: style.glowBlur, intensity: style.glowIntensity },
+      });
+    }
+    layers.push({
+      kind: 'single-stroke',
+      category: 'base',
+      params: { color: colorToRgba(style.strokeColor, style.strokeOpacity), width: style.strokeWidth, unit: 'px' },
+      decorations,
+    });
+  }
+  if (style.fillVisible) {
+    layers.push({
+      kind: 'solid-fill',
+      category: 'base',
+      params: { color: colorToRgba(style.fillColor, style.fillOpacity) },
+    });
+  }
+
+  return layers;
+}
+
+function sharedStyleFromFancyConfig (config: FancyConfig, fallback: SharedStyle): SharedStyle {
+  const strokes = config.layers.filter(layer => layer.kind === 'single-stroke');
+  const stroke = strokes[strokes.length - 1];
+  const fill = config.layers.find(layer => layer.kind === 'solid-fill');
+  const decorations = config.layers.flatMap(layer => layer.decorations ?? []);
+  const shadow = decorations.find(layer => layer.kind === 'shadow');
+  const glow = decorations.find(layer => layer.kind === 'glow');
+  const shadowOffsetX = shadow?.kind === 'shadow' ? shadow.params.offsetX : 0;
+  const shadowOffsetY = shadow?.kind === 'shadow' ? shadow.params.offsetY : 0;
+
+  return {
+    ...fallback,
+    fillVisible: Boolean(fill) || config.layers.some(layer => layer.kind === 'gradient' || layer.kind === 'texture'),
+    fillColor: fill?.kind === 'solid-fill' ? rgbaToHex(fill.params.color, true) : fallback.fillColor,
+    fillOpacity: fill?.kind === 'solid-fill' ? fill.params.color[3] : fallback.fillOpacity,
+    strokeVisible: Boolean(stroke),
+    strokeColor: stroke?.kind === 'single-stroke' ? rgbaToHex(stroke.params.color, true) : fallback.strokeColor,
+    strokeOpacity: stroke?.kind === 'single-stroke' ? stroke.params.color[3] : fallback.strokeOpacity,
+    strokeWidth: stroke?.kind === 'single-stroke' ? stroke.params.width : fallback.strokeWidth,
+    shadowVisible: shadow?.kind === 'shadow',
+    shadowColor: shadow?.kind === 'shadow' ? rgbaToHex(shadow.params.color, true) : fallback.shadowColor,
+    shadowOpacity: shadow?.kind === 'shadow' ? shadow.params.color[3] : fallback.shadowOpacity,
+    shadowBlur: shadow?.kind === 'shadow' ? shadow.params.blur : fallback.shadowBlur,
+    shadowDistance: shadow?.kind === 'shadow' ? offsetToDistance(shadowOffsetX, shadowOffsetY) : fallback.shadowDistance,
+    shadowAngle: shadow?.kind === 'shadow' ? offsetToAngle(shadowOffsetX, shadowOffsetY) : fallback.shadowAngle,
+    glowVisible: glow?.kind === 'glow',
+    glowColor: glow?.kind === 'glow' ? rgbaToHex(glow.params.color, true) : fallback.glowColor,
+    glowOpacity: glow?.kind === 'glow' ? glow.params.color[3] : fallback.glowOpacity,
+    glowBlur: glow?.kind === 'glow' ? glow.params.blur : fallback.glowBlur,
+    glowIntensity: glow?.kind === 'glow' ? (glow.params.intensity ?? 1) : fallback.glowIntensity,
+  };
+}
+
 function rangeLayersFromStyle (style: StyleState): BaseLayerConfig[] {
   const layers: BaseLayerConfig[] = [];
   const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
@@ -512,41 +627,6 @@ function rangeLayersFromStyle (style: StyleState): BaseLayerConfig[] {
 }
 
 function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions']>[0] {
-  const sharedOffset = distanceToOffset(sharedStyle.shadowDistance, sharedStyle.shadowAngle);
-  const sharedLayers: Array<Record<string, unknown>> = [];
-
-  if (sharedStyle.strokeVisible) {
-    const decorations: Array<Record<string, unknown>> = [];
-
-    if (sharedStyle.shadowVisible) {
-      decorations.push({
-        kind: 'shadow',
-        category: 'decorative',
-        params: { color: colorToRgba(sharedStyle.shadowColor, sharedStyle.shadowOpacity), blur: sharedStyle.shadowBlur, offsetX: sharedOffset.offsetX, offsetY: sharedOffset.offsetY },
-      });
-    }
-    if (sharedStyle.glowVisible) {
-      decorations.push({
-        kind: 'glow',
-        category: 'decorative',
-        params: { color: colorToRgba(sharedStyle.glowColor, sharedStyle.glowOpacity), blur: sharedStyle.glowBlur, intensity: sharedStyle.glowIntensity },
-      });
-    }
-    sharedLayers.push({
-      kind: 'single-stroke',
-      category: 'base',
-      params: { color: colorToRgba(sharedStyle.strokeColor, sharedStyle.strokeOpacity), width: sharedStyle.strokeWidth, unit: 'px' },
-      decorations,
-    });
-  }
-  if (sharedStyle.fillVisible) {
-    sharedLayers.push({
-      kind: 'solid-fill',
-      category: 'base',
-      params: { color: colorToRgba(sharedStyle.fillColor, sharedStyle.fillOpacity) },
-    });
-  }
-
   const rangeStacks: BaseLayerConfig[][] = [];
   const rangeStackIndexByJson = new Map<string, number>();
   const rangeOverrides: Array<null | number> = [];
@@ -591,7 +671,7 @@ function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions'
     lineHeight: 52,
     fancyRenderPadding: { left: 80, right: 80, top: 80, bottom: 80 },
     fancyConfig: {
-      layers: sharedLayers,
+      ...richFancyConfig,
       rangeStacks: rangeStacks.map(layers => ({ layers })),
       rangeOverrides,
     },
@@ -626,7 +706,7 @@ function scheduleRenderText (): void {
   });
 }
 
-function buildPlainTextOptions (presetKey: string): Record<string, unknown> {
+function buildPlainTextOptions (): Record<string, unknown> {
   return {
     text: plainTextInput?.value || 'Galacean 普通文本',
     fontFamily: 'Arial',
@@ -643,7 +723,7 @@ function buildPlainTextOptions (presetKey: string): Record<string, unknown> {
     overflow: spec.TextOverflow.display,
     wrapEnabled: true,
     autoResize: spec.TextSizeMode.fixed,
-    fancyConfig: BUILTIN_FANCY_PRESETS[presetKey] ?? BUILTIN_FANCY_PRESETS.none,
+    fancyConfig: plainFancyConfig,
   };
 }
 
@@ -679,7 +759,7 @@ function buildPlainTextScene (): Record<string, unknown> {
       id: componentId,
       item: { id: itemId },
       dataType: 'TextComponent',
-      options: buildPlainTextOptions(currentPlainPreset),
+      options: buildPlainTextOptions(),
       renderer: { renderMode: 1 },
     }, {
       id: compositionComponentId,
@@ -730,12 +810,9 @@ function renderPlainPresets (): void {
     button.addEventListener('click', () => {
       const key = button.dataset.plainPreset;
 
-      if (!key) {
-        return;
+      if (key) {
+        applyBuiltinPreset(key, 'plain');
       }
-      currentPlainPreset = key;
-      renderPlainPresets();
-      renderPlainText();
     });
   });
 }
@@ -745,7 +822,7 @@ function renderPlainText (): void {
     return;
   }
 
-  plainTextComponent.updateWithOptions(buildPlainTextOptions(currentPlainPreset) as unknown as Parameters<TextComponent['updateWithOptions']>[0]);
+  plainTextComponent.updateWithOptions(buildPlainTextOptions() as unknown as Parameters<TextComponent['updateWithOptions']>[0]);
   plainTextComponent.isDirty = true;
   plainTextComponent.onUpdate(0);
   renderPlainComposition?.();
@@ -808,22 +885,139 @@ function updateScopeSummary (): void {
   }
 }
 
+function isObjectPresetParam (config: FancyConfig, param: AdjustableParam): boolean {
+  const path = param.path.split('.');
+  const layerIndex = Number(path[1]);
+  const layer = config.layers[layerIndex];
+
+  if (!layer) {
+    return false;
+  }
+
+  const decorationIndex = path.indexOf('decorations');
+
+  if (decorationIndex >= 0) {
+    const decoration = layer.decorations?.[Number(path[decorationIndex + 1])];
+
+    return decoration?.kind === 'glow';
+  }
+
+  return layer.kind === 'gradient' || layer.kind === 'texture';
+}
+
+function renderPresetParameter (param: AdjustableParam): string {
+  const path = escapeHtml(param.path);
+  const label = escapeHtml(param.label);
+
+  if (param.type === 'color' && Array.isArray(param.value)) {
+    return `<div class="param-row wide"><label>${label}</label><input type="color" data-preset-path="${path}" data-preset-type="color" value="${rgbaToHex(param.value)}" /></div>`;
+  }
+
+  if ((param.type === 'number' || param.type === 'angle') && typeof param.value === 'number') {
+    const min = param.min ?? 0;
+    const max = param.max ?? 100;
+    const step = param.step ?? 1;
+    const suffix = param.type === 'angle' ? '°' : '';
+
+    return `<div class="param-row"><label>${label}</label><input type="range" data-preset-path="${path}" data-preset-type="number" min="${min}" max="${max}" step="${step}" value="${param.value}" /><output data-preset-output="${path}">${param.value}${suffix}</output></div>`;
+  }
+
+  if (param.type === 'select' && param.options?.length) {
+    const options = param.options.map(option => `<option value="${escapeHtml(String(option.value))}" ${option.value === param.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('');
+
+    return `<div class="param-row wide"><label>${label}</label><select data-preset-path="${path}" data-preset-type="select">${options}</select></div>`;
+  }
+
+  return '';
+}
+
+function renderPresetConfigSection (config: FancyConfig, objectOnly: boolean): string {
+  const params = PresetManager.getAdjustableParams(config).filter(param => !objectOnly || isObjectPresetParam(config, param));
+
+  if (params.length === 0) {
+    return `<section class="section"><div class="section-label"><span>${objectOnly ? '全文效果' : '预设参数'}</span><small>${objectOnly ? '当前预设没有可调对象效果' : '当前预设没有可调参数'}</small></div><div class="locked-note">${objectOnly ? 'Fill、Stroke 和 Shadow 仍可在当前片段中单独修改。' : '选择其他预设后可继续调节参数。'}</div></section>`;
+  }
+
+  const groups = new Map<string, AdjustableParam[]>();
+
+  for (const param of params) {
+    const group = param.group ?? '参数';
+    const entries = groups.get(group) ?? [];
+
+    entries.push(param);
+    groups.set(group, entries);
+  }
+
+  return Array.from(groups, ([group, entries]) => `<section class="section"><div class="section-label"><span>${escapeHtml(group)}</span><small>${objectOnly ? '全文效果 · 修改作用于整个文本对象' : '预设参数 · 全文'}</small></div><div class="layer-card"><div class="layer-params">${entries.map(renderPresetParameter).join('')}</div></div></section>`).join('');
+}
+
+function syncTargetChrome (): void {
+  editorTargetSwitch?.querySelectorAll<HTMLButtonElement>('[data-editor-target]').forEach(button => {
+    button.dataset.active = String(button.dataset.editorTarget === editorTarget);
+  });
+  richOnlyElements.forEach(element => { element.hidden = editorTarget !== 'rich'; });
+  if (editorTitleMeta) {
+    editorTitleMeta.textContent = editorTarget === 'rich' ? 'RichText · Range + Object' : 'TextComponent · 全文';
+  }
+  if (presetScopeNote) {
+    presetScopeNote.textContent = editorTarget === 'rich' ? '应用到全文，片段可继续覆盖' : '应用到普通文本全文';
+  }
+}
+
+function setEditorTarget (target: EditorTarget): void {
+  editorTarget = target;
+  syncTargetChrome();
+  renderEditor();
+}
+
+function applyBuiltinPreset (key: string, target: EditorTarget = editorTarget): void {
+  const preset = PresetManager.getPreset(key);
+
+  if (!preset) {
+    return;
+  }
+
+  if (target === 'plain') {
+    plainFancyConfig = preset;
+    currentPlainPreset = key;
+    renderPlainPresets();
+    renderPlainText();
+  } else {
+    richFancyConfig = preset;
+    currentRichPreset = key;
+    sharedStyle = sharedStyleFromFancyConfig(preset, sharedStyle);
+    segments.forEach(segment => {
+      segment.override = false;
+      segment.style = cloneStyle(sharedStyle);
+    });
+    selectedSegmentIds = [];
+    lastSelection = { start: 0, end: 0 };
+    renderText();
+  }
+
+  editorTarget = target;
+  syncTargetChrome();
+  renderEditor();
+}
+
 function renderPresets (): void {
   if (!presetList) {
     return;
   }
 
-  presetList.innerHTML = [
-    ['mint', '薄荷 / 紫'],
-    ['sunset', '日落 / 奶油'],
-    ['mono', '黑白 / 青'],
-  ].map(([key, label]) => `<button class="preset-button" type="button" data-preset="${key}" data-active="${key === currentPalette}">${label}</button>`).join('');
+  const current = activePresetKey();
+
+  presetList.innerHTML = Object.keys(PresetManager.getBuiltinPresets())
+    .map(key => `<button class="preset-button" type="button" data-preset="${key}" data-active="${key === current}">${plainPresetLabels[key] ?? key}</button>`)
+    .join('');
 
   presetList.querySelectorAll<HTMLButtonElement>('[data-preset]').forEach(button => {
     button.addEventListener('click', () => {
-      const paletteName = button.dataset.preset as PaletteName;
+      const key = button.dataset.preset;
 
-      applyPalette(paletteName);
+      if (key) {
+        applyBuiltinPreset(key);
+      }
     });
   });
 }
@@ -985,12 +1179,23 @@ function renderGlowLayer (selected: Array<{ segment: SegmentState, index: number
 function renderEffectsSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
   const multiple = selected.length > 1;
 
-  return `<section class="section"><div class="section-label"><span>效果</span><small>${multiple ? '多选批量修改 Shadow · Glow 全文级' : 'Shadow · Range / Glow · Object'}</small></div>${inheritanceMarkup(selected)}${renderShadowLayer(style, selected)}${renderGlowLayer(selected)}</section>`;
+  return `<section class="section"><div class="section-label"><span>效果</span><small>${multiple ? '多选批量修改' : 'Shadow · Range'}</small></div>${inheritanceMarkup(selected)}${renderShadowLayer(style, selected)}</section>`;
 }
 
 function renderEditor (): void {
-  updateSelectionState();
+  syncTargetChrome();
   renderPresets();
+
+  if (editorTarget === 'plain') {
+    if (editorSections) {
+      editorSections.innerHTML = renderPresetConfigSection(plainFancyConfig, false);
+      bindPresetParamControls();
+    }
+
+    return;
+  }
+
+  updateSelectionState();
   renderScopes();
   renderSegments();
   updateScopeSummary();
@@ -998,11 +1203,56 @@ function renderEditor (): void {
   if (editorSections) {
     const selected = selectedSegmentEntries();
     const style = selected.length > 0 ? styleForSegment(selected[0].segment) : sharedStyle;
+    const all = isAllSegmentsSelected();
 
-    editorSections.innerHTML = `${renderFillSection(style, selected)}${renderStrokeSection(style, selected)}${renderEffectsSection(style, selected)}`;
+    editorSections.innerHTML = all
+      ? renderPresetConfigSection(richFancyConfig, false)
+      : `${renderFillSection(style, selected)}${renderStrokeSection(style, selected)}${renderEffectsSection(style, selected)}${renderPresetConfigSection(richFancyConfig, true)}`;
     bindEditorControls();
+    bindPresetParamControls();
     updateControlReadouts();
   }
+}
+
+function bindPresetParamControls (): void {
+  editorSections?.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-preset-path]').forEach(input => {
+    input.addEventListener('input', () => {
+      const path = input.dataset.presetPath;
+      const type = input.dataset.presetType;
+
+      if (!path) {
+        return;
+      }
+
+      const config = activeFancyConfig();
+      const param = PresetManager.getAdjustableParams(config).find(item => item.path === path);
+      let value: unknown = input.value;
+
+      if (type === 'number') {
+        value = Number(input.value);
+      } else if (type === 'color') {
+        const currentColor = Array.isArray(param?.value) ? param.value : [1, 1, 1, 1];
+
+        value = colorToRgba(input.value, Number(currentColor[3] ?? 1));
+      }
+
+      const nextConfig = PresetManager.updateParamByPath(config, path, value);
+
+      setActiveFancyConfig(nextConfig);
+      const output = editorSections.querySelector<HTMLOutputElement>(`[data-preset-output="${path}"]`);
+
+      if (output) {
+        output.value = input.value;
+      }
+
+      if (editorTarget === 'plain') {
+        renderPlainText();
+      } else {
+        sharedStyle = sharedStyleFromFancyConfig(richFancyConfig, sharedStyle);
+        scheduleRenderText();
+      }
+    });
+  });
 }
 
 function updateControlReadouts (): void {
@@ -1356,12 +1606,22 @@ async function main (): Promise<void> {
   }
 
   sharedStyle = createSharedStyle(currentPalette);
+  richFancyConfig = { layers: sharedLayersFromStyle(sharedStyle) };
   segments = createInitialSegments(currentPalette);
   normalizeSegments();
   textInput.value = editorText;
   updateSelectionListeners();
   splitSelectionButton?.addEventListener('click', splitSelection);
   mergeSelectionButton?.addEventListener('click', mergeSelection);
+  editorTargetSwitch?.querySelectorAll<HTMLButtonElement>('[data-editor-target]').forEach(button => {
+    button.addEventListener('click', () => {
+      const target = button.dataset.editorTarget as EditorTarget | undefined;
+
+      if (target) {
+        setEditorTarget(target);
+      }
+    });
+  });
   renderEditor();
 
   const player = new Player({ container, manualRender: true });

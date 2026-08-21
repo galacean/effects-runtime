@@ -163,6 +163,11 @@
       .editor-card { background: var(--panel); }
       .editor-body { padding: 12px; }
       .editor-title-meta { color: var(--quiet); font-size: 11px; }
+      .editor-head-tools { display: flex; align-items: center; gap: 10px; }
+      .target-switch { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: #202020; }
+      .target-button { border: 0; border-radius: 5px; padding: 6px 9px; background: transparent; color: #858585; font-size: 10px; cursor: pointer; }
+      .target-button[data-active="true"] { background: #424242; color: #f3f3f3; }
+      [hidden] { display: none !important; }
 
       .preset-strip { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 12px; border-bottom: 1px solid #414141; }
       .preset-button, .scope-button, .segment-row, .tool-button, .layer-action { border: 0; cursor: pointer; }
@@ -310,7 +315,7 @@
       <div class="eyebrow">RichText / Fancy Editor</div>
       <div class="intro">
         <h1>富文本花字</h1>
-        <p class="lede">沿用平台文本花字面板。先切段，再针对当前片段编辑 Fill、Stroke 和 Shadow；Glow 保持为全文效果。</p>
+        <p class="lede">普通文本与策略富文本共用同一套预设。预设默认应用全文；富文本片段可继续覆盖 Fill、Stroke 和 Shadow，全局效果始终可编辑。</p>
       </div>
 
       <section class="layout">
@@ -334,16 +339,22 @@
         <aside class="card editor-card">
           <header class="card-head">
             <h2>花字样式编辑器</h2>
-            <span class="editor-title-meta">RichText</span>
+            <div class="editor-head-tools">
+              <div class="target-switch" id="editor-target-switch" aria-label="编辑对象">
+                <button class="target-button" type="button" data-editor-target="rich" data-active="true">策略富文本</button>
+                <button class="target-button" type="button" data-editor-target="plain" data-active="false">普通文本</button>
+              </div>
+              <span class="editor-title-meta" id="editor-title-meta">RichText</span>
+            </div>
           </header>
           <div class="editor-body">
-            <div class="section-label"><span>预设</span><small>应用到全文和片段</small></div>
+            <div class="section-label"><span>预设</span><small id="preset-scope-note">默认应用到全文</small></div>
             <div class="preset-strip" id="preset-list"></div>
 
-            <div class="scope-label"><span>当前作用范围</span><small id="scope-summary">全文</small></div>
-            <div class="scope-switch" id="scope-switch"></div>
+            <div class="scope-label" data-rich-only><span>当前作用范围</span><small id="scope-summary">全文</small></div>
+            <div class="scope-switch" id="scope-switch" data-rich-only></div>
 
-            <div class="text-editor">
+            <div class="text-editor" data-rich-only>
               <div class="text-editor-head"><strong>文本与切段</strong><span>选择文字后拆分</span></div>
               <textarea id="text" spellcheck="false">Range A  Range B
 跨行仍是同一个 source range</textarea>
@@ -356,12 +367,12 @@
               </div>
             </div>
 
-            <div class="section-label"><span>片段</span><small>跟随文本选区</small></div>
-            <div class="segment-list" id="segment-list"></div>
+            <div class="section-label" data-rich-only><span>片段</span><small>跟随文本选区</small></div>
+            <div class="segment-list" id="segment-list" data-rich-only></div>
 
             <div id="editor-sections"></div>
 
-            <details class="diagnostics">
+            <details class="diagnostics" data-rich-only>
               <summary>Render plan diagnostics</summary>
               <div class="metric-grid">
                 <div class="metric"><span>Glyphs</span><strong id="glyph-count">—</strong></div>
