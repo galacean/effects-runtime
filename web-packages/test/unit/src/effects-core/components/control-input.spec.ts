@@ -2,7 +2,9 @@ import type { Control } from '@galacean/effects';
 import {
   Composition,
   ContainerControl,
+  CursorShape,
   FocusMode,
+  InputEvent,
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
@@ -18,25 +20,25 @@ import {
 } from '@galacean/effects';
 
 const { expect } = chai;
-const { Vector2 } = math;
+const { Matrix3, Vector2 } = math;
 
 class RecordingControl extends ContainerControl {
   readonly log: string[] = [];
 
-  override onMouseDown (position: math.Vector2): void {
-    this.log.push(`down:${position.x},${position.y}`);
+  override onMouseDown (event: InputEventMouseButton): void {
+    this.log.push(`down:${event.position.x},${event.position.y}`);
   }
 
-  override onMouseMove (position: math.Vector2): void {
-    this.log.push(`move:${position.x},${position.y}`);
+  override onMouseMove (event: InputEventMouseMotion): void {
+    this.log.push(`move:${event.position.x},${event.position.y}`);
   }
 
-  override onTouchDown (position: math.Vector2, pointerId: number): void {
-    this.log.push(`touch-down:${pointerId}:${position.x},${position.y}`);
+  override onTouchDown (event: InputEventScreenTouch): void {
+    this.log.push(`touch-down:${event.index}:${event.position.x},${event.position.y}`);
   }
 
-  override onTouchMove (position: math.Vector2, pointerId: number): void {
-    this.log.push(`touch-move:${pointerId}:${position.x},${position.y}`);
+  override onTouchMove (event: InputEventScreenDrag): void {
+    this.log.push(`touch-move:${event.index}:${event.position.x},${event.position.y}`);
   }
 
   override onKeyDown (event: InputEventKey): void {
@@ -65,6 +67,13 @@ class SelfHidingControl extends HoverRecordingControl {
   }
 }
 
+class AcceptingControl extends RecordingControl {
+  override onMouseDown (event: InputEventMouseButton): void {
+    super.onMouseDown(event);
+    event.accept();
+  }
+}
+
 describe('core/gui input', () => {
   let player: Player;
   let composition: Composition;
@@ -83,6 +92,29 @@ describe('core/gui input', () => {
 
   afterEach(() => player.dispose());
 
+  it('keeps acceptance state on InputEvent', () => {
+    const event = new InputEvent();
+
+    event.accept();
+    expect(event.isAccepted()).equals(true);
+    event.clearAccepted();
+    expect(event.isAccepted()).equals(false);
+  });
+
+  it('only clones spatial events', () => {
+    const transform = new Matrix3();
+    const keyEvent = new InputEventKey();
+    const mouseEvent = mouseButton(20, 20, true);
+    const localMouseEvent = mouseEvent.xformedBy(transform);
+
+    expect(keyEvent.xformedBy(transform)).equals(keyEvent);
+    expect(localMouseEvent).not.equals(mouseEvent);
+
+    localMouseEvent.accept();
+    expect(localMouseEvent.isAccepted()).equals(true);
+    expect(mouseEvent.isAccepted()).equals(false);
+  });
+
   it('dispatches to the front-most control and bubbles through Pass parents', () => {
     const parent = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 100);
     const child = addControl(parent.item!, new RecordingControl(player.engine), 10, 10, 40, 40);
@@ -95,6 +127,24 @@ describe('core/gui input', () => {
     player.engine.windowRoot.pushInput(event);
     expect(child.log).deep.equals(['down:10,10']);
     expect(parent.log).deep.equals(['down:20,20']);
+  });
+
+  it('uses InputEvent acceptance to stop bubbling and report handled input', () => {
+    const parent = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 100);
+    const child = addControl(parent.item!, new AcceptingControl(player.engine), 10, 10, 40, 40);
+
+    parent.mouseFilter = MouseFilter.Pass;
+    child.mouseFilter = MouseFilter.Pass;
+    const event = mouseButton(20, 20, true);
+
+    player.engine.windowRoot.pushInput(event);
+    expect(child.log).deep.equals(['down:10,10']);
+    expect(parent.log).deep.equals([]);
+    expect(event.isAccepted()).equals(true);
+    expect(player.engine.windowRoot.isInputHandled()).equals(true);
+
+    event.clearAccepted();
+    expect(event.isAccepted()).equals(false);
   });
 
   it('uses reverse child order for hit testing', () => {
@@ -326,6 +376,20 @@ describe('core/gui input', () => {
     expect(player.engine.windowRoot.getMousePosition()).deep.equals(new Vector2(35, 55));
     expect(control.getLocalMousePosition()).deep.equals(new Vector2(25, 35));
     expect('getMousePosition' in composition.uiCanvas.rootControl).equals(false);
+  });
+
+  it('supports custom CSS cursors and refreshes cursor changes immediately', () => {
+    const control = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 100);
+    const motion = new InputEventMouseMotion();
+
+    control.defaultCursorShape = CursorShape.PointingHand;
+    motion.position.set(10, 10);
+    motion.globalPosition.copyFrom(motion.position);
+    player.engine.windowRoot.pushInput(motion);
+    expect(player.canvas.style.cursor).equals('pointer');
+
+    control.defaultCursorShape = 'grabbing';
+    expect(player.canvas.style.cursor).equals('grabbing');
   });
 });
 

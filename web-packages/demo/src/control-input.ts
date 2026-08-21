@@ -128,47 +128,41 @@ class DemoControl extends ContainerControl {
     appendLog(this.label, 'mouse exit');
   }
 
-  override onMouseDown (
-    location: Vector2,
-    button: MouseButton,
-    event: InputEventMouseButton,
-  ): void {
-    this.pressed = button === MouseButton.Left;
-    appendLog(this.label, `mouse down (${MouseButton[button]})`, location);
+  override onMouseDown (event: InputEventMouseButton): void {
+    const { buttonIndex, position } = event;
+
+    this.pressed = buttonIndex === MouseButton.Left;
+    appendLog(this.label, `mouse down (${MouseButton[buttonIndex]})`, position);
     if (this.acceptMouseButtons) {
-      appendLog(this.label, 'acceptEvent()');
-      this.acceptEvent();
+      appendLog(this.label, 'event.accept()');
+      event.accept();
     }
     reportHandled(this.engine);
   }
 
-  override onMouseUp (
-    location: Vector2,
-    button: MouseButton,
-    event: InputEventMouseButton,
-  ): void {
+  override onMouseUp (event: InputEventMouseButton): void {
+    const { buttonIndex, position } = event;
+
     this.pressed = false;
-    appendLog(this.label, `mouse up (${MouseButton[button]})`, location);
+    appendLog(this.label, `mouse up (${MouseButton[buttonIndex]})`, position);
     if (this.acceptMouseButtons) {
-      appendLog(this.label, 'acceptEvent()');
-      this.acceptEvent();
+      appendLog(this.label, 'event.accept()');
+      event.accept();
     }
     reportHandled(this.engine);
   }
 
-  override onMouseMove (location: Vector2, event: InputEventMouseMotion): void {
+  override onMouseMove (event: InputEventMouseMotion): void {
     if ((event.buttonMask & MouseButtonMask.Left) !== 0) {
-      appendLog(this.label, 'mouse drag', location);
+      appendLog(this.label, 'mouse drag', event.position);
     }
     reportHandled(this.engine);
   }
 
-  override onMouseWheel (
-    location: Vector2,
-    delta: number,
-    event: InputEventMouseButton,
-  ): void {
-    appendLog(this.label, `wheel (${delta.toFixed(0)})`, location);
+  override onMouseWheel (event: InputEventMouseButton): void {
+    const direction = event.buttonIndex === MouseButton.WheelUp || event.buttonIndex === MouseButton.WheelLeft ? 1 : -1;
+
+    appendLog(this.label, `wheel (${(direction * event.factor).toFixed(0)})`, event.position);
     reportHandled(this.engine);
   }
 
@@ -365,7 +359,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-filter]
 
 acceptInput.addEventListener('change', () => {
   front.acceptMouseButtons = acceptInput.checked;
-  appendLog('settings', `acceptEvent = ${acceptInput.checked}`);
+  appendLog('settings', `event.accept = ${acceptInput.checked}`);
 });
 
 clearButton.addEventListener('click', () => {
