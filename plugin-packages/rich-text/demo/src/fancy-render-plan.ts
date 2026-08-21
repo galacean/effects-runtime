@@ -647,16 +647,20 @@ function buildPlainTextOptions (presetKey: string): Record<string, unknown> {
   };
 }
 
-/** 最小内联场景：一个 TextComponent（普通文本）元素，预览尺寸与富文本一致。 */
+/**
+ * 最小内联场景：一个 TextComponent（普通文本）元素，预览尺寸与富文本一致。
+ * 使用 3.7 的场景树结构，避免 `version36Migration` 把普通文本 quad 再缩小一次。
+ */
 function buildPlainTextScene (): Record<string, unknown> {
   const componentId = 'plain-text-comp';
   const itemId = 'plain-item';
+  const compositionComponentId = 'plain-composition-component';
 
   return {
     playerVersion: { web: '2.1.2', native: '0.0.1' },
     images: [],
     fonts: [],
-    version: '3.1',
+    version: '3.7',
     shapes: [],
     type: 'ge',
     compositionId: 'plain-composition',
@@ -667,9 +671,9 @@ function buildPlainTextScene (): Record<string, unknown> {
       startTime: 0,
       endBehavior: 4,
       previewSize: [750, 750],
-      items: [{ id: itemId }],
+      components: [{ id: compositionComponentId }],
+      children: [{ id: itemId }],
       camera: { fov: 60, far: 40, near: 0.1, clipMode: 1, position: [0, 0, 8], rotation: [0, 0, 0] },
-      sceneBindings: [],
     }],
     components: [{
       id: componentId,
@@ -677,6 +681,11 @@ function buildPlainTextScene (): Record<string, unknown> {
       dataType: 'TextComponent',
       options: buildPlainTextOptions(currentPlainPreset),
       renderer: { renderMode: 1 },
+    }, {
+      id: compositionComponentId,
+      item: { id: 'plain-composition' },
+      dataType: 'CompositionComponent',
+      sceneBindings: [],
     }],
     items: [{
       id: itemId,
@@ -693,6 +702,8 @@ function buildPlainTextScene (): Record<string, unknown> {
         scale: { x: 1, y: 1, z: 1 },
       },
       components: [{ id: componentId }],
+      children: [],
+      content: { options: {} },
       dataType: 'VFXItemData',
     }],
     geometries: [],
