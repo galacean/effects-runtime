@@ -33,7 +33,6 @@ const rangeList = document.getElementById('range-list');
 const objectList = document.getElementById('object-list');
 const plainContainer = document.getElementById('J-plain-container');
 const plainStatus = document.getElementById('plain-status');
-const plainPresetList = document.getElementById('plain-preset-list');
 const plainTextInput = document.getElementById('plain-text') as HTMLInputElement | null;
 const editorTargetSwitch = document.getElementById('editor-target-switch');
 const editorTitleMeta = document.getElementById('editor-title-meta');
@@ -891,26 +890,6 @@ function buildPlainTextScene (): Record<string, unknown> {
   };
 }
 
-function renderPlainPresets (): void {
-  if (!plainPresetList) {
-    return;
-  }
-
-  plainPresetList.innerHTML = Object.keys(BUILTIN_FANCY_PRESETS)
-    .map(key => `<button class="preset-button" type="button" data-plain-preset="${key}" data-active="${key === currentPlainPreset}">${plainPresetLabels[key] ?? key}</button>`)
-    .join('');
-
-  plainPresetList.querySelectorAll<HTMLButtonElement>('[data-plain-preset]').forEach(button => {
-    button.addEventListener('click', () => {
-      const key = button.dataset.plainPreset;
-
-      if (key) {
-        applyBuiltinPreset(key, 'plain');
-      }
-    });
-  });
-}
-
 function renderPlainText (): void {
   if (!plainTextComponent) {
     return;
@@ -953,7 +932,6 @@ async function initPlainText (): Promise<void> {
   Reflect.set(window, '__plainTextDemo', plainTextComponent);
 
   plainTextInput.addEventListener('input', renderPlainText);
-  renderPlainPresets();
   renderPlainText();
   if (plainStatus) {
     plainStatus.textContent = 'editor online';
@@ -1075,7 +1053,6 @@ function applyBuiltinPreset (key: string, target: EditorTarget = editorTarget): 
     plainFancyConfig = preset;
     plainStyle = sharedStyleFromFancyConfig(preset, plainStyle);
     currentPlainPreset = key;
-    renderPlainPresets();
     renderPlainText();
   } else {
     richFancyConfig = preset;
