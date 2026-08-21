@@ -29,6 +29,19 @@ export class InputEvent {
   device = 0;
   pressed = false;
   canceled = false;
+  private _accepted = false;
+
+  accept (): void {
+    this._accepted = true;
+  }
+
+  clearAccepted (): void {
+    this._accepted = false;
+  }
+
+  isAccepted (): boolean {
+    return this._accepted;
+  }
 
   isPressed (): boolean {
     return this.pressed && !this.canceled;
@@ -47,13 +60,7 @@ export class InputEvent {
   }
 
   xformedBy (transform: Matrix3): InputEvent {
-    const event = new InputEvent();
-
-    event.device = this.device;
-    event.pressed = this.pressed;
-    event.canceled = this.canceled;
-
-    return event;
+    return this;
   }
 }
 
@@ -74,14 +81,6 @@ export class InputEventWithModifiers extends InputEvent {
     event.metaPressed = this.metaPressed;
     event.ctrlPressed = this.ctrlPressed;
   }
-
-  override xformedBy (transform: Matrix3): InputEventWithModifiers {
-    const event = new InputEventWithModifiers();
-
-    this.copyModifiersTo(event);
-
-    return event;
-  }
 }
 
 export class InputEventKey extends InputEventWithModifiers {
@@ -95,20 +94,6 @@ export class InputEventKey extends InputEventWithModifiers {
   override isEcho (): boolean {
     return this.echo;
   }
-
-  override xformedBy (transform: Matrix3): InputEventKey {
-    const event = new InputEventKey();
-
-    this.copyModifiersTo(event);
-    event.keycode = this.keycode;
-    event.physicalKeycode = this.physicalKeycode;
-    event.keyLabel = this.keyLabel;
-    event.unicode = this.unicode;
-    event.location = this.location;
-    event.echo = this.echo;
-
-    return event;
-  }
 }
 
 export class InputEventMouse extends InputEventWithModifiers {
@@ -121,15 +106,6 @@ export class InputEventMouse extends InputEventWithModifiers {
     event.buttonMask = this.buttonMask;
     event.position.copyFrom(this.position);
     event.globalPosition.copyFrom(this.globalPosition);
-  }
-
-  override xformedBy (transform: Matrix3): InputEventMouse {
-    const event = new InputEventMouse();
-
-    this.copyMouseTo(event);
-    event.position.copyFrom(transformPoint(transform, this.position));
-
-    return event;
   }
 }
 

@@ -3,12 +3,12 @@ import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { Engine } from '../engine';
 import type {
+  CursorStyle,
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  MouseButton,
 } from '../input';
 import {
   CursorShape,
@@ -74,7 +74,7 @@ export class Control {
   private _mouseBehaviorRecursive = MouseBehaviorRecursive.Inherited;
   private _focusMode = FocusMode.None;
   private _focusBehaviorRecursive = FocusBehaviorRecursive.Inherited;
-  private _defaultCursorShape = CursorShape.Arrow;
+  private _defaultCursorShape: CursorStyle = CursorShape.Arrow;
   private _rotation = 0;
   private transformDirty = true;
   private readonly cachedTransform = new Matrix3();
@@ -207,12 +207,16 @@ export class Control {
     }
   }
 
-  get defaultCursorShape (): CursorShape {
+  get defaultCursorShape (): CursorStyle {
     return this._defaultCursorShape;
   }
 
-  set defaultCursorShape (value: CursorShape) {
+  set defaultCursorShape (value: CursorStyle) {
+    if (this._defaultCursorShape === value) {
+      return;
+    }
     this._defaultCursorShape = value;
+    this.root?.updateMouseCursorState();
   }
 
   get location (): Vector2 {
@@ -485,12 +489,8 @@ export class Control {
     return this.enabledInHierarchy && this.isFocusRecursiveEnabled() ? this.focusMode : FocusMode.None;
   }
 
-  getCursorShape (position: Vector2): CursorShape {
+  getCursorShape (position: Vector2): CursorStyle {
     return this.defaultCursorShape;
-  }
-
-  acceptEvent (): void {
-    this.root?.acceptControlEvent(this);
   }
 
   focus (): void {
@@ -620,14 +620,14 @@ export class Control {
   }
 
   onMouseEnter (location: Vector2): void {}
-  onMouseMove (location: Vector2, event: InputEventMouseMotion): void {}
+  onMouseMove (event: InputEventMouseMotion): void {}
   onMouseLeave (): void {}
-  onMouseWheel (location: Vector2, delta: number, event: InputEventMouseButton): void {}
-  onMouseDown (location: Vector2, button: MouseButton, event: InputEventMouseButton): void {}
-  onMouseUp (location: Vector2, button: MouseButton, event: InputEventMouseButton): void {}
-  onTouchDown (location: Vector2, pointerId: number, event: InputEventScreenTouch): void {}
-  onTouchMove (location: Vector2, pointerId: number, event: InputEventScreenDrag): void {}
-  onTouchUp (location: Vector2, pointerId: number, event: InputEventScreenTouch): void {}
+  onMouseWheel (event: InputEventMouseButton): void {}
+  onMouseDown (event: InputEventMouseButton): void {}
+  onMouseUp (event: InputEventMouseButton): void {}
+  onTouchDown (event: InputEventScreenTouch): void {}
+  onTouchMove (event: InputEventScreenDrag): void {}
+  onTouchUp (event: InputEventScreenTouch): void {}
   onKeyDown (event: InputEventKey): void {}
   onKeyUp (event: InputEventKey): void {}
   onGotFocus (): void {}
@@ -850,11 +850,11 @@ export abstract class RootControl extends ContainerControl {
   abstract guiGetDragData (): unknown;
   abstract guiIsDragSuccessful (): boolean;
   abstract guiCancelDrag (): void;
-  abstract acceptControlEvent (control: Control): void;
   abstract grabControlFocus (control: Control): void;
   abstract grabControlClickFocus (control: Control): void;
   abstract releaseControlFocus (control?: Control): void;
   abstract warpControlMouse (position: Vector2): void;
+  abstract updateMouseCursorState (): void;
   abstract controlStateChanged (control: Control): void;
   abstract controlRemoved (control: Control): void;
   abstract controlTreeChanged (): void;

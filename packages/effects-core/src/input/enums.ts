@@ -70,3 +70,6 @@ export enum CursorShape {
   Hsplit,
   Help,
 }
+
+/** A preset cursor shape or a complete CSS cursor value. */
+export type CursorStyle = CursorShape | string;

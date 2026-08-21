@@ -15,7 +15,7 @@ import {
   MouseButtonMask,
   MouseFilter,
 } from '../input';
-import type { InputEvent } from '../input';
+import type { CursorStyle, InputEvent } from '../input';
 import type { Control } from './control';
 import { ContainerControl, RootControl } from './control';
 
@@ -52,12 +52,6 @@ function getButtonMask (button: MouseButton): number {
 
 function isWheelButton (button: MouseButton): boolean {
   return button >= MouseButton.WheelUp && button <= MouseButton.WheelRight;
-}
-
-function getWheelDelta (event: InputEventMouseButton): number {
-  return event.buttonIndex === MouseButton.WheelUp || event.buttonIndex === MouseButton.WheelLeft
-    ? event.factor
-    : -event.factor;
 }
 
 type GUIState = {
@@ -127,7 +121,7 @@ export class CanvasContainer extends ContainerControl {
 export class WindowRootControl extends RootControl {
   readonly canvases: CanvasContainer;
   dragThreshold = 10;
-  private inputHandled = false;
+  private lastInput: InputEvent | null = null;
   private readonly gui: GUIState = {
     mouseFocus: null,
     mouseClickGrabber: null,
@@ -156,14 +150,15 @@ export class WindowRootControl extends RootControl {
   }
 
   pushInput (event: InputEvent): void {
-    this.inputHandled = false;
+    event.clearAccepted();
+    this.lastInput = event;
     this.cleanupInternalState();
     this.processGUIInput(event);
     this.postGrabClickFocus();
   }
 
   isInputHandled (): boolean {
-    return this.inputHandled;
+    return this.lastInput?.isAccepted() ?? false;
   }
 
   override getMousePosition (): Vector2 {
@@ -192,12 +187,6 @@ export class WindowRootControl extends RootControl {
 
   override guiCancelDrag (): void {
     this.endDragging(false);
-  }
-
-  override acceptControlEvent (control: Control): void {
-    if (this.isControlUsable(control)) {
-      this.inputHandled = true;
-    }
   }
 
   override grabControlFocus (control: Control): void {
@@ -235,6 +224,18 @@ export class WindowRootControl extends RootControl {
   override warpControlMouse (position: Vector2): void {
     this.gui.lastMousePosition.copyFrom(position);
     this.updateMouseOver(position);
+    this.updateMouseCursorState();
+  }
+
+  override updateMouseCursorState (): void {
+    const position = this.gui.lastMousePosition;
+    const target = this.isControlUsable(this.gui.mouseFocus)
+      ? this.gui.mouseFocus
+      : this.isControlUsable(this.gui.mouseOver)
+        ? this.gui.mouseOver
+        : null;
+
+    this.updateCursor(target, position);
   }
 
   override controlStateChanged (control: Control): void {
@@ -416,13 +417,18 @@ export class WindowRootControl extends RootControl {
       const filter = current.getEffectiveMouseFilter();
 
       if (filter !== MouseFilter.Ignore) {
-        this.callControlInput(current, event.xformedBy(this.getGlobalInverse(current)));
+        const localEvent = event.xformedBy(this.getGlobalInverse(current));
+
+        this.callControlInput(current, localEvent);
+        if (localEvent.isAccepted()) {
+          event.accept();
+        }
       }
       const forcePassWheel = event instanceof InputEventMouseButton && isWheelButton(event.buttonIndex) &&
         current.mouseForcePassScrollEvents;
 
-      if (this.inputHandled || (filter === MouseFilter.Stop && pointerEvent && !forcePassWheel)) {
-        this.inputHandled = true;
+      if (event.isAccepted() || (filter === MouseFilter.Stop && pointerEvent && !forcePassWheel)) {
+        event.accept();
 
         return;
       }
@@ -433,22 +439,22 @@ export class WindowRootControl extends RootControl {
   private callControlInput (control: Control, event: InputEvent): void {
     if (event instanceof InputEventMouseButton) {
       if (isWheelButton(event.buttonIndex)) {
-        control.onMouseWheel(event.position, getWheelDelta(event), event);
+        control.onMouseWheel(event);
       } else if (event.isPressed()) {
-        control.onMouseDown(event.position, event.buttonIndex, event);
+        control.onMouseDown(event);
       } else {
-        control.onMouseUp(event.position, event.buttonIndex, event);
+        control.onMouseUp(event);
       }
     } else if (event instanceof InputEventMouseMotion) {
-      control.onMouseMove(event.position, event);
+      control.onMouseMove(event);
     } else if (event instanceof InputEventScreenTouch) {
       if (event.isPressed()) {
-        control.onTouchDown(event.position, event.index, event);
+        control.onTouchDown(event);
       } else {
-        control.onTouchUp(event.position, event.index, event);
+        control.onTouchUp(event);
       }
     } else if (event instanceof InputEventScreenDrag) {
-      control.onTouchMove(event.position, event.index, event);
+      control.onTouchMove(event);
     } else if (event instanceof InputEventKey) {
       if (event.isPressed()) {
         control.onKeyDown(event);
@@ -628,13 +634,13 @@ export class WindowRootControl extends RootControl {
 
   private updateCursor (target: Control | null, position: Vector2): void {
     let current = target;
-    let shape = CursorShape.Arrow;
+    let cursor: CursorStyle = CursorShape.Arrow;
 
     while (current && current !== this) {
       const candidate = current.getCursorShape(this.toLocal(current, position));
 
       if (candidate !== CursorShape.Arrow) {
-        shape = candidate;
+        cursor = candidate;
 
         break;
       }
@@ -643,7 +649,7 @@ export class WindowRootControl extends RootControl {
       }
       current = current.parent;
     }
-    this.engine.canvas.style.cursor = cursorNames[shape];
+    this.engine.canvas.style.cursor = typeof cursor === 'string' ? cursor : cursorNames[cursor];
   }
 
   private postGrabClickFocus (): void {
