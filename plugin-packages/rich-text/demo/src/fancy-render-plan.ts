@@ -169,6 +169,7 @@ let currentRichPreset: string | undefined;
 let editorTarget: EditorTarget = 'rich';
 let plainFancyConfig = PresetManager.getPreset(currentPlainPreset) ?? BUILTIN_FANCY_PRESETS.none;
 let richFancyConfig: FancyConfig;
+let plainStyle: SharedStyle;
 let renderScheduled = false;
 let nextSegmentId = 1;
 let lastSelection = { start: 0, end: 0 };
@@ -445,14 +446,16 @@ function ensureSegmentOverride (segment: SegmentState): StyleState {
 }
 
 function setStyleField (field: StyleField, value: string | number | boolean): void {
-  const targets = selectedSegments();
-  const styles = targets.length > 0
-    ? targets.map(segment => ensureSegmentOverride(segment))
-    : [sharedStyle];
+  const targets = editorTarget === 'plain' ? [] : selectedSegments();
+  const styles = editorTarget === 'plain'
+    ? [plainStyle]
+    : targets.length > 0
+      ? targets.map(segment => ensureSegmentOverride(segment))
+      : [sharedStyle];
 
   // 全文（默认全选）修改时同步更新 sharedStyle，让“全文默认样式”与当前显示
   // 一致，避免“全部恢复继承”后跳回旧的默认值。
-  if (isAllSegmentsSelected() && !styles.includes(sharedStyle)) {
+  if (editorTarget === 'rich' && isAllSegmentsSelected() && !styles.includes(sharedStyle)) {
     styles.unshift(sharedStyle);
   }
 
@@ -499,25 +502,35 @@ function setStyleField (field: StyleField, value: string | number | boolean): vo
         break;
     }
   }
+
+  if (editorTarget === 'plain') {
+    plainFancyConfig = updatePlainConfigFromStyle(plainFancyConfig, plainStyle);
+  }
 }
 
 function setGlowField (field: GlowField, value: string | number | boolean): void {
+  const target = editorTarget === 'plain' ? plainStyle : sharedStyle;
+
   switch (field) {
-    case 'glowVisible': sharedStyle.glowVisible = Boolean(value);
+    case 'glowVisible': target.glowVisible = Boolean(value);
 
       break;
-    case 'glowColor': sharedStyle.glowColor = String(value);
+    case 'glowColor': target.glowColor = String(value);
 
       break;
-    case 'glowOpacity': sharedStyle.glowOpacity = Number(value) / 100;
+    case 'glowOpacity': target.glowOpacity = Number(value) / 100;
 
       break;
-    case 'glowBlur': sharedStyle.glowBlur = Number(value);
+    case 'glowBlur': target.glowBlur = Number(value);
 
       break;
-    case 'glowIntensity': sharedStyle.glowIntensity = Number(value);
+    case 'glowIntensity': target.glowIntensity = Number(value);
 
       break;
+  }
+
+  if (editorTarget === 'plain') {
+    plainFancyConfig = updatePlainConfigFromStyle(plainFancyConfig, plainStyle);
   }
 }
 
@@ -591,6 +604,87 @@ function sharedStyleFromFancyConfig (config: FancyConfig, fallback: SharedStyle)
     glowBlur: glow?.kind === 'glow' ? glow.params.blur : fallback.glowBlur,
     glowIntensity: glow?.kind === 'glow' ? (glow.params.intensity ?? 1) : fallback.glowIntensity,
   };
+}
+
+function updatePlainConfigFromStyle (config: FancyConfig, style: SharedStyle): FancyConfig {
+  const next = PresetManager.deserializeConfig(PresetManager.serializeConfig(config));
+  let layers = next.layers;
+  const fillIndex = layers.findIndex(layer => layer.kind === 'solid-fill');
+
+  if (style.fillVisible) {
+    const fillLayer: BaseLayerConfig = {
+      kind: 'solid-fill',
+      category: 'base',
+      params: { color: colorToRgba(style.fillColor, style.fillOpacity) },
+      decorations: fillIndex >= 0 ? layers[fillIndex].decorations : undefined,
+    };
+
+    if (fillIndex >= 0) {
+      layers[fillIndex] = fillLayer;
+    } else {
+      layers.push(fillLayer);
+    }
+  } else {
+    layers = layers.filter(layer => layer.kind !== 'solid-fill');
+  }
+
+  const strokeIndexes = layers.reduce<number[]>((result, layer, index) => {
+    if (layer.kind === 'single-stroke') {
+      result.push(index);
+    }
+
+    return result;
+  }, []);
+
+  if (style.strokeVisible) {
+    const strokeIndex = strokeIndexes[strokeIndexes.length - 1];
+    const strokeLayer: BaseLayerConfig = {
+      kind: 'single-stroke',
+      category: 'base',
+      params: { color: colorToRgba(style.strokeColor, style.strokeOpacity), width: style.strokeWidth, unit: 'px' },
+      decorations: strokeIndex !== undefined ? layers[strokeIndex].decorations : undefined,
+    };
+
+    if (strokeIndex !== undefined) {
+      layers[strokeIndex] = strokeLayer;
+    } else {
+      layers.unshift(strokeLayer);
+    }
+  } else {
+    layers = layers.filter(layer => layer.kind !== 'single-stroke');
+  }
+
+  layers = layers.map(layer => ({
+    ...layer,
+    decorations: layer.decorations?.filter(decoration => decoration.kind !== 'shadow' && decoration.kind !== 'glow'),
+  })) as BaseLayerConfig[];
+
+  const anchor = layers.find(layer => layer.kind === 'single-stroke') ?? layers.find(layer => layer.kind === 'solid-fill');
+
+  if (anchor) {
+    const decorations: DecorativeLayerConfig[] = [];
+    const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
+
+    if (style.shadowVisible) {
+      decorations.push({
+        kind: 'shadow',
+        category: 'decorative',
+        params: { color: colorToRgba(style.shadowColor, style.shadowOpacity), blur: style.shadowBlur, offsetX: offset.offsetX, offsetY: offset.offsetY },
+      });
+    }
+    if (style.glowVisible) {
+      decorations.push({
+        kind: 'glow',
+        category: 'decorative',
+        params: { color: colorToRgba(style.glowColor, style.glowOpacity), blur: style.glowBlur, intensity: style.glowIntensity },
+      });
+    }
+    anchor.decorations = decorations;
+  }
+
+  next.layers = layers;
+
+  return next;
 }
 
 function rangeLayersFromStyle (style: StyleState): BaseLayerConfig[] {
@@ -979,6 +1073,7 @@ function applyBuiltinPreset (key: string, target: EditorTarget = editorTarget): 
 
   if (target === 'plain') {
     plainFancyConfig = preset;
+    plainStyle = sharedStyleFromFancyConfig(preset, plainStyle);
     currentPlainPreset = key;
     renderPlainPresets();
     renderPlainText();
@@ -1151,14 +1246,16 @@ function selectionValues (selected: Array<{ segment: SegmentState, index: number
 
 function renderFillSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
   const multiple = selected.length > 1;
+  const scope = editorTarget === 'plain' ? '全文' : multiple ? '多选批量修改' : '当前作用范围';
 
-  return `<section class="section"><div class="section-label"><span>填充</span><small>${multiple ? '多选批量修改' : '当前作用范围'}</small></div>${inheritanceMarkup(selected)}<div class="layer-card ${style.fillVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('fillVisible', style.fillVisible)}<span class="layer-preview" style="background:${colorToCss(style.fillColor, style.fillOpacity)}"></span><span class="layer-info"><strong>纯色填充</strong><small>${style.fillVisible ? 'Fill' : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'fillColor', style.fillColor)}${rangeRow('不透明度', 'fillOpacity', Math.round(style.fillOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.fillOpacity * 100))}</div>${selectionValues(selected, 'fill', current => `${colorToCss(current.fillColor, current.fillOpacity)} · ${Math.round(current.fillOpacity * 100)}%`)}</div></section>`;
+  return `<section class="section"><div class="section-label"><span>填充</span><small>${scope}</small></div>${inheritanceMarkup(selected)}<div class="layer-card ${style.fillVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('fillVisible', style.fillVisible)}<span class="layer-preview" style="background:${colorToCss(style.fillColor, style.fillOpacity)}"></span><span class="layer-info"><strong>纯色填充</strong><small>${style.fillVisible ? 'Fill' : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'fillColor', style.fillColor)}${rangeRow('不透明度', 'fillOpacity', Math.round(style.fillOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.fillOpacity * 100))}</div>${selectionValues(selected, 'fill', current => `${colorToCss(current.fillColor, current.fillOpacity)} · ${Math.round(current.fillOpacity * 100)}%`)}</div></section>`;
 }
 
 function renderStrokeSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
   const multiple = selected.length > 1;
+  const scope = editorTarget === 'plain' ? '全文' : multiple ? '多选批量修改' : '片段级';
 
-  return `<section class="section"><div class="section-label"><span>描边</span><small>${multiple ? '多选批量修改' : '片段级'}</small></div><div class="layer-card ${style.strokeVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('strokeVisible', style.strokeVisible)}<span class="layer-preview" style="background:${colorToCss(style.strokeColor, style.strokeOpacity)}"></span><span class="layer-info"><strong>单描边</strong><small>${style.strokeVisible ? `${style.strokeWidth}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'strokeColor', style.strokeColor)}${rangeRow('宽度', 'strokeWidth', style.strokeWidth, 0, 16, 1, multiple ? '多值' : style.strokeWidth)}${rangeRow('不透明度', 'strokeOpacity', Math.round(style.strokeOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.strokeOpacity * 100))}</div>${selectionValues(selected, 'stroke', current => `${current.strokeWidth}px · ${colorToCss(current.strokeColor, current.strokeOpacity)}`)}</div></section>`;
+  return `<section class="section"><div class="section-label"><span>描边</span><small>${scope}</small></div><div class="layer-card ${style.strokeVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('strokeVisible', style.strokeVisible)}<span class="layer-preview" style="background:${colorToCss(style.strokeColor, style.strokeOpacity)}"></span><span class="layer-info"><strong>单描边</strong><small>${style.strokeVisible ? `${style.strokeWidth}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'strokeColor', style.strokeColor)}${rangeRow('宽度', 'strokeWidth', style.strokeWidth, 0, 16, 1, multiple ? '多值' : style.strokeWidth)}${rangeRow('不透明度', 'strokeOpacity', Math.round(style.strokeOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.strokeOpacity * 100))}</div>${selectionValues(selected, 'stroke', current => `${current.strokeWidth}px · ${colorToCss(current.strokeColor, current.strokeOpacity)}`)}</div></section>`;
 }
 
 function renderShadowLayer (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
@@ -1167,19 +1264,30 @@ function renderShadowLayer (style: StyleState, selected: Array<{ segment: Segmen
   return `<div class="layer-card ${style.shadowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('shadowVisible', style.shadowVisible)}<span class="layer-preview" style="background:${colorToCss(style.shadowColor, style.shadowOpacity)}"></span><span class="layer-info"><strong>阴影</strong><small>${style.shadowVisible ? `${style.shadowBlur}px` : '已隐藏'}</small></span></div><div class="layer-params">${colorRow('颜色', 'shadowColor', style.shadowColor)}${rangeRow('模糊', 'shadowBlur', style.shadowBlur, 0, 28, 1, multiple ? '多值' : style.shadowBlur)}${rangeRow('距离', 'shadowDistance', style.shadowDistance, 0, 40, 1, multiple ? '多值' : style.shadowDistance)}${rangeRow('角度', 'shadowAngle', style.shadowAngle, -180, 180, 1, multiple ? '多值' : style.shadowAngle)}${rangeRow('不透明度', 'shadowOpacity', Math.round(style.shadowOpacity * 100), 0, 100, 1, multiple ? '多值' : Math.round(style.shadowOpacity * 100))}</div>${selectionValues(selected, 'shadow', current => `${current.shadowBlur}px · ${current.shadowDistance}px · ${current.shadowAngle}°`)}</div>`;
 }
 
-function renderGlowLayer (selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+function renderGlowLayer (
+  style: SharedStyle,
+  selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>,
+  forceEditable = false,
+): string {
   // “全文”就是全部片段：此时可以编辑对象级 Glow；只有选中部分片段时才锁定。
-  if (!isAllSegmentsSelected()) {
+  if (!forceEditable && !isAllSegmentsSelected()) {
     return '<div class="layer-card disabled"><div class="layer-head"><span class="layer-preview" style="background:#9c8dff"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · 请切换到全文编辑</small></span></div><div class="locked-note">Glow 作用于整个文本对象，多选片段时不会重复显示。</div></div>';
   }
 
-  return `<div class="layer-card ${sharedStyle.glowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('glowVisible', sharedStyle.glowVisible)}<span class="layer-preview" style="background:${colorToCss(sharedStyle.glowColor, sharedStyle.glowOpacity)}"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · OBJECT</small></span></div><div class="layer-params">${colorRow('颜色', 'glowColor', sharedStyle.glowColor)}${rangeRow('模糊', 'glowBlur', sharedStyle.glowBlur, 0, 32, 1)}${rangeRow('强度', 'glowIntensity', sharedStyle.glowIntensity, 1, 5, 1)}${rangeRow('不透明度', 'glowOpacity', Math.round(sharedStyle.glowOpacity * 100), 0, 100, 1)}</div></div>`;
+  return `<div class="layer-card ${style.glowVisible ? '' : 'disabled'}"><div class="layer-head">${toggleMarkup('glowVisible', style.glowVisible)}<span class="layer-preview" style="background:${colorToCss(style.glowColor, style.glowOpacity)}"></span><span class="layer-info"><strong>发光</strong><small>全文效果 · OBJECT</small></span></div><div class="layer-params">${colorRow('颜色', 'glowColor', style.glowColor)}${rangeRow('模糊', 'glowBlur', style.glowBlur, 0, 32, 1)}${rangeRow('强度', 'glowIntensity', style.glowIntensity, 1, 5, 1)}${rangeRow('不透明度', 'glowOpacity', Math.round(style.glowOpacity * 100), 0, 100, 1)}</div></div>`;
 }
 
-function renderEffectsSection (style: StyleState, selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>): string {
+function renderEffectsSection (
+  style: StyleState,
+  selected: Array<{ segment: SegmentState, index: number, displayIndex: number }>,
+  glowStyle?: SharedStyle,
+  forceGlow = false,
+): string {
   const multiple = selected.length > 1;
 
-  return `<section class="section"><div class="section-label"><span>效果</span><small>${multiple ? '多选批量修改' : 'Shadow · Range'}</small></div>${inheritanceMarkup(selected)}${renderShadowLayer(style, selected)}</section>`;
+  const scope = editorTarget === 'plain' ? 'Shadow / Glow · 全文' : glowStyle ? 'Shadow · Range / Glow · Object' : multiple ? '多选批量修改' : 'Shadow · Range';
+
+  return `<section class="section"><div class="section-label"><span>效果</span><small>${scope}</small></div>${inheritanceMarkup(selected)}${renderShadowLayer(style, selected)}${glowStyle ? renderGlowLayer(glowStyle, selected, forceGlow) : ''}</section>`;
 }
 
 function renderEditor (): void {
@@ -1188,8 +1296,9 @@ function renderEditor (): void {
 
   if (editorTarget === 'plain') {
     if (editorSections) {
-      editorSections.innerHTML = renderPresetConfigSection(plainFancyConfig, false);
-      bindPresetParamControls();
+      editorSections.innerHTML = `${renderFillSection(plainStyle, [])}${renderStrokeSection(plainStyle, [])}${renderEffectsSection(plainStyle, [], plainStyle, true)}`;
+      bindEditorControls();
+      updateControlReadouts();
     }
 
     return;
@@ -1270,7 +1379,7 @@ function updateControlReadouts (): void {
       return;
     }
 
-    if (selectedSegmentEntries().length > 1 && !field.startsWith('glow')) {
+    if (editorTarget === 'rich' && selectedSegmentEntries().length > 1 && !field.startsWith('glow')) {
       output.value = '多值';
 
       return;
@@ -1305,10 +1414,16 @@ function updateSelectionValueRows (): void {
 }
 
 function refreshAfterEdit (): void {
-  scheduleRenderText();
+  if (editorTarget === 'plain') {
+    renderPlainText();
+  } else {
+    scheduleRenderText();
+  }
   updateControlReadouts();
-  updateSelectionValueRows();
-  updateScopesAndSegmentsOnly();
+  if (editorTarget === 'rich') {
+    updateSelectionValueRows();
+    updateScopesAndSegmentsOnly();
+  }
 }
 
 function updateScopesAndSegmentsOnly (): void {
@@ -1607,6 +1722,7 @@ async function main (): Promise<void> {
 
   sharedStyle = createSharedStyle(currentPalette);
   richFancyConfig = { layers: sharedLayersFromStyle(sharedStyle) };
+  plainStyle = sharedStyleFromFancyConfig(plainFancyConfig, { ...sharedStyle });
   segments = createInitialSegments(currentPalette);
   normalizeSegments();
   textInput.value = editorText;
