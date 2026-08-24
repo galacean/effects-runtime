@@ -620,7 +620,6 @@ export class TextComponent extends MaskableGraphic {
         paintSegments,
       });
 
-      if (typeof window !== 'undefined') { Reflect.set(window, '__plainRenderPlan', plan); }
       const backend = new CanvasTextBackend({
         style: this.textStyle,
       });
