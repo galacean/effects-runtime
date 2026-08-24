@@ -97,6 +97,28 @@ print(json.dumps({
   return JSON.parse(result);
 }
 
+function compareImages (leftPath, rightPath) {
+  const script = String.raw`
+from PIL import Image, ImageChops
+import json, sys
+left = Image.open(sys.argv[1]).convert('RGBA')
+right = Image.open(sys.argv[2]).convert('RGBA')
+if left.size != right.size:
+    print(json.dumps({'differentPixels': left.width * left.height, 'meanDelta': 255}))
+    raise SystemExit
+diff = ImageChops.difference(left, right)
+pixels = list(diff.getdata())
+delta = [max(r, g, b, a) for r, g, b, a in pixels]
+print(json.dumps({
+  'differentPixels': sum(value > 8 for value in delta),
+  'meanDelta': round(sum(delta) / max(1, len(delta)), 3),
+}, ensure_ascii=False))
+`;
+  const result = require('child_process').execFileSync('python3', ['-c', script, leftPath, rightPath], { encoding: 'utf8' });
+
+  return JSON.parse(result);
+}
+
 async function waitForOnline (page) {
   await page.waitForFunction(() =>
     (document.getElementById('status')?.textContent || '').includes('online') &&
@@ -200,6 +222,7 @@ async function main () {
     assert(plainFieldSignature.textValue === 'Galacean 普通文本', 'Plain mode did not move the text editor into the shared editor.');
 
     let firstPlainSignature;
+    let plainNoneImage;
     const plainVisual = {};
     for (const key of PRESETS) {
       await clickPreset(page, key);
@@ -217,14 +240,25 @@ async function main () {
       if (VISUALLY_REQUIRED.has(key)) {
         assert(offscreen.alphaPixels > 100, `Plain preset ${key} produced no visible text.`);
       }
+      if (key === 'none') {
+        plainNoneImage = imagePath;
+      } else if (VISUALLY_REQUIRED.has(key)) {
+        assert(compareImages(plainNoneImage, imagePath).differentPixels > 100, `Plain preset ${key} did not change the rendered effect.`);
+      }
     }
 
     // Plain text editing and fixed controls update the TextComponent.
+    await clickPreset(page, 'neon');
+    const plainBeforeFill = path.join(ARTIFACT_DIR, 'plain', 'interaction-before-fill.png');
+    const plainAfterFill = path.join(ARTIFACT_DIR, 'plain', 'interaction-after-fill.png');
+    await screenshotCanvas(page, '#J-plain-container canvas', plainBeforeFill);
     await setInputValue(page, '#text', '普通文本编辑检查');
     await page.waitForTimeout(300);
     assert((await readState(page)).plainText === '普通文本编辑检查', 'Plain text input did not update TextComponent.');
     await setInputValue(page, '#editor-sections [data-field="fillColor"]', '#ff0000');
     await page.waitForTimeout(300);
+    await screenshotCanvas(page, '#J-plain-container canvas', plainAfterFill);
+    assert(compareImages(plainBeforeFill, plainAfterFill).differentPixels > 100, 'Plain Fill interaction did not change rendered pixels.');
     const plainLayerState = await page.evaluate(() => window.__plainTextDemo.textStyle.fancyConfig.layers);
     assert(plainLayerState.some(layer => layer.kind === 'solid-fill'), 'Plain fill control did not update FancyConfig.');
     await page.screenshot({ path: path.join(ARTIFACT_DIR, 'editor-plain.png'), fullPage: true });
@@ -237,6 +271,11 @@ async function main () {
       await screenshotCanvas(page, '#J-plain-container canvas', imagePath);
       const analysis = await screenshotComponentCanvas(page, '__plainTextDemo', path.join(ARTIFACT_DIR, 'rtl', `offscreen-${key}.png`));
       assert(analysis.alphaPixels > 100, `RTL preset ${key} produced no visible text.`);
+      if (key === 'none') {
+        plainNoneImage = imagePath;
+      } else if (key === 'neon') {
+        assert(compareImages(plainNoneImage, imagePath).differentPixels > 100, 'RTL neon effect did not change rendered pixels.');
+      }
     }
 
     // Rich mode: full preset application resets range overrides and keeps object effects global.
@@ -247,6 +286,7 @@ async function main () {
     assert(richState.richPreset === 'neon', 'Rich preset was not applied globally.');
     assert((richState.richConfig.rangeOverrides || []).every(value => value === null), 'Global rich preset did not clear range overrides.');
     const richVisual = {};
+    let richNoneImage;
     for (const key of PRESETS) {
       await clickPreset(page, key);
       richState = await readState(page);
@@ -255,6 +295,12 @@ async function main () {
       richVisual[key] = await screenshotCanvas(page, '#J-container canvas', path.join(ARTIFACT_DIR, 'rich', `${key}.png`));
       const offscreen = await screenshotComponentCanvas(page, '__richTextDemo', path.join(ARTIFACT_DIR, 'rich', `offscreen-${key}.png`));
       assert(offscreen.alphaPixels > 100, `Rich preset ${key} produced no visible text.`);
+      const richImagePath = path.join(ARTIFACT_DIR, 'rich', `${key}.png`);
+      if (key === 'none') {
+        richNoneImage = richImagePath;
+      } else if (VISUALLY_REQUIRED.has(key)) {
+        assert(compareImages(richNoneImage, richImagePath).differentPixels > 100, `Rich preset ${key} did not change the rendered effect.`);
+      }
     }
 
     // Range override + object effect separation.
@@ -267,11 +313,23 @@ async function main () {
     }));
     assert(rangeControls.rangeFields > 0, 'Rich range mode has no range controls.');
     assert(rangeControls.objectFields > 0 && rangeControls.glowLabel, 'Rich range mode lost editable global object effects.');
+    const richBeforeRange = path.join(ARTIFACT_DIR, 'rich', 'interaction-before-range.png');
+    const richAfterRange = path.join(ARTIFACT_DIR, 'rich', 'interaction-after-range.png');
+    await screenshotCanvas(page, '#J-container canvas', richBeforeRange);
     await setInputValue(page, '#editor-sections [data-field="fillColor"]', '#ff0000');
     await page.waitForTimeout(300);
+    await screenshotCanvas(page, '#J-container canvas', richAfterRange);
+    assert(compareImages(richBeforeRange, richAfterRange).differentPixels > 100, 'Rich range Fill interaction did not change rendered pixels.');
     richState = await readState(page);
     assert(typeof richState.richConfig.rangeOverrides[0] === 'number', 'Editing a rich range did not create a range override.');
-    const glowBlur = page.locator('#editor-sections [data-preset-path$="params.blur"]').first();
+    const richBeforeGlow = path.join(ARTIFACT_DIR, 'rich', 'interaction-before-glow.png');
+    const richAfterGlow = path.join(ARTIFACT_DIR, 'rich', 'interaction-after-glow.png');
+    await screenshotCanvas(page, '#J-container canvas', richBeforeGlow);
+    await setInputValue(page, '#editor-sections [data-preset-path="layers.0.decorations.0.params.color"]', '#ff00ff');
+    await page.waitForTimeout(300);
+    await screenshotCanvas(page, '#J-container canvas', richAfterGlow);
+    assert(compareImages(richBeforeGlow, richAfterGlow).differentPixels > 100, 'Global Glow interaction did not change rendered pixels.');
+    const glowBlur = page.locator('#editor-sections [data-preset-path="layers.0.decorations.0.params.blur"]').first();
     await glowBlur.evaluate(element => {
       element.value = '13';
       element.dispatchEvent(new Event('input', { bubbles: true }));
