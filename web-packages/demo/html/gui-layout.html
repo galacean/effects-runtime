@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GUI 自动布局 Demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: #10131a;
+    }
+    main { display: grid; gap: 12px; }
+    p { margin: 0; color: #aeb8ca; }
+    #stage-host {
+      position: relative;
+      width: 720px;
+      height: 440px;
+    }
+    #stage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 720px;
+      height: 440px;
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid #394155;
+      border-radius: 12px;
+      background: #171b25;
+      box-shadow: 0 24px 80px #0008;
+    }
+    #stage canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      border-radius: inherit;
+    }
+    .resize-handle {
+      position: absolute;
+      z-index: 2;
+      width: 18px;
+      height: 18px;
+      touch-action: none;
+      border: 2px solid #8994aa;
+      border-radius: 50%;
+      background: #202737;
+      box-shadow: 0 2px 8px #0008;
+    }
+    .resize-handle[data-corner="nw"] {
+      top: 0;
+      left: 0;
+      cursor: nwse-resize;
+      transform: translate(-50%, -50%);
+    }
+    .resize-handle[data-corner="ne"] {
+      top: 0;
+      right: 0;
+      cursor: nesw-resize;
+      transform: translate(50%, -50%);
+    }
+    .resize-handle[data-corner="sw"] {
+      bottom: 0;
+      left: 0;
+      cursor: nesw-resize;
+      transform: translate(-50%, 50%);
+    }
+    .resize-handle[data-corner="se"] {
+      right: 0;
+      bottom: 0;
+      cursor: nwse-resize;
+      transform: translate(50%, 50%);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p>拖动任意角点调整 Canvas 尺寸；对角保持固定，布局会在同一帧内重新计算并重绘。</p>
+    <div id="stage-host">
+      <div id="stage">
+        <div class="resize-handle" data-corner="nw" role="separator" aria-label="拖动左上角调整 Canvas 尺寸"></div>
+        <div class="resize-handle" data-corner="ne" role="separator" aria-label="拖动右上角调整 Canvas 尺寸"></div>
+        <div class="resize-handle" data-corner="sw" role="separator" aria-label="拖动左下角调整 Canvas 尺寸"></div>
+        <div class="resize-handle" data-corner="se" role="separator" aria-label="拖动右下角调整 Canvas 尺寸"></div>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="../src/gui-layout.ts"></script>
+</body>
+</html>

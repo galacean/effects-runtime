@@ -16,8 +16,8 @@ import {
   MouseFilter,
 } from '../input';
 import type { CursorStyle, InputEvent } from '../input';
-import type { Control } from './control';
-import { ContainerControl, RootControl } from './control';
+import type { Container } from './control';
+import { Control, RootControl } from './control';
 
 const cursorNames: Record<CursorShape, string> = {
   [CursorShape.Arrow]: 'default',
@@ -74,9 +74,12 @@ type GUIState = {
 };
 
 /** CanvasLayer-like boundary for a single UICanvas GUI tree. */
-export class CanvasRootControl extends ContainerControl {
-  constructor (engine: Engine, readonly canvas: UICanvas) {
+export class CanvasRootControl extends Control {
+  readonly canvas: UICanvas;
+
+  constructor (engine: Engine, canvas: UICanvas) {
     super(engine);
+    this.canvas = canvas;
     this.mouseFilter = MouseFilter.Ignore;
     this.setSize(engine.canvas.width, engine.canvas.height);
   }
@@ -87,7 +90,7 @@ export class CanvasRootControl extends ContainerControl {
 }
 
 /** Global ordered collection of UICanvas roots. */
-export class CanvasContainer extends ContainerControl {
+export class CanvasContainer extends Control {
   constructor (engine: Engine) {
     super(engine);
     this.mouseFilter = MouseFilter.Ignore;
@@ -101,16 +104,17 @@ export class CanvasContainer extends ContainerControl {
 
   override addChildInternal (child: Control): void {
     super.addChildInternal(child);
+    child.setSize(this.width, this.height);
     this.sortCanvases();
   }
 
-  override draw (): void {
+  protected override drawChildren (): void {
     this.sortCanvases();
     for (const child of this.children) {
       const root = child as CanvasRootControl;
 
       if (root.canvas.isVisible) {
-        root.draw();
+        root.drawInternal();
       }
     }
   }
@@ -122,6 +126,7 @@ export class WindowRootControl extends RootControl {
   readonly canvases: CanvasContainer;
   dragThreshold = 10;
   private lastInput: InputEvent | null = null;
+  private readonly dirtyContainers = new Set<Container>();
   private readonly gui: GUIState = {
     mouseFocus: null,
     mouseClickGrabber: null,
@@ -255,6 +260,12 @@ export class WindowRootControl extends RootControl {
     this.requestMouseOverUpdate();
   }
 
+  override queueLayout (container: Container): void {
+    if (!container.isDisposed) {
+      this.dirtyContainers.add(container);
+    }
+  }
+
   cancelPointerInput (): void {
     this.dropMouseFocus();
     this.dropMouseOver();
@@ -272,11 +283,12 @@ export class WindowRootControl extends RootControl {
   }
 
   render (): void {
+    this.flushLayout();
     if (this.canvases.children.length === 0) {
       return;
     }
     this.engine.graphics.begin();
-    this.draw();
+    this.drawInternal();
     this.engine.graphics.end();
   }
 
@@ -286,11 +298,45 @@ export class WindowRootControl extends RootControl {
       this.updateMouseOver(this.gui.lastMousePosition);
     }
     super.update(deltaTime);
+    this.flushLayout();
   }
 
   override dispose (): void {
     this.cancelPointerInput();
+    this.dirtyContainers.clear();
     super.dispose();
+  }
+
+  private flushLayout (): void {
+    let round = 0;
+
+    while (this.dirtyContainers.size > 0) {
+      if (round++ >= 32) {
+        this.dirtyContainers.clear();
+        throw new Error('GUI layout did not converge after 32 rounds.');
+      }
+      const batch = Array.from(this.dirtyContainers);
+
+      this.dirtyContainers.clear();
+      batch.sort((left, right) => this.getControlDepth(left) - this.getControlDepth(right));
+      for (const container of batch) {
+        if (container.root === this && !container.isDisposed) {
+          container.invokeSortChildren();
+        }
+      }
+    }
+  }
+
+  private getControlDepth (control: Control): number {
+    let depth = 0;
+    let parent = control.parent;
+
+    while (parent) {
+      depth++;
+      parent = parent.parent;
+    }
+
+    return depth;
   }
 
   private processGUIInput (event: InputEvent): void {
@@ -482,7 +528,7 @@ export class WindowRootControl extends RootControl {
     return null;
   }
 
-  private findControlAtPosition (container: ContainerControl, position: Vector2, skipSelf = false): Control | null {
+  private findControlAtPosition (container: Control, position: Vector2, skipSelf = false): Control | null {
     if (!container.visibleInHierarchy || container.isDisposed) {
       return null;
     }
@@ -497,14 +543,10 @@ export class WindowRootControl extends RootControl {
       if (!child.visibleInHierarchy || child.isDisposed) {
         continue;
       }
-      if (child instanceof ContainerControl) {
-        const found = this.findControlAtPosition(child, position);
+      const found = this.findControlAtPosition(child, position);
 
-        if (found) {
-          return found;
-        }
-      } else if (child.getEffectiveMouseFilter() !== MouseFilter.Ignore && child.hasPoint(this.toLocal(child, position))) {
-        return child;
+      if (found) {
+        return found;
       }
     }
     if (!skipSelf && container.getEffectiveMouseFilter() !== MouseFilter.Ignore && container.hasPoint(localPosition)) {
