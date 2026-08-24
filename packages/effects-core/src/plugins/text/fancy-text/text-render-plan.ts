@@ -11,7 +11,7 @@ export interface TextLineInput {
 /** A Canvas-independent subset of FancyRenderLayer used by the render plan. */
 export type TextRenderLayer =
   | Exclude<FancyRenderLayer, { kind: 'texture' }>
-  | Omit<Extract<FancyRenderLayer, { kind: 'texture' }>, 'runtimePattern'>;
+  | Extract<FancyRenderLayer, { kind: 'texture' }>;
 
 export interface TextSize {
   width: number,
@@ -146,8 +146,10 @@ function isObjectLayer (layer: FancyRenderLayer): boolean {
 
 function normalizeLayer (layer: FancyRenderLayer): TextRenderLayer {
   if (layer.kind === 'texture') {
-    // runtimePattern is a Canvas resource and must stay in the Canvas adapter.
-    return { kind: 'texture', category: layer.category, params: layer.params };
+    // Keep the resolved CanvasPattern on the runtime plan. This also handles
+    // range-local texture layers; looking it up by a synthetic layer id loses
+    // the resource when the pattern finishes loading asynchronously.
+    return { kind: 'texture', category: layer.category, params: layer.params, runtimePattern: layer.runtimePattern };
   }
 
   return layer;

@@ -610,11 +610,17 @@ export class TextComponent extends MaskableGraphic {
         fontRef: context.font,
         fillColor: this.textStyle.textColor,
         baseXPerLine,
+        // Plain text has no range-aware layout builder to provide content
+        // bounds. Keep object-scope gradient/texture effects anchored to the
+        // same logical text frame instead of silently skipping the gradient.
+        contentBounds: { x: 0, y: 0, width: baseWidth, height: baseHeight },
         logicalSize: { width: baseWidth, height: baseHeight },
         renderSize: { width: texWidth, height: texHeight },
         padding: { left: padL, right: padR, top: padT, bottom: padB },
         paintSegments,
       });
+
+      if (typeof window !== 'undefined') { Reflect.set(window, '__plainRenderPlan', plan); }
       const backend = new CanvasTextBackend({
         style: this.textStyle,
       });

@@ -903,11 +903,33 @@ function renderPlainText (): void {
   if (plainStatus) {
     plainStatus.textContent = `preset · ${plainPresetLabels[currentPlainPreset] ?? currentPlainPreset}`;
   }
-  // 纹理预设的 pattern 是异步加载的，加载完成后补渲染一帧。
-  window.setTimeout(() => {
-    plainTextComponent?.onUpdate(0);
+  // 纹理 pattern 异步加载；manualRender 不会替组件自动 tick，因此持续补
+  // 一帧直到 pattern 就绪，避免纹理预设在网络较慢时永远停留在空白画布。
+  let refreshAttempts = 0;
+  const refreshAfterTextureLoad = (): void => {
+    const pendingTexture = plainTextComponent?.textStyle?.fancyRenderStyle?.layers.some(
+      layer => layer.kind === 'texture' && !layer.runtimePattern,
+    );
+
+    if (pendingTexture && refreshAttempts++ < 50) {
+      plainTextComponent?.onUpdate(0);
+      renderPlainComposition?.();
+      window.setTimeout(refreshAfterTextureLoad, 100);
+
+      return;
+    }
+
+    // The async loader flips the pattern on the style and marks the component
+    // dirty, but manualRender has no component tick. Force one final rebuild
+    // after the pattern becomes available so the plan captures the resource.
+    if (plainTextComponent) {
+      plainTextComponent.isDirty = true;
+      plainTextComponent.onUpdate(0);
+    }
     renderPlainComposition?.();
-  }, 500);
+  };
+
+  window.setTimeout(refreshAfterTextureLoad, 100);
 }
 
 async function initPlainText (): Promise<void> {

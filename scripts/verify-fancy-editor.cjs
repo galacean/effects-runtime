@@ -20,7 +20,7 @@ const PRESETS = [
   'none', 'single-stroke', 'multi-stroke', 'gradient', 'shadow', 'texture', 'glow',
   'neon', 'metallic', 'glow-stroke-gradient', 'rainbow', 'frost', 'flame', 'stereo',
 ];
-const VISUALLY_REQUIRED = new Set(['none', 'single-stroke', 'multi-stroke', 'shadow', 'glow', 'neon', 'flame']);
+const VISUALLY_REQUIRED = new Set(PRESETS);
 
 function assert (condition, message) {
   if (!condition) {
@@ -149,6 +149,15 @@ async function clickPreset (page, key) {
 
   await button.click();
   await page.waitForTimeout(650);
+  if (key === 'texture') {
+    const target = await page.evaluate(() =>
+      document.querySelector('[data-editor-target="plain"][data-active="true"]') ? '__plainTextDemo' : '__richTextDemo');
+
+    await page.waitForFunction(name =>
+      window[name]?.textStyle?.fancyRenderStyle?.layers?.some(layer => layer.kind === 'texture' && layer.runtimePattern),
+    target, { timeout: 10000 });
+    await page.waitForTimeout(250);
+  }
 }
 
 async function setInputValue (page, selector, value) {

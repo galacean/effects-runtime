@@ -64,11 +64,7 @@ function setCachedSurface (key: string, entry: CachedCanvasSurface): void {
  * different source surfaces and blur passes. Object effects remain separate.
  */
 export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderingContext2D> {
-  private readonly rawLayersById: Map<string, FancyRenderLayer>;
-
-  constructor (private readonly options: CanvasTextRenderBackendOptions) {
-    this.rawLayersById = new Map(options.layers.map((layer, index) => [`layer-${index}`, layer]));
-  }
+  constructor (private readonly options: CanvasTextRenderBackendOptions) {}
 
   render (plan: TextRenderPlan, context: CanvasRenderingContext2D): void {
     const contentCanvas = document.createElement('canvas');
@@ -553,16 +549,14 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
   ): void {
-    const rawLayer = this.rawLayersById.get(layerPlan.layerId);
-
-    if (!rawLayer || rawLayer.kind !== 'texture' || !rawLayer.runtimePattern) {
+    if (layerPlan.layer.kind !== 'texture' || !layerPlan.layer.runtimePattern) {
       return;
     }
 
     const previousAlpha = context.globalAlpha;
 
-    context.fillStyle = rawLayer.runtimePattern;
-    context.globalAlpha = previousAlpha * (rawLayer.params.opacity ?? 1);
+    context.fillStyle = layerPlan.layer.runtimePattern;
+    context.globalAlpha = previousAlpha * (layerPlan.layer.params.opacity ?? 1);
     for (const range of ranges) {
       this.drawRangePaintUnits(
         plan,
