@@ -33,7 +33,6 @@ const rangeList = document.getElementById('range-list');
 const objectList = document.getElementById('object-list');
 const plainContainer = document.getElementById('J-plain-container');
 const plainStatus = document.getElementById('plain-status');
-const plainTextInput = document.getElementById('plain-text') as HTMLInputElement | null;
 const editorTargetSwitch = document.getElementById('editor-target-switch');
 const editorTitleMeta = document.getElementById('editor-title-meta');
 const presetScopeNote = document.getElementById('preset-scope-note');
@@ -153,8 +152,10 @@ const palettes = {
 } satisfies Record<PaletteName, Palette>;
 
 const defaultText = textInput?.value ?? 'Range A  Range B\n跨行仍是同一个 source range';
+const defaultPlainText = 'Galacean 普通文本';
 let currentPalette: PaletteName = 'mint';
 let editorText = defaultText;
+let plainEditorText = defaultPlainText;
 let sharedStyle: SharedStyle;
 let segments: SegmentState[];
 let selectedSegmentIds: string[] = [];
@@ -801,7 +802,7 @@ function scheduleRenderText (): void {
 
 function buildPlainTextOptions (): Record<string, unknown> {
   return {
-    text: plainTextInput?.value || 'Galacean 普通文本',
+    text: plainEditorText || defaultPlainText,
     fontFamily: 'Arial',
     fontSize: 42,
     textColor: [255, 255, 255, 1],
@@ -910,7 +911,7 @@ function renderPlainText (): void {
 }
 
 async function initPlainText (): Promise<void> {
-  if (!plainContainer || !plainTextInput) {
+  if (!plainContainer) {
     throw new Error('Plain text container was not found.');
   }
 
@@ -931,7 +932,6 @@ async function initPlainText (): Promise<void> {
 
   Reflect.set(window, '__plainTextDemo', plainTextComponent);
 
-  plainTextInput.addEventListener('input', renderPlainText);
   renderPlainText();
   if (plainStatus) {
     plainStatus.textContent = 'editor online';
@@ -1033,6 +1033,9 @@ function syncTargetChrome (): void {
   }
   if (presetScopeNote) {
     presetScopeNote.textContent = editorTarget === 'rich' ? '应用到全文，片段可继续覆盖' : '应用到普通文本全文';
+  }
+  if (textInput) {
+    textInput.value = editorTarget === 'rich' ? editorText : plainEditorText;
   }
 }
 
@@ -1668,6 +1671,10 @@ function updateSelectionListeners (): void {
   }
 
   const captureSelection = (): void => {
+    if (editorTarget !== 'rich') {
+      return;
+    }
+
     lastSelection = { start: textInput.selectionStart, end: textInput.selectionEnd };
     renderEditor();
   };
@@ -1677,11 +1684,18 @@ function updateSelectionListeners (): void {
   });
   ['select', 'keyup', 'mouseup', 'focus'].forEach(eventName => textInput.addEventListener(eventName, captureSelection));
   document.addEventListener('selectionchange', () => {
-    if (document.activeElement === textInput) {
+    if (editorTarget === 'rich' && document.activeElement === textInput) {
       renderEditor();
     }
   });
   textInput.addEventListener('input', () => {
+    if (editorTarget === 'plain') {
+      plainEditorText = textInput.value;
+      renderPlainText();
+
+      return;
+    }
+
     const oldText = editorText;
     const editSelection = pendingEditSelection.start === pendingEditSelection.end && lastSelection.end > lastSelection.start ? lastSelection : pendingEditSelection;
 

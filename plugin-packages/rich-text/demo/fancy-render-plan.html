@@ -325,12 +325,6 @@
           </header>
           <div class="stage"><div id="J-container"></div></div>
           <div class="compare-divider"><strong>普通文本</strong><span>TextComponent · 同一渲染执行</span><span class="status" id="plain-status">initializing</span></div>
-          <div class="plain-controls">
-            <div class="plain-text-row">
-              <label for="plain-text">文本</label>
-              <input id="plain-text" spellcheck="false" value="Galacean 普通文本" />
-            </div>
-          </div>
           <div class="stage"><div id="J-plain-container"></div></div>
         </article>
 
@@ -352,11 +346,11 @@
             <div class="scope-label" data-rich-only><span>当前作用范围</span><small id="scope-summary">全文</small></div>
             <div class="scope-switch" id="scope-switch" data-rich-only></div>
 
-            <div class="text-editor" data-rich-only>
-              <div class="text-editor-head"><strong>文本与切段</strong><span>选择文字后拆分</span></div>
+            <div class="text-editor">
+              <div class="text-editor-head"><strong id="text-editor-title">文本与切段</strong><span id="text-editor-note">选择文字后拆分</span></div>
               <textarea id="text" spellcheck="false">Range A  Range B
 跨行仍是同一个 source range</textarea>
-              <div class="text-tools">
+              <div class="text-tools" data-rich-only>
                 <span class="selection-status" id="selection-status">未选择文字</span>
                 <div>
                   <button class="tool-button" id="split-selection" type="button" disabled>拆分为片段</button>
