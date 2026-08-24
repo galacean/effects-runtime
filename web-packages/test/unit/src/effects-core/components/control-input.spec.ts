@@ -11,6 +11,7 @@ import {
   InputEventScreenDrag,
   InputEventScreenTouch,
   MouseButton,
+  MouseButtonMask,
   MouseFilter,
   Player,
   UIControl,
@@ -71,6 +72,37 @@ class AcceptingControl extends RecordingControl {
   override onMouseDown (event: InputEventMouseButton): void {
     super.onMouseDown(event);
     event.accept();
+  }
+}
+
+class MouseStateRecordingControl extends ContainerControl {
+  readonly states: Array<{
+    phase: 'down' | 'move' | 'up',
+    buttonMask: MouseButtonMask,
+    pressed: boolean,
+  }> = [];
+
+  override onMouseDown (event: InputEventMouseButton): void {
+    this.record('down', event);
+  }
+
+  override onMouseMove (event: InputEventMouseMotion): void {
+    this.record('move', event);
+  }
+
+  override onMouseUp (event: InputEventMouseButton): void {
+    this.record('up', event);
+  }
+
+  private record (
+    phase: 'down' | 'move' | 'up',
+    event: InputEventMouseButton | InputEventMouseMotion,
+  ): void {
+    this.states.push({
+      phase,
+      buttonMask: event.buttonMask,
+      pressed: event.pressed,
+    });
   }
 }
 
@@ -155,7 +187,94 @@ describe('core/gui input', () => {
     expect(order).deep.equals(['rect', 'focus']);
   });
 
-  it('matches Godot by focusing before mapping native touch coordinates', () => {
+  it('keeps the admitted button session through a release-edge motion with buttons=0', () => {
+    player.canvas.getBoundingClientRect = canvasRect;
+    const control = addControl(
+      composition.sceneRoot,
+      new MouseStateRecordingControl(player.engine),
+      0, 0, 100, 100,
+    );
+
+    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: 20,
+      clientY: 30,
+      button: 0,
+      buttons: 1,
+    }));
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: 21,
+      clientY: 30,
+      button: 0,
+      buttons: 0,
+    }));
+    window.dispatchEvent(new MouseEvent('mouseup', {
+      clientX: 21,
+      clientY: 30,
+      button: 0,
+      buttons: 0,
+    }));
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: 22,
+      clientY: 30,
+      button: 0,
+      buttons: 0,
+    }));
+
+    expect(control.states).deep.equals([
+      { phase: 'down', buttonMask: MouseButtonMask.Left, pressed: true },
+      { phase: 'move', buttonMask: MouseButtonMask.Left, pressed: true },
+      { phase: 'up', buttonMask: MouseButtonMask.None, pressed: false },
+      { phase: 'move', buttonMask: MouseButtonMask.None, pressed: false },
+    ]);
+  });
+
+  it('clears the canonical button mask after overlapping button releases', () => {
+    player.canvas.getBoundingClientRect = canvasRect;
+    const control = addControl(
+      composition.sceneRoot,
+      new MouseStateRecordingControl(player.engine),
+      0, 0, 100, 100,
+    );
+
+    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: 20,
+      clientY: 30,
+      button: 0,
+      buttons: 1,
+    }));
+    player.canvas.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: 20,
+      clientY: 30,
+      button: 2,
+      buttons: 3,
+    }));
+    window.dispatchEvent(new MouseEvent('mouseup', {
+      clientX: 20,
+      clientY: 30,
+      button: 2,
+      buttons: 1,
+    }));
+    window.dispatchEvent(new MouseEvent('mouseup', {
+      clientX: 20,
+      clientY: 30,
+      button: 0,
+      buttons: 0,
+    }));
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: 21,
+      clientY: 30,
+      button: 0,
+      buttons: 0,
+    }));
+
+    expect(control.states[control.states.length - 1]).deep.equals({
+      phase: 'move',
+      buttonMask: MouseButtonMask.None,
+      pressed: false,
+    });
+  });
+
+  it('focusing before mapping native touch coordinates', () => {
     const order: string[] = [];
 
     player.canvas.focus = () => {

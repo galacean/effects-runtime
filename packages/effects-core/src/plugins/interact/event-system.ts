@@ -71,6 +71,14 @@ export class EventSystem implements Disposable {
   private nativeHandlers: NativeHandler[] = [];
   private target: HTMLCanvasElement | null = null;
   private mouseState: PointerState | null = null;
+  /**
+   * Logical mouse button state maintained from mousedown/mouseup transitions.
+   *
+   * On macOS, a trackpad may emit a release-edge pointermove with buttons=0
+   * before mouseup. Treating that motion as a release ends the drag early and
+   * may skip the final transform commit.
+   */
+  private mouseButtonMask = MouseButtonMask.None;
   private touchStates = new Map<number, PointerState>();
   private mouseFromTouchIndex: number | null = null;
   private touchFromMousePressed = false;
@@ -93,6 +101,7 @@ export class EventSystem implements Disposable {
     this._enabled = value;
     if (!value) {
       this.mouseState = null;
+      this.mouseButtonMask = MouseButtonMask.None;
       this.touchStates.clear();
       this.mouseFromTouchIndex = null;
       this.touchFromMousePressed = false;
@@ -170,6 +179,7 @@ export class EventSystem implements Disposable {
   dispose (): void {
     this.engine.windowRoot.cancelPointerInput();
     this.mouseState = null;
+    this.mouseButtonMask = MouseButtonMask.None;
     this.touchStates.clear();
     this.mouseFromTouchIndex = null;
     this.touchFromMousePressed = false;
@@ -238,6 +248,10 @@ export class EventSystem implements Disposable {
     if (!this.enabled || !this.target) {
       return;
     }
+    // Keep the canonical mask in sync even when mouseState already ended on a
+    // previous button release. The target and Window listeners may see the
+    // same mouseup, but clearing a bit twice is intentionally idempotent.
+    this.setMouseButtonPressed(event.button, false);
     const position = this.getCanvasPosition(event.clientX, event.clientY);
     const existingState = this.mouseState;
 
@@ -318,6 +332,7 @@ export class EventSystem implements Disposable {
   private onWindowBlur = (): void => {
     if (this.enabled) {
       this.mouseState = null;
+      this.mouseButtonMask = MouseButtonMask.None;
       this.touchStates.clear();
       this.mouseFromTouchIndex = null;
       this.touchFromMousePressed = false;
@@ -329,6 +344,7 @@ export class EventSystem implements Disposable {
     if (!this.enabled || !this.target) {
       return;
     }
+    this.setMouseButtonPressed(event.button, true);
     const position = this.getCanvasPosition(event.clientX, event.clientY);
 
     this.focusTarget();
@@ -427,7 +443,7 @@ export class EventSystem implements Disposable {
   ): boolean {
     let handled = false;
 
-    if (this.touchFromMousePressed && (event.buttons & 1) !== 0) {
+    if (this.touchFromMousePressed && (this.mouseButtonMask & MouseButtonMask.Left) !== 0) {
       handled = this.pushScreenDrag(
         0,
         position,
@@ -531,17 +547,22 @@ export class EventSystem implements Disposable {
     this.copyMouseFields(input, event, position);
     input.device = InputEvent.deviceIdMouse;
     input.buttonIndex = getMouseButton(event.button);
-    input.buttonMask = getMouseButtonMask(event.buttons);
-    if (pressed) {
-      input.buttonMask |= getMouseButtonBit(input.buttonIndex);
-    } else {
-      input.buttonMask &= ~getMouseButtonBit(input.buttonIndex);
-    }
+    input.buttonMask = this.mouseButtonMask;
     input.pressed = pressed;
     input.doubleClick = event.detail > 1;
     this.engine.windowRoot.pushInput(input);
 
     return this.engine.windowRoot.isInputHandled();
+  }
+
+  private setMouseButtonPressed (button: number, pressed: boolean): void {
+    const buttonBit = getMouseButtonBit(getMouseButton(button));
+
+    if (pressed) {
+      this.mouseButtonMask |= buttonBit;
+    } else {
+      this.mouseButtonMask &= ~buttonBit;
+    }
   }
 
   private pushWheelButton (
@@ -555,7 +576,7 @@ export class EventSystem implements Disposable {
     this.copyMouseFields(input, event, position);
     input.device = InputEvent.deviceIdMouse;
     input.buttonIndex = button;
-    input.buttonMask = getMouseButtonMask(event.buttons);
+    input.buttonMask = this.mouseButtonMask;
     input.factor = factor;
     input.pressed = true;
     this.engine.windowRoot.pushInput(input);
@@ -573,8 +594,8 @@ export class EventSystem implements Disposable {
 
     this.copyMouseFields(input, event, position);
     input.device = InputEvent.deviceIdMouse;
-    input.buttonMask = getMouseButtonMask(event.buttons);
-    input.pressed = event.buttons !== 0;
+    input.buttonMask = this.mouseButtonMask;
+    input.pressed = this.mouseButtonMask !== MouseButtonMask.None;
     input.relative.copyFrom(relative);
     input.screenRelative.copyFrom(relative);
     input.velocity.copyFrom(velocity);
@@ -868,28 +889,6 @@ function getMouseButton (button: number): MouseButton {
     default:
       return MouseButton.None;
   }
-}
-
-function getMouseButtonMask (buttons: number): MouseButtonMask {
-  let mask = MouseButtonMask.None;
-
-  if ((buttons & 1) !== 0) {
-    mask |= MouseButtonMask.Left;
-  }
-  if ((buttons & 2) !== 0) {
-    mask |= MouseButtonMask.Right;
-  }
-  if ((buttons & 4) !== 0) {
-    mask |= MouseButtonMask.Middle;
-  }
-  if ((buttons & 8) !== 0) {
-    mask |= MouseButtonMask.Xbutton1;
-  }
-  if ((buttons & 16) !== 0) {
-    mask |= MouseButtonMask.Xbutton2;
-  }
-
-  return mask;
 }
 
 function getMouseButtonBit (button: MouseButton): MouseButtonMask {
