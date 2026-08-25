@@ -270,10 +270,11 @@ describe('core/GUI measurement and automatic layout', () => {
     expect(child.parent).instanceOf(Container);
     player.engine.windowRoot.update(0);
 
-    expect(child.x).equals(0);
-    expect(childItem.transform.position.x).equals(0);
+    expect([child.x, child.y]).deep.equals([0, 0]);
+    expect([childItem.transform.position.x, childItem.transform.position.y]).deep.equals([0, 0]);
     childItem.transform.setPosition(88, 9, 3);
-    expect(child.x).equals(0);
+    expect([child.x, child.y]).deep.equals([0, 0]);
+    expect([childItem.transform.position.x, childItem.transform.position.y]).deep.equals([88, 9]);
   });
 
   it('coalesces queueSort calls raised during the current layout pass', () => {

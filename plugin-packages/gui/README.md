@@ -16,12 +16,18 @@ Importing the package does not register a plugin and has no logging side
 effects. Create controls with the same `Engine` used by the owning GUI tree.
 
 ```ts
-import { SizeFlags } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { Control, SizeFlags } from '@galacean/effects';
 import { HBoxContainer } from '@galacean/effects-plugin-gui';
 
-const row = new HBoxContainer(engine);
+function createRow (engine: Engine): HBoxContainer {
+  const row = new HBoxContainer(engine);
+  const child = new Control(engine);
 
-row.separation = 12;
-child.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
-row.addChild(child);
+  row.separation = 12;
+  child.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
+  row.addChild(child);
+
+  return row;
+}
 ```

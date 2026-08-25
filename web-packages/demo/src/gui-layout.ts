@@ -80,6 +80,8 @@ for (let index = 0; index < colors.length; index++) {
 }
 
 type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
+const MIN_STAGE_SIZE = 120;
+
 interface ActiveResize {
   corner: ResizeCorner,
   fixedX: number,
@@ -123,10 +125,10 @@ function resizeFromCorner (event: PointerEvent, handle: HTMLElement): void {
 
   const west = activeResize.corner.endsWith('w');
   const north = activeResize.corner.startsWith('n');
-  const left = west ? Math.min(event.clientX, activeResize.fixedX) : activeResize.fixedX;
-  const right = west ? activeResize.fixedX : Math.max(event.clientX, activeResize.fixedX);
-  const top = north ? Math.min(event.clientY, activeResize.fixedY) : activeResize.fixedY;
-  const bottom = north ? activeResize.fixedY : Math.max(event.clientY, activeResize.fixedY);
+  const left = west ? Math.min(event.clientX, activeResize.fixedX - MIN_STAGE_SIZE) : activeResize.fixedX;
+  const right = west ? activeResize.fixedX : Math.max(event.clientX, activeResize.fixedX + MIN_STAGE_SIZE);
+  const top = north ? Math.min(event.clientY, activeResize.fixedY - MIN_STAGE_SIZE) : activeResize.fixedY;
+  const bottom = north ? activeResize.fixedY : Math.max(event.clientY, activeResize.fixedY + MIN_STAGE_SIZE);
 
   stage.style.left = `${left - activeResize.hostLeft}px`;
   stage.style.top = `${top - activeResize.hostTop}px`;
