@@ -14,12 +14,32 @@ import {
   MouseFilter,
   Player,
   SizeFlags,
+  Texture,
+  TextureSourceType,
   math,
 } from '@galacean/effects';
 import {
+  AutowrapMode,
+  Button,
+  ButtonGroup,
+  CheckBox,
+  CheckButton,
+  ColorRect,
+  GUIStyle,
   GridContainer,
+  HSlider,
+  HorizontalAlignment,
+  Label,
   MarginContainer,
+  NinePatchRect,
+  Panel,
+  ProgressBar,
   ScrollContainer,
+  Side,
+  TextureRect,
+  TextureStretchMode,
+  VSlider,
+  VerticalAlignment,
   VBoxContainer,
 } from '@galacean/effects-plugin-gui';
 
@@ -43,7 +63,7 @@ const palette = {
   red: new math.Color(0.96, 0.36, 0.43, 1),
 };
 
-type DemoID = 'input' | 'layout' | 'scroll';
+type DemoID = 'input' | 'layout' | 'scroll' | 'basic';
 type DemoDefinition = {
   id: DemoID,
   index: string,
@@ -73,6 +93,13 @@ const demoDefinitions: DemoDefinition[] = [
     title: 'Clip & Scroll',
     subtitle: '双轴滚动、嵌套滚动与旋转裁剪',
     eyebrow: 'SCROLL CONTAINER',
+  },
+  {
+    id: 'basic',
+    index: '04',
+    title: 'Basic Controls',
+    subtitle: '文本、纹理、按钮、选择、滑块与进度',
+    eyebrow: 'GUI COMPONENTS',
   },
 ];
 
@@ -126,12 +153,37 @@ function fillRoundedRect (
 
     return;
   }
-  control.fillRect(x + actualRadius, y, width - actualRadius * 2, height, color);
-  control.fillRect(x, y + actualRadius, width, height - actualRadius * 2, color);
-  control.fillCircle(x + actualRadius, y + actualRadius, actualRadius, color);
-  control.fillCircle(x + width - actualRadius, y + actualRadius, actualRadius, color);
-  control.fillCircle(x + actualRadius, y + height - actualRadius, actualRadius, color);
-  control.fillCircle(x + width - actualRadius, y + height - actualRadius, actualRadius, color);
+  const segmentCount = Math.max(2, Math.ceil(actualRadius / 3));
+  const centerX = x + width * 0.5;
+  const centerY = y + height * 0.5;
+  let firstX = 0;
+  let firstY = 0;
+  let previousX = 0;
+  let previousY = 0;
+  let pointCount = 0;
+
+  for (let corner = 0; corner < 4; corner++) {
+    const cornerX = corner === 0 || corner === 3 ? x + actualRadius : x + width - actualRadius;
+    const cornerY = corner < 2 ? y + actualRadius : y + height - actualRadius;
+    const startAngle = ((corner + 2) % 4) * Math.PI * 0.5;
+
+    for (let segment = 0; segment <= segmentCount; segment++) {
+      const angle = startAngle + (Math.PI * 0.5 * segment / segmentCount);
+      const pointX = cornerX + Math.cos(angle) * actualRadius;
+      const pointY = cornerY + Math.sin(angle) * actualRadius;
+
+      if (pointCount === 0) {
+        firstX = pointX;
+        firstY = pointY;
+      } else {
+        control.fillTriangle(centerX, centerY, previousX, previousY, pointX, pointY, color);
+      }
+      previousX = pointX;
+      previousY = pointY;
+      pointCount++;
+    }
+  }
+  control.fillTriangle(centerX, centerY, previousX, previousY, firstX, firstY, color);
 }
 
 function shorten (value: string, maximum: number): string {
@@ -394,11 +446,13 @@ class ControlApp extends Control {
     const inputPage = new InputDemoPage(engine);
     const layoutPage = new LayoutDemoPage(engine);
     const scrollPage = new ScrollDemoPage(engine);
+    const basicPage = new BasicControlsDemoPage(engine);
 
     for (const [id, page] of [
       ['input', inputPage],
       ['layout', layoutPage],
       ['scroll', scrollPage],
+      ['basic', basicPage],
     ] as const) {
       attachFullRect(page, this, 270, 150, 22, 22);
       this.pages.set(id, page);
@@ -419,6 +473,215 @@ class ControlApp extends Control {
     }
     this.engine.windowRoot.guiReleaseFocus();
   }
+}
+
+// -----------------------------------------------------------------------------
+// Basic controls demo
+
+class BasicControlsDemoPage extends Control {
+  private readonly demoTexture: Texture;
+
+  constructor (engine: Engine) {
+    super(engine);
+    this.demoTexture = createDemoTexture(engine);
+
+    const displayPanel = new Panel(engine);
+    const interactionPanel = new Panel(engine);
+
+    attachAnchoredRect(displayPanel, this, 0, 0, 0.48, 1, 18, 66, 8, 18);
+    attachAnchoredRect(interactionPanel, this, 0.48, 0, 1, 1, 8, 66, 18, 18);
+    displayPanel.backgroundColor = new math.Color(0.045, 0.06, 0.09, 1);
+    interactionPanel.backgroundColor = new math.Color(0.045, 0.06, 0.09, 1);
+
+    const displayTitle = new Label(engine, '显示控件 · Label / Texture / Panel');
+
+    displayTitle.fontSize = 13;
+    displayTitle.fontWeight = 650;
+    displayTitle.textColor = palette.accent;
+    displayTitle.setRect({ position: new math.Vector2(18, 16), size: new math.Vector2(300, 28) });
+    displayTitle.parent = displayPanel;
+
+    const multiline = new Label(engine, '完整 Unicode code point：中文、Emoji 😀\nWordSmart 会按可用宽度自动换行。');
+
+    multiline.autowrapMode = AutowrapMode.WordSmart;
+    multiline.verticalAlignment = VerticalAlignment.Center;
+    multiline.textColor = palette.text;
+    multiline.setRect({ position: new math.Vector2(18, 48), size: new math.Vector2(270, 68) });
+    multiline.parent = displayPanel;
+
+    const swatch = new ColorRect(engine);
+
+    swatch.color = new math.Color(0.13, 0.45, 0.72, 1);
+    swatch.setRect({ position: new math.Vector2(18, 130), size: new math.Vector2(62, 62) });
+    swatch.parent = displayPanel;
+
+    const textureRect = new TextureRect(engine, this.demoTexture);
+
+    textureRect.stretchMode = TextureStretchMode.KeepAspectCentered;
+    textureRect.flipH = true;
+    textureRect.setRect({ position: new math.Vector2(96, 130), size: new math.Vector2(92, 62) });
+    textureRect.parent = displayPanel;
+
+    const ninePatch = new NinePatchRect(engine, this.demoTexture);
+
+    ninePatch.setPatchMargin(Side.Left, 12);
+    ninePatch.setPatchMargin(Side.Top, 12);
+    ninePatch.setPatchMargin(Side.Right, 12);
+    ninePatch.setPatchMargin(Side.Bottom, 12);
+    ninePatch.setRect({ position: new math.Vector2(204, 130), size: new math.Vector2(104, 62) });
+    ninePatch.parent = displayPanel;
+
+    const textureLabels = [
+      { text: 'ColorRect', x: 18, width: 62 },
+      { text: 'TextureRect', x: 96, width: 92 },
+      { text: 'NinePatchRect', x: 204, width: 104 },
+    ];
+
+    for (const { text, x, width } of textureLabels) {
+      const label = new Label(engine, text);
+
+      label.fontSize = 10;
+      label.textColor = palette.muted;
+      label.horizontalAlignment = HorizontalAlignment.Center;
+      label.verticalAlignment = VerticalAlignment.Center;
+      label.setRect({ position: new math.Vector2(x, 202), size: new math.Vector2(width, 22) });
+      label.parent = displayPanel;
+    }
+
+    const alignmentLabel = new Label(engine, 'Center aligned label');
+
+    alignmentLabel.horizontalAlignment = HorizontalAlignment.Center;
+    alignmentLabel.verticalAlignment = VerticalAlignment.Center;
+    alignmentLabel.textColor = palette.green;
+    alignmentLabel.setRect({ position: new math.Vector2(18, 238), size: new math.Vector2(290, 52) });
+    alignmentLabel.parent = displayPanel;
+
+    const interactionTitle = new Label(engine, '交互控件 · Buttons / Range');
+
+    interactionTitle.fontSize = 13;
+    interactionTitle.fontWeight = 650;
+    interactionTitle.textColor = palette.accent;
+    interactionTitle.setRect({ position: new math.Vector2(18, 16), size: new math.Vector2(280, 28) });
+    interactionTitle.parent = interactionPanel;
+
+    const defaultButton = new Button(engine, 'GUIStyle default');
+    const customButton = new Button(engine, 'Instance override');
+
+    defaultButton.setRect({ position: new math.Vector2(18, 50), size: new math.Vector2(132, 38) });
+    defaultButton.parent = interactionPanel;
+    customButton.normalColor = new math.Color(0.43, 0.20, 0.52, 1);
+    customButton.hoverColor = new math.Color(0.58, 0.28, 0.68, 1);
+    customButton.setRect({ position: new math.Vector2(162, 50), size: new math.Vector2(132, 38) });
+    customButton.parent = interactionPanel;
+
+    const choiceGroup = new ButtonGroup();
+    const firstChoice = new CheckBox(engine, 'Option A');
+    const secondChoice = new CheckBox(engine, 'Option B');
+    const switchButton = new CheckButton(engine, 'Live update');
+
+    firstChoice.buttonGroup = choiceGroup;
+    secondChoice.buttonGroup = choiceGroup;
+    firstChoice.buttonPressed = true;
+    firstChoice.setRect({ position: new math.Vector2(18, 102), size: new math.Vector2(132, 34) });
+    firstChoice.parent = interactionPanel;
+    secondChoice.setRect({ position: new math.Vector2(162, 102), size: new math.Vector2(132, 34) });
+    secondChoice.parent = interactionPanel;
+    switchButton.buttonPressed = true;
+    switchButton.setRect({ position: new math.Vector2(18, 144), size: new math.Vector2(276, 34) });
+    switchButton.parent = interactionPanel;
+
+    const actionStatus = new Label(engine, 'Ready · buttons reset after release');
+
+    actionStatus.fontSize = 9;
+    actionStatus.textColor = palette.muted;
+    actionStatus.horizontalAlignment = HorizontalAlignment.Center;
+    actionStatus.verticalAlignment = VerticalAlignment.Center;
+    actionStatus.setRect({ position: new math.Vector2(18, 181), size: new math.Vector2(276, 18) });
+    actionStatus.parent = interactionPanel;
+
+    defaultButton.on('pressed', () => {
+      actionStatus.text = 'GUIStyle default pressed';
+    });
+    customButton.on('pressed', () => {
+      actionStatus.text = 'Instance override pressed';
+    });
+    firstChoice.on('toggled', pressed => {
+      if (pressed) {
+        actionStatus.text = 'Option A selected';
+      }
+    });
+    secondChoice.on('toggled', pressed => {
+      if (pressed) {
+        actionStatus.text = 'Option B selected';
+      }
+    });
+    switchButton.on('toggled', pressed => {
+      actionStatus.text = `Live update ${pressed ? 'enabled' : 'disabled'}`;
+    });
+
+    const horizontalSlider = new HSlider(engine);
+    const verticalSlider = new VSlider(engine);
+    const progress = new ProgressBar(engine);
+
+    horizontalSlider.value = 64;
+    horizontalSlider.setRect({ position: new math.Vector2(18, 202), size: new math.Vector2(238, 18) });
+    horizontalSlider.parent = interactionPanel;
+    verticalSlider.value = 64;
+    verticalSlider.setRect({ position: new math.Vector2(274, 194), size: new math.Vector2(18, 96) });
+    verticalSlider.parent = interactionPanel;
+    progress.value = 64;
+    progress.setRect({ position: new math.Vector2(18, 242), size: new math.Vector2(238, 28) });
+    progress.parent = interactionPanel;
+    horizontalSlider.on('valueChanged', value => {
+      progress.value = value;
+      verticalSlider.setValueNoSignal(value);
+    });
+    verticalSlider.on('valueChanged', value => {
+      progress.value = value;
+      horizontalSlider.setValueNoSignal(value);
+    });
+  }
+
+  override draw (): void {
+    this.drawText(20, 17, '控件实例在构造时复制 GUIStyle.current；紫色按钮展示实例级覆盖。', 12, palette.muted, FONT_FAMILY, 450);
+  }
+
+  override onDestroy (): void {
+    this.demoTexture.dispose();
+  }
+}
+
+function createDemoTexture (engine: Engine): Texture {
+  const canvas = document.createElement('canvas');
+
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    throw new Error('Unable to create the basic controls demo texture.');
+  }
+  context.fillStyle = '#17314f';
+  context.fillRect(0, 0, 64, 64);
+  context.fillStyle = '#4fa5ff';
+  context.fillRect(0, 0, 64, 12);
+  context.fillRect(0, 52, 64, 12);
+  context.fillRect(0, 0, 12, 64);
+  context.fillRect(52, 0, 12, 64);
+  context.fillStyle = '#b9dcff';
+  context.beginPath();
+  context.arc(32, 32, 11, 0, Math.PI * 2);
+  context.fill();
+
+  const texture = Texture.create(engine, {
+    sourceType: TextureSourceType.image,
+    image: canvas,
+    flipY: true,
+  });
+
+  texture.initialize();
+
+  return texture;
 }
 
 // -----------------------------------------------------------------------------
@@ -1270,6 +1533,18 @@ const player = new Player({
   interactive: true,
   env: 'editor',
 });
+
+GUIStyle.current.fontFamily = FONT_FAMILY;
+GUIStyle.current.fontSize = 13;
+GUIStyle.current.textColor = new math.Color(0.91, 0.94, 0.98, 1);
+GUIStyle.current.panelColor = new math.Color(0.055, 0.073, 0.11, 1);
+GUIStyle.current.borderColor = new math.Color(0.18, 0.23, 0.32, 1);
+GUIStyle.current.normalColor = new math.Color(0.12, 0.16, 0.23, 1);
+GUIStyle.current.hoverColor = new math.Color(0.18, 0.25, 0.36, 1);
+GUIStyle.current.pressedColor = new math.Color(0.08, 0.12, 0.19, 1);
+GUIStyle.current.accentColor = new math.Color(0.35, 0.63, 1, 1);
+GUIStyle.current.accentHoverColor = new math.Color(0.49, 0.74, 1, 1);
+GUIStyle.current.fillColor = new math.Color(0.35, 0.63, 1, 1);
 const composition = new Composition(player.engine);
 const app = new ControlApp(player.engine);
 

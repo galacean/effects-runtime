@@ -19,7 +19,7 @@ import {
 } from '../input';
 import type { EventEmitterListener } from '../events';
 import { EventEmitter } from '../events';
-import type { FontStyle, FontWeight, TextureRegion } from '../render';
+import type { FontStyle, FontWeight, TextMeasurement, TextureRegion } from '../render';
 import type { Texture } from '../texture';
 import type { UIControl } from '../components/ui-control';
 import type { VFXItem } from '../vfx-item';
@@ -879,7 +879,6 @@ export class Control {
 
   onDestroy (): void {}
 
-  /** @internal */
   drawInternal (): void {
     if (!this.visibleInHierarchy || this.disposed) {
       return;
@@ -949,6 +948,13 @@ export class Control {
     fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
   ): void {
     this.engine.graphics.drawText(x, y, text, fontSize, color, fontFamily, fontWeight, fontStyle);
+  }
+
+  measureText (
+    text: string, fontSize: number,
+    fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
+  ): TextMeasurement {
+    return this.engine.graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
   }
 
   onMouseEnter (location: Vector2): void {}

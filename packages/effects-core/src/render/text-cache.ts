@@ -70,7 +70,7 @@ export class GlyphAtlas {
   /** cell 高（逻辑像素，含 padding），用于 quad 高度 */
   readonly lineHeight: number;
 
-  /** 字形 canvas 的像素密度，与 Pixi 的纹理 resolution 语义一致。 */
+  /** 字形 canvas 的像素密度。 */
   readonly resolution: number;
 
   private readonly ctx: CanvasRenderingContext2D;
@@ -255,7 +255,7 @@ export class TextCache {
     fontWeight: FontWeight,
     fontStyle: FontStyle,
   ): GlyphAtlas {
-    // Pixi CanvasText 默认跟随 renderer.resolution；这里对应 Engine.pixelRatio。
+    // 字形 atlas 跟随 Engine.pixelRatio。
     const resolution = this.engine.pixelRatio;
 
     if (resolution !== this.resolution) {

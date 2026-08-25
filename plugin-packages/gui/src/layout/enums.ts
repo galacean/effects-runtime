@@ -1,4 +1,4 @@
-export enum LayoutOrientation {
+export enum Orientation {
   Horizontal,
   Vertical,
 }

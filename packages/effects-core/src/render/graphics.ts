@@ -20,6 +20,13 @@ import type { ShapePrimitive } from '../math/shape/shape-primitive';
  */
 export type TextureRegion = { u0: number, v0: number, u1: number, v1: number };
 
+/** Logical text metrics produced by the glyph atlas used for rendering. */
+export type TextMeasurement = {
+  width: number,
+  lineHeight: number,
+  advances: number[],
+};
+
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 
 type BatchType = 'colored' | 'textured' | 'text';
@@ -170,7 +177,7 @@ export class Graphics {
     this.texturedMaterial.depthMask = false;
     this.texturedMaterial.blending = true;
 
-    // 文本 atlas 按 Pixi 的方式在上传时预乘 alpha，因此采样后只需应用顶点色和顶点 alpha。
+    // 文本 atlas 在上传时预乘 alpha，因此采样后只需应用顶点色和顶点 alpha。
     // 单独使用 material，避免改变 drawTexture 对普通非预乘纹理的处理。
     this.textMaterial = Material.create(this.engine, {
       shader: {
@@ -266,10 +273,7 @@ export class Graphics {
     this.currentTransform = transform;
   }
 
-  /**
-   * Pushes a local rectangular child clip. Transformed clips follow Godot's
-   * screen-space AABB scissor semantics rather than polygon clipping.
-   */
+  /** Pushes a local rectangular child clip using a screen-space AABB scissor. */
   pushClipRect (x: number, y: number, width: number, height: number): void {
     const elements = this.currentTransform.elements;
     const corners = [
@@ -660,11 +664,12 @@ export class Graphics {
 
     const lineHeight = atlas.lineHeight;
     let cursorX = x;
+    const characters = Array.from(text);
 
     // ensureChar 可能往 atlas canvas 写新字并打 dirty 标；实际 upload 推迟到
     // flushBatch 统一处理，这样一帧多次 drawText 共写同一 atlas 只 upload 一次
-    for (let i = 0; i < text.length; i++) {
-      const info = atlas.ensureChar(text[i]);
+    for (let i = 0; i < characters.length; i++) {
+      const info = atlas.ensureChar(characters[i]);
 
       if (!info) {
         continue;
@@ -686,6 +691,29 @@ export class Graphics {
       );
       cursorX += info.advance;
     }
+  }
+
+  /** Measures text with the same glyph metrics used by {@link drawText}. */
+  measureText (
+    text: string,
+    fontSize: number,
+    fontFamily: string = 'sans-serif',
+    fontWeight: FontWeight = 'normal',
+    fontStyle: FontStyle = 'normal',
+  ): TextMeasurement {
+    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const characters = Array.from(text);
+    const advances: number[] = [];
+    let width = 0;
+
+    for (const character of characters) {
+      const advance = atlas.ensureChar(character)?.advance ?? 0;
+
+      advances.push(advance);
+      width += advance;
+    }
+
+    return { width, lineHeight: atlas.lineHeight, advances };
   }
 
   dispose (): void {

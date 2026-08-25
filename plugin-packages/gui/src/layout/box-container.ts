@@ -1,21 +1,21 @@
 import { Container, SizeFlags, math } from '@galacean/effects';
 import type { Control, Engine } from '@galacean/effects';
-import { LayoutAlignment, LayoutOrientation } from './enums';
+import { LayoutAlignment, Orientation } from './enums';
 import { alignmentOffset, assertEnumValue, assertFinite, growSlots, sum } from './utils';
 
 /** Places visible children in a single horizontal or vertical row. */
 export class BoxContainer extends Container {
-  private _orientation = LayoutOrientation.Horizontal;
+  private _orientation = Orientation.Horizontal;
   private _alignment = LayoutAlignment.Begin;
   private _separation = 0;
   private _reverse = false;
 
-  get orientation (): LayoutOrientation {
+  get orientation (): Orientation {
     return this._orientation;
   }
 
-  set orientation (value: LayoutOrientation) {
-    assertEnumValue('BoxContainer orientation', value, LayoutOrientation.Vertical);
+  set orientation (value: Orientation) {
+    assertEnumValue('BoxContainer orientation', value, Orientation.Vertical);
     if (this._orientation !== value) {
       this._orientation = value;
       this.invalidateMeasurement();
@@ -75,7 +75,7 @@ export class BoxContainer extends Container {
       return;
     }
 
-    const horizontal = this.orientation === LayoutOrientation.Horizontal;
+    const horizontal = this.orientation === Orientation.Horizontal;
     const availableMain = horizontal ? this.size.x : this.size.y;
     const availableCross = horizontal ? this.size.y : this.size.x;
     const gapTotal = this.separation * (children.length - 1);
@@ -135,21 +135,21 @@ export class BoxContainer extends Container {
       main += this.separation * (children.length - 1);
     }
 
-    return this.orientation === LayoutOrientation.Horizontal
+    return this.orientation === Orientation.Horizontal
       ? new math.Vector2(main, cross)
       : new math.Vector2(cross, main);
   }
 
   private getMainSize (size: math.Vector2): number {
-    return this.orientation === LayoutOrientation.Horizontal ? size.x : size.y;
+    return this.orientation === Orientation.Horizontal ? size.x : size.y;
   }
 
   private getCrossSize (size: math.Vector2): number {
-    return this.orientation === LayoutOrientation.Horizontal ? size.y : size.x;
+    return this.orientation === Orientation.Horizontal ? size.y : size.x;
   }
 
   private isMainExpanded (child: Control): boolean {
-    const flags = this.orientation === LayoutOrientation.Horizontal
+    const flags = this.orientation === Orientation.Horizontal
       ? child.horizontalSizeFlags
       : child.verticalSizeFlags;
 
@@ -166,13 +166,13 @@ export class BoxContainer extends Container {
 export class HBoxContainer extends BoxContainer {
   constructor (engine: Engine) {
     super(engine);
-    this.orientation = LayoutOrientation.Horizontal;
+    this.orientation = Orientation.Horizontal;
   }
 }
 
 export class VBoxContainer extends BoxContainer {
   constructor (engine: Engine) {
     super(engine);
-    this.orientation = LayoutOrientation.Vertical;
+    this.orientation = Orientation.Vertical;
   }
 }
