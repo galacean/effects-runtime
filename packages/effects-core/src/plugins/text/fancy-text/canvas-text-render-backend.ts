@@ -13,6 +13,8 @@ import type {
 export interface CanvasTextRenderBackendOptions {
   textStyle: TextStyle,
   layers: FancyRenderLayer[],
+  /** Paint compatibility for the caller's historical Canvas stroke semantics. */
+  strokeLineJoin?: CanvasLineJoin,
 }
 
 function colorToCss (color: spec.vec4): string {
@@ -454,7 +456,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
         context,
         (glyphContext, glyph) => {
           glyphContext.strokeStyle = maskOnly ? 'rgb(255, 255, 255)' : colorToCss(color);
-          glyphContext.lineJoin = 'round';
+          glyphContext.lineJoin = this.options.strokeLineJoin ?? 'round';
           glyphContext.lineWidth = width;
           glyphContext.strokeText(glyph.glyph, glyph.x, glyph.y);
         },
@@ -638,7 +640,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     offscreenContext.setTransform(context.getTransform());
     offscreenContext.font = segment.fontRef;
     offscreenContext.textBaseline = 'alphabetic';
-    offscreenContext.lineJoin = 'round';
+    offscreenContext.lineJoin = this.options.strokeLineJoin ?? 'round';
     offscreenContext.lineWidth = width * (this.options.textStyle.fontScale || 1);
     offscreenContext.strokeStyle = color;
     offscreenContext.direction = segment.direction ?? 'ltr';

@@ -356,8 +356,12 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           // fix bug 1/255
           context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
           const [r, g, b, a] = fontColor;
+          // TextStyle normalizes base colors to 0..1, while legacy rich-text
+          // data may still carry 0..255 range colors. Keep both forms visible
+          // in the legacy Canvas path.
+          const colorScale = [r, g, b].some(channel => channel > 1) ? 1 : 255;
 
-          context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
+          context.fillStyle = `rgba(${r * colorScale}, ${g * colorScale}, ${b * colorScale}, ${a})`;
 
           context.fillText(text, strOffsetX, charsLineHeight);
         });

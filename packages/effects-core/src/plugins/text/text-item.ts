@@ -688,7 +688,11 @@ export class TextComponent extends MaskableGraphic {
       }
     }
 
-    const pad = outlinePad + shadowPad + glowPad + strokePad;
+    // The legacy outline is already represented as a single-stroke layer in
+    // fancyRenderStyle. Use the larger stroke budget instead of adding both
+    // budgets, otherwise the same outline expands the texture twice.
+    const strokeAndOutlinePad = Math.max(outlinePad, strokePad);
+    const pad = strokeAndOutlinePad + shadowPad + glowPad;
 
     return { padL: pad, padR: pad, padT: pad, padB: pad };
   }

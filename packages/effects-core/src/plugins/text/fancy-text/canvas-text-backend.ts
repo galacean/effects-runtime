@@ -25,6 +25,9 @@ export class CanvasTextBackend implements TextRenderBackend<TextRenderTarget> {
     this.planBackend = new CanvasTextRenderBackend({
       textStyle: options.style,
       layers: options.style.fancyRenderStyle.layers,
+      // TextComponent's pre-fancy path used Canvas's default miter joins.
+      // Keep that paint detail while still executing through the shared backend.
+      strokeLineJoin: 'miter',
     });
   }
 
