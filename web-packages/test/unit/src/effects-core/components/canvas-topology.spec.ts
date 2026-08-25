@@ -1,6 +1,5 @@
 import {
   Composition,
-  ContainerControl,
   Control,
   Player,
   RootControl,
@@ -40,7 +39,7 @@ describe('core/GUI topology', () => {
 
   it('keeps the window as the only RootControl and canvases as ordinary containers', () => {
     expect(player.engine.windowRoot).instanceOf(RootControl);
-    expect(composition.uiCanvas.rootControl).instanceOf(ContainerControl);
+    expect(composition.uiCanvas.rootControl).instanceOf(Control);
     expect(composition.uiCanvas.rootControl).not.instanceOf(RootControl);
     expect(player.engine.windowRoot.canvases.parent).equals(player.engine.windowRoot);
     expect(composition.sceneRoot.getComponent(UICanvas)).equals(composition.uiCanvas);
@@ -51,7 +50,7 @@ describe('core/GUI topology', () => {
   it('builds a GUI tree through UIControl bridges', () => {
     const parentItem = new VFXItem(player.engine);
     const parentBridge = parentItem.addComponent(UIControl);
-    const parentControl = new ContainerControl(player.engine);
+    const parentControl = new Control(player.engine);
 
     parentBridge.control = parentControl;
     parentItem.setParent(composition.sceneRoot);
@@ -114,7 +113,7 @@ describe('core/GUI topology', () => {
   });
 
   it('owns anchored layout and the 2D transform directly on Control', () => {
-    const parent = new ContainerControl(player.engine);
+    const parent = new Control(player.engine);
     const child = new Control(player.engine);
 
     parent.setSize(100, 80);
@@ -165,7 +164,7 @@ describe('core/GUI topology', () => {
     ] as const;
 
     for (const [preset, x, y, width, height] of expectations) {
-      const parent = new ContainerControl(player.engine);
+      const parent = new Control(player.engine);
       const child = new Control(player.engine);
 
       parent.setSize(200, 100);
@@ -274,6 +273,17 @@ describe('core/GUI topology', () => {
 
     composition.uiCanvas.enabled = true;
     expect(composition.uiCanvas.rootControl.parent).equals(player.engine.windowRoot.canvases);
+  });
+
+  it('synchronizes a canvas to the current window size when attaching late', () => {
+    const canvasRoot = composition.uiCanvas.rootControl;
+
+    composition.uiCanvas.enabled = false;
+    player.engine.windowRoot.resize(640, 360);
+    expect([canvasRoot.width, canvasRoot.height]).not.deep.equals([640, 360]);
+
+    composition.uiCanvas.enabled = true;
+    expect([canvasRoot.width, canvasRoot.height]).deep.equals([640, 360]);
   });
 
   it('detaches and disposes GUI objects with their bridge', () => {

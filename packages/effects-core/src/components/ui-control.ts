@@ -1,4 +1,5 @@
-import type { ContainerControl, Control } from '../gui';
+import type { Control } from '../gui';
+import { Container } from '../gui';
 import type { Engine } from '../engine';
 import type { Transform } from '../transform';
 import { Component } from './component';
@@ -9,7 +10,7 @@ import { UICanvas } from './ui-canvas';
  * serialization while the Control tree owns layout, drawing and input.
  */
 export class UIControl extends Component {
-  static fallbackParentGetDelegate?: (control: UIControl) => ContainerControl | null;
+  static fallbackParentGetDelegate?: (control: UIControl) => Control | null;
 
   private controlNode: Control | null = null;
   private linkedItemTransform: Transform | null = null;
@@ -123,7 +124,7 @@ export class UIControl extends Component {
     }
   }
 
-  private resolveParent (): ContainerControl | null {
+  private resolveParent (): Control | null {
     const parentItem = this.item.parent;
 
     if (!parentItem) {
@@ -131,8 +132,8 @@ export class UIControl extends Component {
     }
     const uiControl = parentItem.getComponent(UIControl);
 
-    if (uiControl?.control && 'children' in uiControl.control) {
-      return uiControl.control as ContainerControl;
+    if (uiControl?.control) {
+      return uiControl.control;
     }
     const canvas = parentItem.getComponent(UICanvas);
 
@@ -194,7 +195,9 @@ export class UIControl extends Component {
   private copyItemLocationToControl (): void {
     const control = this.controlNode;
 
-    if (control) {
+    // Automatic layout owns the local X/Y rectangle. Keep the reverse sync so
+    // layout results still update the scene item transform.
+    if (control && !(control.parent instanceof Container)) {
       const source = this.item.transform.position;
       const target = control.location;
 

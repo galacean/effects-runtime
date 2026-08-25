@@ -29,6 +29,23 @@ export type Rect = {
   size: Vector2,
 };
 
+/** Bit flags that describe how a Control uses space assigned by a Container. */
+export enum SizeFlags {
+  ShrinkBegin = 0,
+  Fill = 1,
+  Expand = 2,
+  ShrinkCenter = 4,
+  ShrinkEnd = 8,
+  ExpandFill = Fill | Expand,
+}
+
+/** Direction in which a Control grows when a minimum size makes its requested rectangle larger. */
+export enum GrowDirection {
+  Begin,
+  End,
+  Both,
+}
+
 export type LayoutPreset =
   | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight'
   | 'centerLeft' | 'centerTop' | 'centerRight' | 'centerBottom'
@@ -41,7 +58,43 @@ export type ControlEvent = {
   locationChanged: [control: Control],
   sizeChanged: [control: Control],
   parentChanged: [control: Control],
+  minimumSizeChanged: [control: Control],
+  desiredSizeChanged: [control: Control],
+  maximumSizeChanged: [control: Control],
+  sizeFlagsChanged: [control: Control],
+  visibilityChanged: [control: Control],
 };
+
+function normalizeMeasuredMinimum (value: Vector2): Vector2 {
+  if (!Number.isFinite(value.x) || !Number.isFinite(value.y)) {
+    throw new RangeError('Control minimum and desired sizes must be finite.');
+  }
+
+  return new Vector2(Math.max(0, value.x), Math.max(0, value.y));
+}
+
+function normalizeMeasuredMaximum (value: Vector2): Vector2 {
+  if (!Number.isFinite(value.x) || !Number.isFinite(value.y)) {
+    throw new RangeError('Control maximum sizes must be finite.');
+  }
+
+  return new Vector2(value.x < 0 ? -1 : value.x, value.y < 0 ? -1 : value.y);
+}
+
+function combineMaximum (measured: number, custom: number): number {
+  if (measured < 0) {
+    return custom;
+  }
+  if (custom < 0) {
+    return measured;
+  }
+
+  return Math.min(measured, custom);
+}
+
+function clampToMaximum (value: number, maximum: number): number {
+  return maximum < 0 ? value : Math.min(value, maximum);
+}
 
 const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]> = {
   topLeft: [0, 0, 0, 0],
@@ -67,22 +120,10 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  * scene tree. UIControl is the bridge between both trees.
  */
 export class Control {
-  private _parent: ContainerControl | null = null;
-  private _visible = true;
-  private _enabled = true;
-  private _mouseFilter = MouseFilter.Stop;
-  private _mouseBehaviorRecursive = MouseBehaviorRecursive.Inherited;
-  private _focusMode = FocusMode.None;
-  private _focusBehaviorRecursive = FocusBehaviorRecursive.Inherited;
-  private _defaultCursorShape: CursorStyle = CursorShape.Arrow;
-  private _rotation = 0;
-  private transformDirty = true;
-  private readonly cachedTransform = new Matrix3();
-  private readonly eventEmitter = new EventEmitter<ControlEvent>();
-  private disposed = false;
-
+  readonly engine: Engine;
   /** Scene-tree bridge that owns this GUI object, if any. */
   owner: UIControl | null = null;
+  readonly children: Control[] = [];
   readonly position = new Vector2();
   readonly size = new Vector2(1, 1);
   readonly anchorMin = new Vector2();
@@ -95,18 +136,39 @@ export class Control {
   mouseForcePassScrollEvents = true;
   clipContents = false;
 
-  constructor (readonly engine: Engine) {}
+  private _parent: Control | null = null;
+  private _visible = true;
+  private _enabled = true;
+  private _mouseFilter = MouseFilter.Stop;
+  private _mouseBehaviorRecursive = MouseBehaviorRecursive.Inherited;
+  private _focusMode = FocusMode.None;
+  private _focusBehaviorRecursive = FocusBehaviorRecursive.Inherited;
+  private _defaultCursorShape: CursorStyle = CursorShape.Arrow;
+  private _rotation = 0;
+  private transformDirty = true;
+  private readonly cachedTransform = new Matrix3();
+  private readonly eventEmitter = new EventEmitter<ControlEvent>();
+  private disposed = false;
+  private readonly customMinimumSize = new Vector2();
+  private readonly customMaximumSize = new Vector2(-1, -1);
+  private minimumSizeCache: Vector2 | null = null;
+  private desiredSizeCache: Vector2 | null = null;
+  private maximumSizeCache: Vector2 | null = null;
+  private _horizontalSizeFlags = SizeFlags.Fill;
+  private _verticalSizeFlags = SizeFlags.Fill;
+  private _stretchRatio = 1;
+  private _horizontalGrowDirection = GrowDirection.End;
+  private _verticalGrowDirection = GrowDirection.End;
 
-  get parent (): ContainerControl | null {
+  constructor (engine: Engine) {
+    this.engine = engine;
+  }
+
+  get parent (): Control | null {
     return this._parent;
   }
 
-  /** Scene item exposed through the optional UIControl bridge. */
-  get item (): VFXItem | null {
-    return this.owner?.item ?? null;
-  }
-
-  set parent (value: ContainerControl | null) {
+  set parent (value: Control | null) {
     if (value === this._parent) {
       return;
     }
@@ -121,8 +183,16 @@ export class Control {
     if (previousRoot && previousRoot !== nextRoot) {
       previousRoot.controlRemoved(this);
     }
+    if (nextRoot && previousRoot !== nextRoot) {
+      this.queuePendingLayouts();
+    }
     nextRoot?.controlTreeChanged();
     this.eventEmitter.emit('parentChanged', this);
+  }
+
+  /** Scene item exposed through the optional UIControl bridge. */
+  get item (): VFXItem | null {
+    return this.owner?.item ?? null;
   }
 
   get indexInParent (): number {
@@ -141,6 +211,7 @@ export class Control {
     if (this._visible !== value) {
       this._visible = value;
       this.root?.controlStateChanged(this);
+      this.eventEmitter.emit('visibilityChanged', this);
     }
   }
 
@@ -263,6 +334,68 @@ export class Control {
     this.setSize(this.size.x, value);
   }
 
+  get horizontalSizeFlags (): SizeFlags {
+    return this._horizontalSizeFlags;
+  }
+
+  set horizontalSizeFlags (value: SizeFlags) {
+    this.setSizeFlags(value, this._verticalSizeFlags);
+  }
+
+  get verticalSizeFlags (): SizeFlags {
+    return this._verticalSizeFlags;
+  }
+
+  set verticalSizeFlags (value: SizeFlags) {
+    this.setSizeFlags(this._horizontalSizeFlags, value);
+  }
+
+  get stretchRatio (): number {
+    return this._stretchRatio;
+  }
+
+  set stretchRatio (value: number) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RangeError('Control stretchRatio must be a finite number greater than zero.');
+    }
+    if (this._stretchRatio !== value) {
+      this._stretchRatio = value;
+      this.eventEmitter.emit('sizeFlagsChanged', this);
+    }
+  }
+
+  get horizontalGrowDirection (): GrowDirection {
+    return this._horizontalGrowDirection;
+  }
+
+  set horizontalGrowDirection (value: GrowDirection) {
+    this.assertGrowDirection(value);
+    if (this._horizontalGrowDirection !== value) {
+      this._horizontalGrowDirection = value;
+      this.updateLayout();
+    }
+  }
+
+  get verticalGrowDirection (): GrowDirection {
+    return this._verticalGrowDirection;
+  }
+
+  set verticalGrowDirection (value: GrowDirection) {
+    this.assertGrowDirection(value);
+    if (this._verticalGrowDirection !== value) {
+      this._verticalGrowDirection = value;
+      this.updateLayout();
+    }
+  }
+
+  get root (): RootControl | null {
+    return this instanceof RootControl ? this : this.parent?.root ?? null;
+  }
+
+  get isDisposed (): boolean {
+    return this.disposed;
+  }
+
   on<E extends keyof ControlEvent> (
     eventName: E,
     listener: EventEmitterListener<ControlEvent[E]>,
@@ -276,6 +409,54 @@ export class Control {
     listener: EventEmitterListener<ControlEvent[E]>,
   ): void {
     this.eventEmitter.off(eventName, listener);
+  }
+
+  addChild<T extends Control> (child: T): T {
+    child.parent = this;
+
+    return child;
+  }
+
+  removeChild (child: Control): void {
+    if (child.parent === this) {
+      child.parent = null;
+    }
+  }
+
+  getChildIndex (child: Control): number {
+    return this.children.indexOf(child);
+  }
+
+  /** @internal */
+  changeChildIndex (child: Control, newIndex: number): void {
+    const oldIndex = this.children.indexOf(child);
+
+    if (oldIndex === newIndex || oldIndex === -1) {
+      return;
+    }
+    this.children.splice(oldIndex, 1);
+    if (newIndex < 0 || newIndex >= this.children.length) {
+      this.children.push(child);
+    } else {
+      this.children.splice(newIndex, 0, child);
+    }
+    this.root?.controlTreeChanged();
+  }
+
+  /** @internal */
+  addChildInternal (child: Control): void {
+    if (!this.children.includes(child)) {
+      this.children.push(child);
+    }
+  }
+
+  /** @internal */
+  removeChildInternal (child: Control): void {
+    const index = this.children.indexOf(child);
+
+    if (index !== -1) {
+      this.children.splice(index, 1);
+    }
   }
 
   setPosition (x: number, y: number, keepOffsets = false): void {
@@ -300,6 +481,120 @@ export class Control {
 
     this.computeOffsets(rect, this.getParentRect());
     this.updateLayout();
+  }
+
+  /** Atomically replaces the local rectangle while preserving the current anchors. */
+  setRect (rect: Rect): void {
+    const nextRect = {
+      position: rect.position.clone(),
+      size: rect.size.clone(),
+    };
+
+    this.computeOffsets(nextRect, this.getParentRect());
+    this.updateLayout();
+  }
+
+  setSizeFlags (horizontal: SizeFlags, vertical: SizeFlags): void {
+    if (!Number.isInteger(horizontal) || horizontal < SizeFlags.ShrinkBegin
+      || !Number.isInteger(vertical) || vertical < SizeFlags.ShrinkBegin) {
+      throw new RangeError('Control size flags must be non-negative integers.');
+    }
+    if (this._horizontalSizeFlags !== horizontal || this._verticalSizeFlags !== vertical) {
+      this._horizontalSizeFlags = horizontal;
+      this._verticalSizeFlags = vertical;
+      this.eventEmitter.emit('sizeFlagsChanged', this);
+    }
+  }
+
+  /** Intrinsic minimum size supplied by a subclass. */
+  getMinimumSize (): Vector2 {
+    return new Vector2();
+  }
+
+  /** Intrinsic preferred size supplied by a subclass. */
+  getDesiredSize (): Vector2 {
+    return new Vector2();
+  }
+
+  /** Intrinsic maximum size supplied by a subclass. Negative components are unbounded. */
+  getMaximumSize (): Vector2 {
+    return new Vector2(-1, -1);
+  }
+
+  getCombinedMinimumSize (): Vector2 {
+    const measured = this.getCachedMinimumSize();
+
+    return new Vector2(
+      Math.max(measured.x, this.customMinimumSize.x),
+      Math.max(measured.y, this.customMinimumSize.y),
+    );
+  }
+
+  getCombinedMaximumSize (): Vector2 {
+    const measured = this.getCachedMaximumSize();
+
+    return new Vector2(
+      combineMaximum(measured.x, this.customMaximumSize.x),
+      combineMaximum(measured.y, this.customMaximumSize.y),
+    );
+  }
+
+  /** Minimum size after resolving a conflicting maximum; the maximum wins. */
+  getBoundMinimumSize (): Vector2 {
+    const minimum = this.getCombinedMinimumSize();
+    const maximum = this.getCombinedMaximumSize();
+
+    return new Vector2(
+      clampToMaximum(minimum.x, maximum.x),
+      clampToMaximum(minimum.y, maximum.y),
+    );
+  }
+
+  /** Desired size clamped to the resolved minimum and maximum constraints. */
+  getBoundDesiredSize (): Vector2 {
+    const minimum = this.getBoundMinimumSize();
+    const maximum = this.getCombinedMaximumSize();
+    const desired = this.getCachedDesiredSize();
+
+    return new Vector2(
+      Math.max(minimum.x, clampToMaximum(desired.x, maximum.x)),
+      Math.max(minimum.y, clampToMaximum(desired.y, maximum.y)),
+    );
+  }
+
+  setCustomMinimumSize (width: number, height: number): void {
+    const next = normalizeMeasuredMinimum(new Vector2(width, height));
+
+    if (this.customMinimumSize.x !== next.x || this.customMinimumSize.y !== next.y) {
+      this.customMinimumSize.copyFrom(next);
+      this.updateMinimumSize();
+    }
+  }
+
+  setCustomMaximumSize (width: number, height: number): void {
+    const next = normalizeMeasuredMaximum(new Vector2(width, height));
+
+    if (this.customMaximumSize.x !== next.x || this.customMaximumSize.y !== next.y) {
+      this.customMaximumSize.copyFrom(next);
+      this.updateMaximumSize();
+    }
+  }
+
+  updateMinimumSize (): void {
+    this.minimumSizeCache = null;
+    this.updateLayout();
+    this.eventEmitter.emit('minimumSizeChanged', this);
+  }
+
+  updateDesiredSize (): void {
+    this.desiredSizeCache = null;
+    this.eventEmitter.emit('desiredSizeChanged', this);
+  }
+
+  updateMaximumSize (): void {
+    this.maximumSizeCache = null;
+    this.updateLayout();
+    this.eventEmitter.emit('maximumSizeChanged', this);
   }
 
   setScale (x: number, y: number): void {
@@ -486,14 +781,6 @@ export class Control {
     this.setOffsetsPreset(preset, margin);
   }
 
-  get root (): RootControl | null {
-    return this instanceof RootControl ? this : this.parent?.root ?? null;
-  }
-
-  get isDisposed (): boolean {
-    return this.disposed;
-  }
-
   getGlobalTransform2D (): Matrix3 {
     const local = this.getTransform2D();
 
@@ -565,7 +852,13 @@ export class Control {
     return root ? this.makePositionLocal(root.getMousePosition()) : new Vector2();
   }
 
-  update (deltaTime: number): void {}
+  update (deltaTime: number): void {
+    for (const child of this.children.slice()) {
+      if (child.enabled && !child.isDisposed) {
+        child.update(deltaTime);
+      }
+    }
+  }
 
   draw (): void {
     // OVERRIDE
@@ -582,6 +875,7 @@ export class Control {
 
     graphics.pushTransform(this.getTransform2D());
     this.draw();
+    this.drawChildren();
     graphics.popTransform();
   }
 
@@ -673,13 +967,12 @@ export class Control {
     this.dropData(position, data);
   }
 
-  protected getDragData (position: Vector2): unknown { return null; }
-  protected canDropData (position: Vector2, data: unknown): boolean { return false; }
-  protected dropData (position: Vector2, data: unknown): void {}
-
   dispose (): void {
     if (this.disposed) {
       return;
+    }
+    for (const child of this.children.slice()) {
+      child.dispose();
     }
     this.disposed = true;
     this.onDestroy();
@@ -695,8 +988,27 @@ export class Control {
     const right = this.offsetMax.x + this.anchorMax.x * parentSize.x;
     const bottom = this.offsetMax.y + this.anchorMax.y * parentSize.y;
 
-    this.applyBounds(left, top, right - left, bottom - top);
+    const minimum = this.getBoundMinimumSize();
+    const maximum = this.getCombinedMaximumSize();
+    const horizontal = this.resolveBoundedAxis(left, right - left, minimum.x, maximum.x, this.horizontalGrowDirection);
+    const vertical = this.resolveBoundedAxis(top, bottom - top, minimum.y, maximum.y, this.verticalGrowDirection);
+
+    this.applyBounds(horizontal.position, vertical.position, horizontal.size, vertical.size);
   }
+
+  protected drawChildren (): void {
+    if (this.clipContents) {
+      // Graphics has no public rectangular clip stack yet. Keep the tree
+      // boundary here so the renderer can add it without changing ownership.
+    }
+    for (const child of this.children) {
+      child.drawInternal();
+    }
+  }
+
+  protected getDragData (position: Vector2): unknown { return null; }
+  protected canDropData (position: Vector2, data: unknown): boolean { return false; }
+  protected dropData (position: Vector2, data: unknown): void {}
 
   private applyBounds (x: number, y: number, width: number, height: number): void {
     const locationChanged = this.position.x !== x || this.position.y !== y;
@@ -713,7 +1025,7 @@ export class Control {
     }
     if (sizeChanged) {
       this.eventEmitter.emit('sizeChanged', this);
-      if (this instanceof ContainerControl) {
+      if (!(this instanceof Container)) {
         for (const child of this.children.slice()) {
           child.updateLayout();
         }
@@ -724,6 +1036,60 @@ export class Control {
   private markTransformDirty (): void {
     this.transformDirty = true;
     this.root?.controlTreeChanged();
+  }
+
+  private getCachedMinimumSize (): Vector2 {
+    this.minimumSizeCache ??= normalizeMeasuredMinimum(this.getMinimumSize());
+
+    return this.minimumSizeCache.clone();
+  }
+
+  private getCachedDesiredSize (): Vector2 {
+    this.desiredSizeCache ??= normalizeMeasuredMinimum(this.getDesiredSize());
+
+    return this.desiredSizeCache.clone();
+  }
+
+  private getCachedMaximumSize (): Vector2 {
+    this.maximumSizeCache ??= normalizeMeasuredMaximum(this.getMaximumSize());
+
+    return this.maximumSizeCache.clone();
+  }
+
+  private resolveBoundedAxis (
+    position: number,
+    requestedSize: number,
+    minimumSize: number,
+    maximumSize: number,
+    growDirection: GrowDirection,
+  ): { position: number, size: number } {
+    const finiteSize = Number.isFinite(requestedSize) ? requestedSize : 0;
+    const size = Math.max(minimumSize, clampToMaximum(finiteSize, maximumSize));
+    const difference = size - finiteSize;
+    let adjustedPosition = Number.isFinite(position) ? position : 0;
+
+    if (growDirection === GrowDirection.Begin) {
+      adjustedPosition -= difference;
+    } else if (growDirection === GrowDirection.Both) {
+      adjustedPosition -= difference / 2;
+    }
+
+    return { position: adjustedPosition, size };
+  }
+
+  private assertGrowDirection (value: GrowDirection): void {
+    if (!Number.isInteger(value) || value < GrowDirection.Begin || value > GrowDirection.Both) {
+      throw new RangeError('Invalid Control grow direction.');
+    }
+  }
+
+  private queuePendingLayouts (): void {
+    if (this instanceof Container) {
+      this.queueSort();
+    }
+    for (const child of this.children) {
+      child.queuePendingLayouts();
+    }
   }
 
   private getParentRect (): Rect {
@@ -772,103 +1138,173 @@ export class Control {
   }
 }
 
-/** A Control that owns child Controls. */
-export class ContainerControl extends Control {
-  readonly children: Control[] = [];
+/**
+ * A Control that automatically measures and arranges its child Controls.
+ * Concrete layout algorithms live in GUI plugin packages.
+ */
+export class Container extends Control {
+  private sortPending = false;
+  private readonly childLayoutChanged = () => this.invalidateMeasurementsAndQueueSort();
+  private readonly ownSizeChanged = () => this.queueSort();
 
-  addChild<T extends Control> (child: T): T {
-    child.parent = this;
-
-    return child;
+  constructor (engine: Engine) {
+    super(engine);
+    this.on('sizeChanged', this.ownSizeChanged);
   }
 
-  removeChild (child: Control): void {
-    if (child.parent === this) {
-      child.parent = null;
-    }
-  }
+  /** Defers and coalesces a layout pass until the GUI update phase. */
+  queueSort (): void {
+    const root = this.root;
 
-  getChildIndex (child: Control): number {
-    return this.children.indexOf(child);
-  }
-
-  /** @internal */
-  changeChildIndex (child: Control, newIndex: number): void {
-    const oldIndex = this.children.indexOf(child);
-
-    if (oldIndex === newIndex || oldIndex === -1) {
+    if (!root || this.sortPending) {
       return;
     }
-    this.children.splice(oldIndex, 1);
-    if (newIndex < 0 || newIndex >= this.children.length) {
-      this.children.push(child);
-    } else {
-      this.children.splice(newIndex, 0, child);
-    }
-    this.root?.controlTreeChanged();
+    this.sortPending = true;
+    root.queueLayout(this);
   }
 
   /** @internal */
-  addChildInternal (child: Control): void {
-    if (!this.children.includes(child)) {
-      this.children.push(child);
+  invokeSortChildren (): void {
+    if (!this.sortPending || this.isDisposed) {
+      return;
+    }
+    this.sortChildren();
+    this.sortPending = false;
+  }
+
+  override changeChildIndex (child: Control, newIndex: number): void {
+    const previousIndex = this.getChildIndex(child);
+
+    super.changeChildIndex(child, newIndex);
+    if (previousIndex !== this.getChildIndex(child)) {
+      this.invalidateMeasurementsAndQueueSort();
     }
   }
 
-  /** @internal */
-  removeChildInternal (child: Control): void {
-    const index = this.children.indexOf(child);
+  override addChildInternal (child: Control): void {
+    const wasChild = this.children.includes(child);
 
-    if (index !== -1) {
-      this.children.splice(index, 1);
+    super.addChildInternal(child);
+    if (!wasChild) {
+      this.bindChild(child);
+      this.invalidateMeasurementsAndQueueSort();
     }
   }
 
-  drawSelf (): void {
-    super.draw();
-  }
+  override removeChildInternal (child: Control): void {
+    const wasChild = this.children.includes(child);
 
-  override draw (): void {
-    this.drawSelf();
-    this.drawChildren();
-  }
-
-  protected drawChildren (): void {
-    const graphics = this.engine.graphics;
-
-    if (this.clipContents) {
-      // Graphics has no public rectangular clip stack yet. Keep the tree
-      // boundary here so the renderer can add it without changing ownership.
+    if (wasChild) {
+      this.unbindChild(child);
     }
-    for (const child of this.children) {
-      if (!child.visible || child.isDisposed) {
-        continue;
-      }
-      graphics.pushTransform(child.getTransform2D());
-      child.draw();
-      graphics.popTransform();
-    }
-  }
-
-  override update (deltaTime: number): void {
-    super.update(deltaTime);
-    for (const child of this.children.slice()) {
-      if (child.enabled && !child.isDisposed) {
-        child.update(deltaTime);
-      }
+    super.removeChildInternal(child);
+    if (wasChild) {
+      this.invalidateMeasurementsAndQueueSort();
     }
   }
 
   override dispose (): void {
+    this.off('sizeChanged', this.ownSizeChanged);
     for (const child of this.children.slice()) {
-      child.dispose();
+      this.unbindChild(child);
     }
     super.dispose();
+  }
+
+  /**
+   * Applies size flags and strict container geometry to a child. Automatic
+   * layout owns anchors, rotation, scale and shear; pivot is intentionally kept.
+   */
+  fitChildInRect (child: Control, rect: Rect): void {
+    const minimum = child.getBoundMinimumSize();
+    const desired = child.getBoundDesiredSize();
+    const maximum = child.getCombinedMaximumSize();
+    const horizontal = this.fitAxis(
+      rect.position.x,
+      rect.size.x,
+      minimum.x,
+      desired.x,
+      maximum.x,
+      child.horizontalSizeFlags,
+    );
+    const vertical = this.fitAxis(
+      rect.position.y,
+      rect.size.y,
+      minimum.y,
+      desired.y,
+      maximum.y,
+      child.verticalSizeFlags,
+    );
+
+    child.anchorMin.set(0, 0);
+    child.anchorMax.set(0, 0);
+    child.setRotation(0);
+    child.setScale(1, 1);
+    child.setShear(0, 0);
+    child.setRect({
+      position: new Vector2(horizontal.position, vertical.position),
+      size: new Vector2(horizontal.size, vertical.size),
+    });
+  }
+
+  /** Returns direct children that participate in layout. Disabled children still participate. */
+  protected getLayoutChildren (): Control[] {
+    return this.children.filter(child => child.visible && !child.isDisposed);
+  }
+
+  protected sortChildren (): void {}
+
+  private bindChild (child: Control): void {
+    child.on('minimumSizeChanged', this.childLayoutChanged);
+    child.on('desiredSizeChanged', this.childLayoutChanged);
+    child.on('maximumSizeChanged', this.childLayoutChanged);
+    child.on('sizeFlagsChanged', this.childLayoutChanged);
+    child.on('visibilityChanged', this.childLayoutChanged);
+  }
+
+  private unbindChild (child: Control): void {
+    child.off('minimumSizeChanged', this.childLayoutChanged);
+    child.off('desiredSizeChanged', this.childLayoutChanged);
+    child.off('maximumSizeChanged', this.childLayoutChanged);
+    child.off('sizeFlagsChanged', this.childLayoutChanged);
+    child.off('visibilityChanged', this.childLayoutChanged);
+  }
+
+  private invalidateMeasurementsAndQueueSort (): void {
+    this.updateMinimumSize();
+    this.updateDesiredSize();
+    this.updateMaximumSize();
+    this.queueSort();
+  }
+
+  private fitAxis (
+    position: number,
+    available: number,
+    minimum: number,
+    desired: number,
+    maximum: number,
+    flags: SizeFlags,
+  ): { position: number, size: number } {
+    const wantsFill = (flags & SizeFlags.Fill) !== 0;
+    let size = wantsFill ? available : Math.min(available, desired);
+
+    size = Math.max(minimum, clampToMaximum(size, maximum));
+    const remaining = available - size;
+    let adjustedPosition = position;
+
+    if ((flags & SizeFlags.ShrinkEnd) !== 0) {
+      adjustedPosition += remaining;
+    } else if ((flags & SizeFlags.ShrinkCenter) !== 0) {
+      adjustedPosition += remaining / 2;
+    }
+
+    return { position: adjustedPosition, size };
   }
 }
 
 /** Base class for GUI tree roots and input dispatchers. */
-export abstract class RootControl extends ContainerControl {
+export abstract class RootControl extends Control {
+  abstract queueLayout (container: Container): void;
   abstract getMousePosition (): Vector2;
   abstract guiGetFocusOwner (): Control | null;
   abstract guiIsDragging (): boolean;

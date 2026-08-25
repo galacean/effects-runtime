@@ -6,7 +6,7 @@ import type {
 } from '@galacean/effects';
 import {
   Composition,
-  ContainerControl,
+  Control,
   CursorShape,
   FocusMode,
   MouseButton,
@@ -92,7 +92,7 @@ function reportHandled (engine: Engine): void {
   });
 }
 
-class DemoControl extends ContainerControl {
+class DemoControl extends Control {
   label = 'Control';
   detail = '';
   fillColor = new Color(0.18, 0.22, 0.31, 1);
@@ -107,7 +107,7 @@ class DemoControl extends ContainerControl {
   private hovered = false;
   private pressed = false;
 
-  override drawSelf (): void {
+  override draw (): void {
     const size = this.size;
     const color = this.pressed ? this.pressedColor : this.hovered ? this.hoverColor : this.fillColor;
 

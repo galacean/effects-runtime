@@ -1,7 +1,6 @@
-import type { Control } from '@galacean/effects';
 import {
   Composition,
-  ContainerControl,
+  Control,
   CursorShape,
   FocusMode,
   InputEvent,
@@ -23,7 +22,7 @@ import {
 const { expect } = chai;
 const { Matrix3, Vector2 } = math;
 
-class RecordingControl extends ContainerControl {
+class RecordingControl extends Control {
   readonly log: string[] = [];
 
   override onMouseDown (event: InputEventMouseButton): void {
@@ -75,7 +74,7 @@ class AcceptingControl extends RecordingControl {
   }
 }
 
-class MouseStateRecordingControl extends ContainerControl {
+class MouseStateRecordingControl extends Control {
   readonly states: Array<{
     phase: 'down' | 'move' | 'up',
     buttonMask: MouseButtonMask,
