@@ -598,6 +598,18 @@ export class GLEngine extends Engine {
     }
   }
 
+  override setScissorTest (enable: boolean) {
+    if (enable) {
+      this.enable(glContext.SCISSOR_TEST);
+    } else {
+      this.disable(glContext.SCISSOR_TEST);
+    }
+  }
+
+  override setScissor (x: number, y: number, width: number, height: number) {
+    this.set4('scissor', x, y, width, height);
+  }
+
   override setCulling (enable: boolean) {
     if (enable) {
       this.enable(glContext.CULL_FACE);

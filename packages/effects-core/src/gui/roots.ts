@@ -110,11 +110,22 @@ export class CanvasContainer extends Control {
 
   protected override drawChildren (): void {
     this.sortCanvases();
-    for (const child of this.children) {
-      const root = child as CanvasRootControl;
+    const graphics = this.engine.graphics;
 
-      if (root.canvas.isVisible) {
-        root.drawInternal();
+    if (this.clipContents) {
+      graphics.pushClipRect(0, 0, this.width, this.height);
+    }
+    try {
+      for (const child of this.children) {
+        const root = child as CanvasRootControl;
+
+        if (root.canvas.isVisible) {
+          root.drawInternal();
+        }
+      }
+    } finally {
+      if (this.clipContents) {
+        graphics.popClipRect();
       }
     }
   }
@@ -205,6 +216,7 @@ export class WindowRootControl extends RootControl {
       previous.onLostFocus();
     }
     control.onGotFocus();
+    this.notifyFocusOwnerChanged(control);
   }
 
   override grabControlClickFocus (control: Control): void {
@@ -224,6 +236,7 @@ export class WindowRootControl extends RootControl {
     if (!previous.isDisposed) {
       previous.onLostFocus();
     }
+    this.notifyFocusOwnerChanged(null);
   }
 
   override warpControlMouse (position: Vector2): void {
@@ -266,12 +279,28 @@ export class WindowRootControl extends RootControl {
     }
   }
 
-  cancelPointerInput (): void {
+  override cancelPointerInput (): void {
     this.dropMouseFocus();
     this.dropMouseOver();
     this.gui.touchFocus.clear();
     this.endDragging(false);
     this.releaseControlFocus();
+  }
+
+  override cancelPointerPress (control: Control, touchIndex: number): void {
+    if (!this.isControlValid(control)) {
+      return;
+    }
+    if (this.controlBelongsToSubtree(this.gui.mouseFocus, control)) {
+      this.gui.mouseFocus = control;
+    }
+    if (this.controlBelongsToSubtree(this.gui.mouseClickGrabber, control)) {
+      this.gui.mouseClickGrabber = null;
+    }
+    if (this.controlBelongsToSubtree(this.gui.touchFocus.get(touchIndex) ?? null, control)) {
+      this.gui.touchFocus.set(touchIndex, control);
+    }
+    this.endDragging(false);
   }
 
   resize (width: number, height: number): void {
@@ -472,8 +501,10 @@ export class WindowRootControl extends RootControl {
       }
       const forcePassWheel = event instanceof InputEventMouseButton && isWheelButton(event.buttonIndex) &&
         current.mouseForcePassScrollEvents;
+      const forcePassTouch = (event instanceof InputEventScreenTouch || event instanceof InputEventScreenDrag) &&
+        current.mouseForcePassScrollEvents;
 
-      if (event.isAccepted() || (filter === MouseFilter.Stop && pointerEvent && !forcePassWheel)) {
+      if (event.isAccepted() || (filter === MouseFilter.Stop && pointerEvent && !forcePassWheel && !forcePassTouch)) {
         event.accept();
 
         return;
@@ -541,6 +572,9 @@ export class WindowRootControl extends RootControl {
       const child = container.children[index];
 
       if (!child.visibleInHierarchy || child.isDisposed) {
+        continue;
+      }
+      if (!container.intersectsChildContent(child, localPosition)) {
         continue;
       }
       const found = this.findControlAtPosition(child, position);
@@ -815,6 +849,10 @@ export class WindowRootControl extends RootControl {
     }
 
     return null;
+  }
+
+  private notifyFocusOwnerChanged (control: Control | null): void {
+    this.rootEventEmitter.emit('guiFocusChanged', control);
   }
 
   private isFocusTargetUsable (control: Control | null): control is Control {

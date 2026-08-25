@@ -24,6 +24,13 @@ const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 
 type BatchType = 'colored' | 'textured' | 'text';
 
+type ClipRect = {
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+};
+
 export class Graphics {
   private geometry: Geometry;
   private coloredMaterial: Material;
@@ -60,6 +67,9 @@ export class Graphics {
   // 变换栈和缓存(使用 Matrix3 进行 2D 变换)
   private transformStack: Matrix3[] = [];
   private currentTransform: Matrix3 = Matrix3.fromIdentity();
+  private clipStack: ClipRect[] = [];
+  private logicalWidth = 1;
+  private logicalHeight = 1;
 
   private get currentVertexCount () {
     return this.vertices.length / 2;
@@ -205,12 +215,19 @@ export class Graphics {
 
     this.transformStack = [];
     this.currentTransform = Matrix3.fromIdentity();
+    this.clipStack = [];
 
     this.currentBatchType = 'colored';
     this.currentBatchTexture = null;
+    this.engine.setScissorTest(false);
 
     // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标：(0, 0) 在左上角，(width, height) 在右下角，+Y 向下。
-    const { width, height } = this.engine.canvas.getBoundingClientRect();
+    const bounds = this.engine.canvas.getBoundingClientRect();
+    const width = bounds.width || this.engine.canvas.width / this.engine.pixelRatio || 1;
+    const height = bounds.height || this.engine.canvas.height / this.engine.pixelRatio || 1;
+
+    this.logicalWidth = width;
+    this.logicalHeight = height;
 
     // 正交投影矩阵：将屏幕坐标 [0, width] x [0, height] 映射到 NDC [-1, 1] x [-1, 1]
     const projectionMatrix = new Matrix4(
@@ -250,10 +267,85 @@ export class Graphics {
   }
 
   /**
+   * Pushes a local rectangular child clip. Transformed clips follow Godot's
+   * screen-space AABB scissor semantics rather than polygon clipping.
+   */
+  pushClipRect (x: number, y: number, width: number, height: number): void {
+    const elements = this.currentTransform.elements;
+    const corners = [
+      [x, y],
+      [x + width, y],
+      [x, y + height],
+      [x + width, y + height],
+    ];
+    let left = Infinity;
+    let top = Infinity;
+    let right = -Infinity;
+    let bottom = -Infinity;
+
+    for (const corner of corners) {
+      const transformedX = elements[0] * corner[0] + elements[3] * corner[1] + elements[6];
+      const transformedY = elements[1] * corner[0] + elements[4] * corner[1] + elements[7];
+
+      left = Math.min(left, transformedX);
+      top = Math.min(top, transformedY);
+      right = Math.max(right, transformedX);
+      bottom = Math.max(bottom, transformedY);
+    }
+
+    const parent = this.clipStack[this.clipStack.length - 1];
+
+    if (parent) {
+      left = Math.max(left, parent.x);
+      top = Math.max(top, parent.y);
+      right = Math.min(right, parent.x + parent.width);
+      bottom = Math.min(bottom, parent.y + parent.height);
+    }
+
+    const clip = {
+      x: left,
+      y: top,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top),
+    };
+    const previous = parent;
+
+    this.clipStack.push(clip);
+    if (!this.clipRectsEqual(previous, clip)) {
+      this.flushBatch();
+      this.applyClipRect(clip);
+    }
+  }
+
+  /** Restores the parent rectangular clip. */
+  popClipRect (): void {
+    const previous = this.clipStack.pop();
+
+    if (!previous) {
+      console.warn('Graphics: clip stack is empty.');
+
+      return;
+    }
+
+    const clip = this.clipStack[this.clipStack.length - 1];
+
+    if (!this.clipRectsEqual(previous, clip)) {
+      this.flushBatch();
+      if (clip) {
+        this.applyClipRect(clip);
+      } else {
+        this.engine.setScissorTest(false);
+      }
+    }
+  }
+
+  /**
    * 刷新并渲染所有累积的绘制命令
    */
   end (): void {
     this.flushBatch();
+    this.clipStack = [];
+    this.engine.setScissorTest(false);
   }
 
   /**
@@ -269,6 +361,28 @@ export class Graphics {
 
     this.currentBatchType = type;
     this.currentBatchTexture = texture;
+  }
+
+  private applyClipRect (clip: ClipRect): void {
+    const framebufferWidth = this.engine.canvas.width;
+    const framebufferHeight = this.engine.canvas.height;
+    const scaleX = framebufferWidth / this.logicalWidth;
+    const scaleY = framebufferHeight / this.logicalHeight;
+    const left = Math.max(0, Math.min(framebufferWidth, Math.floor(clip.x * scaleX)));
+    const top = Math.max(0, Math.min(framebufferHeight, Math.floor(clip.y * scaleY)));
+    const right = Math.max(left, Math.min(framebufferWidth, Math.ceil((clip.x + clip.width) * scaleX)));
+    const bottom = Math.max(top, Math.min(framebufferHeight, Math.ceil((clip.y + clip.height) * scaleY)));
+
+    this.engine.setScissorTest(true);
+    this.engine.setScissor(left, framebufferHeight - bottom, right - left, bottom - top);
+  }
+
+  private clipRectsEqual (left?: ClipRect, right?: ClipRect): boolean {
+    if (!left || !right) {
+      return left === right;
+    }
+
+    return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
   }
 
   /**

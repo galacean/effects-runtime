@@ -17,7 +17,7 @@ import {
   MouseBehaviorRecursive,
   MouseFilter,
 } from '../input';
-import type { EventEmitterListener, EventEmitterOptions } from '../events';
+import type { EventEmitterListener } from '../events';
 import { EventEmitter } from '../events';
 import type { FontStyle, FontWeight, TextureRegion } from '../render';
 import type { Texture } from '../texture';
@@ -63,6 +63,11 @@ export type ControlEvent = {
   maximumSizeChanged: [control: Control],
   sizeFlagsChanged: [control: Control],
   visibilityChanged: [control: Control],
+  enabledChanged: [control: Control],
+};
+
+export type RootControlEvent = ControlEvent & {
+  guiFocusChanged: [control: Control | null],
 };
 
 function normalizeMeasuredMinimum (value: Vector2): Vector2 {
@@ -186,6 +191,9 @@ export class Control {
     if (nextRoot && previousRoot !== nextRoot) {
       this.queuePendingLayouts();
     }
+    if (previousRoot !== nextRoot) {
+      this.notifyRootChanged(previousRoot, nextRoot);
+    }
     nextRoot?.controlTreeChanged();
     this.eventEmitter.emit('parentChanged', this);
   }
@@ -227,6 +235,7 @@ export class Control {
     if (this._enabled !== value) {
       this._enabled = value;
       this.root?.controlStateChanged(this);
+      this.eventEmitter.emit('enabledChanged', this);
     }
   }
 
@@ -399,9 +408,8 @@ export class Control {
   on<E extends keyof ControlEvent> (
     eventName: E,
     listener: EventEmitterListener<ControlEvent[E]>,
-    options?: EventEmitterOptions,
   ): void {
-    this.eventEmitter.on(eventName, listener, options);
+    this.eventEmitter.on(eventName, listener);
   }
 
   off<E extends keyof ControlEvent> (
@@ -793,6 +801,11 @@ export class Control {
     return point.x >= 0 && point.y >= 0 && point.x <= this.size.x && point.y <= this.size.y;
   }
 
+  /** Whether input at a position in this Control's space may reach a direct child. */
+  intersectsChildContent (child: Control, position: Vector2): boolean {
+    return true;
+  }
+
   getEffectiveMouseFilter (): MouseFilter {
     return this.enabledInHierarchy && this.isMouseRecursiveEnabled() ? this.mouseFilter : MouseFilter.Ignore;
   }
@@ -951,6 +964,8 @@ export class Control {
   onKeyUp (event: InputEventKey): void {}
   onGotFocus (): void {}
   onLostFocus (): void {}
+  onScrollBegin (): void {}
+  onScrollEnd (): void {}
 
   /** @internal */
   invokeGetDragData (position: Vector2): unknown {
@@ -997,15 +1012,23 @@ export class Control {
   }
 
   protected drawChildren (): void {
+    const graphics = this.engine.graphics;
+
     if (this.clipContents) {
-      // Graphics has no public rectangular clip stack yet. Keep the tree
-      // boundary here so the renderer can add it without changing ownership.
+      graphics.pushClipRect(0, 0, this.width, this.height);
     }
-    for (const child of this.children) {
-      child.drawInternal();
+    try {
+      for (const child of this.children) {
+        child.drawInternal();
+      }
+    } finally {
+      if (this.clipContents) {
+        graphics.popClipRect();
+      }
     }
   }
 
+  protected onRootChanged (previousRoot: RootControl | null, nextRoot: RootControl | null): void {}
   protected getDragData (position: Vector2): unknown { return null; }
   protected canDropData (position: Vector2, data: unknown): boolean { return false; }
   protected dropData (position: Vector2, data: unknown): void {}
@@ -1089,6 +1112,13 @@ export class Control {
     }
     for (const child of this.children) {
       child.queuePendingLayouts();
+    }
+  }
+
+  private notifyRootChanged (previousRoot: RootControl | null, nextRoot: RootControl | null): void {
+    this.onRootChanged(previousRoot, nextRoot);
+    for (const child of this.children) {
+      child.notifyRootChanged(previousRoot, nextRoot);
     }
   }
 
@@ -1304,6 +1334,30 @@ export class Container extends Control {
 
 /** Base class for GUI tree roots and input dispatchers. */
 export abstract class RootControl extends Control {
+  protected readonly rootEventEmitter = new EventEmitter<RootControlEvent>();
+
+  override on<E extends keyof RootControlEvent> (
+    eventName: E,
+    listener: EventEmitterListener<RootControlEvent[E]>,
+  ): void {
+    if (eventName === 'guiFocusChanged') {
+      this.rootEventEmitter.on(eventName, listener);
+    } else {
+      super.on(eventName, listener as never);
+    }
+  }
+
+  override off<E extends keyof RootControlEvent> (
+    eventName: E,
+    listener: EventEmitterListener<RootControlEvent[E]>,
+  ): void {
+    if (eventName === 'guiFocusChanged') {
+      this.rootEventEmitter.off(eventName, listener);
+    } else {
+      super.off(eventName, listener as never);
+    }
+  }
+
   abstract queueLayout (container: Container): void;
   abstract getMousePosition (): Vector2;
   abstract guiGetFocusOwner (): Control | null;
@@ -1311,6 +1365,8 @@ export abstract class RootControl extends Control {
   abstract guiGetDragData (): unknown;
   abstract guiIsDragSuccessful (): boolean;
   abstract guiCancelDrag (): void;
+  abstract cancelPointerInput (): void;
+  abstract cancelPointerPress (control: Control, touchIndex: number): void;
   abstract grabControlFocus (control: Control): void;
   abstract grabControlClickFocus (control: Control): void;
   abstract releaseControlFocus (control?: Control): void;

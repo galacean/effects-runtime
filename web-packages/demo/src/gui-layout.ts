@@ -32,7 +32,7 @@ if (!stageElement || !stageHostElement || resizeHandles.length !== 4) {
 
 const stage = stageElement;
 const stageHost = stageHostElement;
-const player = new Player({ container: stage, pixelRatio: 1 });
+const player = new Player({ container: stage, env: 'editor' });
 const composition = new Composition(player.engine);
 const margin = new MarginContainer(player.engine);
 const column = new VBoxContainer(player.engine);

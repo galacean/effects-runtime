@@ -429,7 +429,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.info(`Resize engine ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
 
       this.setSize(canvasWidth, canvasHeight);
-      this.windowRoot.resize(canvasWidth, canvasHeight);
+      this.windowRoot.resize(containerWidth, containerHeight);
     }
   }
 
@@ -706,6 +706,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   setStencilTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setScissorTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setScissor (x: number, y: number, width: number, height: number) {
     // OVERRIDE
   }
 
