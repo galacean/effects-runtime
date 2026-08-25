@@ -232,7 +232,7 @@ export class GlyphAtlas {
  * `ATLAS_SIZE × ATLAS_SIZE` 的离屏 canvas atlas，字符按需逐个绘制并打包，
  * `Graphics.drawText` 通过逐字 quad 引用 atlas 子矩形渲染。
  *
- * - 同一段文本不同颜色不会重复 upload（颜色由顶点 `vColor` 乘上字形 alpha）
+ * - 同一段文本不同颜色不会重复 upload（颜色由顶点 `vColor` 与字形 RGBA 相乘）
  * - 同一字体/字号下重复字符只渲染一次，显著减少 canvas → texture 上传次数
  *
  * 入参全部展开（避免调用方每帧创建临时 style 对象触发 GC）

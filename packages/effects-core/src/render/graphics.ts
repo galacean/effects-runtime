@@ -177,7 +177,7 @@ export class Graphics {
     this.texturedMaterial.depthMask = false;
     this.texturedMaterial.blending = true;
 
-    // 文本 atlas 在上传时预乘 alpha，因此采样后只需应用顶点色和顶点 alpha。
+    // 文本 atlas 在上传时预乘 alpha，因此纹理 RGB 只需乘顶点色和顶点 alpha。
     // 单独使用 material，避免改变 drawTexture 对普通非预乘纹理的处理。
     this.textMaterial = Material.create(this.engine, {
       shader: {
@@ -199,8 +199,10 @@ export class Graphics {
         varying vec2 vUV;
         uniform sampler2D uMainTexture;
         void main() {
-          float alpha = texture2D(uMainTexture, vUV).a * vColor.a;
-          gl_FragColor = vec4(vColor.rgb * alpha, alpha);
+          vec4 textureColor = texture2D(uMainTexture, vUV);
+          float alpha = textureColor.a * vColor.a;
+          vec3 rgb = textureColor.rgb * vColor.rgb * vColor.a;
+          gl_FragColor = vec4(rgb, alpha);
         }`,
       },
     });
@@ -634,7 +636,7 @@ export class Graphics {
    * 绘制文本（本地坐标，Y 向下，(x, y) 为文本 cell 左上角）。
    *
    * 文本走字符级 bitmap atlas（同一字体下每个字只渲染一次，任意文本组合复用 atlas）;
-   * `color` 作为乘色与白色字形 alpha 相乘，任意颜色都不会污染 atlas。
+   * `color` 与 atlas 字形 RGBA 相乘，任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开，避免调用方每帧创建临时 style 对象触发 GC
    * @param x - 文本左上角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
@@ -730,7 +732,7 @@ export class Graphics {
     const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
-    shape.build(buildPoints);
+    shape.build(buildPoints, this.getScreenScale());
     shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
 
     this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
@@ -742,11 +744,21 @@ export class Graphics {
     const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
-    shape.build(buildPoints);
+    shape.build(buildPoints, this.getScreenScale());
     this.lineStyle.width = thickness;
     buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
 
     this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+  }
+
+  private getScreenScale (): number {
+    const transform = this.currentTransform.elements;
+    const transformScaleX = Math.hypot(transform[0], transform[1]);
+    const transformScaleY = Math.hypot(transform[3], transform[4]);
+    const framebufferScaleX = this.engine.canvas.width / this.logicalWidth;
+    const framebufferScaleY = this.engine.canvas.height / this.logicalHeight;
+
+    return Math.max(transformScaleX * framebufferScaleX, transformScaleY * framebufferScaleY, 1);
   }
 
   private setTriangleShape (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
