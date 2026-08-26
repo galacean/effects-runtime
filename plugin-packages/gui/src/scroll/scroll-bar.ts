@@ -180,7 +180,12 @@ export class ScrollBar extends Range {
       const area = this.getAreaSize();
 
       if (area > 0) {
+        const previous = this.value;
+
         this.setAsRatio(this.dragRatio + (position - this.dragPosition) / area);
+        if (previous !== this.value) {
+          this.scrollBarEventEmitter.emit('scrolling');
+        }
       }
 
       return;

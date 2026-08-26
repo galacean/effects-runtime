@@ -19,7 +19,13 @@ import {
 } from '../input';
 import type { EventEmitterListener } from '../events';
 import { EventEmitter } from '../events';
-import type { FontStyle, FontWeight, TextMeasurement, TextureRegion } from '../render';
+import type {
+  FontStyle,
+  FontWeight,
+  NinePatchDrawOptions,
+  TextMeasurement,
+  TextureRegion,
+} from '../render';
 import type { Texture } from '../texture';
 import type { UIControl } from '../components/ui-control';
 import type { VFXItem } from '../vfx-item';
@@ -944,6 +950,13 @@ export class Control {
     texture: Texture, region?: TextureRegion, color?: Color,
   ): void {
     this.engine.graphics.drawTexture(x, y, width, height, texture, region, color);
+  }
+
+  drawNinePatch (
+    x: number, y: number, width: number, height: number,
+    texture: Texture, options: NinePatchDrawOptions, color?: Color,
+  ): void {
+    this.engine.graphics.drawNinePatch(x, y, width, height, texture, options, color);
   }
 
   drawText (

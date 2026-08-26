@@ -11,18 +11,12 @@ import type {
   EventEmitterListener,
   Rect,
   Texture,
-  TextureRegion,
 } from '@galacean/effects';
 import { AxisStretchMode, Side } from './enums';
 import type { NinePatchRectData } from '../data';
 
 export type NinePatchRectEvent = ControlEvent & {
   textureChanged: [texture: Texture | null],
-};
-
-type AxisSegment = {
-  destination: number,
-  source: number,
 };
 
 @effectsClass('NinePatchRect')
@@ -136,27 +130,20 @@ export class NinePatchRect extends Control {
     }
 
     const source = this.getSourceRect();
-    const sourceX = splitAxis(source.position.x, source.size.x,
-      this.getPatchMargin(Side.Left), this.getPatchMargin(Side.Right));
-    const sourceY = splitAxis(source.position.y, source.size.y,
-      this.getPatchMargin(Side.Top), this.getPatchMargin(Side.Bottom));
-    const destinationX = splitAxis(0, this.width,
-      this.getPatchMargin(Side.Left), this.getPatchMargin(Side.Right));
-    const destinationY = splitAxis(0, this.height,
-      this.getPatchMargin(Side.Top), this.getPatchMargin(Side.Bottom));
 
-    for (let row = 0; row < 3; row++) {
-      for (let column = 0; column < 3; column++) {
-        if (!this.drawCenter && row === 1 && column === 1) {
-          continue;
-        }
-        const horizontalMode = column === 1 ? this.horizontalAxisStretchMode : AxisStretchMode.Stretch;
-        const verticalMode = row === 1 ? this.verticalAxisStretchMode : AxisStretchMode.Stretch;
-
-        this.drawPatch(destinationX[column], destinationY[row], sourceX[column], sourceY[row],
-          horizontalMode, verticalMode);
-      }
-    }
+    this.drawNinePatch(0, 0, this.width, this.height, texture, {
+      sourceX: source.position.x,
+      sourceY: source.position.y,
+      sourceWidth: source.size.x,
+      sourceHeight: source.size.y,
+      marginLeft: this.getPatchMargin(Side.Left),
+      marginTop: this.getPatchMargin(Side.Top),
+      marginRight: this.getPatchMargin(Side.Right),
+      marginBottom: this.getPatchMargin(Side.Bottom),
+      horizontalMode: this.horizontalAxisStretchMode,
+      verticalMode: this.verticalAxisStretchMode,
+      drawCenter: this.drawCenter,
+    }, this.tint);
   }
 
   private getSourceRect (): Rect {
@@ -173,65 +160,6 @@ export class NinePatchRect extends Control {
       position: new math.Vector2(),
       size: new math.Vector2(texture.width, texture.height),
     };
-  }
-
-  private drawPatch (
-    destinationX: AxisSegment,
-    destinationY: AxisSegment,
-    sourceX: AxisSegment,
-    sourceY: AxisSegment,
-    horizontalMode: AxisStretchMode,
-    verticalMode: AxisStretchMode,
-  ): void {
-    if (destinationX.destination <= 0 || destinationY.destination <= 0
-      || sourceX.destination <= 0 || sourceY.destination <= 0) {
-      return;
-    }
-
-    const columns = getTiles(destinationX.destination, sourceX.destination, horizontalMode);
-    const rows = getTiles(destinationY.destination, sourceY.destination, verticalMode);
-    let y = destinationY.source;
-
-    for (const row of rows) {
-      let x = destinationX.source;
-
-      for (const column of columns) {
-        this.drawPatchTile(
-          x, y, column.destination, row.destination,
-          sourceX.source, sourceY.source, sourceX.destination, sourceY.destination,
-          column.sourceRatio, row.sourceRatio,
-        );
-        x += column.destination;
-      }
-      y += row.destination;
-    }
-  }
-
-  private drawPatchTile (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    sourceX: number,
-    sourceY: number,
-    sourceWidth: number,
-    sourceHeight: number,
-    horizontalRatio: number,
-    verticalRatio: number,
-  ): void {
-    const texture = this.texture;
-
-    if (!texture) {
-      return;
-    }
-    const region: TextureRegion = {
-      u0: sourceX / texture.width,
-      u1: (sourceX + sourceWidth * horizontalRatio) / texture.width,
-      v0: 1 - (sourceY + sourceHeight * verticalRatio) / texture.height,
-      v1: 1 - sourceY / texture.height,
-    };
-
-    this.drawTexture(x, y, width, height, texture, region, this.tint);
   }
 
   override fromData (data: NinePatchRectData): void {
@@ -270,47 +198,4 @@ export class NinePatchRect extends Control {
       this.tint.copyFrom(data.tint);
     }
   }
-}
-
-function splitAxis (start: number, size: number, firstMargin: number, lastMargin: number): AxisSegment[] {
-  const totalMargin = firstMargin + lastMargin;
-  const scale = totalMargin > size && totalMargin > 0 ? size / totalMargin : 1;
-  const first = firstMargin * scale;
-  const last = lastMargin * scale;
-  const middle = Math.max(0, size - first - last);
-
-  return [
-    { destination: first, source: start },
-    { destination: middle, source: start + first },
-    { destination: last, source: start + size - last },
-  ];
-}
-
-function getTiles (destination: number, source: number, mode: AxisStretchMode): Array<{
-  destination: number,
-  sourceRatio: number,
-}> {
-  if (mode === AxisStretchMode.Stretch || source <= 0) {
-    return [{ destination, sourceRatio: 1 }];
-  }
-
-  const count = Math.max(1, Math.ceil(destination / source));
-
-  if (mode === AxisStretchMode.TileFit) {
-    const size = destination / count;
-
-    return Array.from({ length: count }, () => ({ destination: size, sourceRatio: 1 }));
-  }
-
-  const tiles = [];
-  let remaining = destination;
-
-  while (remaining > 0) {
-    const size = Math.min(source, remaining);
-
-    tiles.push({ destination: size, sourceRatio: size / source });
-    remaining -= size;
-  }
-
-  return tiles;
 }

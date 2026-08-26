@@ -1,4 +1,5 @@
 import { Composition, Control, Player, math } from '@galacean/effects';
+import type { Texture } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -125,5 +126,76 @@ describe('core/Graphics clip stack', () => {
       player.engine.setScissor = originalSetScissor;
       player.dispose();
     }
+  });
+});
+
+describe('core/Graphics nine-patch command', () => {
+  it('keeps Tile and TileFit at one quad and preserves surrounding batch order', () => {
+    const player = new Player({
+      canvas: document.createElement('canvas'),
+      pixelRatio: 1,
+      manualRender: true,
+    });
+    const graphics = player.engine.graphics;
+    const texture = { width: 32, height: 32 } as Texture;
+    const drawCounts: number[] = [];
+    const drawTypes: string[] = [];
+    const originalDrawGeometry = player.engine.renderer.drawGeometry.bind(player.engine.renderer);
+
+    player.engine.renderer.drawGeometry = (geometry, worldMatrix, material) => {
+      drawCounts.push(geometry.getDrawCount());
+      drawTypes.push(material.shaderSource.fragment.includes('mapNinePatchAxis')
+        ? 'ninePatch'
+        : 'regular');
+    };
+
+    graphics.begin();
+    graphics.fillRectangle(0, 0, 10, 10);
+    graphics.drawNinePatch(0, 0, 1_000_000, 1_000_000, texture, {
+      sourceX: 0,
+      sourceY: 0,
+      sourceWidth: 32,
+      sourceHeight: 32,
+      marginLeft: 8,
+      marginTop: 8,
+      marginRight: 8,
+      marginBottom: 8,
+      horizontalMode: 1,
+      verticalMode: 2,
+      drawCenter: true,
+    });
+    graphics.drawNinePatch(10, 10, 1_000_000, 1_000_000, texture, {
+      sourceX: 0,
+      sourceY: 0,
+      sourceWidth: 32,
+      sourceHeight: 32,
+      marginLeft: 8,
+      marginTop: 8,
+      marginRight: 8,
+      marginBottom: 8,
+      horizontalMode: 2,
+      verticalMode: 1,
+      drawCenter: false,
+    });
+    graphics.fillRectangle(20, 20, 10, 10);
+    graphics.end();
+
+    expect(drawCounts).deep.equals([6, 12, 6]);
+    expect(drawTypes).deep.equals(['regular', 'ninePatch', 'regular']);
+
+    player.engine.renderer.drawGeometry = originalDrawGeometry;
+    graphics.begin();
+    graphics.drawNinePatch(0, 0, 10, 10, player.engine.whiteTexture, {
+      sourceX: 0,
+      sourceY: 0,
+      sourceWidth: player.engine.whiteTexture.width,
+      sourceHeight: player.engine.whiteTexture.height,
+      marginLeft: 0,
+      marginTop: 0,
+      marginRight: 0,
+      marginBottom: 0,
+    });
+    graphics.end();
+    player.dispose();
   });
 });

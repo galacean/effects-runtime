@@ -3,6 +3,7 @@ import {
   Control,
   FocusMode,
   InputEventMouseButton,
+  InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
   MouseButton,
@@ -109,6 +110,26 @@ describe('core/GUI clipping and scrolling', () => {
     expect(horizontal.value).equals(50);
     expect(wheel.isAccepted()).equals(true);
     expect(vertical.getMinimumSize()).deep.equals(new math.Vector2(12, 36));
+  });
+
+  it('emits scrolling while the ScrollBar grabber is dragged', () => {
+    const horizontal = new HScrollBar(player.engine);
+    const motion = new InputEventMouseMotion();
+    let scrolling = 0;
+
+    horizontal.setSize(120, 12);
+    horizontal.maxValue = 200;
+    horizontal.page = 40;
+    horizontal.setValueNoSignal(40);
+    horizontal.on('scrolling', () => scrolling++);
+    horizontal.onMouseDown(mouseButton(35, 6, MouseButton.Left));
+    motion.position.set(60, 6);
+    horizontal.onMouseMove(motion);
+    expect(horizontal.value).greaterThan(40);
+    expect(scrolling).equals(1);
+
+    horizontal.onMouseMove(motion);
+    expect(scrolling).equals(1);
   });
 
   it('resolves both scroll bars and repositions expanded content', () => {

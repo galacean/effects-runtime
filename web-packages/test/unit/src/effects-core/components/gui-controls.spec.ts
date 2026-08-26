@@ -150,7 +150,7 @@ describe('core/GUI basic controls', () => {
     rect.setPatchMargin(Side.Right, 6);
     rect.setPatchMargin(Side.Bottom, 7);
     rect.on('textureChanged', texture => textures.push(texture));
-    rect.drawTexture = ((...args: unknown[]) => calls.push(args)) as typeof rect.drawTexture;
+    rect.drawNinePatch = ((...args: unknown[]) => calls.push(args)) as typeof rect.drawNinePatch;
 
     for (const horizontal of [AxisStretchMode.Stretch, AxisStretchMode.Tile, AxisStretchMode.TileFit]) {
       for (const vertical of [AxisStretchMode.Stretch, AxisStretchMode.Tile, AxisStretchMode.TileFit]) {
@@ -158,7 +158,24 @@ describe('core/GUI basic controls', () => {
         rect.verticalAxisStretchMode = vertical;
         calls.length = 0;
         rect.draw();
-        expect(calls.length).greaterThan(0);
+        expect(calls).length(1);
+        const options = calls[0][5] as {
+          sourceX: number,
+          sourceY: number,
+          sourceWidth: number,
+          sourceHeight: number,
+          horizontalMode: AxisStretchMode,
+          verticalMode: AxisStretchMode,
+        };
+
+        expect(options).includes({
+          sourceX: 2,
+          sourceY: 3,
+          sourceWidth: 24,
+          sourceHeight: 18,
+          horizontalMode: horizontal,
+          verticalMode: vertical,
+        });
       }
     }
     expect(rect.getMinimumSize()).deep.equals(new math.Vector2(10, 12));
@@ -224,6 +241,11 @@ describe('core/GUI basic controls', () => {
     first.onMouseDown(mouseButton(10, 10, MouseButton.Left));
     first.onMouseUp(mouseButton(10, 10, MouseButton.Left));
     expect(group.getPressedButton()).equals(null);
+
+    first.buttonGroup = null;
+    first.buttonPressed = true;
+    expect(first.buttonPressed).equals(true);
+    expect(group.getButtons()).deep.equals([second]);
     expect(checkButton.toggleMode).equals(true);
     expect(new Button(player.engine, 'Text').getMinimumSize().x).greaterThan(0);
   });

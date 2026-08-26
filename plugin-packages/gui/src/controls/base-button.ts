@@ -32,6 +32,25 @@ export type ButtonGroupEvent = {
 };
 
 export class ButtonGroup {
+  /** @internal */
+  static updateButton (
+    button: BaseButton,
+    previous: ButtonGroup | null,
+    next: ButtonGroup | null,
+  ): void {
+    previous?.buttons.delete(button);
+    if (next) {
+      next.buttons.add(button);
+      if (button.buttonPressed) {
+        for (const peer of next.buttons) {
+          if (peer !== button) {
+            peer.setPressedFromGroup(false, false);
+          }
+        }
+      }
+    }
+  }
+
   private readonly buttons = new Set<BaseButton>();
   private readonly eventEmitter = new EventEmitter<ButtonGroupEvent>();
 
@@ -63,21 +82,6 @@ export class ButtonGroup {
 
   getButtons (): BaseButton[] {
     return Array.from(this.buttons);
-  }
-
-  addButton (button: BaseButton): void {
-    this.buttons.add(button);
-    if (button.buttonPressed) {
-      for (const peer of this.buttons) {
-        if (peer !== button) {
-          peer.setPressedFromGroup(false, false);
-        }
-      }
-    }
-  }
-
-  removeButton (button: BaseButton): void {
-    this.buttons.delete(button);
   }
 
   select (button: BaseButton, signal: boolean, emitPressed = false): boolean {
@@ -184,9 +188,10 @@ export class BaseButton extends Control {
 
   set buttonGroup (value: ButtonGroup | null) {
     if (this._buttonGroup !== value) {
-      this._buttonGroup?.removeButton(this);
+      const previous = this._buttonGroup;
+
       this._buttonGroup = value;
-      value?.addButton(this);
+      ButtonGroup.updateButton(this, previous, value);
     }
   }
 
