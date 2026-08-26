@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { Color, Vector2 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { canvasPool } from '../../canvas-pool';
 import { MaskableGraphic } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -14,7 +13,8 @@ import type { Renderer } from '../../render/renderer';
 import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
 import { CanvasTextBackend } from './fancy-text/canvas-text-backend';
 import type { CharInfo } from './fancy-text/render-with-text-layers';
-import { buildTextRenderPlanFromCharInfo } from './fancy-text/text-render-plan';
+import { buildTextRenderPlanFromCharInfo, createTextFont } from './fancy-text/text-render-plan';
+import { compileTextEffectPlan } from './fancy-text/text-effect-plan';
 import type { TextLayerDrawer } from './fancy-text/fancy-types';
 import { hasRtlOrJoiningText } from './text-direction';
 
@@ -62,11 +62,8 @@ export class TextComponent extends MaskableGraphic {
 
     this.name = 'MText' + seed++;
 
-    // 初始化canvas资源
-    const canvasAndContext = canvasPool.getCanvasAndContext(1, 1);
-
-    this.canvas = canvasAndContext.canvas;
-    this.context = canvasAndContext.context;
+    // 初始化共享 Canvas 资源。
+    this.initTextBase(engine);
 
     // 使用默认值初始化
     const defaultData = this.getDefaultProps();
@@ -581,17 +578,24 @@ export class TextComponent extends MaskableGraphic {
       }
 
       const baseXPerLine = charsInfo.map(line => this.textLayout.getOffsetX(this.textStyle, line.width));
-      const paintSegments = charsInfo.flatMap((line, lineId) => {
+      const paintFontSize = this.maxLineWidth > baseWidth && layout.overflow === spec.TextOverflow.display
+        ? fontSize * baseWidth / this.maxLineWidth
+        : fontSize;
+      const paintFont = createTextFont({
+        size: paintFontSize,
+        family: style.fontFamily,
+        weight: style.textWeight,
+        style: style.fontStyle,
+      });
+      const shapingRuns = charsInfo.flatMap((line, lineId) => {
         const text = line.chars.join('');
 
         if (!hasRtlOrJoiningText(text)) {
           return [];
         }
 
-        const fontRef = this.textStyle.fontDesc;
-
         context.save();
-        context.font = fontRef;
+        context.font = style.fontDesc;
         const width = context.measureText(text).width;
 
         context.restore();
@@ -602,12 +606,13 @@ export class TextComponent extends MaskableGraphic {
           y: line.y,
           lineId,
           sourceRangeId: 'text',
-          fontRef,
+          fontId: paintFont.id,
           direction: 'rtl' as const,
         }];
       });
-      const plan = buildTextRenderPlanFromCharInfo(charsInfo, this.textStyle.fancyRenderStyle.layers, {
-        fontRef: context.font,
+      const plan = buildTextRenderPlanFromCharInfo(charsInfo, {
+        font: paintFont,
+        effectPlan: compileTextEffectPlan({ defaultLayers: this.textStyle.fancyRenderStyle.layers }),
         fillColor: this.textStyle.textColor,
         baseXPerLine,
         // Plain text has no range-aware layout builder to provide content
@@ -616,12 +621,13 @@ export class TextComponent extends MaskableGraphic {
         contentBounds: { x: 0, y: 0, width: baseWidth, height: baseHeight },
         logicalSize: { width: baseWidth, height: baseHeight },
         renderSize: { width: texWidth, height: texHeight },
+        renderScale: fontScale,
         padding: { left: padL, right: padR, top: padT, bottom: padB },
-        paintSegments,
+        shapingRuns,
       });
 
       const backend = new CanvasTextBackend({
-        style: this.textStyle,
+        textureLayers: this.textStyle.fancyRenderStyle.layers,
       });
 
       backend.render(plan, { canvas: this.canvas, context });

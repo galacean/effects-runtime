@@ -1,5 +1,5 @@
-import type { TextStyle } from '../text-style';
 import { CanvasTextRenderBackend } from './canvas-text-render-backend';
+import type { FancyRenderLayer } from './fancy-types';
 import type { TextRenderBackend, TextRenderPlan } from './text-render-plan';
 
 export interface TextRenderTarget {
@@ -8,7 +8,7 @@ export interface TextRenderTarget {
 }
 
 export interface CanvasTextBackendOptions {
-  style: TextStyle,
+  textureLayers: FancyRenderLayer[],
 }
 
 /**
@@ -23,8 +23,7 @@ export class CanvasTextBackend implements TextRenderBackend<TextRenderTarget> {
 
   constructor (options: CanvasTextBackendOptions) {
     this.planBackend = new CanvasTextRenderBackend({
-      textStyle: options.style,
-      layers: options.style.fancyRenderStyle.layers,
+      textureLayers: options.textureLayers,
       // TextComponent's pre-fancy path used Canvas's default miter joins.
       // Keep that paint detail while still executing through the shared backend.
       strokeLineJoin: 'miter',

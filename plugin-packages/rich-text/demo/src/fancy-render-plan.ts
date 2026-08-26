@@ -1683,7 +1683,7 @@ function updateDiagnostics (): void {
     rangeList.innerHTML = plan.rangePlans.map((range, index) => `<div class="scope-map-row"><span>RANGE</span><code>range-${index}</code><span>${range.glyphIds.length} glyphs · ${segments[index]?.override ? 'override' : 'inherit'}</span></div>`).join('');
   }
   if (objectList) {
-    objectList.innerHTML = plan.objectPlan.layers.map(layer => `<div class="scope-map-row"><span>OBJECT</span><code>${layer.layer.kind}</code><span>shared pass</span></div>`).join('');
+    objectList.innerHTML = plan.effects.objectLayers.map(layer => `<div class="scope-map-row"><span>OBJECT</span><code>${layer.layer.kind}</code><span>shared pass</span></div>`).join('');
   }
 }
 

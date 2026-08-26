@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import { isObjectFancyLayer, type FancyRenderLayer } from './fancy-types';
+import type { TextEffectPlan } from './text-effect-plan';
 
 export interface TextLineInput {
   y: number,
@@ -7,11 +7,6 @@ export interface TextLineInput {
   chars: string[],
   charOffsetX: number[],
 }
-
-/** A Canvas-independent subset of FancyRenderLayer used by the render plan. */
-export type TextRenderLayer =
-  | Exclude<FancyRenderLayer, { kind: 'texture' }>
-  | Extract<FancyRenderLayer, { kind: 'texture' }>;
 
 export interface TextSize {
   width: number,
@@ -25,49 +20,48 @@ export interface TextBounds {
   height: number,
 }
 
-/**
- * Layout output consumed by text backends.
- *
- * The current Canvas implementation uses a character as the glyph value. The
- * type intentionally names it glyph so that future shaping/MSDF backends do
- * not need to change the plan boundary.
- */
-export interface PositionedGlyph {
-  id: number,
-  glyph: string,
-  x: number,
-  y: number,
-  lineId: number,
-  sourceRangeId: string,
-  fontRef: string,
-  advance?: number,
-  bounds?: TextBounds,
-  sourceCluster?: number,
+/** A logical font resource referenced by id from a TextRenderPlan. */
+export interface TextFont {
+  id: string,
+  family: string,
+  size: number,
+  weight: spec.TextWeight,
+  style: spec.FontStyle,
 }
 
 export type TextDirection = 'ltr' | 'rtl';
+export type TextGlyphId = string | number;
 
-/**
- * A text segment that must be handed to Canvas as one string.
- *
- * This is a paint unit, not a shaping implementation: layout decides the
- * segment text, anchor and direction, while the Canvas adapter performs the
- * browser's normal text shaping when it paints the segment.
- */
-export interface TextPaintSegment {
+/** A shaped run that a backend can paint as text or resolve to glyph ids. */
+export interface TextShapingRun {
   id: number,
   text: string,
   x: number,
   y: number,
   lineId: number,
   sourceRangeId: string,
-  fontRef: string,
+  fontId: string,
   direction?: TextDirection,
+  glyphIds?: number[],
 }
 
-export type TextPaintUnit =
+/** A positioned logical glyph that a concrete backend resolves to a resource. */
+export interface PositionedGlyph {
+  id: number,
+  glyphId: TextGlyphId,
+  x: number,
+  y: number,
+  lineId: number,
+  sourceRangeId: string,
+  fontId: string,
+  advance?: number,
+  bounds?: TextBounds,
+  sourceCluster?: number,
+}
+
+export type TextDrawUnit =
   | { kind: 'glyph', glyphId: number }
-  | { kind: 'segment', segmentId: number };
+  | { kind: 'run', runId: number };
 
 export interface PositionedTextLine {
   lineId: number,
@@ -77,15 +71,8 @@ export interface PositionedTextLine {
   glyphIds: number[],
 }
 
-export interface TextRenderLayerPlan {
-  layerId: string,
-  order: number,
-  stage: 'range' | 'object',
-  layer: TextRenderLayer,
-}
-
 export interface RangeTextStyle {
-  fontRef: string,
+  fontId: string,
   fillColor?: spec.vec4,
 }
 
@@ -93,13 +80,8 @@ export interface RangePlan {
   sourceRangeId: string,
   glyphIds: number[],
   basicStyle: RangeTextStyle,
-  layers: TextRenderLayerPlan[],
-  /** Optional mixed glyph/segment stream used by the Canvas painter. */
-  paintUnits?: TextPaintUnit[],
-}
-
-export interface ObjectPlan {
-  layers: TextRenderLayerPlan[],
+  /** Optional mixed glyph/run stream supplied by the shaping stage. */
+  drawUnits?: TextDrawUnit[],
 }
 
 export interface TextGeometry {
@@ -108,22 +90,87 @@ export interface TextGeometry {
   padding: { left: number, right: number, top: number, bottom: number },
   logicalSize: TextSize,
   renderSize: TextSize,
+  /** Logical-to-surface paint scale used by Canvas/MSDF adapters. */
+  renderScale?: number,
 }
 
 export interface TextRenderPlan {
+  fonts: TextFont[],
   glyphs: PositionedGlyph[],
-  textSegments?: TextPaintSegment[],
+  shapingRuns?: TextShapingRun[],
   lines: PositionedTextLine[],
   rangePlans: RangePlan[],
-  objectPlan: ObjectPlan,
+  effects: TextEffectPlan,
+  defaultFillColor?: spec.vec4,
   geometry: TextGeometry,
 }
 
+/** The source-neutral input consumed by the shared plan assembler. */
+export interface TextPlanAssemblyInput {
+  fonts: TextFont[],
+  glyphs: PositionedGlyph[],
+  shapingRuns?: TextShapingRun[],
+  lines: PositionedTextLine[],
+  rangePlans: RangePlan[],
+  effects: TextEffectPlan,
+  defaultFillColor?: spec.vec4,
+  geometry: {
+    contentBounds?: TextBounds,
+    effectBounds?: TextBounds,
+    padding?: Partial<TextGeometry['padding']>,
+    logicalSize: TextSize,
+    renderSize: TextSize,
+    renderScale?: number,
+  },
+}
+
+/**
+ * Common final assembly for ordinary TextComponent and RichText plans.
+ * Source-specific builders should only adapt their layout result into this
+ * input; they should not duplicate geometry/font normalization.
+ */
+export function assembleTextRenderPlan (input: TextPlanAssemblyInput): TextRenderPlan {
+  const padding = {
+    left: input.geometry.padding?.left ?? 0,
+    right: input.geometry.padding?.right ?? 0,
+    top: input.geometry.padding?.top ?? 0,
+    bottom: input.geometry.padding?.bottom ?? 0,
+  };
+  const effectBounds = input.geometry.effectBounds ?? (input.geometry.contentBounds
+    ? {
+      x: input.geometry.contentBounds.x - padding.left,
+      y: input.geometry.contentBounds.y - padding.top,
+      width: input.geometry.contentBounds.width + padding.left + padding.right,
+      height: input.geometry.contentBounds.height + padding.top + padding.bottom,
+    }
+    : undefined);
+  const fonts = input.fonts.filter((font, index, list) =>
+    list.findIndex(item => item.id === font.id) === index,
+  );
+
+  return {
+    fonts,
+    glyphs: input.glyphs,
+    shapingRuns: input.shapingRuns,
+    lines: input.lines,
+    rangePlans: input.rangePlans,
+    effects: input.effects,
+    defaultFillColor: input.defaultFillColor,
+    geometry: {
+      contentBounds: input.geometry.contentBounds,
+      effectBounds,
+      padding,
+      logicalSize: input.geometry.logicalSize,
+      renderSize: input.geometry.renderSize,
+      renderScale: input.geometry.renderScale,
+    },
+  };
+}
+
 export interface TextRenderPlanBuildOptions {
-  fontRef: string,
-  /** Plain-text fill color mirrored into the range basicStyle so the unified
-   *  backend honors it the same way it honors RichText's per-range fontColor.
-   *  Falls back to the text fill color when omitted. */
+  font: TextFont,
+  effectPlan: TextEffectPlan,
+  /** Plain-text fill color mirrored into the range basicStyle. */
   fillColor?: spec.vec4,
   sourceRangeId?: string,
   baseXPerLine?: number[],
@@ -131,98 +178,52 @@ export interface TextRenderPlanBuildOptions {
   logicalSize?: TextSize,
   renderSize?: TextSize,
   padding?: Partial<TextGeometry['padding']>,
-  layerIdPrefix?: string,
-  /** Layout-provided full-text paint segments (e.g. RTL lines). */
-  paintSegments?: Array<Omit<TextPaintSegment, 'id'>>,
+  renderScale?: number,
+  /** Additional font resources referenced by shaping runs. */
+  fontTable?: TextFont[],
+  /** Layout-provided shaping runs, for example RTL lines. */
+  shapingRuns?: Array<Omit<TextShapingRun, 'id'>>,
 }
 
 export interface TextRenderBackend<TTarget, TResult = void> {
   render(plan: TextRenderPlan, target: TTarget): TResult,
 }
 
-function isObjectLayer (layer: FancyRenderLayer): boolean {
-  return isObjectFancyLayer(layer);
+export function createTextFontId (font: Omit<TextFont, 'id'>): string {
+  return `${font.style}|${font.weight}|${font.size}|${font.family}`;
 }
 
-function normalizeLayer (layer: FancyRenderLayer): TextRenderLayer {
-  if (layer.kind === 'texture') {
-    // Keep the resolved CanvasPattern on the runtime plan. This also handles
-    // range-local texture layers; looking it up by a synthetic layer id loses
-    // the resource when the pattern finishes loading asynchronously.
-    return { kind: 'texture', category: layer.category, params: layer.params, runtimePattern: layer.runtimePattern };
-  }
-
-  return layer;
+export function createTextFont (font: Omit<TextFont, 'id'>): TextFont {
+  return { ...font, id: createTextFontId(font) };
 }
 
-export function createTextRenderLayerPlans (
-  layers: FancyRenderLayer[],
-  layerIdPrefix = 'layer',
-): { rangeLayers: TextRenderLayerPlan[], objectLayers: TextRenderLayerPlan[] } {
-  const rangeLayers: TextRenderLayerPlan[] = [];
-  const objectLayers: TextRenderLayerPlan[] = [];
-
-  layers.forEach((layer, order) => {
-    const plan: TextRenderLayerPlan = {
-      layerId: `${layerIdPrefix}-${order}`,
-      order,
-      stage: isObjectLayer(layer) ? 'object' : 'range',
-      layer: normalizeLayer(layer),
-    };
-
-    if (plan.stage === 'object') {
-      objectLayers.push(plan);
-    } else {
-      rangeLayers.push(plan);
-    }
-  });
-
-  return { rangeLayers, objectLayers };
-}
-
-function normalizePadding (padding: TextRenderPlanBuildOptions['padding']): TextGeometry['padding'] {
-  return {
-    left: padding?.left ?? 0,
-    right: padding?.right ?? 0,
-    top: padding?.top ?? 0,
-    bottom: padding?.bottom ?? 0,
-  };
-}
-
-/**
- * Builds the first, one-range TextRenderPlan used by ordinary TextComponent.
- *
- * This is deliberately a data-only builder: it does not touch Canvas APIs,
- * decide batching, or allocate a rendering surface.
- */
+/** Builds the ordinary TextComponent source input and assembles the plan. */
 export function buildTextRenderPlanFromCharInfo (
   linesInput: TextLineInput[],
-  layers: FancyRenderLayer[],
   options: TextRenderPlanBuildOptions,
 ): TextRenderPlan {
   const sourceRangeId = options.sourceRangeId ?? 'text';
-  const layerIdPrefix = options.layerIdPrefix ?? 'layer';
   const lines: PositionedTextLine[] = [];
   const glyphs: PositionedGlyph[] = [];
   let glyphId = 0;
 
   linesInput.forEach((line, lineId) => {
     const originX = options.baseXPerLine?.[lineId] ?? 0;
-    const glyphIds: number[] = [];
+    const lineGlyphIds: number[] = [];
 
     line.chars.forEach((glyph, charIndex) => {
       const x = originX + (line.charOffsetX[charIndex] ?? 0);
 
       glyphs.push({
         id: glyphId,
-        glyph,
+        glyphId: glyph,
         x,
         y: line.y,
         lineId,
         sourceRangeId,
-        fontRef: options.fontRef,
+        fontId: options.font.id,
       });
-      glyphIds.push(glyphId);
+      lineGlyphIds.push(glyphId);
       glyphId++;
     });
 
@@ -231,75 +232,63 @@ export function buildTextRenderPlanFromCharInfo (
       baselineY: line.y,
       width: line.width,
       originX,
-      glyphIds,
+      glyphIds: lineGlyphIds,
     });
   });
 
-  const { rangeLayers, objectLayers } = createTextRenderLayerPlans(layers, layerIdPrefix);
+  const shapingRuns: TextShapingRun[] = (options.shapingRuns ?? []).map((run, id) => ({ ...run, id }));
+  const runsByLine = new Map<number, TextShapingRun[]>();
 
-  const textSegments: TextPaintSegment[] = (options.paintSegments ?? []).map((segment, id) => ({
-    ...segment,
-    id,
-  }));
-  const segmentsByLine = new Map<number, TextPaintSegment[]>();
+  for (const run of shapingRuns) {
+    const lineRuns = runsByLine.get(run.lineId) ?? [];
 
-  for (const segment of textSegments) {
-    const lineSegments = segmentsByLine.get(segment.lineId) ?? [];
-
-    lineSegments.push(segment);
-    segmentsByLine.set(segment.lineId, lineSegments);
+    lineRuns.push(run);
+    runsByLine.set(run.lineId, lineRuns);
   }
 
-  const paintUnits: TextPaintUnit[] = [];
+  const drawUnits: TextDrawUnit[] = [];
 
   for (const line of lines) {
-    const lineSegments = segmentsByLine.get(line.lineId);
+    const lineRuns = runsByLine.get(line.lineId);
 
-    if (lineSegments?.length) {
-      paintUnits.push(...lineSegments.map(segment => ({ kind: 'segment' as const, segmentId: segment.id })));
+    if (lineRuns?.length) {
+      drawUnits.push(...lineRuns.map(run => ({ kind: 'run' as const, runId: run.id })));
     } else {
-      paintUnits.push(...line.glyphIds.map(glyphId => ({ kind: 'glyph' as const, glyphId })));
+      drawUnits.push(...line.glyphIds.map(id => ({ kind: 'glyph' as const, glyphId: id })));
     }
   }
 
-  const logicalSize = options.logicalSize ?? { width: 0, height: 0 };
-  const renderSize = options.renderSize ?? logicalSize;
-  const padding = normalizePadding(options.padding);
-  const contentBounds = options.contentBounds;
-  const effectBounds = contentBounds
-    ? {
-      x: contentBounds.x - padding.left,
-      y: contentBounds.y - padding.top,
-      width: contentBounds.width + padding.left + padding.right,
-      height: contentBounds.height + padding.top + padding.bottom,
-    }
-    : undefined;
+  const rangePlans: RangePlan[] = [{
+    sourceRangeId,
+    glyphIds: glyphs.map(glyph => glyph.id),
+    basicStyle: { fontId: options.font.id, fillColor: options.fillColor },
+    drawUnits,
+  }];
 
-  return {
+  return assembleTextRenderPlan({
+    fonts: [options.font, ...(options.fontTable ?? [])],
     glyphs,
-    textSegments,
+    shapingRuns,
     lines,
-    rangePlans: [{
-      sourceRangeId,
-      glyphIds: glyphs.map(glyph => glyph.id),
-      basicStyle: { fontRef: options.fontRef, fillColor: options.fillColor },
-      layers: rangeLayers,
-      paintUnits,
-    }],
-    objectPlan: { layers: objectLayers },
-    geometry: { contentBounds, effectBounds, padding, logicalSize, renderSize },
-  };
+    rangePlans,
+    effects: options.effectPlan,
+    defaultFillColor: options.fillColor,
+    geometry: {
+      contentBounds: options.contentBounds,
+      padding: options.padding,
+      logicalSize: options.logicalSize ?? { width: 0, height: 0 },
+      renderSize: options.renderSize ?? options.logicalSize ?? { width: 0, height: 0 },
+      renderScale: options.renderScale,
+    },
+  });
 }
 
-/**
- * Converts a plan back to the legacy CharInfo shape for external compatibility
- * callers. The ordinary-text main path no longer uses this bridge.
- */
+/** Converts a plan back to the legacy CharInfo shape for compatibility callers. */
 export function planToLegacyCharInfo (plan: TextRenderPlan): TextLineInput[] {
   return plan.lines.map(line => ({
     y: line.baselineY,
     width: line.width,
-    chars: line.glyphIds.map(glyphId => plan.glyphs[glyphId].glyph),
-    charOffsetX: line.glyphIds.map(glyphId => plan.glyphs[glyphId].x - line.originX),
+    chars: line.glyphIds.map(id => String(plan.glyphs[id].glyphId)),
+    charOffsetX: line.glyphIds.map(id => plan.glyphs[id].x - line.originX),
   }));
 }

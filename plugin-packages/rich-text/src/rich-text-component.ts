@@ -2,7 +2,7 @@
 import type { Engine, FancyScopeResolution, IRichTextComponent, TextRenderPlan } from '@galacean/effects';
 import {
   assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
-  TextComponentBase, FancyLayerFactory,
+  TextComponentBase, FancyLayerFactory, compileTextEffectPlan,
 } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
@@ -479,6 +479,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       }
     }
 
+    const effectPlan = compileTextEffectPlan({
+      defaultLayers: this.textStyle.fancyRenderStyle.layers,
+      rangeLayersBySourceId: resolvedRangeLayers,
+    });
     const requestedPadding = calculateTextEffectPadding(this.textStyle, resolvedRangeLayers);
     const padding = this.mergeEffectPadding(requestedPadding);
     const paddedLogicalWidth = overflowResult.canvasWidth + padding.left + padding.right;
@@ -513,16 +517,21 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       horizontalAlignResult,
       verticalAlignResult,
       overflowResult,
-      layers: this.textStyle.fancyRenderStyle.layers,
+      effectPlan,
       logicalSize: { width: paddedLogicalWidth, height: paddedLogicalHeight },
       renderSize: { width: physicalW, height: physicalH },
+      renderScale: fontScale,
       padding,
     });
 
     this.lastRenderPlan = renderPlan;
+    const allLayers = [
+      ...this.textStyle.fancyRenderStyle.layers,
+      ...Object.keys(resolvedRangeLayers).reduce<RichTextRangeFancyLayers[string]>((all, key) => all.concat(resolvedRangeLayers[key] ?? []), []),
+    ];
+
     const backend = new CanvasRichTextFancyBackend({
-      textStyle: this.textStyle,
-      layers: this.textStyle.fancyRenderStyle.layers,
+      textureLayers: allLayers,
     });
 
     this.renderToTexture(physicalW, physicalH, flipY, context => {

@@ -1,4 +1,4 @@
-import { TextStyle, type FancyConfig, type FancyRenderLayer, spec } from '@galacean/effects';
+import { TextStyle, compileTextEffectPlan, type FancyConfig, type FancyRenderLayer, spec } from '@galacean/effects';
 import { RichTextLayout } from '../../src/rich-text-layout';
 import { RichWrapEnabledStrategy } from '../../src/strategies/wrap/rich-wrap-enabled';
 import {
@@ -176,21 +176,21 @@ describe('rich-text/render-plan', () => {
       horizontalAlignResult,
       verticalAlignResult,
       overflowResult,
-      layers,
+      effectPlan: compileTextEffectPlan({ defaultLayers: layers }),
     });
 
     expect(plan.glyphs.map(glyph => glyph.sourceRangeId)).to.eql([
       'range-0', 'range-0', 'range-0', 'range-0', 'range-1',
     ]);
-    expect(plan.glyphs.map(glyph => [glyph.glyph, glyph.x, glyph.y])).to.eql([
+    expect(plan.glyphs.map(glyph => [glyph.glyphId, glyph.x, glyph.y])).to.eql([
       ['A', 7, 23], ['B', 17, 23], ['C', 12, 53], ['D', 22, 53], ['E', 32, 53],
     ]);
     expect(plan.rangePlans).to.have.length(2);
     expect(plan.rangePlans[0].glyphIds).to.eql([0, 1, 2, 3]);
     expect(plan.rangePlans[0].basicStyle.fillColor).to.eql([255, 0, 0, 1]);
-    expect(plan.rangePlans[0].layers.map(layer => layer.layer.kind)).to.eql(['shadow']);
-    expect(plan.rangePlans[1].basicStyle.fontRef).to.equal('normal bold 20px Arial');
-    expect(plan.objectPlan.layers.map(layer => layer.layer.kind)).to.eql(['glow']);
+    expect(plan.effects.rangeLayersBySourceId['range-0'].map(layer => layer.layer.kind)).to.eql(['shadow']);
+    expect(plan.fonts.find(font => font.id === plan.rangePlans[1].basicStyle.fontId)).to.include({ family: 'Arial', size: 20, weight: 'bold', style: 'normal' });
+    expect(plan.effects.objectLayers.map(layer => layer.layer.kind)).to.eql(['glow']);
     expect(plan.geometry.contentBounds).to.eql({ x: 7, y: 5, width: 35, height: 60 });
   });
 
@@ -273,12 +273,13 @@ describe('rich-text/render-plan', () => {
       horizontalAlignResult: { lineOffsets: [0] },
       verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
       overflowResult: { canvasWidth: 30, canvasHeight: 20, renderOffsetX: 0, renderOffsetY: 0 },
-      layers: sharedLayers,
+      effectPlan: compileTextEffectPlan({ defaultLayers: sharedLayers }),
     });
 
     const getLayer = (sourceRangeId: string, kind: 'single-stroke' | 'shadow') => {
       const range = plan.rangePlans.find(item => item.sourceRangeId === sourceRangeId);
-      const layer = range?.layers.find(item => item.layer.kind === kind);
+      const layer = plan.effects.rangeLayersBySourceId[sourceRangeId]?.find(item => item.layer.kind === kind)
+        ?? plan.effects.defaultRangeLayers.find(item => item.layer.kind === kind);
 
       return layer;
     };
@@ -389,7 +390,7 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 30, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 100, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: [],
+        effectPlan: compileTextEffectPlan({ defaultLayers: [] }),
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -399,7 +400,7 @@ describe('rich-text/render-plan', () => {
       canvas.height = 50;
       const context = canvas.getContext('2d')!;
 
-      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+      new CanvasRichTextFancyBackend({ }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
@@ -465,7 +466,7 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: [],
+        effectPlan: compileTextEffectPlan({ defaultLayers: [] }),
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -475,7 +476,7 @@ describe('rich-text/render-plan', () => {
       canvas.height = 50;
       const context = canvas.getContext('2d')!;
 
-      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+      new CanvasRichTextFancyBackend({ }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
@@ -556,11 +557,11 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: [{
+        effectPlan: compileTextEffectPlan({ defaultLayers: [{
           kind: 'glow',
           category: 'decorative',
           params: { color: [0, 1, 1, 1], blur: 8, intensity: 1 },
-        }],
+        }] }),
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -570,7 +571,7 @@ describe('rich-text/render-plan', () => {
       canvas.height = 50;
       const context = canvas.getContext('2d')!;
 
-      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+      new CanvasRichTextFancyBackend({ }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
@@ -636,7 +637,7 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers,
+        effectPlan: compileTextEffectPlan({ defaultLayers: layers }),
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -646,7 +647,7 @@ describe('rich-text/render-plan', () => {
       canvas.height = 50;
       const context = canvas.getContext('2d')!;
 
-      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+      new CanvasRichTextFancyBackend({ }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
@@ -718,7 +719,7 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: glow,
+        effectPlan: compileTextEffectPlan({ defaultLayers: glow }),
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -728,7 +729,7 @@ describe('rich-text/render-plan', () => {
       canvas.height = 50;
       const context = canvas.getContext('2d')!;
 
-      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+      new CanvasRichTextFancyBackend({ }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
@@ -814,7 +815,7 @@ describe('rich-text/render-plan', () => {
         horizontalAlignResult: { lineOffsets: [0] },
         verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
         overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-        layers: glow,
+        effectPlan: compileTextEffectPlan({ defaultLayers: glow }),
       });
     };
     const render = (plan: ReturnType<typeof buildRichTextRenderPlan>): Uint8ClampedArray => {
@@ -824,7 +825,7 @@ describe('rich-text/render-plan', () => {
       canvas.height = 50;
       const context = canvas.getContext('2d')!;
 
-      new CanvasRichTextFancyBackend({ textStyle, layers: [] }).render(plan, context);
+      new CanvasRichTextFancyBackend({ }).render(plan, context);
 
       return context.getImageData(0, 0, canvas.width, canvas.height).data;
     };
@@ -895,7 +896,7 @@ describe('rich-text/render-plan', () => {
       horizontalAlignResult: { lineOffsets: [0] },
       verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
       overflowResult: { canvasWidth: 80, canvasHeight: 50, renderOffsetX: 0, renderOffsetY: 0 },
-      layers,
+      effectPlan: compileTextEffectPlan({ defaultLayers: layers }),
     });
     const canvas = document.createElement('canvas');
 
@@ -903,7 +904,7 @@ describe('rich-text/render-plan', () => {
     canvas.height = 50;
     const context = canvas.getContext('2d')!;
 
-    new CanvasRichTextFancyBackend({ textStyle, layers }).render(plan, context);
+    new CanvasRichTextFancyBackend({ }).render(plan, context);
 
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
     const visiblePixels = Array.from(pixels).filter((value, index) => index % 4 === 3 && value > 0).length;
@@ -933,6 +934,7 @@ describe('rich-text/render-plan', () => {
       horizontalAlignResult: { lineOffsets: [0] },
       verticalAlignResult: { baselineY: 20, lineYOffsets: [0] },
       overflowResult: { canvasWidth: 20, canvasHeight: 20, renderOffsetX: 0, renderOffsetY: 0 },
+      effectPlan: compileTextEffectPlan({ defaultLayers: [] }),
     });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;

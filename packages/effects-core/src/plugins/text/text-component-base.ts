@@ -6,8 +6,8 @@ import type { ItemRenderer } from '../../components';
 import type { VFXItem } from '../../vfx-item';
 import type { BaseLayout } from './base-layout';
 import type { TextStyle } from './text-style';
-import { glContext } from '../../gl';
 import { isValidFontFamily } from '../../utils';
+import { glContext } from '../../gl';
 import { canvasPool } from '../../canvas-pool';
 import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
 import { loadTexturePatterns } from './fancy-text/texture-pattern-loader';
@@ -316,33 +316,24 @@ export class TextComponentBase {
     const textureWidth = Math.max(1, width);
     const textureHeight = Math.max(1, height);
 
-    // 先保存状态
     context.save();
 
-    // 设置canvas尺寸
-    this.canvas.width = textureWidth;
-    this.canvas.height = textureHeight;
+    try {
+      this.canvas.width = textureWidth;
+      this.canvas.height = textureHeight;
+      context.setTransform(1, 0, 0, 1, 0, 0);
 
-    //重置变换
-    context.setTransform(1, 0, 0, 1, 0, 0);
+      if (!flipY) {
+        context.translate(0, textureHeight);
+        context.scale(1, -1);
+      }
 
-    // 处理翻转
-    if (!flipY) {
-      context.translate(0, textureHeight);
-      context.scale(1, -1);
+      context.clearRect(0, 0, textureWidth, textureHeight);
+      context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
+      drawCallback(context);
+    } finally {
+      context.restore();
     }
-
-    // 在翻转后清空画布
-    context.clearRect(0, 0, textureWidth, textureHeight);
-
-    // 设置 alpha 修复用填充色（不实际输出像素）
-    context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
-
-    // 执行绘制回调
-    drawCallback(context);
-
-    // 创建纹理前恢复状态
-    context.restore();
 
     const imageData = context.getImageData(0, 0, textureWidth, textureHeight);
     const data = {
@@ -360,9 +351,6 @@ export class TextComponentBase {
       currentTexture.height === textureHeight;
 
     if (canReuseTexture) {
-      // Updating the existing GPU texture avoids deleting/rebinding a texture
-      // on every interactive slider event. This keeps unaffected glyph ranges
-      // stable while the current text surface is being refreshed.
       currentTexture.updateSource({ data });
 
       return;
@@ -379,13 +367,14 @@ export class TextComponentBase {
         wrapT: glContext.CLAMP_TO_EDGE,
       },
     );
+    const oldTexture = this.renderer.texture;
 
-    // 根据选项决定是否释放旧纹理
-    if (options.disposeOld !== false) {
-      this.disposeTextTexture();
-    }
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
+
+    if (options.disposeOld !== false && oldTexture && oldTexture !== this.engine.whiteTexture) {
+      oldTexture.dispose();
+    }
   }
 
   // 初始化方法，由子类调用

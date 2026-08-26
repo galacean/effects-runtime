@@ -1,20 +1,30 @@
-import type * as spec from '@galacean/effects-specification';
-import type { TextStyle } from '../text-style';
+import * as spec from '@galacean/effects-specification';
+
+interface CachedCanvasSurface {
+  canvas: HTMLCanvasElement,
+  offsetX: number,
+  offsetY: number,
+}
+
+import { getTextTextureResourceId } from './text-effect-plan';
 import type { FancyRenderLayer } from './fancy-types';
+import type { TextRenderStrategy } from './text-render-strategy';
+import type { TextEffectLayerPlan } from './text-effect-plan';
 import type {
   PositionedGlyph,
   RangePlan,
   TextRenderBackend,
-  TextRenderLayerPlan,
   TextRenderPlan,
-  TextPaintSegment,
+  TextFont,
+  TextShapingRun,
 } from './text-render-plan';
 
 export interface CanvasTextRenderBackendOptions {
-  textStyle: TextStyle,
-  layers: FancyRenderLayer[],
   /** Paint compatibility for the caller's historical Canvas stroke semantics. */
   strokeLineJoin?: CanvasLineJoin,
+  texturePatterns?: Map<string, CanvasPattern | null>,
+  /** Raw layer resources are accepted only for Canvas-side resource resolution. */
+  textureLayers?: FancyRenderLayer[],
 }
 
 function colorToCss (color: spec.vec4): string {
@@ -24,38 +34,31 @@ function colorToCss (color: spec.vec4): string {
   return `rgba(${Math.round(r * scale)}, ${Math.round(g * scale)}, ${Math.round(b * scale)}, ${a})`;
 }
 
-interface CachedCanvasSurface {
-  canvas: HTMLCanvasElement,
-  offsetX: number,
-  offsetY: number,
-}
+function fontToCss (font: TextFont): string {
+  const family = ['serif', 'sans-serif', 'monospace', 'courier'].includes(font.family)
+    ? font.family
+    : `"${font.family}"`;
+  let fontDesc = `${font.size}px ${family}`;
 
-const cachedSurfaces = new Map<string, CachedCanvasSurface>();
-const CACHED_SURFACES_MAX = 8;
-
-function getCachedSurface (key: string): CachedCanvasSurface | undefined {
-  const entry = cachedSurfaces.get(key);
-
-  if (entry) {
-    cachedSurfaces.delete(key);
-    cachedSurfaces.set(key, entry);
+  if (font.weight !== spec.TextWeight.normal) {
+    fontDesc = `${font.weight} ${fontDesc}`;
   }
 
-  return entry;
+  if (font.style !== spec.FontStyle.normal) {
+    fontDesc = `${font.style} ${fontDesc}`;
+  }
+
+  return fontDesc;
 }
 
-function setCachedSurface (key: string, entry: CachedCanvasSurface): void {
-  cachedSurfaces.delete(key);
-  cachedSurfaces.set(key, entry);
+function getFont (plan: TextRenderPlan, fontId: string): TextFont | undefined {
+  return plan.fonts.find(font => font.id === fontId);
+}
 
-  while (cachedSurfaces.size > CACHED_SURFACES_MAX) {
-    const oldestKey = cachedSurfaces.keys().next().value;
+function getFontCss (plan: TextRenderPlan, fontId: string): string {
+  const font = getFont(plan, fontId);
 
-    if (oldestKey === undefined) {
-      break;
-    }
-    cachedSurfaces.delete(oldestKey);
-  }
+  return font ? fontToCss(font) : '20px sans-serif';
 }
 
 /**
@@ -65,10 +68,81 @@ function setCachedSurface (key: string, entry: CachedCanvasSurface): void {
  * identical parameters can share a group; ranges with different parameters get
  * different source surfaces and blur passes. Object effects remain separate.
  */
-export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderingContext2D> {
-  constructor (private readonly options: CanvasTextRenderBackendOptions) {}
+export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderingContext2D>, TextRenderStrategy<CanvasRenderingContext2D> {
+  readonly mode = 'canvas';
+
+  private static readonly CACHED_SURFACES_MAX = 8;
+  private readonly cachedSurfaces = new Map<string, CachedCanvasSurface>();
+
+  private getCachedSurface (key: string): CachedCanvasSurface | undefined {
+    const entry = this.cachedSurfaces.get(key);
+
+    if (entry) {
+      this.cachedSurfaces.delete(key);
+      this.cachedSurfaces.set(key, entry);
+    }
+
+    return entry;
+  }
+
+  private setCachedSurface (key: string, entry: CachedCanvasSurface): void {
+    this.cachedSurfaces.delete(key);
+    this.cachedSurfaces.set(key, entry);
+
+    while (this.cachedSurfaces.size > CanvasTextRenderBackend.CACHED_SURFACES_MAX) {
+      const oldestKey = this.cachedSurfaces.keys().next().value;
+
+      if (oldestKey === undefined) {
+        break;
+      }
+      this.cachedSurfaces.delete(oldestKey);
+    }
+  }
+
+  canRender (): boolean {
+    return true;
+  }
+
+  constructor (private readonly options: CanvasTextRenderBackendOptions) {
+    if (!this.options.texturePatterns) {
+      this.options.texturePatterns = new Map();
+    }
+
+    for (const layer of options.textureLayers ?? []) {
+      if (layer.kind === 'texture' && layer.runtimePattern) {
+        const resourceId = getTextTextureResourceId(layer);
+
+        if (resourceId) {
+          this.options.texturePatterns.set(resourceId, layer.runtimePattern);
+        }
+      }
+    }
+  }
 
   render (plan: TextRenderPlan, context: CanvasRenderingContext2D): void {
+    const glows = plan.effects.objectLayers.filter(layer => layer.layer.kind === 'glow');
+    const shadowGroups = this.getRangeLayerGroups(plan, 'shadow');
+
+    // The 2.9.0 plain/strategy Canvas paths painted directly into the target
+    // surface when no whole-surface blur/composite pass was required. Keep that pixel path
+    // available while still using the shared layer executor; an unnecessary
+    // contentCanvas -> drawImage round-trip changes fractional/custom-font
+    // anti-aliasing in headed Chromium.
+    const rangeEffectLayers = Object.keys(plan.effects.rangeLayersBySourceId)
+      .reduce<TextEffectLayerPlan[]>((all, sourceRangeId) =>
+      all.concat(plan.effects.rangeLayersBySourceId[sourceRangeId] ?? []), []);
+    const requiresFullSurfaceComposite = [
+      ...plan.effects.defaultRangeLayers,
+      ...rangeEffectLayers,
+      ...plan.effects.objectLayers,
+    ].some(layer => layer.composite !== 'content');
+
+    if (!requiresFullSurfaceComposite) {
+      this.renderContent(plan, context);
+
+      return;
+    }
+
     const contentCanvas = document.createElement('canvas');
 
     contentCanvas.width = context.canvas.width;
@@ -84,14 +158,11 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
     contentContext.setTransform(contentTransform);
     this.renderContent(plan, contentContext);
-
-    const glows = plan.objectPlan.layers.filter(layer => layer.layer.kind === 'glow');
-    const shadowGroups = this.getRangeLayerGroups(plan, 'shadow');
     let glowCanvas: HTMLCanvasElement | undefined;
 
     if (glows.length > 0) {
       const glowKey = this.buildGlowCacheKey(plan, contentTransform, context.canvas);
-      const cachedGlow = getCachedSurface(glowKey);
+      const cachedGlow = this.getCachedSurface(glowKey);
 
       if (cachedGlow) {
         glowCanvas = cachedGlow.canvas;
@@ -128,7 +199,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
           }
         }
         glowCanvas = canvas;
-        setCachedSurface(glowKey, { canvas, offsetX: 0, offsetY: 0 });
+        this.setCachedSurface(glowKey, { canvas, offsetX: 0, offsetY: 0 });
       }
     }
 
@@ -172,16 +243,16 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     context.textBaseline = 'alphabetic';
 
     for (const range of plan.rangePlans) {
-      const fillColor = range.basicStyle.fillColor ?? this.options.textStyle.textColor;
+      const fillColor = range.basicStyle.fillColor ?? plan.defaultFillColor ?? [1, 1, 1, 1];
 
       this.drawRangePaintUnits(
         plan,
         range,
         context,
         (glyphContext, glyph) => {
-          glyphContext.font = range.basicStyle.fontRef ?? glyph.fontRef;
+          glyphContext.font = getFontCss(plan, range.basicStyle.fontId);
           glyphContext.fillStyle = colorToCss(fillColor);
-          glyphContext.fillText(glyph.glyph, glyph.x, glyph.y);
+          glyphContext.fillText(String(glyph.glyphId), glyph.x, glyph.y);
         },
         (segmentContext, segment) => {
           segmentContext.fillStyle = colorToCss(fillColor);
@@ -205,8 +276,8 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
   }
 
   private buildGlowCacheKey (plan: TextRenderPlan, contentTransform: DOMMatrix, canvas: HTMLCanvasElement): string {
-    const glyphs = plan.glyphs.map(glyph => `${glyph.glyph}|${glyph.x.toFixed(3)}|${glyph.y.toFixed(3)}|${glyph.fontRef}`).join(';');
-    const glows = plan.objectPlan.layers
+    const glyphs = plan.glyphs.map(glyph => `${glyph.glyphId}|${glyph.x.toFixed(3)}|${glyph.y.toFixed(3)}|${glyph.fontId}`).join(';');
+    const glows = plan.effects.objectLayers
       .filter(layer => layer.layer.kind === 'glow')
       .map(layer => `${layer.layerId}|${JSON.stringify(layer.layer.params)}`)
       .join(';');
@@ -216,16 +287,16 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
   private buildShadowCacheKey (
     plan: TextRenderPlan,
-    group: { layerPlan: TextRenderLayerPlan, ranges: RangePlan[] },
+    group: { layerPlan: TextEffectLayerPlan, ranges: RangePlan[] },
     contentTransform: DOMMatrix,
     canvas: HTMLCanvasElement,
   ): string {
     const glyphs = group.ranges.flatMap(range => range.glyphIds.map(glyphId => {
       const glyph = plan.glyphs[glyphId];
 
-      return glyph ? `${glyph.glyph}|${glyph.x.toFixed(3)}|${glyph.y.toFixed(3)}|${glyph.fontRef}` : '';
+      return glyph ? `${glyph.glyphId}|${glyph.x.toFixed(3)}|${glyph.y.toFixed(3)}|${glyph.fontId}` : '';
     })).join(';');
-    const layers = group.ranges.flatMap(range => range.layers.map(layer => (
+    const layers = group.ranges.flatMap(range => this.getLayersForRange(plan, range).map(layer => (
       layer.layer.kind === 'shadow' || layer.layer.kind === 'single-stroke'
         ? `${layer.layerId}|${JSON.stringify(layer.layer.params)}`
         : ''
@@ -242,16 +313,16 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     maskOnly = false,
   ): void {
     context.textBaseline = 'alphabetic';
-    const rangeLayers = this.getRangeContentLayers(ranges, includeStrokes);
+    const rangeLayers = this.getRangeContentLayers(plan, ranges, includeStrokes);
     const contentLayers = maskOnly
       ? rangeLayers
       : [
         ...rangeLayers,
-        ...plan.objectPlan.layers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
+        ...plan.effects.objectLayers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
       ].sort((a, b) => a.order - b.order);
 
     for (const layerPlan of contentLayers) {
-      const layerRanges = this.getRangesForLayer(ranges, layerPlan);
+      const layerRanges = this.getRangesForLayer(plan, ranges, layerPlan);
 
       switch (layerPlan.layer.kind) {
         case 'single-stroke':
@@ -279,7 +350,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
   private createShadowSurface (
     plan: TextRenderPlan,
-    group: { layerPlan: TextRenderLayerPlan, ranges: RangePlan[] },
+    group: { layerPlan: TextEffectLayerPlan, ranges: RangePlan[] },
     target: CanvasRenderingContext2D,
     contentTransform: DOMMatrix,
   ): { canvas: HTMLCanvasElement, offsetX: number, offsetY: number } | undefined {
@@ -290,7 +361,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     // 阴影源是“几何 Mask”，不依赖 Fill 颜色/透明度。几何与参数不变时直接
     // 复用上一次的模糊结果，颜色拖动期间阴影开销降为 0。
     const cacheKey = this.buildShadowCacheKey(plan, group, contentTransform, target.canvas);
-    const cached = getCachedSurface(cacheKey);
+    const cached = this.getCachedSurface(cacheKey);
 
     if (cached) {
       return cached;
@@ -304,7 +375,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     let strokeWidth = 0;
 
     for (const range of group.ranges) {
-      for (const layer of range.layers) {
+      for (const layer of this.getLayersForRange(plan, range)) {
         if (layer.layer.kind === 'single-stroke') {
           strokeWidth = Math.max(strokeWidth, layer.layer.params.width);
         }
@@ -328,7 +399,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
     if (probeContext) {
       for (const range of group.ranges) {
-        probeContext.font = range.basicStyle.fontRef;
+        probeContext.font = getFontCss(plan, range.basicStyle.fontId);
 
         for (const glyphId of range.glyphIds) {
           const glyph = plan.glyphs[glyphId];
@@ -337,8 +408,8 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
             continue;
           }
 
-          const metrics = probeContext.measureText(glyph.glyph);
-          const fontSize = Number(/(\d+(?:\.\d+)?)px/.exec(glyph.fontRef)?.[1] ?? 20);
+          const metrics = probeContext.measureText(String(glyph.glyphId));
+          const fontSize = getFont(plan, glyph.fontId)?.size ?? 20;
           const ascent = metrics.actualBoundingBoxAscent || fontSize;
           const descent = metrics.actualBoundingBoxDescent || fontSize * 0.3;
           const left = metrics.actualBoundingBoxLeft || 0;
@@ -423,14 +494,14 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
       offsetY: Math.round(minY - pad),
     };
 
-    setCachedSurface(cacheKey, result);
+    this.setCachedSurface(cacheKey, result);
 
     return result;
   }
 
   private drawStroke (
     plan: TextRenderPlan,
-    layerPlan: TextRenderLayerPlan,
+    layerPlan: TextEffectLayerPlan,
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
     maskOnly = false,
@@ -458,10 +529,11 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
           glyphContext.strokeStyle = maskOnly ? 'rgb(255, 255, 255)' : colorToCss(color);
           glyphContext.lineJoin = this.options.strokeLineJoin ?? 'round';
           glyphContext.lineWidth = width;
-          glyphContext.strokeText(glyph.glyph, glyph.x, glyph.y);
+          glyphContext.strokeText(String(glyph.glyphId), glyph.x, glyph.y);
         },
         (segmentContext, segment) => {
           this.drawSegmentStroke(
+            plan,
             segmentContext,
             segment,
             width,
@@ -474,7 +546,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
   private drawSolidFill (
     plan: TextRenderPlan,
-    layerPlan: TextRenderLayerPlan,
+    layerPlan: TextEffectLayerPlan,
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
     maskOnly = false,
@@ -487,18 +559,58 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
         range,
         context,
         (glyphContext, glyph) => {
-          this.drawFillUnit(glyphContext, glyph.glyph, glyph.x, glyph.y, range, layerColor, maskOnly);
+          this.drawFillUnit(plan, glyphContext, String(glyph.glyphId), glyph.x, glyph.y, range, layerColor, maskOnly);
         },
         (segmentContext, segment) => {
-          this.drawFillUnit(segmentContext, segment.text, segment.x, segment.y, range, layerColor, maskOnly, segment);
+          this.drawFillUnit(plan, segmentContext, segment.text, segment.x, segment.y, range, layerColor, maskOnly, segment);
         },
       );
     }
   }
 
+  private drawAllRangePaintUnits (
+    plan: TextRenderPlan,
+    ranges: RangePlan[],
+    context: CanvasRenderingContext2D,
+    drawGlyph: (context: CanvasRenderingContext2D, glyph: PositionedGlyph) => void,
+    drawSegment: (context: CanvasRenderingContext2D, segment: TextShapingRun) => void,
+  ): void {
+    // Object layers must paint every glyph exactly once. Looping per range
+    // would alpha-blend overlapping anti-aliased edges multiple times when
+    // gradient/texture stops carry transparency.
+    for (const range of ranges) {
+      const units = range.drawUnits ?? range.glyphIds.map(glyphId => ({ kind: 'glyph' as const, glyphId }));
+
+      for (const unit of units) {
+        if (unit.kind === 'glyph') {
+          const glyph = plan.glyphs[unit.glyphId];
+
+          if (glyph) {
+            context.font = getFontCss(plan, range.basicStyle.fontId);
+            drawGlyph(context, glyph);
+          }
+
+          continue;
+        }
+
+        const segment = plan.shapingRuns?.[unit.runId];
+
+        if (segment) {
+          context.save();
+          context.font = getFontCss(plan, segment.fontId);
+          if (segment.direction) {
+            context.direction = segment.direction;
+          }
+          drawSegment(context, segment);
+          context.restore();
+        }
+      }
+    }
+  }
+
   private drawGradient (
     plan: TextRenderPlan,
-    layerPlan: TextRenderLayerPlan,
+    layerPlan: TextEffectLayerPlan,
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
   ): void {
@@ -534,44 +646,57 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     });
     context.fillStyle = gradient;
 
-    for (const range of ranges) {
-      this.drawRangePaintUnits(
-        plan,
-        range,
-        context,
-        (glyphContext, glyph) => glyphContext.fillText(glyph.glyph, glyph.x, glyph.y),
-        (segmentContext, segment) => this.drawSegmentWithPadding(segmentContext, segment),
-      );
+    this.drawAllRangePaintUnits(
+      plan,
+      ranges,
+      context,
+      (glyphContext, glyph) => glyphContext.fillText(String(glyph.glyphId), glyph.x, glyph.y),
+      (segmentContext, segment) => this.drawSegmentWithPadding(segmentContext, segment),
+    );
+  }
+
+  private getTexturePattern (layerPlan: TextEffectLayerPlan): CanvasPattern | null | undefined {
+    if (layerPlan.layer.kind !== 'texture') {
+      return undefined;
     }
+
+    const resourceId = layerPlan.resourceId ?? getTextTextureResourceId(layerPlan.layer);
+
+    return resourceId ? this.options.texturePatterns?.get(resourceId) : undefined;
   }
 
   private drawTexture (
     plan: TextRenderPlan,
-    layerPlan: TextRenderLayerPlan,
+    layerPlan: TextEffectLayerPlan,
     context: CanvasRenderingContext2D,
     ranges: RangePlan[],
   ): void {
-    if (layerPlan.layer.kind !== 'texture' || !layerPlan.layer.runtimePattern) {
+    if (layerPlan.layer.kind !== 'texture') {
+      return;
+    }
+
+    const pattern = this.getTexturePattern(layerPlan);
+
+    if (!pattern) {
       return;
     }
 
     const previousAlpha = context.globalAlpha;
 
-    context.fillStyle = layerPlan.layer.runtimePattern;
+    context.fillStyle = pattern;
     context.globalAlpha = previousAlpha * (layerPlan.layer.params.opacity ?? 1);
-    for (const range of ranges) {
-      this.drawRangePaintUnits(
-        plan,
-        range,
-        context,
-        (glyphContext, glyph) => glyphContext.fillText(glyph.glyph, glyph.x, glyph.y),
-        (segmentContext, segment) => this.drawSegmentWithPadding(segmentContext, segment),
-      );
-    }
+    this.drawAllRangePaintUnits(
+      plan,
+      ranges,
+      context,
+      (glyphContext, glyph) => glyphContext.fillText(String(glyph.glyphId), glyph.x, glyph.y),
+      (segmentContext, segment) => this.drawSegmentWithPadding(segmentContext, segment),
+    );
     context.globalAlpha = previousAlpha;
   }
 
   private drawFillUnit (
+    plan: TextRenderPlan,
     context: CanvasRenderingContext2D,
     text: string,
     x: number,
@@ -579,7 +704,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     range: RangePlan,
     layerColor: spec.vec4 | undefined,
     maskOnly: boolean,
-    segment?: TextPaintSegment,
+    segment?: TextShapingRun,
   ): void {
     if (maskOnly) {
       // The shared object-glow source is a pure, full-alpha white silhouette.
@@ -595,9 +720,9 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
       // text presets without a per-range fill still show their fill color);
       // finally the text style fallback. RichText's `basicStyle.fillColor`
       // is always set, so this stays byte-identical for rich text.
-      const fillColor = segment
-        ? layerColor ?? range.basicStyle.fillColor ?? this.options.textStyle.textColor
-        : range.basicStyle.fillColor ?? layerColor ?? this.options.textStyle.textColor;
+      // Per-range fill color (RichText span color) always wins over the
+      // solid-fill layer color, which wins over the plan-level fallback.
+      const fillColor = range.basicStyle.fillColor ?? layerColor ?? plan.defaultFillColor ?? [1, 1, 1, 1];
 
       context.fillStyle = colorToCss(fillColor);
     }
@@ -609,7 +734,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
   }
 
   /** Preserve the legacy whole-string fill/stroke anti-alias compensation. */
-  private drawSegmentWithPadding (context: CanvasRenderingContext2D, segment: TextPaintSegment): void {
+  private drawSegmentWithPadding (context: CanvasRenderingContext2D, segment: TextShapingRun): void {
     context.save();
     context.lineWidth = 1;
     context.lineJoin = 'round';
@@ -621,8 +746,9 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
   /** Match the legacy drawer's outer-stroke-only Canvas operation for segments. */
   private drawSegmentStroke (
+    plan: TextRenderPlan,
     context: CanvasRenderingContext2D,
-    segment: TextPaintSegment,
+    segment: TextShapingRun,
     width: number,
     color: string,
   ): void {
@@ -638,10 +764,10 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     }
 
     offscreenContext.setTransform(context.getTransform());
-    offscreenContext.font = segment.fontRef;
+    offscreenContext.font = getFontCss(plan, segment.fontId);
     offscreenContext.textBaseline = 'alphabetic';
     offscreenContext.lineJoin = this.options.strokeLineJoin ?? 'round';
-    offscreenContext.lineWidth = width * (this.options.textStyle.fontScale || 1);
+    offscreenContext.lineWidth = width * (plan.geometry.renderScale || 1);
     offscreenContext.strokeStyle = color;
     offscreenContext.direction = segment.direction ?? 'ltr';
     offscreenContext.strokeText(segment.text, segment.x, segment.y);
@@ -661,10 +787,10 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     range: RangePlan,
     context: CanvasRenderingContext2D,
     drawGlyph: (context: CanvasRenderingContext2D, glyph: PositionedGlyph) => void,
-    drawSegment: (context: CanvasRenderingContext2D, segment: TextPaintSegment) => void,
+    drawSegment: (context: CanvasRenderingContext2D, segment: TextShapingRun) => void,
   ): void {
-    context.font = range.basicStyle.fontRef;
-    const paintUnits = range.paintUnits ?? range.glyphIds.map(glyphId => ({ kind: 'glyph' as const, glyphId }));
+    context.font = getFontCss(plan, range.basicStyle.fontId);
+    const paintUnits = range.drawUnits ?? range.glyphIds.map(glyphId => ({ kind: 'glyph' as const, glyphId }));
 
     for (const unit of paintUnits) {
       if (unit.kind === 'glyph') {
@@ -677,11 +803,11 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
         continue;
       }
 
-      const segment = plan.textSegments?.[unit.segmentId];
+      const segment = plan.shapingRuns?.[unit.runId];
 
       if (segment) {
         context.save();
-        context.font = segment.fontRef;
+        context.font = getFontCss(plan, segment.fontId);
         if (segment.direction) {
           context.direction = segment.direction;
         }
@@ -691,12 +817,20 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     }
   }
 
-  private getRangeContentLayers (ranges: RangePlan[], includeStrokes = true): TextRenderLayerPlan[] {
+  private getLayersForRange (plan: TextRenderPlan, range: RangePlan): TextEffectLayerPlan[] {
+    return plan.effects.rangeLayersBySourceId[range.sourceRangeId] ?? plan.effects.defaultRangeLayers;
+  }
+
+  private getRangeContentLayers (
+    plan: TextRenderPlan,
+    ranges: RangePlan[],
+    includeStrokes = true,
+  ): TextEffectLayerPlan[] {
     const seen = new Set<string>();
-    const result: TextRenderLayerPlan[] = [];
+    const result: TextEffectLayerPlan[] = [];
 
     for (const range of ranges) {
-      for (const layer of range.layers) {
+      for (const layer of this.getLayersForRange(plan, range)) {
         const isContentLayer = layer.layer.kind === 'solid-fill' || (includeStrokes && layer.layer.kind === 'single-stroke');
 
         if (isContentLayer && !seen.has(layer.layerId)) {
@@ -709,20 +843,26 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     return result.sort((a, b) => a.order - b.order);
   }
 
-  private getRangesForLayer (ranges: RangePlan[], layerPlan: TextRenderLayerPlan): RangePlan[] {
-    const matchingRanges = ranges.filter(range => range.layers.some(layer => layer.layerId === layerPlan.layerId));
+  private getRangesForLayer (
+    plan: TextRenderPlan,
+    ranges: RangePlan[],
+    layerPlan: TextEffectLayerPlan,
+  ): RangePlan[] {
+    const matchingRanges = ranges.filter(range =>
+      this.getLayersForRange(plan, range).some(layer => layer.layerId === layerPlan.layerId),
+    );
 
-    return matchingRanges.length > 0 ? matchingRanges : ranges;
+    return layerPlan.stage === 'object' ? ranges : matchingRanges;
   }
 
   private getRangeLayerGroups (
     plan: TextRenderPlan,
     kind: 'shadow' | 'single-stroke',
-  ): Array<{ layerPlan: TextRenderLayerPlan, ranges: RangePlan[] }> {
-    const groups: Array<{ layerPlan: TextRenderLayerPlan, ranges: RangePlan[] }> = [];
+  ): Array<{ layerPlan: TextEffectLayerPlan, ranges: RangePlan[] }> {
+    const groups: Array<{ layerPlan: TextEffectLayerPlan, ranges: RangePlan[] }> = [];
 
     for (const range of plan.rangePlans) {
-      for (const layer of range.layers) {
+      for (const layer of this.getLayersForRange(plan, range)) {
         if (layer.layer.kind !== kind) {
           continue;
         }
@@ -736,7 +876,7 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
     return groups.sort((a, b) => a.layerPlan.order - b.layerPlan.order);
   }
 
-  private compositeGlow (context: CanvasRenderingContext2D, surface: HTMLCanvasElement, layerPlan: TextRenderLayerPlan): void {
+  private compositeGlow (context: CanvasRenderingContext2D, surface: HTMLCanvasElement, layerPlan: TextEffectLayerPlan): void {
     if (layerPlan.layer.kind !== 'glow') {
       return;
     }

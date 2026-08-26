@@ -1,11 +1,12 @@
-import { createTextRenderLayerPlans } from '@galacean/effects';
+import { assembleTextRenderPlan, createTextFont } from '@galacean/effects';
 import type {
-  FancyRenderLayer,
   PositionedGlyph,
   PositionedTextLine,
   RangePlan,
   RangeTextStyle,
   TextBounds,
+  TextEffectPlan,
+  TextFont,
   TextRenderBackend,
   TextRenderPlan,
   TextRenderPlanBuildOptions,
@@ -20,22 +21,39 @@ import type {
   WrapResult,
 } from './strategies/rich-text-interfaces';
 
-export interface RichTextRenderPlanOptions extends Pick<TextRenderPlanBuildOptions, 'logicalSize' | 'renderSize' | 'padding'> {
+export interface RichTextRenderPlanOptions extends Pick<TextRenderPlanBuildOptions, 'logicalSize' | 'renderSize' | 'padding' | 'renderScale'> {
   textStyle: TextStyle,
   wrapResult: WrapResult,
   horizontalAlignResult: HorizontalAlignResult,
   verticalAlignResult: VerticalAlignResult,
   overflowResult: OverflowResult,
-  layers?: FancyRenderLayer[],
+  effectPlan: TextEffectPlan,
 }
 
-function resolveFontRef (options: RichLine['richOptions'][number], textStyle: TextStyle): string {
-  const fontSize = options.fontSize;
-  const fontFamily = options.fontFamily ?? textStyle.fontFamily;
-  const fontWeight = options.fontWeight ?? textStyle.textWeight;
-  const fontStyle = options.fontStyle ?? textStyle.fontStyle;
+function resolveFont (options: RichLine['richOptions'][number], textStyle: TextStyle): TextFont {
+  return createTextFont({
+    size: options.fontSize,
+    family: options.fontFamily ?? textStyle.fontFamily,
+    weight: options.fontWeight ?? textStyle.textWeight,
+    style: options.fontStyle ?? textStyle.fontStyle,
+  });
+}
 
-  return `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
+function fontToCss (font: TextFont): string {
+  const family = ['serif', 'sans-serif', 'monospace', 'courier'].includes(font.family)
+    ? font.family
+    : `"${font.family}"`;
+  let fontDesc = `${font.size}px ${family}`;
+
+  if (font.weight !== 'normal') {
+    fontDesc = `${font.weight} ${fontDesc}`;
+  }
+
+  if (font.style !== 'normal') {
+    fontDesc = `${font.style} ${fontDesc}`;
+  }
+
+  return fontDesc;
 }
 
 function resolveFillColor (options: RichLine['richOptions'][number], textStyle: TextStyle): spec.vec4 {
@@ -65,18 +83,12 @@ function buildContentBounds (
 
 /** Builds a range-aware render plan from the completed RichText layout output. */
 export function buildRichTextRenderPlan (options: RichTextRenderPlanOptions): TextRenderPlan {
-  const {
-    textStyle,
-    wrapResult,
-    horizontalAlignResult,
-    verticalAlignResult,
-    overflowResult,
-    layers = [],
-  } = options;
+  const { textStyle, wrapResult, horizontalAlignResult, verticalAlignResult, overflowResult } = options;
   const glyphs: PositionedGlyph[] = [];
   const lines: PositionedTextLine[] = [];
   const glyphIdsByRange = new Map<string, number[]>();
   const styleByRange = new Map<string, RangeTextStyle>();
+  const fonts: TextFont[] = [];
   let glyphId = 0;
   let baselineY = verticalAlignResult.baselineY + overflowResult.renderOffsetY;
 
@@ -89,18 +101,20 @@ export function buildRichTextRenderPlan (options: RichTextRenderPlanOptions): Te
       const charDetails = line.chars[segmentIndex] ?? [];
       const sourceRangeId = richOptions.sourceRangeId;
       const rangeGlyphIds = glyphIdsByRange.get(sourceRangeId) ?? [];
-      const fontRef = resolveFontRef(richOptions, textStyle);
+      const font = resolveFont(richOptions, textStyle);
+
+      fonts.push(font);
       const fillColor = resolveFillColor(richOptions, textStyle);
 
       charDetails.forEach(charDetail => {
         glyphs.push({
           id: glyphId,
-          glyph: charDetail.char,
+          glyphId: charDetail.char,
           x: originX + segmentStartX + charDetail.x,
           y: baselineY,
           lineId,
           sourceRangeId,
-          fontRef,
+          fontId: font.id,
         });
         lineGlyphIds.push(glyphId);
         rangeGlyphIds.push(glyphId);
@@ -108,7 +122,7 @@ export function buildRichTextRenderPlan (options: RichTextRenderPlanOptions): Te
       });
 
       glyphIdsByRange.set(sourceRangeId, rangeGlyphIds);
-      styleByRange.set(sourceRangeId, { fontRef, fillColor });
+      styleByRange.set(sourceRangeId, { fontId: font.id, fillColor });
     });
 
     lines.push({
@@ -124,57 +138,34 @@ export function buildRichTextRenderPlan (options: RichTextRenderPlanOptions): Te
     }
   });
 
-  const { rangeLayers: sharedRangeLayers, objectLayers } = createTextRenderLayerPlans(layers);
-  const rangeLayerPlansBySourceId = new Map<string, ReturnType<typeof createTextRenderLayerPlans>['rangeLayers']>();
-
-  wrapResult.lines.forEach(line => {
-    line.richOptions.forEach(richOptions => {
-      if (rangeLayerPlansBySourceId.has(richOptions.sourceRangeId)) {
-        return;
-      }
-
-      const rangeLayers = richOptions.rangeFancyLayers
-        ? createTextRenderLayerPlans(richOptions.rangeFancyLayers, `range-${richOptions.sourceRangeId}`).rangeLayers
-        : sharedRangeLayers;
-
-      rangeLayerPlansBySourceId.set(richOptions.sourceRangeId, rangeLayers);
-    });
+  const fallbackFont = createTextFont({
+    size: textStyle.fontSize,
+    family: textStyle.fontFamily,
+    weight: textStyle.textWeight,
+    style: textStyle.fontStyle,
   });
-
   const rangePlans: RangePlan[] = Array.from(glyphIdsByRange, ([sourceRangeId, glyphIds]) => ({
     sourceRangeId,
     glyphIds,
-    basicStyle: styleByRange.get(sourceRangeId) ?? { fontRef: textStyle.fontDesc },
-    layers: rangeLayerPlansBySourceId.get(sourceRangeId) ?? sharedRangeLayers,
+    basicStyle: styleByRange.get(sourceRangeId) ?? { fontId: fallbackFont.id },
   }));
-  const padding = {
-    left: options.padding?.left ?? 0,
-    right: options.padding?.right ?? 0,
-    top: options.padding?.top ?? 0,
-    bottom: options.padding?.bottom ?? 0,
-  };
-  const logicalSize = options.logicalSize ?? {
-    width: overflowResult.canvasWidth,
-    height: overflowResult.canvasHeight,
-  };
-  const renderSize = options.renderSize ?? logicalSize;
   const contentBounds = buildContentBounds(lines, wrapResult, verticalAlignResult, overflowResult);
-  const effectBounds = contentBounds
-    ? {
-      x: contentBounds.x - padding.left,
-      y: contentBounds.y - padding.top,
-      width: contentBounds.width + padding.left + padding.right,
-      height: contentBounds.height + padding.top + padding.bottom,
-    }
-    : undefined;
 
-  return {
+  return assembleTextRenderPlan({
+    fonts,
     glyphs,
     lines,
     rangePlans,
-    objectPlan: { layers: objectLayers },
-    geometry: { contentBounds, effectBounds, padding, logicalSize, renderSize },
-  };
+    effects: options.effectPlan,
+    defaultFillColor: textStyle.textColor,
+    geometry: {
+      contentBounds,
+      logicalSize: options.logicalSize ?? { width: overflowResult.canvasWidth, height: overflowResult.canvasHeight },
+      renderSize: options.renderSize ?? options.logicalSize ?? { width: overflowResult.canvasWidth, height: overflowResult.canvasHeight },
+      padding: options.padding,
+      renderScale: options.renderScale,
+    },
+  });
 }
 
 /** Canvas backend for the basic RichText fill stage. */
@@ -187,13 +178,17 @@ export class CanvasRichTextFillBackend implements TextRenderBackend<CanvasRender
     for (const glyph of plan.glyphs) {
       const rangeStyle = styleByRange.get(glyph.sourceRangeId);
 
-      context.font = rangeStyle?.fontRef ?? glyph.fontRef;
+      const font = plan.fonts.find(item => item.id === (rangeStyle?.fontId ?? glyph.fontId));
+
+      if (font) {
+        context.font = fontToCss(font);
+      }
       if (rangeStyle?.fillColor) {
         const [r, g, b, a] = rangeStyle.fillColor;
 
         context.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
       }
-      context.fillText(glyph.glyph, glyph.x, glyph.y);
+      context.fillText(String(glyph.glyphId), glyph.x, glyph.y);
     }
   }
 }

@@ -15,3 +15,15 @@ temp
 api
 www
 **/__definations__/*.ts
+
+# Codex/agent working artifacts
+.claude/plans/
+.claude/tmp/
+
+# Frame comparison and headed test screenshots
+artifacts/
+
+# GE render loop demo (experimental, not part of test suite)
+web-packages/demo/html/ge-render-loop.html
+web-packages/demo/public/ge-render/
+web-packages/demo/src/ge-render-loop.ts
