@@ -1,4 +1,11 @@
-import { EventEmitter, FocusMode, MouseButton, MouseFilter, math } from '@galacean/effects';
+import {
+  EventEmitter,
+  FocusMode,
+  MouseButton,
+  MouseFilter,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type {
   Engine,
   EventEmitterListener,
@@ -13,6 +20,7 @@ import { Orientation } from '../layout/enums';
 import { Range } from '../scroll/range';
 import type { RangeEvent } from '../scroll/range';
 import { cloneColor, GUIStyle } from '../style';
+import type { SliderData } from '../data';
 
 export type SliderEvent = RangeEvent & {
   dragStarted: [],
@@ -323,14 +331,41 @@ export class Slider extends Range {
       ? { x: offset, y: (this.height - GRABBER_SIZE) * 0.5, width: GRABBER_SIZE, height: GRABBER_SIZE }
       : { x: (this.width - GRABBER_SIZE) * 0.5, y: this.getUsableLength() - offset, width: GRABBER_SIZE, height: GRABBER_SIZE };
   }
+
+  override fromData (data: SliderData): void {
+    super.fromData(data);
+    if (data.editable !== undefined) {
+      this.editable = data.editable;
+    }
+    if (data.scrollable !== undefined) {
+      this.scrollable = data.scrollable;
+    }
+    if (data.trackColor !== undefined) {
+      this.trackColor.copyFrom(data.trackColor);
+    }
+    if (data.fillColor !== undefined) {
+      this.fillColor.copyFrom(data.fillColor);
+    }
+    if (data.grabberColor !== undefined) {
+      this.grabberColor.copyFrom(data.grabberColor);
+    }
+    if (data.grabberHighlightedColor !== undefined) {
+      this.grabberHighlightedColor.copyFrom(data.grabberHighlightedColor);
+    }
+    if (data.grabberDisabledColor !== undefined) {
+      this.grabberDisabledColor.copyFrom(data.grabberDisabledColor);
+    }
+  }
 }
 
+@effectsClass('HSlider')
 export class HSlider extends Slider {
   constructor (engine: Engine) {
     super(engine, Orientation.Horizontal);
   }
 }
 
+@effectsClass('VSlider')
 export class VSlider extends Slider {
   constructor (engine: Engine) {
     super(engine, Orientation.Vertical);

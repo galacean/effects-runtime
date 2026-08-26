@@ -281,15 +281,12 @@ export class TextCache {
     let ascentPx = fontSize * 0.8 * resolution;
     let descentPx = fontSize * 0.2 * resolution;
 
-    try {
-      probeCtx.font = scaledFontString;
-      const m = probeCtx.measureText(METRICS_STRING + BASELINE_SYMBOL);
+    probeCtx.font = scaledFontString;
+    const m = probeCtx.measureText(METRICS_STRING + BASELINE_SYMBOL);
 
-      ascentPx = m.actualBoundingBoxAscent || ascentPx;
-      descentPx = m.actualBoundingBoxDescent || descentPx;
-    } finally {
-      canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
-    }
+    ascentPx = m.actualBoundingBoxAscent || ascentPx;
+    descentPx = m.actualBoundingBoxDescent || descentPx;
+    canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
 
     const atlas = new GlyphAtlas(this.engine, scaledFontString, ascentPx, descentPx, fontStyle, resolution);
 

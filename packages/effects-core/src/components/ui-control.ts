@@ -1,7 +1,10 @@
-import type { Control } from '../gui';
+import type * as spec from '@galacean/effects-specification';
+import { effectsClass, getClass } from '../decorators';
+import type { Control, UIControlData } from '../gui';
 import { Container } from '../gui';
 import type { Engine } from '../engine';
 import type { Transform } from '../transform';
+import type { Constructor } from '../utils';
 import { Component } from './component';
 import { UICanvas } from './ui-canvas';
 
@@ -9,6 +12,7 @@ import { UICanvas } from './ui-canvas';
  * Scene-tree bridge for a GUI Control. The VFXItem tree owns lifecycle and
  * serialization while the Control tree owns layout, drawing and input.
  */
+@effectsClass('UIControl')
 export class UIControl extends Component {
   static fallbackParentGetDelegate?: (control: UIControl) => Control | null;
 
@@ -31,15 +35,7 @@ export class UIControl extends Component {
     if (value === this.controlNode) {
       return;
     }
-    this.disposeControl();
-    if (value) {
-      if (value.owner && value.owner !== this && value.owner.control === value) {
-        throw new Error('A Control can only be owned by one UIControl.');
-      }
-      this.controlNode = value;
-      value.owner = this;
-      this.syncControl();
-    }
+    this.attachControl(value);
   }
 
   get hasControl (): boolean {
@@ -89,6 +85,18 @@ export class UIControl extends Component {
     }
   }
 
+  private attachControl (value: Control | null): void {
+    if (value?.owner && value.owner !== this && value.owner.control === value) {
+      throw new Error('A Control can only be owned by one UIControl.');
+    }
+    this.disposeControl();
+    if (value) {
+      this.controlNode = value;
+      value.owner = this;
+      this.syncControl();
+    }
+  }
+
   private disposeControl (): void {
     const control = this.controlNode;
 
@@ -106,15 +114,12 @@ export class UIControl extends Component {
       return;
     }
     this.syncingLocation = true;
-    try {
-      control.visible = this.item.isActive;
-      control.enabled = this.enabled;
-      control.parent = this.resolveParent();
-      this.syncControlOrder();
-      this.copyItemLocationToControl();
-    } finally {
-      this.syncingLocation = false;
-    }
+    control.visible = this.item.isActive;
+    control.enabled = this.enabled;
+    control.parent = this.resolveParent();
+    this.syncControlOrder();
+    this.copyItemLocationToControl();
+    this.syncingLocation = false;
     this.bindLocationSync();
   }
 
@@ -164,30 +169,25 @@ export class UIControl extends Component {
   }
 
   private syncItemLocationToControl (): void {
-    if (!this.syncingLocation && this.controlNode) {
-      this.syncingLocation = true;
-      try {
-        this.copyItemLocationToControl();
-      } finally {
-        this.syncingLocation = false;
-      }
+    if (this.syncingLocation || !this.controlNode) {
+      return;
     }
+    this.syncingLocation = true;
+    this.copyItemLocationToControl();
+    this.syncingLocation = false;
   }
 
   private syncControlLocationToItem (): void {
     const control = this.controlNode;
 
-    if (!this.syncingLocation && control) {
+    if (!this.syncingLocation && control && this.item) {
       const source = control.location;
       const target = this.item.transform.position;
 
       if (source.x !== target.x || source.y !== target.y) {
         this.syncingLocation = true;
-        try {
-          this.item.transform.setPosition(source.x, source.y, target.z);
-        } finally {
-          this.syncingLocation = false;
-        }
+        this.item.transform.setPosition(source.x, source.y, target.z);
+        this.syncingLocation = false;
       }
     }
   }
@@ -205,5 +205,18 @@ export class UIControl extends Component {
         control.setPosition(source.x, source.y);
       }
     }
+  }
+
+  override fromData (data: spec.ComponentData): void {
+    super.fromData(data);
+    const serialized = (data as UIControlData).control;
+    const Constructor = getClass(serialized.type) as Constructor<Control>;
+    const control = new Constructor(this.engine);
+
+    this.attachControl(control);
+    this.syncingLocation = true;
+    control.fromData(serialized.data);
+    this.syncingLocation = false;
+    this.syncControlLocationToItem();
   }
 }

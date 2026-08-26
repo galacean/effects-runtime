@@ -1,9 +1,16 @@
-import { Control, MouseFilter, math } from '@galacean/effects';
+import {
+  Control,
+  MouseFilter,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type { Engine, Texture, TextureRegion } from '@galacean/effects';
+import type { TextureRectData } from '../data';
 import { TextureExpandMode, TextureStretchMode } from './enums';
 
 const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
 
+@effectsClass('TextureRect')
 export class TextureRect extends Control {
   private _texture: Texture | null = null;
   private _expandMode = TextureExpandMode.KeepSize;
@@ -195,6 +202,28 @@ export class TextureRect extends Control {
     if (this.expandMode === TextureExpandMode.FitWidthProportional
       || this.expandMode === TextureExpandMode.FitHeightProportional) {
       this.updateMinimumSize();
+    }
+  }
+
+  override fromData (data: TextureRectData): void {
+    super.fromData(data);
+    if (data.texture !== undefined) {
+      this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : null;
+    }
+    if (data.expandMode !== undefined) {
+      this.expandMode = data.expandMode;
+    }
+    if (data.stretchMode !== undefined) {
+      this.stretchMode = data.stretchMode;
+    }
+    if (data.flipH !== undefined) {
+      this.flipH = data.flipH;
+    }
+    if (data.flipV !== undefined) {
+      this.flipV = data.flipV;
+    }
+    if (data.tint !== undefined) {
+      this.tint.copyFrom(data.tint);
     }
   }
 }

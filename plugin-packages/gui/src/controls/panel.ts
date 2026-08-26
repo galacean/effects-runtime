@@ -1,7 +1,9 @@
-import { Control, MouseFilter } from '@galacean/effects';
+import { Control, MouseFilter, effectsClass } from '@galacean/effects';
 import type { Engine, math } from '@galacean/effects';
+import type { PanelData } from '../data';
 import { cloneColor, GUIStyle } from '../style';
 
+@effectsClass('Panel')
 export class Panel extends Control {
   backgroundColor: math.Color;
   borderColor: math.Color;
@@ -20,6 +22,19 @@ export class Panel extends Control {
     this.fillRect(0, 0, this.width, this.height, this.backgroundColor);
     if (this.borderWidth > 0) {
       this.drawRect(0, 0, this.width, this.height, this.borderColor, this.borderWidth);
+    }
+  }
+
+  override fromData (data: PanelData): void {
+    super.fromData(data);
+    if (data.backgroundColor !== undefined) {
+      this.backgroundColor.copyFrom(data.backgroundColor);
+    }
+    if (data.borderColor !== undefined) {
+      this.borderColor.copyFrom(data.borderColor);
+    }
+    if (data.borderWidth !== undefined) {
+      this.borderWidth = data.borderWidth;
     }
   }
 }

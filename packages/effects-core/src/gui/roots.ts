@@ -115,18 +115,15 @@ export class CanvasContainer extends Control {
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.width, this.height);
     }
-    try {
-      for (const child of this.children) {
-        const root = child as CanvasRootControl;
+    for (const child of this.children) {
+      const root = child as CanvasRootControl;
 
-        if (root.canvas.isVisible) {
-          root.drawInternal();
-        }
+      if (root.canvas.isVisible) {
+        root.drawInternal();
       }
-    } finally {
-      if (this.clipContents) {
-        graphics.popClipRect();
-      }
+    }
+    if (this.clipContents) {
+      graphics.popClipRect();
     }
   }
 

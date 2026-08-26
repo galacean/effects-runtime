@@ -18,6 +18,7 @@ import type {
   RootControl,
 } from '@galacean/effects';
 import { ButtonActionMode, ButtonDrawMode } from './enums';
+import type { BaseButtonData } from '../data';
 
 export type BaseButtonEvent = ControlEvent & {
   buttonDown: [],
@@ -122,6 +123,11 @@ export class BaseButton extends Control {
   private mousePressing = false;
   private keyboardPressing = false;
   private touchIndex = -1;
+  private readonly controlStateChanged = () => {
+    if (!this.visible || !this.enabled) {
+      this.cancelPress();
+    }
+  };
 
   actionMode = ButtonActionMode.Release;
   keepPressedOutside = false;
@@ -130,6 +136,8 @@ export class BaseButton extends Control {
     super(engine);
     this.focusMode = FocusMode.All;
     this.mouseFilter = MouseFilter.Stop;
+    this.on('visibilityChanged', this.controlStateChanged);
+    this.on('enabledChanged', this.controlStateChanged);
   }
 
   get disabled (): boolean {
@@ -143,28 +151,6 @@ export class BaseButton extends Control {
         this.cancelPress();
       }
       this.root?.controlStateChanged(this);
-    }
-  }
-
-  override get visible (): boolean {
-    return super.visible;
-  }
-
-  override set visible (value: boolean) {
-    super.visible = value;
-    if (!value) {
-      this.cancelPress();
-    }
-  }
-
-  override get enabled (): boolean {
-    return super.enabled;
-  }
-
-  override set enabled (value: boolean) {
-    super.enabled = value;
-    if (!value) {
-      this.cancelPress();
     }
   }
 
@@ -362,6 +348,8 @@ export class BaseButton extends Control {
   }
 
   override onDestroy (): void {
+    this.off('visibilityChanged', this.controlStateChanged);
+    this.off('enabledChanged', this.controlStateChanged);
     this.buttonGroup = null;
     this.cancelPress();
   }
@@ -444,6 +432,28 @@ export class BaseButton extends Control {
       }
     }
     this.buttonEventEmitter.emit('pressed');
+  }
+
+  override fromData (data: BaseButtonData): void {
+    super.fromData(data);
+    if (data.disabled !== undefined) {
+      this.disabled = data.disabled;
+    }
+    if (data.toggleMode !== undefined) {
+      this.toggleMode = data.toggleMode;
+    }
+    if (data.buttonPressed !== undefined) {
+      this.setPressedNoSignal(data.buttonPressed);
+    }
+    if (data.buttonMask !== undefined) {
+      this.buttonMask = data.buttonMask;
+    }
+    if (data.actionMode !== undefined) {
+      this.actionMode = data.actionMode;
+    }
+    if (data.keepPressedOutside !== undefined) {
+      this.keepPressedOutside = data.keepPressedOutside;
+    }
   }
 }
 

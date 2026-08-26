@@ -1,4 +1,10 @@
-import { EventEmitter, FocusMode, MouseButton, math } from '@galacean/effects';
+import {
+  EventEmitter,
+  FocusMode,
+  MouseButton,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type {
   Engine,
   EventEmitterListener,
@@ -10,6 +16,7 @@ import { Orientation } from '../layout/enums';
 import { Range } from './range';
 import type { RangeEvent } from './range';
 import { cloneColor, GUIStyle } from '../style';
+import type { ScrollBarData } from '../data';
 
 export type ScrollBarEvent = RangeEvent & {
   scrolling: [],
@@ -333,14 +340,44 @@ export class ScrollBar extends Range {
       this.highlight = 'track';
     }
   }
+
+  override fromData (data: ScrollBarData): void {
+    super.fromData(data);
+    if (data.customStep !== undefined) {
+      this.customStep = data.customStep;
+    }
+    if (data.trackColor !== undefined) {
+      this.trackColor.copyFrom(data.trackColor);
+    }
+    if (data.buttonColor !== undefined) {
+      this.buttonColor.copyFrom(data.buttonColor);
+    }
+    if (data.buttonActiveColor !== undefined) {
+      this.buttonActiveColor.copyFrom(data.buttonActiveColor);
+    }
+    if (data.grabberColor !== undefined) {
+      this.grabberColor.copyFrom(data.grabberColor);
+    }
+    if (data.grabberHoverColor !== undefined) {
+      this.grabberHoverColor.copyFrom(data.grabberHoverColor);
+    }
+    if (data.grabberPressedColor !== undefined) {
+      this.grabberPressedColor.copyFrom(data.grabberPressedColor);
+    }
+    if (data.arrowColor !== undefined) {
+      this.arrowColor.copyFrom(data.arrowColor);
+    }
+  }
 }
 
+@effectsClass('HScrollBar')
 export class HScrollBar extends ScrollBar {
   constructor (engine: Engine) {
     super(engine, Orientation.Horizontal);
   }
 }
 
+@effectsClass('VScrollBar')
 export class VScrollBar extends ScrollBar {
   constructor (engine: Engine) {
     super(engine, Orientation.Vertical);

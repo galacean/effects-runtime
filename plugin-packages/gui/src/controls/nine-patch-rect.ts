@@ -1,4 +1,10 @@
-import { Control, EventEmitter, MouseFilter, math } from '@galacean/effects';
+import {
+  Control,
+  EventEmitter,
+  MouseFilter,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type {
   ControlEvent,
   Engine,
@@ -8,6 +14,7 @@ import type {
   TextureRegion,
 } from '@galacean/effects';
 import { AxisStretchMode, Side } from './enums';
+import type { NinePatchRectData } from '../data';
 
 export type NinePatchRectEvent = ControlEvent & {
   textureChanged: [texture: Texture | null],
@@ -18,6 +25,7 @@ type AxisSegment = {
   source: number,
 };
 
+@effectsClass('NinePatchRect')
 export class NinePatchRect extends Control {
   private readonly ninePatchEventEmitter = new EventEmitter<NinePatchRectEvent>();
   private readonly patchMargins = [0, 0, 0, 0];
@@ -224,6 +232,43 @@ export class NinePatchRect extends Control {
     };
 
     this.drawTexture(x, y, width, height, texture, region, this.tint);
+  }
+
+  override fromData (data: NinePatchRectData): void {
+    super.fromData(data);
+    if (data.texture !== undefined) {
+      this.texture = data.texture ? this.engine.findObject<Texture>(data.texture) : null;
+    }
+    if (data.regionRect !== undefined) {
+      this.setRegionRect(
+        data.regionRect.position[0], data.regionRect.position[1],
+        data.regionRect.size[0], data.regionRect.size[1],
+      );
+    }
+    if (data.patchMarginLeft !== undefined) {
+      this.setPatchMargin(Side.Left, data.patchMarginLeft);
+    }
+    if (data.patchMarginTop !== undefined) {
+      this.setPatchMargin(Side.Top, data.patchMarginTop);
+    }
+    if (data.patchMarginRight !== undefined) {
+      this.setPatchMargin(Side.Right, data.patchMarginRight);
+    }
+    if (data.patchMarginBottom !== undefined) {
+      this.setPatchMargin(Side.Bottom, data.patchMarginBottom);
+    }
+    if (data.drawCenter !== undefined) {
+      this.drawCenter = data.drawCenter;
+    }
+    if (data.horizontalAxisStretchMode !== undefined) {
+      this.horizontalAxisStretchMode = data.horizontalAxisStretchMode;
+    }
+    if (data.verticalAxisStretchMode !== undefined) {
+      this.verticalAxisStretchMode = data.verticalAxisStretchMode;
+    }
+    if (data.tint !== undefined) {
+      this.tint.copyFrom(data.tint);
+    }
   }
 }
 

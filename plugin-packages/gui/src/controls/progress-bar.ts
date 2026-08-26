@@ -1,9 +1,15 @@
-import { MouseFilter, math } from '@galacean/effects';
+import {
+  MouseFilter,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type { Engine, FontStyle, FontWeight } from '@galacean/effects';
 import { Range } from '../scroll/range';
 import { cloneColor, GUIStyle } from '../style';
 import { ProgressFillMode } from './enums';
+import type { ProgressBarData } from '../data';
 
+@effectsClass('ProgressBar')
 export class ProgressBar extends Range {
   private _showPercentage = true;
   private _fillMode = ProgressFillMode.BeginToEnd;
@@ -151,5 +157,36 @@ export class ProgressBar extends Range {
   private updateTextSize (): void {
     this.updateMinimumSize();
     this.updateDesiredSize();
+  }
+
+  override fromData (data: ProgressBarData): void {
+    super.fromData(data);
+    if (data.showPercentage !== undefined) {
+      this.showPercentage = data.showPercentage;
+    }
+    if (data.fillMode !== undefined) {
+      this.fillMode = data.fillMode;
+    }
+    if (data.fontFamily !== undefined) {
+      this.fontFamily = data.fontFamily;
+    }
+    if (data.fontSize !== undefined) {
+      this.fontSize = data.fontSize;
+    }
+    if (data.fontWeight !== undefined) {
+      this.fontWeight = data.fontWeight;
+    }
+    if (data.fontStyle !== undefined) {
+      this.fontStyle = data.fontStyle;
+    }
+    if (data.backgroundColor !== undefined) {
+      this.backgroundColor.copyFrom(data.backgroundColor);
+    }
+    if (data.fillColor !== undefined) {
+      this.fillColor.copyFrom(data.fillColor);
+    }
+    if (data.textColor !== undefined) {
+      this.textColor.copyFrom(data.textColor);
+    }
   }
 }

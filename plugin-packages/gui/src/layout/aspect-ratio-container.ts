@@ -1,8 +1,10 @@
-import { Container, math } from '@galacean/effects';
+import { Container, effectsClass, math } from '@galacean/effects';
+import type { AspectRatioContainerData } from '../data';
 import { AspectRatioStretchMode, LayoutAlignment } from './enums';
 import { assertEnumValue, assertFinite } from './utils';
 
 /** Fits every visible child into the same rectangle with a fixed width/height ratio. */
+@effectsClass('AspectRatioContainer')
 export class AspectRatioContainer extends Container {
   private _ratio = 1;
   private _stretchMode = AspectRatioStretchMode.Fit;
@@ -129,5 +131,21 @@ export class AspectRatioContainer extends Container {
     }
 
     return 0;
+  }
+
+  override fromData (data: AspectRatioContainerData): void {
+    super.fromData(data);
+    if (data.ratio !== undefined) {
+      this.ratio = data.ratio;
+    }
+    if (data.stretchMode !== undefined) {
+      this.stretchMode = data.stretchMode;
+    }
+    if (data.horizontalAlignment !== undefined) {
+      this.horizontalAlignment = data.horizontalAlignment;
+    }
+    if (data.verticalAlignment !== undefined) {
+      this.verticalAlignment = data.verticalAlignment;
+    }
   }
 }

@@ -1,4 +1,6 @@
+import { effectsClass } from '@galacean/effects';
 import type { Engine, math } from '@galacean/effects';
+import type { CheckBoxData } from '../data';
 import { cloneColor, GUIStyle } from '../style';
 import { Button } from './button';
 import type { ContentInsets } from './button';
@@ -7,6 +9,7 @@ import { HorizontalAlignment } from './enums';
 const MARK_SIZE = 14;
 const MARK_GAP = 6;
 
+@effectsClass('CheckBox')
 export class CheckBox extends Button {
   markColor: math.Color;
 
@@ -39,6 +42,13 @@ export class CheckBox extends Button {
       if (this.buttonPressed) {
         this.fillRect(x + 3, y + 3, MARK_SIZE - 6, MARK_SIZE - 6, this.markColor);
       }
+    }
+  }
+
+  override fromData (data: CheckBoxData): void {
+    super.fromData(data);
+    if (data.markColor !== undefined) {
+      this.markColor.copyFrom(data.markColor);
     }
   }
 }

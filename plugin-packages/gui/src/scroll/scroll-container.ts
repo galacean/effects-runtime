@@ -4,6 +4,7 @@ import {
   FocusMode,
   MouseButton,
   SizeFlags,
+  effectsClass,
   math,
 } from '@galacean/effects';
 import type {
@@ -18,6 +19,7 @@ import type {
 } from '@galacean/effects';
 import { ScrollMode } from './enums';
 import { HScrollBar, ScrollBar, VScrollBar } from './scroll-bar';
+import type { ScrollContainerData } from '../data';
 
 export type ScrollContainerEvent = ControlEvent & {
   scrollStarted: [],
@@ -36,6 +38,7 @@ type ScrollLayout = {
 const INERTIA_DECELERATION = 1000;
 
 /** Clips and scrolls its content children using two internal Range scroll bars. */
+@effectsClass('ScrollContainer')
 export class ScrollContainer extends Container {
   private readonly scrollContainerEventEmitter = new EventEmitter<ScrollContainerEvent>();
   private readonly horizontalBar: HScrollBar;
@@ -647,6 +650,37 @@ export class ScrollContainer extends Container {
     if (notifyEnd) {
       this.notifyContentScroll(false);
       this.scrollContainerEventEmitter.emit('scrollEnded');
+    }
+  }
+
+  override fromData (data: ScrollContainerData): void {
+    super.fromData(data);
+    if (data.horizontalScrollMode !== undefined) {
+      this.horizontalScrollMode = data.horizontalScrollMode;
+    }
+    if (data.verticalScrollMode !== undefined) {
+      this.verticalScrollMode = data.verticalScrollMode;
+    }
+    if (data.horizontalCustomStep !== undefined) {
+      this.horizontalCustomStep = data.horizontalCustomStep;
+    }
+    if (data.verticalCustomStep !== undefined) {
+      this.verticalCustomStep = data.verticalCustomStep;
+    }
+    if (data.scrollHorizontalByDefault !== undefined) {
+      this.scrollHorizontalByDefault = data.scrollHorizontalByDefault;
+    }
+    if (data.deadzone !== undefined) {
+      this.deadzone = data.deadzone;
+    }
+    if (data.followFocus !== undefined) {
+      this.followFocus = data.followFocus;
+    }
+    if (data.hScroll !== undefined) {
+      this.horizontalBar.setValueNoSignal(data.hScroll);
+    }
+    if (data.vScroll !== undefined) {
+      this.verticalBar.setValueNoSignal(data.vScroll);
     }
   }
 }

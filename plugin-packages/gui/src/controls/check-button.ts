@@ -1,4 +1,6 @@
+import { effectsClass } from '@galacean/effects';
 import type { Engine, math } from '@galacean/effects';
+import type { CheckButtonData } from '../data';
 import { cloneColor, GUIStyle } from '../style';
 import { Button } from './button';
 import type { ContentInsets } from './button';
@@ -8,6 +10,7 @@ const SWITCH_WIDTH = 26;
 const SWITCH_HEIGHT = 14;
 const SWITCH_GAP = 6;
 
+@effectsClass('CheckButton')
 export class CheckButton extends Button {
   switchColor: math.Color;
 
@@ -35,5 +38,12 @@ export class CheckButton extends Button {
     this.fillCircle(x + radius, y + radius, radius, trackColor);
     this.fillCircle(x + SWITCH_WIDTH - radius, y + radius, radius, trackColor);
     this.fillCircle(knobX, y + radius, radius - 2, this.textColor);
+  }
+
+  override fromData (data: CheckButtonData): void {
+    super.fromData(data);
+    if (data.switchColor !== undefined) {
+      this.switchColor.copyFrom(data.switchColor);
+    }
   }
 }

@@ -1,5 +1,6 @@
 import { Control, EventEmitter } from '@galacean/effects';
 import type { ControlEvent, Engine, EventEmitterListener } from '@galacean/effects';
+import type { RangeData } from '../data';
 
 export type RangeEvent = ControlEvent & {
   changed: [],
@@ -22,6 +23,7 @@ type SharedRange = {
 export class Range extends Control {
   private shared: SharedRange;
   private _rounded = false;
+  private suppressSignals = false;
   private readonly rangeEventEmitter = new EventEmitter<RangeEvent>();
 
   constructor (engine: Engine) {
@@ -306,14 +308,51 @@ export class Range extends Control {
   private notifyValueChanged (): void {
     for (const owner of this.shared.owners) {
       owner.valueChanged(this.shared.value);
-      owner.rangeEventEmitter.emit('valueChanged', this.shared.value);
+      if (!this.suppressSignals) {
+        owner.rangeEventEmitter.emit('valueChanged', this.shared.value);
+      }
     }
   }
 
   private notifyChanged (): void {
     for (const owner of this.shared.owners) {
-      owner.rangeEventEmitter.emit('changed');
+      if (!this.suppressSignals) {
+        owner.rangeEventEmitter.emit('changed');
+      }
     }
+  }
+
+  override fromData (data: RangeData): void {
+    this.suppressSignals = true;
+    super.fromData(data);
+    if (data.allowGreater !== undefined) {
+      this.allowGreater = data.allowGreater;
+    }
+    if (data.allowLesser !== undefined) {
+      this.allowLesser = data.allowLesser;
+    }
+    if (data.exponentialRatio !== undefined) {
+      this.exponentialRatio = data.exponentialRatio;
+    }
+    if (data.rounded !== undefined) {
+      this.rounded = data.rounded;
+    }
+    if (data.minValue !== undefined) {
+      this.setMinValue(data.minValue);
+    }
+    if (data.maxValue !== undefined) {
+      this.setMaxValue(data.maxValue);
+    }
+    if (data.step !== undefined) {
+      this.setStep(data.step);
+    }
+    if (data.page !== undefined) {
+      this.setPage(data.page);
+    }
+    if (data.value !== undefined) {
+      this.setValueNoSignal(data.value);
+    }
+    this.suppressSignals = false;
   }
 }
 

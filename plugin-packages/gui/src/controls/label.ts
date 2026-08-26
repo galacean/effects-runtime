@@ -1,5 +1,11 @@
-import { Control, MouseFilter, math } from '@galacean/effects';
+import {
+  Control,
+  MouseFilter,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type { Engine, FontStyle, FontWeight, TextMeasurement } from '@galacean/effects';
+import type { LabelData } from '../data';
 import { cloneColor, GUIStyle } from '../style';
 import { AutowrapMode, HorizontalAlignment, TextOverflow, VerticalAlignment } from './enums';
 
@@ -15,6 +21,7 @@ type TextLayout = {
   height: number,
 };
 
+@effectsClass('Label')
 export class Label extends Control {
   private _text = '';
   private _fontFamily: string;
@@ -460,6 +467,43 @@ export class Label extends Control {
       if (isBreakSpace(character)) {
         x += extra;
       }
+    }
+  }
+
+  override fromData (data: LabelData): void {
+    super.fromData(data);
+    if (data.text !== undefined) {
+      this.text = data.text;
+    }
+    if (data.fontFamily !== undefined) {
+      this.fontFamily = data.fontFamily;
+    }
+    if (data.fontSize !== undefined) {
+      this.fontSize = data.fontSize;
+    }
+    if (data.fontWeight !== undefined) {
+      this.fontWeight = data.fontWeight;
+    }
+    if (data.fontStyle !== undefined) {
+      this.fontStyle = data.fontStyle;
+    }
+    if (data.lineSpacing !== undefined) {
+      this.lineSpacing = data.lineSpacing;
+    }
+    if (data.horizontalAlignment !== undefined) {
+      this.horizontalAlignment = data.horizontalAlignment;
+    }
+    if (data.verticalAlignment !== undefined) {
+      this.verticalAlignment = data.verticalAlignment;
+    }
+    if (data.autowrapMode !== undefined) {
+      this.autowrapMode = data.autowrapMode;
+    }
+    if (data.textOverflow !== undefined) {
+      this.textOverflow = data.textOverflow;
+    }
+    if (data.textColor !== undefined) {
+      this.textColor.copyFrom(data.textColor);
     }
   }
 }

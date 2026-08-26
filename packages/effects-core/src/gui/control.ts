@@ -23,6 +23,8 @@ import type { FontStyle, FontWeight, TextMeasurement, TextureRegion } from '../r
 import type { Texture } from '../texture';
 import type { UIControl } from '../components/ui-control';
 import type { VFXItem } from '../vfx-item';
+import { effectsClass } from '../decorators';
+import type { ControlData } from './data';
 
 export type Rect = {
   position: Vector2,
@@ -124,6 +126,7 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  * A drawable GUI object. Controls form a tree independent from the VFXItem
  * scene tree. UIControl is the bridge between both trees.
  */
+@effectsClass('Control')
 export class Control {
   readonly engine: Engine;
   /** Scene-tree bridge that owns this GUI object, if any. */
@@ -1023,14 +1026,11 @@ export class Control {
     if (this.clipContents) {
       graphics.pushClipRect(0, 0, this.width, this.height);
     }
-    try {
-      for (const child of this.children) {
-        child.drawInternal();
-      }
-    } finally {
-      if (this.clipContents) {
-        graphics.popClipRect();
-      }
+    for (const child of this.children) {
+      child.drawInternal();
+    }
+    if (this.clipContents) {
+      graphics.popClipRect();
     }
   }
 
@@ -1172,12 +1172,82 @@ export class Control {
 
     return this.focusBehaviorRecursive === FocusBehaviorRecursive.Enabled;
   }
+
+  fromData (data: ControlData): void {
+    if (data.anchorMin !== undefined) {
+      this.setAnchorMin(...data.anchorMin);
+    }
+    if (data.anchorMax !== undefined) {
+      this.setAnchorMax(...data.anchorMax);
+    }
+    if (data.offsetMin !== undefined) {
+      this.setOffsetMin(...data.offsetMin);
+    }
+    if (data.offsetMax !== undefined) {
+      this.setOffsetMax(...data.offsetMax);
+    }
+    if (data.pivot !== undefined) {
+      this.setPivot(...data.pivot);
+    }
+    if (data.scale !== undefined) {
+      this.setScale(...data.scale);
+    }
+    if (data.shear !== undefined) {
+      this.setShear(...data.shear);
+    }
+    if (data.rotation !== undefined) {
+      this.setRotation(data.rotation);
+    }
+    if (data.customMinimumSize !== undefined) {
+      this.setCustomMinimumSize(...data.customMinimumSize);
+    }
+    if (data.customMaximumSize !== undefined) {
+      this.setCustomMaximumSize(...data.customMaximumSize);
+    }
+    if (data.horizontalSizeFlags !== undefined || data.verticalSizeFlags !== undefined) {
+      this.setSizeFlags(
+        data.horizontalSizeFlags ?? this.horizontalSizeFlags,
+        data.verticalSizeFlags ?? this.verticalSizeFlags,
+      );
+    }
+    if (data.stretchRatio !== undefined) {
+      this.stretchRatio = data.stretchRatio;
+    }
+    if (data.horizontalGrowDirection !== undefined) {
+      this.horizontalGrowDirection = data.horizontalGrowDirection;
+    }
+    if (data.verticalGrowDirection !== undefined) {
+      this.verticalGrowDirection = data.verticalGrowDirection;
+    }
+    if (data.mouseFilter !== undefined) {
+      this.mouseFilter = data.mouseFilter;
+    }
+    if (data.mouseBehaviorRecursive !== undefined) {
+      this.mouseBehaviorRecursive = data.mouseBehaviorRecursive;
+    }
+    if (data.mouseForcePassScrollEvents !== undefined) {
+      this.mouseForcePassScrollEvents = data.mouseForcePassScrollEvents;
+    }
+    if (data.focusMode !== undefined) {
+      this.focusMode = data.focusMode;
+    }
+    if (data.focusBehaviorRecursive !== undefined) {
+      this.focusBehaviorRecursive = data.focusBehaviorRecursive;
+    }
+    if (data.defaultCursorShape !== undefined) {
+      this.defaultCursorShape = data.defaultCursorShape;
+    }
+    if (data.clipContents !== undefined) {
+      this.clipContents = data.clipContents;
+    }
+  }
 }
 
 /**
  * A Control that automatically measures and arranges its child Controls.
  * Concrete layout algorithms live in GUI plugin packages.
  */
+@effectsClass('Container')
 export class Container extends Control {
   private sortPending = false;
   private readonly childLayoutChanged = () => this.invalidateMeasurementsAndQueueSort();

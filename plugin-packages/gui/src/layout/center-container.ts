@@ -1,6 +1,8 @@
-import { Container, math } from '@galacean/effects';
+import { Container, effectsClass, math } from '@galacean/effects';
+import type { CenterContainerData } from '../data';
 
 /** Centers children at their bound minimum size. */
+@effectsClass('CenterContainer')
 export class CenterContainer extends Container {
   private _useTopLeft = false;
 
@@ -54,5 +56,12 @@ export class CenterContainer extends Container {
     }
 
     return new math.Vector2(width, height);
+  }
+
+  override fromData (data: CenterContainerData): void {
+    super.fromData(data);
+    if (data.useTopLeft !== undefined) {
+      this.useTopLeft = data.useTopLeft;
+    }
   }
 }

@@ -1,5 +1,9 @@
-import { math } from '@galacean/effects';
+import {
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type { Engine, FontStyle, FontWeight, Texture } from '@galacean/effects';
+import type { ButtonData } from '../data';
 import { cloneColor, GUIStyle } from '../style';
 import { BaseButton } from './base-button';
 import { ButtonDrawMode, HorizontalAlignment, VerticalAlignment } from './enums';
@@ -11,6 +15,7 @@ export type ContentInsets = {
   bottom: number,
 };
 
+@effectsClass('Button')
 export class Button extends BaseButton {
   private _text = '';
   private _icon: Texture | null = null;
@@ -297,5 +302,78 @@ export class Button extends BaseButton {
     }
 
     return characters.slice(0, count).join('') + ellipsis;
+  }
+
+  override fromData (data: ButtonData): void {
+    super.fromData(data);
+    if (data.text !== undefined) {
+      this.text = data.text;
+    }
+    if (data.icon !== undefined) {
+      this.icon = data.icon ? this.engine.findObject<Texture>(data.icon) : null;
+    }
+    if (data.fontFamily !== undefined) {
+      this.fontFamily = data.fontFamily;
+    }
+    if (data.fontSize !== undefined) {
+      this.fontSize = data.fontSize;
+    }
+    if (data.fontWeight !== undefined) {
+      this.fontWeight = data.fontWeight;
+    }
+    if (data.fontStyle !== undefined) {
+      this.fontStyle = data.fontStyle;
+    }
+    if (data.flat !== undefined) {
+      this.flat = data.flat;
+    }
+    if (data.clipText !== undefined) {
+      this.clipText = data.clipText;
+    }
+    if (data.expandIcon !== undefined) {
+      this.expandIcon = data.expandIcon;
+    }
+    if (data.textAlignment !== undefined) {
+      this.textAlignment = data.textAlignment;
+    }
+    if (data.iconAlignment !== undefined) {
+      this.iconAlignment = data.iconAlignment;
+    }
+    if (data.iconVerticalAlignment !== undefined) {
+      this.iconVerticalAlignment = data.iconVerticalAlignment;
+    }
+    if (data.horizontalPadding !== undefined) {
+      this.horizontalPadding = data.horizontalPadding;
+    }
+    if (data.verticalPadding !== undefined) {
+      this.verticalPadding = data.verticalPadding;
+    }
+    if (data.iconSeparation !== undefined) {
+      this.iconSeparation = data.iconSeparation;
+    }
+    if (data.borderWidth !== undefined) {
+      this.borderWidth = data.borderWidth;
+    }
+    if (data.textColor !== undefined) {
+      this.textColor.copyFrom(data.textColor);
+    }
+    if (data.disabledTextColor !== undefined) {
+      this.disabledTextColor.copyFrom(data.disabledTextColor);
+    }
+    if (data.normalColor !== undefined) {
+      this.normalColor.copyFrom(data.normalColor);
+    }
+    if (data.hoverColor !== undefined) {
+      this.hoverColor.copyFrom(data.hoverColor);
+    }
+    if (data.pressedColor !== undefined) {
+      this.pressedColor.copyFrom(data.pressedColor);
+    }
+    if (data.disabledColor !== undefined) {
+      this.disabledColor.copyFrom(data.disabledColor);
+    }
+    if (data.borderColor !== undefined) {
+      this.borderColor.copyFrom(data.borderColor);
+    }
   }
 }

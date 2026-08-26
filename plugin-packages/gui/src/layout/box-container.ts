@@ -1,5 +1,11 @@
-import { Container, SizeFlags, math } from '@galacean/effects';
+import {
+  Container,
+  SizeFlags,
+  effectsClass,
+  math,
+} from '@galacean/effects';
 import type { Control, Engine } from '@galacean/effects';
+import type { BoxContainerData } from '../data';
 import { LayoutAlignment, Orientation } from './enums';
 import { alignmentOffset, assertEnumValue, assertFinite, growSlots, sum } from './utils';
 
@@ -161,8 +167,22 @@ export class BoxContainer extends Container {
     this.updateDesiredSize();
     this.queueSort();
   }
+
+  override fromData (data: BoxContainerData): void {
+    super.fromData(data);
+    if (data.alignment !== undefined) {
+      this.alignment = data.alignment;
+    }
+    if (data.separation !== undefined) {
+      this.separation = data.separation;
+    }
+    if (data.reverse !== undefined) {
+      this.reverse = data.reverse;
+    }
+  }
 }
 
+@effectsClass('HBoxContainer')
 export class HBoxContainer extends BoxContainer {
   constructor (engine: Engine) {
     super(engine);
@@ -170,6 +190,7 @@ export class HBoxContainer extends BoxContainer {
   }
 }
 
+@effectsClass('VBoxContainer')
 export class VBoxContainer extends BoxContainer {
   constructor (engine: Engine) {
     super(engine);
