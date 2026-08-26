@@ -9,9 +9,7 @@ import type { TextStyle } from './text-style';
 import { isValidFontFamily } from '../../utils';
 import { glContext } from '../../gl';
 import { canvasPool } from '../../canvas-pool';
-import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
 import { loadTexturePatterns } from './fancy-text/texture-pattern-loader';
-import type { TextLayerDrawer } from './fancy-text/fancy-types';
 
 /**
  * 富文本组件特有 API
@@ -28,7 +26,6 @@ export class TextComponentBase {
   text: string;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
-  layerDrawers: TextLayerDrawer[];   // 原来叫 effects
 
   // 通用状态字段
   isDirty = true;
@@ -101,7 +98,6 @@ export class TextComponentBase {
    */
   setTextColor (value: spec.RGBAColorValue): void {
     this.textStyle.setTextColor(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -154,7 +150,6 @@ export class TextComponentBase {
    */
   setOutlineColor (value: spec.RGBAColorValue): void {
     this.textStyle.setOutlineColor(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -264,7 +259,7 @@ export class TextComponentBase {
    *
    * 检测 fancyRenderStyle.layers 中的 texture 层，
    * 对 runtimePattern 为 null 且有 imageUrl 的层发起异步图片加载，
-   * 加载完成后创建 CanvasPattern 写回 runtimePattern，重建 layerDrawers 并触发重绘。
+   * 加载完成后创建 CanvasPattern 写回 runtimePattern，并触发重绘。
    *
    * 使用 _textureLoadVersion 版本号防止重入和过期回调。
    */
@@ -290,8 +285,6 @@ export class TextComponentBase {
         return;
       }
 
-      // 重建 layerDrawers（此时 texture 层的 runtimePattern 已填充）
-      this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(layers);
       this.isDirty = true;
     } catch (err) {
       console.warn('[FancyText] 纹理 pattern 加载异常:', err);

@@ -8,7 +8,7 @@ import {
   compileTextEffectPlan,
   spec,
 } from '@galacean/effects-core';
-import type { CharInfo } from '@galacean/effects-core';
+import type { TextLineInput } from '@galacean/effects-core';
 
 const { expect } = chai;
 
@@ -36,7 +36,7 @@ describe('core/plugins/text/text-render-plan', () => {
     },
   ];
 
-  const charsInfo: CharInfo[] = [
+  const charsInfo: TextLineInput[] = [
     { y: 20, width: 0, chars: [], charOffsetX: [] },
     { y: 50, width: 24, chars: ['A', 'B'], charOffsetX: [0, 12] },
   ];

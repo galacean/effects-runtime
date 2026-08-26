@@ -2,7 +2,7 @@
 import type { Engine, FancyScopeResolution, IRichTextComponent, TextRenderPlan } from '@galacean/effects';
 import {
   assertExist, math, effectsClass, spec, MaskableGraphic, applyMixins, TextStyle,
-  TextComponentBase, FancyLayerFactory, compileTextEffectPlan,
+  TextComponentBase, compileTextEffectPlan,
 } from '@galacean/effects';
 import { RichTextLayout } from './rich-text-layout';
 import { RichTextStrategyFactory } from './strategies/rich-text-factory';
@@ -180,7 +180,6 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     if (this.textLayout.useLegacyRichText) {
       this.textLayout.textVerticalAlign = spec.TextVerticalAlign.middle;
     }
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     void this.loadFancyTexturePatterns();
     this.updateStrategies();
     this.isDirty = true;

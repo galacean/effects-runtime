@@ -1,6 +1,3 @@
-import './fancy-layer-factory.spec';
-import './render-with-text-layers.spec';
-import './text-layer-drawers.spec';
 import './text-style-base.spec';
 import './text-style-parse.spec';
 import './text-item.spec';

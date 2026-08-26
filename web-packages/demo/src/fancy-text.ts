@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
 import type { FancyConfig, FancyRenderLayer } from '@galacean/effects-core';
-import { FancyLayerFactory, TextStyle, TextComponent, loadTexturePatterns } from '@galacean/effects-core';
+import { TextStyle, TextComponent, loadTexturePatterns } from '@galacean/effects-core';
 import { getDemoFancyJsonConfig } from './fancy-presets';
 
 // 使用text.ts中的JSON数据
@@ -67,8 +67,6 @@ async function setupTexturePattern (textComponent: TextComponent) {
 
   await loadTexturePatterns(config.layers, ctx);
 
-  // 重建 layerDrawers（此时 texture 层的 runtimePattern 已填充）
-  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(config.layers);
   textComponent.isDirty = true;
 }
 
@@ -149,8 +147,6 @@ function applyFancyPreset (presetName: string) {
     style.fancyRenderStyle = flat;
   }
 
-  // 按当前 fancyRenderStyle.layers 重建 layerDrawers
-  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(style.fancyRenderStyle.layers);
   textComponent.isDirty = true;
 
   if (presetName === 'texture') {
@@ -221,8 +217,6 @@ function updateShadowParams (params: {
   // 使用 TextStyle 的 updateShadowParams 方法，支持完整参数
   textComponent.textStyle.updateShadowParams(params);
 
-  // 更新 layerDrawers
-  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(textComponent.textStyle.fancyRenderStyle.layers);
   textComponent.isDirty = true;
 
   // eslint-disable-next-line no-console
@@ -2176,8 +2170,6 @@ function applyEditorStateToRuntime () {
 
   style.fancyRenderStyle = { layers };
 
-  // 重建 layerDrawers
-  textComponent.layerDrawers = FancyLayerFactory.createDrawersFromLayers(layers);
   textComponent.isDirty = true;
 
   // 如果有纹理，需要设置纹理 pattern

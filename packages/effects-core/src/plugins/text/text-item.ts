@@ -10,12 +10,10 @@ import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { TextComponentBase } from './text-component-base';
 import type { Renderer } from '../../render/renderer';
-import { FancyLayerFactory } from './fancy-text/fancy-layer-factory';
 import { CanvasTextBackend } from './fancy-text/canvas-text-backend';
-import type { CharInfo } from './fancy-text/render-with-text-layers';
+import type { TextLineInput } from './fancy-text/text-render-plan';
 import { buildTextRenderPlanFromCharInfo, createTextFont } from './fancy-text/text-render-plan';
 import { compileTextEffectPlan } from './fancy-text/text-effect-plan';
-import type { TextLayerDrawer } from './fancy-text/fancy-types';
 import { hasRtlOrJoiningText } from './text-direction';
 
 export const DEFAULT_FONTS = [
@@ -44,7 +42,6 @@ export class TextComponent extends MaskableGraphic {
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
-  layerDrawers: TextLayerDrawer[];
 
   /**
    * 描边/阴影等特效导致的纹理扩容比例 X/Y
@@ -148,9 +145,6 @@ export class TextComponent extends MaskableGraphic {
 
     this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text);
-
-    // 初始化 layerDrawers（texture 层此时 runtimePattern 为 null，待异步加载）
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
 
     // 异步加载纹理层图片并创建 CanvasPattern
     void this.loadFancyTexturePatterns();
@@ -339,7 +333,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setTextColor (value: spec.RGBAColorValue): void {
     this.textStyle.setTextColor(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -350,7 +343,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setOutlineColor (value: spec.RGBAColorValue): void {
     this.textStyle.setOutlineColor(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -439,7 +431,7 @@ export class TextComponent extends MaskableGraphic {
       }
 
       // 计算字符信息
-      const charsInfo: CharInfo[] = [];
+      const charsInfo: TextLineInput[] = [];
       let x = 0;
       let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
       let charsArray: string[] = [];
@@ -781,7 +773,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setOutlineWidth (value: number): void {
     this.textStyle.setOutlineWidth(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -804,7 +795,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setShadowBlur (value: number): void {
     this.textStyle.setShadowBlur(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -816,7 +806,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setShadowColor (value: spec.RGBAColorValue): void {
     this.textStyle.setShadowColor(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -827,7 +816,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setShadowOffsetX (value: number): void {
     this.textStyle.setShadowOffsetX(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -838,7 +826,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setShadowOffsetY (value: number): void {
     this.textStyle.setShadowOffsetY(value);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -847,7 +834,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setStrokeEnabled (enabled: boolean): void {
     this.textStyle.setStrokeEnabled(enabled);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 
@@ -856,7 +842,6 @@ export class TextComponent extends MaskableGraphic {
    */
   setShadowEnabled (enabled: boolean): void {
     this.textStyle.setShadowEnabled(enabled);
-    this.layerDrawers = FancyLayerFactory.createDrawersFromLayers(this.textStyle.fancyRenderStyle.layers);
     this.isDirty = true;
   }
 

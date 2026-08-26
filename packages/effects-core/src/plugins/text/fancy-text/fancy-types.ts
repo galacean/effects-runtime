@@ -146,23 +146,3 @@ export interface FancyScopeResolution {
   objectLayers: FancyRenderLayer[],
   rangeOverrides: FancyRangeOverride[],
 }
-
-// ========== 文字绘制环境 ==========
-
-export interface TextEnv {
-  fontDesc: string,
-  style: any,
-  layout: any,
-  lines: any[],
-  layer: { dispose: () => void },
-  canvas: HTMLCanvasElement,
-}
-
-/** 文本层绘制器接口 */
-export interface TextLayerDrawer {
-  name?: string,
-  category?: LayerCategory,
-  render?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,
-  renderDecorations?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,
-  renderFill?: (ctx: CanvasRenderingContext2D, env: TextEnv) => void,
-}
