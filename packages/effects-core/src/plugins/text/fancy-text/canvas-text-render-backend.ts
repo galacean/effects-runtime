@@ -120,8 +120,12 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
   }
 
   render (plan: TextRenderPlan, context: CanvasRenderingContext2D): void {
-    const glows = plan.effects.objectLayers.filter(layer => layer.layer.kind === 'glow');
-    const shadowGroups = this.getRangeLayerGroups(plan, 'shadow');
+    const glows = plan.effects.objectLayers.filter(layer =>
+      layer.source === 'object-fill-mask' &&
+      layer.composite === 'behind-content' &&
+      layer.layer.kind === 'glow',
+    );
+    const shadowGroups = this.getRangeLayerGroups(plan, 'fill-and-stroke-mask', 'behind-content');
 
     // The 2.9.0 plain/strategy Canvas paths painted directly into the target
     // surface when no whole-surface blur/composite pass was required. Keep that pixel path
@@ -278,7 +282,12 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
   private buildGlowCacheKey (plan: TextRenderPlan, contentTransform: DOMMatrix, canvas: HTMLCanvasElement): string {
     const glyphs = plan.glyphs.map(glyph => `${glyph.glyphId}|${glyph.x.toFixed(3)}|${glyph.y.toFixed(3)}|${glyph.fontId}`).join(';');
     const glows = plan.effects.objectLayers
-      .filter(layer => layer.layer.kind === 'glow')
+      .filter(layer =>
+        layer.source === 'object-fill-mask' &&
+        layer.composite === 'behind-content' &&
+        layer.isolation === 'object' &&
+        layer.layer.kind === 'glow',
+      )
       .map(layer => `${layer.layerId}|${JSON.stringify(layer.layer.params)}`)
       .join(';');
 
@@ -318,7 +327,11 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
       ? rangeLayers
       : [
         ...rangeLayers,
-        ...plan.effects.objectLayers.filter(layer => layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
+        ...plan.effects.objectLayers.filter(layer =>
+          layer.source === 'glyph' &&
+          layer.composite === 'content' &&
+          (layer.layer.kind === 'gradient' || layer.layer.kind === 'texture'),
+        ),
       ].sort((a, b) => a.order - b.order);
 
     for (const layerPlan of contentLayers) {
@@ -831,7 +844,9 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
 
     for (const range of ranges) {
       for (const layer of this.getLayersForRange(plan, range)) {
-        const isContentLayer = layer.layer.kind === 'solid-fill' || (includeStrokes && layer.layer.kind === 'single-stroke');
+        const isContentLayer = layer.source === 'glyph' &&
+          layer.composite === 'content' &&
+          (layer.layer.kind === 'solid-fill' || (includeStrokes && layer.layer.kind === 'single-stroke'));
 
         if (isContentLayer && !seen.has(layer.layerId)) {
           seen.add(layer.layerId);
@@ -852,18 +867,19 @@ export class CanvasTextRenderBackend implements TextRenderBackend<CanvasRenderin
       this.getLayersForRange(plan, range).some(layer => layer.layerId === layerPlan.layerId),
     );
 
-    return layerPlan.stage === 'object' ? ranges : matchingRanges;
+    return layerPlan.isolation === 'object' ? ranges : matchingRanges;
   }
 
   private getRangeLayerGroups (
     plan: TextRenderPlan,
-    kind: 'shadow' | 'single-stroke',
+    source: 'fill-and-stroke-mask',
+    composite: 'behind-content',
   ): Array<{ layerPlan: TextEffectLayerPlan, ranges: RangePlan[] }> {
     const groups: Array<{ layerPlan: TextEffectLayerPlan, ranges: RangePlan[] }> = [];
 
     for (const range of plan.rangePlans) {
       for (const layer of this.getLayersForRange(plan, range)) {
-        if (layer.layer.kind !== kind) {
+        if (layer.isolation !== 'range' || layer.source !== source || layer.composite !== composite || layer.layer.kind !== 'shadow') {
           continue;
         }
 

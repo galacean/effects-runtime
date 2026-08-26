@@ -61,7 +61,17 @@ describe('core/plugins/text/text-render-plan', () => {
       'single-stroke',
       'solid-fill',
     ]);
+    expect(plan.effects.defaultRangeLayers.map(({ source, composite, isolation }) => ({ source, composite, isolation }))).to.eql([
+      { source: 'fill-and-stroke-mask', composite: 'behind-content', isolation: 'range' },
+      { source: 'glyph', composite: 'content', isolation: 'range' },
+      { source: 'glyph', composite: 'content', isolation: 'range' },
+    ]);
     expect(plan.effects.objectLayers.map(item => item.layer.kind)).to.eql(['glow']);
+    expect(plan.effects.objectLayers[0]).to.include({
+      source: 'object-fill-mask',
+      composite: 'behind-content',
+      isolation: 'object',
+    });
     expect(plan.geometry.contentBounds).to.be.undefined;
     expect(plan.geometry.logicalSize).to.eql({ width: 100, height: 60 });
     expect(plan.geometry.renderSize).to.eql({ width: 200, height: 120 });

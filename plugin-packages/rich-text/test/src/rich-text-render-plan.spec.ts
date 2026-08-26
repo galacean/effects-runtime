@@ -189,8 +189,18 @@ describe('rich-text/render-plan', () => {
     expect(plan.rangePlans[0].glyphIds).to.eql([0, 1, 2, 3]);
     expect(plan.rangePlans[0].basicStyle.fillColor).to.eql([255, 0, 0, 1]);
     expect(plan.effects.rangeLayersBySourceId['range-0'].map(layer => layer.layer.kind)).to.eql(['shadow']);
+    expect(plan.effects.rangeLayersBySourceId['range-0'][0]).to.include({
+      source: 'fill-and-stroke-mask',
+      composite: 'behind-content',
+      isolation: 'range',
+    });
     expect(plan.fonts.find(font => font.id === plan.rangePlans[1].basicStyle.fontId)).to.include({ family: 'Arial', size: 20, weight: 'bold', style: 'normal' });
     expect(plan.effects.objectLayers.map(layer => layer.layer.kind)).to.eql(['glow']);
+    expect(plan.effects.objectLayers[0]).to.include({
+      source: 'object-fill-mask',
+      composite: 'behind-content',
+      isolation: 'object',
+    });
     expect(plan.geometry.contentBounds).to.eql({ x: 7, y: 5, width: 35, height: 60 });
   });
 

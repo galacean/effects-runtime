@@ -17,15 +17,18 @@ export type TextEffectLayer =
   | TextTextureLayer;
 
 export type TextEffectSource = 'glyph' | 'fill-and-stroke-mask' | 'object-fill-mask';
+/** `mask-out` is reserved for a future negative-mask pass. */
 export type TextEffectComposite = 'content' | 'behind-content' | 'mask-out';
 export type TextEffectIsolation = 'range' | 'object';
 
 export interface TextEffectLayerPlan {
   layerId: string,
   order: number,
-  stage: 'range' | 'object',
+  /** The mask/content source selected by the backend, not inferred from kind. */
   source: TextEffectSource,
+  /** How the result is composited; non-content effects may require isolation. */
   composite: TextEffectComposite,
+  /** The range/object scope used to select source glyphs. */
   isolation: TextEffectIsolation,
   layer: TextEffectLayer,
   /** Adapter-resolved resource key, for example a texture image/repeat key. */
@@ -50,7 +53,6 @@ export function getTextTextureResourceId (layer: FancyRenderLayer | TextEffectLa
 
 function resolveEffectSemantics (
   layer: FancyRenderLayer,
-  stage: 'range' | 'object',
 ): Pick<TextEffectLayerPlan, 'source' | 'composite' | 'isolation'> {
   switch (layer.kind) {
     case 'shadow':
@@ -58,7 +60,11 @@ function resolveEffectSemantics (
     case 'glow':
       return { source: 'object-fill-mask', composite: 'behind-content', isolation: 'object' };
     default:
-      return { source: 'glyph', composite: 'content', isolation: stage };
+      return {
+        source: 'glyph',
+        composite: 'content',
+        isolation: isObjectFancyLayer(layer) ? 'object' : 'range',
+      };
   }
 }
 
@@ -78,17 +84,15 @@ export function compileTextEffectLayers (
   const objectLayers: TextEffectLayerPlan[] = [];
 
   layers.forEach((layer, order) => {
-    const stage = isObjectFancyLayer(layer) ? 'object' : 'range';
     const plan: TextEffectLayerPlan = {
       layerId: `${layerIdPrefix}-${order}`,
       order,
-      stage,
-      ...resolveEffectSemantics(layer, stage),
+      ...resolveEffectSemantics(layer),
       layer: normalizeLayer(layer),
       resourceId: getTextTextureResourceId(layer),
     };
 
-    if (plan.stage === 'object') {
+    if (plan.isolation === 'object') {
       objectLayers.push(plan);
     } else {
       rangeLayers.push(plan);
