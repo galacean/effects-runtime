@@ -1,13 +1,22 @@
 import type { AccentName, ThemeName } from './theme';
 
-export type PageID = 'overview' | 'buttons' | 'selection' | 'sliders' | 'display' | 'layout' | 'scroll' | 'input' | 'config';
+export type PageID = 'overview' | 'inspector' | 'buttons' | 'selection' | 'sliders' | 'display' | 'layout' | 'scroll' | 'input' | 'config';
 export type LayoutKind = 'vbox' | 'hbox' | 'grid';
+export type InspectorControlType =
+  | 'Button' | 'CheckBox' | 'CheckButton'
+  | 'Label' | 'TextureRect' | 'NinePatchRect' | 'ColorRect' | 'Panel'
+  | 'HSlider' | 'VSlider' | 'ProgressBar' | 'HScrollBar' | 'VScrollBar'
+  | 'HBoxContainer' | 'VBoxContainer' | 'GridContainer' | 'MarginContainer'
+  | 'CenterContainer' | 'AspectRatioContainer' | 'ScrollContainer';
 
 export type DemoState = {
   theme: ThemeName,
   accent: AccentName,
   customAccent: [number, number, number] | null,
   activePage: PageID,
+  inspector: {
+    controlType: InspectorControlType,
+  },
   sliders: {
     linked: number,
     rgb: [number, number, number],
@@ -39,7 +48,7 @@ export type DemoState = {
 
 const THEME_KEY = 'control-demo-modern-theme';
 const ACCENT_KEY = 'control-demo-modern-accent';
-const PAGE_IDS: PageID[] = ['overview', 'buttons', 'selection', 'sliders', 'display', 'layout', 'scroll', 'input', 'config'];
+const PAGE_IDS: PageID[] = ['overview', 'inspector', 'buttons', 'selection', 'sliders', 'display', 'layout', 'scroll', 'input', 'config'];
 
 export function createDemoState (): DemoState {
   return {
@@ -47,6 +56,7 @@ export function createDemoState (): DemoState {
     accent: readAccent(),
     customAccent: null,
     activePage: readPage(),
+    inspector: { controlType: 'Button' },
     sliders: { linked: 64, rgb: [37, 99, 235], step: 35 },
     selection: { multi: [true, false, true], plan: 1, switches: [true, false, true] },
     text: { stretchMode: 5, autowrap: true, wrapWidth: 280 },

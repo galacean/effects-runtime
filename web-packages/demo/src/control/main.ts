@@ -20,6 +20,7 @@ export function boot (): void {
   let disposed = false;
   const context: AppContext = {
     state,
+    navigate: page => app.selectPage(page),
     requestRebuild: () => {
       persistAppearance(state);
       if (rebuildQueued || disposed) {

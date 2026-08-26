@@ -14,6 +14,7 @@ import type { AppContext } from './context';
 import { attachAnchoredRect, attachFullRect } from './layout';
 import { ButtonsPage } from './pages/buttons';
 import { InputPage } from './pages/input';
+import { InspectorPage } from './pages/inspector';
 import { LayoutPage } from './pages/layout';
 import { OverviewPage } from './pages/overview';
 import { ScrollPage } from './pages/scroll';
@@ -34,7 +35,8 @@ type PageDefinition = {
 };
 
 const PAGE_DEFINITIONS: PageDefinition[] = [
-  { id: 'overview', title: 'Overview 总览', shortTitle: 'Overview', subtitle: 'A practical catalog of the controls available in the GUI plugin.', group: 'Getting started' },
+  { id: 'overview', title: 'Overview 总览', shortTitle: 'Overview', subtitle: 'Understand the demo, its coverage and the fastest way to explore it.', group: 'Getting started' },
+  { id: 'inspector', title: 'Inspector 属性面板', shortTitle: 'Inspector', subtitle: 'Edit current Control properties with consistent names, options and ranges.', group: 'Getting started' },
   { id: 'buttons', title: 'Buttons 按钮', shortTitle: 'Buttons', subtitle: 'Button states, groups, icons, sizing and action modes.', group: 'Foundation' },
   { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'CheckBox, radio groups and CheckButton switches.', group: 'Foundation' },
   { id: 'sliders', title: 'Sliders 滑杆', shortTitle: 'Sliders', subtitle: 'Shared ranges, progress feedback, fill modes and RGB values.', group: 'Foundation' },
@@ -87,6 +89,7 @@ export class ControlApp extends Control {
     attachAnchoredRect(themeButton, header, 1, 0, 1, 0, -116, 24, 24, -60);
     const pages: Array<[PageID, Control]> = [
       ['overview', new OverviewPage(engine, ctx)],
+      ['inspector', new InspectorPage(engine, ctx)],
       ['buttons', new ButtonsPage(engine, ctx)],
       ['selection', new SelectionPage(engine, ctx)],
       ['sliders', new SlidersPage(engine, ctx)],
@@ -119,8 +122,10 @@ export class ControlApp extends Control {
       button.setPressedNoSignal(buttonID === definition.id);
     }
     for (const [pageID, page] of this.pages) {
-      page.visible = pageID === definition.id;
-      page.enabled = pageID === definition.id;
+      const active = pageID === definition.id;
+
+      page.visible = active;
+      page.enabled = active;
     }
     this.engine.windowRoot.guiReleaseFocus();
   }
@@ -144,19 +149,20 @@ export class ControlApp extends Control {
     const group = new ButtonGroup();
     const positions: Record<PageID, number> = {
       overview: 82,
-      buttons: 150,
-      selection: 190,
-      sliders: 230,
-      display: 270,
-      layout: 340,
-      scroll: 380,
-      input: 420,
-      config: 490,
+      inspector: 120,
+      buttons: 188,
+      selection: 228,
+      sliders: 268,
+      display: 308,
+      layout: 376,
+      scroll: 416,
+      input: 456,
+      config: 526,
     };
 
-    this.createHeaderLabel(this.engine, sidebar, 'FOUNDATION', 20, 124, 180, 18, 9, theme.textTertiary, 650);
-    this.createHeaderLabel(this.engine, sidebar, 'LAYOUT & INPUT', 20, 314, 180, 18, 9, theme.textTertiary, 650);
-    this.createHeaderLabel(this.engine, sidebar, 'APPEARANCE', 20, 464, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'FOUNDATION', 20, 162, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'LAYOUT & INPUT', 20, 350, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'APPEARANCE', 20, 500, 180, 18, 9, theme.textTertiary, 650);
     for (const definition of PAGE_DEFINITIONS) {
       const button = createButton(this.engine, definition.shortTitle, undefined, 'ghost');
 

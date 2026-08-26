@@ -66,9 +66,9 @@ export class ScrollBar extends Range {
     this.step = 0;
     this.focusMode = FocusMode.Accessibility;
     this.trackColor = cloneColor(style.trackColor);
-    this.buttonColor = cloneColor(style.normalColor);
+    this.buttonColor = cloneColor(style.trackColor);
     this.buttonActiveColor = cloneColor(style.hoverColor);
-    this.grabberColor = cloneColor(style.normalColor);
+    this.grabberColor = cloneColor(style.disabledTextColor);
     this.grabberHoverColor = cloneColor(style.accentColor);
     this.grabberPressedColor = cloneColor(style.accentHoverColor);
     this.arrowColor = cloneColor(style.textColor);

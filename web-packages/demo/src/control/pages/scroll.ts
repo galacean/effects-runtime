@@ -20,6 +20,8 @@ import { getTheme, withAlpha } from '../theme';
 import { addKeyValueRow, addSectionTitle, createButton, createSegmentedControl } from '../widgets';
 import { label } from './common';
 
+const SCROLL_STEP = 40;
+
 export class ScrollPage extends Control {
   private readonly outer: ScrollContainer;
   private readonly horizontalValue: Label;
@@ -52,6 +54,8 @@ export class ScrollPage extends Control {
     attachFullRect(this.outer, viewportPanel, 20, 118, 20, 20);
     this.outer.deadzone = 6;
     this.outer.followFocus = true;
+    this.outer.horizontalCustomStep = SCROLL_STEP;
+    this.outer.verticalCustomStep = SCROLL_STEP;
     this.outer.horizontalScrollMode = ctx.state.scroll.mode;
     this.outer.verticalScrollMode = ctx.state.scroll.mode;
     this.outer.addChild(surface);
@@ -170,6 +174,8 @@ export class ScrollPage extends Control {
     nestedTitle.setRect({ position: new math.Vector2(430, 20), size: new math.Vector2(300, 26) });
     nestedTitle.parent = surface;
     nested.setRect({ position: new math.Vector2(430, 54), size: new math.Vector2(330, 230) });
+    nested.horizontalCustomStep = SCROLL_STEP;
+    nested.verticalCustomStep = SCROLL_STEP;
     nested.parent = surface;
     nestedSurface.setCustomMinimumSize(540, 390);
     nestedSurface.backgroundColor = withAlpha(theme.accent, 0.06);
