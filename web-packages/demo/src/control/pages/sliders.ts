@@ -12,7 +12,7 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';
-import { getTheme } from '../theme';
+import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl, styleSlider } from '../widgets';
 import { label } from './common';
 
@@ -63,19 +63,19 @@ export class SlidersPage extends Control {
     horizontal.on('valueChanged', update);
     horizontal.on('dragStarted', () => {
       dragState.text = 'Dragging horizontal slider';
-      dragState.textColor = theme.accent;
+      dragState.setThemeColorOverride('fontColor', theme.accent);
     });
     horizontal.on('dragEnded', changed => {
       dragState.text = changed ? 'Value committed' : 'Value unchanged';
-      dragState.textColor = theme.textSecondary;
+      dragState.setThemeColorOverride('fontColor', theme.textSecondary);
     });
     vertical.on('dragStarted', () => {
       dragState.text = 'Dragging vertical slider';
-      dragState.textColor = theme.accent;
+      dragState.setThemeColorOverride('fontColor', theme.accent);
     });
     vertical.on('dragEnded', () => {
       dragState.text = 'Ready to drag';
-      dragState.textColor = theme.textSecondary;
+      dragState.setThemeColorOverride('fontColor', theme.textSecondary);
     });
 
     label(this.engine, 'STEP = 5', 20, 250, 140, 20, panel, {
@@ -133,9 +133,7 @@ export class SlidersPage extends Control {
 
     preview.setRect({ position: new math.Vector2(20, 78), size: new math.Vector2(282, 82) });
     preview.parent = panel;
-    hex.fontSize = 13;
-    hex.fontWeight = 650;
-    hex.textColor = theme.textPrimary;
+    setFontOverrides(hex, { size: 13, weight: 650, color: theme.textPrimary });
     hex.horizontalAlignment = HorizontalAlignment.Center;
     hex.setRect({ position: new math.Vector2(20, 170), size: new math.Vector2(282, 28) });
     hex.parent = panel;
@@ -161,7 +159,7 @@ export class SlidersPage extends Control {
 
       channel.maxValue = 255;
       channel.step = 1;
-      channel.fillColor = channelColors[index];
+      setFlatStyleOverride(channel, 'fill', { background: channelColors[index] });
       channel.setValueNoSignal(initial);
       channel.setRect({ position: new math.Vector2(50, 222 + index * 60), size: new math.Vector2(198, 18) });
       channel.parent = panel;

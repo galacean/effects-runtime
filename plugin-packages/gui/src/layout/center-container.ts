@@ -4,6 +4,7 @@ import type { CenterContainerData } from '../data';
 /** Centers children at their bound minimum size. */
 @effectsClass('CenterContainer')
 export class CenterContainer extends Container {
+  static override readonly themeType: string = 'CenterContainer';
   private _useTopLeft = false;
 
   get useTopLeft (): boolean {

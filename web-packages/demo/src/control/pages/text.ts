@@ -20,7 +20,7 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';
-import { getTheme } from '../theme';
+import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl, createToggle, styleSlider } from '../widgets';
 import { ResizeHandle, createDemoTexture, label } from './common';
 
@@ -57,10 +57,9 @@ export class TextPage extends Control {
         const y = 76 + row * 50;
 
         cell.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(90, 40) });
-        cell.backgroundColor = theme.panelRaisedBg;
+        setFlatStyleOverride(cell, 'panel', { background: theme.panelRaisedBg });
         cell.parent = card;
-        value.fontSize = 10;
-        value.textColor = theme.textSecondary;
+        setFontOverrides(value, { size: 10, color: theme.textSecondary });
         value.horizontalAlignment = H_ALIGNMENTS[column];
         value.verticalAlignment = V_ALIGNMENTS[row];
         value.setRect({ position: new math.Vector2(x + 8, y + 5), size: new math.Vector2(74, 30) });
@@ -96,7 +95,7 @@ export class TextPage extends Control {
     widthSlider.parent = card;
     wrapped.autowrapMode = ctx.state.text.autowrap ? AutowrapMode.WordSmart : AutowrapMode.Off;
     wrapped.textOverflow = TextOverflow.Clip;
-    wrapped.textColor = theme.textPrimary;
+    wrapped.setThemeColorOverride('fontColor', theme.textPrimary);
     wrapped.verticalAlignment = VerticalAlignment.Center;
     wrapped.setRect({ position: new math.Vector2(20, 376), size: new math.Vector2(ctx.state.text.wrapWidth, 72) });
     wrapped.parent = card;
@@ -138,8 +137,8 @@ export class TextPage extends Control {
     const modeGroup = new ButtonGroup();
 
     modeGrid.columns = 4;
-    modeGrid.horizontalSeparation = 4;
-    modeGrid.verticalSeparation = 4;
+    modeGrid.setThemeConstantOverride('horizontalSeparation', 4);
+    modeGrid.setThemeConstantOverride('verticalSeparation', 4);
     modeGrid.setRect({ position: new math.Vector2(20, 76), size: new math.Vector2(294, 70) });
     modeGrid.parent = card;
     ['Scale', 'Tile', 'Keep', 'Center', 'Aspect', 'Fit', 'Cover'].forEach((mode, index) => {
@@ -147,7 +146,9 @@ export class TextPage extends Control {
 
       button.toggleMode = true;
       button.buttonGroup = modeGroup;
-      button.horizontalPadding = 4;
+      for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+        setFlatStyleOverride(button, state, { horizontalMargin: 4 });
+      }
       button.setPressedNoSignal(index === ctx.state.text.stretchMode);
       button.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
       button.on('toggled', pressed => {

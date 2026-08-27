@@ -6,6 +6,7 @@ import { assertEnumValue, assertFinite } from './utils';
 /** Fits every visible child into the same rectangle with a fixed width/height ratio. */
 @effectsClass('AspectRatioContainer')
 export class AspectRatioContainer extends Container {
+  static override readonly themeType: string = 'AspectRatioContainer';
   private _ratio = 1;
   private _stretchMode = AspectRatioStretchMode.Fit;
   private _horizontalAlignment = LayoutAlignment.Center;

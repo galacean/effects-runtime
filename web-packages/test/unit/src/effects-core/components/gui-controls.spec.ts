@@ -3,6 +3,7 @@ import {
   InputEventMouseButton,
   MouseButton,
   Player,
+  Theme,
   math,
 } from '@galacean/effects';
 import type { Texture } from '@galacean/effects';
@@ -14,7 +15,6 @@ import {
   ButtonGroup,
   CheckBox,
   CheckButton,
-  GUIStyle,
   HSlider,
   HorizontalAlignment,
   Label,
@@ -34,7 +34,6 @@ const { expect } = chai;
 
 describe('core/GUI basic controls', () => {
   let player: Player;
-  let previousStyle: GUIStyle;
 
   beforeEach(() => {
     player = new Player({
@@ -43,35 +42,33 @@ describe('core/GUI basic controls', () => {
       manualRender: true,
       interactive: true,
     });
-    previousStyle = GUIStyle.current;
-    GUIStyle.current = new GUIStyle();
   });
 
   afterEach(() => {
-    GUIStyle.current = previousStyle;
     player.dispose();
   });
 
-  it('copies global style values and deep-copies colors at construction', () => {
-    GUIStyle.current.fontSize = 19;
-    GUIStyle.current.textColor = new math.Color(0.2, 0.3, 0.4, 0.5);
+  it('updates existing controls from a tree Theme and protects stored colors', () => {
+    const theme = new Theme();
     const first = new Label(player.engine, 'first');
+    const source = new math.Color(0.2, 0.3, 0.4, 0.5);
 
-    expect(first.fontSize).equals(19);
-    expect(first.textColor).not.equals(GUIStyle.current.textColor);
-    GUIStyle.current.fontSize = 24;
-    GUIStyle.current.textColor.r = 0.9;
-    const second = new Label(player.engine, 'second');
-
-    expect(first.fontSize).equals(19);
-    expect(first.textColor.r).equals(0.2);
-    expect(second.fontSize).equals(24);
-    expect(second.textColor.r).equals(0.9);
+    first.theme = theme;
+    theme.setFontSize('Label', 'fontSize', 19);
+    theme.setColor('Label', 'fontColor', source);
+    expect(first.getThemeFontSize('fontSize')).equals(19);
+    expect(first.getThemeColor('fontColor')).not.equals(source);
+    source.r = 0.9;
+    expect(first.getThemeColor('fontColor').r).equals(0.2);
+    theme.setFontSize('Label', 'fontSize', 24);
+    theme.setColor('Label', 'fontColor', new math.Color(0.9, 0.3, 0.4, 0.5));
+    expect(first.getThemeFontSize('fontSize')).equals(24);
+    expect(first.getThemeColor('fontColor').r).equals(0.9);
   });
 
   it('measures and lays out multiline Unicode text with wrapping and ellipsis', () => {
     const label = new Label(player.engine, '中文 😀 emoji and a very long word');
-    const measurements = label.measureText('A😀中', label.fontSize);
+    const measurements = label.measureText('A😀中', label.getThemeFontSize('fontSize'));
     const draws: string[] = [];
 
     expect(measurements.advances).to.have.length(3);
@@ -287,9 +284,9 @@ describe('core/GUI basic controls', () => {
 
     progress.setSize(100, 20);
     progress.value = 25;
-    progress.fillRect = ((...args: Parameters<typeof progress.fillRect>) => {
-      rectangles.push(args.slice(0, 4) as number[]);
-    }) as typeof progress.fillRect;
+    progress.drawStyleBox = ((_style, x, y, width, height) => {
+      rectangles.push([x, y, width, height]);
+    }) as typeof progress.drawStyleBox;
     progress.drawText = ((x: number, y: number, text: string) => labels.push(text)) as typeof progress.drawText;
     for (const mode of [
       ProgressFillMode.BeginToEnd,

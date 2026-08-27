@@ -10,7 +10,7 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';
-import { getTheme } from '../theme';
+import { getTheme, setFlatStyleOverride } from '../theme';
 import { addSectionTitle } from '../widgets';
 import { label } from './common';
 
@@ -49,7 +49,7 @@ export class SelectionPage extends Control {
     const master = new CheckBox(this.engine, 'Select all capabilities');
 
     master.setPressedNoSignal(ctx.state.selection.multi.every(Boolean));
-    master.normalColor = theme.accentSoft;
+    setFlatStyleOverride(master, 'normal', { background: theme.accentSoft });
     master.setRect({ position: new math.Vector2(20, 80), size: new math.Vector2(294, 38) });
     master.parent = card;
 

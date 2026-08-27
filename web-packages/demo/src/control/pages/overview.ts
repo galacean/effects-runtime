@@ -13,7 +13,7 @@ import {
 import type { AppContext } from '../context';
 import { attachAnchoredRect, attachFullRect } from '../layout';
 import type { ThemeTokens } from '../theme';
-import { getTheme, mix, withAlpha } from '../theme';
+import { getTheme, mix, setFlatStyleOverride, setFontOverrides, withAlpha } from '../theme';
 import { createButton } from '../widgets';
 import { label } from './common';
 
@@ -74,7 +74,7 @@ export class OverviewPage extends Control {
       0.78,
     );
 
-    title.lineSpacing = 4;
+    title.setThemeConstantOverride('lineSpacing', 4);
     title.verticalAlignment = VerticalAlignment.Top;
     const introduction = this.addStretchLabel(
       hero,
@@ -273,8 +273,7 @@ export class OverviewPage extends Control {
   private createSection (parent: Control, y: number, height: number, theme: ThemeTokens): Panel {
     const section = new Panel(this.engine);
 
-    section.backgroundColor = theme.panelBg;
-    section.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(section, 'panel', { background: theme.panelBg, border: theme.borderSubtle });
     section.parent = parent;
     section.setAnchorMin(0, 0);
     section.setAnchorMax(1, 0);
@@ -308,8 +307,9 @@ export class OverviewPage extends Control {
   ): void {
     const pill = new Panel(this.engine);
 
-    pill.backgroundColor = mix(theme.panelBg, color, 0.11);
-    pill.borderColor = withAlpha(color, 0.42);
+    setFlatStyleOverride(pill, 'panel', {
+      background: mix(theme.panelBg, color, 0.11), border: withAlpha(color, 0.42),
+    });
     pill.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, 26) });
     pill.parent = parent;
     const pillLabel = label(this.engine, text, 0, 0, width, 26, pill, {
@@ -337,14 +337,13 @@ export class OverviewPage extends Control {
     const left = index === 0 ? 24 : 8;
     const right = index === 3 ? 24 : 8;
 
-    card.backgroundColor = mix(theme.panelBg, theme.panelRaisedBg, 0.66);
-    card.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(card, 'panel', {
+      background: mix(theme.panelBg, theme.panelRaisedBg, 0.66), border: theme.borderSubtle,
+    });
     attachAnchoredRect(card, parent, index * 0.25, 0, (index + 1) * 0.25, 1, left, 112, right, 22);
     const metric = new AnimatedMetricLabel(this.engine, value, suffix);
 
-    metric.fontSize = 22;
-    metric.fontWeight = 720;
-    metric.textColor = color;
+    setFontOverrides(metric, { size: 22, weight: 720, color });
     metric.verticalAlignment = VerticalAlignment.Center;
     metric.setRect({ position: new math.Vector2(14, 9), size: new math.Vector2(90, 34) });
     metric.parent = card;
@@ -397,7 +396,7 @@ export class OverviewPage extends Control {
     button.setAnchorMax(1, 1);
     button.setOffsetMin(14, -48);
     button.setOffsetMax(-14, -12);
-    button.textColor = color;
+    button.setThemeColorOverride('fontColor', color);
   }
 
   private addJourneyStep (
@@ -437,8 +436,9 @@ export class OverviewPage extends Control {
   ): void {
     const row = new Panel(this.engine);
 
-    row.backgroundColor = mix(theme.panelBg, theme.panelRaisedBg, 0.58);
-    row.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(row, 'panel', {
+      background: mix(theme.panelBg, theme.panelRaisedBg, 0.58), border: theme.borderSubtle,
+    });
     row.parent = parent;
     row.setAnchorMin(0, 0);
     row.setAnchorMax(1, 0);
@@ -476,9 +476,7 @@ export class OverviewPage extends Control {
   ): Label {
     const control = new Label(this.engine, text);
 
-    control.fontSize = size;
-    control.fontWeight = weight;
-    control.textColor = color;
+    setFontOverrides(control, { size, weight, color });
     control.textOverflow = TextOverflow.Clip;
     control.verticalAlignment = VerticalAlignment.Center;
     control.parent = parent;
@@ -591,6 +589,8 @@ class HoverCard extends Panel {
   private readonly restingColor: math.Color;
   private readonly hoveredColor: math.Color;
   private readonly accentColor: math.Color;
+  private readonly currentColor: math.Color;
+  private readonly outlineColor: math.Color;
   private hovered = false;
   private hoverAmount = 0;
   private lastFrame = performance.now();
@@ -600,8 +600,8 @@ class HoverCard extends Panel {
     this.restingColor = mix(theme.panelBg, theme.panelRaisedBg, 0.54);
     this.hoveredColor = mix(theme.panelBg, accent, 0.10);
     this.accentColor = accent;
-    this.backgroundColor.copyFrom(this.restingColor);
-    this.borderColor = theme.borderSubtle;
+    this.currentColor = this.restingColor.clone();
+    this.outlineColor = theme.borderSubtle.clone();
   }
 
   override draw (): void {
@@ -611,13 +611,14 @@ class HoverCard extends Panel {
 
     this.lastFrame = now;
     this.hoverAmount += (target - this.hoverAmount) * delta;
-    this.backgroundColor.set(
+    this.currentColor.set(
       this.restingColor.r + (this.hoveredColor.r - this.restingColor.r) * this.hoverAmount,
       this.restingColor.g + (this.hoveredColor.g - this.restingColor.g) * this.hoverAmount,
       this.restingColor.b + (this.hoveredColor.b - this.restingColor.b) * this.hoverAmount,
       1,
     );
-    super.draw();
+    this.fillRect(0, 0, this.width, this.height, this.currentColor);
+    this.drawRect(0, 0, this.width, this.height, this.outlineColor, 1);
     this.fillRect(0, 0, 4 + 4 * this.hoverAmount, this.height, this.accentColor);
     this.fillRect(4, 0, (this.width - 4) * this.hoverAmount, 2, this.accentColor);
   }

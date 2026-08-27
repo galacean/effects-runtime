@@ -21,6 +21,7 @@ export type NinePatchRectEvent = ControlEvent & {
 
 @effectsClass('NinePatchRect')
 export class NinePatchRect extends Control {
+  static override readonly themeType: string = 'NinePatchRect';
   private readonly ninePatchEventEmitter = new EventEmitter<NinePatchRectEvent>();
   private readonly patchMargins = [0, 0, 0, 0];
   private _texture: Texture | null = null;

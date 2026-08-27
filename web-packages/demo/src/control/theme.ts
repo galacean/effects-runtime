@@ -1,5 +1,5 @@
-import { math } from '@galacean/effects';
-import { GUIStyle } from '@galacean/effects-plugin-gui';
+import { StyleBoxFlat, Theme, ThemeRegistry, math } from '@galacean/effects';
+import type { Control, FontStyle, FontWeight } from '@galacean/effects';
 
 export const FONT_FAMILY = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
@@ -99,6 +99,7 @@ export const ACCENTS: Record<AccentName, Record<ThemeName, math.Color>> = {
 };
 
 let currentTheme: ThemeTokens = makeTheme('light', 'blue');
+const runtimeTheme = new Theme();
 
 export function makeTheme (
   name: ThemeName,
@@ -123,30 +124,173 @@ export function getTheme (): ThemeTokens {
   return currentTheme;
 }
 
+export function getRuntimeTheme (): Theme {
+  return runtimeTheme;
+}
+
 export function applyTheme (
   name: ThemeName,
   accentName: AccentName,
   customAccent?: [number, number, number] | null,
 ): void {
   const theme = makeTheme(name, accentName, customAccent);
-  const style = GUIStyle.current;
 
   currentTheme = theme;
-  style.fontFamily = FONT_FAMILY;
-  style.fontSize = 13;
-  style.textColor = copy(theme.textPrimary);
-  style.disabledTextColor = copy(theme.textTertiary, 0.72);
-  style.panelColor = copy(theme.panelBg);
-  style.borderColor = copy(theme.borderSubtle);
-  style.normalColor = copy(theme.panelBg);
-  style.hoverColor = copy(theme.panelRaisedBg);
-  style.pressedColor = copy(theme.accentSoft);
-  style.disabledColor = copy(theme.panelRaisedBg, 0.72);
-  style.accentColor = copy(theme.accent);
-  style.accentHoverColor = copy(theme.accentHover);
-  style.trackColor = copy(theme.controlTrack);
-  style.fillColor = copy(theme.accent);
+  runtimeTheme.batch(() => {
+    runtimeTheme.setFont('Control', 'font', { family: FONT_FAMILY, weight: 'normal', style: 'normal' });
+    runtimeTheme.setFontSize('Control', 'fontSize', 13);
+    runtimeTheme.setColor('Label', 'fontColor', theme.textPrimary);
+    runtimeTheme.setColor('Button', 'fontColor', theme.textPrimary);
+    runtimeTheme.setColor('Button', 'fontHoverColor', theme.textPrimary);
+    runtimeTheme.setColor('Button', 'fontPressedColor', theme.textPrimary);
+    runtimeTheme.setColor('Button', 'fontHoverPressedColor', theme.textPrimary);
+    runtimeTheme.setColor('Button', 'fontDisabledColor', copy(theme.textTertiary, 0.72));
+    // Button icon colors are multiplicative tints. White preserves authored
+    // texture colors; using the light theme's dark text color turns them black.
+    runtimeTheme.setColor('Button', 'iconTint', theme.textOnAccent);
+    runtimeTheme.setColor('Button', 'iconHoverTint', theme.textOnAccent);
+    runtimeTheme.setColor('Button', 'iconPressedTint', theme.textOnAccent);
+    runtimeTheme.setColor('Button', 'iconHoverPressedTint', theme.textOnAccent);
+    runtimeTheme.setColor('Button', 'iconDisabledTint', copy(theme.textOnAccent, 0.45));
+    runtimeTheme.setStyleBox('Button', 'normal', makeFlat(theme.panelBg, theme.borderSubtle, 1, 8, 4));
+    runtimeTheme.setStyleBox('Button', 'hover', makeFlat(theme.panelRaisedBg, theme.borderSubtle, 1, 8, 4));
+    runtimeTheme.setStyleBox('Button', 'pressed', makeFlat(theme.accentSoft, theme.borderSubtle, 1, 8, 4));
+    runtimeTheme.setStyleBox('Button', 'hoverPressed', makeFlat(theme.accentSoft, theme.accent, 1, 8, 4));
+    runtimeTheme.setStyleBox('Button', 'disabled', makeFlat(copy(theme.panelRaisedBg, 0.72), theme.borderSubtle, 1, 8, 4));
+    runtimeTheme.setStyleBox('Button', 'focus', makeFlat(new math.Color(0, 0, 0, 0), theme.accentHover, 1));
+    runtimeTheme.setStyleBox('Panel', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1));
+    runtimeTheme.setStyleBox('ProgressBar', 'background', makeFlat(theme.controlTrack));
+    runtimeTheme.setStyleBox('ProgressBar', 'fill', makeFlat(theme.accent));
+    runtimeTheme.setColor('ProgressBar', 'fontColor', theme.textPrimary);
+    runtimeTheme.setStyleBox('Slider', 'track', makeFlat(theme.controlTrack));
+    runtimeTheme.setStyleBox('Slider', 'fill', makeFlat(theme.accent));
+    runtimeTheme.setStyleBox(
+      'Slider',
+      'grabber',
+      makeFlat(mix(theme.borderStrong, theme.textPrimary, 0.18), theme.borderSubtle, 1),
+    );
+    runtimeTheme.setStyleBox('Slider', 'grabberHighlight', makeFlat(theme.accentHover, theme.borderSubtle, 1));
+    runtimeTheme.setStyleBox('Slider', 'grabberDisabled', makeFlat(theme.borderSubtle, theme.borderSubtle, 1));
+    runtimeTheme.setStyleBox('Slider', 'focus', makeFlat(new math.Color(0, 0, 0, 0), theme.accentHover, 1));
+    runtimeTheme.setColor('CheckBox', 'markColor', theme.accent);
+    runtimeTheme.setColor('CheckBox', 'markDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('CheckBox', 'markOutlineColor', theme.borderStrong);
+    runtimeTheme.setColor('CheckButton', 'switchColor', theme.accent);
+    runtimeTheme.setColor('CheckButton', 'switchDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('CheckButton', 'switchOffColor', theme.borderStrong);
+    runtimeTheme.setColor('CheckButton', 'switchKnobColor', theme.textOnAccent);
+    runtimeTheme.setStyleBox('ScrollBar', 'scroll', makeFlat(theme.controlTrack));
+    runtimeTheme.setStyleBox('ScrollBar', 'scrollFocus', makeFlat(theme.controlTrack, theme.accentHover, 1));
+    runtimeTheme.setStyleBox('ScrollBar', 'decrement', makeFlat(theme.panelRaisedBg));
+    runtimeTheme.setStyleBox('ScrollBar', 'decrementHighlight', makeFlat(theme.accentSoft));
+    runtimeTheme.setStyleBox('ScrollBar', 'decrementPressed', makeFlat(theme.accent));
+    runtimeTheme.setStyleBox('ScrollBar', 'increment', makeFlat(theme.panelRaisedBg));
+    runtimeTheme.setStyleBox('ScrollBar', 'incrementHighlight', makeFlat(theme.accentSoft));
+    runtimeTheme.setStyleBox('ScrollBar', 'incrementPressed', makeFlat(theme.accent));
+    runtimeTheme.setStyleBox('ScrollBar', 'grabber', makeFlat(theme.borderStrong));
+    runtimeTheme.setStyleBox('ScrollBar', 'grabberHighlight', makeFlat(theme.accent));
+    runtimeTheme.setStyleBox('ScrollBar', 'grabberPressed', makeFlat(theme.accentHover));
+    runtimeTheme.setColor('ScrollBar', 'arrowColor', theme.textSecondary);
+  });
   document.body.style.background = toCss(theme.appBg);
+}
+
+export function makeFlat (
+  background: math.Color,
+  border = new math.Color(),
+  borderWidth = 0,
+  horizontalMargin = 0,
+  verticalMargin = 0,
+): StyleBoxFlat {
+  const style = new StyleBoxFlat();
+
+  style.setBackgroundColor(background);
+  style.setBorderColor(border);
+  style.setBorderWidths(borderWidth, borderWidth, borderWidth, borderWidth);
+  style.setContentMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
+
+  return style;
+}
+
+export function setFontOverrides (
+  control: Control,
+  options: {
+    family?: string,
+    size?: number,
+    weight?: FontWeight,
+    style?: FontStyle,
+    color?: math.Color,
+    colorItem?: string,
+  },
+): void {
+  if (options.family !== undefined || options.weight !== undefined || options.style !== undefined) {
+    const font = control.getThemeFont('font');
+
+    control.setThemeFontOverride('font', {
+      family: options.family ?? font.family,
+      weight: options.weight ?? font.weight,
+      style: options.style ?? font.style,
+    });
+  }
+  if (options.size !== undefined) {control.setThemeFontSizeOverride('fontSize', options.size);}
+  if (options.color !== undefined) {
+    control.setThemeColorOverride(options.colorItem ?? 'fontColor', options.color);
+  }
+}
+
+export function setFlatStyleOverride (
+  control: Control,
+  name: string,
+  options: {
+    background?: math.Color,
+    border?: math.Color,
+    borderWidth?: number,
+    horizontalMargin?: number,
+    verticalMargin?: number,
+  },
+): void {
+  // Demo controls are commonly styled before they are attached to the Canvas
+  // theme tree. Resolve their base from the active demo Theme explicitly so a
+  // partial override (for example, margins only) cannot snapshot the dark
+  // built-in fallback while Light Mode is active.
+  const source = getRuntimeStyleBox(control, name);
+  const result = new StyleBoxFlat();
+  const content = source.getContentMargins();
+  let border = { left: 0, top: 0, right: 0, bottom: 0 };
+
+  if (source instanceof StyleBoxFlat) {
+    border = source.getBorderWidths();
+    result.setBackgroundColor(options.background ?? source.getBackgroundColor());
+    result.setBorderColor(options.border ?? source.getBorderColor());
+  } else {
+    if (options.background) {result.setBackgroundColor(options.background);}
+    if (options.border) {result.setBorderColor(options.border);}
+  }
+  const borderWidth = options.borderWidth;
+
+  result.setBorderWidths(
+    borderWidth ?? border.left,
+    borderWidth ?? border.top,
+    borderWidth ?? border.right,
+    borderWidth ?? border.bottom,
+  );
+  result.setContentMargins(
+    options.horizontalMargin ?? content.left,
+    options.verticalMargin ?? content.top,
+    options.horizontalMargin ?? content.right,
+    options.verticalMargin ?? content.bottom,
+  );
+  control.setThemeStyleBoxOverride(name, result);
+}
+
+function getRuntimeStyleBox (control: Control, name: string) {
+  for (const type of ThemeRegistry.getTypeChain(control.getThemeType())) {
+    const style = runtimeTheme.getStyleBox(type, name);
+
+    if (style) {return style;}
+  }
+
+  return control.getThemeStyleBox(name);
 }
 
 export function withAlpha (source: math.Color, alpha: number): math.Color {

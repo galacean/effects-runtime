@@ -9,7 +9,7 @@ import {
   TextureStretchMode,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';
-import { FONT_FAMILY, getTheme } from '../theme';
+import { FONT_FAMILY, getTheme, setFontOverrides } from '../theme';
 
 export function label (
   engine: Engine,
@@ -31,10 +31,12 @@ export function label (
 ): Label {
   const control = new Label(engine, text);
 
-  control.fontFamily = FONT_FAMILY;
-  control.fontSize = options.size ?? 13;
-  control.fontWeight = options.weight ?? 450;
-  control.textColor = options.color ?? getTheme().textPrimary;
+  setFontOverrides(control, {
+    family: FONT_FAMILY,
+    size: options.size ?? 13,
+    weight: options.weight ?? 450,
+    color: options.color ?? getTheme().textPrimary,
+  });
   control.horizontalAlignment = options.horizontal ?? HorizontalAlignment.Left;
   control.verticalAlignment = options.vertical ?? VerticalAlignment.Center;
   control.textOverflow = options.overflow ?? TextOverflow.Clip;

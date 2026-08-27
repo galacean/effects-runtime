@@ -9,8 +9,8 @@ export * from './scroll/enums';
 export * from './scroll/range';
 export * from './scroll/scroll-bar';
 export * from './scroll/scroll-container';
-export * from './style';
+export * from './theme';
 export * from './controls';
 
-/** GUI plugin package version. Importing this package has no registration side effects. */
+/** GUI plugin package version. Importing this package registers its native fallback theme. */
 export const version = __VERSION__;

@@ -21,6 +21,7 @@ type SharedRange = {
 
 /** Numeric value model shared by scroll bars and future slider controls. */
 export class Range extends Control {
+  static override readonly themeType: string = 'Range';
   private shared: SharedRange;
   private _rounded = false;
   private suppressSignals = false;

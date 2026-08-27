@@ -16,7 +16,7 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect, attachFullRect } from '../layout';
-import { getTheme, withAlpha } from '../theme';
+import { getTheme, setFlatStyleOverride, setFontOverrides, withAlpha } from '../theme';
 import { addKeyValueRow, addSectionTitle, createButton, createSegmentedControl } from '../widgets';
 import { label } from './common';
 
@@ -50,7 +50,7 @@ export class ScrollPage extends Control {
     const surface = new Panel(engine);
 
     surface.setCustomMinimumSize(960, 680);
-    surface.backgroundColor = getTheme().panelRaisedBg;
+    setFlatStyleOverride(surface, 'panel', { background: getTheme().panelRaisedBg });
     attachFullRect(this.outer, viewportPanel, 20, 118, 20, 20);
     this.outer.deadzone = 6;
     this.outer.followFocus = true;
@@ -79,11 +79,11 @@ export class ScrollPage extends Control {
 
     this.outer.on('scrollStarted', () => {
       status.text = 'Scrolling';
-      status.textColor = getTheme().accent;
+      status.setThemeColorOverride('fontColor', getTheme().accent);
     });
     this.outer.on('scrollEnded', () => {
       status.text = 'Idle';
-      status.textColor = getTheme().textSecondary;
+      status.setThemeColorOverride('fontColor', getTheme().textSecondary);
     });
     const origin = createButton(engine, 'Origin', () => {
       this.outer.hScroll = 0;
@@ -145,19 +145,19 @@ export class ScrollPage extends Control {
     const list = new VBoxContainer(this.engine);
     const rows: Button[] = [];
 
-    listTitle.fontSize = 13;
-    listTitle.fontWeight = 650;
-    listTitle.textColor = theme.textPrimary;
+    setFontOverrides(listTitle, { size: 13, weight: 650, color: theme.textPrimary });
     listTitle.setRect({ position: new math.Vector2(24, 20), size: new math.Vector2(340, 26) });
     listTitle.parent = surface;
     list.setRect({ position: new math.Vector2(24, 54), size: new math.Vector2(360, 580) });
-    list.separation = 8;
+    list.setThemeConstantOverride('separation', 8);
     list.parent = surface;
     for (let index = 0; index < 10; index++) {
       const row = new Button(this.engine, `List item ${index + 1}`);
 
       row.textAlignment = HorizontalAlignment.Left;
-      row.horizontalPadding = 14;
+      for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+        setFlatStyleOverride(row, state, { horizontalMargin: 14 });
+      }
       row.setCustomMinimumSize(360, 46);
       row.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
       list.addChild(row);
@@ -168,9 +168,7 @@ export class ScrollPage extends Control {
     const nested = new ScrollContainer(this.engine);
     const nestedSurface = new Panel(this.engine);
 
-    nestedTitle.fontSize = 13;
-    nestedTitle.fontWeight = 650;
-    nestedTitle.textColor = theme.textPrimary;
+    setFontOverrides(nestedTitle, { size: 13, weight: 650, color: theme.textPrimary });
     nestedTitle.setRect({ position: new math.Vector2(430, 20), size: new math.Vector2(300, 26) });
     nestedTitle.parent = surface;
     nested.setRect({ position: new math.Vector2(430, 54), size: new math.Vector2(330, 230) });
@@ -178,7 +176,7 @@ export class ScrollPage extends Control {
     nested.verticalCustomStep = SCROLL_STEP;
     nested.parent = surface;
     nestedSurface.setCustomMinimumSize(540, 390);
-    nestedSurface.backgroundColor = withAlpha(theme.accent, 0.06);
+    setFlatStyleOverride(nestedSurface, 'panel', { background: withAlpha(theme.accent, 0.06) });
     nested.addChild(nestedSurface);
     for (let index = 0; index < 6; index++) {
       const block = new ColorRect(this.engine);
@@ -192,9 +190,7 @@ export class ScrollPage extends Control {
     const clip = new Panel(this.engine);
     const oversized = new ColorRect(this.engine);
 
-    clipTitle.fontSize = 13;
-    clipTitle.fontWeight = 650;
-    clipTitle.textColor = theme.textPrimary;
+    setFontOverrides(clipTitle, { size: 13, weight: 650, color: theme.textPrimary });
     clipTitle.setRect({ position: new math.Vector2(430, 330), size: new math.Vector2(300, 26) });
     clipTitle.parent = surface;
     clip.setRect({ position: new math.Vector2(450, 372), size: new math.Vector2(260, 170) });
@@ -206,8 +202,7 @@ export class ScrollPage extends Control {
     oversized.parent = clip;
     const focusNote = new Label(this.engine, 'Use the side-panel button to move focus and let ScrollContainer reveal the last item.');
 
-    focusNote.fontSize = 11;
-    focusNote.textColor = theme.textSecondary;
+    setFontOverrides(focusNote, { size: 11, color: theme.textSecondary });
     focusNote.autowrapMode = AutowrapMode.WordSmart;
     focusNote.textOverflow = TextOverflow.Clip;
     focusNote.setRect({ position: new math.Vector2(790, 64), size: new math.Vector2(140, 120) });

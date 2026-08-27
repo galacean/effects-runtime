@@ -3,7 +3,7 @@ import type { AppContext } from './context';
 import { ControlApp } from './app';
 import { attachFullRect } from './layout';
 import { createDemoState, persistAppearance } from './state';
-import { applyTheme } from './theme';
+import { applyTheme, getRuntimeTheme } from './theme';
 
 export function boot (): void {
   const state = createDemoState();
@@ -15,6 +15,8 @@ export function boot (): void {
     env: 'editor',
   });
   const composition = new Composition(player.engine);
+
+  composition.uiCanvas.rootControl.theme = getRuntimeTheme();
   let app: ControlApp;
   let rebuildQueued = false;
   let disposed = false;

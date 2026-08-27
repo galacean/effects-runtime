@@ -24,7 +24,7 @@ function createRow (engine: Engine): HBoxContainer {
   const row = new HBoxContainer(engine);
   const child = new Control(engine);
 
-  row.separation = 12;
+  row.setThemeConstantOverride('separation', 12);
   child.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
   row.addChild(child);
 

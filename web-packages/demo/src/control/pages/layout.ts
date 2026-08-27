@@ -19,7 +19,7 @@ import {
 import type { AppContext } from '../context';
 import { attachAnchoredRect, attachFullRect } from '../layout';
 import type { LayoutKind } from '../state';
-import { getTheme } from '../theme';
+import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl, createToggle, styleSlider } from '../widgets';
 import type { ResizeCorner } from './common';
 import { ResizeHandle, label } from './common';
@@ -43,18 +43,15 @@ export class LayoutPage extends Control {
 
     attachAnchoredRect(controls, this, 0, 0, 0.36, 1, 0, 0, 8, 0);
     this.stage = new Panel(engine);
-    this.stage.borderColor = theme.accent;
+    setFlatStyleOverride(this.stage, 'panel', { border: theme.accent });
     this.stage.parent = this;
     this.modeLabel = new Label(engine);
-    this.modeLabel.fontSize = 12;
-    this.modeLabel.fontWeight = 650;
-    this.modeLabel.textColor = theme.textPrimary;
+    setFontOverrides(this.modeLabel, { size: 12, weight: 650, color: theme.textPrimary });
     this.modeLabel.verticalAlignment = VerticalAlignment.Center;
     this.modeLabel.setRect({ position: new math.Vector2(16, 12), size: new math.Vector2(180, 28) });
     this.modeLabel.parent = this.stage;
     this.selectedLabel = new Label(engine);
-    this.selectedLabel.fontSize = 11;
-    this.selectedLabel.textColor = theme.textSecondary;
+    setFontOverrides(this.selectedLabel, { size: 11, color: theme.textSecondary });
     this.selectedLabel.horizontalAlignment = HorizontalAlignment.Right;
     this.selectedLabel.verticalAlignment = VerticalAlignment.Center;
     attachAnchoredRect(this.selectedLabel, this.stage, 1, 0, 1, 0, -150, 12, 16, -40);
@@ -196,10 +193,9 @@ export class LayoutPage extends Control {
     aspect.ratio = 16 / 9;
     aspect.setRect({ position: new math.Vector2(20, 454), size: new math.Vector2(204, 48) });
     aspect.parent = panel;
-    aspectPanel.backgroundColor = theme.accentSoft;
+    setFlatStyleOverride(aspectPanel, 'panel', { background: theme.accentSoft });
     aspect.addChild(aspectPanel);
-    aspectLabel.fontSize = 10;
-    aspectLabel.textColor = theme.accent;
+    setFontOverrides(aspectLabel, { size: 10, color: theme.accent });
     aspectLabel.horizontalAlignment = HorizontalAlignment.Center;
     aspectLabel.verticalAlignment = VerticalAlignment.Center;
     attachFullRect(aspectLabel, aspectPanel);
@@ -262,10 +258,10 @@ export class LayoutPage extends Control {
   private applyMetrics (): void {
     if (this.layout instanceof GridContainer) {
       this.layout.columns = this.ctx.state.layout.columns;
-      this.layout.horizontalSeparation = this.ctx.state.layout.separation;
-      this.layout.verticalSeparation = this.ctx.state.layout.separation;
+      this.layout.setThemeConstantOverride('horizontalSeparation', this.ctx.state.layout.separation);
+      this.layout.setThemeConstantOverride('verticalSeparation', this.ctx.state.layout.separation);
     } else if (this.layout) {
-      this.layout.separation = this.ctx.state.layout.separation;
+      this.layout.setThemeConstantOverride('separation', this.ctx.state.layout.separation);
       this.layout.alignment = [LayoutAlignment.Begin, LayoutAlignment.Center, LayoutAlignment.End][this.ctx.state.layout.alignment];
     }
     this.updateHeader();

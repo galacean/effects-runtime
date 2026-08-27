@@ -4,6 +4,7 @@ import type { ColorRectData } from '../data';
 
 @effectsClass('ColorRect')
 export class ColorRect extends Control {
+  static override readonly themeType: string = 'ColorRect';
   color = new math.Color(1, 1, 1, 1);
 
   constructor (engine: Engine) {

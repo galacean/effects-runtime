@@ -1,10 +1,6 @@
-import {
-  effectsClass,
-  math,
-} from '@galacean/effects';
-import type { Engine, FontStyle, FontWeight, Texture } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import type { Engine, Texture } from '@galacean/effects';
 import type { ButtonData } from '../data';
-import { cloneColor, GUIStyle } from '../style';
 import { BaseButton } from './base-button';
 import { ButtonDrawMode, HorizontalAlignment, VerticalAlignment } from './enums';
 
@@ -17,12 +13,9 @@ export type ContentInsets = {
 
 @effectsClass('Button')
 export class Button extends BaseButton {
+  static override readonly themeType: string = 'Button';
   private _text = '';
-  private _icon: Texture | null = null;
-  private _fontFamily: string;
-  private _fontSize: number;
-  private _fontWeight: FontWeight;
-  private _fontStyle: FontStyle;
+  private _icon: Texture | null | undefined;
 
   flat = false;
   clipText = false;
@@ -30,34 +23,11 @@ export class Button extends BaseButton {
   textAlignment = HorizontalAlignment.Center;
   iconAlignment = HorizontalAlignment.Left;
   iconVerticalAlignment = VerticalAlignment.Center;
-  horizontalPadding = 8;
-  verticalPadding = 5;
-  iconSeparation = 6;
-  borderWidth = 1;
-  textColor: math.Color;
-  disabledTextColor: math.Color;
-  normalColor: math.Color;
-  hoverColor: math.Color;
-  pressedColor: math.Color;
-  disabledColor: math.Color;
-  borderColor: math.Color;
 
   constructor (engine: Engine, text = '') {
     super(engine);
-    const style = GUIStyle.current;
 
     this._text = text;
-    this._fontFamily = style.fontFamily;
-    this._fontSize = style.fontSize;
-    this._fontWeight = style.fontWeight;
-    this._fontStyle = style.fontStyle;
-    this.textColor = cloneColor(style.textColor);
-    this.disabledTextColor = cloneColor(style.disabledTextColor);
-    this.normalColor = cloneColor(style.normalColor);
-    this.hoverColor = cloneColor(style.hoverColor);
-    this.pressedColor = cloneColor(style.pressedColor);
-    this.disabledColor = cloneColor(style.disabledColor);
-    this.borderColor = cloneColor(style.borderColor);
   }
 
   get text (): string {
@@ -73,7 +43,7 @@ export class Button extends BaseButton {
   }
 
   get icon (): Texture | null {
-    return this._icon;
+    return this._icon === undefined ? this.getThemeIcon('icon') : this._icon;
   }
 
   set icon (value: Texture | null) {
@@ -81,53 +51,6 @@ export class Button extends BaseButton {
       this._icon = value;
       this.updateMinimumSize();
       this.updateDesiredSize();
-    }
-  }
-
-  get fontFamily (): string {
-    return this._fontFamily;
-  }
-
-  set fontFamily (value: string) {
-    if (this._fontFamily !== value) {
-      this._fontFamily = value;
-      this.updateTextSize();
-    }
-  }
-
-  get fontSize (): number {
-    return this._fontSize;
-  }
-
-  set fontSize (value: number) {
-    if (!Number.isFinite(value) || value <= 0) {
-      throw new RangeError('Button fontSize must be a positive finite number.');
-    }
-    if (this._fontSize !== value) {
-      this._fontSize = value;
-      this.updateTextSize();
-    }
-  }
-
-  get fontWeight (): FontWeight {
-    return this._fontWeight;
-  }
-
-  set fontWeight (value: FontWeight) {
-    if (this._fontWeight !== value) {
-      this._fontWeight = value;
-      this.updateTextSize();
-    }
-  }
-
-  get fontStyle (): FontStyle {
-    return this._fontStyle;
-  }
-
-  set fontStyle (value: FontStyle) {
-    if (this._fontStyle !== value) {
-      this._fontStyle = value;
-      this.updateTextSize();
     }
   }
 
@@ -141,39 +64,32 @@ export class Button extends BaseButton {
 
   override draw (): void {
     const mode = this.getDrawMode();
-    const background = this.getBackgroundColor(mode);
+    const styleBox = this.getThemeStyleBox(this.getStyleBoxName(mode));
 
     if (!this.flat || mode !== ButtonDrawMode.Normal) {
-      this.fillRect(0, 0, this.width, this.height, background);
-      if (this.borderWidth > 0) {
-        this.drawRect(0, 0, this.width, this.height, this.borderColor, this.borderWidth);
-      }
+      this.drawStyleBox(styleBox, 0, 0, this.width, this.height);
     }
     this.drawDecoration(mode);
-    this.drawContent(this.getContentInsets());
+    this.drawContent(mode, this.getContentInsets());
+    if (this.hasFocus()) {
+      this.drawStyleBox(this.getThemeStyleBox('focus'), 0, 0, this.width, this.height);
+    }
   }
 
   protected getContentInsets (): ContentInsets {
-    return {
-      left: this.horizontalPadding,
-      top: this.verticalPadding,
-      right: this.horizontalPadding,
-      bottom: this.verticalPadding,
-    };
+    return this.getBaseContentInsets();
   }
 
   protected drawDecoration (mode: ButtonDrawMode): void {}
 
-  private updateTextSize (): void {
-    this.updateMinimumSize();
-    this.updateDesiredSize();
-  }
-
   private measureButton (): math.Vector2 {
-    const text = this.measureText(this.text, this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle);
+    const font = this.getThemeFont('font');
+    const text = this.measureText(
+      this.text, this.getThemeFontSize('fontSize'), font.family, font.weight, font.style,
+    );
     const iconWidth = this.icon?.width ?? 0;
     const iconHeight = this.icon?.height ?? 0;
-    const separation = this.text && this.icon ? this.iconSeparation : 0;
+    const separation = this.text && this.icon ? this.getThemeConstant('iconSeparation') : 0;
     const insets = this.getContentInsets();
 
     return new math.Vector2(
@@ -182,32 +98,30 @@ export class Button extends BaseButton {
     );
   }
 
-  private getBackgroundColor (mode: ButtonDrawMode): math.Color {
+  private getStyleBoxName (mode: ButtonDrawMode): string {
     switch (mode) {
-      case ButtonDrawMode.Disabled:
-        return this.disabledColor;
-      case ButtonDrawMode.Hover:
-        return this.hoverColor;
-      case ButtonDrawMode.Pressed:
-      case ButtonDrawMode.HoverPressed:
-        return this.pressedColor;
-      default:
-        return this.normalColor;
+      case ButtonDrawMode.Disabled: return 'disabled';
+      case ButtonDrawMode.HoverPressed: return 'hoverPressed';
+      case ButtonDrawMode.Pressed: return 'pressed';
+      case ButtonDrawMode.Hover: return 'hover';
+      default: return 'normal';
     }
   }
 
-  private drawContent (insets: ContentInsets): void {
+  private drawContent (mode: ButtonDrawMode, insets: ContentInsets): void {
     const left = insets.left;
     const top = insets.top;
     const width = Math.max(0, this.width - insets.left - insets.right);
     const height = Math.max(0, this.height - insets.top - insets.bottom);
     const iconSize = this.getIconSize(width, height);
     const hasText = this.text.length > 0;
-    const separation = this.icon && hasText ? this.iconSeparation : 0;
+    const separation = this.icon && hasText ? this.getThemeConstant('iconSeparation') : 0;
     const reservedIconWidth = this.icon ? iconSize.x + separation : 0;
     const textWidth = Math.max(0, width - reservedIconWidth);
     const sourceText = this.clipText ? this.ellipsizeText(this.text, textWidth) : this.text;
-    const text = this.measureText(sourceText, this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle);
+    const font = this.getThemeFont('font');
+    const fontSize = this.getThemeFontSize('fontSize');
+    const text = this.measureText(sourceText, fontSize, font.family, font.weight, font.style);
     let iconX = left;
     let textAreaX = left + reservedIconWidth;
 
@@ -231,18 +145,53 @@ export class Button extends BaseButton {
       if (this.icon) {
         const iconY = this.getAlignedY(top, height, iconSize.y, this.iconVerticalAlignment);
 
-        this.drawTexture(iconX, iconY, iconSize.x, iconSize.y, this.icon);
+        this.drawTexture(iconX, iconY, iconSize.x, iconSize.y, this.icon, undefined, this.getIconTint(mode));
       }
       this.drawText(
-        textX, textY, sourceText, this.fontSize,
-        this.disabled || !this.enabledInHierarchy ? this.disabledTextColor : this.textColor,
-        this.fontFamily, this.fontWeight, this.fontStyle,
+        textX, textY, sourceText, fontSize,
+        this.getFontColor(mode),
+        font.family, font.weight, font.style,
       );
     } finally {
       if (this.clipText) {
         this.engine.graphics.popClipRect();
       }
     }
+  }
+
+  private getFontColor (mode: ButtonDrawMode): math.Color {
+    switch (mode) {
+      case ButtonDrawMode.Disabled: return this.getThemeColor('fontDisabledColor');
+      case ButtonDrawMode.HoverPressed: return this.getThemeColor('fontHoverPressedColor');
+      case ButtonDrawMode.Pressed: return this.getThemeColor('fontPressedColor');
+      case ButtonDrawMode.Hover: return this.getThemeColor('fontHoverColor');
+      default: return this.getThemeColor('fontColor');
+    }
+  }
+
+  private getIconTint (mode: ButtonDrawMode): math.Color {
+    switch (mode) {
+      case ButtonDrawMode.Disabled: return this.getThemeColor('iconDisabledTint');
+      case ButtonDrawMode.HoverPressed: return this.getThemeColor('iconHoverPressedTint');
+      case ButtonDrawMode.Pressed: return this.getThemeColor('iconPressedTint');
+      case ButtonDrawMode.Hover: return this.getThemeColor('iconHoverTint');
+      default: return this.getThemeColor('iconTint');
+    }
+  }
+
+  protected getBaseContentInsets (): ContentInsets {
+    const result: ContentInsets = { left: 0, top: 0, right: 0, bottom: 0 };
+
+    for (const name of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+      const margin = this.getThemeStyleBox(name).getContentMargins();
+
+      result.left = Math.max(result.left, margin.left);
+      result.top = Math.max(result.top, margin.top);
+      result.right = Math.max(result.right, margin.right);
+      result.bottom = Math.max(result.bottom, margin.bottom);
+    }
+
+    return result;
   }
 
   private getIconSize (width: number, height: number): math.Vector2 {
@@ -282,13 +231,15 @@ export class Button extends BaseButton {
   }
 
   private ellipsizeText (text: string, width: number): string {
-    const measurement = this.measureText(text, this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle);
+    const font = this.getThemeFont('font');
+    const fontSize = this.getThemeFontSize('fontSize');
+    const measurement = this.measureText(text, fontSize, font.family, font.weight, font.style);
 
     if (measurement.width <= width) {
       return text;
     }
     const ellipsis = '…';
-    const ellipsisWidth = this.measureText(ellipsis, this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle).width;
+    const ellipsisWidth = this.measureText(ellipsis, fontSize, font.family, font.weight, font.style).width;
     const characters = Array.from(text);
     let used = ellipsisWidth;
     let count = 0;
@@ -312,18 +263,6 @@ export class Button extends BaseButton {
     if (data.icon !== undefined) {
       this.icon = data.icon ? this.engine.findObject<Texture>(data.icon) : null;
     }
-    if (data.fontFamily !== undefined) {
-      this.fontFamily = data.fontFamily;
-    }
-    if (data.fontSize !== undefined) {
-      this.fontSize = data.fontSize;
-    }
-    if (data.fontWeight !== undefined) {
-      this.fontWeight = data.fontWeight;
-    }
-    if (data.fontStyle !== undefined) {
-      this.fontStyle = data.fontStyle;
-    }
     if (data.flat !== undefined) {
       this.flat = data.flat;
     }
@@ -341,39 +280,6 @@ export class Button extends BaseButton {
     }
     if (data.iconVerticalAlignment !== undefined) {
       this.iconVerticalAlignment = data.iconVerticalAlignment;
-    }
-    if (data.horizontalPadding !== undefined) {
-      this.horizontalPadding = data.horizontalPadding;
-    }
-    if (data.verticalPadding !== undefined) {
-      this.verticalPadding = data.verticalPadding;
-    }
-    if (data.iconSeparation !== undefined) {
-      this.iconSeparation = data.iconSeparation;
-    }
-    if (data.borderWidth !== undefined) {
-      this.borderWidth = data.borderWidth;
-    }
-    if (data.textColor !== undefined) {
-      this.textColor.copyFrom(data.textColor);
-    }
-    if (data.disabledTextColor !== undefined) {
-      this.disabledTextColor.copyFrom(data.disabledTextColor);
-    }
-    if (data.normalColor !== undefined) {
-      this.normalColor.copyFrom(data.normalColor);
-    }
-    if (data.hoverColor !== undefined) {
-      this.hoverColor.copyFrom(data.hoverColor);
-    }
-    if (data.pressedColor !== undefined) {
-      this.pressedColor.copyFrom(data.pressedColor);
-    }
-    if (data.disabledColor !== undefined) {
-      this.disabledColor.copyFrom(data.disabledColor);
-    }
-    if (data.borderColor !== undefined) {
-      this.borderColor.copyFrom(data.borderColor);
     }
   }
 }

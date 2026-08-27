@@ -40,6 +40,7 @@ const INERTIA_DECELERATION = 1000;
 /** Clips and scrolls its content children using two internal Range scroll bars. */
 @effectsClass('ScrollContainer')
 export class ScrollContainer extends Container {
+  static override readonly themeType: string = 'ScrollContainer';
   private readonly scrollContainerEventEmitter = new EventEmitter<ScrollContainerEvent>();
   private readonly horizontalBar: HScrollBar;
   private readonly verticalBar: VScrollBar;

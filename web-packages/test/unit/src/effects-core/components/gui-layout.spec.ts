@@ -122,7 +122,7 @@ describe('core/GUI measurement and automatic layout', () => {
 
     box.parent = composition.uiCanvas.rootControl;
     box.setSize(110, 30);
-    box.separation = 10;
+    box.setThemeConstantOverride('separation', 10);
     first.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
     second.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
     second.stretchRatio = 3;
@@ -172,7 +172,10 @@ describe('core/GUI measurement and automatic layout', () => {
 
     margin.parent = composition.uiCanvas.rootControl;
     margin.setSize(100, 50);
-    margin.setMargins(5, 6, 7, 8);
+    margin.setThemeConstantOverride('marginLeft', 5);
+    margin.setThemeConstantOverride('marginTop', 6);
+    margin.setThemeConstantOverride('marginRight', 7);
+    margin.setThemeConstantOverride('marginBottom', 8);
     margin.addChild(marginChild);
 
     const center = new CenterContainer(player.engine);
@@ -210,7 +213,10 @@ describe('core/GUI measurement and automatic layout', () => {
 
     outer.parent = composition.uiCanvas.rootControl;
     outer.setSize(120, 70);
-    outer.setMargins(5, 6, 7, 8);
+    outer.setThemeConstantOverride('marginLeft', 5);
+    outer.setThemeConstantOverride('marginTop', 6);
+    outer.setThemeConstantOverride('marginRight', 7);
+    outer.setThemeConstantOverride('marginBottom', 8);
     outer.addChild(inner);
     child.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
     inner.addChild(child);
@@ -241,7 +247,10 @@ describe('core/GUI measurement and automatic layout', () => {
     composition.uiCanvas.enabled = false;
     margin.parent = composition.uiCanvas.rootControl;
     margin.setAnchorsAndOffsetsPreset('fullRect');
-    margin.setMargins(10, 10, 10, 10);
+    margin.setThemeConstantOverride('marginLeft', 10);
+    margin.setThemeConstantOverride('marginTop', 10);
+    margin.setThemeConstantOverride('marginRight', 10);
+    margin.setThemeConstantOverride('marginBottom', 10);
     margin.addChild(child);
 
     composition.uiCanvas.enabled = true;

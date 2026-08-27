@@ -1,54 +1,59 @@
 import { effectsClass } from '@galacean/effects';
-import type { Engine, math } from '@galacean/effects';
-import type { CheckBoxData } from '../data';
-import { cloneColor, GUIStyle } from '../style';
+import type { Engine } from '@galacean/effects';
 import { Button } from './button';
 import type { ContentInsets } from './button';
 import { HorizontalAlignment } from './enums';
 
-const MARK_SIZE = 14;
-const MARK_GAP = 6;
-
 @effectsClass('CheckBox')
 export class CheckBox extends Button {
-  markColor: math.Color;
+  static override readonly themeType: string = 'CheckBox';
 
   constructor (engine: Engine, text = '') {
     super(engine, text);
     this.toggleMode = true;
     this.textAlignment = HorizontalAlignment.Left;
-    this.markColor = cloneColor(GUIStyle.current.accentColor);
   }
 
   protected override getContentInsets (): ContentInsets {
     const insets = super.getContentInsets();
 
-    return { ...insets, left: insets.left + MARK_SIZE + MARK_GAP };
+    return {
+      ...insets,
+      left: insets.left + this.getThemeConstant('markSize') + this.getThemeConstant('markSeparation'),
+    };
   }
 
   protected override drawDecoration (): void {
-    const x = this.horizontalPadding;
-    const y = (this.height - MARK_SIZE) * 0.5;
-    const centerX = x + MARK_SIZE * 0.5;
-    const centerY = y + MARK_SIZE * 0.5;
+    const markSize = this.getThemeConstant('markSize');
+    const x = this.getBaseContentInsets().left;
+    const y = (this.height - markSize) * 0.5;
+    const centerX = x + markSize * 0.5;
+    const centerY = y + markSize * 0.5;
+    const iconName = this.disabled || !this.enabledInHierarchy
+      ? this.buttonPressed ? 'checkedDisabled' : 'uncheckedDisabled'
+      : this.buttonPressed ? 'checked' : 'unchecked';
+    const icon = this.getThemeIcon(iconName);
+
+    if (icon) {
+      this.drawTexture(x, y, markSize, markSize, icon);
+
+      return;
+    }
+    const markColor = this.disabled || !this.enabledInHierarchy
+      ? this.getThemeColor('markDisabledColor')
+      : this.getThemeColor('markColor');
+    const outlineColor = this.getThemeColor('markOutlineColor');
 
     if (this.buttonGroup) {
-      this.drawCircle(centerX, centerY, MARK_SIZE * 0.5, this.borderColor, 1);
+      this.drawCircle(centerX, centerY, markSize * 0.5, outlineColor, 1);
       if (this.buttonPressed) {
-        this.fillCircle(centerX, centerY, MARK_SIZE * 0.27, this.markColor);
+        this.fillCircle(centerX, centerY, markSize * 0.27, markColor);
       }
     } else {
-      this.drawRect(x, y, MARK_SIZE, MARK_SIZE, this.borderColor, 1);
+      this.drawRect(x, y, markSize, markSize, outlineColor, 1);
       if (this.buttonPressed) {
-        this.fillRect(x + 3, y + 3, MARK_SIZE - 6, MARK_SIZE - 6, this.markColor);
+        this.fillRect(x + 3, y + 3, markSize - 6, markSize - 6, markColor);
       }
-    }
-  }
-
-  override fromData (data: CheckBoxData): void {
-    super.fromData(data);
-    if (data.markColor !== undefined) {
-      this.markColor.copyFrom(data.markColor);
     }
   }
 }

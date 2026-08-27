@@ -1,4 +1,61 @@
 import type * as spec from '@galacean/effects-specification';
+import type { FontStyle, FontWeight } from '../render';
+
+export interface ThemeFontData {
+  family: string,
+  weight?: FontWeight,
+  style?: FontStyle,
+}
+
+export interface StyleBoxMarginsData {
+  left?: number,
+  top?: number,
+  right?: number,
+  bottom?: number,
+}
+
+export interface StyleBoxEmptyData {
+  type: 'empty',
+  contentMargins?: StyleBoxMarginsData,
+}
+
+export interface StyleBoxFlatData {
+  type: 'flat',
+  backgroundColor?: spec.ColorData,
+  borderColor?: spec.ColorData,
+  borderWidths?: StyleBoxMarginsData,
+  contentMargins?: StyleBoxMarginsData,
+}
+
+export interface StyleBoxTextureData {
+  type: 'texture',
+  texture: spec.DataPath | null,
+  sourceRect?: RectData,
+  patchMargins?: StyleBoxMarginsData,
+  contentMargins?: StyleBoxMarginsData,
+  horizontalAxisStretchMode?: number,
+  verticalAxisStretchMode?: number,
+  drawCenter?: boolean,
+  tint?: spec.ColorData,
+}
+
+export type StyleBoxData = StyleBoxEmptyData | StyleBoxFlatData | StyleBoxTextureData;
+
+export interface ThemeItemCollectionData {
+  colors?: Record<string, spec.ColorData>,
+  constants?: Record<string, number>,
+  fonts?: Record<string, ThemeFontData>,
+  fontSizes?: Record<string, number>,
+  icons?: Record<string, spec.DataPath | null>,
+  styleBoxes?: Record<string, StyleBoxData>,
+}
+
+export interface ThemeData {
+  types: Record<string, ThemeItemCollectionData>,
+  variations?: Record<string, string>,
+}
+
+export interface ThemeOverridesData extends ThemeItemCollectionData {}
 
 /** Common serialized properties shared by every GUI Control. */
 export interface ControlData {
@@ -24,6 +81,8 @@ export interface ControlData {
   focusBehaviorRecursive?: number,
   defaultCursorShape?: number | string,
   clipContents?: boolean,
+  themeTypeVariation?: string,
+  themeOverrides?: ThemeOverridesData,
 }
 
 export interface SerializedControlData<T extends ControlData = ControlData> {

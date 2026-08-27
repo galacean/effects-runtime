@@ -115,6 +115,7 @@ export class ButtonGroup {
 }
 
 export class BaseButton extends Control {
+  static override readonly themeType: string = 'BaseButton';
   private readonly buttonEventEmitter = new EventEmitter<BaseButtonEvent>();
   private _disabled = false;
   private _toggleMode = false;

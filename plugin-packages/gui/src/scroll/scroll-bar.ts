@@ -15,7 +15,6 @@ import type {
 import { Orientation } from '../layout/enums';
 import { Range } from './range';
 import type { RangeEvent } from './range';
-import { cloneColor, GUIStyle } from '../style';
 import type { ScrollBarData } from '../data';
 
 export type ScrollBarEvent = RangeEvent & {
@@ -31,13 +30,11 @@ type GrabberRect = {
   height: number,
 };
 
-const BAR_SIZE = 12;
-const BUTTON_SIZE = 12;
-const MIN_GRABBER_SIZE = 12;
 const PAGE_DIVISOR = 8;
 
 /** A horizontal or vertical range scroll bar. */
 export class ScrollBar extends Range {
+  static override readonly themeType: string = 'ScrollBar';
   static readonly pageDivisor = PAGE_DIVISOR;
 
   private readonly scrollBarEventEmitter = new EventEmitter<ScrollBarEvent>();
@@ -50,28 +47,12 @@ export class ScrollBar extends Range {
   private dragPosition = 0;
   private dragRatio = 0;
 
-  trackColor: math.Color;
-  buttonColor: math.Color;
-  buttonActiveColor: math.Color;
-  grabberColor: math.Color;
-  grabberHoverColor: math.Color;
-  grabberPressedColor: math.Color;
-  arrowColor: math.Color;
-
   constructor (engine: Engine, orientation = Orientation.Vertical) {
     super(engine);
-    const style = GUIStyle.current;
 
     this._orientation = orientation;
     this.step = 0;
     this.focusMode = FocusMode.Accessibility;
-    this.trackColor = cloneColor(style.trackColor);
-    this.buttonColor = cloneColor(style.trackColor);
-    this.buttonActiveColor = cloneColor(style.hoverColor);
-    this.grabberColor = cloneColor(style.disabledTextColor);
-    this.grabberHoverColor = cloneColor(style.accentColor);
-    this.grabberPressedColor = cloneColor(style.accentHoverColor);
-    this.arrowColor = cloneColor(style.textColor);
   }
 
   get orientation (): Orientation {
@@ -135,38 +116,48 @@ export class ScrollBar extends Range {
   }
 
   override getMinimumSize (): math.Vector2 {
-    const main = BUTTON_SIZE * 2 + MIN_GRABBER_SIZE;
+    const buttonSize = this.getThemeConstant('buttonSize');
+    const main = buttonSize * 2 + this.getThemeConstant('grabberMinimumSize');
+    const thickness = this.getThemeConstant('thickness');
 
     return this.orientation === Orientation.Horizontal
-      ? new math.Vector2(main, BAR_SIZE)
-      : new math.Vector2(BAR_SIZE, main);
+      ? new math.Vector2(main, thickness)
+      : new math.Vector2(thickness, main);
   }
 
   override draw (): void {
     const horizontal = this.orientation === Orientation.Horizontal;
     const axisSize = horizontal ? this.width : this.height;
-    const trackLength = Math.max(0, axisSize - BUTTON_SIZE * 2);
-    const decrementColor = this.decrementActive ? this.buttonActiveColor : this.buttonColor;
-    const incrementColor = this.incrementActive ? this.buttonActiveColor : this.buttonColor;
+    const buttonSize = this.getThemeConstant('buttonSize');
+    const trackLength = Math.max(0, axisSize - buttonSize * 2);
+    const decrementState = this.decrementActive
+      ? 'Pressed'
+      : this.highlight === 'decrement' ? 'Highlight' : '';
+    const incrementState = this.incrementActive
+      ? 'Pressed'
+      : this.highlight === 'increment' ? 'Highlight' : '';
     const grabber = this.getGrabberRect();
-    const grabberColor = this.dragging
-      ? this.grabberPressedColor
-      : this.highlight === 'track' ? this.grabberHoverColor : this.grabberColor;
+    const grabberStyle = this.dragging
+      ? 'grabberPressed'
+      : this.highlight === 'track' ? 'grabberHighlight' : 'grabber';
+    const decrementStyle = `decrement${decrementState}`;
+    const incrementStyle = `increment${incrementState}`;
+    const scrollStyle = this.hasFocus() ? 'scrollFocus' : 'scroll';
 
     if (horizontal) {
-      this.fillRect(0, 0, BUTTON_SIZE, this.height, decrementColor);
-      this.fillRect(BUTTON_SIZE, 0, trackLength, this.height, this.trackColor);
-      this.fillRect(axisSize - BUTTON_SIZE, 0, BUTTON_SIZE, this.height, incrementColor);
-      this.fillTriangle(7.5, 3, 7.5, 9, 4, 6, this.arrowColor);
-      this.fillTriangle(axisSize - 7.5, 3, axisSize - 7.5, 9, axisSize - 4, 6, this.arrowColor);
+      this.drawStyleBox(this.getThemeStyleBox(decrementStyle), 0, 0, buttonSize, this.height);
+      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), buttonSize, 0, trackLength, this.height);
+      this.drawStyleBox(this.getThemeStyleBox(incrementStyle), axisSize - buttonSize, 0, buttonSize, this.height);
+      this.drawArrowIcon(false, decrementState, 0, 0, buttonSize, this.height);
+      this.drawArrowIcon(true, incrementState, axisSize - buttonSize, 0, buttonSize, this.height);
     } else {
-      this.fillRect(0, 0, this.width, BUTTON_SIZE, decrementColor);
-      this.fillRect(0, BUTTON_SIZE, this.width, trackLength, this.trackColor);
-      this.fillRect(0, axisSize - BUTTON_SIZE, this.width, BUTTON_SIZE, incrementColor);
-      this.fillTriangle(3, 7.5, 9, 7.5, 6, 4, this.arrowColor);
-      this.fillTriangle(3, axisSize - 7.5, 9, axisSize - 7.5, 6, axisSize - 4, this.arrowColor);
+      this.drawStyleBox(this.getThemeStyleBox(decrementStyle), 0, 0, this.width, buttonSize);
+      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), 0, buttonSize, this.width, trackLength);
+      this.drawStyleBox(this.getThemeStyleBox(incrementStyle), 0, axisSize - buttonSize, this.width, buttonSize);
+      this.drawArrowIcon(false, decrementState, 0, 0, this.width, buttonSize);
+      this.drawArrowIcon(true, incrementState, 0, axisSize - buttonSize, this.width, buttonSize);
     }
-    this.fillRect(grabber.x, grabber.y, grabber.width, grabber.height, grabberColor);
+    this.drawStyleBox(this.getThemeStyleBox(grabberStyle), grabber.x, grabber.y, grabber.width, grabber.height);
   }
 
   override onMouseEnter (location: math.Vector2): void {
@@ -207,12 +198,13 @@ export class ScrollBar extends Range {
     const total = this.getAxisSize();
     const grabberOffset = this.getGrabberOffset();
     const grabberSize = this.getGrabberSize();
-    const trackPosition = position - BUTTON_SIZE;
+    const buttonSize = this.getThemeConstant('buttonSize');
+    const trackPosition = position - buttonSize;
 
-    if (position < BUTTON_SIZE) {
+    if (position < buttonSize) {
       this.decrementActive = true;
       this.scroll(-this.getIncrement());
-    } else if (position > total - BUTTON_SIZE) {
+    } else if (position > total - buttonSize) {
       this.incrementActive = true;
       this.scroll(this.getIncrement());
     } else if (trackPosition < grabberOffset) {
@@ -302,11 +294,11 @@ export class ScrollBar extends Range {
   }
 
   private getTrackSize (): number {
-    return Math.max(0, this.getAxisSize() - BUTTON_SIZE * 2);
+    return Math.max(0, this.getAxisSize() - this.getThemeConstant('buttonSize') * 2);
   }
 
   private getAreaSize (): number {
-    return Math.max(0, this.getTrackSize() - MIN_GRABBER_SIZE);
+    return Math.max(0, this.getTrackSize() - this.getThemeConstant('grabberMinimumSize'));
   }
 
   private getGrabberSize (): number {
@@ -316,7 +308,10 @@ export class ScrollBar extends Range {
       return 0;
     }
 
-    return Math.min(this.getTrackSize(), MIN_GRABBER_SIZE + Math.max(0, this.page) / range * this.getAreaSize());
+    return Math.min(
+      this.getTrackSize(),
+      this.getThemeConstant('grabberMinimumSize') + Math.max(0, this.page) / range * this.getAreaSize(),
+    );
   }
 
   private getGrabberOffset (): number {
@@ -324,7 +319,7 @@ export class ScrollBar extends Range {
   }
 
   private getGrabberRect (): GrabberRect {
-    const offset = BUTTON_SIZE + this.getGrabberOffset();
+    const offset = this.getThemeConstant('buttonSize') + this.getGrabberOffset();
     const size = this.getGrabberSize();
 
     return this.orientation === Orientation.Horizontal
@@ -334,15 +329,51 @@ export class ScrollBar extends Range {
 
   private updateHighlight (position: number): void {
     const total = this.getAxisSize();
+    const buttonSize = this.getThemeConstant('buttonSize');
 
     if (position < 0 || position > total) {
       this.highlight = 'none';
-    } else if (position < BUTTON_SIZE) {
+    } else if (position < buttonSize) {
       this.highlight = 'decrement';
-    } else if (position > total - BUTTON_SIZE) {
+    } else if (position > total - buttonSize) {
       this.highlight = 'increment';
     } else {
       this.highlight = 'track';
+    }
+  }
+
+  private drawArrowIcon (
+    increment: boolean,
+    state: '' | 'Highlight' | 'Pressed',
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ): void {
+    const prefix = increment ? 'incrementIcon' : 'decrementIcon';
+    const icon = this.getThemeIcon(`${prefix}${state}`);
+
+    if (icon) {
+      this.drawTexture(x, y, width, height, icon);
+
+      return;
+    }
+    if (this.orientation === Orientation.Horizontal) {
+      const baseX = increment ? x + width * 0.35 : x + width * 0.65;
+      const tipX = increment ? x + width * 0.65 : x + width * 0.35;
+
+      this.fillTriangle(
+        baseX, y + height * 0.25, baseX, y + height * 0.75, tipX, y + height * 0.5,
+        this.getThemeColor('arrowColor'),
+      );
+    } else {
+      const baseY = increment ? y + height * 0.35 : y + height * 0.65;
+      const tipY = increment ? y + height * 0.65 : y + height * 0.35;
+
+      this.fillTriangle(
+        x + width * 0.25, baseY, x + width * 0.75, baseY, x + width * 0.5, tipY,
+        this.getThemeColor('arrowColor'),
+      );
     }
   }
 
@@ -351,32 +382,12 @@ export class ScrollBar extends Range {
     if (data.customStep !== undefined) {
       this.customStep = data.customStep;
     }
-    if (data.trackColor !== undefined) {
-      this.trackColor.copyFrom(data.trackColor);
-    }
-    if (data.buttonColor !== undefined) {
-      this.buttonColor.copyFrom(data.buttonColor);
-    }
-    if (data.buttonActiveColor !== undefined) {
-      this.buttonActiveColor.copyFrom(data.buttonActiveColor);
-    }
-    if (data.grabberColor !== undefined) {
-      this.grabberColor.copyFrom(data.grabberColor);
-    }
-    if (data.grabberHoverColor !== undefined) {
-      this.grabberHoverColor.copyFrom(data.grabberHoverColor);
-    }
-    if (data.grabberPressedColor !== undefined) {
-      this.grabberPressedColor.copyFrom(data.grabberPressedColor);
-    }
-    if (data.arrowColor !== undefined) {
-      this.arrowColor.copyFrom(data.arrowColor);
-    }
   }
 }
 
 @effectsClass('HScrollBar')
 export class HScrollBar extends ScrollBar {
+  static override readonly themeType: string = 'HScrollBar';
   constructor (engine: Engine) {
     super(engine, Orientation.Horizontal);
   }
@@ -384,6 +395,7 @@ export class HScrollBar extends ScrollBar {
 
 @effectsClass('VScrollBar')
 export class VScrollBar extends ScrollBar {
+  static override readonly themeType: string = 'VScrollBar';
   constructor (engine: Engine) {
     super(engine, Orientation.Vertical);
   }

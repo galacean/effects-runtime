@@ -22,7 +22,7 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect, placeNormalized } from '../layout';
-import { getTheme, mix } from '../theme';
+import { getTheme, mix, setFontOverrides } from '../theme';
 import { createButton, createSegmentedControl, createToggle } from '../widgets';
 
 type Vector2 = math.Vector2;
@@ -296,9 +296,7 @@ class InputInspector extends Panel {
   ): Label {
     const control = new Label(this.engine, text);
 
-    control.fontSize = size;
-    control.fontWeight = weight;
-    control.textColor = color;
+    setFontOverrides(control, { size, weight, color });
     control.textOverflow = TextOverflow.Ellipsis;
     control.verticalAlignment = VerticalAlignment.Center;
     control.mouseFilter = MouseFilter.Ignore;
@@ -317,9 +315,9 @@ class InputInspector extends Panel {
 
     this.statusValues.forEach((control, index) => {
       control.text = values[index];
-      control.textColor = index === 1
+      control.setThemeColorOverride('fontColor', index === 1
         ? this._handled ? theme.warning : theme.success
-        : theme.textPrimary;
+        : theme.textPrimary);
     });
   }
 
@@ -333,7 +331,7 @@ class InputInspector extends Panel {
       row.event.visible = Boolean(entry);
       if (entry) {
         row.owner.text = entry.owner;
-        row.owner.textColor = getOwnerColor(entry.owner);
+        row.owner.setThemeColorOverride('fontColor', getOwnerColor(entry.owner));
         row.event.text = entry.position
           ? `${entry.event} · ${entry.position.x.toFixed(0)},${entry.position.y.toFixed(0)}`
           : entry.event;
@@ -368,16 +366,13 @@ class InputEventControl extends Control {
     this.pressedColor = mix(theme.panelBg, theme.accent, 0.36);
     this.borderColor = mix(theme.panelBg, theme.accent, 0.58);
     this.titleControl = new Label(engine, this._label);
-    this.titleControl.fontSize = 12;
-    this.titleControl.fontWeight = 650;
-    this.titleControl.textColor = theme.textPrimary;
+    setFontOverrides(this.titleControl, { size: 12, weight: 650, color: theme.textPrimary });
     this.titleControl.textOverflow = TextOverflow.Ellipsis;
     this.titleControl.verticalAlignment = VerticalAlignment.Center;
     this.titleControl.mouseFilter = MouseFilter.Ignore;
     attachAnchoredRect(this.titleControl, this, 0, 0, 1, 0, 13, 7, 13, -30);
     this.detailControl = new Label(engine);
-    this.detailControl.fontSize = 10;
-    this.detailControl.textColor = theme.textSecondary;
+    setFontOverrides(this.detailControl, { size: 10, color: theme.textSecondary });
     this.detailControl.textOverflow = TextOverflow.Ellipsis;
     this.detailControl.verticalAlignment = VerticalAlignment.Center;
     this.detailControl.mouseFilter = MouseFilter.Ignore;
