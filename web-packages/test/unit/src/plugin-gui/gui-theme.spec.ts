@@ -6,6 +6,7 @@ import type { Graphics } from '@galacean/effects';
 import type { Texture } from '@galacean/effects';
 import {
   Button,
+  ButtonGroup,
   CheckBox,
   Control,
   HBoxContainer,
@@ -307,7 +308,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(box.getCombinedMinimumSize().x).equals(27);
   });
 
-  it('selects all Button state StyleBoxes and draws focus last', () => {
+  it('selects Godot Button state StyleBoxes and draws focus before content', () => {
     const button = new Button(player.engine, 'state');
     const theme = new Theme();
     const styles = new Map<string, StyleBox>();
@@ -342,10 +343,22 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     button.draw();
     expect(draws[0]).equals(styles.get('disabled'));
     button.disabled = false;
+    button.setPressedNoSignal(false);
     button.focus();
     draws.length = 0;
+    const order: Array<StyleBox | string> = [];
+
+    button.drawStyleBox = ((style: StyleBox) => order.push(style)) as typeof button.drawStyleBox;
+    button.drawText = (() => order.push('content')) as typeof button.drawText;
     button.draw();
-    expect(draws.at(-1)).equals(styles.get('focus'));
+    expect(order).deep.equals([styles.get('normal'), styles.get('focus'), 'content']);
+
+    button.releaseFocus();
+    button.flat = true;
+    button.onMouseEnter();
+    order.length = 0;
+    button.draw();
+    expect(order).deep.equals(['content']);
   });
 
   it('selects themed CheckBox, Slider, ProgressBar and ScrollBar items', () => {
@@ -355,15 +368,17 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     const slider = new HSlider(player.engine);
     const progress = new ProgressBar(player.engine);
     const scroll = new HScrollBar(player.engine);
+    const decrementIcon = { width: 10, height: 20 } as Texture;
+    const decrementHighlightIcon = { width: 11, height: 20 } as Texture;
     const styles = new Map<string, StyleBox>();
 
     theme.setIcon('CheckBox', 'checked', checkedIcon);
+    theme.setIcon('ScrollBar', 'decrement', decrementIcon);
+    theme.setIcon('ScrollBar', 'decrementHighlight', decrementHighlightIcon);
     for (const [type, names] of [
-      ['Slider', ['track', 'fill', 'grabber', 'grabberHighlight']],
+      ['Slider', ['track', 'fill', 'fillHighlight', 'grabber', 'grabberHighlight']],
       ['ProgressBar', ['background', 'fill']],
-      ['ScrollBar', [
-        'scroll', 'decrement', 'decrementHighlight', 'increment', 'grabber',
-      ]],
+      ['ScrollBar', ['scroll', 'grabber']],
     ] as const) {
       for (const name of names) {
         const style = new StyleBoxEmpty();
@@ -383,6 +398,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(drawnIcon).equals(checkedIcon);
 
     slider.theme = theme;
+    slider.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
     slider.setSize(100, 20);
     const sliderDraws: StyleBox[] = [];
 
@@ -392,10 +408,19 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     slider.onMouseEnter();
     sliderDraws.length = 0;
     slider.draw();
+    expect(sliderDraws).contains(styles.get('Slider.fillHighlight'));
     expect(sliderDraws).contains(styles.get('Slider.grabberHighlight'));
+    slider.onMouseLeave();
+    slider.focus();
+    sliderDraws.length = 0;
+    slider.draw();
+    expect(sliderDraws).contains(styles.get('Slider.fillHighlight'));
+    expect(sliderDraws).contains(styles.get('Slider.grabberHighlight'));
+    expect(sliderDraws).to.have.length(3);
 
     progress.theme = theme;
     progress.showPercentage = false;
+    progress.value = 50;
     progress.setSize(100, 20);
     const progressDraws: StyleBox[] = [];
 
@@ -408,14 +433,27 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     scroll.theme = theme;
     scroll.setSize(100, 20);
     const scrollDraws: StyleBox[] = [];
+    let scrollIcon: Texture | null = null;
 
     scroll.drawStyleBox = ((style: StyleBox) => scrollDraws.push(style)) as typeof scroll.drawStyleBox;
+    scroll.drawTexture = ((_x, _y, _width, _height, icon) => {scrollIcon = icon;}) as typeof scroll.drawTexture;
     scroll.draw();
     expect(scrollDraws).contains(styles.get('ScrollBar.scroll'));
     expect(scrollDraws).contains(styles.get('ScrollBar.grabber'));
+    expect(scrollIcon).equals(decrementIcon);
     scroll.onMouseEnter(new math.Vector2(1, 10));
     scrollDraws.length = 0;
     scroll.draw();
-    expect(scrollDraws).contains(styles.get('ScrollBar.decrementHighlight'));
+    expect(scrollIcon).equals(decrementHighlightIcon);
+
+    const radioIcon = { width: 16, height: 16 } as Texture;
+    const group = new ButtonGroup();
+
+    theme.setIcon('CheckBox', 'radioChecked', radioIcon);
+    check.buttonGroup = group;
+    check.setPressedNoSignal(true);
+    check.draw();
+    expect(drawnIcon).equals(radioIcon);
+    expect(check.getThemeStyleBox('normal')).instanceOf(StyleBoxEmpty);
   });
 });

@@ -42,6 +42,14 @@ function flat (
   return style;
 }
 
+function empty (contentHorizontal = 0, contentVertical = 0): StyleBoxEmpty {
+  const style = new StyleBoxEmpty();
+
+  style.setContentMargins(contentHorizontal, contentVertical, contentHorizontal, contentVertical);
+
+  return style;
+}
+
 function style (value: StyleBox): { type: ThemeItemType.StyleBox, defaultValue: StyleBox, affectsLayout: true } {
   return { type: ThemeItemType.StyleBox, defaultValue: value, affectsLayout: true };
 }
@@ -78,34 +86,56 @@ ThemeRegistry.registerType('Button', 'BaseButton', {
   disabled: style(flat(palette.disabled, palette.border, 1, 8, 4)),
   focus: style(flat(palette.clear, palette.accentHover, 1)),
   fontColor: color(palette.text),
+  fontFocusColor: color(palette.text),
   fontHoverColor: color(palette.text),
   fontPressedColor: color(palette.text),
   fontHoverPressedColor: color(palette.text),
   fontDisabledColor: color(palette.disabledText),
   iconTint: color(palette.white),
+  iconFocusTint: color(palette.white),
   iconHoverTint: color(palette.white),
   iconPressedTint: color(palette.white),
   iconHoverPressedTint: color(palette.white),
   iconDisabledTint: color(palette.disabledText),
   icon: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   iconSeparation: constant(4),
+  alignToLargestStyleBox: constant(0),
 });
 ThemeRegistry.registerType('CheckBox', 'Button', {
+  normal: style(empty(4, 4)),
+  hover: style(empty(4, 4)),
+  pressed: style(empty(4, 4)),
+  hoverPressed: style(empty(4, 4)),
+  disabled: style(empty(4, 4)),
   checked: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   unchecked: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   checkedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   uncheckedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  radioChecked: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  radioUnchecked: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  radioCheckedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  radioUncheckedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  checkedColor: color(palette.white),
+  uncheckedColor: color(palette.white),
   markColor: color(palette.accent),
   markDisabledColor: color(palette.disabledText),
   markOutlineColor: color(palette.border),
   markSize: constant(14),
   markSeparation: constant(6),
+  checkVOffset: constant(0),
 });
 ThemeRegistry.registerType('CheckButton', 'Button', {
+  normal: style(empty(6, 4)),
+  hover: style(empty(6, 4)),
+  pressed: style(empty(6, 4)),
+  hoverPressed: style(empty(6, 4)),
+  disabled: style(empty(6, 4)),
   checked: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   unchecked: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   checkedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   uncheckedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  buttonCheckedColor: color(palette.white),
+  buttonUncheckedColor: color(palette.white),
   switchColor: color(palette.accent),
   switchDisabledColor: color(palette.disabledText),
   switchOffColor: color(palette.border),
@@ -113,6 +143,7 @@ ThemeRegistry.registerType('CheckButton', 'Button', {
   switchWidth: constant(28),
   switchHeight: constant(14),
   switchSeparation: constant(6),
+  checkVOffset: constant(0),
 });
 ThemeRegistry.registerType('Panel', 'Control', {
   panel: style(flat(palette.panel, palette.border, 1)),
@@ -126,10 +157,10 @@ ThemeRegistry.registerType('ProgressBar', 'Range', {
 ThemeRegistry.registerType('Slider', 'Range', {
   track: style(flat(palette.track)),
   fill: style(flat(palette.accent)),
+  fillHighlight: style(flat(palette.accentHover)),
   grabber: style(flat(palette.normal, palette.border, 1)),
   grabberHighlight: style(flat(palette.accentHover, palette.border, 1)),
   grabberDisabled: style(flat(palette.disabled, palette.border, 1)),
-  focus: style(flat(palette.clear, palette.accentHover, 1)),
   trackThickness: constant(4),
   grabberSize: constant(14),
 });
@@ -138,28 +169,26 @@ ThemeRegistry.registerType('VSlider', 'Slider');
 ThemeRegistry.registerType('ScrollBar', 'Range', {
   scroll: style(flat(palette.track)),
   scrollFocus: style(flat(palette.track, palette.accentHover, 1)),
-  decrement: style(flat(palette.track)),
-  decrementHighlight: style(flat(palette.hover)),
-  decrementPressed: style(flat(palette.pressed)),
-  increment: style(flat(palette.track)),
-  incrementHighlight: style(flat(palette.hover)),
-  incrementPressed: style(flat(palette.pressed)),
-  grabber: style(flat(palette.disabledText)),
-  grabberHighlight: style(flat(palette.accent)),
-  grabberPressed: style(flat(palette.accentHover)),
-  decrementIcon: { type: ThemeItemType.Icon, defaultValue: null },
-  decrementIconHighlight: { type: ThemeItemType.Icon, defaultValue: null },
-  decrementIconPressed: { type: ThemeItemType.Icon, defaultValue: null },
-  incrementIcon: { type: ThemeItemType.Icon, defaultValue: null },
-  incrementIconHighlight: { type: ThemeItemType.Icon, defaultValue: null },
-  incrementIconPressed: { type: ThemeItemType.Icon, defaultValue: null },
-  arrowColor: color(palette.text),
-  buttonSize: constant(12),
-  grabberMinimumSize: constant(12),
-  thickness: constant(12),
+  grabber: style(flat(palette.disabledText, palette.clear, 0, 4, 4)),
+  grabberHighlight: style(flat(palette.accent, palette.clear, 0, 4, 4)),
+  grabberPressed: style(flat(palette.accentHover, palette.clear, 0, 4, 4)),
+  decrement: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  decrementHighlight: { type: ThemeItemType.Icon, defaultValue: null },
+  decrementPressed: { type: ThemeItemType.Icon, defaultValue: null },
+  increment: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  incrementHighlight: { type: ThemeItemType.Icon, defaultValue: null },
+  incrementPressed: { type: ThemeItemType.Icon, defaultValue: null },
+  paddingLeft: constant(0),
+  paddingTop: constant(0),
+  paddingRight: constant(0),
+  paddingBottom: constant(0),
 });
-ThemeRegistry.registerType('HScrollBar', 'ScrollBar');
-ThemeRegistry.registerType('VScrollBar', 'ScrollBar');
+ThemeRegistry.registerType('HScrollBar', 'ScrollBar', {
+  scroll: style(flat(palette.track, palette.clear, 0, 0, 4)),
+});
+ThemeRegistry.registerType('VScrollBar', 'ScrollBar', {
+  scroll: style(flat(palette.track, palette.clear, 0, 4, 0)),
+});
 ThemeRegistry.registerType('BoxContainer', 'Container', { separation: constant(0) });
 ThemeRegistry.registerType('HBoxContainer', 'BoxContainer');
 ThemeRegistry.registerType('VBoxContainer', 'BoxContainer');

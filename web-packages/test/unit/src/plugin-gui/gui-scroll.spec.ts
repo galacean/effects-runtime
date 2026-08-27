@@ -8,6 +8,7 @@ import {
   Player,
   math,
 } from '@galacean/effects';
+import type { Texture } from '@galacean/effects';
 import {
   Control,
   FocusMode,
@@ -16,6 +17,8 @@ import {
   ScrollContainer,
   ScrollMode,
   SizeFlags,
+  StyleBoxEmpty,
+  Theme,
   VScrollBar,
   GUIRootComponent,
   UICanvas,
@@ -94,7 +97,11 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
   it('supports ScrollBar buttons, track, wheel and orientation', () => {
     const horizontal = new HScrollBar(player.engine);
     const vertical = new VScrollBar(player.engine);
+    const decrement = { width: 12, height: 12 } as Texture;
+    const increment = { width: 12, height: 12 } as Texture;
 
+    horizontal.setThemeIconOverride('decrement', decrement);
+    horizontal.setThemeIconOverride('increment', increment);
     horizontal.setSize(120, 12);
     horizontal.maxValue = 200;
     horizontal.page = 40;
@@ -111,7 +118,19 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     horizontal.onMouseWheel(wheel);
     expect(horizontal.value).equals(50);
     expect(wheel.isAccepted()).equals(true);
-    expect(vertical.getMinimumSize()).deep.equals(new math.Vector2(12, 36));
+    expect(vertical.getMinimumSize()).deep.equals(new math.Vector2(8, 8));
+  });
+
+  it('matches the Godot default ScrollBar theme without visible end buttons', () => {
+    const vertical = new VScrollBar(player.engine);
+    let iconDraws = 0;
+
+    vertical.setSize(8, 100);
+    vertical.drawStyleBox = (() => undefined) as typeof vertical.drawStyleBox;
+    vertical.drawTexture = (() => {iconDraws++;}) as typeof vertical.drawTexture;
+    vertical.draw();
+    expect(iconDraws).equals(0);
+    expect(vertical.getMinimumSize()).deep.equals(new math.Vector2(8, 8));
   });
 
   it('emits scrolling while the ScrollBar grabber is dragged', () => {
@@ -134,6 +153,38 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     expect(scrolling).equals(1);
   });
 
+  it('uses ScrollBar track margins and cross-axis padding for the grabber', () => {
+    const horizontal = new HScrollBar(player.engine);
+    const theme = new Theme();
+    const scroll = new StyleBoxEmpty();
+    const grabber = new StyleBoxEmpty();
+    const decrement = { width: 8, height: 10 } as Texture;
+    const increment = { width: 9, height: 11 } as Texture;
+    let grabberRect: number[] | undefined;
+
+    scroll.setContentMargins(5, 0, 7, 0);
+    grabber.setContentMargins(6, 0, 6, 0);
+    theme.setStyleBox('HScrollBar', 'scroll', scroll);
+    theme.setStyleBox('HScrollBar', 'grabber', grabber);
+    theme.setIcon('HScrollBar', 'decrement', decrement);
+    theme.setIcon('HScrollBar', 'increment', increment);
+    theme.setConstant('HScrollBar', 'paddingTop', 2);
+    theme.setConstant('HScrollBar', 'paddingBottom', 3);
+    horizontal.theme = theme;
+    horizontal.setSize(100, 16);
+    horizontal.maxValue = 100;
+    horizontal.drawStyleBox = ((style, x, y, width, height) => {
+      if (style === grabber) {
+        grabberRect = [x, y, width, height];
+      }
+    }) as typeof horizontal.drawStyleBox;
+    horizontal.drawTexture = (() => undefined) as typeof horizontal.drawTexture;
+    horizontal.draw();
+
+    expect(horizontal.getMinimumSize()).deep.equals(new math.Vector2(41, 16));
+    expect(grabberRect).deep.equals([13, 2, 12, 11]);
+  });
+
   it('resolves both scroll bars and repositions expanded content', () => {
     const scroll = new ScrollContainer(player.engine);
     const content = new ScrollContent(player.engine, new math.Vector2(180, 220));
@@ -147,7 +198,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     expect(scroll.clipContents).equals(true);
     expect(scroll.getHScrollBar().visible).equals(true);
     expect(scroll.getVScrollBar().visible).equals(true);
-    expect([scroll.getHScrollBar().page, scroll.getVScrollBar().page]).deep.equals([88, 88]);
+    expect([scroll.getHScrollBar().page, scroll.getVScrollBar().page]).deep.equals([92, 92]);
 
     scroll.hScroll = 30;
     scroll.vScroll = 40;
@@ -203,7 +254,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect(scroll.getHScrollBar().visible).equals(true);
     expect(scroll.getVScrollBar().visible).equals(false);
-    expect(scroll.getHScrollBar().page).equals(88);
+    expect(scroll.getHScrollBar().page).equals(92);
 
     scroll.horizontalScrollMode = ScrollMode.ShowNever;
     scroll.verticalScrollMode = ScrollMode.Disabled;

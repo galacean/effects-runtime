@@ -234,19 +234,20 @@ export class BaseButton extends Control {
     if (this.disabled || !this.enabledInHierarchy) {
       return ButtonDrawMode.Disabled;
     }
-    const visuallyPressed = this.isPressing() || this.buttonPressed;
-
-    if (visuallyPressed && this.hovered) {
-      return ButtonDrawMode.HoverPressed;
-    }
-    if (visuallyPressed) {
-      return ButtonDrawMode.Pressed;
-    }
-    if (this.hovered) {
-      return ButtonDrawMode.Hover;
+    if (!this.pressing && this.hovered) {
+      return this.buttonPressed ? ButtonDrawMode.HoverPressed : ButtonDrawMode.Hover;
     }
 
-    return ButtonDrawMode.Normal;
+    let pressed = this.buttonPressed;
+
+    if (this.pressing) {
+      pressed = this.pressInside || this.keepPressedOutside;
+      if (this.buttonPressed) {
+        pressed = !pressed;
+      }
+    }
+
+    return pressed ? ButtonDrawMode.Pressed : ButtonDrawMode.Normal;
   }
 
   override getEffectiveMouseFilter (): MouseFilter {

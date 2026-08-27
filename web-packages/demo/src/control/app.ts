@@ -127,7 +127,6 @@ export class ControlApp extends Control {
       page.visible = active;
       page.enabled = active;
     }
-    this.engine.root.getComponent(GUIRootComponent).windowRoot.guiReleaseFocus();
   }
 
   private buildBrand (sidebar: Panel): void {

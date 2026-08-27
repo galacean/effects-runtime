@@ -437,6 +437,11 @@ describe('plugin-gui/input', () => {
     key.keycode = 'Enter';
     player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(key);
     expect(control.log).deep.equals(['focus', 'down:10,10', 'key:Enter']);
+    expect(control.hasFocus()).equals(true);
+    expect(control.hasFocus(true)).equals(false);
+
+    control.focus();
+    expect(control.hasFocus(true)).equals(true);
   });
 
   it('keeps one focused control across all canvases in a window', () => {

@@ -71,6 +71,7 @@ type GUIState = {
   mouseOverHierarchy: Control[],
   touchFocus: Map<number, Control>,
   keyFocus: Control | null,
+  hideFocus: boolean,
   dragAccum: Vector2,
   dragAttempted: boolean,
   dragging: boolean,
@@ -152,6 +153,7 @@ export class WindowRootControl extends RootControl {
     mouseOverHierarchy: [],
     touchFocus: new Map(),
     keyFocus: null,
+    hideFocus: false,
     dragAccum: new Vector2(),
     dragAttempted: false,
     dragging: false,
@@ -190,6 +192,10 @@ export class WindowRootControl extends RootControl {
     return this.isFocusTargetUsable(this.gui.keyFocus) ? this.gui.keyFocus : null;
   }
 
+  override guiControlHasFocus (control: Control, visibleOnly = false): boolean {
+    return this.guiGetFocusOwner() === control && (!visibleOnly || !this.gui.hideFocus);
+  }
+
   guiReleaseFocus (): void {
     this.releaseControlFocus();
   }
@@ -210,13 +216,19 @@ export class WindowRootControl extends RootControl {
     this.endDragging(false);
   }
 
-  override grabControlFocus (control: Control): void {
-    if (!this.isFocusTargetUsable(control) || this.gui.keyFocus === control) {
+  override grabControlFocus (control: Control, hideFocus = false): void {
+    if (!this.isFocusTargetUsable(control)) {
+      return;
+    }
+    if (this.gui.keyFocus === control) {
+      this.gui.hideFocus = hideFocus;
+
       return;
     }
     const previous = this.gui.keyFocus;
 
     this.gui.keyFocus = control;
+    this.gui.hideFocus = hideFocus;
     if (previous && !previous.isDisposed) {
       previous.onLostFocus();
     }
@@ -238,6 +250,7 @@ export class WindowRootControl extends RootControl {
       return;
     }
     this.gui.keyFocus = null;
+    this.gui.hideFocus = false;
     if (!previous.isDisposed) {
       previous.onLostFocus();
     }
@@ -414,6 +427,10 @@ export class WindowRootControl extends RootControl {
 
       this.gui.mouseFocus = target;
       if (!target) {
+        if (event.buttonIndex === MouseButton.Left && this.gui.keyFocus) {
+          this.gui.hideFocus = true;
+        }
+
         return;
       }
       this.gui.mouseFocusMask |= mask;
@@ -649,7 +666,7 @@ export class WindowRootControl extends RootControl {
       const mode = current.getFocusModeWithOverride();
 
       if (mode === FocusMode.Click || mode === FocusMode.All) {
-        this.grabControlFocus(current);
+        this.grabControlFocus(current, true);
 
         return;
       }

@@ -11,6 +11,7 @@ import {
   AxisStretchMode,
   BaseButton,
   Button,
+  ButtonDrawMode,
   ButtonGroup,
   CheckBox,
   CheckButton,
@@ -21,6 +22,7 @@ import {
   ProgressBar,
   ProgressFillMode,
   Side,
+  StyleBoxEmpty,
   TextOverflow,
   TextureExpandMode,
   TextureRect,
@@ -211,6 +213,29 @@ describe('plugin-gui/GUI basic controls', () => {
     expect(button.isPressing()).equals(false);
   });
 
+  it('matches Godot Button draw modes while pressing toggle and regular buttons', () => {
+    const regular = new BaseButton(player.engine);
+
+    regular.setSize(100, 30);
+    regular.onMouseEnter();
+    expect(regular.getDrawMode()).equals(ButtonDrawMode.Hover);
+    regular.onMouseDown(mouseButton(10, 10, MouseButton.Left));
+    expect(regular.getDrawMode()).equals(ButtonDrawMode.Pressed);
+    regular.onScrollBegin();
+
+    const toggle = new BaseButton(player.engine);
+
+    toggle.setSize(100, 30);
+    toggle.toggleMode = true;
+    toggle.setPressedNoSignal(true);
+    toggle.onMouseEnter();
+    expect(toggle.getDrawMode()).equals(ButtonDrawMode.HoverPressed);
+    toggle.onMouseDown(mouseButton(10, 10, MouseButton.Left));
+    expect(toggle.getDrawMode()).equals(ButtonDrawMode.Normal);
+    toggle.onMouseLeave();
+    expect(toggle.getDrawMode()).equals(ButtonDrawMode.Pressed);
+  });
+
   it('enforces button groups and supplies both check appearances', () => {
     const group = new ButtonGroup();
     const first = new CheckBox(player.engine, 'First');
@@ -245,6 +270,29 @@ describe('plugin-gui/GUI basic controls', () => {
     expect(group.getButtons()).deep.equals([second]);
     expect(checkButton.toggleMode).equals(true);
     expect(new Button(player.engine, 'Text').getMinimumSize().x).greaterThan(0);
+  });
+
+  it('matches Godot Button minimum sizing for clipped text and expanded icons', () => {
+    const button = new Button(player.engine, 'Long label');
+    const theme = new Theme();
+    const normal = new StyleBoxEmpty();
+    const icon = { width: 20, height: 10 } as Texture;
+
+    normal.setContentMargins(3, 4, 3, 4);
+    theme.setStyleBox('Button', 'normal', normal);
+    button.theme = theme;
+    const textWidth = button.getMinimumSize().x;
+
+    button.clipText = true;
+    expect(button.getMinimumSize().x).lessThan(textWidth);
+
+    button.clipText = false;
+    button.text = '';
+    button.icon = icon;
+    expect(button.getMinimumSize()).deep.equals(new math.Vector2(26, 18));
+
+    button.expandIcon = true;
+    expect(button.getMinimumSize()).deep.equals(new math.Vector2(6, 8));
   });
 
   it('supports slider clicking, dragging, wheel, keys and both directions', () => {
@@ -301,6 +349,33 @@ describe('plugin-gui/GUI basic controls', () => {
     }
     expect(labels).deep.equals(['25%', '25%', '25%', '25%']);
     expect(progress.step).equals(0.01);
+  });
+
+  it('uses the ProgressBar fill StyleBox minimum size like Godot', () => {
+    const progress = new ProgressBar(player.engine);
+    const theme = new Theme();
+    const background = new StyleBoxEmpty();
+    const fill = new StyleBoxEmpty();
+    const rectangles: number[][] = [];
+
+    fill.setContentMargins(5, 0, 5, 0);
+    theme.setStyleBox('ProgressBar', 'background', background);
+    theme.setStyleBox('ProgressBar', 'fill', fill);
+    progress.theme = theme;
+    progress.showPercentage = false;
+    progress.setSize(100, 20);
+    progress.drawStyleBox = ((_style, x, y, width, height) => {
+      rectangles.push([x, y, width, height]);
+    }) as typeof progress.drawStyleBox;
+
+    progress.value = 25;
+    progress.draw();
+    expect(rectangles).deep.equals([[0, 0, 100, 20], [0, 0, 33, 20]]);
+
+    rectangles.length = 0;
+    progress.value = 0;
+    progress.draw();
+    expect(rectangles).deep.equals([[0, 0, 100, 20]]);
   });
 });
 

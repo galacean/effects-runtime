@@ -16,29 +16,41 @@ export class CheckBox extends Button {
 
   protected override getContentInsets (): ContentInsets {
     const insets = super.getContentInsets();
+    const separation = this.text ? Math.max(0, this.getThemeConstant('markSeparation')) : 0;
 
     return {
       ...insets,
-      left: insets.left + this.getThemeConstant('markSize') + this.getThemeConstant('markSeparation'),
+      left: insets.left + this.getMarkSize().width + separation,
     };
   }
 
   protected override drawDecoration (): void {
     const markSize = this.getThemeConstant('markSize');
-    const x = this.getBaseContentInsets().left;
-    const y = (this.height - markSize) * 0.5;
-    const centerX = x + markSize * 0.5;
-    const centerY = y + markSize * 0.5;
+    const iconSize = this.getMarkSize();
+    const x = this.getNormalContentInsets().left;
+    const yOffset = this.getThemeConstant('checkVOffset');
+    const y = (this.height - iconSize.height) * 0.5 + yOffset;
+    const radio = !!this.buttonGroup;
     const iconName = this.disabled || !this.enabledInHierarchy
-      ? this.buttonPressed ? 'checkedDisabled' : 'uncheckedDisabled'
-      : this.buttonPressed ? 'checked' : 'unchecked';
+      ? radio
+        ? this.buttonPressed ? 'radioCheckedDisabled' : 'radioUncheckedDisabled'
+        : this.buttonPressed ? 'checkedDisabled' : 'uncheckedDisabled'
+      : radio
+        ? this.buttonPressed ? 'radioChecked' : 'radioUnchecked'
+        : this.buttonPressed ? 'checked' : 'unchecked';
     const icon = this.getThemeIcon(iconName);
 
     if (icon) {
-      this.drawTexture(x, y, markSize, markSize, icon);
+      this.drawTexture(
+        x, y, icon.width, icon.height, icon, undefined,
+        this.getThemeColor(this.buttonPressed ? 'checkedColor' : 'uncheckedColor'),
+      );
 
       return;
     }
+    const fallbackY = (this.height - markSize) * 0.5 + yOffset;
+    const centerX = x + markSize * 0.5;
+    const centerY = fallbackY + markSize * 0.5;
     const markColor = this.disabled || !this.enabledInHierarchy
       ? this.getThemeColor('markDisabledColor')
       : this.getThemeColor('markColor');
@@ -50,10 +62,32 @@ export class CheckBox extends Button {
         this.fillCircle(centerX, centerY, markSize * 0.27, markColor);
       }
     } else {
-      this.drawRect(x, y, markSize, markSize, outlineColor, 1);
+      this.drawRect(x, fallbackY, markSize, markSize, outlineColor, 1);
       if (this.buttonPressed) {
-        this.fillRect(x + 3, y + 3, markSize - 6, markSize - 6, markColor);
+        this.fillRect(x + 3, fallbackY + 3, markSize - 6, markSize - 6, markColor);
       }
     }
+  }
+
+  private getMarkSize (): { width: number, height: number } {
+    let width = 0;
+    let height = 0;
+
+    for (const name of [
+      'checked', 'unchecked', 'checkedDisabled', 'uncheckedDisabled',
+      'radioChecked', 'radioUnchecked', 'radioCheckedDisabled', 'radioUncheckedDisabled',
+    ]) {
+      const icon = this.getThemeIcon(name);
+
+      width = Math.max(width, icon?.width ?? 0);
+      height = Math.max(height, icon?.height ?? 0);
+    }
+    if (width <= 0 && height <= 0) {
+      const fallback = this.getThemeConstant('markSize');
+
+      return { width: fallback, height: fallback };
+    }
+
+    return { width, height };
   }
 }

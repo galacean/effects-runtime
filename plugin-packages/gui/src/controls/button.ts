@@ -66,18 +66,22 @@ export class Button extends BaseButton {
     const mode = this.getDrawMode();
     const styleBox = this.getThemeStyleBox(this.getStyleBoxName(mode));
 
-    if (!this.flat || mode !== ButtonDrawMode.Normal) {
+    if (!this.flat) {
       this.drawStyleBox(styleBox, 0, 0, this.width, this.height);
+    }
+    if (this.hasFocus(true)) {
+      this.drawStyleBox(this.getThemeStyleBox('focus'), 0, 0, this.width, this.height);
     }
     this.drawDecoration(mode);
     this.drawContent(mode, this.getContentInsets());
-    if (this.hasFocus()) {
-      this.drawStyleBox(this.getThemeStyleBox('focus'), 0, 0, this.width, this.height);
-    }
   }
 
   protected getContentInsets (): ContentInsets {
     return this.getBaseContentInsets();
+  }
+
+  protected getNormalContentInsets (): ContentInsets {
+    return this.getThemeStyleBox('normal').getContentMargins();
   }
 
   protected drawDecoration (mode: ButtonDrawMode): void {}
@@ -87,14 +91,25 @@ export class Button extends BaseButton {
     const text = this.measureText(
       this.text, this.getThemeFontSize('fontSize'), font.family, font.weight, font.style,
     );
-    const iconWidth = this.icon?.width ?? 0;
-    const iconHeight = this.icon?.height ?? 0;
-    const separation = this.text && this.icon ? this.getThemeConstant('iconSeparation') : 0;
+    const hasText = this.text.length > 0;
+    const iconWidth = this.expandIcon ? 0 : this.icon?.width ?? 0;
+    const iconHeight = this.expandIcon ? 0 : this.icon?.height ?? 0;
+    const textWidth = this.clipText ? 0 : text.width;
+    const textHeight = hasText ? text.lineHeight : 0;
+    const separation = hasText && iconWidth > 0 && this.iconAlignment !== HorizontalAlignment.Center
+      ? Math.max(0, this.getThemeConstant('iconSeparation'))
+      : 0;
     const insets = this.getContentInsets();
+    const contentWidth = this.iconAlignment === HorizontalAlignment.Center
+      ? Math.max(iconWidth, textWidth)
+      : iconWidth + separation + textWidth;
+    const contentHeight = this.iconVerticalAlignment === VerticalAlignment.Center
+      ? Math.max(iconHeight, textHeight)
+      : iconHeight + textHeight;
 
     return new math.Vector2(
-      insets.left + iconWidth + separation + text.width + insets.right,
-      insets.top + Math.max(iconHeight, text.lineHeight) + insets.bottom,
+      insets.left + contentWidth + insets.right,
+      insets.top + contentHeight + insets.bottom,
     );
   }
 
@@ -113,14 +128,25 @@ export class Button extends BaseButton {
     const top = insets.top;
     const width = Math.max(0, this.width - insets.left - insets.right);
     const height = Math.max(0, this.height - insets.top - insets.bottom);
-    const iconSize = this.getIconSize(width, height);
     const hasText = this.text.length > 0;
-    const separation = this.icon && hasText ? this.getThemeConstant('iconSeparation') : 0;
-    const reservedIconWidth = this.icon ? iconSize.x + separation : 0;
-    const textWidth = Math.max(0, width - reservedIconWidth);
-    const sourceText = this.clipText ? this.ellipsizeText(this.text, textWidth) : this.text;
+    const separation = this.icon && hasText && this.iconAlignment !== HorizontalAlignment.Center
+      ? Math.max(0, this.getThemeConstant('iconSeparation'))
+      : 0;
     const font = this.getThemeFont('font');
     const fontSize = this.getThemeFontSize('fontSize');
+    const naturalText = this.measureText(this.text, fontSize, font.family, font.weight, font.style);
+    const iconWidth = !this.clipText && hasText && this.iconAlignment !== HorizontalAlignment.Center
+      ? Math.max(0, width - naturalText.width - separation)
+      : width;
+    const iconHeight = hasText && this.iconVerticalAlignment !== VerticalAlignment.Center
+      ? Math.max(0, height - naturalText.lineHeight)
+      : height;
+    const iconSize = this.getIconSize(iconWidth, iconHeight);
+    const reservedIconWidth = this.icon && this.iconAlignment !== HorizontalAlignment.Center
+      ? iconSize.x + separation
+      : 0;
+    const textWidth = Math.max(0, width - reservedIconWidth);
+    const sourceText = this.clipText ? this.ellipsizeText(this.text, textWidth) : this.text;
     const text = this.measureText(sourceText, fontSize, font.family, font.weight, font.style);
     let iconX = left;
     let textAreaX = left + reservedIconWidth;
@@ -129,14 +155,18 @@ export class Button extends BaseButton {
       iconX = left + width - iconSize.x;
       textAreaX = left;
     } else if (this.icon && this.iconAlignment === HorizontalAlignment.Center) {
-      const groupWidth = iconSize.x + separation + text.width;
-
-      iconX = left + (width - groupWidth) * 0.5;
-      textAreaX = iconX + reservedIconWidth;
+      iconX = left + (width - iconSize.x) * 0.5;
+      textAreaX = left;
     }
 
     const textX = this.getAlignedX(textAreaX, textWidth, text.width, this.textAlignment);
-    const textY = top + (height - text.lineHeight) * 0.5;
+    const textAreaY = this.icon && this.iconVerticalAlignment === VerticalAlignment.Top
+      ? top + iconSize.y
+      : top;
+    const textHeight = Math.max(0, height - (this.icon && this.iconVerticalAlignment !== VerticalAlignment.Center
+      ? iconSize.y
+      : 0));
+    const textY = textAreaY + (textHeight - text.lineHeight) * 0.5;
 
     if (this.clipText) {
       this.engine.graphics.pushClipRect(left, top, width, height);
@@ -165,7 +195,9 @@ export class Button extends BaseButton {
       case ButtonDrawMode.HoverPressed: return this.getThemeColor('fontHoverPressedColor');
       case ButtonDrawMode.Pressed: return this.getThemeColor('fontPressedColor');
       case ButtonDrawMode.Hover: return this.getThemeColor('fontHoverColor');
-      default: return this.getThemeColor('fontColor');
+      default: return this.hasFocus(true)
+        ? this.getThemeColor('fontFocusColor')
+        : this.getThemeColor('fontColor');
     }
   }
 
@@ -175,11 +207,16 @@ export class Button extends BaseButton {
       case ButtonDrawMode.HoverPressed: return this.getThemeColor('iconHoverPressedTint');
       case ButtonDrawMode.Pressed: return this.getThemeColor('iconPressedTint');
       case ButtonDrawMode.Hover: return this.getThemeColor('iconHoverTint');
-      default: return this.getThemeColor('iconTint');
+      default: return this.hasFocus(true)
+        ? this.getThemeColor('iconFocusTint')
+        : this.getThemeColor('iconTint');
     }
   }
 
   protected getBaseContentInsets (): ContentInsets {
+    if (!this.getThemeConstant('alignToLargestStyleBox')) {
+      return this.getThemeStyleBox(this.getStyleBoxName(this.getDrawMode())).getContentMargins();
+    }
     const result: ContentInsets = { left: 0, top: 0, right: 0, bottom: 0 };
 
     for (const name of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {

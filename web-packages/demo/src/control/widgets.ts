@@ -50,6 +50,9 @@ export function createButton (
     button.flat = true;
     setButtonStateColors(button, theme.panelBg, theme.panelRaisedBg, theme.accentSoft, theme.borderSubtle, 0);
     setButtonFontColors(button, theme.textSecondary);
+    button.setThemeColorOverride('fontHoverColor', theme.textPrimary);
+    button.setThemeColorOverride('fontPressedColor', theme.accent);
+    button.setThemeColorOverride('fontHoverPressedColor', theme.accentHover);
   }
   if (pressed) {
     button.on('pressed', pressed);
@@ -78,6 +81,7 @@ export function styleSlider<T extends Slider> (slider: T): T {
 
   setFlatStyleOverride(slider, 'track', { background: theme.controlTrack });
   setFlatStyleOverride(slider, 'fill', { background: theme.accent });
+  setFlatStyleOverride(slider, 'fillHighlight', { background: theme.accentHover });
   setFlatStyleOverride(slider, 'grabber', { background: mix(theme.borderStrong, theme.textPrimary, 0.18) });
   setFlatStyleOverride(slider, 'grabberHighlight', { background: theme.accentHover });
   setFlatStyleOverride(slider, 'grabberDisabled', { background: theme.borderSubtle });
@@ -194,7 +198,7 @@ function setButtonStateColors (
 }
 
 function setButtonFontColors (button: Button, color: math.Color): void {
-  for (const name of ['fontColor', 'fontHoverColor', 'fontPressedColor', 'fontHoverPressedColor']) {
+  for (const name of ['fontColor', 'fontFocusColor', 'fontHoverColor', 'fontPressedColor', 'fontHoverPressedColor']) {
     button.setThemeColorOverride(name, color);
   }
 }

@@ -114,9 +114,11 @@ export class Slider extends Range {
 
   override draw (): void {
     const grabber = this.getGrabberRect();
+    const highlighted = this.editable && (this.hovered || this.hasFocus(true));
     const grabberStyle = !this.editable
       ? 'grabberDisabled'
-      : this.dragging || this.hovered ? 'grabberHighlight' : 'grabber';
+      : highlighted ? 'grabberHighlight' : 'grabber';
+    const fillStyle = highlighted ? 'fillHighlight' : 'fill';
     const trackThickness = this.getThemeConstant('trackThickness');
 
     if (this.orientation === Orientation.Horizontal) {
@@ -124,16 +126,15 @@ export class Slider extends Range {
       const fillWidth = grabber.x + grabber.width * 0.5;
 
       this.drawStyleBox(this.getThemeStyleBox('track'), 0, centerY, this.width, trackThickness);
-      this.drawStyleBox(this.getThemeStyleBox('fill'), 0, centerY, fillWidth, trackThickness);
+      this.drawStyleBox(this.getThemeStyleBox(fillStyle), 0, centerY, fillWidth, trackThickness);
     } else {
       const centerX = (this.width - trackThickness) * 0.5;
       const fillY = grabber.y + grabber.height * 0.5;
 
       this.drawStyleBox(this.getThemeStyleBox('track'), centerX, 0, trackThickness, this.height);
-      this.drawStyleBox(this.getThemeStyleBox('fill'), centerX, fillY, trackThickness, this.height - fillY);
+      this.drawStyleBox(this.getThemeStyleBox(fillStyle), centerX, fillY, trackThickness, this.height - fillY);
     }
     this.drawStyleBox(this.getThemeStyleBox(grabberStyle), grabber.x, grabber.y, grabber.width, grabber.height);
-    if (this.hasFocus()) {this.drawStyleBox(this.getThemeStyleBox('focus'), 0, 0, this.width, this.height);}
   }
 
   override onMouseEnter (): void {

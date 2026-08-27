@@ -1,6 +1,6 @@
 import { math } from '@galacean/effects';
 import type { FontStyle, FontWeight } from '@galacean/effects';
-import { StyleBoxFlat, Theme, ThemeRegistry } from '@galacean/effects-plugin-gui';
+import { StyleBoxEmpty, StyleBoxFlat, Theme, ThemeRegistry } from '@galacean/effects-plugin-gui';
 import type { Control } from '@galacean/effects-plugin-gui';
 
 export const FONT_FAMILY = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -47,6 +47,14 @@ function color (hex: string, alpha = 1): math.Color {
 
 function copy (source: math.Color, alpha = source.a): math.Color {
   return new math.Color(source.r, source.g, source.b, alpha);
+}
+
+function makeEmpty (contentHorizontal: number, contentVertical: number): StyleBoxEmpty {
+  const style = new StyleBoxEmpty();
+
+  style.setContentMargins(contentHorizontal, contentVertical, contentHorizontal, contentVertical);
+
+  return style;
 }
 
 const BASE_THEMES: Record<ThemeName, ThemeBase> = {
@@ -143,6 +151,7 @@ export function applyTheme (
     runtimeTheme.setFontSize('Control', 'fontSize', 13);
     runtimeTheme.setColor('Label', 'fontColor', theme.textPrimary);
     runtimeTheme.setColor('Button', 'fontColor', theme.textPrimary);
+    runtimeTheme.setColor('Button', 'fontFocusColor', theme.textPrimary);
     runtimeTheme.setColor('Button', 'fontHoverColor', theme.textPrimary);
     runtimeTheme.setColor('Button', 'fontPressedColor', theme.textPrimary);
     runtimeTheme.setColor('Button', 'fontHoverPressedColor', theme.textPrimary);
@@ -150,6 +159,7 @@ export function applyTheme (
     // Button icon colors are multiplicative tints. White preserves authored
     // texture colors; using the light theme's dark text color turns them black.
     runtimeTheme.setColor('Button', 'iconTint', theme.textOnAccent);
+    runtimeTheme.setColor('Button', 'iconFocusTint', theme.textOnAccent);
     runtimeTheme.setColor('Button', 'iconHoverTint', theme.textOnAccent);
     runtimeTheme.setColor('Button', 'iconPressedTint', theme.textOnAccent);
     runtimeTheme.setColor('Button', 'iconHoverPressedTint', theme.textOnAccent);
@@ -160,12 +170,21 @@ export function applyTheme (
     runtimeTheme.setStyleBox('Button', 'hoverPressed', makeFlat(theme.accentSoft, theme.accent, 1, 8, 4));
     runtimeTheme.setStyleBox('Button', 'disabled', makeFlat(copy(theme.panelRaisedBg, 0.72), theme.borderSubtle, 1, 8, 4));
     runtimeTheme.setStyleBox('Button', 'focus', makeFlat(new math.Color(0, 0, 0, 0), theme.accentHover, 1));
+    runtimeTheme.setConstant('Button', 'alignToLargestStyleBox', 1);
+    const checkBoxStyle = makeEmpty(4, 4);
+    const checkButtonStyle = makeEmpty(6, 4);
+
+    for (const name of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+      runtimeTheme.setStyleBox('CheckBox', name, checkBoxStyle);
+      runtimeTheme.setStyleBox('CheckButton', name, checkButtonStyle);
+    }
     runtimeTheme.setStyleBox('Panel', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1));
     runtimeTheme.setStyleBox('ProgressBar', 'background', makeFlat(theme.controlTrack));
     runtimeTheme.setStyleBox('ProgressBar', 'fill', makeFlat(theme.accent));
     runtimeTheme.setColor('ProgressBar', 'fontColor', theme.textPrimary);
     runtimeTheme.setStyleBox('Slider', 'track', makeFlat(theme.controlTrack));
     runtimeTheme.setStyleBox('Slider', 'fill', makeFlat(theme.accent));
+    runtimeTheme.setStyleBox('Slider', 'fillHighlight', makeFlat(theme.accentHover));
     runtimeTheme.setStyleBox(
       'Slider',
       'grabber',
@@ -173,7 +192,6 @@ export function applyTheme (
     );
     runtimeTheme.setStyleBox('Slider', 'grabberHighlight', makeFlat(theme.accentHover, theme.borderSubtle, 1));
     runtimeTheme.setStyleBox('Slider', 'grabberDisabled', makeFlat(theme.borderSubtle, theme.borderSubtle, 1));
-    runtimeTheme.setStyleBox('Slider', 'focus', makeFlat(new math.Color(0, 0, 0, 0), theme.accentHover, 1));
     runtimeTheme.setColor('CheckBox', 'markColor', theme.accent);
     runtimeTheme.setColor('CheckBox', 'markDisabledColor', theme.textTertiary);
     runtimeTheme.setColor('CheckBox', 'markOutlineColor', theme.borderStrong);
@@ -181,18 +199,12 @@ export function applyTheme (
     runtimeTheme.setColor('CheckButton', 'switchDisabledColor', theme.textTertiary);
     runtimeTheme.setColor('CheckButton', 'switchOffColor', theme.borderStrong);
     runtimeTheme.setColor('CheckButton', 'switchKnobColor', theme.textOnAccent);
-    runtimeTheme.setStyleBox('ScrollBar', 'scroll', makeFlat(theme.controlTrack));
+    runtimeTheme.setStyleBox('HScrollBar', 'scroll', makeFlat(theme.controlTrack, undefined, 0, 0, 4));
+    runtimeTheme.setStyleBox('VScrollBar', 'scroll', makeFlat(theme.controlTrack, undefined, 0, 4, 0));
     runtimeTheme.setStyleBox('ScrollBar', 'scrollFocus', makeFlat(theme.controlTrack, theme.accentHover, 1));
-    runtimeTheme.setStyleBox('ScrollBar', 'decrement', makeFlat(theme.panelRaisedBg));
-    runtimeTheme.setStyleBox('ScrollBar', 'decrementHighlight', makeFlat(theme.accentSoft));
-    runtimeTheme.setStyleBox('ScrollBar', 'decrementPressed', makeFlat(theme.accent));
-    runtimeTheme.setStyleBox('ScrollBar', 'increment', makeFlat(theme.panelRaisedBg));
-    runtimeTheme.setStyleBox('ScrollBar', 'incrementHighlight', makeFlat(theme.accentSoft));
-    runtimeTheme.setStyleBox('ScrollBar', 'incrementPressed', makeFlat(theme.accent));
-    runtimeTheme.setStyleBox('ScrollBar', 'grabber', makeFlat(theme.borderStrong));
-    runtimeTheme.setStyleBox('ScrollBar', 'grabberHighlight', makeFlat(theme.accent));
-    runtimeTheme.setStyleBox('ScrollBar', 'grabberPressed', makeFlat(theme.accentHover));
-    runtimeTheme.setColor('ScrollBar', 'arrowColor', theme.textSecondary);
+    runtimeTheme.setStyleBox('ScrollBar', 'grabber', makeFlat(theme.borderStrong, undefined, 0, 4, 4));
+    runtimeTheme.setStyleBox('ScrollBar', 'grabberHighlight', makeFlat(theme.accent, undefined, 0, 4, 4));
+    runtimeTheme.setStyleBox('ScrollBar', 'grabberPressed', makeFlat(theme.accentHover, undefined, 0, 4, 4));
   });
   document.body.style.background = toCss(theme.appBg);
 }

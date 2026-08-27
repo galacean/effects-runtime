@@ -116,46 +116,49 @@ export class ScrollBar extends Range {
   }
 
   override getMinimumSize (): math.Vector2 {
-    const buttonSize = this.getThemeConstant('buttonSize');
-    const main = buttonSize * 2 + this.getThemeConstant('grabberMinimumSize');
-    const thickness = this.getThemeConstant('thickness');
+    const decrementSize = this.getButtonAxisSize(false);
+    const incrementSize = this.getButtonAxisSize(true);
+    const incrementCrossSize = this.getButtonCrossSize(true);
+    const scrollMinimum = this.getThemeStyleBox('scroll').getMinimumSize();
+    const grabberMinimum = this.getGrabberMinimumSize();
 
     return this.orientation === Orientation.Horizontal
-      ? new math.Vector2(main, thickness)
-      : new math.Vector2(thickness, main);
+      ? new math.Vector2(
+        decrementSize + incrementSize + scrollMinimum.x + grabberMinimum,
+        Math.max(incrementCrossSize, scrollMinimum.y) + this.getCrossStartPadding() + this.getCrossEndPadding(),
+      )
+      : new math.Vector2(
+        Math.max(incrementCrossSize, scrollMinimum.x) + this.getCrossStartPadding() + this.getCrossEndPadding(),
+        decrementSize + incrementSize + scrollMinimum.y + grabberMinimum,
+      );
   }
 
   override draw (): void {
     const horizontal = this.orientation === Orientation.Horizontal;
     const axisSize = horizontal ? this.width : this.height;
-    const buttonSize = this.getThemeConstant('buttonSize');
-    const trackLength = Math.max(0, axisSize - buttonSize * 2);
     const decrementState = this.decrementActive
       ? 'Pressed'
       : this.highlight === 'decrement' ? 'Highlight' : '';
     const incrementState = this.incrementActive
       ? 'Pressed'
       : this.highlight === 'increment' ? 'Highlight' : '';
+    const decrementSize = this.getButtonAxisSize(false, decrementState);
+    const incrementSize = this.getButtonAxisSize(true, incrementState);
+    const trackLength = Math.max(0, axisSize - decrementSize - incrementSize);
     const grabber = this.getGrabberRect();
     const grabberStyle = this.dragging
       ? 'grabberPressed'
       : this.highlight === 'track' ? 'grabberHighlight' : 'grabber';
-    const decrementStyle = `decrement${decrementState}`;
-    const incrementStyle = `increment${incrementState}`;
-    const scrollStyle = this.hasFocus() ? 'scrollFocus' : 'scroll';
+    const scrollStyle = this.hasFocus(true) ? 'scrollFocus' : 'scroll';
 
     if (horizontal) {
-      this.drawStyleBox(this.getThemeStyleBox(decrementStyle), 0, 0, buttonSize, this.height);
-      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), buttonSize, 0, trackLength, this.height);
-      this.drawStyleBox(this.getThemeStyleBox(incrementStyle), axisSize - buttonSize, 0, buttonSize, this.height);
-      this.drawArrowIcon(false, decrementState, 0, 0, buttonSize, this.height);
-      this.drawArrowIcon(true, incrementState, axisSize - buttonSize, 0, buttonSize, this.height);
+      this.drawButtonIcon(false, decrementState, 0, 0);
+      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), decrementSize, 0, trackLength, this.height);
+      this.drawButtonIcon(true, incrementState, axisSize - incrementSize, 0);
     } else {
-      this.drawStyleBox(this.getThemeStyleBox(decrementStyle), 0, 0, this.width, buttonSize);
-      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), 0, buttonSize, this.width, trackLength);
-      this.drawStyleBox(this.getThemeStyleBox(incrementStyle), 0, axisSize - buttonSize, this.width, buttonSize);
-      this.drawArrowIcon(false, decrementState, 0, 0, this.width, buttonSize);
-      this.drawArrowIcon(true, incrementState, 0, axisSize - buttonSize, this.width, buttonSize);
+      this.drawButtonIcon(false, decrementState, 0, 0);
+      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), 0, decrementSize, this.width, trackLength);
+      this.drawButtonIcon(true, incrementState, 0, axisSize - incrementSize);
     }
     this.drawStyleBox(this.getThemeStyleBox(grabberStyle), grabber.x, grabber.y, grabber.width, grabber.height);
   }
@@ -198,13 +201,14 @@ export class ScrollBar extends Range {
     const total = this.getAxisSize();
     const grabberOffset = this.getGrabberOffset();
     const grabberSize = this.getGrabberSize();
-    const buttonSize = this.getThemeConstant('buttonSize');
-    const trackPosition = position - buttonSize;
+    const decrementSize = this.getButtonAxisSize(false);
+    const incrementSize = this.getButtonAxisSize(true);
+    const trackPosition = position - decrementSize - this.getTrackStartMargin();
 
-    if (position < buttonSize) {
+    if (position < decrementSize) {
       this.decrementActive = true;
       this.scroll(-this.getIncrement());
-    } else if (position > total - buttonSize) {
+    } else if (position > total - incrementSize) {
       this.incrementActive = true;
       this.scroll(this.getIncrement());
     } else if (trackPosition < grabberOffset) {
@@ -294,11 +298,14 @@ export class ScrollBar extends Range {
   }
 
   private getTrackSize (): number {
-    return Math.max(0, this.getAxisSize() - this.getThemeConstant('buttonSize') * 2);
+    return Math.max(0, this.getAxisSize() - this.getButtonAxisSize(false) - this.getButtonAxisSize(true));
   }
 
   private getAreaSize (): number {
-    return Math.max(0, this.getTrackSize() - this.getThemeConstant('grabberMinimumSize'));
+    const scrollMinimum = this.getThemeStyleBox('scroll').getMinimumSize();
+    const scrollAxisMinimum = this.orientation === Orientation.Horizontal ? scrollMinimum.x : scrollMinimum.y;
+
+    return Math.max(0, this.getTrackSize() - scrollAxisMinimum - this.getGrabberMinimumSize());
   }
 
   private getGrabberSize (): number {
@@ -310,8 +317,14 @@ export class ScrollBar extends Range {
 
     return Math.min(
       this.getTrackSize(),
-      this.getThemeConstant('grabberMinimumSize') + Math.max(0, this.page) / range * this.getAreaSize(),
+      this.getGrabberMinimumSize() + Math.max(0, this.page) / range * this.getAreaSize(),
     );
+  }
+
+  private getGrabberMinimumSize (): number {
+    const minimum = this.getThemeStyleBox('grabber').getMinimumSize();
+
+    return this.orientation === Orientation.Horizontal ? minimum.x : minimum.y;
   }
 
   private getGrabberOffset (): number {
@@ -319,62 +332,80 @@ export class ScrollBar extends Range {
   }
 
   private getGrabberRect (): GrabberRect {
-    const offset = this.getThemeConstant('buttonSize') + this.getGrabberOffset();
+    const offset = this.getButtonAxisSize(false) + this.getTrackStartMargin() + this.getGrabberOffset();
     const size = this.getGrabberSize();
+    const crossStart = this.getCrossStartPadding();
+    const crossSize = Math.max(0, (this.orientation === Orientation.Horizontal ? this.height : this.width)
+      - crossStart - this.getCrossEndPadding());
 
     return this.orientation === Orientation.Horizontal
-      ? { x: offset, y: 0, width: size, height: this.height }
-      : { x: 0, y: offset, width: this.width, height: size };
+      ? { x: offset, y: crossStart, width: size, height: crossSize }
+      : { x: crossStart, y: offset, width: crossSize, height: size };
+  }
+
+  private getTrackStartMargin (): number {
+    const margins = this.getThemeStyleBox('scroll').getContentMargins();
+
+    return this.orientation === Orientation.Horizontal ? margins.left : margins.top;
+  }
+
+  private getCrossStartPadding (): number {
+    return Math.max(0, this.getThemeConstant(
+      this.orientation === Orientation.Horizontal ? 'paddingTop' : 'paddingLeft',
+    ));
+  }
+
+  private getCrossEndPadding (): number {
+    return Math.max(0, this.getThemeConstant(
+      this.orientation === Orientation.Horizontal ? 'paddingBottom' : 'paddingRight',
+    ));
   }
 
   private updateHighlight (position: number): void {
     const total = this.getAxisSize();
-    const buttonSize = this.getThemeConstant('buttonSize');
+    const decrementSize = this.getButtonAxisSize(false);
+    const incrementSize = this.getButtonAxisSize(true);
 
     if (position < 0 || position > total) {
       this.highlight = 'none';
-    } else if (position < buttonSize) {
+    } else if (position < decrementSize) {
       this.highlight = 'decrement';
-    } else if (position > total - buttonSize) {
+    } else if (position > total - incrementSize) {
       this.highlight = 'increment';
     } else {
       this.highlight = 'track';
     }
   }
 
-  private drawArrowIcon (
+  private drawButtonIcon (
     increment: boolean,
     state: '' | 'Highlight' | 'Pressed',
     x: number,
     y: number,
-    width: number,
-    height: number,
   ): void {
-    const prefix = increment ? 'incrementIcon' : 'decrementIcon';
-    const icon = this.getThemeIcon(`${prefix}${state}`);
+    const icon = this.getButtonIcon(increment, state);
 
     if (icon) {
-      this.drawTexture(x, y, width, height, icon);
-
-      return;
+      this.drawTexture(x, y, icon.width, icon.height, icon);
     }
-    if (this.orientation === Orientation.Horizontal) {
-      const baseX = increment ? x + width * 0.35 : x + width * 0.65;
-      const tipX = increment ? x + width * 0.65 : x + width * 0.35;
+  }
 
-      this.fillTriangle(
-        baseX, y + height * 0.25, baseX, y + height * 0.75, tipX, y + height * 0.5,
-        this.getThemeColor('arrowColor'),
-      );
-    } else {
-      const baseY = increment ? y + height * 0.35 : y + height * 0.65;
-      const tipY = increment ? y + height * 0.65 : y + height * 0.35;
+  private getButtonIcon (increment: boolean, state: '' | 'Highlight' | 'Pressed' = '') {
+    const name = increment ? 'increment' : 'decrement';
 
-      this.fillTriangle(
-        x + width * 0.25, baseY, x + width * 0.75, baseY, x + width * 0.5, tipY,
-        this.getThemeColor('arrowColor'),
-      );
-    }
+    return this.getThemeIcon(`${name}${state}`) ?? this.getThemeIcon(name);
+  }
+
+  private getButtonAxisSize (increment: boolean, state: '' | 'Highlight' | 'Pressed' = ''): number {
+    const icon = this.getButtonIcon(increment, state);
+
+    return icon ? this.orientation === Orientation.Horizontal ? icon.width : icon.height : 0;
+  }
+
+  private getButtonCrossSize (increment: boolean): number {
+    const icon = this.getButtonIcon(increment);
+
+    return icon ? this.orientation === Orientation.Horizontal ? icon.height : icon.width : 0;
   }
 
   override fromData (data: ScrollBarData): void {

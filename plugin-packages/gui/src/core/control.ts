@@ -576,8 +576,8 @@ export class Control {
     this.propagateThemeChanged(affectsLayout, false);
   }
 
-  hasFocus (): boolean {
-    return this.root?.guiGetFocusOwner() === this;
+  hasFocus (visibleOnly = false): boolean {
+    return this.root?.guiControlHasFocus(this, visibleOnly) ?? false;
   }
 
   drawStyleBox (styleBox: StyleBox, x: number, y: number, width: number, height: number): void {
@@ -997,12 +997,12 @@ export class Control {
     return this.defaultCursorShape;
   }
 
-  focus (): void {
-    this.root?.grabControlFocus(this);
+  focus (hideFocus = false): void {
+    this.root?.grabControlFocus(this, hideFocus);
   }
 
-  grabFocus (): void {
-    this.focus();
+  grabFocus (hideFocus = false): void {
+    this.focus(hideFocus);
   }
 
   grabClickFocus (): void {
@@ -1830,13 +1830,14 @@ export abstract class RootControl extends Control {
   abstract queueLayout (container: Container): void;
   abstract getMousePosition (): Vector2;
   abstract guiGetFocusOwner (): Control | null;
+  abstract guiControlHasFocus (control: Control, visibleOnly?: boolean): boolean;
   abstract guiIsDragging (): boolean;
   abstract guiGetDragData (): unknown;
   abstract guiIsDragSuccessful (): boolean;
   abstract guiCancelDrag (): void;
   abstract cancelPointerInput (): void;
   abstract cancelPointerPress (control: Control, touchIndex: number): void;
-  abstract grabControlFocus (control: Control): void;
+  abstract grabControlFocus (control: Control, hideFocus?: boolean): void;
   abstract grabControlClickFocus (control: Control): void;
   abstract releaseControlFocus (control?: Control): void;
   abstract warpControlMouse (position: Vector2): void;
