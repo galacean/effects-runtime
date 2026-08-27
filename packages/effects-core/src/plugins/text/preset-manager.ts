@@ -1,13 +1,27 @@
-import type { AdjustableParam, AdjustableParamMeta, BaseLayerKind, DecorativeLayerKind, FancyConfig } from './fancy-text/fancy-types';
+import type { FancyConfig } from './fancy-text/fancy-types';
 import { BUILTIN_FANCY_PRESETS } from './fancy-text/fancy-presets';
 
-/** 当前预设数据格式的版本号 */
-const CURRENT_PRESET_VERSION = 2;
+/** 仅供 demo/editor 根据当前层参数生成控件的临时参数描述，不写入 FancyConfig。 */
+export interface PresetParameterMeta {
+  path: string,
+  label: string,
+  type: 'color' | 'number' | 'angle' | 'select',
+  min?: number,
+  max?: number,
+  step?: number,
+  options?: { label: string, value: unknown }[],
+  group?: string,
+}
+
+export interface PresetParameter extends PresetParameterMeta {
+  value: unknown,
+}
 
 /**
  * 花字预设管理器
  *
- * 提供预设注册、序列化/反序列化、版本迁移、可调参数查询与路径修改等能力。
+ * 提供预设注册、JSON 深拷贝和路径修改等能力。
+ * 参数控件描述由当前配置临时推导，不属于 FancyConfig，也不会参与序列化。
  * 所有静态方法均为纯函数式设计，不依赖上下文状态。
  */
 export class PresetManager {
@@ -82,63 +96,9 @@ export class PresetManager {
     return JSON.parse(JSON.stringify(config));
   }
 
-  /**
-   * 反序列化 JSON 对象为 FancyConfig（带版本迁移）
-   */
+  /** 反序列化 JSON 对象为 FancyConfig，不做版本迁移或额外补字段。 */
   static deserializeConfig (data: Record<string, unknown>): FancyConfig {
-    const config = data as unknown as FancyConfig;
-
-    return PresetManager.migrateConfig(config);
-  }
-
-  // ========== 版本迁移 ==========
-
-  /**
-   * 版本迁移：将任意版本的 FancyConfig 迁移到当前版本
-   * 无 version 字段视为 v1
-   */
-  static migrateConfig (config: FancyConfig): FancyConfig {
-    const result = PresetManager.deepClone(config);
-    const fromVersion = result.version ?? 1;
-
-    if (fromVersion < CURRENT_PRESET_VERSION) {
-      // v1 → v2：为没有 category 字段的层补充 category（按 kind 推导）
-      if (fromVersion < 2) {
-        PresetManager.migrateV1ToV2(result);
-      }
-      // 后续版本升级在此处添加迁移逻辑，例如：
-      // if (fromVersion < 3) { migrateV2ToV3(result); }
-    }
-
-    result.version = CURRENT_PRESET_VERSION;
-
-    return result;
-  }
-
-  /**
-   * v1 → v2 迁移：为缺少 category 字段的层按照 kind 补充默认值
-   * - 基础层（single-stroke / solid-fill / gradient / texture）→ category: 'base'
-   * - 装饰层（shadow / glow）→ category: 'decorative'
-   */
-  private static migrateV1ToV2 (config: FancyConfig): void {
-    const baseKinds: Set<BaseLayerKind> = new Set(['single-stroke', 'solid-fill', 'gradient', 'texture']);
-    const decorativeKinds: Set<DecorativeLayerKind> = new Set(['shadow', 'glow']);
-
-    for (const layer of config.layers) {
-      if (!('category' in layer) || (layer as any).category === undefined) {
-        if (baseKinds.has(layer.kind as BaseLayerKind)) {
-          (layer as any).category = 'base';
-        }
-      }
-      // decorations 内部的装饰层
-      if ('decorations' in layer && Array.isArray((layer as any).decorations)) {
-        for (const dec of (layer as any).decorations) {
-          if ((!('category' in dec) || dec.category === undefined) && decorativeKinds.has(dec.kind as DecorativeLayerKind)) {
-            dec.category = 'decorative';
-          }
-        }
-      }
-    }
+    return PresetManager.deepClone(data as unknown as FancyConfig);
   }
 
   // ========== 调参接口 ==========
@@ -146,19 +106,9 @@ export class PresetManager {
   /**
    * 提取可调参数列表
    *
-   * 如果 FancyConfig 上有 adjustableParams 元信息，则按声明提取；
-   * 否则使用启发式策略自动推断。
+   * 根据当前 layers 临时推断参数，不读取或写入 FancyConfig 的额外字段。
    */
-  static getAdjustableParams (config: FancyConfig): AdjustableParam[] {
-    if (config.adjustableParams?.length) {
-      return config.adjustableParams.map(meta => {
-        const value = PresetManager.getValueByPath(config as unknown as Record<string, unknown>, meta.path);
-
-        return { ...meta, value };
-      });
-    }
-
-    // 启发式策略：自动扫描参数
+  static getAdjustableParams (config: FancyConfig): PresetParameter[] {
     return PresetManager.inferAdjustableParams(config);
   }
 
@@ -215,29 +165,11 @@ export class PresetManager {
   // ========== 内部工具方法 ==========
 
   /**
-   * 按点号路径读取值
-   */
-  private static getValueByPath (obj: Record<string, unknown>, path: string): unknown {
-    const segments = path.split('.');
-    let current: unknown = obj;
-
-    for (const seg of segments) {
-      if (current === undefined || current === null) {
-        return undefined;
-      }
-
-      current = (current as Record<string, unknown>)[seg];
-    }
-
-    return current;
-  }
-
-  /**
    * 启发式推断可调参数
    * 扫描 layers 中的参数，按语义自动推断类型和范围
    */
-  private static inferAdjustableParams (config: FancyConfig): AdjustableParam[] {
-    const params: AdjustableParam[] = [];
+  private static inferAdjustableParams (config: FancyConfig): PresetParameter[] {
+    const params: PresetParameter[] = [];
 
     for (let i = 0; i < config.layers.length; i++) {
       const layer = config.layers[i];
@@ -299,7 +231,7 @@ export class PresetManager {
     value: unknown,
     path: string,
     group: string,
-  ): AdjustableParamMeta | null {
+  ): PresetParameterMeta | null {
     // 颜色属性：名为 color 且为长度≥3的数组
     if (key === 'color' && Array.isArray(value) && value.length >= 3) {
       return { path, label: `${group}颜色`, type: 'color', group };
@@ -307,8 +239,7 @@ export class PresetManager {
 
     // 渐变色数组：名为 colors 且为嵌套数组
     if (key === 'colors' && Array.isArray(value)) {
-      // colors 数组整体不作为单个可调参数
-      // 在 adjustableParams 中应逐色声明（如 layers.0.params.colors.0）
+      // colors 数组整体不作为单个控件。
       return null;
     }
 

@@ -170,9 +170,7 @@ async function setInputValue (page, selector, value) {
 async function readState (page) {
   return page.evaluate(() => ({
     plainText: window.__plainTextDemo?.text,
-    plainPreset: window.__plainTextDemo?.textStyle?.fancyConfig?.presetName,
     plainLayers: window.__plainTextDemo?.textStyle?.fancyRenderStyle?.layers?.map(layer => layer.kind),
-    richPreset: window.__richTextDemo?.textStyle?.fancyConfig?.presetName,
     richConfig: window.__richTextDemo?.textStyle?.fancyConfig,
     richPlan: window.__richTextDemo?.getRenderPlan?.(),
   }));
@@ -245,7 +243,6 @@ async function main () {
       plainVisual[key] = await screenshotCanvas(page, '#J-plain-container canvas', imagePath);
       const offscreen = await screenshotComponentCanvas(page, '__plainTextDemo', path.join(ARTIFACT_DIR, 'plain', `offscreen-${key}.png`));
       const state = await readState(page);
-      assert(state.plainPreset === key, `Plain preset state did not update for ${key}.`);
       if (VISUALLY_REQUIRED.has(key)) {
         assert(offscreen.alphaPixels > 100, `Plain preset ${key} produced no visible text.`);
       }
@@ -292,14 +289,12 @@ async function main () {
     assert((await page.$eval('#text', element => element.value)).startsWith('Range A'), 'Switching back to rich did not restore rich text.');
     await clickPreset(page, 'neon');
     let richState = await readState(page);
-    assert(richState.richPreset === 'neon', 'Rich preset was not applied globally.');
     assert((richState.richConfig.rangeOverrides || []).every(value => value === null), 'Global rich preset did not clear range overrides.');
     const richVisual = {};
     let richNoneImage;
     for (const key of PRESETS) {
       await clickPreset(page, key);
       richState = await readState(page);
-      assert(richState.richPreset === key, `Rich preset state did not update for ${key}.`);
       assert((richState.richConfig.rangeOverrides || []).every(value => value === null), `Rich preset ${key} left a range override behind.`);
       richVisual[key] = await screenshotCanvas(page, '#J-container canvas', path.join(ARTIFACT_DIR, 'rich', `${key}.png`));
       const offscreen = await screenshotComponentCanvas(page, '__richTextDemo', path.join(ARTIFACT_DIR, 'rich', `offscreen-${key}.png`));

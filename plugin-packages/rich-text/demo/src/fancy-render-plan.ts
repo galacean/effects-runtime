@@ -4,8 +4,8 @@ import {
   PresetManager,
   TextComponent,
   spec,
-  type AdjustableParam,
-  type BaseLayerConfig,
+  type PresetParameter,
+  type FancyLayerConfig,
   type Composition,
   type DecorativeLayerConfig,
   type FancyConfig,
@@ -534,9 +534,9 @@ function setGlowField (field: GlowField, value: string | number | boolean): void
   }
 }
 
-function sharedLayersFromStyle (style: SharedStyle): BaseLayerConfig[] {
+function sharedLayersFromStyle (style: SharedStyle): FancyLayerConfig[] {
   const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
-  const layers: BaseLayerConfig[] = [];
+  const layers: FancyLayerConfig[] = [];
 
   if (style.strokeVisible) {
     const decorations: DecorativeLayerConfig[] = [];
@@ -612,7 +612,7 @@ function updatePlainConfigFromStyle (config: FancyConfig, style: SharedStyle): F
   const fillIndex = layers.findIndex(layer => layer.kind === 'solid-fill');
 
   if (style.fillVisible) {
-    const fillLayer: BaseLayerConfig = {
+    const fillLayer: FancyLayerConfig = {
       kind: 'solid-fill',
       category: 'base',
       params: { color: colorToRgba(style.fillColor, style.fillOpacity) },
@@ -638,7 +638,7 @@ function updatePlainConfigFromStyle (config: FancyConfig, style: SharedStyle): F
 
   if (style.strokeVisible) {
     const strokeIndex = strokeIndexes[strokeIndexes.length - 1];
-    const strokeLayer: BaseLayerConfig = {
+    const strokeLayer: FancyLayerConfig = {
       kind: 'single-stroke',
       category: 'base',
       params: { color: colorToRgba(style.strokeColor, style.strokeOpacity), width: style.strokeWidth, unit: 'px' },
@@ -657,7 +657,7 @@ function updatePlainConfigFromStyle (config: FancyConfig, style: SharedStyle): F
   layers = layers.map(layer => ({
     ...layer,
     decorations: layer.decorations?.filter(decoration => decoration.kind !== 'shadow' && decoration.kind !== 'glow'),
-  })) as BaseLayerConfig[];
+  })) as FancyLayerConfig[];
 
   const anchor = layers.find(layer => layer.kind === 'single-stroke') ?? layers.find(layer => layer.kind === 'solid-fill');
 
@@ -687,8 +687,8 @@ function updatePlainConfigFromStyle (config: FancyConfig, style: SharedStyle): F
   return next;
 }
 
-function rangeLayersFromStyle (style: StyleState): BaseLayerConfig[] {
-  const layers: BaseLayerConfig[] = [];
+function rangeLayersFromStyle (style: StyleState): FancyLayerConfig[] {
+  const layers: FancyLayerConfig[] = [];
   const offset = distanceToOffset(style.shadowDistance, style.shadowAngle);
 
   if (style.strokeVisible) {
@@ -721,7 +721,7 @@ function rangeLayersFromStyle (style: StyleState): BaseLayerConfig[] {
 }
 
 function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions']>[0] {
-  const rangeStacks: BaseLayerConfig[][] = [];
+  const rangeStacks: FancyLayerConfig[][] = [];
   const rangeStackIndexByJson = new Map<string, number>();
   const rangeOverrides: Array<null | number> = [];
 
@@ -979,7 +979,7 @@ function updateScopeSummary (): void {
   }
 }
 
-function isObjectPresetParam (config: FancyConfig, param: AdjustableParam): boolean {
+function isObjectPresetParam (config: FancyConfig, param: PresetParameter): boolean {
   const path = param.path.split('.');
   const layerIndex = Number(path[1]);
   const layer = config.layers[layerIndex];
@@ -999,7 +999,7 @@ function isObjectPresetParam (config: FancyConfig, param: AdjustableParam): bool
   return layer.kind === 'gradient' || layer.kind === 'texture';
 }
 
-function renderPresetParameter (param: AdjustableParam): string {
+function renderPresetParameter (param: PresetParameter): string {
   const path = escapeHtml(param.path);
   const label = escapeHtml(param.label);
 
@@ -1032,7 +1032,7 @@ function renderPresetConfigSection (config: FancyConfig, objectOnly: boolean): s
     return `<section class="section"><div class="section-label"><span>${objectOnly ? '全文效果' : '预设参数'}</span><small>${objectOnly ? '当前预设没有可调对象效果' : '当前预设没有可调参数'}</small></div><div class="locked-note">${objectOnly ? 'Fill、Stroke 和 Shadow 仍可在当前片段中单独修改。' : '选择其他预设后可继续调节参数。'}</div></section>`;
   }
 
-  const groups = new Map<string, AdjustableParam[]>();
+  const groups = new Map<string, PresetParameter[]>();
 
   for (const param of params) {
     const group = param.group ?? '参数';

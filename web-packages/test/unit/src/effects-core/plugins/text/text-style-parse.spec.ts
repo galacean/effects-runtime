@@ -278,19 +278,6 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
     });
   });
 
-  describe('presetName', () => {
-    it('should not include presetName in result', () => {
-      const config: FancyConfig = {
-        layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
-        presetName: 'metallic',
-      };
-
-      const result = TextStyle.parseFancyConfig(config);
-
-      expect(result.presetName).to.be.undefined;
-    });
-  });
-
   describe('glow decorations', () => {
     it('should flatten glow decoration before base layer', () => {
       const config: FancyConfig = {
@@ -536,31 +523,4 @@ describe('core/plugins/text/text-style-parseFancyConfig', () => {
     });
   });
 
-  describe('version and adjustableParams fields', () => {
-    it('version field should not affect parseFancyConfig result', () => {
-      const config: FancyConfig = {
-        layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
-        version: 1,
-      };
-
-      const result = TextStyle.parseFancyConfig(config);
-
-      expect(result.layers).to.have.lengthOf(1);
-      expect(result.layers[0].kind).to.eql('solid-fill');
-    });
-
-    it('adjustableParams field should not affect parseFancyConfig result', () => {
-      const config: FancyConfig = {
-        layers: [{ kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } }],
-        adjustableParams: [
-          { path: 'layers.0.params.color', label: '颜色', type: 'color', group: '描边' },
-        ],
-      };
-
-      const result = TextStyle.parseFancyConfig(config);
-
-      expect(result.layers).to.have.lengthOf(1);
-      expect(result.layers[0].kind).to.eql('single-stroke');
-    });
-  });
 });

@@ -54,70 +54,49 @@ export interface TextureLayerConfig {
   decorations?: DecorativeLayerConfig[],
 }
 
-export type BaseLayerConfig =
+/**
+ * 花字内容层配置。
+ *
+ * 这里的“内容层”是公开配置中的单个主绘制层，例如填充、描边、渐变或纹理；
+ * 阴影、发光等装饰效果可以通过该层的 decorations 附着。
+ */
+export type FancyLayerConfig =
   | SingleStrokeLayerConfig
   | SolidFillLayerConfig
   | GradientLayerConfig
   | TextureLayerConfig;
 
 /**
- * A reusable range-scoped stack definition for rich text.
- * The stack is addressed by its position in FancyConfig.rangeStacks.
+ * 富文本可复用的 Range 效果栈。
+ *
+ * 一个 stack 由多个内容层按顺序组成；rangeOverrides 中的正整数按 1 开始
+ * 引用 FancyConfig.rangeStacks 中对应的 stack。
  */
 export interface FancyRangeStack {
-  layers: BaseLayerConfig[],
+  /** 该 Range 使用的内容层列表。 */
+  layers: FancyLayerConfig[],
+  /** 仅用于编辑器或调试展示，运行时引用仍使用位置编号。 */
   name?: string,
 }
 
 /**
- * Rich-text range binding. Positive numbers are 1-based indexes into
- * FancyConfig.rangeStacks; null inherits the default range stack.
+ * 富文本 Range 到效果栈的绑定：
+ * - null：继承 FancyConfig.layers 默认效果栈；
+ * - 正整数：按 1 开始引用 FancyConfig.rangeStacks；
+ * - disable：禁用花字，只保留基础填充。
  */
 export type FancyRangeOverride = null | number | { mode: 'disable' };
 
 // ========== 花字整体配置 ==========
 
 export interface FancyConfig {
-  layers: BaseLayerConfig[],
-  /** Reusable range-scoped stacks. The public JSON uses 1-based references. */
+  /** 默认效果栈，普通文本和未覆盖的 RichText Range 使用它。 */
+  layers: FancyLayerConfig[],
+  /** 可复用的 Range 效果栈表，公开 JSON 使用 1 开始的位置编号引用。 */
   rangeStacks?: FancyRangeStack[],
-  /** One entry per parser source range, in parser output order. */
+  /** 按 Parser 输出顺序，为每个 source range 指定效果栈。 */
   rangeOverrides?: FancyRangeOverride[],
-  presetName?: string,
-  /** 预设版本号，默认 1 */
-  version?: number,
-  /** 可调参数元信息列表 */
-  adjustableParams?: AdjustableParamMeta[],
 }
-
-// ========== 预设调参 ==========
-
-export interface AdjustableParamMeta {
-  /** 点号分隔的属性路径，如 'layers.0.params.color' */
-  path: string,
-  /** UI 显示名称，如 '外描边颜色' */
-  label: string,
-  /** 参数类型，指导 UI 控件选择 */
-  type: 'color' | 'number' | 'angle' | 'select',
-  /** number/angle 类型的最小值 */
-  min?: number,
-  /** number/angle 类型的最大值 */
-  max?: number,
-  /** number/angle 类型的步进 */
-  step?: number,
-  /** select 类型的候选值 */
-  options?: { label: string, value: unknown }[],
-  /** UI 分组，如 '描边'、'填充'、'效果' */
-  group?: string,
-}
-
-export interface AdjustableParam extends AdjustableParamMeta {
-  /** 当前值（从 config 中按 path 读取） */
-  value: unknown,
-}
-
-export type BaseLayerKind = 'single-stroke' | 'solid-fill' | 'gradient' | 'texture';
-export type DecorativeLayerKind = 'shadow' | 'glow';
 
 // ========== 运行时渲染层 ==========
 
@@ -136,7 +115,6 @@ export function isObjectFancyLayer (layer: FancyRenderLayer): boolean {
 
 export interface FancyRenderStyle {
   layers: FancyRenderLayer[],
-  presetName?: string,
 }
 
 /** Runtime-only result of compiling the public FancyConfig for rich text. */

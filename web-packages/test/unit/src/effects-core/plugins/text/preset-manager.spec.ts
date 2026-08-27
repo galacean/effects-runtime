@@ -1,7 +1,6 @@
 import {
   BUILTIN_FANCY_PRESETS,
   PresetManager,
-  TextStyle,
 } from '@galacean/effects-core';
 import type { FancyConfig } from '@galacean/effects-core';
 
@@ -17,7 +16,6 @@ describe('core/plugins/text/preset-manager', () => {
       const presets = PresetManager.getBuiltinPresets();
 
       expect(Object.keys(presets).length).to.be.greaterThan(0);
-      // 验证关键预设存在
       expect(presets).to.have.property('none');
       expect(presets).to.have.property('single-stroke');
       expect(presets).to.have.property('glow');
@@ -27,6 +25,12 @@ describe('core/plugins/text/preset-manager', () => {
       expect(presets).to.have.property('frost');
       expect(presets).to.have.property('flame');
       expect(presets).to.have.property('stereo');
+
+      for (const config of Object.values(presets)) {
+        expect(config).to.not.have.property('presetName');
+        expect(config).to.not.have.property('version');
+        expect(config).to.not.have.property('adjustableParams');
+      }
     });
 
     it('should return deep copies (modifying result does not affect source)', () => {
@@ -46,7 +50,6 @@ describe('core/plugins/text/preset-manager', () => {
       const neon = PresetManager.getPreset('neon');
 
       expect(neon).to.not.be.undefined;
-      expect(neon!.presetName).to.eql('neon');
       expect(neon!.layers.length).to.eql(3);
       // 第一层描边应带 glow 装饰层（而非 shadow offset=0）
       const firstLayer = neon!.layers[0];
@@ -77,7 +80,6 @@ describe('core/plugins/text/preset-manager', () => {
     it('should register and retrieve custom preset', () => {
       const customConfig: FancyConfig = {
         layers: [{ kind: 'solid-fill', params: { color: [1, 0, 0, 1] } }],
-        presetName: 'custom-red',
       };
 
       PresetManager.registerPreset('custom-red', customConfig);
@@ -85,13 +87,12 @@ describe('core/plugins/text/preset-manager', () => {
       const result = PresetManager.getPreset('custom-red');
 
       expect(result).to.not.be.undefined;
-      expect(result!.presetName).to.eql('custom-red');
+      expect(result!.layers[0].kind).to.eql('solid-fill');
     });
 
     it('should unregister custom preset', () => {
       const customConfig: FancyConfig = {
         layers: [{ kind: 'solid-fill', params: { color: [1, 0, 0, 1] } }],
-        presetName: 'custom-red',
       };
 
       PresetManager.registerPreset('custom-red', customConfig);
@@ -105,11 +106,9 @@ describe('core/plugins/text/preset-manager', () => {
     it('should override existing preset with same name', () => {
       PresetManager.registerPreset('test-override', {
         layers: [{ kind: 'solid-fill', params: { color: [1, 0, 0, 1] } }],
-        presetName: 'test-override',
       });
       PresetManager.registerPreset('test-override', {
         layers: [{ kind: 'solid-fill', params: { color: [0, 0, 1, 1] } }],
-        presetName: 'test-override',
       });
 
       const result = PresetManager.getPreset('test-override');
@@ -120,7 +119,6 @@ describe('core/plugins/text/preset-manager', () => {
     it('custom preset should take priority over builtin', () => {
       PresetManager.registerPreset('glow', {
         layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
-        presetName: 'glow',
       });
 
       const result = PresetManager.getPreset('glow');
@@ -130,23 +128,27 @@ describe('core/plugins/text/preset-manager', () => {
   });
 
   describe('serializeConfig / deserializeConfig', () => {
-    it('should roundtrip correctly', () => {
+    it('should roundtrip render data without adding metadata', () => {
       const original: FancyConfig = {
         layers: [{
           kind: 'single-stroke',
           params: { width: 3, color: [1, 0, 0, 1] },
           decorations: [{ kind: 'glow', params: { color: [0, 1, 1, 0.8], blur: 10, intensity: 2 } }],
         }],
-        presetName: 'test',
-        version: 1,
+        rangeStacks: [{
+          layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
+        }],
+        rangeOverrides: [null, 1],
       };
 
       const serialized = PresetManager.serializeConfig(original);
       const deserialized = PresetManager.deserializeConfig(serialized);
 
-      expect(deserialized.layers).to.eql(original.layers);
-      expect(deserialized.presetName).to.eql(original.presetName);
-      expect(deserialized.version).to.eql(original.version);
+      expect(serialized).to.eql(original);
+      expect(deserialized).to.eql(original);
+      expect(serialized).to.not.have.property('presetName');
+      expect(serialized).to.not.have.property('version');
+      expect(serialized).to.not.have.property('adjustableParams');
     });
 
     it('should strip undefined properties during serialization', () => {
@@ -156,62 +158,12 @@ describe('core/plugins/text/preset-manager', () => {
 
       const serialized = PresetManager.serializeConfig(config);
 
-      // undefined 字段在 JSON.stringify 后会消失
-      expect(serialized).to.not.have.property('presetName');
-      expect(serialized).to.not.have.property('version');
-    });
-  });
-
-  describe('migrateConfig', () => {
-    it('should treat no-version config as v1 and add version', () => {
-      const config: FancyConfig = {
-        layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
-      };
-
-      const migrated = PresetManager.migrateConfig(config);
-
-      expect(migrated.version).to.eql(1);
-      expect(migrated.layers).to.eql(config.layers);
-    });
-
-    it('should return deep copy for current version config', () => {
-      const config: FancyConfig = {
-        layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
-        version: 1,
-      };
-
-      const migrated = PresetManager.migrateConfig(config);
-
-      expect(migrated).to.not.equal(config);
-      expect(migrated.layers).to.eql(config.layers);
+      expect(serialized).to.eql({ layers: config.layers });
     });
   });
 
   describe('getAdjustableParams', () => {
-    it('should use adjustableParams metadata when present', () => {
-      const config: FancyConfig = {
-        layers: [
-          { kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } },
-          { kind: 'solid-fill', params: { color: [1, 1, 1, 1] } },
-        ],
-        adjustableParams: [
-          { path: 'layers.0.params.color', label: '描边颜色', type: 'color', group: '描边' },
-          { path: 'layers.0.params.width', label: '描边宽度', type: 'number', min: 1, max: 20, step: 0.5, group: '描边' },
-        ],
-      };
-
-      const params = PresetManager.getAdjustableParams(config);
-
-      expect(params.length).to.eql(2);
-      expect(params[0].path).to.eql('layers.0.params.color');
-      expect(params[0].type).to.eql('color');
-      expect(params[0].value).to.eql([1, 0, 0, 1]);
-      expect(params[1].path).to.eql('layers.0.params.width');
-      expect(params[1].type).to.eql('number');
-      expect(params[1].value).to.eql(3);
-    });
-
-    it('should infer adjustable params when no adjustableParams present', () => {
+    it('should infer parameters from the render layers', () => {
       const config: FancyConfig = {
         layers: [
           {
@@ -225,30 +177,11 @@ describe('core/plugins/text/preset-manager', () => {
 
       const params = PresetManager.getAdjustableParams(config);
 
-      // 应该推断出描边颜色、宽度、glow颜色/模糊/强度、填充颜色
+      // 这是基于当前 layers 的临时 demo/editor 推导结果，不是 FancyConfig 字段。
       expect(params.length).to.be.greaterThan(0);
-      const colorParams = params.filter(p => p.type === 'color');
-
-      expect(colorParams.length).to.be.greaterThan(0);
-
-      const glowParams = params.filter(p => p.group === '发光');
-
-      expect(glowParams.length).to.be.greaterThan(0);
-    });
-
-    it('should return correct path and value for each param', () => {
-      const config: FancyConfig = {
-        layers: [
-          { kind: 'single-stroke', params: { width: 3, color: [1, 0, 0, 1] } },
-        ],
-        adjustableParams: [
-          { path: 'layers.0.params.width', label: '宽度', type: 'number', group: '描边' },
-        ],
-      };
-
-      const params = PresetManager.getAdjustableParams(config);
-
-      expect(params[0].value).to.eql(3);
+      expect(params.filter(p => p.type === 'color').length).to.be.greaterThan(0);
+      expect(params.filter(p => p.group === '发光').length).to.be.greaterThan(0);
+      expect(params.find(p => p.path === 'layers.0.params.width')?.value).to.eql(5);
     });
   });
 
@@ -291,7 +224,6 @@ describe('core/plugins/text/preset-manager', () => {
       const newConfig = PresetManager.updateParamByPath(config, 'layers.0.decorations.0.params.blur', 20);
 
       expect((newConfig.layers[0].decorations![0].params as Record<string, unknown>).blur).to.eql(20);
-      // 原始不变
       expect((config.layers[0].decorations![0].params as Record<string, unknown>).blur).to.eql(10);
     });
 
@@ -316,19 +248,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       const result = PresetManager.updateParamByPath(config, 'layers.5.params.color', [0, 0, 0, 1]);
 
-      // 应返回原 config 的深拷贝（layers 不变）
       expect(result.layers).to.eql(config.layers);
-    });
-
-    it('should update presetName top-level property', () => {
-      const config: FancyConfig = {
-        layers: [{ kind: 'solid-fill', params: { color: [1, 1, 1, 1] } }],
-        presetName: 'original',
-      };
-
-      const newConfig = PresetManager.updateParamByPath(config, 'presetName', 'updated');
-
-      expect(newConfig.presetName).to.eql('updated');
     });
   });
 });
