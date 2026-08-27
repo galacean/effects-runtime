@@ -1,9 +1,4 @@
-import {
-  isObjectFancyLayer,
-  type FancyRenderLayer,
-  type LayerCategory,
-  type TexturePatternConfig,
-} from './fancy-types';
+import type { FancyRenderLayer, LayerCategory, TexturePatternConfig } from './fancy-types';
 
 /** Backend-neutral texture layer. Runtime CanvasPattern stays in the adapter. */
 export interface TextTextureLayer {
@@ -35,6 +30,61 @@ export interface TextEffectLayerPlan {
   resourceId?: string,
 }
 
+/**
+ * 花字层的执行能力。
+ *
+ * 这张表是效果 kind 到执行语义的唯一来源；普通文本、RichText 和后端
+ * 不需要各自维护一份 Object/Range 判断。
+ */
+export interface FancyLayerCapability {
+  source: TextEffectSource,
+  composite: TextEffectComposite,
+  isolation: TextEffectIsolation,
+}
+
+export const FANCY_LAYER_CAPABILITIES = {
+  shadow: {
+    source: 'fill-and-stroke-mask',
+    composite: 'behind-content',
+    isolation: 'range',
+  },
+  glow: {
+    source: 'object-fill-mask',
+    composite: 'behind-content',
+    isolation: 'object',
+  },
+  'single-stroke': {
+    source: 'glyph',
+    composite: 'content',
+    isolation: 'range',
+  },
+  'solid-fill': {
+    source: 'glyph',
+    composite: 'content',
+    isolation: 'range',
+  },
+  gradient: {
+    source: 'glyph',
+    composite: 'content',
+    isolation: 'object',
+  },
+  texture: {
+    source: 'glyph',
+    composite: 'content',
+    isolation: 'object',
+  },
+} satisfies Record<FancyRenderLayer['kind'], FancyLayerCapability>;
+
+/** 根据能力表读取一个花字层的执行语义。 */
+export function getFancyLayerCapability (layer: FancyRenderLayer): FancyLayerCapability {
+  return FANCY_LAYER_CAPABILITIES[layer.kind];
+}
+
+/** 根据能力表判断当前层是否按 Object 作用域执行。 */
+export function isObjectFancyLayer (layer: FancyRenderLayer): boolean {
+  return getFancyLayerCapability(layer).isolation === 'object';
+}
+
 export interface TextEffectPlan {
   defaultRangeLayers: TextEffectLayerPlan[],
   rangeLayersBySourceId: Record<string, TextEffectLayerPlan[]>,
@@ -49,23 +99,6 @@ export function getTextTextureResourceId (layer: FancyRenderLayer | TextEffectLa
   const pattern = layer.params.pattern;
 
   return `${pattern.imageUrl}|${pattern.repeat ?? 'repeat'}`;
-}
-
-function resolveEffectSemantics (
-  layer: FancyRenderLayer,
-): Pick<TextEffectLayerPlan, 'source' | 'composite' | 'isolation'> {
-  switch (layer.kind) {
-    case 'shadow':
-      return { source: 'fill-and-stroke-mask', composite: 'behind-content', isolation: 'range' };
-    case 'glow':
-      return { source: 'object-fill-mask', composite: 'behind-content', isolation: 'object' };
-    default:
-      return {
-        source: 'glyph',
-        composite: 'content',
-        isolation: isObjectFancyLayer(layer) ? 'object' : 'range',
-      };
-  }
 }
 
 function normalizeLayer (layer: FancyRenderLayer): TextEffectLayer {
@@ -87,7 +120,7 @@ export function compileTextEffectLayers (
     const plan: TextEffectLayerPlan = {
       layerId: `${layerIdPrefix}-${order}`,
       order,
-      ...resolveEffectSemantics(layer),
+      ...getFancyLayerCapability(layer),
       layer: normalizeLayer(layer),
       resourceId: getTextTextureResourceId(layer),
     };

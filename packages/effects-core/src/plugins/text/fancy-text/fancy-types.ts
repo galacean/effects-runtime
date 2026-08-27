@@ -108,11 +108,6 @@ export type FancyRenderLayer =
   | { kind: 'gradient', category?: LayerCategory, params: { angle: number, colors: spec.vec4[] } }
   | { kind: 'texture', category?: LayerCategory, params: { pattern: TexturePatternConfig, opacity?: number }, runtimePattern?: CanvasPattern | null };
 
-/** V1 object-scope effect registry used by normalizers and render plans. */
-export function isObjectFancyLayer (layer: FancyRenderLayer): boolean {
-  return layer.kind === 'glow' || layer.kind === 'gradient' || layer.kind === 'texture';
-}
-
 export interface FancyRenderStyle {
   layers: FancyRenderLayer[],
 }

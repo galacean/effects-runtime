@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { isObjectFancyLayer } from './fancy-text/fancy-types';
+import { isObjectFancyLayer } from './fancy-text/text-effect-plan';
 import type {
   FancyConfig,
   FancyRangeOverride,

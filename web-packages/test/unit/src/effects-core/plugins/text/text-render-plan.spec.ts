@@ -6,6 +6,9 @@ import {
   TextStyle,
   createTextFont,
   compileTextEffectPlan,
+  FANCY_LAYER_CAPABILITIES,
+  getFancyLayerCapability,
+  isObjectFancyLayer,
   spec,
 } from '@galacean/effects-core';
 import type { TextLineInput } from '@galacean/effects-core';
@@ -40,6 +43,26 @@ describe('core/plugins/text/text-render-plan', () => {
     { y: 20, width: 0, chars: [], charOffsetX: [] },
     { y: 50, width: 24, chars: ['A', 'B'], charOffsetX: [0, 12] },
   ];
+
+  it('uses one capability table for layer semantics and object classification', () => {
+    const expectedScopes = {
+      shadow: 'range',
+      glow: 'object',
+      'single-stroke': 'range',
+      'solid-fill': 'range',
+      gradient: 'object',
+      texture: 'object',
+    } as const;
+
+    expect(Object.keys(FANCY_LAYER_CAPABILITIES).sort()).to.eql(Object.keys(expectedScopes).sort());
+
+    for (const [kind, isolation] of Object.entries(expectedScopes)) {
+      const layer = { kind } as FancyRenderLayer;
+
+      expect(getFancyLayerCapability(layer).isolation).to.eql(isolation);
+      expect(isObjectFancyLayer(layer)).to.eql(isolation === 'object');
+    }
+  });
 
   it('builds a one-range plan and preserves empty layout lines', () => {
     const plan = buildTextRenderPlanFromCharInfo(charsInfo, {
