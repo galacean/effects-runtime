@@ -17,12 +17,20 @@ import {
   MouseBehaviorRecursive,
   MouseFilter,
 } from '../input';
-import type { EventEmitterListener, EventEmitterOptions } from '../events';
+import type { EventEmitterListener } from '../events';
 import { EventEmitter } from '../events';
-import type { FontStyle, FontWeight, TextureRegion } from '../render';
+import type {
+  FontStyle,
+  FontWeight,
+  NinePatchDrawOptions,
+  TextMeasurement,
+  TextureRegion,
+} from '../render';
 import type { Texture } from '../texture';
 import type { UIControl } from '../components/ui-control';
 import type { VFXItem } from '../vfx-item';
+import { effectsClass } from '../decorators';
+import type { ControlData } from './data';
 
 export type Rect = {
   position: Vector2,
@@ -63,6 +71,11 @@ export type ControlEvent = {
   maximumSizeChanged: [control: Control],
   sizeFlagsChanged: [control: Control],
   visibilityChanged: [control: Control],
+  enabledChanged: [control: Control],
+};
+
+export type RootControlEvent = ControlEvent & {
+  guiFocusChanged: [control: Control | null],
 };
 
 function normalizeMeasuredMinimum (value: Vector2): Vector2 {
@@ -119,6 +132,7 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  * A drawable GUI object. Controls form a tree independent from the VFXItem
  * scene tree. UIControl is the bridge between both trees.
  */
+@effectsClass('Control')
 export class Control {
   readonly engine: Engine;
   /** Scene-tree bridge that owns this GUI object, if any. */
@@ -186,6 +200,9 @@ export class Control {
     if (nextRoot && previousRoot !== nextRoot) {
       this.queuePendingLayouts();
     }
+    if (previousRoot !== nextRoot) {
+      this.notifyRootChanged(previousRoot, nextRoot);
+    }
     nextRoot?.controlTreeChanged();
     this.eventEmitter.emit('parentChanged', this);
   }
@@ -227,6 +244,7 @@ export class Control {
     if (this._enabled !== value) {
       this._enabled = value;
       this.root?.controlStateChanged(this);
+      this.eventEmitter.emit('enabledChanged', this);
     }
   }
 
@@ -399,9 +417,8 @@ export class Control {
   on<E extends keyof ControlEvent> (
     eventName: E,
     listener: EventEmitterListener<ControlEvent[E]>,
-    options?: EventEmitterOptions,
   ): void {
-    this.eventEmitter.on(eventName, listener, options);
+    this.eventEmitter.on(eventName, listener);
   }
 
   off<E extends keyof ControlEvent> (
@@ -793,6 +810,11 @@ export class Control {
     return point.x >= 0 && point.y >= 0 && point.x <= this.size.x && point.y <= this.size.y;
   }
 
+  /** Whether input at a position in this Control's space may reach a direct child. */
+  intersectsChildContent (child: Control, position: Vector2): boolean {
+    return true;
+  }
+
   getEffectiveMouseFilter (): MouseFilter {
     return this.enabledInHierarchy && this.isMouseRecursiveEnabled() ? this.mouseFilter : MouseFilter.Ignore;
   }
@@ -866,7 +888,6 @@ export class Control {
 
   onDestroy (): void {}
 
-  /** @internal */
   drawInternal (): void {
     if (!this.visibleInHierarchy || this.disposed) {
       return;
@@ -931,11 +952,25 @@ export class Control {
     this.engine.graphics.drawTexture(x, y, width, height, texture, region, color);
   }
 
+  drawNinePatch (
+    x: number, y: number, width: number, height: number,
+    texture: Texture, options: NinePatchDrawOptions, color?: Color,
+  ): void {
+    this.engine.graphics.drawNinePatch(x, y, width, height, texture, options, color);
+  }
+
   drawText (
     x: number, y: number, text: string, fontSize: number, color?: Color,
     fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
   ): void {
     this.engine.graphics.drawText(x, y, text, fontSize, color, fontFamily, fontWeight, fontStyle);
+  }
+
+  measureText (
+    text: string, fontSize: number,
+    fontFamily?: string, fontWeight?: FontWeight, fontStyle?: FontStyle,
+  ): TextMeasurement {
+    return this.engine.graphics.measureText(text, fontSize, fontFamily, fontWeight, fontStyle);
   }
 
   onMouseEnter (location: Vector2): void {}
@@ -951,6 +986,8 @@ export class Control {
   onKeyUp (event: InputEventKey): void {}
   onGotFocus (): void {}
   onLostFocus (): void {}
+  onScrollBegin (): void {}
+  onScrollEnd (): void {}
 
   /** @internal */
   invokeGetDragData (position: Vector2): unknown {
@@ -997,15 +1034,20 @@ export class Control {
   }
 
   protected drawChildren (): void {
+    const graphics = this.engine.graphics;
+
     if (this.clipContents) {
-      // Graphics has no public rectangular clip stack yet. Keep the tree
-      // boundary here so the renderer can add it without changing ownership.
+      graphics.pushClipRect(0, 0, this.width, this.height);
     }
     for (const child of this.children) {
       child.drawInternal();
     }
+    if (this.clipContents) {
+      graphics.popClipRect();
+    }
   }
 
+  protected onRootChanged (previousRoot: RootControl | null, nextRoot: RootControl | null): void {}
   protected getDragData (position: Vector2): unknown { return null; }
   protected canDropData (position: Vector2, data: unknown): boolean { return false; }
   protected dropData (position: Vector2, data: unknown): void {}
@@ -1092,6 +1134,13 @@ export class Control {
     }
   }
 
+  private notifyRootChanged (previousRoot: RootControl | null, nextRoot: RootControl | null): void {
+    this.onRootChanged(previousRoot, nextRoot);
+    for (const child of this.children) {
+      child.notifyRootChanged(previousRoot, nextRoot);
+    }
+  }
+
   private getParentRect (): Rect {
     return {
       position: new Vector2(),
@@ -1136,12 +1185,82 @@ export class Control {
 
     return this.focusBehaviorRecursive === FocusBehaviorRecursive.Enabled;
   }
+
+  fromData (data: ControlData): void {
+    if (data.anchorMin !== undefined) {
+      this.setAnchorMin(...data.anchorMin);
+    }
+    if (data.anchorMax !== undefined) {
+      this.setAnchorMax(...data.anchorMax);
+    }
+    if (data.offsetMin !== undefined) {
+      this.setOffsetMin(...data.offsetMin);
+    }
+    if (data.offsetMax !== undefined) {
+      this.setOffsetMax(...data.offsetMax);
+    }
+    if (data.pivot !== undefined) {
+      this.setPivot(...data.pivot);
+    }
+    if (data.scale !== undefined) {
+      this.setScale(...data.scale);
+    }
+    if (data.shear !== undefined) {
+      this.setShear(...data.shear);
+    }
+    if (data.rotation !== undefined) {
+      this.setRotation(data.rotation);
+    }
+    if (data.customMinimumSize !== undefined) {
+      this.setCustomMinimumSize(...data.customMinimumSize);
+    }
+    if (data.customMaximumSize !== undefined) {
+      this.setCustomMaximumSize(...data.customMaximumSize);
+    }
+    if (data.horizontalSizeFlags !== undefined || data.verticalSizeFlags !== undefined) {
+      this.setSizeFlags(
+        data.horizontalSizeFlags ?? this.horizontalSizeFlags,
+        data.verticalSizeFlags ?? this.verticalSizeFlags,
+      );
+    }
+    if (data.stretchRatio !== undefined) {
+      this.stretchRatio = data.stretchRatio;
+    }
+    if (data.horizontalGrowDirection !== undefined) {
+      this.horizontalGrowDirection = data.horizontalGrowDirection;
+    }
+    if (data.verticalGrowDirection !== undefined) {
+      this.verticalGrowDirection = data.verticalGrowDirection;
+    }
+    if (data.mouseFilter !== undefined) {
+      this.mouseFilter = data.mouseFilter;
+    }
+    if (data.mouseBehaviorRecursive !== undefined) {
+      this.mouseBehaviorRecursive = data.mouseBehaviorRecursive;
+    }
+    if (data.mouseForcePassScrollEvents !== undefined) {
+      this.mouseForcePassScrollEvents = data.mouseForcePassScrollEvents;
+    }
+    if (data.focusMode !== undefined) {
+      this.focusMode = data.focusMode;
+    }
+    if (data.focusBehaviorRecursive !== undefined) {
+      this.focusBehaviorRecursive = data.focusBehaviorRecursive;
+    }
+    if (data.defaultCursorShape !== undefined) {
+      this.defaultCursorShape = data.defaultCursorShape;
+    }
+    if (data.clipContents !== undefined) {
+      this.clipContents = data.clipContents;
+    }
+  }
 }
 
 /**
  * A Control that automatically measures and arranges its child Controls.
  * Concrete layout algorithms live in GUI plugin packages.
  */
+@effectsClass('Container')
 export class Container extends Control {
   private sortPending = false;
   private readonly childLayoutChanged = () => this.invalidateMeasurementsAndQueueSort();
@@ -1304,6 +1423,30 @@ export class Container extends Control {
 
 /** Base class for GUI tree roots and input dispatchers. */
 export abstract class RootControl extends Control {
+  protected readonly rootEventEmitter = new EventEmitter<RootControlEvent>();
+
+  override on<E extends keyof RootControlEvent> (
+    eventName: E,
+    listener: EventEmitterListener<RootControlEvent[E]>,
+  ): void {
+    if (eventName === 'guiFocusChanged') {
+      this.rootEventEmitter.on(eventName, listener);
+    } else {
+      super.on(eventName, listener as never);
+    }
+  }
+
+  override off<E extends keyof RootControlEvent> (
+    eventName: E,
+    listener: EventEmitterListener<RootControlEvent[E]>,
+  ): void {
+    if (eventName === 'guiFocusChanged') {
+      this.rootEventEmitter.off(eventName, listener);
+    } else {
+      super.off(eventName, listener as never);
+    }
+  }
+
   abstract queueLayout (container: Container): void;
   abstract getMousePosition (): Vector2;
   abstract guiGetFocusOwner (): Control | null;
@@ -1311,6 +1454,8 @@ export abstract class RootControl extends Control {
   abstract guiGetDragData (): unknown;
   abstract guiIsDragSuccessful (): boolean;
   abstract guiCancelDrag (): void;
+  abstract cancelPointerInput (): void;
+  abstract cancelPointerPress (control: Control, touchIndex: number): void;
   abstract grabControlFocus (control: Control): void;
   abstract grabControlClickFocus (control: Control): void;
   abstract releaseControlFocus (control?: Control): void;

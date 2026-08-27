@@ -1,5 +1,6 @@
-import { Container, SizeFlags, math } from '@galacean/effects';
+import { Container, SizeFlags, effectsClass, math } from '@galacean/effects';
 import type { Control } from '@galacean/effects';
+import type { GridContainerData } from '../data';
 import { assertFinite, growSlots, sum } from './utils';
 
 type TrackMetrics = {
@@ -10,6 +11,7 @@ type TrackMetrics = {
 };
 
 /** Places visible children in LTR row-major cells without spanning. */
+@effectsClass('GridContainer')
 export class GridContainer extends Container {
   private _columns = 1;
   private _horizontalSeparation = 0;
@@ -183,5 +185,18 @@ export class GridContainer extends Container {
     this.updateMinimumSize();
     this.updateDesiredSize();
     this.queueSort();
+  }
+
+  override fromData (data: GridContainerData): void {
+    super.fromData(data);
+    if (data.columns !== undefined) {
+      this.columns = data.columns;
+    }
+    if (data.horizontalSeparation !== undefined) {
+      this.horizontalSeparation = data.horizontalSeparation;
+    }
+    if (data.verticalSeparation !== undefined) {
+      this.verticalSeparation = data.verticalSeparation;
+    }
   }
 }

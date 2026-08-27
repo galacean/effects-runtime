@@ -70,7 +70,7 @@ export class GlyphAtlas {
   /** cell 高（逻辑像素，含 padding），用于 quad 高度 */
   readonly lineHeight: number;
 
-  /** 字形 canvas 的像素密度，与 Pixi 的纹理 resolution 语义一致。 */
+  /** 字形 canvas 的像素密度。 */
   readonly resolution: number;
 
   private readonly ctx: CanvasRenderingContext2D;
@@ -232,7 +232,7 @@ export class GlyphAtlas {
  * `ATLAS_SIZE × ATLAS_SIZE` 的离屏 canvas atlas，字符按需逐个绘制并打包，
  * `Graphics.drawText` 通过逐字 quad 引用 atlas 子矩形渲染。
  *
- * - 同一段文本不同颜色不会重复 upload（颜色由顶点 `vColor` 乘上字形 alpha）
+ * - 同一段文本不同颜色不会重复 upload（颜色由顶点 `vColor` 与字形 RGBA 相乘）
  * - 同一字体/字号下重复字符只渲染一次，显著减少 canvas → texture 上传次数
  *
  * 入参全部展开（避免调用方每帧创建临时 style 对象触发 GC）
@@ -255,7 +255,7 @@ export class TextCache {
     fontWeight: FontWeight,
     fontStyle: FontStyle,
   ): GlyphAtlas {
-    // Pixi CanvasText 默认跟随 renderer.resolution；这里对应 Engine.pixelRatio。
+    // 字形 atlas 跟随 Engine.pixelRatio。
     const resolution = this.engine.pixelRatio;
 
     if (resolution !== this.resolution) {
@@ -281,15 +281,12 @@ export class TextCache {
     let ascentPx = fontSize * 0.8 * resolution;
     let descentPx = fontSize * 0.2 * resolution;
 
-    try {
-      probeCtx.font = scaledFontString;
-      const m = probeCtx.measureText(METRICS_STRING + BASELINE_SYMBOL);
+    probeCtx.font = scaledFontString;
+    const m = probeCtx.measureText(METRICS_STRING + BASELINE_SYMBOL);
 
-      ascentPx = m.actualBoundingBoxAscent || ascentPx;
-      descentPx = m.actualBoundingBoxDescent || descentPx;
-    } finally {
-      canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
-    }
+    ascentPx = m.actualBoundingBoxAscent || ascentPx;
+    descentPx = m.actualBoundingBoxDescent || descentPx;
+    canvasPool.releaseCanvasAndContext(probeCanvasAndContext);
 
     const atlas = new GlyphAtlas(this.engine, scaledFontString, ascentPx, descentPx, fontStyle, resolution);
 

@@ -198,13 +198,13 @@ export class EventSystem implements Disposable {
     if (event.deltaY !== 0) {
       handled = this.pushWheelButton(
         event.deltaY < 0 ? MouseButton.WheelUp : MouseButton.WheelDown,
-        Math.abs(event.deltaY), position, event,
+        normalizeWheelFactor(event.deltaY, event.deltaMode), position, event,
       ) || handled;
     }
     if (event.deltaX !== 0) {
       handled = this.pushWheelButton(
         event.deltaX < 0 ? MouseButton.WheelLeft : MouseButton.WheelRight,
-        Math.abs(event.deltaX), position, event,
+        normalizeWheelFactor(event.deltaX, event.deltaMode), position, event,
       ) || handled;
     }
     this.consumeNativeEvent(event, handled);
@@ -906,4 +906,17 @@ function getMouseButtonBit (button: MouseButton): MouseButtonMask {
     default:
       return MouseButtonMask.None;
   }
+}
+
+function normalizeWheelFactor (delta: number, mode: number): number {
+  const magnitude = Math.abs(delta);
+
+  if (mode === 1) {
+    return magnitude / 3;
+  }
+  if (mode === 2) {
+    return magnitude;
+  }
+
+  return magnitude / 100;
 }

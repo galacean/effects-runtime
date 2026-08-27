@@ -1,7 +1,9 @@
-import { Container, math } from '@galacean/effects';
+import { Container, effectsClass, math } from '@galacean/effects';
+import type { MarginContainerData } from '../data';
 import { assertFinite } from './utils';
 
 /** Adds four independent margins around every visible child. */
+@effectsClass('MarginContainer')
 export class MarginContainer extends Container {
   private _marginLeft = 0;
   private _marginTop = 0;
@@ -75,5 +77,18 @@ export class MarginContainer extends Container {
       width + this.marginLeft + this.marginRight,
       height + this.marginTop + this.marginBottom,
     );
+  }
+
+  override fromData (data: MarginContainerData): void {
+    super.fromData(data);
+    if (data.marginLeft !== undefined || data.marginTop !== undefined
+      || data.marginRight !== undefined || data.marginBottom !== undefined) {
+      this.setMargins(
+        data.marginLeft ?? this.marginLeft,
+        data.marginTop ?? this.marginTop,
+        data.marginRight ?? this.marginRight,
+        data.marginBottom ?? this.marginBottom,
+      );
+    }
   }
 }
