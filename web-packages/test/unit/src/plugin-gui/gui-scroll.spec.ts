@@ -121,7 +121,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     expect(vertical.getMinimumSize()).deep.equals(new math.Vector2(8, 8));
   });
 
-  it('matches the Godot default ScrollBar theme without visible end buttons', () => {
+  it('uses the default ScrollBar theme without visible end buttons', () => {
     const vertical = new VScrollBar(player.engine);
     let iconDraws = 0;
 

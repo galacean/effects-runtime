@@ -213,7 +213,7 @@ describe('plugin-gui/GUI basic controls', () => {
     expect(button.isPressing()).equals(false);
   });
 
-  it('matches Godot Button draw modes while pressing toggle and regular buttons', () => {
+  it('selects Button draw modes while pressing toggle and regular buttons', () => {
     const regular = new BaseButton(player.engine);
 
     regular.setSize(100, 30);
@@ -272,7 +272,7 @@ describe('plugin-gui/GUI basic controls', () => {
     expect(new Button(player.engine, 'Text').getMinimumSize().x).greaterThan(0);
   });
 
-  it('matches Godot Button minimum sizing for clipped text and expanded icons', () => {
+  it('calculates Button minimum sizing for clipped text and expanded icons', () => {
     const button = new Button(player.engine, 'Long label');
     const theme = new Theme();
     const normal = new StyleBoxEmpty();
@@ -351,7 +351,7 @@ describe('plugin-gui/GUI basic controls', () => {
     expect(progress.step).equals(0.01);
   });
 
-  it('uses the ProgressBar fill StyleBox minimum size like Godot', () => {
+  it('uses the ProgressBar fill StyleBox minimum size', () => {
     const progress = new ProgressBar(player.engine);
     const theme = new Theme();
     const background = new StyleBoxEmpty();

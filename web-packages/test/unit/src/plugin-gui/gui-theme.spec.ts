@@ -308,7 +308,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(box.getCombinedMinimumSize().x).equals(27);
   });
 
-  it('selects Godot Button state StyleBoxes and draws focus before content', () => {
+  it('selects Button state StyleBoxes and draws focus before content', () => {
     const button = new Button(player.engine, 'state');
     const theme = new Theme();
     const styles = new Map<string, StyleBox>();
