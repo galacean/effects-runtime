@@ -53,13 +53,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   textLayout: RichTextLayout;
 
   processedTextOptions: RichTextOptions[] = [];
-  /** @deprecated Use for legacy mode*/
+  /** @deprecated 仅用于旧版模式。 */
   private singleLineHeight: number = 1.571;
-  /** @deprecated Use for legacy mode*/
+  /** @deprecated 仅用于旧版模式。 */
   private size: math.Vector2 | null = null;
-  /** @deprecated Use for legacy mode*/
+  /** @deprecated 仅用于旧版模式。 */
   private initialized: boolean = false;
-  /** @deprecated Use for legacy mode*/
+  /** @deprecated 仅用于旧版模式。 */
   private canvasSize: math.Vector2 | null = null;
 
   private richWrapStrategy: RichWrapStrategy;
@@ -74,9 +74,9 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   private lastRenderPlan?: TextRenderPlan;
   private rangeFancyLayers: RichTextRangeFancyLayers = {};
   private fancyResolution?: FancyScopeResolution;
-  /** Runtime-only padding budget for interactive/animated fancy parameters. */
+  /** 交互或动画调节花字参数时使用的运行时 padding 预算。 */
   private fancyRenderPadding: Partial<TextEffectPadding> = {};
-  /** Keeps the render surface stable while interactive fancy parameters change. */
+  /** 交互调节花字参数时，保持渲染表面尺寸稳定。 */
   private stableEffectPadding?: TextEffectPadding;
 
   constructor (engine: Engine) {
@@ -105,10 +105,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   }
 
   /**
-   * Returns the most recent plan produced by the strategy renderer.
+   * 返回策略渲染器最近一次生成的渲染计划。
    *
-   * This is intentionally read-only at the component boundary and is mainly
-   * useful for diagnostics and demo tooling; the Canvas backend owns execution.
+   * 组件边界只提供只读访问，主要用于诊断和 Demo 工具；
+   * 实际执行由 Canvas 后端负责。
    */
   getRenderPlan (): TextRenderPlan | undefined {
     return this.lastRenderPlan;
@@ -355,9 +355,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
           // fix bug 1/255
           context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
           const [r, g, b, a] = fontColor;
-          // TextStyle normalizes base colors to 0..1, while legacy rich-text
-          // data may still carry 0..255 range colors. Keep both forms visible
-          // in the legacy Canvas path.
+          // TextStyle 会把基础颜色归一化到 0..1，但旧版富文本数据可能仍使用
+          // 0..255 的颜色范围；旧版 Canvas 路径需要同时兼容这两种格式。
           const colorScale = [r, g, b].some(channel => channel > 1) ? 1 : 255;
 
           context.fillStyle = `rgba(${r * colorScale}, ${g * colorScale}, ${b * colorScale}, ${a})`;
@@ -548,8 +547,8 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     const hasBudget = Object.keys(this.fancyRenderPadding).length > 0;
 
     if (!hasBudget) {
-      // Keep the legacy/non-interactive path exact: without an explicit budget
-      // there is no reason to retain a previous larger surface forever.
+      // 保持旧版和非交互路径的结果不变：没有显式预算时，不需要永久保留
+      // 之前更大的渲染表面。
       this.stableEffectPadding = undefined;
 
       return requested;
