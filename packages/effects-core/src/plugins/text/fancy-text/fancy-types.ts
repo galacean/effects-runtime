@@ -112,7 +112,7 @@ export interface FancyRenderStyle {
   layers: FancyRenderLayer[],
 }
 
-/** Runtime-only result of compiling the public FancyConfig for rich text. */
+/** 将公开 FancyConfig 编译成 RichText 所需的运行时结果。 */
 export interface FancyScopeResolution {
   defaultRangeLayers: FancyRenderLayer[],
   rangeStackLayers: FancyRenderLayer[][],

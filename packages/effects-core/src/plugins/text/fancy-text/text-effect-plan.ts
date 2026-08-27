@@ -1,6 +1,6 @@
 import type { FancyRenderLayer, LayerCategory, TexturePatternConfig } from './fancy-types';
 
-/** Backend-neutral texture layer. Runtime CanvasPattern stays in the adapter. */
+/** 后端无关的纹理层；运行时的 CanvasPattern 只保留在 Canvas 适配层。 */
 export interface TextTextureLayer {
   kind: 'texture',
   category?: LayerCategory,
@@ -12,21 +12,21 @@ export type TextEffectLayer =
   | TextTextureLayer;
 
 export type TextEffectSource = 'glyph' | 'fill-and-stroke-mask' | 'object-fill-mask';
-/** `mask-out` is reserved for a future negative-mask pass. */
+/** `mask-out` 为未来的反向遮罩 Pass 预留。 */
 export type TextEffectComposite = 'content' | 'behind-content' | 'mask-out';
 export type TextEffectIsolation = 'range' | 'object';
 
 export interface TextEffectLayerPlan {
   layerId: string,
   order: number,
-  /** The mask/content source selected by the backend, not inferred from kind. */
+  /** 后端实际使用的遮罩或内容来源，不由后端根据 kind 临时猜测。 */
   source: TextEffectSource,
-  /** How the result is composited; non-content effects may require isolation. */
+  /** 当前结果的合成方式；非 content 效果可能需要独立隔离。 */
   composite: TextEffectComposite,
-  /** The range/object scope used to select source glyphs. */
+  /** 选择源字形时使用的 Range/Object 作用域。 */
   isolation: TextEffectIsolation,
   layer: TextEffectLayer,
-  /** Adapter-resolved resource key, for example a texture image/repeat key. */
+  /** 由适配层解析出的资源 key，例如纹理图片和重复方式组成的 key。 */
   resourceId?: string,
 }
 
@@ -141,12 +141,12 @@ export interface TextEffectPlanBuildOptions {
 }
 
 /**
- * Compiles FancyConfig layers into a backend-neutral effect plan.
+ * 将 FancyConfig 的层编译为后端无关的效果计划。
  *
- * Semantics of `rangeLayersBySourceId`:
- * - Key present with non-empty array → that range uses the provided layers (replace).
- * - Key present with empty array → that range has NO effect layers (disable / transparent).
- * - Key absent → that range inherits `defaultRangeLayers`.
+ * `rangeLayersBySourceId` 的语义：
+ * - 存在且数组非空：该 Range 使用传入的层，并替换默认层；
+ * - 存在但数组为空：该 Range 不使用任何效果层，即关闭花字；
+ * - 不存在：该 Range 继承 `defaultRangeLayers`。
  */
 export function compileTextEffectPlan (options: TextEffectPlanBuildOptions): TextEffectPlan {
   const defaultLayers = compileTextEffectLayers(options.defaultLayers);

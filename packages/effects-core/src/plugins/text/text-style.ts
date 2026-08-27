@@ -157,9 +157,8 @@ export class TextStyle {
   }
 
   /**
-   * Compile the public FancyConfig into the range/object data needed by
-   * RichText. Stack references are deliberately positional and local to the
-   * config; no preset or range identity is required by the renderer.
+   * 将公开 FancyConfig 编译成 RichText 所需的 Range/Object 数据。
+   * Stack 引用使用配置内的顺序编号，渲染器不需要预设名称或 Range 身份。
    */
   static resolveFancyConfig (
     config: FancyConfig | undefined,
@@ -185,7 +184,7 @@ export class TextStyle {
     };
   }
 
-  /** Resolve one positional range override into its compiled layer stack. */
+  /** 根据顺序编号解析一个 Range 覆盖项对应的效果层栈。 */
   static resolveRangeOverride (
     resolution: FancyScopeResolution,
     override: FancyRangeOverride | undefined,

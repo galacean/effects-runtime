@@ -179,9 +179,8 @@ describe('core/plugins/text/text-render-plan', () => {
       renderSize: { width: 200, height: 120 },
     });
 
-    // basicStyle.fillColor carries the plain-text color; the backend still
-    // renders a visible fill even though no solid-fill layer is present in the
-    // theme (the unified backend uses textColor as the final fallback).
+    // basicStyle.fillColor 保存普通文本颜色；即使主题层中没有 solid-fill，
+    // 后端仍然会绘制可见填充（统一后端最终会使用 textColor 作为兜底颜色）。
     expect(plan.rangePlans[0].basicStyle.fillColor).to.eql([1, 1, 1, 1]);
   });
 
