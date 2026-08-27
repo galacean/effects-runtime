@@ -95,7 +95,7 @@ export class Renderer {
   }
 
   setViewport (x: number, y: number, width: number, height: number) {
-    this.engine.viewport(x, y, width, height);
+    this.engine.setViewport(x, y, width, height);
   }
 
   clear (action: RenderPassClearAction) {
@@ -172,7 +172,47 @@ export class Renderer {
   }
 
   drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0) {
-    this.engine.drawGeometry(geometry, matrix, material, subMeshIndex);
+    if (!geometry || !material) {
+      return;
+    }
+
+    material.initialize();
+    geometry.initialize();
+    geometry.flush();
+    material.setMatrix('effects_ObjectToWorld', matrix);
+
+    try {
+      material.use(this, this.renderingData.currentFrame.globalUniforms);
+    } catch (e) {
+      console.error(e);
+      this.engine.renderErrors.add(e as Error);
+
+      return;
+    }
+
+    const indexBuffer = geometry.getIndexBuffer();
+    let offset = geometry.getDrawStart();
+    let count = geometry.getDrawCount();
+    const subMeshes = geometry.subMeshes;
+
+    if (subMeshes.length > 0) {
+      const subMesh = subMeshes[subMeshIndex];
+
+      offset = subMesh.offset;
+      count = indexBuffer ? subMesh.indexCount ?? 0 : subMesh.vertexCount;
+    }
+    if (count <= 0) {
+      return;
+    }
+
+    geometry.bind(material.shaderVariant);
+    const instanceCount = geometry.instanceCount || undefined;
+
+    if (indexBuffer) {
+      this.engine.drawElementsType(geometry.mode, offset, count, instanceCount);
+    } else {
+      this.engine.drawArraysType(geometry.mode, offset, count, instanceCount);
+    }
   }
 
   getTemporaryRT (

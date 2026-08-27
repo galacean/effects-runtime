@@ -259,7 +259,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable, RestoreHan
     state.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
 
     // TODO 不在bind中设置viewport
-    state.viewport(x, y, width, height);
+    state.setViewport(x, y, width, height);
     const whiteTexture = this.renderer.engine.whiteTexture as GLTexture;
     const whiteWebGLTexture = whiteTexture.textureBuffer;
 

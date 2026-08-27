@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
@@ -28,6 +27,8 @@ import { PluginSystem } from './plugin-system';
 import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
+import { VFXItem } from './vfx-item';
+import { WindowRootControl } from './gui';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -94,10 +95,15 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * 渲染过程中错误队列
    */
   renderErrors: Set<Error> = new Set();
-  compositions: Composition[] = [];
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
+  /** Window-level GUI owner and input router. */
+  readonly windowRoot: WindowRootControl;
+  /**
+   * Root of the unified runtime scene tree.
+   */
+  root: VFXItem;
   env = '';
   /**
    * 计时器
@@ -137,6 +143,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   protected renderbuffers: Renderbuffer[] = [];
   protected particleSystems: ParticleSystem[] = [];
 
+  private _compositions: Composition[] = [];
   private _graphics: Graphics;
   private assetLoader: AssetLoader;
   private clearAction: RenderPassClearAction = {
@@ -160,6 +167,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.pixelRatio = options?.pixelRatio ?? getPixelRatio();
     this.jsonSceneData = {};
     this.objectInstance = {};
+    this.root = new VFXItem(this);
+    this.root.name = 'root';
+    this.windowRoot = new WindowRootControl(this);
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -182,6 +192,10 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     };
 
     PluginSystem.notifyEngineCreated(this);
+  }
+
+  get compositions (): Composition[] {
+    return this._compositions.sort((a, b) => a.getIndex() - b.getIndex());
   }
 
   get graphics (): Graphics {
@@ -323,8 +337,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     const compositions = this.compositions;
 
-    compositions.sort((a, b) => a.getIndex() - b.getIndex());
-
     let skipRender = false;
 
     // Update Compositions
@@ -347,6 +359,8 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
+    this.windowRoot.update(dt);
+
     // Tick compositions onPreRender
     //-------------------------------------------------------------------------
 
@@ -361,8 +375,9 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.renderer.clear(this.clearAction);
 
     for (const composition of compositions) {
-      composition.render();
+      composition.renderContent();
     }
+    this.windowRoot.render();
 
     this.renderTargetPool.flush();
   }
@@ -414,6 +429,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.info(`Resize engine ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
 
       this.setSize(canvasWidth, canvasHeight);
+      this.windowRoot.resize(containerWidth, containerHeight);
     }
   }
 
@@ -421,7 +437,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     if (this.getWidth() !== width || this.getHeight() !== height) {
       this.canvas.width = width;
       this.canvas.height = height;
-      this.viewport(0, 0, width, height);
+      this.setViewport(0, 0, width, height);
     }
 
     this.compositions?.forEach(comp => {
@@ -470,10 +486,44 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   /** @hide */
   bindBuffers (
     vertexBuffers: Record<string, VertexBuffer>,
-    indexBuffer: DataBuffer | undefined,
+    indexBuffer: DataBuffer | null,
     effect: ShaderVariant,
   ): void {
     throw new Error('The active rendering backend cannot bind geometry buffers.');
+  }
+
+  /**
+   * 使用当前绑定的顶点和索引缓冲区绘制图元。
+   * @param mode - 图元类型
+   * @param indexOffset - 索引缓冲区中的字节偏移
+   * @param indexCount - 索引数量
+   * @param instanceCount - 实例数量
+   * @hide
+   */
+  drawElementsType (
+    mode: number,
+    indexOffset: number,
+    indexCount: number,
+    instanceCount?: number,
+  ): void {
+    throw new Error('The active rendering backend cannot draw indexed primitives.');
+  }
+
+  /**
+   * 使用当前绑定的顶点缓冲区绘制图元。
+   * @param mode - 图元类型
+   * @param vertexStart - 起始顶点
+   * @param vertexCount - 顶点数量
+   * @param instanceCount - 实例数量
+   * @hide
+   */
+  drawArraysType (
+    mode: number,
+    vertexStart: number,
+    vertexCount: number,
+    instanceCount?: number,
+  ): void {
+    throw new Error('The active rendering backend cannot draw primitives.');
   }
 
   addTexture (tex: Texture) {
@@ -633,15 +683,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
    * example:
    * gl.viewport(0, 0, width, height);
    */
-  viewport (x: number, y: number, width: number, height: number) {
+  setViewport (x: number, y: number, width: number, height: number) {
     // OVERRIDE
   }
 
   clear (action: RenderPassClearAction) {
-    // OVERRIDE
-  }
-
-  drawGeometry (geometry: Geometry, matrix: Matrix4, material: Material, subMeshIndex = 0) {
     // OVERRIDE
   }
 
@@ -660,6 +706,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   }
 
   setStencilTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setScissorTest (enable: boolean) {
+    // OVERRIDE
+  }
+
+  setScissor (x: number, y: number, width: number, height: number) {
     // OVERRIDE
   }
 
@@ -755,6 +809,11 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
 
     this.ticker?.stop();
     this.eventSystem?.dispose();
+    for (const composition of this._compositions.slice()) {
+      composition.dispose();
+    }
+    this.root.dispose();
+    this.windowRoot.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
 
@@ -764,15 +823,14 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.materials.forEach(mat => mat.dispose());
     this.textures.forEach(tex => tex.dispose());
     this.assetManagers.forEach(assetManager => assetManager.dispose());
-    this.compositions.forEach(comp => comp.dispose());
 
     this.textures = [];
     this.materials = [];
     this.geometries = [];
     this.meshes = [];
     this.renderPasses = [];
-    this.compositions = [];
     this.particleSystems = [];
+    this._compositions = [];
   }
 
   private getTargetSize (parentEle: HTMLElement) {

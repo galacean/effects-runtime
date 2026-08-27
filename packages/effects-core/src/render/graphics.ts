@@ -11,7 +11,7 @@ import type { StrokeAttributes } from '../math';
 import { buildLine, Circle, Polygon, Triangle, Rectangle } from '../math';
 import type { Texture } from '../texture';
 import type { FontStyle, FontWeight } from './text-cache';
-import { ATLAS_SIZE, FONT_SCALE, TextCache } from './text-cache';
+import { TextCache } from './text-cache';
 import { buildAdaptiveBezier } from '../math/shape/build-adaptive-bezier';
 import type { ShapePrimitive } from '../math/shape/shape-primitive';
 
@@ -20,14 +20,49 @@ import type { ShapePrimitive } from '../math/shape/shape-primitive';
  */
 export type TextureRegion = { u0: number, v0: number, u1: number, v1: number };
 
-const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
+export type NinePatchDrawOptions = {
+  sourceX: number,
+  sourceY: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  marginLeft: number,
+  marginTop: number,
+  marginRight: number,
+  marginBottom: number,
+  horizontalMode?: number,
+  verticalMode?: number,
+  drawCenter?: boolean,
+};
 
-type BatchType = 'colored' | 'textured';
+/** Logical text metrics produced by the glyph atlas used for rendering. */
+export type TextMeasurement = {
+  width: number,
+  lineHeight: number,
+  advances: number[],
+};
+
+const FULL_REGION: TextureRegion = { u0: 0, v0: 0, u1: 1, v1: 1 };
+const NINE_PATCH_DRAW_SOURCE_SIZE = 'aDrawSourceSize';
+const NINE_PATCH_SOURCE_RECT = 'aSourceRect';
+const NINE_PATCH_MARGINS = 'aMargins';
+const NINE_PATCH_OPTIONS = 'aOptions';
+
+type BatchType = 'colored' | 'textured' | 'text' | 'ninePatch';
+
+type ClipRect = {
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+};
 
 export class Graphics {
   private geometry: Geometry;
+  private ninePatchGeometry: Geometry;
   private coloredMaterial: Material;
   private texturedMaterial: Material;
+  private textMaterial: Material;
+  private ninePatchMaterial: Material;
 
   private readonly lineShape = new Polygon();
   private readonly bezierShape = new Polygon();
@@ -40,6 +75,10 @@ export class Graphics {
   private colors: number[] = [];
   private uvs: number[] = [];
   private indices: number[] = [];
+  private ninePatchDrawSourceSizes: number[] = [];
+  private ninePatchSourceRects: number[] = [];
+  private ninePatchMargins: number[] = [];
+  private ninePatchOptions: number[] = [];
 
   private lineStyle: StrokeAttributes = {
     width: 1,
@@ -59,6 +98,9 @@ export class Graphics {
   // 变换栈和缓存(使用 Matrix3 进行 2D 变换)
   private transformStack: Matrix3[] = [];
   private currentTransform: Matrix3 = Matrix3.fromIdentity();
+  private clipStack: ClipRect[] = [];
+  private logicalWidth = 1;
+  private logicalHeight = 1;
 
   private get currentVertexCount () {
     return this.vertices.length / 2;
@@ -96,6 +138,49 @@ export class Graphics {
           offset: 0,
           type: glContext.FLOAT,
           data: new Float32Array([0, 1, 0, 0, 1, 1, 1, 0]),
+        },
+      },
+      indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
+      mode: glContext.TRIANGLES,
+      drawCount: 6,
+      bufferUsage: glContext.DYNAMIC_DRAW,
+    });
+    this.ninePatchGeometry = Geometry.create(this.engine, {
+      attributes: {
+        [VertexBuffer.PositionKind]: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(8),
+        },
+        [VertexBuffer.ColorKind]: {
+          type: glContext.FLOAT,
+          size: 4,
+          data: new Float32Array(16),
+        },
+        [VertexBuffer.UVKind]: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(8),
+        },
+        [NINE_PATCH_DRAW_SOURCE_SIZE]: {
+          type: glContext.FLOAT,
+          size: 4,
+          data: new Float32Array(16),
+        },
+        [NINE_PATCH_SOURCE_RECT]: {
+          type: glContext.FLOAT,
+          size: 4,
+          data: new Float32Array(16),
+        },
+        [NINE_PATCH_MARGINS]: {
+          type: glContext.FLOAT,
+          size: 4,
+          data: new Float32Array(16),
+        },
+        [NINE_PATCH_OPTIONS]: {
+          type: glContext.FLOAT,
+          size: 4,
+          data: new Float32Array(16),
         },
       },
       indices: { data: new Uint16Array([0, 1, 2, 2, 1, 3]) },
@@ -159,6 +244,141 @@ export class Graphics {
     this.texturedMaterial.depthMask = false;
     this.texturedMaterial.blending = true;
 
+    this.ninePatchMaterial = Material.create(this.engine, {
+      shader: {
+        vertex: `precision highp float;
+        attribute vec2 aPos;
+        attribute vec4 aColor;
+        attribute vec2 aUV;
+        attribute vec4 aDrawSourceSize;
+        attribute vec4 aSourceRect;
+        attribute vec4 aMargins;
+        attribute vec4 aOptions;
+        varying vec4 vColor;
+        varying vec2 vUV;
+        varying vec4 vDrawSourceSize;
+        varying vec4 vSourceRect;
+        varying vec4 vMargins;
+        varying vec4 vOptions;
+
+        uniform mat4 effects_MatrixVP;
+        void main() {
+          vColor = aColor;
+          vUV = aUV;
+          vDrawSourceSize = aDrawSourceSize;
+          vSourceRect = aSourceRect;
+          vMargins = aMargins;
+          vOptions = aOptions;
+          gl_Position = effects_MatrixVP * vec4(aPos, 0.0, 1.0);
+        }`,
+        fragment: `precision highp float;
+        varying vec4 vColor;
+        varying vec2 vUV;
+        varying vec4 vDrawSourceSize;
+        varying vec4 vSourceRect;
+        varying vec4 vMargins;
+        varying vec4 vOptions;
+        uniform sampler2D uMainTexture;
+
+        float mapNinePatchAxis(
+          float pixel,
+          float drawSize,
+          float sourceSize,
+          float marginBegin,
+          float marginEnd,
+          float repeatMode,
+          inout float drawCenter
+        ) {
+          if (pixel < marginBegin) {
+            return pixel / sourceSize;
+          } else if (pixel >= drawSize - marginEnd) {
+            return (sourceSize - (drawSize - pixel)) / sourceSize;
+          } else {
+            if (vOptions.z < 0.5) {
+              drawCenter -= 1.0;
+            }
+
+            if (repeatMode < 0.5) {
+              float ratio = (pixel - marginBegin) / (drawSize - marginBegin - marginEnd);
+              return (marginBegin + ratio * (sourceSize - marginBegin - marginEnd)) / sourceSize;
+            } else if (repeatMode < 1.5) {
+              float offset = mod(pixel - marginBegin, sourceSize - marginBegin - marginEnd);
+              return (marginBegin + offset) / sourceSize;
+            } else {
+              float drawArea = drawSize - marginBegin - marginEnd;
+              float sourceArea = sourceSize - marginBegin - marginEnd;
+              float scale = max(1.0, floor(drawArea / max(sourceArea, 0.0000001) + 0.5));
+              float ratio = mod((pixel - marginBegin) / drawArea * scale, 1.0);
+              return (marginBegin + ratio * sourceArea) / sourceSize;
+            }
+          }
+        }
+
+        void main() {
+          vec2 pixel = vec2(vUV.x, 1.0 - vUV.y) * vDrawSourceSize.xy;
+          float drawCenter = 2.0;
+          vec2 sourceUV = vec2(
+            mapNinePatchAxis(
+              pixel.x, vDrawSourceSize.x, vDrawSourceSize.z,
+              vMargins.x, vMargins.z, vOptions.x, drawCenter
+            ),
+            mapNinePatchAxis(
+              pixel.y, vDrawSourceSize.y, vDrawSourceSize.w,
+              vMargins.y, vMargins.w, vOptions.y, drawCenter
+            )
+          );
+
+          if (drawCenter < 0.5) {
+            discard;
+          }
+
+          vec2 uv = vec2(
+            vSourceRect.x + sourceUV.x * vSourceRect.z,
+            vSourceRect.y - sourceUV.y * vSourceRect.w
+          );
+          vec4 color = texture2D(uMainTexture, uv) * vColor;
+          color.rgb *= color.a;
+          gl_FragColor = color;
+        }`,
+      },
+    });
+    this.ninePatchMaterial.depthTest = false;
+    this.ninePatchMaterial.depthMask = false;
+    this.ninePatchMaterial.blending = true;
+
+    // 文本 atlas 在上传时预乘 alpha，因此纹理 RGB 只需乘顶点色和顶点 alpha。
+    // 单独使用 material，避免改变 drawTexture 对普通非预乘纹理的处理。
+    this.textMaterial = Material.create(this.engine, {
+      shader: {
+        vertex: `precision highp float;
+        attribute vec2 aPos;
+        attribute vec4 aColor;
+        attribute vec2 aUV;
+        varying vec4 vColor;
+        varying vec2 vUV;
+
+        uniform mat4 effects_MatrixVP;
+        void main() {
+          vColor = aColor;
+          vUV = aUV;
+          gl_Position = effects_MatrixVP * vec4(aPos, 0.0, 1.0);
+        }`,
+        fragment: `precision highp float;
+        varying vec4 vColor;
+        varying vec2 vUV;
+        uniform sampler2D uMainTexture;
+        void main() {
+          vec4 textureColor = texture2D(uMainTexture, vUV);
+          float alpha = textureColor.a * vColor.a;
+          vec3 rgb = textureColor.rgb * vColor.rgb * vColor.a;
+          gl_FragColor = vec4(rgb, alpha);
+        }`,
+      },
+    });
+    this.textMaterial.depthTest = false;
+    this.textMaterial.depthMask = false;
+    this.textMaterial.blending = true;
+
     this.textCache = new TextCache(engine);
   }
 
@@ -170,26 +390,39 @@ export class Graphics {
     this.vertices.length = 0;
     this.colors.length = 0;
     this.uvs.length = 0;
+    this.ninePatchDrawSourceSizes.length = 0;
+    this.ninePatchSourceRects.length = 0;
+    this.ninePatchMargins.length = 0;
+    this.ninePatchOptions.length = 0;
 
     this.transformStack = [];
     this.currentTransform = Matrix3.fromIdentity();
+    this.clipStack = [];
 
     this.currentBatchType = 'colored';
     this.currentBatchTexture = null;
+    this.engine.setScissorTest(false);
 
-    // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标: (0, 0) 在左下角，(width, height) 在右上角
-    const { width, height } = this.engine.canvas.getBoundingClientRect();
+    // 创建从屏幕坐标到 NDC 的投影矩阵，屏幕坐标：(0, 0) 在左上角，(width, height) 在右下角，+Y 向下。
+    const bounds = this.engine.canvas.getBoundingClientRect();
+    const width = bounds.width || this.engine.canvas.width / this.engine.pixelRatio || 1;
+    const height = bounds.height || this.engine.canvas.height / this.engine.pixelRatio || 1;
+
+    this.logicalWidth = width;
+    this.logicalHeight = height;
 
     // 正交投影矩阵：将屏幕坐标 [0, width] x [0, height] 映射到 NDC [-1, 1] x [-1, 1]
     const projectionMatrix = new Matrix4(
       2 / width, 0, 0, 0,  // 第一列
-      0, 2 / height, 0, 0,  // 第二列
+      0, -2 / height, 0, 0,  // 第二列
       0, 0, -1, 0,  // 第三列
-      -1, -1, 0, 1   // 第四列
+      -1, 1, 0, 1   // 第四列
     );
 
     this.coloredMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
     this.texturedMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
+    this.textMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
+    this.ninePatchMaterial.setMatrix('effects_MatrixVP', projectionMatrix);
   }
 
   /**
@@ -216,11 +449,83 @@ export class Graphics {
     this.currentTransform = transform;
   }
 
+  /** Pushes a local rectangular child clip using a screen-space AABB scissor. */
+  pushClipRect (x: number, y: number, width: number, height: number): void {
+    const elements = this.currentTransform.elements;
+    const corners = [
+      [x, y],
+      [x + width, y],
+      [x, y + height],
+      [x + width, y + height],
+    ];
+    let left = Infinity;
+    let top = Infinity;
+    let right = -Infinity;
+    let bottom = -Infinity;
+
+    for (const corner of corners) {
+      const transformedX = elements[0] * corner[0] + elements[3] * corner[1] + elements[6];
+      const transformedY = elements[1] * corner[0] + elements[4] * corner[1] + elements[7];
+
+      left = Math.min(left, transformedX);
+      top = Math.min(top, transformedY);
+      right = Math.max(right, transformedX);
+      bottom = Math.max(bottom, transformedY);
+    }
+
+    const parent = this.clipStack[this.clipStack.length - 1];
+
+    if (parent) {
+      left = Math.max(left, parent.x);
+      top = Math.max(top, parent.y);
+      right = Math.min(right, parent.x + parent.width);
+      bottom = Math.min(bottom, parent.y + parent.height);
+    }
+
+    const clip = {
+      x: left,
+      y: top,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top),
+    };
+    const previous = parent;
+
+    this.clipStack.push(clip);
+    if (!this.clipRectsEqual(previous, clip)) {
+      this.flushBatch();
+      this.applyClipRect(clip);
+    }
+  }
+
+  /** Restores the parent rectangular clip. */
+  popClipRect (): void {
+    const previous = this.clipStack.pop();
+
+    if (!previous) {
+      console.warn('Graphics: clip stack is empty.');
+
+      return;
+    }
+
+    const clip = this.clipStack[this.clipStack.length - 1];
+
+    if (!this.clipRectsEqual(previous, clip)) {
+      this.flushBatch();
+      if (clip) {
+        this.applyClipRect(clip);
+      } else {
+        this.engine.setScissorTest(false);
+      }
+    }
+  }
+
   /**
    * 刷新并渲染所有累积的绘制命令
    */
   end (): void {
     this.flushBatch();
+    this.clipStack = [];
+    this.engine.setScissorTest(false);
   }
 
   /**
@@ -228,7 +533,7 @@ export class Graphics {
    */
   private ensureBatch (type: BatchType, texture: Texture | null = null): void {
     const sameBatch = this.currentBatchType === type
-      && (type !== 'textured' || this.currentBatchTexture === texture);
+      && (type === 'colored' || this.currentBatchTexture === texture);
 
     if (!sameBatch && this.currentVertexCount > 0) {
       this.flushBatch();
@@ -236,6 +541,28 @@ export class Graphics {
 
     this.currentBatchType = type;
     this.currentBatchTexture = texture;
+  }
+
+  private applyClipRect (clip: ClipRect): void {
+    const framebufferWidth = this.engine.canvas.width;
+    const framebufferHeight = this.engine.canvas.height;
+    const scaleX = framebufferWidth / this.logicalWidth;
+    const scaleY = framebufferHeight / this.logicalHeight;
+    const left = Math.max(0, Math.min(framebufferWidth, Math.floor(clip.x * scaleX)));
+    const top = Math.max(0, Math.min(framebufferHeight, Math.floor(clip.y * scaleY)));
+    const right = Math.max(left, Math.min(framebufferWidth, Math.ceil((clip.x + clip.width) * scaleX)));
+    const bottom = Math.max(top, Math.min(framebufferHeight, Math.ceil((clip.y + clip.height) * scaleY)));
+
+    this.engine.setScissorTest(true);
+    this.engine.setScissor(left, framebufferHeight - bottom, right - left, bottom - top);
+  }
+
+  private clipRectsEqual (left?: ClipRect, right?: ClipRect): boolean {
+    if (!left || !right) {
+      return left === right;
+    }
+
+    return left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height;
   }
 
   /**
@@ -255,16 +582,35 @@ export class Graphics {
     const uvsArray = new Float32Array(this.uvs);
     const indicesArray = new Uint16Array(this.indices);
 
-    this.updateAttributeData(VertexBuffer.PositionKind, verticesArray, 2);
-    this.updateAttributeData(VertexBuffer.ColorKind, colorsArray, 4);
-    this.updateAttributeData(VertexBuffer.UVKind, uvsArray, 2);
-    this.geometry.setIndexData(indicesArray);
-    this.geometry.setDrawCount(this.currentIndexCount);
+    const geometry = this.currentBatchType === 'ninePatch' ? this.ninePatchGeometry : this.geometry;
+
+    this.updateAttributeData(geometry, VertexBuffer.PositionKind, verticesArray, 2);
+    this.updateAttributeData(geometry, VertexBuffer.ColorKind, colorsArray, 4);
+    this.updateAttributeData(geometry, VertexBuffer.UVKind, uvsArray, 2);
+    if (this.currentBatchType === 'ninePatch') {
+      this.updateAttributeData(
+        geometry, NINE_PATCH_DRAW_SOURCE_SIZE, new Float32Array(this.ninePatchDrawSourceSizes), 4,
+      );
+      this.updateAttributeData(
+        geometry, NINE_PATCH_SOURCE_RECT, new Float32Array(this.ninePatchSourceRects), 4,
+      );
+      this.updateAttributeData(
+        geometry, NINE_PATCH_MARGINS, new Float32Array(this.ninePatchMargins), 4,
+      );
+      this.updateAttributeData(
+        geometry, NINE_PATCH_OPTIONS, new Float32Array(this.ninePatchOptions), 4,
+      );
+    }
+    geometry.setIndexData(indicesArray);
+    geometry.setDrawCount(this.currentIndexCount);
 
     let material: Material;
 
-    if (this.currentBatchType === 'textured') {
-      material = this.texturedMaterial;
+    if (this.currentBatchType === 'textured' || this.currentBatchType === 'text'
+      || this.currentBatchType === 'ninePatch') {
+      material = this.currentBatchType === 'text'
+        ? this.textMaterial
+        : this.currentBatchType === 'ninePatch' ? this.ninePatchMaterial : this.texturedMaterial;
       const tex = this.currentBatchTexture ?? this.engine.whiteTexture;
 
       material.setTexture('uMainTexture', tex);
@@ -272,19 +618,23 @@ export class Graphics {
       material = this.coloredMaterial;
     }
 
-    this.engine.renderer.drawGeometry(this.geometry, Matrix4.IDENTITY, material);
+    this.engine.renderer.drawGeometry(geometry, Matrix4.IDENTITY, material);
 
     this.indices.length = 0;
     this.vertices.length = 0;
     this.colors.length = 0;
     this.uvs.length = 0;
+    this.ninePatchDrawSourceSizes.length = 0;
+    this.ninePatchSourceRects.length = 0;
+    this.ninePatchMargins.length = 0;
+    this.ninePatchOptions.length = 0;
   }
 
-  private updateAttributeData (name: string, data: Float32Array, size: number): void {
-    const dataBuffer = this.geometry.getVertexBuffer(name)?.getBuffer();
+  private updateAttributeData (geometry: Geometry, name: string, data: Float32Array, size: number): void {
+    const dataBuffer = geometry.getVertexBuffer(name)?.getBuffer();
 
     if (dataBuffer && data.byteLength > dataBuffer.capacity) {
-      this.geometry.setVerticesBuffer(new VertexBuffer(
+      geometry.setVerticesBuffer(new VertexBuffer(
         this.engine,
         data,
         name,
@@ -293,7 +643,7 @@ export class Graphics {
 
       return;
     }
-    this.geometry.setAttributeData(name, data);
+    geometry.setAttributeData(name, data);
   }
 
   /**
@@ -386,8 +736,8 @@ export class Graphics {
 
   /**
    * 绘制矩形边框
-   * @param x - 矩形左下角 X 坐标
-   * @param y - 矩形左下角 Y 坐标
+   * @param x - 矩形左上角 X 坐标
+   * @param y - 矩形左上角 Y 坐标
    * @param width - 矩形宽度
    * @param height - 矩形高度
    * @param color - 边框颜色，默认白色，范围 0-1
@@ -431,8 +781,8 @@ export class Graphics {
 
   /**
    * 绘制填充矩形
-   * @param x - 矩形左下角 X 坐标
-   * @param y - 矩形左下角 Y 坐标
+   * @param x - 矩形左上角 X 坐标
+   * @param y - 矩形左上角 Y 坐标
    * @param width - 矩形宽度
    * @param height - 矩形高度
    * @param color - 填充颜色，默认白色，范围 0-1
@@ -460,9 +810,9 @@ export class Graphics {
   }
 
   /**
-   * 绘制纹理矩形（本地坐标，Y 向上，(x, y) 为左下角）
-   * @param x - 矩形左下角 X 坐标
-   * @param y - 矩形左下角 Y 坐标
+   * 绘制纹理矩形（本地坐标，Y 向下，(x, y) 为左上角）
+   * @param x - 矩形左上角 X 坐标
+   * @param y - 矩形左上角 Y 坐标
    * @param width - 矩形宽度
    * @param height - 矩形高度
    * @param texture - 要采样的纹理。同纹理连续绘制会合批，纹理切换会自动 flush 当前批次
@@ -480,14 +830,48 @@ export class Graphics {
   }
 
   /**
-   * 绘制文本（本地坐标，Y 向上，(x, y) 为文本左下角）。
+   * Draws a nine-patch as one quad. Stretching and repetition are resolved in the fragment shader,
+   * so Tile and TileFit do not expand into CPU-side geometry.
+   */
+  drawNinePatch (
+    x: number, y: number, width: number, height: number,
+    texture: Texture,
+    options: NinePatchDrawOptions,
+    color: Color = Color.WHITE,
+  ): void {
+    if (width <= 0 || height <= 0 || options.sourceWidth <= 0 || options.sourceHeight <= 0) {
+      return;
+    }
+
+    this.ensureBatch('ninePatch', texture);
+    const sourceU = options.sourceX / texture.width;
+    const sourceV = 1 - options.sourceY / texture.height;
+    const sourceUSize = options.sourceWidth / texture.width;
+    const sourceVSize = options.sourceHeight / texture.height;
+    const horizontalMode = options.horizontalMode ?? 0;
+    const verticalMode = options.verticalMode ?? 0;
+    const drawCenter = Number(options.drawCenter ?? true);
+
+    this.pushQuad(x, y, width, height, color, FULL_REGION);
+    for (let i = 0; i < 4; i++) {
+      this.ninePatchDrawSourceSizes.push(width, height, options.sourceWidth, options.sourceHeight);
+      this.ninePatchSourceRects.push(sourceU, sourceV, sourceUSize, sourceVSize);
+      this.ninePatchMargins.push(
+        options.marginLeft, options.marginTop, options.marginRight, options.marginBottom,
+      );
+      this.ninePatchOptions.push(horizontalMode, verticalMode, drawCenter, 0);
+    }
+  }
+
+  /**
+   * 绘制文本（本地坐标，Y 向下，(x, y) 为文本 cell 左上角）。
    *
    * 文本走字符级 bitmap atlas（同一字体下每个字只渲染一次，任意文本组合复用 atlas）;
-   * `color` 作为乘色与白色字形 alpha 相乘，任意颜色都不会污染 atlas。
+   * `color` 与 atlas 字形 RGBA 相乘，任意颜色都不会污染 atlas。
    *
    * 字体参数全部展开，避免调用方每帧创建临时 style 对象触发 GC
-   * @param x - 文本左下角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
-   * @param y - 文本左下角 Y 坐标（cell 底，含底部 padding；字形 ink 在其上方 padding+ascent 处）
+   * @param x - 文本左上角 X 坐标（首字 ink 起始处，含 padding 的 quad 会向左延伸）
+   * @param y - 文本 cell 顶部 Y 坐标
    * @param text - 要绘制的文本内容，空串直接 return
    * @param fontSize - 字号（逻辑像素）
    * @param color - 乘色，默认白色，范围 0-1
@@ -509,40 +893,69 @@ export class Graphics {
     }
     const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
 
-    this.ensureBatch('textured', atlas.texture);
+    this.ensureBatch('text', atlas.texture);
 
     const lineHeight = atlas.lineHeight;
     let cursorX = x;
+    const characters = Array.from(text);
 
     // ensureChar 可能往 atlas canvas 写新字并打 dirty 标；实际 upload 推迟到
     // flushBatch 统一处理，这样一帧多次 drawText 共写同一 atlas 只 upload 一次
-    for (let i = 0; i < text.length; i++) {
-      const info = atlas.ensureChar(text[i]);
+    for (let i = 0; i < characters.length; i++) {
+      const info = atlas.ensureChar(characters[i]);
 
       if (!info) {
         continue;
       }
       // atlas 像素坐标 → UV（纹理 flipY 后，canvas 顶 → v=1，canvas 底 → v=0）
-      const u0 = info.px / ATLAS_SIZE;
-      const u1 = (info.px + info.pw) / ATLAS_SIZE;
-      const v0 = 1 - (info.py + info.ph) / ATLAS_SIZE;
-      const v1 = 1 - info.py / ATLAS_SIZE;
+      const atlasWidth = atlas.canvas.width;
+      const atlasHeight = atlas.canvas.height;
+      const u0 = info.px / atlasWidth;
+      const u1 = (info.px + info.pw) / atlasWidth;
+      const v0 = 1 - (info.py + info.ph) / atlasHeight;
+      const v1 = 1 - info.py / atlasHeight;
 
       // quad 宽与采样区都含四周 padding（cell 留白透明）；但光标只按 advance 前进，
       // quad 起点左偏 paddingLeft 使字形 ink 落在 cursorX — padding 区重叠无妨
       this.pushQuad(
         cursorX - info.paddingLeft, y,
-        info.pw / FONT_SCALE, lineHeight,
+        info.pw / atlas.resolution, lineHeight,
         color, { u0, v0, u1, v1 },
       );
       cursorX += info.advance;
     }
   }
 
+  /** Measures text with the same glyph metrics used by {@link drawText}. */
+  measureText (
+    text: string,
+    fontSize: number,
+    fontFamily: string = 'sans-serif',
+    fontWeight: FontWeight = 'normal',
+    fontStyle: FontStyle = 'normal',
+  ): TextMeasurement {
+    const atlas = this.textCache.getAtlas(fontSize, fontFamily, fontWeight, fontStyle);
+    const characters = Array.from(text);
+    const advances: number[] = [];
+    let width = 0;
+
+    for (const character of characters) {
+      const advance = atlas.ensureChar(character)?.advance ?? 0;
+
+      advances.push(advance);
+      width += advance;
+    }
+
+    return { width, lineHeight: atlas.lineHeight, advances };
+  }
+
   dispose (): void {
     this.geometry.dispose();
+    this.ninePatchGeometry.dispose();
     this.coloredMaterial.dispose();
     this.texturedMaterial.dispose();
+    this.textMaterial.dispose();
+    this.ninePatchMaterial.dispose();
     this.textCache.dispose();
   }
 
@@ -552,7 +965,7 @@ export class Graphics {
     const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
-    shape.build(buildPoints);
+    shape.build(buildPoints, this.getScreenScale());
     shape.triangulate(buildPoints, this.vertices, vertexOffset, this.indices, indexOffset);
 
     this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
@@ -564,11 +977,21 @@ export class Graphics {
     const vertexOffset = this.vertices.length / 2;
 
     buildPoints.length = 0;
-    shape.build(buildPoints);
+    shape.build(buildPoints, this.getScreenScale());
     this.lineStyle.width = thickness;
     buildLine(buildPoints, this.lineStyle, false, closed, this.vertices, 2, vertexOffset, this.indices, indexOffset);
 
     this.applyTransformAndColor(vertexOffset, this.vertices.length / 2 - vertexOffset, color);
+  }
+
+  private getScreenScale (): number {
+    const transform = this.currentTransform.elements;
+    const transformScaleX = Math.hypot(transform[0], transform[1]);
+    const transformScaleY = Math.hypot(transform[3], transform[4]);
+    const framebufferScaleX = this.engine.canvas.width / this.logicalWidth;
+    const framebufferScaleY = this.engine.canvas.height / this.logicalHeight;
+
+    return Math.max(transformScaleX * framebufferScaleX, transformScaleY * framebufferScaleY, 1);
   }
 
   private setTriangleShape (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
@@ -628,7 +1051,7 @@ export class Graphics {
   ): void {
     const vertexOffset = this.vertices.length / 2;
 
-    // 4 顶点（本地坐标，左下/右下/左上/右上），应用当前变换写入 vertices
+    // 4 顶点（本地坐标，左上/右上/左下/右下），应用当前变换写入 vertices
     const corners: [number, number][] = [
       [x, y],
       [x + width, y],
@@ -640,10 +1063,10 @@ export class Graphics {
     const u1 = region ? region.u1 : 0;
     const v1 = region ? region.v1 : 0;
     const cornerUVs: [number, number][] = [
-      [u0, v0],
-      [u1, v0],
       [u0, v1],
       [u1, v1],
+      [u0, v0],
+      [u1, v0],
     ];
 
     for (let i = 0; i < 4; i++) {

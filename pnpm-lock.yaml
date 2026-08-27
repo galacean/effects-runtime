@@ -223,6 +223,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects
 
+  plugin-packages/gui:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
   plugin-packages/ktx2:
     devDependencies:
       '@galacean/effects':
@@ -299,6 +305,9 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
@@ -358,6 +367,9 @@ importers:
       '@galacean/effects-plugin-dom-content':
         specifier: workspace:*
         version: link:../../plugin-packages/dom-content
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../../plugin-packages/model

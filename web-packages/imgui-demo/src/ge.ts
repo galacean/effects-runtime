@@ -1,4 +1,4 @@
-import { Player, VFXItem } from '@galacean/effects';
+import { Player, UICanvas, UIControl, VFXItem } from '@galacean/effects';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
@@ -588,9 +588,13 @@ export class GalaceanEffects {
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
+        const overlayCanvas = composition.pluginRoot.getComponent(UICanvas) ??
+          composition.pluginRoot.addComponent(UICanvas);
         const canvasGizmo = new VFXItem(composition.engine);
+        const bridge = canvasGizmo.addComponent(UIControl);
 
-        canvasGizmo.addComponent(CanvasGizmo);
+        overlayCanvas.order = Number.MAX_SAFE_INTEGER;
+        bridge.control = new CanvasGizmo(composition.engine);
 
         canvasGizmo.setParent(composition.pluginRoot);
       });

@@ -4,6 +4,8 @@ import type * as spec from '@galacean/effects-specification';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
 import type { Engine } from './engine';
+import type { EventEmitterListener, EventEmitterOptions } from './events';
+import { EventEmitter } from './events';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
@@ -15,6 +17,10 @@ export interface TransformProps {
   anchor?: spec.vec2 | Vector2,
   valid?: boolean,
 }
+
+export type TransformEvent = {
+  changed: [transform: Transform],
+};
 
 const tempQuat = new Quaternion();
 const tempVector3 = new Vector3();
@@ -112,6 +118,7 @@ export class Transform implements Disposable {
    * 最终模型矩阵对应变换的缓存，当自身矩阵或父矩阵有修改时需要更新
    */
   private readonly worldTRSCache = { position: new Vector3(0, 0, 0), quat: new Quaternion(0, 0, 0, 1), scale: new Vector3(1, 1, 1) };
+  private readonly eventEmitter = new EventEmitter<TransformEvent>();
 
   /**
    *
@@ -132,7 +139,7 @@ export class Transform implements Disposable {
   }
 
   set parentTransform (transform: Transform | null) {
-    if (!transform || this.parent === transform || this === transform) {
+    if (this.parent === transform || this === transform) {
       return;
     }
     const oldParent = this.parent;
@@ -140,7 +147,9 @@ export class Transform implements Disposable {
     if (this.parent) {
       this.parent.removeChild(this);
     }
-    transform.addChild(this);
+    if (transform) {
+      transform.addChild(this);
+    }
     this.parent = transform;
     this.worldMatrixDirty = true;
     this.onParentTransformChanged(oldParent, transform);
@@ -148,6 +157,21 @@ export class Transform implements Disposable {
 
   get parentTransform () {
     return this.parent;
+  }
+
+  on<E extends keyof TransformEvent> (
+    eventName: E,
+    listener: EventEmitterListener<TransformEvent[E]>,
+    options?: EventEmitterOptions,
+  ): void {
+    this.eventEmitter.on(eventName, listener, options);
+  }
+
+  off<E extends keyof TransformEvent> (
+    eventName: E,
+    listener: EventEmitterListener<TransformEvent[E]>,
+  ): void {
+    this.eventEmitter.off(eventName, listener);
   }
 
   /**
@@ -655,6 +679,7 @@ export class Transform implements Disposable {
     this.children.forEach(c => {
       c.worldMatrixDirty = true;
     });
+    this.eventEmitter.emit('changed', this);
   }
 }
 

@@ -125,7 +125,7 @@ describe('webgl/gl-render-pass', () => {
 
   it('RPOrderTest08 render pass resort meshes with meshes.length===1', () => {
     const spy = chai.spy(() => { });
-    const call = renderer.engine.viewport;
+    const call = renderer.engine.setViewport;
     const geom = new Geometry(
       engine,
       {
@@ -150,9 +150,9 @@ describe('webgl/gl-render-pass', () => {
     rp1.addMesh(mesh);
 
     renderer.engine.bindSystemFramebuffer();
-    renderer.engine.viewport = spy;
+    renderer.engine.setViewport = spy;
     renderer.setFramebuffer(null);
-    renderer.engine.viewport = call;
+    renderer.engine.setViewport = call;
 
     expect(gl.getParameter(gl.FRAMEBUFFER_BINDING)).is.null;
     expect(rp1.meshes.length).is.eql(1);

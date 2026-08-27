@@ -8,6 +8,5 @@ export * from './post-process-volume';
 export * from './base-render-component';
 export * from './fake-3d-component';
 export * from './frame-component';
-export * from './canvas-layer';
-export * from './canvas-item';
-export * from './control';
+export * from './ui-canvas';
+export * from './ui-control';

@@ -348,6 +348,7 @@ describe('webgl/geometry', () => {
     const gl = engine.gl;
     const originalDrawElements = gl.drawElements;
     const offsets: number[] = [];
+    const types: number[] = [];
     const material = {
       initialize () {},
       setMatrix () {},
@@ -362,6 +363,7 @@ describe('webgl/geometry', () => {
     } as unknown as Material;
 
     gl.drawElements = ((...args) => {
+      types.push(args[2]);
       offsets.push(args[3]);
     }) as typeof gl.drawElements;
     try {
@@ -381,7 +383,8 @@ describe('webgl/geometry', () => {
           drawCount: indices.length - 1,
         });
 
-        engine.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
+        engine.renderer.drawGeometry(geometry, math.Matrix4.IDENTITY, material);
+        expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).not.to.equal(null);
         geometry.dispose();
       });
     } finally {
@@ -391,6 +394,59 @@ describe('webgl/geometry', () => {
       Uint16Array.BYTES_PER_ELEMENT,
       Uint32Array.BYTES_PER_ELEMENT,
     ]);
+    expect(types).to.deep.equal([gl.UNSIGNED_SHORT, gl.UNSIGNED_INT]);
+  });
+
+  it('draws unindexed sub-mesh ranges through the renderer', () => {
+    const gl = engine.gl;
+    const originalDrawArrays = gl.drawArrays;
+    const calls: number[][] = [];
+    const geometry = new Geometry(engine, {
+      attributes: {
+        aPosition: {
+          data: new Float32Array([0, 0, 1, 0, 0, 1]),
+          size: 2,
+        },
+      },
+      drawCount: 3,
+      mode: glContext.TRIANGLES,
+    });
+
+    geometry.subMeshes = [{ offset: 1, indexCount: 0, vertexCount: 2 }];
+    gl.drawArrays = ((...args) => {
+      calls.push(args);
+    }) as typeof gl.drawArrays;
+    try {
+      engine.renderer.drawGeometry(
+        geometry,
+        math.Matrix4.IDENTITY,
+        createMaterialStub(),
+      );
+      expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).not.to.equal(null);
+    } finally {
+      gl.drawArrays = originalDrawArrays;
+      geometry.dispose();
+    }
+    expect(calls).to.deep.equal([[gl.TRIANGLES, 1, 2]]);
+  });
+
+  it('protects a cached vertex array while creating another geometry', () => {
+    const gl = engine.gl;
+    const material = createMaterialStub();
+    const firstGeometry = createGeometry(engine);
+    const secondGeometry = createGeometry(engine);
+
+    engine.renderer.drawGeometry(firstGeometry, math.Matrix4.IDENTITY, material);
+    const vertexArrayObject = gl.getParameter(gl.VERTEX_ARRAY_BINDING) as WebGLVertexArrayObject;
+    const indexResource = firstGeometry.getIndexBuffer()!.underlyingResource;
+
+    secondGeometry.initialize();
+    expect(gl.getParameter(gl.VERTEX_ARRAY_BINDING)).to.equal(null);
+    gl.bindVertexArray(vertexArrayObject);
+    expect(gl.getParameter(gl.ELEMENT_ARRAY_BUFFER_BINDING)).to.equal(indexResource);
+    gl.bindVertexArray(null);
+    firstGeometry.dispose();
+    secondGeometry.dispose();
   });
 
   it('rejects instanced drawing when it is unsupported', () => {
@@ -398,7 +454,7 @@ describe('webgl/geometry', () => {
 
     geometry.instanceCount = 2;
     Object.defineProperty(engine.gpuCapability.detail, 'instanceDraw', { value: false });
-    expect(() => engine.drawGeometry(
+    expect(() => engine.renderer.drawGeometry(
       geometry,
       math.Matrix4.IDENTITY,
       createMaterialStub(),

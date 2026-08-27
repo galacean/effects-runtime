@@ -22,6 +22,8 @@ export * from './decorators';
 export * from './downloader';
 export * from './effects-object';
 export * from './engine';
+export * from './input';
+export * from './gui';
 export {
   ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,
   getStandardJSON, normalizeColor,
@@ -42,7 +44,6 @@ export * from './template-image';
 export * from './texture';
 export * from './ticker';
 export * from './transform';
-export * from './rect-transform';
 export * from './utils';
 export * from './vfx-item';
 export * from './effects-object';
