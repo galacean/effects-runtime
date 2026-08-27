@@ -64,7 +64,8 @@ type NativeHandler = {
 
 export type EventSystemEvent = {
   input: [event: InputEvent],
-  inputcancel: [],
+  onCanvasFocus: [],
+  onCanvasBlur: [],
 };
 
 export class EventSystem extends EventEmitter<EventSystemEvent> implements Disposable {
@@ -102,16 +103,23 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     return this._enabled;
   }
 
+  /**
+   * Enables native input processing.
+   *
+   * Change this only while there are no active key, mouse, touch, or drag sessions.
+   */
   set enabled (value: boolean) {
     if (this._enabled === value) {
       return;
     }
     this._enabled = value;
-    if (!value) {
-      this.cancelInputState();
-    }
   }
 
+  /**
+   * Rebinds native input listeners to a canvas.
+   *
+   * Rebind or unbind only while there are no active key, mouse, touch, or drag sessions.
+   */
   bindListeners (target: HTMLCanvasElement | null): void {
     this.unbindListeners();
     this.target = target;
@@ -140,7 +148,8 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     this.addNativeHandler(target, 'wheel', this.onNativeWheel as EventListener, { passive: false });
     this.addNativeHandler(target, 'keydown', this.onNativeKeyDown as EventListener);
     this.addNativeHandler(target, 'keyup', this.onNativeKeyUp as EventListener);
-    this.addNativeHandler(window, 'blur', this.onWindowBlur as EventListener);
+    this.addNativeHandler(target, 'focus', this.onCanvasFocus as EventListener);
+    this.addNativeHandler(target, 'blur', this.onCanvasBlur as EventListener);
   }
 
   dispatchEvent (type: string, event: TouchEventType): void {
@@ -180,9 +189,9 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
   }
 
   dispose (): void {
-    this.cancelInputState();
+    this.resetInputState();
     this.handlers = {};
-    this.unbindListeners(false);
+    this.unbindListeners();
     this.target = null;
   }
 
@@ -327,10 +336,12 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     this.handleNativeTouchEnd(event, true);
   };
 
-  private onWindowBlur = (): void => {
-    if (this.enabled) {
-      this.cancelInputState();
-    }
+  private onCanvasFocus = (): void => {
+    this.emit('onCanvasFocus');
+  };
+
+  private onCanvasBlur = (): void => {
+    this.emit('onCanvasBlur');
   };
 
   private handleNativeMouseDown (event: MouseEvent): void {
@@ -399,9 +410,6 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
       }
       this.touchStates.delete(touch.identifier);
       this.consumeNativeEvent(event, handled || state.inputHandled || !this.allowPropagation);
-    }
-    if (canceled) {
-      this.cancelInputState();
     }
     this.preventTouchDefaults(event);
   }
@@ -822,13 +830,12 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     this.target?.focus();
   }
 
-  private cancelInputState (): void {
+  private resetInputState (): void {
     this.mouseState = null;
     this.mouseButtonMask = MouseButtonMask.None;
     this.touchStates.clear();
     this.mouseFromTouchIndex = null;
     this.touchFromMousePressed = false;
-    this.emit('inputcancel');
   }
 
   private addNativeHandler (
@@ -841,9 +848,7 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     this.nativeHandlers.push({ target, name, handler, options });
   }
 
-  private unbindListeners (cancelInput = true): void {
-    const wasBound = this.target !== null || this.nativeHandlers.length > 0;
-
+  private unbindListeners (): void {
     for (const nativeHandler of this.nativeHandlers) {
       nativeHandler.target.removeEventListener(
         nativeHandler.name,
@@ -860,9 +865,6 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
     }
     this.addedTabIndex = false;
     this.addedOutlineStyle = false;
-    if (cancelInput && wasBound) {
-      this.cancelInputState();
-    }
   }
 }
 

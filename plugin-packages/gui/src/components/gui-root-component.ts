@@ -29,8 +29,8 @@ export class GUIRootComponent extends Component {
     }
   };
 
-  private readonly cancelInput = (): void => {
-    this.windowRoot.cancelPointerInput();
+  private readonly onCanvasBlur = (): void => {
+    this.windowRoot.onCanvasBlur();
   };
 
   constructor (engine: Engine) {
@@ -40,7 +40,7 @@ export class GUIRootComponent extends Component {
     engine.on('postrender', this.renderWindowRoot);
     engine.on('resize', this.resizeWindowRoot);
     engine.eventSystem.on('input', this.pushInput);
-    engine.eventSystem.on('inputcancel', this.cancelInput);
+    engine.eventSystem.on('onCanvasBlur', this.onCanvasBlur);
     this.resizeWindowRoot();
   }
 
@@ -53,7 +53,7 @@ export class GUIRootComponent extends Component {
     this.engine.off('postrender', this.renderWindowRoot);
     this.engine.off('resize', this.resizeWindowRoot);
     this.engine.eventSystem.off('input', this.pushInput);
-    this.engine.eventSystem.off('inputcancel', this.cancelInput);
+    this.engine.eventSystem.off('onCanvasBlur', this.onCanvasBlur);
     this.windowRoot.dispose();
     super.dispose();
   }

@@ -108,6 +108,42 @@ class MouseStateRecordingControl extends Control {
   }
 }
 
+class CanvasBlurRecordingControl extends RecordingControl {
+  readonly releases: InputEventMouseButton[] = [];
+  mouseEnterCount = 0;
+  mouseLeaveCount = 0;
+
+  override onMouseUp (event: InputEventMouseButton): void {
+    this.releases.push(event);
+  }
+
+  override onMouseEnter (): void {
+    this.mouseEnterCount++;
+  }
+
+  override onMouseLeave (): void {
+    this.mouseLeaveCount++;
+  }
+}
+
+class DragSourceControl extends Control {
+  protected override getDragData (): unknown {
+    return 'drag-data';
+  }
+}
+
+class DropTargetControl extends Control {
+  readonly drops: unknown[] = [];
+
+  protected override canDropData (): boolean {
+    return true;
+  }
+
+  protected override dropData (_position: math.Vector2, data: unknown): void {
+    this.drops.push(data);
+  }
+}
+
 describe('plugin-gui/input', () => {
   let player: Player;
   let composition: Composition;
@@ -388,16 +424,183 @@ describe('plugin-gui/input', () => {
     expect(handled).equals(false);
   });
 
-  it('cancels GUI pointer state when EventSystem is disabled or unbound', () => {
+  it('emits canvas focus and blur events exactly once', () => {
+    const focusEvents: string[] = [];
+
+    player.engine.eventSystem.on('onCanvasFocus', () => focusEvents.push('in'));
+    player.engine.eventSystem.on('onCanvasBlur', () => focusEvents.push('out'));
+
+    player.canvas.dispatchEvent(new Event('focus'));
+    player.canvas.dispatchEvent(new Event('blur'));
+    expect(focusEvents).deep.equals(['in', 'out']);
+
+    focusEvents.length = 0;
+    player.engine.eventSystem.enabled = false;
+    player.engine.eventSystem.bindListeners(null);
+    expect(focusEvents).deep.equals([]);
+  });
+
+  it('releases mouse focus on canvas blur while preserving other GUI state', () => {
+    const windowRoot = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const control = addControl(
+      composition.sceneRoot,
+      new CanvasBlurRecordingControl(player.engine),
+      10, 0, 50, 50,
+    );
+    const sibling = addControl(
+      composition.sceneRoot,
+      new RecordingControl(player.engine),
+      100, 0, 50, 50,
+    );
+
+    control.focusMode = FocusMode.Click;
+    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Left));
+    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Right));
+    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Middle));
+    const touch = new InputEventScreenTouch();
+
+    touch.index = 7;
+    touch.pressed = true;
+    touch.position.set(20, 10);
+    windowRoot.pushInput(touch);
+
+    player.canvas.dispatchEvent(new Event('blur'));
+
+    expect(control.releases.map(event => ({
+      button: event.buttonIndex,
+      device: event.device,
+      pressed: event.pressed,
+      canceled: event.canceled,
+      position: event.position,
+      globalPosition: event.globalPosition,
+    }))).deep.equals([
+      {
+        button: MouseButton.Left,
+        device: InputEvent.deviceIdInternal,
+        pressed: false,
+        canceled: false,
+        position: new Vector2(10, 10),
+        globalPosition: new Vector2(10, 10),
+      },
+      {
+        button: MouseButton.Right,
+        device: InputEvent.deviceIdInternal,
+        pressed: false,
+        canceled: false,
+        position: new Vector2(10, 10),
+        globalPosition: new Vector2(10, 10),
+      },
+      {
+        button: MouseButton.Middle,
+        device: InputEvent.deviceIdInternal,
+        pressed: false,
+        canceled: false,
+        position: new Vector2(10, 10),
+        globalPosition: new Vector2(10, 10),
+      },
+    ]);
+    expect(control.hasFocus()).equals(true);
+    expect(control.mouseEnterCount).equals(1);
+    expect(control.mouseLeaveCount).equals(0);
+    expect(control.log).not.includes('blur');
+
+    const key = new InputEventKey();
+
+    key.pressed = true;
+    key.keycode = 'Enter';
+    windowRoot.pushInput(key);
+    expect(control.log).includes('key:Enter');
+
+    const drag = new InputEventScreenDrag();
+
+    drag.index = 7;
+    drag.position.set(110, 10);
+    drag.relative.set(100, 0);
+    windowRoot.pushInput(drag);
+    expect(control.log).includes('touch-move:7:100,10');
+
+    const motion = new InputEventMouseMotion();
+
+    motion.position.set(110, 10);
+    motion.globalPosition.copyFrom(motion.position);
+    motion.relative.set(100, 0);
+    windowRoot.pushInput(motion);
+    expect(sibling.log).deep.equals(['move:10,10']);
+  });
+
+  it('cancels only the affected native touch and its emulated mouse', () => {
+    player.canvas.getBoundingClientRect = canvasRect;
+    const inputs: InputEvent[] = [];
+
+    player.engine.eventSystem.on('input', event => inputs.push(event));
+    player.canvas.dispatchEvent(nativeTouchEvent('touchstart', [
+      { identifier: 1, clientX: 20, clientY: 30 },
+      { identifier: 2, clientX: 30, clientY: 40 },
+    ]));
+
+    inputs.length = 0;
+    player.canvas.dispatchEvent(nativeTouchEvent('touchcancel', [
+      { identifier: 1, clientX: 20, clientY: 30 },
+    ]));
+
+    const canceledTouches = inputs.filter(event => event instanceof InputEventScreenTouch);
+    const canceledMouse = inputs.filter(event => event instanceof InputEventMouseButton);
+
+    expect(canceledTouches).to.have.length(1);
+    expect(canceledTouches[0]).includes({ index: 1, pressed: false, canceled: true });
+    expect(canceledMouse).to.have.length(1);
+    expect(canceledMouse[0]).includes({
+      device: InputEvent.deviceIdEmulation,
+      pressed: false,
+      canceled: true,
+    });
+
+    inputs.length = 0;
+    player.canvas.dispatchEvent(nativeTouchEvent('touchend', [
+      { identifier: 2, clientX: 30, clientY: 40 },
+    ]));
+    const remainingTouchRelease = inputs.filter(event => event instanceof InputEventScreenTouch);
+
+    expect(remainingTouchRelease).to.have.length(1);
+    expect(remainingTouchRelease[0]).includes({ index: 2, pressed: false, canceled: false });
+  });
+
+  it('preserves dragging on blur and drops on a canceled mouse release', () => {
+    addControl(composition.sceneRoot, new DragSourceControl(player.engine), 0, 0, 50, 50);
+    const target = addControl(composition.sceneRoot, new DropTargetControl(player.engine), 100, 0, 50, 50);
     const windowRoot = player.engine.root.getComponent(GUIRootComponent).windowRoot;
 
-    chai.spy.on(windowRoot, 'cancelPointerInput');
-    player.engine.eventSystem.enabled = false;
-    expect(windowRoot.cancelPointerInput).to.have.been.called.once;
+    windowRoot.pushInput(mouseButton(10, 10, true));
+    const motion = new InputEventMouseMotion();
 
-    player.engine.eventSystem.enabled = true;
-    player.engine.eventSystem.bindListeners(null);
-    expect(windowRoot.cancelPointerInput).to.have.been.called.twice;
+    motion.position.set(110, 10);
+    motion.globalPosition.copyFrom(motion.position);
+    motion.relative.set(100, 0);
+    windowRoot.pushInput(motion);
+    expect(windowRoot.guiIsDragging()).equals(true);
+    expect(windowRoot.guiGetDragData()).equals('drag-data');
+
+    player.canvas.dispatchEvent(new Event('blur'));
+    expect(windowRoot.guiIsDragging()).equals(true);
+
+    const release = mouseButton(110, 10, false);
+
+    release.canceled = true;
+    windowRoot.pushInput(release);
+    expect(target.drops).deep.equals(['drag-data']);
+    expect(windowRoot.guiIsDragging()).equals(false);
+    expect(windowRoot.guiIsDragSuccessful()).equals(true);
+  });
+
+  it('keeps EventSystem disposal silent and lets GUIRootComponent clean up independently', () => {
+    const guiRoot = player.engine.root.getComponent(GUIRootComponent);
+
+    chai.spy.on(guiRoot.windowRoot, 'cancelPointerInput');
+    player.engine.eventSystem.dispose();
+    expect(guiRoot.windowRoot.cancelPointerInput).to.not.have.been.called();
+
+    guiRoot.dispose();
+    expect(guiRoot.windowRoot.cancelPointerInput).to.have.been.called.once;
   });
 
   it('uses reverse child order for hit testing', () => {
@@ -670,13 +873,29 @@ function addControl<T extends Control> (
   return control;
 }
 
-function mouseButton (x: number, y: number, pressed: boolean): InputEventMouseButton {
+function mouseButton (
+  x: number,
+  y: number,
+  pressed: boolean,
+  button = MouseButton.Left,
+): InputEventMouseButton {
   const event = new InputEventMouseButton();
 
-  event.buttonIndex = MouseButton.Left;
+  event.buttonIndex = button;
   event.pressed = pressed;
   event.position.copyFrom(new Vector2(x, y));
   event.globalPosition.copyFrom(event.position);
+
+  return event;
+}
+
+function nativeTouchEvent (
+  type: 'touchstart' | 'touchend' | 'touchcancel',
+  changedTouches: Array<{ identifier: number, clientX: number, clientY: number }>,
+): Event {
+  const event = new Event(type, { cancelable: true });
+
+  Object.defineProperty(event, 'changedTouches', { value: changedTouches });
 
   return event;
 }

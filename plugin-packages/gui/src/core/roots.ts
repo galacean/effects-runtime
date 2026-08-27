@@ -1,5 +1,6 @@
 import type { UICanvas } from '../components/ui-canvas';
 import {
+  InputEvent,
   InputEventKey,
   InputEventMouse,
   InputEventMouseButton,
@@ -12,7 +13,6 @@ import {
 } from '@galacean/effects';
 import type {
   Engine,
-  InputEvent,
 } from '@galacean/effects';
 import {
   CursorShape,
@@ -303,6 +303,30 @@ export class WindowRootControl extends RootControl {
     this.gui.touchFocus.clear();
     this.endDragging(false);
     this.releaseControlFocus();
+  }
+
+  onCanvasBlur (): void {
+    const target = this.gui.mouseFocus;
+    const mask = this.gui.mouseFocusMask;
+
+    this.dropMouseFocus();
+    if (!target || target.isDisposed) {
+      return;
+    }
+    for (const button of [MouseButton.Left, MouseButton.Right, MouseButton.Middle]) {
+      if ((mask & getButtonMask(button)) === 0) {
+        continue;
+      }
+      const event = new InputEventMouseButton();
+      const position = target.makePositionLocal(this.gui.lastMousePosition);
+
+      event.device = InputEvent.deviceIdInternal;
+      event.buttonIndex = button;
+      event.pressed = false;
+      event.position.copyFrom(position);
+      event.globalPosition.copyFrom(position);
+      this.callControlInput(target, event);
+    }
   }
 
   override cancelPointerPress (control: Control, touchIndex: number): void {
