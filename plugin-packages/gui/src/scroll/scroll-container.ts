@@ -1,22 +1,19 @@
 import {
-  Container,
   EventEmitter,
-  FocusMode,
   MouseButton,
-  SizeFlags,
   effectsClass,
   math,
 } from '@galacean/effects';
 import type {
-  Control,
-  ControlEvent,
   Engine,
   EventEmitterListener,
   InputEventMouseButton,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  RootControl,
 } from '@galacean/effects';
+import { Container, SizeFlags } from '../core/control';
+import type { Control, ControlEvent, RootControl } from '../core/control';
+import { FocusMode } from '../core/enums';
 import { ScrollMode } from './enums';
 import { HScrollBar, ScrollBar, VScrollBar } from './scroll-bar';
 import type { ScrollContainerData } from '../data';

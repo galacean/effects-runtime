@@ -1,8 +1,9 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   Button,
   ButtonGroup,
+  Control,
   HorizontalAlignment,
   Label,
   Panel,

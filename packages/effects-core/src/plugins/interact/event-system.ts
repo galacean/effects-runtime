@@ -1,6 +1,7 @@
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { Composition } from '../../composition';
 import type { Engine } from '../../engine';
+import { EventEmitter } from '../../events';
 import {
   InputEvent,
   InputEventKey,
@@ -50,7 +51,7 @@ type PointerState = {
   start: Vector2,
   last: Vector2,
   lastTime: number,
-  controlHandled: boolean,
+  inputHandled: boolean,
   pressed: boolean,
 };
 
@@ -61,7 +62,12 @@ type NativeHandler = {
   options?: AddEventListenerOptions | boolean,
 };
 
-export class EventSystem implements Disposable {
+export type EventSystemEvent = {
+  input: [event: InputEvent],
+  inputcancel: [],
+};
+
+export class EventSystem extends EventEmitter<EventSystemEvent> implements Disposable {
   skipPointerMovePicking = true;
   private readonly emulateMouseFromTouch = true;
   private readonly emulateTouchFromMouse = false;
@@ -88,7 +94,9 @@ export class EventSystem implements Disposable {
   constructor (
     public engine: Engine,
     public allowPropagation = false,
-  ) {}
+  ) {
+    super();
+  }
 
   get enabled (): boolean {
     return this._enabled;
@@ -100,12 +108,7 @@ export class EventSystem implements Disposable {
     }
     this._enabled = value;
     if (!value) {
-      this.mouseState = null;
-      this.mouseButtonMask = MouseButtonMask.None;
-      this.touchStates.clear();
-      this.mouseFromTouchIndex = null;
-      this.touchFromMousePressed = false;
-      this.engine.windowRoot.cancelPointerInput();
+      this.cancelInputState();
     }
   }
 
@@ -177,14 +180,9 @@ export class EventSystem implements Disposable {
   }
 
   dispose (): void {
-    this.engine.windowRoot.cancelPointerInput();
-    this.mouseState = null;
-    this.mouseButtonMask = MouseButtonMask.None;
-    this.touchStates.clear();
-    this.mouseFromTouchIndex = null;
-    this.touchFromMousePressed = false;
+    this.cancelInputState();
     this.handlers = {};
-    this.unbindListeners();
+    this.unbindListeners(false);
     this.target = null;
   }
 
@@ -234,8 +232,8 @@ export class EventSystem implements Disposable {
     const velocity = this.getVelocity(state, position);
     const handled = this.pushNativeMouseMotion(event, position, relative, velocity);
 
-    state.controlHandled ||= handled;
-    if (!handled && (!state.pressed || !state.controlHandled)) {
+    state.inputHandled ||= handled;
+    if (!handled && (!state.pressed || !state.inputHandled)) {
       const pointerEvent = this.createPointerEvent(event, position, state, velocity);
 
       this.dispatchEvent(EVENT_TYPE_TOUCH_MOVE, pointerEvent);
@@ -262,14 +260,14 @@ export class EventSystem implements Disposable {
     const handled = this.pushNativeMouseButton(event, position, false);
     const pointerEvent = this.createPointerEvent(event, position, state);
 
-    if (!state.controlHandled && !handled && this.isClick(state, position)) {
+    if (!state.inputHandled && !handled && this.isClick(state, position)) {
       this.dispatchEvent(EVENT_TYPE_CLICK, pointerEvent);
     }
-    if (!handled && !state.controlHandled) {
+    if (!handled && !state.inputHandled) {
       this.dispatchEvent(EVENT_TYPE_TOUCH_END, pointerEvent);
     }
     this.mouseState = null;
-    this.consumeNativeEvent(event, handled || state.controlHandled || !this.allowPropagation);
+    this.consumeNativeEvent(event, handled || state.inputHandled || !this.allowPropagation);
   };
 
   private onNativeTouchStart = (event: TouchEvent): void => {
@@ -285,7 +283,7 @@ export class EventSystem implements Disposable {
       state.pressed = true;
       const handled = this.pushNativeScreenTouch(touch.identifier, position, true, false, false);
 
-      state.controlHandled = handled;
+      state.inputHandled = handled;
       if (!handled) {
         const pointerEvent = this.createPointerEvent(event, position, state);
 
@@ -309,8 +307,8 @@ export class EventSystem implements Disposable {
       const velocity = this.getVelocity(state, position);
       const handled = this.pushNativeScreenDrag(touch.identifier, position, relative, velocity);
 
-      state.controlHandled ||= handled;
-      if (!handled && !state.controlHandled) {
+      state.inputHandled ||= handled;
+      if (!handled && !state.inputHandled) {
         const pointerEvent = this.createPointerEvent(event, position, state, velocity);
 
         this.dispatchEvent(EVENT_TYPE_TOUCH_MOVE, pointerEvent);
@@ -331,12 +329,7 @@ export class EventSystem implements Disposable {
 
   private onWindowBlur = (): void => {
     if (this.enabled) {
-      this.mouseState = null;
-      this.mouseButtonMask = MouseButtonMask.None;
-      this.touchStates.clear();
-      this.mouseFromTouchIndex = null;
-      this.touchFromMousePressed = false;
-      this.engine.windowRoot.cancelPointerInput();
+      this.cancelInputState();
     }
   };
 
@@ -354,7 +347,7 @@ export class EventSystem implements Disposable {
     state.pressed = true;
     const handled = this.pushNativeMouseButton(event, position, true);
 
-    state.controlHandled = handled;
+    state.inputHandled = handled;
     if (!handled) {
       const pointerEvent = this.createPointerEvent(event, position, state);
 
@@ -381,8 +374,7 @@ export class EventSystem implements Disposable {
     input.altPressed = event.altKey;
     input.metaPressed = event.metaKey;
     input.ctrlPressed = event.ctrlKey;
-    this.engine.windowRoot.pushInput(input);
-    this.consumeNativeEvent(event, this.engine.windowRoot.isInputHandled());
+    this.consumeNativeEvent(event, this.pushInput(input));
   }
 
   private handleNativeTouchEnd (event: TouchEvent, canceled: boolean): void {
@@ -399,14 +391,17 @@ export class EventSystem implements Disposable {
       const handled = this.pushNativeScreenTouch(touch.identifier, position, false, canceled, false);
       const pointerEvent = this.createPointerEvent(event, position, state);
 
-      if (!canceled && !state.controlHandled && !handled && this.isClick(state, position)) {
+      if (!canceled && !state.inputHandled && !handled && this.isClick(state, position)) {
         this.dispatchEvent(EVENT_TYPE_CLICK, pointerEvent);
       }
-      if (!handled && !canceled && !state.controlHandled) {
+      if (!handled && !canceled && !state.inputHandled) {
         this.dispatchEvent(EVENT_TYPE_TOUCH_END, pointerEvent);
       }
       this.touchStates.delete(touch.identifier);
-      this.consumeNativeEvent(event, handled || state.controlHandled || !this.allowPropagation);
+      this.consumeNativeEvent(event, handled || state.inputHandled || !this.allowPropagation);
+    }
+    if (canceled) {
+      this.cancelInputState();
     }
     this.preventTouchDefaults(event);
   }
@@ -511,9 +506,8 @@ export class EventSystem implements Disposable {
     input.pressed = pressed;
     input.canceled = canceled;
     input.doubleClick = doubleClick;
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private pushEmulatedMouseMotion (
@@ -532,9 +526,8 @@ export class EventSystem implements Disposable {
     input.screenRelative.copyFrom(relative);
     input.velocity.copyFrom(velocity);
     input.screenVelocity.copyFrom(velocity);
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private pushMouseButton (
@@ -550,9 +543,8 @@ export class EventSystem implements Disposable {
     input.buttonMask = this.mouseButtonMask;
     input.pressed = pressed;
     input.doubleClick = event.detail > 1;
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private setMouseButtonPressed (button: number, pressed: boolean): void {
@@ -579,9 +571,8 @@ export class EventSystem implements Disposable {
     input.buttonMask = this.mouseButtonMask;
     input.factor = factor;
     input.pressed = true;
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private pushMouseMotion (
@@ -604,9 +595,8 @@ export class EventSystem implements Disposable {
       input.pressure = event.pressure;
       input.tilt.set(event.tiltX, event.tiltY);
     }
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private pushScreenTouch (
@@ -625,9 +615,8 @@ export class EventSystem implements Disposable {
     input.pressed = pressed;
     input.canceled = canceled;
     input.doubleTap = doubleTap;
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private pushScreenDrag (
@@ -647,9 +636,8 @@ export class EventSystem implements Disposable {
     input.velocity.copyFrom(velocity);
     input.screenVelocity.copyFrom(velocity);
     input.pressed = true;
-    this.engine.windowRoot.pushInput(input);
 
-    return this.engine.windowRoot.isInputHandled();
+    return this.pushInput(input);
   }
 
   private copyMouseFields (
@@ -746,7 +734,7 @@ export class EventSystem implements Disposable {
       start: position.clone(),
       last: position.clone(),
       lastTime: performance.now(),
-      controlHandled: false,
+      inputHandled: false,
       pressed: false,
     };
 
@@ -784,8 +772,8 @@ export class EventSystem implements Disposable {
 
     return {
       x: position.x / cssWidth * 2 - 1,
-      // Legacy composition picking uses bottom-left, Y-up NDC even though GUI
-      // input follows the DOM convention of top-left, Y-down pixels.
+      // Legacy composition picking uses bottom-left, Y-up NDC even though
+      // standardized input follows the DOM convention of top-left, Y-down pixels.
       y: 1 - position.y / cssHeight * 2,
       vx: velocity.x / cssWidth * 2,
       vy: -velocity.y / cssHeight * 2,
@@ -817,6 +805,13 @@ export class EventSystem implements Disposable {
     }
   }
 
+  private pushInput (input: InputEvent): boolean {
+    input.clearAccepted();
+    this.emit('input', input);
+
+    return input.isAccepted();
+  }
+
   private preventTouchDefaults (event: TouchEvent): void {
     if (event.cancelable) {
       event.preventDefault();
@@ -825,6 +820,15 @@ export class EventSystem implements Disposable {
 
   private focusTarget (): void {
     this.target?.focus();
+  }
+
+  private cancelInputState (): void {
+    this.mouseState = null;
+    this.mouseButtonMask = MouseButtonMask.None;
+    this.touchStates.clear();
+    this.mouseFromTouchIndex = null;
+    this.touchFromMousePressed = false;
+    this.emit('inputcancel');
   }
 
   private addNativeHandler (
@@ -837,7 +841,9 @@ export class EventSystem implements Disposable {
     this.nativeHandlers.push({ target, name, handler, options });
   }
 
-  private unbindListeners (): void {
+  private unbindListeners (cancelInput = true): void {
+    const wasBound = this.target !== null || this.nativeHandlers.length > 0;
+
     for (const nativeHandler of this.nativeHandlers) {
       nativeHandler.target.removeEventListener(
         nativeHandler.name,
@@ -854,6 +860,9 @@ export class EventSystem implements Disposable {
     }
     this.addedTabIndex = false;
     this.addedOutlineStyle = false;
+    if (cancelInput && wasBound) {
+      this.cancelInputState();
+    }
   }
 }
 

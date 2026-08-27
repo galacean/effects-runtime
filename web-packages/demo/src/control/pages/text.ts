@@ -1,11 +1,12 @@
 import type { Engine } from '@galacean/effects';
-import { Control, SizeFlags, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type {
   Button } from '@galacean/effects-plugin-gui';
 import {
   AutowrapMode,
   ButtonGroup,
   ColorRect,
+  Control,
   GridContainer,
   HSlider,
   HorizontalAlignment,
@@ -13,6 +14,7 @@ import {
   NinePatchRect,
   Panel,
   Side,
+  SizeFlags,
   TextOverflow,
   TextureRect,
   TextureStretchMode,

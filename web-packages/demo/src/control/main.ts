@@ -1,4 +1,5 @@
 import { Composition, Player } from '@galacean/effects';
+import { GUIRootComponent, UICanvas } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { ControlApp } from './app';
 import { attachFullRect } from './layout';
@@ -16,7 +17,13 @@ export function boot (): void {
   });
   const composition = new Composition(player.engine);
 
-  composition.uiCanvas.rootControl.theme = getRuntimeTheme();
+  const uiCanvas = composition.sceneRoot.getComponent(UICanvas);
+  const guiRoot = player.engine.root.getComponent(GUIRootComponent);
+
+  if (!uiCanvas || !guiRoot) {
+    throw new Error('GUI plugin failed to initialize.');
+  }
+  uiCanvas.rootControl.theme = getRuntimeTheme();
   let app: ControlApp;
   let rebuildQueued = false;
   let disposed = false;
@@ -34,18 +41,18 @@ export function boot (): void {
         if (disposed) {
           return;
         }
-        player.engine.windowRoot.guiReleaseFocus();
-        player.engine.windowRoot.cancelPointerInput();
+        guiRoot.windowRoot.guiReleaseFocus();
+        guiRoot.windowRoot.cancelPointerInput();
         applyTheme(state.theme, state.accent, state.customAccent);
         app.dispose();
         app = new ControlApp(player.engine, context);
-        attachFullRect(app, composition.uiCanvas.rootControl);
+        attachFullRect(app, uiCanvas.rootControl);
       });
     },
   };
 
   app = new ControlApp(player.engine, context);
-  attachFullRect(app, composition.uiCanvas.rootControl);
+  attachFullRect(app, uiCanvas.rootControl);
   window.addEventListener('resize', () => player.resize());
   window.addEventListener('beforeunload', () => {
     disposed = true;

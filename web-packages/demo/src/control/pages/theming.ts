@@ -1,15 +1,17 @@
 import type { Engine } from '@galacean/effects';
-import { Control, Theme, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   Button,
   AutowrapMode,
   CheckBox,
   CheckButton,
+  Control,
   HSlider,
   HorizontalAlignment,
   Label,
   Panel,
   ProgressBar,
+  Theme,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';

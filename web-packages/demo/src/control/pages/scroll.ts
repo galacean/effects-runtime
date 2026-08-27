@@ -1,16 +1,18 @@
 import type { Engine } from '@galacean/effects';
-import { Control, SizeFlags, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   Button,
   AutowrapMode,
   CheckButton,
   ColorRect,
+  Control,
   Label,
   HorizontalAlignment,
   Panel,
   ProgressBar,
   ScrollContainer,
   ScrollMode,
+  SizeFlags,
   TextOverflow,
   VBoxContainer,
 } from '@galacean/effects-plugin-gui';

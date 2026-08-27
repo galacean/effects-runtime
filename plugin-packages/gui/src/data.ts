@@ -1,8 +1,7 @@
 import type {
-  ControlData,
-  RectData,
   spec,
 } from '@galacean/effects';
+import type { ControlData, RectData } from './core/data';
 import type {
   AspectRatioStretchMode,
   LayoutAlignment,

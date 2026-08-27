@@ -5,7 +5,8 @@ import { EditorWindow } from './editor-window';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { CanvasGizmo } from '../core/canvas-gizmo';
-import { UIControl, VFXItem } from '@galacean/effects-core';
+import { VFXItem } from '@galacean/effects-core';
+import { UIControl } from '@galacean/effects-plugin-gui';
 import { beginToolbar, endToolbar, toggleButton } from '../widgets';
 
 @editorWindow()

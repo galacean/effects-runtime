@@ -1,11 +1,13 @@
 import {
+  math,
+} from '@galacean/effects';
+import {
   StyleBoxEmpty,
   StyleBoxFlat,
   ThemeItemType,
   ThemeRegistry,
-  math,
-} from '@galacean/effects';
-import type { StyleBox, ThemeItemDefinitions } from '@galacean/effects';
+} from '../core/theme';
+import type { StyleBox, ThemeItemDefinitions } from '../core/theme';
 
 const palette = {
   text: new math.Color(0.92, 0.94, 0.98, 1),

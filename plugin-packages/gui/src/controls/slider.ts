@@ -1,8 +1,6 @@
 import {
   EventEmitter,
-  FocusMode,
   MouseButton,
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
@@ -14,8 +12,9 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  RootControl,
 } from '@galacean/effects';
+import type { RootControl } from '../core/control';
+import { FocusMode, MouseFilter } from '../core/enums';
 import { Orientation } from '../layout/enums';
 import { Range } from '../scroll/range';
 import type { RangeEvent } from '../scroll/range';

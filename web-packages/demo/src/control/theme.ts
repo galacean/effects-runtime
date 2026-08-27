@@ -1,5 +1,7 @@
-import { StyleBoxFlat, Theme, ThemeRegistry, math } from '@galacean/effects';
-import type { Control, FontStyle, FontWeight } from '@galacean/effects';
+import { math } from '@galacean/effects';
+import type { FontStyle, FontWeight } from '@galacean/effects';
+import { StyleBoxFlat, Theme, ThemeRegistry } from '@galacean/effects-plugin-gui';
+import type { Control } from '@galacean/effects-plugin-gui';
 
 export const FONT_FAMILY = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 

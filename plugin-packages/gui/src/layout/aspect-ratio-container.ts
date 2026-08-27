@@ -1,4 +1,5 @@
-import { Container, effectsClass, math } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import { Container } from '../core/control';
 import type { AspectRatioContainerData } from '../data';
 import { AspectRatioStretchMode, LayoutAlignment } from './enums';
 import { assertEnumValue, assertFinite } from './utils';

@@ -1,10 +1,11 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   AutowrapMode,
   ButtonGroup,
   CheckBox,
   CheckButton,
+  Control,
   HorizontalAlignment,
   Panel,
 } from '@galacean/effects-plugin-gui';

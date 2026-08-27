@@ -47,6 +47,10 @@ export class PluginSystem {
     return plugins;
   }
 
+  static notifyCompositionCreating (composition: Composition, scene?: Scene) {
+    plugins.forEach(plugin => plugin.onCompositionCreating(composition, scene));
+  }
+
   static notifyCompositionCreated (composition: Composition, scene?: Scene) {
     plugins.forEach(plugin => plugin.onCompositionCreated(composition, scene));
   }

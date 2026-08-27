@@ -1,4 +1,5 @@
-import { Container, effectsClass, math } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import { Container } from '../core/control';
 
 /** Adds four independent margins around every visible child. */
 @effectsClass('MarginContainer')

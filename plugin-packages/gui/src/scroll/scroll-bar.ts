@@ -1,10 +1,10 @@
 import {
   EventEmitter,
-  FocusMode,
   MouseButton,
   effectsClass,
   math,
 } from '@galacean/effects';
+import { FocusMode } from '../core/enums';
 import type {
   Engine,
   EventEmitterListener,

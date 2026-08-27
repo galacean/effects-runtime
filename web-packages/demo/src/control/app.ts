@@ -1,14 +1,16 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type { Button } from '@galacean/effects-plugin-gui';
 import {
   ButtonGroup,
   ColorRect,
+  Control,
   HorizontalAlignment,
   Label,
   Panel,
   TextOverflow,
   VerticalAlignment,
+  GUIRootComponent,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { attachAnchoredRect, attachFullRect } from './layout';
@@ -125,7 +127,7 @@ export class ControlApp extends Control {
       page.visible = active;
       page.enabled = active;
     }
-    this.engine.windowRoot.guiReleaseFocus();
+    this.engine.root.getComponent(GUIRootComponent).windowRoot.guiReleaseFocus();
   }
 
   private buildBrand (sidebar: Panel): void {

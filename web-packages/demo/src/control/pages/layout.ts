@@ -1,10 +1,11 @@
 import type { Engine } from '@galacean/effects';
-import { Control, SizeFlags, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type {
   Button } from '@galacean/effects-plugin-gui';
 import {
   AspectRatioContainer,
   ButtonGroup,
+  Control,
   GridContainer,
   HBoxContainer,
   HSlider,
@@ -13,6 +14,7 @@ import {
   LayoutAlignment,
   MarginContainer,
   Panel,
+  SizeFlags,
   VBoxContainer,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';

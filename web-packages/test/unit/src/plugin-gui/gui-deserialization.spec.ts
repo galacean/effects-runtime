@@ -1,15 +1,5 @@
-import {
-  Container,
-  Control,
-  Player,
-  UIControl,
-  VFXItem,
-  effectsClass,
-  getClass,
-  math,
-} from '@galacean/effects';
-import type { Engine, UIControlData,
-  StyleBoxFlat } from '@galacean/effects';
+import { Player, VFXItem, effectsClass, getClass, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import {
   AspectRatioContainer,
   AspectRatioStretchMode,
@@ -19,6 +9,8 @@ import {
   CheckBox,
   CheckButton,
   ColorRect,
+  Container,
+  Control,
   GridContainer,
   HBoxContainer,
   HScrollBar,
@@ -41,6 +33,11 @@ import {
   VBoxContainer,
   VScrollBar,
   VSlider,
+  UIControl,
+} from '@galacean/effects-plugin-gui';
+import type {
+  StyleBoxFlat,
+  UIControlData,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
@@ -51,7 +48,7 @@ type DeserializationCase = {
   verify: (control: Control) => void,
 };
 
-describe('core/GUI Control deserialization', () => {
+describe('plugin-gui/GUI Control deserialization', () => {
   let player: Player;
   let serial = 0;
 

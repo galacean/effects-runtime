@@ -4,12 +4,7 @@ import type {
   InputEventMouseButton,
 } from '@galacean/effects';
 import {
-  Control,
-  CursorShape,
-  FocusMode,
   MouseButton,
-  MouseFilter,
-  SizeFlags,
   math,
 } from '@galacean/effects';
 import {
@@ -17,13 +12,18 @@ import {
   Button,
   CheckBox,
   ColorRect,
+  Control,
+  CursorShape,
+  FocusMode,
   GridContainer,
   HSlider,
   HorizontalAlignment,
   Label,
+  MouseFilter,
   Panel,
   ScrollContainer,
   ScrollMode,
+  SizeFlags,
   TextOverflow,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';

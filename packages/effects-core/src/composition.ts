@@ -3,7 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import type { Component, PostProcessVolume } from './components';
-import { CompositionComponent, UICanvas, UpdateModes } from './components';
+import { CompositionComponent, UpdateModes } from './components';
 import { setRayFromCamera } from './math';
 import { PluginSystem } from './plugin-system';
 import type { EventSystem, Region } from './plugins';
@@ -142,9 +142,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   set renderOrder (value: number) {
     this._renderOrder = value;
-    if (this.uiCanvas) {
-      this.uiCanvas.order = value;
-    }
   }
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
@@ -161,9 +158,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   set interactive (value: boolean) {
     this._interactive = !!value;
-    if (this.uiCanvas) {
-      this.uiCanvas.receivesEvents = this._interactive;
-    }
   }
   /**
    * 合成是否结束
@@ -225,8 +219,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 合成中消息元素创建/销毁时触发的回调
    */
   onItemMessage?: (message: MessageItem) => void;
-  /** Screen-space GUI boundary owned by this Composition. */
-  readonly uiCanvas: UICanvas;
   /**
    * 销毁状态位
    */
@@ -311,10 +303,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // Instantiate composition rootItem
     this.sceneRoot = new VFXItem(this.engine);
     this.sceneRoot.setParent(this.root);
-    this.uiCanvas = this.sceneRoot.addComponent(UICanvas);
 
     if (sourceContent) {
       this.sceneRoot.setInstanceId(sourceContent.id);
+    }
+
+    PluginSystem.notifyCompositionCreating(this, scene);
+
+    if (sourceContent) {
       this.sceneRoot.instantiatePreComposition(sourceContent, false);
     }
 

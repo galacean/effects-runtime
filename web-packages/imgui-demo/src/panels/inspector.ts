@@ -1,5 +1,7 @@
-import type { Control, LayoutPreset, Material, Texture } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, UIControl, VFXItem, math, spec } from '@galacean/effects';
+import type { Material, Texture } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, math, spec } from '@galacean/effects';
+import { UIControl } from '@galacean/effects-plugin-gui';
+import type { Control, LayoutPreset } from '@galacean/effects-plugin-gui';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { editorApp } from '../core/editor-application';

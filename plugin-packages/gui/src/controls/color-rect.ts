@@ -1,5 +1,7 @@
-import { Control, MouseFilter, effectsClass, math } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
+import { Control } from '../core/control';
+import { MouseFilter } from '../core/enums';
 import type { ColorRectData } from '../data';
 
 @effectsClass('ColorRect')

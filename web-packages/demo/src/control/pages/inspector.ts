@@ -1,5 +1,5 @@
 import type { Engine, Texture } from '@galacean/effects';
-import { Control, SizeFlags, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type {
   Range } from '@galacean/effects-plugin-gui';
 import {
@@ -9,6 +9,7 @@ import {
   CheckBox,
   CheckButton,
   ColorRect,
+  Control,
   GridContainer,
   HBoxContainer,
   HScrollBar,
@@ -20,6 +21,7 @@ import {
   Panel,
   ProgressBar,
   ScrollContainer,
+  SizeFlags,
   Side,
   TextOverflow,
   TextureRect,

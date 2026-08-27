@@ -1,10 +1,5 @@
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { UICanvas } from '../components/ui-canvas';
-import type { Engine } from '../engine';
 import {
-  CursorShape,
-  FocusMode,
   InputEventKey,
   InputEventMouse,
   InputEventMouseButton,
@@ -13,11 +8,25 @@ import {
   InputEventScreenTouch,
   MouseButton,
   MouseButtonMask,
+  math,
+} from '@galacean/effects';
+import type {
+  Engine,
+  InputEvent,
+} from '@galacean/effects';
+import {
+  CursorShape,
+  FocusMode,
   MouseFilter,
-} from '../input';
-import type { CursorStyle, InputEvent } from '../input';
+} from './enums';
+import type { CursorStyle } from './enums';
 import type { Container } from './control';
 import { Control, RootControl } from './control';
+
+type Matrix3 = math.Matrix3;
+type Vector2 = math.Vector2;
+const Matrix3 = math.Matrix3;
+const Vector2 = math.Vector2;
 
 const cursorNames: Record<CursorShape, string> = {
   [CursorShape.Arrow]: 'default',
@@ -163,7 +172,6 @@ export class WindowRootControl extends RootControl {
   }
 
   pushInput (event: InputEvent): void {
-    event.clearAccepted();
     this.lastInput = event;
     this.cleanupInternalState();
     this.processGUIInput(event);

@@ -1,24 +1,26 @@
 import {
-  Control,
-  PatchStretchMode,
   Player,
-  StyleBoxEmpty,
-  StyleBoxFlat,
-  StyleBoxTexture,
-  Theme,
   math,
 } from '@galacean/effects';
-import type { Graphics, StyleBox } from '@galacean/effects';
+import type { Graphics } from '@galacean/effects';
 import type { Texture } from '@galacean/effects';
 import {
   Button,
   CheckBox,
+  Control,
   HBoxContainer,
   HScrollBar,
   HSlider,
   Label,
+  PatchStretchMode,
   ProgressBar,
+  StyleBoxEmpty,
+  StyleBoxFlat,
+  StyleBoxTexture,
+  Theme,
+  GUIRootComponent,
 } from '@galacean/effects-plugin-gui';
+import type { StyleBox } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
@@ -35,7 +37,7 @@ function color (red: number): math.Color {
   return new math.Color(red, 0, 0, 1);
 }
 
-describe('core/GUI Theme and StyleBox', () => {
+describe('plugin-gui/GUI Theme and StyleBox', () => {
   let player: Player;
 
   beforeEach(() => {
@@ -176,10 +178,10 @@ describe('core/GUI Theme and StyleBox', () => {
 
       firstTheme.setColor('Label', 'fontColor', color(0.2));
       secondTheme.setColor('Label', 'fontColor', color(0.8));
-      player.engine.windowRoot.theme = firstTheme;
-      other.engine.windowRoot.theme = secondTheme;
-      first.parent = player.engine.windowRoot;
-      second.parent = other.engine.windowRoot;
+      player.engine.root.getComponent(GUIRootComponent).windowRoot.theme = firstTheme;
+      other.engine.root.getComponent(GUIRootComponent).windowRoot.theme = secondTheme;
+      first.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+      second.parent = other.engine.root.getComponent(GUIRootComponent).windowRoot;
       expect(first.getThemeColor('fontColor').r).equals(0.2);
       expect(second.getThemeColor('fontColor').r).equals(0.8);
       firstTheme.setColor('Label', 'fontColor', color(0.4));
@@ -317,7 +319,7 @@ describe('core/GUI Theme and StyleBox', () => {
       theme.setStyleBox('Button', name, style);
     }
     button.theme = theme;
-    button.parent = player.engine.windowRoot;
+    button.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
     const draws: StyleBox[] = [];
 
     button.drawStyleBox = ((style: StyleBox) => draws.push(style)) as typeof button.drawStyleBox;

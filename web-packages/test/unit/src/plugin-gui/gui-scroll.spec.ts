@@ -1,22 +1,24 @@
 import {
   Composition,
-  Control,
-  FocusMode,
   InputEventMouseButton,
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
   MouseButton,
   Player,
-  SizeFlags,
   math,
 } from '@galacean/effects';
 import {
+  Control,
+  FocusMode,
   HScrollBar,
   Range,
   ScrollContainer,
   ScrollMode,
+  SizeFlags,
   VScrollBar,
+  GUIRootComponent,
+  UICanvas,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
@@ -43,7 +45,7 @@ class TestScrollContainer extends ScrollContainer {
   }
 }
 
-describe('core/GUI clipping and scrolling', () => {
+describe('plugin-gui/GUI clipping and scrolling', () => {
   let player: Player;
   let composition: Composition;
 
@@ -136,11 +138,11 @@ describe('core/GUI clipping and scrolling', () => {
     const scroll = new ScrollContainer(player.engine);
     const content = new ScrollContent(player.engine, new math.Vector2(180, 220));
 
-    scroll.parent = composition.uiCanvas.rootControl;
+    scroll.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     content.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
     scroll.addChild(content);
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect(scroll.clipContents).equals(true);
     expect(scroll.getHScrollBar().visible).equals(true);
@@ -149,7 +151,7 @@ describe('core/GUI clipping and scrolling', () => {
 
     scroll.hScroll = 30;
     scroll.vScroll = 40;
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect([content.x, content.y, content.width, content.height]).deep.equals([-30, -40, 180, 220]);
   });
 
@@ -159,12 +161,12 @@ describe('core/GUI clipping and scrolling', () => {
     const second = new ScrollContent(player.engine, new math.Vector2(180, 220));
     const drawOrder: string[] = [];
 
-    scroll.parent = composition.uiCanvas.rootControl;
+    scroll.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     scroll.addChild(first);
     scroll.addChild(second);
     scroll.changeChildIndex(first, -1);
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect(scroll.children).deep.equals([
       scroll.getHScrollBar(),
@@ -183,7 +185,7 @@ describe('core/GUI clipping and scrolling', () => {
     const event = mouseButton(94, 60, MouseButton.Left);
 
     event.globalPosition.copyFrom(event.position);
-    player.engine.windowRoot.pushInput(event);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(event);
     expect(first.mouseDownCount).equals(0);
     expect(second.mouseDownCount).equals(0);
     expect(scroll.getVScrollBar().value).greaterThan(0);
@@ -193,19 +195,19 @@ describe('core/GUI clipping and scrolling', () => {
     const scroll = new ScrollContainer(player.engine);
     const content = new ScrollContent(player.engine, new math.Vector2(40, 40));
 
-    scroll.parent = composition.uiCanvas.rootControl;
+    scroll.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     scroll.addChild(content);
     scroll.horizontalScrollMode = ScrollMode.ShowAlways;
     scroll.verticalScrollMode = ScrollMode.Reserve;
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect(scroll.getHScrollBar().visible).equals(true);
     expect(scroll.getVScrollBar().visible).equals(false);
     expect(scroll.getHScrollBar().page).equals(88);
 
     scroll.horizontalScrollMode = ScrollMode.ShowNever;
     scroll.verticalScrollMode = ScrollMode.Disabled;
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect(scroll.getHScrollBar().visible).equals(false);
     expect(scroll.getVScrollBar().visible).equals(false);
   });
@@ -216,21 +218,21 @@ describe('core/GUI clipping and scrolling', () => {
     const inner = new ScrollContainer(player.engine);
     const innerContent = new ScrollContent(player.engine, new math.Vector2(100, 300));
 
-    outer.parent = composition.uiCanvas.rootControl;
+    outer.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     outer.setSize(100, 100);
     outer.addChild(outerContent);
     inner.parent = outerContent;
     inner.setSize(100, 100);
     inner.addChild(innerContent);
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     inner.vScroll = 300;
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     const innerBoundary = inner.vScroll;
     const wheel = mouseButton(50, 50, MouseButton.WheelDown);
 
     wheel.globalPosition.set(50, 50);
     wheel.factor = 1;
-    player.engine.windowRoot.pushInput(wheel);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(wheel);
     expect(inner.vScroll).equals(innerBoundary);
     expect(outer.vScroll).greaterThan(0);
     expect(wheel.isAccepted()).equals(true);
@@ -240,10 +242,10 @@ describe('core/GUI clipping and scrolling', () => {
     const scroll = new ScrollContainer(player.engine);
     const content = new ScrollContent(player.engine, new math.Vector2(40, 500));
 
-    scroll.parent = composition.uiCanvas.rootControl;
+    scroll.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     scroll.addChild(content);
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     player.canvas.dispatchEvent(new WheelEvent('wheel', {
       deltaY: 100,
       deltaMode: WheelEvent.DOM_DELTA_PIXEL,
@@ -260,26 +262,26 @@ describe('core/GUI clipping and scrolling', () => {
     const content = new ScrollContent(player.engine, new math.Vector2(100, 500));
     const events: string[] = [];
 
-    scroll.parent = composition.uiCanvas.rootControl;
+    scroll.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     scroll.addChild(content);
     scroll.deadzone = 5;
     scroll.on('scrollStarted', () => events.push('start'));
     scroll.on('scrollEnded', () => events.push('end'));
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     const down = new InputEventScreenTouch();
 
     down.index = 1;
     down.pressed = true;
     down.position.set(50, 50);
-    player.engine.windowRoot.pushInput(down);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(down);
     const drag = new InputEventScreenDrag();
 
     drag.index = 1;
     drag.position.set(50, 10);
     drag.relative.set(0, -40);
-    player.engine.windowRoot.pushInput(drag);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(drag);
     expect(scroll.vScroll).equals(40);
     expect(events).deep.equals(['start']);
 
@@ -288,7 +290,7 @@ describe('core/GUI clipping and scrolling', () => {
 
     up.index = 1;
     up.position.set(50, 10);
-    player.engine.windowRoot.pushInput(up);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(up);
     scroll.update(100);
     expect(scroll.vScroll).greaterThan(40);
 
@@ -304,7 +306,7 @@ describe('core/GUI clipping and scrolling', () => {
     const content = new ScrollContent(player.engine, new math.Vector2(100, 500));
     const target = new Control(player.engine);
 
-    scroll.parent = lateComposition.uiCanvas.rootControl;
+    scroll.parent = lateComposition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     scroll.followFocus = true;
     scroll.addChild(content);
@@ -314,7 +316,7 @@ describe('core/GUI clipping and scrolling', () => {
     target.focusMode = FocusMode.All;
     lateComposition.root.awake();
     lateComposition.root.beginPlay();
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     target.grabFocus();
     expect(scroll.vScroll).greaterThan(250);
@@ -326,13 +328,13 @@ describe('core/GUI clipping and scrolling', () => {
     const focusChanges: Array<Control | null> = [];
     const focusChanged = (owner: Control | null) => focusChanges.push(owner);
 
-    control.parent = composition.uiCanvas.rootControl;
+    control.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     control.focusMode = FocusMode.All;
-    player.engine.windowRoot.on('guiFocusChanged', focusChanged);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.on('guiFocusChanged', focusChanged);
     control.grabFocus();
     control.grabFocus();
     control.releaseFocus();
-    player.engine.windowRoot.off('guiFocusChanged', focusChanged);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.off('guiFocusChanged', focusChanged);
     control.grabFocus();
 
     expect(focusChanges).deep.equals([control, null]);

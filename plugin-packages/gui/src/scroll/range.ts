@@ -1,5 +1,7 @@
-import { Control, EventEmitter } from '@galacean/effects';
-import type { ControlEvent, Engine, EventEmitterListener } from '@galacean/effects';
+import { EventEmitter } from '@galacean/effects';
+import type { Engine, EventEmitterListener } from '@galacean/effects';
+import { Control } from '../core/control';
+import type { ControlEvent } from '../core/control';
 import type { RangeData } from '../data';
 
 export type RangeEvent = ControlEvent & {

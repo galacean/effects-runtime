@@ -1,4 +1,5 @@
-import { Container, effectsClass, math } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import { Container } from '../core/control';
 import type { CenterContainerData } from '../data';
 
 /** Centers children at their bound minimum size. */

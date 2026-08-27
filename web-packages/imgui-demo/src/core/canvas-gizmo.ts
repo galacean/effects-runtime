@@ -1,5 +1,6 @@
 import type { Camera, Engine, Renderer } from '@galacean/effects-core';
-import { Control, math, RendererComponent, VFXItem } from '@galacean/effects-core';
+import { math, RendererComponent, VFXItem } from '@galacean/effects-core';
+import { Control } from '@galacean/effects-plugin-gui';
 import { Selection } from './selection';
 
 const { Vector2, Vector3, Matrix4, Color, Quaternion } = math;

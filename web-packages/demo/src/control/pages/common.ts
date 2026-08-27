@@ -1,7 +1,9 @@
 import type { Engine, InputEventMouseButton, InputEventMouseMotion } from '@galacean/effects';
-import { Control, CursorShape, MouseButton, MouseButtonMask, Texture, TextureSourceType, math } from '@galacean/effects';
+import { MouseButton, MouseButtonMask, Texture, TextureSourceType, math } from '@galacean/effects';
 import {
   AutowrapMode,
+  Control,
+  CursorShape,
   HorizontalAlignment,
   Label,
   TextOverflow,
@@ -18,7 +20,7 @@ export function label (
   y: number,
   width: number,
   height: number,
-  parent: import('@galacean/effects').Control,
+  parent: import('@galacean/effects-plugin-gui').Control,
   options: {
     size?: number,
     color?: math.Color,
@@ -89,7 +91,7 @@ export function createDemoTexture (engine: Engine): Texture {
 export function texturePreview (
   engine: Engine,
   texture: Texture,
-  parent: import('@galacean/effects').Control,
+  parent: import('@galacean/effects-plugin-gui').Control,
   x: number,
   y: number,
   width: number,

@@ -1,10 +1,10 @@
 import {
-  Control,
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
 import type { Engine, TextMeasurement } from '@galacean/effects';
+import { Control } from '../core/control';
+import { MouseFilter } from '../core/enums';
 import type { LabelData } from '../data';
 import { AutowrapMode, HorizontalAlignment, TextOverflow, VerticalAlignment } from './enums';
 

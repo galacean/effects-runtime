@@ -34,6 +34,14 @@ export abstract class Plugin {
   onAssetsLoadFinish (scene: Scene, options: SceneLoadOptions, engine: Engine): void { }
 
   /**
+   * 合成内容开始创建前触发。
+   * 此时 root、pluginRoot 和 sceneRoot 已创建，但场景内容尚未实例化。
+   * @param composition - 正在创建的合成对象
+   * @param scene - 场景对象
+   */
+  onCompositionCreating (composition: Composition, scene?: Scene): void { }
+
+  /**
    * 合成创建完成后触发。
    * @param composition - 合成对象
    * @param scene - 场景对象

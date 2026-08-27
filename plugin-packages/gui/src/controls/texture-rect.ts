@@ -1,10 +1,10 @@
 import {
-  Control,
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
 import type { Engine, Texture, TextureRegion } from '@galacean/effects';
+import { Control } from '../core/control';
+import { MouseFilter } from '../core/enums';
 import type { TextureRectData } from '../data';
 import { TextureExpandMode, TextureStretchMode } from './enums';
 

@@ -1,9 +1,9 @@
 import {
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
 import type { Engine } from '@galacean/effects';
+import { MouseFilter } from '../core/enums';
 import { Range } from '../scroll/range';
 import { ProgressFillMode } from './enums';
 import type { ProgressBarData } from '../data';

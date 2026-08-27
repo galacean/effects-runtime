@@ -1,5 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
-import type { FontStyle, FontWeight } from '../render';
+import type { FontStyle, FontWeight, spec } from '@galacean/effects';
 
 export interface ThemeFontData {
   family: string,

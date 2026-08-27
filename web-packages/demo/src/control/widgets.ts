@@ -1,17 +1,19 @@
-import type { Control, Engine } from '@galacean/effects';
-import { SizeFlags, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type {
   Slider } from '@galacean/effects-plugin-gui';
 import {
   Button,
   ButtonGroup,
   CheckButton,
+  SizeFlags,
   HBoxContainer,
   HorizontalAlignment,
   Label,
   TextOverflow,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';
+import type { Control } from '@galacean/effects-plugin-gui';
 import { getTheme, mix, setFlatStyleOverride, setFontOverrides, withAlpha } from './theme';
 
 export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger';

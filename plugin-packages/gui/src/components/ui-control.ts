@@ -1,11 +1,8 @@
-import type * as spec from '@galacean/effects-specification';
-import { effectsClass, getClass } from '../decorators';
-import type { Control, UIControlData } from '../gui';
-import { Container } from '../gui';
-import type { Engine } from '../engine';
-import type { Transform } from '../transform';
-import type { Constructor } from '../utils';
-import { Component } from './component';
+import { Component, effectsClass, getClass } from '@galacean/effects';
+import type { Constructor, Engine, Transform, spec } from '@galacean/effects';
+import { Container } from '../core/control';
+import type { Control } from '../core/control';
+import type { UIControlData } from '../core/data';
 import { UICanvas } from './ui-canvas';
 
 /**

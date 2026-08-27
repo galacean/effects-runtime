@@ -1,5 +1,7 @@
-import { Control, MouseFilter, effectsClass } from '@galacean/effects';
+import { effectsClass } from '@galacean/effects';
 import type { Engine, math } from '@galacean/effects';
+import { Control } from '../core/control';
+import { MouseFilter } from '../core/enums';
 
 @effectsClass('Panel')
 export class Panel extends Control {

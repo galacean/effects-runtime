@@ -1,12 +1,15 @@
 import type { Engine } from '@galacean/effects';
-import { Control, MouseFilter, SizeFlags, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   AutowrapMode,
+  Control,
   HorizontalAlignment,
   Label,
+  MouseFilter,
   Panel,
   ScrollContainer,
   ScrollMode,
+  SizeFlags,
   TextOverflow,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';

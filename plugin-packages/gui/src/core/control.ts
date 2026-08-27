@@ -1,36 +1,34 @@
-import { Color } from '@galacean/effects-math/es/core/color';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Engine } from '../engine';
+import { math } from '@galacean/effects';
 import type {
-  CursorStyle,
+  Engine,
+  EventEmitterListener,
+  FontStyle,
+  FontWeight,
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-} from '../input';
+  NinePatchDrawOptions,
+  TextMeasurement,
+  Texture,
+  TextureRegion,
+  VFXItem,
+} from '@galacean/effects';
+import {
+  effectsClass,
+  EventEmitter,
+} from '@galacean/effects';
+import type { UIControl } from '../components/ui-control';
+import type { ControlData, ThemeItemCollectionData } from './data';
+import type { CursorStyle } from './enums';
 import {
   CursorShape,
   FocusBehaviorRecursive,
   FocusMode,
   MouseBehaviorRecursive,
   MouseFilter,
-} from '../input';
-import type { EventEmitterListener } from '../events';
-import { EventEmitter } from '../events';
-import type {
-  FontStyle,
-  FontWeight,
-  NinePatchDrawOptions,
-  TextMeasurement,
-  TextureRegion,
-} from '../render';
-import type { Texture } from '../texture';
-import type { UIControl } from '../components/ui-control';
-import type { VFXItem } from '../vfx-item';
-import { effectsClass } from '../decorators';
-import type { ControlData, ThemeItemCollectionData } from './data';
+} from './enums';
 import {
   cloneThemeValue,
   StyleBox,
@@ -40,6 +38,13 @@ import {
   ThemeRegistry,
 } from './theme';
 import type { Theme, ThemeFont, ThemeValue } from './theme';
+
+type Color = math.Color;
+type Matrix3 = math.Matrix3;
+type Vector2 = math.Vector2;
+const Color = math.Color;
+const Matrix3 = math.Matrix3;
+const Vector2 = math.Vector2;
 
 export type Rect = {
   position: Vector2,

@@ -1,5 +1,6 @@
-import { Container, SizeFlags, effectsClass, math } from '@galacean/effects';
-import type { Control } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import { Container, SizeFlags } from '../core/control';
+import type { Control } from '../core/control';
 import type { GridContainerData } from '../data';
 import { growSlots, sum } from './utils';
 

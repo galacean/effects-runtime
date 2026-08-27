@@ -1,10 +1,10 @@
 import {
-  Container,
-  SizeFlags,
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Control, Engine } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { Container, SizeFlags } from '../core/control';
+import type { Control } from '../core/control';
 import type { BoxContainerData } from '../data';
 import { LayoutAlignment, Orientation } from './enums';
 import { alignmentOffset, assertEnumValue, growSlots, sum } from './utils';

@@ -1,17 +1,16 @@
+import { MouseButtonMask } from '@galacean/effects';
+import type {
+  Texture,
+  math,
+} from '@galacean/effects';
 import {
   FocusBehaviorRecursive,
   FocusMode,
   GrowDirection,
-  MouseButtonMask,
   MouseFilter,
   SizeFlags,
-} from '@galacean/effects';
-import type {
-  Control,
-  Texture,
-  CursorShape,
-  math,
-} from '@galacean/effects';
+} from '@galacean/effects-plugin-gui';
+import type { Control, CursorShape } from '@galacean/effects-plugin-gui';
 import type {
   AspectRatioContainer,
   BaseButton,

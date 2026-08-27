@@ -1,10 +1,12 @@
-import { Color } from '@galacean/effects-math/es/core/color';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Engine } from '../engine';
-import { EventEmitter } from '../events';
-import type { EventEmitterListener } from '../events';
-import type { FontStyle, FontWeight, Graphics } from '../render';
-import type { Texture } from '../texture';
+import { EventEmitter, math } from '@galacean/effects';
+import type {
+  Engine,
+  EventEmitterListener,
+  FontStyle,
+  FontWeight,
+  Graphics,
+  Texture,
+} from '@galacean/effects';
 import type {
   StyleBoxData,
   StyleBoxMarginsData,
@@ -12,6 +14,11 @@ import type {
   ThemeFontData,
   ThemeItemCollectionData,
 } from './data';
+
+type Color = math.Color;
+type Vector2 = math.Vector2;
+const Color = math.Color;
+const Vector2 = math.Vector2;
 
 export enum ThemeItemType {
   Color = 'color',

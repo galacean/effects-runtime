@@ -1,13 +1,9 @@
 import {
-  Control,
   EventEmitter,
-  FocusMode,
   MouseButton,
   MouseButtonMask,
-  MouseFilter,
 } from '@galacean/effects';
 import type {
-  ControlEvent,
   Engine,
   EventEmitterListener,
   InputEventKey,
@@ -15,8 +11,10 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  RootControl,
 } from '@galacean/effects';
+import { Control } from '../core/control';
+import type { ControlEvent, RootControl } from '../core/control';
+import { FocusMode, MouseFilter } from '../core/enums';
 import { ButtonActionMode, ButtonDrawMode } from './enums';
 import type { BaseButtonData } from '../data';
 

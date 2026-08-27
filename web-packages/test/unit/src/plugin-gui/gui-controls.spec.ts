@@ -3,7 +3,6 @@ import {
   InputEventMouseButton,
   MouseButton,
   Player,
-  Theme,
   math,
 } from '@galacean/effects';
 import type { Texture } from '@galacean/effects';
@@ -26,13 +25,14 @@ import {
   TextureExpandMode,
   TextureRect,
   TextureStretchMode,
+  Theme,
   VSlider,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
-describe('core/GUI basic controls', () => {
+describe('plugin-gui/GUI basic controls', () => {
   let player: Player;
 
   beforeEach(() => {
