@@ -41,7 +41,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       const neonAgain = PresetManager.getPreset('neon');
 
-      expect(neonAgain?.layers.length).to.be.greaterThan(0);
+      expect(neonAgain?.layers!.length).to.be.greaterThan(0);
     });
   });
 
@@ -50,9 +50,9 @@ describe('core/plugins/text/preset-manager', () => {
       const neon = PresetManager.getPreset('neon');
 
       expect(neon).to.not.be.undefined;
-      expect(neon!.layers.length).to.eql(3);
+      expect(neon!.layers!.length).to.eql(3);
       // 第一层描边应带 glow 装饰层（而非 shadow offset=0）
-      const firstLayer = neon!.layers[0];
+      const firstLayer = neon!.layers![0];
 
       expect(firstLayer.kind).to.eql('single-stroke');
       expect(firstLayer.decorations?.[0]?.kind).to.eql('glow');
@@ -67,10 +67,10 @@ describe('core/plugins/text/preset-manager', () => {
     it('should return deep copy (modifying result does not affect source)', () => {
       const neon1 = PresetManager.getPreset('neon')!;
 
-      (neon1.layers[0].params as Record<string, unknown>).color = [1, 1, 1, 1];
+      (neon1.layers![0].params as Record<string, unknown>).color = [1, 1, 1, 1];
 
       const neon2 = PresetManager.getPreset('neon')!;
-      const neon2Color = (neon2.layers[0].params as Record<string, unknown>).color;
+      const neon2Color = (neon2.layers![0].params as Record<string, unknown>).color;
 
       expect(neon2Color).to.not.eql([1, 1, 1, 1]);
     });
@@ -87,7 +87,7 @@ describe('core/plugins/text/preset-manager', () => {
       const result = PresetManager.getPreset('custom-red');
 
       expect(result).to.not.be.undefined;
-      expect(result!.layers[0].kind).to.eql('solid-fill');
+      expect(result!.layers![0].kind).to.eql('solid-fill');
     });
 
     it('should unregister custom preset', () => {
@@ -113,7 +113,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       const result = PresetManager.getPreset('test-override');
 
-      expect((result?.layers[0].params as Record<string, unknown>).color).to.eql([0, 0, 1, 1]);
+      expect((result?.layers![0].params as Record<string, unknown>).color).to.eql([0, 0, 1, 1]);
     });
 
     it('custom preset should take priority over builtin', () => {
@@ -123,7 +123,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       const result = PresetManager.getPreset('glow');
 
-      expect(result?.layers.length).to.eql(1);
+      expect(result?.layers!.length).to.eql(1);
     });
   });
 
@@ -195,7 +195,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       const newConfig = PresetManager.updateParamByPath(config, 'layers.0.params.color', [0, 1, 0, 1]);
 
-      expect((newConfig.layers[0].params as Record<string, unknown>).color).to.eql([0, 1, 0, 1]);
+      expect((newConfig.layers![0].params as Record<string, unknown>).color).to.eql([0, 1, 0, 1]);
     });
 
     it('should not modify original config (immutability)', () => {
@@ -207,7 +207,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       PresetManager.updateParamByPath(config, 'layers.0.params.color', [0, 1, 0, 1]);
 
-      expect((config.layers[0].params as Record<string, unknown>).color).to.eql([1, 0, 0, 1]);
+      expect((config.layers![0].params as Record<string, unknown>).color).to.eql([1, 0, 0, 1]);
     });
 
     it('should update nested decorations property', () => {
@@ -223,8 +223,8 @@ describe('core/plugins/text/preset-manager', () => {
 
       const newConfig = PresetManager.updateParamByPath(config, 'layers.0.decorations.0.params.blur', 20);
 
-      expect((newConfig.layers[0].decorations![0].params as Record<string, unknown>).blur).to.eql(20);
-      expect((config.layers[0].decorations![0].params as Record<string, unknown>).blur).to.eql(10);
+      expect((newConfig.layers![0].decorations![0].params as Record<string, unknown>).blur).to.eql(20);
+      expect((config.layers![0].decorations![0].params as Record<string, unknown>).blur).to.eql(10);
     });
 
     it('should update array element within params', () => {
@@ -236,7 +236,7 @@ describe('core/plugins/text/preset-manager', () => {
 
       const newConfig = PresetManager.updateParamByPath(config, 'layers.0.params.colors.1', [0, 1, 0, 1]);
 
-      expect(((newConfig.layers[0].params as Record<string, unknown>).colors as unknown[])[1]).to.eql([0, 1, 0, 1]);
+      expect(((newConfig.layers![0].params as Record<string, unknown>).colors as unknown[])[1]).to.eql([0, 1, 0, 1]);
     });
 
     it('should warn and return original config when path does not exist', () => {

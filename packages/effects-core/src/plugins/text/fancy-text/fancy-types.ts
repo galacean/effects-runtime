@@ -89,14 +89,35 @@ export type FancyRangeOverride = null | number | { mode: 'disable' };
 
 // ========== 花字整体配置 ==========
 
-export interface FancyConfig {
-  /** 默认效果栈，普通文本和未覆盖的 RichText Range 使用它。 */
-  layers: FancyLayerConfig[],
-  /** 可复用的 Range 效果栈表，公开 JSON 使用 1 开始的位置编号引用。 */
-  rangeStacks?: FancyRangeStack[],
-  /** 按 Parser 输出顺序，为每个 source range 指定效果栈。 */
-  rangeOverrides?: FancyRangeOverride[],
+interface FancyConfigBase {
+  /**
+   * 默认效果栈，普通文本和未覆盖的 RichText Range 使用它。
+   * 缺省时回退到普通文本填充色。
+   */
+  layers?: FancyLayerConfig[],
 }
+
+interface FancyConfigWithoutRanges extends FancyConfigBase {
+  /** Range 花字配置必须与 rangeOverrides 成对出现。 */
+  rangeStacks?: undefined,
+  /** Range 花字配置必须与 rangeStacks 成对出现。 */
+  rangeOverrides?: undefined,
+}
+
+interface FancyConfigWithRanges extends FancyConfigBase {
+  /** 可复用的 Range 效果栈表，公开 JSON 使用 1 开始的位置编号引用。 */
+  rangeStacks: FancyRangeStack[],
+  /** 按 Parser 输出顺序，为每个 source range 指定效果栈。 */
+  rangeOverrides: FancyRangeOverride[],
+}
+
+/**
+ * 花字整体配置。
+ *
+ * `layers` 是可选的：缺省表示没有默认花字，使用普通文本作为默认外观。
+ * `rangeStacks` 与 `rangeOverrides` 是一组配置，要么同时存在，要么同时缺省。
+ */
+export type FancyConfig = FancyConfigWithoutRanges | FancyConfigWithRanges;
 
 // ========== 运行时渲染层 ==========
 

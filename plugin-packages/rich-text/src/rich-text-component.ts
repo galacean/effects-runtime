@@ -74,10 +74,10 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
   private lastRenderPlan?: TextRenderPlan;
   private rangeFancyLayers: RichTextRangeFancyLayers = {};
   private fancyResolution?: FancyScopeResolution;
-  /** 交互或动画调节花字参数时使用的运行时 padding 预算。 */
-  private fancyRenderPadding: Partial<TextEffectPadding> = {};
-  /** 交互调节花字参数时，保持渲染表面尺寸稳定。 */
+  /** 在同一文本内容的动态花字调节过程中保持渲染表面尺寸稳定。 */
   private stableEffectPadding?: TextEffectPadding;
+  /** Effect-shape key that scopes the stable padding cache. */
+  private stableEffectPaddingKey?: string;
 
   constructor (engine: Engine) {
     super(engine);
@@ -118,6 +118,7 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this._destroyed = true;
     this.lastRenderPlan = undefined;
     this.stableEffectPadding = undefined;
+    this.stableEffectPaddingKey = undefined;
     super.onDestroy();
     this.disposeTextTexture();
   }
@@ -161,15 +162,25 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
 
     if (nextText !== this.text) {
       this.stableEffectPadding = undefined;
+      this.stableEffectPaddingKey = undefined;
     }
 
     this.rangeFancyLayers = richOptions.rangeFancyLayers ?? {};
-    this.fancyRenderPadding = richOptions.fancyRenderPadding ?? {};
     this.textStyle = new TextStyle(options);
-    this.fancyResolution = this.textStyle.fancyConfig
-      && (this.textStyle.fancyConfig.rangeStacks || this.textStyle.fancyConfig.rangeOverrides)
+
+    const fancyConfig = this.textStyle.fancyConfig;
+    const hasRangeStacks = fancyConfig?.rangeStacks !== undefined;
+    const hasRangeOverrides = fancyConfig?.rangeOverrides !== undefined;
+
+    if (hasRangeStacks !== hasRangeOverrides) {
+      throw new Error(
+        'fancyConfig.rangeStacks and rangeOverrides must be provided together.'
+      );
+    }
+
+    this.fancyResolution = fancyConfig && hasRangeStacks
       ? TextStyle.resolveFancyConfig(
-        this.textStyle.fancyConfig,
+        fancyConfig,
         this.textStyle.textColor,
         this.textStyle.fancyRenderStyle.layers,
       )
@@ -414,6 +425,14 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       letterSpace,
     );
 
+    // 没有可渲染内容时保持历史行为：不进入尺寸、花字 padding 和纹理更新流程。
+    // display 模式的有效内容仍会继续走后续动态尺寸计算。
+    if (wrapResult.lines.length === 0 || wrapResult.maxLineWidth === 0 || wrapResult.totalHeight === 0) {
+      this.isDirty = false;
+
+      return;
+    }
+
     // ── 步骤 2: SizeMode → 帧尺寸（逻辑单位）──
     // fontScale 不参与排版，全部在逻辑坐标系中完成。
     let frameW: number;
@@ -481,6 +500,13 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
       defaultLayers: this.textStyle.fancyRenderStyle.layers,
       rangeLayersBySourceId: resolvedRangeLayers,
     });
+    const effectPaddingKey = this.buildEffectPaddingKey(resolvedRangeLayers);
+
+    if (effectPaddingKey !== this.stableEffectPaddingKey) {
+      this.stableEffectPadding = undefined;
+      this.stableEffectPaddingKey = effectPaddingKey;
+    }
+
     const requestedPadding = calculateTextEffectPadding(this.textStyle, resolvedRangeLayers);
     const padding = this.mergeEffectPadding(requestedPadding);
     const paddedLogicalWidth = overflowResult.canvasWidth + padding.left + padding.right;
@@ -543,32 +569,34 @@ export class RichTextComponent extends MaskableGraphic implements IRichTextCompo
     this.isDirty = false;
   }
 
+  private buildEffectPaddingKey (rangeLayers: RichTextRangeFancyLayers): string {
+    const shapeKey = (layers: RichTextRangeFancyLayers[string] | undefined): string =>
+      (layers ?? []).map(layer => `${layer.kind}:${layer.category ?? ''}`).join(',');
+    const rangeKeys = Object.keys(rangeLayers).sort().map(sourceRangeId =>
+      `${sourceRangeId}:${shapeKey(rangeLayers[sourceRangeId])}`
+    );
+
+    return [
+      `default:${shapeKey(this.textStyle.fancyRenderStyle.layers)}`,
+      ...rangeKeys,
+    ].join('|');
+  }
+
+  /**
+   * Keeps the render surface large enough for the biggest effect extent seen
+   * while the current text is being updated. The padding is derived entirely
+   * from the current runtime effect layers; callers do not need to provide a
+   * pixel budget.
+   */
   private mergeEffectPadding (requested: TextEffectPadding): TextEffectPadding {
-    const hasBudget = Object.keys(this.fancyRenderPadding).length > 0;
-
-    if (!hasBudget) {
-      // 保持旧版和非交互路径的结果不变：没有显式预算时，不需要永久保留
-      // 之前更大的渲染表面。
-      this.stableEffectPadding = undefined;
-
-      return requested;
-    }
-
-    const budgeted: TextEffectPadding = {
-      left: Math.max(requested.left, this.fancyRenderPadding.left ?? 0),
-      right: Math.max(requested.right, this.fancyRenderPadding.right ?? 0),
-      top: Math.max(requested.top, this.fancyRenderPadding.top ?? 0),
-      bottom: Math.max(requested.bottom, this.fancyRenderPadding.bottom ?? 0),
-    };
-
     if (!this.stableEffectPadding) {
-      this.stableEffectPadding = budgeted;
+      this.stableEffectPadding = { ...requested };
     } else {
       this.stableEffectPadding = {
-        left: Math.max(this.stableEffectPadding.left, budgeted.left),
-        right: Math.max(this.stableEffectPadding.right, budgeted.right),
-        top: Math.max(this.stableEffectPadding.top, budgeted.top),
-        bottom: Math.max(this.stableEffectPadding.bottom, budgeted.bottom),
+        left: Math.max(this.stableEffectPadding.left, requested.left),
+        right: Math.max(this.stableEffectPadding.right, requested.right),
+        top: Math.max(this.stableEffectPadding.top, requested.top),
+        bottom: Math.max(this.stableEffectPadding.bottom, requested.bottom),
       };
     }
 

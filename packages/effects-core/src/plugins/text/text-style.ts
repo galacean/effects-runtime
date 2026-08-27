@@ -214,7 +214,7 @@ export class TextStyle {
   /** 将花字配置解析为 FancyRenderStyle，扁平化 decorations 到渲染层数组 */
   static parseFancyConfig (config: FancyConfig, fallbackFillColor?: spec.vec4): FancyRenderStyle {
     const layers: FancyRenderLayer[] = [];
-    const srcLayers = config.layers || [];
+    const srcLayers = config.layers ?? [];
     const fallback = fallbackFillColor ?? ([0, 0, 0, 1] as spec.vec4);
 
     if (srcLayers.length === 0) {

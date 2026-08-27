@@ -574,10 +574,11 @@ function sharedLayersFromStyle (style: SharedStyle): FancyLayerConfig[] {
 }
 
 function sharedStyleFromFancyConfig (config: FancyConfig, fallback: SharedStyle): SharedStyle {
-  const strokes = config.layers.filter(layer => layer.kind === 'single-stroke');
+  const layers = config.layers ?? [];
+  const strokes = layers.filter(layer => layer.kind === 'single-stroke');
   const stroke = strokes[strokes.length - 1];
-  const fill = config.layers.find(layer => layer.kind === 'solid-fill');
-  const decorations = config.layers.flatMap(layer => layer.decorations ?? []);
+  const fill = layers.find(layer => layer.kind === 'solid-fill');
+  const decorations = layers.flatMap(layer => layer.decorations ?? []);
   const shadow = decorations.find(layer => layer.kind === 'shadow');
   const glow = decorations.find(layer => layer.kind === 'glow');
   const shadowOffsetX = shadow?.kind === 'shadow' ? shadow.params.offsetX : 0;
@@ -585,7 +586,7 @@ function sharedStyleFromFancyConfig (config: FancyConfig, fallback: SharedStyle)
 
   return {
     ...fallback,
-    fillVisible: Boolean(fill) || config.layers.some(layer => layer.kind === 'gradient' || layer.kind === 'texture'),
+    fillVisible: Boolean(fill) || layers.some(layer => layer.kind === 'gradient' || layer.kind === 'texture'),
     fillColor: fill?.kind === 'solid-fill' ? rgbaToHex(fill.params.color, true) : fallback.fillColor,
     fillOpacity: fill?.kind === 'solid-fill' ? fill.params.color[3] : fallback.fillOpacity,
     strokeVisible: Boolean(stroke),
@@ -608,7 +609,7 @@ function sharedStyleFromFancyConfig (config: FancyConfig, fallback: SharedStyle)
 
 function updatePlainConfigFromStyle (config: FancyConfig, style: SharedStyle): FancyConfig {
   const next = PresetManager.deserializeConfig(PresetManager.serializeConfig(config));
-  let layers = next.layers;
+  let layers = next.layers ?? [];
   const fillIndex = layers.findIndex(layer => layer.kind === 'solid-fill');
 
   if (style.fillVisible) {
@@ -763,7 +764,6 @@ function createFancyOptions (): Parameters<RichTextComponent['updateWithOptions'
     maxTextHeight: 220,
     autoResize: spec.TextSizeMode.fixed,
     lineHeight: 52,
-    fancyRenderPadding: { left: 80, right: 80, top: 80, bottom: 80 },
     fancyConfig: {
       ...richFancyConfig,
       rangeStacks: rangeStacks.map(layers => ({ layers })),
@@ -982,7 +982,7 @@ function updateScopeSummary (): void {
 function isObjectPresetParam (config: FancyConfig, param: PresetParameter): boolean {
   const path = param.path.split('.');
   const layerIndex = Number(path[1]);
-  const layer = config.layers[layerIndex];
+  const layer = config.layers?.[layerIndex];
 
   if (!layer) {
     return false;

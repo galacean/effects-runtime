@@ -13,13 +13,6 @@ export interface RichTextContentOptions extends spec.RichTextContentOptions {
   fancyConfig?: FancyConfig,
   /** @deprecated Temporary compatibility input. */
   rangeFancyLayers?: RichTextRangeFancyLayers,
-  /** Runtime-only padding budget for interactive fancy parameters. */
-  fancyRenderPadding?: {
-    left?: number,
-    right?: number,
-    top?: number,
-    bottom?: number,
-  },
 }
 
 export interface RichTextOptions {

@@ -171,8 +171,10 @@ export class PresetManager {
   private static inferAdjustableParams (config: FancyConfig): PresetParameter[] {
     const params: PresetParameter[] = [];
 
-    for (let i = 0; i < config.layers.length; i++) {
-      const layer = config.layers[i];
+    const layers = config.layers ?? [];
+
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i];
       const layerPrefix = `layers.${i}`;
       const groupLabel = PresetManager.getLayerGroupLabel(layer.kind);
 
