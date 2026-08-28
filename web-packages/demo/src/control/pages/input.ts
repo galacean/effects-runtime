@@ -19,7 +19,7 @@ import {
   MouseFilter,
   TextOverflow,
   VerticalAlignment,
-  GUIRootComponent,
+  GUIWindowComponent,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect, placeNormalized } from '../layout';
@@ -500,7 +500,7 @@ class InputEventControl extends Control {
   private reportHandled (): void {
     queueMicrotask(() => {
       if (!this.isDisposed) {
-        this.inspector.handled = this.engine.root.getComponent(GUIRootComponent).windowRoot.isInputHandled();
+        this.inspector.handled = this.engine.root.getComponent(GUIWindowComponent).windowRoot.isInputHandled();
       }
     });
   }

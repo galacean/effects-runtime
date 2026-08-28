@@ -3,7 +3,7 @@ import type { Engine, InputEvent } from '@galacean/effects';
 import { WindowRootControl } from '../core/roots';
 
 /** Engine-level owner for the GUI window root and its runtime subscriptions. */
-export class GUIRootComponent extends Component {
+export class GUIWindowComponent extends Component {
   readonly windowRoot: WindowRootControl;
   private disposed = false;
 
@@ -40,7 +40,7 @@ export class GUIRootComponent extends Component {
     engine.on('postrender', this.renderWindowRoot);
     engine.on('resize', this.resizeWindowRoot);
     engine.eventSystem.on('input', this.pushInput);
-    engine.eventSystem.on('onCanvasBlur', this.onCanvasBlur);
+    engine.eventSystem.on('canvasBlur', this.onCanvasBlur);
     this.resizeWindowRoot();
   }
 
@@ -53,7 +53,7 @@ export class GUIRootComponent extends Component {
     this.engine.off('postrender', this.renderWindowRoot);
     this.engine.off('resize', this.resizeWindowRoot);
     this.engine.eventSystem.off('input', this.pushInput);
-    this.engine.eventSystem.off('onCanvasBlur', this.onCanvasBlur);
+    this.engine.eventSystem.off('canvasBlur', this.onCanvasBlur);
     this.windowRoot.dispose();
     super.dispose();
   }

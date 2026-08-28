@@ -225,7 +225,9 @@ export abstract class TextInput extends Control {
     }
     if (event.keycode === 'ArrowLeft' || event.keycode === 'ArrowRight') {
       const direction = event.keycode === 'ArrowLeft' ? -1 : 1;
-      const next = Math.max(0, Math.min(this._text.length, this.selectionEnd + direction));
+      const next = direction < 0
+        ? getPreviousCharacterIndex(this._text, this.selectionEnd)
+        : getNextCharacterIndex(this._text, this.selectionEnd);
 
       this.moveCaret(next, event.shiftPressed);
       event.accept();
@@ -259,7 +261,7 @@ export abstract class TextInput extends Control {
 
       return;
     }
-    if (event.unicode >= 32) {
+    if (!command && !event.altPressed && event.unicode >= 32) {
       this.replaceSelection(String.fromCodePoint(event.unicode));
       event.accept();
     }
@@ -336,6 +338,7 @@ export abstract class TextInput extends Control {
   }
 
   protected abstract getCharacterIndex (position: math.Vector2): number;
+  protected onTextValueChanged (): void {}
 
   private setText (value: string, signal: boolean): void {
     const limited = this._maxLength > 0 ? value.slice(0, this._maxLength) : value;
@@ -344,6 +347,7 @@ export abstract class TextInput extends Control {
     this._text = limited;
     this.selectionStart = Math.min(this.selectionStart, limited.length);
     this.selectionEnd = Math.min(this.selectionEnd, limited.length);
+    this.onTextValueChanged();
     if (this.textarea && this.textarea.value !== limited) {this.textarea.value = limited;}
     this.updateMinimumSize();
     this.updateDesiredSize();
@@ -373,8 +377,8 @@ export abstract class TextInput extends Control {
       return;
     }
     const caret = this.selectionEnd;
-    const start = direction < 0 ? Math.max(0, caret - 1) : caret;
-    const end = direction < 0 ? caret : Math.min(this._text.length, caret + 1);
+    const start = direction < 0 ? getPreviousCharacterIndex(this._text, caret) : caret;
+    const end = direction < 0 ? caret : getNextCharacterIndex(this._text, caret);
 
     if (start === end) {return;}
     this.setSelection(start, end);
@@ -567,4 +571,31 @@ export abstract class TextInput extends Control {
   private readonly onTextareaBlur = (): void => {
     if (this.textarea && this.hasFocus()) {this.releaseFocus();}
   };
+}
+
+function getPreviousCharacterIndex (value: string, index: number): number {
+  const previous = Math.max(0, index - 1);
+
+  if (previous > 0 && isLowSurrogate(value.charCodeAt(previous)) && isHighSurrogate(value.charCodeAt(previous - 1))) {
+    return previous - 1;
+  }
+
+  return previous;
+}
+
+function getNextCharacterIndex (value: string, index: number): number {
+  if (index >= value.length) {return value.length;}
+
+  return Math.min(
+    value.length,
+    index + (isHighSurrogate(value.charCodeAt(index)) && isLowSurrogate(value.charCodeAt(index + 1)) ? 2 : 1),
+  );
+}
+
+function isHighSurrogate (value: number): boolean {
+  return value >= 0xd800 && value <= 0xdbff;
+}
+
+function isLowSurrogate (value: number): boolean {
+  return value >= 0xdc00 && value <= 0xdfff;
 }

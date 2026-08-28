@@ -234,7 +234,7 @@ export class PopupMenu extends Popup {
 
   private findEnabledIndex (origin: number, direction: number): number {
     if (this.items.length === 0) {return -1;}
-    let index = origin;
+    let index = origin < 0 && direction < 0 ? this.items.length : origin;
 
     for (let count = 0; count < this.items.length; count++) {
       index = (index + direction + this.items.length) % this.items.length;

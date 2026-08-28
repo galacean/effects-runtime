@@ -1,5 +1,5 @@
 import { Composition, Player } from '@galacean/effects';
-import { GUIRootComponent, UICanvas } from '@galacean/effects-plugin-gui';
+import { GUIWindowComponent, UICanvas } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { ControlApp } from './app';
 import { attachFullRect } from './layout';
@@ -18,9 +18,9 @@ export function boot (): void {
   const composition = new Composition(player.engine);
 
   const uiCanvas = composition.sceneRoot.getComponent(UICanvas);
-  const guiRoot = player.engine.root.getComponent(GUIRootComponent);
+  const guiWindow = player.engine.root.getComponent(GUIWindowComponent);
 
-  if (!uiCanvas || !guiRoot) {
+  if (!uiCanvas || !guiWindow) {
     throw new Error('GUI plugin failed to initialize.');
   }
   uiCanvas.rootControl.theme = getRuntimeTheme();
@@ -41,8 +41,8 @@ export function boot (): void {
         if (disposed) {
           return;
         }
-        guiRoot.windowRoot.guiReleaseFocus();
-        guiRoot.windowRoot.cancelPointerInput();
+        guiWindow.windowRoot.guiReleaseFocus();
+        guiWindow.windowRoot.cancelPointerInput();
         applyTheme(state.theme, state.accent, state.customAccent);
         app.dispose();
         app = new ControlApp(player.engine, context);

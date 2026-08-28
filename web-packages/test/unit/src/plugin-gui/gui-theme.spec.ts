@@ -19,7 +19,7 @@ import {
   StyleBoxFlat,
   StyleBoxTexture,
   Theme,
-  GUIRootComponent,
+  GUIWindowComponent,
 } from '@galacean/effects-plugin-gui';
 import type { StyleBox } from '@galacean/effects-plugin-gui';
 
@@ -82,7 +82,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   it('supports multi-level variations, explicit type queries and rejects bad variation graphs', () => {
     const button = new Button(player.engine);
     const theme = new Theme();
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
 
     theme.setTypeVariation('DangerButton', 'Button');
     theme.setTypeVariation('ProminentDangerButton', 'DangerButton');
@@ -118,7 +118,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     let themeChanges = 0;
     let layoutChanges = 0;
     let lastAffectsLayout = false;
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
 
     label.theme = theme;
     label.parent = root;
@@ -149,6 +149,38 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(label.getThemeStyleBox('testBox').getMinimumSize().toArray()).deep.equals([4, 6]);
   });
 
+  it('draws rounded borders as a ring without covering a transparent center', () => {
+    const style = new StyleBoxFlat();
+    const borderColor = new math.Color(0.8, 0.2, 0.1, 1);
+    const triangles: unknown[][] = [];
+    const graphics = player.engine.graphics;
+    const originalTriangle = graphics.fillTriangle;
+
+    style.setBackgroundColor(new math.Color(0.1, 0.2, 0.3, 0));
+    style.setBorderColor(borderColor);
+    style.setBorderWidths(3, 3, 3, 3);
+    style.setCornerRadii(7, 7, 7, 7);
+    graphics.fillTriangle = ((...args: unknown[]) => triangles.push(args)) as Graphics['fillTriangle'];
+    try {
+      style.draw(graphics, { x: 0, y: 0, width: 20, height: 20 });
+    } finally {
+      graphics.fillTriangle = originalTriangle;
+    }
+    const borderTriangles = triangles.filter(args => {
+      const triangleColor = args[6] as math.Color;
+
+      return triangleColor.equals(borderColor);
+    });
+
+    expect(borderTriangles.length).greaterThan(0);
+    expect(borderTriangles.every(args => !triangleContainsPoint(
+      10, 10,
+      args[0] as number, args[1] as number,
+      args[2] as number, args[3] as number,
+      args[4] as number, args[5] as number,
+    ))).equals(true);
+  });
+
   it('invalidates inherited caches across reparent and detaches listeners on dispose', () => {
     const left = new Control(player.engine);
     const right = new Control(player.engine);
@@ -175,7 +207,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('assigns Theme owners without notifying outside the tree and notifies on every tree entry', () => {
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     const theme = new Theme();
     const left = new Control(player.engine);
     const right = new Control(player.engine);
@@ -198,7 +230,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('keeps explicit Theme owner boundaries while inherited owner chains change', () => {
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     const outerTheme = new Theme();
     const innerTheme = new Theme();
     const branch = new Control(player.engine);
@@ -230,7 +262,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   });
 
   it('defers and coalesces measurement changes across a nested themed layout', () => {
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     const theme = new Theme();
     const outer = new HBoxContainer(player.engine);
     const inner = new HBoxContainer(player.engine);
@@ -268,10 +300,10 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
 
       firstTheme.setColor('Label', 'fontColor', color(0.2));
       secondTheme.setColor('Label', 'fontColor', color(0.8));
-      player.engine.root.getComponent(GUIRootComponent).windowRoot.theme = firstTheme;
-      other.engine.root.getComponent(GUIRootComponent).windowRoot.theme = secondTheme;
-      first.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
-      second.parent = other.engine.root.getComponent(GUIRootComponent).windowRoot;
+      player.engine.root.getComponent(GUIWindowComponent).windowRoot.theme = firstTheme;
+      other.engine.root.getComponent(GUIWindowComponent).windowRoot.theme = secondTheme;
+      first.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+      second.parent = other.engine.root.getComponent(GUIWindowComponent).windowRoot;
       expect(first.getThemeColor('fontColor').r).equals(0.2);
       expect(second.getThemeColor('fontColor').r).equals(0.8);
       firstTheme.setColor('Label', 'fontColor', color(0.4));
@@ -400,7 +432,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     second.setCustomMinimumSize(10, 8);
     box.addChild(first);
     box.addChild(second);
-    root.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    root.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     expect(box.getCombinedMinimumSize().x).equals(20);
     theme.setConstant('HBoxContainer', 'separation', 7);
     expect(box.getCombinedMinimumSize().x).equals(27);
@@ -418,7 +450,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
       theme.setStyleBox('Button', name, style);
     }
     button.theme = theme;
-    button.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    button.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     const draws: StyleBox[] = [];
 
     button.drawStyleBox = ((style: StyleBox) => draws.push(style)) as typeof button.drawStyleBox;
@@ -496,7 +528,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(drawnIcon).equals(checkedIcon);
 
     slider.theme = theme;
-    slider.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    slider.parent = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     slider.setSize(100, 20);
     const sliderDraws: StyleBox[] = [];
 
@@ -555,3 +587,22 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(check.getThemeStyleBox('normal')).instanceOf(StyleBoxEmpty);
   });
 });
+
+function triangleContainsPoint (
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+): boolean {
+  const first = (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  const second = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
+  const third = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
+  const hasNegative = first < 0 || second < 0 || third < 0;
+  const hasPositive = first > 0 || second > 0 || third > 0;
+
+  return !hasNegative || !hasPositive;
+}

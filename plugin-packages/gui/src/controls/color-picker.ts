@@ -295,9 +295,12 @@ export class ColorPicker extends VBoxContainer {
   }
 
   private submitHex (value: string): void {
-    const parsed = colorFromHex(value, this._editAlpha ? this.currentColor.a : 1);
+    const parsed = colorFromHex(value, 1);
 
-    if (parsed) {this.setColor(parsed, true);}
+    if (parsed) {
+      if (!this._editAlpha) {parsed.a = this.currentColor.a;}
+      this.setColor(parsed, true);
+    }
   }
 
   override fromData (data: ColorPickerData): void {

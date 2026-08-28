@@ -9,13 +9,24 @@ export class LineEdit extends TextInput {
   static override readonly themeType: string = 'LineEdit';
   protected readonly multiline = false;
   secret = false;
-  secretCharacter = '•';
   alignment = HorizontalAlignment.Left;
   private scrollOffset = 0;
+  private _secretCharacter = '•';
 
   constructor (engine: Engine, text = '') {
     super(engine);
     this.text = text;
+  }
+
+  get secretCharacter (): string { return this._secretCharacter; }
+  set secretCharacter (value: string) {
+    const character = Array.from(value)[0] ?? '';
+
+    if (this._secretCharacter !== character) {
+      this._secretCharacter = character;
+      this.updateMinimumSize();
+      this.updateDesiredSize();
+    }
   }
 
   override getMinimumSize (): math.Vector2 {
@@ -52,20 +63,20 @@ export class LineEdit extends TextInput {
     const full = this.measureText(shown, fontSize, font.family, font.weight, font.style);
     const textY = margins.top + Math.max(0, (this.height - margins.top - margins.bottom - full.lineHeight) * 0.5);
 
-    this.updateScrollOffset(display, contentWidth);
+    this.updateScrollOffset(contentWidth);
     const textX = this.getAlignedTextX(full.width, contentWidth, margins.left) - this.scrollOffset;
 
     this.engine.graphics.pushClipRect(margins.left, margins.top, contentWidth, Math.max(0, this.height - margins.top - margins.bottom));
     if (display) {
       const [selectionStart, selectionEnd] = this.getSelectionRange();
-      const prefix = this.measurePrefix(display, selectionStart);
-      const selected = this.measurePrefix(display, selectionEnd) - prefix;
+      const prefix = this.measurePrefix(selectionStart);
+      const selected = this.measurePrefix(selectionEnd) - prefix;
 
       this.drawSelection(textX + prefix, textY, selected, full.lineHeight);
     }
     this.drawText(textX, textY, shown, fontSize, this.getTextColor(), font.family, font.weight, font.style);
     if (display) {
-      this.drawCaret(textX + this.measurePrefix(display, this.caretColumn), textY, full.lineHeight);
+      this.drawCaret(textX + this.measurePrefix(this.caretColumn), textY, full.lineHeight);
     } else {
       this.drawCaret(textX, textY, full.lineHeight);
     }
@@ -79,46 +90,49 @@ export class LineEdit extends TextInput {
   protected override getCharacterIndex (position: math.Vector2): number {
     const style = this.getTextStyleBox();
     const margins = style.getContentMargins();
-    const display = this.getVisibleText();
     const contentWidth = Math.max(0, this.width - margins.left - margins.right);
-    const fullWidth = this.measurePrefix(display, display.length);
+    const fullWidth = this.measurePrefix(this.text.length);
     const origin = this.getAlignedTextX(fullWidth, contentWidth, margins.left) - this.scrollOffset;
     const x = position.x - origin;
 
-    return this.findColumn(display, x);
+    if (x <= 0) {return 0;}
+    const boundaries = getCharacterBoundaries(this.text);
+
+    for (let index = 1; index < boundaries.length; index++) {
+      const previous = this.measurePrefix(boundaries[index - 1]);
+      const next = this.measurePrefix(boundaries[index]);
+
+      if (x < (previous + next) * 0.5) {return boundaries[index - 1];}
+    }
+
+    return this.text.length;
   }
 
   private getVisibleText (): string {
-    return this.secret ? this.secretCharacter.repeat(this.text.length) : this.text;
+    return this.secret
+      ? (this.secretCharacter || '•').repeat(Array.from(this.text).length)
+      : this.text;
   }
 
-  private measurePrefix (text: string, length: number): number {
+  private measurePrefix (column: number): number {
     const font = this.getTextFont();
+    const prefix = this.text.slice(0, column);
+    const visiblePrefix = this.secret
+      ? (this.secretCharacter || '•').repeat(Array.from(prefix).length)
+      : prefix;
 
     return this.measureText(
-      text.slice(0, length), this.getTextFontSize(), font.family, font.weight, font.style,
+      visiblePrefix, this.getTextFontSize(), font.family, font.weight, font.style,
     ).width;
   }
 
-  private findColumn (text: string, x: number): number {
-    if (x <= 0) {return 0;}
-    for (let index = 1; index <= text.length; index++) {
-      const previous = this.measurePrefix(text, index - 1);
-      const next = this.measurePrefix(text, index);
-
-      if (x < (previous + next) * 0.5) {return index - 1;}
-    }
-
-    return text.length;
-  }
-
-  private updateScrollOffset (display: string, width: number): void {
+  private updateScrollOffset (width: number): void {
     if (!this.hasFocus()) {
       this.scrollOffset = 0;
 
       return;
     }
-    const caret = this.measurePrefix(display, this.caretColumn);
+    const caret = this.measurePrefix(this.caretColumn);
 
     if (caret - this.scrollOffset > width) {this.scrollOffset = caret - width;}
     if (caret < this.scrollOffset) {this.scrollOffset = caret;}
@@ -141,4 +155,16 @@ export class LineEdit extends TextInput {
     if (data.secretCharacter !== undefined) {this.secretCharacter = data.secretCharacter;}
     if (data.alignment !== undefined) {this.alignment = data.alignment;}
   }
+}
+
+function getCharacterBoundaries (value: string): number[] {
+  const boundaries = [0];
+  let offset = 0;
+
+  for (const character of value) {
+    offset += character.length;
+    boundaries.push(offset);
+  }
+
+  return boundaries;
 }

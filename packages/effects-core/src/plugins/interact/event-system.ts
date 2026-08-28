@@ -64,8 +64,8 @@ type NativeHandler = {
 
 export type EventSystemEvent = {
   input: [event: InputEvent],
-  onCanvasFocus: [],
-  onCanvasBlur: [],
+  canvasFocus: [],
+  canvasBlur: [],
 };
 
 export class EventSystem extends EventEmitter<EventSystemEvent> implements Disposable {
@@ -337,11 +337,11 @@ export class EventSystem extends EventEmitter<EventSystemEvent> implements Dispo
   };
 
   private onCanvasFocus = (): void => {
-    this.emit('onCanvasFocus');
+    this.emit('canvasFocus');
   };
 
   private onCanvasBlur = (): void => {
-    this.emit('onCanvasBlur');
+    this.emit('canvasBlur');
   };
 
   private handleNativeMouseDown (event: MouseEvent): void {

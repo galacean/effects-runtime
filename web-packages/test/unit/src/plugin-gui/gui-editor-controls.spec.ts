@@ -10,7 +10,7 @@ import {
 } from '@galacean/effects';
 import {
   ColorPicker,
-  GUIRootComponent,
+  GUIWindowComponent,
   LineEdit,
   OptionButton,
   PopupMenu,
@@ -76,6 +76,40 @@ describe('plugin-gui/editor controls', () => {
     edit.onKeyDown(characterKey('c'));
     expect(edit.text).equals('a');
     expect(changed).deep.equals(['a', 'ab', 'a']);
+  });
+
+  it('does not insert printable characters while command modifiers are held', () => {
+    const edit = new LineEdit(player.engine, 'value');
+
+    edit.caretColumn = edit.text.length;
+    for (const modifier of ['ctrlPressed', 'metaPressed', 'altPressed'] as const) {
+      const event = characterKey('s');
+
+      event[modifier] = true;
+      edit.onKeyDown(event);
+    }
+    expect(edit.text).equals('value');
+  });
+
+  it('keeps secret text columns aligned to Unicode characters', () => {
+    const edit = new UnitWidthLineEdit(player.engine, '😀a');
+
+    edit.secret = true;
+    edit.secretCharacter = '🔒x';
+    expect(edit.secretCharacter).equals('🔒');
+    expect(edit.visibleText()).equals('🔒🔒');
+    expect(edit.prefixWidth(0)).equals(0);
+    expect(edit.prefixWidth(2)).equals(1);
+    expect(edit.prefixWidth(3)).equals(2);
+
+    edit.caretColumn = edit.text.length;
+    const left = new InputEventKey();
+
+    left.keycode = 'ArrowLeft';
+    edit.onKeyDown(left);
+    expect(edit.caretColumn).equals(2);
+    edit.onKeyDown(left);
+    expect(edit.caretColumn).equals(0);
   });
 
   it('uses a hidden textarea for composition and removes it with focus', () => {
@@ -169,8 +203,17 @@ describe('plugin-gui/editor controls', () => {
     expect(edit.placeholderText).equals('');
   });
 
+  it('keeps TextEdit scroll state inside the current text range', () => {
+    const edit = new TextEdit(player.engine, 'first\nsecond\nthird');
+    const state = edit as unknown as { scrollLine: number };
+
+    state.scrollLine = 2;
+    edit.text = 'short';
+    expect(state.scrollLine).equals(0);
+  });
+
   it('opens PopupMenu on the top layer, clamps it and restores focus', () => {
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     const source = new OptionButton(player.engine);
     const popup = new PopupMenu(player.engine);
 
@@ -203,7 +246,7 @@ describe('plugin-gui/editor controls', () => {
   });
 
   it('navigates OptionButton choices and emits the selected id', () => {
-    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
     const option = new OptionButton(player.engine);
     const selected: Array<number | string> = [];
 
@@ -224,6 +267,24 @@ describe('plugin-gui/editor controls', () => {
     expect(option.popupMenu.visible).equals(false);
   });
 
+  it('starts upward PopupMenu navigation from the last enabled item', () => {
+    const popup = new PopupMenu(player.engine);
+    const selected: Array<number | string> = [];
+
+    popup.addItem('First', 'first');
+    popup.addItem('Last', 'last');
+    popup.on('idPressed', id => selected.push(id));
+    popup.onMouseLeave();
+    const up = new InputEventKey();
+    const enter = new InputEventKey();
+
+    up.keycode = 'ArrowUp';
+    enter.keycode = 'Enter';
+    popup.onKeyDown(up);
+    popup.onKeyDown(enter);
+    expect(selected).deep.equals(['last']);
+  });
+
   it('updates ColorPicker in real time without leaking mutable colors', () => {
     const picker = new ColorPicker(player.engine);
     const changes: math.Color[] = [];
@@ -236,6 +297,24 @@ describe('plugin-gui/editor controls', () => {
     picker.fromData({ color: { r: 0.6, g: 0.5, b: 0.4, a: 1 }, editAlpha: false });
     expect(picker.color.toArray()).deep.equals([0.6, 0.5, 0.4, 1]);
     expect(picker.editAlpha).equals(false);
+  });
+
+  it('preserves hidden alpha for six and eight digit ColorPicker hex input', () => {
+    const picker = new ColorPicker(player.engine);
+    const submitHex = (value: string) => {
+      (picker as unknown as { submitHex(value: string): void }).submitHex(value);
+    };
+
+    picker.color = new math.Color(0.2, 0.3, 0.4, 0.25);
+    picker.editAlpha = false;
+    submitHex('#336699');
+    expect(picker.color.a).equals(0.25);
+    submitHex('#112233CC');
+    expect(picker.color.a).equals(0.25);
+
+    picker.editAlpha = true;
+    submitHex('#AABBCC');
+    expect(picker.color.a).equals(1);
   });
 });
 
@@ -251,5 +330,21 @@ function characterKey (value: string): InputEventKey {
 class IndexedLineEdit extends LineEdit {
   protected override getCharacterIndex (position: math.Vector2): number {
     return Math.max(0, Math.min(this.text.length, Math.round(position.x)));
+  }
+}
+
+class UnitWidthLineEdit extends LineEdit {
+  visibleText (): string {
+    return (this as unknown as { getVisibleText(): string }).getVisibleText();
+  }
+
+  prefixWidth (column: number): number {
+    return (this as unknown as { measurePrefix(column: number): number }).measurePrefix(column);
+  }
+
+  override measureText (text: string): { width: number, lineHeight: number, advances: number[] } {
+    const length = Array.from(text).length;
+
+    return { width: length, lineHeight: 1, advances: Array.from({ length }, () => 1) };
   }
 }

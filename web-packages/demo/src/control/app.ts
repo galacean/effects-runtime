@@ -10,7 +10,6 @@ import {
   Panel,
   TextOverflow,
   VerticalAlignment,
-  GUIRootComponent,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { attachAnchoredRect, attachFullRect } from './layout';

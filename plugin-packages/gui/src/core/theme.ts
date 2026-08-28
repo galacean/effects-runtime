@@ -265,12 +265,13 @@ export class StyleBoxFlat extends StyleBox {
   }
 
   private drawRounded (graphics: Graphics, rect: StyleBoxRect): void {
-    const border = this.borderWidths;
-    const radii = normalizeCornerRadii(this.cornerRadii, rect.width, rect.height);
+    const border = adaptBorderWidths(this.borderWidths, rect.width, rect.height);
+    const radii = adaptCornerRadii(this.cornerRadii, border, rect.width, rect.height);
     const hasBorder = border.left > 0 || border.top > 0 || border.right > 0 || border.bottom > 0;
 
-    drawRoundedFill(graphics, rect, radii, hasBorder ? this.borderColor : this.backgroundColor);
     if (!hasBorder) {
+      drawRoundedFill(graphics, rect, radii, this.backgroundColor);
+
       return;
     }
     const inner = {
@@ -281,25 +282,69 @@ export class StyleBoxFlat extends StyleBox {
     };
 
     if (inner.width <= 0 || inner.height <= 0) {
+      drawRoundedFill(graphics, rect, radii, this.borderColor);
+
       return;
     }
-    drawRoundedFill(graphics, inner, {
-      left: Math.max(0, radii.left - Math.max(border.left, border.top)),
-      top: Math.max(0, radii.top - Math.max(border.right, border.top)),
-      right: Math.max(0, radii.right - Math.max(border.right, border.bottom)),
-      bottom: Math.max(0, radii.bottom - Math.max(border.left, border.bottom)),
-    }, this.backgroundColor);
+    const innerRadii = {
+      left: Math.max(0, radii.left - Math.min(border.left, border.top)),
+      top: Math.max(0, radii.top - Math.min(border.right, border.top)),
+      right: Math.max(0, radii.right - Math.min(border.right, border.bottom)),
+      bottom: Math.max(0, radii.bottom - Math.min(border.left, border.bottom)),
+    };
+
+    drawRoundedRing(graphics, rect, radii, inner, innerRadii, this.borderColor);
+    drawRoundedFill(graphics, inner, innerRadii, this.backgroundColor);
   }
 }
 
-function normalizeCornerRadii (radii: StyleBoxMargins, width: number, height: number): StyleBoxMargins {
-  const limit = Math.max(0, Math.min(width, height) * 0.5);
+function adaptBorderWidths (border: StyleBoxMargins, width: number, height: number): StyleBoxMargins {
+  const adapted = createInfiniteMargins();
 
+  adaptMarginPair('top', 'bottom', adapted, border, height, height, height);
+  adaptMarginPair('left', 'right', adapted, border, width, width, width);
+
+  return adapted;
+}
+
+function adaptCornerRadii (
+  radii: StyleBoxMargins,
+  border: StyleBoxMargins,
+  width: number,
+  height: number,
+): StyleBoxMargins {
+  const adapted = createInfiniteMargins();
+
+  adaptMarginPair('top', 'right', adapted, radii, height, height - border.bottom, height - border.top);
+  adaptMarginPair('left', 'bottom', adapted, radii, height, height - border.bottom, height - border.top);
+  adaptMarginPair('left', 'top', adapted, radii, width, width - border.right, width - border.left);
+  adaptMarginPair('bottom', 'right', adapted, radii, width, width - border.right, width - border.left);
+
+  return adapted;
+}
+
+function adaptMarginPair (
+  first: keyof StyleBoxMargins,
+  second: keyof StyleBoxMargins,
+  adapted: StyleBoxMargins,
+  source: StyleBoxMargins,
+  available: number,
+  firstMaximum: number,
+  secondMaximum: number,
+): void {
+  const sum = source[first] + source[second];
+  const factor = sum > 0 ? Math.min(1, available / sum) : 1;
+
+  adapted[first] = Math.min(source[first] * factor, firstMaximum, adapted[first]);
+  adapted[second] = Math.min(source[second] * factor, secondMaximum, adapted[second]);
+}
+
+function createInfiniteMargins (): StyleBoxMargins {
   return {
-    left: Math.min(radii.left, limit),
-    top: Math.min(radii.top, limit),
-    right: Math.min(radii.right, limit),
-    bottom: Math.min(radii.bottom, limit),
+    left: Number.POSITIVE_INFINITY,
+    top: Number.POSITIVE_INFINITY,
+    right: Number.POSITIVE_INFINITY,
+    bottom: Number.POSITIVE_INFINITY,
   };
 }
 
@@ -309,6 +354,44 @@ function drawRoundedFill (
   radii: StyleBoxMargins,
   color: Color,
 ): void {
+  const points = getRoundedPoints(rect, radii);
+  const centerX = rect.x + rect.width * 0.5;
+  const centerY = rect.y + rect.height * 0.5;
+
+  for (let index = 0; index < points.length; index++) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
+
+    graphics.fillTriangle(centerX, centerY, current[0], current[1], next[0], next[1], color);
+  }
+}
+
+function drawRoundedRing (
+  graphics: Graphics,
+  outerRect: StyleBoxRect,
+  outerRadii: StyleBoxMargins,
+  innerRect: StyleBoxRect,
+  innerRadii: StyleBoxMargins,
+  color: Color,
+): void {
+  const outer = getRoundedPoints(outerRect, outerRadii);
+  const inner = getRoundedPoints(innerRect, innerRadii);
+
+  for (let index = 0; index < outer.length; index++) {
+    const next = (index + 1) % outer.length;
+
+    graphics.fillTriangle(
+      outer[index][0], outer[index][1], outer[next][0], outer[next][1],
+      inner[index][0], inner[index][1], color,
+    );
+    graphics.fillTriangle(
+      outer[next][0], outer[next][1], inner[next][0], inner[next][1],
+      inner[index][0], inner[index][1], color,
+    );
+  }
+}
+
+function getRoundedPoints (rect: StyleBoxRect, radii: StyleBoxMargins): Array<[number, number]> {
   const points: Array<[number, number]> = [];
   const segments = 5;
   const corners: Array<[number, number, number, number]> = [
@@ -319,25 +402,14 @@ function drawRoundedFill (
   ];
 
   for (const [cx, cy, radius, start] of corners) {
-    if (radius === 0) {
-      points.push([cx, cy]);
-      continue;
-    }
     for (let index = 0; index <= segments; index++) {
       const angle = start + index / segments * Math.PI * 0.5;
 
       points.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]);
     }
   }
-  const centerX = rect.x + rect.width * 0.5;
-  const centerY = rect.y + rect.height * 0.5;
 
-  for (let index = 0; index < points.length; index++) {
-    const current = points[index];
-    const next = points[(index + 1) % points.length];
-
-    graphics.fillTriangle(centerX, centerY, current[0], current[1], next[0], next[1], color);
-  }
+  return points;
 }
 
 export class StyleBoxTexture extends StyleBox {

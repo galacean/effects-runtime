@@ -1,6 +1,6 @@
 import { Composition, Player, math } from '@galacean/effects';
 import type { Texture } from '@galacean/effects';
-import { Control, GUIRootComponent, UICanvas } from '@galacean/effects-plugin-gui';
+import { Control, GUIWindowComponent, UICanvas } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
@@ -65,7 +65,7 @@ describe('plugin-gui/Graphics clip stack', () => {
       sibling.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
       sibling.setRect({ position: new math.Vector2(60, 60), size: new math.Vector2(10, 10) });
 
-      player.engine.root.getComponent(GUIRootComponent).windowRoot.render();
+      player.engine.root.getComponent(GUIWindowComponent).windowRoot.render();
 
       expect(drawScissorStates).deep.equals([false, true, false]);
       expect(scissorRects).length(1);

@@ -54,6 +54,8 @@ export class TextEdit extends TextInput {
     const fontSize = this.getTextFontSize();
     const source = this.text || this.placeholderText;
     const lines = source.split('\n');
+
+    this.scrollLine = Math.max(0, Math.min(lines.length - 1, this.scrollLine));
     const lineHeight = this.measureText('M', fontSize, font.family, font.weight, font.style).lineHeight;
     const [selectionStart, selectionEnd] = this.getSelectionRange();
     let textIndex = lines.slice(0, this.scrollLine).reduce((total, line) => total + line.length + 1, 0);
@@ -175,6 +177,14 @@ export class TextEdit extends TextInput {
     const caretLine = this.text.slice(0, this.caretColumn).split('\n').length - 1;
 
     if (caretLine < this.scrollLine) {this.scrollLine = caretLine;} else if (caretLine >= this.scrollLine + visibleLines) {this.scrollLine = caretLine - visibleLines + 1;}
+  }
+
+  protected override onTextValueChanged (): void {
+    const lineCount = this.text.split('\n').length;
+    const caretLine = this.text.slice(0, this.caretColumn).split('\n').length - 1;
+
+    this.scrollLine = Math.max(0, Math.min(lineCount - 1, this.scrollLine));
+    if (caretLine < this.scrollLine) {this.scrollLine = caretLine;}
   }
 
   override fromData (data: TextEditData): void {
