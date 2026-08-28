@@ -1,5 +1,5 @@
 import type { SceneLoadOptions, Scene, Composition } from '@galacean/effects';
-import { Player, Plugin, VFXItem, registerPlugin, unregisterPlugin } from '@galacean/effects';
+import { CompositionComponent, Player, Plugin, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -18,9 +18,9 @@ describe('core/composition/plugin', () => {
 
   it('lifetime check', async () => {
     let i = 0;
-    const resetSpy = chai.spy();
+    const lifecycle: string[] = [];
+    const creatingSpy = chai.spy();
     const constructSpy = chai.spy();
-    const updateSpy = chai.spy();
 
     function ipp () {
       return i++;
@@ -33,9 +33,26 @@ describe('core/composition/plugin', () => {
         expect(options.player).not.exist;
       }
 
+      override onCompositionCreating (composition: Composition, scene?: Scene) {
+        const sourceContent = scene?.jsonScene.compositions.find(data =>
+          data.id === scene.jsonScene.compositionId,
+        ) ?? scene?.jsonScene.compositions[0];
+
+        lifecycle.push('creating');
+        expect(composition.root.parent).equals(composition.engine.root);
+        expect(composition.pluginRoot.parent).equals(composition.root);
+        expect(composition.sceneRoot.parent).equals(composition.root);
+        expect(composition.sceneRoot.getInstanceId()).equals(sourceContent?.id);
+        expect(composition.items).deep.equals([]);
+        expect(composition.sceneRoot.getComponent(CompositionComponent)).not.exist;
+        creatingSpy();
+      }
+
       override onCompositionCreated (composition: Composition, scene: Scene) {
+        lifecycle.push('created');
         expect(scene.storage.xx).to.eql(1);
         expect(composition.items.length).to.eql(1);
+        expect(composition.sceneRoot.getComponent(CompositionComponent)).instanceOf(CompositionComponent);
         // @ts-expect-error
         constructSpy(ipp());
       }
@@ -46,7 +63,9 @@ describe('core/composition/plugin', () => {
 
     player.gotoAndStop(0.1);
 
+    expect(creatingSpy).to.have.been.called.once;
     expect(constructSpy).to.have.been.called.with(0);
+    expect(lifecycle).deep.equals(['creating', 'created']);
 
     unregisterPlugin('test-plugin');
   });
@@ -128,4 +147,3 @@ function generateScene (opt: Record<string, any> = {}) {
     '_imgs': { '1': [] },
   };
 }
-

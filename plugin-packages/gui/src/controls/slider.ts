@@ -1,8 +1,6 @@
 import {
   EventEmitter,
-  FocusMode,
   MouseButton,
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
@@ -14,12 +12,12 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  RootControl,
 } from '@galacean/effects';
+import type { RootControl } from '../core/control';
+import { FocusMode, MouseFilter } from '../core/enums';
 import { Orientation } from '../layout/enums';
 import { Range } from '../scroll/range';
 import type { RangeEvent } from '../scroll/range';
-import { cloneColor, GUIStyle } from '../style';
 import type { SliderData } from '../data';
 
 export type SliderEvent = RangeEvent & {
@@ -34,11 +32,8 @@ type GrabberRect = {
   height: number,
 };
 
-const CONTROL_THICKNESS = 16;
-const GRABBER_SIZE = 14;
-const TRACK_THICKNESS = 4;
-
 export class Slider extends Range {
+  static override readonly themeType: string = 'Slider';
   private readonly sliderEventEmitter = new EventEmitter<SliderEvent>();
   private _orientation: Orientation;
   private _editable = true;
@@ -50,24 +45,13 @@ export class Slider extends Range {
   private touchIndex = -1;
 
   scrollable = true;
-  trackColor: math.Color;
-  fillColor: math.Color;
-  grabberColor: math.Color;
-  grabberHighlightedColor: math.Color;
-  grabberDisabledColor: math.Color;
 
   constructor (engine: Engine, orientation = Orientation.Horizontal) {
     super(engine);
-    const style = GUIStyle.current;
 
     this._orientation = orientation;
     this.focusMode = FocusMode.All;
     this.mouseFilter = MouseFilter.Stop;
-    this.trackColor = cloneColor(style.trackColor);
-    this.fillColor = cloneColor(style.fillColor);
-    this.grabberColor = cloneColor(style.normalColor);
-    this.grabberHighlightedColor = cloneColor(style.accentHoverColor);
-    this.grabberDisabledColor = cloneColor(style.disabledColor);
   }
 
   get orientation (): Orientation {
@@ -120,31 +104,37 @@ export class Slider extends Range {
   }
 
   override getMinimumSize (): math.Vector2 {
+    const grabberSize = this.getThemeConstant('grabberSize');
+    const thickness = Math.max(grabberSize, this.getThemeConstant('trackThickness'));
+
     return this.orientation === Orientation.Horizontal
-      ? new math.Vector2(GRABBER_SIZE, CONTROL_THICKNESS)
-      : new math.Vector2(CONTROL_THICKNESS, GRABBER_SIZE);
+      ? new math.Vector2(grabberSize, thickness)
+      : new math.Vector2(thickness, grabberSize);
   }
 
   override draw (): void {
     const grabber = this.getGrabberRect();
-    const color = !this.editable
-      ? this.grabberDisabledColor
-      : this.dragging || this.hovered ? this.grabberHighlightedColor : this.grabberColor;
+    const highlighted = this.editable && (this.hovered || this.hasFocus(true));
+    const grabberStyle = !this.editable
+      ? 'grabberDisabled'
+      : highlighted ? 'grabberHighlight' : 'grabber';
+    const fillStyle = highlighted ? 'fillHighlight' : 'fill';
+    const trackThickness = this.getThemeConstant('trackThickness');
 
     if (this.orientation === Orientation.Horizontal) {
-      const centerY = (this.height - TRACK_THICKNESS) * 0.5;
+      const centerY = (this.height - trackThickness) * 0.5;
       const fillWidth = grabber.x + grabber.width * 0.5;
 
-      this.fillRect(0, centerY, this.width, TRACK_THICKNESS, this.trackColor);
-      this.fillRect(0, centerY, fillWidth, TRACK_THICKNESS, this.fillColor);
+      this.drawStyleBox(this.getThemeStyleBox('track'), 0, centerY, this.width, trackThickness);
+      this.drawStyleBox(this.getThemeStyleBox(fillStyle), 0, centerY, fillWidth, trackThickness);
     } else {
-      const centerX = (this.width - TRACK_THICKNESS) * 0.5;
+      const centerX = (this.width - trackThickness) * 0.5;
       const fillY = grabber.y + grabber.height * 0.5;
 
-      this.fillRect(centerX, 0, TRACK_THICKNESS, this.height, this.trackColor);
-      this.fillRect(centerX, fillY, TRACK_THICKNESS, this.height - fillY, this.fillColor);
+      this.drawStyleBox(this.getThemeStyleBox('track'), centerX, 0, trackThickness, this.height);
+      this.drawStyleBox(this.getThemeStyleBox(fillStyle), centerX, fillY, trackThickness, this.height - fillY);
     }
-    this.fillRect(grabber.x, grabber.y, grabber.width, grabber.height, color);
+    this.drawStyleBox(this.getThemeStyleBox(grabberStyle), grabber.x, grabber.y, grabber.width, grabber.height);
   }
 
   override onMouseEnter (): void {
@@ -310,12 +300,12 @@ export class Slider extends Range {
   }
 
   private getUsableLength (): number {
-    return Math.max(0, this.getAxisSize() - GRABBER_SIZE);
+    return Math.max(0, this.getAxisSize() - this.getThemeConstant('grabberSize'));
   }
 
   private getRatioAt (position: number): number {
     const area = this.getUsableLength();
-    const normalized = area > 0 ? (position - GRABBER_SIZE * 0.5) / area : 0;
+    const normalized = area > 0 ? (position - this.getThemeConstant('grabberSize') * 0.5) / area : 0;
 
     return this.orientation === Orientation.Horizontal ? normalized : 1 - normalized;
   }
@@ -325,11 +315,12 @@ export class Slider extends Range {
   }
 
   private getGrabberRect (): GrabberRect {
+    const grabberSize = this.getThemeConstant('grabberSize');
     const offset = this.getUsableLength() * this.getAsRatio();
 
     return this.orientation === Orientation.Horizontal
-      ? { x: offset, y: (this.height - GRABBER_SIZE) * 0.5, width: GRABBER_SIZE, height: GRABBER_SIZE }
-      : { x: (this.width - GRABBER_SIZE) * 0.5, y: this.getUsableLength() - offset, width: GRABBER_SIZE, height: GRABBER_SIZE };
+      ? { x: offset, y: (this.height - grabberSize) * 0.5, width: grabberSize, height: grabberSize }
+      : { x: (this.width - grabberSize) * 0.5, y: this.getUsableLength() - offset, width: grabberSize, height: grabberSize };
   }
 
   override fromData (data: SliderData): void {
@@ -340,26 +331,13 @@ export class Slider extends Range {
     if (data.scrollable !== undefined) {
       this.scrollable = data.scrollable;
     }
-    if (data.trackColor !== undefined) {
-      this.trackColor.copyFrom(data.trackColor);
-    }
-    if (data.fillColor !== undefined) {
-      this.fillColor.copyFrom(data.fillColor);
-    }
-    if (data.grabberColor !== undefined) {
-      this.grabberColor.copyFrom(data.grabberColor);
-    }
-    if (data.grabberHighlightedColor !== undefined) {
-      this.grabberHighlightedColor.copyFrom(data.grabberHighlightedColor);
-    }
-    if (data.grabberDisabledColor !== undefined) {
-      this.grabberDisabledColor.copyFrom(data.grabberDisabledColor);
-    }
   }
+
 }
 
 @effectsClass('HSlider')
 export class HSlider extends Slider {
+  static override readonly themeType: string = 'HSlider';
   constructor (engine: Engine) {
     super(engine, Orientation.Horizontal);
   }
@@ -367,6 +345,7 @@ export class HSlider extends Slider {
 
 @effectsClass('VSlider')
 export class VSlider extends Slider {
+  static override readonly themeType: string = 'VSlider';
   constructor (engine: Engine) {
     super(engine, Orientation.Vertical);
   }

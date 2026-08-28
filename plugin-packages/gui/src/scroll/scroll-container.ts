@@ -1,22 +1,19 @@
 import {
-  Container,
   EventEmitter,
-  FocusMode,
   MouseButton,
-  SizeFlags,
   effectsClass,
   math,
 } from '@galacean/effects';
 import type {
-  Control,
-  ControlEvent,
   Engine,
   EventEmitterListener,
   InputEventMouseButton,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  RootControl,
 } from '@galacean/effects';
+import { Container, SizeFlags } from '../core/control';
+import type { Control, ControlEvent, RootControl } from '../core/control';
+import { FocusMode } from '../core/enums';
 import { ScrollMode } from './enums';
 import { HScrollBar, ScrollBar, VScrollBar } from './scroll-bar';
 import type { ScrollContainerData } from '../data';
@@ -40,6 +37,7 @@ const INERTIA_DECELERATION = 1000;
 /** Clips and scrolls its content children using two internal Range scroll bars. */
 @effectsClass('ScrollContainer')
 export class ScrollContainer extends Container {
+  static override readonly themeType: string = 'ScrollContainer';
   private readonly scrollContainerEventEmitter = new EventEmitter<ScrollContainerEvent>();
   private readonly horizontalBar: HScrollBar;
   private readonly verticalBar: VScrollBar;

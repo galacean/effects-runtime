@@ -1,10 +1,10 @@
 import {
   EventEmitter,
-  FocusMode,
   MouseButton,
   effectsClass,
   math,
 } from '@galacean/effects';
+import { FocusMode } from '../core/enums';
 import type {
   Engine,
   EventEmitterListener,
@@ -15,7 +15,6 @@ import type {
 import { Orientation } from '../layout/enums';
 import { Range } from './range';
 import type { RangeEvent } from './range';
-import { cloneColor, GUIStyle } from '../style';
 import type { ScrollBarData } from '../data';
 
 export type ScrollBarEvent = RangeEvent & {
@@ -31,13 +30,11 @@ type GrabberRect = {
   height: number,
 };
 
-const BAR_SIZE = 12;
-const BUTTON_SIZE = 12;
-const MIN_GRABBER_SIZE = 12;
 const PAGE_DIVISOR = 8;
 
 /** A horizontal or vertical range scroll bar. */
 export class ScrollBar extends Range {
+  static override readonly themeType: string = 'ScrollBar';
   static readonly pageDivisor = PAGE_DIVISOR;
 
   private readonly scrollBarEventEmitter = new EventEmitter<ScrollBarEvent>();
@@ -50,28 +47,12 @@ export class ScrollBar extends Range {
   private dragPosition = 0;
   private dragRatio = 0;
 
-  trackColor: math.Color;
-  buttonColor: math.Color;
-  buttonActiveColor: math.Color;
-  grabberColor: math.Color;
-  grabberHoverColor: math.Color;
-  grabberPressedColor: math.Color;
-  arrowColor: math.Color;
-
   constructor (engine: Engine, orientation = Orientation.Vertical) {
     super(engine);
-    const style = GUIStyle.current;
 
     this._orientation = orientation;
     this.step = 0;
     this.focusMode = FocusMode.Accessibility;
-    this.trackColor = cloneColor(style.trackColor);
-    this.buttonColor = cloneColor(style.trackColor);
-    this.buttonActiveColor = cloneColor(style.hoverColor);
-    this.grabberColor = cloneColor(style.disabledTextColor);
-    this.grabberHoverColor = cloneColor(style.accentColor);
-    this.grabberPressedColor = cloneColor(style.accentHoverColor);
-    this.arrowColor = cloneColor(style.textColor);
   }
 
   get orientation (): Orientation {
@@ -135,38 +116,51 @@ export class ScrollBar extends Range {
   }
 
   override getMinimumSize (): math.Vector2 {
-    const main = BUTTON_SIZE * 2 + MIN_GRABBER_SIZE;
+    const decrementSize = this.getButtonAxisSize(false);
+    const incrementSize = this.getButtonAxisSize(true);
+    const incrementCrossSize = this.getButtonCrossSize(true);
+    const scrollMinimum = this.getThemeStyleBox('scroll').getMinimumSize();
+    const grabberMinimum = this.getGrabberMinimumSize();
 
     return this.orientation === Orientation.Horizontal
-      ? new math.Vector2(main, BAR_SIZE)
-      : new math.Vector2(BAR_SIZE, main);
+      ? new math.Vector2(
+        decrementSize + incrementSize + scrollMinimum.x + grabberMinimum,
+        Math.max(incrementCrossSize, scrollMinimum.y) + this.getCrossStartPadding() + this.getCrossEndPadding(),
+      )
+      : new math.Vector2(
+        Math.max(incrementCrossSize, scrollMinimum.x) + this.getCrossStartPadding() + this.getCrossEndPadding(),
+        decrementSize + incrementSize + scrollMinimum.y + grabberMinimum,
+      );
   }
 
   override draw (): void {
     const horizontal = this.orientation === Orientation.Horizontal;
     const axisSize = horizontal ? this.width : this.height;
-    const trackLength = Math.max(0, axisSize - BUTTON_SIZE * 2);
-    const decrementColor = this.decrementActive ? this.buttonActiveColor : this.buttonColor;
-    const incrementColor = this.incrementActive ? this.buttonActiveColor : this.buttonColor;
+    const decrementState = this.decrementActive
+      ? 'Pressed'
+      : this.highlight === 'decrement' ? 'Highlight' : '';
+    const incrementState = this.incrementActive
+      ? 'Pressed'
+      : this.highlight === 'increment' ? 'Highlight' : '';
+    const decrementSize = this.getButtonAxisSize(false, decrementState);
+    const incrementSize = this.getButtonAxisSize(true, incrementState);
+    const trackLength = Math.max(0, axisSize - decrementSize - incrementSize);
     const grabber = this.getGrabberRect();
-    const grabberColor = this.dragging
-      ? this.grabberPressedColor
-      : this.highlight === 'track' ? this.grabberHoverColor : this.grabberColor;
+    const grabberStyle = this.dragging
+      ? 'grabberPressed'
+      : this.highlight === 'track' ? 'grabberHighlight' : 'grabber';
+    const scrollStyle = this.hasFocus(true) ? 'scrollFocus' : 'scroll';
 
     if (horizontal) {
-      this.fillRect(0, 0, BUTTON_SIZE, this.height, decrementColor);
-      this.fillRect(BUTTON_SIZE, 0, trackLength, this.height, this.trackColor);
-      this.fillRect(axisSize - BUTTON_SIZE, 0, BUTTON_SIZE, this.height, incrementColor);
-      this.fillTriangle(7.5, 3, 7.5, 9, 4, 6, this.arrowColor);
-      this.fillTriangle(axisSize - 7.5, 3, axisSize - 7.5, 9, axisSize - 4, 6, this.arrowColor);
+      this.drawButtonIcon(false, decrementState, 0, 0);
+      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), decrementSize, 0, trackLength, this.height);
+      this.drawButtonIcon(true, incrementState, axisSize - incrementSize, 0);
     } else {
-      this.fillRect(0, 0, this.width, BUTTON_SIZE, decrementColor);
-      this.fillRect(0, BUTTON_SIZE, this.width, trackLength, this.trackColor);
-      this.fillRect(0, axisSize - BUTTON_SIZE, this.width, BUTTON_SIZE, incrementColor);
-      this.fillTriangle(3, 7.5, 9, 7.5, 6, 4, this.arrowColor);
-      this.fillTriangle(3, axisSize - 7.5, 9, axisSize - 7.5, 6, axisSize - 4, this.arrowColor);
+      this.drawButtonIcon(false, decrementState, 0, 0);
+      this.drawStyleBox(this.getThemeStyleBox(scrollStyle), 0, decrementSize, this.width, trackLength);
+      this.drawButtonIcon(true, incrementState, 0, axisSize - incrementSize);
     }
-    this.fillRect(grabber.x, grabber.y, grabber.width, grabber.height, grabberColor);
+    this.drawStyleBox(this.getThemeStyleBox(grabberStyle), grabber.x, grabber.y, grabber.width, grabber.height);
   }
 
   override onMouseEnter (location: math.Vector2): void {
@@ -207,12 +201,14 @@ export class ScrollBar extends Range {
     const total = this.getAxisSize();
     const grabberOffset = this.getGrabberOffset();
     const grabberSize = this.getGrabberSize();
-    const trackPosition = position - BUTTON_SIZE;
+    const decrementSize = this.getButtonAxisSize(false);
+    const incrementSize = this.getButtonAxisSize(true);
+    const trackPosition = position - decrementSize - this.getTrackStartMargin();
 
-    if (position < BUTTON_SIZE) {
+    if (position < decrementSize) {
       this.decrementActive = true;
       this.scroll(-this.getIncrement());
-    } else if (position > total - BUTTON_SIZE) {
+    } else if (position > total - incrementSize) {
       this.incrementActive = true;
       this.scroll(this.getIncrement());
     } else if (trackPosition < grabberOffset) {
@@ -302,11 +298,14 @@ export class ScrollBar extends Range {
   }
 
   private getTrackSize (): number {
-    return Math.max(0, this.getAxisSize() - BUTTON_SIZE * 2);
+    return Math.max(0, this.getAxisSize() - this.getButtonAxisSize(false) - this.getButtonAxisSize(true));
   }
 
   private getAreaSize (): number {
-    return Math.max(0, this.getTrackSize() - MIN_GRABBER_SIZE);
+    const scrollMinimum = this.getThemeStyleBox('scroll').getMinimumSize();
+    const scrollAxisMinimum = this.orientation === Orientation.Horizontal ? scrollMinimum.x : scrollMinimum.y;
+
+    return Math.max(0, this.getTrackSize() - scrollAxisMinimum - this.getGrabberMinimumSize());
   }
 
   private getGrabberSize (): number {
@@ -316,7 +315,16 @@ export class ScrollBar extends Range {
       return 0;
     }
 
-    return Math.min(this.getTrackSize(), MIN_GRABBER_SIZE + Math.max(0, this.page) / range * this.getAreaSize());
+    return Math.min(
+      this.getTrackSize(),
+      this.getGrabberMinimumSize() + Math.max(0, this.page) / range * this.getAreaSize(),
+    );
+  }
+
+  private getGrabberMinimumSize (): number {
+    const minimum = this.getThemeStyleBox('grabber').getMinimumSize();
+
+    return this.orientation === Orientation.Horizontal ? minimum.x : minimum.y;
   }
 
   private getGrabberOffset (): number {
@@ -324,26 +332,80 @@ export class ScrollBar extends Range {
   }
 
   private getGrabberRect (): GrabberRect {
-    const offset = BUTTON_SIZE + this.getGrabberOffset();
+    const offset = this.getButtonAxisSize(false) + this.getTrackStartMargin() + this.getGrabberOffset();
     const size = this.getGrabberSize();
+    const crossStart = this.getCrossStartPadding();
+    const crossSize = Math.max(0, (this.orientation === Orientation.Horizontal ? this.height : this.width)
+      - crossStart - this.getCrossEndPadding());
 
     return this.orientation === Orientation.Horizontal
-      ? { x: offset, y: 0, width: size, height: this.height }
-      : { x: 0, y: offset, width: this.width, height: size };
+      ? { x: offset, y: crossStart, width: size, height: crossSize }
+      : { x: crossStart, y: offset, width: crossSize, height: size };
+  }
+
+  private getTrackStartMargin (): number {
+    const margins = this.getThemeStyleBox('scroll').getContentMargins();
+
+    return this.orientation === Orientation.Horizontal ? margins.left : margins.top;
+  }
+
+  private getCrossStartPadding (): number {
+    return Math.max(0, this.getThemeConstant(
+      this.orientation === Orientation.Horizontal ? 'paddingTop' : 'paddingLeft',
+    ));
+  }
+
+  private getCrossEndPadding (): number {
+    return Math.max(0, this.getThemeConstant(
+      this.orientation === Orientation.Horizontal ? 'paddingBottom' : 'paddingRight',
+    ));
   }
 
   private updateHighlight (position: number): void {
     const total = this.getAxisSize();
+    const decrementSize = this.getButtonAxisSize(false);
+    const incrementSize = this.getButtonAxisSize(true);
 
     if (position < 0 || position > total) {
       this.highlight = 'none';
-    } else if (position < BUTTON_SIZE) {
+    } else if (position < decrementSize) {
       this.highlight = 'decrement';
-    } else if (position > total - BUTTON_SIZE) {
+    } else if (position > total - incrementSize) {
       this.highlight = 'increment';
     } else {
       this.highlight = 'track';
     }
+  }
+
+  private drawButtonIcon (
+    increment: boolean,
+    state: '' | 'Highlight' | 'Pressed',
+    x: number,
+    y: number,
+  ): void {
+    const icon = this.getButtonIcon(increment, state);
+
+    if (icon) {
+      this.drawTexture(x, y, icon.width, icon.height, icon);
+    }
+  }
+
+  private getButtonIcon (increment: boolean, state: '' | 'Highlight' | 'Pressed' = '') {
+    const name = increment ? 'increment' : 'decrement';
+
+    return this.getThemeIcon(`${name}${state}`) ?? this.getThemeIcon(name);
+  }
+
+  private getButtonAxisSize (increment: boolean, state: '' | 'Highlight' | 'Pressed' = ''): number {
+    const icon = this.getButtonIcon(increment, state);
+
+    return icon ? this.orientation === Orientation.Horizontal ? icon.width : icon.height : 0;
+  }
+
+  private getButtonCrossSize (increment: boolean): number {
+    const icon = this.getButtonIcon(increment);
+
+    return icon ? this.orientation === Orientation.Horizontal ? icon.height : icon.width : 0;
   }
 
   override fromData (data: ScrollBarData): void {
@@ -351,32 +413,12 @@ export class ScrollBar extends Range {
     if (data.customStep !== undefined) {
       this.customStep = data.customStep;
     }
-    if (data.trackColor !== undefined) {
-      this.trackColor.copyFrom(data.trackColor);
-    }
-    if (data.buttonColor !== undefined) {
-      this.buttonColor.copyFrom(data.buttonColor);
-    }
-    if (data.buttonActiveColor !== undefined) {
-      this.buttonActiveColor.copyFrom(data.buttonActiveColor);
-    }
-    if (data.grabberColor !== undefined) {
-      this.grabberColor.copyFrom(data.grabberColor);
-    }
-    if (data.grabberHoverColor !== undefined) {
-      this.grabberHoverColor.copyFrom(data.grabberHoverColor);
-    }
-    if (data.grabberPressedColor !== undefined) {
-      this.grabberPressedColor.copyFrom(data.grabberPressedColor);
-    }
-    if (data.arrowColor !== undefined) {
-      this.arrowColor.copyFrom(data.arrowColor);
-    }
   }
 }
 
 @effectsClass('HScrollBar')
 export class HScrollBar extends ScrollBar {
+  static override readonly themeType: string = 'HScrollBar';
   constructor (engine: Engine) {
     super(engine, Orientation.Horizontal);
   }
@@ -384,6 +426,7 @@ export class HScrollBar extends ScrollBar {
 
 @effectsClass('VScrollBar')
 export class VScrollBar extends ScrollBar {
+  static override readonly themeType: string = 'VScrollBar';
   constructor (engine: Engine) {
     super(engine, Orientation.Vertical);
   }

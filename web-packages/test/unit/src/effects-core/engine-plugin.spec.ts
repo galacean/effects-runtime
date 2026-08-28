@@ -1,9 +1,37 @@
 import type { Engine } from '@galacean/effects';
-import { Player, Plugin, registerPlugin, unregisterPlugin } from '@galacean/effects';
+import { Composition, Player, Plugin, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('core/engine/plugin-engine-lifetime', () => {
+  it('emits update and postrender at the engine frame boundaries', () => {
+    const player = new Player({
+      canvas: document.createElement('canvas'),
+      manualRender: true,
+    });
+    const composition = new Composition(player.engine);
+    const order: string[] = [];
+
+    composition.update = () => order.push('composition-update');
+    composition.sceneTicking.preRender.tick = () => order.push('composition-prerender');
+    composition.renderContent = () => order.push('composition-render');
+    player.engine.renderTargetPool.flush = () => order.push('pool-flush');
+    player.engine.on('update', deltaTime => order.push(`engine-update:${deltaTime}`));
+    player.engine.on('postrender', () => order.push('engine-postrender'));
+
+    player.engine.mainLoop(16);
+
+    expect(order).deep.equals([
+      'composition-update',
+      'engine-update:16',
+      'composition-prerender',
+      'composition-render',
+      'engine-postrender',
+      'pool-flush',
+    ]);
+    player.dispose();
+  });
+
   it('triggers onEngineCreated on construction and onEngineDestroy on dispose', () => {
     let createdEngine: Engine | undefined;
     let destroyedEngine: Engine | undefined;

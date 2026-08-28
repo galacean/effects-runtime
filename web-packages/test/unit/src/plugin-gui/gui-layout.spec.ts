@@ -1,20 +1,22 @@
 import {
   Composition,
-  Container,
-  Control,
-  GrowDirection,
   Player,
-  SizeFlags,
-  UIControl,
   VFXItem,
   math,
 } from '@galacean/effects';
 import {
   AspectRatioContainer,
   CenterContainer,
+  Container,
+  Control,
+  GrowDirection,
   GridContainer,
   HBoxContainer,
   MarginContainer,
+  SizeFlags,
+  UIControl,
+  GUIRootComponent,
+  UICanvas,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
@@ -60,7 +62,7 @@ class CountingLayout extends Container {
   }
 }
 
-describe('core/GUI measurement and automatic layout', () => {
+describe('plugin-gui/GUI measurement and automatic layout', () => {
   let player: Player;
   let composition: Composition;
 
@@ -120,9 +122,9 @@ describe('core/GUI measurement and automatic layout', () => {
     const first = measuredChild(20, 10, 30, 10);
     const second = measuredChild(20, 10, 30, 10);
 
-    box.parent = composition.uiCanvas.rootControl;
+    box.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     box.setSize(110, 30);
-    box.separation = 10;
+    box.setThemeConstantOverride('separation', 10);
     first.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
     second.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
     second.stretchRatio = 3;
@@ -133,7 +135,7 @@ describe('core/GUI measurement and automatic layout', () => {
     box.addChild(first);
     box.addChild(second);
 
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect([first.x, first.width, second.x, second.width]).deep.equals([0, 40, 50, 60]);
     expect([first.height, second.height]).deep.equals([30, 30]);
@@ -144,20 +146,20 @@ describe('core/GUI measurement and automatic layout', () => {
 
     first.maximum.set(35, -1);
     first.invalidateMeasurements();
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect([first.width, second.x, second.width]).deep.equals([35, 45, 65]);
 
     first.maximum.set(-1, -1);
     first.invalidateMeasurements();
     second.visible = false;
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect(first.width).equals(110);
   });
 
   it('lays out Grid, Margin, Center and AspectRatio containers', () => {
     const grid = new GridContainer(player.engine);
 
-    grid.parent = composition.uiCanvas.rootControl;
+    grid.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     grid.columns = 2;
     grid.setSize(100, 60);
     const gridChildren = Array.from({ length: 4 }, () => measuredChild(10, 10, 10, 10));
@@ -170,27 +172,30 @@ describe('core/GUI measurement and automatic layout', () => {
     const margin = new MarginContainer(player.engine);
     const marginChild = measuredChild(20, 10, 20, 10);
 
-    margin.parent = composition.uiCanvas.rootControl;
+    margin.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     margin.setSize(100, 50);
-    margin.setMargins(5, 6, 7, 8);
+    margin.setThemeConstantOverride('marginLeft', 5);
+    margin.setThemeConstantOverride('marginTop', 6);
+    margin.setThemeConstantOverride('marginRight', 7);
+    margin.setThemeConstantOverride('marginBottom', 8);
     margin.addChild(marginChild);
 
     const center = new CenterContainer(player.engine);
     const centerChild = measuredChild(20, 10, 20, 10);
 
-    center.parent = composition.uiCanvas.rootControl;
+    center.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     center.setSize(100, 50);
     center.addChild(centerChild);
 
     const aspect = new AspectRatioContainer(player.engine);
     const aspectChild = measuredChild(0, 0, 0, 0);
 
-    aspect.parent = composition.uiCanvas.rootControl;
+    aspect.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     aspect.setSize(100, 100);
     aspect.ratio = 2;
     aspect.addChild(aspectChild);
 
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect(gridChildren.map(child => [child.x, child.y, child.width, child.height])).deep.equals([
       [0, 0, 50, 30],
@@ -208,14 +213,17 @@ describe('core/GUI measurement and automatic layout', () => {
     const inner = new GridContainer(player.engine);
     const child = measuredChild(10, 10, 10, 10);
 
-    outer.parent = composition.uiCanvas.rootControl;
+    outer.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     outer.setSize(120, 70);
-    outer.setMargins(5, 6, 7, 8);
+    outer.setThemeConstantOverride('marginLeft', 5);
+    outer.setThemeConstantOverride('marginTop', 6);
+    outer.setThemeConstantOverride('marginRight', 7);
+    outer.setThemeConstantOverride('marginBottom', 8);
     outer.addChild(inner);
     child.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
     inner.addChild(child);
 
-    player.engine.windowRoot.render();
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.render();
 
     expect([inner.x, inner.y, inner.width, inner.height]).deep.equals([5, 6, 108, 56]);
     expect([child.x, child.y, child.width, child.height]).deep.equals([0, 0, 108, 56]);
@@ -225,10 +233,10 @@ describe('core/GUI measurement and automatic layout', () => {
     const layout = new CountingLayout(player.engine);
     const child = new Control(player.engine);
 
-    layout.parent = composition.uiCanvas.rootControl;
+    layout.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     layout.setSize(100, 30);
     layout.addChild(child);
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect(layout.sortCount).equals(1);
     expect([child.width, child.height]).deep.equals([100, 30]);
@@ -238,14 +246,17 @@ describe('core/GUI measurement and automatic layout', () => {
     const margin = new MarginContainer(player.engine);
     const child = measuredChild(20, 10, 20, 10);
 
-    composition.uiCanvas.enabled = false;
-    margin.parent = composition.uiCanvas.rootControl;
+    composition.sceneRoot.getComponent(UICanvas).enabled = false;
+    margin.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     margin.setAnchorsAndOffsetsPreset('fullRect');
-    margin.setMargins(10, 10, 10, 10);
+    margin.setThemeConstantOverride('marginLeft', 10);
+    margin.setThemeConstantOverride('marginTop', 10);
+    margin.setThemeConstantOverride('marginRight', 10);
+    margin.setThemeConstantOverride('marginBottom', 10);
     margin.addChild(child);
 
-    composition.uiCanvas.enabled = true;
-    player.engine.windowRoot.update(0);
+    composition.sceneRoot.getComponent(UICanvas).enabled = true;
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect([margin.x, margin.y, margin.width, margin.height]).deep.equals([0, 0, 300, 150]);
     expect([child.x, child.y, child.width, child.height]).deep.equals([10, 10, 280, 130]);
@@ -268,7 +279,7 @@ describe('core/GUI measurement and automatic layout', () => {
     childBridge.control = child;
     childItem.setParent(parentItem);
     expect(child.parent).instanceOf(Container);
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect([child.x, child.y]).deep.equals([0, 0]);
     expect([childItem.transform.position.x, childItem.transform.position.y]).deep.equals([0, 0]);
@@ -280,8 +291,8 @@ describe('core/GUI measurement and automatic layout', () => {
   it('coalesces queueSort calls raised during the current layout pass', () => {
     const layout = new SelfQueuingLayout(player.engine);
 
-    layout.parent = composition.uiCanvas.rootControl;
-    player.engine.windowRoot.update(0);
+    layout.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
 
     expect(layout.sortCount).equals(1);
   });

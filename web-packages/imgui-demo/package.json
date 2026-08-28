@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",
+    "@galacean/effects-plugin-gui": "workspace:*",
     "@galacean/effects-plugin-model": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "@galacean/effects-plugin-spine": "workspace:*",

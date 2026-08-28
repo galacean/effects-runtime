@@ -4,32 +4,32 @@ import type {
   InputEventMouseButton,
 } from '@galacean/effects';
 import {
-  Control,
-  CursorShape,
-  FocusMode,
   MouseButton,
-  MouseFilter,
-  SizeFlags,
   math,
 } from '@galacean/effects';
 import {
   AutowrapMode,
   Button,
-  CheckBox,
+  Checkbox,
   ColorRect,
+  Control,
+  CursorShape,
+  FocusMode,
   GridContainer,
   HSlider,
   HorizontalAlignment,
   Label,
+  MouseFilter,
   Panel,
   ScrollContainer,
   ScrollMode,
+  SizeFlags,
   TextOverflow,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';
 import type { InspectorControlType } from '../state';
 import type { ThemeTokens } from '../theme';
-import { mix, withAlpha } from '../theme';
+import { mix, setFlatStyleOverride, setFontOverrides, withAlpha } from '../theme';
 import type { InspectorProperty } from './schema';
 
 type RefreshBinding = {
@@ -61,28 +61,27 @@ export class ControlInspectorPanel extends Panel {
   constructor (
     engine: Engine,
     type: InspectorControlType,
-    private readonly theme: ThemeTokens,
+    private readonly tokens: ThemeTokens,
     private readonly resetControl: () => void,
   ) {
     super(engine);
     this.type = type;
-    this.backgroundColor = theme.panelBg;
-    this.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(this, 'panel', { background: tokens.panelBg, border: tokens.borderSubtle });
     this.clipContents = true;
 
-    this.addLabel('INSPECTOR', 14, 10, 210, 16, 9, theme.textTertiary, 700);
-    this.objectTitle = this.addLabel('', 14, 28, 210, 24, 15, theme.textPrimary, 680);
+    this.addLabel('INSPECTOR', 14, 10, 210, 16, 9, tokens.textTertiary, 700);
+    this.objectTitle = this.addLabel('', 14, 28, 210, 24, 15, tokens.textPrimary, 680);
     const reset = this.createButton('Reset', () => this.resetControl());
 
     reset.setRect({ position: new math.Vector2(264, 24), size: new math.Vector2(54, 27) });
     reset.parent = this;
-    this.description = this.addLabel('', 14, 54, 304, 32, 10, theme.textSecondary, 450);
+    this.description = this.addLabel('', 14, 54, 304, 32, 10, tokens.textSecondary, 450);
     this.description.autowrapMode = AutowrapMode.WordSmart;
     this.description.verticalAlignment = VerticalAlignment.Top;
 
     const divider = new ColorRect(engine);
 
-    divider.color = theme.borderSubtle;
+    divider.color = tokens.borderSubtle;
     divider.setRect({ position: new math.Vector2(0, 91), size: new math.Vector2(PANEL_WIDTH, 1) });
     divider.parent = this;
 
@@ -143,12 +142,13 @@ export class ControlInspectorPanel extends Panel {
     const header = new Panel(this.engine);
     const accent = new ColorRect(this.engine);
 
-    header.backgroundColor = mix(this.theme.panelBg, this.theme.panelRaisedBg, 0.72);
-    header.borderWidth = 0;
-    accent.color = this.theme.accent;
+    setFlatStyleOverride(header, 'panel', {
+      background: mix(this.tokens.panelBg, this.tokens.panelRaisedBg, 0.72), borderWidth: 0,
+    });
+    accent.color = this.tokens.accent;
     accent.setRect({ position: new math.Vector2(0, 0), size: new math.Vector2(3, 32) });
     accent.parent = header;
-    this.addLabelTo(header, name, 11, 0, CONTENT_WIDTH - 20, 32, 11, this.theme.textPrimary, 680);
+    this.addLabelTo(header, name, 11, 0, CONTENT_WIDTH - 20, 32, 11, this.tokens.textPrimary, 680);
 
     return header;
   }
@@ -162,13 +162,22 @@ export class ControlInspectorPanel extends Panel {
 
     button.flat = true;
     button.textAlignment = HorizontalAlignment.Left;
-    button.horizontalPadding = indent + 4;
-    button.fontSize = 10;
-    button.fontWeight = 650;
-    button.normalColor = mix(this.theme.panelBg, this.theme.panelRaisedBg, 0.42);
-    button.hoverColor = mix(this.theme.panelRaisedBg, this.theme.accentSoft, 0.35);
-    button.pressedColor = this.theme.accentSoft;
-    button.borderWidth = 0;
+    setFontOverrides(button, { size: 10, weight: 650 });
+    setFlatStyleOverride(button, 'normal', {
+      background: mix(this.tokens.panelBg, this.tokens.panelRaisedBg, 0.42),
+      borderWidth: 0,
+      horizontalMargin: indent + 4,
+    });
+    setFlatStyleOverride(button, 'hover', {
+      background: mix(this.tokens.panelRaisedBg, this.tokens.accentSoft, 0.35),
+      borderWidth: 0,
+      horizontalMargin: indent + 4,
+    });
+    for (const state of ['pressed', 'hoverPressed']) {
+      setFlatStyleOverride(button, state, {
+        background: this.tokens.accentSoft, borderWidth: 0, horizontalMargin: indent + 4,
+      });
+    }
 
     return button;
   }
@@ -215,16 +224,18 @@ export class ControlInspectorPanel extends Panel {
     const labelHeight = stacked ? 24 : height;
     const indent = depth * 10;
 
-    row.backgroundColor = this.propertyRowIndex++ % 2 === 0
-      ? this.theme.panelBg
-      : mix(this.theme.panelBg, this.theme.panelRaisedBg, 0.28);
-    row.borderColor = withAlpha(this.theme.borderSubtle, 0.55);
-    row.borderWidth = 0;
+    setFlatStyleOverride(row, 'panel', {
+      background: this.propertyRowIndex++ % 2 === 0
+        ? this.tokens.panelBg
+        : mix(this.tokens.panelBg, this.tokens.panelRaisedBg, 0.28),
+      border: withAlpha(this.tokens.borderSubtle, 0.55),
+      borderWidth: 0,
+    });
     this.addLabelTo(
       row,
       humanize(property.name),
       12 + indent, 0, stacked ? CONTENT_WIDTH - 24 - indent : 142 - indent, labelHeight,
-      10, this.theme.textSecondary, 450,
+      10, this.tokens.textSecondary, 450,
     );
 
     if (property.kind === 'boolean') {
@@ -254,10 +265,12 @@ export class ControlInspectorPanel extends Panel {
     x: number,
     y: number,
   ): void {
-    const editor = new CheckBox(this.engine);
+    const editor = new Checkbox(this.engine);
 
     editor.flat = true;
-    editor.horizontalPadding = 5;
+    for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+      setFlatStyleOverride(editor, state, { horizontalMargin: 5 });
+    }
     editor.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(32, 24) });
     editor.parent = parent;
     editor.on('toggled', value => {
@@ -284,7 +297,7 @@ export class ControlInspectorPanel extends Panel {
     height: number,
   ): void {
     const suffixWidth = property.suffix ? 22 : 0;
-    const editor = new InspectorTextField(this.engine, this.theme);
+    const editor = new InspectorTextField(this.engine, this.tokens);
 
     editor.numeric = true;
     editor.step = property.step ?? 1;
@@ -306,7 +319,7 @@ export class ControlInspectorPanel extends Panel {
     if (property.suffix) {
       this.addLabelTo(
         parent, property.suffix, x + width - suffixWidth + 4, y,
-        suffixWidth - 4, height, 9, this.theme.textTertiary, 450,
+        suffixWidth - 4, height, 9, this.tokens.textTertiary, 450,
       );
     }
     this.bindings.push({
@@ -329,9 +342,9 @@ export class ControlInspectorPanel extends Panel {
     const fieldWidth = (width - 30) * 0.5;
     const fields = ['X', 'Y'].map((axis, index) => {
       const axisX = x + index * (fieldWidth + 15);
-      const field = new InspectorTextField(this.engine, this.theme);
+      const field = new InspectorTextField(this.engine, this.tokens);
 
-      this.addLabelTo(parent, axis, axisX, y, 13, height, 9, index === 0 ? this.theme.danger : this.theme.success, 700);
+      this.addLabelTo(parent, axis, axisX, y, 13, height, 9, index === 0 ? this.tokens.danger : this.tokens.success, 700);
       field.numeric = true;
       field.step = property.step ?? 1;
       field.changed = value => {
@@ -386,11 +399,11 @@ export class ControlInspectorPanel extends Panel {
     height: number,
   ): void {
     const axes = ['X', 'Y', 'W', 'H'];
-    const colors = [this.theme.danger, this.theme.success, this.theme.warning, this.theme.violet];
+    const colors = [this.tokens.danger, this.tokens.success, this.tokens.warning, this.tokens.violet];
     const fieldWidth = (width - 52) * 0.25;
     const fields = axes.map((axis, index) => {
       const fieldX = x + index * (fieldWidth + 13);
-      const field = new InspectorTextField(this.engine, this.theme);
+      const field = new InspectorTextField(this.engine, this.tokens);
 
       this.addLabelTo(parent, axis, fieldX, y, 12, height, 8, colors[index], 700);
       field.numeric = true;
@@ -451,7 +464,9 @@ export class ControlInspectorPanel extends Panel {
     });
 
     editor.textAlignment = HorizontalAlignment.Left;
-    editor.horizontalPadding = 8;
+    for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+      setFlatStyleOverride(editor, state, { horizontalMargin: 8 });
+    }
     editor.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, height) });
     editor.parent = parent;
     this.bindings.push({
@@ -476,17 +491,17 @@ export class ControlInspectorPanel extends Panel {
     height: number,
   ): void {
     const grid = new GridContainer(this.engine);
-    const editors: CheckBox[] = [];
+    const editors: Checkbox[] = [];
 
     grid.columns = 2;
-    grid.horizontalSeparation = 4;
-    grid.verticalSeparation = 2;
+    grid.setThemeConstantOverride('horizontalSeparation', 4);
+    grid.setThemeConstantOverride('verticalSeparation', 2);
     grid.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, height) });
     grid.parent = parent;
     for (const option of property.options) {
-      const editor = new CheckBox(this.engine, option.label);
+      const editor = new Checkbox(this.engine, option.label);
 
-      editor.fontSize = 9;
+      editor.setThemeFontSizeOverride('fontSize', 9);
       editor.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
       editor.on('toggled', () => {
         if (!this.target) {
@@ -524,7 +539,7 @@ export class ControlInspectorPanel extends Panel {
     width: number,
     height: number,
   ): void {
-    const editor = new InspectorTextField(this.engine, this.theme);
+    const editor = new InspectorTextField(this.engine, this.tokens);
 
     editor.multiline = property.multiline ?? false;
     editor.changed = value => {
@@ -553,7 +568,7 @@ export class ControlInspectorPanel extends Panel {
   ): void {
     const swatch = new ColorRect(this.engine);
     const channels: Array<'r' | 'g' | 'b' | 'a'> = ['r', 'g', 'b', 'a'];
-    const channelColors = [this.theme.danger, this.theme.success, this.theme.accent, this.theme.textSecondary];
+    const channelColors = [this.tokens.danger, this.tokens.success, this.tokens.accent, this.tokens.textSecondary];
     const sliders: HSlider[] = [];
     const values: Label[] = [];
 
@@ -564,14 +579,14 @@ export class ControlInspectorPanel extends Panel {
       const slider = new HSlider(this.engine);
       const valueLabel = this.addLabelTo(
         parent, '', x + width - 34, rowY, 34, 20,
-        9, this.theme.textSecondary, 550,
+        9, this.tokens.textSecondary, 550,
       );
 
       this.addLabelTo(parent, channel.toUpperCase(), x + 46, rowY, 14, 20, 9, channelColors[index], 700);
       slider.minValue = 0;
       slider.maxValue = 1;
       slider.step = 0.01;
-      slider.fillColor = channelColors[index];
+      setFlatStyleOverride(slider, 'fill', { background: channelColors[index] });
       slider.setRect({ position: new math.Vector2(x + 62, rowY + 2), size: new math.Vector2(width - 100, 16) });
       slider.parent = parent;
       slider.on('valueChanged', value => {
@@ -644,13 +659,19 @@ export class ControlInspectorPanel extends Panel {
   private createButton (text: string, pressed: () => void): Button {
     const button = new Button(this.engine, text);
 
-    button.fontSize = 10;
-    button.fontWeight = 600;
-    button.normalColor = this.theme.panelRaisedBg;
-    button.hoverColor = mix(this.theme.panelRaisedBg, this.theme.accentSoft, 0.45);
-    button.pressedColor = this.theme.accentSoft;
-    button.borderColor = this.theme.borderSubtle;
-    button.textColor = this.theme.textPrimary;
+    setFontOverrides(button, { size: 10, weight: 600, color: this.tokens.textPrimary });
+    setFlatStyleOverride(button, 'normal', {
+      background: this.tokens.panelRaisedBg, border: this.tokens.borderSubtle,
+    });
+    setFlatStyleOverride(button, 'hover', {
+      background: mix(this.tokens.panelRaisedBg, this.tokens.accentSoft, 0.45),
+      border: this.tokens.borderSubtle,
+    });
+    for (const state of ['pressed', 'hoverPressed']) {
+      setFlatStyleOverride(button, state, {
+        background: this.tokens.accentSoft, border: this.tokens.borderSubtle,
+      });
+    }
     button.on('pressed', pressed);
 
     return button;
@@ -682,9 +703,7 @@ export class ControlInspectorPanel extends Panel {
   ): Label {
     const label = new Label(this.engine, text);
 
-    label.fontSize = size;
-    label.fontWeight = weight;
-    label.textColor = color;
+    setFontOverrides(label, { size, weight, color });
     label.textOverflow = TextOverflow.Ellipsis;
     label.verticalAlignment = VerticalAlignment.Center;
     label.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, height) });
@@ -703,7 +722,7 @@ class InspectorTextField extends Control {
   private value = '';
   private selectAll = false;
 
-  constructor (engine: Engine, private readonly theme: ThemeTokens) {
+  constructor (engine: Engine, private readonly tokens: ThemeTokens) {
     super(engine);
     this.focusMode = FocusMode.All;
     this.mouseFilter = MouseFilter.Stop;
@@ -720,8 +739,8 @@ class InspectorTextField extends Control {
 
   override draw (): void {
     const focused = this.isEditing;
-    const background = focused && this.selectAll ? this.theme.accentSoft : this.theme.panelRaisedBg;
-    const border = focused ? this.theme.accent : this.theme.borderSubtle;
+    const background = focused && this.selectAll ? this.tokens.accentSoft : this.tokens.panelRaisedBg;
+    const border = focused ? this.tokens.accent : this.tokens.borderSubtle;
     const display = this.value.replaceAll('\n', ' ↵ ');
     const measurement = this.measureText(display, 10);
     const textX = Math.min(6, Math.max(6 - measurement.width + this.width - 12, -measurement.width + 6));
@@ -730,9 +749,9 @@ class InspectorTextField extends Control {
     this.fillRect(0, 0, this.width, this.height, background);
     this.drawRect(0.5, 0.5, Math.max(0, this.width - 1), Math.max(0, this.height - 1), border, 1);
     this.engine.graphics.pushClipRect(4, 2, Math.max(0, this.width - 8), Math.max(0, this.height - 4));
-    this.drawText(textX, textY, display, 10, this.theme.textPrimary);
+    this.drawText(textX, textY, display, 10, this.tokens.textPrimary);
     if (focused && !this.selectAll) {
-      this.drawLine(textX + measurement.width + 1, textY, textX + measurement.width + 1, textY + measurement.lineHeight, this.theme.accent, 1);
+      this.drawLine(textX + measurement.width + 1, textY, textX + measurement.width + 1, textY + measurement.lineHeight, this.tokens.accent, 1);
     }
     this.engine.graphics.popClipRect();
   }

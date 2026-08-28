@@ -6,7 +6,7 @@ export * from './color-rect';
 export * from './panel';
 export * from './base-button';
 export * from './button';
-export * from './check-box';
+export * from './checkbox';
 export * from './check-button';
 export * from './slider';
 export * from './progress-bar';

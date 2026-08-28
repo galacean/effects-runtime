@@ -1,23 +1,16 @@
-import {
-  Container,
-  Control,
-  Player,
-  UIControl,
-  VFXItem,
-  effectsClass,
-  getClass,
-  math,
-} from '@galacean/effects';
-import type { Engine, UIControlData } from '@galacean/effects';
+import { Player, VFXItem, effectsClass, getClass, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 import {
   AspectRatioContainer,
   AspectRatioStretchMode,
   BaseButton,
   Button,
   CenterContainer,
-  CheckBox,
+  Checkbox,
   CheckButton,
   ColorRect,
+  Container,
+  Control,
   GridContainer,
   HBoxContainer,
   HScrollBar,
@@ -40,6 +33,11 @@ import {
   VBoxContainer,
   VScrollBar,
   VSlider,
+  UIControl,
+} from '@galacean/effects-plugin-gui';
+import type {
+  StyleBoxFlat,
+  UIControlData,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
@@ -50,7 +48,7 @@ type DeserializationCase = {
   verify: (control: Control) => void,
 };
 
-describe('core/GUI Control deserialization', () => {
+describe('plugin-gui/GUI Control deserialization', () => {
   let player: Player;
   let serial = 0;
 
@@ -85,7 +83,7 @@ describe('core/GUI Control deserialization', () => {
       ['Panel', Panel],
       ['ProgressBar', ProgressBar],
       ['Button', Button],
-      ['CheckBox', CheckBox],
+      ['Checkbox', Checkbox],
       ['CheckButton', CheckButton],
       ['HSlider', HSlider],
       ['VSlider', VSlider],
@@ -147,35 +145,63 @@ describe('core/GUI Control deserialization', () => {
         verify: control => expect(control.stretchRatio).equals(3),
       },
       {
-        type: 'HBoxContainer', data: { alignment: LayoutAlignment.End, separation: 6, reverse: true },
+        type: 'HBoxContainer',
+        data: {
+          alignment: LayoutAlignment.End,
+          reverse: true,
+          themeOverrides: { constants: { separation: 6 } },
+        },
         verify: control => {
           const box = control as HBoxContainer;
 
-          expect([box.alignment, box.separation, box.reverse]).deep.equals([LayoutAlignment.End, 6, true]);
+          expect([box.alignment, box.getThemeConstant('separation'), box.reverse])
+            .deep.equals([LayoutAlignment.End, 6, true]);
         },
       },
       {
-        type: 'VBoxContainer', data: { alignment: LayoutAlignment.Center, separation: 7 },
+        type: 'VBoxContainer',
+        data: {
+          alignment: LayoutAlignment.Center,
+          themeOverrides: { constants: { separation: 7 } },
+        },
         verify: control => {
           const box = control as VBoxContainer;
 
-          expect([box.alignment, box.separation]).deep.equals([LayoutAlignment.Center, 7]);
+          expect([box.alignment, box.getThemeConstant('separation')]).deep.equals([LayoutAlignment.Center, 7]);
         },
       },
       {
-        type: 'GridContainer', data: { columns: 3, horizontalSeparation: 4, verticalSeparation: 5 },
+        type: 'GridContainer',
+        data: {
+          columns: 3,
+          themeOverrides: { constants: { horizontalSeparation: 4, verticalSeparation: 5 } },
+        },
         verify: control => {
           const grid = control as GridContainer;
 
-          expect([grid.columns, grid.horizontalSeparation, grid.verticalSeparation]).deep.equals([3, 4, 5]);
+          expect([
+            grid.columns,
+            grid.getThemeConstant('horizontalSeparation'),
+            grid.getThemeConstant('verticalSeparation'),
+          ]).deep.equals([3, 4, 5]);
         },
       },
       {
-        type: 'MarginContainer', data: { marginLeft: 1, marginTop: 2, marginRight: 3, marginBottom: 4 },
+        type: 'MarginContainer',
+        data: {
+          themeOverrides: {
+            constants: { marginLeft: 1, marginTop: 2, marginRight: 3, marginBottom: 4 },
+          },
+        },
         verify: control => {
           const margin = control as MarginContainer;
 
-          expect([margin.marginLeft, margin.marginTop, margin.marginRight, margin.marginBottom])
+          expect([
+            margin.getThemeConstant('marginLeft'),
+            margin.getThemeConstant('marginTop'),
+            margin.getThemeConstant('marginRight'),
+            margin.getThemeConstant('marginBottom'),
+          ])
             .deep.equals([1, 2, 3, 4]);
         },
       },
@@ -227,15 +253,25 @@ describe('core/GUI Control deserialization', () => {
       {
         type: 'Label',
         data: {
-          text: 'Hello', fontFamily: 'serif', fontSize: 20, horizontalAlignment: 2,
-          textColor: { r: 0.1, g: 0.2, b: 0.3, a: 0.4 },
+          text: 'Hello',
+          horizontalAlignment: 2,
+          themeOverrides: {
+            fonts: { font: { family: 'serif' } },
+            fontSizes: { fontSize: 20 },
+            colors: { fontColor: { r: 0.1, g: 0.2, b: 0.3, a: 0.4 } },
+          },
         },
         verify: control => {
           const label = control as Label;
 
-          expect([label.text, label.fontFamily, label.fontSize, label.horizontalAlignment])
+          expect([
+            label.text,
+            label.getThemeFont('font').family,
+            label.getThemeFontSize('fontSize'),
+            label.horizontalAlignment,
+          ])
             .deep.equals(['Hello', 'serif', 20, HorizontalAlignment.Right]);
-          expect(label.textColor.toArray()).deep.equals([0.1, 0.2, 0.3, 0.4]);
+          expect(label.getThemeColor('fontColor').toArray()).deep.equals([0.1, 0.2, 0.3, 0.4]);
         },
       },
       {
@@ -286,15 +322,24 @@ describe('core/GUI Control deserialization', () => {
       {
         type: 'Panel',
         data: {
-          backgroundColor: { r: 0.1, g: 0.2, b: 0.3, a: 1 },
-          borderColor: { r: 0.9, g: 0.8, b: 0.7, a: 1 },
-          borderWidth: 4,
+          themeOverrides: {
+            styleBoxes: {
+              panel: {
+                type: 'flat',
+                backgroundColor: { r: 0.1, g: 0.2, b: 0.3, a: 1 },
+                borderColor: { r: 0.9, g: 0.8, b: 0.7, a: 1 },
+                borderWidths: { left: 4, top: 4, right: 4, bottom: 4 },
+              },
+            },
+          },
         },
         verify: control => {
           const panel = control as Panel;
 
-          expect(panel.backgroundColor.toArray()).deep.equals([0.1, 0.2, 0.3, 1]);
-          expect(panel.borderWidth).equals(4);
+          const style = panel.getThemeStyleBox('panel') as StyleBoxFlat;
+
+          expect(style.getBackgroundColor().toArray()).deep.equals([0.1, 0.2, 0.3, 1]);
+          expect(style.getBorderWidths().left).equals(4);
         },
       },
       {
@@ -306,7 +351,11 @@ describe('core/GUI Control deserialization', () => {
           value: 80,
           showPercentage: false,
           fillMode: ProgressFillMode.BottomToTop,
-          fillColor: { r: 0.1, g: 0.7, b: 0.2, a: 1 },
+          themeOverrides: {
+            styleBoxes: {
+              fill: { type: 'flat', backgroundColor: { r: 0.1, g: 0.7, b: 0.2, a: 1 } },
+            },
+          },
         },
         verify: control => {
           const progress = control as ProgressBar;
@@ -315,24 +364,30 @@ describe('core/GUI Control deserialization', () => {
             .deep.equals([10, 210, 2, 80]);
           expect([progress.showPercentage, progress.fillMode])
             .deep.equals([false, ProgressFillMode.BottomToTop]);
+          expect((progress.getThemeStyleBox('fill') as StyleBoxFlat).getBackgroundColor().toArray())
+            .deep.equals([0.1, 0.7, 0.2, 1]);
         },
       },
       buttonCase('Button', texturePath, texture),
       {
-        ...buttonCase('CheckBox', texturePath, texture),
+        ...buttonCase('Checkbox', texturePath, texture),
         data: {
-          ...buttonCase('CheckBox', texturePath, texture).data,
-          markColor: { r: 0.8, g: 0.2, b: 0.1, a: 1 },
+          ...buttonCase('Checkbox', texturePath, texture).data,
+          themeOverrides: {
+            colors: { markColor: { r: 0.8, g: 0.2, b: 0.1, a: 1 } },
+          },
         },
-        verify: control => expect((control as CheckBox).markColor.toArray()).deep.equals([0.8, 0.2, 0.1, 1]),
+        verify: control => expect(control.getThemeColor('markColor').toArray()).deep.equals([0.8, 0.2, 0.1, 1]),
       },
       {
         ...buttonCase('CheckButton', texturePath, texture),
         data: {
           ...buttonCase('CheckButton', texturePath, texture).data,
-          switchColor: { r: 0.2, g: 0.8, b: 0.1, a: 1 },
+          themeOverrides: {
+            colors: { switchColor: { r: 0.2, g: 0.8, b: 0.1, a: 1 } },
+          },
         },
-        verify: control => expect((control as CheckButton).switchColor.toArray()).deep.equals([0.2, 0.8, 0.1, 1]),
+        verify: control => expect(control.getThemeColor('switchColor').toArray()).deep.equals([0.2, 0.8, 0.1, 1]),
       },
       sliderCase('HSlider'),
       sliderCase('VSlider'),
@@ -350,10 +405,10 @@ describe('core/GUI Control deserialization', () => {
     const button = deserializeControl(player.engine, 'Button', {}, serial++).control as Button;
 
     expect(label.text).equals('Only text');
-    expect(label.fontSize).greaterThan(0);
+    expect(label.getThemeFontSize('fontSize')).greaterThan(0);
     expect(button.text).equals('');
     expect(button.disabled).equals(false);
-    expect(button.normalColor).not.equals(undefined);
+    expect(button.getThemeStyleBox('normal')).not.equals(undefined);
   });
 
   it('uses silent setters while loading Button and Range state', () => {
@@ -454,20 +509,25 @@ describe('core/GUI Control deserialization', () => {
         page: 20,
         value: 25,
         customStep: 3,
-        grabberColor: { r: 0.2, g: 0.3, b: 0.4, a: 1 },
+        themeOverrides: {
+          styleBoxes: {
+            grabber: { type: 'flat', backgroundColor: { r: 0.2, g: 0.3, b: 0.4, a: 1 } },
+          },
+        },
       },
       verify: control => {
         const bar = control as HScrollBar | VScrollBar;
 
         expect([bar.minValue, bar.maxValue, bar.step, bar.page, bar.value, bar.customStep])
           .deep.equals([5, 205, 2, 20, 25, 3]);
-        expect(bar.grabberColor.toArray()).deep.equals([0.2, 0.3, 0.4, 1]);
+        expect((bar.getThemeStyleBox('grabber') as StyleBoxFlat).getBackgroundColor().toArray())
+          .deep.equals([0.2, 0.3, 0.4, 1]);
       },
     };
   }
 
   function buttonCase (
-    type: 'Button' | 'CheckBox' | 'CheckButton',
+    type: 'Button' | 'Checkbox' | 'CheckButton',
     texturePath: { id: string },
     texture: Engine['whiteTexture'],
   ): DeserializationCase {
@@ -480,8 +540,15 @@ describe('core/GUI Control deserialization', () => {
         toggleMode: true,
         buttonPressed: true,
         flat: true,
-        horizontalPadding: 12,
-        normalColor: { r: 0.22, g: 0.25, b: 0.31, a: 1 },
+        themeOverrides: {
+          styleBoxes: {
+            normal: {
+              type: 'flat',
+              backgroundColor: { r: 0.22, g: 0.25, b: 0.31, a: 1 },
+              contentMargins: { left: 12, top: 4, right: 12, bottom: 4 },
+            },
+          },
+        },
       },
       verify: control => {
         const button = control as Button;
@@ -489,8 +556,10 @@ describe('core/GUI Control deserialization', () => {
         expect([button.text, button.disabled, button.toggleMode, button.buttonPressed, button.flat])
           .deep.equals(['Confirm', true, true, true, true]);
         expect(button.icon).equals(texture);
-        expect(button.horizontalPadding).equals(12);
-        expect(button.normalColor.toArray()).deep.equals([0.22, 0.25, 0.31, 1]);
+        const style = button.getThemeStyleBox('normal') as StyleBoxFlat;
+
+        expect(style.getContentMargins().left).equals(12);
+        expect(style.getBackgroundColor().toArray()).deep.equals([0.22, 0.25, 0.31, 1]);
       },
     };
   }
@@ -505,7 +574,11 @@ describe('core/GUI Control deserialization', () => {
         value: 2.5,
         editable: false,
         scrollable: false,
-        fillColor: { r: 0.7, g: 0.2, b: 0.1, a: 1 },
+        themeOverrides: {
+          styleBoxes: {
+            fill: { type: 'flat', backgroundColor: { r: 0.7, g: 0.2, b: 0.1, a: 1 } },
+          },
+        },
       },
       verify: control => {
         const slider = control as HSlider | VSlider;
@@ -513,7 +586,8 @@ describe('core/GUI Control deserialization', () => {
         expect([slider.minValue, slider.maxValue, slider.step, slider.value])
           .deep.equals([-10, 10, 0.5, 2.5]);
         expect([slider.editable, slider.scrollable]).deep.equals([false, false]);
-        expect(slider.fillColor.toArray()).deep.equals([0.7, 0.2, 0.1, 1]);
+        expect((slider.getThemeStyleBox('fill') as StyleBoxFlat).getBackgroundColor().toArray())
+          .deep.equals([0.7, 0.2, 0.1, 1]);
       },
     };
   }

@@ -1,18 +1,20 @@
-import type { Control, Engine } from '@galacean/effects';
-import { SizeFlags, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type {
   Slider } from '@galacean/effects-plugin-gui';
 import {
   Button,
   ButtonGroup,
   CheckButton,
+  SizeFlags,
   HBoxContainer,
   HorizontalAlignment,
   Label,
   TextOverflow,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';
-import { getTheme, mix, withAlpha } from './theme';
+import type { Control } from '@galacean/effects-plugin-gui';
+import { getTheme, mix, setFlatStyleOverride, setFontOverrides, withAlpha } from './theme';
 
 export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger';
 
@@ -26,32 +28,31 @@ export function createButton (
   const button = new Button(engine, text);
 
   button.clipText = true;
-  button.fontSize = 12;
-  button.fontWeight = 600;
-  button.borderWidth = 1;
-  button.normalColor = theme.panelBg;
-  button.hoverColor = theme.panelRaisedBg;
-  button.pressedColor = theme.accentSoft;
-  button.borderColor = theme.borderSubtle;
-  button.textColor = theme.textPrimary;
+  setFontOverrides(button, { size: 12, weight: 600, color: theme.textPrimary });
+  setButtonStateColors(button, theme.panelBg, theme.panelRaisedBg, theme.accentSoft, theme.borderSubtle, 1);
   if (variant === 'primary') {
-    button.normalColor = theme.accent;
-    button.hoverColor = theme.accentHover;
-    button.pressedColor = mix(theme.accentHover, theme.textPrimary, 0.12);
-    button.borderColor = theme.accent;
-    button.textColor = theme.textOnAccent;
+    setButtonStateColors(
+      button, theme.accent, theme.accentHover,
+      mix(theme.accentHover, theme.textPrimary, 0.12), theme.accent, 1,
+    );
+    setButtonFontColors(button, theme.textOnAccent);
   } else if (variant === 'danger') {
-    button.normalColor = withAlpha(theme.danger, 0.14);
-    button.hoverColor = withAlpha(theme.danger, 0.22);
-    button.pressedColor = withAlpha(theme.danger, 0.32);
-    button.borderColor = withAlpha(theme.danger, 0.52);
-    button.textColor = theme.danger;
+    setButtonStateColors(
+      button,
+      withAlpha(theme.danger, 0.14),
+      withAlpha(theme.danger, 0.22),
+      withAlpha(theme.danger, 0.32),
+      withAlpha(theme.danger, 0.52),
+      1,
+    );
+    setButtonFontColors(button, theme.danger);
   } else if (variant === 'ghost') {
     button.flat = true;
-    button.borderWidth = 0;
-    button.hoverColor = theme.panelRaisedBg;
-    button.pressedColor = theme.accentSoft;
-    button.textColor = theme.textSecondary;
+    setButtonStateColors(button, theme.panelBg, theme.panelRaisedBg, theme.accentSoft, theme.borderSubtle, 0);
+    setButtonFontColors(button, theme.textSecondary);
+    button.setThemeColorOverride('fontHoverColor', theme.textPrimary);
+    button.setThemeColorOverride('fontPressedColor', theme.accent);
+    button.setThemeColorOverride('fontHoverPressedColor', theme.accentHover);
   }
   if (pressed) {
     button.on('pressed', pressed);
@@ -78,11 +79,12 @@ export function createToggle (
 export function styleSlider<T extends Slider> (slider: T): T {
   const theme = getTheme();
 
-  slider.trackColor = theme.controlTrack;
-  slider.fillColor = theme.accent;
-  slider.grabberColor = mix(theme.borderStrong, theme.textPrimary, 0.18);
-  slider.grabberHighlightedColor = theme.accentHover;
-  slider.grabberDisabledColor = theme.borderSubtle;
+  setFlatStyleOverride(slider, 'track', { background: theme.controlTrack });
+  setFlatStyleOverride(slider, 'fill', { background: theme.accent });
+  setFlatStyleOverride(slider, 'fillHighlight', { background: theme.accentHover });
+  setFlatStyleOverride(slider, 'grabber', { background: mix(theme.borderStrong, theme.textPrimary, 0.18) });
+  setFlatStyleOverride(slider, 'grabberHighlight', { background: theme.accentHover });
+  setFlatStyleOverride(slider, 'grabberDisabled', { background: theme.borderSubtle });
 
   return slider;
 }
@@ -118,7 +120,7 @@ export function createSegmentedControl (
     return button;
   });
 
-  row.separation = 4;
+  row.setThemeConstantOverride('separation', 4);
 
   return {
     control: row,
@@ -140,15 +142,12 @@ export function addSectionTitle (
   const title = new Label(engine, titleText);
   const description = new Label(engine, caption);
 
-  title.fontSize = 15;
-  title.fontWeight = 650;
-  title.textColor = theme.textPrimary;
+  setFontOverrides(title, { size: 15, weight: 650, color: theme.textPrimary });
   title.textOverflow = TextOverflow.Ellipsis;
   title.verticalAlignment = VerticalAlignment.Center;
   title.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, 24) });
   title.parent = parent;
-  description.fontSize = 11;
-  description.textColor = theme.textSecondary;
+  setFontOverrides(description, { size: 11, color: theme.textSecondary });
   description.textOverflow = TextOverflow.Ellipsis;
   description.verticalAlignment = VerticalAlignment.Center;
   description.setRect({ position: new math.Vector2(x, y + 27), size: new math.Vector2(width, 20) });
@@ -168,15 +167,12 @@ export function addKeyValueRow (
   const keyLabel = new Label(engine, key);
   const valueLabel = new Label(engine, value);
 
-  keyLabel.fontSize = 11;
-  keyLabel.textColor = theme.textSecondary;
+  setFontOverrides(keyLabel, { size: 11, color: theme.textSecondary });
   keyLabel.verticalAlignment = VerticalAlignment.Center;
   keyLabel.textOverflow = TextOverflow.Ellipsis;
   keyLabel.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width * 0.58, 28) });
   keyLabel.parent = parent;
-  valueLabel.fontSize = 11;
-  valueLabel.fontWeight = 600;
-  valueLabel.textColor = theme.textPrimary;
+  setFontOverrides(valueLabel, { size: 11, weight: 600, color: theme.textPrimary });
   valueLabel.horizontalAlignment = HorizontalAlignment.Right;
   valueLabel.verticalAlignment = VerticalAlignment.Center;
   valueLabel.textOverflow = TextOverflow.Ellipsis;
@@ -184,4 +180,25 @@ export function addKeyValueRow (
   valueLabel.parent = parent;
 
   return valueLabel;
+}
+
+function setButtonStateColors (
+  button: Button,
+  normal: math.Color,
+  hover: math.Color,
+  pressed: math.Color,
+  border: math.Color,
+  borderWidth: number,
+): void {
+  setFlatStyleOverride(button, 'normal', { background: normal, border, borderWidth });
+  setFlatStyleOverride(button, 'hover', { background: hover, border, borderWidth });
+  setFlatStyleOverride(button, 'pressed', { background: pressed, border, borderWidth });
+  setFlatStyleOverride(button, 'hoverPressed', { background: pressed, border, borderWidth });
+  setFlatStyleOverride(button, 'disabled', { border, borderWidth });
+}
+
+function setButtonFontColors (button: Button, color: math.Color): void {
+  for (const name of ['fontColor', 'fontFocusColor', 'fontHoverColor', 'fontPressedColor', 'fontHoverPressedColor']) {
+    button.setThemeColorOverride(name, color);
+  }
 }

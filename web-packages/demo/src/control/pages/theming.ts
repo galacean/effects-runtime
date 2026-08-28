@@ -1,21 +1,22 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   Button,
   AutowrapMode,
-  CheckBox,
+  Checkbox,
   CheckButton,
-  GUIStyle,
+  Control,
   HSlider,
   HorizontalAlignment,
   Label,
   Panel,
   ProgressBar,
+  Theme,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';
 import type { AccentName } from '../theme';
-import { ACCENTS, getTheme } from '../theme';
+import { ACCENTS, getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl, styleSlider } from '../widgets';
 import { label } from './common';
 
@@ -64,14 +65,15 @@ export class ThemingPage extends Control {
       const button = new Button(this.engine, name.slice(0, 1).toUpperCase());
       const accent = ACCENTS[name][ctx.state.theme];
 
-      button.normalColor = accent;
-      button.hoverColor = accent;
-      button.pressedColor = accent;
-      button.borderColor = ctx.state.customAccent === null && ctx.state.accent === name
+      const border = ctx.state.customAccent === null && ctx.state.accent === name
         ? theme.textPrimary
         : theme.borderSubtle;
-      button.borderWidth = ctx.state.customAccent === null && ctx.state.accent === name ? 3 : 1;
-      button.textColor = theme.textOnAccent;
+      const borderWidth = ctx.state.customAccent === null && ctx.state.accent === name ? 3 : 1;
+
+      for (const state of ['normal', 'hover', 'pressed', 'hoverPressed']) {
+        setFlatStyleOverride(button, state, { background: accent, border, borderWidth });
+      }
+      setFontOverrides(button, { color: theme.textOnAccent });
       button.setRect({ position: new math.Vector2(20 + index * 57, 202), size: new math.Vector2(48, 42) });
       button.parent = panel;
       button.on('pressed', () => {
@@ -104,7 +106,7 @@ export class ThemingPage extends Control {
     });
     label(
       this.engine,
-      'GUI controls copy GUIStyle.current when constructed. Rebuilding lets every native control pick up the new palette consistently.',
+      'A Theme attached to a root or subtree is inherited live. This gallery still rebuilds to refresh its content-level color tokens.',
       20,
       370,
       282,
@@ -125,27 +127,28 @@ export class ThemingPage extends Control {
   private buildSemantics (panel: Panel): void {
     const theme = getTheme();
 
-    addSectionTitle(this.engine, panel, 'GUIStyle snapshot', 'Controls keep the style values copied at construction');
-    const original = label(this.engine, 'Existing Label — original color', 20, 80, 282, 32, panel, {
-      size: 13,
-      color: theme.textPrimary,
-      weight: 600,
-    });
+    addSectionTitle(this.engine, panel, 'Tree Theme update', 'Existing controls resolve inherited values live');
+    const localTheme = new Theme();
+    const original = new Label(this.engine, 'Existing Label — inherited color');
+
+    panel.theme = localTheme;
+    original.parent = panel;
+    setFontOverrides(original, { weight: 600 });
+    original.setRect({ position: new math.Vector2(20, 80), size: new math.Vector2(282, 32) });
     let created: Label | null = null;
-    const action = createButton(this.engine, 'Mutate style and create a Label', () => {
-      GUIStyle.current.textColor = theme.danger;
+    const action = createButton(this.engine, 'Update subtree Theme', () => {
+      localTheme.setColor('Label', 'fontColor', theme.danger);
       created?.dispose();
-      created = new Label(this.engine, 'New Label — copied danger color');
-      created.fontSize = 13;
-      created.fontWeight = 600;
-      created.setRect({ position: new math.Vector2(20, 124), size: new math.Vector2(282, 32) });
+      created = new Label(this.engine, 'New Label — same inherited color');
       created.parent = panel;
-      original.text = 'Existing Label — unchanged';
+      setFontOverrides(created, { weight: 600 });
+      created.setRect({ position: new math.Vector2(20, 124), size: new math.Vector2(282, 32) });
+      original.text = 'Existing Label — updated live';
     }, 'primary');
 
     action.setRect({ position: new math.Vector2(20, 174), size: new math.Vector2(282, 38) });
     action.parent = panel;
-    label(this.engine, 'A theme change restores GUIStyle before creating the next tree.', 20, 220, 282, 42, panel, {
+    label(this.engine, 'The local Theme affects only this panel subtree; sibling Canvas and Player trees remain isolated.', 20, 220, 282, 42, panel, {
       size: 11,
       color: theme.textSecondary,
       autowrap: AutowrapMode.WordSmart,
@@ -158,7 +161,7 @@ export class ThemingPage extends Control {
     });
     const normal = new Button(this.engine, 'Normal');
     const disabled = new Button(this.engine, 'Disabled');
-    const checked = new CheckBox(this.engine, 'Checked');
+    const checked = new Checkbox(this.engine, 'Checked');
     const toggle = new CheckButton(this.engine, 'Switch');
     const slider = styleSlider(new HSlider(this.engine));
     const progress = new ProgressBar(this.engine);

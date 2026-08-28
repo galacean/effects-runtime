@@ -1,8 +1,9 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   Button,
   ButtonActionMode,
+  Control,
   HorizontalAlignment,
   Label,
   Panel,
@@ -10,7 +11,7 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';
-import { getTheme } from '../theme';
+import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl } from '../widgets';
 import { createDemoTexture, label } from './common';
 
@@ -80,14 +81,16 @@ export class ButtonsPage extends Control {
     const medium = new Button(this.engine, 'Medium');
     const large = new Button(this.engine, 'Large');
 
-    small.fontSize = 11;
-    small.horizontalPadding = 6;
-    small.verticalPadding = 3;
+    setFontOverrides(small, { size: 11 });
+    for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+      setFlatStyleOverride(small, state, { horizontalMargin: 6, verticalMargin: 3 });
+    }
     small.setRect({ position: new math.Vector2(20, 382), size: new math.Vector2(78, 28) });
     medium.setRect({ position: new math.Vector2(108, 378), size: new math.Vector2(94, 36) });
-    large.fontSize = 14;
-    large.horizontalPadding = 14;
-    large.verticalPadding = 8;
+    setFontOverrides(large, { size: 14 });
+    for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+      setFlatStyleOverride(large, state, { horizontalMargin: 14, verticalMargin: 8 });
+    }
     large.setRect({ position: new math.Vector2(212, 374), size: new math.Vector2(90, 44) });
     [small, medium, large].forEach(control => {
       control.parent = panel;
@@ -113,12 +116,12 @@ export class ButtonsPage extends Control {
 
     segmented.control.setRect({ position: new math.Vector2(20, 104), size: new math.Vector2(282, 34) });
     segmented.control.parent = panel;
-    previewPanel.backgroundColor = theme.panelRaisedBg;
+    setFlatStyleOverride(previewPanel, 'panel', { background: theme.panelRaisedBg });
     previewPanel.setRect({ position: new math.Vector2(20, 150), size: new math.Vector2(282, 62) });
     previewPanel.parent = panel;
     preview.horizontalAlignment = HorizontalAlignment.Center;
     preview.verticalAlignment = VerticalAlignment.Center;
-    preview.textColor = theme.textPrimary;
+    preview.setThemeColorOverride('fontColor', theme.textPrimary);
     preview.setRect({ position: new math.Vector2(12, 8), size: new math.Vector2(258, 46) });
     preview.parent = previewPanel;
 
@@ -164,7 +167,7 @@ export class ButtonsPage extends Control {
     toggle.parent = panel;
     toggle.on('toggled', pressed => {
       toggleState.text = pressed ? 'On' : 'Off';
-      toggleState.textColor = pressed ? theme.success : theme.textSecondary;
+      toggleState.setThemeColorOverride('fontColor', pressed ? theme.success : theme.textSecondary);
     });
   }
 }

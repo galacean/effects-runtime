@@ -1,14 +1,15 @@
 import type { Engine, Texture } from '@galacean/effects';
-import { Control, SizeFlags, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type {
   Range } from '@galacean/effects-plugin-gui';
 import {
   AspectRatioContainer,
   Button,
   CenterContainer,
-  CheckBox,
+  Checkbox,
   CheckButton,
   ColorRect,
+  Control,
   GridContainer,
   HBoxContainer,
   HScrollBar,
@@ -20,6 +21,7 @@ import {
   Panel,
   ProgressBar,
   ScrollContainer,
+  SizeFlags,
   Side,
   TextOverflow,
   TextureRect,
@@ -35,7 +37,7 @@ import { ControlInspectorPanel } from '../inspector/panel';
 import { INSPECTOR_CONTROL_OPTIONS, createInspectorProperties } from '../inspector/schema';
 import { attachAnchoredRect, attachFullRect } from '../layout';
 import type { InspectorControlType } from '../state';
-import { getTheme, withAlpha } from '../theme';
+import { getTheme, setFlatStyleOverride, withAlpha } from '../theme';
 import { createButton } from '../widgets';
 import { createDemoTexture, label } from './common';
 
@@ -57,8 +59,7 @@ export class InspectorPage extends Control {
     const grid = new PreviewGrid(engine);
 
     attachAnchoredRect(stage, this, 0, 0, 1, 1, 196, 0, 352, 0);
-    stage.backgroundColor = theme.panelBg;
-    stage.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(stage, 'panel', { background: theme.panelBg, border: theme.borderSubtle });
     stage.clipContents = true;
     this.className = label(engine, '', 22, 18, 280, 28, stage, {
       size: 16,
@@ -80,8 +81,9 @@ export class InspectorPage extends Control {
       weight: 700,
     });
     attachAnchoredRect(viewport, stage, 0, 0, 1, 1, 22, 118, 22, 52);
-    viewport.backgroundColor = theme.panelRaisedBg;
-    viewport.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(viewport, 'panel', {
+      background: theme.panelRaisedBg, border: theme.borderSubtle,
+    });
     viewport.clipContents = true;
     attachFullRect(grid, viewport, 1, 1, 1, 1);
     grid.lineColor = withAlpha(theme.borderStrong, 0.35);
@@ -184,8 +186,8 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
 
       return control;
     }
-    case 'CheckBox': {
-      const control = new CheckBox(engine, 'Enable feature');
+    case 'Checkbox': {
+      const control = new Checkbox(engine, 'Enable feature');
 
       control.setPressedNoSignal(true);
 
@@ -272,7 +274,7 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
     case 'HBoxContainer': {
       const control = new HBoxContainer(engine);
 
-      control.separation = 8;
+      control.setThemeConstantOverride('separation', 8);
       addContainerButtons(control, 3);
 
       return control;
@@ -280,7 +282,7 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
     case 'VBoxContainer': {
       const control = new VBoxContainer(engine);
 
-      control.separation = 8;
+      control.setThemeConstantOverride('separation', 8);
       addContainerButtons(control, 3);
 
       return control;
@@ -289,8 +291,8 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
       const control = new GridContainer(engine);
 
       control.columns = 3;
-      control.horizontalSeparation = 8;
-      control.verticalSeparation = 8;
+      control.setThemeConstantOverride('horizontalSeparation', 8);
+      control.setThemeConstantOverride('verticalSeparation', 8);
       addContainerButtons(control, 6);
 
       return control;
@@ -300,8 +302,11 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
       const child = new Panel(engine);
       const childLabel = new Label(engine, 'Content');
 
-      control.setMargins(24, 18, 24, 18);
-      child.backgroundColor = getTheme().accentSoft;
+      control.setThemeConstantOverride('marginLeft', 24);
+      control.setThemeConstantOverride('marginTop', 18);
+      control.setThemeConstantOverride('marginRight', 24);
+      control.setThemeConstantOverride('marginBottom', 18);
+      setFlatStyleOverride(child, 'panel', { background: getTheme().accentSoft });
       child.parent = control;
       childLabel.horizontalAlignment = HorizontalAlignment.Center;
       childLabel.verticalAlignment = VerticalAlignment.Center;
@@ -338,7 +343,7 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
       const surface = new Panel(engine);
 
       surface.setCustomMinimumSize(420, 300);
-      surface.backgroundColor = getTheme().panelRaisedBg;
+      setFlatStyleOverride(surface, 'panel', { background: getTheme().panelRaisedBg });
       surface.parent = control;
       for (let index = 0; index < 6; index++) {
         const button = createButton(engine, `Item ${index + 1}`);
@@ -359,7 +364,7 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
 
 function attachPreviewControl (control: Control, parent: Control, type: InspectorControlType): void {
   const vertical = type === 'VSlider' || type === 'VScrollBar';
-  const compact = type === 'Button' || type === 'CheckBox' || type === 'CheckButton'
+  const compact = type === 'Button' || type === 'Checkbox' || type === 'CheckButton'
     || type === 'HSlider' || type === 'ProgressBar' || type === 'HScrollBar';
   const width = vertical ? 44 : compact ? 236 : 280;
   const height = vertical ? 236 : compact ? type === 'Button' ? 64 : type === 'ProgressBar' ? 34 : 42 : 210;

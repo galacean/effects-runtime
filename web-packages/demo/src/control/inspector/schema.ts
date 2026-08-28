@@ -1,17 +1,16 @@
+import { MouseButtonMask } from '@galacean/effects';
+import type {
+  Texture,
+  math,
+} from '@galacean/effects';
 import {
   FocusBehaviorRecursive,
   FocusMode,
   GrowDirection,
-  MouseButtonMask,
   MouseFilter,
   SizeFlags,
-} from '@galacean/effects';
-import type {
-  Control,
-  Texture,
-  CursorShape,
-  math,
-} from '@galacean/effects';
+} from '@galacean/effects-plugin-gui';
+import type { Control, CursorShape } from '@galacean/effects-plugin-gui';
 import type {
   AspectRatioContainer,
   BaseButton,
@@ -125,7 +124,7 @@ export type InspectorControlOption = {
 
 export const INSPECTOR_CONTROL_OPTIONS: InspectorControlOption[] = [
   { type: 'Button', title: 'Button', group: 'Buttons', description: 'Text button with BaseButton interaction behavior.' },
-  { type: 'CheckBox', title: 'CheckBox', group: 'Buttons', description: 'Checkbox using the Button and BaseButton property set.' },
+  { type: 'Checkbox', title: 'Checkbox', group: 'Buttons', description: 'Checkbox using the Button and BaseButton property set.' },
   { type: 'CheckButton', title: 'CheckButton', group: 'Buttons', description: 'Switch-style toggle using the Button property set.' },
   { type: 'Label', title: 'Label', group: 'Display', description: 'Text layout, wrapping, alignment and theme overrides.' },
   { type: 'TextureRect', title: 'TextureRect', group: 'Display', description: 'Texture sizing and stretch behavior.' },
@@ -179,7 +178,7 @@ export function createInspectorProperties (type: InspectorControlType, texture: 
 
   switch (type) {
     case 'Button':
-    case 'CheckBox':
+    case 'Checkbox':
     case 'CheckButton':
       properties.push(...buttonProperties(texture), ...baseButtonProperties());
 
@@ -461,18 +460,18 @@ function labelProperties (): InspectorProperty[] {
     },
     {
       group: 'Theme Overrides / Colors', name: 'font_color', kind: 'color',
-      getValue: control => (control as Label).textColor,
-      setValue: (control, value) => (control as Label).textColor.copyFrom(value),
+      getValue: control => control.getThemeColor('fontColor'),
+      setValue: (control, value) => control.setThemeColorOverride('fontColor', value),
     },
     {
       group: 'Theme Overrides / Font Sizes', name: 'font_size', kind: 'number', min: 1, max: 256, step: 1, suffix: 'px',
-      getValue: control => (control as Label).fontSize,
-      setValue: (control, value) => { (control as Label).fontSize = value; },
+      getValue: control => control.getThemeFontSize('fontSize'),
+      setValue: (control, value) => control.setThemeFontSizeOverride('fontSize', value),
     },
     {
       group: 'Theme Overrides / Constants', name: 'line_spacing', kind: 'number', min: -128, max: 256, step: 1, suffix: 'px',
-      getValue: control => (control as Label).lineSpacing,
-      setValue: (control, value) => { (control as Label).lineSpacing = value; },
+      getValue: control => control.getThemeConstant('lineSpacing'),
+      setValue: (control, value) => control.setThemeConstantOverride('lineSpacing', value),
     },
   ];
 }
@@ -522,23 +521,23 @@ function buttonProperties (texture: Texture): InspectorProperty[] {
     },
     {
       group: 'Theme Overrides / Colors', name: 'font_color', kind: 'color',
-      getValue: control => (control as Button).textColor,
-      setValue: (control, value) => (control as Button).textColor.copyFrom(value),
+      getValue: control => control.getThemeColor('fontColor'),
+      setValue: (control, value) => control.setThemeColorOverride('fontColor', value),
     },
     {
       group: 'Theme Overrides / Colors', name: 'font_disabled_color', kind: 'color',
-      getValue: control => (control as Button).disabledTextColor,
-      setValue: (control, value) => (control as Button).disabledTextColor.copyFrom(value),
+      getValue: control => control.getThemeColor('fontDisabledColor'),
+      setValue: (control, value) => control.setThemeColorOverride('fontDisabledColor', value),
     },
     {
       group: 'Theme Overrides / Font Sizes', name: 'font_size', kind: 'number', min: 1, max: 256, step: 1, suffix: 'px',
-      getValue: control => (control as Button).fontSize,
-      setValue: (control, value) => { (control as Button).fontSize = value; },
+      getValue: control => control.getThemeFontSize('fontSize'),
+      setValue: (control, value) => control.setThemeFontSizeOverride('fontSize', value),
     },
     {
       group: 'Theme Overrides / Constants', name: 'h_separation', kind: 'number', min: 0, max: 256, step: 1, suffix: 'px',
-      getValue: control => (control as Button).iconSeparation,
-      setValue: (control, value) => { (control as Button).iconSeparation = value; },
+      getValue: control => control.getThemeConstant('iconSeparation'),
+      setValue: (control, value) => control.setThemeConstantOverride('iconSeparation', value),
     },
   ];
 }
@@ -773,13 +772,13 @@ function progressBarProperties (): InspectorProperty[] {
     },
     {
       group: 'Theme Overrides / Colors', name: 'font_color', kind: 'color',
-      getValue: control => (control as ProgressBar).textColor,
-      setValue: (control, value) => (control as ProgressBar).textColor.copyFrom(value),
+      getValue: control => control.getThemeColor('fontColor'),
+      setValue: (control, value) => control.setThemeColorOverride('fontColor', value),
     },
     {
       group: 'Theme Overrides / Font Sizes', name: 'font_size', kind: 'number', min: 1, max: 256, step: 1, suffix: 'px',
-      getValue: control => (control as ProgressBar).fontSize,
-      setValue: (control, value) => { (control as ProgressBar).fontSize = value; },
+      getValue: control => control.getThemeFontSize('fontSize'),
+      setValue: (control, value) => control.setThemeFontSizeOverride('fontSize', value),
     },
   ];
 }
@@ -801,8 +800,8 @@ function boxContainerProperties (): InspectorProperty[] {
     },
     {
       group: 'Theme Overrides / Constants', name: 'separation', kind: 'number', min: -128, max: 1024, step: 1, suffix: 'px',
-      getValue: control => (control as BoxContainer).separation,
-      setValue: (control, value) => { (control as BoxContainer).separation = value; },
+      getValue: control => control.getThemeConstant('separation'),
+      setValue: (control, value) => control.setThemeConstantOverride('separation', value),
     },
   ];
 }
@@ -816,13 +815,13 @@ function gridContainerProperties (): InspectorProperty[] {
     },
     {
       group: 'Theme Overrides / Constants', name: 'h_separation', kind: 'number', min: -128, max: 1024, step: 1, suffix: 'px',
-      getValue: control => (control as GridContainer).horizontalSeparation,
-      setValue: (control, value) => { (control as GridContainer).horizontalSeparation = value; },
+      getValue: control => control.getThemeConstant('horizontalSeparation'),
+      setValue: (control, value) => control.setThemeConstantOverride('horizontalSeparation', value),
     },
     {
       group: 'Theme Overrides / Constants', name: 'v_separation', kind: 'number', min: -128, max: 1024, step: 1, suffix: 'px',
-      getValue: control => (control as GridContainer).verticalSeparation,
-      setValue: (control, value) => { (control as GridContainer).verticalSeparation = value; },
+      getValue: control => control.getThemeConstant('verticalSeparation'),
+      setValue: (control, value) => control.setThemeConstantOverride('verticalSeparation', value),
     },
   ];
 }
@@ -830,33 +829,9 @@ function gridContainerProperties (): InspectorProperty[] {
 function marginContainerProperties (): InspectorProperty[] {
   const margin = (name: string, side: 'left' | 'top' | 'right' | 'bottom'): InspectorProperty => ({
     group: 'Theme Overrides / Constants', name, kind: 'number', min: -128, max: 1024, step: 1, suffix: 'px',
-    getValue: control => {
-      const marginControl = control as MarginContainer;
-
-      if (side === 'left') {
-        return marginControl.marginLeft;
-      }
-      if (side === 'top') {
-        return marginControl.marginTop;
-      }
-      if (side === 'right') {
-        return marginControl.marginRight;
-      }
-
-      return marginControl.marginBottom;
-    },
+    getValue: control => control.getThemeConstant(`margin${side[0].toUpperCase()}${side.slice(1)}`),
     setValue: (control, value) => {
-      const marginControl = control as MarginContainer;
-
-      if (side === 'left') {
-        marginControl.marginLeft = value;
-      } else if (side === 'top') {
-        marginControl.marginTop = value;
-      } else if (side === 'right') {
-        marginControl.marginRight = value;
-      } else {
-        marginControl.marginBottom = value;
-      }
+      control.setThemeConstantOverride(`margin${side[0].toUpperCase()}${side.slice(1)}`, value);
     },
   });
 

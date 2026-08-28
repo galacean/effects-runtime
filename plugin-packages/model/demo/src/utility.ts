@@ -80,7 +80,7 @@ export function createButton (parent: HTMLElement, name: string, callback?: (thi
   return button;
 }
 
-export function createCheckBox (parent: HTMLElement, name: string, defaultValue: boolean, callback?: (this: HTMLInputElement, ev: MouseEvent) => any) {
+export function createCheckbox (parent: HTMLElement, name: string, defaultValue: boolean, callback?: (this: HTMLInputElement, ev: MouseEvent) => any) {
   const input = document.createElement('input');
 
   input.type = 'checkbox';

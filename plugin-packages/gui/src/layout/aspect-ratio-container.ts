@@ -1,4 +1,5 @@
-import { Container, effectsClass, math } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import { Container } from '../core/control';
 import type { AspectRatioContainerData } from '../data';
 import { AspectRatioStretchMode, LayoutAlignment } from './enums';
 import { assertEnumValue, assertFinite } from './utils';
@@ -6,6 +7,7 @@ import { assertEnumValue, assertFinite } from './utils';
 /** Fits every visible child into the same rectangle with a fixed width/height ratio. */
 @effectsClass('AspectRatioContainer')
 export class AspectRatioContainer extends Container {
+  static override readonly themeType: string = 'AspectRatioContainer';
   private _ratio = 1;
   private _stretchMode = AspectRatioStretchMode.Fit;
   private _horizontalAlignment = LayoutAlignment.Center;

@@ -1,40 +1,24 @@
 import {
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine, FontStyle, FontWeight } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { MouseFilter } from '../core/enums';
 import { Range } from '../scroll/range';
-import { cloneColor, GUIStyle } from '../style';
 import { ProgressFillMode } from './enums';
 import type { ProgressBarData } from '../data';
 
 @effectsClass('ProgressBar')
 export class ProgressBar extends Range {
+  static override readonly themeType: string = 'ProgressBar';
   private _showPercentage = true;
   private _fillMode = ProgressFillMode.BeginToEnd;
-  private _fontFamily: string;
-  private _fontSize: number;
-  private _fontWeight: FontWeight;
-  private _fontStyle: FontStyle;
-
-  backgroundColor: math.Color;
-  fillColor: math.Color;
-  textColor: math.Color;
 
   constructor (engine: Engine) {
     super(engine);
-    const style = GUIStyle.current;
 
     this.step = 0.01;
     this.mouseFilter = MouseFilter.Ignore;
-    this._fontFamily = style.fontFamily;
-    this._fontSize = style.fontSize;
-    this._fontWeight = style.fontWeight;
-    this._fontStyle = style.fontStyle;
-    this.backgroundColor = cloneColor(style.trackColor);
-    this.fillColor = cloneColor(style.fillColor);
-    this.textColor = cloneColor(style.textColor);
   }
 
   get showPercentage (): boolean {
@@ -57,60 +41,20 @@ export class ProgressBar extends Range {
     this._fillMode = value;
   }
 
-  get fontFamily (): string {
-    return this._fontFamily;
-  }
-
-  set fontFamily (value: string) {
-    if (this._fontFamily !== value) {
-      this._fontFamily = value;
-      this.updateTextSize();
-    }
-  }
-
-  get fontSize (): number {
-    return this._fontSize;
-  }
-
-  set fontSize (value: number) {
-    if (!Number.isFinite(value) || value <= 0) {
-      throw new RangeError('ProgressBar fontSize must be a positive finite number.');
-    }
-    if (this._fontSize !== value) {
-      this._fontSize = value;
-      this.updateTextSize();
-    }
-  }
-
-  get fontWeight (): FontWeight {
-    return this._fontWeight;
-  }
-
-  set fontWeight (value: FontWeight) {
-    if (this._fontWeight !== value) {
-      this._fontWeight = value;
-      this.updateTextSize();
-    }
-  }
-
-  get fontStyle (): FontStyle {
-    return this._fontStyle;
-  }
-
-  set fontStyle (value: FontStyle) {
-    if (this._fontStyle !== value) {
-      this._fontStyle = value;
-      this.updateTextSize();
-    }
-  }
-
   override getMinimumSize (): math.Vector2 {
-    if (!this.showPercentage) {
-      return new math.Vector2(16, 8);
-    }
-    const text = this.measureText('100%', this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle);
+    const background = this.getThemeStyleBox('background').getMinimumSize();
+    const fill = this.getThemeStyleBox('fill').getMinimumSize();
+    const styleMinimum = new math.Vector2(Math.max(background.x, fill.x), Math.max(background.y, fill.y));
 
-    return new math.Vector2(text.width + 12, text.lineHeight + 6);
+    if (!this.showPercentage) {
+      return new math.Vector2(Math.max(1, styleMinimum.x), Math.max(1, styleMinimum.y));
+    }
+    const font = this.getThemeFont('font');
+    const text = this.measureText(
+      '100%', this.getThemeFontSize('fontSize'), font.family, font.weight, font.style,
+    );
+
+    return new math.Vector2(styleMinimum.x, Math.max(background.y + text.lineHeight, styleMinimum.y));
   }
 
   override getDesiredSize (): math.Vector2 {
@@ -121,42 +65,65 @@ export class ProgressBar extends Range {
 
   override draw (): void {
     const ratio = this.getAsRatio();
+    const fillStyle = this.getThemeStyleBox('fill');
+    const fillMinimum = fillStyle.getMinimumSize();
 
-    this.fillRect(0, 0, this.width, this.height, this.backgroundColor);
+    this.drawStyleBox(this.getThemeStyleBox('background'), 0, 0, this.width, this.height);
     switch (this.fillMode) {
-      case ProgressFillMode.BeginToEnd:
-        this.fillRect(0, 0, this.width * ratio, this.height, this.fillColor);
+      case ProgressFillMode.BeginToEnd: {
+        const progress = Math.round(ratio * (this.width - fillMinimum.x));
+
+        if (progress > 0) {
+          this.drawStyleBox(fillStyle, 0, 0, progress + fillMinimum.x, this.height);
+        }
 
         break;
-      case ProgressFillMode.EndToBegin:
-        this.fillRect(this.width * (1 - ratio), 0, this.width * ratio, this.height, this.fillColor);
+      }
+      case ProgressFillMode.EndToBegin: {
+        const progress = Math.round(ratio * (this.width - fillMinimum.x));
+
+        if (progress > 0) {
+          const remaining = Math.round((1 - ratio) * (this.width - fillMinimum.x));
+
+          this.drawStyleBox(fillStyle, remaining, 0, progress + fillMinimum.x, this.height);
+        }
 
         break;
-      case ProgressFillMode.TopToBottom:
-        this.fillRect(0, 0, this.width, this.height * ratio, this.fillColor);
+      }
+      case ProgressFillMode.TopToBottom: {
+        const progress = Math.round(ratio * (this.height - fillMinimum.y));
+
+        if (progress > 0) {
+          this.drawStyleBox(fillStyle, 0, 0, this.width, progress + fillMinimum.y);
+        }
 
         break;
-      case ProgressFillMode.BottomToTop:
-        this.fillRect(0, this.height * (1 - ratio), this.width, this.height * ratio, this.fillColor);
+      }
+      case ProgressFillMode.BottomToTop: {
+        const progress = Math.round(ratio * (this.height - fillMinimum.y));
+
+        if (progress > 0) {
+          const remaining = Math.round((1 - ratio) * (this.height - fillMinimum.y));
+
+          this.drawStyleBox(fillStyle, 0, remaining, this.width, progress + fillMinimum.y);
+        }
 
         break;
+      }
     }
 
     if (this.showPercentage) {
       const text = `${Math.round(ratio * 100)}%`;
-      const measurement = this.measureText(text, this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle);
+      const font = this.getThemeFont('font');
+      const fontSize = this.getThemeFontSize('fontSize');
+      const measurement = this.measureText(text, fontSize, font.family, font.weight, font.style);
 
       this.drawText(
         (this.width - measurement.width) * 0.5,
         (this.height - measurement.lineHeight) * 0.5,
-        text, this.fontSize, this.textColor, this.fontFamily, this.fontWeight, this.fontStyle,
+        text, fontSize, this.getThemeColor('fontColor'), font.family, font.weight, font.style,
       );
     }
-  }
-
-  private updateTextSize (): void {
-    this.updateMinimumSize();
-    this.updateDesiredSize();
   }
 
   override fromData (data: ProgressBarData): void {
@@ -167,26 +134,6 @@ export class ProgressBar extends Range {
     if (data.fillMode !== undefined) {
       this.fillMode = data.fillMode;
     }
-    if (data.fontFamily !== undefined) {
-      this.fontFamily = data.fontFamily;
-    }
-    if (data.fontSize !== undefined) {
-      this.fontSize = data.fontSize;
-    }
-    if (data.fontWeight !== undefined) {
-      this.fontWeight = data.fontWeight;
-    }
-    if (data.fontStyle !== undefined) {
-      this.fontStyle = data.fontStyle;
-    }
-    if (data.backgroundColor !== undefined) {
-      this.backgroundColor.copyFrom(data.backgroundColor);
-    }
-    if (data.fillColor !== undefined) {
-      this.fillColor.copyFrom(data.fillColor);
-    }
-    if (data.textColor !== undefined) {
-      this.textColor.copyFrom(data.textColor);
-    }
   }
+
 }

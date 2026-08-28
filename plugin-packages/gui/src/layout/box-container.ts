@@ -1,19 +1,19 @@
 import {
-  Container,
-  SizeFlags,
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Control, Engine } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { Container, SizeFlags } from '../core/control';
+import type { Control } from '../core/control';
 import type { BoxContainerData } from '../data';
 import { LayoutAlignment, Orientation } from './enums';
-import { alignmentOffset, assertEnumValue, assertFinite, growSlots, sum } from './utils';
+import { alignmentOffset, assertEnumValue, growSlots, sum } from './utils';
 
 /** Places visible children in a single horizontal or vertical row. */
 export class BoxContainer extends Container {
+  static override readonly themeType: string = 'BoxContainer';
   private _orientation = Orientation.Horizontal;
   private _alignment = LayoutAlignment.Begin;
-  private _separation = 0;
   private _reverse = false;
 
   get orientation (): Orientation {
@@ -37,18 +37,6 @@ export class BoxContainer extends Container {
     if (this._alignment !== value) {
       this._alignment = value;
       this.queueSort();
-    }
-  }
-
-  get separation (): number {
-    return this._separation;
-  }
-
-  set separation (value: number) {
-    assertFinite('BoxContainer separation', value);
-    if (this._separation !== value) {
-      this._separation = value;
-      this.invalidateMeasurement();
     }
   }
 
@@ -84,7 +72,8 @@ export class BoxContainer extends Container {
     const horizontal = this.orientation === Orientation.Horizontal;
     const availableMain = horizontal ? this.size.x : this.size.y;
     const availableCross = horizontal ? this.size.y : this.size.x;
-    const gapTotal = this.separation * (children.length - 1);
+    const separation = this.getThemeConstant('separation');
+    const gapTotal = separation * (children.length - 1);
     const slotSpace = availableMain - gapTotal;
     const minimums = children.map(child => this.getMainSize(child.getBoundMinimumSize()));
     const desired = children.map(child => this.getMainSize(child.getBoundDesiredSize()));
@@ -122,7 +111,7 @@ export class BoxContainer extends Container {
         : new math.Vector2(availableCross, mainSize);
 
       this.fitChildInRect(children[index], { position, size });
-      cursor += mainSize + this.separation;
+      cursor += mainSize + separation;
     }
   }
 
@@ -138,7 +127,7 @@ export class BoxContainer extends Container {
       cross = Math.max(cross, this.getCrossSize(childSize));
     }
     if (children.length > 1) {
-      main += this.separation * (children.length - 1);
+      main += this.getThemeConstant('separation') * (children.length - 1);
     }
 
     return this.orientation === Orientation.Horizontal
@@ -173,9 +162,6 @@ export class BoxContainer extends Container {
     if (data.alignment !== undefined) {
       this.alignment = data.alignment;
     }
-    if (data.separation !== undefined) {
-      this.separation = data.separation;
-    }
     if (data.reverse !== undefined) {
       this.reverse = data.reverse;
     }
@@ -184,6 +170,7 @@ export class BoxContainer extends Container {
 
 @effectsClass('HBoxContainer')
 export class HBoxContainer extends BoxContainer {
+  static override readonly themeType: string = 'HBoxContainer';
   constructor (engine: Engine) {
     super(engine);
     this.orientation = Orientation.Horizontal;
@@ -192,6 +179,7 @@ export class HBoxContainer extends BoxContainer {
 
 @effectsClass('VBoxContainer')
 export class VBoxContainer extends BoxContainer {
+  static override readonly themeType: string = 'VBoxContainer';
   constructor (engine: Engine) {
     super(engine);
     this.orientation = Orientation.Vertical;

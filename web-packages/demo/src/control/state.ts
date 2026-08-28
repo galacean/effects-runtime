@@ -3,7 +3,7 @@ import type { AccentName, ThemeName } from './theme';
 export type PageID = 'overview' | 'inspector' | 'buttons' | 'selection' | 'sliders' | 'display' | 'layout' | 'scroll' | 'input' | 'config';
 export type LayoutKind = 'vbox' | 'hbox' | 'grid';
 export type InspectorControlType =
-  | 'Button' | 'CheckBox' | 'CheckButton'
+  | 'Button' | 'Checkbox' | 'CheckButton'
   | 'Label' | 'TextureRect' | 'NinePatchRect' | 'ColorRect' | 'Panel'
   | 'HSlider' | 'VSlider' | 'ProgressBar' | 'HScrollBar' | 'VScrollBar'
   | 'HBoxContainer' | 'VBoxContainer' | 'GridContainer' | 'MarginContainer'

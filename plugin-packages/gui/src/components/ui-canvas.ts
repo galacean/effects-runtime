@@ -1,6 +1,7 @@
-import type { Engine } from '../engine';
-import { CanvasRootControl } from '../gui';
-import { Component } from './component';
+import { Component } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { CanvasRootControl } from '../core/roots';
+import { GUIRootComponent } from './gui-root-component';
 
 export enum CanvasRenderMode {
   ScreenSpace = 0,
@@ -29,7 +30,7 @@ export class UICanvas extends Component {
   set order (value: number) {
     if (this._order !== value) {
       this._order = value;
-      this.engine.windowRoot.canvases.sortCanvases();
+      this.engine.root.getComponent(GUIRootComponent).windowRoot.canvases.sortCanvases();
     }
   }
 
@@ -57,7 +58,9 @@ export class UICanvas extends Component {
 
   private register (): void {
     if (!this.registered) {
-      this.rootControl.parent = this.engine.windowRoot.canvases;
+      const guiRoot = this.engine.root.getComponent(GUIRootComponent);
+
+      this.rootControl.parent = guiRoot.windowRoot.canvases;
       this.registered = true;
     }
   }
@@ -75,4 +78,5 @@ export class UICanvas extends Component {
       this.rootControl.dispose();
     }
   }
+
 }

@@ -1,13 +1,9 @@
 import {
-  Control,
   EventEmitter,
-  FocusMode,
   MouseButton,
   MouseButtonMask,
-  MouseFilter,
 } from '@galacean/effects';
 import type {
-  ControlEvent,
   Engine,
   EventEmitterListener,
   InputEventKey,
@@ -15,8 +11,10 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-  RootControl,
 } from '@galacean/effects';
+import { Control } from '../core/control';
+import type { ControlEvent, RootControl } from '../core/control';
+import { FocusMode, MouseFilter } from '../core/enums';
 import { ButtonActionMode, ButtonDrawMode } from './enums';
 import type { BaseButtonData } from '../data';
 
@@ -115,6 +113,7 @@ export class ButtonGroup {
 }
 
 export class BaseButton extends Control {
+  static override readonly themeType: string = 'BaseButton';
   private readonly buttonEventEmitter = new EventEmitter<BaseButtonEvent>();
   private _disabled = false;
   private _toggleMode = false;
@@ -235,19 +234,20 @@ export class BaseButton extends Control {
     if (this.disabled || !this.enabledInHierarchy) {
       return ButtonDrawMode.Disabled;
     }
-    const visuallyPressed = this.isPressing() || this.buttonPressed;
-
-    if (visuallyPressed && this.hovered) {
-      return ButtonDrawMode.HoverPressed;
-    }
-    if (visuallyPressed) {
-      return ButtonDrawMode.Pressed;
-    }
-    if (this.hovered) {
-      return ButtonDrawMode.Hover;
+    if (!this.pressing && this.hovered) {
+      return this.buttonPressed ? ButtonDrawMode.HoverPressed : ButtonDrawMode.Hover;
     }
 
-    return ButtonDrawMode.Normal;
+    let pressed = this.buttonPressed;
+
+    if (this.pressing) {
+      pressed = this.pressInside || this.keepPressedOutside;
+      if (this.buttonPressed) {
+        pressed = !pressed;
+      }
+    }
+
+    return pressed ? ButtonDrawMode.Pressed : ButtonDrawMode.Normal;
   }
 
   override getEffectiveMouseFilter (): MouseFilter {

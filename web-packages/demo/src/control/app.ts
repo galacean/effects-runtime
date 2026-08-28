@@ -1,14 +1,16 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import type { Button } from '@galacean/effects-plugin-gui';
 import {
   ButtonGroup,
   ColorRect,
+  Control,
   HorizontalAlignment,
   Label,
   Panel,
   TextOverflow,
   VerticalAlignment,
+  GUIRootComponent,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { attachAnchoredRect, attachFullRect } from './layout';
@@ -23,7 +25,7 @@ import { SlidersPage } from './pages/sliders';
 import { TextPage } from './pages/text';
 import { ThemingPage } from './pages/theming';
 import type { PageID } from './state';
-import { getTheme } from './theme';
+import { getTheme, setFlatStyleOverride, setFontOverrides } from './theme';
 import { createButton } from './widgets';
 
 type PageDefinition = {
@@ -38,13 +40,13 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
   { id: 'overview', title: 'Overview 总览', shortTitle: 'Overview', subtitle: 'Understand the demo, its coverage and the fastest way to explore it.', group: 'Getting started' },
   { id: 'inspector', title: 'Inspector 属性面板', shortTitle: 'Inspector', subtitle: 'Edit current Control properties with consistent names, options and ranges.', group: 'Getting started' },
   { id: 'buttons', title: 'Buttons 按钮', shortTitle: 'Buttons', subtitle: 'Button states, groups, icons, sizing and action modes.', group: 'Foundation' },
-  { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'CheckBox, radio groups and CheckButton switches.', group: 'Foundation' },
+  { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'Checkbox, radio groups and CheckButton switches.', group: 'Foundation' },
   { id: 'sliders', title: 'Sliders 滑杆', shortTitle: 'Sliders', subtitle: 'Shared ranges, progress feedback, fill modes and RGB values.', group: 'Foundation' },
   { id: 'display', title: 'Display 展示', shortTitle: 'Display', subtitle: 'Label layout, overflow, textures and NinePatchRect sizing.', group: 'Foundation' },
   { id: 'layout', title: 'Containers 布局', shortTitle: 'Containers', subtitle: 'Box, grid, margin and aspect-ratio container behavior.', group: 'Layout & input' },
   { id: 'scroll', title: 'Scroll 滚动', shortTitle: 'Scroll', subtitle: 'ScrollContainer modes, focus following and nested scrolling.', group: 'Layout & input' },
   { id: 'input', title: 'Input 输入', shortTitle: 'Input', subtitle: 'Mouse filters, bubbling, focus, drag-and-drop and cursors.', group: 'Layout & input' },
-  { id: 'config', title: 'Theme 主题', shortTitle: 'Theme', subtitle: 'Light and dark themes, accents and GUIStyle snapshots.', group: 'Appearance' },
+  { id: 'config', title: 'Theme 主题', shortTitle: 'Theme', subtitle: 'Light and dark themes, accents and live tree-scoped updates.', group: 'Appearance' },
 ];
 
 export class ControlApp extends Control {
@@ -63,11 +65,9 @@ export class ControlApp extends Control {
 
     background.color = theme.appBg;
     attachFullRect(background, this);
-    sidebar.backgroundColor = theme.sidebarBg;
-    sidebar.borderWidth = 0;
+    setFlatStyleOverride(sidebar, 'panel', { background: theme.sidebarBg, borderWidth: 0 });
     attachAnchoredRect(sidebar, this, 0, 0, 0, 1, 0, 0, -220, 0);
-    header.backgroundColor = theme.appBg;
-    header.borderWidth = 0;
+    setFlatStyleOverride(header, 'panel', { background: theme.appBg, borderWidth: 0 });
     attachAnchoredRect(header, this, 0, 0, 1, 0, 220, 0, 0, -88);
     const sidebarDivider = new ColorRect(engine);
     const headerDivider = new ColorRect(engine);
@@ -127,7 +127,6 @@ export class ControlApp extends Control {
       page.visible = active;
       page.enabled = active;
     }
-    this.engine.windowRoot.guiReleaseFocus();
   }
 
   private buildBrand (sidebar: Panel): void {
@@ -169,11 +168,13 @@ export class ControlApp extends Control {
       button.toggleMode = true;
       button.buttonGroup = group;
       button.textAlignment = HorizontalAlignment.Left;
-      button.horizontalPadding = 12;
-      button.fontSize = 12;
-      button.fontWeight = 550;
-      button.pressedColor = theme.accentSoft;
-      button.textColor = theme.textSecondary;
+      setFontOverrides(button, { size: 12, weight: 550, color: theme.textSecondary });
+      for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
+        setFlatStyleOverride(button, state, {
+          background: state === 'pressed' || state === 'hoverPressed' ? theme.accentSoft : undefined,
+          horizontalMargin: 12,
+        });
+      }
       button.setRect({ position: new math.Vector2(12, positions[definition.id]), size: new math.Vector2(196, 34) });
       button.parent = sidebar;
       button.on('toggled', pressed => {
@@ -199,9 +200,7 @@ export class ControlApp extends Control {
   ): Label {
     const label = new Label(engine, text);
 
-    label.fontSize = size;
-    label.fontWeight = weight;
-    label.textColor = color;
+    setFontOverrides(label, { size, weight, color });
     label.textOverflow = TextOverflow.Ellipsis;
     label.verticalAlignment = VerticalAlignment.Center;
     label.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, height) });

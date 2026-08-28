@@ -1,5 +1,5 @@
-import type { Control } from '@galacean/effects';
 import { math } from '@galacean/effects';
+import type { Control } from '@galacean/effects-plugin-gui';
 
 export function attachFullRect (
   control: Control,

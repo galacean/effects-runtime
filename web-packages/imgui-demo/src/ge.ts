@@ -1,4 +1,5 @@
-import { Player, UICanvas, UIControl, VFXItem } from '@galacean/effects';
+import { Player, VFXItem } from '@galacean/effects';
+import { UICanvas, UIControl } from '@galacean/effects-plugin-gui';
 import '@galacean/effects-plugin-ffd';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';

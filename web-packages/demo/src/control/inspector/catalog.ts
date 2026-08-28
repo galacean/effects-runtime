@@ -1,8 +1,9 @@
 import type { Engine } from '@galacean/effects';
-import { Control, math } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import {
   Button,
   ButtonGroup,
+  Control,
   HorizontalAlignment,
   Label,
   Panel,
@@ -14,6 +15,7 @@ import {
 import { attachAnchoredRect } from '../layout';
 import type { InspectorControlType } from '../state';
 import type { ThemeTokens } from '../theme';
+import { setFlatStyleOverride, setFontOverrides } from '../theme';
 import { INSPECTOR_CONTROL_OPTIONS } from './schema';
 
 const CONTENT_WIDTH = 166;
@@ -24,20 +26,18 @@ export class ControlCatalog extends Panel {
   constructor (
     engine: Engine,
     selected: InspectorControlType,
-    private readonly theme: ThemeTokens,
+    private readonly tokens: ThemeTokens,
     selectControl: (type: InspectorControlType) => void,
   ) {
     super(engine);
-    this.backgroundColor = theme.panelBg;
-    this.borderColor = theme.borderSubtle;
+    setFlatStyleOverride(this, 'panel', { background: tokens.panelBg, border: tokens.borderSubtle });
     this.clipContents = true;
-    this.addLabel('CONTROLS', 12, 10, 150, 16, 9, theme.textTertiary, 700);
-    this.addLabel('Control types', 12, 28, 150, 24, 14, theme.textPrimary, 680);
+    this.addLabel('CONTROLS', 12, 10, 150, 16, 9, tokens.textTertiary, 700);
+    this.addLabel('Control types', 12, 28, 150, 24, 14, tokens.textPrimary, 680);
 
     const divider = new Panel(engine);
 
-    divider.backgroundColor = theme.borderSubtle;
-    divider.borderWidth = 0;
+    setFlatStyleOverride(divider, 'panel', { background: tokens.borderSubtle, borderWidth: 0 });
     divider.setRect({ position: new math.Vector2(0, 59), size: new math.Vector2(184, 1) });
     divider.parent = this;
 
@@ -60,7 +60,7 @@ export class ControlCatalog extends Panel {
       groups.set(option.group, options);
     }
     for (const [groupName, options] of groups) {
-      const groupLabel = this.createLabel(groupName.toUpperCase(), 10, y, 146, 22, 9, theme.textTertiary, 700);
+      const groupLabel = this.createLabel(groupName.toUpperCase(), 10, y, 146, 22, 9, tokens.textTertiary, 700);
 
       groupLabel.parent = content;
       y += 24;
@@ -71,15 +71,19 @@ export class ControlCatalog extends Panel {
         button.buttonGroup = selection;
         button.flat = true;
         button.clipText = true;
-        button.fontSize = 11;
-        button.fontWeight = 550;
+        setFontOverrides(button, { size: 11, weight: 550, color: tokens.textSecondary });
         button.textAlignment = HorizontalAlignment.Left;
-        button.horizontalPadding = 12;
-        button.normalColor = theme.panelBg;
-        button.hoverColor = theme.panelRaisedBg;
-        button.pressedColor = theme.accentSoft;
-        button.textColor = theme.textSecondary;
-        button.borderWidth = 0;
+        setFlatStyleOverride(button, 'normal', {
+          background: tokens.panelBg, borderWidth: 0, horizontalMargin: 12,
+        });
+        setFlatStyleOverride(button, 'hover', {
+          background: tokens.panelRaisedBg, borderWidth: 0, horizontalMargin: 12,
+        });
+        for (const state of ['pressed', 'hoverPressed']) {
+          setFlatStyleOverride(button, state, {
+            background: tokens.accentSoft, borderWidth: 0, horizontalMargin: 12,
+          });
+        }
         button.setRect({ position: new math.Vector2(4, y), size: new math.Vector2(158, 30) });
         button.parent = content;
         button.on('toggled', pressed => {
@@ -99,7 +103,9 @@ export class ControlCatalog extends Panel {
   setSelected (type: InspectorControlType): void {
     for (const [buttonType, button] of this.buttons) {
       button.setPressedNoSignal(buttonType === type);
-      button.textColor = buttonType === type ? this.theme.accent : this.theme.textSecondary;
+      button.setThemeColorOverride(
+        'fontColor', buttonType === type ? this.tokens.accent : this.tokens.textSecondary,
+      );
     }
   }
 
@@ -132,9 +138,7 @@ export class ControlCatalog extends Panel {
   ): Label {
     const label = new Label(this.engine, text);
 
-    label.fontSize = size;
-    label.fontWeight = weight;
-    label.textColor = color;
+    setFontOverrides(label, { size, weight, color });
     label.textOverflow = TextOverflow.Ellipsis;
     label.verticalAlignment = VerticalAlignment.Center;
     label.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, height) });

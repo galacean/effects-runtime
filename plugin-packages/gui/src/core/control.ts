@@ -1,36 +1,50 @@
-import type { Color } from '@galacean/effects-math/es/core';
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import type { Engine } from '../engine';
+import { math } from '@galacean/effects';
 import type {
-  CursorStyle,
+  Engine,
+  EventEmitterListener,
+  FontStyle,
+  FontWeight,
   InputEventKey,
   InputEventMouseButton,
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
-} from '../input';
+  NinePatchDrawOptions,
+  TextMeasurement,
+  Texture,
+  TextureRegion,
+  VFXItem,
+} from '@galacean/effects';
+import {
+  effectsClass,
+  EventEmitter,
+} from '@galacean/effects';
+import type { UIControl } from '../components/ui-control';
+import type { ControlData, ThemeItemCollectionData } from './data';
+import type { CursorStyle } from './enums';
 import {
   CursorShape,
   FocusBehaviorRecursive,
   FocusMode,
   MouseBehaviorRecursive,
   MouseFilter,
-} from '../input';
-import type { EventEmitterListener } from '../events';
-import { EventEmitter } from '../events';
-import type {
-  FontStyle,
-  FontWeight,
-  NinePatchDrawOptions,
-  TextMeasurement,
-  TextureRegion,
-} from '../render';
-import type { Texture } from '../texture';
-import type { UIControl } from '../components/ui-control';
-import type { VFXItem } from '../vfx-item';
-import { effectsClass } from '../decorators';
-import type { ControlData } from './data';
+} from './enums';
+import {
+  cloneThemeValue,
+  StyleBox,
+  styleBoxFromData,
+  themeFallbacks,
+  ThemeItemType,
+  ThemeRegistry,
+} from './theme';
+import type { Theme, ThemeFont, ThemeValue } from './theme';
+
+type Color = math.Color;
+type Matrix3 = math.Matrix3;
+type Vector2 = math.Vector2;
+const Color = math.Color;
+const Matrix3 = math.Matrix3;
+const Vector2 = math.Vector2;
 
 export type Rect = {
   position: Vector2,
@@ -72,7 +86,10 @@ export type ControlEvent = {
   sizeFlagsChanged: [control: Control],
   visibilityChanged: [control: Control],
   enabledChanged: [control: Control],
+  themeChanged: [control: Control, affectsLayout: boolean],
 };
+
+type ThemeCacheEntry = { found: boolean, value: ThemeValue };
 
 export type RootControlEvent = ControlEvent & {
   guiFocusChanged: [control: Control | null],
@@ -134,6 +151,7 @@ const ANCHOR_PRESET_TABLE: Record<LayoutPreset, [number, number, number, number]
  */
 @effectsClass('Control')
 export class Control {
+  static readonly themeType: string = 'Control';
   readonly engine: Engine;
   /** Scene-tree bridge that owns this GUI object, if any. */
   owner: UIControl | null = null;
@@ -173,6 +191,15 @@ export class Control {
   private _stretchRatio = 1;
   private _horizontalGrowDirection = GrowDirection.End;
   private _verticalGrowDirection = GrowDirection.End;
+  private _theme: Theme | null = null;
+  private _themeTypeVariation = '';
+  private readonly themeOverrides = new Map<ThemeItemType, Map<string, ThemeValue>>();
+  private readonly themeCache = new Map<string, ThemeCacheEntry>();
+  private readonly overrideStyleBoxReferences = new Map<StyleBox, number>();
+  private readonly attachedThemeChanged = (_theme: Theme, affectsLayout: boolean) => {
+    this.propagateThemeChanged(affectsLayout);
+  };
+  private readonly overrideStyleBoxChanged = () => this.propagateThemeChanged(true, false);
 
   constructor (engine: Engine) {
     this.engine = engine;
@@ -191,6 +218,7 @@ export class Control {
     this._parent?.removeChildInternal(this);
     this._parent = value;
     value?.addChildInternal(this);
+    this.propagateThemeChanged(true);
     this.updateLayout();
     const nextRoot = this.root;
 
@@ -412,6 +440,148 @@ export class Control {
 
   get isDisposed (): boolean {
     return this.disposed;
+  }
+
+  /** Theme applied to this Control and inherited by its descendants. */
+  get theme (): Theme | null {
+    return this._theme;
+  }
+
+  set theme (value: Theme | null) {
+    if (this._theme === value) {return;}
+    this._theme?.off('changed', this.attachedThemeChanged);
+    this._theme = value;
+    this._theme?.on('changed', this.attachedThemeChanged);
+    this.propagateThemeChanged(true);
+  }
+
+  /** Optional named type variation resolved before this Control's native theme type. */
+  get themeTypeVariation (): string {
+    return this._themeTypeVariation;
+  }
+
+  set themeTypeVariation (value: string) {
+    const normalized = value.trim();
+
+    if (this._themeTypeVariation !== normalized) {
+      this._themeTypeVariation = normalized;
+      this.propagateThemeChanged(true, false);
+    }
+  }
+
+  /** Stable theme type declared by the closest Control class that provides one. */
+  getThemeType (): string {
+    return (this.constructor as typeof Control).themeType;
+  }
+
+  getThemeColor (name: string, themeType?: string): Color {
+    return cloneThemeValue(this.resolveThemeItem(ThemeItemType.Color, name, themeType).value as Color);
+  }
+
+  getThemeConstant (name: string, themeType?: string): number {
+    return this.resolveThemeItem(ThemeItemType.Constant, name, themeType).value as number;
+  }
+
+  getThemeFont (name: string, themeType?: string): ThemeFont {
+    return cloneThemeValue(this.resolveThemeItem(ThemeItemType.Font, name, themeType).value as ThemeFont);
+  }
+
+  getThemeFontSize (name: string, themeType?: string): number {
+    return this.resolveThemeItem(ThemeItemType.FontSize, name, themeType).value as number;
+  }
+
+  getThemeIcon (name: string, themeType?: string): Texture | null {
+    return this.resolveThemeItem(ThemeItemType.Icon, name, themeType).value as Texture | null;
+  }
+
+  getThemeStyleBox (name: string, themeType?: string): StyleBox {
+    return this.resolveThemeItem(ThemeItemType.StyleBox, name, themeType).value as StyleBox;
+  }
+
+  hasThemeColor (name: string, themeType?: string): boolean {
+    return this.resolveThemeItem(ThemeItemType.Color, name, themeType).found;
+  }
+
+  hasThemeConstant (name: string, themeType?: string): boolean {
+    return this.resolveThemeItem(ThemeItemType.Constant, name, themeType).found;
+  }
+
+  hasThemeFont (name: string, themeType?: string): boolean {
+    return this.resolveThemeItem(ThemeItemType.Font, name, themeType).found;
+  }
+
+  hasThemeFontSize (name: string, themeType?: string): boolean {
+    return this.resolveThemeItem(ThemeItemType.FontSize, name, themeType).found;
+  }
+
+  hasThemeIcon (name: string, themeType?: string): boolean {
+    return this.resolveThemeItem(ThemeItemType.Icon, name, themeType).found;
+  }
+
+  hasThemeStyleBox (name: string, themeType?: string): boolean {
+    return this.resolveThemeItem(ThemeItemType.StyleBox, name, themeType).found;
+  }
+
+  setThemeColorOverride (name: string, value: Color): void {
+    this.setThemeOverride(ThemeItemType.Color, name, value);
+  }
+
+  setThemeConstantOverride (name: string, value: number): void {
+    if (!Number.isFinite(value)) {throw new RangeError(`${name} must be finite.`);}
+    this.setThemeOverride(ThemeItemType.Constant, name, value);
+  }
+
+  setThemeFontOverride (name: string, value: ThemeFont): void {
+    this.setThemeOverride(ThemeItemType.Font, name, value);
+  }
+
+  setThemeFontSizeOverride (name: string, value: number): void {
+    if (!Number.isFinite(value) || value <= 0) {throw new RangeError(`${name} must be a positive finite font size.`);}
+    this.setThemeOverride(ThemeItemType.FontSize, name, value);
+  }
+
+  setThemeIconOverride (name: string, value: Texture | null): void {
+    this.setThemeOverride(ThemeItemType.Icon, name, value);
+  }
+
+  setThemeStyleBoxOverride (name: string, value: StyleBox): void {
+    this.setThemeOverride(ThemeItemType.StyleBox, name, value);
+  }
+
+  removeThemeColorOverride (name: string): void { this.removeThemeOverride(ThemeItemType.Color, name); }
+  removeThemeConstantOverride (name: string): void { this.removeThemeOverride(ThemeItemType.Constant, name); }
+  removeThemeFontOverride (name: string): void { this.removeThemeOverride(ThemeItemType.Font, name); }
+  removeThemeFontSizeOverride (name: string): void { this.removeThemeOverride(ThemeItemType.FontSize, name); }
+  removeThemeIconOverride (name: string): void { this.removeThemeOverride(ThemeItemType.Icon, name); }
+  removeThemeStyleBoxOverride (name: string): void { this.removeThemeOverride(ThemeItemType.StyleBox, name); }
+
+  hasThemeColorOverride (name: string): boolean { return this.hasThemeOverride(ThemeItemType.Color, name); }
+  hasThemeConstantOverride (name: string): boolean { return this.hasThemeOverride(ThemeItemType.Constant, name); }
+  hasThemeFontOverride (name: string): boolean { return this.hasThemeOverride(ThemeItemType.Font, name); }
+  hasThemeFontSizeOverride (name: string): boolean { return this.hasThemeOverride(ThemeItemType.FontSize, name); }
+  hasThemeIconOverride (name: string): boolean { return this.hasThemeOverride(ThemeItemType.Icon, name); }
+  hasThemeStyleBoxOverride (name: string): boolean { return this.hasThemeOverride(ThemeItemType.StyleBox, name); }
+
+  clearThemeOverrides (): void {
+    if (this.themeOverrides.size === 0) {return;}
+    let affectsLayout = false;
+
+    for (const [itemType, items] of this.themeOverrides) {
+      for (const [name, value] of items) {
+        if (value instanceof StyleBox) {this.releaseOverrideStyleBox(value);}
+        affectsLayout ||= ThemeRegistry.affectsLayout(this.getThemeType(), itemType, name);
+      }
+    }
+    this.themeOverrides.clear();
+    this.propagateThemeChanged(affectsLayout, false);
+  }
+
+  hasFocus (visibleOnly = false): boolean {
+    return this.root?.guiControlHasFocus(this, visibleOnly) ?? false;
+  }
+
+  drawStyleBox (styleBox: StyleBox, x: number, y: number, width: number, height: number): void {
+    styleBox.draw(this.engine.graphics, { x, y, width, height });
   }
 
   on<E extends keyof ControlEvent> (
@@ -827,12 +997,12 @@ export class Control {
     return this.defaultCursorShape;
   }
 
-  focus (): void {
-    this.root?.grabControlFocus(this);
+  focus (hideFocus = false): void {
+    this.root?.grabControlFocus(this, hideFocus);
   }
 
-  grabFocus (): void {
-    this.focus();
+  grabFocus (hideFocus = false): void {
+    this.focus(hideFocus);
   }
 
   grabClickFocus (): void {
@@ -1011,6 +1181,14 @@ export class Control {
     for (const child of this.children.slice()) {
       child.dispose();
     }
+    this._theme?.off('changed', this.attachedThemeChanged);
+    this._theme = null;
+    for (const styleBox of this.overrideStyleBoxReferences.keys()) {
+      styleBox.off('changed', this.overrideStyleBoxChanged);
+    }
+    this.overrideStyleBoxReferences.clear();
+    this.themeOverrides.clear();
+    this.themeCache.clear();
     this.disposed = true;
     this.onDestroy();
     this.parent = null;
@@ -1047,10 +1225,173 @@ export class Control {
     }
   }
 
+  protected onThemeChanged (affectsLayout: boolean): void {
+    if (affectsLayout) {
+      this.updateMinimumSize();
+      this.updateDesiredSize();
+      if (this instanceof Container) {this.queueSort();}
+    }
+  }
+
   protected onRootChanged (previousRoot: RootControl | null, nextRoot: RootControl | null): void {}
   protected getDragData (position: Vector2): unknown { return null; }
   protected canDropData (position: Vector2, data: unknown): boolean { return false; }
   protected dropData (position: Vector2, data: unknown): void {}
+
+  private getThemeDependencies (theme: Theme, explicitType?: string): string[] {
+    const nativeType = this.getThemeType();
+    const requestedType = explicitType ?? (this.themeTypeVariation || nativeType);
+
+    if (theme.hasTypeVariation(requestedType)) {return theme.getTypeDependencies(requestedType);}
+    if (!explicitType && this.themeTypeVariation) {
+      return [this.themeTypeVariation, ...ThemeRegistry.getTypeChain(nativeType)];
+    }
+
+    return ThemeRegistry.getTypeChain(requestedType);
+  }
+
+  private getFallbackThemeDependencies (explicitType?: string): string[] {
+    const nativeType = this.getThemeType();
+    const requestedType = explicitType ?? (this.themeTypeVariation || nativeType);
+
+    if (this.theme?.hasTypeVariation(requestedType)) {
+      return this.theme.getTypeDependencies(requestedType);
+    }
+    for (let current = this.parent; current; current = current.parent) {
+      if (current.theme?.hasTypeVariation(requestedType)) {
+        return current.theme.getTypeDependencies(requestedType);
+      }
+    }
+    if (!explicitType && this.themeTypeVariation) {
+      return [this.themeTypeVariation, ...ThemeRegistry.getTypeChain(nativeType)];
+    }
+
+    return ThemeRegistry.getTypeChain(requestedType);
+  }
+
+  private resolveThemeItem (itemType: ThemeItemType, name: string, explicitType?: string): ThemeCacheEntry {
+    const cacheKey = `${itemType}\u0000${explicitType ?? ''}\u0000${name}`;
+    const cached = this.themeCache.get(cacheKey);
+
+    if (cached) {return { found: cached.found, value: cloneThemeValue(cached.value) };}
+    const nativeType = this.getThemeType();
+    const queryMatchesCurrentType = !explicitType
+      || explicitType === nativeType
+      || (!!this.themeTypeVariation && explicitType === this.themeTypeVariation);
+    const override = queryMatchesCurrentType ? this.themeOverrides.get(itemType)?.get(name) : undefined;
+    let found = override !== undefined;
+    let value = override;
+
+    if (!found) {
+      const visitedThemes = new Set<Theme>();
+      const themes: Theme[] = [];
+
+      if (this.theme) {themes.push(this.theme);}
+      for (let current = this.parent; current; current = current.parent) {
+        if (current.theme) {themes.push(current.theme);}
+      }
+      for (const theme of themes) {
+        if (found) {break;}
+
+        if (visitedThemes.has(theme)) {continue;}
+        visitedThemes.add(theme);
+        for (const dependency of this.getThemeDependencies(theme, explicitType)) {
+          const candidate = theme.getItem(dependency, itemType, name);
+
+          if (candidate !== undefined) {
+            value = candidate;
+            found = true;
+
+            break;
+          }
+        }
+      }
+    }
+    if (!found) {
+      for (const dependency of this.getFallbackThemeDependencies(explicitType)) {
+        const candidate = ThemeRegistry.getDefault(dependency, itemType, name);
+
+        if (candidate !== undefined) {
+          value = candidate;
+          found = true;
+
+          break;
+        }
+      }
+    }
+    if (!found) {value = this.getThemeFallback(itemType);}
+    const entry = { found, value: cloneThemeValue(value as ThemeValue) };
+
+    this.themeCache.set(cacheKey, entry);
+
+    return { found: entry.found, value: cloneThemeValue(entry.value) };
+  }
+
+  private getThemeFallback (itemType: ThemeItemType): ThemeValue {
+    switch (itemType) {
+      case ThemeItemType.Color: return themeFallbacks.color;
+      case ThemeItemType.Constant: return themeFallbacks.constant;
+      case ThemeItemType.Font: return themeFallbacks.font;
+      case ThemeItemType.FontSize: return themeFallbacks.fontSize;
+      case ThemeItemType.Icon: return themeFallbacks.icon;
+      case ThemeItemType.StyleBox: return themeFallbacks.styleBox;
+    }
+  }
+
+  private setThemeOverride (itemType: ThemeItemType, name: string, value: ThemeValue): void {
+    if (!name) {throw new Error('Theme override item names cannot be empty.');}
+    let items = this.themeOverrides.get(itemType);
+
+    if (!items) {this.themeOverrides.set(itemType, items = new Map());}
+    const previous = items.get(name);
+
+    if (previous instanceof StyleBox) {this.releaseOverrideStyleBox(previous);}
+    const stored = cloneThemeValue(value);
+
+    items.set(name, stored);
+    if (stored instanceof StyleBox) {this.retainOverrideStyleBox(stored);}
+    this.propagateThemeChanged(ThemeRegistry.affectsLayout(this.getThemeType(), itemType, name), false);
+  }
+
+  private removeThemeOverride (itemType: ThemeItemType, name: string): void {
+    const items = this.themeOverrides.get(itemType);
+    const previous = items?.get(name);
+
+    if (!items?.delete(name)) {return;}
+    if (items.size === 0) {this.themeOverrides.delete(itemType);}
+    if (previous instanceof StyleBox) {this.releaseOverrideStyleBox(previous);}
+    this.propagateThemeChanged(ThemeRegistry.affectsLayout(this.getThemeType(), itemType, name), false);
+  }
+
+  private hasThemeOverride (itemType: ThemeItemType, name: string): boolean {
+    return this.themeOverrides.get(itemType)?.has(name) ?? false;
+  }
+
+  private retainOverrideStyleBox (styleBox: StyleBox): void {
+    const count = this.overrideStyleBoxReferences.get(styleBox) ?? 0;
+
+    if (count === 0) {styleBox.on('changed', this.overrideStyleBoxChanged);}
+    this.overrideStyleBoxReferences.set(styleBox, count + 1);
+  }
+
+  private releaseOverrideStyleBox (styleBox: StyleBox): void {
+    const count = this.overrideStyleBoxReferences.get(styleBox) ?? 0;
+
+    if (count <= 1) {
+      styleBox.off('changed', this.overrideStyleBoxChanged);
+      this.overrideStyleBoxReferences.delete(styleBox);
+    } else {this.overrideStyleBoxReferences.set(styleBox, count - 1);}
+  }
+
+  private propagateThemeChanged (affectsLayout: boolean, includeChildren = true): void {
+    if (this.disposed) {return;}
+    this.themeCache.clear();
+    this.onThemeChanged(affectsLayout);
+    this.eventEmitter.emit('themeChanged', this, affectsLayout);
+    if (includeChildren) {
+      for (const child of this.children) {child.propagateThemeChanged(affectsLayout);}
+    }
+  }
 
   private applyBounds (x: number, y: number, width: number, height: number): void {
     const locationChanged = this.position.x !== x || this.position.y !== y;
@@ -1253,6 +1594,44 @@ export class Control {
     if (data.clipContents !== undefined) {
       this.clipContents = data.clipContents;
     }
+    if (data.themeTypeVariation !== undefined) {
+      this.themeTypeVariation = data.themeTypeVariation;
+    }
+    if (data.themeOverrides !== undefined) {
+      this.clearThemeOverrides();
+      this.applyThemeOverridesFromData(data.themeOverrides);
+    }
+  }
+
+  private applyThemeOverridesFromData (data: ThemeItemCollectionData): void {
+    for (const name of Object.keys(data.colors ?? {})) {
+      const value = data.colors![name];
+
+      this.setThemeColorOverride(name, new Color(value.r, value.g, value.b, value.a));
+    }
+    for (const name of Object.keys(data.constants ?? {})) {
+      this.setThemeConstantOverride(name, data.constants![name]);
+    }
+    for (const name of Object.keys(data.fonts ?? {})) {
+      const value = data.fonts![name];
+
+      this.setThemeFontOverride(name, {
+        family: value.family,
+        weight: value.weight ?? 'normal',
+        style: value.style ?? 'normal',
+      });
+    }
+    for (const name of Object.keys(data.fontSizes ?? {})) {
+      this.setThemeFontSizeOverride(name, data.fontSizes![name]);
+    }
+    for (const name of Object.keys(data.icons ?? {})) {
+      const value = data.icons![name];
+
+      this.setThemeIconOverride(name, value ? this.engine.findObject<Texture>(value) : null);
+    }
+    for (const name of Object.keys(data.styleBoxes ?? {})) {
+      this.setThemeStyleBoxOverride(name, styleBoxFromData(this.engine, data.styleBoxes![name]));
+    }
   }
 }
 
@@ -1262,6 +1641,7 @@ export class Control {
  */
 @effectsClass('Container')
 export class Container extends Control {
+  static override readonly themeType: string = 'Container';
   private sortPending = false;
   private readonly childLayoutChanged = () => this.invalidateMeasurementsAndQueueSort();
   private readonly ownSizeChanged = () => this.queueSort();
@@ -1450,13 +1830,14 @@ export abstract class RootControl extends Control {
   abstract queueLayout (container: Container): void;
   abstract getMousePosition (): Vector2;
   abstract guiGetFocusOwner (): Control | null;
+  abstract guiControlHasFocus (control: Control, visibleOnly?: boolean): boolean;
   abstract guiIsDragging (): boolean;
   abstract guiGetDragData (): unknown;
   abstract guiIsDragSuccessful (): boolean;
   abstract guiCancelDrag (): void;
   abstract cancelPointerInput (): void;
   abstract cancelPointerPress (control: Control, touchIndex: number): void;
-  abstract grabControlFocus (control: Control): void;
+  abstract grabControlFocus (control: Control, hideFocus?: boolean): void;
   abstract grabControlClickFocus (control: Control): void;
   abstract releaseControlFocus (control?: Control): void;
   abstract warpControlMouse (position: Vector2): void;
@@ -1465,3 +1846,6 @@ export abstract class RootControl extends Control {
   abstract controlRemoved (control: Control): void;
   abstract controlTreeChanged (): void;
 }
+
+ThemeRegistry.registerType(Control.themeType, null);
+ThemeRegistry.registerType(Container.themeType, Control.themeType);

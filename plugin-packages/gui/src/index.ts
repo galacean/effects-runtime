@@ -1,3 +1,8 @@
+import { registerPlugin } from '@galacean/effects';
+import { GUIPlugin } from './plugin';
+
+export * from './core';
+export * from './components';
 export * from './data';
 export * from './layout/enums';
 export * from './layout/box-container';
@@ -9,8 +14,11 @@ export * from './scroll/enums';
 export * from './scroll/range';
 export * from './scroll/scroll-bar';
 export * from './scroll/scroll-container';
-export * from './style';
+export * from './theme';
 export * from './controls';
+export * from './plugin';
 
-/** GUI plugin package version. Importing this package has no registration side effects. */
+registerPlugin('gui', GUIPlugin);
+
+/** GUI plugin package version. Importing this package registers the GUI runtime and native fallback theme. */
 export const version = __VERSION__;

@@ -333,6 +333,9 @@ importers:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
+      '@galacean/effects-plugin-gui':
+        specifier: workspace:*
+        version: link:../../plugin-packages/gui
       '@galacean/effects-plugin-ffd':
         specifier: workspace:*
         version: link:../../plugin-packages/ffd

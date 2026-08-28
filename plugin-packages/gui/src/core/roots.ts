@@ -1,10 +1,6 @@
-import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import type { UICanvas } from '../components/ui-canvas';
-import type { Engine } from '../engine';
 import {
-  CursorShape,
-  FocusMode,
+  InputEvent,
   InputEventKey,
   InputEventMouse,
   InputEventMouseButton,
@@ -13,11 +9,24 @@ import {
   InputEventScreenTouch,
   MouseButton,
   MouseButtonMask,
+  math,
+} from '@galacean/effects';
+import type {
+  Engine,
+} from '@galacean/effects';
+import {
+  CursorShape,
+  FocusMode,
   MouseFilter,
-} from '../input';
-import type { CursorStyle, InputEvent } from '../input';
+} from './enums';
+import type { CursorStyle } from './enums';
 import type { Container } from './control';
 import { Control, RootControl } from './control';
+
+type Matrix3 = math.Matrix3;
+type Vector2 = math.Vector2;
+const Matrix3 = math.Matrix3;
+const Vector2 = math.Vector2;
 
 const cursorNames: Record<CursorShape, string> = {
   [CursorShape.Arrow]: 'default',
@@ -62,6 +71,7 @@ type GUIState = {
   mouseOverHierarchy: Control[],
   touchFocus: Map<number, Control>,
   keyFocus: Control | null,
+  hideFocus: boolean,
   dragAccum: Vector2,
   dragAttempted: boolean,
   dragging: boolean,
@@ -143,6 +153,7 @@ export class WindowRootControl extends RootControl {
     mouseOverHierarchy: [],
     touchFocus: new Map(),
     keyFocus: null,
+    hideFocus: false,
     dragAccum: new Vector2(),
     dragAttempted: false,
     dragging: false,
@@ -163,7 +174,6 @@ export class WindowRootControl extends RootControl {
   }
 
   pushInput (event: InputEvent): void {
-    event.clearAccepted();
     this.lastInput = event;
     this.cleanupInternalState();
     this.processGUIInput(event);
@@ -180,6 +190,10 @@ export class WindowRootControl extends RootControl {
 
   override guiGetFocusOwner (): Control | null {
     return this.isFocusTargetUsable(this.gui.keyFocus) ? this.gui.keyFocus : null;
+  }
+
+  override guiControlHasFocus (control: Control, visibleOnly = false): boolean {
+    return this.guiGetFocusOwner() === control && (!visibleOnly || !this.gui.hideFocus);
   }
 
   guiReleaseFocus (): void {
@@ -202,13 +216,19 @@ export class WindowRootControl extends RootControl {
     this.endDragging(false);
   }
 
-  override grabControlFocus (control: Control): void {
-    if (!this.isFocusTargetUsable(control) || this.gui.keyFocus === control) {
+  override grabControlFocus (control: Control, hideFocus = false): void {
+    if (!this.isFocusTargetUsable(control)) {
+      return;
+    }
+    if (this.gui.keyFocus === control) {
+      this.gui.hideFocus = hideFocus;
+
       return;
     }
     const previous = this.gui.keyFocus;
 
     this.gui.keyFocus = control;
+    this.gui.hideFocus = hideFocus;
     if (previous && !previous.isDisposed) {
       previous.onLostFocus();
     }
@@ -230,6 +250,7 @@ export class WindowRootControl extends RootControl {
       return;
     }
     this.gui.keyFocus = null;
+    this.gui.hideFocus = false;
     if (!previous.isDisposed) {
       previous.onLostFocus();
     }
@@ -282,6 +303,30 @@ export class WindowRootControl extends RootControl {
     this.gui.touchFocus.clear();
     this.endDragging(false);
     this.releaseControlFocus();
+  }
+
+  onCanvasBlur (): void {
+    const target = this.gui.mouseFocus;
+    const mask = this.gui.mouseFocusMask;
+
+    this.dropMouseFocus();
+    if (!target || target.isDisposed) {
+      return;
+    }
+    for (const button of [MouseButton.Left, MouseButton.Right, MouseButton.Middle]) {
+      if ((mask & getButtonMask(button)) === 0) {
+        continue;
+      }
+      const event = new InputEventMouseButton();
+      const position = target.makePositionLocal(this.gui.lastMousePosition);
+
+      event.device = InputEvent.deviceIdInternal;
+      event.buttonIndex = button;
+      event.pressed = false;
+      event.position.copyFrom(position);
+      event.globalPosition.copyFrom(position);
+      this.callControlInput(target, event);
+    }
   }
 
   override cancelPointerPress (control: Control, touchIndex: number): void {
@@ -406,6 +451,10 @@ export class WindowRootControl extends RootControl {
 
       this.gui.mouseFocus = target;
       if (!target) {
+        if (event.buttonIndex === MouseButton.Left && this.gui.keyFocus) {
+          this.gui.hideFocus = true;
+        }
+
         return;
       }
       this.gui.mouseFocusMask |= mask;
@@ -641,7 +690,7 @@ export class WindowRootControl extends RootControl {
       const mode = current.getFocusModeWithOverride();
 
       if (mode === FocusMode.Click || mode === FocusMode.All) {
-        this.grabControlFocus(current);
+        this.grabControlFocus(current, true);
 
         return;
       }

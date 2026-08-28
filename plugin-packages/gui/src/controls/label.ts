@@ -1,12 +1,11 @@
 import {
-  Control,
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine, FontStyle, FontWeight, TextMeasurement } from '@galacean/effects';
+import type { Engine, TextMeasurement } from '@galacean/effects';
+import { Control } from '../core/control';
+import { MouseFilter } from '../core/enums';
 import type { LabelData } from '../data';
-import { cloneColor, GUIStyle } from '../style';
 import { AutowrapMode, HorizontalAlignment, TextOverflow, VerticalAlignment } from './enums';
 
 type TextLine = {
@@ -23,12 +22,8 @@ type TextLayout = {
 
 @effectsClass('Label')
 export class Label extends Control {
+  static override readonly themeType: string = 'Label';
   private _text = '';
-  private _fontFamily: string;
-  private _fontSize: number;
-  private _fontWeight: FontWeight;
-  private _fontStyle: FontStyle;
-  private _lineSpacing = 0;
   private _horizontalAlignment = HorizontalAlignment.Left;
   private _verticalAlignment = VerticalAlignment.Top;
   private _autowrapMode = AutowrapMode.Off;
@@ -37,18 +32,10 @@ export class Label extends Control {
   private layoutWidth = Number.NaN;
   private layout: TextLayout | null = null;
 
-  textColor: math.Color;
-
   constructor (engine: Engine, text = '') {
     super(engine);
-    const style = GUIStyle.current;
 
     this._text = text;
-    this._fontFamily = style.fontFamily;
-    this._fontSize = style.fontSize;
-    this._fontWeight = style.fontWeight;
-    this._fontStyle = style.fontStyle;
-    this.textColor = cloneColor(style.textColor);
     this.mouseFilter = MouseFilter.Ignore;
   }
 
@@ -59,67 +46,6 @@ export class Label extends Control {
   set text (value: string) {
     if (this._text !== value) {
       this._text = value;
-      this.invalidateTextLayout();
-    }
-  }
-
-  get fontFamily (): string {
-    return this._fontFamily;
-  }
-
-  set fontFamily (value: string) {
-    if (this._fontFamily !== value) {
-      this._fontFamily = value;
-      this.invalidateTextLayout();
-    }
-  }
-
-  get fontSize (): number {
-    return this._fontSize;
-  }
-
-  set fontSize (value: number) {
-    if (!Number.isFinite(value) || value <= 0) {
-      throw new RangeError('Label fontSize must be a positive finite number.');
-    }
-    if (this._fontSize !== value) {
-      this._fontSize = value;
-      this.invalidateTextLayout();
-    }
-  }
-
-  get fontWeight (): FontWeight {
-    return this._fontWeight;
-  }
-
-  set fontWeight (value: FontWeight) {
-    if (this._fontWeight !== value) {
-      this._fontWeight = value;
-      this.invalidateTextLayout();
-    }
-  }
-
-  get fontStyle (): FontStyle {
-    return this._fontStyle;
-  }
-
-  set fontStyle (value: FontStyle) {
-    if (this._fontStyle !== value) {
-      this._fontStyle = value;
-      this.invalidateTextLayout();
-    }
-  }
-
-  get lineSpacing (): number {
-    return this._lineSpacing;
-  }
-
-  set lineSpacing (value: number) {
-    if (!Number.isFinite(value)) {
-      throw new RangeError('Label lineSpacing must be finite.');
-    }
-    if (this._lineSpacing !== value) {
-      this._lineSpacing = value;
       this.invalidateTextLayout();
     }
   }
@@ -184,7 +110,7 @@ export class Label extends Control {
 
     return new math.Vector2(
       width,
-      natural.lineHeight * paragraphCount + this.lineSpacing * Math.max(0, paragraphCount - 1),
+      natural.lineHeight * paragraphCount + this.getThemeConstant('lineSpacing') * Math.max(0, paragraphCount - 1),
     );
   }
 
@@ -214,12 +140,9 @@ export class Label extends Control {
         if (fill && countFillSpaces(line.text) > 0 && line.measurement.width < this.width) {
           this.drawFilledLine(line, y);
         } else {
-          this.drawText(
-            this.getTextStartX(line.measurement.width), y, line.text,
-            this.fontSize, this.textColor, this.fontFamily, this.fontWeight, this.fontStyle,
-          );
+          this.drawThemedText(this.getTextStartX(line.measurement.width), y, line.text);
         }
-        y += layout.lineHeight + this.lineSpacing + gap;
+        y += layout.lineHeight + this.getThemeConstant('lineSpacing') + gap;
       }
     } finally {
       if (clipped) {
@@ -234,8 +157,15 @@ export class Label extends Control {
     this.updateDesiredSize();
   }
 
+  protected override onThemeChanged (affectsLayout: boolean): void {
+    if (affectsLayout) {this.layoutDirty = true;}
+    super.onThemeChanged(affectsLayout);
+  }
+
   private measure (text: string): TextMeasurement {
-    return this.measureText(text, this.fontSize, this.fontFamily, this.fontWeight, this.fontStyle);
+    const font = this.getThemeFont('font');
+
+    return this.measureText(text, this.getThemeFontSize('fontSize'), font.family, font.weight, font.style);
   }
 
   private getTextLayout (width: number): TextLayout {
@@ -272,7 +202,7 @@ export class Label extends Control {
 
     const lineHeight = lines[0]?.measurement.lineHeight ?? emptyMeasurement.lineHeight;
     const maximumWidth = lines.reduce((value, line) => Math.max(value, line.measurement.width), 0);
-    const height = lineHeight * lines.length + this.lineSpacing * Math.max(0, lines.length - 1);
+    const height = lineHeight * lines.length + this.getThemeConstant('lineSpacing') * Math.max(0, lines.length - 1);
 
     return { lines, lineHeight, width: maximumWidth, height };
   }
@@ -462,7 +392,7 @@ export class Label extends Control {
     for (let i = 0; i < characters.length; i++) {
       const character = characters[i];
 
-      this.drawText(x, y, character, this.fontSize, this.textColor, this.fontFamily, this.fontWeight, this.fontStyle);
+      this.drawThemedText(x, y, character);
       x += line.measurement.advances[i] ?? 0;
       if (isBreakSpace(character)) {
         x += extra;
@@ -470,25 +400,25 @@ export class Label extends Control {
     }
   }
 
+  private drawThemedText (x: number, y: number, text: string): void {
+    const font = this.getThemeFont('font');
+
+    this.drawText(
+      x,
+      y,
+      text,
+      this.getThemeFontSize('fontSize'),
+      this.getThemeColor('fontColor'),
+      font.family,
+      font.weight,
+      font.style,
+    );
+  }
+
   override fromData (data: LabelData): void {
     super.fromData(data);
     if (data.text !== undefined) {
       this.text = data.text;
-    }
-    if (data.fontFamily !== undefined) {
-      this.fontFamily = data.fontFamily;
-    }
-    if (data.fontSize !== undefined) {
-      this.fontSize = data.fontSize;
-    }
-    if (data.fontWeight !== undefined) {
-      this.fontWeight = data.fontWeight;
-    }
-    if (data.fontStyle !== undefined) {
-      this.fontStyle = data.fontStyle;
-    }
-    if (data.lineSpacing !== undefined) {
-      this.lineSpacing = data.lineSpacing;
     }
     if (data.horizontalAlignment !== undefined) {
       this.horizontalAlignment = data.horizontalAlignment;
@@ -501,9 +431,6 @@ export class Label extends Control {
     }
     if (data.textOverflow !== undefined) {
       this.textOverflow = data.textOverflow;
-    }
-    if (data.textColor !== undefined) {
-      this.textColor.copyFrom(data.textColor);
     }
   }
 }

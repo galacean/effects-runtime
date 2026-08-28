@@ -28,7 +28,6 @@ import type { GLType } from './gl';
 import { HELP_LINK } from './constants';
 import { EventEmitter } from './events';
 import { VFXItem } from './vfx-item';
-import { WindowRootControl } from './gui';
 
 export interface EngineOptions extends WebGLContextAttributes {
   name?: string,
@@ -49,7 +48,7 @@ export interface EngineOptions extends WebGLContextAttributes {
   doNotHandleContextLost?: boolean,
 }
 
-type EngineEvent = {
+export type EngineEvent = {
   contextlost: [eventData: { engine: Engine, e: Event }],
   contextrestored: [engine: Engine],
   rendererror: [e: Event | Error],
@@ -58,6 +57,8 @@ type EngineEvent = {
   pointerdown: [eventData: PointerEventData],
   pointerup: [eventData: PointerEventData],
   pointermove: [eventData: PointerEventData],
+  update: [deltaTime: number],
+  postrender: [],
 };
 
 /**
@@ -98,8 +99,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
   assetManagers: AssetManager[] = [];
   assetService: AssetService;
   eventSystem: EventSystem;
-  /** Window-level GUI owner and input router. */
-  readonly windowRoot: WindowRootControl;
   /**
    * Root of the unified runtime scene tree.
    */
@@ -169,7 +168,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     this.objectInstance = {};
     this.root = new VFXItem(this);
     this.root.name = 'root';
-    this.windowRoot = new WindowRootControl(this);
     this.whiteTexture = generateWhiteTexture(this);
     this.transparentTexture = generateEmptyTexture(this);
 
@@ -359,7 +357,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       return;
     }
 
-    this.windowRoot.update(dt);
+    this.emit('update', dt);
 
     // Tick compositions onPreRender
     //-------------------------------------------------------------------------
@@ -377,7 +375,7 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
     for (const composition of compositions) {
       composition.renderContent();
     }
-    this.windowRoot.render();
+    this.emit('postrender');
 
     this.renderTargetPool.flush();
   }
@@ -429,7 +427,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       logger.info(`Resize engine ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
 
       this.setSize(canvasWidth, canvasHeight);
-      this.windowRoot.resize(containerWidth, containerHeight);
     }
   }
 
@@ -813,7 +810,6 @@ export class Engine extends EventEmitter<EngineEvent> implements Disposable {
       composition.dispose();
     }
     this.root.dispose();
-    this.windowRoot.dispose();
     this.assetService?.dispose();
     this._graphics?.dispose();
 

@@ -1,5 +1,6 @@
-import { Composition, Control, Player, math } from '@galacean/effects';
+import { Composition, Player, math } from '@galacean/effects';
 import type { Texture } from '@galacean/effects';
+import { Control, GUIRootComponent, UICanvas } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
@@ -9,7 +10,7 @@ class FilledControl extends Control {
   }
 }
 
-describe('core/Graphics clip stack', () => {
+describe('plugin-gui/Graphics clip stack', () => {
   it('flushes around a rotated child clip and restores scissor state', () => {
     const canvas = document.createElement('canvas');
 
@@ -55,16 +56,16 @@ describe('core/Graphics clip stack', () => {
     try {
       composition.root.awake();
       composition.root.beginPlay();
-      clipped.parent = composition.uiCanvas.rootControl;
+      clipped.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
       clipped.setRect({ position: new math.Vector2(20, 20), size: new math.Vector2(20, 20) });
       clipped.setRotation(45);
       clipped.clipContents = true;
       clipped.addChild(child);
       child.setSize(40, 40);
-      sibling.parent = composition.uiCanvas.rootControl;
+      sibling.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
       sibling.setRect({ position: new math.Vector2(60, 60), size: new math.Vector2(10, 10) });
 
-      player.engine.windowRoot.render();
+      player.engine.root.getComponent(GUIRootComponent).windowRoot.render();
 
       expect(drawScissorStates).deep.equals([false, true, false]);
       expect(scissorRects).length(1);
@@ -129,7 +130,7 @@ describe('core/Graphics clip stack', () => {
   });
 });
 
-describe('core/Graphics nine-patch command', () => {
+describe('plugin-gui/Graphics nine-patch command', () => {
   it('keeps Tile and TileFit at one quad and preserves surrounding batch order', () => {
     const player = new Player({
       canvas: document.createElement('canvas'),

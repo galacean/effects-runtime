@@ -1,7 +1,8 @@
-import { Container, SizeFlags, effectsClass, math } from '@galacean/effects';
-import type { Control } from '@galacean/effects';
+import { effectsClass, math } from '@galacean/effects';
+import { Container, SizeFlags } from '../core/control';
+import type { Control } from '../core/control';
 import type { GridContainerData } from '../data';
-import { assertFinite, growSlots, sum } from './utils';
+import { growSlots, sum } from './utils';
 
 type TrackMetrics = {
   minimum: number[],
@@ -13,9 +14,8 @@ type TrackMetrics = {
 /** Places visible children in LTR row-major cells without spanning. */
 @effectsClass('GridContainer')
 export class GridContainer extends Container {
+  static override readonly themeType: string = 'GridContainer';
   private _columns = 1;
-  private _horizontalSeparation = 0;
-  private _verticalSeparation = 0;
 
   get columns (): number {
     return this._columns;
@@ -27,30 +27,6 @@ export class GridContainer extends Container {
     }
     if (this._columns !== value) {
       this._columns = value;
-      this.invalidateMeasurement();
-    }
-  }
-
-  get horizontalSeparation (): number {
-    return this._horizontalSeparation;
-  }
-
-  set horizontalSeparation (value: number) {
-    assertFinite('GridContainer horizontalSeparation', value);
-    if (this._horizontalSeparation !== value) {
-      this._horizontalSeparation = value;
-      this.invalidateMeasurement();
-    }
-  }
-
-  get verticalSeparation (): number {
-    return this._verticalSeparation;
-  }
-
-  set verticalSeparation (value: number) {
-    assertFinite('GridContainer verticalSeparation', value);
-    if (this._verticalSeparation !== value) {
-      this._verticalSeparation = value;
       this.invalidateMeasurement();
     }
   }
@@ -73,10 +49,12 @@ export class GridContainer extends Container {
     const rowCount = Math.ceil(children.length / this.columns);
     const columnMetrics = this.collectTrackMetrics(children, columnCount, true);
     const rowMetrics = this.collectTrackMetrics(children, rowCount, false);
-    const columnSizes = this.allocateTracks(columnMetrics, this.size.x, this.horizontalSeparation);
-    const rowSizes = this.allocateTracks(rowMetrics, this.size.y, this.verticalSeparation);
-    const columnPositions = this.getTrackPositions(columnSizes, this.horizontalSeparation);
-    const rowPositions = this.getTrackPositions(rowSizes, this.verticalSeparation);
+    const horizontalSeparation = this.getThemeConstant('horizontalSeparation');
+    const verticalSeparation = this.getThemeConstant('verticalSeparation');
+    const columnSizes = this.allocateTracks(columnMetrics, this.size.x, horizontalSeparation);
+    const rowSizes = this.allocateTracks(rowMetrics, this.size.y, verticalSeparation);
+    const columnPositions = this.getTrackPositions(columnSizes, horizontalSeparation);
+    const rowPositions = this.getTrackPositions(rowSizes, verticalSeparation);
 
     for (let index = 0; index < children.length; index++) {
       const column = index % this.columns;
@@ -103,8 +81,8 @@ export class GridContainer extends Container {
     const rowSizes = useDesired ? rows.desired : rows.minimum;
 
     return new math.Vector2(
-      sum(columnSizes) + this.horizontalSeparation * Math.max(0, columnCount - 1),
-      sum(rowSizes) + this.verticalSeparation * Math.max(0, rowCount - 1),
+      sum(columnSizes) + this.getThemeConstant('horizontalSeparation') * Math.max(0, columnCount - 1),
+      sum(rowSizes) + this.getThemeConstant('verticalSeparation') * Math.max(0, rowCount - 1),
     );
   }
 
@@ -191,12 +169,6 @@ export class GridContainer extends Container {
     super.fromData(data);
     if (data.columns !== undefined) {
       this.columns = data.columns;
-    }
-    if (data.horizontalSeparation !== undefined) {
-      this.horizontalSeparation = data.horizontalSeparation;
-    }
-    if (data.verticalSeparation !== undefined) {
-      this.verticalSeparation = data.verticalSeparation;
     }
   }
 }

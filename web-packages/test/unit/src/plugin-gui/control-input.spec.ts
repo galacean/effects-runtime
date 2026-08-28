@@ -1,8 +1,5 @@
 import {
   Composition,
-  Control,
-  CursorShape,
-  FocusMode,
   InputEvent,
   InputEventKey,
   InputEventMouseButton,
@@ -11,13 +8,19 @@ import {
   InputEventScreenTouch,
   MouseButton,
   MouseButtonMask,
-  MouseFilter,
   Player,
-  UIControl,
-  UICanvas,
   VFXItem,
   math,
 } from '@galacean/effects';
+import {
+  Control,
+  CursorShape,
+  FocusMode,
+  MouseFilter,
+  UICanvas,
+  UIControl,
+  GUIRootComponent,
+} from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 const { Matrix3, Vector2 } = math;
@@ -105,7 +108,43 @@ class MouseStateRecordingControl extends Control {
   }
 }
 
-describe('core/gui input', () => {
+class CanvasBlurRecordingControl extends RecordingControl {
+  readonly releases: InputEventMouseButton[] = [];
+  mouseEnterCount = 0;
+  mouseLeaveCount = 0;
+
+  override onMouseUp (event: InputEventMouseButton): void {
+    this.releases.push(event);
+  }
+
+  override onMouseEnter (): void {
+    this.mouseEnterCount++;
+  }
+
+  override onMouseLeave (): void {
+    this.mouseLeaveCount++;
+  }
+}
+
+class DragSourceControl extends Control {
+  protected override getDragData (): unknown {
+    return 'drag-data';
+  }
+}
+
+class DropTargetControl extends Control {
+  readonly drops: unknown[] = [];
+
+  protected override canDropData (): boolean {
+    return true;
+  }
+
+  protected override dropData (_position: math.Vector2, data: unknown): void {
+    this.drops.push(data);
+  }
+}
+
+describe('plugin-gui/input', () => {
   let player: Player;
   let composition: Composition;
 
@@ -155,7 +194,7 @@ describe('core/gui input', () => {
 
     const event = mouseButton(20, 20, true);
 
-    player.engine.windowRoot.pushInput(event);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(event);
     expect(child.log).deep.equals(['down:10,10']);
     expect(parent.log).deep.equals(['down:20,20']);
   });
@@ -330,14 +369,238 @@ describe('core/gui input', () => {
     child.mouseFilter = MouseFilter.Pass;
     const event = mouseButton(20, 20, true);
 
-    player.engine.windowRoot.pushInput(event);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(event);
     expect(child.log).deep.equals(['down:10,10']);
     expect(parent.log).deep.equals([]);
     expect(event.isAccepted()).equals(true);
-    expect(player.engine.windowRoot.isInputHandled()).equals(true);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.isInputHandled()).equals(true);
 
     event.clearAccepted();
     expect(event.isAccepted()).equals(false);
+  });
+
+  it('receives standardized EventSystem input and consumes accepted native events', () => {
+    player.canvas.getBoundingClientRect = canvasRect;
+    const control = addControl(
+      composition.sceneRoot,
+      new AcceptingControl(player.engine),
+      0, 0, 100, 100,
+    );
+    let input: InputEvent | null = null;
+
+    player.engine.eventSystem.on('input', event => {
+      input = event;
+    });
+    const nativeEvent = new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 20,
+      clientY: 30,
+      button: 0,
+      buttons: 1,
+    });
+
+    player.canvas.dispatchEvent(nativeEvent);
+
+    expect(input).instanceOf(InputEventMouseButton);
+    expect(input!.isAccepted()).equals(true);
+    expect(nativeEvent.defaultPrevented).equals(true);
+    expect(control.log).deep.equals(['down:10,10']);
+  });
+
+  it('clears acceptance before EventSystem input dispatch', () => {
+    const event = new InputEvent();
+    let acceptedDuringDispatch = true;
+
+    event.accept();
+    player.engine.eventSystem.on('input', input => {
+      acceptedDuringDispatch = input.isAccepted();
+    });
+    const handled = (player.engine.eventSystem as unknown as {
+      pushInput: (input: InputEvent) => boolean,
+    }).pushInput(event);
+
+    expect(acceptedDuringDispatch).equals(false);
+    expect(handled).equals(false);
+  });
+
+  it('emits canvas focus and blur events exactly once', () => {
+    const focusEvents: string[] = [];
+
+    player.engine.eventSystem.on('onCanvasFocus', () => focusEvents.push('in'));
+    player.engine.eventSystem.on('onCanvasBlur', () => focusEvents.push('out'));
+
+    player.canvas.dispatchEvent(new Event('focus'));
+    player.canvas.dispatchEvent(new Event('blur'));
+    expect(focusEvents).deep.equals(['in', 'out']);
+
+    focusEvents.length = 0;
+    player.engine.eventSystem.enabled = false;
+    player.engine.eventSystem.bindListeners(null);
+    expect(focusEvents).deep.equals([]);
+  });
+
+  it('releases mouse focus on canvas blur while preserving other GUI state', () => {
+    const windowRoot = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const control = addControl(
+      composition.sceneRoot,
+      new CanvasBlurRecordingControl(player.engine),
+      10, 0, 50, 50,
+    );
+    const sibling = addControl(
+      composition.sceneRoot,
+      new RecordingControl(player.engine),
+      100, 0, 50, 50,
+    );
+
+    control.focusMode = FocusMode.Click;
+    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Left));
+    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Right));
+    windowRoot.pushInput(mouseButton(20, 10, true, MouseButton.Middle));
+    const touch = new InputEventScreenTouch();
+
+    touch.index = 7;
+    touch.pressed = true;
+    touch.position.set(20, 10);
+    windowRoot.pushInput(touch);
+
+    player.canvas.dispatchEvent(new Event('blur'));
+
+    expect(control.releases.map(event => ({
+      button: event.buttonIndex,
+      device: event.device,
+      pressed: event.pressed,
+      canceled: event.canceled,
+      position: event.position,
+      globalPosition: event.globalPosition,
+    }))).deep.equals([
+      {
+        button: MouseButton.Left,
+        device: InputEvent.deviceIdInternal,
+        pressed: false,
+        canceled: false,
+        position: new Vector2(10, 10),
+        globalPosition: new Vector2(10, 10),
+      },
+      {
+        button: MouseButton.Right,
+        device: InputEvent.deviceIdInternal,
+        pressed: false,
+        canceled: false,
+        position: new Vector2(10, 10),
+        globalPosition: new Vector2(10, 10),
+      },
+      {
+        button: MouseButton.Middle,
+        device: InputEvent.deviceIdInternal,
+        pressed: false,
+        canceled: false,
+        position: new Vector2(10, 10),
+        globalPosition: new Vector2(10, 10),
+      },
+    ]);
+    expect(control.hasFocus()).equals(true);
+    expect(control.mouseEnterCount).equals(1);
+    expect(control.mouseLeaveCount).equals(0);
+    expect(control.log).not.includes('blur');
+
+    const key = new InputEventKey();
+
+    key.pressed = true;
+    key.keycode = 'Enter';
+    windowRoot.pushInput(key);
+    expect(control.log).includes('key:Enter');
+
+    const drag = new InputEventScreenDrag();
+
+    drag.index = 7;
+    drag.position.set(110, 10);
+    drag.relative.set(100, 0);
+    windowRoot.pushInput(drag);
+    expect(control.log).includes('touch-move:7:100,10');
+
+    const motion = new InputEventMouseMotion();
+
+    motion.position.set(110, 10);
+    motion.globalPosition.copyFrom(motion.position);
+    motion.relative.set(100, 0);
+    windowRoot.pushInput(motion);
+    expect(sibling.log).deep.equals(['move:10,10']);
+  });
+
+  it('cancels only the affected native touch and its emulated mouse', () => {
+    player.canvas.getBoundingClientRect = canvasRect;
+    const inputs: InputEvent[] = [];
+
+    player.engine.eventSystem.on('input', event => inputs.push(event));
+    player.canvas.dispatchEvent(nativeTouchEvent('touchstart', [
+      { identifier: 1, clientX: 20, clientY: 30 },
+      { identifier: 2, clientX: 30, clientY: 40 },
+    ]));
+
+    inputs.length = 0;
+    player.canvas.dispatchEvent(nativeTouchEvent('touchcancel', [
+      { identifier: 1, clientX: 20, clientY: 30 },
+    ]));
+
+    const canceledTouches = inputs.filter(event => event instanceof InputEventScreenTouch);
+    const canceledMouse = inputs.filter(event => event instanceof InputEventMouseButton);
+
+    expect(canceledTouches).to.have.length(1);
+    expect(canceledTouches[0]).includes({ index: 1, pressed: false, canceled: true });
+    expect(canceledMouse).to.have.length(1);
+    expect(canceledMouse[0]).includes({
+      device: InputEvent.deviceIdEmulation,
+      pressed: false,
+      canceled: true,
+    });
+
+    inputs.length = 0;
+    player.canvas.dispatchEvent(nativeTouchEvent('touchend', [
+      { identifier: 2, clientX: 30, clientY: 40 },
+    ]));
+    const remainingTouchRelease = inputs.filter(event => event instanceof InputEventScreenTouch);
+
+    expect(remainingTouchRelease).to.have.length(1);
+    expect(remainingTouchRelease[0]).includes({ index: 2, pressed: false, canceled: false });
+  });
+
+  it('preserves dragging on blur and drops on a canceled mouse release', () => {
+    addControl(composition.sceneRoot, new DragSourceControl(player.engine), 0, 0, 50, 50);
+    const target = addControl(composition.sceneRoot, new DropTargetControl(player.engine), 100, 0, 50, 50);
+    const windowRoot = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+
+    windowRoot.pushInput(mouseButton(10, 10, true));
+    const motion = new InputEventMouseMotion();
+
+    motion.position.set(110, 10);
+    motion.globalPosition.copyFrom(motion.position);
+    motion.relative.set(100, 0);
+    windowRoot.pushInput(motion);
+    expect(windowRoot.guiIsDragging()).equals(true);
+    expect(windowRoot.guiGetDragData()).equals('drag-data');
+
+    player.canvas.dispatchEvent(new Event('blur'));
+    expect(windowRoot.guiIsDragging()).equals(true);
+
+    const release = mouseButton(110, 10, false);
+
+    release.canceled = true;
+    windowRoot.pushInput(release);
+    expect(target.drops).deep.equals(['drag-data']);
+    expect(windowRoot.guiIsDragging()).equals(false);
+    expect(windowRoot.guiIsDragSuccessful()).equals(true);
+  });
+
+  it('keeps EventSystem disposal silent and lets GUIRootComponent clean up independently', () => {
+    const guiRoot = player.engine.root.getComponent(GUIRootComponent);
+
+    chai.spy.on(guiRoot.windowRoot, 'cancelPointerInput');
+    player.engine.eventSystem.dispose();
+    expect(guiRoot.windowRoot.cancelPointerInput).to.not.have.been.called();
+
+    guiRoot.dispose();
+    expect(guiRoot.windowRoot.cancelPointerInput).to.have.been.called.once;
   });
 
   it('uses reverse child order for hit testing', () => {
@@ -345,7 +608,7 @@ describe('core/gui input', () => {
     const back = addControl(parent.item!, new RecordingControl(player.engine), 0, 0, 50, 50);
     const front = addControl(parent.item!, new RecordingControl(player.engine), 0, 0, 50, 50);
 
-    player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(10, 10, true));
     expect(front.log).deep.equals(['down:10,10']);
     expect(back.log).deep.equals([]);
   });
@@ -357,12 +620,12 @@ describe('core/gui input', () => {
 
     motion.position.set(10, 10);
     motion.globalPosition.copyFrom(motion.position);
-    player.engine.windowRoot.pushInput(motion);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(motion);
 
     expect(front.log).deep.equals(['enter']);
     expect(back.log).not.includes('enter');
 
-    player.engine.windowRoot.update(0);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
     expect(back.log).includes('enter');
   });
 
@@ -370,13 +633,18 @@ describe('core/gui input', () => {
     const control = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 100);
 
     control.focusMode = FocusMode.Click;
-    player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(10, 10, true));
     const key = new InputEventKey();
 
     key.pressed = true;
     key.keycode = 'Enter';
-    player.engine.windowRoot.pushInput(key);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(key);
     expect(control.log).deep.equals(['focus', 'down:10,10', 'key:Enter']);
+    expect(control.hasFocus()).equals(true);
+    expect(control.hasFocus(true)).equals(false);
+
+    control.focus();
+    expect(control.hasFocus(true)).equals(true);
   });
 
   it('keeps one focused control across all canvases in a window', () => {
@@ -393,13 +661,13 @@ describe('core/gui input', () => {
     second.focus();
     expect(first.log).deep.equals(['focus', 'blur']);
     expect(second.log).deep.equals(['focus']);
-    expect(first.root).equals(player.engine.windowRoot);
-    expect(second.root).equals(player.engine.windowRoot);
-    expect(player.engine.windowRoot.guiGetFocusOwner()).equals(second);
+    expect(first.root).equals(player.engine.root.getComponent(GUIRootComponent).windowRoot);
+    expect(second.root).equals(player.engine.root.getComponent(GUIRootComponent).windowRoot);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.guiGetFocusOwner()).equals(second);
 
-    player.engine.windowRoot.guiReleaseFocus();
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.guiReleaseFocus();
     expect(second.log).deep.equals(['focus', 'blur']);
-    expect(player.engine.windowRoot.guiGetFocusOwner()).equals(null);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.guiGetFocusOwner()).equals(null);
   });
 
   it('keeps pointer capture in the window GUIState across canvases', () => {
@@ -411,13 +679,13 @@ describe('core/gui input', () => {
     overlayItem.setParent(composition.root);
     const second = addControl(overlayItem, new RecordingControl(player.engine), 100, 0, 50, 50);
 
-    player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(10, 10, true));
     const motion = new InputEventMouseMotion();
 
     motion.position.set(110, 10);
     motion.globalPosition.copyFrom(motion.position);
     motion.relative.set(100, 0);
-    player.engine.windowRoot.pushInput(motion);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(motion);
     expect(first.log).deep.equals(['down:10,10', 'move:110,10']);
     expect(second.log).deep.equals([]);
   });
@@ -434,13 +702,13 @@ describe('core/gui input', () => {
     touch.index = 7;
     touch.pressed = true;
     touch.position.set(10, 10);
-    player.engine.windowRoot.pushInput(touch);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(touch);
     const drag = new InputEventScreenDrag();
 
     drag.index = 7;
     drag.position.set(110, 10);
     drag.relative.set(100, 0);
-    player.engine.windowRoot.pushInput(drag);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(drag);
     expect(first.log).deep.equals(['touch-down:7:10,10', 'touch-move:7:110,10']);
     expect(second.log).deep.equals([]);
   });
@@ -452,16 +720,16 @@ describe('core/gui input', () => {
 
     child.focusMode = FocusMode.All;
     child.focus();
-    player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(10, 10, true));
     const touch = new InputEventScreenTouch();
 
     touch.index = 7;
     touch.pressed = true;
     touch.position.set(10, 10);
-    player.engine.windowRoot.pushInput(touch);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(touch);
 
     parent.visible = false;
-    expect(player.engine.windowRoot.guiGetFocusOwner()).equals(null);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.guiGetFocusOwner()).equals(null);
     parent.visible = true;
 
     const motion = new InputEventMouseMotion();
@@ -469,18 +737,18 @@ describe('core/gui input', () => {
     motion.position.set(110, 10);
     motion.globalPosition.copyFrom(motion.position);
     motion.relative.set(100, 0);
-    player.engine.windowRoot.pushInput(motion);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(motion);
     const drag = new InputEventScreenDrag();
 
     drag.index = 7;
     drag.position.set(110, 10);
     drag.relative.set(100, 0);
-    player.engine.windowRoot.pushInput(drag);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(drag);
     expect(sibling.log).deep.equals(['move:10,10', 'touch-move:7:10,10']);
 
     child.focus();
     parent.enabled = false;
-    expect(player.engine.windowRoot.guiGetFocusOwner()).equals(null);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.guiGetFocusOwner()).equals(null);
     expect(child.log).deep.equals([
       'focus',
       'down:10,10',
@@ -498,34 +766,34 @@ describe('core/gui input', () => {
 
     child.focusMode = FocusMode.All;
     child.focus();
-    player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(10, 10, true));
     const touch = new InputEventScreenTouch();
 
     touch.index = 9;
     touch.pressed = true;
     touch.position.set(10, 10);
-    player.engine.windowRoot.pushInput(touch);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(touch);
 
     child.item!.setParent(secondParent.item!);
-    expect(player.engine.windowRoot.guiGetFocusOwner()).equals(child);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.guiGetFocusOwner()).equals(child);
 
     const key = new InputEventKey();
 
     key.pressed = true;
     key.keycode = 'Enter';
-    player.engine.windowRoot.pushInput(key);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(key);
     const motion = new InputEventMouseMotion();
 
     motion.position.set(260, 10);
     motion.globalPosition.copyFrom(motion.position);
     motion.relative.set(250, 0);
-    player.engine.windowRoot.pushInput(motion);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(motion);
     const drag = new InputEventScreenDrag();
 
     drag.index = 9;
     drag.position.set(260, 10);
     drag.relative.set(250, 0);
-    player.engine.windowRoot.pushInput(drag);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(drag);
     expect(child.log).deep.equals([
       'focus',
       'down:10,10',
@@ -547,14 +815,14 @@ describe('core/gui input', () => {
     control.focus();
     overlay.enabled = false;
     expect(control.log).deep.equals(['focus', 'blur']);
-    expect(player.engine.windowRoot.guiGetFocusOwner()).equals(null);
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.guiGetFocusOwner()).equals(null);
   });
 
   it('stops receiving input when its canvas disables events', () => {
     const control = addControl(composition.sceneRoot, new RecordingControl(player.engine), 0, 0, 100, 100);
 
-    composition.uiCanvas.receivesEvents = false;
-    player.engine.windowRoot.pushInput(mouseButton(10, 10, true));
+    composition.sceneRoot.getComponent(UICanvas).receivesEvents = false;
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(10, 10, true));
     expect(control.log).deep.equals([]);
   });
 
@@ -564,11 +832,11 @@ describe('core/gui input', () => {
 
     motion.position.set(35, 55);
     motion.globalPosition.copyFrom(motion.position);
-    player.engine.windowRoot.pushInput(motion);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(motion);
 
-    expect(player.engine.windowRoot.getMousePosition()).deep.equals(new Vector2(35, 55));
+    expect(player.engine.root.getComponent(GUIRootComponent).windowRoot.getMousePosition()).deep.equals(new Vector2(35, 55));
     expect(control.getLocalMousePosition()).deep.equals(new Vector2(25, 35));
-    expect('getMousePosition' in composition.uiCanvas.rootControl).equals(false);
+    expect('getMousePosition' in composition.sceneRoot.getComponent(UICanvas).rootControl).equals(false);
   });
 
   it('supports custom CSS cursors and refreshes cursor changes immediately', () => {
@@ -578,7 +846,7 @@ describe('core/gui input', () => {
     control.defaultCursorShape = CursorShape.PointingHand;
     motion.position.set(10, 10);
     motion.globalPosition.copyFrom(motion.position);
-    player.engine.windowRoot.pushInput(motion);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(motion);
     expect(player.canvas.style.cursor).equals('pointer');
 
     control.defaultCursorShape = 'grabbing';
@@ -605,13 +873,29 @@ function addControl<T extends Control> (
   return control;
 }
 
-function mouseButton (x: number, y: number, pressed: boolean): InputEventMouseButton {
+function mouseButton (
+  x: number,
+  y: number,
+  pressed: boolean,
+  button = MouseButton.Left,
+): InputEventMouseButton {
   const event = new InputEventMouseButton();
 
-  event.buttonIndex = MouseButton.Left;
+  event.buttonIndex = button;
   event.pressed = pressed;
   event.position.copyFrom(new Vector2(x, y));
   event.globalPosition.copyFrom(event.position);
+
+  return event;
+}
+
+function nativeTouchEvent (
+  type: 'touchstart' | 'touchend' | 'touchcancel',
+  changedTouches: Array<{ identifier: number, clientX: number, clientY: number }>,
+): Event {
+  const event = new Event(type, { cancelable: true });
+
+  Object.defineProperty(event, 'changedTouches', { value: changedTouches });
 
   return event;
 }

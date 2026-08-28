@@ -1,17 +1,16 @@
 import {
-  Control,
   EventEmitter,
-  MouseFilter,
   effectsClass,
   math,
 } from '@galacean/effects';
 import type {
-  ControlEvent,
   Engine,
   EventEmitterListener,
-  Rect,
   Texture,
 } from '@galacean/effects';
+import { Control } from '../core/control';
+import type { ControlEvent, Rect } from '../core/control';
+import { MouseFilter } from '../core/enums';
 import { AxisStretchMode, Side } from './enums';
 import type { NinePatchRectData } from '../data';
 
@@ -21,6 +20,7 @@ export type NinePatchRectEvent = ControlEvent & {
 
 @effectsClass('NinePatchRect')
 export class NinePatchRect extends Control {
+  static override readonly themeType: string = 'NinePatchRect';
   private readonly ninePatchEventEmitter = new EventEmitter<NinePatchRectEvent>();
   private readonly patchMargins = [0, 0, 0, 0];
   private _texture: Texture | null = null;

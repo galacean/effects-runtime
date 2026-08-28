@@ -11,10 +11,10 @@ import {
   AxisStretchMode,
   BaseButton,
   Button,
+  ButtonDrawMode,
   ButtonGroup,
-  CheckBox,
+  Checkbox,
   CheckButton,
-  GUIStyle,
   HSlider,
   HorizontalAlignment,
   Label,
@@ -22,19 +22,20 @@ import {
   ProgressBar,
   ProgressFillMode,
   Side,
+  StyleBoxEmpty,
   TextOverflow,
   TextureExpandMode,
   TextureRect,
   TextureStretchMode,
+  Theme,
   VSlider,
   VerticalAlignment,
 } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
-describe('core/GUI basic controls', () => {
+describe('plugin-gui/GUI basic controls', () => {
   let player: Player;
-  let previousStyle: GUIStyle;
 
   beforeEach(() => {
     player = new Player({
@@ -43,35 +44,33 @@ describe('core/GUI basic controls', () => {
       manualRender: true,
       interactive: true,
     });
-    previousStyle = GUIStyle.current;
-    GUIStyle.current = new GUIStyle();
   });
 
   afterEach(() => {
-    GUIStyle.current = previousStyle;
     player.dispose();
   });
 
-  it('copies global style values and deep-copies colors at construction', () => {
-    GUIStyle.current.fontSize = 19;
-    GUIStyle.current.textColor = new math.Color(0.2, 0.3, 0.4, 0.5);
+  it('updates existing controls from a tree Theme and protects stored colors', () => {
+    const theme = new Theme();
     const first = new Label(player.engine, 'first');
+    const source = new math.Color(0.2, 0.3, 0.4, 0.5);
 
-    expect(first.fontSize).equals(19);
-    expect(first.textColor).not.equals(GUIStyle.current.textColor);
-    GUIStyle.current.fontSize = 24;
-    GUIStyle.current.textColor.r = 0.9;
-    const second = new Label(player.engine, 'second');
-
-    expect(first.fontSize).equals(19);
-    expect(first.textColor.r).equals(0.2);
-    expect(second.fontSize).equals(24);
-    expect(second.textColor.r).equals(0.9);
+    first.theme = theme;
+    theme.setFontSize('Label', 'fontSize', 19);
+    theme.setColor('Label', 'fontColor', source);
+    expect(first.getThemeFontSize('fontSize')).equals(19);
+    expect(first.getThemeColor('fontColor')).not.equals(source);
+    source.r = 0.9;
+    expect(first.getThemeColor('fontColor').r).equals(0.2);
+    theme.setFontSize('Label', 'fontSize', 24);
+    theme.setColor('Label', 'fontColor', new math.Color(0.9, 0.3, 0.4, 0.5));
+    expect(first.getThemeFontSize('fontSize')).equals(24);
+    expect(first.getThemeColor('fontColor').r).equals(0.9);
   });
 
   it('measures and lays out multiline Unicode text with wrapping and ellipsis', () => {
     const label = new Label(player.engine, '中文 😀 emoji and a very long word');
-    const measurements = label.measureText('A😀中', label.fontSize);
+    const measurements = label.measureText('A😀中', label.getThemeFontSize('fontSize'));
     const draws: string[] = [];
 
     expect(measurements.advances).to.have.length(3);
@@ -214,10 +213,33 @@ describe('core/GUI basic controls', () => {
     expect(button.isPressing()).equals(false);
   });
 
+  it('selects Button draw modes while pressing toggle and regular buttons', () => {
+    const regular = new BaseButton(player.engine);
+
+    regular.setSize(100, 30);
+    regular.onMouseEnter();
+    expect(regular.getDrawMode()).equals(ButtonDrawMode.Hover);
+    regular.onMouseDown(mouseButton(10, 10, MouseButton.Left));
+    expect(regular.getDrawMode()).equals(ButtonDrawMode.Pressed);
+    regular.onScrollBegin();
+
+    const toggle = new BaseButton(player.engine);
+
+    toggle.setSize(100, 30);
+    toggle.toggleMode = true;
+    toggle.setPressedNoSignal(true);
+    toggle.onMouseEnter();
+    expect(toggle.getDrawMode()).equals(ButtonDrawMode.HoverPressed);
+    toggle.onMouseDown(mouseButton(10, 10, MouseButton.Left));
+    expect(toggle.getDrawMode()).equals(ButtonDrawMode.Normal);
+    toggle.onMouseLeave();
+    expect(toggle.getDrawMode()).equals(ButtonDrawMode.Pressed);
+  });
+
   it('enforces button groups and supplies both check appearances', () => {
     const group = new ButtonGroup();
-    const first = new CheckBox(player.engine, 'First');
-    const second = new CheckBox(player.engine, 'Second');
+    const first = new Checkbox(player.engine, 'First');
+    const second = new Checkbox(player.engine, 'Second');
     const checkButton = new CheckButton(player.engine, 'Enabled');
     const groupEvents: BaseButton[] = [];
 
@@ -248,6 +270,29 @@ describe('core/GUI basic controls', () => {
     expect(group.getButtons()).deep.equals([second]);
     expect(checkButton.toggleMode).equals(true);
     expect(new Button(player.engine, 'Text').getMinimumSize().x).greaterThan(0);
+  });
+
+  it('calculates Button minimum sizing for clipped text and expanded icons', () => {
+    const button = new Button(player.engine, 'Long label');
+    const theme = new Theme();
+    const normal = new StyleBoxEmpty();
+    const icon = { width: 20, height: 10 } as Texture;
+
+    normal.setContentMargins(3, 4, 3, 4);
+    theme.setStyleBox('Button', 'normal', normal);
+    button.theme = theme;
+    const textWidth = button.getMinimumSize().x;
+
+    button.clipText = true;
+    expect(button.getMinimumSize().x).lessThan(textWidth);
+
+    button.clipText = false;
+    button.text = '';
+    button.icon = icon;
+    expect(button.getMinimumSize()).deep.equals(new math.Vector2(26, 18));
+
+    button.expandIcon = true;
+    expect(button.getMinimumSize()).deep.equals(new math.Vector2(6, 8));
   });
 
   it('supports slider clicking, dragging, wheel, keys and both directions', () => {
@@ -287,9 +332,9 @@ describe('core/GUI basic controls', () => {
 
     progress.setSize(100, 20);
     progress.value = 25;
-    progress.fillRect = ((...args: Parameters<typeof progress.fillRect>) => {
-      rectangles.push(args.slice(0, 4) as number[]);
-    }) as typeof progress.fillRect;
+    progress.drawStyleBox = ((_style, x, y, width, height) => {
+      rectangles.push([x, y, width, height]);
+    }) as typeof progress.drawStyleBox;
     progress.drawText = ((x: number, y: number, text: string) => labels.push(text)) as typeof progress.drawText;
     for (const mode of [
       ProgressFillMode.BeginToEnd,
@@ -304,6 +349,33 @@ describe('core/GUI basic controls', () => {
     }
     expect(labels).deep.equals(['25%', '25%', '25%', '25%']);
     expect(progress.step).equals(0.01);
+  });
+
+  it('uses the ProgressBar fill StyleBox minimum size', () => {
+    const progress = new ProgressBar(player.engine);
+    const theme = new Theme();
+    const background = new StyleBoxEmpty();
+    const fill = new StyleBoxEmpty();
+    const rectangles: number[][] = [];
+
+    fill.setContentMargins(5, 0, 5, 0);
+    theme.setStyleBox('ProgressBar', 'background', background);
+    theme.setStyleBox('ProgressBar', 'fill', fill);
+    progress.theme = theme;
+    progress.showPercentage = false;
+    progress.setSize(100, 20);
+    progress.drawStyleBox = ((_style, x, y, width, height) => {
+      rectangles.push([x, y, width, height]);
+    }) as typeof progress.drawStyleBox;
+
+    progress.value = 25;
+    progress.draw();
+    expect(rectangles).deep.equals([[0, 0, 100, 20], [0, 0, 33, 20]]);
+
+    rectangles.length = 0;
+    progress.value = 0;
+    progress.draw();
+    expect(rectangles).deep.equals([[0, 0, 100, 20]]);
   });
 });
 
