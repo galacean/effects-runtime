@@ -131,7 +131,7 @@ export abstract class TextInput extends Control {
 
   override onMouseDown (event: InputEventMouseButton): void {
     if (event.buttonIndex !== MouseButton.Left) {return;}
-    this.grabFocus();
+    this.grabFocus(true);
     this.cancelTextareaFocus();
     const index = this.getCharacterIndex(event.position);
 
@@ -332,7 +332,7 @@ export abstract class TextInput extends Control {
   }
 
   protected drawCaret (x: number, y: number, height: number): void {
-    if (this.hasFocus(true) && !this.hasSelection) {
+    if (this.hasFocus() && !this.hasSelection) {
       this.fillRect(x, y, Math.max(1, this.getThemeConstant('caretWidth')), height, this.getThemeColor('caretColor'));
     }
   }

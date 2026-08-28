@@ -22,7 +22,7 @@ import { label } from './common';
 
 const ACCENT_NAMES: AccentName[] = ['blue', 'indigo', 'emerald', 'amber', 'orange', 'rose', 'gray'];
 
-export class ThemingPage extends Control {
+export class ThemePage extends Control {
   constructor (engine: Engine, ctx: AppContext) {
     super(engine);
     const appearance = new Panel(engine);

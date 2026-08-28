@@ -24,7 +24,7 @@ import { label } from './common';
 
 const SCROLL_STEP = 40;
 
-export class ScrollPage extends Control {
+export class ScrollingPage extends Control {
   private readonly outer: ScrollContainer;
   private readonly horizontalValue: Label;
   private readonly verticalValue: Label;
@@ -40,8 +40,8 @@ export class ScrollPage extends Control {
     attachAnchoredRect(controls, this, 0.69, 0, 1, 1, 8, 0, 0, 0);
     addSectionTitle(engine, viewportPanel, 'ScrollContainer', 'Two axes, nested scrolling and focus following', 20, 18, 250);
     const modes = [ScrollMode.Auto, ScrollMode.ShowAlways, ScrollMode.ShowNever, ScrollMode.Reserve];
-    const mode = createSegmentedControl(engine, ['Auto', 'Always', 'Never', 'Reserve'], Math.max(0, modes.indexOf(ctx.state.scroll.mode)), index => {
-      ctx.state.scroll.mode = modes[index];
+    const mode = createSegmentedControl(engine, ['Auto', 'Always', 'Never', 'Reserve'], Math.max(0, modes.indexOf(ctx.state.scrolling.mode)), index => {
+      ctx.state.scrolling.mode = modes[index];
       this.outer.horizontalScrollMode = modes[index];
       this.outer.verticalScrollMode = modes[index];
     });
@@ -58,8 +58,8 @@ export class ScrollPage extends Control {
     this.outer.followFocus = true;
     this.outer.horizontalCustomStep = SCROLL_STEP;
     this.outer.verticalCustomStep = SCROLL_STEP;
-    this.outer.horizontalScrollMode = ctx.state.scroll.mode;
-    this.outer.verticalScrollMode = ctx.state.scroll.mode;
+    this.outer.horizontalScrollMode = ctx.state.scrolling.mode;
+    this.outer.verticalScrollMode = ctx.state.scrolling.mode;
     this.outer.addChild(surface);
     const rows = this.buildSurface(surface);
 

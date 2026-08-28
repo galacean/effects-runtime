@@ -117,11 +117,14 @@ ThemeRegistry.registerType('Checkbox', 'Button', {
   radioUncheckedDisabled: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
   checkedColor: color(palette.white),
   uncheckedColor: color(palette.white),
+  checkedDisabledColor: color(palette.disabledText),
   markColor: color(palette.accent),
   markDisabledColor: color(palette.disabledText),
+  markUncheckedColor: color(new math.Color(0.88, 0.88, 0.88, 0.2)),
+  markUncheckedDisabledColor: color(new math.Color(0.5, 0.5, 0.5, 0.2)),
   markOutlineColor: color(palette.border),
-  markSize: constant(14),
-  markSeparation: constant(6),
+  markSize: constant(16),
+  markSeparation: constant(8),
   checkVOffset: constant(0),
 });
 ThemeRegistry.registerType('CheckButton', 'Button', {
@@ -186,7 +189,13 @@ ThemeRegistry.registerType('PopupMenu', 'Popup', {
   iconWidth: constant(20),
 });
 ThemeRegistry.registerType('MenuButton', 'Button');
-ThemeRegistry.registerType('OptionButton', 'MenuButton');
+ThemeRegistry.registerType('OptionButton', 'MenuButton', {
+  arrow: { type: ThemeItemType.Icon, defaultValue: null, affectsLayout: true },
+  arrowSize: constant(12),
+  arrowMargin: constant(4),
+  hSeparation: constant(4),
+  modulateArrow: constant(1),
+});
 ThemeRegistry.registerType('ColorPickerButton', 'Button', {
   swatchBorderColor: color(palette.border),
 });

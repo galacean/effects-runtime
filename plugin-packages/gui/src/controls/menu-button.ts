@@ -1,9 +1,14 @@
 import { EventEmitter, effectsClass, math } from '@galacean/effects';
 import type { Engine, EventEmitterListener } from '@galacean/effects';
+import { FocusMode } from '../core/enums';
 import type { MenuButtonData, OptionButtonData } from '../data';
 import { Button } from './button';
+import type { ContentInsets } from './button';
+import { ButtonDrawMode, HorizontalAlignment } from './enums';
 import type { PopupMenuEvent, PopupMenuItemId } from './popup-menu';
 import { PopupMenu } from './popup-menu';
+
+const OPTION_ARROW_GRID_SIZE = 12;
 
 @effectsClass('MenuButton')
 export class MenuButton extends Button {
@@ -13,6 +18,7 @@ export class MenuButton extends Button {
 
   constructor (engine: Engine, text = '') {
     super(engine, text);
+    this.focusMode = FocusMode.Accessibility;
     this.popupMenu = new PopupMenu(engine);
     this.on('pressed', this.openMenu);
   }
@@ -49,7 +55,65 @@ export class OptionButton extends MenuButton {
 
   constructor (engine: Engine) {
     super(engine);
+    this.focusMode = FocusMode.All;
+    this.textAlignment = HorizontalAlignment.Left;
     this.popupMenu.on('idPressed', this.menuSelected as EventEmitterListener<PopupMenuEvent['idPressed']>);
+  }
+
+  protected override getContentInsets (): ContentInsets {
+    const insets = super.getContentInsets();
+    const arrow = this.getThemeIcon('arrow');
+    const arrowWidth = arrow?.width ?? this.getThemeConstant('arrowSize');
+
+    return {
+      ...insets,
+      right: insets.right + arrowWidth + Math.max(0, this.getThemeConstant('hSeparation')),
+    };
+  }
+
+  protected override drawDecoration (mode: ButtonDrawMode): void {
+    const arrow = this.getThemeIcon('arrow');
+    const size = arrow?.width ?? this.getThemeConstant('arrowSize');
+    const height = arrow?.height ?? size;
+    const margin = this.getThemeConstant('arrowMargin');
+    const x = Math.max(0, this.width - margin - size);
+    const y = Math.floor(Math.abs(this.height - height) * 0.5);
+    const color = this.getArrowColor(mode);
+
+    if (arrow) {
+      this.drawTexture(x, y, size, height, arrow, undefined, color);
+
+      return;
+    }
+    const scale = size / OPTION_ARROW_GRID_SIZE;
+    const startX = x + 2 * scale;
+    const startY = y + 4 * scale;
+    const middleX = x + 6 * scale;
+    const middleY = y + 8 * scale;
+    const endX = x + 10 * scale;
+    const thickness = 2 * scale;
+    const radius = thickness * 0.5;
+
+    this.drawLine(startX, startY, middleX, middleY, color, thickness);
+    this.drawLine(middleX, middleY, endX, startY, color, thickness);
+    this.fillCircle(startX, startY, radius, color);
+    this.fillCircle(middleX, middleY, radius, color);
+    this.fillCircle(endX, startY, radius, color);
+  }
+
+  private getArrowColor (mode: ButtonDrawMode): math.Color {
+    if (this.getThemeConstant('modulateArrow') === 0) {
+      return this.getThemeColor('iconTint');
+    }
+    switch (mode) {
+      case ButtonDrawMode.Pressed: return this.getThemeColor('fontPressedColor');
+      case ButtonDrawMode.Hover: return this.getThemeColor('fontHoverColor');
+      case ButtonDrawMode.HoverPressed: return this.getThemeColor('fontHoverPressedColor');
+      case ButtonDrawMode.Disabled: return this.getThemeColor('fontDisabledColor');
+      default: return this.hasFocus(true)
+        ? this.getThemeColor('fontFocusColor')
+        : this.getThemeColor('fontColor');
+    }
   }
 
   get selected (): number { return this._selected; }

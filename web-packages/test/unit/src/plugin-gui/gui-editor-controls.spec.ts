@@ -112,6 +112,18 @@ describe('plugin-gui/editor controls', () => {
     expect(edit.caretColumn).equals(0);
   });
 
+  it('remeasures desired size when secret display changes', () => {
+    const edit = new SecretWidthLineEdit(player.engine, 'abcd'.repeat(10));
+    const plainWidth = edit.getBoundDesiredSize().x;
+
+    edit.secret = true;
+    expect(edit.getBoundDesiredSize().x).equals(plainWidth + 40);
+    edit.fromData({ secretCharacter: 'x' });
+    expect(edit.getBoundDesiredSize().x).equals(plainWidth + 80);
+    edit.fromData({ secret: false });
+    expect(edit.getBoundDesiredSize().x).equals(plainWidth);
+  });
+
   it('uses a hidden textarea for composition and removes it with focus', () => {
     const edit = new LineEdit(player.engine);
 
@@ -346,5 +358,17 @@ class UnitWidthLineEdit extends LineEdit {
     const length = Array.from(text).length;
 
     return { width: length, lineHeight: 1, advances: Array.from({ length }, () => 1) };
+  }
+}
+
+class SecretWidthLineEdit extends LineEdit {
+  override measureText (text: string): { width: number, lineHeight: number, advances: number[] } {
+    const advances = Array.from(text, character => character === '•' ? 2 : character === 'x' ? 3 : 1);
+
+    return {
+      width: advances.reduce((total, advance) => total + advance, 0),
+      lineHeight: 1,
+      advances,
+    };
   }
 }

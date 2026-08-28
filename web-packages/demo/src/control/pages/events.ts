@@ -46,7 +46,7 @@ const ownerColors = [
   new math.Color(1, 0.56, 0.64, 1),
 ];
 
-export class InputPage extends Control {
+export class EventsPage extends Control {
   constructor (engine: Engine, _ctx: AppContext) {
     super(engine);
     const theme = getTheme();

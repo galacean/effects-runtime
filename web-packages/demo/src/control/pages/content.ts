@@ -5,20 +5,23 @@ import type {
 import {
   AutowrapMode,
   ButtonGroup,
-  ColorRect,
   Control,
   GridContainer,
+  HBoxContainer,
+  HSeparator,
   HSlider,
   HorizontalAlignment,
   Label,
   NinePatchRect,
   Panel,
+  PanelContainer,
   Side,
   SizeFlags,
   TextOverflow,
   TextureRect,
   TextureStretchMode,
   VerticalAlignment,
+  VSeparator,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect } from '../layout';
@@ -29,7 +32,7 @@ import { ResizeHandle, createDemoTexture, label } from './common';
 const H_ALIGNMENTS = [HorizontalAlignment.Left, HorizontalAlignment.Center, HorizontalAlignment.Right];
 const V_ALIGNMENTS = [VerticalAlignment.Top, VerticalAlignment.Center, VerticalAlignment.Bottom];
 
-export class TextPage extends Control {
+export class ContentPage extends Control {
   private readonly texture = createDemoTexture(this.engine);
 
   constructor (engine: Engine, ctx: AppContext) {
@@ -75,8 +78,8 @@ export class TextPage extends Control {
       weight: 700,
     });
     const wrapped = new Label(this.engine, 'Long content demonstrates wrapping, clipping and ellipsis. 中文会保持清晰可读。');
-    const wrapToggle = createToggle(this.engine, 'WordSmart autowrap', ctx.state.text.autowrap, checked => {
-      ctx.state.text.autowrap = checked;
+    const wrapToggle = createToggle(this.engine, 'WordSmart autowrap', ctx.state.content.autowrap, checked => {
+      ctx.state.content.autowrap = checked;
       wrapped.autowrapMode = checked ? AutowrapMode.WordSmart : AutowrapMode.Off;
     });
 
@@ -92,14 +95,14 @@ export class TextPage extends Control {
     widthSlider.minValue = 160;
     widthSlider.maxValue = 294;
     widthSlider.step = 2;
-    widthSlider.setValueNoSignal(ctx.state.text.wrapWidth);
+    widthSlider.setValueNoSignal(ctx.state.content.wrapWidth);
     widthSlider.setRect({ position: new math.Vector2(20, 316), size: new math.Vector2(214, 18) });
     widthSlider.parent = card;
-    wrapped.autowrapMode = ctx.state.text.autowrap ? AutowrapMode.WordSmart : AutowrapMode.Off;
+    wrapped.autowrapMode = ctx.state.content.autowrap ? AutowrapMode.WordSmart : AutowrapMode.Off;
     wrapped.textOverflow = TextOverflow.Clip;
     wrapped.setThemeColorOverride('fontColor', theme.textPrimary);
     wrapped.verticalAlignment = VerticalAlignment.Center;
-    wrapped.setRect({ position: new math.Vector2(20, 376), size: new math.Vector2(ctx.state.text.wrapWidth, 72) });
+    wrapped.setRect({ position: new math.Vector2(20, 376), size: new math.Vector2(ctx.state.content.wrapWidth, 72) });
     wrapped.parent = card;
     const overflow = createSegmentedControl(this.engine, ['Visible', 'Clip', 'Ellipsis'], 1, index => {
       wrapped.textOverflow = [TextOverflow.Visible, TextOverflow.Clip, TextOverflow.Ellipsis][index];
@@ -108,7 +111,7 @@ export class TextPage extends Control {
     overflow.control.setRect({ position: new math.Vector2(20, 344), size: new math.Vector2(294, 30) });
     overflow.control.parent = card;
     const updateWidth = (value: number): void => {
-      ctx.state.text.wrapWidth = value;
+      ctx.state.content.wrapWidth = value;
       widthReadout.text = `${value.toFixed(0)} px`;
       wrapped.setRect({ position: new math.Vector2(20, 376), size: new math.Vector2(value, 72) });
     };
@@ -132,7 +135,7 @@ export class TextPage extends Control {
       TextureStretchMode.KeepAspectCovered,
     ];
 
-    texture.stretchMode = stretchModes[ctx.state.text.stretchMode] ?? TextureStretchMode.KeepAspectCentered;
+    texture.stretchMode = stretchModes[ctx.state.content.stretchMode] ?? TextureStretchMode.KeepAspectCentered;
     texture.setRect({ position: new math.Vector2(20, 158), size: new math.Vector2(294, 96) });
     texture.parent = card;
     const modeGrid = new GridContainer(this.engine);
@@ -151,11 +154,11 @@ export class TextPage extends Control {
       for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
         setFlatStyleOverride(button, state, { horizontalMargin: 4 });
       }
-      button.setPressedNoSignal(index === ctx.state.text.stretchMode);
+      button.setPressedNoSignal(index === ctx.state.content.stretchMode);
       button.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
       button.on('toggled', pressed => {
         if (pressed) {
-          ctx.state.text.stretchMode = index;
+          ctx.state.content.stretchMode = index;
           texture.stretchMode = stretchModes[index];
         }
       });
@@ -192,17 +195,39 @@ export class TextPage extends Control {
       weight: 700,
     });
 
-    label(this.engine, 'THEME TOKENS', 20, 420, 180, 20, card, {
+    label(this.engine, 'SURFACES & SEPARATORS', 20, 414, 220, 20, card, {
       size: 10,
       color: theme.textTertiary,
       weight: 700,
     });
-    [theme.accent, theme.success, theme.amber, theme.danger, theme.textPrimary, theme.controlTrack].forEach((color, index) => {
-      const swatch = new ColorRect(this.engine);
+    const surface = new PanelContainer(this.engine);
+    const surfaceLabel = new Label(this.engine, 'PanelContainer');
 
-      swatch.color = color;
-      swatch.setRect({ position: new math.Vector2(20 + index * 48, 452), size: new math.Vector2(40, 28) });
-      swatch.parent = card;
-    });
+    surface.setRect({ position: new math.Vector2(20, 442), size: new math.Vector2(140, 58) });
+    surface.parent = card;
+    surfaceLabel.horizontalAlignment = HorizontalAlignment.Center;
+    surfaceLabel.verticalAlignment = VerticalAlignment.Center;
+    surfaceLabel.parent = surface;
+    const separator = new HSeparator(this.engine);
+
+    separator.setRect({ position: new math.Vector2(174, 442), size: new math.Vector2(120, 14) });
+    separator.parent = card;
+    const split = new HBoxContainer(this.engine);
+    const left = new Label(this.engine, 'Left');
+    const verticalSeparator = new VSeparator(this.engine);
+    const right = new Label(this.engine, 'Right');
+
+    split.setThemeConstantOverride('separation', 6);
+    split.setRect({ position: new math.Vector2(174, 462), size: new math.Vector2(120, 38) });
+    split.parent = card;
+    for (const value of [left, right]) {
+      value.horizontalAlignment = HorizontalAlignment.Center;
+      value.verticalAlignment = VerticalAlignment.Center;
+      value.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
+    }
+    verticalSeparator.setSizeFlags(SizeFlags.Fill, SizeFlags.ExpandFill);
+    left.parent = split;
+    verticalSeparator.parent = split;
+    right.parent = split;
   }
 }

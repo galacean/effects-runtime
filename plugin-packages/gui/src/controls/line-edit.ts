@@ -8,14 +8,22 @@ import { TextInput } from './text-input';
 export class LineEdit extends TextInput {
   static override readonly themeType: string = 'LineEdit';
   protected readonly multiline = false;
-  secret = false;
   alignment = HorizontalAlignment.Left;
   private scrollOffset = 0;
+  private _secret = false;
   private _secretCharacter = '•';
 
   constructor (engine: Engine, text = '') {
     super(engine);
     this.text = text;
+  }
+
+  get secret (): boolean { return this._secret; }
+  set secret (value: boolean) {
+    if (this._secret !== value) {
+      this._secret = value;
+      this.updateDesiredSize();
+    }
   }
 
   get secretCharacter (): string { return this._secretCharacter; }
@@ -24,7 +32,6 @@ export class LineEdit extends TextInput {
 
     if (this._secretCharacter !== character) {
       this._secretCharacter = character;
-      this.updateMinimumSize();
       this.updateDesiredSize();
     }
   }

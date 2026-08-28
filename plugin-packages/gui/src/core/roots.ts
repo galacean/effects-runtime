@@ -88,6 +88,7 @@ type GUIState = {
 type PopupState = {
   control: Control,
   restoreFocus: Control | null,
+  restoreFocusHidden: boolean,
   originalTheme: Theme | null,
 };
 
@@ -331,6 +332,9 @@ export class WindowRootControl extends RootControl {
   override popupControl (control: Control, source: Control | null, position: Vector2): void {
     this.closePopupControl(control);
     const originalTheme = control.theme;
+    const focusOwner = this.guiGetFocusOwner();
+    const restoreFocus = source ?? focusOwner;
+    const restoreFocusHidden = restoreFocus === focusOwner && !!restoreFocus && !restoreFocus.hasFocus(true);
 
     if (!originalTheme) {control.theme = source?.getInheritedTheme() ?? null;}
     const desired = control.getBoundDesiredSize();
@@ -345,7 +349,7 @@ export class WindowRootControl extends RootControl {
     control.parent = this.popupLayer;
     control.visible = true;
     this.popupLayer.visible = true;
-    this.popupStack.push({ control, restoreFocus: source ?? this.guiGetFocusOwner(), originalTheme });
+    this.popupStack.push({ control, restoreFocus, restoreFocusHidden, originalTheme });
     control.onPopupOpened();
     control.grabFocus();
   }
@@ -365,9 +369,9 @@ export class WindowRootControl extends RootControl {
       state.control.onPopupClosed();
     }
     this.popupLayer.visible = this.popupStack.length > 0;
-    const restore = removed[0].restoreFocus;
+    const { restoreFocus: restore, restoreFocusHidden } = removed[0];
 
-    if (restore && !restore.isDisposed && restore.root === this) {restore.grabFocus();}
+    if (restore && !restore.isDisposed && restore.root === this) {restore.grabFocus(restoreFocusHidden);}
   }
 
   override queueLayout (container: Container): void {

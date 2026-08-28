@@ -11,6 +11,54 @@ class FilledControl extends Control {
 }
 
 describe('plugin-gui/Graphics clip stack', () => {
+  it('composes nested local transforms in parent space', () => {
+    const canvas = document.createElement('canvas');
+
+    canvas.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+    const player = new Player({ canvas, pixelRatio: 2, manualRender: true });
+
+    canvas.width = 200;
+    canvas.height = 200;
+    const scissorRects: number[][] = [];
+    const originalSetScissor = player.engine.setScissor.bind(player.engine);
+
+    player.engine.setScissor = (x, y, width, height) => {
+      scissorRects.push([x, y, width, height]);
+      originalSetScissor(x, y, width, height);
+    };
+
+    try {
+      const graphics = player.engine.graphics;
+      const parent = new math.Matrix3().set(1, 0, 0, 0, 1, 0, 20, 10, 1);
+      const child = new math.Matrix3().set(0, 1, 0, -1, 0, 0, 5, 0, 1);
+
+      graphics.begin();
+      graphics.pushTransform(parent);
+      graphics.pushTransform(child);
+      graphics.pushClipRect(0, 0, 10, 5);
+      graphics.fillRectangle(0, 0, 10, 5);
+      graphics.popClipRect();
+      graphics.popTransform();
+      graphics.popTransform();
+      graphics.end();
+
+      expect(scissorRects[0]).deep.equals([40, 160, 10, 20]);
+    } finally {
+      player.engine.setScissor = originalSetScissor;
+      player.dispose();
+    }
+  });
+
   it('flushes around a rotated child clip and restores scissor state', () => {
     const canvas = document.createElement('canvas');
 

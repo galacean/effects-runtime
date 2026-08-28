@@ -270,6 +270,9 @@ export function applyTheme (
     runtimeTheme.setStyleBox('Slider', 'grabberDisabled', makeFlat(theme.borderSubtle, theme.borderSubtle, 1));
     runtimeTheme.setColor('Checkbox', 'markColor', theme.accent);
     runtimeTheme.setColor('Checkbox', 'markDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('Checkbox', 'checkedDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('Checkbox', 'markUncheckedColor', copy(theme.textPrimary, 0.2));
+    runtimeTheme.setColor('Checkbox', 'markUncheckedDisabledColor', copy(theme.textTertiary, 0.2));
     runtimeTheme.setColor('Checkbox', 'markOutlineColor', theme.borderStrong);
     runtimeTheme.setColor('CheckButton', 'switchColor', theme.accent);
     runtimeTheme.setColor('CheckButton', 'switchDisabledColor', theme.textTertiary);
@@ -320,6 +323,10 @@ function registerThemeVariations (): void {
     EditorAxisH: 'Label',
     EditorInspectorButton: 'Button',
     EditorInspectorFlatButton: 'Button',
+    EditorInspectorCheck: 'Checkbox',
+    EditorInspectorOptionButton: 'OptionButton',
+    EditorVectorPanel: 'PanelContainer',
+    EditorVectorSpinSlider: 'EditorSpinSlider',
   };
 
   for (const [variation, base] of Object.entries(variations)) {
@@ -333,6 +340,7 @@ function applyInspectorTheme (theme: ThemeTokens, name: ThemeName): void {
   const rowHover = name === 'dark' ? color('#242424') : color('#EDF3FA');
   const rowSelected = name === 'dark' ? color('#303030') : mix(theme.panelBg, theme.accent, 0.14);
   const buttonHover = name === 'dark' ? color('#2B2B2B') : theme.panelRaisedBg;
+  const fieldBackground = name === 'dark' ? color('#1B1B1B') : theme.panelRaisedBg;
 
   runtimeTheme.setStyleBox('EditorInspector', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1));
   runtimeTheme.setConstant('EditorInspectorContainer', 'separation', 0);
@@ -371,6 +379,23 @@ function applyInspectorTheme (theme: ThemeTokens, name: ThemeName): void {
   runtimeTheme.setColor('EditorInspectorFlatButton', 'fontHoverPressedColor', theme.textPrimary);
   runtimeTheme.setStyleBox('EditorSpinSlider', 'normal', makeFlat(theme.panelRaisedBg, theme.borderSubtle, 1, 6, 4, 3));
   runtimeTheme.setStyleBox('EditorSpinSlider', 'focus', makeFlat(theme.panelRaisedBg, theme.textSecondary, 1, 0, 0, 3));
+  for (const state of ['normal', 'pressed', 'disabled']) {
+    runtimeTheme.setStyleBox('EditorInspectorCheck', state, makeFlat(fieldBackground, undefined, 0, 6, 3, 4));
+    runtimeTheme.setStyleBox('EditorInspectorOptionButton', state, makeFlat(fieldBackground, undefined, 0, 9, 4, 4));
+  }
+  for (const state of ['hover', 'hoverPressed']) {
+    runtimeTheme.setStyleBox('EditorInspectorCheck', state, makeFlat(buttonHover, undefined, 0, 6, 3, 4));
+    runtimeTheme.setStyleBox('EditorInspectorOptionButton', state, makeFlat(buttonHover, undefined, 0, 9, 4, 4));
+  }
+  runtimeTheme.setStyleBox('EditorInspectorCheck', 'focus', makeFlat(clear, theme.borderStrong, 1, 0, 0, 4));
+  runtimeTheme.setStyleBox('EditorInspectorOptionButton', 'focus', makeFlat(clear, theme.borderStrong, 1, 0, 0, 4));
+  runtimeTheme.setConstant('EditorInspectorOptionButton', 'arrowSize', 12);
+  runtimeTheme.setConstant('EditorInspectorOptionButton', 'arrowMargin', 8);
+  runtimeTheme.setConstant('EditorInspectorOptionButton', 'hSeparation', 4);
+  runtimeTheme.setStyleBox('EditorVectorPanel', 'panel', makeFlat(fieldBackground, undefined, 0, 9, 3, 4));
+  runtimeTheme.setStyleBox('EditorVectorSpinSlider', 'normal', makeFlat(clear, undefined, 0, 0, 3));
+  runtimeTheme.setStyleBox('EditorVectorSpinSlider', 'readOnly', makeFlat(clear, undefined, 0, 0, 3));
+  runtimeTheme.setStyleBox('EditorVectorSpinSlider', 'focus', makeFlat(clear, undefined, 0, 0, 3));
 }
 
 export function setFontOverrides (

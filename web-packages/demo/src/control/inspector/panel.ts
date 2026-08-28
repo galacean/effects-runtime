@@ -207,7 +207,9 @@ export class EditorInspector extends ScrollContainer {
 
   private appendSection (parent: VBoxContainer, node: PropertyNode, depth: number): void {
     const states = this.foldStates.get(this.type) ?? new Map<string, boolean>();
-    const open = this.filter.length > 0 || states.get(node.path) === true;
+    const savedState = states.get(node.path);
+    const open = this.filter.length > 0 || savedState === true
+      || (savedState === undefined && node.path === 'Control/Layout');
     const section = new EditorInspectorSection(this.engine, node.name, depth, open, value => {
       states.set(node.path, value);
       this.foldStates.set(this.type, states);
@@ -424,13 +426,16 @@ export class EditorProperty extends Container {
     const narrow = contentWidth < this.getThemeConstant('wideThreshold');
     const split = narrow ? contentWidth : contentWidth * this.getThemeConstant('splitRatio');
     const labelWidth = Math.max(0, split - revertWidth - separation);
+    const labelY = this.binding.bottom || narrow
+      ? padding
+      : padding + Math.max(0, (this.height - padding * 2 - rowHeight) * 0.5);
 
     this.fitChildInRect(this.nameLabel, {
-      position: new math.Vector2(padding, padding),
+      position: new math.Vector2(padding, labelY),
       size: new math.Vector2(labelWidth, rowHeight),
     });
     this.fitChildInRect(this.revertButton, {
-      position: new math.Vector2(padding + labelWidth, padding),
+      position: new math.Vector2(padding + labelWidth, labelY),
       size: new math.Vector2(revertWidth, rowHeight),
     });
     if (this.binding.bottom || narrow) {
@@ -501,6 +506,7 @@ export class EditorSpinSlider extends LineEdit {
   maxValue = Number.POSITIVE_INFINITY;
   step = 1;
   suffix = '';
+  decimalPlaces = 0;
   changed?: (value: number) => void;
   private currentValue = 0;
   private dragging = false;
@@ -579,9 +585,11 @@ export class EditorSpinSlider extends LineEdit {
   }
 
   private updateText (): void {
-    const value = Number.isInteger(this.currentValue)
-      ? String(this.currentValue)
-      : String(Number(this.currentValue.toFixed(4)));
+    const value = this.decimalPlaces > 0
+      ? this.currentValue.toFixed(this.decimalPlaces)
+      : Number.isInteger(this.currentValue)
+        ? String(this.currentValue)
+        : String(Number(this.currentValue.toFixed(4)));
 
     this.text = `${value}${this.suffix}`;
   }
@@ -600,8 +608,9 @@ function createPropertyEditor (
   changed: () => void,
 ): RefreshBinding {
   if (property.kind === 'boolean') {
-    const editor = new Checkbox(engine);
+    const editor = new Checkbox(engine, 'On');
 
+    editor.themeTypeVariation = 'EditorInspectorCheck';
     editor.mouseFilter = MouseFilter.Pass;
     editor.on('toggled', value => {
       property.setValue(target, value);
@@ -634,6 +643,7 @@ function createPropertyEditor (
   if (property.kind === 'enum') {
     const editor = new OptionButton(engine);
 
+    editor.themeTypeVariation = 'EditorInspectorOptionButton';
     editor.mouseFilter = MouseFilter.Pass;
     for (const option of property.options) {editor.addItem(option.label, option.value);}
     editor.onOption('itemSelected', value => {
@@ -718,25 +728,31 @@ function createVectorEditor (
   property: Extract<InspectorProperty, { kind: 'vector2' | 'rect2' }>,
   changed: () => void,
 ): RefreshBinding {
-  const editor = new GridContainer(engine);
-  const axes = property.kind === 'vector2' ? ['X', 'Y'] : ['X', 'Y', 'W', 'H'];
+  const editor = new PanelContainer(engine);
+  const rows = new VBoxContainer(engine);
+  const axes = property.kind === 'vector2' ? ['x', 'y'] : ['x', 'y', 'w', 'h'];
   const fields: EditorSpinSlider[] = [];
 
-  editor.columns = 2;
-  editor.setThemeConstantOverride('horizontalSeparation', 5);
-  editor.setThemeConstantOverride('verticalSeparation', 4);
+  editor.themeTypeVariation = 'EditorVectorPanel';
+  rows.setThemeConstantOverride('separation', 0);
+  rows.parent = editor;
   for (let index = 0; index < axes.length; index++) {
     const fieldRow = new HBoxContainer(engine);
     const axis = new Label(engine, axes[index]);
     const field = createSpinSlider(engine, undefined, property.max, property.step, property.suffix);
+    const themeAxis = axes[index].toUpperCase();
 
-    axis.themeTypeVariation = `EditorAxis${axes[index]}`;
-    axis.setCustomMinimumSize(14, 0);
+    fieldRow.setCustomMinimumSize(0, 30);
+    axis.themeTypeVariation = `EditorAxis${themeAxis}`;
+    axis.setCustomMinimumSize(24, 0);
     axis.verticalAlignment = VerticalAlignment.Center;
     axis.parent = fieldRow;
+    field.themeTypeVariation = 'EditorVectorSpinSlider';
+    field.decimalPlaces = 1;
+    field.suffix = property.suffix ? ` ${property.suffix}` : '';
     field.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.Fill);
     field.parent = fieldRow;
-    fieldRow.parent = editor;
+    fieldRow.parent = rows;
     field.changed = value => {
       const vector = property.getValue(target);
 
@@ -751,7 +767,7 @@ function createVectorEditor (
 
   return {
     control: editor,
-    bottom: true,
+    bottom: false,
     refresh: () => {
       const vector = property.getValue(target);
 

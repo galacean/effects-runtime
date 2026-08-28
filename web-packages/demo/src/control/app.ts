@@ -13,17 +13,18 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from './context';
 import { attachAnchoredRect, attachFullRect } from './layout';
-import { ButtonsPage } from './pages/buttons';
-import { EditorsPage } from './pages/editors';
-import { InputPage } from './pages/input';
+import { ActionsPage } from './pages/actions';
+import { ContainersPage } from './pages/containers';
+import { ContentPage } from './pages/content';
+import { EventsPage } from './pages/events';
 import { InspectorPage } from './pages/inspector';
-import { LayoutPage } from './pages/layout';
 import { OverviewPage } from './pages/overview';
-import { ScrollPage } from './pages/scroll';
+import { OverlaysPage } from './pages/overlays';
+import { RangesPage } from './pages/ranges';
+import { ScrollingPage } from './pages/scrolling';
 import { SelectionPage } from './pages/selection';
-import { SlidersPage } from './pages/sliders';
-import { TextPage } from './pages/text';
-import { ThemingPage } from './pages/theming';
+import { TextColorPage } from './pages/text-color';
+import { ThemePage } from './pages/theme';
 import type { PageID } from './state';
 import { getTheme, setFlatStyleOverride, setFontOverrides } from './theme';
 import { createButton } from './widgets';
@@ -39,15 +40,16 @@ type PageDefinition = {
 const PAGE_DEFINITIONS: PageDefinition[] = [
   { id: 'overview', title: 'Overview 总览', shortTitle: 'Overview', subtitle: 'Understand the demo, its coverage and the fastest way to explore it.', group: 'Getting started' },
   { id: 'inspector', title: 'Inspector 属性面板', shortTitle: 'Inspector', subtitle: 'Edit current Control properties with consistent names, options and ranges.', group: 'Getting started' },
-  { id: 'buttons', title: 'Buttons 按钮', shortTitle: 'Buttons', subtitle: 'Button states, groups, icons, sizing and action modes.', group: 'Foundation' },
-  { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'Checkbox, radio groups and CheckButton switches.', group: 'Foundation' },
-  { id: 'editors', title: 'Editors & Popups 编辑与弹层', shortTitle: 'Editors', subtitle: 'Text editing, menus, popup layers, color picking and layout decoration.', group: 'Foundation' },
-  { id: 'sliders', title: 'Sliders 滑杆', shortTitle: 'Sliders', subtitle: 'Shared ranges, progress feedback, fill modes and RGB values.', group: 'Foundation' },
-  { id: 'display', title: 'Display 展示', shortTitle: 'Display', subtitle: 'Label layout, overflow, textures and NinePatchRect sizing.', group: 'Foundation' },
-  { id: 'layout', title: 'Containers 布局', shortTitle: 'Containers', subtitle: 'Box, grid, margin and aspect-ratio container behavior.', group: 'Layout & input' },
-  { id: 'scroll', title: 'Scroll 滚动', shortTitle: 'Scroll', subtitle: 'ScrollContainer modes, focus following and nested scrolling.', group: 'Layout & input' },
-  { id: 'input', title: 'Input 输入', shortTitle: 'Input', subtitle: 'Mouse filters, bubbling, focus, drag-and-drop and cursors.', group: 'Layout & input' },
-  { id: 'config', title: 'Theme 主题', shortTitle: 'Theme', subtitle: 'Light and dark themes, accents and live tree-scoped updates.', group: 'Appearance' },
+  { id: 'actions', title: 'Actions 操作', shortTitle: 'Actions', subtitle: 'Button states, groups, icons, sizing and action modes.', group: 'Controls' },
+  { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'Checkbox, radio groups and CheckButton switches.', group: 'Controls' },
+  { id: 'text-color', title: 'Text & Color 文本与颜色', shortTitle: 'Text & Color', subtitle: 'Single-line, multiline and color value editing.', group: 'Controls' },
+  { id: 'ranges', title: 'Ranges 范围与进度', shortTitle: 'Ranges', subtitle: 'Shared ranges, progress feedback, fill modes and RGB values.', group: 'Controls' },
+  { id: 'content', title: 'Content 内容展示', shortTitle: 'Content', subtitle: 'Text, textures, scalable surfaces and visual separators.', group: 'Controls' },
+  { id: 'overlays', title: 'Menus & Overlays 菜单与弹层', shortTitle: 'Overlays', subtitle: 'Menus, option lists, popup panels and transient color editors.', group: 'Controls' },
+  { id: 'containers', title: 'Containers 容器布局', shortTitle: 'Containers', subtitle: 'Box, grid, margin and aspect-ratio container behavior.', group: 'Layout' },
+  { id: 'scrolling', title: 'Scrolling 滚动容器', shortTitle: 'Scrolling', subtitle: 'ScrollContainer modes, focus following and nested scrolling.', group: 'Layout' },
+  { id: 'events', title: 'Input Events 交互事件', shortTitle: 'Events', subtitle: 'Mouse filters, bubbling, focus, drag-and-drop and cursors.', group: 'Interaction' },
+  { id: 'theme', title: 'Theme 主题', shortTitle: 'Theme', subtitle: 'Light and dark themes, accents and live tree-scoped updates.', group: 'Styling' },
 ];
 
 export class ControlApp extends Control {
@@ -91,15 +93,16 @@ export class ControlApp extends Control {
     const pages: Array<[PageID, Control]> = [
       ['overview', new OverviewPage(engine, ctx)],
       ['inspector', new InspectorPage(engine, ctx)],
-      ['buttons', new ButtonsPage(engine, ctx)],
+      ['actions', new ActionsPage(engine, ctx)],
       ['selection', new SelectionPage(engine, ctx)],
-      ['editors', new EditorsPage(engine, ctx)],
-      ['sliders', new SlidersPage(engine, ctx)],
-      ['display', new TextPage(engine, ctx)],
-      ['layout', new LayoutPage(engine, ctx)],
-      ['scroll', new ScrollPage(engine, ctx)],
-      ['input', new InputPage(engine, ctx)],
-      ['config', new ThemingPage(engine, ctx)],
+      ['text-color', new TextColorPage(engine, ctx)],
+      ['ranges', new RangesPage(engine, ctx)],
+      ['content', new ContentPage(engine, ctx)],
+      ['overlays', new OverlaysPage(engine, ctx)],
+      ['containers', new ContainersPage(engine, ctx)],
+      ['scrolling', new ScrollingPage(engine, ctx)],
+      ['events', new EventsPage(engine, ctx)],
+      ['theme', new ThemePage(engine, ctx)],
     ];
 
     for (const [id, page] of pages) {
@@ -149,22 +152,24 @@ export class ControlApp extends Control {
     const theme = getTheme();
     const group = new ButtonGroup();
     const positions: Record<PageID, number> = {
-      overview: 82,
-      inspector: 120,
-      buttons: 188,
-      selection: 228,
-      editors: 268,
-      sliders: 308,
-      display: 348,
-      layout: 416,
-      scroll: 456,
-      input: 496,
-      config: 566,
+      overview: 76,
+      inspector: 112,
+      actions: 178,
+      selection: 214,
+      'text-color': 250,
+      ranges: 286,
+      content: 322,
+      overlays: 358,
+      containers: 430,
+      scrolling: 466,
+      events: 538,
+      theme: 610,
     };
 
-    this.createHeaderLabel(this.engine, sidebar, 'FOUNDATION', 20, 162, 180, 18, 9, theme.textTertiary, 650);
-    this.createHeaderLabel(this.engine, sidebar, 'LAYOUT & INPUT', 20, 390, 180, 18, 9, theme.textTertiary, 650);
-    this.createHeaderLabel(this.engine, sidebar, 'APPEARANCE', 20, 540, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'CONTROLS', 20, 152, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'LAYOUT', 20, 404, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'INTERACTION', 20, 512, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'STYLING', 20, 584, 180, 18, 9, theme.textTertiary, 650);
     for (const definition of PAGE_DEFINITIONS) {
       const button = createButton(this.engine, definition.shortTitle, undefined, 'ghost');
 

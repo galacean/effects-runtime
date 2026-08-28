@@ -99,7 +99,7 @@ export class OverviewPage extends Control {
     this.addPill(hero, 'RUNTIME INPUT', 282, 208, 112, mix(theme.accent, theme.textSecondary, 0.28), theme);
 
     const inspector = createButton(this.engine, 'Open live Inspector', () => ctx.navigate('inspector'), 'primary');
-    const browse = createButton(this.engine, 'Browse focused demos', () => ctx.navigate('buttons'));
+    const browse = createButton(this.engine, 'Browse focused demos', () => ctx.navigate('actions'));
 
     inspector.setRect({ position: new math.Vector2(32, 258), size: new math.Vector2(154, 42) });
     browse.setRect({ position: new math.Vector2(196, 258), size: new math.Vector2(166, 42) });
@@ -165,7 +165,7 @@ export class OverviewPage extends Control {
       ['Focused examples', 'Shared state', 'Layout behavior'],
       'Explore layout',
       theme.cyan,
-      () => ctx.navigate('layout'),
+      () => ctx.navigate('containers'),
       theme,
     );
     this.addFeatureCard(
@@ -177,7 +177,7 @@ export class OverviewPage extends Control {
       ['Input routing', 'Theme snapshots', 'Native scrolling'],
       'Test input',
       theme.violet,
-      () => ctx.navigate('input'),
+      () => ctx.navigate('events'),
       theme,
     );
   }
@@ -275,7 +275,7 @@ export class OverviewPage extends Control {
     copy.autowrapMode = AutowrapMode.WordSmart;
     copy.verticalAlignment = VerticalAlignment.Top;
     const primary = createButton(this.engine, 'Start with Inspector', () => ctx.navigate('inspector'), 'primary');
-    const secondary = createButton(this.engine, 'Open appearance', () => ctx.navigate('config'));
+    const secondary = createButton(this.engine, 'Open appearance', () => ctx.navigate('theme'));
 
     primary.setRect({ position: new math.Vector2(32, 158), size: new math.Vector2(150, 40) });
     secondary.setRect({ position: new math.Vector2(192, 158), size: new math.Vector2(146, 40) });

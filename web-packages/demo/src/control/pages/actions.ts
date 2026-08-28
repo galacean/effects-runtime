@@ -15,7 +15,7 @@ import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl } from '../widgets';
 import { createDemoTexture, label } from './common';
 
-export class ButtonsPage extends Control {
+export class ActionsPage extends Control {
   private readonly texture = createDemoTexture(this.engine);
 
   constructor (engine: Engine, _ctx: AppContext) {

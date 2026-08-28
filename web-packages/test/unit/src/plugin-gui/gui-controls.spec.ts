@@ -15,10 +15,16 @@ import {
   ButtonGroup,
   Checkbox,
   CheckButton,
+  ColorPickerButton,
+  FocusMode,
+  GUIWindowComponent,
   HSlider,
   HorizontalAlignment,
   Label,
+  LineEdit,
+  MenuButton,
   NinePatchRect,
+  OptionButton,
   ProgressBar,
   ProgressFillMode,
   Side,
@@ -270,6 +276,82 @@ describe('plugin-gui/GUI basic controls', () => {
     expect(group.getButtons()).deep.equals([second]);
     expect(checkButton.toggleMode).equals(true);
     expect(new Button(player.engine, 'Text').getMinimumSize().x).greaterThan(0);
+  });
+
+  it('draws fallback check and option indicators without theme icons', () => {
+    const check = new Checkbox(player.engine, 'On');
+    const checkTriangles: number[][] = [];
+
+    check.setSize(100, 30);
+    check.setPressedNoSignal(true);
+    check.drawStyleBox = (() => undefined) as typeof check.drawStyleBox;
+    check.drawText = (() => undefined) as typeof check.drawText;
+    check.fillTriangle = ((
+      x1: number, y1: number, x2: number, y2: number, x3: number, y3: number,
+    ) => {checkTriangles.push([x1, y1, x2, y2, x3, y3]);}) as typeof check.fillTriangle;
+    check.draw();
+    expect(checkTriangles).to.have.length(24);
+    const markY = Math.floor((check.height - 16) * 0.5);
+
+    expect(checkTriangles[20][5]).closeTo(markY + 12.344, 0.001);
+    expect(markY + 15 - checkTriangles[20][5]).closeTo(2.656, 0.001);
+
+    const option = new OptionButton(player.engine);
+    const arrowLines: number[][] = [];
+    let arrowCircles = 0;
+
+    option.addItem('Center');
+    option.setSize(120, 30);
+    option.drawStyleBox = (() => undefined) as typeof option.drawStyleBox;
+    option.drawText = (() => undefined) as typeof option.drawText;
+    option.drawLine = ((
+      x1: number, y1: number, x2: number, y2: number, _color?: math.Color, thickness?: number,
+    ) => {arrowLines.push([x1, y1, x2, y2, thickness ?? 0]);}) as typeof option.drawLine;
+    option.fillCircle = (() => {arrowCircles++;}) as typeof option.fillCircle;
+    option.draw();
+    expect(option.textAlignment).equals(HorizontalAlignment.Left);
+    const arrowY = Math.floor(Math.abs(option.height - 12) * 0.5);
+
+    expect(arrowLines).deep.equals([
+      [106, arrowY + 4, 110, arrowY + 8, 2],
+      [110, arrowY + 8, 114, arrowY + 4, 2],
+    ]);
+    expect(arrowCircles).equals(3);
+  });
+
+  it('keeps pointer focus hidden for text fields and popup sources', () => {
+    const root = player.engine.root.getComponent(GUIWindowComponent).windowRoot;
+    const edit = new LineEdit(player.engine);
+    const pointer = mouseButton(2, 2, MouseButton.Left);
+
+    edit.parent = root;
+    edit.onMouseDown(pointer);
+    expect(edit.hasFocus()).equals(true);
+    expect(edit.hasFocus(true)).equals(false);
+    edit.releaseFocus();
+
+    const menu = new MenuButton(player.engine);
+    const option = new OptionButton(player.engine);
+
+    expect(menu.focusMode).equals(FocusMode.Accessibility);
+    expect(option.focusMode).equals(FocusMode.All);
+    option.addItem('Center');
+    option.parent = root;
+    option.grabFocus(true);
+    option.showPopup();
+    expect(option.popupMenu.hasFocus(true)).equals(true);
+    option.popupMenu.hidePopup();
+    expect(option.hasFocus()).equals(true);
+    expect(option.hasFocus(true)).equals(false);
+
+    const color = new ColorPickerButton(player.engine);
+
+    color.parent = root;
+    color.grabFocus(true);
+    color.showPicker();
+    color.popupPanel.hidePopup();
+    expect(color.hasFocus()).equals(true);
+    expect(color.hasFocus(true)).equals(false);
   });
 
   it('calculates Button minimum sizing for clipped text and expanded icons', () => {
