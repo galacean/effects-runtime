@@ -148,6 +148,48 @@ ThemeRegistry.registerType('CheckButton', 'Button', {
 ThemeRegistry.registerType('Panel', 'Control', {
   panel: style(flat(palette.panel, palette.border, 1)),
 });
+ThemeRegistry.registerType('PanelContainer', 'Container', {
+  panel: style(flat(palette.panel, palette.border, 1, 4, 4)),
+});
+ThemeRegistry.registerType('Separator', 'Control', {
+  separator: style(flat(palette.border)),
+  separation: constant(1),
+});
+ThemeRegistry.registerType('HSeparator', 'Separator');
+ThemeRegistry.registerType('VSeparator', 'Separator');
+ThemeRegistry.registerType('TextInput', 'Control', {
+  normal: style(flat(palette.track, palette.border, 1, 6, 4)),
+  readOnly: style(flat(palette.disabled, palette.border, 1, 6, 4)),
+  focus: style(flat(palette.clear, palette.accentHover, 1)),
+  fontColor: color(palette.text),
+  fontReadOnlyColor: color(palette.disabledText),
+  fontPlaceholderColor: color(palette.disabledText),
+  selectionColor: color(new math.Color(palette.accent.r, palette.accent.g, palette.accent.b, 0.45)),
+  caretColor: color(palette.text),
+  caretWidth: constant(1, false),
+});
+ThemeRegistry.registerType('LineEdit', 'TextInput');
+ThemeRegistry.registerType('TextEdit', 'TextInput');
+ThemeRegistry.registerType('Popup', 'PanelContainer', {
+  panel: style(flat(palette.panel, palette.border, 1, 6, 6)),
+});
+ThemeRegistry.registerType('PopupPanel', 'Popup');
+ThemeRegistry.registerType('PopupMenu', 'Popup', {
+  hover: style(flat(palette.hover)),
+  separator: style(flat(palette.border)),
+  fontColor: color(palette.text),
+  fontDisabledColor: color(palette.disabledText),
+  checkColor: color(palette.accent),
+  itemHeight: constant(28),
+  separatorHeight: constant(9),
+  horizontalPadding: constant(8),
+  iconWidth: constant(20),
+});
+ThemeRegistry.registerType('MenuButton', 'Button');
+ThemeRegistry.registerType('OptionButton', 'MenuButton');
+ThemeRegistry.registerType('ColorPickerButton', 'Button', {
+  swatchBorderColor: color(palette.border),
+});
 ThemeRegistry.registerType('Range', 'Control');
 ThemeRegistry.registerType('ProgressBar', 'Range', {
   background: style(flat(palette.track)),
@@ -192,6 +234,7 @@ ThemeRegistry.registerType('VScrollBar', 'ScrollBar', {
 ThemeRegistry.registerType('BoxContainer', 'Container', { separation: constant(0) });
 ThemeRegistry.registerType('HBoxContainer', 'BoxContainer');
 ThemeRegistry.registerType('VBoxContainer', 'BoxContainer');
+ThemeRegistry.registerType('ColorPicker', 'VBoxContainer');
 ThemeRegistry.registerType('GridContainer', 'Container', {
   horizontalSeparation: constant(0),
   verticalSeparation: constant(0),

@@ -82,6 +82,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
   it('supports multi-level variations, explicit type queries and rejects bad variation graphs', () => {
     const button = new Button(player.engine);
     const theme = new Theme();
+    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
 
     theme.setTypeVariation('DangerButton', 'Button');
     theme.setTypeVariation('ProminentDangerButton', 'DangerButton');
@@ -90,6 +91,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     theme.setColor('DangerButton', 'fontColor', color(0.5));
     button.theme = theme;
     button.themeTypeVariation = 'ProminentDangerButton';
+    button.parent = root;
     expect(button.getThemeColor('fontColor').r).equals(0.5);
 
     button.setThemeColorOverride('fontColor', color(0.8));
@@ -105,6 +107,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
 
     button.on('minimumSizeChanged', () => layoutChanges++);
     theme.setFontSize('ProminentDangerButton', 'fontSize', 26);
+    root.update(0);
     expect(layoutChanges).equals(1);
   });
 
@@ -115,8 +118,10 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     let themeChanges = 0;
     let layoutChanges = 0;
     let lastAffectsLayout = false;
+    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
 
     label.theme = theme;
+    label.parent = root;
     label.on('themeChanged', (_control, affectsLayout) => {
       themeChanges++;
       lastAffectsLayout = affectsLayout;
@@ -132,6 +137,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
 
     theme.setFontSize('Label', 'fontSize', 22);
     expect(label.getThemeFontSize('fontSize')).equals(22);
+    root.update(0);
     expect(layoutChanges).equals(1);
     expect(lastAffectsLayout).equals(true);
 
@@ -166,6 +172,89 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
 
     rightTheme.setColor('Label', 'fontColor', color(0.9));
     expect(changes).equals(before);
+  });
+
+  it('assigns Theme owners without notifying outside the tree and notifies on every tree entry', () => {
+    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const theme = new Theme();
+    const left = new Control(player.engine);
+    const right = new Control(player.engine);
+    const branch = new Control(player.engine);
+    const label = new Label(player.engine, 'stable');
+    let changes = 0;
+
+    root.theme = theme;
+    left.parent = root;
+    right.parent = root;
+    label.parent = branch;
+    label.on('themeChanged', () => changes++);
+    expect(label.hasThemeOwnerNode()).equals(false);
+    branch.parent = left;
+    expect(branch.getThemeOwnerNode()).equals(root);
+    expect(label.getThemeOwnerNode()).equals(root);
+    expect(changes).equals(1);
+    branch.parent = right;
+    expect(changes).equals(2);
+  });
+
+  it('keeps explicit Theme owner boundaries while inherited owner chains change', () => {
+    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const outerTheme = new Theme();
+    const innerTheme = new Theme();
+    const branch = new Control(player.engine);
+    const nested = new Control(player.engine);
+    const label = new Label(player.engine);
+    let changes = 0;
+
+    outerTheme.setColor('Label', 'outer', color(0.2));
+    innerTheme.setColor('Label', 'inner', color(0.7));
+    root.theme = outerTheme;
+    nested.theme = innerTheme;
+    label.parent = nested;
+    label.on('themeChanged', () => changes++);
+    nested.parent = branch;
+    expect(branch.hasThemeOwnerNode()).equals(false);
+    expect(nested.getThemeOwnerNode()).equals(nested);
+    expect(label.getThemeOwnerNode()).equals(nested);
+    expect(changes).equals(0);
+    branch.parent = root;
+    expect(branch.getThemeOwnerNode()).equals(root);
+    expect(nested.getThemeOwnerNode()).equals(nested);
+    expect(label.getThemeOwnerNode()).equals(nested);
+    expect(changes).equals(1);
+    expect(label.getThemeColor('inner').r).equals(0.7);
+    expect(label.getThemeColor('outer').r).equals(0.2);
+    nested.theme = null;
+    expect(nested.getThemeOwnerNode()).equals(root);
+    expect(label.getThemeOwnerNode()).equals(root);
+  });
+
+  it('defers and coalesces measurement changes across a nested themed layout', () => {
+    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+    const theme = new Theme();
+    const outer = new HBoxContainer(player.engine);
+    const inner = new HBoxContainer(player.engine);
+    const first = new Label(player.engine, 'First');
+    const second = new Label(player.engine, 'Second');
+    let outerChanges = 0;
+    let innerChanges = 0;
+
+    root.theme = theme;
+    outer.parent = root;
+    inner.parent = outer;
+    first.parent = inner;
+    second.parent = inner;
+    root.update(0);
+    outer.getCombinedMinimumSize();
+    inner.getCombinedMinimumSize();
+    outer.on('minimumSizeChanged', () => outerChanges++);
+    inner.on('minimumSizeChanged', () => innerChanges++);
+    theme.setFontSize('Label', 'fontSize', 24);
+    expect(outerChanges).equals(0);
+    expect(innerChanges).equals(0);
+    root.update(0);
+    expect(outerChanges).equals(1);
+    expect(innerChanges).equals(1);
   });
 
   it('keeps root Themes isolated between Players', () => {
@@ -206,6 +295,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
               backgroundColor: { r: 0.1, g: 0.2, b: 0.3, a: 1 },
               borderColor: { r: 0.8, g: 0.7, b: 0.6, a: 1 },
               borderWidths: { left: 1, top: 2, right: 3, bottom: 4 },
+              cornerRadii: { left: 9, top: 8, right: 7, bottom: 6 },
               contentMargins: { left: 5, top: 6, right: 7, bottom: 8 },
             },
           },
@@ -258,17 +348,24 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(dataTextureStyle.getTint().toArray()).deep.equals([0.2, 0.3, 0.4, 0.5]);
 
     const flat = label.getThemeStyleBox('test');
+
+    expect((flat as StyleBoxFlat).getCornerRadii()).deep.equals({ left: 9, top: 8, right: 7, bottom: 6 });
     const fillCalls: unknown[][] = [];
+    const triangleCalls: unknown[][] = [];
     const graphics = player.engine.graphics;
     const originalFill = graphics.fillRectangle;
+    const originalTriangle = graphics.fillTriangle;
 
     graphics.fillRectangle = ((...args: unknown[]) => fillCalls.push(args)) as Graphics['fillRectangle'];
+    graphics.fillTriangle = ((...args: unknown[]) => triangleCalls.push(args)) as Graphics['fillTriangle'];
     try {
       flat.draw(graphics, { x: 0, y: 0, width: 30, height: 20 });
     } finally {
       graphics.fillRectangle = originalFill;
+      graphics.fillTriangle = originalTriangle;
     }
-    expect(fillCalls.length).equals(5);
+    expect(fillCalls).to.have.length(0);
+    expect(triangleCalls.length).greaterThan(0);
 
     const texture = { width: 40, height: 20 } as never;
     const textureStyle = new StyleBoxTexture();
@@ -303,6 +400,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     second.setCustomMinimumSize(10, 8);
     box.addChild(first);
     box.addChild(second);
+    root.parent = player.engine.root.getComponent(GUIRootComponent).windowRoot;
     expect(box.getCombinedMinimumSize().x).equals(20);
     theme.setConstant('HBoxContainer', 'separation', 7);
     expect(box.getCombinedMinimumSize().x).equals(27);

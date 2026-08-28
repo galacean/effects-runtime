@@ -20,7 +20,7 @@ import { getTheme, mix, setFlatStyleOverride, setFontOverrides, withAlpha } from
 import { createButton } from '../widgets';
 import { label } from './common';
 
-const PAGE_HEIGHT = 2072;
+const PAGE_HEIGHT = 2192;
 
 export class OverviewPage extends Control {
   constructor (engine: Engine, ctx: AppContext) {
@@ -95,8 +95,8 @@ export class OverviewPage extends Control {
     introduction.autowrapMode = AutowrapMode.WordSmart;
     introduction.verticalAlignment = VerticalAlignment.Top;
     this.addPill(hero, 'CANVAS NATIVE', 32, 208, 112, theme.accent, theme);
-    this.addPill(hero, 'LIVE PROPERTIES', 152, 208, 122, theme.cyan, theme);
-    this.addPill(hero, 'RUNTIME INPUT', 282, 208, 112, theme.violet, theme);
+    this.addPill(hero, 'LIVE PROPERTIES', 152, 208, 122, mix(theme.accent, theme.textPrimary, 0.16), theme);
+    this.addPill(hero, 'RUNTIME INPUT', 282, 208, 112, mix(theme.accent, theme.textSecondary, 0.28), theme);
 
     const inspector = createButton(this.engine, 'Open live Inspector', () => ctx.navigate('inspector'), 'primary');
     const browse = createButton(this.engine, 'Browse focused demos', () => ctx.navigate('buttons'));
@@ -129,8 +129,8 @@ export class OverviewPage extends Control {
       'The gallery is both a learning surface and a visual regression workspace: each page isolates one runtime concern so behavior is easy to understand, compare and verify.',
       theme,
     );
-    this.addMetric(section, 0, 20, '+', 'CONTROL TYPES', 'Concrete controls available to inspect.', theme.accent, theme);
-    this.addMetric(section, 1, 9, '', 'FOCUSED PATHS', 'Purpose-built pages for common workflows.', theme.cyan, theme);
+    this.addMetric(section, 0, 31, '', 'CONTROL TYPES', 'Concrete controls available to inspect.', theme.accent, theme);
+    this.addMetric(section, 1, 10, '', 'FOCUSED PATHS', 'Purpose-built pages for common workflows.', theme.cyan, theme);
     this.addMetric(section, 2, 1, '×', 'LIVE FEEDBACK', 'Every supported property updates immediately.', theme.violet, theme);
     this.addMetric(section, 3, 100, '%', 'CONTROL RENDERED', 'The demo surface and Inspector share one GUI tree.', theme.success, theme);
   }
@@ -200,7 +200,7 @@ export class OverviewPage extends Control {
   }
 
   private buildCoverage (content: Control, theme: ThemeTokens): void {
-    const section = this.createSection(content, 1458, 348, theme);
+    const section = this.createSection(content, 1458, 464, theme);
 
     this.addSectionHeading(
       section,
@@ -215,7 +215,7 @@ export class OverviewPage extends Control {
     );
     this.addCoverageRow(
       section, 154, 'INTERACTION',
-      'Button · Checkbox · CheckButton · focus · pointer routing',
+      'Button · Checkbox · CheckButton · MenuButton · OptionButton',
       'Selection and input state', theme.rose, theme,
     );
     this.addCoverageRow(
@@ -225,13 +225,23 @@ export class OverviewPage extends Control {
     );
     this.addCoverageRow(
       section, 266, 'LAYOUT',
-      'Box · Grid · Margin · Center · AspectRatio · ScrollContainer',
+      'Box · Grid · Margin · PanelContainer · Separator · ScrollContainer',
       'Sizing, arrangement and clipping', theme.violet, theme,
+    );
+    this.addCoverageRow(
+      section, 322, 'EDITING',
+      'LineEdit · TextEdit · ColorPicker · ColorPickerButton',
+      'Text and color authoring', theme.success, theme,
+    );
+    this.addCoverageRow(
+      section, 378, 'OVERLAYS',
+      'PopupPanel · PopupMenu · focus restore · edge avoidance',
+      'Transient interface layers', theme.warning, theme,
     );
   }
 
   private buildCallout (content: Control, theme: ThemeTokens, ctx: AppContext): void {
-    const section = this.createSection(content, 1830, 218, theme);
+    const section = this.createSection(content, 1946, 218, theme);
     const backdrop = new CalloutBackdrop(this.engine, theme);
 
     section.clipContents = true;

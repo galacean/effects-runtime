@@ -22,6 +22,7 @@ const CONTENT_WIDTH = 166;
 
 export class ControlCatalog extends Panel {
   private readonly buttons = new Map<InspectorControlType, Button>();
+  private selectedType: InspectorControlType;
 
   constructor (
     engine: Engine,
@@ -30,6 +31,7 @@ export class ControlCatalog extends Panel {
     selectControl: (type: InspectorControlType) => void,
   ) {
     super(engine);
+    this.selectedType = selected;
     setFlatStyleOverride(this, 'panel', { background: tokens.panelBg, border: tokens.borderSubtle });
     this.clipContents = true;
     this.addLabel('CONTROLS', 12, 10, 150, 16, 9, tokens.textTertiary, 700);
@@ -87,7 +89,8 @@ export class ControlCatalog extends Panel {
         button.setRect({ position: new math.Vector2(4, y), size: new math.Vector2(158, 30) });
         button.parent = content;
         button.on('toggled', pressed => {
-          if (pressed) {
+          if (pressed && this.selectedType !== option.type) {
+            this.selectedType = option.type;
             selectControl(option.type);
           }
         });
@@ -101,6 +104,7 @@ export class ControlCatalog extends Panel {
   }
 
   setSelected (type: InspectorControlType): void {
+    this.selectedType = type;
     for (const [buttonType, button] of this.buttons) {
       button.setPressedNoSignal(buttonType === type);
       button.setThemeColorOverride(

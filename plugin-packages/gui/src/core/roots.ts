@@ -17,11 +17,13 @@ import type {
 import {
   CursorShape,
   FocusMode,
+  MouseBehaviorRecursive,
   MouseFilter,
 } from './enums';
 import type { CursorStyle } from './enums';
 import type { Container } from './control';
 import { Control, RootControl } from './control';
+import type { Theme } from './theme';
 
 type Matrix3 = math.Matrix3;
 type Vector2 = math.Vector2;
@@ -83,6 +85,29 @@ type GUIState = {
   mouseOverUpdatePending: boolean,
 };
 
+type PopupState = {
+  control: Control,
+  restoreFocus: Control | null,
+  originalTheme: Theme | null,
+};
+
+class PopupLayer extends Control {
+  closeTop?: () => void;
+
+  constructor (engine: Engine) {
+    super(engine);
+    this.mouseFilter = MouseFilter.Stop;
+    this.visible = false;
+  }
+
+  override onMouseDown (event: InputEventMouseButton): void {
+    if (event.buttonIndex === MouseButton.Left || event.buttonIndex === MouseButton.Right) {
+      this.closeTop?.();
+      event.accept();
+    }
+  }
+}
+
 /** CanvasLayer-like boundary for a single UICanvas GUI tree. */
 export class CanvasRootControl extends Control {
   readonly canvas: UICanvas;
@@ -142,9 +167,12 @@ export class CanvasContainer extends Control {
 /** Engine window GUI root. Routes events across all UICanvas roots. */
 export class WindowRootControl extends RootControl {
   readonly canvases: CanvasContainer;
+  private readonly popupLayer: PopupLayer;
+  private readonly popupStack: PopupState[] = [];
   dragThreshold = 10;
   private lastInput: InputEvent | null = null;
   private readonly dirtyContainers = new Set<Container>();
+  private readonly dirtyMeasurements = new Set<Control>();
   private readonly gui: GUIState = {
     mouseFocus: null,
     mouseClickGrabber: null,
@@ -171,6 +199,15 @@ export class WindowRootControl extends RootControl {
     this.setSize(engine.canvas.width, engine.canvas.height);
     this.canvases = new CanvasContainer(engine);
     this.canvases.parent = this;
+    this.popupLayer = new PopupLayer(engine);
+    this.popupLayer.setAnchorMax(1, 1);
+    this.popupLayer.setOffsetMax(0, 0);
+    this.popupLayer.closeTop = () => {
+      const top = this.popupStack[this.popupStack.length - 1];
+
+      if (top) {this.closePopupControl(top.control);}
+    };
+    this.popupLayer.parent = this;
   }
 
   pushInput (event: InputEvent): void {
@@ -278,22 +315,70 @@ export class WindowRootControl extends RootControl {
     if (!this.isControlUsable(control)) {
       this.dropControlState(control);
     }
-    this.requestMouseOverUpdate();
+    this.updateMouseOverHierarchy();
   }
 
   override controlRemoved (control: Control): void {
     this.dropControlState(control);
     this.cleanupInternalState();
-    this.requestMouseOverUpdate();
+    this.updateMouseOverHierarchy();
   }
 
   override controlTreeChanged (): void {
-    this.requestMouseOverUpdate();
+    this.updateMouseOverHierarchy();
+  }
+
+  override popupControl (control: Control, source: Control | null, position: Vector2): void {
+    this.closePopupControl(control);
+    const originalTheme = control.theme;
+
+    if (!originalTheme) {control.theme = source?.getInheritedTheme() ?? null;}
+    const desired = control.getBoundDesiredSize();
+    const width = Math.max(control.width, desired.x);
+    const height = Math.max(control.height, desired.y);
+
+    control.setSize(width, height);
+    control.setPosition(
+      Math.max(0, Math.min(position.x, this.width - width)),
+      Math.max(0, Math.min(position.y, this.height - height)),
+    );
+    control.parent = this.popupLayer;
+    control.visible = true;
+    this.popupLayer.visible = true;
+    this.popupStack.push({ control, restoreFocus: source ?? this.guiGetFocusOwner(), originalTheme });
+    control.onPopupOpened();
+    control.grabFocus();
+  }
+
+  override closePopupControl (control: Control): void {
+    const index = this.popupStack.findIndex(state => state.control === control);
+
+    if (index === -1) {return;}
+    const removed = this.popupStack.splice(index);
+
+    for (let removedIndex = removed.length - 1; removedIndex >= 0; removedIndex--) {
+      const state = removed[removedIndex];
+
+      state.control.visible = false;
+      state.control.parent = null;
+      state.control.theme = state.originalTheme;
+      state.control.onPopupClosed();
+    }
+    this.popupLayer.visible = this.popupStack.length > 0;
+    const restore = removed[0].restoreFocus;
+
+    if (restore && !restore.isDisposed && restore.root === this) {restore.grabFocus();}
   }
 
   override queueLayout (container: Container): void {
     if (!container.isDisposed) {
       this.dirtyContainers.add(container);
+    }
+  }
+
+  override queueMeasurementChange (control: Control): void {
+    if (!control.isDisposed) {
+      this.dirtyMeasurements.add(control);
     }
   }
 
@@ -351,6 +436,7 @@ export class WindowRootControl extends RootControl {
     for (const root of this.canvases.children as CanvasRootControl[]) {
       root.setSize(width, height);
     }
+    this.popupLayer.setSize(width, height);
   }
 
   render (): void {
@@ -366,7 +452,7 @@ export class WindowRootControl extends RootControl {
   override update (deltaTime: number): void {
     if (this.gui.mouseOverUpdatePending) {
       this.gui.mouseOverUpdatePending = false;
-      this.updateMouseOver(this.gui.lastMousePosition);
+      this.updateMouseOverHierarchy();
     }
     super.update(deltaTime);
     this.flushLayout();
@@ -375,16 +461,35 @@ export class WindowRootControl extends RootControl {
   override dispose (): void {
     this.cancelPointerInput();
     this.dirtyContainers.clear();
+    this.dirtyMeasurements.clear();
+    for (const state of this.popupStack.splice(0)) {
+      state.control.parent = null;
+      state.control.theme = state.originalTheme;
+      state.control.onPopupClosed();
+    }
     super.dispose();
   }
 
   private flushLayout (): void {
     let round = 0;
 
-    while (this.dirtyContainers.size > 0) {
+    while (this.dirtyMeasurements.size > 0 || this.dirtyContainers.size > 0) {
       if (round++ >= 32) {
+        this.dirtyMeasurements.clear();
         this.dirtyContainers.clear();
         throw new Error('GUI layout did not converge after 32 rounds.');
+      }
+      if (this.dirtyMeasurements.size > 0) {
+        const measurements = Array.from(this.dirtyMeasurements);
+
+        this.dirtyMeasurements.clear();
+        measurements.sort((left, right) => this.getControlDepth(right) - this.getControlDepth(left));
+        for (const control of measurements) {
+          if (control.root === this && !control.isDisposed) {
+            control.invokeMeasurementChanges();
+          }
+        }
+        continue;
       }
       const batch = Array.from(this.dirtyContainers);
 
@@ -415,15 +520,16 @@ export class WindowRootControl extends RootControl {
       const target = this.guiGetFocusOwner();
 
       if (target) {
-        this.callControlInput(target, event);
+        this.callGUIInput(target, event);
       }
     } else if (event instanceof InputEventMouse) {
       this.gui.lastMousePosition.copyFrom(event.globalPosition);
-      this.updateMouseOver(event.globalPosition);
+      const target = this.updateMouseOver(event.globalPosition);
+
       if (event instanceof InputEventMouseButton) {
-        this.processMouseButton(event);
+        this.processMouseButton(event, target);
       } else if (event instanceof InputEventMouseMotion) {
-        this.processMouseMotion(event);
+        this.processMouseMotion(event, target);
       }
     } else if (event instanceof InputEventScreenTouch) {
       this.processScreenTouch(event);
@@ -432,12 +538,10 @@ export class WindowRootControl extends RootControl {
     }
   }
 
-  private processMouseButton (event: InputEventMouseButton): void {
+  private processMouseButton (event: InputEventMouseButton, mouseOver: Control | null): void {
     if (isWheelButton(event.buttonIndex)) {
-      const target = this.findInputControl(event.globalPosition);
-
-      if (target) {
-        this.callGUIInput(target, event);
+      if (mouseOver) {
+        this.callGUIInput(mouseOver, event);
       }
 
       return;
@@ -447,7 +551,7 @@ export class WindowRootControl extends RootControl {
     if (event.isPressed()) {
       const target = this.gui.mouseFocusMask !== 0
         ? this.gui.mouseFocus
-        : this.findInputControl(event.globalPosition);
+        : mouseOver;
 
       this.gui.mouseFocus = target;
       if (!target) {
@@ -480,7 +584,7 @@ export class WindowRootControl extends RootControl {
     }
   }
 
-  private processMouseMotion (event: InputEventMouseMotion): void {
+  private processMouseMotion (event: InputEventMouseMotion, mouseOver: Control | null): void {
     if (!this.gui.dragging && !this.gui.dragAttempted && this.gui.mouseFocus &&
       (this.gui.mouseFocusMask & MouseButtonMask.Left) !== 0) {
       this.gui.dragAccum.add(event.relative);
@@ -493,13 +597,13 @@ export class WindowRootControl extends RootControl {
     }
     const target = this.isControlUsable(this.gui.mouseFocus)
       ? this.gui.mouseFocus
-      : this.findInputControl(event.globalPosition);
+      : mouseOver;
 
     if (target) {
       this.callGUIInput(target, event);
     }
     if (this.gui.dragging) {
-      this.gui.dragMouseOver = this.findDropTarget(this.findInputControl(event.globalPosition), event.globalPosition);
+      this.gui.dragMouseOver = this.findDropTarget(mouseOver, event.globalPosition);
     }
     this.updateCursor(target, event.globalPosition);
   }
@@ -588,28 +692,34 @@ export class WindowRootControl extends RootControl {
   }
 
   private findInputControl (position: Vector2): Control | null {
-    this.canvases.sortCanvases();
-    for (let index = this.canvases.children.length - 1; index >= 0; index--) {
-      const root = this.canvases.children[index] as CanvasRootControl;
-
-      if (!root.canvas.isVisible || root.inputDisabled) {
-        continue;
-      }
-      const target = this.findControlAtPosition(root, position, true);
-
-      if (target) {
-        return target;
-      }
+    if (this.popupLayer.visible) {
+      return this.findControlAtPosition(this.popupLayer, position) ?? this.popupLayer;
     }
+    this.canvases.sortCanvases();
 
-    return null;
+    return this.findControlAtPosition(this.canvases, position, true);
   }
 
-  private findControlAtPosition (container: Control, position: Vector2, skipSelf = false): Control | null {
-    if (!container.visibleInHierarchy || container.isDisposed) {
+  private findControlAtPosition (
+    container: Control,
+    positionInParent: Vector2,
+    skipSelf = false,
+    parentEnabled = true,
+    parentMouseEnabled = true,
+  ): Control | null {
+    if (!container.visible || container.isDisposed ||
+      (container instanceof CanvasRootControl && (!container.canvas.isVisible || container.inputDisabled))) {
       return null;
     }
-    const localPosition = this.toLocal(container, position);
+    const localPosition = this.toControlLocal(container, positionInParent);
+
+    if (!localPosition) {
+      return null;
+    }
+    const enabled = parentEnabled && container.enabled;
+    const mouseEnabled = container.mouseBehaviorRecursive === MouseBehaviorRecursive.Inherited
+      ? parentMouseEnabled
+      : container.mouseBehaviorRecursive === MouseBehaviorRecursive.Enabled;
 
     if (container.clipContents && !container.hasPoint(localPosition)) {
       return null;
@@ -617,40 +727,85 @@ export class WindowRootControl extends RootControl {
     for (let index = container.children.length - 1; index >= 0; index--) {
       const child = container.children[index];
 
-      if (!child.visibleInHierarchy || child.isDisposed) {
-        continue;
-      }
       if (!container.intersectsChildContent(child, localPosition)) {
         continue;
       }
-      const found = this.findControlAtPosition(child, position);
+      const found = this.findControlAtPosition(child, localPosition, false, enabled, mouseEnabled);
 
       if (found) {
         return found;
       }
     }
-    if (!skipSelf && container.getEffectiveMouseFilter() !== MouseFilter.Ignore && container.hasPoint(localPosition)) {
+    if (!skipSelf && enabled && mouseEnabled && container.mouseFilter !== MouseFilter.Ignore &&
+      container.hasPoint(localPosition)) {
       return container;
     }
 
     return null;
   }
 
-  private updateMouseOver (position: Vector2): void {
+  private toControlLocal (control: Control, positionInParent: Vector2): Vector2 | null {
+    const elements = control.getTransform2D().elements;
+    const determinant = elements[0] * elements[4] - elements[1] * elements[3];
+
+    if (Math.abs(determinant) < 1e-12) {
+      return null;
+    }
+    const x = positionInParent.x - elements[6];
+    const y = positionInParent.y - elements[7];
+
+    return new Vector2(
+      (elements[4] * x - elements[3] * y) / determinant,
+      (elements[0] * y - elements[1] * x) / determinant,
+    );
+  }
+
+  private updateMouseOver (position: Vector2): Control | null {
+    if (this.gui.sendingMouseEnterExit) {
+      this.gui.mouseOverUpdatePending = true;
+
+      return this.gui.mouseOver;
+    }
+    this.gui.mouseOverUpdatePending = false;
+    const target = this.findInputControl(position);
+    const next = this.buildHoverHierarchy(target);
+
+    this.applyMouseOver(target, next, position);
+
+    return this.isControlUsable(target) ? target : null;
+  }
+
+  private updateMouseOverHierarchy (): void {
+    const current = this.gui.mouseOver;
+
+    if (!current || this.gui.mouseOverHierarchy.length === 0) {
+      return;
+    }
     if (this.gui.sendingMouseEnterExit) {
       this.gui.mouseOverUpdatePending = true;
 
       return;
     }
-    this.gui.mouseOverUpdatePending = false;
-    const target = this.findInputControl(position);
-    const next = this.buildHoverHierarchy(target);
+    if (!this.isControlUsable(current)) {
+      this.dropMouseOver();
+
+      return;
+    }
+    const next = this.buildHoverHierarchy(current);
+    const target = current.getEffectiveMouseFilter() === MouseFilter.Ignore ? null : current;
+
+    this.applyMouseOver(target, next, this.gui.lastMousePosition);
+  }
+
+  private applyMouseOver (target: Control | null, next: Control[], position: Vector2): void {
     const previous = this.gui.mouseOverHierarchy;
     let common = 0;
 
     while (common < previous.length && common < next.length && previous[common] === next[common]) {
       common++;
     }
+    this.gui.mouseOver = target;
+    this.gui.mouseOverHierarchy = next;
     this.gui.sendingMouseEnterExit = true;
     for (let index = previous.length - 1; index >= common; index--) {
       if (!previous[index].isDisposed) {
@@ -661,8 +816,6 @@ export class WindowRootControl extends RootControl {
       next[index].onMouseEnter(this.toLocal(next[index], position));
     }
     this.gui.sendingMouseEnterExit = false;
-    this.gui.mouseOver = target;
-    this.gui.mouseOverHierarchy = next;
   }
 
   private buildHoverHierarchy (target: Control | null): Control[] {
@@ -670,10 +823,12 @@ export class WindowRootControl extends RootControl {
     let current = target;
 
     while (current && current !== this) {
-      if (current.getEffectiveMouseFilter() !== MouseFilter.Ignore) {
+      const filter = current.getEffectiveMouseFilter();
+
+      if (filter !== MouseFilter.Ignore) {
         hierarchy.push(current);
       }
-      if (current.getEffectiveMouseFilter() === MouseFilter.Stop) {
+      if (filter === MouseFilter.Stop) {
         break;
       }
       current = current.parent;
@@ -803,6 +958,11 @@ export class WindowRootControl extends RootControl {
   }
 
   private dropMouseOver (): void {
+    if (this.gui.sendingMouseEnterExit) {
+      this.gui.mouseOverUpdatePending = true;
+
+      return;
+    }
     for (let index = this.gui.mouseOverHierarchy.length - 1; index >= 0; index--) {
       const control = this.gui.mouseOverHierarchy[index];
 
@@ -834,12 +994,6 @@ export class WindowRootControl extends RootControl {
       if (this.controlBelongsToSubtree(target, control)) {
         this.gui.touchFocus.delete(index);
       }
-    }
-  }
-
-  private requestMouseOverUpdate (): void {
-    if (Number.isFinite(this.gui.lastMousePosition.x)) {
-      this.updateMouseOver(this.gui.lastMousePosition);
     }
   }
 

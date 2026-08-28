@@ -15,6 +15,7 @@ import {
 import type { AppContext } from './context';
 import { attachAnchoredRect, attachFullRect } from './layout';
 import { ButtonsPage } from './pages/buttons';
+import { EditorsPage } from './pages/editors';
 import { InputPage } from './pages/input';
 import { InspectorPage } from './pages/inspector';
 import { LayoutPage } from './pages/layout';
@@ -41,6 +42,7 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
   { id: 'inspector', title: 'Inspector 属性面板', shortTitle: 'Inspector', subtitle: 'Edit current Control properties with consistent names, options and ranges.', group: 'Getting started' },
   { id: 'buttons', title: 'Buttons 按钮', shortTitle: 'Buttons', subtitle: 'Button states, groups, icons, sizing and action modes.', group: 'Foundation' },
   { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'Checkbox, radio groups and CheckButton switches.', group: 'Foundation' },
+  { id: 'editors', title: 'Editors & Popups 编辑与弹层', shortTitle: 'Editors', subtitle: 'Text editing, menus, popup layers, color picking and layout decoration.', group: 'Foundation' },
   { id: 'sliders', title: 'Sliders 滑杆', shortTitle: 'Sliders', subtitle: 'Shared ranges, progress feedback, fill modes and RGB values.', group: 'Foundation' },
   { id: 'display', title: 'Display 展示', shortTitle: 'Display', subtitle: 'Label layout, overflow, textures and NinePatchRect sizing.', group: 'Foundation' },
   { id: 'layout', title: 'Containers 布局', shortTitle: 'Containers', subtitle: 'Box, grid, margin and aspect-ratio container behavior.', group: 'Layout & input' },
@@ -92,6 +94,7 @@ export class ControlApp extends Control {
       ['inspector', new InspectorPage(engine, ctx)],
       ['buttons', new ButtonsPage(engine, ctx)],
       ['selection', new SelectionPage(engine, ctx)],
+      ['editors', new EditorsPage(engine, ctx)],
       ['sliders', new SlidersPage(engine, ctx)],
       ['display', new TextPage(engine, ctx)],
       ['layout', new LayoutPage(engine, ctx)],
@@ -151,17 +154,18 @@ export class ControlApp extends Control {
       inspector: 120,
       buttons: 188,
       selection: 228,
-      sliders: 268,
-      display: 308,
-      layout: 376,
-      scroll: 416,
-      input: 456,
-      config: 526,
+      editors: 268,
+      sliders: 308,
+      display: 348,
+      layout: 416,
+      scroll: 456,
+      input: 496,
+      config: 566,
     };
 
     this.createHeaderLabel(this.engine, sidebar, 'FOUNDATION', 20, 162, 180, 18, 9, theme.textTertiary, 650);
-    this.createHeaderLabel(this.engine, sidebar, 'LAYOUT & INPUT', 20, 350, 180, 18, 9, theme.textTertiary, 650);
-    this.createHeaderLabel(this.engine, sidebar, 'APPEARANCE', 20, 500, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'LAYOUT & INPUT', 20, 390, 180, 18, 9, theme.textTertiary, 650);
+    this.createHeaderLabel(this.engine, sidebar, 'APPEARANCE', 20, 540, 180, 18, 9, theme.textTertiary, 650);
     for (const definition of PAGE_DEFINITIONS) {
       const button = createButton(this.engine, definition.shortTitle, undefined, 'ghost');
 

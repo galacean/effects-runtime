@@ -8,28 +8,39 @@ import {
   CenterContainer,
   Checkbox,
   CheckButton,
+  ColorPicker,
+  ColorPickerButton,
   ColorRect,
   Control,
   GridContainer,
   HBoxContainer,
+  HSeparator,
   HScrollBar,
   HSlider,
   HorizontalAlignment,
   Label,
+  LineEdit,
   MarginContainer,
+  MenuButton,
   NinePatchRect,
+  OptionButton,
   Panel,
+  PanelContainer,
+  PopupMenu,
+  PopupPanel,
   ProgressBar,
   ScrollContainer,
   SizeFlags,
   Side,
   TextOverflow,
+  TextEdit,
   TextureRect,
   TextureStretchMode,
   VBoxContainer,
   VScrollBar,
   VSlider,
   VerticalAlignment,
+  VSeparator,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { ControlCatalog } from '../inspector/catalog';
@@ -48,7 +59,9 @@ export class InspectorPage extends Control {
   private readonly classDescription: Label;
   private readonly catalog: ControlCatalog;
   private readonly inspector: ControlInspectorPanel;
+  private readonly stage: Panel;
   private target: Control | null = null;
+  private readonly resizeInspector = () => this.updateInspectorWidth();
 
   constructor (engine: Engine, private readonly ctx: AppContext) {
     super(engine);
@@ -59,6 +72,7 @@ export class InspectorPage extends Control {
     const grid = new PreviewGrid(engine);
 
     attachAnchoredRect(stage, this, 0, 0, 1, 1, 196, 0, 352, 0);
+    this.stage = stage;
     setFlatStyleOverride(stage, 'panel', { background: theme.panelBg, border: theme.borderSubtle });
     stage.clipContents = true;
     this.className = label(engine, '', 22, 18, 280, 28, stage, {
@@ -110,17 +124,30 @@ export class InspectorPage extends Control {
       engine,
       ctx.state.inspector.controlType,
       theme,
-      () => this.selectControl(ctx.state.inspector.controlType),
+      () => this.selectControl(ctx.state.inspector.controlType, true),
     );
     attachAnchoredRect(this.inspector, this, 1, 0, 1, 1, -340, 0, 0, 0);
+    this.on('sizeChanged', this.resizeInspector);
+    this.updateInspectorWidth();
     this.selectControl(ctx.state.inspector.controlType);
   }
 
   override onDestroy (): void {
+    this.off('sizeChanged', this.resizeInspector);
     this.texture.dispose();
   }
 
-  private selectControl (type: InspectorControlType): void {
+  private updateInspectorWidth (): void {
+    const width = this.width >= 1200 ? 420 : this.width <= 850 ? 320 : 340;
+
+    this.inspector.setOffsetMin(-width, 0);
+    this.stage.setOffsetMax(-(width + 12), 0);
+  }
+
+  private selectControl (type: InspectorControlType, force = false): void {
+    if (!force && this.target && type === this.ctx.state.inspector.controlType) {
+      return;
+    }
     this.ctx.state.inspector.controlType = type;
     this.catalog.setSelected(type);
     this.target?.dispose();
@@ -135,6 +162,18 @@ export class InspectorPage extends Control {
     if (this.target instanceof HSlider || this.target instanceof VSlider
       || this.target instanceof ProgressBar || this.target instanceof HScrollBar || this.target instanceof VScrollBar) {
       (this.target as Range).on('valueChanged', () => this.inspector.refresh());
+    }
+    if (this.target instanceof LineEdit || this.target instanceof TextEdit) {
+      this.target.on('textChanged', () => this.inspector.refresh());
+    }
+    if (this.target instanceof ColorPicker) {
+      this.target.on('colorChanged', () => this.inspector.refresh());
+    }
+    if (this.target instanceof ColorPickerButton) {
+      this.target.on('colorChanged', () => this.inspector.refresh());
+    }
+    if (this.target instanceof OptionButton) {
+      this.target.onOption('itemSelected', () => this.inspector.refresh());
     }
   }
 }
@@ -200,6 +239,80 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
 
       return control;
     }
+    case 'MenuButton': {
+      const control = new MenuButton(engine, 'Actions');
+
+      control.popupMenu.addItem('Duplicate', 'duplicate');
+      control.popupMenu.addItem('Rename', 'rename');
+      control.popupMenu.addSeparator();
+      control.popupMenu.addItem('Archive', 'archive');
+      control.popupMenu.setItemDisabled(3, true);
+
+      return control;
+    }
+    case 'OptionButton': {
+      const control = new OptionButton(engine);
+
+      control.addItem('Draft', 'draft');
+      control.addItem('In Review', 'review');
+      control.addItem('Published', 'published');
+      control.select(1, false);
+
+      return control;
+    }
+    case 'ColorPickerButton': {
+      const control = new ColorPickerButton(engine);
+
+      control.text = 'Accent color';
+      control.color = getTheme().accent;
+
+      return control;
+    }
+    case 'LineEdit': {
+      const control = new LineEdit(engine, 'Editable text');
+
+      control.placeholderText = 'Type here…';
+
+      return control;
+    }
+    case 'TextEdit': {
+      const control = new TextEdit(engine, 'Multiline text editor\nDrag to select · scroll for more');
+
+      control.placeholderText = 'Write something…';
+
+      return control;
+    }
+    case 'ColorPicker': {
+      const control = new ColorPicker(engine);
+
+      control.color = getTheme().accent;
+
+      return control;
+    }
+    case 'PopupPanel': {
+      const control = new PopupPanel(engine);
+      const content = new Label(engine, 'PopupPanel\ntransient content surface');
+
+      control.visible = true;
+      content.horizontalAlignment = HorizontalAlignment.Center;
+      content.verticalAlignment = VerticalAlignment.Center;
+      content.parent = control;
+
+      return control;
+    }
+    case 'PopupMenu': {
+      const control = new PopupMenu(engine);
+
+      control.addItem('Checked item', 'checked');
+      control.setItemChecked(0, true);
+      control.addItem('Regular item', 'regular');
+      control.addSeparator('Section');
+      control.addItem('Disabled item', 'disabled');
+      control.setItemDisabled(3, true);
+      control.visible = true;
+
+      return control;
+    }
     case 'Label': {
       const control = new Label(engine, 'Control inspector\nLive properties · 中文预览');
 
@@ -234,6 +347,20 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
     }
     case 'Panel':
       return new Panel(engine);
+    case 'PanelContainer': {
+      const control = new PanelContainer(engine);
+      const content = new Label(engine, 'Content fitted inside\nStyleBox margins');
+
+      content.horizontalAlignment = HorizontalAlignment.Center;
+      content.verticalAlignment = VerticalAlignment.Center;
+      content.parent = control;
+
+      return control;
+    }
+    case 'HSeparator':
+      return new HSeparator(engine);
+    case 'VSeparator':
+      return new VSeparator(engine);
     case 'HSlider': {
       const control = new HSlider(engine);
 
@@ -365,9 +492,30 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
 function attachPreviewControl (control: Control, parent: Control, type: InspectorControlType): void {
   const vertical = type === 'VSlider' || type === 'VScrollBar';
   const compact = type === 'Button' || type === 'Checkbox' || type === 'CheckButton'
+    || type === 'MenuButton' || type === 'OptionButton' || type === 'ColorPickerButton' || type === 'LineEdit'
     || type === 'HSlider' || type === 'ProgressBar' || type === 'HScrollBar';
-  const width = vertical ? 44 : compact ? 236 : 280;
-  const height = vertical ? 236 : compact ? type === 'Button' ? 64 : type === 'ProgressBar' ? 34 : 42 : 210;
+  let width = vertical ? 44 : compact ? 236 : 280;
+  let height = vertical ? 236 : compact ? type === 'Button' ? 64 : type === 'ProgressBar' ? 34 : 42 : 210;
+
+  if (type === 'ColorPicker') {
+    width = 280;
+    height = 350;
+  } else if (type === 'TextEdit') {
+    width = 320;
+    height = 180;
+  } else if (type === 'PopupMenu') {
+    width = 240;
+    height = 154;
+  } else if (type === 'PopupPanel' || type === 'PanelContainer') {
+    width = 280;
+    height = 160;
+  } else if (type === 'HSeparator') {
+    width = 280;
+    height = 32;
+  } else if (type === 'VSeparator') {
+    width = 32;
+    height = 236;
+  }
 
   control.parent = parent;
   control.setAnchorMin(0.5, 0.5);

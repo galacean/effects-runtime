@@ -179,10 +179,12 @@ export class StyleBoxFlat extends StyleBox {
   private backgroundColor = Color.CLEAR.clone();
   private borderColor = Color.CLEAR.clone();
   private borderWidths = cloneMargins(ZERO_MARGINS);
+  private cornerRadii = cloneMargins(ZERO_MARGINS);
 
   getBackgroundColor (): Color { return this.backgroundColor.clone(); }
   getBorderColor (): Color { return this.borderColor.clone(); }
   getBorderWidths (): StyleBoxMargins { return cloneMargins(this.borderWidths); }
+  getCornerRadii (): StyleBoxMargins { return cloneMargins(this.cornerRadii); }
 
   setBackgroundColor (value: Color): void {
     this.assertMutable();
@@ -215,8 +217,28 @@ export class StyleBoxFlat extends StyleBox {
     }
   }
 
+  setCornerRadii (topLeft: number, topRight: number, bottomRight: number, bottomLeft: number): void {
+    this.assertMutable();
+    const next = {
+      left: nonNegative('StyleBoxFlat top-left corner radius', topLeft),
+      top: nonNegative('StyleBoxFlat top-right corner radius', topRight),
+      right: nonNegative('StyleBoxFlat bottom-right corner radius', bottomRight),
+      bottom: nonNegative('StyleBoxFlat bottom-left corner radius', bottomLeft),
+    };
+
+    if (Object.keys(next).some(key => next[key as keyof StyleBoxMargins] !== this.cornerRadii[key as keyof StyleBoxMargins])) {
+      this.cornerRadii = next;
+      this.notifyChanged();
+    }
+  }
+
   override draw (graphics: Graphics, rect: StyleBoxRect): void {
     if (rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
+    if (this.hasRoundedCorners()) {
+      this.drawRounded(graphics, rect);
+
       return;
     }
     graphics.fillRectangle(rect.x, rect.y, rect.width, rect.height, this.backgroundColor);
@@ -234,6 +256,87 @@ export class StyleBoxFlat extends StyleBox {
 
       graphics.fillRectangle(rect.x + rect.width - width, rect.y, width, rect.height, this.borderColor);
     }
+  }
+
+  private hasRoundedCorners (): boolean {
+    const radii = this.cornerRadii;
+
+    return radii.left > 0 || radii.top > 0 || radii.right > 0 || radii.bottom > 0;
+  }
+
+  private drawRounded (graphics: Graphics, rect: StyleBoxRect): void {
+    const border = this.borderWidths;
+    const radii = normalizeCornerRadii(this.cornerRadii, rect.width, rect.height);
+    const hasBorder = border.left > 0 || border.top > 0 || border.right > 0 || border.bottom > 0;
+
+    drawRoundedFill(graphics, rect, radii, hasBorder ? this.borderColor : this.backgroundColor);
+    if (!hasBorder) {
+      return;
+    }
+    const inner = {
+      x: rect.x + border.left,
+      y: rect.y + border.top,
+      width: Math.max(0, rect.width - border.left - border.right),
+      height: Math.max(0, rect.height - border.top - border.bottom),
+    };
+
+    if (inner.width <= 0 || inner.height <= 0) {
+      return;
+    }
+    drawRoundedFill(graphics, inner, {
+      left: Math.max(0, radii.left - Math.max(border.left, border.top)),
+      top: Math.max(0, radii.top - Math.max(border.right, border.top)),
+      right: Math.max(0, radii.right - Math.max(border.right, border.bottom)),
+      bottom: Math.max(0, radii.bottom - Math.max(border.left, border.bottom)),
+    }, this.backgroundColor);
+  }
+}
+
+function normalizeCornerRadii (radii: StyleBoxMargins, width: number, height: number): StyleBoxMargins {
+  const limit = Math.max(0, Math.min(width, height) * 0.5);
+
+  return {
+    left: Math.min(radii.left, limit),
+    top: Math.min(radii.top, limit),
+    right: Math.min(radii.right, limit),
+    bottom: Math.min(radii.bottom, limit),
+  };
+}
+
+function drawRoundedFill (
+  graphics: Graphics,
+  rect: StyleBoxRect,
+  radii: StyleBoxMargins,
+  color: Color,
+): void {
+  const points: Array<[number, number]> = [];
+  const segments = 5;
+  const corners: Array<[number, number, number, number]> = [
+    [rect.x + radii.left, rect.y + radii.left, radii.left, Math.PI],
+    [rect.x + rect.width - radii.top, rect.y + radii.top, radii.top, Math.PI * 1.5],
+    [rect.x + rect.width - radii.right, rect.y + rect.height - radii.right, radii.right, 0],
+    [rect.x + radii.bottom, rect.y + rect.height - radii.bottom, radii.bottom, Math.PI * 0.5],
+  ];
+
+  for (const [cx, cy, radius, start] of corners) {
+    if (radius === 0) {
+      points.push([cx, cy]);
+      continue;
+    }
+    for (let index = 0; index <= segments; index++) {
+      const angle = start + index / segments * Math.PI * 0.5;
+
+      points.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]);
+    }
+  }
+  const centerX = rect.x + rect.width * 0.5;
+  const centerY = rect.y + rect.height * 0.5;
+
+  for (let index = 0; index < points.length; index++) {
+    const current = points[index];
+    const next = points[(index + 1) % points.length];
+
+    graphics.fillTriangle(centerX, centerY, current[0], current[1], next[0], next[1], color);
   }
 }
 
@@ -703,6 +806,9 @@ export function styleBoxFromData (engine: Engine, data: StyleBoxData): StyleBox 
     const border = marginsFromData(data.borderWidths);
 
     flat.setBorderWidths(border.left, border.top, border.right, border.bottom);
+    const corners = marginsFromData(data.cornerRadii);
+
+    flat.setCornerRadii(corners.left, corners.top, corners.right, corners.bottom);
     styleBox = flat;
   } else if (data.type === 'texture') {
     const texture = new StyleBoxTexture();

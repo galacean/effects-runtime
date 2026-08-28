@@ -17,16 +17,21 @@ import type {
   BoxContainer,
   Button,
   CenterContainer,
+  ColorPicker,
+  ColorPickerButton,
   ColorRect,
   GridContainer,
   Label,
+  LineEdit,
   MarginContainer,
   NinePatchRect,
+  OptionButton,
   ProgressBar,
   Range,
   ScrollBar,
   ScrollContainer,
   Slider,
+  TextInput,
   TextureRect,
 } from '@galacean/effects-plugin-gui';
 import {
@@ -55,6 +60,13 @@ export type InspectorOption = {
 type PropertyBase = {
   group: string,
   name: string,
+  path?: string,
+  hint?: string,
+  readOnly?: boolean,
+  themeOverride?: {
+    type: 'color' | 'constant' | 'fontSize',
+    name: string,
+  },
 };
 
 export type InspectorProperty = PropertyBase & (
@@ -126,6 +138,14 @@ export const INSPECTOR_CONTROL_OPTIONS: InspectorControlOption[] = [
   { type: 'Button', title: 'Button', group: 'Buttons', description: 'Text button with BaseButton interaction behavior.' },
   { type: 'Checkbox', title: 'Checkbox', group: 'Buttons', description: 'Checkbox using the Button and BaseButton property set.' },
   { type: 'CheckButton', title: 'CheckButton', group: 'Buttons', description: 'Switch-style toggle using the Button property set.' },
+  { type: 'MenuButton', title: 'MenuButton', group: 'Buttons', description: 'Button that opens a PopupMenu below itself.' },
+  { type: 'OptionButton', title: 'OptionButton', group: 'Buttons', description: 'Single-choice menu button with a selected item.' },
+  { type: 'ColorPickerButton', title: 'ColorPickerButton', group: 'Buttons', description: 'Button with a color swatch and popup ColorPicker.' },
+  { type: 'LineEdit', title: 'LineEdit', group: 'Text Input', description: 'Single-line text input with selection, caret, clipboard and IME.' },
+  { type: 'TextEdit', title: 'TextEdit', group: 'Text Input', description: 'Multiline text input with selection, scrolling and undo history.' },
+  { type: 'ColorPicker', title: 'ColorPicker', group: 'Editing', description: 'HSV, alpha, channel and hex color editor.' },
+  { type: 'PopupPanel', title: 'PopupPanel', group: 'Popups', description: 'Transient panel hosted by the root popup layer.' },
+  { type: 'PopupMenu', title: 'PopupMenu', group: 'Popups', description: 'Keyboard-navigable menu with checks, disabled items and separators.' },
   { type: 'Label', title: 'Label', group: 'Display', description: 'Text layout, wrapping, alignment and theme overrides.' },
   { type: 'TextureRect', title: 'TextureRect', group: 'Display', description: 'Texture sizing and stretch behavior.' },
   { type: 'NinePatchRect', title: 'NinePatchRect', group: 'Display', description: 'Nine-patch margins and per-axis repeat behavior.' },
@@ -143,6 +163,9 @@ export const INSPECTOR_CONTROL_OPTIONS: InspectorControlOption[] = [
   { type: 'CenterContainer', title: 'CenterContainer', group: 'Containers', description: 'Centers children using their desired size.' },
   { type: 'AspectRatioContainer', title: 'AspectRatioContainer', group: 'Containers', description: 'Fits children to a configured aspect ratio.' },
   { type: 'ScrollContainer', title: 'ScrollContainer', group: 'Containers', description: 'Clipped scrolling viewport with automatic scrollbars.' },
+  { type: 'PanelContainer', title: 'PanelContainer', group: 'Containers', description: 'Fits children inside the panel StyleBox content margins.' },
+  { type: 'HSeparator', title: 'HSeparator', group: 'Decoration', description: 'Horizontal themed separator with a configurable thickness.' },
+  { type: 'VSeparator', title: 'VSeparator', group: 'Decoration', description: 'Vertical themed separator with a configurable thickness.' },
 ];
 
 const customMinimumSizes = new WeakMap<Control, [number, number]>();
@@ -180,7 +203,28 @@ export function createInspectorProperties (type: InspectorControlType, texture: 
     case 'Button':
     case 'Checkbox':
     case 'CheckButton':
+    case 'MenuButton':
       properties.push(...buttonProperties(texture), ...baseButtonProperties());
+
+      break;
+    case 'OptionButton':
+      properties.push(...optionButtonProperties(), ...buttonProperties(texture), ...baseButtonProperties());
+
+      break;
+    case 'ColorPickerButton':
+      properties.push(...colorPickerButtonProperties(), ...buttonProperties(texture), ...baseButtonProperties());
+
+      break;
+    case 'LineEdit':
+      properties.push(...lineEditProperties(), ...textInputProperties());
+
+      break;
+    case 'TextEdit':
+      properties.push(...textInputProperties(true));
+
+      break;
+    case 'ColorPicker':
+      properties.push(...colorPickerProperties());
 
       break;
     case 'Label':
@@ -246,9 +290,51 @@ export function createInspectorProperties (type: InspectorControlType, texture: 
       properties.push(...scrollContainerProperties());
 
       break;
+    case 'HSeparator':
+    case 'VSeparator':
+      properties.push(...separatorProperties());
+
+      break;
   }
 
-  return [...properties, ...controlProperties()];
+  return [...properties, ...controlProperties()].map(property => ({
+    ...property,
+    path: `${property.group}/${property.name}`,
+    hint: `${property.group} / ${humanizePropertyName(property.name)}`,
+    themeOverride: getThemeOverride(type, property),
+  }));
+}
+
+function getThemeOverride (
+  controlType: InspectorControlType,
+  property: InspectorProperty,
+): PropertyBase['themeOverride'] {
+  if (!property.group.startsWith('Theme Overrides')) {return undefined;}
+  if (property.name === 'font_color') {return { type: 'color', name: 'fontColor' };}
+  if (property.name === 'font_disabled_color') {return { type: 'color', name: 'fontDisabledColor' };}
+  if (property.name === 'font_size') {return { type: 'fontSize', name: 'fontSize' };}
+  if (property.name === 'line_spacing') {return { type: 'constant', name: 'lineSpacing' };}
+  if (property.name === 'separation') {return { type: 'constant', name: 'separation' };}
+  if (property.name === 'h_separation') {
+    if (controlType === 'GridContainer') {return { type: 'constant', name: 'horizontalSeparation' };}
+    if (controlType === 'HBoxContainer' || controlType === 'VBoxContainer') {
+      return { type: 'constant', name: 'separation' };
+    }
+
+    return { type: 'constant', name: 'iconSeparation' };
+  }
+  if (property.name === 'v_separation') {return { type: 'constant', name: 'verticalSeparation' };}
+  if (property.name.startsWith('margin_')) {
+    const suffix = humanizePropertyName(property.name.replace('margin_', '')).replaceAll(' ', '');
+
+    return { type: 'constant', name: `margin${suffix}` };
+  }
+
+  return undefined;
+}
+
+function humanizePropertyName (name: string): string {
+  return name.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
 }
 
 function controlProperties (): InspectorProperty[] {
@@ -592,6 +678,102 @@ function baseButtonProperties (): InspectorProperty[] {
       setValue: (control, value) => { (control as BaseButton).buttonGroup = Number(value) === 1 ? group : null; },
     },
   ];
+}
+
+function textInputProperties (multiline = false): InspectorProperty[] {
+  return [
+    {
+      group: 'TextInput', name: 'text', kind: 'text', multiline,
+      getValue: control => (control as TextInput).text,
+      setValue: (control, value) => { (control as TextInput).text = value; },
+    },
+    {
+      group: 'TextInput', name: 'placeholder_text', kind: 'text',
+      getValue: control => (control as TextInput).placeholderText,
+      setValue: (control, value) => { (control as TextInput).placeholderText = value; },
+    },
+    {
+      group: 'TextInput', name: 'editable', kind: 'boolean',
+      getValue: control => (control as TextInput).editable,
+      setValue: (control, value) => { (control as TextInput).editable = value; },
+    },
+    {
+      group: 'TextInput', name: 'max_length', kind: 'number', min: 0, max: 4096, step: 1,
+      getValue: control => (control as TextInput).maxLength,
+      setValue: (control, value) => { (control as TextInput).maxLength = value; },
+    },
+  ];
+}
+
+function lineEditProperties (): InspectorProperty[] {
+  return [
+    {
+      group: 'LineEdit', name: 'secret', kind: 'boolean',
+      getValue: control => (control as LineEdit).secret,
+      setValue: (control, value) => { (control as LineEdit).secret = value; },
+    },
+    {
+      group: 'LineEdit', name: 'secret_character', kind: 'text',
+      getValue: control => (control as LineEdit).secretCharacter,
+      setValue: (control, value) => { (control as LineEdit).secretCharacter = value; },
+    },
+    {
+      group: 'LineEdit', name: 'alignment', kind: 'enum', options: horizontalAlignments,
+      getValue: control => (control as LineEdit).alignment,
+      setValue: (control, value) => { (control as LineEdit).alignment = Number(value); },
+    },
+  ];
+}
+
+function optionButtonProperties (): InspectorProperty[] {
+  return [{
+    group: 'OptionButton', name: 'selected', kind: 'enum',
+    options: [
+      { label: 'Draft', value: 0 },
+      { label: 'In Review', value: 1 },
+      { label: 'Published', value: 2 },
+    ],
+    getValue: control => (control as OptionButton).selected,
+    setValue: (control, value) => { (control as OptionButton).select(Number(value)); },
+  }];
+}
+
+function colorPickerProperties (): InspectorProperty[] {
+  return [
+    {
+      group: 'ColorPicker', name: 'color', kind: 'color',
+      getValue: control => (control as ColorPicker).color,
+      setValue: (control, value) => { (control as ColorPicker).color = value; },
+    },
+    {
+      group: 'ColorPicker', name: 'edit_alpha', kind: 'boolean',
+      getValue: control => (control as ColorPicker).editAlpha,
+      setValue: (control, value) => { (control as ColorPicker).editAlpha = value; },
+    },
+  ];
+}
+
+function colorPickerButtonProperties (): InspectorProperty[] {
+  return [
+    {
+      group: 'ColorPickerButton', name: 'color', kind: 'color',
+      getValue: control => (control as ColorPickerButton).color,
+      setValue: (control, value) => { (control as ColorPickerButton).color = value; },
+    },
+    {
+      group: 'ColorPickerButton', name: 'edit_alpha', kind: 'boolean',
+      getValue: control => (control as ColorPickerButton).editAlpha,
+      setValue: (control, value) => { (control as ColorPickerButton).editAlpha = value; },
+    },
+  ];
+}
+
+function separatorProperties (): InspectorProperty[] {
+  return [{
+    group: 'Theme Overrides / Constants', name: 'separation', kind: 'number', min: 1, max: 32, step: 1, suffix: 'px',
+    getValue: control => control.getThemeConstant('separation'),
+    setValue: (control, value) => control.setThemeConstantOverride('separation', value),
+  }];
 }
 
 function textureRectProperties (texture: Texture): InspectorProperty[] {

@@ -68,6 +68,20 @@ class SelfHidingControl extends HoverRecordingControl {
     super.onMouseEnter();
     this.visible = false;
   }
+
+  override onMouseLeave (): void {
+    this.log.push('leave');
+  }
+}
+
+class CountingHitControl extends RecordingControl {
+  hitTestCount = 0;
+
+  override hasPoint (point: math.Vector2): boolean {
+    this.hitTestCount++;
+
+    return super.hasPoint(point);
+  }
 }
 
 class AcceptingControl extends RecordingControl {
@@ -613,7 +627,16 @@ describe('plugin-gui/input', () => {
     expect(back.log).deep.equals([]);
   });
 
-  it('defers mouse-over updates requested by enter callbacks until the next frame', () => {
+  it('routes hit testing through nested local transforms', () => {
+    const parent = addControl(composition.sceneRoot, new RecordingControl(player.engine), 10, 20, 50, 50);
+    const child = addControl(parent.item!, new RecordingControl(player.engine), 10, 5, 20, 20);
+
+    parent.setScale(2, 2);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(mouseButton(25, 15, true));
+    expect(child.log).deep.equals(['down:10,5']);
+  });
+
+  it('defers dropping a hidden hover target without searching for a sibling', () => {
     const back = addControl(composition.sceneRoot, new HoverRecordingControl(player.engine), 0, 0, 50, 50);
     const front = addControl(composition.sceneRoot, new SelfHidingControl(player.engine), 0, 0, 50, 50);
     const motion = new InputEventMouseMotion();
@@ -626,7 +649,20 @@ describe('plugin-gui/input', () => {
     expect(back.log).not.includes('enter');
 
     player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
-    expect(back.log).includes('enter');
+    expect(front.log).deep.equals(['enter', 'leave']);
+    expect(back.log).not.includes('enter');
+  });
+
+  it('does not repeat hit testing when a hovered Control changes bounds', () => {
+    const control = addControl(composition.sceneRoot, new CountingHitControl(player.engine), 0, 0, 50, 50);
+    const root = player.engine.root.getComponent(GUIRootComponent).windowRoot;
+
+    root.pushInput(mouseButton(10, 10, true));
+    expect(control.hitTestCount).equals(1);
+    control.hitTestCount = 0;
+    control.setPosition(20, 0);
+    root.update(0);
+    expect(control.hitTestCount).equals(0);
   });
 
   it('routes keyboard input to the focused control', () => {

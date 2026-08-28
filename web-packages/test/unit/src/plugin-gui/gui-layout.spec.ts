@@ -13,7 +13,9 @@ import {
   GridContainer,
   HBoxContainer,
   MarginContainer,
+  PanelContainer,
   SizeFlags,
+  StyleBoxFlat,
   UIControl,
   GUIRootComponent,
   UICanvas,
@@ -206,6 +208,24 @@ describe('plugin-gui/GUI measurement and automatic layout', () => {
     expect([marginChild.x, marginChild.y, marginChild.width, marginChild.height]).deep.equals([5, 6, 88, 36]);
     expect([centerChild.x, centerChild.y, centerChild.width, centerChild.height]).deep.equals([40, 20, 20, 10]);
     expect([aspectChild.x, aspectChild.y, aspectChild.width, aspectChild.height]).deep.equals([0, 25, 100, 50]);
+  });
+
+  it('measures and lays out PanelContainer inside StyleBox content margins', () => {
+    const panel = new PanelContainer(player.engine);
+    const child = measuredChild(20, 10, 40, 30);
+    const style = new StyleBoxFlat();
+
+    style.setContentMargins(5, 6, 7, 8);
+    panel.setThemeStyleBoxOverride('panel', style);
+    panel.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
+    panel.setSize(100, 60);
+    child.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
+    panel.addChild(child);
+    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+
+    expect(panel.getMinimumSize()).deep.equals(new math.Vector2(32, 24));
+    expect(panel.getDesiredSize()).deep.equals(new math.Vector2(52, 44));
+    expect([child.x, child.y, child.width, child.height]).deep.equals([5, 6, 88, 46]);
   });
 
   it('flushes nested layout defensively before render', () => {

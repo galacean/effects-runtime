@@ -8,19 +8,28 @@ import {
   CenterContainer,
   Checkbox,
   CheckButton,
+  ColorPicker,
+  ColorPickerButton,
   ColorRect,
   Container,
   Control,
   GridContainer,
   HBoxContainer,
   HScrollBar,
+  HSeparator,
   HSlider,
   HorizontalAlignment,
   Label,
   LayoutAlignment,
+  LineEdit,
   MarginContainer,
+  MenuButton,
   NinePatchRect,
+  OptionButton,
   Panel,
+  PanelContainer,
+  PopupMenu,
+  PopupPanel,
   ProgressBar,
   ProgressFillMode,
   Range,
@@ -30,8 +39,10 @@ import {
   TextureExpandMode,
   TextureRect,
   TextureStretchMode,
+  TextEdit,
   VBoxContainer,
   VScrollBar,
+  VSeparator,
   VSlider,
   UIControl,
 } from '@galacean/effects-plugin-gui';
@@ -70,13 +81,24 @@ describe('plugin-gui/GUI Control deserialization', () => {
       ['HBoxContainer', HBoxContainer],
       ['VBoxContainer', VBoxContainer],
       ['GridContainer', GridContainer],
+      ['PanelContainer', PanelContainer],
       ['MarginContainer', MarginContainer],
       ['CenterContainer', CenterContainer],
       ['AspectRatioContainer', AspectRatioContainer],
       ['ScrollContainer', ScrollContainer],
       ['HScrollBar', HScrollBar],
       ['VScrollBar', VScrollBar],
+      ['HSeparator', HSeparator],
+      ['VSeparator', VSeparator],
       ['Label', Label],
+      ['LineEdit', LineEdit],
+      ['TextEdit', TextEdit],
+      ['PopupPanel', PopupPanel],
+      ['PopupMenu', PopupMenu],
+      ['MenuButton', MenuButton],
+      ['OptionButton', OptionButton],
+      ['ColorPicker', ColorPicker],
+      ['ColorPickerButton', ColorPickerButton],
       ['TextureRect', TextureRect],
       ['NinePatchRect', NinePatchRect],
       ['ColorRect', ColorRect],
@@ -187,6 +209,23 @@ describe('plugin-gui/GUI Control deserialization', () => {
         },
       },
       {
+        type: 'PanelContainer',
+        data: {
+          themeOverrides: {
+            styleBoxes: {
+              panel: {
+                type: 'flat',
+                contentMargins: { left: 3, top: 4, right: 5, bottom: 6 },
+              },
+            },
+          },
+        },
+        verify: control => {
+          expect(control.getThemeStyleBox('panel').getContentMargins())
+            .deep.equals({ left: 3, top: 4, right: 5, bottom: 6 });
+        },
+      },
+      {
         type: 'MarginContainer',
         data: {
           themeOverrides: {
@@ -251,6 +290,14 @@ describe('plugin-gui/GUI Control deserialization', () => {
       scrollBarCase('HScrollBar'),
       scrollBarCase('VScrollBar'),
       {
+        type: 'HSeparator', data: { customMinimumSize: [30, 2] },
+        verify: control => expect(control.getCombinedMinimumSize()).deep.equals(new math.Vector2(30, 2)),
+      },
+      {
+        type: 'VSeparator', data: { customMinimumSize: [2, 30] },
+        verify: control => expect(control.getCombinedMinimumSize()).deep.equals(new math.Vector2(2, 30)),
+      },
+      {
         type: 'Label',
         data: {
           text: 'Hello',
@@ -272,6 +319,105 @@ describe('plugin-gui/GUI Control deserialization', () => {
           ])
             .deep.equals(['Hello', 'serif', 20, HorizontalAlignment.Right]);
           expect(label.getThemeColor('fontColor').toArray()).deep.equals([0.1, 0.2, 0.3, 0.4]);
+        },
+      },
+      {
+        type: 'LineEdit',
+        data: {
+          text: 'secret',
+          placeholderText: 'Password',
+          editable: false,
+          maxLength: 24,
+          secret: true,
+          secretCharacter: '*',
+          alignment: HorizontalAlignment.Center,
+        },
+        verify: control => {
+          const edit = control as LineEdit;
+
+          expect([
+            edit.text,
+            edit.placeholderText,
+            edit.editable,
+            edit.maxLength,
+            edit.secret,
+            edit.secretCharacter,
+            edit.alignment,
+          ]).deep.equals(['secret', 'Password', false, 24, true, '*', HorizontalAlignment.Center]);
+        },
+      },
+      {
+        type: 'TextEdit',
+        data: { text: 'first\nsecond', placeholderText: 'Notes', editable: false, maxLength: 80 },
+        verify: control => {
+          const edit = control as TextEdit;
+
+          expect([edit.text, edit.placeholderText, edit.editable, edit.maxLength])
+            .deep.equals(['first\nsecond', 'Notes', false, 80]);
+        },
+      },
+      {
+        type: 'PopupPanel', data: { customMinimumSize: [120, 80] },
+        verify: control => expect(control.getCombinedMinimumSize()).deep.equals(new math.Vector2(120, 80)),
+      },
+      {
+        type: 'PopupMenu',
+        data: {
+          items: [
+            { id: 'open', text: 'Open', checked: true },
+            { id: 'separator', text: '', separator: true },
+            { id: 'disabled', text: 'Disabled', disabled: true },
+          ],
+        },
+        verify: control => {
+          const menu = control as PopupMenu;
+
+          expect(menu.getItemCount()).equals(3);
+          expect(menu.getItem(0)).includes({ id: 'open', text: 'Open', checked: true });
+          expect(menu.getItem(1)?.separator).equals(true);
+          expect(menu.getItem(2)?.disabled).equals(true);
+        },
+      },
+      {
+        type: 'MenuButton',
+        data: { text: 'Actions', items: [{ id: 3, text: 'Duplicate' }] },
+        verify: control => {
+          const menu = control as MenuButton;
+
+          expect(menu.text).equals('Actions');
+          expect(menu.popupMenu.getItem(0)).includes({ id: 3, text: 'Duplicate' });
+        },
+      },
+      {
+        type: 'OptionButton',
+        data: {
+          items: [{ id: 'small', text: 'Small' }, { id: 'large', text: 'Large' }],
+          selected: 1,
+        },
+        verify: control => {
+          const option = control as OptionButton;
+
+          expect([option.selected, option.text]).deep.equals([1, 'Large']);
+        },
+      },
+      {
+        type: 'ColorPicker',
+        data: { color: { r: 0.1, g: 0.2, b: 0.3, a: 0.4 }, editAlpha: false },
+        verify: control => {
+          const picker = control as ColorPicker;
+
+          expect(picker.color.toArray()).deep.equals([0.1, 0.2, 0.3, 0.4]);
+          expect(picker.editAlpha).equals(false);
+        },
+      },
+      {
+        type: 'ColorPickerButton',
+        data: { color: { r: 0.8, g: 0.7, b: 0.6, a: 0.5 }, editAlpha: false },
+        verify: control => {
+          const picker = control as ColorPickerButton;
+
+          expect(picker.color.toArray()).deep.equals([0.8, 0.7, 0.6, 0.5]);
+          expect(picker.editAlpha).equals(false);
         },
       },
       {

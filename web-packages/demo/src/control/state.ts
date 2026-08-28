@@ -1,13 +1,15 @@
 import type { AccentName, ThemeName } from './theme';
 
-export type PageID = 'overview' | 'inspector' | 'buttons' | 'selection' | 'sliders' | 'display' | 'layout' | 'scroll' | 'input' | 'config';
+export type PageID = 'overview' | 'inspector' | 'buttons' | 'selection' | 'editors' | 'sliders' | 'display' | 'layout' | 'scroll' | 'input' | 'config';
 export type LayoutKind = 'vbox' | 'hbox' | 'grid';
 export type InspectorControlType =
-  | 'Button' | 'Checkbox' | 'CheckButton'
+  | 'Button' | 'Checkbox' | 'CheckButton' | 'MenuButton' | 'OptionButton' | 'ColorPickerButton'
+  | 'LineEdit' | 'TextEdit' | 'ColorPicker' | 'PopupPanel' | 'PopupMenu'
   | 'Label' | 'TextureRect' | 'NinePatchRect' | 'ColorRect' | 'Panel'
   | 'HSlider' | 'VSlider' | 'ProgressBar' | 'HScrollBar' | 'VScrollBar'
   | 'HBoxContainer' | 'VBoxContainer' | 'GridContainer' | 'MarginContainer'
-  | 'CenterContainer' | 'AspectRatioContainer' | 'ScrollContainer';
+  | 'CenterContainer' | 'AspectRatioContainer' | 'ScrollContainer' | 'PanelContainer'
+  | 'HSeparator' | 'VSeparator';
 
 export type DemoState = {
   theme: ThemeName,
@@ -48,7 +50,7 @@ export type DemoState = {
 
 const THEME_KEY = 'control-demo-modern-theme';
 const ACCENT_KEY = 'control-demo-modern-accent';
-const PAGE_IDS: PageID[] = ['overview', 'inspector', 'buttons', 'selection', 'sliders', 'display', 'layout', 'scroll', 'input', 'config'];
+const PAGE_IDS: PageID[] = ['overview', 'inspector', 'buttons', 'selection', 'editors', 'sliders', 'display', 'layout', 'scroll', 'input', 'config'];
 
 export function createDemoState (): DemoState {
   return {
@@ -102,7 +104,8 @@ function readAccent (): AccentName {
   try {
     const value = localStorage.getItem(ACCENT_KEY);
 
-    return value === 'indigo' || value === 'emerald' || value === 'amber' || value === 'rose'
+    return value === 'gray' || value === 'indigo' || value === 'emerald' || value === 'amber'
+      || value === 'orange' || value === 'rose'
       ? value
       : 'blue';
   } catch {
