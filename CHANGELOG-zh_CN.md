@@ -8,6 +8,12 @@
 
 ---
 
+## 2.9.4
+
+`2026-08-28`
+
+- Fix: replace Set spread operator with Array.from to avoid SWC compilation issues. [#1496](https://github.com/galacean/effects-runtime/pull/1496) @chenmo0204
+
 ## 2.9.3
 
 `2026-06-29`
