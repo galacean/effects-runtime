@@ -10,6 +10,8 @@ export * from './layout/grid-container';
 export * from './layout/margin-container';
 export * from './layout/center-container';
 export * from './layout/aspect-ratio-container';
+export * from './layout/panel-container';
+export * from './layout/separator';
 export * from './scroll/enums';
 export * from './scroll/range';
 export * from './scroll/scroll-bar';

@@ -23,6 +23,7 @@ export interface StyleBoxFlatData {
   backgroundColor?: spec.ColorData,
   borderColor?: spec.ColorData,
   borderWidths?: StyleBoxMarginsData,
+  cornerRadii?: StyleBoxMarginsData,
   contentMargins?: StyleBoxMarginsData,
 }
 

@@ -19,7 +19,7 @@ import {
   MouseFilter,
   TextOverflow,
   VerticalAlignment,
-  GUIRootComponent,
+  GUIWindowComponent,
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect, placeNormalized } from '../layout';
@@ -46,7 +46,7 @@ const ownerColors = [
   new math.Color(1, 0.56, 0.64, 1),
 ];
 
-export class InputPage extends Control {
+export class EventsPage extends Control {
   constructor (engine: Engine, _ctx: AppContext) {
     super(engine);
     const theme = getTheme();
@@ -500,7 +500,7 @@ class InputEventControl extends Control {
   private reportHandled (): void {
     queueMicrotask(() => {
       if (!this.isDisposed) {
-        this.inspector.handled = this.engine.root.getComponent(GUIRootComponent).windowRoot.isInputHandled();
+        this.inspector.handled = this.engine.root.getComponent(GUIWindowComponent).windowRoot.isInputHandled();
       }
     });
   }

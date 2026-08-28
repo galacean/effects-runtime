@@ -20,13 +20,13 @@ import {
 } from '@galacean/effects-plugin-gui';
 import type { AppContext } from '../context';
 import { attachAnchoredRect, attachFullRect } from '../layout';
-import type { LayoutKind } from '../state';
+import type { ContainerKind } from '../state';
 import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl, createToggle, styleSlider } from '../widgets';
 import type { ResizeCorner } from './common';
 import { ResizeHandle, label } from './common';
 
-export class LayoutPage extends Control {
+export class ContainersPage extends Control {
   private readonly stage: Panel;
   private readonly host: MarginContainer;
   private readonly modeLabel: Label;
@@ -99,9 +99,9 @@ export class LayoutPage extends Control {
 
     addSectionTitle(this.engine, panel, 'Container settings', 'Adjust layout properties live', 20, 18, 210);
     label(this.engine, 'CONTAINER', 20, 72, 140, 20, panel, { size: 10, color: theme.textTertiary, weight: 650 });
-    const kinds: LayoutKind[] = ['vbox', 'hbox', 'grid'];
-    const kind = createSegmentedControl(this.engine, ['VBox', 'HBox', 'Grid'], kinds.indexOf(this.ctx.state.layout.kind), index => {
-      this.ctx.state.layout.kind = kinds[index];
+    const kinds: ContainerKind[] = ['vbox', 'hbox', 'grid'];
+    const kind = createSegmentedControl(this.engine, ['VBox', 'HBox', 'Grid'], kinds.indexOf(this.ctx.state.containers.kind), index => {
+      this.ctx.state.containers.kind = kinds[index];
       this.rebuildLayout();
     });
 
@@ -119,12 +119,12 @@ export class LayoutPage extends Control {
     separation.minValue = 4;
     separation.maxValue = 24;
     separation.step = 2;
-    separation.setValueNoSignal(this.ctx.state.layout.separation);
+    separation.setValueNoSignal(this.ctx.state.containers.separation);
     separation.setRect({ position: new math.Vector2(20, 174), size: new math.Vector2(140, 18) });
     separation.parent = panel;
     separationValue.text = `${separation.value.toFixed(0)} px`;
     separation.on('valueChanged', value => {
-      this.ctx.state.layout.separation = value;
+      this.ctx.state.containers.separation = value;
       separationValue.text = `${value.toFixed(0)} px`;
       this.applyMetrics();
     });
@@ -140,19 +140,19 @@ export class LayoutPage extends Control {
     columns.minValue = 1;
     columns.maxValue = 4;
     columns.step = 1;
-    columns.setValueNoSignal(this.ctx.state.layout.columns);
+    columns.setValueNoSignal(this.ctx.state.containers.columns);
     columns.setRect({ position: new math.Vector2(20, 236), size: new math.Vector2(140, 18) });
     columns.parent = panel;
     columnValue.text = columns.value.toFixed(0);
     columns.on('valueChanged', value => {
-      this.ctx.state.layout.columns = value;
+      this.ctx.state.containers.columns = value;
       columnValue.text = value.toFixed(0);
       this.applyMetrics();
     });
 
     label(this.engine, 'ALIGNMENT', 20, 270, 130, 20, panel, { size: 10, color: theme.textTertiary, weight: 650 });
-    const alignment = createSegmentedControl(this.engine, ['Begin', 'Center', 'End'], this.ctx.state.layout.alignment, index => {
-      this.ctx.state.layout.alignment = index;
+    const alignment = createSegmentedControl(this.engine, ['Begin', 'Center', 'End'], this.ctx.state.containers.alignment, index => {
+      this.ctx.state.containers.alignment = index;
       this.applyMetrics();
     });
 
@@ -160,19 +160,19 @@ export class LayoutPage extends Control {
     alignment.control.parent = panel;
 
     label(this.engine, 'ITEM COUNT', 20, 342, 120, 20, panel, { size: 10, color: theme.textTertiary, weight: 650 });
-    const count = label(this.engine, `${this.ctx.state.layout.itemCount} items`, 78, 366, 88, 32, panel, {
+    const count = label(this.engine, `${this.ctx.state.containers.itemCount} items`, 78, 366, 88, 32, panel, {
       size: 11,
       color: theme.textSecondary,
       horizontal: HorizontalAlignment.Center,
     });
     const remove = createButton(this.engine, '−', () => {
-      this.ctx.state.layout.itemCount = Math.max(1, this.ctx.state.layout.itemCount - 1);
-      count.text = `${this.ctx.state.layout.itemCount} items`;
+      this.ctx.state.containers.itemCount = Math.max(1, this.ctx.state.containers.itemCount - 1);
+      count.text = `${this.ctx.state.containers.itemCount} items`;
       this.rebuildLayout();
     });
     const add = createButton(this.engine, '+', () => {
-      this.ctx.state.layout.itemCount = Math.min(8, this.ctx.state.layout.itemCount + 1);
-      count.text = `${this.ctx.state.layout.itemCount} items`;
+      this.ctx.state.containers.itemCount = Math.min(8, this.ctx.state.containers.itemCount + 1);
+      count.text = `${this.ctx.state.containers.itemCount} items`;
       this.rebuildLayout();
     }, 'primary');
 
@@ -180,8 +180,8 @@ export class LayoutPage extends Control {
     add.setRect({ position: new math.Vector2(176, 366), size: new math.Vector2(48, 32) });
     remove.parent = panel;
     add.parent = panel;
-    const reverse = createToggle(this.engine, 'Reverse order', this.ctx.state.layout.reverse, checked => {
-      this.ctx.state.layout.reverse = checked;
+    const reverse = createToggle(this.engine, 'Reverse order', this.ctx.state.containers.reverse, checked => {
+      this.ctx.state.containers.reverse = checked;
       this.rebuildLayout();
     });
 
@@ -222,11 +222,11 @@ export class LayoutPage extends Control {
 
   private rebuildLayout (): void {
     this.items.length = 0;
-    this.ctx.state.layout.selectedItem = Math.min(this.ctx.state.layout.selectedItem, this.ctx.state.layout.itemCount - 1);
+    this.ctx.state.containers.selectedItem = Math.min(this.ctx.state.containers.selectedItem, this.ctx.state.containers.itemCount - 1);
     this.layout?.dispose();
-    if (this.ctx.state.layout.kind === 'hbox') {
+    if (this.ctx.state.containers.kind === 'hbox') {
       this.layout = new HBoxContainer(this.engine);
-    } else if (this.ctx.state.layout.kind === 'grid') {
+    } else if (this.ctx.state.containers.kind === 'grid') {
       this.layout = new GridContainer(this.engine);
     } else {
       this.layout = new VBoxContainer(this.engine);
@@ -235,19 +235,19 @@ export class LayoutPage extends Control {
     this.applyMetrics();
     const group = new ButtonGroup();
 
-    for (let slot = 0; slot < this.ctx.state.layout.itemCount; slot++) {
-      const index = this.ctx.state.layout.reverse
-        ? this.ctx.state.layout.itemCount - slot
+    for (let slot = 0; slot < this.ctx.state.containers.itemCount; slot++) {
+      const index = this.ctx.state.containers.reverse
+        ? this.ctx.state.containers.itemCount - slot
         : slot + 1;
       const item = createButton(this.engine, String(index));
 
       item.toggleMode = true;
       item.buttonGroup = group;
-      item.setPressedNoSignal(index - 1 === this.ctx.state.layout.selectedItem);
+      item.setPressedNoSignal(index - 1 === this.ctx.state.containers.selectedItem);
       item.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
       item.on('toggled', pressed => {
         if (pressed) {
-          this.ctx.state.layout.selectedItem = index - 1;
+          this.ctx.state.containers.selectedItem = index - 1;
           this.updateHeader();
         }
       });
@@ -259,19 +259,19 @@ export class LayoutPage extends Control {
 
   private applyMetrics (): void {
     if (this.layout instanceof GridContainer) {
-      this.layout.columns = this.ctx.state.layout.columns;
-      this.layout.setThemeConstantOverride('horizontalSeparation', this.ctx.state.layout.separation);
-      this.layout.setThemeConstantOverride('verticalSeparation', this.ctx.state.layout.separation);
+      this.layout.columns = this.ctx.state.containers.columns;
+      this.layout.setThemeConstantOverride('horizontalSeparation', this.ctx.state.containers.separation);
+      this.layout.setThemeConstantOverride('verticalSeparation', this.ctx.state.containers.separation);
     } else if (this.layout) {
-      this.layout.setThemeConstantOverride('separation', this.ctx.state.layout.separation);
-      this.layout.alignment = [LayoutAlignment.Begin, LayoutAlignment.Center, LayoutAlignment.End][this.ctx.state.layout.alignment];
+      this.layout.setThemeConstantOverride('separation', this.ctx.state.containers.separation);
+      this.layout.alignment = [LayoutAlignment.Begin, LayoutAlignment.Center, LayoutAlignment.End][this.ctx.state.containers.alignment];
     }
     this.updateHeader();
   }
 
   private updateHeader (): void {
-    this.modeLabel.text = `${this.ctx.state.layout.kind.toUpperCase()} · ${this.ctx.state.layout.itemCount} items`;
-    this.selectedLabel.text = `Selected ${this.ctx.state.layout.selectedItem + 1}`;
+    this.modeLabel.text = `${this.ctx.state.containers.kind.toUpperCase()} · ${this.ctx.state.containers.itemCount} items`;
+    this.selectedLabel.text = `Selected ${this.ctx.state.containers.selectedItem + 1}`;
   }
 
   private resetStage (): void {

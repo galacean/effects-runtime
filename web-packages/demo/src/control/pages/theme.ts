@@ -20,9 +20,9 @@ import { ACCENTS, getTheme, setFlatStyleOverride, setFontOverrides } from '../th
 import { addSectionTitle, createButton, createSegmentedControl, styleSlider } from '../widgets';
 import { label } from './common';
 
-const ACCENT_NAMES: AccentName[] = ['blue', 'indigo', 'emerald', 'amber', 'rose'];
+const ACCENT_NAMES: AccentName[] = ['blue', 'indigo', 'emerald', 'amber', 'orange', 'rose', 'gray'];
 
-export class ThemingPage extends Control {
+export class ThemePage extends Control {
   constructor (engine: Engine, ctx: AppContext) {
     super(engine);
     const appearance = new Panel(engine);
@@ -64,6 +64,8 @@ export class ThemingPage extends Control {
     ACCENT_NAMES.forEach((name, index) => {
       const button = new Button(this.engine, name.slice(0, 1).toUpperCase());
       const accent = ACCENTS[name][ctx.state.theme];
+      const column = index % 4;
+      const row = Math.floor(index / 4);
 
       const border = ctx.state.customAccent === null && ctx.state.accent === name
         ? theme.textPrimary
@@ -74,14 +76,14 @@ export class ThemingPage extends Control {
         setFlatStyleOverride(button, state, { background: accent, border, borderWidth });
       }
       setFontOverrides(button, { color: theme.textOnAccent });
-      button.setRect({ position: new math.Vector2(20 + index * 57, 202), size: new math.Vector2(48, 42) });
+      button.setRect({ position: new math.Vector2(20 + column * 72, 202 + row * 68), size: new math.Vector2(56, 42) });
       button.parent = panel;
       button.on('pressed', () => {
         ctx.state.accent = name;
         ctx.state.customAccent = null;
         ctx.requestRebuild();
       });
-      label(this.engine, name, 20 + index * 57, 248, 48, 18, panel, {
+      label(this.engine, name, 20 + column * 72, 248 + row * 68, 56, 18, panel, {
         size: 9,
         color: theme.textSecondary,
         horizontal: HorizontalAlignment.Center,
@@ -92,14 +94,14 @@ export class ThemingPage extends Control {
       ? `Custom RGB ${ctx.state.customAccent.map(value => value.toFixed(0)).join(', ')}`
       : `Preset: ${ctx.state.accent}`;
 
-    label(this.engine, currentAccent, 20, 286, 282, 28, panel, {
+    label(this.engine, currentAccent, 20, 344, 282, 28, panel, {
       size: 12,
       color: theme.textPrimary,
       weight: 600,
       horizontal: HorizontalAlignment.Center,
     });
 
-    label(this.engine, 'WHY THE TREE REBUILDS', 20, 342, 210, 20, panel, {
+    label(this.engine, 'WHY THE TREE REBUILDS', 20, 390, 210, 20, panel, {
       size: 10,
       color: theme.textTertiary,
       weight: 650,
@@ -108,7 +110,7 @@ export class ThemingPage extends Control {
       this.engine,
       'A Theme attached to a root or subtree is inherited live. This gallery still rebuilds to refresh its content-level color tokens.',
       20,
-      370,
+      418,
       282,
       68,
       panel,
@@ -120,7 +122,7 @@ export class ThemingPage extends Control {
       ctx.requestRebuild();
     });
 
-    reset.setRect({ position: new math.Vector2(20, 452), size: new math.Vector2(282, 36) });
+    reset.setRect({ position: new math.Vector2(20, 500), size: new math.Vector2(282, 36) });
     reset.parent = panel;
   }
 

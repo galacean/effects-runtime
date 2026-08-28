@@ -10,23 +10,28 @@ import {
   MouseFilter,
   SizeFlags,
 } from '@galacean/effects-plugin-gui';
-import type { Control, CursorShape } from '@galacean/effects-plugin-gui';
+import type { Control, CursorShape, LayoutPreset } from '@galacean/effects-plugin-gui';
 import type {
   AspectRatioContainer,
   BaseButton,
   BoxContainer,
   Button,
   CenterContainer,
+  ColorPicker,
+  ColorPickerButton,
   ColorRect,
   GridContainer,
   Label,
+  LineEdit,
   MarginContainer,
   NinePatchRect,
+  OptionButton,
   ProgressBar,
   Range,
   ScrollBar,
   ScrollContainer,
   Slider,
+  TextInput,
   TextureRect,
 } from '@galacean/effects-plugin-gui';
 import {
@@ -55,6 +60,13 @@ export type InspectorOption = {
 type PropertyBase = {
   group: string,
   name: string,
+  path?: string,
+  hint?: string,
+  readOnly?: boolean,
+  themeOverride?: {
+    type: 'color' | 'constant' | 'fontSize',
+    name: string,
+  },
 };
 
 export type InspectorProperty = PropertyBase & (
@@ -123,26 +135,37 @@ export type InspectorControlOption = {
 };
 
 export const INSPECTOR_CONTROL_OPTIONS: InspectorControlOption[] = [
-  { type: 'Button', title: 'Button', group: 'Buttons', description: 'Text button with BaseButton interaction behavior.' },
-  { type: 'Checkbox', title: 'Checkbox', group: 'Buttons', description: 'Checkbox using the Button and BaseButton property set.' },
-  { type: 'CheckButton', title: 'CheckButton', group: 'Buttons', description: 'Switch-style toggle using the Button property set.' },
-  { type: 'Label', title: 'Label', group: 'Display', description: 'Text layout, wrapping, alignment and theme overrides.' },
-  { type: 'TextureRect', title: 'TextureRect', group: 'Display', description: 'Texture sizing and stretch behavior.' },
-  { type: 'NinePatchRect', title: 'NinePatchRect', group: 'Display', description: 'Nine-patch margins and per-axis repeat behavior.' },
-  { type: 'ColorRect', title: 'ColorRect', group: 'Display', description: 'A solid color rectangle.' },
-  { type: 'Panel', title: 'Panel', group: 'Display', description: 'Panel geometry; visual appearance comes from its theme style.' },
-  { type: 'HSlider', title: 'HSlider', group: 'Range', description: 'Horizontal Slider backed by the shared Range model.' },
-  { type: 'VSlider', title: 'VSlider', group: 'Range', description: 'Vertical Slider backed by the shared Range model.' },
-  { type: 'ProgressBar', title: 'ProgressBar', group: 'Range', description: 'Range visualization with percentage and fill direction.' },
-  { type: 'HScrollBar', title: 'HScrollBar', group: 'Range', description: 'Horizontal ScrollBar with page and custom step.' },
-  { type: 'VScrollBar', title: 'VScrollBar', group: 'Range', description: 'Vertical ScrollBar with page and custom step.' },
-  { type: 'HBoxContainer', title: 'HBoxContainer', group: 'Containers', description: 'Arranges children horizontally.' },
-  { type: 'VBoxContainer', title: 'VBoxContainer', group: 'Containers', description: 'Arranges children vertically.' },
-  { type: 'GridContainer', title: 'GridContainer', group: 'Containers', description: 'Arranges children in a fixed column grid.' },
-  { type: 'MarginContainer', title: 'MarginContainer', group: 'Containers', description: 'Applies theme margins around its children.' },
-  { type: 'CenterContainer', title: 'CenterContainer', group: 'Containers', description: 'Centers children using their desired size.' },
-  { type: 'AspectRatioContainer', title: 'AspectRatioContainer', group: 'Containers', description: 'Fits children to a configured aspect ratio.' },
-  { type: 'ScrollContainer', title: 'ScrollContainer', group: 'Containers', description: 'Clipped scrolling viewport with automatic scrollbars.' },
+  { type: 'Button', title: 'Button', group: 'Actions', description: 'Text button with BaseButton interaction behavior.' },
+  { type: 'Checkbox', title: 'Checkbox', group: 'Selection', description: 'Checkbox using the Button and BaseButton property set.' },
+  { type: 'CheckButton', title: 'CheckButton', group: 'Selection', description: 'Switch-style toggle using the Button property set.' },
+  { type: 'OptionButton', title: 'OptionButton', group: 'Selection', description: 'Single-choice menu button with a selected item.' },
+  { type: 'LineEdit', title: 'LineEdit', group: 'Text & Color', description: 'Single-line text input with selection, caret, clipboard and IME.' },
+  { type: 'TextEdit', title: 'TextEdit', group: 'Text & Color', description: 'Multiline text input with selection, scrolling and undo history.' },
+  { type: 'ColorPicker', title: 'ColorPicker', group: 'Text & Color', description: 'HSV, alpha, channel and hex color editor.' },
+  { type: 'MenuButton', title: 'MenuButton', group: 'Menus & Overlays', description: 'Button that opens a PopupMenu below itself.' },
+  { type: 'ColorPickerButton', title: 'ColorPickerButton', group: 'Menus & Overlays', description: 'Button with a color swatch and popup ColorPicker.' },
+  { type: 'PopupPanel', title: 'PopupPanel', group: 'Menus & Overlays', description: 'Transient panel hosted by the root popup layer.' },
+  { type: 'PopupMenu', title: 'PopupMenu', group: 'Menus & Overlays', description: 'Keyboard-navigable menu with checks, disabled items and separators.' },
+  { type: 'Label', title: 'Label', group: 'Content', description: 'Text layout, wrapping, alignment and theme overrides.' },
+  { type: 'TextureRect', title: 'TextureRect', group: 'Content', description: 'Texture sizing and stretch behavior.' },
+  { type: 'NinePatchRect', title: 'NinePatchRect', group: 'Content', description: 'Nine-patch margins and per-axis repeat behavior.' },
+  { type: 'ColorRect', title: 'ColorRect', group: 'Content', description: 'A solid color rectangle.' },
+  { type: 'Panel', title: 'Panel', group: 'Content', description: 'Panel geometry; visual appearance comes from its theme style.' },
+  { type: 'HSeparator', title: 'HSeparator', group: 'Content', description: 'Horizontal themed separator with a configurable thickness.' },
+  { type: 'VSeparator', title: 'VSeparator', group: 'Content', description: 'Vertical themed separator with a configurable thickness.' },
+  { type: 'HSlider', title: 'HSlider', group: 'Ranges', description: 'Horizontal Slider backed by the shared Range model.' },
+  { type: 'VSlider', title: 'VSlider', group: 'Ranges', description: 'Vertical Slider backed by the shared Range model.' },
+  { type: 'ProgressBar', title: 'ProgressBar', group: 'Ranges', description: 'Range visualization with percentage and fill direction.' },
+  { type: 'HScrollBar', title: 'HScrollBar', group: 'Ranges', description: 'Horizontal ScrollBar with page and custom step.' },
+  { type: 'VScrollBar', title: 'VScrollBar', group: 'Ranges', description: 'Vertical ScrollBar with page and custom step.' },
+  { type: 'HBoxContainer', title: 'HBoxContainer', group: 'Layout', description: 'Arranges children horizontally.' },
+  { type: 'VBoxContainer', title: 'VBoxContainer', group: 'Layout', description: 'Arranges children vertically.' },
+  { type: 'GridContainer', title: 'GridContainer', group: 'Layout', description: 'Arranges children in a fixed column grid.' },
+  { type: 'MarginContainer', title: 'MarginContainer', group: 'Layout', description: 'Applies theme margins around its children.' },
+  { type: 'CenterContainer', title: 'CenterContainer', group: 'Layout', description: 'Centers children using their desired size.' },
+  { type: 'AspectRatioContainer', title: 'AspectRatioContainer', group: 'Layout', description: 'Fits children to a configured aspect ratio.' },
+  { type: 'ScrollContainer', title: 'ScrollContainer', group: 'Layout', description: 'Clipped scrolling viewport with automatic scrollbars.' },
+  { type: 'PanelContainer', title: 'PanelContainer', group: 'Layout', description: 'Fits children inside the panel StyleBox content margins.' },
 ];
 
 const customMinimumSizes = new WeakMap<Control, [number, number]>();
@@ -172,6 +195,24 @@ const stretchModes: InspectorOption[] = [
   { label: 'Tile', value: AxisStretchMode.Tile },
   { label: 'Tile Fit', value: AxisStretchMode.TileFit },
 ];
+const anchorPresets: Array<{ label: string, value: LayoutPreset }> = [
+  { label: 'Top Left', value: 'topLeft' },
+  { label: 'Center Top', value: 'centerTop' },
+  { label: 'Top Right', value: 'topRight' },
+  { label: 'Center Left', value: 'centerLeft' },
+  { label: 'Center', value: 'center' },
+  { label: 'Center Right', value: 'centerRight' },
+  { label: 'Bottom Left', value: 'bottomLeft' },
+  { label: 'Center Bottom', value: 'centerBottom' },
+  { label: 'Bottom Right', value: 'bottomRight' },
+  { label: 'Top Wide', value: 'topWide' },
+  { label: 'Horizontal Center Wide', value: 'hcenterWide' },
+  { label: 'Bottom Wide', value: 'bottomWide' },
+  { label: 'Left Wide', value: 'leftWide' },
+  { label: 'Vertical Center Wide', value: 'vcenterWide' },
+  { label: 'Right Wide', value: 'rightWide' },
+  { label: 'Full Rect', value: 'fullRect' },
+];
 
 export function createInspectorProperties (type: InspectorControlType, texture: Texture): InspectorProperty[] {
   const properties: InspectorProperty[] = [];
@@ -180,7 +221,28 @@ export function createInspectorProperties (type: InspectorControlType, texture: 
     case 'Button':
     case 'Checkbox':
     case 'CheckButton':
+    case 'MenuButton':
       properties.push(...buttonProperties(texture), ...baseButtonProperties());
+
+      break;
+    case 'OptionButton':
+      properties.push(...optionButtonProperties(), ...buttonProperties(texture), ...baseButtonProperties());
+
+      break;
+    case 'ColorPickerButton':
+      properties.push(...colorPickerButtonProperties(), ...buttonProperties(texture), ...baseButtonProperties());
+
+      break;
+    case 'LineEdit':
+      properties.push(...lineEditProperties(), ...textInputProperties());
+
+      break;
+    case 'TextEdit':
+      properties.push(...textInputProperties(true));
+
+      break;
+    case 'ColorPicker':
+      properties.push(...colorPickerProperties());
 
       break;
     case 'Label':
@@ -246,13 +308,65 @@ export function createInspectorProperties (type: InspectorControlType, texture: 
       properties.push(...scrollContainerProperties());
 
       break;
+    case 'HSeparator':
+    case 'VSeparator':
+      properties.push(...separatorProperties());
+
+      break;
   }
 
-  return [...properties, ...controlProperties()];
+  return [...properties, ...controlProperties()].map(property => ({
+    ...property,
+    path: `${property.group}/${property.name}`,
+    hint: `${property.group} / ${humanizePropertyName(property.name)}`,
+    themeOverride: getThemeOverride(type, property),
+  }));
+}
+
+function getThemeOverride (
+  controlType: InspectorControlType,
+  property: InspectorProperty,
+): PropertyBase['themeOverride'] {
+  if (!property.group.startsWith('Theme Overrides')) {return undefined;}
+  if (property.name === 'font_color') {return { type: 'color', name: 'fontColor' };}
+  if (property.name === 'font_disabled_color') {return { type: 'color', name: 'fontDisabledColor' };}
+  if (property.name === 'font_size') {return { type: 'fontSize', name: 'fontSize' };}
+  if (property.name === 'line_spacing') {return { type: 'constant', name: 'lineSpacing' };}
+  if (property.name === 'separation') {return { type: 'constant', name: 'separation' };}
+  if (property.name === 'h_separation') {
+    if (controlType === 'GridContainer') {return { type: 'constant', name: 'horizontalSeparation' };}
+    if (controlType === 'HBoxContainer' || controlType === 'VBoxContainer') {
+      return { type: 'constant', name: 'separation' };
+    }
+
+    return { type: 'constant', name: 'iconSeparation' };
+  }
+  if (property.name === 'v_separation') {return { type: 'constant', name: 'verticalSeparation' };}
+  if (property.name.startsWith('margin_')) {
+    const suffix = humanizePropertyName(property.name.replace('margin_', '')).replaceAll(' ', '');
+
+    return { type: 'constant', name: `margin${suffix}` };
+  }
+
+  return undefined;
+}
+
+function humanizePropertyName (name: string): string {
+  return name.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
 }
 
 function controlProperties (): InspectorProperty[] {
   return [
+    {
+      group: 'Layout', name: 'anchors_preset', kind: 'enum',
+      options: [{ label: 'Custom', value: 'custom' }, ...anchorPresets],
+      getValue: control => getAnchorPreset(control),
+      setValue: (control, value) => {
+        if (value !== 'custom') {
+          control.setAnchorsPreset(value as LayoutPreset, false);
+        }
+      },
+    },
     {
       group: 'Layout', name: 'custom_minimum_size', kind: 'vector2', min: 0, step: 1, suffix: 'px',
       getValue: control => customMinimumSizes.get(control) ?? [0, 0],
@@ -421,6 +535,44 @@ function controlProperties (): InspectorProperty[] {
       setValue: (control, value) => { control.defaultCursorShape = Number(value); },
     },
   ];
+}
+
+function getAnchorPreset (control: Control): LayoutPreset | 'custom' {
+  const epsilon = 0.0001;
+
+  for (const preset of anchorPresets) {
+    const [minX, minY, maxX, maxY] = anchorPresetValues(preset.value);
+
+    if (Math.abs(control.anchorMin.x - minX) < epsilon
+      && Math.abs(control.anchorMin.y - minY) < epsilon
+      && Math.abs(control.anchorMax.x - maxX) < epsilon
+      && Math.abs(control.anchorMax.y - maxY) < epsilon) {
+      return preset.value;
+    }
+  }
+
+  return 'custom';
+}
+
+function anchorPresetValues (preset: LayoutPreset): [number, number, number, number] {
+  switch (preset) {
+    case 'topLeft': return [0, 0, 0, 0];
+    case 'topRight': return [1, 0, 1, 0];
+    case 'bottomLeft': return [0, 1, 0, 1];
+    case 'bottomRight': return [1, 1, 1, 1];
+    case 'centerLeft': return [0, 0.5, 0, 0.5];
+    case 'centerTop': return [0.5, 0, 0.5, 0];
+    case 'centerRight': return [1, 0.5, 1, 0.5];
+    case 'centerBottom': return [0.5, 1, 0.5, 1];
+    case 'center': return [0.5, 0.5, 0.5, 0.5];
+    case 'leftWide': return [0, 0, 0, 1];
+    case 'topWide': return [0, 0, 1, 0];
+    case 'rightWide': return [1, 0, 1, 1];
+    case 'bottomWide': return [0, 1, 1, 1];
+    case 'vcenterWide': return [0.5, 0, 0.5, 1];
+    case 'hcenterWide': return [0, 0.5, 1, 0.5];
+    case 'fullRect': return [0, 0, 1, 1];
+  }
 }
 
 function labelProperties (): InspectorProperty[] {
@@ -592,6 +744,102 @@ function baseButtonProperties (): InspectorProperty[] {
       setValue: (control, value) => { (control as BaseButton).buttonGroup = Number(value) === 1 ? group : null; },
     },
   ];
+}
+
+function textInputProperties (multiline = false): InspectorProperty[] {
+  return [
+    {
+      group: 'TextInput', name: 'text', kind: 'text', multiline,
+      getValue: control => (control as TextInput).text,
+      setValue: (control, value) => { (control as TextInput).text = value; },
+    },
+    {
+      group: 'TextInput', name: 'placeholder_text', kind: 'text',
+      getValue: control => (control as TextInput).placeholderText,
+      setValue: (control, value) => { (control as TextInput).placeholderText = value; },
+    },
+    {
+      group: 'TextInput', name: 'editable', kind: 'boolean',
+      getValue: control => (control as TextInput).editable,
+      setValue: (control, value) => { (control as TextInput).editable = value; },
+    },
+    {
+      group: 'TextInput', name: 'max_length', kind: 'number', min: 0, max: 4096, step: 1,
+      getValue: control => (control as TextInput).maxLength,
+      setValue: (control, value) => { (control as TextInput).maxLength = value; },
+    },
+  ];
+}
+
+function lineEditProperties (): InspectorProperty[] {
+  return [
+    {
+      group: 'LineEdit', name: 'secret', kind: 'boolean',
+      getValue: control => (control as LineEdit).secret,
+      setValue: (control, value) => { (control as LineEdit).secret = value; },
+    },
+    {
+      group: 'LineEdit', name: 'secret_character', kind: 'text',
+      getValue: control => (control as LineEdit).secretCharacter,
+      setValue: (control, value) => { (control as LineEdit).secretCharacter = value; },
+    },
+    {
+      group: 'LineEdit', name: 'alignment', kind: 'enum', options: horizontalAlignments,
+      getValue: control => (control as LineEdit).alignment,
+      setValue: (control, value) => { (control as LineEdit).alignment = Number(value); },
+    },
+  ];
+}
+
+function optionButtonProperties (): InspectorProperty[] {
+  return [{
+    group: 'OptionButton', name: 'selected', kind: 'enum',
+    options: [
+      { label: 'Draft', value: 0 },
+      { label: 'In Review', value: 1 },
+      { label: 'Published', value: 2 },
+    ],
+    getValue: control => (control as OptionButton).selected,
+    setValue: (control, value) => { (control as OptionButton).select(Number(value)); },
+  }];
+}
+
+function colorPickerProperties (): InspectorProperty[] {
+  return [
+    {
+      group: 'ColorPicker', name: 'color', kind: 'color',
+      getValue: control => (control as ColorPicker).color,
+      setValue: (control, value) => { (control as ColorPicker).color = value; },
+    },
+    {
+      group: 'ColorPicker', name: 'edit_alpha', kind: 'boolean',
+      getValue: control => (control as ColorPicker).editAlpha,
+      setValue: (control, value) => { (control as ColorPicker).editAlpha = value; },
+    },
+  ];
+}
+
+function colorPickerButtonProperties (): InspectorProperty[] {
+  return [
+    {
+      group: 'ColorPickerButton', name: 'color', kind: 'color',
+      getValue: control => (control as ColorPickerButton).color,
+      setValue: (control, value) => { (control as ColorPickerButton).color = value; },
+    },
+    {
+      group: 'ColorPickerButton', name: 'edit_alpha', kind: 'boolean',
+      getValue: control => (control as ColorPickerButton).editAlpha,
+      setValue: (control, value) => { (control as ColorPickerButton).editAlpha = value; },
+    },
+  ];
+}
+
+function separatorProperties (): InspectorProperty[] {
+  return [{
+    group: 'Theme Overrides / Constants', name: 'separation', kind: 'number', min: 1, max: 32, step: 1, suffix: 'px',
+    getValue: control => control.getThemeConstant('separation'),
+    setValue: (control, value) => control.setThemeConstantOverride('separation', value),
+  }];
 }
 
 function textureRectProperties (texture: Texture): InspectorProperty[] {

@@ -138,3 +138,48 @@ export interface ProgressBarData extends RangeData {
   showPercentage?: boolean,
   fillMode?: ProgressFillMode,
 }
+
+export interface TextInputData extends ControlData {
+  text?: string,
+  placeholderText?: string,
+  editable?: boolean,
+  maxLength?: number,
+}
+
+export interface LineEditData extends TextInputData {
+  secret?: boolean,
+  secretCharacter?: string,
+  alignment?: HorizontalAlignment,
+}
+
+export interface TextEditData extends TextInputData {}
+
+export interface PopupMenuItemData {
+  id: number | string,
+  text: string,
+  disabled?: boolean,
+  separator?: boolean,
+  checked?: boolean,
+}
+
+export interface PopupMenuData extends ControlData {
+  items?: PopupMenuItemData[],
+}
+
+export interface MenuButtonData extends ButtonData {
+  items?: PopupMenuItemData[],
+}
+
+export interface OptionButtonData extends MenuButtonData {
+  selected?: number,
+}
+
+export interface ColorPickerData extends ControlData {
+  color?: spec.ColorData,
+  editAlpha?: boolean,
+}
+
+export interface ColorPickerButtonData extends ButtonData {
+  color?: spec.ColorData,
+  editAlpha?: boolean,
+}

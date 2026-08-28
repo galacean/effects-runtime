@@ -17,7 +17,7 @@ import { getTheme, setFlatStyleOverride, setFontOverrides } from '../theme';
 import { addSectionTitle, createButton, createSegmentedControl, styleSlider } from '../widgets';
 import { label } from './common';
 
-export class SlidersPage extends Control {
+export class RangesPage extends Control {
   constructor (engine: Engine, ctx: AppContext) {
     super(engine);
     const linked = new Panel(engine);
@@ -48,7 +48,7 @@ export class SlidersPage extends Control {
 
     horizontal.share(vertical);
     horizontal.share(progress);
-    horizontal.setValueNoSignal(ctx.state.sliders.linked);
+    horizontal.setValueNoSignal(ctx.state.ranges.linked);
     horizontal.setRect({ position: new math.Vector2(20, 124), size: new math.Vector2(242, 20) });
     vertical.setRect({ position: new math.Vector2(286, 80), size: new math.Vector2(18, 112) });
     progress.setRect({ position: new math.Vector2(20, 160), size: new math.Vector2(242, 28) });
@@ -56,7 +56,7 @@ export class SlidersPage extends Control {
       control.parent = panel;
     });
     const update = (next: number): void => {
-      ctx.state.sliders.linked = next;
+      ctx.state.ranges.linked = next;
       value.text = `${Math.round(next)} / 100`;
     };
 
@@ -91,11 +91,11 @@ export class SlidersPage extends Control {
     });
 
     stepped.step = 5;
-    stepped.setValueNoSignal(ctx.state.sliders.step);
+    stepped.setValueNoSignal(ctx.state.ranges.step);
     stepped.setRect({ position: new math.Vector2(20, 278), size: new math.Vector2(282, 18) });
     stepped.parent = panel;
     const updateStep = (next: number): void => {
-      ctx.state.sliders.step = next;
+      ctx.state.ranges.step = next;
       stepValue.text = `${next.toFixed(0)} — snapped to the nearest step`;
     };
 
@@ -144,13 +144,13 @@ export class SlidersPage extends Control {
       new math.Color(0.15, 0.39, 0.92, 1),
     ];
     const updatePreview = (): void => {
-      const [red, green, blue] = ctx.state.sliders.rgb;
+      const [red, green, blue] = ctx.state.ranges.rgb;
 
       preview.color = new math.Color(red / 255, green / 255, blue / 255, 1);
       hex.text = `#${[red, green, blue].map(channel => Math.round(channel).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
     };
 
-    ctx.state.sliders.rgb.forEach((initial, index) => {
+    ctx.state.ranges.rgb.forEach((initial, index) => {
       const channel = styleSlider(new HSlider(this.engine));
       const channelValue = label(this.engine, String(initial), 260, 214 + index * 60, 42, 34, panel, {
         size: 11,
@@ -170,14 +170,14 @@ export class SlidersPage extends Control {
         weight: 700,
       });
       channel.on('valueChanged', next => {
-        ctx.state.sliders.rgb[index] = next;
+        ctx.state.ranges.rgb[index] = next;
         channelValue.text = next.toFixed(0);
         updatePreview();
       });
     });
     updatePreview();
     const apply = createButton(this.engine, 'Use as accent color', () => {
-      ctx.state.customAccent = [...ctx.state.sliders.rgb] as [number, number, number];
+      ctx.state.customAccent = [...ctx.state.ranges.rgb] as [number, number, number];
       ctx.requestRebuild();
     }, 'primary');
 

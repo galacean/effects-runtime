@@ -20,7 +20,7 @@ import {
   StyleBoxEmpty,
   Theme,
   VScrollBar,
-  GUIRootComponent,
+  GUIWindowComponent,
   UICanvas,
 } from '@galacean/effects-plugin-gui';
 
@@ -193,7 +193,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.setSize(100, 100);
     content.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);
     scroll.addChild(content);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
 
     expect(scroll.clipContents).equals(true);
     expect(scroll.getHScrollBar().visible).equals(true);
@@ -202,7 +202,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
 
     scroll.hScroll = 30;
     scroll.vScroll = 40;
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
     expect([content.x, content.y, content.width, content.height]).deep.equals([-30, -40, 180, 220]);
   });
 
@@ -217,7 +217,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.addChild(first);
     scroll.addChild(second);
     scroll.changeChildIndex(first, -1);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
 
     expect(scroll.children).deep.equals([
       scroll.getHScrollBar(),
@@ -236,7 +236,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     const event = mouseButton(94, 60, MouseButton.Left);
 
     event.globalPosition.copyFrom(event.position);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(event);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.pushInput(event);
     expect(first.mouseDownCount).equals(0);
     expect(second.mouseDownCount).equals(0);
     expect(scroll.getVScrollBar().value).greaterThan(0);
@@ -251,14 +251,14 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.addChild(content);
     scroll.horizontalScrollMode = ScrollMode.ShowAlways;
     scroll.verticalScrollMode = ScrollMode.Reserve;
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
     expect(scroll.getHScrollBar().visible).equals(true);
     expect(scroll.getVScrollBar().visible).equals(false);
     expect(scroll.getHScrollBar().page).equals(92);
 
     scroll.horizontalScrollMode = ScrollMode.ShowNever;
     scroll.verticalScrollMode = ScrollMode.Disabled;
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
     expect(scroll.getHScrollBar().visible).equals(false);
     expect(scroll.getVScrollBar().visible).equals(false);
   });
@@ -275,15 +275,15 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     inner.parent = outerContent;
     inner.setSize(100, 100);
     inner.addChild(innerContent);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
     inner.vScroll = 300;
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
     const innerBoundary = inner.vScroll;
     const wheel = mouseButton(50, 50, MouseButton.WheelDown);
 
     wheel.globalPosition.set(50, 50);
     wheel.factor = 1;
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(wheel);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.pushInput(wheel);
     expect(inner.vScroll).equals(innerBoundary);
     expect(outer.vScroll).greaterThan(0);
     expect(wheel.isAccepted()).equals(true);
@@ -296,7 +296,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     scroll.setSize(100, 100);
     scroll.addChild(content);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
     player.canvas.dispatchEvent(new WheelEvent('wheel', {
       deltaY: 100,
       deltaMode: WheelEvent.DOM_DELTA_PIXEL,
@@ -319,20 +319,20 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     scroll.deadzone = 5;
     scroll.on('scrollStarted', () => events.push('start'));
     scroll.on('scrollEnded', () => events.push('end'));
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
 
     const down = new InputEventScreenTouch();
 
     down.index = 1;
     down.pressed = true;
     down.position.set(50, 50);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(down);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.pushInput(down);
     const drag = new InputEventScreenDrag();
 
     drag.index = 1;
     drag.position.set(50, 10);
     drag.relative.set(0, -40);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(drag);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.pushInput(drag);
     expect(scroll.vScroll).equals(40);
     expect(events).deep.equals(['start']);
 
@@ -341,7 +341,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
 
     up.index = 1;
     up.position.set(50, 10);
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.pushInput(up);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.pushInput(up);
     scroll.update(100);
     expect(scroll.vScroll).greaterThan(40);
 
@@ -367,7 +367,7 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
     target.focusMode = FocusMode.All;
     lateComposition.root.awake();
     lateComposition.root.beginPlay();
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.update(0);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.update(0);
 
     target.grabFocus();
     expect(scroll.vScroll).greaterThan(250);
@@ -381,11 +381,11 @@ describe('plugin-gui/GUI clipping and scrolling', () => {
 
     control.parent = composition.sceneRoot.getComponent(UICanvas).rootControl;
     control.focusMode = FocusMode.All;
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.on('guiFocusChanged', focusChanged);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.on('guiFocusChanged', focusChanged);
     control.grabFocus();
     control.grabFocus();
     control.releaseFocus();
-    player.engine.root.getComponent(GUIRootComponent).windowRoot.off('guiFocusChanged', focusChanged);
+    player.engine.root.getComponent(GUIWindowComponent).windowRoot.off('guiFocusChanged', focusChanged);
     control.grabFocus();
 
     expect(focusChanges).deep.equals([control, null]);

@@ -431,7 +431,7 @@ export class Graphics {
    */
   pushTransform (transform: Matrix3): void {
     this.transformStack.push(this.currentTransform.clone());
-    this.currentTransform = this.currentTransform.premultiply(transform);
+    this.currentTransform = this.currentTransform.multiply(transform);
   }
 
   /**

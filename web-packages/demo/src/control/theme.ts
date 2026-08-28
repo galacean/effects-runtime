@@ -1,12 +1,18 @@
 import { math } from '@galacean/effects';
 import type { FontStyle, FontWeight } from '@galacean/effects';
-import { StyleBoxEmpty, StyleBoxFlat, Theme, ThemeRegistry } from '@galacean/effects-plugin-gui';
-import type { Control } from '@galacean/effects-plugin-gui';
+import {
+  StyleBoxEmpty,
+  StyleBoxFlat,
+  Theme,
+  ThemeItemType,
+  ThemeRegistry,
+} from '@galacean/effects-plugin-gui';
+import type { Control, StyleBox, ThemeItemDefinitions } from '@galacean/effects-plugin-gui';
 
 export const FONT_FAMILY = 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 export type ThemeName = 'dark' | 'light';
-export type AccentName = 'blue' | 'indigo' | 'emerald' | 'amber' | 'rose';
+export type AccentName = 'gray' | 'blue' | 'indigo' | 'emerald' | 'amber' | 'orange' | 'rose';
 
 export type ThemeTokens = {
   appBg: math.Color,
@@ -57,6 +63,53 @@ function makeEmpty (contentHorizontal: number, contentVertical: number): StyleBo
   return style;
 }
 
+function style (value: StyleBox) {
+  return { type: ThemeItemType.StyleBox, defaultValue: value, affectsLayout: true } as const;
+}
+
+function themeColor (value: math.Color) {
+  return { type: ThemeItemType.Color, defaultValue: value } as const;
+}
+
+function constant (value: number, affectsLayout = true) {
+  return { type: ThemeItemType.Constant, defaultValue: value, affectsLayout } as const;
+}
+
+function registerInspectorThemeTypes (): void {
+  const clear = new math.Color();
+  const defaults: Record<string, { base: string, definitions?: ThemeItemDefinitions }> = {
+    EditorInspector: {
+      base: 'PanelContainer',
+      definitions: {
+        panel: style(makeFlat(new math.Color(0.08, 0.08, 0.08, 1), new math.Color(0.18, 0.18, 0.18, 1), 1)),
+      },
+    },
+    EditorInspectorCategory: { base: 'VBoxContainer' },
+    EditorInspectorSection: { base: 'VBoxContainer' },
+    EditorProperty: {
+      base: 'Container',
+      definitions: {
+        background: style(makeFlat(clear)),
+        backgroundSelected: style(makeFlat(new math.Color(0.24, 0.24, 0.24, 1))),
+        hover: style(makeFlat(new math.Color(0.17, 0.17, 0.17, 1))),
+        rowHeight: constant(30),
+        padding: constant(5),
+        separation: constant(5),
+        revertWidth: constant(24),
+        wideThreshold: constant(270),
+        splitRatio: constant(0.48, false),
+      },
+    },
+    EditorSpinSlider: { base: 'LineEdit' },
+  };
+
+  for (const [type, registration] of Object.entries(defaults)) {
+    if (!ThemeRegistry.hasType(type)) {
+      ThemeRegistry.registerType(type, registration.base, registration.definitions);
+    }
+  }
+}
+
 const BASE_THEMES: Record<ThemeName, ThemeBase> = {
   light: {
     appBg: color('#F1F5FA'),
@@ -79,16 +132,16 @@ const BASE_THEMES: Record<ThemeName, ThemeBase> = {
     controlTrack: color('#DFE7F2'),
   },
   dark: {
-    appBg: color('#0B1220'),
-    sidebarBg: color('#0F1828'),
-    panelBg: color('#152033'),
-    panelRaisedBg: color('#1C2A42'),
-    borderSubtle: color('#2B3A52'),
-    borderStrong: color('#47617F'),
-    textPrimary: color('#F2F5F8'),
-    textSecondary: color('#A8B2C0'),
-    textTertiary: color('#738092'),
-    textOnAccent: color('#FFFFFF'),
+    appBg: color('#0D0D0D'),
+    sidebarBg: color('#121212'),
+    panelBg: color('#171717'),
+    panelRaisedBg: color('#202020'),
+    borderSubtle: color('#2A2A2A'),
+    borderStrong: color('#3A3A3A'),
+    textPrimary: color('#E6E6E6'),
+    textSecondary: color('#A8A8A8'),
+    textTertiary: color('#747474'),
+    textOnAccent: color('#0D0D0D'),
     amber: color('#FFB020'),
     success: color('#34D399'),
     warning: color('#FBBF24'),
@@ -96,20 +149,24 @@ const BASE_THEMES: Record<ThemeName, ThemeBase> = {
     cyan: color('#22D3EE'),
     violet: color('#A78BFA'),
     rose: color('#FB7185'),
-    controlTrack: color('#293A54'),
+    controlTrack: color('#242424'),
   },
 };
 
 export const ACCENTS: Record<AccentName, Record<ThemeName, math.Color>> = {
-  blue: { light: color('#146EF5'), dark: color('#5B9CFF') },
-  indigo: { light: color('#5B4AF5'), dark: color('#8C82FF') },
-  emerald: { light: color('#05A66A'), dark: color('#34D399') },
-  amber: { light: color('#E98900'), dark: color('#FFBF3F') },
-  rose: { light: color('#E92D63'), dark: color('#FF7096') },
+  blue: { light: color('#146EF5'), dark: color('#4F8EF7') },
+  indigo: { light: color('#5B4AF5'), dark: color('#8175F7') },
+  emerald: { light: color('#05A66A'), dark: color('#2CC98B') },
+  amber: { light: color('#E98900'), dark: color('#F5B83D') },
+  orange: { light: color('#EA6A00'), dark: color('#F28A3B') },
+  rose: { light: color('#E92D63'), dark: color('#F05F87') },
+  gray: { light: color('#697386'), dark: color('#A6AFBD') },
 };
 
 let currentTheme: ThemeTokens = makeTheme('light', 'blue');
 const runtimeTheme = new Theme();
+
+registerInspectorThemeTypes();
 
 export function makeTheme (
   name: ThemeName,
@@ -147,6 +204,7 @@ export function applyTheme (
 
   currentTheme = theme;
   runtimeTheme.batch(() => {
+    registerThemeVariations();
     runtimeTheme.setFont('Control', 'font', { family: FONT_FAMILY, weight: 'normal', style: 'normal' });
     runtimeTheme.setFontSize('Control', 'fontSize', 13);
     runtimeTheme.setColor('Label', 'fontColor', theme.textPrimary);
@@ -156,14 +214,14 @@ export function applyTheme (
     runtimeTheme.setColor('Button', 'fontPressedColor', theme.textPrimary);
     runtimeTheme.setColor('Button', 'fontHoverPressedColor', theme.textPrimary);
     runtimeTheme.setColor('Button', 'fontDisabledColor', copy(theme.textTertiary, 0.72));
-    // Button icon colors are multiplicative tints. White preserves authored
-    // texture colors; using the light theme's dark text color turns them black.
-    runtimeTheme.setColor('Button', 'iconTint', theme.textOnAccent);
-    runtimeTheme.setColor('Button', 'iconFocusTint', theme.textOnAccent);
-    runtimeTheme.setColor('Button', 'iconHoverTint', theme.textOnAccent);
-    runtimeTheme.setColor('Button', 'iconPressedTint', theme.textOnAccent);
-    runtimeTheme.setColor('Button', 'iconHoverPressedTint', theme.textOnAccent);
-    runtimeTheme.setColor('Button', 'iconDisabledTint', copy(theme.textOnAccent, 0.45));
+    const iconTint = color('#FFFFFF');
+
+    runtimeTheme.setColor('Button', 'iconTint', iconTint);
+    runtimeTheme.setColor('Button', 'iconFocusTint', iconTint);
+    runtimeTheme.setColor('Button', 'iconHoverTint', iconTint);
+    runtimeTheme.setColor('Button', 'iconPressedTint', iconTint);
+    runtimeTheme.setColor('Button', 'iconHoverPressedTint', iconTint);
+    runtimeTheme.setColor('Button', 'iconDisabledTint', copy(iconTint, 0.45));
     runtimeTheme.setStyleBox('Button', 'normal', makeFlat(theme.panelBg, theme.borderSubtle, 1, 8, 4));
     runtimeTheme.setStyleBox('Button', 'hover', makeFlat(theme.panelRaisedBg, theme.borderSubtle, 1, 8, 4));
     runtimeTheme.setStyleBox('Button', 'pressed', makeFlat(theme.accentSoft, theme.borderSubtle, 1, 8, 4));
@@ -179,6 +237,24 @@ export function applyTheme (
       runtimeTheme.setStyleBox('CheckButton', name, checkButtonStyle);
     }
     runtimeTheme.setStyleBox('Panel', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1));
+    runtimeTheme.setStyleBox('PanelContainer', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1, 6, 6, 4));
+    runtimeTheme.setStyleBox('Separator', 'separator', makeFlat(theme.borderSubtle));
+    runtimeTheme.setConstant('Separator', 'separation', 1);
+    runtimeTheme.setStyleBox('TextInput', 'normal', makeFlat(theme.panelRaisedBg, theme.borderStrong, 1, 7, 5, 4));
+    runtimeTheme.setStyleBox('TextInput', 'readOnly', makeFlat(theme.panelBg, theme.borderSubtle, 1, 7, 5, 4));
+    runtimeTheme.setStyleBox('TextInput', 'focus', makeFlat(theme.panelRaisedBg, theme.textSecondary, 1, 0, 0, 4));
+    runtimeTheme.setColor('TextInput', 'fontColor', theme.textPrimary);
+    runtimeTheme.setColor('TextInput', 'fontReadOnlyColor', theme.textTertiary);
+    runtimeTheme.setColor('TextInput', 'fontPlaceholderColor', theme.textTertiary);
+    runtimeTheme.setColor('TextInput', 'selectionColor', copy(theme.textPrimary, name === 'dark' ? 0.24 : 0.18));
+    runtimeTheme.setColor('TextInput', 'caretColor', theme.textPrimary);
+    runtimeTheme.setStyleBox('Popup', 'panel', makeFlat(theme.panelRaisedBg, theme.borderStrong, 1, 8, 8, 5));
+    runtimeTheme.setStyleBox('PopupMenu', 'hover', makeFlat(name === 'dark' ? color('#303030') : theme.accentSoft, undefined, 0, 4, 2, 3));
+    runtimeTheme.setStyleBox('PopupMenu', 'separator', makeFlat(theme.borderSubtle));
+    runtimeTheme.setColor('PopupMenu', 'fontColor', theme.textPrimary);
+    runtimeTheme.setColor('PopupMenu', 'fontDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('PopupMenu', 'checkColor', name === 'dark' ? theme.textPrimary : theme.accent);
+    runtimeTheme.setColor('ColorPickerButton', 'swatchBorderColor', theme.borderStrong);
     runtimeTheme.setStyleBox('ProgressBar', 'background', makeFlat(theme.controlTrack));
     runtimeTheme.setStyleBox('ProgressBar', 'fill', makeFlat(theme.accent));
     runtimeTheme.setColor('ProgressBar', 'fontColor', theme.textPrimary);
@@ -194,6 +270,9 @@ export function applyTheme (
     runtimeTheme.setStyleBox('Slider', 'grabberDisabled', makeFlat(theme.borderSubtle, theme.borderSubtle, 1));
     runtimeTheme.setColor('Checkbox', 'markColor', theme.accent);
     runtimeTheme.setColor('Checkbox', 'markDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('Checkbox', 'checkedDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('Checkbox', 'markUncheckedColor', copy(theme.textPrimary, 0.2));
+    runtimeTheme.setColor('Checkbox', 'markUncheckedDisabledColor', copy(theme.textTertiary, 0.2));
     runtimeTheme.setColor('Checkbox', 'markOutlineColor', theme.borderStrong);
     runtimeTheme.setColor('CheckButton', 'switchColor', theme.accent);
     runtimeTheme.setColor('CheckButton', 'switchDisabledColor', theme.textTertiary);
@@ -205,6 +284,7 @@ export function applyTheme (
     runtimeTheme.setStyleBox('ScrollBar', 'grabber', makeFlat(theme.borderStrong, undefined, 0, 4, 4));
     runtimeTheme.setStyleBox('ScrollBar', 'grabberHighlight', makeFlat(theme.accent, undefined, 0, 4, 4));
     runtimeTheme.setStyleBox('ScrollBar', 'grabberPressed', makeFlat(theme.accentHover, undefined, 0, 4, 4));
+    applyInspectorTheme(theme, name);
   });
   document.body.style.background = toCss(theme.appBg);
 }
@@ -215,6 +295,7 @@ export function makeFlat (
   borderWidth = 0,
   horizontalMargin = 0,
   verticalMargin = 0,
+  cornerRadius = 0,
 ): StyleBoxFlat {
   const style = new StyleBoxFlat();
 
@@ -222,8 +303,99 @@ export function makeFlat (
   style.setBorderColor(border);
   style.setBorderWidths(borderWidth, borderWidth, borderWidth, borderWidth);
   style.setContentMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
+  style.setCornerRadii(cornerRadius, cornerRadius, cornerRadius, cornerRadius);
 
   return style;
+}
+
+function registerThemeVariations (): void {
+  const variations: Record<string, string> = {
+    EditorInspectorContainer: 'VBoxContainer',
+    EditorInspectorCategoryPanel: 'PanelContainer',
+    EditorPropertyContainer: 'VBoxContainer',
+    EditorInspectorTitle: 'Label',
+    EditorInspectorHint: 'Label',
+    EditorInspectorCategoryLabel: 'Label',
+    EditorPropertyLabel: 'Label',
+    EditorAxisX: 'Label',
+    EditorAxisY: 'Label',
+    EditorAxisW: 'Label',
+    EditorAxisH: 'Label',
+    EditorInspectorButton: 'Button',
+    EditorInspectorFlatButton: 'Button',
+    EditorInspectorCheck: 'Checkbox',
+    EditorInspectorOptionButton: 'OptionButton',
+    EditorVectorPanel: 'PanelContainer',
+    EditorVectorSpinSlider: 'EditorSpinSlider',
+  };
+
+  for (const [variation, base] of Object.entries(variations)) {
+    runtimeTheme.setTypeVariation(variation, base);
+  }
+}
+
+function applyInspectorTheme (theme: ThemeTokens, name: ThemeName): void {
+  const clear = new math.Color();
+  const categoryBackground = name === 'dark' ? color('#202020') : color('#E8EEF6');
+  const rowHover = name === 'dark' ? color('#242424') : color('#EDF3FA');
+  const rowSelected = name === 'dark' ? color('#303030') : mix(theme.panelBg, theme.accent, 0.14);
+  const buttonHover = name === 'dark' ? color('#2B2B2B') : theme.panelRaisedBg;
+  const fieldBackground = name === 'dark' ? color('#1B1B1B') : theme.panelRaisedBg;
+
+  runtimeTheme.setStyleBox('EditorInspector', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1));
+  runtimeTheme.setConstant('EditorInspectorContainer', 'separation', 0);
+  runtimeTheme.setStyleBox('EditorInspectorCategoryPanel', 'panel', makeFlat(categoryBackground, theme.borderSubtle, 0, 10, 5));
+  runtimeTheme.setConstant('EditorPropertyContainer', 'separation', 0);
+  runtimeTheme.setColor('EditorInspectorTitle', 'fontColor', theme.textPrimary);
+  runtimeTheme.setFontSize('EditorInspectorTitle', 'fontSize', 15);
+  runtimeTheme.setColor('EditorInspectorHint', 'fontColor', theme.textTertiary);
+  runtimeTheme.setFontSize('EditorInspectorHint', 'fontSize', 11);
+  runtimeTheme.setColor('EditorInspectorCategoryLabel', 'fontColor', theme.textSecondary);
+  runtimeTheme.setFontSize('EditorInspectorCategoryLabel', 'fontSize', 11);
+  runtimeTheme.setColor('EditorPropertyLabel', 'fontColor', theme.textSecondary);
+  runtimeTheme.setColor('EditorAxisX', 'fontColor', theme.danger);
+  runtimeTheme.setColor('EditorAxisY', 'fontColor', theme.success);
+  runtimeTheme.setColor('EditorAxisW', 'fontColor', theme.warning);
+  runtimeTheme.setColor('EditorAxisH', 'fontColor', theme.cyan);
+  runtimeTheme.setStyleBox('EditorProperty', 'background', makeFlat(clear, theme.borderSubtle, 0));
+  runtimeTheme.setStyleBox('EditorProperty', 'hover', makeFlat(rowHover));
+  runtimeTheme.setStyleBox('EditorProperty', 'backgroundSelected', makeFlat(rowSelected));
+  runtimeTheme.setConstant('EditorProperty', 'rowHeight', 30);
+  runtimeTheme.setConstant('EditorProperty', 'padding', 5);
+  runtimeTheme.setConstant('EditorProperty', 'separation', 5);
+  runtimeTheme.setConstant('EditorProperty', 'revertWidth', 24);
+  runtimeTheme.setConstant('EditorProperty', 'wideThreshold', 270);
+  runtimeTheme.setConstant('EditorProperty', 'splitRatio', 0.48);
+  for (const state of ['normal', 'pressed', 'disabled']) {
+    runtimeTheme.setStyleBox('EditorInspectorFlatButton', state, makeFlat(clear, undefined, 0, 5, 3, 3));
+  }
+  for (const state of ['hover', 'hoverPressed']) {
+    runtimeTheme.setStyleBox('EditorInspectorFlatButton', state, makeFlat(buttonHover, undefined, 0, 5, 3, 3));
+  }
+  runtimeTheme.setStyleBox('EditorInspectorFlatButton', 'focus', makeFlat(clear, theme.borderStrong, 1, 0, 0, 3));
+  runtimeTheme.setColor('EditorInspectorFlatButton', 'fontColor', theme.textSecondary);
+  runtimeTheme.setColor('EditorInspectorFlatButton', 'fontHoverColor', theme.textPrimary);
+  runtimeTheme.setColor('EditorInspectorFlatButton', 'fontPressedColor', theme.textPrimary);
+  runtimeTheme.setColor('EditorInspectorFlatButton', 'fontHoverPressedColor', theme.textPrimary);
+  runtimeTheme.setStyleBox('EditorSpinSlider', 'normal', makeFlat(theme.panelRaisedBg, theme.borderSubtle, 1, 6, 4, 3));
+  runtimeTheme.setStyleBox('EditorSpinSlider', 'focus', makeFlat(theme.panelRaisedBg, theme.textSecondary, 1, 0, 0, 3));
+  for (const state of ['normal', 'pressed', 'disabled']) {
+    runtimeTheme.setStyleBox('EditorInspectorCheck', state, makeFlat(fieldBackground, undefined, 0, 6, 3, 4));
+    runtimeTheme.setStyleBox('EditorInspectorOptionButton', state, makeFlat(fieldBackground, undefined, 0, 9, 4, 4));
+  }
+  for (const state of ['hover', 'hoverPressed']) {
+    runtimeTheme.setStyleBox('EditorInspectorCheck', state, makeFlat(buttonHover, undefined, 0, 6, 3, 4));
+    runtimeTheme.setStyleBox('EditorInspectorOptionButton', state, makeFlat(buttonHover, undefined, 0, 9, 4, 4));
+  }
+  runtimeTheme.setStyleBox('EditorInspectorCheck', 'focus', makeFlat(clear, theme.borderStrong, 1, 0, 0, 4));
+  runtimeTheme.setStyleBox('EditorInspectorOptionButton', 'focus', makeFlat(clear, theme.borderStrong, 1, 0, 0, 4));
+  runtimeTheme.setConstant('EditorInspectorOptionButton', 'arrowSize', 12);
+  runtimeTheme.setConstant('EditorInspectorOptionButton', 'arrowMargin', 8);
+  runtimeTheme.setConstant('EditorInspectorOptionButton', 'hSeparation', 4);
+  runtimeTheme.setStyleBox('EditorVectorPanel', 'panel', makeFlat(fieldBackground, undefined, 0, 9, 3, 4));
+  runtimeTheme.setStyleBox('EditorVectorSpinSlider', 'normal', makeFlat(clear, undefined, 0, 0, 3));
+  runtimeTheme.setStyleBox('EditorVectorSpinSlider', 'readOnly', makeFlat(clear, undefined, 0, 0, 3));
+  runtimeTheme.setStyleBox('EditorVectorSpinSlider', 'focus', makeFlat(clear, undefined, 0, 0, 3));
 }
 
 export function setFontOverrides (

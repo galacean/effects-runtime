@@ -91,6 +91,13 @@ export type ControlEvent = {
 
 type ThemeCacheEntry = { found: boolean, value: ThemeValue };
 
+const enum MeasurementChange {
+  Minimum = 1,
+  Desired = 2,
+  Maximum = 4,
+  All = Minimum | Desired | Maximum,
+}
+
 export type RootControlEvent = ControlEvent & {
   guiFocusChanged: [control: Control | null],
 };
@@ -186,12 +193,14 @@ export class Control {
   private minimumSizeCache: Vector2 | null = null;
   private desiredSizeCache: Vector2 | null = null;
   private maximumSizeCache: Vector2 | null = null;
+  private pendingMeasurementChanges = 0;
   private _horizontalSizeFlags = SizeFlags.Fill;
   private _verticalSizeFlags = SizeFlags.Fill;
   private _stretchRatio = 1;
   private _horizontalGrowDirection = GrowDirection.End;
   private _verticalGrowDirection = GrowDirection.End;
   private _theme: Theme | null = null;
+  private themeOwnerNode: Control | null = null;
   private _themeTypeVariation = '';
   private readonly themeOverrides = new Map<ThemeItemType, Map<string, ThemeValue>>();
   private readonly themeCache = new Map<string, ThemeCacheEntry>();
@@ -215,18 +224,27 @@ export class Control {
     }
     const previousRoot = this.root;
 
+    if (this._parent?.hasThemeOwnerNode()) {
+      this.propagateThemeOwner(null, false, true);
+    }
     this._parent?.removeChildInternal(this);
     this._parent = value;
     value?.addChildInternal(this);
-    this.propagateThemeChanged(true);
+    if (value?.hasThemeOwnerNode()) {
+      this.propagateThemeOwner(value.getThemeOwnerNode(), false, true);
+    }
     this.updateLayout();
     const nextRoot = this.root;
 
+    if (nextRoot) {
+      this.propagateThemeChanged(true);
+    }
     if (previousRoot && previousRoot !== nextRoot) {
       previousRoot.controlRemoved(this);
     }
     if (nextRoot && previousRoot !== nextRoot) {
       this.queuePendingLayouts();
+      this.queuePendingMeasurements(nextRoot);
     }
     if (previousRoot !== nextRoot) {
       this.notifyRootChanged(previousRoot, nextRoot);
@@ -451,8 +469,27 @@ export class Control {
     if (this._theme === value) {return;}
     this._theme?.off('changed', this.attachedThemeChanged);
     this._theme = value;
-    this._theme?.on('changed', this.attachedThemeChanged);
-    this.propagateThemeChanged(true);
+    if (value) {
+      this.propagateThemeOwner(this, !!this.root, true);
+      value.on('changed', this.attachedThemeChanged);
+    } else {
+      this.propagateThemeOwner(this.parent?.getThemeOwnerNode() ?? null, !!this.root, true);
+    }
+  }
+
+  /** Returns the nearest Theme currently inherited by this Control. */
+  getInheritedTheme (): Theme | null {
+    return this.themeOwnerNode?.theme ?? null;
+  }
+
+  /** Returns the Control that owns the first Theme in this Control's inheritance chain. */
+  getThemeOwnerNode (): Control | null {
+    return this.themeOwnerNode;
+  }
+
+  /** Returns whether this Control is affected by a Theme in its Control ancestry. */
+  hasThemeOwnerNode (): boolean {
+    return this.themeOwnerNode !== null;
   }
 
   /** Optional named type variation resolved before this Control's native theme type. */
@@ -768,20 +805,75 @@ export class Control {
   }
 
   updateMinimumSize (): void {
-    this.minimumSizeCache = null;
-    this.updateLayout();
-    this.eventEmitter.emit('minimumSizeChanged', this);
+    this.invalidateMeasurementChanges(MeasurementChange.Minimum);
   }
 
   updateDesiredSize (): void {
-    this.desiredSizeCache = null;
-    this.eventEmitter.emit('desiredSizeChanged', this);
+    this.invalidateMeasurementChanges(MeasurementChange.Desired);
   }
 
   updateMaximumSize (): void {
-    this.maximumSizeCache = null;
-    this.updateLayout();
-    this.eventEmitter.emit('maximumSizeChanged', this);
+    this.invalidateMeasurementChanges(MeasurementChange.Maximum);
+  }
+
+  /** @internal */
+  invokeMeasurementChanges (): void {
+    if (this.disposed || this.pendingMeasurementChanges === 0) {return;}
+    const changes = this.pendingMeasurementChanges;
+
+    this.pendingMeasurementChanges = 0;
+    if ((changes & (MeasurementChange.Minimum | MeasurementChange.Maximum)) !== 0) {
+      this.updateLayout();
+    }
+    if ((changes & MeasurementChange.Minimum) !== 0) {
+      this.eventEmitter.emit('minimumSizeChanged', this);
+    }
+    if ((changes & MeasurementChange.Desired) !== 0) {
+      this.eventEmitter.emit('desiredSizeChanged', this);
+    }
+    if ((changes & MeasurementChange.Maximum) !== 0) {
+      this.eventEmitter.emit('maximumSizeChanged', this);
+    }
+  }
+
+  protected invalidateMeasurementChanges (changes: number): void {
+    const root = this.root;
+    let changed = false;
+
+    if ((changes & MeasurementChange.Minimum) !== 0) {
+      changed ||= this.minimumSizeCache !== null
+        || (!!root && (this.pendingMeasurementChanges & MeasurementChange.Minimum) === 0);
+      this.minimumSizeCache = null;
+    }
+    if ((changes & MeasurementChange.Desired) !== 0) {
+      changed ||= this.desiredSizeCache !== null
+        || (!!root && (this.pendingMeasurementChanges & MeasurementChange.Desired) === 0);
+      this.desiredSizeCache = null;
+    }
+    if ((changes & MeasurementChange.Maximum) !== 0) {
+      changed ||= this.maximumSizeCache !== null
+        || (!!root && (this.pendingMeasurementChanges & MeasurementChange.Maximum) === 0);
+      this.maximumSizeCache = null;
+    }
+    if (root) {
+      this.scheduleMeasurementChanges(changes, root);
+    } else {
+      if ((changes & (MeasurementChange.Minimum | MeasurementChange.Maximum)) !== 0) {
+        this.updateLayout();
+      }
+      if ((changes & MeasurementChange.Minimum) !== 0) {
+        this.eventEmitter.emit('minimumSizeChanged', this);
+      }
+      if ((changes & MeasurementChange.Desired) !== 0) {
+        this.eventEmitter.emit('desiredSizeChanged', this);
+      }
+      if ((changes & MeasurementChange.Maximum) !== 0) {
+        this.eventEmitter.emit('maximumSizeChanged', this);
+      }
+    }
+    if (changed && this.parent instanceof Container) {
+      this.parent.invalidateMeasurementsFromChild();
+    }
   }
 
   setScale (x: number, y: number): void {
@@ -1158,6 +1250,10 @@ export class Control {
   onLostFocus (): void {}
   onScrollBegin (): void {}
   onScrollEnd (): void {}
+  /** @internal */
+  onPopupOpened (): void {}
+  /** @internal */
+  onPopupClosed (): void {}
 
   /** @internal */
   invokeGetDragData (position: Vector2): unknown {
@@ -1189,6 +1285,7 @@ export class Control {
     this.overrideStyleBoxReferences.clear();
     this.themeOverrides.clear();
     this.themeCache.clear();
+    this.pendingMeasurementChanges = 0;
     this.disposed = true;
     this.onDestroy();
     this.parent = null;
@@ -1254,12 +1351,9 @@ export class Control {
     const nativeType = this.getThemeType();
     const requestedType = explicitType ?? (this.themeTypeVariation || nativeType);
 
-    if (this.theme?.hasTypeVariation(requestedType)) {
-      return this.theme.getTypeDependencies(requestedType);
-    }
-    for (let current = this.parent; current; current = current.parent) {
-      if (current.theme?.hasTypeVariation(requestedType)) {
-        return current.theme.getTypeDependencies(requestedType);
+    for (let owner = this.themeOwnerNode; owner; owner = owner.parent?.themeOwnerNode ?? null) {
+      if (owner.theme?.hasTypeVariation(requestedType)) {
+        return owner.theme.getTypeDependencies(requestedType);
       }
     }
     if (!explicitType && this.themeTypeVariation) {
@@ -1283,18 +1377,10 @@ export class Control {
     let value = override;
 
     if (!found) {
-      const visitedThemes = new Set<Theme>();
-      const themes: Theme[] = [];
+      for (let owner = this.themeOwnerNode; owner && !found; owner = owner.parent?.themeOwnerNode ?? null) {
+        const theme = owner.theme;
 
-      if (this.theme) {themes.push(this.theme);}
-      for (let current = this.parent; current; current = current.parent) {
-        if (current.theme) {themes.push(current.theme);}
-      }
-      for (const theme of themes) {
-        if (found) {break;}
-
-        if (visitedThemes.has(theme)) {continue;}
-        visitedThemes.add(theme);
+        if (!theme) {continue;}
         for (const dependency of this.getThemeDependencies(theme, explicitType)) {
           const candidate = theme.getItem(dependency, itemType, name);
 
@@ -1386,11 +1472,40 @@ export class Control {
   private propagateThemeChanged (affectsLayout: boolean, includeChildren = true): void {
     if (this.disposed) {return;}
     this.themeCache.clear();
-    this.onThemeChanged(affectsLayout);
-    this.eventEmitter.emit('themeChanged', this, affectsLayout);
+    if (this.root) {
+      this.onThemeChanged(affectsLayout);
+      this.eventEmitter.emit('themeChanged', this, affectsLayout);
+    }
     if (includeChildren) {
       for (const child of this.children) {child.propagateThemeChanged(affectsLayout);}
     }
+  }
+
+  private propagateThemeOwner (ownerNode: Control | null, notify: boolean, assign: boolean): void {
+    let assignToControl = assign;
+
+    if (this !== ownerNode && this.theme) {
+      assignToControl = false;
+    }
+    if (assignToControl) {
+      this.themeOwnerNode = ownerNode;
+    }
+    this.themeCache.clear();
+    if (notify && this.root) {
+      this.onThemeChanged(true);
+      this.eventEmitter.emit('themeChanged', this, true);
+    }
+    for (const child of this.children) {
+      child.propagateThemeOwner(ownerNode, notify, assignToControl);
+    }
+  }
+
+  private scheduleMeasurementChanges (changes: MeasurementChange, root: RootControl): void {
+    const pending = changes & ~this.pendingMeasurementChanges;
+
+    if (pending === 0) {return;}
+    this.pendingMeasurementChanges |= pending;
+    root.queueMeasurementChange(this);
   }
 
   private applyBounds (x: number, y: number, width: number, height: number): void {
@@ -1418,7 +1533,6 @@ export class Control {
 
   private markTransformDirty (): void {
     this.transformDirty = true;
-    this.root?.controlTreeChanged();
   }
 
   private getCachedMinimumSize (): Vector2 {
@@ -1472,6 +1586,15 @@ export class Control {
     }
     for (const child of this.children) {
       child.queuePendingLayouts();
+    }
+  }
+
+  private queuePendingMeasurements (root: RootControl): void {
+    if (this.pendingMeasurementChanges !== 0) {
+      root.queueMeasurementChange(this);
+    }
+    for (const child of this.children) {
+      child.queuePendingMeasurements(root);
     }
   }
 
@@ -1754,25 +1877,22 @@ export class Container extends Control {
   protected sortChildren (): void {}
 
   private bindChild (child: Control): void {
-    child.on('minimumSizeChanged', this.childLayoutChanged);
-    child.on('desiredSizeChanged', this.childLayoutChanged);
-    child.on('maximumSizeChanged', this.childLayoutChanged);
     child.on('sizeFlagsChanged', this.childLayoutChanged);
     child.on('visibilityChanged', this.childLayoutChanged);
   }
 
   private unbindChild (child: Control): void {
-    child.off('minimumSizeChanged', this.childLayoutChanged);
-    child.off('desiredSizeChanged', this.childLayoutChanged);
-    child.off('maximumSizeChanged', this.childLayoutChanged);
     child.off('sizeFlagsChanged', this.childLayoutChanged);
     child.off('visibilityChanged', this.childLayoutChanged);
   }
 
   private invalidateMeasurementsAndQueueSort (): void {
-    this.updateMinimumSize();
-    this.updateDesiredSize();
-    this.updateMaximumSize();
+    this.invalidateMeasurementsFromChild();
+  }
+
+  /** @internal */
+  invalidateMeasurementsFromChild (): void {
+    this.invalidateMeasurementChanges(MeasurementChange.All);
     this.queueSort();
   }
 
@@ -1828,6 +1948,7 @@ export abstract class RootControl extends Control {
   }
 
   abstract queueLayout (container: Container): void;
+  abstract queueMeasurementChange (control: Control): void;
   abstract getMousePosition (): Vector2;
   abstract guiGetFocusOwner (): Control | null;
   abstract guiControlHasFocus (control: Control, visibleOnly?: boolean): boolean;
@@ -1845,6 +1966,8 @@ export abstract class RootControl extends Control {
   abstract controlStateChanged (control: Control): void;
   abstract controlRemoved (control: Control): void;
   abstract controlTreeChanged (): void;
+  abstract popupControl (control: Control, source: Control | null, position: Vector2): void;
+  abstract closePopupControl (control: Control): void;
 }
 
 ThemeRegistry.registerType(Control.themeType, null);
