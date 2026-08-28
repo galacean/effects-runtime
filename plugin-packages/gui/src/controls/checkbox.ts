@@ -4,9 +4,9 @@ import { Button } from './button';
 import type { ContentInsets } from './button';
 import { HorizontalAlignment } from './enums';
 
-@effectsClass('CheckBox')
-export class CheckBox extends Button {
-  static override readonly themeType: string = 'CheckBox';
+@effectsClass('Checkbox')
+export class Checkbox extends Button {
+  static override readonly themeType: string = 'Checkbox';
 
   constructor (engine: Engine, text = '') {
     super(engine, text);

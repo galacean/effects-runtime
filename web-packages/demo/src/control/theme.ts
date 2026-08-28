@@ -171,11 +171,11 @@ export function applyTheme (
     runtimeTheme.setStyleBox('Button', 'disabled', makeFlat(copy(theme.panelRaisedBg, 0.72), theme.borderSubtle, 1, 8, 4));
     runtimeTheme.setStyleBox('Button', 'focus', makeFlat(new math.Color(0, 0, 0, 0), theme.accentHover, 1));
     runtimeTheme.setConstant('Button', 'alignToLargestStyleBox', 1);
-    const checkBoxStyle = makeEmpty(4, 4);
+    const checkboxStyle = makeEmpty(4, 4);
     const checkButtonStyle = makeEmpty(6, 4);
 
     for (const name of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
-      runtimeTheme.setStyleBox('CheckBox', name, checkBoxStyle);
+      runtimeTheme.setStyleBox('Checkbox', name, checkboxStyle);
       runtimeTheme.setStyleBox('CheckButton', name, checkButtonStyle);
     }
     runtimeTheme.setStyleBox('Panel', 'panel', makeFlat(theme.panelBg, theme.borderSubtle, 1));
@@ -192,9 +192,9 @@ export function applyTheme (
     );
     runtimeTheme.setStyleBox('Slider', 'grabberHighlight', makeFlat(theme.accentHover, theme.borderSubtle, 1));
     runtimeTheme.setStyleBox('Slider', 'grabberDisabled', makeFlat(theme.borderSubtle, theme.borderSubtle, 1));
-    runtimeTheme.setColor('CheckBox', 'markColor', theme.accent);
-    runtimeTheme.setColor('CheckBox', 'markDisabledColor', theme.textTertiary);
-    runtimeTheme.setColor('CheckBox', 'markOutlineColor', theme.borderStrong);
+    runtimeTheme.setColor('Checkbox', 'markColor', theme.accent);
+    runtimeTheme.setColor('Checkbox', 'markDisabledColor', theme.textTertiary);
+    runtimeTheme.setColor('Checkbox', 'markOutlineColor', theme.borderStrong);
     runtimeTheme.setColor('CheckButton', 'switchColor', theme.accent);
     runtimeTheme.setColor('CheckButton', 'switchDisabledColor', theme.textTertiary);
     runtimeTheme.setColor('CheckButton', 'switchOffColor', theme.borderStrong);

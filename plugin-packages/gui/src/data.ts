@@ -125,7 +125,7 @@ export interface ButtonData extends BaseButtonData {
   iconVerticalAlignment?: VerticalAlignment,
 }
 
-export interface CheckBoxData extends ButtonData {}
+export interface CheckboxData extends ButtonData {}
 
 export interface CheckButtonData extends ButtonData {}
 

@@ -101,7 +101,7 @@ ThemeRegistry.registerType('Button', 'BaseButton', {
   iconSeparation: constant(4),
   alignToLargestStyleBox: constant(0),
 });
-ThemeRegistry.registerType('CheckBox', 'Button', {
+ThemeRegistry.registerType('Checkbox', 'Button', {
   normal: style(empty(4, 4)),
   hover: style(empty(4, 4)),
   pressed: style(empty(4, 4)),

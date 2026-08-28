@@ -7,7 +7,7 @@ import type { Texture } from '@galacean/effects';
 import {
   Button,
   ButtonGroup,
-  CheckBox,
+  Checkbox,
   Control,
   HBoxContainer,
   HScrollBar,
@@ -361,10 +361,10 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     expect(order).deep.equals(['content']);
   });
 
-  it('selects themed CheckBox, Slider, ProgressBar and ScrollBar items', () => {
+  it('selects themed Checkbox, Slider, ProgressBar and ScrollBar items', () => {
     const theme = new Theme();
     const checkedIcon = { width: 12, height: 12 } as Texture;
-    const check = new CheckBox(player.engine);
+    const check = new Checkbox(player.engine);
     const slider = new HSlider(player.engine);
     const progress = new ProgressBar(player.engine);
     const scroll = new HScrollBar(player.engine);
@@ -372,7 +372,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     const decrementHighlightIcon = { width: 11, height: 20 } as Texture;
     const styles = new Map<string, StyleBox>();
 
-    theme.setIcon('CheckBox', 'checked', checkedIcon);
+    theme.setIcon('Checkbox', 'checked', checkedIcon);
     theme.setIcon('ScrollBar', 'decrement', decrementIcon);
     theme.setIcon('ScrollBar', 'decrementHighlight', decrementHighlightIcon);
     for (const [type, names] of [
@@ -449,7 +449,7 @@ describe('plugin-gui/GUI Theme and StyleBox', () => {
     const radioIcon = { width: 16, height: 16 } as Texture;
     const group = new ButtonGroup();
 
-    theme.setIcon('CheckBox', 'radioChecked', radioIcon);
+    theme.setIcon('Checkbox', 'radioChecked', radioIcon);
     check.buttonGroup = group;
     check.setPressedNoSignal(true);
     check.draw();

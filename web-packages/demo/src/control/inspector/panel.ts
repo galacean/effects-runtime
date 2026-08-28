@@ -10,7 +10,7 @@ import {
 import {
   AutowrapMode,
   Button,
-  CheckBox,
+  Checkbox,
   ColorRect,
   Control,
   CursorShape,
@@ -265,7 +265,7 @@ export class ControlInspectorPanel extends Panel {
     x: number,
     y: number,
   ): void {
-    const editor = new CheckBox(this.engine);
+    const editor = new Checkbox(this.engine);
 
     editor.flat = true;
     for (const state of ['normal', 'hover', 'pressed', 'hoverPressed', 'disabled']) {
@@ -491,7 +491,7 @@ export class ControlInspectorPanel extends Panel {
     height: number,
   ): void {
     const grid = new GridContainer(this.engine);
-    const editors: CheckBox[] = [];
+    const editors: Checkbox[] = [];
 
     grid.columns = 2;
     grid.setThemeConstantOverride('horizontalSeparation', 4);
@@ -499,7 +499,7 @@ export class ControlInspectorPanel extends Panel {
     grid.setRect({ position: new math.Vector2(x, y), size: new math.Vector2(width, height) });
     grid.parent = parent;
     for (const option of property.options) {
-      const editor = new CheckBox(this.engine, option.label);
+      const editor = new Checkbox(this.engine, option.label);
 
       editor.setThemeFontSizeOverride('fontSize', 9);
       editor.setSizeFlags(SizeFlags.ExpandFill, SizeFlags.ExpandFill);

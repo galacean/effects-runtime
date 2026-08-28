@@ -6,7 +6,7 @@ import {
   BaseButton,
   Button,
   CenterContainer,
-  CheckBox,
+  Checkbox,
   CheckButton,
   ColorRect,
   Container,
@@ -83,7 +83,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
       ['Panel', Panel],
       ['ProgressBar', ProgressBar],
       ['Button', Button],
-      ['CheckBox', CheckBox],
+      ['Checkbox', Checkbox],
       ['CheckButton', CheckButton],
       ['HSlider', HSlider],
       ['VSlider', VSlider],
@@ -370,9 +370,9 @@ describe('plugin-gui/GUI Control deserialization', () => {
       },
       buttonCase('Button', texturePath, texture),
       {
-        ...buttonCase('CheckBox', texturePath, texture),
+        ...buttonCase('Checkbox', texturePath, texture),
         data: {
-          ...buttonCase('CheckBox', texturePath, texture).data,
+          ...buttonCase('Checkbox', texturePath, texture).data,
           themeOverrides: {
             colors: { markColor: { r: 0.8, g: 0.2, b: 0.1, a: 1 } },
           },
@@ -527,7 +527,7 @@ describe('plugin-gui/GUI Control deserialization', () => {
   }
 
   function buttonCase (
-    type: 'Button' | 'CheckBox' | 'CheckButton',
+    type: 'Button' | 'Checkbox' | 'CheckButton',
     texturePath: { id: string },
     texture: Engine['whiteTexture'],
   ): DeserializationCase {

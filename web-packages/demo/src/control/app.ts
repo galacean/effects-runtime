@@ -40,7 +40,7 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
   { id: 'overview', title: 'Overview 总览', shortTitle: 'Overview', subtitle: 'Understand the demo, its coverage and the fastest way to explore it.', group: 'Getting started' },
   { id: 'inspector', title: 'Inspector 属性面板', shortTitle: 'Inspector', subtitle: 'Edit current Control properties with consistent names, options and ranges.', group: 'Getting started' },
   { id: 'buttons', title: 'Buttons 按钮', shortTitle: 'Buttons', subtitle: 'Button states, groups, icons, sizing and action modes.', group: 'Foundation' },
-  { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'CheckBox, radio groups and CheckButton switches.', group: 'Foundation' },
+  { id: 'selection', title: 'Selection 选择', shortTitle: 'Selection', subtitle: 'Checkbox, radio groups and CheckButton switches.', group: 'Foundation' },
   { id: 'sliders', title: 'Sliders 滑杆', shortTitle: 'Sliders', subtitle: 'Shared ranges, progress feedback, fill modes and RGB values.', group: 'Foundation' },
   { id: 'display', title: 'Display 展示', shortTitle: 'Display', subtitle: 'Label layout, overflow, textures and NinePatchRect sizing.', group: 'Foundation' },
   { id: 'layout', title: 'Containers 布局', shortTitle: 'Containers', subtitle: 'Box, grid, margin and aspect-ratio container behavior.', group: 'Layout & input' },

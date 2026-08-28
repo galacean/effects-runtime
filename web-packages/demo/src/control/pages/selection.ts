@@ -3,7 +3,7 @@ import { math } from '@galacean/effects';
 import {
   AutowrapMode,
   ButtonGroup,
-  CheckBox,
+  Checkbox,
   CheckButton,
   Control,
   HorizontalAlignment,
@@ -30,7 +30,7 @@ export class SelectionPage extends Control {
   private buildChoices (card: Panel, ctx: AppContext): void {
     const theme = getTheme();
 
-    addSectionTitle(this.engine, card, 'Multiple selection', 'CheckBox values with a select-all controller');
+    addSectionTitle(this.engine, card, 'Multiple selection', 'Checkbox values with a select-all controller');
     const summary = label(this.engine, '', 20, 294, 294, 52, card, {
       size: 12,
       color: theme.textSecondary,
@@ -39,7 +39,7 @@ export class SelectionPage extends Control {
     });
     const itemLabels = ['Animation', 'Interaction', 'Post-processing'];
     const items = itemLabels.map((text, index) => {
-      const checkbox = new CheckBox(this.engine, text);
+      const checkbox = new Checkbox(this.engine, text);
 
       checkbox.setPressedNoSignal(ctx.state.selection.multi[index]);
       checkbox.setRect({ position: new math.Vector2(20, 132 + index * 48), size: new math.Vector2(294, 36) });
@@ -47,7 +47,7 @@ export class SelectionPage extends Control {
 
       return checkbox;
     });
-    const master = new CheckBox(this.engine, 'Select all capabilities');
+    const master = new Checkbox(this.engine, 'Select all capabilities');
 
     master.setPressedNoSignal(ctx.state.selection.multi.every(Boolean));
     setFlatStyleOverride(master, 'normal', { background: theme.accentSoft });
@@ -78,7 +78,7 @@ export class SelectionPage extends Control {
     });
     update();
 
-    const disabled = new CheckBox(this.engine, 'Unavailable capability');
+    const disabled = new Checkbox(this.engine, 'Unavailable capability');
 
     disabled.disabled = true;
     disabled.setRect({ position: new math.Vector2(20, 374), size: new math.Vector2(294, 36) });
@@ -99,7 +99,7 @@ export class SelectionPage extends Control {
     });
 
     plans.forEach((text, index) => {
-      const radio = new CheckBox(this.engine, text);
+      const radio = new Checkbox(this.engine, text);
 
       radio.buttonGroup = group;
       radio.setPressedNoSignal(index === ctx.state.selection.plan);

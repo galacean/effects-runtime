@@ -124,7 +124,7 @@ export type InspectorControlOption = {
 
 export const INSPECTOR_CONTROL_OPTIONS: InspectorControlOption[] = [
   { type: 'Button', title: 'Button', group: 'Buttons', description: 'Text button with BaseButton interaction behavior.' },
-  { type: 'CheckBox', title: 'CheckBox', group: 'Buttons', description: 'Checkbox using the Button and BaseButton property set.' },
+  { type: 'Checkbox', title: 'Checkbox', group: 'Buttons', description: 'Checkbox using the Button and BaseButton property set.' },
   { type: 'CheckButton', title: 'CheckButton', group: 'Buttons', description: 'Switch-style toggle using the Button property set.' },
   { type: 'Label', title: 'Label', group: 'Display', description: 'Text layout, wrapping, alignment and theme overrides.' },
   { type: 'TextureRect', title: 'TextureRect', group: 'Display', description: 'Texture sizing and stretch behavior.' },
@@ -178,7 +178,7 @@ export function createInspectorProperties (type: InspectorControlType, texture: 
 
   switch (type) {
     case 'Button':
-    case 'CheckBox':
+    case 'Checkbox':
     case 'CheckButton':
       properties.push(...buttonProperties(texture), ...baseButtonProperties());
 

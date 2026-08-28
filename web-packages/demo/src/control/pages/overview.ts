@@ -215,7 +215,7 @@ export class OverviewPage extends Control {
     );
     this.addCoverageRow(
       section, 154, 'INTERACTION',
-      'Button · CheckBox · CheckButton · focus · pointer routing',
+      'Button · Checkbox · CheckButton · focus · pointer routing',
       'Selection and input state', theme.rose, theme,
     );
     this.addCoverageRow(

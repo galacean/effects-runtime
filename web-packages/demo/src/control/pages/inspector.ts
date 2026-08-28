@@ -6,7 +6,7 @@ import {
   AspectRatioContainer,
   Button,
   CenterContainer,
-  CheckBox,
+  Checkbox,
   CheckButton,
   ColorRect,
   Control,
@@ -186,8 +186,8 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
 
       return control;
     }
-    case 'CheckBox': {
-      const control = new CheckBox(engine, 'Enable feature');
+    case 'Checkbox': {
+      const control = new Checkbox(engine, 'Enable feature');
 
       control.setPressedNoSignal(true);
 
@@ -364,7 +364,7 @@ function createPreviewControl (engine: Engine, type: InspectorControlType, textu
 
 function attachPreviewControl (control: Control, parent: Control, type: InspectorControlType): void {
   const vertical = type === 'VSlider' || type === 'VScrollBar';
-  const compact = type === 'Button' || type === 'CheckBox' || type === 'CheckButton'
+  const compact = type === 'Button' || type === 'Checkbox' || type === 'CheckButton'
     || type === 'HSlider' || type === 'ProgressBar' || type === 'HScrollBar';
   const width = vertical ? 44 : compact ? 236 : 280;
   const height = vertical ? 236 : compact ? type === 'Button' ? 64 : type === 'ProgressBar' ? 34 : 42 : 210;

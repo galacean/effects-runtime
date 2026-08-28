@@ -3,7 +3,7 @@ import { math } from '@galacean/effects';
 import {
   Button,
   AutowrapMode,
-  CheckBox,
+  Checkbox,
   CheckButton,
   Control,
   HSlider,
@@ -161,7 +161,7 @@ export class ThemingPage extends Control {
     });
     const normal = new Button(this.engine, 'Normal');
     const disabled = new Button(this.engine, 'Disabled');
-    const checked = new CheckBox(this.engine, 'Checked');
+    const checked = new Checkbox(this.engine, 'Checked');
     const toggle = new CheckButton(this.engine, 'Switch');
     const slider = styleSlider(new HSlider(this.engine));
     const progress = new ProgressBar(this.engine);

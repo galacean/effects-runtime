@@ -13,7 +13,7 @@ import {
   Button,
   ButtonDrawMode,
   ButtonGroup,
-  CheckBox,
+  Checkbox,
   CheckButton,
   HSlider,
   HorizontalAlignment,
@@ -238,8 +238,8 @@ describe('plugin-gui/GUI basic controls', () => {
 
   it('enforces button groups and supplies both check appearances', () => {
     const group = new ButtonGroup();
-    const first = new CheckBox(player.engine, 'First');
-    const second = new CheckBox(player.engine, 'Second');
+    const first = new Checkbox(player.engine, 'First');
+    const second = new Checkbox(player.engine, 'Second');
     const checkButton = new CheckButton(player.engine, 'Enabled');
     const groupEvents: BaseButton[] = [];
 
