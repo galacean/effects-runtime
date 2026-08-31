@@ -1,4 +1,5 @@
 ---
+name: "quick-commit"
 description: "Stage all changes and commit with a descriptive message"
 ---
 
