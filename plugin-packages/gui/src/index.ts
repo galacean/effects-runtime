@@ -3,7 +3,6 @@ import { GUIPlugin } from './plugin';
 
 export * from './core';
 export * from './components';
-export * from './data';
 export * from './layout/enums';
 export * from './layout/box-container';
 export * from './layout/grid-container';

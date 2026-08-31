@@ -14,13 +14,13 @@ import type {
   Texture,
   TextureRegion,
   VFXItem,
+  spec,
 } from '@galacean/effects';
 import {
   effectsClass,
   EventEmitter,
 } from '@galacean/effects';
 import type { UIControl } from '../components/ui-control';
-import type { ControlData, ThemeItemCollectionData } from './data';
 import type { CursorStyle } from './enums';
 import {
   CursorShape,
@@ -1650,7 +1650,7 @@ export class Control {
     return this.focusBehaviorRecursive === FocusBehaviorRecursive.Enabled;
   }
 
-  fromData (data: ControlData): void {
+  fromData (data: spec.ControlData): void {
     if (data.anchorMin !== undefined) {
       this.setAnchorMin(...data.anchorMin);
     }
@@ -1726,7 +1726,7 @@ export class Control {
     }
   }
 
-  private applyThemeOverridesFromData (data: ThemeItemCollectionData): void {
+  private applyThemeOverridesFromData (data: spec.ThemeItemCollectionData): void {
     for (const name of Object.keys(data.colors ?? {})) {
       const value = data.colors![name];
 

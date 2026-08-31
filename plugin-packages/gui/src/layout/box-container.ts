@@ -2,10 +2,9 @@ import {
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine } from '@galacean/effects';
+import type { Engine, spec } from '@galacean/effects';
 import { Container, SizeFlags } from '../core/control';
 import type { Control } from '../core/control';
-import type { BoxContainerData } from '../data';
 import { LayoutAlignment, Orientation } from './enums';
 import { alignmentOffset, assertEnumValue, growSlots, sum } from './utils';
 
@@ -157,7 +156,7 @@ export class BoxContainer extends Container {
     this.queueSort();
   }
 
-  override fromData (data: BoxContainerData): void {
+  override fromData (data: spec.BoxContainerData): void {
     super.fromData(data);
     if (data.alignment !== undefined) {
       this.alignment = data.alignment;

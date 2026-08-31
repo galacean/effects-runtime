@@ -1,6 +1,5 @@
 import { effectsClass, math } from '@galacean/effects';
-import type { Engine, Texture } from '@galacean/effects';
-import type { ButtonData } from '../data';
+import type { Engine, Texture, spec } from '@galacean/effects';
 import { BaseButton } from './base-button';
 import { ButtonDrawMode, HorizontalAlignment, VerticalAlignment } from './enums';
 
@@ -292,7 +291,7 @@ export class Button extends BaseButton {
     return characters.slice(0, count).join('') + ellipsis;
   }
 
-  override fromData (data: ButtonData): void {
+  override fromData (data: spec.ButtonData): void {
     super.fromData(data);
     if (data.text !== undefined) {
       this.text = data.text;

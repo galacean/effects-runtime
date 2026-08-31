@@ -1,5 +1,5 @@
 import { Player, VFXItem, effectsClass, getClass, math } from '@galacean/effects';
-import type { Engine } from '@galacean/effects';
+import type { Engine, spec } from '@galacean/effects';
 import {
   AspectRatioContainer,
   AspectRatioStretchMode,
@@ -46,10 +46,7 @@ import {
   VSlider,
   UIControl,
 } from '@galacean/effects-plugin-gui';
-import type {
-  StyleBoxFlat,
-  UIControlData,
-} from '@galacean/effects-plugin-gui';
+import type { StyleBoxFlat } from '@galacean/effects-plugin-gui';
 
 const { expect } = chai;
 
@@ -761,11 +758,12 @@ function createUIControlData (
   itemId: string,
   type: string,
   data: Record<string, unknown>,
-): UIControlData {
+): spec.UIControlData {
   return {
     id,
-    dataType: 'UIControl' as UIControlData['dataType'],
+    dataType: 'UIControl' as spec.UIControlData['dataType'],
     item: { id: itemId },
-    control: { type, data },
-  } as UIControlData;
+    control: type,
+    data,
+  } as spec.UIControlData;
 }

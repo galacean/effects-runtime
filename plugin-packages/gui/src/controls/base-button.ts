@@ -11,12 +11,12 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
+  spec,
 } from '@galacean/effects';
 import { Control } from '../core/control';
 import type { ControlEvent, RootControl } from '../core/control';
 import { FocusMode, MouseFilter } from '../core/enums';
 import { ButtonActionMode, ButtonDrawMode } from './enums';
-import type { BaseButtonData } from '../data';
 
 export type BaseButtonEvent = ControlEvent & {
   buttonDown: [],
@@ -439,7 +439,7 @@ export class BaseButton extends Control {
     this.buttonEventEmitter.emit('pressed');
   }
 
-  override fromData (data: BaseButtonData): void {
+  override fromData (data: spec.BaseButtonData): void {
     super.fromData(data);
     if (data.disabled !== undefined) {
       this.disabled = data.disabled;

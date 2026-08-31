@@ -1,7 +1,7 @@
 import { effectsClass, math } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { Container, SizeFlags } from '../core/control';
 import type { Control } from '../core/control';
-import type { GridContainerData } from '../data';
 import { growSlots, sum } from './utils';
 
 type TrackMetrics = {
@@ -165,7 +165,7 @@ export class GridContainer extends Container {
     this.queueSort();
   }
 
-  override fromData (data: GridContainerData): void {
+  override fromData (data: spec.GridContainerData): void {
     super.fromData(data);
     if (data.columns !== undefined) {
       this.columns = data.columns;

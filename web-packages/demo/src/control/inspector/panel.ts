@@ -680,7 +680,7 @@ function createPropertyEditor (
 
     return {
       control: editor,
-      bottom: true,
+      bottom: false,
       refresh: () => {
         const value = property.getValue(target);
 

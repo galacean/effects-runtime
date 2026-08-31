@@ -1,6 +1,5 @@
 import { effectsClass, math } from '@galacean/effects';
-import type { Engine } from '@galacean/effects';
-import type { LineEditData } from '../data';
+import type { Engine, spec } from '@galacean/effects';
 import { HorizontalAlignment } from './enums';
 import { TextInput } from './text-input';
 
@@ -152,7 +151,7 @@ export class LineEdit extends TextInput {
     return left;
   }
 
-  override fromData (data: LineEditData): void {
+  override fromData (data: spec.LineEditData): void {
     super.fromData(data);
     if (data.text !== undefined) {this.text = data.text;}
     if (data.placeholderText !== undefined) {this.placeholderText = data.placeholderText;}

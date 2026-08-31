@@ -3,8 +3,7 @@ import {
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine, InputEventKey, InputEventMouseButton } from '@galacean/effects';
-import type { TextEditData } from '../data';
+import type { Engine, InputEventKey, InputEventMouseButton, spec } from '@galacean/effects';
 import { TextInput } from './text-input';
 
 @effectsClass('TextEdit')
@@ -187,7 +186,7 @@ export class TextEdit extends TextInput {
     if (caretLine < this.scrollLine) {this.scrollLine = caretLine;}
   }
 
-  override fromData (data: TextEditData): void {
+  override fromData (data: spec.TextEditData): void {
     super.fromData(data);
     if (data.text !== undefined) {this.text = data.text;}
     if (data.placeholderText !== undefined) {this.placeholderText = data.placeholderText;}

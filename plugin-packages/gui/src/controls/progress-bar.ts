@@ -2,11 +2,10 @@ import {
   effectsClass,
   math,
 } from '@galacean/effects';
-import type { Engine } from '@galacean/effects';
+import type { Engine, spec } from '@galacean/effects';
 import { MouseFilter } from '../core/enums';
 import { Range } from '../scroll/range';
 import { ProgressFillMode } from './enums';
-import type { ProgressBarData } from '../data';
 
 @effectsClass('ProgressBar')
 export class ProgressBar extends Range {
@@ -126,7 +125,7 @@ export class ProgressBar extends Range {
     }
   }
 
-  override fromData (data: ProgressBarData): void {
+  override fromData (data: spec.ProgressBarData): void {
     super.fromData(data);
     if (data.showPercentage !== undefined) {
       this.showPercentage = data.showPercentage;

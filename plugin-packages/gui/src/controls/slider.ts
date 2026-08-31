@@ -12,13 +12,13 @@ import type {
   InputEventMouseMotion,
   InputEventScreenDrag,
   InputEventScreenTouch,
+  spec,
 } from '@galacean/effects';
 import type { RootControl } from '../core/control';
 import { FocusMode, MouseFilter } from '../core/enums';
 import { Orientation } from '../layout/enums';
 import { Range } from '../scroll/range';
 import type { RangeEvent } from '../scroll/range';
-import type { SliderData } from '../data';
 
 export type SliderEvent = RangeEvent & {
   dragStarted: [],
@@ -323,7 +323,7 @@ export class Slider extends Range {
       : { x: (this.width - grabberSize) * 0.5, y: this.getUsableLength() - offset, width: grabberSize, height: grabberSize };
   }
 
-  override fromData (data: SliderData): void {
+  override fromData (data: spec.SliderData): void {
     super.fromData(data);
     if (data.editable !== undefined) {
       this.editable = data.editable;
