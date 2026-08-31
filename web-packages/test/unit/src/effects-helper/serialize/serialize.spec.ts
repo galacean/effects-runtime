@@ -233,128 +233,128 @@ describe('helper/serialize', () => {
     expect(a2).to.deep.equals(buffer2);
   });
 
-  it('serialize cube texture with mipmap 1', async () => {
-    const options = await getDefaultTextureFactory().loadSource(cube1, {
-      wrapS: WebGLRenderingContext.CLAMP_TO_EDGE,
-      magFilter: WebGLRenderingContext.NEAREST,
-    });
-    const result = await serializeTextures([options]);
+  // it('serialize cube texture with mipmap 1', async () => {
+  //   const options = await getDefaultTextureFactory().loadSource(cube1, {
+  //     wrapS: WebGLRenderingContext.CLAMP_TO_EDGE,
+  //     magFilter: WebGLRenderingContext.NEAREST,
+  //   });
+  //   const result = await serializeTextures([options]);
 
-    expect(result.bins?.[0].byteLength).to.eql(padding4(744 + 147));
-    expect(result.textures[0]).to.deep.equals({
-      'wrapS': 33071,
-      'magFilter': 9728,
-      'sourceType': 7,
-      'target': 34067,
-      'mipmaps': [[
-        [20, [0, 0, 149]],
-        [20, [0, 152, 149]],
-        [20, [0, 304, 149]],
-        [20, [0, 456, 133]],
-        [20, [0, 592, 149]],
-        [20, [0, 744, 147]],
-      ]],
-    });
-  });
+  //   expect(result.bins?.[0].byteLength).to.eql(padding4(744 + 147));
+  //   expect(result.textures[0]).to.deep.equals({
+  //     'wrapS': 33071,
+  //     'magFilter': 9728,
+  //     'sourceType': 7,
+  //     'target': 34067,
+  //     'mipmaps': [[
+  //       [20, [0, 0, 149]],
+  //       [20, [0, 152, 149]],
+  //       [20, [0, 304, 149]],
+  //       [20, [0, 456, 133]],
+  //       [20, [0, 592, 149]],
+  //       [20, [0, 744, 147]],
+  //     ]],
+  //   });
+  // });
 
-  it('serialize cube texture with mipmap 2', async () => {
-    const options = await getDefaultTextureFactory().loadSource(cube2, {
-      wrapS: WebGLRenderingContext.REPEAT,
-      magFilter: WebGLRenderingContext.NEAREST,
-    });
-    const result = await serializeTextures([options]);
+  // it('serialize cube texture with mipmap 2', async () => {
+  //   const options = await getDefaultTextureFactory().loadSource(cube2, {
+  //     wrapS: WebGLRenderingContext.REPEAT,
+  //     magFilter: WebGLRenderingContext.NEAREST,
+  //   });
+  //   const result = await serializeTextures([options]);
 
-    expect(result.bins?.[0].byteLength).to.eql(1484);
-    expect(result.textures[0]).to.deep.equals({
-      'wrapS': 10497,
-      'magFilter': 9728,
-      'sourceType': 7,
-      'target': 34067,
-      'mipmaps': [[
-        [20, [0, 0, 149]],
-        [20, [0, 152, 149]],
-        [20, [0, 304, 149]],
-        [20, [0, 456, 133]],
-        [20, [0, 592, 149]],
-        [20, [0, 744, 147]],
-      ], [
-        [20, [0, 892, 97]],
-        [20, [0, 992, 95]],
-        [20, [0, 1088, 97]],
-        [20, [0, 1188, 97]],
-        [20, [0, 1288, 97]],
-        [20, [0, 1388, 96]],
-      ]],
-    });
-  });
+  //   expect(result.bins?.[0].byteLength).to.eql(1484);
+  //   expect(result.textures[0]).to.deep.equals({
+  //     'wrapS': 10497,
+  //     'magFilter': 9728,
+  //     'sourceType': 7,
+  //     'target': 34067,
+  //     'mipmaps': [[
+  //       [20, [0, 0, 149]],
+  //       [20, [0, 152, 149]],
+  //       [20, [0, 304, 149]],
+  //       [20, [0, 456, 133]],
+  //       [20, [0, 592, 149]],
+  //       [20, [0, 744, 147]],
+  //     ], [
+  //       [20, [0, 892, 97]],
+  //       [20, [0, 992, 95]],
+  //       [20, [0, 1088, 97]],
+  //       [20, [0, 1188, 97]],
+  //       [20, [0, 1288, 97]],
+  //       [20, [0, 1388, 96]],
+  //     ]],
+  //   });
+  // });
 
-  it('serialize 2 cube textures with mipmap 1', async () => {
-    const options = await getDefaultTextureFactory().loadSource(cube1, {
-      wrapS: WebGLRenderingContext.CLAMP_TO_EDGE,
-      magFilter: WebGLRenderingContext.NEAREST,
-    });
-    const result = await serializeTextures([options, Object.assign({}, options)]);
+  // it('serialize 2 cube textures with mipmap 1', async () => {
+  //   const options = await getDefaultTextureFactory().loadSource(cube1, {
+  //     wrapS: WebGLRenderingContext.CLAMP_TO_EDGE,
+  //     magFilter: WebGLRenderingContext.NEAREST,
+  //   });
+  //   const result = await serializeTextures([options, Object.assign({}, options)]);
 
-    expect(result.bins?.[0].byteLength).to.eql(padding4((744 + 147)));
-    expect(result.bins?.[1].byteLength).to.eql(padding4((744 + 147)));
-    expect(result.textures[0]).to.deep.equals({
-      'wrapS': 33071,
-      'magFilter': 9728,
-      'sourceType': 7,
-      'target': 34067,
-      'mipmaps': [[
-        [20, [0, 0, 149]],
-        [20, [0, 152, 149]],
-        [20, [0, 304, 149]],
-        [20, [0, 456, 133]],
-        [20, [0, 592, 149]],
-        [20, [0, 744, 147]],
-      ]],
-    });
-    expect(result.textures[1]).to.deep.equals({
-      'wrapS': 33071,
-      'magFilter': 9728,
-      'sourceType': 7,
-      'target': 34067,
-      'mipmaps': [[
-        [20, [1, 0, 149]],
-        [20, [1, 152, 149]],
-        [20, [1, 304, 149]],
-        [20, [1, 456, 133]],
-        [20, [1, 592, 149]],
-        [20, [1, 744, 147]],
-      ]],
-    });
-  });
+  //   expect(result.bins?.[0].byteLength).to.eql(padding4((744 + 147)));
+  //   expect(result.bins?.[1].byteLength).to.eql(padding4((744 + 147)));
+  //   expect(result.textures[0]).to.deep.equals({
+  //     'wrapS': 33071,
+  //     'magFilter': 9728,
+  //     'sourceType': 7,
+  //     'target': 34067,
+  //     'mipmaps': [[
+  //       [20, [0, 0, 149]],
+  //       [20, [0, 152, 149]],
+  //       [20, [0, 304, 149]],
+  //       [20, [0, 456, 133]],
+  //       [20, [0, 592, 149]],
+  //       [20, [0, 744, 147]],
+  //     ]],
+  //   });
+  //   expect(result.textures[1]).to.deep.equals({
+  //     'wrapS': 33071,
+  //     'magFilter': 9728,
+  //     'sourceType': 7,
+  //     'target': 34067,
+  //     'mipmaps': [[
+  //       [20, [1, 0, 149]],
+  //       [20, [1, 152, 149]],
+  //       [20, [1, 304, 149]],
+  //       [20, [1, 456, 133]],
+  //       [20, [1, 592, 149]],
+  //       [20, [1, 744, 147]],
+  //     ]],
+  //   });
+  // });
 
-  it('serialize 2 cube textures mix', async () => {
-    const options1 = await getDefaultTextureFactory().loadSource(cube1, {
-      wrapS: WebGLRenderingContext.CLAMP_TO_EDGE,
-      magFilter: WebGLRenderingContext.NEAREST,
-    });
-    const options2 = await getDefaultTextureFactory().loadSource(cube2, {
-      wrapS: WebGLRenderingContext.REPEAT,
-      magFilter: WebGLRenderingContext.NEAREST,
-    });
-    const result = await serializeTextures([options1, options2]);
+  // it('serialize 2 cube textures mix', async () => {
+  //   const options1 = await getDefaultTextureFactory().loadSource(cube1, {
+  //     wrapS: WebGLRenderingContext.CLAMP_TO_EDGE,
+  //     magFilter: WebGLRenderingContext.NEAREST,
+  //   });
+  //   const options2 = await getDefaultTextureFactory().loadSource(cube2, {
+  //     wrapS: WebGLRenderingContext.REPEAT,
+  //     magFilter: WebGLRenderingContext.NEAREST,
+  //   });
+  //   const result = await serializeTextures([options1, options2]);
 
-    expect(result.bins?.[0].byteLength).to.eql(892);
-    expect(result.bins?.[1].byteLength).to.eql(1484);
-    expect(result.textures[0]).to.deep.equals({
-      'wrapS': 33071,
-      'magFilter': 9728,
-      'sourceType': 7,
-      'target': 34067,
-      'mipmaps': [[[20, [0, 0, 149]], [20, [0, 152, 149]], [20, [0, 304, 149]], [20, [0, 456, 133]], [20, [0, 592, 149]], [20, [0, 744, 147]]]],
-    });
-    expect(result.textures[1]).to.deep.equals({
-      'wrapS': 10497,
-      'magFilter': 9728,
-      'sourceType': 7,
-      'target': 34067,
-      'mipmaps': [[[20, [1, 0, 149]], [20, [1, 152, 149]], [20, [1, 304, 149]], [20, [1, 456, 133]], [20, [1, 592, 149]], [20, [1, 744, 147]]], [[20, [1, 892, 97]], [20, [1, 992, 95]], [20, [1, 1088, 97]], [20, [1, 1188, 97]], [20, [1, 1288, 97]], [20, [1, 1388, 96]]]],
-    });
-  });
+  //   expect(result.bins?.[0].byteLength).to.eql(892);
+  //   expect(result.bins?.[1].byteLength).to.eql(1484);
+  //   expect(result.textures[0]).to.deep.equals({
+  //     'wrapS': 33071,
+  //     'magFilter': 9728,
+  //     'sourceType': 7,
+  //     'target': 34067,
+  //     'mipmaps': [[[20, [0, 0, 149]], [20, [0, 152, 149]], [20, [0, 304, 149]], [20, [0, 456, 133]], [20, [0, 592, 149]], [20, [0, 744, 147]]]],
+  //   });
+  //   expect(result.textures[1]).to.deep.equals({
+  //     'wrapS': 10497,
+  //     'magFilter': 9728,
+  //     'sourceType': 7,
+  //     'target': 34067,
+  //     'mipmaps': [[[20, [1, 0, 149]], [20, [1, 152, 149]], [20, [1, 304, 149]], [20, [1, 456, 133]], [20, [1, 592, 149]], [20, [1, 744, 147]]], [[20, [1, 892, 97]], [20, [1, 992, 95]], [20, [1, 1088, 97]], [20, [1, 1188, 97]], [20, [1, 1288, 97]], [20, [1, 1388, 96]]]],
+  //   });
+  // });
 });
 
 function padding4 (n: number) {

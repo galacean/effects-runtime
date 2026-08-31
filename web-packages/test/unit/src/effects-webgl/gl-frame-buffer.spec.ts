@@ -3,7 +3,6 @@ import { Renderer } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
 import { GLEngine } from '@galacean/effects-webgl';
 import { GLFramebuffer, GLRenderbuffer, GLTexture } from '@galacean/effects-webgl';
-import { sleep } from '../utils';
 
 const { expect } = chai;
 
@@ -26,8 +25,7 @@ function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
 
     this.timeout('10s');
 
-    before(async () => {
-      await sleep(3000);
+    before(() => {
       engine = new GLEngine(canvas, { glType: framework });
       fakeRenderer = new Renderer(engine);
       gl = (fakeRenderer.engine as GLEngine).gl;
